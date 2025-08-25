@@ -14,9 +14,9 @@
     "@noodl/runtime": "file:../noodl-runtime"
   },
   "devDependencies": {
+    "copy-webpack-plugin": "^4.6.0",
     "generate-json-webpack-plugin": "^2.0.0",
-    "ts-loader": "^9.3.1",
-    "typescript": "^4.7.4",
-    "copy-webpack-plugin": "^4.6.0"
+    "ts-loader": "^9.5.4",
+    "typescript": "^4.9.5"
   }
 }

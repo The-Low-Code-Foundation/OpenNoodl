@@ -27,24 +27,24 @@
     "test:platform": "lerna exec --scope @noodl/platform-node -- npm test"
   },
   "devDependencies": {
-    "@ianvs/prettier-plugin-sort-imports": "^3.7.1",
+    "@ianvs/prettier-plugin-sort-imports": "^3.7.2",
     "@types/keyv": "3.1.4",
-    "@types/node": "^18.8.3",
-    "@typescript-eslint/eslint-plugin": "^5.49.0",
-    "@typescript-eslint/parser": "^5.49.0",
-    "eslint": "^8.33.0",
-    "eslint-plugin-react": "^7.32.2",
-    "fs-extra": "^10.0.0",
+    "@types/node": "^18.19.123",
+    "@typescript-eslint/eslint-plugin": "^5.62.0",
+    "@typescript-eslint/parser": "^5.62.0",
+    "eslint": "^8.57.1",
+    "eslint-plugin-react": "^7.37.5",
+    "fs-extra": "^10.1.0",
+    "lerna": "^7.4.2",
     "rimraf": "^3.0.2",
-    "ts-node": "^10.9.1",
+    "ts-node": "^10.9.2",
     "typescript": "^4.9.5",
-    "webpack": "^5.84.1",
-    "webpack-cli": "^5.1.1",
-    "webpack-dev-server": "^4.15.0",
-    "lerna": "^7.4.2"
+    "webpack": "^5.101.3",
+    "webpack-cli": "^5.1.4",
+    "webpack-dev-server": "^4.15.2"
   },
   "engines": {
     "npm": ">=6.0.0",
-    "node": ">=16.0.0 <=18"
+    "node": ">=16.0.0"
   }
 }
