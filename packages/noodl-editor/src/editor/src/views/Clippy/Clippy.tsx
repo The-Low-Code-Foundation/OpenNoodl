@@ -51,7 +51,7 @@ export default function Clippy() {
   const firstInputRef = useRef(null);
   const secondInputRef = useRef(null);
   const secondTextAreaRef = useRef(null);
-  const ref = useRef<HTMLDivElement>();
+  const ref = useRef<HTMLDivElement>(undefined);
   const [hasApiKey, setHasApiKey] = useState(false);
   const aiAssistantModel = useModernModel(AiAssistantModel.instance);
   const nodeGraphContext = useNodeGraphContext();

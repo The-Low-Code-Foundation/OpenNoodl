@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import ReactDOM from 'react-dom';
+import { createRoot } from 'react-dom/client';
 import { Git } from '@noodl/git';
 import { platform } from '@noodl/platform';
 
@@ -126,8 +126,8 @@ function BaseVersionControlPanel() {
 
   function openGitSettingsPopout() {
     const popoutDiv = document.createElement('div');
-
-    ReactDOM.render(React.createElement(GitProviderPopout, { git }), popoutDiv);
+    const root = createRoot(popoutDiv);
+    root.render(React.createElement(GitProviderPopout, { git }));
 
     //the timeout is needed to solve a bug when the popout us opened from the git status button
     //it causes timing issues between native events and react where the popout is instantly closed
@@ -138,7 +138,7 @@ function BaseVersionControlPanel() {
         position: 'right',
         disableDynamicPositioning: true,
         onClose: () => {
-          ReactDOM.unmountComponentAtNode(popoutDiv);
+          root.unmount();
           fetch.fetchRemote();
         }
       });

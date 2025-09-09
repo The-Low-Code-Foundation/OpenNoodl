@@ -1,7 +1,7 @@
 import { useModernModel } from '@noodl-hooks/useModel';
 import { OpenAiStore } from '@noodl-store/AiAssistantStore';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import ReactDOM from 'react-dom';
+import { createRoot } from 'react-dom/client';
 
 import { AiAssistantModel } from '@noodl-models/AiAssistant/AiAssistantModel';
 import { AiCopilotContext } from '@noodl-models/AiAssistant/AiCopilotContext';
@@ -332,7 +332,8 @@ function AiMessageFunctionNodeAffix({ context, onUpdated }: AiMessageFunctionNod
     };
 
     const popoutDiv = document.createElement('div');
-    ReactDOM.render(React.createElement(CodeEditor, props), popoutDiv);
+    const root = createRoot(popoutDiv);
+    root.render(React.createElement(CodeEditor, props));
 
     const popout = PopupLayer.instance.showPopout({
       content: { el: [popoutDiv] },

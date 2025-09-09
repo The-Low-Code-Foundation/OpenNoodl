@@ -1,7 +1,7 @@
 import { clipboard, ipcRenderer } from 'electron';
 import _ from 'underscore';
 import React from 'react';
-import ReactDOM from 'react-dom';
+import { createRoot, Root } from 'react-dom/client';
 
 import { NodeGraphColors } from '@noodl-constants/NodeGraphColors';
 import { AiAssistantEvent, AiAssistantModel } from '@noodl-models/AiAssistant/AiAssistantModel';
@@ -226,6 +226,8 @@ export class NodeGraphEditor extends View {
 
   nodesIdsAnimating: string[];
   isPlayingNodeAnimations: boolean;
+
+  toolbarRoots: Root[];
 
   constructor(args) {
     super();
@@ -1418,8 +1420,8 @@ export class NodeGraphEditor extends View {
   }
 
   updateTitle() {
-    const root = this.el[0].querySelector('.nodegraph-component-trail-root');
-
+    const rootElem = this.el[0].querySelector('.nodegraph-component-trail-root');
+    const root = createRoot(rootElem);
     if (this.activeComponent) {
       const fullName = this.activeComponent.fullName;
       const nameParts = fullName.split('/');
@@ -1464,9 +1466,9 @@ export class NodeGraphEditor extends View {
         canNavigateForward: this.navigationHistory.canNavigateForward
       };
 
-      ReactDOM.render(React.createElement(NodeGraphComponentTrail, props), root);
+      root.render(React.createElement(NodeGraphComponentTrail, props));
     } else {
-      ReactDOM.unmountComponentAtNode(root);
+      root.unmount();
     }
   }
 
@@ -1761,10 +1763,10 @@ export class NodeGraphEditor extends View {
           // @ts-expect-error
           toProps.sourcePort = fromPort;
           toProps.disabled = false;
-          ReactDOM.render(React.createElement(ConnectionPopup, toProps), toDiv);
+          createRoot(toDiv).render(React.createElement(ConnectionPopup, toProps));
 
           fromProps.disabled = true;
-          ReactDOM.render(React.createElement(ConnectionPopup, fromProps), fromDiv);
+          createRoot(fromDiv).render(React.createElement(ConnectionPopup, fromProps));
 
           fromNode.borderHighlighted = false;
           toNode.borderHighlighted = true;
@@ -1772,7 +1774,8 @@ export class NodeGraphEditor extends View {
         }
       };
       const fromDiv = document.createElement('div');
-      ReactDOM.render(React.createElement(ConnectionPopup, fromProps), fromDiv);
+      const root = createRoot(fromDiv);
+      root.render(React.createElement(ConnectionPopup, fromProps));
 
       const fromPosition = toNode.global.x > fromNodeXPos ? 'left' : 'right';
 
@@ -1790,7 +1793,7 @@ export class NodeGraphEditor extends View {
           y: (fromNode.global.y + panAndScale.y) * panAndScale.scale + tl[1] + 20 * panAndScale.scale
         },
         onClose: () => {
-          ReactDOM.unmountComponentAtNode(fromDiv);
+          root.unmount();
           ipcRenderer.send('viewer-show');
         }
       });
@@ -1824,10 +1827,10 @@ export class NodeGraphEditor extends View {
             // @ts-expect-error
             toProps.sourcePort = undefined;
             toProps.disabled = true;
-            ReactDOM.render(React.createElement(ConnectionPopup, toProps), toDiv);
+            createRoot(toDiv).render(React.createElement(ConnectionPopup, toProps));
 
             fromProps.disabled = false;
-            ReactDOM.render(React.createElement(ConnectionPopup, fromProps), fromDiv);
+            createRoot(fromDiv).render(React.createElement(ConnectionPopup, fromProps));
 
             fromNode.borderHighlighted = true;
             toNode.borderHighlighted = false;
@@ -1836,7 +1839,7 @@ export class NodeGraphEditor extends View {
         }
       };
       const toDiv = document.createElement('div');
-      ReactDOM.render(React.createElement(ConnectionPopup, toProps), toDiv);
+      createRoot(toDiv).render(React.createElement(ConnectionPopup, toProps));
 
       const toPosition = fromNodeXPos >= toNode.global.x ? 'left' : 'right';
       const toPopout = PopupLayer.instance.showPopout({
@@ -1851,7 +1854,7 @@ export class NodeGraphEditor extends View {
           y: (toNode.global.y + panAndScale.y) * panAndScale.scale + tl[1] + 20 * panAndScale.scale
         },
         onClose: () => {
-          ReactDOM.unmountComponentAtNode(toDiv);
+          root.unmount();
           this.clearSelection();
           this.repaint();
         }
@@ -2203,20 +2206,23 @@ export class NodeGraphEditor extends View {
     div.style.position = 'absolute';
     div.style.left = pos.x + 'px';
     div.style.top = pos.y + 'px';
-
-    ReactDOM.render(
+    const root = createRoot(div);
+    this.toolbarRoots.push(root);
+    root.render(
       React.createElement(PopupToolbar, {
         menuItems,
         contextMenuItems: this.getContextMenuActions()
-      } as PopupToolbarProps),
-      div
+      } as PopupToolbarProps)
     );
   }
 
   hideNodeToolbar() {
+    for (const root of this.toolbarRoots) {
+      root.unmount();
+    }
+    this.toolbarRoots = [];
     const toolbars = this.domElementContainer.querySelectorAll('.nodegraph-node-toolbar');
     for (const toolbar of toolbars) {
-      ReactDOM.unmountComponentAtNode(toolbar);
       this.domElementContainer.removeChild(toolbar);
     }
   }

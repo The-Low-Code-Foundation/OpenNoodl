@@ -1,6 +1,6 @@
 import { ipcRenderer } from 'electron';
 import React from 'react';
-import ReactDOM from 'react-dom';
+import { createRoot } from 'react-dom/client';
 
 import { EventDispatcher } from '../../shared/utils/EventDispatcher';
 import LessonTemplatesModel from './models/lessontemplatesmodel';
@@ -24,11 +24,11 @@ function createToastLayer() {
   toastLayer.classList.add('toast-layer');
   $('body').append(toastLayer);
 
-  ReactDOM.render(React.createElement(ToastLayerContainer), toastLayer);
+  createRoot(toastLayer).render(React.createElement(ToastLayerContainer));
 
   if (import.meta.webpackHot) {
     import.meta.webpackHot.accept('./views/ToastLayer', () => {
-      ReactDOM.render(React.createElement(ToastLayerContainer), toastLayer);
+      createRoot(toastLayer).render(React.createElement(ToastLayerContainer));
     });
   }
 }
@@ -47,11 +47,11 @@ function createDialogLayer() {
   dialogLayer.classList.add('dialog-layer');
   $('body').append(dialogLayer);
 
-  ReactDOM.render(React.createElement(DialogLayerContainer), dialogLayer);
+  createRoot(dialogLayer).render(React.createElement(DialogLayerContainer));
 
   if (import.meta.webpackHot) {
     import.meta.webpackHot.accept('./views/DialogLayer', () => {
-      ReactDOM.render(React.createElement(DialogLayerContainer), dialogLayer);
+      createRoot(dialogLayer).render(React.createElement(DialogLayerContainer));
     });
   }
 }
