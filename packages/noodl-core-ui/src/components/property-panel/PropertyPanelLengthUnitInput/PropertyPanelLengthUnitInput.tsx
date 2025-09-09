@@ -15,7 +15,6 @@ import { normalizeAlphanumericString } from '../../../utils/normalizeAlphanumeri
 import css from './PropertyPanelLengthUnitInput.module.scss';
 
 export interface PropertyPanelLengthUnitInputProps extends Omit<PropertyPanelBaseInputProps, 'type'> {
-  properties?: TSFixme;
   hasSmallText?: boolean;
 }
 

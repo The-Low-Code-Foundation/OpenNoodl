@@ -5,7 +5,7 @@ import { PropertyPanelBaseInputProps } from '@noodl-core-ui/components/property-
 
 import css from './PropertyPanelTextRadioInput.module.scss';
 
-interface PropertyPanelTextRadioProperties {
+export interface PropertyPanelTextRadioProperties {
   name: string;
   options: {
     label: string;

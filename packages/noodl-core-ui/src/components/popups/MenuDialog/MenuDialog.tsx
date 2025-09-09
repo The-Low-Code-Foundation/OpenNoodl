@@ -100,7 +100,7 @@ export function MenuDialog({
                   {item.label}
                 </Label>
               </div>
-              {item.component && cloneElement(item.component(() => onClose()) as TSFixme)}
+              {item.component && cloneElement(item.component(() => onClose()))}
               <div className={css['EndSlot']}>
                 {item.endSlot && typeof item.endSlot === 'string' && <Text>{item.endSlot}</Text>}
                 {item.endSlot && typeof item.endSlot !== 'string' && item.endSlot}

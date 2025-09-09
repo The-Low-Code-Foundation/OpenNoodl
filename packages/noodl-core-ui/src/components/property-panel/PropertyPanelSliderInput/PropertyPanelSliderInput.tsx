@@ -9,7 +9,11 @@ import { linearMap } from '../../../utils/linearMap';
 import css from './PropertyPanelSliderInput.module.scss';
 
 export interface PropertyPanelSliderInputProps extends Omit<PropertyPanelBaseInputProps, 'type'> {
-  properties: TSFixme;
+  properties: {
+    min: number | string;
+    max: number | string;
+    step: number | string;
+  };
 }
 
 export function PropertyPanelSliderInput({
