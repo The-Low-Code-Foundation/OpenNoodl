@@ -1,6 +1,6 @@
 # OpenNoodl
 
-OpenNoodl is a fork of the original Noodl open source code under GPL-3.0 license. OpenNoodl / Noodl is a front end React app builder with a visual programming interface. 
+OpenNoodl is a fork of the original Noodl open source code under GPL-3.0 license. OpenNoodl / Noodl is a front end React app builder with a visual programming interface.
 
 OpenNoodl will aim to stay entirely in sync with the original repository, including future updates to this repository. A roadmap for updates will be published soon.
 
@@ -39,6 +39,21 @@ If you prefer self-hosting or a local backend, while still taking advantage of t
 ## Building from source
 
 See the original Noodl documentation below
+
+# Contribution
+
+We welcome contributions to OpenNoodl! To contribute:
+
+1. **Fork the repository** and create your feature branch (`git checkout -b feature/my-feature`).
+2. **Make your changes** and follow the existing code style.
+3. **Test your changes** locally.
+4. **Commit your changes** (`git commit -am 'Add new feature'`).
+5. **Push to your branch** (`git push origin feature/my-feature`).
+6. **Open a pull request** describing your changes.
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for details and our code of conduct.
+
+If you have questions, join our [community](https://the-low-code-foundation.fibery.io/invite/5NtlTThnCPh2vaAk) or open an issue.
 
 # Noodl
 
@@ -88,5 +103,5 @@ Packaged licensed under MIT:
 - `noodl-runtime`
 - `noodl-viewer-cloud`
 - `noodl-viewer-react`
-  
+
 You can find a MIT LICENSE file in each of these packages. The rest of the repository is licensed under GPLv3.
