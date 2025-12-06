@@ -1,0 +1,601 @@
+# Cline Development Guidelines for OpenNoodl
+
+## Overview
+
+This document provides guidelines for AI-assisted development on the OpenNoodl codebase using Cline in VSCode. Follow these guidelines to ensure consistent, well-documented, and testable contributions.
+
+---
+
+## 1. Before Starting Any Task
+
+### 1.1 Understand the Context
+
+```bash
+# Always check which branch you're on
+git branch
+
+# Check for uncommitted changes
+git status
+
+# Review recent commits
+git log --oneline -10
+```
+
+### 1.2 Read Relevant Documentation
+
+Before modifying any file, understand its purpose:
+
+1. Check for README files in the package
+2. Read JSDoc comments on functions
+3. Look for related test files
+4. Search for usage patterns: `grep -r "functionName" packages/`
+
+### 1.3 Identify Dependencies
+
+```bash
+# Check what imports a file
+grep -r "from.*filename" packages/
+
+# Check what the file imports
+head -50 path/to/file.ts | grep "import"
+```
+
+---
+
+## 2. Code Style Requirements
+
+### 2.1 TypeScript Standards
+
+```typescript
+// ✅ GOOD: Explicit types
+interface NodeProps {
+  id: string;
+  type: NodeType;
+  connections: Connection[];
+}
+
+function processNode(node: NodeProps): ProcessedNode {
+  // ...
+}
+
+// ❌ BAD: Implicit any
+function processNode(node) {
+  // ...
+}
+
+// ❌ BAD: Using TSFixme
+function processNode(node: TSFixme): TSFixme {
+  // ...
+}
+```
+
+### 2.2 React Component Standards
+
+```tsx
+// ✅ GOOD: Functional component with types
+interface ButtonProps {
+  label: string;
+  onClick: () => void;
+  disabled?: boolean;
+}
+
+export function Button({ label, onClick, disabled = false }: ButtonProps) {
+  return (
+    <button onClick={onClick} disabled={disabled}>
+      {label}
+    </button>
+  );
+}
+
+// ❌ BAD: Class component (unless necessary for lifecycle)
+class Button extends React.Component {
+  // ...
+}
+```
+
+### 2.3 Import Organization
+
+```typescript
+// 1. External packages (alphabetical)
+import classNames from 'classnames';
+import React, { useCallback, useState } from 'react';
+
+// 2. Internal packages (alphabetical by alias)
+import { IconName } from '@noodl-core-ui/components/common/Icon';
+import { NodeGraphModel } from '@noodl-models/nodegraphmodel';
+import { KeyCode } from '@noodl-utils/keyboard/KeyCode';
+
+// 3. Relative imports (by depth, then alphabetical)
+import { localHelper } from './helpers';
+import css from './Component.module.scss';
+```
+
+### 2.4 Naming Conventions
+
+| Type | Convention | Example |
+|------|------------|---------|
+| Components | PascalCase | `NodeEditor.tsx` |
+| Hooks | camelCase, use prefix | `useNodeSelection.ts` |
+| Utils | camelCase | `formatNodeName.ts` |
+| Constants | UPPER_SNAKE | `MAX_CONNECTIONS` |
+| CSS Modules | kebab-case | `node-editor.module.scss` |
+| Test files | Same + .test | `NodeEditor.test.tsx` |
+
+---
+
+## 3. Documentation Requirements
+
+### 3.1 File Headers
+
+Every new file should have a header comment:
+
+```typescript
+/**
+ * NodeProcessor
+ * 
+ * Handles the processing of node graph updates and manages
+ * the execution order of connected nodes.
+ * 
+ * @module noodl-runtime
+ * @since 1.2.0
+ */
+```
+
+### 3.2 Function Documentation
+
+```typescript
+/**
+ * Processes a node and propagates changes to connected nodes.
+ * 
+ * @param node - The node to process
+ * @param context - The execution context
+ * @param options - Processing options
+ * @param options.force - Force re-evaluation even if inputs unchanged
+ * @returns The processed output values
+ * @throws {NodeProcessingError} If the node definition is invalid
+ * 
+ * @example
+ * ```typescript
+ * const output = processNode(myNode, context, { force: true });
+ * console.log(output.value);
+ * ```
+ */
+function processNode(
+  node: NodeInstance,
+  context: ExecutionContext,
+  options: ProcessOptions = {}
+): NodeOutput {
+  // ...
+}
+```
+
+### 3.3 Complex Logic Comments
+
+```typescript
+// Calculate the topological sort order for node evaluation.
+// This ensures nodes are processed after their dependencies.
+// Uses Kahn's algorithm for O(V+E) complexity.
+const sortedNodes = topologicalSort(nodes, connections);
+```
+
+---
+
+## 4. Testing Requirements
+
+### 4.1 Test File Location
+
+Tests should be co-located or in a parallel `tests/` directory:
+
+```
+// Option A: Co-located
+components/
+├── Button/
+│   ├── Button.tsx
+│   ├── Button.test.tsx
+│   └── Button.module.scss
+
+// Option B: Parallel (current pattern in noodl-editor)
+packages/noodl-editor/
+├── src/
+│   └── components/Button.tsx
+└── tests/
+    └── components/Button.test.ts
+```
+
+### 4.2 Test Structure
+
+```typescript
+import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+import { renderHook, act } from '@testing-library/react-hooks';
+
+describe('useNodeSelection', () => {
+  // Setup
+  let mockContext: NodeGraphContext;
+  
+  beforeEach(() => {
+    mockContext = createMockContext();
+  });
+  
+  // Group related tests
+  describe('when selecting a single node', () => {
+    it('should update selection state', () => {
+      const { result } = renderHook(() => useNodeSelection(mockContext));
+      
+      act(() => {
+        result.current.selectNode('node-1');
+      });
+      
+      expect(result.current.selectedNodes).toContain('node-1');
+    });
+    
+    it('should clear previous selection by default', () => {
+      // ...
+    });
+  });
+  
+  describe('when multi-selecting nodes', () => {
+    // ...
+  });
+});
+```
+
+### 4.3 What to Test
+
+| Priority | What to Test |
+|----------|--------------|
+| High | Utility functions |
+| High | Data transformations |
+| High | State management logic |
+| Medium | React hooks |
+| Medium | Component behavior |
+| Low | Pure UI rendering |
+
+---
+
+## 5. Git Workflow
+
+### 5.1 Branch Naming
+
+```bash
+# Features
+git checkout -b feature/add-vercel-deployment
+
+# Bug fixes
+git checkout -b fix/page-router-scroll
+
+# Refactoring
+git checkout -b refactor/remove-tsfixme-panels
+
+# Documentation
+git checkout -b docs/update-node-api
+```
+
+### 5.2 Commit Messages
+
+Follow conventional commits:
+
+```bash
+# Format: type(scope): description
+
+# Features
+git commit -m "feat(editor): add breakpoint support for node connections"
+
+# Bug fixes
+git commit -m "fix(viewer): resolve scroll position reset in nested Page Router"
+
+# Refactoring
+git commit -m "refactor(runtime): replace TSFixme with proper types in node processor"
+
+# Documentation
+git commit -m "docs(api): add JSDoc to all public node methods"
+
+# Tests
+git commit -m "test(editor): add unit tests for node selection hook"
+
+# Chores
+git commit -m "chore(deps): update react to 19.0.0"
+```
+
+### 5.3 Commit Frequency
+
+- Commit after each logical change
+- Don't combine unrelated changes
+- Commit working states (tests should pass)
+
+---
+
+## 6. Codebase Navigation
+
+### 6.1 Key Directories
+
+```
+packages/
+├── noodl-editor/
+│   ├── src/
+│   │   ├── editor/src/
+│   │   │   ├── models/         # Data models (ProjectModel, NodeGraph, etc.)
+│   │   │   ├── views/          # UI components and views
+│   │   │   ├── utils/          # Helper utilities
+│   │   │   ├── store/          # State stores (AI Assistant, etc.)
+│   │   │   └── pages/          # Page-level components
+│   │   ├── main/               # Electron main process
+│   │   └── shared/             # Shared utilities
+│   └── tests/                  # Test files
+│
+├── noodl-runtime/
+│   └── src/
+│       ├── nodes/              # Runtime node definitions
+│       └── nodecontext.js      # Execution context
+│
+├── noodl-viewer-react/
+│   └── src/
+│       └── nodes/              # React-based visual nodes
+│
+└── noodl-core-ui/
+    └── src/
+        └── components/         # Shared UI components
+```
+
+### 6.2 Finding Things
+
+```bash
+# Find a component
+find packages/ -name "*NodeEditor*" -type f
+
+# Find where something is imported
+grep -r "import.*from.*NodeEditor" packages/
+
+# Find where a function is called
+grep -r "processNode(" packages/ --include="*.ts" --include="*.tsx"
+
+# Find all TODO comments
+grep -rn "TODO\|FIXME" packages/noodl-editor/src
+
+# Find test files
+find packages/ -name "*.test.ts" -o -name "*.spec.ts"
+```
+
+### 6.3 Understanding Data Flow
+
+1. **User Action** → `views/` components capture events
+2. **State Update** → `models/` handle business logic
+3. **Runtime Sync** → `ViewerConnection` sends to preview
+4. **Persistence** → `ProjectModel` saves to disk
+
+---
+
+## 7. Common Patterns
+
+### 7.1 Event Handling Pattern
+
+```typescript
+// Models use EventDispatcher for pub/sub
+import { EventDispatcher } from '../../../shared/utils/EventDispatcher';
+
+class MyModel extends EventDispatcher {
+  doSomething() {
+    // ... logic
+    this.notifyListeners('updated', { data: result });
+  }
+}
+
+// Usage
+const model = new MyModel();
+model.on('updated', (data) => {
+  console.log('Model updated:', data);
+});
+```
+
+### 7.2 React Hook Pattern
+
+```typescript
+// Custom hook for model subscription
+function useModel<T>(model: EventDispatcher, event: string): T {
+  const [state, setState] = useState<T>(model.getState());
+  
+  useEffect(() => {
+    const handler = (newState: T) => setState(newState);
+    model.on(event, handler);
+    return () => model.off(event, handler);
+  }, [model, event]);
+  
+  return state;
+}
+```
+
+### 7.3 Node Definition Pattern
+
+```javascript
+// In noodl-runtime/src/nodes/
+const MyNode = {
+  name: 'My.Custom.Node',
+  displayName: 'My Custom Node',
+  category: 'Custom',
+  
+  inputs: {
+    inputValue: {
+      type: 'string',
+      displayName: 'Input Value',
+      default: ''
+    }
+  },
+  
+  outputs: {
+    outputValue: {
+      type: 'string',
+      displayName: 'Output Value'
+    }
+  },
+  
+  methods: {
+    setInputValue(value) {
+      this._internal.inputValue = value;
+      this.flagOutputDirty('outputValue');
+    }
+  },
+  
+  getOutputValue(name) {
+    if (name === 'outputValue') {
+      return this._internal.inputValue.toUpperCase();
+    }
+  }
+};
+```
+
+---
+
+## 8. Error Handling
+
+### 8.1 User-Facing Errors
+
+```typescript
+import { ToastLayer } from '../views/ToastLayer/ToastLayer';
+
+try {
+  await riskyOperation();
+} catch (error) {
+  // Log for debugging
+  console.error('Operation failed:', error);
+  
+  // Show user-friendly message
+  ToastLayer.showError('Unable to complete operation. Please try again.');
+}
+```
+
+### 8.2 Developer Errors
+
+```typescript
+// Use assertions for developer errors
+function processNode(node: NodeInstance) {
+  if (!node.id) {
+    throw new Error(`processNode: node.id is required`);
+  }
+  
+  if (!node.definition) {
+    throw new Error(`processNode: node "${node.id}" has no definition`);
+  }
+}
+```
+
+### 8.3 Graceful Degradation
+
+```typescript
+function getNodeIcon(node: NodeInstance): string {
+  try {
+    return node.definition.icon || 'default-icon';
+  } catch {
+    console.warn(`Could not get icon for node ${node.id}`);
+    return 'default-icon';
+  }
+}
+```
+
+---
+
+## 9. Performance Considerations
+
+### 9.1 Avoid Unnecessary Re-renders
+
+```tsx
+// ✅ GOOD: Memoized callback
+const handleClick = useCallback(() => {
+  onNodeSelect(node.id);
+}, [node.id, onNodeSelect]);
+
+// ✅ GOOD: Memoized expensive computation
+const sortedNodes = useMemo(() => {
+  return topologicalSort(nodes);
+}, [nodes]);
+
+// ❌ BAD: New function on every render
+<Button onClick={() => onNodeSelect(node.id)} />
+```
+
+### 9.2 Lazy Loading
+
+```tsx
+// Lazy load heavy components
+const CodeEditor = React.lazy(() => import('./CodeEditor'));
+
+function EditorPanel() {
+  return (
+    <Suspense fallback={<LoadingSpinner />}>
+      <CodeEditor />
+    </Suspense>
+  );
+}
+```
+
+### 9.3 Batch Updates
+
+```typescript
+// Batch multiple state updates
+import { unstable_batchedUpdates } from 'react-dom';
+
+unstable_batchedUpdates(() => {
+  setSelection(newSelection);
+  setHighlight(newHighlight);
+  setZoom(newZoom);
+});
+```
+
+---
+
+## 10. Checklist Before Submitting
+
+### Code Quality
+- [ ] No `TSFixme` types added
+- [ ] All new functions have JSDoc comments
+- [ ] Complex logic has inline comments
+- [ ] No console.log statements (except errors/warnings)
+- [ ] No unused imports or variables
+
+### Testing
+- [ ] Unit tests for new utility functions
+- [ ] Integration tests for new features
+- [ ] Existing tests still pass
+- [ ] Manual testing completed
+
+### Documentation
+- [ ] README updated if needed
+- [ ] JSDoc added to public APIs
+- [ ] Comments explain "why", not "what"
+
+### Git
+- [ ] Meaningful commit messages
+- [ ] No unrelated changes in commits
+- [ ] Branch named correctly
+- [ ] Based on latest main branch
+
+### Performance
+- [ ] No obvious performance regressions
+- [ ] Large lists use virtualization
+- [ ] Expensive computations are memoized
+
+---
+
+## Quick Reference Commands
+
+```bash
+# Development
+npm run dev                    # Start editor with hot reload
+npm run test:editor           # Run tests
+npm run build:editor          # Production build
+
+# Code Quality
+npx eslint packages/noodl-editor/src --fix
+npx prettier --write "packages/**/*.{ts,tsx}"
+npx tsc --noEmit               # Type check
+
+# Debugging
+DEBUG=* npm run dev            # Verbose logging
+npm run test:editor -- --verbose
+
+# Finding Issues
+grep -r "TSFixme" packages/    # Find type escapes
+grep -r "any" packages/ --include="*.ts" | head -20
+```
+
+---
+
+*Last Updated: December 2024*
