@@ -1,4 +1,4 @@
-import React, { ReactElement, ReactFragment, ReactPortal } from 'react';
+import React, { ReactElement, ReactPortal } from 'react';
 
 import type { NodeConstructor } from '../typings/global';
 
@@ -33,6 +33,6 @@ export namespace Noodl {
   }
 }
 
-export type SingleSlot = ReactElement<unknown> | ReactFragment | ReactPortal | boolean | null | undefined;
+export type SingleSlot = ReactElement<unknown> | Iterable<React.ReactNode> | ReactPortal | boolean | null | undefined;
 
 export type Slot = SingleSlot | SingleSlot[];

@@ -22,6 +22,8 @@ export interface DragProps extends Noodl.ReactProps {
   positionY?: (value: number) => void;
   deltaX?: (value: number) => void;
   deltaY?: (value: number) => void;
+
+  children?: React.ReactNode;
 }
 
 function setDragValues(event, props) {

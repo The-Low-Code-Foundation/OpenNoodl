@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, isValidElement } from 'react';
 
 import { ForEachComponent } from '../../../nodes/std-library/data/foreach';
 import { Noodl, Slot } from '../../../types';
@@ -110,18 +110,21 @@ export function Columns(props: ColumnsProps) {
     props.marginX
   );
 
-  let children = [];
-  let forEachComponent = null;
+  let children: React.ReactElement[] = [];
+  let forEachComponent: React.ReactElement | null = null;
 
   // ForEachCompoent breaks the layout but is needed to send onMount/onUnmount
   if (!Array.isArray(props.children)) {
-    // @ts-expect-error props.children.type is any
-    if (props.children.type !== ForEachComponent) {
+    if (isValidElement(props.children) && props.children.type !== ForEachComponent) {
       children = [props.children]
     }
   } else {
-    children = props.children.filter((child) => child.type !== ForEachComponent);
-    forEachComponent = props.children.find((child) => child.type === ForEachComponent);
+    children = props.children.filter((child): child is React.ReactElement => 
+      isValidElement(child) && child.type !== ForEachComponent
+    );
+    forEachComponent = props.children.find((child): child is React.ReactElement => 
+      isValidElement(child) && child.type === ForEachComponent
+    ) || null;
   }
 
   return (

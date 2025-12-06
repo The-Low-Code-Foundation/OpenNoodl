@@ -36,7 +36,7 @@ export function ContextMenu({
   renderDirection
 }: ContextMenuProps) {
   const [isContextMenuVisible, setIsContextMenuVisible] = useState(false);
-  const toggleRef = useRef();
+  const toggleRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (isContextMenuVisible) {

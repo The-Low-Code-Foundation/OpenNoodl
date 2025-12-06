@@ -104,10 +104,7 @@ export function Columns({
               flexGrow: 0
             }}
           >
-            {
-              // @ts-expect-error
-              React.cloneElement(child)
-            }
+            {React.cloneElement(child)}
           </div>
         );
       })}

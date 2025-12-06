@@ -5,7 +5,7 @@ import PointerListeners from '../../../pointerlisteners';
 import { Noodl } from '../../../types';
 
 export interface TextProps extends Noodl.ReactProps {
-  as?: keyof JSX.IntrinsicElements | React.ComponentType<unknown>;
+  as?: keyof React.JSX.IntrinsicElements | React.ComponentType<unknown>;
 
   textStyle: Noodl.TextStyle;
   text: string;
@@ -21,7 +21,7 @@ export interface TextProps extends Noodl.ReactProps {
 }
 
 export function Text(props: TextProps) {
-  const { as: Component = 'div' } = props;
+  const Component = props.as || 'div';
 
   const style = {
     ...props.textStyle,

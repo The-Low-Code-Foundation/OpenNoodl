@@ -40,7 +40,7 @@ export function SideNavigationButton({
   menuItems
 }: SideNavigationButtonProps) {
   const context = useSideNavigationContext();
-  const iconRef = useRef();
+  const iconRef = useRef<HTMLDivElement>(null);
   const hasMenu = Boolean(menuItems);
   const [isMenuVisible, setIsMenuVisible] = useState(false);
 

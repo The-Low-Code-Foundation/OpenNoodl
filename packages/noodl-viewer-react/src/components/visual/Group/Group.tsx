@@ -2,7 +2,6 @@ import BScroll from '@better-scroll/core';
 import MouseWheel from '@better-scroll/mouse-wheel';
 import ScrollBar from '@better-scroll/scroll-bar';
 import React from 'react';
-import ReactDOM from 'react-dom';
 
 import Layout from '../../../layout';
 import PointerListeners from '../../../pointerlisteners';
@@ -17,7 +16,7 @@ BScroll.use(MouseWheel);
 BScroll.use(Slide);
 
 export interface GroupProps extends Noodl.ReactProps {
-  as?: keyof JSX.IntrinsicElements | React.ComponentType<unknown>;
+  as?: keyof React.JSX.IntrinsicElements | React.ComponentType<unknown>;
 
   scrollSnapEnabled: boolean;
   showScrollbar: boolean;
@@ -34,6 +33,8 @@ export interface GroupProps extends Noodl.ReactProps {
   onScrollPositionChanged?: (value: number) => void;
   onScrollStart?: () => void;
   onScrollEnd?: () => void;
+
+  children?: React.ReactNode;
 }
 
 type ScrollRef = HTMLDivElement & { noodlNode?: Noodl.ReactProps['noodlNode'] };
@@ -97,8 +98,11 @@ export class Group extends React.Component<GroupProps> {
 
   scrollToElement(noodlChild, duration) {
     if (!noodlChild) return;
-    // eslint-disable-next-line react/no-find-dom-node
-    const element = ReactDOM.findDOMNode(noodlChild.getRef()) as HTMLElement;
+    // Get the ref - in React 19, we need to access the DOM element directly
+    // rather than using the deprecated findDOMNode
+    const ref = noodlChild.getRef();
+    // The ref might be a DOM element directly, or a ref object with a current property
+    const element = (ref instanceof HTMLElement ? ref : ref?.current) as HTMLElement | null;
     if (element && element.scrollIntoView) {
       if (this.iScroll) {
         this.iScroll.scrollToElement(element, duration, 0, 0);
