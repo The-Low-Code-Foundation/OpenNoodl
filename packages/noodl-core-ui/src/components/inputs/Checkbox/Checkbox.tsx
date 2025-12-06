@@ -113,7 +113,7 @@ export function Checkbox({
         </div>
       )}
 
-      {children && <div className={css['ChildContainer']}>{cloneElement(children as TSFixme, { isChecked })}</div>}
+      {children && <div className={css['ChildContainer']}>{cloneElement(children, { isChecked })}</div>}
       {label && <InputLabelSection label={label} />}
     </label>
   );

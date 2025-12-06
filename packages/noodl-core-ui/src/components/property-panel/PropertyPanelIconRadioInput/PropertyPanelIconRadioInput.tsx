@@ -10,7 +10,7 @@ export enum PropertyPanelIconRadioSize {
   Default = 'default',
   Large = 'large'
 }
-interface PropertyPanelIconRadioProperties {
+export interface PropertyPanelIconRadioProperties {
   name: string;
   options: {
     icon: SingleSlot;

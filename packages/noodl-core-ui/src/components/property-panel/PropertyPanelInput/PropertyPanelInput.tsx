@@ -2,15 +2,15 @@ import classNames from 'classnames';
 import React, { useMemo } from 'react';
 
 import { PropertyPanelBaseInputProps } from '@noodl-core-ui/components/property-panel/PropertyPanelBaseInput';
-import { PropertyPanelButton } from '@noodl-core-ui/components/property-panel/PropertyPanelButton';
+import { PropertyPanelButton, PropertyPanelButtonProps } from '@noodl-core-ui/components/property-panel/PropertyPanelButton';
 import { PropertyPanelCheckbox } from '@noodl-core-ui/components/property-panel/PropertyPanelCheckbox';
-import { PropertyPanelIconRadioInput } from '@noodl-core-ui/components/property-panel/PropertyPanelIconRadioInput';
+import { PropertyPanelIconRadioInput, PropertyPanelIconRadioProperties } from '@noodl-core-ui/components/property-panel/PropertyPanelIconRadioInput';
 import { PropertyPanelLengthUnitInput } from '@noodl-core-ui/components/property-panel/PropertyPanelLengthUnitInput';
 import { PropertyPanelNumberInput } from '@noodl-core-ui/components/property-panel/PropertyPanelNumberInput';
-import { PropertyPanelSelectInput } from '@noodl-core-ui/components/property-panel/PropertyPanelSelectInput';
-import { PropertyPanelSliderInput } from '@noodl-core-ui/components/property-panel/PropertyPanelSliderInput';
+import { PropertyPanelSelectInput, PropertyPanelSelectProperties } from '@noodl-core-ui/components/property-panel/PropertyPanelSelectInput';
+import { PropertyPanelSliderInput, PropertyPanelSliderInputProps } from '@noodl-core-ui/components/property-panel/PropertyPanelSliderInput';
 import { PropertyPanelTextInput } from '@noodl-core-ui/components/property-panel/PropertyPanelTextInput';
-import { PropertyPanelTextRadioInput } from '@noodl-core-ui/components/property-panel/PropertyPanelTextRadioInput';
+import { PropertyPanelTextRadioInput, PropertyPanelTextRadioProperties } from '@noodl-core-ui/components/property-panel/PropertyPanelTextRadioInput';
 import { Slot } from '@noodl-core-ui/types/global';
 
 import css from './PropertyPanelInput.module.scss';
@@ -31,10 +31,13 @@ export enum PropertyPanelInputType {
   // SizeMode = 'size-mode',
 }
 
+export type PropertyPanelProps = undefined |PropertyPanelIconRadioProperties | PropertyPanelButtonProps["properties"]
+| PropertyPanelSliderInputProps ["properties"] | PropertyPanelSelectProperties | PropertyPanelTextRadioProperties
+
 export interface PropertyPanelInputProps extends Omit<PropertyPanelBaseInputProps, 'type'> {
   label: string;
   inputType: PropertyPanelInputType;
-  properties: TSFixme;
+  properties: PropertyPanelProps;
 }
 
 export function PropertyPanelInput({

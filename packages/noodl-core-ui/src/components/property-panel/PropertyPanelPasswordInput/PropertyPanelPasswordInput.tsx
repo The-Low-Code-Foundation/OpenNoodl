@@ -6,7 +6,7 @@ import {
 } from '@noodl-core-ui/components/property-panel/PropertyPanelBaseInput';
 
 export interface PropertyPanelPasswordInputProps extends Omit<PropertyPanelBaseInputProps<string>, 'type'> {
-  properties?: TSFixme;
+  value: string;
 }
 
 export function PropertyPanelPasswordInput({

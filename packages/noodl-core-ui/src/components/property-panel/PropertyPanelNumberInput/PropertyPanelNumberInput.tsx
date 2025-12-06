@@ -7,10 +7,6 @@ import {
 
 import { extractNumber } from '../../../utils/extractNumber';
 
-export interface PropertyPanelNumberInputProps extends Omit<PropertyPanelBaseInputProps, 'type'> {
-  properties?: TSFixme;
-}
-
 export function PropertyPanelNumberInput({
   value,
   isChanged,
@@ -19,7 +15,7 @@ export function PropertyPanelNumberInput({
   onFocus,
   onBlur,
   onKeyDown
-}: PropertyPanelNumberInputProps) {
+}: PropertyPanelBaseInputProps) {
   // TODO: This component doesnt handle the value types correct
 
   const [displayedInputValue, setDisplayedInputValue] = useState(value?.toString() || '');
