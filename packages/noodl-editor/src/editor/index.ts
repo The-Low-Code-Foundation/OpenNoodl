@@ -1,7 +1,7 @@
 import * as remote from '@electron/remote';
 import { ipcRenderer } from 'electron';
 import React from 'react';
-import ReactDOM from 'react-dom';
+import { createRoot } from 'react-dom/client';
 
 import './process-setup';
 
@@ -83,5 +83,5 @@ window.addEventListener('DOMContentLoaded', () => {
 
   // Create the main element
   const rootElement = document.getElementById('root');
-  ReactDOM.render(React.createElement(Router, { uri: remote.process.env.noodlURI }), rootElement);
+  createRoot(rootElement).render(React.createElement(Router, { uri: remote.process.env.noodlURI }));
 });

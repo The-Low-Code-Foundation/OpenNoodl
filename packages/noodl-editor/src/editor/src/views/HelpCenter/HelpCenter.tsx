@@ -1,6 +1,6 @@
 import algoliasearch from 'algoliasearch/lite';
 import React, { useRef, useState } from 'react';
-import { InstantSearch, Hits, Highlight, useSearchBox, Configure } from 'react-instantsearch-hooks-web';
+import { InstantSearch, Hits, Highlight, useSearchBox, Configure } from 'react-instantsearch';
 import { platform } from '@noodl/platform';
 
 import { IconName, IconSize } from '@noodl-core-ui/components/common/Icon';

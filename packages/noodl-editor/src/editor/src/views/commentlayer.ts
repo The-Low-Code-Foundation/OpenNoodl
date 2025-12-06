@@ -1,6 +1,6 @@
 import _ from 'underscore';
 import React from 'react';
-import ReactDOM from 'react-dom';
+import { createRoot, Root } from 'react-dom/client';
 
 import { Comment, CommentsModel } from '@noodl-models/commentsmodel';
 import KeyboardHandler from '@noodl-utils/keyboardhandler';
@@ -36,6 +36,8 @@ export default class CommentLayer {
   backgroundDiv: HTMLDivElement;
   activeCommentId: string;
   foregroundDiv: HTMLDivElement;
+  backgroundRoot: Root;
+  foregroundRoot: Root;
 
   constructor(nodegraphEditor) {
     this.nodegraphEditor = nodegraphEditor;
@@ -140,14 +142,16 @@ export default class CommentLayer {
       return;
     }
 
-    ReactDOM.render(React.createElement(CommentLayerView.Background, this.props), this.backgroundDiv);
-    ReactDOM.render(React.createElement(CommentLayerView.Foreground, this.props), this.foregroundDiv);
+    this.backgroundRoot = createRoot(this.backgroundDiv);
+    this.backgroundRoot.render(React.createElement(CommentLayerView.Background, this.props));
+    this.foregroundRoot = createRoot(this.foregroundDiv);
+    this.foregroundRoot.render(React.createElement(CommentLayerView.Foreground, this.props));
   }
 
   renderTo(backgroundDiv, foregroundDiv) {
     if (this.backgroundDiv) {
-      ReactDOM.unmountComponentAtNode(this.backgroundDiv);
-      ReactDOM.unmountComponentAtNode(this.foregroundDiv);
+      this.backgroundRoot.unmount();
+      this.foregroundRoot.unmount();
     }
 
     this.backgroundDiv = backgroundDiv;
@@ -297,8 +301,8 @@ export default class CommentLayer {
   }
 
   dispose() {
-    ReactDOM.unmountComponentAtNode(this.foregroundDiv);
-    ReactDOM.unmountComponentAtNode(this.backgroundDiv);
+    this.foregroundRoot.unmount();
+    this.backgroundRoot.unmount();
 
     //hack to remove all event listeners without having to keep track of them
     const newForegroundDiv = this.foregroundDiv.cloneNode(true);

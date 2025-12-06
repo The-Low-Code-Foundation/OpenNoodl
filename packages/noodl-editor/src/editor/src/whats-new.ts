@@ -1,11 +1,12 @@
-import React from 'react';
-import ReactDOM from 'react-dom';
 import { ipcRenderer } from 'electron';
+import React from 'react';
+import { createRoot } from 'react-dom/client';
 
 import { LocalStorageKey } from '@noodl-constants/LocalStorageKey';
 import getDocsEndpoint from '@noodl-utils/getDocsEndpoint';
-import PopupLayer from './views/popuplayer';
+
 import { NewsModal } from './views/NewsModal';
+import PopupLayer from './views/popuplayer';
 
 /**
  * Display latest whats-new-post if the user hasn't seen one after it was last published
@@ -34,12 +35,11 @@ export async function whatsnewRender() {
   modalContainer.classList.add('popup-layer-react-modal');
   PopupLayer.instance.el.find('.popup-layer-modal').before(modalContainer);
 
-  ReactDOM.render(
+  createRoot(modalContainer).render(
     React.createElement(NewsModal, {
       content: latestChangelogPost.content_html,
       onFinished: () => ipcRenderer.send('viewer-show')
-    }),
-    modalContainer
+    })
   );
 
   localStorage.setItem(LocalStorageKey.lastSeenChangelogDate, latestChangelogDate.toString());

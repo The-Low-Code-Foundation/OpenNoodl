@@ -1,6 +1,6 @@
 import { getCurrentWindow, screen } from '@electron/remote';
 import React from 'react';
-import ReactDOM from 'react-dom';
+import { createRoot } from 'react-dom/client';
 
 import { DialogRenderDirection } from '@noodl-core-ui/components/layout/BaseDialog';
 import { MenuDialog, MenuDialogItem, MenuDialogWidth } from '@noodl-core-ui/components/popups/MenuDialog';
@@ -23,6 +23,7 @@ export function showContextMenuInPopup({
   const container = document.createElement('div');
   const screenPoint = screen.getCursorScreenPoint();
   const [winX, winY] = getCurrentWindow().getPosition();
+  const root = createRoot(container)
 
   const popout = PopupLayer.instance.showPopout({
     content: { el: $(container) },
@@ -33,11 +34,11 @@ export function showContextMenuInPopup({
     },
     position: 'top',
     onClose: () => {
-      ReactDOM.unmountComponentAtNode(container);
+      root.unmount();
     }
   });
 
-  ReactDOM.render(
+  root.render(
     <MenuDialog
       title={title}
       width={width || MenuDialogWidth.Large}
@@ -48,7 +49,5 @@ export function showContextMenuInPopup({
         PopupLayer.instance.hidePopout(popout);
       }}
       items={items}
-    />,
-    container
-  );
+    />);
 }
