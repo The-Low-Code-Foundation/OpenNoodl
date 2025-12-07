@@ -89,7 +89,7 @@ export function CoreBaseDialog({
     }, 50);
   }, [isVisible]);
 
-  const dialogRef = useRef<HTMLDivElement>();
+  const dialogRef = useRef<HTMLDivElement>(null);
   const [dialogPosition, setDialogPosition] = useState({
     x: 0,
     y: 0,

@@ -50,7 +50,7 @@ export function PropertyPanelSliderInput({
   }
 
   const thumbPercentage = useMemo(
-    () => linearMap(parseInt(value.toString()), properties.min, properties.max, 0, 100),
+    () => linearMap(parseInt(value.toString()), Number(properties.min), Number(properties.max), 0, 100),
     [value, properties]
   );
 

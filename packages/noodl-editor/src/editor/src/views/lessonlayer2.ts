@@ -1,5 +1,5 @@
 import React from 'react';
-import ReactDOM from 'react-dom';
+import { createRoot, Root } from 'react-dom/client';
 
 import { App } from '@noodl-models/app';
 import { KeyCode, KeyMod } from '@noodl-utils/keyboard/KeyCode';
@@ -30,6 +30,7 @@ export class LessonLayer {
   steps: ILessonStep[];
   el: TSFixme;
   refreshTimeout: NodeJS.Timeout;
+  root: Root | null = null;
 
   constructor() {
     this.keyboardCommands = [
@@ -116,12 +117,16 @@ export class LessonLayer {
       }
     };
 
-    ReactDOM.render(React.createElement(LessonLayerView, props), this.div);
+    if (!this.root) {
+      this.root = createRoot(this.div);
+    }
+    this.root.render(React.createElement(LessonLayerView, props));
   }
 
   _render() {
-    if (this.div) {
-      ReactDOM.unmountComponentAtNode(this.div);
+    if (this.root) {
+      this.root.unmount();
+      this.root = null;
     }
 
     this.div = document.createElement('div');
@@ -320,7 +325,10 @@ export class LessonLayer {
     this.model.off(this);
     EventDispatcher.instance.off(this);
 
-    ReactDOM.unmountComponentAtNode(this.div);
+    if (this.root) {
+      this.root.unmount();
+      this.root = null;
+    }
   }
 
   resize() {}

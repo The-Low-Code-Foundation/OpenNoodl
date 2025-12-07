@@ -39,7 +39,7 @@ export function PropertyPanelSelectInput({
   hasSmallText
 }: PropertyPanelSelectInputProps) {
   const [isSelectCollapsed, setIsSelectCollapsed] = useState(true);
-  const rootRef = useRef<HTMLDivElement>();
+  const rootRef = useRef<HTMLDivElement>(null);
 
   const displayValue = properties?.options.find((option) => option.value === value)?.label;
 

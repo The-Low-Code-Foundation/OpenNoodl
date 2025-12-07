@@ -1,6 +1,6 @@
 import { ipcRenderer } from 'electron';
 import React from 'react';
-import ReactDOM from 'react-dom';
+import { createRoot, Root } from 'react-dom/client';
 
 import { ComponentModel } from '@noodl-models/componentmodel';
 import { NodeGraphModel, NodeGraphNode } from '@noodl-models/nodegraphmodel';
@@ -24,6 +24,7 @@ export class CreateNewNodePanel extends View {
   attachToRoot: boolean;
   pos: IVector2;
   runtimeType: string;
+  root: Root | null = null;
 
   static shouldShow(context: { component: ComponentModel; parentModel: NodeGraphNode }) {
     const nodeTypes = NodeLibrary.instance.getNodeTypes();
@@ -55,11 +56,14 @@ export class CreateNewNodePanel extends View {
   }
 
   dispose() {
-    ReactDOM.unmountComponentAtNode(this.el[0]);
+    if (this.root) {
+      this.root.unmount();
+      this.root = null;
+    }
     ipcRenderer.send('viewer-show');
   }
 
-  renderReact(div) {
+  renderReact(div: HTMLElement) {
     const props = {
       model: this.model,
       parentModel: this.parentModel,
@@ -72,8 +76,10 @@ export class CreateNewNodePanel extends View {
     ipcRenderer.send('viewer-hide');
 
     // ... then render the picker
-    ReactDOM.unmountComponentAtNode(div);
-    ReactDOM.render(React.createElement(NodePicker, props), div);
+    if (!this.root) {
+      this.root = createRoot(div);
+    }
+    this.root.render(React.createElement(NodePicker, props));
   }
 
   render() {

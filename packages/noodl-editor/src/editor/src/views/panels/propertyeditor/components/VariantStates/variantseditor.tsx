@@ -1,5 +1,5 @@
 import React from 'react';
-import ReactDOM from 'react-dom';
+import { createRoot, Root } from 'react-dom/client';
 
 import { ProjectModel } from '@noodl-models/projectmodel';
 
@@ -26,6 +26,7 @@ export class VariantsEditor extends React.Component<VariantsEditorProps, State> 
   model: VariantsEditorProps['model'];
   popout: any;
   popupAnchor: HTMLDivElement;
+  private popupRoot: Root | null = null;
 
   constructor(props: VariantsEditorProps) {
     super(props);
@@ -128,7 +129,7 @@ export class VariantsEditor extends React.Component<VariantsEditorProps, State> 
     }
 
     return (
-      <div className="variants-editor" ref={(el) => (this.popupAnchor = el)}>
+      <div className="variants-editor" ref={(el) => { this.popupAnchor = el; }}>
         {content}
       </div>
     );
@@ -185,13 +186,18 @@ export class VariantsEditor extends React.Component<VariantsEditorProps, State> 
         PopupLayer.instance.hidePopout(this.popout);
       }
     };
-    ReactDOM.render(React.createElement(PickVariantPopup, props), div);
+    this.popupRoot = createRoot(div);
+    this.popupRoot.render(React.createElement(PickVariantPopup, props));
 
     this.popout = PopupLayer.instance.showPopout({
       content: { el: $(div) },
       attachTo: $(this.popupAnchor),
       position: 'right',
-      onClose: function () {
+      onClose: () => {
+        if (this.popupRoot) {
+          this.popupRoot.unmount();
+          this.popupRoot = null;
+        }
         this.popout = undefined;
       }
     });

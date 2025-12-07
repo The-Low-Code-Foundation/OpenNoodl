@@ -18,8 +18,7 @@ function DeployPopupChild() {
           backgroundColor: '#444444',
           position: 'relative',
           maxHeight: `calc(90vh - 40px)`,
-          // @ts-expect-error https://github.com/frenic/csstype/issues/62
-          overflowY: 'overlay',
+          overflowY: 'overlay' as React.CSSProperties['overflowY'],
           overflowX: 'hidden'
         }}
       >

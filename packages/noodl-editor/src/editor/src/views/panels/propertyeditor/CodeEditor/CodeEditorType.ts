@@ -1,6 +1,6 @@
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
 import React from 'react';
-import ReactDOM from 'react-dom';
+import { createRoot, Root } from 'react-dom/client';
 
 import { WarningsModel } from '@noodl-models/warningsmodel';
 import { createModel } from '@noodl-utils/CodeEditor';
@@ -66,6 +66,9 @@ export class CodeEditorType extends TypeView {
 
   isPrimary: boolean;
 
+  propertyRoot: Root | null = null;
+  popoutRoot: Root | null = null;
+
   static fromPort(args): TSFixme {
     const view = new CodeEditorType();
 
@@ -97,8 +100,11 @@ export class CodeEditorType extends TypeView {
     this.model?.dispose();
     this.model = null;
 
-    // ReactDOM.unmountComponentAtNode(this.propertyDiv);
-    ReactDOM.unmountComponentAtNode(this.popoutDiv);
+    // Unmount popout root
+    if (this.popoutRoot) {
+      this.popoutRoot.unmount();
+      this.popoutRoot = null;
+    }
 
     WarningsModel.instance.off(this);
   }
@@ -107,7 +113,7 @@ export class CodeEditorType extends TypeView {
     this.el = this.bindView($(`<div></div>`), this);
     super.render();
 
-    const _this = this;
+    const self = this;
 
     const propertyProps: PropertyProps = {
       isPrimary: this.isPrimary,
@@ -115,12 +121,13 @@ export class CodeEditorType extends TypeView {
       tooltip: this.tooltip,
       isDefault: this.isDefault,
       onClick(event) {
-        _this.onLaunchClicked(_this, event.currentTarget, event);
+        self.onLaunchClicked(self, event.currentTarget, event);
       }
     };
 
     this.propertyDiv = document.createElement('div');
-    ReactDOM.render(React.createElement(Property, propertyProps), this.propertyDiv);
+    this.propertyRoot = createRoot(this.propertyDiv);
+    this.propertyRoot.render(React.createElement(Property, propertyProps));
 
     return this.propertyDiv;
   }
@@ -261,7 +268,8 @@ export class CodeEditorType extends TypeView {
     }
 
     this.popoutDiv = document.createElement('div');
-    ReactDOM.render(React.createElement(CodeEditor, props), this.popoutDiv);
+    this.popoutRoot = createRoot(this.popoutDiv);
+    this.popoutRoot.render(React.createElement(CodeEditor, props));
 
     const popoutDiv = this.popoutDiv;
     this.parent.showPopout({

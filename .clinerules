@@ -596,6 +596,86 @@ grep -r "TSFixme" packages/    # Find type escapes
 grep -r "any" packages/ --include="*.ts" | head -20
 ```
 
+## 11. Additional system instructions and critical development files
+
+dev-docs/
+├── reference/
+│   ├── CODEBASE-MAP.md         # OpenNoodl Codebase Quick Navigation
+│   ├── COMMON-ISSUES.md        # Solutions to frequently encountered problems when developing OpenNoodl.
+│   ├── NODE-PATTERNS.md        # How to create and modify nodes in OpenNoodl.
+├── guidelines/
+│   ├── CODING-STANDARDS.md     # This document defines the coding style and patterns for OpenNoodl development.
+│   ├── GIT-WORKFLOW.md         # How to manage branches, commits, and pull requests for OpenNoodl development.
+├── TASK-TEMPLATE.md            # Use this template to create new task documentation. Copy the entire `TASK-XXX-template/` folder and rename it.
+
+## 12. Institutional Learning
+
+### Discovering & Recording Knowledge
+
+As you work through tasks in this large codebase, you WILL discover things that aren't documented:
+- Why something was built a certain way
+- Hidden gotchas or edge cases
+- Patterns that aren't obvious
+- Fixes for confusing errors
+- Relationships between distant parts of the code
+
+**When you learn something useful, write it down immediately.**
+
+Add discoveries to: `dev-docs/reference/LEARNINGS.md`
+
+Format each entry:
+```
+### [Date] - [Brief Title]
+
+**Context**: What were you trying to do?
+**Discovery**: What did you learn?
+**Location**: What files/areas does this apply to?
+**Keywords**: [searchable terms]
+```
+
+Examples of things worth recording:
+- "The `scheduleAfterInputsHaveUpdated` pattern is required when multiple inputs might change in the same frame"
+- "RouterAdapter.ts secretly depends on component naming conventions - pages must be in folders"
+- "React 19 automatic batching breaks the old `forceUpdate` pattern in nodegrapheditor"
+- "Collection change events don't fire if you mutate items directly - must use `.set()`"
+
+### Using Accumulated Knowledge
+
+**Before struggling with something complex, check the learnings:**
+
+1. Read `dev-docs/reference/LEARNINGS.md`
+2. Search for relevant keywords
+3. Check if someone already solved this problem
+
+**When hitting a confusing error:**
+1. Search LEARNINGS.md for the error message or related terms
+2. Check `dev-docs/reference/COMMON-ISSUES.md`
+3. If you solve it and it's not documented, ADD IT
+
+### What Makes Good Learnings
+
+✅ **Worth recording:**
+- Non-obvious behavior ("X only works if Y is true")
+- Error solutions that took time to figure out
+- Undocumented dependencies between systems
+- Performance gotchas
+- Patterns you had to reverse-engineer
+
+❌ **Not worth recording:**
+- Basic TypeScript/React knowledge
+- Things already in official docs
+- One-off typos or simple mistakes
+- Task-specific details (those go in task CHANGELOG)
+
+### Building the Knowledge Base
+
+Over time, LEARNINGS.md may grow large. When it does:
+- Group related entries under headings
+- Move mature topics to dedicated docs (e.g., `LEARNINGS.md` entry about data nodes → `DATA-SYSTEM-DEEP-DIVE.md`)
+- Cross-reference from COMMON-ISSUES.md
+
+The goal: **No one should have to solve the same puzzle twice.**
+
 ---
 
 *Last Updated: December 2024*

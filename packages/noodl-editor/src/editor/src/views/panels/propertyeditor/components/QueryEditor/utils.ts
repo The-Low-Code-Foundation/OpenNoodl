@@ -1,9 +1,11 @@
 import React from 'react';
-import ReactDOM from 'react-dom';
+import { createRoot, Root } from 'react-dom/client';
 
 import PopupLayer from '../../../../popuplayer';
 
 export function openPopup(args) {
+  let root: Root | null = null;
+
   const onChange = () => {
     args.onChange && args.onChange();
     renderPopup();
@@ -21,7 +23,10 @@ export function openPopup(args) {
       onDelete
     };
 
-    ReactDOM.render(React.createElement(args.reactComponent, props), div);
+    if (!root) {
+      root = createRoot(div);
+    }
+    root.render(React.createElement(args.reactComponent, props));
   };
 
   const div = document.createElement('div');
@@ -33,7 +38,10 @@ export function openPopup(args) {
     attachTo: $(args.attachTo),
     position: 'right',
     onClose() {
-      ReactDOM.unmountComponentAtNode(div);
+      if (root) {
+        root.unmount();
+        root = null;
+      }
     }
   });
 }

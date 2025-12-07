@@ -1,4 +1,4 @@
-import algoliasearch from 'algoliasearch/lite';
+import { liteClient as algoliasearch } from 'algoliasearch/lite';
 import React, { useRef, useState } from 'react';
 import { InstantSearch, Hits, Highlight, useSearchBox, Configure } from 'react-instantsearch';
 import { platform } from '@noodl/platform';
@@ -17,7 +17,7 @@ import { Title, TitleSize } from '@noodl-core-ui/components/typography/Title';
 import css from './HelpCenter.module.scss';
 
 export function HelpCenter() {
-  const rootRef = useRef();
+  const rootRef = useRef<HTMLDivElement>(null);
   const [version] = useState(platform.getVersion().slice(0, 3));
   const [isDialogVisible, setIsDialogVisible] = useState(false);
   const [isSearchModalVisible, setIsSearchModalVisible] = useState(false);

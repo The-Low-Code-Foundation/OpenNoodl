@@ -91,6 +91,10 @@ export function Columns({
       }}
     >
       {toArray(children).map((child, i) => {
+        // Skip non-element children (null, undefined, boolean)
+        if (!React.isValidElement(child)) {
+          return child;
+        }
         return (
           <div
             className="column-item"

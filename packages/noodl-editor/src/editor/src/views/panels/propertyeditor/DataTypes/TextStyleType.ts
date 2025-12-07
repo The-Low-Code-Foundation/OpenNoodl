@@ -1,5 +1,5 @@
 import React from 'react';
-import ReactDOM from 'react-dom';
+import { createRoot, Root } from 'react-dom/client';
 
 import { NodeLibrary } from '@noodl-models/nodelibrary';
 import { StylesModel } from '@noodl-models/StylesModel';
@@ -54,7 +54,8 @@ export class TextStyleType extends TypeView {
       this
     );
 
-    let textStylePickerDiv;
+    let textStylePickerDiv: HTMLDivElement | undefined;
+    let textStylePickerRoot: Root | null = null;
 
     const props = {};
 
@@ -158,19 +159,21 @@ export class TextStyleType extends TypeView {
         });
       };
 
-      // @ts-expect-error
+      // @ts-expect-error - Dynamic props assignment for legacy component
       props.inputValue = this.$('input').val();
 
       textStylePickerDiv = document.createElement('div');
-      ReactDOM.render(React.createElement(TextStylePicker, props), textStylePickerDiv);
+      textStylePickerRoot = createRoot(textStylePickerDiv);
+      textStylePickerRoot.render(React.createElement(TextStylePicker, props));
 
       this.parent.showPopout({
         content: { el: $(textStylePickerDiv) },
         attachTo: this.el,
         position: 'right',
         onClose: () => {
-          if (textStylePickerDiv) {
-            ReactDOM.unmountComponentAtNode(textStylePickerDiv);
+          if (textStylePickerRoot) {
+            textStylePickerRoot.unmount();
+            textStylePickerRoot = null;
             textStylePickerDiv = undefined;
           }
         }
@@ -180,16 +183,16 @@ export class TextStyleType extends TypeView {
     });
 
     this.$('input').on('keyup', (e) => {
-      if (!textStylePickerDiv) {
+      if (!textStylePickerRoot) {
         return;
       }
 
       if (e.key === 'Enter') {
         this.parent.hidePopout();
       } else {
-        // @ts-expect-error
+        // @ts-expect-error - Dynamic props assignment for legacy component
         props.filter = e.target.value;
-        ReactDOM.render(React.createElement(TextStylePicker, props), textStylePickerDiv);
+        textStylePickerRoot.render(React.createElement(TextStylePicker, props));
       }
     });
 

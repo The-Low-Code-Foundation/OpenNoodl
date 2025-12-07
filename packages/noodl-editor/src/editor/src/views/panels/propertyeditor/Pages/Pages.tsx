@@ -1,6 +1,6 @@
 import { NodeGraphContextTmp } from '@noodl-contexts/NodeGraphContext/NodeGraphContext';
 import React, { useState, useRef } from 'react';
-import ReactDOM from 'react-dom';
+import { createRoot, Root } from 'react-dom/client';
 
 import { IconName, IconSize } from '@noodl-core-ui/components/common/Icon';
 import { IconButton, IconButtonVariant } from '@noodl-core-ui/components/inputs/IconButton';
@@ -234,14 +234,17 @@ export class Pages extends React.Component {
       }
     };
     const div = document.createElement('div');
-    ReactDOM.render(React.createElement(AddNewPagePopup, props), div);
+    const root = createRoot(div);
+    root.render(React.createElement(AddNewPagePopup, props));
 
     PopupLayer.instance.showPopup({
       content: { el: $(div) },
-      // @ts-expect-error
+      // @ts-expect-error - Legacy class component without proper typing
       attachTo: $(this.popupAnchor),
       position: 'right',
-      onClose: function () {}
+      onClose: function () {
+        root.unmount();
+      }
     });
   }
 

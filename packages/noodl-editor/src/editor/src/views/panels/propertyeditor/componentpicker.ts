@@ -1,7 +1,7 @@
 import { NodeGraphContextTmp } from '@noodl-contexts/NodeGraphContext/NodeGraphContext';
 import _ from 'underscore';
 import React from 'react';
-import ReactDOM from 'react-dom';
+import { createRoot, Root } from 'react-dom/client';
 
 import { ComponentModel } from '@noodl-models/componentmodel';
 import { getComponentIconType, ComponentIconType } from '@noodl-models/nodelibrary/ComponentIcon';
@@ -34,6 +34,7 @@ export class ComponentPicker {
   private reactMount: HTMLElement;
   private componentsToShow: ComponentPickerOptions['components'];
   private ignoreSheetName: boolean;
+  private root: Root | null = null;
 
   constructor(args: ComponentPickerOptions) {
     this.onItemSelected = args.onItemSelected;
@@ -159,7 +160,10 @@ export class ComponentPicker {
       width: MenuDialogWidth.Medium
     };
 
-    ReactDOM.render(React.createElement(MenuDialog, props), this.reactMount);
+    if (!this.root) {
+      this.root = createRoot(this.reactMount);
+    }
+    this.root.render(React.createElement(MenuDialog, props));
   }
 
   render(target: HTMLElement) {
@@ -168,8 +172,9 @@ export class ComponentPicker {
   }
 
   dispose() {
-    if (this.reactMount) {
-      ReactDOM.unmountComponentAtNode(this.reactMount);
+    if (this.root) {
+      this.root.unmount();
+      this.root = null;
     }
   }
 }

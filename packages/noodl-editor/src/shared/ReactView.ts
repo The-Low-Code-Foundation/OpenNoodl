@@ -1,5 +1,5 @@
 import React from 'react';
-import ReactDOM from 'react-dom';
+import { createRoot, Root } from 'react-dom/client';
 import View from './view';
 
 export interface ReactViewDefaultProps {
@@ -8,6 +8,7 @@ export interface ReactViewDefaultProps {
 
 export abstract class ReactView<TProps extends ReactViewDefaultProps> extends View {
   private props: TProps;
+  private root: Root | null = null;
 
   public el: any;
 
@@ -31,14 +32,20 @@ export abstract class ReactView<TProps extends ReactViewDefaultProps> extends Vi
       });
     }
 
-    ReactDOM.render(React.createElement(this.renderReact.bind(this), this.props), this.el[0]);
+    if (!this.root) {
+      this.root = createRoot(this.el[0]);
+    }
+    this.root.render(React.createElement(this.renderReact.bind(this), this.props));
 
     return this.el;
   }
 
   public dispose() {
-    this.el && ReactDOM.unmountComponentAtNode(this.el[0]);
+    if (this.root) {
+      this.root.unmount();
+      this.root = null;
+    }
   }
 
-  protected abstract renderReact(props: TProps): JSX.Element;
+  protected abstract renderReact(props: TProps): React.JSX.Element;
 }

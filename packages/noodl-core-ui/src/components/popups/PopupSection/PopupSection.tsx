@@ -35,7 +35,7 @@ export function PopupSection({
   style,
   contentContainerStyle
 }: PopupSectionProps) {
-  const contentRef = useRef<HTMLDivElement>();
+  const contentRef = useRef<HTMLDivElement>(null);
   const [shouldScroll, setShouldScroll] = useState(false);
   const [hasBeenCalculated, setHasBeenCalculated] = useState(false);
 
@@ -78,7 +78,6 @@ export function PopupSection({
           style={{
             ...contentContainerStyle,
             height: shouldScroll ? maxContentHeight : undefined,
-            // @ts-expect-error
             overflowY: shouldScroll ? 'overlay' : undefined
           }}
         >

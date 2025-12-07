@@ -1,7 +1,7 @@
 import { NodeGraphContextTmp } from '@noodl-contexts/NodeGraphContext/NodeGraphContext';
 import _ from 'underscore';
 import React from 'react';
-import ReactDOM from 'react-dom';
+import { createRoot, Root } from 'react-dom/client';
 
 import { NodeGraphNode } from '@noodl-models/nodegraphmodel';
 import { UndoQueue, UndoActionGroup } from '@noodl-models/undo-queue-model';
@@ -27,6 +27,8 @@ export class PropertyEditor extends View {
   allowAsRoot: TSFixme;
   portsView: TSFixme;
   renderPortsViewScheduled: TSFixme;
+  variantsRoot: Root | null = null;
+  visualStatesRoot: Root | null = null;
 
   constructor(args) {
     super();
@@ -76,7 +78,11 @@ export class PropertyEditor extends View {
           this.$('.sidebar-property-editor').removeClass('variants-sidepanel-edit-mode');
         }
       };
-      ReactDOM.render(React.createElement(VariantsEditor, props), this.$('.variants')[0]);
+      const container = this.$('.variants')[0];
+      if (!this.variantsRoot) {
+        this.variantsRoot = createRoot(container);
+      }
+      this.variantsRoot.render(React.createElement(VariantsEditor, props));
     }
   }
   renderVisualStates() {
@@ -86,7 +92,11 @@ export class PropertyEditor extends View {
         onVisualStateChanged: this.onVisualStateChanged.bind(this),
         portsView: this.portsView
       };
-      ReactDOM.render(React.createElement(VisualStates, props), this.$('.visual-states')[0]);
+      const container = this.$('.visual-states')[0];
+      if (!this.visualStatesRoot) {
+        this.visualStatesRoot = createRoot(container);
+      }
+      this.visualStatesRoot.render(React.createElement(VisualStates, props));
     }
   }
   onVisualStateChanged(state) {

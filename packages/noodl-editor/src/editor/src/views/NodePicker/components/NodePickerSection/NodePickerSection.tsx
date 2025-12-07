@@ -1,4 +1,4 @@
-import React, { ReactChild, ReactNode } from 'react';
+import React, { ReactNode } from 'react';
 import css from './NodePickerSection.module.scss';
 
 interface NodePickerSectionProps {

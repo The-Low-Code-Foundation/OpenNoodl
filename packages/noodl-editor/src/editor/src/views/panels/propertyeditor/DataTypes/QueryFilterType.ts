@@ -1,11 +1,13 @@
 import React from 'react';
-import ReactDOM from 'react-dom';
+import { createRoot, Root } from 'react-dom/client';
 
 import QueryEditor from '../components/QueryEditor';
 import { TypeView } from '../TypeView';
 import { getEditType } from '../utils';
 
 export class QueryFilterType extends TypeView {
+  private root: Root | null = null;
+
   static fromPort(args) {
     const view = new QueryFilterType();
 
@@ -33,6 +35,8 @@ export class QueryFilterType extends TypeView {
       this.isDefault = false;
     };
 
+    const div = document.createElement('div');
+
     const renderFilters = () => {
       const props = {
         filter: this.value,
@@ -40,10 +44,12 @@ export class QueryFilterType extends TypeView {
         onChange
       };
 
-      ReactDOM.render(React.createElement(QueryEditor.Filter, props), div);
+      if (!this.root) {
+        this.root = createRoot(div);
+      }
+      this.root.render(React.createElement(QueryEditor.Filter, props));
     };
 
-    const div = document.createElement('div');
     renderFilters();
 
     this.el = $(div);

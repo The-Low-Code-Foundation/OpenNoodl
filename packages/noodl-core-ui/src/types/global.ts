@@ -1,11 +1,4 @@
-import React, {
-  JSXElementConstructor,
-  ReactChild,
-  ReactElement,
-  ReactFragment,
-  ReactPortal,
-  ReactText
-} from 'react';
+import React, { ReactElement, ReactPortal } from 'react';
 
 export interface UnsafeStyleProps {
   UNSAFE_className?: string;
@@ -13,9 +6,10 @@ export interface UnsafeStyleProps {
 }
 
 // FIXME: add generics to be able to specify what exact components are allowed?
+// Note: ReactFragment removed in React 19, using React.ReactNode for fragments
 export type SingleSlot =
   | ReactElement<TSFixme, TSFixme>
-  | ReactFragment
+  | Iterable<React.ReactNode>
   | ReactPortal
   | boolean
   | null

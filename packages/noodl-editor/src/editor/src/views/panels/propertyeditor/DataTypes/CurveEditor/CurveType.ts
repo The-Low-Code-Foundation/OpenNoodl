@@ -1,5 +1,5 @@
 import React from 'react';
-import ReactDOM from 'react-dom';
+import { createRoot } from 'react-dom/client';
 
 import { TypeView } from '../../TypeView';
 import { getEditType } from '../../utils';
@@ -53,7 +53,8 @@ export class CurveType extends TypeView {
       }
     };
     const div = document.createElement('div');
-    ReactDOM.render(React.createElement(require('./curveeditor.jsx'), props), div);
+    const root = createRoot(div);
+    root.render(React.createElement(require('./curveeditor.jsx'), props));
 
     const curveEditorView = {
       el: $(div)

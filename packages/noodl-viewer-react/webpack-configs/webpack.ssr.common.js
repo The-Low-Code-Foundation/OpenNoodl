@@ -1,16 +1,9 @@
 const path = require('path');
 const { outPath } = require('./constants.js');
 
-const CleanWebpackPlugin = require('clean-webpack-plugin');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
 
 const noodlEditorExternalDeployPath = path.join(outPath, 'ssr');
-
-function stripStartDirectories(targetPath, numDirs) {
-  const p = targetPath.split('/');
-  p.splice(0, numDirs);
-  return p.join(path.sep);
-}
 
 module.exports = {
   entry: {
@@ -18,22 +11,20 @@ module.exports = {
   },
   output: {
     filename: 'noodl.[name].js',
-    path: noodlEditorExternalDeployPath
+    path: noodlEditorExternalDeployPath,
+    clean: true
   },
   plugins: [
-    new CleanWebpackPlugin(noodlEditorExternalDeployPath, {
-      allowExternal: true
-    }),
-    new CopyWebpackPlugin([
-      // {
-      //   from: 'static/shared/**/*',
-      //   transformPath: (targetPath) => stripStartDirectories(targetPath, 2)
-      // },
-      {
-        from: 'static/ssr/**/*',
-        transformPath: (targetPath) => stripStartDirectories(targetPath, 2)
-      }
-    ])
+    new CopyWebpackPlugin({
+      patterns: [
+        {
+          from: 'static/ssr',
+          to: '.',
+          noErrorOnMissing: true,
+          info: { minimized: true }
+        }
+      ]
+    })
   ],
   externals: {
     react: 'React',

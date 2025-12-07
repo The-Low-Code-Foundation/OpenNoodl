@@ -1,6 +1,6 @@
 import { ipcRenderer } from 'electron';
 import React from 'react';
-import ReactDOM from 'react-dom';
+import { createRoot, Root } from 'react-dom/client';
 import { platform } from '@noodl/platform';
 
 import { EventDispatcher } from '../../../../shared/utils/EventDispatcher';
@@ -18,6 +18,8 @@ export class CanvasView extends View {
 
   inspectMode: boolean;
   selectedNodeId: string | null;
+
+  private root: Root | null = null;
 
   props: {
     deviceName?: string;
@@ -152,7 +154,10 @@ export class CanvasView extends View {
     return this.el;
   }
   renderReact() {
-    ReactDOM.render(React.createElement(VisualCanvas, this.props), this.el[0]);
+    if (!this.root) {
+      this.root = createRoot(this.el[0]);
+    }
+    this.root.render(React.createElement(VisualCanvas, this.props as any));
   }
   setCurrentRoute(route: string) {
     const protocol = process.env.ssl ? 'https://' : 'http://';
@@ -171,7 +176,10 @@ export class CanvasView extends View {
       });
     }
 
-    ReactDOM.unmountComponentAtNode(this.el[0]);
+    if (this.root) {
+      this.root.unmount();
+      this.root = null;
+    }
     ipcRenderer.off('editor-api-response', this._onEditorApiResponse);
   }
   refresh() {

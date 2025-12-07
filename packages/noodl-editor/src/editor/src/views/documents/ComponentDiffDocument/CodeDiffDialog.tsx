@@ -22,7 +22,7 @@ function anyToString(value: unknown) {
 }
 
 export function CodeDiffDialog({ diff, onClose }: CodeDiffDialogProps) {
-  const codeEditorRef = useRef();
+  const codeEditorRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!codeEditorRef.current) {

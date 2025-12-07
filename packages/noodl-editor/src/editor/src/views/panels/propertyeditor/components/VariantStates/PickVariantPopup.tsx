@@ -135,7 +135,7 @@ export class PickVariantPopup extends React.Component<PickVariantPopupProps, Sta
           <div className="variants-input-container">
             <input
               className="variants-input"
-              ref={(ref) => ref && setTimeout(() => ref.focus(), 10)}
+              ref={(ref) => { if (ref) setTimeout(() => ref.focus(), 10); }}
               autoFocus
               onKeyUp={this.onKeyUp.bind(this)}
               onChange={(e) => (this.newVariantName = e.target.value)}

@@ -27,8 +27,8 @@ export interface CodeEditorProps {
 }
 
 export function CodeEditor({ model, initialSize, onSave, outEditor }: CodeEditorProps) {
-  const rootRef = useRef<HTMLDivElement>();
-  const editorRef = useRef<HTMLDivElement>();
+  const rootRef = useRef<HTMLDivElement>(null);
+  const editorRef = useRef<HTMLDivElement>(null);
   const [editor, setEditor] = useState<monaco.editor.IStandaloneCodeEditor>(null);
   const [size, setSize] = useState<{ width: number; height: number }>({
     width: initialSize?.x ?? 700,

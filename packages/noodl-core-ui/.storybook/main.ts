@@ -1,23 +1,24 @@
-const path = require('path');
+import type { StorybookConfig } from '@storybook/react-webpack5';
+import path from 'path';
+
 const editorDir = path.join(__dirname, '../../noodl-editor');
 const coreLibDir = path.join(__dirname, '../');
 
-module.exports = {
+const config: StorybookConfig = {
   stories: ['../src/**/*.stories.mdx', '../src/**/*.stories.@(ts|tsx)'],
   addons: [
     '@storybook/addon-links',
     '@storybook/addon-essentials',
     '@storybook/addon-interactions',
-    '@storybook/preset-create-react-app',
     '@storybook/addon-measure'
   ],
-  framework: '@storybook/react',
-  core: {
-    builder: '@storybook/builder-webpack5'
+  framework: {
+    name: '@storybook/react-webpack5',
+    options: {}
   },
   webpackFinal: (config) => {
     const destinationPath = path.resolve(__dirname, '../../noodl-editor');
-    const addExternalPath = (rules) => {
+    const addExternalPath = (rules: any[]) => {
       for (let i = 0; i < rules.length; i++) {
         const rule = rules[i];
         if (rule.test && RegExp(rule.test).test('.tsx')) {
@@ -32,17 +33,20 @@ module.exports = {
       }
     };
 
-    addExternalPath(config.module.rules);
+    if (config.module?.rules) {
+      addExternalPath(config.module.rules as any[]);
 
-    config.module.rules.push({
-      test: /\.ts$/,
-      use: [
-        {
-          loader: require.resolve('ts-loader')
-        }
-      ]
-    });
+      config.module.rules.push({
+        test: /\.ts$/,
+        use: [
+          {
+            loader: require.resolve('ts-loader')
+          }
+        ]
+      });
+    }
 
+    config.resolve = config.resolve || {};
     config.resolve.alias = {
       ...config.resolve.alias,
       '@noodl-core-ui': path.join(coreLibDir, 'src'),
@@ -56,5 +60,10 @@ module.exports = {
     };
 
     return config;
+  },
+  typescript: {
+    reactDocgen: 'react-docgen-typescript'
   }
 };
+
+export default config;

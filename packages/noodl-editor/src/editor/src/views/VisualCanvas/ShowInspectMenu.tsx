@@ -1,6 +1,6 @@
 import { getCurrentWindow, screen } from '@electron/remote';
 import React from 'react';
-import ReactDOM from 'react-dom';
+import { createRoot, Root } from 'react-dom/client';
 
 import { MenuDialog, MenuDialogWidth } from '@noodl-core-ui/components/popups/MenuDialog';
 
@@ -11,6 +11,8 @@ export function showInspectMenu(items: TSFixme) {
   const screenPoint = screen.getCursorScreenPoint();
   const [winX, winY] = getCurrentWindow().getPosition();
 
+  let root: Root | null = null;
+
   const popout = PopupLayer.instance.showPopout({
     content: { el: $(container) },
     arrowColor: 'transparent',
@@ -20,11 +22,15 @@ export function showInspectMenu(items: TSFixme) {
     },
     position: 'top',
     onClose: () => {
-      ReactDOM.unmountComponentAtNode(container);
+      if (root) {
+        root.unmount();
+        root = null;
+      }
     }
   });
 
-  ReactDOM.render(
+  root = createRoot(container);
+  root.render(
     <MenuDialog
       title="Nodes"
       width={MenuDialogWidth.Large}
@@ -34,7 +40,6 @@ export function showInspectMenu(items: TSFixme) {
         PopupLayer.instance.hidePopout(popout);
       }}
       items={items}
-    />,
-    container
+    />
   );
 }

@@ -137,7 +137,7 @@ export class QueryGroup extends React.Component<QueryGroupProps> {
         className={'queryeditor-group' + (this.props.isTopLevel ? ' toplevel' : '')}
         style={{ position: 'relative' }}
       >
-        <div className="queryeditor-group-children" ref={(el) => (this.childContainer = el)}>
+        <div className="queryeditor-group-children" ref={(el) => { this.childContainer = el; }}>
           {this.renderChildren()}
         </div>
         <div className="queryeditor-group-row">

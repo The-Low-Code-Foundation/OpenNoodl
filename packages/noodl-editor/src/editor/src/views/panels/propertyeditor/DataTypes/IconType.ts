@@ -1,5 +1,5 @@
 import React from 'react';
-import ReactDOM from 'react-dom';
+import { createRoot } from 'react-dom/client';
 
 import { NodeLibrary } from '@noodl-models/nodelibrary';
 
@@ -77,7 +77,8 @@ export class IconType extends TypeView {
       }
     };
     const div = document.createElement('div');
-    ReactDOM.render(React.createElement(IconPicker, props), div);
+    const root = createRoot(div);
+    root.render(React.createElement(IconPicker, props));
 
     this.parent.showPopout({
       content: {

@@ -103,7 +103,7 @@ interface ItemProps {
 
 function Item({ item, onSwitchToComponent }: ItemProps) {
   let icon = getIconFromItem(item);
-  const itemRef = useRef<HTMLDivElement>();
+  const itemRef = useRef<HTMLDivElement>(null);
 
   // change a visual component icon to be a regular component icon in the trail
   // @ts-expect-error fix this when we refactor the component sidebar to not use the old HTML templates

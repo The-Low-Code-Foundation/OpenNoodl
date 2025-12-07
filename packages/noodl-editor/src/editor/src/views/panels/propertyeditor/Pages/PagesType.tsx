@@ -1,6 +1,6 @@
 import { NodeGraphContextTmp } from '@noodl-contexts/NodeGraphContext/NodeGraphContext';
 import React from 'react';
-import ReactDOM from 'react-dom';
+import { createRoot, Root } from 'react-dom/client';
 
 import { ProjectModel } from '@noodl-models/projectmodel';
 
@@ -10,6 +10,7 @@ import { Pages } from './Pages';
 
 export class PagesType extends TypeView {
   el: TSFixme;
+  private root: Root | null = null;
 
   static fromPort(args) {
     const view = new PagesType();
@@ -50,10 +51,19 @@ export class PagesType extends TypeView {
     };
 
     const div = document.createElement('div');
-    ReactDOM.render(React.createElement(Pages, props), div);
+    this.root = createRoot(div);
+    this.root.render(React.createElement(Pages, props));
 
     this.el = $(div);
 
     return this.el;
+  }
+
+  dispose() {
+    if (this.root) {
+      this.root.unmount();
+      this.root = null;
+    }
+    TypeView.prototype.dispose.call(this);
   }
 }

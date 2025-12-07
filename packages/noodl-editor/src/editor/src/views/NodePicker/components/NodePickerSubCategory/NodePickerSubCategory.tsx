@@ -1,10 +1,10 @@
 import { Text, TextSize, TextType } from '@noodl-core-ui/components/typography/Text';
-import React, { ReactChild } from 'react';
+import React, { ReactNode } from 'react';
 import css from './NodePickerSubCategory.module.scss';
 
 interface NodePickerSubCategoryProps {
   title: string;
-  children: ReactChild;
+  children: ReactNode;
 }
 
 export default function NodePickerSubCategory({ title, children }: NodePickerSubCategoryProps) {

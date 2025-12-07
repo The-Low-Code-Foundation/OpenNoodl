@@ -1,5 +1,5 @@
 import classNames from 'classnames';
-import React, { cloneElement, MouseEventHandler } from 'react';
+import React, { cloneElement, isValidElement, MouseEventHandler, ReactElement } from 'react';
 
 import { Icon, IconName, IconSize } from '@noodl-core-ui/components/common/Icon';
 import { BaseDialog, BaseDialogProps } from '@noodl-core-ui/components/layout/BaseDialog';
@@ -100,7 +100,10 @@ export function MenuDialog({
                   {item.label}
                 </Label>
               </div>
-              {item.component && cloneElement(item.component(() => onClose()))}
+              {item.component && (() => {
+                const component = item.component(() => onClose());
+                return isValidElement(component) ? cloneElement(component as ReactElement) : component;
+              })()}
               <div className={css['EndSlot']}>
                 {item.endSlot && typeof item.endSlot === 'string' && <Text>{item.endSlot}</Text>}
                 {item.endSlot && typeof item.endSlot !== 'string' && item.endSlot}

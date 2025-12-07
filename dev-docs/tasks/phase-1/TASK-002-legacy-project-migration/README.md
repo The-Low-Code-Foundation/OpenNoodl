@@ -403,9 +403,64 @@ If migration causes issues:
 4. What's the oldest Noodl version we need to support?
 5. Should the CLI be a separate npm package or bundled?
 
+---
+
+## Dependency Analysis Impact (from TASK-000)
+
+Based on the [TASK-000 Dependency Analysis](../TASK-000-dependency-analysis/README.md), the following dependency changes have implications for legacy project migration:
+
+### Already Applied Changes (Need Testing)
+
+| Dependency | Change | Migration Impact |
+|------------|--------|------------------|
+| React 17 → 19 | Breaking | Projects using React patterns may behave differently |
+| react-instantsearch | Package renamed | Search-related custom components may need updates |
+| Algoliasearch 4 → 5 | API changes | Cloud functions using search may need migration |
+
+### Future Changes (Plan Ahead)
+
+These are NOT in TASK-001 but may require migration handling in the future:
+
+| Dependency | Potential Change | Migration Impact |
+|------------|-----------------|------------------|
+| Express 4 → 5 | Breaking API | Backend/cloud functions using Express patterns |
+| Electron 31 → 39 | Native API changes | Desktop app behavior, IPC, file system access |
+| Dugite 1 → 3 | Git API overhaul | Version control operations, commit history |
+| ESLint 8 → 9 | Config format | Developer tooling (not runtime) |
+
+### Migration Handlers to Consider
+
+Based on the dependency analysis, consider creating migration handlers for:
+
+1. **React Concurrent Mode Patterns**
+   - Projects using legacy `ReactDOM.render` patterns
+   - Timing-dependent component behaviors
+   - Strict mode double-render issues
+
+2. **Search Service Integration**
+   - Projects using Algolia search
+   - Custom search implementations
+   - API response format expectations
+
+3. **Runtime Dependencies**
+   - Projects bundled with older noodl-runtime versions
+   - Node definitions that expect old API patterns
+   - Custom JavaScript nodes using deprecated patterns
+
+### Testing Considerations
+
+When testing legacy project migration, specifically validate:
+- [ ] React 19 concurrent rendering doesn't break existing animations
+- [ ] useEffect cleanup timing changes don't cause memory leaks
+- [ ] Search functionality works after react-instantsearch migration
+- [ ] Custom nodes using old prop patterns still work
+- [ ] Preview renders correctly in updated viewer
+
 ## References
 
+- TASK-000: Dependency Analysis (comprehensive dependency audit)
 - TASK-001: Dependency Updates (lists breaking changes)
+- [TASK-000 Impact Matrix](../TASK-000-dependency-analysis/IMPACT-MATRIX.md)
 - Noodl project file documentation (if exists)
 - React 19 migration guide
 - Community feedback on pain points

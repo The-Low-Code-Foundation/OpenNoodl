@@ -1,11 +1,13 @@
 import React from 'react';
-import ReactDOM from 'react-dom';
+import { createRoot, Root } from 'react-dom/client';
 
 import QueryEditor from '../components/QueryEditor';
 import { TypeView } from '../TypeView';
 import { getEditType } from '../utils';
 
 export class QuerySortingType extends TypeView {
+  private root: Root | null = null;
+
   public static fromPort(args: TSFixme) {
     const view = new QuerySortingType();
 
@@ -34,6 +36,8 @@ export class QuerySortingType extends TypeView {
       this.isDefault = false;
     };
 
+    const div = document.createElement('div');
+
     const renderSorting = () => {
       const props = {
         sorting: this.value,
@@ -41,10 +45,12 @@ export class QuerySortingType extends TypeView {
         onChange
       };
 
-      ReactDOM.render(React.createElement(QueryEditor.Sorting, props), div);
+      if (!this.root) {
+        this.root = createRoot(div);
+      }
+      this.root.render(React.createElement(QueryEditor.Sorting, props));
     };
 
-    const div = document.createElement('div');
     renderSorting();
 
     this.el = $(div);

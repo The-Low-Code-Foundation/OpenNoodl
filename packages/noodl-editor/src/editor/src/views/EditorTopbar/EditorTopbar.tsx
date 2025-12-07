@@ -72,12 +72,12 @@ export function EditorTopbar({
   deployIsDisabled
 }: EditorTopbarProps) {
   const urlBarRef = useRef<HTMLInputElement>(null);
-  const deployButtonRef = useRef();
-  const warningButtonRef = useRef();
-  const urlInputRef = useRef();
-  const zoomLevelTrigger = useRef();
-  const screenSizeTrigger = useRef();
-  const previewLayoutTrigger = useRef();
+  const deployButtonRef = useRef<HTMLSpanElement>(null);
+  const warningButtonRef = useRef<HTMLDivElement>(null);
+  const urlInputRef = useRef<HTMLDivElement>(null);
+  const zoomLevelTrigger = useRef<HTMLDivElement>(null);
+  const screenSizeTrigger = useRef<HTMLDivElement>(null);
+  const previewLayoutTrigger = useRef<HTMLDivElement>(null);
   const [isDeployVisible, setIsDeployVisible] = useState(false);
   const [isWarningsDialogVisible, setIsWarningsDialogVisible] = useState(false);
   const [isZoomDialogVisible, setIsZoomDialogVisible] = useState(false);
@@ -162,7 +162,7 @@ export function EditorTopbar({
       onClose: () => createNewNodePanel.dispose()
     });
   }
-  const rootRef = useRef<HTMLDivElement>();
+  const rootRef = useRef<HTMLDivElement>(null);
 
   const bounds = useTrackBounds(rootRef);
   const isSmall = bounds?.width < 850;

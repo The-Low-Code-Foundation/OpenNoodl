@@ -77,7 +77,7 @@ export class QuerySortingEditor extends React.Component<QuerySortingEditorProps>
         {this.sorting !== undefined ? (
           <div>
             <div className="queryeditor-sorting-rules">
-              <div ref={(el) => (this.childContainer = el)}>
+              <div ref={(el) => { this.childContainer = el; }}>
                 {this.sorting.map((s, idx) => (
                   <div key={idx /* TODO: Invalid key */}>
                     <QuerySortingRule

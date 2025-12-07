@@ -1,5 +1,5 @@
 import React from 'react';
-import ReactDOM from 'react-dom';
+import { createRoot, Root } from 'react-dom/client';
 
 import { ProjectModel } from '@noodl-models/projectmodel';
 
@@ -94,9 +94,9 @@ export class ColorType extends TypeView {
       bindColorPickerToView(this);
     }
 
-    let colorStylePickerDiv;
+    let colorStylePickerDiv: HTMLDivElement | undefined;
+    let colorStylePickerRoot: Root | null = null;
     const props = {};
-    let isShowingColorStylePicker = false;
 
     EventDispatcher.instance.on(
       'Model.stylesChanged',
@@ -113,10 +113,10 @@ export class ColorType extends TypeView {
     });
 
     this.$('input').on('click', (e) => {
-      // @ts-expect-error
+      // @ts-expect-error - Dynamic props assignment for legacy component
       delete props.filter; //delete filter in case the user opens/closes multiple times
 
-      // @ts-expect-error
+      // @ts-expect-error - Dynamic props assignment for legacy component
       props.onItemSelected = (name) => {
         this.parent.setParameter(this.name, name);
         this.updateCurrentValue();
@@ -124,36 +124,39 @@ export class ColorType extends TypeView {
       };
 
       const current = this.getCurrentValue();
-      // @ts-expect-error
+      // @ts-expect-error - Dynamic props assignment for legacy component
       props.inputValue = current.value;
 
       colorStylePickerDiv = document.createElement('div');
-      ReactDOM.render(React.createElement(ColorStylePicker, props), colorStylePickerDiv);
+      colorStylePickerRoot = createRoot(colorStylePickerDiv);
+      colorStylePickerRoot.render(React.createElement(ColorStylePicker, props));
 
       this.parent.showPopout({
         content: { el: $(colorStylePickerDiv) },
         attachTo: this.el,
         position: 'right',
         onClose: () => {
-          ReactDOM.unmountComponentAtNode(colorStylePickerDiv);
-          isShowingColorStylePicker = false;
+          if (colorStylePickerRoot) {
+            colorStylePickerRoot.unmount();
+            colorStylePickerRoot = null;
+            colorStylePickerDiv = undefined;
+          }
         }
       });
-      isShowingColorStylePicker = true;
 
       e.stopPropagation(); // Stop propagation, otherwise the popup will close
     });
 
     this.$('input').on('keyup', (e) => {
-      if (!isShowingColorStylePicker) {
+      if (!colorStylePickerRoot) {
         return;
       }
       if (e.key === 'Enter') {
         this.parent.hidePopout();
       } else {
-        // @ts-expect-error
+        // @ts-expect-error - Dynamic props assignment for legacy component
         props.filter = e.target.value;
-        ReactDOM.render(React.createElement(ColorStylePicker, props), colorStylePickerDiv);
+        colorStylePickerRoot.render(React.createElement(ColorStylePicker, props));
       }
     });
 

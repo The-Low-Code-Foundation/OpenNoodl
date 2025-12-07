@@ -1,5 +1,5 @@
 import React from 'react';
-import ReactDOM from 'react-dom';
+import { createRoot } from 'react-dom/client';
 
 import { IconName } from '@noodl-core-ui/components/common/Icon';
 
@@ -230,7 +230,8 @@ class PageComponentTemplate extends ComponentTemplate {
       }
     };
     const div = document.createElement('div');
-    ReactDOM.render(React.createElement(PageComponentTemplatePopup, props), div);
+    const root = createRoot(div);
+    root.render(React.createElement(PageComponentTemplatePopup, props));
 
     return { el: $(div) };
   }

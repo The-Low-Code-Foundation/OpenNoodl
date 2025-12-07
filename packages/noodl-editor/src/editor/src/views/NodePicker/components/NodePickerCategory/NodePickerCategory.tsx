@@ -1,5 +1,5 @@
 import classNames from 'classnames';
-import React, { ReactChild, ReactNode, useEffect, useState } from 'react';
+import React, { ReactNode, useEffect, useState } from 'react';
 import { NodeType } from '@noodl-constants/NodeType';
 import { Collapsible } from '@noodl-core-ui/components/layout/Collapsible';
 

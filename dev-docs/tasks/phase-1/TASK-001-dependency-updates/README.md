@@ -72,11 +72,34 @@ After this task:
 - [x] Improve build performance
 - [x] Fix hot reload issues
 
+### Additional Items from TASK-000 Analysis
+Based on [TASK-000 Dependency Analysis](../TASK-000-dependency-analysis/README.md), the following items should be added:
+
+#### 🔴 P0 - Critical (Added) ✅ COMPLETED
+- [x] **Fix Storybook scripts in noodl-core-ui** - Updated to Storybook 8.6.14 with modern CLI commands
+- [x] **Standardize TypeScript version** - noodl-viewer-react updated to 4.9.5 to match rest of monorepo
+
+#### 🟡 P1 - High Priority (Added) ✅ COMPLETED
+- [x] Update webpack plugins in noodl-viewer-react:
+  - [x] copy-webpack-plugin 4.6.0 → 12.0.2
+  - [x] clean-webpack-plugin 1.0.1 → 4.0.0 (replaced with output.clean)
+  - [x] webpack-dev-server 3.11.2 → 4.15.2
+- [x] Align css-loader (5.0.0 → 6.11.0) and style-loader (2.0.0 → 3.3.4) in noodl-viewer-react
+- [x] Update Jest to v29 across all packages (jest 29.7.0, ts-jest 29.4.1, @types/jest 29.5.14)
+- [x] Update copy-webpack-plugin in noodl-viewer-cloud (4.6.0 → 12.0.2)
+
+#### 🟢 P2 - Nice to Have ✅ COMPLETED
+- [x] Update @types/react (19.0.0 → 19.2.7) and @types/react-dom (19.0.0 → 19.2.3)
+- [x] Update Babel packages to latest patch versions (already at latest: 7.28.3/7.27.1)
+
 ### Out of Scope
 - Major refactoring (that's later tasks)
 - New features
 - TSFixme cleanup (TASK-002)
-- Storybook 9 migration (can be separate task)
+- ESLint 9 migration (significant config changes required)
+- Electron upgrade (31 → 39 requires separate planning)
+- Express 5.x migration (breaking changes)
+- Dugite 3.0 upgrade (breaking API changes)
 
 ## Technical Approach
 

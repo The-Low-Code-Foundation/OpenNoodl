@@ -22,7 +22,7 @@ export function SidePanel() {
 
   // All the panel data
   const [activeId, setActiveId] = useState(null);
-  const [panels, setPanels] = useState<Record<string, React.ReactChild>>({});
+  const [panels, setPanels] = useState<Record<string, React.ReactElement>>({});
 
   useEffect(() => {
     // ---

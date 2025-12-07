@@ -188,7 +188,7 @@ function CommentForeground(props) {
 
 function CommentControls(props) {
   const [showColorPicker, setShowColorPicker] = useState(false);
-  const colorPickerRef = useRef();
+  const colorPickerRef = useRef<HTMLDivElement>(null);
 
   const color = getColor(props);
 
