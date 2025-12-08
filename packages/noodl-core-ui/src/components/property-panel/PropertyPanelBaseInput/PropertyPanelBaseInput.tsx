@@ -14,11 +14,11 @@ export interface PropertyPanelBaseInputProps<ValueType = string | number> {
   hasSmallText?: boolean;
 
   onChange?: (value: ValueType) => void;
-  onClick?: MouseEventHandler<HTMLButtonElement>;
-  onMouseEnter?: MouseEventHandler<HTMLButtonElement>;
-  onMouseLeave?: MouseEventHandler<HTMLButtonElement>;
-  onFocus?: FocusEventHandler<HTMLButtonElement>;
-  onBlur?: FocusEventHandler<HTMLButtonElement>;
+  onClick?: MouseEventHandler<HTMLInputElement>;
+  onMouseEnter?: MouseEventHandler<HTMLInputElement>;
+  onMouseLeave?: MouseEventHandler<HTMLInputElement>;
+  onFocus?: FocusEventHandler<HTMLInputElement>;
+  onBlur?: FocusEventHandler<HTMLInputElement>;
   onKeyDown?: KeyboardEventHandler;
   onError?: (error: Error) => void;
 

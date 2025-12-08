@@ -73,8 +73,7 @@ export const screenSizesWithDividers: (ScreenSize | 'divider')[] = [
   }
 ];
 
-//@ts-expect-error TODO: make proper type when i know it works
-export const screenSizes: ScreenSize[] = screenSizesWithDividers.filter((item) => typeof item !== 'string');
+export const screenSizes: ScreenSize[] = screenSizesWithDividers.filter((item): item is ScreenSize => typeof item !== 'string');
 
 export function getIconFromScreenSizeGroupName(group: ScreenSize['group']) {
   switch (group) {

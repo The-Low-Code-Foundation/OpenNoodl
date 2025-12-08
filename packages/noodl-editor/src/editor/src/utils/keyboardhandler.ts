@@ -8,8 +8,8 @@ export interface KeyboardCommand {
   type?: 'up' | 'down'; //default is down
 }
 
-function getKeyMod(evt: KeyboardEvent): KeyMod {
-  let modKey: KeyMod = 0;
+function getKeyMod(evt: KeyboardEvent): number {
+  let modKey = 0;
   if (evt.metaKey || evt.ctrlKey) modKey |= KeyMod.CtrlCmd; // | KeyMod.WinCtrl
   if (evt.shiftKey) modKey |= KeyMod.Shift;
   if (evt.altKey) modKey |= KeyMod.Alt;

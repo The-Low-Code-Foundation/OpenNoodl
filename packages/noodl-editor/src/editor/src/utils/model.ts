@@ -135,7 +135,6 @@ export class Model<TEnum extends ModelEventEnum = any, TEvents extends ModelEven
     for (let index = 0; index < this.listeners.length; index++) {
       const listener = this.listeners[index];
       if (shouldNotify(listener, event)) {
-        // @ts-expect-error
         listener.listener(...args);
       }
     }
@@ -143,7 +142,6 @@ export class Model<TEnum extends ModelEventEnum = any, TEvents extends ModelEven
     if (this.listenersOnce.length > 0) {
       this.listenersOnce = this.listenersOnce.filter((listener) => {
         if (shouldNotify(listener, event)) {
-          // @ts-expect-error
           listener.listener(...args);
           return false;
         }
