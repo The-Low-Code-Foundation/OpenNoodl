@@ -561,7 +561,7 @@ function generateNodeLibrary(nodeRegister) {
         },
         {
           name: 'External Data',
-          items: ['REST2']
+          items: ['net.noodl.HTTP', 'REST2']
         }
       ]
     },
