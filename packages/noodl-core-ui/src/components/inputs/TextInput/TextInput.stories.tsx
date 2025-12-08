@@ -1,5 +1,4 @@
-import { ComponentStory, ComponentMeta } from '@storybook/react';
-import React from 'react';
+import type { Meta, StoryObj } from '@storybook/react';
 
 import { InputNotificationDisplayMode } from '@noodl-types/globalInputTypes';
 import { FeedbackType } from '@noodl-constants/FeedbackType';
@@ -11,36 +10,41 @@ import { VStack } from '@noodl-core-ui/components/layout/Stack';
 
 import { TextInput } from './TextInput';
 
-export default {
+const meta: Meta<typeof TextInput> = {
   title: 'Inputs/Text Input',
   component: TextInput,
   argTypes: {
     value: { summary: 'string' }
   }
-} as ComponentMeta<typeof TextInput>;
-
-const Template: ComponentStory<typeof TextInput> = (args) => <TextInput {...args} />;
-
-export const Common = Template.bind({});
-Common.args = {};
-
-export const CopyMe = Template.bind({});
-CopyMe.args = {
-  value: 'Copy Me',
-  isCopyable: true
 };
 
-export const ErrorMessage = Template.bind({});
-ErrorMessage.args = {
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+export const Common: Story = {
+  args: {},
+};
+
+export const CopyMe: Story = {
+  args: {
+  value: 'Copy Me',
+  isCopyable: true
+},
+};
+
+export const ErrorMessage: Story = {
+  args: {
   value: 'I got the error',
   notification: {
     type: FeedbackType.Danger,
     message: 'I am error!',
     displayMode: InputNotificationDisplayMode.Stay
   }
+},
 };
 
-export const SuffixText: ComponentStory<typeof TextInput> = (args) => (
+export const SuffixText: Story = {
+  render: (args) => (
   <div>
     <Box hasBottomSpacing>
       <TextInput placeholder="placeholder" value="" suffix=".noodl.net" />
@@ -51,15 +55,16 @@ export const SuffixText: ComponentStory<typeof TextInput> = (args) => (
   </div>
 );
 
-export const SuffixSlotAfter = Template.bind({});
-SuffixSlotAfter.args = {
+export const SuffixSlotAfter: Story = {
+  args: {
   value: 'example',
   suffix: '.noodl.net',
   isCopyable: true,
   slotAfterInput: <IconButton icon={IconName.Bug} />
+},
 };
 
-const StyleTestTemplate: ComponentStory<typeof TextInput> = (args) => (
+const StyleTestTemplate: Story = (args) => (
   <div>
     <Box hasBottomSpacing>
       <TextInput {...args} />

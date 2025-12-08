@@ -1,23 +1,26 @@
-import React from 'react';
-import { ComponentStory, ComponentMeta } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/react';
 
 import { Container, ContainerDirection } from './Container';
 import { Text } from '@noodl-core-ui/components/typography/Text';
 
-export default {
+const meta: Meta<typeof Container> = {
   title: 'Layout/Container', // Layout scaffolding ?
   component: Container,
   argTypes: {}
-} as ComponentMeta<typeof Container>;
+};
 
-const Template: ComponentStory<typeof Container> = (args) => (
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+const Template: Story = (args) => (
   <div style={{ width: 280 }}>
     <Container {...args}></Container>
   </div>
 );
 
-export const Common = Template.bind({});
-Common.args = {};
+export const Common: Story = {
+  args: {},
+};
 
 export const SpaceBetweenHorizontal = () => (
   /* Showcase how it is when the size is set on the parent */

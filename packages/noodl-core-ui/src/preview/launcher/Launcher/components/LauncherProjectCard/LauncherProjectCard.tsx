@@ -140,7 +140,7 @@ export function LauncherProjectCard({
                     <HStack UNSAFE_style={{ alignItems: 'center' }}>
                       <Icon icon={IconName.CloudDownload} variant={FeedbackType.Notice} size={IconSize.Tiny} />
                       <Label hasLeftSpacing={LabelSpacingSize.Small} variant={FeedbackType.Notice}>
-                        {pullAmount}
+                        {String(pullAmount)}
                       </Label>
                     </HStack>
                   </Tooltip>
@@ -155,7 +155,7 @@ export function LauncherProjectCard({
                     <HStack UNSAFE_style={{ alignItems: 'center' }}>
                       <Icon icon={IconName.CloudUpload} variant={FeedbackType.Danger} size={IconSize.Tiny} />
                       <Label hasLeftSpacing={LabelSpacingSize.Small} variant={FeedbackType.Danger}>
-                        {pushAmount}
+                        {String(pushAmount)}
                       </Label>
                     </HStack>
                   </Tooltip>
@@ -175,7 +175,7 @@ export function LauncherProjectCard({
                         UNSAFE_className={css.VersionControlTooltip}
                       />
                       <Label hasLeftSpacing={LabelSpacingSize.Small} variant={FeedbackType.Danger}>
-                        {uncommittedChangesAmount}
+                        {String(uncommittedChangesAmount)}
                       </Label>
                     </HStack>
                   </Tooltip>

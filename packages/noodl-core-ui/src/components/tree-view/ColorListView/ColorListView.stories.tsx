@@ -1,18 +1,18 @@
-import { ComponentStory, ComponentMeta } from '@storybook/react';
-import React from 'react';
+import type { Meta, StoryObj } from '@storybook/react';
 
 import { ColorListView } from './ColorListView';
 
-export default {
+const meta: Meta<typeof ColorListView> = {
   title: 'Tree View/Color List View',
   component: ColorListView,
   argTypes: {}
-} as ComponentMeta<typeof ColorListView>;
+};
 
-const Template: ComponentStory<typeof ColorListView> = (args) => <ColorListView {...args} />;
+export default meta;
+type Story = StoryObj<typeof meta>;
 
-export const Common = Template.bind({});
-Common.args = {
+export const Common: Story = {
+  args: {
   items: [
     { id: 0, text: 'Grey - 200', color: '#F4F4F4' },
     { id: 1, text: 'Grey - 300', color: '#E9E9E9' },
@@ -53,4 +53,5 @@ Common.args = {
     { id: 36, text: 'Grey - 600', color: '#757575' },
     { id: 37, text: 'Black', color: '#000000' }
   ]
+},
 };

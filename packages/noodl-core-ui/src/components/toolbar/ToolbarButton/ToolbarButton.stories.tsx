@@ -1,20 +1,21 @@
-import React from 'react';
-import { ComponentStory, ComponentMeta } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/react';
 
 import { ToolbarButton } from './ToolbarButton';
 
-export default {
+const meta: Meta<typeof ToolbarButton> = {
   title: 'Toolbar/Toolbar Button',
   component: ToolbarButton,
   argTypes: {
     label: { control: 'text' },
     prefix: { control: 'slot' }
   }
-} as ComponentMeta<typeof ToolbarButton>;
+};
 
-const Template: ComponentStory<typeof ToolbarButton> = (args) => <ToolbarButton {...args} />;
+export default meta;
+type Story = StoryObj<typeof meta>;
 
-export const Common = Template.bind({});
-Common.args = {
+export const Common: Story = {
+  args: {
   label: 'PRESS ME',
+},
 };

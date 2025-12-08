@@ -1,4 +1,4 @@
-import { ComponentMeta } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/react';
 import React, { useEffect, useState } from 'react';
 
 import { AiChatLoader } from '@noodl-core-ui/components/ai/AiChatLoader';
@@ -14,11 +14,14 @@ import { VStack } from '@noodl-core-ui/components/layout/Stack';
 
 import { AiChatBox } from './AiChatBox';
 
-export default {
+const meta: Meta<typeof AiChatBox> = {
   title: 'Ai/Ai ChatBox',
   component: AiChatBox,
   argTypes: {}
-} as ComponentMeta<typeof AiChatBox>;
+};
+
+export default meta;
+type Story = StoryObj<typeof meta>;
 
 export const Preview = () => (
   <div style={{ maxWidth: '380px', height: '800px' }}>

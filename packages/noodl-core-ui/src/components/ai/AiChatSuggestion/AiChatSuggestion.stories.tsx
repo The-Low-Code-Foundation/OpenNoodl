@@ -1,4 +1,4 @@
-import { ComponentStory, ComponentMeta } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/react';
 import React, { useState } from 'react';
 
 import { PrimaryButton, PrimaryButtonVariant } from '@noodl-core-ui/components/inputs/PrimaryButton';
@@ -6,26 +6,31 @@ import { Box } from '@noodl-core-ui/components/layout/Box';
 
 import { AiChatSuggestion } from './AiChatSuggestion';
 
-export default {
+const meta: Meta<typeof AiChatSuggestion> = {
   title: 'Ai/Ai Chat Suggestion',
   component: AiChatSuggestion,
   argTypes: {}
-} as ComponentMeta<typeof AiChatSuggestion>;
+};
 
-const Template: ComponentStory<typeof AiChatSuggestion> = (args) => (
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+const Template: Story = (args) => (
   <div style={{ maxWidth: '280px' }}>
     <AiChatSuggestion {...args} />
   </div>
 );
 
-export const Common = Template.bind({});
-Common.args = {
+export const Common: Story = {
+  args: {
   text: 'What are the required inputs for this node to work correctly?'
+},
 };
 
-export const IsLoading = Template.bind({});
-IsLoading.args = {
+export const IsLoading: Story = {
+  args: {
   isLoading: true
+},
 };
 
 export const OnUpdate = () => {

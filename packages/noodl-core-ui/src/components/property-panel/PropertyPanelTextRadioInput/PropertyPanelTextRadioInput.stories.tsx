@@ -1,22 +1,24 @@
-import { ComponentStory, ComponentMeta } from '@storybook/react';
-import React from 'react';
+import type { Meta, StoryObj } from '@storybook/react';
 
 import { PropertyPanelTextRadioInput } from './PropertyPanelTextRadioInput';
 
-export default {
+const meta: Meta<typeof PropertyPanelTextRadioInput> = {
   title: 'Property Panel/Radio',
   component: PropertyPanelTextRadioInput,
   argTypes: {}
-} as ComponentMeta<typeof PropertyPanelTextRadioInput>;
+};
 
-const Template: ComponentStory<typeof PropertyPanelTextRadioInput> = (args) => (
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+const Template: Story = (args) => (
   <div style={{ width: 280 }}>
     <PropertyPanelTextRadioInput {...args} />
   </div>
 );
 
-export const Common = Template.bind({});
-Common.args = {
+export const Common: Story = {
+  args: {
   value: 'one',
   properties: {
     options: [
@@ -35,4 +37,5 @@ Common.args = {
       }
     ]
   }
+},
 };

@@ -1,15 +1,18 @@
-import { ComponentStory, ComponentMeta } from '@storybook/react';
-import React from 'react';
+import type { Meta, StoryObj } from '@storybook/react';
 
 import { Launcher } from './Launcher';
 
-export default {
+const meta: Meta<typeof Launcher> = {
   title: 'Preview/Launcher/[WIP] Launcher',
   component: Launcher,
   argTypes: {}
-} as ComponentMeta<typeof Launcher>;
+};
 
-const Template: ComponentStory<typeof Launcher> = (args) => <Launcher {...args}></Launcher>;
+export default meta;
+type Story = StoryObj<typeof meta>;
 
-export const Primary = Template.bind({});
-Primary.args = {};
+</Launcher>;
+
+export const Primary: Story = {
+  args: {},
+};

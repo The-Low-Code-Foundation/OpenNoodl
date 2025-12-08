@@ -1,8 +1,10 @@
 {
   "extends": "../../tsconfig.json",
   "compilerOptions": {
+    "skipLibCheck": true,
     "moduleResolution": "node",
     "module": "es2020",
+    "baseUrl": ".",
     "paths": {
       "@noodl-core-ui/*": ["../noodl-core-ui/src/*"],
       "@noodl-hooks/*": ["./src/editor/src/hooks/*"],

@@ -1,23 +1,25 @@
-import { ComponentStory, ComponentMeta } from '@storybook/react';
-import React from 'react';
+import type { Meta, StoryObj } from '@storybook/react';
 
 import { IconName } from '@noodl-core-ui/components/common/Icon';
 import { PopupToolbar, PopupToolbarProps } from '@noodl-core-ui/components/popups/PopupToolbar/PopupToolbar';
 
-export default {
+const meta: Meta<typeof PopupToolbar> = {
   title: 'Popups/PopupToolbar',
   component: PopupToolbar,
   argTypes: {}
-} as ComponentMeta<typeof PopupToolbar>;
+};
 
-const Template: ComponentStory<typeof PopupToolbar> = (args: PopupToolbarProps) => (
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+const Template: Story = (args: PopupToolbarProps) => (
   <div style={{ width: '100vw', height: '100vh' }}>
     <PopupToolbar {...args} />
   </div>
 );
 
-export const Common = Template.bind({});
-Common.args = {
+export const Common: Story = {
+  args: {
   menuItems: [
     {
       tooltip: 'Action',
@@ -53,10 +55,11 @@ Common.args = {
       endSlot: 'Subtitle goes here'
     }
   ]
+},
 };
 
-export const NoContextMenu = Template.bind({});
-NoContextMenu.args = {
+export const NoContextMenu: Story = {
+  args: {
   menuItems: [
     {
       tooltip: 'Action',
@@ -67,4 +70,5 @@ NoContextMenu.args = {
       icon: IconName.Plus
     }
   ]
+},
 };

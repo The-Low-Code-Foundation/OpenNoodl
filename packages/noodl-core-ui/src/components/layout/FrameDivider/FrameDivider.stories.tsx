@@ -1,16 +1,19 @@
 import React, { useState } from 'react';
-import { ComponentStory, ComponentMeta } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/react';
 
 import { FrameDivider, FrameDividerOwner } from './FrameDivider';
 import { TestView } from '@noodl-core-ui/components/layout/TestView/TestView';
 
-export default {
+const meta: Meta<typeof FrameDivider> = {
   title: 'Layout/Frame Divider',
   component: FrameDivider,
   argTypes: {}
-} as ComponentMeta<typeof FrameDivider>;
+};
 
-const Template: ComponentStory<typeof FrameDivider> = (args) => (
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+const Template: Story = (args) => (
   <div style={{ width: 1280, height: 800, background: 'lightgray' }}>
     <FrameDivider
       {...args}
@@ -20,17 +23,19 @@ const Template: ComponentStory<typeof FrameDivider> = (args) => (
   </div>
 );
 
-export const Horizontal = Template.bind({});
-Horizontal.args = {
+export const Horizontal: Story = {
+  args: {
   horizontal: true
+},
 };
 
-export const Vertical = Template.bind({});
-Vertical.args = {
+export const Vertical: Story = {
+  args: {
   horizontal: false
+},
 };
 
-export const Editor3Horizontal: ComponentStory<typeof FrameDivider> = () => {
+export const Editor3Horizontal: Story = () => {
   const [firstSize, setFirstSize] = useState(343);
   const [secondSize, setSecondSize] = useState(343);
 
@@ -57,7 +62,7 @@ export const Editor3Horizontal: ComponentStory<typeof FrameDivider> = () => {
     </div>
   );
 };
-export const Editor3Vertical: ComponentStory<typeof FrameDivider> = () => {
+export const Editor3Vertical: Story = () => {
   const [firstSize, setFirstSize] = useState(300);
   const [secondSize, setSecondSize] = useState(300);
 
@@ -84,7 +89,7 @@ export const Editor3Vertical: ComponentStory<typeof FrameDivider> = () => {
   );
 };
 
-export const Editor2Horizontal1Vertical: ComponentStory<typeof FrameDivider> = () => {
+export const Editor2Horizontal1Vertical: Story = () => {
   const [firstSize, setFirstSize] = useState(300);
   const [secondSize, setSecondSize] = useState(300);
 

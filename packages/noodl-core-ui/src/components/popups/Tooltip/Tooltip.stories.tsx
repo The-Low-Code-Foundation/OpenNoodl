@@ -1,19 +1,22 @@
 import React from 'react';
-import { ComponentStory, ComponentMeta } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/react';
 
 import { Tooltip } from './Tooltip';
 
-export default {
+const meta: Meta<typeof Tooltip> = {
   title: 'Popups/Tooltip',
   component: Tooltip,
   argTypes: {}
-} as ComponentMeta<typeof Tooltip>;
+};
+
+export default meta;
+type Story = StoryObj<typeof meta>;
 
 function HoverTarget() {
   return <div style={{ padding: 10, backgroundColor: 'lightcoral' }}>HOVER ME</div>;
 }
 
-const Template: ComponentStory<typeof Tooltip> = (args) => (
+const Template: Story = (args) => (
   <div
     style={{
       height: 'calc(100vh - 35px)',
@@ -63,5 +66,6 @@ const Template: ComponentStory<typeof Tooltip> = (args) => (
   </div>
 );
 
-export const Common = Template.bind({});
-Common.args = {};
+export const Common: Story = {
+  args: {},
+};

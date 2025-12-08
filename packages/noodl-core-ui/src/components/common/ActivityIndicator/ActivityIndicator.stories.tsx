@@ -1,17 +1,20 @@
-import React from 'react';
-import { ComponentStory, ComponentMeta } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/react';
 
 import { ActivityIndicator } from './ActivityIndicator';
 
-export default {
+const meta: Meta<typeof ActivityIndicator> = {
   title: 'Common/Activity Indicator',
   component: ActivityIndicator,
   argTypes: {},
-} as ComponentMeta<typeof ActivityIndicator>;
+};
 
-const Template: ComponentStory<typeof ActivityIndicator> = (args) => (
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+const Template: Story = (args) => (
   <ActivityIndicator {...args} />
 );
 
-export const Common = Template.bind({});
-Common.args = {};
+export const Common: Story = {
+  args: {},
+};

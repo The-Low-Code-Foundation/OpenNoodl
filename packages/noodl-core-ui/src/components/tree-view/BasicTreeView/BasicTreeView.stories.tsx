@@ -1,5 +1,4 @@
-import React from 'react';
-import { ComponentStory, ComponentMeta } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/react';
 
 import { IconName } from '@noodl-core-ui/components/common/Icon';
 import {
@@ -10,13 +9,16 @@ import {
 import { ContextMenu } from '@noodl-core-ui/components/popups/ContextMenu';
 import { IconButtonVariant } from '@noodl-core-ui/components/inputs/IconButton';
 
-export default {
+const meta: Meta<typeof BasicTreeView> = {
   title: 'Tree View/Basic Tree View',
   component: BasicTreeView,
   argTypes: {}
-} as ComponentMeta<typeof BasicTreeView>;
+};
 
-export const Common: ComponentStory<typeof BasicTreeView> = (args) => {
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+export const Common: Story = (args) => {
   return (
     <div style={{ width: 280 }}>
       <BasicTreeView {...args} />

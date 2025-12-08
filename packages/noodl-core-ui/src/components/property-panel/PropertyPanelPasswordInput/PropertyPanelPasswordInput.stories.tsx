@@ -1,21 +1,24 @@
-import { ComponentStory, ComponentMeta } from '@storybook/react';
-import React from 'react';
+import type { Meta, StoryObj } from '@storybook/react';
 
 import { PropertyPanelPasswordInput } from './PropertyPanelPasswordInput';
 
-export default {
+const meta: Meta<typeof PropertyPanelPasswordInput> = {
   title: 'Property Panel/Password',
   component: PropertyPanelPasswordInput,
   argTypes: {}
-} as ComponentMeta<typeof PropertyPanelPasswordInput>;
+};
 
-const Template: ComponentStory<typeof PropertyPanelPasswordInput> = (args) => (
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+const Template: Story = (args) => (
   <div style={{ width: 280 }}>
     <PropertyPanelPasswordInput {...args} />
   </div>
 );
 
-export const Common = Template.bind({});
-Common.args = {
+export const Common: Story = {
+  args: {
   value: 'Hello World'
+},
 };

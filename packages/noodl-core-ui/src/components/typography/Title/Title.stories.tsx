@@ -1,9 +1,8 @@
-import React from 'react';
-import { ComponentStory, ComponentMeta } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/react';
 
 import { Title } from './Title';
 
-export default {
+const meta: Meta<typeof Title> = {
   title: 'Typography/Title',
   component: Title,
   argTypes: {
@@ -34,11 +33,15 @@ export default {
     isCentered: { control: 'boolean' },
     isInline: { control: 'boolean' },
   },
-} as ComponentMeta<typeof Title>;
+};
 
-const Template: ComponentStory<typeof Title> = (args) => <Title {...args}>{args.children}</Title>;
+export default meta;
+type Story = StoryObj<typeof meta>;
 
-export const Common = Template.bind({});
-Common.args = {
+{args.children}</Title>;
+
+export const Common: Story = {
+  args: {
   children: "Typography",
+},
 };

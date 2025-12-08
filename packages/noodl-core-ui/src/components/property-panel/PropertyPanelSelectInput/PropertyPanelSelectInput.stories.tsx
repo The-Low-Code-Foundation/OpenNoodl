@@ -1,22 +1,24 @@
-import { ComponentStory, ComponentMeta } from '@storybook/react';
-import React from 'react';
+import type { Meta, StoryObj } from '@storybook/react';
 
 import { PropertyPanelSelectInput } from './PropertyPanelSelectInput';
 
-export default {
+const meta: Meta<typeof PropertyPanelSelectInput> = {
   title: 'Property Panel/Select',
   component: PropertyPanelSelectInput,
   argTypes: {}
-} as ComponentMeta<typeof PropertyPanelSelectInput>;
+};
 
-const Template: ComponentStory<typeof PropertyPanelSelectInput> = (args) => (
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+const Template: Story = (args) => (
   <div style={{ width: 280 }}>
     <PropertyPanelSelectInput {...args} />
   </div>
 );
 
-export const Common = Template.bind({});
-Common.args = {
+export const Common: Story = {
+  args: {
   value: 'disabled',
   properties: {
     options: [
@@ -25,10 +27,11 @@ Common.args = {
       { label: 'Full Beta (gpt-4)', value: 'full-beta' }
     ]
   }
+},
 };
 
-export const hasSmallText = Template.bind({});
-hasSmallText.args = {
+export const hasSmallText: Story = {
+  args: {
   value: 'disabled',
   properties: {
     options: [
@@ -38,4 +41,5 @@ hasSmallText.args = {
     ]
   },
   hasSmallText: true
+},
 };

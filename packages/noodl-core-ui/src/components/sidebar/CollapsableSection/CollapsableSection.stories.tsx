@@ -1,5 +1,4 @@
-import { ComponentStory, ComponentMeta } from '@storybook/react';
-import React from 'react';
+import type { Meta, StoryObj } from '@storybook/react';
 
 import { IconName } from '@noodl-core-ui/components/common/Icon';
 import { IconButton } from '@noodl-core-ui/components/inputs/IconButton';
@@ -10,13 +9,16 @@ import { Text } from '@noodl-core-ui/components/typography/Text';
 
 import { CollapsableSection } from './CollapsableSection';
 
-export default {
+const meta: Meta<typeof CollapsableSection> = {
   title: 'Layout/Collapsable Section',
   component: CollapsableSection,
   argTypes: {}
-} as ComponentMeta<typeof CollapsableSection>;
+};
 
-const Template: ComponentStory<typeof CollapsableSection> = (args) => (
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+const Template: Story = (args) => (
   <div style={{ width: 280 }}>
     <CollapsableSection {...args}>
       <Container hasYSpacing>
@@ -26,38 +28,44 @@ const Template: ComponentStory<typeof CollapsableSection> = (args) => (
   </div>
 );
 
-export const Common = Template.bind({});
-Common.args = {};
-
-export const VariantPanel = Template.bind({});
-VariantPanel.args = {
-  title: 'Title',
-  variant: SectionVariant.Panel
+export const Common: Story = {
+  args: {},
 };
 
-export const CollapsableVariantPanel = Template.bind({});
-CollapsableVariantPanel.args = {
+export const VariantPanel: Story = {
+  args: {
+  title: 'Title',
+  variant: SectionVariant.Panel
+},
+};
+
+export const CollapsableVariantPanel: Story = {
+  args: {
   title: 'Title',
   variant: SectionVariant.Panel,
   isCollapsable: true
+},
 };
 
-export const VariantPanelShy = Template.bind({});
-VariantPanelShy.args = {
+export const VariantPanelShy: Story = {
+  args: {
   title: 'Title',
   variant: SectionVariant.PanelShy
+},
 };
 
-export const VariantInModal = Template.bind({});
-VariantInModal.args = {
+export const VariantInModal: Story = {
+  args: {
   title: 'Title',
   variant: SectionVariant.InModal
+},
 };
 
-export const WithAction = Template.bind({});
-WithAction.args = {
+export const WithAction: Story = {
+  args: {
   title: 'Title',
   actions: <IconButton icon={IconName.Plus} />
+},
 };
 
 // Boring, but it should be content size and not handle scrollbars

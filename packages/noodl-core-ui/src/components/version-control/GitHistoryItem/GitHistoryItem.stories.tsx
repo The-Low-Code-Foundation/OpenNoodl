@@ -1,22 +1,24 @@
-import React from 'react';
-import { ComponentStory, ComponentMeta } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/react';
 
 import { GitHistoryItem } from './GitHistoryItem';
 
-export default {
+const meta: Meta<typeof GitHistoryItem> = {
   title: 'Version Control/History Item',
   component: GitHistoryItem,
   argTypes: {}
-} as ComponentMeta<typeof GitHistoryItem>;
+};
 
-const Template: ComponentStory<typeof GitHistoryItem> = (args) => (
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+const Template: Story = (args) => (
   <div style={{ width: 280 }}>
     <GitHistoryItem {...args}></GitHistoryItem>
   </div>
 );
 
-export const Common = Template.bind({});
-Common.args = {
+export const Common: Story = {
+  args: {
   branches: [
     {
       bottom: true,
@@ -33,10 +35,11 @@ Common.args = {
     label: 'JD',
     color: 'red'
   }
+},
 };
 
-export const FirstCommit = Template.bind({});
-FirstCommit.args = {
+export const FirstCommit: Story = {
+  args: {
   branches: [
     {
       bottom: false,
@@ -54,10 +57,11 @@ FirstCommit.args = {
     label: 'JD',
     color: 'red'
   }
+},
 };
 
-export const LocalChanges = Template.bind({});
-LocalChanges.args = {
+export const LocalChanges: Story = {
+  args: {
   branches: [
     {
       bottom: true,
@@ -71,10 +75,11 @@ LocalChanges.args = {
   message: 'Local changes',
   date: undefined,
   badge: undefined
+},
 };
 
-export const BeforeLocalChanges = Template.bind({});
-BeforeLocalChanges.args = {
+export const BeforeLocalChanges: Story = {
+  args: {
   branches: [
     {
       bottom: true,
@@ -93,10 +98,11 @@ BeforeLocalChanges.args = {
     label: 'JD',
     color: 'red'
   }
+},
 };
 
-export const LongCommitMessage = Template.bind({});
-LongCommitMessage.args = {
+export const LongCommitMessage: Story = {
+  args: {
   branches: [
     {
       bottom: true,
@@ -116,4 +122,5 @@ LongCommitMessage.args = {
     label: 'JD',
     color: 'red'
   }
+},
 };

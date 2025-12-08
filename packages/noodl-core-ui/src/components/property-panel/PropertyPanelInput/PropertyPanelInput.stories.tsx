@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ComponentStory, ComponentMeta } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/react';
 
 import {
   PropertyPanelInput,
@@ -10,13 +10,16 @@ import { ReactComponent as AlignLeftIcon } from '../../../assets/icons/align-lef
 import { ReactComponent as AlignCenterIcon } from '../../../assets/icons/align-center.svg';
 import { ReactComponent as AlignRightcon } from '../../../assets/icons/align-right.svg';
 
-export default {
+const meta: Meta<typeof PropertyPanelInput> = {
   title: 'Property Panel/# Generic',
   component: PropertyPanelInput,
   argTypes: {},
-} as ComponentMeta<typeof PropertyPanelInput>;
+};
 
-const Template: ComponentStory<typeof PropertyPanelInput> = (args) => {
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+const Template: Story = (args) => {
   const [value, setValue] = useState(args.value || '');
 
   return (
@@ -33,30 +36,34 @@ const Template: ComponentStory<typeof PropertyPanelInput> = (args) => {
   );
 };
 
-export const Common = Template.bind({});
-Common.args = { label: 'Label' };
+export const Common: Story = {
+  args: { label: 'Label' },
+};
 
-export const Text = Template.bind({});
-Text.args = {
+export const Text: Story = {
+  args: {
   inputType: PropertyPanelInputType.Text,
   label: 'Text',
+},
 };
 
-export const Number = Template.bind({});
-Number.args = {
+export const Number: Story = {
+  args: {
   inputType: PropertyPanelInputType.Number,
   label: 'Number',
+},
 };
 
-export const LengthUnit = Template.bind({});
-LengthUnit.args = {
+export const LengthUnit: Story = {
+  args: {
   inputType: PropertyPanelInputType.LengthUnit,
   label: 'Length unit',
   value: '200px',
+},
 };
 
-export const Slider = Template.bind({});
-Slider.args = {
+export const Slider: Story = {
+  args: {
   inputType: PropertyPanelInputType.Slider,
   label: 'Slider',
   value: 50,
@@ -65,10 +72,11 @@ Slider.args = {
     max: 90,
     step: 5,
   },
+},
 };
 
-export const Select = Template.bind({});
-Select.args = {
+export const Select: Story = {
+  args: {
   inputType: PropertyPanelInputType.Select,
   label: 'Select',
   value: 'first',
@@ -89,10 +97,11 @@ Select.args = {
       },
     ],
   },
+},
 };
 
-export const TextRadio = Template.bind({});
-TextRadio.args = {
+export const TextRadio: Story = {
+  args: {
   inputType: PropertyPanelInputType.TextRadio,
   label: 'Text radio',
   value: 'one',
@@ -113,10 +122,11 @@ TextRadio.args = {
       },
     ],
   },
+},
 };
 
-export const IconRadio = Template.bind({});
-IconRadio.args = {
+export const IconRadio: Story = {
+  args: {
   inputType: PropertyPanelInputType.IconRadio,
   label: 'Icon radio',
   value: 'left',
@@ -137,21 +147,24 @@ IconRadio.args = {
       },
     ],
   },
+},
 };
 
-export const Checkbox = Template.bind({});
-Checkbox.args = {
+export const Checkbox: Story = {
+  args: {
   inputType: PropertyPanelInputType.Checkbox,
   label: 'Checkbox',
   value: true,
+},
 };
 
-export const Button = Template.bind({});
-Button.args = {
+export const Button: Story = {
+  args: {
   inputType: PropertyPanelInputType.Button,
   label: 'Button',
   properties: {
     buttonLabel: 'Click me',
     onClick: () => alert('hello'),
   },
+},
 };

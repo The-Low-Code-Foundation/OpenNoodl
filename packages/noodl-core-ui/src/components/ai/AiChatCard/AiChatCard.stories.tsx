@@ -1,18 +1,19 @@
-import { ComponentStory, ComponentMeta } from '@storybook/react';
-import React from 'react';
+import type { Meta, StoryObj } from '@storybook/react';
 
 import { AiChatCard } from './AiChatCard';
 
-export default {
+const meta: Meta<typeof AiChatCard> = {
   title: 'Ai/Ai Chat Card',
   component: AiChatCard,
   argTypes: {}
-} as ComponentMeta<typeof AiChatCard>;
+};
 
-const Template: ComponentStory<typeof AiChatCard> = (args) => <AiChatCard {...args} />;
+export default meta;
+type Story = StoryObj<typeof meta>;
 
-export const Common = Template.bind({});
-Common.args = {
+export const Common: Story = {
+  args: {
   title: 'Home page',
   subtitle: 'Landing page for the app'
+},
 };

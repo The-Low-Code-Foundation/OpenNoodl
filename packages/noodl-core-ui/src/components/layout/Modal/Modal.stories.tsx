@@ -1,42 +1,59 @@
-import React from 'react';
+import type { Meta, StoryObj } from '@storybook/react';
 
 import { Modal } from '@noodl-core-ui/components/layout/Modal/Modal';
 
-export default {
+const meta: Meta<typeof Modal> = {
   title: 'Layout/Modal',
-  argTypes: {}
+  component: Modal,
+  argTypes: {},
+  decorators: [
+    (Story) => (
+      <div style={{ width: 280 }}>
+        <Story />
+      </div>
+    ),
+  ],
 };
 
-const Template = (args) => (
-  <div style={{ width: 280 }}>
-    <Modal isVisible {...args}>
-      Content in a Modal
-    </Modal>
-  </div>
-);
+export default meta;
+type Story = StoryObj<typeof meta>;
 
-export const Common = Template.bind({});
-
-export const Header = Template.bind({});
-Header.args = {
-  strapline: 'strapline',
-  title: 'title',
-  subtitle: 'subtitle',
-  hasHeaderDivider: true
+export const Common: Story = {
+  args: {
+    isVisible: true,
+    children: 'Content in a Modal',
+  },
 };
 
-export const Footer = Template.bind({});
-Footer.args = {
-  footerSlot: <>Content in Footer</>,
-  hasFooterDivider: true
+export const Header: Story = {
+  args: {
+    isVisible: true,
+    children: 'Content in a Modal',
+    strapline: 'strapline',
+    title: 'title',
+    subtitle: 'subtitle',
+    hasHeaderDivider: true,
+  },
 };
 
-export const Full = Template.bind({});
-Full.args = {
-  strapline: 'strapline',
-  title: 'title',
-  subtitle: 'subtitle',
-  hasHeaderDivider: true,
-  footerSlot: <>Content in Footer</>,
-  hasFooterDivider: true
+export const Footer: Story = {
+  args: {
+    isVisible: true,
+    children: 'Content in a Modal',
+    footerSlot: <>Content in Footer</>,
+    hasFooterDivider: true,
+  },
+};
+
+export const Full: Story = {
+  args: {
+    isVisible: true,
+    children: 'Content in a Modal',
+    strapline: 'strapline',
+    title: 'title',
+    subtitle: 'subtitle',
+    hasHeaderDivider: true,
+    footerSlot: <>Content in Footer</>,
+    hasFooterDivider: true,
+  },
 };

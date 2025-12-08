@@ -1,18 +1,10 @@
-type TSFixme = any;
+/**
+ * Global type declarations for noodl-core-ui
+ * 
+ * This file imports shared global types from @noodl/noodl-types.
+ * Package-specific types can be added below the reference directive.
+ * 
+ * @see packages/noodl-types/src/global.d.ts for shared types
+ */
 
-declare module '*.svg' {
-  import React = require('react');
-  export const ReactComponent: React.FC<React.SVGProps<SVGSVGElement>>;
-  const src: string;
-  export default src;
-}
-
-declare module '*.css' {
-  const styles: { readonly [key: string]: string };
-  export default styles;
-}
-
-declare module '*.scss' {
-  const styles: { readonly [key: string]: string };
-  export default styles;
-}
+/// <reference path="../../../../noodl-types/src/global.d.ts" />

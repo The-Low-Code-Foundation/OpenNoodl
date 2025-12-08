@@ -1,9 +1,8 @@
-import { ComponentStory, ComponentMeta } from '@storybook/react';
-import React from 'react';
+import type { Meta, StoryObj } from '@storybook/react';
 
 import { UserBadge, UserBadgeSize } from './UserBadge';
 
-export default {
+const meta: Meta<typeof UserBadge> = {
   title: 'User/User Badge',
   component: UserBadge,
   argTypes: {
@@ -11,37 +10,42 @@ export default {
     email: { control: 'text' },
     id: { control: 'text' }
   }
-} as ComponentMeta<typeof UserBadge>;
+};
 
-const Template: ComponentStory<typeof UserBadge> = (args) => <UserBadge {...args} />;
+export default meta;
+type Story = StoryObj<typeof meta>;
 
-export const Common = Template.bind({});
-Common.args = {
+export const Common: Story = {
+  args: {
   name: 'John Doe',
   email: 'john@noodl.net',
   id: '20'
+},
 };
 
-export const SizeMedium = Template.bind({});
-SizeMedium.args = {
+export const SizeMedium: Story = {
+  args: {
   name: 'John Doe',
   email: 'john@noodl.net',
   id: '20',
   size: UserBadgeSize.Medium
+},
 };
 
-export const SizeSmall = Template.bind({});
-SizeSmall.args = {
+export const SizeSmall: Story = {
+  args: {
   name: 'John Doe',
   email: 'john@noodl.net',
   id: '20',
   size: UserBadgeSize.Small
+},
 };
 
-export const TinySmall = Template.bind({});
-TinySmall.args = {
+export const TinySmall: Story = {
+  args: {
   name: 'John Doe',
   email: 'john@noodl.net',
   id: '20',
   size: UserBadgeSize.Tiny
+},
 };

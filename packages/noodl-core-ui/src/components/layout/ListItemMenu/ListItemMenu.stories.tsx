@@ -1,24 +1,26 @@
-import React from 'react';
-import { ComponentStory, ComponentMeta } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/react';
 
 import { ListItemMenu } from './ListItemMenu';
 import { IconName } from '@noodl-core-ui/components/common/Icon';
 import { ListItemVariant } from '@noodl-core-ui/components/layout/ListItem/ListItem';
 
-export default {
+const meta: Meta<typeof ListItemMenu> = {
   title: 'Layout/List Item Menu',
   component: ListItemMenu,
   argTypes: {}
-} as ComponentMeta<typeof ListItemMenu>;
+};
 
-const Template: ComponentStory<typeof ListItemMenu> = (args) => (
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+const Template: Story = (args) => (
   <div style={{ width: 280 }}>
     <ListItemMenu {...args} />
   </div>
 );
 
-export const Common = Template.bind({});
-Common.args = {
+export const Common: Story = {
+  args: {
   icon: IconName.Home,
   text: 'Home',
   menuItems: [
@@ -32,13 +34,15 @@ Common.args = {
       label: 'Delete'
     }
   ]
+},
 };
 
-export const ShyWithIcon = Template.bind({});
-ShyWithIcon.args = {
+export const ShyWithIcon: Story = {
+  args: {
   variant: ListItemVariant.Shy,
   icon: IconName.Home,
   text: 'Home',
   menuIcon: IconName.ImportDown,
   menuItems: []
+},
 };

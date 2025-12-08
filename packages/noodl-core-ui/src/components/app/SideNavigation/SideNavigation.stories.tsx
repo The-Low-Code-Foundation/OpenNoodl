@@ -1,5 +1,4 @@
-import { ComponentStory, ComponentMeta } from '@storybook/react';
-import React from 'react';
+import type { Meta, StoryObj } from '@storybook/react';
 
 import { IconName } from '@noodl-core-ui/components/common/Icon';
 import { PrimaryButton } from '@noodl-core-ui/components/inputs/PrimaryButton';
@@ -7,20 +6,23 @@ import { Container, ContainerDirection } from '@noodl-core-ui/components/layout/
 
 import { SideNavigation, SideNavigationButton } from './SideNavigation';
 
-export default {
+const meta: Meta<typeof SideNavigation> = {
   title: 'App/Side Navigation',
   component: SideNavigation,
   argTypes: {}
-} as ComponentMeta<typeof SideNavigation>;
+};
 
-const Template: ComponentStory<typeof SideNavigation> = (args) => (
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+const Template: Story = (args) => (
   <div style={{ width: '380px', height: '800px' }}>
     <SideNavigation {...args} />
   </div>
 );
 
-export const Common = Template.bind({});
-Common.args = {
+export const Common: Story = {
+  args: {
   toolbar: (
     <>
       <Container direction={ContainerDirection.Vertical} UNSAFE_style={{ flex: '1' }}>
@@ -43,4 +45,5 @@ Common.args = {
       <PrimaryButton label="Hello World" isGrowing />
     </Container>
   )
+},
 };

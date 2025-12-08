@@ -1,14 +1,16 @@
-import React from 'react';
-import { ComponentMeta } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/react';
 
 import { ErrorBoundary } from './ErrorBoundary';
 import { Text } from '@noodl-core-ui/components/typography/Text';
 
-export default {
+const meta: Meta<typeof ErrorBoundary> = {
   title: 'Common/Error Boundary',
   component: ErrorBoundary,
   argTypes: {}
-} as ComponentMeta<typeof ErrorBoundary>;
+};
+
+export default meta;
+type Story = StoryObj<typeof meta>;
 
 export const Common = (args) => (
   <ErrorBoundary {...args}>

@@ -1,24 +1,26 @@
-import { ComponentStory, ComponentMeta } from '@storybook/react';
-import React from 'react';
+import type { Meta, StoryObj } from '@storybook/react';
 
 import { IconName } from '@noodl-core-ui/components/common/Icon';
 
 import { MenuDialog, MenuDialogWidth } from './MenuDialog';
 
-export default {
+const meta: Meta<typeof MenuDialog> = {
   title: 'Popups/Menu Dialog',
   component: MenuDialog,
   argTypes: {}
-} as ComponentMeta<typeof MenuDialog>;
+};
 
-const Template: ComponentStory<typeof MenuDialog> = (args) => (
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+const Template: Story = (args) => (
   <div>
     <MenuDialog {...args} />
   </div>
 );
 
-export const Common = Template.bind({});
-Common.args = {
+export const Common: Story = {
+  args: {
   title: 'Preview layout',
   width: MenuDialogWidth.Small,
   isVisible: true,
@@ -47,4 +49,5 @@ Common.args = {
       tooltipShowAfterMs: 300
     }
   ]
+},
 };

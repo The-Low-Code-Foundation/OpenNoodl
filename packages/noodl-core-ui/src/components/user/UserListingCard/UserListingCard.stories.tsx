@@ -1,9 +1,8 @@
-import React from 'react';
-import { ComponentStory, ComponentMeta } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/react';
 
 import { UserListingCard } from './UserListingCard';
 
-export default {
+const meta: Meta<typeof UserListingCard> = {
   title: 'User/User Listing Card',
   component: UserListingCard,
   argTypes: {
@@ -25,13 +24,15 @@ export default {
     interactionSlot: { control: 'slot' },
     isLoading: { control: 'boolean' },
   },
-} as ComponentMeta<typeof UserListingCard>;
+};
 
-const Template: ComponentStory<typeof UserListingCard> = (args) => <UserListingCard {...args} />;
+export default meta;
+type Story = StoryObj<typeof meta>;
 
-export const Common = Template.bind({});
-Common.args = {
+export const Common: Story = {
+  args: {
   name: 'John Doe',
   email: 'john@noodl.net',
   id: '20',
+},
 };

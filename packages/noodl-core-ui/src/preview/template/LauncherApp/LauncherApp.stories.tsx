@@ -1,22 +1,26 @@
-import React from "react";
-import { ComponentStory, ComponentMeta } from "@storybook/react";
+import type { Meta, StoryObj } from '@storybook/react';
 
 import { LauncherApp, LauncherSidebarExample } from "./LauncherApp";
 
-export default {
+const meta: Meta<typeof LauncherApp> = {
   title: "Preview/Template/Launcher",
   component: LauncherApp,
   argTypes: {},
-} as ComponentMeta<typeof LauncherApp>;
+};
 
-const Template: ComponentStory<typeof LauncherApp> = (args) => (
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+const Template: Story = (args) => (
   <LauncherApp {...args}></LauncherApp>
 );
 
-export const Common = Template.bind({});
-Common.args = {};
+export const Common: Story = {
+  args: {},
+};
 
-export const WithSidebar = Template.bind({});
-WithSidebar.args = {
+export const WithSidebar: Story = {
+  args: {
   sidePanel: <LauncherSidebarExample />
+},
 };

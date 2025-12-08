@@ -1,15 +1,16 @@
-import React from 'react';
-import { ComponentStory, ComponentMeta } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/react';
 
 import { NotificationFeedbackDisplay } from './NotificationFeedbackDisplay';
 
-export default {
+const meta: Meta<typeof NotificationFeedbackDisplay> = {
   title: 'Inputs/Notification Feedback Display',
   component: NotificationFeedbackDisplay,
   argTypes: {},
-} as ComponentMeta<typeof NotificationFeedbackDisplay>;
+};
 
-const Template: ComponentStory<typeof NotificationFeedbackDisplay> = (args) => <NotificationFeedbackDisplay {...args} />;
+export default meta;
+type Story = StoryObj<typeof meta>;
 
-export const Common = Template.bind({});
-Common.args = {};
+export const Common: Story = {
+  args: {},
+};

@@ -1,20 +1,23 @@
-import React from 'react';
-import { ComponentStory, ComponentMeta } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/react';
 
 import { LegacyIconButton } from './LegacyIconButton';
 
-export default {
+const meta: Meta<typeof LegacyIconButton> = {
   title: 'Inputs/Legacy Icon Button',
   component: LegacyIconButton,
   argTypes: {},
-} as ComponentMeta<typeof LegacyIconButton>;
+};
 
-const Template: ComponentStory<typeof LegacyIconButton> = (args) => (
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+const Template: Story = (args) => (
   <>
     DONT USE THIS COMPONENT
     <LegacyIconButton {...args} />
   </>
 );
 
-export const Common = Template.bind({});
-Common.args = {};
+export const Common: Story = {
+  args: {},
+};

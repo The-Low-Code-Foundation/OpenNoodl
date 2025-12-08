@@ -1,15 +1,16 @@
-import { ComponentStory, ComponentMeta } from '@storybook/react';
-import React from 'react';
+import type { Meta, StoryObj } from '@storybook/react';
 
 import { AiIcon } from './AiIcon';
 
-export default {
+const meta: Meta<typeof AiIcon> = {
   title: 'Ai/Ai Icon',
   component: AiIcon,
   argTypes: {}
-} as ComponentMeta<typeof AiIcon>;
+};
 
-const Template: ComponentStory<typeof AiIcon> = (args) => <AiIcon {...args} />;
+export default meta;
+type Story = StoryObj<typeof meta>;
 
-export const Common = Template.bind({});
-Common.args = {};
+export const Common: Story = {
+  args: {},
+};

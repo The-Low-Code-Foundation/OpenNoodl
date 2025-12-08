@@ -1,15 +1,19 @@
-import { ComponentStory, ComponentMeta } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/react';
 import React from 'react';
 
 import { PropertyPanelSection } from './PropertyPanelSection';
 
-export default {
+const meta: Meta<typeof PropertyPanelSection> = {
   title: 'Property Panel/Property Panel Section',
   component: PropertyPanelSection,
   argTypes: {}
-} as ComponentMeta<typeof PropertyPanelSection>;
+};
 
-const Template: ComponentStory<typeof PropertyPanelSection> = (args) => <PropertyPanelSection {...args} />;
+export default meta;
+type Story = StoryObj<typeof meta>;
 
-export const Common = Template.bind({});
-Common.args = { title: 'Section title' };
+
+
+export const Common: Story = {
+  args: { title: 'Section title' },
+};

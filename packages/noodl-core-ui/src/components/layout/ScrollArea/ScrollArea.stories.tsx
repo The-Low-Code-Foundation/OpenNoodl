@@ -1,15 +1,16 @@
-import { ComponentStory, ComponentMeta } from '@storybook/react';
-import React from 'react';
+import type { Meta, StoryObj } from '@storybook/react';
 
 import { ScrollArea } from './ScrollArea';
 
-export default {
+const meta: Meta<typeof ScrollArea> = {
   title: 'Layout/ScrollArea',
   component: ScrollArea,
   argTypes: {}
-} as ComponentMeta<typeof ScrollArea>;
+};
 
-const Template: ComponentStory<typeof ScrollArea> = (args) => <ScrollArea {...args} />;
+export default meta;
+type Story = StoryObj<typeof meta>;
 
-export const Common = Template.bind({});
-Common.args = {};
+export const Common: Story = {
+  args: {},
+};

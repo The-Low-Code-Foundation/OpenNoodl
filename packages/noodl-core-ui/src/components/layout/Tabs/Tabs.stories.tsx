@@ -1,23 +1,26 @@
 import React from 'react';
-import { ComponentStory, ComponentMeta } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/react';
 
 import { Tabs, TabsVariant } from './Tabs';
 import { Text } from '@noodl-core-ui/components/typography/Text';
 
-export default {
+const meta: Meta<typeof Tabs> = {
   title: 'Layout/Tabs',
   component: Tabs,
   argTypes: {}
-} as ComponentMeta<typeof Tabs>;
+};
 
-const Template: ComponentStory<typeof Tabs> = (args) => (
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+const Template: Story = (args) => (
   <div style={{ width: 280 }}>
     <Tabs {...args}></Tabs>
   </div>
 );
 
-export const Common = Template.bind({});
-Common.args = {
+export const Common: Story = {
+  args: {
   tabs: [
     {
       label: 'First tab',
@@ -28,10 +31,11 @@ Common.args = {
       content: 'Second tab content!'
     }
   ]
+},
 };
 
-export const VariantText = Template.bind({});
-VariantText.args = {
+export const VariantText: Story = {
+  args: {
   variant: TabsVariant.Text,
   tabs: [
     {
@@ -43,10 +47,11 @@ VariantText.args = {
       content: <Text>Second tab content!</Text>
     }
   ]
+},
 };
 
-export const VariantSidebar = Template.bind({});
-VariantSidebar.args = {
+export const VariantSidebar: Story = {
+  args: {
   variant: TabsVariant.Sidebar,
   tabs: [
     {
@@ -58,10 +63,11 @@ VariantSidebar.args = {
       content: <Text>Second tab content!</Text>
     }
   ]
+},
 };
 
-export const SettingTabsWithId = Template.bind({});
-SettingTabsWithId.args = {
+export const SettingTabsWithId: Story = {
+  args: {
   tabs: [
     {
       label: 'Same label',
@@ -74,4 +80,5 @@ SettingTabsWithId.args = {
       id: 2
     }
   ]
+},
 };

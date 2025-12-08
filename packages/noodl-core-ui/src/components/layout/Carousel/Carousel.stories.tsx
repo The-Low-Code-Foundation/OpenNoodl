@@ -1,5 +1,4 @@
-import { ComponentStory, ComponentMeta } from '@storybook/react';
-import React from 'react';
+import type { Meta, StoryObj } from '@storybook/react';
 
 import { PrimaryButton, PrimaryButtonSize, PrimaryButtonVariant } from '@noodl-core-ui/components/inputs/PrimaryButton';
 import { Box } from '@noodl-core-ui/components/layout/Box';
@@ -48,20 +47,23 @@ function NodePickerSlider({ subtitle, title, text, action }: NodePickerSliderPro
   );
 }
 
-export default {
+const meta: Meta<typeof Carousel> = {
   title: 'Layout/Carousel',
   component: Carousel,
   argTypes: {}
-} as ComponentMeta<typeof Carousel>;
+};
 
-const Template: ComponentStory<typeof Carousel> = (args) => (
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+const Template: Story = (args) => (
   <div style={{ width: '430px' }}>
     <Carousel {...args} />
   </div>
 );
 
-export const Common = Template.bind({});
-Common.args = {
+export const Common: Story = {
+  args: {
   items: [
     {
       slot: (
@@ -86,4 +88,5 @@ Common.args = {
     { slot: <>Test 3</> }
   ],
   indicator: CarouselIndicatorDot
+},
 };

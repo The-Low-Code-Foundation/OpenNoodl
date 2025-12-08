@@ -1,15 +1,16 @@
-import React from 'react';
-import { ComponentStory, ComponentMeta } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/react';
 
 import { SearchInput } from './SearchInput';
 
-export default {
+const meta: Meta<typeof SearchInput> = {
   title: 'Inputs/Search Input',
   component: SearchInput,
   argTypes: {},
-} as ComponentMeta<typeof SearchInput>;
+};
 
-const Template: ComponentStory<typeof SearchInput> = (args) => <SearchInput {...args} />;
+export default meta;
+type Story = StoryObj<typeof meta>;
 
-export const Common = Template.bind({});
-Common.args = {};
+export const Common: Story = {
+  args: {},
+};

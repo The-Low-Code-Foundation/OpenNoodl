@@ -1,19 +1,22 @@
-import { ComponentStory, ComponentMeta } from '@storybook/react';
-import React from 'react';
+import type { Meta, StoryObj } from '@storybook/react';
 
 import { PropertyPanelCheckbox } from '@noodl-core-ui/components/property-panel/PropertyPanelCheckbox';
 
-export default {
+const meta: Meta<typeof PropertyPanelCheckbox> = {
   title: 'Property Panel/Checkbox',
   component: PropertyPanelCheckbox,
   argTypes: {}
-} as ComponentMeta<typeof PropertyPanelCheckbox>;
+};
 
-const Template: ComponentStory<typeof PropertyPanelCheckbox> = (args) => (
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+const Template: Story = (args) => (
   <div style={{ width: 280 }}>
     <PropertyPanelCheckbox {...args} />
   </div>
 );
 
-export const Common = Template.bind({});
-Common.args = {};
+export const Common: Story = {
+  args: {},
+};

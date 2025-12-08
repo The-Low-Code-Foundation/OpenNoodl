@@ -4,9 +4,14 @@ const merge = require('webpack-merge').default;
 const shared = require('./shared/webpack.renderer.shared.js');
 const getExternalModules = require('./helpers/get-externals-modules');
 
+// Track if electron has been started to prevent multiple launches
+let electronStarted = false;
+
 module.exports = merge(shared, {
   mode: 'development',
-  devtool: 'eval-source-map',
+  // Use faster sourcemap for development - 'eval-cheap-module-source-map' is much faster
+  // than 'eval-source-map' while still providing decent debugging experience
+  devtool: 'eval-cheap-module-source-map',
   externals: getExternalModules({
     production: false
   }),
@@ -27,20 +32,34 @@ module.exports = merge(shared, {
     host: 'localhost', // Default: '0.0.0.0' that is causing issues on some OS / net interfaces
     port: 8080,
     onListening(devServer) {
-      //start electron when the dev server has started
-      child_process
-        .spawn('npm', ['run', 'start:_dev'], {
-          shell: true,
-          env: process.env,
-          stdio: 'inherit'
-        })
-        .on('close', (code) => {
-          devServer.stop();
-        })
-        .on('error', (spawnError) => {
-          console.error(spawnError);
-          devServer.stop();
-        });
+      // Wait for webpack compilation to finish before starting Electron
+      // This prevents the black screen issue where Electron opens before
+      // the bundle is ready to be served
+      devServer.compiler.hooks.done.tap('StartElectron', (stats) => {
+        // Only start once, and only if compilation succeeded
+        if (electronStarted) return;
+        if (stats.hasErrors()) {
+          console.error('Webpack compilation has errors - not starting Electron');
+          return;
+        }
+        
+        electronStarted = true;
+        console.log('\n✓ Webpack compilation complete - launching Electron...\n');
+        
+        child_process
+          .spawn('npm', ['run', 'start:_dev'], {
+            shell: true,
+            env: process.env,
+            stdio: 'inherit'
+          })
+          .on('close', (code) => {
+            devServer.stop();
+          })
+          .on('error', (spawnError) => {
+            console.error(spawnError);
+            devServer.stop();
+          });
+      });
     }
   }
 });

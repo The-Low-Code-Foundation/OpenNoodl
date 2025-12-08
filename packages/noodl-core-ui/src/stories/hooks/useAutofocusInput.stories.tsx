@@ -1,16 +1,19 @@
 import React, { useState } from 'react';
-import { ComponentStory, ComponentMeta } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/react';
 
 import { TextInput } from '@noodl-core-ui/components/inputs/TextInput';
 import { useAutofocusInput } from '@noodl-core-ui/hooks/useAutofocusInput';
 
-export default {
+const meta: Meta<typeof TextInput> = {
   title: 'Hooks/useAutofocusInput',
   component: TextInput,
   argTypes: {}
-} as ComponentMeta<typeof TextInput>;
+};
 
-const Template: ComponentStory<typeof TextInput> = () => {
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+const Template: Story = () => {
   const setRef = useAutofocusInput();
   const [secondInputState, setSecondInputState] = useState('Focus me manually');
 
@@ -22,5 +25,6 @@ const Template: ComponentStory<typeof TextInput> = () => {
   );
 };
 
-export const Common = Template.bind({});
-Common.args = {};
+export const Common: Story = {
+  args: {},
+};

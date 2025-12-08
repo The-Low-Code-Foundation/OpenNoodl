@@ -1,38 +1,43 @@
-import { ComponentStory, ComponentMeta } from '@storybook/react';
-import React from 'react';
+import type { Meta, StoryObj } from '@storybook/react';
 
 import { InputNotificationDisplayMode } from '@noodl-types/globalInputTypes';
 import { FeedbackType } from '@noodl-constants/FeedbackType';
 
 import { TextArea } from './TextArea';
 
-export default {
+const meta: Meta<typeof TextArea> = {
   title: 'Inputs/Text Area',
   component: TextArea,
   argTypes: {}
-} as ComponentMeta<typeof TextArea>;
+};
 
-const Template: ComponentStory<typeof TextArea> = (args) => (
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+const Template: Story = (args) => (
   <div style={{ width: 280 }}>
     <TextArea {...args} />
   </div>
 );
 
-export const Common = Template.bind({});
-Common.args = {};
+export const Common: Story = {
+  args: {},
+};
 
-export const ErrorMessage = Template.bind({});
-ErrorMessage.args = {
+export const ErrorMessage: Story = {
+  args: {
   value: 'I got the error',
   notification: {
     type: FeedbackType.Danger,
     message: 'I am error!',
     displayMode: InputNotificationDisplayMode.Stay
   }
+},
 };
 
-export const BigMessage = Template.bind({});
-BigMessage.args = {
+export const BigMessage: Story = {
+  args: {
   value: 'Hello\nHello\nHello\nHello\n',
   isResizeDisabled: true
+},
 };

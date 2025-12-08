@@ -248,7 +248,7 @@ function GroupPanel() {
           <CollapsableSection title="Style">
             <Box hasXSpacing hasBottomSpacing>
               <PropertyPanelRow label="Opacity" isChanged={false}>
-                <PropertyPanelSliderInput value={1} properties={{ min: 0, max: 1 }} />
+                <PropertyPanelSliderInput value={1} properties={{ min: 0, max: 1, step: 0.01 }} />
               </PropertyPanelRow>
               <PropertyPanelRow label="Blend Mode" isChanged={false}>
                 <PropertyPanelSelectInput
@@ -266,7 +266,7 @@ function GroupPanel() {
                 <PropertyPanelCheckbox value={true} />
               </PropertyPanelRow>
               <PropertyPanelRow label="zIndex" isChanged={false}>
-                <PropertyPanelNumberInput value="" />
+                <PropertyPanelNumberInput value="" type="number" />
               </PropertyPanelRow>
             </Box>
           </CollapsableSection>
@@ -389,12 +389,12 @@ function GroupPanel() {
               <PropertyPanelInput
                 inputType={PropertyPanelInputType.Slider}
                 label="Rotation"
-                properties={{ min: -365, max: 365 }}
+                properties={{ min: -365, max: 365, step: 1 }}
                 value={0}
               />
 
               <PropertyPanelRow label="Scale" isChanged={false}>
-                <PropertyPanelNumberInput value="1" />
+                <PropertyPanelNumberInput value="1" type="number" />
               </PropertyPanelRow>
               <PropertyPanelRow label="Transform Origin X" isChanged={false}>
                 <PropertyPanelLengthUnitInput value="50%" />

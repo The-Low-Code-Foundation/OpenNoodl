@@ -1,21 +1,24 @@
-import { ComponentStory, ComponentMeta } from '@storybook/react';
-import React from 'react';
+import type { Meta, StoryObj } from '@storybook/react';
 
 import { PropertyPanelTextInput } from './PropertyPanelTextInput';
 
-export default {
+const meta: Meta<typeof PropertyPanelTextInput> = {
   title: 'Property Panel/Text',
   component: PropertyPanelTextInput,
   argTypes: {}
-} as ComponentMeta<typeof PropertyPanelTextInput>;
+};
 
-const Template: ComponentStory<typeof PropertyPanelTextInput> = (args) => (
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+const Template: Story = (args) => (
   <div style={{ width: 280 }}>
     <PropertyPanelTextInput {...args} />
   </div>
 );
 
-export const Common = Template.bind({});
-Common.args = {
+export const Common: Story = {
+  args: {
   value: 'Hello World'
+},
 };

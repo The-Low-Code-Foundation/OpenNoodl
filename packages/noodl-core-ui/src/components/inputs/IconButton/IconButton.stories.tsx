@@ -1,19 +1,23 @@
 import React from 'react';
-import { ComponentStory, ComponentMeta } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/react';
 
 import { IconButton } from './IconButton';
 
-export default {
+const meta: Meta<typeof IconButton> = {
   title: 'Inputs/Icon Button',
   component: IconButton,
   argTypes: {}
-} as ComponentMeta<typeof IconButton>;
+};
 
-const Template: ComponentStory<typeof IconButton> = (args) => (
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+const Template: Story = (args) => (
   <>
     <IconButton {...args} />
   </>
 );
 
-export const Common = Template.bind({});
-Common.args = {};
+export const Common: Story = {
+  args: {},
+};
