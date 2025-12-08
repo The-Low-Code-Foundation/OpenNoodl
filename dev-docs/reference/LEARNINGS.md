@@ -160,6 +160,85 @@ Using `overrides` for this case can conflict with other version specifications. 
 
 ---
 
+## React 18/19 Migration Patterns
+
+### [2025-12-08] - React 18+ Removed ReactDOM.render() and unmountComponentAtNode()
+
+**Context**: After React 19 migration, node graph editor was completely broken - right-click showed grab hand instead of node picker, couldn't click nodes or drag wires.
+
+**Discovery**: React 18 removed the legacy `ReactDOM.render()` and `ReactDOM.unmountComponentAtNode()` APIs. Code using these APIs throws errors like:
+- `ReactDOM.render is not a function`
+- `ReactDOM.unmountComponentAtNode is not a function`
+
+The migration pattern is:
+
+```javascript
+// Before (React 17):
+import ReactDOM from 'react-dom';
+ReactDOM.render(<Component />, container);
+ReactDOM.unmountComponentAtNode(container);
+
+// After (React 18+):
+import { createRoot } from 'react-dom/client';
+const root = createRoot(container);
+root.render(<Component />);
+root.unmount();
+```
+
+**Important**: If rendering multiple times to the same container, you must:
+1. Create the root only ONCE
+2. Store the root reference
+3. Call `root.render()` for subsequent updates
+4. Call `root.unmount()` when disposing
+
+Creating `createRoot()` on every render causes: "You are calling ReactDOMClient.createRoot() on a container that has already been passed to createRoot() before."
+
+**Location**: 
+- `packages/noodl-editor/src/editor/src/views/nodegrapheditor.debuginspectors.js`
+- `packages/noodl-editor/src/editor/src/views/commentlayer.ts`
+- `packages/noodl-editor/src/editor/src/views/TextStylePicker/TextStylePicker.jsx`
+
+**Keywords**: ReactDOM.render, createRoot, unmountComponentAtNode, React 18, React 19, migration, root.unmount
+
+---
+
+### [2025-12-08] - React 18+ createRoot() Renders Asynchronously
+
+**Context**: After migrating to React 18+ createRoot, the NodePicker popup appeared offset to the bottom-right corner instead of centered.
+
+**Discovery**: Unlike the old synchronous `ReactDOM.render()`, React 18's `createRoot().render()` is asynchronous. If code measures DOM dimensions immediately after calling `render()`, the React component hasn't painted yet.
+
+In PopupLayer.showPopup():
+```javascript
+this.$('.popup-layer-popup-content').append(content);
+var contentWidth = content.outerWidth(true);   // Returns 0!
+var contentHeight = content.outerHeight(true); // Returns 0!
+```
+
+When dimensions are zero, the centering calculation `x = this.width / 2 - 0 / 2` places the popup at the far right.
+
+**Fix Options**:
+1. **Set explicit dimensions** on the container div before React renders (recommended for fixed-size components)
+2. Use `requestAnimationFrame` or `setTimeout` before measuring
+3. Use a ResizeObserver to detect when content renders
+
+For NodePicker (which has fixed 800x600 dimensions in CSS), the simplest fix was setting dimensions on the container div before React renders:
+```javascript
+render() {
+  const div = document.createElement('div');
+  div.style.width = '800px';
+  div.style.height = '600px';
+  this.renderReact(div);  // createRoot is async
+  return this.el;
+}
+```
+
+**Location**: `packages/noodl-editor/src/editor/src/views/createnewnodepanel.ts`
+
+**Keywords**: createRoot, async render, dimensions, outerWidth, outerHeight, popup positioning, React 18, React 19
+
+---
+
 ## Template for Future Entries
 
 ```markdown

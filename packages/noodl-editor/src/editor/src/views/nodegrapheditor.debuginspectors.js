@@ -1,7 +1,7 @@
 const DebugInspector = require('../utils/debuginspector');
 const { ProjectModel } = require('../models/projectmodel');
 const { InspectPopup } = require('./nodegrapheditor/InspectJSONView/InspectPopup');
-const ReactDOM = require('react-dom');
+const { createRoot } = require('react-dom/client');
 const React = require('react');
 const { EventDispatcher } = require('../../../shared/utils/EventDispatcher');
 
@@ -57,11 +57,18 @@ DebugInspectorPopup.prototype.render = function () {
     this.togglePinned();
   };
 
-  ReactDOM.render(React.createElement(InspectPopup, { debugValue, onPinClicked, pinned: this.model.pinned }), this.div);
+  // Create root only once, reuse for subsequent renders
+  if (!this.root) {
+    this.root = createRoot(this.div);
+  }
+  this.root.render(React.createElement(InspectPopup, { debugValue, onPinClicked, pinned: this.model.pinned }));
 };
 
 DebugInspectorPopup.prototype.dispose = function () {
-  ReactDOM.unmountComponentAtNode(this.div);
+  if (this.root) {
+    this.root.unmount();
+    this.root = null;
+  }
   if (this.div.parentElement) {
     this.div.parentElement.removeChild(this.div);
   }

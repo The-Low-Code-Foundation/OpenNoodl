@@ -84,6 +84,12 @@ export class CreateNewNodePanel extends View {
 
   render() {
     const div = document.createElement('div');
+    
+    // Set explicit dimensions so PopupLayer can measure correctly
+    // before React 18's async rendering completes
+    // These dimensions match NodePicker.module.scss: width: 800px, height: 600px
+    div.style.width = '800px';
+    div.style.height = '600px';
 
     this.renderReact(div);
 

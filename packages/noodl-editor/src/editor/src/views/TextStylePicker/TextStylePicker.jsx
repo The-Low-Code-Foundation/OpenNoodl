@@ -1,5 +1,5 @@
 import React, { useState, useRef, useLayoutEffect, useEffect } from 'react';
-import ReactDOM from 'react-dom';
+import { createRoot } from 'react-dom/client';
 
 import { StylesModel } from '@noodl-models/StylesModel';
 
@@ -41,21 +41,22 @@ function TextStylePicker(props) {
     if (!styleToEdit || !popupAnchor) return;
 
     const div = document.createElement('div');
-    ReactDOM.render(<TextStylePopup style={styleToEdit} stylesModel={stylesModel} />, div);
+    const root = createRoot(div);
+    root.render(<TextStylePopup style={styleToEdit} stylesModel={stylesModel} />);
 
     const popout = PopupLayer.instance.showPopout({
       content: { el: $(div) },
       attachTo: $(popupAnchor),
       position: 'right',
       onClose: () => {
-        ReactDOM.unmountComponentAtNode(div);
+        root.unmount();
       }
     });
 
     return () => {
       PopupLayer.instance.hidePopout(popout);
     };
-  }, [styleToEdit, popupAnchor]);
+  }, [styleToEdit, popupAnchor, stylesModel]);
 
   let filteredStyles = textStyles;
 

@@ -142,16 +142,29 @@ export default class CommentLayer {
       return;
     }
 
-    this.backgroundRoot = createRoot(this.backgroundDiv);
+    // Create roots only once, reuse for subsequent renders
+    if (!this.backgroundRoot) {
+      this.backgroundRoot = createRoot(this.backgroundDiv);
+    }
     this.backgroundRoot.render(React.createElement(CommentLayerView.Background, this.props));
-    this.foregroundRoot = createRoot(this.foregroundDiv);
+    
+    if (!this.foregroundRoot) {
+      this.foregroundRoot = createRoot(this.foregroundDiv);
+    }
     this.foregroundRoot.render(React.createElement(CommentLayerView.Foreground, this.props));
   }
 
   renderTo(backgroundDiv, foregroundDiv) {
+    // Clean up existing roots if we're switching to new divs
     if (this.backgroundDiv) {
-      this.backgroundRoot.unmount();
-      this.foregroundRoot.unmount();
+      if (this.backgroundRoot) {
+        this.backgroundRoot.unmount();
+        this.backgroundRoot = null;
+      }
+      if (this.foregroundRoot) {
+        this.foregroundRoot.unmount();
+        this.foregroundRoot = null;
+      }
     }
 
     this.backgroundDiv = backgroundDiv;
@@ -301,12 +314,20 @@ export default class CommentLayer {
   }
 
   dispose() {
-    this.foregroundRoot.unmount();
-    this.backgroundRoot.unmount();
+    if (this.foregroundRoot) {
+      this.foregroundRoot.unmount();
+      this.foregroundRoot = null;
+    }
+    if (this.backgroundRoot) {
+      this.backgroundRoot.unmount();
+      this.backgroundRoot = null;
+    }
 
     //hack to remove all event listeners without having to keep track of them
-    const newForegroundDiv = this.foregroundDiv.cloneNode(true);
-    this.foregroundDiv.parentNode.replaceChild(newForegroundDiv, this.foregroundDiv);
+    if (this.foregroundDiv && this.foregroundDiv.parentNode) {
+      const newForegroundDiv = this.foregroundDiv.cloneNode(true);
+      this.foregroundDiv.parentNode.replaceChild(newForegroundDiv, this.foregroundDiv);
+    }
 
     if (this.model) {
       this.model.off(this);

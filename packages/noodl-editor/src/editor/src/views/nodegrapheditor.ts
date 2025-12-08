@@ -227,7 +227,8 @@ export class NodeGraphEditor extends View {
   nodesIdsAnimating: string[];
   isPlayingNodeAnimations: boolean;
 
-  toolbarRoots: Root[];
+  toolbarRoots: Root[] = [];
+  titleRoot: Root = null;
 
   constructor(args) {
     super();
@@ -1421,7 +1422,12 @@ export class NodeGraphEditor extends View {
 
   updateTitle() {
     const rootElem = this.el[0].querySelector('.nodegraph-component-trail-root');
-    const root = createRoot(rootElem);
+    
+    // Create root only once, reuse for subsequent renders
+    if (!this.titleRoot) {
+      this.titleRoot = createRoot(rootElem);
+    }
+    
     if (this.activeComponent) {
       const fullName = this.activeComponent.fullName;
       const nameParts = fullName.split('/');
@@ -1466,9 +1472,9 @@ export class NodeGraphEditor extends View {
         canNavigateForward: this.navigationHistory.canNavigateForward
       };
 
-      root.render(React.createElement(NodeGraphComponentTrail, props));
+      this.titleRoot.render(React.createElement(NodeGraphComponentTrail, props));
     } else {
-      root.unmount();
+      this.titleRoot.render(null);
     }
   }
 
