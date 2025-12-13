@@ -7,6 +7,9 @@ import Viewer, { ssrSetupRuntime } from './src/viewer.jsx';
 
 registerPolyfills();
 
+// React 19 root management
+let currentRoot = null;
+
 function createArgs() {
   // Support SSR
   if (typeof window === 'undefined') {
@@ -44,14 +47,31 @@ export default {
 
     const noodlRuntime = new NoodlRuntime(runtimeArgs);
 
-    ReactDOM.render(React.createElement(Viewer, { noodlRuntime, noodlModules }, null), element);
+    // React 19: Use createRoot instead of ReactDOM.render
+    if (currentRoot) {
+      currentRoot.unmount();
+    }
+    currentRoot = ReactDOM.createRoot(element);
+    currentRoot.render(React.createElement(Viewer, { noodlRuntime, noodlModules }, null));
   },
   renderDeployed(element, noodlModules, projectData) {
+    // React 19: Use hydrateRoot for SSR, createRoot for client-side
     // React SSR adds a 'data-reactroot' attribute on the root element to be able to hydrate the app.
     if (element.children.length > 0 && !!element.children[0].hasAttribute('data-reactroot')) {
-      ReactDOM.hydrate(this.createElement(noodlModules, projectData), element);
+      currentRoot = ReactDOM.hydrateRoot(element, this.createElement(noodlModules, projectData));
     } else {
-      ReactDOM.render(this.createElement(noodlModules, projectData), element);
+      if (currentRoot) {
+        currentRoot.unmount();
+      }
+      currentRoot = ReactDOM.createRoot(element);
+      currentRoot.render(this.createElement(noodlModules, projectData));
+    }
+  },
+  /** Unmount the current React root */
+  unmount() {
+    if (currentRoot) {
+      currentRoot.unmount();
+      currentRoot = null;
     }
   },
   /** This can be called for server side rendering too. */

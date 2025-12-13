@@ -68,19 +68,6 @@ export class Group extends React.Component<GroupProps> {
     this.props.noodlNode.context.setNodeFocused(this.props.noodlNode, false);
   }
 
-  componentDidUpdate() {
-    if (this.scrollNeedsToInit) {
-      this.setupIScroll();
-      this.scrollNeedsToInit = false;
-    }
-
-    if (this.iScroll) {
-      setTimeout(() => {
-        this.iScroll && this.iScroll.refresh();
-      }, 0);
-    }
-  }
-
   scrollToIndex(index, duration) {
     if (this.iScroll) {
       const child = this.scrollRef.current.children[0].children[index] as HTMLElement;
@@ -171,19 +158,19 @@ export class Group extends React.Component<GroupProps> {
     }
   }
 
-  UNSAFE_componentWillReceiveProps(nextProps: GroupProps) {
+  componentDidUpdate(prevProps: GroupProps) {
     const scrollHasUpdated =
-      this.props.scrollSnapEnabled !== nextProps.scrollSnapEnabled ||
-      this.props.onScrollPositionChanged !== nextProps.onScrollPositionChanged ||
-      this.props.onScrollStart !== nextProps.onScrollStart ||
-      this.props.onScrollEnd !== nextProps.onScrollEnd ||
-      this.props.showScrollbar !== nextProps.showScrollbar ||
-      this.props.scrollEnabled !== nextProps.scrollEnabled ||
-      this.props.nativeScroll !== nextProps.nativeScroll ||
-      this.props.scrollSnapToEveryItem !== nextProps.scrollSnapToEveryItem ||
-      this.props.layout !== nextProps.layout ||
-      this.props.flexWrap !== nextProps.flexWrap ||
-      this.props.scrollBounceEnabled !== nextProps.scrollBounceEnabled;
+      prevProps.scrollSnapEnabled !== this.props.scrollSnapEnabled ||
+      prevProps.onScrollPositionChanged !== this.props.onScrollPositionChanged ||
+      prevProps.onScrollStart !== this.props.onScrollStart ||
+      prevProps.onScrollEnd !== this.props.onScrollEnd ||
+      prevProps.showScrollbar !== this.props.showScrollbar ||
+      prevProps.scrollEnabled !== this.props.scrollEnabled ||
+      prevProps.nativeScroll !== this.props.nativeScroll ||
+      prevProps.scrollSnapToEveryItem !== this.props.scrollSnapToEveryItem ||
+      prevProps.layout !== this.props.layout ||
+      prevProps.flexWrap !== this.props.flexWrap ||
+      prevProps.scrollBounceEnabled !== this.props.scrollBounceEnabled;
 
     if (scrollHasUpdated) {
       if (this.iScroll) {
@@ -191,7 +178,19 @@ export class Group extends React.Component<GroupProps> {
         this.iScroll = undefined;
       }
 
-      this.scrollNeedsToInit = nextProps.scrollEnabled && !nextProps.nativeScroll;
+      this.scrollNeedsToInit = this.props.scrollEnabled && !this.props.nativeScroll;
+    }
+
+    // Handle scroll initialization (moved from the old componentDidUpdate)
+    if (this.scrollNeedsToInit) {
+      this.setupIScroll();
+      this.scrollNeedsToInit = false;
+    }
+
+    if (this.iScroll) {
+      setTimeout(() => {
+        this.iScroll && this.iScroll.refresh();
+      }, 0);
     }
   }
 

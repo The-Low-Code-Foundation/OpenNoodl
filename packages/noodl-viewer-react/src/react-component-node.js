@@ -1,7 +1,6 @@
 'use strict';
 
 import React from 'react';
-import ReactDOM from 'react-dom';
 
 import DOMBoundingBoxObserver from './dom-boundingbox-oberver';
 import Layout from './layout';
@@ -127,6 +126,14 @@ class NoodlReactComponent extends React.Component {
     const props = {
       ref: (ref) => {
         noodlNode.innerReactComponentRef = ref;
+        // React 19: Store DOM element reference directly for getDOMElement()
+        // This avoids using the deprecated findDOMNode
+        if (ref && ref instanceof Element) {
+          noodlNode._domElement = ref;
+        } else if (ref && typeof ref === 'object' && ref.nodeType === 1) {
+          // ref is already a DOM element
+          noodlNode._domElement = ref;
+        }
       },
       style: finalStyle,
       //the noodl props coming from the node
@@ -659,7 +666,15 @@ function createNodeFromReactComponent(def) {
           noodlNode: this,
           ref: (ref) => {
             this.reactComponentRef = ref;
-            this.boundingBoxObserver.setTarget(ReactDOM.findDOMNode(ref));
+            // React 19: Use stored DOM element instead of findDOMNode
+            // The _domElement is set by the ref callback in NoodlReactComponent
+            // We need to wait a frame for the inner ref to be set
+            if (ref) {
+              requestAnimationFrame(() => {
+                const domElement = this._domElement || this.getDOMElement();
+                this.boundingBoxObserver.setTarget(domElement);
+              });
+            }
           }
         });
       },
@@ -800,10 +815,28 @@ function createNodeFromReactComponent(def) {
         return this.reactComponentRef;
       },
       getDOMElement() {
+        // React 19: Use stored DOM element reference instead of findDOMNode
+        // The _domElement is set by the ref callback in NoodlReactComponent
+        if (this._domElement) {
+          return this._domElement;
+        }
+        
+        // Fallback: try to get DOM element from innerReactComponentRef
+        const innerRef = this.innerReactComponentRef;
+        if (innerRef && innerRef instanceof Element) {
+          return innerRef;
+        }
+        
+        // Legacy fallback for backwards compatibility (will be removed)
         const ref = this.getRef();
-        if (!ref) return;
-
-        return ReactDOM.findDOMNode(ref);
+        if (!ref) return null;
+        
+        // If ref is a DOM element, return it directly
+        if (ref instanceof Element) {
+          return ref;
+        }
+        
+        return null;
       },
       getVisualParentNode() {
         if (this.parent) return this.parent;

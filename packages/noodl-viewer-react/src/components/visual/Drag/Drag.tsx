@@ -73,18 +73,18 @@ export class Drag extends React.Component<DragProps, State> {
     setDragValues({ x, y, deltaX: 0, deltaY: 0 }, this.props);
   }
 
-  UNSAFE_componentWillReceiveProps(nextProps: DragProps) {
+  componentDidUpdate(prevProps: DragProps) {
     const props = this.props;
 
-    if (props.inputPositionX !== nextProps.inputPositionX) {
-      this.setState({ x: nextProps.inputPositionX });
-      props.positionX && props.positionX(nextProps.inputPositionX);
-      props.deltaX && props.deltaX(nextProps.inputPositionX - props.inputPositionX);
+    if (prevProps.inputPositionX !== props.inputPositionX) {
+      this.setState({ x: props.inputPositionX });
+      props.positionX && props.positionX(props.inputPositionX);
+      props.deltaX && props.deltaX(props.inputPositionX - prevProps.inputPositionX);
     }
-    if (props.inputPositionY !== nextProps.inputPositionY) {
-      this.setState({ y: nextProps.inputPositionY });
-      props.positionY && props.positionY(nextProps.inputPositionY);
-      props.deltaY && props.deltaY(nextProps.inputPositionY - props.inputPositionY);
+    if (prevProps.inputPositionY !== props.inputPositionY) {
+      this.setState({ y: props.inputPositionY });
+      props.positionY && props.positionY(props.inputPositionY);
+      props.deltaY && props.deltaY(props.inputPositionY - prevProps.inputPositionY);
     }
   }
 
