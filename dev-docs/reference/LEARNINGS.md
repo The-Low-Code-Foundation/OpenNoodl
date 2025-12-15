@@ -538,6 +538,89 @@ import { CoreBaseDialog } from '@noodl-core-ui/components/layout/BaseDialog';
 
 ---
 
+## Project Migration System
+
+### [2024-12-15] - Runtime Cache Must Persist Between App Sessions
+
+**Context**: After migrating a project from React 17 to React 19, the project showed as React 19 (not legacy) immediately after migration. However, after closing and reopening the Electron app, the same project was flagged as legacy again.
+
+**Discovery**: The `LocalProjectsModel` had a runtime version cache (`runtimeInfoCache`) that was stored in memory only. The cache would:
+1. Correctly detect the migrated project as React 19
+2. Show "React 19" badge in the UI
+3. But on app restart, the cache was empty
+4. Runtime detection would run again from scratch
+5. During the detection delay, the project appeared as "legacy" 
+
+The `runtimeInfoCache` was a `Map<string, RuntimeVersionInfo>` with no persistence. Every app restart lost the cache, forcing re-detection and causing a race condition where the UI rendered before detection completed.
+
+**Fix**: Added electron-store persistence for the runtime cache:
+```typescript
+private runtimeCacheStore = new Store({
+  name: 'project_runtime_cache'
+});
+
+private loadRuntimeCache(): void {
+  const cached = this.runtimeCacheStore.get('cache') as Record<string, RuntimeVersionInfo>;
+  if (cached) {
+    this.runtimeInfoCache = new Map(Object.entries(cached));
+  }
+}
+
+private saveRuntimeCache(): void {
+  const cacheObject = Object.fromEntries(this.runtimeInfoCache.entries());
+  this.runtimeCacheStore.set('cache', cacheObject);
+}
+```
+
+Now the cache survives app restarts, so migrated projects stay marked as React 19 permanently.
+
+**Location**: `packages/noodl-editor/src/editor/src/utils/LocalProjectsModel.ts`
+
+**Keywords**: runtime cache, persistence, electron-store, legacy flag, app restart, runtime detection, migration
+
+---
+
+### [2024-12-15] - Binary Files Corrupted When Using readFile/writeFile for Copying
+
+**Context**: After migrating a project using the migration system, font files weren't loading in the migrated project. Text appeared with default system fonts instead of custom project fonts. All other files (JSON, JS, CSS) worked correctly.
+
+**Discovery**: The `MigrationSession.copyDirectoryRecursive()` method was copying ALL files using:
+```typescript
+const content = await filesystem.readFile(sourceItemPath);
+await filesystem.writeFile(targetItemPath, content);
+```
+
+The `filesystem.readFile()` method reads files as UTF-8 text strings. When font files (.ttf, .woff, .woff2, .otf) are read as text:
+1. Binary data gets corrupted by UTF-8 encoding
+2. Invalid bytes are replaced with � (replacement character)
+3. The resulting file is not a valid font
+4. Browser's FontLoader fails silently to load the font
+5. Text falls back to system fonts
+
+Images (.png, .jpg) would have the same issue. Any binary file copied this way becomes corrupted.
+
+**Fix**: Use `filesystem.copyFile()` which handles binary files correctly:
+```typescript
+// Before (corrupts binary files):
+const content = await filesystem.readFile(sourceItemPath);
+await filesystem.writeFile(targetItemPath, content);
+
+// After (preserves binary files):
+await filesystem.copyFile(sourceItemPath, targetItemPath);
+```
+
+The `copyFile` method in the platform API is specifically designed for copying files while preserving their binary content intact.
+
+**How Fonts Work in Noodl**: Font files are stored in the project directory (e.g., `fonts/MyFont.ttf`). The project.json references them by filename. The FontLoader in the viewer runtime loads them at runtime with `@font-face` CSS. If the font file is corrupted, the load fails silently and system fonts are used.
+
+**Location**: 
+- Bug: `packages/noodl-editor/src/editor/src/models/migration/MigrationSession.ts` (copyDirectoryRecursive method)
+- Font loading: `packages/noodl-viewer-react/src/fontloader.js`
+
+**Keywords**: binary files, font corruption, readFile, writeFile, copyFile, UTF-8, migration, fonts not working, images corrupted, binary data
+
+---
+
 ## Template for Future Entries
 
 ```markdown

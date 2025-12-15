@@ -102,7 +102,10 @@ export default class Inspector {
     //walk the dom tree upwards until a dom element with react state is found
     let domFiber;
     while (!domFiber && dom) {
-      const key = Object.keys(dom).find((key) => key.startsWith('__reactInternalInstance$'));
+      // React 18 changed from __reactInternalInstance$ to __reactFiber$
+      const key = Object.keys(dom).find((key) => 
+        key.startsWith('__reactFiber$') || key.startsWith('__reactInternalInstance$')
+      );
       domFiber = dom[key];
       if (!domFiber) dom = dom.parentElement;
     }

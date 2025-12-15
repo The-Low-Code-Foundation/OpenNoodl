@@ -2,10 +2,7 @@ import path from 'node:path';
 import { GitStore } from '@noodl-store/GitStore';
 import Store from 'electron-store';
 import { isEqual } from 'underscore';
-import {
-  RequestGitAccountFuncReturn,
-  setRequestGitAccount
-} from '@noodl/git/src/core/trampoline/trampoline-askpass-handler';
+import { setRequestGitAccount } from '@noodl/git/src/core/trampoline/trampoline-askpass-handler';
 import { filesystem, platform } from '@noodl/platform';
 
 import { ProjectModel } from '@noodl-models/projectmodel';
@@ -45,8 +42,16 @@ export class LocalProjectsModel extends Model {
   });
 
   /**
+   * Persistent store for runtime version cache
+   * Survives app restarts to avoid re-detecting runtime on every launch
+   */
+  private runtimeCacheStore = new Store({
+    name: 'project_runtime_cache'
+  });
+
+  /**
    * Cache for runtime version info - keyed by project directory path
-   * Not persisted, re-detected on each app session
+   * Loaded from persistent store on init, saved on updates
    */
   private runtimeInfoCache: Map<string, RuntimeVersionInfo> = new Map();
 
@@ -56,6 +61,9 @@ export class LocalProjectsModel extends Model {
   private detectingProjects: Set<string> = new Set();
 
   async fetch() {
+    // Load runtime cache from persistent store
+    this.loadRuntimeCache();
+
     // Fetch projects from local storage and verify project folders
     const folders = (this.recentProjectsStore.get('recentProjects') || []) as ProjectItem[];
 
@@ -101,7 +109,7 @@ export class LocalProjectsModel extends Model {
   loadProject(projectEntry: ProjectItem) {
     tracker.track('Load Local Project');
 
-    return new Promise<ProjectModel>((resolve, reject) => {
+    return new Promise<ProjectModel>((resolve) => {
       projectFromDirectory(projectEntry.retainedProjectDirectory, (project) => {
         if (!project) {
           resolve(null);
@@ -326,6 +334,33 @@ export class LocalProjectsModel extends Model {
   // =========================================================================
 
   /**
+   * Load runtime cache from persistent store
+   */
+  private loadRuntimeCache(): void {
+    try {
+      const cached = this.runtimeCacheStore.get('cache') as Record<string, RuntimeVersionInfo> | undefined;
+      if (cached) {
+        this.runtimeInfoCache = new Map(Object.entries(cached));
+      }
+    } catch (error) {
+      console.warn('Failed to load runtime cache:', error);
+      this.runtimeInfoCache = new Map();
+    }
+  }
+
+  /**
+   * Save runtime cache to persistent store
+   */
+  private saveRuntimeCache(): void {
+    try {
+      const cacheObject = Object.fromEntries(this.runtimeInfoCache.entries());
+      this.runtimeCacheStore.set('cache', cacheObject);
+    } catch (error) {
+      console.error('Failed to save runtime cache:', error);
+    }
+  }
+
+  /**
    * Get cached runtime info for a project, or null if not yet detected
    * @param projectPath - The project directory path
    */
@@ -392,6 +427,7 @@ export class LocalProjectsModel extends Model {
     try {
       const runtimeInfo = await detectRuntimeVersion(projectPath);
       this.runtimeInfoCache.set(projectPath, runtimeInfo);
+      this.saveRuntimeCache(); // Persist to disk
       this.notifyListeners('runtimeDetectionComplete', projectPath, runtimeInfo);
       return runtimeInfo;
     } catch (error) {
@@ -402,6 +438,7 @@ export class LocalProjectsModel extends Model {
         indicators: ['Detection error: ' + (error instanceof Error ? error.message : 'Unknown error')]
       };
       this.runtimeInfoCache.set(projectPath, fallback);
+      this.saveRuntimeCache(); // Persist to disk
       this.notifyListeners('runtimeDetectionComplete', projectPath, fallback);
       return fallback;
     } finally {
@@ -442,6 +479,16 @@ export class LocalProjectsModel extends Model {
    */
   clearRuntimeCache(projectPath: string): void {
     this.runtimeInfoCache.delete(projectPath);
+    this.saveRuntimeCache(); // Persist the change
     this.notifyListeners('runtimeCacheCleared', projectPath);
+  }
+
+  /**
+   * Clear all runtime cache (useful for debugging or forcing re-detection)
+   */
+  clearAllRuntimeCache(): void {
+    this.runtimeInfoCache.clear();
+    this.saveRuntimeCache();
+    this.notifyListeners('allRuntimeCacheCleared');
   }
 }

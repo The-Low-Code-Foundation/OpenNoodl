@@ -302,7 +302,7 @@ function getContentType(request) {
       break;
     case '.wav':
       contentType = 'audio/wav';
-    // eslint-disable-next-line no-fallthrough
+      break;
     case '.mp4':
     case '.m4v':
       contentType = 'video/mp4';
@@ -315,6 +315,15 @@ function getContentType(request) {
       break;
     case '.ttf':
       contentType = 'font/ttf';
+      break;
+    case '.otf':
+      contentType = 'font/otf';
+      break;
+    case '.woff':
+      contentType = 'font/woff';
+      break;
+    case '.woff2':
+      contentType = 'font/woff2';
       break;
   }
 

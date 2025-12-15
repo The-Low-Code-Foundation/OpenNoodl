@@ -454,6 +454,7 @@ export class MigrationSessionManager extends EventDispatcher {
 
   /**
    * Recursively copies a directory and its contents
+   * Uses copyFile to preserve binary files (fonts, images, etc.)
    */
   private async copyDirectoryRecursive(sourcePath: string, targetPath: string): Promise<void> {
     const entries = await filesystem.listDirectory(sourcePath);
@@ -472,9 +473,8 @@ export class MigrationSessionManager extends EventDispatcher {
         await filesystem.makeDirectory(targetItemPath);
         await this.copyDirectoryRecursive(sourceItemPath, targetItemPath);
       } else {
-        // Copy file
-        const content = await filesystem.readFile(sourceItemPath);
-        await filesystem.writeFile(targetItemPath, content);
+        // Copy file using copyFile to preserve binary files correctly
+        await filesystem.copyFile(sourceItemPath, targetItemPath);
       }
     }
   }
