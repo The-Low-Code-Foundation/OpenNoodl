@@ -8,6 +8,8 @@
  * @since 1.2.0
  */
 
+import { filesystem } from '@noodl/platform';
+
 import { EventDispatcher } from '../../../../shared/utils/EventDispatcher';
 import { detectRuntimeVersion, scanProjectForMigration } from './ProjectScanner';
 import {
@@ -409,27 +411,72 @@ export class MigrationSessionManager extends EventDispatcher {
   }
 
   private async executeCopyPhase(): Promise<void> {
+    if (!this.session) return;
+
+    const sourcePath = this.session.source.path;
+    const targetPath = this.session.target.path;
+
     this.updateProgress({ phase: 'copying', current: 0 });
     this.addLogEntry({
       level: 'info',
-      message: 'Creating project copy...'
+      message: `Copying project from ${sourcePath} to ${targetPath}...`
     });
 
-    // TODO: Implement actual file copying using filesystem
-    // For now, this is a placeholder
+    try {
+      // Check if target already exists
+      const targetExists = await filesystem.exists(targetPath);
+      if (targetExists) {
+        throw new Error(`Target directory already exists: ${targetPath}`);
+      }
 
-    await this.simulateDelay(500);
+      // Create target directory
+      await filesystem.makeDirectory(targetPath);
 
-    if (this.session) {
+      // Copy all files recursively
+      await this.copyDirectoryRecursive(sourcePath, targetPath);
+
       this.session.target.copied = true;
+
+      this.addLogEntry({
+        level: 'success',
+        message: 'Project copied successfully'
+      });
+
+      this.updateProgress({ current: 1 });
+    } catch (error) {
+      this.addLogEntry({
+        level: 'error',
+        message: `Failed to copy project: ${error instanceof Error ? error.message : 'Unknown error'}`
+      });
+      throw error;
     }
+  }
 
-    this.addLogEntry({
-      level: 'success',
-      message: 'Project copied successfully'
-    });
+  /**
+   * Recursively copies a directory and its contents
+   */
+  private async copyDirectoryRecursive(sourcePath: string, targetPath: string): Promise<void> {
+    const entries = await filesystem.listDirectory(sourcePath);
 
-    this.updateProgress({ current: 1 });
+    for (const entry of entries) {
+      const sourceItemPath = entry.fullPath;
+      const targetItemPath = `${targetPath}/${entry.name}`;
+
+      if (entry.isDirectory) {
+        // Skip node_modules and .git folders
+        if (entry.name === 'node_modules' || entry.name === '.git') {
+          continue;
+        }
+
+        // Create directory and recurse
+        await filesystem.makeDirectory(targetItemPath);
+        await this.copyDirectoryRecursive(sourceItemPath, targetItemPath);
+      } else {
+        // Copy file
+        const content = await filesystem.readFile(sourceItemPath);
+        await filesystem.writeFile(targetItemPath, content);
+      }
+    }
   }
 
   private async executeAutomaticPhase(): Promise<void> {
@@ -493,14 +540,47 @@ export class MigrationSessionManager extends EventDispatcher {
   }
 
   private async executeFinalizePhase(): Promise<void> {
+    if (!this.session) return;
+
     this.updateProgress({ phase: 'finalizing' });
     this.addLogEntry({
       level: 'info',
       message: 'Finalizing migration...'
     });
 
-    // TODO: Update project.json with migration metadata
-    await this.simulateDelay(200);
+    try {
+      // Update project.json with migration metadata
+      const targetProjectJsonPath = `${this.session.target.path}/project.json`;
+      
+      // Read existing project.json
+      const projectJson = await filesystem.readJson(targetProjectJsonPath) as Record<string, unknown>;
+      
+      // Add React 19 markers
+      projectJson.runtimeVersion = 'react19';
+      projectJson.migratedFrom = {
+        version: 'react17',
+        date: new Date().toISOString(),
+        originalPath: this.session.source.path,
+        aiAssisted: this.session.ai?.enabled ?? false
+      };
+      
+      // Write updated project.json back
+      await filesystem.writeFile(
+        targetProjectJsonPath,
+        JSON.stringify(projectJson, null, 2)
+      );
+
+      this.addLogEntry({
+        level: 'success',
+        message: 'Project marked as React 19'
+      });
+    } catch (error) {
+      this.addLogEntry({
+        level: 'warning',
+        message: `Could not update project.json metadata: ${error instanceof Error ? error.message : 'Unknown error'}`
+      });
+      // Don't throw - this is not a critical failure
+    }
 
     this.addLogEntry({
       level: 'success',

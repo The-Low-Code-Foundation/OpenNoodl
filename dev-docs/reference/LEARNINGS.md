@@ -239,6 +239,305 @@ render() {
 
 ---
 
+## Electron & Node.js Patterns
+
+### [2025-12-14] - EPIPE Errors When Writing to stdout
+
+**Context**: Editor was crashing with `Error: write EPIPE` when trying to open projects.
+
+**Discovery**: EPIPE errors occur when a process tries to write to stdout/stderr but the receiving pipe has been closed (e.g., the terminal or parent process that spawned the subprocess is gone). In Electron apps, this happens when:
+- The terminal that started `npm run dev` is closed before the app
+- The parent process that spawned a child dies unexpectedly
+- stdout is redirected to a file that gets closed
+
+Cloud-function-server.js was calling `console.log()` during project operations. When the stdout pipe was broken, the error bubbled up and crashed the editor.
+
+**Fix**: Wrap console.log calls in a try-catch:
+```javascript
+function safeLog(...args) {
+  try {
+    console.log(...args);
+  } catch (e) {
+    // Ignore EPIPE errors - stdout pipe may be broken
+  }
+}
+```
+
+**Location**: `packages/noodl-editor/src/main/src/cloud-function-server.js`
+
+**Keywords**: EPIPE, console.log, stdout, broken pipe, electron, subprocess, crash
+
+---
+
+## Webpack & Build Patterns
+
+### [2025-12-14] - Webpack SCSS Cache Can Persist Old Files
+
+**Context**: MigrationWizard.module.scss was fixed on disk but webpack kept showing errors for a removed import line.
+
+**Discovery**: Webpack's sass-loader caches compiled SCSS files aggressively. Even after fixing a file on disk, if an old error is cached, webpack may continue to report the stale error. This is especially confusing because:
+- `cat` and `grep` show the correct file contents
+- But webpack reports errors for lines that no longer exist
+- The webpack process may be from a previous session that cached the old content
+
+**Fix Steps**:
+1. Kill ALL webpack processes: `pkill -9 -f webpack`
+2. Clear webpack cache: `rm -rf node_modules/.cache/` in the affected package
+3. Touch the file to force rebuild: `touch path/to/file.scss`
+4. Restart dev server fresh
+
+**Location**: Any SCSS file processed by sass-loader
+
+**Keywords**: webpack, sass-loader, cache, SCSS, stale error, module build failed
+
+---
+
+## Event-Driven UI Patterns
+
+### [2025-12-14] - Async Detection Requires Re-render Listener
+
+**Context**: Migration UI badges weren't showing on legacy projects even though runtime detection was working.
+
+**Discovery**: In OpenNoodl's jQuery-based View system, the template is rendered once when `render()` is called. If data is populated asynchronously (e.g., runtime detection), the UI won't update unless you explicitly listen for a completion event and re-render.
+
+The pattern:
+1. `renderProjectItems()` is called - projects show without runtime info
+2. `detectAllProjectRuntimes()` runs async in background
+3. Detection completes, `runtimeDetectionComplete` event fires
+4. BUT... no one was listening → UI stays stale
+
+**Fix**: Subscribe to the async completion event in the View:
+```javascript
+this.projectsModel.on('runtimeDetectionComplete', () => this.renderProjectItemsPane(), this);
+```
+
+This pattern applies to any async data in the jQuery View system:
+- Runtime detection
+- Cloud service status
+- Git remote checks
+- etc.
+
+**Location**: `packages/noodl-editor/src/editor/src/views/projectsview.ts`
+
+**Keywords**: async, re-render, event listener, runtimeDetectionComplete, jQuery View, stale UI
+
+---
+
+## CSS & Styling Patterns
+
+### [2025-12-14] - BaseDialog `::after` Pseudo-Element Blocks Clicks
+
+**Context**: Migration wizard popup buttons weren't clickable at all - no response to any interaction.
+
+**Discovery**: The BaseDialog component uses a `::after` pseudo-element on `.VisibleDialog` to render the background color. This pseudo covers the entire dialog area:
+
+```scss
+.VisibleDialog {
+  &::after {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--background);
+    // Without pointer-events: none, this blocks all clicks!
+  }
+}
+```
+
+The `.ChildContainer` has `z-index: 1` which should put it above the `::after`, but due to stacking context behavior with `filter: drop-shadow()` on the parent, clicks were being intercepted by the pseudo-element.
+
+**Fix**: Add `pointer-events: none` to the `::after` pseudo-element:
+```scss
+&::after {
+  // ...existing styles...
+  pointer-events: none; // Allow clicks to pass through
+}
+```
+
+**Location**: `packages/noodl-core-ui/src/components/layout/BaseDialog/BaseDialog.module.scss`
+
+**Keywords**: BaseDialog, ::after, pointer-events, click not working, buttons broken, Modal, dialog
+
+---
+
+### [2025-12-14] - Theme Color Variables Are `--theme-color-*` Not `--color-*`
+
+**Context**: Migration wizard UI appeared gray-on-gray with unreadable text.
+
+**Discovery**: OpenNoodl's theme system uses CSS variables prefixed with `--theme-color-*`, NOT `--color-*`. Using undefined variables like `--color-grey-800` results in invalid/empty values causing display issues.
+
+**Correct Variables:**
+| Wrong | Correct |
+|-------|---------|
+| `--color-grey-800` | `--theme-color-bg-3` |
+| `--color-grey-700` | `--theme-color-bg-2` |
+| `--color-grey-400`, `--color-grey-300` | `--theme-color-secondary-as-fg` (for text!) |
+| `--color-grey-200`, `--color-grey-100` | `--theme-color-fg-highlight` |
+| `--color-primary` | `--theme-color-primary` |
+| `--color-success-500` | `--theme-color-success` |
+| `--color-warning` | `--theme-color-warning` |
+| `--color-danger` | `--theme-color-danger` |
+
+**Location**: Any SCSS module files in `@noodl-core-ui` or `noodl-editor`
+
+**Keywords**: CSS variables, theme-color, --color, --theme-color, gray text, contrast, undefined variable, SCSS
+
+---
+
+### [2025-12-14] - `--theme-color-secondary` Is NOT For Text - Use `--theme-color-secondary-as-fg`
+
+**Context**: Migration wizard text was impossible to read even after using `--theme-color-*` prefix.
+
+**Discovery**: Two commonly misused theme variables cause text to be unreadable:
+
+1. **`--theme-color-fg-1` doesn't exist!** The correct variable is:
+   - `--theme-color-fg-highlight` = `#f5f5f5` (white/light text)
+   - `--theme-color-fg-default` = `#b8b8b8` (normal text)
+   - `--theme-color-fg-default-shy` = `#9a9999` (subtle text)
+   - `--theme-color-fg-muted` = `#7e7d7d` (muted text)
+
+2. **`--theme-color-secondary` is a BACKGROUND color!** 
+   - `--theme-color-secondary` = `#005769` (dark teal - use for backgrounds only!)
+   - `--theme-color-secondary-as-fg` = `#7ec2cf` (light teal - use for text!)
+
+When text appears invisible/gray, check for these common mistakes:
+```scss
+// WRONG - produces invisible text
+color: var(--theme-color-fg-1);           // Variable doesn't exist!
+color: var(--theme-color-secondary);       // Dark teal background color!
+
+// CORRECT - visible text
+color: var(--theme-color-fg-highlight);    // White text
+color: var(--theme-color-secondary-as-fg); // Light teal text
+```
+
+**Color Reference from `colors.css`:**
+```css
+--theme-color-bg-1: #151414;  /* Darkest background */
+--theme-color-bg-2: #292828;
+--theme-color-bg-3: #3c3c3c;
+--theme-color-bg-4: #504f4f;  /* Lightest background */
+
+--theme-color-fg-highlight: #f5f5f5;       /* Bright white text */
+--theme-color-fg-default-contrast: #d4d4d4; /* High contrast text */
+--theme-color-fg-default: #b8b8b8;          /* Normal text */
+--theme-color-fg-default-shy: #9a9999;      /* Subtle text */
+--theme-color-fg-muted: #7e7d7d;            /* Muted text */
+
+--theme-color-secondary: #005769;           /* BACKGROUND only! */
+--theme-color-secondary-as-fg: #7ec2cf;     /* For text */
+```
+
+**Location**: `packages/noodl-core-ui/src/styles/custom-properties/colors.css`
+
+**Keywords**: --theme-color-fg-1, --theme-color-secondary, invisible text, gray on gray, secondary-as-fg, text color, theme variables
+
+---
+
+### [2025-12-14] - Flex Container Scrolling Requires `min-height: 0`
+
+**Context**: Migration wizard content wasn't scrollable on shorter screens.
+
+**Discovery**: When using flexbox with `overflow: auto` on a child, the child needs `min-height: 0` (or `min-width: 0` for horizontal) to allow it to shrink below its content size. Without this, the default `min-height: auto` prevents shrinking and breaks scrolling.
+
+**Pattern:**
+```scss
+.Parent {
+  display: flex;
+  flex-direction: column;
+  max-height: 80vh;
+  overflow: hidden;
+}
+
+.ScrollableChild {
+  flex: 1;
+  min-height: 0;  // Critical! Allows shrinking
+  overflow-y: auto;
+}
+```
+
+The `min-height: 0` overrides the default `min-height: auto` which would prevent the element from being smaller than its content.
+
+**Location**: Any scrollable flex container, e.g., `MigrationWizard.module.scss`
+
+**Keywords**: flex, overflow, scroll, min-height, flex-shrink, not scrolling, content cut off
+
+---
+
+### [2025-12-14] - useReducer State Must Be Initialized Before Actions Work
+
+**Context**: Migration wizard "Start Migration" button did nothing - no errors, no state change, no visual feedback.
+
+**Discovery**: When using `useReducer` to manage component state, all action handlers typically guard against null state:
+```typescript
+case 'START_SCAN':
+  if (!state.session) return state;  // Does nothing if session is null!
+  return { ...state, session: { ...state.session, step: 'scanning' } };
+```
+
+The bug pattern:
+1. Component initializes with `session: null` in reducer state
+2. External manager (`migrationSessionManager`) creates and stores the session
+3. UI renders using `manager.getSession()` - works fine
+4. Button click dispatches action to reducer
+5. Reducer checks `if (!state.session)` → returns unchanged state
+6. Nothing happens - no errors, no visual change
+
+The fix is to dispatch a `SET_SESSION` action to initialize the reducer state:
+```typescript
+// In useEffect after creating session:
+const session = await manager.createSession(...);
+dispatch({ type: 'SET_SESSION', session });  // Initialize reducer!
+
+// In reducer:
+case 'SET_SESSION':
+  return { ...state, session: action.session };
+```
+
+**Key Insight**: If using both an external manager AND useReducer, the reducer state must be explicitly synchronized with the manager's state for actions to work.
+
+**Location**: `packages/noodl-editor/src/editor/src/views/migration/MigrationWizard.tsx`
+
+**Keywords**: useReducer, dispatch, null state, button does nothing, state not updating, SET_SESSION, state synchronization
+
+---
+
+### [2025-12-14] - CoreBaseDialog vs Modal Component Patterns
+
+**Context**: Migration wizard popup wasn't working - clicks blocked, layout broken.
+
+**Discovery**: OpenNoodl has two dialog patterns:
+
+1. **CoreBaseDialog** (Working, Recommended):
+   - Direct component from `@noodl-core-ui/components/layout/BaseDialog`
+   - Used by ConfirmDialog and other working dialogs
+   - Props: `isVisible`, `hasBackdrop`, `onClose`
+   - Content is passed as children
+
+2. **Modal** (Problematic):
+   - Wrapper component with additional complexity
+   - Was causing issues with click handling and layout
+
+When creating new dialogs, use the CoreBaseDialog pattern:
+```tsx
+import { CoreBaseDialog } from '@noodl-core-ui/components/layout/BaseDialog';
+
+<CoreBaseDialog isVisible hasBackdrop onClose={onCancel}>
+  <div className={css['YourContainer']}>
+    {/* Your content */}
+  </div>
+</CoreBaseDialog>
+```
+
+**Location**: 
+- Working example: `packages/noodl-editor/src/editor/src/views/ConfirmDialog/`
+- `packages/noodl-core-ui/src/components/layout/BaseDialog/`
+
+**Keywords**: CoreBaseDialog, Modal, dialog, popup, BaseDialog, modal not working, clicks blocked
+
+---
+
 ## Template for Future Entries
 
 ```markdown

@@ -10,20 +10,29 @@
 - [x] Create index.ts module exports
 
 ## Session 2: Wizard UI (Basic Flow)
-- [ ] MigrationWizard.tsx container
-- [ ] ConfirmStep.tsx component
-- [ ] ScanningStep.tsx component  
-- [ ] ReportStep.tsx component
-- [ ] CompleteStep.tsx component
-- [ ] MigrationExecutor.ts (project copy + basic fixes)
-- [ ] DialogLayerModel integration for showing wizard
+- [x] MigrationWizard.tsx container
+- [x] WizardProgress.tsx component
+- [x] ConfirmStep.tsx component
+- [x] ScanningStep.tsx component  
+- [x] ReportStep.tsx component
+- [x] CompleteStep.tsx component
+- [x] FailedStep.tsx component
+- [x] SCSS module files (MigrationWizard, WizardProgress, ConfirmStep, ScanningStep, ReportStep, CompleteStep, FailedStep)
+- [ ] MigrationExecutor.ts (project copy + basic fixes) - deferred to Session 4
+- [x] DialogLayerModel integration for showing wizard (completed in Session 3)
 
 ## Session 3: Projects View Integration
-- [ ] Update projectsview.ts to detect and show legacy badges
-- [ ] Add "Migrate Project" button to project cards
-- [ ] Add "Open Read-Only" button to project cards
-- [ ] Create EditorBanner.tsx for read-only mode warning
-- [ ] Wire open project flow to detect legacy projects
+- [x] DialogLayerModel.showDialog() generic method
+- [x] LocalProjectsModel runtime detection with cache
+- [x] Update projectsview.html template with legacy badges
+- [x] Add CSS styles for legacy project indicators
+- [x] Update projectsview.ts to detect and show legacy badges
+- [x] Add "Migrate Project" button to project cards
+- [x] Add "Open Read-Only" button to project cards
+- [x] onMigrateProjectClicked handler (opens MigrationWizard)
+- [x] onOpenReadOnlyClicked handler (opens project normally)
+- [ ] Create EditorBanner.tsx for read-only mode warning - deferred to Post-Migration UX
+- [ ] Wire auto-detect on existing project open - deferred to Post-Migration UX
 
 ## Session 4: AI Migration + Polish
 - [ ] claudeClient.ts (Anthropic API integration)

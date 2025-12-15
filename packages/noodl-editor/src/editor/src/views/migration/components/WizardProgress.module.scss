@@ -1,0 +1,78 @@
+/**
+ * WizardProgress Styles
+ * 
+ * Step progress indicator for migration wizard.
+ */
+
+.Root {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+}
+
+.Step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  position: relative;
+}
+
+.StepCircle {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  background-color: var(--theme-color-bg-2);
+  color: var(--theme-color-secondary-as-fg);
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.Step.is-completed .StepCircle {
+  background-color: var(--theme-color-success);
+  color: white;
+}
+
+.Step.is-active .StepCircle {
+  background-color: var(--theme-color-primary);
+  color: white;
+}
+
+.StepLabel {
+  font-size: 10px;
+  color: var(--theme-color-secondary-as-fg);
+  text-align: center;
+  max-width: 60px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.Step.is-completed .StepLabel,
+.Step.is-active .StepLabel {
+  color: var(--theme-color-fg-highlight);
+}
+
+.Connector {
+  width: 24px;
+  height: 2px;
+  background-color: var(--theme-color-bg-2);
+  margin-bottom: 20px;
+  transition: background-color 0.2s;
+}
+
+.Connector.is-completed {
+  background-color: var(--theme-color-success);
+}
+
+.CheckIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}

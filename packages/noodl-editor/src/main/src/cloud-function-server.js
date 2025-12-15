@@ -6,6 +6,15 @@ const URL = require('url');
 
 var port = process.env.NOODL_CLOUD_FUNCTIONS_PORT || 8577;
 
+// Safe console.log wrapper to prevent EPIPE errors when stdout is broken
+function safeLog(...args) {
+  try {
+    console.log(...args);
+  } catch (e) {
+    // Ignore EPIPE errors - stdout pipe may be broken
+  }
+}
+
 function guid() {
   function s4() {
     return Math.floor((1 + Math.random()) * 0x10000)
@@ -30,7 +39,7 @@ function openCloudRuntimeDevTools() {
       mode: 'detach'
     });
   } else {
-    console.log('No cloud sandbox active');
+    safeLog('No cloud sandbox active');
   }
 }
 
@@ -62,7 +71,7 @@ function startCloudFunctionServer(app, cloudServicesGetActive, mainWindow) {
       show: false
     });
 
-    console.log('starting cloud runtime');
+    safeLog('starting cloud runtime');
 
     hasLoadedProject = false;
 
@@ -103,9 +112,9 @@ function startCloudFunctionServer(app, cloudServicesGetActive, mainWindow) {
       headers: args.headers
     };
 
-    console.log('noodl-cf-fetch');
-    console.log(_options);
-    console.log(args.body);
+    safeLog('noodl-cf-fetch');
+    safeLog(_options);
+    safeLog(args.body);
 
     const httpx = url.protocol === 'https:' ? https : http;
     const req = httpx.request(_options, (res) => {
@@ -120,13 +129,13 @@ function startCloudFunctionServer(app, cloudServicesGetActive, mainWindow) {
           body: _data,
           status: res.statusCode
         };
-        console.log('response', _response);
+        safeLog('response', _response);
         sandbox.webContents.send('noodl-cf-fetch-response', _response);
       });
     });
 
     req.on('error', (error) => {
-      console.log('error', error);
+      safeLog('error', error);
       sandbox.webContents.send('noodl-cf-fetch-response', {
         token,
         error: error
@@ -161,9 +170,9 @@ function startCloudFunctionServer(app, cloudServicesGetActive, mainWindow) {
       if (path.startsWith('/functions/')) {
         const functionName = decodeURIComponent(path.split('/')[2]);
 
-        console.log('Calling cloud function: ' + functionName);
+        safeLog('Calling cloud function: ' + functionName);
         if (!sandbox) {
-          console.log('Error: No cloud runtime active...');
+          safeLog('Error: No cloud runtime active...');
           return;
         }
 
@@ -184,7 +193,7 @@ function startCloudFunctionServer(app, cloudServicesGetActive, mainWindow) {
             }
 
             try {
-              console.log('with body ', body);
+              safeLog('with body ', body);
 
               const token = guid();
               _responseHandlers[token] = (args) => {
@@ -205,7 +214,7 @@ function startCloudFunctionServer(app, cloudServicesGetActive, mainWindow) {
                 queuedRequestsBeforeProjectLoaded.push(cfRequestArgs);
               }
             } catch (e) {
-              console.log(e);
+              safeLog(e);
 
               response.writeHead(400, headers);
               response.end(JSON.stringify({ error: 'Failed to run function.' }));
@@ -218,7 +227,7 @@ function startCloudFunctionServer(app, cloudServicesGetActive, mainWindow) {
 
   var server;
   if (process.env.ssl) {
-    console.log('Using SSL');
+    safeLog('Using SSL');
 
     const options = {
       key: fs.readFileSync(process.env.sslKey),
@@ -244,8 +253,8 @@ function startCloudFunctionServer(app, cloudServicesGetActive, mainWindow) {
       });
   });
 
-  server.on('listening', (e) => {
-    console.log('noodl cloud functions server running on port', port);
+  server.on('listening', () => {
+    safeLog('noodl cloud functions server running on port', port);
     process.env.NOODL_CLOUD_FUNCTIONS_PORT = port;
   });
 }

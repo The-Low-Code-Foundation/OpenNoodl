@@ -1,0 +1,128 @@
+/**
+ * FailedStep Styles
+ * 
+ * Error state when migration fails.
+ */
+
+.Root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.Header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.ErrorCircleIcon {
+  color: var(--theme-color-danger);
+}
+
+.DescriptionText {
+  color: var(--theme-color-secondary-as-fg);
+}
+
+.ErrorBox {
+  margin-top: 16px;
+  background-color: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.ErrorHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background-color: rgba(239, 68, 68, 0.15);
+
+  svg {
+    color: var(--theme-color-danger);
+  }
+}
+
+.ErrorText {
+  color: var(--theme-color-danger);
+  font-weight: 500;
+}
+
+.ErrorMessage {
+  padding: 12px 16px;
+  font-family: monospace;
+  font-size: 12px;
+  color: var(--theme-color-fg-highlight);
+  word-break: break-all;
+}
+
+.Suggestions {
+  margin-top: 16px;
+  padding: 16px;
+  background-color: var(--theme-color-bg-3);
+  border-radius: 8px;
+}
+
+.SuggestionList {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0 0 0;
+
+  li {
+    display: flex;
+    gap: 12px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--theme-color-bg-2);
+
+    &:last-child {
+      border-bottom: none;
+    }
+
+    svg {
+      width: 16px;
+      height: 16px;
+      flex-shrink: 0;
+      margin-top: 2px;
+      color: var(--theme-color-secondary-as-fg);
+    }
+  }
+}
+
+.Link {
+  color: var(--theme-color-primary);
+  text-decoration: underline;
+
+  &:hover {
+    opacity: 0.8;
+  }
+}
+
+.SafetyNotice {
+  display: flex;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 12px 16px;
+  background-color: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  border-radius: 8px;
+
+  svg {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+    color: var(--theme-color-success);
+  }
+}
+
+.SafetyText {
+  color: var(--theme-color-secondary-as-fg);
+}
+
+.Actions {
+  margin-top: auto;
+  padding-top: 24px;
+  display: flex;
+  justify-content: flex-end;
+}

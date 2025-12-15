@@ -315,12 +315,14 @@ export async function detectRuntimeVersion(projectPath: string): Promise<Runtime
   }
 
   // ==========================================================================
-  // Default: Unknown - could be either version
+  // Default: Assume React 17 for older projects without explicit markers
+  // Any project without runtimeVersion, migratedFrom, or a recent editorVersion
+  // is most likely a legacy project from before OpenNoodl
   // ==========================================================================
   return {
-    version: 'unknown',
+    version: 'react17',
     confidence: 'low',
-    indicators: ['No version indicators found - manual verification recommended']
+    indicators: ['No React 19 markers found - assuming legacy React 17 project']
   };
 }
 

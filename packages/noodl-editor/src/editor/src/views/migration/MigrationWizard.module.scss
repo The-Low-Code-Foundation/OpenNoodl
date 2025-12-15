@@ -1,0 +1,44 @@
+/**
+ * MigrationWizard Styles
+ * 
+ * Main container for the migration wizard using CoreBaseDialog.
+ */
+
+.WizardContainer {
+  position: relative;
+  width: 700px;
+  max-width: 90vw;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--theme-color-bg-4);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.CloseButton {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 10;
+}
+
+.WizardHeader {
+  padding: 24px 24px 16px;
+  padding-right: 48px; // Space for close button
+}
+
+.WizardContent {
+  display: flex;
+  flex-direction: column;
+  padding: 0 24px 24px;
+  gap: 16px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.StepContainer {
+  flex: 1;
+  min-height: 200px;
+}

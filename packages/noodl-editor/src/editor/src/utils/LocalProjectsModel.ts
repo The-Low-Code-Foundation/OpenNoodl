@@ -13,6 +13,8 @@ import { templateRegistry } from '@noodl-utils/forge';
 
 import Model from '../../../shared/model';
 import { projectFromDirectory, unzipIntoDirectory } from '../models/projectmodel.editor';
+import { RuntimeVersionInfo } from '../models/migration/types';
+import { detectRuntimeVersion } from '../models/migration/ProjectScanner';
 import FileSystem from './filesystem';
 import { tracker } from './tracker';
 import { guid } from './utils';
@@ -25,6 +27,14 @@ export interface ProjectItem {
   thumbURI: string;
   retainedProjectDirectory: string;
 }
+
+/**
+ * Extended project item with runtime version info (not persisted)
+ */
+export interface ProjectItemWithRuntime extends ProjectItem {
+  runtimeInfo?: RuntimeVersionInfo;
+  runtimeDetectionPending?: boolean;
+}
 export class LocalProjectsModel extends Model {
   public static instance = new LocalProjectsModel();
 
@@ -33,6 +43,17 @@ export class LocalProjectsModel extends Model {
   private recentProjectsStore = new Store({
     name: 'recently_opened_project'
   });
+
+  /**
+   * Cache for runtime version info - keyed by project directory path
+   * Not persisted, re-detected on each app session
+   */
+  private runtimeInfoCache: Map<string, RuntimeVersionInfo> = new Map();
+
+  /**
+   * Set of project directories currently being detected
+   */
+  private detectingProjects: Set<string> = new Set();
 
   async fetch() {
     // Fetch projects from local storage and verify project folders
@@ -298,5 +319,129 @@ export class LocalProjectsModel extends Model {
     };
 
     setRequestGitAccount(func);
+  }
+
+  // =========================================================================
+  // Runtime Version Detection Methods
+  // =========================================================================
+
+  /**
+   * Get cached runtime info for a project, or null if not yet detected
+   * @param projectPath - The project directory path
+   */
+  getRuntimeInfo(projectPath: string): RuntimeVersionInfo | null {
+    return this.runtimeInfoCache.get(projectPath) || null;
+  }
+
+  /**
+   * Check if runtime detection is currently in progress for a project
+   * @param projectPath - The project directory path
+   */
+  isDetectingRuntime(projectPath: string): boolean {
+    return this.detectingProjects.has(projectPath);
+  }
+
+  /**
+   * Get projects with their runtime info (extended interface)
+   * Returns projects enriched with cached runtime detection status
+   */
+  getProjectsWithRuntime(): ProjectItemWithRuntime[] {
+    return this.projectEntries.map((project) => ({
+      ...project,
+      runtimeInfo: this.getRuntimeInfo(project.retainedProjectDirectory),
+      runtimeDetectionPending: this.isDetectingRuntime(project.retainedProjectDirectory)
+    }));
+  }
+
+  /**
+   * Detect runtime version for a single project.
+   * Results are cached and listeners are notified.
+   * @param projectPath - Path to the project directory
+   * @returns The detected runtime version info
+   */
+  async detectProjectRuntime(projectPath: string): Promise<RuntimeVersionInfo> {
+    // Return cached result if available
+    const cached = this.runtimeInfoCache.get(projectPath);
+    if (cached) {
+      return cached;
+    }
+
+    // Skip if already detecting
+    if (this.detectingProjects.has(projectPath)) {
+      // Wait for existing detection to complete by polling
+      return new Promise((resolve) => {
+        const checkCached = () => {
+          const result = this.runtimeInfoCache.get(projectPath);
+          if (result) {
+            resolve(result);
+          } else if (this.detectingProjects.has(projectPath)) {
+            setTimeout(checkCached, 100);
+          } else {
+            // Detection finished but no result - return unknown
+            resolve({ version: 'unknown', confidence: 'low', indicators: ['Detection failed'] });
+          }
+        };
+        checkCached();
+      });
+    }
+
+    // Mark as detecting
+    this.detectingProjects.add(projectPath);
+    this.notifyListeners('runtimeDetectionStarted', projectPath);
+
+    try {
+      const runtimeInfo = await detectRuntimeVersion(projectPath);
+      this.runtimeInfoCache.set(projectPath, runtimeInfo);
+      this.notifyListeners('runtimeDetectionComplete', projectPath, runtimeInfo);
+      return runtimeInfo;
+    } catch (error) {
+      console.error(`Failed to detect runtime for ${projectPath}:`, error);
+      const fallback: RuntimeVersionInfo = {
+        version: 'unknown',
+        confidence: 'low',
+        indicators: ['Detection error: ' + (error instanceof Error ? error.message : 'Unknown error')]
+      };
+      this.runtimeInfoCache.set(projectPath, fallback);
+      this.notifyListeners('runtimeDetectionComplete', projectPath, fallback);
+      return fallback;
+    } finally {
+      this.detectingProjects.delete(projectPath);
+    }
+  }
+
+  /**
+   * Detect runtime version for all projects in the list (background)
+   * Useful for pre-populating the cache when the projects view loads
+   */
+  async detectAllProjectRuntimes(): Promise<void> {
+    const projects = this.getProjects();
+    
+    // Detect in parallel but don't wait for all to complete
+    // Instead, trigger detection and let events update the UI
+    for (const project of projects) {
+      // Don't await - let them run in background
+      this.detectProjectRuntime(project.retainedProjectDirectory).catch(() => {
+        // Errors are handled in detectProjectRuntime
+      });
+    }
+  }
+
+  /**
+   * Check if a project is a legacy project (React 17)
+   * @param projectPath - Path to the project directory
+   * @returns True if project is detected as React 17
+   */
+  isLegacyProject(projectPath: string): boolean {
+    const info = this.getRuntimeInfo(projectPath);
+    return info?.version === 'react17';
+  }
+
+  /**
+   * Clear runtime cache for a specific project (e.g., after migration)
+   * @param projectPath - Path to the project directory
+   */
+  clearRuntimeCache(projectPath: string): void {
+    this.runtimeInfoCache.delete(projectPath);
+    this.notifyListeners('runtimeCacheCleared', projectPath);
   }
 }

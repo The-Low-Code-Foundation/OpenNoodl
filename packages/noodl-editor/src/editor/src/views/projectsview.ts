@@ -1,10 +1,14 @@
+import React from 'react';
+
 import { filesystem, platform } from '@noodl/platform';
 
 import { DialogLayerModel } from '@noodl-models/DialogLayerModel';
 import { LessonsProjectsModel } from '@noodl-models/LessonsProjectModel';
 import { CloudServiceMetadata } from '@noodl-models/projectmodel';
 import { setCloudServices } from '@noodl-models/projectmodel.editor';
-import { LocalProjectsModel, ProjectItem } from '@noodl-utils/LocalProjectsModel';
+import { LocalProjectsModel, ProjectItem, ProjectItemWithRuntime } from '@noodl-utils/LocalProjectsModel';
+
+import { MigrationWizard } from './migration/MigrationWizard';
 
 import View from '../../../shared/view';
 import LessonTemplatesModel from '../models/lessontemplatesmodel';
@@ -29,6 +33,10 @@ type ProjectItemScope = {
   project: ProjectItem;
   label: string;
   latestAccessedTimeAgo: string;
+  /** Whether the project uses legacy React 17 runtime */
+  isLegacy: boolean;
+  /** Whether runtime detection is in progress */
+  isDetecting: boolean;
 };
 
 export class ProjectsView extends View {
@@ -111,6 +119,9 @@ export class ProjectsView extends View {
     this.renderProjectItemsPane();
 
     this.projectsModel.on('myProjectsChanged', () => this.renderProjectItemsPane(), this);
+    
+    // Re-render when runtime detection completes to update legacy indicators
+    this.projectsModel.on('runtimeDetectionComplete', () => this.renderProjectItemsPane(), this);
 
     this.switchPane('projects');
 
@@ -274,27 +285,34 @@ export class ProjectsView extends View {
   }) {
     options = options || {};
 
-    const items = options.items;
+    const projectItems = options.items || [];
     const projectItemsSelector = options.appendProjectItemsTo || '.projects-items';
     const template = options.template || 'projects-item';
     this.$(projectItemsSelector).html('');
 
-    for (const i in items) {
-      const label = items[i].name;
+    for (const item of projectItems) {
+      const label = item.name;
       if (options.filter && label.toLowerCase().indexOf(options.filter) === -1) continue;
 
-      const latestAccessed = items[i].latestAccessed || Date.now();
+      const latestAccessed = item.latestAccessed || Date.now();
+      
+      // Check if this is a legacy React 17 project
+      const projectPath = item.retainedProjectDirectory;
+      const isLegacy = projectPath ? this.projectsModel.isLegacyProject(projectPath) : false;
+      const isDetecting = projectPath ? this.projectsModel.isDetectingRuntime(projectPath) : false;
 
       const scope: ProjectItemScope = {
-        project: items[i],
+        project: item,
         label: label,
-        latestAccessedTimeAgo: timeSince(latestAccessed) + ' ago'
+        latestAccessedTimeAgo: timeSince(latestAccessed) + ' ago',
+        isLegacy,
+        isDetecting
       };
 
       const el = this.bindView(this.cloneTemplate(template), scope);
-      if (items[i].thumbURI) {
+      if (item.thumbURI) {
         // Set the thumbnail image if there is one
-        View.$(el, '.projects-item-thumb').css('background-image', 'url(' + items[i].thumbURI + ')');
+        View.$(el, '.projects-item-thumb').css('background-image', 'url(' + item.thumbURI + ')');
       } else {
         // No thumbnail, show cloud download icon
         View.$(el, '.projects-item-cloud-download').show();
@@ -302,6 +320,12 @@ export class ProjectsView extends View {
 
       this.$(projectItemsSelector).append(el);
     }
+
+    // Trigger background runtime detection for all projects
+    this.projectsModel.detectAllProjectRuntimes().then(() => {
+      // Re-render after detection completes (if any legacy projects found)
+      // The on('runtimeDetected') listener handles this
+    });
   }
 
   renderTutorialItems() {
@@ -631,6 +655,107 @@ export class ProjectsView extends View {
       text: 'Do you want to remove the project from the list? Note that the project folder is still left intact, and can be opened again',
       onConfirm: () => this.projectsModel.removeProject(scope.project.id)
     });
+  }
+
+  /**
+   * Called when user clicks "Migrate Project" on a legacy project card.
+   * Opens the migration wizard dialog.
+   */
+  onMigrateProjectClicked(scope: ProjectItemScope, _el: unknown, evt: Event) {
+    evt.stopPropagation();
+
+    const projectPath = scope.project.retainedProjectDirectory;
+    if (!projectPath) {
+      ToastLayer.showError('Cannot migrate project: path not found');
+      return;
+    }
+
+    // Show the migration wizard as a dialog
+    DialogLayerModel.instance.showDialog(
+      (close) =>
+        React.createElement(MigrationWizard, {
+          sourcePath: projectPath,
+          projectName: scope.project.name,
+          onComplete: async (targetPath: string) => {
+            close();
+            // Clear runtime cache for the source project
+            this.projectsModel.clearRuntimeCache(projectPath);
+            
+            // Show activity indicator
+            const activityId = 'opening-migrated-project';
+            ToastLayer.showActivity('Opening migrated project', activityId);
+            
+            try {
+              // Open the migrated project from the target path
+              const project = await this.projectsModel.openProjectFromFolder(targetPath);
+              
+              if (!project.name) {
+                project.name = scope.project.name + ' (React 19)';
+              }
+              
+              ToastLayer.hideActivity(activityId);
+              ToastLayer.showSuccess('Project migrated successfully!');
+              
+              // Open the migrated project
+              this.notifyListeners('projectLoaded', project);
+            } catch (error) {
+              ToastLayer.hideActivity(activityId);
+              ToastLayer.showError('Project migrated but could not open automatically. Check your projects list.');
+              console.error('Failed to open migrated project:', error);
+              // Refresh project list anyway
+              this.projectsModel.fetch();
+            }
+          },
+          onCancel: () => {
+            close();
+          }
+        }),
+      {
+        onClose: () => {
+          // Refresh project list when dialog closes
+          this.projectsModel.fetch();
+        }
+      }
+    );
+
+    tracker.track('Migration Wizard Opened', {
+      projectName: scope.project.name
+    });
+  }
+
+  /**
+   * Called when user clicks "Open Read-Only" on a legacy project card.
+   * Opens the project in read-only mode without migration.
+   * Note: The project will open normally; legacy banner display
+   * will be handled by the EditorBanner component based on runtime detection.
+   */
+  async onOpenReadOnlyClicked(scope: ProjectItemScope, _el: unknown, evt: Event) {
+    evt.stopPropagation();
+
+    const activityId = 'opening-project-readonly';
+    ToastLayer.showActivity('Opening project in read-only mode', activityId);
+
+    try {
+      const project = await this.projectsModel.loadProject(scope.project);
+      ToastLayer.hideActivity(activityId);
+
+      if (!project) {
+        ToastLayer.showError("Couldn't load project.");
+        return;
+      }
+
+      tracker.track('Legacy Project Opened Read-Only', {
+        projectName: scope.project.name
+      });
+
+      // Open the project - the EditorBanner will detect legacy runtime
+      // and display a warning banner automatically
+      this.notifyListeners('projectLoaded', project);
+    } catch (error) {
+      ToastLayer.hideActivity(activityId);
+      ToastLayer.showError('Could not open project');
+      console.error('Failed to open legacy project:', error);
+    }
   }
 
   // Import a project from a URL

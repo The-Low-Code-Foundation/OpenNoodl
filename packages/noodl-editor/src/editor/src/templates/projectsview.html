@@ -1,6 +1,6 @@
 <div class="projects-main">
   <!-- project item template -->
-  <div data-template="projects-item" class="projects-item projects-item-plate" data-click="onProjectItemClicked">
+  <div data-template="projects-item" class="projects-item projects-item-plate" data-class="isLegacy:projects-item--legacy" data-click="onProjectItemClicked">
 
       <div class="projects-item-thumb" style="position:absolute; left:0px; top:0px; width:100%; bottom:70px;">
         <div class="projects-item-cloud-download" style="width:100%; height:100%;">
@@ -8,6 +8,14 @@
             <i class="fa fa-cloud-download"></i>
           </div>
         </div>
+      </div>
+
+      <!-- Legacy project badge -->
+      <div class="projects-item-legacy-badge" data-class="!isLegacy:hidden">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/>
+        </svg>
+        <span>Legacy</span>
       </div>
 
       <div class="projects-item-label" style="position:absolute; bottom:36px; left:10px; right:10px;"
@@ -26,6 +34,16 @@
 
       <div class="projects-panel-icon-show-on-hover" style="position:absolute;bottom:20px;right:10px" data-click="onDeleteProjectClicked"> 
         <img class="projects-remove-icon" src="../assets/images/sharp-clear-24px.svg">
+      </div>
+
+      <!-- Legacy project hover actions -->
+      <div class="projects-item-legacy-actions" data-class="!isLegacy:hidden">
+        <button class="projects-item-migrate-btn" data-click="onMigrateProjectClicked">
+          Migrate Project
+        </button>
+        <button class="projects-item-readonly-btn" data-click="onOpenReadOnlyClicked">
+          Open Read-Only
+        </button>
       </div>
 
   </div>

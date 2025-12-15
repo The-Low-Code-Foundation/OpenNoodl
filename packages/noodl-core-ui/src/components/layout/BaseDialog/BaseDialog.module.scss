@@ -55,6 +55,7 @@
     background-color: var(--background);
     border-radius: 2px;
     overflow: hidden;
+    pointer-events: none; // Allow clicks to pass through to content
   }
 }
 
