@@ -143,15 +143,67 @@ function startServer(app, projectGetSettings, projectGetInfo, projectGetComponen
     //by this point it must be a static file in either the viewer folder or the project
     //check if it's a viewer file
     const viewerFilePath = appPath + '/src/external/viewer/' + path;
+    
+    // Debug: Log ALL font requests regardless of where they're served from
+    const fontExtensions = ['.ttf', '.otf', '.woff', '.woff2'];
+    const ext = (path.match(/\.[^.]+$/) || [''])[0].toLowerCase();
+    const isFont = fontExtensions.includes(ext);
+    
+    if (isFont) {
+      console.log(`\n======= FONT REQUEST =======`);
+      console.log(`[Font] Requested path: ${path}`);
+      console.log(`[Font] Checking viewer path: ${viewerFilePath}`);
+    }
+    
     if (fs.existsSync(viewerFilePath)) {
+      if (isFont) console.log(`[Font] SERVED from viewer folder`);
       serveFile(viewerFilePath, request, response);
     } else {
       // Check if file exists in project directory
       projectGetInfo((info) => {
         const projectPath = info.projectDirectory + path;
+        
+        if (isFont) {
+          console.log(`[Font] Project dir: ${info.projectDirectory}`);
+          console.log(`[Font] Checking project path: ${projectPath}`);
+          console.log(`[Font] Exists at project path: ${fs.existsSync(projectPath)}`);
+        }
+        
         if (fs.existsSync(projectPath)) {
+          if (isFont) console.log(`[Font] SERVED from project folder`);
           serveFile(projectPath, request, response);
         } else {
+          // For fonts, try common fallback locations
+          // Legacy projects may store fonts without folder prefix, or in different locations
+          const fontExtensions = ['.ttf', '.otf', '.woff', '.woff2'];
+          const ext = (path.match(/\.[^.]+$/) || [''])[0].toLowerCase();
+          
+          if (fontExtensions.includes(ext)) {
+            console.log(`[Font Debug] Request: ${path}`);
+            console.log(`[Font Debug] Project dir: ${info.projectDirectory}`);
+            console.log(`[Font Debug] Primary path NOT found: ${projectPath}`);
+            
+            const filename = path.split('/').pop();
+            const fallbackPaths = [
+              info.projectDirectory + '/fonts' + path,           // /fonts/filename.ttf
+              info.projectDirectory + '/fonts/' + filename,      // /fonts/filename.ttf (when path has no subfolder)
+              info.projectDirectory + '/' + filename,            // /filename.ttf (root level)
+              info.projectDirectory + '/assets/fonts/' + filename // /assets/fonts/filename.ttf
+            ];
+            
+            console.log(`[Font Debug] Trying fallback paths:`);
+            for (const fallbackPath of fallbackPaths) {
+              const exists = fs.existsSync(fallbackPath);
+              console.log(`[Font Debug]   ${exists ? '✓' : '✗'} ${fallbackPath}`);
+              if (exists) {
+                console.log(`[Font Debug] SUCCESS - serving from fallback`);
+                serveFile(fallbackPath, request, response);
+                return;
+              }
+            }
+            console.log(`[Font Debug] FAILED - no fallback found`);
+          }
+          
           serve404(response);
         }
       });
@@ -184,7 +236,7 @@ function startServer(app, projectGetSettings, projectGetInfo, projectGetComponen
       });
   });
 
-  server.on('listening', (e) => {
+  server.on('listening', () => {
     console.log('webserver hustling bytes on port', port);
     process.env.NOODLPORT = port;
 

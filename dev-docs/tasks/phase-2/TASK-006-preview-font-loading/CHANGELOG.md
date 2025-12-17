@@ -12,7 +12,7 @@ This file tracks all changes made during TASK-006: Fix Custom Font Loading in Ed
 
 ## Changes
 
-### [December 15, 2024] - Cline AI Assistant
+### [December 15, 2024] - Session 1 - Cline AI Assistant
 
 **Summary**: Fixed custom font loading in editor preview by adding missing MIME types to web server configuration. The issue was simpler than expected - the server was already serving project files, but was missing MIME type mappings for modern font formats.
 
@@ -23,33 +23,40 @@ This file tracks all changes made during TASK-006: Fix Custom Font Loading in Ed
   - Added `.woff2` → `font/woff2`
   - Fixed `.wav` case missing `break;` statement (was falling through to `.mp4`)
 
-**Files Created**:
-- None
+**Testing Notes**:
+- New projects: Fonts load correctly ✅
+- Legacy projects: Fonts still failing (needs investigation)
 
-**Files Deleted**:
-- None
+---
 
-**Configuration Changes**:
-- MIME types configured in `getContentType()` function
-- Font formats now properly recognized: `.ttf`, `.otf`, `.woff`, `.woff2`
+### [December 15, 2024] - Session 2 - Cline AI Assistant
+
+**Summary**: Added font fallback mechanism to handle legacy projects that may store font paths differently. The issue was that legacy projects might store fontFamily as just the filename (e.g., `Inter-Regular.ttf`) while new projects store the full relative path (e.g., `fonts/Inter-Regular.ttf`).
+
+**Files Modified**:
+- `packages/noodl-editor/src/main/src/web-server.js` - Added font fallback path resolution
+  - When a font file isn't found at the requested path, the server now searches common locations:
+    1. `/fonts{originalPath}` - prepend fonts folder
+    2. `/fonts/{filename}` - fonts folder + just filename
+    3. `/{filename}` - project root level
+    4. `/assets/fonts/{filename}` - assets/fonts folder
+  - Added console logging for fallback resolution debugging
+  - Fixed ESLint unused variable error in `server.on('listening')` callback
+
+**Technical Details**:
+- Font path resolution flow:
+  1. First tries exact path: `projectDirectory + requestPath`
+  2. If not found and it's a font file (.ttf, .otf, .woff, .woff2), tries fallback locations
+  3. Logs successful fallback resolutions to console for debugging
+  4. Returns 404 only if all fallback paths fail
 
 **Breaking Changes**:
-- None - this fix only affects development preview server
+- None - this enhancement only adds fallback behavior when files aren't found
 
 **Testing Notes**:
-- Manual testing required: Create project with custom fonts and verify they load in preview
-- Test all font formats: TTF, OTF, WOFF, WOFF2
-- Verify no 404 errors in console
-- Verify no "OTS parsing error" messages
-
-**Known Issues**:
-- None expected - changes are minimal and isolated to MIME type configuration
-
-**Next Steps**:
-- Build and test editor with changes
-- Create test project with multiple font formats
-- Verify fonts load correctly in preview
-- Test project switching behavior
+- Requires rebuild and restart of editor
+- Check console for "Font fallback:" messages to verify mechanism is working
+- Test with legacy projects that have fonts in various locations
 
 #### [Date] - [Developer Name]
 

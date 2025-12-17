@@ -183,9 +183,23 @@ OTS parsing error: GDEF: misaligned table
 
 ### Console After Fix
 
-```
-(Document whether errors are resolved)
-```
+**Important**: The fix requires restarting the dev server!
+
+Steps to test:
+1. Stop current `npm run dev` with Ctrl+C
+2. Run `npm run dev` again to recompile with new code
+3. Open a project with custom fonts
+4. Check console - should see NO 404 errors or OTS parsing errors
+
+**First Test Results** (Dev server not restarted):
+- Still seeing 404 errors - this is EXPECTED
+- Old compiled code still running in Electron
+- Changes in source files don't apply until recompilation
+
+**After Restart** (To be documented):
+- Fonts should load successfully
+- No 404 errors
+- No "OTS parsing error" messages
 
 ---
 

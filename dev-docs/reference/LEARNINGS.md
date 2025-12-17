@@ -621,6 +621,94 @@ The `copyFile` method in the platform API is specifically designed for copying f
 
 ---
 
+## Preview & Web Server
+
+### [2024-12-15] - Custom Fonts 404 Due to Missing MIME Types
+
+**Context**: Custom fonts (TTF, OTF, WOFF, WOFF2) weren't loading in editor preview. Console showed 404 errors and "OTS parsing error: GDEF: misaligned table" messages. Users thought the dev server wasn't serving project files.
+
+**Discovery**: The web server WAS already serving project directory files correctly (lines 166-172 in web-server.js already handle project path lookups). The real issue was the `getContentType()` function only had MIME types for `.ttf` fonts, not for modern formats:
+- `.otf` → Missing
+- `.woff` → Missing  
+- `.woff2` → Missing
+
+When browsers requested these files, they received them with the default `text/html` content-type. Browsers then tried to parse binary font data as HTML, which fails with confusing OTS parsing errors.
+
+Also found a bug: the `.wav` case was missing a `break;` statement, causing it to fall through to `.mp4`.
+
+**Fix**: Add missing MIME types to the switch statement:
+```javascript
+case '.otf':
+  contentType = 'font/otf';
+  break;
+case '.woff':
+  contentType = 'font/woff';
+  break;
+case '.woff2':
+  contentType = 'font/woff2';
+  break;
+```
+
+**Key Insight**: The task documentation assumed we needed to add project file serving infrastructure (middleware, protocol handlers, etc.). The architecture was already correct - we just needed proper MIME type mapping. This turned a 4-6 hour task into a 5-minute fix.
+
+**Location**: `packages/noodl-editor/src/main/src/web-server.js` (getContentType function)
+
+**Keywords**: fonts, MIME types, 404, OTS parsing error, web server, preview, TTF, OTF, WOFF, WOFF2, content-type
+
+---
+
+### [2024-12-15] - Legacy Project Fonts Need Fallback Path Resolution
+
+**Context**: After fixing MIME types, new projects loaded fonts correctly but legacy/migrated projects still showed 404 errors for fonts. Investigation revealed font URLs were being requested without folder prefixes.
+
+**Discovery**: OpenNoodl stores font paths in project.json relative to the project root. The FontPicker component (fontpicker.js) generates these paths from `fileEntry.fullPath.substring(ProjectModel.instance._retainedProjectDirectory.length + 1)`:
+
+- If font is at `/project/fonts/Inter.ttf` → stored as `fonts/Inter.ttf`
+- If font is at `/project/Inter.ttf` → stored as `Inter.ttf`
+
+Legacy projects may have fonts stored in different locations or with different path conventions. When the viewer requests a font URL like `/Inter.ttf`, the server looks for `{projectDir}/Inter.ttf`, but the font might actually be at `{projectDir}/fonts/Inter.ttf`.
+
+**The Font Loading Chain**:
+1. Node parameter stores fontFamily: `"Inter-Regular.ttf"`
+2. `node-shared-port-definitions.js` calls `FontLoader.instance.loadFont(family)`
+3. `fontloader.js` uses `getAbsoluteUrl(fontURL)` which prepends `Noodl.baseUrl` (usually `/`)
+4. Browser requests `GET /Inter-Regular.ttf`
+5. Server tries `projectDirectory + /Inter-Regular.ttf`
+6. If not found → 404
+
+**Fix**: Added font fallback mechanism in web-server.js that searches common locations when a font isn't found:
+```javascript
+if (fontExtensions.includes(ext)) {
+  const filename = path.split('/').pop();
+  const fallbackPaths = [
+    info.projectDirectory + '/fonts' + path,           // /fonts/filename.ttf
+    info.projectDirectory + '/fonts/' + filename,      // /fonts/filename.ttf
+    info.projectDirectory + '/' + filename,            // /filename.ttf (root)
+    info.projectDirectory + '/assets/fonts/' + filename // /assets/fonts/filename.ttf
+  ];
+  
+  for (const fallbackPath of fallbackPaths) {
+    if (fs.existsSync(fallbackPath)) {
+      console.log(`Font fallback: ${path} -> ${fallbackPath}`);
+      serveFile(fallbackPath, request, response);
+      return;
+    }
+  }
+}
+```
+
+**Key Files**:
+- `packages/noodl-viewer-react/src/fontloader.js` - Runtime font loading
+- `packages/noodl-viewer-react/src/node-shared-port-definitions.js` - Where loadFont is called
+- `packages/noodl-editor/src/editor/src/views/panels/propertyeditor/fontpicker.js` - How font paths are stored
+- `packages/noodl-editor/src/main/src/web-server.js` - Server-side font resolution
+
+**Location**: `packages/noodl-editor/src/main/src/web-server.js`
+
+**Keywords**: fonts, legacy projects, fallback paths, font not found, 404, projectDirectory, font resolution, migration
+
+---
+
 ## Template for Future Entries
 
 ```markdown
