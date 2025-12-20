@@ -1,0 +1,166 @@
+.AIConfigPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  max-width: 600px;
+  padding: 24px;
+}
+
+.Header {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+
+  svg {
+    flex-shrink: 0;
+    color: var(--theme-color-primary);
+  }
+}
+
+.HeaderText {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--theme-color-fg-highlight);
+  }
+}
+
+.Section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  background: var(--theme-color-bg-2);
+  border-radius: 6px;
+
+  h4 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--theme-color-fg-highlight);
+  }
+
+  a {
+    color: var(--theme-color-primary);
+    text-decoration: none;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+}
+
+.InputGroup {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+
+  > :first-child {
+    flex: 1;
+  }
+}
+
+.ValidationSuccess {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  color: var(--theme-color-success);
+  font-size: 13px;
+
+  svg {
+    flex-shrink: 0;
+  }
+}
+
+.ValidationError {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  color: var(--theme-color-danger);
+  font-size: 13px;
+
+  svg {
+    flex-shrink: 0;
+  }
+}
+
+.SecurityNote {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  padding: 12px;
+  background: var(--theme-color-bg-3);
+  border-radius: 4px;
+  font-size: 13px;
+
+  svg {
+    flex-shrink: 0;
+    margin-top: 2px;
+    color: var(--theme-color-secondary-as-fg);
+  }
+}
+
+.Field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  > label:first-child {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--theme-color-fg-default);
+  }
+}
+
+.BudgetRow {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+
+  span {
+    color: var(--theme-color-fg-default);
+  }
+}
+
+.BudgetInput {
+  width: 80px;
+  padding: 6px 10px;
+  background: var(--theme-color-bg-1);
+  border: 1px solid var(--theme-color-bg-3);
+  border-radius: 4px;
+  color: var(--theme-color-fg-highlight);
+  font-size: 14px;
+
+  &:focus {
+    outline: none;
+    border-color: var(--theme-color-primary);
+  }
+}
+
+.Checkbox {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  cursor: pointer;
+  font-size: 13px;
+
+  input[type='checkbox'] {
+    cursor: pointer;
+  }
+
+  span {
+    color: var(--theme-color-fg-default);
+  }
+}
+
+.Actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 8px;
+}

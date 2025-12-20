@@ -16,25 +16,30 @@ import { Text, TextSize, TextType } from '@noodl-core-ui/components/typography/T
 import { Title, TitleSize } from '@noodl-core-ui/components/typography/Title';
 
 import { MigrationScan, ComponentMigrationInfo } from '../../../models/migration/types';
-
 import css from './ReportStep.module.scss';
 
 export interface ReportStepProps {
   /** Scan results */
   scan: MigrationScan;
+  /** Called when user chooses to configure AI */
+  onConfigureAi: () => void;
   /** Called when user chooses to migrate without AI */
   onMigrateWithoutAi: () => void;
   /** Called when user chooses to migrate with AI */
   onMigrateWithAi: () => void;
   /** Called when user cancels */
   onCancel: () => void;
+  /** Whether AI is configured and enabled */
+  aiEnabled?: boolean;
 }
 
 export function ReportStep({
   scan,
+  onConfigureAi,
   onMigrateWithoutAi,
   onMigrateWithAi,
-  onCancel
+  onCancel,
+  aiEnabled = false
 }: ReportStepProps) {
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
 
@@ -56,24 +61,9 @@ export function ReportStep({
 
         {/* Summary Stats */}
         <div className={css['SummaryStats']}>
-          <StatCard
-            icon={<CheckCircleIcon />}
-            value={automatic.length}
-            label="Automatic"
-            variant="success"
-          />
-          <StatCard
-            icon={<ZapIcon />}
-            value={simpleFixes.length}
-            label="Simple Fixes"
-            variant="info"
-          />
-          <StatCard
-            icon={<ToolIcon />}
-            value={needsReview.length}
-            label="Needs Review"
-            variant="warning"
-          />
+          <StatCard icon={<CheckCircleIcon />} value={automatic.length} label="Automatic" variant="success" />
+          <StatCard icon={<ZapIcon />} value={simpleFixes.length} label="Simple Fixes" variant="info" />
+          <StatCard icon={<ToolIcon />} value={needsReview.length} label="Needs Review" variant="warning" />
         </div>
 
         {/* Category Sections */}
@@ -86,9 +76,7 @@ export function ReportStep({
             items={automatic}
             variant="success"
             expanded={expandedCategory === 'automatic'}
-            onToggle={() =>
-              setExpandedCategory(expandedCategory === 'automatic' ? null : 'automatic')
-            }
+            onToggle={() => setExpandedCategory(expandedCategory === 'automatic' ? null : 'automatic')}
           />
 
           {/* Simple Fixes */}
@@ -100,9 +88,7 @@ export function ReportStep({
               items={simpleFixes}
               variant="info"
               expanded={expandedCategory === 'simpleFixes'}
-              onToggle={() =>
-                setExpandedCategory(expandedCategory === 'simpleFixes' ? null : 'simpleFixes')
-              }
+              onToggle={() => setExpandedCategory(expandedCategory === 'simpleFixes' ? null : 'simpleFixes')}
               showIssueDetails
             />
           )}
@@ -116,9 +102,7 @@ export function ReportStep({
               items={needsReview}
               variant="warning"
               expanded={expandedCategory === 'needsReview'}
-              onToggle={() =>
-                setExpandedCategory(expandedCategory === 'needsReview' ? null : 'needsReview')
-              }
+              onToggle={() => setExpandedCategory(expandedCategory === 'needsReview' ? null : 'needsReview')}
               showIssueDetails
             />
           )}
@@ -131,12 +115,15 @@ export function ReportStep({
               <RobotIcon />
             </div>
             <div className={css['AiPromptContent']}>
-              <Title size={TitleSize.Small}>AI-Assisted Migration (Coming Soon)</Title>
+              <Title size={TitleSize.Small}>AI-Assisted Migration Available</Title>
               <Text textType={TextType.Secondary} size={TextSize.Small}>
-                Claude can help automatically fix the {totalIssues} components that need
-                code changes. Estimated cost: ~${estimatedCost.toFixed(2)}
+                Claude can help automatically fix the {totalIssues} components that need code changes. Estimated cost:
+                ~${estimatedCost.toFixed(2)}
               </Text>
             </div>
+            {!aiEnabled && (
+              <PrimaryButton label="Configure AI" variant={PrimaryButtonVariant.Muted} onClick={onConfigureAi} />
+            )}
           </div>
         )}
       </VStack>
@@ -144,22 +131,12 @@ export function ReportStep({
       {/* Actions */}
       <div className={css['Actions']}>
         <HStack hasSpacing>
-          <PrimaryButton
-            label="Cancel"
-            variant={PrimaryButtonVariant.Muted}
-            onClick={onCancel}
-          />
+          <PrimaryButton label="Cancel" variant={PrimaryButtonVariant.Muted} onClick={onCancel} />
           <PrimaryButton
             label={allAutomatic ? 'Migrate Project' : 'Migrate (Auto Only)'}
             onClick={onMigrateWithoutAi}
           />
-          {!allAutomatic && (
-            <PrimaryButton
-              label="Migrate with AI"
-              onClick={onMigrateWithAi}
-              isDisabled // AI not yet implemented
-            />
-          )}
+          {!allAutomatic && aiEnabled && <PrimaryButton label="Migrate with AI" onClick={onMigrateWithAi} />}
         </HStack>
       </div>
     </div>
@@ -240,7 +217,8 @@ function CategorySection({
                       <li key={issue.id}>
                         <code>{issue.type}</code>
                         <Text size={TextSize.Small} isSpan textType={TextType.Secondary}>
-                          {' '}{issue.description}
+                          {' '}
+                          {issue.description}
                         </Text>
                       </li>
                     ))}

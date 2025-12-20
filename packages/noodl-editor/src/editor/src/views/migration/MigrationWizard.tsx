@@ -10,23 +10,34 @@
 
 import React, { useCallback, useEffect, useReducer, useState } from 'react';
 
+import { IconName } from '@noodl-core-ui/components/common/Icon';
 import { IconButton, IconButtonVariant } from '@noodl-core-ui/components/inputs/IconButton';
 import { CoreBaseDialog } from '@noodl-core-ui/components/layout/BaseDialog';
 import { Text, TextType } from '@noodl-core-ui/components/typography/Text';
 import { Title, TitleSize, TitleVariant } from '@noodl-core-ui/components/typography/Title';
-import { IconName } from '@noodl-core-ui/components/common/Icon';
 
-import { MigrationSession, MigrationScan, MigrationResult } from '../../models/migration/types';
-import { migrationSessionManager, getStepLabel, getStepNumber, getTotalSteps } from '../../models/migration/MigrationSession';
-
+import {
+  migrationSessionManager,
+  getStepLabel,
+  getStepNumber,
+  getTotalSteps
+} from '../../models/migration/MigrationSession';
+import {
+  MigrationSession,
+  MigrationScan,
+  MigrationResult,
+  AIBudget,
+  AIPreferences
+} from '../../models/migration/types';
+import { AIConfigPanel, AIConfig } from './AIConfigPanel';
 import { WizardProgress } from './components/WizardProgress';
-import { ConfirmStep } from './steps/ConfirmStep';
-import { ScanningStep } from './steps/ScanningStep';
-import { ReportStep } from './steps/ReportStep';
-import { CompleteStep } from './steps/CompleteStep';
-import { FailedStep } from './steps/FailedStep';
-
 import css from './MigrationWizard.module.scss';
+import { CompleteStep } from './steps/CompleteStep';
+import { ConfirmStep } from './steps/ConfirmStep';
+import { FailedStep } from './steps/FailedStep';
+import { MigratingStep, AiDecision } from './steps/MigratingStep';
+import { ReportStep } from './steps/ReportStep';
+import { ScanningStep } from './steps/ScanningStep';
 
 // =============================================================================
 // Types
@@ -48,8 +59,12 @@ type WizardAction =
   | { type: 'SET_TARGET_PATH'; path: string }
   | { type: 'START_SCAN' }
   | { type: 'SCAN_COMPLETE'; scan: MigrationScan }
+  | { type: 'CONFIGURE_AI' }
+  | { type: 'AI_CONFIGURED' }
+  | { type: 'BACK_TO_REPORT' }
   | { type: 'ERROR'; error: Error }
   | { type: 'START_MIGRATE'; useAi: boolean }
+  | { type: 'AI_DECISION'; decision: AiDecision }
   | { type: 'MIGRATION_PROGRESS'; progress: number; currentComponent?: string }
   | { type: 'COMPLETE'; result: MigrationResult }
   | { type: 'RETRY' };
@@ -101,6 +116,31 @@ function wizardReducer(state: WizardState, action: WizardAction): WizardState {
         },
         loading: false
       };
+
+    case 'CONFIGURE_AI':
+      if (!state.session) return state;
+      return {
+        ...state,
+        session: { ...state.session, step: 'configureAi' }
+      };
+
+    case 'AI_CONFIGURED':
+      if (!state.session) return state;
+      return {
+        ...state,
+        session: { ...state.session, step: 'report' }
+      };
+
+    case 'BACK_TO_REPORT':
+      if (!state.session) return state;
+      return {
+        ...state,
+        session: { ...state.session, step: 'report' }
+      };
+
+    case 'AI_DECISION':
+      // Handle AI decision - just continue migration
+      return state;
 
     case 'ERROR':
       if (!state.session) return state;
@@ -173,12 +213,7 @@ function wizardReducer(state: WizardState, action: WizardAction): WizardState {
 // Component
 // =============================================================================
 
-export function MigrationWizard({
-  sourcePath,
-  projectName,
-  onComplete,
-  onCancel
-}: MigrationWizardProps) {
+export function MigrationWizard({ sourcePath, projectName, onComplete, onCancel }: MigrationWizardProps) {
   // Initialize session on mount
   const [state, dispatch] = useReducer(wizardReducer, {
     session: null,
@@ -197,7 +232,7 @@ export function MigrationWizard({
         // Set default target path
         const defaultTargetPath = `${sourcePath}-react19`;
         migrationSessionManager.setTargetPath(defaultTargetPath);
-        
+
         // Update session with new target path
         const updatedSession = migrationSessionManager.getSession();
         if (updatedSession) {
@@ -274,6 +309,56 @@ export function MigrationWizard({
     }
   }, [onComplete]);
 
+  const handleConfigureAi = useCallback(async () => {
+    try {
+      await migrationSessionManager.transitionTo('configureAi');
+      dispatch({ type: 'CONFIGURE_AI' });
+    } catch (error) {
+      console.error('Failed to transition to AI config:', error);
+      dispatch({ type: 'ERROR', error: error as Error });
+    }
+  }, []);
+
+  const handleAiConfigured = useCallback(async (config: AIConfig) => {
+    try {
+      // Transform AIConfig to match MigrationSessionManager expectations
+      const aiConfig = {
+        ...config,
+        budget: {
+          ...config.budget,
+          spent: 0 // Initialize spent to 0 for new config
+        }
+      };
+      migrationSessionManager.configureAI(aiConfig);
+      await migrationSessionManager.transitionTo('report');
+      dispatch({ type: 'AI_CONFIGURED' });
+    } catch (error) {
+      console.error('Failed to configure AI:', error);
+      dispatch({ type: 'ERROR', error: error as Error });
+    }
+  }, []);
+
+  const handleBackToReport = useCallback(async () => {
+    try {
+      await migrationSessionManager.transitionTo('report');
+      dispatch({ type: 'BACK_TO_REPORT' });
+    } catch (error) {
+      console.error('Failed to go back to report:', error);
+      dispatch({ type: 'ERROR', error: error as Error });
+    }
+  }, []);
+
+  const handleAiDecision = useCallback((decision: AiDecision) => {
+    // For now, just continue - full AI orchestration will be wired in Phase 3
+    console.log('AI decision:', decision);
+    dispatch({ type: 'AI_DECISION', decision });
+  }, []);
+
+  const handlePauseMigration = useCallback(() => {
+    // Pause migration - will be implemented when orchestrator is wired up
+    console.log('Pause migration requested');
+  }, []);
+
   // ==========================================================================
   // Render
   // ==========================================================================
@@ -305,10 +390,23 @@ export function MigrationWizard({
         );
 
       case 'scanning':
+        return <ScanningStep sourcePath={sourcePath} targetPath={session.target.path} />;
+
+      case 'configureAi':
         return (
-          <ScanningStep
-            sourcePath={sourcePath}
-            targetPath={session.target.path}
+          <AIConfigPanel
+            existingConfig={
+              session.ai
+                ? {
+                    apiKey: session.ai.apiKey || '',
+                    enabled: session.ai.enabled,
+                    budget: session.ai.budget,
+                    preferences: session.ai.preferences
+                  }
+                : undefined
+            }
+            onSave={handleAiConfigured}
+            onCancel={handleBackToReport}
           />
         );
 
@@ -316,19 +414,22 @@ export function MigrationWizard({
         return (
           <ReportStep
             scan={session.scan!}
+            onConfigureAi={handleConfigureAi}
             onMigrateWithoutAi={() => handleStartMigration(false)}
             onMigrateWithAi={() => handleStartMigration(true)}
             onCancel={onCancel}
+            aiEnabled={session.ai?.enabled || false}
           />
         );
 
       case 'migrating':
         return (
-          <ScanningStep
-            sourcePath={sourcePath}
-            targetPath={session.target.path}
-            isMigrating
-            progress={session.progress}
+          <MigratingStep
+            progress={session.progress || { phase: 'copying', current: 0, total: 0, log: [] }}
+            useAi={!!session.ai}
+            budget={session.ai?.budget}
+            onAiDecision={handleAiDecision}
+            onPause={handlePauseMigration}
           />
         );
 
@@ -343,13 +444,7 @@ export function MigrationWizard({
         );
 
       case 'failed':
-        return (
-          <FailedStep
-            error={state.error}
-            onRetry={handleRetry}
-            onCancel={onCancel}
-          />
-        );
+        return <FailedStep error={state.error} onRetry={handleRetry} onCancel={onCancel} />;
 
       default:
         return null;
@@ -361,11 +456,7 @@ export function MigrationWizard({
       <div className={css['WizardContainer']}>
         {/* Close Button */}
         <div className={css['CloseButton']}>
-          <IconButton 
-            icon={IconName.Close} 
-            onClick={onCancel} 
-            variant={IconButtonVariant.Transparent} 
-          />
+          <IconButton icon={IconName.Close} onClick={onCancel} variant={IconButtonVariant.Transparent} />
         </div>
 
         {/* Header */}
@@ -383,9 +474,7 @@ export function MigrationWizard({
             totalSteps={totalSteps}
             stepLabels={['Confirm', 'Scan', 'Report', 'Migrate', 'Complete']}
           />
-          <div className={css['StepContainer']}>
-            {renderStep()}
-          </div>
+          <div className={css['StepContainer']}>{renderStep()}</div>
         </div>
       </div>
     </CoreBaseDialog>

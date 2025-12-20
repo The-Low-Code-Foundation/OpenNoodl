@@ -62,10 +62,7 @@ export class MigrationSessionManager extends EventDispatcher {
   /**
    * Creates a new migration session for a project
    */
-  async createSession(
-    sourcePath: string,
-    projectName: string
-  ): Promise<MigrationSessionState> {
+  async createSession(sourcePath: string, projectName: string): Promise<MigrationSessionState> {
     // Generate unique session ID
     const sessionId = `migration-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
@@ -74,9 +71,7 @@ export class MigrationSessionManager extends EventDispatcher {
 
     // Only allow migration of React 17 projects
     if (versionInfo.version !== 'react17' && versionInfo.version !== 'unknown') {
-      throw new Error(
-        `Project is already using ${versionInfo.version}. Migration not needed.`
-      );
+      throw new Error(`Project is already using ${versionInfo.version}. Migration not needed.`);
     }
 
     // Create session
@@ -120,7 +115,7 @@ export class MigrationSessionManager extends EventDispatcher {
       confirm: ['scanning'],
       scanning: ['report', 'failed'],
       report: ['configureAi', 'migrating'], // Can skip AI config if no AI needed
-      configureAi: ['migrating'],
+      configureAi: ['migrating', 'report'], // Can go back to report (cancel)
       migrating: ['complete', 'failed'],
       complete: [], // Terminal state
       failed: ['confirm'] // Can retry from beginning
@@ -140,9 +135,7 @@ export class MigrationSessionManager extends EventDispatcher {
     const currentStep = this.session.step;
 
     if (!this.canTransitionTo(currentStep, step)) {
-      throw new Error(
-        `Invalid transition from "${currentStep}" to "${step}"`
-      );
+      throw new Error(`Invalid transition from "${currentStep}" to "${step}"`);
     }
 
     const previousStep = this.session.step;
@@ -181,17 +174,14 @@ export class MigrationSessionManager extends EventDispatcher {
     await this.transitionTo('scanning');
 
     try {
-      const scan = await scanProjectForMigration(
-        this.session.source.path,
-        (progress, currentItem, stats) => {
-          this.notifyListeners('scanProgress', {
-            session: this.session,
-            progress,
-            currentItem,
-            stats
-          });
-        }
-      );
+      const scan = await scanProjectForMigration(this.session.source.path, (progress, currentItem, stats) => {
+        this.notifyListeners('scanProgress', {
+          session: this.session,
+          progress,
+          currentItem,
+          stats
+        });
+      });
 
       this.session.scan = scan;
       await this.transitionTo('report');
@@ -395,9 +385,7 @@ export class MigrationSessionManager extends EventDispatcher {
 
   private getSuccessfulMigrationCount(): number {
     // Count from log entries
-    return (
-      this.session?.progress?.log.filter((l) => l.level === 'success').length ?? 0
-    );
+    return this.session?.progress?.log.filter((l) => l.level === 'success').length ?? 0;
   }
 
   private getNeedsReviewCount(): number {
@@ -405,9 +393,7 @@ export class MigrationSessionManager extends EventDispatcher {
   }
 
   private getFailedCount(): number {
-    return (
-      this.session?.progress?.log.filter((l) => l.level === 'error').length ?? 0
-    );
+    return this.session?.progress?.log.filter((l) => l.level === 'error').length ?? 0;
   }
 
   private async executeCopyPhase(): Promise<void> {
@@ -551,10 +537,10 @@ export class MigrationSessionManager extends EventDispatcher {
     try {
       // Update project.json with migration metadata
       const targetProjectJsonPath = `${this.session.target.path}/project.json`;
-      
+
       // Read existing project.json
-      const projectJson = await filesystem.readJson(targetProjectJsonPath) as Record<string, unknown>;
-      
+      const projectJson = (await filesystem.readJson(targetProjectJsonPath)) as Record<string, unknown>;
+
       // Add React 19 markers
       projectJson.runtimeVersion = 'react19';
       projectJson.migratedFrom = {
@@ -563,12 +549,9 @@ export class MigrationSessionManager extends EventDispatcher {
         originalPath: this.session.source.path,
         aiAssisted: this.session.ai?.enabled ?? false
       };
-      
+
       // Write updated project.json back
-      await filesystem.writeFile(
-        targetProjectJsonPath,
-        JSON.stringify(projectJson, null, 2)
-      );
+      await filesystem.writeFile(targetProjectJsonPath, JSON.stringify(projectJson, null, 2));
 
       this.addLogEntry({
         level: 'success',
@@ -613,9 +596,7 @@ export const migrationSessionManager = new MigrationSessionManager();
 /**
  * Checks if a project needs migration
  */
-export async function checkProjectNeedsMigration(
-  projectPath: string
-): Promise<{
+export async function checkProjectNeedsMigration(projectPath: string): Promise<{
   needsMigration: boolean;
   versionInfo: RuntimeVersionInfo;
 }> {
@@ -647,14 +628,7 @@ export function getStepLabel(step: MigrationStep): string {
  * Gets the step number for progress display (1-indexed)
  */
 export function getStepNumber(step: MigrationStep): number {
-  const order: MigrationStep[] = [
-    'confirm',
-    'scanning',
-    'report',
-    'configureAi',
-    'migrating',
-    'complete'
-  ];
+  const order: MigrationStep[] = ['confirm', 'scanning', 'report', 'configureAi', 'migrating', 'complete'];
   const index = order.indexOf(step);
   return index >= 0 ? index + 1 : 0;
 }
