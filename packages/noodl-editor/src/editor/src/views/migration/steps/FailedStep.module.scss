@@ -1,91 +1,181 @@
 /**
  * FailedStep Styles
  * 
- * Error state when migration fails.
+ * Enhanced error state with helpful suggestions and beautiful error display.
  */
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-4px);
+  }
+  75% {
+    transform: translateX(4px);
+  }
+}
 
 .Root {
   display: flex;
   flex-direction: column;
   height: 100%;
+  animation: slideInUp 300ms ease-out;
 }
 
 .Header {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 8px;
-}
+  gap: 16px;
+  margin-bottom: 24px;
+  padding: 20px;
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, transparent 100%);
+  border-radius: 12px;
 
-.ErrorCircleIcon {
-  color: var(--theme-color-danger);
-}
+  .ErrorIcon {
+    width: 64px;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.2) 0%, rgba(239, 68, 68, 0.1) 100%);
+    border-radius: 50%;
+    animation: shake 500ms ease-out;
 
-.DescriptionText {
-  color: var(--theme-color-secondary-as-fg);
+    svg {
+      width: 36px;
+      height: 36px;
+      color: var(--theme-color-danger);
+    }
+  }
+
+  h2 {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--theme-color-fg-highlight);
+    margin: 0;
+    text-align: center;
+  }
+
+  p {
+    font-size: 14px;
+    color: var(--theme-color-fg-default);
+    margin: 0;
+    text-align: center;
+    line-height: 1.6;
+  }
 }
 
 .ErrorBox {
-  margin-top: 16px;
-  background-color: rgba(239, 68, 68, 0.1);
-  border: 1px solid rgba(239, 68, 68, 0.3);
-  border-radius: 8px;
+  margin-bottom: 20px;
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.08) 0%, rgba(239, 68, 68, 0.05) 100%);
+  border: 2px solid rgba(239, 68, 68, 0.3);
+  border-radius: 12px;
   overflow: hidden;
 }
 
 .ErrorHeader {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 12px 16px;
+  gap: 12px;
+  padding: 16px 20px;
   background-color: rgba(239, 68, 68, 0.15);
+  border-bottom: 1px solid rgba(239, 68, 68, 0.2);
 
   svg {
+    width: 20px;
+    height: 20px;
     color: var(--theme-color-danger);
+    flex-shrink: 0;
+  }
+
+  h3 {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--theme-color-danger);
+    margin: 0;
   }
 }
 
-.ErrorText {
-  color: var(--theme-color-danger);
-  font-weight: 500;
-}
-
 .ErrorMessage {
-  padding: 12px 16px;
+  padding: 20px;
   font-family: monospace;
-  font-size: 12px;
+  font-size: 13px;
+  line-height: 1.6;
   color: var(--theme-color-fg-highlight);
-  word-break: break-all;
+  background-color: var(--theme-color-bg-4);
+  word-break: break-word;
+  white-space: pre-wrap;
 }
 
 .Suggestions {
-  margin-top: 16px;
-  padding: 16px;
-  background-color: var(--theme-color-bg-3);
-  border-radius: 8px;
+  padding: 20px;
+  background: linear-gradient(135deg, var(--theme-color-bg-3) 0%, var(--theme-color-bg-2) 100%);
+  border-radius: 12px;
+  border: 1px solid var(--theme-color-bg-2);
+  margin-bottom: 20px;
+
+  h3 {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--theme-color-fg-highlight);
+    margin: 0 0 16px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    svg {
+      width: 20px;
+      height: 20px;
+      color: var(--theme-color-primary);
+    }
+  }
 }
 
 .SuggestionList {
   list-style: none;
   padding: 0;
-  margin: 12px 0 0 0;
+  margin: 0;
 
   li {
     display: flex;
-    gap: 12px;
-    padding: 8px 0;
-    border-bottom: 1px solid var(--theme-color-bg-2);
+    gap: 16px;
+    padding: 16px;
+    background-color: var(--theme-color-bg-4);
+    border-radius: 8px;
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--theme-color-fg-default);
+    transition: all 200ms ease-in-out;
 
-    &:last-child {
-      border-bottom: none;
+    &:not(:last-child) {
+      margin-bottom: 10px;
+    }
+
+    &:hover {
+      background-color: var(--theme-color-bg-3);
+      transform: translateX(4px);
     }
 
     svg {
-      width: 16px;
-      height: 16px;
+      width: 20px;
+      height: 20px;
       flex-shrink: 0;
       margin-top: 2px;
-      color: var(--theme-color-secondary-as-fg);
+      color: var(--theme-color-primary);
     }
   }
 }
@@ -93,31 +183,47 @@
 .Link {
   color: var(--theme-color-primary);
   text-decoration: underline;
+  font-weight: 500;
+  transition: opacity 200ms ease-in-out;
 
   &:hover {
-    opacity: 0.8;
+    opacity: 0.7;
   }
 }
 
 .SafetyNotice {
   display: flex;
-  gap: 12px;
-  margin-top: 16px;
-  padding: 12px 16px;
-  background-color: rgba(34, 197, 94, 0.1);
-  border: 1px solid rgba(34, 197, 94, 0.3);
-  border-radius: 8px;
+  gap: 16px;
+  padding: 20px;
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.12) 0%, rgba(34, 197, 94, 0.08) 100%);
+  border: 2px solid rgba(34, 197, 94, 0.3);
+  border-radius: 12px;
+  margin-bottom: 20px;
 
   svg {
-    width: 16px;
-    height: 16px;
+    width: 24px;
+    height: 24px;
     flex-shrink: 0;
     color: var(--theme-color-success);
   }
-}
 
-.SafetyText {
-  color: var(--theme-color-secondary-as-fg);
+  .SafetyContent {
+    flex: 1;
+
+    h4 {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--theme-color-success);
+      margin: 0 0 6px 0;
+    }
+
+    p {
+      font-size: 13px;
+      line-height: 1.6;
+      color: var(--theme-color-fg-default);
+      margin: 0;
+    }
+  }
 }
 
 .Actions {
@@ -125,4 +231,5 @@
   padding-top: 24px;
   display: flex;
   justify-content: flex-end;
+  gap: 12px;
 }

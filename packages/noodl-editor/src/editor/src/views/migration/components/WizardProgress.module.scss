@@ -1,78 +1,146 @@
 /**
  * WizardProgress Styles
  * 
- * Step progress indicator for migration wizard.
+ * Enhanced step progress indicator for migration wizard with animations and better visuals.
  */
+
+@keyframes pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(66, 135, 245, 0.7);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 0 0 8px rgba(66, 135, 245, 0);
+  }
+}
+
+@keyframes checkmark {
+  0% {
+    transform: scale(0) rotate(-45deg);
+  }
+  50% {
+    transform: scale(1.2) rotate(-45deg);
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+@keyframes slideProgress {
+  from {
+    transform: scaleX(0);
+    transform-origin: left;
+  }
+  to {
+    transform: scaleX(1);
+    transform-origin: left;
+  }
+}
 
 .Root {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 0;
+  gap: 0;
+  padding: 16px 0 24px;
+  margin-bottom: 8px;
 }
 
 .Step {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 8px;
   flex: 1;
   position: relative;
+  z-index: 1;
 }
 
 .StepCircle {
-  width: 28px;
-  height: 28px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   background-color: var(--theme-color-bg-2);
-  color: var(--theme-color-secondary-as-fg);
-  transition: background-color 0.2s, color 0.2s;
+  color: var(--theme-color-fg-muted);
+  border: 2px solid var(--theme-color-bg-2);
+  transition: all 300ms ease-in-out;
+  position: relative;
+  z-index: 2;
 }
 
 .Step.is-completed .StepCircle {
   background-color: var(--theme-color-success);
+  border-color: var(--theme-color-success);
   color: white;
+  animation: checkmark 400ms ease-out;
 }
 
 .Step.is-active .StepCircle {
   background-color: var(--theme-color-primary);
+  border-color: var(--theme-color-primary);
   color: white;
+  animation: pulse 2s ease-in-out infinite;
+  box-shadow: 0 0 0 0 rgba(66, 135, 245, 0.7);
 }
 
 .StepLabel {
-  font-size: 10px;
-  color: var(--theme-color-secondary-as-fg);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--theme-color-fg-muted);
   text-align: center;
-  max-width: 60px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  max-width: 80px;
+  transition: color 200ms ease-in-out;
+  line-height: 1.3;
 }
 
 .Step.is-completed .StepLabel,
 .Step.is-active .StepLabel {
   color: var(--theme-color-fg-highlight);
+  font-weight: 600;
 }
 
 .Connector {
-  width: 24px;
+  flex: 1;
   height: 2px;
   background-color: var(--theme-color-bg-2);
-  margin-bottom: 20px;
-  transition: background-color 0.2s;
+  margin: 0 -4px;
+  margin-bottom: 28px;
+  position: relative;
+  z-index: 0;
+  overflow: hidden;
+
+  &::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: var(--theme-color-success);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 400ms ease-in-out;
+  }
 }
 
-.Connector.is-completed {
-  background-color: var(--theme-color-success);
+.Connector.is-completed::after {
+  transform: scaleX(1);
+  animation: slideProgress 400ms ease-out;
 }
 
 .CheckIcon {
   display: flex;
   align-items: center;
   justify-content: center;
+
+  svg {
+    width: 18px;
+    height: 18px;
+  }
 }

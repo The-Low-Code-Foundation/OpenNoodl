@@ -1,82 +1,187 @@
 /**
  * ReportStep Styles
  * 
- * Scan results report with categories and AI options.
+ * Enhanced scan results report with beautiful categories and AI options.
  */
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes countUp {
+  from {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes sparkle {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.1);
+  }
+}
 
 .Root {
   display: flex;
   flex-direction: column;
   height: 100%;
+  animation: slideInUp 300ms ease-out;
 }
 
 .Header {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 8px;
+  gap: 16px;
+  margin-bottom: 20px;
 
   svg {
+    width: 24px;
+    height: 24px;
     color: var(--theme-color-primary);
+  }
+
+  h2 {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--theme-color-fg-highlight);
+    margin: 0;
+  }
+
+  p {
+    font-size: 14px;
+    color: var(--theme-color-fg-default);
+    margin: 4px 0 0 0;
   }
 }
 
 .StatsRow {
-  display: flex;
-  gap: 12px;
-  margin-top: 16px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
 }
 
 .StatCard {
-  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
-  padding: 12px;
-  background-color: var(--theme-color-bg-3);
-  border-radius: 8px;
+  gap: 12px;
+  padding: 20px 16px;
+  background: linear-gradient(135deg, var(--theme-color-bg-3) 0%, var(--theme-color-bg-2) 100%);
+  border-radius: 12px;
   text-align: center;
+  border: 1px solid var(--theme-color-bg-2);
+  transition: all 250ms ease-in-out;
+  position: relative;
+  overflow: hidden;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: var(--theme-color-secondary-as-fg);
+    opacity: 0;
+    transition: opacity 250ms ease-in-out;
+  }
+
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+
+    &::before {
+      opacity: 1;
+    }
+  }
+}
+
+.StatCard.is-automatic::before {
+  background: var(--theme-color-success);
+}
+
+.StatCard.is-simpleFixes::before {
+  background: var(--theme-color-warning);
+}
+
+.StatCard.is-needsReview::before {
+  background: var(--theme-color-danger);
 }
 
 .StatCardIcon {
-  width: 24px;
-  height: 24px;
+  width: 40px;
+  height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
   color: var(--theme-color-secondary-as-fg);
+  background-color: var(--theme-color-bg-4);
+  border-radius: 50%;
+  transition: all 200ms ease-in-out;
+
+  svg {
+    width: 22px;
+    height: 22px;
+  }
 }
 
 .StatCard.is-automatic .StatCardIcon {
   color: var(--theme-color-success);
+  background-color: rgba(34, 197, 94, 0.15);
 }
 
 .StatCard.is-simpleFixes .StatCardIcon {
   color: var(--theme-color-warning);
+  background-color: rgba(251, 191, 36, 0.15);
 }
 
 .StatCard.is-needsReview .StatCardIcon {
   color: var(--theme-color-danger);
+  background-color: rgba(239, 68, 68, 0.15);
+}
+
+.StatCard:hover .StatCardIcon {
+  transform: scale(1.1) rotate(5deg);
 }
 
 .StatCardValue {
-  font-size: 24px;
-  font-weight: 600;
+  font-size: 32px;
+  font-weight: 700;
   color: var(--theme-color-fg-highlight);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  animation: countUp 400ms ease-out;
 }
 
 .StatCardLabel {
   font-size: 11px;
-  color: var(--theme-color-secondary-as-fg);
+  color: var(--theme-color-fg-default);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.8px;
+  font-weight: 600;
 }
 
 .Categories {
   flex: 1;
   overflow-y: auto;
-  margin-top: 16px;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -84,127 +189,309 @@
 
 .CategorySection {
   background-color: var(--theme-color-bg-3);
-  border-radius: 8px;
+  border-radius: 10px;
   overflow: hidden;
+  border: 1px solid var(--theme-color-bg-2);
+  transition: all 250ms ease-in-out;
+
+  &:hover {
+    border-color: var(--theme-color-bg-1);
+  }
+}
+
+.CategorySection.is-expanded {
+  background-color: var(--theme-color-bg-2);
 }
 
 .CategoryHeader {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 12px 16px;
-  background-color: var(--theme-color-bg-2);
+  gap: 12px;
+  padding: 16px 20px;
+  background-color: transparent;
   cursor: pointer;
+  transition: all 200ms ease-in-out;
+  user-select: none;
 
   &:hover {
-    background-color: var(--theme-color-bg-1);
+    background-color: var(--theme-color-bg-2);
+  }
+
+  &:active {
+    transform: scale(0.98);
   }
 }
 
+.CategorySection.is-expanded .CategoryHeader {
+  background-color: var(--theme-color-bg-1);
+  border-bottom: 1px solid var(--theme-color-bg-3);
+}
+
 .CategoryIcon {
-  width: 16px;
-  height: 16px;
+  width: 36px;
+  height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
+  border-radius: 8px;
+  transition: all 200ms ease-in-out;
+  flex-shrink: 0;
+
+  svg {
+    width: 18px;
+    height: 18px;
+  }
 }
 
 .CategorySection.is-automatic .CategoryIcon {
   color: var(--theme-color-success);
+  background-color: rgba(34, 197, 94, 0.15);
 }
 
 .CategorySection.is-simpleFixes .CategoryIcon {
   color: var(--theme-color-warning);
+  background-color: rgba(251, 191, 36, 0.15);
 }
 
 .CategorySection.is-needsReview .CategoryIcon {
   color: var(--theme-color-danger);
+  background-color: rgba(239, 68, 68, 0.15);
+}
+
+.CategoryHeader:hover .CategoryIcon {
+  transform: scale(1.1);
+}
+
+.CategoryInfo {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .CategoryTitle {
-  flex: 1;
-  font-weight: 500;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--theme-color-fg-highlight);
+}
+
+.CategoryDescription {
+  font-size: 12px;
+  color: var(--theme-color-fg-default);
 }
 
 .CategoryCount {
-  background-color: var(--theme-color-bg-1);
-  padding: 2px 8px;
-  border-radius: 10px;
-  font-size: 11px;
-  color: var(--theme-color-secondary-as-fg);
+  background-color: var(--theme-color-bg-4);
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--theme-color-fg-highlight);
+  border: 1px solid var(--theme-color-bg-1);
 }
 
 .ExpandIcon {
-  width: 16px;
-  height: 16px;
-  color: var(--theme-color-secondary-as-fg);
-  transition: transform 0.2s ease;
+  width: 20px;
+  height: 20px;
+  color: var(--theme-color-fg-muted);
+  transition: transform 250ms ease-in-out;
+  flex-shrink: 0;
+
+  svg {
+    width: 100%;
+    height: 100%;
+  }
 }
 
 .CategorySection.is-expanded .ExpandIcon {
   transform: rotate(180deg);
+  color: var(--theme-color-primary);
 }
 
 .ComponentList {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 8px;
-  max-height: 200px;
+  gap: 6px;
+  padding: 12px;
+  max-height: 250px;
   overflow-y: auto;
+  animation: slideInUp 250ms ease-out;
+
+  /* Custom scrollbar */
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: var(--theme-color-bg-3);
+    border-radius: 3px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: var(--theme-color-bg-1);
+    border-radius: 3px;
+
+    &:hover {
+      background: var(--theme-color-primary);
+    }
+  }
 }
 
 .ComponentItem {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 8px 12px;
-  background-color: var(--theme-color-bg-2);
-  border-radius: 4px;
+  padding: 12px 16px;
+  background-color: var(--theme-color-bg-4);
+  border-radius: 8px;
+  border: 1px solid var(--theme-color-bg-3);
+  transition: all 200ms ease-in-out;
+  cursor: pointer;
 
   &:hover {
-    background-color: var(--theme-color-bg-1);
+    background-color: var(--theme-color-bg-3);
+    border-color: var(--theme-color-primary);
+    transform: translateX(4px);
   }
 }
 
 .ComponentName {
   font-size: 13px;
+  font-weight: 500;
+  color: var(--theme-color-fg-highlight);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  &::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background-color: var(--theme-color-primary);
+  }
 }
 
 .ComponentIssueCount {
   font-size: 11px;
-  color: var(--theme-color-secondary-as-fg);
+  color: var(--theme-color-fg-default);
+  background-color: var(--theme-color-bg-2);
+  padding: 3px 8px;
+  border-radius: 10px;
+  font-weight: 500;
 }
 
 .AiPromptSection {
-  margin-top: 16px;
-  padding: 16px;
-  background-color: rgba(139, 92, 246, 0.1);
-  border: 1px solid rgba(139, 92, 246, 0.3);
-  border-radius: 8px;
+  margin-top: 20px;
+  padding: 24px;
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.12) 0%, rgba(139, 92, 246, 0.08) 100%);
+  border: 2px solid rgba(139, 92, 246, 0.3);
+  border-radius: 12px;
+  position: relative;
+  overflow: hidden;
+  transition: all 250ms ease-in-out;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
+    background: linear-gradient(45deg, rgba(139, 92, 246, 0.3), rgba(168, 85, 247, 0.3), rgba(139, 92, 246, 0.3));
+    background-size: 200% 200%;
+    animation: shimmer 3s ease-in-out infinite;
+    border-radius: 12px;
+    opacity: 0;
+    transition: opacity 250ms ease-in-out;
+    z-index: -1;
+  }
+
+  &:hover::before {
+    opacity: 1;
+  }
 }
 
 .AiPromptHeader {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
+  gap: 12px;
+  margin-bottom: 16px;
 
   svg {
-    width: 20px;
-    height: 20px;
-    color: #8b5cf6; // AI purple
+    width: 28px;
+    height: 28px;
+    color: #8b5cf6;
+    animation: sparkle 2s ease-in-out infinite;
+    filter: drop-shadow(0 0 8px rgba(139, 92, 246, 0.4));
+  }
+
+  h4 {
+    font-size: 16px;
+    font-weight: 600;
+    color: #8b5cf6;
+    margin: 0;
   }
 }
 
-.AiPromptTitle {
+.AiPromptContent {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+
+  p {
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--theme-color-fg-default);
+    margin: 0;
+  }
+
+  strong {
+    color: var(--theme-color-fg-highlight);
+  }
+}
+
+.AiPromptFeatures {
+  display: flex;
+  gap: 12px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+.AiPromptFeature {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background-color: rgba(139, 92, 246, 0.15);
+  border-radius: 16px;
+  font-size: 12px;
+  color: #8b5cf6;
   font-weight: 500;
-  color: #8b5cf6; // AI purple
+
+  svg {
+    width: 14px;
+    height: 14px;
+  }
+}
+
+.AiPromptCost {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 600;
+  color: #8b5cf6;
+
+  svg {
+    width: 16px;
+    height: 16px;
+  }
 }
 
 .AiPromptSection.is-disabled {
-  opacity: 0.6;
+  opacity: 0.5;
   pointer-events: none;
+  filter: grayscale(0.5);
 }
 
 .Actions {
@@ -212,4 +499,5 @@
   padding-top: 24px;
   display: flex;
   justify-content: flex-end;
+  gap: 12px;
 }

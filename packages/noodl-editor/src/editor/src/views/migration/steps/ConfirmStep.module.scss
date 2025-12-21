@@ -2,53 +2,124 @@
  * ConfirmStep Styles
  * 
  * First step of migration wizard - confirm source and target paths.
+ * Enhanced with better visual hierarchy and animations.
  */
+
+@keyframes arrowBounce {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(4px);
+  }
+}
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
 
 .Root {
   display: flex;
   flex-direction: column;
   height: 100%;
+  animation: slideInUp 300ms ease-out;
 }
 
 .Header {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 8px;
+  margin-bottom: 20px;
 
   svg {
     color: var(--theme-color-primary);
+    width: 24px;
+    height: 24px;
+  }
+
+  h2 {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--theme-color-fg-highlight);
+    margin: 0;
   }
 }
 
 .PathSection {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 16px;
+  gap: 12px;
+  padding: 20px;
   background-color: var(--theme-color-bg-3);
   border-radius: 8px;
+  border: 1px solid transparent;
+  transition: all 250ms ease-in-out;
+
+  &:hover {
+    background-color: var(--theme-color-bg-2);
+  }
+}
+
+.PathSection--locked {
+  background-color: var(--theme-color-bg-2);
+  border-color: var(--theme-color-bg-1);
+  opacity: 0.9;
+
+  .PathValue {
+    background-color: var(--theme-color-bg-1);
+    color: var(--theme-color-fg-default-shy);
+    border: 1px dashed var(--theme-color-bg-1);
+  }
+}
+
+.PathSection--editable {
+  border-color: var(--theme-color-primary);
+  border-width: 2px;
+  box-shadow: 0 0 0 3px rgba(66, 135, 245, 0.1);
+
+  &:hover {
+    box-shadow: 0 0 0 4px rgba(66, 135, 245, 0.15);
+  }
 }
 
 .PathHeader {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
+
+  h3 {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--theme-color-fg-highlight);
+    margin: 0;
+  }
 }
 
-.LockIcon,
+.LockIcon {
+  color: var(--theme-color-fg-muted);
+  width: 16px;
+  height: 16px;
+}
+
 .FolderIcon {
-  color: var(--theme-color-secondary-as-fg);
+  color: var(--theme-color-primary);
+  width: 16px;
+  height: 16px;
 }
 
 .PathFields {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  margin-top: 16px;
-  padding: 16px;
-  background-color: var(--theme-color-bg-3);
-  border-radius: 8px;
+  gap: 20px;
+  margin-top: 0;
 }
 
 .PathField {
@@ -115,24 +186,66 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  padding: 8px 0;
-  color: var(--theme-color-secondary-as-fg);
+  gap: 12px;
+  padding: 16px 0;
+  margin: 8px 0;
+  color: var(--theme-color-primary);
+  font-size: 13px;
+  font-weight: 500;
+
+  svg {
+    width: 20px;
+    height: 20px;
+    animation: arrowBounce 2s ease-in-out infinite;
+  }
 }
 
 .InfoBox {
-  padding: 16px;
-  background-color: var(--theme-color-bg-3);
+  padding: 20px;
+  background: linear-gradient(135deg, var(--theme-color-bg-3) 0%, var(--theme-color-bg-2) 100%);
   border-radius: 8px;
+  border-left: 3px solid var(--theme-color-primary);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+
+  h4 {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--theme-color-fg-highlight);
+    margin: 0 0 12px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    svg {
+      width: 16px;
+      height: 16px;
+      color: var(--theme-color-primary);
+    }
+  }
+
+  p {
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--theme-color-fg-default);
+    margin: 0 0 12px 0;
+  }
 }
 
 .StepsList {
-  margin: 8px 0 0 0;
-  padding-left: 20px;
+  margin: 0;
+  padding-left: 24px;
   color: var(--theme-color-fg-default);
-  
+  font-size: 13px;
+  line-height: 1.6;
+
   li {
-    margin-bottom: 4px;
+    margin-bottom: 8px;
+    padding-left: 4px;
+
+    &::marker {
+      color: var(--theme-color-primary);
+      font-weight: 600;
+    }
   }
 }
 

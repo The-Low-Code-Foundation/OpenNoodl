@@ -2,43 +2,122 @@
  * MigrationWizard Styles
  * 
  * Main container for the migration wizard using CoreBaseDialog.
+ * Enhanced with modern visual design, animations, and better spacing.
  */
+
+/* Animation definitions */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Design system variables */
+:root {
+  --wizard-space-xs: 4px;
+  --wizard-space-sm: 8px;
+  --wizard-space-md: 16px;
+  --wizard-space-lg: 24px;
+  --wizard-space-xl: 32px;
+  --wizard-space-xxl: 48px;
+
+  --wizard-transition-fast: 150ms ease-out;
+  --wizard-transition-base: 250ms ease-in-out;
+  --wizard-transition-slow: 400ms ease-in-out;
+
+  --wizard-radius-sm: 4px;
+  --wizard-radius-md: 8px;
+  --wizard-radius-lg: 12px;
+
+  --wizard-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.12);
+  --wizard-shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+  --wizard-shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.15);
+}
 
 .WizardContainer {
   position: relative;
-  width: 700px;
-  max-width: 90vw;
-  max-height: 80vh;
+  width: 750px;
+  max-width: 92vw;
+  max-height: 85vh;
   display: flex;
   flex-direction: column;
   background-color: var(--theme-color-bg-4);
-  border-radius: 4px;
+  border-radius: var(--wizard-radius-lg);
   overflow: hidden;
+  box-shadow: var(--wizard-shadow-lg);
+  animation: fadeIn var(--wizard-transition-base);
 }
 
 .CloseButton {
   position: absolute;
-  top: 8px;
-  right: 8px;
+  top: var(--wizard-space-md);
+  right: var(--wizard-space-md);
   z-index: 10;
+  transition: transform var(--wizard-transition-fast);
+
+  &:hover {
+    transform: scale(1.1);
+  }
+
+  &:active {
+    transform: scale(0.95);
+  }
 }
 
 .WizardHeader {
-  padding: 24px 24px 16px;
-  padding-right: 48px; // Space for close button
+  padding: var(--wizard-space-xl) var(--wizard-space-xl) var(--wizard-space-lg);
+  padding-right: var(--wizard-space-xxl); // Space for close button
+  border-bottom: 1px solid var(--theme-color-bg-3);
 }
 
 .WizardContent {
   display: flex;
   flex-direction: column;
-  padding: 0 24px 24px;
-  gap: 16px;
+  padding: 0 var(--wizard-space-xl) var(--wizard-space-xl);
+  gap: var(--wizard-space-lg);
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  animation: slideIn var(--wizard-transition-base);
+
+  /* Custom scrollbar styling */
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: var(--theme-color-bg-3);
+    border-radius: var(--wizard-radius-sm);
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: var(--theme-color-bg-1);
+    border-radius: var(--wizard-radius-sm);
+
+    &:hover {
+      background: var(--theme-color-primary);
+    }
+  }
 }
 
 .StepContainer {
   flex: 1;
-  min-height: 200px;
+  min-height: 300px;
+  animation: slideIn var(--wizard-transition-base);
 }
