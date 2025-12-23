@@ -15,14 +15,15 @@ import { IconName } from '@noodl-core-ui/components/common/Icon';
 
 import { EventDispatcher } from '../../../../../shared/utils/EventDispatcher';
 import View from '../../../../../shared/view';
-import { NodeGraphEditor } from '../../nodegrapheditor';
-import * as NewPopupLayer from '../../PopupLayer/index';
-import { ToastLayer } from '../../ToastLayer/ToastLayer';
 import { ComponentsPanelFolder } from './ComponentsPanelFolder';
 import { ComponentTemplates } from './ComponentTemplates';
 
 const PopupLayer = require('@noodl-views/popuplayer');
 const ComponentsPanelTemplate = require('../../../templates/componentspanel.html');
+
+// TODO: Add these imports when implementing migration badges
+// import { getMigrationNote, getMigrationNoteCounts } from '../../../models/migration/MigrationNotesManager';
+// import { MigrationNotesPanel } from '../MigrationNotesPanel';
 
 // Styles
 require('../../../styles/componentspanel.css');

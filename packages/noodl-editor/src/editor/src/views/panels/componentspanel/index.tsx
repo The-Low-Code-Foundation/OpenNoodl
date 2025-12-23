@@ -1,32 +1,28 @@
-import { useNodeGraphContext } from '@noodl-contexts/NodeGraphContext/NodeGraphContext';
-import React, { useEffect, useState } from 'react';
+/**
+ * ComponentsPanel Wrapper
+ *
+ * Temporary wrapper that will be replaced with direct import
+ * from the new ComponentsPanel React component.
+ */
 
-import { Frame } from '../../common/Frame';
-import { ComponentsPanelOptions, ComponentsPanelView } from './ComponentsPanel';
+import React from 'react';
+
+import { ComponentsPanel as NewComponentsPanel } from '../ComponentsPanelNew/ComponentsPanelReact';
 
 export interface ComponentsPanelProps {
-  options?: ComponentsPanelOptions;
+  options?: {
+    showSheetList?: boolean;
+    hideSheets?: string[];
+  };
 }
 
+/**
+ * Wrapper component for ComponentsPanel
+ * Currently using new React implementation
+ */
 export function ComponentsPanel({ options }: ComponentsPanelProps) {
-  const [instance, setInstance] = useState<ComponentsPanelView>(null);
-
-  useEffect(() => {
-    const instance = new ComponentsPanelView(options);
-    instance.render();
-    setInstance(instance);
-
-    return () => {
-      instance.dispose();
-    };
-  }, []);
-
-  const nodeGraphContext = useNodeGraphContext();
-
-  useEffect(() => {
-    //make sure the node graph is kept up to date through hot reloads
-    instance?.setNodeGraphEditor(nodeGraphContext.nodeGraph);
-  }, [instance, nodeGraphContext.nodeGraph]);
-
-  return <Frame instance={instance} isFitWidth />;
+  return <NewComponentsPanel options={options} />;
 }
+
+// Re-export types for compatibility
+export type { ComponentsPanelOptions } from '../ComponentsPanelNew/types';

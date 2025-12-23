@@ -1,0 +1,185 @@
+/**
+ * ComponentsPanel Styles
+ * 
+ * Migrated from legacy componentspanel.css to CSS modules
+ * Using design tokens for proper theming support
+ */
+
+.ComponentsPanel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.Header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 36px;
+  padding: 0 10px;
+  background-color: var(--theme-color-bg-3);
+  border-bottom: 1px solid var(--theme-color-bg-2);
+  color: var(--theme-color-fg-highlight);
+  font: 12px var(--font-family-regular);
+}
+
+.Title {
+  font: 12px var(--font-family-regular);
+  color: var(--theme-color-fg-highlight);
+}
+
+.AddButton {
+  width: 24px;
+  height: 24px;
+  background-color: transparent;
+  color: var(--theme-color-fg-default);
+  border: none;
+  border-radius: 2px;
+  cursor: pointer;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.6;
+  transition: opacity var(--speed-turbo), background-color var(--speed-turbo);
+
+  &:hover {
+    background-color: var(--theme-color-bg-1);
+    color: var(--theme-color-fg-highlight);
+    opacity: 1;
+  }
+}
+
+.Tree {
+  flex: 1;
+  overflow: hidden overlay;
+  display: flex;
+  flex-direction: column;
+}
+
+.PlaceholderMessage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 16px;
+  color: var(--theme-color-fg-default-shy);
+  text-align: center;
+  font: 12px var(--font-family-regular);
+
+  span {
+    display: block;
+  }
+}
+
+/* Tree items */
+.TreeItem {
+  display: flex;
+  align-items: center;
+  padding: 6px 10px;
+  cursor: pointer;
+  font: 11px var(--font-family-regular);
+  color: var(--theme-color-fg-default);
+  user-select: none;
+  transition: background-color 0.15s ease;
+
+  &:hover {
+    background-color: var(--theme-color-bg-3);
+  }
+
+  &.Selected {
+    background-color: var(--theme-color-primary-transparent);
+    color: var(--theme-color-primary);
+  }
+
+  &.DropTarget {
+    background-color: var(--theme-color-primary-transparent);
+    border: 2px dashed var(--theme-color-primary);
+    border-radius: 4px;
+    transition: all 0.15s ease;
+  }
+}
+
+.Caret {
+  width: 12px;
+  height: 12px;
+  margin-right: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 8px;
+  color: var(--theme-color-fg-muted);
+  transition: transform 0.15s ease;
+
+  &.Expanded {
+    transform: rotate(90deg);
+  }
+}
+
+.ItemContent {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  gap: 6px;
+}
+
+.Icon {
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--theme-color-fg-default);
+}
+
+.Label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.Warning {
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--theme-color-warning);
+  color: var(--theme-color-bg-1);
+  border-radius: 50%;
+  font-size: 10px;
+  font-weight: bold;
+}
+
+/* Rename Input */
+.RenameContainer {
+  display: flex;
+  align-items: center;
+  padding: 6px 10px;
+  background-color: var(--theme-color-bg-3);
+}
+
+.RenameInput {
+  flex: 1;
+  padding: 4px 8px;
+  font: 11px var(--font-family-regular);
+  color: var(--theme-color-fg-default);
+  background-color: var(--theme-color-bg-1);
+  border: 1px solid var(--theme-color-primary);
+  border-radius: 4px;
+  outline: none;
+  transition: border-color var(--speed-turbo), box-shadow var(--speed-turbo);
+
+  &:focus {
+    border-color: var(--theme-color-primary);
+    box-shadow: 0 0 0 2px var(--theme-color-primary-transparent);
+    background-color: var(--theme-color-bg-1);
+  }
+
+  &::selection {
+    background-color: var(--theme-color-primary);
+    color: var(--theme-color-bg-1);
+  }
+}

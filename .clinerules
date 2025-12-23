@@ -100,26 +100,27 @@ class Button extends React.Component {
 import classNames from 'classnames';
 import React, { useCallback, useState } from 'react';
 
-// 2. Internal packages (alphabetical by alias)
-import { IconName } from '@noodl-core-ui/components/common/Icon';
 import { NodeGraphModel } from '@noodl-models/nodegraphmodel';
 import { KeyCode } from '@noodl-utils/keyboard/KeyCode';
 
+// 2. Internal packages (alphabetical by alias)
+import { IconName } from '@noodl-core-ui/components/common/Icon';
+
+import css from './Component.module.scss';
 // 3. Relative imports (by depth, then alphabetical)
 import { localHelper } from './helpers';
-import css from './Component.module.scss';
 ```
 
 ### 2.4 Naming Conventions
 
-| Type | Convention | Example |
-|------|------------|---------|
-| Components | PascalCase | `NodeEditor.tsx` |
-| Hooks | camelCase, use prefix | `useNodeSelection.ts` |
-| Utils | camelCase | `formatNodeName.ts` |
-| Constants | UPPER_SNAKE | `MAX_CONNECTIONS` |
-| CSS Modules | kebab-case | `node-editor.module.scss` |
-| Test files | Same + .test | `NodeEditor.test.tsx` |
+| Type        | Convention            | Example                   |
+| ----------- | --------------------- | ------------------------- |
+| Components  | PascalCase            | `NodeEditor.tsx`          |
+| Hooks       | camelCase, use prefix | `useNodeSelection.ts`     |
+| Utils       | camelCase             | `formatNodeName.ts`       |
+| Constants   | UPPER_SNAKE           | `MAX_CONNECTIONS`         |
+| CSS Modules | kebab-case            | `node-editor.module.scss` |
+| Test files  | Same + .test          | `NodeEditor.test.tsx`     |
 
 ---
 
@@ -132,10 +133,10 @@ Every new file should have a header comment:
 ```typescript
 /**
  * NodeProcessor
- * 
+ *
  * Handles the processing of node graph updates and manages
  * the execution order of connected nodes.
- * 
+ *
  * @module noodl-runtime
  * @since 1.2.0
  */
@@ -143,31 +144,27 @@ Every new file should have a header comment:
 
 ### 3.2 Function Documentation
 
-```typescript
+````typescript
 /**
  * Processes a node and propagates changes to connected nodes.
- * 
+ *
  * @param node - The node to process
  * @param context - The execution context
  * @param options - Processing options
  * @param options.force - Force re-evaluation even if inputs unchanged
  * @returns The processed output values
  * @throws {NodeProcessingError} If the node definition is invalid
- * 
+ *
  * @example
  * ```typescript
  * const output = processNode(myNode, context, { force: true });
  * console.log(output.value);
  * ```
  */
-function processNode(
-  node: NodeInstance,
-  context: ExecutionContext,
-  options: ProcessOptions = {}
-): NodeOutput {
+function processNode(node: NodeInstance, context: ExecutionContext, options: ProcessOptions = {}): NodeOutput {
   // ...
 }
-```
+````
 
 ### 3.3 Complex Logic Comments
 
@@ -211,28 +208,28 @@ import { renderHook, act } from '@testing-library/react-hooks';
 describe('useNodeSelection', () => {
   // Setup
   let mockContext: NodeGraphContext;
-  
+
   beforeEach(() => {
     mockContext = createMockContext();
   });
-  
+
   // Group related tests
   describe('when selecting a single node', () => {
     it('should update selection state', () => {
       const { result } = renderHook(() => useNodeSelection(mockContext));
-      
+
       act(() => {
         result.current.selectNode('node-1');
       });
-      
+
       expect(result.current.selectedNodes).toContain('node-1');
     });
-    
+
     it('should clear previous selection by default', () => {
       // ...
     });
   });
-  
+
   describe('when multi-selecting nodes', () => {
     // ...
   });
@@ -241,14 +238,14 @@ describe('useNodeSelection', () => {
 
 ### 4.3 What to Test
 
-| Priority | What to Test |
-|----------|--------------|
-| High | Utility functions |
-| High | Data transformations |
-| High | State management logic |
-| Medium | React hooks |
-| Medium | Component behavior |
-| Low | Pure UI rendering |
+| Priority | What to Test           |
+| -------- | ---------------------- |
+| High     | Utility functions      |
+| High     | Data transformations   |
+| High     | State management logic |
+| Medium   | React hooks            |
+| Medium   | Component behavior     |
+| Low      | Pure UI rendering      |
 
 ---
 
@@ -392,13 +389,13 @@ model.on('updated', (data) => {
 // Custom hook for model subscription
 function useModel<T>(model: EventDispatcher, event: string): T {
   const [state, setState] = useState<T>(model.getState());
-  
+
   useEffect(() => {
     const handler = (newState: T) => setState(newState);
     model.on(event, handler);
     return () => model.off(event, handler);
   }, [model, event]);
-  
+
   return state;
 }
 ```
@@ -411,7 +408,7 @@ const MyNode = {
   name: 'My.Custom.Node',
   displayName: 'My Custom Node',
   category: 'Custom',
-  
+
   inputs: {
     inputValue: {
       type: 'string',
@@ -419,21 +416,21 @@ const MyNode = {
       default: ''
     }
   },
-  
+
   outputs: {
     outputValue: {
       type: 'string',
       displayName: 'Output Value'
     }
   },
-  
+
   methods: {
     setInputValue(value) {
       this._internal.inputValue = value;
       this.flagOutputDirty('outputValue');
     }
   },
-  
+
   getOutputValue(name) {
     if (name === 'outputValue') {
       return this._internal.inputValue.toUpperCase();
@@ -456,7 +453,7 @@ try {
 } catch (error) {
   // Log for debugging
   console.error('Operation failed:', error);
-  
+
   // Show user-friendly message
   ToastLayer.showError('Unable to complete operation. Please try again.');
 }
@@ -470,7 +467,7 @@ function processNode(node: NodeInstance) {
   if (!node.id) {
     throw new Error(`processNode: node.id is required`);
   }
-  
+
   if (!node.definition) {
     throw new Error(`processNode: node "${node.id}" has no definition`);
   }
@@ -508,7 +505,7 @@ const sortedNodes = useMemo(() => {
 }, [nodes]);
 
 // ❌ BAD: New function on every render
-<Button onClick={() => onNodeSelect(node.id)} />
+<Button onClick={() => onNodeSelect(node.id)} />;
 ```
 
 ### 9.2 Lazy Loading
@@ -544,6 +541,7 @@ unstable_batchedUpdates(() => {
 ## 10. Checklist Before Submitting
 
 ### Code Quality
+
 - [ ] No `TSFixme` types added
 - [ ] All new functions have JSDoc comments
 - [ ] Complex logic has inline comments
@@ -551,23 +549,27 @@ unstable_batchedUpdates(() => {
 - [ ] No unused imports or variables
 
 ### Testing
+
 - [ ] Unit tests for new utility functions
 - [ ] Integration tests for new features
 - [ ] Existing tests still pass
 - [ ] Manual testing completed
 
 ### Documentation
+
 - [ ] README updated if needed
 - [ ] JSDoc added to public APIs
 - [ ] Comments explain "why", not "what"
 
 ### Git
+
 - [ ] Meaningful commit messages
 - [ ] No unrelated changes in commits
 - [ ] Branch named correctly
 - [ ] Based on latest main branch
 
 ### Performance
+
 - [ ] No obvious performance regressions
 - [ ] Large lists use virtualization
 - [ ] Expensive computations are memoized
@@ -600,19 +602,20 @@ grep -r "any" packages/ --include="*.ts" | head -20
 
 dev-docs/
 ├── reference/
-│   ├── CODEBASE-MAP.md         # OpenNoodl Codebase Quick Navigation
-│   ├── COMMON-ISSUES.md        # Solutions to frequently encountered problems when developing OpenNoodl.
-│   ├── NODE-PATTERNS.md        # How to create and modify nodes in OpenNoodl.
+│ ├── CODEBASE-MAP.md # OpenNoodl Codebase Quick Navigation
+│ ├── COMMON-ISSUES.md # Solutions to frequently encountered problems when developing OpenNoodl.
+│ ├── NODE-PATTERNS.md # How to create and modify nodes in OpenNoodl.
 ├── guidelines/
-│   ├── CODING-STANDARDS.md     # This document defines the coding style and patterns for OpenNoodl development.
-│   ├── GIT-WORKFLOW.md         # How to manage branches, commits, and pull requests for OpenNoodl development.
-├── TASK-TEMPLATE.md            # Use this template to create new task documentation. Copy the entire `TASK-XXX-template/` folder and rename it.
+│ ├── CODING-STANDARDS.md # This document defines the coding style and patterns for OpenNoodl development.
+│ ├── GIT-WORKFLOW.md # How to manage branches, commits, and pull requests for OpenNoodl development.
+├── TASK-TEMPLATE.md # Use this template to create new task documentation. Copy the entire `TASK-XXX-template/` folder and rename it.
 
 ## 12. Institutional Learning
 
 ### Discovering & Recording Knowledge
 
 As you work through tasks in this large codebase, you WILL discover things that aren't documented:
+
 - Why something was built a certain way
 - Hidden gotchas or edge cases
 - Patterns that aren't obvious
@@ -624,6 +627,7 @@ As you work through tasks in this large codebase, you WILL discover things that 
 Add discoveries to: `dev-docs/reference/LEARNINGS.md`
 
 Format each entry:
+
 ```
 ### [Date] - [Brief Title]
 
@@ -634,6 +638,7 @@ Format each entry:
 ```
 
 Examples of things worth recording:
+
 - "The `scheduleAfterInputsHaveUpdated` pattern is required when multiple inputs might change in the same frame"
 - "RouterAdapter.ts secretly depends on component naming conventions - pages must be in folders"
 - "React 19 automatic batching breaks the old `forceUpdate` pattern in nodegrapheditor"
@@ -648,6 +653,7 @@ Examples of things worth recording:
 3. Check if someone already solved this problem
 
 **When hitting a confusing error:**
+
 1. Search LEARNINGS.md for the error message or related terms
 2. Check `dev-docs/reference/COMMON-ISSUES.md`
 3. If you solve it and it's not documented, ADD IT
@@ -655,6 +661,7 @@ Examples of things worth recording:
 ### What Makes Good Learnings
 
 ✅ **Worth recording:**
+
 - Non-obvious behavior ("X only works if Y is true")
 - Error solutions that took time to figure out
 - Undocumented dependencies between systems
@@ -662,6 +669,7 @@ Examples of things worth recording:
 - Patterns you had to reverse-engineer
 
 ❌ **Not worth recording:**
+
 - Basic TypeScript/React knowledge
 - Things already in official docs
 - One-off typos or simple mistakes
@@ -670,6 +678,7 @@ Examples of things worth recording:
 ### Building the Knowledge Base
 
 Over time, LEARNINGS.md may grow large. When it does:
+
 - Group related entries under headings
 - Move mature topics to dedicated docs (e.g., `LEARNINGS.md` entry about data nodes → `DATA-SYSTEM-DEEP-DIVE.md`)
 - Cross-reference from COMMON-ISSUES.md
@@ -678,4 +687,58 @@ The goal: **No one should have to solve the same puzzle twice.**
 
 ---
 
-*Last Updated: December 2024*
+---
+
+## 13. UI Styling Rules
+
+> **CRITICAL:** Before any UI/CSS work, read `dev-docs/reference/UI-STYLING-GUIDE.md`
+
+### 13.1 Never Use Hardcoded Colors
+
+```scss
+// ❌ BAD - copying legacy patterns
+.Card {
+  background-color: #27272a;
+  color: #b8b8b8;
+}
+
+// ✅ GOOD - using design tokens
+.Card {
+  background-color: var(--theme-color-bg-3);
+  color: var(--theme-color-fg-default);
+}
+```
+
+### 13.2 Quick Token Reference
+
+| Purpose           | Token                          |
+| ----------------- | ------------------------------ |
+| Panel backgrounds | `--theme-color-bg-2`           |
+| Card backgrounds  | `--theme-color-bg-3`           |
+| Normal text       | `--theme-color-fg-default`     |
+| Secondary text    | `--theme-color-fg-default-shy` |
+| Emphasized text   | `--theme-color-fg-highlight`   |
+| Primary buttons   | `--theme-color-primary`        |
+| Borders           | `--theme-color-border-default` |
+
+### 13.3 Legacy Files Warning
+
+DO NOT copy patterns from these files (they have hardcoded colors):
+
+- `packages/noodl-editor/src/editor/src/styles/popuplayer.css`
+- `packages/noodl-editor/src/editor/src/styles/propertyeditor.css`
+
+DO reference these files (they use proper patterns):
+
+- `packages/noodl-core-ui/src/components/layout/BaseDialog/`
+- `packages/noodl-core-ui/src/components/inputs/PrimaryButton/`
+
+### 13.4 Before Completing UI Tasks
+
+Verify:
+
+- [ ] No hardcoded hex colors (`grep -E '#[0-9a-fA-F]{3,6}' your-file.scss`)
+- [ ] All colors use `var(--theme-color-*)` tokens
+- [ ] Hover/focus/disabled states defined
+
+_Last Updated: December 2025_

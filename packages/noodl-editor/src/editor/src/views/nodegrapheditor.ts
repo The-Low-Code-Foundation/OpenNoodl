@@ -279,6 +279,19 @@ export class NodeGraphEditor extends View {
       this
     );
 
+    // Listen for component switch requests from ComponentsPanel
+    EventDispatcher.instance.on(
+      'ComponentPanel.SwitchToComponent',
+      (args: { component: ComponentModel; pushHistory?: boolean }) => {
+        if (args.component) {
+          this.switchToComponent(args.component, {
+            pushHistory: args.pushHistory
+          });
+        }
+      },
+      this
+    );
+
     if (import.meta.webpackHot) {
       import.meta.webpackHot.accept('./createnewnodepanel');
     }
@@ -1422,12 +1435,12 @@ export class NodeGraphEditor extends View {
 
   updateTitle() {
     const rootElem = this.el[0].querySelector('.nodegraph-component-trail-root');
-    
+
     // Create root only once, reuse for subsequent renders
     if (!this.titleRoot) {
       this.titleRoot = createRoot(rootElem);
     }
-    
+
     if (this.activeComponent) {
       const fullName = this.activeComponent.fullName;
       const nameParts = fullName.split('/');
