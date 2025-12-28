@@ -16,7 +16,10 @@ import { HStack, VStack } from '@noodl-core-ui/components/layout/Stack';
 import { Text, TextSize, TextType } from '@noodl-core-ui/components/typography/Text';
 import { Title, TitleSize } from '@noodl-core-ui/components/typography/Title';
 
-import { MigrationProgress, AIBudget } from '../../../models/migration/types';
+import { BudgetState } from '../../../models/migration/BudgetController';
+import { MigrationProgress, AIBudget, AIDecisionRequest } from '../../../models/migration/types';
+import { BudgetApprovalDialog } from '../BudgetApprovalDialog';
+import { DecisionDialog } from '../DecisionDialog';
 import css from './MigratingStep.module.scss';
 
 export interface AiDecisionRequest {
@@ -46,6 +49,14 @@ export interface MigratingStepProps {
   onAiDecision?: (decision: AiDecision) => void;
   /** Called when user pauses migration */
   onPause?: () => void;
+  /** Budget approval request from orchestrator */
+  budgetApprovalRequest?: BudgetState | null;
+  /** Called when user approves/denies budget */
+  onBudgetApproval?: (approved: boolean) => void;
+  /** Decision request from orchestrator */
+  decisionRequest?: AIDecisionRequest | null;
+  /** Called when user makes a decision */
+  onDecision?: (action: 'retry' | 'skip' | 'manual' | 'getHelp') => void;
 }
 
 export function MigratingStep({
@@ -54,7 +65,11 @@ export function MigratingStep({
   budget,
   awaitingDecision,
   onAiDecision,
-  onPause
+  onPause,
+  budgetApprovalRequest,
+  onBudgetApproval,
+  decisionRequest,
+  onDecision
 }: MigratingStepProps) {
   const progressPercent = Math.round((progress.current / progress.total) * 100);
   const budgetPercent = budget ? (budget.spent / budget.maxPerSession) * 100 : 0;
@@ -135,8 +150,26 @@ export function MigratingStep({
           </div>
         )}
 
-        {/* AI Decision Panel */}
+        {/* AI Decision Panel (legacy) */}
         {awaitingDecision && onAiDecision && <AiDecisionPanel request={awaitingDecision} onDecision={onAiDecision} />}
+
+        {/* Budget Approval Dialog */}
+        {budgetApprovalRequest && onBudgetApproval && (
+          <div className={css['DialogOverlay']}>
+            <BudgetApprovalDialog
+              state={budgetApprovalRequest}
+              onApprove={() => onBudgetApproval(true)}
+              onDeny={() => onBudgetApproval(false)}
+            />
+          </div>
+        )}
+
+        {/* Decision Dialog */}
+        {decisionRequest && onDecision && (
+          <div className={css['DialogOverlay']}>
+            <DecisionDialog request={decisionRequest} onDecision={onDecision} />
+          </div>
+        )}
       </VStack>
 
       {/* Actions */}

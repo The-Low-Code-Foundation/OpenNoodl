@@ -61,30 +61,24 @@ export function useEventListener<T = unknown>(
   // Set up subscription
   useEffect(
     () => {
-      console.log('🚨 useEventListener useEffect RUNNING! dispatcher:', dispatcher, 'eventName:', eventName);
       if (!dispatcher) {
-        console.log('⚠️ useEventListener: dispatcher is null/undefined, returning early');
         return;
       }
 
       // Create wrapper that calls the current callback ref
-      const wrapper = (data?: T, eventName?: string) => {
-        console.log('🔔 useEventListener received event:', eventName || eventName, 'data:', data);
-        callbackRef.current(data, eventName);
+      const wrapper = (data?: T, emittedEventName?: string) => {
+        callbackRef.current(data, emittedEventName);
       };
 
       // Create stable group object for cleanup
       // Using a unique object ensures proper unsubscription
       const group = { id: `useEventListener_${Math.random()}` };
 
-      console.log('📡 useEventListener subscribing to:', eventName, 'on dispatcher:', dispatcher);
-
       // Subscribe to event(s)
       dispatcher.on(eventName, wrapper, group);
 
       // Cleanup: unsubscribe when unmounting or dependencies change
       return () => {
-        console.log('🔌 useEventListener unsubscribing from:', eventName);
         dispatcher.off(group);
       };
     },

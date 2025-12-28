@@ -14,6 +14,8 @@
     "packages/*"
   ],
   "scripts": {
+    "clean:all": "rimraf node_modules/.cache packages/*/node_modules/.cache .eslintcache packages/*/.eslintcache && echo '✓ All caches cleared. On macOS, Electron cache at ~/Library/Application Support/Noodl/ should be manually cleared if issues persist.'",
+    "health:check": "node scripts/health-check.js",
     "graph": "npx nx graph",
     "ci:prepare:editor": "ts-node -P ./scripts/tsconfig.json ./scripts/ci-editor-prepare.ts",
     "ci:build:viewer": "lerna exec --scope @noodl/noodl-viewer-react -- npm run build",

@@ -14,32 +14,57 @@
         ┌───────────────────────────┼───────────────────────────┐
         ▼                           ▼                           ▼
 ┌───────────────────┐    ┌───────────────────┐    ┌───────────────────┐
-│   EDITOR (GPL)    │    │   RUNTIME (MIT)   │    │   UI LIBRARY      │
+│ ⚡ EDITOR (GPL)   │    │   RUNTIME (MIT)   │    │   UI LIBRARY      │
 │   noodl-editor    │    │   noodl-runtime   │    │   noodl-core-ui   │
 │                   │    │                   │    │                   │
 │ • Electron app    │    │ • Node engine     │    │ • React components│
-│ • React UI        │    │ • Data flow       │    │ • Storybook       │
-│ • Property panels │    │ • Event system    │    │ • Styling         │
+│   (DESKTOP ONLY)  │    │ • Data flow       │    │ • Storybook (web) │
+│ • React UI        │    │ • Event system    │    │ • Styling         │
+│ • Property panels │    │                   │    │                   │
 └───────────────────┘    └───────────────────┘    └───────────────────┘
         │                           │
         │                           ▼
         │               ┌───────────────────┐
-        │               │  VIEWER (MIT)     │
+        │               │  🌐 VIEWER (MIT)  │
         │               │ noodl-viewer-react│
         │               │                   │
         │               │ • React runtime   │
         │               │ • Visual nodes    │
         │               │ • DOM handling    │
+        │               │   (WEB - Runs in  │
+        │               │    browser)       │
         │               └───────────────────┘
         │
         ▼
 ┌───────────────────────────────────────────────────────────────────────┐
-│                        PLATFORM LAYER                                  │
+│                  ⚡ PLATFORM LAYER (Electron)                          │
 ├───────────────────┬───────────────────┬───────────────────────────────┤
 │  noodl-platform   │ platform-electron │    platform-node              │
 │  (abstraction)    │  (desktop impl)   │    (server impl)              │
 └───────────────────┴───────────────────┴───────────────────────────────┘
+
+⚡ = Electron Desktop Application (NOT accessible via browser)
+🌐 = Web Application (runs in browser)
 ```
+
+## 🖥️ Architecture: Desktop vs Web
+
+**Critical Distinction for Development:**
+
+| Component        | Runtime          | Access Method                         | Purpose                       |
+| ---------------- | ---------------- | ------------------------------------- | ----------------------------- |
+| **Editor** ⚡    | Electron Desktop | `npm run dev` → auto-launches window  | Development environment       |
+| **Viewer** 🌐    | Web Browser      | Deployed URL or preview inside editor | User-facing applications      |
+| **Runtime**      | Node.js/Browser  | Embedded in viewer                    | Application logic engine      |
+| **Storybook** 🌐 | Web Browser      | `npm run start:storybook` → browser   | Component library development |
+
+**Important for Testing:**
+
+- When working on the **editor**, you're always in Electron
+- Never try to open `http://localhost:8080` in a browser - that's the webpack dev server internal to Electron
+- The editor automatically launches as an Electron window when you run `npm run dev`
+- Use Electron DevTools (View → Toggle Developer Tools) for debugging the editor
+- Console logs from the editor appear in Electron DevTools, NOT in the terminal
 
 ---
 
@@ -172,14 +197,14 @@ grep -rn "TODO\|FIXME" packages/noodl-editor/src
 
 ### Common Search Targets
 
-| Looking for... | Search pattern |
-|----------------|----------------|
-| Node definitions | `packages/noodl-runtime/src/nodes/` |
-| React visual nodes | `packages/noodl-viewer-react/src/nodes/` |
-| UI components | `packages/noodl-core-ui/src/components/` |
-| Models/state | `packages/noodl-editor/src/editor/src/models/` |
-| Property panels | `packages/noodl-editor/src/editor/src/views/panels/` |
-| Tests | `packages/noodl-editor/tests/` |
+| Looking for...     | Search pattern                                       |
+| ------------------ | ---------------------------------------------------- |
+| Node definitions   | `packages/noodl-runtime/src/nodes/`                  |
+| React visual nodes | `packages/noodl-viewer-react/src/nodes/`             |
+| UI components      | `packages/noodl-core-ui/src/components/`             |
+| Models/state       | `packages/noodl-editor/src/editor/src/models/`       |
+| Property panels    | `packages/noodl-editor/src/editor/src/views/panels/` |
+| Tests              | `packages/noodl-editor/tests/`                       |
 
 ---
 
@@ -243,40 +268,40 @@ npx prettier --write "packages/**/*.{ts,tsx}"
 
 ### Configuration
 
-| File | Purpose |
-|------|---------|
-| `package.json` | Root workspace config |
-| `lerna.json` | Monorepo settings |
-| `tsconfig.json` | TypeScript config |
-| `.eslintrc.js` | Linting rules |
-| `.prettierrc` | Code formatting |
+| File            | Purpose               |
+| --------------- | --------------------- |
+| `package.json`  | Root workspace config |
+| `lerna.json`    | Monorepo settings     |
+| `tsconfig.json` | TypeScript config     |
+| `.eslintrc.js`  | Linting rules         |
+| `.prettierrc`   | Code formatting       |
 
 ### Entry Points
 
-| File | Purpose |
-|------|---------|
-| `noodl-editor/src/main/main.js` | Electron main process |
-| `noodl-editor/src/editor/src/index.js` | Renderer entry |
-| `noodl-runtime/noodl-runtime.js` | Runtime engine |
-| `noodl-viewer-react/index.js` | React runtime |
+| File                                   | Purpose               |
+| -------------------------------------- | --------------------- |
+| `noodl-editor/src/main/main.js`        | Electron main process |
+| `noodl-editor/src/editor/src/index.js` | Renderer entry        |
+| `noodl-runtime/noodl-runtime.js`       | Runtime engine        |
+| `noodl-viewer-react/index.js`          | React runtime         |
 
 ### Core Models
 
-| File | Purpose |
-|------|---------|
-| `projectmodel.ts` | Project state management |
-| `nodegraphmodel.ts` | Graph data structure |
-| `componentmodel.ts` | Component definitions |
-| `nodelibrary.ts` | Node type registry |
+| File                | Purpose                  |
+| ------------------- | ------------------------ |
+| `projectmodel.ts`   | Project state management |
+| `nodegraphmodel.ts` | Graph data structure     |
+| `componentmodel.ts` | Component definitions    |
+| `nodelibrary.ts`    | Node type registry       |
 
 ### Important Views
 
-| File | Purpose |
-|------|---------|
-| `nodegrapheditor.ts` | Main canvas editor |
-| `EditorPage.tsx` | Main page layout |
-| `NodePicker.tsx` | Node creation panel |
-| `PropertyEditor/` | Property panels |
+| File                 | Purpose             |
+| -------------------- | ------------------- |
+| `nodegrapheditor.ts` | Main canvas editor  |
+| `EditorPage.tsx`     | Main page layout    |
+| `NodePicker.tsx`     | Node creation panel |
+| `PropertyEditor/`    | Property panels     |
 
 ---
 
@@ -375,4 +400,4 @@ npm run rebuild
 
 ---
 
-*Quick reference card for OpenNoodl development. Print or pin to your IDE!*
+_Quick reference card for OpenNoodl development. Print or pin to your IDE!_

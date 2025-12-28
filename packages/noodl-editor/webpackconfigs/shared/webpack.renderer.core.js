@@ -11,7 +11,8 @@ module.exports = {
           loader: 'babel-loader',
           options: {
             babelrc: false,
-            cacheDirectory: true,
+            // Disable cache in development to ensure fresh code loads
+            cacheDirectory: false,
             presets: ['@babel/preset-react']
           }
         }

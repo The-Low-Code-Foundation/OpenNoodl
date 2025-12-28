@@ -4,6 +4,39 @@ Copy this entire file into your Cline Custom Instructions (VSCode → Cline exte
 
 ---
 
+## 🚨 CRITICAL: OpenNoodl is an Electron Desktop Application
+
+**OpenNoodl Editor is NOT a web application.** It is exclusively an Electron desktop app.
+
+### What This Means for Development:
+
+- ❌ **NEVER** try to open it in a browser at `http://localhost:8080`
+- ❌ **NEVER** use `browser_action` tool to test the editor
+- ✅ **ALWAYS** `npm run dev` automatically launches the Electron app window
+- ✅ **ALWAYS** use Electron DevTools for debugging (View → Toggle Developer Tools in the Electron window)
+- ✅ **ALWAYS** test in the actual Electron window that opens
+
+### Testing Workflow:
+
+```bash
+# 1. Start development
+npm run dev
+
+# 2. Electron window launches automatically
+# 3. Open Electron DevTools: View → Toggle Developer Tools
+# 4. Console logs appear in Electron DevTools, NOT in terminal
+```
+
+**Architecture Overview:**
+
+- **Editor** (this codebase) = Electron desktop app where developers build
+- **Viewer/Runtime** = Web apps that run in browsers (what users see)
+- **Storybook** = Web-based component library (separate from main editor)
+
+The `localhost:8080` webpack dev server is internal to Electron - it's not meant to be accessed directly via browser.
+
+---
+
 ## Identity
 
 You are an expert TypeScript/React developer working on OpenNoodl, a visual low-code application builder. You write clean, well-documented, tested code that follows established patterns.
@@ -13,11 +46,13 @@ You are an expert TypeScript/React developer working on OpenNoodl, a visual low-
 ### Before ANY Code Changes
 
 1. **Read the task documentation first**
+
    - Check `dev-docs/tasks/` for the current task
    - Understand the full scope before writing code
    - Follow the checklist step-by-step
 
 2. **Understand the codebase location**
+
    - Check `dev-docs/reference/CODEBASE-MAP.md`
    - Use `grep -r "pattern" packages/` to find related code
    - Look at similar existing implementations
@@ -64,12 +99,12 @@ this.scheduleAfterInputsHaveUpdated(() => {
 // ✅ PREFER: Functional components with hooks
 export function MyComponent({ value, onChange }: MyComponentProps) {
   const [state, setState] = useState(value);
-  
+
   const handleChange = useCallback((newValue: string) => {
     setState(newValue);
     onChange?.(newValue);
   }, [onChange]);
-  
+
   return <input value={state} onChange={e => handleChange(e.target.value)} />;
 }
 
@@ -83,20 +118,21 @@ class MyComponent extends React.Component {
 
 ```typescript
 // 1. External packages
-import React, { useState, useCallback } from 'react';
-import classNames from 'classnames';
 
-// 2. Internal packages (alphabetical by alias)
-import { IconName } from '@noodl-core-ui/components/common/Icon';
+import classNames from 'classnames';
+import React, { useState, useCallback } from 'react';
+
 import { NodeGraphModel } from '@noodl-models/nodegraphmodel';
 import { guid } from '@noodl-utils/utils';
 
+// 2. Internal packages (alphabetical by alias)
+import { IconName } from '@noodl-core-ui/components/common/Icon';
+
 // 3. Relative imports
 import { localHelper } from './helpers';
-import { MyComponentProps } from './types';
-
 // 4. Styles last
 import css from './MyComponent.module.scss';
+import { MyComponentProps } from './types';
 ```
 
 ## Task Execution Protocol
@@ -125,12 +161,14 @@ import css from './MyComponent.module.scss';
 ## Confidence Checks
 
 Rate your confidence (1-10) at these points:
+
 - Before starting a task
 - Before making significant changes
 - After completing each checklist item
 - Before marking task complete
 
 If confidence < 7:
+
 - List what's uncertain
 - Ask for clarification
 - Research existing patterns in codebase
@@ -167,17 +205,20 @@ Use these phrases to maintain quality:
 ## Project-Specific Knowledge
 
 ### Key Models
+
 - `ProjectModel` - Project state, components, settings
 - `NodeGraphModel` - Graph structure, connections
 - `ComponentModel` - Individual component definition
 - `NodeLibrary` - Available node types
 
 ### Key Patterns
+
 - Event system: `model.on('event', handler)` / `model.off(handler)`
 - Dirty flagging: `this.flagOutputDirty('outputName')`
 - Scheduled updates: `this.scheduleAfterInputsHaveUpdated(() => {})`
 
 ### Key Directories
+
 - Editor UI: `packages/noodl-editor/src/editor/src/views/`
 - Models: `packages/noodl-editor/src/editor/src/models/`
 - Runtime nodes: `packages/noodl-runtime/src/nodes/`

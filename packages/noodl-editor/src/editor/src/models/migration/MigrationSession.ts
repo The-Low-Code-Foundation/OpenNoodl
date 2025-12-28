@@ -58,6 +58,7 @@ const DEFAULT_AI_PREFERENCES: AIPreferences = {
  */
 export class MigrationSessionManager extends EventDispatcher {
   private session: MigrationSessionState | null = null;
+  private orchestrator: { abort: () => void } | null = null; // AIMigrationOrchestrator instance
 
   /**
    * Creates a new migration session for a project
@@ -339,6 +340,12 @@ export class MigrationSessionManager extends EventDispatcher {
   cancelSession(): void {
     if (!this.session) return;
 
+    // Abort orchestrator if running
+    if (this.orchestrator) {
+      this.orchestrator.abort();
+      this.orchestrator = null;
+    }
+
     const session = this.session;
     this.session = null;
 
@@ -497,32 +504,179 @@ export class MigrationSessionManager extends EventDispatcher {
   }
 
   private async executeAIAssistedPhase(): Promise<void> {
-    if (!this.session?.scan || !this.session.ai?.enabled) return;
+    if (!this.session?.scan || !this.session.ai?.enabled || !this.session.ai.apiKey) return;
 
     this.updateProgress({ phase: 'ai-assisted' });
     this.addLogEntry({
       level: 'info',
-      message: 'Starting AI-assisted migration...'
+      message: 'Starting AI-assisted migration with Claude...'
     });
 
     const { needsReview } = this.session.scan.categories;
 
-    for (let i = 0; i < needsReview.length; i++) {
-      const component = needsReview[i];
+    // Dynamic import to avoid loading unless needed
+    const { AIMigrationOrchestrator } = await import('./AIMigrationOrchestrator');
 
-      this.updateProgress({
-        currentComponent: component.name
-      });
+    // Create orchestrator with budget pause callback
+    const orchestrator = new AIMigrationOrchestrator(
+      this.session.ai.apiKey,
+      {
+        maxPerSession: this.session.ai.budget.maxPerSession,
+        pauseIncrement: this.session.ai.budget.pauseIncrement
+      },
+      {
+        maxRetries: 3,
+        minConfidence: 0.7,
+        verifyMigration: true
+      },
+      async (budgetState) => {
+        // Emit budget pause event
+        return new Promise<boolean>((resolve) => {
+          this.notifyListeners('budget-pause-required', {
+            session: this.session,
+            budgetState,
+            resolve
+          });
+        });
+      }
+    );
 
-      // TODO: Implement actual AI migration using Claude API
-      await this.simulateDelay(200);
+    // Track orchestrator for abort capability
+    this.orchestrator = orchestrator;
+
+    try {
+      for (let i = 0; i < needsReview.length; i++) {
+        const component = needsReview[i];
+
+        this.updateProgress({
+          current: this.getAutomaticComponentCount() + i + 1,
+          currentComponent: component.name
+        });
+
+        this.addLogEntry({
+          level: 'info',
+          component: component.name,
+          message: 'Starting AI migration...'
+        });
+
+        // Read source code
+        const sourcePath = `${this.session.source.path}/${component.path}`;
+        let sourceCode: string;
+        try {
+          sourceCode = await filesystem.readFile(sourcePath);
+        } catch (error) {
+          this.addLogEntry({
+            level: 'error',
+            component: component.name,
+            message: `Failed to read source file: ${error instanceof Error ? error.message : 'Unknown error'}`
+          });
+          continue;
+        }
+
+        // Migrate with AI
+        const result = await orchestrator.migrateComponent(
+          component,
+          sourceCode,
+          this.session.ai.preferences,
+          (update) => {
+            // Progress callback
+            this.addLogEntry({
+              level: 'info',
+              component: component.name,
+              message: update.message
+            });
+          },
+          async (request) => {
+            // Decision callback
+            return new Promise((resolve) => {
+              this.notifyListeners('ai-decision-required', {
+                session: this.session,
+                request,
+                resolve
+              });
+            });
+          }
+        );
+
+        // Update budget
+        if (this.session.ai?.budget) {
+          this.session.ai.budget.spent += result.totalCost;
+        }
+
+        // Handle result
+        if (result.status === 'success' && result.migratedCode) {
+          // Write migrated code to target
+          const targetPath = `${this.session.target.path}/${component.path}`;
+          try {
+            await filesystem.writeFile(targetPath, result.migratedCode);
+            this.addLogEntry({
+              level: 'success',
+              component: component.name,
+              message: `Migrated successfully (${result.attempts} attempts)`,
+              cost: result.totalCost
+            });
+          } catch (error) {
+            this.addLogEntry({
+              level: 'error',
+              component: component.name,
+              message: `Failed to write migrated file: ${error instanceof Error ? error.message : 'Unknown error'}`
+            });
+          }
+        } else if (result.status === 'partial' && result.migratedCode) {
+          // Write partial migration
+          const targetPath = `${this.session.target.path}/${component.path}`;
+          try {
+            await filesystem.writeFile(targetPath, result.migratedCode);
+            this.addLogEntry({
+              level: 'warning',
+              component: component.name,
+              message: 'Partial migration - manual review required',
+              cost: result.totalCost
+            });
+          } catch (error) {
+            this.addLogEntry({
+              level: 'error',
+              component: component.name,
+              message: `Failed to write partial migration: ${error instanceof Error ? error.message : 'Unknown error'}`
+            });
+          }
+        } else if (result.status === 'failed') {
+          this.addLogEntry({
+            level: 'error',
+            component: component.name,
+            message: result.error || 'Migration failed',
+            details: result.aiSuggestion,
+            cost: result.totalCost
+          });
+        } else if (result.status === 'skipped') {
+          this.addLogEntry({
+            level: 'warning',
+            component: component.name,
+            message: result.warnings[0] || 'Component skipped',
+            cost: result.totalCost
+          });
+        }
+      }
 
       this.addLogEntry({
-        level: 'warning',
-        component: component.name,
-        message: 'AI migration not yet implemented - marked for manual review'
+        level: 'success',
+        message: `AI migration complete. Total spent: $${this.session.ai.budget.spent.toFixed(2)}`
       });
+    } catch (error) {
+      this.addLogEntry({
+        level: 'error',
+        message: `AI migration error: ${error instanceof Error ? error.message : 'Unknown error'}`
+      });
+      throw error;
+    } finally {
+      this.orchestrator = null;
     }
+  }
+
+  private getAutomaticComponentCount(): number {
+    if (!this.session?.scan) return 0;
+    const { automatic, simpleFixes } = this.session.scan.categories;
+    return automatic.length + simpleFixes.length;
   }
 
   private async executeFinalizePhase(): Promise<void> {

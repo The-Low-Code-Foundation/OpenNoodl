@@ -6,7 +6,7 @@
 
 import React from 'react';
 
-import { TreeNode } from '../types';
+import { Sheet, TreeNode } from '../types';
 import { ComponentItem } from './ComponentItem';
 import { FolderItem } from './FolderItem';
 
@@ -25,6 +25,8 @@ interface ComponentTreeProps {
   onDragStart?: (node: TreeNode, element: HTMLElement) => void;
   onDrop?: (node: TreeNode) => void;
   canAcceptDrop?: (node: TreeNode) => boolean;
+  onAddComponent?: (template: TSFixme, parentPath?: string) => void;
+  onAddFolder?: (parentPath?: string) => void;
   // Rename mode props
   renamingItem?: TreeNode | null;
   renameValue?: string;
@@ -32,6 +34,9 @@ interface ComponentTreeProps {
   onRenameConfirm?: () => void;
   onRenameCancel?: () => void;
   onDoubleClick?: (node: TreeNode) => void;
+  // Sheet management props
+  sheets?: Sheet[];
+  onMoveToSheet?: (componentPath: string, sheet: Sheet) => void;
 }
 
 export function ComponentTree({
@@ -49,12 +54,16 @@ export function ComponentTree({
   onDragStart,
   onDrop,
   canAcceptDrop,
+  onAddComponent,
+  onAddFolder,
   renamingItem,
   renameValue,
   onRenameChange,
   onRenameConfirm,
   onRenameCancel,
-  onDoubleClick
+  onDoubleClick,
+  sheets,
+  onMoveToSheet
 }: ComponentTreeProps) {
   return (
     <>
@@ -81,11 +90,18 @@ export function ComponentTree({
               onDrop={onDrop}
               canAcceptDrop={canAcceptDrop}
               onDoubleClick={onDoubleClick}
+              onAddComponent={onAddComponent}
+              onAddFolder={onAddFolder}
               isRenaming={isRenaming}
               renameValue={renameValue}
               onRenameChange={onRenameChange}
               onRenameConfirm={onRenameConfirm}
               onRenameCancel={onRenameCancel}
+              sheets={sheets}
+              onMoveToSheet={onMoveToSheet}
+              onOpen={onOpen}
+              onMakeHome={onMakeHome}
+              onDuplicate={onDuplicate}
             >
               {expandedFolders.has(node.data.path) && node.data.children.length > 0 && (
                 <ComponentTree
@@ -103,12 +119,16 @@ export function ComponentTree({
                   onDragStart={onDragStart}
                   onDrop={onDrop}
                   canAcceptDrop={canAcceptDrop}
+                  onAddComponent={onAddComponent}
+                  onAddFolder={onAddFolder}
                   renamingItem={renamingItem}
                   renameValue={renameValue}
                   onRenameChange={onRenameChange}
                   onRenameConfirm={onRenameConfirm}
                   onRenameCancel={onRenameCancel}
                   onDoubleClick={onDoubleClick}
+                  sheets={sheets}
+                  onMoveToSheet={onMoveToSheet}
                 />
               )}
             </FolderItem>
@@ -127,12 +147,18 @@ export function ComponentTree({
               onRename={onRename}
               onOpen={onOpen}
               onDragStart={onDragStart}
+              onDrop={onDrop}
+              canAcceptDrop={canAcceptDrop}
               onDoubleClick={onDoubleClick}
+              onAddComponent={onAddComponent}
+              onAddFolder={onAddFolder}
               isRenaming={isRenaming}
               renameValue={renameValue}
               onRenameChange={onRenameChange}
               onRenameConfirm={onRenameConfirm}
               onRenameCancel={onRenameCancel}
+              sheets={sheets}
+              onMoveToSheet={onMoveToSheet}
             />
           );
         }

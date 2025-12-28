@@ -1,0 +1,187 @@
+.DecisionDialog {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  padding: 32px 24px 24px;
+  max-width: 550px;
+  max-height: 80vh;
+}
+
+.Icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  color: var(--theme-color-bg-1);
+  opacity: 0.9;
+
+  &[data-type='warning'] {
+    background: var(--theme-color-warning);
+  }
+
+  &[data-type='help'] {
+    background: var(--theme-color-primary);
+  }
+}
+
+.Content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  text-align: center;
+  overflow-y: auto;
+  max-height: calc(80vh - 200px);
+
+  h3 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--theme-color-fg-highlight);
+  }
+
+  h4 {
+    margin: 0 0 8px 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--theme-color-fg-highlight);
+    text-align: left;
+  }
+
+  strong {
+    color: var(--theme-color-fg-highlight);
+    font-weight: 600;
+  }
+}
+
+.CostInfo {
+  padding: 12px;
+  background: var(--theme-color-bg-3);
+  border-radius: 8px;
+  border-left: 3px solid var(--theme-color-warning);
+}
+
+.AttemptHistory {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-align: left;
+}
+
+.Attempts {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.Attempt {
+  padding: 12px;
+  background: var(--theme-color-bg-3);
+  border-radius: 6px;
+  border: 1px solid var(--theme-color-border-default);
+}
+
+.Attempt__Header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.Attempt__Number {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--theme-color-fg-default);
+}
+
+.Attempt__Cost {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--theme-color-fg-default-shy);
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+}
+
+.Attempt__Error {
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.Options {
+  margin-top: 8px;
+}
+
+.HelpContent {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  text-align: left;
+  padding: 16px;
+  background: var(--theme-color-bg-2);
+  border-radius: 8px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.HelpSection {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+
+  ul,
+  ol {
+    margin: 0;
+    padding-left: 20px;
+    color: var(--theme-color-fg-default);
+    font-size: 13px;
+    line-height: 1.6;
+
+    li {
+      margin-bottom: 8px;
+
+      &:last-child {
+        margin-bottom: 0;
+      }
+    }
+  }
+
+  ul {
+    list-style-type: disc;
+  }
+
+  ol {
+    list-style-type: decimal;
+  }
+}
+
+.AttemptSummary {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 12px;
+  background: var(--theme-color-bg-3);
+  border-radius: 4px;
+  border-left: 2px solid var(--theme-color-danger);
+
+  strong {
+    font-size: 12px;
+  }
+}
+
+.Actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+
+.Actions__Row {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+  justify-content: center;
+}

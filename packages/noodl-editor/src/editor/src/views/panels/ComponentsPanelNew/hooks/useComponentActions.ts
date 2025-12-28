@@ -15,18 +15,24 @@ import { guid } from '@noodl-utils/utils';
 
 import { EventDispatcher } from '../../../../../../shared/utils/EventDispatcher';
 import { ComponentModel } from '../../../../models/componentmodel';
+import { ToastLayer } from '../../../ToastLayer/ToastLayer';
 import { TreeNode } from '../types';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const PopupLayer = require('@noodl-views/popuplayer');
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const ToastLayer = require('@noodl-views/toastlayer/toastlayer');
 
 export function useComponentActions() {
   const handleMakeHome = useCallback((node: TreeNode) => {
-    if (node.type !== 'component') return;
+    // Support both component nodes and folder nodes (for component-folders)
+    let component;
+    if (node.type === 'component') {
+      component = node.data.component;
+    } else if (node.type === 'folder' && node.data.isComponentFolder && node.data.component) {
+      component = node.data.component;
+    } else {
+      return;
+    }
 
-    const component = node.data.component;
     if (!component) return;
 
     const canDelete = ProjectModel.instance?.deleteComponentAllowed(component);
@@ -77,36 +83,34 @@ export function useComponentActions() {
     const confirmed = confirm(`Are you sure you want to delete "${component.localName}"?`);
     if (!confirmed) return;
 
-    const undoGroup = new UndoActionGroup({
-      label: `Delete ${component.name}`
-    });
-
-    UndoQueue.instance.push(undoGroup);
-
-    undoGroup.push({
-      do: () => {
-        ProjectModel.instance?.removeComponent(component, { undo: undoGroup });
-      },
-      undo: () => {
-        const restored = ProjectModel.instance?.getComponentWithName(component.name);
-        if (!restored) {
-          // Component was deleted, need to recreate it
-          // This is handled by the removeComponent undo
+    // Use pushAndDo pattern - removeComponent handles its own undo internally
+    UndoQueue.instance.pushAndDo(
+      new UndoActionGroup({
+        label: `Delete ${component.name}`,
+        do: () => {
+          const undoGroup = new UndoActionGroup({ label: `Delete ${component.name}` });
+          UndoQueue.instance.push(undoGroup);
+          ProjectModel.instance?.removeComponent(component, { undo: undoGroup });
+        },
+        undo: () => {
+          // Undo is handled internally by removeComponent
         }
-      }
-    });
-
-    undoGroup.do();
+      })
+    );
   }, []);
 
   const handleDuplicate = useCallback((node: TreeNode) => {
-    if (node.type !== 'component') {
-      // TODO: Implement folder duplication
+    // Support both component nodes and folder nodes (for component-folders)
+    let component;
+    if (node.type === 'component') {
+      component = node.data.component;
+    } else if (node.type === 'folder' && node.data.isComponentFolder && node.data.component) {
+      component = node.data.component;
+    } else {
+      // TODO: Implement pure folder duplication
       console.log('Folder duplication not yet implemented');
       return;
     }
-
-    const component = node.data.component;
     let newName = component.name + ' Copy';
 
     // Find unique name
@@ -116,31 +120,30 @@ export function useComponentActions() {
       counter++;
     }
 
+    // Create undo group - duplicateComponent handles its own undo registration
     const undoGroup = new UndoActionGroup({
-      label: `Duplicate ${component.name}`
+      label: `Duplicate ${component.localName}`
     });
 
+    // Call duplicateComponent which internally registers undo actions
+    ProjectModel.instance?.duplicateComponent(component, newName, {
+      undo: undoGroup,
+      rerouteComponentRefs: null
+    });
+
+    // Push the undo group after duplicate is done
     UndoQueue.instance.push(undoGroup);
 
-    let duplicatedComponent = null;
+    // Switch to the new component
+    const duplicatedComponent = ProjectModel.instance?.getComponentWithName(newName);
+    if (duplicatedComponent) {
+      EventDispatcher.instance.notifyListeners('ComponentPanel.SwitchToComponent', {
+        component: duplicatedComponent,
+        pushHistory: true
+      });
+    }
 
-    undoGroup.push({
-      do: () => {
-        ProjectModel.instance?.duplicateComponent(component, newName, {
-          undo: undoGroup,
-          rerouteComponentRefs: null
-        });
-
-        duplicatedComponent = ProjectModel.instance?.getComponentWithName(newName);
-      },
-      undo: () => {
-        if (duplicatedComponent) {
-          ProjectModel.instance?.removeComponent(duplicatedComponent, { undo: undoGroup });
-        }
-      }
-    });
-
-    undoGroup.do();
+    tracker.track('Component Duplicated');
   }, []);
 
   const handleRename = useCallback((node: TreeNode) => {
@@ -165,22 +168,17 @@ export function useComponentActions() {
         return false;
       }
 
-      const undoGroup = new UndoActionGroup({
-        label: `Rename ${component.localName} to ${newName}`
-      });
-
-      UndoQueue.instance.push(undoGroup);
-
-      undoGroup.push({
-        do: () => {
-          ProjectModel.instance?.renameComponent(component, fullNewName);
-        },
-        undo: () => {
-          ProjectModel.instance?.renameComponent(component, oldName);
-        }
-      });
-
-      undoGroup.do();
+      UndoQueue.instance.pushAndDo(
+        new UndoActionGroup({
+          label: `Rename ${component.localName} to ${newName}`,
+          do: () => {
+            ProjectModel.instance?.renameComponent(component, fullNewName);
+          },
+          undo: () => {
+            ProjectModel.instance?.renameComponent(component, oldName);
+          }
+        })
+      );
 
       return true;
     } else if (node.type === 'folder') {
@@ -250,11 +248,23 @@ export function useComponentActions() {
   }, []);
 
   const handleOpen = useCallback((node: TreeNode) => {
-    if (node.type !== 'component') return;
+    // Support both component nodes and folder nodes (for component-folders)
+    let component;
+    if (node.type === 'component') {
+      component = node.data.component;
+    } else if (node.type === 'folder' && node.data.isComponentFolder && node.data.component) {
+      component = node.data.component;
+    } else {
+      return;
+    }
 
-    // TODO: Open component in NodeGraphEditor
-    // This requires integration with the editor's tab system
-    console.log('Open component:', node.data.component.name);
+    // Open component in NodeGraphEditor by dispatching event
+    if (component) {
+      EventDispatcher.instance.notifyListeners('ComponentPanel.SwitchToComponent', {
+        component,
+        pushHistory: true
+      });
+    }
   }, []);
 
   /**
@@ -264,7 +274,8 @@ export function useComponentActions() {
    * Handle adding a new component using a template
    */
   const handleAddComponent = useCallback((template: TSFixme, parentPath?: string) => {
-    const finalParentPath = parentPath || '';
+    // Normalize parent path: '/' means root (empty string), otherwise use as-is
+    const finalParentPath = !parentPath || parentPath === '/' ? '' : parentPath;
 
     const popup = template.createPopup({
       onCreate: (localName: string, options?: TSFixme) => {
@@ -317,7 +328,8 @@ export function useComponentActions() {
 
     PopupLayer.instance.showPopup({
       content: popup,
-      position: 'bottom'
+      position: 'screen-center',
+      isBackgroundDimmed: true
     });
   }, []);
 
@@ -336,12 +348,56 @@ export function useComponentActions() {
           return;
         }
 
-        // For now, just show a message that this will be implemented
-        // The actual folder creation requires the ComponentsPanelFolder class
-        // which is part of the legacy system. We'll implement this when we
-        // migrate the folder structure to React state.
-        console.log('Creating folder:', folderName, 'at path:', parentPath);
-        ToastLayer.showInteraction('Folder creation will be available in the next phase');
+        // Normalize parent path: ensure it starts with /
+        // If parentPath is undefined, empty, or '/', treat as root '/'
+        let normalizedPath = parentPath || '/';
+        if (normalizedPath === '/') {
+          normalizedPath = '/';
+        } else if (!normalizedPath.startsWith('/')) {
+          normalizedPath = '/' + normalizedPath;
+        }
+        // Ensure it ends with / for concatenation (unless it's just '/')
+        if (normalizedPath !== '/' && !normalizedPath.endsWith('/')) {
+          normalizedPath = normalizedPath + '/';
+        }
+
+        // Create folder path - component names MUST start with /
+        const folderPath = normalizedPath === '/' ? `/${folderName}` : `${normalizedPath}${folderName}`;
+
+        // Check if folder already exists (any component starts with this path)
+        const folderExists = ProjectModel.instance
+          ?.getComponents()
+          .some((comp) => comp.name.startsWith(folderPath + '/'));
+
+        if (folderExists) {
+          ToastLayer.showError('A folder with this name already exists');
+          return;
+        }
+
+        // Create a placeholder component to make the folder visible
+        // The placeholder will be at {folderPath}/.placeholder
+        const placeholderName = `${folderPath}/.placeholder`;
+
+        UndoQueue.instance.pushAndDo(
+          new UndoActionGroup({
+            label: `Create folder ${folderName}`,
+            do: () => {
+              const placeholder = new ComponentModel({
+                name: placeholderName,
+                graph: new NodeGraphModel(),
+                id: guid()
+              });
+
+              ProjectModel.instance?.addComponent(placeholder);
+            },
+            undo: () => {
+              const placeholder = ProjectModel.instance?.getComponentWithName(placeholderName);
+              if (placeholder) {
+                ProjectModel.instance?.removeComponent(placeholder);
+              }
+            }
+          })
+        );
 
         PopupLayer.instance.hidePopup();
       }
@@ -350,8 +406,108 @@ export function useComponentActions() {
 
     PopupLayer.instance.showPopup({
       content: popup,
-      position: 'bottom'
+      position: 'screen-center',
+      isBackgroundDimmed: true
     });
+  }, []);
+
+  /**
+   * Handle dropping an item onto the root level (empty space)
+   */
+  const handleDropOnRoot = useCallback((draggedItem: TreeNode) => {
+    // Component → Root
+    if (draggedItem.type === 'component') {
+      const component = draggedItem.data.component;
+      const newName = component.localName;
+
+      // Check if already at root
+      if (!component.name.includes('/')) {
+        console.log('Component already at root level');
+        PopupLayer.instance.dragCompleted();
+        return;
+      }
+
+      // Check for naming conflicts
+      if (ProjectModel.instance?.getComponentWithName(newName)) {
+        alert(`Component "${newName}" already exists at root level`);
+        PopupLayer.instance.dragCompleted();
+        return;
+      }
+
+      const oldName = component.name;
+
+      // End drag operation FIRST - before the rename triggers a re-render
+      PopupLayer.instance.dragCompleted();
+
+      UndoQueue.instance.pushAndDo(
+        new UndoActionGroup({
+          label: `Move ${component.localName} to root`,
+          do: () => {
+            ProjectModel.instance?.renameComponent(component, newName);
+          },
+          undo: () => {
+            ProjectModel.instance?.renameComponent(component, oldName);
+          }
+        })
+      );
+    }
+    // Folder → Root (including component-folders)
+    else if (draggedItem.type === 'folder') {
+      const sourcePath = draggedItem.data.path;
+      const newPath = draggedItem.data.name;
+
+      // Check if already at root
+      if (!sourcePath.includes('/')) {
+        console.log('Folder already at root level');
+        PopupLayer.instance.dragCompleted();
+        return;
+      }
+
+      // Get all components in source folder (including the folder's component if it exists)
+      const componentsToMove = ProjectModel.instance
+        ?.getComponents()
+        .filter((comp) => comp.name === sourcePath || comp.name.startsWith(sourcePath + '/'));
+
+      if (!componentsToMove || componentsToMove.length === 0) {
+        console.log('Folder is empty, nothing to move');
+        PopupLayer.instance.dragCompleted();
+        return;
+      }
+
+      const renames: Array<{ component: TSFixme; oldName: string; newName: string }> = [];
+
+      componentsToMove.forEach((comp) => {
+        let newName: string;
+        if (comp.name === sourcePath) {
+          // This is the component-folder itself
+          newName = newPath;
+        } else {
+          // This is a nested component
+          const relativePath = comp.name.substring(sourcePath.length);
+          newName = newPath + relativePath;
+        }
+        renames.push({ component: comp, oldName: comp.name, newName });
+      });
+
+      // End drag operation FIRST - before the rename triggers a re-render
+      PopupLayer.instance.dragCompleted();
+
+      UndoQueue.instance.pushAndDo(
+        new UndoActionGroup({
+          label: `Move ${draggedItem.data.name} to root`,
+          do: () => {
+            renames.forEach(({ component, newName }) => {
+              ProjectModel.instance?.renameComponent(component, newName);
+            });
+          },
+          undo: () => {
+            renames.forEach(({ component, oldName }) => {
+              ProjectModel.instance?.renameComponent(component, oldName);
+            });
+          }
+        })
+      );
+    }
   }, []);
 
   /**
@@ -367,10 +523,15 @@ export function useComponentActions() {
       // Check for naming conflicts
       if (ProjectModel.instance?.getComponentWithName(newName)) {
         alert(`Component "${newName}" already exists in that folder`);
+        PopupLayer.instance.dragCompleted();
         return;
       }
 
       const oldName = component.name;
+
+      // End drag operation FIRST - before the rename triggers a re-render
+      // This prevents the drag state from persisting across the tree rebuild
+      PopupLayer.instance.dragCompleted();
 
       UndoQueue.instance.pushAndDo(
         new UndoActionGroup({
@@ -390,23 +551,41 @@ export function useComponentActions() {
       const targetPath = targetItem.data.path === '/' ? '' : targetItem.data.path;
       const newPath = targetPath ? `${targetPath}/${draggedItem.data.name}` : draggedItem.data.name;
 
-      // Get all components in source folder
+      // Prevent moving folder into itself
+      if (targetPath.startsWith(sourcePath + '/') || targetPath === sourcePath) {
+        alert('Cannot move folder into itself');
+        PopupLayer.instance.dragCompleted();
+        return;
+      }
+
+      // Get all components in source folder (including the folder's component if it exists)
       const componentsToMove = ProjectModel.instance
         ?.getComponents()
-        .filter((comp) => comp.name.startsWith(sourcePath + '/'));
+        .filter((comp) => comp.name === sourcePath || comp.name.startsWith(sourcePath + '/'));
 
       if (!componentsToMove || componentsToMove.length === 0) {
         console.log('Folder is empty, nothing to move');
+        PopupLayer.instance.dragCompleted();
         return;
       }
 
       const renames: Array<{ component: TSFixme; oldName: string; newName: string }> = [];
 
       componentsToMove.forEach((comp) => {
-        const relativePath = comp.name.substring(sourcePath.length + 1);
-        const newName = `${newPath}/${relativePath}`;
+        let newName: string;
+        if (comp.name === sourcePath) {
+          // This is the component-folder itself
+          newName = newPath;
+        } else {
+          // This is a nested component
+          const relativePath = comp.name.substring(sourcePath.length);
+          newName = newPath + relativePath;
+        }
         renames.push({ component: comp, oldName: comp.name, newName });
       });
+
+      // End drag operation FIRST - before the rename triggers a re-render
+      PopupLayer.instance.dragCompleted();
 
       UndoQueue.instance.pushAndDo(
         new UndoActionGroup({
@@ -433,10 +612,14 @@ export function useComponentActions() {
       // Check for naming conflicts
       if (ProjectModel.instance?.getComponentWithName(newName)) {
         alert(`Component "${newName}" already exists`);
+        PopupLayer.instance.dragCompleted();
         return;
       }
 
       const oldName = component.name;
+
+      // End drag operation FIRST - before the rename triggers a re-render
+      PopupLayer.instance.dragCompleted();
 
       UndoQueue.instance.pushAndDo(
         new UndoActionGroup({
@@ -446,6 +629,66 @@ export function useComponentActions() {
           },
           undo: () => {
             ProjectModel.instance?.renameComponent(component, oldName);
+          }
+        })
+      );
+    }
+    // Folder → Component (treat component-folder AS a component, nest inside target)
+    else if (draggedItem.type === 'folder' && targetItem.type === 'component') {
+      const sourcePath = draggedItem.data.path;
+      const targetComponent = targetItem.data.component;
+      const newPath = `${targetComponent.name}/${draggedItem.data.name}`;
+
+      // Get all components in source folder (including the folder's component if it exists)
+      const componentsToMove = ProjectModel.instance
+        ?.getComponents()
+        .filter((comp) => comp.name === sourcePath || comp.name.startsWith(sourcePath + '/'));
+
+      if (!componentsToMove || componentsToMove.length === 0) {
+        console.log('Folder is empty, nothing to move');
+        PopupLayer.instance.dragCompleted();
+        return;
+      }
+
+      const renames: Array<{ component: TSFixme; oldName: string; newName: string }> = [];
+
+      componentsToMove.forEach((comp) => {
+        let newName: string;
+        if (comp.name === sourcePath) {
+          // This is the component-folder itself
+          newName = newPath;
+        } else {
+          // This is a nested component
+          const relativePath = comp.name.substring(sourcePath.length);
+          newName = newPath + relativePath;
+        }
+        renames.push({ component: comp, oldName: comp.name, newName });
+      });
+
+      // Check for conflicts
+      const hasConflict = renames.some(({ newName }) => ProjectModel.instance?.getComponentWithName(newName));
+
+      if (hasConflict) {
+        alert(`Some components would conflict with existing names`);
+        PopupLayer.instance.dragCompleted();
+        return;
+      }
+
+      // End drag operation FIRST - before the rename triggers a re-render
+      PopupLayer.instance.dragCompleted();
+
+      UndoQueue.instance.pushAndDo(
+        new UndoActionGroup({
+          label: `Move ${draggedItem.data.name} into ${targetComponent.localName}`,
+          do: () => {
+            renames.forEach(({ component, newName }) => {
+              ProjectModel.instance?.renameComponent(component, newName);
+            });
+          },
+          undo: () => {
+            renames.forEach(({ component, oldName }) => {
+              ProjectModel.instance?.renameComponent(component, oldName);
+            });
           }
         })
       );
@@ -460,6 +703,7 @@ export function useComponentActions() {
     performRename,
     handleOpen,
     handleDropOn,
+    handleDropOnRoot,
     handleAddComponent,
     handleAddFolder
   };

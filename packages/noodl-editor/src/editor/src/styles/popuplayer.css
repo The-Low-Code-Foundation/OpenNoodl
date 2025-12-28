@@ -190,6 +190,9 @@
 .popup-layer-popup-menu {
   min-width: 208px;
   cursor: default;
+  background-color: var(--theme-color-bg-3);
+  border-radius: 4px;
+  padding: 4px 0;
 }
 
 .popup-layer-popup-menu-divider {

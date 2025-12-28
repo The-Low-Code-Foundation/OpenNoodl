@@ -30,6 +30,11 @@ export interface FolderItemData {
   isComponentFolder: boolean;
   component?: ComponentModel;
   children: TreeNode[];
+  // Component type flags (only set when isComponentFolder is true)
+  isRoot?: boolean;
+  isPage?: boolean;
+  isCloudFunction?: boolean;
+  isVisual?: boolean;
 }
 
 /**
@@ -50,4 +55,21 @@ export interface ComponentsPanelProps {
 export interface ComponentsPanelOptions {
   showSheetList?: boolean;
   hideSheets?: string[];
+  /** Lock to a specific sheet (e.g., for Cloud Functions panel) */
+  lockToSheet?: string;
+}
+
+/**
+ * Represents a sheet (top-level organizational folder)
+ * Sheets are folders with names starting with # (e.g., #Pages, #Components)
+ */
+export interface Sheet {
+  /** Display name (without # prefix) */
+  name: string;
+  /** Original folder name with # prefix, empty string for default sheet */
+  folderName: string;
+  /** Whether this is the default sheet (components not in any # folder) */
+  isDefault: boolean;
+  /** Number of components in this sheet */
+  componentCount: number;
 }

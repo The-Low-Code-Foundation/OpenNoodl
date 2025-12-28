@@ -4,6 +4,14 @@
 
 This document provides guidelines for AI-assisted development on the OpenNoodl codebase using Cline in VSCode. Follow these guidelines to ensure consistent, well-documented, and testable contributions.
 
+**🚨 CRITICAL: OpenNoodl Editor is an Electron Desktop Application**
+
+- The editor is NOT a web app - never try to open it in a browser
+- Running `npm run dev` launches the Electron app automatically
+- Use Electron DevTools (View → Toggle Developer Tools) for debugging
+- The viewer/runtime creates web apps, but the editor itself is always Electron
+- Never use `browser_action` tool to test the editor - it only works for Storybook or deployed viewers
+
 ---
 
 ## 1. Before Starting Any Task
@@ -574,6 +582,14 @@ unstable_batchedUpdates(() => {
 - [ ] Large lists use virtualization
 - [ ] Expensive computations are memoized
 
+### React + EventDispatcher (Phase 0 Critical Bugs)
+
+- [ ] Using `useEventListener` hook for ALL EventDispatcher subscriptions (NOT direct `.on()`)
+- [ ] Singleton instances included in useEffect dependencies (e.g., `[ProjectModel.instance]`)
+- [ ] Using `UndoQueue.instance.pushAndDo()` pattern (NOT `undoGroup.push()` + `undoGroup.do()`)
+- [ ] No direct EventDispatcher `.on()` calls in React components
+- [ ] Event subscriptions verified with debug logging
+
 ---
 
 ## Quick Reference Commands
@@ -741,4 +757,173 @@ Verify:
 - [ ] All colors use `var(--theme-color-*)` tokens
 - [ ] Hover/focus/disabled states defined
 
+---
+
+## Section: React + EventDispatcher Integration
+
+````markdown
+## React + EventDispatcher Integration
+
+### CRITICAL: Always use useEventListener hook
+
+When subscribing to EventDispatcher events from React components, ALWAYS use the `useEventListener` hook. Direct subscriptions silently fail.
+
+**Hook location:** `@noodl-hooks/useEventListener`
+
+**✅ CORRECT - Always do this:**
+
+```typescript
+import { useEventListener } from '@noodl-hooks/useEventListener';
+
+import { ProjectModel } from '@noodl-models/projectmodel';
+
+function MyComponent() {
+  useEventListener(ProjectModel.instance, 'componentRenamed', (data) => {
+    // This works!
+  });
+}
+```
+````
+
+**❌ BROKEN - Never do this:**
+
+```typescript
+// This compiles and runs without errors, but events are NEVER received
+useEffect(() => {
+  const context = {};
+  ProjectModel.instance.on('event', handler, context);
+  return () => ProjectModel.instance.off(context);
+}, []);
+```
+
+### Why this matters
+
+EventDispatcher uses a context-object cleanup pattern incompatible with React closures. Direct subscriptions fail silently - no errors, no events, just confusion.
+
+This pattern was established in Phase 0 after discovering the issue in TASK-004B.
+
+### Available dispatchers
+
+- `ProjectModel.instance` - component changes, settings
+- `NodeLibrary.instance` - library/module changes
+- `WarningsModel.instance` - validation warnings
+- `EventDispatcher.instance` - global events
+- `UndoQueue.instance` - undo/redo state
+
+### Full documentation
+
+See: `dev-docs/patterns/REACT-EVENTDISPATCHER.md`
+
+````
+
+---
+
+## Section: Webpack Cache Issues
+
+```markdown
+## Webpack Cache Issues
+
+### If code changes don't appear
+
+When editing code and changes don't load in the running app:
+
+1. **First, run `npm run clean:all`** - This nukes all caches
+2. **Restart the dev server** - Don't just refresh
+3. **Check for the build canary** - Console should show `🔥 BUILD TIMESTAMP: [recent time]`
+
+If the canary shows an old timestamp, caching is still an issue. Check:
+- Electron app cache (platform-specific location)
+- Any lingering node/Electron processes (`pkill -f node; pkill -f Electron`)
+- Browser cache (hard refresh with Cmd+Shift+R)
+
+### Never debug without verifying fresh code
+
+Before spending time debugging, ALWAYS verify your code changes are actually running:
+
+1. Add a distinctive console.log: `console.log('🔥 MY CHANGE LOADED:', Date.now())`
+2. Save the file
+3. Check if the log appears
+4. If not, clear caches and restart
+
+This avoids wasting hours debugging stale code.
+
+### Webpack config notes
+
+- Dev mode should NOT use `cache: { type: 'filesystem' }`
+- Memory cache or no cache is preferred for development
+- Production can use filesystem cache for CI speed
+````
+
+---
+
+## Section: Foundation Health
+
+```markdown
+## Foundation Health Check
+
+### When to run
+
+Run `npm run health:check` when:
+
+- Starting work after a break
+- After updating dependencies
+- When things "feel broken"
+- Before investigating mysterious bugs
+
+### What it checks
+
+1. Cache state (not stale/oversized)
+2. Webpack config (correct cache settings)
+3. useEventListener hook (present and exported)
+4. Direct EventDispatcher subscriptions (anti-pattern detection)
+5. Build canary (present in entry)
+6. Package versions (no known problematic versions)
+
+### Interpreting results
+
+- ✅ Pass: All good
+- ⚠️ Warning: Works but could be improved
+- ❌ Fail: Must fix before proceeding
+```
+
+---
+
+## Section: Debugging React Migrations
+
+````markdown
+## Debugging Legacy → React Migrations
+
+### Common issue: UI doesn't update after action
+
+If you perform an action (rename, add, delete) and the UI doesn't update:
+
+1. **Check if the action succeeded** - Look in console for success logs
+2. **Check if event was emitted** - Add logging to the model method
+3. **Check if event was received** - Add logging in useEventListener callback
+4. **Check if component re-rendered** - Add console.log in component body
+
+Usually the problem is:
+
+- ❌ Using direct `.on()` instead of `useEventListener`
+- ❌ Cached old code running (run `npm run clean:all`)
+- ❌ Event name mismatch (check exact spelling)
+
+### Pattern for debugging event subscriptions
+
+```typescript
+useEventListener(ProjectModel.instance, 'componentRenamed', (data) => {
+  console.log('🔔 Event received:', data); // Add this temporarily
+  // Your actual handler
+});
+```
+````
+
+If you don't see the log, the subscription isn't working.
+
+```
+
+---
+
+
 _Last Updated: December 2025_
+```

@@ -9,7 +9,7 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-  overflow: hidden;
+  overflow: visible; /* Allow popups to extend outside panel */
 }
 
 .Header {

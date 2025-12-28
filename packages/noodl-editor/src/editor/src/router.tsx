@@ -173,6 +173,6 @@ export default class Router
 
   render() {
     const Route = this.state.route;
-    return Route ? <Route {...this.state.routeArgs} /> : null;
+    return <>{Route ? <Route {...this.state.routeArgs} /> : null}</>;
   }
 }

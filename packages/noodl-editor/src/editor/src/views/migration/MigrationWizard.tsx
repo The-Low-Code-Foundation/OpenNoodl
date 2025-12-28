@@ -16,6 +16,7 @@ import { CoreBaseDialog } from '@noodl-core-ui/components/layout/BaseDialog';
 import { Text, TextType } from '@noodl-core-ui/components/typography/Text';
 import { Title, TitleSize, TitleVariant } from '@noodl-core-ui/components/typography/Title';
 
+import { BudgetState } from '../../models/migration/BudgetController';
 import {
   migrationSessionManager,
   getStepLabel,
@@ -27,10 +28,13 @@ import {
   MigrationScan,
   MigrationResult,
   AIBudget,
-  AIPreferences
+  AIPreferences,
+  AIDecisionRequest
 } from '../../models/migration/types';
 import { AIConfigPanel, AIConfig } from './AIConfigPanel';
+import { BudgetApprovalDialog } from './BudgetApprovalDialog';
 import { WizardProgress } from './components/WizardProgress';
+import { DecisionDialog } from './DecisionDialog';
 import css from './MigrationWizard.module.scss';
 import { CompleteStep } from './steps/CompleteStep';
 import { ConfirmStep } from './steps/ConfirmStep';
@@ -222,6 +226,10 @@ export function MigrationWizard({ sourcePath, projectName, onComplete, onCancel 
   });
 
   const [isInitialized, setIsInitialized] = useState(false);
+  const [budgetApprovalRequest, setBudgetApprovalRequest] = useState<BudgetState | null>(null);
+  const [decisionRequest, setDecisionRequest] = useState<AIDecisionRequest | null>(null);
+  const [budgetApprovalResolve, setBudgetApprovalResolve] = useState<((approved: boolean) => void) | null>(null);
+  const [decisionResolve, setDecisionResolve] = useState<((action: string) => void) | null>(null);
 
   // Create session on mount
   useEffect(() => {
@@ -359,6 +367,47 @@ export function MigrationWizard({ sourcePath, projectName, onComplete, onCancel 
     console.log('Pause migration requested');
   }, []);
 
+  const handleBudgetApproval = useCallback(
+    (approved: boolean) => {
+      if (budgetApprovalResolve) {
+        budgetApprovalResolve(approved);
+        setBudgetApprovalResolve(null);
+      }
+      setBudgetApprovalRequest(null);
+    },
+    [budgetApprovalResolve]
+  );
+
+  const handleDecision = useCallback(
+    (action: 'retry' | 'skip' | 'manual' | 'getHelp') => {
+      if (decisionResolve) {
+        decisionResolve(action);
+        setDecisionResolve(null);
+      }
+      setDecisionRequest(null);
+    },
+    [decisionResolve]
+  );
+
+  // Callback for orchestrator to request budget approval
+  const requestBudgetApproval = useCallback((state: BudgetState): Promise<boolean> => {
+    return new Promise<boolean>((resolve) => {
+      setBudgetApprovalRequest(state);
+      setBudgetApprovalResolve(() => resolve);
+    });
+  }, []);
+
+  // Callback for orchestrator to request decision
+  const requestDecision = useCallback(
+    (request: AIDecisionRequest): Promise<'retry' | 'skip' | 'manual' | 'getHelp'> => {
+      return new Promise<'retry' | 'skip' | 'manual' | 'getHelp'>((resolve) => {
+        setDecisionRequest(request);
+        setDecisionResolve(() => resolve);
+      });
+    },
+    []
+  );
+
   // ==========================================================================
   // Render
   // ==========================================================================
@@ -430,6 +479,10 @@ export function MigrationWizard({ sourcePath, projectName, onComplete, onCancel 
             budget={session.ai?.budget}
             onAiDecision={handleAiDecision}
             onPause={handlePauseMigration}
+            budgetApprovalRequest={budgetApprovalRequest}
+            onBudgetApproval={handleBudgetApproval}
+            decisionRequest={decisionRequest}
+            onDecision={handleDecision}
           />
         );
 

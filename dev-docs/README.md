@@ -2,6 +2,16 @@
 
 Welcome to the OpenNoodl development docs. This folder contains everything needed for AI-assisted development with Cline and human contributors alike.
 
+## ⚡ About OpenNoodl
+
+**OpenNoodl is an Electron desktop application** for visual low-code development.
+
+- The **editor** is a desktop app (Electron) where developers build applications
+- The **viewer/runtime** creates web applications that run in browsers
+- This documentation focuses on the **editor** (Electron app)
+
+**Important:** When you run `npm run dev`, an Electron window opens automatically - you don't access it through a web browser. The webpack dev server at `localhost:8080` is internal to Electron and should not be opened in a browser.
+
 ## 📁 Structure
 
 ```
@@ -35,11 +45,13 @@ dev-docs/
 ### For Cline Users
 
 1. **Copy `.clinerules` to repo root**
+
    ```bash
    cp dev-docs/.clinerules .clinerules
    ```
 
 2. **Add custom instructions to Cline**
+
    - Open VSCode → Cline extension settings
    - Paste contents of `CLINE-INSTRUCTIONS.md` into Custom Instructions
 
@@ -59,6 +71,7 @@ dev-docs/
 ### Starting a Task
 
 1. **Read the task documentation completely**
+
    ```
    tasks/phase-X/TASK-XXX-name/
    ├── README.md           # Full task description
@@ -68,6 +81,7 @@ dev-docs/
    ```
 
 2. **Create a branch**
+
    ```bash
    git checkout -b task/XXX-short-name
    ```
@@ -87,27 +101,30 @@ dev-docs/
 ## 🎯 Current Priorities
 
 ### Phase 1: Foundation (Do First)
+
 - [x] TASK-000: Dependency Analysis Report (Research/Documentation)
 - [ ] TASK-001: Dependency Updates & Build Modernization
 - [ ] TASK-002: Legacy Project Migration & Backward Compatibility
 
 ### Phase 2: Core Systems
+
 - [ ] TASK-003: Navigation System Overhaul
 - [ ] TASK-004: Data Nodes Modernization
 
 ### Phase 3: UX Polish
+
 - [ ] TASK-005: Property Panel Overhaul
 - [ ] TASK-006: Import/Export Redesign
 - [ ] TASK-007: REST API Improvements
 
 ## 📚 Key Resources
 
-| Resource | Description |
-|----------|-------------|
-| [Codebase Map](reference/CODEBASE-MAP.md) | Navigate the monorepo |
-| [Coding Standards](guidelines/CODING-STANDARDS.md) | Style and patterns |
-| [Node Patterns](reference/NODE-PATTERNS.md) | Creating new nodes |
-| [Common Issues](reference/COMMON-ISSUES.md) | Troubleshooting |
+| Resource                                           | Description           |
+| -------------------------------------------------- | --------------------- |
+| [Codebase Map](reference/CODEBASE-MAP.md)          | Navigate the monorepo |
+| [Coding Standards](guidelines/CODING-STANDARDS.md) | Style and patterns    |
+| [Node Patterns](reference/NODE-PATTERNS.md)        | Creating new nodes    |
+| [Common Issues](reference/COMMON-ISSUES.md)        | Troubleshooting       |
 
 ## 🤝 Contributing
 

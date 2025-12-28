@@ -1,18 +1,23 @@
 /**
  * FolderItem
  *
- * Renders a folder row with expand/collapse caret and nesting.
+ * Renders a folder row with caret and folder icon.
  */
 
 import classNames from 'classnames';
 import React, { useCallback, useRef, useState } from 'react';
 
 import { Icon, IconName } from '@noodl-core-ui/components/common/Icon';
+import { MenuDialogWidth } from '@noodl-core-ui/components/popups/MenuDialog';
 
-import PopupLayer from '../../../popuplayer';
+import { showContextMenuInPopup } from '../../../ShowContextMenuInPopup';
 import css from '../ComponentsPanel.module.scss';
-import { FolderItemData, TreeNode } from '../types';
+import { ComponentTemplates } from '../ComponentTemplates';
+import { FolderItemData, Sheet, TreeNode } from '../types';
 import { RenameInput } from './RenameInput';
+
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const PopupLayer = require('@noodl-views/popuplayer');
 
 interface FolderItemProps {
   folder: FolderItemData;
@@ -28,11 +33,20 @@ interface FolderItemProps {
   onDrop?: (node: TreeNode) => void;
   canAcceptDrop?: (node: TreeNode) => boolean;
   onDoubleClick?: (node: TreeNode) => void;
+  onAddComponent?: (template: TSFixme, parentPath?: string) => void;
+  onAddFolder?: (parentPath?: string) => void;
   isRenaming?: boolean;
   renameValue?: string;
   onRenameChange?: (value: string) => void;
   onRenameConfirm?: () => void;
   onRenameCancel?: () => void;
+  // Sheet management
+  sheets?: Sheet[];
+  onMoveToSheet?: (componentPath: string, sheet: Sheet) => void;
+  // Component-folder actions (same as ComponentItem)
+  onOpen?: (node: TreeNode) => void;
+  onMakeHome?: (node: TreeNode) => void;
+  onDuplicate?: (node: TreeNode) => void;
 }
 
 export function FolderItem({
@@ -49,11 +63,18 @@ export function FolderItem({
   onDrop,
   canAcceptDrop,
   onDoubleClick,
+  onAddComponent,
+  onAddFolder,
   isRenaming,
   renameValue,
   onRenameChange,
   onRenameConfirm,
-  onRenameCancel
+  onRenameCancel,
+  sheets,
+  onMoveToSheet,
+  onOpen,
+  onMakeHome,
+  onDuplicate
 }: FolderItemProps) {
   const indent = level * 12;
   const itemRef = useRef<HTMLDivElement>(null);
@@ -83,9 +104,21 @@ export function FolderItem({
     [folder, onDragStart]
   );
 
-  const handleMouseUp = useCallback(() => {
-    dragStartPos.current = null;
-  }, []);
+  const handleMouseUp = useCallback(
+    (e: React.MouseEvent) => {
+      dragStartPos.current = null;
+
+      // If this folder is a valid drop target, execute the drop
+      if (isDropTarget && onDrop) {
+        e.stopPropagation(); // Prevent bubble to Tree (for root drop fallback)
+        const node: TreeNode = { type: 'folder', data: folder };
+        onDrop(node);
+        setIsDropTarget(false);
+        // Note: dragCompleted() is called by handleDropOn - don't call it here
+      }
+    },
+    [isDropTarget, folder, onDrop]
+  );
 
   // Drop handlers
   const handleMouseEnter = useCallback(() => {
@@ -118,29 +151,135 @@ export function FolderItem({
       e.preventDefault();
       e.stopPropagation();
 
+      // Clear drag state to prevent phantom drags after menu closes
+      dragStartPos.current = null;
+
       const node: TreeNode = { type: 'folder', data: folder };
 
-      const items = [
-        {
-          label: 'Rename',
-          onClick: () => onRename?.(node)
-        },
-        { type: 'divider' as const },
-        {
-          label: 'Delete',
-          onClick: () => onDelete?.(node)
+      // Parent path for new items in this folder
+      const parentPath = folder.path === '/' ? '/' : folder.path + '/';
+
+      const items: TSFixme[] = [];
+
+      // Add "Create" menu items if handlers are provided
+      if (onAddComponent && onAddFolder) {
+        // Get templates for browser runtime (default)
+        const templates = ComponentTemplates.instance.getTemplates({
+          forRuntimeType: 'browser'
+        });
+
+        // Add template creation items
+        templates.forEach((template) => {
+          items.push({
+            icon: template.icon,
+            label: `Create ${template.label}`,
+            onClick: () => onAddComponent(template, parentPath)
+          });
+        });
+
+        // Add folder creation
+        items.push('divider');
+        items.push({
+          icon: IconName.FolderClosed,
+          label: 'Create Folder',
+          onClick: () => onAddFolder(parentPath)
+        });
+
+        items.push('divider');
+      }
+
+      // For component-folders, add component-specific actions (Open, Make Home, Duplicate)
+      if (folder.isComponentFolder && folder.component) {
+        items.push({
+          label: 'Open',
+          onClick: () => onOpen?.(node)
+        });
+        items.push('divider');
+
+        // Only show "Make Home" for pages or visual components (not logic/cloud functions)
+        if (folder.isPage || folder.isVisual) {
+          items.push({
+            label: 'Make Home',
+            disabled: folder.isRoot,
+            onClick: () => onMakeHome?.(node)
+          });
+          items.push('divider');
         }
-      ];
+      }
 
-      const menu = new PopupLayer.PopupMenu({ items });
+      // Add rename (available for all folders)
+      items.push({
+        label: 'Rename',
+        onClick: () => onRename?.(node)
+      });
 
-      PopupLayer.instance.showPopup({
-        content: menu,
-        attachTo: e.currentTarget as HTMLElement,
-        position: { x: e.clientX, y: e.clientY }
+      // Add duplicate for component-folders
+      if (folder.isComponentFolder && folder.component) {
+        items.push({
+          label: 'Duplicate',
+          onClick: () => onDuplicate?.(node)
+        });
+      }
+
+      // Add "Move to" option for any folder that has a path and sheets are available
+      // Works for both component-folders and regular folders
+      if (folder.path && sheets && sheets.length > 0 && onMoveToSheet) {
+        items.push('divider');
+
+        // Use component.name for component-folders, folder.path for regular folders
+        const folderPath = folder.isComponentFolder && folder.component ? folder.component.name : folder.path;
+
+        // "Move to" opens a separate popup with sheet options
+        items.push({
+          label: 'Move to...',
+          icon: IconName.FolderClosed,
+          onClick: () => {
+            // Determine which sheet this folder is currently in
+            const currentSheetFolder = sheets.find(
+              (s) => !s.isDefault && folderPath.startsWith('/' + s.folderName + '/')
+            );
+            const isInDefaultSheet = !currentSheetFolder;
+
+            // Create sheet selection menu items
+            const sheetItems: TSFixme[] = sheets.map((sheet) => {
+              const isCurrentSheet = sheet.isDefault
+                ? isInDefaultSheet
+                : sheet.folderName === currentSheetFolder?.folderName;
+
+              return {
+                label: sheet.name + (isCurrentSheet ? ' (current)' : ''),
+                icon: sheet.isDefault ? IconName.Component : IconName.FolderClosed,
+                isDisabled: isCurrentSheet,
+                isHighlighted: isCurrentSheet,
+                onClick: () => {
+                  if (!isCurrentSheet) {
+                    onMoveToSheet(folderPath, sheet);
+                  }
+                }
+              };
+            });
+
+            // Show the sheet selection popup
+            showContextMenuInPopup({
+              items: sheetItems,
+              width: MenuDialogWidth.Default
+            });
+          }
+        });
+      }
+
+      items.push('divider');
+      items.push({
+        label: 'Delete',
+        onClick: () => onDelete?.(node)
+      });
+
+      showContextMenuInPopup({
+        items,
+        width: MenuDialogWidth.Default
       });
     },
-    [folder, onRename, onDelete]
+    [folder, onRename, onDelete, onAddComponent, onAddFolder, sheets, onMoveToSheet, onOpen, onMakeHome, onDuplicate]
   );
 
   const handleDoubleClick = useCallback(() => {
