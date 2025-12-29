@@ -927,3 +927,155 @@ If you don't see the log, the subscription isn't working.
 
 _Last Updated: December 2025_
 ```
+
+---
+
+## 14. Node Creation Checklist
+
+> **🚨 CRITICAL:** Before creating or modifying runtime nodes, read `dev-docs/reference/LEARNINGS-NODE-CREATION.md`
+
+Creating nodes in OpenNoodl is deceptively tricky. This checklist prevents the most common (and hardest to debug) issues.
+
+### 14.1 Pre-Flight Checklist
+
+Before writing any node code:
+
+- [ ] Read `dev-docs/reference/LEARNINGS-NODE-CREATION.md` (especially the CRITICAL GOTCHAS section)
+- [ ] Study an existing working node of similar complexity (e.g., `restnode.js` for data nodes)
+- [ ] Understand the difference between `inputs` (static) vs `prototypeExtensions` (instance methods)
+- [ ] Know where your node should be registered (noodl-runtime vs noodl-viewer-react)
+
+### 14.2 Input Handler Rules
+
+```javascript
+// ✅ CORRECT: Signal inputs use valueChangedToTrue
+inputs: {
+  fetch: {
+    type: 'signal',
+    valueChangedToTrue: function() {
+      this.scheduleFetch();
+    }
+  }
+}
+
+// ❌ WRONG: Signal inputs with set() - NEVER TRIGGERS
+inputs: {
+  fetch: {
+    type: 'signal',
+    set: function(value) { // ☠️ Never called for signals
+      this.scheduleFetch();
+    }
+  }
+}
+```
+
+### 14.3 Never Override setInputValue
+
+```javascript
+// ❌ BREAKS EVERYTHING - Never define setInputValue in prototypeExtensions
+prototypeExtensions: {
+  setInputValue: function(name, value) { // ☠️ Overrides base - signals stop working
+    // ...
+  }
+}
+
+// ✅ Use a different name for custom storage
+prototypeExtensions: {
+  _storeInputValue: function(name, value) { // ✅ Doesn't override anything
+    this._internal.inputValues[name] = value;
+  }
+}
+```
+
+### 14.4 Dynamic Ports Must Include Static Ports
+
+```javascript
+// ❌ WRONG - Static ports disappear
+function updatePorts(nodeId, parameters, editorConnection) {
+  const ports = [];
+  // Only adds dynamic ports...
+  editorConnection.sendDynamicPorts(nodeId, ports); // Static inputs gone!
+}
+
+// ✅ CORRECT - Include all ports
+function updatePorts(nodeId, parameters, editorConnection) {
+  const ports = [
+    // Re-add static inputs
+    { name: 'url', displayName: 'URL', type: 'string', plug: 'input', group: 'Request' },
+    { name: 'fetch', displayName: 'Fetch', type: 'signal', plug: 'input', group: 'Actions' },
+    // Then add dynamic ports...
+  ];
+  editorConnection.sendDynamicPorts(nodeId, ports);
+}
+```
+
+### 14.5 Register Config Inputs Explicitly
+
+```javascript
+// Config inputs (from stringlist editors) need explicit registration
+registerInputIfNeeded: function(name) {
+  if (this.hasInput(name)) return;
+
+  // Map config names to their setters
+  const configSetters = {
+    'method': this.setMethod.bind(this),
+    'headers': this.setHeaders.bind(this),
+    'queryParams': this.setQueryParams.bind(this)
+  };
+
+  if (configSetters[name]) {
+    return this.registerInput(name, { set: configSetters[name] });
+  }
+
+  // Handle prefixed dynamic inputs
+  if (name.startsWith('header-')) {
+    return this.registerInput(name, {
+      set: this._storeInputValue.bind(this, name)
+    });
+  }
+}
+```
+
+### 14.6 Export Format Matters
+
+```javascript
+// ✅ CORRECT: Export with setup function
+module.exports = {
+  node: MyNode,
+  setup: function (context, graphModel) {
+    // Port management goes here
+  }
+};
+
+// ❌ WRONG: Direct export (setup never runs)
+module.exports = MyNode;
+```
+
+### 14.7 Post-Creation Verification
+
+After creating a node:
+
+1. **Check ports appear**: All static AND dynamic inputs/outputs visible in editor?
+2. **Check signals work**: Add console.log in `valueChangedToTrue` - does it print?
+3. **Check config inputs work**: Change dropdown/stringlist values - does setter get called?
+4. **Clear caches if needed**: `npm run clean:all` and restart
+
+### 14.8 Quick Reference
+
+| Input Type                   | Handler                     | Callback Format             |
+| ---------------------------- | --------------------------- | --------------------------- |
+| Signal                       | `valueChangedToTrue`        | `function() { ... }`        |
+| Value (string, number, etc.) | `set`                       | `function(value) { ... }`   |
+| Enum (dropdown)              | `set`                       | `function(value) { ... }`   |
+| StringList (config)          | Needs explicit registration | Via `registerInputIfNeeded` |
+
+### 14.9 Where to Find Examples
+
+| Pattern                              | Example File                                                     |
+| ------------------------------------ | ---------------------------------------------------------------- |
+| Complex data node with dynamic ports | `noodl-runtime/src/nodes/std-library/data/restnode.js`           |
+| HTTP node (fixed, working)           | `noodl-runtime/src/nodes/std-library/data/httpnode.js`           |
+| Simple value node                    | `noodl-runtime/src/nodes/std-library/variables/numbernode.js`    |
+| Signal-based node                    | `noodl-runtime/src/nodes/std-library/timer.js` (in viewer-react) |
+
+---

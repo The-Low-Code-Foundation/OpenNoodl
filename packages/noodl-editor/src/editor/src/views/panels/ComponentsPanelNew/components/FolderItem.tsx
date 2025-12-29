@@ -111,10 +111,14 @@ export function FolderItem({
       // If this folder is a valid drop target, execute the drop
       if (isDropTarget && onDrop) {
         e.stopPropagation(); // Prevent bubble to Tree (for root drop fallback)
+
+        // End drag IMMEDIATELY at event handler level (before action chain)
+        // This matches the working root drop pattern
+        PopupLayer.instance.dragCompleted();
+
         const node: TreeNode = { type: 'folder', data: folder };
         onDrop(node);
         setIsDropTarget(false);
-        // Note: dragCompleted() is called by handleDropOn - don't call it here
       }
     },
     [isDropTarget, folder, onDrop]

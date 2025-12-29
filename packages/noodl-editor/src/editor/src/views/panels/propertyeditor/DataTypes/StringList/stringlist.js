@@ -3,11 +3,26 @@ import StringListTemplate from '../../../../../templates/propertyeditor/stringli
 import PopupLayer from '../../../../popuplayer';
 import { ToastLayer } from '../../../../ToastLayer/ToastLayer';
 
+// Helper to normalize list input - handles both string and array formats
+function normalizeList(value) {
+  if (value === undefined || value === null || value === '') {
+    return [];
+  }
+  if (Array.isArray(value)) {
+    // Already an array (legacy proplist data) - extract labels if objects
+    return value.map((item) => (typeof item === 'object' && item.label ? item.label : String(item)));
+  }
+  if (typeof value === 'string') {
+    return value.split(',').filter(Boolean);
+  }
+  return [];
+}
+
 var StringList = function (args) {
   View.call(this);
 
   this.parent = args.parent;
-  this.list = args.list !== undefined && args.list !== '' ? args.list.split(',') : [];
+  this.list = normalizeList(args.list);
   this.type = args.type;
   this.plug = args.plug;
   this.title = args.title;
@@ -32,7 +47,7 @@ StringList.prototype.listUpdated = function () {
   if (this.onUpdate) {
     var updated = this.onUpdate(this.list.join(','));
     if (updated) {
-      this.list = updated.value ? updated.value.split(',') : [];
+      this.list = normalizeList(updated.value);
       this.isDefault = updated.isDefault;
     }
   }

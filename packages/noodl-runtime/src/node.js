@@ -84,10 +84,20 @@ Node.prototype.registerInputIfNeeded = function () {
 };
 
 Node.prototype.setInputValue = function (name, value) {
+  // DEBUG: Track input value setting for HTTP node
+  if (this.name === 'net.noodl.HTTP') {
+    console.log('[Node.setInputValue] 🎯 HTTP node setting input:', name, 'value:', value);
+  }
+
   const input = this.getInput(name);
   if (!input) {
-    console.log("node doesn't have input", name);
+    console.log("node doesn't have input", name, 'for node:', this.name);
     return;
+  }
+
+  // DEBUG: Track if setter exists
+  if (this.name === 'net.noodl.HTTP' && name === 'fetch') {
+    console.log('[Node.setInputValue] 🎯 HTTP fetch input found, calling setter');
   }
 
   //inputs with units always expect objects in the shape of {value, unit, ...}

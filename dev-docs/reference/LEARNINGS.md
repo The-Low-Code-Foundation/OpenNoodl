@@ -852,6 +852,145 @@ const handleTreeMouseUp = useCallback(() => {
 
 ---
 
+## 🔥 CRITICAL: Runtime Node Creation - The Unholy Trinity of Silent Failures (Dec 2025)
+
+### The HTTP Node Debugging Saga: 3+ Hours of Silent Failures
+
+**Context**: Creating an HTTP node (httpnode.js) as a modern, no-code-friendly alternative to the script-based REST node. Everything looked correct but nothing worked. Signals never fired, config values never set, and no errors anywhere.
+
+**The Problems Found** (each took significant debugging time):
+
+#### Problem 1: Signal Input Using `set` Instead of `valueChangedToTrue`
+
+```javascript
+// ❌ WHAT I WROTE (never triggers)
+inputs: {
+  fetch: {
+    type: 'signal',
+    set: function(value) {
+      this.scheduleFetch();  // ☠️ Never called
+    }
+  }
+}
+
+// ✅ WHAT IT SHOULD BE
+inputs: {
+  fetch: {
+    type: 'signal',
+    valueChangedToTrue: function() {
+      this.scheduleFetch();  // ✓ Works!
+    }
+  }
+}
+```
+
+**Why**: Signals use `EdgeTriggeredInput.createSetter()` which wraps the callback and only calls `valueChangedToTrue` when value transitions from falsy to truthy. The `set` callback is never used.
+
+#### Problem 2: Custom `setInputValue` Overriding Base Method
+
+```javascript
+// ❌ WHAT I WROTE (breaks ALL inputs including signals)
+prototypeExtensions: {
+  setInputValue: function(name, value) {
+    this._internal.inputValues[name] = value;  // ☠️ Overrides Node.prototype.setInputValue
+  }
+}
+
+// ✅ WHAT IT SHOULD BE
+prototypeExtensions: {
+  _storeInputValue: function(name, value) {  // Different name!
+    this._internal.inputValues[name] = value;
+  }
+}
+```
+
+**Why**: `prototypeExtensions` methods are merged into node prototype. Defining `setInputValue` completely replaces the base implementation, which handles signal detection, input.set() calls, and event emission.
+
+#### Problem 3: Dynamic Ports Replacing Static Ports
+
+```javascript
+// ❌ WHAT I WROTE (static ports disappear)
+function updatePorts(nodeId, parameters, editorConnection) {
+  const ports = [];
+  // Only add dynamic header/query param ports...
+  if (parameters.headers) { /* add header ports */ }
+  editorConnection.sendDynamicPorts(nodeId, ports);  // Static inputs GONE!
+}
+
+// ✅ WHAT IT SHOULD BE
+function updatePorts(nodeId, parameters, editorConnection) {
+  const ports = [
+    // Re-add ALL static inputs
+    { name: 'url', displayName: 'URL', type: 'string', plug: 'input', group: 'Request' },
+    { name: 'fetch', displayName: 'Fetch', type: 'signal', plug: 'input', group: 'Actions' },
+    { name: 'cancel', displayName: 'Cancel', type: 'signal', plug: 'input', group: 'Actions' },
+    // Then dynamic ports...
+  ];
+  editorConnection.sendDynamicPorts(nodeId, ports);
+}
+```
+
+**Why**: `sendDynamicPorts` REPLACES all ports, not merges. The `inputs` object in node definition is only for default setup - once dynamic ports are sent, they're the only ports.
+
+#### Problem 4: Config Inputs (StringList/Enum) Need Explicit Registration
+
+```javascript
+// ❌ MISSING (config values never reach setters)
+// StringList inputs like "headers", "queryParams" appear in editor but their
+// values never reach the node because there's no registered input handler
+
+// ✅ WHAT IT NEEDS
+registerInputIfNeeded: function(name) {
+  if (this.hasInput(name)) return;
+
+  const configSetters = {
+    'method': this.setMethod.bind(this),
+    'headers': this.setHeaders.bind(this),
+    'queryParams': this.setQueryParams.bind(this),
+    'bodyType': this.setBodyType.bind(this),
+    // ... all config inputs
+  };
+
+  if (configSetters[name]) {
+    return this.registerInput(name, { set: configSetters[name] });
+  }
+
+  // Dynamic inputs (header-X, query-Y, etc.)
+  if (name.startsWith('header-')) {
+    return this.registerInput(name, {
+      set: this._storeInputValue.bind(this, name)
+    });
+  }
+}
+```
+
+**Why**: Inputs defined in the `inputs` object get registered automatically. Dynamic ports don't - they need `registerInputIfNeeded` to create runtime handlers.
+
+**Why This Was So Hard to Debug**:
+
+1. **No errors** - Everything appeared to work, logs said "success", but nothing happened
+2. **Partial success** - Some things worked (node appeared in palette) making it seem close
+3. **Multiple bugs** - Each fix revealed the next bug, each taking time to diagnose
+4. **No TypeScript** - Runtime code is JS, no compile-time checking
+5. **Unfamiliar patterns** - `valueChangedToTrue`, `registerInputIfNeeded`, etc. aren't obvious
+
+**Time Lost**: 3+ hours debugging what should have been a straightforward node
+
+**Prevention**:
+
+- Created `dev-docs/reference/LEARNINGS-NODE-CREATION.md` with Critical Gotchas section
+- Added Node Creation Checklist to `.clinerules` Section 14
+- These gotchas are now documented with THE BUG / WHY IT BREAKS / THE FIX patterns
+
+**Location**:
+
+- `packages/noodl-runtime/src/nodes/std-library/data/httpnode.js` (fixed)
+- `dev-docs/reference/LEARNINGS-NODE-CREATION.md` (new documentation)
+
+**Keywords**: node creation, signal, valueChangedToTrue, setInputValue, prototypeExtensions, sendDynamicPorts, registerInputIfNeeded, stringlist, enum, config inputs, HTTP node, runtime
+
+---
+
 ## 🔥 CRITICAL: PopupLayer.dragCompleted() - Not endDrag() (Dec 2025)
 
 ### Wrong Method Name Causes TypeError

@@ -23,7 +23,7 @@ function registerNodes(noodlRuntime) {
 
     // Data
     require('./src/nodes/std-library/data/restnode'),
-    require('./src/nodes/std-library/data/httpnode'),
+    // require('./src/nodes/std-library/data/httpnode'), // moved to viewer for debugging
 
     // Custom code
     require('./src/nodes/std-library/expression'),

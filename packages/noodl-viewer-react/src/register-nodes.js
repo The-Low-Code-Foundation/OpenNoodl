@@ -60,6 +60,9 @@ export default function registerNodes(noodlRuntime) {
     require('./nodes/std-library/colorblend'),
     require('./nodes/std-library/animate-to-value'),
 
+    // HTTP node - temporarily here for debugging (normally in noodl-runtime)
+    require('@noodl/runtime/src/nodes/std-library/data/httpnode'),
+
     //require('./nodes/std-library/variables/number'), // moved to runtime
     //require('./nodes/std-library/variables/string'),
     //require('./nodes/std-library/variables/boolean'),

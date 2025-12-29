@@ -200,6 +200,7 @@ function defineNode(opts) {
     Object.keys(opts.inputs).forEach(function (name) {
       var input = opts.inputs[name];
       if (input.valueChangedToTrue) {
+        console.log('[NodeDefinition] 📌 Registering signal input:', name, 'for node:', opts.name);
         node._inputs[name] = {
           set: EdgeTriggeredInput.createSetter({
             valueChangedToTrue: input.valueChangedToTrue

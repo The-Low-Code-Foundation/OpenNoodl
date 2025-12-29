@@ -19,6 +19,9 @@
 
 // Note: This file uses CommonJS module format to match the noodl-runtime pattern
 
+// DEBUG: Confirm module is loaded
+console.log('[HTTP Node Module] 📦 httpnode.js MODULE LOADED');
+
 /**
  * Extract value from object using JSONPath-like syntax
  * Supports: $.data.users, $.items[0].name, $.meta.pagination.total
@@ -88,12 +91,13 @@ var HttpNode = {
   searchTags: ['http', 'request', 'fetch', 'api', 'rest', 'curl'],
 
   initialize: function () {
+    console.log('[HTTP Node] 🚀 INITIALIZE called - node instance created');
     this._internal.inputValues = {};
     this._internal.outputValues = {};
-    this._internal.headers = [];
-    this._internal.queryParams = [];
-    this._internal.bodyFields = [];
-    this._internal.responseMapping = [];
+    this._internal.headers = '';
+    this._internal.queryParams = '';
+    this._internal.bodyFields = '';
+    this._internal.responseMapping = '';
     this._internal.inspectData = null;
   },
 
@@ -105,6 +109,7 @@ var HttpNode = {
   },
 
   inputs: {
+    // Static inputs - these don't need to trigger port regeneration
     url: {
       type: 'string',
       displayName: 'URL',
@@ -114,40 +119,12 @@ var HttpNode = {
         this._internal.url = value;
       }
     },
-    method: {
-      type: {
-        name: 'enum',
-        enums: [
-          { label: 'GET', value: 'GET' },
-          { label: 'POST', value: 'POST' },
-          { label: 'PUT', value: 'PUT' },
-          { label: 'PATCH', value: 'PATCH' },
-          { label: 'DELETE', value: 'DELETE' },
-          { label: 'HEAD', value: 'HEAD' },
-          { label: 'OPTIONS', value: 'OPTIONS' }
-        ]
-      },
-      displayName: 'Method',
-      group: 'Request',
-      default: 'GET',
-      set: function (value) {
-        this._internal.method = value;
-      }
-    },
-    timeout: {
-      type: 'number',
-      displayName: 'Timeout (ms)',
-      group: 'Request',
-      default: 30000,
-      set: function (value) {
-        this._internal.timeout = value;
-      }
-    },
     fetch: {
       type: 'signal',
       displayName: 'Fetch',
       group: 'Actions',
       valueChangedToTrue: function () {
+        console.log('[HTTP Node] ⚡ FETCH SIGNAL RECEIVED - valueChangedToTrue triggered!');
         this.scheduleFetch();
       }
     },
@@ -159,6 +136,7 @@ var HttpNode = {
         this.cancelFetch();
       }
     }
+    // Note: method, timeout, and config ports are now dynamic (in updatePorts)
   },
 
   outputs: {
@@ -212,7 +190,9 @@ var HttpNode = {
   },
 
   prototypeExtensions: {
-    setInputValue: function (name, value) {
+    // Store values for dynamic inputs only - static inputs (including signals)
+    // use the base Node.prototype.setInputValue which calls input.set()
+    _storeInputValue: function (name, value) {
       this._internal.inputValues[name] = value;
     },
 
@@ -233,25 +213,45 @@ var HttpNode = {
     registerInputIfNeeded: function (name) {
       if (this.hasInput(name)) return;
 
-      // Dynamic inputs for path params, headers, query params, body fields, auth
-      const inputSetters = {
-        path: this.setInputValue.bind(this),
-        header: this.setInputValue.bind(this),
-        query: this.setInputValue.bind(this),
-        body: this.setInputValue.bind(this),
-        auth: this.setInputValue.bind(this)
+      // Configuration inputs - these set internal state
+      const configSetters = {
+        method: this.setMethod.bind(this),
+        timeout: this.setTimeout.bind(this),
+        headers: this.setHeaders.bind(this),
+        queryParams: this.setQueryParams.bind(this),
+        bodyType: this.setBodyType.bind(this),
+        bodyFields: this.setBodyFields.bind(this),
+        authType: this.setAuthType.bind(this),
+        responseMapping: this.setResponseMapping.bind(this)
       };
 
-      for (const [prefix, setter] of Object.entries(inputSetters)) {
-        if (name.startsWith(prefix + '-')) {
-          return this.registerInput(name, { set: setter.bind(this, name) });
+      if (configSetters[name]) {
+        return this.registerInput(name, {
+          set: configSetters[name]
+        });
+      }
+
+      // Dynamic inputs for path params, headers, query params, body fields, auth, mapping paths
+      // These use _storeInputValue to just store values (no signal trigger needed)
+      const dynamicPrefixes = ['path-', 'header-', 'query-', 'body-', 'auth-', 'mapping-path-'];
+
+      for (const prefix of dynamicPrefixes) {
+        if (name.startsWith(prefix)) {
+          return this.registerInput(name, {
+            set: this._storeInputValue.bind(this, name)
+          });
         }
       }
     },
 
     scheduleFetch: function () {
-      if (this._internal.hasScheduledFetch) return;
+      console.log('[HTTP Node] scheduleFetch called');
+      if (this._internal.hasScheduledFetch) {
+        console.log('[HTTP Node] Already scheduled, skipping');
+        return;
+      }
       this._internal.hasScheduledFetch = true;
+      console.log('[HTTP Node] Scheduling doFetch after inputs update');
       this.scheduleAfterInputsHaveUpdated(this.doFetch.bind(this));
     },
 
@@ -278,12 +278,16 @@ var HttpNode = {
       // Add query parameters
       const queryParams = {};
 
-      // From visual config
+      // From visual config (stringlist format)
       if (this._internal.queryParams) {
-        for (const qp of this._internal.queryParams) {
-          const value = this._internal.inputValues['query-' + qp.key];
+        const queryList = this._internal.queryParams
+          .split(',')
+          .map((q) => q.trim())
+          .filter(Boolean);
+        for (const qp of queryList) {
+          const value = this._internal.inputValues['query-' + qp];
           if (value !== undefined && value !== null && value !== '') {
-            queryParams[qp.key] = value;
+            queryParams[qp] = value;
           }
         }
       }
@@ -312,12 +316,16 @@ var HttpNode = {
     buildHeaders: function () {
       const headers = {};
 
-      // From visual config
+      // From visual config (stringlist format)
       if (this._internal.headers) {
-        for (const h of this._internal.headers) {
-          const value = this._internal.inputValues['header-' + h.key];
+        const headerList = this._internal.headers
+          .split(',')
+          .map((h) => h.trim())
+          .filter(Boolean);
+        for (const h of headerList) {
+          const value = this._internal.inputValues['header-' + h];
           if (value !== undefined && value !== null) {
-            headers[h.key] = String(value);
+            headers[h] = String(value);
           }
         }
       }
@@ -341,32 +349,38 @@ var HttpNode = {
       }
 
       const bodyType = this._internal.bodyType || 'json';
-      const bodyFields = this._internal.bodyFields || [];
+      const bodyFieldsStr = this._internal.bodyFields || '';
+
+      // Parse stringlist format
+      const bodyFields = bodyFieldsStr
+        .split(',')
+        .map((f) => f.trim())
+        .filter(Boolean);
 
       if (bodyType === 'json') {
         const body = {};
         for (const field of bodyFields) {
-          const value = this._internal.inputValues['body-' + field.key];
+          const value = this._internal.inputValues['body-' + field];
           if (value !== undefined) {
-            body[field.key] = value;
+            body[field] = value;
           }
         }
         return Object.keys(body).length > 0 ? JSON.stringify(body) : undefined;
       } else if (bodyType === 'form') {
         const formData = new FormData();
         for (const field of bodyFields) {
-          const value = this._internal.inputValues['body-' + field.key];
+          const value = this._internal.inputValues['body-' + field];
           if (value !== undefined && value !== null) {
-            formData.append(field.key, value);
+            formData.append(field, value);
           }
         }
         return formData;
       } else if (bodyType === 'urlencoded') {
         const params = new URLSearchParams();
         for (const field of bodyFields) {
-          const value = this._internal.inputValues['body-' + field.key];
+          const value = this._internal.inputValues['body-' + field];
           if (value !== undefined && value !== null) {
-            params.append(field.key, String(value));
+            params.append(field, String(value));
           }
         }
         return params.toString();
@@ -390,10 +404,20 @@ var HttpNode = {
       this._internal.responseHeaders = responseHeaders;
 
       // Process response mappings
-      const mappings = this._internal.responseMapping || [];
-      for (const mapping of mappings) {
-        const outputName = 'out-' + mapping.name;
-        const value = extractByPath(responseBody, mapping.path);
+      // Output names are in responseMapping (comma-separated)
+      // Path for each output is in inputValues['mapping-path-{name}']
+      const mappingStr = this._internal.responseMapping || '';
+      const outputNames = mappingStr
+        .split(',')
+        .map((m) => m.trim())
+        .filter(Boolean);
+
+      for (const name of outputNames) {
+        // Get the path from the corresponding input port
+        const path = this._internal.inputValues['mapping-path-' + name] || '$';
+
+        const outputName = 'out-' + name;
+        const value = extractByPath(responseBody, path);
 
         this.registerOutputIfNeeded(outputName);
         this._internal.outputValues[outputName] = value;
@@ -415,6 +439,7 @@ var HttpNode = {
     },
 
     doFetch: function () {
+      console.log('[HTTP Node] doFetch executing');
       this._internal.hasScheduledFetch = false;
 
       const url = this.buildUrl();
@@ -423,11 +448,20 @@ var HttpNode = {
       const body = this.buildBody();
       const timeout = this._internal.timeout || 30000;
 
+      console.log('[HTTP Node] Request details:', {
+        url,
+        method,
+        headers,
+        body: body ? '(has body)' : '(no body)',
+        timeout
+      });
+
       // Store for inspect
       this._internal.lastRequestUrl = url;
 
       // Validate URL
       if (!url) {
+        console.log('[HTTP Node] No URL provided, sending failure');
         this._internal.error = 'URL is required';
         this.flagOutputDirty('error');
         this.sendSignalOnOutput('failure');
@@ -503,11 +537,11 @@ var HttpNode = {
 
     // Configuration setters called from setup function
     setHeaders: function (value) {
-      this._internal.headers = value || [];
+      this._internal.headers = value || '';
     },
 
     setQueryParams: function (value) {
-      this._internal.queryParams = value || [];
+      this._internal.queryParams = value || '';
     },
 
     setBodyType: function (value) {
@@ -515,15 +549,23 @@ var HttpNode = {
     },
 
     setBodyFields: function (value) {
-      this._internal.bodyFields = value || [];
+      this._internal.bodyFields = value || '';
     },
 
     setResponseMapping: function (value) {
-      this._internal.responseMapping = value || [];
+      this._internal.responseMapping = value || '';
     },
 
     setAuthType: function (value) {
       this._internal.authType = value;
+    },
+
+    setMethod: function (value) {
+      this._internal.method = value || 'GET';
+    },
+
+    setTimeout: function (value) {
+      this._internal.timeout = value || 30000;
     }
   }
 };
@@ -533,36 +575,6 @@ var HttpNode = {
  */
 function updatePorts(nodeId, parameters, editorConnection) {
   const ports = [];
-
-  // URL input (already defined in static inputs, but we want it first)
-  ports.push({
-    name: 'url',
-    displayName: 'URL',
-    type: 'string',
-    plug: 'input',
-    group: 'Request'
-  });
-
-  // Method input
-  ports.push({
-    name: 'method',
-    displayName: 'Method',
-    type: {
-      name: 'enum',
-      enums: [
-        { label: 'GET', value: 'GET' },
-        { label: 'POST', value: 'POST' },
-        { label: 'PUT', value: 'PUT' },
-        { label: 'PATCH', value: 'PATCH' },
-        { label: 'DELETE', value: 'DELETE' },
-        { label: 'HEAD', value: 'HEAD' },
-        { label: 'OPTIONS', value: 'OPTIONS' }
-      ]
-    },
-    default: 'GET',
-    plug: 'input',
-    group: 'Request'
-  });
 
   // Parse URL for path parameters: /users/{userId} → userId port
   if (parameters.url) {
@@ -580,7 +592,7 @@ function updatePorts(nodeId, parameters, editorConnection) {
     }
   }
 
-  // Headers configuration
+  // Headers configuration - comma-separated list
   ports.push({
     name: 'headers',
     displayName: 'Headers',
@@ -590,21 +602,23 @@ function updatePorts(nodeId, parameters, editorConnection) {
   });
 
   // Generate input ports for each header
-  if (parameters.headers && Array.isArray(parameters.headers)) {
-    for (const header of parameters.headers) {
-      if (header.key) {
-        ports.push({
-          name: 'header-' + header.key,
-          displayName: header.key,
-          type: 'string',
-          plug: 'input',
-          group: 'Headers'
-        });
-      }
+  if (parameters.headers) {
+    const headerList = parameters.headers
+      .split(',')
+      .map((h) => h.trim())
+      .filter(Boolean);
+    for (const header of headerList) {
+      ports.push({
+        name: 'header-' + header,
+        displayName: header,
+        type: 'string',
+        plug: 'input',
+        group: 'Headers'
+      });
     }
   }
 
-  // Query parameters configuration
+  // Query parameters configuration - comma-separated list
   ports.push({
     name: 'queryParams',
     displayName: 'Query Parameters',
@@ -614,19 +628,43 @@ function updatePorts(nodeId, parameters, editorConnection) {
   });
 
   // Generate input ports for each query param
-  if (parameters.queryParams && Array.isArray(parameters.queryParams)) {
-    for (const param of parameters.queryParams) {
-      if (param.key) {
-        ports.push({
-          name: 'query-' + param.key,
-          displayName: param.key,
-          type: '*',
-          plug: 'input',
-          group: 'Query Parameters'
-        });
-      }
+  if (parameters.queryParams) {
+    const queryList = parameters.queryParams
+      .split(',')
+      .map((q) => q.trim())
+      .filter(Boolean);
+    for (const param of queryList) {
+      ports.push({
+        name: 'query-' + param,
+        displayName: param,
+        type: 'string',
+        plug: 'input',
+        group: 'Query Parameters'
+      });
     }
   }
+
+  // Method selector as dynamic port (so we can track parameter changes properly)
+  ports.push({
+    name: 'method',
+    displayName: 'Method',
+    type: {
+      name: 'enum',
+      enums: [
+        { label: 'GET', value: 'GET' },
+        { label: 'POST', value: 'POST' },
+        { label: 'PUT', value: 'PUT' },
+        { label: 'PATCH', value: 'PATCH' },
+        { label: 'DELETE', value: 'DELETE' },
+        { label: 'HEAD', value: 'HEAD' },
+        { label: 'OPTIONS', value: 'OPTIONS' }
+      ],
+      allowEditOnly: true
+    },
+    default: 'GET',
+    plug: 'input',
+    group: 'Request'
+  });
 
   // Body type selector (only shown for POST/PUT/PATCH)
   const method = parameters.method || 'GET';
@@ -649,7 +687,7 @@ function updatePorts(nodeId, parameters, editorConnection) {
       group: 'Body'
     });
 
-    // Body fields configuration
+    // Body fields configuration - comma-separated list
     const bodyType = parameters.bodyType || 'json';
     if (bodyType === 'json' || bodyType === 'form' || bodyType === 'urlencoded') {
       ports.push({
@@ -660,25 +698,56 @@ function updatePorts(nodeId, parameters, editorConnection) {
         group: 'Body'
       });
 
-      // Generate input ports for each body field
-      if (parameters.bodyFields && Array.isArray(parameters.bodyFields)) {
-        for (const field of parameters.bodyFields) {
-          if (field.key) {
-            ports.push({
-              name: 'body-' + field.key,
-              displayName: field.key,
-              type: '*',
-              plug: 'input',
-              group: 'Body'
-            });
-          }
+      // Type options for body fields
+      const _types = [
+        { label: 'String', value: 'string' },
+        { label: 'Number', value: 'number' },
+        { label: 'Boolean', value: 'boolean' },
+        { label: 'Array', value: 'array' },
+        { label: 'Object', value: 'object' },
+        { label: 'Any', value: '*' }
+      ];
+
+      // Generate type selector and value input ports for each body field
+      if (parameters.bodyFields) {
+        const fieldList = parameters.bodyFields
+          .split(',')
+          .map((f) => f.trim())
+          .filter(Boolean);
+        for (const field of fieldList) {
+          // Get the selected type for this field (default to string)
+          const fieldType = parameters['body-type-' + field] || 'string';
+
+          // Type selector for this field
+          ports.push({
+            name: 'body-type-' + field,
+            displayName: field + ' Type',
+            type: {
+              name: 'enum',
+              enums: _types,
+              allowEditOnly: true
+            },
+            default: 'string',
+            plug: 'input',
+            group: 'Body'
+          });
+
+          // Value input for this field (type matches selected type)
+          ports.push({
+            name: 'body-' + field,
+            displayName: field,
+            type: fieldType,
+            plug: 'input',
+            group: 'Body'
+          });
         }
       }
     } else if (bodyType === 'raw') {
+      // Raw body - use code editor with JSON syntax
       ports.push({
         name: 'body-raw',
         displayName: 'Body',
-        type: 'string',
+        type: { name: 'string', allowEditOnly: true, codeeditor: 'json' },
         plug: 'input',
         group: 'Body'
       });
@@ -760,41 +829,28 @@ function updatePorts(nodeId, parameters, editorConnection) {
     });
   }
 
-  // Response mapping
-  ports.push({
-    name: 'responseMapping',
-    displayName: 'Response Mapping',
-    type: { name: 'stringlist', allowEditOnly: true },
-    plug: 'input',
-    group: 'Response Mapping'
-  });
-
-  // Generate output ports for each response mapping
-  if (parameters.responseMapping && Array.isArray(parameters.responseMapping)) {
-    for (const mapping of parameters.responseMapping) {
-      if (mapping.name) {
-        ports.push({
-          name: 'out-' + mapping.name,
-          displayName: mapping.name,
-          type: '*',
-          plug: 'output',
-          group: 'Response'
-        });
-      }
-    }
-  }
-
-  // Timeout
+  // Timeout setting
   ports.push({
     name: 'timeout',
     displayName: 'Timeout (ms)',
     type: 'number',
     default: 30000,
     plug: 'input',
-    group: 'Settings'
+    group: 'Request'
   });
 
-  // Actions
+  // Response mapping - add output names, then specify JSONPath for each
+  // User adds output names like: userId, userName, totalCount
+  // For each name, we generate a "Path" input and an output port
+  ports.push({
+    name: 'responseMapping',
+    displayName: 'Output Fields',
+    type: { name: 'stringlist', allowEditOnly: true },
+    plug: 'input',
+    group: 'Response Mapping'
+  });
+
+  // Signal inputs - MUST be in dynamic ports for editor to show them
   ports.push({
     name: 'fetch',
     displayName: 'Fetch',
@@ -810,6 +866,44 @@ function updatePorts(nodeId, parameters, editorConnection) {
     plug: 'input',
     group: 'Actions'
   });
+
+  // URL input - also needs to be in dynamic ports
+  ports.push({
+    name: 'url',
+    displayName: 'URL',
+    type: 'string',
+    plug: 'input',
+    group: 'Request'
+  });
+
+  // Generate path input ports and output ports for each response mapping
+  if (parameters.responseMapping && typeof parameters.responseMapping === 'string') {
+    const outputNames = parameters.responseMapping
+      .split(',')
+      .map((m) => m.trim())
+      .filter(Boolean);
+
+    for (const name of outputNames) {
+      // Path input port for specifying JSONPath (e.g., $.data.id)
+      ports.push({
+        name: 'mapping-path-' + name,
+        displayName: name + ' Path',
+        type: 'string',
+        default: '$',
+        plug: 'input',
+        group: 'Response Mapping'
+      });
+
+      // Output port for the extracted value
+      ports.push({
+        name: 'out-' + name,
+        displayName: name,
+        type: '*',
+        plug: 'output',
+        group: 'Response'
+      });
+    }
+  }
 
   // Standard outputs
   ports.push({
@@ -891,7 +985,8 @@ module.exports = {
           event.name === 'bodyType' ||
           event.name === 'bodyFields' ||
           event.name === 'authType' ||
-          event.name === 'responseMapping'
+          event.name === 'responseMapping' ||
+          event.name.startsWith('body-type-') // Body field type changes
         ) {
           updatePorts(node.id, node.parameters, context.editorConnection);
         }

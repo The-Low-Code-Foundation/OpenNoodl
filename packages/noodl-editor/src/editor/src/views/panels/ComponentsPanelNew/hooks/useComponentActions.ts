@@ -523,15 +523,12 @@ export function useComponentActions() {
       // Check for naming conflicts
       if (ProjectModel.instance?.getComponentWithName(newName)) {
         alert(`Component "${newName}" already exists in that folder`);
-        PopupLayer.instance.dragCompleted();
         return;
       }
 
       const oldName = component.name;
 
-      // End drag operation FIRST - before the rename triggers a re-render
-      // This prevents the drag state from persisting across the tree rebuild
-      PopupLayer.instance.dragCompleted();
+      // Note: dragCompleted() now called by ComponentItem.handleMouseUp before this action
 
       UndoQueue.instance.pushAndDo(
         new UndoActionGroup({
@@ -554,7 +551,6 @@ export function useComponentActions() {
       // Prevent moving folder into itself
       if (targetPath.startsWith(sourcePath + '/') || targetPath === sourcePath) {
         alert('Cannot move folder into itself');
-        PopupLayer.instance.dragCompleted();
         return;
       }
 
@@ -565,7 +561,6 @@ export function useComponentActions() {
 
       if (!componentsToMove || componentsToMove.length === 0) {
         console.log('Folder is empty, nothing to move');
-        PopupLayer.instance.dragCompleted();
         return;
       }
 
@@ -584,8 +579,7 @@ export function useComponentActions() {
         renames.push({ component: comp, oldName: comp.name, newName });
       });
 
-      // End drag operation FIRST - before the rename triggers a re-render
-      PopupLayer.instance.dragCompleted();
+      // Note: dragCompleted() now called by FolderItem.handleMouseUp before this action
 
       UndoQueue.instance.pushAndDo(
         new UndoActionGroup({
@@ -612,14 +606,12 @@ export function useComponentActions() {
       // Check for naming conflicts
       if (ProjectModel.instance?.getComponentWithName(newName)) {
         alert(`Component "${newName}" already exists`);
-        PopupLayer.instance.dragCompleted();
         return;
       }
 
       const oldName = component.name;
 
-      // End drag operation FIRST - before the rename triggers a re-render
-      PopupLayer.instance.dragCompleted();
+      // Note: dragCompleted() now called by ComponentItem.handleMouseUp before this action
 
       UndoQueue.instance.pushAndDo(
         new UndoActionGroup({
@@ -646,7 +638,6 @@ export function useComponentActions() {
 
       if (!componentsToMove || componentsToMove.length === 0) {
         console.log('Folder is empty, nothing to move');
-        PopupLayer.instance.dragCompleted();
         return;
       }
 
@@ -670,12 +661,10 @@ export function useComponentActions() {
 
       if (hasConflict) {
         alert(`Some components would conflict with existing names`);
-        PopupLayer.instance.dragCompleted();
         return;
       }
 
-      // End drag operation FIRST - before the rename triggers a re-render
-      PopupLayer.instance.dragCompleted();
+      // Note: dragCompleted() now called by ComponentItem.handleMouseUp before this action
 
       UndoQueue.instance.pushAndDo(
         new UndoActionGroup({
