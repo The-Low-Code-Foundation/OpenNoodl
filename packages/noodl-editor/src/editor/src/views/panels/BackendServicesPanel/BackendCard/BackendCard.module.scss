@@ -1,0 +1,59 @@
+.Root {
+  background-color: var(--theme-color-bg-3);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: 6px;
+  padding: 12px;
+  margin-bottom: 8px;
+  transition: border-color 0.2s ease;
+
+  &:hover {
+    border-color: var(--theme-color-border-hover);
+  }
+
+  &.Active {
+    border-color: var(--theme-color-primary);
+    background-color: var(--theme-color-bg-2);
+  }
+}
+
+.Header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 8px;
+}
+
+.TypeIcon {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  background-color: var(--theme-color-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.ActiveBadge {
+  background-color: var(--theme-color-primary);
+  color: var(--theme-color-fg-on-primary);
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.Status {
+  margin-bottom: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--theme-color-border-default);
+}
+
+.SchemaInfo {
+  margin-bottom: 8px;
+}
+
+.Actions {
+  padding-top: 8px;
+  border-top: 1px solid var(--theme-color-border-default);
+}

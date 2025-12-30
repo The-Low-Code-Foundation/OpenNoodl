@@ -601,7 +601,7 @@ inputs: {
 
 ---
 
-### 🔴 GOTCHA #5: Node Registration Path Matters
+### 🔴 GOTCHA #5: Node Registration Path Matters (Signals Not Wrapping)
 
 **THE BUG:**
 
@@ -630,6 +630,104 @@ module.exports = {
 const NodeDefinition = require('./nodedefinition');
 module.exports = NodeDefinition.defineNode(MyNode);
 ```
+
+---
+
+### 🔴 GOTCHA #6: Signal in Static `inputs` + Dynamic Ports = Duplicate Ports (Dec 2025)
+
+**THE BUG:**
+
+```javascript
+// Signal defined in static inputs with handler
+inputs: {
+  fetch: {
+    type: 'signal',
+    valueChangedToTrue: function() { this.scheduleFetch(); }
+  }
+}
+
+// updatePorts() ALSO adds fetch - CAUSES DUPLICATE!
+function updatePorts(nodeId, parameters, editorConnection) {
+  const ports = [];
+  // ... other ports ...
+  ports.push({ name: 'fetch', type: 'signal', plug: 'input' }); // ❌ Duplicate!
+  editorConnection.sendDynamicPorts(nodeId, ports);
+}
+```
+
+**SYMPTOM:** When trying to connect to the node, TWO "Fetch" signals appear in the connection popup.
+
+**WHY IT BREAKS:**
+
+- GOTCHA #2 says "include static ports in dynamic ports" which is true for MOST ports
+- But signals with `valueChangedToTrue` handlers ALREADY have a runtime registration
+- Adding them again in `updatePorts()` creates a duplicate visual port
+- The handler still works, but UX is confusing
+
+**THE FIX:**
+
+```javascript
+// ✅ CORRECT - Only define signal in static inputs, NOT in updatePorts()
+inputs: {
+  fetch: {
+    type: 'signal',
+    valueChangedToTrue: function() { this.scheduleFetch(); }
+  }
+}
+
+function updatePorts(nodeId, parameters, editorConnection) {
+  const ports = [];
+  // ... dynamic ports ...
+
+  // NOTE: 'fetch' signal is defined in static inputs (with valueChangedToTrue handler)
+  // DO NOT add it here again or it will appear twice in the connection popup
+
+  // ... other ports ...
+  editorConnection.sendDynamicPorts(nodeId, ports);
+}
+```
+
+**RULE:** Signals with `valueChangedToTrue` handlers → ONLY in static `inputs`. All other ports (value inputs, outputs) → in `updatePorts()` dynamic ports.
+
+---
+
+### 🔴 GOTCHA #7: Require Path Depth for noodl-runtime (Dec 2025)
+
+**THE BUG:**
+
+```javascript
+// File: src/nodes/std-library/data/mynode.js
+// Trying to require noodl-runtime.js at package root
+
+const NoodlRuntime = require('../../../noodl-runtime'); // ❌ WRONG - only 3 levels
+// This breaks the entire runtime with "Cannot find module" error
+```
+
+**WHY IT MATTERS:**
+
+- From `src/nodes/std-library/data/` you need to go UP 4 levels to reach the package root
+- Path: data → std-library → nodes → src → (package root)
+- One wrong `../` and the entire app fails to load
+
+**THE FIX:**
+
+```javascript
+// ✅ CORRECT - Count the directories carefully
+// From src/nodes/std-library/data/mynode.js:
+const NoodlRuntime = require('../../../../noodl-runtime'); // 4 levels
+
+// Reference: cloudstore.js at src/api/ uses 2 levels:
+const NoodlRuntime = require('../../noodl-runtime'); // 2 levels from src/api/
+```
+
+**Quick Reference:**
+
+| File Location                 | Levels to Package Root | Require Path                |
+| ----------------------------- | ---------------------- | --------------------------- |
+| `src/api/`                    | 2                      | `../../noodl-runtime`       |
+| `src/nodes/`                  | 2                      | `../../noodl-runtime`       |
+| `src/nodes/std-library/`      | 3                      | `../../../noodl-runtime`    |
+| `src/nodes/std-library/data/` | 4                      | `../../../../noodl-runtime` |
 
 ---
 

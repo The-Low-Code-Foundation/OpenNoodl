@@ -562,6 +562,10 @@ function generateNodeLibrary(nodeRegister) {
         {
           name: 'External Data',
           items: ['net.noodl.HTTP', 'REST2']
+        },
+        {
+          name: 'BYOB Data',
+          items: ['noodl.byob.QueryData']
         }
       ]
     },

@@ -941,6 +941,7 @@ Creating nodes in OpenNoodl is deceptively tricky. This checklist prevents the m
 Before writing any node code:
 
 - [ ] Read `dev-docs/reference/LEARNINGS-NODE-CREATION.md` (especially the CRITICAL GOTCHAS section)
+- [ ] Check `dev-docs/reference/LEARNINGS.md` for recent node-related discoveries (search for "node", "runtime", "coreNodes")
 - [ ] Study an existing working node of similar complexity (e.g., `restnode.js` for data nodes)
 - [ ] Understand the difference between `inputs` (static) vs `prototypeExtensions` (instance methods)
 - [ ] Know where your node should be registered (noodl-runtime vs noodl-viewer-react)

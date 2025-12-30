@@ -10,6 +10,7 @@ import { getEditType } from '../utils';
 import { AlignToolsType } from './AlignTools/AlignToolsType';
 import { BasicType } from './BasicType';
 import { BooleanType } from './BooleanType';
+import { ByobFilterType } from './ByobFilterType';
 import { ColorType } from './ColorPicker/ColorType';
 import { ComponentType } from './ComponentType';
 import { CurveType } from './CurveEditor/CurveType';
@@ -344,6 +345,10 @@ export class Ports extends View {
       return NodeLibrary.nameForPortType(type) === 'query-sorting';
     }
 
+    function isOfByobFilterType() {
+      return NodeLibrary.nameForPortType(type) === 'byob-filter';
+    }
+
     // Is of pages type
     function isOfPagesType() {
       return NodeLibrary.nameForPortType(type) === 'pages';
@@ -379,6 +384,7 @@ export class Ports extends View {
     else if (isOfCurveType()) return CurveType;
     else if (isOfQueryFilterType()) return QueryFilterType;
     else if (isOfQuerySortingType()) return QuerySortingType;
+    else if (isOfByobFilterType()) return ByobFilterType;
     else if (isOfPagesType()) return PagesType;
     else if (isOfPropListType()) return PropListType;
   }

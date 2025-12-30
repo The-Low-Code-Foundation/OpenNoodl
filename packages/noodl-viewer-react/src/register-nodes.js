@@ -63,6 +63,9 @@ export default function registerNodes(noodlRuntime) {
     // HTTP node - temporarily here for debugging (normally in noodl-runtime)
     require('@noodl/runtime/src/nodes/std-library/data/httpnode'),
 
+    // BYOB (Bring Your Own Backend) data nodes
+    require('@noodl/runtime/src/nodes/std-library/data/byob-query-data'),
+
     //require('./nodes/std-library/variables/number'), // moved to runtime
     //require('./nodes/std-library/variables/string'),
     //require('./nodes/std-library/variables/boolean'),

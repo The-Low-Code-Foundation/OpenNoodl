@@ -1071,3 +1071,125 @@ PopupLayer.prototype.dragCompleted = function () {
 **Keywords**: PopupLayer, dragCompleted, endDrag, TypeError, drag-and-drop, method name, API
 
 ---
+
+## NoodlRuntime.instance.getMetaData() Pattern for Project Data (Dec 2025)
+
+### How Runtime Nodes Access Project Metadata
+
+**Context**: BYOB Query Data node needed to access backend services configuration (URLs, tokens, schema) from runtime code.
+
+**The Pattern**: Use `NoodlRuntime.instance.getMetaData(key)` to access project metadata stored in graphModel.
+
+**Working Example** (from byob-query-data.js):
+
+```javascript
+const NoodlRuntime = require('../../../../noodl-runtime');
+
+resolveBackend: function() {
+  // Get metadata - same pattern as cloudstore.js uses for cloudservices
+  const backendServices = NoodlRuntime.instance.getMetaData('backendServices');
+
+  if (!backendServices || !backendServices.backends) {
+    console.log('[BYOB Query Data] No backend services metadata found');
+    console.log('[BYOB Query Data] Available metadata keys:',
+                Object.keys(NoodlRuntime.instance.metadata || {}));
+    return null;
+  }
+
+  // Access the data
+  const backends = backendServices.backends || [];
+  const activeBackendId = backendServices.activeBackendId;
+
+  // Find and use the backend config...
+}
+```
+
+**Reference Implementation** (from `src/api/cloudstore.js`):
+
+```javascript
+const NoodlRuntime = require('../../noodl-runtime');
+
+// Access cloud services config
+const cloudServices = NoodlRuntime.instance.getMetaData('cloudservices');
+```
+
+**How It Works**:
+
+- `NoodlRuntime.prototype.getMetaData(key)` delegates to `this.graphModel.getMetaData(key)`
+- Metadata is stored in the project file and loaded into graphModel
+- Editor components set metadata via `graphModel.setMetaData(key, value)`
+
+**Available Metadata Keys** (varies by project):
+
+- `cloudservices` - Parse/Firebase cloud settings
+- `backendServices` - BYOB backend configurations
+- Project-specific settings
+
+**Location**:
+
+- NoodlRuntime API: `packages/noodl-runtime/noodl-runtime.js` (line 299)
+- Pattern reference: `packages/noodl-runtime/src/api/cloudstore.js`
+- BYOB usage: `packages/noodl-runtime/src/nodes/std-library/data/byob-query-data.js`
+
+**Keywords**: NoodlRuntime, getMetaData, project metadata, runtime, backend config, cloudservices
+
+---
+
+## 🔴 Runtime Nodes Must Be in coreNodes Index (Dec 2025)
+
+### Problem: Node Module Loads But Doesn't Appear in Node Picker
+
+**Context**: TASK-002 BYOB Data Nodes - Created `byob-query-data.js`, registered in `register-nodes.js`, console showed "Module loaded" but node never appeared in Node Picker.
+
+**Root Cause**: Runtime nodes need to be registered in THREE places:
+
+1. ✅ Node file created (`noodl-runtime/src/nodes/std-library/data/byob-query-data.js`)
+2. ✅ Registered in `register-nodes.js` via `require()`
+3. ❌ **MISSING** - Added to `coreNodes` index in `nodelibraryexport.js`
+
+**The Hidden Requirement**:
+
+```javascript
+// In nodelibraryexport.js, the coreNodes array determines Node Picker organization
+const coreNodes = [
+  {
+    name: 'Read & Write Data',
+    subCategories: [
+      {
+        name: 'External Data',
+        items: ['net.noodl.HTTP', 'REST2'] // HTTP appears because it's HERE
+      }
+      // Node not in this array = not in Node Picker!
+    ]
+  }
+];
+```
+
+**The Fix**:
+
+```javascript
+// Add node to appropriate category in coreNodes
+{
+  name: 'BYOB Data',
+  items: ['noodl.byob.QueryData']  // Now appears in Node Picker!
+}
+```
+
+**Why This Is Easy to Miss**:
+
+- Module loads fine (console log appears)
+- No errors anywhere
+- Node IS registered in `nodeRegister._constructors`
+- Node IS in `nodetypes` array exported to editor
+- But Node Picker uses `coreNodes` index for organization
+
+**Critical Rule**: After creating a node, ALWAYS add it to `nodelibraryexport.js` coreNodes array.
+
+**Location**:
+
+- `packages/noodl-runtime/src/nodelibraryexport.js` (coreNodes array)
+- Documented in: `dev-docs/reference/LEARNINGS-NODE-CREATION.md` (Step 3)
+
+**Keywords**: node picker, coreNodes, nodelibraryexport, runtime node, silent failure, node not appearing
+
+---
