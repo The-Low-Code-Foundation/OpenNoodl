@@ -6,7 +6,7 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  border-left: 1px solid #292929;
+  border-left: 1px solid var(--theme-color-bg-4);
 }
 
 .textstyles-edit-style::before {

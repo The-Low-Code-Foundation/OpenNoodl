@@ -6,7 +6,7 @@
   height: 100%;
   cursor: nwse-resize;
 
-  fill: #7a7a7a;
+  fill: var(--theme-color-fg-muted);
 
   display: flex;
   justify-content: flex-end;

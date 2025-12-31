@@ -1,0 +1,422 @@
+/**
+ * BYOB Delete Record Node
+ *
+ * Deletes a record from a BYOB backend collection.
+ * Supports Directus system tables and user collections.
+ *
+ * @module noodl-runtime
+ * @since 2.0.0
+ */
+
+const ByobUtils = require('./byob-utils');
+
+console.log('[BYOB Delete Record] 📦 Module loaded');
+
+var DeleteRecordNode = {
+  name: 'noodl.byob.DeleteRecord',
+  displayNodeName: 'Delete Record',
+  docs: 'https://docs.noodl.net/nodes/data/byob/delete-record',
+  category: 'Data',
+  color: 'data',
+  searchTags: ['byob', 'delete', 'remove', 'data', 'database', 'records', 'directus', 'api', 'backend'],
+
+  initialize: function () {
+    console.log('[BYOB Delete Record] 🚀 INITIALIZE called');
+    this._internal.loading = false;
+    this._internal.apiPathMode = 'items';
+  },
+
+  getInspectInfo() {
+    if (!this._internal.lastResult) {
+      return { type: 'text', value: '[Not executed yet]' };
+    }
+    return { type: 'value', value: this._internal.lastResult };
+  },
+
+  inputs: {
+    delete: {
+      type: 'signal',
+      displayName: 'Delete',
+      group: 'Actions',
+      valueChangedToTrue: function () {
+        console.log('[BYOB Delete Record] ⚡ DELETE SIGNAL RECEIVED');
+        this.scheduleDelete();
+      }
+    }
+  },
+
+  outputs: {
+    loading: {
+      type: 'boolean',
+      displayName: 'Loading',
+      group: 'Status',
+      getter: function () {
+        return this._internal.loading;
+      }
+    },
+    error: {
+      type: 'object',
+      displayName: 'Error',
+      group: 'Status',
+      getter: function () {
+        return this._internal.error;
+      }
+    },
+    success: {
+      type: 'signal',
+      displayName: 'Success',
+      group: 'Events'
+    },
+    failure: {
+      type: 'signal',
+      displayName: 'Failure',
+      group: 'Events'
+    }
+  },
+
+  prototypeExtensions: {
+    /**
+     * Resolve the backend configuration from metadata
+     */
+    resolveBackend: function () {
+      const backendId = this._internal.backendId || '_active_';
+      return ByobUtils.resolveBackend(backendId);
+    },
+
+    scheduleDelete: function () {
+      console.log('[BYOB Delete Record] scheduleDelete called');
+      if (this._internal.hasScheduledDelete) {
+        console.log('[BYOB Delete Record] Already scheduled, skipping');
+        return;
+      }
+      this._internal.hasScheduledDelete = true;
+      this.scheduleAfterInputsHaveUpdated(this.doDelete.bind(this));
+    },
+
+    doDelete: function () {
+      console.log('[BYOB Delete Record] doDelete executing');
+      this._internal.hasScheduledDelete = false;
+
+      // Resolve the backend configuration
+      const backendConfig = this.resolveBackend();
+      if (!backendConfig) {
+        console.log('[BYOB Delete Record] No backend configured');
+        this._internal.error = {
+          message: 'No backend configured. Please add a backend in the Backend Services panel.'
+        };
+        this.flagOutputDirty('error');
+        this.sendSignalOnOutput('failure');
+        return;
+      }
+
+      const collection = this._internal.collection;
+      const recordId = this._internal.recordId;
+      const apiPathMode = this._internal.apiPathMode || 'items';
+
+      if (!collection) {
+        console.log('[BYOB Delete Record] No collection specified');
+        this._internal.error = { message: 'Collection is required' };
+        this.flagOutputDirty('error');
+        this.sendSignalOnOutput('failure');
+        return;
+      }
+
+      if (!recordId) {
+        console.log('[BYOB Delete Record] No record ID specified');
+        this._internal.error = { message: 'Record ID is required' };
+        this.flagOutputDirty('error');
+        this.sendSignalOnOutput('failure');
+        return;
+      }
+
+      // Build URL with record ID
+      const url = ByobUtils.buildUrl(backendConfig, collection, apiPathMode, recordId);
+      if (!url) {
+        console.log('[BYOB Delete Record] Failed to build URL');
+        this._internal.error = { message: 'Failed to build request URL' };
+        this.flagOutputDirty('error');
+        this.sendSignalOnOutput('failure');
+        return;
+      }
+
+      // Build headers
+      const headers = ByobUtils.buildHeaders(backendConfig.token);
+
+      console.log('[BYOB Delete Record] Request:', {
+        url,
+        backendType: backendConfig.type,
+        recordId
+      });
+
+      // Set loading state
+      this._internal.loading = true;
+      this.flagOutputDirty('loading');
+
+      // Perform fetch
+      fetch(url, {
+        method: 'DELETE',
+        headers: headers
+      })
+        .then((response) => {
+          if (!response.ok) {
+            return response
+              .json()
+              .then((errorBody) => {
+                throw {
+                  status: response.status,
+                  statusText: response.statusText,
+                  body: errorBody
+                };
+              })
+              .catch((parseError) => {
+                if (parseError.status) throw parseError;
+                throw {
+                  status: response.status,
+                  statusText: response.statusText,
+                  body: null
+                };
+              });
+          }
+          // DELETE may return 204 No Content or empty response
+          if (response.status === 204) {
+            return null;
+          }
+          return response.json().catch(() => null);
+        })
+        .then(() => {
+          console.log('[BYOB Delete Record] Delete successful');
+
+          this._internal.error = null;
+          this._internal.loading = false;
+
+          // Store for inspect
+          this._internal.lastResult = {
+            url,
+            collection,
+            recordId,
+            deleted: true
+          };
+
+          // Flag outputs dirty
+          this.flagOutputDirty('loading');
+          this.flagOutputDirty('error');
+
+          this.sendSignalOnOutput('success');
+        })
+        .catch((error) => {
+          console.error('[BYOB Delete Record] Error:', error);
+
+          this._internal.loading = false;
+
+          // Format error for output
+          if (error.body && error.body.errors) {
+            this._internal.error = {
+              status: error.status,
+              message: error.body.errors.map((e) => e.message).join(', '),
+              errors: error.body.errors
+            };
+          } else {
+            this._internal.error = {
+              status: error.status || 0,
+              message: error.message || error.statusText || 'Network error'
+            };
+          }
+
+          // Store for inspect
+          this._internal.lastResult = {
+            url,
+            collection,
+            recordId,
+            error: this._internal.error
+          };
+
+          this.flagOutputDirty('loading');
+          this.flagOutputDirty('error');
+
+          this.sendSignalOnOutput('failure');
+        });
+    },
+
+    registerInputIfNeeded: function (name) {
+      if (this.hasInput(name)) return;
+
+      // Map of configuration input names to their setters
+      const configSetters = {
+        backendId: (value) => {
+          this._internal.backendId = value;
+        },
+        collection: (value) => {
+          this._internal.collection = value;
+        },
+        recordId: (value) => {
+          this._internal.recordId = value;
+        },
+        apiPathMode: (value) => {
+          this._internal.apiPathMode = value;
+        }
+      };
+
+      // Register configuration inputs
+      if (configSetters[name]) {
+        return this.registerInput(name, {
+          set: configSetters[name]
+        });
+      }
+    }
+  }
+};
+
+/**
+ * Update dynamic ports based on node configuration
+ */
+function updatePorts(nodeId, parameters, editorConnection, graphModel) {
+  const ports = [];
+
+  // Get backend services metadata
+  const backendServices = graphModel.getMetaData('backendServices') || { backends: [] };
+  const backends = backendServices.backends || [];
+
+  // Backend selection dropdown
+  const backendEnums = [{ label: 'Active Backend', value: '_active_' }];
+  backends.forEach((b) => {
+    backendEnums.push({ label: b.name, value: b.id });
+  });
+
+  ports.push({
+    name: 'backendId',
+    displayName: 'Backend',
+    type: {
+      name: 'enum',
+      enums: backendEnums,
+      allowEditOnly: true
+    },
+    default: '_active_',
+    plug: 'input',
+    group: 'Backend'
+  });
+
+  // Resolve the selected backend
+  const selectedBackendId =
+    parameters.backendId === '_active_' || !parameters.backendId
+      ? backendServices.activeBackendId
+      : parameters.backendId;
+  const selectedBackend = backends.find((b) => b.id === selectedBackendId);
+  const allCollections = selectedBackend?.schema?.collections || [];
+
+  // API Path Mode dropdown - MUST come before Collection for proper UX
+  const isSystemTable = ByobUtils.isSystemCollection(parameters.collection);
+
+  ports.push({
+    name: 'apiPathMode',
+    displayName: 'API Path',
+    type: {
+      name: 'enum',
+      enums: [
+        { label: 'Items (User Collections)', value: 'items' },
+        { label: 'System (Directus Tables)', value: 'system' }
+      ],
+      allowEditOnly: true
+    },
+    default: isSystemTable ? 'system' : 'items',
+    plug: 'input',
+    group: 'Configuration'
+  });
+
+  // Filter collections based on selected API path mode
+  const apiPathMode = parameters.apiPathMode || (isSystemTable ? 'system' : 'items');
+  const filteredCollections = ByobUtils.filterCollectionsByMode(allCollections, apiPathMode);
+
+  // Collection dropdown (filtered by API path mode)
+  const collectionEnums = [{ label: '(Select collection)', value: '' }];
+  filteredCollections.forEach((c) => {
+    collectionEnums.push({ label: c.displayName || c.name, value: c.name });
+  });
+
+  ports.push({
+    name: 'collection',
+    displayName: 'Collection',
+    type: {
+      name: 'enum',
+      enums: collectionEnums,
+      allowEditOnly: true
+    },
+    plug: 'input',
+    group: 'Configuration'
+  });
+
+  // Record ID input (required for delete)
+  ports.push({
+    name: 'recordId',
+    displayName: 'Record ID',
+    type: 'string',
+    plug: 'input',
+    group: 'Configuration'
+  });
+
+  // NOTE: 'delete' signal is defined in static inputs
+  // Outputs
+  ports.push({
+    name: 'loading',
+    displayName: 'Loading',
+    type: 'boolean',
+    plug: 'output',
+    group: 'Status'
+  });
+
+  ports.push({
+    name: 'error',
+    displayName: 'Error',
+    type: 'object',
+    plug: 'output',
+    group: 'Status'
+  });
+
+  ports.push({
+    name: 'success',
+    displayName: 'Success',
+    type: 'signal',
+    plug: 'output',
+    group: 'Events'
+  });
+
+  ports.push({
+    name: 'failure',
+    displayName: 'Failure',
+    type: 'signal',
+    plug: 'output',
+    group: 'Events'
+  });
+
+  editorConnection.sendDynamicPorts(nodeId, ports);
+}
+
+module.exports = {
+  node: DeleteRecordNode,
+  setup: function (context, graphModel) {
+    if (!context.editorConnection || !context.editorConnection.isRunningLocally()) {
+      return;
+    }
+
+    function _managePortsForNode(node) {
+      updatePorts(node.id, node.parameters || {}, context.editorConnection, graphModel);
+
+      node.on('parameterUpdated', function () {
+        updatePorts(node.id, node.parameters, context.editorConnection, graphModel);
+      });
+
+      graphModel.on('metadataChanged.backendServices', function () {
+        updatePorts(node.id, node.parameters, context.editorConnection, graphModel);
+      });
+    }
+
+    graphModel.on('editorImportComplete', () => {
+      graphModel.on('nodeAdded.noodl.byob.DeleteRecord', function (node) {
+        _managePortsForNode(node);
+      });
+
+      for (const node of graphModel.getNodesWithType('noodl.byob.DeleteRecord')) {
+        _managePortsForNode(node);
+      }
+    });
+  }
+};

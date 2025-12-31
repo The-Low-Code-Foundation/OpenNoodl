@@ -489,9 +489,15 @@ export class BackendServices extends Model<BackendServicesEvent, BackendServices
       field: string;
       type: string;
       schema?: { is_nullable?: boolean; is_primary_key?: boolean; is_unique?: boolean; default_value?: unknown };
-      meta?: { options?: { choices?: Array<{ value: string }> }; special?: string[] };
+      meta?: {
+        options?: { choices?: Array<{ value: string }> };
+        special?: string[];
+        interface?: string;
+        hidden?: boolean;
+      };
     }>) {
-      if (!field.collection || field.collection.startsWith('directus_')) continue;
+      // Only skip if collection name is missing - include system tables (directus_*)
+      if (!field.collection) continue;
 
       if (!collectionMap.has(field.collection)) {
         collectionMap.set(field.collection, {

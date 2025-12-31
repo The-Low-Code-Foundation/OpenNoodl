@@ -22,7 +22,7 @@
 
 .Title {
   font-family: var(--font-family);
-  color: #aaa;
+  color: var(--theme-color-fg-muted);
   font-size: 12px;
   position: absolute;
   left: 50%;
@@ -31,7 +31,7 @@
 
 .Version {
   font-family: var(--font-family);
-  color: #c4c4c4;
+  color: var(--theme-color-fg-default-shy);
   font-size: 11px;
   margin-right: 10px;
 }

@@ -15,7 +15,7 @@
 }
 
 .popup-layer.dim {
-  background-color: #0000007f;
+  background-color: var(--base-color-black-transparent-50);
   transition: background-color 0.2s linear;
   pointer-events: all;
 }
@@ -93,7 +93,7 @@
 }
 
 .popup-layer-popup-arrow.dark {
-  border-bottom-color: rgba(0, 0, 0, 0.7);
+  border-bottom-color: var(--base-color-black-transparent-70);
 }
 
 /** popout **/
@@ -122,7 +122,7 @@
   width: 0;
   position: absolute;
   pointer-events: none;
-  border-bottom-color: #333;
+  border-bottom-color: var(--theme-color-bg-5);
   border-width: 10px;
   margin-left: -10px;
 }
@@ -136,7 +136,7 @@
   width: 0;
   position: absolute;
   pointer-events: none;
-  border-left-color: #333;
+  border-left-color: var(--theme-color-bg-5);
   border-width: 10px;
   margin-top: -10px;
 }
@@ -150,7 +150,7 @@
   width: 0;
   position: absolute;
   pointer-events: none;
-  border-top-color: #333;
+  border-top-color: var(--theme-color-bg-5);
   border-width: 10px;
   margin-left: -10px;
 }
@@ -164,7 +164,7 @@
   width: 0;
   position: absolute;
   pointer-events: none;
-  border-right-color: #333;
+  border-right-color: var(--theme-color-bg-5);
   border-width: 10px;
   margin-top: -10px;
 }
@@ -197,19 +197,19 @@
 
 .popup-layer-popup-menu-divider {
   height: 0px;
-  border-top: 2px #333 solid;
+  border-top: 2px var(--theme-color-border-default) solid;
   margin-top: 3px;
   margin-bottom: 3px;
 }
 
 .popup-layer-toast {
   position: absolute;
-  background-color: rgba(0, 0, 0, 0.7);
+  background-color: var(--base-color-black-transparent-70);
   border-radius: 3px;
-  border-color: rgba(0, 0, 0, 0.7);
+  border-color: var(--base-color-black-transparent-70);
   border-width: 3px;
   padding: 5px;
-  color: white;
+  color: var(--theme-color-fg-highlight);
   opacity: 0;
   transition: opacity 500ms;
   font-size: 15px;
@@ -218,10 +218,10 @@
 
 .popup-layer-dragger {
   position: absolute;
-  background-color: rgba(0, 0, 0, 0.8);
+  background-color: var(--base-color-black-transparent-80);
   border-radius: 3px;
   border-width: 3px;
-  color: white;
+  color: var(--theme-color-fg-highlight);
   font-size: 12px;
   -webkit-transition: opacity 0.25s ease-out;
   padding: 5px;
@@ -243,13 +243,13 @@
   border-color: var(--popup-layer-tooltip-border-color);
   border-width: 1px;
   padding: 12px 16px;
-  color: white;
+  color: var(--theme-color-fg-highlight);
   position: absolute;
   opacity: 0;
   -webkit-transition: opacity 0.3s;
   pointer-events: none;
   z-index: 2000;
-  box-shadow: -4px 4px 16px rgba(0, 0, 0, 0.3);
+  box-shadow: -4px 4px 16px var(--base-color-black-transparent-30);
 }
 
 .popup-layer-tooltip-content {
@@ -343,7 +343,7 @@
 
 .popup {
   padding-bottom: 3px;
-  color: #aaaaaa;
+  color: var(--theme-color-fg-default-shy);
 }
 
 .popup p {
@@ -353,20 +353,20 @@
 
 .popup-group-label {
   display: block;
-  color: #cccccc;
-  background-color: #272727;
+  color: var(--theme-color-fg-default);
+  background-color: var(--theme-color-bg-4);
   padding: 5px;
 }
 
 .popup-text {
   display: block;
-  color: #777777;
+  color: var(--theme-color-fg-muted);
   margin-left: 5px;
   margin-right: 5px;
 }
 
 .popup-file-drop {
-  background-color: #000000;
+  background-color: var(--theme-color-bg-0);
   opacity: 0.7;
   width: 100%;
   height: 100%;
@@ -374,10 +374,10 @@
 
 .popup-file-drop-msg {
   margin: auto;
-  color: #eeeeee;
+  color: var(--theme-color-fg-default-contrast);
   width: 400px;
   background-color: transparent;
-  border-color: #aaaaaa;
+  border-color: var(--theme-color-fg-default-shy);
   border-width: 2px;
   border-style: dashed;
   font-size: 20px;
@@ -393,12 +393,12 @@
 
 .popup-layer-activity {
   position: absolute;
-  background-color: rgba(0, 0, 0, 0.7);
+  background-color: var(--base-color-black-transparent-70);
   border-radius: 3px;
-  border-color: rgba(0, 0, 0, 0.7);
+  border-color: var(--base-color-black-transparent-70);
   border-width: 3px;
   padding: 10px;
-  color: white;
+  color: var(--theme-color-fg-highlight);
   opacity: 0;
   transition: opacity 500ms;
   font-size: 15px;
@@ -417,7 +417,7 @@
 .popup-layer-activity-progress {
   margin-left: 10px;
   margin-right: 10px;
-  background-color: black;
+  background-color: var(--theme-color-bg-0);
   opacity: 0.5;
   height: 10px;
   display: none;
@@ -426,69 +426,69 @@
 .popup-layer-activity-progress-bar {
   width: 0%;
   height: 100%;
-  background-color: #cccccc;
+  background-color: var(--theme-color-fg-default);
 }
 
 .popup-title {
   display: block;
-  color: #aaaaaa;
+  color: var(--theme-color-fg-default-shy);
   margin-left: 5px;
   margin-right: 5px;
 }
 
 .popup-title > strong {
-  color: #cccccc;
+  color: var(--theme-color-fg-default);
 }
 
 .popup-message {
   display: block;
-  color: #aaa;
+  color: var(--theme-color-fg-default-shy);
   margin-left: 5px;
   margin-right: 5px;
 }
 
 .popup-message > strong {
-  color: #ddd;
+  color: var(--theme-color-fg-default-contrast);
 }
 
 .popup-button {
   border: none;
   padding: 0px;
-  background-color: #d49517;
-  color: #171717;
+  background-color: var(--theme-color-notice);
+  color: var(--theme-color-bg-2);
   padding: 2px 15px 2px 15px;
   font-size: 12px;
   text-transform: uppercase;
 }
 
 .popup-button:hover {
-  background-color: #fdb314;
+  background-color: var(--theme-color-notice-hover);
 }
 
 .popup-button-grey {
   border: none;
   padding: 0px;
-  background-color: #333333;
-  color: #999999;
+  background-color: var(--theme-color-bg-5);
+  color: var(--theme-color-fg-default-shy);
   padding: 2px 15px 2px 15px;
   font-size: 12px;
   text-transform: uppercase;
 }
 
 .popup-button-grey:hover {
-  background-color: #555555;
+  background-color: var(--theme-color-border-strong);
 }
 
 .popup-small-docs {
   position: absolute;
-  background-color: #171717;
+  background-color: var(--theme-color-bg-2);
   z-index: 2;
   bottom: 2px;
 }
 
 /* Confim modal */
 .confirm-modal {
-  color: #c4c4c4;
+  color: var(--theme-color-fg-default);
   max-width: 70vw;
   max-height: 70vh;
   overflow-y: auto;
@@ -496,7 +496,7 @@
 
 .confirm-modal label {
   display: block;
-  background-color: #272727;
+  background-color: var(--theme-color-bg-4);
   padding: 5px 10px;
 }
 
@@ -519,19 +519,19 @@
 }
 
 .confirm-modal .confirm-button {
-  background-color: #f67465;
-  color: #1d1f20;
+  background-color: var(--theme-color-primary);
+  color: var(--theme-color-bg-2);
 }
 
 .confirm-modal .confirm-button:hover {
-  background-color: #f89387;
+  background-color: var(--theme-color-primary-hover);
 }
 
 .confirm-modal .cancel-button {
-  background-color: #1d1f20;
-  color: #c4c4c4;
+  background-color: var(--theme-color-bg-2);
+  color: var(--theme-color-fg-default);
 }
 
 .confirm-modal .cancel-button:hover {
-  background-color: #2f3335;
+  background-color: var(--theme-color-bg-3);
 }

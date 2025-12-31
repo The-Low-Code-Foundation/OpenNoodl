@@ -2,20 +2,25 @@
 
 .Root {
   border: 0;
-  font-size: 14px;
-  font-weight: var(--font-weight-semibold);
-  padding-left: 12px;
-  padding-right: 12px;
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-tight);
+  padding: var(--spacing-button-padding-y) var(--spacing-button-padding-x);
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: var(--spacing-button-gap);
   cursor: pointer;
   min-height: length.$global-input-size;
   min-width: 70px;
   flex-grow: 0;
   flex-shrink: 0;
   position: relative;
-  transition: background-color var(--speed-turbo) var(--easing-base), color var(--speed-turbo) var(--easing-base);
+  border-radius: var(--radius-md);
+  transition: background-color var(--transition-default) var(--transition-ease),
+    color var(--transition-default) var(--transition-ease),
+    border-color var(--transition-default) var(--transition-ease),
+    box-shadow var(--transition-default) var(--transition-ease), transform var(--transition-fast) var(--transition-ease);
 
   &.is-size-small {
     min-height: length.$global-input-size-small;
@@ -25,13 +30,22 @@
   &.is-variant-cta {
     color: var(--theme-color-on-primary);
     background-color: var(--theme-color-primary);
+    box-shadow: var(--shadow-sm);
 
     path {
       fill: var(--theme-color-on-primary);
     }
 
-    &:hover {
+    &:hover:not(:disabled) {
       background-color: var(--theme-color-primary-highlight);
+      box-shadow: var(--shadow-default);
+      transform: translateY(-1px);
+    }
+
+    &:active:not(:disabled) {
+      background-color: var(--theme-color-primary-dim);
+      box-shadow: none;
+      transform: translateY(0);
     }
   }
 
@@ -105,12 +119,20 @@
 
   &:disabled {
     cursor: not-allowed;
+    opacity: 0.5;
     background-color: var(--theme-color-bg-3) !important;
     color: var(--theme-color-fg-muted);
+    transform: none !important;
+    box-shadow: none !important;
 
     path {
       fill: var(--theme-color-fg-muted);
     }
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--theme-color-focus-ring);
+    outline-offset: 2px;
   }
 
   &.has-left-spacing {

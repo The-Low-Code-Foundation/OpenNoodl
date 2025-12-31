@@ -2,6 +2,19 @@
   display: flex;
   flex-direction: column;
   height: 100%;
+
+  /* Background */
+  background-color: var(--theme-color-bg-2);
+
+  /* Subtle border for definition */
+  border: 1px solid var(--theme-color-border-subtle);
+  border-radius: var(--radius-md);
+
+  /* Consistent padding */
+  padding: var(--spacing-panel-padding);
+
+  /* Panel gap between children */
+  gap: var(--spacing-panel-gap);
 }
 
 .Inner {
@@ -21,6 +34,24 @@
   &.has-content-scroll {
     overflow-y: overlay;
     z-index: 0;
+
+    /* Custom scrollbar styling */
+    &::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    &::-webkit-scrollbar-track {
+      background: var(--theme-color-bg-3);
+    }
+
+    &::-webkit-scrollbar-thumb {
+      background: var(--theme-color-bg-5);
+      border-radius: var(--radius-full);
+
+      &:hover {
+        background: var(--theme-color-fg-muted);
+      }
+    }
   }
 
   &.is-fill {
@@ -36,12 +67,12 @@
     z-index: -1;
     content: '';
     position: absolute;
-    top: 5px;
+    top: var(--spacing-1);
     left: 0;
     right: 0;
     height: 10px;
     border-radius: 50%;
-    box-shadow: 0 0 10px 15px var(--theme-color-bg-2);
+    box-shadow: var(--shadow-sm) var(--theme-color-bg-2);
     pointer-events: none;
   }
 }

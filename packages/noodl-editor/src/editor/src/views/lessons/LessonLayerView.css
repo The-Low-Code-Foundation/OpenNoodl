@@ -1,5 +1,5 @@
 .lessonlayerview {
-  background-color: #1f1f1f;
+  background-color: var(--theme-color-bg-2);
 }
 
 .lesson-layer-progressbar {
@@ -31,7 +31,7 @@
   box-sizing: border-box;
   width: 230px;
   padding: 8px 16px;
-  color: #f0f7f980;
+  color: rgba(240, 247, 249, 0.5);
   border-left: 1px solid var(--theme-color-bg-1);
   flex-shrink: 0;
   overflow: hidden;

@@ -565,7 +565,12 @@ function generateNodeLibrary(nodeRegister) {
         },
         {
           name: 'BYOB Data',
-          items: ['noodl.byob.QueryData']
+          items: [
+            'noodl.byob.QueryData',
+            'noodl.byob.CreateRecord',
+            'noodl.byob.UpdateRecord',
+            'noodl.byob.DeleteRecord'
+          ]
         }
       ]
     },

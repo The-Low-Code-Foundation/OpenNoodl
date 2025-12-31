@@ -11,6 +11,11 @@
 
   &.has-backdrop {
     background-color: var(--theme-color-bg-1-transparent);
+
+    /* Optional: Subtle blur for modern feel */
+    /* Note: May have performance implications on older hardware */
+    /* backdrop-filter: blur(4px); */
+    /* -webkit-backdrop-filter: blur(4px); */
   }
 
   &.is-locking-scroll {
@@ -23,8 +28,22 @@
 }
 
 .VisibleDialog {
-  filter: drop-shadow(0 4px 15px var(--theme-color-bg-1-transparent-2));
-  box-shadow: 0 0 10px -5px var(--theme-color-bg-1-transparent-2);
+  /* Modern elevated shadow */
+  box-shadow: var(--shadow-popup);
+
+  /* Border for definition against backdrop */
+  border: 1px solid var(--theme-color-border-subtle);
+
+  /* Modern rounded corners */
+  border-radius: var(--radius-lg);
+
+  /* Overflow handling */
+  overflow: hidden;
+
+  /* Size constraints */
+  max-height: 90vh;
+  max-width: 90vw;
+
   position: absolute;
   width: var(--width);
   pointer-events: all;
@@ -53,9 +72,27 @@
     right: 0;
     bottom: 0;
     background-color: var(--background);
-    border-radius: 2px;
+    border-radius: var(--radius-lg);
     overflow: hidden;
     pointer-events: none; // Allow clicks to pass through to content
+  }
+
+  /* Custom scrollbar styling for dialog content */
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: var(--theme-color-bg-3);
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: var(--theme-color-bg-5);
+    border-radius: var(--radius-full);
+
+    &:hover {
+      background: var(--theme-color-fg-muted);
+    }
   }
 }
 

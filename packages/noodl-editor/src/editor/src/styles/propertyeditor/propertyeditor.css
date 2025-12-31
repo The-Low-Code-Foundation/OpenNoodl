@@ -29,7 +29,7 @@
   top: 12px;
   height: 10px;
   width: 10px;
-  background-color: #555;
+  background-color: var(--theme-color-fg-muted);
   border-radius: 50%;
 }
 
@@ -58,28 +58,28 @@
 }
 
 .property-input-dropdown-arrow {
-  color: #7b7b7b;
+  color: var(--theme-color-fg-muted);
 }
 
 .property-input-dropdown-arrow:hover {
-  color: #f8f8f8;
+  color: var(--theme-color-fg-highlight);
 }
 
 .property-input-enum:hover {
-  background-color: #555555;
+  background-color: var(--theme-color-border-strong);
   cursor: pointer;
 }
 
 .property-input-enum {
-  background-color: #000000;
-  color: #f8f8f8;
+  background-color: var(--theme-color-bg-0);
+  color: var(--theme-color-fg-highlight);
   min-height: 30px;
   line-height: 30px;
   padding-left: 10px;
 }
 
 .property-input-enum + .property-input-enum {
-  border-top: 1px solid #2e2e2e;
+  border-top: 1px solid var(--theme-color-border-subtle);
 }
 
 .property-input-connected {
@@ -92,12 +92,12 @@
 }
 
 .property-input-focused {
-  color: #f8f8f8;
-  background-color: #000000;
+  color: var(--theme-color-fg-highlight);
+  background-color: var(--theme-color-bg-0);
 }
 
 .property-input-color {
-  background-color: #222222;
+  background-color: var(--theme-color-bg-2);
 }
 
 .property-input-color-hidden {
@@ -115,8 +115,8 @@
 }
 
 .property-input-textarea:focus {
-  color: #f8f8f8;
-  background-color: #000000;
+  color: var(--theme-color-fg-highlight);
+  background-color: var(--theme-color-bg-0);
 }
 
 .property-input-textarea-bg {
@@ -150,7 +150,7 @@
 }
 
 .property-header-bar-label {
-  color: #f8f8f8;
+  color: var(--theme-color-fg-highlight);
   font: 12px var(--font-family-regular);
   padding: 10px 0 10px 10px;
   text-overflow: ellipsis;
@@ -169,12 +169,12 @@
 }
 
 .property-editor-highlight {
-  color: #ffa300;
+  color: var(--theme-color-notice);
 }
 
 .property-editor-highlight:hover {
-  background-color: #ffa300;
-  color: #f8f8f8;
+  background-color: var(--theme-color-notice);
+  color: var(--theme-color-fg-highlight);
 }
 
 .property-codeeditor-button {
@@ -195,19 +195,19 @@
 }
 
 .property-number-unit-enum {
-  background-color: #000000;
-  color: #f8f8f8;
+  background-color: var(--theme-color-bg-0);
+  color: var(--theme-color-fg-highlight);
   height: 30px;
   line-height: 30px;
   cursor: default;
 }
 
 .property-number-unit-enum + .property-number-unit-enum {
-  border-top: 1px solid #2e2e2e;
+  border-top: 1px solid var(--theme-color-border-subtle);
 }
 
 .property-number-unit-enum:hover {
-  background-color: #555555;
+  background-color: var(--theme-color-border-strong);
 }
 
 .property-dimension-fixed-disabled {

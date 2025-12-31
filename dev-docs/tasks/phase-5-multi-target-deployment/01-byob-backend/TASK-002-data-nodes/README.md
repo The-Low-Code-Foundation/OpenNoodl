@@ -59,29 +59,84 @@ The **Visual Filter Builder** eliminates the pain of writing Directus filter JSO
 
 ---
 
-## Known Limitations (Dec 2025)
+## System Table Support (Resolved - Dec 2025)
 
-### Directus System Collections Not Supported
+### Directus System Collections Now Supported ✅
 
-**Issue**: The Query Data node only uses `/items/{collection}` API endpoint, which doesn't work for Directus system tables.
+All BYOB data nodes now support Directus system tables through an **API Path Mode** dropdown:
 
-**Affected Collections**:
+**Available Modes**:
 
-- `directus_users` - User management (use `/users` endpoint)
-- `directus_roles` - Role management (use `/roles` endpoint)
-- `directus_files` - File management (use `/files` endpoint)
-- `directus_folders` - Folder management (use `/folders` endpoint)
-- `directus_activity` - Activity log (use `/activity` endpoint)
-- `directus_permissions` - Permissions (use `/permissions` endpoint)
-- And other `directus_*` system tables
+- **Items (User Collections)** - Uses `/items/{collection}` endpoint for regular tables
+- **System (Directus Tables)** - Uses appropriate system endpoints for `directus_*` tables
 
-**Current Behavior**: These collections may appear in the Collection dropdown (if schema introspection includes them), but queries will fail with 404 or forbidden errors.
+**Supported System Collections**:
 
-**Future Enhancement**: Add an "API Path Type" dropdown to the Query node:
+- `directus_users` → `/users`
+- `directus_roles` → `/roles`
+- `directus_files` → `/files`
+- `directus_folders` → `/folders`
+- `directus_activity` → `/activity`
+- `directus_permissions` → `/permissions`
+- `directus_settings` → `/settings`
+- `directus_webhooks` → `/webhooks`
+- `directus_flows` → `/flows`
+- And more...
 
-- **Items** (default) - Uses `/items/{collection}` for user collections
-- **System** - Uses `/{collection_without_directus_prefix}` for system tables
+**Auto-Detection**: The API Path Mode automatically defaults to "System" when a `directus_*` collection is selected.
 
-**Alternative Workaround**: Use the HTTP Request node with manual endpoint construction for system table access.
+**Applies To**: Query Data, Create Record, Update Record, and Delete Record nodes.
 
-**Related**: This limitation also affects Create/Update/Delete Record nodes (when implemented).
+---
+
+## Implementation Status
+
+**Status**: ✅ **Complete** (December 2025)
+
+All four BYOB data nodes are fully implemented and tested:
+
+- ✅ **Query Records Node** - With visual filter builder
+- ✅ **Create Record Node** - With schema-driven field inputs
+- ✅ **Update Record Node** - With schema-driven field inputs
+- ✅ **Delete Record Node** - Simple ID-based deletion
+
+### Key Features Delivered
+
+1. **Schema-Aware Field Inputs** - Dynamic ports generated from backend schema
+2. **Visual Filter Builder** - Complex query filters without JSON syntax
+3. **System Table Support** - Full CRUD on Directus system collections
+4. **Type-Aware Inputs** - Numbers, booleans, dates, and enums mapped correctly
+5. **Date Normalization** - Automatic ISO 8601 conversion
+6. **Field Filtering** - Hides presentation elements and readonly fields
+
+### Implementation Files
+
+```
+packages/noodl-runtime/src/nodes/std-library/data/
+├── byob-utils.js              # Shared utilities (NEW)
+├── byob-query-data.js         # Query Records node
+├── byob-create-record.js      # Create Record node
+├── byob-update-record.js      # Update Record node
+└── byob-delete-record.js      # Delete Record node
+
+packages/noodl-editor/src/editor/src/views/panels/propertyeditor/
+├── components/ByobFilterBuilder/  # Visual filter builder UI
+└── DataTypes/ByobFilterType.ts    # Filter builder integration
+```
+
+### Recent Bug Fixes
+
+See [CHANGELOG.md](./CHANGELOG.md) for detailed bug fix documentation including:
+
+- Collection filtering by API path mode
+- Field type mapping
+- System table schema support
+- Critical runtime errors resolved
+
+---
+
+## Documentation
+
+- [NODES-SPEC.md](./NODES-SPEC.md) - Node specifications and API reference
+- [FILTER-BUILDER.md](./FILTER-BUILDER.md) - Visual filter builder details
+- [CHANGELOG.md](./CHANGELOG.md) - Bug fixes and implementation timeline

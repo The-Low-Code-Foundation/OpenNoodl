@@ -9,7 +9,7 @@
 
 .tutorial-lesson-item .progress-bar {
   box-sizing: border-box;
-  background-color: #0000007f;
+  background-color: var(--base-color-black-transparent-50);
   width: 100%;
   height: 8px;
 }
@@ -162,7 +162,7 @@
 .tutorial-lesson-item.in-progress.is-feature-highlight,
 .tutorial-lesson-item.next-up.is-feature-highligh {
   /*always highligt this*/
-  background-color: #332c7d;
+  background-color: var(--theme-color-bg-4);
 }
 
 .tutorial-lesson-item.not-started.is-feature-highlight button,
@@ -179,16 +179,16 @@
 }
 
 .tutorial-lesson-item.completed.is-feature-highlight {
-  background-color: #1f1b52;
+  background-color: var(--theme-color-bg-2);
 }
 
 .tutorial-lesson-item.completed.is-feature-highlight button {
-  background-color: #3a3578;
+  background-color: var(--theme-color-bg-5);
   color: var(--base-color-teal-100);
 }
 
 .tutorial-lesson-item.in-progress.is-feature-highlight button {
-  background-color: #5b54a6;
+  background-color: var(--theme-color-border-strong);
   color: var(--base-color-teal-100);
 }
 

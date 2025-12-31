@@ -1,43 +1,69 @@
-import React, { useState } from 'react';
+/**
+ * Launcher - Main dashboard for OpenNoodl
+ *
+ * Modern, clean tabbed interface for managing projects, learning resources,
+ * and project templates.
+ *
+ * @module noodl-core-ui/preview/launcher
+ */
+
+import React, { useEffect, useState } from 'react';
 
 import { IconName } from '@noodl-core-ui/components/common/Icon';
+import { TabBar, TabBarItem } from '@noodl-core-ui/components/layout/TabBar';
+import { LauncherFooter } from '@noodl-core-ui/preview/launcher/Launcher/components/LauncherFooter';
+import { LauncherHeader } from '@noodl-core-ui/preview/launcher/Launcher/components/LauncherHeader';
 import {
   CloudSyncType,
   LauncherProjectData
 } from '@noodl-core-ui/preview/launcher/Launcher/components/LauncherProjectCard';
-import { LauncherSidebar } from '@noodl-core-ui/preview/launcher/Launcher/components/LauncherSidebar';
+import { ViewMode } from '@noodl-core-ui/preview/launcher/Launcher/components/ViewModeToggle';
+import { usePersistentTab } from '@noodl-core-ui/preview/launcher/Launcher/hooks/usePersistentTab';
+import { LauncherPageId, LauncherProvider } from '@noodl-core-ui/preview/launcher/Launcher/LauncherContext';
 import { LearningCenter } from '@noodl-core-ui/preview/launcher/Launcher/views/LearningCenter';
 import { Projects } from '@noodl-core-ui/preview/launcher/Launcher/views/Projects';
+import { Templates } from '@noodl-core-ui/preview/launcher/Launcher/views/Templates';
 
-import { LauncherApp } from '../../template/LauncherApp';
+import css from './Launcher.module.scss';
 
-export interface LauncherProps {}
+export interface LauncherProps {
+  /**
+   * Initial tab to open (for deep linking support)
+   */
+  initialTab?: LauncherPageId;
+  /**
+   * Optional real project data. If provided, user can toggle between mock and real data.
+   */
+  projects?: LauncherProjectData[];
 
-export enum LauncherPageId {
-  LocalProjects,
-  LearningCenter
+  // Project management callbacks
+  onCreateProject?: () => void;
+  onOpenProject?: () => void;
+  onLaunchProject?: (projectId: string) => void;
+  onOpenProjectFolder?: (projectId: string) => void;
+  onDeleteProject?: (projectId: string) => void;
 }
 
-export interface LauncherPageMetaData {
-  id: LauncherPageId | string; // renders workspace page if starts with WORKSPACE_PAGE_PREFIX
-  displayName: string;
-  icon?: IconName;
-}
-
-// FIXME: make the mock data real
-export const PAGES: LauncherPageMetaData[] = [
+// Tab configuration
+const LAUNCHER_TABS: TabBarItem[] = [
   {
-    id: LauncherPageId.LocalProjects,
-    displayName: 'Recent Projects',
-    icon: IconName.CircleDot
+    id: 'projects',
+    label: 'Projects',
+    icon: IconName.FolderOpen
   },
   {
-    id: LauncherPageId.LearningCenter,
-    displayName: 'Learn',
+    id: 'learn',
+    label: 'Learn',
     icon: IconName.Rocket
+  },
+  {
+    id: 'templates',
+    label: 'Templates',
+    icon: IconName.Components
   }
 ];
 
+// FIXME: make the mock data real
 export const MOCK_PROJECTS: LauncherProjectData[] = [
   {
     id: '1',
@@ -116,23 +142,144 @@ export const MOCK_PROJECTS: LauncherProjectData[] = [
   }
 ];
 
-export function Launcher({}: LauncherProps) {
-  const pages = [...PAGES];
-  const [activePageId, setActivePageId] = useState<LauncherPageMetaData['id']>(pages[0].id);
+/**
+ * Parse deep link URL to extract initial tab
+ * Supports formats like: noodl://dashboard/learn, noodl://dashboard/templates
+ */
+function parseDeepLink(): LauncherPageId | null {
+  try {
+    const url = new URL(window.location.href);
+    const pathParts = url.pathname.split('/');
+    const tabPart = pathParts[pathParts.length - 1];
 
-  function setActivePage(pageId: LauncherPageMetaData['id']) {
-    setActivePageId(pageId);
-    console.info(`Navigated to pageId ${pageId}`);
+    if (tabPart === 'projects' || tabPart === 'learn' || tabPart === 'templates') {
+      return tabPart as LauncherPageId;
+    }
+  } catch (error) {
+    // Ignore parsing errors
   }
+  return null;
+}
 
-  const activePage = pages.find((page) => page.id === activePageId);
+export function Launcher({
+  initialTab,
+  projects,
+  onCreateProject,
+  onOpenProject,
+  onLaunchProject,
+  onOpenProjectFolder,
+  onDeleteProject
+}: LauncherProps) {
+  // Determine initial tab: props > deep link > persisted > default
+  const deepLinkTab = parseDeepLink();
+  const defaultTab: LauncherPageId = initialTab || deepLinkTab || 'projects';
+
+  const [activePageId, setActivePageId] = usePersistentTab(defaultTab);
+
+  // View mode state with localStorage persistence
+  const [viewMode, setViewMode] = useState<ViewMode>(() => {
+    try {
+      const stored = localStorage.getItem('launcher:viewMode');
+      return (stored as ViewMode) || ViewMode.List;
+    } catch {
+      return ViewMode.List;
+    }
+  });
+
+  // Mock data toggle state with localStorage persistence
+  const [useMockData, setUseMockData] = useState<boolean>(() => {
+    // Default to mock if no projects provided, otherwise check localStorage
+    if (!projects) return true;
+
+    try {
+      const stored = localStorage.getItem('launcher:useMockData');
+      return stored === 'true';
+    } catch {
+      return false; // Default to real data if provided
+    }
+  });
+
+  // Persist view mode changes
+  useEffect(() => {
+    try {
+      localStorage.setItem('launcher:viewMode', viewMode);
+    } catch (error) {
+      console.warn('Failed to persist view mode:', error);
+    }
+  }, [viewMode]);
+
+  // Persist mock data toggle
+  useEffect(() => {
+    if (projects) {
+      try {
+        localStorage.setItem('launcher:useMockData', String(useMockData));
+      } catch (error) {
+        console.warn('Failed to persist mock data preference:', error);
+      }
+    }
+  }, [useMockData, projects]);
+
+  // Determine which projects to use and if toggle should be available
+  const hasRealProjects = Boolean(projects && projects.length > 0);
+  const activeProjects = useMockData ? MOCK_PROJECTS : projects || MOCK_PROJECTS;
+
+  // Update URL when tab changes (for deep linking support)
+  useEffect(() => {
+    try {
+      const url = new URL(window.location.href);
+      url.pathname = `/dashboard/${activePageId}`;
+      window.history.replaceState({}, '', url.toString());
+    } catch (error) {
+      // Ignore URL update errors
+    }
+  }, [activePageId]);
+
+  const handleTabChange = (tabId: string) => {
+    setActivePageId(tabId as LauncherPageId);
+    console.info(`Navigated to tab: ${tabId}`);
+  };
+
+  // Render active view
+  const renderActiveView = () => {
+    switch (activePageId) {
+      case 'projects':
+        return <Projects />;
+      case 'learn':
+        return <LearningCenter />;
+      case 'templates':
+        return <Templates />;
+      default:
+        return <Projects />;
+    }
+  };
 
   return (
-    <LauncherApp
-      sidePanel={<LauncherSidebar pages={pages} activePageId={activePageId} setActivePageId={setActivePage} />}
+    <LauncherProvider
+      value={{
+        activePageId,
+        setActivePageId,
+        viewMode,
+        setViewMode,
+        useMockData,
+        setUseMockData,
+        projects: activeProjects,
+        hasRealProjects,
+        onCreateProject,
+        onOpenProject,
+        onLaunchProject,
+        onOpenProjectFolder,
+        onDeleteProject
+      }}
     >
-      {activePageId === LauncherPageId.LocalProjects && <Projects />}
-      {activePageId === LauncherPageId.LearningCenter && <LearningCenter />}
-    </LauncherApp>
+      <div className={css['Root']}>
+        <LauncherHeader />
+
+        <TabBar items={LAUNCHER_TABS} activeItemId={activePageId} onChange={handleTabChange} size="large" />
+
+        <div className={css['ContentArea']}>{renderActiveView()}</div>
+
+        <LauncherFooter />
+      </div>
+    </LauncherProvider>
   );
 }

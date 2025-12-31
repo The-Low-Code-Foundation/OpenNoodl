@@ -11,6 +11,7 @@
  */
 
 const NoodlRuntime = require('../../../../noodl-runtime');
+const ByobUtils = require('./byob-utils');
 
 console.log('[BYOB Query Data] 📦 Module loaded');
 
@@ -29,6 +30,7 @@ var QueryDataNode = {
     this._internal.records = [];
     this._internal.totalCount = 0;
     this._internal.inspectData = null;
+    this._internal.apiPathMode = 'items'; // 'items' or 'system'
   },
 
   getInspectInfo() {
@@ -133,38 +135,8 @@ var QueryDataNode = {
      * Returns { url, token, type } or null if not found
      */
     resolveBackend: function () {
-      // Get metadata from NoodlRuntime (same pattern as cloudstore.js uses for cloudservices)
-      const backendServices = NoodlRuntime.instance.getMetaData('backendServices');
-
-      if (!backendServices || !backendServices.backends) {
-        console.log('[BYOB Query Data] No backend services metadata found');
-        console.log('[BYOB Query Data] Available metadata keys:', Object.keys(NoodlRuntime.instance.metadata || {}));
-        return null;
-      }
-
       const backendId = this._internal.backendId || '_active_';
-      const backends = backendServices.backends || [];
-
-      // Resolve the backend
-      let backend;
-      if (backendId === '_active_') {
-        backend = backends.find((b) => b.id === backendServices.activeBackendId);
-      } else {
-        backend = backends.find((b) => b.id === backendId);
-      }
-
-      if (!backend) {
-        console.log('[BYOB Query Data] Backend not found:', backendId);
-        return null;
-      }
-
-      // Return backend config (using publicToken for runtime, NOT adminToken)
-      return {
-        url: backend.url,
-        token: backend.auth?.publicToken || '',
-        type: backend.type,
-        endpoints: backend.endpoints
-      };
+      return ByobUtils.resolveBackend(backendId);
     },
 
     scheduleFetch: function () {
@@ -178,17 +150,19 @@ var QueryDataNode = {
     },
 
     buildUrl: function (backendConfig) {
-      const baseUrl = backendConfig?.url || '';
       const collection = this._internal.collection || '';
+      const apiPathMode = this._internal.apiPathMode || 'items';
 
-      if (!baseUrl || !collection) {
+      if (!backendConfig?.url || !collection) {
         return null;
       }
 
-      // TODO: Use backendConfig.type for backend-specific URL formats (Supabase, Appwrite, etc.)
-      // Currently only Directus format is implemented
-      const cleanBaseUrl = baseUrl.replace(/\/$/, '');
-      let url = `${cleanBaseUrl}/items/${collection}`;
+      // Build base URL with system table support
+      let url = ByobUtils.buildUrl(backendConfig, collection, apiPathMode);
+
+      if (!url) {
+        return null;
+      }
 
       // Build query parameters
       const params = new URLSearchParams();
@@ -242,16 +216,7 @@ var QueryDataNode = {
     },
 
     buildHeaders: function (backendConfig) {
-      const headers = {
-        'Content-Type': 'application/json'
-      };
-
-      const authToken = backendConfig?.token;
-      if (authToken) {
-        headers['Authorization'] = `Bearer ${authToken}`;
-      }
-
-      return headers;
+      return ByobUtils.buildHeaders(backendConfig?.token);
     },
 
     doFetch: function () {
@@ -403,6 +368,9 @@ var QueryDataNode = {
         },
         collection: (value) => {
           this._internal.collection = value;
+        },
+        apiPathMode: (value) => {
+          this._internal.apiPathMode = value;
         },
         filter: (value) => {
           this._internal.filter = value;
@@ -612,11 +580,34 @@ function updatePorts(nodeId, parameters, editorConnection, graphModel) {
       ? backendServices.activeBackendId
       : parameters.backendId;
   const selectedBackend = backends.find((b) => b.id === selectedBackendId);
-  const collections = selectedBackend?.schema?.collections || [];
+  const allCollections = selectedBackend?.schema?.collections || [];
 
-  // Collection dropdown (populated from schema)
+  // API Path Mode dropdown - MUST come before Collection for proper UX
+  const isSystemTable = ByobUtils.isSystemCollection(parameters.collection);
+
+  ports.push({
+    name: 'apiPathMode',
+    displayName: 'API Path',
+    type: {
+      name: 'enum',
+      enums: [
+        { label: 'Items (User Collections)', value: 'items' },
+        { label: 'System (Directus Tables)', value: 'system' }
+      ],
+      allowEditOnly: true
+    },
+    default: isSystemTable ? 'system' : 'items',
+    plug: 'input',
+    group: 'Query'
+  });
+
+  // Filter collections based on selected API path mode
+  const apiPathMode = parameters.apiPathMode || (isSystemTable ? 'system' : 'items');
+  const filteredCollections = ByobUtils.filterCollectionsByMode(allCollections, apiPathMode);
+
+  // Collection dropdown (filtered by API path mode)
   const collectionEnums = [{ label: '(Select collection)', value: '' }];
-  collections.forEach((c) => {
+  filteredCollections.forEach((c) => {
     collectionEnums.push({ label: c.displayName || c.name, value: c.name });
   });
 
@@ -632,8 +623,8 @@ function updatePorts(nodeId, parameters, editorConnection, graphModel) {
     group: 'Query'
   });
 
-  // Sort field dropdown (populated from selected collection's fields)
-  const selectedCollection = collections.find((c) => c.name === parameters.collection);
+  // Get selected collection for field-based dropdowns
+  const selectedCollection = allCollections.find((c) => c.name === parameters.collection);
 
   // Filter port - uses Visual Filter Builder when schema is available
   ports.push({

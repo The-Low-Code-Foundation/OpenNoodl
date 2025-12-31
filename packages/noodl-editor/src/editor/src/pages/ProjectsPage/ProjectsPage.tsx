@@ -1,116 +1,206 @@
-import { ipcRenderer } from 'electron';
-import React, { useEffect, useState } from 'react';
-import { platform } from '@noodl/platform';
+/**
+ * ProjectsPage - Entry point for the launcher dashboard
+ *
+ * This page displays the new React-based Launcher component
+ * with horizontal tab navigation.
+ */
 
-import { ProjectModel } from '@noodl-models/projectmodel';
-import getDocsEndpoint from '@noodl-utils/getDocsEndpoint';
-import { LocalProjectsModel } from '@noodl-utils/LocalProjectsModel';
+import { ipcRenderer, shell } from 'electron';
+import React, { useCallback, useEffect } from 'react';
+import { filesystem } from '@noodl/platform';
 
-import { Logo, LogoSize } from '@noodl-core-ui/components/common/Logo';
-import { TextButton } from '@noodl-core-ui/components/inputs/TextButton';
-import { HStack } from '@noodl-core-ui/components/layout/Stack';
+import { Launcher } from '@noodl-core-ui/preview/launcher/Launcher/Launcher';
 
-import { EventDispatcher } from '../../../../shared/utils/EventDispatcher';
 import { IRouteProps } from '../../pages/AppRoute';
-import { Frame } from '../../views/common/Frame';
-import { ProjectsView } from '../../views/projectsview';
-import { BaseWindow } from '../../views/windows/BaseWindow';
+import { LocalProjectsModel } from '../../utils/LocalProjectsModel';
+import { ToastLayer } from '../../views/ToastLayer/ToastLayer';
 
 export interface ProjectsPageProps extends IRouteProps {
   from: TSFixme;
 }
 
-export function ProjectsPage({ route, from }: ProjectsPageProps) {
-  const [view, setView] = useState<ProjectsView>(null);
-  const [showSpinner, setShowSpinner] = useState(false);
-
+export function ProjectsPage(props: ProjectsPageProps) {
   useEffect(() => {
-    const eventGroup = {};
-
-    // Switch main window size
+    // Switch main window size to editor size
     ipcRenderer.send('main-window-resize', { size: 'editor', center: true });
+  }, []);
 
-    const instance = new ProjectsView({ from });
-    instance.render();
+  const handleCreateProject = useCallback(async () => {
+    try {
+      const direntry = await filesystem.openDialog({
+        allowCreateDirectory: true
+      });
+      if (!direntry) return;
 
-    setView(instance);
+      // For now, use a simple prompt for project name
+      // TODO: Replace with a proper React dialog in future
+      const name = prompt('Project name:');
+      if (!name) return;
 
-    instance.on(
-      'projectLoaded',
-      (project: ProjectModel) => {
-        LocalProjectsModel.instance.setCurrentGlobalGitAuth(project.id);
-        route.router.route({ to: 'editor', project });
-      },
-      eventGroup
-    );
+      const path = filesystem.makeUniquePath(filesystem.join(direntry, name));
 
-    EventDispatcher.instance.on(
-      'importFromUrl',
-      (url: string) => {
-        instance.importFromUrl(url);
-      },
-      eventGroup
-    );
+      const activityId = 'creating-project';
+      ToastLayer.showActivity('Creating new project', activityId);
 
-    return function () {
-      EventDispatcher.instance.off(eventGroup);
-      instance?.off(eventGroup);
-      instance?.dispose();
-    };
+      LocalProjectsModel.instance.newProject(
+        (project) => {
+          ToastLayer.hideActivity(activityId);
+          if (!project) {
+            ToastLayer.showError('Could not create project');
+            return;
+          }
+          // Navigate to editor with the newly created project
+          props.route.router.route({ to: 'editor', project });
+        },
+        { name, path, projectTemplate: '' }
+      );
+    } catch (error) {
+      console.error('Failed to create project:', error);
+      ToastLayer.showError('Failed to create project');
+    }
+  }, [props.route]);
+
+  const handleOpenProject = useCallback(async () => {
+    console.log('🔵 [handleOpenProject] Starting...');
+    try {
+      console.log('🔵 [handleOpenProject] Opening file dialog...');
+      const direntry = await filesystem.openDialog({
+        allowCreateDirectory: false
+      });
+      console.log('🔵 [handleOpenProject] Selected folder:', direntry);
+
+      if (!direntry) {
+        console.log('🔵 [handleOpenProject] User cancelled');
+        return;
+      }
+
+      const activityId = 'opening-project';
+      console.log('🔵 [handleOpenProject] Showing activity toast');
+      ToastLayer.showActivity('Opening project', activityId);
+
+      console.log('🔵 [handleOpenProject] Calling openProjectFromFolder...');
+      // openProjectFromFolder adds the project to recent list and returns ProjectModel
+      const project = await LocalProjectsModel.instance.openProjectFromFolder(direntry);
+      console.log('🔵 [handleOpenProject] Got project:', project);
+
+      if (!project) {
+        console.log('🔴 [handleOpenProject] Project is null/undefined');
+        ToastLayer.hideActivity(activityId);
+        ToastLayer.showError('Could not open project');
+        return;
+      }
+
+      if (!project.name) {
+        console.log('🔵 [handleOpenProject] Setting project name from folder');
+        project.name = filesystem.basename(direntry);
+      }
+
+      console.log('🔵 [handleOpenProject] Getting projects list...');
+      // Now we need to find the project entry that was just added and load it
+      const projects = LocalProjectsModel.instance.getProjects();
+      console.log('🔵 [handleOpenProject] Projects in list:', projects.length);
+
+      const projectEntry = projects.find((p) => p.id === project.id);
+      console.log('🔵 [handleOpenProject] Found project entry:', projectEntry);
+
+      if (!projectEntry) {
+        console.log('🔴 [handleOpenProject] Project entry not found in list');
+        ToastLayer.hideActivity(activityId);
+        ToastLayer.showError('Could not find project in recent list');
+        console.error('Project was added but not found in list:', project.id);
+        return;
+      }
+
+      console.log('🔵 [handleOpenProject] Loading project...');
+      // Actually load/open the project
+      const loaded = await LocalProjectsModel.instance.loadProject(projectEntry);
+      console.log('🔵 [handleOpenProject] Project loaded:', loaded);
+
+      ToastLayer.hideActivity(activityId);
+
+      if (!loaded) {
+        console.log('🔴 [handleOpenProject] Load result is falsy');
+        ToastLayer.showError('Could not load project');
+      } else {
+        console.log('✅ [handleOpenProject] Success! Navigating to editor...');
+        // Navigate to editor with the loaded project
+        props.route.router.route({ to: 'editor', project: loaded });
+      }
+    } catch (error) {
+      console.error('🔴 [handleOpenProject] EXCEPTION:', error);
+      ToastLayer.hideActivity('opening-project');
+      console.error('Failed to open project:', error);
+      ToastLayer.showError('Could not open project');
+    }
+  }, [props.route]);
+
+  const handleLaunchProject = useCallback(
+    async (projectId: string) => {
+      const projects = LocalProjectsModel.instance.getProjects();
+      const project = projects.find((p) => p.id === projectId);
+      if (!project) return;
+
+      const activityId = 'launching-project';
+      ToastLayer.showActivity('Opening project', activityId);
+
+      try {
+        const loaded = await LocalProjectsModel.instance.loadProject(project);
+        ToastLayer.hideActivity(activityId);
+
+        if (!loaded) {
+          ToastLayer.showError('Could not load project');
+        } else {
+          // Navigate to editor with the loaded project
+          props.route.router.route({ to: 'editor', project: loaded });
+        }
+      } catch (error) {
+        ToastLayer.hideActivity(activityId);
+        console.error('Failed to launch project:', error);
+        ToastLayer.showError('Could not load project');
+      }
+    },
+    [props.route]
+  );
+
+  const handleOpenProjectFolder = useCallback(async (projectId: string) => {
+    const projects = LocalProjectsModel.instance.getProjects();
+    const project = projects.find((p) => p.id === projectId);
+    if (!project || !project.retainedProjectDirectory) {
+      ToastLayer.showError('Project folder not found');
+      return;
+    }
+
+    try {
+      shell.showItemInFolder(project.retainedProjectDirectory);
+    } catch (error) {
+      console.error('Failed to open project folder:', error);
+      ToastLayer.showError('Could not open project folder');
+    }
+  }, []);
+
+  const handleDeleteProject = useCallback((projectId: string) => {
+    const projects = LocalProjectsModel.instance.getProjects();
+    const project = projects.find((p) => p.id === projectId);
+    if (!project) return;
+
+    // Confirm deletion
+    if (
+      confirm(
+        `Remove project "${project.name}" from the list?\n\nNote: The project folder will remain on disk and can be opened again later.`
+      )
+    ) {
+      LocalProjectsModel.instance.removeProject(projectId);
+      ToastLayer.showSuccess('Project removed from list');
+    }
   }, []);
 
   return (
-    <BaseWindow title="">
-      <TopBar showSpinner={showSpinner} setShowSpinner={setShowSpinner} />
-      <div style={{ position: 'relative', flex: 1 }}>
-        <Frame instance={view} isAbsolute />
-        {showSpinner && (
-          <div
-            className="spinner page-spinner"
-            style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}
-          >
-            <div className="bounce1"></div>
-            <div className="bounce2"></div>
-            <div className="bounce3"></div>
-          </div>
-        )}
-      </div>
-    </BaseWindow>
-  );
-}
-
-interface TopBarProps {
-  showSpinner: boolean;
-  setShowSpinner: (value: boolean) => void;
-}
-
-function TopBar({ showSpinner, setShowSpinner }: TopBarProps) {
-  return (
-    <div
-      style={{
-        height: '52px',
-        display: 'flex',
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        backgroundColor: 'var(--theme-color-bg-2)'
-      }}
-    >
-      <HStack
-        UNSAFE_style={{
-          alignItems: 'center',
-          height: '100%'
-        }}
-        hasSpacing={6}
-      >
-        <Logo
-          size={LogoSize.Small}
-          UNSAFE_style={{
-            marginLeft: '24px'
-          }}
-        />
-        <TextButton label="Docs" onClick={() => platform.openExternal(getDocsEndpoint())} />
-        <TextButton label="Community" onClick={() => platform.openExternal('https://www.noodl.net/community')} />
-      </HStack>
-    </div>
+    <Launcher
+      onCreateProject={handleCreateProject}
+      onOpenProject={handleOpenProject}
+      onLaunchProject={handleLaunchProject}
+      onOpenProjectFolder={handleOpenProjectFolder}
+      onDeleteProject={handleDeleteProject}
+    />
   );
 }

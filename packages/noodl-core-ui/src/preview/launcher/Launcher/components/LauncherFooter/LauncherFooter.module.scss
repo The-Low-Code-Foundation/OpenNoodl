@@ -1,0 +1,21 @@
+/**
+ * LauncherFooter - Styling
+ */
+
+.Root {
+  padding: 16px 24px;
+  border-top: 1px solid var(--theme-color-border-default);
+  background: var(--theme-color-bg-1);
+}
+
+.Content {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 13px;
+}
+
+.Label {
+  color: var(--theme-color-fg-default-shy);
+  font-weight: 500;
+}

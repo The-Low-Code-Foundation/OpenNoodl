@@ -1,0 +1,30 @@
+/**
+ * LauncherHeader - Styling
+ */
+
+.Root {
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--theme-color-border-default);
+  background: var(--theme-color-bg-1);
+}
+
+.Content {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.VersionInfo {
+  flex: 1;
+}
+
+.Actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.DataSourceToggle {
+  display: flex;
+  align-items: center;
+}

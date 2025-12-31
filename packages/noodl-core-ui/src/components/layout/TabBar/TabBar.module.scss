@@ -1,0 +1,121 @@
+/**
+ * TabBar - Modern, clean horizontal tab navigation
+ */
+
+.Root {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  border-bottom: 1px solid var(--theme-color-border-default);
+}
+
+.Tab {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--theme-color-fg-default-shy);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  user-select: none;
+
+  // Bottom border indicator
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: transparent;
+    transition: background 0.2s ease;
+  }
+
+  &:hover:not(.is-disabled) {
+    color: var(--theme-color-fg-default);
+    background: var(--theme-color-bg-hover);
+  }
+
+  &:focus {
+    outline: none;
+    box-shadow: inset 0 0 0 2px var(--theme-color-primary);
+  }
+
+  &:focus:not(:focus-visible) {
+    box-shadow: none;
+  }
+
+  &.is-active {
+    color: var(--theme-color-primary);
+    font-weight: 600;
+
+    &::after {
+      background: var(--theme-color-primary);
+    }
+  }
+
+  &.is-disabled {
+    color: var(--theme-color-fg-disabled);
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+}
+
+.Tab-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+}
+
+.Tab-label {
+  display: flex;
+  align-items: center;
+}
+
+// Size variants
+.is-size-small {
+  .Tab {
+    padding: 8px 16px;
+    font-size: 13px;
+    gap: 6px;
+  }
+
+  .Tab-icon {
+    font-size: 14px;
+  }
+}
+
+.is-size-medium {
+  .Tab {
+    padding: 12px 20px;
+    font-size: 14px;
+    gap: 8px;
+  }
+
+  .Tab-icon {
+    font-size: 16px;
+  }
+}
+
+.is-size-large {
+  .Tab {
+    padding: 16px 24px;
+    font-size: 15px;
+    gap: 10px;
+  }
+
+  .Tab-icon {
+    font-size: 18px;
+  }
+}

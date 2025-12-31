@@ -1,6 +1,7 @@
 import '../../editor/src/styles/custom-properties/animations.css';
 import '../../editor/src/styles/custom-properties/fonts.css';
 import '../../editor/src/styles/custom-properties/colors.css';
+import '../../editor/src/styles/custom-properties/spacing.css';
 import PopupLayer from '../../editor/src/views/popuplayer';
 import Viewer from './src/views/viewer';
 

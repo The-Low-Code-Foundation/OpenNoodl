@@ -2,23 +2,23 @@
    String list
    ------------------------------------------------------------------- */
 .proplist-add-button-container {
-    position: relative;
-    padding-right: 0;
-  }
-  
-  .proplist-default-label {
-    color: #666666;
-  }
+  position: relative;
+  padding-right: 0;
+}
+
+.proplist-default-label {
+  color: var(--theme-color-fg-muted);
+}
 
 .proplist-item {
-    cursor: default;
-    color: #f8f8f8;
-    position: relative;
-    line-height: 35px;    
+  cursor: default;
+  color: var(--theme-color-fg-highlight);
+  position: relative;
+  line-height: 35px;
 }
 
 .proplist-header {
-    background-color: #1f1f1f;
-    margin-bottom:2px;
-    margin-top:2px;
+  background-color: var(--theme-color-bg-2);
+  margin-bottom: 2px;
+  margin-top: 2px;
 }

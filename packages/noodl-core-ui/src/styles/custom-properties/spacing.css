@@ -1,0 +1,113 @@
+/* =============================================================================
+   NOODL DESIGN SYSTEM - SPACING
+   ============================================================================= */
+
+:root {
+  /* ---------------------------------------------------------------------------
+     SPACING SCALE
+     4px base unit system
+     --------------------------------------------------------------------------- */
+  --spacing-0: 0;
+  --spacing-px: 1px;
+  --spacing-0-5: 2px;
+  --spacing-1: 4px;
+  --spacing-1-5: 6px;
+  --spacing-2: 8px;
+  --spacing-2-5: 10px;
+  --spacing-3: 12px;
+  --spacing-3-5: 14px;
+  --spacing-4: 16px;
+  --spacing-5: 20px;
+  --spacing-6: 24px;
+  --spacing-7: 28px;
+  --spacing-8: 32px;
+  --spacing-9: 36px;
+  --spacing-10: 40px;
+  --spacing-11: 44px;
+  --spacing-12: 48px;
+  --spacing-14: 56px;
+  --spacing-16: 64px;
+  --spacing-20: 80px;
+  --spacing-24: 96px;
+
+  /* ---------------------------------------------------------------------------
+     SEMANTIC SPACING
+     Component-specific spacing aliases
+     --------------------------------------------------------------------------- */
+
+  /* Panel spacing */
+  --spacing-panel-padding: var(--spacing-4);
+  --spacing-panel-gap: var(--spacing-3);
+
+  /* Card spacing */
+  --spacing-card-padding: var(--spacing-3);
+  --spacing-card-gap: var(--spacing-2);
+
+  /* Section spacing */
+  --spacing-section-gap: var(--spacing-6);
+  --spacing-section-padding: var(--spacing-4);
+
+  /* Input spacing */
+  --spacing-input-padding-x: var(--spacing-2);
+  --spacing-input-padding-y: var(--spacing-1-5);
+  --spacing-input-gap: var(--spacing-2);
+
+  /* Button spacing */
+  --spacing-button-padding-x: var(--spacing-3);
+  --spacing-button-padding-y: var(--spacing-2);
+  --spacing-button-gap: var(--spacing-2);
+
+  /* Icon spacing */
+  --spacing-icon-gap: var(--spacing-2);
+
+  /* ---------------------------------------------------------------------------
+     BORDER RADIUS
+     --------------------------------------------------------------------------- */
+  --radius-none: 0;
+  --radius-sm: 2px;
+  --radius-default: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --radius-2xl: 16px;
+  --radius-3xl: 24px;
+  --radius-full: 9999px;
+
+  /* ---------------------------------------------------------------------------
+     SHADOWS
+     --------------------------------------------------------------------------- */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-default: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  --shadow-inner: inset 0 2px 4px 0 rgba(0, 0, 0, 0.05);
+
+  /* Dialog/popup shadow */
+  --shadow-popup: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 10px 15px -3px rgba(0, 0, 0, 0.2),
+    0 20px 25px -5px rgba(0, 0, 0, 0.15);
+
+  /* ---------------------------------------------------------------------------
+     TRANSITIONS
+     --------------------------------------------------------------------------- */
+  --transition-fast: 100ms;
+  --transition-default: 150ms;
+  --transition-slow: 300ms;
+  --transition-ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --transition-ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --transition-ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* ---------------------------------------------------------------------------
+     Z-INDEX SCALE
+     --------------------------------------------------------------------------- */
+  --z-base: 0;
+  --z-dropdown: 100;
+  --z-sticky: 200;
+  --z-fixed: 300;
+  --z-modal-backdrop: 400;
+  --z-modal: 500;
+  --z-popover: 600;
+  --z-tooltip: 700;
+}

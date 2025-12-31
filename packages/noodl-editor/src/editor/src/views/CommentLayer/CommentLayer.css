@@ -48,7 +48,7 @@
 
 .comment-layer-comment.background.fill:not(.selected),
 .comment-layer-comment.background.transparent:not(.selected) {
-  border: 2px solid #00000020;
+  border: 2px solid rgba(0, 0, 0, 0.125);
 }
 
 .comment-layer-comment.background.selected.fill,
@@ -78,15 +78,15 @@
 }
 
 .comment-layer-comment.background.has-annotation.changed {
-  outline: 2px solid #83b8ba;
+  outline: 2px solid var(--theme-color-primary);
 }
 
 .comment-layer-comment.background.has-annotation.deleted {
-  outline: 2px solid #f57569;
+  outline: 2px solid var(--theme-color-danger);
 }
 
 .comment-layer-comment.background.has-annotation.created {
-  outline: 2px solid #5bf59e;
+  outline: 2px solid var(--theme-color-success);
 }
 
 .comment-drag-area {

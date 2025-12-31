@@ -19,13 +19,26 @@ import {
   LauncherSearchBar,
   useLauncherSearchBar
 } from '@noodl-core-ui/preview/launcher/Launcher/components/LauncherSearchBar';
+import { ProjectList } from '@noodl-core-ui/preview/launcher/Launcher/components/ProjectList';
 import { ProjectSettingsModal } from '@noodl-core-ui/preview/launcher/Launcher/components/ProjectSettingsModal';
+import { ViewModeToggle } from '@noodl-core-ui/preview/launcher/Launcher/components/ViewModeToggle';
+import { useProjectList } from '@noodl-core-ui/preview/launcher/Launcher/hooks/useProjectList';
 import { MOCK_PROJECTS } from '@noodl-core-ui/preview/launcher/Launcher/Launcher';
+import { useLauncherContext, ViewMode } from '@noodl-core-ui/preview/launcher/Launcher/LauncherContext';
 
 export interface ProjectsViewProps {}
 
 export function Projects({}: ProjectsViewProps) {
-  const allProjects = MOCK_PROJECTS;
+  const {
+    viewMode,
+    setViewMode,
+    projects: allProjects,
+    onCreateProject,
+    onOpenProject,
+    onLaunchProject,
+    onOpenProjectFolder,
+    onDeleteProject
+  } = useLauncherContext();
 
   const [selectedProjectId, setSelectedProjectId] = useState(null);
   const uniqueTypes = [...new Set(allProjects.map((item) => item.cloudSyncMeta.type))];
@@ -46,6 +59,13 @@ export function Projects({}: ProjectsViewProps) {
     propertyNameToFilter: 'cloudSyncMeta.type'
   });
 
+  // Sorting for list view
+  const { sortedProjects, sortField, sortDirection, setSorting } = useProjectList({
+    projects,
+    initialSortField: 'lastModified',
+    initialSortDirection: 'desc'
+  });
+
   function onOpenProjectSettings(projectDataId: LauncherProjectData['id']) {
     setSelectedProjectId(projectDataId);
   }
@@ -55,11 +75,11 @@ export function Projects({}: ProjectsViewProps) {
   }
 
   function onImportProjectClick() {
-    alert('FIXME: Import project');
+    onOpenProject?.();
   }
 
   function onNewProjectClick() {
-    alert('FIXME: Create new project');
+    onCreateProject?.();
   }
 
   return (
@@ -83,63 +103,83 @@ export function Projects({}: ProjectsViewProps) {
         projectData={projects.find((project) => project.id === selectedProjectId)}
       />
 
-      <LauncherSearchBar
-        searchTerm={searchTerm}
-        setSearchTerm={setSearchTerm}
-        filterValue={filterValue}
-        setFilterValue={setFilterValue}
-        filterDropdownItems={visibleTypesDropdownItems}
-      />
+      <HStack hasSpacing={4} UNSAFE_style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+        <LauncherSearchBar
+          searchTerm={searchTerm}
+          setSearchTerm={setSearchTerm}
+          filterValue={filterValue}
+          setFilterValue={setFilterValue}
+          filterDropdownItems={visibleTypesDropdownItems}
+        />
+        <ViewModeToggle mode={viewMode} onChange={setViewMode} />
+      </HStack>
 
-      {/* TODO: make project list legend and grid reusable */}
-      <Box hasBottomSpacing={4} hasTopSpacing={4}>
-        <HStack hasSpacing>
-          <div style={{ width: 100 }} />
-          <div style={{ width: '100%' }}>
-            <Columns layoutString={'1 1 1'}>
-              <Label variant={TextType.Shy} size={LabelSize.Small}>
-                Name
-              </Label>
-              <Label variant={TextType.Shy} size={LabelSize.Small}>
-                Version control
-              </Label>
-              <Label variant={TextType.Shy} size={LabelSize.Small}>
-                Contributors
-              </Label>
-            </Columns>
-          </div>
-        </HStack>
-      </Box>
-      <Columns layoutString="1" hasXGap hasYGap>
-        {projects.map((project) => (
-          <LauncherProjectCard
-            key={project.id}
-            {...project}
-            contextMenuItems={[
-              {
-                label: 'Launch project',
-                onClick: () => alert('FIXME: Launch project')
-              },
-              {
-                label: 'Open project folder',
-                onClick: () => alert('FIXME: Open folder')
-              },
-              {
-                label: 'Open project settings',
-                onClick: () => onOpenProjectSettings(project.id)
-              },
-
-              'divider',
-              {
-                label: 'Delete project',
-                onClick: () => alert('FIXME: Delete project'),
-                icon: IconName.Trash,
-                isDangerous: true
-              }
-            ]}
+      <Box hasTopSpacing={4}>
+        {viewMode === ViewMode.List ? (
+          <ProjectList
+            projects={sortedProjects}
+            sortField={sortField}
+            sortDirection={sortDirection}
+            onSort={setSorting}
+            onProjectClick={(project) => onLaunchProject?.(project.id)}
+            onOpenFolder={(project) => onOpenProjectFolder?.(project.id)}
+            onSettings={(project) => onOpenProjectSettings(project.id)}
+            onDelete={(project) => onDeleteProject?.(project.id)}
           />
-        ))}
-      </Columns>
+        ) : (
+          <>
+            {/* TODO: make project list legend and grid reusable */}
+            <Box hasBottomSpacing={4}>
+              <HStack hasSpacing>
+                <div style={{ width: 100 }} />
+                <div style={{ width: '100%' }}>
+                  <Columns layoutString={'1 1 1'}>
+                    <Label variant={TextType.Shy} size={LabelSize.Small}>
+                      Name
+                    </Label>
+                    <Label variant={TextType.Shy} size={LabelSize.Small}>
+                      Version control
+                    </Label>
+                    <Label variant={TextType.Shy} size={LabelSize.Small}>
+                      Contributors
+                    </Label>
+                  </Columns>
+                </div>
+              </HStack>
+            </Box>
+            <Columns layoutString="1" hasXGap hasYGap>
+              {projects.map((project) => (
+                <LauncherProjectCard
+                  key={project.id}
+                  {...project}
+                  contextMenuItems={[
+                    {
+                      label: 'Launch project',
+                      onClick: () => onLaunchProject?.(project.id)
+                    },
+                    {
+                      label: 'Open project folder',
+                      onClick: () => onOpenProjectFolder?.(project.id)
+                    },
+                    {
+                      label: 'Open project settings',
+                      onClick: () => onOpenProjectSettings(project.id)
+                    },
+
+                    'divider',
+                    {
+                      label: 'Delete project',
+                      onClick: () => onDeleteProject?.(project.id),
+                      icon: IconName.Trash,
+                      isDangerous: true
+                    }
+                  ]}
+                />
+              ))}
+            </Columns>
+          </>
+        )}
+      </Box>
     </LauncherPage>
   );
 }

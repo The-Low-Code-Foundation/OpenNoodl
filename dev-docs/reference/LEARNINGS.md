@@ -1193,3 +1193,106 @@ const coreNodes = [
 **Keywords**: node picker, coreNodes, nodelibraryexport, runtime node, silent failure, node not appearing
 
 ---
+
+## 🔥 CRITICAL: LocalProjectsModel.loadProject() Doesn't Navigate to Editor (Dec 2025)
+
+### The Silent Success: Projects Load But Don't Open
+
+**Context**: Phase 3 Launcher integration - Implemented all project management buttons (Open Project, Launch Project, Create Project). LocalProjectsModel.loadProject() succeeded and returned a ProjectModel, but the editor never opened.
+
+**The Problem**: `LocalProjectsModel.loadProject()` **only loads the project into memory**. It does NOT navigate to the editor. You must explicitly call the router after loading.
+
+**Discovery Timeline**:
+
+```
+🔵 [handleOpenProject] Starting...
+🔵 [handleOpenProject] Selected folder: /Users/.../MAU chatbot
+🔵 [handleOpenProject] Calling openProjectFromFolder...
+🔵 [handleOpenProject] Got project: ProjectModel
+🔵 [handleOpenProject] Loading project...
+🔵 [handleOpenProject] Project loaded: ProjectModel
+✅ [handleOpenProject] Success! Project should open now
+// But no project opens 🤔
+```
+
+**Root Cause**: Missing router navigation call after successful project load.
+
+**The Broken Pattern**:
+
+```typescript
+// ❌ WRONG - Project loads but editor never opens
+const handleOpenProject = async () => {
+  const direntry = await filesystem.openDialog({ ... });
+  const project = await LocalProjectsModel.instance.openProjectFromFolder(direntry);
+  const projectEntry = LocalProjectsModel.instance.getProjects().find(p => p.id === project.id);
+  const loaded = await LocalProjectsModel.instance.loadProject(projectEntry);
+  // ☠️ Returns ProjectModel but nothing happens
+  // User stays on dashboard, confused
+};
+```
+
+**The Solution**:
+
+```typescript
+// ✅ RIGHT - Navigate to editor after loading
+const handleOpenProject = useCallback(async () => {
+  const direntry = await filesystem.openDialog({ ... });
+  const project = await LocalProjectsModel.instance.openProjectFromFolder(direntry);
+  const projectEntry = LocalProjectsModel.instance.getProjects().find(p => p.id === project.id);
+  const loaded = await LocalProjectsModel.instance.loadProject(projectEntry);
+
+  if (loaded) {
+    // Navigate to editor with loaded project
+    props.route.router.route({ to: 'editor', project: loaded });
+  }
+}, [props.route]);
+```
+
+**Why This Pattern Exists**:
+
+1. `loadProject()` is a data operation - it loads project files, initializes ProjectModel, sets up modules
+2. Router navigation is a separate concern - handled by the Router component
+3. In Phase 3, `ProjectsPage` (React) must explicitly trigger navigation
+4. In legacy code, this was handled by imperative routing in Backbone views
+
+**The Router Navigation Pattern** (Phase 3):
+
+```typescript
+// Access router through props.route.router
+interface ProjectsPageProps extends IRouteProps {
+  from: TSFixme;
+  // route.router is the Router instance
+}
+
+// Navigate with project data
+props.route.router.route({
+  to: 'editor', // Target route
+  project: loaded // ProjectModel instance
+});
+
+// Navigate without project (back to dashboard)
+props.route.router.route({
+  to: 'projects',
+  from: 'editor'
+});
+```
+
+**Applies to All Project Opening Scenarios**:
+
+1. **Create Project**: After `newProject()` callback → navigate to editor
+2. **Open Project**: After `openProjectFromFolder()` + `loadProject()` → navigate to editor
+3. **Launch Project**: After `loadProject()` from list → navigate to editor
+
+**Critical Rule**: **`loadProject()` only loads data. Always call `props.route.router.route()` to actually open the editor.**
+
+**Location**:
+
+- Fixed in: `packages/noodl-editor/src/editor/src/pages/ProjectsPage/ProjectsPage.tsx`
+- Router source: `packages/noodl-editor/src/editor/src/router.tsx`
+- Phase 3 context: DASH-001 Tabbed Navigation integration
+
+**Detection**: If you see success logs but the editor doesn't open, you're missing the router navigation call.
+
+**Keywords**: LocalProjectsModel, loadProject, router, navigation, Phase 3, Launcher, ProjectsPage, silent success, openProjectFromFolder
+
+---

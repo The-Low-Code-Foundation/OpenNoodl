@@ -108,8 +108,8 @@
 }
 
 .variants-name:hover {
-  background-color: #333;
-  color: #fff;
+  background-color: var(--theme-color-bg-5);
+  color: var(--theme-color-fg-highlight);
 }
 
 .variants-input-container {

@@ -71,7 +71,7 @@
   left: 20px;
   font: 12px var(--font-family-regular);
   line-height: 36px;
-  color: #aaa;
+  color: var(--theme-color-fg-default-shy);
   white-space: nowrap;
 }
 
@@ -93,7 +93,7 @@
 }
 
 .components-panel-isroot {
-  color: #ffa300;
+  color: var(--theme-color-notice);
 }
 
 .components-panel-icon {
@@ -103,7 +103,7 @@
 .components-panel-folder-menu,
 .components-panel-item-menu {
   background-color: transparent;
-  color: #cecece;
+  color: var(--theme-color-fg-default);
   font-size: 18px;
 }
 

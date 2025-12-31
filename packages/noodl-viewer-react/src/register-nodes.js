@@ -65,6 +65,9 @@ export default function registerNodes(noodlRuntime) {
 
     // BYOB (Bring Your Own Backend) data nodes
     require('@noodl/runtime/src/nodes/std-library/data/byob-query-data'),
+    require('@noodl/runtime/src/nodes/std-library/data/byob-create-record'),
+    require('@noodl/runtime/src/nodes/std-library/data/byob-update-record'),
+    require('@noodl/runtime/src/nodes/std-library/data/byob-delete-record'),
 
     //require('./nodes/std-library/variables/number'), // moved to runtime
     //require('./nodes/std-library/variables/string'),

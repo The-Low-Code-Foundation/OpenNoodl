@@ -63,7 +63,7 @@ $_scroll-bar-width: 4px;
   }
 
   &::-webkit-scrollbar-thumb {
-    background-color: #575757;
+    background-color: var(--theme-color-bg-5);
   }
 }
 

@@ -31,7 +31,7 @@
 }
 
 .visual-state-default-transition .label {
-  background-color: #292929;
+  background-color: var(--theme-color-bg-4);
   padding: 2px 2px 2px 8px;
   color: rgba(255, 255, 255, 0.75);
   flex-grow: 1;

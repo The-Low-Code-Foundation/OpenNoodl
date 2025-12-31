@@ -36,7 +36,7 @@
   position: relative;
 
   &.disabled {
-    color: #ffffff80;
+    color: rgba(255, 255, 255, 0.5);
   }
 }
 
@@ -67,13 +67,13 @@
 
   &.disabled::after {
     @extend %overlay;
-    background-color: #00000060;
+    background-color: rgba(0, 0, 0, 0.4);
   }
 }
 
 .noPortsMessage {
   padding: 10px;
-  color: #ccc;
+  color: var(--theme-color-fg-default-contrast);
 }
 
 .listElement {
@@ -96,7 +96,7 @@
   }
 
   &.disabled {
-    color: #ffffff40;
+    color: rgba(255, 255, 255, 0.25);
 
     .signalIcon {
       opacity: 0.3;
@@ -108,7 +108,7 @@
 
     &::before {
       @extend %overlay;
-      background-color: #ffffff33;
+      background-color: rgba(255, 255, 255, 0.2);
     }
   }
 }
@@ -134,7 +134,7 @@
   display: flex;
   align-items: center;
   position: relative;
-  color: #ffffffaa;
+  color: rgba(255, 255, 255, 0.67);
 }
 
 .groupLabel {
@@ -148,14 +148,14 @@
 
 .docsPopup {
   width: 300px;
-  background-color: #171717;
+  background-color: var(--theme-color-bg-2);
   padding: 10px;
-  color: #fff;
+  color: var(--theme-color-fg-highlight);
 }
 
 .docsType {
   margin-left: 5px;
-  color: #72babb;
+  color: var(--theme-color-primary);
 }
 
 .docsHeader {
@@ -163,7 +163,7 @@
 }
 
 .docsBody {
-  color: #ccc;
+  color: var(--theme-color-fg-default-contrast);
 }
 
 .docsEnumValue {
@@ -184,7 +184,7 @@
 
   &,
   &::placeholder {
-    color: rgba(255,255,255,0.6);
+    color: rgba(255, 255, 255, 0.6);
   }
 }
 

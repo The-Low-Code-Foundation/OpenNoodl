@@ -16,6 +16,7 @@ import { ProjectModel } from './src/models/projectmodel';
 import '../editor/src/styles/custom-properties/animations.css';
 import '../editor/src/styles/custom-properties/fonts.css';
 import '../editor/src/styles/custom-properties/colors.css';
+import '../editor/src/styles/custom-properties/spacing.css';
 
 import Router from './src/router';
 

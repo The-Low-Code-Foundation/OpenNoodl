@@ -642,21 +642,26 @@ export class NodeGraphEditorNode {
         ctx.globalAlpha = 1;
       }
 
-      if (this.icon) {
+      if (this.icon && this.icon.complete && this.icon.naturalWidth > 0) {
         ctx.imageSmoothingEnabled = true;
         ctx.imageSmoothingQuality = 'high';
 
         const offset = Math.abs(this.iconSize - 18);
 
-        ctx.drawImage(
-          this.icon,
-          x + horizontalSpacing + this.nodeSize.width - horizontalSpacing - connectionDragAreaWidth - 16 - offset,
-          y + NodeGraphEditorNode.verticalSpacing + 1 - offset / 2,
-          this.iconSize,
-          this.iconSize
-        );
+        try {
+          ctx.drawImage(
+            this.icon,
+            x + horizontalSpacing + this.nodeSize.width - horizontalSpacing - connectionDragAreaWidth - 16 - offset,
+            y + NodeGraphEditorNode.verticalSpacing + 1 - offset / 2,
+            this.iconSize,
+            this.iconSize
+          );
+        } catch (e) {
+          // Icon failed to load, skip drawing
+          console.warn('Failed to draw node icon:', e);
+        }
 
-        if (this.rotatingIcon) {
+        if (this.rotatingIcon && this.rotatingIcon.complete && this.rotatingIcon.naturalWidth > 0) {
           ctx.save();
           ctx.translate(
             x +
@@ -670,7 +675,13 @@ export class NodeGraphEditorNode {
             y + NodeGraphEditorNode.verticalSpacing + 1 - offset / 2 + this.iconSize / 2
           );
           ctx.rotate(this.iconRotation);
-          ctx.drawImage(this.rotatingIcon, -this.iconSize / 2, -this.iconSize / 2, this.iconSize, this.iconSize);
+
+          try {
+            ctx.drawImage(this.rotatingIcon, -this.iconSize / 2, -this.iconSize / 2, this.iconSize, this.iconSize);
+          } catch (e) {
+            // Rotating icon failed to load, skip drawing
+            console.warn('Failed to draw rotating icon:', e);
+          }
 
           ctx.restore();
         }

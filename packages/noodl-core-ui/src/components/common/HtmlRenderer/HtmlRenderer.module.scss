@@ -49,8 +49,8 @@
     }
 
     .language-javascript {
-      color: #eee;
-      background-color: #444;
+      color: var(--theme-color-fg-highlight);
+      background-color: var(--theme-color-bg-4);
       display: block;
       padding: 5px;
       overflow: scroll;
