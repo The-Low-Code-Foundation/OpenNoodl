@@ -103,12 +103,12 @@
   left: 0;
   visibility: hidden;
   height: 0;
-  overflow: overlay;
+  overflow: hidden;
   white-space: pre;
 }
 
 .InputWrapper {
-  overflow-x: overlay;
+  overflow-x: hidden;
   flex-grow: 1;
   padding-top: 1px;
 }

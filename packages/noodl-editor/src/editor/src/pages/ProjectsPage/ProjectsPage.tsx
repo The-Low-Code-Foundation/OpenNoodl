@@ -6,24 +6,66 @@
  */
 
 import { ipcRenderer, shell } from 'electron';
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { filesystem } from '@noodl/platform';
 
+import {
+  CloudSyncType,
+  LauncherProjectData
+} from '@noodl-core-ui/preview/launcher/Launcher/components/LauncherProjectCard';
 import { Launcher } from '@noodl-core-ui/preview/launcher/Launcher/Launcher';
 
+import { useEventListener } from '../../hooks/useEventListener';
 import { IRouteProps } from '../../pages/AppRoute';
-import { LocalProjectsModel } from '../../utils/LocalProjectsModel';
+import { LocalProjectsModel, ProjectItem } from '../../utils/LocalProjectsModel';
 import { ToastLayer } from '../../views/ToastLayer/ToastLayer';
 
 export interface ProjectsPageProps extends IRouteProps {
   from: TSFixme;
 }
 
+/**
+ * Map LocalProjectsModel ProjectItem to LauncherProjectData format
+ */
+function mapProjectToLauncherData(project: ProjectItem): LauncherProjectData {
+  return {
+    id: project.id,
+    title: project.name || 'Untitled',
+    localPath: project.retainedProjectDirectory,
+    lastOpened: new Date(project.latestAccessed).toISOString(),
+    imageSrc: project.thumbURI || 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg"%3E%3C/svg%3E',
+    cloudSyncMeta: {
+      type: CloudSyncType.None // TODO: Detect git repos in future
+    }
+    // Git-related fields will be populated in future tasks
+  };
+}
+
 export function ProjectsPage(props: ProjectsPageProps) {
+  // Real projects from LocalProjectsModel
+  const [realProjects, setRealProjects] = useState<LauncherProjectData[]>([]);
+
+  // Fetch projects on mount
   useEffect(() => {
     // Switch main window size to editor size
     ipcRenderer.send('main-window-resize', { size: 'editor', center: true });
+
+    // Initial load
+    const loadProjects = async () => {
+      await LocalProjectsModel.instance.fetch();
+      const projects = LocalProjectsModel.instance.getProjects();
+      setRealProjects(projects.map(mapProjectToLauncherData));
+    };
+
+    loadProjects();
   }, []);
+
+  // Subscribe to project list changes
+  useEventListener(LocalProjectsModel.instance, 'myProjectsChanged', () => {
+    console.log('🔔 Projects list changed, updating dashboard');
+    const projects = LocalProjectsModel.instance.getProjects();
+    setRealProjects(projects.map(mapProjectToLauncherData));
+  });
 
   const handleCreateProject = useCallback(async () => {
     try {
@@ -196,6 +238,7 @@ export function ProjectsPage(props: ProjectsPageProps) {
 
   return (
     <Launcher
+      projects={realProjects}
       onCreateProject={handleCreateProject}
       onOpenProject={handleOpenProject}
       onLaunchProject={handleLaunchProject}

@@ -19,6 +19,8 @@ import { Title, TitleSize } from '@noodl-core-ui/components/typography/Title';
 import { UserBadgeProps, UserBadgeSize } from '@noodl-core-ui/components/user/UserBadge';
 import { UserBadgeList } from '@noodl-core-ui/components/user/UserBadgeList';
 
+import { useProjectOrganization } from '../../hooks/useProjectOrganization';
+import { TagPill, TagPillSize } from '../TagPill';
 import css from './LauncherProjectCard.module.scss';
 
 // FIXME: Use the timeSince function from the editor package when this is moved there
@@ -73,26 +75,31 @@ export interface LauncherProjectData {
 
 export interface LauncherProjectCardProps extends LauncherProjectData {
   contextMenuItems: ContextMenuProps[];
+  onClick?: () => void;
 }
 
 export function LauncherProjectCard({
   id,
   title,
   cloudSyncMeta,
+  localPath,
   lastOpened,
   pullAmount,
   pushAmount,
   uncommittedChangesAmount,
   imageSrc,
   contextMenuItems,
-  contributors
+  contributors,
+  onClick
 }: LauncherProjectCardProps) {
+  const { tags, getProjectMeta } = useProjectOrganization();
+
+  // Get project tags
+  const projectMeta = getProjectMeta(localPath);
+  const projectTags = projectMeta ? tags.filter((tag) => projectMeta.tagIds.includes(tag.id)) : [];
+
   return (
-    <Card
-      background={CardBackground.Bg2}
-      hoverBackground={CardBackground.Bg3}
-      onClick={() => alert('FIXME: open project')}
-    >
+    <Card background={CardBackground.Bg2} hoverBackground={CardBackground.Bg3} onClick={onClick}>
       <Stack direction="row">
         <div className={css.Image} style={{ backgroundImage: `url(${imageSrc})` }} />
 
@@ -102,6 +109,16 @@ export function LauncherProjectCard({
               <Title hasBottomSpacing size={TitleSize.Medium}>
                 {title}
               </Title>
+
+              {/* Tags */}
+              {projectTags.length > 0 && (
+                <HStack hasSpacing={2} UNSAFE_style={{ marginBottom: 'var(--spacing-2)', flexWrap: 'wrap' }}>
+                  {projectTags.map((tag) => (
+                    <TagPill key={tag.id} tag={tag} size={TagPillSize.Small} />
+                  ))}
+                </HStack>
+              )}
+
               <Label variant={TextType.Shy}>Last opened {timeSince(new Date(lastOpened))} ago</Label>
             </div>
 

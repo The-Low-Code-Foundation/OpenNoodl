@@ -1,10 +1,6 @@
 import classNames from 'classnames';
-import React, {
-  CSSProperties,
-  MouseEvent,
-  MouseEventHandler,
-  SyntheticEvent,
-} from 'react';
+import React, { CSSProperties, MouseEvent, MouseEventHandler, SyntheticEvent } from 'react';
+
 import css from './LegacyIconButton.module.scss';
 
 export enum LegacyIconButtonIcon {
@@ -12,7 +8,7 @@ export enum LegacyIconButtonIcon {
   Close = 'close',
   CloseDark = 'close-dark',
   CaretDown = 'caret-down',
-  Generate = 'generate',
+  Generate = 'generate'
 }
 
 export interface LegacyIconButtonProps {
@@ -23,26 +19,12 @@ export interface LegacyIconButtonProps {
   testId?: string;
 }
 
-export function LegacyIconButton({
-  icon,
-  isRotated180,
-  style,
-  onClick,
-  testId,
-}: LegacyIconButtonProps) {
+export function LegacyIconButton({ icon, isRotated180, style, onClick, testId }: LegacyIconButtonProps) {
   return (
-    <button
-      className={css['Root']}
-      onClick={onClick}
-      style={style}
-      data-test={testId}
-    >
+    <button className={css['Root']} onClick={onClick} style={style} data-test={testId}>
       <img
-        className={classNames([
-          css['Icon'],
-          isRotated180 && css['is-rotated-180'],
-        ])}
-        src={`../assets/icons/icon-button/${icon}.svg`}
+        className={classNames([css['Icon'], isRotated180 && css['is-rotated-180']])}
+        src={`/assets/icons/icon-button/${icon}.svg`}
       />
     </button>
   );

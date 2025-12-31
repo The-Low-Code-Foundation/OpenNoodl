@@ -48,8 +48,8 @@
 }
 
 .lesson-item.selected {
-  background-color: var(--theme-color-fg-highlight);
-  color: var(--theme-color-secondary-dim);
+  background-color: var(--theme-color-bg-4);
+  color: var(--theme-color-fg-highlight);
   opacity: 1;
   transition: background-color 200ms, opacity 200ms;
 }
@@ -128,9 +128,9 @@
 }
 
 .lesson-item-popup {
-  background-color: var(--theme-color-secondary);
+  background-color: var(--theme-color-bg-3);
   width: 512px;
-  color: white;
+  color: var(--theme-color-fg-highlight);
   padding: 8px;
 }
 

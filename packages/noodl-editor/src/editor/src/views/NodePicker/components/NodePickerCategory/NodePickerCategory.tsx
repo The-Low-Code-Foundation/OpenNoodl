@@ -1,12 +1,14 @@
+import { CustomPropertyAnimation, useCustomPropertyValue } from '@noodl-hooks/useCustomPropertyValue';
 import classNames from 'classnames';
 import React, { ReactNode, useEffect, useState } from 'react';
+
 import { NodeType } from '@noodl-constants/NodeType';
+
 import { Collapsible } from '@noodl-core-ui/components/layout/Collapsible';
+import { Text, TextSize, TextType } from '@noodl-core-ui/components/typography/Text';
+import { Title, TitleSize, TitleVariant } from '@noodl-core-ui/components/typography/Title';
 
 import css from './NodePickerCategory.module.scss';
-import { CustomPropertyAnimation, useCustomPropertyValue } from '@noodl-hooks/useCustomPropertyValue';
-import { Title, TitleSize, TitleVariant } from '@noodl-core-ui/components/typography/Title';
-import { Text, TextSize, TextType } from '@noodl-core-ui/components/typography/Text';
 
 interface NodePickerCategoryProps {
   title: string;
@@ -86,7 +88,7 @@ export default function NodePickerCategory({
             css['Arrow'],
             isCollapsedState ? css['Arrow--is-collapsed'] : css['Arrow--is-not-collapsed']
           ])}
-          src="../assets/icons/editor/right_arrow_22.svg"
+          src="/assets/icons/editor/right_arrow_22.svg"
         />
       </header>
 

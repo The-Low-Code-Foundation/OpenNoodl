@@ -83,13 +83,14 @@
   cursor: pointer;
 
   * {
-    color: var(--theme-color-fg-default);
-    fill: var(--theme-color-fg-default);
+    color: var(--theme-color-fg-highlight);
+    fill: var(--theme-color-fg-highlight);
   }
 
   &:hover * {
     color: var(--theme-color-fg-highlight);
     fill: var(--theme-color-fg-highlight);
+    opacity: 0.8;
   }
 }
 

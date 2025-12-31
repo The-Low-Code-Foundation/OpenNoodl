@@ -27,10 +27,18 @@
   transition: background-color var(--speed-turbo) var(--easing-base);
 
   &.is-highlighted:not(.is-disabled) {
-    background-color: var(--theme-color-secondary-highlight);
+    background-color: var(--theme-color-primary);
 
     h2 {
-      color: var(--theme-color-on-secondary);
+      color: var(--theme-color-on-primary);
+    }
+
+    .Label span {
+      color: var(--theme-color-on-primary);
+    }
+
+    .Icon path {
+      fill: var(--theme-color-on-primary);
     }
   }
 

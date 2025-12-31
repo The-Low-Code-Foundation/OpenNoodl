@@ -219,13 +219,13 @@ TODO: review this icon
 
 .components-panel-item-selected {
   line-height: 36px;
-  background-color: var(--theme-color-secondary);
-  color: var(--theme-color-on-secondary);
+  background-color: var(--theme-color-bg-4);
+  color: var(--theme-color-fg-highlight);
   opacity: 1;
 }
 
 .components-panel-item-selected .caret-icon-container {
-  background-color: var(--theme-color-secondary);
+  background-color: var(--theme-color-bg-4);
 }
 
 .components-panel-item-selected .components-panel-item-selected {
@@ -234,13 +234,13 @@ TODO: review this icon
 
 .components-panel-item-selected:hover,
 .components-panel-item-selected:hover .caret-icon-container {
-  background-color: var(--theme-color-secondary-highlight);
+  background-color: var(--theme-color-bg-5);
 }
 
 .components-panel-item-selected .components-panel-edit-button:hover,
 .components-panel-item-selected .components-panel-item-dropdown:hover {
-  background-color: var(--theme-color-secondary);
-  color: var(--theme-color-on-secondary);
+  background-color: var(--theme-color-bg-3);
+  color: var(--theme-color-fg-highlight);
 }
 
 .is-folder-component:hover .components-panel-folder-label {

@@ -290,6 +290,135 @@ Before completing any UI task, verify:
 
 ---
 
+## Part 9: Selected/Active State Patterns
+
+### Decision Matrix: Which Background to Use?
+
+When styling selected or active items, choose based on the **level of emphasis** needed:
+
+| Context              | Background Token        | Text Color                              | Use Case                                       |
+| -------------------- | ----------------------- | --------------------------------------- | ---------------------------------------------- |
+| **Subtle highlight** | `--theme-color-bg-4`    | `--theme-color-fg-highlight`            | Breadcrumb current page, sidebar selected item |
+| **Medium highlight** | `--theme-color-bg-5`    | `--theme-color-fg-highlight`            | Hovered list items, tabs                       |
+| **Bold accent**      | `--theme-color-primary` | `var(--theme-color-on-primary)` (white) | Dropdown selected item, focused input          |
+
+### Common Pattern: Dropdown/Menu Selected Items
+
+```scss
+.MenuItem {
+  padding: 8px 12px;
+  cursor: pointer;
+
+  // Default state
+  color: var(--theme-color-fg-default);
+  background-color: transparent;
+
+  // Hover state (if not selected)
+  &:hover:not(.is-selected) {
+    background-color: var(--theme-color-bg-3);
+    color: var(--theme-color-fg-highlight);
+  }
+
+  // Selected state - BOLD accent for visibility
+  &.is-selected {
+    background-color: var(--theme-color-primary);
+    color: var(--theme-color-on-primary);
+
+    // Icons and child elements also need white
+    svg path {
+      fill: var(--theme-color-on-primary);
+    }
+  }
+
+  // Disabled state
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+```
+
+### Common Pattern: Navigation/Breadcrumb Current Item
+
+```scss
+.BreadcrumbItem {
+  padding: 6px 12px;
+  border-radius: 4px;
+  color: var(--theme-color-fg-default);
+
+  // Current/active page - SUBTLE highlight
+  &.is-current {
+    background-color: var(--theme-color-bg-4);
+    color: var(--theme-color-fg-highlight);
+  }
+}
+```
+
+### ⚠️ CRITICAL: Never Use These for Backgrounds
+
+**DO NOT use these tokens for selected/active backgrounds:**
+
+```scss
+/* ❌ WRONG - These are now WHITE after token consolidation */
+background-color: var(--theme-color-secondary);
+background-color: var(--theme-color-secondary-highlight);
+background-color: var(--theme-color-fg-highlight);
+
+/* ❌ WRONG - Poor contrast on dark backgrounds */
+background-color: var(--theme-color-bg-1); /* Too dark */
+background-color: var(--theme-color-bg-2); /* Too dark */
+```
+
+### Visual Hierarchy Example
+
+```scss
+// List with multiple states
+.ListItem {
+  // Normal
+  background: transparent;
+  color: var(--theme-color-fg-default);
+
+  // Hover (not selected)
+  &:hover:not(.is-selected) {
+    background: var(--theme-color-bg-3); // Subtle lift
+  }
+
+  // Selected
+  &.is-selected {
+    background: var(--theme-color-primary); // Bold, can't miss it
+    color: white;
+  }
+
+  // Selected AND hovered
+  &.is-selected:hover {
+    background: var(--theme-color-primary-highlight); // Slightly lighter red
+  }
+}
+```
+
+### Accessibility Checklist for Selected States
+
+- [ ] Selected item is **immediately visible** (high contrast)
+- [ ] Color is not the **only** indicator (use icons/checkmarks too)
+- [ ] Keyboard focus state is **distinct** from selection
+- [ ] Text contrast meets **WCAG AA** (4.5:1 minimum)
+
+### Real-World Examples
+
+✅ **Good patterns** (fixed December 2025):
+
+- `MenuDialog.module.scss` - Uses `--theme-color-primary` for selected dropdown items
+- `NodeGraphComponentTrail.module.scss` - Uses `--theme-color-bg-4` for current breadcrumb
+- `search-panel.module.scss` - Uses `--theme-color-bg-4` for active search result
+
+❌ **Anti-patterns** (to avoid):
+
+- Using `--theme-color-secondary` as background (it's white now!)
+- No visual distinction between selected and unselected items
+- Low contrast text on selected backgrounds
+
+---
+
 ## Quick Grep Commands
 
 ```bash
@@ -301,8 +430,11 @@ grep -rE '#[0-9a-fA-F]{3,6}' packages/noodl-editor/src/editor/src/styles/
 
 # Find usage of a specific token
 grep -r "theme-color-primary" packages/
+
+# Find potential white-on-white issues
+grep -r "theme-color-secondary" packages/ --include="*.scss" --include="*.css"
 ```
 
 ---
 
-_Last Updated: December 2024_
+_Last Updated: December 2025_

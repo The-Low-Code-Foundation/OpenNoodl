@@ -26,6 +26,10 @@ export interface LauncherContextValue {
   projects: LauncherProjectData[];
   hasRealProjects: boolean; // Indicates if real projects were provided to Launcher
 
+  // Folder organization
+  selectedFolderId: string | null;
+  setSelectedFolderId: (folderId: string | null) => void;
+
   // Project management callbacks
   onCreateProject?: () => void;
   onOpenProject?: () => void;

@@ -1,0 +1,200 @@
+/**
+ * FolderTree Styles
+ */
+
+.Root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+  padding: var(--spacing-2);
+  height: 100%;
+}
+
+.VirtualFolders {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+}
+
+.Divider {
+  height: 1px;
+  background-color: var(--theme-color-border-default);
+  margin: var(--spacing-2) 0;
+}
+
+.UserFolders {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+  flex: 1;
+  overflow-y: auto;
+}
+
+.RenameInput {
+  padding: var(--spacing-1) var(--spacing-2);
+}
+
+.RenameInputField {
+  width: 100%;
+  padding: var(--spacing-2);
+  background-color: var(--theme-color-bg-2);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: var(--radius-default);
+  color: var(--theme-color-fg-default);
+  font-size: var(--theme-font-size-default);
+  outline: none;
+
+  &:focus {
+    border-color: var(--theme-color-primary);
+  }
+}
+
+.NewFolderButton {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  padding: var(--spacing-2) var(--spacing-3);
+  margin-bottom: var(--spacing-4);
+  background: none;
+  border: 1px dashed var(--theme-color-border-default);
+  border-radius: var(--radius-default);
+  color: var(--theme-color-fg-default-shy);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-size: var(--theme-font-size-default);
+
+  &:hover {
+    background-color: var(--theme-color-bg-3);
+    border-color: var(--theme-color-border-highlight);
+    color: var(--theme-color-fg-default);
+  }
+
+  &:active {
+    background-color: var(--theme-color-bg-4);
+  }
+}
+
+.NewFolderIcon {
+  display: flex;
+  flex-shrink: 0;
+}
+
+.NewFolderLabel {
+  flex: 1;
+  text-align: left;
+}
+
+.CreateFolderInput {
+  padding: var(--spacing-1) var(--spacing-2);
+}
+
+.CreateFolderInputField {
+  width: 100%;
+  padding: var(--spacing-2);
+  background-color: var(--theme-color-bg-2);
+  border: 1px solid var(--theme-color-primary);
+  border-radius: var(--radius-default);
+  color: var(--theme-color-fg-default);
+  font-size: var(--theme-font-size-default);
+  outline: none;
+
+  &::placeholder {
+    color: var(--theme-color-fg-default-shy);
+  }
+}
+
+/* Delete Confirmation Dialog */
+.DeleteConfirmation {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.DeleteConfirmationBackdrop {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+}
+
+.DeleteConfirmationDialog {
+  position: relative;
+  background-color: var(--theme-color-bg-2);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-6);
+  min-width: 400px;
+  max-width: 500px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  z-index: 1001;
+}
+
+.DeleteConfirmationTitle {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--theme-color-fg-default);
+  margin: 0 0 var(--spacing-3) 0;
+  line-height: 1.3;
+}
+
+.DeleteConfirmationMessage {
+  font-size: var(--theme-font-size-default);
+  color: var(--theme-color-fg-default);
+  margin-bottom: var(--spacing-6);
+  line-height: 1.5;
+}
+
+.DeleteConfirmationButtons {
+  display: flex;
+  gap: var(--spacing-3);
+  justify-content: flex-end;
+}
+
+.DeleteConfirmationCancelButton {
+  padding: var(--spacing-2) var(--spacing-4);
+  background-color: var(--theme-color-bg-3);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: var(--radius-default);
+  color: var(--theme-color-fg-default);
+  font-size: var(--theme-font-size-default);
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  &:hover {
+    background-color: var(--theme-color-bg-4);
+    border-color: var(--theme-color-border-highlight);
+  }
+
+  &:active {
+    transform: scale(0.98);
+  }
+}
+
+.DeleteConfirmationDeleteButton {
+  padding: var(--spacing-2) var(--spacing-4);
+  background-color: var(--theme-color-danger);
+  border: 1px solid var(--theme-color-danger);
+  border-radius: var(--radius-default);
+  color: white;
+  font-size: var(--theme-font-size-default);
+  font-weight: var(--theme-font-weight-medium);
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  &:hover {
+    background-color: var(--theme-color-danger-hover);
+    border-color: var(--theme-color-danger-hover);
+  }
+
+  &:active {
+    transform: scale(0.98);
+  }
+}

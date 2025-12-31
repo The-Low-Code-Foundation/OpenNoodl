@@ -6,13 +6,14 @@
   height: 24px;
   width: 42px;
   border-radius: 12px;
-  background-color: var(--theme-color-bg-1);
+  background-color: var(--theme-color-bg-3);
   cursor: pointer;
   display: flex;
   align-items: center;
   padding: 3px;
   margin-left: 8px;
   margin-right: 8px;
+  border: 1px solid var(--theme-color-border-default);
 }
 
 .Indicator {
@@ -20,8 +21,7 @@
   height: 18px;
   border-radius: 50%;
   background-color: var(--theme-color-bg-3);
-  transition: transform var(--speed-quick) var(--easing-base),
-    background-color var(--speed-quick) var(--easing-base);
+  transition: transform var(--speed-quick) var(--easing-base), background-color var(--speed-quick) var(--easing-base);
 
   &.is-checked {
     transform: translateX(100%);

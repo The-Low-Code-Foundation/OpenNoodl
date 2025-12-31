@@ -169,8 +169,64 @@ packages/noodl-core-ui/src/
 │       ├── AiChatBox/
 │       └── AiChatMessage/
 │
+├── preview/                 # 📱 Preview/Launcher UI
+│   └── launcher/
+│       ├── Launcher.tsx         → Main launcher container
+│       ├── LauncherContext.tsx  → Shared state context
+│       │
+│       ├── components/      # Launcher-specific components
+│       │   ├── LauncherProjectCard/     → Project card display
+│       │   ├── FolderTree/              → Folder hierarchy UI
+│       │   ├── FolderTreeItem/          → Individual folder item
+│       │   ├── TagPill/                 → Tag display badge
+│       │   ├── TagSelector/             → Tag assignment UI
+│       │   ├── ProjectList/             → List view components
+│       │   ├── GitStatusBadge/          → Git status indicator
+│       │   └── ViewModeToggle/          → Card/List toggle
+│       │
+│       ├── hooks/           # Launcher hooks
+│       │   ├── useProjectOrganization.ts → Folder/tag management
+│       │   ├── useProjectList.ts         → Project list logic
+│       │   └── usePersistentTab.ts       → Tab state persistence
+│       │
+│       └── views/           # Launcher view pages
+│           ├── Projects.tsx      → Projects tab view
+│           └── Templates.tsx     → Templates tab view
+│
 └── styles/                  # 🎨 Global styles
+    └── custom-properties/
+        ├── colors.css       → Design tokens (colors)
+        ├── fonts.css        → Typography tokens
+        └── spacing.css      → Spacing tokens
 ```
+
+#### 🚀 Launcher/Projects Organization System (Phase 3)
+
+The Launcher includes a complete project organization system with folders and tags:
+
+**Key Components:**
+
+- **FolderTree**: Hierarchical folder display with expand/collapse
+- **TagPill**: Colored badge for displaying project tags (9 predefined colors)
+- **TagSelector**: Checkbox-based UI for assigning tags to projects
+- **useProjectOrganization**: Hook for folder/tag management (uses LocalStorage for Storybook compatibility)
+
+**Data Flow:**
+
+```
+ProjectOrganizationService (editor)
+    ↓ (via LauncherContext)
+useProjectOrganization hook
+    ↓
+FolderTree / TagPill / TagSelector components
+```
+
+**Storage:**
+
+- Projects identified by `localPath` (stable across renames)
+- Folders: hierarchical structure with parent/child relationships
+- Tags: 9 predefined colors (#EF4444, #F97316, #EAB308, #22C55E, #06B6D4, #3B82F6, #8B5CF6, #EC4899, #6B7280)
+- Persisted via `ProjectOrganizationService` → LocalStorage (Storybook) or electron-store (production)
 
 ---
 

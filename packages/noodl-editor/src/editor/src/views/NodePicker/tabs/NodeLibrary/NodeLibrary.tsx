@@ -180,7 +180,7 @@ export function NodeLibrary({ model, parentModel, pos, attachToRoot, runtimeType
                     createNewComment(model, pos);
                     e.stopPropagation();
                   }}
-                  icon={<img src="../assets/icons/comment.svg" />}
+                  icon={<img src="/assets/icons/comment.svg" />}
                 />
               </NodePickerSection>
             ) : null}

@@ -199,6 +199,16 @@ export function Launcher({
     }
   });
 
+  // Folder selection state with localStorage persistence
+  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(() => {
+    try {
+      const stored = localStorage.getItem('launcher:selectedFolderId');
+      return stored === 'null' ? null : stored;
+    } catch {
+      return null; // Default to "All Projects"
+    }
+  });
+
   // Persist view mode changes
   useEffect(() => {
     try {
@@ -218,6 +228,15 @@ export function Launcher({
       }
     }
   }, [useMockData, projects]);
+
+  // Persist folder selection
+  useEffect(() => {
+    try {
+      localStorage.setItem('launcher:selectedFolderId', selectedFolderId === null ? 'null' : selectedFolderId);
+    } catch (error) {
+      console.warn('Failed to persist folder selection:', error);
+    }
+  }, [selectedFolderId]);
 
   // Determine which projects to use and if toggle should be available
   const hasRealProjects = Boolean(projects && projects.length > 0);
@@ -264,6 +283,8 @@ export function Launcher({
         setUseMockData,
         projects: activeProjects,
         hasRealProjects,
+        selectedFolderId,
+        setSelectedFolderId,
         onCreateProject,
         onOpenProject,
         onLaunchProject,

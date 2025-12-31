@@ -122,9 +122,10 @@
   width: 0;
   position: absolute;
   pointer-events: none;
-  border-bottom-color: var(--theme-color-bg-5);
+  border-bottom-color: var(--theme-color-bg-4);
   border-width: 10px;
   margin-left: -10px;
+  transform: translateX(0);
 }
 
 .popup-layer-popout-arrow.right {
