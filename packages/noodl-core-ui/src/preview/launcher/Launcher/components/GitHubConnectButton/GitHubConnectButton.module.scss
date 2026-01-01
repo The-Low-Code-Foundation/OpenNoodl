@@ -1,0 +1,10 @@
+.Root {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--spacing-8);
+}
+
+.Description {
+  display: none; /* Hide description to keep header compact */
+}

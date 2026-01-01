@@ -16,6 +16,16 @@ export { ViewMode };
 
 export type LauncherPageId = 'projects' | 'learn' | 'templates';
 
+// GitHub user info (matches GitHubOAuthService interface)
+export interface GitHubUser {
+  id: number;
+  login: string;
+  name: string | null;
+  email: string | null;
+  avatar_url: string;
+  html_url: string;
+}
+
 export interface LauncherContextValue {
   activePageId: LauncherPageId;
   setActivePageId: (pageId: LauncherPageId) => void;
@@ -36,6 +46,13 @@ export interface LauncherContextValue {
   onLaunchProject?: (projectId: string) => void;
   onOpenProjectFolder?: (projectId: string) => void;
   onDeleteProject?: (projectId: string) => void;
+
+  // GitHub OAuth integration (optional - for Storybook compatibility)
+  githubUser?: GitHubUser | null;
+  githubIsAuthenticated?: boolean;
+  githubIsConnecting?: boolean;
+  onGitHubConnect?: () => void;
+  onGitHubDisconnect?: () => void;
 }
 
 const LauncherContext = createContext<LauncherContextValue | null>(null);

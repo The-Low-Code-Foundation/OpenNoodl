@@ -540,6 +540,8 @@ function launchApp() {
 
     setupFloatingWindowIpc();
 
+    setupGitHubOAuthIpc();
+
     setupMainWindowControlIpc();
 
     setupMenu();
@@ -562,6 +564,25 @@ function launchApp() {
     app.on('open-url', function (event, uri) {
       console.log('open-url', uri);
       event.preventDefault();
+
+      // Handle GitHub OAuth callback
+      if (uri.startsWith('noodl://github-callback')) {
+        try {
+          const url = new URL(uri);
+          const code = url.searchParams.get('code');
+          const state = url.searchParams.get('state');
+
+          if (code && state) {
+            console.log('🔐 GitHub OAuth callback received');
+            win && win.webContents.send('github-oauth-callback', { code, state });
+            return;
+          }
+        } catch (error) {
+          console.error('Failed to parse GitHub OAuth callback:', error);
+        }
+      }
+
+      // Default noodl URI handling
       win && win.webContents.send('open-noodl-uri', uri);
       process.env.noodlURI = uri;
       //  logEverywhere("open-url# " + deeplinkingUrl)
@@ -619,6 +640,67 @@ function launchApp() {
     });
     ipcMain.on('floating-window-open', function (event, options) {
       openFloatingWindow(options);
+    });
+  }
+
+  // --------------------------------------------------------------------------------------------------------------------
+  // GitHub OAuth
+  // --------------------------------------------------------------------------------------------------------------------
+  function setupGitHubOAuthIpc() {
+    const { safeStorage } = require('electron');
+
+    // Save GitHub token securely
+    ipcMain.handle('github-save-token', async (event, token) => {
+      try {
+        if (safeStorage.isEncryptionAvailable()) {
+          const encrypted = safeStorage.encryptString(token);
+          jsonstorage.set('github.token', encrypted.toString('base64'));
+          console.log('✅ GitHub token saved securely');
+        } else {
+          console.warn('⚠️ Encryption not available, storing token in plain text');
+          jsonstorage.set('github.token', token);
+        }
+      } catch (error) {
+        console.error('Failed to save GitHub token:', error);
+        throw error;
+      }
+    });
+
+    // Load GitHub token
+    ipcMain.handle('github-load-token', async (event) => {
+      try {
+        const stored = jsonstorage.getSync('github.token');
+        if (!stored) return null;
+
+        if (safeStorage.isEncryptionAvailable()) {
+          try {
+            const buffer = Buffer.from(stored, 'base64');
+            const decrypted = safeStorage.decryptString(buffer);
+            console.log('✅ GitHub token loaded');
+            return decrypted;
+          } catch (error) {
+            console.error('Failed to decrypt token, may be corrupted:', error);
+            return null;
+          }
+        } else {
+          // Fallback: token was stored in plain text
+          return stored;
+        }
+      } catch (error) {
+        console.error('Failed to load GitHub token:', error);
+        return null;
+      }
+    });
+
+    // Clear GitHub token
+    ipcMain.handle('github-clear-token', async (event) => {
+      try {
+        jsonstorage.set('github.token', null);
+        console.log('✅ GitHub token cleared');
+      } catch (error) {
+        console.error('Failed to clear GitHub token:', error);
+        throw error;
+      }
     });
   }
 

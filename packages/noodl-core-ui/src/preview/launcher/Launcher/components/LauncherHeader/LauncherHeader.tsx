@@ -18,6 +18,7 @@ import { TextType } from '@noodl-core-ui/components/typography/Text';
 import { Title, TitleSize, TitleVariant } from '@noodl-core-ui/components/typography/Title';
 
 import { useLauncherContext } from '../../LauncherContext';
+import { GitHubConnectButton } from '../GitHubConnectButton';
 import css from './LauncherHeader.module.scss';
 
 const VERSION_NUMBER = '2.9.3';
@@ -25,7 +26,8 @@ const VERSION_NUMBER = '2.9.3';
 export interface LauncherHeaderProps {}
 
 export function LauncherHeader({}: LauncherHeaderProps) {
-  const { useMockData, setUseMockData, hasRealProjects } = useLauncherContext();
+  const { useMockData, setUseMockData, hasRealProjects, githubIsAuthenticated, githubIsConnecting, onGitHubConnect } =
+    useLauncherContext();
 
   const handleToggleDataSource = () => {
     setUseMockData(!useMockData);
@@ -42,6 +44,11 @@ export function LauncherHeader({}: LauncherHeaderProps) {
           </Title>
         </div>
         <div className={css['Actions']}>
+          {/* GitHub OAuth Button - Show when not authenticated */}
+          {!githubIsAuthenticated && onGitHubConnect && (
+            <GitHubConnectButton onConnect={onGitHubConnect} isConnecting={githubIsConnecting} />
+          )}
+
           {hasRealProjects && (
             <div className={css['DataSourceToggle']}>
               <TextButton

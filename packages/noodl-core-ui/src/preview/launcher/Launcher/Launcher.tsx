@@ -19,7 +19,7 @@ import {
 } from '@noodl-core-ui/preview/launcher/Launcher/components/LauncherProjectCard';
 import { ViewMode } from '@noodl-core-ui/preview/launcher/Launcher/components/ViewModeToggle';
 import { usePersistentTab } from '@noodl-core-ui/preview/launcher/Launcher/hooks/usePersistentTab';
-import { LauncherPageId, LauncherProvider } from '@noodl-core-ui/preview/launcher/Launcher/LauncherContext';
+import { GitHubUser, LauncherPageId, LauncherProvider } from '@noodl-core-ui/preview/launcher/Launcher/LauncherContext';
 import { LearningCenter } from '@noodl-core-ui/preview/launcher/Launcher/views/LearningCenter';
 import { Projects } from '@noodl-core-ui/preview/launcher/Launcher/views/Projects';
 import { Templates } from '@noodl-core-ui/preview/launcher/Launcher/views/Templates';
@@ -42,6 +42,13 @@ export interface LauncherProps {
   onLaunchProject?: (projectId: string) => void;
   onOpenProjectFolder?: (projectId: string) => void;
   onDeleteProject?: (projectId: string) => void;
+
+  // GitHub OAuth integration (optional - for Storybook compatibility)
+  githubUser?: GitHubUser | null;
+  githubIsAuthenticated?: boolean;
+  githubIsConnecting?: boolean;
+  onGitHubConnect?: () => void;
+  onGitHubDisconnect?: () => void;
 }
 
 // Tab configuration
@@ -168,7 +175,12 @@ export function Launcher({
   onOpenProject,
   onLaunchProject,
   onOpenProjectFolder,
-  onDeleteProject
+  onDeleteProject,
+  githubUser,
+  githubIsAuthenticated,
+  githubIsConnecting,
+  onGitHubConnect,
+  onGitHubDisconnect
 }: LauncherProps) {
   // Determine initial tab: props > deep link > persisted > default
   const deepLinkTab = parseDeepLink();
@@ -289,7 +301,12 @@ export function Launcher({
         onOpenProject,
         onLaunchProject,
         onOpenProjectFolder,
-        onDeleteProject
+        onDeleteProject,
+        githubUser,
+        githubIsAuthenticated,
+        githubIsConnecting,
+        onGitHubConnect,
+        onGitHubDisconnect
       }}
     >
       <div className={css['Root']}>
