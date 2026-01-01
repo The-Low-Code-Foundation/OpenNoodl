@@ -9,6 +9,7 @@ import { ProjectModel } from '../../models/projectmodel';
 import { ViewerConnection } from '../../ViewerConnection';
 import { NodeGraphEditor } from '../nodegrapheditor';
 import PopupLayer from '../popuplayer';
+import { fillRoundRect, roundRect, strokeRoundRect, truncateText } from './canvasHelpers';
 import { NodeGraphEditorConnection } from './NodeGraphEditorConnection';
 
 function _getColorForAnnotation(annotation) {
@@ -288,6 +289,7 @@ export class NodeGraphEditorNode {
   public static readonly attachedThreshold = 20;
   public static readonly propertyConnectionHeight = 20;
   public static readonly verticalSpacing = 8;
+  public static readonly cornerRadius = 6;
 
   model: NodeGraphNode;
   x: number;
@@ -314,6 +316,8 @@ export class NodeGraphEditorNode {
   rotatingIcon: HTMLImageElement;
   iconSize: number;
   iconRotation: number;
+
+  commentIconBounds: { x: number; y: number; width: number; height: number } | undefined;
 
   constructor(model) {
     this.model = model;
@@ -519,6 +523,16 @@ export class NodeGraphEditorNode {
         PopupLayer.instance.hideTooltip();
 
         if (this.owner.highlighted === this) {
+          // Check if clicking on comment icon
+          const inCommentIcon = this.commentIconBounds && this.isPointInCommentIcon(pos);
+
+          if (inCommentIcon) {
+            // Show comment edit prompt
+            this.showCommentEditPopup();
+            evt.stopPropagation && evt.stopPropagation();
+            return;
+          }
+
           if (this.borderHighlighted || this.connectionDragAreaHighlighted) {
             // User starts dragging from the border or connection area with circle icon
             this.owner.startDraggingConnection(this);
@@ -615,19 +629,17 @@ export class NodeGraphEditorNode {
       ctx.textBaseline = 'middle';
       ctx.save();
 
-      // Clip
-      ctx.beginPath();
-      ctx.rect(x, y, this.nodeSize.width, this.nodeSize.height);
+      // Clip to rounded rectangle
+      roundRect(ctx, x, y, this.nodeSize.width, this.nodeSize.height, NodeGraphEditorNode.cornerRadius);
       ctx.clip();
 
-      // Bg
+      // Bg - Use rounded rectangle for modern appearance
       ctx.fillStyle = nc.header;
-      ctx.fillRect(x, y, this.nodeSize.width, this.nodeSize.height);
+      fillRoundRect(ctx, x, y, this.nodeSize.width, this.nodeSize.height, NodeGraphEditorNode.cornerRadius);
 
       const titlebarHeight = this.titlebarHeight();
 
-      // Darken plate
-      //ctx.globalAlpha = 0.07;
+      // Darken plate (body area below title)
       ctx.fillStyle = nc.base;
       ctx.fillRect(x, y + titlebarHeight, this.nodeSize.width, this.nodeSize.height - titlebarHeight);
 
@@ -637,7 +649,7 @@ export class NodeGraphEditorNode {
         ctx.globalCompositeOperation = 'hard-light'; // additive blending looks better
         ctx.globalAlpha = 0.19;
         ctx.fillStyle = nc.text;
-        ctx.fillRect(x, y, this.nodeSize.width, this.nodeSize.height);
+        fillRoundRect(ctx, x, y, this.nodeSize.width, this.nodeSize.height, NodeGraphEditorNode.cornerRadius);
         ctx.globalCompositeOperation = prevCompOperation;
         ctx.globalAlpha = 1;
       }
@@ -694,7 +706,7 @@ export class NodeGraphEditorNode {
       // Title
       ctx.fillStyle = nc.text;
 
-      ctx.font = '12px Inter-Regular';
+      ctx.font = '12px Inter-Medium';
       ctx.textBaseline = 'top';
       textWordWrap(
         ctx,
@@ -711,7 +723,7 @@ export class NodeGraphEditorNode {
         ctx.save();
         ctx.fillStyle = nc.text;
         ctx.globalAlpha = 0.65;
-        ctx.font = '12px Inter-Regular';
+        ctx.font = '12px Inter-Medium';
         ctx.textBaseline = 'top';
         textWordWrap(
           ctx,
@@ -724,6 +736,85 @@ export class NodeGraphEditorNode {
         );
         ctx.globalAlpha = 1;
         ctx.restore();
+      }
+
+      // Draw comment icon (if node has comment OR is highlighted)
+      // Position on right side, before the node icon area if present
+      const hasComment = this.model.hasComment();
+      if (hasComment || isHighligthed) {
+        const commentIconSize = 14;
+        // Adjust offset based on whether node icon is present
+        // If icon exists, offset more to avoid overlap; if not, position closer to edge
+        const commentIconRightOffset = this.icon ? 30 : 10;
+        const commentIconX =
+          x + this.nodeSize.width - connectionDragAreaWidth - commentIconSize - commentIconRightOffset;
+        const commentIconY = y + titlebarHeight / 2 - commentIconSize / 2;
+
+        // Store bounds for click detection
+        this.commentIconBounds = {
+          x: commentIconX,
+          y: commentIconY,
+          width: commentIconSize,
+          height: commentIconSize
+        };
+
+        ctx.save();
+
+        // Set opacity based on whether comment exists
+        ctx.globalAlpha = hasComment ? 1.0 : 0.4;
+        ctx.fillStyle = nc.text;
+        ctx.strokeStyle = nc.text;
+        ctx.lineWidth = 1.5;
+
+        // Draw speech bubble (rounded rectangle)
+        const bubbleWidth = commentIconSize;
+        const bubbleHeight = commentIconSize * 0.8;
+        const bubbleRadius = 2;
+
+        // Main bubble body
+        ctx.beginPath();
+        ctx.moveTo(commentIconX + bubbleRadius, commentIconY);
+        ctx.lineTo(commentIconX + bubbleWidth - bubbleRadius, commentIconY);
+        ctx.quadraticCurveTo(
+          commentIconX + bubbleWidth,
+          commentIconY,
+          commentIconX + bubbleWidth,
+          commentIconY + bubbleRadius
+        );
+        ctx.lineTo(commentIconX + bubbleWidth, commentIconY + bubbleHeight - bubbleRadius);
+        ctx.quadraticCurveTo(
+          commentIconX + bubbleWidth,
+          commentIconY + bubbleHeight,
+          commentIconX + bubbleWidth - bubbleRadius,
+          commentIconY + bubbleHeight
+        );
+
+        // Draw tail (small triangle at bottom)
+        const tailWidth = 3;
+        const tailHeight = 3;
+        const tailX = commentIconX + bubbleWidth * 0.7;
+        ctx.lineTo(tailX + tailWidth, commentIconY + bubbleHeight);
+        ctx.lineTo(tailX, commentIconY + bubbleHeight + tailHeight);
+        ctx.lineTo(tailX - tailWidth / 2, commentIconY + bubbleHeight);
+
+        // Complete the bubble
+        ctx.lineTo(commentIconX + bubbleRadius, commentIconY + bubbleHeight);
+        ctx.quadraticCurveTo(
+          commentIconX,
+          commentIconY + bubbleHeight,
+          commentIconX,
+          commentIconY + bubbleHeight - bubbleRadius
+        );
+        ctx.lineTo(commentIconX, commentIconY + bubbleRadius);
+        ctx.quadraticCurveTo(commentIconX, commentIconY, commentIconX + bubbleRadius, commentIconY);
+        ctx.closePath();
+
+        ctx.stroke();
+
+        ctx.restore();
+      } else {
+        // Clear bounds when not visible
+        this.commentIconBounds = undefined;
       }
 
       ctx.restore(); // Restore clip so we can draw border
@@ -745,16 +836,21 @@ export class NodeGraphEditorNode {
         // );
       }
 
-      // Border
+      // Border - Use rounded rectangles for modern appearance
       const health = this.model.getHealth();
       if (!health.healthy) {
         ctx.setLineDash([5]);
         ctx.lineWidth = 1;
         ctx.strokeStyle = '#F57569';
         ctx.globalAlpha = 0.7;
-        ctx.beginPath();
-        ctx.rect(x - 1, y - 1, this.nodeSize.width + 2, this.nodeSize.height + 2);
-        ctx.stroke();
+        strokeRoundRect(
+          ctx,
+          x - 1,
+          y - 1,
+          this.nodeSize.width + 2,
+          this.nodeSize.height + 2,
+          NodeGraphEditorNode.cornerRadius + 1
+        );
         ctx.setLineDash([]); // Restore line dash
         ctx.globalAlpha = 1;
       }
@@ -762,9 +858,7 @@ export class NodeGraphEditorNode {
       if (this.selected || this.borderHighlighted || this.connectionDragAreaHighlighted) {
         ctx.strokeStyle = '#ffffff';
         ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.rect(x, y, this.nodeSize.width, this.nodeSize.height);
-        ctx.stroke();
+        strokeRoundRect(ctx, x, y, this.nodeSize.width, this.nodeSize.height, NodeGraphEditorNode.cornerRadius);
       }
 
       if (this.model.annotation) {
@@ -773,9 +867,7 @@ export class NodeGraphEditorNode {
         else if (this.model.annotation === 'Created') ctx.strokeStyle = '#5BF59E';
 
         ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.rect(x, y, this.nodeSize.width, this.nodeSize.height);
-        ctx.stroke();
+        strokeRoundRect(ctx, x, y, this.nodeSize.width, this.nodeSize.height, NodeGraphEditorNode.cornerRadius);
       }
 
       // Paint plugs
@@ -793,35 +885,61 @@ export class NodeGraphEditorNode {
       }
 
       function dot(side, color) {
+        const cx = x + (side === 'left' ? 0 : _this.nodeSize.width);
+        const radius = 6; // Back to normal size
+
+        // Draw main port indicator
         ctx.fillStyle = color;
         ctx.beginPath();
-        ctx.arc(x + (side === 'left' ? 0 : _this.nodeSize.width), ty, 4, 0, 2 * Math.PI, false);
+        ctx.arc(cx, ty, radius, 0, 2 * Math.PI, false);
+        ctx.fill();
+
+        // Add subtle inner highlight for depth
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+        ctx.beginPath();
+        ctx.arc(cx - 0.5, ty - 0.5, radius * 0.4, 0, 2 * Math.PI, false);
         ctx.fill();
       }
 
       function drawPlugs(plugs, offset) {
-        ctx.font = '11px Inter-Regular';
+        ctx.font = '11px Inter-Medium';
         ctx.textBaseline = 'middle';
         ctx.globalAlpha = 1;
 
         for (const i in plugs) {
           const p = plugs[i];
 
-          // Label
+          // Calculate Y position for this port
           ty = p.index * NodeGraphEditorNode.propertyConnectionHeight + offset;
 
-          if (p.loc === 'left' || p.loc === 'middle') tx = x + horizontalSpacing;
-          else if (p.loc === 'right') tx = x + _this.nodeSize.width - horizontalSpacing;
-          else tx = x + _this.nodeSize.width / 2;
+          // Draw labels at normal positions
+          if (p.loc === 'left' || p.loc === 'middle') {
+            // Left-aligned labels
+            tx = x + horizontalSpacing;
+          } else if (p.loc === 'right') {
+            // Right-aligned labels
+            tx = x + _this.nodeSize.width - horizontalSpacing;
+          } else {
+            tx = x + _this.nodeSize.width / 2;
+          }
+
           ctx.fillStyle = nc.text;
           ctx.textAlign = p.loc === 'right' ? 'right' : 'left';
 
-          ctx.fillText(p.displayName ? p.displayName : p.property, tx, ty);
+          // Truncate port labels to prevent overflow
+          const label = p.displayName ? p.displayName : p.property;
+          const portAreaWidth =
+            p.loc === 'middle'
+              ? _this.nodeSize.width - 2 * horizontalSpacing
+              : _this.nodeSize.width - horizontalSpacing - 8;
+          const truncatedLabel = truncateText(ctx, label, portAreaWidth);
 
-          // Plug
-          if (p.leftCons.length) {
+          ctx.fillText(truncatedLabel, tx, ty);
+
+          // Plug - Left side
+          if (p.leftCons.length || p.leftIcon) {
             var connectionColors = NodeLibrary.instance.colorSchemeForConnectionType(
-              NodeLibrary.nameForPortType(p.leftCons[0].fromPort ? p.leftCons[0].fromPort.type : undefined)
+              NodeLibrary.nameForPortType(p.leftCons[0]?.fromPort ? p.leftCons[0].fromPort.type : undefined)
             );
             var color = _.find(p.leftCons, function (p) {
               return p.isHighlighted();
@@ -834,7 +952,7 @@ export class NodeGraphEditorNode {
                 return p.isHighlighted();
               }) || p.leftCons[p.leftCons.length - 1];
 
-            if (topConnection.model.annotation) {
+            if (topConnection && topConnection.model.annotation) {
               color = _getColorForAnnotation(topConnection.model.annotation);
             }
 
@@ -845,9 +963,10 @@ export class NodeGraphEditorNode {
             }
           }
 
-          if (p.rightCons.length) {
+          // Plug - Right side
+          if (p.rightCons.length || p.rightIcon) {
             connectionColors = NodeLibrary.instance.colorSchemeForConnectionType(
-              NodeLibrary.nameForPortType(p.rightCons[0].fromPort ? p.rightCons[0].fromPort.type : undefined)
+              NodeLibrary.nameForPortType(p.rightCons[0]?.fromPort ? p.rightCons[0].fromPort.type : undefined)
             );
             color = _.find(p.rightCons, function (p) {
               return p.isHighlighted();
@@ -860,7 +979,7 @@ export class NodeGraphEditorNode {
                 return p.isHighlighted();
               }) || p.rightCons[p.rightCons.length - 1];
 
-            if (topConnection.model.annotation) {
+            if (topConnection && topConnection.model.annotation) {
               color = _getColorForAnnotation(topConnection.model.annotation);
             }
 
@@ -1087,5 +1206,76 @@ export class NodeGraphEditorNode {
       this.parent.children.splice(idx, 1);
       this.parent = undefined;
     }
+  }
+
+  /**
+   * Check if a point (in local node coordinates) is within the comment icon bounds
+   */
+  isPointInCommentIcon(pos: { x: number; y: number }): boolean {
+    if (!this.commentIconBounds) return false;
+
+    // Convert local pos to global for comparison with commentIconBounds (which are in global coords)
+    const globalX = pos.x + this.global.x;
+    const globalY = pos.y + this.global.y;
+
+    const bounds = this.commentIconBounds;
+    const padding = 4; // Extra hit area padding for easier clicking
+
+    return (
+      globalX >= bounds.x - padding &&
+      globalX <= bounds.x + bounds.width + padding &&
+      globalY >= bounds.y - padding &&
+      globalY <= bounds.y + bounds.height + padding
+    );
+  }
+
+  /**
+   * Show a popup for editing the node comment
+   */
+  showCommentEditPopup() {
+    const currentComment = this.model.getComment() || '';
+    const nodeLabel = this.model.label || 'Node';
+    const model = this.model;
+    const owner = this.owner;
+
+    // Use PopupLayer.StringInputPopup for Electron compatibility
+    const popup = new PopupLayer.StringInputPopup({
+      label: `Comment for "${nodeLabel}"`,
+      okLabel: 'Save',
+      cancelLabel: 'Cancel',
+      onOk: (newComment: string) => {
+        // Set comment with undo support
+        model.setComment(newComment || undefined, {
+          undo: true,
+          label: newComment ? 'Edit node comment' : 'Remove node comment'
+        });
+
+        // Repaint to update the icon appearance
+        owner.repaint();
+        PopupLayer.instance.hidePopup();
+      },
+      onCancel: () => {
+        PopupLayer.instance.hidePopup();
+      }
+    });
+
+    // Render popup BEFORE showing it
+    popup.render();
+
+    // Set initial value after render
+    popup.$('.string-input-popup-input').val(currentComment);
+
+    // Use requestAnimationFrame + setTimeout to ensure we're past both the current
+    // event cycle AND any pending DOM updates. This prevents the PopupLayer's body
+    // click handler from immediately closing the popup.
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        PopupLayer.instance.showPopup({
+          content: popup,
+          position: 'screen-center',
+          isBackgroundDimmed: true
+        });
+      }, 100); // 100ms delay to be extra safe
+    });
   }
 }

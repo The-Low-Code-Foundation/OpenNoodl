@@ -161,49 +161,49 @@ function generateNodeLibrary(nodeRegister) {
     colors: {
       nodes: {
         component: {
-          base: '#643D8B',
-          baseHighlighted: '#79559b',
-          header: '#4E2877',
-          headerHighlighted: '#643d8b',
-          outline: '#4E2877',
+          base: '#8B4DAB',
+          baseHighlighted: '#A167C5',
+          header: '#6B2D8B',
+          headerHighlighted: '#8B4DAB',
+          outline: '#6B2D8B',
           outlineHighlighted: '#b58900',
-          text: '#dbd0e4'
+          text: '#FFFFFF'
         },
         visual: {
-          base: '#315272',
-          baseHighlighted: '#4d6784',
-          header: '#173E5D',
-          headerHighlighted: '#315272',
-          outline: '#173E5D',
+          base: '#4A7CA8',
+          baseHighlighted: '#6496C2',
+          header: '#2A5C88',
+          headerHighlighted: '#4A7CA8',
+          outline: '#2A5C88',
           outlineHighlighted: '#b58900',
-          text: '#cfd5de'
+          text: '#FFFFFF'
         },
         data: {
-          base: '#465524',
-          baseHighlighted: '#5b6a37',
-          header: '#314110',
-          headerHighlighted: '#465524',
-          outline: '#314110',
+          base: '#6B8F3C',
+          baseHighlighted: '#85A956',
+          header: '#4B6F1C',
+          headerHighlighted: '#6B8F3C',
+          outline: '#4B6F1C',
           outlineHighlighted: '#b58900',
-          text: '#d2d6c5'
+          text: '#FFFFFF'
         },
         javascript: {
-          base: '#7E3660',
-          baseHighlighted: '#944e74',
-          header: '#67214B',
-          headerHighlighted: '#7e3660',
-          outline: '#67214B',
+          base: '#B84D7C',
+          baseHighlighted: '#CE6796',
+          header: '#982D5C',
+          headerHighlighted: '#B84D7C',
+          outline: '#982D5C',
           outlineHighlighted: '#d57bab',
-          text: '#e4cfd9'
+          text: '#FFFFFF'
         },
         default: {
-          base: '#4C4F59',
-          baseHighlighted: '#62656e',
-          header: '#373B45',
-          headerHighlighted: '#4c4f59',
-          outline: '#373B45',
+          base: '#6C6F79',
+          baseHighlighted: '#868993',
+          header: '#4C4F59',
+          headerHighlighted: '#6C6F79',
+          outline: '#4C4F59',
           outlineHighlighted: '#b58900',
-          text: '#d3d4d6'
+          text: '#FFFFFF'
         }
       },
       connections: {

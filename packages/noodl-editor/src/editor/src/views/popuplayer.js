@@ -281,8 +281,14 @@ PopupLayer.prototype.showPopup = function (args) {
   args.content.owner = this;
 
   this.$('.popup-layer-popup-content').append(content);
-  var contentWidth = content.outerWidth(true);
-  var contentHeight = content.outerHeight(true);
+
+  // Force a reflow to ensure the element is measurable
+  void this.$('.popup-layer-popup-content')[0].offsetHeight;
+
+  // Query the actual appended element to measure dimensions
+  var popupContent = this.$('.popup-layer-popup-content');
+  var contentWidth = popupContent.children().first().outerWidth(true);
+  var contentHeight = popupContent.children().first().outerHeight(true);
 
   if (args.position === 'screen-center') {
     if (args.isBackgroundDimmed) {
@@ -921,13 +927,17 @@ PopupLayer.StringInputPopup.prototype = Object.create(View.prototype);
 PopupLayer.StringInputPopup.prototype.render = function () {
   this.el = this.bindView($(StringInputPopupTemplate), this);
 
-  this.$('.string-input-popup-input')
-    .off('keypress')
-    .on('keypress', (e) => {
+  // Only close on Enter for single-line inputs, not textareas
+  const input = this.$('.string-input-popup-input');
+  const isTextarea = input.is('textarea');
+
+  if (!isTextarea) {
+    input.off('keypress').on('keypress', (e) => {
       if (e.which == 13) {
         this.onOkClicked();
       }
     });
+  }
 
   return this.el;
 };
@@ -949,8 +959,49 @@ PopupLayer.StringInputPopup.prototype.onCancelClicked = function () {
   this.owner.hidePopup();
 };
 
+PopupLayer.StringInputPopup.prototype.updateLineNumbers = function () {
+  const textarea = this.$('.string-input-popup-input')[0];
+  const lineNumbersEl = this.$('.string-input-popup-line-numbers')[0];
+
+  if (!textarea || !lineNumbersEl) return;
+
+  // Count lines based on textarea value
+  const text = textarea.value;
+  const lines = text ? text.split('\n').length : 1;
+
+  // Always show at least 8 lines (matching rows="8")
+  const displayLines = Math.max(8, lines);
+
+  // Generate line numbers
+  let lineNumbersHTML = '';
+  for (let i = 1; i <= displayLines; i++) {
+    lineNumbersHTML += i + '\n';
+  }
+
+  lineNumbersEl.textContent = lineNumbersHTML;
+
+  // Sync scroll
+  lineNumbersEl.scrollTop = textarea.scrollTop;
+};
+
 PopupLayer.StringInputPopup.prototype.onOpen = function () {
-  this.$('.string-input-popup-input').focus();
+  const textarea = this.$('.string-input-popup-input');
+
+  // Initial line numbers
+  this.updateLineNumbers();
+
+  // Update line numbers on input
+  textarea.on('input', () => this.updateLineNumbers());
+
+  // Sync scroll between textarea and line numbers
+  textarea.on('scroll', () => {
+    const lineNumbersEl = this.$('.string-input-popup-line-numbers')[0];
+    if (lineNumbersEl) {
+      lineNumbersEl.scrollTop = textarea[0].scrollTop;
+    }
+  });
+
+  textarea.focus();
 };
 
 // ---------------------------------------------------------------------

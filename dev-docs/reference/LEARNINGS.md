@@ -4,6 +4,130 @@ This document captures important discoveries and gotchas encountered during Open
 
 ---
 
+## 🚫 Port Hover Compatibility Highlighting Failed Attempt (Jan 1, 2026)
+
+### The Invisible Compatibility: Why Port Hover Preview Didn't Work
+
+**Context**: Phase 3 TASK-000I-C3 - Attempted to add visual feedback showing compatible/incompatible ports when hovering over any port. After 6+ debugging iterations spanning multiple attempts, the feature was abandoned.
+
+**The Problem**: Despite comprehensive implementation with proper type detection, bidirectional logic, cache optimization, and visual effects, console logs consistently showed "incompatible" for most ports that should have been compatible.
+
+**What Was Implemented**:
+
+- Port hover detection with 8px hit radius
+- Compatibility cache system for performance
+- Type coercion rules (number↔string, boolean↔string, color↔string)
+- Bidirectional vs unidirectional port logic (data vs signals)
+- Visual feedback (glow for compatible, dim for incompatible)
+- Proper port definition lookup (not connection-based)
+
+**Debugging Attempts**:
+
+1. Fixed backwards compatibility logic
+2. Fixed cache key mismatches
+3. Increased glow visibility (shadowBlur 50)
+4. Added bidirectional logic for data ports vs unidirectional for signals
+5. Fixed type detection to use `model.getPorts()` instead of connections
+6. Modified cache rebuilding to support bidirectional data ports
+
+**Why It Failed** (Suspected Root Causes):
+
+1. **Port Type System Complexity**: Noodl's type system has more nuances than documented
+
+   - Type coercion rules may be more complex than number↔string, etc.
+   - Some types may have special compatibility that isn't exposed in port definitions
+   - Dynamic type resolution at connection time may differ from static analysis
+
+2. **Dynamic Port Generation**: Many nodes generate ports dynamically based on configuration
+
+   - Port definitions from `model.getPorts()` may not reflect all runtime ports
+   - StringList-configured ports (headers, query params) create dynamic inputs
+   - These ports may not have proper type metadata until after connection
+
+3. **Port Direction Ambiguity**: Input/output distinction may be insufficient
+
+   - Some ports accept data from both directions (middle/bidirectional ports)
+   - Connection validation logic in the engine may use different rules than exposed in the model
+   - Legacy nodes may have special-case connection rules
+
+4. **Hidden Compatibility Layer**: The actual connection validation may happen elsewhere
+   - NodeLibrary or ConnectionModel may have additional validation logic
+   - Engine-level type checking may override model-level type information
+   - Some compatibility may be determined by node behavior, not type declarations
+
+**Critical Learnings**:
+
+**❌ Don't assume port type compatibility is simple**:
+
+```typescript
+// ❌ WRONG - Oversimplified compatibility
+if (sourceType === targetType) return true;
+if (sourceType === 'any' || targetType === 'any') return true;
+// Missing: Engine-level rules, dynamic types, node-specific compatibility
+```
+
+**✅ Port compatibility is more complex than it appears**:
+
+- Port definitions don't tell the whole story
+- Connection validation happens in multiple places
+- Type coercion has engine-level rules not exposed in metadata
+- Some compatibility is behavioral, not type-based
+
+**What Would Be Needed for This Feature**:
+
+1. **Access to Engine Validation**: Hook into the actual connection validation logic
+
+   - Use the same code path that validates connections when dragging
+   - Don't reimplement compatibility rules - use existing validator
+
+2. **Runtime Type Resolution**: Get actual types at connection time, not from definitions
+
+   - Some nodes resolve types dynamically based on connected nodes
+   - Type information may flow through the graph
+
+3. **Node-Specific Rules**: Account for special-case compatibility
+
+   - Some nodes accept any connection and do runtime type conversion
+   - Legacy nodes may have grandfathered compatibility rules
+
+4. **Testing Infrastructure**: Comprehensive test suite for all node types
+   - Would need to test every node's port compatibility
+   - Edge cases like Collection nodes, Router adapters, etc.
+
+**Alternative Approaches** (For Future Attempts):
+
+1. **Hook Existing Validation**: Instead of reimplementing, call the existing connection validator
+
+   ```typescript
+   // Pseudocode - use actual engine validation
+   const canConnect = connectionModel.validateConnection(sourcePort, targetPort);
+   ```
+
+2. **Show Type Names Only**: Simpler feature - just show port types on hover
+
+   - No compatibility checking
+   - Let users learn type names and infer compatibility themselves
+
+3. **Connection Hints After Drag**: Show compatibility when actively dragging a connection
+   - Only check compatibility for the connection being created
+   - Use the engine's validation since we're about to create the connection anyway
+
+**Time Lost**: ~3-4 hours across multiple debugging sessions
+
+**Files Cleaned Up** (All code removed):
+
+- `packages/noodl-editor/src/editor/src/views/nodegrapheditor.ts`
+- `packages/noodl-editor/src/editor/src/views/nodegrapheditor/NodeGraphEditorNode.ts`
+
+**Documentation**:
+
+- Failure documented in: `dev-docs/tasks/phase-3-editor-ux-overhaul/TASK-000-styles-overhaul/TASK-000I-node-graph-visual-improvements/CHANGELOG.md`
+- Task marked as: ❌ REMOVED (FAILED)
+
+**Keywords**: port compatibility, hover preview, type checking, connection validation, node graph, canvas, visual feedback, failed feature, type system, dynamic ports
+
+---
+
 ## 🔥 CRITICAL: Electron Blocks window.prompt() and window.confirm() (Dec 2025)
 
 ### The Silent Dialog: Native Dialogs Don't Work in Electron

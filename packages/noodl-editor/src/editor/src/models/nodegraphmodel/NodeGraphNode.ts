@@ -605,6 +605,45 @@ export class NodeGraphNode extends Model {
     }
   }
 
+  // Get the comment text for this node
+  getComment(): string | undefined {
+    return this.metadata?.comment;
+  }
+
+  // Check if this node has a comment
+  hasComment(): boolean {
+    return !!this.metadata?.comment?.trim();
+  }
+
+  // Set or clear the comment for this node, supports undo
+  setComment(comment: string | undefined, args?: { undo?: any; label?: any }) {
+    const _this = this;
+    const oldComment = this.getComment();
+
+    if (!this.metadata) this.metadata = {};
+
+    // Store trimmed comment or undefined if empty
+    this.metadata.comment = comment?.trim() || undefined;
+
+    // Notify listeners of the change
+    this.notifyListeners('commentChanged', { comment: this.metadata.comment });
+
+    // Undo support
+    if (args && args.undo) {
+      const undo = typeof args.undo === 'object' ? args.undo : UndoQueue.instance;
+
+      undo.push({
+        label: args.label || 'Edit node comment',
+        do: function () {
+          _this.setComment(comment);
+        },
+        undo: function () {
+          _this.setComment(oldComment);
+        }
+      });
+    }
+  }
+
   // Set a parameter for the node instance
   setParameter(name: string, value, args?) {
     const _this = this;

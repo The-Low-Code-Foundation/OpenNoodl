@@ -536,3 +536,122 @@
 .confirm-modal .cancel-button:hover {
   background-color: var(--theme-color-bg-3);
 }
+
+/* String Input Popup */
+.string-input-popup {
+  padding: 16px;
+  width: 500px;
+  min-width: 400px;
+  max-width: 600px;
+}
+
+.string-input-popup-label {
+  display: block;
+  color: var(--theme-color-fg-default);
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+.string-input-popup-editor-wrapper {
+  position: relative;
+  display: flex;
+  background-color: var(--theme-color-bg-1);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: 4px;
+  overflow: hidden;
+  /* Fixed height to prevent modal from growing */
+  height: 200px;
+  max-height: 200px;
+}
+
+.string-input-popup-line-numbers {
+  flex-shrink: 0;
+  /* Match textarea padding exactly for alignment */
+  padding: 12px 8px 12px 12px;
+  background-color: var(--theme-color-bg-2);
+  border-right: 1px solid var(--theme-color-border-default);
+  color: var(--theme-color-fg-muted);
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', 'source-code-pro', monospace;
+  font-size: 13px;
+  line-height: 20.8px;
+  text-align: right;
+  user-select: none;
+  pointer-events: none;
+  min-width: 36px;
+  /* Allow scroll sync - hide scrollbar but allow scrollTop changes */
+  overflow-y: scroll;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+  white-space: pre;
+}
+
+/* Hide scrollbar for line numbers in WebKit browsers */
+.string-input-popup-line-numbers::-webkit-scrollbar {
+  display: none;
+}
+
+.string-input-popup-textarea {
+  flex: 1;
+  /* Fill the fixed-height wrapper */
+  height: 100%;
+  padding: 12px;
+  background-color: transparent;
+  border: none;
+  border-radius: 0;
+  color: var(--theme-color-fg-default);
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', 'source-code-pro', monospace;
+  font-size: 13px;
+  line-height: 20.8px;
+  resize: none;
+  box-sizing: border-box;
+  outline: none;
+  overflow-y: auto;
+}
+
+.string-input-popup-textarea:focus {
+  outline: none;
+  border-color: var(--theme-color-primary);
+  box-shadow: 0 0 0 2px var(--theme-color-primary-transparent);
+}
+
+.string-input-popup-textarea::placeholder {
+  color: var(--theme-color-fg-muted);
+  font-style: italic;
+}
+
+.string-input-popup-buttons {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 16px;
+}
+
+.string-input-popup-button-ok,
+.string-input-popup-button-cancel {
+  padding: 8px 20px;
+  border: none;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.string-input-popup-button-ok {
+  background-color: var(--theme-color-primary);
+  color: var(--theme-color-bg-2);
+}
+
+.string-input-popup-button-ok:hover {
+  background-color: var(--theme-color-primary-hover);
+}
+
+.string-input-popup-button-cancel {
+  background-color: var(--theme-color-bg-4);
+  color: var(--theme-color-fg-default);
+}
+
+.string-input-popup-button-cancel:hover {
+  background-color: var(--theme-color-bg-5);
+}

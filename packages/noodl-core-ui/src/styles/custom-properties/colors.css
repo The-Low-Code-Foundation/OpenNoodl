@@ -74,69 +74,69 @@
 
   /* ---------------------------------------------------------------------------
      NODE TYPE COLORS
-     Subtle variations to distinguish node types on canvas
-     Using desaturated colors so they don't compete with the red accent
+     Modern, vibrant colors to distinguish node types on canvas
+     Brightened and more saturated for better visual distinction
      --------------------------------------------------------------------------- */
 
-  /* Node-Pink - For Custom/User nodes */
-  --base-color-node-pink-100: #fdf2f8;
-  --base-color-node-pink-200: #f5d0e5;
-  --base-color-node-pink-300: #e8a8ca;
-  --base-color-node-pink-400: #d87caa;
-  --base-color-node-pink-500: #c2578a;
-  --base-color-node-pink-600: #a63d6f;
-  --base-color-node-pink-700: #862d56;
-  --base-color-node-pink-800: #6b2445;
-  --base-color-node-pink-900: #521c35;
-  --base-color-node-pink-1000: #2d0e1c;
+  /* Node-Pink - For Custom/User nodes - Vibrant Pink */
+  --base-color-node-pink-100: #fef2f8;
+  --base-color-node-pink-200: #fce0ed;
+  --base-color-node-pink-300: #f9b5d8;
+  --base-color-node-pink-400: #f58ac3;
+  --base-color-node-pink-500: #ec5ca8;
+  --base-color-node-pink-600: #d63a8e;
+  --base-color-node-pink-700: #b02872;
+  --base-color-node-pink-800: #8a1f5b;
+  --base-color-node-pink-900: #641746;
+  --base-color-node-pink-1000: #3a0d28;
 
-  /* Node-Purple - For Component nodes */
-  --base-color-node-purple-100: #f8f5fa;
-  --base-color-node-purple-200: #e8dff0;
-  --base-color-node-purple-300: #d4c4e3;
-  --base-color-node-purple-400: #b8a0cf;
-  --base-color-node-purple-500: #9a7bb8;
-  --base-color-node-purple-600: #7d5a9e;
-  --base-color-node-purple-700: #624382;
-  --base-color-node-purple-800: #4b3366;
-  --base-color-node-purple-900: #37264b;
-  --base-color-node-purple-1000: #1e1429;
+  /* Node-Purple - For Component nodes - Vibrant Purple */
+  --base-color-node-purple-100: #faf7fc;
+  --base-color-node-purple-200: #f0e8f8;
+  --base-color-node-purple-300: #ddc5ef;
+  --base-color-node-purple-400: #c99ee5;
+  --base-color-node-purple-500: #b176db;
+  --base-color-node-purple-600: #9854c6;
+  --base-color-node-purple-700: #7d3da5;
+  --base-color-node-purple-800: #612e82;
+  --base-color-node-purple-900: #46215e;
+  --base-color-node-purple-1000: #291436;
 
-  /* Node-Green - For Data nodes */
-  --base-color-node-green-100: #f4f7f4;
-  --base-color-node-green-200: #d8e5d8;
-  --base-color-node-green-300: #b5cfb5;
-  --base-color-node-green-400: #8eb58e;
-  --base-color-node-green-500: #6a996a;
-  --base-color-node-green-600: #4d7d4d;
-  --base-color-node-green-700: #3a613a;
-  --base-color-node-green-800: #2c4a2c;
-  --base-color-node-green-900: #203520;
-  --base-color-node-green-1000: #111c11;
+  /* Node-Green - For Data nodes - Vibrant Green */
+  --base-color-node-green-100: #f2fdf2;
+  --base-color-node-green-200: #ddf5dd;
+  --base-color-node-green-300: #b5e8b5;
+  --base-color-node-green-400: #8ddb8d;
+  --base-color-node-green-500: #5fcb5f;
+  --base-color-node-green-600: #3db83d;
+  --base-color-node-green-700: #2d9a2d;
+  --base-color-node-green-800: #227822;
+  --base-color-node-green-900: #185618;
+  --base-color-node-green-1000: #0d2f0d;
 
-  /* Node-Gray - For Logic nodes */
-  --base-color-node-grey-100: #f5f5f5;
-  --base-color-node-grey-200: #e0e0e0;
-  --base-color-node-grey-300: #c2c2c2;
-  --base-color-node-grey-400: #9e9e9e;
-  --base-color-node-grey-500: #757575;
-  --base-color-node-grey-600: #5c5c5c;
-  --base-color-node-grey-700: #454545;
-  --base-color-node-grey-800: #333333;
-  --base-color-node-grey-900: #212121;
-  --base-color-node-grey-1000: #0d0d0d;
+  /* Node-Gray - For Logic nodes - Slightly warmer gray */
+  --base-color-node-grey-100: #f8f8f8;
+  --base-color-node-grey-200: #e8e8e8;
+  --base-color-node-grey-300: #cccccc;
+  --base-color-node-grey-400: #acacac;
+  --base-color-node-grey-500: #888888;
+  --base-color-node-grey-600: #6a6a6a;
+  --base-color-node-grey-700: #525252;
+  --base-color-node-grey-800: #3a3a3a;
+  --base-color-node-grey-900: #262626;
+  --base-color-node-grey-1000: #141414;
 
-  /* Node-Blue - For Visual nodes */
-  --base-color-node-blue-100: #f4f6f8;
-  --base-color-node-blue-200: #dce3eb;
-  --base-color-node-blue-300: #bccad9;
-  --base-color-node-blue-400: #96adc2;
-  --base-color-node-blue-500: #7090a9;
-  --base-color-node-blue-600: #53758f;
-  --base-color-node-blue-700: #3e5a72;
-  --base-color-node-blue-800: #2f4557;
-  --base-color-node-blue-900: #22323f;
-  --base-color-node-blue-1000: #121b22;
+  /* Node-Blue - For Visual nodes - Vibrant Blue */
+  --base-color-node-blue-100: #f3f8fc;
+  --base-color-node-blue-200: #deeaf7;
+  --base-color-node-blue-300: #b8d7ee;
+  --base-color-node-blue-400: #91c3e5;
+  --base-color-node-blue-500: #62aed9;
+  --base-color-node-blue-600: #3d96ca;
+  --base-color-node-blue-700: #2c7aac;
+  --base-color-node-blue-800: #21608a;
+  --base-color-node-blue-900: #174563;
+  --base-color-node-blue-1000: #0d2638;
 
   /* ---------------------------------------------------------------------------
      LEGACY ALIASES - For backwards compatibility
