@@ -19,16 +19,24 @@ import { ProjectsPage } from './pages/ProjectsPage';
 import { DialogLayerContainer } from './views/DialogLayer';
 import { ToastLayerContainer } from './views/ToastLayer';
 
+// Store roots globally for HMR reuse
+let toastLayerRoot: ReturnType<typeof createRoot> | null = null;
+let dialogLayerRoot: ReturnType<typeof createRoot> | null = null;
+
 function createToastLayer() {
   const toastLayer = document.createElement('div');
   toastLayer.classList.add('toast-layer');
   $('body').append(toastLayer);
 
-  createRoot(toastLayer).render(React.createElement(ToastLayerContainer));
+  toastLayerRoot = createRoot(toastLayer);
+  toastLayerRoot.render(React.createElement(ToastLayerContainer));
 
   if (import.meta.webpackHot) {
     import.meta.webpackHot.accept('./views/ToastLayer', () => {
-      createRoot(toastLayer).render(React.createElement(ToastLayerContainer));
+      // Reuse existing root instead of creating a new one
+      if (toastLayerRoot) {
+        toastLayerRoot.render(React.createElement(ToastLayerContainer));
+      }
     });
   }
 }
@@ -47,11 +55,15 @@ function createDialogLayer() {
   dialogLayer.classList.add('dialog-layer');
   $('body').append(dialogLayer);
 
-  createRoot(dialogLayer).render(React.createElement(DialogLayerContainer));
+  dialogLayerRoot = createRoot(dialogLayer);
+  dialogLayerRoot.render(React.createElement(DialogLayerContainer));
 
   if (import.meta.webpackHot) {
     import.meta.webpackHot.accept('./views/DialogLayer', () => {
-      createRoot(dialogLayer).render(React.createElement(DialogLayerContainer));
+      // Reuse existing root instead of creating a new one
+      if (dialogLayerRoot) {
+        dialogLayerRoot.render(React.createElement(DialogLayerContainer));
+      }
     });
   }
 }

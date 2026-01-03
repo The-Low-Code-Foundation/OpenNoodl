@@ -14,7 +14,9 @@
     "packages/*"
   ],
   "scripts": {
-    "clean:all": "rimraf node_modules/.cache packages/*/node_modules/.cache .eslintcache packages/*/.eslintcache && echo '✓ All caches cleared. On macOS, Electron cache at ~/Library/Application Support/Noodl/ should be manually cleared if issues persist.'",
+    "clean:cache": "rimraf node_modules/.cache packages/*/node_modules/.cache .eslintcache packages/*/.eslintcache && echo '✓ Webpack/Babel caches cleared'",
+    "clean:electron": "rimraf ~/Library/Application\\ Support/Electron ~/Library/Application\\ Support/Noodl ~/Library/Application\\ Support/OpenNoodl && echo '✓ Electron caches cleared (macOS)'",
+    "clean:all": "npm run clean:cache && npm run clean:electron",
     "health:check": "node scripts/health-check.js",
     "graph": "npx nx graph",
     "ci:prepare:editor": "ts-node -P ./scripts/tsconfig.json ./scripts/ci-editor-prepare.ts",
@@ -29,6 +31,7 @@
     "start:viewer": "lerna run start --scope @noodl/noodl-viewer-react --stream",
     "start:editor": "lerna run start --scope noodl-editor --stream",
     "dev": "ts-node -P ./scripts/tsconfig.json ./scripts/start.ts",
+    "dev:clean": "npm run clean:all && npm run dev",
     "start": "ts-node -P ./scripts/tsconfig.json ./scripts/start.ts -- --build-viewer",
     "test:editor": "ts-node -P ./scripts/tsconfig.json ./scripts/test-editor.ts",
     "test:platform": "lerna exec --scope @noodl/platform-node -- npm test",

@@ -65,7 +65,7 @@ export function useComponentsPanel(options: UseComponentsPanelOptions = {}) {
         ProjectModel.instance.off(group);
       }
     };
-  }, [ProjectModel.instance]); // Re-run when ProjectModel.instance changes from null to real instance
+  }, []); // Empty deps: ProjectModel.instance is a singleton that never changes, so subscribe once and cleanup on unmount
 
   // Get all components (including placeholders) for sheet detection
   // IMPORTANT: Spread to create new array reference - getComponents() may return
@@ -142,7 +142,7 @@ export function useComponentsPanel(options: UseComponentsPanelOptions = {}) {
     });
 
     return result;
-  }, [rawComponents, allComponents, hideSheets]);
+  }, [rawComponents, allComponents, hideSheets, updateCounter]);
 
   // Get current sheet object
   const currentSheet = useMemo((): Sheet | null => {

@@ -90,8 +90,12 @@ export function SidePanel() {
     item.onClick && item.onClick();
   }
 
+  // Check if topology panel is active for expanded view
+  const isExpanded = activeId === 'topology';
+
   return (
     <SideNavigation
+      isExpanded={isExpanded}
       onExitClick={() => App.instance.exitProject()}
       toolbar={
         <>

@@ -12,6 +12,11 @@ module.exports = merge(shared, {
   // Use faster sourcemap for development - 'eval-cheap-module-source-map' is much faster
   // than 'eval-source-map' while still providing decent debugging experience
   devtool: 'eval-cheap-module-source-map',
+
+  // CRITICAL FIX: Disable ALL webpack caching in development
+  // This ensures code changes are always picked up without requiring `npm run clean:all`
+  cache: false,
+
   externals: getExternalModules({
     production: false
   }),
@@ -31,6 +36,10 @@ module.exports = merge(shared, {
     hot: true,
     host: 'localhost', // Default: '0.0.0.0' that is causing issues on some OS / net interfaces
     port: 8080,
+    // Disable server-side caching
+    headers: {
+      'Cache-Control': 'no-store'
+    },
     onListening(devServer) {
       // Wait for webpack compilation to finish before starting Electron
       // This prevents the black screen issue where Electron opens before
@@ -42,10 +51,14 @@ module.exports = merge(shared, {
           console.error('Webpack compilation has errors - not starting Electron');
           return;
         }
-        
+
         electronStarted = true;
         console.log('\n✓ Webpack compilation complete - launching Electron...\n');
-        
+
+        // Build timestamp canary for cache verification
+        console.log(`🔥 BUILD TIMESTAMP: ${new Date().toISOString()}`);
+        console.log('   (Check console for this timestamp to verify fresh code is running)\n');
+
         child_process
           .spawn('npm', ['run', 'start:_dev'], {
             shell: true,

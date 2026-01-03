@@ -6,6 +6,12 @@ $_sidebar-hover-enter-offset: 250ms;
   display: flex;
   position: relative;
   overflow: hidden;
+  width: 380px;
+  transition: width 0.3s ease-in-out;
+
+  &--expanded {
+    width: 55vw;
+  }
 }
 
 .Toolbar {

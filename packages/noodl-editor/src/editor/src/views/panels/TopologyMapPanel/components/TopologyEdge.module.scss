@@ -1,0 +1,22 @@
+/**
+ * TopologyEdge Styles
+ */
+
+.TopologyEdge {
+  pointer-events: none;
+}
+
+.TopologyEdge__path {
+  stroke: #6b8cae; // Brighter blue-grey for better visibility
+  stroke-width: 2;
+  opacity: 0.8;
+  transition: all 0.2s ease;
+}
+
+.TopologyEdge__count {
+  fill: var(--theme-color-fg-default-shy);
+  font-size: 10px;
+  font-weight: 600;
+  user-select: none;
+  pointer-events: none;
+}

@@ -9,6 +9,7 @@ import { ProjectModel } from './models/projectmodel';
 import { WarningsModel } from './models/warningsmodel';
 import DebugInspector from './utils/debuginspector';
 import * as Exporter from './utils/exporter';
+import { triggerChainRecorder } from './utils/triggerChain';
 
 const port = process.env.NOODLPORT || 8574;
 
@@ -105,6 +106,13 @@ export class ViewerConnection extends Model {
     } else if (request.cmd === 'connectiondebugpulse' && request.type === 'viewer') {
       const content = JSON.parse(request.content);
       DebugInspector.instance.setConnectionsToPulse(content.connectionsToPulse);
+
+      // Also capture for trigger chain recorder if recording
+      if (triggerChainRecorder.isRecording()) {
+        content.connectionsToPulse.forEach((connectionId: string) => {
+          triggerChainRecorder.captureConnectionPulse(connectionId);
+        });
+      }
     } else if (request.cmd === 'debuginspectorvalues' && request.type === 'viewer') {
       DebugInspector.instance.setInspectorValues(request.content.inspectors);
     } else if (request.cmd === 'connectionValue' && request.type === 'viewer') {

@@ -16,6 +16,7 @@ A summary card view that shows everything important about a component at a glanc
 ## The Problem
 
 To understand a component today, you have to:
+
 1. Open it in the canvas
 2. Scroll around to see all nodes
 3. Mentally categorize what's there
@@ -30,6 +31,7 @@ There's no quick "tell me about this component" view.
 ## The Solution
 
 A single-screen summary that answers:
+
 - **What does this component do?** (Node breakdown by category)
 - **What's the interface?** (Inputs and outputs)
 - **What's inside?** (Subcomponents used)
@@ -152,14 +154,14 @@ interface ComponentXRay {
   // Identity
   name: string;
   fullName: string;
-  path: string;  // Folder path
-  
+  path: string; // Folder path
+
   // Usage
   usedIn: {
     component: ComponentModel;
     instanceCount: number;
   }[];
-  
+
   // Interface
   inputs: {
     name: string;
@@ -171,7 +173,7 @@ interface ComponentXRay {
     type: string;
     isSignal: boolean;
   }[];
-  
+
   // Contents
   subcomponents: {
     name: string;
@@ -183,7 +185,7 @@ interface ComponentXRay {
     nodeTypes: { type: string; count: number }[];
   }[];
   totalNodes: number;
-  
+
   // External dependencies
   restCalls: {
     method: string;
@@ -202,13 +204,13 @@ interface ComponentXRay {
     functionName: string;
     nodeId: string;
   }[];
-  
+
   // Internal state
   variables: { name: string; nodeId: string }[];
   objects: { name: string; nodeId: string }[];
-  statesNodes: { 
-    name: string; 
-    nodeId: string; 
+  statesNodes: {
+    name: string;
+    nodeId: string;
     states: string[];
   }[];
 }
@@ -217,10 +219,7 @@ interface ComponentXRay {
 ### Building X-Ray Data
 
 ```typescript
-function buildComponentXRay(
-  project: ProjectModel,
-  component: ComponentModel
-): ComponentXRay {
+function buildComponentXRay(project: ProjectModel, component: ComponentModel): ComponentXRay {
   const xray: ComponentXRay = {
     name: component.name,
     fullName: component.fullName,
@@ -239,11 +238,11 @@ function buildComponentXRay(
     objects: [],
     statesNodes: []
   };
-  
+
   // Analyze all nodes in the component
   component.graph.forEachNode((node) => {
     xray.totalNodes++;
-    
+
     // Check for subcomponents
     if (isComponentInstance(node)) {
       xray.subcomponents.push({
@@ -251,7 +250,7 @@ function buildComponentXRay(
         component: findComponent(project, node.type.name)
       });
     }
-    
+
     // Check for REST calls
     if (node.type.name === 'REST' || node.type.name.includes('REST')) {
       xray.restCalls.push({
@@ -260,7 +259,7 @@ function buildComponentXRay(
         nodeId: node.id
       });
     }
-    
+
     // Check for events
     if (node.type.name === 'Send Event') {
       xray.eventsSent.push({
@@ -274,7 +273,7 @@ function buildComponentXRay(
         nodeId: node.id
       });
     }
-    
+
     // Check for functions
     if (node.type.name === 'Function' || node.type.name === 'Javascript') {
       xray.functionCalls.push({
@@ -282,7 +281,7 @@ function buildComponentXRay(
         nodeId: node.id
       });
     }
-    
+
     // Check for state nodes
     if (node.type.name === 'Variable') {
       xray.variables.push({ name: node.label || 'Unnamed', nodeId: node.id });
@@ -298,10 +297,10 @@ function buildComponentXRay(
       });
     }
   });
-  
+
   // Build category breakdown
   xray.nodeBreakdown = buildCategoryBreakdown(component);
-  
+
   return xray;
 }
 ```
@@ -319,6 +318,7 @@ function buildComponentXRay(
 5. Find state-related nodes (Variables, Objects, States)
 
 **Verification:**
+
 - [ ] All sections populated correctly for test component
 - [ ] Subcomponent detection works
 - [ ] External dependencies found
@@ -331,6 +331,7 @@ function buildComponentXRay(
 4. Add icons for categories
 
 **Verification:**
+
 - [ ] All sections render correctly
 - [ ] Sections expand/collapse
 - [ ] Looks clean and readable
@@ -344,6 +345,7 @@ function buildComponentXRay(
 5. Wire up to Analysis Panel context
 
 **Verification:**
+
 - [ ] All navigation links work
 - [ ] Can drill into subcomponents
 - [ ] Event tracking works
@@ -356,6 +358,7 @@ function buildComponentXRay(
 4. Performance optimization
 
 **Verification:**
+
 - [ ] Collapsed view useful
 - [ ] Empty sections handled gracefully
 - [ ] Renders quickly
@@ -406,11 +409,11 @@ packages/noodl-editor/src/editor/src/views/AnalysisPanel/
 
 ## Risks & Mitigations
 
-| Risk | Mitigation |
-|------|------------|
-| Node type detection misses edge cases | Start with common types, expand based on testing |
-| Component inputs/outputs detection fails | Test with various component patterns |
-| Too much information overwhelming | Use collapsible sections, start collapsed |
+| Risk                                     | Mitigation                                       |
+| ---------------------------------------- | ------------------------------------------------ |
+| Node type detection misses edge cases    | Start with common types, expand based on testing |
+| Component inputs/outputs detection fails | Test with various component patterns             |
+| Too much information overwhelming        | Use collapsible sections, start collapsed        |
 
 ---
 
@@ -421,3 +424,50 @@ packages/noodl-editor/src/editor/src/views/AnalysisPanel/
 ## Blocks
 
 - None (independent view)
+
+---
+
+## Known Issues
+
+### AI Function Node Sidebar Disappearing Bug
+
+**Status:** Open (Not Fixed)  
+**Severity:** Medium  
+**Date Discovered:** January 2026
+
+**Description:**
+When clicking on AI-generated function nodes in the Component X-Ray panel's "Functions" section, the left sidebar navigation toolbar disappears from view.
+
+**Technical Details:**
+
+- The `.Toolbar` CSS class in `SideNavigation.module.scss` loses its `flex-direction: column` property
+- This appears to be related to the `AiPropertyEditor` component which uses `TabsVariant.Sidebar` tabs
+- The AiPropertyEditor renders for AI-generated nodes and displays tabs for "AI Chat" and "Properties"
+- Investigation showed the TabsVariant.Sidebar CSS doesn't directly manipulate parent elements
+- Attempted fix with CSS `!important` rules on the Toolbar did not resolve the issue
+
+**Impact:**
+
+- Users cannot access the main left sidebar navigation after clicking AI function nodes from X-Ray panel
+- Workaround: Close the property editor or switch to a different panel to restore the toolbar
+
+**Root Cause:**
+Unknown - the exact mechanism causing the CSS property to disappear has not been identified. The issue likely involves complex CSS cascade interactions between:
+
+- SideNavigation component styles
+- AiPropertyEditor component styles
+- TabsVariant.Sidebar tab system styles
+
+**Investigation Files:**
+
+- `packages/noodl-core-ui/src/components/app/SideNavigation/SideNavigation.module.scss`
+- `packages/noodl-editor/src/editor/src/views/panels/propertyeditor/index.tsx` (AiPropertyEditor)
+- `packages/noodl-editor/src/editor/src/models/sidebar/sidebarmodel.tsx` (switchToNode method)
+
+**Next Steps:**
+Future investigation should focus on:
+
+1. Using React DevTools to inspect component tree when bug occurs
+2. Checking if TabsVariant.Sidebar modifies parent DOM structure
+3. Looking for JavaScript that directly manipulates Toolbar styles
+4. Testing if the issue reproduces with other sidebar panels open

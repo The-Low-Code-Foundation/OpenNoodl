@@ -4,6 +4,329 @@ This document captures important discoveries and gotchas encountered during Open
 
 ---
 
+## 🎨 Canvas Overlay Pattern: React Over HTML5 Canvas (Jan 3, 2026)
+
+### The Transform Trick: CSS scale() + translate() for Automatic Coordinate Transformation
+
+**Context**: Phase 4 PREREQ-003 - Studying CommentLayer to understand how React components overlay the HTML5 Canvas node graph. Need to build Data Lineage, Impact Radar, and Semantic Layer visualizations using the same pattern.
+
+**The Discovery**: The most elegant solution for overlaying React on Canvas uses CSS transforms on a parent container. Child React components automatically position themselves in canvas coordinates without manual recalculation.
+
+**The Pattern**:
+
+```typescript
+// ❌ WRONG - Manual coordinate transformation for every element
+function OverlayComponent({ node, viewport }) {
+  const screenX = (node.x + viewport.pan.x) * viewport.scale;
+  const screenY = (node.y + viewport.pan.y) * viewport.scale;
+
+  return <div style={{ left: screenX, top: screenY }}>...</div>;
+  // Problem: Must recalculate for every element, every render
+}
+
+// ✅ RIGHT - CSS transform on parent container
+function OverlayContainer({ children, viewport }) {
+  return (
+    <div
+      style={{
+        transform: `scale(${viewport.scale}) translate(${viewport.pan.x}px, ${viewport.pan.y}px)`,
+        transformOrigin: '0 0'
+      }}
+    >
+      {children}
+      {/* All children automatically positioned in canvas coordinates! */}
+    </div>
+  );
+}
+
+// React children use canvas coordinates directly
+function NodeBadge({ node }) {
+  return (
+    <div style={{ position: 'absolute', left: node.x, top: node.y }}>
+      {/* Works perfectly - transform handles the rest */}
+    </div>
+  );
+}
+```
+
+**Why This Matters**:
+
+- **Automatic transformation**: React children don't need coordinate math
+- **Performance**: No per-element calculations on every render
+- **Simplicity**: Overlay components use canvas coordinates naturally
+- **Consistency**: Same coordinate system as canvas drawing code
+
+**React 19 Root API Pattern** - Critical for overlays:
+
+```typescript
+// ❌ WRONG - Creates new root on every render (memory leak)
+function updateOverlay() {
+  createRoot(container).render(<Overlay />); // ☠️ New root each time
+}
+
+// ✅ RIGHT - Create once, reuse forever
+class CanvasOverlay {
+  private root: Root;
+
+  constructor(container: HTMLElement) {
+    this.root = createRoot(container); // Create once
+  }
+
+  render(props: OverlayProps) {
+    this.root.render(<Overlay {...props} />); // Reuse root
+  }
+
+  dispose() {
+    this.root.unmount(); // Clean up properly
+  }
+}
+```
+
+**Two-Layer System** - CommentLayer's architecture:
+
+```
+┌─────────────────────────────────────┐
+│   Foreground Layer (z-index: 2)    │ ← Interactive controls
+├─────────────────────────────────────┤
+│   HTML5 Canvas (z-index: 1)        │ ← Node graph
+├─────────────────────────────────────┤
+│   Background Layer (z-index: 0)    │ ← Comment boxes with shadows
+└─────────────────────────────────────┘
+```
+
+This allows:
+
+- Comment boxes render **behind** canvas (no z-fighting with nodes)
+- Interactive controls render **in front** of canvas (draggable handles)
+- No z-index conflicts between overlay elements
+
+**Mouse Event Forwarding** - The click-through solution:
+
+```typescript
+// Three-step pattern for handling clicks
+overlayContainer.addEventListener('mousedown', (event) => {
+  // Step 1: Capture the event
+  const target = event.target as HTMLElement;
+
+  // Step 2: Check if clicking on actual UI
+  const clickedOnUI = target.style.pointerEvents !== 'none';
+
+  // Step 3: If not UI, forward to canvas
+  if (!clickedOnUI) {
+    const canvasEvent = new MouseEvent('mousedown', event);
+    canvasElement.dispatchEvent(canvasEvent);
+  }
+});
+```
+
+**EventDispatcher Context Pattern** - Must use context object:
+
+```typescript
+// ✅ BEST - Use useEventListener hook (built-in context handling)
+import { useEventListener } from '@noodl-hooks/useEventListener';
+
+// ❌ WRONG - Direct subscription in React (breaks on cleanup)
+useEffect(() => {
+  editor.on('viewportChanged', handler);
+  return () => editor.off('viewportChanged', handler); // ☠️ Can't unsubscribe
+}, []);
+
+// ✅ RIGHT - Use context object for cleanup
+useEffect(() => {
+  const context = {};
+  editor.on('viewportChanged', handler, context);
+  return () => editor.off(context); // Removes all subscriptions with context
+}, []);
+
+useEventListener(editor, 'viewportChanged', (viewport) => {
+  // Automatically handles context and cleanup
+});
+```
+
+**Scale-Dependent vs Scale-Independent Sizing**:
+
+```scss
+// Scale-dependent - Grows/shrinks with zoom
+.node-badge {
+  font-size: 12px; // Affected by parent transform
+  padding: 4px;
+}
+
+// Scale-independent - Stays same size
+.floating-panel {
+  position: fixed; // Not affected by transform
+  top: 20px;
+  right: 20px;
+  font-size: 14px; // Always 14px regardless of zoom
+}
+```
+
+**Common Gotchas**:
+
+1. **React-rnd scale prop**: Must set scale on mount, can't update dynamically
+
+   ```typescript
+   // Set scale once when component mounts
+   <Rnd scale={this.scale} onMount={...} />
+   ```
+
+2. **Transform affects ALL children**: Can't exempt specific elements
+
+   - Solution: Use two overlays (one transformed, one not)
+
+3. **Async rendering timing**: React 19 may batch updates
+
+   ```typescript
+   // Force immediate render with setTimeout
+   setTimeout(() => this.root.render(<Overlay />), 0);
+   ```
+
+4. **EventDispatcher cleanup**: Must use context object, not direct references
+
+**Documentation Created**:
+
+- `CANVAS-OVERLAY-PATTERN.md` - Overview and quick start
+- `CANVAS-OVERLAY-ARCHITECTURE.md` - Integration with NodeGraphEditor
+- `CANVAS-OVERLAY-COORDINATES.md` - Coordinate transformation details
+- `CANVAS-OVERLAY-EVENTS.md` - Mouse event handling
+- `CANVAS-OVERLAY-REACT.md` - React 19 specific patterns
+
+**Impact**: This pattern unblocks all Phase 4 visualization views:
+
+- VIEW-005: Data Lineage (path highlighting)
+- VIEW-006: Impact Radar (dependency visualization)
+- VIEW-007: Semantic Layers (node filtering)
+
+**Critical Rules**:
+
+1. **Use CSS transform on parent** - Let CSS handle coordinate transformation
+2. **Create React root once** - Reuse for all renders, unmount on disposal
+3. **Use two layers when needed** - Background and foreground for z-index control
+4. **Forward mouse events** - Check pointer-events before forwarding to canvas
+5. **Use EventDispatcher context** - Never subscribe without context object
+
+**Time Saved**: This documentation will save ~4-6 hours per visualization view by providing proven patterns instead of trial-and-error.
+
+**Location**:
+
+- Study file: `packages/noodl-editor/src/editor/src/views/nodegrapheditor/commentlayer.ts`
+- Documentation: `dev-docs/reference/CANVAS-OVERLAY-*.md` (5 files)
+- Task CHANGELOG: `dev-docs/tasks/phase-4-canvas-visualisation-views/PREREQ-003-canvas-overlay-pattern/CHANGELOG.md`
+
+**Keywords**: canvas overlay, React over canvas, CSS transform, coordinate transformation, React 19, createRoot, EventDispatcher, mouse forwarding, pointer-events, two-layer system, CommentLayer, viewport, pan, zoom, scale
+
+---
+
+## 🔄 React UseMemo Array Reference Equality (Jan 3, 2026)
+
+### The Invisible Update: When UseMemo Recalculates But React Doesn't Re-render
+
+**Context**: Phase 2 TASK-008 - Sheet dropdown in Components Panel wasn't updating when sheets were created/deleted. Events fired correctly, useMemo recalculated correctly, but the UI didn't update.
+
+**The Problem**: React's useMemo uses reference equality (`===`) to determine if a value has changed. Even when useMemo recalculates an array with new values, if the dependencies haven't changed by reference, React may return the same memoized reference, preventing child components from detecting the change.
+
+**The Broken Pattern**:
+
+```typescript
+// ❌ WRONG - Recalculation doesn't guarantee new reference
+const sheets = useMemo((): Sheet[] => {
+  const sheetSet = new Set<string>();
+  // ... calculate sheets ...
+  return result; // Same reference if deps unchanged
+}, [rawComponents, allComponents, hideSheets]);
+
+// Child component receives same array reference
+<SheetSelector sheets={sheets} />; // No re-render!
+```
+
+**The Solution** - Add an update counter to force new references:
+
+```typescript
+// ✅ RIGHT - Update counter forces new reference
+const [updateCounter, setUpdateCounter] = useState(0);
+
+// Increment counter when model changes
+useEffect(() => {
+  const handleUpdate = () => setUpdateCounter((c) => c + 1);
+  ProjectModel.instance.on(EVENTS, handleUpdate, group);
+  return () => ProjectModel.instance.off(group);
+}, []);
+
+// Counter in deps forces new reference on every recalculation
+const sheets = useMemo((): Sheet[] => {
+  const sheetSet = new Set<string>();
+  // ... calculate sheets ...
+  return result; // New reference when updateCounter changes!
+}, [rawComponents, allComponents, hideSheets, updateCounter]);
+
+// Child component detects new reference and re-renders
+<SheetSelector sheets={sheets} />; // Re-renders correctly!
+```
+
+**Why This Matters**:
+
+- **useMemo is an optimization, not a guarantee**: It may return the cached value even when recalculating
+- **Reference equality drives React updates**: Components only re-render when props change by reference
+- **Update counters bypass the cache**: Changing a simple number in deps forces a full recalculation with a new reference
+
+**The Debug Journey**:
+
+1. ✅ Events fire correctly (componentAdded, componentRemoved)
+2. ✅ Event handlers execute (updateCounter increments)
+3. ✅ useMemo recalculates (new sheet values computed)
+4. ❌ But child components don't re-render (same array reference)
+
+**Common Symptoms**:
+
+- Events fire but UI doesn't update
+- Data is correct when logged but not displayed
+- Refreshing the page shows correct state
+- Direct state changes work but derived state doesn't
+
+**Critical Rules**:
+
+1. **Never assume useMemo creates new references** - It's an optimization, not a forcing mechanism
+2. **Use update counters for event-driven data** - Simple incrementing values in deps force re-computation
+3. **Always verify reference changes** - Log array/object references to confirm they change
+4. **Test with React DevTools** - Check component re-render highlighting to confirm updates
+
+**Alternative Patterns**:
+
+```typescript
+// Pattern 1: Force re-creation with spreading (less efficient)
+const sheets = useMemo(() => {
+  const result = calculateSheets();
+  return [...result]; // Always new array
+}, [deps, updateCounter]);
+
+// Pattern 2: Skip useMemo for frequently-changing data
+const sheets = calculateSheets(); // Recalculate every render
+// Only use when calculation is cheap
+
+// Pattern 3: Use useCallback for stable references with changing data
+const getSheets = useCallback(() => {
+  return calculateSheets(); // Fresh calculation on every call
+}, [deps]);
+```
+
+**Related Issues**:
+
+- Similar to React's "stale closure" problem
+- Related to React.memo's shallow comparison
+- Connected to PureComponent update blocking
+
+**Time Lost**: 2-3 hours debugging "why events work but UI doesn't update"
+
+**Location**:
+
+- Fixed in: `packages/noodl-editor/src/editor/src/views/panels/ComponentsPanelNew/hooks/useComponentsPanel.ts` (line 153)
+- Task: Phase 2 TASK-008 ComponentsPanel Menus and Sheets
+- CHANGELOG: `dev-docs/tasks/phase-2-react-migration/TASK-008-componentspanel-menus-and-sheets/CHANGELOG.md`
+
+**Keywords**: React, useMemo, reference equality, array reference, update counter, force re-render, shallow comparison, React optimization, derived state, memoization
+
+---
+
 ## 🚫 Port Hover Compatibility Highlighting Failed Attempt (Jan 1, 2026)
 
 ### The Invisible Compatibility: Why Port Hover Preview Didn't Work

@@ -1,0 +1,447 @@
+/**
+ * Component X-Ray Panel Styles
+ *
+ * Uses design tokens from UI-STYLING-GUIDE.md
+ */
+
+.ComponentXRayPanel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background-color: var(--theme-color-bg-1);
+  color: var(--theme-color-fg-default);
+  overflow: hidden;
+}
+
+/* =================================================================
+   Empty State
+   ================================================================= */
+
+.EmptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 24px;
+  text-align: center;
+  color: var(--theme-color-fg-default-shy);
+
+  h3 {
+    margin: 16px 0 8px;
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--theme-color-fg-default);
+  }
+
+  p {
+    margin: 0;
+    font-size: 13px;
+  }
+}
+
+/* =================================================================
+   Header
+   ================================================================= */
+
+.Header {
+  flex-shrink: 0;
+  padding: 16px;
+  border-bottom: 1px solid var(--theme-color-border-default);
+  background-color: var(--theme-color-bg-2);
+}
+
+.Title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+
+  h2 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--theme-color-fg-default-shy);
+  }
+}
+
+.ComponentName {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background-color: var(--theme-color-bg-3);
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--theme-color-fg-highlight);
+}
+
+/* =================================================================
+   Content - Scrollable Area
+   ================================================================= */
+
+.Content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+}
+
+/* =================================================================
+   Summary Stats
+   ================================================================= */
+
+.SummaryStats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.Stat {
+  display: flex;
+  flex-direction: column;
+  padding: 12px;
+  background-color: var(--theme-color-bg-2);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: 4px;
+}
+
+.StatLabel {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--theme-color-fg-default-shy);
+  margin-bottom: 4px;
+}
+
+.StatValue {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--theme-color-fg-highlight);
+}
+
+/* =================================================================
+   Sections
+   ================================================================= */
+
+.Section {
+  margin-bottom: 24px;
+}
+
+.SectionTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 12px;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--theme-color-fg-default);
+  cursor: pointer;
+  user-select: none;
+  transition: color 0.15s ease;
+
+  &:hover {
+    color: var(--theme-color-fg-highlight);
+  }
+}
+
+.SectionContent {
+  padding: 12px;
+  background-color: var(--theme-color-bg-2);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: 4px;
+}
+
+.NoData {
+  padding: 12px;
+  text-align: center;
+  font-size: 13px;
+  font-style: italic;
+  color: var(--theme-color-fg-default-shy);
+  background-color: var(--theme-color-bg-2);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: 4px;
+}
+
+/* =================================================================
+   Usage Items
+   ================================================================= */
+
+.UsageItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  font-size: 13px;
+  color: var(--theme-color-fg-default);
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border-left: 2px solid transparent;
+
+  &:hover {
+    background-color: var(--theme-color-bg-4);
+    color: var(--theme-color-fg-highlight);
+    border-left-color: var(--theme-color-primary);
+  }
+
+  &:not(:last-child) {
+    margin-bottom: 4px;
+  }
+}
+
+/* =================================================================
+   Interface Grid
+   ================================================================= */
+
+.InterfaceGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.InterfaceColumn {
+  h4 {
+    margin: 0 0 8px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--theme-color-fg-default-shy);
+  }
+}
+
+.PortItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 8px;
+  margin-bottom: 4px;
+  background-color: var(--theme-color-bg-3);
+  border-radius: 3px;
+  font-size: 12px;
+}
+
+.PortName {
+  font-weight: 500;
+  color: var(--theme-color-fg-default);
+}
+
+.PortType {
+  font-size: 11px;
+  padding: 2px 6px;
+  background-color: var(--theme-color-bg-1);
+  border-radius: 2px;
+  color: var(--theme-color-fg-default-shy);
+}
+
+/* =================================================================
+   Subsections
+   ================================================================= */
+
+.Subsection {
+  &:not(:last-child) {
+    margin-bottom: 16px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--theme-color-border-default);
+  }
+
+  h4 {
+    margin: 0 0 8px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--theme-color-fg-default);
+  }
+}
+
+/* =================================================================
+   Subcomponent Items
+   ================================================================= */
+
+.SubcomponentItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  font-size: 13px;
+  color: var(--theme-color-fg-default);
+  background-color: var(--theme-color-bg-3);
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border-left: 2px solid transparent;
+
+  &:hover {
+    background-color: var(--theme-color-bg-4);
+    color: var(--theme-color-fg-highlight);
+    border-left-color: var(--theme-color-primary);
+  }
+
+  &:not(:last-child) {
+    margin-bottom: 4px;
+  }
+}
+
+/* =================================================================
+   Node Breakdown
+   ================================================================= */
+
+.BreakdownItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 8px;
+  margin-bottom: 4px;
+  background-color: var(--theme-color-bg-3);
+  border-radius: 3px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border-left: 2px solid transparent;
+
+  &:hover {
+    background-color: var(--theme-color-bg-4);
+    border-left-color: var(--theme-color-primary);
+
+    .CategoryName {
+      color: var(--theme-color-fg-highlight);
+    }
+  }
+
+  &.active {
+    background-color: var(--theme-color-bg-4);
+    border-left-color: var(--theme-color-primary);
+
+    .CategoryName {
+      color: var(--theme-color-fg-highlight);
+    }
+  }
+}
+
+.CategoryName {
+  font-weight: 500;
+  color: var(--theme-color-fg-default);
+  text-transform: capitalize;
+}
+
+.CategoryCount {
+  font-weight: 600;
+  padding: 2px 8px;
+  background-color: var(--theme-color-bg-1);
+  border-radius: 2px;
+  color: var(--theme-color-fg-highlight);
+}
+
+/* =================================================================
+   External Dependencies
+   ================================================================= */
+
+.DependencyItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  margin-bottom: 4px;
+  background-color: var(--theme-color-bg-3);
+  border-radius: 3px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border-left: 2px solid transparent;
+
+  &:hover {
+    background-color: var(--theme-color-bg-4);
+    border-left-color: var(--theme-color-primary);
+
+    .Endpoint {
+      color: var(--theme-color-fg-highlight);
+    }
+  }
+}
+
+.Method {
+  font-weight: 600;
+  padding: 2px 6px;
+  background-color: var(--theme-color-primary);
+  color: white;
+  border-radius: 2px;
+  font-size: 10px;
+  text-transform: uppercase;
+}
+
+.Endpoint {
+  flex: 1;
+  color: var(--theme-color-fg-default);
+  font-family: monospace;
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.EventItem,
+.FunctionItem {
+  padding: 6px 8px;
+  margin-bottom: 4px;
+  background-color: var(--theme-color-bg-3);
+  border-radius: 3px;
+  font-size: 12px;
+  color: var(--theme-color-fg-default);
+  font-family: monospace;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border-left: 2px solid transparent;
+
+  &:hover {
+    background-color: var(--theme-color-bg-4);
+    color: var(--theme-color-fg-highlight);
+    border-left-color: var(--theme-color-primary);
+  }
+}
+
+/* =================================================================
+   Internal State
+   ================================================================= */
+
+.StateItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  margin-bottom: 4px;
+  background-color: var(--theme-color-bg-3);
+  border-radius: 3px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border-left: 2px solid transparent;
+
+  &:hover {
+    background-color: var(--theme-color-bg-4);
+    border-left-color: var(--theme-color-primary);
+
+    .StateName {
+      color: var(--theme-color-fg-highlight);
+    }
+  }
+}
+
+.StateType {
+  font-weight: 600;
+  padding: 2px 6px;
+  background-color: var(--theme-color-bg-4);
+  color: var(--theme-color-fg-default-shy);
+  border-radius: 2px;
+  font-size: 10px;
+  text-transform: uppercase;
+}
+
+.StateName {
+  color: var(--theme-color-fg-default);
+  font-family: monospace;
+}

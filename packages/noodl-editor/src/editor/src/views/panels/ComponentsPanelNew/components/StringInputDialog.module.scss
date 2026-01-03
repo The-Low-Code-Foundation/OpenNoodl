@@ -1,0 +1,93 @@
+/**
+ * StringInputDialog styles
+ * Uses proper CSS classes for Electron compatibility
+ */
+
+.Root {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+}
+
+.Dialog {
+  background-color: var(--theme-color-bg-3);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: 8px;
+  padding: 24px;
+  min-width: 400px;
+  max-width: 500px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.Title {
+  margin: 0 0 20px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--theme-color-fg-default);
+}
+
+.Input {
+  width: 100%;
+  padding: 8px 12px;
+  font-size: 14px;
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: 4px;
+  background-color: var(--theme-color-bg-1);
+  color: var(--theme-color-fg-default);
+  margin-bottom: 20px;
+  font-family: inherit;
+
+  &:focus {
+    outline: none;
+    border-color: var(--theme-color-primary);
+  }
+}
+
+.Actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.ButtonCancel,
+.ButtonConfirm {
+  padding: 8px 16px;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background-color 0.15s ease;
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.ButtonCancel {
+  background-color: var(--theme-color-bg-3);
+  border: 1px solid var(--theme-color-border-default);
+  color: var(--theme-color-fg-default);
+
+  &:hover:not(:disabled) {
+    background-color: var(--theme-color-bg-4);
+  }
+}
+
+.ButtonConfirm {
+  background-color: var(--theme-color-primary);
+  border: none;
+  color: white;
+
+  &:hover:not(:disabled) {
+    opacity: 0.9;
+  }
+}

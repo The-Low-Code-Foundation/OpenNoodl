@@ -1,0 +1,105 @@
+/**
+ * ChainStats Component Styles
+ *
+ * Uses design tokens from UI-STYLING-GUIDE.md
+ */
+
+.ChainStats {
+  padding: 16px;
+  background-color: var(--theme-color-bg-2);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: 4px;
+  margin-bottom: 16px;
+}
+
+/* =================================================================
+   Stats Title
+   ================================================================= */
+
+.StatsTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 16px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--theme-color-fg-default);
+}
+
+/* =================================================================
+   Stat Groups
+   ================================================================= */
+
+.StatGroup {
+  margin-bottom: 16px;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.GroupTitle {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--theme-color-fg-default-shy);
+}
+
+/* =================================================================
+   Stat Items
+   ================================================================= */
+
+.StatItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 8px;
+  background-color: var(--theme-color-bg-3);
+  border-radius: 3px;
+  margin-bottom: 4px;
+  font-size: 12px;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.StatLabel {
+  color: var(--theme-color-fg-default);
+}
+
+.StatValue {
+  font-weight: 600;
+  font-family: monospace;
+  color: var(--theme-color-fg-highlight);
+}
+
+/* =================================================================
+   Component List
+   ================================================================= */
+
+.ComponentList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ComponentChip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background-color: var(--theme-color-bg-3);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: 3px;
+  font-size: 11px;
+  color: var(--theme-color-fg-default);
+  transition: all 0.15s ease;
+
+  &:hover {
+    background-color: var(--theme-color-bg-4);
+    border-color: var(--theme-color-primary);
+  }
+}

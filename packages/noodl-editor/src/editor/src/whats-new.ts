@@ -35,10 +35,17 @@ export async function whatsnewRender() {
   modalContainer.classList.add('popup-layer-react-modal');
   PopupLayer.instance.el.find('.popup-layer-modal').before(modalContainer);
 
-  createRoot(modalContainer).render(
+  // Create root once and properly unmount when finished
+  const modalRoot = createRoot(modalContainer);
+  modalRoot.render(
     React.createElement(NewsModal, {
       content: latestChangelogPost.content_html,
-      onFinished: () => ipcRenderer.send('viewer-show')
+      onFinished: () => {
+        ipcRenderer.send('viewer-show');
+        // Properly cleanup React root and DOM element
+        modalRoot.unmount();
+        modalContainer.remove();
+      }
     })
   );
 

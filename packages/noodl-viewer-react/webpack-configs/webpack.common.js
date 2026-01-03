@@ -8,7 +8,7 @@ module.exports = {
   resolve: {
     extensions: ['.tsx', '.ts', '.jsx', '.js'],
     fallback: {
-      events: require.resolve('events/'),
+      events: require.resolve('events/')
     }
   },
   module: {
@@ -20,7 +20,8 @@ module.exports = {
           loader: 'babel-loader',
           options: {
             babelrc: false,
-            cacheDirectory: true,
+            // Disable cache to ensure fresh code loads during development
+            cacheDirectory: false,
             presets: ['@babel/preset-react']
           }
         }

@@ -1,0 +1,123 @@
+/**
+ * TopologyNode Styles
+ */
+
+.TopologyNode {
+  transition: all 0.2s ease;
+
+  &:hover {
+    .TopologyNode__rect {
+      filter: brightness(1.1);
+    }
+  }
+}
+
+.TopologyNode__rect {
+  fill: var(--theme-color-bg-3);
+  stroke: #4a90d9; // Brighter blue instead of dim border
+  stroke-width: 2;
+  transition: all 0.2s ease;
+}
+
+// Page nodes
+.TopologyNode--page {
+  .TopologyNode__rect {
+    fill: var(--theme-color-bg-4);
+    stroke: var(--theme-color-primary);
+    stroke-width: 2.5;
+    filter: drop-shadow(0 0 4px rgba(74, 144, 217, 0.3));
+  }
+}
+
+// Current component highlight
+.TopologyNode--current {
+  .TopologyNode__rect {
+    stroke: var(--theme-color-primary);
+    stroke-width: 3;
+    fill: var(--theme-color-bg-4);
+    filter: drop-shadow(0 0 12px var(--theme-color-primary));
+  }
+
+  // Distinct hover state for selected nodes
+  &:hover .TopologyNode__rect {
+    stroke-width: 4;
+    filter: drop-shadow(0 0 18px var(--theme-color-primary));
+    animation: selected-pulse 1.5s ease-in-out infinite;
+  }
+}
+
+@keyframes selected-pulse {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 18px var(--theme-color-primary));
+  }
+  50% {
+    filter: drop-shadow(0 0 24px var(--theme-color-primary));
+  }
+}
+
+// Shared components (used multiple times)
+.TopologyNode--shared {
+  .TopologyNode__rect {
+    stroke: #f5a623; // Brighter orange/gold for shared
+    stroke-width: 2;
+  }
+}
+
+// Orphan components (never used)
+.TopologyNode--orphan {
+  opacity: 0.6;
+
+  .TopologyNode__rect {
+    stroke: var(--theme-color-warning);
+    stroke-dasharray: 4 2;
+  }
+}
+
+.TopologyNode__icon {
+  fill: var(--theme-color-fg-default);
+  user-select: none;
+  pointer-events: none;
+}
+
+.TopologyNode__text {
+  fill: var(--theme-color-fg-default);
+  font-size: 12px;
+  font-weight: 500;
+  user-select: none;
+  pointer-events: none;
+}
+
+.TopologyNode__star {
+  user-select: none;
+  pointer-events: none;
+  filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.8));
+}
+
+// Usage count badge
+.TopologyNode__badge {
+  fill: var(--theme-color-accent);
+  stroke: var(--theme-color-bg-3);
+  stroke-width: 2;
+}
+
+.TopologyNode__badgeText {
+  fill: var(--theme-color-fg-on-accent);
+  font-weight: 600;
+  user-select: none;
+  pointer-events: none;
+}
+
+// Warning indicator for orphans
+.TopologyNode__warning {
+  fill: var(--theme-color-warning);
+  stroke: var(--theme-color-bg-3);
+  stroke-width: 2;
+}
+
+.TopologyNode__warningText {
+  fill: var(--theme-color-fg-on-warning);
+  font-weight: 700;
+  user-select: none;
+  pointer-events: none;
+}

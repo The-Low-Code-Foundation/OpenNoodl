@@ -194,8 +194,9 @@ export function useSheetManagement() {
       .getComponents()
       .filter((comp) => comp.name.startsWith('/' + sheet.folderName + '/'));
 
+    // Check if sheet exists at all (must have at least a placeholder)
     if (componentsInSheet.length === 0) {
-      ToastLayer.showError('Sheet is already empty');
+      ToastLayer.showError('Sheet does not exist');
       return false;
     }
 
@@ -218,6 +219,37 @@ export function useSheetManagement() {
         });
       }
     });
+
+    // Allow deletion of empty sheets (sheets with only placeholders)
+    if (renameMap.length === 0) {
+      // Sheet is empty (only has placeholders) - just delete the placeholders
+      UndoQueue.instance.pushAndDo(
+        new UndoActionGroup({
+          label: `Delete empty sheet "${sheet.name}"`,
+          do: () => {
+            placeholderNames.forEach((placeholderName) => {
+              const placeholder = ProjectModel.instance?.getComponentWithName(placeholderName);
+              if (placeholder) {
+                ProjectModel.instance?.removeComponent(placeholder);
+              }
+            });
+          },
+          undo: () => {
+            placeholderNames.forEach((placeholderName) => {
+              const restoredPlaceholder = new ComponentModel({
+                name: placeholderName,
+                graph: new NodeGraphModel(),
+                id: guid()
+              });
+              ProjectModel.instance?.addComponent(restoredPlaceholder);
+            });
+          }
+        })
+      );
+
+      ToastLayer.showSuccess(`Deleted empty sheet "${sheet.name}"`);
+      return true;
+    }
 
     // Check for naming conflicts
     for (const { newName } of renameMap) {

@@ -13,6 +13,7 @@ import { CloudFunctionsPanel } from './views/panels/CloudFunctionsPanel/CloudFun
 import { CloudServicePanel } from './views/panels/CloudServicePanel/CloudServicePanel';
 import { ComponentPortsComponent } from './views/panels/componentports';
 import { ComponentsPanel } from './views/panels/componentspanel';
+import { ComponentXRayPanel } from './views/panels/ComponentXRayPanel';
 import { DesignTokenPanel } from './views/panels/DesignTokenPanel/DesignTokenPanel';
 import { EditorSettingsPanel } from './views/panels/EditorSettingsPanel/EditorSettingsPanel';
 import { FileExplorerPanel } from './views/panels/FileExplorerPanel';
@@ -21,6 +22,8 @@ import { NodeReferencesPanel } from './views/panels/NodeReferencesPanel/NodeRefe
 import { ProjectSettingsPanel } from './views/panels/ProjectSettingsPanel/ProjectSettingsPanel';
 import { PropertyEditor } from './views/panels/propertyeditor';
 import { SearchPanel } from './views/panels/search-panel/search-panel';
+import { TopologyMapPanel } from './views/panels/TopologyMapPanel';
+import { TriggerChainDebuggerPanel } from './views/panels/TriggerChainDebuggerPanel';
 import { UndoQueuePanel } from './views/panels/UndoQueuePanel/UndoQueuePanel';
 import { VersionControlPanel_ID } from './views/panels/VersionControlPanel';
 import { VersionControlPanel } from './views/panels/VersionControlPanel/VersionControlPanel';
@@ -77,6 +80,26 @@ export function installSidePanel({ isLesson }: SetupEditorOptions) {
   });
 
   SidebarModel.instance.register({
+    experimental: true,
+    id: 'topology',
+    name: 'Topology',
+    order: 3,
+    icon: IconName.Navigate,
+    panel: TopologyMapPanel
+  });
+
+  SidebarModel.instance.register({
+    experimental: true,
+    id: 'component-xray',
+    name: 'Component X-Ray',
+    description:
+      'Shows comprehensive information about the active component: usage, interface, structure, and dependencies.',
+    order: 4,
+    icon: IconName.SearchGrid,
+    panel: ComponentXRayPanel
+  });
+
+  SidebarModel.instance.register({
     id: VersionControlPanel_ID,
     name: 'Version control',
     order: 5,
@@ -117,6 +140,16 @@ export function installSidePanel({ isLesson }: SetupEditorOptions) {
     order: 9,
     icon: IconName.Setting,
     panel: ProjectSettingsPanel
+  });
+
+  SidebarModel.instance.register({
+    experimental: true,
+    id: 'trigger-chain-debugger',
+    name: 'Trigger Chain Debugger',
+    description: 'Records and visualizes chains of events triggered from user interactions in the preview.',
+    order: 10,
+    icon: IconName.Play,
+    panel: TriggerChainDebuggerPanel
   });
 
   if (config.devMode) {

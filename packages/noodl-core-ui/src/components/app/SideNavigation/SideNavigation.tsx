@@ -107,12 +107,13 @@ export interface SideNavigationProps {
   panel: Slot;
 
   onExitClick?: React.MouseEventHandler<HTMLDivElement>;
+  isExpanded?: boolean;
 }
 
-export function SideNavigation({ toolbar, panel, onExitClick }: SideNavigationProps) {
+export function SideNavigation({ toolbar, panel, onExitClick, isExpanded = false }: SideNavigationProps) {
   return (
     <SideNavigationContextProvider>
-      <div className={css['Root']}>
+      <div className={classNames(css['Root'], isExpanded && css['Root--expanded'])}>
         <div className={css['Panel']}>{panel}</div>
 
         <div className={css['Toolbar']}>

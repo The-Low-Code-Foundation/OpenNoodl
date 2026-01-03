@@ -17,6 +17,7 @@ import { MenuDialogWidth } from '@noodl-core-ui/components/popups/MenuDialog';
 import { showContextMenuInPopup } from '../../ShowContextMenuInPopup';
 import { ComponentTree } from './components/ComponentTree';
 import { SheetSelector } from './components/SheetSelector';
+import { StringInputDialog } from './components/StringInputDialog';
 import css from './ComponentsPanel.module.scss';
 import { ComponentTemplates } from './ComponentTemplates';
 import { useComponentActions } from './hooks/useComponentActions';
@@ -57,54 +58,35 @@ export function ComponentsPanel({ options }: ComponentsPanelProps) {
 
   // Handle creating a new sheet
   const handleCreateSheet = useCallback(() => {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const PopupLayer = require('@noodl-views/popuplayer');
-
-    const popup = new PopupLayer.StringInputPopup({
-      label: 'New sheet name',
-      okLabel: 'Create',
-      cancelLabel: 'Cancel',
-      onOk: (name: string) => {
-        if (createSheet(name)) {
-          PopupLayer.instance.hidePopup();
-        }
-      }
-    });
-
-    popup.render();
-
-    PopupLayer.instance.showPopup({
-      content: popup,
-      position: 'screen-center',
-      isBackgroundDimmed: true
-    });
+    DialogLayerModel.instance.showDialog((close) =>
+      React.createElement(StringInputDialog, {
+        title: 'New sheet name',
+        placeholder: 'Enter sheet name',
+        confirmLabel: 'Create',
+        onConfirm: (value) => {
+          createSheet(value);
+          close();
+        },
+        onCancel: close
+      })
+    );
   }, [createSheet]);
 
   // Handle renaming a sheet
   const handleRenameSheet = useCallback(
     (sheet: TSFixme) => {
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const PopupLayer = require('@noodl-views/popuplayer');
-
-      const popup = new PopupLayer.StringInputPopup({
-        label: 'New sheet name',
-        value: sheet.name,
-        okLabel: 'Rename',
-        cancelLabel: 'Cancel',
-        onOk: (newName: string) => {
-          if (renameSheet(sheet, newName)) {
-            PopupLayer.instance.hidePopup();
-          }
-        }
-      });
-
-      popup.render();
-
-      PopupLayer.instance.showPopup({
-        content: popup,
-        position: 'screen-center',
-        isBackgroundDimmed: true
-      });
+      DialogLayerModel.instance.showDialog((close) =>
+        React.createElement(StringInputDialog, {
+          title: 'Rename sheet',
+          defaultValue: sheet.name,
+          confirmLabel: 'Rename',
+          onConfirm: (value) => {
+            renameSheet(sheet, value);
+            close();
+          },
+          onCancel: close
+        })
+      );
     },
     [renameSheet]
   );

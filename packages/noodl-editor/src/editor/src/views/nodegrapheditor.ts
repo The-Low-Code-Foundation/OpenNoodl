@@ -35,10 +35,14 @@ import {
 import { NodeLibrary } from '../models/nodelibrary';
 import { ProjectModel } from '../models/projectmodel';
 import { WarningsModel } from '../models/warningsmodel';
+import { HighlightManager } from '../services/HighlightManager';
 import DebugInspector from '../utils/debuginspector';
 import { rectanglesOverlap, guid } from '../utils/utils';
 import { ViewerConnection } from '../ViewerConnection';
+import { HighlightOverlay } from './CanvasOverlays/HighlightOverlay';
 import CommentLayer from './commentlayer';
+// Import test utilities for console debugging (dev only)
+import '../services/HighlightManager/test-highlights';
 import { ConnectionPopup } from './ConnectionPopup';
 import { CreateNewNodePanel } from './createnewnodepanel';
 import { TitleBar } from './documents/EditorDocument/titlebar';
@@ -229,6 +233,7 @@ export class NodeGraphEditor extends View {
 
   toolbarRoots: Root[] = [];
   titleRoot: Root = null;
+  highlightOverlayRoot: Root = null;
 
   constructor(args) {
     super();
@@ -399,6 +404,12 @@ export class NodeGraphEditor extends View {
     this.inspectorsModel?.off(this);
 
     this.commentLayer && this.commentLayer.dispose();
+
+    // Clean up React roots
+    if (this.highlightOverlayRoot) {
+      this.highlightOverlayRoot.unmount();
+      this.highlightOverlayRoot = null;
+    }
 
     SidebarModel.instance.off(this);
 
@@ -772,6 +783,11 @@ export class NodeGraphEditor extends View {
   render() {
     const _this = this;
 
+    // Expose editor instance to window for console debugging (dev only)
+    // Used by test utilities: window.testHighlightManager.testBasicHighlight()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (window as any).__nodeGraphEditor = this;
+
     this.el = this.bindView($(NodeGraphEditorTemplate), this);
 
     this.domElementContainer = this.el.find('#nodegraph-dom-layer').get(0);
@@ -860,10 +876,73 @@ export class NodeGraphEditor extends View {
       this.commentLayer.renderTo(this.el.find('#comment-layer-bg').get(0), this.el.find('#comment-layer-fg').get(0));
     }, 1);
 
+    // Render the highlight overlay
+    setTimeout(() => {
+      this.renderHighlightOverlay();
+    }, 1);
+
     this.relayout();
     this.repaint();
 
     return this.el;
+  }
+
+  /**
+   * Get node bounds for the highlight overlay
+   * Maps node IDs to their screen coordinates
+   */
+  getNodeBounds = (nodeId: string) => {
+    const node = this.findNodeWithId(nodeId);
+    if (!node) return null;
+
+    return {
+      x: node.global.x,
+      y: node.global.y,
+      width: node.nodeSize.width,
+      height: node.nodeSize.height
+    };
+  };
+
+  /**
+   * Render the HighlightOverlay React component
+   */
+  renderHighlightOverlay() {
+    const overlayElement = this.el.find('#highlight-overlay-layer').get(0);
+    if (!overlayElement) {
+      console.warn('Highlight overlay layer not found in DOM');
+      return;
+    }
+
+    // Create React root if it doesn't exist
+    if (!this.highlightOverlayRoot) {
+      this.highlightOverlayRoot = createRoot(overlayElement);
+    }
+
+    // Get current viewport state
+    const panAndScale = this.getPanAndScale();
+    const viewport = {
+      x: panAndScale.x,
+      y: panAndScale.y,
+      zoom: panAndScale.scale
+    };
+
+    // Render the overlay
+    this.highlightOverlayRoot.render(
+      React.createElement(HighlightOverlay, {
+        viewport,
+        getNodeBounds: this.getNodeBounds
+      })
+    );
+  }
+
+  /**
+   * Update the highlight overlay with new viewport state
+   * Called whenever pan/zoom changes
+   */
+  updateHighlightOverlay() {
+    if (this.highlightOverlayRoot) {
+      this.renderHighlightOverlay();
+    }
   }
 
   // This is called by the parent view (frames view) when the size and position
@@ -1260,6 +1339,7 @@ export class NodeGraphEditor extends View {
     };
     panAndScale = this.clampPanAndScale(panAndScale);
     this.setPanAndScale(panAndScale);
+    this.updateHighlightOverlay();
 
     this.relayout();
     this.repaint();
@@ -1378,6 +1458,7 @@ export class NodeGraphEditor extends View {
     panAndScale.y += dy;
     panAndScale = this.clampPanAndScale(panAndScale);
     this.setPanAndScale(panAndScale);
+    this.updateHighlightOverlay();
 
     /* for(var i in this.roots) {
       this.roots[i].x += dx;
@@ -1517,6 +1598,9 @@ export class NodeGraphEditor extends View {
 
       this.commentLayer.setComponentModel(undefined);
 
+      // Clear all highlights when closing/switching away from component
+      HighlightManager.instance.clearAll();
+
       return;
     }
 
@@ -1525,6 +1609,9 @@ export class NodeGraphEditor extends View {
 
     if (this.activeComponent !== component) {
       this.activeComponent?.off(this);
+
+      // Clear highlights when switching to a different component
+      HighlightManager.instance.clearAll();
 
       this.activeComponent = component;
 
@@ -1549,6 +1636,9 @@ export class NodeGraphEditor extends View {
         },
         this
       );
+
+      // Notify HighlightManager of component change for cross-component path highlighting
+      HighlightManager.instance.setCurrentComponent(component.fullName);
 
       EventDispatcher.instance.emit('activeComponentChanged', { component });
     }
@@ -1788,10 +1878,10 @@ export class NodeGraphEditor extends View {
           // @ts-expect-error
           toProps.sourcePort = fromPort;
           toProps.disabled = false;
-          createRoot(toDiv).render(React.createElement(ConnectionPopup, toProps));
+          toRoot.render(React.createElement(ConnectionPopup, toProps));
 
           fromProps.disabled = true;
-          createRoot(fromDiv).render(React.createElement(ConnectionPopup, fromProps));
+          fromRoot.render(React.createElement(ConnectionPopup, fromProps));
 
           fromNode.borderHighlighted = false;
           toNode.borderHighlighted = true;
@@ -1799,8 +1889,8 @@ export class NodeGraphEditor extends View {
         }
       };
       const fromDiv = document.createElement('div');
-      const root = createRoot(fromDiv);
-      root.render(React.createElement(ConnectionPopup, fromProps));
+      const fromRoot = createRoot(fromDiv);
+      fromRoot.render(React.createElement(ConnectionPopup, fromProps));
 
       const fromPosition = toNode.global.x > fromNodeXPos ? 'left' : 'right';
 
@@ -1818,7 +1908,7 @@ export class NodeGraphEditor extends View {
           y: (fromNode.global.y + panAndScale.y) * panAndScale.scale + tl[1] + 20 * panAndScale.scale
         },
         onClose: () => {
-          root.unmount();
+          fromRoot.unmount();
           ipcRenderer.send('viewer-show');
         }
       });
@@ -1852,10 +1942,10 @@ export class NodeGraphEditor extends View {
             // @ts-expect-error
             toProps.sourcePort = undefined;
             toProps.disabled = true;
-            createRoot(toDiv).render(React.createElement(ConnectionPopup, toProps));
+            toRoot.render(React.createElement(ConnectionPopup, toProps));
 
             fromProps.disabled = false;
-            createRoot(fromDiv).render(React.createElement(ConnectionPopup, fromProps));
+            fromRoot.render(React.createElement(ConnectionPopup, fromProps));
 
             fromNode.borderHighlighted = true;
             toNode.borderHighlighted = false;
@@ -1864,7 +1954,8 @@ export class NodeGraphEditor extends View {
         }
       };
       const toDiv = document.createElement('div');
-      createRoot(toDiv).render(React.createElement(ConnectionPopup, toProps));
+      const toRoot = createRoot(toDiv);
+      toRoot.render(React.createElement(ConnectionPopup, toProps));
 
       const toPosition = fromNodeXPos >= toNode.global.x ? 'left' : 'right';
       const toPopout = PopupLayer.instance.showPopout({
@@ -1879,7 +1970,7 @@ export class NodeGraphEditor extends View {
           y: (toNode.global.y + panAndScale.y) * panAndScale.scale + tl[1] + 20 * panAndScale.scale
         },
         onClose: () => {
-          root.unmount();
+          toRoot.unmount();
           this.clearSelection();
           this.repaint();
         }
@@ -2984,6 +3075,7 @@ export class NodeGraphEditor extends View {
   setPanAndScale(panAndScale: PanAndScale) {
     this.panAndScale = panAndScale;
     this.commentLayer && this.commentLayer.setPanAndScale(panAndScale);
+    this.updateHighlightOverlay();
   }
 
   clampPanAndScale(panAndScale: PanAndScale) {

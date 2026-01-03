@@ -1,0 +1,72 @@
+/**
+ * ChainTimeline Component Styles
+ *
+ * Uses design tokens from UI-STYLING-GUIDE.md
+ */
+
+.ChainTimeline {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* =================================================================
+   Chain Header
+   ================================================================= */
+
+.ChainHeader {
+  padding: 12px;
+  background-color: var(--theme-color-bg-2);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: 4px;
+}
+
+.ChainInfo {
+  h3 {
+    margin: 0 0 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--theme-color-fg-highlight);
+  }
+}
+
+.ChainMeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--theme-color-fg-default-shy);
+
+  span {
+    &:nth-child(2) {
+      color: var(--theme-color-fg-default-shy);
+    }
+  }
+}
+
+/* =================================================================
+   Timeline List
+   ================================================================= */
+
+.TimelineList {
+  display: flex;
+  flex-direction: column;
+}
+
+/* =================================================================
+   Empty Timeline
+   ================================================================= */
+
+.EmptyTimeline {
+  padding: 48px 24px;
+  text-align: center;
+  background-color: var(--theme-color-bg-2);
+  border: 1px dashed var(--theme-color-border-default);
+  border-radius: 4px;
+  color: var(--theme-color-fg-default-shy);
+
+  p {
+    margin: 0;
+    font-size: 13px;
+  }
+}

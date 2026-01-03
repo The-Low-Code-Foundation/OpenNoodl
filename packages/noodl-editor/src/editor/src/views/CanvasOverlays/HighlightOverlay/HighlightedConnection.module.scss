@@ -1,0 +1,58 @@
+/**
+ * HighlightedConnection styles
+ *
+ * Styles for connection path highlight overlays with different visual effects.
+ */
+
+.highlightedConnection {
+  position: absolute;
+  pointer-events: none;
+  overflow: visible;
+  z-index: 999; // Below nodes (1000) but above canvas
+
+  // Pulse path - animated overlay for pulse effect
+  .pulsePath {
+    animation: connection-pulse 1.5s ease-in-out infinite;
+  }
+}
+
+// Solid style - simple static path
+.solid {
+  // Base styles applied from .highlightedConnection
+  // No animations
+}
+
+// Glow style - constant glow via SVG filter
+.glow {
+  // Filter applied inline in component
+  animation: glow-breathe 2s ease-in-out infinite;
+}
+
+// Pulse style - animated path
+.pulse {
+  // Animation applied to .pulsePath child
+}
+
+// Glow breathing animation
+@keyframes glow-breathe {
+  0%,
+  100% {
+    opacity: 0.8;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+// Connection pulse animation
+@keyframes connection-pulse {
+  0%,
+  100% {
+    stroke-dashoffset: 0;
+    opacity: 0.8;
+  }
+  50% {
+    stroke-dashoffset: 10;
+    opacity: 1;
+  }
+}
