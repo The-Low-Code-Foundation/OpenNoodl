@@ -1,0 +1,188 @@
+// Data Lineage Panel Styles
+
+.DataLineagePanel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: var(--theme-spacing-2);
+  overflow-y: auto;
+  background-color: var(--theme-color-bg-1);
+}
+
+.EmptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--theme-color-fg-default-shy);
+
+  &-icon {
+    font-size: 48px;
+    margin-bottom: var(--theme-spacing-3);
+    opacity: 0.5;
+  }
+
+  &-title {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: var(--theme-spacing-2);
+  }
+
+  &-description {
+    font-size: 14px;
+    text-align: center;
+    max-width: 300px;
+  }
+}
+
+.Header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: var(--theme-spacing-2);
+  border-bottom: 1px solid var(--theme-color-border-default);
+  margin-bottom: var(--theme-spacing-3);
+
+  &-title {
+    display: flex;
+    align-items: center;
+    gap: var(--theme-spacing-2);
+    font-weight: 600;
+    font-size: 16px;
+  }
+
+  &-icon {
+    font-size: 20px;
+  }
+
+  &-actions {
+    display: flex;
+    gap: var(--theme-spacing-2);
+  }
+}
+
+.Button {
+  padding: var(--theme-spacing-1) var(--theme-spacing-3);
+  background-color: var(--theme-color-primary);
+  color: var(--theme-color-bg-1);
+  border: none;
+  border-radius: var(--theme-border-radius-1);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+
+  &:hover {
+    background-color: var(--theme-color-primary-hover);
+  }
+}
+
+.SelectedNode {
+  padding: var(--theme-spacing-2);
+  background-color: var(--theme-color-bg-2);
+  border-radius: var(--theme-border-radius-1);
+  margin-bottom: var(--theme-spacing-3);
+
+  &-label {
+    font-size: 15px;
+    margin-bottom: var(--theme-spacing-1);
+  }
+
+  &-meta {
+    font-size: 13px;
+    color: var(--theme-color-fg-default-shy);
+    margin-bottom: var(--theme-spacing-1);
+  }
+
+  &-component {
+    font-size: 12px;
+    color: var(--theme-color-fg-default-shy);
+    font-family: monospace;
+  }
+}
+
+.Section {
+  margin-bottom: var(--theme-spacing-3);
+
+  &-header {
+    display: flex;
+    align-items: center;
+    gap: var(--theme-spacing-2);
+    padding: var(--theme-spacing-2);
+    background-color: var(--theme-color-bg-2);
+    border-radius: var(--theme-border-radius-1);
+    cursor: pointer;
+    user-select: none;
+
+    &:hover {
+      background-color: var(--theme-color-bg-3);
+    }
+  }
+
+  &-toggle {
+    font-size: 12px;
+    color: var(--theme-color-fg-default-shy);
+  }
+
+  &-title {
+    display: flex;
+    align-items: center;
+    gap: var(--theme-spacing-1);
+    font-weight: 600;
+    font-size: 14px;
+  }
+
+  &-icon {
+    font-size: 14px;
+  }
+
+  &-subtitle {
+    font-size: 12px;
+    color: var(--theme-color-fg-default-shy);
+    margin-left: auto;
+  }
+
+  &-content {
+    margin-top: var(--theme-spacing-2);
+    padding-left: var(--theme-spacing-2);
+  }
+}
+
+.EmptyPath {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--theme-spacing-4) var(--theme-spacing-2);
+  color: var(--theme-color-fg-default-shy);
+
+  &-icon {
+    font-size: 32px;
+    margin-bottom: var(--theme-spacing-2);
+    opacity: 0.5;
+  }
+
+  &-text {
+    font-size: 14px;
+    margin-bottom: var(--theme-spacing-1);
+  }
+
+  &-hint {
+    font-size: 12px;
+    opacity: 0.7;
+  }
+}
+
+.DownstreamPath {
+  margin-bottom: var(--theme-spacing-2);
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.PathBranch {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--theme-color-primary);
+  margin-bottom: var(--theme-spacing-1);
+}

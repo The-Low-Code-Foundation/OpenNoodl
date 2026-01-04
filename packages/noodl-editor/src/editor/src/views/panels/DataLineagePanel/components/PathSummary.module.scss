@@ -1,0 +1,57 @@
+// PathSummary Component Styles
+
+.PathSummary {
+  padding: var(--theme-spacing-2);
+  background-color: var(--theme-color-bg-2);
+  border-radius: var(--theme-border-radius-1);
+  margin-bottom: var(--theme-spacing-3);
+  border-left: 3px solid var(--theme-color-primary);
+
+  &-title {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: var(--theme-color-fg-default-shy);
+    margin-bottom: var(--theme-spacing-2);
+  }
+
+  &-content {
+    display: flex;
+    flex-direction: column;
+    gap: var(--theme-spacing-1);
+    font-size: 13px;
+  }
+}
+
+.Path {
+  display: flex;
+  align-items: center;
+  gap: var(--theme-spacing-2);
+  flex-wrap: wrap;
+
+  &-segment {
+    color: var(--theme-color-fg-default);
+    font-family: monospace;
+    font-size: 12px;
+  }
+
+  &-arrow {
+    color: var(--theme-color-fg-default-shy);
+    font-size: 14px;
+  }
+
+  &-selected {
+    padding: var(--theme-spacing-1) var(--theme-spacing-2);
+    background-color: var(--theme-color-primary);
+    color: var(--theme-color-bg-1);
+    border-radius: var(--theme-border-radius-1);
+    font-weight: 600;
+  }
+
+  &-branch {
+    font-size: 11px;
+    color: var(--theme-color-fg-default-shy);
+    font-style: italic;
+    margin-left: var(--theme-spacing-1);
+  }
+}

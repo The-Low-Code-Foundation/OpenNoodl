@@ -2485,7 +2485,59 @@ export class NodeGraphEditor extends View {
           PopupLayer.instance.hidePopup();
           evt.consumed = true;
 
+          // Check if we're right-clicking on a node (selected or not)
+          let nodeUnderCursor: NodeGraphEditorNode = null;
+
+          // First check if clicking on already selected nodes
           if (this.isPointInsideNodes(scaledPos, this.selector.nodes)) {
+            nodeUnderCursor = this.selector.nodes.find((node) => {
+              const nodeRect = {
+                x: node.global.x,
+                y: node.global.y,
+                width: node.nodeSize.width,
+                height: node.nodeSize.height
+              };
+              return (
+                scaledPos.x >= nodeRect.x &&
+                scaledPos.x <= nodeRect.x + nodeRect.width &&
+                scaledPos.y >= nodeRect.y &&
+                scaledPos.y <= nodeRect.y + nodeRect.height
+              );
+            });
+          }
+
+          // If not on a selected node, check all nodes
+          if (!nodeUnderCursor) {
+            this.forEachNode((node) => {
+              const nodeRect = {
+                x: node.global.x,
+                y: node.global.y,
+                width: node.nodeSize.width,
+                height: node.nodeSize.height
+              };
+              if (
+                scaledPos.x >= nodeRect.x &&
+                scaledPos.x <= nodeRect.x + nodeRect.width &&
+                scaledPos.y >= nodeRect.y &&
+                scaledPos.y <= nodeRect.y + nodeRect.height
+              ) {
+                nodeUnderCursor = node;
+                return true; // Stop iteration
+              }
+            });
+          }
+
+          if (nodeUnderCursor) {
+            // Select the node if it isn't already selected
+            if (!this.selector.isActive(nodeUnderCursor)) {
+              this.clearSelection();
+              this.commentLayer?.clearSelection();
+              nodeUnderCursor.selected = true;
+              this.selector.select([nodeUnderCursor]);
+              this.repaint();
+            }
+
+            // Show context menu
             this.openRightClickMenu();
           } else if (
             CreateNewNodePanel.shouldShow({
@@ -2508,14 +2560,8 @@ export class NodeGraphEditor extends View {
               isBackgroundDimmed: true,
               onClose: () => this.createNewNodePanel.dispose()
             });
-          } else {
-            PopupLayer.instance.showTooltip({
-              x: evt.pageX,
-              y: evt.pageY,
-              position: 'bottom',
-              content: 'This node type cannot have children.'
-            });
           }
+          // If clicking empty space with no valid actions, do nothing (no broken tooltip)
         }
         this.rightClickPos = undefined;
       }
@@ -2576,6 +2622,27 @@ export class NodeGraphEditor extends View {
     });
 
     items.push('divider');
+
+    // Data Lineage - DISABLED: Not production ready, requires more work
+    // TODO: Re-enable when lineage filtering and event handling are fixed
+    // items.push({
+    //   label: 'Show Data Lineage',
+    //   icon: IconName.Link,
+    //   onClick: () => {
+    //     const selectedNode = this.selector.nodes[0];
+    //     if (selectedNode) {
+    //       EventDispatcher.instance.emit('DataLineage.ShowForNode', {
+    //         nodeId: selectedNode.model.id,
+    //         componentName: this.activeComponent?.fullName
+    //       });
+    //       SidebarModel.instance.switch('data-lineage');
+    //     }
+    //   },
+    //   isDisabled: selectedNodes.length !== 1,
+    //   tooltip: selectedNodes.length !== 1 ? 'Select a single node to trace its data lineage' : undefined,
+    //   tooltipShowAfterMs: 300
+    // });
+    // items.push('divider');
 
     if (
       selectedNodes.length === 1 &&

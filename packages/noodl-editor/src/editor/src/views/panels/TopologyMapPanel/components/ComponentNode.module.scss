@@ -1,0 +1,205 @@
+/**
+ * ComponentNode Styles
+ *
+ * Card-style component nodes with colors inherited from parent folder type.
+ */
+
+.ComponentNode {
+  transition: all 0.2s ease;
+
+  &:hover {
+    .ComponentNode__border {
+      opacity: 1;
+      stroke-width: 3;
+    }
+
+    .ComponentNode__background {
+      filter: brightness(1.1);
+    }
+  }
+}
+
+.ComponentNode__background {
+  fill: var(--theme-color-bg-4);
+  opacity: 0.9;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+  transition: all 0.2s ease;
+}
+
+.ComponentNode__border {
+  fill: none;
+  stroke: var(--theme-color-border-default);
+  stroke-width: 2;
+  opacity: 0.7;
+  transition: all 0.2s ease;
+}
+
+.ComponentNode__header {
+  pointer-events: none;
+}
+
+.ComponentNode__iconBackground {
+  fill: var(--theme-color-bg-5);
+  opacity: 0.8;
+}
+
+.ComponentNode__iconText {
+  fill: var(--theme-color-fg-default);
+  font-weight: 600;
+  pointer-events: none;
+  user-select: none;
+}
+
+.ComponentNode__name {
+  fill: var(--theme-color-fg-default);
+  pointer-events: none;
+  user-select: none;
+}
+
+.ComponentNode__stats {
+  fill: var(--theme-color-fg-default-shy);
+  pointer-events: none;
+  user-select: none;
+}
+
+.ComponentNode__nodeList {
+  fill: var(--theme-color-fg-default);
+  opacity: 0.7;
+  pointer-events: none;
+  user-select: none;
+}
+
+// ============================================================================
+// Folder Type Color Inheritance (matching parent folder colors)
+// ============================================================================
+
+// Page folder components (blue)
+.ComponentNode--page {
+  .ComponentNode__background {
+    fill: #1e3a8a;
+  }
+  .ComponentNode__border {
+    stroke: #3b82f6;
+  }
+  .ComponentNode__iconBackground {
+    fill: #3b82f6;
+    opacity: 0.3;
+  }
+}
+
+// Feature folder components (purple)
+.ComponentNode--feature {
+  .ComponentNode__background {
+    fill: #581c87;
+  }
+  .ComponentNode__border {
+    stroke: #a855f7;
+  }
+  .ComponentNode__iconBackground {
+    fill: #a855f7;
+    opacity: 0.3;
+  }
+}
+
+// Integration folder components (green)
+.ComponentNode--integration {
+  .ComponentNode__background {
+    fill: #064e3b;
+  }
+  .ComponentNode__border {
+    stroke: #10b981;
+  }
+  .ComponentNode__iconBackground {
+    fill: #10b981;
+    opacity: 0.3;
+  }
+}
+
+// UI folder components (cyan)
+.ComponentNode--ui {
+  .ComponentNode__background {
+    fill: #164e63;
+  }
+  .ComponentNode__border {
+    stroke: #06b6d4;
+  }
+  .ComponentNode__iconBackground {
+    fill: #06b6d4;
+    opacity: 0.3;
+  }
+}
+
+// Utility folder components (gray)
+.ComponentNode--utility {
+  .ComponentNode__background {
+    fill: #374151;
+  }
+  .ComponentNode__border {
+    stroke: #6b7280;
+  }
+  .ComponentNode__iconBackground {
+    fill: #6b7280;
+    opacity: 0.3;
+  }
+}
+
+// Orphan folder components (yellow)
+.ComponentNode--orphan {
+  .ComponentNode__background {
+    fill: #422006;
+  }
+  .ComponentNode__border {
+    stroke: #ca8a04;
+  }
+  .ComponentNode__iconBackground {
+    fill: #ca8a04;
+    opacity: 0.3;
+  }
+}
+
+// ============================================================================
+// App Component Special Styling (Gold/Amber border)
+// ============================================================================
+
+.ComponentNode--app {
+  .ComponentNode__border {
+    stroke: #fbbf24; // Amber/gold color
+    stroke-width: 3;
+    opacity: 1;
+  }
+
+  &:hover .ComponentNode__border {
+    stroke: #f59e0b; // Brighter amber on hover
+    filter: drop-shadow(0 0 8px #fbbf24);
+  }
+}
+
+// ============================================================================
+// Selection State
+// ============================================================================
+
+.ComponentNode--selected {
+  .ComponentNode__border {
+    stroke-width: 3;
+    opacity: 1;
+  }
+
+  &.ComponentNode--page .ComponentNode__border {
+    filter: drop-shadow(0 0 8px #3b82f6);
+  }
+  &.ComponentNode--feature .ComponentNode__border {
+    filter: drop-shadow(0 0 8px #a855f7);
+  }
+  &.ComponentNode--integration .ComponentNode__border {
+    filter: drop-shadow(0 0 8px #10b981);
+  }
+  &.ComponentNode--ui .ComponentNode__border {
+    filter: drop-shadow(0 0 8px #06b6d4);
+  }
+  &.ComponentNode--utility .ComponentNode__border {
+    filter: drop-shadow(0 0 8px #6b7280);
+  }
+  &.ComponentNode--orphan .ComponentNode__border {
+    filter: drop-shadow(0 0 8px #ca8a04);
+  }
+}

@@ -66,7 +66,7 @@ export function PropertyEditor(props: PropertyEditorProps) {
     return function () {
       SidebarModel.instance.off(group);
     };
-  }, []);
+  }, [props.model]); // FIX: Update when model changes!
 
   const aiAssistant = props.model?.metadata?.AiAssistant;
   if (aiAssistant) {

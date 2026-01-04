@@ -1,0 +1,12 @@
+/**
+ * FolderEdge Styles
+ *
+ * Styling for folder-to-folder connections.
+ */
+
+.FolderEdge {
+  stroke: #4b5563;
+  fill: none;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}

@@ -1,5 +1,14 @@
 # VIEW-005: Data Lineage View
 
+> ⚠️ **STATUS: NOT PRODUCTION READY**
+>
+> This feature has been **disabled** due to persistent issues. The code exists but is commented out.
+> See [NOT-PRODUCTION-READY.md](./NOT-PRODUCTION-READY.md) for details on issues and what needs fixing.
+>
+> **Estimated rework needed:** 2-3 days
+
+---
+
 **View Type:** 🎨 Canvas Overlay (enhances existing canvas with highlighting)
 
 ## Overview
@@ -16,6 +25,7 @@ A complete trace of where any value originates and where it flows to, crossing c
 ## The Problem
 
 In a complex Noodl project:
+
 - Data comes from parent components, API calls, user input... but where exactly?
 - A value passes through 5 transformations before reaching its destination
 - Component boundaries hide the full picture
@@ -28,6 +38,7 @@ The question: "I'm looking at this `userName` value in a Text node. Where does i
 ## The Solution
 
 A visual lineage trace that:
+
 1. Shows the complete upstream path (all the way to the source)
 2. Shows the complete downstream path (all the way to final usage)
 3. Crosses component boundaries transparently
@@ -185,9 +196,9 @@ interface LineageResult {
     type: string;
     componentName: string;
   };
-  
+
   upstream: LineagePath;
-  downstream: LineagePath[];  // Can branch to multiple destinations
+  downstream: LineagePath[]; // Can branch to multiple destinations
 }
 
 interface LineagePath {
@@ -200,9 +211,9 @@ interface LineageStep {
   component: ComponentModel;
   port: string;
   portType: 'input' | 'output';
-  transformation?: string;  // Description of what happens (.name, Expression, etc.)
-  isSource?: boolean;       // True if this is the ultimate origin
-  isSink?: boolean;         // True if this is a final destination
+  transformation?: string; // Description of what happens (.name, Expression, etc.)
+  isSource?: boolean; // True if this is the ultimate origin
+  isSink?: boolean; // True if this is a final destination
 }
 
 interface ComponentCrossing {
@@ -210,7 +221,7 @@ interface ComponentCrossing {
   to: ComponentModel;
   viaPort: string;
   direction: 'into' | 'outof';
-  stepIndex: number;  // Where in the path this crossing occurs
+  stepIndex: number; // Where in the path this crossing occurs
 }
 ```
 
@@ -221,16 +232,16 @@ function buildLineage(
   project: ProjectModel,
   component: ComponentModel,
   nodeId: string,
-  port?: string  // Optional: specific port to trace
+  port?: string // Optional: specific port to trace
 ): LineageResult {
   const node = component.graph.findNodeWithId(nodeId);
-  
+
   // Trace upstream (find sources)
   const upstream = traceUpstream(project, component, node, port);
-  
+
   // Trace downstream (find destinations)
   const downstream = traceDownstream(project, component, node, port);
-  
+
   return {
     selectedNode: {
       id: node.id,
@@ -252,22 +263,20 @@ function traceUpstream(
 ): LineagePath {
   const steps: LineageStep[] = [];
   const crossings: ComponentCrossing[] = [];
-  
+
   // Prevent infinite loops
   const nodeKey = `${component.fullName}:${node.id}`;
   if (visited.has(nodeKey)) {
     return { steps, crossings };
   }
   visited.add(nodeKey);
-  
+
   // Get input connections
-  const inputs = port 
-    ? getConnectionsToPort(component, node.id, port)
-    : getAllInputConnections(component, node.id);
-  
+  const inputs = port ? getConnectionsToPort(component, node.id, port) : getAllInputConnections(component, node.id);
+
   for (const connection of inputs) {
     const sourceNode = component.graph.findNodeWithId(connection.fromId);
-    
+
     steps.push({
       node: sourceNode,
       component,
@@ -275,7 +284,7 @@ function traceUpstream(
       portType: 'output',
       transformation: describeTransformation(sourceNode, connection.fromProperty)
     });
-    
+
     // Check if this is a Component Input (crosses boundary)
     if (sourceNode.type.name === 'Component Inputs') {
       const parentInfo = findParentConnection(project, component, connection.fromProperty);
@@ -287,7 +296,7 @@ function traceUpstream(
           direction: 'into',
           stepIndex: steps.length
         });
-        
+
         // Continue tracing in parent component
         const parentLineage = traceUpstream(
           project,
@@ -309,20 +318,20 @@ function traceUpstream(
       steps[steps.length - 1].isSource = true;
     }
   }
-  
+
   return { steps, crossings };
 }
 
 function isSourceNode(node: NodeGraphNode): boolean {
   // These node types are considered "sources" - don't trace further
   const sourceTypes = [
-    'REST',           // API response is a source
-    'Variable',       // Unless we want to trace where it was set
+    'REST', // API response is a source
+    'Variable', // Unless we want to trace where it was set
     'Object',
     'Page Inputs',
     'Receive Event',
-    'Function',       // Function output is a source
-    'String',         // Literal values
+    'Function', // Function output is a source
+    'String', // Literal values
     'Number',
     'Boolean'
   ];
@@ -342,6 +351,7 @@ function isSourceNode(node: NodeGraphNode): boolean {
 4. Detect source nodes (REST, Variable, etc.)
 
 **Verification:**
+
 - [ ] Can trace simple linear chains
 - [ ] Handles multiple inputs
 - [ ] Stops at source nodes
@@ -355,6 +365,7 @@ function isSourceNode(node: NodeGraphNode): boolean {
 5. Track component crossings
 
 **Verification:**
+
 - [ ] Crosses into parent components
 - [ ] Crosses into child components
 - [ ] Crossings tracked correctly
@@ -366,6 +377,7 @@ function isSourceNode(node: NodeGraphNode): boolean {
 3. Track all destination paths
 
 **Verification:**
+
 - [ ] Finds all destinations
 - [ ] Handles branching
 - [ ] Crosses component boundaries
@@ -379,6 +391,7 @@ function isSourceNode(node: NodeGraphNode): boolean {
 5. Add path summary
 
 **Verification:**
+
 - [ ] Lineage renders correctly
 - [ ] Component sections clear
 - [ ] Crossings visually distinct
@@ -391,6 +404,7 @@ function isSourceNode(node: NodeGraphNode): boolean {
 4. Handle edge cases (orphan nodes, cycles)
 
 **Verification:**
+
 - [ ] Navigation works
 - [ ] Context menu works
 - [ ] Edge cases handled gracefully
@@ -437,10 +451,10 @@ While Data Lineage is primarily a **static analysis** tool (showing the graph st
 
 ### Static vs Live Mode
 
-| Mode | What it shows | Runtime needed? |
-|------|---------------|-----------------|
-| **Static** | The *path* data takes through the graph | No |
-| **Live** | The *path* + *actual current values* at each step | Yes |
+| Mode       | What it shows                                     | Runtime needed? |
+| ---------- | ------------------------------------------------- | --------------- |
+| **Static** | The _path_ data takes through the graph           | No              |
+| **Live**   | The _path_ + _actual current values_ at each step | Yes             |
 
 ### Live Value Display
 
@@ -471,6 +485,7 @@ This answers "where does this come from?" AND "what's the actual value right now
 ### Integration with Existing Debug Infrastructure
 
 The live values can come from the same system that powers:
+
 - **DebugInspector hover values** - Already shows live values on connection hover
 - **Pinned inspectors** - Already tracks values over time
 
@@ -494,6 +509,7 @@ function getLiveValueForNode(nodeId: string, port: string): unknown {
 ### Syncing with Canvas Highlighting
 
 When the user hovers over a step in the lineage view:
+
 - Highlight that node on the canvas (using existing highlighting)
 - If the node is in a different component, show a "navigate" prompt
 - Optionally flash the connection path on canvas
@@ -509,12 +525,12 @@ When the user hovers over a step in the lineage view:
 
 ## Risks & Mitigations
 
-| Risk | Mitigation |
-|------|------------|
-| Deep component nesting | Limit depth, show "continue" option |
-| Cycles in graph | Track visited nodes, break cycles |
-| Many branches overwhelm UI | Collapse by default, expand on demand |
-| Performance on complex graphs | Cache results, lazy expansion |
+| Risk                          | Mitigation                            |
+| ----------------------------- | ------------------------------------- |
+| Deep component nesting        | Limit depth, show "continue" option   |
+| Cycles in graph               | Track visited nodes, break cycles     |
+| Many branches overwhelm UI    | Collapse by default, expand on demand |
+| Performance on complex graphs | Cache results, lazy expansion         |
 
 ---
 

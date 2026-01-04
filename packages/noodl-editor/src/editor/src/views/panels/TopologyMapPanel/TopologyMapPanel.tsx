@@ -5,138 +5,111 @@
  * Shows the "big picture" of component relationships in the project.
  */
 
-import { NodeGraphContextTmp } from '@noodl-contexts/NodeGraphContext/NodeGraphContext';
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 
 import { Icon, IconName } from '@noodl-core-ui/components/common/Icon';
 
 import { TopologyMapView } from './components/TopologyMapView';
-import { useTopologyGraph } from './hooks/useTopologyGraph';
-import { useTopologyLayout } from './hooks/useTopologyLayout';
+import { useFolderGraph } from './hooks/useFolderGraph';
+import { useFolderLayout } from './hooks/useFolderLayout';
 import css from './TopologyMapPanel.module.scss';
-import { TopologyNode } from './utils/topologyTypes';
+import { FolderNode, TopologyViewState } from './utils/topologyTypes';
 
 export function TopologyMapPanel() {
-  const [hoveredNode, setHoveredNode] = useState<TopologyNode | null>(null);
-  const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number } | null>(null);
+  const [selectedFolder, setSelectedFolder] = useState<FolderNode | null>(null);
   const [isLegendOpen, setIsLegendOpen] = useState(false);
+  const [viewState, setViewState] = useState<TopologyViewState>({
+    mode: 'overview',
+    expandedFolderId: null,
+    selectedComponentId: null
+  });
 
-  // Build the graph data
-  const graph = useTopologyGraph();
+  // Build the folder graph
+  const folderGraph = useFolderGraph();
 
-  // Apply layout algorithm
-  const positionedGraph = useTopologyLayout(graph);
+  // Apply tiered layout
+  const positionedGraph = useFolderLayout(folderGraph);
 
-  // Handle node click - navigate to that component
-  const handleNodeClick = useCallback((node: TopologyNode) => {
-    console.log('[TopologyMapPanel] Navigating to component:', node.fullName);
-
-    if (NodeGraphContextTmp.switchToComponent) {
-      NodeGraphContextTmp.switchToComponent(node.component, {
-        pushHistory: true,
-        breadcrumbs: true
-      });
-    }
+  // Handle folder click - select for details (Phase 4)
+  const handleFolderClick = useCallback((folder: FolderNode) => {
+    console.log('[TopologyMapPanel] Selected folder:', folder.name);
+    setSelectedFolder(folder);
   }, []);
 
-  // Handle node hover for tooltip
-  const handleNodeHover = useCallback((node: TopologyNode | null, event?: React.MouseEvent) => {
-    setHoveredNode(node);
-    if (node && event) {
-      setTooltipPos({ x: event.clientX, y: event.clientY });
-    } else {
-      setTooltipPos(null);
-    }
+  // Handle folder double-click - drill down (Phase 3)
+  const handleFolderDoubleClick = useCallback((folder: FolderNode) => {
+    console.log('[TopologyMapPanel] Drilling into folder:', folder.name);
+    setViewState({
+      mode: 'expanded',
+      expandedFolderId: folder.id,
+      selectedComponentId: null
+    });
   }, []);
 
-  // Auto-fit on first load
-  useEffect(() => {
-    // Trigger fit to view after initial render
-    const timer = setTimeout(() => {
-      // The TopologyMapView has a fitToView method, but we can't call it directly
-      // Instead, it will auto-fit on mount via the controls
-    }, 100);
-    return () => clearTimeout(timer);
+  // Handle back to overview
+  const handleBackToOverview = useCallback(() => {
+    console.log('[TopologyMapPanel] Returning to overview');
+    setViewState({
+      mode: 'overview',
+      expandedFolderId: null,
+      selectedComponentId: null
+    });
+    setSelectedFolder(null);
   }, []);
+
+  // Get expanded folder details
+  const expandedFolder =
+    viewState.mode === 'expanded' ? positionedGraph.folders.find((f) => f.id === viewState.expandedFolderId) : null;
 
   return (
     <div className={css['TopologyMapPanel']}>
-      {/* Header with breadcrumbs */}
+      {/* Header */}
       <div className={css['TopologyMapPanel__header']}>
         <div className={css['TopologyMapPanel__title']}>
+          {viewState.mode === 'expanded' && (
+            <button
+              className={css['TopologyMapPanel__backButton']}
+              onClick={handleBackToOverview}
+              title="Back to overview"
+            >
+              <Icon icon={IconName.ArrowLeft} />
+            </button>
+          )}
           <Icon icon={IconName.Navigate} />
-          <h2 className={css['TopologyMapPanel__titleText']}>Project Topology</h2>
+          <h2 className={css['TopologyMapPanel__titleText']}>
+            {viewState.mode === 'overview' ? 'Project Topology' : expandedFolder?.name || 'Folder Contents'}
+          </h2>
         </div>
 
-        {graph.currentPath.length > 0 && (
-          <div className={css['TopologyMapPanel__breadcrumbs']}>
-            <span className={css['TopologyMapPanel__breadcrumbLabel']}>Current path:</span>
-            {graph.currentPath.map((componentName, i) => (
-              <React.Fragment key={componentName}>
-                {i > 0 && <span className={css['TopologyMapPanel__breadcrumbSeparator']}>→</span>}
-                <span
-                  className={css['TopologyMapPanel__breadcrumb']}
-                  style={{
-                    fontWeight: i === graph.currentPath.length - 1 ? 600 : 400
-                  }}
-                >
-                  {componentName.split('/').pop() || componentName}
+        {/* Stats display */}
+        <div className={css['TopologyMapPanel__stats']}>
+          {viewState.mode === 'overview' ? (
+            <>
+              <span>
+                {positionedGraph.totalFolders} folders • {positionedGraph.totalComponents} components
+              </span>
+              {positionedGraph.orphanComponents.length > 0 && (
+                <span className={css['TopologyMapPanel__orphanCount']}>
+                  {positionedGraph.orphanComponents.length} orphans
                 </span>
-              </React.Fragment>
-            ))}
-          </div>
-        )}
+              )}
+            </>
+          ) : (
+            <span>{expandedFolder?.componentCount || 0} components in this folder</span>
+          )}
+        </div>
       </div>
 
-      {/* Main visualization with legend inside */}
+      {/* Main visualization */}
       <TopologyMapView
         graph={positionedGraph}
-        onNodeClick={handleNodeClick}
-        onNodeHover={handleNodeHover}
+        viewState={viewState}
+        selectedFolderId={selectedFolder?.id || null}
+        onFolderClick={handleFolderClick}
+        onFolderDoubleClick={handleFolderDoubleClick}
         isLegendOpen={isLegendOpen}
         onLegendToggle={() => setIsLegendOpen(!isLegendOpen)}
       />
-
-      {/* Tooltip */}
-      {hoveredNode && tooltipPos && (
-        <div
-          className={css['TopologyMapPanel__tooltip']}
-          style={{
-            left: tooltipPos.x + 10,
-            top: tooltipPos.y + 10
-          }}
-        >
-          <div className={css['TopologyMapPanel__tooltipTitle']}>{hoveredNode.name}</div>
-          <div className={css['TopologyMapPanel__tooltipContent']}>
-            <div>Type: {hoveredNode.type === 'page' ? '📄 Page' : '🧩 Component'}</div>
-            <div>
-              Used {hoveredNode.usageCount} time{hoveredNode.usageCount !== 1 ? 's' : ''}
-            </div>
-            {hoveredNode.depth < 999 && <div>Depth: {hoveredNode.depth}</div>}
-            {hoveredNode.usedBy.length > 0 && (
-              <div className={css['TopologyMapPanel__tooltipSection']}>
-                <strong>Used by:</strong>{' '}
-                {hoveredNode.usedBy
-                  .slice(0, 3)
-                  .map((name) => name.split('/').pop())
-                  .join(', ')}
-                {hoveredNode.usedBy.length > 3 && ` +${hoveredNode.usedBy.length - 3} more`}
-              </div>
-            )}
-            {hoveredNode.uses.length > 0 && (
-              <div className={css['TopologyMapPanel__tooltipSection']}>
-                <strong>Uses:</strong>{' '}
-                {hoveredNode.uses
-                  .slice(0, 3)
-                  .map((name) => name.split('/').pop())
-                  .join(', ')}
-                {hoveredNode.uses.length > 3 && ` +${hoveredNode.uses.length - 3} more`}
-              </div>
-            )}
-          </div>
-          <div className={css['TopologyMapPanel__tooltipHint']}>Click to navigate →</div>
-        </div>
-      )}
     </div>
   );
 }

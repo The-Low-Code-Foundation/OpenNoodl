@@ -14,6 +14,7 @@ import { CloudServicePanel } from './views/panels/CloudServicePanel/CloudService
 import { ComponentPortsComponent } from './views/panels/componentports';
 import { ComponentsPanel } from './views/panels/componentspanel';
 import { ComponentXRayPanel } from './views/panels/ComponentXRayPanel';
+import { DataLineagePanel } from './views/panels/DataLineagePanel';
 import { DesignTokenPanel } from './views/panels/DesignTokenPanel/DesignTokenPanel';
 import { EditorSettingsPanel } from './views/panels/EditorSettingsPanel/EditorSettingsPanel';
 import { FileExplorerPanel } from './views/panels/FileExplorerPanel';
@@ -99,6 +100,17 @@ export function installSidePanel({ isLesson }: SetupEditorOptions) {
     order: 4,
     icon: IconName.SearchGrid,
     panel: ComponentXRayPanel
+  });
+
+  SidebarModel.instance.register({
+    experimental: true,
+    id: 'data-lineage',
+    name: 'Data Lineage',
+    description:
+      'Traces where data values come from (upstream sources) and where they go to (downstream destinations), crossing component boundaries.',
+    order: 4.5,
+    icon: IconName.Link,
+    panel: DataLineagePanel
   });
 
   SidebarModel.instance.register({

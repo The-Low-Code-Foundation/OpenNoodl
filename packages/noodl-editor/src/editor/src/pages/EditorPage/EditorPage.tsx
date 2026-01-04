@@ -83,6 +83,39 @@ export function EditorPage({ route }: EditorPageProps) {
   const [lesson, setLesson] = useState(null);
   const [frameDividerSize, setFrameDividerSize] = useState(undefined);
 
+  // Handle sidebar expansion for topology panel
+  useEffect(() => {
+    const eventGroup = {};
+
+    const updateSidebarSize = () => {
+      const activeId = SidebarModel.instance.ActiveId;
+      const isTopology = activeId === 'topology';
+
+      if (isTopology) {
+        // Calculate 55vw in pixels to match SideNavigation expansion
+        const expandedSize = Math.floor(window.innerWidth * 0.55);
+        setFrameDividerSize(expandedSize);
+      } else {
+        // Use default size
+        setFrameDividerSize(380);
+      }
+    };
+
+    // Listen to sidebar changes
+    SidebarModel.instance.on(SidebarModelEvent.activeChanged, updateSidebarSize, eventGroup);
+
+    // Also listen to window resize to recalculate 55vw
+    window.addEventListener('resize', updateSidebarSize);
+
+    // Run once on mount
+    updateSidebarSize();
+
+    return () => {
+      SidebarModel.instance.off(eventGroup);
+      window.removeEventListener('resize', updateSidebarSize);
+    };
+  }, []);
+
   useEffect(() => {
     // Display latest whats-new-post if the user hasn't seen one after it was last published
     whatsnewRender();

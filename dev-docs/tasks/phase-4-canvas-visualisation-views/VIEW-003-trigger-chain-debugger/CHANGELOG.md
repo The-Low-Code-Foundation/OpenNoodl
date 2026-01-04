@@ -1,10 +1,13 @@
 # VIEW-003: Trigger Chain Debugger - CHANGELOG
 
-## Status: ✅ Complete (Option B - Phases 1-3)
+## Status: ⚠️ UNSTABLE - Known Issues (See KNOWN-ISSUES.md)
 
 **Started:** January 3, 2026  
-**Completed:** January 3, 2026  
+**Completed:** January 3, 2026 (initial implementation)  
+**Known Issues Identified:** January 4, 2026  
 **Scope:** Option B - Phases 1-3 (Core recording + timeline UI)
+
+**⚠️ CRITICAL:** This feature has known bugs with event deduplication and filtering. See `KNOWN-ISSUES.md` for details and investigation plan. Feature is marked experimental and may capture inaccurate event data.
 
 ---
 

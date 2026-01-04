@@ -24,6 +24,29 @@
   gap: 12px;
 }
 
+.TopologyMapPanel__backButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: 4px;
+  color: var(--theme-color-fg-default);
+  cursor: pointer;
+  padding: 6px;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: var(--theme-color-bg-4);
+    border-color: var(--theme-color-primary);
+    color: var(--theme-color-primary);
+  }
+
+  &:active {
+    background: var(--theme-color-bg-5);
+  }
+}
+
 .TopologyMapPanel__icon {
   font-size: 24px;
 }
@@ -55,6 +78,25 @@
 .TopologyMapPanel__breadcrumbSeparator {
   color: var(--theme-color-fg-default-shy);
   font-weight: 300;
+}
+
+.TopologyMapPanel__stats {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 13px;
+  color: var(--theme-color-fg-default-shy);
+
+  span {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+}
+
+.TopologyMapPanel__orphanCount {
+  color: var(--theme-color-warning) !important;
+  font-weight: 500;
 }
 
 // Legend

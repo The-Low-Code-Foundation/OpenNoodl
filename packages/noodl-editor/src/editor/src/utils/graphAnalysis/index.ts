@@ -51,3 +51,14 @@ export {
   analyzeDuplicateConflicts,
   findSimilarlyNamedNodes
 } from './duplicateDetection';
+
+// Export lineage analysis utilities
+export {
+  buildLineage,
+  traceUpstream,
+  traceDownstream,
+  type LineageResult,
+  type LineagePath,
+  type LineageStep,
+  type ComponentBoundary
+} from './lineage';

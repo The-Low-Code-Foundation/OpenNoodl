@@ -1,0 +1,191 @@
+/**
+ * FolderNode Styles
+ *
+ * Color-coded styling for folder nodes based on type.
+ */
+
+.FolderNode {
+  transition: all 0.2s ease;
+
+  &:hover {
+    .FolderNode__border {
+      opacity: 1;
+      stroke-width: 3;
+    }
+
+    .FolderNode__background {
+      filter: brightness(1.1) drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+    }
+  }
+}
+
+.FolderNode__background {
+  fill: var(--theme-color-bg-4);
+  opacity: 0.9;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+  transition: all 0.2s ease;
+}
+
+.FolderNode__border {
+  fill: none;
+  stroke: var(--theme-color-border-default);
+  stroke-width: 2;
+  opacity: 0.7;
+  transition: all 0.2s ease;
+}
+
+.FolderNode__path {
+  fill: var(--theme-color-fg-default);
+  font-size: 11px;
+  font-weight: 600;
+  pointer-events: none;
+  user-select: none;
+}
+
+.FolderNode__nameWrapper {
+  color: var(--theme-color-fg-default);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.3;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  pointer-events: none;
+  user-select: none;
+}
+
+.FolderNode__componentList {
+  fill: var(--theme-color-fg-default);
+  font-size: 11px;
+  pointer-events: none;
+  user-select: none;
+  opacity: 0.8;
+}
+
+.FolderNode__componentListWrapper {
+  color: var(--theme-color-fg-default);
+  font-size: 11px;
+  line-height: 1.4;
+  opacity: 0.8;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+  user-select: none;
+}
+
+.FolderNode__connections {
+  fill: var(--theme-color-fg-default);
+  font-size: 11px;
+  pointer-events: none;
+  user-select: none;
+  opacity: 0.9;
+}
+
+.FolderNode__count {
+  fill: var(--theme-color-fg-default-shy);
+  font-size: 11px;
+  pointer-events: none;
+  user-select: none;
+}
+
+// ============================================================================
+// Folder Type Colors (from spec)
+// ============================================================================
+
+// Page folders (blue)
+.FolderNode--page {
+  .FolderNode__background {
+    fill: #1e3a8a;
+  }
+  .FolderNode__border {
+    stroke: #3b82f6;
+  }
+}
+
+// Feature folders (purple)
+.FolderNode--feature {
+  .FolderNode__background {
+    fill: #581c87;
+  }
+  .FolderNode__border {
+    stroke: #a855f7;
+  }
+}
+
+// Integration folders (green)
+.FolderNode--integration {
+  .FolderNode__background {
+    fill: #064e3b;
+  }
+  .FolderNode__border {
+    stroke: #10b981;
+  }
+}
+
+// UI folders (cyan)
+.FolderNode--ui {
+  .FolderNode__background {
+    fill: #164e63;
+  }
+  .FolderNode__border {
+    stroke: #06b6d4;
+  }
+}
+
+// Utility folders (gray)
+.FolderNode--utility {
+  .FolderNode__background {
+    fill: #374151;
+  }
+  .FolderNode__border {
+    stroke: #6b7280;
+  }
+}
+
+// Orphan folders (yellow with dashed border)
+.FolderNode--orphan {
+  .FolderNode__background {
+    fill: #422006;
+  }
+  .FolderNode__border {
+    stroke: #ca8a04;
+    stroke-dasharray: 4;
+  }
+}
+
+// ============================================================================
+// Selection State
+// ============================================================================
+
+.FolderNode--selected {
+  .FolderNode__border {
+    stroke-width: 3;
+    opacity: 1;
+    filter: drop-shadow(0 0 10px currentColor);
+  }
+
+  &.FolderNode--page .FolderNode__border {
+    filter: drop-shadow(0 0 10px #3b82f6);
+  }
+  &.FolderNode--feature .FolderNode__border {
+    filter: drop-shadow(0 0 10px #a855f7);
+  }
+  &.FolderNode--integration .FolderNode__border {
+    filter: drop-shadow(0 0 10px #10b981);
+  }
+  &.FolderNode--ui .FolderNode__border {
+    filter: drop-shadow(0 0 10px #06b6d4);
+  }
+  &.FolderNode--utility .FolderNode__border {
+    filter: drop-shadow(0 0 10px #6b7280);
+  }
+  &.FolderNode--orphan .FolderNode__border {
+    filter: drop-shadow(0 0 10px #ca8a04);
+  }
+}
