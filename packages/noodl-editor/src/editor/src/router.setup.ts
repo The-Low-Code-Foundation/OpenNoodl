@@ -22,7 +22,7 @@ import { NodeReferencesPanel } from './views/panels/NodeReferencesPanel/NodeRefe
 import { ProjectSettingsPanel } from './views/panels/ProjectSettingsPanel/ProjectSettingsPanel';
 import { PropertyEditor } from './views/panels/propertyeditor';
 import { SearchPanel } from './views/panels/search-panel/search-panel';
-import { TopologyMapPanel } from './views/panels/TopologyMapPanel';
+// import { TopologyMapPanel } from './views/panels/TopologyMapPanel'; // Disabled - shelved feature
 import { TriggerChainDebuggerPanel } from './views/panels/TriggerChainDebuggerPanel';
 import { UndoQueuePanel } from './views/panels/UndoQueuePanel/UndoQueuePanel';
 import { VersionControlPanel_ID } from './views/panels/VersionControlPanel';
@@ -79,14 +79,16 @@ export function installSidePanel({ isLesson }: SetupEditorOptions) {
     panel: SearchPanel
   });
 
-  SidebarModel.instance.register({
-    experimental: true,
-    id: 'topology',
-    name: 'Topology',
-    order: 3,
-    icon: IconName.Navigate,
-    panel: TopologyMapPanel
-  });
+  // Topology Map Panel - Disabled (shelved for future development)
+  // See: dev-docs/tasks/phase-4-canvas-visualisation-views/VIEW-001-topology-map/SHELVED.md
+  // SidebarModel.instance.register({
+  //   experimental: true,
+  //   id: 'topology',
+  //   name: 'Topology',
+  //   order: 3,
+  //   icon: IconName.StructureCircle,
+  //   panel: TopologyMapPanel
+  // });
 
   SidebarModel.instance.register({
     experimental: true,
