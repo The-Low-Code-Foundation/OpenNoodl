@@ -64,6 +64,25 @@ export function SidePanel() {
     );
 
     // ---
+    // Listen for node selection changes to force PropertyEditor recreation
+    // This ensures the panel updates when switching between different nodes
+    SidebarModel.instance.on(
+      SidebarModelEvent.nodeSelected,
+      () => {
+        const panelId = 'PropertyEditor';
+        setPanels((prev) => {
+          const component = SidebarModel.instance.getPanelComponent(panelId);
+          if (component) {
+            // Force recreation with new node props
+            prev[panelId] = React.createElement(component);
+          }
+          return prev;
+        });
+      },
+      group
+    );
+
+    // ---
     // Support Hot reload on all panels
     SidebarModel.instance.on(SidebarModelEvent.HotReload, () => {
       nextTick(() => {
