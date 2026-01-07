@@ -7,14 +7,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 
-// Import types and service from noodl-editor
-// Note: This assumes the service is available in the editor context
-// We'll need to expose it through the window or context
-declare global {
-  interface Window {
-    ProjectOrganizationService?: any;
-  }
-}
+import { useLauncherContext } from '../LauncherContext';
 
 export interface Folder {
   id: string;
@@ -67,21 +60,25 @@ export interface UseProjectOrganizationReturn {
 /**
  * Hook to manage project organization through folders and tags.
  *
- * Note: Currently uses localStorage directly as a fallback.
- * In production, this should interface with ProjectOrganizationService
- * from the Electron main process.
+ * Uses the real ProjectOrganizationService when available (in production),
+ * falls back to localStorage service for Storybook compatibility.
  */
 export function useProjectOrganization(): UseProjectOrganizationReturn {
+  const { projectOrganizationService } = useLauncherContext();
   const [folders, setFolders] = useState<Folder[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
   const [, setUpdateTrigger] = useState(0);
 
-  // Memoize service to prevent infinite loop - service must be stable across renders
+  // Use real service if available, otherwise fall back to localStorage
   const service = useMemo(() => {
-    // TODO: In production, get this from window context or inject it
-    // For now, we'll implement a minimal localStorage version
+    if (projectOrganizationService) {
+      console.log('✅ Using real ProjectOrganizationService');
+      return projectOrganizationService;
+    }
+
+    console.warn('⚠️ ProjectOrganizationService not available, using localStorage fallback');
     return createLocalStorageService();
-  }, []); // Empty deps - create service once
+  }, [projectOrganizationService]);
 
   // Subscribe to service events and load initial data
   useEffect(() => {

@@ -9,6 +9,7 @@ import { ipcRenderer, shell } from 'electron';
 import React, { useCallback, useEffect, useState } from 'react';
 import { filesystem } from '@noodl/platform';
 
+import { CreateProjectModal } from '@noodl-core-ui/preview/launcher/Launcher/components/CreateProjectModal';
 import {
   CloudSyncType,
   LauncherProjectData
@@ -19,6 +20,7 @@ import { GitHubUser } from '@noodl-core-ui/preview/launcher/Launcher/LauncherCon
 import { useEventListener } from '../../hooks/useEventListener';
 import { IRouteProps } from '../../pages/AppRoute';
 import { GitHubOAuthService } from '../../services/GitHubOAuthService';
+import { ProjectOrganizationService } from '../../services/ProjectOrganizationService';
 import { LocalProjectsModel, ProjectItem } from '../../utils/LocalProjectsModel';
 import { ToastLayer } from '../../views/ToastLayer/ToastLayer';
 
@@ -51,6 +53,9 @@ export function ProjectsPage(props: ProjectsPageProps) {
   const [githubUser, setGithubUser] = useState<GitHubUser | null>(null);
   const [githubIsAuthenticated, setGithubIsAuthenticated] = useState<boolean>(false);
   const [githubIsConnecting, setGithubIsConnecting] = useState<boolean>(false);
+
+  // Create project modal state
+  const [isCreateModalVisible, setIsCreateModalVisible] = useState(false);
 
   // Initialize and fetch projects on mount
   useEffect(() => {
@@ -147,40 +152,55 @@ export function ProjectsPage(props: ProjectsPageProps) {
     ToastLayer.showSuccess('Disconnected from GitHub');
   });
 
-  const handleCreateProject = useCallback(async () => {
+  const handleCreateProject = useCallback(() => {
+    setIsCreateModalVisible(true);
+  }, []);
+
+  const handleChooseLocation = useCallback(async (): Promise<string | null> => {
     try {
       const direntry = await filesystem.openDialog({
         allowCreateDirectory: true
       });
-      if (!direntry) return;
-
-      // For now, use a simple prompt for project name
-      // TODO: Replace with a proper React dialog in future
-      const name = prompt('Project name:');
-      if (!name) return;
-
-      const path = filesystem.makeUniquePath(filesystem.join(direntry, name));
-
-      const activityId = 'creating-project';
-      ToastLayer.showActivity('Creating new project', activityId);
-
-      LocalProjectsModel.instance.newProject(
-        (project) => {
-          ToastLayer.hideActivity(activityId);
-          if (!project) {
-            ToastLayer.showError('Could not create project');
-            return;
-          }
-          // Navigate to editor with the newly created project
-          props.route.router.route({ to: 'editor', project });
-        },
-        { name, path, projectTemplate: '' }
-      );
+      return direntry || null;
     } catch (error) {
-      console.error('Failed to create project:', error);
-      ToastLayer.showError('Failed to create project');
+      console.error('Failed to choose location:', error);
+      return null;
     }
-  }, [props.route]);
+  }, []);
+
+  const handleCreateProjectConfirm = useCallback(
+    async (name: string, location: string) => {
+      setIsCreateModalVisible(false);
+
+      try {
+        const path = filesystem.makeUniquePath(filesystem.join(location, name));
+
+        const activityId = 'creating-project';
+        ToastLayer.showActivity('Creating new project', activityId);
+
+        LocalProjectsModel.instance.newProject(
+          (project) => {
+            ToastLayer.hideActivity(activityId);
+            if (!project) {
+              ToastLayer.showError('Could not create project');
+              return;
+            }
+            // Navigate to editor with the newly created project
+            props.route.router.route({ to: 'editor', project });
+          },
+          { name, path, projectTemplate: '' }
+        );
+      } catch (error) {
+        console.error('Failed to create project:', error);
+        ToastLayer.showError('Failed to create project');
+      }
+    },
+    [props.route]
+  );
+
+  const handleCreateModalClose = useCallback(() => {
+    setIsCreateModalVisible(false);
+  }, []);
 
   const handleOpenProject = useCallback(async () => {
     console.log('🔵 [handleOpenProject] Starting...');
@@ -328,18 +348,28 @@ export function ProjectsPage(props: ProjectsPageProps) {
   }, []);
 
   return (
-    <Launcher
-      projects={realProjects}
-      onCreateProject={handleCreateProject}
-      onOpenProject={handleOpenProject}
-      onLaunchProject={handleLaunchProject}
-      onOpenProjectFolder={handleOpenProjectFolder}
-      onDeleteProject={handleDeleteProject}
-      githubUser={githubUser}
-      githubIsAuthenticated={githubIsAuthenticated}
-      githubIsConnecting={githubIsConnecting}
-      onGitHubConnect={handleGitHubConnect}
-      onGitHubDisconnect={handleGitHubDisconnect}
-    />
+    <>
+      <Launcher
+        projects={realProjects}
+        onCreateProject={handleCreateProject}
+        onOpenProject={handleOpenProject}
+        onLaunchProject={handleLaunchProject}
+        onOpenProjectFolder={handleOpenProjectFolder}
+        onDeleteProject={handleDeleteProject}
+        projectOrganizationService={ProjectOrganizationService.instance}
+        githubUser={githubUser}
+        githubIsAuthenticated={githubIsAuthenticated}
+        githubIsConnecting={githubIsConnecting}
+        onGitHubConnect={handleGitHubConnect}
+        onGitHubDisconnect={handleGitHubDisconnect}
+      />
+
+      <CreateProjectModal
+        isVisible={isCreateModalVisible}
+        onClose={handleCreateModalClose}
+        onConfirm={handleCreateProjectConfirm}
+        onChooseLocation={handleChooseLocation}
+      />
+    </>
   );
 }

@@ -17,7 +17,6 @@ import {
   CloudSyncType,
   LauncherProjectData
 } from '@noodl-core-ui/preview/launcher/Launcher/components/LauncherProjectCard';
-import { ViewMode } from '@noodl-core-ui/preview/launcher/Launcher/components/ViewModeToggle';
 import { usePersistentTab } from '@noodl-core-ui/preview/launcher/Launcher/hooks/usePersistentTab';
 import { GitHubUser, LauncherPageId, LauncherProvider } from '@noodl-core-ui/preview/launcher/Launcher/LauncherContext';
 import { LearningCenter } from '@noodl-core-ui/preview/launcher/Launcher/views/LearningCenter';
@@ -42,6 +41,9 @@ export interface LauncherProps {
   onLaunchProject?: (projectId: string) => void;
   onOpenProjectFolder?: (projectId: string) => void;
   onDeleteProject?: (projectId: string) => void;
+
+  // Project organization service (optional - for Storybook compatibility)
+  projectOrganizationService?: any;
 
   // GitHub OAuth integration (optional - for Storybook compatibility)
   githubUser?: GitHubUser | null;
@@ -176,6 +178,7 @@ export function Launcher({
   onLaunchProject,
   onOpenProjectFolder,
   onDeleteProject,
+  projectOrganizationService,
   githubUser,
   githubIsAuthenticated,
   githubIsConnecting,
@@ -187,16 +190,6 @@ export function Launcher({
   const defaultTab: LauncherPageId = initialTab || deepLinkTab || 'projects';
 
   const [activePageId, setActivePageId] = usePersistentTab(defaultTab);
-
-  // View mode state with localStorage persistence
-  const [viewMode, setViewMode] = useState<ViewMode>(() => {
-    try {
-      const stored = localStorage.getItem('launcher:viewMode');
-      return (stored as ViewMode) || ViewMode.List;
-    } catch {
-      return ViewMode.List;
-    }
-  });
 
   // Mock data toggle state with localStorage persistence
   const [useMockData, setUseMockData] = useState<boolean>(() => {
@@ -220,15 +213,6 @@ export function Launcher({
       return null; // Default to "All Projects"
     }
   });
-
-  // Persist view mode changes
-  useEffect(() => {
-    try {
-      localStorage.setItem('launcher:viewMode', viewMode);
-    } catch (error) {
-      console.warn('Failed to persist view mode:', error);
-    }
-  }, [viewMode]);
 
   // Persist mock data toggle
   useEffect(() => {
@@ -289,14 +273,13 @@ export function Launcher({
       value={{
         activePageId,
         setActivePageId,
-        viewMode,
-        setViewMode,
         useMockData,
         setUseMockData,
         projects: activeProjects,
         hasRealProjects,
         selectedFolderId,
         setSelectedFolderId,
+        projectOrganizationService,
         onCreateProject,
         onOpenProject,
         onLaunchProject,

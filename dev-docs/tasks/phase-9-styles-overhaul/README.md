@@ -1,8 +1,8 @@
-# Phase 8: Styles Overhaul
+# Phase 9: Styles Overhaul
 
 ## Overview
 
-Phase 8 transforms Noodl's styling experience from "start with nothing, figure it out yourself" to "sensible defaults that scale with your needs." This phase builds on Noodl's existing style tokens and variant systems, enhancing them into a cohesive design system that works for beginners and power users alike.
+Phase 9 transforms Noodl's styling experience from "start with nothing, figure it out yourself" to "sensible defaults that scale with your needs." This phase builds on Noodl's existing style tokens and variant systems, enhancing them into a cohesive design system that works for beginners and power users alike.
 
 **Philosophy**: Make the happy path so good that manual styling feels unnecessary, while preserving complete freedom for those who need it.
 
@@ -153,7 +153,7 @@ All three levels coexist. Nothing is blocked. The UX guides users toward systema
 1. **Migration**: How do we handle existing projects? Opt-in to new system, or automatic detection/upgrade?
 2. **Custom Presets**: Should users be able to save/share their own presets?
 3. **Dark Mode**: Built into presets (each preset has light/dark), or separate toggle?
-4. **Component Library**: Does Phase 8 create the foundation for a future Noodl prefab library?
+4. **Component Library**: Does Phase 9 create the foundation for a future Noodl prefab library?
 
 ---
 

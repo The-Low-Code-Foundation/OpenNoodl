@@ -15,7 +15,7 @@
   ],
   "scripts": {
     "clean:cache": "rimraf node_modules/.cache packages/*/node_modules/.cache .eslintcache packages/*/.eslintcache && echo '✓ Webpack/Babel caches cleared'",
-    "clean:electron": "rimraf ~/Library/Application\\ Support/Electron ~/Library/Application\\ Support/Noodl ~/Library/Application\\ Support/OpenNoodl && echo '✓ Electron caches cleared (macOS)'",
+    "clean:electron": "node scripts/clean-electron.js",
     "clean:all": "npm run clean:cache && npm run clean:electron",
     "health:check": "node scripts/health-check.js",
     "graph": "npx nx graph",

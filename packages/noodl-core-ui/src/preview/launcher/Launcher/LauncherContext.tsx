@@ -9,10 +9,6 @@
 import React, { createContext, useContext, ReactNode } from 'react';
 
 import { LauncherProjectData } from './components/LauncherProjectCard';
-import { ViewMode } from './components/ViewModeToggle';
-
-// Re-export ViewMode for convenience
-export { ViewMode };
 
 export type LauncherPageId = 'projects' | 'learn' | 'templates';
 
@@ -29,8 +25,6 @@ export interface GitHubUser {
 export interface LauncherContextValue {
   activePageId: LauncherPageId;
   setActivePageId: (pageId: LauncherPageId) => void;
-  viewMode: ViewMode;
-  setViewMode: (mode: ViewMode) => void;
   useMockData: boolean;
   setUseMockData: (value: boolean) => void;
   projects: LauncherProjectData[];
@@ -39,6 +33,9 @@ export interface LauncherContextValue {
   // Folder organization
   selectedFolderId: string | null;
   setSelectedFolderId: (folderId: string | null) => void;
+
+  // Project organization service (optional for Storybook compatibility)
+  projectOrganizationService?: any; // Use 'any' to avoid circular deps
 
   // Project management callbacks
   onCreateProject?: () => void;

@@ -5,6 +5,8 @@
  * Data is stored client-side in electron-store and keyed by project path.
  */
 
+import Store from 'electron-store';
+
 import { EventDispatcher } from '../../../shared/utils/EventDispatcher';
 
 // ============================================================================
@@ -59,11 +61,23 @@ export const TAG_COLORS = [
 
 export class ProjectOrganizationService extends EventDispatcher {
   private static _instance: ProjectOrganizationService;
+  private store: Store<ProjectOrganizationData>;
   private data: ProjectOrganizationData;
-  private storageKey = 'projectOrganization';
 
   private constructor() {
     super();
+
+    // Initialize electron-store
+    this.store = new Store<ProjectOrganizationData>({
+      name: 'project_organization',
+      defaults: {
+        version: 1,
+        folders: [],
+        tags: [],
+        projectMeta: {}
+      }
+    });
+
     this.data = this.loadData();
   }
 
@@ -80,26 +94,21 @@ export class ProjectOrganizationService extends EventDispatcher {
 
   private loadData(): ProjectOrganizationData {
     try {
-      const stored = localStorage.getItem(this.storageKey);
-      if (stored) {
-        return JSON.parse(stored);
-      }
+      return this.store.store; // Get all data from store
     } catch (error) {
       console.error('[ProjectOrganizationService] Failed to load data:', error);
+      return {
+        version: 1,
+        folders: [],
+        tags: [],
+        projectMeta: {}
+      };
     }
-
-    // Return default empty structure
-    return {
-      version: 1,
-      folders: [],
-      tags: [],
-      projectMeta: {}
-    };
   }
 
   private saveData(): void {
     try {
-      localStorage.setItem(this.storageKey, JSON.stringify(this.data));
+      this.store.store = this.data; // Save all data to store
       this.notifyListeners('dataChanged', this.data);
     } catch (error) {
       console.error('[ProjectOrganizationService] Failed to save data:', error);

@@ -2,6 +2,7 @@ import path from 'node:path';
 import { GitStore } from '@noodl-store/GitStore';
 import Store from 'electron-store';
 import { isEqual } from 'underscore';
+import { getTopLevelWorkingDirectory } from '@noodl/git/src/core/open';
 import { setRequestGitAccount } from '@noodl/git/src/core/trampoline/trampoline-askpass-handler';
 import { filesystem, platform } from '@noodl/platform';
 
@@ -9,13 +10,12 @@ import { ProjectModel } from '@noodl-models/projectmodel';
 import { templateRegistry } from '@noodl-utils/forge';
 
 import Model from '../../../shared/model';
-import { projectFromDirectory, unzipIntoDirectory } from '../models/projectmodel.editor';
-import { RuntimeVersionInfo } from '../models/migration/types';
 import { detectRuntimeVersion } from '../models/migration/ProjectScanner';
+import { RuntimeVersionInfo } from '../models/migration/types';
+import { projectFromDirectory, unzipIntoDirectory } from '../models/projectmodel.editor';
 import FileSystem from './filesystem';
 import { tracker } from './tracker';
 import { guid } from './utils';
-import { getTopLevelWorkingDirectory } from '@noodl/git/src/core/open';
 
 export interface ProjectItem {
   id: string;
@@ -243,10 +243,6 @@ export class LocalProjectsModel extends Model {
       projectFromDirectory(dirEntry, (project) => {
         if (!project) {
           fn();
-          // callback({
-          //   result: 'failure',
-          //   message: 'Failed to load project'
-          // });
           return;
         }
 
@@ -258,21 +254,42 @@ export class LocalProjectsModel extends Model {
         project.toDirectory(project._retainedProjectDirectory, (res) => {
           if (res.result === 'success') {
             fn(project);
-            // callback({
-            //   result: 'success',
-            //   project: project
-            // });
           } else {
             fn();
-            // callback({
-            //   result: 'failure',
-            //   message: 'Failed to clone project'
-            // });
           }
         });
       });
     } else {
-      this._unzipAndLaunchProject('./external/projecttemplates/helloworld.zip', dirEntry, fn, options);
+      // Default template path
+      const defaultTemplatePath = './external/projecttemplates/helloworld.zip';
+
+      // Check if template exists, otherwise create an empty project
+      if (filesystem.exists(defaultTemplatePath)) {
+        this._unzipAndLaunchProject(defaultTemplatePath, dirEntry, fn, options);
+      } else {
+        console.warn('Default project template not found, creating empty project');
+
+        // Create minimal project.json for empty project
+        const minimalProject = {
+          name: name,
+          components: [],
+          settings: {}
+        };
+
+        await filesystem.writeFile(filesystem.join(dirEntry, 'project.json'), JSON.stringify(minimalProject, null, 2));
+
+        // Load the newly created empty project
+        projectFromDirectory(dirEntry, (project) => {
+          if (!project) {
+            fn();
+            return;
+          }
+
+          project.name = name;
+          this._addProject(project);
+          fn(project);
+        });
+      }
     }
   }
 
@@ -300,8 +317,8 @@ export class LocalProjectsModel extends Model {
   /**
    * Check if this project is in a git repository.
    *
-   * @param project 
-   * @returns 
+   * @param project
+   * @returns
    */
   async isGitProject(project: ProjectModel): Promise<boolean> {
     const gitPath = await getTopLevelWorkingDirectory(project._retainedProjectDirectory);
@@ -452,7 +469,7 @@ export class LocalProjectsModel extends Model {
    */
   async detectAllProjectRuntimes(): Promise<void> {
     const projects = this.getProjects();
-    
+
     // Detect in parallel but don't wait for all to complete
     // Instead, trigger detection and let events update the UI
     for (const project of projects) {
