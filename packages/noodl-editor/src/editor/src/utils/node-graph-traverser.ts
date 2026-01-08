@@ -59,14 +59,24 @@ export class NodeGraphTraverser {
     this.traverseComponent = typeof options.traverseComponent === 'boolean' ? options.traverseComponent : true;
     this.tagSelector = typeof options.tagSelector === 'function' ? options.tagSelector : null;
 
-    this.root = new TraverseNode(this, null, targetNode || project.getRootNode(), null);
+    const rootNode = targetNode || project.getRootNode();
+
+    // Handle empty projects with no root node
+    if (!rootNode) {
+      this.root = null;
+      return;
+    }
+
+    this.root = new TraverseNode(this, null, rootNode, null);
   }
 
   public forEach(callback: (node: TraverseNode) => void) {
+    if (!this.root) return;
     this.root.forEach(callback);
   }
 
   public map<T = any>(callback: (node: TraverseNode) => T) {
+    if (!this.root) return [];
     const items: T[] = [];
     this.forEach((node) => {
       const result = callback(node);
@@ -76,6 +86,7 @@ export class NodeGraphTraverser {
   }
 
   public filter(callback: (node: TraverseNode) => boolean) {
+    if (!this.root) return [];
     const items: TraverseNode[] = [];
     this.forEach((node) => {
       if (callback(node)) items.push(node);

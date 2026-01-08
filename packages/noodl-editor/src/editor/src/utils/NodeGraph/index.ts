@@ -3,6 +3,9 @@ import { NodeGraphNode } from '@noodl-models/nodegraphmodel';
 import { RuntimeType } from '@noodl-models/nodelibrary/NodeLibraryData';
 
 export function getComponentModelRuntimeType(node: ComponentModel) {
+  // Guard against undefined node (happens on empty projects)
+  if (!node) return RuntimeType.Browser;
+
   const name = node.name;
 
   if (name.startsWith('/#__cloud__/')) {

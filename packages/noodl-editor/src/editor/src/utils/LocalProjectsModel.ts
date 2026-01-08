@@ -260,36 +260,67 @@ export class LocalProjectsModel extends Model {
         });
       });
     } else {
-      // Default template path
-      const defaultTemplatePath = './external/projecttemplates/helloworld.zip';
-
-      // Check if template exists, otherwise create an empty project
-      if (filesystem.exists(defaultTemplatePath)) {
-        this._unzipAndLaunchProject(defaultTemplatePath, dirEntry, fn, options);
-      } else {
-        console.warn('Default project template not found, creating empty project');
-
-        // Create minimal project.json for empty project
-        const minimalProject = {
-          name: name,
-          components: [],
-          settings: {}
-        };
-
-        await filesystem.writeFile(filesystem.join(dirEntry, 'project.json'), JSON.stringify(minimalProject, null, 2));
-
-        // Load the newly created empty project
-        projectFromDirectory(dirEntry, (project) => {
-          if (!project) {
-            fn();
-            return;
+      // Create a minimal Hello World project programmatically
+      // This is a temporary solution until TASK-009-template-system-refactoring is implemented
+      const minimalProject = {
+        name: name,
+        components: [
+          {
+            name: 'App',
+            ports: [],
+            visual: true,
+            visualStateTransitions: [],
+            nodes: [
+              {
+                id: guid(),
+                type: 'Group',
+                x: 0,
+                y: 0,
+                parameters: {},
+                ports: [],
+                children: [
+                  {
+                    id: guid(),
+                    type: 'Text',
+                    x: 50,
+                    y: 50,
+                    parameters: {
+                      text: 'Hello World!'
+                    },
+                    ports: [],
+                    children: []
+                  }
+                ]
+              }
+            ]
           }
+        ],
+        settings: {},
+        metadata: {
+          title: name,
+          description: 'A new Noodl project'
+        }
+      };
 
-          project.name = name;
-          this._addProject(project);
-          fn(project);
+      await filesystem.writeFile(filesystem.join(dirEntry, 'project.json'), JSON.stringify(minimalProject, null, 2));
+
+      // Load the newly created project
+      projectFromDirectory(dirEntry, (project) => {
+        if (!project) {
+          fn();
+          return;
+        }
+
+        project.name = name;
+        this._addProject(project);
+        project.toDirectory(project._retainedProjectDirectory, (res) => {
+          if (res.result === 'success') {
+            fn(project);
+          } else {
+            fn();
+          }
         });
-      }
+      });
     }
   }
 

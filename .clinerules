@@ -1520,3 +1520,37 @@ Starting with Subtask 1 now..."
 6. **Learn from errors** - If you hit limits, that task was too large
 
 **Remember**: It's better to complete 3 small subtasks successfully than fail on 1 large task repeatedly.
+
+---
+
+## 16. Code Comments Language
+
+**All code comments must be in English**, regardless of the user's language. This ensures:
+
+- Consistent codebase for international collaboration
+- Better compatibility with AI tools
+- Easier code review and maintenance
+
+```typescript
+// ✅ GOOD: English comments
+function calculateTotal(items: Item[]): number {
+  // Sum up all item prices
+  return items.reduce((sum, item) => sum + item.price, 0);
+}
+
+// ❌ BAD: Non-English comments
+function calculateTotal(items: Item[]): number {
+  // Additionner tous les prix des articles
+  return items.reduce((sum, item) => sum + item.price, 0);
+}
+```
+
+This rule applies to:
+
+- Inline comments
+- Function/class documentation (JSDoc)
+- Block comments explaining logic
+- TODO/FIXME notes
+- Commit messages (covered in Git Workflow section)
+
+**Exception**: User-facing strings in UI components may be in any language (they will be localized later).

@@ -86,6 +86,9 @@ export function NodeGraphContextProvider({ children }: NodeGraphContextProviderP
     if (!nodeGraph) return;
 
     function _update(model: ComponentModel) {
+      // Guard against undefined model (happens on empty projects)
+      if (!model) return;
+
       if (isComponentModel_CloudRuntime(model)) {
         setActive('backend');
         if (SidebarModel.instance.ActiveId === 'components') {

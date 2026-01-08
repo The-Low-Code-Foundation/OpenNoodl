@@ -154,6 +154,11 @@ export async function getPageRoutes(project: ProjectModel, options: IndexedPages
     }
   });
 
+  // Check if traverser has valid root (empty project case)
+  if (!traverser.root) {
+    return { routes: [], pages: [], dynamicHash: {} };
+  }
+
   // Fetch all the Page nodes.
   const pages: TraverseNode[] = traverser.filter((node) => node.node.typename === 'Page');
 
