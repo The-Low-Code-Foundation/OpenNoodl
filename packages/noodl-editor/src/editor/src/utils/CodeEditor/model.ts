@@ -26,6 +26,13 @@ export interface createModelOptions {
  * Create the Monaco Model, with better typings etc
  */
 export function createModel(options: createModelOptions, node: NodeGraphNode): EditorModel {
+  // Simple JSON editing - use plaintext (no workers needed)
+  // Monaco workers require initialization from node context; plaintext avoids this.
+  // JSON validation happens on save via JSON.parse()
+  if (options.codeeditor === 'json') {
+    return new EditorModel(monaco.editor.createModel(options.value, 'plaintext'));
+  }
+
   // arrays are edited as javascript (and eval:ed during runtime)
   // we are not going to add any extra typings here.
   if (options.type === 'array') {

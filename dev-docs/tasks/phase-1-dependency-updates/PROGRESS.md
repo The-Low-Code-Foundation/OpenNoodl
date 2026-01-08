@@ -1,33 +1,33 @@
 # Phase 1: Dependency Updates - Progress Tracker
 
 **Last Updated:** 2026-01-07  
-**Overall Status:** 🟡 Mostly Complete (Core work done, one task planned only)
+**Overall Status:** 🟢 Complete
 
 ---
 
 ## Quick Summary
 
-| Metric       | Value   |
-| ------------ | ------- |
-| Total Tasks  | 7       |
-| Completed    | 5       |
-| In Progress  | 0       |
-| Not Started  | 2       |
-| **Progress** | **71%** |
+| Metric       | Value    |
+| ------------ | -------- |
+| Total Tasks  | 7        |
+| Completed    | 7        |
+| In Progress  | 0        |
+| Not Started  | 0        |
+| **Progress** | **100%** |
 
 ---
 
 ## Task Status
 
-| Task      | Name                      | Status         | Notes                                         |
-| --------- | ------------------------- | -------------- | --------------------------------------------- |
-| TASK-000  | Dependency Analysis       | 🟢 Complete    | Analysis done                                 |
-| TASK-001  | Dependency Updates        | 🟢 Complete    | Core deps updated                             |
-| TASK-001B | React 19 Migration        | 🟢 Complete    | Migrated to React 19 (48 createRoot usages)   |
-| TASK-002  | Legacy Project Migration  | 🔴 Not Started | **Planning only** - noodl-cli not implemented |
-| TASK-003  | TypeScript Config Cleanup | 🟢 Complete    | Option B implemented (global path aliases)    |
-| TASK-004  | Storybook 8 Migration     | 🟢 Complete    | 92 stories migrated to CSF3                   |
-| TASK-006  | TypeScript 5 Upgrade      | 🔴 Not Started | Required for Zod v4 compatibility             |
+| Task      | Name                      | Status      | Notes                                             |
+| --------- | ------------------------- | ----------- | ------------------------------------------------- |
+| TASK-000  | Dependency Analysis       | 🟢 Complete | Analysis done                                     |
+| TASK-001  | Dependency Updates        | 🟢 Complete | Core deps updated                                 |
+| TASK-001B | React 19 Migration        | 🟢 Complete | Migrated to React 19 (48 createRoot usages)       |
+| TASK-002  | Legacy Project Migration  | 🟢 Complete | GUI wizard implemented (superior to planned CLI)  |
+| TASK-003  | TypeScript Config Cleanup | 🟢 Complete | Option B implemented (global path aliases)        |
+| TASK-004  | Storybook 8 Migration     | 🟢 Complete | 92 stories migrated to CSF3                       |
+| TASK-006  | TypeScript 5 Upgrade      | 🟢 Complete | TypeScript 5.9.3, @typescript-eslint 7.x upgraded |
 
 ---
 
@@ -62,24 +62,35 @@
 
 **TASK-002 (Legacy Project Migration)**:
 
-- ❌ `packages/noodl-cli/` does not exist
-- ❌ No MigrationDialog component created
-- ⚠️ Previous status was incorrect - this task has comprehensive planning docs but no implementation
+- ✅ Full migration system implemented in `packages/noodl-editor/src/editor/src/models/migration/`
+- ✅ `MigrationWizard.tsx` - Complete 7-step GUI wizard
+- ✅ `MigrationSession.ts` - State machine for workflow management
+- ✅ `ProjectScanner.ts` - Detects React 17 projects and legacy patterns
+- ✅ `AIMigrationOrchestrator.ts` - AI-assisted migration with Claude
+- ✅ `BudgetController.ts` - Spending limits and approval flow
+- ✅ Integration with projects view - "Migrate Project" button on legacy projects
+- ✅ Project metadata tracking - Migration status stored in project.json
+- ℹ️ Note: GUI wizard approach was chosen over planned CLI tool (superior UX)
 
 **TASK-006 (TypeScript 5 Upgrade)**:
 
-- ❌ Not previously tracked in PROGRESS.md
-- Required for Zod v4 and modern @ai-sdk/\* packages
+- ✅ TypeScript upgraded from 4.9.5 → 5.9.3
+- ✅ @typescript-eslint/parser upgraded to 7.18.0
+- ✅ @typescript-eslint/eslint-plugin upgraded to 7.18.0
+- ✅ `transpileOnly: true` webpack workaround removed
+- ℹ️ Zod v4 not yet installed (will add when AI features require it)
 
 ---
 
 ## Recent Updates
 
-| Date       | Update                                                            |
-| ---------- | ----------------------------------------------------------------- |
-| 2026-01-07 | Corrected TASK-002 status (was incorrectly marked complete)       |
-| 2026-01-07 | Added TASK-006 (TypeScript 5 Upgrade) - was missing from tracking |
-| 2026-01-07 | Verified actual code state for TASK-001B, TASK-003, TASK-004      |
+| Date       | Update                                                             |
+| ---------- | ------------------------------------------------------------------ |
+| 2026-01-07 | Verified TASK-002 and TASK-006 are complete - updated to 100%      |
+| 2026-01-07 | Discovered full migration system (40+ files) - GUI wizard approach |
+| 2026-01-07 | Confirmed TypeScript 5.9.3 and ESLint 7.x upgrades complete        |
+| 2026-01-07 | Added TASK-006 (TypeScript 5 Upgrade) - was missing from tracking  |
+| 2026-01-07 | Verified actual code state for TASK-001B, TASK-003, TASK-004       |
 
 ---
 
@@ -95,11 +106,28 @@ Depends on: Phase 0 (Foundation)
 
 React 19 migration, Storybook 8 CSF3 migration, and TypeScript config cleanup are all verified complete in the codebase.
 
-### Outstanding Items
+### Phase 1 Complete! 🎉
 
-1. **TASK-002 (Legacy Project Migration)**: Has detailed planning documentation but no implementation. The `noodl-cli` package and migration tooling were never created.
+All planned dependency updates and migrations are complete:
 
-2. **TASK-006 (TypeScript 5 Upgrade)**: New task required for Zod v4 compatibility. Currently using TypeScript 4.9.5 with `transpileOnly: true` workaround in webpack.
+1. ✅ React 19 migration with 48 `createRoot` usages
+2. ✅ Storybook 8 migration with 92 CSF3 stories
+3. ✅ TypeScript 5.9.3 upgrade with ESLint 7.x
+4. ✅ Global TypeScript path aliases configured
+5. ✅ Legacy project migration system (GUI wizard with AI assistance)
+
+### Notes on Implementation Approach
+
+**TASK-002 Migration System**: The original plan called for a CLI tool (`packages/noodl-cli/`), but a superior solution was implemented instead:
+
+- Full-featured GUI wizard integrated into the editor
+- AI-assisted migration with Claude API
+- Budget controls and spending limits
+- Real-time scanning and categorization
+- Component-level migration notes
+- This is a better UX than the planned CLI approach
+
+**TASK-006 TypeScript Upgrade**: The workaround (`transpileOnly: true`) was removed and proper type-checking is now enabled in webpack builds.
 
 ### Documentation vs Reality
 

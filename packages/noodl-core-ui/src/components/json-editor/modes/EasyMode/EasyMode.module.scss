@@ -1,0 +1,283 @@
+/**
+ * Easy Mode Styles
+ * Uses design tokens for consistency with OpenNoodl design system
+ */
+
+.Root {
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+  padding: 12px;
+  background-color: var(--theme-color-bg-2);
+  border-radius: 4px;
+  font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+  font-size: 13px;
+}
+
+/* Empty State */
+.EmptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 150px;
+  padding: 24px;
+  text-align: center;
+}
+
+.EmptyIcon {
+  font-size: 48px;
+  margin-bottom: 12px;
+  opacity: 0.5;
+}
+
+.EmptyText {
+  font-size: 13px;
+  color: var(--theme-color-fg-muted);
+}
+
+/* Tree Node */
+.TreeNode {
+  margin-bottom: 4px;
+}
+
+.NodeHeader {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border-radius: 3px;
+  transition: background-color 0.15s ease;
+
+  &:hover {
+    background-color: var(--theme-color-bg-3);
+  }
+}
+
+/* Node Labels */
+.Key {
+  color: var(--theme-color-primary);
+  font-weight: 500;
+}
+
+.Index {
+  color: var(--theme-color-fg-muted);
+  font-weight: 500;
+}
+
+.Colon {
+  color: var(--theme-color-fg-muted);
+}
+
+/* Type Badge */
+.TypeBadge {
+  display: inline-block;
+  padding: 2px 6px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  border-radius: 3px;
+  letter-spacing: 0.5px;
+  background-color: var(--theme-color-bg-3);
+  color: var(--theme-color-fg-muted);
+  border: 1px solid var(--theme-color-border-default);
+
+  &[data-type='string'] {
+    background-color: #3b82f61a;
+    color: #3b82f6;
+    border-color: #3b82f64d;
+  }
+
+  &[data-type='number'] {
+    background-color: #10b9811a;
+    color: #10b981;
+    border-color: #10b9814d;
+  }
+
+  &[data-type='boolean'] {
+    background-color: #f59e0b1a;
+    color: #f59e0b;
+    border-color: #f59e0b4d;
+  }
+
+  &[data-type='null'] {
+    background-color: #6b72801a;
+    color: #6b7280;
+    border-color: #6b72804d;
+  }
+
+  &[data-type='array'] {
+    background-color: #8b5cf61a;
+    color: #8b5cf6;
+    border-color: #8b5cf64d;
+  }
+
+  &[data-type='object'] {
+    background-color: #ec48991a;
+    color: #ec4899;
+    border-color: #ec48994d;
+  }
+}
+
+/* Value Display */
+.Value {
+  color: var(--theme-color-fg-default);
+  font-family: inherit;
+
+  &[data-type='string'] {
+    color: #3b82f6;
+  }
+
+  &[data-type='number'] {
+    color: #10b981;
+  }
+
+  &[data-type='boolean'] {
+    color: #f59e0b;
+  }
+
+  &[data-type='null'] {
+    color: #6b7280;
+    font-style: italic;
+  }
+}
+
+/* Count Badge */
+.Count {
+  font-size: 11px;
+  color: var(--theme-color-fg-muted);
+  font-weight: 400;
+}
+
+/* Children Container */
+.Children {
+  margin-left: 0;
+  border-left: 1px solid var(--theme-color-border-default);
+  padding-left: 8px;
+  margin-top: 2px;
+}
+
+/* Action Buttons */
+.EditButton,
+.AddButton,
+.DeleteButton {
+  padding: 2px 8px;
+  font-size: 12px;
+  font-weight: 500;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  margin-left: 6px;
+}
+
+.EditButton {
+  background-color: var(--theme-color-bg-3);
+  color: var(--theme-color-primary);
+
+  &:hover {
+    background-color: var(--theme-color-primary);
+    color: white;
+  }
+}
+
+.AddButton {
+  background-color: var(--theme-color-primary);
+  color: white;
+  font-size: 11px;
+
+  &:hover {
+    opacity: 0.9;
+  }
+}
+
+.DeleteButton {
+  background-color: #dc2626;
+  color: white;
+  font-size: 14px;
+  font-weight: bold;
+  line-height: 1;
+
+  &:hover {
+    background-color: #b91c1c;
+  }
+}
+
+/* Add Item Form */
+.AddItemForm {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  margin: 4px 0;
+  background-color: var(--theme-color-bg-3);
+  border-radius: 4px;
+  border: 1px solid var(--theme-color-border-default);
+
+  input[type='text'] {
+    flex: 1;
+    padding: 4px 8px;
+    font-size: 13px;
+    background-color: var(--theme-color-bg-1);
+    border: 1px solid var(--theme-color-border-default);
+    border-radius: 3px;
+    color: var(--theme-color-fg-default);
+
+    &::placeholder {
+      color: var(--theme-color-fg-muted);
+    }
+  }
+
+  select {
+    padding: 4px 8px;
+    font-size: 13px;
+    background-color: var(--theme-color-bg-1);
+    border: 1px solid var(--theme-color-border-default);
+    border-radius: 3px;
+    color: var(--theme-color-fg-default);
+    cursor: pointer;
+  }
+
+  button {
+    padding: 4px 12px;
+    font-size: 12px;
+    font-weight: 500;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+
+    &:first-of-type {
+      background-color: var(--theme-color-primary);
+      color: white;
+
+      &:hover:not(:disabled) {
+        opacity: 0.9;
+      }
+
+      &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+    }
+
+    &:last-of-type {
+      background-color: var(--theme-color-bg-2);
+      color: var(--theme-color-fg-default);
+      border: 1px solid var(--theme-color-border-default);
+
+      &:hover {
+        background-color: var(--theme-color-bg-1);
+      }
+    }
+  }
+}
+
+/* Clickable value for editing */
+.Value {
+  cursor: pointer;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}

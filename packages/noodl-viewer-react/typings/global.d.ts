@@ -28,6 +28,19 @@ type GlobalNoodl = {
   CloudFunctions: TSFixme;
   Navigation: TSFixme;
   Files: TSFixme;
+  /**
+   * App Configuration - Immutable configuration values defined in App Setup.
+   * Access app-wide settings like API keys, feature flags, and metadata.
+   *
+   * @example
+   * ```typescript
+   * // Access config values
+   * const apiKey = Noodl.Config.apiKey;
+   * const appName = Noodl.Config.appName;
+   * const isFeatureEnabled = Noodl.Config.featureFlag;
+   * ```
+   */
+  Config: Readonly<Record<string, unknown>>;
 };
 
 interface Window {

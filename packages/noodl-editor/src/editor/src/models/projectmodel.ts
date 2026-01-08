@@ -881,6 +881,82 @@ export class ProjectModel extends Model {
     }
   }
 
+  // App Configuration Methods
+  /**
+   * Gets the app configuration from project metadata.
+   * @returns The app config object
+   */
+  getAppConfig() {
+    // Import types dynamically to avoid circular dependencies
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { DEFAULT_APP_CONFIG } = require('@noodl/runtime/src/config/types');
+    return this.getMetaData('appConfig') || DEFAULT_APP_CONFIG;
+  }
+
+  /**
+   * Sets the app configuration in project metadata.
+   * @param config - The app config to save
+   */
+  setAppConfig(config) {
+    this.setMetaData('appConfig', config);
+  }
+
+  /**
+   * Updates the app configuration with partial values.
+   * @param updates - Partial app config updates
+   */
+  updateAppConfig(updates) {
+    const current = this.getAppConfig();
+    this.setAppConfig({
+      ...current,
+      ...updates,
+      identity: {
+        ...current.identity,
+        ...(updates.identity || {})
+      },
+      seo: {
+        ...current.seo,
+        ...(updates.seo || {})
+      },
+      pwa: updates.pwa ? { ...current.pwa, ...updates.pwa } : current.pwa
+    });
+  }
+
+  /**
+   * Gets all config variables.
+   * @returns Array of config variables
+   */
+  getConfigVariables() {
+    return this.getAppConfig().variables || [];
+  }
+
+  /**
+   * Sets or updates a config variable.
+   * @param variable - The config variable to set
+   */
+  setConfigVariable(variable) {
+    const config = this.getAppConfig();
+    const index = config.variables.findIndex((v) => v.key === variable.key);
+
+    if (index >= 0) {
+      config.variables[index] = variable;
+    } else {
+      config.variables.push(variable);
+    }
+
+    this.setAppConfig(config);
+  }
+
+  /**
+   * Removes a config variable by key.
+   * @param key - The variable key to remove
+   */
+  removeConfigVariable(key: string) {
+    const config = this.getAppConfig();
+    config.variables = config.variables.filter((v) => v.key !== key);
+    this.setAppConfig(config);
+  }
+
   createNewVariant(name, node) {
     let variant = this.variants.find((v) => v.name === name && v.typename === node.type.localName);
 

@@ -8,7 +8,7 @@ module.exports = merge(
   merge(shared, {
     entry: {
       './src/editor/index': './src/editor/index.ts',
-      './src/frames/viewer-frame/index': './src/frames/viewer-frame/index.js',
+      './src/frames/viewer-frame/index': './src/frames/viewer-frame/index.js'
     },
     output: {
       filename: '[name].bundle.js',
@@ -17,7 +17,9 @@ module.exports = merge(
     },
     plugins: [
       new MonacoWebpackPlugin({
-        languages: ['typescript', 'javascript', 'css']
+        // JSON language worker is broken in Electron/CommonJS - use TypeScript for JSON editing
+        languages: ['typescript', 'javascript', 'css'],
+        globalAPI: true
       })
     ]
   })
