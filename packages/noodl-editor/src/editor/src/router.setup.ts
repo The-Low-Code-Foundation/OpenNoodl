@@ -8,6 +8,7 @@ import { IconName } from '@noodl-core-ui/components/common/Icon';
 import config from '../../shared/config/config';
 import { ComponentDiffDocumentProvider } from './views/documents/ComponentDiffDocument';
 import { EditorDocumentProvider } from './views/documents/EditorDocument';
+import { AppSetupPanel } from './views/panels/AppSetupPanel/AppSetupPanel';
 import { BackendServicesPanel } from './views/panels/BackendServicesPanel/BackendServicesPanel';
 import { CloudFunctionsPanel } from './views/panels/CloudFunctionsPanel/CloudFunctionsPanel';
 import { CloudServicePanel } from './views/panels/CloudServicePanel/CloudServicePanel';
@@ -146,6 +147,15 @@ export function installSidePanel({ isLesson }: SetupEditorOptions) {
     order: 8,
     icon: IconName.RestApi,
     panel: BackendServicesPanel
+  });
+
+  SidebarModel.instance.register({
+    id: 'app-setup',
+    name: 'App Setup',
+    isDisabled: isLesson === true,
+    order: 8.5,
+    icon: IconName.Sliders,
+    panel: AppSetupPanel
   });
 
   SidebarModel.instance.register({

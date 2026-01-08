@@ -19,17 +19,17 @@
 
 ## Task Status
 
-| Task      | Name                    | Status         | Notes                                 |
-| --------- | ----------------------- | -------------- | ------------------------------------- |
-| TASK-001  | Dashboard UX Foundation | 🟢 Complete    | Tabbed navigation done                |
-| TASK-001B | Launcher Fixes          | 🟢 Complete    | All 4 subtasks implemented            |
-| TASK-002  | GitHub Integration      | 🟢 Complete    | OAuth + basic features done           |
-| TASK-002B | GitHub Advanced         | 🔴 Not Started | Issues/PR panels planned              |
-| TASK-003  | Shared Component System | 🔴 Not Started | Prefab system refactor                |
-| TASK-004  | AI Project Creation     | 🔴 Not Started | AI scaffolding feature                |
-| TASK-005  | Deployment Automation   | 🔴 Not Started | Planning docs only, no implementation |
-| TASK-006  | Expressions Overhaul    | 🔴 Not Started | Enhanced expression nodes             |
-| TASK-007  | App Config              | 🔴 Not Started | App configuration system              |
+| Task      | Name                    | Status         | Notes                                         |
+| --------- | ----------------------- | -------------- | --------------------------------------------- |
+| TASK-001  | Dashboard UX Foundation | 🟢 Complete    | Tabbed navigation done                        |
+| TASK-001B | Launcher Fixes          | 🟢 Complete    | All 4 subtasks implemented                    |
+| TASK-002  | GitHub Integration      | 🟢 Complete    | OAuth + basic features done                   |
+| TASK-002B | GitHub Advanced         | 🔴 Not Started | Issues/PR panels planned                      |
+| TASK-003  | Shared Component System | 🔴 Not Started | Prefab system refactor                        |
+| TASK-004  | AI Project Creation     | 🔴 Not Started | AI scaffolding feature                        |
+| TASK-005  | Deployment Automation   | 🔴 Not Started | Planning docs only, no implementation         |
+| TASK-006  | Expressions Overhaul    | 🔴 Not Started | Enhanced expression nodes                     |
+| TASK-007  | App Config              | 🟡 In Progress | Runtime ✅, UI mostly done (Monaco debugging) |
 
 ---
 

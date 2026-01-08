@@ -33,12 +33,31 @@
 
 ### Other Deployment Targets 🔴 Not Started
 
-| Phase   | Name                    | Status         | Notes                     |
-| ------- | ----------------------- | -------------- | ------------------------- |
-| Phase B | Capacitor Mobile Target | 🔴 Not Started | iOS/Android via Capacitor |
-| Phase C | Electron Desktop Target | 🔴 Not Started | Desktop app deployment    |
-| Phase D | Chrome Extension Target | 🔴 Not Started | Browser extension support |
-| Phase E | Target System Core      | 🔴 Not Started | Node compatibility badges |
+| Phase   | Name                      | Status         | Notes                              |
+| ------- | ------------------------- | -------------- | ---------------------------------- |
+| Phase B | Capacitor Mobile Target   | 🔴 Not Started | iOS/Android via Capacitor          |
+| Phase C | Electron Desktop Target   | 🔴 Not Started | Desktop app deployment             |
+| Phase D | Chrome Extension Target   | 🔴 Not Started | Browser extension support          |
+| Phase E | Target System Core        | 🔴 Not Started | Node compatibility badges          |
+| Phase F | Progressive Web App (PWA) | 🔴 Not Started | PWA file generation from App Setup |
+
+### Phase F: PWA Target Details
+
+| Task     | Name                    | Status         | Notes                                              |
+| -------- | ----------------------- | -------------- | -------------------------------------------------- |
+| TASK-008 | PWA File Generation     | 🔴 Not Started | Generate manifest.json, service worker from config |
+| TASK-009 | PWA Icon Processing     | 🔴 Not Started | Resize icons to PWA sizes (192x192, 512x512)       |
+| TASK-010 | Service Worker Template | 🔴 Not Started | Offline-first caching strategy                     |
+| TASK-011 | PWA Deploy Integration  | 🔴 Not Started | Include PWA files in deployment bundles            |
+
+**Phase F Scope:**
+
+- Reads PWA configuration from project.json (created in Phase 3 TASK-007 CONFIG-002)
+- Generates manifest.json with app name, icons, theme colors
+- Processes icon files and resizes to PWA specifications
+- Creates service worker for offline capability
+- Updates index.html with manifest links and meta tags
+- Outputs all files to deployment folder
 
 ---
 

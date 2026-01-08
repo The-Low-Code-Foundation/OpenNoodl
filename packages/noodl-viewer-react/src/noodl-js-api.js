@@ -1,5 +1,6 @@
 'use strict';
 
+import { createConfigAPI } from './api/config';
 import { SeoApi } from './api/seo';
 
 export default function createNoodlAPI(noodlRuntime) {
@@ -8,6 +9,7 @@ export default function createNoodlAPI(noodlRuntime) {
 
   global.Noodl.getProjectSettings = noodlRuntime.getProjectSettings.bind(noodlRuntime);
   global.Noodl.getMetaData = noodlRuntime.getMetaData.bind(noodlRuntime);
+
   global.Noodl.Collection = global.Noodl.Array = require('@noodl/runtime/src/collection');
   global.Noodl.Model = global.Noodl.Object = require('@noodl/runtime/src/model');
   global.Noodl.Variables = global.Noodl.Object.get('--ndl--global-variables');
@@ -19,6 +21,7 @@ export default function createNoodlAPI(noodlRuntime) {
   global.Noodl.Navigation._noodlRuntime = noodlRuntime;
   global.Noodl.Files = require('./api/files');
   global.Noodl.SEO = new SeoApi();
+  global.Noodl.Config = createConfigAPI(global.Noodl.getMetaData);
   if (!global.Noodl.Env) {
     global.Noodl.Env = {};
   }

@@ -21,7 +21,7 @@ import '../editor/src/styles/custom-properties/spacing.css';
 import Router from './src/router';
 
 // Build canary: Verify fresh code is loading
-console.log('🔥 BUILD TIMESTAMP:', new Date().toISOString());
+console.log('🔥🔥 BUILD TIMESTAMP:', new Date().toISOString());
 
 ipcRenderer.on('open-noodl-uri', async (event, uri) => {
   if (uri.startsWith('noodl:import/http')) {

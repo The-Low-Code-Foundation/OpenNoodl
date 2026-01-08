@@ -1,0 +1,121 @@
+/**
+ * ValueEditor Styles
+ */
+
+/* Input Editor (String/Number) */
+.InputEditor {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+}
+
+.Input {
+  flex: 1;
+  padding: 4px 8px;
+  font-size: 13px;
+  font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+  background-color: var(--theme-color-bg-1);
+  border: 1px solid var(--theme-color-primary);
+  border-radius: 3px;
+  color: var(--theme-color-fg-default);
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+
+  &:focus {
+    border-color: var(--theme-color-primary);
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+  }
+
+  &::placeholder {
+    color: var(--theme-color-fg-muted);
+    opacity: 0.6;
+  }
+}
+
+.ButtonGroup {
+  display: flex;
+  gap: 4px;
+}
+
+.SaveButton,
+.CancelButton,
+.CloseButton {
+  padding: 4px 8px;
+  font-size: 14px;
+  font-weight: bold;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  line-height: 1;
+}
+
+.SaveButton {
+  background-color: var(--theme-color-primary);
+  color: white;
+
+  &:hover {
+    opacity: 0.9;
+  }
+}
+
+.CancelButton,
+.CloseButton {
+  background-color: var(--theme-color-bg-3);
+  color: var(--theme-color-fg-default);
+
+  &:hover {
+    background-color: var(--theme-color-bg-2);
+  }
+}
+
+/* Boolean Editor */
+.BooleanEditor {
+  display: flex;
+  align-items: center;
+}
+
+.BooleanToggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 3px;
+  background-color: var(--theme-color-bg-3);
+  transition: background-color 0.15s ease;
+
+  &:hover {
+    background-color: var(--theme-color-bg-2);
+  }
+
+  input[type='checkbox'] {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+  }
+}
+
+.ToggleLabel {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--theme-color-fg-default);
+  user-select: none;
+}
+
+/* Null Editor */
+.NullEditor {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  background-color: var(--theme-color-bg-3);
+  border-radius: 3px;
+}
+
+.NullValue {
+  font-size: 13px;
+  font-style: italic;
+  color: #6b7280;
+}
