@@ -10,6 +10,7 @@ const { startCloudFunctionServer, closeRuntimeWhenWindowCloses } = require('./sr
 const DesignToolImportServer = require('./src/design-tool-import-server');
 const jsonstorage = require('../shared/utils/jsonstorage');
 const StorageApi = require('./src/StorageApi');
+const { initializeGitHubOAuthHandlers } = require('./github-oauth-handler');
 
 const { handleProjectMerge } = require('./src/merge-driver');
 
@@ -542,6 +543,9 @@ function launchApp() {
 
     setupGitHubOAuthIpc();
 
+    // Initialize Web OAuth handlers for GitHub (with protocol handler)
+    initializeGitHubOAuthHandlers(app);
+
     setupMainWindowControlIpc();
 
     setupMenu();
@@ -565,27 +569,12 @@ function launchApp() {
       console.log('open-url', uri);
       event.preventDefault();
 
-      // Handle GitHub OAuth callback
-      if (uri.startsWith('noodl://github-callback')) {
-        try {
-          const url = new URL(uri);
-          const code = url.searchParams.get('code');
-          const state = url.searchParams.get('state');
-
-          if (code && state) {
-            console.log('🔐 GitHub OAuth callback received');
-            win && win.webContents.send('github-oauth-callback', { code, state });
-            return;
-          }
-        } catch (error) {
-          console.error('Failed to parse GitHub OAuth callback:', error);
-        }
+      // GitHub OAuth callbacks are handled by github-oauth-handler.js
+      // Only handle other noodl:// URIs here
+      if (!uri.startsWith('noodl://github-callback')) {
+        win && win.webContents.send('open-noodl-uri', uri);
+        process.env.noodlURI = uri;
       }
-
-      // Default noodl URI handling
-      win && win.webContents.send('open-noodl-uri', uri);
-      process.env.noodlURI = uri;
-      //  logEverywhere("open-url# " + deeplinkingUrl)
     });
   });
 

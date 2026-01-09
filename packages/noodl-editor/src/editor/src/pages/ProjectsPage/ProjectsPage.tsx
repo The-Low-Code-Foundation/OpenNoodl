@@ -15,11 +15,9 @@ import {
   LauncherProjectData
 } from '@noodl-core-ui/preview/launcher/Launcher/components/LauncherProjectCard';
 import { Launcher } from '@noodl-core-ui/preview/launcher/Launcher/Launcher';
-import { GitHubUser } from '@noodl-core-ui/preview/launcher/Launcher/LauncherContext';
 
 import { useEventListener } from '../../hooks/useEventListener';
 import { IRouteProps } from '../../pages/AppRoute';
-import { GitHubOAuthService } from '../../services/GitHubOAuthService';
 import { ProjectOrganizationService } from '../../services/ProjectOrganizationService';
 import { LocalProjectsModel, ProjectItem } from '../../utils/LocalProjectsModel';
 import { ToastLayer } from '../../views/ToastLayer/ToastLayer';
@@ -49,11 +47,6 @@ export function ProjectsPage(props: ProjectsPageProps) {
   // Real projects from LocalProjectsModel
   const [realProjects, setRealProjects] = useState<LauncherProjectData[]>([]);
 
-  // GitHub OAuth state
-  const [githubUser, setGithubUser] = useState<GitHubUser | null>(null);
-  const [githubIsAuthenticated, setGithubIsAuthenticated] = useState<boolean>(false);
-  const [githubIsConnecting, setGithubIsConnecting] = useState<boolean>(false);
-
   // Create project modal state
   const [isCreateModalVisible, setIsCreateModalVisible] = useState(false);
 
@@ -62,17 +55,6 @@ export function ProjectsPage(props: ProjectsPageProps) {
     // Switch main window size to editor size
     ipcRenderer.send('main-window-resize', { size: 'editor', center: true });
 
-    // Initialize GitHub OAuth service
-    const initGitHub = async () => {
-      console.log('🔧 Initializing GitHub OAuth service...');
-      await GitHubOAuthService.instance.initialize();
-      const user = GitHubOAuthService.instance.getCurrentUser();
-      const isAuth = GitHubOAuthService.instance.isAuthenticated();
-      setGithubUser(user);
-      setGithubIsAuthenticated(isAuth);
-      console.log('✅ GitHub OAuth initialized. Authenticated:', isAuth);
-    };
-
     // Load projects
     const loadProjects = async () => {
       await LocalProjectsModel.instance.fetch();
@@ -80,31 +62,7 @@ export function ProjectsPage(props: ProjectsPageProps) {
       setRealProjects(projects.map(mapProjectToLauncherData));
     };
 
-    initGitHub();
     loadProjects();
-
-    // Set up IPC listener for OAuth callback
-    const handleOAuthCallback = (_event: any, { code, state }: { code: string; state: string }) => {
-      console.log('🔄 Received GitHub OAuth callback from main process');
-      setGithubIsConnecting(true);
-      GitHubOAuthService.instance
-        .handleCallback(code, state)
-        .then(() => {
-          console.log('✅ OAuth callback handled successfully');
-          setGithubIsConnecting(false);
-        })
-        .catch((error) => {
-          console.error('❌ OAuth callback failed:', error);
-          setGithubIsConnecting(false);
-          ToastLayer.showError('GitHub authentication failed');
-        });
-    };
-
-    ipcRenderer.on('github-oauth-callback', handleOAuthCallback);
-
-    return () => {
-      ipcRenderer.removeListener('github-oauth-callback', handleOAuthCallback);
-    };
   }, []);
 
   // Subscribe to project list changes
@@ -112,44 +70,6 @@ export function ProjectsPage(props: ProjectsPageProps) {
     console.log('🔔 Projects list changed, updating dashboard');
     const projects = LocalProjectsModel.instance.getProjects();
     setRealProjects(projects.map(mapProjectToLauncherData));
-  });
-
-  // Subscribe to GitHub OAuth state changes
-  useEventListener(GitHubOAuthService.instance, 'oauth-success', (data: { user: GitHubUser }) => {
-    console.log('🎉 GitHub OAuth success:', data.user.login);
-    setGithubUser(data.user);
-    setGithubIsAuthenticated(true);
-    setGithubIsConnecting(false);
-    ToastLayer.showSuccess(`Connected to GitHub as ${data.user.login}`);
-  });
-
-  useEventListener(GitHubOAuthService.instance, 'auth-state-changed', (data: { authenticated: boolean }) => {
-    console.log('🔐 GitHub auth state changed:', data.authenticated);
-    setGithubIsAuthenticated(data.authenticated);
-    if (data.authenticated) {
-      const user = GitHubOAuthService.instance.getCurrentUser();
-      setGithubUser(user);
-    } else {
-      setGithubUser(null);
-    }
-  });
-
-  useEventListener(GitHubOAuthService.instance, 'oauth-started', () => {
-    console.log('🚀 GitHub OAuth flow started');
-    setGithubIsConnecting(true);
-  });
-
-  useEventListener(GitHubOAuthService.instance, 'oauth-error', (data: { error: string }) => {
-    console.error('❌ GitHub OAuth error:', data.error);
-    setGithubIsConnecting(false);
-    ToastLayer.showError(`GitHub authentication failed: ${data.error}`);
-  });
-
-  useEventListener(GitHubOAuthService.instance, 'disconnected', () => {
-    console.log('👋 GitHub disconnected');
-    setGithubUser(null);
-    setGithubIsAuthenticated(false);
-    ToastLayer.showSuccess('Disconnected from GitHub');
   });
 
   const handleCreateProject = useCallback(() => {
@@ -336,17 +256,6 @@ export function ProjectsPage(props: ProjectsPageProps) {
     }
   }, []);
 
-  // GitHub OAuth handlers
-  const handleGitHubConnect = useCallback(() => {
-    console.log('🔗 Initiating GitHub OAuth...');
-    GitHubOAuthService.instance.initiateOAuth();
-  }, []);
-
-  const handleGitHubDisconnect = useCallback(() => {
-    console.log('🔌 Disconnecting GitHub...');
-    GitHubOAuthService.instance.disconnect();
-  }, []);
-
   return (
     <>
       <Launcher
@@ -357,11 +266,11 @@ export function ProjectsPage(props: ProjectsPageProps) {
         onOpenProjectFolder={handleOpenProjectFolder}
         onDeleteProject={handleDeleteProject}
         projectOrganizationService={ProjectOrganizationService.instance}
-        githubUser={githubUser}
-        githubIsAuthenticated={githubIsAuthenticated}
-        githubIsConnecting={githubIsConnecting}
-        onGitHubConnect={handleGitHubConnect}
-        onGitHubDisconnect={handleGitHubDisconnect}
+        githubUser={null}
+        githubIsAuthenticated={false}
+        githubIsConnecting={false}
+        onGitHubConnect={() => {}}
+        onGitHubDisconnect={() => {}}
       />
 
       <CreateProjectModal
