@@ -260,57 +260,21 @@ export class LocalProjectsModel extends Model {
         });
       });
     } else {
-      // Create a minimal Hello World project programmatically
-      // This is a temporary solution until TASK-009-template-system-refactoring is implemented
-      const minimalProject = {
-        name: name,
-        components: [
-          {
-            name: 'App',
-            id: guid(),
-            graph: {
-              roots: [
-                {
-                  id: guid(),
-                  type: 'Group',
-                  x: 0,
-                  y: 0,
-                  parameters: {},
-                  ports: [],
-                  children: [
-                    {
-                      id: guid(),
-                      type: 'Text',
-                      x: 50,
-                      y: 50,
-                      parameters: {
-                        text: 'Hello World!'
-                      },
-                      ports: [],
-                      children: []
-                    }
-                  ]
-                }
-              ],
-              connections: [],
-              comments: []
-            },
-            metadata: {}
-          }
-        ],
-        settings: {},
-        metadata: {
-          title: name,
-          description: 'A new Noodl project'
-        }
-      };
+      // No template specified - use default embedded Hello World template
+      // This uses the template system implemented in TASK-009
+      const defaultTemplate = 'embedded://hello-world';
 
-      await filesystem.writeFile(filesystem.join(dirEntry, 'project.json'), JSON.stringify(minimalProject, null, 2));
+      // For embedded templates, write directly to the project directory
+      // (no need for temporary folder + copy)
+      const { EmbeddedTemplateProvider } = await import('../models/template/EmbeddedTemplateProvider');
+      const embeddedProvider = new EmbeddedTemplateProvider();
+
+      await embeddedProvider.download(defaultTemplate, dirEntry);
 
       // Load the newly created project
       projectFromDirectory(dirEntry, (project) => {
         if (!project) {
-          console.error('Failed to create project from generated structure');
+          console.error('Failed to create project from template');
           fn();
           return;
         }
