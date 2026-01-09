@@ -267,32 +267,35 @@ export class LocalProjectsModel extends Model {
         components: [
           {
             name: 'App',
-            ports: [],
-            visual: true,
-            visualStateTransitions: [],
-            nodes: [
-              {
-                id: guid(),
-                type: 'Group',
-                x: 0,
-                y: 0,
-                parameters: {},
-                ports: [],
-                children: [
-                  {
-                    id: guid(),
-                    type: 'Text',
-                    x: 50,
-                    y: 50,
-                    parameters: {
-                      text: 'Hello World!'
-                    },
-                    ports: [],
-                    children: []
-                  }
-                ]
-              }
-            ]
+            id: guid(),
+            graph: {
+              roots: [
+                {
+                  id: guid(),
+                  type: 'Group',
+                  x: 0,
+                  y: 0,
+                  parameters: {},
+                  ports: [],
+                  children: [
+                    {
+                      id: guid(),
+                      type: 'Text',
+                      x: 50,
+                      y: 50,
+                      parameters: {
+                        text: 'Hello World!'
+                      },
+                      ports: [],
+                      children: []
+                    }
+                  ]
+                }
+              ],
+              connections: [],
+              comments: []
+            },
+            metadata: {}
           }
         ],
         settings: {},
@@ -307,6 +310,7 @@ export class LocalProjectsModel extends Model {
       // Load the newly created project
       projectFromDirectory(dirEntry, (project) => {
         if (!project) {
+          console.error('Failed to create project from generated structure');
           fn();
           return;
         }
@@ -315,8 +319,10 @@ export class LocalProjectsModel extends Model {
         this._addProject(project);
         project.toDirectory(project._retainedProjectDirectory, (res) => {
           if (res.result === 'success') {
+            console.log('Project created successfully:', name);
             fn(project);
           } else {
+            console.error('Failed to save project to directory');
             fn();
           }
         });

@@ -4,6 +4,196 @@ This document captures important discoveries and gotchas encountered during Open
 
 ---
 
+## 🐛 CRITICAL: Project.json Structure - Missing `graph` Object (Jan 9, 2026)
+
+### The Silent Crash: Cannot Read Properties of Undefined (reading 'comments')
+
+**Context**: Phase 0 TASK-010 - New project creation failed with `TypeError: Cannot read properties of undefined (reading 'comments')`. After three previous failed attempts, the root cause was finally identified: incorrect JSON structure in programmatic project creation.
+
+**The Problem**: The programmatically generated project.json had `nodes` array directly in the component object, but the schema requires a `graph` object containing `roots`, `connections`, and `comments`.
+
+**Root Cause**: Misunderstanding of the project.json schema hierarchy:
+
+```
+Component
+  ├─ name
+  ├─ id
+  ├─ metadata
+  └─ graph         ← REQUIRED
+      ├─ roots     ← Was "nodes" (WRONG)
+      ├─ connections
+      └─ comments  ← Error occurred here
+```
+
+**The Broken Pattern**:
+
+```typescript
+// ❌ WRONG - Missing graph wrapper, comments field
+const minimalProject = {
+  name: name,
+  components: [
+    {
+      name: 'App',
+      ports: [],
+      visual: true,
+      visualStateTransitions: [],
+      nodes: [
+        // ☠️ Should be graph.roots, not nodes
+        {
+          id: guid(),
+          type: 'Group'
+          // ...
+        }
+      ]
+    }
+  ]
+};
+
+// ComponentModel.fromJSON calls NodeGraphModel.fromJSON(json.graph)
+// But json.graph is undefined!
+// NodeGraphModel.fromJSON tries to access json.comments
+// BOOM: Cannot read properties of undefined (reading 'comments')
+```
+
+**The Correct Pattern**:
+
+```typescript
+// ✅ RIGHT - Complete structure with graph object
+const minimalProject = {
+  name: name,
+  components: [
+    {
+      name: 'App',
+      id: guid(), // Component needs id
+      graph: {
+        // Graph wrapper required
+        roots: [
+          // Not "nodes"
+          {
+            id: guid(),
+            type: 'Group',
+            x: 0,
+            y: 0,
+            parameters: {},
+            ports: [],
+            children: [
+              {
+                id: guid(),
+                type: 'Text',
+                x: 50,
+                y: 50,
+                parameters: { text: 'Hello World!' },
+                ports: [],
+                children: []
+              }
+            ]
+          }
+        ],
+        connections: [], // Required array
+        comments: [] // Required array (caused the error!)
+      },
+      metadata: {} // Component metadata
+    }
+  ],
+  settings: {},
+  metadata: {
+    // Project metadata
+    title: name,
+    description: 'A new Noodl project'
+  }
+};
+```
+
+**Why This Was Hard to Debug**:
+
+1. **Error message was misleading**: "reading 'comments'" suggested a problem with comments, not missing `graph` object
+2. **Deep call stack**: Error originated 3 levels deep (ProjectModel → ComponentModel → NodeGraphModel)
+3. **No schema documentation**: project.json structure wasn't formally documented
+4. **Template file was truncated**: The actual template (`project-truncated.json`) had incomplete structure
+5. **Multiple fix attempts**: Previous fixes addressed symptoms (path resolution) not root cause (structure)
+
+**The Fix Journey**:
+
+- **Attempt 1**: Path resolution with `__dirname` - FAILED (webpack bundling issue)
+- **Attempt 2**: Path resolution with `process.cwd()` - FAILED (wrong directory)
+- **Attempt 3**: Programmatic creation - FAILED (incomplete structure)
+- **Attempt 4**: Complete structure with `graph` object - SUCCESS ✅
+
+**Required Fields Hierarchy**:
+
+```typescript
+// Complete minimal project structure
+{
+  name: string,
+  components: [{
+    name: string,
+    id: string,           // ← REQUIRED
+    graph: {              // ← REQUIRED wrapper
+      roots: [...],       // ← Was incorrectly "nodes"
+      connections: [],    // ← REQUIRED array
+      comments: []        // ← REQUIRED array (error occurred here)
+    },
+    metadata: {}          // ← REQUIRED object
+  }],
+  settings: {},           // ← REQUIRED object
+  metadata: {             // ← Project-level metadata
+    title: string,
+    description: string
+  }
+}
+```
+
+**How to Identify This Issue**:
+
+1. **Error**: `Cannot read properties of undefined (reading 'comments')`
+2. **Stack trace**: Shows `NodeGraphModel.fromJSON` at line accessing `json.comments`
+3. **Symptom**: Project creation appears to work but crashes when loading
+4. **Root cause**: `ComponentModel.fromJSON` passes `json.graph` to `NodeGraphModel.fromJSON`, but `json.graph` is `undefined`
+
+**Critical Rules**:
+
+1. **Components have `graph` objects, not `nodes` arrays directly** - The nodes live in `graph.roots`
+2. **Always include `comments` and `connections` arrays** - Even if empty, they must exist
+3. **Component needs `id` field** - Can't rely on auto-generation
+4. **Use actual template structure as reference** - Don't invent your own schema
+5. **Test project creation end-to-end** - Not just file writing, but also loading
+
+**Related Code Paths**:
+
+```typescript
+// The error chain:
+ProjectModel.fromJSON(json)
+  → calls ComponentModel.fromJSON(json.components[i])
+    → calls NodeGraphModel.fromJSON(json.graph)  // ← json.graph is undefined!
+      → accesses json.comments  // ← BOOM!
+```
+
+**Prevention**: When creating projects programmatically, always use this checklist:
+
+- [ ] Component has `id` field
+- [ ] Component has `graph` object (not `nodes` array)
+- [ ] `graph.roots` array exists (not `nodes`)
+- [ ] `graph.connections` array exists (can be empty)
+- [ ] `graph.comments` array exists (can be empty)
+- [ ] Component has `metadata` object (can be empty)
+- [ ] Project has `settings` object (can be empty)
+- [ ] Project has `metadata` object with `title` and `description`
+
+**Time Lost**: ~6 hours across three failed attempts before finding root cause
+
+**Location**:
+
+- Fixed in: `packages/noodl-editor/src/editor/src/utils/LocalProjectsModel.ts` (lines 288-321)
+- Error source: `packages/noodl-editor/src/editor/src/models/nodegraphmodel/NodeGraphModel.ts` (line 57)
+- Task: Phase 0 TASK-010 Project Creation Bug Fix
+- CHANGELOG: `dev-docs/tasks/phase-0-foundation-stabilisation/TASK-010-project-creation-bug-fix/CHANGELOG.md`
+
+**Impact**: This was a P0 blocker preventing all new users from creating projects. The fix allows project creation to work correctly without requiring external templates.
+
+**Keywords**: project.json, schema, graph object, NodeGraphModel, ComponentModel, fromJSON, comments, roots, Cannot read properties of undefined, project creation, minimal project, structure
+
+---
+
 ## 🎨 Canvas Overlay Pattern: React Over HTML5 Canvas (Jan 3, 2026)
 
 ### The Transform Trick: CSS scale() + translate() for Automatic Coordinate Transformation
