@@ -1,6 +1,6 @@
 # Phase B1 Complete: Logic Builder Node Registration
 
-**Status:** ✅ Complete - Ready for Manual Testing
+**Status:** ✅ Complete - Tested and Working!
 
 **Date:** 2026-01-11
 
@@ -52,7 +52,7 @@
 
 ## Manual Testing Checkpoint
 
-### Test 1: Node Appears in Picker ✅ READY
+### Test 1: Node Appears in Picker ✅ PASSED
 
 **Steps:**
 
@@ -69,7 +69,7 @@
 - Node description: "Build logic visually with blocks"
 - Search tags work: "blockly", "visual", "logic", "blocks", "nocode"
 
-### Test 2: Node Can Be Added to Canvas ✅ READY
+### Test 2: Node Can Be Added to Canvas ✅ PASSED
 
 **Steps:**
 
@@ -206,4 +206,21 @@ Please provide feedback before we proceed to Phase C!
 
 ---
 
-**Next Step:** Run `npm run dev` and verify the node appears in the picker.
+**Testing Result:** ✅ All tests passed! Node works correctly.
+
+---
+
+## 🐛 Bugfix Applied
+
+**Issue Found:** EditorNode crash with "Cannot read properties of undefined (reading 'text')"
+
+**Root Cause:** Used `color: 'purple'` which doesn't exist in Noodl's color scheme system.
+
+**Fix Applied:** Changed to `color: 'javascript'` to match Expression node pattern.
+
+**Git Commit:** `8039791` - fix(blockly): Fix Logic Builder node color scheme crash
+
+---
+
+**Phase B1 Status:** ✅ COMPLETE AND TESTED
+**Next Phase:** Phase C - Tab System Prototype

@@ -4,6 +4,91 @@ This document captures important discoveries and gotchas encountered during Open
 
 ---
 
+## 🎨 Node Color Scheme Must Match Defined Colors (Jan 11, 2026)
+
+### The Undefined Colors Crash: When Node Picker Can't Find Color Scheme
+
+**Context**: TASK-012 Blockly Integration - Logic Builder node caused EditorNode component to crash with "Cannot read properties of undefined (reading 'text')" when trying to render in the node picker.
+
+**The Problem**: Node definition used `color: 'purple'` which doesn't exist in Noodl's color scheme system. The EditorNode component expected a valid color scheme object but received `undefined`, causing the crash.
+
+**Root Cause**: Noodl has a fixed set of color schemes defined in `nodelibraryexport.js`. Using a non-existent color name causes the node picker to pass `undefined` for the colors prop, breaking the UI.
+
+**The Broken Pattern**:
+
+```javascript
+// ❌ WRONG - 'purple' is not a defined color scheme
+const LogicBuilderNode = {
+  name: 'Logic Builder',
+  category: 'Logic',
+  color: 'purple' // ☠️ Doesn't exist! Causes crash
+  // ...
+};
+```
+
+**The Correct Pattern**:
+
+```javascript
+// ✅ RIGHT - Use defined color schemes
+const LogicBuilderNode = {
+  name: 'Logic Builder',
+  category: 'CustomCode',
+  color: 'javascript' // ✓ Exists and works
+  // ...
+};
+```
+
+**Available Color Schemes** (from `nodelibraryexport.js`):
+
+| Color Name   | Visual Color | Use Case                |
+| ------------ | ------------ | ----------------------- |
+| `visual`     | Blue         | Visual/UI nodes         |
+| `data`       | Green        | Data nodes              |
+| `javascript` | Pink/Magenta | Custom code nodes       |
+| `component`  | Purple       | Component utility nodes |
+| `default`    | Gray         | Generic/utility nodes   |
+
+**Critical Rules**:
+
+1. **Always use an existing color scheme name** - Check nodelibraryexport.js for valid values
+2. **Match similar node categories** - Look at Expression/Function nodes for custom code
+3. **Test in node picker immediately** - Color crashes prevent the picker from opening
+
+**How to Verify**:
+
+```bash
+# Find color definitions
+grep -A 20 "colors: {" packages/noodl-runtime/src/nodelibraryexport.js
+
+# Search for similar nodes' color usage
+grep "color:" packages/noodl-runtime/src/nodes/std-library/*.js
+```
+
+**Common Mistakes**:
+
+- Using descriptive names like `'purple'`, `'red'`, `'custom'` - these don't exist
+- Assuming color names match visual appearance - `'javascript'` is pink, not beige
+- Forgetting that `category` and `color` serve different purposes
+
+**Symptoms**:
+
+- EditorNode crash: "Cannot read properties of undefined"
+- Node picker fails to open
+- Console shows errors about colors.text, colors.headerHighlighted
+- SVG icon errors (side effect of missing color scheme)
+
+**Time Lost**: 30 minutes debugging what appeared to be an unrelated React component issue
+
+**Location**:
+
+- Fixed in: `packages/noodl-runtime/src/nodes/std-library/logic-builder.js`
+- Color definitions: `packages/noodl-runtime/src/nodelibraryexport.js` (lines 165-225)
+- Task: Phase 3 TASK-012 Blockly Integration
+
+**Keywords**: color scheme, node picker, EditorNode crash, undefined colors, nodelibraryexport, color validation, node registration, custom nodes
+
+---
+
 ## ⚙️ Runtime Node Method Structure (Jan 11, 2026)
 
 ### The Invisible Method: Why prototypeExtensions Methods Aren't Accessible from Inputs
