@@ -203,7 +203,8 @@ const LogicBuilderNode = {
       group: 'General',
       type: {
         name: 'string',
-        allowEditOnly: true
+        allowEditOnly: true,
+        editorType: 'logic-builder-workspace'
       },
       displayName: 'Workspace',
       set: function (value) {
