@@ -300,6 +300,17 @@ export class NodeGraphEditor extends View {
       this
     );
 
+    // Listen for Logic Builder tab open requests
+    EventDispatcher.instance.on(
+      'LogicBuilder.OpenTab',
+      (args: { nodeId: string; nodeName: string; workspace: string }) => {
+        console.log('[NodeGraphEditor] Opening Logic Builder tab for node:', args.nodeId);
+        // The CanvasTabs context will handle the actual tab opening via EventDispatcher
+        // This is just logged for debugging - the actual implementation happens in Phase C Step 6
+      },
+      this
+    );
+
     if (import.meta.webpackHot) {
       import.meta.webpackHot.accept('./createnewnodepanel');
     }
@@ -412,6 +423,11 @@ export class NodeGraphEditor extends View {
     if (this.highlightOverlayRoot) {
       this.highlightOverlayRoot.unmount();
       this.highlightOverlayRoot = null;
+    }
+
+    if (this.canvasTabsRoot) {
+      this.canvasTabsRoot.unmount();
+      this.canvasTabsRoot = null;
     }
 
     SidebarModel.instance.off(this);
@@ -884,10 +900,61 @@ export class NodeGraphEditor extends View {
       this.renderHighlightOverlay();
     }, 1);
 
+    // Render the canvas tabs
+    setTimeout(() => {
+      this.renderCanvasTabs();
+    }, 1);
+
     this.relayout();
     this.repaint();
 
     return this.el;
+  }
+
+  /**
+   * Render the CanvasTabs React component
+   */
+  renderCanvasTabs() {
+    const tabsElement = this.el.find('#canvas-tabs-root').get(0);
+    if (!tabsElement) {
+      console.warn('Canvas tabs root not found in DOM');
+      return;
+    }
+
+    // Create React root if it doesn't exist
+    if (!this.canvasTabsRoot) {
+      this.canvasTabsRoot = createRoot(tabsElement);
+    }
+
+    // Render the tabs with provider
+    this.canvasTabsRoot.render(
+      React.createElement(
+        CanvasTabsProvider,
+        null,
+        React.createElement(CanvasTabs, {
+          onWorkspaceChange: this.handleBlocklyWorkspaceChange.bind(this)
+        })
+      )
+    );
+  }
+
+  /**
+   * Handle workspace changes from Blockly editor
+   */
+  handleBlocklyWorkspaceChange(nodeId: string, workspace: string) {
+    console.log(`[NodeGraphEditor] Workspace changed for node ${nodeId}`);
+
+    const node = this.findNodeWithId(nodeId);
+    if (!node) {
+      console.warn(`[NodeGraphEditor] Node ${nodeId} not found`);
+      return;
+    }
+
+    // Save workspace to node model
+    node.model.setParameter('workspace', workspace);
+
+    // TODO: Generate code and update ports
+    // This will be implemented in Phase C Step 7
   }
 
   /**
