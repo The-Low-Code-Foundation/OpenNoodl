@@ -1,5 +1,9 @@
-import type { StorybookConfig } from '@storybook/react-webpack5';
 import path from 'path';
+import { fileURLToPath } from 'url';
+import type { StorybookConfig } from '@storybook/react-webpack5';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const editorDir = path.join(__dirname, '../../noodl-editor');
 const coreLibDir = path.join(__dirname, '../');
@@ -40,7 +44,7 @@ const config: StorybookConfig = {
         test: /\.ts$/,
         use: [
           {
-            loader: require.resolve('ts-loader')
+            loader: 'ts-loader'
           }
         ]
       });

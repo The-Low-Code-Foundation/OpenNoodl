@@ -10,6 +10,7 @@ import { UndoActionGroup, UndoQueue } from '@noodl-models/undo-queue-model';
 import { WarningsModel } from '@noodl-models/warningsmodel';
 
 import Model from '../../../../shared/model';
+import { ParameterValueResolver } from '../../utils/ParameterValueResolver';
 
 export type NodeGraphNodeParameters = {
   [key: string]: any;
@@ -770,6 +771,28 @@ export class NodeGraphNode extends Model {
     }
 
     return port ? port.default : undefined;
+  }
+
+  /**
+   * Get a parameter value formatted as a display string.
+   * Handles expression parameter objects by resolving them to strings.
+   *
+   * @param name - The parameter name
+   * @param args - Optional args (same as getParameter)
+   * @returns A string representation of the parameter value, safe for UI display
+   *
+   * @example
+   * ```ts
+   * // Regular value
+   * node.getParameterDisplayValue('width') // '100'
+   *
+   * // Expression parameter object
+   * node.getParameterDisplayValue('height') // '{height * 2}' (not '[object Object]')
+   * ```
+   */
+  getParameterDisplayValue(name: string, args?): string {
+    const value = this.getParameter(name, args);
+    return ParameterValueResolver.toString(value);
   }
 
   // Sets the dynamic instance ports for this node

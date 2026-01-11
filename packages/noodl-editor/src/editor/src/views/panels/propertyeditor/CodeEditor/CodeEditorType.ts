@@ -2,9 +2,12 @@ import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
 import React from 'react';
 import { createRoot, Root } from 'react-dom/client';
 
+import { CodeHistoryManager } from '@noodl-models/CodeHistoryManager';
 import { WarningsModel } from '@noodl-models/warningsmodel';
 import { createModel } from '@noodl-utils/CodeEditor';
 import { EditorModel } from '@noodl-utils/CodeEditor/model/editorModel';
+
+import { JavaScriptEditor, type ValidationType } from '@noodl-core-ui/components/code-editor';
 
 import { TypeView } from '../TypeView';
 import { getEditType } from '../utils';
@@ -204,18 +207,31 @@ export class CodeEditorType extends TypeView {
 
     this.parent.hidePopout();
 
-    WarningsModel.instance.off(this);
-    WarningsModel.instance.on(
-      'warningsChanged',
-      function () {
-        _this.updateWarnings();
-      },
-      this
-    );
+    // Always use new JavaScriptEditor for JavaScript/TypeScript
+    const isJavaScriptEditor = this.type.codeeditor === 'javascript' || this.type.codeeditor === 'typescript';
+
+    // Only set up Monaco warnings for Monaco-based editors
+    if (!isJavaScriptEditor) {
+      WarningsModel.instance.off(this);
+      WarningsModel.instance.on(
+        'warningsChanged',
+        function () {
+          _this.updateWarnings();
+        },
+        this
+      );
+    }
 
     function save() {
-      let source = _this.model.getValue();
+      // For JavaScriptEditor, use this.value (already updated in onChange)
+      // For Monaco editor, get value from model
+      let source = isJavaScriptEditor ? _this.value : _this.model.getValue();
       if (source === '') source = undefined;
+
+      // Save snapshot to history (before updating)
+      if (source && nodeId) {
+        CodeHistoryManager.instance.saveSnapshot(nodeId, scope.name, source);
+      }
 
       _this.value = source;
       _this.parent.setParameter(scope.name, source !== _this.default ? source : undefined);
@@ -224,14 +240,17 @@ export class CodeEditorType extends TypeView {
 
     const node = this.parent.model.model;
 
-    this.model = createModel(
-      {
-        type: this.type.name || this.type,
-        value: this.value,
-        codeeditor: this.type.codeeditor?.toLowerCase()
-      },
-      node
-    );
+    // Only create Monaco model for Monaco-based editors
+    if (!isJavaScriptEditor) {
+      this.model = createModel(
+        {
+          type: this.type.name || this.type,
+          value: this.value,
+          codeeditor: this.type.codeeditor?.toLowerCase()
+        },
+        node
+      );
+    }
 
     const props: CodeEditorProps = {
       nodeId,
@@ -265,11 +284,62 @@ export class CodeEditorType extends TypeView {
           y: height
         };
       } catch (error) {}
+    } else {
+      // Default size: Make it wider (60% of viewport width, 70% of height)
+      const b = document.body.getBoundingClientRect();
+      props.initialSize = {
+        x: Math.min(b.width * 0.6, b.width - 200), // 60% width, but leave some margin
+        y: Math.min(b.height * 0.7, b.height - 200) // 70% height
+      };
     }
 
     this.popoutDiv = document.createElement('div');
     this.popoutRoot = createRoot(this.popoutDiv);
-    this.popoutRoot.render(React.createElement(CodeEditor, props));
+
+    // Determine which editor to use
+    if (isJavaScriptEditor) {
+      console.log('✨ Using JavaScriptEditor for:', this.type.codeeditor);
+
+      // Determine validation type based on editor type
+      let validationType: ValidationType = 'function';
+      if (this.type.codeeditor === 'javascript') {
+        // Could be expression or function - check type name for hints
+        const typeName = (this.type.name || '').toLowerCase();
+        if (typeName.includes('expression')) {
+          validationType = 'expression';
+        } else if (typeName.includes('script')) {
+          validationType = 'script';
+        } else {
+          validationType = 'function';
+        }
+      } else if (this.type.codeeditor === 'typescript') {
+        validationType = 'script';
+      }
+
+      // Render JavaScriptEditor with proper sizing and history support
+      this.popoutRoot.render(
+        React.createElement(JavaScriptEditor, {
+          value: this.value || '',
+          onChange: (newValue) => {
+            this.value = newValue;
+            // Don't update Monaco model - JavaScriptEditor is independent
+            // The old code triggered Monaco validation which caused errors
+          },
+          onSave: () => {
+            save();
+          },
+          validationType,
+          width: props.initialSize?.x || 800,
+          height: props.initialSize?.y || 500,
+          // Add history tracking
+          nodeId: nodeId,
+          parameterName: scope.name
+        })
+      );
+    } else {
+      // Use existing Monaco CodeEditor
+      this.popoutRoot.render(React.createElement(CodeEditor, props));
+    }
 
     const popoutDiv = this.popoutDiv;
     this.parent.showPopout({
@@ -303,7 +373,11 @@ export class CodeEditorType extends TypeView {
       }
     });
 
-    this.updateWarnings();
+    // Only update warnings for Monaco-based editors
+    if (!isJavaScriptEditor) {
+      this.updateWarnings();
+    }
+
     evt.stopPropagation();
   }
 }

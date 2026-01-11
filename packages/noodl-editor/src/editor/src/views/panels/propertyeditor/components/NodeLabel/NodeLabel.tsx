@@ -5,6 +5,7 @@ import { platform } from '@noodl/platform';
 import { Keybindings } from '@noodl-constants/Keybindings';
 import { NodeGraphNode } from '@noodl-models/nodegraphmodel';
 import getDocsEndpoint from '@noodl-utils/getDocsEndpoint';
+import { ParameterValueResolver } from '@noodl-utils/ParameterValueResolver';
 import { tracker } from '@noodl-utils/tracker';
 
 import { IconName, IconSize } from '@noodl-core-ui/components/common/Icon';
@@ -22,14 +23,16 @@ export interface NodeLabelProps {
 export function NodeLabel({ model, showHelp = true }: NodeLabelProps) {
   const labelInputRef = useRef<HTMLInputElement | null>(null);
   const [isEditingLabel, setIsEditingLabel] = useState(false);
-  const [label, setLabel] = useState(model.label);
+  // Defensive: convert label to string (handles expression parameter objects)
+  const [label, setLabel] = useState(ParameterValueResolver.toString(model.label));
 
   // Listen for label changes on the model
   useEffect(() => {
     model.on(
       'labelChanged',
       () => {
-        setLabel(model.label);
+        // Defensive: convert label to string (handles expression parameter objects)
+        setLabel(ParameterValueResolver.toString(model.label));
       },
       this
     );

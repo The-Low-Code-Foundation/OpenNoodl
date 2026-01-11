@@ -1,4 +1,21 @@
 const OutputProperty = require('./outputproperty');
+const { evaluateExpression } = require('./expression-evaluator');
+const { coerceToType } = require('./expression-type-coercion');
+
+/**
+ * Helper to check if a value is an expression parameter
+ * @param {*} value - The value to check
+ * @returns {boolean} True if value is an expression parameter
+ */
+function isExpressionParameter(value) {
+  return (
+    value !== null &&
+    value !== undefined &&
+    typeof value === 'object' &&
+    value.mode === 'expression' &&
+    typeof value.expression === 'string'
+  );
+}
 
 /**
  * Base class for all Nodes
@@ -83,6 +100,63 @@ Node.prototype.registerInputIfNeeded = function () {
   //noop, can be overriden by subclasses
 };
 
+/**
+ * Evaluate an expression parameter and return the coerced result
+ *
+ * @param {*} paramValue - The parameter value (might be an ExpressionParameter)
+ * @param {string} portName - The input port name
+ * @returns {*} The evaluated and coerced value (or original if not an expression)
+ */
+Node.prototype._evaluateExpressionParameter = function (paramValue, portName) {
+  // Check if this is an expression parameter
+  if (!isExpressionParameter(paramValue)) {
+    return paramValue; // Simple value, return as-is
+  }
+
+  const input = this.getInput(portName);
+  if (!input) {
+    return paramValue.fallback; // No input definition, use fallback
+  }
+
+  try {
+    // Evaluate the expression with access to context
+    const result = evaluateExpression(paramValue.expression, this.context);
+
+    // Coerce to expected type
+    const coercedValue = coerceToType(result, input.type, paramValue.fallback);
+
+    // Clear any previous expression errors
+    if (this.context.editorConnection) {
+      this.context.editorConnection.clearWarning(
+        this.nodeScope.componentOwner.name,
+        this.id,
+        'expression-error-' + portName
+      );
+    }
+
+    return coercedValue;
+  } catch (error) {
+    // Expression evaluation failed
+    console.warn(`Expression evaluation failed for ${this.name}.${portName}:`, error);
+
+    // Show warning in editor
+    if (this.context.editorConnection) {
+      this.context.editorConnection.sendWarning(
+        this.nodeScope.componentOwner.name,
+        this.id,
+        'expression-error-' + portName,
+        {
+          showGlobally: true,
+          message: `Expression error: ${error.message}`
+        }
+      );
+    }
+
+    // Return fallback value
+    return paramValue.fallback;
+  }
+};
+
 Node.prototype.setInputValue = function (name, value) {
   // DEBUG: Track input value setting for HTTP node
   if (this.name === 'net.noodl.HTTP') {
@@ -114,6 +188,9 @@ Node.prototype.setInputValue = function (name, value) {
 
   //Save the current input value. Save it before resolving color styles so delta updates on color styles work correctly
   this._inputValues[name] = value;
+
+  // Evaluate expression parameters before further processing
+  value = this._evaluateExpressionParameter(value, name);
 
   if (input.type === 'color' && this.context && this.context.styles) {
     value = this.context.styles.resolveColor(value);
