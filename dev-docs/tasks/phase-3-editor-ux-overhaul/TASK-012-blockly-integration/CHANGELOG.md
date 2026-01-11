@@ -184,3 +184,82 @@ User clicks "Edit Blocks"
 ```
 
 ### Ready for Production Testing! 🚀
+
+---
+
+### Session 3: 2026-01-11 (Bug Investigation)
+
+**Duration:** ~30 minutes
+
+**Phase:** Investigation & Documentation
+
+**Discovered Issues:**
+
+During user testing, discovered critical integration bugs:
+
+**Bug #1-3, #5: Canvas Not Rendering**
+
+- Opening project shows blank canvas
+- First component click shows nothing
+- Second component works normally
+- Root cause: CanvasTabs tried to "wrap" canvas in React tab system
+- Canvas is rendered via vanilla JS/jQuery, not React
+- DOM ID conflict between React component and legacy canvas
+- **Resolution:** Created TASK-012B to fix with separation of concerns
+
+**Bug #4: Logic Builder Button Crash**
+
+- `this.parent.model.getDisplayName is not a function`
+- Root cause: Incorrect assumption about model API
+- **Resolution:** Documented fix in TASK-012B
+
+**Bug #6: Floating "Workspace" Label**
+
+- CSS positioning issue in property panel
+- **Resolution:** Documented fix in TASK-012B
+
+**Key Learning:**
+
+- Don't try to wrap legacy jQuery/vanilla JS in React
+- Keep canvas and Logic Builder completely separate
+- Use visibility toggle instead of replacement
+- Canvas = Desktop, Logic Builder = Windows on desktop
+
+**Files Created:**
+
+- `TASK-012B-integration-bugfixes.md` - Complete bug fix task documentation
+
+**Next Steps:**
+
+- ✅ **Phase A-C Implementation COMPLETE!**
+- 🐛 TASK-012B needed to fix integration issues
+- 🧪 After fixes: Full production testing
+
+---
+
+## Status Update
+
+### What Works ✅
+
+- Blockly workspace component
+- Custom Noodl blocks (20+ blocks)
+- Code generation system
+- Logic Builder runtime node
+- Dynamic port registration
+- Property panel button (when model API fixed)
+- IODetector and code generation pipeline
+
+### What's Broken 🐛
+
+- Canvas rendering on project open
+- Logic Builder button crashes (model API error)
+- Canvas/Logic Builder visibility coordination
+
+### Architecture Decision
+
+- **Original Plan:** Canvas and Logic Builder as sibling tabs
+- **Reality:** Canvas is legacy vanilla JS, can't be React-wrapped
+- **Solution:** Keep them separate, use visibility toggle
+- **Status:** Documented in TASK-012B for implementation
+
+### Ready for Production Testing! 🚀 (After TASK-012B)
