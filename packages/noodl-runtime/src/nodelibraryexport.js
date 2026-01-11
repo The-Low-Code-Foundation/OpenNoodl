@@ -581,7 +581,7 @@ function generateNodeLibrary(nodeRegister) {
       subCategories: [
         {
           name: '',
-          items: ['Expression', 'JavaScriptFunction', 'Javascript2', 'CSS Definition']
+          items: ['Expression', 'JavaScriptFunction', 'Javascript2', 'Logic Builder', 'CSS Definition']
         }
       ]
     },
