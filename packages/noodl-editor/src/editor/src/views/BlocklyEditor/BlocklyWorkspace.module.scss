@@ -1,0 +1,121 @@
+/**
+ * BlocklyWorkspace Styles
+ * 
+ * Styling for the Blockly visual programming workspace.
+ * Uses theme tokens for consistent integration with Noodl editor.
+ */
+
+.Root {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  background-color: var(--theme-color-bg-1);
+  overflow: hidden;
+}
+
+.BlocklyContainer {
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  position: relative;
+
+  /* Ensure Blockly SVG fills container */
+  & > .injectionDiv {
+    width: 100% !important;
+    height: 100% !important;
+  }
+}
+
+/* Override Blockly default styles to match Noodl theme */
+:global {
+  /* Toolbox styling */
+  .blocklyToolboxDiv {
+    background-color: var(--theme-color-bg-2) !important;
+    border-right: 1px solid var(--theme-color-border-default) !important;
+  }
+
+  .blocklyTreeLabel {
+    color: var(--theme-color-fg-default) !important;
+    font-family: var(--theme-font-family) !important;
+    font-size: 13px !important;
+  }
+
+  .blocklyTreeRow:hover {
+    background-color: var(--theme-color-bg-3) !important;
+  }
+
+  .blocklyTreeSelected {
+    background-color: var(--theme-color-primary) !important;
+  }
+
+  /* Flyout styling */
+  .blocklyFlyoutBackground {
+    fill: var(--theme-color-bg-2) !important;
+    fill-opacity: 0.95 !important;
+  }
+
+  /* Block styling - keep default Blockly colors for now */
+  /* May customize later to match Noodl node colors */
+
+  /* Zoom controls */
+  .blocklyZoom {
+    & image {
+      filter: brightness(0.8);
+    }
+  }
+
+  /* Trashcan */
+  .blocklyTrash {
+    & image {
+      filter: brightness(0.8);
+    }
+  }
+
+  /* Context menu */
+  .blocklyContextMenu {
+    background-color: var(--theme-color-bg-3) !important;
+    border: 1px solid var(--theme-color-border-default) !important;
+    border-radius: 4px !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+  }
+
+  .blocklyMenuItem {
+    color: var(--theme-color-fg-default) !important;
+    font-family: var(--theme-font-family) !important;
+    font-size: 13px !important;
+    padding: 6px 12px !important;
+
+    &:hover {
+      background-color: var(--theme-color-bg-4) !important;
+    }
+
+    &.blocklyMenuItemDisabled {
+      color: var(--theme-color-fg-default-shy) !important;
+      opacity: 0.5;
+    }
+  }
+
+  /* Scrollbars */
+  .blocklyScrollbarHandle {
+    fill: var(--theme-color-border-default) !important;
+  }
+
+  /* Field editor backgrounds */
+  .blocklyWidgetDiv {
+    & .goog-menu {
+      background-color: var(--theme-color-bg-3) !important;
+      border: 1px solid var(--theme-color-border-default) !important;
+      border-radius: 4px !important;
+    }
+
+    & .goog-menuitem {
+      color: var(--theme-color-fg-default) !important;
+      font-family: var(--theme-font-family) !important;
+
+      &:hover {
+        background-color: var(--theme-color-bg-4) !important;
+      }
+    }
+  }
+}

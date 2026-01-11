@@ -132,11 +132,18 @@ const SimpleJavascriptNode = {
         }
       }
 
+      // Create Noodl API and augment with Inputs/Outputs for backward compatibility
+      // Legacy code used: Noodl.Outputs.foo = 'bar'
+      // New code uses: Outputs.foo = 'bar' (direct parameter)
+      const noodlAPI = JavascriptNodeParser.createNoodlAPI(this.nodeScope.modelScope);
+      noodlAPI.Inputs = inputs;
+      noodlAPI.Outputs = outputs;
+
       try {
         await func.apply(this._internal._this, [
           inputs,
           outputs,
-          JavascriptNodeParser.createNoodlAPI(this.nodeScope.modelScope),
+          noodlAPI,
           JavascriptNodeParser.getComponentScopeForNode(this)
         ]);
       } catch (e) {

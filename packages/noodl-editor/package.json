@@ -74,6 +74,7 @@
     "algoliasearch": "^5.35.0",
     "archiver": "^5.3.2",
     "async": "^3.2.6",
+    "blockly": "^12.3.1",
     "classnames": "^2.5.1",
     "dagre": "^0.8.5",
     "diff3": "0.0.4",

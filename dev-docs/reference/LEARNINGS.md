@@ -4,6 +4,199 @@ This document captures important discoveries and gotchas encountered during Open
 
 ---
 
+## ⚙️ Runtime Node Method Structure (Jan 11, 2026)
+
+### The Invisible Method: Why prototypeExtensions Methods Aren't Accessible from Inputs
+
+**Context**: Phase 3 TASK-008 Critical Runtime Bugs - Expression node was throwing `TypeError: this._scheduleEvaluateExpression is not a function` when the Run signal was triggered, despite the method being clearly defined in the node definition.
+
+**The Problem**: Methods defined in `prototypeExtensions` with descriptor syntax (`{ value: function() {...} }`) are NOT accessible from `inputs` callbacks. Calling `this._methodName()` from an input handler fails with "not a function" error.
+
+**Root Cause**: Node definition structure has two places to define methods:
+
+- **`prototypeExtensions`**: Uses ES5 descriptor syntax, methods added to prototype at registration time
+- **`methods`**: Simple object with functions, methods accessible everywhere via `this`
+
+Input callbacks execute in a different context where `prototypeExtensions` methods aren't accessible.
+
+**The Broken Pattern**:
+
+```javascript
+// ❌ WRONG - Method not accessible from inputs
+const MyNode = {
+  inputs: {
+    run: {
+      type: 'signal',
+      valueChangedToTrue: function () {
+        this._doSomething(); // ☠️ TypeError: this._doSomething is not a function
+      }
+    }
+  },
+  prototypeExtensions: {
+    _doSomething: {
+      value: function () {
+        // This method is NOT accessible from input callbacks!
+        console.log('This never runs');
+      }
+    }
+  }
+};
+```
+
+**The Correct Pattern**:
+
+```javascript
+// ✅ RIGHT - Methods accessible everywhere
+const MyNode = {
+  inputs: {
+    run: {
+      type: 'signal',
+      valueChangedToTrue: function () {
+        this._doSomething(); // ✅ Works!
+      }
+    }
+  },
+  methods: {
+    _doSomething: function () {
+      // This method IS accessible from anywhere
+      console.log('This works perfectly');
+    }
+  }
+};
+```
+
+**Key Differences**:
+
+| Pattern               | Access from Inputs | Access from Methods | Syntax                                        |
+| --------------------- | ------------------ | ------------------- | --------------------------------------------- |
+| `prototypeExtensions` | ❌ No              | ✅ Yes              | `{ methodName: { value: function() {...} } }` |
+| `methods`             | ✅ Yes             | ✅ Yes              | `{ methodName: function() {...} }`            |
+
+**When This Manifests**:
+
+- Signal inputs using `valueChangedToTrue` callback
+- Input setters trying to call helper methods
+- Any input handler calling `this._methodName()`
+
+**Symptoms**:
+
+- Error: `TypeError: this._methodName is not a function`
+- Method clearly defined but "not found"
+- Other methods CAN call the method (if they're in `prototypeExtensions` too)
+
+**Related Pattern**: Noodl API Augmentation for Backward Compatibility
+
+When passing the Noodl API object to user code, you often need to augment it with additional properties:
+
+```javascript
+// Function/Expression nodes need Noodl.Inputs and Noodl.Outputs
+const noodlAPI = JavascriptNodeParser.createNoodlAPI(this.context.modelScope);
+
+// Augment with inputs/outputs for backward compatibility
+noodlAPI.Inputs = inputs; // Enables: Noodl.Inputs.foo
+noodlAPI.Outputs = outputs; // Enables: Noodl.Outputs.bar = 'value'
+
+// Pass augmented API to user function
+const result = userFunction.apply(null, [inputs, outputs, noodlAPI, component]);
+```
+
+This allows both legacy syntax (`Noodl.Outputs.foo = 'bar'`) and modern syntax (`Outputs.foo = 'bar'`) to work.
+
+**Passing Noodl Context to Compiled Functions**:
+
+Expression nodes compile user expressions into functions. To provide access to Noodl globals (Variables, Objects, Arrays), pass the Noodl API as a parameter:
+
+```javascript
+// ❌ WRONG - Function can't access Noodl context
+function compileExpression(expression, inputNames) {
+  const args = inputNames.concat([expression]);
+  return construct(Function, args); // function(inputA, inputB, ...) { return expression; }
+  // Problem: Expression can't access Variables.myVar
+}
+
+// ✅ RIGHT - Pass Noodl as parameter
+function compileExpression(expression, inputNames) {
+  const args = inputNames.concat(['Noodl', expression]);
+  return construct(Function, args); // function(inputA, inputB, Noodl) { return expression; }
+}
+
+// When calling: pass Noodl API as last argument
+const noodlAPI = JavascriptNodeParser.createNoodlAPI(this.context.modelScope);
+const argsWithNoodl = inputValues.concat([noodlAPI]);
+const result = compiledFunction.apply(null, argsWithNoodl);
+```
+
+**Debug Logging Pattern** - Colored Emojis for Flow Tracing:
+
+When debugging complex async flows, use colored emojis to make logs scannable:
+
+```javascript
+function scheduleEvaluation() {
+  console.log('🔵 [Expression] Scheduling evaluation...');
+  this.scheduleAfterInputsHaveUpdated(function () {
+    console.log('🟡 [Expression] Callback FIRED');
+    const result = this.calculate();
+    console.log('✅ [Expression] Result:', result, '(type:', typeof result, ')');
+  });
+}
+```
+
+**Color Coding**:
+
+- 🔵 Blue: Function entry/scheduling
+- 🟢 Green: Success path taken
+- 🟡 Yellow: Async callback fired
+- 🔷 Diamond: Calculation/processing
+- ✅ Check: Success result
+- ❌ X: Error path
+- 🟠 Orange: State changes
+- 🟣 Purple: Side effects (flagOutputDirty, sendSignal)
+
+**Files Fixed in TASK-008**:
+
+- `expression.js`: Moved 4 methods from `prototypeExtensions` to `methods`
+- `simplejavascript.js`: Augmented Noodl API with Inputs/Outputs
+- `popuplayer.css`: Replaced hardcoded colors with theme tokens
+
+**All Three Bugs Shared Common Cause**: Missing Noodl context access
+
+- **Tooltips**: Hardcoded colors (not using theme context)
+- **Function node**: Missing `Noodl.Outputs` reference
+- **Expression node**: Methods inaccessible + missing Noodl parameter
+
+**Critical Rules**:
+
+1. **Always use `methods` object for node methods** - Accessible from everywhere
+2. **Never use `prototypeExtensions` unless you understand the limitations** - Only for prototype manipulation
+3. **Augment Noodl API for backward compatibility** - Add Inputs/Outputs references
+4. **Pass Noodl as function parameter** - Don't rely on global scope
+5. **Use colored emoji logging for async flows** - Makes debugging 10x faster
+
+**Verification Commands**:
+
+```bash
+# Find nodes using prototypeExtensions
+grep -r "prototypeExtensions:" packages/noodl-runtime/src/nodes --include="*.js"
+
+# Check if they're accessible from inputs (potential bug)
+grep -A 5 "valueChangedToTrue.*function" packages/noodl-runtime/src/nodes --include="*.js"
+```
+
+**Time Saved**: This pattern will prevent ~2-4 hours of debugging per occurrence. The error message gives no indication that the problem is structural access, not missing code.
+
+**Location**:
+
+- Fixed files:
+  - `packages/noodl-runtime/src/nodes/std-library/expression.js`
+  - `packages/noodl-runtime/src/nodes/std-library/simplejavascript.js`
+  - `packages/noodl-editor/src/editor/src/styles/popuplayer.css`
+- Task: Phase 3 TASK-008 Critical Runtime Bugs
+- CHANGELOG: `dev-docs/tasks/phase-3-editor-ux-overhaul/TASK-008-critical-runtime-bugs/CHANGELOG.md`
+
+**Keywords**: node structure, methods, prototypeExtensions, runtime nodes, this context, signal inputs, valueChangedToTrue, TypeError not a function, Noodl API, JavascriptNodeParser, backward compatibility, compiled functions, debug logging, colored emojis, flow tracing
+
+---
+
 ## 🎨 Canvas Overlay Pattern: React Over HTML5 Canvas (Jan 3, 2026)
 
 ### The Transform Trick: CSS scale() + translate() for Automatic Coordinate Transformation
