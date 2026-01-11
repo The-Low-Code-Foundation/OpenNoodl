@@ -239,80 +239,21 @@ const LogicBuilderNode = {
 
 /**
  * Update dynamic ports based on workspace
+ * This function is injected by the editor's setup code
  */
+let updatePortsImpl = null;
+
 function updatePorts(nodeId, workspace, editorConnection) {
   if (!workspace) {
     editorConnection.sendDynamicPorts(nodeId, []);
     return;
   }
 
-  try {
-    // Detect I/O from workspace
-    // This imports the detectIO function from the editor
-    // In the editor context, this will work; in runtime it's a no-op
-    const detected = detectIOFromWorkspace(workspace);
-
-    const ports = [];
-
-    // Add detected inputs
-    detected.inputs.forEach((input) => {
-      ports.push({
-        name: input.name,
-        type: input.type,
-        plug: 'input',
-        group: 'Inputs'
-      });
-    });
-
-    // Add detected outputs
-    detected.outputs.forEach((output) => {
-      ports.push({
-        name: output.name,
-        type: output.type,
-        plug: 'output',
-        group: 'Outputs'
-      });
-    });
-
-    // Add detected signal inputs
-    detected.signalInputs.forEach((signalName) => {
-      ports.push({
-        name: signalName,
-        type: 'signal',
-        plug: 'input',
-        group: 'Signal Inputs'
-      });
-    });
-
-    // Add detected signal outputs
-    detected.signalOutputs.forEach((signalName) => {
-      ports.push({
-        name: signalName,
-        type: 'signal',
-        plug: 'output',
-        group: 'Signal Outputs'
-      });
-    });
-
-    editorConnection.sendDynamicPorts(nodeId, ports);
-  } catch (error) {
-    console.error('[Logic Builder] Failed to update ports:', error);
+  if (updatePortsImpl) {
+    updatePortsImpl(nodeId, workspace, editorConnection);
+  } else {
+    console.warn('[Logic Builder] updatePortsImpl not initialized - running in runtime mode?');
   }
-}
-
-/**
- * Detect I/O from workspace
- * This is a bridge function that calls the editor's IODetector
- */
-function detectIOFromWorkspace() {
-  // In editor context, this will be replaced with actual detection
-  // For now, return empty structure
-  return {
-    inputs: [],
-    outputs: [],
-    signalInputs: [],
-    signalOutputs: []
-  };
 }
 
 module.exports = {
@@ -321,6 +262,70 @@ module.exports = {
     if (!context.editorConnection || !context.editorConnection.isRunningLocally()) {
       return;
     }
+
+    // Inject the real updatePorts implementation
+    // This is set by the editor's initialization code
+    updatePortsImpl = function (nodeId, workspace, editorConnection) {
+      try {
+        // The IODetector should be available in the editor context
+        // We'll access it through the global window object (editor environment)
+        if (typeof window !== 'undefined' && window.NoodlEditor && window.NoodlEditor.detectIO) {
+          const detected = window.NoodlEditor.detectIO(workspace);
+
+          const ports = [];
+
+          // Add detected inputs
+          detected.inputs.forEach((input) => {
+            ports.push({
+              name: input.name,
+              type: input.type,
+              plug: 'input',
+              group: 'Inputs',
+              displayName: input.name
+            });
+          });
+
+          // Add detected outputs
+          detected.outputs.forEach((output) => {
+            ports.push({
+              name: output.name,
+              type: output.type,
+              plug: 'output',
+              group: 'Outputs',
+              displayName: output.name
+            });
+          });
+
+          // Add detected signal inputs
+          detected.signalInputs.forEach((signalName) => {
+            ports.push({
+              name: signalName,
+              type: 'signal',
+              plug: 'input',
+              group: 'Signal Inputs',
+              displayName: signalName
+            });
+          });
+
+          // Add detected signal outputs
+          detected.signalOutputs.forEach((signalName) => {
+            ports.push({
+              name: signalName,
+              type: 'signal',
+              plug: 'output',
+              group: 'Signal Outputs',
+              displayName: signalName
+            });
+          });
+
+          editorConnection.sendDynamicPorts(nodeId, ports);
+        } else {
+          console.warn('[Logic Builder] IODetector not available in editor context');
+        }
+      } catch (error) {
+        console.error('[Logic Builder] Failed to update ports:', error);
+      }
+    };
 
     graphModel.on('nodeAdded.Logic Builder', function (node) {
       if (node.parameters.workspace) {
@@ -333,5 +338,10 @@ module.exports = {
         }
       });
     });
+  },
+
+  // Export for editor to set the implementation
+  setUpdatePortsImpl: function (impl) {
+    updatePortsImpl = impl;
   }
 };

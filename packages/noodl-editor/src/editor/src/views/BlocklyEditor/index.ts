@@ -9,6 +9,8 @@
 
 import { initNoodlBlocks } from './NoodlBlocks';
 import { initNoodlGenerators } from './NoodlGenerators';
+// Initialize globals (IODetector, code generation)
+import '../../utils/BlocklyEditorGlobals';
 
 // Main component
 export { BlocklyWorkspace } from './BlocklyWorkspace';
@@ -30,6 +32,8 @@ export function initBlocklyIntegration() {
 
   // Initialize code generators
   initNoodlGenerators();
+
+  // Note: BlocklyEditorGlobals auto-initializes via side-effect import above
 
   console.log('✅ [Blockly] Integration initialized');
 }
