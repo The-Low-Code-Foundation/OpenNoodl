@@ -24,6 +24,7 @@ import { PopupToolbar, PopupToolbarProps } from '@noodl-core-ui/components/popup
 
 import { EventDispatcher } from '../../../shared/utils/EventDispatcher';
 import View from '../../../shared/view';
+import { CanvasTabsProvider } from '../contexts/CanvasTabsContext';
 import { ComponentModel } from '../models/componentmodel';
 import {
   Connection,
@@ -40,6 +41,7 @@ import DebugInspector from '../utils/debuginspector';
 import { rectanglesOverlap, guid } from '../utils/utils';
 import { ViewerConnection } from '../ViewerConnection';
 import { HighlightOverlay } from './CanvasOverlays/HighlightOverlay';
+import { CanvasTabs } from './CanvasTabs';
 import CommentLayer from './commentlayer';
 // Import test utilities for console debugging (dev only)
 import '../services/HighlightManager/test-highlights';
@@ -234,6 +236,7 @@ export class NodeGraphEditor extends View {
   toolbarRoots: Root[] = [];
   titleRoot: Root = null;
   highlightOverlayRoot: Root = null;
+  canvasTabsRoot: Root = null;
 
   constructor(args) {
     super();
