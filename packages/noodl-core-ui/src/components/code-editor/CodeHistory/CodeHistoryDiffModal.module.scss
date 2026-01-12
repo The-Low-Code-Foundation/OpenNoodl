@@ -1,0 +1,326 @@
+/**
+ * CodeHistoryDiffModal Styles
+ * The KILLER feature - beautiful side-by-side diff comparison
+ */
+
+.Overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  animation: fadeIn 0.2s ease;
+}
+
+.Modal {
+  background: var(--theme-color-bg-1);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: 12px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6);
+  width: 90vw;
+  max-width: 1200px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  animation: scaleIn 0.2s ease;
+}
+
+.Header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--theme-color-border-default);
+}
+
+.Title {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--theme-color-fg-default);
+}
+
+.CloseButton {
+  background: none;
+  border: none;
+  color: var(--theme-color-fg-default-shy);
+  font-size: 28px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  transition: all 0.15s ease;
+
+  &:hover {
+    background: var(--theme-color-bg-3);
+    color: var(--theme-color-fg-default);
+  }
+}
+
+/* Diff Container */
+.DiffContainer {
+  display: flex;
+  gap: 16px;
+  padding: 24px;
+  overflow: hidden;
+  flex: 1;
+  min-height: 0;
+}
+
+.DiffSide {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--theme-color-bg-2);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.DiffHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: var(--theme-color-bg-3);
+  border-bottom: 1px solid var(--theme-color-border-default);
+}
+
+.DiffLabel {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--theme-color-fg-default);
+}
+
+.DiffInfo {
+  display: flex;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.Additions {
+  color: #4ade80;
+}
+
+.Deletions {
+  color: #f87171;
+}
+
+.Modifications {
+  color: #fbbf24;
+}
+
+.DiffCode {
+  flex: 1;
+  overflow-y: auto;
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.DiffLine {
+  display: flex;
+  padding: 2px 0;
+  min-height: 21px;
+  transition: background 0.1s ease;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.03);
+  }
+}
+
+.LineNumber {
+  flex-shrink: 0;
+  width: 50px;
+  padding: 0 12px;
+  text-align: right;
+  color: var(--theme-color-fg-default-shy);
+  user-select: none;
+  font-size: 12px;
+}
+
+.LineContent {
+  flex: 1;
+  padding-right: 12px;
+  white-space: pre;
+  overflow-x: auto;
+  color: var(--theme-color-fg-default);
+}
+
+/* Diff line states */
+.DiffLineAdded {
+  background: rgba(74, 222, 128, 0.15);
+
+  .LineNumber {
+    background: rgba(74, 222, 128, 0.2);
+    color: #4ade80;
+  }
+
+  .LineContent {
+    color: #d9f99d;
+  }
+}
+
+.DiffLineRemoved {
+  background: rgba(248, 113, 113, 0.15);
+
+  .LineNumber {
+    background: rgba(248, 113, 113, 0.2);
+    color: #f87171;
+  }
+
+  .LineContent {
+    color: #fecaca;
+    text-decoration: line-through;
+    opacity: 0.8;
+  }
+}
+
+.DiffLineModified {
+  background: rgba(251, 191, 36, 0.12);
+
+  .LineNumber {
+    background: rgba(251, 191, 36, 0.2);
+    color: #fbbf24;
+  }
+
+  .LineContent {
+    color: #fef3c7;
+  }
+}
+
+.DiffLineEmpty {
+  background: rgba(255, 255, 255, 0.02);
+  opacity: 0.3;
+
+  .LineNumber {
+    opacity: 0;
+  }
+
+  .LineContent {
+    opacity: 0;
+  }
+}
+
+/* Separator */
+.DiffSeparator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--theme-color-fg-default-shy);
+  opacity: 0.6;
+}
+
+/* Summary */
+.Summary {
+  padding: 16px 24px;
+  border-top: 1px solid var(--theme-color-border-default);
+  border-bottom: 1px solid var(--theme-color-border-default);
+  background: var(--theme-color-bg-2);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--theme-color-fg-default-shy);
+}
+
+/* Footer */
+.Footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 20px 24px;
+}
+
+.CancelButton {
+  padding: 10px 20px;
+  background: var(--theme-color-bg-2);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: 6px;
+  color: var(--theme-color-fg-default);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  &:hover {
+    background: var(--theme-color-bg-3);
+    border-color: var(--theme-color-border-highlight);
+  }
+}
+
+.RestoreButton {
+  padding: 10px 20px;
+  background: var(--theme-color-primary);
+  border: 1px solid var(--theme-color-primary);
+  border-radius: 6px;
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  &:hover {
+    background: var(--theme-color-primary-highlight);
+    border-color: var(--theme-color-primary-highlight);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Scrollbar styling */
+.DiffCode::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.DiffCode::-webkit-scrollbar-track {
+  background: var(--theme-color-bg-1);
+}
+
+.DiffCode::-webkit-scrollbar-thumb {
+  background: var(--theme-color-border-default);
+  border-radius: 4px;
+
+  &:hover {
+    background: var(--theme-color-border-highlight);
+  }
+}

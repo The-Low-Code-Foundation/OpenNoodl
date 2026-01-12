@@ -1,0 +1,64 @@
+.Root {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background-color: var(--theme-color-bg-3, rgba(99, 102, 241, 0.05));
+  border: 1px solid var(--theme-color-border-default, rgba(99, 102, 241, 0.2));
+  border-radius: 4px;
+  padding: 4px 8px;
+  flex: 1;
+  transition: all 0.15s ease;
+
+  &:focus-within {
+    border-color: var(--theme-color-primary, #6366f1);
+    background-color: var(--theme-color-bg-2, rgba(99, 102, 241, 0.08));
+  }
+
+  &.HasError {
+    border-color: var(--theme-color-error, #ef4444);
+    background-color: var(--theme-color-bg-2, rgba(239, 68, 68, 0.05));
+  }
+}
+
+.Badge {
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Courier New', monospace;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--theme-color-primary, #6366f1);
+  padding: 2px 4px;
+  background-color: var(--theme-color-bg-2, rgba(99, 102, 241, 0.15));
+  border-radius: 2px;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.Input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Courier New', monospace;
+  font-size: 12px;
+  color: var(--theme-color-fg-default, #ffffff);
+  padding: 0;
+  min-width: 0;
+
+  &::placeholder {
+    color: var(--theme-color-fg-default-shy, rgba(255, 255, 255, 0.4));
+    opacity: 1;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.ErrorIndicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--theme-color-error, #ef4444);
+  cursor: help;
+}

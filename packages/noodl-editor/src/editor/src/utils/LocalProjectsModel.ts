@@ -13,6 +13,7 @@ import Model from '../../../shared/model';
 import { detectRuntimeVersion } from '../models/migration/ProjectScanner';
 import { RuntimeVersionInfo } from '../models/migration/types';
 import { projectFromDirectory, unzipIntoDirectory } from '../models/projectmodel.editor';
+import { GitHubAuth } from '../services/github';
 import FileSystem from './filesystem';
 import { tracker } from './tracker';
 import { guid } from './utils';
@@ -119,6 +120,10 @@ export class LocalProjectsModel extends Model {
         project.name = projectEntry.name; // Also assign the name
         this.touchProject(projectEntry);
         this.bindProject(project);
+
+        // Initialize Git authentication for this project
+        this.setCurrentGlobalGitAuth(projectEntry.id);
+
         resolve(project);
       });
     });
@@ -329,13 +334,34 @@ export class LocalProjectsModel extends Model {
   setCurrentGlobalGitAuth(projectId: string) {
     const func = async (endpoint: string) => {
       if (endpoint.includes('github.com')) {
+        // Priority 1: Check for global OAuth token
+        const authState = GitHubAuth.getAuthState();
+        if (authState.isAuthenticated && authState.token) {
+          console.log('[Git Auth] Using GitHub OAuth token for:', endpoint);
+          return {
+            username: authState.username || 'oauth',
+            password: authState.token.access_token // Extract actual access token string
+          };
+        }
+
+        // Priority 2: Fall back to project-specific PAT
         const config = await GitStore.get('github', projectId);
-        //username is not used by github when using a token, but git will still ask for it. Just set it to "noodl"
+        if (config?.password) {
+          console.log('[Git Auth] Using project PAT for:', endpoint);
+          return {
+            username: 'noodl',
+            password: config.password
+          };
+        }
+
+        // No credentials available
+        console.warn('[Git Auth] No GitHub credentials found for:', endpoint);
         return {
           username: 'noodl',
-          password: config?.password
+          password: ''
         };
       } else {
+        // Non-GitHub providers use project-specific credentials only
         const config = await GitStore.get('unknown', projectId);
         return {
           username: config?.username,

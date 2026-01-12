@@ -1,8 +1,7 @@
 'use strict';
 
 const difference = require('lodash.difference');
-
-//const Model = require('./data/model');
+const ExpressionEvaluator = require('../../expression-evaluator');
 
 const ExpressionNode = {
   name: 'Expression',
@@ -26,6 +25,97 @@ const ExpressionNode = {
     internal.compiledFunction = undefined;
     internal.inputNames = [];
     internal.inputValues = [];
+
+    // New: Expression evaluator integration
+    internal.noodlDependencies = { variables: [], objects: [], arrays: [] };
+    internal.unsubscribe = null;
+  },
+  methods: {
+    _onNodeDeleted: function () {
+      // Clean up reactive subscriptions to prevent memory leaks
+      if (this._internal.unsubscribe) {
+        this._internal.unsubscribe();
+        this._internal.unsubscribe = null;
+      }
+    },
+    registerInputIfNeeded: function (name) {
+      if (this.hasInput(name)) {
+        return;
+      }
+
+      this._internal.scope[name] = 0;
+      this._inputValues[name] = 0;
+
+      this.registerInput(name, {
+        set: function (value) {
+          this._internal.scope[name] = value;
+          if (!this.isInputConnected('run')) this._scheduleEvaluateExpression();
+        }
+      });
+    },
+    _scheduleEvaluateExpression: function () {
+      var internal = this._internal;
+      if (internal.hasScheduledEvaluation === false) {
+        internal.hasScheduledEvaluation = true;
+        this.flagDirty();
+        this.scheduleAfterInputsHaveUpdated(function () {
+          var lastValue = internal.cachedValue;
+          internal.cachedValue = this._calculateExpression();
+          if (lastValue !== internal.cachedValue) {
+            this.flagOutputDirty('result');
+            this.flagOutputDirty('isTrue');
+            this.flagOutputDirty('isFalse');
+          }
+          if (internal.cachedValue) this.sendSignalOnOutput('isTrueEv');
+          else this.sendSignalOnOutput('isFalseEv');
+          internal.hasScheduledEvaluation = false;
+        });
+      }
+    },
+    _calculateExpression: function () {
+      var internal = this._internal;
+
+      if (!internal.compiledFunction) {
+        internal.compiledFunction = this._compileFunction();
+      }
+
+      for (var i = 0; i < internal.inputNames.length; ++i) {
+        var inputValue = internal.scope[internal.inputNames[i]];
+        internal.inputValues[i] = inputValue;
+      }
+
+      // Get proper Noodl API and append as last parameter for backward compatibility
+      const JavascriptNodeParser = require('../../javascriptnodeparser');
+      const noodlAPI = JavascriptNodeParser.createNoodlAPI(this.context && this.context.modelScope);
+      const argsWithNoodl = internal.inputValues.concat([noodlAPI]);
+
+      try {
+        return internal.compiledFunction.apply(null, argsWithNoodl);
+      } catch (e) {
+        console.error('Error in expression:', e.message);
+      }
+      return 0;
+    },
+    _compileFunction: function () {
+      var expression = this._internal.currentExpression;
+      var args = Object.keys(this._internal.scope);
+
+      // Add 'Noodl' as last parameter for backward compatibility
+      args.push('Noodl');
+
+      var key = expression + args.join(' ');
+
+      if (compiledFunctionsCache.hasOwnProperty(key) === false) {
+        args.push(expression);
+
+        try {
+          compiledFunctionsCache[key] = construct(Function, args);
+        } catch (e) {
+          console.error('Failed to compile JS function', e.message);
+        }
+      }
+      return compiledFunctionsCache[key];
+    }
   },
   getInspectInfo() {
     return this._internal.cachedValue;
@@ -72,15 +162,31 @@ const ExpressionNode = {
           self._inputValues[name] = 0;
         });
 
-        /*      if(value.indexOf('Vars') !== -1 || value.indexOf('Variables') !== -1)  {
-                    // This expression is using variables, it should listen for changes
-                    this._internal.onVariablesChangedCallback = (args) => {
-                        this._scheduleEvaluateExpression()
-                    }
+        // Detect dependencies for reactive updates
+        internal.noodlDependencies = ExpressionEvaluator.detectDependencies(value);
 
-                    Model.get('--ndl--global-variables').off('change',this._internal.onVariablesChangedCallback)
-                    Model.get('--ndl--global-variables').on('change',this._internal.onVariablesChangedCallback)
-                }*/
+        // Clean up old subscription
+        if (internal.unsubscribe) {
+          internal.unsubscribe();
+          internal.unsubscribe = null;
+        }
+
+        // Subscribe to Noodl global changes if expression uses them
+        if (
+          internal.noodlDependencies.variables.length > 0 ||
+          internal.noodlDependencies.objects.length > 0 ||
+          internal.noodlDependencies.arrays.length > 0
+        ) {
+          internal.unsubscribe = ExpressionEvaluator.subscribeToChanges(
+            internal.noodlDependencies,
+            function () {
+              if (!self.isInputConnected('run')) {
+                self._scheduleEvaluateExpression();
+              }
+            },
+            self.context && self.context.modelScope
+          );
+        }
 
         internal.inputNames = Object.keys(internal.scope);
         if (!this.isInputConnected('run')) this._scheduleEvaluateExpression();
@@ -141,83 +247,32 @@ const ExpressionNode = {
       group: 'Events',
       type: 'signal',
       displayName: 'On False'
-    }
-  },
-  prototypeExtensions: {
-    registerInputIfNeeded: {
-      value: function (name) {
-        if (this.hasInput(name)) {
-          return;
-        }
-
-        this._internal.scope[name] = 0;
-        this._inputValues[name] = 0;
-
-        this.registerInput(name, {
-          set: function (value) {
-            this._internal.scope[name] = value;
-            if (!this.isInputConnected('run')) this._scheduleEvaluateExpression();
-          }
-        });
+    },
+    // New typed outputs for better downstream compatibility
+    asString: {
+      group: 'Typed Results',
+      type: 'string',
+      displayName: 'As String',
+      getter: function () {
+        const val = this._internal.cachedValue;
+        return val !== undefined && val !== null ? String(val) : '';
       }
     },
-    _scheduleEvaluateExpression: {
-      value: function () {
-        var internal = this._internal;
-        if (internal.hasScheduledEvaluation === false) {
-          internal.hasScheduledEvaluation = true;
-          this.flagDirty();
-          this.scheduleAfterInputsHaveUpdated(function () {
-            var lastValue = internal.cachedValue;
-            internal.cachedValue = this._calculateExpression();
-            if (lastValue !== internal.cachedValue) {
-              this.flagOutputDirty('result');
-              this.flagOutputDirty('isTrue');
-              this.flagOutputDirty('isFalse');
-            }
-            if (internal.cachedValue) this.sendSignalOnOutput('isTrueEv');
-            else this.sendSignalOnOutput('isFalseEv');
-            internal.hasScheduledEvaluation = false;
-          });
-        }
+    asNumber: {
+      group: 'Typed Results',
+      type: 'number',
+      displayName: 'As Number',
+      getter: function () {
+        const val = this._internal.cachedValue;
+        return typeof val === 'number' ? val : Number(val) || 0;
       }
     },
-    _calculateExpression: {
-      value: function () {
-        var internal = this._internal;
-
-        if (!internal.compiledFunction) {
-          internal.compiledFunction = this._compileFunction();
-        }
-        for (var i = 0; i < internal.inputNames.length; ++i) {
-          var inputValue = internal.scope[internal.inputNames[i]];
-          internal.inputValues[i] = inputValue;
-        }
-        try {
-          return internal.compiledFunction.apply(null, internal.inputValues);
-        } catch (e) {
-          console.error('Error in expression:', e.message);
-        }
-        return 0;
-      }
-    },
-    _compileFunction: {
-      value: function () {
-        var expression = this._internal.currentExpression;
-        var args = Object.keys(this._internal.scope);
-
-        var key = expression + args.join(' ');
-
-        if (compiledFunctionsCache.hasOwnProperty(key) === false) {
-          args.push(expression);
-
-          try {
-            compiledFunctionsCache[key] = construct(Function, args);
-          } catch (e) {
-            console.error('Failed to compile JS function', e.message);
-          }
-        }
-        return compiledFunctionsCache[key];
+    asBoolean: {
+      group: 'Typed Results',
+      type: 'boolean',
+      displayName: 'As Boolean',
+      getter: function () {
+        return !!this._internal.cachedValue;
       }
     }
   }
@@ -235,8 +290,19 @@ var functionPreamble = [
     '    floor = Math.floor,' +
     '    ceil = Math.ceil,' +
     '    abs = Math.abs,' +
-    '    random = Math.random;'
-  /* '    Vars = Variables = Noodl.Object.get("--ndl--global-variables");' */
+    '    random = Math.random,' +
+    '    pow = Math.pow,' +
+    '    log = Math.log,' +
+    '    exp = Math.exp;' +
+    // Add Noodl global context
+    'try {' +
+    '  var NoodlContext = (typeof Noodl !== "undefined") ? Noodl : (typeof global !== "undefined" && global.Noodl) || {};' +
+    '  var Variables = NoodlContext.Variables || {};' +
+    '  var Objects = NoodlContext.Objects || {};' +
+    '  var Arrays = NoodlContext.Arrays || {};' +
+    '} catch (e) {' +
+    '  var Variables = {}, Objects = {}, Arrays = {};' +
+    '}'
 ].join('');
 
 //Since apply cannot be used on constructors (i.e. new Something) we need this hax
@@ -264,11 +330,19 @@ var portsToIgnore = [
   'ceil',
   'abs',
   'random',
+  'pow',
+  'log',
+  'exp',
   'Math',
   'window',
   'document',
   'undefined',
   'Vars',
+  'Variables',
+  'Objects',
+  'Arrays',
+  'Noodl',
+  'NoodlContext',
   'true',
   'false',
   'null',
@@ -326,13 +400,43 @@ function updatePorts(nodeId, expression, editorConnection) {
 }
 
 function evalCompileWarnings(editorConnection, node) {
-  try {
-    new Function(node.parameters.expression);
+  const expression = node.parameters.expression;
+  if (!expression) {
     editorConnection.clearWarning(node.component.name, node.id, 'expression-compile-error');
-  } catch (e) {
+    return;
+  }
+
+  // Validate expression syntax
+  const validation = ExpressionEvaluator.validateExpression(expression);
+
+  if (!validation.valid) {
     editorConnection.sendWarning(node.component.name, node.id, 'expression-compile-error', {
-      message: e.message
+      message: 'Syntax error: ' + validation.error
     });
+  } else {
+    editorConnection.clearWarning(node.component.name, node.id, 'expression-compile-error');
+
+    // Optionally show detected dependencies as info (helpful for users)
+    const deps = ExpressionEvaluator.detectDependencies(expression);
+    const depCount = deps.variables.length + deps.objects.length + deps.arrays.length;
+
+    if (depCount > 0) {
+      const depList = [];
+      if (deps.variables.length > 0) {
+        depList.push('Variables: ' + deps.variables.join(', '));
+      }
+      if (deps.objects.length > 0) {
+        depList.push('Objects: ' + deps.objects.join(', '));
+      }
+      if (deps.arrays.length > 0) {
+        depList.push('Arrays: ' + deps.arrays.join(', '));
+      }
+
+      // This is just informational, not an error
+      // Could be shown in a future info panel
+      // For now, we'll just log it
+      console.log('[Expression Node] Reactive dependencies detected:', depList.join('; '));
+    }
   }
 }
 

@@ -1,0 +1,28 @@
+.Root {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ExpressionActive {
+  background-color: var(--theme-color-primary, #6366f1);
+  color: white;
+
+  &:hover {
+    background-color: var(--theme-color-primary-hover, #4f46e5);
+  }
+
+  &:active {
+    background-color: var(--theme-color-primary-active, #4338ca);
+  }
+}
+
+.ConnectionIndicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  opacity: 0.5;
+  cursor: default;
+}

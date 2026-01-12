@@ -21,6 +21,7 @@ import { FontType } from './FontType';
 import { IconType } from './IconType';
 import { IdentifierType } from './IdentifierType';
 import { ImageType } from './ImageType';
+import { LogicBuilderWorkspaceType } from './LogicBuilderWorkspaceType';
 import { MarginPaddingType } from './MarginPaddingType';
 import { NumberWithUnits } from './NumberWithUnits';
 import { PopoutGroup } from './PopoutGroup';
@@ -219,6 +220,11 @@ export class Ports extends View {
   }
   viewClassForPort(p) {
     const type = getEditType(p);
+
+    // Check for custom editorType
+    if (typeof type === 'object' && type.editorType === 'logic-builder-workspace') {
+      return LogicBuilderWorkspaceType;
+    }
 
     // Align tools types
     function isOfAlignToolsType() {

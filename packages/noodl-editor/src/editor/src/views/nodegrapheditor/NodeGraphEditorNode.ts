@@ -25,13 +25,22 @@ function measureTextHeight(text, font, lineHeight, maxWidth) {
   ctx.font = font;
   ctx.textBaseline = 'top';
 
-  return textWordWrap(ctx, text, 0, 0, lineHeight, maxWidth);
+  // Defensive: convert to string (handles expression objects, numbers, etc.)
+  const textString = typeof text === 'string' ? text : String(text || '');
+
+  return textWordWrap(ctx, textString, 0, 0, lineHeight, maxWidth);
 }
 
 function textWordWrap(context, text, x, y, lineHeight, maxWidth, cb?) {
-  if (!text) return;
+  // Defensive: ensure we have a string
+  const textString = typeof text === 'string' ? text : String(text || '');
 
-  let words = text.split(' ');
+  // Empty string still has height (return lineHeight, not undefined)
+  if (!textString) {
+    return lineHeight;
+  }
+
+  let words = textString.split(' ');
   let currentLine = 0;
   let idx = 1;
   while (words.length > 0 && idx <= words.length) {

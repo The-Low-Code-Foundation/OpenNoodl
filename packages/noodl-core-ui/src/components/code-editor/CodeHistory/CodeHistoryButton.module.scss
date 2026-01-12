@@ -1,0 +1,67 @@
+/**
+ * CodeHistoryButton Styles
+ */
+
+.Root {
+  position: relative;
+}
+
+.Button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: var(--theme-color-bg-2);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: 4px;
+  color: var(--theme-color-fg-default);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  &:hover {
+    background: var(--theme-color-bg-3);
+    border-color: var(--theme-color-border-highlight);
+    color: var(--theme-color-fg-highlight);
+  }
+
+  &:active {
+    transform: translateY(1px);
+  }
+}
+
+.Icon {
+  width: 16px;
+  height: 16px;
+  opacity: 0.8;
+}
+
+.Label {
+  line-height: 1;
+}
+
+.Dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 1000;
+  min-width: 350px;
+  max-width: 450px;
+  background: var(--theme-color-bg-1);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  animation: slideDown 0.15s ease;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
