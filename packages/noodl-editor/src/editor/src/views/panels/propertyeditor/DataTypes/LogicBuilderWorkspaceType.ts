@@ -33,7 +33,7 @@ export class LogicBuilderWorkspaceType extends TypeView {
   render() {
     // Create a simple container with a button
     const html = `
-      <div class="property-basic-container logic-builder-workspace-editor">
+      <div class="property-basic-container logic-builder-workspace-editor" style="display: flex; flex-direction: column; gap: 8px;">
         <div class="property-label-container" style="display: flex; align-items: center; gap: 8px;">
           <div class="property-changed-dot" data-click="resetToDefault" style="display: none;"></div>
           <div class="property-label">${this.displayName}</div>
@@ -77,11 +77,12 @@ export class LogicBuilderWorkspaceType extends TypeView {
   }
 
   onEditBlocksClicked() {
-    const nodeId = this.parent.model.id;
-    const nodeName = this.parent.model.label || this.parent.model.getDisplayName() || 'Logic Builder';
-    const workspace = this.parent.model.getParameter('workspace') || '';
+    // ModelProxy wraps the actual node model in a .model property
+    const nodeId = this.parent?.model?.model?.id;
+    const nodeName = this.parent?.model?.model?.label || this.parent?.model?.type?.displayName || 'Logic Builder';
+    const workspace = this.parent?.model?.getParameter('workspace') || '';
 
-    console.log('[LogicBuilderWorkspaceType] Opening tab for node:', nodeId);
+    console.log('[LogicBuilderWorkspaceType] Opening Logic Builder tab for node:', nodeId);
 
     // Emit event to open Logic Builder tab
     EventDispatcher.instance.emit('LogicBuilder.OpenTab', {

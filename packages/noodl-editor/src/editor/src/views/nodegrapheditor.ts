@@ -37,6 +37,8 @@ import { NodeLibrary } from '../models/nodelibrary';
 import { ProjectModel } from '../models/projectmodel';
 import { WarningsModel } from '../models/warningsmodel';
 import { HighlightManager } from '../services/HighlightManager';
+// Initialize Blockly globals early (must run before runtime nodes load)
+import { initBlocklyEditorGlobals } from '../utils/BlocklyEditorGlobals';
 import DebugInspector from '../utils/debuginspector';
 import { rectanglesOverlap, guid } from '../utils/utils';
 import { ViewerConnection } from '../ViewerConnection';
@@ -58,6 +60,8 @@ import { NodeGraphEditorNode } from './nodegrapheditor/NodeGraphEditorNode';
 import PopupLayer from './popuplayer';
 import { showContextMenuInPopup } from './ShowContextMenuInPopup';
 import { ToastLayer } from './ToastLayer/ToastLayer';
+
+initBlocklyEditorGlobals();
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const NodeGraphEditorTemplate = require('../templates/nodegrapheditor.html');
@@ -300,13 +304,32 @@ export class NodeGraphEditor extends View {
       this
     );
 
-    // Listen for Logic Builder tab open requests
+    // Listen for Logic Builder tab opened - hide canvas
+    EventDispatcher.instance.on(
+      'LogicBuilder.TabOpened',
+      () => {
+        console.log('[NodeGraphEditor] Logic Builder tab opened - hiding canvas');
+        this.setCanvasVisibility(false);
+      },
+      this
+    );
+
+    // Listen for all Logic Builder tabs closed - show canvas
+    EventDispatcher.instance.on(
+      'LogicBuilder.AllTabsClosed',
+      () => {
+        console.log('[NodeGraphEditor] All Logic Builder tabs closed - showing canvas');
+        this.setCanvasVisibility(true);
+      },
+      this
+    );
+
+    // Listen for Logic Builder tab open requests (for opening tabs from property panel)
     EventDispatcher.instance.on(
       'LogicBuilder.OpenTab',
       (args: { nodeId: string; nodeName: string; workspace: string }) => {
         console.log('[NodeGraphEditor] Opening Logic Builder tab for node:', args.nodeId);
-        // The CanvasTabs context will handle the actual tab opening via EventDispatcher
-        // This is just logged for debugging - the actual implementation happens in Phase C Step 6
+        // The CanvasTabs context will handle the actual tab opening
       },
       this
     );
@@ -941,7 +964,7 @@ export class NodeGraphEditor extends View {
   /**
    * Handle workspace changes from Blockly editor
    */
-  handleBlocklyWorkspaceChange(nodeId: string, workspace: string) {
+  handleBlocklyWorkspaceChange(nodeId: string, workspace: string, code: string) {
     console.log(`[NodeGraphEditor] Workspace changed for node ${nodeId}`);
 
     const node = this.findNodeWithId(nodeId);
@@ -950,11 +973,14 @@ export class NodeGraphEditor extends View {
       return;
     }
 
-    // Save workspace to node model
+    // Save workspace JSON to node model
     node.model.setParameter('workspace', workspace);
 
-    // TODO: Generate code and update ports
-    // This will be implemented in Phase C Step 7
+    // Save generated JavaScript code to node model
+    // This triggers the runtime's parameterUpdated listener which calls updatePorts()
+    node.model.setParameter('generatedCode', code);
+
+    console.log(`[NodeGraphEditor] Saved workspace and generated code for node ${nodeId}`);
   }
 
   /**
@@ -1012,6 +1038,35 @@ export class NodeGraphEditor extends View {
   updateHighlightOverlay() {
     if (this.highlightOverlayRoot) {
       this.renderHighlightOverlay();
+    }
+  }
+
+  /**
+   * Set canvas visibility (hide when Logic Builder is open, show when closed)
+   */
+  setCanvasVisibility(visible: boolean) {
+    const canvasElement = this.el.find('#nodegraphcanvas');
+    const commentLayerBg = this.el.find('#comment-layer-bg');
+    const commentLayerFg = this.el.find('#comment-layer-fg');
+    const highlightOverlay = this.el.find('#highlight-overlay-layer');
+    const componentTrail = this.el.find('.nodegraph-component-trail-root');
+
+    if (visible) {
+      // Show canvas and related elements
+      canvasElement.css('display', 'block');
+      commentLayerBg.css('display', 'block');
+      commentLayerFg.css('display', 'block');
+      highlightOverlay.css('display', 'block');
+      componentTrail.css('display', 'flex');
+      this.domElementContainer.style.display = '';
+    } else {
+      // Hide canvas and related elements
+      canvasElement.css('display', 'none');
+      commentLayerBg.css('display', 'none');
+      commentLayerFg.css('display', 'none');
+      highlightOverlay.css('display', 'none');
+      componentTrail.css('display', 'none');
+      this.domElementContainer.style.display = 'none';
     }
   }
 

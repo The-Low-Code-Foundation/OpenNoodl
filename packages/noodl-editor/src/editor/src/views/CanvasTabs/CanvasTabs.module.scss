@@ -9,6 +9,7 @@
   flex-direction: column;
   height: 100%;
   width: 100%;
+  pointer-events: all; /* Enable clicks on tabs */
 }
 
 .TabBar {

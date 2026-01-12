@@ -80,14 +80,16 @@
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
   }
 
-  .blocklyMenuItem {
+  .blocklyContextMenu .blocklyMenuItem {
     color: var(--theme-color-fg-default) !important;
     font-family: var(--theme-font-family) !important;
     font-size: 13px !important;
     padding: 6px 12px !important;
 
-    &:hover {
+    &:hover,
+    &:hover * {
       background-color: var(--theme-color-bg-4) !important;
+      color: var(--theme-color-fg-default) !important;
     }
 
     &.blocklyMenuItemDisabled {
@@ -101,21 +103,148 @@
     fill: var(--theme-color-border-default) !important;
   }
 
-  /* Field editor backgrounds */
-  .blocklyWidgetDiv {
-    & .goog-menu {
+  /* Field editor backgrounds (dropdowns, text inputs, etc.) */
+  /* NOTE: blocklyWidgetDiv and blocklyDropDownDiv are rendered at document root! */
+  .blocklyWidgetDiv,
+  .blocklyDropDownDiv {
+    z-index: 10000 !important; /* Ensure it's above everything */
+  }
+
+  /* Blockly dropdown container - DARK BACKGROUND */
+  .blocklyDropDownDiv,
+  :global(.blocklyDropDownDiv) {
+    background-color: var(--theme-color-bg-3) !important; /* DARK background */
+    max-height: 400px !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+
+    /* Inner scrollable container */
+    & > div {
       background-color: var(--theme-color-bg-3) !important;
-      border: 1px solid var(--theme-color-border-default) !important;
-      border-radius: 4px !important;
+      max-height: 400px !important;
+      overflow-y: auto !important;
     }
 
-    & .goog-menuitem {
-      color: var(--theme-color-fg-default) !important;
-      font-family: var(--theme-font-family) !important;
-
-      &:hover {
-        background-color: var(--theme-color-bg-4) !important;
-      }
+    /* SVG containers inside dropdown */
+    & svg {
+      background-color: var(--theme-color-bg-3) !important;
     }
+  }
+
+  /* Text input fields */
+  .blocklyWidgetDiv input,
+  .blocklyHtmlInput {
+    background-color: var(--theme-color-bg-3) !important;
+    color: var(--theme-color-fg-default) !important;
+    border: 1px solid var(--theme-color-border-default) !important;
+    border-radius: 4px !important;
+    padding: 4px 8px !important;
+    font-family: var(--theme-font-family) !important;
+  }
+
+  /* Dropdown menus - DARK BACKGROUND with WHITE TEXT (matches Noodl theme) */
+  /* Target ACTUAL Blockly classes: .blocklyMenuItem not .goog-menuitem */
+
+  .goog-menu,
+  :global(.goog-menu) {
+    background-color: var(--theme-color-bg-3) !important; /* DARK background */
+    border: 1px solid var(--theme-color-border-default) !important;
+    border-radius: 4px !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+    max-height: 400px !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    z-index: 10001 !important;
+  }
+
+  /* Target Blockly's ACTUAL menu item class - DROPDOWN MENUS */
+  .blocklyDropDownDiv .blocklyMenuItem,
+  :global(.blocklyDropDownDiv) :global(.blocklyMenuItem) {
+    color: #ffffff !important; /* WHITE text */
+    background-color: transparent !important;
+    padding: 6px 12px !important;
+    cursor: pointer !important;
+    font-family: var(--theme-font-family) !important;
+    font-size: 13px !important;
+
+    /* ALL children white */
+    & *,
+    & div,
+    & span {
+      color: #ffffff !important;
+    }
+
+    /* HOVER - Keep white text with lighter background */
+    &:hover,
+    &:hover *,
+    &:hover div,
+    &:hover span {
+      background-color: var(--theme-color-bg-4) !important;
+      color: #ffffff !important; /* WHITE on hover */
+    }
+
+    &[aria-selected='true'],
+    &[aria-selected='true'] * {
+      background-color: var(--theme-color-primary) !important;
+      color: #ffffff !important;
+    }
+
+    &[aria-disabled='true'],
+    &[aria-disabled='true'] * {
+      color: #999999 !important;
+      opacity: 0.5;
+      cursor: not-allowed !important;
+    }
+  }
+
+  /* Target Blockly's ACTUAL content class */
+  .blocklyMenuItemContent,
+  :global(.blocklyMenuItemContent) {
+    color: #ffffff !important;
+
+    & *,
+    & div,
+    & span {
+      color: #ffffff !important;
+    }
+  }
+
+  /* Fallback for goog- classes if they exist */
+  .goog-menuitem,
+  .goog-option,
+  :global(.goog-menuitem),
+  :global(.goog-option) {
+    color: #ffffff !important;
+    background-color: transparent !important;
+    padding: 6px 12px !important;
+    font-family: var(--theme-font-family) !important;
+    font-size: 13px !important;
+
+    & *,
+    & div,
+    & span {
+      color: #ffffff !important;
+    }
+
+    &:hover,
+    &:hover * {
+      background-color: var(--theme-color-bg-4) !important;
+    }
+  }
+
+  .goog-menuitem-content,
+  :global(.goog-menuitem-content) {
+    color: #ffffff !important;
+
+    & * {
+      color: #ffffff !important;
+    }
+  }
+
+  /* Blockly dropdown content container */
+  :global(.blocklyDropDownContent) {
+    max-height: 400px !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
   }
 }

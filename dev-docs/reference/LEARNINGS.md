@@ -4,6 +4,482 @@ This document captures important discoveries and gotchas encountered during Open
 
 ---
 
+## 🏗️ CRITICAL ARCHITECTURE PATTERNS
+
+These fundamental patterns apply across ALL Noodl development. Understanding them prevents hours of debugging.
+
+---
+
+## 🔴 Editor/Runtime Window Separation (Jan 2026)
+
+### The Invisible Boundary: Why Editor Methods Don't Exist in Runtime
+
+**Context**: TASK-012 Blockly Integration - Discovered that editor and runtime run in completely separate JavaScript contexts (different windows/iframes). This is THE most important architectural detail to understand.
+
+**CRITICAL PRINCIPLE**: The OpenNoodl editor and runtime are NOT in the same JavaScript execution context. They are separate windows that communicate via message passing.
+
+**What This Means**:
+
+```
+┌─────────────────────┐         ┌─────────────────────┐
+│   Editor Window     │ Message │   Runtime Window    │
+│                     │ Passing │                     │
+│ - ProjectModel      │←-------→│ - Node execution    │
+│ - NodeGraphEditor   │         │ - Dynamic ports     │
+│ - graphModel        │         │ - Code compilation  │
+│ - UI components     │         │ - No editor access! │
+└─────────────────────┘         └─────────────────────┘
+```
+
+**The Broken Pattern**:
+
+```javascript
+// ❌ WRONG - In runtime node code, trying to access editor
+function updatePorts(nodeId, workspace, editorConnection) {
+  // These look reasonable but FAIL silently or crash:
+  const graphModel = getGraphModel(); // ☠️ Doesn't exist in runtime!
+  const node = graphModel.getNodeWithId(nodeId); // ☠️ graphModel is undefined
+  const code = node.parameters.generatedCode; // ☠️ Can't access node this way
+
+  // Problem: Runtime has NO ACCESS to editor objects/methods
+}
+```
+
+**The Correct Pattern**:
+
+```javascript
+// ✅ RIGHT - Pass ALL data explicitly via parameters
+function updatePorts(nodeId, workspace, generatedCode, editorConnection) {
+  // generatedCode passed directly - no cross-window access needed
+  const detected = parseCode(generatedCode);
+  editorConnection.sendDynamicPorts(nodeId, detected.ports);
+
+  // All data provided explicitly through function parameters
+}
+
+// In editor: Pass the data explicitly when calling
+const node = graphModel.getNodeWithId(nodeId);
+updatePorts(
+  node.id,
+  node.parameters.workspace,
+  node.parameters.generatedCode, // ✅ Pass explicitly
+  editorConnection
+);
+```
+
+**Why This Matters**:
+
+- **Silent failures**: Attempting to access editor objects from runtime often fails silently
+- **Mysterious undefined errors**: "Cannot read property X of undefined" when objects don't exist
+- **Debugging nightmare**: Looks like your code is wrong when it's an architecture issue
+- **Affects ALL editor/runtime communication**: Dynamic ports, code generation, parameter updates
+
+**Common Mistakes**:
+
+1. Looking up nodes in graphModel from runtime
+2. Accessing ProjectModel from runtime
+3. Trying to call editor methods from node setup functions
+4. Assuming shared global scope between editor and runtime
+
+**Critical Rules**:
+
+1. **NEVER** assume editor objects exist in runtime code
+2. **ALWAYS** pass data explicitly through function parameters
+3. **NEVER** look up nodes via graphModel from runtime
+4. **ALWAYS** use event payloads with complete data
+5. **TREAT** editor and runtime as separate processes that only communicate via messages
+
+**Applies To**:
+
+- Dynamic port detection systems
+- Code generation and compilation
+- Parameter updates and node configuration
+- Custom property editors
+- Any feature bridging editor and runtime
+
+**Detection**:
+
+- Runtime errors about undefined objects that "should exist"
+- Functions that work in editor but fail in runtime
+- Dynamic features that don't update when they should
+- Silent failures with no error messages
+
+**Time Saved**: Understanding this architectural boundary can save 2-4 hours PER feature that crosses the editor/runtime divide.
+
+**Location**: Discovered in TASK-012 Blockly Integration (Logic Builder dynamic ports)
+
+**Keywords**: editor runtime separation, window context, iframe, cross-context communication, graphModel, ProjectModel, dynamic ports, architecture boundary
+
+---
+
+## 🟡 Dynamic Code Compilation Context (Jan 2026)
+
+### The this Trap: Why new Function() + .call() Doesn't Work
+
+**Context**: TASK-012 Blockly Integration - Generated code failed with "ReferenceError: Outputs is not defined" despite context being passed via `.call()`.
+
+**CRITICAL PRINCIPLE**: When using `new Function()` to compile user code dynamically, execution context MUST be passed as function parameters, NOT via `this` or `.call()`.
+
+**The Problem**: Modern JavaScript scoping rules make `this` unreliable for providing execution context to dynamically compiled code.
+
+**The Broken Pattern**:
+
+```javascript
+// ❌ WRONG - Generated code can't access context variables
+const fn = new Function(code); // Code contains: Outputs["result"] = 'test';
+fn.call(context); // context = { Outputs: {}, Inputs: {}, Noodl: {...} }
+
+// Result: ReferenceError: Outputs is not defined
+// Why: Generated code has no lexical access to context properties
+```
+
+**The Correct Pattern**:
+
+```javascript
+// ✅ RIGHT - Pass context as function parameters
+const fn = new Function(
+  'Inputs', // Parameter names define lexical scope
+  'Outputs',
+  'Noodl',
+  'Variables',
+  'Objects',
+  'Arrays',
+  'sendSignalOnOutput',
+  code // Function body - can reference parameters by name
+);
+
+// Call with actual values as arguments
+fn(
+  context.Inputs,
+  context.Outputs,
+  context.Noodl,
+  context.Variables,
+  context.Objects,
+  context.Arrays,
+  context.sendSignalOnOutput
+);
+
+// Generated code: Outputs["result"] = 'test'; // ✅ Works! Outputs is in scope
+```
+
+**Why This Works**:
+
+Function parameters create a proper lexical scope where the generated code can access variables by their parameter names. This is how closures and scope work in JavaScript.
+
+**Code Generator Pattern**:
+
+```javascript
+// When generating code, reference parameters directly
+javascriptGenerator.forBlock['set_output'] = function (block) {
+  const name = block.getFieldValue('NAME');
+  const value = javascriptGenerator.valueToCode(block, 'VALUE', Order.ASSIGNMENT);
+
+  // Generated code uses parameter name directly - no 'context.' prefix needed
+  return `Outputs["${name}"] = ${value};\n`;
+};
+
+// Result: Outputs["result"] = "hello"; // Parameter name, not property access
+```
+
+**Comparison with eval()** (Don't use eval, but this explains the difference):
+
+```javascript
+// eval() has access to surrounding scope (dangerous!)
+const context = { Outputs: {} };
+eval('Outputs["result"] = "test"'); // Works but unsafe
+
+// new Function() creates isolated scope (safe!)
+const fn = new Function('Outputs', 'Outputs["result"] = "test"');
+fn(context.Outputs); // Safe and works
+```
+
+**Critical Rules**:
+
+1. **ALWAYS** pass execution context as function parameters
+2. **NEVER** rely on `this` or `.call()` for context in compiled code
+3. **GENERATE** code that references parameters directly, not properties
+4. **LIST** all context variables as function parameters
+5. **PASS** arguments in same order as parameters
+
+**Applies To**:
+
+- Expression node evaluation
+- JavaScript Function node execution
+- Logic Builder block code generation
+- Any dynamic code compilation system
+- Script evaluation in custom nodes
+
+**Common Mistakes**:
+
+1. Using `.call(context)` and expecting generated code to access context properties
+2. Using `.apply(context, args)` but not listing context as parameters
+3. Generating code with `context.Outputs` instead of just `Outputs`
+4. Forgetting to pass an argument for every parameter
+
+**Detection**:
+
+- "ReferenceError: [variable] is not defined" when executing compiled code
+- Variables exist in context but code can't access them
+- `.call()` or `.apply()` used but doesn't provide access
+- Generated code works in eval() but not new Function()
+
+**Time Saved**: This pattern prevents 1-2 hours of debugging per dynamic code feature. The error message gives no clue that the problem is parameter passing.
+
+**Location**: Discovered in TASK-012 Blockly Integration (Logic Builder execution)
+
+**Keywords**: new Function, dynamic code, compilation, execution context, this, call, apply, parameters, lexical scope, ReferenceError, code generation
+
+---
+
+## 🎨 React Overlay Z-Index Pattern (Jan 2026)
+
+### The Invisible UI: Why React Overlays Disappear Behind Canvas
+
+**Context**: TASK-012 Blockly Integration - React tabs were invisible because canvas layers rendered on top. This is a universal problem when adding React to legacy canvas systems.
+
+**CRITICAL PRINCIPLE**: When overlaying React components on legacy HTML5 Canvas or jQuery systems, DOM order alone is INSUFFICIENT. You MUST set explicit `position` and `z-index`.
+
+**The Problem**: Absolute-positioned canvas layers render based on z-index, not DOM order. React overlays without explicit z-index appear behind the canvas.
+
+**The Broken Pattern**:
+
+```html
+<!-- ❌ WRONG - React overlay invisible behind canvas -->
+<div id="react-overlay-root" style="width: 100%; height: 100%">
+  <div class="tabs">Tab controls here</div>
+</div>
+<canvas id="legacy-canvas" style="position: absolute; top: 0; left: 0">
+  <!-- Canvas renders ON TOP even though it's after in DOM! -->
+</canvas>
+```
+
+**The Correct Pattern**:
+
+```html
+<!-- ✅ RIGHT - Explicit z-index layering -->
+<div id="react-overlay-root" style="position: absolute; z-index: 100; pointer-events: none">
+  <div class="tabs" style="pointer-events: all">
+    <!-- Tabs visible and clickable -->
+  </div>
+</div>
+<canvas id="legacy-canvas" style="position: absolute; top: 0; left: 0">
+  <!-- Canvas in background (no z-index or z-index < 100) -->
+</canvas>
+```
+
+**Pointer Events Strategy**: The click-through pattern
+
+1. **Container**: `pointer-events: none` (transparent to clicks)
+2. **Content**: `pointer-events: all` (captures clicks)
+3. **Result**: Canvas clickable when no React UI, React UI clickable when present
+
+**CSS Pattern**:
+
+```scss
+#react-overlay-root {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 100; // Above canvas
+  pointer-events: none; // Transparent when empty
+}
+
+.ReactUIComponent {
+  pointer-events: all; // Clickable when rendered
+}
+```
+
+**Layer Stack** (Bottom → Top):
+
+```
+z-index: 100  ← React overlays (tabs, panels, etc.)
+z-index: 50   ← Canvas overlays (comments, highlights)
+z-index: 1    ← Main canvas
+z-index: 0    ← Background layers
+```
+
+**Why This Matters**:
+
+- **Silent failure**: UI renders but is invisible (no errors)
+- **Works in isolation**: React components work fine in Storybook
+- **Fails in integration**: Same components invisible when added to canvas
+- **Not obvious**: DevTools show elements exist but can't see them
+
+**Critical Rules**:
+
+1. **ALWAYS** set `position: absolute` or `fixed` on overlay containers
+2. **ALWAYS** set explicit `z-index` higher than canvas (e.g., 100)
+3. **ALWAYS** use `pointer-events: none` on containers
+4. **ALWAYS** use `pointer-events: all` on interactive content
+5. **NEVER** rely on DOM order for layering with absolute positioning
+
+**Applies To**:
+
+- Any React overlay on canvas (tabs, panels, dialogs)
+- Canvas visualization views
+- Debug overlays and dev tools
+- Custom editor tools and widgets
+- Future canvas integration features
+
+**Common Mistakes**:
+
+1. Forgetting `position: absolute` on overlay (it won't stack correctly)
+2. Not setting `z-index` (canvas wins by default)
+3. Not using `pointer-events` management (blocks canvas clicks)
+4. Setting z-index on wrong element (set on container, not children)
+
+**Detection**:
+
+- React component renders in React DevTools but not visible
+- Element exists in DOM inspector but can't see it
+- Clicking canvas area triggers React component (wrong z-order)
+- Works in Storybook but invisible in editor
+
+**Time Saved**: This pattern prevents 1-3 hours of "why is my UI invisible" debugging per overlay feature.
+
+**Location**: Discovered in TASK-012B Blockly Integration (Tab visibility fix)
+
+**Keywords**: z-index, React overlay, canvas layering, position absolute, pointer-events, click-through, DOM order, stacking context, legacy integration
+
+---
+
+## 🚫 Legacy/React Separation Pattern (Jan 2026)
+
+### The Wrapper Trap: Why You Can't Render Canvas in React
+
+**Context**: TASK-012 Blockly Integration - Initial attempt to wrap canvas in React tabs failed catastrophically. Canvas rendering broke completely.
+
+**CRITICAL PRINCIPLE**: NEVER try to render legacy vanilla JS or jQuery code inside React components. Keep them completely separate and coordinate via events.
+
+**The Problem**: Legacy canvas systems manage their own DOM, lifecycle, and rendering. React's virtual DOM and component lifecycle conflict with this, causing rendering failures, memory leaks, and crashes.
+
+**The Broken Pattern**:
+
+```typescript
+// ❌ WRONG - Trying to wrap canvas in React
+function EditorTabs() {
+  return (
+    <div>
+      <TabBar />
+      <div id="canvas-container">
+        {/* Can't put vanilla JS canvas here! */}
+        {/* Canvas is rendered by nodegrapheditor.ts, not React */}
+      </div>
+      <BlocklyTab />
+    </div>
+  );
+}
+
+// Result: Canvas rendering breaks, tabs don't work, memory leaks
+```
+
+**The Correct Pattern**: Separation of Concerns
+
+```typescript
+// ✅ RIGHT - Canvas and React completely separate
+
+// Canvas rendered by vanilla JS (always present)
+// In nodegrapheditor.ts:
+const canvas = document.getElementById('nodegraphcanvas');
+renderCanvas(canvas); // Legacy rendering
+
+// React tabs overlay when needed (conditional)
+function EditorTabs() {
+  return tabs.length > 0 ? (
+    <div className="overlay">
+      {tabs.map((tab) => (
+        <Tab key={tab.id} {...tab} />
+      ))}
+    </div>
+  ) : null;
+}
+
+// Coordinate visibility via EventDispatcher
+EventDispatcher.instance.on('BlocklyTabOpened', () => {
+  setCanvasVisibility(false); // Hide canvas
+});
+
+EventDispatcher.instance.on('BlocklyTabClosed', () => {
+  setCanvasVisibility(true); // Show canvas
+});
+```
+
+**Architecture**: Desktop vs Windows Metaphor
+
+```
+┌────────────────────────────────────┐
+│   React Tabs (Windows)             │ ← Overlay when needed
+├────────────────────────────────────┤
+│   Canvas (Desktop)                 │ ← Always rendered
+└────────────────────────────────────┘
+
+• Canvas = Desktop: Always there, rendered by vanilla JS
+• React Tabs = Windows: Appear/disappear, managed by React
+• Coordination = Events: Show/hide via EventDispatcher
+```
+
+**Why This Matters**:
+
+- **Canvas lifecycle independence**: Canvas manages its own rendering, events, state
+- **React lifecycle conflicts**: React wants to control DOM, canvas already controls it
+- **Memory leaks**: Re-rendering React components can duplicate canvas instances
+- **Event handler chaos**: Both systems try to manage the same DOM events
+
+**Critical Rules**:
+
+1. **NEVER** put legacy canvas/jQuery in React component JSX
+2. **ALWAYS** keep legacy always-rendered in background
+3. **ALWAYS** coordinate visibility via EventDispatcher, not React state
+4. **NEVER** try to control canvas lifecycle from React
+5. **TREAT** them as separate systems that coordinate, don't integrate
+
+**Coordination Pattern**:
+
+```typescript
+// React component listens to canvas events
+useEventListener(NodeGraphEditor.instance, 'viewportChanged', (viewport) => {
+  // Update React state based on canvas events
+});
+
+// Canvas listens to React events
+EventDispatcher.instance.on('ReactUIAction', (data) => {
+  // Canvas responds to React UI changes
+});
+```
+
+**Applies To**:
+
+- Canvas integration (node graph editor)
+- Any legacy jQuery code in the editor
+- Third-party libraries with their own rendering
+- Future integrations with non-React systems
+- Plugin systems or external tools
+
+**Common Mistakes**:
+
+1. Trying to `ReactDOM.render(<Canvas />)` with legacy canvas
+2. Putting canvas container in React component tree
+3. Managing canvas visibility with React state instead of CSS
+4. Attempting to "React-ify" legacy code instead of coordinating
+
+**Detection**:
+
+- Canvas stops rendering after React component mounts
+- Multiple canvas instances created (memory leak)
+- Event handlers fire multiple times
+- Canvas rendering flickers or behaves erratically
+- DOM manipulation conflicts (React vs vanilla JS)
+
+**Time Saved**: Understanding this pattern saves 4-8 hours of debugging per integration attempt. Prevents architectural dead-ends.
+
+**Location**: Discovered in TASK-012B Blockly Integration (Canvas visibility coordination)
+
+**Keywords**: React legacy integration, canvas React, vanilla JS React, jQuery React, separation of concerns, EventDispatcher coordination, lifecycle management, DOM conflicts
+
+---
+
 ## 🎨 Node Color Scheme Must Match Defined Colors (Jan 11, 2026)
 
 ### The Undefined Colors Crash: When Node Picker Can't Find Color Scheme

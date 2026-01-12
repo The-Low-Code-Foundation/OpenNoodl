@@ -6,14 +6,15 @@ import css from './CanvasTabs.module.scss';
 
 export interface CanvasTabsProps {
   /** Callback when workspace changes */
-  onWorkspaceChange?: (nodeId: string, workspace: string) => void;
+  onWorkspaceChange?: (nodeId: string, workspace: string, code: string) => void;
 }
 
 /**
  * Canvas Tabs Component
  *
- * Manages tabs for canvas view and Logic Builder (Blockly) editors.
- * Renders a tab bar and switches content based on active tab.
+ * Manages tabs for Logic Builder (Blockly) editors.
+ * The canvas itself is NOT managed here - it's always visible in the background
+ * unless a Logic Builder tab is open.
  */
 export function CanvasTabs({ onWorkspaceChange }: CanvasTabsProps) {
   const { tabs, activeTabId, switchTab, closeTab, updateTab } = useCanvasTabs();
@@ -23,17 +24,17 @@ export function CanvasTabs({ onWorkspaceChange }: CanvasTabsProps) {
   /**
    * Handle workspace changes from Blockly editor
    */
-  const handleWorkspaceChange = (_workspaceSvg: unknown, json: string) => {
-    if (!activeTab || activeTab.type !== 'logic-builder') {
+  const handleWorkspaceChange = (_workspaceSvg: unknown, json: string, code: string) => {
+    if (!activeTab) {
       return;
     }
 
     // Update tab's workspace with JSON
     updateTab(activeTab.id, { workspace: json });
 
-    // Notify parent
+    // Notify parent (pass both workspace JSON and generated code)
     if (onWorkspaceChange && activeTab.nodeId) {
-      onWorkspaceChange(activeTab.nodeId, json);
+      onWorkspaceChange(activeTab.nodeId, json, code);
     }
   };
 
@@ -52,13 +53,17 @@ export function CanvasTabs({ onWorkspaceChange }: CanvasTabsProps) {
     closeTab(tabId);
   };
 
+  // Don't render anything if no tabs are open
+  if (tabs.length === 0) {
+    return null;
+  }
+
   return (
     <div className={css['CanvasTabs']}>
       {/* Tab Bar */}
       <div className={css['TabBar']}>
         {tabs.map((tab) => {
           const isActive = tab.id === activeTabId;
-          const canClose = tab.type !== 'canvas';
 
           return (
             <div
@@ -69,20 +74,16 @@ export function CanvasTabs({ onWorkspaceChange }: CanvasTabsProps) {
               aria-selected={isActive}
               tabIndex={0}
             >
-              <span className={css['TabLabel']}>
-                {tab.type === 'canvas' ? 'Canvas' : `Logic Builder: ${tab.nodeName || 'Unnamed'}`}
-              </span>
+              <span className={css['TabLabel']}>Logic Builder: {tab.nodeName || 'Unnamed'}</span>
 
-              {canClose && (
-                <button
-                  className={css['TabCloseButton']}
-                  onClick={(e) => handleTabClose(e, tab.id)}
-                  aria-label="Close tab"
-                  title="Close tab"
-                >
-                  ×
-                </button>
-              )}
+              <button
+                className={css['TabCloseButton']}
+                onClick={(e) => handleTabClose(e, tab.id)}
+                aria-label="Close tab"
+                title="Close tab"
+              >
+                ×
+              </button>
             </div>
           );
         })}
@@ -90,13 +91,7 @@ export function CanvasTabs({ onWorkspaceChange }: CanvasTabsProps) {
 
       {/* Tab Content */}
       <div className={css['TabContent']}>
-        {activeTab?.type === 'canvas' && (
-          <div className={css['CanvasContainer']} id="nodegraph-canvas-container">
-            {/* Canvas will be rendered here by NodeGraphEditor */}
-          </div>
-        )}
-
-        {activeTab?.type === 'logic-builder' && (
+        {activeTab && (
           <div className={css['BlocklyContainer']}>
             <BlocklyWorkspace initialWorkspace={activeTab.workspace || undefined} onChange={handleWorkspaceChange} />
           </div>

@@ -104,8 +104,16 @@ const LogicBuilderNode = {
         // Create execution context
         const context = this._createExecutionContext(triggerSignal);
 
-        // Execute generated code
-        internal.compiledFunction.call(context);
+        // Execute generated code, passing context variables as parameters
+        internal.compiledFunction(
+          context.Inputs,
+          context.Outputs,
+          context.Noodl,
+          context.Variables,
+          context.Objects,
+          context.Arrays,
+          context.sendSignalOnOutput
+        );
 
         // Update outputs
         for (const outputName in context.Outputs) {
@@ -179,9 +187,18 @@ const LogicBuilderNode = {
           return null;
         }
 
-        // Wrap code in a function
-        // Code will have access to: Inputs, Outputs, Noodl, Variables, Objects, Arrays, sendSignalOnOutput
-        const fn = new Function(code);
+        // Create function with parameters for context variables
+        // This makes Inputs, Outputs, Noodl, etc. available to the generated code
+        const fn = new Function(
+          'Inputs',
+          'Outputs',
+          'Noodl',
+          'Variables',
+          'Objects',
+          'Arrays',
+          'sendSignalOnOutput',
+          code
+        );
         return fn;
       } catch (error) {
         console.error('[Logic Builder] Failed to compile function:', error);
@@ -200,13 +217,12 @@ const LogicBuilderNode = {
 
   inputs: {
     workspace: {
-      group: 'General',
       type: {
         name: 'string',
         allowEditOnly: true,
         editorType: 'logic-builder-workspace'
       },
-      displayName: 'Workspace',
+      displayName: 'Logic Blocks',
       set: function (value) {
         const internal = this._internal;
         internal.workspace = value;
@@ -214,13 +230,22 @@ const LogicBuilderNode = {
       }
     },
     generatedCode: {
-      group: 'General',
       type: 'string',
       displayName: 'Generated Code',
+      group: 'Advanced',
+      editorName: 'Hidden', // Hide from property panel
       set: function (value) {
         const internal = this._internal;
         internal.generatedCode = value;
         internal.compiledFunction = null; // Reset compiled function
+      }
+    },
+    run: {
+      type: 'signal',
+      displayName: 'Run',
+      group: 'Signals',
+      valueChangedToTrue: function () {
+        this._executeLogic('run');
       }
     }
   },
@@ -243,14 +268,14 @@ const LogicBuilderNode = {
  */
 let updatePortsImpl = null;
 
-function updatePorts(nodeId, workspace, editorConnection) {
+function updatePorts(nodeId, workspace, generatedCode, editorConnection) {
   if (!workspace) {
     editorConnection.sendDynamicPorts(nodeId, []);
     return;
   }
 
   if (updatePortsImpl) {
-    updatePortsImpl(nodeId, workspace, editorConnection);
+    updatePortsImpl(nodeId, workspace, generatedCode, editorConnection);
   } else {
     console.warn('[Logic Builder] updatePortsImpl not initialized - running in runtime mode?');
   }
@@ -265,17 +290,47 @@ module.exports = {
 
     // Inject the real updatePorts implementation
     // This is set by the editor's initialization code
-    updatePortsImpl = function (nodeId, workspace, editorConnection) {
+    updatePortsImpl = function (nodeId, workspace, generatedCode, editorConnection) {
+      console.log('[Logic Builder] updatePortsImpl called for node:', nodeId);
+      console.log('[Logic Builder] Workspace length:', workspace ? workspace.length : 0);
+      console.log('[Logic Builder] Generated code length:', generatedCode ? generatedCode.length : 0);
+
       try {
-        // The IODetector should be available in the editor context
-        // We'll access it through the global window object (editor environment)
-        if (typeof window !== 'undefined' && window.NoodlEditor && window.NoodlEditor.detectIO) {
-          const detected = window.NoodlEditor.detectIO(workspace);
+        console.log('[Logic Builder] Parsing generated code for outputs...');
+
+        const detected = {
+          inputs: [],
+          outputs: [],
+          signalInputs: [],
+          signalOutputs: []
+        };
+
+        // Detect outputs from code like: Outputs["result"] = ...
+        const outputRegex = /Outputs\["([^"]+)"\]/g;
+        let match;
+        while ((match = outputRegex.exec(generatedCode)) !== null) {
+          const outputName = match[1];
+          if (!detected.outputs.find((o) => o.name === outputName)) {
+            detected.outputs.push({ name: outputName, type: '*' });
+          }
+        }
+
+        console.log('[Logic Builder] Detected outputs from code:', detected.outputs);
+
+        if (detected.outputs.length > 0) {
+          console.log('[Logic Builder] Detection results:', {
+            inputs: detected.inputs.length,
+            outputs: detected.outputs.length,
+            signalInputs: detected.signalInputs.length,
+            signalOutputs: detected.signalOutputs.length
+          });
+          console.log('[Logic Builder] Detected outputs:', detected.outputs);
 
           const ports = [];
 
           // Add detected inputs
           detected.inputs.forEach((input) => {
+            console.log('[Logic Builder] Adding input port:', input.name);
             ports.push({
               name: input.name,
               type: input.type,
@@ -287,6 +342,7 @@ module.exports = {
 
           // Add detected outputs
           detected.outputs.forEach((output) => {
+            console.log('[Logic Builder] Adding output port:', output.name);
             ports.push({
               name: output.name,
               type: output.type,
@@ -298,6 +354,7 @@ module.exports = {
 
           // Add detected signal inputs
           detected.signalInputs.forEach((signalName) => {
+            console.log('[Logic Builder] Adding signal input:', signalName);
             ports.push({
               name: signalName,
               type: 'signal',
@@ -309,6 +366,7 @@ module.exports = {
 
           // Add detected signal outputs
           detected.signalOutputs.forEach((signalName) => {
+            console.log('[Logic Builder] Adding signal output:', signalName);
             ports.push({
               name: signalName,
               type: 'signal',
@@ -318,23 +376,33 @@ module.exports = {
             });
           });
 
+          console.log('[Logic Builder] Sending', ports.length, 'ports to editor');
           editorConnection.sendDynamicPorts(nodeId, ports);
+          console.log('[Logic Builder] Ports sent successfully');
         } else {
           console.warn('[Logic Builder] IODetector not available in editor context');
         }
       } catch (error) {
         console.error('[Logic Builder] Failed to update ports:', error);
+        console.error('[Logic Builder] Error stack:', error.stack);
       }
     };
 
     graphModel.on('nodeAdded.Logic Builder', function (node) {
+      console.log('[Logic Builder] Node added:', node.id);
       if (node.parameters.workspace) {
-        updatePorts(node.id, node.parameters.workspace, context.editorConnection);
+        console.log('[Logic Builder] Node has workspace, updating ports...');
+        updatePorts(node.id, node.parameters.workspace, node.parameters.generatedCode, context.editorConnection);
       }
 
       node.on('parameterUpdated', function (event) {
-        if (event.name === 'workspace') {
-          updatePorts(node.id, node.parameters.workspace, context.editorConnection);
+        console.log('[Logic Builder] Parameter updated:', event.name, 'for node:', node.id);
+        // Trigger port update when workspace OR generatedCode changes
+        if (event.name === 'workspace' || event.name === 'generatedCode') {
+          console.log('[Logic Builder] Triggering port update for:', event.name);
+          console.log('[Logic Builder] Workspace value:', node.parameters.workspace ? 'exists' : 'empty');
+          console.log('[Logic Builder] Generated code value:', node.parameters.generatedCode ? 'exists' : 'empty');
+          updatePorts(node.id, node.parameters.workspace, node.parameters.generatedCode, context.editorConnection);
         }
       });
     });

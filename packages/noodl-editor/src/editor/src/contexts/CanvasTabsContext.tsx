@@ -1,9 +1,11 @@
-import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback, ReactNode, useEffect } from 'react';
+
+import { EventDispatcher } from '../../../shared/utils/EventDispatcher';
 
 /**
  * Tab types supported by the canvas tab system
  */
-export type TabType = 'canvas' | 'logic-builder';
+export type TabType = 'logic-builder';
 
 /**
  * Tab data structure
@@ -62,15 +64,10 @@ interface CanvasTabsProviderProps {
  * Provider for canvas tabs state
  */
 export function CanvasTabsProvider({ children }: CanvasTabsProviderProps) {
-  // Always start with the canvas tab
-  const [tabs, setTabs] = useState<Tab[]>([
-    {
-      id: 'canvas',
-      type: 'canvas'
-    }
-  ]);
+  // Start with no tabs - Logic Builder tabs are opened on demand
+  const [tabs, setTabs] = useState<Tab[]>([]);
 
-  const [activeTabId, setActiveTabId] = useState<string>('canvas');
+  const [activeTabId, setActiveTabId] = useState<string | undefined>(undefined);
 
   /**
    * Open a new tab or switch to existing one
@@ -93,7 +90,15 @@ export function CanvasTabsProvider({ children }: CanvasTabsProviderProps) {
         ...newTab,
         id: tabId
       };
-      return [...prevTabs, tab];
+
+      const newTabs = [...prevTabs, tab];
+
+      // Emit event that a Logic Builder tab was opened (first tab)
+      if (prevTabs.length === 0) {
+        EventDispatcher.instance.emit('LogicBuilder.TabOpened');
+      }
+
+      return newTabs;
     });
 
     // Switch to the new/existing tab
@@ -101,15 +106,33 @@ export function CanvasTabsProvider({ children }: CanvasTabsProviderProps) {
   }, []);
 
   /**
+   * Listen for Logic Builder tab open requests from property panel
+   */
+  useEffect(() => {
+    const context = {};
+
+    const handleOpenTab = (data: { nodeId: string; nodeName: string; workspace: string }) => {
+      console.log('[CanvasTabsContext] Received LogicBuilder.OpenTab event:', data);
+      openTab({
+        type: 'logic-builder',
+        nodeId: data.nodeId,
+        nodeName: data.nodeName,
+        workspace: data.workspace
+      });
+    };
+
+    EventDispatcher.instance.on('LogicBuilder.OpenTab', handleOpenTab, context);
+
+    return () => {
+      EventDispatcher.instance.off(context);
+    };
+  }, [openTab]);
+
+  /**
    * Close a tab by ID
    */
   const closeTab = useCallback(
     (tabId: string) => {
-      // Can't close the canvas tab
-      if (tabId === 'canvas') {
-        return;
-      }
-
       setTabs((prevTabs) => {
         const tabIndex = prevTabs.findIndex((t) => t.id === tabId);
         if (tabIndex === -1) {
@@ -118,9 +141,15 @@ export function CanvasTabsProvider({ children }: CanvasTabsProviderProps) {
 
         const newTabs = prevTabs.filter((t) => t.id !== tabId);
 
-        // If closing the active tab, switch to canvas
+        // If closing the active tab, switch to another tab or clear active
         if (activeTabId === tabId) {
-          setActiveTabId('canvas');
+          if (newTabs.length > 0) {
+            setActiveTabId(newTabs[newTabs.length - 1].id);
+          } else {
+            setActiveTabId(undefined);
+            // Emit event that all Logic Builder tabs are closed
+            EventDispatcher.instance.emit('LogicBuilder.AllTabsClosed');
+          }
         }
 
         return newTabs;

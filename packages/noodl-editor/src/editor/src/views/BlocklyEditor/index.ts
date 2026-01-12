@@ -20,11 +20,20 @@ export type { BlocklyWorkspaceProps } from './BlocklyWorkspace';
 export { initNoodlBlocks } from './NoodlBlocks';
 export { initNoodlGenerators, generateCode } from './NoodlGenerators';
 
+// Track initialization to prevent double-registration
+let blocklyInitialized = false;
+
 /**
  * Initialize all Noodl Blockly extensions
  * Call this once at app startup before using Blockly components
+ * Safe to call multiple times - will only initialize once
  */
 export function initBlocklyIntegration() {
+  if (blocklyInitialized) {
+    console.log('⏭️  [Blockly] Already initialized, skipping');
+    return;
+  }
+
   console.log('🔧 [Blockly] Initializing Noodl Blockly integration');
 
   // Initialize custom blocks
@@ -35,5 +44,6 @@ export function initBlocklyIntegration() {
 
   // Note: BlocklyEditorGlobals auto-initializes via side-effect import above
 
+  blocklyInitialized = true;
   console.log('✅ [Blockly] Integration initialized');
 }
