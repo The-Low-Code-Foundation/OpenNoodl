@@ -28,6 +28,7 @@ function registerNodes(noodlRuntime) {
     // Custom code
     require('./src/nodes/std-library/expression'),
     require('./src/nodes/std-library/simplejavascript'),
+    require('./src/nodes/std-library/logic-builder'),
 
     // Records
     require('./src/nodes/std-library/data/dbcollectionnode2'),

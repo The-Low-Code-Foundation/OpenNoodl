@@ -37,6 +37,84 @@ const ExpressionNode = {
         this._internal.unsubscribe();
         this._internal.unsubscribe = null;
       }
+    },
+    registerInputIfNeeded: function (name) {
+      if (this.hasInput(name)) {
+        return;
+      }
+
+      this._internal.scope[name] = 0;
+      this._inputValues[name] = 0;
+
+      this.registerInput(name, {
+        set: function (value) {
+          this._internal.scope[name] = value;
+          if (!this.isInputConnected('run')) this._scheduleEvaluateExpression();
+        }
+      });
+    },
+    _scheduleEvaluateExpression: function () {
+      var internal = this._internal;
+      if (internal.hasScheduledEvaluation === false) {
+        internal.hasScheduledEvaluation = true;
+        this.flagDirty();
+        this.scheduleAfterInputsHaveUpdated(function () {
+          var lastValue = internal.cachedValue;
+          internal.cachedValue = this._calculateExpression();
+          if (lastValue !== internal.cachedValue) {
+            this.flagOutputDirty('result');
+            this.flagOutputDirty('isTrue');
+            this.flagOutputDirty('isFalse');
+          }
+          if (internal.cachedValue) this.sendSignalOnOutput('isTrueEv');
+          else this.sendSignalOnOutput('isFalseEv');
+          internal.hasScheduledEvaluation = false;
+        });
+      }
+    },
+    _calculateExpression: function () {
+      var internal = this._internal;
+
+      if (!internal.compiledFunction) {
+        internal.compiledFunction = this._compileFunction();
+      }
+
+      for (var i = 0; i < internal.inputNames.length; ++i) {
+        var inputValue = internal.scope[internal.inputNames[i]];
+        internal.inputValues[i] = inputValue;
+      }
+
+      // Get proper Noodl API and append as last parameter for backward compatibility
+      const JavascriptNodeParser = require('../../javascriptnodeparser');
+      const noodlAPI = JavascriptNodeParser.createNoodlAPI(this.context && this.context.modelScope);
+      const argsWithNoodl = internal.inputValues.concat([noodlAPI]);
+
+      try {
+        return internal.compiledFunction.apply(null, argsWithNoodl);
+      } catch (e) {
+        console.error('Error in expression:', e.message);
+      }
+      return 0;
+    },
+    _compileFunction: function () {
+      var expression = this._internal.currentExpression;
+      var args = Object.keys(this._internal.scope);
+
+      // Add 'Noodl' as last parameter for backward compatibility
+      args.push('Noodl');
+
+      var key = expression + args.join(' ');
+
+      if (compiledFunctionsCache.hasOwnProperty(key) === false) {
+        args.push(expression);
+
+        try {
+          compiledFunctionsCache[key] = construct(Function, args);
+        } catch (e) {
+          console.error('Failed to compile JS function', e.message);
+        }
+      }
+      return compiledFunctionsCache[key];
     }
   },
   getInspectInfo() {
@@ -195,84 +273,6 @@ const ExpressionNode = {
       displayName: 'As Boolean',
       getter: function () {
         return !!this._internal.cachedValue;
-      }
-    }
-  },
-  prototypeExtensions: {
-    registerInputIfNeeded: {
-      value: function (name) {
-        if (this.hasInput(name)) {
-          return;
-        }
-
-        this._internal.scope[name] = 0;
-        this._inputValues[name] = 0;
-
-        this.registerInput(name, {
-          set: function (value) {
-            this._internal.scope[name] = value;
-            if (!this.isInputConnected('run')) this._scheduleEvaluateExpression();
-          }
-        });
-      }
-    },
-    _scheduleEvaluateExpression: {
-      value: function () {
-        var internal = this._internal;
-        if (internal.hasScheduledEvaluation === false) {
-          internal.hasScheduledEvaluation = true;
-          this.flagDirty();
-          this.scheduleAfterInputsHaveUpdated(function () {
-            var lastValue = internal.cachedValue;
-            internal.cachedValue = this._calculateExpression();
-            if (lastValue !== internal.cachedValue) {
-              this.flagOutputDirty('result');
-              this.flagOutputDirty('isTrue');
-              this.flagOutputDirty('isFalse');
-            }
-            if (internal.cachedValue) this.sendSignalOnOutput('isTrueEv');
-            else this.sendSignalOnOutput('isFalseEv');
-            internal.hasScheduledEvaluation = false;
-          });
-        }
-      }
-    },
-    _calculateExpression: {
-      value: function () {
-        var internal = this._internal;
-
-        if (!internal.compiledFunction) {
-          internal.compiledFunction = this._compileFunction();
-        }
-        for (var i = 0; i < internal.inputNames.length; ++i) {
-          var inputValue = internal.scope[internal.inputNames[i]];
-          internal.inputValues[i] = inputValue;
-        }
-        try {
-          return internal.compiledFunction.apply(null, internal.inputValues);
-        } catch (e) {
-          console.error('Error in expression:', e.message);
-        }
-        return 0;
-      }
-    },
-    _compileFunction: {
-      value: function () {
-        var expression = this._internal.currentExpression;
-        var args = Object.keys(this._internal.scope);
-
-        var key = expression + args.join(' ');
-
-        if (compiledFunctionsCache.hasOwnProperty(key) === false) {
-          args.push(expression);
-
-          try {
-            compiledFunctionsCache[key] = construct(Function, args);
-          } catch (e) {
-            console.error('Failed to compile JS function', e.message);
-          }
-        }
-        return compiledFunctionsCache[key];
       }
     }
   }
