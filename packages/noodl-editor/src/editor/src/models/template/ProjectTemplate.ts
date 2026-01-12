@@ -40,6 +40,9 @@ export interface ProjectContent {
   /** Project name (will be overridden by user input) */
   name: string;
 
+  /** Name of the root component that serves as the entry point */
+  rootComponent?: string;
+
   /** Array of component definitions */
   components: ComponentDefinition[];
 

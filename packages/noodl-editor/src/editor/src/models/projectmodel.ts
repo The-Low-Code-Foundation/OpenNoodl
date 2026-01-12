@@ -169,6 +169,14 @@ export class ProjectModel extends Model {
 
     if (json.rootNodeId) _this.rootNode = _this.findNodeWithId(json.rootNodeId);
 
+    // Handle rootComponent from templates (name of component instead of node ID)
+    if (json.rootComponent && !_this.rootNode) {
+      const rootComponent = _this.getComponentWithName(json.rootComponent);
+      if (rootComponent) {
+        _this.setRootComponent(rootComponent);
+      }
+    }
+
     // Upgrade project if necessary
     ProjectModel.upgrade(_this);
 

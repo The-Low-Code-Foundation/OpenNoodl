@@ -36,6 +36,7 @@ export const helloWorldTemplate: ProjectTemplate = {
 
   content: {
     name: 'Hello World Project',
+    rootComponent: 'App',
     components: [
       // App component (root)
       {
