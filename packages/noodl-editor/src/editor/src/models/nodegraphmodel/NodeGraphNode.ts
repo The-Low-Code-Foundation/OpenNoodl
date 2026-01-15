@@ -1,6 +1,7 @@
 import { each, filter, find, isEqual, some } from 'underscore';
 
 import { ComponentModel } from '@noodl-models/componentmodel';
+import { ElementConfigRegistry } from '@noodl-models/ElementConfigs';
 import { NodeGraphModel } from '@noodl-models/nodegraphmodel/NodeGraphModel';
 import { NodeGrapPort } from '@noodl-models/NodeGraphPort';
 import { NodeLibrary } from '@noodl-models/nodelibrary';
@@ -131,6 +132,12 @@ export class NodeGraphNode extends Model {
     if (!this.children) this.children = [];
     if (!this.ports) this.ports = [];
     if (!this.dynamicports) this.dynamicports = [];
+
+    // Apply element config defaults if available
+    // This auto-populates new nodes with sensible defaults from their config
+    if (this.typename && Object.keys(this.parameters).length === 0) {
+      ElementConfigRegistry.instance.applyDefaults(this as any);
+    }
   }
 
   static fromJSON(json: NodeGraphNodeJSON): NodeGraphNode {
