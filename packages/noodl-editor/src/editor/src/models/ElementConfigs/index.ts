@@ -25,11 +25,14 @@ export * from './configs';
  */
 export function initElementConfigs(): void {
   // Import configs and register them
-  import('./configs').then(({ ButtonConfig, TextConfig }) => {
+  import('./configs').then(({ ButtonConfig, TextConfig, GroupConfig, TextInputConfig, ImageConfig }) => {
     // Import registry from local module
     import('./ElementConfigRegistry').then(({ ElementConfigRegistry }) => {
       ElementConfigRegistry.instance.register(ButtonConfig);
       ElementConfigRegistry.instance.register(TextConfig);
+      ElementConfigRegistry.instance.register(GroupConfig);
+      ElementConfigRegistry.instance.register(TextInputConfig);
+      ElementConfigRegistry.instance.register(ImageConfig);
 
       console.log('[ElementConfigs] Initialized with', ElementConfigRegistry.instance.getCount(), 'configs');
     });

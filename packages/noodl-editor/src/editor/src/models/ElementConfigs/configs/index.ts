@@ -10,8 +10,6 @@
 
 export { ButtonConfig } from './ButtonConfig';
 export { TextConfig } from './TextConfig';
-
-// Other configs to be implemented:
-// export { GroupConfig } from './GroupConfig';
-// export { TextInputConfig } from './TextInputConfig';
-// export { ImageConfig } from './ImageConfig';
+export { GroupConfig } from './GroupConfig';
+export { TextInputConfig } from './TextInputConfig';
+export { ImageConfig } from './ImageConfig';
