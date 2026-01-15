@@ -54,6 +54,10 @@
 export { ExecutionStore } from './store';
 export type { SQLiteDatabase } from './store';
 
+// Export logger
+export { ExecutionLogger } from './ExecutionLogger';
+export type { LoggerConfig, StartExecutionParams, StartNodeParams } from './ExecutionLogger';
+
 // Export types
 export type {
   // Status types
