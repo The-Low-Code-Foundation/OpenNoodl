@@ -1,12 +1,17 @@
 # TASK-007 Progress: Integrated Local Backend
 
 **Last Updated**: January 15, 2026
+**Status**: Core Infrastructure Complete ✅
 
-## Current Status: 4/6 Subtasks Complete
+## Summary
 
-### Completed
+The BYOB (Bring Your Own Backend) local SQLite implementation is now functionally complete at the infrastructure level. Users can create, start, stop, and manage local backends from the editor. The remaining work (schema viewer/editor, data browser) will be handled separately.
 
-#### ✅ TASK-007A: LocalSQL Adapter
+---
+
+## Completed Subtasks
+
+### ✅ TASK-007A: LocalSQL Adapter
 
 **Files created:**
 
@@ -21,12 +26,12 @@
 **Features:**
 
 - Parse Server compatible API on SQLite
-- Auto-schema management (auto-create tables)
+- Auto-schema management (auto-create tables and columns)
 - All CRUD operations supported
 - Query operators: $eq, $ne, $lt, $lte, $gt, $gte, $in, $nin, $exists, $regex
 - In-memory fallback when better-sqlite3 unavailable
 
-#### ✅ TASK-007B: Local Backend Server
+### ✅ TASK-007B: Local Backend Server
 
 **Files created:**
 
@@ -41,7 +46,7 @@
 - Multi-backend support with config persistence
 - Per-project backend isolation
 
-#### ✅ TASK-007C: WorkflowRunner Implementation
+### ✅ TASK-007C: WorkflowRunner Implementation
 
 **Files created:**
 
@@ -54,7 +59,7 @@
 - Error handling and propagation
 - Async operation support
 
-#### ✅ TASK-007D: Launcher Integration (UI)
+### ✅ TASK-007D: Launcher Integration (UI)
 
 **Files created:**
 
@@ -69,37 +74,54 @@
 - Status display (Running/Stopped)
 - Endpoint URL display with copy-to-clipboard
 - Integration with existing BackendServicesPanel
+- Proper React dialogs (replaced prompt/confirm which don't work in Electron)
 
-### Remaining Tasks
+---
 
-#### 📋 TASK-007E: Migration & Export Tools
+## Bug Fixes Applied
+
+1. **prompt()/confirm() not supported in Electron** - Replaced with inline TextInput form and useConfirmationDialog hook
+2. **IPC transport not available** - Fixed to use `window.require('electron').ipcRenderer.invoke()` pattern
+
+---
+
+## Future Work (Separate Tasks)
+
+### 📋 Schema Viewer/Editor Panel
+
+To be developed separately - a visual interface for:
+
+- Viewing tables and columns
+- Adding/modifying schema
+- Browsing/editing data
+- Sample data generation
+
+### 📋 TASK-007E: Migration & Export Tools (Optional)
 
 - Schema export to PostgreSQL format
 - Data migration wizard
 - Environment configuration export
 
-#### 📋 TASK-007F: Standalone Deployment
+### 📋 TASK-007F: Standalone Deployment (Optional)
 
 - Docker container generation
 - Self-hosted deployment scripts
 - Production configuration
 
-## Git History
+---
 
-```bash
-# TASK-007A/B/C merged to cline-dev from feature/task-007-integrated-backend
-# TASK-007D merged to cline-dev from feature/task-007d-launcher-ui
+## Git Commits
+
+```
+dac5330 fix(editor): use correct IPC transport pattern in useLocalBackends
+9181d5d fix(editor): replace prompt/confirm with proper dialogs in BackendServicesPanel
+1c40f45 docs: update TASK-007 progress (4/6 subtasks complete)
+[merge]  Merge feature/task-007d-launcher-ui into cline-dev
+5f61317 feat(editor): add local backends UI to BackendServicesPanel
+[merge]  Merge feature/task-007-integrated-backend into cline-dev
 ```
 
-## Testing Notes
-
-The UI components use IPC handlers registered in main.js. To test:
-
-1. Run `npm run dev`
-2. Open Backend Services panel
-3. Create a local backend (name it)
-4. Start/Stop the backend
-5. Check the displayed endpoint when running
+---
 
 ## Architecture Summary
 
@@ -138,3 +160,16 @@ The UI components use IPC handlers registered in main.js. To test:
 │  └─────────────────────────────────────────────────────┘│
 └─────────────────────────────────────────────────────────┘
 ```
+
+---
+
+## Testing Instructions
+
+1. Run `npm run dev`
+2. Open Backend Services panel (database icon in sidebar)
+3. Click `+` next to "Local Backends"
+4. Enter a name and click "Create"
+5. Backend appears in list with Start/Stop/Delete options
+6. Click "Start" to launch the local server
+7. Check terminal for server startup logs
+8. Endpoint URL displays when running (e.g., `http://localhost:3001`)
