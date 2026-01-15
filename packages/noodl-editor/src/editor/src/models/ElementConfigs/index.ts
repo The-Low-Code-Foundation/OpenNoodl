@@ -1,3 +1,7 @@
+// Import configs synchronously for initialization
+import { ButtonConfig, TextConfig, GroupConfig, TextInputConfig, ImageConfig } from './configs';
+import { ElementConfigRegistry } from './ElementConfigRegistry';
+
 /**
  * ElementConfigs
  *
@@ -24,17 +28,14 @@ export * from './configs';
  * Should be called once at application startup.
  */
 export function initElementConfigs(): void {
-  // Import configs and register them
-  import('./configs').then(({ ButtonConfig, TextConfig, GroupConfig, TextInputConfig, ImageConfig }) => {
-    // Import registry from local module
-    import('./ElementConfigRegistry').then(({ ElementConfigRegistry }) => {
-      ElementConfigRegistry.instance.register(ButtonConfig);
-      ElementConfigRegistry.instance.register(TextConfig);
-      ElementConfigRegistry.instance.register(GroupConfig);
-      ElementConfigRegistry.instance.register(TextInputConfig);
-      ElementConfigRegistry.instance.register(ImageConfig);
+  console.log('[ElementConfigs] Initializing element configs...');
 
-      console.log('[ElementConfigs] Initialized with', ElementConfigRegistry.instance.getCount(), 'configs');
-    });
-  });
+  // Register all configs synchronously
+  ElementConfigRegistry.instance.register(ButtonConfig);
+  ElementConfigRegistry.instance.register(TextConfig);
+  ElementConfigRegistry.instance.register(GroupConfig);
+  ElementConfigRegistry.instance.register(TextInputConfig);
+  ElementConfigRegistry.instance.register(ImageConfig);
+
+  console.log('[ElementConfigs] ✅ Initialized with', ElementConfigRegistry.instance.getCount(), 'configs');
 }
