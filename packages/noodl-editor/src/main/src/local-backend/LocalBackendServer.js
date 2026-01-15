@@ -12,6 +12,7 @@
  */
 
 const http = require('http');
+const path = require('path');
 const EventEmitter = require('events');
 
 // Using native http.IncomingMessage handling instead of Express for lighter weight
@@ -58,8 +59,21 @@ class LocalBackendServer {
    * Initialize the database adapter
    */
   async initAdapter() {
-    // Import adapter dynamically to avoid circular deps
-    const { LocalSQLAdapter } = require('../../../../noodl-runtime/src/api/adapters/local-sql');
+    // Import adapter dynamically using absolute path to avoid resolution issues
+    const adapterPath = path.resolve(
+      __dirname,
+      '..',
+      '..',
+      '..',
+      '..',
+      '..',
+      'noodl-runtime',
+      'src',
+      'api',
+      'adapters',
+      'local-sql'
+    );
+    const { LocalSQLAdapter } = require(adapterPath);
     this.adapter = new LocalSQLAdapter(this.config.dbPath);
     await this.adapter.connect();
 
