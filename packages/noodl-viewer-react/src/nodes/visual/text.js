@@ -28,7 +28,9 @@ const TextNode = {
   },
   defaultCss: {
     position: 'relative',
-    display: 'flex'
+    display: 'flex',
+    // FIX: Text should size to content by default, not stretch to parent width
+    width: 'auto'
   },
   inputProps: {
     text: {

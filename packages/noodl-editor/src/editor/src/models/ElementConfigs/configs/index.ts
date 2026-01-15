@@ -9,9 +9,7 @@
  */
 
 export { ButtonConfig } from './ButtonConfig';
-
-// TextConfig will be added next
-// export { TextConfig } from './TextConfig';
+export { TextConfig } from './TextConfig';
 
 // Other configs to be implemented:
 // export { GroupConfig } from './GroupConfig';
