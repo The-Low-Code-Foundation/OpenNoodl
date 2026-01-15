@@ -15,6 +15,8 @@ const http = require('http');
 const path = require('path');
 const EventEmitter = require('events');
 
+const { WorkflowRunner } = require('./WorkflowRunner');
+
 // Using native http.IncomingMessage handling instead of Express for lighter weight
 // This keeps the main process simple and avoids additional dependencies
 
@@ -46,11 +48,13 @@ class LocalBackendServer {
    * @param {string} config.name - Backend display name
    * @param {string} config.dbPath - Path to SQLite database
    * @param {number} config.port - Port to listen on
+   * @param {string} config.workflowsPath - Path to workflows directory
    */
   constructor(config) {
     this.config = config;
     this.server = null;
     this.adapter = null;
+    this.workflowRunner = null;
     this.events = new EventEmitter();
     this.wsClients = new Set();
   }
@@ -412,12 +416,34 @@ class LocalBackendServer {
 
   /**
    * POST /functions/:name - Execute cloud function
-   * Placeholder - will be implemented with CloudRunner
+   * Executes a visual workflow via the WorkflowRunner
    */
   async handleFunction(res, functionName, body, headers) {
-    // TODO: Integrate with CloudRunner when TASK-007C is complete
+    if (!this.workflowRunner) {
+      return this.sendError(res, 501, 'Workflows not initialized');
+    }
+
     safeLog(`Cloud function called: ${functionName}`);
-    this.sendError(res, 501, 'Cloud functions not yet implemented');
+
+    // Build request object matching CloudRunner's expected format
+    const request = {
+      body: JSON.stringify(body),
+      headers: headers
+    };
+
+    try {
+      const response = await this.workflowRunner.run(functionName, request);
+      res.writeHead(response.statusCode, {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+        'Access-Control-Allow-Headers': '*'
+      });
+      res.end(response.body);
+    } catch (error) {
+      safeLog('Function execution error:', error);
+      this.sendError(res, 500, error.message);
+    }
   }
 
   // ==========================================================================
@@ -454,6 +480,24 @@ class LocalBackendServer {
   async start() {
     // Initialize adapter
     await this.initAdapter();
+
+    // Initialize WorkflowRunner if workflows path is provided
+    if (this.config.workflowsPath) {
+      this.workflowRunner = new WorkflowRunner({
+        workflowsPath: this.config.workflowsPath,
+        adapter: this.adapter,
+        enableDebugInspectors: false
+      });
+
+      try {
+        await this.workflowRunner.initialize();
+        await this.workflowRunner.loadWorkflows();
+        safeLog(`WorkflowRunner initialized with ${this.workflowRunner.getAvailableFunctions().length} functions`);
+      } catch (e) {
+        safeLog('WorkflowRunner initialization failed (workflows disabled):', e.message);
+        // Don't fail server startup if workflows can't be initialized
+      }
+    }
 
     // Create HTTP server
     this.server = http.createServer((req, res) => {
@@ -506,6 +550,45 @@ class LocalBackendServer {
    */
   getAdapter() {
     return this.adapter;
+  }
+
+  /**
+   * Get WorkflowRunner for direct access
+   */
+  getWorkflowRunner() {
+    return this.workflowRunner;
+  }
+
+  /**
+   * Update a workflow (hot reload)
+   * @param {string} name - Workflow name
+   * @param {Object} exportData - Workflow export data
+   */
+  async updateWorkflow(name, exportData) {
+    if (!this.workflowRunner) {
+      return { success: false, error: 'Workflows not initialized' };
+    }
+    return this.workflowRunner.loadWorkflow(name, exportData);
+  }
+
+  /**
+   * Reload all workflows
+   */
+  async reloadWorkflows() {
+    if (!this.workflowRunner) {
+      return { success: false, error: 'Workflows not initialized' };
+    }
+    return this.workflowRunner.reloadWorkflows();
+  }
+
+  /**
+   * Get workflow status
+   */
+  getWorkflowStatus() {
+    if (!this.workflowRunner) {
+      return { initialized: false, workflowCount: 0, functions: [] };
+    }
+    return this.workflowRunner.getStatus();
   }
 }
 

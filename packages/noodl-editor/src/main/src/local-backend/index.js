@@ -18,11 +18,13 @@
 
 const { LocalBackendServer, generateObjectId } = require('./LocalBackendServer');
 const { BackendManager, backendManager, setupBackendIPC } = require('./BackendManager');
+const { WorkflowRunner } = require('./WorkflowRunner');
 
 module.exports = {
   // Classes
   LocalBackendServer,
   BackendManager,
+  WorkflowRunner,
 
   // Singleton instance
   backendManager,

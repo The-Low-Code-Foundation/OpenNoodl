@@ -100,6 +100,19 @@ class BackendManager {
       return this.exportSchema(id, format);
     });
 
+    // Workflow management
+    ipcMain.handle('backend:update-workflow', async (_, args) => {
+      return this.updateWorkflow(args.backendId, args.name, args.workflow);
+    });
+
+    ipcMain.handle('backend:reload-workflows', async (_, id) => {
+      return this.reloadWorkflows(id);
+    });
+
+    ipcMain.handle('backend:workflow-status', async (_, id) => {
+      return this.getWorkflowStatus(id);
+    });
+
     this.ipcHandlersSetup = true;
   }
 
@@ -234,6 +247,7 @@ class BackendManager {
       id: config.id,
       name: config.name,
       dbPath: path.join(backendPath, 'data', 'local.db'),
+      workflowsPath: path.join(backendPath, 'workflows'),
       port: config.port
     });
 
@@ -345,6 +359,51 @@ class BackendManager {
     }
 
     this.runningBackends.clear();
+  }
+
+  // ==========================================================================
+  // WORKFLOW MANAGEMENT
+  // ==========================================================================
+
+  /**
+   * Update/deploy a workflow to a backend
+   * @param {string} backendId - Backend ID
+   * @param {string} name - Workflow name
+   * @param {Object} workflow - Workflow export data
+   */
+  async updateWorkflow(backendId, name, workflow) {
+    const server = this.runningBackends.get(backendId);
+    if (!server) {
+      throw new Error('Backend must be running to update workflows');
+    }
+
+    return server.updateWorkflow(name, workflow);
+  }
+
+  /**
+   * Reload all workflows for a backend
+   * @param {string} backendId - Backend ID
+   */
+  async reloadWorkflows(backendId) {
+    const server = this.runningBackends.get(backendId);
+    if (!server) {
+      throw new Error('Backend must be running to reload workflows');
+    }
+
+    return server.reloadWorkflows();
+  }
+
+  /**
+   * Get workflow status for a backend
+   * @param {string} backendId - Backend ID
+   */
+  getWorkflowStatus(backendId) {
+    const server = this.runningBackends.get(backendId);
+    if (!server) {
+      return { initialized: false, workflowCount: 0, functions: [] };
+    }
+
+    return server.getWorkflowStatus();
   }
 }
 
