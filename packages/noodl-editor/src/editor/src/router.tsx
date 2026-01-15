@@ -10,6 +10,7 @@ import './utils/editorapi';
 import { platform } from '@noodl/platform';
 
 import { AiAssistantModel } from '@noodl-models/AiAssistant';
+import { initElementConfigs } from '@noodl-models/ElementConfigs';
 import { ProjectModel } from '@noodl-models/projectmodel';
 
 import { AppRoute } from './pages/AppRoute';
@@ -107,6 +108,9 @@ export default class Router
 
     // Initialise models
     LessonTemplatesModel.instance.fetch();
+
+    // Initialize element configs (Button, Text, etc.)
+    initElementConfigs();
 
     EventDispatcher.instance.on(
       'viewer-refresh',

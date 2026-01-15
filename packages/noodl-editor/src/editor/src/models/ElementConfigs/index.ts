@@ -14,5 +14,24 @@ export * from './ElementConfigTypes';
 // Export registry
 export { ElementConfigRegistry, registry } from './ElementConfigRegistry';
 
-// Configs will be exported once implemented
-// export * from './configs';
+// Export configs
+export * from './configs';
+
+/**
+ * Initialize Element Configs
+ *
+ * Registers all built-in element configurations.
+ * Should be called once at application startup.
+ */
+export function initElementConfigs(): void {
+  // Import configs and register them
+  import('./configs').then(({ ButtonConfig, TextConfig }) => {
+    // Import registry from local module
+    import('./ElementConfigRegistry').then(({ ElementConfigRegistry }) => {
+      ElementConfigRegistry.instance.register(ButtonConfig);
+      ElementConfigRegistry.instance.register(TextConfig);
+
+      console.log('[ElementConfigs] Initialized with', ElementConfigRegistry.instance.getCount(), 'configs');
+    });
+  });
+}
