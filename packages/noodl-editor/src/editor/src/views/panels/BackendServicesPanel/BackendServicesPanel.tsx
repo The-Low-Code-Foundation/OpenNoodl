@@ -16,9 +16,11 @@ import { BackendServices, BackendServicesEvent } from '@noodl-models/BackendServ
 import { ActivityIndicator } from '@noodl-core-ui/components/common/ActivityIndicator';
 import { IconName, IconSize } from '@noodl-core-ui/components/common/Icon';
 import { IconButton } from '@noodl-core-ui/components/inputs/IconButton';
+import { PrimaryButton, PrimaryButtonVariant, PrimaryButtonSize } from '@noodl-core-ui/components/inputs/PrimaryButton';
+import { TextInput } from '@noodl-core-ui/components/inputs/TextInput';
 import { Box } from '@noodl-core-ui/components/layout/Box';
 import { Container } from '@noodl-core-ui/components/layout/Container';
-import { VStack } from '@noodl-core-ui/components/layout/Stack';
+import { HStack, VStack } from '@noodl-core-ui/components/layout/Stack';
 import { useConfirmationDialog } from '@noodl-core-ui/components/popups/ConfirmationDialog/ConfirmationDialog.hooks';
 import { BasePanel } from '@noodl-core-ui/components/sidebar/BasePanel';
 import { Section, SectionVariant } from '@noodl-core-ui/components/sidebar/Section';
@@ -35,6 +37,10 @@ export function BackendServicesPanel() {
   const [isLoading, setIsLoading] = useState(false);
   const [isAddDialogVisible, setIsAddDialogVisible] = useState(false);
   const [hasActivity, setHasActivity] = useState(false);
+
+  // Local backend creation state
+  const [isAddLocalVisible, setIsAddLocalVisible] = useState(false);
+  const [newLocalBackendName, setNewLocalBackendName] = useState('');
 
   // Local backends hook
   const {
@@ -65,12 +71,41 @@ export function BackendServicesPanel() {
     setActiveBackendId(id);
   });
 
-  // Delete confirmation dialog
+  // Delete confirmation dialog for external backends
   const [DeleteDialog, confirmDelete] = useConfirmationDialog({
     title: 'Delete Backend',
     message: 'Are you sure you want to delete this backend configuration? This cannot be undone.',
     isDangerousAction: true
   });
+
+  // Delete confirmation dialog for local backends
+  const [DeleteLocalDialog, confirmDeleteLocal] = useConfirmationDialog({
+    title: 'Delete Local Backend',
+    message: 'Delete this local backend? All data will be permanently lost.',
+    isDangerousAction: true
+  });
+
+  // Handle delete local backend
+  const handleDeleteLocalBackend = useCallback(
+    async (id: string) => {
+      try {
+        await confirmDeleteLocal();
+        await deleteLocalBackend(id);
+      } catch {
+        // User cancelled
+      }
+    },
+    [confirmDeleteLocal, deleteLocalBackend]
+  );
+
+  // Handle create local backend
+  const handleCreateLocalBackend = useCallback(async () => {
+    if (newLocalBackendName.trim()) {
+      await createLocalBackend(newLocalBackendName.trim());
+      setNewLocalBackendName('');
+      setIsAddLocalVisible(false);
+    }
+  }, [newLocalBackendName, createLocalBackend]);
 
   // Handle delete backend
   const handleDeleteBackend = useCallback(
@@ -124,6 +159,7 @@ export function BackendServicesPanel() {
   return (
     <BasePanel title="Backend Services" hasActivityBlocker={hasActivity} hasContentScroll>
       <DeleteDialog />
+      <DeleteLocalDialog />
 
       {isLoading || isLoadingLocal ? (
         <Container hasLeftSpacing hasTopSpacing>
@@ -136,19 +172,59 @@ export function BackendServicesPanel() {
             title="Local Backends"
             variant={SectionVariant.Panel}
             actions={
-              <IconButton
-                icon={IconName.Plus}
-                size={IconSize.Small}
-                onClick={async () => {
-                  const name = prompt('Enter backend name:');
-                  if (name) {
-                    await createLocalBackend(name);
-                  }
-                }}
-                testId="add-local-backend-button"
-              />
+              !isAddLocalVisible && (
+                <IconButton
+                  icon={IconName.Plus}
+                  size={IconSize.Small}
+                  onClick={() => setIsAddLocalVisible(true)}
+                  testId="add-local-backend-button"
+                />
+              )
             }
           >
+            {/* Add Local Backend Form */}
+            {isAddLocalVisible && (
+              <Container hasLeftSpacing hasRightSpacing hasTopSpacing hasBottomSpacing>
+                <VStack>
+                  <Text textType={TextType.DefaultContrast}>Create Local Backend</Text>
+                  <Box hasTopSpacing>
+                    <TextInput
+                      value={newLocalBackendName}
+                      onChange={(e) => setNewLocalBackendName(e.target.value)}
+                      placeholder="Backend name"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleCreateLocalBackend();
+                        if (e.key === 'Escape') {
+                          setIsAddLocalVisible(false);
+                          setNewLocalBackendName('');
+                        }
+                      }}
+                    />
+                  </Box>
+                  <Box hasTopSpacing>
+                    <HStack hasSpacing>
+                      <PrimaryButton
+                        label="Create"
+                        size={PrimaryButtonSize.Small}
+                        variant={PrimaryButtonVariant.Muted}
+                        onClick={handleCreateLocalBackend}
+                        isDisabled={!newLocalBackendName.trim()}
+                      />
+                      <PrimaryButton
+                        label="Cancel"
+                        size={PrimaryButtonSize.Small}
+                        variant={PrimaryButtonVariant.Muted}
+                        onClick={() => {
+                          setIsAddLocalVisible(false);
+                          setNewLocalBackendName('');
+                        }}
+                      />
+                    </HStack>
+                  </Box>
+                </VStack>
+              </Container>
+            )}
+
             {localBackends.length > 0 ? (
               <VStack>
                 {localBackends.map((backend) => (
@@ -157,23 +233,21 @@ export function BackendServicesPanel() {
                     backend={backend}
                     onStart={async () => startLocalBackend(backend.id)}
                     onStop={async () => stopLocalBackend(backend.id)}
-                    onDelete={() => {
-                      if (confirm('Delete this local backend? All data will be lost.')) {
-                        deleteLocalBackend(backend.id);
-                      }
-                    }}
+                    onDelete={() => handleDeleteLocalBackend(backend.id)}
                   />
                 ))}
               </VStack>
             ) : (
-              <Container hasLeftSpacing hasTopSpacing hasBottomSpacing>
-                <Text>No local backends</Text>
-                <Box hasTopSpacing>
-                  <Text textType={TextType.Shy}>
-                    Create a local SQLite backend for zero-config database development.
-                  </Text>
-                </Box>
-              </Container>
+              !isAddLocalVisible && (
+                <Container hasLeftSpacing hasTopSpacing hasBottomSpacing>
+                  <Text>No local backends</Text>
+                  <Box hasTopSpacing>
+                    <Text textType={TextType.Shy}>
+                      Create a local SQLite backend for zero-config database development.
+                    </Text>
+                  </Box>
+                </Container>
+              )
             )}
           </Section>
 
