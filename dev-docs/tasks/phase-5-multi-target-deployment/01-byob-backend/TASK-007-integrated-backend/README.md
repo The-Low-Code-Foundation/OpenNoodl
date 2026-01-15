@@ -16,6 +16,7 @@ Implement a zero-configuration local backend that runs alongside the Nodegex edi
 ### The Problem
 
 New users consistently hit a wall when they need backend functionality:
+
 - They don't want to immediately learn Docker
 - They don't want to pay for cloud backends before validating their idea
 - The cognitive overhead of "choose and configure a backend" kills momentum
@@ -23,6 +24,7 @@ New users consistently hit a wall when they need backend functionality:
 ### The Solution
 
 An integrated, zero-config local backend that:
+
 1. Starts automatically with the editor (optional)
 2. Uses the **same visual node paradigm** for backend workflows
 3. Provides instant full-stack development capability
@@ -30,12 +32,12 @@ An integrated, zero-config local backend that:
 
 ### Why This Is a Game-Changer
 
-| Current State | With Local Backend |
-|---------------|-------------------|
+| Current State                               | With Local Backend                       |
+| ------------------------------------------- | ---------------------------------------- |
 | "How do I add a database?" → Complex answer | "It's built in, just use Database nodes" |
-| Requires external services for testing | 100% offline development |
-| Backend = different paradigm/tools | Backend = same Noodl visual nodes |
-| Prototype → Production = migration pain | Clear, assisted migration path |
+| Requires external services for testing      | 100% offline development                 |
+| Backend = different paradigm/tools          | Backend = same Noodl visual nodes        |
+| Prototype → Production = migration pain     | Clear, assisted migration path           |
 
 ---
 
@@ -99,10 +101,10 @@ An integrated, zero-config local backend that:
   "name": "My Todo App",
   "version": "2.0",
   "backend": {
-    "type": "local",           // "local" | "parse" | "external"
-    "id": "backend-uuid-1",    // Reference to ~/.noodl/backends/{id}
+    "type": "local", // "local" | "parse" | "external"
+    "id": "backend-uuid-1", // Reference to ~/.noodl/backends/{id}
     "settings": {
-      "autoStart": true,       // Start with editor
+      "autoStart": true, // Start with editor
       "port": 8577
     }
   }
@@ -146,24 +148,24 @@ interface CloudStoreAdapter {
   fetch(options: FetchOptions): Promise<Record>;
   count(options: CountOptions): Promise<number>;
   aggregate(options: AggregateOptions): Promise<AggregateResult>;
-  
+
   // Mutation operations
   create(options: CreateOptions): Promise<Record>;
   save(options: SaveOptions): Promise<void>;
   delete(options: DeleteOptions): Promise<void>;
-  
+
   // Relation operations
   addRelation(options: RelationOptions): Promise<void>;
   removeRelation(options: RelationOptions): Promise<void>;
-  
+
   // Schema operations
   getSchema(): Promise<SchemaDefinition>;
   updateSchema(schema: SchemaDefinition): Promise<void>;
-  
+
   // Event subscription (for realtime)
   on(event: 'create' | 'save' | 'delete', handler: EventHandler): void;
   off(event: string, handler: EventHandler): void;
-  
+
   // Lifecycle
   connect(): Promise<void>;
   disconnect(): Promise<void>;
@@ -181,6 +183,7 @@ Create the SQLite-based CloudStore adapter that implements the existing interfac
 #### A.1: SQLite Integration (4 hours)
 
 **Files to create:**
+
 ```
 packages/noodl-runtime/src/api/adapters/
 ├── index.ts                    # Adapter registry
@@ -196,30 +199,32 @@ packages/noodl-runtime/src/api/adapters/
 
 ```typescript
 // LocalSQLAdapter.ts
-import Database from 'better-sqlite3';
-import { CloudStoreAdapter } from '../cloudstore-adapter';
+
 import { EventEmitter } from 'events';
+import Database from 'better-sqlite3';
+
+import { CloudStoreAdapter } from '../cloudstore-adapter';
 
 export class LocalSQLAdapter implements CloudStoreAdapter {
   private db: Database.Database;
   private events = new EventEmitter();
-  
+
   constructor(dbPath: string) {
     this.db = new Database(dbPath);
     this.db.pragma('journal_mode = WAL'); // Better concurrent access
   }
-  
+
   async query(options: QueryOptions): Promise<QueryResult> {
     const { sql, params } = QueryBuilder.buildSelect(options);
     const rows = this.db.prepare(sql).all(...params);
-    return rows.map(row => this.rowToRecord(row, options.collection));
+    return rows.map((row) => this.rowToRecord(row, options.collection));
   }
-  
+
   async create(options: CreateOptions): Promise<Record> {
     const id = generateObjectId();
     const { sql, params } = QueryBuilder.buildInsert(options, id);
     this.db.prepare(sql).run(...params);
-    
+
     // Emit event for realtime subscribers
     const record = { objectId: id, ...options.data };
     this.events.emit('create', {
@@ -227,10 +232,10 @@ export class LocalSQLAdapter implements CloudStoreAdapter {
       collection: options.collection,
       object: record
     });
-    
+
     return record;
   }
-  
+
   // ... other methods
 }
 ```
@@ -252,32 +257,32 @@ export class QueryBuilder {
   static buildSelect(options: QueryOptions): { sql: string; params: any[] } {
     const params: any[] = [];
     let sql = `SELECT * FROM ${this.escapeTable(options.collection)}`;
-    
+
     if (options.where) {
       const whereClause = this.buildWhereClause(options.where, params);
       if (whereClause) sql += ` WHERE ${whereClause}`;
     }
-    
+
     if (options.sort) {
       sql += ` ORDER BY ${this.buildOrderClause(options.sort)}`;
     }
-    
+
     if (options.limit) {
       sql += ` LIMIT ?`;
       params.push(options.limit);
     }
-    
+
     if (options.skip) {
       sql += ` OFFSET ?`;
       params.push(options.skip);
     }
-    
+
     return { sql, params };
   }
-  
+
   private static buildWhereClause(where: any, params: any[]): string {
     const conditions: string[] = [];
-    
+
     for (const [field, condition] of Object.entries(where)) {
       if (typeof condition === 'object') {
         for (const [op, value] of Object.entries(condition)) {
@@ -289,18 +294,13 @@ export class QueryBuilder {
         params.push(condition);
       }
     }
-    
+
     return conditions.join(' AND ');
   }
-  
-  private static translateOperator(
-    field: string, 
-    op: string, 
-    value: any, 
-    params: any[]
-  ): string {
+
+  private static translateOperator(field: string, op: string, value: any, params: any[]): string {
     const col = this.escapeColumn(field);
-    
+
     switch (op) {
       case 'equalTo':
         params.push(value);
@@ -369,26 +369,26 @@ export interface TableSchema {
 
 export class SchemaManager {
   constructor(private db: Database.Database) {}
-  
+
   async createTable(schema: TableSchema): Promise<void> {
     const columns = [
       'objectId TEXT PRIMARY KEY',
       'createdAt TEXT DEFAULT CURRENT_TIMESTAMP',
       'updatedAt TEXT DEFAULT CURRENT_TIMESTAMP',
-      ...schema.columns.map(col => this.columnToSQL(col))
+      ...schema.columns.map((col) => this.columnToSQL(col))
     ];
-    
+
     const sql = `CREATE TABLE IF NOT EXISTS ${schema.name} (${columns.join(', ')})`;
     this.db.exec(sql);
-    
+
     // Create indexes for common query patterns
     this.db.exec(`CREATE INDEX IF NOT EXISTS idx_${schema.name}_createdAt ON ${schema.name}(createdAt)`);
     this.db.exec(`CREATE INDEX IF NOT EXISTS idx_${schema.name}_updatedAt ON ${schema.name}(updatedAt)`);
   }
-  
+
   private columnToSQL(col: ColumnDefinition): string {
     let sqlType: string;
-    
+
     switch (col.type) {
       case 'String':
         sqlType = 'TEXT';
@@ -415,32 +415,32 @@ export class SchemaManager {
       default:
         sqlType = 'TEXT';
     }
-    
+
     let def = `${col.name} ${sqlType}`;
     if (col.required) def += ' NOT NULL';
-    
+
     return def;
   }
-  
+
   async addColumn(table: string, column: ColumnDefinition): Promise<void> {
     const colSQL = this.columnToSQL(column);
     if (colSQL) {
       this.db.exec(`ALTER TABLE ${table} ADD COLUMN ${colSQL}`);
     }
   }
-  
+
   async exportSchema(): Promise<TableSchema[]> {
-    const tables = this.db.prepare(
-      "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
-    ).all() as { name: string }[];
-    
-    return tables.map(t => this.getTableSchema(t.name));
+    const tables = this.db
+      .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")
+      .all() as { name: string }[];
+
+    return tables.map((t) => this.getTableSchema(t.name));
   }
-  
+
   async generatePostgresSQL(): Promise<string> {
     // Export schema as Postgres-compatible SQL for migration
     const schemas = await this.exportSchema();
-    return schemas.map(s => this.tableToPostgresSQL(s)).join('\n\n');
+    return schemas.map((s) => this.tableToPostgresSQL(s)).join('\n\n');
   }
 }
 ```
@@ -452,21 +452,23 @@ export class SchemaManager {
 
 import { CloudStoreAdapter } from '../cloudstore-adapter';
 import { LocalSQLAdapter } from './local-sql/LocalSQLAdapter';
-import { ParseAdapter } from './parse/ParseAdapter'; // Existing, refactored
+import { ParseAdapter } from './parse/ParseAdapter';
+
+// Existing, refactored
 
 export type AdapterType = 'local' | 'parse' | 'external';
 
 export interface AdapterConfig {
   type: AdapterType;
-  
+
   // For local
   dbPath?: string;
-  
+
   // For parse
   endpoint?: string;
   appId?: string;
   masterKey?: string;
-  
+
   // For external (future)
   provider?: string;
   apiKey?: string;
@@ -475,17 +477,17 @@ export interface AdapterConfig {
 export class AdapterRegistry {
   private static instance: AdapterRegistry;
   private adapters = new Map<string, CloudStoreAdapter>();
-  
+
   static getInstance(): AdapterRegistry {
     if (!this.instance) {
       this.instance = new AdapterRegistry();
     }
     return this.instance;
   }
-  
+
   async createAdapter(id: string, config: AdapterConfig): Promise<CloudStoreAdapter> {
     let adapter: CloudStoreAdapter;
-    
+
     switch (config.type) {
       case 'local':
         adapter = new LocalSQLAdapter(config.dbPath!);
@@ -498,16 +500,16 @@ export class AdapterRegistry {
       default:
         throw new Error(`Unknown adapter type: ${config.type}`);
     }
-    
+
     await adapter.connect();
     this.adapters.set(id, adapter);
     return adapter;
   }
-  
+
   getAdapter(id: string): CloudStoreAdapter | undefined {
     return this.adapters.get(id);
   }
-  
+
   async disconnectAll(): Promise<void> {
     for (const adapter of this.adapters.values()) {
       await adapter.disconnect();
@@ -526,11 +528,11 @@ Extend the existing Express server to handle local backend operations.
 ```typescript
 // packages/noodl-editor/src/main/src/local-backend/LocalBackendServer.ts
 
-import express, { Express, Request, Response } from 'express';
 import http from 'http';
+import express, { Express, Request, Response } from 'express';
 import { WebSocketServer, WebSocket } from 'ws';
-import { LocalSQLAdapter } from '@noodl/runtime/src/api/adapters/local-sql/LocalSQLAdapter';
 import { CloudRunner } from '@noodl/cloud-runtime';
+import { LocalSQLAdapter } from '@noodl/runtime/src/api/adapters/local-sql/LocalSQLAdapter';
 
 export interface LocalBackendConfig {
   id: string;
@@ -547,16 +549,16 @@ export class LocalBackendServer {
   private adapter: LocalSQLAdapter;
   private cloudRunner: CloudRunner;
   private clients = new Set<WebSocket>();
-  
+
   constructor(private config: LocalBackendConfig) {
     this.app = express();
     this.setupMiddleware();
     this.setupRoutes();
   }
-  
+
   private setupMiddleware(): void {
     this.app.use(express.json({ limit: '10mb' }));
-    
+
     // CORS for local development
     this.app.use((req, res, next) => {
       res.header('Access-Control-Allow-Origin', '*');
@@ -568,37 +570,37 @@ export class LocalBackendServer {
       next();
     });
   }
-  
+
   private setupRoutes(): void {
     // Health check
     this.app.get('/health', (req, res) => {
       res.json({ status: 'ok', backend: this.config.name });
     });
-    
+
     // Schema endpoints
     this.app.get('/api/_schema', this.handleGetSchema.bind(this));
     this.app.post('/api/_schema', this.handleUpdateSchema.bind(this));
     this.app.get('/api/_export', this.handleExport.bind(this));
-    
+
     // Auto-REST for tables
     this.app.get('/api/:table', this.handleQuery.bind(this));
     this.app.get('/api/:table/:id', this.handleFetch.bind(this));
     this.app.post('/api/:table', this.handleCreate.bind(this));
     this.app.put('/api/:table/:id', this.handleSave.bind(this));
     this.app.delete('/api/:table/:id', this.handleDelete.bind(this));
-    
+
     // Visual workflow functions (CloudRunner)
     this.app.post('/functions/:name', this.handleFunction.bind(this));
-    
+
     // Batch operations
     this.app.post('/api/_batch', this.handleBatch.bind(this));
   }
-  
+
   private async handleQuery(req: Request, res: Response): Promise<void> {
     try {
       const { table } = req.params;
       const { where, sort, limit, skip } = req.query;
-      
+
       const results = await this.adapter.query({
         collection: table,
         where: where ? JSON.parse(where as string) : undefined,
@@ -606,58 +608,58 @@ export class LocalBackendServer {
         limit: limit ? parseInt(limit as string) : 100,
         skip: skip ? parseInt(skip as string) : 0
       });
-      
+
       res.json({ results });
     } catch (error) {
       res.status(400).json({ error: error.message });
     }
   }
-  
+
   private async handleCreate(req: Request, res: Response): Promise<void> {
     try {
       const { table } = req.params;
       const data = req.body;
-      
+
       const record = await this.adapter.create({
         collection: table,
         data
       });
-      
+
       // Broadcast to WebSocket clients
       this.broadcast('create', { collection: table, object: record });
-      
+
       res.status(201).json(record);
     } catch (error) {
       res.status(400).json({ error: error.message });
     }
   }
-  
+
   private async handleFunction(req: Request, res: Response): Promise<void> {
     try {
       const { name } = req.params;
-      
+
       const result = await this.cloudRunner.run(name, {
         body: req.body,
         headers: req.headers
       });
-      
+
       res.status(result.statusCode).json(JSON.parse(result.body));
     } catch (error) {
       res.status(400).json({ error: error.message });
     }
   }
-  
+
   // WebSocket for realtime updates
   private setupWebSocket(): void {
     this.wss = new WebSocketServer({ server: this.server });
-    
+
     this.wss.on('connection', (ws) => {
       this.clients.add(ws);
-      
+
       ws.on('close', () => {
         this.clients.delete(ws);
       });
-      
+
       // Handle subscription messages
       ws.on('message', (data) => {
         try {
@@ -673,10 +675,10 @@ export class LocalBackendServer {
       });
     });
   }
-  
+
   private broadcast(event: string, data: any): void {
     const message = JSON.stringify({ event, data, timestamp: Date.now() });
-    
+
     for (const client of this.clients) {
       if (client.readyState === WebSocket.OPEN) {
         // Check if client is subscribed to this collection
@@ -687,59 +689,56 @@ export class LocalBackendServer {
       }
     }
   }
-  
+
   async start(): Promise<void> {
     // Initialize database adapter
     this.adapter = new LocalSQLAdapter(this.config.dbPath);
     await this.adapter.connect();
-    
+
     // Initialize CloudRunner for visual workflows
     this.cloudRunner = new CloudRunner({});
     await this.loadWorkflows();
-    
+
     // Subscribe to adapter events for realtime
     this.adapter.on('create', (data) => this.broadcast('create', data));
     this.adapter.on('save', (data) => this.broadcast('save', data));
     this.adapter.on('delete', (data) => this.broadcast('delete', data));
-    
+
     // Start HTTP server
     this.server = this.app.listen(this.config.port, () => {
       console.log(`Local backend "${this.config.name}" running on port ${this.config.port}`);
     });
-    
+
     // Start WebSocket server
     this.setupWebSocket();
   }
-  
+
   async stop(): Promise<void> {
     // Close all WebSocket connections
     for (const client of this.clients) {
       client.close();
     }
     this.clients.clear();
-    
+
     // Close servers
     if (this.wss) this.wss.close();
     if (this.server) this.server.close();
-    
+
     // Disconnect database
     if (this.adapter) await this.adapter.disconnect();
   }
-  
+
   private async loadWorkflows(): Promise<void> {
     // Load compiled visual workflows from disk
     // These are exported from the editor when workflows change
     const fs = require('fs').promises;
     const path = require('path');
-    
+
     try {
       const files = await fs.readdir(this.config.workflowsPath);
       for (const file of files) {
         if (file.endsWith('.workflow.json')) {
-          const content = await fs.readFile(
-            path.join(this.config.workflowsPath, file),
-            'utf-8'
-          );
+          const content = await fs.readFile(path.join(this.config.workflowsPath, file), 'utf-8');
           const workflow = JSON.parse(content);
           await this.cloudRunner.load(workflow);
         }
@@ -756,10 +755,11 @@ export class LocalBackendServer {
 ```typescript
 // packages/noodl-editor/src/main/src/local-backend/BackendManager.ts
 
-import { LocalBackendServer, LocalBackendConfig } from './LocalBackendServer';
-import { ipcMain } from 'electron';
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import { ipcMain } from 'electron';
+
+import { LocalBackendServer, LocalBackendConfig } from './LocalBackendServer';
 
 export interface BackendMetadata {
   id: string;
@@ -773,23 +773,19 @@ export class BackendManager {
   private static instance: BackendManager;
   private backends = new Map<string, LocalBackendServer>();
   private backendsPath: string;
-  
+
   static getInstance(): BackendManager {
     if (!this.instance) {
       this.instance = new BackendManager();
     }
     return this.instance;
   }
-  
+
   constructor() {
-    this.backendsPath = path.join(
-      process.env.HOME || process.env.USERPROFILE || '',
-      '.noodl',
-      'backends'
-    );
+    this.backendsPath = path.join(process.env.HOME || process.env.USERPROFILE || '', '.noodl', 'backends');
     this.setupIPC();
   }
-  
+
   private setupIPC(): void {
     // IPC handlers for renderer process
     ipcMain.handle('backend:list', () => this.listBackends());
@@ -798,17 +794,15 @@ export class BackendManager {
     ipcMain.handle('backend:start', (_, id: string) => this.startBackend(id));
     ipcMain.handle('backend:stop', (_, id: string) => this.stopBackend(id));
     ipcMain.handle('backend:status', (_, id: string) => this.getStatus(id));
-    ipcMain.handle('backend:export-schema', (_, id: string, format: string) => 
-      this.exportSchema(id, format)
-    );
+    ipcMain.handle('backend:export-schema', (_, id: string, format: string) => this.exportSchema(id, format));
   }
-  
+
   async listBackends(): Promise<BackendMetadata[]> {
     await fs.mkdir(this.backendsPath, { recursive: true });
-    
+
     const entries = await fs.readdir(this.backendsPath, { withFileTypes: true });
     const backends: BackendMetadata[] = [];
-    
+
     for (const entry of entries) {
       if (entry.isDirectory()) {
         try {
@@ -820,18 +814,18 @@ export class BackendManager {
         }
       }
     }
-    
+
     return backends;
   }
-  
+
   async createBackend(name: string): Promise<BackendMetadata> {
     const id = this.generateId();
     const backendPath = path.join(this.backendsPath, id);
-    
+
     await fs.mkdir(backendPath, { recursive: true });
     await fs.mkdir(path.join(backendPath, 'data'));
     await fs.mkdir(path.join(backendPath, 'workflows'));
-    
+
     const metadata: BackendMetadata = {
       id,
       name,
@@ -839,31 +833,23 @@ export class BackendManager {
       port: await this.findAvailablePort(),
       projectIds: []
     };
-    
-    await fs.writeFile(
-      path.join(backendPath, 'config.json'),
-      JSON.stringify(metadata, null, 2)
-    );
-    
+
+    await fs.writeFile(path.join(backendPath, 'config.json'), JSON.stringify(metadata, null, 2));
+
     // Create empty schema
-    await fs.writeFile(
-      path.join(backendPath, 'schema.json'),
-      JSON.stringify({ tables: [] }, null, 2)
-    );
-    
+    await fs.writeFile(path.join(backendPath, 'schema.json'), JSON.stringify({ tables: [] }, null, 2));
+
     return metadata;
   }
-  
+
   async startBackend(id: string): Promise<void> {
     if (this.backends.has(id)) {
       return; // Already running
     }
-    
+
     const backendPath = path.join(this.backendsPath, id);
-    const config = JSON.parse(
-      await fs.readFile(path.join(backendPath, 'config.json'), 'utf-8')
-    );
-    
+    const config = JSON.parse(await fs.readFile(path.join(backendPath, 'config.json'), 'utf-8'));
+
     const server = new LocalBackendServer({
       id,
       name: config.name,
@@ -871,11 +857,11 @@ export class BackendManager {
       port: config.port,
       workflowsPath: path.join(backendPath, 'workflows')
     });
-    
+
     await server.start();
     this.backends.set(id, server);
   }
-  
+
   async stopBackend(id: string): Promise<void> {
     const server = this.backends.get(id);
     if (server) {
@@ -883,7 +869,7 @@ export class BackendManager {
       this.backends.delete(id);
     }
   }
-  
+
   getStatus(id: string): { running: boolean; port?: number } {
     const server = this.backends.get(id);
     if (server) {
@@ -891,17 +877,17 @@ export class BackendManager {
     }
     return { running: false };
   }
-  
+
   async exportSchema(id: string, format: 'postgres' | 'supabase' | 'json'): Promise<string> {
     const backendPath = path.join(this.backendsPath, id);
     const server = this.backends.get(id);
-    
+
     if (!server) {
       throw new Error('Backend must be running to export schema');
     }
-    
+
     const adapter = (server as any).adapter;
-    
+
     switch (format) {
       case 'postgres':
         return adapter.schemaManager.generatePostgresSQL();
@@ -913,16 +899,16 @@ export class BackendManager {
         throw new Error(`Unknown export format: ${format}`);
     }
   }
-  
+
   private generateId(): string {
     return 'backend-' + Math.random().toString(36).substring(2, 15);
   }
-  
+
   private async findAvailablePort(): Promise<number> {
     // Start from 8577 and find next available
     const existingBackends = await this.listBackends();
-    const usedPorts = new Set(existingBackends.map(b => b.port));
-    
+    const usedPorts = new Set(existingBackends.map((b) => b.port));
+
     let port = 8577;
     while (usedPorts.has(port)) {
       port++;
@@ -952,24 +938,24 @@ export interface BackendInfo {
 
 export class BackendModel extends Model {
   static instance = new BackendModel();
-  
+
   private currentBackend: BackendInfo | null = null;
-  
+
   async loadProjectBackend(projectConfig: any): Promise<void> {
     if (!projectConfig.backend) {
       this.currentBackend = null;
       this.notifyListeners('backendChanged');
       return;
     }
-    
+
     const { type, id, settings } = projectConfig.backend;
-    
+
     if (type === 'local') {
       // Start local backend if autoStart enabled
       if (settings?.autoStart) {
         await window.electronAPI.invoke('backend:start', id);
       }
-      
+
       const status = await window.electronAPI.invoke('backend:status', id);
       this.currentBackend = {
         id,
@@ -989,14 +975,14 @@ export class BackendModel extends Model {
         endpoint: projectConfig.cloudServices?.url
       };
     }
-    
+
     this.notifyListeners('backendChanged');
   }
-  
+
   getCurrentBackend(): BackendInfo | null {
     return this.currentBackend;
   }
-  
+
   async startBackend(): Promise<void> {
     if (this.currentBackend?.type === 'local') {
       await window.electronAPI.invoke('backend:start', this.currentBackend.id);
@@ -1004,7 +990,7 @@ export class BackendModel extends Model {
       this.notifyListeners('backendStatusChanged');
     }
   }
-  
+
   async stopBackend(): Promise<void> {
     if (this.currentBackend?.type === 'local') {
       await window.electronAPI.invoke('backend:stop', this.currentBackend.id);
@@ -1036,7 +1022,7 @@ export const node = {
   category: 'Local Database',
   color: 'data',
   docs: 'https://docs.nodegex.com/nodes/local-database/query',
-  
+
   inputs: {
     collection: {
       type: 'string',
@@ -1066,7 +1052,7 @@ export const node = {
       group: 'Actions'
     }
   },
-  
+
   outputs: {
     results: {
       type: 'array',
@@ -1094,7 +1080,7 @@ export const node = {
       group: 'Error'
     }
   },
-  
+
   methods: {
     async doQuery() {
       try {
@@ -1105,7 +1091,7 @@ export const node = {
           limit: this._internal.limit,
           skip: this._internal.skip
         });
-        
+
         this._internal.results = results;
         this._internal.count = results.length;
         this.flagOutputDirty('results');
@@ -1132,7 +1118,7 @@ export const node = {
   category: 'Triggers',
   color: 'data',
   singleton: true,
-  
+
   inputs: {
     cron: {
       type: 'string',
@@ -1147,7 +1133,7 @@ export const node = {
       default: true
     }
   },
-  
+
   outputs: {
     triggered: {
       type: 'signal',
@@ -1160,17 +1146,17 @@ export const node = {
       group: 'Info'
     }
   },
-  
+
   initialize() {
     this._internal.job = null;
   },
-  
+
   methods: {
     startSchedule() {
       if (this._internal.job) {
         this._internal.job.stop();
       }
-      
+
       if (this._internal.enabled && this._internal.cron) {
         const cron = require('node-cron');
         this._internal.job = cron.schedule(this._internal.cron, () => {
@@ -1180,7 +1166,7 @@ export const node = {
         });
       }
     },
-    
+
     _onNodeDeleted() {
       if (this._internal.job) {
         this._internal.job.stop();
@@ -1199,7 +1185,7 @@ export const node = {
   category: 'Triggers',
   color: 'data',
   singleton: true,
-  
+
   inputs: {
     collection: {
       type: 'string',
@@ -1221,7 +1207,7 @@ export const node = {
       group: 'General'
     }
   },
-  
+
   outputs: {
     triggered: {
       type: 'signal',
@@ -1244,36 +1230,36 @@ export const node = {
       group: 'Data'
     }
   },
-  
+
   initialize() {
     this._internal.handler = null;
   },
-  
+
   methods: {
     setupListener() {
       const adapter = this.context.getLocalAdapter();
-      
+
       this._internal.handler = (event) => {
         if (event.collection !== this._internal.collection) return;
-        
+
         const eventFilter = this._internal.events;
         if (eventFilter !== 'all' && event.type !== eventFilter) return;
-        
+
         this._internal.eventType = event.type;
         this._internal.record = event.object;
         this._internal.recordId = event.objectId;
-        
+
         this.flagOutputDirty('eventType');
         this.flagOutputDirty('record');
         this.flagOutputDirty('recordId');
         this.sendSignalOnOutput('triggered');
       };
-      
+
       adapter.on('create', this._internal.handler);
       adapter.on('save', this._internal.handler);
       adapter.on('delete', this._internal.handler);
     },
-    
+
     _onNodeDeleted() {
       if (this._internal.handler) {
         const adapter = this.context.getLocalAdapter();
@@ -1296,59 +1282,57 @@ import { exportComponentsToJSON } from '@noodl-utils/exporter';
 
 export class WorkflowCompiler {
   static instance = new WorkflowCompiler();
-  
+
   private debounceTimer: NodeJS.Timeout | null = null;
-  
+
   constructor() {
     // Listen for component changes
     ProjectModel.instance.on('componentChanged', this.scheduleCompile.bind(this));
     ProjectModel.instance.on('componentAdded', this.scheduleCompile.bind(this));
     ProjectModel.instance.on('componentRemoved', this.scheduleCompile.bind(this));
   }
-  
+
   private scheduleCompile(): void {
     // Debounce compilation
     if (this.debounceTimer) {
       clearTimeout(this.debounceTimer);
     }
-    
+
     this.debounceTimer = setTimeout(() => {
       this.compile();
     }, 1000);
   }
-  
+
   async compile(): Promise<void> {
     const project = ProjectModel.instance;
     const backend = project.getMetaData('backend');
-    
+
     if (!backend || backend.type !== 'local') {
       return; // No local backend to compile for
     }
-    
+
     // Get all cloud/local workflow components
-    const workflowComponents = project.getComponents().filter(c => 
-      c.name.startsWith('/#__cloud__/') || c.name.startsWith('/#__local__/')
-    );
-    
+    const workflowComponents = project
+      .getComponents()
+      .filter((c) => c.name.startsWith('/#__cloud__/') || c.name.startsWith('/#__local__/'));
+
     if (workflowComponents.length === 0) {
       return;
     }
-    
+
     // Export each workflow
     for (const component of workflowComponents) {
       const exported = exportComponentsToJSON(project, [component], {
         useBundles: false
       });
-      
+
       // Clean up unnecessary metadata
       delete exported.metadata?.variants;
       delete exported.metadata?.styles;
       delete exported.componentIndex;
-      
-      const workflowName = component.name
-        .replace('/#__cloud__/', '')
-        .replace('/#__local__/', '');
-      
+
+      const workflowName = component.name.replace('/#__cloud__/', '').replace('/#__local__/', '');
+
       // Send to backend
       await window.electronAPI.invoke('backend:update-workflow', {
         backendId: backend.id,
@@ -1356,7 +1340,7 @@ export class WorkflowCompiler {
         workflow: exported
       });
     }
-    
+
     // Notify backend to reload workflows
     await window.electronAPI.invoke('backend:reload-workflows', backend.id);
   }
@@ -1373,9 +1357,10 @@ Add backend management to the project launcher.
 // packages/noodl-editor/src/editor/src/views/Launcher/BackendManager/BackendList.tsx
 
 import React, { useState, useEffect } from 'react';
+
 import { BackendCard } from './BackendCard';
-import { CreateBackendDialog } from './CreateBackendDialog';
 import styles from './BackendList.module.scss';
+import { CreateBackendDialog } from './CreateBackendDialog';
 
 interface Backend {
   id: string;
@@ -1389,15 +1374,15 @@ export function BackendList() {
   const [backends, setBackends] = useState<Backend[]>([]);
   const [showCreate, setShowCreate] = useState(false);
   const [loading, setLoading] = useState(true);
-  
+
   useEffect(() => {
     loadBackends();
   }, []);
-  
+
   async function loadBackends() {
     setLoading(true);
     const list = await window.electronAPI.invoke('backend:list');
-    
+
     // Get status for each
     const withStatus = await Promise.all(
       list.map(async (b) => {
@@ -1410,43 +1395,41 @@ export function BackendList() {
         };
       })
     );
-    
+
     setBackends(withStatus);
     setLoading(false);
   }
-  
+
   async function handleStart(id: string) {
     await window.electronAPI.invoke('backend:start', id);
     loadBackends();
   }
-  
+
   async function handleStop(id: string) {
     await window.electronAPI.invoke('backend:stop', id);
     loadBackends();
   }
-  
+
   async function handleDelete(id: string) {
     if (confirm('Delete this backend? Data will be lost.')) {
       await window.electronAPI.invoke('backend:delete', id);
       loadBackends();
     }
   }
-  
+
   async function handleCreate(name: string) {
     await window.electronAPI.invoke('backend:create', name);
     setShowCreate(false);
     loadBackends();
   }
-  
+
   return (
     <div className={styles.container}>
       <div className={styles.header}>
         <h2>Local Backends</h2>
-        <button onClick={() => setShowCreate(true)}>
-          + New Backend
-        </button>
+        <button onClick={() => setShowCreate(true)}>+ New Backend</button>
       </div>
-      
+
       {loading ? (
         <div className={styles.loading}>Loading...</div>
       ) : backends.length === 0 ? (
@@ -1456,7 +1439,7 @@ export function BackendList() {
         </div>
       ) : (
         <div className={styles.list}>
-          {backends.map(backend => (
+          {backends.map((backend) => (
             <BackendCard
               key={backend.id}
               backend={backend}
@@ -1467,13 +1450,8 @@ export function BackendList() {
           ))}
         </div>
       )}
-      
-      {showCreate && (
-        <CreateBackendDialog
-          onClose={() => setShowCreate(false)}
-          onCreate={handleCreate}
-        />
-      )}
+
+      {showCreate && <CreateBackendDialog onClose={() => setShowCreate(false)} onCreate={handleCreate} />}
     </div>
   );
 }
@@ -1485,6 +1463,7 @@ export function BackendList() {
 // packages/noodl-editor/src/editor/src/views/Launcher/ProjectCard/BackendSelector.tsx
 
 import React, { useState, useEffect } from 'react';
+
 import styles from './BackendSelector.module.scss';
 
 interface Props {
@@ -1496,57 +1475,56 @@ interface Props {
 export function BackendSelector({ projectId, currentBackendId, onSelect }: Props) {
   const [backends, setBackends] = useState([]);
   const [isOpen, setIsOpen] = useState(false);
-  
+
   useEffect(() => {
     loadBackends();
   }, []);
-  
+
   async function loadBackends() {
     const list = await window.electronAPI.invoke('backend:list');
     setBackends(list);
   }
-  
-  const currentBackend = backends.find(b => b.id === currentBackendId);
-  
+
+  const currentBackend = backends.find((b) => b.id === currentBackendId);
+
   return (
     <div className={styles.selector}>
-      <button 
-        className={styles.trigger}
-        onClick={() => setIsOpen(!isOpen)}
-      >
+      <button className={styles.trigger} onClick={() => setIsOpen(!isOpen)}>
         <span className={styles.icon}>⚡</span>
-        {currentBackend ? (
-          <span>{currentBackend.name}</span>
-        ) : (
-          <span className={styles.placeholder}>No backend</span>
-        )}
+        {currentBackend ? <span>{currentBackend.name}</span> : <span className={styles.placeholder}>No backend</span>}
       </button>
-      
+
       {isOpen && (
         <div className={styles.dropdown}>
-          <button 
+          <button
             className={styles.option}
-            onClick={() => { onSelect(null); setIsOpen(false); }}
+            onClick={() => {
+              onSelect(null);
+              setIsOpen(false);
+            }}
           >
             No Backend
           </button>
-          
+
           <div className={styles.divider} />
-          
-          {backends.map(backend => (
+
+          {backends.map((backend) => (
             <button
               key={backend.id}
               className={styles.option}
-              onClick={() => { onSelect(backend.id); setIsOpen(false); }}
+              onClick={() => {
+                onSelect(backend.id);
+                setIsOpen(false);
+              }}
             >
               {backend.name}
               {backend.id === currentBackendId && ' ✓'}
             </button>
           ))}
-          
+
           <div className={styles.divider} />
-          
-          <button 
+
+          <button
             className={styles.option}
             onClick={() => {
               // Open create dialog
@@ -1570,6 +1548,7 @@ export function BackendSelector({ projectId, currentBackendId, onSelect }: Props
 // packages/noodl-editor/src/editor/src/views/BackendPanel/ExportWizard.tsx
 
 import React, { useState } from 'react';
+
 import styles from './ExportWizard.module.scss';
 
 type ExportFormat = 'postgres' | 'supabase' | 'pocketbase' | 'json';
@@ -1584,38 +1563,30 @@ export function ExportWizard({ backendId, onClose }: Props) {
   const [includeData, setIncludeData] = useState(false);
   const [result, setResult] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  
+
   async function handleExport() {
     setLoading(true);
-    
+
     try {
-      const schema = await window.electronAPI.invoke(
-        'backend:export-schema',
-        backendId,
-        format
-      );
-      
+      const schema = await window.electronAPI.invoke('backend:export-schema', backendId, format);
+
       let data = '';
       if (includeData) {
-        data = await window.electronAPI.invoke(
-          'backend:export-data',
-          backendId,
-          format === 'json' ? 'json' : 'sql'
-        );
+        data = await window.electronAPI.invoke('backend:export-data', backendId, format === 'json' ? 'json' : 'sql');
       }
-      
+
       setResult(schema + (data ? '\n\n-- DATA\n' + data : ''));
     } catch (e) {
       setResult(`Error: ${e.message}`);
     }
-    
+
     setLoading(false);
   }
-  
+
   function handleCopy() {
     navigator.clipboard.writeText(result || '');
   }
-  
+
   function handleDownload() {
     const ext = format === 'json' ? 'json' : 'sql';
     const blob = new Blob([result || ''], { type: 'text/plain' });
@@ -1626,38 +1597,30 @@ export function ExportWizard({ backendId, onClose }: Props) {
     a.click();
     URL.revokeObjectURL(url);
   }
-  
+
   return (
     <div className={styles.wizard}>
       <h2>Export Schema</h2>
-      
+
       <div className={styles.section}>
         <label>Export Format</label>
-        <select value={format} onChange={e => setFormat(e.target.value as ExportFormat)}>
+        <select value={format} onChange={(e) => setFormat(e.target.value as ExportFormat)}>
           <option value="postgres">PostgreSQL</option>
           <option value="supabase">Supabase (with RLS)</option>
           <option value="pocketbase">PocketBase</option>
           <option value="json">JSON Schema</option>
         </select>
       </div>
-      
+
       <div className={styles.section}>
         <label>
-          <input
-            type="checkbox"
-            checked={includeData}
-            onChange={e => setIncludeData(e.target.checked)}
-          />
+          <input type="checkbox" checked={includeData} onChange={(e) => setIncludeData(e.target.checked)} />
           Include sample data (for testing)
         </label>
       </div>
-      
+
       {!result ? (
-        <button 
-          className={styles.exportBtn}
-          onClick={handleExport}
-          disabled={loading}
-        >
+        <button className={styles.exportBtn} onClick={handleExport} disabled={loading}>
           {loading ? 'Exporting...' : 'Generate Export'}
         </button>
       ) : (
@@ -1665,14 +1628,14 @@ export function ExportWizard({ backendId, onClose }: Props) {
           <div className={styles.result}>
             <pre>{result}</pre>
           </div>
-          
+
           <div className={styles.actions}>
             <button onClick={handleCopy}>Copy to Clipboard</button>
             <button onClick={handleDownload}>Download File</button>
           </div>
         </>
       )}
-      
+
       <button className={styles.closeBtn} onClick={onClose}>
         Close
       </button>
@@ -1687,6 +1650,7 @@ export function ExportWizard({ backendId, onClose }: Props) {
 // packages/noodl-editor/src/editor/src/views/Migration/ParseMigrationWizard.tsx
 
 import React, { useState } from 'react';
+
 import styles from './ParseMigrationWizard.module.scss';
 
 interface Props {
@@ -1702,22 +1666,17 @@ interface Props {
 
 type Step = 'confirm' | 'fetching' | 'review' | 'migrating' | 'complete';
 
-export function ParseMigrationWizard({ 
-  projectId, 
-  parseConfig, 
-  onComplete, 
-  onCancel 
-}: Props) {
+export function ParseMigrationWizard({ projectId, parseConfig, onComplete, onCancel }: Props) {
   const [step, setStep] = useState<Step>('confirm');
   const [schema, setSchema] = useState<any>(null);
   const [dataStats, setDataStats] = useState<any>(null);
   const [newBackendId, setNewBackendId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
-  
+
   async function fetchSchema() {
     setStep('fetching');
-    
+
     try {
       // Fetch schema from Parse Server
       const response = await fetch(`${parseConfig.endpoint}/schemas`, {
@@ -1726,104 +1685,92 @@ export function ParseMigrationWizard({
           'X-Parse-Master-Key': parseConfig.masterKey || ''
         }
       });
-      
+
       const data = await response.json();
       setSchema(data.results);
-      
+
       // Get record counts
       const stats: any = {};
       for (const cls of data.results) {
-        const countRes = await fetch(
-          `${parseConfig.endpoint}/classes/${cls.className}?count=1&limit=0`,
-          {
-            headers: {
-              'X-Parse-Application-Id': parseConfig.appId,
-              'X-Parse-Master-Key': parseConfig.masterKey || ''
-            }
+        const countRes = await fetch(`${parseConfig.endpoint}/classes/${cls.className}?count=1&limit=0`, {
+          headers: {
+            'X-Parse-Application-Id': parseConfig.appId,
+            'X-Parse-Master-Key': parseConfig.masterKey || ''
           }
-        );
+        });
         const countData = await countRes.json();
         stats[cls.className] = countData.count;
       }
       setDataStats(stats);
-      
+
       setStep('review');
     } catch (e) {
       setError(`Failed to fetch schema: ${e.message}`);
     }
   }
-  
+
   async function startMigration() {
     setStep('migrating');
     setProgress(0);
-    
+
     try {
       // Create new local backend
-      const backend = await window.electronAPI.invoke('backend:create', 
-        `Migrated from ${parseConfig.appId}`
-      );
+      const backend = await window.electronAPI.invoke('backend:create', `Migrated from ${parseConfig.appId}`);
       setNewBackendId(backend.id);
-      
+
       // Start it
       await window.electronAPI.invoke('backend:start', backend.id);
-      
+
       // Migrate schema
       setProgress(10);
       await window.electronAPI.invoke('backend:import-parse-schema', {
         backendId: backend.id,
         schema
       });
-      
+
       // Migrate data (if requested)
       const totalRecords = Object.values(dataStats).reduce((a: number, b: number) => a + b, 0);
       let migratedRecords = 0;
-      
+
       for (const cls of schema) {
         const className = cls.className;
         const count = dataStats[className];
-        
+
         // Fetch in batches
         let skip = 0;
         const batchSize = 100;
-        
+
         while (skip < count) {
-          const response = await fetch(
-            `${parseConfig.endpoint}/classes/${className}?limit=${batchSize}&skip=${skip}`,
-            {
-              headers: {
-                'X-Parse-Application-Id': parseConfig.appId,
-                'X-Parse-Master-Key': parseConfig.masterKey || ''
-              }
+          const response = await fetch(`${parseConfig.endpoint}/classes/${className}?limit=${batchSize}&skip=${skip}`, {
+            headers: {
+              'X-Parse-Application-Id': parseConfig.appId,
+              'X-Parse-Master-Key': parseConfig.masterKey || ''
             }
-          );
-          
+          });
+
           const data = await response.json();
-          
+
           await window.electronAPI.invoke('backend:import-records', {
             backendId: backend.id,
             collection: className,
             records: data.results
           });
-          
+
           skip += batchSize;
           migratedRecords += data.results.length;
           setProgress(10 + (migratedRecords / totalRecords) * 80);
         }
       }
-      
+
       setProgress(100);
       setStep('complete');
     } catch (e) {
       setError(`Migration failed: ${e.message}`);
     }
   }
-  
+
   // Render different steps...
-  return (
-    <div className={styles.wizard}>
-      {/* Step UI here */}
-    </div>
-  );
+  return <div className={styles.wizard}>{/* Step UI here */}</div>;
 }
 ```
 
@@ -1846,45 +1793,28 @@ export interface BundleOptions {
 
 export async function bundleBackend(options: BundleOptions): Promise<void> {
   const { backendId, outputPath, includeData, platform } = options;
-  
+
   // Create output directory structure
   await fs.mkdir(path.join(outputPath, 'backend'), { recursive: true });
-  
+
   // Get backend config
-  const backendPath = path.join(
-    process.env.HOME || '',
-    '.noodl/backends',
-    backendId
-  );
-  
+  const backendPath = path.join(process.env.HOME || '', '.noodl/backends', backendId);
+
   // Copy server code (pre-bundled)
   const serverBundle = await getServerBundle(platform);
-  await fs.writeFile(
-    path.join(outputPath, 'backend', 'server.js'),
-    serverBundle
-  );
-  
+  await fs.writeFile(path.join(outputPath, 'backend', 'server.js'), serverBundle);
+
   // Copy schema
-  await fs.copyFile(
-    path.join(backendPath, 'schema.json'),
-    path.join(outputPath, 'backend', 'schema.json')
-  );
-  
+  await fs.copyFile(path.join(backendPath, 'schema.json'), path.join(outputPath, 'backend', 'schema.json'));
+
   // Copy workflows
-  await fs.cp(
-    path.join(backendPath, 'workflows'),
-    path.join(outputPath, 'backend', 'workflows'),
-    { recursive: true }
-  );
-  
+  await fs.cp(path.join(backendPath, 'workflows'), path.join(outputPath, 'backend', 'workflows'), { recursive: true });
+
   // Optionally copy data
   if (includeData) {
-    await fs.copyFile(
-      path.join(backendPath, 'data', 'local.db'),
-      path.join(outputPath, 'backend', 'data.db')
-    );
+    await fs.copyFile(path.join(backendPath, 'data', 'local.db'), path.join(outputPath, 'backend', 'data.db'));
   }
-  
+
   // Generate package.json
   const packageJson = {
     name: 'nodegex-backend',
@@ -1895,17 +1825,14 @@ export async function bundleBackend(options: BundleOptions): Promise<void> {
     },
     dependencies: {
       'better-sqlite3': '^9.0.0',
-      'express': '^4.18.0',
-      'ws': '^8.0.0',
+      express: '^4.18.0',
+      ws: '^8.0.0',
       'node-cron': '^3.0.0'
     }
   };
-  
-  await fs.writeFile(
-    path.join(outputPath, 'backend', 'package.json'),
-    JSON.stringify(packageJson, null, 2)
-  );
-  
+
+  await fs.writeFile(path.join(outputPath, 'backend', 'package.json'), JSON.stringify(packageJson, null, 2));
+
   // Generate startup script
   const startupScript = `
 const { spawn } = require('child_process');
@@ -1925,23 +1852,14 @@ backend.stderr.on('data', (data) => console.error('[Backend]', data.toString()))
 
 module.exports = { backend };
 `;
-  
-  await fs.writeFile(
-    path.join(outputPath, 'start-backend.js'),
-    startupScript
-  );
+
+  await fs.writeFile(path.join(outputPath, 'start-backend.js'), startupScript);
 }
 
 async function getServerBundle(platform: string): Promise<string> {
   // Return pre-compiled server bundle
   // This would be generated during editor build
-  const bundlePath = path.join(
-    __dirname,
-    '..',
-    'resources',
-    'local-backend',
-    `server.${platform}.bundle.js`
-  );
+  const bundlePath = path.join(__dirname, '..', 'resources', 'local-backend', `server.${platform}.bundle.js`);
   return fs.readFile(bundlePath, 'utf-8');
 }
 ```
@@ -1963,10 +1881,10 @@ export interface ElectronDeployOptions {
 
 export async function deployElectron(options: ElectronDeployOptions): Promise<void> {
   const { projectPath, outputPath, backendId, includeBackend, includeData } = options;
-  
+
   // Standard Electron deployment first
   await buildElectronApp(projectPath, outputPath);
-  
+
   // Add backend if requested
   if (includeBackend && backendId) {
     await bundleBackend({
@@ -1975,11 +1893,11 @@ export async function deployElectron(options: ElectronDeployOptions): Promise<vo
       includeData,
       platform: 'electron'
     });
-    
+
     // Modify main.js to start backend
     const mainPath = path.join(outputPath, 'resources', 'app', 'main.js');
     const mainContent = await fs.readFile(mainPath, 'utf-8');
-    
+
     const backendStartup = `
 // Start local backend
 const { backend } = require('./start-backend.js');
@@ -1987,7 +1905,7 @@ app.on('before-quit', () => {
   backend.kill();
 });
 `;
-    
+
     await fs.writeFile(mainPath, backendStartup + mainContent);
   }
 }
@@ -2080,34 +1998,45 @@ packages/noodl-viewer-cloud/src/nodes/index.ts
 
 ## Testing Checklist
 
-### LocalSQL Adapter
-- [ ] Query with all operator types (equalTo, greaterThan, contains, etc.)
-- [ ] Create/Save/Delete operations
-- [ ] Relation operations
-- [ ] Schema creation and migration
-- [ ] Concurrent access handling
-- [ ] Large dataset performance
+### LocalSQL Adapter ✅ COMPLETE (TASK-007A)
 
-### Local Backend Server
-- [ ] REST endpoints respond correctly
-- [ ] WebSocket connections work
+- [x] Query with all operator types (equalTo, greaterThan, contains, etc.)
+- [x] Create/Save/Delete operations
+- [x] Relation operations
+- [x] Schema creation and migration
+- [x] In-memory fallback when better-sqlite3 unavailable
+- [ ] Concurrent access handling (needs real SQLite)
+- [ ] Large dataset performance (needs real SQLite)
+
+### Local Backend Server ✅ COMPLETE (TASK-007B)
+
+- [x] REST endpoints respond correctly
+- [x] Health check endpoint works
+- [x] IPC handlers for create/start/stop/list
+- [x] Server starts and responds on dynamic port
+- [ ] WebSocket connections (basic structure, needs testing)
 - [ ] Realtime events broadcast
-- [ ] CloudRunner executes workflows
-- [ ] Multiple backends can run simultaneously
+- [ ] CloudRunner executes workflows (needs TASK-007C)
+- [ ] Multiple backends can run simultaneously (needs testing)
 
-### Editor Integration
-- [ ] Backend status shows in UI
-- [ ] Start/Stop from launcher works
+### Editor Integration (Partial)
+
+- [x] Backend status available via IPC
+- [x] Start/Stop from DevTools works
+- [ ] Backend status shows in UI (needs UI)
+- [ ] Start/Stop from launcher works (needs UI)
 - [ ] Project-backend association persists
-- [ ] Workflow hot reload works
+- [ ] Workflow hot reload works (needs TASK-007C)
 
 ### Backward Compatibility
+
 - [ ] Existing Parse projects load correctly
 - [ ] Parse adapter still functions
 - [ ] Migration wizard works
 - [ ] No regressions in existing functionality
 
 ### Deployment
+
 - [ ] Schema export to Postgres works
 - [ ] Schema export to Supabase works
 - [ ] Electron bundle includes backend
@@ -2129,15 +2058,19 @@ packages/noodl-viewer-cloud/src/nodes/index.ts
 ## Risks & Mitigations
 
 ### Risk: SQLite concurrency limitations
+
 **Mitigation**: Use WAL mode, implement connection pooling, document limitations
 
 ### Risk: Parse query syntax gaps
+
 **Mitigation**: Comprehensive query translation layer with fallback warnings
 
 ### Risk: Workflow runtime differences
+
 **Mitigation**: Extensive testing, clear documentation of node compatibility
 
 ### Risk: Migration data loss
+
 **Mitigation**: Backup prompts, rollback capability, staged migration
 
 ---
@@ -2147,8 +2080,29 @@ packages/noodl-viewer-cloud/src/nodes/index.ts
 **Blocked by:** None (can start immediately)
 
 **Blocks:**
+
 - Phase 5 external adapter implementations (Supabase, PocketBase)
 - Future marketplace backend templates
+- **Phase 11: Cloud Functions & Workflow Automation**
+
+### Phase 11 Dependency Note
+
+Phase 11 (Cloud Functions) depends on TASK-007 sub-tasks A, B, and C:
+
+| This Sub-task                  | Phase 11 Needs                                        |
+| ------------------------------ | ----------------------------------------------------- |
+| **TASK-007A** (LocalSQL)       | CF11-004 reuses SQLite patterns for execution history |
+| **TASK-007B** (Backend Server) | Execution APIs will be added to this server           |
+| **TASK-007C** (CloudRunner)    | All Phase 11 workflow nodes require this runtime      |
+| TASK-007D/E/F                  | Not blocking - can be done after Phase 11 starts      |
+
+**Recommended sequencing:**
+
+1. Complete TASK-007A, 007B, 007C first (~45h)
+2. Start Phase 11 Series 1 & 2 (Advanced Nodes + Execution History)
+3. Return to TASK-007D/E/F later OR continue Phase 11
+
+See: [Phase 11 README](../../../../phase-11-cloud-functions/README.md) for full details.
 
 ---
 
