@@ -9,7 +9,6 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { platform } from '@noodl/platform';
 
 /** Backend metadata as stored in config.json */
 export interface LocalBackendMetadata {
@@ -52,23 +51,16 @@ export interface UseLocalBackendsReturn {
 
 /**
  * Invoke IPC handler with error handling
+ * Uses window.require('electron').ipcRenderer like GitHubOAuthService
  */
 async function invokeIPC<T>(channel: string, ...args: unknown[]): Promise<T | null> {
   try {
-    // Use platform's invoke if available, otherwise fallback to window.electronAPI
-    const electronAPI = (window as unknown as { electronAPI?: { invoke: (ch: string, ...a: unknown[]) => Promise<T> } })
-      .electronAPI;
-    if (electronAPI?.invoke) {
-      return await electronAPI.invoke(channel, ...args);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { ipcRenderer } = (window as any).require('electron');
+    if (ipcRenderer?.invoke) {
+      return await ipcRenderer.invoke(channel, ...args);
     }
-    // Try Noodl platform
-    if (platform && (platform as unknown as { ipcInvoke?: (ch: string, ...a: unknown[]) => Promise<T> }).ipcInvoke) {
-      return await (platform as unknown as { ipcInvoke: (ch: string, ...a: unknown[]) => Promise<T> }).ipcInvoke(
-        channel,
-        ...args
-      );
-    }
-    console.warn('[useLocalBackends] No IPC transport available');
+    console.warn('[useLocalBackends] ipcRenderer not available');
     return null;
   } catch (error) {
     console.error(`[useLocalBackends] IPC error (${channel}):`, error);
