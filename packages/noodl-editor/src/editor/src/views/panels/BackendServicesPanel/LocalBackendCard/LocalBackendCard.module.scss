@@ -1,0 +1,65 @@
+.Root {
+  background-color: var(--theme-color-bg-3);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: 6px;
+  padding: 12px;
+  margin-bottom: 8px;
+  transition: border-color 0.2s ease;
+
+  &:hover {
+    border-color: var(--theme-color-border-hover);
+  }
+}
+
+.Header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 8px;
+}
+
+.TypeIcon {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  background-color: var(--theme-color-success);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.StatusBadge {
+  display: flex;
+  align-items: center;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background-color: var(--theme-color-bg-2);
+}
+
+.Endpoint {
+  display: flex;
+  align-items: center;
+  background-color: var(--theme-color-bg-2);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: 4px;
+  padding: 6px 8px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+
+  &:hover {
+    background-color: var(--theme-color-bg-1);
+  }
+}
+
+.Info {
+  margin-bottom: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--theme-color-border-default);
+}
+
+.Actions {
+  padding-top: 8px;
+  border-top: 1px solid var(--theme-color-border-default);
+}
