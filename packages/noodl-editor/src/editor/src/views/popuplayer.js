@@ -535,6 +535,9 @@ PopupLayer.prototype.showPopout = function (args) {
 
   this.popouts.push(popout);
 
+  // Enable pointer events for outside-click-to-close when popouts are active
+  this.$('.popup-layer').addClass('has-popouts');
+
   if (args.animate) {
     popoutEl.css({
       transform: 'translateY(10px)',
@@ -587,6 +590,8 @@ PopupLayer.prototype.hidePopout = function (popout) {
 
     if (this.popouts.length === 0) {
       this.$('.popup-layer-blocker').css({ display: 'none' });
+      // Disable pointer events when no popouts are active
+      this.$('.popup-layer').removeClass('has-popouts');
     }
   };
 

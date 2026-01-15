@@ -45,6 +45,7 @@ import { ViewerConnection } from '../ViewerConnection';
 import { HighlightOverlay } from './CanvasOverlays/HighlightOverlay';
 import { CanvasTabs } from './CanvasTabs';
 import CommentLayer from './commentlayer';
+import { EditorBanner } from './EditorBanner';
 // Import test utilities for console debugging (dev only)
 import '../services/HighlightManager/test-highlights';
 import { ConnectionPopup } from './ConnectionPopup';
@@ -241,6 +242,7 @@ export class NodeGraphEditor extends View {
   titleRoot: Root = null;
   highlightOverlayRoot: Root = null;
   canvasTabsRoot: Root = null;
+  editorBannerRoot: Root = null;
 
   constructor(args) {
     super();
@@ -463,6 +465,11 @@ export class NodeGraphEditor extends View {
   setReadOnly(readOnly: boolean) {
     this.readOnly = readOnly;
     this.commentLayer?.setReadOnly(readOnly);
+
+    // Update banner visibility when read-only status changes
+    if (this.editorBannerRoot) {
+      this.renderEditorBanner();
+    }
   }
 
   reset() {
@@ -928,6 +935,11 @@ export class NodeGraphEditor extends View {
       this.renderCanvasTabs();
     }, 1);
 
+    // Render the editor banner (for read-only mode)
+    setTimeout(() => {
+      this.renderEditorBanner();
+    }, 1);
+
     this.relayout();
     this.repaint();
 
@@ -981,6 +993,42 @@ export class NodeGraphEditor extends View {
     node.model.setParameter('generatedCode', code);
 
     console.log(`[NodeGraphEditor] Saved workspace and generated code for node ${nodeId}`);
+  }
+
+  /**
+   * Render the EditorBanner React component (for read-only mode)
+   */
+  renderEditorBanner() {
+    const bannerElement = this.el.find('#editor-banner-root').get(0);
+    if (!bannerElement) {
+      console.warn('Editor banner root not found in DOM');
+      return;
+    }
+
+    // Create React root if it doesn't exist
+    if (!this.editorBannerRoot) {
+      this.editorBannerRoot = createRoot(bannerElement);
+    }
+
+    // Only show banner if in read-only mode
+    if (this.readOnly) {
+      this.editorBannerRoot.render(
+        React.createElement(EditorBanner, {
+          onDismiss: this.handleDismissBanner.bind(this)
+        })
+      );
+    } else {
+      // Clear banner if not in read-only mode
+      this.editorBannerRoot.render(null);
+    }
+  }
+
+  /**
+   * Handle banner dismiss
+   */
+  handleDismissBanner() {
+    console.log('[NodeGraphEditor] Banner dismissed');
+    // Banner handles its own visibility via state
   }
 
   /**
@@ -1807,17 +1855,20 @@ export class NodeGraphEditor extends View {
       return;
     }
 
+    // Always select the node in the selector if not already selected
     if (!node.selected) {
-      // Select node
       this.clearSelection();
       this.commentLayer?.clearSelection();
       node.selected = true;
       this.selector.select([node]);
-      SidebarModel.instance.switchToNode(node.model);
-
       this.repaint();
-    } else {
-      // Double selection
+    }
+
+    // Always switch to the node in the sidebar (fixes property panel stuck issue)
+    SidebarModel.instance.switchToNode(node.model);
+
+    // Handle double-click navigation
+    if (this.leftButtonIsDoubleClicked) {
       if (node.model.type instanceof ComponentModel) {
         this.switchToComponent(node.model.type, { pushHistory: true });
       } else {
@@ -1832,7 +1883,7 @@ export class NodeGraphEditor extends View {
         if (type) {
           // @ts-expect-error TODO: this is wrong!
           this.switchToComponent(type, { pushHistory: true });
-        } else if (this.leftButtonIsDoubleClicked) {
+        } else {
           //there was no type that matched, so forward the double click event to the sidebar
           SidebarModel.instance.invokeActive('doubleClick', node);
         }

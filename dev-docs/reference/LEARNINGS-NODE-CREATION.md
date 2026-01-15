@@ -731,6 +731,60 @@ const NoodlRuntime = require('../../noodl-runtime'); // 2 levels from src/api/
 
 ---
 
+### 🔴 GOTCHA #8: Port Properties Must Be Inside `type` Object (Jan 2026)
+
+**THE BUG:**
+
+```javascript
+// Port-level properties are NOT passed to property panel
+generatedCode: {
+  type: {
+    name: 'string',
+    codeeditor: 'javascript'
+  },
+  readOnly: true  // ❌ Not accessible in property panel!
+}
+```
+
+**WHY IT BREAKS:**
+
+- Port object only contains: `['name', 'type', 'plug', 'group', 'displayName', 'index']`
+- Custom properties like `readOnly` at port level are NOT included in this list
+- Property panel accesses ports via `port.type.propertyName`, not `port.propertyName`
+- Result: `port.readOnly` is `undefined`, property panel ignores the flag
+
+**THE FIX:**
+
+```javascript
+// ✅ CORRECT - Put custom properties inside type object
+generatedCode: {
+  type: {
+    name: 'string',
+    codeeditor: 'javascript',
+    readOnly: true  // ✅ Accessible as port.type.readOnly
+  },
+  displayName: 'Generated code',
+  group: 'Advanced'
+}
+```
+
+**DEBUGGING TIP:**
+
+Add logging to see what properties are actually available:
+
+```javascript
+console.log('Port properties:', {
+  name: p.name,
+  readOnly: p.readOnly, // undefined ❌
+  typeReadOnly: p.type?.readOnly, // true ✅
+  allKeys: Object.keys(p) // Shows actual properties
+});
+```
+
+**RULE:** Any custom property you want accessible in the property panel must be inside the `type` object.
+
+---
+
 ## Complete Working Pattern (HTTP Node Reference)
 
 Here's the proven pattern from the HTTP node that handles all gotchas:

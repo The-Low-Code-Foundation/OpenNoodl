@@ -87,7 +87,9 @@ export function NodeLabel({ model, showHelp = true }: NodeLabelProps) {
     <div className="property-editor-label-and-buttons property-header-bar" style={{ flex: '0 0' }}>
       <div
         style={{ flexGrow: 1, overflow: 'hidden' }}
-        onDoubleClick={() => {
+        onDoubleClick={(e) => {
+          // Stop propagation to prevent canvas double-click handler from triggering
+          e.stopPropagation();
           if (!isEditingLabel) {
             onEditLabel();
           }

@@ -97,7 +97,9 @@ export class ProjectModel extends Model {
   public id?: string;
   public name?: string;
   public version?: string;
+  public runtimeVersion?: 'react17' | 'react19';
   public _retainedProjectDirectory?: string;
+  public _isReadOnly?: boolean; // Flag for read-only mode (legacy projects)
   public settings?: ProjectSettings;
   public metadata?: TSFixme;
   public components: ComponentModel[];
@@ -121,9 +123,15 @@ export class ProjectModel extends Model {
       this.settings = args.settings;
       // this.thumbnailURI = args.thumbnailURI;
       this.version = args.version;
+      this.runtimeVersion = args.runtimeVersion;
       this.metadata = args.metadata;
       // this.deviceSettings = args.deviceSettings;
     }
+
+    // NOTE: runtimeVersion is NOT auto-defaulted here!
+    // - New projects: Explicitly set to 'react19' in LocalProjectsModel.newProject()
+    // - Old projects: Left undefined, detected by runtime scanner
+    // - This prevents corrupting legacy projects when they're loaded
 
     NodeLibrary.instance.on(
       ['moduleRegistered', 'moduleUnregistered', 'libraryUpdated'],
@@ -1154,6 +1162,7 @@ export class ProjectModel extends Model {
       rootNodeId: this.rootNode ? this.rootNode.id : undefined,
       // thumbnailURI:this.thumbnailURI,
       version: this.version,
+      runtimeVersion: this.runtimeVersion,
       lesson: this.lesson ? this.lesson.toJSON() : undefined,
       metadata: this.metadata,
       variants: this.variants.map((v) => v.toJSON())
@@ -1245,6 +1254,12 @@ EventDispatcher.instance.on(
 
 function saveProject() {
   if (!ProjectModel.instance) return;
+
+  // CRITICAL: Do not save read-only projects (e.g., legacy projects opened for inspection)
+  if (ProjectModel.instance._isReadOnly) {
+    console.log('⚠️  Skipping auto-save: Project is in read-only mode');
+    return;
+  }
 
   if (ProjectModel.instance._retainedProjectDirectory) {
     // Project is loaded from directory, save it

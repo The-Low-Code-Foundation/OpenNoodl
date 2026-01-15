@@ -32,7 +32,10 @@ export function SidePanel() {
     setPanels((prev) => {
       const component = SidebarModel.instance.getPanelComponent(currentPanelId);
       if (component) {
-        prev[currentPanelId] = React.createElement(component);
+        return {
+          ...prev,
+          [currentPanelId]: React.createElement(component)
+        };
       }
       return prev;
     });
@@ -52,7 +55,10 @@ export function SidePanel() {
             // TODO: Clean up this inside SidebarModel, createElement can be done here instead
             const component = SidebarModel.instance.getPanelComponent(panelId);
             if (component) {
-              prev[panelId] = React.createElement(component);
+              return {
+                ...prev,
+                [panelId]: React.createElement(component)
+              };
             }
             return prev;
           });
@@ -73,8 +79,11 @@ export function SidePanel() {
         setPanels((prev) => {
           const component = SidebarModel.instance.getPanelComponent(panelId);
           if (component) {
-            // Force recreation with new node props
-            prev[panelId] = React.createElement(component);
+            // Force recreation with new node props - MUST return new object for React to detect change
+            return {
+              ...prev,
+              [panelId]: React.createElement(component)
+            };
           }
           return prev;
         });

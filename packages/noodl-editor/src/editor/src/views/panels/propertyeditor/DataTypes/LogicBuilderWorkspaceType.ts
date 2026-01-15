@@ -5,6 +5,7 @@ import { getEditType } from '../utils';
 /**
  * Custom editor for Logic Builder workspace parameter
  * Shows an "Edit Blocks" button that opens the Blockly editor in a tab
+ * And a "View Generated Code" button to show the compiled JavaScript
  */
 export class LogicBuilderWorkspaceType extends TypeView {
   el: TSFixme;
@@ -20,7 +21,7 @@ export class LogicBuilderWorkspaceType extends TypeView {
     view.displayName = p.displayName ? p.displayName : p.name;
     view.name = p.name;
     view.type = getEditType(p);
-    view.group = p.group;
+    view.group = null; // Hide group label
     view.tooltip = p.tooltip;
     view.value = parent.model.getParameter(p.name);
     view.parent = parent;
@@ -31,13 +32,21 @@ export class LogicBuilderWorkspaceType extends TypeView {
   }
 
   render() {
-    // Create a simple container with a button
-    const html = `
+    // Hide empty group labels
+    const hideEmptyGroupsCSS = `
+      <style>
+        /* Hide empty group labels */
+        .property-editor-group-name:empty {
+          display: none !important;
+        }
+      </style>
+    `;
+
+    // Create a simple container with single button
+    const html =
+      hideEmptyGroupsCSS +
+      `
       <div class="property-basic-container logic-builder-workspace-editor" style="display: flex; flex-direction: column; gap: 8px;">
-        <div class="property-label-container" style="display: flex; align-items: center; gap: 8px;">
-          <div class="property-changed-dot" data-click="resetToDefault" style="display: none;"></div>
-          <div class="property-label">${this.displayName}</div>
-        </div>
         <button class="edit-blocks-button" 
                 style="
                   padding: 8px 16px;
@@ -52,7 +61,7 @@ export class LogicBuilderWorkspaceType extends TypeView {
                 "
                 onmouseover="this.style.backgroundColor='var(--theme-color-primary-hover)'"
                 onmouseout="this.style.backgroundColor='var(--theme-color-primary)'">
-          ✨ Edit Logic Blocks
+          View Logic Blocks
         </button>
       </div>
     `;

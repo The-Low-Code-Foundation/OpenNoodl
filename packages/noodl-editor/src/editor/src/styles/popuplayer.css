@@ -20,6 +20,12 @@
   pointer-events: all;
 }
 
+/* Enable pointer events when popouts are active (without dimming background)
+   This allows clicking outside popouts to close them */
+.popup-layer.has-popouts {
+  pointer-events: all;
+}
+
 .popup-menu {
   background-color: var(--theme-color-bg-3);
 }

@@ -1205,6 +1205,136 @@ if (sourceType === 'any' || targetType === 'any') return true;
 
 ---
 
+## ⚠️ Permanent Warning Patterns: Banner + Toast Dual-Layer (Jan 2026)
+
+### The Dismissable Problem: Why One Warning Layer Isn't Enough
+
+**Context**: TASK-001D Legacy Read-Only Enforcement - Users needed constant reminder they're in read-only mode, but banner alone was insufficient (dismissable) and toast alone was intrusive (blocks view).
+
+**CRITICAL PRINCIPLE**: For critical mode warnings (read-only, offline, unsaved changes), use BOTH a dismissable banner AND a permanent toast to balance UX with safety.
+
+**The Problem**: Single-layer warnings fail:
+
+- **Banner only**: User dismisses it, forgets mode, loses work
+- **Toast only**: Blocks UI permanently, user frustrated but can't clear it
+- **Temporary warnings**: Disappear, user forgets critical mode
+
+**The Solution** - Dual-layer warning system:
+
+```typescript
+// Layer 1: EditorBanner (Top) - Dismissable, high visibility
+<EditorBanner
+  onDismiss={handleDismiss} // ✅ User CAN close to clear workspace
+  message="Legacy Project (React 17) - Read-Only Mode"
+  description="Return to the launcher to migrate it before editing"
+  style={{
+    background: '#1a1a1a', // Solid black for maximum visibility
+    borderBottom: '2px solid var(--theme-color-warning)'
+  }}
+/>;
+
+// Layer 2: Toast (Bottom Right) - Permanent, subtle reminder
+ToastLayer.showError(
+  'READ-ONLY MODE - No changes will be saved',
+  Infinity // ✅ Stays forever
+);
+// NO close button - truly permanent
+```
+
+**Toast Permanence Pattern**:
+
+```typescript
+// ❌ WRONG - User can dismiss critical warning
+showError(message, {
+  duration: 10000, // Disappears after 10s
+  onClose: () => toast.dismiss(id) // Has close button
+});
+
+// ✅ RIGHT - Permanent reminder
+showError(message, {
+  duration: Infinity // Never auto-dismisses
+  // No onClose callback = no close button
+});
+```
+
+**Banner Visibility Pattern**:
+
+```scss
+// ❌ WRONG - Semi-transparent, hard to see
+.EditorBanner {
+  background: rgba(255, 193, 7, 0.15); // Transparent yellow
+  pointer-events: none; // Can't interact!
+}
+
+// ✅ RIGHT - Solid color, highly visible
+.EditorBanner {
+  background: #1a1a1a; // Solid black
+  border-bottom: 2px solid var(--theme-color-warning);
+  pointer-events: auto; // Fully interactive
+}
+```
+
+**Why This Works**:
+
+**Banner Advantages:**
+
+- Large, prominent at top of viewport
+- Can include detailed instructions
+- User can dismiss to clear workspace when needed
+- Shows mode on initial project open
+
+**Toast Advantages:**
+
+- Small, non-intrusive in corner
+- Always visible (can't dismiss)
+- Constant reminder even after banner closed
+- Doesn't block UI when user understands the mode
+
+**User Flow**:
+
+1. User opens project → Banner + Toast appear
+2. User reads banner, understands mode
+3. User closes banner to work (needs space)
+4. **Toast remains**: Constant reminder in corner
+5. User forgets after 30 minutes → **Toast still there!**
+
+**Critical Rules**:
+
+1. **NEVER** rely on banner alone for critical modes (user will dismiss)
+2. **NEVER** make toast the only warning (too intrusive)
+3. **ALWAYS** use `duration: Infinity` for permanent toasts
+4. **NEVER** add close button to critical toasts (remove onClose callback)
+5. **ALWAYS** use solid backgrounds on banners (visibility)
+
+**Applies To**:
+
+- Read-only mode warnings
+- Offline mode indicators
+- Unsaved changes warnings
+- Beta feature warnings
+- Migration required notices
+- Any critical persistent state
+
+**Common Mistakes**:
+
+1. Using toast with 10-second duration (disappears, user forgets)
+2. Banner only (user closes it, forgets critical mode)
+3. Making toast undismissable with close button (confusing UX)
+4. Transparent banner backgrounds (low visibility)
+5. Blocking all interactions when warnings show
+
+**Time Saved**: This pattern prevents data loss scenarios and support tickets. Clear, persistent warnings = fewer user mistakes.
+
+**Location**:
+
+- Implemented in: TASK-001D Legacy Read-Only Enforcement
+- Files: `EditorBanner.tsx`, `ToastLayer.tsx`, `ProjectsPage.tsx`
+- Documentation: `TASK-001D/CHANGELOG.md`
+
+**Keywords**: permanent toast, dismissable banner, dual-layer warnings, read-only mode, critical warnings, user safety, Infinity duration, banner visibility, UX balance
+
+---
+
 ## 🔥 CRITICAL: Electron Blocks window.prompt() and window.confirm() (Dec 2025)
 
 ### The Silent Dialog: Native Dialogs Don't Work in Electron

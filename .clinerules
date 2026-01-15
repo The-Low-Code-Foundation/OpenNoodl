@@ -1,731 +1,459 @@
 # Cline Development Guidelines for OpenNoodl
 
-## Overview
+## Communication Style
 
-This document provides guidelines for AI-assisted development on the OpenNoodl codebase using Cline in VSCode. Follow these guidelines to ensure consistent, well-documented, and testable contributions.
+**You are assisting Richard**, an experienced CTO and full-stack developer. Communication should be:
 
-**🚨 CRITICAL: OpenNoodl Editor is an Electron Desktop Application**
+- **Direct and technical** - Skip basic explanations, use proper terminology
+- **Practical and actionable** - Focus on working solutions over theory
+- **Concise but complete** - Respect time while providing necessary context
+- **Honest about limitations** - Say "I don't know" rather than guess
+- **Assumes competence** - Richard understands development fundamentals
+- **Casual and humorous when appropriate** - Use slang, informal expressions, and humor to keep things human
 
-- The editor is NOT a web app - never try to open it in a browser
-- Running `npm run dev` launches the Electron app automatically
-- Use Electron DevTools (View → Toggle Developer Tools) for debugging
-- The viewer/runtime creates web apps, but the editor itself is always Electron
-- Never use `browser_action` tool to test the editor - it only works for Storybook or deployed viewers
-
----
-
-## 1. Before Starting Any Task
-
-### 1.1 Understand the Context
-
-```bash
-# Always check which branch you're on
-git branch
-
-# Check for uncommitted changes
-git status
-
-# Review recent commits
-git log --oneline -10
-```
-
-### 1.2 Read Relevant Documentation
-
-Before modifying any file, understand its purpose:
-
-1. Check for README files in the package
-2. Read JSDoc comments on functions
-3. Look for related test files
-4. Search for usage patterns: `grep -r "functionName" packages/`
-
-### 1.3 Identify Dependencies
-
-```bash
-# Check what imports a file
-grep -r "from.*filename" packages/
-
-# Check what the file imports
-head -50 path/to/file.ts | grep "import"
-```
+**Tone**: Professional peer who doesn't take themselves too seriously. "Hold the front door" > "Please wait a moment". Explain _why_ when context helps, not _what_ when it's obvious. Be precise about technical details, relaxed about everything else.
 
 ---
 
-## 2. Code Style Requirements
+## 🚨 CRITICAL REQUIREMENTS
 
-### 2.1 TypeScript Standards
+### 1. Testing & Verification Are Mandatory
 
-```typescript
-// ✅ GOOD: Explicit types
-interface NodeProps {
-  id: string;
-  type: NodeType;
-  connections: Connection[];
-}
+**Code written ≠ Feature working**
 
-function processNode(node: NodeProps): ProcessedNode {
-  // ...
-}
+- ✅ **ALWAYS prefer unit tests** - Write tests that prove functionality works
+- ✅ **If tests aren't feasible** - Explicitly ask Richard to verify changes before marking complete
+- ❌ **NEVER declare "done" without proof** - Either tests pass or user confirms it works
 
-// ❌ BAD: Implicit any
-function processNode(node) {
-  // ...
-}
+```markdown
+## Before marking any task complete:
 
-// ❌ BAD: Using TSFixme
-function processNode(node: TSFixme): TSFixme {
-  // ...
-}
+- [ ] Unit tests added and passing, OR
+- [ ] User has verified changes work as expected
+- [ ] No assumptions that "code compiles = feature works"
 ```
 
-### 2.2 React Component Standards
+### 2. Break Out of Loops
 
-```tsx
-// ✅ GOOD: Functional component with types
-interface ButtonProps {
-  label: string;
-  onClick: () => void;
-  disabled?: boolean;
-}
+**When you're stuck (same error 3+ times, repeated attempts failing):**
 
-export function Button({ label, onClick, disabled = false }: ButtonProps) {
-  return (
-    <button onClick={onClick} disabled={disabled}>
-      {label}
-    </button>
-  );
-}
+```markdown
+I'm hitting a wall with [specific issue]. This needs dedicated research.
 
-// ❌ BAD: Class component (unless necessary for lifecycle)
-class Button extends React.Component {
-  // ...
-}
+Should I create a research task doc to:
+
+1. [Investigate root cause]
+2. [Explore alternatives]
+3. [Document solution for future reference]
+
+This will prevent wasting time on trial-and-error.
 ```
 
-### 2.3 Import Organization
+**Do NOT** keep trying variations of the same approach. Recognize the pattern and escalate.
 
-```typescript
-// 1. External packages (alphabetical)
-import classNames from 'classnames';
-import React, { useCallback, useState } from 'react';
+### 3. Document Discoveries Systematically
 
-import { NodeGraphModel } from '@noodl-models/nodegraphmodel';
-import { KeyCode } from '@noodl-utils/keyboard/KeyCode';
+**When you learn something important about the codebase:**
 
-// 2. Internal packages (alphabetical by alias)
-import { IconName } from '@noodl-core-ui/components/common/Icon';
+```markdown
+## Discovered: [Brief Title]
 
-import css from './Component.module.scss';
-// 3. Relative imports (by depth, then alphabetical)
-import { localHelper } from './helpers';
+**Context**: [What were you trying to do?]
+**Discovery**: [What did you learn?]
+**Location**: [What files/systems does this affect?]
+**Action**: [Added to LEARNINGS.md / COMMON-ISSUES.md]
 ```
 
-### 2.4 Naming Conventions
+**Important = Worth documenting:**
 
-| Type        | Convention            | Example                   |
-| ----------- | --------------------- | ------------------------- |
-| Components  | PascalCase            | `NodeEditor.tsx`          |
-| Hooks       | camelCase, use prefix | `useNodeSelection.ts`     |
-| Utils       | camelCase             | `formatNodeName.ts`       |
-| Constants   | UPPER_SNAKE           | `MAX_CONNECTIONS`         |
-| CSS Modules | kebab-case            | `node-editor.module.scss` |
-| Test files  | Same + .test          | `NodeEditor.test.tsx`     |
+- Non-obvious behavior or gotchas
+- Error solutions that took time to figure out
+- Undocumented dependencies between systems
+- Patterns you had to reverse-engineer
+- Anything the next developer shouldn't have to rediscover
+
+**Update these files as you learn:**
+
+- `dev-docs/reference/LEARNINGS.md` - General discoveries
+- `dev-docs/reference/COMMON-ISSUES.md` - Error solutions
+- Task `CHANGELOG.md` - Task-specific progress
 
 ---
 
-## 3. Documentation Requirements
+## Project Context
 
-### 3.1 File Headers
+### What is OpenNoodl
 
-Every new file should have a header comment:
+OpenNoodl is an **Electron desktop application** (not a web app) for visual programming. Key facts:
 
-```typescript
-/**
- * NodeProcessor
- *
- * Handles the processing of node graph updates and manages
- * the execution order of connected nodes.
- *
- * @module noodl-runtime
- * @since 1.2.0
- */
-```
+- **Editor**: Electron app (never opens in browser)
+- **Viewer**: Generates web applications
+- **Runtime**: JavaScript execution engine for node graphs
+- Run with `npm run dev` (launches Electron, not a web server)
+- Debug with Electron DevTools (View → Toggle Developer Tools)
 
-### 3.2 Function Documentation
-
-````typescript
-/**
- * Processes a node and propagates changes to connected nodes.
- *
- * @param node - The node to process
- * @param context - The execution context
- * @param options - Processing options
- * @param options.force - Force re-evaluation even if inputs unchanged
- * @returns The processed output values
- * @throws {NodeProcessingError} If the node definition is invalid
- *
- * @example
- * ```typescript
- * const output = processNode(myNode, context, { force: true });
- * console.log(output.value);
- * ```
- */
-function processNode(node: NodeInstance, context: ExecutionContext, options: ProcessOptions = {}): NodeOutput {
-  // ...
-}
-````
-
-### 3.3 Complex Logic Comments
-
-```typescript
-// Calculate the topological sort order for node evaluation.
-// This ensures nodes are processed after their dependencies.
-// Uses Kahn's algorithm for O(V+E) complexity.
-const sortedNodes = topologicalSort(nodes, connections);
-```
-
----
-
-## 4. Testing Requirements
-
-### 4.1 Test File Location
-
-Tests should be co-located or in a parallel `tests/` directory:
-
-```
-// Option A: Co-located
-components/
-├── Button/
-│   ├── Button.tsx
-│   ├── Button.test.tsx
-│   └── Button.module.scss
-
-// Option B: Parallel (current pattern in noodl-editor)
-packages/noodl-editor/
-├── src/
-│   └── components/Button.tsx
-└── tests/
-    └── components/Button.test.ts
-```
-
-### 4.2 Test Structure
-
-```typescript
-import { describe, it, expect, beforeEach, jest } from '@jest/globals';
-import { renderHook, act } from '@testing-library/react-hooks';
-
-describe('useNodeSelection', () => {
-  // Setup
-  let mockContext: NodeGraphContext;
-
-  beforeEach(() => {
-    mockContext = createMockContext();
-  });
-
-  // Group related tests
-  describe('when selecting a single node', () => {
-    it('should update selection state', () => {
-      const { result } = renderHook(() => useNodeSelection(mockContext));
-
-      act(() => {
-        result.current.selectNode('node-1');
-      });
-
-      expect(result.current.selectedNodes).toContain('node-1');
-    });
-
-    it('should clear previous selection by default', () => {
-      // ...
-    });
-  });
-
-  describe('when multi-selecting nodes', () => {
-    // ...
-  });
-});
-```
-
-### 4.3 What to Test
-
-| Priority | What to Test           |
-| -------- | ---------------------- |
-| High     | Utility functions      |
-| High     | Data transformations   |
-| High     | State management logic |
-| Medium   | React hooks            |
-| Medium   | Component behavior     |
-| Low      | Pure UI rendering      |
-
----
-
-## 5. Git Workflow
-
-### 5.1 Branch Naming
-
-```bash
-# Features
-git checkout -b feature/add-vercel-deployment
-
-# Bug fixes
-git checkout -b fix/page-router-scroll
-
-# Refactoring
-git checkout -b refactor/remove-tsfixme-panels
-
-# Documentation
-git checkout -b docs/update-node-api
-```
-
-### 5.2 Commit Messages
-
-Follow conventional commits:
-
-```bash
-# Format: type(scope): description
-
-# Features
-git commit -m "feat(editor): add breakpoint support for node connections"
-
-# Bug fixes
-git commit -m "fix(viewer): resolve scroll position reset in nested Page Router"
-
-# Refactoring
-git commit -m "refactor(runtime): replace TSFixme with proper types in node processor"
-
-# Documentation
-git commit -m "docs(api): add JSDoc to all public node methods"
-
-# Tests
-git commit -m "test(editor): add unit tests for node selection hook"
-
-# Chores
-git commit -m "chore(deps): update react to 19.0.0"
-```
-
-### 5.3 Commit Frequency
-
-- Commit after each logical change
-- Don't combine unrelated changes
-- Commit working states (tests should pass)
-
----
-
-## 6. Codebase Navigation
-
-### 6.1 Key Directories
+### Codebase Structure
 
 ```
 packages/
-├── noodl-editor/
-│   ├── src/
-│   │   ├── editor/src/
-│   │   │   ├── models/         # Data models (ProjectModel, NodeGraph, etc.)
-│   │   │   ├── views/          # UI components and views
-│   │   │   ├── utils/          # Helper utilities
-│   │   │   ├── store/          # State stores (AI Assistant, etc.)
-│   │   │   └── pages/          # Page-level components
-│   │   ├── main/               # Electron main process
-│   │   └── shared/             # Shared utilities
-│   └── tests/                  # Test files
+├── noodl-editor/          # Electron editor application
+│   ├── src/editor/src/    # Main editor code
+│   │   ├── models/        # Data models (ProjectModel, NodeGraph)
+│   │   ├── views/         # React UI components
+│   │   ├── store/         # State management
+│   │   └── utils/         # Utilities
+│   └── tests/             # Test files
 │
-├── noodl-runtime/
-│   └── src/
-│       ├── nodes/              # Runtime node definitions
-│       └── nodecontext.js      # Execution context
+├── noodl-runtime/         # Node execution engine
+│   └── src/nodes/         # Runtime node definitions
 │
-├── noodl-viewer-react/
-│   └── src/
-│       └── nodes/              # React-based visual nodes
+├── noodl-viewer-react/    # React-based visual nodes
+│   └── src/nodes/         # Visual components
 │
-└── noodl-core-ui/
-    └── src/
-        └── components/         # Shared UI components
+└── noodl-core-ui/         # Shared UI components
+    └── src/components/    # Reusable UI
 ```
 
-### 6.2 Finding Things
+### Key Documentation
+
+**Read these FIRST for relevant tasks:**
+
+- `dev-docs/reference/CODEBASE-MAP.md` - Navigation guide
+- `dev-docs/reference/COMMON-ISSUES.md` - Known problems/solutions
+- `dev-docs/reference/NODE-PATTERNS.md` - How to create/modify nodes
+- `dev-docs/reference/LEARNINGS.md` - Accumulated knowledge
+- `dev-docs/reference/UI-STYLING-GUIDE.md` - Styling rules (NO hardcoded colors!)
+- `dev-docs/reference/LEARNINGS-NODE-CREATION.md` - Node creation gotchas
+
+---
+
+## Development Workflow
+
+### 1. Before Starting Any Task
 
 ```bash
-# Find a component
-find packages/ -name "*NodeEditor*" -type f
+# Check context
+git branch
+git status
+git log --oneline -10
 
-# Find where something is imported
-grep -r "import.*from.*NodeEditor" packages/
-
-# Find where a function is called
-grep -r "processNode(" packages/ --include="*.ts" --include="*.tsx"
-
-# Find all TODO comments
-grep -rn "TODO\|FIXME" packages/noodl-editor/src
-
-# Find test files
-find packages/ -name "*.test.ts" -o -name "*.spec.ts"
+# Read relevant docs
+# - Check LEARNINGS.md for related discoveries
+# - Check COMMON-ISSUES.md for known problems
+# - Review referenced files in dev-docs/
 ```
 
-### 6.3 Understanding Data Flow
+### 2. Understanding Before Coding
 
-1. **User Action** → `views/` components capture events
-2. **State Update** → `models/` handle business logic
-3. **Runtime Sync** → `ViewerConnection` sends to preview
-4. **Persistence** → `ProjectModel` saves to disk
+- Read JSDoc comments on functions you'll modify
+- Check for existing test files
+- Search for usage patterns: `grep -r "functionName" packages/`
+- Understand dependencies: `grep -r "from.*filename" packages/`
 
----
+### 3. Implementation Standards
 
-## 7. Common Patterns
+**TypeScript**:
 
-### 7.1 Event Handling Pattern
+- Explicit types always (no `any`, no `TSFixme`)
+- Use interfaces for complex types
+- Document public APIs with JSDoc
+
+**React**:
+
+- Functional components (no class components unless required)
+- Use hooks properly (`useCallback`, `useMemo` for optimization)
+- NEVER use direct EventDispatcher `.on()` - ALWAYS use `useEventListener` hook
+
+**Node Creation**:
+
+- Signal inputs use `valueChangedToTrue`, not `set`
+- NEVER override `setInputValue` in `prototypeExtensions`
+- Dynamic ports must include static ports when updating
+- Export format: `module.exports = { node: NodeDef, setup: fn }`
+
+### 4. Critical Patterns
+
+**EventDispatcher in React** (Phase 0 Critical):
 
 ```typescript
-// Models use EventDispatcher for pub/sub
-import { EventDispatcher } from '../../../shared/utils/EventDispatcher';
+// ✅ CORRECT - Always use this
+import { useEventListener } from '@noodl-hooks/useEventListener';
 
-class MyModel extends EventDispatcher {
-  doSomething() {
-    // ... logic
-    this.notifyListeners('updated', { data: result });
-  }
-}
-
-// Usage
-const model = new MyModel();
-model.on('updated', (data) => {
-  console.log('Model updated:', data);
+useEventListener(ProjectModel.instance, 'componentRenamed', (data) => {
+  // This works!
 });
+
+// ❌ BROKEN - Never do this (silently fails)
+useEffect(() => {
+  ProjectModel.instance.on('event', handler, context);
+  return () => ProjectModel.instance.off(context);
+}, []);
 ```
 
-### 7.2 React Hook Pattern
-
-```typescript
-// Custom hook for model subscription
-function useModel<T>(model: EventDispatcher, event: string): T {
-  const [state, setState] = useState<T>(model.getState());
-
-  useEffect(() => {
-    const handler = (newState: T) => setState(newState);
-    model.on(event, handler);
-    return () => model.off(event, handler);
-  }, [model, event]);
-
-  return state;
-}
-```
-
-### 7.3 Node Definition Pattern
-
-```javascript
-// In noodl-runtime/src/nodes/
-const MyNode = {
-  name: 'My.Custom.Node',
-  displayName: 'My Custom Node',
-  category: 'Custom',
-
-  inputs: {
-    inputValue: {
-      type: 'string',
-      displayName: 'Input Value',
-      default: ''
-    }
-  },
-
-  outputs: {
-    outputValue: {
-      type: 'string',
-      displayName: 'Output Value'
-    }
-  },
-
-  methods: {
-    setInputValue(value) {
-      this._internal.inputValue = value;
-      this.flagOutputDirty('outputValue');
-    }
-  },
-
-  getOutputValue(name) {
-    if (name === 'outputValue') {
-      return this._internal.inputValue.toUpperCase();
-    }
-  }
-};
-```
-
----
-
-## 8. Error Handling
-
-### 8.1 User-Facing Errors
-
-```typescript
-import { ToastLayer } from '../views/ToastLayer/ToastLayer';
-
-try {
-  await riskyOperation();
-} catch (error) {
-  // Log for debugging
-  console.error('Operation failed:', error);
-
-  // Show user-friendly message
-  ToastLayer.showError('Unable to complete operation. Please try again.');
-}
-```
-
-### 8.2 Developer Errors
-
-```typescript
-// Use assertions for developer errors
-function processNode(node: NodeInstance) {
-  if (!node.id) {
-    throw new Error(`processNode: node.id is required`);
-  }
-
-  if (!node.definition) {
-    throw new Error(`processNode: node "${node.id}" has no definition`);
-  }
-}
-```
-
-### 8.3 Graceful Degradation
-
-```typescript
-function getNodeIcon(node: NodeInstance): string {
-  try {
-    return node.definition.icon || 'default-icon';
-  } catch {
-    console.warn(`Could not get icon for node ${node.id}`);
-    return 'default-icon';
-  }
-}
-```
-
----
-
-## 9. Performance Considerations
-
-### 9.1 Avoid Unnecessary Re-renders
-
-```tsx
-// ✅ GOOD: Memoized callback
-const handleClick = useCallback(() => {
-  onNodeSelect(node.id);
-}, [node.id, onNodeSelect]);
-
-// ✅ GOOD: Memoized expensive computation
-const sortedNodes = useMemo(() => {
-  return topologicalSort(nodes);
-}, [nodes]);
-
-// ❌ BAD: New function on every render
-<Button onClick={() => onNodeSelect(node.id)} />;
-```
-
-### 9.2 Lazy Loading
-
-```tsx
-// Lazy load heavy components
-const CodeEditor = React.lazy(() => import('./CodeEditor'));
-
-function EditorPanel() {
-  return (
-    <Suspense fallback={<LoadingSpinner />}>
-      <CodeEditor />
-    </Suspense>
-  );
-}
-```
-
-### 9.3 Batch Updates
-
-```typescript
-// Batch multiple state updates
-import { unstable_batchedUpdates } from 'react-dom';
-
-unstable_batchedUpdates(() => {
-  setSelection(newSelection);
-  setHighlight(newHighlight);
-  setZoom(newZoom);
-});
-```
-
----
-
-## 10. Checklist Before Submitting
-
-### Code Quality
-
-- [ ] No `TSFixme` types added
-- [ ] All new functions have JSDoc comments
-- [ ] Complex logic has inline comments
-- [ ] No console.log statements (except errors/warnings)
-- [ ] No unused imports or variables
-
-### Testing
-
-- [ ] Unit tests for new utility functions
-- [ ] Integration tests for new features
-- [ ] Existing tests still pass
-- [ ] Manual testing completed
-
-### Documentation
-
-- [ ] README updated if needed
-- [ ] JSDoc added to public APIs
-- [ ] Comments explain "why", not "what"
-
-### Git
-
-- [ ] Meaningful commit messages
-- [ ] No unrelated changes in commits
-- [ ] Branch named correctly
-- [ ] Based on latest main branch
-
-### Performance
-
-- [ ] No obvious performance regressions
-- [ ] Large lists use virtualization
-- [ ] Expensive computations are memoized
-
-### React + EventDispatcher (Phase 0 Critical Bugs)
-
-- [ ] Using `useEventListener` hook for ALL EventDispatcher subscriptions (NOT direct `.on()`)
-- [ ] Singleton instances included in useEffect dependencies (e.g., `[ProjectModel.instance]`)
-- [ ] Using `UndoQueue.instance.pushAndDo()` pattern (NOT `undoGroup.push()` + `undoGroup.do()`)
-- [ ] No direct EventDispatcher `.on()` calls in React components
-- [ ] Event subscriptions verified with debug logging
-
----
-
-## Quick Reference Commands
-
-```bash
-# Development
-npm run dev                    # Start editor with hot reload
-npm run test:editor           # Run tests
-npm run build:editor          # Production build
-
-# Code Quality
-npx eslint packages/noodl-editor/src --fix
-npx prettier --write "packages/**/*.{ts,tsx}"
-npx tsc --noEmit               # Type check
-
-# Debugging
-DEBUG=* npm run dev            # Verbose logging
-npm run test:editor -- --verbose
-
-# Finding Issues
-grep -r "TSFixme" packages/    # Find type escapes
-grep -r "any" packages/ --include="*.ts" | head -20
-```
-
-## 11. Additional system instructions and critical development files
-
-dev-docs/
-├── reference/
-│ ├── CODEBASE-MAP.md # OpenNoodl Codebase Quick Navigation
-│ ├── COMMON-ISSUES.md # Solutions to frequently encountered problems when developing OpenNoodl.
-│ ├── NODE-PATTERNS.md # How to create and modify nodes in OpenNoodl.
-├── guidelines/
-│ ├── CODING-STANDARDS.md # This document defines the coding style and patterns for OpenNoodl development.
-│ ├── GIT-WORKFLOW.md # How to manage branches, commits, and pull requests for OpenNoodl development.
-├── TASK-TEMPLATE.md # Use this template to create new task documentation. Copy the entire `TASK-XXX-template/` folder and rename it.
-
-## 12. Institutional Learning
-
-### Discovering & Recording Knowledge
-
-As you work through tasks in this large codebase, you WILL discover things that aren't documented:
-
-- Why something was built a certain way
-- Hidden gotchas or edge cases
-- Patterns that aren't obvious
-- Fixes for confusing errors
-- Relationships between distant parts of the code
-
-**When you learn something useful, write it down immediately.**
-
-Add discoveries to: `dev-docs/reference/LEARNINGS.md`
-
-Format each entry:
-
-```
-### [Date] - [Brief Title]
-
-**Context**: What were you trying to do?
-**Discovery**: What did you learn?
-**Location**: What files/areas does this apply to?
-**Keywords**: [searchable terms]
-```
-
-Examples of things worth recording:
-
-- "The `scheduleAfterInputsHaveUpdated` pattern is required when multiple inputs might change in the same frame"
-- "RouterAdapter.ts secretly depends on component naming conventions - pages must be in folders"
-- "React 19 automatic batching breaks the old `forceUpdate` pattern in nodegrapheditor"
-- "Collection change events don't fire if you mutate items directly - must use `.set()`"
-
-### Using Accumulated Knowledge
-
-**Before struggling with something complex, check the learnings:**
-
-1. Read `dev-docs/reference/LEARNINGS.md`
-2. Search for relevant keywords
-3. Check if someone already solved this problem
-
-**When hitting a confusing error:**
-
-1. Search LEARNINGS.md for the error message or related terms
-2. Check `dev-docs/reference/COMMON-ISSUES.md`
-3. If you solve it and it's not documented, ADD IT
-
-### What Makes Good Learnings
-
-✅ **Worth recording:**
-
-- Non-obvious behavior ("X only works if Y is true")
-- Error solutions that took time to figure out
-- Undocumented dependencies between systems
-- Performance gotchas
-- Patterns you had to reverse-engineer
-
-❌ **Not worth recording:**
-
-- Basic TypeScript/React knowledge
-- Things already in official docs
-- One-off typos or simple mistakes
-- Task-specific details (those go in task CHANGELOG)
-
-### Building the Knowledge Base
-
-Over time, LEARNINGS.md may grow large. When it does:
-
-- Group related entries under headings
-- Move mature topics to dedicated docs (e.g., `LEARNINGS.md` entry about data nodes → `DATA-SYSTEM-DEEP-DIVE.md`)
-- Cross-reference from COMMON-ISSUES.md
-
-The goal: **No one should have to solve the same puzzle twice.**
-
----
-
----
-
-## 13. UI Styling Rules
-
-> **CRITICAL:** Before any UI/CSS work, read `dev-docs/reference/UI-STYLING-GUIDE.md`
-
-### 13.1 Never Use Hardcoded Colors
+**UI Styling**:
 
 ```scss
-// ❌ BAD - copying legacy patterns
+// ❌ NEVER - Hardcoded colors
 .Card {
   background-color: #27272a;
   color: #b8b8b8;
 }
 
-// ✅ GOOD - using design tokens
+// ✅ ALWAYS - Design tokens
 .Card {
   background-color: var(--theme-color-bg-3);
   color: var(--theme-color-fg-default);
 }
 ```
 
-### 13.2 Quick Token Reference
+### 5. Testing Requirements
+
+```typescript
+// Test file structure
+import { describe, it, expect, beforeEach } from '@jest/globals';
+
+describe('FeatureName', () => {
+  beforeEach(() => {
+    // Setup
+  });
+
+  describe('when condition X', () => {
+    it('should do Y', () => {
+      // Arrange
+      // Act
+      // Assert
+    });
+  });
+});
+```
+
+**What to test** (Priority order):
+
+1. Utility functions
+2. Data transformations
+3. State management logic
+4. React hooks
+5. Component behavior
+
+### 6. Git Workflow
+
+**Branch naming**:
+
+```bash
+feature/add-vercel-deployment
+fix/page-router-scroll
+refactor/remove-tsfixme-panels
+docs/update-node-api
+```
+
+**Commit messages** (Conventional Commits):
+
+```bash
+feat(editor): add breakpoint support for node connections
+fix(viewer): resolve scroll position reset in nested Page Router
+refactor(runtime): replace TSFixme with proper types in node processor
+docs(api): add JSDoc to all public node methods
+test(editor): add unit tests for node selection hook
+chore(deps): update react to 19.0.0
+```
+
+**Commit frequency**: After each logical change (tests should pass)
+
+---
+
+## Task Sizing & Context Management
+
+### Recognizing Tasks That Are Too Large
+
+**Signs you'll hit API limits:**
+
+- Modifying 10+ files in one go
+- Reading entire large files multiple times
+- Converting 50+ Storybook stories
+- Refactoring a whole subsystem
+- Adding features across multiple packages
+
+**Size estimation**:
+
+| Scope          | Files | Safety       | Action              |
+| -------------- | ----- | ------------ | ------------------- |
+| Bug fix        | 1-3   | ✅ Safe      | Proceed             |
+| Small feature  | 3-5   | ✅ Safe      | Proceed             |
+| Medium feature | 5-10  | ⚠️ Watch     | Monitor context     |
+| Large feature  | 10-20 | ❌ Risky     | Split into subtasks |
+| Refactoring    | 20+   | ❌ Too large | Must split          |
+
+### When You Hit API Limits
+
+**DO NOT** retry the same scope. **IMMEDIATELY**:
+
+```markdown
+I've hit an API context limit. This task is too large.
+
+I was attempting to: [describe scope]
+
+Breaking into subtasks:
+
+**Subtask 1**: [Specific scope - 2-4 files max]
+
+- File A: [specific changes]
+- File B: [specific changes]
+
+**Subtask 2**: [Next logical chunk]
+
+- File C: [specific changes]
+
+Starting with Subtask 1 now...
+```
+
+### How to Split Tasks
+
+**Strategies**:
+
+1. **By package/module** - Runtime changes, then editor changes, then integration
+2. **By feature slice** - Core logic, then UI, then validation/error handling
+3. **By file groups** - Batch similar components (5-7 at a time)
+4. **By logical phases** - Audit, then core changes, then secondary changes, then verification
+
+**Each subtask must be**:
+
+- Complete and working (no placeholders)
+- Independently testable
+- Fully documented
+- Quality standards maintained
+
+---
+
+## Debugging & Troubleshooting
+
+### Cache Issues
+
+**If code changes don't appear**:
+
+```bash
+# 1. Nuclear option first
+npm run clean:all
+
+# 2. Restart dev server (don't just refresh)
+
+# 3. Check build canary in console
+# Should see: 🔥 BUILD TIMESTAMP: [recent time]
+
+# 4. Add distinctive log to verify code loaded
+console.log('🔥 MY CHANGE LOADED:', Date.now());
+```
+
+**Never debug without verifying fresh code is running.**
+
+### Foundation Health Check
+
+Run when things "feel broken":
+
+```bash
+npm run health:check
+```
+
+Checks:
+
+- Cache state
+- Webpack config
+- useEventListener hook presence
+- Direct EventDispatcher anti-patterns
+- Build canary
+- Package versions
+
+### React Migration Issues
+
+**UI doesn't update after action:**
+
+1. Check if action succeeded (console logs)
+2. Check if event was emitted (log in model method)
+3. Check if event was received (log in useEventListener callback)
+4. Check if component re-rendered (log in component body)
+
+**Usually the problem**:
+
+- Using direct `.on()` instead of `useEventListener`
+- Cached old code running
+- Event name mismatch
+
+---
+
+## Pre-Completion Checklist
+
+Before marking any task complete:
+
+### Code Quality
+
+- [ ] No `TSFixme` types added
+- [ ] All new functions have JSDoc comments
+- [ ] Complex logic has explanatory comments
+- [ ] No console.log statements (except errors/warnings)
+- [ ] No unused imports or variables
+- [ ] No hardcoded colors (use `var(--theme-color-*)` tokens)
+
+### Testing & Verification
+
+- [ ] **Unit tests added and passing, OR user verified changes work**
+- [ ] Existing tests still pass
+- [ ] Manual testing completed (document steps taken)
+
+### React + EventDispatcher (Critical)
+
+- [ ] Using `useEventListener` hook for ALL EventDispatcher subscriptions
+- [ ] Singleton instances in useEffect dependencies
+- [ ] No direct EventDispatcher `.on()` calls in React components
+
+### Node Creation (If applicable)
+
+- [ ] Signal inputs use `valueChangedToTrue` (not `set`)
+- [ ] No `setInputValue` override in `prototypeExtensions`
+- [ ] Dynamic ports include static ports
+- [ ] Config inputs explicitly registered
+
+### Documentation
+
+- [ ] README updated if needed
+- [ ] JSDoc added to public APIs
+- [ ] **Discoveries added to LEARNINGS.md or COMMON-ISSUES.md**
+- [ ] Task CHANGELOG.md updated with progress
+
+### Git
+
+- [ ] Meaningful commit messages (conventional commits format)
+- [ ] No unrelated changes in commits
+- [ ] Branch named correctly
+- [ ] Based on latest main branch
+
+---
+
+## Quick Reference
+
+### Common Commands
+
+```bash
+# Development
+npm run dev                    # Start Electron editor
+npm run test:editor           # Run tests
+npm run build:editor          # Production build
+npm run clean:all             # Clear all caches
+
+# Code Quality
+npx eslint packages/noodl-editor/src --fix
+npx prettier --write "packages/**/*.{ts,tsx}"
+npx tsc --noEmit              # Type check
+
+# Debugging
+DEBUG=* npm run dev           # Verbose logging
+npm run test:editor -- --verbose
+
+# Finding Issues
+grep -r "TSFixme" packages/
+grep -rn "TODO\|FIXME" packages/noodl-editor/src
+find packages/ -name "*.test.ts"
+```
+
+### Design Token Reference
 
 | Purpose           | Token                          |
 | ----------------- | ------------------------------ |
@@ -737,786 +465,24 @@ The goal: **No one should have to solve the same puzzle twice.**
 | Primary buttons   | `--theme-color-primary`        |
 | Borders           | `--theme-color-border-default` |
 
-### 13.3 Legacy Files Warning
+### Node Input Handler Reference
 
-DO NOT copy patterns from these files (they have hardcoded colors):
-
-- `packages/noodl-editor/src/editor/src/styles/popuplayer.css`
-- `packages/noodl-editor/src/editor/src/styles/propertyeditor.css`
-
-DO reference these files (they use proper patterns):
-
-- `packages/noodl-core-ui/src/components/layout/BaseDialog/`
-- `packages/noodl-core-ui/src/components/inputs/PrimaryButton/`
-
-### 13.4 Before Completing UI Tasks
-
-Verify:
-
-- [ ] No hardcoded hex colors (`grep -E '#[0-9a-fA-F]{3,6}' your-file.scss`)
-- [ ] All colors use `var(--theme-color-*)` tokens
-- [ ] Hover/focus/disabled states defined
+| Input Type | Handler               | Callback                    |
+| ---------- | --------------------- | --------------------------- |
+| Signal     | `valueChangedToTrue`  | `function() { ... }`        |
+| Value      | `set`                 | `function(value)`           |
+| Enum       | `set`                 | `function(value)`           |
+| StringList | Explicit registration | Via `registerInputIfNeeded` |
 
 ---
 
-## Section: React + EventDispatcher Integration
+## When to Ask Richard
 
-````markdown
-## React + EventDispatcher Integration
-
-### CRITICAL: Always use useEventListener hook
-
-When subscribing to EventDispatcher events from React components, ALWAYS use the `useEventListener` hook. Direct subscriptions silently fail.
-
-**Hook location:** `@noodl-hooks/useEventListener`
-
-**✅ CORRECT - Always do this:**
-
-```typescript
-import { useEventListener } from '@noodl-hooks/useEventListener';
-
-import { ProjectModel } from '@noodl-models/projectmodel';
-
-function MyComponent() {
-  useEventListener(ProjectModel.instance, 'componentRenamed', (data) => {
-    // This works!
-  });
-}
-```
-````
-
-**❌ BROKEN - Never do this:**
-
-```typescript
-// This compiles and runs without errors, but events are NEVER received
-useEffect(() => {
-  const context = {};
-  ProjectModel.instance.on('event', handler, context);
-  return () => ProjectModel.instance.off(context);
-}, []);
-```
-
-### Why this matters
-
-EventDispatcher uses a context-object cleanup pattern incompatible with React closures. Direct subscriptions fail silently - no errors, no events, just confusion.
-
-This pattern was established in Phase 0 after discovering the issue in TASK-004B.
-
-### Available dispatchers
-
-- `ProjectModel.instance` - component changes, settings
-- `NodeLibrary.instance` - library/module changes
-- `WarningsModel.instance` - validation warnings
-- `EventDispatcher.instance` - global events
-- `UndoQueue.instance` - undo/redo state
-
-### Full documentation
-
-See: `dev-docs/patterns/REACT-EVENTDISPATCHER.md`
-
-````
+- Task scope genuinely unclear (multiple valid approaches)
+- Dependencies block all split strategies
+- Still hitting limits after splitting subtasks
+- Stuck in loop despite trying multiple approaches (offer to create research task doc)
 
 ---
 
-## Section: Webpack Cache Issues
-
-```markdown
-## Webpack Cache Issues
-
-### If code changes don't appear
-
-When editing code and changes don't load in the running app:
-
-1. **First, run `npm run clean:all`** - This nukes all caches
-2. **Restart the dev server** - Don't just refresh
-3. **Check for the build canary** - Console should show `🔥 BUILD TIMESTAMP: [recent time]`
-
-If the canary shows an old timestamp, caching is still an issue. Check:
-- Electron app cache (platform-specific location)
-- Any lingering node/Electron processes (`pkill -f node; pkill -f Electron`)
-- Browser cache (hard refresh with Cmd+Shift+R)
-
-### Never debug without verifying fresh code
-
-Before spending time debugging, ALWAYS verify your code changes are actually running:
-
-1. Add a distinctive console.log: `console.log('🔥 MY CHANGE LOADED:', Date.now())`
-2. Save the file
-3. Check if the log appears
-4. If not, clear caches and restart
-
-This avoids wasting hours debugging stale code.
-
-### Webpack config notes
-
-- Dev mode should NOT use `cache: { type: 'filesystem' }`
-- Memory cache or no cache is preferred for development
-- Production can use filesystem cache for CI speed
-````
-
----
-
-## Section: Foundation Health
-
-```markdown
-## Foundation Health Check
-
-### When to run
-
-Run `npm run health:check` when:
-
-- Starting work after a break
-- After updating dependencies
-- When things "feel broken"
-- Before investigating mysterious bugs
-
-### What it checks
-
-1. Cache state (not stale/oversized)
-2. Webpack config (correct cache settings)
-3. useEventListener hook (present and exported)
-4. Direct EventDispatcher subscriptions (anti-pattern detection)
-5. Build canary (present in entry)
-6. Package versions (no known problematic versions)
-
-### Interpreting results
-
-- ✅ Pass: All good
-- ⚠️ Warning: Works but could be improved
-- ❌ Fail: Must fix before proceeding
-```
-
----
-
-## Section: Debugging React Migrations
-
-````markdown
-## Debugging Legacy → React Migrations
-
-### Common issue: UI doesn't update after action
-
-If you perform an action (rename, add, delete) and the UI doesn't update:
-
-1. **Check if the action succeeded** - Look in console for success logs
-2. **Check if event was emitted** - Add logging to the model method
-3. **Check if event was received** - Add logging in useEventListener callback
-4. **Check if component re-rendered** - Add console.log in component body
-
-Usually the problem is:
-
-- ❌ Using direct `.on()` instead of `useEventListener`
-- ❌ Cached old code running (run `npm run clean:all`)
-- ❌ Event name mismatch (check exact spelling)
-
-### Pattern for debugging event subscriptions
-
-```typescript
-useEventListener(ProjectModel.instance, 'componentRenamed', (data) => {
-  console.log('🔔 Event received:', data); // Add this temporarily
-  // Your actual handler
-});
-```
-````
-
-If you don't see the log, the subscription isn't working.
-
-```
-
----
-
-
-_Last Updated: December 2025_
-```
-
----
-
-## 14. Node Creation Checklist
-
-> **🚨 CRITICAL:** Before creating or modifying runtime nodes, read `dev-docs/reference/LEARNINGS-NODE-CREATION.md`
-
-Creating nodes in OpenNoodl is deceptively tricky. This checklist prevents the most common (and hardest to debug) issues.
-
-### 14.1 Pre-Flight Checklist
-
-Before writing any node code:
-
-- [ ] Read `dev-docs/reference/LEARNINGS-NODE-CREATION.md` (especially the CRITICAL GOTCHAS section)
-- [ ] Check `dev-docs/reference/LEARNINGS.md` for recent node-related discoveries (search for "node", "runtime", "coreNodes")
-- [ ] Study an existing working node of similar complexity (e.g., `restnode.js` for data nodes)
-- [ ] Understand the difference between `inputs` (static) vs `prototypeExtensions` (instance methods)
-- [ ] Know where your node should be registered (noodl-runtime vs noodl-viewer-react)
-
-### 14.2 Input Handler Rules
-
-```javascript
-// ✅ CORRECT: Signal inputs use valueChangedToTrue
-inputs: {
-  fetch: {
-    type: 'signal',
-    valueChangedToTrue: function() {
-      this.scheduleFetch();
-    }
-  }
-}
-
-// ❌ WRONG: Signal inputs with set() - NEVER TRIGGERS
-inputs: {
-  fetch: {
-    type: 'signal',
-    set: function(value) { // ☠️ Never called for signals
-      this.scheduleFetch();
-    }
-  }
-}
-```
-
-### 14.3 Never Override setInputValue
-
-```javascript
-// ❌ BREAKS EVERYTHING - Never define setInputValue in prototypeExtensions
-prototypeExtensions: {
-  setInputValue: function(name, value) { // ☠️ Overrides base - signals stop working
-    // ...
-  }
-}
-
-// ✅ Use a different name for custom storage
-prototypeExtensions: {
-  _storeInputValue: function(name, value) { // ✅ Doesn't override anything
-    this._internal.inputValues[name] = value;
-  }
-}
-```
-
-### 14.4 Dynamic Ports Must Include Static Ports
-
-```javascript
-// ❌ WRONG - Static ports disappear
-function updatePorts(nodeId, parameters, editorConnection) {
-  const ports = [];
-  // Only adds dynamic ports...
-  editorConnection.sendDynamicPorts(nodeId, ports); // Static inputs gone!
-}
-
-// ✅ CORRECT - Include all ports
-function updatePorts(nodeId, parameters, editorConnection) {
-  const ports = [
-    // Re-add static inputs
-    { name: 'url', displayName: 'URL', type: 'string', plug: 'input', group: 'Request' },
-    { name: 'fetch', displayName: 'Fetch', type: 'signal', plug: 'input', group: 'Actions' },
-    // Then add dynamic ports...
-  ];
-  editorConnection.sendDynamicPorts(nodeId, ports);
-}
-```
-
-### 14.5 Register Config Inputs Explicitly
-
-```javascript
-// Config inputs (from stringlist editors) need explicit registration
-registerInputIfNeeded: function(name) {
-  if (this.hasInput(name)) return;
-
-  // Map config names to their setters
-  const configSetters = {
-    'method': this.setMethod.bind(this),
-    'headers': this.setHeaders.bind(this),
-    'queryParams': this.setQueryParams.bind(this)
-  };
-
-  if (configSetters[name]) {
-    return this.registerInput(name, { set: configSetters[name] });
-  }
-
-  // Handle prefixed dynamic inputs
-  if (name.startsWith('header-')) {
-    return this.registerInput(name, {
-      set: this._storeInputValue.bind(this, name)
-    });
-  }
-}
-```
-
-### 14.6 Export Format Matters
-
-```javascript
-// ✅ CORRECT: Export with setup function
-module.exports = {
-  node: MyNode,
-  setup: function (context, graphModel) {
-    // Port management goes here
-  }
-};
-
-// ❌ WRONG: Direct export (setup never runs)
-module.exports = MyNode;
-```
-
-### 14.7 Post-Creation Verification
-
-After creating a node:
-
-1. **Check ports appear**: All static AND dynamic inputs/outputs visible in editor?
-2. **Check signals work**: Add console.log in `valueChangedToTrue` - does it print?
-3. **Check config inputs work**: Change dropdown/stringlist values - does setter get called?
-4. **Clear caches if needed**: `npm run clean:all` and restart
-
-### 14.8 Quick Reference
-
-| Input Type                   | Handler                     | Callback Format             |
-| ---------------------------- | --------------------------- | --------------------------- |
-| Signal                       | `valueChangedToTrue`        | `function() { ... }`        |
-| Value (string, number, etc.) | `set`                       | `function(value) { ... }`   |
-| Enum (dropdown)              | `set`                       | `function(value) { ... }`   |
-| StringList (config)          | Needs explicit registration | Via `registerInputIfNeeded` |
-
-### 14.9 Where to Find Examples
-
-| Pattern                              | Example File                                                     |
-| ------------------------------------ | ---------------------------------------------------------------- |
-| Complex data node with dynamic ports | `noodl-runtime/src/nodes/std-library/data/restnode.js`           |
-| HTTP node (fixed, working)           | `noodl-runtime/src/nodes/std-library/data/httpnode.js`           |
-| Simple value node                    | `noodl-runtime/src/nodes/std-library/variables/numbernode.js`    |
-| Signal-based node                    | `noodl-runtime/src/nodes/std-library/timer.js` (in viewer-react) |
-
----
-
----
-
-## 15. Task Sizing & Context Management
-
-### 15.1 Understanding Your Limits
-
-You (Cline) are running on Claude API with hard limits:
-
-- **Context window**: ~200K tokens (~150K words)
-- **Output limit**: ~8K tokens per response
-- **When you exceed these**: You get an API error and must retry
-
-**CRITICAL**: If you hit an API error about context length or output limit, DO NOT retry the same approach. You must split the task.
-
-### 15.2 Recognizing Tasks That Are Too Large
-
-Before starting implementation, estimate task size:
-
-#### Signs a task will exceed limits:
-
-```
-❌ TOO LARGE - Will hit API limits:
-- Modifying 10+ files in one go
-- Reading entire large files multiple times
-- Converting 50+ Storybook stories
-- Refactoring a whole subsystem at once
-- Adding features across runtime + editor + viewer
-
-✅ MANAGEABLE - Can complete in context:
-- Modifying 1-3 related files
-- Adding a single feature to one package
-- Converting 5-10 Storybook stories
-- Fixing a specific bug in one area
-- Writing focused tests for one module
-```
-
-#### Quick size estimation:
-
-| Task Scope     | Estimated Files | Context Safety | Action                    |
-| -------------- | --------------- | -------------- | ------------------------- |
-| Bug fix        | 1-3 files       | ✅ Safe        | Proceed                   |
-| Small feature  | 3-5 files       | ✅ Safe        | Proceed                   |
-| Medium feature | 5-10 files      | ⚠️ Monitor     | Watch context carefully   |
-| Large feature  | 10-20 files     | ❌ Risky       | Split into subtasks first |
-| Refactoring    | 20+ files       | ❌ Too large   | Must split                |
-
-### 15.3 When You Get an API Error
-
-If you receive an error like:
-
-- "Request too large"
-- "Context length exceeded"
-- "Maximum token limit exceeded"
-- Any message about being over limits
-
-**DO NOT** retry the same task at the same scope.
-
-**IMMEDIATELY** follow this protocol:
-
-```markdown
-## Error Recovery Protocol
-
-1. **Acknowledge the error**
-   "I've hit an API context limit. This task is too large to complete in one pass."
-
-2. **Analyze what you were trying to do**
-   "I was attempting to [describe full scope]"
-
-3. **Propose a split**
-   "I'll break this into smaller subtasks:
-
-   **Subtask 1**: [Specific scope - 2-4 files max]
-
-   - File A: [specific changes]
-   - File B: [specific changes]
-
-   **Subtask 2**: [Next logical chunk]
-
-   - File C: [specific changes]
-   - File D: [specific changes]
-
-   **Subtask 3**: [Remaining work]
-
-   - File E: [specific changes]
-
-   Each subtask is independently testable and won't exceed limits."
-
-4. **Start with Subtask 1**
-   "Starting with Subtask 1 now..."
-```
-
-### 15.4 How to Split Tasks Intelligently
-
-#### Strategy 1: By Package/Module
-
-```markdown
-# Original (too large):
-
-"Implement responsive breakpoints across the platform"
-
-# Split:
-
-**Subtask 1**: Runtime changes (noodl-runtime)
-
-- Add breakpoint evaluation to node context
-- Update reactive system for breakpoint changes
-
-**Subtask 2**: Editor changes (noodl-editor)
-
-- Add breakpoint UI to property panel
-- Implement breakpoint selector component
-
-**Subtask 3**: Integration
-
-- Connect editor to runtime
-- Add tests for full flow
-```
-
-#### Strategy 2: By Feature Slice
-
-```markdown
-# Original (too large):
-
-"Add cURL import with parsing, UI, validation, and error handling"
-
-# Split:
-
-**Subtask 1**: Core parsing logic
-
-- Implement cURL parser utility
-- Add unit tests for parser
-- Handle basic HTTP methods
-
-**Subtask 2**: UI integration
-
-- Add import button to HTTP node config
-- Create import modal/dialog
-- Wire up parser to UI
-
-**Subtask 3**: Advanced features
-
-- Add validation and error states
-- Handle complex cURL flags
-- Add user feedback/toasts
-```
-
-#### Strategy 3: By File Groups
-
-```markdown
-# Original (too large):
-
-"Migrate 50 Storybook stories to CSF3"
-
-# Split:
-
-**Subtask 1**: Button components (5 stories)
-
-- PrimaryButton, SecondaryButton, IconButton, etc.
-
-**Subtask 2**: Input components (6 stories)
-
-- TextInput, NumberInput, Select, etc.
-
-**Subtask 3**: Layout components (7 stories)
-
-- Panel, Dialog, Popover, etc.
-
-# Continue until complete
-```
-
-#### Strategy 4: By Logical Phases
-
-```markdown
-# Original (too large):
-
-"Refactor EventDispatcher usage in panels"
-
-# Split:
-
-**Subtask 1**: Audit and preparation
-
-- Find all direct .on() usage
-- Document required changes
-- Create shared hook if needed
-
-**Subtask 2**: Core panels (3-4 files)
-
-- NodeGraphEditor
-- PropertyEditor
-- ComponentPanel
-
-**Subtask 3**: Secondary panels (3-4 files)
-
-- LibraryPanel
-- WarningsPanel
-- NavigatorPanel
-
-**Subtask 4**: Utility panels (remaining)
-
-- All other panels
-- Verification and testing
-```
-
-### 15.5 Maintaining Quality While Splitting
-
-**DO NOT cut corners to fit in context:**
-
-❌ **WRONG approaches**:
-
-- Removing documentation to save tokens
-- Skipping test files
-- Using placeholders instead of real implementation
-- Commenting out code with "// TODO: Implement later"
-- Removing type safety to save space
-
-✅ **CORRECT approaches**:
-
-- Split into complete, working subtasks
-- Each subtask is fully implemented and tested
-- Each subtask can be verified independently
-- Each subtask advances the overall goal
-- Quality standards maintained for every subtask
-
-### 15.6 Progress Tracking for Multi-Subtask Work
-
-When you've split a task, track progress:
-
-```markdown
-## Task Progress: [Feature Name]
-
-**Overall Goal**: [Brief description]
-
-**Subtasks**:
-
-- [x] Subtask 1: [Name] - ✅ Complete
-- [ ] Subtask 2: [Name] - 🔄 In Progress
-- [ ] Subtask 3: [Name] - ⏳ Pending
-- [ ] Subtask 4: [Name] - ⏳ Pending
-
-**Current Status**: Working on Subtask 2
-**Files Modified So Far**: [List]
-**Tests Added**: [Count]
-```
-
-Update this at the start of each subtask session.
-
-### 15.7 When to Ask for Help
-
-You should ask Richard for guidance when:
-
-1. **Task scope is genuinely unclear**
-   - "This could be split 3 different ways - which do you prefer?"
-2. **Dependencies block all split approaches**
-   - "Files A, B, C must change together atomically - can't split safely"
-3. **You've split but still hitting limits on a subtask**
-
-   - "Subtask 1 is still too large. Should I split further or simplify scope?"
-
-4. **Integration approach is ambiguous**
-   - "I can split by feature or by layer - which matches your mental model better?"
-
-### 15.8 Context-Saving Techniques
-
-When context is tight but task is manageable, use these techniques:
-
-#### Read files strategically:
-
-```bash
-# ❌ BAD - Reads entire 2000-line file
-view path/to/huge-component.tsx
-
-# ✅ GOOD - Reads just what you need
-view path/to/huge-component.tsx [50, 100]  # Lines 50-100
-```
-
-#### Use targeted searches:
-
-```bash
-# ❌ BAD - Reads all search results
-grep -r "EventDispatcher" packages/
-
-# ✅ GOOD - Limit scope first
-grep -r "EventDispatcher" packages/noodl-editor/src/views/panels/ --include="*.tsx"
-```
-
-#### Build incrementally:
-
-```typescript
-// ❌ BAD - Write entire 500-line component at once
-create_file(path, [massive-file-content])
-
-// ✅ GOOD - Build in stages
-create_file(path, [minimal-working-version])
-# Test it works
-str_replace(path, old, new)  # Add feature 1
-# Test it works
-str_replace(path, old, new)  # Add feature 2
-# Continue...
-```
-
-### 15.9 Emergency Context Recovery
-
-If you're deep in a task and suddenly hit limits:
-
-1. **Save your current work immediately**
-
-   ```bash
-   git add .
-   git commit -m "WIP: [what you completed]"
-   ```
-
-2. **Document exactly where you are**
-
-   ```markdown
-   ## Current State
-
-   - Completed: [specific changes]
-   - Files modified: [list]
-   - Next step: [exactly what remains]
-   - Blocked by: [if applicable]
-   ```
-
-3. **Propose next steps**
-   "I've completed X and Y. To finish, I need to do Z.
-   Should I continue with Z in the next session?"
-
-### 15.10 Self-Check Before Starting Large Tasks
-
-Before beginning any task that modifies 5+ files:
-
-```markdown
-## Pre-Flight Context Check
-
-**Task**: [Name]
-**Estimated files to modify**: [Count]
-**Estimated LOC to read**: [Rough guess]
-
-**Risk assessment**:
-
-- [ ] Will I need to read multiple large files (>500 lines)?
-- [ ] Does this touch 3+ packages?
-- [ ] Will I need to trace complex dependencies?
-- [ ] Is this a refactor touching 10+ files?
-
-**If 2+ boxes checked**: Propose split BEFORE starting implementation
-
-**My split plan**:
-
-1. [Subtask with 2-4 files]
-2. [Subtask with 2-4 files]
-3. [Remaining work]
-```
-
----
-
-## Usage Examples
-
-### Example 1: Proactive Split
-
-```markdown
-Richard: "Implement the full HTTP node with cURL import, auth presets, and JSONPath mapping"
-
-Cline: "This task is quite large and would likely exceed API limits if done in one pass. Let me break it down:
-
-**Subtask 1 - Core HTTP Node** (Est: 3 files, 2h)
-
-- Implement basic HTTP node structure
-- Add method/URL/body inputs
-- Handle simple requests/responses
-
-**Subtask 2 - cURL Import** (Est: 2 files, 1.5h)
-
-- Add cURL parser utility
-- Integrate import UI
-- Handle common cURL flags
-
-**Subtask 3 - Auth Presets** (Est: 2 files, 1h)
-
-- Create auth preset system
-- Add Bearer/Basic/Custom options
-- Persist presets in project
-
-**Subtask 4 - JSONPath Mapping** (Est: 2 files, 1.5h)
-
-- Implement JSONPath evaluation
-- Add output port creation
-- Handle mapping UI
-
-Should I start with Subtask 1?"
-```
-
-### Example 2: Error Recovery
-
-```markdown
-[API error occurs]
-
-Cline: "I've hit an API context limit while trying to update all 15 panel components at once.
-
-I was attempting to migrate EventDispatcher usage across:
-
-- NodeGraphEditor, PropertyEditor, ComponentPanel, LibraryPanel... [full list]
-
-This is too large. Let me split it:
-
-**Subtask 1 - Core Panels** (3 files)
-
-- NodeGraphEditor.tsx
-- PropertyEditor.tsx
-- ComponentPanel.tsx
-
-**Subtask 2 - Secondary Panels** (4 files)
-
-- LibraryPanel.tsx
-- WarningsPanel.tsx
-- NavigatorPanel.tsx
-- InspectorPanel.tsx
-
-**Subtask 3 - Remaining Panels** (8 files)
-
-- All other panels
-- Final verification
-
-Starting with Subtask 1 now..."
-
-[Proceeds with focused work]
-```
-
----
-
-## Key Principles
-
-1. **Recognize limits early** - Better to split proactively than hit errors
-2. **Split logically** - Each subtask should be coherent and testable
-3. **Maintain quality** - Never sacrifice standards to fit in context
-4. **Track progress** - Show what's done and what remains
-5. **Ask when stuck** - Richard can guide unclear splits
-6. **Learn from errors** - If you hit limits, that task was too large
-
-**Remember**: It's better to complete 3 small subtasks successfully than fail on 1 large task repeatedly.
+_Last Updated: January 2026_

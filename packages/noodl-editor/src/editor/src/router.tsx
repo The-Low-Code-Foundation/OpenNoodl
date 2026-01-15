@@ -167,13 +167,18 @@ export default class Router
     if (args.project && ProjectModel.instance !== args.project) {
       //set new project
       ProjectModel.instance = args.project;
+
+      // Set read-only mode if specified (for legacy projects)
+      if (args.readOnly !== undefined) {
+        args.project._isReadOnly = args.readOnly;
+      }
     }
 
     // Routes
     if (args.to === 'editor') {
       this.setState({
         route: EditorPage,
-        routeArgs: { route }
+        routeArgs: { route, readOnly: args.readOnly }
       });
     } else if (args.to === 'projects') {
       this.setState({

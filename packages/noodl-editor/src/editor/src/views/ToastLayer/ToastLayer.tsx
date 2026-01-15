@@ -34,8 +34,9 @@ export const ToastLayer = {
     toast.success(<ToastCard type={ToastType.Success} message={message} />);
   },
 
-  showError(message: string, duration = 1000000) {
-    toast.error((t) => <ToastCard type={ToastType.Danger} message={message} onClose={() => toast.dismiss(t.id)} />, {
+  showError(message: string, duration = Infinity) {
+    // Don't pass onClose callback - makes toast permanent with no close button
+    toast.error(<ToastCard type={ToastType.Danger} message={message} />, {
       duration
     });
   },

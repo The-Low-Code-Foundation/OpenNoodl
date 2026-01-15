@@ -36,7 +36,9 @@ export function Projects({}: ProjectsViewProps) {
     onOpenProject,
     onLaunchProject,
     onOpenProjectFolder,
-    onDeleteProject
+    onDeleteProject,
+    onMigrateProject,
+    onOpenReadOnly
   } = useLauncherContext();
 
   const { getProjectMeta, getProjectsInFolder, folders, moveProjectToFolder } = useProjectOrganization();
@@ -189,6 +191,8 @@ export function Projects({}: ProjectsViewProps) {
                   key={project.id}
                   {...project}
                   onClick={() => onLaunchProject?.(project.id)}
+                  onMigrateProject={() => onMigrateProject?.(project.id)}
+                  onOpenReadOnly={() => onOpenReadOnly?.(project.id)}
                   contextMenuItems={[
                     {
                       label: 'Launch project',

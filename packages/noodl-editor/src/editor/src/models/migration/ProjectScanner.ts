@@ -220,16 +220,28 @@ async function getProjectCreationDate(_projectPath: string): Promise<Date | null
 export async function detectRuntimeVersion(projectPath: string): Promise<RuntimeVersionInfo> {
   const indicators: string[] = [];
 
+  console.log('🔍 [detectRuntimeVersion] Starting detection for:', projectPath);
+
   // Read project.json
   const projectJson = await readProjectJson(projectPath);
 
   if (!projectJson) {
+    console.log('❌ [detectRuntimeVersion] Could not read project.json');
     return {
       version: 'unknown',
       confidence: 'low',
       indicators: ['Could not read project.json']
     };
   }
+
+  console.log('📄 [detectRuntimeVersion] Project JSON loaded:', {
+    name: projectJson.name,
+    version: projectJson.version,
+    editorVersion: projectJson.editorVersion,
+    runtimeVersion: projectJson.runtimeVersion,
+    migratedFrom: projectJson.migratedFrom,
+    createdAt: projectJson.createdAt
+  });
 
   // ==========================================================================
   // Check 1: Explicit runtimeVersion field (most reliable)
@@ -301,9 +313,7 @@ export async function detectRuntimeVersion(projectPath: string): Promise<Runtime
   // Check 5: Project creation date heuristic
   // Projects created before OpenNoodl fork are assumed React 17
   // ==========================================================================
-  const createdAt = projectJson.createdAt
-    ? new Date(projectJson.createdAt)
-    : await getProjectCreationDate(projectPath);
+  const createdAt = projectJson.createdAt ? new Date(projectJson.createdAt) : await getProjectCreationDate(projectPath);
 
   if (createdAt && createdAt < OPENNOODL_FORK_DATE) {
     indicators.push(`Project created ${createdAt.toISOString()} (before OpenNoodl fork)`);
@@ -319,6 +329,7 @@ export async function detectRuntimeVersion(projectPath: string): Promise<Runtime
   // Any project without runtimeVersion, migratedFrom, or a recent editorVersion
   // is most likely a legacy project from before OpenNoodl
   // ==========================================================================
+  console.log('✅ [detectRuntimeVersion] FINAL: Assuming React 17 (no markers found)');
   return {
     version: 'react17',
     confidence: 'low',
@@ -445,7 +456,11 @@ function generateIssueId(): string {
  */
 export async function scanProjectForMigration(
   projectPath: string,
-  onProgress?: (progress: number, currentItem: string, stats: { components: number; nodes: number; jsFiles: number }) => void
+  onProgress?: (
+    progress: number,
+    currentItem: string,
+    stats: { components: number; nodes: number; jsFiles: number }
+  ) => void
 ): Promise<MigrationScan> {
   const projectJson = await readProjectJson(projectPath);
 
@@ -478,9 +493,7 @@ export async function scanProjectForMigration(
 
   // Scan JavaScript files for issues
   const allFiles = await listFilesRecursively(projectPath);
-  const jsFiles = allFiles.filter(
-    (file) => /\.(js|jsx|ts|tsx)$/.test(file) && !file.includes('node_modules')
-  );
+  const jsFiles = allFiles.filter((file) => /\.(js|jsx|ts|tsx)$/.test(file) && !file.includes('node_modules'));
   stats.jsFiles = jsFiles.length;
 
   // Group issues by file/component
@@ -610,12 +623,6 @@ function estimateAICost(issueCount: number): number {
 // Exports
 // =============================================================================
 
-export {
-  LEGACY_PATTERNS,
-  REACT19_MIN_VERSION,
-  OPENNOODL_FORK_DATE,
-  readProjectJson,
-  compareVersions
-};
+export { LEGACY_PATTERNS, REACT19_MIN_VERSION, OPENNOODL_FORK_DATE, readProjectJson, compareVersions };
 
 export type { ProjectJson };

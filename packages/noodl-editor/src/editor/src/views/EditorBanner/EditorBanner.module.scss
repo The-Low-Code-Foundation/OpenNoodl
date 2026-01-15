@@ -1,0 +1,98 @@
+/**
+ * EditorBanner Styles
+ *
+ * Warning banner for legacy projects in read-only mode.
+ * Uses design tokens exclusively - NO hardcoded colors!
+ */
+
+.EditorBanner {
+  position: fixed;
+  top: var(--topbar-height, 40px);
+  left: 0;
+  right: 0;
+  z-index: 1000;
+
+  display: flex;
+  align-items: center;
+  gap: 16px;
+
+  padding: 12px 20px;
+  /* Solid dark background for maximum visibility */
+  background: #1a1a1a;
+  border-bottom: 2px solid var(--theme-color-warning, #ffc107);
+
+  /* Subtle shadow for depth */
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+
+  /* CRITICAL: Allow clicks through banner to editor below */
+  /* Only interactive elements (buttons) should capture clicks */
+  pointer-events: none;
+}
+
+.Icon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  color: var(--theme-color-warning);
+}
+
+.Content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+
+  /* Re-enable pointer events for text content */
+  pointer-events: all;
+}
+
+.Title {
+  color: var(--theme-color-fg-default);
+  font-weight: 600;
+}
+
+.Description {
+  color: var(--theme-color-fg-default-shy);
+}
+
+.Actions {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  /* Re-enable pointer events for interactive buttons */
+  pointer-events: all;
+}
+
+.CloseButton {
+  flex-shrink: 0;
+  margin-left: 8px;
+
+  /* Re-enable pointer events for close button */
+  pointer-events: all;
+}
+
+/* Responsive adjustments */
+@media (max-width: 900px) {
+  .EditorBanner {
+    flex-wrap: wrap;
+  }
+
+  .Content {
+    flex-basis: 100%;
+    order: 1;
+  }
+
+  .Actions {
+    order: 2;
+    margin-top: 8px;
+  }
+
+  .CloseButton {
+    order: 0;
+    margin-left: auto;
+  }
+}

@@ -19,6 +19,7 @@ import { DataLineagePanel } from './views/panels/DataLineagePanel';
 import { DesignTokenPanel } from './views/panels/DesignTokenPanel/DesignTokenPanel';
 import { EditorSettingsPanel } from './views/panels/EditorSettingsPanel/EditorSettingsPanel';
 import { FileExplorerPanel } from './views/panels/FileExplorerPanel';
+import { GitHubPanel } from './views/panels/GitHubPanel';
 import { NodeReferencesPanel_ID } from './views/panels/NodeReferencesPanel';
 import { NodeReferencesPanel } from './views/panels/NodeReferencesPanel/NodeReferencesPanel';
 import { ProjectSettingsPanel } from './views/panels/ProjectSettingsPanel/ProjectSettingsPanel';
@@ -120,6 +121,14 @@ export function installSidePanel({ isLesson }: SetupEditorOptions) {
     order: 5,
     icon: IconName.StructureCircle,
     panel: VersionControlPanel
+  });
+
+  SidebarModel.instance.register({
+    id: 'github',
+    name: 'GitHub',
+    order: 5.5,
+    icon: IconName.Link,
+    panel: GitHubPanel
   });
 
   SidebarModel.instance.register({

@@ -1,41 +1,52 @@
 /**
- * GitHub Services
+ * GitHub Service - Public API
  *
- * Public exports for GitHub OAuth authentication and API integration.
- * This module provides everything needed to connect to GitHub,
- * authenticate users, and interact with the GitHub API.
+ * Provides GitHub integration services including OAuth authentication
+ * and REST API client with rate limiting and caching.
  *
- * @module services/github
- * @since 1.1.0
+ * @module noodl-editor/services/github
  *
  * @example
  * ```typescript
- * import { GitHubAuth, githubClient } from '@noodl-services/github';
+ * import { GitHubClient, GitHubOAuthService } from '@noodl-editor/services/github';
  *
- * // Check if authenticated
- * if (GitHubAuth.isAuthenticated()) {
- *   // Fetch user repos
- *   const repos = await githubClient.listRepositories();
- * }
+ * // Initialize OAuth
+ * await GitHubOAuthService.instance.initialize();
+ *
+ * // Use API client
+ * const client = GitHubClient.instance;
+ * const { data: issues } = await client.listIssues('owner', 'repo');
  * ```
  */
 
-// Authentication
+// Re-export main services
+export { GitHubOAuthService } from '../GitHubOAuthService';
 export { GitHubAuth } from './GitHubAuth';
-export { GitHubTokenStore } from './GitHubTokenStore';
+export { GitHubClient } from './GitHubClient';
 
-// API Client
-export { GitHubClient, githubClient } from './GitHubClient';
-
-// Types
+// Re-export all types
 export type {
-  GitHubDeviceCode,
-  GitHubToken,
-  GitHubAuthState,
+  GitHubIssue,
+  GitHubPullRequest,
   GitHubUser,
+  GitHubOrganization,
   GitHubRepository,
+  GitHubLabel,
+  GitHubMilestone,
+  GitHubComment,
+  GitHubCommit,
+  GitHubCheckRun,
+  GitHubReview,
   GitHubRateLimit,
-  GitHubError,
-  GitHubAuthError,
-  StoredGitHubAuth
+  GitHubApiResponse,
+  GitHubIssueFilters,
+  CreateIssueOptions,
+  UpdateIssueOptions,
+  GitHubApiError,
+  GitHubToken,
+  GitHubInstallation,
+  StoredGitHubAuth,
+  GitHubAuthState,
+  GitHubDeviceCode,
+  GitHubAuthError
 } from './GitHubTypes';

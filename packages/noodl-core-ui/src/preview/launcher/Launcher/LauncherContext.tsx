@@ -43,6 +43,8 @@ export interface LauncherContextValue {
   onLaunchProject?: (projectId: string) => void;
   onOpenProjectFolder?: (projectId: string) => void;
   onDeleteProject?: (projectId: string) => void;
+  onMigrateProject?: (projectId: string) => void;
+  onOpenReadOnly?: (projectId: string) => void;
 
   // GitHub OAuth integration (optional - for Storybook compatibility)
   githubUser?: GitHubUser | null;

@@ -109,6 +109,7 @@
 
 .InputWrapper {
   overflow-x: hidden;
+  overflow-y: hidden; // Prevent tiny vertical scrollbar on single-line inputs
   flex-grow: 1;
   padding-top: 1px;
 }

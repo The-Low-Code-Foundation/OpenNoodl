@@ -1,11 +1,13 @@
 import React, { createContext, useContext, useCallback, useState, useEffect } from 'react';
 
 import { ComponentModel } from '@noodl-models/componentmodel';
+import { ProjectModel } from '@noodl-models/projectmodel';
 import { SidebarModel } from '@noodl-models/sidebar';
 import { isComponentModel_CloudRuntime } from '@noodl-utils/NodeGraph';
 
 import { Slot } from '@noodl-core-ui/types/global';
 
+import { EventDispatcher } from '../../../../shared/utils/EventDispatcher';
 import { CenterToFitMode, NodeGraphEditor } from '../../views/nodegrapheditor';
 
 type NodeGraphID = 'frontend' | 'backend';
@@ -71,6 +73,29 @@ export function NodeGraphContextProvider({ children }: NodeGraphContextProviderP
       currentInstance.dispose();
     };
   }, []);
+
+  // Detect and apply read-only mode from ProjectModel
+  useEffect(() => {
+    if (!nodeGraph) return;
+
+    const eventGroup = {};
+
+    // Apply read-only mode when project instance changes
+    const updateReadOnlyMode = () => {
+      const isReadOnly = ProjectModel.instance?._isReadOnly || false;
+      nodeGraph.setReadOnly(isReadOnly);
+    };
+
+    // Listen for project changes
+    EventDispatcher.instance.on('ProjectModel.instanceHasChanged', updateReadOnlyMode, eventGroup);
+
+    // Apply immediately if project is already loaded
+    updateReadOnlyMode();
+
+    return () => {
+      EventDispatcher.instance.off(eventGroup);
+    };
+  }, [nodeGraph]);
 
   const switchToComponent: NodeGraphControlContext['switchToComponent'] = useCallback(
     (component, options) => {

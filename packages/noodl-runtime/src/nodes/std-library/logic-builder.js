@@ -223,6 +223,7 @@ const LogicBuilderNode = {
         editorType: 'logic-builder-workspace'
       },
       displayName: 'Logic Blocks',
+      group: '', // Empty group to avoid "Other" label
       set: function (value) {
         const internal = this._internal;
         internal.workspace = value;
@@ -230,10 +231,14 @@ const LogicBuilderNode = {
       }
     },
     generatedCode: {
-      type: 'string',
-      displayName: 'Generated Code',
+      type: {
+        name: 'string',
+        allowEditOnly: true,
+        codeeditor: 'javascript',
+        readOnly: true // ✅ Inside type object - this gets passed through to property panel!
+      },
+      displayName: 'Generated code',
       group: 'Advanced',
-      editorName: 'Hidden', // Hide from property panel
       set: function (value) {
         const internal = this._internal;
         internal.generatedCode = value;

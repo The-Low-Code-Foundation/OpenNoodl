@@ -1,184 +1,346 @@
 /**
- * GitHubTypes
+ * TypeScript interfaces for GitHub API data structures
  *
- * TypeScript type definitions for GitHub OAuth and API integration.
- * These types define the structure of tokens, authentication state, and API responses.
- *
- * @module services/github
- * @since 1.1.0
+ * @module noodl-editor/services/github
  */
 
 /**
- * OAuth device code response from GitHub
- * Returned when initiating device flow authorization
+ * GitHub Issue data structure
  */
-export interface GitHubDeviceCode {
-  /** The device verification code */
-  device_code: string;
-  /** The user verification code (8-character code) */
-  user_code: string;
-  /** URL where user enters the code */
-  verification_uri: string;
-  /** Expiration time in seconds (default: 900) */
-  expires_in: number;
-  /** Polling interval in seconds (default: 5) */
-  interval: number;
+export interface GitHubIssue {
+  id: number;
+  number: number;
+  title: string;
+  body: string | null;
+  state: 'open' | 'closed';
+  html_url: string;
+  user: GitHubUser;
+  labels: GitHubLabel[];
+  assignees: GitHubUser[];
+  created_at: string;
+  updated_at: string;
+  closed_at: string | null;
+  comments: number;
+  milestone: GitHubMilestone | null;
 }
 
 /**
- * GitHub OAuth access token
- * Stored securely and used for API authentication
+ * GitHub Pull Request data structure
  */
-export interface GitHubToken {
-  /** The OAuth access token */
-  access_token: string;
-  /** Token type (always 'bearer' for GitHub) */
-  token_type: string;
-  /** Granted scopes (comma-separated) */
-  scope: string;
-  /** Token expiration timestamp (ISO 8601) - undefined if no expiration */
-  expires_at?: string;
+export interface GitHubPullRequest {
+  id: number;
+  number: number;
+  title: string;
+  body: string | null;
+  state: 'open' | 'closed';
+  html_url: string;
+  user: GitHubUser;
+  labels: GitHubLabel[];
+  assignees: GitHubUser[];
+  created_at: string;
+  updated_at: string;
+  closed_at: string | null;
+  merged_at: string | null;
+  draft: boolean;
+  head: {
+    ref: string;
+    sha: string;
+  };
+  base: {
+    ref: string;
+    sha: string;
+  };
+  mergeable: boolean | null;
+  mergeable_state: string;
+  comments: number;
+  review_comments: number;
+  commits: number;
+  additions: number;
+  deletions: number;
+  changed_files: number;
 }
 
 /**
- * Current GitHub authentication state
- * Used by React components to display connection status
- */
-export interface GitHubAuthState {
-  /** Whether user is authenticated with GitHub */
-  isAuthenticated: boolean;
-  /** GitHub username if authenticated */
-  username?: string;
-  /** User's primary email if authenticated */
-  email?: string;
-  /** Current token (for internal use only) */
-  token?: GitHubToken;
-  /** Timestamp of last successful authentication */
-  authenticatedAt?: string;
-}
-
-/**
- * GitHub user information
- * Retrieved from /user API endpoint
+ * GitHub User data structure
  */
 export interface GitHubUser {
-  /** GitHub username */
-  login: string;
-  /** GitHub user ID */
   id: number;
-  /** User's display name */
+  login: string;
   name: string | null;
-  /** User's primary email */
   email: string | null;
-  /** Avatar URL */
   avatar_url: string;
-  /** Profile URL */
   html_url: string;
-  /** User type (User or Organization) */
-  type: string;
 }
 
 /**
- * GitHub repository information
- * Basic repo details for issue/PR association
+ * GitHub Organization data structure
+ */
+export interface GitHubOrganization {
+  id: number;
+  login: string;
+  avatar_url: string;
+  description: string | null;
+  html_url: string;
+}
+
+/**
+ * GitHub Repository data structure
  */
 export interface GitHubRepository {
-  /** Repository ID */
   id: number;
-  /** Repository name (without owner) */
   name: string;
-  /** Full repository name (owner/repo) */
   full_name: string;
-  /** Repository owner */
-  owner: {
-    login: string;
-    id: number;
-    avatar_url: string;
-  };
-  /** Whether repo is private */
+  owner: GitHubUser | GitHubOrganization;
   private: boolean;
-  /** Repository URL */
   html_url: string;
-  /** Default branch */
+  description: string | null;
+  fork: boolean;
+  created_at: string;
+  updated_at: string;
+  pushed_at: string;
+  homepage: string | null;
+  size: number;
+  stargazers_count: number;
+  watchers_count: number;
+  language: string | null;
+  has_issues: boolean;
+  has_projects: boolean;
+  has_downloads: boolean;
+  has_wiki: boolean;
+  has_pages: boolean;
+  forks_count: number;
+  open_issues_count: number;
   default_branch: string;
-}
-
-/**
- * GitHub App installation information
- * Represents organizations/accounts where the app was installed
- */
-export interface GitHubInstallation {
-  /** Installation ID */
-  id: number;
-  /** Account where app is installed */
-  account: {
-    login: string;
-    type: 'User' | 'Organization';
-    avatar_url: string;
+  permissions?: {
+    admin: boolean;
+    maintain: boolean;
+    push: boolean;
+    triage: boolean;
+    pull: boolean;
   };
-  /** Repository selection type */
-  repository_selection: 'all' | 'selected';
-  /** List of repositories (if selected) */
-  repositories?: Array<{
-    id: number;
-    name: string;
-    full_name: string;
-    private: boolean;
-  }>;
 }
 
 /**
- * Rate limit information from GitHub API
- * Used to prevent hitting API limits
+ * GitHub Label data structure
+ */
+export interface GitHubLabel {
+  id: number;
+  node_id: string;
+  url: string;
+  name: string;
+  color: string;
+  default: boolean;
+  description: string | null;
+}
+
+/**
+ * GitHub Milestone data structure
+ */
+export interface GitHubMilestone {
+  id: number;
+  number: number;
+  title: string;
+  description: string | null;
+  state: 'open' | 'closed';
+  created_at: string;
+  updated_at: string;
+  due_on: string | null;
+  closed_at: string | null;
+}
+
+/**
+ * GitHub Comment data structure
+ */
+export interface GitHubComment {
+  id: number;
+  body: string;
+  user: GitHubUser;
+  created_at: string;
+  updated_at: string;
+  html_url: string;
+}
+
+/**
+ * GitHub Commit data structure
+ */
+export interface GitHubCommit {
+  sha: string;
+  commit: {
+    author: {
+      name: string;
+      email: string;
+      date: string;
+    };
+    committer: {
+      name: string;
+      email: string;
+      date: string;
+    };
+    message: string;
+  };
+  author: GitHubUser | null;
+  committer: GitHubUser | null;
+  html_url: string;
+}
+
+/**
+ * GitHub Check Run data structure (for PR status checks)
+ */
+export interface GitHubCheckRun {
+  id: number;
+  name: string;
+  status: 'queued' | 'in_progress' | 'completed';
+  conclusion: 'success' | 'failure' | 'neutral' | 'cancelled' | 'skipped' | 'timed_out' | 'action_required' | null;
+  html_url: string;
+  details_url: string;
+  started_at: string | null;
+  completed_at: string | null;
+}
+
+/**
+ * GitHub Review data structure
+ */
+export interface GitHubReview {
+  id: number;
+  user: GitHubUser;
+  body: string;
+  state: 'APPROVED' | 'CHANGES_REQUESTED' | 'COMMENTED' | 'DISMISSED' | 'PENDING';
+  html_url: string;
+  submitted_at: string;
+}
+
+/**
+ * Rate limit information
  */
 export interface GitHubRateLimit {
-  /** Maximum requests allowed per hour */
   limit: number;
-  /** Remaining requests in current window */
   remaining: number;
-  /** Timestamp when rate limit resets (Unix epoch) */
-  reset: number;
-  /** Resource type (core, search, graphql) */
-  resource: string;
+  reset: number; // Unix timestamp
+  used: number;
+}
+
+/**
+ * API response with rate limit info
+ */
+export interface GitHubApiResponse<T> {
+  data: T;
+  rateLimit: GitHubRateLimit;
+}
+
+/**
+ * Issue/PR filter options
+ */
+export interface GitHubIssueFilters {
+  state?: 'open' | 'closed' | 'all';
+  labels?: string[];
+  assignee?: string;
+  creator?: string;
+  mentioned?: string;
+  milestone?: string | number;
+  sort?: 'created' | 'updated' | 'comments';
+  direction?: 'asc' | 'desc';
+  since?: string;
+  per_page?: number;
+  page?: number;
+}
+
+/**
+ * Create issue options
+ */
+export interface CreateIssueOptions {
+  title: string;
+  body?: string;
+  labels?: string[];
+  assignees?: string[];
+  milestone?: number;
+}
+
+/**
+ * Update issue options
+ */
+export interface UpdateIssueOptions {
+  title?: string;
+  body?: string;
+  state?: 'open' | 'closed';
+  labels?: string[];
+  assignees?: string[];
+  milestone?: number | null;
 }
 
 /**
  * Error response from GitHub API
  */
-export interface GitHubError {
-  /** HTTP status code */
-  status: number;
-  /** Error message */
+export interface GitHubApiError {
   message: string;
-  /** Detailed documentation URL if available */
   documentation_url?: string;
+  errors?: Array<{
+    resource: string;
+    field: string;
+    code: string;
+  }>;
 }
 
 /**
- * OAuth authorization error
- * Thrown during device flow authorization
+ * OAuth Token structure
  */
-export interface GitHubAuthError extends Error {
-  /** Error code from GitHub */
-  code?: string;
-  /** HTTP status if applicable */
-  status?: number;
+export interface GitHubToken {
+  access_token: string;
+  token_type: string;
+  scope: string;
+  expires_at?: string;
 }
 
 /**
- * Stored token data (persisted format)
- * Encrypted and stored in Electron's secure storage
+ * GitHub Installation (App installation on org/repo)
+ */
+export interface GitHubInstallation {
+  id: number;
+  account: {
+    login: string;
+    type: string;
+  };
+  repository_selection: string;
+  permissions: Record<string, string>;
+}
+
+/**
+ * Stored GitHub authentication data
  */
 export interface StoredGitHubAuth {
-  /** OAuth token */
   token: GitHubToken;
-  /** Associated user info */
   user: {
     login: string;
     email: string | null;
   };
-  /** Installation information (organizations/repos with access) */
   installations?: GitHubInstallation[];
-  /** Timestamp when stored */
   storedAt: string;
+}
+
+/**
+ * GitHub Auth state (returned by GitHubAuth.getAuthState())
+ */
+export interface GitHubAuthState {
+  isAuthenticated: boolean;
+  username?: string;
+  email?: string;
+  token?: GitHubToken;
+  authenticatedAt?: string;
+}
+
+/**
+ * GitHub Device Code (for OAuth Device Flow)
+ */
+export interface GitHubDeviceCode {
+  device_code: string;
+  user_code: string;
+  verification_uri: string;
+  expires_in: number;
+  interval: number;
+}
+
+/**
+ * GitHub Auth Error
+ */
+export interface GitHubAuthError extends Error {
+  code?: string;
 }

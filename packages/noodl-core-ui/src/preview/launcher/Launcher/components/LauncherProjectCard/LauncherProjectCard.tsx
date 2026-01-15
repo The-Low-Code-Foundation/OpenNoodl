@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 import { FeedbackType } from '@noodl-constants/FeedbackType';
 
@@ -22,6 +22,13 @@ import { UserBadgeList } from '@noodl-core-ui/components/user/UserBadgeList';
 import { useProjectOrganization } from '../../hooks/useProjectOrganization';
 import { TagPill, TagPillSize } from '../TagPill';
 import css from './LauncherProjectCard.module.scss';
+
+// Runtime version detection types
+export interface RuntimeVersionInfo {
+  version: 'react17' | 'react19' | 'unknown';
+  confidence: 'high' | 'medium' | 'low';
+  indicators: string[];
+}
 
 // FIXME: Use the timeSince function from the editor package when this is moved there
 function timeSince(date: Date | number) {
@@ -71,11 +78,15 @@ export interface LauncherProjectData {
   uncommittedChangesAmount?: number;
   imageSrc: string;
   contributors?: UserBadgeProps[];
+  runtimeInfo?: RuntimeVersionInfo;
 }
 
 export interface LauncherProjectCardProps extends LauncherProjectData {
   contextMenuItems: ContextMenuProps[];
   onClick?: () => void;
+  runtimeInfo?: RuntimeVersionInfo;
+  onMigrateProject?: () => void;
+  onOpenReadOnly?: () => void;
 }
 
 export function LauncherProjectCard({
@@ -90,25 +101,54 @@ export function LauncherProjectCard({
   imageSrc,
   contextMenuItems,
   contributors,
-  onClick
+  onClick,
+  runtimeInfo,
+  onMigrateProject,
+  onOpenReadOnly
 }: LauncherProjectCardProps) {
   const { tags, getProjectMeta } = useProjectOrganization();
+  const [showLegacyDetails, setShowLegacyDetails] = useState(false);
 
   // Get project tags
   const projectMeta = getProjectMeta(localPath);
   const projectTags = projectMeta ? tags.filter((tag) => projectMeta.tagIds.includes(tag.id)) : [];
 
+  // Determine if this is a legacy project
+  const isLegacy = runtimeInfo?.version === 'react17';
+  const isDetecting = runtimeInfo === undefined;
+
   return (
-    <Card background={CardBackground.Bg2} hoverBackground={CardBackground.Bg3} onClick={onClick}>
+    <Card
+      background={CardBackground.Bg2}
+      hoverBackground={CardBackground.Bg3}
+      onClick={
+        isLegacy
+          ? () => {
+              // Auto-expand details when user clicks legacy project
+              setShowLegacyDetails(true);
+            }
+          : onClick
+      }
+      UNSAFE_className={isLegacy ? css.LegacyCard : undefined}
+    >
       <Stack direction="row">
         <div className={css.Image} style={{ backgroundImage: `url(${imageSrc})` }} />
 
         <div className={css.Details}>
           <Columns layoutString="1 1 1" hasXGap={4}>
             <div>
-              <Title hasBottomSpacing size={TitleSize.Medium}>
-                {title}
-              </Title>
+              <HStack hasSpacing={2} UNSAFE_style={{ alignItems: 'center' }}>
+                <Title hasBottomSpacing size={TitleSize.Medium}>
+                  {title}
+                </Title>
+
+                {/* Legacy warning icon */}
+                {isLegacy && (
+                  <Tooltip content="This project uses React 17 and needs migration">
+                    <Icon icon={IconName.WarningCircle} variant={FeedbackType.Danger} size={IconSize.Default} />
+                  </Tooltip>
+                )}
+              </HStack>
 
               {/* Tags */}
               {projectTags.length > 0 && (
@@ -219,6 +259,66 @@ export function LauncherProjectCard({
               )}
             </HStack>
           </Columns>
+
+          {/* Legacy warning banner */}
+          {isLegacy && (
+            <div className={css.LegacyBanner}>
+              <HStack hasSpacing={2} UNSAFE_style={{ alignItems: 'center', flex: 1 }}>
+                <Icon icon={IconName.WarningCircle} variant={FeedbackType.Danger} size={IconSize.Small} />
+                <Text size={TextSize.Small}>React 17 (Legacy Runtime)</Text>
+              </HStack>
+
+              <TextButton
+                label={showLegacyDetails ? 'Less' : 'Options'}
+                size={TextButtonSize.Small}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowLegacyDetails(!showLegacyDetails);
+                }}
+              />
+            </div>
+          )}
+
+          {/* Expanded legacy details */}
+          {isLegacy && showLegacyDetails && (
+            <div className={css.LegacyDetails}>
+              <Label variant={TextType.Shy} size={LabelSize.Default}>
+                This project needs migration to work with OpenNoodl 1.2+. Your original project will remain untouched.
+              </Label>
+
+              <HStack hasSpacing={2} UNSAFE_style={{ marginTop: 'var(--spacing-3)' }}>
+                <PrimaryButton
+                  label="Migrate Project"
+                  size={PrimaryButtonSize.Small}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onMigrateProject?.();
+                  }}
+                />
+
+                <PrimaryButton
+                  label="View Read-Only"
+                  size={PrimaryButtonSize.Small}
+                  variant={PrimaryButtonVariant.Muted}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onOpenReadOnly?.();
+                  }}
+                />
+
+                <TextButton
+                  label="Learn More"
+                  size={TextButtonSize.Small}
+                  icon={IconName.ExternalLink}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    // TODO: Open documentation
+                    window.open('https://docs.opennoodl.com/migration', '_blank');
+                  }}
+                />
+              </HStack>
+            </div>
+          )}
         </div>
       </Stack>
     </Card>

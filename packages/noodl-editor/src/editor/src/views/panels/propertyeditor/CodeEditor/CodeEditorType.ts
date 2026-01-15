@@ -68,6 +68,7 @@ export class CodeEditorType extends TypeView {
   nodeId: string;
 
   isPrimary: boolean;
+  readOnly: boolean;
 
   propertyRoot: Root | null = null;
   popoutRoot: Root | null = null;
@@ -77,6 +78,14 @@ export class CodeEditorType extends TypeView {
 
     const p = args.port;
     const parent = args.parent;
+
+    // Debug: Log all port properties
+    console.log('[CodeEditorType.fromPort] Port properties:', {
+      name: p.name,
+      readOnly: p.readOnly,
+      type: p.type,
+      allKeys: Object.keys(p)
+    });
 
     view.port = p;
     view.displayName = p.displayName ? p.displayName : p.name;
@@ -89,6 +98,11 @@ export class CodeEditorType extends TypeView {
     view.tooltip = p.tooltip;
     view.isConnected = parent.model.isPortConnected(p.name, 'target');
     view.isDefault = parent.model.parameters[p.name] === undefined;
+
+    // Try multiple locations for readOnly flag
+    view.readOnly = p.readOnly || p.type?.readOnly || getEditType(p)?.readOnly || false;
+
+    console.log('[CodeEditorType.fromPort] Resolved readOnly:', view.readOnly);
 
     // HACK: Like most of Property panel,
     //       since the property panel can have many code editors
@@ -316,7 +330,15 @@ export class CodeEditorType extends TypeView {
         validationType = 'script';
       }
 
+      // Debug logging
+      console.log('[CodeEditorType] Rendering JavaScriptEditor:', {
+        parameterName: scope.name,
+        readOnly: this.readOnly,
+        nodeId: nodeId
+      });
+
       // Render JavaScriptEditor with proper sizing and history support
+      // For read-only fields, don't pass nodeId/parameterName (no history tracking)
       this.popoutRoot.render(
         React.createElement(JavaScriptEditor, {
           value: this.value || '',
@@ -329,11 +351,12 @@ export class CodeEditorType extends TypeView {
             save();
           },
           validationType,
+          disabled: this.readOnly, // Enable read-only mode if port is marked readOnly
           width: props.initialSize?.x || 800,
           height: props.initialSize?.y || 500,
-          // Add history tracking
-          nodeId: nodeId,
-          parameterName: scope.name
+          // Only add history tracking for editable fields
+          nodeId: this.readOnly ? undefined : nodeId,
+          parameterName: this.readOnly ? undefined : scope.name
         })
       );
     } else {

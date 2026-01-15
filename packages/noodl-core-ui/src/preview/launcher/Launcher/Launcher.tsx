@@ -41,6 +41,8 @@ export interface LauncherProps {
   onLaunchProject?: (projectId: string) => void;
   onOpenProjectFolder?: (projectId: string) => void;
   onDeleteProject?: (projectId: string) => void;
+  onMigrateProject?: (projectId: string) => void;
+  onOpenReadOnly?: (projectId: string) => void;
 
   // Project organization service (optional - for Storybook compatibility)
   projectOrganizationService?: any;
@@ -178,6 +180,8 @@ export function Launcher({
   onLaunchProject,
   onOpenProjectFolder,
   onDeleteProject,
+  onMigrateProject,
+  onOpenReadOnly,
   projectOrganizationService,
   githubUser,
   githubIsAuthenticated,
@@ -285,6 +289,8 @@ export function Launcher({
         onLaunchProject,
         onOpenProjectFolder,
         onDeleteProject,
+        onMigrateProject,
+        onOpenReadOnly,
         githubUser,
         githubIsAuthenticated,
         githubIsConnecting,

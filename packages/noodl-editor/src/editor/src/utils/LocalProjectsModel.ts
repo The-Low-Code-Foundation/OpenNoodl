@@ -252,6 +252,7 @@ export class LocalProjectsModel extends Model {
         }
 
         project.name = name; //update the name from the template
+        project.runtimeVersion = 'react19'; // NEW projects default to React 19
 
         // Store the project, this will make it a unique project by
         // forcing it to generate a project id
@@ -278,7 +279,8 @@ export class LocalProjectsModel extends Model {
         const minimalProject = {
           name: name,
           components: [],
-          settings: {}
+          settings: {},
+          runtimeVersion: 'react19' // NEW projects default to React 19
         };
 
         await filesystem.writeFile(filesystem.join(dirEntry, 'project.json'), JSON.stringify(minimalProject, null, 2));
@@ -291,6 +293,7 @@ export class LocalProjectsModel extends Model {
           }
 
           project.name = name;
+          project.runtimeVersion = 'react19'; // Ensure it's set
           this._addProject(project);
           fn(project);
         });
