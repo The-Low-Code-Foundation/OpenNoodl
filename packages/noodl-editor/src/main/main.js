@@ -7,6 +7,7 @@ const AutoUpdater = require('./src/autoupdater');
 const FloatingWindow = require('./src/floating-window');
 const startServer = require('./src/web-server');
 const { startCloudFunctionServer, closeRuntimeWhenWindowCloses } = require('./src/cloud-function-server');
+const { setupBackendIPC, backendManager } = require('./src/local-backend');
 const DesignToolImportServer = require('./src/design-tool-import-server');
 const jsonstorage = require('../shared/utils/jsonstorage');
 const StorageApi = require('./src/StorageApi');
@@ -555,6 +556,9 @@ function launchApp() {
     startCloudFunctionServer(app, cloudServicesGetActive);
     closeRuntimeWhenWindowCloses(win);
 
+    // Initialize local backend IPC handlers
+    setupBackendIPC();
+
     DesignToolImportServer.start(projectGetInfo);
 
     try {
@@ -584,6 +588,15 @@ function launchApp() {
     // to stay active until the user quits explicitly with Cmd + Q
     if (process.platform !== 'darwin') {
       app.quit();
+    }
+  });
+
+  // Stop all local backends on quit
+  app.on('before-quit', async () => {
+    try {
+      await backendManager.stopAll();
+    } catch (e) {
+      console.log('Error stopping backends:', e);
     }
   });
 
