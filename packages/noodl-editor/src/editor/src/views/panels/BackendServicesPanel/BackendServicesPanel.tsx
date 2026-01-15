@@ -26,6 +26,8 @@ import { Text, TextType } from '@noodl-core-ui/components/typography/Text';
 
 import { AddBackendDialog } from './AddBackendDialog/AddBackendDialog';
 import { BackendCard } from './BackendCard/BackendCard';
+import { useLocalBackends } from './hooks/useLocalBackends';
+import { LocalBackendCard } from './LocalBackendCard/LocalBackendCard';
 
 export function BackendServicesPanel() {
   const [backends, setBackends] = useState(BackendServices.instance.backends);
@@ -33,6 +35,16 @@ export function BackendServicesPanel() {
   const [isLoading, setIsLoading] = useState(false);
   const [isAddDialogVisible, setIsAddDialogVisible] = useState(false);
   const [hasActivity, setHasActivity] = useState(false);
+
+  // Local backends hook
+  const {
+    backends: localBackends,
+    isLoading: isLoadingLocal,
+    createBackend: createLocalBackend,
+    deleteBackend: deleteLocalBackend,
+    startBackend: startLocalBackend,
+    stopBackend: stopLocalBackend
+  } = useLocalBackends();
 
   // Initialize backends on mount
   useEffect(() => {
@@ -113,14 +125,61 @@ export function BackendServicesPanel() {
     <BasePanel title="Backend Services" hasActivityBlocker={hasActivity} hasContentScroll>
       <DeleteDialog />
 
-      {isLoading ? (
+      {isLoading || isLoadingLocal ? (
         <Container hasLeftSpacing hasTopSpacing>
           <ActivityIndicator />
         </Container>
       ) : (
         <>
+          {/* Local Backends Section */}
           <Section
-            title="Available Backends"
+            title="Local Backends"
+            variant={SectionVariant.Panel}
+            actions={
+              <IconButton
+                icon={IconName.Plus}
+                size={IconSize.Small}
+                onClick={async () => {
+                  const name = prompt('Enter backend name:');
+                  if (name) {
+                    await createLocalBackend(name);
+                  }
+                }}
+                testId="add-local-backend-button"
+              />
+            }
+          >
+            {localBackends.length > 0 ? (
+              <VStack>
+                {localBackends.map((backend) => (
+                  <LocalBackendCard
+                    key={backend.id}
+                    backend={backend}
+                    onStart={async () => startLocalBackend(backend.id)}
+                    onStop={async () => stopLocalBackend(backend.id)}
+                    onDelete={() => {
+                      if (confirm('Delete this local backend? All data will be lost.')) {
+                        deleteLocalBackend(backend.id);
+                      }
+                    }}
+                  />
+                ))}
+              </VStack>
+            ) : (
+              <Container hasLeftSpacing hasTopSpacing hasBottomSpacing>
+                <Text>No local backends</Text>
+                <Box hasTopSpacing>
+                  <Text textType={TextType.Shy}>
+                    Create a local SQLite backend for zero-config database development.
+                  </Text>
+                </Box>
+              </Container>
+            )}
+          </Section>
+
+          {/* External Backends Section */}
+          <Section
+            title="External Backends"
             variant={SectionVariant.Panel}
             actions={
               <IconButton
@@ -147,7 +206,7 @@ export function BackendServicesPanel() {
               </VStack>
             ) : (
               <Container hasLeftSpacing hasTopSpacing hasBottomSpacing>
-                <Text>No backends configured</Text>
+                <Text>No external backends configured</Text>
                 <Box hasTopSpacing>
                   <Text textType={TextType.Shy}>
                     Click the + button to add a Directus, Supabase, or custom REST backend.
