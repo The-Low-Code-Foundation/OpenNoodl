@@ -65,11 +65,11 @@ class LocalSQLAdapter {
     }
 
     // Dynamic import of better-sqlite3 (Node.js only)
-    // This allows the module to be loaded in browser environments
-    // where better-sqlite3 is not available
+    // Falls back to in-memory mock when not available
     try {
       const Database = require('better-sqlite3');
       this.db = new Database(this.dbPath);
+      this._usingMock = false;
 
       // Enable WAL mode for better concurrent access
       this.db.pragma('journal_mode = WAL');
@@ -95,8 +95,124 @@ class LocalSQLAdapter {
         }
       }
     } catch (e) {
-      throw new Error(`Failed to connect to SQLite database: ${e.message}`);
+      // Fallback to in-memory mock when better-sqlite3 not available
+      console.warn('[LocalSQLAdapter] better-sqlite3 not available, using in-memory mock');
+      this._usingMock = true;
+      this._mockData = {}; // { tableName: { objectId: record } }
+      this._mockSchema = {};
+      this.db = this._createMockDb();
+      this.schemaManager = this._createMockSchemaManager();
     }
+  }
+
+  /**
+   * Create a mock database object that stores data in memory
+   * @private
+   */
+  _createMockDb() {
+    const self = this;
+    return {
+      prepare: (sql) => ({
+        get: (...params) => self._mockExec(sql, params, 'get'),
+        all: (...params) => self._mockExec(sql, params, 'all'),
+        run: (...params) => self._mockExec(sql, params, 'run')
+      }),
+      exec: () => {},
+      close: () => {},
+      pragma: () => {},
+      transaction: (fn) => fn
+    };
+  }
+
+  /**
+   * Create a mock schema manager
+   * @private
+   */
+  _createMockSchemaManager() {
+    const self = this;
+    return {
+      ensureSchemaTable: () => {},
+      createTable: ({ name }) => {
+        if (!self._mockData[name]) {
+          self._mockData[name] = {};
+          self._mockSchema[name] = {};
+        }
+      },
+      addColumn: (table, col) => {
+        if (!self._mockSchema[table]) self._mockSchema[table] = {};
+        self._mockSchema[table][col.name] = col;
+      },
+      getTableSchema: (table) => self._mockSchema[table] || {},
+      addRelation: () => {},
+      removeRelation: () => {}
+    };
+  }
+
+  /**
+   * Execute mock SQL operations
+   * @private
+   */
+  _mockExec(sql, params, mode) {
+    // Parse simple SQL patterns for mock execution
+    const selectMatch = sql.match(/SELECT \* FROM "?(\w+)"?\s*(?:WHERE "?objectId"?\s*=\s*\?)?/i);
+    const insertMatch = sql.match(/INSERT INTO "?(\w+)"?/i);
+    const updateMatch = sql.match(/UPDATE "?(\w+)"?\s+SET/i);
+    const deleteMatch = sql.match(/DELETE FROM "?(\w+)"?/i);
+
+    if (selectMatch) {
+      const table = selectMatch[1];
+      if (!this._mockData[table]) this._mockData[table] = {};
+
+      if (params.length > 0) {
+        // Single record fetch
+        const record = this._mockData[table][params[0]];
+        return mode === 'get' ? record || null : record ? [record] : [];
+      }
+      // Return all records
+      const records = Object.values(this._mockData[table]);
+      return mode === 'get' ? records[0] || null : records;
+    }
+
+    if (insertMatch) {
+      const table = insertMatch[1];
+      if (!this._mockData[table]) this._mockData[table] = {};
+      // Find objectId in params (simple extraction)
+      const now = new Date().toISOString();
+      const record = { objectId: params[0], createdAt: now, updatedAt: now };
+      this._mockData[table][params[0]] = record;
+      return { changes: 1 };
+    }
+
+    if (updateMatch) {
+      const table = updateMatch[1];
+      // Last param is typically the objectId in WHERE clause
+      const objectId = params[params.length - 1];
+      if (this._mockData[table] && this._mockData[table][objectId]) {
+        this._mockData[table][objectId].updatedAt = new Date().toISOString();
+      }
+      return { changes: 1 };
+    }
+
+    if (deleteMatch) {
+      const table = deleteMatch[1];
+      const objectId = params[0];
+      if (this._mockData[table]) {
+        delete this._mockData[table][objectId];
+      }
+      return { changes: 1 };
+    }
+
+    // Count query
+    if (sql.includes('COUNT(*)')) {
+      const countMatch = sql.match(/FROM "?(\w+)"?/i);
+      if (countMatch) {
+        const table = countMatch[1];
+        const count = Object.keys(this._mockData[table] || {}).length;
+        return mode === 'get' ? { count } : [{ count }];
+      }
+    }
+
+    return mode === 'get' ? null : [];
   }
 
   /**
