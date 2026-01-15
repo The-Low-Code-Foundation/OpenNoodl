@@ -1,150 +1,140 @@
-# TASK-007A: LocalSQL Adapter - Progress
+# TASK-007 Progress: Integrated Local Backend
 
-**Status:** ✅ Core Implementation Complete  
-**Branch:** `feature/task-007a-localsql-adapter`  
-**Started:** 2026-01-15  
-**Last Updated:** 2026-01-15
+**Last Updated**: January 15, 2026
 
----
+## Current Status: 4/6 Subtasks Complete
 
-## What Was Built
+### Completed
 
-### Files Created
+#### ✅ TASK-007A: LocalSQL Adapter
 
-```
-packages/noodl-runtime/src/api/adapters/
-├── index.js                    # Adapter registry & exports
-├── types.js                    # JSDoc type definitions
-└── local-sql/
-    ├── index.js                # Module exports
-    ├── LocalSQLAdapter.js      # Main adapter (implements CloudStore interface)
-    ├── QueryBuilder.js         # Parse-style query → SQL translation
-    └── SchemaManager.js        # Table creation, migrations, export
+**Files created:**
 
-packages/noodl-runtime/test/adapters/
-└── QueryBuilder.test.js        # Unit tests for query builder
-```
+- `packages/noodl-runtime/src/api/adapters/local-sql/QueryBuilder.js`
+- `packages/noodl-runtime/src/api/adapters/local-sql/SchemaManager.js`
+- `packages/noodl-runtime/src/api/adapters/local-sql/LocalSQLAdapter.js`
+- `packages/noodl-runtime/src/api/adapters/local-sql/index.js`
+- `packages/noodl-runtime/src/api/adapters/types.js`
+- `packages/noodl-runtime/src/api/adapters/index.js`
+- `packages/noodl-runtime/test/adapters/QueryBuilder.test.js`
 
-### Features Implemented
+**Features:**
 
-#### LocalSQLAdapter
+- Parse Server compatible API on SQLite
+- Auto-schema management (auto-create tables)
+- All CRUD operations supported
+- Query operators: $eq, $ne, $lt, $lte, $gt, $gte, $in, $nin, $exists, $regex
+- In-memory fallback when better-sqlite3 unavailable
 
-- ✅ Implements same API as existing `CloudStore` class
-- ✅ Uses `better-sqlite3` for local SQLite storage
-- ✅ WAL mode for better concurrent access
-- ✅ Event emission (create, save, delete, fetch)
-- ✅ Auto-create tables on first access
-- ✅ Auto-add columns for new fields
+#### ✅ TASK-007B: Local Backend Server
 
-#### QueryBuilder
+**Files created:**
 
-- ✅ Translates Parse-style queries to SQL
-- ✅ All operators: `$eq`, `$ne`, `$gt`, `$gte`, `$lt`, `$lte`
-- ✅ Collection operators: `$in`, `$nin`
-- ✅ Existence: `$exists`
-- ✅ Logical: `$and`, `$or`
-- ✅ Relation support: `$relatedTo`
-- ✅ Parse types: Date, Pointer
-- ✅ SQL injection prevention
-- ✅ Value serialization/deserialization
+- `packages/noodl-editor/src/main/src/local-backend/LocalBackendServer.js`
+- `packages/noodl-editor/src/main/src/local-backend/BackendManager.js`
+- `packages/noodl-editor/src/main/src/local-backend/index.js`
 
-#### SchemaManager
+**Features:**
 
-- ✅ Create tables from Noodl schemas
-- ✅ Add columns dynamically
-- ✅ Junction tables for relations
-- ✅ Export to PostgreSQL SQL
-- ✅ Export to Supabase SQL (with RLS policies)
-- ✅ JSON schema export/import
-- ✅ Schema tracking in `_Schema` table
+- Express server with REST API
+- IPC handlers for create/start/stop/delete/status
+- Multi-backend support with config persistence
+- Per-project backend isolation
 
-### CloudStore Interface Methods
+#### ✅ TASK-007C: WorkflowRunner Implementation
 
-| Method             | Status | Notes                   |
-| ------------------ | ------ | ----------------------- |
-| `query()`          | ✅     | Full Parse query syntax |
-| `fetch()`          | ✅     | Single record by ID     |
-| `create()`         | ✅     | With auto ID generation |
-| `save()`           | ✅     | Update existing         |
-| `delete()`         | ✅     | By objectId             |
-| `count()`          | ✅     | With where filter       |
-| `aggregate()`      | ✅     | sum, avg, max, min      |
-| `distinct()`       | ✅     | Unique values           |
-| `increment()`      | ✅     | Atomic increment        |
-| `addRelation()`    | ✅     | Via junction tables     |
-| `removeRelation()` | ✅     | Via junction tables     |
-| `on()` / `off()`   | ✅     | Event subscription      |
+**Files created:**
 
----
+- `packages/noodl-editor/src/main/src/local-backend/WorkflowRunner.js`
 
-## Testing Status
+**Features:**
 
-### Unit Tests
+- Component graph execution engine
+- Signal-based flow control
+- Error handling and propagation
+- Async operation support
 
-- ✅ QueryBuilder tests written (56 test cases)
-- ⚠️ Runtime package has dependency issues (`terminal-link` missing)
-- Tests need `npm install` at repo root to run
+#### ✅ TASK-007D: Launcher Integration (UI)
 
-### Manual Testing
+**Files created:**
 
-- 🔲 Pending - requires `better-sqlite3` installation
+- `packages/noodl-editor/src/editor/src/views/panels/BackendServicesPanel/hooks/useLocalBackends.ts`
+- `packages/noodl-editor/src/editor/src/views/panels/BackendServicesPanel/LocalBackendCard/LocalBackendCard.tsx`
+- `packages/noodl-editor/src/editor/src/views/panels/BackendServicesPanel/LocalBackendCard/LocalBackendCard.module.scss`
 
----
+**Features:**
 
-## What's Next
+- useLocalBackends hook for IPC communication
+- LocalBackendCard component with start/stop/delete controls
+- Status display (Running/Stopped)
+- Endpoint URL display with copy-to-clipboard
+- Integration with existing BackendServicesPanel
 
-### Remaining for TASK-007A
+### Remaining Tasks
 
-1. Install missing test dependencies
-2. Run and verify all tests pass
-3. Manual integration test with real database
+#### 📋 TASK-007E: Migration & Export Tools
 
-### Next Steps (TASK-007B: Backend Server)
+- Schema export to PostgreSQL format
+- Data migration wizard
+- Environment configuration export
 
-- Express server implementation
-- REST endpoints matching CloudStore API
-- WebSocket for realtime updates
-- IPC handlers for Electron main process
+#### 📋 TASK-007F: Standalone Deployment
 
----
+- Docker container generation
+- Self-hosted deployment scripts
+- Production configuration
 
-## Usage Example
+## Git History
 
-```javascript
-const { LocalSQLAdapter } = require('@noodl/runtime/src/api/adapters');
-
-// Create adapter
-const adapter = new LocalSQLAdapter('/path/to/database.db');
-await adapter.connect();
-
-// Create a record
-adapter.create({
-  collection: 'todos',
-  data: { title: 'Learn Noodl', completed: false },
-  success: (record) => console.log('Created:', record),
-  error: (err) => console.error(err)
-});
-
-// Query records
-adapter.query({
-  collection: 'todos',
-  where: { completed: { $eq: false } },
-  sort: '-createdAt',
-  limit: 10,
-  success: (results) => console.log('Todos:', results),
-  error: (err) => console.error(err)
-});
-
-// Export schema to PostgreSQL
-const pgSQL = adapter.getSchemaManager().generatePostgresSQL();
-console.log(pgSQL);
+```bash
+# TASK-007A/B/C merged to cline-dev from feature/task-007-integrated-backend
+# TASK-007D merged to cline-dev from feature/task-007d-launcher-ui
 ```
 
----
+## Testing Notes
 
-## Notes
+The UI components use IPC handlers registered in main.js. To test:
 
-- The adapter matches the callback-based API of CloudStore for compatibility
-- `better-sqlite3` is required but not added to package.json yet
-- Will be added when integrating with Backend Server (TASK-007B)
-- ESLint warnings about `require()` are expected (CommonJS package)
+1. Run `npm run dev`
+2. Open Backend Services panel
+3. Create a local backend (name it)
+4. Start/Stop the backend
+5. Check the displayed endpoint when running
+
+## Architecture Summary
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    Electron Main Process                 │
+│  ┌─────────────────────────────────────────────────────┐│
+│  │              BackendManager                          ││
+│  │  - Manages multiple backend instances                ││
+│  │  - Config persistence                                ││
+│  │  - IPC handler registration                          ││
+│  └─────────────────────────────────────────────────────┘│
+│  ┌─────────────────────────────────────────────────────┐│
+│  │              LocalBackendServer (per backend)        ││
+│  │  - Express HTTP server                               ││
+│  │  - REST API endpoints                                ││
+│  │  - LocalSQLAdapter for DB operations                 ││
+│  │  - WorkflowRunner for cloud functions                ││
+│  └─────────────────────────────────────────────────────┘│
+└─────────────────────────────────────────────────────────┘
+                           ↕ IPC
+┌─────────────────────────────────────────────────────────┐
+│                    Electron Renderer                     │
+│  ┌─────────────────────────────────────────────────────┐│
+│  │              BackendServicesPanel                    ││
+│  │  ├─ Local Backends Section                          ││
+│  │  │   └─ LocalBackendCard (per backend)              ││
+│  │  └─ External Backends Section                       ││
+│  │      └─ BackendCard (per backend)                   ││
+│  └─────────────────────────────────────────────────────┘│
+│  ┌─────────────────────────────────────────────────────┐│
+│  │              useLocalBackends hook                   ││
+│  │  - IPC communication                                 ││
+│  │  - State management                                  ││
+│  │  - Actions: create/start/stop/delete                 ││
+│  └─────────────────────────────────────────────────────┘│
+└─────────────────────────────────────────────────────────┘
+```
