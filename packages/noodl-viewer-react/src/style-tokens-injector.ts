@@ -28,11 +28,17 @@ export class StyleTokensInjector {
   constructor(options: StyleTokensInjectorOptions) {
     this.graphModel = options.graphModel;
 
+    console.log('[StyleTokensInjector] Initializing...');
+
     // Load tokens from project metadata
     this.loadTokens();
 
+    console.log('[StyleTokensInjector] Loaded tokens:', Object.keys(this.tokens).length, 'tokens');
+
     // Inject tokens into DOM
     this.injectTokens();
+
+    console.log('[StyleTokensInjector] Tokens injected into DOM');
 
     // Listen for project changes
     this.bindListeners();
@@ -44,16 +50,24 @@ export class StyleTokensInjector {
   private loadTokens() {
     try {
       const metadata = this.graphModel.getMetaData();
-      const styleTokens = metadata?.styleTokens;
+      console.log('[StyleTokensInjector] Metadata:', metadata);
 
-      // Validate that styleTokens is a proper object
+      const styleTokens = metadata?.styleTokens;
+      console.log('[StyleTokensInjector] Style tokens from metadata:', styleTokens);
+
+      // Always start with defaults
+      const defaults = this.getDefaultTokens();
+
+      // Validate that styleTokens is a proper object and merge with defaults
       if (styleTokens && typeof styleTokens === 'object' && !Array.isArray(styleTokens)) {
-        this.tokens = styleTokens as Record<string, string>;
+        console.log('[StyleTokensInjector] Merging custom tokens with defaults');
+        this.tokens = { ...defaults, ...styleTokens };
       } else {
-        this.tokens = this.getDefaultTokens();
+        console.log('[StyleTokensInjector] No custom tokens, using defaults only');
+        this.tokens = defaults;
       }
     } catch (error) {
-      console.warn('Failed to load style tokens, using defaults:', error);
+      console.warn('[StyleTokensInjector] Failed to load style tokens, using defaults:', error);
       this.tokens = this.getDefaultTokens();
     }
   }
@@ -85,7 +99,10 @@ export class StyleTokensInjector {
    */
   private injectTokens() {
     // Support SSR
-    if (typeof document === 'undefined') return;
+    if (typeof document === 'undefined') {
+      console.log('[StyleTokensInjector] Skipping injection (SSR)');
+      return;
+    }
 
     // Remove existing style element if any
     this.removeStyleElement();
@@ -93,10 +110,15 @@ export class StyleTokensInjector {
     // Create new style element
     this.styleElement = document.createElement('style');
     this.styleElement.id = 'noodl-style-tokens';
-    this.styleElement.textContent = this.generateCSS();
+    const css = this.generateCSS();
+    this.styleElement.textContent = css;
+
+    console.log('[StyleTokensInjector] Generated CSS:', css.substring(0, 100) + '...');
 
     // Inject into head
     document.head.appendChild(this.styleElement);
+
+    console.log('[StyleTokensInjector] Style element added to <head>, id:', this.styleElement.id);
   }
 
   /**
