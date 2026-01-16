@@ -4,6 +4,141 @@ This document captures important discoveries and gotchas encountered during Open
 
 ---
 
+## 🎨 STYLE-001 MVP: Style Tokens Not Injecting for Legacy Projects (Jan 12, 2026)
+
+### The Missing Defaults: When Old Projects Had No Tokens
+
+**Context**: Phase 9 STYLE-001 MVP - Style tokens were successfully injected for new projects but completely missing for legacy projects (created before STYLE-001). The `<style id="noodl-style-tokens">` element was absent from the DOM.
+
+**The Problem**: The StyleTokensInjector only injected custom tokens from project metadata, but didn't inject default tokens when metadata was missing or empty. Legacy projects had no `styleTokens` metadata, so NO tokens were injected at all.
+
+**Root Cause**: Incorrect merge logic in `loadTokens()` method:
+
+```typescript
+// ❌ WRONG - Only uses defaults when metadata is invalid
+private loadTokens() {
+  const metadata = this.graphModel.getMetaData();
+  const styleTokens = metadata?.styleTokens;
+
+  if (styleTokens && typeof styleTokens === 'object') {
+    this.tokens = styleTokens;  // Custom tokens only, no defaults!
+  } else {
+    this.tokens = this.getDefaultTokens();  // Only when metadata missing
+  }
+}
+```
+
+**The Issue**: When `styleTokens` existed in metadata, it completely replaced defaults. But when metadata was empty (legacy projects), the logic correctly fell through to defaults. However, the initial implementation had a bug where empty metadata didn't trigger the fallback.
+
+**The Fix** - Always merge custom tokens WITH defaults:
+
+```typescript
+// ✅ RIGHT - Always inject defaults, then merge customs
+private loadTokens() {
+  const metadata = this.graphModel.getMetaData();
+  const styleTokens = metadata?.styleTokens;
+
+  // Always start with defaults
+  const defaults = this.getDefaultTokens();
+
+  if (styleTokens && typeof styleTokens === 'object') {
+    // Merge custom tokens over defaults
+    this.tokens = { ...defaults, ...styleTokens };
+  } else {
+    // Use defaults only
+    this.tokens = defaults;
+  }
+}
+```
+
+**Debug Logging Added** - To help diagnose similar issues:
+
+```typescript
+console.log('[StyleTokensInjector] Initializing...');
+console.log('[StyleTokensInjector] Metadata:', metadata);
+console.log('[StyleTokensInjector] Style tokens from metadata:', styleTokens);
+console.log('[StyleTokensInjector] Loaded tokens:', Object.keys(this.tokens).length, 'tokens');
+console.log('[StyleTokensInjector] Generated CSS:', css.substring(0, 100) + '...');
+console.log('[StyleTokensInjector] Tokens injected into DOM');
+```
+
+**Why This Matters**:
+
+- **Backward compatibility**: Legacy projects must work without code changes
+- **Graceful degradation**: System should provide sensible defaults
+- **Merge pattern**: Custom values should enhance, not replace, defaults
+- **Zero configuration**: Tokens should "just work" for all projects
+
+**How to Verify the Fix**:
+
+1. Open DevTools on preview window (View → Toggle Developer Tools)
+2. Check Console for `[StyleTokensInjector]` logs
+3. Check Elements tab: `<head>` should contain `<style id="noodl-style-tokens">`
+4. Verify in Console: `document.getElementById('noodl-style-tokens')` returns element
+
+**Expected Console Output**:
+
+```
+[StyleTokensInjector] Initializing...
+[StyleTokensInjector] Metadata: {...}
+[StyleTokensInjector] Style tokens from metadata: undefined
+[StyleTokensInjector] No custom tokens, using defaults only
+[StyleTokensInjector] Loaded tokens: 10 tokens
+[StyleTokensInjector] Generated CSS: :root {
+  --primary: #3b82f6;
+  ...
+[StyleTokensInjector] Tokens injected into DOM
+[StyleTokensInjector] Style element added to <head>, id: noodl-style-tokens
+```
+
+**Critical Rules**:
+
+1. **Always inject defaults first** - Never assume projects have custom values
+2. **Merge, don't replace** - Custom tokens enhance defaults, don't replace them
+3. **Add debug logging** - Makes diagnosis trivial for similar issues
+4. **Test with legacy projects** - New features must work with old data
+
+**The 10 Default Tokens** (Always available):
+
+```css
+--primary: #3b82f6        /* Blue - primary actions */
+--background: #ffffff     /* White - page background */
+--foreground: #0f172a     /* Near black - text */
+--border: #e2e8f0         /* Light gray - borders */
+--space-sm: 8px           /* Small spacing */
+--space-md: 16px          /* Medium spacing */
+--space-lg: 24px          /* Large spacing */
+--radius-md: 8px          /* Border radius */
+--shadow-sm: 0 1px 2px... /* Small shadow */
+--shadow-md: 0 4px 6px... /* Medium shadow */
+```
+
+**Usage Pattern**:
+
+```css
+/* In any visual element's Style property */
+background: var(--primary);
+padding: var(--space-md);
+border-radius: var(--radius-md);
+box-shadow: var(--shadow-md);
+```
+
+**Related Issue**: Secondary UI bug discovered - the Style editor popup is poorly positioned and hard to use. This is unrelated to STYLE-001 and should be fixed separately.
+
+**Time Lost**: ~2 hours debugging (tokens in code but not in DOM)
+
+**Location**:
+
+- Fixed in: `packages/noodl-viewer-react/src/style-tokens-injector.ts` (lines 50-67, 105-130)
+- Task: Phase 9 STYLE-001 Token System Enhancement (MVP)
+- CHANGELOG: `dev-docs/tasks/phase-9-styles-overhaul/STYLE-001-token-system-enhancement/CHANGELOG-MVP.md`
+
+**Impact**: This was a P0 blocker for STYLE-001 MVP validation. Without this fix, the token system appeared to not work at all for existing users/projects, only for newly created projects.
+
+**Keywords**: style tokens, CSS custom properties, design tokens, backward compatibility, legacy projects, default values, merge pattern, StyleTokensInjector, metadata, graceful degradation
+
+---
+
 ## 🐛 CRITICAL: Project.json Structure - Missing `graph` Object (Jan 9, 2026)
 
 ### The Silent Crash: Cannot Read Properties of Undefined (reading 'comments')

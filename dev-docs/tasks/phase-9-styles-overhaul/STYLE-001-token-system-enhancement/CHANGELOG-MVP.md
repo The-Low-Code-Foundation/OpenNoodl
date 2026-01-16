@@ -125,7 +125,7 @@ Tokens are injected as CSS custom properties:
 ## ✅ Testing Results
 
 **Date Tested**: 2026-01-12  
-**Tester**: Richard  
+**Tester**: Tara  
 **Test Project**: noodl-starter-template (legacy project)
 
 ### Core Functionality Tests
