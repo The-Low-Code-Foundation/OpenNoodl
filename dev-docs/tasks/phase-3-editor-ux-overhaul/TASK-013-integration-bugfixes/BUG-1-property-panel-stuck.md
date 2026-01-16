@@ -1,7 +1,7 @@
 # BUG-1: Property Panel "Stuck" on Previous Node
 
 **Priority:** P0 - Blocks basic workflow  
-**Status:** 🔴 Research  
+**Status:** DONE  
 **Introduced in:** Phase 2 Task 8 (Side panel changes)
 
 ---

@@ -183,6 +183,7 @@ export class NodeGraphEditor extends View {
   curtop = 0;
   inspectorsModel: DebugInspector.InspectorsModel;
   clearDeleteModeTimer: NodeJS.Timeout;
+  lastBlocklyTabCloseTime: number = 0; // Track when Blockly tabs close to prevent accidental deletions
 
   draggingNodes: NodeGraphEditorNode[] | null = null;
 
@@ -321,6 +322,8 @@ export class NodeGraphEditor extends View {
       'LogicBuilder.AllTabsClosed',
       () => {
         console.log('[NodeGraphEditor] All Logic Builder tabs closed - showing canvas');
+        // Track close time to prevent accidental node deletions during focus transition
+        this.lastBlocklyTabCloseTime = Date.now();
         this.setCanvasVisibility(true);
       },
       this
@@ -393,27 +396,29 @@ export class NodeGraphEditor extends View {
 
     // Load icons using webpack require to ensure proper bundling
     this.homeIcon = new Image();
-    this.homeIcon.src = require('../../../assets/icons/core-ui-temp/home--nodegraph.svg');
+    this.homeIcon.src = require('../../../assets/icons/core-ui-temp/home--nodegraph.svg').default;
     this.homeIcon.onload = () => this.repaint();
     this.homeIcon.onerror = (e) => console.error('Failed to load home icon:', e);
 
     this.componentIcon = new Image();
-    this.componentIcon.src = require('../../../assets/icons/core-ui-temp/component--nodegraph.svg');
+    this.componentIcon.src = require('../../../assets/icons/core-ui-temp/component--nodegraph.svg').default;
     this.componentIcon.onload = () => this.repaint();
     this.componentIcon.onerror = (e) => console.error('Failed to load component icon:', e);
 
     this.aiAssistantInnerIcon = new Image();
-    this.aiAssistantInnerIcon.src = require('../../../assets/icons/core-ui-temp/aiAssistant--nodegraph-inner.svg');
+    this.aiAssistantInnerIcon.src =
+      require('../../../assets/icons/core-ui-temp/aiAssistant--nodegraph-inner.svg').default;
     this.aiAssistantInnerIcon.onload = () => this.repaint();
     this.aiAssistantInnerIcon.onerror = (e) => console.error('Failed to load AI assistant inner icon:', e);
 
     this.aiAssistantOuterIcon = new Image();
-    this.aiAssistantOuterIcon.src = require('../../../assets/icons/core-ui-temp/aiAssistant--nodegraph-outer.svg');
+    this.aiAssistantOuterIcon.src =
+      require('../../../assets/icons/core-ui-temp/aiAssistant--nodegraph-outer.svg').default;
     this.aiAssistantOuterIcon.onload = () => this.repaint();
     this.aiAssistantOuterIcon.onerror = (e) => console.error('Failed to load AI assistant outer icon:', e);
 
     this.warningIcon = new Image();
-    this.warningIcon.src = require('../../../assets/icons/core-ui-temp/warning_triangle.svg');
+    this.warningIcon.src = require('../../../assets/icons/core-ui-temp/warning_triangle.svg').default;
     this.warningIcon.onload = () => this.repaint();
     this.warningIcon.onerror = (e) => console.error('Failed to load warning icon:', e);
 
@@ -1176,6 +1181,14 @@ export class NodeGraphEditor extends View {
 
   delete() {
     if (this.readOnly) {
+      return false;
+    }
+
+    // Guard against accidental deletions during Blockly tab close transition
+    // This prevents nodes from being deleted if a Blockly tab was just closed
+    const timeSinceBlocklyClose = Date.now() - this.lastBlocklyTabCloseTime;
+    if (timeSinceBlocklyClose < 200) {
+      console.warn('[NodeGraphEditor] Ignoring delete during Blockly tab close transition');
       return false;
     }
 

@@ -1,4 +1,8 @@
+import React from 'react';
+import { createRoot, Root } from 'react-dom/client';
+
 import { EventDispatcher } from '../../../../../../shared/utils/EventDispatcher';
+import { GeneratedCodeModal } from '../GeneratedCodeModal';
 import { TypeView } from '../TypeView';
 import { getEditType } from '../utils';
 
@@ -10,6 +14,10 @@ import { getEditType } from '../utils';
 export class LogicBuilderWorkspaceType extends TypeView {
   el: TSFixme;
   editButton: JQuery;
+  viewCodeButton: JQuery;
+  modalContainer: HTMLDivElement | null = null;
+  modalRoot: Root | null = null;
+  isModalOpen: boolean = false;
 
   static fromPort(args) {
     const view = new LogicBuilderWorkspaceType();
@@ -42,7 +50,7 @@ export class LogicBuilderWorkspaceType extends TypeView {
       </style>
     `;
 
-    // Create a simple container with single button
+    // Create a simple container with two buttons
     const html =
       hideEmptyGroupsCSS +
       `
@@ -61,19 +69,40 @@ export class LogicBuilderWorkspaceType extends TypeView {
                 "
                 onmouseover="this.style.backgroundColor='var(--theme-color-primary-hover)'"
                 onmouseout="this.style.backgroundColor='var(--theme-color-primary)'">
-          View Logic Blocks
+          Edit Logic Blocks
+        </button>
+        <button class="view-code-button" 
+                style="
+                  padding: 8px 16px;
+                  background: var(--theme-color-bg-3);
+                  color: var(--theme-color-fg-default);
+                  border: 1px solid var(--theme-color-border-default);
+                  border-radius: 4px;
+                  cursor: pointer;
+                  font-size: 13px;
+                  font-weight: 500;
+                  transition: background-color 0.2s;
+                "
+                onmouseover="this.style.backgroundColor='var(--theme-color-bg-4)'"
+                onmouseout="this.style.backgroundColor='var(--theme-color-bg-3)'">
+          View Generated Code
         </button>
       </div>
     `;
 
     this.el = this.bindView($(html), this);
 
-    // Get reference to button
+    // Get references to buttons
     this.editButton = this.el.find('.edit-blocks-button');
+    this.viewCodeButton = this.el.find('.view-code-button');
 
-    // Handle button click
+    // Handle button clicks
     this.editButton.on('click', () => {
       this.onEditBlocksClicked();
+    });
+
+    this.viewCodeButton.on('click', () => {
+      this.onViewCodeClicked();
     });
 
     // Call parent render for common functionality (tooltips, etc.)
@@ -101,6 +130,46 @@ export class LogicBuilderWorkspaceType extends TypeView {
     });
   }
 
+  onViewCodeClicked() {
+    const nodeName = this.parent?.model?.model?.label || this.parent?.model?.type?.displayName || 'Logic Builder';
+    const generatedCode = this.parent?.model?.getParameter('generatedCode') || '';
+
+    console.log('[LogicBuilderWorkspaceType] Opening generated code modal for node:', nodeName);
+
+    this.showModal(nodeName, generatedCode);
+  }
+
+  showModal(nodeName: string, code: string) {
+    // Create modal container if it doesn't exist
+    if (!this.modalContainer) {
+      this.modalContainer = document.createElement('div');
+      this.modalContainer.id = 'generated-code-modal-container';
+      document.body.appendChild(this.modalContainer);
+      this.modalRoot = createRoot(this.modalContainer);
+    }
+
+    this.isModalOpen = true;
+    this.renderModal(nodeName, code);
+  }
+
+  hideModal() {
+    this.isModalOpen = false;
+    this.renderModal('', '');
+  }
+
+  renderModal(nodeName: string, code: string) {
+    if (!this.modalRoot) return;
+
+    this.modalRoot.render(
+      React.createElement(GeneratedCodeModal, {
+        isOpen: this.isModalOpen,
+        nodeName: nodeName,
+        code: code,
+        onClose: () => this.hideModal()
+      })
+    );
+  }
+
   updateChangedDot() {
     const dot = this.el.find('.property-changed-dot');
     if (this.isDefault) {
@@ -118,5 +187,17 @@ export class LogicBuilderWorkspaceType extends TypeView {
     });
     this.isDefault = true;
     this.updateChangedDot();
+  }
+
+  dispose() {
+    // Clean up modal when view is disposed
+    if (this.modalRoot) {
+      this.modalRoot.unmount();
+      this.modalRoot = null;
+    }
+    if (this.modalContainer && this.modalContainer.parentNode) {
+      this.modalContainer.parentNode.removeChild(this.modalContainer);
+      this.modalContainer = null;
+    }
   }
 }

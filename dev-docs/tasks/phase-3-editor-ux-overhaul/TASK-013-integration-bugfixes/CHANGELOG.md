@@ -251,7 +251,11 @@ The generatedCode parameter was being hidden via CSS and had a separate button t
 3. Close Blockly tab and verify generated code field appears
 4. Click it and verify read-only CodeMirror editor opens
 
-**STATUS: ✅ IMPLEMENTED - AWAITING USER TESTING**
+**STATUS: ✅ COMPLETE - USER VERIFIED WORKING**
+
+---
+
+_Last Updated: January 16, 2026 14:00_
 
 ---
 
@@ -512,3 +516,166 @@ User verification confirmed:
 ---
 
 _Last Updated: January 14, 2026 22:01_
+
+---
+
+## [2026-01-16 12:00] - BUG-6 COMPLETE: App Component Click Fix
+
+### Issue
+
+Clicking on the 'App' component (or any component-folder) in the left component menu only toggled expand/collapse - it didn't open the component's node canvas.
+
+### Root Cause
+
+In `useComponentsPanel.ts`, the `handleItemClick` function only handled components of `type: 'component'`. For folders, it only toggled the folder expansion. Component-folders (folders that are also components, like App with children) were not being opened.
+
+### Solution
+
+Added check for `isComponentFolder && node.data.component` in the folder branch of `handleItemClick`. When clicking a component-folder:
+
+1. Open the component canvas (via `ComponentPanel.SwitchToComponent` event)
+2. Toggle the folder expand/collapse
+
+### Files Modified
+
+- `packages/noodl-editor/src/editor/src/views/panels/ComponentsPanelNew/hooks/useComponentsPanel.ts`
+  - Added component-folder opening logic in `handleItemClick` (~line 188-195)
+
+### Testing Checklist
+
+- [ ] Click on 'App' component (with children) → Opens App canvas AND toggles folder
+- [ ] Click on regular folder → Only toggles expand/collapse
+- [ ] Click on regular component → Opens component canvas
+- [ ] Component-folders at any nesting depth work correctly
+
+**STATUS: ✅ COMPLETE - USER VERIFIED WORKING**
+
+---
+
+## [2026-01-16 12:15] - BUG-7 COMPLETE: Broken Editor Icons Fix
+
+### Issue
+
+Several Node Picker icons were broken due to absolute paths like `/assets/icons/...` not resolving in Electron. Console showed ERR_FILE_NOT_FOUND errors for:
+
+- `/assets/icons/editor/right_arrow_22.svg` (category expand arrows)
+- `/assets/icons/comment.svg` (comment action icon)
+
+### Root Cause
+
+Absolute paths like `/assets/icons/...` resolve to the file system root in Electron, not the app's asset directory. The icons were using `<img src="/assets/...">` which doesn't work.
+
+### Solution
+
+Replaced `<img>` tags with the existing `Icon` component from `@noodl-core-ui`:
+
+**NodePickerCategory.tsx:**
+
+- Replaced `<img src="/assets/icons/editor/right_arrow_22.svg">`
+- With `<Icon icon={IconName.CaretRight} size={IconSize.Small} UNSAFE_className={...}>`
+- CSS animation classes still apply via UNSAFE_className
+
+**NodeLibrary.tsx:**
+
+- Replaced `<img src="/assets/icons/comment.svg">`
+- With `<Icon icon={IconName.Chat} size={IconSize.Default}>`
+
+### Files Modified
+
+1. `packages/noodl-editor/src/editor/src/views/NodePicker/components/NodePickerCategory/NodePickerCategory.tsx`
+
+   - Added import for Icon, IconName, IconSize
+   - Replaced img tag with Icon component
+
+2. `packages/noodl-editor/src/editor/src/views/NodePicker/tabs/NodeLibrary/NodeLibrary.tsx`
+   - Added import for Icon, IconName, IconSize
+   - Replaced img tag with Icon component (using Chat icon for comment)
+
+### Testing Checklist
+
+- [ ] Open Node Picker (double-click canvas or press space)
+- [ ] Category expand/collapse arrows visible
+- [ ] Arrow rotates smoothly on expand/collapse
+- [ ] "Comment" item in "Other" section has visible chat icon
+- [ ] No ERR_FILE_NOT_FOUND errors in console
+
+**STATUS: ✅ IMPLEMENTED - AWAITING USER TESTING**
+
+---
+
+## [2026-01-16 17:15] - BUG-2 & BUG-2.1 FINAL FIX: Hidden Property Panel Input
+
+### Issue
+
+The Logic Builder node showed unwanted "Generated code" label and Edit button in the property panel, cluttering the UI. Users only need to see:
+
+- "Edit Logic Blocks" button
+- "View Generated Code" button
+
+### Root Cause
+
+There's no built-in way to hide an input from the property panel while still storing its value. The `hidden: true` flag is ignored, and `allowEditOnly: true` only prevents connections.
+
+### Solution: Custom Hidden editorType
+
+**Created a new pattern for hiding inputs from property panel:**
+
+1. **New file: `LogicBuilderHiddenType.ts`**
+
+   - Extends TypeView
+   - Returns `<div style="display: none;"></div>` - invisible element
+   - Input value still stored via setter, just not visible
+
+2. **Updated `Ports.ts`**
+
+   - Added check for `editorType: 'logic-builder-hidden'`
+   - Returns LogicBuilderHiddenType before other type checks
+
+3. **Updated `logic-builder.js`**
+   - Changed `generatedCode` input to use `editorType: 'logic-builder-hidden'`
+   - Value still stored via setter, just hidden from UI
+
+### Files Modified
+
+1. **NEW:** `packages/noodl-editor/src/editor/src/views/panels/propertyeditor/DataTypes/LogicBuilderHiddenType.ts`
+2. `packages/noodl-editor/src/editor/src/views/panels/propertyeditor/DataTypes/Ports.ts`
+3. `packages/noodl-runtime/src/nodes/std-library/logic-builder.js`
+
+### Architecture Pattern
+
+```
+Runtime Node Definition
+  └─ inputs: { generatedCode: { editorType: 'logic-builder-hidden' } }
+        │
+        ▼
+Ports.ts viewClassForPort()
+  └─ if (type.editorType === 'logic-builder-hidden') return LogicBuilderHiddenType
+        │
+        ▼
+Property Panel renders <div style="display: none;"></div>
+  └─ User sees nothing - input effectively hidden
+```
+
+### Key Learning: GOTCHA #9 Added
+
+**Added to LEARNINGS-NODE-CREATION.md:**
+
+To hide an input from property panel while preserving value storage:
+
+1. Create custom TypeView that renders `display: none`
+2. Register the editorType in Ports.ts before other type checks
+3. Use the custom editorType in node definition
+
+### Testing Checklist
+
+- [x] Property panel shows ONLY "Edit Logic Blocks" and "View Generated Code" buttons
+- [x] No "Generated code" label visible
+- [x] No extra Edit button visible
+- [x] Generated code value still stored when Blockly workspace changes
+- [x] Node still works correctly at runtime
+
+**STATUS: ✅ COMPLETE - USER VERIFIED WORKING**
+
+---
+
+_Last Updated: January 16, 2026 17:15_

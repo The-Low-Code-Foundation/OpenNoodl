@@ -785,6 +785,98 @@ console.log('Port properties:', {
 
 ---
 
+### 🔴 GOTCHA #9: Hiding Inputs from Property Panel Requires Custom editorType (Jan 2026)
+
+**THE BUG:**
+
+```javascript
+// ❌ WRONG - hidden: true doesn't work
+generatedCode: {
+  type: 'string',
+  hidden: true,  // ☠️ IGNORED - still renders in property panel
+  set: function(value) { ... }
+}
+
+// ❌ WRONG - allowEditOnly doesn't hide
+generatedCode: {
+  type: {
+    name: 'string',
+    allowEditOnly: true  // ☠️ Still renders (just prevents connections)
+  },
+  set: function(value) { ... }
+}
+```
+
+**WHY IT BREAKS:**
+
+- The property panel's `viewClassForPort()` in `Ports.ts` determines what renders
+- `hidden: true` is ignored because it's not checked in the port filtering logic
+- `allowEditOnly: true` only prevents port connections, doesn't hide from UI
+- If `viewClassForPort()` returns ANY class, the input WILL render
+
+**THE FIX:** Create a custom editorType that returns an invisible element:
+
+```javascript
+// Step 1: In runtime node definition (logic-builder.js)
+generatedCode: {
+  type: {
+    name: 'string',
+    allowEditOnly: true,
+    editorType: 'logic-builder-hidden'  // Custom type
+  },
+  displayName: 'Generated Code',
+  set: function(value) {
+    this._internal.generatedCode = value;
+  }
+}
+
+// Step 2: Create hidden type (LogicBuilderHiddenType.ts)
+export class LogicBuilderHiddenType extends TypeView {
+  render() {
+    // Return invisible element - takes no space
+    this.el = $('<div style="display: none;"></div>');
+    return this.el;
+  }
+}
+
+// Step 3: Register in Ports.ts viewClassForPort()
+if (typeof type === 'object' && type.editorType === 'logic-builder-hidden') {
+  return LogicBuilderHiddenType;
+}
+```
+
+**ARCHITECTURE INSIGHT:**
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│ Runtime Node Definition (logic-builder.js)                   │
+│ inputs: { generatedCode: { editorType: 'logic-builder-hidden' } } │
+└────────────────────────────┬─────────────────────────────────┘
+                             │
+                             ▼
+┌──────────────────────────────────────────────────────────────┐
+│ Ports.ts viewClassForPort()                                  │
+│ if (type.editorType === 'logic-builder-hidden')              │
+│   return LogicBuilderHiddenType;  // Renders nothing         │
+└────────────────────────────┬─────────────────────────────────┘
+                             │
+                             ▼
+┌──────────────────────────────────────────────────────────────┐
+│ Property Panel renders <div style="display: none;"></div>   │
+│ User sees nothing - input is effectively hidden              │
+└──────────────────────────────────────────────────────────────┘
+```
+
+**CRITICAL:** You MUST:
+
+1. Define the input in the runtime node (so runtime receives the value via setter)
+2. Create a custom TypeView that renders an invisible element
+3. Register the editorType check in Ports.ts BEFORE other type checks
+
+**RULE:** To hide an input from the property panel while still storing/persisting the value, create a custom `editorType` with a TypeView class that renders `display: none`.
+
+---
+
 ## Complete Working Pattern (HTTP Node Reference)
 
 Here's the proven pattern from the HTTP node that handles all gotchas:

@@ -6,7 +6,8 @@ $_sidebar-hover-enter-offset: 250ms;
   display: flex;
   position: relative;
   overflow: hidden;
-  width: 380px;
+  min-width: 380px;
+  max-width: 55vw;
   transition: width 0.3s ease-in-out;
 
   &--expanded {

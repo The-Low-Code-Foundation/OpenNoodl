@@ -231,24 +231,25 @@ const LogicBuilderNode = {
       }
     },
     generatedCode: {
+      // Internal storage - renders nothing in property panel
       type: {
         name: 'string',
         allowEditOnly: true,
-        codeeditor: 'javascript',
-        readOnly: true // ✅ Inside type object - this gets passed through to property panel!
+        editorType: 'logic-builder-hidden' // Custom type that renders nothing
       },
-      displayName: 'Generated code',
-      group: 'Advanced',
+      displayName: 'Generated Code',
+      group: '', // Empty group
       set: function (value) {
         const internal = this._internal;
         internal.generatedCode = value;
-        internal.compiledFunction = null; // Reset compiled function
+        internal.compiledFunction = null; // Reset compiled function when code changes
       }
     },
     run: {
       type: 'signal',
       displayName: 'Run',
       group: 'Signals',
+      editorName: 'hidden', // Hide from property panel - signal comes from dynamic ports
       valueChangedToTrue: function () {
         this._executeLogic('run');
       }
@@ -260,6 +261,7 @@ const LogicBuilderNode = {
       group: 'Status',
       type: 'string',
       displayName: 'Error',
+      editorName: 'hidden', // Hide from property panel
       getter: function () {
         return this._internal.executionError || '';
       }

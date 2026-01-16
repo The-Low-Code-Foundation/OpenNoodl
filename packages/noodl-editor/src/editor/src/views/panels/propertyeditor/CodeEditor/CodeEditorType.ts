@@ -337,6 +337,11 @@ export class CodeEditorType extends TypeView {
         nodeId: nodeId
       });
 
+      // Create close handler to trigger popout close
+      const closeHandler = () => {
+        _this.parent.hidePopout();
+      };
+
       // Render JavaScriptEditor with proper sizing and history support
       // For read-only fields, don't pass nodeId/parameterName (no history tracking)
       this.popoutRoot.render(
@@ -350,6 +355,7 @@ export class CodeEditorType extends TypeView {
           onSave: () => {
             save();
           },
+          onClose: closeHandler,
           validationType,
           disabled: this.readOnly, // Enable read-only mode if port is marked readOnly
           width: props.initialSize?.x || 800,

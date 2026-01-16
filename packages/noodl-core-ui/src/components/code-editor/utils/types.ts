@@ -24,6 +24,9 @@ export interface JavaScriptEditorProps {
   /** Callback when user saves (Ctrl+S or Save button) */
   onSave?: (value: string) => void;
 
+  /** Callback when user closes the editor (Close button or Escape) */
+  onClose?: () => void;
+
   /** Validation type */
   validationType?: ValidationType;
 

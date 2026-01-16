@@ -256,4 +256,51 @@ This might be related to:
 
 ---
 
-_Last Updated: January 13, 2026_
+## Investigation Findings (January 16, 2026)
+
+### What I Checked
+
+1. **`LogicBuilder.AllTabsClosed` handler** - Just shows the canvas, NOT deleting nodes ✅
+2. **`CanvasTabsContext.closeTab()`** - Only removes tab from state, doesn't touch nodes ✅
+3. **Event propagation** - Tab close button uses `e.stopPropagation()` ✅
+
+### Most Likely Culprits
+
+Based on the code review, the most likely causes are:
+
+#### 1. Keyboard Focus + Delete Key
+
+When the Blockly tab closes, focus may return to the canvas with the node still selected. If Delete/Backspace is pressed (or held down from Blockly editing), it could trigger node deletion.
+
+**Test:** After closing Blockly tab, check if the node is still selected. Try pressing Delete immediately after closing.
+
+#### 2. `clearDeleteModeTimer` in nodegrapheditor.ts (line 185)
+
+There's a timer for "delete mode" in the node graph editor. This could be related to delayed deletion behavior.
+
+#### 3. Race Condition with Canvas Visibility
+
+When `LogicBuilder.AllTabsClosed` triggers `setCanvasVisibility(true)`, the canvas re-renders. If the node was selected before opening Blockly, and some keyboard event fires during the transition, it could trigger deletion.
+
+### Recommended Debug Steps
+
+1. Add console logging to the Delete key handler to see when it fires
+2. Log node selection state when closing Blockly tab
+3. Log any pending timers (clearDeleteModeTimer)
+4. Check if node exists BEFORE and AFTER `LogicBuilder.AllTabsClosed` event
+
+### Potential Quick Fix
+
+Add a guard in the delete handler to ignore deletion when a Blockly tab was just closed:
+
+```typescript
+// In delete handler
+if (Date.now() - lastBlocklyTabCloseTime < 100) {
+  console.warn('[NodeGraphEditor] Ignoring delete during Blockly tab close transition');
+  return;
+}
+```
+
+---
+
+_Last Updated: January 16, 2026_

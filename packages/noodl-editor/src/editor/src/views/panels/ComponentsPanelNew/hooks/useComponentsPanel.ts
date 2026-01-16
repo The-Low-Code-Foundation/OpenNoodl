@@ -196,8 +196,20 @@ export function useComponentsPanel(options: UseComponentsPanelOptions = {}) {
           });
         }
       } else {
+        // It's a folder
         setSelectedId(node.data.path);
-        // Toggle folder if clicking on folder
+
+        // BUG-6 FIX: If it's a component-folder, open the component too
+        // Component-folders are folders that also have an associated component
+        // (e.g., App with App/Header as a child)
+        if (node.data.isComponentFolder && node.data.component) {
+          EventDispatcher.instance.notifyListeners('ComponentPanel.SwitchToComponent', {
+            component: node.data.component,
+            pushHistory: true
+          });
+        }
+
+        // Toggle folder expand/collapse
         toggleFolder(node.data.path);
       }
     },

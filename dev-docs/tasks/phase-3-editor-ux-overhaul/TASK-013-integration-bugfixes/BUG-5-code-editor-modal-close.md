@@ -1,7 +1,7 @@
 # BUG-5: Code Editor Modal Won't Close on Outside Click
 
 **Priority:** P1 - Significant UX Issue  
-**Status:** ✅ Complete - Verified Working  
+**Status:** Sort of fixed but still bugs on the Blockly node 'generated code' button
 **Created:** January 13, 2026  
 **Updated:** January 14, 2026
 

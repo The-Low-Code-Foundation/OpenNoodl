@@ -27,6 +27,7 @@ export function JavaScriptEditor({
   value,
   onChange,
   onSave,
+  onClose,
   validationType = 'expression',
   disabled = false,
   height,
@@ -292,6 +293,23 @@ export function JavaScriptEditor({
               type="button"
             >
               Save
+            </button>
+          )}
+          {onClose && (
+            <button
+              onClick={() => {
+                // Save before closing if onSave is available
+                if (onSave) {
+                  const currentCode = editorViewRef.current?.state.doc.toString() || '';
+                  onSave(currentCode);
+                }
+                onClose();
+              }}
+              className={css['CloseButton']}
+              title="Save and Close (Escape)"
+              type="button"
+            >
+              Close
             </button>
           )}
         </div>

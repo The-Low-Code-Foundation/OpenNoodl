@@ -9,6 +9,7 @@ import { createNodeIndex } from '@noodl-utils/createnodeindex';
 import { tracker } from '@noodl-utils/tracker';
 
 import { HtmlRenderer } from '@noodl-core-ui/components/common/HtmlRenderer';
+import { Icon, IconName, IconSize } from '@noodl-core-ui/components/common/Icon';
 import { PrimaryButton, PrimaryButtonSize, PrimaryButtonVariant } from '@noodl-core-ui/components/inputs/PrimaryButton';
 import { SearchInput } from '@noodl-core-ui/components/inputs/SearchInput';
 import { Box } from '@noodl-core-ui/components/layout/Box';
@@ -180,7 +181,7 @@ export function NodeLibrary({ model, parentModel, pos, attachToRoot, runtimeType
                     createNewComment(model, pos);
                     e.stopPropagation();
                   }}
-                  icon={<img src="/assets/icons/comment.svg" />}
+                  icon={<Icon icon={IconName.Chat} size={IconSize.Default} />}
                 />
               </NodePickerSection>
             ) : null}

@@ -21,6 +21,7 @@ import { FontType } from './FontType';
 import { IconType } from './IconType';
 import { IdentifierType } from './IdentifierType';
 import { ImageType } from './ImageType';
+import { LogicBuilderHiddenType } from './LogicBuilderHiddenType';
 import { LogicBuilderWorkspaceType } from './LogicBuilderWorkspaceType';
 import { MarginPaddingType } from './MarginPaddingType';
 import { NumberWithUnits } from './NumberWithUnits';
@@ -224,6 +225,11 @@ export class Ports extends View {
     // Check for custom editorType
     if (typeof type === 'object' && type.editorType === 'logic-builder-workspace') {
       return LogicBuilderWorkspaceType;
+    }
+
+    // Hidden type for internal Logic Builder parameters (renders nothing)
+    if (typeof type === 'object' && type.editorType === 'logic-builder-hidden') {
+      return LogicBuilderHiddenType;
     }
 
     // Align tools types
