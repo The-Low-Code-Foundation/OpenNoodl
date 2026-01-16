@@ -1,5 +1,10 @@
 const OutputProperty = require('./outputproperty');
-const { evaluateExpression } = require('./expression-evaluator');
+const {
+  evaluateExpression,
+  compileExpression,
+  detectDependencies,
+  subscribeToChanges
+} = require('./expression-evaluator');
 const { coerceToType } = require('./expression-type-coercion');
 
 /**
@@ -45,6 +50,9 @@ function Node(context, id) {
 
   this._valuesFromConnections = {};
   this.updateOnDirtyFlagging = true;
+
+  // Expression subscriptions: { [portName]: { unsub: unsubscribeFn, expression: string } }
+  this._expressionSubscriptions = {};
 }
 
 Node.prototype.getInputValue = function (name) {
@@ -101,7 +109,8 @@ Node.prototype.registerInputIfNeeded = function () {
 };
 
 /**
- * Evaluate an expression parameter and return the coerced result
+ * Evaluate an expression parameter and return the coerced result.
+ * Also sets up reactive subscriptions so the node updates when dependencies change.
  *
  * @param {*} paramValue - The parameter value (might be an ExpressionParameter)
  * @param {string} portName - The input port name
@@ -110,6 +119,14 @@ Node.prototype.registerInputIfNeeded = function () {
 Node.prototype._evaluateExpressionParameter = function (paramValue, portName) {
   // Check if this is an expression parameter
   if (!isExpressionParameter(paramValue)) {
+    // Clean up any existing subscription for this port since it's no longer an expression
+    if (this._expressionSubscriptions[portName]) {
+      const sub = this._expressionSubscriptions[portName];
+      if (sub && sub.unsub) {
+        sub.unsub();
+      }
+      delete this._expressionSubscriptions[portName];
+    }
     return paramValue; // Simple value, return as-is
   }
 
@@ -119,14 +136,63 @@ Node.prototype._evaluateExpressionParameter = function (paramValue, portName) {
   }
 
   try {
-    // Evaluate the expression with access to context
-    const result = evaluateExpression(paramValue.expression, this.context);
+    // Compile and evaluate the expression
+    // Note: We pass undefined for modelScope - evaluateExpression will use the global Model
+    const compiled = compileExpression(paramValue.expression);
+    if (!compiled) {
+      console.warn(`Expression compilation failed for ${this.name}.${portName}: ${paramValue.expression}`);
+      return paramValue.fallback;
+    }
+    const result = evaluateExpression(compiled, undefined);
 
     // Coerce to expected type
     const coercedValue = coerceToType(result, input.type, paramValue.fallback);
 
+    // Set up reactive subscription
+    // Track both the unsubscribe function and the expression string
+    // If expression changes, we need to re-subscribe with new dependencies
+    const currentSub = this._expressionSubscriptions[portName];
+    const expressionChanged = currentSub && currentSub.expression !== paramValue.expression;
+
+    // Unsubscribe if expression changed
+    if (expressionChanged && currentSub.unsub) {
+      currentSub.unsub();
+      delete this._expressionSubscriptions[portName];
+    }
+
+    // Subscribe if not subscribed or expression changed
+    if (!this._expressionSubscriptions[portName]) {
+      const dependencies = detectDependencies(paramValue.expression);
+      const hasDependencies =
+        dependencies.variables.length > 0 || dependencies.objects.length > 0 || dependencies.arrays.length > 0;
+
+      if (hasDependencies) {
+        // Subscribe to changes - when a dependency changes, re-queue the input
+        // Note: We store the expression string to detect changes later
+        const unsub = subscribeToChanges(
+          dependencies,
+          function () {
+            // Don't re-evaluate if node is deleted
+            if (this._deleted) return;
+
+            // Re-queue the expression parameter - it will be re-evaluated
+            // Use the stored input value which has the current expression
+            const currentValue = this._inputValues[portName];
+            if (isExpressionParameter(currentValue)) {
+              this.queueInput(portName, currentValue);
+            }
+          }.bind(this)
+        );
+
+        this._expressionSubscriptions[portName] = {
+          unsub: unsub,
+          expression: paramValue.expression
+        };
+      }
+    }
+
     // Clear any previous expression errors
-    if (this.context.editorConnection) {
+    if (this.context && this.context.editorConnection) {
       this.context.editorConnection.clearWarning(
         this.nodeScope.componentOwner.name,
         this.id,
@@ -140,7 +206,7 @@ Node.prototype._evaluateExpressionParameter = function (paramValue, portName) {
     console.warn(`Expression evaluation failed for ${this.name}.${portName}:`, error);
 
     // Show warning in editor
-    if (this.context.editorConnection) {
+    if (this.context && this.context.editorConnection) {
       this.context.editorConnection.sendWarning(
         this.nodeScope.componentOwner.name,
         this.id,
@@ -604,6 +670,15 @@ Node.prototype._onNodeDeleted = function () {
   }
 
   this._deleted = true;
+
+  // Clean up expression subscriptions
+  for (const portName in this._expressionSubscriptions) {
+    const sub = this._expressionSubscriptions[portName];
+    if (sub && sub.unsub) {
+      sub.unsub();
+    }
+  }
+  this._expressionSubscriptions = {};
 
   for (const deleteListener of this._deleteListeners) {
     deleteListener.call(this);

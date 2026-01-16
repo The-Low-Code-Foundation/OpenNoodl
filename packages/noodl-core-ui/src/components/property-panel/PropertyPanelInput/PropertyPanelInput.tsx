@@ -74,6 +74,8 @@ export interface PropertyPanelInputProps extends Omit<PropertyPanelBaseInputProp
   onExpressionChange?: (expression: string) => void;
   /** Whether the expression has an error */
   expressionError?: string;
+  /** Callback when expand button is clicked (opens expression in full editor) */
+  onExpressionExpand?: () => void;
 }
 
 export function PropertyPanelInput({
@@ -90,7 +92,8 @@ export function PropertyPanelInput({
   expression = '',
   onExpressionModeChange,
   onExpressionChange,
-  expressionError
+  expressionError,
+  onExpressionExpand
 }: PropertyPanelInputProps) {
   const Input = useMemo(() => {
     switch (inputType) {
@@ -136,6 +139,7 @@ export function PropertyPanelInput({
           onChange={onExpressionChange}
           hasError={!!expressionError}
           errorMessage={expressionError}
+          onExpand={onExpressionExpand}
           UNSAFE_style={{ flex: 1 }}
         />
       );
@@ -165,7 +169,7 @@ export function PropertyPanelInput({
     <div className={css['Root']}>
       <div className={classNames(css['Label'], isChanged && css['is-changed'])}>{label}</div>
       <div className={css['InputContainer']}>
-        <div style={{ display: 'flex', gap: '4px', alignItems: 'center', width: '100%' }}>
+        <div style={{ display: 'flex', gap: '4px', alignItems: 'center', minWidth: 0 }}>
           {renderInput()}
           {showExpressionToggle && (
             <ExpressionToggle mode={expressionMode} isConnected={isConnected} onToggle={handleToggleMode} />

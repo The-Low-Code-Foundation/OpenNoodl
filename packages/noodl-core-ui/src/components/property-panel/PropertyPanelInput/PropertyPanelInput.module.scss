@@ -24,4 +24,6 @@
 
 .InputContainer {
   flex: 1 1 auto;
+  min-width: 0; // Allow flex item to shrink below content size
+  overflow: hidden; // Prevent content overflow
 }

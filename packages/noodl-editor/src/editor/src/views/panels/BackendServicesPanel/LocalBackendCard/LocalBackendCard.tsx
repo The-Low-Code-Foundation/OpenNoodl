@@ -9,6 +9,7 @@
  */
 
 import React, { useCallback, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 import { Icon, IconName, IconSize } from '@noodl-core-ui/components/common/Icon';
 import { IconButton } from '@noodl-core-ui/components/inputs/IconButton';
@@ -16,6 +17,8 @@ import { PrimaryButton, PrimaryButtonSize, PrimaryButtonVariant } from '@noodl-c
 import { HStack, VStack } from '@noodl-core-ui/components/layout/Stack';
 import { Text, TextType } from '@noodl-core-ui/components/typography/Text';
 
+import { DataBrowser } from '../../databrowser';
+import { SchemaPanel } from '../../schemamanager';
 import { LocalBackendInfo } from '../hooks/useLocalBackends';
 import css from './LocalBackendCard.module.scss';
 
@@ -44,6 +47,8 @@ function getStatusDisplay(running: boolean): { icon: IconName; color: string; te
 
 export function LocalBackendCard({ backend, onStart, onStop, onDelete, onExport }: LocalBackendCardProps) {
   const [isOperating, setIsOperating] = useState(false);
+  const [showSchemaPanel, setShowSchemaPanel] = useState(false);
+  const [showDataBrowser, setShowDataBrowser] = useState(false);
   const statusDisplay = getStatusDisplay(backend.running);
 
   // Format date
@@ -127,6 +132,22 @@ export function LocalBackendCard({ backend, onStart, onStop, onDelete, onExport 
             onClick={handleToggle}
             isDisabled={isOperating}
           />
+          {backend.running && (
+            <>
+              <PrimaryButton
+                label="Data"
+                size={PrimaryButtonSize.Small}
+                variant={PrimaryButtonVariant.Muted}
+                onClick={() => setShowDataBrowser(true)}
+              />
+              <PrimaryButton
+                label="Schema"
+                size={PrimaryButtonSize.Small}
+                variant={PrimaryButtonVariant.Muted}
+                onClick={() => setShowSchemaPanel(true)}
+              />
+            </>
+          )}
           {onExport && backend.running && (
             <PrimaryButton
               label="Export"
@@ -144,6 +165,29 @@ export function LocalBackendCard({ backend, onStart, onStop, onDelete, onExport 
           />
         </HStack>
       </div>
+
+      {/* Schema Panel (rendered via portal for full-screen overlay) */}
+      {showSchemaPanel &&
+        createPortal(
+          <div className={css.SchemaPanelOverlay}>
+            <SchemaPanel
+              backendId={backend.id}
+              backendName={backend.name}
+              isRunning={backend.running}
+              onClose={() => setShowSchemaPanel(false)}
+            />
+          </div>,
+          document.body
+        )}
+
+      {/* Data Browser (rendered via portal for full-screen overlay) */}
+      {showDataBrowser &&
+        createPortal(
+          <div className={css.SchemaPanelOverlay}>
+            <DataBrowser backendId={backend.id} backendName={backend.name} onClose={() => setShowDataBrowser(false)} />
+          </div>,
+          document.body
+        )}
     </div>
   );
 }

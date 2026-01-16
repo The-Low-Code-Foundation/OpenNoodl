@@ -169,6 +169,89 @@ class SchemaManager {
   }
 
   /**
+   * Delete a table and all its data
+   *
+   * @param {string} tableName - Table name
+   * @returns {boolean} Whether table was deleted
+   */
+  deleteTable(tableName) {
+    // Check if table exists
+    const exists = this.db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name = ?").get(tableName);
+
+    if (!exists) {
+      return false;
+    }
+
+    // Drop the table
+    this.db.exec(`DROP TABLE IF EXISTS ${escapeTable(tableName)}`);
+
+    // Remove from schema tracking
+    this.ensureSchemaTable();
+    this.db.prepare('DELETE FROM "_Schema" WHERE "name" = ?').run(tableName);
+
+    // Clear cache
+    this._schemaCache.delete(tableName);
+
+    // Drop any junction tables for relations
+    const junctionTables = this.db
+      .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name LIKE ?")
+      .all(`_Join_%_${tableName}`);
+
+    for (const jt of junctionTables) {
+      this.db.exec(`DROP TABLE IF EXISTS ${escapeTable(jt.name)}`);
+    }
+
+    return true;
+  }
+
+  /**
+   * Rename a column in a table (SQLite 3.25.0+)
+   *
+   * @param {string} tableName - Table name
+   * @param {string} oldName - Current column name
+   * @param {string} newName - New column name
+   * @returns {boolean} Whether column was renamed
+   */
+  renameColumn(tableName, oldName, newName) {
+    // Validate new name
+    if (!newName || !/^[a-zA-Z][a-zA-Z0-9_]*$/.test(newName)) {
+      throw new Error('Invalid column name');
+    }
+
+    // Can't rename system columns
+    const systemCols = ['objectId', 'createdAt', 'updatedAt', 'ACL'];
+    if (systemCols.includes(oldName)) {
+      throw new Error('Cannot rename system columns');
+    }
+
+    try {
+      this.db.exec(
+        `ALTER TABLE ${escapeTable(tableName)} RENAME COLUMN ${escapeColumn(oldName)} TO ${escapeColumn(newName)}`
+      );
+
+      // Update schema tracking
+      const schema = this.getTableSchema(tableName);
+      if (schema && schema.columns) {
+        const col = schema.columns.find((c) => c.name === oldName);
+        if (col) {
+          col.name = newName;
+          this.db
+            .prepare(`UPDATE "_Schema" SET "schema" = ?, "updatedAt" = CURRENT_TIMESTAMP WHERE "name" = ?`)
+            .run(JSON.stringify(schema), tableName);
+          this._schemaCache.set(tableName, schema);
+        }
+      }
+
+      return true;
+    } catch (e) {
+      if (e.message.includes('no such column')) {
+        throw new Error(`Column "${oldName}" does not exist`);
+      }
+      throw e;
+    }
+  }
+
+  /**
    * Get schema for a table
    *
    * @param {string} tableName - Table name

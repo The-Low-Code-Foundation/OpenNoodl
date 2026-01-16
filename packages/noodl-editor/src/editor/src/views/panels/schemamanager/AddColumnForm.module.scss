@@ -1,0 +1,113 @@
+/**
+ * AddColumnForm styles
+ */
+
+.Root {
+  padding: 8px 12px;
+  background: var(--theme-color-bg-2);
+  border-top: 1px solid var(--theme-color-border-default);
+}
+
+.Row {
+  display: grid;
+  grid-template-columns: 2fr 1.2fr 0.8fr 1.5fr auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.Field {
+  display: flex;
+  align-items: center;
+}
+
+.FieldSmall {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.Actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.Input {
+  width: 100%;
+  padding: 6px 8px;
+  background: var(--theme-color-bg-3);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: 3px;
+  color: var(--theme-color-fg-default);
+  font-size: 12px;
+
+  &::placeholder {
+    color: var(--theme-color-fg-default-shy);
+  }
+
+  &:focus {
+    outline: none;
+    border-color: var(--theme-color-primary);
+  }
+}
+
+.Select {
+  width: 100%;
+  padding: 6px 8px;
+  background: var(--theme-color-bg-3);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: 3px;
+  color: var(--theme-color-fg-default);
+  font-size: 12px;
+  cursor: pointer;
+
+  &:focus {
+    outline: none;
+    border-color: var(--theme-color-primary);
+  }
+}
+
+.Error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0 0 0;
+  color: var(--theme-color-danger);
+  font-size: 12px;
+}
+
+// Inline column rename styles
+.RenameWrapper {
+  position: relative;
+}
+
+.RenameInput {
+  width: 100%;
+  padding: 4px 6px;
+  background: var(--theme-color-bg-3);
+  border: 1px solid var(--theme-color-primary);
+  border-radius: 2px;
+  color: var(--theme-color-fg-default);
+  font-size: 12px;
+
+  &:focus {
+    outline: none;
+  }
+
+  &:disabled {
+    opacity: 0.6;
+  }
+}
+
+.RenameError {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  padding: 4px 6px;
+  background: var(--theme-color-danger);
+  color: var(--theme-color-fg-default);
+  font-size: 10px;
+  border-radius: 2px;
+  white-space: nowrap;
+  z-index: 10;
+}

@@ -10,6 +10,95 @@ These fundamental patterns apply across ALL Noodl development. Understanding the
 
 ---
 
+## 📊 Property Expression Runtime Context (Jan 16, 2026)
+
+### The Context Trap: Why evaluateExpression() Needs undefined, Not this.context
+
+**Context**: TASK-006 Expressions Overhaul - Property expressions in the properties panel weren't evaluating. Error: "scope.get is not a function".
+
+**The Problem**: The `evaluateExpression()` function in `expression-evaluator.js` expects either `undefined` (to use global Model) or a Model scope object. Passing `this.context` (the runtime node context with editorConnection, styles, etc.) caused the error because it lacks a `.get()` method.
+
+**The Broken Pattern**:
+
+```javascript
+// ❌ WRONG - this.context is NOT a Model scope
+Node.prototype._evaluateExpressionParameter = function (paramValue, portName) {
+  const compiled = compileExpression(paramValue.expression);
+  const result = evaluateExpression(compiled, this.context); // ☠️ scope.get is not a function
+};
+```
+
+**The Correct Pattern**:
+
+```javascript
+// ✅ RIGHT - Pass undefined to use global Model
+Node.prototype._evaluateExpressionParameter = function (paramValue, portName) {
+  const compiled = compileExpression(paramValue.expression);
+  const result = evaluateExpression(compiled, undefined); // ✅ Uses global Model
+};
+```
+
+**Why This Works**:
+
+The expression-evaluator's `createNoodlContext()` function does:
+
+```javascript
+const scope = modelScope || Model; // Falls back to global Model
+const variablesModel = scope.get('--ndl--global-variables');
+```
+
+When `undefined` is passed, it uses the global `Model` which has the `.get()` method. The runtime's `this.context` is a completely different object containing `editorConnection`, `styles`, etc.
+
+**Reactive Expression Subscriptions**:
+
+To make expressions update when Variables change, the expression-evaluator already has:
+
+- `detectDependencies(expression)` - finds what Variables/Objects/Arrays are referenced
+- `subscribeToChanges(dependencies, callback)` - subscribes to Model changes
+
+Wire these up in `_evaluateExpressionParameter`:
+
+```javascript
+// Set up reactive subscription
+if (!this._expressionSubscriptions[portName]) {
+  const dependencies = detectDependencies(paramValue.expression);
+  if (dependencies.variables.length > 0) {
+    this._expressionSubscriptions[portName] = subscribeToChanges(
+      dependencies,
+      function () {
+        if (this._deleted) return;
+        this.queueInput(portName, paramValue); // Re-evaluate
+      }.bind(this)
+    );
+  }
+}
+```
+
+**Critical Rules**:
+
+1. **NEVER** pass `this.context` to `evaluateExpression()` - it's not a Model scope
+2. **ALWAYS** pass `undefined` to use the global Model for Variables/Objects/Arrays
+3. **Clean up subscriptions** in `_onNodeDeleted()` to prevent memory leaks
+4. **Track subscriptions by port name** to avoid duplicate listeners
+
+**Applies To**:
+
+- Property panel expression fields
+- Any runtime expression evaluation
+- Future expression support in other property types
+
+**Time Saved**: This pattern prevents 1-2 hours debugging "scope.get is not a function" errors.
+
+**Location**:
+
+- Fixed in: `packages/noodl-runtime/src/node.js`
+- Expression evaluator: `packages/noodl-runtime/src/expression-evaluator.js`
+- Task: Phase 3 TASK-006 Expressions Overhaul
+
+**Keywords**: expression, evaluateExpression, this.context, Model scope, scope.get, Variables, reactive, subscribeToChanges, detectDependencies
+
+---
+
 ## 🔴 Editor/Runtime Window Separation (Jan 2026)
 
 ### The Invisible Boundary: Why Editor Methods Don't Exist in Runtime

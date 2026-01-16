@@ -71,13 +71,15 @@
 
 ## Recent Updates
 
-| Date       | Update                                                    |
-| ---------- | --------------------------------------------------------- |
-| 2026-01-15 | TASK-007 Integrated Backend core infrastructure complete  |
-| 2026-01-07 | Corrected PROGRESS.md to reflect actual completion status |
-| 2025-12-30 | TASK-002 bug fixes and system table support               |
-| 2025-12-29 | TASK-001 Backend Services Panel completed                 |
-| 2025-12-29 | TASK-002 Data Nodes completed                             |
+| Date       | Update                                                      |
+| ---------- | ----------------------------------------------------------- |
+| 2026-01-15 | TASK-007J Schema Manager & Data Browser UX complete w/ bugs |
+| 2026-01-15 | TASK-007K Draft created for bug fixes                       |
+| 2026-01-15 | TASK-007 Integrated Backend core infrastructure complete    |
+| 2026-01-07 | Corrected PROGRESS.md to reflect actual completion status   |
+| 2025-12-30 | TASK-002 bug fixes and system table support                 |
+| 2025-12-29 | TASK-001 Backend Services Panel completed                   |
+| 2025-12-29 | TASK-002 Data Nodes completed                               |
 
 ---
 
@@ -103,7 +105,7 @@
 
 ### TASK-007: Integrated Local Backend ✅
 
-Zero-config local SQLite backend system - infrastructure complete.
+Zero-config local SQLite backend system - infrastructure complete with Schema Manager & Data Browser UI.
 
 **Completed subtasks:**
 
@@ -111,6 +113,9 @@ Zero-config local SQLite backend system - infrastructure complete.
 - TASK-007B: Local Backend Server (Express + IPC handlers)
 - TASK-007C: WorkflowRunner (Cloud function execution)
 - TASK-007D: Launcher UI (BackendServicesPanel integration)
+- TASK-007H: Backend Manager IPC Handlers
+- TASK-007I: Data Browser Panel (spreadsheet-style grid)
+- TASK-007J: Schema Manager Panel (create tables, add columns)
 
 **What's working:**
 
@@ -118,12 +123,16 @@ Zero-config local SQLite backend system - infrastructure complete.
 - Start/stop backend servers via IPC
 - REST API compatible with Parse Server
 - Auto-schema (tables/columns created on first write)
+- Schema Manager: create tables, add columns, view schema
+- Data Browser: view records, inline editing, create/delete records
+- UUID `id` field (compatible with Noodl frontend objects)
 
-**Future work (separate task):**
+**Known Issues (TASK-007K):**
 
-- Schema viewer/editor panel for visual data management
-- Data browser with grid view
-- Migration/export tools (optional)
+- Object/Array field editors don't work
+- Real SQLite falls back to in-memory mock (better-sqlite3 issues)
+- Can't edit/delete existing tables
+- Cell editor focus issues
 
 **Implementation Files:**
 
@@ -143,6 +152,20 @@ packages/noodl-editor/src/main/src/local-backend/
 packages/noodl-editor/src/editor/src/views/panels/BackendServicesPanel/
 ├── hooks/useLocalBackends.ts
 └── LocalBackendCard/LocalBackendCard.tsx
+
+packages/noodl-editor/src/editor/src/views/panels/schemamanager/
+├── SchemaPanel.tsx, SchemaPanel.module.scss
+├── TableRow.tsx, TableRow.module.scss
+├── CreateTableModal.tsx, CreateTableModal.module.scss
+├── AddColumnForm.tsx, AddColumnForm.module.scss
+└── index.ts
+
+packages/noodl-editor/src/editor/src/views/panels/databrowser/
+├── DataBrowser.tsx, DataBrowser.module.scss
+├── DataGrid.tsx, DataGrid.module.scss
+├── CellEditor.tsx, CellEditor.module.scss
+├── NewRecordModal.tsx, NewRecordModal.module.scss
+└── index.ts
 ```
 
 ---

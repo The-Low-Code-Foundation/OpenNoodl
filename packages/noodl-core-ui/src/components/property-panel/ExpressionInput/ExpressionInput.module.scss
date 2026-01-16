@@ -7,6 +7,8 @@
   border-radius: 4px;
   padding: 4px 8px;
   flex: 1;
+  min-width: 0; // Allow flex item to shrink below content size
+  overflow: hidden; // Prevent content overflow
   transition: all 0.15s ease;
 
   &:focus-within {
@@ -61,4 +63,30 @@
   flex-shrink: 0;
   color: var(--theme-color-error, #ef4444);
   cursor: help;
+}
+
+.ExpandButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--theme-color-fg-default-shy, rgba(255, 255, 255, 0.5));
+  cursor: pointer;
+  border-radius: 2px;
+  transition: all 0.15s ease;
+
+  &:hover {
+    background-color: var(--theme-color-bg-1, rgba(255, 255, 255, 0.1));
+    color: var(--theme-color-primary, #6366f1);
+  }
+
+  &:focus {
+    outline: none;
+    background-color: var(--theme-color-bg-1, rgba(255, 255, 255, 0.1));
+  }
 }

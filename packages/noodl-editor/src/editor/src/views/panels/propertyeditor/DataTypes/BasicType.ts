@@ -5,11 +5,9 @@ import { isExpressionParameter, createExpressionParameter } from '@noodl-models/
 import { NodeLibrary } from '@noodl-models/nodelibrary';
 import { ParameterValueResolver } from '@noodl-utils/ParameterValueResolver';
 
-import {
-  PropertyPanelInput,
-  PropertyPanelInputType
-} from '@noodl-core-ui/components/property-panel/PropertyPanelInput';
+import { PropertyPanelInputType } from '@noodl-core-ui/components/property-panel/PropertyPanelInput';
 
+import { PropertyPanelInputWithExpressionModal } from '../components/PropertyPanelInputWithExpressionModal';
 import { TypeView } from '../TypeView';
 import { getEditType } from '../utils';
 
@@ -154,10 +152,12 @@ export class BasicType extends TypeView {
         }
 
         this.isDefault = false;
+        // Re-render to update UI and sync modal with inline input
+        setTimeout(() => this.renderReact(), 0);
       }
     };
 
-    this.root.render(React.createElement(PropertyPanelInput, props));
+    this.root.render(React.createElement(PropertyPanelInputWithExpressionModal, props));
   }
 
   dispose() {

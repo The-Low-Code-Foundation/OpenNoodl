@@ -100,6 +100,65 @@ class BackendManager {
       return this.exportSchema(id, format);
     });
 
+    // Get full schema
+    ipcMain.handle('backend:getSchema', async (_, id) => {
+      return this.getSchema(id);
+    });
+
+    // Get single table schema
+    ipcMain.handle('backend:getTableSchema', async (_, id, tableName) => {
+      return this.getTableSchema(id, tableName);
+    });
+
+    // Get record count for a table
+    ipcMain.handle('backend:getRecordCount', async (_, id, tableName) => {
+      return this.getRecordCount(id, tableName);
+    });
+
+    // Create a new table
+    ipcMain.handle('backend:createTable', async (_, id, tableSchema) => {
+      return this.createTable(id, tableSchema);
+    });
+
+    // Add column to existing table
+    ipcMain.handle('backend:addColumn', async (_, id, tableName, column) => {
+      return this.addColumn(id, tableName, column);
+    });
+
+    // Rename column in existing table
+    ipcMain.handle('backend:renameColumn', async (_, id, tableName, oldName, newName) => {
+      return this.renameColumn(id, tableName, oldName, newName);
+    });
+
+    // Delete a table
+    ipcMain.handle('backend:deleteTable', async (_, id, tableName) => {
+      return this.deleteTable(id, tableName);
+    });
+
+    // ==========================================================================
+    // DATA OPERATIONS (for Data Browser)
+    // ==========================================================================
+
+    // Query records with pagination, search, filters
+    ipcMain.handle('backend:queryRecords', async (_, id, options) => {
+      return this.queryRecords(id, options);
+    });
+
+    // Create a new record
+    ipcMain.handle('backend:createRecord', async (_, id, collection, data) => {
+      return this.createRecord(id, collection, data);
+    });
+
+    // Update an existing record
+    ipcMain.handle('backend:saveRecord', async (_, id, collection, objectId, data) => {
+      return this.saveRecord(id, collection, objectId, data);
+    });
+
+    // Delete a record
+    ipcMain.handle('backend:deleteRecord', async (_, id, collection, objectId) => {
+      return this.deleteRecord(id, collection, objectId);
+    });
+
     // Workflow management
     ipcMain.handle('backend:update-workflow', async (_, args) => {
       return this.updateWorkflow(args.backendId, args.name, args.workflow);
@@ -310,16 +369,200 @@ class BackendManager {
       throw new Error('Adapter or schema manager not available');
     }
 
-    switch (format) {
-      case 'postgres':
-        return adapter.schemaManager.generatePostgresSQL();
-      case 'supabase':
-        return adapter.schemaManager.generateSupabaseSQL();
-      case 'json':
-      default:
-        const schema = await adapter.schemaManager.exportSchema();
-        return JSON.stringify(schema, null, 2);
+    if (format === 'postgres') {
+      return adapter.schemaManager.generatePostgresSQL();
     }
+    if (format === 'supabase') {
+      return adapter.schemaManager.generateSupabaseSQL();
+    }
+    // Default: json
+    const exportedSchema = await adapter.schemaManager.exportSchema();
+    return JSON.stringify(exportedSchema, null, 2);
+  }
+
+  // ==========================================================================
+  // SCHEMA MANAGEMENT
+  // ==========================================================================
+
+  /**
+   * Get full schema for a backend
+   * @param {string} id - Backend ID
+   * @returns {Promise<Object>} Schema with tables array
+   */
+  async getSchema(id) {
+    const server = this.runningBackends.get(id);
+    if (!server) {
+      throw new Error('Backend must be running to get schema');
+    }
+
+    const adapter = server.getAdapter();
+    if (!adapter || !adapter.schemaManager) {
+      throw new Error('Adapter or schema manager not available');
+    }
+
+    const tables = adapter.schemaManager.listTables();
+    const schemas = adapter.schemaManager.exportSchemas();
+
+    // Build response with table info
+    return {
+      tables: tables.map((tableName) => {
+        const schema = schemas.find((s) => s.name === tableName);
+        return {
+          name: tableName,
+          columns: schema?.columns || [],
+          createdAt: schema?.createdAt || null
+        };
+      })
+    };
+  }
+
+  /**
+   * Get schema for a single table
+   * @param {string} id - Backend ID
+   * @param {string} tableName - Table name
+   * @returns {Promise<Object|null>} Table schema
+   */
+  async getTableSchema(id, tableName) {
+    const server = this.runningBackends.get(id);
+    if (!server) {
+      throw new Error('Backend must be running to get table schema');
+    }
+
+    const adapter = server.getAdapter();
+    if (!adapter || !adapter.schemaManager) {
+      throw new Error('Adapter or schema manager not available');
+    }
+
+    const schema = adapter.schemaManager.getTableSchema(tableName);
+    if (!schema) {
+      return null;
+    }
+
+    return {
+      name: tableName,
+      columns: schema.columns || []
+    };
+  }
+
+  /**
+   * Get record count for a table
+   * @param {string} id - Backend ID
+   * @param {string} tableName - Table name
+   * @returns {Promise<number>} Record count
+   */
+  async getRecordCount(id, tableName) {
+    const server = this.runningBackends.get(id);
+    if (!server) {
+      throw new Error('Backend must be running to get record count');
+    }
+
+    const adapter = server.getAdapter();
+    if (!adapter) {
+      throw new Error('Adapter not available');
+    }
+
+    return new Promise((resolve, reject) => {
+      adapter.count({
+        collection: tableName,
+        success: (count) => resolve(count),
+        error: (err) => reject(new Error(err))
+      });
+    });
+  }
+
+  /**
+   * Create a new table
+   * @param {string} id - Backend ID
+   * @param {Object} tableSchema - Table schema { name, columns }
+   * @returns {Promise<Object>} Result with success status
+   */
+  async createTable(id, tableSchema) {
+    const server = this.runningBackends.get(id);
+    if (!server) {
+      throw new Error('Backend must be running to create table');
+    }
+
+    const adapter = server.getAdapter();
+    if (!adapter || !adapter.schemaManager) {
+      throw new Error('Adapter or schema manager not available');
+    }
+
+    const created = adapter.schemaManager.createTable(tableSchema);
+    safeLog(`Created table: ${tableSchema.name} (created: ${created})`);
+
+    return { success: true, created, tableName: tableSchema.name };
+  }
+
+  /**
+   * Add a column to an existing table
+   * @param {string} id - Backend ID
+   * @param {string} tableName - Table name
+   * @param {Object} column - Column definition { name, type, required, default }
+   * @returns {Promise<Object>} Result with success status
+   */
+  async addColumn(id, tableName, column) {
+    const server = this.runningBackends.get(id);
+    if (!server) {
+      throw new Error('Backend must be running to add column');
+    }
+
+    const adapter = server.getAdapter();
+    if (!adapter || !adapter.schemaManager) {
+      throw new Error('Adapter or schema manager not available');
+    }
+
+    adapter.schemaManager.addColumn(tableName, column);
+    safeLog(`Added column: ${column.name} to table ${tableName}`);
+
+    return { success: true, tableName, columnName: column.name };
+  }
+
+  /**
+   * Rename a column in an existing table
+   * @param {string} id - Backend ID
+   * @param {string} tableName - Table name
+   * @param {string} oldName - Current column name
+   * @param {string} newName - New column name
+   * @returns {Promise<Object>} Result with success status
+   */
+  async renameColumn(id, tableName, oldName, newName) {
+    const server = this.runningBackends.get(id);
+    if (!server) {
+      throw new Error('Backend must be running to rename column');
+    }
+
+    const adapter = server.getAdapter();
+    if (!adapter || !adapter.schemaManager) {
+      throw new Error('Adapter or schema manager not available');
+    }
+
+    adapter.schemaManager.renameColumn(tableName, oldName, newName);
+    safeLog(`Renamed column: ${oldName} -> ${newName} in table ${tableName}`);
+
+    return { success: true, tableName, oldName, newName };
+  }
+
+  /**
+   * Delete a table and all its data
+   * @param {string} id - Backend ID
+   * @param {string} tableName - Table name
+   * @returns {Promise<Object>} Result with success status
+   */
+  async deleteTable(id, tableName) {
+    const server = this.runningBackends.get(id);
+    if (!server) {
+      throw new Error('Backend must be running to delete table');
+    }
+
+    const adapter = server.getAdapter();
+    if (!adapter || !adapter.schemaManager) {
+      throw new Error('Adapter or schema manager not available');
+    }
+
+    const deleted = adapter.schemaManager.deleteTable(tableName);
+    safeLog(`Deleted table: ${tableName} (deleted: ${deleted})`);
+
+    return { success: true, deleted, tableName };
   }
 
   /**
@@ -341,6 +584,147 @@ class BackendManager {
     }
 
     return port;
+  }
+
+  // ==========================================================================
+  // DATA OPERATIONS (for Data Browser)
+  // ==========================================================================
+
+  /**
+   * Query records with pagination, search, and filters
+   * @param {string} id - Backend ID
+   * @param {Object} options - Query options
+   * @param {string} options.collection - Table/collection name
+   * @param {number} [options.limit=50] - Max records to return
+   * @param {number} [options.skip=0] - Records to skip (for pagination)
+   * @param {Object} [options.where] - Filter conditions
+   * @param {Array} [options.sort] - Sort order (e.g., ['-createdAt'])
+   * @param {boolean} [options.count] - Include total count
+   * @returns {Promise<{results: Object[], count?: number}>}
+   */
+  async queryRecords(id, options) {
+    const server = this.runningBackends.get(id);
+    if (!server) {
+      throw new Error('Backend must be running to query records');
+    }
+
+    const adapter = server.getAdapter();
+    if (!adapter) {
+      throw new Error('Adapter not available');
+    }
+
+    return new Promise((resolve, reject) => {
+      adapter.query({
+        collection: options.collection,
+        limit: options.limit || 50,
+        skip: options.skip || 0,
+        where: options.where,
+        sort: options.sort,
+        count: options.count,
+        success: (results, count) => {
+          resolve({
+            results,
+            count: options.count ? count : undefined
+          });
+        },
+        error: (err) => reject(new Error(err))
+      });
+    });
+  }
+
+  /**
+   * Create a new record
+   * @param {string} id - Backend ID
+   * @param {string} collection - Table/collection name
+   * @param {Object} data - Record data
+   * @returns {Promise<Object>} Created record with objectId
+   */
+  async createRecord(id, collection, data) {
+    const server = this.runningBackends.get(id);
+    if (!server) {
+      throw new Error('Backend must be running to create records');
+    }
+
+    const adapter = server.getAdapter();
+    if (!adapter) {
+      throw new Error('Adapter not available');
+    }
+
+    return new Promise((resolve, reject) => {
+      adapter.create({
+        collection,
+        data,
+        success: (record) => {
+          safeLog(`Created record in ${collection}:`, record.objectId);
+          resolve(record);
+        },
+        error: (err) => reject(new Error(err))
+      });
+    });
+  }
+
+  /**
+   * Update an existing record
+   * @param {string} id - Backend ID
+   * @param {string} collection - Table/collection name
+   * @param {string} objectId - Record ID to update
+   * @param {Object} data - Fields to update
+   * @returns {Promise<Object>} Updated record
+   */
+  async saveRecord(id, collection, objectId, data) {
+    const server = this.runningBackends.get(id);
+    if (!server) {
+      throw new Error('Backend must be running to save records');
+    }
+
+    const adapter = server.getAdapter();
+    if (!adapter) {
+      throw new Error('Adapter not available');
+    }
+
+    return new Promise((resolve, reject) => {
+      adapter.save({
+        collection,
+        objectId,
+        data,
+        success: (record) => {
+          safeLog(`Updated record in ${collection}:`, objectId);
+          resolve(record);
+        },
+        error: (err) => reject(new Error(err))
+      });
+    });
+  }
+
+  /**
+   * Delete a record
+   * @param {string} id - Backend ID
+   * @param {string} collection - Table/collection name
+   * @param {string} objectId - Record ID to delete
+   * @returns {Promise<{success: boolean}>}
+   */
+  async deleteRecord(id, collection, objectId) {
+    const server = this.runningBackends.get(id);
+    if (!server) {
+      throw new Error('Backend must be running to delete records');
+    }
+
+    const adapter = server.getAdapter();
+    if (!adapter) {
+      throw new Error('Adapter not available');
+    }
+
+    return new Promise((resolve, reject) => {
+      adapter.delete({
+        collection,
+        objectId,
+        success: () => {
+          safeLog(`Deleted record from ${collection}:`, objectId);
+          resolve({ success: true });
+        },
+        error: (err) => reject(new Error(err))
+      });
+    });
   }
 
   /**

@@ -275,6 +275,12 @@ function translateOperator(col, op, value, params, schema) {
       }
       return null;
 
+    case 'contains':
+    case '$contains':
+      // Contains search - convert to LIKE with wildcards
+      params.push(`%${convertedValue}%`);
+      return `${col} LIKE ?`;
+
     // Geo queries - not fully supported in SQLite without extensions
     case '$nearSphere':
     case '$within':
@@ -333,8 +339,8 @@ function buildSelect(options, schema) {
   let selectClause = '*';
   if (options.select) {
     const selectArray = Array.isArray(options.select) ? options.select : options.select.split(',');
-    // Always include objectId
-    const fields = new Set(['objectId', ...selectArray.map((s) => s.trim())]);
+    // Always include id
+    const fields = new Set(['id', ...selectArray.map((s) => s.trim())]);
     selectClause = Array.from(fields)
       .map((f) => escapeColumn(f))
       .join(', ');
@@ -406,13 +412,13 @@ function buildCount(options, schema) {
  * @param {string} objectId
  * @returns {{ sql: string, params: Array }}
  */
-function buildInsert(options, objectId) {
+function buildInsert(options, id) {
   const params = [];
   const table = escapeTable(options.collection);
 
   const now = new Date().toISOString();
   const data = {
-    objectId,
+    id,
     createdAt: now,
     updatedAt: now,
     ...options.data
@@ -441,7 +447,7 @@ function buildInsert(options, objectId) {
  *
  * @param {Object} options
  * @param {string} options.collection
- * @param {string} options.objectId
+ * @param {string} options.id - Record ID
  * @param {Object} options.data
  * @returns {{ sql: string, params: Array }}
  */
@@ -455,7 +461,7 @@ function buildUpdate(options) {
   data.updatedAt = new Date().toISOString();
 
   // Remove protected fields
-  delete data.objectId;
+  delete data.id;
   delete data.createdAt;
   delete data._createdAt;
   delete data._updatedAt;
@@ -467,9 +473,11 @@ function buildUpdate(options) {
     params.push(serializeValue(value));
   }
 
-  params.push(options.objectId);
+  // Use id or objectId for backwards compatibility
+  const recordId = options.id || options.objectId;
+  params.push(recordId);
 
-  const sql = `UPDATE ${table} SET ${setClause.join(', ')} WHERE "objectId" = ?`;
+  const sql = `UPDATE ${table} SET ${setClause.join(', ')} WHERE "id" = ?`;
 
   return { sql, params };
 }
@@ -479,13 +487,15 @@ function buildUpdate(options) {
  *
  * @param {Object} options
  * @param {string} options.collection
- * @param {string} options.objectId
+ * @param {string} options.id - Record ID
  * @returns {{ sql: string, params: Array }}
  */
 function buildDelete(options) {
   const table = escapeTable(options.collection);
-  const sql = `DELETE FROM ${table} WHERE "objectId" = ?`;
-  return { sql, params: [options.objectId] };
+  // Use id or objectId for backwards compatibility
+  const recordId = options.id || options.objectId;
+  const sql = `DELETE FROM ${table} WHERE "id" = ?`;
+  return { sql, params: [recordId] };
 }
 
 /**
@@ -493,7 +503,7 @@ function buildDelete(options) {
  *
  * @param {Object} options
  * @param {string} options.collection
- * @param {string} options.objectId
+ * @param {string} options.id - Record ID
  * @param {Object<string, number>} options.properties
  * @returns {{ sql: string, params: Array }}
  */
@@ -513,9 +523,11 @@ function buildIncrement(options) {
   setClause.push('"updatedAt" = ?');
   params.push(new Date().toISOString());
 
-  params.push(options.objectId);
+  // Use id or objectId for backwards compatibility
+  const recordId = options.id || options.objectId;
+  params.push(recordId);
 
-  const sql = `UPDATE ${table} SET ${setClause.join(', ')} WHERE "objectId" = ?`;
+  const sql = `UPDATE ${table} SET ${setClause.join(', ')} WHERE "id" = ?`;
 
   return { sql, params };
 }

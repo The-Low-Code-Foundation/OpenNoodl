@@ -1,0 +1,121 @@
+/**
+ * NewRecordModal styles
+ */
+
+.Overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.Modal {
+  background-color: var(--theme-color-bg-2);
+  border-radius: 8px;
+  width: 100%;
+  max-width: 500px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+}
+
+.Header {
+  padding: 16px;
+  border-bottom: 1px solid var(--theme-color-border-default);
+  background-color: var(--theme-color-bg-3);
+  border-radius: 8px 8px 0 0;
+}
+
+.Content {
+  padding: 16px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.Field {
+  margin-bottom: 16px;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.Label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  font-size: 12px;
+  color: var(--theme-color-fg-default);
+  font-weight: 500;
+}
+
+.Required {
+  color: var(--theme-color-danger);
+}
+
+.TypeHint {
+  font-size: 10px;
+  color: var(--theme-color-fg-default-shy);
+  text-transform: uppercase;
+  padding: 2px 6px;
+  background-color: var(--theme-color-bg-1);
+  border-radius: 4px;
+}
+
+.Input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: 4px;
+  background-color: var(--theme-color-bg-3);
+  color: var(--theme-color-fg-default);
+  font-size: 13px;
+
+  &:focus {
+    outline: none;
+    border-color: var(--theme-color-primary);
+  }
+}
+
+.JsonInput {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: 4px;
+  background-color: var(--theme-color-bg-3);
+  color: var(--theme-color-fg-default);
+  font-size: 12px;
+  font-family: monospace;
+  resize: vertical;
+
+  &:focus {
+    outline: none;
+    border-color: var(--theme-color-primary);
+  }
+}
+
+.Error {
+  padding: 12px;
+  background-color: var(--theme-color-danger-bg);
+  border-radius: 4px;
+  margin-top: 16px;
+  color: var(--theme-color-danger);
+}
+
+.Footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 16px;
+  border-top: 1px solid var(--theme-color-border-default);
+  background-color: var(--theme-color-bg-3);
+  border-radius: 0 0 8px 8px;
+}

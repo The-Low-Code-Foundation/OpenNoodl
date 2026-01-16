@@ -1,0 +1,47 @@
+/**
+ * SchemaPanel styles
+ * Uses theme tokens from UI-STYLING-GUIDE.md
+ */
+
+.Root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background-color: var(--theme-color-bg-2);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.Header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 16px;
+  border-bottom: 1px solid var(--theme-color-border-default);
+  background-color: var(--theme-color-bg-3);
+}
+
+.TableList {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.Loading,
+.Error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+  gap: 16px;
+}
+
+.EmptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  text-align: center;
+}

@@ -123,6 +123,7 @@ packages/
 - `dev-docs/reference/NODE-PATTERNS.md` - How to create/modify nodes
 - `dev-docs/reference/LEARNINGS.md` - Accumulated knowledge
 - `dev-docs/reference/UI-STYLING-GUIDE.md` - Styling rules (NO hardcoded colors!)
+- `dev-docs/reference/PANEL-UI-STYLE-GUIDE.md` - **Panels & Modals (READ BEFORE making UI!)**
 - `dev-docs/reference/LEARNINGS-NODE-CREATION.md` - Node creation gotchas
 
 ---
@@ -417,6 +418,20 @@ Before marking any task complete:
 - [ ] JSDoc added to public APIs
 - [ ] **Discoveries added to LEARNINGS.md or COMMON-ISSUES.md**
 - [ ] Task CHANGELOG.md updated with progress
+
+### Visual Components (Panels, Modals, Forms)
+
+**MUST read `dev-docs/reference/PANEL-UI-STYLE-GUIDE.md` before building UI!**
+
+- [ ] NO emojis in buttons, labels, or headers
+- [ ] Using CSS variables for ALL colors (`var(--theme-color-*)`)
+- [ ] Using `Text` component with proper `textType` for typography
+- [ ] Using `PrimaryButton` with correct variant (Cta/Muted/Ghost/Danger)
+- [ ] Panel structure: Header → Toolbar → Content → Footer
+- [ ] Modal structure: Overlay → Modal → Header → Body → Footer
+- [ ] Form inputs styled with proper tokens (bg-1, bg-3 borders)
+- [ ] Empty states, loading states, and error states handled
+- [ ] Dark theme first - ensure contrast with light text
 
 ### Git
 

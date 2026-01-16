@@ -62,23 +62,39 @@ export function ExpressionToggle({
 
   const tooltipContent = isExpressionMode ? 'Switch to fixed value' : 'Switch to expression';
 
-  const icon = isExpressionMode ? IconName.Code : IconName.MagicWand;
+  // When in expression mode, show TextInBox icon (switch to fixed value)
+  // When in fixed mode, show "fx" text button (switch to expression)
+  if (isExpressionMode) {
+    return (
+      <Tooltip content={tooltipContent}>
+        <div className={css['Root']} style={UNSAFE_style}>
+          <IconButton
+            icon={IconName.TextInBox}
+            size={IconSize.Tiny}
+            variant={IconButtonVariant.Default}
+            onClick={onToggle}
+            isDisabled={isDisabled}
+            testId={testId}
+            UNSAFE_className={css['ExpressionActive']}
+          />
+        </div>
+      </Tooltip>
+    );
+  }
 
-  const variant = isExpressionMode ? IconButtonVariant.Default : IconButtonVariant.OpaqueOnHover;
-
+  // Fixed mode - show "fx" text button
   return (
     <Tooltip content={tooltipContent}>
-      <div className={css['Root']} style={UNSAFE_style}>
-        <IconButton
-          icon={icon}
-          size={IconSize.Tiny}
-          variant={variant}
-          onClick={onToggle}
-          isDisabled={isDisabled}
-          testId={testId}
-          UNSAFE_className={isExpressionMode ? css['ExpressionActive'] : UNSAFE_className}
-        />
-      </div>
+      <button
+        type="button"
+        className={`${css['FxButton']} ${isDisabled ? css['is-disabled'] : ''} ${UNSAFE_className || ''}`}
+        style={UNSAFE_style}
+        onClick={isDisabled ? undefined : onToggle}
+        disabled={isDisabled}
+        data-test={testId}
+      >
+        fx
+      </button>
     </Tooltip>
   );
 }

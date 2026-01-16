@@ -13,17 +13,17 @@ const QueryBuilder = require('./QueryBuilder');
 const SchemaManager = require('./SchemaManager');
 
 /**
- * Generate a unique object ID (similar to Parse objectId)
+ * Generate a UUID v4
  *
- * @returns {string} 10-character alphanumeric ID
+ * @returns {string} UUID string (e.g., "123e4567-e89b-12d3-a456-426614174000")
  */
-function generateObjectId() {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  let id = '';
-  for (let i = 0; i < 10; i++) {
-    id += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return id;
+function generateUUID() {
+  // RFC 4122 version 4 UUID
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
 }
 
 /**
@@ -132,17 +132,25 @@ class LocalSQLAdapter {
     const self = this;
     return {
       ensureSchemaTable: () => {},
-      createTable: ({ name }) => {
+      createTable: ({ name, columns }) => {
         if (!self._mockData[name]) {
           self._mockData[name] = {};
-          self._mockSchema[name] = {};
+          self._mockSchema[name] = { name, columns: columns || [] };
         }
+        return true;
       },
       addColumn: (table, col) => {
-        if (!self._mockSchema[table]) self._mockSchema[table] = {};
-        self._mockSchema[table][col.name] = col;
+        if (!self._mockSchema[table]) self._mockSchema[table] = { name: table, columns: [] };
+        if (!self._mockSchema[table].columns) self._mockSchema[table].columns = [];
+        // Check if column already exists
+        const exists = self._mockSchema[table].columns.some((c) => c.name === col.name);
+        if (!exists) {
+          self._mockSchema[table].columns.push(col);
+        }
       },
-      getTableSchema: (table) => self._mockSchema[table] || {},
+      getTableSchema: (table) => self._mockSchema[table] || null,
+      listTables: () => Object.keys(self._mockData).filter((name) => !name.startsWith('_')),
+      exportSchemas: () => Object.values(self._mockSchema).filter((s) => s && !s.name?.startsWith('_')),
       addRelation: () => {},
       removeRelation: () => {}
     };
@@ -153,8 +161,9 @@ class LocalSQLAdapter {
    * @private
    */
   _mockExec(sql, params, mode) {
-    // Parse simple SQL patterns for mock execution
-    const selectMatch = sql.match(/SELECT \* FROM "?(\w+)"?\s*(?:WHERE "?objectId"?\s*=\s*\?)?/i);
+    // Parse SQL patterns for mock execution
+    // Match SELECT with optional WHERE, ORDER BY, LIMIT, OFFSET
+    const selectMatch = sql.match(/SELECT\s+\*\s+FROM\s+"?(\w+)"?/i);
     const insertMatch = sql.match(/INSERT INTO "?(\w+)"?/i);
     const updateMatch = sql.match(/UPDATE "?(\w+)"?\s+SET/i);
     const deleteMatch = sql.match(/DELETE FROM "?(\w+)"?/i);
@@ -163,48 +172,111 @@ class LocalSQLAdapter {
       const table = selectMatch[1];
       if (!this._mockData[table]) this._mockData[table] = {};
 
-      if (params.length > 0) {
-        // Single record fetch
-        const record = this._mockData[table][params[0]];
+      let records = Object.values(this._mockData[table]);
+
+      // Check for WHERE id = ? or WHERE objectId = ?
+      const idMatch = sql.match(/WHERE\s+"?(?:id|objectId)"?\s*=\s*\?/i);
+      if (idMatch && params.length > 0) {
+        const recordId = params[0];
+        const record = this._mockData[table][recordId];
         return mode === 'get' ? record || null : record ? [record] : [];
       }
-      // Return all records
-      const records = Object.values(this._mockData[table]);
+
+      // Handle ORDER BY
+      const orderMatch = sql.match(/ORDER BY\s+"?(\w+)"?\s+(ASC|DESC)?/i);
+      if (orderMatch) {
+        const orderCol = orderMatch[1];
+        const orderDir = (orderMatch[2] || 'ASC').toUpperCase();
+        records = records.sort((a, b) => {
+          const aVal = a[orderCol];
+          const bVal = b[orderCol];
+          if (aVal < bVal) return orderDir === 'ASC' ? -1 : 1;
+          if (aVal > bVal) return orderDir === 'ASC' ? 1 : -1;
+          return 0;
+        });
+      }
+
+      // Handle LIMIT and OFFSET
+      // Find position of LIMIT in params (it comes after WHERE params if any)
+      let paramIndex = 0;
+      if (sql.includes('LIMIT')) {
+        // Find LIMIT param position - it's after WHERE params
+        const limitIdx = sql.indexOf('LIMIT');
+        const whereClause = sql.substring(0, limitIdx);
+        const whereParams = (whereClause.match(/\?/g) || []).length;
+        paramIndex = whereParams;
+
+        const limit = params[paramIndex];
+        const skip = sql.includes('OFFSET') ? params[paramIndex + 1] || 0 : 0;
+        records = records.slice(skip, skip + limit);
+      }
+
       return mode === 'get' ? records[0] || null : records;
     }
 
     if (insertMatch) {
       const table = insertMatch[1];
       if (!this._mockData[table]) this._mockData[table] = {};
-      // Find objectId in params (simple extraction)
+
+      // Parse column names from SQL: INSERT INTO table (col1, col2, ...) VALUES (?, ?, ...)
+      const columnsMatch = sql.match(/\(([^)]+)\)\s*VALUES/i);
+      if (columnsMatch) {
+        const columns = columnsMatch[1].split(',').map((c) => c.trim().replace(/"/g, ''));
+        const record = {};
+        columns.forEach((col, idx) => {
+          record[col] = params[idx];
+        });
+        // Ensure id exists
+        if (!record.id && params[0]) {
+          record.id = params[0];
+        }
+        const recordId = record.id;
+        this._mockData[table][recordId] = record;
+        return { changes: 1 };
+      }
+
+      // Fallback: simple record creation
       const now = new Date().toISOString();
-      const record = { objectId: params[0], createdAt: now, updatedAt: now };
+      const record = { id: params[0], createdAt: now, updatedAt: now };
       this._mockData[table][params[0]] = record;
       return { changes: 1 };
     }
 
     if (updateMatch) {
       const table = updateMatch[1];
-      // Last param is typically the objectId in WHERE clause
-      const objectId = params[params.length - 1];
-      if (this._mockData[table] && this._mockData[table][objectId]) {
-        this._mockData[table][objectId].updatedAt = new Date().toISOString();
+      // Last param is typically the id in WHERE clause
+      const recordId = params[params.length - 1];
+      if (this._mockData[table] && this._mockData[table][recordId]) {
+        // Parse SET clauses to update actual fields
+        const setMatch = sql.match(/SET\s+(.+?)\s+WHERE/i);
+        if (setMatch) {
+          const setParts = setMatch[1].split(',');
+          let paramIdx = 0;
+          setParts.forEach((part) => {
+            const colMatch = part.match(/"?(\w+)"?\s*=/);
+            if (colMatch) {
+              this._mockData[table][recordId][colMatch[1]] = params[paramIdx];
+              paramIdx++;
+            }
+          });
+        }
+        this._mockData[table][recordId].updatedAt = new Date().toISOString();
       }
       return { changes: 1 };
     }
 
     if (deleteMatch) {
       const table = deleteMatch[1];
-      const objectId = params[0];
+      const recordId = params[0];
       if (this._mockData[table]) {
-        delete this._mockData[table][objectId];
+        delete this._mockData[table][recordId];
       }
       return { changes: 1 };
     }
 
     // Count query
     if (sql.includes('COUNT(*)')) {
-      const countMatch = sql.match(/FROM "?(\w+)"?/i);
+      const countMatch = sql.match(/FROM\s+"?(\w+)"?/i);
       if (countMatch) {
         const table = countMatch[1];
         const count = Object.keys(this._mockData[table] || {}).length;
@@ -356,8 +428,9 @@ class LocalSQLAdapter {
     try {
       this._ensureTable(options.collection);
 
-      const sql = `SELECT * FROM ${QueryBuilder.escapeTable(options.collection)} WHERE "objectId" = ?`;
-      const row = this.db.prepare(sql).get(options.objectId);
+      const sql = `SELECT * FROM ${QueryBuilder.escapeTable(options.collection)} WHERE "id" = ?`;
+      const recordId = options.id || options.objectId;
+      const row = this.db.prepare(sql).get(recordId);
 
       if (!row) {
         options.error('Object not found');
@@ -370,7 +443,7 @@ class LocalSQLAdapter {
 
       this.events.emit('fetch', {
         type: 'fetch',
-        objectId: options.objectId,
+        id: recordId,
         object: record,
         collection: options.collection
       });
@@ -392,22 +465,22 @@ class LocalSQLAdapter {
       // Auto-add columns for new fields
       if (this.options.autoCreateTables && this.schemaManager) {
         for (const [key, value] of Object.entries(options.data)) {
-          if (key !== 'objectId' && key !== 'createdAt' && key !== 'updatedAt') {
+          if (key !== 'id' && key !== 'createdAt' && key !== 'updatedAt') {
             const type = this._inferType(value);
             this.schemaManager.addColumn(options.collection, { name: key, type });
           }
         }
       }
 
-      const objectId = generateObjectId();
-      const { sql, params } = QueryBuilder.buildInsert(options, objectId);
+      const recordId = generateUUID();
+      const { sql, params } = QueryBuilder.buildInsert(options, recordId);
 
       this.db.prepare(sql).run(...params);
 
       // Fetch the created record to get all fields
       const createdRow = this.db
-        .prepare(`SELECT * FROM ${QueryBuilder.escapeTable(options.collection)} WHERE "objectId" = ?`)
-        .get(objectId);
+        .prepare(`SELECT * FROM ${QueryBuilder.escapeTable(options.collection)} WHERE "id" = ?`)
+        .get(recordId);
 
       const record = this._rowToRecord(createdRow, options.collection);
 
@@ -415,7 +488,7 @@ class LocalSQLAdapter {
 
       this.events.emit('create', {
         type: 'create',
-        objectId,
+        id: recordId,
         object: record,
         collection: options.collection
       });
@@ -437,20 +510,21 @@ class LocalSQLAdapter {
       // Auto-add columns for new fields
       if (this.options.autoCreateTables && this.schemaManager) {
         for (const [key, value] of Object.entries(options.data)) {
-          if (key !== 'objectId' && key !== 'createdAt' && key !== 'updatedAt') {
+          if (key !== 'id' && key !== 'createdAt' && key !== 'updatedAt') {
             const type = this._inferType(value);
             this.schemaManager.addColumn(options.collection, { name: key, type });
           }
         }
       }
 
+      const recordId = options.id || options.objectId;
       const { sql, params } = QueryBuilder.buildUpdate(options);
       this.db.prepare(sql).run(...params);
 
       // Fetch the updated record
       const updatedRow = this.db
-        .prepare(`SELECT * FROM ${QueryBuilder.escapeTable(options.collection)} WHERE "objectId" = ?`)
-        .get(options.objectId);
+        .prepare(`SELECT * FROM ${QueryBuilder.escapeTable(options.collection)} WHERE "id" = ?`)
+        .get(recordId);
 
       const record = this._rowToRecord(updatedRow, options.collection);
 
@@ -458,7 +532,7 @@ class LocalSQLAdapter {
 
       this.events.emit('save', {
         type: 'save',
-        objectId: options.objectId,
+        id: recordId,
         object: record,
         collection: options.collection
       });
@@ -482,9 +556,10 @@ class LocalSQLAdapter {
 
       options.success();
 
+      const recordId = options.id || options.objectId;
       this.events.emit('delete', {
         type: 'delete',
-        objectId: options.objectId,
+        id: recordId,
         collection: options.collection
       });
     } catch (e) {
@@ -573,9 +648,10 @@ class LocalSQLAdapter {
       this.db.prepare(sql).run(...params);
 
       // Fetch the updated record
+      const recordId = options.id || options.objectId;
       const updatedRow = this.db
-        .prepare(`SELECT * FROM ${QueryBuilder.escapeTable(options.collection)} WHERE "objectId" = ?`)
-        .get(options.objectId);
+        .prepare(`SELECT * FROM ${QueryBuilder.escapeTable(options.collection)} WHERE "id" = ?`)
+        .get(recordId);
 
       const record = this._rowToRecord(updatedRow, options.collection);
       options.success(record);

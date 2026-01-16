@@ -30,6 +30,9 @@ export interface ExpressionInputProps extends UnsafeStyleProps {
 
   /** Debounce delay in milliseconds */
   debounceMs?: number;
+
+  /** Callback when expand button is clicked - opens expression in full editor */
+  onExpand?: () => void;
 }
 
 /**
@@ -56,6 +59,7 @@ export function ExpressionInput({
   placeholder = 'Enter expression...',
   testId,
   debounceMs = 300,
+  onExpand,
   UNSAFE_className,
   UNSAFE_style
 }: ExpressionInputProps) {
@@ -141,6 +145,13 @@ export function ExpressionInput({
           <div className={css['ErrorIndicator']}>
             <Icon icon={IconName.WarningCircle} size={IconSize.Tiny} />
           </div>
+        </Tooltip>
+      )}
+      {onExpand && (
+        <Tooltip content="Edit in code editor">
+          <button type="button" className={css['ExpandButton']} onClick={onExpand} aria-label="Edit in code editor">
+            <Icon icon={IconName.Code} size={IconSize.Tiny} />
+          </button>
         </Tooltip>
       )}
     </div>
