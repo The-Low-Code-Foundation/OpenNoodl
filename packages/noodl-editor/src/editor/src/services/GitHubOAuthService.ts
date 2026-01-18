@@ -1,47 +1,16 @@
 /**
  * GitHubOAuthService
  *
- * Manages GitHub OAuth authentication using PKCE flow.
- * Provides token management and user information retrieval.
+ * Manages GitHub OAuth authentication via IPC with the main process.
+ * The main process handles the OAuth flow and protocol callbacks,
+ * this service coordinates with it and manages state in the renderer.
  *
  * @module noodl-editor/services
  */
 
-import crypto from 'crypto';
-import { shell } from 'electron';
+import { shell, ipcRenderer } from 'electron';
 
 import { EventDispatcher } from '../../../shared/utils/EventDispatcher';
-
-/**
- * IMPORTANT: GitHub App Setup Instructions
- *
- * This service uses PKCE (Proof Key for Code Exchange) combined with a client secret.
- *
- * To set up:
- * 1. Go to https://github.com/settings/apps/new
- * 2. Fill in:
- *    - GitHub App name: "OpenNoodl" (or your choice)
- *    - Homepage URL: https://github.com/The-Low-Code-Foundation/OpenNoodl
- *    - Callback URL: noodl://github-callback
- *    - Check "Request user authorization (OAuth) during installation"
- *    - Uncheck "Webhook > Active"
- *    - Permissions:
- *      * Repository permissions → Contents: Read and write
- *      * Account permissions → Email addresses: Read-only
- * 3. Click "Create GitHub App"
- * 4. Copy the Client ID
- * 5. Generate a Client Secret and copy it
- * 6. Update GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET below
- *
- * Security Note:
- * While storing client secrets in desktop apps is not ideal (they can be extracted),
- * this is GitHub's requirement for token exchange. The PKCE flow still adds security
- * by preventing authorization code interception attacks.
- */
-const GITHUB_CLIENT_ID = process.env.GITHUB_CLIENT_ID || 'Iv23lib1WdrimUdyvZui'; // Replace with your GitHub App Client ID
-const GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET || '9bd56694d6d300bf86b1999bab523b32654ec375'; // Replace with your GitHub App Client Secret
-const GITHUB_REDIRECT_URI = 'noodl://github-callback';
-const GITHUB_SCOPES = ['repo', 'read:org', 'read:user'];
 
 export interface GitHubUser {
   id: number;
@@ -65,23 +34,41 @@ interface GitHubToken {
   scope: string;
 }
 
-interface PKCEChallenge {
-  verifier: string;
-  challenge: string;
-  state: string;
+interface OAuthCompleteResult {
+  token: GitHubToken;
+  user: GitHubUser;
+  installations: unknown[];
+  authMethod: string;
+}
+
+interface OAuthErrorResult {
+  error: string;
+  message: string;
 }
 
 /**
  * Service for managing GitHub OAuth authentication
+ *
+ * This service coordinates with the main process which handles:
+ * - State generation and validation
+ * - Protocol callback handling (noodl://github-callback)
+ * - Token exchange with GitHub
+ *
+ * The renderer process handles:
+ * - Opening the auth URL in the browser
+ * - Storing tokens securely
+ * - Managing user state
  */
 export class GitHubOAuthService extends EventDispatcher {
   private static _instance: GitHubOAuthService;
   private currentUser: GitHubUser | null = null;
   private accessToken: string | null = null;
-  private pendingPKCE: PKCEChallenge | null = null;
+  private isAuthenticating: boolean = false;
 
   private constructor() {
     super();
+    console.log('🔧 [GitHubOAuthService] Constructor called - setting up IPC listeners');
+    this.setupIPCListeners();
   }
 
   static get instance(): GitHubOAuthService {
@@ -92,147 +79,119 @@ export class GitHubOAuthService extends EventDispatcher {
   }
 
   /**
-   * Generate PKCE challenge for secure OAuth flow
+   * Set up IPC listeners for OAuth callbacks from main process
    */
-  private generatePKCE(): PKCEChallenge {
-    // Generate code verifier (random string)
-    const verifier = crypto.randomBytes(32).toString('base64url');
+  private setupIPCListeners(): void {
+    console.log('🔌 [GitHubOAuthService] Setting up IPC listeners for github-oauth-complete and github-oauth-error');
 
-    // Generate code challenge (SHA256 hash of verifier)
-    const challenge = crypto.createHash('sha256').update(verifier).digest('base64url');
-
-    // Generate state for CSRF protection
-    const state = crypto.randomBytes(16).toString('hex');
-
-    return { verifier, challenge, state };
-  }
-
-  /**
-   * Initiate OAuth flow by opening GitHub authorization in browser
-   */
-  async initiateOAuth(): Promise<void> {
-    console.log('🔐 Initiating GitHub OAuth flow');
-
-    // Generate PKCE challenge
-    this.pendingPKCE = this.generatePKCE();
-
-    // Build authorization URL
-    const params = new URLSearchParams({
-      client_id: GITHUB_CLIENT_ID,
-      redirect_uri: GITHUB_REDIRECT_URI,
-      scope: GITHUB_SCOPES.join(' '),
-      state: this.pendingPKCE.state,
-      code_challenge: this.pendingPKCE.challenge,
-      code_challenge_method: 'S256'
+    // Listen for successful OAuth completion
+    ipcRenderer.on('github-oauth-complete', (_event, result: OAuthCompleteResult) => {
+      console.log('✅ [GitHubOAuthService] IPC RECEIVED: github-oauth-complete');
+      console.log('✅ [GitHubOAuthService] Result:', result);
+      this.handleOAuthComplete(result);
     });
 
-    const authUrl = `https://github.com/login/oauth/authorize?${params.toString()}`;
+    // Listen for OAuth errors
+    ipcRenderer.on('github-oauth-error', (_event, error: OAuthErrorResult) => {
+      console.error('❌ [GitHubOAuthService] IPC RECEIVED: github-oauth-error');
+      console.error('❌ [GitHubOAuthService] Error:', error);
+      this.handleOAuthError(error);
+    });
 
-    console.log('🌐 Opening GitHub authorization URL:', authUrl);
-
-    // Open in system browser
-    await shell.openExternal(authUrl);
-
-    // Notify listeners that OAuth flow started
-    this.notifyListeners('oauth-started');
+    console.log('✅ [GitHubOAuthService] IPC listeners registered');
   }
 
   /**
-   * Handle OAuth callback with authorization code
+   * Handle successful OAuth completion from main process
    */
-  async handleCallback(code: string, state: string): Promise<void> {
-    console.log('🔄 Handling OAuth callback');
-
+  private async handleOAuthComplete(result: OAuthCompleteResult): Promise<void> {
     try {
-      // Verify state to prevent CSRF
-      if (!this.pendingPKCE || state !== this.pendingPKCE.state) {
-        throw new Error('Invalid OAuth state - possible CSRF attack');
-      }
+      console.log('🔄 [GitHub OAuth] Processing OAuth result for user:', result.user.login);
 
-      // Exchange code for token
-      const token = await this.exchangeCodeForToken(code, this.pendingPKCE.verifier);
-
-      // Store token
-      this.accessToken = token.access_token;
-
-      // Clear pending PKCE
-      this.pendingPKCE = null;
-
-      // Fetch user information
-      await this.fetchCurrentUser();
+      // Store the token
+      this.accessToken = result.token.access_token;
+      this.currentUser = result.user;
 
       // Persist token securely
-      await this.saveToken(token.access_token);
+      await this.saveToken(result.token.access_token);
 
-      console.log('✅ GitHub OAuth successful, user:', this.currentUser?.login);
+      console.log('✅ [GitHub OAuth] Authentication successful');
 
       // Notify listeners
+      this.isAuthenticating = false;
       this.notifyListeners('oauth-success', { user: this.currentUser });
       this.notifyListeners('auth-state-changed', { authenticated: true });
     } catch (error) {
-      console.error('❌ OAuth callback error:', error);
-      this.pendingPKCE = null;
-      this.notifyListeners('oauth-error', { error: error.message });
+      console.error('❌ [GitHub OAuth] Failed to process OAuth result:', error);
+      this.handleOAuthError({
+        error: 'processing_failed',
+        message: error instanceof Error ? error.message : 'Failed to process OAuth result'
+      });
+    }
+  }
+
+  /**
+   * Handle OAuth error from main process
+   */
+  private handleOAuthError(error: OAuthErrorResult): void {
+    console.error('❌ [GitHub OAuth] OAuth error:', error.error, error.message);
+
+    this.isAuthenticating = false;
+    this.notifyListeners('oauth-error', { error: error.message });
+  }
+
+  /**
+   * Initiate OAuth flow by requesting auth URL from main process
+   * and opening it in the system browser
+   */
+  async initiateOAuth(): Promise<void> {
+    if (this.isAuthenticating) {
+      console.warn('[GitHub OAuth] OAuth flow already in progress');
+      return;
+    }
+
+    console.log('🔐 [GitHub OAuth] Initiating OAuth flow');
+    this.isAuthenticating = true;
+
+    try {
+      // Request auth URL from main process
+      // Main process generates the state and stores it for validation
+      const result = await ipcRenderer.invoke('github-oauth-start');
+
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to start OAuth flow');
+      }
+
+      console.log('🌐 [GitHub OAuth] Opening auth URL in browser');
+
+      // Open the auth URL in the system browser
+      await shell.openExternal(result.authUrl);
+
+      // Notify listeners that OAuth flow started
+      this.notifyListeners('oauth-started');
+
+      // The main process will handle the callback and send us the result
+      // via 'github-oauth-complete' or 'github-oauth-error' IPC events
+    } catch (error) {
+      console.error('❌ [GitHub OAuth] Failed to initiate OAuth:', error);
+      this.isAuthenticating = false;
+      this.notifyListeners('oauth-error', {
+        error: error instanceof Error ? error.message : 'Failed to start OAuth'
+      });
       throw error;
     }
   }
 
   /**
-   * Exchange authorization code for access token
+   * Cancel any pending OAuth flow
    */
-  private async exchangeCodeForToken(code: string, verifier: string): Promise<GitHubToken> {
-    console.log('🔄 Exchanging code for access token');
-
-    // Exchange authorization code for access token using PKCE + client secret
-    const response = await fetch('https://github.com/login/oauth/access_token', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Accept: 'application/json'
-      },
-      body: JSON.stringify({
-        client_id: GITHUB_CLIENT_ID,
-        client_secret: GITHUB_CLIENT_SECRET,
-        code,
-        code_verifier: verifier,
-        redirect_uri: GITHUB_REDIRECT_URI
-      })
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Failed to exchange code for token: ${response.status} ${errorText}`);
+  async cancelOAuth(): Promise<void> {
+    if (this.isAuthenticating) {
+      console.log('🚫 [GitHub OAuth] Cancelling OAuth flow');
+      await ipcRenderer.invoke('github-oauth-stop');
+      this.isAuthenticating = false;
+      this.notifyListeners('oauth-cancelled');
     }
-
-    const data = await response.json();
-
-    if (data.error) {
-      throw new Error(`GitHub OAuth error: ${data.error_description || data.error}`);
-    }
-
-    return data;
-  }
-
-  /**
-   * Fetch current user information from GitHub API
-   */
-  private async fetchCurrentUser(): Promise<void> {
-    if (!this.accessToken) {
-      throw new Error('No access token available');
-    }
-
-    const response = await fetch('https://api.github.com/user', {
-      headers: {
-        Authorization: `Bearer ${this.accessToken}`,
-        Accept: 'application/vnd.github.v3+json'
-      }
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch user info: ${response.status}`);
-    }
-
-    this.currentUser = await response.json();
   }
 
   /**
@@ -283,10 +242,17 @@ export class GitHubOAuthService extends EventDispatcher {
   }
 
   /**
+   * Check if OAuth flow is in progress
+   */
+  isOAuthInProgress(): boolean {
+    return this.isAuthenticating;
+  }
+
+  /**
    * Revoke token and disconnect
    */
   async disconnect(): Promise<void> {
-    console.log('🔌 Disconnecting GitHub account');
+    console.log('🔌 [GitHub OAuth] Disconnecting GitHub account');
 
     this.accessToken = null;
     this.currentUser = null;
@@ -300,15 +266,15 @@ export class GitHubOAuthService extends EventDispatcher {
   }
 
   /**
-   * Save token securely using Electron's safeStorage
+   * Save token securely using Electron's safeStorage via IPC
    */
   private async saveToken(token: string): Promise<void> {
     try {
-      const { ipcRenderer } = window.require('electron');
       await ipcRenderer.invoke('github-save-token', token);
+      console.log('💾 [GitHub OAuth] Token saved');
     } catch (error) {
-      console.error('Failed to save token:', error);
-      // Fallback: keep in memory only
+      console.error('❌ [GitHub OAuth] Failed to save token:', error);
+      // Token is still in memory, just not persisted
     }
   }
 
@@ -317,21 +283,46 @@ export class GitHubOAuthService extends EventDispatcher {
    */
   private async loadToken(): Promise<void> {
     try {
-      const { ipcRenderer } = window.require('electron');
       const token = await ipcRenderer.invoke('github-load-token');
 
       if (token) {
+        console.log('🔑 [GitHub OAuth] Token loaded from storage, verifying...');
         this.accessToken = token;
+
         // Fetch user info to verify token is still valid
         await this.fetchCurrentUser();
         this.notifyListeners('auth-state-changed', { authenticated: true });
+        console.log('✅ [GitHub OAuth] Token verified, user:', this.currentUser?.login);
       }
     } catch (error) {
-      console.error('Failed to load token:', error);
+      console.error('❌ [GitHub OAuth] Failed to load/verify token:', error);
       // Token may be invalid, clear it
       this.accessToken = null;
       this.currentUser = null;
+      await this.clearToken();
     }
+  }
+
+  /**
+   * Fetch current user information from GitHub API
+   */
+  private async fetchCurrentUser(): Promise<void> {
+    if (!this.accessToken) {
+      throw new Error('No access token available');
+    }
+
+    const response = await fetch('https://api.github.com/user', {
+      headers: {
+        Authorization: `Bearer ${this.accessToken}`,
+        Accept: 'application/vnd.github.v3+json'
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch user info: ${response.status}`);
+    }
+
+    this.currentUser = await response.json();
   }
 
   /**
@@ -339,10 +330,9 @@ export class GitHubOAuthService extends EventDispatcher {
    */
   private async clearToken(): Promise<void> {
     try {
-      const { ipcRenderer } = window.require('electron');
       await ipcRenderer.invoke('github-clear-token');
     } catch (error) {
-      console.error('Failed to clear token:', error);
+      console.error('❌ [GitHub OAuth] Failed to clear token:', error);
     }
   }
 
@@ -350,7 +340,7 @@ export class GitHubOAuthService extends EventDispatcher {
    * Initialize service and restore session if available
    */
   async initialize(): Promise<void> {
-    console.log('🔧 Initializing GitHubOAuthService');
+    console.log('🔧 [GitHub OAuth] Initializing GitHubOAuthService');
     await this.loadToken();
   }
 }

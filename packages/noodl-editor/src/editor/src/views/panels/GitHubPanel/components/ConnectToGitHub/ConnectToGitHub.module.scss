@@ -1,0 +1,459 @@
+/**
+ * ConnectToGitHub styles
+ * Uses design tokens for theming
+ */
+
+// Main view
+.ConnectView {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  text-align: center;
+  color: var(--theme-color-fg-default-shy);
+  min-height: 300px;
+
+  h3 {
+    margin: 16px 0 8px;
+    color: var(--theme-color-fg-default);
+    font-size: 18px;
+    font-weight: 600;
+  }
+
+  p {
+    margin: 0 0 12px;
+    font-size: 13px;
+    line-height: 1.5;
+    max-width: 400px;
+  }
+}
+
+.Icon {
+  color: var(--theme-color-fg-default-shy);
+  opacity: 0.7;
+  margin-bottom: 8px;
+
+  svg {
+    display: block;
+  }
+}
+
+.Actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 20px;
+  width: 100%;
+  max-width: 280px;
+}
+
+.PrimaryButton {
+  padding: 12px 24px;
+  background-color: var(--theme-color-primary);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  width: 100%;
+
+  &:hover:not(:disabled) {
+    opacity: 0.9;
+    transform: translateY(-1px);
+  }
+
+  &:active:not(:disabled) {
+    opacity: 0.8;
+    transform: translateY(0);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.SecondaryButton {
+  padding: 12px 24px;
+  background-color: var(--theme-color-bg-3);
+  color: var(--theme-color-fg-default);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover:not(:disabled) {
+    background-color: var(--theme-color-bg-4);
+    border-color: var(--theme-color-border-strong);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.RemoteUrl {
+  display: inline-block;
+  padding: 4px 8px;
+  margin-top: 8px;
+  background-color: var(--theme-color-bg-3);
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 12px;
+  word-break: break-all;
+}
+
+.HintText {
+  font-size: 12px;
+  color: var(--theme-color-fg-default-shy);
+  opacity: 0.8;
+}
+
+.ErrorMessage {
+  padding: 12px 16px;
+  background-color: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 6px;
+  color: var(--theme-color-danger);
+  font-size: 13px;
+  margin-top: 16px;
+  width: 100%;
+  max-width: 400px;
+  text-align: left;
+}
+
+// Modal styles
+.ModalBackdrop {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.Modal {
+  background-color: var(--theme-color-bg-2);
+  border-radius: 12px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+  width: 100%;
+  max-width: 420px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.ModalLarge {
+  max-width: 560px;
+}
+
+.ModalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--theme-color-border-default);
+
+  h2 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--theme-color-fg-default);
+  }
+}
+
+.CloseButton {
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: var(--theme-color-fg-default-shy);
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+  transition: color 0.2s ease;
+
+  &:hover:not(:disabled) {
+    color: var(--theme-color-fg-default);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.ModalBody {
+  padding: 20px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.ModalFooter {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 16px 20px;
+  border-top: 1px solid var(--theme-color-border-default);
+  background-color: var(--theme-color-bg-2);
+
+  .PrimaryButton,
+  .SecondaryButton {
+    width: auto;
+    padding: 10px 20px;
+  }
+}
+
+// Form styles
+.FormGroup {
+  margin-bottom: 20px;
+
+  label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--theme-color-fg-default);
+  }
+}
+
+.Input,
+.Select {
+  width: 100%;
+  padding: 10px 12px;
+  background-color: var(--theme-color-bg-3);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: 6px;
+  color: var(--theme-color-fg-default);
+  font-size: 14px;
+  transition: border-color 0.2s ease;
+
+  &::placeholder {
+    color: var(--theme-color-fg-default-shy);
+  }
+
+  &:focus {
+    outline: none;
+    border-color: var(--theme-color-primary);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+.Select {
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23888' d='M3 4.5L6 7.5L9 4.5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 36px;
+}
+
+.RadioGroup {
+  display: flex;
+  gap: 16px;
+}
+
+.RadioLabel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--theme-color-fg-default);
+
+  input[type='radio'] {
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border: 2px solid var(--theme-color-border-strong);
+    border-radius: 50%;
+    cursor: pointer;
+    position: relative;
+
+    &:checked {
+      border-color: var(--theme-color-primary);
+
+      &::after {
+        content: '';
+        position: absolute;
+        top: 3px;
+        left: 3px;
+        width: 8px;
+        height: 8px;
+        background-color: var(--theme-color-primary);
+        border-radius: 50%;
+      }
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+}
+
+.RadioIcon {
+  font-size: 14px;
+}
+
+// Repository list styles
+.SearchContainer {
+  margin-bottom: 16px;
+}
+
+.SearchInput {
+  width: 100%;
+  padding: 10px 12px;
+  background-color: var(--theme-color-bg-3);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: 6px;
+  color: var(--theme-color-fg-default);
+  font-size: 14px;
+
+  &::placeholder {
+    color: var(--theme-color-fg-default-shy);
+  }
+
+  &:focus {
+    outline: none;
+    border-color: var(--theme-color-primary);
+  }
+}
+
+.RepoList {
+  max-height: 400px;
+  overflow-y: auto;
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: 8px;
+}
+
+.RepoGroup {
+  &:not(:last-child) {
+    border-bottom: 1px solid var(--theme-color-border-default);
+  }
+}
+
+.RepoGroupHeader {
+  padding: 10px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--theme-color-fg-default-shy);
+  background-color: var(--theme-color-bg-3);
+  position: sticky;
+  top: 0;
+}
+
+.RepoItem {
+  padding: 12px 14px;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+  border-bottom: 1px solid var(--theme-color-border-default);
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  &:hover {
+    background-color: var(--theme-color-bg-3);
+  }
+
+  &.RepoItemSelected {
+    background-color: rgba(var(--theme-color-primary-rgb, 59, 130, 246), 0.1);
+    border-left: 3px solid var(--theme-color-primary);
+    padding-left: 11px;
+  }
+}
+
+.RepoInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.RepoName {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--theme-color-fg-default);
+}
+
+.PrivateBadge {
+  padding: 2px 6px;
+  background-color: var(--theme-color-bg-4);
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--theme-color-fg-default-shy);
+}
+
+.RepoDescription {
+  font-size: 13px;
+  color: var(--theme-color-fg-default-shy);
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.RepoMeta {
+  font-size: 12px;
+  color: var(--theme-color-fg-default-shy);
+  opacity: 0.8;
+}
+
+// Loading state
+.LoadingState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  color: var(--theme-color-fg-default-shy);
+
+  p {
+    margin-top: 16px;
+    font-size: 13px;
+  }
+}
+
+.Spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--theme-color-bg-4);
+  border-top-color: var(--theme-color-primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+// Empty state
+.EmptyState {
+  padding: 32px 24px;
+  text-align: center;
+  color: var(--theme-color-fg-default-shy);
+
+  p {
+    margin: 0;
+    font-size: 13px;
+  }
+}

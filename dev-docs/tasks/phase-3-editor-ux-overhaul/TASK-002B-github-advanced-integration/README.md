@@ -1,15 +1,39 @@
-# GIT-004: GitHub Project Management Integration
+# TASK-002B: GitHub Advanced Integration
 
 ## Overview
 
-Transform Nodegex from a "coding tool with Git" into a **collaborative development hub** where teams can manage their entire project workflow without leaving the editor. This feature enables viewing, creating, and managing GitHub Issues, Pull Requests, and Discussions directly from both the Nodegex Editor and Dashboard.
+This task encompasses **two major feature sets**:
+
+### Part 1: GitHub Project Management (GIT-004A-F)
+
+Transform OpenNoodl from a "coding tool with Git" into a **collaborative development hub** where teams can manage their entire project workflow without leaving the editor.
 
 **The killer feature**: Link GitHub issues directly to visual components, enabling unprecedented traceability between project management and implementation.
 
+**Effort:** 70-90 hours across 6 sub-tasks
+
+### Part 2: Live Collaboration & Multi-Community (GIT-005-011)
+
+Transform OpenNoodl into a **collaborative platform** with real-time multi-user editing (Google Docs for visual programming), multi-community support, and persistent notifications.
+
+**Effort:** 431-572 hours across 7 sub-tasks
+
+---
+
 **Phase:** 3 (Dashboard UX & Collaboration)  
 **Priority:** HIGH (key differentiator)  
-**Total Effort:** 70-90 hours across 6 sub-tasks  
-**Risk:** Medium (OAuth complexity, GitHub API rate limits)
+**Total Effort:** 501-662 hours across 13 sub-tasks  
+**Risk:** Medium-High (OAuth complexity, WebRTC, server infrastructure)
+
+---
+
+## Integration Strategy
+
+**Important:** We're extending the existing `VersionControlPanel` rather than creating a separate panel. The existing panel is already 100% React with full visual diff support (showing green nodes for additions, red for deletions).
+
+See **[GIT-INTEGRATION-STRATEGY.md](./GIT-INTEGRATION-STRATEGY.md)** for details.
+
+**Key insight:** The visual commit diff system already works perfectly - we just need to add GitHub-specific tabs (Issues, PRs) to the existing panel.
 
 ---
 
@@ -19,13 +43,13 @@ Transform Nodegex from a "coding tool with Git" into a **collaborative developme
 
 No major low-code platform offers this level of GitHub integration:
 
-| Platform | Git Support | Issues/PRs | Component Linking |
-|----------|-------------|------------|-------------------|
-| Retool | ❌ | ❌ | ❌ |
-| Bubble | ❌ | ❌ | ❌ |
-| Webflow | Basic | ❌ | ❌ |
-| FlutterFlow | Basic | ❌ | ❌ |
-| **Nodegex** | ✅ Full | ✅ Full | ✅ **Unique** |
+| Platform    | Git Support | Issues/PRs | Component Linking |
+| ----------- | ----------- | ---------- | ----------------- |
+| Retool      | ❌          | ❌         | ❌                |
+| Bubble      | ❌          | ❌         | ❌                |
+| Webflow     | Basic       | ❌         | ❌                |
+| FlutterFlow | Basic       | ❌         | ❌                |
+| **Nodegex** | ✅ Full     | ✅ Full    | ✅ **Unique**     |
 
 ### Target Users
 
@@ -101,6 +125,7 @@ Overview widgets for project health and team awareness.
 Upgrade from PAT-based authentication to full GitHub App OAuth flow, and create a reusable GitHub API client.
 
 **Scope:**
+
 - GitHub App registration guidance/documentation
 - OAuth authorization flow in Electron
 - Secure token storage (upgrade from current GitStore pattern)
@@ -108,6 +133,7 @@ Upgrade from PAT-based authentication to full GitHub App OAuth flow, and create 
 - Token refresh handling
 
 **Files to Create:**
+
 ```
 packages/noodl-editor/src/editor/src/services/github/
 ├── GitHubAuth.ts              # OAuth flow handler
@@ -118,6 +144,7 @@ packages/noodl-editor/src/editor/src/services/github/
 ```
 
 **Files to Modify:**
+
 ```
 packages/noodl-editor/src/editor/src/views/panels/VersionControlPanel/
   components/GitProviderPopout/GitProviderPopout.tsx
@@ -129,6 +156,7 @@ packages/noodl-git/src/git.ts
 ```
 
 **Success Criteria:**
+
 - [ ] User can authenticate via GitHub OAuth from editor
 - [ ] Token stored securely and persists across sessions
 - [ ] Token refresh works automatically
@@ -142,6 +170,7 @@ packages/noodl-git/src/git.ts
 View GitHub issues for the connected repository.
 
 **Scope:**
+
 - New sidebar panel: GitHubPanel with tabbed interface
 - Issues list with filtering (open/closed, labels, assignees)
 - Issue detail view (body, comments, labels, assignees)
@@ -150,6 +179,7 @@ View GitHub issues for the connected repository.
 - Pagination for large issue lists
 
 **Files to Create:**
+
 ```
 packages/noodl-editor/src/editor/src/views/panels/GitHubPanel/
 ├── GitHubPanel.tsx
@@ -169,6 +199,7 @@ packages/noodl-editor/src/editor/src/views/panels/GitHubPanel/
 ```
 
 **Files to Modify:**
+
 ```
 packages/noodl-editor/src/editor/src/router.setup.ts
   - Register GitHubPanel with SidebarModel
@@ -178,10 +209,12 @@ packages/noodl-editor/src/editor/src/models/sidebar/sidebarmodel.tsx
 ```
 
 **Dependencies:**
+
 - `react-markdown` for rendering issue bodies
 - `@octokit/rest` (from GIT-004A)
 
 **Success Criteria:**
+
 - [ ] GitHub panel appears in sidebar when repo is connected
 - [ ] Issues list loads and displays correctly
 - [ ] Filters work (open/closed, labels, assignees, search)
@@ -197,6 +230,7 @@ packages/noodl-editor/src/editor/src/models/sidebar/sidebarmodel.tsx
 View GitHub pull requests for the connected repository.
 
 **Scope:**
+
 - PRs tab in GitHubPanel
 - PR list with status indicators (draft, review requested, approved, changes requested)
 - PR detail view (description, commits, checks status)
@@ -205,6 +239,7 @@ View GitHub pull requests for the connected repository.
 - Merge conflict indicators
 
 **Files to Create:**
+
 ```
 packages/noodl-editor/src/editor/src/views/panels/GitHubPanel/
 ├── components/
@@ -220,6 +255,7 @@ packages/noodl-editor/src/editor/src/views/panels/GitHubPanel/
 ```
 
 **Success Criteria:**
+
 - [ ] PRs tab displays all open PRs
 - [ ] Status badges show draft/review/approved/changes requested
 - [ ] PR detail shows description, commits list, checks status
@@ -234,6 +270,7 @@ packages/noodl-editor/src/editor/src/views/panels/GitHubPanel/
 Full CRUD operations for GitHub issues from within Nodegex.
 
 **Scope:**
+
 - Create Issue dialog with title, body (markdown editor), labels, assignees
 - Edit existing issues (title, body, status)
 - Add comments to issues
@@ -242,6 +279,7 @@ Full CRUD operations for GitHub issues from within Nodegex.
 - Issue templates support (load from repo's .github/ISSUE_TEMPLATE/)
 
 **Files to Create:**
+
 ```
 packages/noodl-editor/src/editor/src/views/panels/GitHubPanel/
 ├── components/
@@ -256,12 +294,14 @@ packages/noodl-editor/src/editor/src/views/panels/GitHubPanel/
 ```
 
 **Files to Modify:**
+
 ```
 packages/noodl-editor/src/editor/src/views/nodegrapheditor/
   - Add context menu items for component-linked issue creation
 ```
 
 **Success Criteria:**
+
 - [ ] Create Issue dialog opens from panel header
 - [ ] Can set title, body, labels, assignees
 - [ ] Markdown preview works in body editor
@@ -279,6 +319,7 @@ packages/noodl-editor/src/editor/src/views/nodegrapheditor/
 **THE KILLER FEATURE**: Link GitHub issues to visual components for unprecedented traceability.
 
 **Scope:**
+
 - Component metadata extension for issue links
 - "Link Issue" dialog from component context menu
 - "Create Issue from Component" with auto-populated context
@@ -295,21 +336,22 @@ interface ComponentMetadata {
   name: string;
   // ... existing fields
   github?: {
-    linkedIssues: number[];      // Issue numbers
-    linkedPRs: number[];         // PR numbers
-    lastModifiedBy?: string;     // GitHub username
+    linkedIssues: number[]; // Issue numbers
+    linkedPRs: number[]; // PR numbers
+    lastModifiedBy?: string; // GitHub username
   };
 }
 
 // Issue display shows linked components
 interface LinkedComponent {
   componentName: string;
-  componentPath: string;        // For navigation
+  componentPath: string; // For navigation
   linkType: 'mentioned' | 'implements' | 'fixes';
 }
 ```
 
 **Files to Create:**
+
 ```
 packages/noodl-editor/src/editor/src/services/github/
 ├── ComponentLinking.ts          # Link management logic
@@ -323,6 +365,7 @@ packages/noodl-editor/src/editor/src/views/panels/GitHubPanel/
 ```
 
 **Files to Modify:**
+
 ```
 packages/noodl-editor/src/editor/src/models/projectmodel.ts
   - Add methods for component GitHub metadata
@@ -338,17 +381,20 @@ packages/noodl-editor/src/editor/src/views/panels/PropertyPanel/
 **User Flows:**
 
 1. **Link Existing Issue to Component:**
+
    - Right-click component → "Link to Issue"
    - Search/select from open issues
    - Choose link type (mentions, implements, fixes)
    - Component shows badge, issue shows component link
 
 2. **Create Issue from Component:**
+
    - Right-click component → "Create Issue"
    - Dialog pre-fills: component name, path, screenshot option
    - Creates issue and links automatically
 
 3. **Navigate from Issue to Component:**
+
    - In issue detail, "Linked Components" section
    - Click component name → navigates to component in editor
 
@@ -358,6 +404,7 @@ packages/noodl-editor/src/editor/src/views/panels/PropertyPanel/
    - Auto-labels as "bug"
 
 **Success Criteria:**
+
 - [ ] Can link issues to components via context menu
 - [ ] Can create issue from component with pre-filled context
 - [ ] Components show visual indicator when issues linked
@@ -374,6 +421,7 @@ packages/noodl-editor/src/editor/src/views/panels/PropertyPanel/
 Project health overview and activity feed in the Dashboard.
 
 **Scope:**
+
 - Project card enhancements: issue/PR counts, health indicators
 - Activity feed widget: recent issue/PR activity across projects
 - Notification badges for items needing attention
@@ -381,6 +429,7 @@ Project health overview and activity feed in the Dashboard.
 - Click-through to editor with correct panel open
 
 **Files to Create:**
+
 ```
 packages/noodl-editor/src/editor/src/views/Dashboard/
 ├── components/
@@ -393,6 +442,7 @@ packages/noodl-editor/src/editor/src/views/Dashboard/
 ```
 
 **Files to Modify:**
+
 ```
 packages/noodl-editor/src/editor/src/views/Dashboard/ProjectCard/
   - Add GitHub stats display
@@ -405,6 +455,7 @@ packages/noodl-editor/src/editor/src/views/Dashboard/Dashboard.tsx
 **Dashboard Features:**
 
 1. **Project Card Stats:**
+
    ```
    ┌─────────────────────────┐
    │ My Project              │
@@ -418,6 +469,7 @@ packages/noodl-editor/src/editor/src/views/Dashboard/Dashboard.tsx
    ```
 
 2. **Activity Feed:**
+
    - Shows recent activity across all connected projects
    - Filterable by type (issues, PRs, discussions)
    - "Assigned to me" filter
@@ -428,6 +480,7 @@ packages/noodl-editor/src/editor/src/views/Dashboard/Dashboard.tsx
    - Attention triggers: assigned issues, review requests, mentions
 
 **Success Criteria:**
+
 - [ ] Project cards show GitHub stats when connected
 - [ ] Activity feed displays recent cross-project activity
 - [ ] Notification badges appear for items needing attention
@@ -462,16 +515,17 @@ function useIssues(repoOwner: string, repoName: string) {
   const [issues, setIssues] = useState<GitHubIssue[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
-  
+
   const client = useGitHubClient();
-  
+
   useEffect(() => {
-    client.issues.list({ owner: repoOwner, repo: repoName })
+    client.issues
+      .list({ owner: repoOwner, repo: repoName })
       .then(setIssues)
       .catch(setError)
       .finally(() => setLoading(false));
   }, [repoOwner, repoName]);
-  
+
   return { issues, loading, error, refetch };
 }
 ```
@@ -507,10 +561,10 @@ GitHub API has limits (5000 requests/hour for authenticated users). Strategy:
 
 ```json
 {
-  "@octokit/rest": "^20.0.0",       // GitHub API client
+  "@octokit/rest": "^20.0.0", // GitHub API client
   "@octokit/auth-oauth-app": "^7.0.0", // OAuth flow
-  "react-markdown": "^9.0.0",       // Markdown rendering
-  "remark-gfm": "^4.0.0"            // GitHub Flavored Markdown
+  "react-markdown": "^9.0.0", // Markdown rendering
+  "remark-gfm": "^4.0.0" // GitHub Flavored Markdown
 }
 ```
 
@@ -543,6 +597,7 @@ GIT-004A: OAuth & Client Foundation
 ```
 
 **Recommended sequence:**
+
 1. **GIT-004A** (Foundation) - Required first
 2. **GIT-004B** (Issues Read) - Core value, quick win
 3. **GIT-004D** (Issues Write) - Enables productivity
@@ -581,13 +636,13 @@ GIT-004A: OAuth & Client Foundation
 
 ## Risks & Mitigations
 
-| Risk | Impact | Probability | Mitigation |
-|------|--------|-------------|------------|
-| GitHub API rate limits | Medium | Medium | Caching, conditional requests, user feedback |
-| OAuth complexity in Electron | High | Medium | Follow GitHub Desktop patterns, thorough testing |
-| Token security concerns | High | Low | Use OS keychain via electron-store encryption |
-| Large repos performance | Medium | Medium | Pagination, virtual lists, lazy loading |
-| GitHub API changes | Low | Low | Pin @octokit version, integration tests |
+| Risk                         | Impact | Probability | Mitigation                                       |
+| ---------------------------- | ------ | ----------- | ------------------------------------------------ |
+| GitHub API rate limits       | Medium | Medium      | Caching, conditional requests, user feedback     |
+| OAuth complexity in Electron | High   | Medium      | Follow GitHub Desktop patterns, thorough testing |
+| Token security concerns      | High   | Low         | Use OS keychain via electron-store encryption    |
+| Large repos performance      | Medium | Medium      | Pagination, virtual lists, lazy loading          |
+| GitHub API changes           | Low    | Low         | Pin @octokit version, integration tests          |
 
 ---
 
@@ -619,3 +674,124 @@ GIT-004A: OAuth & Client Foundation
 - [GitHub App Permissions](https://docs.github.com/en/rest/overview/permissions-required-for-github-apps)
 - Existing: `packages/noodl-git/` - Current Git integration
 - Existing: `VersionControlPanel/` - Current VCS UI patterns
+
+---
+
+# Part 2: Live Collaboration & Multi-Community System (GIT-005-011)
+
+## Overview
+
+This series transforms OpenNoodl into a collaborative platform with multi-community support, live real-time collaboration (Google Docs for visual programming), and persistent notification system.
+
+**Total Estimated Hours:** 431-572 hours
+
+---
+
+## Task Summary
+
+| Task    | Name                        | Estimated Hours | Status         |
+| ------- | --------------------------- | --------------- | -------------- |
+| GIT-005 | Community Infrastructure    | 60-80           | 🔴 Not Started |
+| GIT-006 | Server Infrastructure       | 80-100          | 🔴 Not Started |
+| GIT-007 | WebRTC Collaboration Client | 100-130         | 🔴 Not Started |
+| GIT-008 | Notification System         | 50-70           | 🔴 Not Started |
+| GIT-009 | Community Tab UI/UX         | 80-100          | 🔴 Not Started |
+| GIT-010 | Session Discovery & Joining | 50-70           | 🔴 Not Started |
+| GIT-011 | Integration & Polish        | 61-82           | 🔴 Not Started |
+
+---
+
+## Key Features
+
+### Multi-Community System
+
+- Join multiple communities simultaneously
+- Fork and operate your own communities
+- Self-hosted infrastructure option (BYOB philosophy)
+- Community template repository for forking
+
+### Live Collaboration
+
+- Real-time multi-user editing via WebRTC
+- Cursor and selection sharing
+- Audio/video chat built-in
+- Automatic WebSocket fallback when P2P fails
+
+### Persistent Notifications
+
+- Cross-session notification system
+- Collaboration invites
+- Community events and mentions
+- Desktop notification support
+
+### Community Features
+
+- Component library discovery
+- Tutorial and showcase feeds
+- GitHub Discussions integration
+- Job board
+
+---
+
+## Task Details
+
+Each task has a detailed README in its subdirectory:
+
+- **[GIT-005: Community Infrastructure](./GIT-005-community-infrastructure/README.md)** - Template repository, community.json schema, CommunityManager service
+- **[GIT-006: Server Infrastructure](./GIT-006-server-infrastructure/README.md)** - Signaling, Sync, and Notification servers
+- **[GIT-007: WebRTC Collaboration](./GIT-007-webrtc-collaboration/README.md)** - P2P connections, Yjs CRDT sync, media handling
+- **[GIT-008: Notification System](./GIT-008-notification-system/README.md)** - NotificationManager, toasts, notification center
+- **[GIT-009: Community UI](./GIT-009-community-ui/README.md)** - Community tab with sessions, components, tutorials
+- **[GIT-010: Session Discovery](./GIT-010-session-discovery/README.md)** - Deep links, quick join, session history
+- **[GIT-011: Integration & Polish](./GIT-011-integration-polish/README.md)** - Testing, documentation, deployment
+
+---
+
+## Implementation Order
+
+```
+GIT-005: Community Infrastructure
+    │
+    └──► GIT-006: Server Infrastructure
+              │
+              ├──► GIT-007: WebRTC Collaboration Client
+              │         │
+              │         └──► GIT-010: Session Discovery
+              │
+              └──► GIT-008: Notification System
+                        │
+                        └──► GIT-009: Community Tab UI
+                                  │
+                                  └──► GIT-011: Integration & Polish
+```
+
+---
+
+## Dependencies
+
+### NPM Packages
+
+```json
+{
+  "yjs": "^13.6.0",
+  "y-webrtc": "^10.2.0",
+  "y-websocket": "^1.5.0",
+  "simple-peer": "^9.11.0"
+}
+```
+
+### External Infrastructure
+
+- Signaling server (WebSocket)
+- Sync server (Yjs WebSocket)
+- Notification server (WebSocket + persistence)
+- TURN server (for WebRTC fallback)
+
+---
+
+## Source Documentation
+
+Full detailed specifications are in:
+
+- `GIT-5-to-GIT-11-Live-Collaboration-Community-System.md`
+- `GIT-5-to-GIT-11-Part-2-Community-UI-Integration.md`

@@ -1,10 +1,30 @@
-import { GitError as DugiteError } from "dugite";
+import { GitError as DugiteError } from 'dugite';
 
 /**
  * Returns the SHA of the passed in IGitResult
+ *
+ * Git commit output format:
+ * - Normal: "[main abc1234] Commit message"
+ * - Root commit: "[main (root-commit) abc1234] Commit message"
  */
 export function parseCommitSHA(result: IGitResult): string {
-  return result.output.toString().split("]")[0].split(" ")[1];
+  const output = result.output.toString();
+  const bracketContent = output.split(']')[0]; // "[main abc1234" or "[main (root-commit) abc1234"
+  const parts = bracketContent.split(' ');
+
+  // For root commit, the SHA is the last part before the closing bracket
+  // For normal commit, it's the second part
+  // Skip "(root-commit)" if present and get the actual SHA
+  for (let i = parts.length - 1; i >= 0; i--) {
+    const part = parts[i];
+    // SHA is a hex string, not "(root-commit)" or branch name
+    if (part && !part.startsWith('(') && !part.startsWith('[') && /^[a-f0-9]+$/.test(part)) {
+      return part;
+    }
+  }
+
+  // Fallback to original behavior
+  return parts[1];
 }
 
 /**
@@ -62,13 +82,13 @@ export class GitError extends Error {
     } else if (result.output.length) {
       message = result.error.toString();
     } else {
-      message = "Unknown error";
+      message = 'Unknown error';
       rawMessage = false;
     }
 
     super(message);
 
-    this.name = "GitError";
+    this.name = 'GitError';
     this.result = result;
     this.args = args;
     this.isRawMessage = rawMessage;
@@ -111,94 +131,94 @@ export function getDescriptionForError(error: DugiteError): string | null {
 
   switch (error) {
     case DugiteError.SSHKeyAuditUnverified:
-      return "The SSH key is unverified.";
+      return 'The SSH key is unverified.';
     case DugiteError.RemoteDisconnection:
-      return "The remote disconnected. Check your Internet connection and try again.";
+      return 'The remote disconnected. Check your Internet connection and try again.';
     case DugiteError.HostDown:
-      return "The host is down. Check your Internet connection and try again.";
+      return 'The host is down. Check your Internet connection and try again.';
     case DugiteError.RebaseConflicts:
-      return "We found some conflicts while trying to rebase. Please resolve the conflicts before continuing.";
+      return 'We found some conflicts while trying to rebase. Please resolve the conflicts before continuing.';
     case DugiteError.MergeConflicts:
-      return "We found some conflicts while trying to merge. Please resolve the conflicts and commit the changes.";
+      return 'We found some conflicts while trying to merge. Please resolve the conflicts and commit the changes.';
     case DugiteError.HTTPSRepositoryNotFound:
     case DugiteError.SSHRepositoryNotFound:
-      return "The repository does not seem to exist anymore. You may not have access, or it may have been deleted or renamed.";
+      return 'The repository does not seem to exist anymore. You may not have access, or it may have been deleted or renamed.';
     case DugiteError.PushNotFastForward:
-      return "The repository has been updated since you last pulled. Try pulling before pushing.";
+      return 'The repository has been updated since you last pulled. Try pulling before pushing.';
     case DugiteError.BranchDeletionFailed:
-      return "Could not delete the branch. It was probably already deleted.";
+      return 'Could not delete the branch. It was probably already deleted.';
     case DugiteError.DefaultBranchDeletionFailed:
       return `The branch is the repository's default branch and cannot be deleted.`;
     case DugiteError.RevertConflicts:
-      return "To finish reverting, please merge and commit the changes.";
+      return 'To finish reverting, please merge and commit the changes.';
     case DugiteError.EmptyRebasePatch:
-      return "There aren’t any changes left to apply.";
+      return 'There aren’t any changes left to apply.';
     case DugiteError.NoMatchingRemoteBranch:
-      return "There aren’t any remote branches that match the current branch.";
+      return 'There aren’t any remote branches that match the current branch.';
     case DugiteError.NothingToCommit:
-      return "There are no changes to commit.";
+      return 'There are no changes to commit.';
     case DugiteError.NoSubmoduleMapping:
-      return "A submodule was removed from .gitmodules, but the folder still exists in the repository. Delete the folder, commit the change, then try again.";
+      return 'A submodule was removed from .gitmodules, but the folder still exists in the repository. Delete the folder, commit the change, then try again.';
     case DugiteError.SubmoduleRepositoryDoesNotExist:
-      return "A submodule points to a location which does not exist.";
+      return 'A submodule points to a location which does not exist.';
     case DugiteError.InvalidSubmoduleSHA:
-      return "A submodule points to a commit which does not exist.";
+      return 'A submodule points to a commit which does not exist.';
     case DugiteError.LocalPermissionDenied:
-      return "Permission denied.";
+      return 'Permission denied.';
     case DugiteError.InvalidMerge:
-      return "This is not something we can merge.";
+      return 'This is not something we can merge.';
     case DugiteError.InvalidRebase:
-      return "This is not something we can rebase.";
+      return 'This is not something we can rebase.';
     case DugiteError.NonFastForwardMergeIntoEmptyHead:
-      return "The merge you attempted is not a fast-forward, so it cannot be performed on an empty branch.";
+      return 'The merge you attempted is not a fast-forward, so it cannot be performed on an empty branch.';
     case DugiteError.PatchDoesNotApply:
-      return "The requested changes conflict with one or more files in the repository.";
+      return 'The requested changes conflict with one or more files in the repository.';
     case DugiteError.BranchAlreadyExists:
-      return "A branch with that name already exists.";
+      return 'A branch with that name already exists.';
     case DugiteError.BadRevision:
-      return "Bad revision.";
+      return 'Bad revision.';
     case DugiteError.NotAGitRepository:
-      return "This is not a git repository.";
+      return 'This is not a git repository.';
     case DugiteError.ProtectedBranchForcePush:
-      return "This branch is protected from force-push operations.";
+      return 'This branch is protected from force-push operations.';
     case DugiteError.ProtectedBranchRequiresReview:
-      return "This branch is protected and any changes requires an approved review. Open a pull request with changes targeting this branch instead.";
+      return 'This branch is protected and any changes requires an approved review. Open a pull request with changes targeting this branch instead.';
     case DugiteError.PushWithFileSizeExceedingLimit:
       return "The push operation includes a file which exceeds GitHub's file size restriction of 100MB. Please remove the file from history and try again.";
     case DugiteError.HexBranchNameRejected:
-      return "The branch name cannot be a 40-character string of hexadecimal characters, as this is the format that Git uses for representing objects.";
+      return 'The branch name cannot be a 40-character string of hexadecimal characters, as this is the format that Git uses for representing objects.';
     case DugiteError.ForcePushRejected:
-      return "The force push has been rejected for the current branch.";
+      return 'The force push has been rejected for the current branch.';
     case DugiteError.InvalidRefLength:
-      return "A ref cannot be longer than 255 characters.";
+      return 'A ref cannot be longer than 255 characters.';
     case DugiteError.CannotMergeUnrelatedHistories:
-      return "Unable to merge unrelated histories in this repository.";
+      return 'Unable to merge unrelated histories in this repository.';
     case DugiteError.PushWithPrivateEmail:
       return 'Cannot push these commits as they contain an email address marked as private on GitHub. To push anyway, visit https://github.com/settings/emails, uncheck "Keep my email address private", then switch back to GitHub Desktop to push your commits. You can then enable the setting again.';
     case DugiteError.LFSAttributeDoesNotMatch:
-      return "Git LFS attribute found in global Git configuration does not match expected value.";
+      return 'Git LFS attribute found in global Git configuration does not match expected value.';
     case DugiteError.ProtectedBranchDeleteRejected:
-      return "This branch cannot be deleted from the remote repository because it is marked as protected.";
+      return 'This branch cannot be deleted from the remote repository because it is marked as protected.';
     case DugiteError.ProtectedBranchRequiredStatus:
-      return "The push was rejected by the remote server because a required status check has not been satisfied.";
+      return 'The push was rejected by the remote server because a required status check has not been satisfied.';
     case DugiteError.BranchRenameFailed:
-      return "The branch could not be renamed.";
+      return 'The branch could not be renamed.';
     case DugiteError.PathDoesNotExist:
-      return "The path does not exist on disk.";
+      return 'The path does not exist on disk.';
     case DugiteError.InvalidObjectName:
-      return "The object was not found in the Git repository.";
+      return 'The object was not found in the Git repository.';
     case DugiteError.OutsideRepository:
-      return "This path is not a valid path inside the repository.";
+      return 'This path is not a valid path inside the repository.';
     case DugiteError.LockFileAlreadyExists:
-      return "A lock file already exists in the repository, which blocks this operation from completing.";
+      return 'A lock file already exists in the repository, which blocks this operation from completing.';
     case DugiteError.NoMergeToAbort:
-      return "There is no merge in progress, so there is nothing to abort.";
+      return 'There is no merge in progress, so there is nothing to abort.';
     case DugiteError.NoExistingRemoteBranch:
-      return "The remote branch does not exist.";
+      return 'The remote branch does not exist.';
     case DugiteError.LocalChangesOverwritten:
-      return "Unable to switch branches as there are working directory changes which would be overwritten. Please commit or stash your changes.";
+      return 'Unable to switch branches as there are working directory changes which would be overwritten. Please commit or stash your changes.';
     case DugiteError.UnresolvedConflicts:
-      return "There are unresolved conflicts in the working directory.";
+      return 'There are unresolved conflicts in the working directory.';
     case DugiteError.ConfigLockFileAlreadyExists:
       // Added in dugite 1.88.0 (https://github.com/desktop/dugite/pull/386)
       // in support of https://github.com/desktop/desktop/issues/8675 but we're
@@ -209,7 +229,7 @@ export function getDescriptionForError(error: DugiteError): string | null {
     case DugiteError.RemoteAlreadyExists:
       return null;
     case DugiteError.TagAlreadyExists:
-      return "A tag with that name already exists";
+      return 'A tag with that name already exists';
     case DugiteError.MergeWithLocalChanges:
     case DugiteError.RebaseWithLocalChanges:
     case DugiteError.GPGFailedToSignData:

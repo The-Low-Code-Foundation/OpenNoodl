@@ -15,6 +15,7 @@ import type {
   GitHubIssue,
   GitHubPullRequest,
   GitHubRepository,
+  GitHubOrganization,
   GitHubComment,
   GitHubCommit,
   GitHubLabel,
@@ -23,6 +24,7 @@ import type {
   GitHubIssueFilters,
   CreateIssueOptions,
   UpdateIssueOptions,
+  CreateRepositoryOptions,
   GitHubApiError
 } from './GitHubTypes';
 
@@ -190,21 +192,22 @@ export class GitHubClient extends EventDispatcher {
 
   /**
    * Get data from cache if valid
+   * Returns undefined if not in cache, the cached value (which could be null) if present
    */
-  private getFromCache<T>(key: string, ttl: number = DEFAULT_CACHE_TTL): T | null {
+  private getFromCache<T>(key: string, ttl: number = DEFAULT_CACHE_TTL): T | undefined {
     const entry = this.cache.get(key) as CacheEntry<T> | undefined;
 
     if (!entry) {
-      return null;
+      return undefined; // Not in cache
     }
 
     const age = Date.now() - entry.timestamp;
     if (age > ttl) {
       this.cache.delete(key);
-      return null;
+      return undefined; // Cache expired
     }
 
-    return entry.data;
+    return entry.data; // Return cached value (could be null)
   }
 
   /**
@@ -302,16 +305,22 @@ export class GitHubClient extends EventDispatcher {
     per_page?: number;
     page?: number;
   }): Promise<GitHubApiResponse<GitHubRepository[]>> {
+    console.log('🔍 [GitHubClient] listRepositories called with:', options);
+
     const cacheKey = this.getCacheKey('listRepositories', options || {});
     const cached = this.getFromCache<GitHubRepository[]>(cacheKey, 60000);
 
     if (cached) {
+      console.log('🔍 [GitHubClient] Returning cached repos:', cached.length);
       return { data: cached, rateLimit: this.rateLimit! };
     }
 
     try {
+      console.log('🔍 [GitHubClient] Calling octokit.repos.listForAuthenticatedUser...');
       const octokit = await this.ensureAuthenticated();
       const response = await octokit.repos.listForAuthenticatedUser(options);
+
+      console.log('🔍 [GitHubClient] Got repos from API:', response.data?.length || 0);
 
       this.updateRateLimitFromHeaders(response.headers as Record<string, string>);
       this.setCache(cacheKey, response.data);
@@ -321,6 +330,7 @@ export class GitHubClient extends EventDispatcher {
         rateLimit: this.rateLimit!
       };
     } catch (error) {
+      console.error('❌ [GitHubClient] listRepositories error:', error);
       this.handleApiError(error);
     }
   }
@@ -676,6 +686,222 @@ export class GitHubClient extends EventDispatcher {
       };
     } catch (error) {
       this.handleApiError(error);
+    }
+  }
+
+  // ==================== ORGANIZATION METHODS ====================
+
+  /**
+   * List organizations for the authenticated user
+   */
+  async listOrganizations(): Promise<GitHubApiResponse<GitHubOrganization[]>> {
+    console.log('🔍 [GitHubClient] listOrganizations called');
+
+    const cacheKey = this.getCacheKey('listOrganizations', {});
+    const cached = this.getFromCache<GitHubOrganization[]>(cacheKey, 60000); // 1 minute cache
+
+    if (cached) {
+      console.log('🔍 [GitHubClient] Returning cached orgs:', cached.length);
+      return { data: cached, rateLimit: this.rateLimit! };
+    }
+
+    try {
+      console.log('🔍 [GitHubClient] Calling octokit.orgs.listForAuthenticatedUser...');
+      const octokit = await this.ensureAuthenticated();
+      const response = await octokit.orgs.listForAuthenticatedUser({
+        per_page: 100
+      });
+
+      console.log('🔍 [GitHubClient] Got orgs from API:', response.data?.length || 0);
+
+      this.updateRateLimitFromHeaders(response.headers as Record<string, string>);
+      this.setCache(cacheKey, response.data);
+
+      return {
+        data: response.data as unknown as GitHubOrganization[],
+        rateLimit: this.rateLimit!
+      };
+    } catch (error) {
+      console.error('❌ [GitHubClient] listOrganizations error:', error);
+      this.handleApiError(error);
+    }
+  }
+
+  /**
+   * List repositories for an organization
+   */
+  async listOrganizationRepositories(
+    org: string,
+    options?: {
+      type?: 'all' | 'public' | 'private' | 'forks' | 'sources' | 'member';
+      sort?: 'created' | 'updated' | 'pushed' | 'full_name';
+      direction?: 'asc' | 'desc';
+      per_page?: number;
+      page?: number;
+    }
+  ): Promise<GitHubApiResponse<GitHubRepository[]>> {
+    const cacheKey = this.getCacheKey('listOrganizationRepositories', { org, ...options });
+    const cached = this.getFromCache<GitHubRepository[]>(cacheKey, 60000); // 1 minute cache
+
+    if (cached) {
+      return { data: cached, rateLimit: this.rateLimit! };
+    }
+
+    try {
+      const octokit = await this.ensureAuthenticated();
+      const response = await octokit.repos.listForOrg({
+        org,
+        ...options
+      });
+
+      this.updateRateLimitFromHeaders(response.headers as Record<string, string>);
+      this.setCache(cacheKey, response.data);
+
+      return {
+        data: response.data as unknown as GitHubRepository[],
+        rateLimit: this.rateLimit!
+      };
+    } catch (error) {
+      this.handleApiError(error);
+    }
+  }
+
+  /**
+   * Create a new repository
+   *
+   * @param options - Repository creation options
+   * @returns The created repository
+   */
+  async createRepository(options: CreateRepositoryOptions): Promise<GitHubApiResponse<GitHubRepository>> {
+    console.log('🔧 [GitHubClient] createRepository called with:', options);
+
+    try {
+      const octokit = await this.ensureAuthenticated();
+
+      let response;
+      if (options.org) {
+        // Create repository in organization
+        console.log('🔧 [GitHubClient] Creating repo in org:', options.org);
+        response = await octokit.repos.createInOrg({
+          org: options.org,
+          name: options.name,
+          description: options.description,
+          private: options.private ?? true,
+          auto_init: options.auto_init ?? false,
+          gitignore_template: options.gitignore_template,
+          license_template: options.license_template
+        });
+      } else {
+        // Create repository in user account
+        console.log('🔧 [GitHubClient] Creating repo in user account');
+        response = await octokit.repos.createForAuthenticatedUser({
+          name: options.name,
+          description: options.description,
+          private: options.private ?? true,
+          auto_init: options.auto_init ?? false,
+          gitignore_template: options.gitignore_template,
+          license_template: options.license_template
+        });
+      }
+
+      console.log('✅ [GitHubClient] Repository created:', response.data.full_name);
+
+      this.updateRateLimitFromHeaders(response.headers as Record<string, string>);
+
+      // Invalidate repo list caches
+      this.clearCacheForPattern('listRepositories');
+      this.clearCacheForPattern('listOrganizationRepositories');
+
+      return {
+        data: response.data as unknown as GitHubRepository,
+        rateLimit: this.rateLimit!
+      };
+    } catch (error) {
+      console.error('❌ [GitHubClient] createRepository error:', error);
+      this.handleApiError(error);
+    }
+  }
+
+  // ==================== FILE CONTENT METHODS ====================
+
+  /**
+   * Get file content from a repository
+   * @returns File content as string, or null if file doesn't exist
+   */
+  async getFileContent(owner: string, repo: string, path: string): Promise<string | null> {
+    const cacheKey = this.getCacheKey('getFileContent', { owner, repo, path });
+    const cached = this.getFromCache<string | null>(cacheKey, 60000); // 1 minute cache
+
+    if (cached !== undefined) {
+      console.log('📦 [getFileContent] Cache hit for', `${owner}/${repo}/${path}`);
+      return cached;
+    }
+
+    console.log('🔍 [getFileContent] Fetching', `${owner}/${repo}/${path}`);
+
+    try {
+      const octokit = await this.ensureAuthenticated();
+      const response = await octokit.repos.getContent({
+        owner,
+        repo,
+        path
+      });
+
+      const responseType = !Array.isArray(response.data) && 'type' in response.data ? response.data.type : 'unknown';
+      console.log('✅ [getFileContent] Got response for', `${owner}/${repo}/${path}`, responseType);
+
+      this.updateRateLimitFromHeaders(response.headers as Record<string, string>);
+
+      // Handle file content (not directory)
+      if (!Array.isArray(response.data) && 'content' in response.data && response.data.type === 'file') {
+        const content = Buffer.from(response.data.content, 'base64').toString('utf-8');
+        this.setCache(cacheKey, content);
+        console.log('✅ [getFileContent] Found file', `${owner}/${repo}/${path}`, content.substring(0, 50) + '...');
+        return content;
+      }
+
+      // It's a directory or something else
+      console.log('⚠️ [getFileContent] Not a file:', `${owner}/${repo}/${path}`, responseType);
+      this.setCache(cacheKey, null);
+      return null;
+    } catch (error) {
+      const errorStatus =
+        error && typeof error === 'object' && 'status' in error ? (error as { status: number }).status : 'unknown';
+      console.log('❌ [getFileContent] Error for', `${owner}/${repo}/${path}`, 'status:', errorStatus);
+
+      // 404 means file doesn't exist - cache that result
+      if (errorStatus === 404) {
+        this.setCache(cacheKey, null);
+        return null;
+      }
+
+      // Log the full error for non-404 errors
+      console.error('❌ [getFileContent] Full error:', error);
+
+      // For other errors, don't cache and rethrow
+      throw error;
+    }
+  }
+
+  /**
+   * Check if a repository is a Noodl project
+   * Checks for project.json at the root of the repo
+   */
+  async isNoodlProject(owner: string, repo: string): Promise<boolean> {
+    console.log('🔍 [GitHubClient] isNoodlProject checking:', `${owner}/${repo}`);
+
+    try {
+      const projectJson = await this.getFileContent(owner, repo, 'project.json');
+      if (projectJson !== null) {
+        console.log('✅ [GitHubClient] Found project.json in', `${owner}/${repo}`);
+        return true;
+      }
+
+      console.log('❌ [GitHubClient] No project.json found in', `${owner}/${repo}`);
+      return false;
+    } catch (error) {
+      console.error('❌ [GitHubClient] Error checking isNoodlProject for', `${owner}/${repo}`, error);
+      return false;
     }
   }
 

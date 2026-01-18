@@ -6,7 +6,8 @@
  */
 
 import { ipcRenderer, shell } from 'electron';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState, useMemo } from 'react';
+import { clone } from '@noodl/git/src/core/clone';
 import { filesystem } from '@noodl/platform';
 
 import { CreateProjectModal } from '@noodl-core-ui/preview/launcher/Launcher/components/CreateProjectModal';
@@ -14,12 +15,18 @@ import {
   CloudSyncType,
   LauncherProjectData
 } from '@noodl-core-ui/preview/launcher/Launcher/components/LauncherProjectCard';
+import {
+  useGitHubRepos,
+  NoodlGitHubRepo,
+  GitHubClientInterface
+} from '@noodl-core-ui/preview/launcher/Launcher/hooks/useGitHubRepos';
 import { Launcher } from '@noodl-core-ui/preview/launcher/Launcher/Launcher';
 
 import { useEventListener } from '../../hooks/useEventListener';
 import { DialogLayerModel } from '../../models/DialogLayerModel';
 import { detectRuntimeVersion } from '../../models/migration/ProjectScanner';
 import { IRouteProps } from '../../pages/AppRoute';
+import { GitHubOAuthService, GitHubClient } from '../../services/github';
 import { ProjectOrganizationService } from '../../services/ProjectOrganizationService';
 import { LocalProjectsModel, ProjectItemWithRuntime } from '../../utils/LocalProjectsModel';
 import { tracker } from '../../utils/tracker';
@@ -55,6 +62,332 @@ export function ProjectsPage(props: ProjectsPageProps) {
 
   // Create project modal state
   const [isCreateModalVisible, setIsCreateModalVisible] = useState(false);
+
+  // GitHub OAuth state
+  const [githubIsAuthenticated, setGithubIsAuthenticated] = useState(false);
+  const [githubIsConnecting, setGithubIsConnecting] = useState(false);
+  const [githubUser, setGithubUser] = useState<ReturnType<typeof GitHubOAuthService.instance.getCurrentUser>>(null);
+  const oauthService = GitHubOAuthService.instance;
+
+  // Initialize GitHub OAuth state on mount
+  useEffect(() => {
+    console.log('🔧 [ProjectsPage] Initializing GitHub OAuth...');
+    oauthService.initialize().then(() => {
+      const isAuth = oauthService.isAuthenticated();
+      const user = oauthService.getCurrentUser();
+      console.log('🔧 [ProjectsPage] GitHub auth state:', isAuth, user?.login);
+      setGithubIsAuthenticated(isAuth);
+      setGithubUser(user);
+    });
+  }, [oauthService]);
+
+  // Listen for GitHub auth state changes
+  useEventListener(oauthService, 'auth-state-changed', (event: { authenticated: boolean }) => {
+    console.log('🔔 [ProjectsPage] GitHub auth state changed:', event.authenticated);
+    setGithubIsAuthenticated(event.authenticated);
+    if (event.authenticated) {
+      setGithubUser(oauthService.getCurrentUser());
+    } else {
+      setGithubUser(null);
+    }
+  });
+
+  // Listen for OAuth success
+  useEventListener(oauthService, 'oauth-success', () => {
+    setGithubIsConnecting(false);
+  });
+
+  useEventListener(oauthService, 'oauth-error', () => {
+    setGithubIsConnecting(false);
+    ToastLayer.showError('GitHub authentication failed');
+  });
+
+  // GitHub OAuth handlers
+  const handleGitHubConnect = useCallback(async () => {
+    console.log('🔘 [ProjectsPage] handleGitHubConnect called');
+    setGithubIsConnecting(true);
+    try {
+      await oauthService.initiateOAuth();
+      console.log('✅ [ProjectsPage] OAuth initiated');
+    } catch (error) {
+      console.error('❌ [ProjectsPage] OAuth error:', error);
+      setGithubIsConnecting(false);
+      ToastLayer.showError('Failed to connect GitHub');
+    }
+  }, [oauthService]);
+
+  const handleGitHubDisconnect = useCallback(async () => {
+    console.log('🔘 [ProjectsPage] handleGitHubDisconnect called');
+    await oauthService.disconnect();
+    ToastLayer.showSuccess('GitHub account disconnected');
+  }, [oauthService]);
+
+  // Create GitHubClient adapter for useGitHubRepos hook
+  const githubClient = useMemo((): GitHubClientInterface | null => {
+    if (!githubIsAuthenticated) return null;
+
+    const client = GitHubClient.instance;
+    return {
+      listRepositories: async (options?: { per_page?: number; sort?: string }) => {
+        const result = await client.listRepositories(options as TSFixme);
+        return result;
+      },
+      listOrganizations: async () => {
+        const result = await client.listOrganizations();
+        return result;
+      },
+      listOrganizationRepositories: async (org, options) => {
+        const result = await client.listOrganizationRepositories(org, options);
+        return result;
+      },
+      isNoodlProject: async (owner, repo) => {
+        return client.isNoodlProject(owner, repo);
+      }
+    };
+  }, [githubIsAuthenticated]);
+
+  // Use the GitHub repos hook
+  const githubRepos = useGitHubRepos(githubClient, githubIsAuthenticated);
+
+  /**
+   * Handle cloning a GitHub repository
+   * Follows the same legacy detection flow as handleOpenProject
+   */
+  const handleCloneRepo = useCallback(
+    async (repo: NoodlGitHubRepo) => {
+      console.log('🔵 [handleCloneRepo] Starting clone for:', repo.full_name);
+
+      // Ask user where to clone
+      try {
+        const targetDir = await filesystem.openDialog({
+          allowCreateDirectory: true
+        });
+
+        if (!targetDir) {
+          console.log('🔵 [handleCloneRepo] User cancelled');
+          return;
+        }
+
+        // Create path with repo name
+        const clonePath = filesystem.join(targetDir, repo.name);
+
+        // Check if directory already exists
+        if (await filesystem.exists(clonePath)) {
+          ToastLayer.showError(`A folder named "${repo.name}" already exists at that location`);
+          return;
+        }
+
+        const activityId = 'cloning-repo';
+        ToastLayer.showActivity(`Cloning ${repo.name}...`, activityId);
+
+        // Get clone URL (prefer HTTPS with token for authenticated access)
+        const token = await oauthService.getToken();
+        const cloneUrl = repo.html_url.replace('https://', `https://x-access-token:${token}@`) + '.git';
+
+        await clone(cloneUrl, clonePath, {
+          singleBranch: false,
+          defaultBranch: repo.default_branch
+        });
+
+        ToastLayer.hideActivity(activityId);
+        ToastLayer.showSuccess(`Cloned "${repo.name}" successfully!`);
+
+        tracker.track('GitHub Repository Cloned', {
+          repoName: repo.name,
+          isPrivate: repo.private
+        });
+
+        // Now detect runtime and follow the same flow as handleOpenProject
+        const runtimeActivityId = 'checking-compatibility';
+        ToastLayer.showActivity('Checking project compatibility...', runtimeActivityId);
+
+        try {
+          const runtimeInfo = await detectRuntimeVersion(clonePath);
+          ToastLayer.hideActivity(runtimeActivityId);
+
+          console.log('🔵 [handleCloneRepo] Runtime detected:', runtimeInfo);
+
+          // If legacy or unknown, show warning dialog
+          if (runtimeInfo.version === 'react17' || runtimeInfo.version === 'unknown') {
+            const projectName = repo.name;
+
+            // Show legacy project warning dialog
+            const userChoice = await new Promise<'migrate' | 'readonly' | 'cancel'>((resolve) => {
+              const confirmed = confirm(
+                `⚠️  Legacy Project Detected\n\n` +
+                  `This project "${projectName}" was created with an earlier version of Noodl (React 17).\n\n` +
+                  `OpenNoodl uses React 19, which requires migrating your project to ensure compatibility.\n\n` +
+                  `What would you like to do?\n\n` +
+                  `OK - Migrate Project (Recommended)\n` +
+                  `Cancel - View options`
+              );
+
+              if (confirmed) {
+                resolve('migrate');
+              } else {
+                // Show second dialog for Read-Only or Cancel
+                const openReadOnly = confirm(
+                  `Would you like to open this project in Read-Only mode?\n\n` +
+                    `You can inspect the project safely without making changes.\n\n` +
+                    `OK - Open Read-Only\n` +
+                    `Cancel - Return to launcher`
+                );
+
+                if (openReadOnly) {
+                  resolve('readonly');
+                } else {
+                  resolve('cancel');
+                }
+              }
+            });
+
+            console.log('🔵 [handleCloneRepo] User choice:', userChoice);
+
+            if (userChoice === 'cancel') {
+              // Add to projects list but don't open
+              await LocalProjectsModel.instance.openProjectFromFolder(clonePath);
+              await LocalProjectsModel.instance.fetch();
+              LocalProjectsModel.instance.detectAllProjectRuntimes();
+              ToastLayer.showSuccess(`Project "${repo.name}" added to your projects.`);
+              return;
+            }
+
+            if (userChoice === 'migrate') {
+              // Launch migration wizard
+              tracker.track('Legacy Project Migration Started from Clone', { projectName });
+
+              DialogLayerModel.instance.showDialog(
+                (close) =>
+                  React.createElement(MigrationWizard, {
+                    sourcePath: clonePath,
+                    projectName,
+                    onComplete: async (targetPath: string) => {
+                      close();
+
+                      const migrateActivityId = 'opening-migrated';
+                      ToastLayer.showActivity('Opening migrated project', migrateActivityId);
+
+                      try {
+                        const migratedProject = await LocalProjectsModel.instance.openProjectFromFolder(targetPath);
+
+                        if (!migratedProject.name) {
+                          migratedProject.name = projectName + ' (React 19)';
+                        }
+
+                        await LocalProjectsModel.instance.fetch();
+                        await LocalProjectsModel.instance.detectProjectRuntime(targetPath);
+                        LocalProjectsModel.instance.detectAllProjectRuntimes();
+
+                        const projects = LocalProjectsModel.instance.getProjects();
+                        const projectEntry = projects.find((p) => p.id === migratedProject.id);
+
+                        if (projectEntry) {
+                          const loaded = await LocalProjectsModel.instance.loadProject(projectEntry);
+                          ToastLayer.hideActivity(migrateActivityId);
+
+                          if (loaded) {
+                            ToastLayer.showSuccess('Project migrated and opened successfully!');
+                            props.route.router.route({ to: 'editor', project: loaded });
+                          }
+                        }
+                      } catch (error) {
+                        ToastLayer.hideActivity(migrateActivityId);
+                        ToastLayer.showError('Could not open migrated project');
+                        console.error(error);
+                      }
+                    },
+                    onCancel: () => {
+                      close();
+                    }
+                  }),
+                {
+                  onClose: () => {
+                    LocalProjectsModel.instance.fetch();
+                  }
+                }
+              );
+
+              return;
+            }
+
+            // Read-only mode
+            tracker.track('Legacy Project Opened Read-Only from Clone', { projectName });
+
+            const readOnlyActivityId = 'opening-project-readonly';
+            ToastLayer.showActivity('Opening project in read-only mode', readOnlyActivityId);
+
+            const readOnlyProject = await LocalProjectsModel.instance.openProjectFromFolder(clonePath);
+
+            if (!readOnlyProject) {
+              ToastLayer.hideActivity(readOnlyActivityId);
+              ToastLayer.showError('Could not open project');
+              return;
+            }
+
+            if (!readOnlyProject.name) {
+              readOnlyProject.name = repo.name;
+            }
+
+            const readOnlyProjects = LocalProjectsModel.instance.getProjects();
+            const readOnlyProjectEntry = readOnlyProjects.find((p) => p.id === readOnlyProject.id);
+
+            if (!readOnlyProjectEntry) {
+              ToastLayer.hideActivity(readOnlyActivityId);
+              ToastLayer.showError('Could not find project in recent list');
+              return;
+            }
+
+            const loadedReadOnly = await LocalProjectsModel.instance.loadProject(readOnlyProjectEntry);
+            ToastLayer.hideActivity(readOnlyActivityId);
+
+            if (!loadedReadOnly) {
+              ToastLayer.showError('Could not load project');
+              return;
+            }
+
+            ToastLayer.showError('⚠️  READ-ONLY MODE - No changes will be saved to this legacy project');
+            props.route.router.route({ to: 'editor', project: loadedReadOnly, readOnly: true });
+            return;
+          }
+        } catch (error) {
+          ToastLayer.hideActivity(runtimeActivityId);
+          console.error('Failed to detect runtime:', error);
+          // Continue with normal flow if detection fails
+        }
+
+        // Modern project - add to list and ask to open
+        const project = await LocalProjectsModel.instance.openProjectFromFolder(clonePath);
+
+        if (project) {
+          if (!project.name) {
+            project.name = repo.name;
+          }
+
+          await LocalProjectsModel.instance.fetch();
+          LocalProjectsModel.instance.detectAllProjectRuntimes();
+
+          const shouldOpen = confirm(`Project "${repo.name}" cloned successfully!\n\nWould you like to open it now?`);
+
+          if (shouldOpen) {
+            const projects = LocalProjectsModel.instance.getProjects();
+            const projectEntry = projects.find((p) => p.id === project.id);
+
+            if (projectEntry) {
+              const loaded = await LocalProjectsModel.instance.loadProject(projectEntry);
+              if (loaded) {
+                props.route.router.route({ to: 'editor', project: loaded });
+              }
+            }
+          }
+        }
+      } catch (error) {
+        ToastLayer.hideActivity('cloning-repo');
+        console.error('Failed to clone repository:', error);
+        ToastLayer.showError(`Failed to clone repository: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+    },
+    [oauthService, props.route]
+  );
 
   // Initialize and fetch projects on mount
   useEffect(() => {
@@ -590,11 +923,13 @@ export function ProjectsPage(props: ProjectsPageProps) {
         onMigrateProject={handleMigrateProject}
         onOpenReadOnly={handleOpenReadOnly}
         projectOrganizationService={ProjectOrganizationService.instance}
-        githubUser={null}
-        githubIsAuthenticated={false}
-        githubIsConnecting={false}
-        onGitHubConnect={() => {}}
-        onGitHubDisconnect={() => {}}
+        githubUser={githubUser}
+        githubIsAuthenticated={githubIsAuthenticated}
+        githubIsConnecting={githubIsConnecting}
+        onGitHubConnect={handleGitHubConnect}
+        onGitHubDisconnect={handleGitHubDisconnect}
+        githubRepos={githubRepos}
+        onCloneRepo={handleCloneRepo}
       />
 
       <CreateProjectModal

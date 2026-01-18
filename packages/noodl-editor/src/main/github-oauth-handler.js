@@ -15,8 +15,8 @@ const { ipcMain, BrowserWindow } = require('electron');
  * GitHub OAuth credentials
  * Uses existing credentials from GitHubOAuthService
  */
-const GITHUB_CLIENT_ID = process.env.GITHUB_CLIENT_ID || 'Iv23lib1WdrimUdyvZui';
-const GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET || '9bd56694d6d300bf86b1999bab523b32654ec375';
+const GITHUB_CLIENT_ID = process.env.GITHUB_CLIENT_ID || 'Ov23li2n9u3dwAhwoifb';
+const GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET || 'c45276fa80b0618de06e5e2b09c1019ca150baef';
 
 /**
  * Custom protocol for OAuth callback
@@ -217,6 +217,7 @@ class GitHubOAuthCallbackHandler {
 
   /**
    * Send success to renderer process
+   * Broadcasts to ALL windows since the editor might not be windows[0]
    */
   sendSuccessToRenderer(result) {
     console.log('📤 [GitHub OAuth] ========================================');
@@ -227,8 +228,15 @@ class GitHubOAuthCallbackHandler {
 
     const windows = BrowserWindow.getAllWindows();
     if (windows.length > 0) {
-      windows[0].webContents.send('github-oauth-complete', result);
-      console.log('✅ [GitHub OAuth] IPC event sent to renderer');
+      // Broadcast to ALL windows - the one with the listener will handle it
+      windows.forEach((win, index) => {
+        try {
+          win.webContents.send('github-oauth-complete', result);
+          console.log(`✅ [GitHub OAuth] IPC event sent to window ${index}`);
+        } catch (err) {
+          console.error(`❌ [GitHub OAuth] Failed to send to window ${index}:`, err.message);
+        }
+      });
     } else {
       console.error('❌ [GitHub OAuth] No windows available to send IPC event!');
     }
@@ -236,13 +244,20 @@ class GitHubOAuthCallbackHandler {
 
   /**
    * Send error to renderer process
+   * Broadcasts to ALL windows since the editor might not be windows[0]
    */
   sendErrorToRenderer(error, description) {
     const windows = BrowserWindow.getAllWindows();
     if (windows.length > 0) {
-      windows[0].webContents.send('github-oauth-error', {
-        error,
-        message: description || error
+      windows.forEach((win) => {
+        try {
+          win.webContents.send('github-oauth-error', {
+            error,
+            message: description || error
+          });
+        } catch (err) {
+          // Ignore errors for windows that can't receive messages
+        }
       });
     }
   }

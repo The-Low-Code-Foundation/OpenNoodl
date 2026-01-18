@@ -671,7 +671,13 @@ function launchApp() {
     // Load GitHub token
     ipcMain.handle('github-load-token', async (event) => {
       try {
-        const stored = jsonstorage.getSync('github.token');
+        // Use Promise wrapper for callback-based jsonstorage.get
+        const stored = await new Promise((resolve) => {
+          jsonstorage.get('github.token', (data) => {
+            resolve(data);
+          });
+        });
+
         if (!stored) return null;
 
         if (safeStorage.isEncryptionAvailable()) {

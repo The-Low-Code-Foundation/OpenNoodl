@@ -2,20 +2,40 @@
  * useGitHubRepository Hook
  *
  * Extracts GitHub repository information from the Git remote URL.
- * Returns owner, repo name, and connection status.
+ * Returns owner, repo name, connection status, and detailed git state.
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Git } from '@noodl/git';
 
 import { ProjectModel } from '@noodl-models/projectmodel';
 import { mergeProject } from '@noodl-utils/projectmerger';
 
-interface GitHubRepoInfo {
+/**
+ * Possible states for a project's git connection
+ */
+export type ProjectGitState =
+  | 'loading' // Still determining state
+  | 'no-git' // No .git folder
+  | 'git-no-remote' // Has .git but no origin remote
+  | 'remote-not-github' // Has remote but not github.com
+  | 'github-connected'; // Connected to GitHub
+
+export interface GitHubRepoInfo {
+  /** GitHub repository owner/organization */
   owner: string | null;
+  /** GitHub repository name */
   repo: string | null;
+  /** Whether the remote is GitHub */
   isGitHub: boolean;
+  /** Whether we have all info needed (owner + repo) */
   isReady: boolean;
+  /** Detailed state of the git connection */
+  gitState: ProjectGitState;
+  /** Remote URL if available */
+  remoteUrl: string | null;
+  /** Git provider (github, noodl, unknown, none) */
+  provider: string | null;
 }
 
 /**
@@ -54,77 +74,116 @@ function parseGitHubUrl(url: string): { owner: string; repo: string } | null {
   return null;
 }
 
+const initialState: GitHubRepoInfo = {
+  owner: null,
+  repo: null,
+  isGitHub: false,
+  isReady: false,
+  gitState: 'loading',
+  remoteUrl: null,
+  provider: null
+};
+
 /**
  * Hook to get GitHub repository information from current project's Git remote
  */
-export function useGitHubRepository(): GitHubRepoInfo {
-  const [repoInfo, setRepoInfo] = useState<GitHubRepoInfo>({
-    owner: null,
-    repo: null,
-    isGitHub: false,
-    isReady: false
-  });
+export function useGitHubRepository(): GitHubRepoInfo & { refetch: () => void } {
+  const [repoInfo, setRepoInfo] = useState<GitHubRepoInfo>(initialState);
 
-  useEffect(() => {
-    async function fetchRepoInfo() {
+  const fetchRepoInfo = useCallback(async () => {
+    try {
+      const projectDirectory = ProjectModel.instance?._retainedProjectDirectory;
+      if (!projectDirectory) {
+        setRepoInfo({
+          ...initialState,
+          gitState: 'no-git'
+        });
+        return;
+      }
+
+      // Create Git instance and try to open repository
+      const git = new Git(mergeProject);
+
       try {
-        const projectDirectory = ProjectModel.instance?._retainedProjectDirectory;
-        if (!projectDirectory) {
-          setRepoInfo({
-            owner: null,
-            repo: null,
-            isGitHub: false,
-            isReady: false
-          });
-          return;
-        }
-
-        // Create Git instance and open repository
-        const git = new Git(mergeProject);
         await git.openRepository(projectDirectory);
-
-        // Check if it's a GitHub repository
-        const provider = git.Provider;
-        if (provider !== 'github') {
-          setRepoInfo({
-            owner: null,
-            repo: null,
-            isGitHub: false,
-            isReady: false
-          });
-          return;
-        }
-
-        // Parse the remote URL
-        const remoteUrl = git.OriginUrl;
-        const parsed = parseGitHubUrl(remoteUrl);
-
-        if (parsed) {
-          setRepoInfo({
-            owner: parsed.owner,
-            repo: parsed.repo,
-            isGitHub: true,
-            isReady: true
-          });
+      } catch (gitError) {
+        // Not a git repository - this is expected for non-git projects
+        const errorMessage = gitError instanceof Error ? gitError.message : String(gitError);
+        if (errorMessage.includes('Not a git repository')) {
+          console.log('[useGitHubRepository] Project is not a git repository');
         } else {
-          setRepoInfo({
-            owner: null,
-            repo: null,
-            isGitHub: true, // It's GitHub but couldn't parse
-            isReady: false
-          });
+          console.warn('[useGitHubRepository] Git error:', errorMessage);
         }
-      } catch (error) {
-        console.error('Failed to fetch GitHub repository info:', error);
+        setRepoInfo({
+          ...initialState,
+          gitState: 'no-git'
+        });
+        return;
+      }
+
+      // Check if we have a remote
+      const remoteName = await git.getRemoteName();
+      if (!remoteName) {
+        console.log('[useGitHubRepository] No remote configured');
+        setRepoInfo({
+          ...initialState,
+          gitState: 'git-no-remote'
+        });
+        return;
+      }
+
+      // Get remote URL and provider
+      const remoteUrl = git.OriginUrl;
+      const provider = git.Provider;
+
+      // Check if it's a GitHub repository
+      if (provider !== 'github') {
         setRepoInfo({
           owner: null,
           repo: null,
           isGitHub: false,
-          isReady: false
+          isReady: false,
+          gitState: 'remote-not-github',
+          remoteUrl,
+          provider
+        });
+        return;
+      }
+
+      // Parse the remote URL
+      const parsed = parseGitHubUrl(remoteUrl);
+
+      if (parsed) {
+        setRepoInfo({
+          owner: parsed.owner,
+          repo: parsed.repo,
+          isGitHub: true,
+          isReady: true,
+          gitState: 'github-connected',
+          remoteUrl,
+          provider
+        });
+      } else {
+        setRepoInfo({
+          owner: null,
+          repo: null,
+          isGitHub: true, // It's GitHub but couldn't parse
+          isReady: false,
+          gitState: 'github-connected',
+          remoteUrl,
+          provider
         });
       }
+    } catch (error) {
+      console.error('[useGitHubRepository] Unexpected error:', error);
+      setRepoInfo({
+        ...initialState,
+        gitState: 'no-git'
+      });
     }
+  }, []);
 
+  useEffect(() => {
     fetchRepoInfo();
 
     // Refetch when project changes
@@ -138,7 +197,7 @@ export function useGitHubRepository(): GitHubRepoInfo {
     return () => {
       ProjectModel.instance?.off(handleProjectChange);
     };
-  }, []);
+  }, [fetchRepoInfo]);
 
-  return repoInfo;
+  return { ...repoInfo, refetch: fetchRepoInfo };
 }

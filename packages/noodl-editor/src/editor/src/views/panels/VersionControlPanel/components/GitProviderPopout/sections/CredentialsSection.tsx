@@ -1,3 +1,4 @@
+import { useEventListener } from '@noodl-hooks/useEventListener';
 import React, { useState, useEffect } from 'react';
 import { GitProvider } from '@noodl/git';
 
@@ -7,7 +8,7 @@ import { TextInput, TextInputVariant } from '@noodl-core-ui/components/inputs/Te
 import { Section, SectionVariant } from '@noodl-core-ui/components/sidebar/Section';
 import { Text } from '@noodl-core-ui/components/typography/Text';
 
-import { GitHubAuth, type GitHubAuthState } from '../../../../../../services/github';
+import { GitHubOAuthService } from '../../../../../../services/github';
 
 type CredentialsSectionProps = {
   provider: GitProvider;
@@ -29,43 +30,75 @@ export function CredentialsSection({
 
   const [hidePassword, setHidePassword] = useState(true);
 
-  // OAuth state management
-  const [authState, setAuthState] = useState<GitHubAuthState>(GitHubAuth.getAuthState());
+  // OAuth state management using GitHubOAuthService
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [authenticatedUsername, setAuthenticatedUsername] = useState<string | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
   const [progressMessage, setProgressMessage] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
 
-  // Check auth state on mount
+  const oauthService = GitHubOAuthService.instance;
+
+  // Initialize OAuth service on mount
   useEffect(() => {
     if (provider === 'github') {
-      setAuthState(GitHubAuth.getAuthState());
+      console.log('🔧 [CredentialsSection] Initializing GitHubOAuthService...');
+      oauthService.initialize().then(() => {
+        setIsAuthenticated(oauthService.isAuthenticated());
+        const user = oauthService.getCurrentUser();
+        setAuthenticatedUsername(user?.login || null);
+        console.log('🔧 [CredentialsSection] Auth state:', oauthService.isAuthenticated(), user?.login);
+      });
     }
-  }, [provider]);
+  }, [provider, oauthService]);
+
+  // Listen for auth state changes
+  useEventListener(oauthService, 'auth-state-changed', (event: { authenticated: boolean }) => {
+    console.log('🔔 [CredentialsSection] Auth state changed:', event.authenticated);
+    setIsAuthenticated(event.authenticated);
+    if (event.authenticated) {
+      const user = oauthService.getCurrentUser();
+      setAuthenticatedUsername(user?.login || null);
+    } else {
+      setAuthenticatedUsername(null);
+    }
+  });
 
   const handleConnect = async () => {
+    console.log('🔘 [CredentialsSection] handleConnect called - button clicked!');
     setIsConnecting(true);
     setError(null);
-    setProgressMessage('Initiating GitHub authentication...');
+    setProgressMessage('Opening GitHub in your browser...');
 
     try {
-      await GitHubAuth.startWebOAuthFlow((message) => {
-        setProgressMessage(message);
-      });
+      console.log('🔐 [CredentialsSection] Calling GitHubOAuthService.initiateOAuth...');
+      await oauthService.initiateOAuth();
 
-      // Update state after successful auth
-      setAuthState(GitHubAuth.getAuthState());
-      setProgressMessage('');
+      console.log('✅ [CredentialsSection] OAuth flow initiated');
+      // State will be updated via event listener when auth completes
+      setProgressMessage('Waiting for authorization...');
     } catch (err) {
+      console.error('❌ [CredentialsSection] OAuth flow error:', err);
       setError(err instanceof Error ? err.message : 'Authentication failed');
       setProgressMessage('');
-    } finally {
       setIsConnecting(false);
     }
   };
 
-  const handleDisconnect = () => {
-    GitHubAuth.disconnect();
-    setAuthState(GitHubAuth.getAuthState());
+  // Listen for auth success to clear connecting state
+  useEventListener(oauthService, 'oauth-success', () => {
+    setIsConnecting(false);
+    setProgressMessage('');
+  });
+
+  useEventListener(oauthService, 'oauth-error', (event: { error: string }) => {
+    setIsConnecting(false);
+    setError(event.error);
+    setProgressMessage('');
+  });
+
+  const handleDisconnect = async () => {
+    await oauthService.disconnect();
     setError(null);
   };
 
@@ -74,11 +107,11 @@ export function CredentialsSection({
       {/* OAuth Section - GitHub Only */}
       {provider === 'github' && (
         <Section title="GitHub Account (Recommended)" variant={SectionVariant.InModal} hasGutter>
-          {authState.isAuthenticated ? (
+          {isAuthenticated ? (
             // Connected state
             <>
               <Text hasBottomSpacing>
-                ✓ Connected as <strong>{authState.username}</strong>
+                ✓ Connected as <strong>{authenticatedUsername}</strong>
               </Text>
               <Text hasBottomSpacing>Your GitHub account is connected and will be used for all Git operations.</Text>
               <TextButton label="Disconnect GitHub Account" onClick={handleDisconnect} />

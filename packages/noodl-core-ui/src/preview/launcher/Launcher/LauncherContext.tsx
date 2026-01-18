@@ -9,8 +9,9 @@
 import React, { createContext, useContext, ReactNode } from 'react';
 
 import { LauncherProjectData } from './components/LauncherProjectCard';
+import { NoodlGitHubRepo, UseGitHubReposReturn } from './hooks/useGitHubRepos';
 
-export type LauncherPageId = 'projects' | 'learn' | 'templates';
+export type LauncherPageId = 'projects' | 'learn' | 'templates' | 'github';
 
 // GitHub user info (matches GitHubOAuthService interface)
 export interface GitHubUser {
@@ -52,6 +53,10 @@ export interface LauncherContextValue {
   githubIsConnecting?: boolean;
   onGitHubConnect?: () => void;
   onGitHubDisconnect?: () => void;
+
+  // GitHub repos for clone feature (optional - for Storybook compatibility)
+  githubRepos?: UseGitHubReposReturn | null;
+  onCloneRepo?: (repo: NoodlGitHubRepo) => Promise<void>;
 }
 
 const LauncherContext = createContext<LauncherContextValue | null>(null);

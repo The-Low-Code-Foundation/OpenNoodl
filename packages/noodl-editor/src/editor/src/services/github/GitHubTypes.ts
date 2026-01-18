@@ -268,6 +268,26 @@ export interface UpdateIssueOptions {
 }
 
 /**
+ * Create repository options
+ */
+export interface CreateRepositoryOptions {
+  /** Repository name */
+  name: string;
+  /** Repository description */
+  description?: string;
+  /** Whether the repo is private (default: true) */
+  private?: boolean;
+  /** Organization name (if creating in an org, otherwise creates in user account) */
+  org?: string;
+  /** Initialize with README */
+  auto_init?: boolean;
+  /** .gitignore template */
+  gitignore_template?: string;
+  /** License template */
+  license_template?: string;
+}
+
+/**
  * Error response from GitHub API
  */
 export interface GitHubApiError {

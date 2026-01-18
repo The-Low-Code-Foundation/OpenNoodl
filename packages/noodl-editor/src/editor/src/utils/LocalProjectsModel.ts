@@ -13,7 +13,7 @@ import Model from '../../../shared/model';
 import { detectRuntimeVersion } from '../models/migration/ProjectScanner';
 import { RuntimeVersionInfo } from '../models/migration/types';
 import { projectFromDirectory, unzipIntoDirectory } from '../models/projectmodel.editor';
-import { GitHubAuth } from '../services/github';
+import { GitHubOAuthService } from '../services/GitHubOAuthService';
 import FileSystem from './filesystem';
 import { tracker } from './tracker';
 import { guid } from './utils';
@@ -336,14 +336,19 @@ export class LocalProjectsModel extends Model {
   setCurrentGlobalGitAuth(projectId: string) {
     const func = async (endpoint: string) => {
       if (endpoint.includes('github.com')) {
-        // Priority 1: Check for global OAuth token
-        const authState = GitHubAuth.getAuthState();
-        if (authState.isAuthenticated && authState.token) {
-          console.log('[Git Auth] Using GitHub OAuth token for:', endpoint);
-          return {
-            username: authState.username || 'oauth',
-            password: authState.token.access_token // Extract actual access token string
-          };
+        // Priority 1: Check for global OAuth token from GitHubOAuthService
+        try {
+          const token = await GitHubOAuthService.instance.getToken();
+          const user = GitHubOAuthService.instance.getCurrentUser();
+          if (token) {
+            console.log('[Git Auth] Using GitHub OAuth token for:', endpoint, 'user:', user?.login);
+            return {
+              username: user?.login || 'oauth',
+              password: token
+            };
+          }
+        } catch (err) {
+          console.warn('[Git Auth] Failed to get OAuth token:', err);
         }
 
         // Priority 2: Fall back to project-specific PAT

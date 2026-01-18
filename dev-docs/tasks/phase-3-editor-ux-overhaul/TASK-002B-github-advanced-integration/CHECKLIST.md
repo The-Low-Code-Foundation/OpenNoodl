@@ -1,9 +1,24 @@
 # GIT-004: Implementation Checklist
 
+> **⚠️ IMPORTANT: Integration Strategy Update (Jan 18, 2026)**
+>
+> GIT-004A-C were implemented with a separate `GitHubPanel`. However, we discovered that the existing `VersionControlPanel` is already 100% React with full visual diff support.
+>
+> **Going forward (GIT-004D-F):** We will integrate GitHub features into the existing VersionControlPanel as new tabs, rather than maintaining a separate panel.
+>
+> See **[GIT-INTEGRATION-STRATEGY.md](./GIT-INTEGRATION-STRATEGY.md)** for the full plan.
+>
+> **What this means for the checklist:**
+>
+> - GIT-004A-C: ✅ Complete (GitHubPanel code exists and works)
+> - GIT-004D-F: Will move components from GitHubPanel → VersionControlPanel tabs
+
+---
+
 ## Pre-Implementation
 
-- [ ] Review existing `packages/noodl-git/` code
-- [ ] Review `VersionControlPanel/` patterns
+- [x] Review existing `packages/noodl-git/` code
+- [x] Review `VersionControlPanel/` patterns
 - [ ] Set up GitHub App in GitHub Developer Settings (for testing)
 - [ ] Document GitHub App creation steps for users
 
@@ -381,17 +396,152 @@
 
 ---
 
-## Progress Summary
+## Progress Summary - Part 1: GitHub Project Management
 
-| Sub-Task | Status | Started | Completed | Hours |
-|----------|--------|---------|-----------|-------|
-| GIT-004A: OAuth & Client | Not Started | - | - | - |
-| GIT-004B: Issues Read | Not Started | - | - | - |
-| GIT-004C: PRs Read | Not Started | - | - | - |
-| GIT-004D: Issues CRUD | Not Started | - | - | - |
-| GIT-004E: Component Linking | Not Started | - | - | - |
-| GIT-004F: Dashboard | Not Started | - | - | - |
-| Integration & Polish | Not Started | - | - | - |
+| Sub-Task                    | Status      | Started | Completed | Hours |
+| --------------------------- | ----------- | ------- | --------- | ----- |
+| GIT-004A: OAuth & Client    | ✅ Complete | -       | -         | -     |
+| GIT-004B: Issues Read       | ✅ Complete | -       | -         | -     |
+| GIT-004C: PRs Read          | ✅ Complete | -       | -         | -     |
+| GIT-004D: Issues CRUD       | Not Started | -       | -         | -     |
+| GIT-004E: Component Linking | Not Started | -       | -         | -     |
+| GIT-004F: Dashboard         | Not Started | -       | -         | -     |
+| Integration & Polish        | Not Started | -       | -         | -     |
 
-**Total Estimated:** 70-90 hours  
+**Part 1 Estimated:** 70-90 hours  
+**Part 1 Actual:** - hours
+
+---
+
+## Part 2: Live Collaboration & Multi-Community (GIT-005-011)
+
+### GIT-005: Community Infrastructure (60-80 hours)
+
+- [ ] Create `opennoodl-community` template repository
+- [ ] Implement `community.json` schema and validation
+- [ ] Create GitHub Actions workflows for validation
+- [ ] Implement `CommunityManager` service
+- [ ] Create community settings UI panel
+- [ ] Add "Add Community" flow
+- [ ] Add "Create Community" flow (fork template)
+- [ ] Implement background sync
+- [ ] Add server health monitoring
+- [ ] Create community switcher UI
+
+### GIT-006: Server Infrastructure (80-100 hours)
+
+**Signaling Server:**
+
+- [ ] Create repository
+- [ ] Implement WebSocket room management
+- [ ] Implement signal relay
+- [ ] Add health check/metrics
+- [ ] Create Dockerfile
+- [ ] Deploy to production
+
+**Sync Server:**
+
+- [ ] Create repository
+- [ ] Implement Yjs WebSocket provider
+- [ ] Add optional LevelDB persistence
+- [ ] Create Dockerfile
+- [ ] Deploy to production
+
+**Notification Server:**
+
+- [ ] Create repository
+- [ ] Implement WebSocket authentication
+- [ ] Implement notification storage
+- [ ] Implement TTL cleanup
+- [ ] Create Dockerfile
+- [ ] Deploy to production
+
+### GIT-007: WebRTC Collaboration Client (100-130 hours)
+
+- [ ] Create `CollaborationManager` service
+- [ ] Implement session creation (host)
+- [ ] Implement session joining (guest)
+- [ ] Implement signaling server communication
+- [ ] Implement WebRTC peer connections
+- [ ] Set up Yjs document structure
+- [ ] Implement WebRTC provider (y-webrtc)
+- [ ] Implement WebSocket fallback (y-websocket)
+- [ ] Sync project to Yjs
+- [ ] Implement cursor broadcasting
+- [ ] Implement selection broadcasting
+- [ ] Implement local audio/video capture
+- [ ] Display remote media streams
+- [ ] Create collaboration toolbar UI
+- [ ] Create participant list panel
+
+### GIT-008: Notification System (50-70 hours)
+
+- [ ] Create `NotificationManager` service
+- [ ] Implement WebSocket connection
+- [ ] Implement notification fetching/parsing
+- [ ] Create `NotificationToast` component
+- [ ] Create toast queue system
+- [ ] Create `NotificationCenter` panel
+- [ ] Add notification badge
+- [ ] Implement Electron desktop notifications
+- [ ] Add notification settings
+
+### GIT-009: Community Tab UI (80-100 hours)
+
+- [ ] Create `CommunityPanel` component
+- [ ] Create tab navigation
+- [ ] Implement Home view
+- [ ] Implement Sessions view
+- [ ] Implement Components view
+- [ ] Implement Learn view
+- [ ] Implement Discuss view (GitHub Discussions)
+- [ ] Implement Jobs view
+- [ ] Add loading states and skeletons
+- [ ] Add error handling
+
+### GIT-010: Session Discovery (50-70 hours)
+
+- [ ] Create `DeepLinkHandler` service
+- [ ] Register `opennoodl://` protocol in Electron
+- [ ] Create `SessionPreview` dialog
+- [ ] Create `QuickJoinWidget` component
+- [ ] Create `SessionHistoryManager` service
+- [ ] Implement favorites
+- [ ] Add "Copy Link" to active sessions
+- [ ] Test cross-platform deep links
+
+### GIT-011: Integration & Polish (61-82 hours)
+
+- [ ] Create comprehensive test plan
+- [ ] End-to-end testing of all flows
+- [ ] Performance profiling and optimization
+- [ ] Write user documentation
+- [ ] Write community setup guide
+- [ ] Create demo video
+- [ ] Deploy servers to production
+- [ ] Set up monitoring
+- [ ] Complete launch checklist
+
+---
+
+## Progress Summary - Part 2: Live Collaboration
+
+| Sub-Task | Name                     | Status      | Hours |
+| -------- | ------------------------ | ----------- | ----- |
+| GIT-005  | Community Infrastructure | Not Started | -     |
+| GIT-006  | Server Infrastructure    | Not Started | -     |
+| GIT-007  | WebRTC Collaboration     | Not Started | -     |
+| GIT-008  | Notification System      | Not Started | -     |
+| GIT-009  | Community Tab UI         | Not Started | -     |
+| GIT-010  | Session Discovery        | Not Started | -     |
+| GIT-011  | Integration & Polish     | Not Started | -     |
+
+**Part 2 Estimated:** 431-572 hours  
+**Part 2 Actual:** - hours
+
+---
+
+## Overall Progress
+
+**Total Estimated:** 501-662 hours  
 **Total Actual:** - hours

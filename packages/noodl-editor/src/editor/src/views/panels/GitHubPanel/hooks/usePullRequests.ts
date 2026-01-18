@@ -6,7 +6,7 @@
  */
 
 import { useEventListener } from '@noodl-hooks/useEventListener';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 
 import { GitHubClient } from '../../../../services/github';
 import type { GitHubPullRequest, GitHubIssueFilters } from '../../../../services/github/GitHubTypes';
@@ -48,6 +48,10 @@ export function usePullRequests({
 
   const client = GitHubClient.instance;
 
+  // Use ref to store filters to avoid infinite loops
+  const filtersRef = useRef(filters);
+  filtersRef.current = filters;
+
   const fetchPullRequests = useCallback(
     async (pageNum: number = 1, append: boolean = false) => {
       if (!owner || !repo || !enabled) {
@@ -64,7 +68,7 @@ export function usePullRequests({
         }
 
         const response = await client.listPullRequests(owner, repo, {
-          ...filters,
+          ...filtersRef.current,
           per_page: DEFAULT_PER_PAGE,
           page: pageNum
         });
@@ -89,7 +93,7 @@ export function usePullRequests({
         setLoadingMore(false);
       }
     },
-    [owner, repo, enabled, filters, client]
+    [owner, repo, enabled, client]
   );
 
   const refetch = useCallback(async () => {
@@ -104,10 +108,15 @@ export function usePullRequests({
     }
   }, [fetchPullRequests, page, hasMore, loadingMore]);
 
-  // Initial fetch
+  // Serialize filters to avoid infinite loops
+  const filtersKey = JSON.stringify(filters);
+
+  // Initial fetch - use serialized filters key
   useEffect(() => {
-    refetch();
-  }, [owner, repo, filters, enabled]);
+    if (owner && repo && enabled) {
+      refetch();
+    }
+  }, [owner, repo, filtersKey, enabled, refetch]);
 
   // Listen for cache invalidation events
   useEventListener(client, 'rate-limit-updated', () => {

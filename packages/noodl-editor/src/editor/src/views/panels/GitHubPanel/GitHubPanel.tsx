@@ -5,11 +5,14 @@
  * with filtering, search, and detail views.
  */
 
-import React, { useState } from 'react';
+import { useEventListener } from '@noodl-hooks/useEventListener';
+import React, { useState, useEffect } from 'react';
 
 import { GitHubClient, GitHubOAuthService } from '../../../services/github';
+import { ConnectToGitHubView } from './components/ConnectToGitHub';
 import { IssuesList } from './components/IssuesTab/IssuesList';
 import { PRsList } from './components/PullRequestsTab/PRsList';
+import { SyncToolbar } from './components/SyncToolbar';
 import styles from './GitHubPanel.module.scss';
 import { useGitHubRepository } from './hooks/useGitHubRepository';
 import { useIssues } from './hooks/useIssues';
@@ -19,11 +22,37 @@ type TabType = 'issues' | 'pullRequests';
 
 export function GitHubPanel() {
   const [activeTab, setActiveTab] = useState<TabType>('issues');
+  const [isConnected, setIsConnected] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
   const client = GitHubClient.instance;
-  const { owner, repo, isGitHub, isReady } = useGitHubRepository();
+  const { owner, repo, isGitHub, isReady, gitState, remoteUrl, provider, refetch } = useGitHubRepository();
 
-  // Check if GitHub is connected
-  const isConnected = client.isReady();
+  // Initialize GitHubOAuthService on mount
+  useEffect(() => {
+    console.log('🔧 [GitHubPanel] useEffect running - initializing OAuth service');
+    const initAuth = async () => {
+      try {
+        console.log('🔧 [GitHubPanel] Calling GitHubOAuthService.instance.initialize()...');
+        await GitHubOAuthService.instance.initialize();
+        const ready = client.isReady();
+        console.log('🔧 [GitHubPanel] After initialize - client.isReady():', ready);
+        setIsConnected(ready);
+      } catch (error) {
+        console.error('[GitHubPanel] Failed to initialize OAuth service:', error);
+      } finally {
+        setIsInitialized(true);
+        console.log('🔧 [GitHubPanel] Initialization complete');
+      }
+    };
+    initAuth();
+  }, [client]);
+
+  // Listen for auth state changes
+  console.log('🎧 [GitHubPanel] Setting up useEventListener for auth-state-changed');
+  useEventListener(GitHubOAuthService.instance, 'auth-state-changed', (event: { authenticated: boolean }) => {
+    console.log('🔔 [GitHubPanel] AUTH STATE CHANGED EVENT RECEIVED:', event.authenticated);
+    setIsConnected(event.authenticated);
+  });
 
   const handleConnectGitHub = async () => {
     try {
@@ -33,6 +62,38 @@ export function GitHubPanel() {
     }
   };
 
+  const handleConnected = () => {
+    // Refetch git state after connecting
+    refetch();
+  };
+
+  // Show loading while initializing
+  if (!isInitialized) {
+    return (
+      <div className={styles.GitHubPanel}>
+        <div className={styles.EmptyState}>
+          <div className={styles.EmptyStateIcon}>⏳</div>
+          <h3>Initializing</h3>
+          <p>Checking GitHub connection...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Loading state while determining git state
+  if (gitState === 'loading') {
+    return (
+      <div className={styles.GitHubPanel}>
+        <div className={styles.EmptyState}>
+          <div className={styles.EmptyStateIcon}>⏳</div>
+          <h3>Loading</h3>
+          <p>Checking repository status...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Not connected to GitHub account
   if (!isConnected) {
     return (
       <div className={styles.GitHubPanel}>
@@ -44,6 +105,20 @@ export function GitHubPanel() {
             Connect GitHub Account
           </button>
         </div>
+      </div>
+    );
+  }
+
+  // Project not connected to GitHub - show connect options
+  if (gitState === 'no-git' || gitState === 'git-no-remote' || gitState === 'remote-not-github') {
+    return (
+      <div className={styles.GitHubPanel}>
+        <ConnectToGitHubView
+          gitState={gitState}
+          remoteUrl={remoteUrl}
+          provider={provider}
+          onConnected={handleConnected}
+        />
       </div>
     );
   }
@@ -74,6 +149,8 @@ export function GitHubPanel() {
 
   return (
     <div className={styles.GitHubPanel}>
+      <SyncToolbar owner={owner} repo={repo} />
+
       <div className={styles.Header}>
         <div className={styles.Tabs}>
           <button

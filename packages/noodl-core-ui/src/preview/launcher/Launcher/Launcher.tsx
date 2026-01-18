@@ -17,8 +17,10 @@ import {
   CloudSyncType,
   LauncherProjectData
 } from '@noodl-core-ui/preview/launcher/Launcher/components/LauncherProjectCard';
+import { NoodlGitHubRepo, UseGitHubReposReturn } from '@noodl-core-ui/preview/launcher/Launcher/hooks/useGitHubRepos';
 import { usePersistentTab } from '@noodl-core-ui/preview/launcher/Launcher/hooks/usePersistentTab';
 import { GitHubUser, LauncherPageId, LauncherProvider } from '@noodl-core-ui/preview/launcher/Launcher/LauncherContext';
+import { GitHubRepos } from '@noodl-core-ui/preview/launcher/Launcher/views/GitHubRepos';
 import { LearningCenter } from '@noodl-core-ui/preview/launcher/Launcher/views/LearningCenter';
 import { Projects } from '@noodl-core-ui/preview/launcher/Launcher/views/Projects';
 import { Templates } from '@noodl-core-ui/preview/launcher/Launcher/views/Templates';
@@ -53,14 +55,23 @@ export interface LauncherProps {
   githubIsConnecting?: boolean;
   onGitHubConnect?: () => void;
   onGitHubDisconnect?: () => void;
+
+  // GitHub repos for clone feature (optional - for Storybook compatibility)
+  githubRepos?: UseGitHubReposReturn | null;
+  onCloneRepo?: (repo: NoodlGitHubRepo) => Promise<void>;
 }
 
-// Tab configuration
+// Tab configuration (GitHub tab added dynamically based on auth state)
 const LAUNCHER_TABS: TabBarItem[] = [
   {
     id: 'projects',
     label: 'Projects',
     icon: IconName.FolderOpen
+  },
+  {
+    id: 'github',
+    label: 'GitHub',
+    icon: IconName.CloudFunction
   },
   {
     id: 'learn',
@@ -187,7 +198,9 @@ export function Launcher({
   githubIsAuthenticated,
   githubIsConnecting,
   onGitHubConnect,
-  onGitHubDisconnect
+  onGitHubDisconnect,
+  githubRepos,
+  onCloneRepo
 }: LauncherProps) {
   // Determine initial tab: props > deep link > persisted > default
   const deepLinkTab = parseDeepLink();
@@ -263,6 +276,8 @@ export function Launcher({
     switch (activePageId) {
       case 'projects':
         return <Projects />;
+      case 'github':
+        return <GitHubRepos />;
       case 'learn':
         return <LearningCenter />;
       case 'templates':
@@ -295,7 +310,9 @@ export function Launcher({
         githubIsAuthenticated,
         githubIsConnecting,
         onGitHubConnect,
-        onGitHubDisconnect
+        onGitHubDisconnect,
+        githubRepos,
+        onCloneRepo
       }}
     >
       <div className={css['Root']}>

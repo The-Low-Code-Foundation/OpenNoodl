@@ -106,11 +106,17 @@ export class Git {
    * Open a git repository in the given path.
    *
    * @param baseDir
+   * @throws Error if the path is not a git repository
    */
   async openRepository(baseDir: string): Promise<void> {
     if (this.baseDir) return;
 
-    this.baseDir = await open(baseDir);
+    const repositoryPath = await open(baseDir);
+    if (!repositoryPath) {
+      throw new Error(`Not a git repository: ${baseDir}`);
+    }
+
+    this.baseDir = repositoryPath;
     await this._setupRepository();
   }
 

@@ -1,0 +1,161 @@
+/**
+ * SyncToolbar styles
+ * Uses design tokens for theming
+ */
+
+.SyncToolbar {
+  display: flex;
+  flex-direction: column;
+  padding: 10px 12px;
+  background-color: var(--theme-color-bg-3);
+  border-bottom: 1px solid var(--theme-color-border-default);
+}
+
+.RepoInfo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.RepoName {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--theme-color-fg-default);
+}
+
+.StatusText {
+  font-size: 12px;
+  color: var(--theme-color-fg-default-shy);
+}
+
+.ChangesIndicator {
+  color: var(--theme-color-warning);
+}
+
+.SyncedIndicator {
+  color: var(--theme-color-success);
+}
+
+.Actions {
+  display: flex;
+  gap: 8px;
+}
+
+.SyncButton {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background-color: var(--theme-color-bg-2);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: 4px;
+  color: var(--theme-color-fg-default);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  &:hover:not(:disabled) {
+    background-color: var(--theme-color-bg-4);
+    border-color: var(--theme-color-border-strong);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  &.HasChanges {
+    background-color: rgba(var(--theme-color-primary-rgb, 59, 130, 246), 0.1);
+    border-color: var(--theme-color-primary);
+    color: var(--theme-color-primary);
+
+    &:hover:not(:disabled) {
+      background-color: rgba(var(--theme-color-primary-rgb, 59, 130, 246), 0.2);
+    }
+  }
+
+  svg {
+    flex-shrink: 0;
+  }
+}
+
+.Badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  background-color: var(--theme-color-primary);
+  border-radius: 9px;
+  color: white;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.RefreshButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  background-color: var(--theme-color-bg-2);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: 4px;
+  color: var(--theme-color-fg-default-shy);
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  &:hover:not(:disabled) {
+    background-color: var(--theme-color-bg-4);
+    color: var(--theme-color-fg-default);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.Spinning {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.ErrorBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 8px;
+  padding: 8px 10px;
+  background-color: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 4px;
+  color: var(--theme-color-danger);
+  font-size: 12px;
+
+  button {
+    background: none;
+    border: none;
+    color: var(--theme-color-danger);
+    font-size: 16px;
+    cursor: pointer;
+    padding: 0 0 0 8px;
+    line-height: 1;
+
+    &:hover {
+      opacity: 0.7;
+    }
+  }
+}

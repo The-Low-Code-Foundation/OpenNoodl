@@ -6,7 +6,7 @@
  */
 
 import { useEventListener } from '@noodl-hooks/useEventListener';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 
 import { GitHubClient } from '../../../../services/github';
 import type { GitHubIssue, GitHubIssueFilters } from '../../../../services/github/GitHubTypes';
@@ -43,6 +43,10 @@ export function useIssues({ owner, repo, filters = {}, enabled = true }: UseIssu
 
   const client = GitHubClient.instance;
 
+  // Use ref to store filters to avoid infinite loops
+  const filtersRef = useRef(filters);
+  filtersRef.current = filters;
+
   const fetchIssues = useCallback(
     async (pageNum: number = 1, append: boolean = false) => {
       if (!owner || !repo || !enabled) {
@@ -59,7 +63,7 @@ export function useIssues({ owner, repo, filters = {}, enabled = true }: UseIssu
         }
 
         const response = await client.listIssues(owner, repo, {
-          ...filters,
+          ...filtersRef.current,
           per_page: DEFAULT_PER_PAGE,
           page: pageNum
         });
@@ -84,7 +88,7 @@ export function useIssues({ owner, repo, filters = {}, enabled = true }: UseIssu
         setLoadingMore(false);
       }
     },
-    [owner, repo, enabled, filters, client]
+    [owner, repo, enabled, client]
   );
 
   const refetch = useCallback(async () => {
@@ -99,10 +103,16 @@ export function useIssues({ owner, repo, filters = {}, enabled = true }: UseIssu
     }
   }, [fetchIssues, page, hasMore, loadingMore]);
 
-  // Initial fetch
+  // Serialize filters to avoid infinite loops from object reference changes
+  const filtersKey = JSON.stringify(filters);
+
+  // Initial fetch - use serialized filters key to avoid infinite loop
+  // Note: refetch is excluded from deps to prevent loops, we use filtersKey instead
   useEffect(() => {
-    refetch();
-  }, [owner, repo, filters, enabled]);
+    if (owner && repo && enabled) {
+      refetch();
+    }
+  }, [owner, repo, filtersKey, enabled, refetch]);
 
   // Listen for cache invalidation events
   useEventListener(client, 'rate-limit-updated', () => {
