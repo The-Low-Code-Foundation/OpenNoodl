@@ -1,38 +1,72 @@
-# Phase 9 Progress — Richard
+# Phase 9: Styles Overhaul — Richard's Progress
 
-**Branch:** cline-dev-richard
-**Last Updated:** 2026-02-18
+_Branch: `cline-dev-richard`_
 
-## Completed This Sprint
+---
 
-| Task              | Name                         | Completed  | Notes                                                                                           |
-| ----------------- | ---------------------------- | ---------- | ----------------------------------------------------------------------------------------------- |
-| STYLE-001 Phase 3 | TokenPicker Component        | 2026-02-18 | noodl-core-ui — searchable grouped dropdown with colour swatches, clear button, category filter |
-| STYLE-001 Phase 4 | Preview CSS Injection        | 2026-02-18 | PreviewTokenInjector singleton + CanvasView dom-ready hook + ProjectDesignTokenContext wiring   |
-| CLEANUP-000H      | Migration Wizard SCSS Polish | 2026-02-18 | All 8 SCSS files replaced with design token versions (removed 2112 lines of hardcoded CSS)      |
+## Sprint 1 — 18 Feb 2026
 
-## In Progress
+### STYLE-005: Smart Style Suggestion Engine ✅ (committed 05379c9)
 
-| Task           | Name                           | Started | Blocker                        |
-| -------------- | ------------------------------ | ------- | ------------------------------ |
-| STYLE-005      | Smart Style Suggestions V1     | -       | Needs fresh context window     |
-| ~~WIZARD-001~~ | ~~Project Creation Wizard V1~~ | ~~-~~   | ~~Needs fresh context window~~ |
+**Files created:**
 
-## Decisions & Learnings
+- `packages/noodl-editor/src/editor/src/services/StyleAnalyzer/types.ts` — TypeScript interfaces: `ElementReference`, `RepeatedValue`, `VariantCandidate`, `StyleAnalysisResult`, `StyleSuggestion`, `StyleAnalysisOptions`, `TokenModelLike`, `SUGGESTION_THRESHOLDS`
+- `packages/noodl-editor/src/editor/src/services/StyleAnalyzer/StyleAnalyzer.ts` — Static analyzer class:
+  - `analyzeProject(options?)` — scans all visual nodes for repeated raw colors/spacing (threshold: 3) and variant candidates (threshold: 3 overrides)
+  - `analyzeNode(nodeId)` — per-node analysis for property panel integration
+  - `toSuggestions(result)` — converts analysis to ordered `StyleSuggestion[]`
+  - `TokenModelLike` injected via options to avoid static singleton coupling
+- `packages/noodl-editor/src/editor/src/services/StyleAnalyzer/SuggestionActionHandler.ts` — `executeSuggestionAction()`:
+  - repeated-color/spacing → calls `tokenModel.setToken()` + replaces all occurrences with `var(--token-name)`
+  - variant-candidate → sets `_variant` param on node
+- `packages/noodl-editor/src/editor/src/services/StyleAnalyzer/index.ts` — barrel export
+- `packages/noodl-core-ui/src/components/StyleSuggestions/SuggestionBanner.tsx` — Compact banner UI (accept / ignore / never-show)
+- `packages/noodl-core-ui/src/components/StyleSuggestions/SuggestionBanner.module.scss` — Styled with CSS tokens only
+- `packages/noodl-core-ui/src/components/StyleSuggestions/index.ts` — barrel export
+- `packages/noodl-editor/src/editor/src/hooks/useStyleSuggestions.ts` — Hook: runs analyzer on mount, exposes `activeSuggestion`, `pendingCount`, `dismissSession`, `dismissPermanent`, `refresh`
 
-- **[2026-02-18] Sprint 1 started on cline-dev-richard.**
+**Pending (next session):**
 
-- **[2026-02-18] STYLE-001 Phase 4 injection architecture:**
+- Unit tests for `StyleAnalyzer` (value detection, threshold logic, `toSuggestions` ordering)
+- Wire `SuggestionBanner` into `ElementStyleSection` / property panel
+- Consider debounced auto-refresh on `componentAdded`/`nodeParametersChanged` events
 
-  - `PreviewTokenInjector.attachModel(model)` → subscribes to `tokensChanged`
-  - `PreviewTokenInjector.notifyDomReady(webview)` → called from `CanvasView` on `dom-ready`
-  - Injects `<style id="noodl-design-tokens">` into preview webview via `executeJavaScript`
-  - Cleanup via `clearWebview()` on CanvasView dispose
+---
 
-- **[2026-02-18] CLEANUP-000H — Migration wizard had 2112 lines of hardcoded CSS.** Replaced with ~455 lines of fully token-based SCSS with sensible fallbacks for tokens not yet defined (e.g. `--theme-color-success`, `--theme-color-danger`). Note: `color-mix()` is used for tinted backgrounds — requires a modern browser/webview (Electron's Chromium should support this).
+## Previously Completed (before Sprint 1)
 
-- **[2026-02-18] WIZARD-001 DONE (commit d9acb41).** `ProjectCreationWizard` replaces `CreateProjectModal` with a 3-mode guided flow (Quick Start, Guided Setup, AI Builder stub). Drop-in API — `ProjectsPage.tsx` needed only an import-name swap. Files: `WizardContext.tsx` (state machine), 4 step components, main container, SCSS, index. 17 unit tests in `tests/models/ProjectCreationWizard.test.ts`. **Richard to verify in Electron** (open "Create project" from the launcher).
+### STYLE-001: Token System Enhancement ✅
 
-- **[2026-02-18] Jest infra gotcha:** Unit tests in `tests/models/` only run via `npm run test:editor` (uses the Babel TS transform wired in `scripts/test-editor.ts`). Running `npx jest` directly fails with "Cannot use import statement outside a module" because the root Jest config has no TS transform. Pre-existing broken tests in `tests/components/` and `tests/git/` cause `test-editor` to exit non-zero — those are not mine and predate this sprint.
+- `StyleTokensModel` — CRUD for design tokens
+- `TokenResolver` — resolves CSS var references
+- `DEFAULT_TOKENS` — baseline token set
+- `TOKEN_CATEGORIES` / `TOKEN_CATEGORY_GROUPS` — category definitions
 
-- **[2026-02-18] FOR NEXT SESSION:** Remaining Phase 9: STYLE-005 (Smart Style Suggestions V1). Then Phase 6 UBA system (UBA-001 through UBA-004). All need fresh context windows.
+### STYLE-002: Element Configs ✅
+
+- `ElementConfigRegistry` — maps node types to `ElementConfig`
+- `ButtonConfig`, `GroupConfig`, `TextConfig`, `TextInputConfig`, `CheckboxConfig`
+- `VariantSelector` component
+
+### STYLE-003: Style Presets ✅
+
+- `StylePresetsModel` — manages presets
+- 5 presets: Modern, Minimal, Playful, Enterprise, Soft
+- `PresetCard`, `PresetSelector` UI components
+
+### STYLE-004: Property Panel Integration ✅
+
+- `ElementStyleSection` — groups style props with token picker
+- `SizePicker` — visual size selector
+- `TokenPicker` — token autocomplete input
+- Property panel HTML + TS wired up
+
+---
+
+## Outstanding Issues
+
+| Issue                                                                                        | Status                                              |
+| -------------------------------------------------------------------------------------------- | --------------------------------------------------- |
+| `StyleTokensModel.setToken()` — verify method name matches actual API                        | ⚠️ Needs verification before action handler is used |
+| `node.setParameter()` / `node.getParameter()` — verify these are valid NodeGraphNode methods | ⚠️ Needs verification                               |
+| StyleAnalyzer unit tests                                                                     | 📋 Planned                                          |
