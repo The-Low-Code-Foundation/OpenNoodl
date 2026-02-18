@@ -1,0 +1,116 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://opennoodl.dev/schemas/model-v2.json",
+  "title": "OpenNoodl Data Model",
+  "description": "Data model definition file (models/<ModelName>.json) describing a backend data schema",
+  "type": "object",
+  "required": ["name", "fields"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Model name (e.g. 'User', 'Session')"
+    },
+    "displayName": {
+      "type": "string",
+      "description": "Human-readable display name"
+    },
+    "description": {
+      "type": "string"
+    },
+    "className": {
+      "type": "string",
+      "description": "Backend class/collection name (defaults to name)"
+    },
+    "fields": {
+      "type": "array",
+      "description": "Field definitions for this model",
+      "items": { "$ref": "#/definitions/field" }
+    },
+    "indexes": {
+      "type": "array",
+      "description": "Database index definitions",
+      "items": { "$ref": "#/definitions/index" }
+    },
+    "acl": {
+      "type": "object",
+      "description": "Access control list configuration",
+      "additionalProperties": true
+    },
+    "created": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "modified": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  },
+  "definitions": {
+    "field": {
+      "type": "object",
+      "required": ["name", "type"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Field name"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["String", "Number", "Boolean", "Date", "Object", "Array", "Pointer", "Relation", "File", "GeoPoint"],
+          "description": "Field data type"
+        },
+        "displayName": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "required": {
+          "type": "boolean",
+          "default": false
+        },
+        "default": {
+          "description": "Default value for this field"
+        },
+        "targetClass": {
+          "type": "string",
+          "description": "For Pointer/Relation fields: the target model class name"
+        },
+        "unique": {
+          "type": "boolean",
+          "default": false
+        }
+      }
+    },
+    "index": {
+      "type": "object",
+      "required": ["fields"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "fields": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1
+        },
+        "unique": {
+          "type": "boolean",
+          "default": false
+        }
+      }
+    }
+  }
+}

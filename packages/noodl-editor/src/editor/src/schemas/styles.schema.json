@@ -1,0 +1,99 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://opennoodl.dev/schemas/styles-v2.json",
+  "title": "OpenNoodl Global Styles",
+  "description": "Global styles and design tokens file (nodegx.styles.json)",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "colors": {
+      "type": "object",
+      "description": "Named color tokens",
+      "additionalProperties": {
+        "type": "string",
+        "description": "CSS color value"
+      }
+    },
+    "textStyles": {
+      "type": "object",
+      "description": "Named text style presets",
+      "additionalProperties": { "$ref": "#/definitions/textStyle" }
+    },
+    "variants": {
+      "type": "array",
+      "description": "Visual variants (responsive overrides) for node types",
+      "items": { "$ref": "#/definitions/variant" }
+    },
+    "tokens": {
+      "type": "object",
+      "description": "Design token overrides (CSS custom properties)",
+      "additionalProperties": true
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  },
+  "definitions": {
+    "textStyle": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "fontFamily": { "type": "string" },
+        "fontSize": { "type": ["string", "number"] },
+        "fontWeight": { "type": ["string", "number"] },
+        "lineHeight": { "type": ["string", "number"] },
+        "letterSpacing": { "type": ["string", "number"] },
+        "color": { "type": "string" },
+        "textTransform": { "type": "string" }
+      }
+    },
+    "variant": {
+      "type": "object",
+      "required": ["name", "typename"],
+      "additionalProperties": true,
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Variant name"
+        },
+        "typename": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Node type this variant applies to"
+        },
+        "parameters": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Parameter overrides for this variant"
+        },
+        "stateParameters": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "stateTransitions": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "defaultStateTransitions": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      }
+    }
+  }
+}

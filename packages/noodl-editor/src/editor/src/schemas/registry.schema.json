@@ -1,0 +1,80 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://opennoodl.dev/schemas/registry-v2.json",
+  "title": "OpenNoodl Component Registry",
+  "description": "Component index/manifest file (_registry.json) listing all components in the project",
+  "type": "object",
+  "required": ["version", "components"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Registry format version"
+    },
+    "lastUpdated": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp of last registry update"
+    },
+    "components": {
+      "type": "object",
+      "description": "Map of component name/path to component summary info",
+      "additionalProperties": { "$ref": "#/definitions/componentEntry" }
+    },
+    "stats": {
+      "type": "object",
+      "description": "Aggregate project statistics",
+      "properties": {
+        "totalComponents": { "type": "integer", "minimum": 0 },
+        "totalNodes": { "type": "integer", "minimum": 0 },
+        "totalConnections": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    }
+  },
+  "definitions": {
+    "componentEntry": {
+      "type": "object",
+      "required": ["path", "type"],
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Relative path to the component folder from the components/ directory"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["root", "page", "visual", "logic", "cloud"],
+          "description": "Component classification"
+        },
+        "route": {
+          "type": "string",
+          "description": "URL route for page components (e.g. '/home')"
+        },
+        "created": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "modified": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "nodeCount": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of nodes in this component"
+        },
+        "connectionCount": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of connections in this component"
+        }
+      }
+    }
+  }
+}

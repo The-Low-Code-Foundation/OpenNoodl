@@ -1,0 +1,63 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://opennoodl.dev/schemas/routes-v2.json",
+  "title": "OpenNoodl Routes",
+  "description": "Route definitions file (nodegx.routes.json) mapping URL paths to page components",
+  "type": "object",
+  "required": ["routes"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "routes": {
+      "type": "array",
+      "description": "Ordered list of route definitions",
+      "items": { "$ref": "#/definitions/route" }
+    },
+    "notFound": {
+      "type": "string",
+      "description": "Component path to render for 404 / not-found routes"
+    }
+  },
+  "definitions": {
+    "route": {
+      "type": "object",
+      "required": ["path", "component"],
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "description": "URL path pattern (e.g. '/home', '/user/:id')"
+        },
+        "component": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Component name/path that handles this route"
+        },
+        "title": {
+          "type": "string",
+          "description": "Page title for this route"
+        },
+        "exact": {
+          "type": "boolean",
+          "description": "Whether the path must match exactly"
+        },
+        "redirect": {
+          "type": "string",
+          "description": "Redirect target path (if this is a redirect route)"
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Arbitrary route metadata (SEO, auth requirements, etc.)"
+        }
+      }
+    }
+  }
+}

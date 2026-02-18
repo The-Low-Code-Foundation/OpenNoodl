@@ -1,0 +1,62 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://opennoodl.dev/schemas/connections-v2.json",
+  "title": "OpenNoodl Component Connections",
+  "description": "Connection (wire) definitions for a single component (connections.json) in the v2 format",
+  "type": "object",
+  "required": ["componentId", "connections"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "componentId": {
+      "type": "string",
+      "description": "ID of the parent component — must match component.json id"
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Schema version for future migrations"
+    },
+    "connections": {
+      "type": "array",
+      "description": "All connections (wires) in this component's graph",
+      "items": { "$ref": "#/definitions/connection" }
+    }
+  },
+  "definitions": {
+    "connection": {
+      "type": "object",
+      "required": ["fromId", "fromProperty", "toId", "toProperty"],
+      "additionalProperties": true,
+      "properties": {
+        "fromId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "ID of the source node"
+        },
+        "fromProperty": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Output port name on the source node"
+        },
+        "toId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "ID of the target node"
+        },
+        "toProperty": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Input port name on the target node"
+        },
+        "annotation": {
+          "type": "string",
+          "enum": ["Deleted", "Changed", "Created"],
+          "description": "Diff annotation (set by project differ)"
+        }
+      }
+    }
+  }
+}

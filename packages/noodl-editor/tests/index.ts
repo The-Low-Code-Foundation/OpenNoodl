@@ -11,3 +11,4 @@ export * from './project';
 export * from './projectmerger';
 export * from './projectpatcher';
 export * from './utils';
+export * from './schemas';
