@@ -1,0 +1,81 @@
+.Item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  background-color: var(--theme-color-bg-2);
+  border-bottom: 1px solid var(--theme-color-bg-3);
+  cursor: pointer;
+  transition: background-color 0.1s;
+
+  &:hover {
+    background-color: var(--theme-color-bg-3);
+  }
+
+  &:focus {
+    outline: 1px solid var(--theme-color-primary);
+    outline-offset: -1px;
+  }
+}
+
+.StatusDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+
+  &[data-status='success'] {
+    background-color: var(--theme-color-success, #22c55e);
+  }
+
+  &[data-status='error'] {
+    background-color: var(--theme-color-danger, #ef4444);
+  }
+
+  &[data-status='running'] {
+    background-color: var(--theme-color-notice, #f59e0b);
+  }
+}
+
+.Info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.Name {
+  color: var(--theme-color-fg-default);
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.Time {
+  color: var(--theme-color-fg-default-shy);
+  font-size: 11px;
+}
+
+.Meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.Duration {
+  color: var(--theme-color-fg-default);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.Trigger {
+  color: var(--theme-color-fg-default-shy);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}

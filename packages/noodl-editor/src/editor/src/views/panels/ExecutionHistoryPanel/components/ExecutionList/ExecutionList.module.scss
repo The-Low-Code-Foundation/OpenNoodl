@@ -1,0 +1,49 @@
+.List {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.Loading,
+.Empty,
+.Error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  text-align: center;
+  gap: 6px;
+}
+
+.Loading {
+  color: var(--theme-color-fg-default-shy);
+  font-size: 13px;
+}
+
+.Empty {
+  color: var(--theme-color-fg-default-shy);
+}
+
+.EmptyTitle {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--theme-color-fg-default);
+}
+
+.EmptyHint {
+  font-size: 12px;
+  color: var(--theme-color-fg-default-shy);
+}
+
+.Error {
+  padding: 12px 16px;
+  background-color: color-mix(in srgb, var(--theme-color-danger, #ef4444) 10%, transparent);
+  border: 1px solid var(--theme-color-danger, #ef4444);
+  border-radius: 4px;
+  margin: 12px 16px;
+  color: var(--theme-color-danger, #ef4444);
+  font-size: 13px;
+  align-items: flex-start;
+  justify-content: flex-start;
+  padding: 12px 16px;
+}

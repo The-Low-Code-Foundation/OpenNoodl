@@ -1,0 +1,10 @@
+.List {
+  display: flex;
+  flex-direction: column;
+}
+
+.Empty {
+  color: var(--theme-color-fg-default-shy);
+  font-size: 12px;
+  padding: 12px 0;
+}

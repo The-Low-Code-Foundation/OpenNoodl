@@ -19,6 +19,7 @@ import { DataLineagePanel } from './views/panels/DataLineagePanel';
 import { DesignTokenPanel } from './views/panels/DesignTokenPanel/DesignTokenPanel';
 import { EditorSettingsPanel } from './views/panels/EditorSettingsPanel/EditorSettingsPanel';
 import { FileExplorerPanel } from './views/panels/FileExplorerPanel';
+import { ExecutionHistoryPanel } from './views/panels/ExecutionHistoryPanel';
 import { GitHubPanel } from './views/panels/GitHubPanel';
 import { NodeReferencesPanel_ID } from './views/panels/NodeReferencesPanel';
 import { NodeReferencesPanel } from './views/panels/NodeReferencesPanel/NodeReferencesPanel';
@@ -156,6 +157,17 @@ export function installSidePanel({ isLesson }: SetupEditorOptions) {
     order: 8,
     icon: IconName.RestApi,
     panel: BackendServicesPanel
+  });
+
+  SidebarModel.instance.register({
+    experimental: true,
+    id: 'execution-history',
+    name: 'Execution History',
+    description: 'View workflow execution history, inspect node data, and debug failed runs.',
+    isDisabled: isLesson === true,
+    order: 8.8,
+    icon: IconName.Bug,
+    panel: ExecutionHistoryPanel
   });
 
   SidebarModel.instance.register({

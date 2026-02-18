@@ -1,0 +1,40 @@
+.Filters {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background-color: var(--theme-color-bg-3);
+  border-bottom: 1px solid var(--theme-color-bg-3);
+  flex-shrink: 0;
+}
+
+.Select {
+  padding: 5px 8px;
+  border: 1px solid var(--theme-color-bg-3);
+  border-radius: 4px;
+  background-color: var(--theme-color-bg-1);
+  color: var(--theme-color-fg-default);
+  font-size: 12px;
+  flex: 1;
+
+  &:focus {
+    outline: none;
+    border-color: var(--theme-color-primary);
+  }
+}
+
+.ClearButton {
+  background: none;
+  border: 1px solid var(--theme-color-bg-3);
+  border-radius: 4px;
+  color: var(--theme-color-fg-default-shy);
+  font-size: 11px;
+  padding: 4px 8px;
+  cursor: pointer;
+  flex-shrink: 0;
+
+  &:hover {
+    background-color: var(--theme-color-bg-2);
+    color: var(--theme-color-fg-default);
+  }
+}
