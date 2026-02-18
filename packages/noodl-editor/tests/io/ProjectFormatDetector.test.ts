@@ -1,17 +1,17 @@
 ﻿/**
  * ProjectFormatDetector Tests -- STRUCT-004
+ *
+ * Uses Jasmine matchers (Electron test runner).
+ * Integration tests using real filesystem are excluded here
+ * (Electron renderer context — use createNodeDetector() in Node.js scripts).
  */
 
 import {
   ProjectFormatDetector,
   DetectorFilesystem,
   V2_INDICATORS,
-  LEGACY_INDICATORS,
-  createNodeDetector
+  LEGACY_INDICATORS
 } from '../../src/editor/src/io/ProjectFormatDetector';
-import * as path from 'path';
-import * as fs from 'fs';
-import * as os from 'os';
 
 // ---- Mock filesystem factory ------------------------------------------------
 
@@ -163,7 +163,14 @@ describe('ProjectFormatDetector.detectSync()', () => {
       join: (...parts: string[]) => parts.join('/')
     };
     const detector = new ProjectFormatDetector(asyncFs);
-    expect(() => detector.detectSync('/proj')).toThrow('synchronous');
+    let threw = false;
+    try {
+      detector.detectSync('/proj');
+    } catch (e) {
+      threw = true;
+      expect((e as Error).message).toContain('synchronous');
+    }
+    expect(threw).toBe(true);
   });
 });
 
@@ -226,50 +233,5 @@ describe('Sentinel constants', () => {
 
   it('LEGACY_INDICATORS.projectFile is project.json', () => {
     expect(LEGACY_INDICATORS.projectFile).toBe('project.json');
-  });
-});
-
-// ---- createNodeDetector() integration test ----------------------------------
-
-describe('createNodeDetector() integration', () => {
-  let tmpDir: string;
-
-  beforeEach(() => {
-    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'noodl-format-test-'));
-  });
-
-  afterEach(() => {
-    fs.rmSync(tmpDir, { recursive: true, force: true });
-  });
-
-  it('detects legacy project from real filesystem', async () => {
-    fs.writeFileSync(path.join(tmpDir, 'project.json'), '{}');
-    const detector = createNodeDetector();
-    const result = await detector.detect(tmpDir);
-    expect(result.format).toBe('legacy');
-    expect(result.confidence).toBe('high');
-  });
-
-  it('detects v2 project from real filesystem', async () => {
-    fs.writeFileSync(path.join(tmpDir, 'nodegx.project.json'), '{}');
-    fs.mkdirSync(path.join(tmpDir, 'components'));
-    fs.writeFileSync(path.join(tmpDir, 'components', '_registry.json'), '{}');
-    const detector = createNodeDetector();
-    const result = await detector.detect(tmpDir);
-    expect(result.format).toBe('v2');
-    expect(result.confidence).toBe('high');
-  });
-
-  it('detects unknown for empty directory', async () => {
-    const detector = createNodeDetector();
-    const result = await detector.detect(tmpDir);
-    expect(result.format).toBe('unknown');
-  });
-
-  it('detectSync works on real filesystem', () => {
-    fs.writeFileSync(path.join(tmpDir, 'project.json'), '{}');
-    const detector = createNodeDetector();
-    const result = detector.detectSync(tmpDir);
-    expect(result.format).toBe('legacy');
   });
 });

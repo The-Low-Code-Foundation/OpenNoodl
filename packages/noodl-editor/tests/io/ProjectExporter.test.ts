@@ -120,7 +120,7 @@ describe('flattenNodes', () => {
   });
   it('flattens a single root node', () => {
     const nodes = flattenNodes([makeNode('n1', 'Group')]);
-    expect(nodes).toHaveLength(1);
+    expect(nodes.length).toBe(1);
     expect(nodes[0].id).toBe('n1');
     expect(nodes[0].type).toBe('Group');
   });
@@ -129,7 +129,7 @@ describe('flattenNodes', () => {
       children: [makeNode('child1', 'Text'), makeNode('child2', 'Image')]
     });
     const nodes = flattenNodes([root]);
-    expect(nodes).toHaveLength(3);
+    expect(nodes.length).toBe(3);
     expect(nodes.map((n) => n.id)).toEqual(['root', 'child1', 'child2']);
   });
   it('sets parent id on child nodes', () => {
@@ -169,7 +169,7 @@ describe('flattenNodes', () => {
     const mid = makeNode('l2', 'Group', { children: [deep] });
     const root = makeNode('l1', 'Group', { children: [mid] });
     const nodes = flattenNodes([root]);
-    expect(nodes).toHaveLength(3);
+    expect(nodes.length).toBe(3);
     const l3 = nodes.find((n) => n.id === 'l3');
     expect(l3?.parent).toBe('l2');
   });
@@ -323,14 +323,14 @@ describe('ProjectExporter', () => {
       comp.graph.roots = [makeNode('root', 'Group', { children: [makeNode('child', 'Text')] })];
       const result = exporter.export(makeProject({ components: [comp] }));
       const file = result.files.find((f) => f.relativePath === 'components/Header/nodes.json')?.content as any;
-      expect(file.nodes).toHaveLength(2);
+      expect(file.nodes.length).toBe(2);
     });
     it('connections.json maps legacy connections correctly', () => {
       const comp = makeComponent('/#Header');
       comp.graph.connections = [{ fromId: 'n1', fromProperty: 'onClick', toId: 'n2', toProperty: 'trigger' }];
       const result = exporter.export(makeProject({ components: [comp] }));
       const file = result.files.find((f) => f.relativePath === 'components/Header/connections.json')?.content as any;
-      expect(file.connections).toHaveLength(1);
+      expect(file.connections.length).toBe(1);
       expect(file.connections[0]).toEqual({ fromId: 'n1', fromProperty: 'onClick', toId: 'n2', toProperty: 'trigger' });
     });
     it('connections.json preserves annotation field', () => {
@@ -346,7 +346,7 @@ describe('ProjectExporter', () => {
     it('lists all components', () => {
       const result = exporter.export(makeProject({ components: [makeComponent('/#Header'), makeComponent('/Pages/Home')] }));
       const file = result.files.find((f) => f.relativePath === 'components/_registry.json')?.content as any;
-      expect(Object.keys(file.components)).toHaveLength(2);
+      expect(Object.keys(file.components).length).toBe(2);
       expect(file.components['Header']).toBeDefined();
       expect(file.components['Pages/Home']).toBeDefined();
     });
@@ -419,7 +419,7 @@ describe('ProjectExporter', () => {
       comp.graph = { roots: [], connections: [] };
       const result = exporter.export(makeProject({ components: [comp] }));
       const nodesFile = result.files.find((f) => f.relativePath === 'components/Header/nodes.json')?.content as any;
-      expect(nodesFile.nodes).toHaveLength(0);
+      expect(nodesFile.nodes.length).toBe(0);
     });
     it('handles multiple components correctly', () => {
       const project = makeProject({
@@ -430,7 +430,7 @@ describe('ProjectExporter', () => {
       const componentFiles = result.files.filter(
         (f) => f.relativePath.startsWith('components/') && !f.relativePath.endsWith('_registry.json')
       );
-      expect(componentFiles).toHaveLength(9);
+      expect(componentFiles.length).toBe(9);
     });
     it('cloud component gets correct type', () => {
       const result = exporter.export(makeProject({ components: [makeComponent('/#__cloud__/SendGrid/Send')] }));
@@ -446,3 +446,4 @@ describe('ProjectExporter', () => {
     });
   });
 });
+
