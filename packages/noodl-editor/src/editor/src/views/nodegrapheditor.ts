@@ -42,6 +42,7 @@ import { initBlocklyEditorGlobals } from '../utils/BlocklyEditorGlobals';
 import DebugInspector from '../utils/debuginspector';
 import { rectanglesOverlap, guid } from '../utils/utils';
 import { ViewerConnection } from '../ViewerConnection';
+import { ExecutionOverlay } from './CanvasOverlays/ExecutionOverlay';
 import { HighlightOverlay } from './CanvasOverlays/HighlightOverlay';
 import { CanvasTabs } from './CanvasTabs';
 import CommentLayer from './commentlayer';
@@ -242,6 +243,7 @@ export class NodeGraphEditor extends View {
   toolbarRoots: Root[] = [];
   titleRoot: Root = null;
   highlightOverlayRoot: Root = null;
+  executionOverlayRoot: Root = null;
   canvasTabsRoot: Root = null;
   editorBannerRoot: Root = null;
 
@@ -945,6 +947,11 @@ export class NodeGraphEditor extends View {
       this.renderEditorBanner();
     }, 1);
 
+    // Render the execution overlay (CF11-007)
+    setTimeout(() => {
+      this.renderExecutionOverlay();
+    }, 1);
+
     this.relayout();
     this.repaint();
 
@@ -1091,6 +1098,49 @@ export class NodeGraphEditor extends View {
   updateHighlightOverlay() {
     if (this.highlightOverlayRoot) {
       this.renderHighlightOverlay();
+    }
+  }
+
+  /**
+   * Render the ExecutionOverlay React component (CF11-007)
+   *
+   * Mounts into #execution-overlay-layer. The React component manages its own
+   * pinned-execution state via EventDispatcher ('execution:pinToCanvas').
+   * We re-render on every pan/zoom so the viewport prop stays current.
+   */
+  renderExecutionOverlay() {
+    const overlayElement = this.el.find('#execution-overlay-layer').get(0);
+    if (!overlayElement) {
+      console.warn('[ExecutionOverlay] #execution-overlay-layer not found in DOM');
+      return;
+    }
+
+    if (!this.executionOverlayRoot) {
+      this.executionOverlayRoot = createRoot(overlayElement);
+    }
+
+    const panAndScale = this.getPanAndScale();
+    const viewport = {
+      x: panAndScale.x,
+      y: panAndScale.y,
+      zoom: panAndScale.scale
+    };
+
+    this.executionOverlayRoot.render(
+      React.createElement(ExecutionOverlay, {
+        viewport,
+        getNodeBounds: this.getNodeBounds
+      })
+    );
+  }
+
+  /**
+   * Update the execution overlay with new viewport state.
+   * Called whenever pan/zoom changes (same cadence as updateHighlightOverlay).
+   */
+  updateExecutionOverlay() {
+    if (this.executionOverlayRoot) {
+      this.renderExecutionOverlay();
     }
   }
 
@@ -3332,6 +3382,7 @@ export class NodeGraphEditor extends View {
     this.panAndScale = panAndScale;
     this.commentLayer && this.commentLayer.setPanAndScale(panAndScale);
     this.updateHighlightOverlay();
+    this.updateExecutionOverlay();
   }
 
   clampPanAndScale(panAndScale: PanAndScale) {

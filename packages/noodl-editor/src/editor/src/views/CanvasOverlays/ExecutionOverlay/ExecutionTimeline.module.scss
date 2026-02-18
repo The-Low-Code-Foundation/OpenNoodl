@@ -1,0 +1,92 @@
+/**
+ * ExecutionTimeline styles
+ *
+ * Fixed-position timeline scrubber at the bottom of the canvas.
+ * Allows stepping through execution steps one at a time.
+ */
+
+.timeline {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background-color: var(--theme-color-bg-2);
+  border-top: 1px solid var(--theme-color-border-default);
+  z-index: 200;
+  pointer-events: all;
+}
+
+.navButton {
+  padding: 3px 10px;
+  font-size: 11px;
+  background: transparent;
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: 4px;
+  color: var(--theme-color-fg-default);
+  cursor: pointer;
+  white-space: nowrap;
+
+  &:hover:not(:disabled) {
+    background-color: var(--theme-color-bg-3);
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+}
+
+.scrubber {
+  flex: 1;
+  height: 4px;
+  accent-color: var(--theme-color-primary);
+  cursor: pointer;
+}
+
+.counter {
+  font-size: 11px;
+  color: var(--theme-color-fg-default-shy);
+  white-space: nowrap;
+  min-width: 70px;
+  text-align: center;
+}
+
+.stepDots {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  flex-wrap: wrap;
+  max-width: 200px;
+}
+
+.stepDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  cursor: pointer;
+  border: 1px solid transparent;
+  flex-shrink: 0;
+
+  &[data-status='success'] {
+    background-color: var(--theme-color-success, #22c55e);
+  }
+
+  &[data-status='error'] {
+    background-color: var(--theme-color-error, #ef4444);
+  }
+
+  &[data-status='running'],
+  &[data-status='skipped'] {
+    background-color: var(--theme-color-fg-default-shy);
+    opacity: 0.5;
+  }
+
+  &[data-active='true'] {
+    border-color: var(--theme-color-primary);
+    transform: scale(1.3);
+  }
+}

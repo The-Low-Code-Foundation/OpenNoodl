@@ -1,0 +1,89 @@
+/**
+ * ExecutionOverlay styles
+ *
+ * Main overlay container for rendering execution visualization over the canvas.
+ * Follows the same CSS transform pattern as HighlightOverlay.
+ */
+
+.overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+// The transform container — all children use canvas-space coordinates.
+// CSS transform applied inline via style prop handles pan/zoom automatically.
+.transformContainer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: 0 0;
+  pointer-events: none;
+}
+
+// Header bar — fixed position, not affected by canvas transform
+.header {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background-color: var(--theme-color-bg-2);
+  border-bottom: 1px solid var(--theme-color-border-default);
+  z-index: 200;
+  pointer-events: all;
+}
+
+.headerTitle {
+  flex: 1;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--theme-color-fg-default);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.headerStatus {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 10px;
+
+  &[data-status='success'] {
+    background-color: var(--theme-color-success-bg, rgba(34, 197, 94, 0.15));
+    color: var(--theme-color-success, #22c55e);
+  }
+
+  &[data-status='error'] {
+    background-color: var(--theme-color-error-bg, rgba(239, 68, 68, 0.15));
+    color: var(--theme-color-error, #ef4444);
+  }
+
+  &[data-status='running'] {
+    background-color: var(--theme-color-bg-3);
+    color: var(--theme-color-fg-default-shy);
+  }
+}
+
+.closeButton {
+  padding: 2px 8px;
+  font-size: 11px;
+  background: transparent;
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: 4px;
+  color: var(--theme-color-fg-default);
+  cursor: pointer;
+  pointer-events: all;
+
+  &:hover {
+    background-color: var(--theme-color-bg-3);
+  }
+}
