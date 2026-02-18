@@ -79,14 +79,6 @@ export class CodeEditorType extends TypeView {
     const p = args.port;
     const parent = args.parent;
 
-    // Debug: Log all port properties
-    console.log('[CodeEditorType.fromPort] Port properties:', {
-      name: p.name,
-      readOnly: p.readOnly,
-      type: p.type,
-      allKeys: Object.keys(p)
-    });
-
     view.port = p;
     view.displayName = p.displayName ? p.displayName : p.name;
     view.name = p.name;
@@ -101,8 +93,6 @@ export class CodeEditorType extends TypeView {
 
     // Try multiple locations for readOnly flag
     view.readOnly = p.readOnly || p.type?.readOnly || getEditType(p)?.readOnly || false;
-
-    console.log('[CodeEditorType.fromPort] Resolved readOnly:', view.readOnly);
 
     // HACK: Like most of Property panel,
     //       since the property panel can have many code editors
@@ -312,8 +302,6 @@ export class CodeEditorType extends TypeView {
 
     // Determine which editor to use
     if (isJavaScriptEditor) {
-      console.log('✨ Using JavaScriptEditor for:', this.type.codeeditor);
-
       // Determine validation type based on editor type
       let validationType: ValidationType = 'function';
       if (this.type.codeeditor === 'javascript') {
@@ -329,13 +317,6 @@ export class CodeEditorType extends TypeView {
       } else if (this.type.codeeditor === 'typescript') {
         validationType = 'script';
       }
-
-      // Debug logging
-      console.log('[CodeEditorType] Rendering JavaScriptEditor:', {
-        parameterName: scope.name,
-        readOnly: this.readOnly,
-        nodeId: nodeId
-      });
 
       // Create close handler to trigger popout close
       const closeHandler = () => {

@@ -1,22 +1,22 @@
 # Phase 9: Styles Overhaul - Progress Tracker
 
-**Last Updated:** 2026-01-07  
+**Last Updated:** 2026-02-18  
 **Overall Status:** 🟡 In Progress
 
 ---
 
 ## Quick Summary
 
-| Metric            | Value       |
-| ----------------- | ----------- |
-| Total Major Tasks | 7           |
-| Completed         | 0           |
-| In Progress       | 1 (CLEANUP) |
-| Not Started       | 6           |
-| **Progress**      | **~15%**    |
+| Metric            | Value    |
+| ----------------- | -------- |
+| Total Major Tasks | 7        |
+| Completed         | 0        |
+| In Progress       | 3        |
+| Not Started       | 4        |
+| **Progress**      | **~35%** |
 
 > **Note:** Significant foundational work completed in CLEANUP-SUBTASKS (000A-000G).
-> Major feature tasks (STYLE-001 to STYLE-005, WIZARD-001) remain not started.
+> STYLE-001 and STYLE-002 are in progress. STYLE-003 to STYLE-005 and WIZARD-001 not started.
 
 ---
 
@@ -24,15 +24,15 @@
 
 ### Major Feature Tasks
 
-| Task       | Name                     | Status         | Notes                         |
-| ---------- | ------------------------ | -------------- | ----------------------------- |
-| STYLE-001  | Token System Enhancement | 🔴 Not Started | Design tokens system          |
-| STYLE-002  | Element Configs/Variants | 🔴 Not Started | Component styling system      |
-| STYLE-003  | Style Presets System     | 🔴 Not Started | Pre-built style presets       |
-| STYLE-004  | Property Panel UX        | 🔴 Not Started | Improved styling UX           |
-| STYLE-005  | Smart Style Suggestions  | 🔴 Not Started | AI-assisted suggestions       |
-| WIZARD-001 | Project Creation Wizard  | 🔴 Not Started | Guided project setup          |
-| CLEANUP-\* | Legacy Color Cleanup     | 🟡 In Progress | 7/8 subtasks complete (87.5%) |
+| Task       | Name                     | Status         | Notes                                           |
+| ---------- | ------------------------ | -------------- | ----------------------------------------------- |
+| STYLE-001  | Token System Enhancement | 🟡 In Progress | Phase 1+2 done; Phase 3+4 TBD                   |
+| STYLE-002  | Element Configs/Variants | 🟡 In Progress | Phase 1+2+3 done; prop panel wiring → STYLE-004 |
+| STYLE-003  | Style Presets System     | ✅ Complete    | 5 presets, PresetSelector UI, launcher wiring   |
+| STYLE-004  | Property Panel UX        | 🟡 In Progress | Phase 1 done (variant+size picker wired)        |
+| STYLE-005  | Smart Style Suggestions  | 🔴 Not Started | AI-assisted suggestions                         |
+| WIZARD-001 | Project Creation Wizard  | 🔴 Not Started | Guided project setup                            |
+| CLEANUP-\* | Legacy Color Cleanup     | 🟡 In Progress | 7/8 subtasks complete (87.5%)                   |
 
 ---
 
@@ -65,6 +65,27 @@ Foundation work to remove hardcoded colors and establish token infrastructure.
 
 ---
 
+## STYLE-001 Progress
+
+| Phase   | Description                      | Status         |
+| ------- | -------------------------------- | -------------- |
+| Phase 1 | Token Data Structure             | 🟢 Complete    |
+| Phase 2 | Context & Panel Enhancement      | 🟢 Complete    |
+| Phase 3 | TokenPicker Component            | 🔴 Not Started |
+| Phase 4 | CSS Variable Injection (preview) | 🔴 Not Started |
+
+## STYLE-002 Progress
+
+| Phase   | Description                              | Status                  |
+| ------- | ---------------------------------------- | ----------------------- |
+| Phase 1 | Config system (types, registry, configs) | 🟢 Complete             |
+| Phase 2 | Node creation hook + Text bug fix        | 🟢 Complete             |
+| Phase 3 | VariantSelector UI component             | 🟢 Complete             |
+| Phase 4 | Property panel wiring                    | 🔴 Deferred → STYLE-004 |
+| Phase 5 | State styles (hover/focus/disabled)      | 🔴 Deferred → STYLE-004 |
+
+---
+
 ## Status Legend
 
 - 🔴 **Not Started** - Work has not begun
@@ -77,6 +98,8 @@ Foundation work to remove hardcoded colors and establish token infrastructure.
 
 | Date       | Update                                                         |
 | ---------- | -------------------------------------------------------------- |
+| 2026-02-18 | STYLE-002 Phase 1+2+3: ElementConfigs system + VariantSelector |
+| 2026-02-18 | STYLE-001 Phase 1+2: Token system + DesignTokenPanel           |
 | 2026-01-07 | Audit: Updated PROGRESS.md to reflect actual completion status |
 | 2025-12-31 | Completed TASK-000F (Buttons) and TASK-000G (Dialogs/Panels)   |
 | 2025-12-30 | Completed TASK-000A through TASK-000E (Token/Color foundation) |
@@ -106,11 +129,18 @@ The foundational cleanup work (000A-000G) has established:
 - Typography and spacing token system
 - Modern visual polish on core UI components
 
+STYLE-001 (Phases 1+2): Full Tailwind-inspired token system with DesignTokenPanel.
+
+STYLE-002 (Phases 1+2+3): ElementConfig system for default node styling on creation,
+VariantSelector UI component, Text node flex bug fix.
+
 ### What's Remaining:
 
 - **TASK-000H:** Final polish on Migration Wizard
-- **STYLE-001 to STYLE-005:** Major feature work (enhanced token system, element configs, presets, property panel UX, AI suggestions)
+- **STYLE-001 Phase 3+4:** TokenPicker component, CSS injection into preview iframe
+- **STYLE-002 Phase 4+5:** Property panel wiring, state style application
+- **STYLE-003 to STYLE-005:** Style presets, property panel UX, AI suggestions
 - **WIZARD-001:** Project creation wizard
 
 See CLEANUP-SUBTASKS/ folder for detailed changelogs of completed work.
-See STYLE-\* folders for README specs of upcoming feature work.
+See STYLE-\* folders for README specs and changelogs.

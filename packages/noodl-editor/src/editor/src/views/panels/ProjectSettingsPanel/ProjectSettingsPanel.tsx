@@ -49,8 +49,6 @@ export function ProjectSettingsPanel({}: ProjectSettingsPanelProps) {
     };
   }, []);
 
-  propertyView?.render();
-
   return (
     <BasePanel title="Project Settings" hasContentScroll>
       <Section hasGutter hasVisibleOverflow>

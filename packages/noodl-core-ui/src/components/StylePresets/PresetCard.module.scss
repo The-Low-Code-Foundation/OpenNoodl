@@ -1,0 +1,108 @@
+.PresetCard {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 6px;
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background: transparent;
+  cursor: pointer;
+  transition: border-color 0.12s ease, background 0.12s ease;
+  flex: 1;
+  min-width: 0;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--theme-color-primary, #3b82f6);
+    outline-offset: 2px;
+  }
+
+  &--selected {
+    border-color: var(--theme-color-primary, #3b82f6);
+    background: rgba(59, 130, 246, 0.08);
+
+    &:hover {
+      background: rgba(59, 130, 246, 0.12);
+    }
+  }
+}
+
+.PresetCard-mockup {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.PresetCard-btn {
+  height: 10px;
+  width: 60%;
+  flex-shrink: 0;
+}
+
+.PresetCard-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+.PresetCard-line {
+  height: 3px;
+  border-radius: 2px;
+  opacity: 0.6;
+}
+
+.PresetCard-surface {
+  flex: 1;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  min-height: 0;
+}
+
+.PresetCard-name {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--theme-color-fg-default, #e4e4e7);
+  text-align: center;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.PresetCard-check {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--theme-color-primary, #3b82f6);
+
+  &::after {
+    content: '';
+    position: absolute;
+    left: 4px;
+    top: 2px;
+    width: 5px;
+    height: 8px;
+    border: 2px solid #fff;
+    border-top: none;
+    border-left: none;
+    transform: rotate(45deg);
+  }
+}

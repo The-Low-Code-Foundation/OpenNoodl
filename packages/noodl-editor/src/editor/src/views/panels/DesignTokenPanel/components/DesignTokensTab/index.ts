@@ -1,0 +1,1 @@
+export { DesignTokensTab } from './DesignTokensTab';

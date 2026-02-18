@@ -6,7 +6,10 @@ import { createRoot, Root } from 'react-dom/client';
 import { NodeGraphNode } from '@noodl-models/nodegraphmodel';
 import { UndoQueue, UndoActionGroup } from '@noodl-models/undo-queue-model';
 
+import { ElementStyleSection } from '@noodl-core-ui/components/propertyeditor/ElementStyleSection';
+
 import View from '../../../../../shared/view';
+import { ElementConfigRegistry } from '../../../models/ElementConfigs/ElementConfigRegistry';
 import { ProjectModel } from '../../../models/projectmodel';
 import { ToastLayer } from '../../ToastLayer/ToastLayer';
 import { VariantsEditor } from './components/VariantStates';
@@ -29,6 +32,10 @@ export class PropertyEditor extends View {
   renderPortsViewScheduled: TSFixme;
   variantsRoot: Root | null = null;
   visualStatesRoot: Root | null = null;
+  /** React root for the ElementStyleSection (variant + size picker). */
+  elementStyleRoot: Root | null = null;
+  /** Stable group object used to manage undo/redo event subscriptions. */
+  private readonly _elementStyleGroup: Record<string, never> = {};
 
   constructor(args) {
     super();
@@ -105,6 +112,93 @@ export class PropertyEditor extends View {
     // Interaction state changed, schedule
     this.scheduleRenderPortsView();
   }
+
+  /**
+   * STYLE-004: Render the ElementStyleSection (variant + size picker) for nodes
+   * that have an ElementConfig registered. Safe to call multiple times — reuses
+   * the existing React root.
+   */
+  renderElementStyleSection() {
+    const typeName: string | undefined = this.model.type?.name;
+    if (!typeName || !ElementConfigRegistry.has(typeName)) return;
+
+    const variants = ElementConfigRegistry.getVariantNames(typeName);
+    const sizes = ElementConfigRegistry.getSizeNames(typeName);
+    const currentVariant = this.model.parameters['_variant'] as string | undefined;
+    const currentSize = this.model.parameters['_size'] as string | undefined;
+
+    const props = {
+      variants,
+      currentVariant,
+      onVariantChange: this.onElementVariantChange.bind(this),
+      sizes,
+      currentSize,
+      onSizeChange: sizes.length > 0 ? this.onElementSizeChange.bind(this) : undefined
+    };
+
+    const container = this.$('.element-style-section')[0];
+    if (!container) return;
+
+    if (!this.elementStyleRoot) {
+      this.elementStyleRoot = createRoot(container);
+    }
+    this.elementStyleRoot.render(React.createElement(ElementStyleSection, props));
+  }
+
+  /**
+   * STYLE-004: Apply a new variant to the node with full undo support.
+   * All property changes are batched into a single UndoActionGroup.
+   */
+  onElementVariantChange(variantName: string) {
+    const typeName: string | undefined = this.model.type?.name;
+    if (!typeName) return;
+
+    const resolved = ElementConfigRegistry.resolveVariant(typeName, variantName);
+    if (!resolved) return;
+
+    const undo = new UndoActionGroup({ label: 'change variant' });
+
+    for (const [key, value] of Object.entries(resolved.baseStyles)) {
+      this.model.setParameter(key, value, { undo, label: 'change variant' });
+    }
+    // Persist the active variant marker
+    this.model.setParameter('_variant', variantName, { undo, label: 'change variant' });
+
+    UndoQueue.instance.push(undo);
+
+    // Refresh port list (style changes may affect visible ports)
+    this.scheduleRenderPortsView();
+    // Refresh the picker to reflect the new selection
+    this.renderElementStyleSection();
+  }
+
+  /**
+   * STYLE-004: Apply a size preset to the node with full undo support.
+   * Size overrides are batched into a single UndoActionGroup.
+   */
+  onElementSizeChange(sizeName: string) {
+    const typeName: string | undefined = this.model.type?.name;
+    if (!typeName) return;
+
+    const config = ElementConfigRegistry.get(typeName);
+    if (!config?.sizes) return;
+
+    const sizePreset = config.sizes[sizeName];
+    if (!sizePreset) return;
+
+    const undo = new UndoActionGroup({ label: 'change size' });
+
+    for (const [key, value] of Object.entries(sizePreset)) {
+      this.model.setParameter(key, value, { undo, label: 'change size' });
+    }
+    this.model.setParameter('_size', sizeName, { undo, label: 'change size' });
+
+    UndoQueue.instance.push(undo);
+
+    this.scheduleRenderPortsView();
+    this.renderElementStyleSection();
+  }
+
   render() {
     this.el = this.bindView($(PropertyEditorTemplate), this);
 
@@ -116,6 +210,18 @@ export class PropertyEditor extends View {
     this.renderVariantsEditor();
 
     this.renderVisualStates();
+
+    // STYLE-004: Re-render ElementStyleSection on undo/redo so the picker
+    // reflects the restored parameter values.
+    this.model.off(this._elementStyleGroup);
+    this.model.on(
+      ['modelParameterUndo', 'modelParameterRedo'],
+      () => {
+        this.renderElementStyleSection();
+      },
+      this._elementStyleGroup
+    );
+    this.renderElementStyleSection();
 
     this.parent && this.parent.append(this.el);
 

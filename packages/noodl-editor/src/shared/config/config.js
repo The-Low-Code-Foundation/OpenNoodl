@@ -1,17 +1,13 @@
-const configDev = require('./config-dev');
-const configDist = require('./config-dist');
+module.exports = {
+  type: 'dist',
+  Tracker: {
+    trackExceptions: true
+  },
+  PreviewServer: {
+    port: 8574
+  },
 
-function getProcess() {
-  try {
-    const remote = require('@electron/remote');
-    return remote ? remote.process : process;
-  } catch (exc) {
-    // Error: "@electron/remote" cannot be required in the browser process. Instead require("@electron/remote/main").
-    return process;
-  }
-}
-
-const _process = getProcess();
-
-if (!_process.env.devMode) _process.env.devMode = (_process.argv || []).indexOf('--dev') !== -1 ? 'yes' : 'no';
-module.exports = _process.env.devMode === 'yes' ? configDev : configDist;
+  apiEndpoint: 'https://api.noodlcloud.com',
+  domainEndpoint: 'http://domains.noodlcloud.com',
+  aiEndpoint: 'https://p2qsqhrh6xd6relfoaye4tf6nm0bibpm.lambda-url.us-east-1.on.aws'
+};

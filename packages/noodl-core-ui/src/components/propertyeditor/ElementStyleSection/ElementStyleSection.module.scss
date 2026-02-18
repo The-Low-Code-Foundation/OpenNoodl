@@ -1,0 +1,30 @@
+/**
+ * STYLE-004: ElementStyleSection styles
+ * Matches the visual rhythm of the existing property editor sections.
+ * All colors via design tokens — no hardcoded values.
+ */
+
+.ElementStyleSection {
+  display: flex;
+  flex-direction: column;
+  border-bottom: 1px solid var(--theme-color-border-default);
+  margin-bottom: 0;
+}
+
+.ElementStyleSection-header {
+  padding: var(--spacing-1, 4px) var(--spacing-2, 8px);
+  font-size: var(--font-size-xsmall, 11px);
+  font-weight: 600;
+  color: var(--theme-color-fg-default-shy);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  user-select: none;
+  background: var(--theme-color-bg-2);
+}
+
+.ElementStyleSection-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2, 8px);
+  padding: var(--spacing-2, 8px);
+}

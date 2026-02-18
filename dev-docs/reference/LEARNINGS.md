@@ -1839,3 +1839,23 @@ grep -r "var(--theme-spacing" packages/noodl-core-ui/src --include="*.scss"
 ---
 
 [Rest of the previous learnings content continues...]
+
+---
+
+## STYLE-001: UndoQueue requires UndoActionGroup class instances (2026-02-18)
+
+**Context:** Building StyleTokensModel with undo support.
+**Discovery:** `UndoQueue.push()` requires `new UndoActionGroup({ label, do, undo })` — NOT a plain `{ label, do, undo }` object. The TypeScript error was clear but the fix isn't obvious from the class name alone.
+**Fix:** `UndoQueue.instance.push(new UndoActionGroup({ label: '...', do: () => {}, undo: () => {} }))`
+**Location:** `packages/noodl-editor/src/editor/src/models/undo-queue-model.ts`
+
+## STYLE-001: Design token persistence pattern (2026-02-18)
+
+**Context:** Implementing per-project design token persistence in StyleTokensModel.
+**Discovery:** Only custom overrides are stored in project metadata — never defaults. Defaults live in `DefaultTokens.ts` and are merged at load time. This keeps `project.json` lean and lets defaults be updated without migrations.
+**Location:** `StyleTokensModel._store()` uses `ProjectModel.instance.setMetaData('designTokens', data)`
+
+## STYLE-001: DesignTokenPanel/ColorsTab pre-existed (2026-02-18)
+
+**Context:** Adding a new "Tokens" tab to the DesignTokenPanel.
+**Discovery:** `DesignTokenPanel/components/ColorsTab/` already existed before this work. The new "Tokens" tab was added alongside it. Always check what pre-exists before creating new panel components.

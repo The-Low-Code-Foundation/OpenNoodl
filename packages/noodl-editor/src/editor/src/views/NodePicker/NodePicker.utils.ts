@@ -2,6 +2,7 @@ import { NodeGraphModel, NodeGraphNode } from '@noodl-models/nodegraphmodel';
 import { INodeIndexCategory } from '@noodl-utils/createnodeindex';
 import { guid } from '@noodl-utils/utils';
 
+import { ElementConfigRegistry } from '../../models/ElementConfigs';
 import { CommentFillStyle } from '../CommentLayer/CommentLayerView';
 
 export function parseNodeObject(nodeTypes: TSFixme[], model: TSFixme, parentModel: TSFixme) {
@@ -72,6 +73,10 @@ export function createNodeFunction(
       y: pos.y,
       id: guid()
     });
+
+    // STYLE-002: Apply element config defaults (token-based styles + initial variant)
+    // Only affects nodes with a registered ElementConfig — no-op for all others.
+    ElementConfigRegistry.applyDefaults(node, type.name);
 
     if (parentModel) {
       parentModel.addChild(node, { undo: true, label: 'create' });

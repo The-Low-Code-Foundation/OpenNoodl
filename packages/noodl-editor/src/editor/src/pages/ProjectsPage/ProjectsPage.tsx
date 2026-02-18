@@ -25,6 +25,7 @@ import { Launcher } from '@noodl-core-ui/preview/launcher/Launcher/Launcher';
 import { useEventListener } from '../../hooks/useEventListener';
 import { DialogLayerModel } from '../../models/DialogLayerModel';
 import { detectRuntimeVersion } from '../../models/migration/ProjectScanner';
+import { getAllPresets, setPendingPresetId } from '../../models/StylePresets';
 import { IRouteProps } from '../../pages/AppRoute';
 import { GitHubOAuthService, GitHubClient } from '../../services/github';
 import { ProjectOrganizationService } from '../../services/ProjectOrganizationService';
@@ -36,6 +37,9 @@ import { ToastLayer } from '../../views/ToastLayer/ToastLayer';
 export interface ProjectsPageProps extends IRouteProps {
   from: TSFixme;
 }
+
+/** Built-in presets computed once at module level — never changes at runtime. */
+const STYLE_PRESETS = getAllPresets();
 
 /**
  * Map LocalProjectsModel ProjectItemWithRuntime to LauncherProjectData format
@@ -441,8 +445,11 @@ export function ProjectsPage(props: ProjectsPageProps) {
   }, []);
 
   const handleCreateProjectConfirm = useCallback(
-    async (name: string, location: string) => {
+    async (name: string, location: string, presetId: string) => {
       setIsCreateModalVisible(false);
+
+      // Store the chosen preset — StyleTokensModel will consume it on editor startup.
+      setPendingPresetId(presetId);
 
       try {
         const path = filesystem.makeUniquePath(filesystem.join(location, name));
@@ -454,15 +461,18 @@ export function ProjectsPage(props: ProjectsPageProps) {
           (project) => {
             ToastLayer.hideActivity(activityId);
             if (!project) {
+              // Clear pending preset if project creation failed
+              setPendingPresetId(null);
               ToastLayer.showError('Could not create project');
               return;
             }
-            // Navigate to editor with the newly created project
+            // Navigate to editor — StyleTokensModel will apply preset on load
             props.route.router.route({ to: 'editor', project });
           },
           { name, path, projectTemplate: '' }
         );
       } catch (error) {
+        setPendingPresetId(null);
         console.error('Failed to create project:', error);
         ToastLayer.showError('Failed to create project');
       }
@@ -937,6 +947,7 @@ export function ProjectsPage(props: ProjectsPageProps) {
         onClose={handleCreateModalClose}
         onConfirm={handleCreateProjectConfirm}
         onChooseLocation={handleChooseLocation}
+        presets={STYLE_PRESETS}
       />
     </>
   );
