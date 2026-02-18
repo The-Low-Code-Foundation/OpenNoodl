@@ -1,180 +1,158 @@
-﻿# Phase 10A  AI-Powered Development: Dishant's Progress
+﻿# Phase 10A  AI-Powered Development: Dishant Progress
 
-**Developer:** Dishant  
-**Branch:** `cline-dev-dishant`  
+**Developer:** Dishant
+**Branch:** `cline-dev-dishant`
 **Last Updated:** 2026-02-19
 
 ---
 
 ## Task Status
 
-| Task ID    | Title                        | Status      | Notes                                      |
-|------------|------------------------------|-------------|--------------------------------------------|
-| STRUCT-001 | JSON Schema Definition       |  Complete | 8 schemas + validator + tests (33/33 pass) |
-| STRUCT-002 | Export Engine Core           |  Complete | ProjectExporter + 50 unit tests            |
+| Task ID    | Title                        | Status      | Notes                                                        |
+|------------|------------------------------|-------------|--------------------------------------------------------------|
+| STRUCT-001 | JSON Schema Definition       | COMPLETE    | 8 schemas + validator + tests (33/33 pass)                   |
+| STRUCT-002 | Export Engine Core           | COMPLETE    | ProjectExporter + 50 unit tests                              |
+| STRUCT-003 | Import Engine Core           | COMPLETE    | ProjectImporter + 55 unit tests incl. round-trip validation  |
+| STRUCT-004 | Editor Format Detection      | TODO        | Unblocked by STRUCT-003                                      |
+| STRUCT-005 | Lazy Loading                 | TODO        | Unblocked by STRUCT-004                                      |
+| STRUCT-006 | Save Logic                   | TODO        | Unblocked by STRUCT-005                                      |
+| STRUCT-007 | Migration Wizard UI          | TODO        | Unblocked by STRUCT-006                                      |
+| STRUCT-008 | Testing and Validation       | TODO        | Unblocked by STRUCT-007                                      |
+| STRUCT-009 | Documentation                | TODO        | Unblocked by STRUCT-008                                      |
 
 ---
 
-## STRUCT-001  JSON Schema Definition 
+## STRUCT-001  JSON Schema Definition COMPLETE
 
-**Completed:** 2026-02-18  
-**Scope:** Define JSON schemas for the v2 multi-file project format
+**Completed:** 2026-02-18
 
 ### What was built
 
-All files live under `packages/noodl-editor/src/editor/src/schemas/`:
-
-#### Schema files (8 total)
+All files under `packages/noodl-editor/src/editor/src/schemas/`:
 
 | File | Schema ID | Describes |
 |------|-----------|-----------|
-| `project-v2.schema.json` | `https://opennoodl.dev/schemas/project-v2.json` | Root project metadata (`nodegx.project.json`) |
-| `component.schema.json` | `https://opennoodl.dev/schemas/component-v2.json` | Component metadata (`component.json`) |
-| `nodes.schema.json` | `https://opennoodl.dev/schemas/nodes-v2.json` | Node graph definitions (`nodes.json`) |
-| `connections.schema.json` | `https://opennoodl.dev/schemas/connections-v2.json` | Connection/wire definitions (`connections.json`) |
-| `registry.schema.json` | `https://opennoodl.dev/schemas/registry-v2.json` | Component index (`_registry.json`) |
-| `routes.schema.json` | `https://opennoodl.dev/schemas/routes-v2.json` | URL route definitions (`nodegx.routes.json`) |
-| `styles.schema.json` | `https://opennoodl.dev/schemas/styles-v2.json` | Global styles + variants (`nodegx.styles.json`) |
-| `model.schema.json` | `https://opennoodl.dev/schemas/model-v2.json` | Backend data model definitions (`models/<Name>.json`) |
+| `project-v2.schema.json` | `https://opennoodl.dev/schemas/project-v2.json` | Root project metadata |
+| `component.schema.json` | `https://opennoodl.dev/schemas/component-v2.json` | Component metadata |
+| `nodes.schema.json` | `https://opennoodl.dev/schemas/nodes-v2.json` | Node graph definitions |
+| `connections.schema.json` | `https://opennoodl.dev/schemas/connections-v2.json` | Connection/wire definitions |
+| `registry.schema.json` | `https://opennoodl.dev/schemas/registry-v2.json` | Component index |
+| `routes.schema.json` | `https://opennoodl.dev/schemas/routes-v2.json` | URL route definitions |
+| `styles.schema.json` | `https://opennoodl.dev/schemas/styles-v2.json` | Global styles + variants |
+| `model.schema.json` | `https://opennoodl.dev/schemas/model-v2.json` | Backend data model definitions |
 
-#### Validator (`validator.ts`)
+- `validator.ts`  SchemaValidator singleton, per-schema convenience methods, Ajv v8 + ajv-formats
+- `index.ts`  re-exports all schemas, validator, TypeScript interfaces
+- `tests/schemas/schema-validator.test.ts`  33 test cases, all passing
 
-- `SchemaValidator` singleton class  compiles all 8 schemas once, reuses validators
-- `SCHEMA_IDS` const  typed schema ID map
-- `validateSchema()` convenience function
-- `validateOrThrow()`  throws with context on failure
-- Per-schema convenience methods: `validateProject()`, `validateComponent()`, etc.
-- `formatValidationErrors()`  human-readable error formatting
-- Ajv v8 with `ajv-formats` for `date-time` format validation
-- `allErrors: true`  collects all errors, not just first
+### Key decisions
 
-#### Index (`index.ts`)
-
-- Re-exports all schemas, validator, and TypeScript interfaces
-- Full TS interfaces for all 8 file types: `ProjectV2File`, `ComponentV2File`, `NodesV2File`, `ConnectionsV2File`, `RegistryV2File`, `RoutesV2File`, `StylesV2File`, `ModelV2File`
-
-#### Tests (`tests/schemas/schema-validator.test.ts`)
-
-- 33 test cases covering all 8 schemas
-- Valid minimal fixtures, full fixtures with all optional fields
-- Invalid cases: missing required fields, wrong enum values, invalid formats
-- Edge cases: legacy component refs (`/#Header`), complex port type objects, deeply nested metadata
-- Registered in `tests/index.ts`  `tests/schemas/index.ts`
-
-### Dependencies added
-
-```json
-"ajv": "^8.x",
-"ajv-formats": "^2.x"
-```
-
-Added to `packages/noodl-editor/package.json` dependencies.
-
-### Key design decisions
-
-1. **`additionalProperties: true` on nodes/connections**  node parameters and connection metadata are open-ended by design; the schema validates structure, not content
-2. **Port type is `oneOf [string, object]`**  Noodl uses both `"string"` and `{ name: "stringlist", ... }` type formats
-3. **`strict: false` on Ajv**  schemas use `description` in `definitions` which Ajv strict mode rejects
-4. **`require()` for `ajv-formats`**  avoids TS type conflict between root-level `ajv-formats` (which bundles its own Ajv) and the package-local Ajv v8
-
-### Verification
-
-```
-33/33 smoke tests passed (node smoke-test-schemas.js)
-0 TypeScript errors
-```
+- `additionalProperties: true` on nodes/connections  open-ended by design
+- Port type is `oneOf [string, object]`  Noodl uses both formats
+- `strict: false` on Ajv  schemas use `description` in `definitions`
+- `require()` for `ajv-formats`  avoids TS type conflict
 
 ---
 
-## STRUCT-002  Export Engine Core 
+## STRUCT-002  Export Engine Core COMPLETE
 
-**Completed:** 2026-02-19  
-**Scope:** Build the engine that converts the legacy `project.json` format into the v2 multi-file directory structure
+**Completed:** 2026-02-19
 
 ### What was built
 
-All files:
-
 | File | Purpose |
 |------|---------|
-| `packages/noodl-editor/src/editor/src/io/ProjectExporter.ts` | Core exporter class + legacy type definitions + helper functions |
+| `packages/noodl-editor/src/editor/src/io/ProjectExporter.ts` | Core exporter class + legacy types + helpers |
 | `packages/noodl-editor/tests/io/ProjectExporter.test.ts` | 50 unit tests |
 | `packages/noodl-editor/tests/io/index.ts` | Test barrel export |
 
 ### Architecture
 
-`ProjectExporter` is a **pure class**  it does not touch the filesystem. It takes a `LegacyProject` object (the parsed `project.json`) and returns an `ExportResult` containing all files to write.
+`ProjectExporter` is pure  no filesystem access. Takes `LegacyProject`, returns `ExportResult { files[], stats }`.
 
+Output layout:
 ```
-ProjectExporter.export(legacyProject)
-   ExportResult {
-      files: ExportFile[],   // { relativePath, content }[]
-      stats: { totalComponents, totalNodes, totalConnections }
-    }
-```
-
-Output file layout:
-```
-nodegx.project.json           project metadata
-nodegx.routes.json            route definitions (if any in metadata)
-nodegx.styles.json            global styles + variants (if any)
+nodegx.project.json
+nodegx.routes.json        (conditional)
+nodegx.styles.json        (conditional)
 components/
-  _registry.json              component index
+  _registry.json
   Header/
-    component.json            component metadata
-    nodes.json                flat node list (tree flattened)
-    connections.json          connection list
-  Pages/Home/
     component.json
     nodes.json
     connections.json
-  ...
+```
+
+### Key decisions
+
+1. Pure/filesystem-agnostic  caller writes files
+2. Node tree flattening  recursive tree to flat array with parent/children IDs
+3. Styles/routes files conditional  only produced when content exists
+4. Legacy `stateParamaters` typo normalised to `stateParameters`
+5. Metadata split  styles/routes extracted, rest stays in project file
+6. Original legacy path preserved in `component.json` for round-trip fidelity
+7. Empty `parameters: {}` omitted from output
+
+---
+
+## STRUCT-003  Import Engine Core COMPLETE
+
+**Completed:** 2026-02-19
+
+### What was built
+
+| File | Purpose |
+|------|---------|
+| `packages/noodl-editor/src/editor/src/io/ProjectImporter.ts` | Core importer class + helpers |
+| `packages/noodl-editor/tests/io/ProjectImporter.test.ts` | 55 unit tests incl. round-trip |
+
+### Architecture
+
+`ProjectImporter` is pure  no filesystem access. Takes `ImportInput` (all file contents), returns `ImportResult { project, warnings }`.
+
+```
+ImportInput {
+  project: ProjectV2File        (nodegx.project.json)
+  registry: RegistryV2File      (components/_registry.json)
+  routes?: RoutesV2File         (nodegx.routes.json)
+  styles?: StylesV2File         (nodegx.styles.json)
+  components: Record<path, { component, nodes, connections }>
+}
 ```
 
 ### Key functions exported
 
 | Function | Purpose |
 |----------|---------|
-| `legacyNameToPath(name)` | Converts `/#Header`  `Header`, `/Pages/Home`  `Pages/Home` |
-| `inferComponentType(name)` | Heuristic: root/page/cloud/visual from legacy name |
-| `flattenNodes(roots)` | Flattens recursive legacy node tree  flat `NodeV2[]` with parent/children IDs |
-| `countNodes(roots)` | Counts all nodes including nested children |
+| `unflattenNodes(flat)` | Reconstructs recursive legacy node tree from flat NodeV2 array |
+| `toLegacyName(componentFile, registryPath)` | Converts v2 path back to legacy name (uses preserved `path` field) |
 
-### Key design decisions
+### Key decisions
 
-1. **Pure / filesystem-agnostic**  caller writes files; exporter just produces the data. Easy to test, easy to use in different contexts (Electron, Node, tests).
-2. **Node tree flattening**  legacy format stores nodes as a recursive tree (children embedded). v2 format stores a flat array with `parent` and `children` (as ID arrays). `flattenNodes()` handles this.
-3. **Styles file is conditional**  only produced when `metadata.styles` has content OR variants exist. Same for routes.
-4. **Legacy `stateParamaters` typo normalised**  VariantModel.toJSON() uses `stateParamaters` (typo). The exporter maps this to `stateParameters` in the v2 format.
-5. **Metadata split**  `styles` and `routes` are extracted from `project.metadata` into their own files; remaining metadata keys stay in `nodegx.project.json`.
-6. **Original legacy path preserved**  `component.json` stores `path: "/#Header"` for round-trip fidelity (STRUCT-003 import engine will need this).
-7. **Empty fields omitted**  nodes with empty `parameters: {}` don't get a `parameters` key in the output, keeping files lean.
+1. Pure/filesystem-agnostic  symmetric with ProjectExporter
+2. `unflattenNodes`  two-pass: build map, then wire children in order
+3. `toLegacyName`  prefers `component.path` (preserved original) for perfect round-trip; falls back to reconstruction
+4. `stateParameters`  `stateParamaters` reversal  restores legacy typo
+5. Metadata merge  routes/styles merged back into `project.metadata`
+6. Non-fatal warnings  component failures collected, not thrown
+7. Round-trip validated  20 round-trip tests covering all data types
 
-### Tests
+### Test coverage (55 tests)
 
-50 unit tests in `tests/io/ProjectExporter.test.ts` covering:
+- `unflattenNodes`  11 cases (empty, single, parent-child, deep nesting, order, field restoration)
+- `toLegacyName`  4 cases (path field, fallback, root, cloud)
+- `ProjectImporter.import()`  20 cases (basic, metadata, variants, components, nodes)
+- Round-trip (export  import)  20 cases (all data types, edge cases)
 
-- `legacyNameToPath`  6 cases (slash stripping, hash stripping, cloud paths, nested paths)
-- `inferComponentType`  6 cases (root, cloud, page, case-insensitive, visual)
-- `countNodes`  4 cases (empty, single, recursive, multiple roots)
-- `flattenNodes`  11 cases (empty, single, nested, parent/child IDs, field omission, metadata)
-- `ProjectExporter.export()`  23 cases across:
-  - Basic structure (always-present files, conditional files, stats)
-  - Project file (name, version, runtimeVersion, settings, $schema, metadata stripping)
-  - Routes file (conditional, content, non-array guard)
-  - Styles file (conditional, colors, variant typo normalisation)
-  - Component files (3 files per component, paths, IDs, type inference, node flattening, connections)
-  - Registry (all components listed, path/type/nodeCount/connectionCount, stats, version)
-  - ExportResult stats
-  - Edge cases (no graph, empty graph, multiple components, cloud type, variant preservation)
+### Cross-branch note for Richard
 
-### Registered in
-
-- `tests/io/index.ts`  `tests/index.ts`
+No shared dependencies with Phase 9/6 work. STRUCT-003 is self-contained in `packages/noodl-editor/src/editor/src/io/` and `packages/noodl-editor/tests/io/`. No cherry-pick needed.
 
 ---
 
-## Next: STRUCT-003  Import Engine
+## Decisions and Learnings
 
-**Unblocked by:** STRUCT-002   
-**Goal:** Build the engine that converts the v2 multi-file format back to the legacy `project.json` format, with round-trip validation.
+- **[2026-02-18]** Ajv v8 + ajv-formats: use `require()` for ajv-formats to avoid TS type conflict with root-level ajv-formats package
+- **[2026-02-19]** Legacy `stateParamaters` typo (missing 'e') is real  must be preserved in round-trip. Exporter normalises to `stateParameters`, importer reverses it.
+- **[2026-02-19]** `component.path` field is the key to perfect round-trip fidelity  always preserve the original legacy name in the v2 component file
+- **[2026-02-19]** `unflattenNodes` needs two passes  first build the node map, then wire children in order using the children ID array
