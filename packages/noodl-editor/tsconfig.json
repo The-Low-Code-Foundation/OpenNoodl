@@ -6,6 +6,7 @@
     "module": "es2020",
     "baseUrl": ".",
     "paths": {
+      "@noodl/git": ["../noodl-git/src/index.ts"],
       "@noodl-core-ui/*": ["../noodl-core-ui/src/*"],
       "@noodl-hooks/*": ["./src/editor/src/hooks/*"],
       "@noodl-utils/*": ["./src/editor/src/utils/*"],
