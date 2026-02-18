@@ -13,10 +13,10 @@
 
 ## In Progress
 
-| Task       | Name                       | Started | Blocker                    |
-| ---------- | -------------------------- | ------- | -------------------------- |
-| STYLE-005  | Smart Style Suggestions V1 | -       | Needs fresh context window |
-| WIZARD-001 | Project Creation Wizard V1 | -       | Needs fresh context window |
+| Task           | Name                           | Started | Blocker                        |
+| -------------- | ------------------------------ | ------- | ------------------------------ |
+| STYLE-005      | Smart Style Suggestions V1     | -       | Needs fresh context window     |
+| ~~WIZARD-001~~ | ~~Project Creation Wizard V1~~ | ~~-~~   | ~~Needs fresh context window~~ |
 
 ## Decisions & Learnings
 
@@ -31,4 +31,8 @@
 
 - **[2026-02-18] CLEANUP-000H — Migration wizard had 2112 lines of hardcoded CSS.** Replaced with ~455 lines of fully token-based SCSS with sensible fallbacks for tokens not yet defined (e.g. `--theme-color-success`, `--theme-color-danger`). Note: `color-mix()` is used for tinted backgrounds — requires a modern browser/webview (Electron's Chromium should support this).
 
-- **[2026-02-18] FOR NEXT SESSION:** Remaining Phase 9 tasks: STYLE-005 (Smart Style Suggestions), WIZARD-001 (Project Creation Wizard V1). Then Phase 6 UBA system (UBA-001 through UBA-004). All need fresh context windows — spec docs haven't been read yet.
+- **[2026-02-18] WIZARD-001 DONE (commit d9acb41).** `ProjectCreationWizard` replaces `CreateProjectModal` with a 3-mode guided flow (Quick Start, Guided Setup, AI Builder stub). Drop-in API — `ProjectsPage.tsx` needed only an import-name swap. Files: `WizardContext.tsx` (state machine), 4 step components, main container, SCSS, index. 17 unit tests in `tests/models/ProjectCreationWizard.test.ts`. **Richard to verify in Electron** (open "Create project" from the launcher).
+
+- **[2026-02-18] Jest infra gotcha:** Unit tests in `tests/models/` only run via `npm run test:editor` (uses the Babel TS transform wired in `scripts/test-editor.ts`). Running `npx jest` directly fails with "Cannot use import statement outside a module" because the root Jest config has no TS transform. Pre-existing broken tests in `tests/components/` and `tests/git/` cause `test-editor` to exit non-zero — those are not mine and predate this sprint.
+
+- **[2026-02-18] FOR NEXT SESSION:** Remaining Phase 9: STYLE-005 (Smart Style Suggestions V1). Then Phase 6 UBA system (UBA-001 through UBA-004). All need fresh context windows.
