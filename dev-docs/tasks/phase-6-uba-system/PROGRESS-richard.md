@@ -1,91 +1,56 @@
-# UBA System — Progress (Richard)
+# UBA System — Richard's Progress
 
-## Sprint 1 Session — 18 Feb 2026
+## Sprint 2 — 18 Feb 2026
 
-### Completed
+### Session 1 (Sprint 1)
 
-#### UBA-001: Types
+- **UBA-001**: `types.ts` — Full type definitions (UBASchema, all field types, ParseResult discriminated union)
+- **UBA-002**: `SchemaParser.ts` — Instance-method parser with `normalise()`, validation, warnings
+- Tests: `UBASchemaParser.test.ts` (18 cases), `UBAConditions.test.ts` (12 cases)
 
-- `packages/noodl-editor/src/editor/src/models/UBA/types.ts`
-- Full discriminated union for all 8 field types
-- `ParseResult<T>` / `ParseError` types
-- `Condition` with operator-based structure
+### Session 2 (Sprint 1)
 
-#### UBA-002: SchemaParser
+- **UBA-003**: Field renderers — StringField, TextField, NumberField, BooleanField, SecretField, UrlField, SelectField, MultiSelectField, FieldWrapper, FieldRenderer
+- **UBA-004**: `ConfigPanel.tsx` + `ConfigSection.tsx` + `useConfigForm.ts` — Full tabbed config form with validation, dirty state, required-field check, section error dots
 
-- `packages/noodl-editor/src/editor/src/models/UBA/SchemaParser.ts`
-- Validates unknown input against the UBA schema spec
-- Returns `ParseResult<UBASchema>` with structured errors + warnings
-- Tests: `packages/noodl-editor/tests/models/UBASchemaParser.test.ts`
+### Session 3 (Sprint 2)
 
-#### UBA-003: Field Renderers
+- **UBA-005**: `services/UBA/UBAClient.ts` — Static HTTP client
 
-All 8 field components + FieldWrapper + FieldRenderer factory:
+  - `configure()`: POST to config endpoint, timeout, auth headers, JSON body
+  - `health()`: GET health endpoint, never throws, returns HealthResult
+  - `openDebugStream()`: SSE via EventSource, named event types, auth as query param
+  - Auth modes: bearer, api_key (custom header), basic (btoa)
+  - `UBAClientError` with status + body for non-2xx responses
 
-| File                                    | Component                            |
-| --------------------------------------- | ------------------------------------ |
-| `views/UBA/fields/FieldWrapper.tsx`     | Shared label/error/description shell |
-| `views/UBA/fields/StringField.tsx`      | Single-line text input               |
-| `views/UBA/fields/TextField.tsx`        | Multi-line textarea                  |
-| `views/UBA/fields/NumberField.tsx`      | Numeric input with clamping          |
-| `views/UBA/fields/BooleanField.tsx`     | Toggle switch                        |
-| `views/UBA/fields/SecretField.tsx`      | Password input with show/hide        |
-| `views/UBA/fields/UrlField.tsx`         | URL input with protocol validation   |
-| `views/UBA/fields/SelectField.tsx`      | Native select dropdown               |
-| `views/UBA/fields/MultiSelectField.tsx` | Tag-based multi-select               |
-| `views/UBA/fields/FieldRenderer.tsx`    | Factory dispatcher                   |
-| `views/UBA/fields/fields.module.scss`   | Shared SCSS (CSS vars only)          |
-| `views/UBA/fields/index.ts`             | Barrel                               |
+- **UBA-006** + **UBA-007**: `views/panels/UBAPanel/` — Editor panel
+  - `UBAPanel.tsx`: BasePanel + Tabs (Configure / Debug)
+    - `useUBASchema` hook: reads `ubaSchemaUrl` from project metadata, fetches + parses
+    - `SchemaLoader` UI: URL input field + error banner
+    - `onSave` → stores `ubaConfig` in project metadata + POSTs via UBAClient
+    - `useEventListener` for `importComplete` / `instanceHasChanged`
+  - `DebugStreamView.tsx`: Live SSE log viewer
+    - Connect/Disconnect toggle, Clear button
+    - Auto-scroll with manual override (40px threshold), max 500 events
+    - Per-event type colour coding (log/info/warn/error/metric)
+    - "Jump to latest" sticky button
+  - `UBAPanel.module.scss`: All design tokens, no hardcoded colors
+  - **Test registration**: `tests/models/index.ts` + `tests/services/index.ts` created; `tests/index.ts` updated
 
-#### UBA-004: ConfigPanel + Conditions
+## Status
 
-Complete form shell with section tabs, validation, dirty state:
+| Task                         | Status  | Notes                            |
+| ---------------------------- | ------- | -------------------------------- |
+| UBA-001 Types                | ✅ Done |                                  |
+| UBA-002 SchemaParser         | ✅ Done | Instance method `.parse()`       |
+| UBA-003 Field Renderers      | ✅ Done | 8 field types                    |
+| UBA-004 ConfigPanel          | ✅ Done | Tabs, validation, dirty state    |
+| UBA-005 UBAClient            | ✅ Done | configure/health/openDebugStream |
+| UBA-006 ConfigPanel mounting | ✅ Done | UBAPanel with project metadata   |
+| UBA-007 Debug Stream Panel   | ✅ Done | SSE viewer in Debug tab          |
 
-| File                                  | Purpose                                                            |
-| ------------------------------------- | ------------------------------------------------------------------ |
-| `models/UBA/Conditions.ts`            | `evaluateCondition`, `getNestedValue`, `setNestedValue`, `isEmpty` |
-| `views/UBA/hooks/useConfigForm.ts`    | Form state, dirty tracking, `validateRequired`, `flatToNested`     |
-| `views/UBA/ConfigSection.tsx`         | Single section with `visible_when` filtering                       |
-| `views/UBA/ConfigPanel.tsx`           | Tabbed panel, save/reset, error banners                            |
-| `views/UBA/ConfigSection.module.scss` | Section styles                                                     |
-| `views/UBA/ConfigPanel.module.scss`   | Panel styles                                                       |
-| `views/UBA/index.ts`                  | Barrel                                                             |
-| `models/UBA/index.ts`                 | Updated to export Conditions                                       |
+## Next Up
 
-#### Tests
-
-- `tests/models/UBAConditions.test.ts` — 22 cases covering all 6 operators + path utils
-- `tests/models/UBASchemaParser.test.ts` — existing tests (unchanged)
-
-> ⚠️ Tests unverified this session — port 8081 in use by dev server. Run after stopping the app.
-
----
-
-## Next Up (Sprint 2)
-
-### UBA-005: Backend HTTP Client
-
-- `services/UBAClient.ts` — `configure(values)`, `health()`, `debugStream()`
-- Typed around `BackendMetadata.endpoints`
-
-### UBA-006: UBAPanel Integration
-
-- Mount `ConfigPanel` inside a proper editor panel
-- Wire to project settings persistence
-- Schema loading from backend `config` endpoint
-
-### UBA-007: Debug Stream Panel
-
-- SSE event viewer using `debug_stream` endpoint
-- Live log display with `DebugSchema` field rendering
-
----
-
-## Architecture Decisions
-
-- Values stored as **flat dot-path map** (`section.field`) for simplicity
-- `flatToNested()` converts to nested object before sending to backends
-- `evaluateCondition` uses flat-path map directly (no nesting required in form state)
-- Section visibility filtered in `ConfigPanel` via `visible_when` on sections
-- Field visibility handled in `ConfigSection` — hidden fields return `null` (unmounted)
-- `useConfigForm` intentionally computes `initial` only on mount — `reset()` handles re-init
+- UBA-008: UBA panel registration in editor sidebar
+- UBA-009: UBA health indicator / status widget
+- STYLE tasks: Any remaining style overhaul items
