@@ -1,4 +1,5 @@
 export { SchemaParser } from './SchemaParser';
+export { evaluateCondition, getNestedValue, setNestedValue, isEmpty } from './Conditions';
 export type {
   UBASchema,
   BackendMetadata,

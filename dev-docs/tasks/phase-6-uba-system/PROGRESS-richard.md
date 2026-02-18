@@ -1,67 +1,91 @@
-# Phase 6: UBA System — Richard's Progress
+# UBA System — Progress (Richard)
 
-## Sprint 1 Session 2 — 18 Feb 2026
+## Sprint 1 Session — 18 Feb 2026
 
-### Completed this session
+### Completed
 
-#### STYLE-005: SuggestionBanner wiring (property panel) — COMPLETE
-
-- Created `ElementStyleSectionHost` (editor-side React wrapper)
-  - Combines `ElementStyleSection` + `SuggestionBanner`
-  - Uses `useStyleSuggestions()` for the active suggestion
-  - Creates local `StyleTokensModel` instance (multiple instances safe — sync via ProjectModel events)
-  - Calls `executeSuggestionAction()` on accept, `dismissSession`/`dismissPermanent` on ignore/never
-- Wired into `propertyeditor.ts` — drop-in replacement, zero API change
-- All TS errors resolved
-
-#### UBA-001: TypeScript type definitions — COMPLETE
+#### UBA-001: Types
 
 - `packages/noodl-editor/src/editor/src/models/UBA/types.ts`
-- Full discriminated union on `Field.type` (string, text, number, boolean, secret, url, select, multi_select)
-- `BackendMetadata`, `Endpoints`, `AuthConfig`, `Capabilities`, `Section`, `Condition`, `DebugSchema`
-- `ParseResult<T>` discriminated union + `ParseError` type
-- Zero external dependencies
+- Full discriminated union for all 8 field types
+- `ParseResult<T>` / `ParseError` types
+- `Condition` with operator-based structure
 
-#### UBA-002: SchemaParser — COMPLETE
+#### UBA-002: SchemaParser
 
 - `packages/noodl-editor/src/editor/src/models/UBA/SchemaParser.ts`
-- Accepts pre-parsed JS object (JSON.parse / yaml.load output) — no YAML dep required
-- Validates: schema_version, backend (id/name/version/endpoints/auth/capabilities), sections, fields, debug
-- Unknown field types → warning, not error (forward-compat)
-- Unknown schema major version → warning with best-effort parsing
-- All field types validated individually; partial errors collected before failing
-- `packages/noodl-editor/src/editor/src/models/UBA/index.ts` — clean barrel exports
+- Validates unknown input against the UBA schema spec
+- Returns `ParseResult<UBASchema>` with structured errors + warnings
+- Tests: `packages/noodl-editor/tests/models/UBASchemaParser.test.ts`
 
-#### UBA-002: SchemaParser unit tests — COMPLETE
+#### UBA-003: Field Renderers
 
-- `packages/noodl-editor/tests/models/UBASchemaParser.test.ts`
-- 22 test cases covering: null/array rejection, missing version, version warning, minimal happy path
-- Backend: missing, missing id, missing endpoints.config, optional fields, invalid auth type
-- Sections: not array, minimal section, missing id
-- Field types: string, boolean, number (min/max), secret, select (+ no-options error), multi_select, unknown type warning
-- Debug schema with event_schema
+All 8 field components + FieldWrapper + FieldRenderer factory:
 
-### Next session priorities
+| File                                    | Component                            |
+| --------------------------------------- | ------------------------------------ |
+| `views/UBA/fields/FieldWrapper.tsx`     | Shared label/error/description shell |
+| `views/UBA/fields/StringField.tsx`      | Single-line text input               |
+| `views/UBA/fields/TextField.tsx`        | Multi-line textarea                  |
+| `views/UBA/fields/NumberField.tsx`      | Numeric input with clamping          |
+| `views/UBA/fields/BooleanField.tsx`     | Toggle switch                        |
+| `views/UBA/fields/SecretField.tsx`      | Password input with show/hide        |
+| `views/UBA/fields/UrlField.tsx`         | URL input with protocol validation   |
+| `views/UBA/fields/SelectField.tsx`      | Native select dropdown               |
+| `views/UBA/fields/MultiSelectField.tsx` | Tag-based multi-select               |
+| `views/UBA/fields/FieldRenderer.tsx`    | Factory dispatcher                   |
+| `views/UBA/fields/fields.module.scss`   | Shared SCSS (CSS vars only)          |
+| `views/UBA/fields/index.ts`             | Barrel                               |
 
-#### UBA-003: Field renderers
+#### UBA-004: ConfigPanel + Conditions
 
-- 8 field renderer components (one per field type)
-- `FieldRenderer` factory component (dispatches on `field.type`)
-- Shared styles (`fields.module.scss`)
-- `FieldWrapper` with label, description, required indicator
+Complete form shell with section tabs, validation, dirty state:
 
-#### UBA-004: ConfigPanel shell
+| File                                  | Purpose                                                            |
+| ------------------------------------- | ------------------------------------------------------------------ |
+| `models/UBA/Conditions.ts`            | `evaluateCondition`, `getNestedValue`, `setNestedValue`, `isEmpty` |
+| `views/UBA/hooks/useConfigForm.ts`    | Form state, dirty tracking, `validateRequired`, `flatToNested`     |
+| `views/UBA/ConfigSection.tsx`         | Single section with `visible_when` filtering                       |
+| `views/UBA/ConfigPanel.tsx`           | Tabbed panel, save/reset, error banners                            |
+| `views/UBA/ConfigSection.module.scss` | Section styles                                                     |
+| `views/UBA/ConfigPanel.module.scss`   | Panel styles                                                       |
+| `views/UBA/index.ts`                  | Barrel                                                             |
+| `models/UBA/index.ts`                 | Updated to export Conditions                                       |
 
-- `ConfigPanel.tsx` — renders sections + fields from a parsed `UBASchema`
-- `useConfigForm` hook — manages form values, validation, dirty state
-- Section collapsing, `visible_when` condition evaluation
+#### Tests
 
-### Tracking
+- `tests/models/UBAConditions.test.ts` — 22 cases covering all 6 operators + path utils
+- `tests/models/UBASchemaParser.test.ts` — existing tests (unchanged)
 
-| Task                               | Status  |
-| ---------------------------------- | ------- |
-| STYLE-005: SuggestionBanner wiring | ✅ DONE |
-| UBA-001: TypeScript types          | ✅ DONE |
-| UBA-002: SchemaParser + tests      | ✅ DONE |
-| UBA-003: Field renderers           | 🔲 NEXT |
-| UBA-004: ConfigPanel + hook        | 🔲 TODO |
+> ⚠️ Tests unverified this session — port 8081 in use by dev server. Run after stopping the app.
+
+---
+
+## Next Up (Sprint 2)
+
+### UBA-005: Backend HTTP Client
+
+- `services/UBAClient.ts` — `configure(values)`, `health()`, `debugStream()`
+- Typed around `BackendMetadata.endpoints`
+
+### UBA-006: UBAPanel Integration
+
+- Mount `ConfigPanel` inside a proper editor panel
+- Wire to project settings persistence
+- Schema loading from backend `config` endpoint
+
+### UBA-007: Debug Stream Panel
+
+- SSE event viewer using `debug_stream` endpoint
+- Live log display with `DebugSchema` field rendering
+
+---
+
+## Architecture Decisions
+
+- Values stored as **flat dot-path map** (`section.field`) for simplicity
+- `flatToNested()` converts to nested object before sending to backends
+- `evaluateCondition` uses flat-path map directly (no nesting required in form state)
+- Section visibility filtered in `ConfigPanel` via `visible_when` on sections
+- Field visibility handled in `ConfigSection` — hidden fields return `null` (unmounted)
+- `useConfigForm` intentionally computes `initial` only on mount — `reset()` handles re-init

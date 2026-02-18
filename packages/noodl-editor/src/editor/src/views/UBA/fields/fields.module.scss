@@ -1,0 +1,329 @@
+/* UBA-003: Shared field styles — CSS variables only, no hardcoded colours */
+
+/* ─── Field wrapper ─────────────────────────────────────────────────────────── */
+
+.fieldWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 16px;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.fieldLabel {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--theme-color-fg-default);
+  line-height: 1.4;
+}
+
+.required {
+  color: var(--theme-color-danger);
+  font-size: 11px;
+  line-height: 1;
+}
+
+.fieldDescription {
+  font-size: 11px;
+  color: var(--theme-color-fg-default-shy);
+  line-height: 1.4;
+  margin: 0;
+}
+
+.fieldError {
+  font-size: 11px;
+  color: var(--theme-color-danger);
+  line-height: 1.4;
+  margin: 0;
+}
+
+.fieldWarning {
+  font-size: 11px;
+  color: var(--theme-color-warning, #d97706);
+  line-height: 1.4;
+  margin: 0;
+}
+
+.helpLink {
+  font-size: 11px;
+  color: var(--theme-color-primary);
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+/* ─── Base inputs ───────────────────────────────────────────────────────────── */
+
+.textInput {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: 4px;
+  background: var(--theme-color-bg-3);
+  color: var(--theme-color-fg-default);
+  font-size: 12px;
+  line-height: 1.4;
+  font-family: inherit;
+  transition: border-color 0.15s ease;
+  box-sizing: border-box;
+
+  &::placeholder {
+    color: var(--theme-color-fg-default-shy);
+  }
+
+  &:focus {
+    outline: none;
+    border-color: var(--theme-color-primary);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: var(--theme-color-bg-2);
+  }
+
+  &.hasError {
+    border-color: var(--theme-color-danger);
+  }
+}
+
+.textArea {
+  composes: textInput;
+  resize: vertical;
+  min-height: 72px;
+  font-family: inherit;
+}
+
+.monoInput {
+  font-family: 'SF Mono', 'Consolas', 'Menlo', monospace;
+  font-size: 11px;
+}
+
+/* ─── Number input ──────────────────────────────────────────────────────────── */
+
+.numberInput {
+  composes: textInput;
+  width: 100%;
+
+  /* Remove browser spinner arrows */
+  &::-webkit-inner-spin-button,
+  &::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  -moz-appearance: textfield;
+}
+
+/* ─── Boolean / toggle ──────────────────────────────────────────────────────── */
+
+.booleanWrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.toggleInput {
+  position: relative;
+  width: 32px;
+  height: 18px;
+  flex-shrink: 0;
+
+  input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+    position: absolute;
+  }
+}
+
+.toggleTrack {
+  position: absolute;
+  inset: 0;
+  border-radius: 9px;
+  background: var(--theme-color-bg-1);
+  border: 1px solid var(--theme-color-border-default);
+  transition: background 0.15s ease, border-color 0.15s ease;
+  cursor: pointer;
+
+  .toggleInput:has(input:checked) & {
+    background: var(--theme-color-primary);
+    border-color: var(--theme-color-primary);
+  }
+
+  .toggleInput:has(input:disabled) & {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.toggleThumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--theme-color-fg-default);
+  transition: transform 0.15s ease, background 0.15s ease;
+
+  .toggleInput:has(input:checked) & {
+    transform: translateX(14px);
+    background: #ffffff;
+  }
+}
+
+.toggleLabel {
+  font-size: 12px;
+  color: var(--theme-color-fg-default);
+  cursor: pointer;
+  user-select: none;
+}
+
+/* ─── Secret input ──────────────────────────────────────────────────────────── */
+
+.secretWrapper {
+  position: relative;
+  display: flex;
+}
+
+.secretInput {
+  composes: textInput;
+  padding-right: 32px;
+}
+
+.visibilityToggle {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--theme-color-fg-default-shy);
+  padding: 0;
+
+  &:hover {
+    color: var(--theme-color-fg-default);
+  }
+
+  &:focus {
+    outline: none;
+  }
+
+  svg {
+    width: 14px;
+    height: 14px;
+  }
+}
+
+/* ─── Select ────────────────────────────────────────────────────────────────── */
+
+.selectWrapper {
+  position: relative;
+}
+
+.selectInput {
+  composes: textInput;
+  appearance: none;
+  padding-right: 28px;
+  cursor: pointer;
+}
+
+.selectChevron {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  color: var(--theme-color-fg-default-shy);
+
+  svg {
+    width: 12px;
+    height: 12px;
+  }
+}
+
+/* ─── Multi-select ──────────────────────────────────────────────────────────── */
+
+.multiSelectContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.multiSelectDropdown {
+  composes: textInput;
+  appearance: none;
+  padding-right: 28px;
+  cursor: pointer;
+}
+
+.selectedTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  min-height: 0;
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  background: var(--theme-color-bg-1);
+  border: 1px solid var(--theme-color-border-default);
+  font-size: 11px;
+  color: var(--theme-color-fg-default);
+  max-width: 200px;
+}
+
+.tagLabel {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tagRemove {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--theme-color-fg-default-shy);
+  padding: 0;
+  border-radius: 2px;
+
+  &:hover {
+    color: var(--theme-color-danger);
+    background: var(--theme-color-bg-2);
+  }
+
+  svg {
+    width: 10px;
+    height: 10px;
+  }
+}
+
+.maxWarning {
+  font-size: 11px;
+  color: var(--theme-color-fg-default-shy);
+  font-style: italic;
+}
