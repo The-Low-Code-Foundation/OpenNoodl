@@ -422,7 +422,34 @@ Found a solution not listed here? Add it!
 **Root cause**: `scripts/test-editor.ts` runs a full webpack compile before Jest. Can appear hung but is just slow (30-90s).
 
 **Rules**:
+
 - Always put test files in `tests/models/` not `tests/services/` (transform config only covers models/ path)
 - Never use `npx jest` directly - Babel cannot parse TypeScript `type` keyword without the full transform setup
 - Use `npm run test:editor` from root — it will eventually complete
 - Never use heredoc (`cat << EOF`) in terminal commands — use printf or write_to_file instead
+
+---
+
+## Pre-Existing Test Bundle Compilation Errors (Feb 2026)
+
+**Symptom**: `npm run test:editor` fails with webpack compilation errors before any tests run:
+
+```
+ERROR: Can't resolve '@noodl-views/panels/componentspanel/ComponentsPanel'
+ERROR: TS2339: Property 'pull' does not exist on type 'Git'
+```
+
+**Root cause**: Two pre-existing issues in the test bundle (unrelated to sprint work):
+
+1. `tests/components/componentspanel.js` references `@noodl-views/panels/componentspanel/ComponentsPanel` — this component was moved/deleted in an earlier refactor. The test file still has the old import path.
+
+2. `tests/git/git-remote*.spec.ts` and `tests/git/git-stash-merge.spec.ts` call `git.pull()` — this method was removed from the `Git` type in `packages/noodl-git/src/git.ts` during an earlier refactor.
+
+**Impact**: The webpack test bundle refuses to compile, so NO tests run (not just the failing ones).
+
+**Fix when prioritised**:
+
+1. Delete or stub `tests/components/componentspanel.js` (or update the import to match the current component location)
+2. Update the git test specs to use the current API (check what replaced `pull` in `packages/noodl-git/src/git.ts`)
+
+**Workaround**: Tests can be verified structurally (code review + type checking) while this is unresolved. The issue is in pre-existing test infra, not in sprint-added code.

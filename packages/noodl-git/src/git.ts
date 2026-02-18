@@ -265,6 +265,15 @@ export class Git {
         // this will also checkout the branch
         await popStashEntryToBranch(this.baseDir, stash.name, stashBranchName);
 
+        // Commit the stash contents to the stash branch to clean the working tree.
+        // Without this, git refuses to merge when both branches have modifications to the
+        // same file (e.g. .gitignore added by appendGitIgnore in _setupRepository).
+        const stashBranchStatus = await this.status();
+        if (stashBranchStatus.length > 0) {
+          await addAll(this.baseDir);
+          await createCommit(this.baseDir, 'Stash contents');
+        }
+
         // Merge our working branch into the stash branch
         await this._merge({
           theirsBranchName: previousBranch,
@@ -375,6 +384,35 @@ export class Git {
     const mergeBaseId = await this.getMergeBaseCommitId(headCommitId, remoteHeadCommitId);
     await this.resetToCommitWithId(mergeBaseId);
     await cleanUntrackedFiles(this.baseDir);
+  }
+
+  /**
+   * Fetch remote changes and merge them into the current branch using Noodl's
+   * custom merge strategy (handles project.json conflicts).
+   *
+   * Equivalent to `git fetch` + `git merge origin/<currentBranch>`.
+   */
+  async pull(options: PullOptions = {}): Promise<void> {
+    // 1. Fetch latest remote state
+    await this.fetch({ onProgress: options.onProgress });
+
+    // 2. Nothing to merge if remote has no commits yet
+    const remoteHeadId = await this.getRemoteHeadCommitId();
+    if (!remoteHeadId) {
+      return;
+    }
+
+    // 3. Merge origin/<currentBranch> into current branch
+    const currentBranch = await this.getCurrentBranchName();
+    const remoteName = await this.getRemoteName();
+    const remoteRef = `${remoteName}/${currentBranch}`;
+
+    await this._mergeToCurrentBranch({
+      theirsBranchName: remoteRef,
+      squash: false,
+      message: `Merge ${remoteRef} into ${currentBranch}`,
+      allowFastForward: true
+    });
   }
 
   /**
@@ -621,8 +659,6 @@ export class Git {
 
     try {
       await this.checkoutBranch(branchName);
-    } catch (err) {
-      throw err;
     } finally {
       if (needsStash) {
         await this.stashPopChanges(currentBranchName);

@@ -1,7 +1,8 @@
 export * from './componentconnections';
 export * from './componentinstances';
 export * from './componentports';
-export * from './componentspanel';
+// componentspanel test removed - tests legacy Backbone ComponentsPanelView which
+// has been archived to ComponentsPanelNew/ComponentsPanel.ts.legacy (not webpack-resolvable)
 export * from './conditionalports';
 export * from './dynamicports';
 export * from './expandedports';
