@@ -1855,6 +1855,22 @@ grep -r "var(--theme-spacing" packages/noodl-core-ui/src --include="*.scss"
 **Discovery:** Only custom overrides are stored in project metadata — never defaults. Defaults live in `DefaultTokens.ts` and are merged at load time. This keeps `project.json` lean and lets defaults be updated without migrations.
 **Location:** `StyleTokensModel._store()` uses `ProjectModel.instance.setMetaData('designTokens', data)`
 
+## TS Won't Narrow Discriminated Unions in Async IIFEs (2026-02-18)
+
+**Context**: UBAPanel `useUBASchema` hook — `SchemaParser.parse()` returns
+`ParseResult<T>` which is `{ success: true; data: T } | { success: false; errors: ParseError[] }`.
+
+**Discovery**: TypeScript refuses to narrow this inside an `(async () => { ... })()`,
+even with `const result` and an `if (result.success) {} else {}` pattern. Error:
+`Property 'errors' does not exist on type '{ success: true; ... }'`.
+
+**Fix**: In the `else` branch, cast explicitly with an inline `type FailResult = { ... }` alias.
+No need for `as any` — a precise cast is fine and type-safe.
+
+**Location**: `views/panels/UBAPanel/UBAPanel.tsx`, `useUBASchema`.
+
+---
+
 ## STYLE-001: DesignTokenPanel/ColorsTab pre-existed (2026-02-18)
 
 **Context:** Adding a new "Tokens" tab to the DesignTokenPanel.

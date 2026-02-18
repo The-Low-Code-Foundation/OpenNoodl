@@ -1,0 +1,86 @@
+.ReviewStep {
+  display: flex;
+  flex-direction: column;
+}
+
+.ReviewStep-subtitle {
+  font-size: 13px;
+  color: var(--theme-color-fg-default-shy);
+  margin: 0 0 var(--spacing-4) 0;
+}
+
+.Summary {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: var(--radius-default);
+  overflow: hidden;
+}
+
+.SummaryRow {
+  display: grid;
+  grid-template-columns: 80px 1fr auto;
+  align-items: start;
+  gap: var(--spacing-3);
+  padding: var(--spacing-4) var(--spacing-5);
+  border-bottom: 1px solid var(--theme-color-border-default);
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.SummaryRow-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--theme-color-fg-default-shy);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding-top: 2px;
+}
+
+.SummaryRow-value {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.SummaryRow-main {
+  font-size: 14px;
+  color: var(--theme-color-fg-default);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.SummaryRow-secondary {
+  font-size: 12px;
+  color: var(--theme-color-fg-default-shy);
+  line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.SummaryRow-edit {
+  font-size: 12px;
+  color: var(--theme-color-primary, #ef4444);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1.6;
+  flex-shrink: 0;
+
+  &:hover {
+    text-decoration: underline;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--theme-color-primary, #ef4444);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+}

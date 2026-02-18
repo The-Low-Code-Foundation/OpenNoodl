@@ -10,11 +10,11 @@ import React, { useCallback, useEffect, useState, useMemo } from 'react';
 import { clone } from '@noodl/git/src/core/clone';
 import { filesystem } from '@noodl/platform';
 
-import { CreateProjectModal } from '@noodl-core-ui/preview/launcher/Launcher/components/CreateProjectModal';
 import {
   CloudSyncType,
   LauncherProjectData
 } from '@noodl-core-ui/preview/launcher/Launcher/components/LauncherProjectCard';
+import { ProjectCreationWizard } from '@noodl-core-ui/preview/launcher/Launcher/components/ProjectCreationWizard';
 import {
   useGitHubRepos,
   NoodlGitHubRepo,
@@ -942,7 +942,7 @@ export function ProjectsPage(props: ProjectsPageProps) {
         onCloneRepo={handleCloneRepo}
       />
 
-      <CreateProjectModal
+      <ProjectCreationWizard
         isVisible={isCreateModalVisible}
         onClose={handleCreateModalClose}
         onConfirm={handleCreateProjectConfirm}
