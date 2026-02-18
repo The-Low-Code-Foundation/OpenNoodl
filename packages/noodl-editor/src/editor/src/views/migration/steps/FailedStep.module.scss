@@ -1,235 +1,85 @@
 /**
- * FailedStep Styles
- * 
- * Enhanced error state with helpful suggestions and beautiful error display.
+ * CLEANUP-000H: FailedStep — design token polish
  */
 
-@keyframes slideInUp {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes shake {
-  0%,
-  100% {
-    transform: translateX(0);
-  }
-  25% {
-    transform: translateX(-4px);
-  }
-  75% {
-    transform: translateX(4px);
-  }
-}
-
-.Root {
+.StepContainer {
+  padding: var(--spacing-6, 24px);
   display: flex;
   flex-direction: column;
-  height: 100%;
-  animation: slideInUp 300ms ease-out;
+  gap: var(--spacing-4, 16px);
 }
 
-.Header {
+.StepTitle {
+  font-size: var(--font-size-large, 16px);
+  font-weight: 600;
+  color: var(--theme-color-fg-highlight, var(--theme-color-fg-default));
+  margin: 0;
+}
+
+// Error banner
+.ErrorBanner {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-3, 12px);
+  padding: var(--spacing-4, 16px);
+  background-color: color-mix(in srgb, var(--theme-color-danger, #ef4444) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--theme-color-danger, #ef4444) 30%, transparent);
+  border-radius: var(--border-radius-small, 4px);
+}
+
+.ErrorIcon {
+  width: 24px;
+  height: 24px;
+  color: var(--theme-color-danger, #ef4444);
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.ErrorContent {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 16px;
-  margin-bottom: 24px;
-  padding: 20px;
-  background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, transparent 100%);
-  border-radius: 12px;
-
-  .ErrorIcon {
-    width: 64px;
-    height: 64px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: linear-gradient(135deg, rgba(239, 68, 68, 0.2) 0%, rgba(239, 68, 68, 0.1) 100%);
-    border-radius: 50%;
-    animation: shake 500ms ease-out;
-
-    svg {
-      width: 36px;
-      height: 36px;
-      color: var(--theme-color-danger);
-    }
-  }
-
-  h2 {
-    font-size: 22px;
-    font-weight: 700;
-    color: var(--theme-color-fg-highlight);
-    margin: 0;
-    text-align: center;
-  }
-
-  p {
-    font-size: 14px;
-    color: var(--theme-color-fg-default);
-    margin: 0;
-    text-align: center;
-    line-height: 1.6;
-  }
+  gap: var(--spacing-2, 8px);
+  flex: 1;
 }
 
-.ErrorBox {
-  margin-bottom: 20px;
-  background: linear-gradient(135deg, rgba(239, 68, 68, 0.08) 0%, rgba(239, 68, 68, 0.05) 100%);
-  border: 2px solid rgba(239, 68, 68, 0.3);
-  border-radius: 12px;
-  overflow: hidden;
-}
-
-.ErrorHeader {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 16px 20px;
-  background-color: rgba(239, 68, 68, 0.15);
-  border-bottom: 1px solid rgba(239, 68, 68, 0.2);
-
-  svg {
-    width: 20px;
-    height: 20px;
-    color: var(--theme-color-danger);
-    flex-shrink: 0;
-  }
-
-  h3 {
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--theme-color-danger);
-    margin: 0;
-  }
+.ErrorTitle {
+  font-size: var(--font-size-default, 13px);
+  font-weight: 600;
+  color: var(--theme-color-danger, #ef4444);
 }
 
 .ErrorMessage {
-  padding: 20px;
-  font-family: monospace;
-  font-size: 13px;
-  line-height: 1.6;
-  color: var(--theme-color-fg-highlight);
-  background-color: var(--theme-color-bg-4);
-  word-break: break-word;
+  font-size: var(--font-size-small, 12px);
+  color: var(--theme-color-fg-default);
+  line-height: 1.5;
+}
+
+// Error details (collapsible/scrollable)
+.ErrorDetails {
+  margin-top: var(--spacing-3, 12px);
+  padding: var(--spacing-3, 12px);
+  background-color: var(--theme-color-bg-1);
+  border-radius: var(--border-radius-small, 4px);
+  font-family: var(--font-family-mono, monospace);
+  font-size: var(--font-size-small, 12px);
+  color: var(--theme-color-fg-default-shy);
+  overflow-x: auto;
   white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 200px;
+  overflow-y: auto;
+  border: 1px solid var(--theme-color-border-default);
 }
 
-.Suggestions {
-  padding: 20px;
-  background: linear-gradient(135deg, var(--theme-color-bg-3) 0%, var(--theme-color-bg-2) 100%);
-  border-radius: 12px;
-  border: 1px solid var(--theme-color-bg-2);
-  margin-bottom: 20px;
-
-  h3 {
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--theme-color-fg-highlight);
-    margin: 0 0 16px 0;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-
-    svg {
-      width: 20px;
-      height: 20px;
-      color: var(--theme-color-primary);
-    }
-  }
-}
-
-.SuggestionList {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-
-  li {
-    display: flex;
-    gap: 16px;
-    padding: 16px;
-    background-color: var(--theme-color-bg-4);
-    border-radius: 8px;
-    font-size: 14px;
-    line-height: 1.5;
-    color: var(--theme-color-fg-default);
-    transition: all 200ms ease-in-out;
-
-    &:not(:last-child) {
-      margin-bottom: 10px;
-    }
-
-    &:hover {
-      background-color: var(--theme-color-bg-3);
-      transform: translateX(4px);
-    }
-
-    svg {
-      width: 20px;
-      height: 20px;
-      flex-shrink: 0;
-      margin-top: 2px;
-      color: var(--theme-color-primary);
-    }
-  }
-}
-
-.Link {
-  color: var(--theme-color-primary);
-  text-decoration: underline;
-  font-weight: 500;
-  transition: opacity 200ms ease-in-out;
-
-  &:hover {
-    opacity: 0.7;
-  }
-}
-
-.SafetyNotice {
+.ActionRow {
   display: flex;
-  gap: 16px;
-  padding: 20px;
-  background: linear-gradient(135deg, rgba(34, 197, 94, 0.12) 0%, rgba(34, 197, 94, 0.08) 100%);
-  border: 2px solid rgba(34, 197, 94, 0.3);
-  border-radius: 12px;
-  margin-bottom: 20px;
-
-  svg {
-    width: 24px;
-    height: 24px;
-    flex-shrink: 0;
-    color: var(--theme-color-success);
-  }
-
-  .SafetyContent {
-    flex: 1;
-
-    h4 {
-      font-size: 14px;
-      font-weight: 600;
-      color: var(--theme-color-success);
-      margin: 0 0 6px 0;
-    }
-
-    p {
-      font-size: 13px;
-      line-height: 1.6;
-      color: var(--theme-color-fg-default);
-      margin: 0;
-    }
-  }
+  align-items: center;
+  gap: var(--spacing-2, 8px);
+  padding-top: var(--spacing-2, 8px);
 }
 
-.Actions {
-  margin-top: auto;
-  padding-top: 24px;
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
+.HintText {
+  font-size: var(--font-size-small, 12px);
+  color: var(--theme-color-fg-default-shy);
+  line-height: 1.5;
 }
