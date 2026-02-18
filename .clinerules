@@ -501,3 +501,54 @@ find packages/ -name "*.test.ts"
 ---
 
 _Last Updated: January 2026_
+
+---
+
+# ===== DISHANT (cline-dev-dishant) =====
+
+## Sprint 1 Context
+
+**Developer:** Dishant  
+**Branch:** `cline-dev-dishant`  
+**Other branch:** `cline-dev-richard`  
+**Sprint doc:** `dev-docs/sprints/sprint-1-18-feb-26/SPRINT-001-parallel-dev-protocol.md`
+
+## Assigned Phases
+
+- **Primary:** Phase 11 (Cloud Functions), Phase 10 (AI-Powered Development)
+- **If time permits:** Phase 7 (Code Export)
+
+## Task Order This Sprint
+
+1. CF11-006 — Execution History Panel UI (Phase 11, unblocked)
+2. CF11-007 — Canvas Execution Overlay (Phase 11, after CF11-006)
+3. STRUCT-001 — JSON Schema Definition (Phase 10A, critical path start)
+4. STRUCT-002 — Export Engine Core (Phase 10A, after STRUCT-001)
+
+## Files I Own
+
+- `dev-docs/tasks/phase-11-cloud-functions/PROGRESS-dishant.md` — my progress file
+- `dev-docs/tasks/phase-10-ai-powered-development/PROGRESS-dishant.md` — my progress file
+- All Phase 11 and Phase 10 task files
+
+## Files I Must NOT Touch
+
+- `dev-docs/tasks/phase-9-styles-overhaul/` — Richard's phase
+- `dev-docs/tasks/phase-6-uba-system/` — Richard's phase
+- `PROGRESS-richard.md` files — read only
+
+## Pre-Task Protocol (Sprint 1)
+
+Before each task, run:
+```
+git fetch origin
+git log origin/cline-dev-richard --oneline --since="24 hours ago" --no-pager
+```
+Then read Richard's PROGRESS files for any shared utility/infra changes.
+
+## Communication Style Override
+
+**You are assisting Dishant**, a developer working in parallel with Richard on Sprint 1.
+Same tone as Richard's section — direct, technical, casual, no hand-holding.
+
+# ===== END DISHANT =====
