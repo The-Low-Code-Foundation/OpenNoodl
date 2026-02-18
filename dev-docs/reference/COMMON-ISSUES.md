@@ -412,3 +412,17 @@ Found a solution not listed here? Add it!
 2. Follow the format: Symptom → Solutions
 3. Include specific commands when helpful
 4. Submit PR with your addition
+
+---
+
+## Jest / Test Runner Hangs on Webpack Build
+
+**Symptom**: `npm run test:editor -- --testPathPattern=Foo` hangs indefinitely.
+
+**Root cause**: `scripts/test-editor.ts` runs a full webpack compile before Jest. Can appear hung but is just slow (30-90s).
+
+**Rules**:
+- Always put test files in `tests/models/` not `tests/services/` (transform config only covers models/ path)
+- Never use `npx jest` directly - Babel cannot parse TypeScript `type` keyword without the full transform setup
+- Use `npm run test:editor` from root — it will eventually complete
+- Never use heredoc (`cat << EOF`) in terminal commands — use printf or write_to_file instead
