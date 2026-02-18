@@ -150,19 +150,14 @@ build-tmp
 dist-cli
 packages/noodl-cloud-services/build/*
 
-# Test files
+# Test files (build artifacts - bundle outputs and leaked SVG assets)
 packages/noodl-editor/tests/css.worker.js
 packages/noodl-editor/tests/editor.worker.js
 packages/noodl-editor/tests/index.bundle.js
-packages/noodl-editor/tests/node_modules_monaco-editor_esm_vs_basic-languages_css_css_js.index.bundle.js
-packages/noodl-editor/tests/node_modules_monaco-editor_esm_vs_basic-languages_graphql_graphql_js.index.bundle.js
-packages/noodl-editor/tests/node_modules_monaco-editor_esm_vs_basic-languages_javascript_javascript_js.index.bundle.js
-packages/noodl-editor/tests/node_modules_monaco-editor_esm_vs_basic-languages_typescript_typescript_js.index.bundle.js
 packages/noodl-editor/tests/ts.worker.js
-packages/noodl-editor/tests/vendors-node_modules_monaco-editor_esm_vs_language_css_cssMode_js.index.bundle.js
-packages/noodl-editor/tests/vendors-node_modules_monaco-editor_esm_vs_language_html_htmlMode_js.index.bundle.js
-packages/noodl-editor/tests/vendors-node_modules_monaco-editor_esm_vs_language_json_jsonMode_js.index.bundle.js
-packages/noodl-editor/tests/vendors-node_modules_monaco-editor_esm_vs_language_typescript_tsMode_js.index.bundle.js
+packages/noodl-editor/tests/node_modules_*.bundle.js
+packages/noodl-editor/tests/vendors-*.bundle.js
+packages/noodl-editor/tests/*.svg
 
 # Other
 packages/noodl-editor/src/external
