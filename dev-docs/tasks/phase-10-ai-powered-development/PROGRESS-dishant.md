@@ -1,8 +1,8 @@
-# Phase 10A — AI-Powered Development: Dishant's Progress
+﻿# Phase 10A  AI-Powered Development: Dishant's Progress
 
 **Developer:** Dishant  
 **Branch:** `cline-dev-dishant`  
-**Last Updated:** 2026-02-18
+**Last Updated:** 2026-02-19
 
 ---
 
@@ -10,12 +10,12 @@
 
 | Task ID    | Title                        | Status      | Notes                                      |
 |------------|------------------------------|-------------|--------------------------------------------|
-| STRUCT-001 | JSON Schema Definition       | ✅ Complete | 8 schemas + validator + tests (33/33 pass) |
-| STRUCT-002 | Export Engine Core           | 🔜 Next     | Depends on STRUCT-001                      |
+| STRUCT-001 | JSON Schema Definition       |  Complete | 8 schemas + validator + tests (33/33 pass) |
+| STRUCT-002 | Export Engine Core           |  Complete | ProjectExporter + 50 unit tests            |
 
 ---
 
-## STRUCT-001 — JSON Schema Definition ✅
+## STRUCT-001  JSON Schema Definition 
 
 **Completed:** 2026-02-18  
 **Scope:** Define JSON schemas for the v2 multi-file project format
@@ -39,14 +39,14 @@ All files live under `packages/noodl-editor/src/editor/src/schemas/`:
 
 #### Validator (`validator.ts`)
 
-- `SchemaValidator` singleton class — compiles all 8 schemas once, reuses validators
-- `SCHEMA_IDS` const — typed schema ID map
+- `SchemaValidator` singleton class  compiles all 8 schemas once, reuses validators
+- `SCHEMA_IDS` const  typed schema ID map
 - `validateSchema()` convenience function
-- `validateOrThrow()` — throws with context on failure
+- `validateOrThrow()`  throws with context on failure
 - Per-schema convenience methods: `validateProject()`, `validateComponent()`, etc.
-- `formatValidationErrors()` — human-readable error formatting
+- `formatValidationErrors()`  human-readable error formatting
 - Ajv v8 with `ajv-formats` for `date-time` format validation
-- `allErrors: true` — collects all errors, not just first
+- `allErrors: true`  collects all errors, not just first
 
 #### Index (`index.ts`)
 
@@ -59,7 +59,7 @@ All files live under `packages/noodl-editor/src/editor/src/schemas/`:
 - Valid minimal fixtures, full fixtures with all optional fields
 - Invalid cases: missing required fields, wrong enum values, invalid formats
 - Edge cases: legacy component refs (`/#Header`), complex port type objects, deeply nested metadata
-- Registered in `tests/index.ts` → `tests/schemas/index.ts`
+- Registered in `tests/index.ts`  `tests/schemas/index.ts`
 
 ### Dependencies added
 
@@ -72,10 +72,10 @@ Added to `packages/noodl-editor/package.json` dependencies.
 
 ### Key design decisions
 
-1. **`additionalProperties: true` on nodes/connections** — node parameters and connection metadata are open-ended by design; the schema validates structure, not content
-2. **Port type is `oneOf [string, object]`** — Noodl uses both `"string"` and `{ name: "stringlist", ... }` type formats
-3. **`strict: false` on Ajv** — schemas use `description` in `definitions` which Ajv strict mode rejects
-4. **`require()` for `ajv-formats`** — avoids TS type conflict between root-level `ajv-formats` (which bundles its own Ajv) and the package-local Ajv v8
+1. **`additionalProperties: true` on nodes/connections**  node parameters and connection metadata are open-ended by design; the schema validates structure, not content
+2. **Port type is `oneOf [string, object]`**  Noodl uses both `"string"` and `{ name: "stringlist", ... }` type formats
+3. **`strict: false` on Ajv**  schemas use `description` in `definitions` which Ajv strict mode rejects
+4. **`require()` for `ajv-formats`**  avoids TS type conflict between root-level `ajv-formats` (which bundles its own Ajv) and the package-local Ajv v8
 
 ### Verification
 
@@ -86,7 +86,95 @@ Added to `packages/noodl-editor/package.json` dependencies.
 
 ---
 
-## Next: STRUCT-002 — Export Engine Core
+## STRUCT-002  Export Engine Core 
 
-**Unblocked by:** STRUCT-001 ✅  
-**Goal:** Build the engine that converts the legacy `project.json` format into the v2 multi-file directory structure, using the schemas defined in STRUCT-001 for validation.
+**Completed:** 2026-02-19  
+**Scope:** Build the engine that converts the legacy `project.json` format into the v2 multi-file directory structure
+
+### What was built
+
+All files:
+
+| File | Purpose |
+|------|---------|
+| `packages/noodl-editor/src/editor/src/io/ProjectExporter.ts` | Core exporter class + legacy type definitions + helper functions |
+| `packages/noodl-editor/tests/io/ProjectExporter.test.ts` | 50 unit tests |
+| `packages/noodl-editor/tests/io/index.ts` | Test barrel export |
+
+### Architecture
+
+`ProjectExporter` is a **pure class**  it does not touch the filesystem. It takes a `LegacyProject` object (the parsed `project.json`) and returns an `ExportResult` containing all files to write.
+
+```
+ProjectExporter.export(legacyProject)
+   ExportResult {
+      files: ExportFile[],   // { relativePath, content }[]
+      stats: { totalComponents, totalNodes, totalConnections }
+    }
+```
+
+Output file layout:
+```
+nodegx.project.json           project metadata
+nodegx.routes.json            route definitions (if any in metadata)
+nodegx.styles.json            global styles + variants (if any)
+components/
+  _registry.json              component index
+  Header/
+    component.json            component metadata
+    nodes.json                flat node list (tree flattened)
+    connections.json          connection list
+  Pages/Home/
+    component.json
+    nodes.json
+    connections.json
+  ...
+```
+
+### Key functions exported
+
+| Function | Purpose |
+|----------|---------|
+| `legacyNameToPath(name)` | Converts `/#Header`  `Header`, `/Pages/Home`  `Pages/Home` |
+| `inferComponentType(name)` | Heuristic: root/page/cloud/visual from legacy name |
+| `flattenNodes(roots)` | Flattens recursive legacy node tree  flat `NodeV2[]` with parent/children IDs |
+| `countNodes(roots)` | Counts all nodes including nested children |
+
+### Key design decisions
+
+1. **Pure / filesystem-agnostic**  caller writes files; exporter just produces the data. Easy to test, easy to use in different contexts (Electron, Node, tests).
+2. **Node tree flattening**  legacy format stores nodes as a recursive tree (children embedded). v2 format stores a flat array with `parent` and `children` (as ID arrays). `flattenNodes()` handles this.
+3. **Styles file is conditional**  only produced when `metadata.styles` has content OR variants exist. Same for routes.
+4. **Legacy `stateParamaters` typo normalised**  VariantModel.toJSON() uses `stateParamaters` (typo). The exporter maps this to `stateParameters` in the v2 format.
+5. **Metadata split**  `styles` and `routes` are extracted from `project.metadata` into their own files; remaining metadata keys stay in `nodegx.project.json`.
+6. **Original legacy path preserved**  `component.json` stores `path: "/#Header"` for round-trip fidelity (STRUCT-003 import engine will need this).
+7. **Empty fields omitted**  nodes with empty `parameters: {}` don't get a `parameters` key in the output, keeping files lean.
+
+### Tests
+
+50 unit tests in `tests/io/ProjectExporter.test.ts` covering:
+
+- `legacyNameToPath`  6 cases (slash stripping, hash stripping, cloud paths, nested paths)
+- `inferComponentType`  6 cases (root, cloud, page, case-insensitive, visual)
+- `countNodes`  4 cases (empty, single, recursive, multiple roots)
+- `flattenNodes`  11 cases (empty, single, nested, parent/child IDs, field omission, metadata)
+- `ProjectExporter.export()`  23 cases across:
+  - Basic structure (always-present files, conditional files, stats)
+  - Project file (name, version, runtimeVersion, settings, $schema, metadata stripping)
+  - Routes file (conditional, content, non-array guard)
+  - Styles file (conditional, colors, variant typo normalisation)
+  - Component files (3 files per component, paths, IDs, type inference, node flattening, connections)
+  - Registry (all components listed, path/type/nodeCount/connectionCount, stats, version)
+  - ExportResult stats
+  - Edge cases (no graph, empty graph, multiple components, cloud type, variant preservation)
+
+### Registered in
+
+- `tests/io/index.ts`  `tests/index.ts`
+
+---
+
+## Next: STRUCT-003  Import Engine
+
+**Unblocked by:** STRUCT-002   
+**Goal:** Build the engine that converts the v2 multi-file format back to the legacy `project.json` format, with round-trip validation.
