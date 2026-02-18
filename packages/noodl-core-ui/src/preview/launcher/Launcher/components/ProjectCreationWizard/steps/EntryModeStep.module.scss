@@ -1,0 +1,72 @@
+.EntryModeStep {
+  display: flex;
+  flex-direction: column;
+}
+
+.EntryModeStep-prompt {
+  font-size: 15px;
+  color: var(--theme-color-fg-default-shy);
+  margin: 0 0 var(--spacing-5) 0;
+}
+
+.EntryModeStep-cards {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3);
+}
+
+.ModeCard {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spacing-1);
+  padding: var(--spacing-4) var(--spacing-5);
+  background-color: var(--theme-color-bg-3);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: var(--radius-default);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+  position: relative;
+
+  &:hover:not(&--disabled) {
+    border-color: var(--theme-color-primary, #ef4444);
+    background-color: var(--theme-color-bg-2);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--theme-color-primary, #ef4444);
+    outline-offset: 2px;
+  }
+
+  &--disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.ModeCard-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--theme-color-fg-default);
+  line-height: 1.3;
+}
+
+.ModeCard-description {
+  font-size: 13px;
+  color: var(--theme-color-fg-default-shy);
+  line-height: 1.5;
+}
+
+.ModeCard-badge {
+  position: absolute;
+  top: var(--spacing-2);
+  right: var(--spacing-3);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--theme-color-fg-default-shy);
+  background-color: var(--theme-color-bg-2);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: var(--radius-sm, 4px);
+  padding: 2px var(--spacing-2);
+}
