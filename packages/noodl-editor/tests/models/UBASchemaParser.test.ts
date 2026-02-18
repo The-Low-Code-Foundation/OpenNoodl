@@ -9,6 +9,12 @@
 import { describe, it, expect, beforeEach } from '@jest/globals';
 
 import { SchemaParser } from '../../src/editor/src/models/UBA/SchemaParser';
+import type { ParseResult } from '../../src/editor/src/models/UBA/types';
+
+/** Type guard: narrows ParseResult to the failure branch (webpack ts-loader friendly) */
+function isFailure<T>(result: ParseResult<T>): result is Extract<ParseResult<T>, { success: false }> {
+  return !result.success;
+}
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
 
@@ -44,7 +50,7 @@ describe('SchemaParser', () => {
     it('rejects null input', () => {
       const result = parser.parse(null);
       expect(result.success).toBe(false);
-      if (!result.success) {
+      if (isFailure(result)) {
         expect(result.errors[0].path).toBe('');
       }
     });
@@ -55,10 +61,11 @@ describe('SchemaParser', () => {
     });
 
     it('rejects missing schema_version', () => {
-      const { schema_version: _sv, ...noVersion } = minimalValid;
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { schema_version: _, ...noVersion } = minimalValid;
       const result = parser.parse(noVersion);
       expect(result.success).toBe(false);
-      if (!result.success) {
+      if (isFailure(result)) {
         expect(result.errors.some((e) => e.path === 'schema_version')).toBe(true);
       }
     });
@@ -87,10 +94,11 @@ describe('SchemaParser', () => {
 
   describe('backend validation', () => {
     it('errors when backend is missing', () => {
-      const { backend: _b, ...noBackend } = minimalValid;
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { backend: _, ...noBackend } = minimalValid;
       const result = parser.parse(noBackend);
       expect(result.success).toBe(false);
-      if (!result.success) {
+      if (isFailure(result)) {
         expect(result.errors.some((e) => e.path === 'backend')).toBe(true);
       }
     });
@@ -107,7 +115,7 @@ describe('SchemaParser', () => {
       });
       const result = parser.parse(data);
       expect(result.success).toBe(false);
-      if (!result.success) {
+      if (isFailure(result)) {
         expect(result.errors.some((e) => e.path === 'backend.endpoints.config')).toBe(true);
       }
     });
@@ -138,7 +146,7 @@ describe('SchemaParser', () => {
       });
       const result = parser.parse(data);
       expect(result.success).toBe(false);
-      if (!result.success) {
+      if (isFailure(result)) {
         expect(result.errors.some((e) => e.path === 'backend.auth.type')).toBe(true);
       }
     });
@@ -171,7 +179,7 @@ describe('SchemaParser', () => {
       });
       const result = parser.parse(data);
       expect(result.success).toBe(false);
-      if (!result.success) {
+      if (isFailure(result)) {
         expect(result.errors.some((e) => e.path.includes('id'))).toBe(true);
       }
     });

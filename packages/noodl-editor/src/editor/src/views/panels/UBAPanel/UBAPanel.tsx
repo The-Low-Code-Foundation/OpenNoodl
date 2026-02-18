@@ -38,6 +38,79 @@ import css from './UBAPanel.module.scss';
 
 const METADATA_SCHEMA_URL = 'ubaSchemaUrl';
 const METADATA_CONFIG = 'ubaConfig';
+const HEALTH_POLL_INTERVAL_MS = 30_000;
+
+// ─── Health Indicator (UBA-009) ───────────────────────────────────────────────
+
+type HealthStatus = 'unknown' | 'checking' | 'healthy' | 'unhealthy';
+
+/**
+ * Polls the backend health endpoint every 30s.
+ * Uses UBAClient.health() which never throws.
+ */
+function useUBAHealth(
+  healthUrl: string | undefined,
+  auth: UBASchema['backend']['auth'] | undefined
+): { status: HealthStatus; message: string | undefined } {
+  const [status, setStatus] = useState<HealthStatus>('unknown');
+  const [message, setMessage] = useState<string | undefined>();
+
+  useEffect(() => {
+    if (!healthUrl) {
+      setStatus('unknown');
+      setMessage(undefined);
+      return;
+    }
+
+    let cancelled = false;
+
+    const check = async () => {
+      if (!cancelled) setStatus('checking');
+      const result = await UBAClient.health(healthUrl, auth);
+      if (!cancelled) {
+        setStatus(result.healthy ? 'healthy' : 'unhealthy');
+        setMessage(result.healthy ? undefined : result.message);
+      }
+    };
+
+    void check();
+    const timer = setInterval(() => void check(), HEALTH_POLL_INTERVAL_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [healthUrl, auth]);
+
+  return { status, message };
+}
+
+const HEALTH_STATUS_CLASS: Record<HealthStatus, string> = {
+  unknown: css.healthUnknown,
+  checking: css.healthChecking,
+  healthy: css.healthHealthy,
+  unhealthy: css.healthUnhealthy
+};
+
+const HEALTH_STATUS_LABEL: Record<HealthStatus, string> = {
+  unknown: 'Not configured',
+  checking: 'Checking…',
+  healthy: 'Healthy',
+  unhealthy: 'Unhealthy'
+};
+
+interface HealthBadgeProps {
+  status: HealthStatus;
+  message: string | undefined;
+}
+
+function HealthBadge({ status, message }: HealthBadgeProps) {
+  return (
+    <div className={`${css.healthBadge} ${HEALTH_STATUS_CLASS[status]}`} title={message ?? HEALTH_STATUS_LABEL[status]}>
+      <span className={css.healthDot} aria-hidden="true" />
+      <span className={css.healthLabel}>{HEALTH_STATUS_LABEL[status]}</span>
+    </div>
+  );
+}
 
 // ─── Schema Loader ────────────────────────────────────────────────────────────
 
@@ -208,6 +281,8 @@ export function UBAPanel() {
     [schema]
   );
 
+  const health = useUBAHealth(schema?.backend.endpoints.health, schema?.backend.auth);
+
   const renderConfigureTab = () => {
     if (!schemaUrl && !loading) {
       return <SchemaLoader onLoad={loadSchema} loading={loading} error={loadError} />;
@@ -233,14 +308,17 @@ export function UBAPanel() {
     }
 
     return (
-      <ConfigPanel
-        schema={schema}
-        initialValues={getSavedConfig()}
-        onSave={handleSave}
-        onReset={() => {
-          /* noop — reset is handled inside ConfigPanel */
-        }}
-      />
+      <div className={css.configureTabContent}>
+        {schema.backend.endpoints.health && <HealthBadge status={health.status} message={health.message} />}
+        <ConfigPanel
+          schema={schema}
+          initialValues={getSavedConfig()}
+          onSave={handleSave}
+          onReset={() => {
+            /* noop — reset is handled inside ConfigPanel */
+          }}
+        />
+      </div>
     );
   };
 

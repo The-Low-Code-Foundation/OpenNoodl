@@ -306,3 +306,88 @@
     color: var(--theme-color-primary);
   }
 }
+
+// ─── Health Indicator (UBA-009) ───────────────────────────────────────────────
+
+.configureTabContent {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+}
+
+.healthBadge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-bottom: 1px solid var(--theme-color-border-default);
+  background: var(--theme-color-bg-2);
+  flex-shrink: 0;
+}
+
+.healthDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--theme-color-fg-default-shy);
+}
+
+.healthLabel {
+  font-size: 11px;
+  color: var(--theme-color-fg-default-shy);
+}
+
+// Status modifier classes — applied to .healthBadge
+.healthUnknown {
+  .healthDot {
+    background: var(--theme-color-fg-default-shy);
+  }
+
+  .healthLabel {
+    color: var(--theme-color-fg-default-shy);
+  }
+}
+
+.healthChecking {
+  .healthDot {
+    background: var(--theme-color-fg-default);
+    animation: healthPulse 1s ease-in-out infinite;
+  }
+
+  .healthLabel {
+    color: var(--theme-color-fg-default);
+  }
+}
+
+.healthHealthy {
+  .healthDot {
+    background: var(--theme-color-success, #4ade80);
+  }
+
+  .healthLabel {
+    color: var(--theme-color-success, #4ade80);
+  }
+}
+
+.healthUnhealthy {
+  .healthDot {
+    background: var(--theme-color-danger, #f87171);
+  }
+
+  .healthLabel {
+    color: var(--theme-color-danger, #f87171);
+  }
+}
+
+@keyframes healthPulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.4;
+  }
+}
