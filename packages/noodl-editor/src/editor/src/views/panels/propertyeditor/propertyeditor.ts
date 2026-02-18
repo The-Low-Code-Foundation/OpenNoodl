@@ -6,12 +6,11 @@ import { createRoot, Root } from 'react-dom/client';
 import { NodeGraphNode } from '@noodl-models/nodegraphmodel';
 import { UndoQueue, UndoActionGroup } from '@noodl-models/undo-queue-model';
 
-import { ElementStyleSection } from '@noodl-core-ui/components/propertyeditor/ElementStyleSection';
-
 import View from '../../../../../shared/view';
 import { ElementConfigRegistry } from '../../../models/ElementConfigs/ElementConfigRegistry';
 import { ProjectModel } from '../../../models/projectmodel';
 import { ToastLayer } from '../../ToastLayer/ToastLayer';
+import { ElementStyleSectionHost } from './components/ElementStyleSectionHost';
 import { VariantsEditor } from './components/VariantStates';
 import { VisualStates } from './components/VisualStates';
 import { Ports } from './DataTypes/Ports';
@@ -142,7 +141,7 @@ export class PropertyEditor extends View {
     if (!this.elementStyleRoot) {
       this.elementStyleRoot = createRoot(container);
     }
-    this.elementStyleRoot.render(React.createElement(ElementStyleSection, props));
+    this.elementStyleRoot.render(React.createElement(ElementStyleSectionHost, props));
   }
 
   /**
