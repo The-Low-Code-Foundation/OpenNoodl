@@ -8,6 +8,7 @@ import { StyleTokenRecord, StyleTokensModel } from '@noodl-models/StyleTokensMod
 
 import { Slot } from '@noodl-core-ui/types/global';
 
+import { PreviewTokenInjector } from '../../services/PreviewTokenInjector';
 import { DesignTokenColor, extractProjectColors } from './extractProjectColors';
 
 export interface ProjectDesignTokenContext {
@@ -76,6 +77,11 @@ export function ProjectDesignTokenContextProvider({ children }: ProjectDesignTok
   // Sync design tokens from StyleTokensModel
   useEffect(() => {
     setDesignTokens(styleTokensModel.getTokens());
+  }, [styleTokensModel]);
+
+  // Wire preview token injector so the preview webview reflects the current token values
+  useEffect(() => {
+    PreviewTokenInjector.instance.attachModel(styleTokensModel);
   }, [styleTokensModel]);
 
   useEventListener(styleTokensModel, 'tokensChanged', () => {

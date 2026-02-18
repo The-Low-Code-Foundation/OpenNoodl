@@ -5,6 +5,7 @@ import { platform } from '@noodl/platform';
 
 import { EventDispatcher } from '../../../../shared/utils/EventDispatcher';
 import View from '../../../../shared/view';
+import { PreviewTokenInjector } from '../../services/PreviewTokenInjector';
 import { VisualCanvas } from './VisualCanvas';
 
 export class CanvasView extends View {
@@ -108,6 +109,9 @@ export class CanvasView extends View {
         this.webview.executeJavaScript(`NoodlEditorHighlightAPI.selectNode('${this.selectedNodeId}')`);
       }
 
+      // Inject project design tokens into the preview so var(--token-name) resolves correctly.
+      PreviewTokenInjector.instance.notifyDomReady(this.webview);
+
       this.updateViewportSize();
     });
 
@@ -180,6 +184,7 @@ export class CanvasView extends View {
       this.root.unmount();
       this.root = null;
     }
+    PreviewTokenInjector.instance.clearWebview();
     ipcRenderer.off('editor-api-response', this._onEditorApiResponse);
   }
   refresh() {

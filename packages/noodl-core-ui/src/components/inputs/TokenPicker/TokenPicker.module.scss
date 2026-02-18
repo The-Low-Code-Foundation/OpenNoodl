@@ -1,0 +1,299 @@
+/**
+ * STYLE-001 Phase 3: TokenPicker styles
+ * All colours via design tokens — no hardcoded values.
+ */
+
+.TokenPicker {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1, 4px);
+  width: 100%;
+}
+
+// ── Label ────────────────────────────────────────────────────────────────────
+
+.TokenPicker-label {
+  font-size: var(--font-size-xsmall, 11px);
+  font-weight: 500;
+  color: var(--theme-color-fg-default-shy);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  user-select: none;
+}
+
+// ── Trigger button ───────────────────────────────────────────────────────────
+
+.TokenPicker-trigger {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-1, 4px);
+  width: 100%;
+  padding: var(--spacing-1, 4px) var(--spacing-2, 8px);
+  background: var(--theme-color-bg-3);
+  color: var(--theme-color-fg-default);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: var(--border-radius-small, 4px);
+  font-size: var(--font-size-small, 12px);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 100ms ease, background 100ms ease;
+  min-height: 26px;
+
+  &:hover:not(:disabled) {
+    background: var(--theme-color-bg-2);
+    border-color: var(--theme-color-primary);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--theme-color-primary);
+    outline-offset: 1px;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  // When a token is selected — highlight border subtly
+  &--hasValue {
+    border-color: color-mix(in srgb, var(--theme-color-primary) 40%, var(--theme-color-border-default));
+  }
+}
+
+// Colour swatch in the trigger
+.TokenPicker-swatch {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 2px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  flex-shrink: 0;
+}
+
+.TokenPicker-triggerText {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.TokenPicker-clearBtn {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--theme-color-fg-default-shy);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: 2px;
+  padding: 0;
+
+  &:hover {
+    color: var(--theme-color-fg-default);
+    background: var(--theme-color-bg-2);
+  }
+}
+
+.TokenPicker-chevron {
+  flex-shrink: 0;
+  font-size: 10px;
+  color: var(--theme-color-fg-default-shy);
+  line-height: 1;
+  pointer-events: none;
+}
+
+// ── Dropdown panel ───────────────────────────────────────────────────────────
+
+.TokenPicker-dropdown {
+  position: absolute;
+  top: calc(100% + var(--spacing-1, 4px));
+  left: 0;
+  right: 0;
+  z-index: 300;
+  background: var(--theme-color-bg-2);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: var(--border-radius-small, 4px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+  display: flex;
+  flex-direction: column;
+  max-height: 320px;
+  overflow: hidden;
+  min-width: 200px;
+}
+
+// ── Search row ───────────────────────────────────────────────────────────────
+
+.TokenPicker-searchRow {
+  padding: var(--spacing-1, 4px) var(--spacing-2, 8px);
+  border-bottom: 1px solid var(--theme-color-border-default);
+  flex-shrink: 0;
+}
+
+.TokenPicker-search {
+  width: 100%;
+  padding: 3px var(--spacing-1, 4px);
+  background: var(--theme-color-bg-3);
+  color: var(--theme-color-fg-default);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: 3px;
+  font-size: var(--font-size-small, 12px);
+  outline: none;
+
+  &::placeholder {
+    color: var(--theme-color-fg-default-shy);
+  }
+
+  &:focus {
+    border-color: var(--theme-color-primary);
+  }
+}
+
+// ── Token list ───────────────────────────────────────────────────────────────
+
+.TokenPicker-list {
+  overflow-y: auto;
+  flex: 1;
+}
+
+.TokenPicker-empty {
+  padding: var(--spacing-2, 8px) var(--spacing-3, 12px);
+  font-size: var(--font-size-small, 12px);
+  color: var(--theme-color-fg-default-shy);
+  text-align: center;
+}
+
+// ── Token group ───────────────────────────────────────────────────────────────
+
+.TokenPicker-group {
+  & + & {
+    border-top: 1px solid var(--theme-color-border-default);
+  }
+}
+
+.TokenPicker-groupLabel {
+  display: block;
+  padding: var(--spacing-1, 4px) var(--spacing-2, 8px);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--theme-color-fg-default-shy);
+  user-select: none;
+  position: sticky;
+  top: 0;
+  background: var(--theme-color-bg-2);
+  z-index: 1;
+}
+
+// ── Token option ─────────────────────────────────────────────────────────────
+
+.TokenPicker-option {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-1, 4px);
+  padding: 3px var(--spacing-2, 8px);
+  background: transparent;
+  color: var(--theme-color-fg-default);
+  border: none;
+  font-size: var(--font-size-small, 12px);
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  transition: background 60ms ease;
+
+  &:hover {
+    background: var(--theme-color-bg-3);
+  }
+
+  &--active {
+    color: var(--theme-color-primary);
+    background: color-mix(in srgb, var(--theme-color-primary) 10%, transparent);
+
+    &:hover {
+      background: color-mix(in srgb, var(--theme-color-primary) 15%, transparent);
+    }
+  }
+
+  // Custom tokens get a subtle tint
+  &--custom {
+    .TokenPicker-optionName {
+      font-style: italic;
+    }
+  }
+}
+
+.TokenPicker-optionPreview {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+}
+
+.TokenPicker-optionSwatch {
+  display: block;
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  flex-shrink: 0;
+}
+
+.TokenPicker-optionValueBadge {
+  display: block;
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--theme-color-fg-default-shy);
+  text-transform: uppercase;
+  letter-spacing: 0;
+  max-width: 20px;
+  overflow: hidden;
+  text-overflow: clip;
+  white-space: nowrap;
+}
+
+.TokenPicker-optionBody {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.TokenPicker-optionName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--font-size-small, 12px);
+  line-height: 1.3;
+}
+
+.TokenPicker-optionValue {
+  font-size: 10px;
+  color: var(--theme-color-fg-default-shy);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.2;
+}
+
+.TokenPicker-customBadge {
+  flex-shrink: 0;
+  font-size: 9px;
+  color: var(--theme-color-primary);
+  opacity: 0.7;
+}
+
+.TokenPicker-checkmark {
+  flex-shrink: 0;
+  font-size: 10px;
+  color: var(--theme-color-primary);
+  line-height: 1;
+}
