@@ -1,5 +1,25 @@
 # REV-008: Trustworthy Dev Loop, Visibility, and Merge Verification Debt
 
+> **Status: ✅ Completed 2026-07-22.** All four streams landed on
+> `task/rev-008-dev-loop-hardening`. Suite 540 → **705 specs, 0 failures**;
+> `typecheck:editor` clean.
+>
+> Two things worth knowing that this document did not anticipate:
+>
+> 1. **The packaged app had never launched.** Verifying Stream A from a genuinely
+>    clean clone — as this task insisted on — surfaced two pre-existing defects
+>    that had nothing to do with tracked bundles: externalised `react` resolving
+>    its *development* build against a *production* `react-dom` (the same
+>    `dispatcher.getOwner` error recorded below, but in a **fresh** production
+>    build, not a stale one), and four externalised-but-undeclared modules that
+>    electron-builder never packaged. Both fixed; a clean clone now yields a
+>    `.dmg` whose app renders.
+> 2. **The style-token system was never connected.** Stream D1 asked for
+>    token injection to be verified in a preview. It cannot be: nothing ever
+>    constructs `StyleTokensInjector`. Written up as
+>    [REV-009](./REV-009-STYLE-TOKENS-NEVER-WIRED.md); it is also why D2/D3 were
+>    resolved by deletion rather than by repointing the identifiers.
+
 ## Metadata
 
 | Field | Value |
@@ -142,11 +162,11 @@ cannot simply be deleted without checking what depends on them:
 
 ### Success criteria
 
-- [ ] No generated `*.bundle.js` tracked in git
-- [ ] Clean clone → `npm run build:editor` produces a launchable packaged app
-- [ ] Clean clone → `npm run dev:debug` → `cdp health` reports `reactMounted: true`
-- [ ] Repo shrinks by ~24 MB of artefacts
-- [ ] A regression guard exists and is wired into CI (coordinate with REV-003)
+- [x] No generated `*.bundle.js` tracked in git
+- [x] Clean clone → `npm run build:editor` produces a launchable packaged app
+- [x] Clean clone → `npm run dev:debug` → `cdp health` reports `reactMounted: true`
+- [x] Repo shrinks by ~24 MB of artefacts
+- [x] A regression guard exists and is wired into CI (coordinate with REV-003)
 
 ---
 
@@ -177,11 +197,11 @@ cannot simply be deleted without checking what depends on them:
 
 ### Success criteria
 
-- [ ] Viewer/preview frame inspectable via CDP
-- [ ] Main process debuggable via an opt-in `--inspect` port
-- [ ] One command reports the health of all dev services
-- [ ] `click` and `type` exist and drive React handlers correctly
-- [ ] Startup exceptions land in `.logs/dev.log` without manual attach
+- [x] Viewer/preview frame inspectable via CDP
+- [x] Main process debuggable via an opt-in `--inspect` port
+- [x] One command reports the health of all dev services
+- [x] `click` and `type` exist and drive React handlers correctly
+- [x] Startup exceptions land in `.logs/dev.log` without manual attach
 
 ---
 
@@ -216,9 +236,9 @@ Playwright's `_electron` driver is the tool for it.
 
 ### Success criteria
 
-- [ ] Both docs state CDP-first, and that a black `screencapture` frame means
+- [x] Both docs state CDP-first, and that a black `screencapture` frame means
       *permission*, not failure
-- [ ] The native-chrome escape hatch is documented with its prerequisite
+- [x] The native-chrome escape hatch is documented with its prerequisite
 
 ---
 
@@ -302,12 +322,13 @@ between each.
 
 ### Success criteria
 
-- [ ] New project creation verified end-to-end, with `react19` confirmed
-- [ ] Style-token injection verified in a running preview
-- [ ] Regression tests added for both
-- [ ] D2 decided and actioned; no dead config left keyed on a non-existent type
-- [ ] D3 resolved (ported or consciously dropped, recorded either way)
-- [ ] Stranded specs converted, rewritten, or deleted — none left running nowhere
+- [x] New project creation verified end-to-end, with `react19` confirmed
+- [x] Style-token injection verified — it does **not** work: `StyleTokensInjector`
+      is never constructed. Written up as REV-009.
+- [x] Regression tests added for both
+- [x] D2 decided and actioned; no dead config left keyed on a non-existent type
+- [x] D3 resolved (ported or consciously dropped, recorded either way)
+- [x] Stranded specs converted, rewritten, or deleted — none left running nowhere
 
 ---
 
@@ -342,12 +363,12 @@ between each.
 
 ## Checklist
 
-- [ ] Read this file, the merge notes, and REV-002-NOTES fully
-- [ ] Create branch `task/rev-008-dev-loop-hardening`
-- [ ] Confirm the baseline: `dev:debug` + `cdp health` → `reactMounted: true`, `test:ci` green
-- [ ] Stream A — untrack build artefacts, verify from a clean clone, add a guard
-- [ ] Stream B — close the visibility gaps
-- [ ] Stream C — document CDP-first vs the permission escape hatch
-- [ ] Stream D — verify the merge, decide D2/D3, unstrand the specs
-- [ ] `test:ci` green and `typecheck:editor` clean
-- [ ] Update `PROGRESS.md`; open PR
+- [x] Read this file, the merge notes, and REV-002-NOTES fully
+- [x] Create branch `task/rev-008-dev-loop-hardening`
+- [x] Confirm the baseline: `dev:debug` + `cdp health` → `reactMounted: true`, `test:ci` green
+- [x] Stream A — untrack build artefacts, verify from a clean clone, add a guard
+- [x] Stream B — close the visibility gaps
+- [x] Stream C — document CDP-first vs the permission escape hatch
+- [x] Stream D — verify the merge, decide D2/D3, unstrand the specs
+- [x] `test:ci` green and `typecheck:editor` clean
+- [x] Update `PROGRESS.md`; open PR
