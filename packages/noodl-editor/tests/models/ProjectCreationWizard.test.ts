@@ -8,7 +8,6 @@
  * If the context logic changes, update both files.
  */
 
-import { describe, it, expect } from '@jest/globals';
 
 // ---- Step sequencing (mirrors WizardContext.getStepSequence) ---------------
 

@@ -6,7 +6,6 @@
  * field type validation, warnings for unknown types/versions.
  */
 
-import { describe, it, expect, beforeEach } from '@jest/globals';
 
 import { SchemaParser } from '../../src/editor/src/models/UBA/SchemaParser';
 import type { ParseResult } from '../../src/editor/src/models/UBA/types';

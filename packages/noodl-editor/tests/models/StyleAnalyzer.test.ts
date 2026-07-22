@@ -5,11 +5,18 @@
  * and suggestion generation — without touching Electron or the real ProjectModel.
  */
 
-import { describe, it, expect, beforeEach, jest } from '@jest/globals';
-
+import { ProjectModel } from '../../src/editor/src/models/projectmodel';
 import { StyleAnalyzer } from '../../src/editor/src/services/StyleAnalyzer/StyleAnalyzer';
 
-// ─── Mock ProjectModel before importing StyleAnalyzer ───────────────────────
+// ─── Stub ProjectModel ──────────────────────────────────────────────────────
+//
+// This spec was written for Jest and used `jest.mock` on the projectmodel
+// module. The editor suite is Jasmine (see DEBUG-INFRASTRUCTURE.md), which has
+// no module mocking — and assigning `ProjectModel.instance` is not an option
+// either, because its setter registers the value with NodeLibrary and would do
+// real work on a fake. StyleAnalyzer only ever reads `ProjectModel.instance` at
+// call time, so spying on the getter is enough, and Jasmine restores it after
+// each spec.
 
 type MockNode = {
   id: string;
@@ -18,21 +25,6 @@ type MockNode = {
 };
 
 let mockNodes: MockNode[] = [];
-
-jest.mock('@noodl-models/projectmodel', () => ({
-  ProjectModel: {
-    instance: {
-      getComponents: () => [
-        {
-          forEachNode: (cb: (node: MockNode) => void) => {
-            mockNodes.forEach(cb);
-          }
-        }
-      ],
-      findNodeWithId: (id: string) => mockNodes.find((n) => n.id === id) ?? null
-    }
-  }
-}));
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -49,6 +41,19 @@ function resetNodes(...nodes: MockNode[]) {
 describe('StyleAnalyzer', () => {
   beforeEach(() => {
     mockNodes = [];
+
+    const fakeProject = {
+      getComponents: () => [
+        {
+          forEachNode: (cb: (node: MockNode) => void) => {
+            mockNodes.forEach(cb);
+          }
+        }
+      ],
+      findNodeWithId: (id: string) => mockNodes.find((n) => n.id === id) ?? null
+    };
+
+    spyOnProperty(ProjectModel, 'instance', 'get').and.returnValue(fakeProject as never);
   });
 
   // ─── Color Detection ───────────────────────────────────────────────────────

@@ -67,8 +67,14 @@ if (isDev) {
 // It throws before first paint, so the packaged app opened a black window. The
 // renderer inherits this env, which is how index.html reads devMode above.
 // REV-008 — verified with `npm run cdp -- health` against a packaged build.
-if (!isDev && !process.env.NODE_ENV) {
-  process.env.NODE_ENV = 'production';
+// The bracket access is load-bearing. In a production build webpack's
+// DefinePlugin substitutes the literal expression `process.env.NODE_ENV` with
+// "production" at compile time, so the dotted form compiles to `"production" =
+// "production"` and the whole branch is dropped as dead code — the fix silently
+// does not ship. DefinePlugin does not touch computed member access.
+const NODE_ENV = 'NODE_ENV';
+if (!isDev && !process.env[NODE_ENV]) {
+  process.env[NODE_ENV] = 'production';
 }
 
 // Opt-in Chrome DevTools Protocol endpoint. With this set, the renderer can be

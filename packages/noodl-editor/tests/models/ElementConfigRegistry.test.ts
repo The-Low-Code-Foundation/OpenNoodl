@@ -5,7 +5,6 @@
  * getVariantNames, applyDefaults.
  */
 
-import { describe, it, expect } from '@jest/globals';
 
 import { ElementConfigRegistry, NodeModelLike } from '../../src/editor/src/models/ElementConfigs/ElementConfigRegistry';
 

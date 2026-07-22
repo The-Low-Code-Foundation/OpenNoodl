@@ -8,7 +8,6 @@
  * - evaluateCondition — all 6 operators
  */
 
-import { describe, expect, it } from '@jest/globals';
 
 import { evaluateCondition, getNestedValue, isEmpty, setNestedValue } from '../../src/editor/src/models/UBA/Conditions';
 
