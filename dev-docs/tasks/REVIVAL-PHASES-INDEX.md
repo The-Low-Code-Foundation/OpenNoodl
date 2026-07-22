@@ -10,7 +10,7 @@ These nine phases document the unlimited-budget revival plan. They sit alongside
 
 | Phase | Track | Tasks | Focus | Start when |
 |---|---|---|---|---|
-| [12 — Reanimation](./phase-12-reanimation/) | Horizon 0 | REV-001…007 | Green build, working tests, CI, current Electron, shipped v0 | **Now** |
+| [12 — Reanimation](./phase-12-reanimation/) | Horizon 0 | REV-001…008 | Green build, working tests, CI, current Electron, shipped v0, trustworthy dev loop | **Now** |
 | [13 — Format & AI Substrate](./phase-13-format-ai-substrate/) | A | SUB-001…008 | v2 format in real use, node catalog, semantic validator, graph diff, MCP server | After REV-001/002 |
 | [14 — Editor Platform Health](./phase-14-editor-platform-health/) | B | PLAT-001…005 | Canvas decomposition, retire jQuery, type the runtime | After REV-003 |
 | [15 — AI Collaboration](./phase-15-ai-collaboration/) | C | AIX-001…005 | Modern AI client, the authoring loop, graph-native review, explain mode | After Phase 13 core |
