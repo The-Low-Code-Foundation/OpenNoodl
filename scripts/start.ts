@@ -98,14 +98,34 @@ switch (process.platform) {
 console.log('---');
 
 // Start processes
+const childEnv: NodeJS.ProcessEnv = {
+  ...process.env,
+  LOCAL_GIT_DIRECTORY,
+  LOCAL_GIT_TRAMPOLINE_DIRECTORY
+};
+
+// Electron boots as a plain Node process when this is set — VS Code sets it in
+// integrated terminals and in the extension host — so `electron.app` is
+// undefined and the editor dies before opening a window. Same failure mode the
+// test harness hit (REV-002).
+delete childEnv.ELECTRON_RUN_AS_NODE;
+
 const processOptions = {
   cwd: CWD,
-  env: {
-    ...process.env,
-    LOCAL_GIT_DIRECTORY,
-    LOCAL_GIT_TRAMPOLINE_DIRECTORY
-  }
+  env: childEnv
 };
+
+// The dev flow only ever watched the renderer, so src/main/main.bundle.js — the
+// actual Electron entry point — kept whatever a production build last left behind.
+// Main-process edits did nothing in dev until someone ran a full build. Rebuild it
+// up front so `npm run dev` always runs the current main process.
+console.log('> Building the Electron main process...');
+execSync('npx lerna exec --scope noodl-editor -- npm run build:main:dev', {
+  cwd: CWD,
+  stdio: 'inherit',
+  env: childEnv
+});
+console.log('---');
 
 const argBuildViewers = process.argv.includes('--build-viewer');
 const viewerScript = argBuildViewers ? 'build' : 'start';

@@ -59,10 +59,17 @@ module.exports = merge(shared, {
         console.log(`🔥 BUILD TIMESTAMP: ${new Date().toISOString()}`);
         console.log('   (Check console for this timestamp to verify fresh code is running)\n');
 
+        // ELECTRON_RUN_AS_NODE makes the Electron binary boot as plain Node, so
+        // `electron.app` is undefined and the editor never opens a window. VS Code
+        // sets it in integrated terminals — strip it here as well as in start.ts,
+        // since this config is also reachable via `npm run start` in the package.
+        const electronEnv = { ...process.env };
+        delete electronEnv.ELECTRON_RUN_AS_NODE;
+
         child_process
           .spawn('npm', ['run', 'start:_dev'], {
             shell: true,
-            env: process.env,
+            env: electronEnv,
             stdio: 'inherit'
           })
           .on('close', (code) => {

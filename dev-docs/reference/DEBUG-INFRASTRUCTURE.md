@@ -185,6 +185,67 @@ Connections "pulse" when data flows through them:
 
 ---
 
+## Running and Inspecting the Editor
+
+The editor can be driven and inspected entirely from a terminal, via the Chrome
+DevTools Protocol. No window-watching, and no OS screen-recording permission —
+`Page.captureScreenshot` renders through the compositor.
+
+```bash
+npm run dev:debug          # full stack + CDP on :9222, logs to .logs/dev.log
+npm run cdp -- health      # is React actually mounted?
+npm run cdp -- console     # stream console + uncaught exceptions
+npm run cdp -- screenshot shot.png
+npm run cdp -- eval "location.href"
+npm run cdp -- dom "<selector>" [text|html]
+npm run cdp -- wait "<selector>" [timeoutMs]
+```
+
+`health` is the one to reach for first: it reports whether `#root` has children,
+which distinguishes "window opened" from "app actually rendered".
+
+`.logs/dev.log` aggregates the viewer, cloud runtime, main process, and the
+renderer console (mirrored into main stdout in dev). Services: web server 8574,
+cloud functions 8577, renderer dev server 8080, CDP 9222.
+
+Tooling lives in `scripts/devtools/` (`dev-debug.js`, `cdp.js`). The
+`.claude/skills/run-editor` skill documents the same workflow for agents.
+
+### The two stale-bundle traps
+
+Both cost significant debugging time before they were understood.
+
+**Renderer.** `src/editor/index.html` picks its bundle at runtime:
+
+```js
+const path = process.env.devMode !== 'yes' ? '.' : 'http://localhost:8080/src/editor';
+```
+
+Nothing ever set `devMode` to `'yes'`, so the editor always loaded
+`./index.bundle.js` from disk while the webpack dev server served fresh code to
+nobody. HMR did nothing and code changes were invisible. Worse, a leftover
+*production* bundle pairs production react-dom with the externalised
+*development* react, which throws before first paint:
+
+```
+TypeError: dispatcher.getOwner is not a function
+  at getOwner (node_modules/react/cjs/react.development.js:416)
+  at createDialogLayer (router.tsx:59)
+```
+
+`getOwner` is dev-only ownership tracking; production react-dom never installs
+it. The window opens black. `main.js` now sets `devMode = 'yes'` when `--dev` is
+passed.
+
+**Main process.** `src/main/main.bundle.js` is the Electron entry point, and
+`npm run dev` only ever ran webpack-dev-server for the renderer — there was no
+dev config for main at all. The bundle sat unchanged for months while
+`src/main/main.js` was edited, so main-process changes did nothing in dev.
+`webpack.main.dev.js` now exists and `scripts/start.ts` rebuilds it on every dev
+launch.
+
+If a change seems to have no effect, suspect a stale bundle first.
+
 ## Editor Test Harness
 
 The editor suite does not run under Node + jsdom. A webpack build produces a test

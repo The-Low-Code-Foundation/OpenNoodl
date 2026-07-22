@@ -21,6 +21,26 @@ app.commandLine.appendSwitch('disable-site-isolation-trials');
 
 var args = process.argv || [];
 
+const isDev = args.includes('--dev');
+
+// src/editor/index.html loads the renderer bundle from the webpack dev server
+// only when devMode === 'yes'; otherwise it falls back to ./index.bundle.js on
+// disk. Nothing ever set this, so `npm run dev` silently ran whatever stale
+// bundle happened to be lying in src/editor — code changes never took effect,
+// and a leftover production bundle mixed production react-dom with the external
+// development react, which crashes on startup with
+// "dispatcher.getOwner is not a function" and leaves a blank window.
+if (isDev) {
+  process.env.devMode = 'yes';
+}
+
+// Opt-in Chrome DevTools Protocol endpoint. With this set, the renderer can be
+// inspected headlessly — evaluate JS, stream console output, capture
+// screenshots — via scripts/devtools/cdp.js. See dev-docs/reference/DEBUG-INFRASTRUCTURE.md.
+if (process.env.NOODL_REMOTE_DEBUG_PORT) {
+  app.commandLine.appendSwitch('remote-debugging-port', process.env.NOODL_REMOTE_DEBUG_PORT);
+}
+
 function launchApp() {
   const { Menu, BrowserWindow, ipcMain, shell } = electron;
   const Config = require('../shared/config/config');
@@ -169,6 +189,30 @@ function launchApp() {
     });
 
     require('@electron/remote/main').enable(win.webContents);
+
+    // Renderer output is invisible from the terminal by default, so a renderer
+    // that dies on startup looks identical to one that booted fine. Mirror it
+    // into the main process stdout so `npm run dev` logs tell the whole story.
+    if (isDev || process.env.NOODL_DEV_LOGS === '1') {
+      const levels = ['debug', 'info', 'warn', 'error'];
+      win.webContents.on('console-message', (_event, level, message, line, sourceId) => {
+        const tag = levels[level] || 'log';
+        const where = sourceId ? ` (${sourceId.split('/').pop()}:${line})` : '';
+        console.log(`[renderer:${tag}]${where} ${message}`);
+      });
+
+      win.webContents.on('render-process-gone', (_event, details) => {
+        console.error(`[renderer] process gone: ${details.reason} (exitCode ${details.exitCode})`);
+      });
+
+      win.webContents.on('did-fail-load', (_event, code, description, url) => {
+        console.error(`[renderer] failed to load ${url}: ${description} (${code})`);
+      });
+
+      win.webContents.on('preload-error', (_event, preloadPath, error) => {
+        console.error(`[renderer] preload error in ${preloadPath}: ${error}`);
+      });
+    }
 
     if (!Config.devMode) {
       AutoUpdater.setupAutoUpdate(win);

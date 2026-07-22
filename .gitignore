@@ -163,3 +163,9 @@ packages/noodl-editor/tests/*.svg
 packages/noodl-editor/src/external
 .github/.secrets
 packages/noodl-viewer-cloud/publish
+
+# Local dev/debug logs (scripts/devtools/dev-debug.js)
+.logs/
+
+# Dev main-process source map (webpack.main.dev.js)
+packages/noodl-editor/src/main/main.bundle.js.map
