@@ -185,6 +185,72 @@ Connections "pulse" when data flows through them:
 
 ---
 
+## Editor Test Harness
+
+The editor suite does not run under Node + jsdom. A webpack build produces a test
+bundle, Electron launches with `test.js` as its main entry, and Jasmine runs the
+specs in the renderer — the real host environment, because much of the editor
+touches Electron APIs, the filesystem, and the DOM.
+
+### Running it
+
+```bash
+npm run test:editor   # webpack dev server on :8081, visible Electron window + DevTools
+npm run test:ci       # bundle built to disk, hidden window, no dev server
+```
+
+Both exit non-zero on any spec failure, on a renderer crash, if no specs ran at
+all, or if the run does not report results within 15 minutes.
+
+### Failure signature: `Cannot read properties of undefined (reading 'on')`
+
+```
+/…/packages/noodl-editor/test.js:51
+app.on('ready', function () {
+    ^
+TypeError: Cannot read properties of undefined (reading 'on')
+Node.js v20.15.1
+```
+
+This means Electron booted as a **plain Node process** rather than as a main
+process, so `require('electron')` returned the CLI shim (a path string) instead of
+the API object. The cause is `ELECTRON_RUN_AS_NODE=1` in the environment — **VS
+Code sets this in integrated terminals and in the extension host**, so the suite
+fails inside the editor and passes in a bare terminal on the same machine.
+
+`packages/noodl-editor/scripts/run-electron-tests.js` is the launcher that exists
+to strip that variable; `scripts/test-editor.ts` strips it from the child
+environment too. `test.js` now detects the condition and prints an explicit
+message instead of the `TypeError` above.
+
+To check the environment directly:
+
+```bash
+env | grep ELECTRON_RUN_AS_NODE
+```
+
+### Moving parts
+
+| File | Role |
+|------|------|
+| `scripts/test-editor.ts` | Root entry; sets `LOCAL_GIT_DIRECTORY`, strips `ELECTRON_RUN_AS_NODE`, propagates the exit code |
+| `packages/noodl-editor/scripts/run-electron-tests.js` | Spawns the Electron binary directly in main-process mode |
+| `packages/noodl-editor/test.js` | Electron main process; owns the launch-mode guard, the watchdog, and the exit code |
+| `packages/noodl-editor/tests/SpecRunner.html` | Renderer entry; Jasmine reporter that sends results back over IPC |
+| `webpackconfigs/webpack.test.js` | Dev-server build; spawns Electron from `onListening` |
+| `webpackconfigs/webpack.test-ci.js` | Disk build for CI; no dev server |
+
+### Writing specs
+
+Specs run under **Jasmine, not Jest**. Two idioms bite:
+
+- `import { describe, it, expect } from '@jest/globals'` throws at module load and
+  takes down the whole run. Use the Jasmine globals — no import needed.
+- Jest's `toThrow('substring')` matches a substring; Jasmine's compares the whole
+  thrown value. Use `toThrowError(/pattern/)`.
+
+---
+
 ## References
 
 - `packages/noodl-editor/src/editor/src/utils/debuginspector.js`

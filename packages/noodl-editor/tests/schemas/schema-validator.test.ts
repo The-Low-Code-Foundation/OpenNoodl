@@ -639,13 +639,14 @@ describe('SchemaValidator', () => {
     it('throws for invalid data', () => {
       expect(() => {
         SchemaValidator.instance.validateOrThrow(SCHEMA_IDS.COMPONENT, { name: 'Header' });
-      }).toThrow('Schema validation failed');
+        // Jasmine's toThrow compares the whole thrown value; toThrowError takes a pattern.
+      }).toThrowError(/Schema validation failed/);
     });
 
     it('includes context in the error message', () => {
       expect(() => {
         SchemaValidator.instance.validateOrThrow(SCHEMA_IDS.COMPONENT, {}, 'components/Header/component.json');
-      }).toThrow('[components/Header/component.json]');
+      }).toThrowError(/\[components\/Header\/component\.json\]/);
     });
   });
 

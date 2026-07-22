@@ -30,9 +30,59 @@
 
   <script type="text/javascript">
     jasmine.DEFAULT_TIMEOUT_INTERVAL = 60 * 1000;
+
+    // Jasmine randomizes spec order by default. Parts of this suite share global
+    // state (ProjectModel.instance, NodeLibrary registration) and pass or fail
+    // depending on the seed, which makes the run useless as a merge gate.
+    // Pin the order until those dependencies are untangled — see REV-002 NOTES.
+    jasmine.getEnv().configure({ random: false });
+
+    // Report results back to the main process so the run exits with a real status
+    // code. Without this the harness is silently green no matter what happens.
+    (function () {
+      const { ipcRenderer } = require('electron');
+      const failures = [];
+      let specCount = 0;
+
+      jasmine.getEnv().addReporter({
+        specDone: function (result) {
+          specCount++;
+          if (result.status === 'failed') {
+            failures.push({
+              fullName: result.fullName,
+              messages: (result.failedExpectations || []).map((e) => e.message)
+            });
+          }
+        },
+        jasmineDone: function (result) {
+          ipcRenderer.send('noodl-test-results', {
+            overallStatus: result.overallStatus,
+            totalCount: specCount,
+            failedCount: failures.length,
+            failures
+          });
+        }
+      });
+    })();
   </script>
 
-  <script defer type="text/javascript" src="http://localhost:8081/index.bundle.js" onload="document.querySelector('#loader').remove()"></script>
+  <script type="text/javascript">
+    // In CI the bundle is written to disk by webpack-cli; locally it is served by
+    // the webpack dev server on :8081.
+    // document.write (not appendChild) so the tag is parser-inserted and `defer`
+    // is honoured — specs must be registered before boot.js runs on window load.
+    (function () {
+      const src = process.env.NOODL_TEST_CI === '1' ? 'index.bundle.js' : 'http://localhost:8081/index.bundle.js';
+      document.write(
+        '<script defer type="text/javascript" src="' +
+          src +
+          '" onload="document.querySelector(\'#loader\')?.remove()"' +
+          ' onerror="require(\'electron\').ipcRenderer.send(\'noodl-test-fatal\', \'Failed to load ' +
+          src +
+          '\')"><\/script>'
+      );
+    })();
+  </script>
 </head>
 
 <body>

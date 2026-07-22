@@ -149,6 +149,14 @@ export class ParameterValueResolver {
       return undefined;
     }
 
+    // An absent value is not zero — Number(null) is 0, which would silently turn
+    // "no value" into a real 0. resolve() also maps a null/undefined expression
+    // fallback to '', so the raw value has to be checked rather than `resolved`.
+    const rawValue = isExpressionParameter(paramValue) ? paramValue.fallback : paramValue;
+    if (rawValue === null || rawValue === undefined) {
+      return undefined;
+    }
+
     const num = Number(resolved);
     return isNaN(num) ? undefined : num;
   }

@@ -25,12 +25,25 @@ console.log(
 );
 console.log("---");
 
-execSync("npx lerna exec --scope noodl-editor -- npm run test", {
-  cwd: CWD,
-  stdio: "inherit",
-  env: {
-    ...process.env,
-    LOCAL_GIT_DIRECTORY,
-    LOCAL_GIT_TRAMPOLINE_DIRECTORY,
-  },
-});
+// `--ci` builds the bundle to disk and runs Electron with a hidden window.
+const script = process.argv.includes("--ci") ? "test:ci" : "test";
+
+const env: NodeJS.ProcessEnv = {
+  ...process.env,
+  LOCAL_GIT_DIRECTORY,
+  LOCAL_GIT_TRAMPOLINE_DIRECTORY,
+};
+
+// Electron boots as a plain Node process when this is set — VS Code sets it in
+// integrated terminals — which makes `electron.app` undefined before any spec runs.
+delete env.ELECTRON_RUN_AS_NODE;
+
+try {
+  execSync(`npx lerna exec --scope noodl-editor -- npm run ${script}`, {
+    cwd: CWD,
+    stdio: "inherit",
+    env,
+  });
+} catch (err: any) {
+  process.exit(typeof err?.status === "number" ? err.status : 1);
+}

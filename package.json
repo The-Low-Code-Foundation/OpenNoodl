@@ -34,6 +34,7 @@
     "dev:clean": "npm run clean:all && npm run dev",
     "start": "ts-node -P ./scripts/tsconfig.json ./scripts/start.ts -- --build-viewer",
     "test:editor": "ts-node -P ./scripts/tsconfig.json ./scripts/test-editor.ts",
+    "test:ci": "ts-node -P ./scripts/tsconfig.json ./scripts/test-editor.ts --ci",
     "test:platform": "lerna exec --scope @noodl/platform-node -- npm test",
     "typecheck": "tsc --noEmit",
     "typecheck:core-ui": "tsc -p packages/noodl-core-ui --noEmit",

@@ -7,8 +7,8 @@
  * @module noodl-editor/tests/utils
  */
 
-import { describe, it, expect } from '@jest/globals';
-
+// describe/it/expect come from Jasmine globals — the editor suite runs under the
+// Electron/Jasmine runner, and importing @jest/globals throws at module load.
 import { createExpressionParameter, ExpressionParameter } from '../../src/editor/src/models/ExpressionParameter';
 import { ParameterValueResolver, ValueContext } from '../../src/editor/src/utils/ParameterValueResolver';
 
@@ -84,7 +84,7 @@ describe('ParameterValueResolver', () => {
       it('should handle objects that are not expression parameters', () => {
         const regularObj = { foo: 'bar' };
         // Should return as-is since it's not an expression parameter
-        expect(ParameterValueResolver.resolve(regularObj, ValueContext.Display)).toBe(regularObj);
+        expect(ParameterValueResolver.resolve(regularObj, ValueContext.Display)).toBe(regularObj as any);
       });
 
       it('should default to fallback for unknown context', () => {
