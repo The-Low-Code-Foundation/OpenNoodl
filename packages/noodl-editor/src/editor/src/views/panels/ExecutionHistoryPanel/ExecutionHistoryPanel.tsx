@@ -1,6 +1,6 @@
 import React, { useCallback, useState } from 'react';
 
-import { EventDispatcher } from '../../../../shared/utils/EventDispatcher';
+import { EventDispatcher } from '../../../../../shared/utils/EventDispatcher';
 import { ExecutionDetail } from './components/ExecutionDetail/ExecutionDetail';
 import { ExecutionFilters } from './components/ExecutionFilters/ExecutionFilters';
 import { ExecutionList } from './components/ExecutionList/ExecutionList';

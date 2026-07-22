@@ -81,8 +81,9 @@ try {
   // it could be useful for debugging.
 
   if (process.platform === 'darwin') {
-    // NOTE: /node_modules/app-builder-lib/templates/entitlements.mac.plist is missing
-    execSync(`ls /node_modules/app-builder-lib/templates`, {
+    // NOTE: helps diagnose a missing entitlements.mac.plist template
+    const appBuilderLibDir = path.dirname(require.resolve('app-builder-lib/package.json'));
+    execSync(`ls ${path.join(appBuilderLibDir, 'templates')}`, {
       stdio: 'inherit',
       env: process.env
     });
