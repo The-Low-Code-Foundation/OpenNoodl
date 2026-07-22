@@ -1,0 +1,65 @@
+# Phase 13: Format & AI Substrate — Progress Tracker
+
+**Created:** 2026-07-22 (from [NOODL-REVIVAL-ROADMAP.md](../../reviews/NOODL-REVIVAL-ROADMAP.md), Track A)
+**Last Updated:** 2026-07-22
+**Overall Status:** 🔴 Not Started
+
+---
+
+## Quick Summary
+
+| Metric       | Value  |
+| ------------ | ------ |
+| Total Tasks  | 8      |
+| Completed    | 0      |
+| In Progress  | 0      |
+| Not Started  | 8      |
+| **Progress** | **0%** |
+
+---
+
+## Foundation (already done, outside this phase)
+
+STRUCT-001..004 from Phase 10A are **complete** (Feb 2026 sprint) and are this phase's
+foundation:
+
+| Task | Name | Where it lives |
+|------------|--------------------------|-------------------------------------------------------|
+| STRUCT-001 | JSON Schema Definition | `packages/noodl-editor/src/editor/src/schemas/` (8 schemas + Ajv validator) |
+| STRUCT-002 | Export Engine Core | `src/editor/src/io/ProjectExporter.ts` (pure, no fs) |
+| STRUCT-003 | Import Engine Core | `src/editor/src/io/ProjectImporter.ts` (pure, no fs) |
+| STRUCT-004 | Editor Format Detection | `src/editor/src/io/ProjectFormatDetector.ts` |
+
+~149 tests in `packages/noodl-editor/tests/io/` (68 Exporter, 55 Importer incl. ~18
+round-trip, 26 Detector; none skipped). Caveat: these classes have **zero application
+call sites** — they are exercised only from tests. Making them real is SUB-001's job.
+
+---
+
+## Task Status
+
+| Task | Name | Est. | Status |
+|---------|--------------------------------|--------|----------------|
+| SUB-001 | Editor v2 Integration (STRUCT-005/006) | 3-4 wks | 🔴 Not Started |
+| SUB-002 | Round-Trip Fidelity | 1-2 wks | 🔴 Not Started |
+| SUB-003 | Migration Wizard & Real-Project Tests (STRUCT-007/008) | 3-4 wks | 🔴 Not Started |
+| SUB-004 | Node Catalog Generator | 1-2 wks | 🔴 Not Started |
+| SUB-005 | Catalog Enrichment | 3-4 wks | 🔴 Not Started |
+| SUB-006 | Semantic Validator | 2-3 wks | 🔴 Not Started |
+| SUB-007 | Graph-Native Git | 4-6 wks | 🔴 Not Started |
+| SUB-008 | Noodl MCP Server | 3-4 wks | 🔴 Not Started |
+
+---
+
+## Gate G1 (phase exit)
+
+- [ ] An external AI agent, via MCP + catalog, authors a valid new page into a real
+      project without ingesting the whole project, and the semantic validator + editor
+      both accept it.
+
+---
+
+## Change Log
+
+- **2026-07-22** — Phase created from the revival roadmap (Track A, tasks A-01..A-08
+  mapped to SUB-001..008). All tasks Not Started.
