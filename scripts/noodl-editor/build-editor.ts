@@ -71,13 +71,10 @@ import { getCurrentPlatform } from '../helper';
   //       It basically means that some package is not relative to this path.
   console.log("--- Run 'npm install' ...");
 
-  if (platform === "darwin") {
-    execSync(`npm install electron-notarize`, {
-      stdio: 'inherit',
-      env: process.env
-    })
-  }
-  
+  // NOTE: a `npm install electron-notarize` used to run here for darwin. It
+  // wrote the dependency into the root package.json, so every macOS build left
+  // the working tree dirty — and nothing ever required it: build/macos-notarize.js
+  // is a no-op stub. Removed in REV-008.
   execSync(`npm install --arch=${arch} --scope noodl-editor`, {
     stdio: 'inherit',
     env: process.env
