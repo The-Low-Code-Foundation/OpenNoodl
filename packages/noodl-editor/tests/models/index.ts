@@ -10,3 +10,4 @@ export * from './UBASchemaParser.test';
 export * from './ProjectCreationWizard.test';
 export * from './StyleAnalyzer.test';
 export * from './EmbeddedTemplate.test';
+export * from './StyleTokenCoverage.test';

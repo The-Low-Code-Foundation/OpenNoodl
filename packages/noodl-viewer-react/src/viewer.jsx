@@ -8,7 +8,6 @@ import NoodlJSAPI from './noodl-js-api';
 import projectSettings from './project-settings';
 import { createNodeFromReactComponent } from './react-component-node';
 import registerNodes from './register-nodes';
-import { StyleTokensInjector } from './style-tokens-injector';
 import Styles from './styles';
 
 if (typeof window !== 'undefined' && window.NoodlEditor) {
@@ -189,11 +188,6 @@ export default class Viewer extends React.Component {
 
     //make the styles available to all nodes via `this.context.styles`
     noodlRuntime.context.styles = this.styles;
-
-    // Initialize style tokens injector
-    this.styleTokensInjector = new StyleTokensInjector({
-      graphModel: noodlRuntime.graphModel
-    });
 
     this.state.waitingForExport = !this.runningDeployed;
 

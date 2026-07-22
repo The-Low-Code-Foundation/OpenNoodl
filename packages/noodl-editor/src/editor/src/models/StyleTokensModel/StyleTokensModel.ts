@@ -18,6 +18,7 @@ import { ProjectModel } from '../projectmodel';
 import { consumePendingPreset } from '../StylePresets';
 import { UndoActionGroup, UndoQueue } from '../undo-queue-model';
 import { buildDefaultTokenMap } from './DefaultTokens';
+import { buildEffectiveTokens, readStoredTokens, STYLE_TOKENS_METADATA_KEY } from './ProjectTokenCss';
 import {
   StyleTokenRecord,
   StyleTokensData,
@@ -28,7 +29,7 @@ import {
 } from './TokenCategories';
 import { TokenResolver } from './TokenResolver';
 
-const METADATA_KEY = 'designTokens';
+const METADATA_KEY = STYLE_TOKENS_METADATA_KEY;
 const CURRENT_VERSION = 1;
 
 export class StyleTokensModel extends Model {
@@ -322,16 +323,9 @@ export class StyleTokensModel extends Model {
    * Build the effective token map by merging defaults with project overrides.
    */
   private _buildEffectiveTokens(): void {
-    // Start with all defaults
-    this._tokens = buildDefaultTokenMap() as Map<string, StyleTokenRecord>;
-
-    // Load stored custom overrides from project metadata
-    const stored = this._loadStored();
-    if (!stored) return;
-
-    for (const customToken of stored.customTokens) {
-      this._tokens.set(customToken.name, customToken);
-    }
+    // Shared with the exporter (ProjectTokenCss) so the preview and a deployed
+    // build can never disagree about what `:root` contains. REV-009.
+    this._tokens = buildEffectiveTokens(this._loadStored());
   }
 
   /**
@@ -362,10 +356,7 @@ export class StyleTokensModel extends Model {
   }
 
   private _loadStored(): StyleTokensData | null {
-    if (!ProjectModel.instance) return null;
-    const data = ProjectModel.instance.getMetaData(METADATA_KEY);
-    if (!data || typeof data !== 'object') return null;
-    return data as StyleTokensData;
+    return readStoredTokens(ProjectModel.instance);
   }
 
   private _bindListeners(): void {

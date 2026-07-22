@@ -85,7 +85,125 @@ undefined `var(--surface)` / `var(--space-4)` vocabulary onto the most-used node
 in the product. Tara's `ImageConfig` had the same defect and was not ported.
 `TextConfig`'s own identifier is correct, which is why it is live.
 
-## The decision to make
+## Correction — what was actually true on execution
+
+Two of the three findings above did not survive contact with the code. They were
+written against a **stale duplicate** of the token system, and against a grep
+that missed a `.jsx` file. The record is left intact above; this section is the
+correction.
+
+### There are two StyleTokens directories, and the spec read the dead one
+
+| Directory | Origin | State |
+|---|---|---|
+| `models/StyleTokens/` | commit `188d993`, pre-revival | 10 tokens. **Zero importers.** Genuinely dead. |
+| `models/StyleTokensModel/` | commit `297dfe0`, STYLE-001 proper | ~200 tokens, full Tailwind scale. Live. |
+
+The 10-token vocabulary in finding #2's left-hand column is the dead one.
+`StyleTokensModel` is wired end-to-end in the editor:
+
+```
+StyleTokensModel  →  ProjectDesignTokenContext (mounted in EditorPage)
+                  →  PreviewTokenInjector.attachModel
+                  →  CanvasView dom-ready  →  webview <style id="noodl-design-tokens">
+```
+
+plus a `DesignTokenPanel` registered in `router.setup.ts`.
+
+### The vocabularies already line up — exactly
+
+Finding #2 claimed the configs reference tokens nothing defines. Measured against
+the *live* table: the four `ElementConfig`s reference **46** distinct custom
+properties, and `DefaultTokens.ts` defines **all 46**. Zero missing. Every name
+finding #2 called undefined — `--font-sans`, `--text-base`, `--space-4`,
+`--surface`, `--border-1`, `--muted` — is present.
+
+### The injector *is* constructed
+
+`grep -rn "new StyleTokensInjector" packages/` does match: `viewer.jsx:194`. It
+was constructed on every viewer boot.
+
+### What was genuinely broken
+
+The defect is real but it is one level down from where the spec put it: **the
+deployed/exported runtime had no working token injection.**
+
+- `PreviewTokenInjector` only drives the editor's preview webview. A deployed
+  build never runs it.
+- The viewer's own `StyleTokensInjector` was the only thing running in a deploy,
+  and it was broken three ways: it emitted the *dead* 10-token vocabulary; it
+  read `metadata.styleTokens`, a key nothing writes (`StyleTokensModel` persists
+  under `designTokens`); and its `metadataChanged` listener tested
+  `'styleTokens' in metadata` when `GraphModel` emits `{ key, data }`, so it
+  never fired.
+
+So a Text node's `var(--font-sans)` resolved correctly while you were editing and
+resolved to nothing the moment you deployed — the failure mode least likely to be
+noticed. `StyleTokensModel.generateCss()` even carries the docstring "Used for
+injection into the preview iframe **and deployed projects**"; the second half was
+never built.
+
+## Decision — **A, narrowed**
+
+Finish it. Not the large A the spec imagined (expanding `DefaultTokens.ts` to a
+new scale) — that work is already done and correct. What was missing is the
+export path.
+
+B and C were both rejected on the same ground: the system is not half-built
+scaffolding, it is a shipped, UI-exposed feature (a Design Tokens panel, presets
+at project creation, a style analyser that suggests tokens). Stripping it would
+be deleting working product to fix a bug in one code path.
+
+### What changed
+
+1. **`ProjectTokenCss.ts`** (new) — side-effect-free core: merge defaults with a
+   project's stored overrides, emit the `:root` block. No model lifecycle, so the
+   exporter can call it.
+2. **`HtmlProcessor`** now stamps `<style id="noodl-design-tokens">` into the
+   exported `index.html`, ahead of the user's own head code. This closes the
+   deploy gap for both the `deploy` and `ssr` runtimes, which share the processor.
+3. **`StyleTokensModel._buildEffectiveTokens`** rewritten onto that shared core,
+   so the preview and a deployed build cannot drift apart again.
+4. **Deleted** `packages/noodl-viewer-react/src/style-tokens-injector.ts` and its
+   construction in `viewer.jsx`. Nothing replaces it: the editor path is covered
+   by `PreviewTokenInjector`, the deploy path is now static CSS in the HTML.
+5. **Deleted** the dead `models/StyleTokens/` directory.
+6. **`tests/models/StyleTokenCoverage.test.ts`** (new) — asserts every `var(--x)`
+   any `ElementConfig` stamps is defined in `DefaultTokens`, and that
+   `generateProjectTokenCss` emits the full set and applies overrides. This is
+   the regression guard that would have caught the original drift.
+
+### Incidental finding — `test:ci` needs an artefact it does not build
+
+Not part of this task; recorded because it cost most of the execution time and
+should become its own spec.
+
+On a clean tree `npm run test:ci` fails three Git specs and spawns seven Electron
+windows that each throw:
+
+```
+Unable to find Electron app at .../packages/noodl-editor
+Cannot find module '.../packages/noodl-editor/src/main/main.bundle.js'
+```
+
+`noodl-git` installs a merge driver that shells out to
+`electron <editor-dir> --merge %O %A %B %L` (`core/init.ts`). That needs
+`src/main/main.bundle.js`, which REV-008's `10ea2a8` correctly untracked as
+generated output — but `test:ci` builds only the renderer test bundle, so the
+driver's Electron cannot boot, never writes the merge, and the spec times out
+after 60s.
+
+REV-008 recorded "705 specs, 0 failures" because the bundle was still on disk
+from an earlier `build:editor`. That is precisely the stale-artefact trap REV-008
+was written to close, reappearing one level up: the suite's result now depends on
+whether someone happened to build recently. `npm run build:main:dev` before
+`test:ci` is the workaround; building main as part of `test:ci` is the fix.
+
+Separately, the harness can exit **0 having reported nothing** — observed once
+here when the renderer never sent results. `test.js` guards the `totalCount === 0`
+case but only on the path where results arrive at all.
+
+## The decision to make (original framing)
 
 Three coherent end states. Pick one deliberately; the current state is none of
 them.
@@ -120,13 +238,51 @@ model. Smallest surface left behind.
 4. If option A: verify token injection end-to-end in a preview, not just in a
    unit test. That is the specific gap that let this sit unnoticed.
 
+## Live verification
+
+Done against a running editor (`npm run dev:debug` + CDP), on a throwaway project
+created in a scratchpad and removed afterwards. Step 1's expected result —
+"the `var()` references resolve to nothing" — was **not** reproduced, because the
+preview was never the broken path.
+
+**Preview** (through the webview, the same channel `PreviewTokenInjector` uses):
+
+```
+styleEl:    true          #noodl-design-tokens present
+cssLen:     4787
+--font-sans      → ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", …
+--text-base      → 16px
+--foreground     → rgb(15, 23, 42)
+--leading-normal → 24px
+--space-4        → 16px
+```
+
+**Export** — the real `createIndexPage(ProjectModel.instance, …)`, i.e. the
+production path, against the real `external/deploy/index.html` template:
+
+```
+htmlLen:  6545
+hasBlock: true      <style id="noodl-design-tokens">
+blockLen: 4789
+--font-sans / --text-base / --space-4 all present
+```
+
+Before this task that block did not exist, so the same call would have produced a
+document in which every `var()` an ElementConfig stamped resolved to nothing.
+
 ## Success criteria
 
-- [ ] One of A/B/C chosen, with the reasoning recorded
-- [ ] No shipped code references a CSS custom property that nothing defines
-- [ ] No exported class that nothing constructs
-- [ ] `npm run test:ci` green, `npm run typecheck:editor` clean
-- [ ] If tokens survive: injection verified in a running preview via CDP
+- [x] One of A/B/C chosen, with the reasoning recorded — **A, narrowed**
+- [x] No shipped code references a CSS custom property that nothing defines —
+      all 46 referenced tokens defined, asserted by `StyleTokenCoverage.test.ts`
+- [x] No exported class that nothing constructs — `StyleTokensInjector` deleted
+      along with the dead `models/StyleTokens/`
+- [x] `npm run test:ci` green (712 specs, 0 failures), `npm run typecheck:editor`
+      clean. Note: `test:ci` needs `npm run build:main:dev` first — see the
+      incidental finding above; without it three Git specs fail for reasons
+      unrelated to any code change.
+- [x] Injection verified in a running preview via CDP — and in the export path,
+      which is where the defect actually was
 
 ## References
 

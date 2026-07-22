@@ -1,4 +1,5 @@
 import { ProjectModel } from '@noodl-models/projectmodel';
+import { generateProjectTokenCss } from '@noodl-models/StyleTokensModel/ProjectTokenCss';
 
 import ProjectModules from '../../../../../../shared/utils/projectmodules';
 
@@ -47,6 +48,13 @@ export class HtmlProcessor {
     if (parameters.headCode) {
       headCode += parameters.headCode;
     }
+
+    // REV-009: stamp the project's design tokens into the exported page. The
+    // editor preview gets the same `:root` block pushed in by
+    // PreviewTokenInjector; without this, every `var(--token)` an ElementConfig
+    // writes into a node would resolve to nothing once deployed. Placed ahead of
+    // the user's own head code so they can still override a token by hand.
+    headCode = `<style id="noodl-design-tokens">\n${generateProjectTokenCss(this.project)}\n</style>\n` + headCode;
 
     if (baseUrl !== '/') {
       headCode = `<base href="${baseUrl}" target="_blank" />\n` + headCode;
