@@ -20,9 +20,11 @@
     "health:check": "node scripts/health-check.js",
     "check:artefacts": "node scripts/check-build-artefacts.js",
     "graph": "npx nx graph",
-    "ci:prepare:editor": "ts-node -P ./scripts/tsconfig.json ./scripts/ci-editor-prepare.ts",
+    "lint": "eslint packages/noodl-editor/src",
+    "lint:ci": "node scripts/lint-ratchet.js",
+    "lint:baseline": "node scripts/lint-ratchet.js --update",
     "ci:build:viewer": "lerna exec --scope @noodl/noodl-viewer-react -- npm run build",
-    "ci:build:editor": "lerna exec --scope noodl-editor -- npm run ci:build",
+    "ci:build:editor": "lerna exec --scope noodl-editor -- npm run build:bundles",
     "build:editor": "ts-node -P ./scripts/tsconfig.json ./scripts/build-editor.ts",
     "build:editor:_viewer": "ts-node -P ./scripts/tsconfig.json ./scripts/noodl-editor/build-viewer.ts",
     "build:editor:_editor": "ts-node -P ./scripts/tsconfig.json ./scripts/noodl-editor/build-editor.ts",
@@ -62,7 +64,7 @@
     "webpack-dev-server": "^4.15.2"
   },
   "engines": {
-    "npm": ">=6.0.0",
-    "node": ">=16.0.0"
+    "npm": ">=10.0.0",
+    "node": ">=22.0.0"
   }
 }

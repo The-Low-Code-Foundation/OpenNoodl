@@ -1,5 +1,7 @@
 # OpenNoodl
 
+[![PR](https://github.com/The-Low-Code-Foundation/OpenNoodl/actions/workflows/pr.yml/badge.svg?branch=cline-dev)](https://github.com/The-Low-Code-Foundation/OpenNoodl/actions/workflows/pr.yml)
+
 OpenNoodl is a fork of the original Noodl open source code under GPL-3.0 license. OpenNoodl / Noodl is a front end React app builder with a visual programming interface.
 
 OpenNoodl will aim to stay entirely in sync with the original repository, including future updates to this repository. A roadmap for updates will be published soon.

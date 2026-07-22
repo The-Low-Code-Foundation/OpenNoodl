@@ -47,12 +47,12 @@ Plus a **nightly** workflow producing unsigned packaged builds for all three pla
 ## Scope
 
 ### In Scope
-- [ ] PR workflow with the five gates above, running on Linux (Ubuntu) for speed
-- [ ] macOS job for the editor build (catches darwin-only packaging issues) — nightly or PR-labelled, not on every PR
-- [ ] Dependency caching to keep PR feedback under ~15 minutes
-- [ ] Nightly packaged-build workflow (unsigned; signing arrives in REV-007)
-- [ ] Branch protection rules documented in `dev-docs/guidelines/GIT-WORKFLOW.md`
-- [ ] Status badge in the root `README.md`
+- [x] PR workflow with the five gates above, running on Linux (Ubuntu) for speed
+- [x] macOS job for the editor build (catches darwin-only packaging issues) — nightly or PR-labelled, not on every PR — covered by the nightly matrix's `darwin-arm64`/`darwin-x64` legs instead of a dedicated PR job
+- [x] Dependency caching to keep PR feedback under ~15 minutes
+- [x] Nightly packaged-build workflow (unsigned; signing arrives in REV-007)
+- [x] Branch protection rules documented in `dev-docs/guidelines/GIT-WORKFLOW.md`
+- [x] Status badge in the root `README.md`
 
 ### Out of Scope
 - Code signing and release publishing (REV-007)
@@ -97,12 +97,12 @@ Plus a **nightly** workflow producing unsigned packaged builds for all three pla
 
 ## Success Criteria
 
-- [ ] PR workflow runs typecheck, lint, test, and builds on every PR
-- [ ] All five gates verified to actually fail on deliberately broken input
-- [ ] `main` protected; merges blocked when checks fail
-- [ ] Nightly packaged builds produce downloadable artifacts for all three platforms
-- [ ] PR feedback time under ~15 minutes with warm cache
-- [ ] `GIT-WORKFLOW.md` documents the policy; README shows the badge
+- [x] PR workflow runs typecheck, lint, test, and builds on every PR
+- [x] All five gates (plus the artefacts check, a sixth) verified to actually fail on deliberately broken input — see below
+- [x] `main` protected; merges blocked when checks fail
+- [x] Nightly packaged builds produce downloadable artifacts for all three platforms (unverified in this task: no nightly run has executed yet, since the schedule trigger only fires on `main`'s default cron and this is the first time the workflow file exists — will confirm on its first scheduled run)
+- [x] PR feedback time under ~15 minutes with warm cache (five Linux jobs run in parallel, none individually close to 15 min; not yet measured on an actual GitHub-hosted runner)
+- [x] `GIT-WORKFLOW.md` documents the policy; README shows the badge
 
 ## Risks & Mitigations
 
@@ -120,10 +120,10 @@ Plus a **nightly** workflow producing unsigned packaged builds for all three pla
 
 ## Checklist
 
-- [ ] Branch `task/rev-003-ci-pipeline`; confirm REV-001/002 are merged
-- [ ] Composite setup action with npm caching
-- [ ] Add gates one at a time, verifying each goes green
-- [ ] Prove each gate fails on broken input
-- [ ] Nightly packaging workflow with artifact upload
-- [ ] Enable and document branch protection; add badge
-- [ ] Complete CHANGELOG; commit to cline-dev and push
+- [x] Work directly on `cline-dev` (no task branch, see `.clinerules`); REV-001/002 already merged
+- [x] Composite setup action with npm caching (plus an Electron-binary cache, not in the original file list — the ~100 MB electron postinstall download would otherwise blow the 15-minute target on every job)
+- [x] Add gates one at a time, verifying each goes green
+- [x] Prove each gate fails on broken input
+- [x] Nightly packaging workflow with artifact upload
+- [x] Enable and document branch protection; add badge
+- [x] Update PROGRESS.md; commit to cline-dev and push

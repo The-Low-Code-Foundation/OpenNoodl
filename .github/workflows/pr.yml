@@ -1,0 +1,78 @@
+name: PR
+
+# The merge gates. Every job here is a required check on `main` — see
+# dev-docs/guidelines/GIT-WORKFLOW.md for the branch-protection policy.
+#
+# Everything runs on Linux: it is the cheapest runner and the only one whose
+# minutes are free on public repos. Platform-specific packaging is covered by
+# nightly.yml, not here.
+
+on:
+  pull_request:
+  push:
+    branches: ['main', 'cline-dev']
+  workflow_dispatch:
+
+# A new push supersedes the run in flight for the same ref.
+concurrency:
+  group: pr-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  typecheck:
+    name: Typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - run: npm run typecheck
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      # A ratchet, not a pass/fail gate: the editor sources carry thousands of
+      # pre-existing errors, so we only block on *new* ones. See
+      # scripts/lint-ratchet.js.
+      - run: npm run lint:ci
+
+  test-editor:
+    name: Test (editor)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      # Electron needs a display even with a hidden window.
+      - name: Run editor suite headless
+        run: xvfb-run --auto-servernum -s "-screen 0 1280x1024x24" npm run test:ci
+
+  test-platform:
+    name: Test (platform-node)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - run: npm run test:platform
+
+  build:
+    name: Build (viewer + editor bundles)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - name: Build viewer bundle
+        run: npm run ci:build:viewer
+      # Renderer + main webpack bundles only. Packaging (electron-builder) is a
+      # nightly concern; it needs per-platform native installs and is far slower.
+      - name: Build editor bundles
+        run: npm run ci:build:editor
+
+  artefacts:
+    name: Check build artefacts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # No install: the check only shells out to `git ls-files`.
+      - run: node scripts/check-build-artefacts.js

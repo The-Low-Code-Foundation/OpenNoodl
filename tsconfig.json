@@ -13,6 +13,7 @@
     "forceConsistentCasingInFileNames": true,
     "baseUrl": ".",
     "paths": {
+      "@noodl-viewer-cloud/execution-history": ["./packages/noodl-viewer-cloud/src/execution-history/index.ts"],
       "@noodl-core-ui/*": ["./packages/noodl-core-ui/src/*"],
       "@noodl-hooks/*": ["./packages/noodl-editor/src/editor/src/hooks/*"],
       "@noodl-utils/*": ["./packages/noodl-editor/src/editor/src/utils/*"],

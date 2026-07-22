@@ -289,12 +289,35 @@ git merge --continue
 
 ## Branch Protection
 
-The `main` branch has these protections:
+CI runs via GitHub Actions — see `.github/workflows/pr.yml`. It triggers on every
+pull request and on every push to `main` or `cline-dev`, and runs six jobs:
 
-- Requires pull request
-- Requires passing CI checks
-- Requires up-to-date branch
+| Job | What it checks |
+|-----|-----------------|
+| `Typecheck` | `npm run typecheck` — 0 errors across all packages |
+| `Lint` | `npm run lint:ci` — an error-count ratchet against `.eslint-baseline.json` (see `scripts/lint-ratchet.js`); it may fall, never rise |
+| `Test (editor)` | `npm run test:ci` — the Electron/Jasmine suite, headless via `xvfb-run` |
+| `Test (platform-node)` | `npm run test:platform` — the `@noodl/platform-node` Jest suite |
+| `Build (viewer + editor bundles)` | `npm run ci:build:viewer` and `npm run ci:build:editor` — webpack only, not electron-builder packaging |
+| `Check build artefacts` | `npm run check:artefacts` — fails if generated webpack output is committed (see REV-008) |
+
+`main` is configured with these protections, requiring all six jobs above:
+
+- Requires pull request before merging
+- Requires the six `pr.yml` checks to pass
+- Requires branches to be up to date before merging
 - No force pushes allowed
+
+`cline-dev` is the actual working branch (single developer, no per-task branches
+or PR review round-trip — see `.clinerules` § Git Workflow) and is **not**
+protected: work is pushed to it directly, and `pr.yml` runs on every push so a red
+result is visible without blocking. If/when this repo has more than one active
+contributor, route work back through PRs into `main` and let its protection do
+the blocking; see the roadmap background in
+`dev-docs/tasks/phase-12-reanimation/REV-003-CI-PIPELINE.md`.
+
+A nightly workflow (`.github/workflows/nightly.yml`) builds unsigned packaged
+installers for macOS/Windows/Linux and is not a merge gate — see the file for why.
 
 ## Tips
 

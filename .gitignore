@@ -181,6 +181,7 @@ packages/noodl-editor/tests/ts.worker.js
 packages/noodl-editor/tests/node_modules_*.bundle.js
 packages/noodl-editor/tests/vendors-*.bundle.js
 packages/noodl-editor/tests/*.svg
+packages/noodl-editor/tests/test-results.json
 
 # Other
 packages/noodl-editor/src/external

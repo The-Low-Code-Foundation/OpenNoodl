@@ -1,3 +1,6 @@
+const fs = require('fs');
+const path = require('path');
+
 const electron = require('electron');
 const StorageApi = require('./src/main/src/StorageApi');
 // Module to control application life.
@@ -39,12 +42,20 @@ const OVERALL_TIMEOUT_MS = 15 * 60 * 1000;
 let win = null;
 let didReportResults = false;
 
+// `app.exit()` is process.exit() underneath: it does not flush pending writes.
+// When stdout is a pipe (CI, `npm run test:ci > log`, lerna) those writes are
+// asynchronous, so everything console.log'd just before the exit — including the
+// whole results summary — is discarded. Write the report synchronously instead.
+function report(text) {
+  fs.writeSync(1, text + '\n');
+}
+
 function finish(exitCode, reason) {
   if (didReportResults) return;
   didReportResults = true;
 
   if (reason) {
-    console.error(reason);
+    fs.writeSync(2, reason + '\n');
   }
 
   // app.exit skips the "window-all-closed" dance and preserves our code.
@@ -59,23 +70,31 @@ overallTimeout.unref?.();
 ipcMain.on('noodl-test-results', (_event, results) => {
   const { failedCount = 0, totalCount = 0, overallStatus, failures = [] } = results || {};
 
-  console.log('');
-  console.log(`Jasmine: ${totalCount} specs, ${failedCount} failures (${overallStatus}).`);
+  report('');
+  report(`Jasmine: ${totalCount} specs, ${failedCount} failures (${overallStatus}).`);
 
   for (const failure of failures) {
-    console.log('');
-    console.log(`  FAILED: ${failure.fullName}`);
+    report('');
+    report(`  FAILED: ${failure.fullName}`);
     for (const message of failure.messages || []) {
-      console.log(`    ${message}`);
+      report(`    ${message}`);
     }
   }
-  console.log('');
+  report('');
+
+  // A machine-readable copy, so a CI run that loses its log tail (or a reviewer
+  // reading an artifact) can still see what happened. Gitignored.
+  try {
+    fs.writeFileSync(path.join(__dirname, 'tests', 'test-results.json'), JSON.stringify(results, null, 2));
+  } catch (err) {
+    fs.writeSync(2, `Failed to write tests/test-results.json: ${err.message}\n`);
+  }
 
   clearTimeout(overallTimeout);
 
   const passed = overallStatus === 'passed' && failedCount === 0 && totalCount > 0;
   if (!passed && totalCount === 0) {
-    console.error('No specs ran — treating as a failure.');
+    fs.writeSync(2, 'No specs ran — treating as a failure.\n');
   }
 
   finish(passed ? 0 : 1);
