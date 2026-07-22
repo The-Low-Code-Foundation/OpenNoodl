@@ -266,38 +266,38 @@ export class LocalProjectsModel extends Model {
         });
       });
     } else {
-      // Default template path
-      const defaultTemplatePath = './external/projecttemplates/helloworld.zip';
+      // No template specified - use default embedded Hello World template
+      // This uses the template system implemented in TASK-009
+      const defaultTemplate = 'embedded://hello-world';
 
-      // Check if template exists, otherwise create an empty project
-      if (filesystem.exists(defaultTemplatePath)) {
-        this._unzipAndLaunchProject(defaultTemplatePath, dirEntry, fn, options);
-      } else {
-        console.warn('Default project template not found, creating empty project');
+      // For embedded templates, write directly to the project directory
+      // (no need for temporary folder + copy)
+      const { EmbeddedTemplateProvider } = await import('../models/template/EmbeddedTemplateProvider');
+      const embeddedProvider = new EmbeddedTemplateProvider();
 
-        // Create minimal project.json for empty project
-        const minimalProject = {
-          name: name,
-          components: [],
-          settings: {},
-          runtimeVersion: 'react19' // NEW projects default to React 19
-        };
+      await embeddedProvider.download(defaultTemplate, dirEntry);
 
-        await filesystem.writeFile(filesystem.join(dirEntry, 'project.json'), JSON.stringify(minimalProject, null, 2));
+      // Load the newly created project
+      projectFromDirectory(dirEntry, (project) => {
+        if (!project) {
+          console.error('Failed to create project from template');
+          fn();
+          return;
+        }
 
-        // Load the newly created empty project
-        projectFromDirectory(dirEntry, (project) => {
-          if (!project) {
+        project.name = name;
+        project.runtimeVersion = 'react19'; // NEW projects default to React 19
+        this._addProject(project);
+        project.toDirectory(project._retainedProjectDirectory, (res) => {
+          if (res.result === 'success') {
+            console.log('Project created successfully:', name);
+            fn(project);
+          } else {
+            console.error('Failed to save project to directory');
             fn();
-            return;
           }
-
-          project.name = name;
-          project.runtimeVersion = 'react19'; // Ensure it's set
-          this._addProject(project);
-          fn(project);
         });
-      }
+      });
     }
   }
 

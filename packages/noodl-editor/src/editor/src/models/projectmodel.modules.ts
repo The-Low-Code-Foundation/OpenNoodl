@@ -1,4 +1,5 @@
 import { filesystem } from '@noodl/platform';
+
 import { bugtracker } from '@noodl-utils/bugtracker';
 
 // TODO: Can we merge this with ProjectModules ?
@@ -27,21 +28,32 @@ export async function listProjectModules(project: TSFixme /* ProjectModel */): P
   }[] = [];
 
   const modulesPath = project._retainedProjectDirectory + '/noodl_modules';
-  const files = await filesystem.listDirectory(modulesPath);
 
-  await Promise.all(
-    files.map(async (file) => {
-      if (file.isDirectory) {
-        const manifestPath = filesystem.join(modulesPath, file.name, 'manifest.json');
-        const manifest = await filesystem.readJson(manifestPath);
+  try {
+    const files = await filesystem.listDirectory(modulesPath);
 
-        modules.push({
-          name: file.name,
-          manifest
-        });
-      }
-    })
-  );
+    await Promise.all(
+      files.map(async (file) => {
+        if (file.isDirectory) {
+          const manifestPath = filesystem.join(modulesPath, file.name, 'manifest.json');
+          const manifest = await filesystem.readJson(manifestPath);
+
+          modules.push({
+            name: file.name,
+            manifest
+          });
+        }
+      })
+    );
+  } catch (error) {
+    // noodl_modules folder doesn't exist (fresh/empty project)
+    if (error.code === 'ENOENT') {
+      console.log('noodl_modules folder not found (fresh project), skipping module loading');
+      return [];
+    }
+    // Re-throw other errors
+    throw error;
+  }
 
   return modules;
 }
@@ -50,40 +62,51 @@ export async function readProjectModules(project: TSFixme /* ProjectModel */): P
   bugtracker.debug('ProjectModel.readModules');
 
   const modulesPath = project._retainedProjectDirectory + '/noodl_modules';
-  const files = await filesystem.listDirectory(modulesPath);
 
   project.modules = [];
   project.previews = [];
   project.componentAnnotations = {};
 
-  await Promise.all(
-    files.map(async (file) => {
-      if (file.isDirectory) {
-        const manifestPath = filesystem.join(modulesPath, file.name, 'manifest.json');
-        const manifest = await filesystem.readJson(manifestPath);
+  try {
+    const files = await filesystem.listDirectory(modulesPath);
 
-        if (manifest) {
-          manifest.name = file.name;
-          project.modules.push(manifest);
+    await Promise.all(
+      files.map(async (file) => {
+        if (file.isDirectory) {
+          const manifestPath = filesystem.join(modulesPath, file.name, 'manifest.json');
+          const manifest = await filesystem.readJson(manifestPath);
 
-          if (manifest.componentAnnotations) {
-            for (var comp in manifest.componentAnnotations) {
-              var ca = manifest.componentAnnotations[comp];
+          if (manifest) {
+            manifest.name = file.name;
+            project.modules.push(manifest);
 
-              if (!project.componentAnnotations[comp]) project.componentAnnotations[comp] = {};
-              for (var key in ca) project.componentAnnotations[comp][key] = ca[key];
+            if (manifest.componentAnnotations) {
+              for (var comp in manifest.componentAnnotations) {
+                var ca = manifest.componentAnnotations[comp];
+
+                if (!project.componentAnnotations[comp]) project.componentAnnotations[comp] = {};
+                for (var key in ca) project.componentAnnotations[comp][key] = ca[key];
+              }
+            }
+
+            if (manifest.previews) {
+              project.previews = manifest.previews.concat(project.previews);
             }
           }
-
-          if (manifest.previews) {
-            project.previews = manifest.previews.concat(project.previews);
-          }
         }
-      }
-    })
-  );
+      })
+    );
 
-  console.log(`Loaded ${project.modules.length} modules`);
+    console.log(`Loaded ${project.modules.length} modules`);
+  } catch (error) {
+    // noodl_modules folder doesn't exist (fresh/empty project)
+    if (error.code === 'ENOENT') {
+      console.log('noodl_modules folder not found (fresh project), skipping module loading');
+      return [];
+    }
+    // Re-throw other errors
+    throw error;
+  }
 
   return project.modules;
 }

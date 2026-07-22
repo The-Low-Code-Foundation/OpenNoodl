@@ -59,6 +59,7 @@ const RouterNode = {
   displayNodeName: 'Page Router',
   category: 'Visuals',
   docs: 'https://docs.noodl.net/nodes/navigation/page-router',
+  allowAsExportRoot: true,
   useVariants: false,
   connectionPanel: {
     groupPriority: ['General', 'Actions', 'Events', 'Mounted']

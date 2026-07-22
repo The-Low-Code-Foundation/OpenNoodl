@@ -552,3 +552,630 @@ Then read Richard's PROGRESS files for any shared utility/infra changes.
 Same tone as Richard's section — direct, technical, casual, no hand-holding.
 
 # ===== END DISHANT =====
+
+---
+
+## 14. Node Creation Checklist
+
+> **🚨 CRITICAL:** Before creating or modifying runtime nodes, read `dev-docs/reference/LEARNINGS-NODE-CREATION.md`
+
+Creating nodes in OpenNoodl is deceptively tricky. This checklist prevents the most common (and hardest to debug) issues.
+
+### 14.1 Pre-Flight Checklist
+
+Before writing any node code:
+
+- [ ] Read `dev-docs/reference/LEARNINGS-NODE-CREATION.md` (especially the CRITICAL GOTCHAS section)
+- [ ] Check `dev-docs/reference/LEARNINGS.md` for recent node-related discoveries (search for "node", "runtime", "coreNodes")
+- [ ] Study an existing working node of similar complexity (e.g., `restnode.js` for data nodes)
+- [ ] Understand the difference between `inputs` (static) vs `prototypeExtensions` (instance methods)
+- [ ] Know where your node should be registered (noodl-runtime vs noodl-viewer-react)
+
+### 14.2 Input Handler Rules
+
+```javascript
+// ✅ CORRECT: Signal inputs use valueChangedToTrue
+inputs: {
+  fetch: {
+    type: 'signal',
+    valueChangedToTrue: function() {
+      this.scheduleFetch();
+    }
+  }
+}
+
+// ❌ WRONG: Signal inputs with set() - NEVER TRIGGERS
+inputs: {
+  fetch: {
+    type: 'signal',
+    set: function(value) { // ☠️ Never called for signals
+      this.scheduleFetch();
+    }
+  }
+}
+```
+
+### 14.3 Never Override setInputValue
+
+```javascript
+// ❌ BREAKS EVERYTHING - Never define setInputValue in prototypeExtensions
+prototypeExtensions: {
+  setInputValue: function(name, value) { // ☠️ Overrides base - signals stop working
+    // ...
+  }
+}
+
+// ✅ Use a different name for custom storage
+prototypeExtensions: {
+  _storeInputValue: function(name, value) { // ✅ Doesn't override anything
+    this._internal.inputValues[name] = value;
+  }
+}
+```
+
+### 14.4 Dynamic Ports Must Include Static Ports
+
+```javascript
+// ❌ WRONG - Static ports disappear
+function updatePorts(nodeId, parameters, editorConnection) {
+  const ports = [];
+  // Only adds dynamic ports...
+  editorConnection.sendDynamicPorts(nodeId, ports); // Static inputs gone!
+}
+
+// ✅ CORRECT - Include all ports
+function updatePorts(nodeId, parameters, editorConnection) {
+  const ports = [
+    // Re-add static inputs
+    { name: 'url', displayName: 'URL', type: 'string', plug: 'input', group: 'Request' },
+    { name: 'fetch', displayName: 'Fetch', type: 'signal', plug: 'input', group: 'Actions' },
+    // Then add dynamic ports...
+  ];
+  editorConnection.sendDynamicPorts(nodeId, ports);
+}
+```
+
+### 14.5 Register Config Inputs Explicitly
+
+```javascript
+// Config inputs (from stringlist editors) need explicit registration
+registerInputIfNeeded: function(name) {
+  if (this.hasInput(name)) return;
+
+  // Map config names to their setters
+  const configSetters = {
+    'method': this.setMethod.bind(this),
+    'headers': this.setHeaders.bind(this),
+    'queryParams': this.setQueryParams.bind(this)
+  };
+
+  if (configSetters[name]) {
+    return this.registerInput(name, { set: configSetters[name] });
+  }
+
+  // Handle prefixed dynamic inputs
+  if (name.startsWith('header-')) {
+    return this.registerInput(name, {
+      set: this._storeInputValue.bind(this, name)
+    });
+  }
+}
+```
+
+### 14.6 Export Format Matters
+
+```javascript
+// ✅ CORRECT: Export with setup function
+module.exports = {
+  node: MyNode,
+  setup: function (context, graphModel) {
+    // Port management goes here
+  }
+};
+
+// ❌ WRONG: Direct export (setup never runs)
+module.exports = MyNode;
+```
+
+### 14.7 Post-Creation Verification
+
+After creating a node:
+
+1. **Check ports appear**: All static AND dynamic inputs/outputs visible in editor?
+2. **Check signals work**: Add console.log in `valueChangedToTrue` - does it print?
+3. **Check config inputs work**: Change dropdown/stringlist values - does setter get called?
+4. **Clear caches if needed**: `npm run clean:all` and restart
+
+### 14.8 Quick Reference
+
+| Input Type                   | Handler                     | Callback Format             |
+| ---------------------------- | --------------------------- | --------------------------- |
+| Signal                       | `valueChangedToTrue`        | `function() { ... }`        |
+| Value (string, number, etc.) | `set`                       | `function(value) { ... }`   |
+| Enum (dropdown)              | `set`                       | `function(value) { ... }`   |
+| StringList (config)          | Needs explicit registration | Via `registerInputIfNeeded` |
+
+### 14.9 Where to Find Examples
+
+| Pattern                              | Example File                                                     |
+| ------------------------------------ | ---------------------------------------------------------------- |
+| Complex data node with dynamic ports | `noodl-runtime/src/nodes/std-library/data/restnode.js`           |
+| HTTP node (fixed, working)           | `noodl-runtime/src/nodes/std-library/data/httpnode.js`           |
+| Simple value node                    | `noodl-runtime/src/nodes/std-library/variables/numbernode.js`    |
+| Signal-based node                    | `noodl-runtime/src/nodes/std-library/timer.js` (in viewer-react) |
+
+---
+
+---
+
+## 15. Task Sizing & Context Management
+
+### 15.1 Understanding Your Limits
+
+You (Cline) are running on Claude API with hard limits:
+
+- **Context window**: ~200K tokens (~150K words)
+- **Output limit**: ~8K tokens per response
+- **When you exceed these**: You get an API error and must retry
+
+**CRITICAL**: If you hit an API error about context length or output limit, DO NOT retry the same approach. You must split the task.
+
+### 15.2 Recognizing Tasks That Are Too Large
+
+Before starting implementation, estimate task size:
+
+#### Signs a task will exceed limits:
+
+```
+❌ TOO LARGE - Will hit API limits:
+- Modifying 10+ files in one go
+- Reading entire large files multiple times
+- Converting 50+ Storybook stories
+- Refactoring a whole subsystem at once
+- Adding features across runtime + editor + viewer
+
+✅ MANAGEABLE - Can complete in context:
+- Modifying 1-3 related files
+- Adding a single feature to one package
+- Converting 5-10 Storybook stories
+- Fixing a specific bug in one area
+- Writing focused tests for one module
+```
+
+#### Quick size estimation:
+
+| Task Scope     | Estimated Files | Context Safety | Action                    |
+| -------------- | --------------- | -------------- | ------------------------- |
+| Bug fix        | 1-3 files       | ✅ Safe        | Proceed                   |
+| Small feature  | 3-5 files       | ✅ Safe        | Proceed                   |
+| Medium feature | 5-10 files      | ⚠️ Monitor     | Watch context carefully   |
+| Large feature  | 10-20 files     | ❌ Risky       | Split into subtasks first |
+| Refactoring    | 20+ files       | ❌ Too large   | Must split                |
+
+### 15.3 When You Get an API Error
+
+If you receive an error like:
+
+- "Request too large"
+- "Context length exceeded"
+- "Maximum token limit exceeded"
+- Any message about being over limits
+
+**DO NOT** retry the same task at the same scope.
+
+**IMMEDIATELY** follow this protocol:
+
+```markdown
+## Error Recovery Protocol
+
+1. **Acknowledge the error**
+   "I've hit an API context limit. This task is too large to complete in one pass."
+
+2. **Analyze what you were trying to do**
+   "I was attempting to [describe full scope]"
+
+3. **Propose a split**
+   "I'll break this into smaller subtasks:
+
+   **Subtask 1**: [Specific scope - 2-4 files max]
+
+   - File A: [specific changes]
+   - File B: [specific changes]
+
+   **Subtask 2**: [Next logical chunk]
+
+   - File C: [specific changes]
+   - File D: [specific changes]
+
+   **Subtask 3**: [Remaining work]
+
+   - File E: [specific changes]
+
+   Each subtask is independently testable and won't exceed limits."
+
+4. **Start with Subtask 1**
+   "Starting with Subtask 1 now..."
+```
+
+### 15.4 How to Split Tasks Intelligently
+
+#### Strategy 1: By Package/Module
+
+```markdown
+# Original (too large):
+
+"Implement responsive breakpoints across the platform"
+
+# Split:
+
+**Subtask 1**: Runtime changes (noodl-runtime)
+
+- Add breakpoint evaluation to node context
+- Update reactive system for breakpoint changes
+
+**Subtask 2**: Editor changes (noodl-editor)
+
+- Add breakpoint UI to property panel
+- Implement breakpoint selector component
+
+**Subtask 3**: Integration
+
+- Connect editor to runtime
+- Add tests for full flow
+```
+
+#### Strategy 2: By Feature Slice
+
+```markdown
+# Original (too large):
+
+"Add cURL import with parsing, UI, validation, and error handling"
+
+# Split:
+
+**Subtask 1**: Core parsing logic
+
+- Implement cURL parser utility
+- Add unit tests for parser
+- Handle basic HTTP methods
+
+**Subtask 2**: UI integration
+
+- Add import button to HTTP node config
+- Create import modal/dialog
+- Wire up parser to UI
+
+**Subtask 3**: Advanced features
+
+- Add validation and error states
+- Handle complex cURL flags
+- Add user feedback/toasts
+```
+
+#### Strategy 3: By File Groups
+
+```markdown
+# Original (too large):
+
+"Migrate 50 Storybook stories to CSF3"
+
+# Split:
+
+**Subtask 1**: Button components (5 stories)
+
+- PrimaryButton, SecondaryButton, IconButton, etc.
+
+**Subtask 2**: Input components (6 stories)
+
+- TextInput, NumberInput, Select, etc.
+
+**Subtask 3**: Layout components (7 stories)
+
+- Panel, Dialog, Popover, etc.
+
+# Continue until complete
+```
+
+#### Strategy 4: By Logical Phases
+
+```markdown
+# Original (too large):
+
+"Refactor EventDispatcher usage in panels"
+
+# Split:
+
+**Subtask 1**: Audit and preparation
+
+- Find all direct .on() usage
+- Document required changes
+- Create shared hook if needed
+
+**Subtask 2**: Core panels (3-4 files)
+
+- NodeGraphEditor
+- PropertyEditor
+- ComponentPanel
+
+**Subtask 3**: Secondary panels (3-4 files)
+
+- LibraryPanel
+- WarningsPanel
+- NavigatorPanel
+
+**Subtask 4**: Utility panels (remaining)
+
+- All other panels
+- Verification and testing
+```
+
+### 15.5 Maintaining Quality While Splitting
+
+**DO NOT cut corners to fit in context:**
+
+❌ **WRONG approaches**:
+
+- Removing documentation to save tokens
+- Skipping test files
+- Using placeholders instead of real implementation
+- Commenting out code with "// TODO: Implement later"
+- Removing type safety to save space
+
+✅ **CORRECT approaches**:
+
+- Split into complete, working subtasks
+- Each subtask is fully implemented and tested
+- Each subtask can be verified independently
+- Each subtask advances the overall goal
+- Quality standards maintained for every subtask
+
+### 15.6 Progress Tracking for Multi-Subtask Work
+
+When you've split a task, track progress:
+
+```markdown
+## Task Progress: [Feature Name]
+
+**Overall Goal**: [Brief description]
+
+**Subtasks**:
+
+- [x] Subtask 1: [Name] - ✅ Complete
+- [ ] Subtask 2: [Name] - 🔄 In Progress
+- [ ] Subtask 3: [Name] - ⏳ Pending
+- [ ] Subtask 4: [Name] - ⏳ Pending
+
+**Current Status**: Working on Subtask 2
+**Files Modified So Far**: [List]
+**Tests Added**: [Count]
+```
+
+Update this at the start of each subtask session.
+
+### 15.7 When to Ask for Help
+
+You should ask Richard for guidance when:
+
+1. **Task scope is genuinely unclear**
+   - "This could be split 3 different ways - which do you prefer?"
+2. **Dependencies block all split approaches**
+   - "Files A, B, C must change together atomically - can't split safely"
+3. **You've split but still hitting limits on a subtask**
+
+   - "Subtask 1 is still too large. Should I split further or simplify scope?"
+
+4. **Integration approach is ambiguous**
+   - "I can split by feature or by layer - which matches your mental model better?"
+
+### 15.8 Context-Saving Techniques
+
+When context is tight but task is manageable, use these techniques:
+
+#### Read files strategically:
+
+```bash
+# ❌ BAD - Reads entire 2000-line file
+view path/to/huge-component.tsx
+
+# ✅ GOOD - Reads just what you need
+view path/to/huge-component.tsx [50, 100]  # Lines 50-100
+```
+
+#### Use targeted searches:
+
+```bash
+# ❌ BAD - Reads all search results
+grep -r "EventDispatcher" packages/
+
+# ✅ GOOD - Limit scope first
+grep -r "EventDispatcher" packages/noodl-editor/src/views/panels/ --include="*.tsx"
+```
+
+#### Build incrementally:
+
+```typescript
+// ❌ BAD - Write entire 500-line component at once
+create_file(path, [massive-file-content])
+
+// ✅ GOOD - Build in stages
+create_file(path, [minimal-working-version])
+# Test it works
+str_replace(path, old, new)  # Add feature 1
+# Test it works
+str_replace(path, old, new)  # Add feature 2
+# Continue...
+```
+
+### 15.9 Emergency Context Recovery
+
+If you're deep in a task and suddenly hit limits:
+
+1. **Save your current work immediately**
+
+   ```bash
+   git add .
+   git commit -m "WIP: [what you completed]"
+   ```
+
+2. **Document exactly where you are**
+
+   ```markdown
+   ## Current State
+
+   - Completed: [specific changes]
+   - Files modified: [list]
+   - Next step: [exactly what remains]
+   - Blocked by: [if applicable]
+   ```
+
+3. **Propose next steps**
+   "I've completed X and Y. To finish, I need to do Z.
+   Should I continue with Z in the next session?"
+
+### 15.10 Self-Check Before Starting Large Tasks
+
+Before beginning any task that modifies 5+ files:
+
+```markdown
+## Pre-Flight Context Check
+
+**Task**: [Name]
+**Estimated files to modify**: [Count]
+**Estimated LOC to read**: [Rough guess]
+
+**Risk assessment**:
+
+- [ ] Will I need to read multiple large files (>500 lines)?
+- [ ] Does this touch 3+ packages?
+- [ ] Will I need to trace complex dependencies?
+- [ ] Is this a refactor touching 10+ files?
+
+**If 2+ boxes checked**: Propose split BEFORE starting implementation
+
+**My split plan**:
+
+1. [Subtask with 2-4 files]
+2. [Subtask with 2-4 files]
+3. [Remaining work]
+```
+
+---
+
+## Usage Examples
+
+### Example 1: Proactive Split
+
+```markdown
+Richard: "Implement the full HTTP node with cURL import, auth presets, and JSONPath mapping"
+
+Cline: "This task is quite large and would likely exceed API limits if done in one pass. Let me break it down:
+
+**Subtask 1 - Core HTTP Node** (Est: 3 files, 2h)
+
+- Implement basic HTTP node structure
+- Add method/URL/body inputs
+- Handle simple requests/responses
+
+**Subtask 2 - cURL Import** (Est: 2 files, 1.5h)
+
+- Add cURL parser utility
+- Integrate import UI
+- Handle common cURL flags
+
+**Subtask 3 - Auth Presets** (Est: 2 files, 1h)
+
+- Create auth preset system
+- Add Bearer/Basic/Custom options
+- Persist presets in project
+
+**Subtask 4 - JSONPath Mapping** (Est: 2 files, 1.5h)
+
+- Implement JSONPath evaluation
+- Add output port creation
+- Handle mapping UI
+
+Should I start with Subtask 1?"
+```
+
+### Example 2: Error Recovery
+
+```markdown
+[API error occurs]
+
+Cline: "I've hit an API context limit while trying to update all 15 panel components at once.
+
+I was attempting to migrate EventDispatcher usage across:
+
+- NodeGraphEditor, PropertyEditor, ComponentPanel, LibraryPanel... [full list]
+
+This is too large. Let me split it:
+
+**Subtask 1 - Core Panels** (3 files)
+
+- NodeGraphEditor.tsx
+- PropertyEditor.tsx
+- ComponentPanel.tsx
+
+**Subtask 2 - Secondary Panels** (4 files)
+
+- LibraryPanel.tsx
+- WarningsPanel.tsx
+- NavigatorPanel.tsx
+- InspectorPanel.tsx
+
+**Subtask 3 - Remaining Panels** (8 files)
+
+- All other panels
+- Final verification
+
+Starting with Subtask 1 now..."
+
+[Proceeds with focused work]
+```
+
+---
+
+## Key Principles
+
+1. **Recognize limits early** - Better to split proactively than hit errors
+2. **Split logically** - Each subtask should be coherent and testable
+3. **Maintain quality** - Never sacrifice standards to fit in context
+4. **Track progress** - Show what's done and what remains
+5. **Ask when stuck** - Richard can guide unclear splits
+6. **Learn from errors** - If you hit limits, that task was too large
+
+**Remember**: It's better to complete 3 small subtasks successfully than fail on 1 large task repeatedly.
+
+---
+
+## 16. Code Comments Language
+
+**All code comments must be in English**, regardless of the user's language. This ensures:
+
+- Consistent codebase for international collaboration
+- Better compatibility with AI tools
+- Easier code review and maintenance
+
+```typescript
+// ✅ GOOD: English comments
+function calculateTotal(items: Item[]): number {
+  // Sum up all item prices
+  return items.reduce((sum, item) => sum + item.price, 0);
+}
+
+// ❌ BAD: Non-English comments
+function calculateTotal(items: Item[]): number {
+  // Additionner tous les prix des articles
+  return items.reduce((sum, item) => sum + item.price, 0);
+}
+```
+
+This rule applies to:
+
+- Inline comments
+- Function/class documentation (JSDoc)
+- Block comments explaining logic
+- TODO/FIXME notes
+- Commit messages (covered in Git Workflow section)
+
+**Exception**: User-facing strings in UI components may be in any language (they will be localized later).

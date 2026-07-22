@@ -1875,3 +1875,330 @@ No need for `as any` — a precise cast is fine and type-safe.
 
 **Context:** Adding a new "Tokens" tab to the DesignTokenPanel.
 **Discovery:** `DesignTokenPanel/components/ColorsTab/` already existed before this work. The new "Tokens" tab was added alongside it. Always check what pre-exists before creating new panel components.
+
+---
+
+## 🎨 STYLE-001 MVP: Style Tokens Not Injecting for Legacy Projects (Jan 12, 2026)
+
+### The Missing Defaults: When Old Projects Had No Tokens
+
+**Context**: Phase 9 STYLE-001 MVP - Style tokens were successfully injected for new projects but completely missing for legacy projects (created before STYLE-001). The `<style id="noodl-style-tokens">` element was absent from the DOM.
+
+**The Problem**: The StyleTokensInjector only injected custom tokens from project metadata, but didn't inject default tokens when metadata was missing or empty. Legacy projects had no `styleTokens` metadata, so NO tokens were injected at all.
+
+**Root Cause**: Incorrect merge logic in `loadTokens()` method:
+
+```typescript
+// ❌ WRONG - Only uses defaults when metadata is invalid
+private loadTokens() {
+  const metadata = this.graphModel.getMetaData();
+  const styleTokens = metadata?.styleTokens;
+
+  if (styleTokens && typeof styleTokens === 'object') {
+    this.tokens = styleTokens;  // Custom tokens only, no defaults!
+  } else {
+    this.tokens = this.getDefaultTokens();  // Only when metadata missing
+  }
+}
+```
+
+**The Issue**: When `styleTokens` existed in metadata, it completely replaced defaults. But when metadata was empty (legacy projects), the logic correctly fell through to defaults. However, the initial implementation had a bug where empty metadata didn't trigger the fallback.
+
+**The Fix** - Always merge custom tokens WITH defaults:
+
+```typescript
+// ✅ RIGHT - Always inject defaults, then merge customs
+private loadTokens() {
+  const metadata = this.graphModel.getMetaData();
+  const styleTokens = metadata?.styleTokens;
+
+  // Always start with defaults
+  const defaults = this.getDefaultTokens();
+
+  if (styleTokens && typeof styleTokens === 'object') {
+    // Merge custom tokens over defaults
+    this.tokens = { ...defaults, ...styleTokens };
+  } else {
+    // Use defaults only
+    this.tokens = defaults;
+  }
+}
+```
+
+**Debug Logging Added** - To help diagnose similar issues:
+
+```typescript
+console.log('[StyleTokensInjector] Initializing...');
+console.log('[StyleTokensInjector] Metadata:', metadata);
+console.log('[StyleTokensInjector] Style tokens from metadata:', styleTokens);
+console.log('[StyleTokensInjector] Loaded tokens:', Object.keys(this.tokens).length, 'tokens');
+console.log('[StyleTokensInjector] Generated CSS:', css.substring(0, 100) + '...');
+console.log('[StyleTokensInjector] Tokens injected into DOM');
+```
+
+**Why This Matters**:
+
+- **Backward compatibility**: Legacy projects must work without code changes
+- **Graceful degradation**: System should provide sensible defaults
+- **Merge pattern**: Custom values should enhance, not replace, defaults
+- **Zero configuration**: Tokens should "just work" for all projects
+
+**How to Verify the Fix**:
+
+1. Open DevTools on preview window (View → Toggle Developer Tools)
+2. Check Console for `[StyleTokensInjector]` logs
+3. Check Elements tab: `<head>` should contain `<style id="noodl-style-tokens">`
+4. Verify in Console: `document.getElementById('noodl-style-tokens')` returns element
+
+**Expected Console Output**:
+
+```
+[StyleTokensInjector] Initializing...
+[StyleTokensInjector] Metadata: {...}
+[StyleTokensInjector] Style tokens from metadata: undefined
+[StyleTokensInjector] No custom tokens, using defaults only
+[StyleTokensInjector] Loaded tokens: 10 tokens
+[StyleTokensInjector] Generated CSS: :root {
+  --primary: #3b82f6;
+  ...
+[StyleTokensInjector] Tokens injected into DOM
+[StyleTokensInjector] Style element added to <head>, id: noodl-style-tokens
+```
+
+**Critical Rules**:
+
+1. **Always inject defaults first** - Never assume projects have custom values
+2. **Merge, don't replace** - Custom tokens enhance defaults, don't replace them
+3. **Add debug logging** - Makes diagnosis trivial for similar issues
+4. **Test with legacy projects** - New features must work with old data
+
+**The 10 Default Tokens** (Always available):
+
+```css
+--primary: #3b82f6        /* Blue - primary actions */
+--background: #ffffff     /* White - page background */
+--foreground: #0f172a     /* Near black - text */
+--border: #e2e8f0         /* Light gray - borders */
+--space-sm: 8px           /* Small spacing */
+--space-md: 16px          /* Medium spacing */
+--space-lg: 24px          /* Large spacing */
+--radius-md: 8px          /* Border radius */
+--shadow-sm: 0 1px 2px... /* Small shadow */
+--shadow-md: 0 4px 6px... /* Medium shadow */
+```
+
+**Usage Pattern**:
+
+```css
+/* In any visual element's Style property */
+background: var(--primary);
+padding: var(--space-md);
+border-radius: var(--radius-md);
+box-shadow: var(--shadow-md);
+```
+
+**Related Issue**: Secondary UI bug discovered - the Style editor popup is poorly positioned and hard to use. This is unrelated to STYLE-001 and should be fixed separately.
+
+**Time Lost**: ~2 hours debugging (tokens in code but not in DOM)
+
+**Location**:
+
+- Fixed in: `packages/noodl-viewer-react/src/style-tokens-injector.ts` (lines 50-67, 105-130)
+- Task: Phase 9 STYLE-001 Token System Enhancement (MVP)
+- CHANGELOG: `dev-docs/tasks/phase-9-styles-overhaul/STYLE-001-token-system-enhancement/CHANGELOG-MVP.md`
+
+**Impact**: This was a P0 blocker for STYLE-001 MVP validation. Without this fix, the token system appeared to not work at all for existing users/projects, only for newly created projects.
+
+**Keywords**: style tokens, CSS custom properties, design tokens, backward compatibility, legacy projects, default values, merge pattern, StyleTokensInjector, metadata, graceful degradation
+
+---
+
+## 🐛 CRITICAL: Project.json Structure - Missing `graph` Object (Jan 9, 2026)
+
+### The Silent Crash: Cannot Read Properties of Undefined (reading 'comments')
+
+**Context**: Phase 0 TASK-010 - New project creation failed with `TypeError: Cannot read properties of undefined (reading 'comments')`. After three previous failed attempts, the root cause was finally identified: incorrect JSON structure in programmatic project creation.
+
+**The Problem**: The programmatically generated project.json had `nodes` array directly in the component object, but the schema requires a `graph` object containing `roots`, `connections`, and `comments`.
+
+**Root Cause**: Misunderstanding of the project.json schema hierarchy:
+
+```
+Component
+  ├─ name
+  ├─ id
+  ├─ metadata
+  └─ graph         ← REQUIRED
+      ├─ roots     ← Was "nodes" (WRONG)
+      ├─ connections
+      └─ comments  ← Error occurred here
+```
+
+**The Broken Pattern**:
+
+```typescript
+// ❌ WRONG - Missing graph wrapper, comments field
+const minimalProject = {
+  name: name,
+  components: [
+    {
+      name: 'App',
+      ports: [],
+      visual: true,
+      visualStateTransitions: [],
+      nodes: [
+        // ☠️ Should be graph.roots, not nodes
+        {
+          id: guid(),
+          type: 'Group'
+          // ...
+        }
+      ]
+    }
+  ]
+};
+
+// ComponentModel.fromJSON calls NodeGraphModel.fromJSON(json.graph)
+// But json.graph is undefined!
+// NodeGraphModel.fromJSON tries to access json.comments
+// BOOM: Cannot read properties of undefined (reading 'comments')
+```
+
+**The Correct Pattern**:
+
+```typescript
+// ✅ RIGHT - Complete structure with graph object
+const minimalProject = {
+  name: name,
+  components: [
+    {
+      name: 'App',
+      id: guid(), // Component needs id
+      graph: {
+        // Graph wrapper required
+        roots: [
+          // Not "nodes"
+          {
+            id: guid(),
+            type: 'Group',
+            x: 0,
+            y: 0,
+            parameters: {},
+            ports: [],
+            children: [
+              {
+                id: guid(),
+                type: 'Text',
+                x: 50,
+                y: 50,
+                parameters: { text: 'Hello World!' },
+                ports: [],
+                children: []
+              }
+            ]
+          }
+        ],
+        connections: [], // Required array
+        comments: [] // Required array (caused the error!)
+      },
+      metadata: {} // Component metadata
+    }
+  ],
+  settings: {},
+  metadata: {
+    // Project metadata
+    title: name,
+    description: 'A new Noodl project'
+  }
+};
+```
+
+**Why This Was Hard to Debug**:
+
+1. **Error message was misleading**: "reading 'comments'" suggested a problem with comments, not missing `graph` object
+2. **Deep call stack**: Error originated 3 levels deep (ProjectModel → ComponentModel → NodeGraphModel)
+3. **No schema documentation**: project.json structure wasn't formally documented
+4. **Template file was truncated**: The actual template (`project-truncated.json`) had incomplete structure
+5. **Multiple fix attempts**: Previous fixes addressed symptoms (path resolution) not root cause (structure)
+
+**The Fix Journey**:
+
+- **Attempt 1**: Path resolution with `__dirname` - FAILED (webpack bundling issue)
+- **Attempt 2**: Path resolution with `process.cwd()` - FAILED (wrong directory)
+- **Attempt 3**: Programmatic creation - FAILED (incomplete structure)
+- **Attempt 4**: Complete structure with `graph` object - SUCCESS ✅
+
+**Required Fields Hierarchy**:
+
+```typescript
+// Complete minimal project structure
+{
+  name: string,
+  components: [{
+    name: string,
+    id: string,           // ← REQUIRED
+    graph: {              // ← REQUIRED wrapper
+      roots: [...],       // ← Was incorrectly "nodes"
+      connections: [],    // ← REQUIRED array
+      comments: []        // ← REQUIRED array (error occurred here)
+    },
+    metadata: {}          // ← REQUIRED object
+  }],
+  settings: {},           // ← REQUIRED object
+  metadata: {             // ← Project-level metadata
+    title: string,
+    description: string
+  }
+}
+```
+
+**How to Identify This Issue**:
+
+1. **Error**: `Cannot read properties of undefined (reading 'comments')`
+2. **Stack trace**: Shows `NodeGraphModel.fromJSON` at line accessing `json.comments`
+3. **Symptom**: Project creation appears to work but crashes when loading
+4. **Root cause**: `ComponentModel.fromJSON` passes `json.graph` to `NodeGraphModel.fromJSON`, but `json.graph` is `undefined`
+
+**Critical Rules**:
+
+1. **Components have `graph` objects, not `nodes` arrays directly** - The nodes live in `graph.roots`
+2. **Always include `comments` and `connections` arrays** - Even if empty, they must exist
+3. **Component needs `id` field** - Can't rely on auto-generation
+4. **Use actual template structure as reference** - Don't invent your own schema
+5. **Test project creation end-to-end** - Not just file writing, but also loading
+
+**Related Code Paths**:
+
+```typescript
+// The error chain:
+ProjectModel.fromJSON(json)
+  → calls ComponentModel.fromJSON(json.components[i])
+    → calls NodeGraphModel.fromJSON(json.graph)  // ← json.graph is undefined!
+      → accesses json.comments  // ← BOOM!
+```
+
+**Prevention**: When creating projects programmatically, always use this checklist:
+
+- [ ] Component has `id` field
+- [ ] Component has `graph` object (not `nodes` array)
+- [ ] `graph.roots` array exists (not `nodes`)
+- [ ] `graph.connections` array exists (can be empty)
+- [ ] `graph.comments` array exists (can be empty)
+- [ ] Component has `metadata` object (can be empty)
+- [ ] Project has `settings` object (can be empty)
+- [ ] Project has `metadata` object with `title` and `description`
+
+**Time Lost**: ~6 hours across three failed attempts before finding root cause
+
+**Location**:
+
+- Fixed in: `packages/noodl-editor/src/editor/src/utils/LocalProjectsModel.ts` (lines 288-321)
+- Error source: `packages/noodl-editor/src/editor/src/models/nodegraphmodel/NodeGraphModel.ts` (line 57)
+- Task: Phase 0 TASK-010 Project Creation Bug Fix
+- CHANGELOG: `dev-docs/tasks/phase-0-foundation-stabilisation/TASK-010-project-creation-bug-fix/CHANGELOG.md`
+
+**Impact**: This was a P0 blocker preventing all new users from creating projects. The fix allows project creation to work correctly without requiring external templates.
+
+**Keywords**: project.json, schema, graph object, NodeGraphModel, ComponentModel, fromJSON, comments, roots, Cannot read properties of undefined, project creation, minimal project, structure
+
+---
