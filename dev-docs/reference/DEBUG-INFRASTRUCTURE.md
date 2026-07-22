@@ -192,24 +192,73 @@ DevTools Protocol. No window-watching, and no OS screen-recording permission —
 `Page.captureScreenshot` renders through the compositor.
 
 ```bash
-npm run dev:debug          # full stack + CDP on :9222, logs to .logs/dev.log
-npm run cdp -- health      # is React actually mounted?
-npm run cdp -- console     # stream console + uncaught exceptions
+npm run dev:debug                    # full stack + CDP on :9222, logs to .logs/dev.log
+npm run dev:debug -- --inspect-main  # plus a main-process inspector on :9229
+npm run cdp -- health                # is React actually mounted?
+npm run cdp -- services              # are the dev servers and builds up?
+npm run cdp -- console               # stream console + uncaught exceptions
 npm run cdp -- screenshot shot.png
 npm run cdp -- eval "location.href"
 npm run cdp -- dom "<selector>" [text|html]
 npm run cdp -- wait "<selector>" [timeoutMs]
+npm run cdp -- click "<selector>"
+npm run cdp -- type "<selector>" "text"
 ```
 
-`health` is the one to reach for first: it reports whether `#root` has children,
-which distinguishes "window opened" from "app actually rendered".
+`health` is the one to reach for first: it reports whether the mount point has
+children, which distinguishes "window opened" from "app actually rendered".
+
+**Two renderers.** The editor and the project preview are separate BrowserWindows
+and therefore separate CDP targets. Every command takes `--target=editor` (the
+default) or `--target=viewer`; the viewer target only exists while a preview is
+running, and asking for it otherwise is an error rather than a silent fall back.
+
+`click` and `type` drive the real input pipeline (`Input.dispatchMouseEvent`,
+`Input.insertText`) rather than dispatching synthetic DOM events, so React's
+handlers, focus and `:active` behave as they do for a user.
 
 `.logs/dev.log` aggregates the viewer, cloud runtime, main process, and the
-renderer console (mirrored into main stdout in dev). Services: web server 8574,
-cloud functions 8577, renderer dev server 8080, CDP 9222.
+renderer console (mirrored into main stdout in dev). `dev-debug.js` also attaches
+to each page over CDP as it appears and writes `[renderer:exception]` lines into
+the same log, so a crash during boot is recorded without anyone having to attach
+in time to see it.
+
+Services: web server 8574, cloud functions 8577, renderer dev server 8080, CDP
+9222, main-process inspector 9229 when requested. `npm run cdp -- services`
+probes them all. The viewer and cloud runtime are webpack watch builds rather
+than servers, so they are reported by the freshness of what they emit into
+`packages/noodl-editor/src/external`.
+
+Debugging the main process needs `--inspect` passed to the Electron binary, which
+cannot be switched on from inside `main.js`. `packages/noodl-editor/scripts/start-electron-dev.js`
+is the launcher that does it, driven by `NOODL_MAIN_INSPECT_PORT`
+(and `NOODL_MAIN_INSPECT_BRK=1` to pause before `main.js` runs). Attach with
+`node inspect 127.0.0.1:9229` or chrome://inspect.
 
 Tooling lives in `scripts/devtools/` (`dev-debug.js`, `cdp.js`). The
 `.claude/skills/run-editor` skill documents the same workflow for agents.
+
+### Screenshots: CDP first, `screencapture` only for native chrome
+
+`npm run cdp -- screenshot` goes through the browser compositor. It needs **no OS
+permission**, works when the window is buried, and covers everything inside the
+window — which is nearly all of an Electron app. Make it the default.
+
+**A black rectangle from macOS `screencapture` is a missing permission, not a
+crashed app.** macOS gates screen capture behind Privacy & Security → Screen &
+System Audio Recording, and the permission belongs to the *capturing* process —
+Terminal or VS Code — not to OpenNoodl. The desktop and dock keep rendering
+normally, so the output is indistinguishable from an app that failed to paint.
+During the 2026-07-22 session this cost several steps: a black frame was read as
+a crash when it was really an unprompted permission.
+
+If you have a black frame and are unsure which it is, run `npm run cdp -- health`.
+`reactMounted: true` means the app is fine and the capture path is not.
+
+The native path is only needed for what lives outside the renderer: the OS window
+frame, native menus, native dialogs, multi-window layout. Grant Screen & System
+Audio Recording to Terminal / VS Code and restart that app. If you need it more
+than once, Playwright's `_electron` driver is the right tool.
 
 ### The two stale-bundle traps
 
