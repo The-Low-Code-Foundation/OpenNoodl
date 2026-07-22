@@ -10,7 +10,7 @@
 | **Difficulty** | 🟡 Medium — the code is small; the decision is a product one |
 | **Estimated Time** | 1–2 days |
 | **Prerequisites** | None. Found during REV-008 Stream D1. |
-| **Branch** | `task/rev-009-style-tokens` |
+| **Branch** | `cline-dev` — work directly on it, no task branch (see `.clinerules`) |
 | **Recommended executor** | 🟠 **Opus 4.8** — the work is small but the call on what the design system *is* is not mechanical |
 
 ## Objective

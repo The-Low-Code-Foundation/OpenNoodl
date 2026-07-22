@@ -10,7 +10,7 @@
 | **Difficulty** | 🔴 Hard (12 major versions; native modules) |
 | **Estimated Time** | 1–3 weeks |
 | **Prerequisites** | REV-001, REV-002 (need a working build and test suite to detect breakage), REV-003 strongly recommended |
-| **Branch** | `task/rev-004-electron-upgrade` |
+| **Branch** | `cline-dev` — work directly on it, no task branch (see `.clinerules`) |
 | **Recommended executor** | 🟠 **Opus 4.8** — a long, judgement-heavy migration across 12 majors with native-module ABI rebuilds and breaking main-process API changes. Needs sustained debugging of opaque runtime failures, but the target state is unambiguous. |
 
 ## Objective
@@ -125,4 +125,4 @@ Work through the official Electron breaking-changes notes for each major from 32
 - [ ] Rebuild and verify native modules
 - [ ] Audit security defaults (no weakening)
 - [ ] Full automated + manual regression; package all three platforms
-- [ ] Re-verify test harness; complete CHANGELOG; open PR
+- [ ] Re-verify test harness; complete CHANGELOG; commit to cline-dev and push

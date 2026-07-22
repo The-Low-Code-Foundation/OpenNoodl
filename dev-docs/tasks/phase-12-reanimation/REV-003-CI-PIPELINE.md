@@ -10,7 +10,7 @@
 | **Difficulty** | 🟡 Medium |
 | **Estimated Time** | 1 week |
 | **Prerequisites** | REV-001 (build must pass), REV-002 (tests must run) |
-| **Branch** | `task/rev-003-ci-pipeline` |
+| **Branch** | `cline-dev` — work directly on it, no task branch (see `.clinerules`) |
 | **Recommended executor** | 🟢 **Sonnet 5** — well-trodden GitHub Actions work with existing `ci:*` scripts to wire up. The hard parts (making build and tests pass) are REV-001/002; this is assembly. Escalate to Opus only if Electron-in-CI proves stubborn. |
 
 ## Objective
@@ -126,4 +126,4 @@ Plus a **nightly** workflow producing unsigned packaged builds for all three pla
 - [ ] Prove each gate fails on broken input
 - [ ] Nightly packaging workflow with artifact upload
 - [ ] Enable and document branch protection; add badge
-- [ ] Complete CHANGELOG; open PR
+- [ ] Complete CHANGELOG; commit to cline-dev and push

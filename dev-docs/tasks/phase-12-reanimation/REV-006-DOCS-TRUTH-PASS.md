@@ -10,7 +10,7 @@
 | **Difficulty** | 🟢 Easy (research-heavy, low technical risk) |
 | **Estimated Time** | 2–3 days |
 | **Prerequisites** | None |
-| **Branch** | `task/rev-006-docs-truth-pass` |
+| **Branch** | `cline-dev` — work directly on it, no task branch (see `.clinerules`) |
 | **Recommended executor** | 🟢 **Sonnet 5** — systematic cross-referencing of docs against git history and code. High volume, low ambiguity. The judgement calls (what "done" means for a partially-wired feature) are enumerated below. |
 
 ## Objective
@@ -111,4 +111,4 @@ Not code, so verification is by spot-check: pick five task IDs at random across 
 - [ ] Rewrite each `PROGRESS.md` with the new status vocabulary
 - [ ] Name the closing task for every integration gap
 - [ ] Update `dev-docs/README.md` and `GIT-WORKFLOW.md`
-- [ ] Independent spot-check of five task IDs; open PR
+- [ ] Independent spot-check of five task IDs; commit to cline-dev and push

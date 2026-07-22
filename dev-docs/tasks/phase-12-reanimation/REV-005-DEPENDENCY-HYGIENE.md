@@ -10,7 +10,7 @@
 | **Difficulty** | 🟡 Medium |
 | **Estimated Time** | 1 week |
 | **Prerequisites** | REV-001; best done alongside or just after REV-004 |
-| **Branch** | `task/rev-005-dependency-hygiene` |
+| **Branch** | `cline-dev` — work directly on it, no task branch (see `.clinerules`) |
 | **Recommended executor** | 🟢 **Sonnet 5** — mechanical and verifiable: bump, build, test, repeat. The one judgement call (which vulnerabilities are genuinely reachable) is documented below. Hand any single dependency that turns into a migration project to Opus as its own task. |
 
 ## Objective
@@ -130,4 +130,4 @@ Measured 2026-07-22:
 - [ ] Toolchain dedupe; builds verified
 - [ ] Case-by-case review of remaining findings; record decisions
 - [ ] Update `engines`; write `DEPENDENCY-POLICY.md`
-- [ ] Clean-clone `npm ci` verification; CHANGELOG; open PR
+- [ ] Clean-clone `npm ci` verification; CHANGELOG; commit to cline-dev and push

@@ -238,7 +238,23 @@ describe('FeatureName', () => {
 
 ### 6. Git Workflow
 
-**Branch naming**:
+**Work directly on `cline-dev`. Do not create per-task branches.**
+
+`cline-dev` is the working branch and there is currently a single developer on
+this repo, so a task branch plus a PR is pure ceremony — it adds a merge step and
+a review round-trip with nobody on the other end. Commit to `cline-dev` as you go,
+one commit per logical change, and push when the work is verified.
+
+The task specs under `dev-docs/tasks/` predate this and carry a `Branch:` field
+and a "create branch" checklist item. Ignore both; the rule here wins.
+
+Branch only when there is a concrete reason, and say what it is:
+
+- work that must be reviewed by someone else before it lands
+- an experiment you expect to throw away
+- something that has to sit unmerged while other work continues
+
+In those cases, name it:
 
 ```bash
 feature/add-vercel-deployment
@@ -437,8 +453,7 @@ Before marking any task complete:
 
 - [ ] Meaningful commit messages (conventional commits format)
 - [ ] No unrelated changes in commits
-- [ ] Branch named correctly
-- [ ] Based on latest main branch
+- [ ] Committed on `cline-dev` (no task branch — see Git Workflow above)
 
 ---
 

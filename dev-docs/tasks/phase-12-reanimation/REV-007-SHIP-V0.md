@@ -10,7 +10,7 @@
 | **Difficulty** | 🟡 Medium (mostly process, credentials, and platform bureaucracy) |
 | **Estimated Time** | 2 weeks |
 | **Prerequisites** | REV-003 (CI), REV-004 (Electron upgrade — sign the version you intend to ship) |
-| **Branch** | `task/rev-007-ship-v0` |
+| **Branch** | `cline-dev` — work directly on it, no task branch (see `.clinerules`) |
 | **Recommended executor** | 🟠 **Opus 4.8** — technically moderate but full of platform-specific failure modes (notarisation, entitlements, code-signing identities, update feeds) where errors are opaque and partial states are dangerous. Requires a human for credential/account steps regardless of model. |
 
 ## Objective
@@ -134,4 +134,4 @@ Note the deliberate ordering with REV-004: sign and ship the *upgraded* Electron
 - [ ] Auto-update tested across two releases, including decline path
 - [ ] Tag-triggered release workflow with secrets; draft-then-publish
 - [ ] `RELEASE-PROCESS.md` incl. rollback; supersede note in phase-8 PROGRESS
-- [ ] Cut and publish v0.1.0; open PR
+- [ ] Cut and publish v0.1.0; commit to cline-dev and push
