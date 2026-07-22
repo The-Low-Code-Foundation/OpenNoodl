@@ -14,7 +14,6 @@
 
 import { ButtonConfig } from './configs/ButtonConfig';
 import { CheckboxConfig } from './configs/CheckboxConfig';
-import { GroupConfig } from './configs/GroupConfig';
 import { TextConfig } from './configs/TextConfig';
 import { TextInputConfig } from './configs/TextInputConfig';
 import { ElementConfig, ResolvedVariant, VariantConfig } from './ElementConfigTypes';
@@ -176,11 +175,17 @@ function getSizeNames(nodeType: string): string[] {
 
 // ------------------------------------------------------------------
 // Register all built-in configs
+//
+// GroupConfig used to be here. It keyed on 'net.noodl.visual.group', which is
+// not a node type — the real one is 'Group' (packages/noodl-viewer-react/src/
+// nodes/visual/group.js) — so it never matched anything and had never applied
+// to a single node. Deleted rather than repointed in REV-008: activating it
+// would stamp var(--surface), var(--space-4) and friends onto every new Group
+// node, and nothing defines those. See REV-009.
 // ------------------------------------------------------------------
 
 register(ButtonConfig);
 register(CheckboxConfig);
-register(GroupConfig);
 register(TextConfig);
 register(TextInputConfig);
 

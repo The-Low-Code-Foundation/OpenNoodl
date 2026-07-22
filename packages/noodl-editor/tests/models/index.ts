@@ -1,4 +1,12 @@
-// NOTE: UBAConditions.test, UBASchemaParser.test, ElementConfigRegistry.test
-// use @jest/globals and are Jest-only tests. They run via `npm run test:editor`.
-// Do NOT re-add them here - the Electron Jasmine runner will crash on import.
-export {};
+// These specs were written against Jest and ran nowhere: the editor suite is
+// Jasmine, and `import ... from '@jest/globals'` throws at module load, taking
+// down the entire Electron run rather than just the one file. REV-008 converted
+// them — Jasmine provides the globals, so no import is needed — and wired them
+// back in one at a time, running `npm run test:ci` between each.
+export * from './expression-parameter.test';
+export * from './ElementConfigRegistry.test';
+export * from './UBAConditions.test';
+export * from './UBASchemaParser.test';
+export * from './ProjectCreationWizard.test';
+export * from './StyleAnalyzer.test';
+export * from './EmbeddedTemplate.test';

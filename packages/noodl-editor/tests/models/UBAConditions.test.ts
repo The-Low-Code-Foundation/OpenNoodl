@@ -8,7 +8,6 @@
  * - evaluateCondition — all 6 operators
  */
 
-import { describe, expect, it } from '@jest/globals';
 
 import { evaluateCondition, getNestedValue, isEmpty, setNestedValue } from '../../src/editor/src/models/UBA/Conditions';
 
@@ -64,7 +63,8 @@ describe('setNestedValue', () => {
 // ─── isEmpty ─────────────────────────────────────────────────────────────────
 
 describe('isEmpty', () => {
-  it.each([
+  // `it.each` is a Jest API; Jasmine has no equivalent, so generate the specs.
+  const cases: [unknown, boolean][] = [
     [null, true],
     [undefined, true],
     ['', true],
@@ -75,20 +75,32 @@ describe('isEmpty', () => {
     [false, false],
     [['a'], false],
     [{}, false]
-  ])('isEmpty(%o) === %s', (value, expected) => {
-    expect(isEmpty(value)).toBe(expected);
-  });
+  ];
+
+  for (const [value, expected] of cases) {
+    it(`isEmpty(${JSON.stringify(value)}) === ${expected}`, () => {
+      expect(isEmpty(value)).toBe(expected);
+    });
+  }
 });
 
 // ─── evaluateCondition ────────────────────────────────────────────────────────
 
 describe('evaluateCondition', () => {
+  // `condition.field` is resolved with getNestedValue, so the fixture has to be
+  // a nested object. It was written with flat dotted keys ('auth.type': ...),
+  // which never resolve — six specs in this block failed the first time the file
+  // was actually run. REV-008.
   const values = {
-    'auth.type': 'bearer',
-    'auth.token': 'abc123',
-    'auth.enabled': true,
-    'features.list': ['a', 'b'],
-    'features.empty': []
+    auth: {
+      type: 'bearer',
+      token: 'abc123',
+      enabled: true
+    },
+    features: {
+      list: ['a', 'b'],
+      empty: []
+    }
   };
 
   it('returns true when condition is undefined', () => {

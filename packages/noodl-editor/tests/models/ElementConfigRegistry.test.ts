@@ -5,7 +5,6 @@
  * getVariantNames, applyDefaults.
  */
 
-import { describe, it, expect } from '@jest/globals';
 
 import { ElementConfigRegistry, NodeModelLike } from '../../src/editor/src/models/ElementConfigs/ElementConfigRegistry';
 
@@ -18,8 +17,15 @@ function makeNode(): NodeModelLike {
 }
 
 const BUTTON_TYPE = 'net.noodl.controls.button';
-const TEXT_TYPE = 'net.noodl.visual.text';
-const GROUP_TYPE = 'net.noodl.visual.group';
+
+// Registered, but defines no sizes. Note the identifier is bare 'Text', not
+// 'net.noodl.visual.text' — this spec had the latter, which matches no node type
+// and no config, so the "no sizes" assertion below was passing for the wrong
+// reason. Same class of bug as the deleted GroupConfig. REV-008.
+const TEXT_TYPE = 'Text';
+
+// Deliberately not a registered type, for the unknown-type paths.
+const UNREGISTERED_TYPE = 'net.noodl.visual.group';
 
 // ---------------------------------------------------------------------------
 // applyVariant
@@ -88,10 +94,15 @@ describe('ElementConfigRegistry.applySize', () => {
     expect(node.parameters['_size']).toBe('lg');
   });
 
-  it('is a no-op for a node type with no sizes', () => {
+  it('is a no-op for a registered type with no sizes', () => {
     const node = makeNode();
-    // Group has no sizes defined
-    ElementConfigRegistry.applySize(node, GROUP_TYPE, 'sm');
+    ElementConfigRegistry.applySize(node, TEXT_TYPE, 'sm');
+    expect(node.parameters).toEqual({});
+  });
+
+  it('is a no-op for an unregistered type', () => {
+    const node = makeNode();
+    ElementConfigRegistry.applySize(node, UNREGISTERED_TYPE, 'sm');
     expect(node.parameters).toEqual({});
   });
 
@@ -119,7 +130,7 @@ describe('ElementConfigRegistry.getSizeNames', () => {
   });
 
   it('returns empty array for node types with no sizes', () => {
-    expect(ElementConfigRegistry.getSizeNames(GROUP_TYPE)).toEqual([]);
+    expect(ElementConfigRegistry.getSizeNames(UNREGISTERED_TYPE)).toEqual([]);
     expect(ElementConfigRegistry.getSizeNames(TEXT_TYPE)).toEqual([]);
   });
 

@@ -3,6 +3,26 @@ const { app, dialog } = electron;
 const fs = require('fs');
 const path = require('path');
 
+// If Electron was booted as a plain Node process (ELECTRON_RUN_AS_NODE=1, which
+// VS Code sets in integrated terminals and the extension host), `require('electron')`
+// hands back the CLI shim instead of the API object. Every main-process API is then
+// undefined and the app exits 0 without opening a window or printing anything —
+// indistinguishable from a successful launch. The test harness already guards this
+// (test.js, REV-002); the app itself did not, so a packaged build launched from an
+// editor terminal silently did nothing.
+if (!app || typeof app.on !== 'function') {
+  console.error('');
+  console.error('  OpenNoodl must run as the Electron main process, not under Node.');
+  console.error('');
+  console.error(`  ELECTRON_RUN_AS_NODE=${JSON.stringify(process.env.ELECTRON_RUN_AS_NODE)} is set,`);
+  console.error('  so `require("electron").app` is undefined and no window can be opened.');
+  console.error('');
+  console.error('  Launch via `npm run dev` / `npm run dev:debug`, which strip it, or clear it:');
+  console.error('      env -u ELECTRON_RUN_AS_NODE <command>');
+  console.error('');
+  process.exit(1);
+}
+
 const AutoUpdater = require('./src/autoupdater');
 const FloatingWindow = require('./src/floating-window');
 const startServer = require('./src/web-server');
@@ -32,6 +52,29 @@ const isDev = args.includes('--dev');
 // "dispatcher.getOwner is not a function" and leaves a blank window.
 if (isDev) {
   process.env.devMode = 'yes';
+}
+
+// React and react-dom are webpack externals, so the packaged app `require()`s them
+// at runtime — and react/index.js picks its development or production build from
+// process.env.NODE_ENV, which is undefined in a packaged Electron app. That paired
+// *development* react with the *production* react-dom the build produced, and
+// React 19's shared internals differ between the two:
+//
+//   TypeError: dispatcher.getOwner is not a function
+//     at getOwner (node_modules/react/cjs/react.development.js:416)
+//     at createDialogLayer (router.tsx:59)
+//
+// It throws before first paint, so the packaged app opened a black window. The
+// renderer inherits this env, which is how index.html reads devMode above.
+// REV-008 — verified with `npm run cdp -- health` against a packaged build.
+// The bracket access is load-bearing. In a production build webpack's
+// DefinePlugin substitutes the literal expression `process.env.NODE_ENV` with
+// "production" at compile time, so the dotted form compiles to `"production" =
+// "production"` and the whole branch is dropped as dead code — the fix silently
+// does not ship. DefinePlugin does not touch computed member access.
+const NODE_ENV = 'NODE_ENV';
+if (!isDev && !process.env[NODE_ENV]) {
+  process.env[NODE_ENV] = 'production';
 }
 
 // Opt-in Chrome DevTools Protocol endpoint. With this set, the renderer can be

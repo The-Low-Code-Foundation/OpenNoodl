@@ -55,6 +55,15 @@ and the three `net.noodl.controls.*` configs are correct.
 something to smuggle into a merge commit. Porting it and fixing `GroupConfig`
 should be a small deliberate task.
 
+**Resolved in REV-008 (2026-07-22): both deleted, neither ported.** Repointing the
+identifiers would have activated configs whose variants reference `var(--surface)`,
+`var(--space-4)` and similar — and nothing defines those. The token system they
+were written against was never wired up: `StyleTokensInjector` is not constructed
+anywhere, and the tokens that *did* ship use a different vocabulary. `GroupConfig`
+is gone from the tree; `ImageConfig` stays recoverable from `d67ee72` if the wider
+question is ever settled. See
+[REV-009](../tasks/phase-12-reanimation/REV-009-STYLE-TOKENS-NEVER-WIRED.md).
+
 ## Other resolutions
 
 **`LocalProjectsModel.ts`** (the only genuine code conflict). The "create project
@@ -100,10 +109,19 @@ Merged cleanly, no conflicts, independent of the ElementConfigs fight:
   `packages/noodl-editor/tsconfig.json` but not in the root `tsconfig.json`, plus a
   `LauncherPageMetaData` export missing from noodl-core-ui. Worth a follow-up.
 
-## Not verified
+## Not verified — resolved by REV-008
 
-The merge is structurally sound and the suite is green, but the editor was not
-launched against it. StyleTokens and the embedded template system have no
-automated coverage — the suite exercises neither. Someone should create a project
-from the launcher and confirm the hello-world template and token injection behave
-before this is relied on.
+The merge was structurally sound and the suite green, but the editor had not been
+launched against it, and StyleTokens and the embedded template system had no
+automated coverage. REV-008 (2026-07-22) closed that:
+
+- **Embedded template system — works.** `tests/models/EmbeddedTemplate.test.ts`
+  covers it: the provider writes a `project.json` with components, a root
+  component, and a `graph` object on each component (the missing-`graph` crash in
+  LEARNINGS.md). `runtimeVersion` round-trips as `react19`, so the hand-resolved
+  combination in `newProject` — tara's template flow plus cline-dev's react19 —
+  is now guarded.
+- **StyleTokens — does not work.** `StyleTokensInjector` is never constructed, so
+  no tokens are ever injected, and the tokens that shipped use a different
+  vocabulary from the one ElementConfigs references. Written up as
+  [REV-009](../tasks/phase-12-reanimation/REV-009-STYLE-TOKENS-NEVER-WIRED.md).

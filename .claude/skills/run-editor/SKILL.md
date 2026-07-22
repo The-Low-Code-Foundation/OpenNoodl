@@ -12,8 +12,9 @@ screen-recording permission.
 ## Launch
 
 ```bash
-npm run dev:debug              # full stack + CDP endpoint, logs to .logs/dev.log
-npm run dev:debug -- --quiet   # same, file logging only
+npm run dev:debug                    # full stack + CDP endpoint, logs to .logs/dev.log
+npm run dev:debug -- --quiet         # same, file logging only
+npm run dev:debug -- --inspect-main  # also open a main-process inspector on :9229
 ```
 
 Always launch in the background and wait for the compile — it takes 60-90s:
@@ -30,23 +31,66 @@ sleep 30   # renderer bundle still has to load
 
 ```bash
 npm run cdp -- health                     # is React mounted? one-shot verdict
+npm run cdp -- services                   # are the dev servers and builds up?
 npm run cdp -- eval "document.title"      # run JS in the renderer
 npm run cdp -- console 20000              # stream console + uncaught exceptions
 npm run cdp -- screenshot shot.png        # PNG via the compositor
 npm run cdp -- dom ".launcher" html       # innerText or outerHTML of a selector
 npm run cdp -- wait ".project-list" 30000 # block until a selector appears
+npm run cdp -- click "button.create"      # real trusted click, React handlers fire
+npm run cdp -- type "input[name=x]" "hi"  # focus + insert text, fires onChange
 npm run cdp -- reload                     # reload, e.g. to catch startup errors
 npm run cdp -- targets                    # list CDP targets
 ```
 
-**Start with `health`.** It reports whether `#root` has children. A window that
-opens but renders nothing is the failure mode this app is prone to, and `health`
-catches it in one call.
+**Start with `health`.** It reports whether the mount point has children. A window
+that opens but renders nothing is the failure mode this app is prone to, and
+`health` catches it in one call.
 
-To capture a startup crash, run `console` in the background and then `reload` —
-errors thrown during boot are otherwise gone before you attach.
+**Two renderers.** The editor and the project preview are separate windows, so
+separate CDP targets. Every command takes `--target`:
 
-Read `screenshot` output with the Read tool; a blank frame is a real failure.
+```bash
+npm run cdp -- health --target=viewer            # the preview window
+npm run cdp -- screenshot preview.png --target=viewer
+```
+
+`--target=editor` is the default. The viewer target only exists while a preview
+is running; asking for it otherwise is an error rather than a silent fall back to
+the editor.
+
+`click` and `type` go through `Input.dispatchMouseEvent` / `Input.insertText`, not
+synthetic DOM events, so React's handlers, focus and `:active` behave as they do
+for a real user. `el.click()` from `eval` bypasses most of that — prefer these.
+
+Startup exceptions are captured automatically: `dev:debug` attaches to each page
+as it appears and writes `[renderer:exception]` lines into `.logs/dev.log`, so a
+boot crash is in the log before you get there. `console` + `reload` is still the
+way to watch them live.
+
+## Screenshots — use CDP, not `screencapture`
+
+`npm run cdp -- screenshot` renders through the browser compositor. It needs **no
+OS permission**, works when the window is behind others, and covers everything
+inside the window — which is nearly all of an Electron app.
+
+**A black rectangle from macOS `screencapture` means a missing permission, not a
+crashed app.** macOS gates screen capture behind Privacy & Security → Screen &
+System Audio Recording, and the permission belongs to the *capturing* process —
+your terminal or VS Code — not to OpenNoodl. The desktop and dock still render
+normally, so the result looks exactly like an app that failed to paint. This has
+already cost one session several steps chasing a crash that never happened.
+
+If you have a black frame and are unsure which it is, run `npm run cdp -- health`.
+`reactMounted: true` means the app is fine and your capture path is not.
+
+Reach for the native path only for things outside the renderer — the OS window
+frame, native menus, native dialogs, multi-window layout. That needs the
+permission granted to Terminal / VS Code (then restart that app), and
+Playwright's `_electron` driver is the better tool if you need it repeatedly.
+
+Read screenshots back with the Read tool. A blank frame from *CDP* is a real
+failure.
 
 ## Logs
 
@@ -59,7 +103,10 @@ grep -iE "error|exception|failed" .logs/dev.log | grep -viE "sass|deprecat"
 ```
 
 Services: web server on 8574, cloud functions on 8577, renderer dev server on
-8080, CDP on 9222.
+8080, CDP on 9222, main-process inspector on 9229 when asked for.
+`npm run cdp -- services` probes all of them, plus the freshness of the viewer
+and cloud-runtime builds in `src/external` — those are webpack watch builds
+rather than servers, so they have no port to probe.
 
 ## Traps specific to this repo
 
@@ -79,8 +126,10 @@ you invoke `electron` yourself, strip it: `env -u ELECTRON_RUN_AS_NODE ...`.
   `scripts/start.ts` rebuilds it on every dev launch. Before that existed, main
   process edits did nothing in dev.
 
-If a change appears to have no effect, suspect a stale bundle before suspecting
-the change.
+Both are gitignored now, and `npm run check:artefacts` fails if they are ever
+committed again — a tracked bundle is what let a months-old build masquerade as
+source. If a change appears to have no effect, suspect a stale bundle before
+suspecting the change.
 
 **Single instance.** The app takes a single-instance lock; a second launch exits
 with "Noodl is already running". Kill the old one first:

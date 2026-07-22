@@ -2,7 +2,7 @@
 
 **Created:** 2026-07-22 (from NOODL-REVIVAL-ROADMAP.md Horizon 0)
 **Last Updated:** 2026-07-22
-**Overall Status:** 🟡 In Progress (14%)
+**Overall Status:** 🟡 In Progress (33%)
 
 ---
 
@@ -10,11 +10,11 @@
 
 | Metric | Value |
 | ------------ | ------ |
-| Total Tasks | 8 |
-| Completed | 2 |
+| Total Tasks | 9 |
+| Completed | 3 |
 | In Progress | 0 |
 | Not Started | 6 |
-| Overall | **25%** |
+| Overall | **33%** |
 
 ---
 
@@ -29,7 +29,8 @@
 | REV-005 | Dependency Hygiene | 🔴 Not Started | — | Coordinate with REV-004 |
 | REV-006 | Docs Truth Pass | 🔴 Not Started | — | Independent; do early |
 | REV-007 | Ship v0 (signed builds + auto-update) | 🔴 Not Started | — | Needs REV-004 |
-| REV-008 | Dev Loop Hardening + Verification Debt | 🔴 Not Started | — | Stream A is critical: committed bundles let stale code run silently |
+| REV-008 | Dev Loop Hardening + Verification Debt | 🟢 Completed | Opus 4.8 | 186 artefacts untracked; packaged app launches again; 540 → 705 specs |
+| REV-009 | Style tokens were never wired up | 🔴 Not Started | — | Found by REV-008 Stream D; a shipped subsystem that does nothing |
 
 ---
 
@@ -46,3 +47,4 @@ trackers misled contributors (see REV-006) — do not let this file become one o
 - **2026-07-22**: REV-002 completed. Root cause was `ELECTRON_RUN_AS_NODE=1` in the inherited environment — VS Code sets it in integrated terminals and the extension host, so the Electron binary booted as plain Node, `require('electron')` returned the CLI shim path instead of the API object, and `app` was `undefined` before any test code ran. That is why the suite could be green on another machine in February and dead here. Added `packages/noodl-editor/scripts/run-electron-tests.js` (spawns the binary directly with the variable stripped, propagates the exit code), stripped it in `scripts/test-editor.ts` too, and added a self-diagnosing guard in `test.js`. The harness also had no results path at all: `test.js` now receives Jasmine results over IPC from a reporter in `SpecRunner.html` and exits non-zero on failures, zero specs, renderer crash, early window close, or a 15-minute watchdog; `webpack.test.js` carries the child's code out through the dev server. Fixed the CI path, which could never have worked — `webpack.test-ci.js` inherited the dev-server `onListening` Electron spawn, and `SpecRunner.html` hard-coded the bundle URL to `localhost:8081` with no server running; CI now builds to disk and runs with a hidden window. Pinned `random: false` in Jasmine: the suite shares global state (`ProjectModel.instance`, `NodeLibrary` registration) and two `tests/nodegraph/export.js` specs passed or failed by seed. Suite result: **540 specs, 539 pass**, three consecutive clean runs at exit 0, and a deliberately broken `tests/io/` assertion correctly reported and exited 1. Fixed along the way: `tests/utils/ParameterValueResolver.test.ts` imported `@jest/globals`, which throws at module load and was taking down the entire run; two `schema-validator.test.ts` specs used Jest substring `toThrow`; and `ParameterValueResolver.toNumber(null)` returned `0` against its own documented contract (real bug, no production callers yet). One spec quarantined as `xit` — component port renames do not propagate to instances in other graphs, a genuine editor bug needing its own task. See `REV-002-NOTES.md` for that and the other follow-ups. Unblocks REV-003.
 - **2026-07-22**: Merged `cline-dev-tara` (16 commits, Jan 2026) into `cline-dev` after REV-002 made verification possible — see `dev-docs/reviews/MERGE-NOTES-cline-dev-tara.md`. Both branches had independently implemented ElementConfigs with different architectures and different consumers (9 of 14 conflicts were add/add on those files); kept `cline-dev`'s, which compiles and drives the property panel. Brought in StyleTokens and the embedded template system. Suite green at 540/0.
 - **2026-07-22**: Fixed the dev loop (`1502581`). The editor opened a black window because of two stacked stale-artefact bugs: `src/editor/index.html` only loads the dev-server bundle when `devMode === 'yes'`, which nothing ever set, so it ran a stale production `index.bundle.js` (production react-dom + external development react → `dispatcher.getOwner is not a function` before first paint); and `npm run dev` never rebuilt `src/main/main.bundle.js`, the Electron entry point, so main-process edits did nothing in dev. Also stripped `ELECTRON_RUN_AS_NODE` from the dev launch path — same bug REV-002 fixed for tests. Added headless debugging: `scripts/devtools/cdp.js` (health/eval/console/screenshot/dom/wait), `npm run dev:debug` with all service output in `.logs/dev.log`, renderer console mirrored into main stdout, and a `run-editor` agent skill. Editor verified rendering via CDP. Follow-up work captured as REV-008.
+- **2026-07-22**: REV-008 completed. **Stream A** — untracked 186 generated files (~24 MB) that were committed webpack output living in `src/`: the three entry bundles, their split chunks, the Monaco workers and the file-loader SVGs. That was the root enabler for the black-window bug — a months-old bundle could run instead of the source beside it, and every dev run left the tree dirty. `npm run check:artefacts` plus a CI workflow stop it recurring; the vendored parse-dashboard bundles stay tracked, since nothing here rebuilds them. Verifying from a genuinely clean clone turned up **two pre-existing defects that meant the packaged app had never launched**: `react`/`react-dom` are webpack externals, so the packaged app resolved *development* react (NODE_ENV is unset in a packaged Electron app) against the *production* react-dom it had built, throwing `dispatcher.getOwner is not a function` before first paint; and `split2`, `crelt`, `style-mod` and `w3c-keyname` were externalised but undeclared, so electron-builder never collected them (`Cannot find module 'split2'`). Both fixed, and the fix itself nearly shipped as a no-op — webpack's DefinePlugin constant-folded the dotted `process.env.NODE_ENV` away, which `cdp health` against the packaged build caught. A clean clone now produces a `.dmg` whose app renders. **Stream B** — `cdp.js` gained `--target=editor|viewer`, a `services` probe, and real `click`/`type` through the input pipeline; `dev-debug.js` attaches over CDP as pages appear and writes renderer exceptions into `.logs/dev.log`; the main process is debuggable at last via `npm run dev:debug -- --inspect-main`. `main.js` also gained the `ELECTRON_RUN_AS_NODE` guard `test.js` already had — without it the app exits 0 in silence. **Stream C** — both docs now say CDP-first for screenshots, and that a black `screencapture` frame is a macOS permission, not a crash. **Stream D** — the merge debt: the embedded hello-world template works and is now covered, including the never-executed template-flow-plus-`react19` combination; the six stranded Jest specs are converted and running (540 → 705 specs, 0 failures), and two of them were not merely stranded but *wrong* — `UBAConditions` built its fixture from flat dotted keys the implementation cannot resolve, and `ProjectCreationWizard` asserted against its own copies of the functions it claimed to test. `GroupConfig` was deleted rather than repointed: it keyed on a non-existent node type, and activating it would have stamped undefined CSS variables onto the most-used node in the product. That last point opened up **REV-009** — the style-token system was never connected to anything.

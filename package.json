@@ -18,6 +18,7 @@
     "clean:electron": "node scripts/clean-electron.js",
     "clean:all": "npm run clean:cache && npm run clean:electron",
     "health:check": "node scripts/health-check.js",
+    "check:artefacts": "node scripts/check-build-artefacts.js",
     "graph": "npx nx graph",
     "ci:prepare:editor": "ts-node -P ./scripts/tsconfig.json ./scripts/ci-editor-prepare.ts",
     "ci:build:viewer": "lerna exec --scope @noodl/noodl-viewer-react -- npm run build",

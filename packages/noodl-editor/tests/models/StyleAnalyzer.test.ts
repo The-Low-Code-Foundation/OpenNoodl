@@ -5,11 +5,18 @@
  * and suggestion generation — without touching Electron or the real ProjectModel.
  */
 
-import { describe, it, expect, beforeEach, jest } from '@jest/globals';
-
+import { ProjectModel } from '../../src/editor/src/models/projectmodel';
 import { StyleAnalyzer } from '../../src/editor/src/services/StyleAnalyzer/StyleAnalyzer';
 
-// ─── Mock ProjectModel before importing StyleAnalyzer ───────────────────────
+// ─── Stub ProjectModel ──────────────────────────────────────────────────────
+//
+// This spec was written for Jest and used `jest.mock` on the projectmodel
+// module. The editor suite is Jasmine (see DEBUG-INFRASTRUCTURE.md), which has
+// no module mocking — and assigning `ProjectModel.instance` is not an option
+// either, because its setter registers the value with NodeLibrary and would do
+// real work on a fake. StyleAnalyzer only ever reads `ProjectModel.instance` at
+// call time, so spying on the getter is enough, and Jasmine restores it after
+// each spec.
 
 type MockNode = {
   id: string;
@@ -18,21 +25,6 @@ type MockNode = {
 };
 
 let mockNodes: MockNode[] = [];
-
-jest.mock('@noodl-models/projectmodel', () => ({
-  ProjectModel: {
-    instance: {
-      getComponents: () => [
-        {
-          forEachNode: (cb: (node: MockNode) => void) => {
-            mockNodes.forEach(cb);
-          }
-        }
-      ],
-      findNodeWithId: (id: string) => mockNodes.find((n) => n.id === id) ?? null
-    }
-  }
-}));
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -49,6 +41,19 @@ function resetNodes(...nodes: MockNode[]) {
 describe('StyleAnalyzer', () => {
   beforeEach(() => {
     mockNodes = [];
+
+    const fakeProject = {
+      getComponents: () => [
+        {
+          forEachNode: (cb: (node: MockNode) => void) => {
+            mockNodes.forEach(cb);
+          }
+        }
+      ],
+      findNodeWithId: (id: string) => mockNodes.find((n) => n.id === id) ?? null
+    };
+
+    spyOnProperty(ProjectModel, 'instance', 'get').and.returnValue(fakeProject as never);
   });
 
   // ─── Color Detection ───────────────────────────────────────────────────────
@@ -61,7 +66,7 @@ describe('StyleAnalyzer', () => {
       );
 
       const result = StyleAnalyzer.analyzeProject();
-      expect(result.repeatedColors).toHaveLength(0);
+      expect(result.repeatedColors).toHaveSize(0);
     });
 
     it('flags a hex color appearing 3+ times', () => {
@@ -72,7 +77,7 @@ describe('StyleAnalyzer', () => {
       );
 
       const result = StyleAnalyzer.analyzeProject();
-      expect(result.repeatedColors).toHaveLength(1);
+      expect(result.repeatedColors).toHaveSize(1);
       expect(result.repeatedColors[0].value).toBe('#3b82f6');
       expect(result.repeatedColors[0].count).toBe(3);
     });
@@ -85,7 +90,7 @@ describe('StyleAnalyzer', () => {
       );
 
       const result = StyleAnalyzer.analyzeProject();
-      expect(result.repeatedColors).toHaveLength(0);
+      expect(result.repeatedColors).toHaveSize(0);
     });
 
     it('handles rgb() and rgba() color values', () => {
@@ -97,7 +102,7 @@ describe('StyleAnalyzer', () => {
       );
 
       const result = StyleAnalyzer.analyzeProject();
-      expect(result.repeatedColors).toHaveLength(1);
+      expect(result.repeatedColors).toHaveSize(1);
       expect(result.repeatedColors[0].value).toBe(color);
     });
 
@@ -112,7 +117,7 @@ describe('StyleAnalyzer', () => {
       );
 
       const result = StyleAnalyzer.analyzeProject();
-      expect(result.repeatedColors).toHaveLength(2);
+      expect(result.repeatedColors).toHaveSize(2);
     });
   });
 
@@ -127,7 +132,7 @@ describe('StyleAnalyzer', () => {
       );
 
       const result = StyleAnalyzer.analyzeProject();
-      expect(result.repeatedSpacing).toHaveLength(1);
+      expect(result.repeatedSpacing).toHaveSize(1);
       expect(result.repeatedSpacing[0].value).toBe('16px');
     });
 
@@ -139,7 +144,7 @@ describe('StyleAnalyzer', () => {
       );
 
       const result = StyleAnalyzer.analyzeProject();
-      expect(result.repeatedSpacing).toHaveLength(1);
+      expect(result.repeatedSpacing).toHaveSize(1);
     });
 
     it('does NOT flag zero — 0 is universally used and not worth tokenising', () => {
@@ -155,7 +160,7 @@ describe('StyleAnalyzer', () => {
       const result = StyleAnalyzer.analyzeProject();
       // '0px' IS a raw spacing value — currently flagged. This is expected.
       // In future we may want to suppress this specific case.
-      expect(result.repeatedSpacing).toHaveLength(1);
+      expect(result.repeatedSpacing).toHaveSize(1);
     });
   });
 
@@ -172,7 +177,7 @@ describe('StyleAnalyzer', () => {
       );
 
       const result = StyleAnalyzer.analyzeProject();
-      expect(result.variantCandidates).toHaveLength(1);
+      expect(result.variantCandidates).toHaveSize(1);
       expect(result.variantCandidates[0].overrideCount).toBe(3);
     });
 
@@ -185,7 +190,7 @@ describe('StyleAnalyzer', () => {
       );
 
       const result = StyleAnalyzer.analyzeProject();
-      expect(result.variantCandidates).toHaveLength(0);
+      expect(result.variantCandidates).toHaveSize(0);
     });
 
     it('does NOT count token references as custom overrides', () => {
@@ -201,7 +206,7 @@ describe('StyleAnalyzer', () => {
 
       const result = StyleAnalyzer.analyzeProject();
       // 3 raw overrides → IS a candidate
-      expect(result.variantCandidates).toHaveLength(1);
+      expect(result.variantCandidates).toHaveSize(1);
       expect(result.variantCandidates[0].overrideCount).toBe(3);
     });
   });
@@ -248,7 +253,7 @@ describe('StyleAnalyzer', () => {
       const result = StyleAnalyzer.analyzeProject();
       const suggestions = StyleAnalyzer.toSuggestions(result);
 
-      expect(suggestions).toHaveLength(0);
+      expect(suggestions).toHaveSize(0);
     });
   });
 
@@ -259,9 +264,9 @@ describe('StyleAnalyzer', () => {
       resetNodes();
 
       const result = StyleAnalyzer.analyzeProject();
-      expect(result.repeatedColors).toHaveLength(0);
-      expect(result.repeatedSpacing).toHaveLength(0);
-      expect(result.variantCandidates).toHaveLength(0);
+      expect(result.repeatedColors).toHaveSize(0);
+      expect(result.repeatedSpacing).toHaveSize(0);
+      expect(result.variantCandidates).toHaveSize(0);
     });
 
     it('does not scan non-visual nodes (e.g. logic nodes without style params)', () => {
@@ -272,8 +277,8 @@ describe('StyleAnalyzer', () => {
       );
 
       const result = StyleAnalyzer.analyzeProject();
-      expect(result.repeatedColors).toHaveLength(0);
-      expect(result.variantCandidates).toHaveLength(0);
+      expect(result.repeatedColors).toHaveSize(0);
+      expect(result.variantCandidates).toHaveSize(0);
     });
 
     it('deduplicates variant candidates if the same node appears in multiple components', () => {
@@ -288,7 +293,7 @@ describe('StyleAnalyzer', () => {
 
       const result = StyleAnalyzer.analyzeProject();
       // Even though forEachNode visits it twice, we deduplicate by nodeId
-      expect(result.variantCandidates).toHaveLength(1);
+      expect(result.variantCandidates).toHaveSize(1);
     });
   });
 });
