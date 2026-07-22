@@ -231,7 +231,7 @@ describe('SchemaParser', () => {
         const field = result.data.sections[0].fields[0];
         expect(field.type).toBe('select');
         if (field.type === 'select') {
-          expect(field.options).toHaveLength(2);
+          expect(field.options).toHaveSize(2);
           expect(field.default).toBe('eu-west-1');
         }
       }
@@ -246,7 +246,7 @@ describe('SchemaParser', () => {
       const result = parser.parse(sectionWith([{ id: 'x', name: 'X', type: 'color_picker' }]));
       // Section-level parse succeeds (unknown field is skipped, not fatal)
       if (result.success) {
-        expect(result.data.sections[0].fields).toHaveLength(0);
+        expect(result.data.sections[0].fields).toHaveSize(0);
         expect(result.warnings?.some((w) => w.includes('color_picker'))).toBe(true);
       }
     });
@@ -311,7 +311,7 @@ describe('SchemaParser', () => {
       expect(result.success).toBe(true);
       if (result.success) {
         expect(result.data.debug?.enabled).toBe(true);
-        expect(result.data.debug?.event_schema).toHaveLength(1);
+        expect(result.data.debug?.event_schema).toHaveSize(1);
       }
     });
   });

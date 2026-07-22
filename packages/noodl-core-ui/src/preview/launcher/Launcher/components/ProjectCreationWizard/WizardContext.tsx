@@ -58,8 +58,12 @@ export function useWizardContext(): WizardContextValue {
 
 // ----- Step ordering --------------------------------------------------------
 
-/** Returns the ordered list of steps for the given mode */
-function getStepSequence(mode: WizardMode): WizardStep[] {
+/**
+ * Returns the ordered list of steps for the given mode.
+ * Exported so the editor suite can test the real thing — the spec used to carry
+ * its own copy of this function and assert against that (REV-008).
+ */
+export function getStepSequence(mode: WizardMode): WizardStep[] {
   switch (mode) {
     case 'quick':
       // Quick Start: just fill in name/location, no preset picker or review
@@ -74,7 +78,8 @@ function getStepSequence(mode: WizardMode): WizardStep[] {
 
 // ----- Validation -----------------------------------------------------------
 
-function isStepValid(step: WizardStep, state: WizardState): boolean {
+/** Exported for the same reason as getStepSequence — see above. */
+export function isStepValid(step: WizardStep, state: WizardState): boolean {
   switch (step) {
     case 'entry':
       // Entry screen has no data — user just picks a mode

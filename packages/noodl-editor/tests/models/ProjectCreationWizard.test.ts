@@ -1,60 +1,39 @@
 /**
  * ProjectCreationWizard — Unit tests for wizard state management
  *
- * Tests the step-sequencing logic and validation rules defined in WizardContext.
+ * Tests the step-sequencing logic and validation rules in WizardContext.
  * These are pure logic tests — no DOM or React renderer required.
  *
- * The functions below mirror the private helpers in WizardContext.tsx.
- * If the context logic changes, update both files.
+ * This spec used to define its own copies of getStepSequence and isStepValid
+ * and assert against those, with a note saying "if the context logic changes,
+ * update both files". It could not have caught a regression: it never imported
+ * the implementation. REV-008 exported the two real helpers and deleted the
+ * copies. goNext/goBack below still mirror the provider's useCallbacks, which
+ * cannot be imported without rendering the component — but they now walk the
+ * real step sequence, so a change to the ordering is caught here.
  */
 
+import {
+  getStepSequence,
+  isStepValid,
+  WizardMode,
+  WizardState,
+  WizardStep
+} from '../../../noodl-core-ui/src/preview/launcher/Launcher/components/ProjectCreationWizard/WizardContext';
 
-// ---- Step sequencing (mirrors WizardContext.getStepSequence) ---------------
+// ---- Step navigation (mirrors the WizardProvider goNext/goBack callbacks) ---
 
-function getStepSequence(mode) {
-  switch (mode) {
-    case 'quick':
-      return ['basics'];
-    case 'guided':
-      return ['basics', 'preset', 'review'];
-    case 'ai':
-      return ['basics', 'preset', 'review'];
-    default:
-      return ['basics'];
-  }
-}
-
-// ---- Validation (mirrors WizardContext.isStepValid) ------------------------
-
-function isStepValid(step, state) {
-  switch (step) {
-    case 'entry':
-      return true;
-    case 'basics':
-      return state.projectName.trim().length > 0 && state.location.length > 0;
-    case 'preset':
-      return state.selectedPresetId.length > 0;
-    case 'review':
-      return true;
-    default:
-      return false;
-  }
-}
-
-// ---- Step navigation (mirrors WizardContext goNext/goBack logic) -----------
-
-function goNext(state) {
+function goNext(state: WizardState): WizardStep {
+  const seq = getStepSequence(state.mode);
   if (state.currentStep === 'entry') {
-    const seq = getStepSequence(state.mode);
     return seq[0];
   }
-  const seq = getStepSequence(state.mode);
   const idx = seq.indexOf(state.currentStep);
   if (idx === -1 || idx >= seq.length - 1) return state.currentStep;
   return seq[idx + 1];
 }
 
-function goBack(state) {
+function goBack(state: WizardState): WizardStep {
   if (state.currentStep === 'entry') return 'entry';
   const seq = getStepSequence(state.mode);
   const idx = seq.indexOf(state.currentStep);
@@ -64,8 +43,9 @@ function goBack(state) {
 
 // ---- Whether the current step is the last one before creation --------------
 
-function isLastStep(mode, step) {
-  return step === 'review' || (mode === 'quick' && step === 'basics');
+function isLastStep(mode: WizardMode, step: WizardStep): boolean {
+  const seq = getStepSequence(mode);
+  return step === seq[seq.length - 1];
 }
 
 // ============================================================================
@@ -87,7 +67,7 @@ describe('WizardContext: step sequences', () => {
 });
 
 describe('WizardContext: validation', () => {
-  const baseState = {
+  const baseState: WizardState = {
     mode: 'quick',
     currentStep: 'basics',
     projectName: '',
@@ -126,7 +106,7 @@ describe('WizardContext: validation', () => {
 });
 
 describe('WizardContext: goNext navigation', () => {
-  const baseState = {
+  const baseState: WizardState = {
     mode: 'quick',
     currentStep: 'entry',
     projectName: 'Test',
@@ -161,7 +141,7 @@ describe('WizardContext: goNext navigation', () => {
 });
 
 describe('WizardContext: goBack navigation', () => {
-  const baseState = {
+  const baseState: WizardState = {
     mode: 'guided',
     currentStep: 'review',
     projectName: 'Test',
