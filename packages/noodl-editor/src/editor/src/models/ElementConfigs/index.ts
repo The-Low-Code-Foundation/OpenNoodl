@@ -9,6 +9,5 @@ export type { NodeModelLike } from './ElementConfigRegistry';
 // Config objects (useful for testing or direct access)
 export { ButtonConfig } from './configs/ButtonConfig';
 export { CheckboxConfig } from './configs/CheckboxConfig';
-export { GroupConfig } from './configs/GroupConfig';
 export { TextConfig } from './configs/TextConfig';
 export { TextInputConfig } from './configs/TextInputConfig';
