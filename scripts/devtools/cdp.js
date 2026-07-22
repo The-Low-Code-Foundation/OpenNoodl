@@ -52,9 +52,16 @@ const targetArg = argv.find((a) => a.startsWith('--target='));
 const TARGET = targetArg ? targetArg.slice('--target='.length) : 'editor';
 const positional = argv.filter((a) => a !== targetArg);
 
-function httpJson(urlPath) {
+// One shot at the DevTools HTTP endpoint, with a hard timeout so a request that
+// never gets a response cannot hang the whole command. Electron 43's Chromium
+// made the /json discovery endpoint flaky to answer a *cold* request — it often
+// accepts the TCP connection and then sits silent for a few seconds before it
+// finally serves the target list. Without a timeout, cdp.js hung forever on that
+// first slow hit; dev-debug.js never noticed because it already polls with a
+// timeout and retries. See httpJson() for the retry loop that papers over it.
+function httpJsonOnce(urlPath, timeoutMs) {
   return new Promise((resolve, reject) => {
-    const req = http.get({ host: '127.0.0.1', port: PORT, path: urlPath }, (res) => {
+    const req = http.get({ host: '127.0.0.1', port: PORT, path: urlPath, timeout: timeoutMs }, (res) => {
       let body = '';
       res.on('data', (d) => (body += d));
       res.on('end', () => {
@@ -65,15 +72,34 @@ function httpJson(urlPath) {
         }
       });
     });
-    req.on('error', () =>
-      reject(
-        new Error(
-          `Cannot reach the DevTools endpoint on port ${PORT}.\n` +
-            `Is the editor running with a debug port? Start it with:  npm run dev:debug`
-        )
-      )
-    );
+    req.on('timeout', () => {
+      req.destroy();
+      reject(new Error(`timeout after ${timeoutMs}ms`));
+    });
+    req.on('error', (err) => reject(err));
   });
+}
+
+// Retry the discovery request until it answers or we give up. The endpoint is
+// reachable the whole time (the browser process owns the port from boot); it is
+// just slow to serve the *first* cold request under Electron 43, so a short
+// timeout plus a few retries turns a hang into a ~1s delay.
+async function httpJson(urlPath, { attempts = 8, timeoutMs = 2000 } = {}) {
+  let lastErr;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return await httpJsonOnce(urlPath, timeoutMs);
+    } catch (e) {
+      lastErr = e;
+      // A connection refused means nothing is listening — fail fast rather than
+      // spending the whole retry budget waiting for an editor that isn't up.
+      if (e && e.code === 'ECONNREFUSED') break;
+    }
+  }
+  throw new Error(
+    `Cannot reach the DevTools endpoint on port ${PORT} (${lastErr ? lastErr.message : 'unknown'}).\n` +
+      `Is the editor running with a debug port? Start it with:  npm run dev:debug`
+  );
 }
 
 /**

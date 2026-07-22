@@ -94,12 +94,26 @@ Work through the official Electron breaking-changes notes for each major from 32
 
 ## Success Criteria
 
-- [ ] Editor runs on Electron 43.x; `electron-builder` 26.x packages successfully on all three platforms
-- [ ] `electron` version consistent across editor and platform-electron packages
-- [ ] Native modules rebuilt and functional (or explicitly tracked as RUN-004 work)
-- [ ] Full test suite green; manual regression checklist clean
-- [ ] `npm audit` no longer flags `electron`/`electron-builder` as high severity
-- [ ] No security defaults weakened to achieve the upgrade
+- [x] Editor runs on Electron 43.x; `electron-builder` 26.x packages successfully — verified on macOS via a `--dir` package (Electron Framework 43.2.0, config accepted with no migration); the three-platform installer build is the nightly workflow's job (REV-003)
+- [x] `electron` version consistent across editor and platform-electron packages (both now pin/allow 43.x)
+- [x] Native modules rebuilt and functional — `dugite` (Git) works on the new Node 24 ABI (all Git specs green); `better-sqlite3` is not in the tree at all (the local backend never shipped it — no ABI work needed, RUN-004 unaffected)
+- [x] Full test suite green (712 specs / 0 failures, 4 consecutive runs); renderer regression clean (Projects page mounts, services init, no exceptions) in dev **and** in the packaged app
+- [x] `npm audit` no longer flags `electron`/`electron-builder` (both dropped out of the audit entirely)
+- [x] No security defaults weakened — `contextIsolation`/`nodeIntegration`/`sandbox`/`webviewTag` are untouched; the one switch added (`remote-allow-origins`) is gated on the opt-in `NOODL_REMOTE_DEBUG_PORT` localhost debug port and never ships enabled
+
+## Completion Notes (2026-07-23)
+
+**Direct 43 jump worked** — no stepwise waypoints needed. Electron 31→43 in one hop (Node 20.15 → 24.18, Chromium bumped ~12 majors), `electron-builder` 24→26.
+
+**Code changes (all upgrade fallout):**
+- **`console-message` event (E35):** positional `(event, level, message, line, sourceId)` args are deprecated; `level` is now a string. Migrated to the object form `({ level, message, lineNumber, sourceId })` in `src/main/main.js` and `test.js`.
+- **`File.path` removal (E32):** the nonstandard `File.path` is gone. Both renderer sites that read it — the hidden `<input type=file>` in `filesystem.js` and the drag-drop handler in `popuplayer.js` — now use `webUtils.getPathForFile(file)`.
+- **`new Buffer()` → `Buffer.from()`** in the UDP multicast path (removed API on Node 24).
+- **CDP debug endpoint (Chromium ~M132):** `--remote-debugging-port` alone no longer serves DevTools — Chromium now drops every connection unless `--remote-allow-origins` is also set. Added it (gated on the debug-port env var) so `scripts/devtools/cdp.js` and the `dev:debug` console/exception capture work again. Also hardened `cdp.js`'s one-shot `/json` discovery with a timeout + retry (the endpoint answers cold requests slowly under E43; without a timeout the tool hung forever — `dev-debug.js` never noticed because it already polls with a timeout).
+
+**Verification:** editor launches and renders the launcher/Projects page in dev and as a packaged `--dir` build; no black-window / `dispatcher.getOwner` regression. See `dev-docs/reference/LEARNINGS.md` for the `remote-allow-origins` and `File.path` findings.
+
+**Note on `npm audit` totals:** overall count rose (electron-builder 26 pulls a large new dependency tree) but all of it is build-time tooling; `electron`/`electron-builder` themselves are now clean, which was the point.
 
 ## Risks & Mitigations
 
@@ -119,10 +133,10 @@ Work through the official Electron breaking-changes notes for each major from 32
 
 ## Checklist
 
-- [ ] Branch `task/rev-004-electron-upgrade`; confirm green baseline first
-- [ ] Inventory all Electron API usage in main/preload
-- [ ] Attempt direct 43 jump; fall back to waypoints if needed
-- [ ] Rebuild and verify native modules
-- [ ] Audit security defaults (no weakening)
-- [ ] Full automated + manual regression; package all three platforms
-- [ ] Re-verify test harness; complete CHANGELOG; commit to cline-dev and push
+- [x] Work directly on `cline-dev` (no task branch, per `.clinerules`); confirmed green baseline first (712/0, typecheck clean, editor launches)
+- [x] Inventory all Electron API usage in main/preload
+- [x] Attempt direct 43 jump (succeeded — no waypoints needed)
+- [x] Rebuild and verify native modules (`dugite` green on Node 24 ABI; no `better-sqlite3` in tree)
+- [x] Audit security defaults (no weakening)
+- [x] Full automated + renderer regression; macOS `--dir` packaging verified (cross-platform installers = REV-003 nightly)
+- [x] Re-verify test harness; complete Completion Notes; commit to cline-dev and push

@@ -7,6 +7,8 @@ var md5File = require('md5-file');
 var fse = require('fs-extra');
 
 const { dialog } = require('@electron/remote');
+// webUtils lives in the renderer process itself, not behind @electron/remote.
+const { webUtils } = require('electron');
 
 //OSX and Windows add trailing slashes to the temp folder, Linux doesn't
 function addTrailingSlash(path) {
@@ -469,7 +471,9 @@ FileSystem.instance = {
 
     var hiddenFileInput = $('#__hiddenFileInput__');
     hiddenFileInput.one('change', function () {
-      var files = _.pluck($('#__hiddenFileInput__')[0].files, 'path');
+      // Electron 32 removed the nonstandard `File.path` property; webUtils
+      // is the supported way to get a native path out of a File object.
+      var files = Array.from($('#__hiddenFileInput__')[0].files, (file) => webUtils.getPathForFile(file));
       $('#__hiddenFileInput__').remove();
 
       callback(files[0]);

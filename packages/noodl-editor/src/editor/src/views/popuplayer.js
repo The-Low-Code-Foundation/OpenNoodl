@@ -11,6 +11,9 @@ const { ToastLayer } = require('./ToastLayer/ToastLayer');
 
 const utils = require('../utils/utils');
 const { platform, PlatformOS } = require('@noodl/platform');
+// Electron 32 removed the nonstandard `File.path`; webUtils.getPathForFile is
+// the supported replacement for turning a dropped File into a native path.
+const { webUtils } = require('electron');
 
 // Styles
 require('../styles/popuplayer.css');
@@ -177,10 +180,8 @@ PopupLayer.prototype.render = function () {
       const toastActivityId = 'toast-drop-files-progress-id';
       try {
         for (var i = 0; i < files.length; i++) {
-          collectFiles(
-            { fullPath: files[i].path, name: files[i].name },
-            FileSystem.instance.getFileDirectoryName(files[i].path)
-          );
+          const fullPath = webUtils.getPathForFile(files[i]);
+          collectFiles({ fullPath, name: files[i].name }, FileSystem.instance.getFileDirectoryName(fullPath));
         }
 
         _files.forEach((f, index) => {

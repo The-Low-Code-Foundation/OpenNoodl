@@ -131,8 +131,10 @@ function createWindow() {
   }
 
   // Surface renderer console output in the terminal — otherwise a headless run is silent.
-  win.webContents.on('console-message', (_event, level, message) => {
-    if (isCI || level >= 2) {
+  // Electron 35+ passes the details on the event object; `level` is a string
+  // ('debug' | 'info' | 'warning' | 'error'), not the old numeric index.
+  win.webContents.on('console-message', ({ level, message }) => {
+    if (isCI || level === 'warning' || level === 'error') {
       console.log(`[renderer] ${message}`);
     }
   });

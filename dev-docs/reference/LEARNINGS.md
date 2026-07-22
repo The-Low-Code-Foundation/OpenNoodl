@@ -4,6 +4,33 @@ This document captures important discoveries and gotchas encountered during Open
 
 ---
 
+## ⚡ Electron 43: CDP debug endpoint needs `--remote-allow-origins` (REV-004, Jul 23 2026)
+
+**Context**: After upgrading Electron 31 → 43, `npm run cdp -- health/screenshot/...` hung forever and `dev:debug`'s renderer console/exception capture went silent.
+
+**Discovery**: From ~Chromium M132 (Electron 34+), passing `--remote-debugging-port` **alone** is no longer enough — Chromium accepts the TCP connection and then silently drops every DevTools request (HTTP `/json` discovery and the WebSocket upgrade alike) unless the allowed origins are also declared. The fix is one switch, added next to the port in `src/main/main.js` (gated on `NOODL_REMOTE_DEBUG_PORT`, so it only exists on the opt-in localhost debug port and never ships enabled):
+
+```js
+app.commandLine.appendSwitch('remote-debugging-port', process.env.NOODL_REMOTE_DEBUG_PORT);
+app.commandLine.appendSwitch('remote-allow-origins', '*');
+```
+
+**Second gotcha**: even with origins allowed, E43's DevTools endpoint answers a *cold* `/json/list` request slowly. `scripts/devtools/cdp.js` did a single request with no timeout, so it hung; `dev-debug.js` never hit this because it already polls with a 2s timeout and retries. `cdp.js` now has the same timeout+retry. If a one-shot `npm run cdp` command still can't find a target, the renderer-console mirror in `.logs/dev.log` (written by `dev-debug.js`) is the more reliable signal.
+
+**Location**: `packages/noodl-editor/src/main/main.js`, `scripts/devtools/cdp.js`.
+
+---
+
+## ⚡ Electron 32+: `File.path` is gone — use `webUtils.getPathForFile()` (REV-004, Jul 23 2026)
+
+**Context**: Getting a native filesystem path out of a dropped file or a `<input type=file>` in the renderer.
+
+**Discovery**: Electron 32 removed the nonstandard `File.path` property. Anywhere the renderer read `file.path` (drag-drop in `views/popuplayer.js`, the hidden file input in `utils/filesystem.js`) must use `require('electron').webUtils.getPathForFile(file)` instead. `webUtils` lives in the renderer process itself, **not** behind `@electron/remote`. Also on the E43 upgrade: the `console-message` webContents event dropped its positional args for an object (`{ level, message, lineNumber, sourceId }`, `level` now a string), and `new Buffer()` is finally gone on the bundled Node 24 — use `Buffer.from()`.
+
+**Location**: `packages/noodl-editor/src/editor/src/utils/filesystem.js`, `src/editor/src/views/popuplayer.js`, `src/main/main.js`.
+
+---
+
 ## ✅ VersionControlPanel is Already React! (Jan 18, 2026)
 
 ### The Good News: No jQuery Rewrite Needed

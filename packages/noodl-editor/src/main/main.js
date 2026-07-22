@@ -82,6 +82,12 @@ if (!isDev && !process.env[NODE_ENV]) {
 // screenshots — via scripts/devtools/cdp.js. See dev-docs/reference/DEBUG-INFRASTRUCTURE.md.
 if (process.env.NOODL_REMOTE_DEBUG_PORT) {
   app.commandLine.appendSwitch('remote-debugging-port', process.env.NOODL_REMOTE_DEBUG_PORT);
+  // Chromium (from ~M132, i.e. Electron 34+) refuses every DevTools Protocol
+  // connection — HTTP /json discovery and the WebSocket upgrade alike — unless
+  // the allowed origins are declared. Without this the endpoint accepts the TCP
+  // connection and then silently drops it, so scripts/devtools/cdp.js hangs.
+  // This is a localhost-only debug port that only exists when the env var is set.
+  app.commandLine.appendSwitch('remote-allow-origins', '*');
 }
 
 function launchApp() {
@@ -237,11 +243,12 @@ function launchApp() {
     // that dies on startup looks identical to one that booted fine. Mirror it
     // into the main process stdout so `npm run dev` logs tell the whole story.
     if (isDev || process.env.NOODL_DEV_LOGS === '1') {
-      const levels = ['debug', 'info', 'warn', 'error'];
-      win.webContents.on('console-message', (_event, level, message, line, sourceId) => {
-        const tag = levels[level] || 'log';
-        const where = sourceId ? ` (${sourceId.split('/').pop()}:${line})` : '';
-        console.log(`[renderer:${tag}]${where} ${message}`);
+      // Electron 35 deprecated the positional (level, message, line, sourceId)
+      // arguments in favour of details on the event object, and `level` is now a
+      // string ('debug' | 'info' | 'warning' | 'error') rather than an index.
+      win.webContents.on('console-message', ({ level, message, lineNumber, sourceId }) => {
+        const where = sourceId ? ` (${sourceId.split('/').pop()}:${lineNumber})` : '';
+        console.log(`[renderer:${level || 'log'}]${where} ${message}`);
       });
 
       win.webContents.on('render-process-gone', (_event, details) => {
@@ -857,7 +864,7 @@ function startUDPMulticast() {
     const hostname = os.hostname();
 
     if (hostname) {
-      const message = new Buffer(
+      const message = Buffer.from(
         jsToArrayBuffer({ https: process.env.ssl ? true : false, hostname, status: 'closed' })
       );
       server.send(message, 0, message.length, 8575, '225.0.0.100');
@@ -869,7 +876,7 @@ function startUDPMulticast() {
     const httpPort = process.env.NOODLPORT || 8574;
 
     if (hostname) {
-      const message = new Buffer(
+      const message = Buffer.from(
         jsToArrayBuffer({ https: process.env.ssl ? true : false, hostname, httpPort, projectName, status: 'active' })
       );
       server.send(message, 0, message.length, 8575, '225.0.0.100');
