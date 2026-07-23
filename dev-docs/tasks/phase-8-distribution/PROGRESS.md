@@ -1,120 +1,42 @@
 # Phase 8: Auto-Update & Distribution - Progress Tracker
 
-**Last Updated:** 2026-01-07  
-**Overall Status:** 🔴 Not Started
+**Last Updated:** 2026-07-23 (REV-006 documentation truth pass)
+**Overall Status:** 🟡 Mostly not started, with one significant partial (CI build matrix) and one task superseded
 
 ---
 
-## Quick Summary
+## Status vocabulary
 
-| Metric       | Value  |
-| ------------ | ------ |
-| Total Tasks  | 5      |
-| Completed    | 0      |
-| In Progress  | 0      |
-| Not Started  | 5      |
-| **Progress** | **0%** |
+- **Not started** — no code exists for this task.
+- **In progress** — some code exists but the task's deliverables are incomplete.
+- **Built–not wired** — the deliverable(s) exist and are tested, but have zero call sites in the application outside tests.
+- **Complete** — deliverable exists, tested, and (for this build/release phase) wired into the actual build/release pipeline (package.json build config, electron-builder targets, GitHub Actions workflows) — not merely present as a script or stub.
+- **Superseded** — the task's goal was later addressed by different work, or the task itself is obsolete.
 
-**Estimated Effort:** 38-56 hours (excluding optional Windows signing)
+---
+
+## Summary
+
+The previous PROGRESS.md (dated 2026-01-07) claimed all five tasks were 0%/"Not Started." That is **mostly still accurate**, with two corrections. First, **TASK-7.1 (rebrand to Nodegex) is not merely not-started — it has been explicitly superseded**: `dev-docs/tasks/phase-20-ecosystem/ECO-005-REBRAND-DECISION.md` reclassifies the rebrand as a deliberately-deferred decision gated behind product traction ("the default is no"), and `dev-docs/tasks/phase-12-reanimation/REV-007-SHIP-V0.md` states explicitly: "Ship under the current name." The product is not going to be called Nodegex any time soon, so tracking TASK-7.1 as an open TODO is actively misleading. Second, **TASK-7.5 (GitHub Actions CI/CD) has real, non-trivial partial progress** that the old doc missed entirely: `.github/workflows/nightly.yml` (landed in REV-003, commit `f02d1e9`) already runs a four-platform packaging matrix (linux-x64, win32-x64, darwin-arm64, darwin-x64) daily and uploads unsigned installers as artifacts — it just deliberately runs with `DISABLE_SIGNING: true` and is not tag-triggered or publish-to-GitHub-Releases. Everything else (7.2 macOS signing, 7.3 auto-update publish config, 7.4 Linux AppImage) remains genuinely not/barely started, and all of it — including finishing 7.5 — is explicitly the scope of **REV-007 ("Ship v0 — Signed Builds & Auto-Update")** in `dev-docs/tasks/phase-12-reanimation/REV-007-SHIP-V0.md`, which itself states plainly: "No signed builds, no release channel, no auto-update feed." A notable and slightly alarming finding: Linux AppImage support was actually built and working in Dec 2024 (commits `42f6aed`, `8b4b4b8`) and then **explicitly reverted** ten days later (`c6460b2 "Revert 'Fix linux builds'"`), leaving the `linux.target` back at `deb`-only — this is a regression, not a gap that was never addressed.
 
 ---
 
 ## Task Status
 
-| Task | Name                             | Status         | Effort | Doc                                          |
-| ---- | -------------------------------- | -------------- | ------ | -------------------------------------------- |
-| 7.1  | Rebrand to Nodegex               | 🔴 Not Started | 4-6h   | [TASK-7.1](./TASK-7.1-rebrand-nodegex.md)    |
-| 7.2  | Fix macOS Code Signing           | 🔴 Not Started | 8-12h  | [TASK-7.2](./TASK-7.2-macos-signing.md)      |
-| 7.3  | Configure Auto-Update Publishing | 🔴 Not Started | 4-6h   | [TASK-7.3](./TASK-7.3-auto-update-config.md) |
-| 7.4  | Linux Universal Distribution     | 🔴 Not Started | 6-8h   | [TASK-7.4](./TASK-7.4-linux-distribution.md) |
-| 7.5  | GitHub Actions CI/CD             | 🔴 Not Started | 12-16h | [TASK-7.5](./TASK-7.5-github-actions.md)     |
-| 7.6  | Windows Code Signing             | 🔴 Not Started | 4-8h   | _(optional, no doc yet)_                     |
+| ID | Title | Status | Evidence (commit / file) | Notes |
+|----|-------|--------|---------------------------|-------|
+| 7.1 | Rebrand to Nodegex | **Superseded** | `dev-docs/tasks/phase-20-ecosystem/ECO-005-REBRAND-DECISION.md`; `dev-docs/tasks/phase-12-reanimation/REV-007-SHIP-V0.md` line 35 ("Ship under the current name"); current `packages/noodl-editor/package.json` still has `productName: "OpenNoodl"`, `appId: "com.opennoodl.app"`, protocol `opennoodl://` | Rebrand decision moved to Phase 20 (ECO-005), gated behind demonstrated traction post-Gate-G2. No "Nodegex" string exists anywhere in current code, config, or app-facing docs (verified via repo-wide search) — this was never implemented and per ECO-005 will not be revisited until much later, if at all. Do not treat as an open TODO for near-term work. |
+| 7.2 | Fix macOS Code Signing | **Not started** | `packages/noodl-editor/package.json` build.mac block (`hardenedRuntime: true`, `entitlements` set, but no `CSC_NAME`/`CSC_LINK` wiring, no `gatekeeperAssess`, no explicit target array, no `asarUnpack` for dugite/desktop-trampoline); `packages/noodl-editor/build/macos-notarize.js` is a one-line stub: `console.log('Notarization skipped - Windows build')` | The notarize script's own message ("Windows build") shows it's a placeholder that was never filled in for macOS — notarization is currently a no-op. CI (`.github/workflows/nightly.yml`) builds macOS with `DISABLE_SIGNING: true`. Closing task: **REV-007** (Ship v0), step 2 in its implementation steps ("macOS signing and notarisation locally first"). |
+| 7.3 | Configure Auto-Update Publishing | **Not started** | `packages/noodl-editor/package.json` build block has no `publish` key at all; `packages/noodl-editor/src/main/src/autoupdater.js` (unchanged since `b9c60b0` initial commit) is wired into `main.js:268` (`AutoUpdater.setupAutoUpdate(win)`) and the UI popup (`showAutoUpdatePopup`) is wired into `BaseWindow.tsx` and `editor/index.ts` | The UI/IPC scaffolding the task doc describes as "already exists" is accurate and pre-dates this task — but it is disconnected from any real feed: no publish provider, no update server, so `checkForUpdates()` has nothing to check against. This is genuinely unstarted work, not a wiring gap. Closing task: **REV-007**, step 5 ("Auto-update wiring... against GitHub Releases"). |
+| 7.4 | Linux Universal Distribution | **In progress** (regressed) | `packages/noodl-editor/package.json`: `linux.target = "deb"` only, no AppImage; commits `42f6aed` ("Build appimage instead of deb for linux") and `8b4b4b8` ("Take appimages into account during packing"), both Dec 19 2024, **reverted** by `c6460b2` ("Revert 'Fix linux builds'", Dec 29 2024); no `build/icons/` directory exists in the current tree (icon files present in Dec 2024 were later removed) | AppImage was built, then explicitly reverted — a regression rather than an untouched gap. `.deb` target does build (unsigned, via nightly CI). No Linux auto-update enablement in `autoupdater.js` (it returns early on `process.platform === 'linux'`). Closing task: **REV-007**, "Linux: AppImage and/or deb/rpm as chosen." |
+| 7.5 | GitHub Actions CI/CD | **In progress** | `.github/workflows/nightly.yml` (landed `f02d1e9`, "feat(REV-003): stand up GitHub Actions CI with six merge gates") — matrix build across linux-x64/win32-x64/darwin-arm64/darwin-x64, runs daily, uploads unsigned installers as artifacts; `.github/workflows/build-noodl-editor.yml` is an older, largely superseded manual-dispatch equivalent; no `release.yml`, no tag-triggered workflow, no GitHub Release creation, no certificate secrets configured | Real, working CI packaging infrastructure exists and is more than the old PROGRESS.md credited — but it is explicitly and deliberately unsigned/unpublished (`DISABLE_SIGNING: true`, per the workflow's own comment: "Signing and publishing arrive with REV-007"). Closing task: **REV-007**, items "Release workflow in GitHub Actions triggered by version tags" and "Apple Developer ID signing + notarisation." |
+| 7.6 | Windows Code Signing (optional, no task doc) | **Not started** | No `WIN_CSC_LINK`/`CSC_LINK` for Windows in `package.json`; `nsis` target builds unsigned | Never had its own task spec in this folder; carried in the old PROGRESS.md as an optional stretch item. Closing task: **REV-007**, "Windows code signing (certificate acquisition may gate this — start early)." |
 
 ---
 
-## Task Details
+## Flagged for human review
 
-### 7.1 Rebrand to Nodegex
-
-**Status:** 🔴 Not Started
-
-Rename application from OpenNoodl to Nodegex across all user-facing surfaces:
-
-- Package.json productName, appId, protocols
-- Window titles and UI strings
-- Protocol handlers (`nodegex://`)
-- userData paths with migration for existing users
-
-### 7.2 Fix macOS Code Signing
-
-**Status:** 🔴 Not Started
-
-Configure electron-builder for automatic signing (eliminates 30+ manual file signatures):
-
-- Certificate configuration via `CSC_NAME`
-- Entitlements for hardened runtime
-- Automatic notarization via afterSign hook
-- Support for both Intel and Apple Silicon
-
-### 7.3 Configure Auto-Update Publishing
-
-**Status:** 🔴 Not Started
-
-Connect existing electron-updater infrastructure to GitHub Releases:
-
-- Add publish configuration to package.json
-- Configure update server URL
-- Generate `latest-*.yml` manifests
-- Test update detection and installation
-
-### 7.4 Linux Universal Distribution
-
-**Status:** 🔴 Not Started
-
-Add AppImage and .deb targets:
-
-- AppImage for universal distribution (auto-update supported)
-- .deb for Debian/Ubuntu native experience
-- Handle native module compatibility (dugite, desktop-trampoline)
-- Test on Ubuntu 22.04/24.04 LTS
-
-### 7.5 GitHub Actions CI/CD
-
-**Status:** 🔴 Not Started
-
-Create automated build pipeline:
-
-- Matrix build for macOS (x64, arm64), Windows (x64), Linux (x64)
-- Secure certificate storage via GitHub Secrets
-- Automatic GitHub Release creation on tag push
-- Update manifest generation
-
-### 7.6 Windows Code Signing (Optional)
-
-**Status:** 🔴 Not Started
-
-Add Windows code signing to eliminate SmartScreen warnings:
-
-- Obtain code signing certificate (EV or standard)
-- Configure in electron-builder
-- Add to CI/CD pipeline
-
----
-
-## Status Legend
-
-- 🔴 **Not Started** - Work has not begun
-- 🟡 **In Progress** - Actively being worked on
-- 🟢 **Complete** - Finished and verified
-
----
-
-## Recent Updates
-
-| Date       | Update                                            |
-| ---------- | ------------------------------------------------- |
-| 2026-01-07 | Updated PROGRESS.md to reflect actual task status |
-| 2026-01-07 | Renumbered from Phase 7 to Phase 8                |
+None of the above evidence was ambiguous — package.json, the notarize script, the workflow files, and the git history for the AppImage revert are all unambiguous. The one judgement call worth flagging: TASK-7.1 is marked **Superseded** rather than **Not started**, because the decision to *not* do it now is itself a documented, deliberate decision (ECO-005), not an absence of work. If a reviewer prefers to track "superseded" only for goals that were *achieved* by different means (rather than *deferred*), this could arguably be relabeled "Not started, deferred to ECO-005" — flagging for a second opinion rather than guessing which convention the audit intends.
 
 ---
 
@@ -122,32 +44,43 @@ Add Windows code signing to eliminate SmartScreen warnings:
 
 **Depends on:** Phase 0-3 (stable editor)
 
-**Task Dependencies:**
+**Effectively depends on / is subsumed by:** `dev-docs/tasks/phase-12-reanimation/REV-007-SHIP-V0.md`, which now owns the actual delivery of signing, publishing, Linux packaging, and CI release automation. TASK-7.2 through 7.5 in this folder should be read as background/reference material for REV-007's implementer, not as separate work items still to be scheduled independently.
 
 ```
-7.1 Rebrand ──┬──► 7.2 macOS Signing ──┐
-              ├──► 7.3 Auto-Update ────┼──► 7.5 GitHub Actions CI/CD
-              └──► 7.4 Linux Distro ───┘
-                                              │
-                                              ▼
-                                       7.6 Windows Signing (optional)
+7.1 Rebrand ──╳ (superseded by ECO-005; do not schedule)
+
+7.2 macOS Signing ─┐
+7.3 Auto-Update ───┼──► REV-007 "Ship v0 — Signed Builds & Auto-Update"
+7.4 Linux Distro ──┘         (Phase 12 — Reanimation)
+7.5 GitHub Actions CI/CD (partially done via nightly.yml) ──► REV-007 finishes signing+publish
+7.6 Windows Signing (optional) ──► REV-007
 ```
 
 ---
 
-## Success Criteria
+## Success Criteria (from README.md, unchanged — none yet met)
 
-1. ✅ User can receive update notification without losing projects
-2. ✅ macOS build requires zero manual signing steps
-3. ✅ Linux AppImage runs on Ubuntu 22.04+ without dependencies
-4. ✅ `git tag v1.2.0 && git push --tags` triggers full release
-5. ✅ All UI shows "Nodegex" branding
-6. ✅ Existing OpenNoodl users' data migrates automatically
+1. ⬜ User can receive update notification without losing projects — not possible yet, no publish feed configured
+2. ⬜ macOS build requires zero manual signing steps — notarize script is a stub
+3. ⬜ Linux AppImage runs on Ubuntu 22.04+ without dependencies — AppImage target was reverted
+4. ⬜ `git tag v1.2.0 && git push --tags` triggers full release — no release workflow exists
+5. N/A "Nodegex" branding — superseded, ship stays "OpenNoodl" (see ECO-005, REV-007)
+6. ⬜ Existing OpenNoodl users' data migrates automatically — N/A per above (no rename underway)
+
+---
+
+## Recent Updates
+
+| Date       | Update                                                                 |
+| ---------- | ----------------------------------------------------------------------- |
+| 2026-07-23 | REV-006 documentation truth pass: rewrote this file against code + git history; corrected 7.1 to Superseded (ECO-005), corrected 7.5 to In progress (nightly.yml CI matrix exists), documented the Dec 2024 AppImage build-then-revert for 7.4, named REV-007 as the closing task for 7.2/7.3/7.4/7.5/7.6 |
+| 2026-01-07 | Updated PROGRESS.md to reflect actual task status (superseded by this pass — was already stale in some respects) |
+| 2026-01-07 | Renumbered from Phase 7 to Phase 8 |
 
 ---
 
 ## Notes
 
-Previously Phase 7 "auto-update-and-distribution". Covers macOS code signing, Windows signing, auto-update infrastructure, Linux distribution, and GitHub Actions CI/CD.
+Previously Phase 7 "auto-update-and-distribution". Covers macOS code signing, Windows signing, auto-update infrastructure, Linux distribution, and GitHub Actions CI/CD. No per-developer progress file (`PROGRESS-*.md`) exists in this folder as of this audit — all evidence here comes directly from code and git history per REV-006's evidence-priority order.
 
-See [README.md](./README.md) for comprehensive technical analysis and architecture decisions.
+See [README.md](./README.md) for the original technical analysis and architecture decisions (still broadly accurate as a design reference; only the "what already exists" table there is now outdated — e.g. it lists the notarization script as "✅ Exists" without noting it is a non-functional stub).

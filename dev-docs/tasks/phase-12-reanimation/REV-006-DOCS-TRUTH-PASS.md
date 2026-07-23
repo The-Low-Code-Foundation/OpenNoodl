@@ -105,10 +105,10 @@ Not code, so verification is by spot-check: pick five task IDs at random across 
 
 ## Checklist
 
-- [ ] Branch `task/rev-006-docs-truth-pass`
-- [ ] Inventory all phase folders and progress files
-- [ ] Verify each task ID against code + git; record evidence
-- [ ] Rewrite each `PROGRESS.md` with the new status vocabulary
-- [ ] Name the closing task for every integration gap
-- [ ] Update `dev-docs/README.md` and `GIT-WORKFLOW.md`
-- [ ] Independent spot-check of five task IDs; commit to cline-dev and push
+- [x] Branch `task/rev-006-docs-truth-pass` — not used; worked directly on `cline-dev` per `.clinerules`
+- [x] Inventory all phase folders and progress files
+- [x] Verify each task ID against code + git; record evidence
+- [x] Rewrite each `PROGRESS.md` with the new status vocabulary
+- [x] Name the closing task for every integration gap (where one exists — a few gaps with no current owner were flagged explicitly instead of inventing one, see individual `PROGRESS.md` files)
+- [x] Update `dev-docs/README.md` and `GIT-WORKFLOW.md`
+- [x] Independent spot-check of five task IDs; commit to cline-dev and push

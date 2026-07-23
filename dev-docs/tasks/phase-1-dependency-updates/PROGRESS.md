@@ -1,134 +1,47 @@
 # Phase 1: Dependency Updates - Progress Tracker
 
-**Last Updated:** 2026-01-07  
-**Overall Status:** 🟢 Complete
+**Audit date:** 2026-07-23 (REV-006 documentation truth pass)
+**Last content update prior to audit:** 2026-01-07
+**Overall Status:** 🟢 Complete — audit confirms this phase's own claim of 100%
 
 ---
 
-## Quick Summary
+## Status vocabulary
 
-| Metric       | Value    |
-| ------------ | -------- |
-| Total Tasks  | 7        |
-| Completed    | 7        |
-| In Progress  | 0        |
-| Not Started  | 0        |
-| **Progress** | **100%** |
+- **Not started** — no code exists for this task.
+- **In progress** — some code exists but the task's deliverables are incomplete.
+- **Built–not wired** — the deliverable(s) exist and are tested, but have zero call sites in the application outside of tests.
+- **Complete** — deliverable exists, is tested, AND has real call sites in the app (outside tests).
+- **Superseded** — the task's goal was later addressed by different work, or the task itself is obsolete.
+
+---
+
+## Audit summary
+
+This is the one phase folder in the revival audit so far where the pre-existing `PROGRESS.md` was **not** stale — it already claimed 100% complete (verified 2026-01-07), and independent re-verification against the code and git history on 2026-07-23 confirms every one of its seven task claims still holds true today, six-plus months later. `PHASE-1-SUMMARY.md` (dated December 2024/January 2025 in its own header, though its git-log evidence places the work in December 2025) tells the same story and does not contradict `PROGRESS.md` on any task; it is a narrative write-up rather than a status tracker, and its "Phase 1 Task Reference" table matches the task table below task-for-task. No per-developer `PROGRESS-*.md` file exists in this folder, so there was nothing to merge. The only correction of substance is precision, not verdict: dates in the old file's "Recent Updates" section say 2026-01-07, but the underlying commits are dated December 2025 (see evidence column) — a cosmetic discrepancy, not a status error.
 
 ---
 
 ## Task Status
 
-| Task      | Name                      | Status      | Notes                                             |
-| --------- | ------------------------- | ----------- | ------------------------------------------------- |
-| TASK-000  | Dependency Analysis       | 🟢 Complete | Analysis done                                     |
-| TASK-001  | Dependency Updates        | 🟢 Complete | Core deps updated                                 |
-| TASK-001B | React 19 Migration        | 🟢 Complete | Migrated to React 19 (48 createRoot usages)       |
-| TASK-002  | Legacy Project Migration  | 🟢 Complete | GUI wizard implemented (superior to planned CLI)  |
-| TASK-003  | TypeScript Config Cleanup | 🟢 Complete | Option B implemented (global path aliases)        |
-| TASK-004  | Storybook 8 Migration     | 🟢 Complete | 92 stories migrated to CSF3                       |
-| TASK-006  | TypeScript 5 Upgrade      | 🟢 Complete | TypeScript 5.9.3, @typescript-eslint 7.x upgraded |
-
----
-
-## Status Legend
-
-- 🔴 **Not Started** - Work has not begun
-- 🟡 **In Progress** - Actively being worked on
-- 🟢 **Complete** - Finished and verified
-- ⏸️ **Blocked** - Waiting on dependency
-- 🔵 **Planned** - Scheduled but not started
-
----
-
-## Code Verification Notes
-
-### Verified 2026-01-07
-
-**TASK-001B (React 19 Migration)**:
-
-- ✅ 48 files using `createRoot` from react-dom/client
-- ✅ No legacy `ReactDOM.render` calls in production code (only in migration tool for detection)
-
-**TASK-003 (TypeScript Config Cleanup)**:
-
-- ✅ Root tsconfig.json has global path aliases (Option B implemented)
-- ✅ Includes: @noodl-core-ui/_, @noodl-hooks/_, @noodl-utils/_, @noodl-models/_, etc.
-
-**TASK-004 (Storybook 8 Migration)**:
-
-- ✅ 92 story files using CSF3 format (Meta, StoryObj)
-- ✅ 0 files using old CSF2 format (ComponentStory, ComponentMeta)
-
-**TASK-002 (Legacy Project Migration)**:
-
-- ✅ Full migration system implemented in `packages/noodl-editor/src/editor/src/models/migration/`
-- ✅ `MigrationWizard.tsx` - Complete 7-step GUI wizard
-- ✅ `MigrationSession.ts` - State machine for workflow management
-- ✅ `ProjectScanner.ts` - Detects React 17 projects and legacy patterns
-- ✅ `AIMigrationOrchestrator.ts` - AI-assisted migration with Claude
-- ✅ `BudgetController.ts` - Spending limits and approval flow
-- ✅ Integration with projects view - "Migrate Project" button on legacy projects
-- ✅ Project metadata tracking - Migration status stored in project.json
-- ℹ️ Note: GUI wizard approach was chosen over planned CLI tool (superior UX)
-
-**TASK-006 (TypeScript 5 Upgrade)**:
-
-- ✅ TypeScript upgraded from 4.9.5 → 5.9.3
-- ✅ @typescript-eslint/parser upgraded to 7.18.0
-- ✅ @typescript-eslint/eslint-plugin upgraded to 7.18.0
-- ✅ `transpileOnly: true` webpack workaround removed
-- ℹ️ Zod v4 not yet installed (will add when AI features require it)
-
----
-
-## Recent Updates
-
-| Date       | Update                                                             |
-| ---------- | ------------------------------------------------------------------ |
-| 2026-01-07 | Verified TASK-002 and TASK-006 are complete - updated to 100%      |
-| 2026-01-07 | Discovered full migration system (40+ files) - GUI wizard approach |
-| 2026-01-07 | Confirmed TypeScript 5.9.3 and ESLint 7.x upgrades complete        |
-| 2026-01-07 | Added TASK-006 (TypeScript 5 Upgrade) - was missing from tracking  |
-| 2026-01-07 | Verified actual code state for TASK-001B, TASK-003, TASK-004       |
+| ID | Title | Status | Evidence (commit / path) | Notes |
+|----|-------|--------|---------------------------|-------|
+| TASK-000 | Dependency Analysis | Complete | Docs-only deliverable: `TASK-000-dependency-analysis/{DETAILED-ANALYSIS,IMPACT-MATRIX,RECOMMENDATIONS}.md` present in repo | Analysis/planning task; deliverable is the documents themselves, which exist and were clearly acted on (TASK-001/003/004/006 implement its recommendations). |
+| TASK-001 | Dependency Updates | Complete | `package.json` / `packages/noodl-editor/package.json` show webpack-dev-server 4.15.2, css-loader 6.11.0, style-loader 3.3.4, webpack 5.101.3, webpack-cli 5.x — all matching the "after" column in `PHASE-1-SUMMARY.md`. Commit `2153baf` "Finished task 1." (2025-12-06) | Core dependency bump landed and is live in the build config actually used by `noodl-editor`. |
+| TASK-001B | React 19 Migration | Complete | `packages/noodl-editor/package.json` and `packages/noodl-core-ui/package.json` pin `react`/`react-dom` `19.0.0`. `grep` finds 33 non-test files using `createRoot` from `react-dom/client`; the only two hits for `ReactDOM.render` are detection-string literals inside `ProjectScanner.ts` / `MigrationNotesManager.ts` (migration-tool code that *looks for* legacy patterns in other people's projects), not live legacy calls. Commit `8fed72d` "Updated project to React 19" (2025-12-07) | Old PROGRESS.md's "48 createRoot usages" figure is now 33 in this repo snapshot (file set has shifted since); the substance — full React 19 adoption, no live `ReactDOM.render` — still checks out. |
+| TASK-002 | Legacy Project Migration | Complete | `packages/noodl-editor/src/editor/src/models/migration/` (types.ts, MigrationSession.ts, ProjectScanner.ts, AIMigrationOrchestrator.ts, BudgetController.ts, MigrationNotesManager.ts) + `views/migration/MigrationWizard.tsx`. Real call site: `pages/ProjectsPage/ProjectsPage.tsx` imports and renders `MigrationWizard` (3 call sites), and `ProjectsPage` is the live route wired in `router.tsx`. Commits `0b47d19` "Finished initial project migration workflow" (2025-12-15), `03a464f` "React 19 runtime migration complete, AI-assisted migration underway" (2025-12-20) | GUI wizard (not the originally planned CLI) — confirmed superior-alternative note is accurate. Note: an older duplicate, `views/projectsview.ts`, also references `MigrationWizard` but is itself unreferenced anywhere else in the codebase (dead/legacy file, superseded by `ProjectsPage.tsx`); this doesn't affect TASK-002's completion since the live route uses the wizard. The same migration code is reused/extended by Phase 2's runtime React-19-migration and AI-migration tasks — expected, not a red flag. |
+| TASK-003 | TypeScript Config Cleanup | Complete | Root `tsconfig.json` `compilerOptions.paths` contains global aliases: `@noodl-core-ui/*`, `@noodl-hooks/*`, `@noodl-utils/*`, `@noodl-models/*`, `@noodl-constants/*`, `@noodl-contexts/*`, `@noodl-types/*`, `@noodl-store/*`, plus a package-specific alias for `@noodl-viewer-cloud/execution-history`. Commit `e927df7` (2025-12-08) | "Option B" (global path aliases) as claimed. |
+| TASK-004 | Storybook 8 Migration | Complete | `packages/noodl-core-ui/package.json` pins `storybook`/`@storybook/*` at `8.6.14`; `.storybook/main.ts`, `manager.ts`, `preview.ts` present and a `storybook-static` build output exists, confirming it actually runs. `grep` over `*.stories.tsx` finds 95 files using CSF3 (`Meta`/`StoryObj`) and 0 using CSF2 (`ComponentStory`/`ComponentMeta`). Commit `e927df7` (2025-12-08) | Story count (95) is close to but not identical to the old doc's "92" — file set has grown slightly since; migration is still complete with zero CSF2 stragglers. |
+| TASK-006 | TypeScript 5 Upgrade | Complete | Root and all package `package.json` files pin `typescript: ^5.9.3`. No `transpileOnly` found anywhere in webpack configs (`grep` across `packages/*/webpackconfigs`). Commit `ef1ffdd` "feat(typescript): upgrade TypeScript to 5.9.3, remove transpileOnly workaround" (2025-12-08) | Zod v4 still not present in any `package.json` — matches the old doc's "not yet installed, will add when AI features require it" note; still true as of 2026-07-23, not a defect. |
 
 ---
 
 ## Dependencies
 
-Depends on: Phase 0 (Foundation)
+Depends on: Phase 0 (Foundation) — unchanged from prior doc.
 
 ---
 
-## Notes
+## Convention note
 
-### Completed Work
-
-React 19 migration, Storybook 8 CSF3 migration, and TypeScript config cleanup are all verified complete in the codebase.
-
-### Phase 1 Complete! 🎉
-
-All planned dependency updates and migrations are complete:
-
-1. ✅ React 19 migration with 48 `createRoot` usages
-2. ✅ Storybook 8 migration with 92 CSF3 stories
-3. ✅ TypeScript 5.9.3 upgrade with ESLint 7.x
-4. ✅ Global TypeScript path aliases configured
-5. ✅ Legacy project migration system (GUI wizard with AI assistance)
-
-### Notes on Implementation Approach
-
-**TASK-002 Migration System**: The original plan called for a CLI tool (`packages/noodl-cli/`), but a superior solution was implemented instead:
-
-- Full-featured GUI wizard integrated into the editor
-- AI-assisted migration with Claude API
-- Budget controls and spending limits
-- Real-time scanning and categorization
-- Component-level migration notes
-- This is a better UX than the planned CLI approach
-
-**TASK-006 TypeScript Upgrade**: The workaround (`transpileOnly: true`) was removed and proper type-checking is now enabled in webpack builds.
-
-### Documentation vs Reality
-
-Task README files have unchecked checkboxes even though work was completed - the checkboxes track planned files rather than actual completion. Code verification is the source of truth.
+No per-developer `PROGRESS-*.md` exists for this phase to merge. If one is added in a future sprint on this phase, fold its verified content into this file per the REV-006 convention (see `dev-docs/guidelines/GIT-WORKFLOW.md`).

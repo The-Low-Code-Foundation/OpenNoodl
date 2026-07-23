@@ -319,6 +319,34 @@ the blocking; see the roadmap background in
 A nightly workflow (`.github/workflows/nightly.yml`) builds unsigned packaged
 installers for macOS/Windows/Linux and is not a merge gate — see the file for why.
 
+## Keeping Progress Docs Current
+
+Every `dev-docs/tasks/phase-N-*/PROGRESS.md` is a load-bearing document, not a
+tidiness nicety: it's how the next contributor (human or AI) decides what to
+build versus what already exists. REV-006 (2026-07-23) found several of these
+had gone stale mid-sprint — reporting "0% / not started" for work that was
+actually complete — because per-developer notes (`PROGRESS-<name>.md`) were kept
+current during the sprint but the shared `PROGRESS.md` was not. An AI assistant
+reading the stale file would have happily re-implemented a subsystem that
+already existed and was tested.
+
+To stop this recurring:
+
+- **Update the shared `PROGRESS.md`, not just your own `PROGRESS-<name>.md`,
+  whenever a task's status changes.** Personal notes are fine as scratch space,
+  but they are not a substitute for the file everyone else reads first.
+- **Use the status vocabulary** (see any phase's `PROGRESS.md` for the full
+  legend): `Not started` / `In progress` / `Built–not wired` / `Complete` /
+  `Superseded`. In particular, don't mark something `Complete` just because the
+  code exists and is tested — check whether it has real call sites in the app
+  outside of tests. Code that exists but isn't wired in is `Built–not wired`,
+  and the entry should name the task expected to close that gap.
+- **Cite evidence** — a commit hash or file path — for any status claim. "Done"
+  without evidence is exactly what caused the last drift.
+- **Do this as part of the task, not after it.** A task isn't finished until its
+  phase's `PROGRESS.md` reflects that; treat the update as part of the task's
+  definition of done, the same way tests and type-checking are.
+
 ## Tips
 
 ### Useful Aliases
