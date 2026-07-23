@@ -182,3 +182,7 @@ npm run build --workspace @noodl/mcp   # esbuild → dist/noodl-mcp.cjs
   the editor holds its own in-memory state and can overwrite MCP writes on save).
 - No project-level settings/styles/routes writes, asset upload, or model files in v1.
 - Read-side supports v2 directories only; migrate legacy projects with the editor first.
+- `get_node_type` with several types can exceed an MCP host's tool-result cap
+  (~126 KB for 7 types in the SUB-010 demo, and the host's "overflow saved to a
+  file" fallback is useless to a filesystem-less agent). Ask for 1–2 types per
+  call until a compact/ports-only projection is added (SUB-010 friction report).

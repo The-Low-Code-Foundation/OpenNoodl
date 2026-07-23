@@ -47,7 +47,7 @@ These are proof-of-thesis prototypes, not part of the eight-task substrate spine
 | Task | Name | Description | Est. |
 |---------|------|-------------|--------|
 | SUB-009 | [Live-Preview Harness](./SUB-009-LIVE-PREVIEW-HARNESS.md) | Standalone `renderDeployed` preview that watches v2 files on disk and hot-reloads — fills the "no file watcher" gap for external writers. **✅ Complete** — `packages/noodl-preview`, `npm run preview -- <dir>` | 3-5 days | 🟠 Opus 4.8 |
-| SUB-010 | [External Authoring Demo](./SUB-010-EXTERNAL-AUTHORING-DEMO.md) | End-to-end: Claude (Desktop/Code) authors a page via a minimal MCP surface → live preview → open & edit in the editor. Recorded demo + honest go/no-go assessment | 4-7 days | 🔵 Fable 5 |
+| SUB-010 | [External Authoring Demo](./SUB-010-EXTERNAL-AUTHORING-DEMO.md) | End-to-end: Claude (Desktop/Code) authors a page via a minimal MCP surface → live preview → open & edit in the editor. Recorded demo + honest go/no-go assessment. **✅ Complete — verdict: GO** ([demo/ASSESSMENT.md](./demo/ASSESSMENT.md)) | 4-7 days | 🔵 Fable 5 |
 
 ---
 

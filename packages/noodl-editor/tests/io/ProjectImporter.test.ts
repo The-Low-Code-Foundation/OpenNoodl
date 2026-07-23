@@ -146,6 +146,16 @@ describe('unflattenNodes', () => {
     expect(roots[0].parameters).toEqual({ layout: 'row' });
   });
 
+  it('defaults parameters to {} when absent — the legacy invariant applyPatches relies on', () => {
+    // v2 makes `parameters` optional (external authors like the MCP server omit
+    // it), but applyPatches dereferences node.parameters before NodeGraphNode
+    // gets a chance to default it. SUB-010 found this as "Could not load
+    // project" on any MCP-authored component.
+    const flat = [{ id: 'n1', type: 'Group' }];
+    const roots = unflattenNodes(flat);
+    expect(roots[0].parameters).toEqual({});
+  });
+
   it('restores stateParameters', () => {
     const flat = [{ id: 'n1', type: 'Group', stateParameters: { hover: { opacity: 0.5 } } }];
     const roots = unflattenNodes(flat);

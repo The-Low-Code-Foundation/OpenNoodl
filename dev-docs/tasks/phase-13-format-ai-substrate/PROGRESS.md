@@ -54,7 +54,7 @@ call sites** — they are exercised only from tests. Making them real is SUB-001
 | Task | Name | Est. | Status |
 |---------|--------------------------------|--------|----------------|
 | SUB-009 | Live-Preview Harness | 3-5 days | 🟢 Complete (`packages/noodl-preview`, `npm run preview -- <dir>`) |
-| SUB-010 | External Authoring Demo (Claude + MCP → live preview → editor hand-off) | 4-7 days | 🔴 Not Started |
+| SUB-010 | External Authoring Demo (Claude + MCP → live preview → editor hand-off) | 4-7 days | 🟢 Complete — **verdict: GO** ([demo/ASSESSMENT.md](./demo/ASSESSMENT.md); video take not recorded, run repeatable from demo/SETUP.md) |
 
 ---
 
@@ -70,6 +70,35 @@ call sites** — they are exercised only from tests. Making them real is SUB-001
 
 ## Change Log
 
+- **2026-07-23** — **SUB-010 complete (optional spike) — verdict: GO on SUB-008 hardening + AIX-002.**
+  The full external-authoring loop ran end to end against a **real production app**
+  ("Shine Phase 2", `git-repo-utf8`: 44 components / 688 nodes, exported to v2):
+  a genuinely external agent (headless Claude Code, empty cwd, **no filesystem
+  tools**, only the `nodegx` MCP server) added a Home page and rewired the app
+  router — **both writes accepted first try, 15 turns, 102 s, $1.98** — while the
+  SUB-009 preview flipped live from the app's 404 to the new page (rebuilds
+  measured 200–250 ms), and the same directory then opened in the editor with the
+  agent's page as an ordinary editable graph; two manual edits saved cleanly and
+  re-validated at baseline. **Context budget proven, not asserted:** 14 tool
+  calls, **63 KB of tool results total**, 6 of 44 components read; full per-call
+  log kept. Record: [`demo/ASSESSMENT.md`](./demo/ASSESSMENT.md) (go/no-go +
+  frictions), [`demo/SETUP.md`](./demo/SETUP.md) (reproducible recipe),
+  `demo/shots/`, `demo/context-log.jsonl`, `demo/agent-final-report.md`.
+  **Product bug found & fixed same-day:** v2's optional `parameters` crashed the
+  editor's v2 open path (`applyPatches` dereferences it before `NodeGraphNode`
+  defaults it) → "Could not load project" for *every* MCP-authored component;
+  fixed in `ProjectImporter.unflattenNodes` (restore the legacy `parameters: {}`
+  invariant; exporter already omits empty on write so round-trip stays stable),
+  regression-tested, editor suite **896 specs, 0 failures**. **Second finding,
+  characterized:** the editor's *first* save of an externally-exported project is
+  a one-time ~all-files normalization (v3→v4 upgrade + save-path enrichments:
+  `visualRoots`, materialized dynamicports, merge metadata); subsequent saves are
+  surgical (verified: second edit touched 1 component + registry). Frictions
+  routed to SUB-008: `get_node_type` (7 types) returned ~126 KB and blew the MCP
+  host's tool-result cap — needs a compact/ports-only mode; also noted: v2 open
+  is still behind the default-off `nodegx.formatV2` flag, and the editor viewer
+  vs deploy runtime render the "Button Primary" variant differently. Video take
+  not recorded (headless run); the demo is scripted and repeatable from SETUP.md.
 - **2026-07-23** — **SUB-009 complete (optional spike).** New package
   **`packages/noodl-preview`** (`@noodl/preview`): `npm run preview -- <dir>`
   renders a project in a plain browser with **no editor process** and reloads it

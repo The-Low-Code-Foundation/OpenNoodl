@@ -99,7 +99,11 @@ export function unflattenNodes(flatNodes: NodeV2[]): LegacyNode[] {
     if (v2Node.y !== undefined) legacyNode.y = v2Node.y;
     if (v2Node.variant !== undefined) legacyNode.variant = v2Node.variant;
     if (v2Node.version !== undefined) legacyNode.version = v2Node.version;
-    if (v2Node.parameters !== undefined) legacyNode.parameters = v2Node.parameters;
+    // Always present in legacy graphs (every node in every corpus project carries
+    // it), and editor code that runs before NodeGraphNode's own defaulting —
+    // applyPatches in particular — dereferences it unconditionally. v2 makes it
+    // optional, so restore the invariant here.
+    legacyNode.parameters = v2Node.parameters ?? {};
     if (v2Node.stateParameters !== undefined) legacyNode.stateParameters = v2Node.stateParameters;
     if (v2Node.stateTransitions !== undefined) legacyNode.stateTransitions = v2Node.stateTransitions;
     if (v2Node.defaultStateTransitions !== undefined) {

@@ -136,10 +136,17 @@ A repeatable, recorded session:
 
 ## Checklist
 
-- [ ] Minimal MCP surface (four tools, validation on write) — decide build-vs-throwaway
-- [ ] Agent-host setup recipe (`SETUP.md`)
-- [ ] Dry-run + tune against a real project; measure validity, iterations, context size
-- [ ] Recorded take: ask → live author → editor hand-off → manual edit
-- [ ] Hand-off fidelity verified
-- [ ] `ASSESSMENT.md` with go/no-go and friction list
-- [ ] Friction routed into SUB-008; CHANGELOG
+- [x] Minimal MCP surface (four tools, validation on write) — decide build-vs-throwaway
+      *(overtaken by events: full SUB-008 server shipped first; the demo used it)*
+- [x] Agent-host setup recipe (`demo/SETUP.md`)
+- [x] Dry-run + tune against a real project; measure validity, iterations, context size
+      *(first run succeeded: 2/2 writes accepted, 15 turns, 63 KB context — demo/context-log.jsonl)*
+- [x] Recorded take: ask → live author → editor hand-off → manual edit
+      *(screenshot sequence in demo/shots/; narrated video not recorded — run is repeatable from SETUP.md)*
+- [x] Hand-off fidelity verified *(lossless; one product bug found & fixed — optional-`parameters`
+      crash in the editor's v2 open path — plus the one-time first-save normalization characterized)*
+- [x] `ASSESSMENT.md` with go/no-go and friction list — **GO**
+- [x] Friction routed into SUB-008 (get_node_type output cap); phase PROGRESS.md updated
+
+**Completed 2026-07-23.** Record: [demo/](./demo/) — ASSESSMENT.md, SETUP.md,
+shots/, context-log.jsonl, agent-final-report.md.
