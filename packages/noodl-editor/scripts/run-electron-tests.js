@@ -69,13 +69,19 @@ if (typeof electronBinary !== 'string') {
 
 // GitHub-hosted Ubuntu runners don't have Electron's setuid `chrome-sandbox`
 // helper configured (root-owned, mode 4755), so the sandboxed renderer aborts
-// at startup with SIGTRAP before any spec runs. `--no-sandbox` is standard
-// practice for CI test runners — this process never ships, unlike the packaged
-// app, whose sandboxing is untouched.
+// at startup with SIGTRAP before any spec runs. The Git specs also spawn their
+// *own* nested Electron process for the merge driver (core/init.ts's
+// `electron <editor-root> --merge`, invoked by `git` itself, not by us) — a
+// `--no-sandbox` CLI flag on this process wouldn't reach that one, but the
+// ELECTRON_DISABLE_SANDBOX env var does, since git subprocesses inherit it.
+// Neither ships: this process is the test harness, and the merge driver here
+// only runs against throwaway fixture repos under /tmp.
 const isCi = args.includes('--ci');
-const electronArgs = isCi ? ['--no-sandbox', 'test.js', ...args] : ['test.js', ...args];
+if (isCi) {
+  env.ELECTRON_DISABLE_SANDBOX = '1';
+}
 
-const child = child_process.spawn(electronBinary, electronArgs, {
+const child = child_process.spawn(electronBinary, ['test.js', ...args], {
   cwd: EDITOR_ROOT,
   env,
   stdio: 'inherit'
