@@ -69,6 +69,17 @@ jobs:
       - name: Build editor bundles
         run: npm run ci:build:editor
 
+  node-catalog:
+    name: Node catalog freshness
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      # Regenerates the catalog from the live node registries and fails if
+      # the committed artifact (packages/noodl-types/src/node-catalog.*)
+      # doesn't match — i.e. node definitions changed without regenerating.
+      - run: npm run catalog:check
+
   artefacts:
     name: Check build artefacts
     runs-on: ubuntu-latest

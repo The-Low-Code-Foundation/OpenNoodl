@@ -2,7 +2,7 @@
 
 **Created:** 2026-07-22 (from [NOODL-REVIVAL-ROADMAP.md](../../reviews/NOODL-REVIVAL-ROADMAP.md), Track A)
 **Last Updated:** 2026-07-23
-**Overall Status:** 🟡 In Progress (SUB-001, SUB-002, SUB-003 complete)
+**Overall Status:** 🟡 In Progress (SUB-001, SUB-002, SUB-003, SUB-004 complete)
 
 ---
 
@@ -11,10 +11,10 @@
 | Metric       | Value  |
 | ------------ | ------ |
 | Total Tasks  | 8      |
-| Completed    | 3      |
+| Completed    | 4      |
 | In Progress  | 0      |
-| Not Started  | 5      |
-| **Progress** | **38%** |
+| Not Started  | 4      |
+| **Progress** | **50%** |
 
 ---
 
@@ -43,7 +43,7 @@ call sites** — they are exercised only from tests. Making them real is SUB-001
 | SUB-001 | Editor v2 Integration (STRUCT-005/006) | 3-4 wks | 🟢 Complete |
 | SUB-002 | Round-Trip Fidelity | 1-2 wks | 🟢 Complete |
 | SUB-003 | Migration Wizard & Real-Project Tests (STRUCT-007/008) | 3-4 wks | 🟢 Complete (engine + STRUCT-008; wizard UI deferred) |
-| SUB-004 | Node Catalog Generator | 1-2 wks | 🔴 Not Started |
+| SUB-004 | Node Catalog Generator | 1-2 wks | 🟢 Complete |
 | SUB-005 | Catalog Enrichment | 3-4 wks | 🔴 Not Started |
 | SUB-006 | Semantic Validator | 2-3 wks | 🔴 Not Started |
 | SUB-007 | Graph-Native Git | 4-6 wks | 🔴 Not Started |
@@ -61,6 +61,38 @@ call sites** — they are exercised only from tests. Making them real is SUB-001
 
 ## Change Log
 
+- **2026-07-23** — **SUB-004 complete.** The node catalog exists: a generator
+  (`scripts/node-catalog/`, `npm run catalog:generate`) loads the real node
+  registries headlessly — `noodl-runtime` + `noodl-viewer-react` as the browser
+  runtime and `noodl-runtime` + `noodl-viewer-cloud` as the cloud runtime, via
+  an esbuild bundle with a small DOM/`Noodl`-global shim — and serialises them
+  into **`packages/noodl-types/src/node-catalog.json`** (135 node types, every
+  port/type/default/enum) plus generated **`node-catalog.d.ts`** (NodeTypeName /
+  PortTypeName unions and catalog interfaces; in root typecheck scope). Design
+  choices that matter downstream: extraction is from the **live register**
+  (never source parsing); output is **byte-deterministic** (double-run assert,
+  sorted nodes/ports, no timestamps); **dynamic ports are modelled as a
+  first-class concept** — 89 of 135 types carry a `dynamicPorts` object with
+  mechanisms (`declared-port-groups` incl. serialized conditional groups and a
+  condition-grammar note, `numbered-inputs`, `component-ports`,
+  `runtime-discovered`, `editor-adapter`) and curated per-node descriptions, so
+  a validator knows exactly when an unknown port name is legal; `availableIn`
+  browser/cloud split; `isVisual`; `inNodePicker` distinguishes the 26
+  registered-but-superseded/specialised types (legacy `Button` vs
+  `net.noodl.controls.button` etc.); typecasts table lifted from the runtime's
+  own `nodelibraryexport`. **Gates:** `npm run catalog:check` regenerates and
+  diffs in CI (new `node-catalog` job in pr.yml). **Validation:** round-trip
+  sanity over the real-project corpus resolves ~5,000 connection endpoints with
+  zero false errors (only genuinely-removed legacy types like `Rectangle`,
+  `Markdown`, `REST` fail, correctly); the **LLM acceptance test passed** — an
+  agent given only the catalog + `docs/node-catalog/SCHEMA.md` + v2 schemas +
+  one example component authored a working ClickCounter component with every
+  node type, port name and typecast justified from the catalog (verified
+  independently against Ajv + the catalog); its reported friction points were
+  folded back into the schema (`inNodePicker`, precedence rules, condition
+  grammar). `esbuild` added as an explicit root devDependency (was only
+  transitive via Storybook). Field-by-field docs: `docs/node-catalog/SCHEMA.md`.
+  Diagnostic: `npm run catalog:validate <project>` previews SUB-006.
 - **2026-07-23** — **SUB-003 complete (engine + validation suite; wizard UI deferred).**
   Shipped the safety-critical half of SUB-003: a **`ProjectMigrator`** engine
   (`services/ProjectStructure/ProjectMigrator.ts`) that converts a legacy
