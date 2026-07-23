@@ -53,7 +53,7 @@ call sites** — they are exercised only from tests. Making them real is SUB-001
 
 | Task | Name | Est. | Status |
 |---------|--------------------------------|--------|----------------|
-| SUB-009 | Live-Preview Harness | 3-5 days | 🔴 Not Started |
+| SUB-009 | Live-Preview Harness | 3-5 days | 🟢 Complete (`packages/noodl-preview`, `npm run preview -- <dir>`) |
 | SUB-010 | External Authoring Demo (Claude + MCP → live preview → editor hand-off) | 4-7 days | 🔴 Not Started |
 
 ---
@@ -70,6 +70,54 @@ call sites** — they are exercised only from tests. Making them real is SUB-001
 
 ## Change Log
 
+- **2026-07-23** — **SUB-009 complete (optional spike).** New package
+  **`packages/noodl-preview`** (`@noodl/preview`): `npm run preview -- <dir>`
+  renders a project in a plain browser with **no editor process** and reloads it
+  when the files on disk change — the "see it" half of the AI-authoring loop that
+  SUB-008 opened. Fills the gap the spec named: there is no file watcher anywhere
+  in the codebase, and the editor's live preview is driven by its in-memory model
+  over a WebSocket, so nothing an external writer puts on disk was ever visible.
+  **The spec's assumed pipeline does not compose** — `loadV2Project.loadProject`
+  returns the validator's *normalized* model (no parameters, unrenderable), and
+  `Exporter.exportToJSON` needs a full `ProjectModel` + populated `NodeLibrary`.
+  That risk row ("export/runtime coupling needs editor-only bits") was settled
+  first with a throwaway esbuild probe, which proved `ProjectModel` +
+  `NodeLibrary` + `utils/exporter` + `HtmlProcessor` all run in plain Node behind
+  four shims: `@noodl/platform-node` bound before any editor import (module-scope
+  `getUserDataPath()` reads), a `bugtracker` stub (it hijacks `console.log` and
+  writes a logfile at import), the node-catalog generator's `dom-shim.js`, and
+  `NodeLibrary` fed from `NoodlRuntime.getNodeLibrary()` — the same node-library
+  JSON the editor receives over the WebSocket, produced in-process. Real pipeline:
+  **v2 dir → `ProjectImporter` → legacy object → SUB-006 gate → `ProjectModel` →
+  `Exporter` → serve.** "Zero new runtime code" holds and then some: the served
+  page is the real deploy template calling `renderDeployed`, exported with
+  `useBundles`/`useBundleHashes` on, so `/noodl_bundles/<id>.json` matches what
+  `deployToFolder` writes; project assets are served from the project folder.
+  **The validation gate is the design point** — errors keep the *last good build*
+  installed and push diagnostics to an injected SSE client that overlays them on
+  the still-rendered page, so an agent's mid-edit state reads as "not finished"
+  rather than "broken"; warnings never block. Chokidar watch + debounce (one
+  rebuild per burst), `.git`/temp/backup paths ignored, read-only throughout
+  (safe alongside an open editor; port 8575 vs the viewer's 8574). **Two finds:**
+  projects authored from outside frequently carry no `rootNodeId` (the MCP
+  fixture does not) and `exportToJSON` silently returns nothing without a root —
+  now falls back to the editor's own `allowAsExportRoot` predicate and reports the
+  guess; and a bogus *parameter* is not a SUB-006 diagnostic (its port rules key
+  on connections), so the gate is exercised with a dangling connection.
+  **Verified in headless Chrome with the editor closed:** standalone render,
+  live edit visible inside 1s (rebuilds 3–10 ms), dangling connection → overlay
+  over the previous render, recovery on fix. The real 176-component corpus
+  project loads/validates/exports in 733 ms but does not paint — its own bundled
+  module `se-topp-fovea` does `Noodl.Collection.apply(this, arguments)` against
+  today's `class Collection extends Array`; a pre-existing module/runtime
+  incompatibility a real `deployToFolder` deploy hits identically, surfaced here
+  because the whole path (module injection → asset serving → runtime setup) ran.
+  **14/14 specs**, driving the *built*
+  CLI over HTTP rather than the TS sources — the risk here is the bundle, which
+  source-level tests would not touch. Option B (incremental hot-update via the
+  8574 protocol) deliberately not built; noted as the upgrade path for SUB-010 to
+  judge. Prerequisite: `packages/noodl-editor/src/external/deploy/` is a
+  gitignored build artifact — absent, the CLI fails with `npm run build:editor:_viewer`.
 - **2026-07-23** — **SUB-008 complete; Gate G1 passed.** New standalone package
   **`packages/noodl-mcp`** (`@noodl/mcp`): an MCP server over v2 project
   directories with a 14-tool surface — read (`get_project_info`,

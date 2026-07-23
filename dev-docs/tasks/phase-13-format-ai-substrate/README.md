@@ -40,6 +40,15 @@ turns Noodl into a first-class target for the entire agent ecosystem.
 | SUB-007 | [Graph-Native Git](./SUB-007-GRAPH-NATIVE-GIT.md) | Replace `projectmerger.js` with v2-aware diff/merge; readable graph diffs | 4-6 wks | 🔵 Fable 5 |
 | SUB-008 | [MCP Server](./SUB-008-MCP-SERVER.md) | Noodl MCP server: any agent can open, inspect, and author projects | 3-4 wks | 🔵 Fable 5 |
 
+### Optional spikes (de-risking, not substrate pillars)
+
+These are proof-of-thesis prototypes, not part of the eight-task substrate spine and not counted in the phase effort/percentage. They exist to test — cheaply, before the ~2-month SUB-008 + Phase-15 commitment — whether the "Noodl as an extension of your existing agent (Claude Desktop / Code), see it live, hand off to the visual editor" experience is real. They add the two dimensions Gate G1 omits: the live-visual payoff and the editor hand-off.
+
+| Task | Name | Description | Est. |
+|---------|------|-------------|--------|
+| SUB-009 | [Live-Preview Harness](./SUB-009-LIVE-PREVIEW-HARNESS.md) | Standalone `renderDeployed` preview that watches v2 files on disk and hot-reloads — fills the "no file watcher" gap for external writers. **✅ Complete** — `packages/noodl-preview`, `npm run preview -- <dir>` | 3-5 days | 🟠 Opus 4.8 |
+| SUB-010 | [External Authoring Demo](./SUB-010-EXTERNAL-AUTHORING-DEMO.md) | End-to-end: Claude (Desktop/Code) authors a page via a minimal MCP surface → live preview → open & edit in the editor. Recorded demo + honest go/no-go assessment | 4-7 days | 🔵 Fable 5 |
+
 ---
 
 ## Dependencies & Sequencing

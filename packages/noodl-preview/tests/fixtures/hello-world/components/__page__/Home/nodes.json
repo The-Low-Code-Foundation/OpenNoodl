@@ -1,0 +1,28 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "c_home",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "page",
+      "type": "Page",
+      "label": "Home",
+      "x": 100,
+      "y": 100,
+      "parameters": { "title": "Home", "urlPath": "home" },
+      "children": ["greeting"]
+    },
+    {
+      "id": "greeting",
+      "type": "Text",
+      "label": "Greeting",
+      "parent": "page",
+      "parameters": {
+        "text": "Hello World!",
+        "fontSize": { "value": 32, "unit": "px" },
+        "textAlign": "center"
+      }
+    }
+  ],
+  "visualRoots": ["page"]
+}

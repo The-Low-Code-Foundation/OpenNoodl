@@ -1,0 +1,27 @@
+{
+  "name": "@noodl/preview",
+  "version": "0.1.0",
+  "description": "Standalone live-preview harness: renders a NodeGX (OpenNoodl) v2 project in a browser with no editor process, and reloads it when the files on disk change.",
+  "main": "src/index.ts",
+  "bin": {
+    "noodl-preview": "./bin/noodl-preview.js"
+  },
+  "files": [
+    "bin",
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "node build.mjs",
+    "test": "jest",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "chokidar": "^3.6.0"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.0.1",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.4.1"
+  }
+}
