@@ -43,6 +43,13 @@ export interface ProjectContent {
   /** Name of the root component that serves as the entry point */
   rootComponent?: string;
 
+  /**
+   * Id of the root node (the "home"). Resolved from `rootComponent` at
+   * instantiation time so the home component is set deterministically,
+   * independent of NodeLibrary state. Present on serialized project.json.
+   */
+  rootNodeId?: string;
+
   /** Array of component definitions */
   components: ComponentDefinition[];
 

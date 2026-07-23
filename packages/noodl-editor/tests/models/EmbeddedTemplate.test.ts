@@ -89,6 +89,74 @@ describe('EmbeddedTemplateProvider', () => {
       const names = project.components.map((c: TSFixme) => c.name);
       expect(names).toContain('App');
     });
+
+    // New projects were saved with no home component. fromJSON only
+    // honours the `rootComponent` name hint via setRootComponent(), which
+    // no-ops when the NodeLibrary is empty (as it is on the launcher at
+    // create time) — so the hint was lost and toJSON never persisted a root.
+    // The provider now resolves a concrete rootNodeId that fromJSON can look
+    // up by id, independent of NodeLibrary state.
+    it('writes a top-level rootNodeId so the home component is set deterministically', () => {
+      expect(project.rootNodeId).toBeDefined();
+      expect(typeof project.rootNodeId).toBe('string');
+    });
+
+    it('points rootNodeId at the root component’s first root node', () => {
+      const rootComp = project.components.find((c: TSFixme) => c.name === project.rootComponent);
+      expect(rootComp).toBeDefined();
+      expect(rootComp.graph.roots[0].id).toBe(project.rootNodeId);
+    });
+
+    // The starter must actually render a page, not just avoid the no-home error.
+    // That requires the Router to be a well-formed page router and the home
+    // component to be a real Page. getRouterIndex() drops nameless routers, and
+    // the runtime only renders a page component that contains exactly one Page
+    // node — see utils/exporter/router.ts and viewer router.tsx resetAsync.
+    it('configures the App router as a named page router pointing at the home page', () => {
+      const app = project.components.find((c: TSFixme) => c.name === 'App');
+      const router = app.graph.roots.find((n: TSFixme) => n.type === 'Router');
+      expect(router).toBeDefined();
+      expect(router.parameters.name).toBeTruthy();
+      expect(router.parameters.pages.routes).toContain('/#__page__/Home');
+      expect(router.parameters.pages.startPage).toBe('/#__page__/Home');
+      // every route must resolve to a real component
+      for (const route of router.parameters.pages.routes) {
+        expect(project.components.some((c: TSFixme) => c.name === route)).toBe(true);
+      }
+    });
+
+    it('gives the home page a single Page node with the greeting inside it', () => {
+      const home = project.components.find((c: TSFixme) => c.name === '/#__page__/Home');
+      expect(home).toBeDefined();
+      const pageNodes = home.graph.roots.filter((n: TSFixme) => n.type === 'Page');
+      expect(pageNodes.length).toBe(1); // runtime requires exactly one Page root
+      const text = pageNodes[0].children.find((n: TSFixme) => n.type === 'Text');
+      expect(text).toBeDefined();
+      expect(text.parameters.text).toContain('Hello World');
+    });
+  });
+
+  // Every new project sharing identical node UUIDs is a latent hazard for
+  // cross-project copy/merge; the provider regenerates ids per instantiation.
+  it('gives each created project fresh, unique node ids', async () => {
+    const dirA = tempDir();
+    const dirB = tempDir();
+    try {
+      await provider.download('embedded://hello-world', dirA);
+      await provider.download('embedded://hello-world', dirB);
+      const a = JSON.parse(fs.readFileSync(path.join(dirA, 'project.json'), 'utf8'));
+      const b = JSON.parse(fs.readFileSync(path.join(dirB, 'project.json'), 'utf8'));
+
+      const idsOf = (proj: TSFixme) => proj.components.flatMap((c: TSFixme) => c.graph.roots.map((r: TSFixme) => r.id));
+      const idsA = idsOf(a);
+      const idsB = idsOf(b);
+
+      expect(idsA.every((id: string) => !idsB.includes(id))).toBe(true);
+      expect(a.rootNodeId).not.toBe(b.rootNodeId);
+    } finally {
+      fs.rmSync(dirA, { recursive: true, force: true });
+      fs.rmSync(dirB, { recursive: true, force: true });
+    }
   });
 });
 

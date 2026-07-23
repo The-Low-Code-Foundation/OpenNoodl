@@ -38,7 +38,7 @@ export const helloWorldTemplate: ProjectTemplate = {
     name: 'Hello World Project',
     rootComponent: 'App',
     components: [
-      // App component (root)
+      // App component (root) — hosts the Page Router.
       {
         name: 'App',
         id: generateId(),
@@ -52,8 +52,17 @@ export const helloWorldTemplate: ProjectTemplate = {
               type: 'Router',
               x: 100,
               y: 100,
+              // `name` is required: getRouterIndex() drops routers without one,
+              // so the router would find no pages. `pages` must be the
+              // { startPage, routes } shape the runtime and exporter expect —
+              // `routes` lists page components by name, `startPage` is the one
+              // shown first. See utils/exporter/router.ts.
               parameters: {
-                startPage: '/#__page__/Home'
+                name: 'Main',
+                pages: {
+                  startPage: '/#__page__/Home',
+                  routes: ['/#__page__/Home']
+                }
               },
               ports: [],
               children: []
@@ -64,7 +73,8 @@ export const helloWorldTemplate: ProjectTemplate = {
         },
         metadata: {}
       },
-      // Home Page component
+      // Home page component — a Page node (what marks a component as a routable
+      // page) with the "Hello World" Text nested inside it.
       {
         name: '/#__page__/Home',
         id: generateId(),
@@ -75,16 +85,29 @@ export const helloWorldTemplate: ProjectTemplate = {
           roots: [
             {
               id: generateId(),
-              type: 'Text',
+              type: 'Page',
               x: 100,
               y: 100,
               parameters: {
-                text: 'Hello World!',
-                fontSize: { value: 32, unit: 'px' },
-                textAlign: 'center'
+                title: 'Home',
+                urlPath: 'home'
               },
               ports: [],
-              children: []
+              children: [
+                {
+                  id: generateId(),
+                  type: 'Text',
+                  x: 100,
+                  y: 100,
+                  parameters: {
+                    text: 'Hello World!',
+                    fontSize: { value: 32, unit: 'px' },
+                    textAlign: 'center'
+                  },
+                  ports: [],
+                  children: []
+                }
+              ]
             }
           ],
           connections: [],
