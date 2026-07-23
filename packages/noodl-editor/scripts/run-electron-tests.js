@@ -67,7 +67,15 @@ if (typeof electronBinary !== 'string') {
   process.exit(1);
 }
 
-const child = child_process.spawn(electronBinary, ['test.js', ...args], {
+// GitHub-hosted Ubuntu runners don't have Electron's setuid `chrome-sandbox`
+// helper configured (root-owned, mode 4755), so the sandboxed renderer aborts
+// at startup with SIGTRAP before any spec runs. `--no-sandbox` is standard
+// practice for CI test runners — this process never ships, unlike the packaged
+// app, whose sandboxing is untouched.
+const isCi = args.includes('--ci');
+const electronArgs = isCi ? ['--no-sandbox', 'test.js', ...args] : ['test.js', ...args];
+
+const child = child_process.spawn(electronBinary, electronArgs, {
   cwd: EDITOR_ROOT,
   env,
   stdio: 'inherit'

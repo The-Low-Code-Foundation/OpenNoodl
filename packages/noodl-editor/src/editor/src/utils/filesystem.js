@@ -1,5 +1,4 @@
-var _ = require('underscore'),
-  Path = require('path');
+var Path = require('path');
 var mkdirp = require('mkdirp');
 var JSZip = require('jszip');
 var fs = require('fs');

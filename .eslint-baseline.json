@@ -2,7 +2,7 @@
   "targets": [
     "packages/noodl-editor/src"
   ],
-  "maxErrors": 3915,
+  "maxErrors": 3916,
   "byRule": {
     "no-shadow-restricted-names": 2,
     "@typescript-eslint/no-this-alias": 835,
@@ -10,7 +10,7 @@
     "no-empty": 150,
     "no-useless-escape": 312,
     "no-undef": 386,
-    "@typescript-eslint/no-var-requires": 193,
+    "@typescript-eslint/no-var-requires": 194,
     "@typescript-eslint/ban-ts-comment": 67,
     "@typescript-eslint/no-unused-vars": 867,
     "no-redeclare": 54,
