@@ -41,6 +41,7 @@ import type {
 import { ProjectStructureFilesystem, V2_FILES } from './types';
 import { ComponentLoader } from './ComponentLoader';
 import { ComponentSaver, stableStringify, hashString } from './ComponentSaver';
+import { ProjectMigrator, type MigratorFilesystem } from './ProjectMigrator';
 
 export interface LoadResult {
   project: LegacyProject;
@@ -256,6 +257,15 @@ export const projectStructureService = new ProjectStructureService(
   filesystem as unknown as ProjectStructureFilesystem
 );
 
+/**
+ * App-wide migration engine (SUB-003) bound to the platform filesystem. The
+ * platform `filesystem` implements the whole-folder copy and unique-path helpers
+ * the migrator needs on top of the base ProjectStructure surface.
+ */
+export const projectMigrator = new ProjectMigrator(filesystem as unknown as MigratorFilesystem);
+
 export { ComponentLoader } from './ComponentLoader';
 export { ComponentSaver } from './ComponentSaver';
+export { ProjectMigrator } from './ProjectMigrator';
+export type { MigratorFilesystem, PreflightReport, MigrationResult, VerificationResult } from './ProjectMigrator';
 export * from './types';

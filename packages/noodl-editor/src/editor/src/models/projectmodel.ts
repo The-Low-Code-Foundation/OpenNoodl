@@ -14,7 +14,8 @@ import { NodeGraphModel, NodeGraphNode } from './nodegraphmodel';
 import { NodeLibrary } from './nodelibrary';
 import { listProjectModules, ProjectModule, ProjectModuleManifest, readProjectModules } from './projectmodel.modules';
 import { VariantModel } from './VariantModel';
-import { projectStructureService } from '../services/ProjectStructure';
+import { projectStructureService, projectMigrator } from '../services/ProjectStructure';
+import type { PreflightReport, MigrationResult } from '../services/ProjectStructure';
 import { isV2FormatEnabled } from '../services/ProjectStructure/featureFlags';
 
 /** Which on-disk format a loaded project uses. Set at load; drives the save path. */
@@ -714,6 +715,45 @@ export class ProjectModel extends Model {
 
     this.notifyListeners('componentReloadedFromDisk', { component: newModel });
     return true;
+  }
+
+  // ── v2 migration (SUB-003) ──────────────────────────────────────────────────
+  //
+  // The seam the migration wizard drives. `analyzeMigration` reports what a
+  // migration would do (no writes); `migrateToV2` performs it safely — backup,
+  // convert, verify, and roll back automatically on any failure. Both operate on
+  // the currently-open project directory.
+
+  /**
+   * True when the open project is a legacy monolithic project that could be
+   * migrated to the v2 decomposed format. Cheap; drives whether to offer migration.
+   */
+  canOfferMigration(): boolean {
+    return this._projectFormat === 'legacy' && !!this._retainedProjectDirectory;
+  }
+
+  /** Pre-flight analysis of the open project (no writes). */
+  async analyzeMigration(): Promise<PreflightReport | undefined> {
+    if (!this._retainedProjectDirectory) return undefined;
+    return projectMigrator.analyze(this._retainedProjectDirectory);
+  }
+
+  /**
+   * Migrates the open project to the v2 format. Safe and reversible: a full
+   * backup is taken first, the result is verified against the in-memory project,
+   * and any failure rolls back to the backup. Returns a structured result rather
+   * than throwing.
+   */
+  async migrateToV2(): Promise<MigrationResult> {
+    if (!this._retainedProjectDirectory) {
+      return { result: 'failure', message: 'No project directory is open.' };
+    }
+    const result = await projectMigrator.migrate(this._retainedProjectDirectory);
+    if (result.result === 'success') {
+      this._projectFormat = 'v2';
+      this.notifyListeners('projectMigratedToV2', { backupPath: result.backupPath });
+    }
+    return result;
   }
 
   // Project lessons

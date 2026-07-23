@@ -15,3 +15,4 @@ export * from './services';
 export * from './utils';
 export * from './schemas';
 export * from './io';
+export * from './structure';

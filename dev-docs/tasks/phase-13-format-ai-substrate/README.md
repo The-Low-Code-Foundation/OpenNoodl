@@ -33,7 +33,7 @@ turns Noodl into a first-class target for the entire agent ecosystem.
 |---------|--------------------------|--------------------------------------------------------------------|--------|
 | SUB-001 | [Editor v2 Integration](./SUB-001-EDITOR-V2-INTEGRATION.md) | Editor natively reads/writes v2 (STRUCT-005 lazy loading + STRUCT-006 component-level save) | 3-4 wks | 🟠 Opus 4.8 |
 | SUB-002 | [Round-Trip Fidelity](./SUB-002-ROUNDTRIP-FIDELITY.md) | Carry `comments`/`visualRoots`/`lesson`/`rootNodeId`; whole-object round-trip tests; golden fixtures | 1-2 wks | 🟢 Sonnet 5 |
-| SUB-003 | [Migration & Real Tests](./SUB-003-MIGRATION-AND-REAL-TESTS.md) | STRUCT-007 migration wizard UI + STRUCT-008 real-project test suite | 3-4 wks | 🟠 Opus 4.8 |
+| SUB-003 | [Migration & Real Tests](./SUB-003-MIGRATION-AND-REAL-TESTS.md) | STRUCT-007 migration wizard UI + STRUCT-008 real-project test suite | 3-4 wks | 🟠 Opus 4.8 — 🟢 engine + STRUCT-008 done; wizard UI deferred |
 | SUB-004 | [Node Catalog](./SUB-004-NODE-CATALOG.md) | **The keystone**: generate `node-catalog.json` from runtime registry metadata | 1-2 wks | 🔵 Fable 5 |
 | SUB-005 | [Catalog Enrichment](./SUB-005-CATALOG-ENRICHMENT.md) | Usage examples, semantic docs, connection-compatibility rules, dynamic-port flags | 3-4 wks | 🔵 Fable 5 |
 | SUB-006 | [Semantic Validator](./SUB-006-SEMANTIC-VALIDATOR.md) | Lint v2 projects against the catalog — "the AI's compiler errors" | 2-3 wks | 🟠 Opus 4.8 |

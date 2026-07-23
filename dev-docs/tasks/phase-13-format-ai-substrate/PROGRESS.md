@@ -2,7 +2,7 @@
 
 **Created:** 2026-07-22 (from [NOODL-REVIVAL-ROADMAP.md](../../reviews/NOODL-REVIVAL-ROADMAP.md), Track A)
 **Last Updated:** 2026-07-23
-**Overall Status:** 🟡 In Progress (SUB-001, SUB-002 complete)
+**Overall Status:** 🟡 In Progress (SUB-001, SUB-002, SUB-003 complete)
 
 ---
 
@@ -11,10 +11,10 @@
 | Metric       | Value  |
 | ------------ | ------ |
 | Total Tasks  | 8      |
-| Completed    | 2      |
+| Completed    | 3      |
 | In Progress  | 0      |
-| Not Started  | 6      |
-| **Progress** | **25%** |
+| Not Started  | 5      |
+| **Progress** | **38%** |
 
 ---
 
@@ -42,7 +42,7 @@ call sites** — they are exercised only from tests. Making them real is SUB-001
 |---------|--------------------------------|--------|----------------|
 | SUB-001 | Editor v2 Integration (STRUCT-005/006) | 3-4 wks | 🟢 Complete |
 | SUB-002 | Round-Trip Fidelity | 1-2 wks | 🟢 Complete |
-| SUB-003 | Migration Wizard & Real-Project Tests (STRUCT-007/008) | 3-4 wks | 🔴 Not Started |
+| SUB-003 | Migration Wizard & Real-Project Tests (STRUCT-007/008) | 3-4 wks | 🟢 Complete (engine + STRUCT-008; wizard UI deferred) |
 | SUB-004 | Node Catalog Generator | 1-2 wks | 🔴 Not Started |
 | SUB-005 | Catalog Enrichment | 3-4 wks | 🔴 Not Started |
 | SUB-006 | Semantic Validator | 2-3 wks | 🔴 Not Started |
@@ -61,6 +61,34 @@ call sites** — they are exercised only from tests. Making them real is SUB-001
 
 ## Change Log
 
+- **2026-07-23** — **SUB-003 complete (engine + validation suite; wizard UI deferred).**
+  Shipped the safety-critical half of SUB-003: a **`ProjectMigrator`** engine
+  (`services/ProjectStructure/ProjectMigrator.ts`) that converts a legacy
+  monolithic project to v2 **safely and reversibly**, plus the STRUCT-008
+  validation suite. The engine's single invariant — *the original project is never
+  damaged* — is upheld by strict ordering: **(1) backup first** (whole-dir copy to
+  a sibling `*.nodegx-backup`, aborts if it can't be made), **(2) write v2 to all
+  new paths** leaving legacy `project.json` untouched, **(3) verify** by reading
+  the written files back, importing, and deep-comparing against the pre-migration
+  in-memory project (SUB-002's round-trip machinery promoted to production —
+  `stripEmpty`/`canonicalEqual`/`firstDifference` now live in the migrator module),
+  **(4) commit last** by removing `project.json` only after verify passes. Because
+  the legacy file dies only at step 4, a process kill at any earlier point leaves a
+  fully-intact legacy project on disk; the orchestrated failure path additionally
+  rolls the directory back to the backup. Injectable fs/exporter/importer make the
+  whole machinery unit-testable and let the suite inject a lossy converter to prove
+  verification aborts. **Pre-flight `analyze()`** reports component/node/connection
+  counts and flags the delicate cases (dynamic ports, non-array routes, lessons,
+  ≥200-component scale) without writing. Wired as an app-wide `projectMigrator` and
+  a `ProjectModel.canOfferMigration()/analyzeMigration()/migrateToV2()` seam (the
+  hooks the future wizard UI drives). **New suite: `tests/structure/` (24 specs)** —
+  migrates & self-verifies all 7 SUB-002 corpus projects (incl. big-merge 176-comp
+  scale), a synthetic cloud-component (`__cloud__/` path mapping), injected-fault
+  abort+rollback, truncated/malformed inputs failing cleanly, interrupted-mid-write
+  auto-rollback, hard-kill leaving the legacy file intact, and idempotent skip on
+  already-v2. Full editor typecheck clean (0 errors). **Deferred (own scope):** the
+  React `MigrationWizard` panel — the engine exposes everything it needs. User docs
+  at `docs/format/MIGRATING-TO-V2.md`.
 - **2026-07-23** — **SUB-001 complete.** The v2 decomposed format is now wired into
   the editor's real save/load path (previously zero application call sites). New
   `services/ProjectStructure/`: **`ComponentLoader`** (STRUCT-005 — per-component
