@@ -48,6 +48,12 @@ import { BuildTarget, getDistPlatform } from './platform/build-platforms';
   const PUBLISH_RELEASE = valueToBoolean(process.env.PUBLISH_RELEASE);
   const publishArg = PUBLISH_RELEASE ? '--publish onTagOrDraft' : '--publish never';
 
+  // Per-arch macOS builds (arm64 / x64), each fully functional. A single-file
+  // `--universal` build was evaluated and deferred: it needs the bundled native
+  // binaries (desktop-trampoline, dugite's git) built for both arches and
+  // lipo-merged, which this one-`npm install`-per-arch pipeline does not
+  // produce — @electron/universal correctly refuses to ship single-arch natives
+  // in a universal app. See dev-docs/guidelines/RELEASE-PROCESS.md §6.
   const args = [`--${platformName}`, `--${target.arch}`, publishArg].join(' ');
 
   // Signing:

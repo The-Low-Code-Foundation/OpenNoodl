@@ -36,7 +36,9 @@
 - ⬜ Auto-update end-to-end across two *published* releases.
 - ⬜ Cut & publish v0.1.0 publicly (draft workflow is ready; a human confirms the draft).
 
-**Known limitation flagged, not silently shipped:** the mac matrix builds arm64 and x64 as separate jobs that each overwrite `latest-mac.yml`, so the published feed points at one arch. Harmless for the *first* release (nobody is auto-updating yet) but **must be fixed before v0.1.1** (universal build). See `RELEASE-PROCESS.md` §6.
+**Unsigned distribution (current v0 plan).** Signing is *not* required to ship a testable build — it only removes the OS warning. macOS ships as **per-arch** builds (arm64 + x64), each fully functional; a single-file universal build was evaluated and deferred (`@electron/universal` refuses to ship the single-arch native binaries `desktop-trampoline`/`dugite` produced by the one-`npm install`-per-arch pipeline — proven by a local build attempt). End-user "open it anyway" instructions for all three OSes are in [`INSTALLING-UNSIGNED-BUILDS.md`](../../guidelines/INSTALLING-UNSIGNED-BUILDS.md), meant to be copied into the GitHub Release notes.
+
+**Known limitation flagged, not silently shipped:** the mac arm64/x64 jobs each overwrite `latest-mac.yml`. This is **moot while unsigned** — macOS auto-update (Squirrel.Mac) requires a signed app, so it does not run at all yet — but becomes a must-fix the moment an Apple Developer ID is added. See `RELEASE-PROCESS.md` §6.
 
 ---
 

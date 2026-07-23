@@ -9,8 +9,13 @@ How to cut, verify, publish, and roll back a signed NodeGX release.
 > code-signing certificate, and the CI secrets built from them. Until a human
 > completes [§1](#1-one-time-credential-setup-human-required), releases produced
 > by CI are **unsigned** (they still build and publish as drafts, but macOS
-> Gatekeeper will warn and Windows SmartScreen will block). Nothing ships to
-> users until someone provisions credentials and publishes a draft.
+> Gatekeeper will warn and Windows SmartScreen will block).
+>
+> **Distributing unsigned test builds is fully supported** in the meantime —
+> that is the current v0 plan. Point testers at
+> [INSTALLING-UNSIGNED-BUILDS.md](./INSTALLING-UNSIGNED-BUILDS.md) (copy it into
+> the GitHub Release notes) for the one-step "open it anyway" instructions per
+> OS. Signing just removes that friction; it is not required to ship.
 
 ---
 
@@ -193,14 +198,21 @@ If a bad release has been published:
 
 These are documented deliberately rather than silently shipped:
 
-- **macOS multi-arch auto-update feed.** The matrix builds `darwin-arm64` and
-  `darwin-x64` as separate jobs, and each writes `latest-mac.yml`. The second to
-  finish overwrites the first, so the published `latest-mac.yml` points at only
-  one arch's `.zip`. This is **harmless for the very first release** (no client
-  is auto-updating yet) but **must be fixed before the second release**, or half
-  of macOS users will be offered the wrong-arch update. The fix is a single
-  **universal** macOS build (`--universal`) or arch-scoped update channels.
-  Tracked as a follow-up; do not publish a v0.1.1 to mac users until it is done.
+- **macOS ships as per-arch builds** (`darwin-arm64` for Apple Silicon,
+  `darwin-x64` for Intel), each fully functional — the standard "which Mac do
+  you have?" download split. A single-file **universal** build was evaluated and
+  **deferred**: `@electron/universal` correctly refuses to ship the bundled
+  single-arch native binaries (`desktop-trampoline`, `dugite`'s `git`) in a
+  universal app, so a real universal build needs each arch's natives built
+  separately and lipo-merged — a CI change worth doing later, not required for
+  distribution now.
+- **macOS multi-arch auto-update feed (future, signed phase only).** Once
+  signing + auto-update are live, the two mac jobs each write `latest-mac.yml`
+  and the later one wins, so the feed would point at one arch. This is **moot
+  today** — macOS auto-update (Squirrel.Mac) requires a *signed* app, so
+  auto-update does not run at all in the current unsigned phase. It becomes a
+  must-fix the moment an Apple Developer ID is added: resolve it then with a
+  universal build or arch-scoped update channels.
 - **Signing is credential-gated, not verified end-to-end.** No Apple/Windows
   certificates exist yet, so the signed/notarised path has never actually run.
   The hooks are wired and will engage the moment the secrets in §1 are present,
