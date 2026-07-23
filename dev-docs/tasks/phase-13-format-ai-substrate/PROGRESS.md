@@ -44,7 +44,7 @@ call sites** — they are exercised only from tests. Making them real is SUB-001
 | SUB-002 | Round-Trip Fidelity | 1-2 wks | 🟢 Complete |
 | SUB-003 | Migration Wizard & Real-Project Tests (STRUCT-007/008) | 3-4 wks | 🟢 Complete (engine + STRUCT-008; wizard UI deferred) |
 | SUB-004 | Node Catalog Generator | 1-2 wks | 🟢 Complete |
-| SUB-005 | Catalog Enrichment | 3-4 wks | 🟢 Complete (comparative LLM acceptance run pending — see docs/node-catalog/ACCEPTANCE.md) |
+| SUB-005 | Catalog Enrichment | 3-4 wks | 🟢 Complete (comparative LLM acceptance test passed — docs/node-catalog/ACCEPTANCE.md) |
 | SUB-006 | Semantic Validator | 2-3 wks | 🟢 Complete |
 | SUB-007 | Graph-Native Git | 4-6 wks | 🔴 Not Started |
 | SUB-008 | Noodl MCP Server | 3-4 wks | 🔴 Not Started |
@@ -61,9 +61,19 @@ call sites** — they are exercised only from tests. Making them real is SUB-001
 
 ## Change Log
 
-- **2026-07-23** — **SUB-005 complete** (one open item: the comparative LLM
-  acceptance run, protocol ready in `docs/node-catalog/ACCEPTANCE.md`, blocked
-  by an API spend limit on the day). The structural catalog is now a semantic
+- **2026-07-23 (later)** — **SUB-005 acceptance test run and passed.** Two blind
+  agents authored the same feature (task list + create + empty state), one from
+  the structural catalog alone, one from the enriched catalog + patterns. Both
+  validate clean — but the structural arm shipped a **silently dead wire**
+  (`created → fetch`; the real Query Records input is `storageFetch`, invisible
+  to the validator on a dynamic node) plus a redundant re-fetch, and used
+  non-canonical item binding; the enriched arm matched the corpus patterns on
+  every checklist point and cited the enrichment's anti-pattern note as the
+  reason it omitted the re-fetch. Full scoring table + raw outputs:
+  `docs/node-catalog/ACCEPTANCE.md`, `docs/node-catalog/acceptance/`. SUB-005 is
+  now fully complete.
+- **2026-07-23** — **SUB-005 complete** (one open item at the time, closed the
+  same day — see entry above). The structural catalog is now a semantic
   one. **Authored corpus** under `docs/node-catalog/`: `enrichment/` — one JSON
   per node type, **135/135 covered** (summary, description, whenToUse, port
   semantics, runtimeBehavior required exactly when the node has dynamic ports;

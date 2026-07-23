@@ -1,0 +1,194 @@
+{
+  "id": "acceptance-a",
+  "title": "Task List Page",
+  "description": "A task-list page backed by cloud data. A Query Records node (DbCollection2) fetches records from the 'Task' class and feeds a Repeater whose item template is /Task Item; each item uses a Record node (DbModel2, idSource 'foreach') to read the task's title. A Text Input plus a Button create a new Task record via Create New Record (NewDbModelProperties); on success the input is cleared and the query is re-fetched. An empty-state Text is shown when the query's Is Empty output is true.",
+  "components": [
+    {
+      "name": "/Task List Page",
+      "nodes": [
+        {
+          "id": "root-group",
+          "type": "Group",
+          "label": "Page Root",
+          "children": ["title-text", "input-row", "empty-state-text", "task-repeater"],
+          "parameters": {
+            "flexDirection": "column",
+            "paddingTop": 32,
+            "paddingBottom": 32,
+            "paddingLeft": 32,
+            "paddingRight": 32,
+            "rowGap": 16
+          }
+        },
+        {
+          "id": "title-text",
+          "type": "Text",
+          "label": "Page Title",
+          "parent": "root-group",
+          "parameters": {
+            "text": "Tasks",
+            "as": "h1"
+          }
+        },
+        {
+          "id": "input-row",
+          "type": "Group",
+          "label": "New Task Row",
+          "parent": "root-group",
+          "children": ["new-task-input", "add-task-button"],
+          "parameters": {
+            "flexDirection": "row",
+            "sizeMode": "contentHeight",
+            "columnGap": 8,
+            "alignItems": "center"
+          }
+        },
+        {
+          "id": "new-task-input",
+          "type": "net.noodl.controls.textinput",
+          "label": "New Task Input",
+          "parent": "input-row",
+          "parameters": {
+            "placeholder": "What needs doing?",
+            "type": "text"
+          }
+        },
+        {
+          "id": "add-task-button",
+          "type": "net.noodl.controls.button",
+          "label": "Add Task Button",
+          "parent": "input-row",
+          "parameters": {
+            "label": "Add Task"
+          }
+        },
+        {
+          "id": "empty-state-text",
+          "type": "Text",
+          "label": "Empty State",
+          "parent": "root-group",
+          "parameters": {
+            "text": "No tasks yet. Add your first task above.",
+            "visible": false
+          }
+        },
+        {
+          "id": "task-repeater",
+          "type": "For Each",
+          "label": "Task Repeater",
+          "parent": "root-group",
+          "parameters": {
+            "templateType": "explicit",
+            "template": "/Task Item"
+          }
+        },
+        {
+          "id": "task-query",
+          "type": "DbCollection2",
+          "label": "Query Tasks",
+          "parameters": {
+            "collectionName": "Task"
+          }
+        },
+        {
+          "id": "create-task",
+          "type": "NewDbModelProperties",
+          "label": "Create Task Record",
+          "parameters": {
+            "collectionName": "Task"
+          }
+        }
+      ],
+      "connections": [
+        {
+          "fromId": "task-query",
+          "fromProperty": "items",
+          "toId": "task-repeater",
+          "toProperty": "items"
+        },
+        {
+          "fromId": "task-query",
+          "fromProperty": "isEmpty",
+          "toId": "empty-state-text",
+          "toProperty": "visible"
+        },
+        {
+          "fromId": "new-task-input",
+          "fromProperty": "onTextChanged",
+          "toId": "create-task",
+          "toProperty": "prop-title"
+        },
+        {
+          "fromId": "add-task-button",
+          "fromProperty": "onClick",
+          "toId": "create-task",
+          "toProperty": "store"
+        },
+        {
+          "fromId": "new-task-input",
+          "fromProperty": "onEnter",
+          "toId": "create-task",
+          "toProperty": "store"
+        },
+        {
+          "fromId": "create-task",
+          "fromProperty": "created",
+          "toId": "new-task-input",
+          "toProperty": "clear"
+        },
+        {
+          "fromId": "create-task",
+          "fromProperty": "created",
+          "toId": "task-query",
+          "toProperty": "fetch"
+        }
+      ]
+    },
+    {
+      "name": "/Task Item",
+      "nodes": [
+        {
+          "id": "item-root",
+          "type": "Group",
+          "label": "Task Item Root",
+          "children": ["task-title-text"],
+          "parameters": {
+            "flexDirection": "row",
+            "sizeMode": "contentHeight",
+            "alignItems": "center",
+            "paddingTop": 8,
+            "paddingBottom": 8,
+            "paddingLeft": 12,
+            "paddingRight": 12
+          }
+        },
+        {
+          "id": "task-title-text",
+          "type": "Text",
+          "label": "Task Title",
+          "parent": "item-root",
+          "parameters": {
+            "text": ""
+          }
+        },
+        {
+          "id": "task-record",
+          "type": "DbModel2",
+          "label": "Task Record",
+          "parameters": {
+            "collectionName": "Task",
+            "idSource": "foreach"
+          }
+        }
+      ],
+      "connections": [
+        {
+          "fromId": "task-record",
+          "fromProperty": "prop-title",
+          "toId": "task-title-text",
+          "toProperty": "text"
+        }
+      ]
+    }
+  ]
+}
