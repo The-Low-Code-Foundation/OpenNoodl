@@ -44,6 +44,7 @@
     "catalog:generate": "node scripts/node-catalog/generate.js",
     "catalog:check": "node scripts/node-catalog/generate.js --check",
     "catalog:validate": "node scripts/node-catalog/validate-project.js",
+    "validate:project": "ts-node -P ./scripts/tsconfig.json ./scripts/validate-project.ts",
     "typecheck": "tsc --noEmit",
     "typecheck:core-ui": "tsc -p packages/noodl-core-ui --noEmit",
     "typecheck:editor": "tsc -p packages/noodl-editor --noEmit",

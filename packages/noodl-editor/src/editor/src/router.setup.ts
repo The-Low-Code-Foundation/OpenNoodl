@@ -23,6 +23,8 @@ import { ExecutionHistoryPanel } from './views/panels/ExecutionHistoryPanel';
 import { GitHubPanel } from './views/panels/GitHubPanel';
 import { NodeReferencesPanel_ID } from './views/panels/NodeReferencesPanel';
 import { NodeReferencesPanel } from './views/panels/NodeReferencesPanel/NodeReferencesPanel';
+import { ProblemsPanel_ID } from './views/panels/ProblemsPanel';
+import { ProblemsPanel } from './views/panels/ProblemsPanel/ProblemsPanel';
 import { ProjectSettingsPanel } from './views/panels/ProjectSettingsPanel/ProjectSettingsPanel';
 import { PropertyEditor } from './views/panels/propertyeditor';
 import { SearchPanel } from './views/panels/search-panel/search-panel';
@@ -115,6 +117,19 @@ export function installSidePanel({ isLesson }: SetupEditorOptions) {
     order: 4.5,
     icon: IconName.Link,
     panel: DataLineagePanel
+  });
+
+  SidebarModel.instance.register({
+    experimental: true,
+    id: ProblemsPanel_ID,
+    name: 'Problems',
+    description:
+      'Validates the project against the node catalog: unknown node types, nonexistent ports, ' +
+      'dangling/incompatible connections, orphaned nodes, and unresolved component references. ' +
+      'Click a problem to jump to the offending node.',
+    order: 4.7,
+    icon: IconName.WarningTriangle,
+    panel: ProblemsPanel
   });
 
   SidebarModel.instance.register({

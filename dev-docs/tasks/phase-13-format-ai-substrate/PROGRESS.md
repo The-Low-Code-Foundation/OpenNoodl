@@ -2,7 +2,7 @@
 
 **Created:** 2026-07-22 (from [NOODL-REVIVAL-ROADMAP.md](../../reviews/NOODL-REVIVAL-ROADMAP.md), Track A)
 **Last Updated:** 2026-07-23
-**Overall Status:** 🟡 In Progress (SUB-001, SUB-002, SUB-003, SUB-004 complete)
+**Overall Status:** 🟡 In Progress (SUB-001, SUB-002, SUB-003, SUB-004, SUB-006 complete)
 
 ---
 
@@ -11,10 +11,10 @@
 | Metric       | Value  |
 | ------------ | ------ |
 | Total Tasks  | 8      |
-| Completed    | 4      |
+| Completed    | 5      |
 | In Progress  | 0      |
-| Not Started  | 4      |
-| **Progress** | **50%** |
+| Not Started  | 3      |
+| **Progress** | **62.5%** |
 
 ---
 
@@ -45,7 +45,7 @@ call sites** — they are exercised only from tests. Making them real is SUB-001
 | SUB-003 | Migration Wizard & Real-Project Tests (STRUCT-007/008) | 3-4 wks | 🟢 Complete (engine + STRUCT-008; wizard UI deferred) |
 | SUB-004 | Node Catalog Generator | 1-2 wks | 🟢 Complete |
 | SUB-005 | Catalog Enrichment | 3-4 wks | 🔴 Not Started |
-| SUB-006 | Semantic Validator | 2-3 wks | 🔴 Not Started |
+| SUB-006 | Semantic Validator | 2-3 wks | 🟢 Complete |
 | SUB-007 | Graph-Native Git | 4-6 wks | 🔴 Not Started |
 | SUB-008 | Noodl MCP Server | 3-4 wks | 🔴 Not Started |
 
@@ -60,6 +60,38 @@ call sites** — they are exercised only from tests. Making them real is SUB-001
 ---
 
 ## Change Log
+
+- **2026-07-23** — **SUB-006 complete.** The semantic validator exists: a
+  framework-agnostic rule engine in
+  **`packages/noodl-editor/src/editor/src/validation/`** that checks a project
+  against the SUB-004 catalog and emits actionable diagnostics. Six independently
+  toggleable rules (`unknown-node-type`, `nonexistent-port`,
+  `dangling-connection`, `unresolved-component-ref`, `orphaned-node`,
+  `type-incompatible-connection`), each in its own file, over a normalized model
+  fed by two adapters (`fromLegacyProject` for the editor's in-memory model,
+  `loadV2Directory` for a v2 decomposed dir on disk — both produce identical
+  results). Diagnostics are **data** (`diagnostics.ts`): severity + code +
+  precise location (component/node/port) + message + `suggestion` + `alternatives`,
+  formatted at the edge (human / JSON). **The dynamic-port problem is handled as
+  the crux:** any node carrying `dynamicPorts` skips unknown-port erroring
+  (runtime/numbered/component/adapter ports are unknowable), while fully-static
+  nodes still error — the exact behaviour the SUB-004 corpus preview proved
+  clean. Design calls that matter: **unknown node type is a `warning`, not an
+  error** (real projects legitimately use module/other-version nodes the catalog
+  can't enumerate; `--strict` promotes to error for greenfield/CI), so the whole
+  real-project corpus validates with **zero errors**. Edit-distance suggestions
+  are length-scaled (`Butonn`→`Button`, `REST`→`REST2`; correctly *no* suggestion
+  for `On Item Action`/`module.inlineHtml`). Ships as: a **library** (editor +
+  MCP), a **CLI** (`scripts/validate-project.ts`, `npm run validate:project`,
+  human + `--json`, correct exit codes, `--strict`/`--only`/`--disable`), and an
+  **editor Problems panel** (`views/panels/ProblemsPanel/`) driven by
+  `ProjectValidationService` (re-validates on graph/project changes) with
+  click-to-navigate to the offending node. **56 tests** in
+  `tests/validation/` — dynamic-port false-positive guards (written first), per-rule
+  units, a diagnostics/AI-fixability contract, the v2-dir loader, and the
+  **false-positive corpus suite** (git-repo-utf8, big-merge 2933 nodes, all
+  testfs projects, synthetic-awkward → zero errors). Uses the catalog's existing
+  `typecasts` for the type rule; SUB-005 (enrichment) can sharpen it later.
 
 - **2026-07-23** — **SUB-004 complete.** The node catalog exists: a generator
   (`scripts/node-catalog/`, `npm run catalog:generate`) loads the real node

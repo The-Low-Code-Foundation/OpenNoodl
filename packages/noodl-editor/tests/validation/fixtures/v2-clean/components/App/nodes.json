@@ -1,0 +1,10 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "c_app",
+  "version": 1,
+  "nodes": [
+    { "id": "app_root", "type": "Group", "children": ["app_text", "app_card"] },
+    { "id": "app_text", "type": "Text", "parent": "app_root", "label": "Title" },
+    { "id": "app_card", "type": "/#Card", "parent": "app_root" }
+  ]
+}
