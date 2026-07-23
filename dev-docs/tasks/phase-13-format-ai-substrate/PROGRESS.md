@@ -11,10 +11,10 @@
 | Metric       | Value  |
 | ------------ | ------ |
 | Total Tasks  | 8      |
-| Completed    | 0      |
+| Completed    | 1      |
 | In Progress  | 0      |
-| Not Started  | 8      |
-| **Progress** | **0%** |
+| Not Started  | 7      |
+| **Progress** | **13%** |
 
 ---
 
@@ -41,7 +41,7 @@ call sites** — they are exercised only from tests. Making them real is SUB-001
 | Task | Name | Est. | Status |
 |---------|--------------------------------|--------|----------------|
 | SUB-001 | Editor v2 Integration (STRUCT-005/006) | 3-4 wks | 🔴 Not Started |
-| SUB-002 | Round-Trip Fidelity | 1-2 wks | 🔴 Not Started |
+| SUB-002 | Round-Trip Fidelity | 1-2 wks | 🟢 Complete |
 | SUB-003 | Migration Wizard & Real-Project Tests (STRUCT-007/008) | 3-4 wks | 🔴 Not Started |
 | SUB-004 | Node Catalog Generator | 1-2 wks | 🔴 Not Started |
 | SUB-005 | Catalog Enrichment | 3-4 wks | 🔴 Not Started |
@@ -61,5 +61,14 @@ call sites** — they are exercised only from tests. Making them real is SUB-001
 
 ## Change Log
 
+- **2026-07-23** — **SUB-002 complete.** Field audit ([NOTES.md](./NOTES.md)) found the
+  four named gaps (`rootNodeId`, `lesson`, graph `comments`, `visualRoots`) **plus four
+  more** the synthetic-only fixtures hid: project `id` and `thumbnailURI` dropped, legacy
+  `metadata.styles.text` silently dropped (exporter read a non-existent `textStyles` key),
+  variant `conflicts` dropped, and non-array `routes` lost. All carried now, with schema +
+  type additions. New whole-object round-trip suite runs over six real projects
+  (import_proj1/2/5, watchproject, git-repo-utf8 44-comp, big-merge 176-comp) + one
+  synthetic-awkward fixture; a data-driven schema-drift guard fails if a real-project field
+  has no schema home. Full editor harness: **741 specs, 0 failures.** SUB-001 gate is clear.
 - **2026-07-22** — Phase created from the revival roadmap (Track A, tasks A-01..A-08
   mapped to SUB-001..008). All tasks Not Started.

@@ -232,8 +232,24 @@ export class ProjectImporter {
       components
     };
 
+    if (input.project.id !== undefined) {
+      project.id = input.project.id;
+    }
+
     if (input.project.runtimeVersion) {
       project.runtimeVersion = input.project.runtimeVersion;
+    }
+
+    if (input.project.rootNodeId !== undefined) {
+      project.rootNodeId = input.project.rootNodeId;
+    }
+
+    if (input.project.lesson !== undefined) {
+      project.lesson = input.project.lesson;
+    }
+
+    if (input.project.thumbnailURI !== undefined) {
+      project.thumbnailURI = input.project.thumbnailURI;
     }
 
     if (input.project.settings && Object.keys(input.project.settings).length > 0) {
@@ -272,11 +288,12 @@ export class ProjectImporter {
       metadata.routes = input.routes.routes;
     }
 
-    // Restore styles (colors + textStyles)
+    // Restore styles. Legacy names the text-preset map `text`; v2 renames it to
+    // `textStyles` (see ProjectExporter.buildStylesFile) — reverse that here.
     if (input.styles) {
       const styles: Record<string, unknown> = {};
       if (input.styles.colors) styles.colors = input.styles.colors;
-      if (input.styles.textStyles) styles.textStyles = input.styles.textStyles;
+      if (input.styles.textStyles) styles.text = input.styles.textStyles;
       if (Object.keys(styles).length > 0) {
         metadata.styles = styles;
       }
@@ -294,10 +311,11 @@ export class ProjectImporter {
 
     return styles.variants.map((v) => {
       const variant: LegacyVariant = {
-        name: v.name,
         typename: v.typename
       };
 
+      // Most real variants carry only a typename — do not fabricate a name key.
+      if (v.name !== undefined) variant.name = v.name;
       if (v.parameters !== undefined) variant.parameters = v.parameters;
       // Reverse the typo normalisation: stateParameters  stateParamaters
       if (v.stateParameters !== undefined) {
@@ -308,6 +326,9 @@ export class ProjectImporter {
       }
       if (v.defaultStateTransitions !== undefined) {
         variant.defaultStateTransitions = v.defaultStateTransitions as Record<string, unknown>;
+      }
+      if (v.conflicts !== undefined) {
+        variant.conflicts = v.conflicts as unknown[];
       }
 
       return variant;
@@ -346,11 +367,23 @@ export class ProjectImporter {
       connections
     };
 
+    // Restore graph-level canvas state carried in nodes.json.
+    if (nodesFile.visualRoots && nodesFile.visualRoots.length > 0) {
+      graph.visualRoots = nodesFile.visualRoots;
+    }
+    if (nodesFile.comments && nodesFile.comments.length > 0) {
+      graph.comments = nodesFile.comments;
+    }
+
     const component: LegacyComponent = {
       name: legacyName,
-      id: componentFile.id,
       graph
     };
+
+    // Many real/imported components are id-less — do not fabricate an id key.
+    if (componentFile.id !== undefined) {
+      component.id = componentFile.id;
+    }
 
     // Restore component metadata
     if (componentFile.metadata && Object.keys(componentFile.metadata).length > 0) {

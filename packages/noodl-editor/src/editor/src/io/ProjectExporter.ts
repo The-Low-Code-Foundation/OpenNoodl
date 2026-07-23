@@ -77,14 +77,16 @@ export interface LegacyGraph {
 /** A single component in the legacy project.json */
 export interface LegacyComponent {
   name: string;
-  id: string;
+  /** Optional in practice — many real/imported projects have id-less components. */
+  id?: string;
   metadata?: Record<string, unknown>;
   graph: LegacyGraph;
 }
 
 /** A variant entry in the legacy project.json */
 export interface LegacyVariant {
-  name: string;
+  /** Optional in practice — most real variants carry only a typename. */
+  name?: string;
   typename: string;
   parameters?: Record<string, unknown>;
   stateParamaters?: Record<string, Record<string, unknown>>; // note: legacy typo
@@ -96,10 +98,12 @@ export interface LegacyVariant {
 /** The full legacy project.json structure */
 export interface LegacyProject {
   name: string;
+  id?: string;
   version?: string;
   runtimeVersion?: 'react17' | 'react19';
   settings?: Record<string, unknown>;
   rootNodeId?: string;
+  thumbnailURI?: string;
   metadata?: Record<string, unknown>;
   lesson?: unknown;
   variants?: LegacyVariant[];
@@ -425,17 +429,40 @@ export class ProjectExporter {
       }
     };
 
+    if (project.id !== undefined) {
+      file.id = project.id;
+    }
+
     if (project.runtimeVersion) {
       file.runtimeVersion = project.runtimeVersion;
+    }
+
+    if (project.rootNodeId !== undefined) {
+      file.rootNodeId = project.rootNodeId;
+    }
+
+    if (project.lesson !== undefined) {
+      file.lesson = project.lesson;
+    }
+
+    if (project.thumbnailURI !== undefined) {
+      file.thumbnailURI = project.thumbnailURI;
     }
 
     if (project.settings && Object.keys(project.settings).length > 0) {
       file.settings = project.settings as ProjectV2File['settings'];
     }
 
-    // Preserve non-styles, non-routes metadata
+    // Preserve metadata, minus the keys that are extracted into their own files.
+    // `styles` always moves to nodegx.styles.json. `routes` only moves to
+    // nodegx.routes.json when it is array-shaped (buildRoutesFile emits nothing
+    // otherwise), so non-array routes must stay in metadata or they are lost.
     if (project.metadata) {
-      const { styles, routes, ...rest } = project.metadata as Record<string, unknown>;
+      const rest = { ...(project.metadata as Record<string, unknown>) };
+      delete rest.styles;
+      if (Array.isArray(rest.routes)) {
+        delete rest.routes;
+      }
       if (Object.keys(rest).length > 0) {
         file.metadata = rest;
       }
@@ -478,20 +505,24 @@ export class ProjectExporter {
       if (metaStyles.colors && typeof metaStyles.colors === 'object') {
         file.colors = metaStyles.colors as Record<string, string>;
       }
-      if (metaStyles.textStyles && typeof metaStyles.textStyles === 'object') {
-        file.textStyles = metaStyles.textStyles as Record<string, Record<string, unknown>>;
+      // Legacy stores text presets under `text`; v2 names the field `textStyles`.
+      // (The previous code read `metaStyles.textStyles`, a key legacy never uses,
+      // so every real project's text styles were silently dropped.)
+      if (metaStyles.text && typeof metaStyles.text === 'object') {
+        file.textStyles = metaStyles.text as Record<string, Record<string, unknown>>;
       }
     }
 
     if (project.variants && project.variants.length > 0) {
       file.variants = project.variants.map((v) => ({
-        name: v.name,
+        name: v.name as string,
         typename: v.typename,
         parameters: v.parameters,
         // Note: legacy uses "stateParamaters" (typo) — we normalise here
         stateParameters: v.stateParamaters,
         stateTransitions: v.stateTransitions,
-        defaultStateTransitions: v.defaultStateTransitions
+        defaultStateTransitions: v.defaultStateTransitions,
+        conflicts: v.conflicts
       }));
     }
 
@@ -504,7 +535,7 @@ export class ProjectExporter {
 
     const file: ComponentV2File = {
       $schema: 'https://opennoodl.dev/schemas/component-v2.json',
-      id: component.id,
+      id: component.id as string,
       name: localName,
       path: component.name, // preserve original legacy path for round-trip
       type: inferComponentType(component.name),
@@ -528,12 +559,24 @@ export class ProjectExporter {
   private buildNodesFile(component: LegacyComponent): NodesV2File {
     const nodes = flattenNodes(component.graph?.roots ?? []);
 
-    return {
+    const file: NodesV2File = {
       $schema: 'https://opennoodl.dev/schemas/nodes-v2.json',
-      componentId: component.id,
+      componentId: component.id as string,
       version: 1,
       nodes
     };
+
+    // Graph-level canvas state — dropped by the original engine.
+    const visualRoots = component.graph?.visualRoots;
+    if (visualRoots && visualRoots.length > 0) {
+      file.visualRoots = visualRoots;
+    }
+    const comments = component.graph?.comments;
+    if (comments && comments.length > 0) {
+      file.comments = comments;
+    }
+
+    return file;
   }
 
   private buildConnectionsFile(component: LegacyComponent): ConnectionsV2File {
@@ -552,7 +595,7 @@ export class ProjectExporter {
 
     return {
       $schema: 'https://opennoodl.dev/schemas/connections-v2.json',
-      componentId: component.id,
+      componentId: component.id as string,
       version: 1,
       connections
     };

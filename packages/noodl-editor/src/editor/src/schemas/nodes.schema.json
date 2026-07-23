@@ -23,6 +23,16 @@
       "type": "array",
       "description": "All nodes in this component's graph (roots and children flattened)",
       "items": { "$ref": "#/definitions/node" }
+    },
+    "visualRoots": {
+      "type": "array",
+      "description": "IDs of nodes that are visual roots of the component graph (canvas roots)",
+      "items": { "type": "string" }
+    },
+    "comments": {
+      "type": "array",
+      "description": "Free-floating comment/annotation boxes drawn on the graph canvas",
+      "items": { "type": "object", "additionalProperties": true }
     }
   },
   "definitions": {

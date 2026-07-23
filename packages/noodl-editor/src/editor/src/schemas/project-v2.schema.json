@@ -98,6 +98,17 @@
       },
       "additionalProperties": false
     },
+    "rootNodeId": {
+      "type": "string",
+      "description": "ID of the component the runtime mounts as the app root"
+    },
+    "lesson": {
+      "description": "Lesson/tutorial payload attached to the project (interactive-lesson projects)"
+    },
+    "thumbnailURI": {
+      "type": "string",
+      "description": "Data-URI or path to the project thumbnail shown in the launcher"
+    },
     "metadata": {
       "type": "object",
       "description": "Arbitrary project metadata (styles, cloudservices, appConfig, etc.)",

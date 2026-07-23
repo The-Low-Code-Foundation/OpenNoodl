@@ -65,6 +65,12 @@ export interface ProjectV2File {
     modelsDir?: string;
     assetsDir?: string;
   };
+  /** ID of the component the runtime mounts as the app root. */
+  rootNodeId?: string;
+  /** Lesson/tutorial payload attached to the project (interactive-lesson projects). */
+  lesson?: unknown;
+  /** Data-URI or path to the project thumbnail shown in the launcher. */
+  thumbnailURI?: string;
   metadata?: Record<string, unknown>;
 }
 
@@ -156,6 +162,10 @@ export interface NodesV2File {
   componentId: string;
   version?: number;
   nodes: NodeV2[];
+  /** IDs of nodes that are visual roots of the component graph (canvas roots). */
+  visualRoots?: string[];
+  /** Free-floating comment/annotation boxes drawn on the graph canvas. */
+  comments?: unknown[];
 }
 
 /**
@@ -245,6 +255,7 @@ export interface StylesV2File {
     stateParameters?: Record<string, Record<string, unknown>>;
     stateTransitions?: Record<string, Record<string, unknown>>;
     defaultStateTransitions?: Record<string, unknown>;
+    conflicts?: unknown[];
     [key: string]: unknown;
   }>;
   tokens?: Record<string, unknown>;

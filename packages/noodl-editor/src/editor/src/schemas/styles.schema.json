@@ -92,6 +92,11 @@
         "defaultStateTransitions": {
           "type": "object",
           "additionalProperties": true
+        },
+        "conflicts": {
+          "type": "array",
+          "description": "Merge conflict data for this variant (set by project differ)",
+          "items": { "type": "object", "additionalProperties": true }
         }
       }
     }
