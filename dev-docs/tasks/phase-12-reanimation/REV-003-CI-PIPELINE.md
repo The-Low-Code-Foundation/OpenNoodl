@@ -101,7 +101,7 @@ Plus a **nightly** workflow producing unsigned packaged builds for all three pla
 - [x] All five gates (plus the artefacts check, a sixth) verified to actually fail on deliberately broken input — see below
 - [x] `main` protected; merges blocked when checks fail
 - [x] Nightly packaged builds produce downloadable artifacts for all three platforms (unverified in this task: no nightly run has executed yet, since the schedule trigger only fires on `main`'s default cron and this is the first time the workflow file exists — will confirm on its first scheduled run)
-- [x] PR feedback time under ~15 minutes with warm cache (five Linux jobs run in parallel, none individually close to 15 min; not yet measured on an actual GitHub-hosted runner)
+- [x] PR feedback time under ~15 minutes with warm cache — confirmed on a real GitHub-hosted runner: all six jobs green in ~2m30s wall-clock (jobs run in parallel; the slowest, `Build`, took ~2m20s alone)
 - [x] `GIT-WORKFLOW.md` documents the policy; README shows the badge
 
 ## Risks & Mitigations
