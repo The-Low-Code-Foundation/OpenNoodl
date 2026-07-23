@@ -1,0 +1,8 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "c_card",
+  "name": "Card",
+  "path": "/Card",
+  "type": "visual",
+  "description": "A simple labelled card"
+}

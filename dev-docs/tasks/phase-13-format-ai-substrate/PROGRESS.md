@@ -2,7 +2,7 @@
 
 **Created:** 2026-07-22 (from [NOODL-REVIVAL-ROADMAP.md](../../reviews/NOODL-REVIVAL-ROADMAP.md), Track A)
 **Last Updated:** 2026-07-23
-**Overall Status:** 🟡 In Progress (SUB-001..SUB-006 complete)
+**Overall Status:** 🟡 In Progress (SUB-001..SUB-006, SUB-008 complete; Gate G1 passed)
 
 ---
 
@@ -11,10 +11,10 @@
 | Metric       | Value  |
 | ------------ | ------ |
 | Total Tasks  | 8      |
-| Completed    | 6      |
-| In Progress  | 0      |
-| Not Started  | 2      |
-| **Progress** | **75%** |
+| Completed    | 7      |
+| In Progress  | 1      |
+| Not Started  | 0      |
+| **Progress** | **88%** |
 
 ---
 
@@ -47,7 +47,7 @@ call sites** — they are exercised only from tests. Making them real is SUB-001
 | SUB-005 | Catalog Enrichment | 3-4 wks | 🟢 Complete (comparative LLM acceptance test passed — docs/node-catalog/ACCEPTANCE.md) |
 | SUB-006 | Semantic Validator | 2-3 wks | 🟢 Complete |
 | SUB-007 | Graph-Native Git | 4-6 wks | 🟡 In Progress (engine complete: identity model, semantic diff, 3-way merge, resolution API, formatter, no-loss suite — see SUB-007-DESIGN.md; UI, git merge driver, legacy-merger removal remain) |
-| SUB-008 | Noodl MCP Server | 3-4 wks | 🔴 Not Started |
+| SUB-008 | Noodl MCP Server | 3-4 wks | 🟢 Complete (Gate G1 passed — see g1/GATE-G1-DEMONSTRATION.md) |
 
 ### Optional spikes (not counted in the 8-task total / percentage above)
 
@@ -60,14 +60,49 @@ call sites** — they are exercised only from tests. Making them real is SUB-001
 
 ## Gate G1 (phase exit)
 
-- [ ] An external AI agent, via MCP + catalog, authors a valid new page into a real
+- [x] An external AI agent, via MCP + catalog, authors a valid new page into a real
       project without ingesting the whole project, and the semantic validator + editor
-      both accept it.
+      both accept it. **Passed 2026-07-23** on the 176-component `big-merge-test-mine`
+      corpus project: recorded run in [`g1/GATE-G1-DEMONSTRATION.md`](./g1/GATE-G1-DEMONSTRATION.md)
+      (+ raw call transcript `g1/transcript.jsonl`).
 
 ---
 
 ## Change Log
 
+- **2026-07-23** — **SUB-008 complete; Gate G1 passed.** New standalone package
+  **`packages/noodl-mcp`** (`@noodl/mcp`): an MCP server over v2 project
+  directories with a 14-tool surface — read (`get_project_info`,
+  `list_components`, `get_component` w/ revision tokens, `search_project`,
+  `explain_component`), catalog slices of the enriched catalog
+  (`list_node_types` compact rows, `get_node_type` full port semantics +
+  example ids, `list_examples`/`get_example`), validation
+  (`validate_component`/`validate_project`), and **opt-in** authoring
+  (`create_component`, `update_component` with full-`set` or batched
+  `operations` deltas, `delete_component` with usage refusal). Surface was
+  designed against a hand-written agent transcript first
+  (`packages/noodl-mcp/docs/DESIGN.md`). **Write policy:** Ajv structural check
+  → SUB-006 semantic validation (unknown types promoted to error;
+  `allow_unknown_types` escape hatch) → *baseline diff* so pre-existing errors
+  never block edits ("don't make it worse"); rejections return diagnostics with
+  suggestions/alternatives and write nothing. **Concurrency:** optimistic —
+  content-hash revisions + `if_revision`, on-disk drift re-stat before write,
+  temp-file + atomic rename; deletes never touch nested component dirs.
+  **Code sharing:** io/schemas/validation engines imported from noodl-editor's
+  pure modules and esbuild-bundled into a self-contained `dist/noodl-mcp.cjs`
+  (Node ≥18 only) — zero duplication; only editor change is exporting
+  `normalizeV2Component`. 31 Jest tests (incl. end-to-end over a real MCP
+  client/server pair and an editor-import round-trip proxy), stdio smoke test,
+  README with tool reference + example session, example client
+  (`examples/call-tool.mjs`). **Gate G1:** an external agent, MCP-only, added a
+  convention-faithful About page (accepted first try, 0 diagnostics) to the
+  real 176-component corpus app and navigation wiring to it, reading only 1
+  page + 5 explains + 4 catalog entries — recorded in
+  `g1/GATE-G1-DEMONSTRATION.md`. The run surfaced one real bug (updates to
+  id-less legacy-exported components rejected with internal schema errors) —
+  fixed same day (`backfillIds` + regression test) and the agent's exact
+  blocked payload replayed successfully. Deferred: project-settings/styles
+  writes, asset/model tools, live editor bridge (Phase 15 / SUB-009 territory).
 - **2026-07-23** — **Added two optional de-risking spikes: SUB-009 (Live-Preview
   Harness) and SUB-010 (External Authoring Demo).** Not part of the 8-task substrate
   spine; not counted in the percentage. They test the "Noodl as an extension of your

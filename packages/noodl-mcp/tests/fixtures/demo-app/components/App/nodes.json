@@ -1,0 +1,10 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "c_app",
+  "version": 1,
+  "nodes": [
+    { "id": "app_group", "type": "Group", "label": "App Root", "children": ["app_router"] },
+    { "id": "app_router", "type": "Router", "label": "Main Router", "parent": "app_group", "parameters": { "name": "Main" } }
+  ],
+  "visualRoots": ["app_group"]
+}

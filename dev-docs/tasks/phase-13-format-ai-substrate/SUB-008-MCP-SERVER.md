@@ -131,11 +131,14 @@ Error responses matter as much as success responses: a rejected write should ret
 
 ## Checklist
 
-- [ ] Branch `task/sub-008-mcp-server`
-- [ ] Design tool surface against hand-written agent transcripts
-- [ ] Resolve editor/server code sharing
-- [ ] Implement read-only tools, then validation, then authoring
-- [ ] Concurrency safety with a running editor
-- [ ] Documentation + example sessions
-- [ ] Run and record the Gate G1 demonstration
-- [ ] CHANGELOG; open PR
+- [x] ~~Branch `task/sub-008-mcp-server`~~ (work committed directly to `cline-dev` per workflow)
+- [x] Design tool surface against hand-written agent transcripts (`packages/noodl-mcp/docs/DESIGN.md`)
+- [x] Resolve editor/server code sharing (import editor's pure modules by path, esbuild-bundle; zero duplication)
+- [x] Implement read-only tools, then validation, then authoring (14 tools; writes behind `--allow-writes`)
+- [x] Concurrency safety with a running editor (revision tokens + drift detection + atomic writes — conflict *detection*, documented)
+- [x] Documentation + example sessions (`packages/noodl-mcp/README.md`, `examples/call-tool.mjs`)
+- [x] Run and record the Gate G1 demonstration (`../g1/GATE-G1-DEMONSTRATION.md` + transcript) — passed; surfaced and fixed one real bug (legacy id-less components)
+- [x] CHANGELOG (phase PROGRESS.md change log, 2026-07-23)
+
+**Status: ✅ Complete (2026-07-23).** Deferred to future work: project-settings/styles/routes
+writes, asset + model tools, npm publish, live running-editor bridge (SUB-009/Phase 15).

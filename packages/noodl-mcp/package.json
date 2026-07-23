@@ -1,0 +1,28 @@
+{
+  "name": "@noodl/mcp",
+  "version": "0.1.0",
+  "description": "Model Context Protocol server exposing NodeGX (OpenNoodl) v2 projects to external AI agents.",
+  "main": "src/index.ts",
+  "bin": {
+    "noodl-mcp": "./bin/noodl-mcp.js"
+  },
+  "files": [
+    "bin",
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "node build.mjs",
+    "test": "jest",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.0.1",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.4.1"
+  }
+}

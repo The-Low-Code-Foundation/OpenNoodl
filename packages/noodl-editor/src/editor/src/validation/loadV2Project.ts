@@ -31,8 +31,12 @@ function instancePortNames(node: any): string[] {
   return names;
 }
 
-/** Normalise one v2 component (already-flat nodes.json + connections.json). */
-function normalizeV2Component(name: string, nodesFile: any, connectionsFile: any): NormComponent {
+/**
+ * Normalise one v2 component (already-flat nodes.json + connections.json).
+ * Exported for consumers that hold v2 files in memory rather than on disk
+ * (the MCP server validates candidate writes before anything hits the disk).
+ */
+export function normalizeV2Component(name: string, nodesFile: any, connectionsFile: any): NormComponent {
   const nodes: NormNode[] = (nodesFile?.nodes ?? []).map((n: any) => ({
     id: n.id,
     type: n.type,
