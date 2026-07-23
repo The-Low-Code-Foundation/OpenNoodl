@@ -46,8 +46,15 @@ call sites** — they are exercised only from tests. Making them real is SUB-001
 | SUB-004 | Node Catalog Generator | 1-2 wks | 🟢 Complete |
 | SUB-005 | Catalog Enrichment | 3-4 wks | 🟢 Complete (comparative LLM acceptance test passed — docs/node-catalog/ACCEPTANCE.md) |
 | SUB-006 | Semantic Validator | 2-3 wks | 🟢 Complete |
-| SUB-007 | Graph-Native Git | 4-6 wks | 🔴 Not Started |
+| SUB-007 | Graph-Native Git | 4-6 wks | 🟡 In Progress (engine complete: identity model, semantic diff, 3-way merge, resolution API, formatter, no-loss suite — see SUB-007-DESIGN.md; UI, git merge driver, legacy-merger removal remain) |
 | SUB-008 | Noodl MCP Server | 3-4 wks | 🔴 Not Started |
+
+### Optional spikes (not counted in the 8-task total / percentage above)
+
+| Task | Name | Est. | Status |
+|---------|--------------------------------|--------|----------------|
+| SUB-009 | Live-Preview Harness | 3-5 days | 🔴 Not Started |
+| SUB-010 | External Authoring Demo (Claude + MCP → live preview → editor hand-off) | 4-7 days | 🔴 Not Started |
 
 ---
 
@@ -61,6 +68,17 @@ call sites** — they are exercised only from tests. Making them real is SUB-001
 
 ## Change Log
 
+- **2026-07-23** — **Added two optional de-risking spikes: SUB-009 (Live-Preview
+  Harness) and SUB-010 (External Authoring Demo).** Not part of the 8-task substrate
+  spine; not counted in the percentage. They test the "Noodl as an extension of your
+  existing agent — Claude Desktop / Code writes via MCP, you watch it live, then hand
+  off to the visual editor" experience cheaply, before committing to full SUB-008
+  (3-4 wks) + Phase-15 AIX-002 (4-6 wks). SUB-009 fills the real "no file watcher"
+  gap (live preview is editor-only, driven by in-memory `ProjectModel` over WS — the
+  runtime's `renderDeployed` entry makes a standalone watched preview a composition,
+  not new runtime code). SUB-010 is G1 plus the two dimensions G1 omits: live-visual
+  and lossless editor hand-off; its output is a recorded demo + an honest go/no-go
+  `ASSESSMENT.md` feeding SUB-008's tool surface.
 - **2026-07-23 (later)** — **SUB-005 acceptance test run and passed.** Two blind
   agents authored the same feature (task list + create + empty state), one from
   the structural catalog alone, one from the enriched catalog + patterns. Both

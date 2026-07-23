@@ -17,3 +17,4 @@ export * from './schemas';
 export * from './io';
 export * from './structure';
 export * from './validation';
+export * from './versioning';

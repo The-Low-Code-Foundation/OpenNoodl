@@ -118,11 +118,20 @@ For merge, prefer **conservative correctness over cleverness**: when in doubt, r
 
 ## Checklist
 
-- [ ] Branch `task/sub-007-graph-native-git`
-- [ ] Design, document, and test the node identity model first
-- [ ] Diff engine + validation against real commit pairs
+- [x] ~~Branch `task/sub-007-graph-native-git`~~ (work goes straight to `cline-dev` per current workflow)
+- [x] Design, document, and test the node identity model first — [SUB-007-DESIGN.md](SUB-007-DESIGN.md); id-primary, structural matching diff-only
+- [x] Diff engine + validation against real commit pairs — `src/editor/src/versioning/GraphDiff.ts`; validated against the captured merge fixtures in `tests/testfs/merge-tests/` (real project histories)
 - [ ] Diff UI reviewed by a human on a large realistic change
-- [ ] Three-way merge with conservative conflict policy
-- [ ] Conflict resolution UI; Git merge driver where practical
-- [ ] Prove parity; remove `projectmerger.js`
+- [x] Three-way merge with conservative conflict policy — `GraphMerge.ts`; no-silent-loss property tested over 150 seeded three-way merges in CI (plus a 1,500-seed offline sweep) and the real fixtures
+- [ ] Conflict resolution UI; Git merge driver where practical (resolution *API* — `applyResolution`/`resolveAll` — is done; UI and driver pending)
+- [ ] Prove parity; remove `projectmerger.js` (legacy merger intentionally untouched until the UI + driver land)
 - [ ] CHANGELOG; open PR
+
+### Status 2026-07-23
+
+Engine layer complete in `packages/noodl-editor/src/editor/src/versioning/`
+(types, GraphSnapshot adapters for v2 files + legacy in-memory shape,
+NodeIdentity, GraphDiff, GraphMerge, DiffFormatter) with the test suite in
+`tests/versioning/`. Design decisions and stated limits: [SUB-007-DESIGN.md](SUB-007-DESIGN.md).
+Remaining: GraphDiffPanel UI, conflict-resolution UI, git merge-driver
+integration for v2 file layouts, parity proof + `projectmerger.js` removal.
