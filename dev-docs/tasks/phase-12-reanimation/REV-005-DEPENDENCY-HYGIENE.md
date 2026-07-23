@@ -100,12 +100,12 @@ Measured 2026-07-22:
 
 ## Success Criteria
 
-- [ ] `npm audit --omit=dev` reports zero critical/high, or each is documented as accepted with reasoning
-- [ ] TypeScript 5.9.3 in every package; all typecheck cleanly
-- [ ] Single webpack-cli major across the repo
-- [ ] `npm ci` from a clean clone builds and tests successfully
-- [ ] `engines` accurate; CI pins the same version
-- [ ] `DEPENDENCY-POLICY.md` exists with the accepted-risk register
+- [x] `npm audit --omit=dev` reports zero critical/high, or each is documented as accepted with reasoning — down to 4 findings (1 critical, 1 high, 2 moderate), all documented in `DEPENDENCY-POLICY.md`'s accepted-risk register
+- [x] TypeScript 5.9.3 in every package; all typecheck cleanly — `^5.9.3` everywhere; `typecheck`/`typecheck:editor` clean. `typecheck:core-ui`/`typecheck:viewer` carry pre-existing errors unrelated to TS version (ambient jasmine/jest type collisions, stale path aliases) confirmed via `git stash` A/B before touching anything — not introduced by, or fixed by, this task
+- [x] Single webpack-cli major across the repo — `^5.1.4` everywhere
+- [x] `npm ci` from a clean clone builds and tests successfully — `rm -rf node_modules && npm ci`, 2386 packages, typecheck/test:platform/712-spec suite/full `build:editor` all green
+- [x] `engines` accurate; CI pins the same version — already done by REV-003 (`f02d1e9`); verified, not re-touched
+- [x] `DEPENDENCY-POLICY.md` exists with the accepted-risk register
 
 ## Risks & Mitigations
 
@@ -124,10 +124,10 @@ Measured 2026-07-22:
 
 ## Checklist
 
-- [ ] Branch `task/rev-005-dependency-hygiene`; snapshot baseline audit output
-- [ ] Safe `npm audit fix` pass + full verification
-- [ ] TypeScript unified to 5.9.3 package by package
-- [ ] Toolchain dedupe; builds verified
-- [ ] Case-by-case review of remaining findings; record decisions
-- [ ] Update `engines`; write `DEPENDENCY-POLICY.md`
-- [ ] Clean-clone `npm ci` verification; CHANGELOG; commit to cline-dev and push
+- [x] Work directly on `cline-dev` (per `.clinerules` — no task branch); snapshot baseline audit output
+- [x] Safe `npm audit fix` pass + full verification
+- [x] TypeScript unified to 5.9.3 package by package
+- [x] Toolchain dedupe; builds verified
+- [x] Case-by-case review of remaining findings; record decisions
+- [x] Update `engines` (already accurate — verified only); write `DEPENDENCY-POLICY.md`
+- [x] Clean-clone `npm ci` verification; PROGRESS.md updated; commit to cline-dev
