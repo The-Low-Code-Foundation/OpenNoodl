@@ -14,6 +14,11 @@ import { NodeGraphModel, NodeGraphNode } from './nodegraphmodel';
 import { NodeLibrary } from './nodelibrary';
 import { listProjectModules, ProjectModule, ProjectModuleManifest, readProjectModules } from './projectmodel.modules';
 import { VariantModel } from './VariantModel';
+import { projectStructureService } from '../services/ProjectStructure';
+import { isV2FormatEnabled } from '../services/ProjectStructure/featureFlags';
+
+/** Which on-disk format a loaded project uses. Set at load; drives the save path. */
+export type ProjectFormatKind = 'legacy' | 'v2';
 
 export interface CloudServiceMetadata {
   id: string;
@@ -100,6 +105,8 @@ export class ProjectModel extends Model {
   public runtimeVersion?: 'react17' | 'react19';
   public _retainedProjectDirectory?: string;
   public _isReadOnly?: boolean; // Flag for read-only mode (legacy projects)
+  /** On-disk format this project was loaded from. Determines the save path. Defaults to legacy. */
+  public _projectFormat?: ProjectFormatKind;
   public settings?: ProjectSettings;
   public metadata?: TSFixme;
   public components: ComponentModel[];
@@ -594,6 +601,30 @@ export class ProjectModel extends Model {
 
   // Save to directory
   toDirectory(retainedProjectDirectory, callback) {
+    // v2 decomposed format: write only the components (and project-level files)
+    // that actually changed, atomically, via the ProjectStructure service. The
+    // saver strips child node positions per-component itself, mirroring the
+    // legacy path's stripNodeChildPositions.
+    if (this._projectFormat === 'v2' && isV2FormatEnabled()) {
+      projectStructureService
+        .saveProject(retainedProjectDirectory, this.toJSON())
+        .then((res) => {
+          if (res.result === 'success') {
+            callback && callback({ result: 'success' });
+          } else {
+            callback && callback({ result: 'failure', message: res.message || 'Error writing project files.' });
+          }
+        })
+        .catch((err) => {
+          callback &&
+            callback({
+              result: 'failure',
+              message: err instanceof Error ? err.message : 'Error writing project files.'
+            });
+        });
+      return;
+    }
+
     // This function stores the project in project json
     // First it writes to a tmp file, make sure it is correctly written and then moves it to project.json
     // This is to avoid project files becomming corrupted in the case of a process exit
@@ -644,6 +675,45 @@ export class ProjectModel extends Model {
             message: 'Error writing project file.'
           });
       });
+  }
+
+  /**
+   * Reloads a single component from disk and swaps it into the project in place,
+   * without disturbing other components' unsaved state.
+   *
+   * This is the surgical-reload seam for file-watch and future live-collab: when
+   * a component's files change underneath us (a peer's edit synced in), call this
+   * to refresh just that component. The ProjectStructure service updates its
+   * save baseline for the component, so the next autosave neither clobbers nor
+   * echoes the external change.
+   *
+   * v2 projects only; a no-op (resolves false) otherwise. Autosave is suspended
+   * during the swap so the reload itself does not schedule a save-back.
+   *
+   * @param componentPath Registry path of the component (e.g. "Pages/Home").
+   * @returns true if a component was reloaded and swapped in.
+   */
+  async reloadComponentFromDisk(componentPath: string): Promise<boolean> {
+    if (this._projectFormat !== 'v2' || !this._retainedProjectDirectory) return false;
+
+    const legacyComponent = await projectStructureService.reloadComponent(
+      this._retainedProjectDirectory,
+      componentPath
+    );
+    const newModel = ComponentModel.fromJSON(legacyComponent);
+    const existing = this.getComponentWithName(legacyComponent.name);
+
+    const wasSaving = saveOnModelChange;
+    ProjectModel.setSaveOnModelChange(false);
+    try {
+      if (existing) this.removeComponent(existing);
+      this.addComponent(newModel);
+    } finally {
+      ProjectModel.setSaveOnModelChange(wasSaving);
+    }
+
+    this.notifyListeners('componentReloadedFromDisk', { component: newModel });
+    return true;
   }
 
   // Project lessons

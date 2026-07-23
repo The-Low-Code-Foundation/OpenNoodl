@@ -163,7 +163,62 @@ export function toLegacyName(componentFile: ComponentV2File, registryPath: strin
   return `/${registryPath}`;
 }
 
-//  ProjectImporter 
+/**
+ * Reconstructs a single LegacyComponent from its three v2 files. Pure — no
+ * filesystem access.
+ *
+ * Extracted so a per-component loader (ComponentLoader) can reconstruct one
+ * component on demand without importing the whole project. `ProjectImporter`
+ * delegates to this so there is a single source of truth for the reconstruction.
+ */
+export function reconstructLegacyComponent(
+  registryPath: string,
+  componentFile: ComponentV2File,
+  nodesFile: NodesV2File,
+  connectionsFile: ConnectionsV2File
+): LegacyComponent {
+  const legacyName = toLegacyName(componentFile, registryPath);
+  const roots = unflattenNodes(nodesFile.nodes ?? []);
+
+  const connections: LegacyConnection[] = (connectionsFile.connections ?? []).map((c) => {
+    const conn: LegacyConnection = {
+      fromId: c.fromId,
+      fromProperty: c.fromProperty,
+      toId: c.toId,
+      toProperty: c.toProperty
+    };
+    if (c.annotation) conn.annotation = c.annotation;
+    return conn;
+  });
+
+  const graph: LegacyGraph = { roots, connections };
+
+  // Restore graph-level canvas state carried in nodes.json.
+  if (nodesFile.visualRoots && nodesFile.visualRoots.length > 0) {
+    graph.visualRoots = nodesFile.visualRoots;
+  }
+  if (nodesFile.comments && nodesFile.comments.length > 0) {
+    graph.comments = nodesFile.comments;
+  }
+
+  const component: LegacyComponent = {
+    name: legacyName,
+    graph
+  };
+
+  // Many real/imported components are id-less — do not fabricate an id key.
+  if (componentFile.id !== undefined) {
+    component.id = componentFile.id;
+  }
+
+  if (componentFile.metadata && Object.keys(componentFile.metadata).length > 0) {
+    component.metadata = componentFile.metadata as Record<string, unknown>;
+  }
+
+  return component;
+}
+
+//  ProjectImporter
 
 /**
  * Converts v2 multi-file project format back to the legacy project.json format.
@@ -337,6 +392,7 @@ export class ProjectImporter {
 
   /**
    * Reconstructs a single LegacyComponent from its three v2 files.
+   * Delegates to the shared {@link reconstructLegacyComponent} helper.
    */
   private reconstructComponent(
     registryPath: string,
@@ -344,52 +400,6 @@ export class ProjectImporter {
     nodesFile: NodesV2File,
     connectionsFile: ConnectionsV2File
   ): LegacyComponent {
-    // Reconstruct the legacy name
-    const legacyName = toLegacyName(componentFile, registryPath);
-
-    // Reconstruct the node tree
-    const roots = unflattenNodes(nodesFile.nodes ?? []);
-
-    // Reconstruct connections
-    const connections: LegacyConnection[] = (connectionsFile.connections ?? []).map((c) => {
-      const conn: LegacyConnection = {
-        fromId: c.fromId,
-        fromProperty: c.fromProperty,
-        toId: c.toId,
-        toProperty: c.toProperty
-      };
-      if (c.annotation) conn.annotation = c.annotation;
-      return conn;
-    });
-
-    const graph: LegacyGraph = {
-      roots,
-      connections
-    };
-
-    // Restore graph-level canvas state carried in nodes.json.
-    if (nodesFile.visualRoots && nodesFile.visualRoots.length > 0) {
-      graph.visualRoots = nodesFile.visualRoots;
-    }
-    if (nodesFile.comments && nodesFile.comments.length > 0) {
-      graph.comments = nodesFile.comments;
-    }
-
-    const component: LegacyComponent = {
-      name: legacyName,
-      graph
-    };
-
-    // Many real/imported components are id-less — do not fabricate an id key.
-    if (componentFile.id !== undefined) {
-      component.id = componentFile.id;
-    }
-
-    // Restore component metadata
-    if (componentFile.metadata && Object.keys(componentFile.metadata).length > 0) {
-      component.metadata = componentFile.metadata as Record<string, unknown>;
-    }
-
-    return component;
+    return reconstructLegacyComponent(registryPath, componentFile, nodesFile, connectionsFile);
   }
 }

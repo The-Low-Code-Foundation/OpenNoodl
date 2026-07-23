@@ -274,6 +274,181 @@ function extractPorts(component: LegacyComponent): ComponentV2File['ports'] | un
   return undefined;
 }
 
+/** The three per-component files produced by the v2 exporter. */
+export interface ComponentV2Files {
+  component: ComponentV2File;
+  nodes: NodesV2File;
+  connections: ConnectionsV2File;
+}
+
+/**
+ * Builds the three v2 files (component.json, nodes.json, connections.json) for a
+ * single legacy component. Pure — no filesystem access.
+ *
+ * Extracted so that per-component savers (ComponentSaver) can serialise one
+ * component without re-running a whole-project export. `ProjectExporter.export`
+ * delegates to this for each component, so there is a single source of truth for
+ * the per-component layout.
+ */
+export function buildComponentV2Files(component: LegacyComponent, now: string): ComponentV2Files {
+  const componentPath = legacyNameToPath(component.name);
+  const localName = componentPath.split('/').pop() ?? componentPath;
+
+  const componentFile: ComponentV2File = {
+    $schema: 'https://opennoodl.dev/schemas/component-v2.json',
+    id: component.id as string,
+    name: localName,
+    path: component.name, // preserve original legacy path for round-trip
+    type: inferComponentType(component.name),
+    modified: now
+  };
+
+  if (component.metadata && Object.keys(component.metadata).length > 0) {
+    componentFile.metadata = component.metadata;
+  }
+
+  const ports = extractPorts(component);
+  if (ports) {
+    componentFile.ports = ports;
+  }
+
+  const nodesFile: NodesV2File = {
+    $schema: 'https://opennoodl.dev/schemas/nodes-v2.json',
+    componentId: component.id as string,
+    version: 1,
+    nodes: flattenNodes(component.graph?.roots ?? [])
+  };
+
+  // Graph-level canvas state (visualRoots / comments).
+  const visualRoots = component.graph?.visualRoots;
+  if (visualRoots && visualRoots.length > 0) {
+    nodesFile.visualRoots = visualRoots;
+  }
+  const comments = component.graph?.comments;
+  if (comments && comments.length > 0) {
+    nodesFile.comments = comments;
+  }
+
+  const connectionsFile: ConnectionsV2File = {
+    $schema: 'https://opennoodl.dev/schemas/connections-v2.json',
+    componentId: component.id as string,
+    version: 1,
+    connections: (component.graph?.connections ?? []).map((c) => {
+      const conn: ConnectionV2 = {
+        fromId: c.fromId,
+        fromProperty: c.fromProperty,
+        toId: c.toId,
+        toProperty: c.toProperty
+      };
+      if (c.annotation) conn.annotation = c.annotation;
+      return conn;
+    })
+  };
+
+  return { component: componentFile, nodes: nodesFile, connections: connectionsFile };
+}
+
+/**
+ * Builds the project-level metadata file (nodegx.project.json). Pure.
+ * Extracted so ComponentSaver can rewrite just this file without a full export.
+ */
+export function buildProjectV2File(project: LegacyProject, now: string): ProjectV2File {
+  const file: ProjectV2File = {
+    $schema: 'https://opennoodl.dev/schemas/project-v2.json',
+    name: project.name,
+    version: project.version ?? '4',
+    nodegxVersion: '1.1.0',
+    modified: now,
+    structure: {
+      componentsDir: 'components',
+      assetsDir: 'assets'
+    }
+  };
+
+  if (project.id !== undefined) file.id = project.id;
+  if (project.runtimeVersion) file.runtimeVersion = project.runtimeVersion;
+  if (project.rootNodeId !== undefined) file.rootNodeId = project.rootNodeId;
+  if (project.lesson !== undefined) file.lesson = project.lesson;
+  if (project.thumbnailURI !== undefined) file.thumbnailURI = project.thumbnailURI;
+  if (project.settings && Object.keys(project.settings).length > 0) {
+    file.settings = project.settings as ProjectV2File['settings'];
+  }
+
+  // Preserve metadata, minus the keys extracted into their own files.
+  // `styles` always moves to nodegx.styles.json. `routes` only moves to
+  // nodegx.routes.json when it is array-shaped (buildRoutesV2File emits nothing
+  // otherwise), so non-array routes must stay in metadata or they are lost.
+  if (project.metadata) {
+    const rest = { ...(project.metadata as Record<string, unknown>) };
+    delete rest.styles;
+    if (Array.isArray(rest.routes)) {
+      delete rest.routes;
+    }
+    if (Object.keys(rest).length > 0) {
+      file.metadata = rest;
+    }
+  }
+
+  return file;
+}
+
+/** Builds nodegx.routes.json, or null when the project has no array-shaped routes. Pure. */
+export function buildRoutesV2File(project: LegacyProject): RoutesV2File | null {
+  const routes = (project.metadata as Record<string, unknown> | undefined)?.routes;
+  if (!routes) return null;
+
+  if (Array.isArray(routes)) {
+    return {
+      $schema: 'https://opennoodl.dev/schemas/routes-v2.json',
+      version: 1,
+      routes: routes as RoutesV2File['routes']
+    };
+  }
+
+  return null;
+}
+
+/** Builds nodegx.styles.json, or null when the project has no styles or variants. Pure. */
+export function buildStylesV2File(project: LegacyProject): StylesV2File | null {
+  const metaStyles = (project.metadata as Record<string, unknown> | undefined)?.styles as
+    | Record<string, unknown>
+    | undefined;
+  const hasVariants = project.variants && project.variants.length > 0;
+  const hasStyles = metaStyles && Object.keys(metaStyles).length > 0;
+
+  if (!hasStyles && !hasVariants) return null;
+
+  const file: StylesV2File = {
+    $schema: 'https://opennoodl.dev/schemas/styles-v2.json',
+    version: 1
+  };
+
+  if (metaStyles) {
+    if (metaStyles.colors && typeof metaStyles.colors === 'object') {
+      file.colors = metaStyles.colors as Record<string, string>;
+    }
+    // Legacy stores text presets under `text`; v2 names the field `textStyles`.
+    if (metaStyles.text && typeof metaStyles.text === 'object') {
+      file.textStyles = metaStyles.text as Record<string, Record<string, unknown>>;
+    }
+  }
+
+  if (project.variants && project.variants.length > 0) {
+    file.variants = project.variants.map((v) => ({
+      name: v.name as string,
+      typename: v.typename,
+      parameters: v.parameters,
+      // Note: legacy uses "stateParamaters" (typo) — we normalise here
+      stateParameters: v.stateParamaters,
+      stateTransitions: v.stateTransitions,
+      defaultStateTransitions: v.defaultStateTransitions,
+      conflicts: v.conflicts
+    }));
+  }
+
+  return file;
+}
+
 // ─── ProjectExporter ──────────────────────────────────────────────────────────
 
 /**
@@ -356,22 +531,19 @@ export class ProjectExporter {
       totalNodes += nodeCount;
       totalConnections += connectionCount;
 
-      // component.json
+      const componentFiles = buildComponentV2Files(component, now);
+
       files.push({
         relativePath: `components/${componentPath}/component.json`,
-        content: this.buildComponentFile(component, now)
+        content: componentFiles.component
       });
-
-      // nodes.json
       files.push({
         relativePath: `components/${componentPath}/nodes.json`,
-        content: this.buildNodesFile(component)
+        content: componentFiles.nodes
       });
-
-      // connections.json
       files.push({
         relativePath: `components/${componentPath}/connections.json`,
-        content: this.buildConnectionsFile(component)
+        content: componentFiles.connections
       });
 
       // Registry entry
@@ -414,190 +586,17 @@ export class ProjectExporter {
     };
   }
 
-  // ─── Private builders ──────────────────────────────────────────────────────
+  // ─── Private builders (delegate to the shared pure functions) ────────────────
 
   private buildProjectFile(project: LegacyProject, now: string): ProjectV2File {
-    const file: ProjectV2File = {
-      $schema: 'https://opennoodl.dev/schemas/project-v2.json',
-      name: project.name,
-      version: project.version ?? '4',
-      nodegxVersion: '1.1.0',
-      modified: now,
-      structure: {
-        componentsDir: 'components',
-        assetsDir: 'assets'
-      }
-    };
-
-    if (project.id !== undefined) {
-      file.id = project.id;
-    }
-
-    if (project.runtimeVersion) {
-      file.runtimeVersion = project.runtimeVersion;
-    }
-
-    if (project.rootNodeId !== undefined) {
-      file.rootNodeId = project.rootNodeId;
-    }
-
-    if (project.lesson !== undefined) {
-      file.lesson = project.lesson;
-    }
-
-    if (project.thumbnailURI !== undefined) {
-      file.thumbnailURI = project.thumbnailURI;
-    }
-
-    if (project.settings && Object.keys(project.settings).length > 0) {
-      file.settings = project.settings as ProjectV2File['settings'];
-    }
-
-    // Preserve metadata, minus the keys that are extracted into their own files.
-    // `styles` always moves to nodegx.styles.json. `routes` only moves to
-    // nodegx.routes.json when it is array-shaped (buildRoutesFile emits nothing
-    // otherwise), so non-array routes must stay in metadata or they are lost.
-    if (project.metadata) {
-      const rest = { ...(project.metadata as Record<string, unknown>) };
-      delete rest.styles;
-      if (Array.isArray(rest.routes)) {
-        delete rest.routes;
-      }
-      if (Object.keys(rest).length > 0) {
-        file.metadata = rest;
-      }
-    }
-
-    return file;
+    return buildProjectV2File(project, now);
   }
 
   private buildRoutesFile(project: LegacyProject): RoutesV2File | null {
-    const routes = (project.metadata as Record<string, unknown> | undefined)?.routes;
-    if (!routes) return null;
-
-    // If routes is already an array of route objects, use it directly
-    if (Array.isArray(routes)) {
-      return {
-        $schema: 'https://opennoodl.dev/schemas/routes-v2.json',
-        version: 1,
-        routes: routes as RoutesV2File['routes']
-      };
-    }
-
-    return null;
+    return buildRoutesV2File(project);
   }
 
   private buildStylesFile(project: LegacyProject): StylesV2File | null {
-    const metaStyles = (project.metadata as Record<string, unknown> | undefined)?.styles as
-      | Record<string, unknown>
-      | undefined;
-    const hasVariants = project.variants && project.variants.length > 0;
-    const hasStyles = metaStyles && Object.keys(metaStyles).length > 0;
-
-    if (!hasStyles && !hasVariants) return null;
-
-    const file: StylesV2File = {
-      $schema: 'https://opennoodl.dev/schemas/styles-v2.json',
-      version: 1
-    };
-
-    if (metaStyles) {
-      if (metaStyles.colors && typeof metaStyles.colors === 'object') {
-        file.colors = metaStyles.colors as Record<string, string>;
-      }
-      // Legacy stores text presets under `text`; v2 names the field `textStyles`.
-      // (The previous code read `metaStyles.textStyles`, a key legacy never uses,
-      // so every real project's text styles were silently dropped.)
-      if (metaStyles.text && typeof metaStyles.text === 'object') {
-        file.textStyles = metaStyles.text as Record<string, Record<string, unknown>>;
-      }
-    }
-
-    if (project.variants && project.variants.length > 0) {
-      file.variants = project.variants.map((v) => ({
-        name: v.name as string,
-        typename: v.typename,
-        parameters: v.parameters,
-        // Note: legacy uses "stateParamaters" (typo) — we normalise here
-        stateParameters: v.stateParamaters,
-        stateTransitions: v.stateTransitions,
-        defaultStateTransitions: v.defaultStateTransitions,
-        conflicts: v.conflicts
-      }));
-    }
-
-    return file;
-  }
-
-  private buildComponentFile(component: LegacyComponent, now: string): ComponentV2File {
-    const componentPath = legacyNameToPath(component.name);
-    const localName = componentPath.split('/').pop() ?? componentPath;
-
-    const file: ComponentV2File = {
-      $schema: 'https://opennoodl.dev/schemas/component-v2.json',
-      id: component.id as string,
-      name: localName,
-      path: component.name, // preserve original legacy path for round-trip
-      type: inferComponentType(component.name),
-      modified: now
-    };
-
-    // Preserve metadata fields as component settings
-    if (component.metadata && Object.keys(component.metadata).length > 0) {
-      file.metadata = component.metadata;
-    }
-
-    // Extract ports if available in metadata
-    const ports = extractPorts(component);
-    if (ports) {
-      file.ports = ports;
-    }
-
-    return file;
-  }
-
-  private buildNodesFile(component: LegacyComponent): NodesV2File {
-    const nodes = flattenNodes(component.graph?.roots ?? []);
-
-    const file: NodesV2File = {
-      $schema: 'https://opennoodl.dev/schemas/nodes-v2.json',
-      componentId: component.id as string,
-      version: 1,
-      nodes
-    };
-
-    // Graph-level canvas state — dropped by the original engine.
-    const visualRoots = component.graph?.visualRoots;
-    if (visualRoots && visualRoots.length > 0) {
-      file.visualRoots = visualRoots;
-    }
-    const comments = component.graph?.comments;
-    if (comments && comments.length > 0) {
-      file.comments = comments;
-    }
-
-    return file;
-  }
-
-  private buildConnectionsFile(component: LegacyComponent): ConnectionsV2File {
-    const legacyConnections = component.graph?.connections ?? [];
-
-    const connections: ConnectionV2[] = legacyConnections.map((c) => {
-      const conn: ConnectionV2 = {
-        fromId: c.fromId,
-        fromProperty: c.fromProperty,
-        toId: c.toId,
-        toProperty: c.toProperty
-      };
-      if (c.annotation) conn.annotation = c.annotation;
-      return conn;
-    });
-
-    return {
-      $schema: 'https://opennoodl.dev/schemas/connections-v2.json',
-      componentId: component.id as string,
-      version: 1,
-      connections
-    };
+    return buildStylesV2File(project);
   }
 }

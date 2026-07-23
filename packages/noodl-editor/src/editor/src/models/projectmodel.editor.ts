@@ -6,65 +6,110 @@ import { ToastLayer } from '../views/ToastLayer/ToastLayer';
 import { CloudServiceMetadata, CloudServiceMetadataDataFormat, ProjectModel } from './projectmodel';
 import { applyPatches } from '@noodl-models/ProjectPatches/applypatches';
 import { filesystem } from '@noodl/platform';
+import { projectStructureService } from '../services/ProjectStructure';
+import { isV2FormatEnabled } from '../services/ProjectStructure/featureFlags';
 
 const supportedProjectVersion = 4;
 
 export function projectFromDirectory(projectdir: string, callback: (project?: ProjectModel) => void, args?: TSFixme) {
   bugtracker.debug('ProjectModel.fromDirectory');
 
-  ProjectModel.readJSONFromDirectory(projectdir, function (content) {
-    if (content) {
-      const openProject = () => {
-        // Before opening the project, we need to patch it, if necessary
-        applyPatches(content)
+  // Turn a reconstructed legacy-shaped `content` object into a live ProjectModel.
+  // Shared by the legacy (single-file) and v2 (decomposed) load paths — the v2
+  // importer reconstructs exactly the same shape `fromJSON` and `applyPatches`
+  // already consume, so everything downstream is format-agnostic.
+  const openFromContent = (content: TSFixme, format: 'legacy' | 'v2') => {
+    const openProject = () => {
+      // Before opening the project, we need to patch it, if necessary
+      applyPatches(content);
 
-        // Disable model listeners while loading project, otherwise this will bog down large projects
-        Model._listenersEnabled = false;
-        const project = ProjectModel.fromJSON(content);
-        Model._listenersEnabled = true;
-        project._retainedProjectDirectory = projectdir;
+      // Disable model listeners while loading project, otherwise this will bog down large projects
+      Model._listenersEnabled = false;
+      const project = ProjectModel.fromJSON(content);
+      Model._listenersEnabled = true;
+      project._retainedProjectDirectory = projectdir;
+      project._projectFormat = format;
 
-        // Check if there are any packages
-        project.readModules( () => {
-          callback(project);
+      // Check if there are any packages
+      project.readModules(() => {
+        callback(project);
+      });
+    };
+
+    //is project version incompatible?
+    if (content.version > supportedProjectVersion) {
+      ToastLayer.hideAll();
+      PopupLayer.instance.showErrorModal({
+        message:
+          'This project was saved with a newer version of Noodl.<br/><a href="https://noodl.net" target="_blank">Click here to download</a>',
+        title: 'Error opening project'
+      });
+      callback();
+      return;
+    }
+
+    //do we need to upgrade the project?
+    if (args && args.showUpgradeModal && content.version < supportedProjectVersion) {
+      ToastLayer.hideAll();
+      PopupLayer.instance.showConfirmModal({
+        message:
+          'This project was saved with an older version of Noodl.<br/>Projects saved with with this version of Noodl will be incompatible with older versions.<br/><br/>Do you want to open and upgrade the project?',
+        title: 'Upgrade project?',
+        confirmLabel: 'Upgrade',
+        cancelLabel: 'Cancel',
+        onConfirm: openProject,
+        onCancel: () => callback()
+      });
+    } else {
+      openProject();
+    }
+  };
+
+  const readLegacy = () => {
+    ProjectModel.readJSONFromDirectory(projectdir, function (content) {
+      if (content) {
+        openFromContent(content, 'legacy');
+      } else {
+        bugtracker.track('ProjectModel.fromDirectory readJSONFromDirectory failed', {
+          dir: projectdir,
+          dirContent: FileSystem.instance.readDirectorySync(projectdir)
         });
-      };
+        callback(); // Failed to read project
+      }
+    });
+  };
 
-      //is project version incompatible?
-      if (content.version > supportedProjectVersion) {
-        ToastLayer.hideAll();
-        PopupLayer.instance.showErrorModal({
-          message:
-            'This project was saved with a newer version of Noodl.<br/><a href="https://noodl.net" target="_blank">Click here to download</a>',
-          title: 'Error opening project'
-        });
-        callback();
+  // v2 decomposed format is gated behind a feature flag during rollout. When off,
+  // behaviour is identical to before (legacy single-file read only).
+  if (!isV2FormatEnabled()) {
+    readLegacy();
+    return;
+  }
+
+  projectStructureService
+    .detectFormat(projectdir)
+    .then((format) => {
+      if (format !== 'v2') {
+        readLegacy();
         return;
       }
-
-      //do we need to upgrade the project?
-      if (args && args.showUpgradeModal && content.version < supportedProjectVersion) {
-        ToastLayer.hideAll();
-        PopupLayer.instance.showConfirmModal({
-          message:
-            'This project was saved with an older version of Noodl.<br/>Projects saved with with this version of Noodl will be incompatible with older versions.<br/><br/>Do you want to open and upgrade the project?',
-          title: 'Upgrade project?',
-          confirmLabel: 'Upgrade',
-          cancelLabel: 'Cancel',
-          onConfirm: openProject,
-          onCancel: () => callback()
+      projectStructureService
+        .loadProject(projectdir)
+        .then(({ project: content, warnings }) => {
+          if (warnings.length > 0) {
+            console.warn(`[v2] project loaded with ${warnings.length} warning(s):`, warnings);
+          }
+          openFromContent(content, 'v2');
+        })
+        .catch((err) => {
+          console.error('[v2] Failed to load v2 project, falling back to legacy read', err);
+          readLegacy();
         });
-      } else {
-        openProject();
-      }
-    } else {
-      bugtracker.track('ProjectModel.fromDirectory readJSONFromDirectory failed', {
-        dir: projectdir,
-        dirContent: FileSystem.instance.readDirectorySync(projectdir)
-      });
-      callback(); // Failed to read project
-    }
-  });
+    })
+    .catch((err) => {
+      console.error('[v2] Format detection failed, falling back to legacy read', err);
+      readLegacy();
+    });
 }
 
 // Extracts a zip into a directory and returns the project in a callback
