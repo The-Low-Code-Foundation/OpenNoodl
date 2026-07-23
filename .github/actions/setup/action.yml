@@ -10,6 +10,16 @@ inputs:
 runs:
   using: composite
   steps:
+    # The editor's Git test fixtures make real commits via dugite (stash, status,
+    # commit-and-update specs). GitHub-hosted runners carry no default identity,
+    # so those specs fail with "Author identity unknown" — not a git-nodes bug,
+    # just a fresh runner with nobody logged in.
+    - name: Configure git identity for test fixtures
+      shell: bash
+      run: |
+        git config --global user.email "ci@opennoodl.local"
+        git config --global user.name "OpenNoodl CI"
+
     - name: Set up Node
       uses: actions/setup-node@v4
       with:
