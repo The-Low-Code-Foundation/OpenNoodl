@@ -40,6 +40,18 @@ A design for this work already exists — `dev-docs/future-projects/CANVAS-MODER
 
 The React roots are correctly implemented — created once, reused, unmounted on dispose — following the pattern documented in `dev-docs/reference/LEARNINGS.md`. The problem is not correctness; it is that everything lives in one place.
 
+## Architecture review (2026-07-23)
+
+The keep-the-renderer / decompose-the-file decision was re-examined adversarially — against the live code and the full set of downstream demands (Phase 4 visualisation views, AIX-002 live authoring, AIX-003 diff overlay, CF11-007 execution overlay, TASK-000J minimap/Smart Frames) — and it holds. Three findings from that review sharpen this task:
+
+**1. The renderer is the high-ceiling choice; a library swap would cap it.** The canvas is imperative HTML5 Canvas-2D — all nodes/wires painted into one bitmap per frame with viewport culling (`isOutsidePaintArea`), not DOM-per-node. Real corpus projects reach ~2,900 nodes; ReactFlow's DOM-per-node model walls exactly there. The rejection of React Flow for the editing surface is therefore a performance decision, not just an ergonomic one. (React Flow remains the right call for the *shelved read-only Topology Map* — a separate meta-view — see `phase-4-canvas-visualisation-views/VIEW-001-topology-map/SHELVED.md`. Do not conflate the two.)
+
+**2. The model/view seam is already clean — the decomposition risk is the view, not the boundary.** The data model is renderer-agnostic and event-emitting: `models/nodegraphmodel/NodeGraphModel.ts` / `NodeGraphNode.ts` / `NodeGraphNodeSet.ts` and `models/commentsmodel.ts` know nothing about pixels. A renderer attaches at `NodeGraphEditor.bindModel(model)` (`views/nodegrapheditor.ts:517`) and switches graphs at `switchToComponent(component)` (`:1817` → `bindModel(component.graph)`); "components as nested graphs" is literally `ComponentModel.graph` (`models/componentmodel.ts`). React overlays already couple through one small contract — `{ viewport: {x, y, zoom}, getNodeBounds }` (`views/nodegrapheditor.ts:1077-1091`) — which is exactly what `OverlayHost` should formalise. **Implication for this task:** the model boundary is not where the danger is; the danger is the imperative view internals and the ~25 editor subsystems reached through `this` on the view. A useful side effect is that because the model is a legitimate plug-in point, this decomposition preserves the option of ever swapping the renderer later without touching the graph model — decomposition is not lock-in.
+
+**3. Corrected line counts.** The design doc's table predates the file's growth. Actuals as of this review: `nodegrapheditor.ts` **3,481**, `NodeGraphEditorNode.ts` **1,290**, `NodeGraphEditorConnection.ts` **416**; core canvas ≈ **5,900 LOC**.
+
+**Sequencing note:** this task is a prerequisite/enabler for the AI-collaboration differentiators — AIX-002 (live authoring rendered on canvas) and AIX-003 (`views/CanvasOverlays/DiffOverlay/`). Treat it as on the critical path *to* those, not as later cleanup that can trail them. Several features a library would not provide — canvas-painted animated/rotating node icons, the wire "pulse" live-data animation, the debug value inspectors, diff-annotation colouring, and the drag-time connection-compatibility popups — are the primitives those AI features build on, which is a further reason to harden this renderer rather than replace it.
+
 ## Desired State
 
 - No file in the canvas subsystem exceeds roughly 800 lines.

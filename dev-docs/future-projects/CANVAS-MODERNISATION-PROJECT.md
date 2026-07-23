@@ -16,6 +16,8 @@
 - Runtime/execution changes
 - New feature implementation (those come after this foundation)
 
+> **Decision re-validation (2026-07-23).** The "not React Flow / keep Canvas 2D" constraint was pressure-tested against the live code and the full downstream roadmap, and it held. Two reasons worth recording: (a) the renderer paints all nodes into one bitmap per frame with viewport culling and reaches the ~2,900-node corpus projects — a DOM-per-node library would cap that, so this is a *performance* decision, not only an ergonomic one; (b) the model/view seam is already clean (the event-emitting `NodeGraphModel` is renderer-agnostic; a renderer plugs in at `bindModel`/`switchToComponent`), so keeping the renderer is **not** lock-in — the option to swap later survives untouched. The real debt is confined to the imperative view file, exactly as this project scopes it. Note also that the line-count table below predates growth: `nodegrapheditor.ts` is now **3,481** lines, `NodeGraphEditorNode.ts` **1,290**, `NodeGraphEditorConnection.ts` **416**. Detailed seam findings and file references live in the task that implements this, [`PLAT-001-CANVAS-DECOMPOSITION.md`](../tasks/phase-14-editor-platform-health/PLAT-001-CANVAS-DECOMPOSITION.md) → "Architecture review (2026-07-23)".
+
 ---
 
 ## Current Architecture Analysis
