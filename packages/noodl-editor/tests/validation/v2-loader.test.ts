@@ -12,7 +12,9 @@ import * as path from 'path';
 import { loadProject, loadV2Directory } from '../../src/editor/src/validation/loadV2Project';
 import { SemanticValidator } from '../../src/editor/src/validation/SemanticValidator';
 
-const V2_CLEAN = path.join(__dirname, 'fixtures', 'v2-clean');
+// process.cwd(), not __dirname: the webpack test bundle resolves __dirname to
+// tests/, which broke these specs in the Electron harness.
+const V2_CLEAN = path.join(process.cwd(), 'tests', 'validation', 'fixtures', 'v2-clean');
 
 describe('SUB-006 v2 directory loader', () => {
   it('loads a v2 directory into the normalized model', () => {

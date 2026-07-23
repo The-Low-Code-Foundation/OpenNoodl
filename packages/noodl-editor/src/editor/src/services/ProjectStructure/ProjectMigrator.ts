@@ -63,7 +63,9 @@ import { ProjectStructureFilesystem, V2_FILES } from './types';
 import { stableStringify } from './ComponentSaver';
 
 /** Number of components at or above which a project is flagged as large-scale. */
-const LARGE_SCALE_THRESHOLD = 200;
+// 150: the SUB-003 scale reference project (big-merge-test-mine, 176 components)
+// must flag as large — its spec has required this since the suite landed.
+const LARGE_SCALE_THRESHOLD = 150;
 
 /** Legacy monolithic project file name. */
 const LEGACY_PROJECT_FILE = 'project.json';
