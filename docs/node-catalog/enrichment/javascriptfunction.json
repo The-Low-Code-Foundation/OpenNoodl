@@ -1,0 +1,23 @@
+{
+  "typeName": "JavaScriptFunction",
+  "summary": "Function: runs multi-line JavaScript; Inputs.* reads create input ports, Outputs.* writes create output ports, Outputs.fn() fires signals.",
+  "description": "The Function node executes the JavaScript in `functionScript`. The script's surface *is* its port list: reading `Inputs.name` creates an input port `name`, assigning `Outputs.name = value` creates a value output, and calling `Outputs.name()` creates and fires a signal output (conventionally `Outputs.Success()` / `Outputs.Failure()`). The script runs when the `run` signal fires; if `run` is unconnected it runs whenever a connected input changes. Scripts may be async and use `await` — fire a signal output when done to sequence downstream work.",
+  "whenToUse": "Anything beyond a one-liner: data transformation, calling browser APIs or fetch, orchestrating async steps. Prefer Expression for simple pure computations and dedicated nodes (Query Records, REST2) where they exist — graphs stay more inspectable than scripts.",
+  "ports": {
+    "functionScript": "The JavaScript source. Its Inputs./Outputs. references define the node's data and signal ports.",
+    "run": "Signal; executes the script. When connected, input changes no longer auto-run the script.",
+    "scriptInputs": "Editor-managed list of the input ports the script declares — not authored directly.",
+    "scriptOutputs": "Editor-managed list of the output ports the script declares — not authored directly."
+  },
+  "runtimeBehavior": "All data/signal ports are runtime-discovered from the script source: the editor parses `Inputs.x` / `Outputs.y` references (JavascriptNodeParser) and registers matching ports; nothing about them is static. An authoring tool must write the script first and then wire to exactly the names the script uses — including signal outputs, which are the calls, not assignments.",
+  "examples": ["function-compute-on-run"],
+  "patterns": [
+    "Async action: `run` from a click → `await fetch(...)` → set value outputs → `Outputs.Success()`; wire Success onward for sequencing.",
+    "Transform between nodes: array in, reshaped array out, feeding a Repeater."
+  ],
+  "antiPatterns": [
+    "Rebuilding what a dedicated node already does (querying cloud data, navigation) — you lose live updates and editor insight.",
+    "Relying on auto-run while also connecting `run`; once `run` is connected, only the signal executes the script."
+  ],
+  "relatedNodes": ["Expression", "Javascript2", "REST2", "RunTasks"]
+}

@@ -1,0 +1,8 @@
+{
+  "typeName": "Model",
+  "summary": "Deprecated all-in-one shared object node. Use Model2 (Object) plus NewModel and SetModelProperties.",
+  "description": "The legacy Model node combined reading, creating and storing a shared client-side object in one node. Its successors split the roles: Object (Model2) reads reactively by id, New Object creates, Set Object Properties writes. The object store is shared, so legacy graphs and new nodes see the same objects by id.",
+  "whenToUse": "Do not use in new graphs — use Model2 with NewModel/SetModelProperties instead.",
+  "runtimeBehavior": "Property ports are generated from the per-instance `properties` list (runtime-discovered), as on its successors.",
+  "relatedNodes": ["Model2", "NewModel", "SetModelProperties"]
+}

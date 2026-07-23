@@ -1,0 +1,46 @@
+{
+  "id": "cloud-edit-record",
+  "title": "Load, edit and save a single record",
+  "description": "The record-detail flow: a Record node (DbModel2) binds to one database object by `modelId` and exposes its properties as schema-generated outputs. The edit field is initialised from the record, and Save (SetDbModelProperties) writes the changed property back on click, targeting the same id. `stored` confirms the round trip. Property ports on both nodes come from the database schema — they are runtime-determined, wired here exactly as the editor would write them.",
+  "demonstrates": ["DbModel2", "SetDbModelProperties"],
+  "components": [
+    {
+      "name": "/Task Detail",
+      "nodes": [
+        {
+          "id": "root",
+          "type": "Group",
+          "label": "Detail",
+          "parameters": { "flexDirection": "column" },
+          "children": ["title_input", "save_btn", "saved_text"]
+        },
+        { "id": "title_input", "type": "net.noodl.controls.textinput", "label": "Title field", "parent": "root" },
+        { "id": "save_btn", "type": "net.noodl.controls.button", "label": "Save", "parent": "root", "parameters": { "label": "Save" } },
+        { "id": "saved_text", "type": "Text", "label": "Saved note", "parent": "root", "parameters": { "text": "Saved." } },
+        { "id": "detail_inputs", "type": "Component Inputs", "label": "Task id in" },
+        {
+          "id": "task_record",
+          "type": "DbModel2",
+          "label": "Task record",
+          "parameters": { "collectionName": "Task" }
+        },
+        {
+          "id": "save_task",
+          "type": "SetDbModelProperties",
+          "label": "Save title",
+          "parameters": { "collectionName": "Task" }
+        },
+        { "id": "saved_gate", "type": "Condition", "label": "Show saved" }
+      ],
+      "connections": [
+        { "fromId": "detail_inputs", "fromProperty": "taskId", "toId": "task_record", "toProperty": "modelId" },
+        { "fromId": "detail_inputs", "fromProperty": "taskId", "toId": "save_task", "toProperty": "modelId" },
+        { "fromId": "task_record", "fromProperty": "title", "toId": "title_input", "toProperty": "startValue" },
+        { "fromId": "title_input", "fromProperty": "onTextChanged", "toId": "save_task", "toProperty": "title" },
+        { "fromId": "save_btn", "fromProperty": "onClick", "toId": "save_task", "toProperty": "store" },
+        { "fromId": "save_task", "fromProperty": "stored", "toId": "saved_gate", "toProperty": "eval" },
+        { "fromId": "saved_gate", "fromProperty": "result", "toId": "saved_text", "toProperty": "visible" }
+      ]
+    }
+  ]
+}

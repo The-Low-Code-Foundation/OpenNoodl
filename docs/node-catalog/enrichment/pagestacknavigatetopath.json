@@ -1,0 +1,14 @@
+{
+  "typeName": "PageStackNavigateToPath",
+  "summary": "Navigate To Path: jumps to an arbitrary URL path within the app, driving whichever routers match the path.",
+  "description": "Navigate To Path performs URL-level navigation: when `navigate` fires, the app's location changes to `path`, and the Router hierarchy resolves it exactly as if the user had typed the URL — including nested routers and page parameters embedded in the path. `queryNames` declares query-string values to attach; each name becomes an input. `openInNewTab` opens the path in a new tab instead.",
+  "whenToUse": "Cross-cutting jumps where composing router+page choices is clumsier than stating the destination path ('/projects/123/settings'), deep links, and programmatic redirects. For navigation within one known router, Navigate (RouterNavigate) is more explicit and survives page renames better.",
+  "ports": {
+    "navigate": "Signal; performs the location change.",
+    "path": "The target path string, with parameter values interpolated by the author.",
+    "queryNames": "Declared query parameters; each becomes an input carried on the URL."
+  },
+  "runtimeBehavior": "Query-parameter inputs are generated from the `queryNames` list on the instance — configuration-determined.",
+  "examples": ["nav-url-product-page"],
+  "relatedNodes": ["RouterNavigate", "Router", "PageInputs", "net.noodl.externallink"]
+}

@@ -1,0 +1,22 @@
+{
+  "typeName": "CloudFunction2",
+  "summary": "Calls a cloud function component from the browser: send parameters, run the server-side graph, receive its results.",
+  "description": "Cloud Function is the browser-side caller of a cloud function — a component that lives on the cloud runtime and starts with a Request node and ends with a Response node. Pick the target in the `function` input; the node then grows one `in-<name>` input per parameter declared on the function's Request node and one `out-<name>` output per value declared on its Response nodes. Triggering `call` (Call, signal) POSTs the current `in-` values to the server, where the function's graph runs; when the Response sends a success reply the `out-` outputs update and `success` (signal) fires. On a failure reply — or any transport error — `error` (string value) is set and `failure` (signal) fires. The logged-in user's session token is sent along automatically, so the function sees the caller's identity.",
+  "whenToUse": "Use it whenever browser logic needs work done with server-side trust: secrets, security-sensitive writes, aggregations, or multi-record transactions. For plain reads of database classes prefer DbCollection2 (Query Records) directly. Do not use the deprecated v1 'Cloud Function' node in new graphs.",
+  "ports": {
+    "call": "Signal input; sends the request with the current `in-` parameter values after all pending input updates have been applied.",
+    "success": "Signal; fires after a success response, after all `out-` outputs have been updated with the returned results.",
+    "failure": "Signal; fires when the function replies with failure status or the request itself fails. Read `error` for the message.",
+    "error": "String value with the last error message (the Response node's Error Message on a failure reply)."
+  },
+  "runtimeBehavior": "Ports are mirrored from the targeted cloud function component by the editor's CloudFunctionAdapter. The `function` input (edit-only) lists every component that contains a `noodl.cloud.request` node — cloud function components live under the `/#__cloud__/` sheet, and the parameter stores the component name without that prefix. Each name in the Request node's `params` list becomes an `in-<name>` input; each name in the Response nodes' `params` lists becomes an `out-<name>` output. All are type '*'; an authoring tool must read the target component's Request/Response `params` to know which ports exist.",
+  "examples": ["fn-cloud-function-roundtrip", "fn-aggregate-stats-function"],
+  "patterns": [
+    "Button `onClick` → `call`, `out-<name>` → visual inputs: the request/response cycle for an action the client must not perform itself.",
+    "`success` → a Query Records fetch action: refresh client data after a server-side write."
+  ],
+  "antiPatterns": [
+    "Wiring `out-` outputs somewhere without also handling `failure` leaves errors invisible — surface `error` in the UI or react to `failure`."
+  ],
+  "relatedNodes": ["noodl.cloud.request", "noodl.cloud.response", "noodl.cloud.aggregate", "DbCollection2"]
+}

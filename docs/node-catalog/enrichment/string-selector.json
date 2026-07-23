@@ -1,0 +1,7 @@
+{
+  "typeName": "String Selector",
+  "summary": "Deprecated 'Index To String' lookup: outputs one of a numbered list of author-defined strings selected by a number index.",
+  "description": "String Selector (shown as 'Index To String') holds a numbered series of author-entered strings and outputs the one at the current `index` on `currentValue`, firing `indexChanged` when the index changes. It is deprecated; a States node (mapping each state to arbitrary values) or an Expression covers the same need with more flexibility.",
+  "whenToUse": "Do not use in new graphs — use States or an Expression instead.",
+  "runtimeBehavior": "Inputs are a numbered series: ports named 'input 0', 'input 1', … (displayed 'String for N') are added by the editor as each is used; there is no static bound on the count."
+}

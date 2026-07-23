@@ -1,0 +1,55 @@
+{
+  "id": "data-static-array-filter-repeater",
+  "title": "Static array filtered and mapped into a list",
+  "description": "Local data without a backend: Static Array holds inline JSON, Array Filter narrows it with a per-item filter script, Array Map reshapes each element with a map script, and the result drives a Repeater. Filter and Map are non-destructive — they emit new arrays and leave the source untouched, so several differently-filtered views can share one source.",
+  "demonstrates": ["Static Data", "Filter Collection", "Map Collection", "For Each"],
+  "components": [
+    {
+      "name": "/Product List",
+      "nodes": [
+        {
+          "id": "root",
+          "type": "Group",
+          "label": "Page",
+          "parameters": { "flexDirection": "column" },
+          "children": ["list_repeater"]
+        },
+        { "id": "list_repeater", "type": "For Each", "label": "Product rows", "parent": "root", "parameters": { "template": "/Product Row" } },
+        {
+          "id": "products",
+          "type": "Static Data",
+          "label": "Products",
+          "parameters": { "type": "json", "json": "[{\"name\":\"Desk\",\"price\":140,\"inStock\":true},{\"name\":\"Lamp\",\"price\":30,\"inStock\":false},{\"name\":\"Chair\",\"price\":90,\"inStock\":true}]" }
+        },
+        {
+          "id": "in_stock",
+          "type": "Filter Collection",
+          "label": "Only in stock",
+          "parameters": { "filterScript": "filter(object.inStock)" }
+        },
+        {
+          "id": "with_label",
+          "type": "Map Collection",
+          "label": "Add display label",
+          "parameters": { "mapScript": "map({ name: object.name, label: object.name + ' — $' + object.price })" }
+        }
+      ],
+      "connections": [
+        { "fromId": "products", "fromProperty": "items", "toId": "in_stock", "toProperty": "items" },
+        { "fromId": "in_stock", "fromProperty": "items", "toId": "with_label", "toProperty": "items" },
+        { "fromId": "with_label", "fromProperty": "items", "toId": "list_repeater", "toProperty": "items" }
+      ]
+    },
+    {
+      "name": "/Product Row",
+      "nodes": [
+        { "id": "row", "type": "Group", "label": "Row", "parameters": { "flexDirection": "row" }, "children": ["label_text"] },
+        { "id": "label_text", "type": "Text", "label": "Label", "parent": "row" },
+        { "id": "row_inputs", "type": "Component Inputs", "label": "Item in" }
+      ],
+      "connections": [
+        { "fromId": "row_inputs", "fromProperty": "label", "toId": "label_text", "toProperty": "text" }
+      ]
+    }
+  ]
+}

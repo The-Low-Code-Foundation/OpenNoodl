@@ -1,0 +1,30 @@
+{
+  "id": "code-css-definition",
+  "title": "CSS Definition: project stylesheet applied via class names",
+  "description": "CSS Definition injects the stylesheet in its `style` parameter into the page — it has no output ports; its presence is its effect. Visual nodes opt in through their `cssClassName` input. Use it for what node parameters cannot express (pseudo-selectors, keyframe animations, media queries); prefer node style parameters for everything they can express, since the editor cannot inspect CSS effects.",
+  "demonstrates": ["CSS Definition"],
+  "components": [
+    {
+      "name": "/Styled Banner",
+      "nodes": [
+        {
+          "id": "root",
+          "type": "Group",
+          "label": "Banner",
+          "parameters": { "flexDirection": "column", "cssClassName": "pulse-banner" },
+          "children": ["banner_text"]
+        },
+        { "id": "banner_text", "type": "Text", "label": "Message", "parent": "root", "parameters": { "text": "Limited offer" } },
+        {
+          "id": "banner_css",
+          "type": "CSS Definition",
+          "label": "Pulse keyframes",
+          "parameters": {
+            "style": ".pulse-banner { animation: pulse 2s infinite; }\n@keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.6; } 100% { opacity: 1; } }"
+          }
+        }
+      ],
+      "connections": []
+    }
+  ]
+}

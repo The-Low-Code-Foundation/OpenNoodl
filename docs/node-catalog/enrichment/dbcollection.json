@@ -1,0 +1,8 @@
+{
+  "typeName": "DbCollection",
+  "summary": "Deprecated query node for cloud database classes; superseded by DbCollection2 (Query Records).",
+  "description": "DbCollection (Query Collection) is the original node for fetching the records of a cloud database class. It is deprecated and hidden from the node picker. DbCollection2 (Query Records) replaces it with the visual filter builder, JavaScript filters, sorting, pagination and live result updates.",
+  "whenToUse": "Do not use in new graphs — use DbCollection2 (Query Records) instead.",
+  "runtimeBehavior": "Ports are runtime-determined: the class choice and filter inputs were generated per instance and pushed to the editor. An authoring tool should not place this node at all; the static port list is incomplete by design.",
+  "relatedNodes": ["DbCollection2", "FilterDBModels", "DbModel2"]
+}

@@ -1,0 +1,17 @@
+{
+  "typeName": "net.noodl.controls.range",
+  "summary": "Slider control: picks a number between min and max by dragging a thumb; value and valuePercent stream out live.",
+  "description": "The Slider renders a draggable range input bounded by `min`/`max` with `step` granularity. `value` (the number) and `valuePercent` (0–100 regardless of bounds) update continuously while dragging; `onChange` fires per change. Thumb and track are styleable separately, and the standard control surface (enabled, focus/hover/pressed states) applies.",
+  "whenToUse": "Continuous or stepped numeric input where feel matters more than precision: volume, brightness, price ranges. For exact numeric entry pair it with (or replace it by) a Text Input.",
+  "ports": {
+    "value": "Number level: the current position in min–max units (input to set, output to read).",
+    "valuePercent": "Number level 0–100; convenient for driving other visuals without knowing the bounds.",
+    "onChange": "Signal; fires as the user drags — expect high frequency; debounce before persistence."
+  },
+  "runtimeBehavior": "Declared-port-groups: label and per-visual-state styling ports appear per configuration.",
+  "examples": ["ctl-settings-form"],
+  "antiPatterns": [
+    "Writing to a backend on every `onChange` while dragging — debounce with a Timer first."
+  ],
+  "relatedNodes": ["net.noodl.controls.textinput", "Number Remapper", "Timer"]
+}

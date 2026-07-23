@@ -1,0 +1,23 @@
+{
+  "typeName": "Expression",
+  "summary": "Evaluates a one-line JavaScript expression whose free variables become input ports; outputs the result as value, boolean, string and events.",
+  "description": "Expression compiles the JavaScript expression in its `expression` parameter and re-evaluates it whenever any referenced input changes (or only on the `run` signal, if `run` is connected). Every free variable name in the expression text becomes an input port of that name — write `price * quantity` and the node grows `price` and `quantity` inputs. The result is exposed simultaneously as `result` (untyped), `asNumber`, `asString`, `asBoolean`, plus level booleans `isTrue`/`isFalse` and edge signals `isTrueEv`/`isFalseEv` that fire when the truthiness changes.",
+  "whenToUse": "Small computations and predicates inline in a graph: arithmetic, comparisons, string interpolation via template syntax, ternaries. For multi-statement logic, side effects, or async work use the Function node; for combining two booleans And/Or are clearer.",
+  "ports": {
+    "expression": "The expression source text. Its identifiers define the node's data inputs; standard Math functions are available (e.g. round(), abs()).",
+    "run": "Signal; when connected, the expression stops auto-evaluating on input changes and evaluates only when this fires.",
+    "result": "Untyped output ('*') carrying the raw value — connectable to any input, so type discipline is on the author.",
+    "isTrueEv": "Signal; fires when an evaluation turns the result truthy — an edge, unlike the `isTrue` level."
+  },
+  "runtimeBehavior": "Inputs are runtime-discovered by parsing the expression text: each identifier that is not a built-in becomes an input port registered on demand. The port set therefore changes whenever the expression is edited, and cannot be known without the expression. Reads of Noodl.Variables/Objects inside the expression additionally subscribe the node to those stores.",
+  "examples": ["validate-before-submit"],
+  "patterns": [
+    "Input validation: text ports feed an Expression predicate; its `result` drives a Condition's `condition`.",
+    "Derived display values: `asString` → a Text's `text` for computed captions."
+  ],
+  "antiPatterns": [
+    "Chaining many Expression nodes to build a program — one Function node with readable JavaScript beats a lattice of expressions.",
+    "Side effects in the expression; it may evaluate more often than you expect. Expressions must stay pure."
+  ],
+  "relatedNodes": ["JavaScriptFunction", "Condition", "And", "Or", "String Format", "Number Remapper"]
+}

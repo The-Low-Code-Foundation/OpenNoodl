@@ -1,0 +1,70 @@
+{
+  "id": "repeater-query-records",
+  "title": "List page: Repeater fed by Query Records",
+  "description": "The canonical data-list shape. Query Records (DbCollection2) fetches a database class and exposes the result on its `items` array output; the Repeater (For Each) consumes that array and instantiates its `template` component once per record. Each record's properties are delivered to the item component through Component Inputs whose names match the record's property names — the item component reads them like any other input. The Repeater and its item template component are separate components by design.",
+  "demonstrates": ["For Each", "DbCollection2", "Group", "Text", "Component Inputs"],
+  "components": [
+    {
+      "name": "/Task List",
+      "nodes": [
+        {
+          "id": "page_root",
+          "type": "Group",
+          "label": "Page",
+          "parameters": { "flexDirection": "column" },
+          "children": ["list_group"]
+        },
+        {
+          "id": "list_group",
+          "type": "Group",
+          "label": "List container",
+          "parent": "page_root",
+          "parameters": { "flexDirection": "column", "scrollEnabled": true },
+          "children": ["task_repeater"]
+        },
+        {
+          "id": "task_repeater",
+          "type": "For Each",
+          "label": "One card per task",
+          "parent": "list_group",
+          "parameters": { "template": "/Task Card" }
+        },
+        {
+          "id": "tasks_query",
+          "type": "DbCollection2",
+          "label": "Fetch tasks",
+          "parameters": { "collectionName": "Task" }
+        }
+      ],
+      "connections": [
+        { "fromId": "tasks_query", "fromProperty": "items", "toId": "task_repeater", "toProperty": "items" }
+      ]
+    },
+    {
+      "name": "/Task Card",
+      "nodes": [
+        {
+          "id": "card_root",
+          "type": "Group",
+          "label": "Card",
+          "parameters": { "flexDirection": "column", "paddingLeft": 12, "paddingTop": 12 },
+          "children": ["title_text"]
+        },
+        {
+          "id": "title_text",
+          "type": "Text",
+          "label": "Task title",
+          "parent": "card_root"
+        },
+        {
+          "id": "card_inputs",
+          "type": "Component Inputs",
+          "label": "Record properties in"
+        }
+      ],
+      "connections": [
+        { "fromId": "card_inputs", "fromProperty": "title", "toId": "title_text", "toProperty": "text" }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,46 @@
+{
+  "id": "code-rest-list",
+  "title": "REST node feeding a repeater",
+  "description": "The REST node wraps a request/response pair in two scripts: the request script assembles the call from the node's script-declared inputs, and the response script maps the payload onto script-declared outputs — here an `items` array. Ports come from those scripts (that is its dynamism). `fetch` on mount loads the list; `success`/`failure` sequence what follows. For a one-off GET without mapping scripts, HTTP Request is the lighter tool.",
+  "demonstrates": ["REST2"],
+  "components": [
+    {
+      "name": "/Remote List",
+      "nodes": [
+        {
+          "id": "root",
+          "type": "Group",
+          "label": "Page",
+          "parameters": { "flexDirection": "column" },
+          "children": ["rows"]
+        },
+        { "id": "rows", "type": "For Each", "label": "Rows", "parent": "root", "parameters": { "template": "/Remote Row" } },
+        {
+          "id": "fetch_list",
+          "type": "REST2",
+          "label": "GET /tasks",
+          "parameters": {
+            "method": "GET",
+            "resource": "https://example.com/api/tasks",
+            "responseScript": "Outputs.items = Response.content.tasks;"
+          }
+        }
+      ],
+      "connections": [
+        { "fromId": "root", "fromProperty": "didMount", "toId": "fetch_list", "toProperty": "fetch" },
+        { "fromId": "fetch_list", "fromProperty": "items", "toId": "rows", "toProperty": "items" }
+      ]
+    },
+    {
+      "name": "/Remote Row",
+      "nodes": [
+        { "id": "row", "type": "Group", "label": "Row", "parameters": { "flexDirection": "row" }, "children": ["title_text"] },
+        { "id": "title_text", "type": "Text", "label": "Title", "parent": "row" },
+        { "id": "row_inputs", "type": "Component Inputs", "label": "Item in" }
+      ],
+      "connections": [
+        { "fromId": "row_inputs", "fromProperty": "title", "toId": "title_text", "toProperty": "text" }
+      ]
+    }
+  ]
+}

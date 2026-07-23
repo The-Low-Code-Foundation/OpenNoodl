@@ -1,0 +1,7 @@
+{
+  "typeName": "Range",
+  "summary": "Legacy slider visual, hidden from the node picker — superseded by net.noodl.controls.range (Slider).",
+  "description": "The original Range (slider) visual, kept only so old projects load. The Slider control (net.noodl.controls.range) supersedes it with min/max/step value binding, visual states and accessibility.",
+  "whenToUse": "Do not use in new graphs — use net.noodl.controls.range instead.",
+  "relatedNodes": ["net.noodl.controls.range"]
+}

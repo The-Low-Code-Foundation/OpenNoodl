@@ -1,0 +1,19 @@
+{
+  "typeName": "Map Collection",
+  "summary": "Array Map: transforms each element of an input array with a map script, emitting a new array and leaving the source untouched.",
+  "description": "Array Map runs its `mapScript` once per element of `items` — the script calls `map(...)` with the reshaped object, with the current element available as `object` — and outputs the resulting new array. The transformation is non-destructive and re-runs when the input array changes, so it behaves like a live derived view.",
+  "whenToUse": "Reshaping list data between its source and the UI: computing display labels, renaming properties, deriving fields. For narrowing a list use Array Filter; for arbitrary multi-array logic a Function node is clearer than a chain of maps.",
+  "ports": {
+    "items": "Input array to transform (input) and the transformed array (output) — same port name, opposite plugs.",
+    "mapScript": "Per-element script; call map({...}) with the output element, reading the source element from `object`.",
+    "modified": "Signal; fires when the output array has been recomputed."
+  },
+  "examples": ["data-static-array-filter-repeater"],
+  "patterns": [
+    "Source array → Array Filter → Array Map → Repeater: narrow first, then shape for display."
+  ],
+  "antiPatterns": [
+    "Mutating `object` inside the map script — emit a new shape via map(); mutation writes through to the shared source objects."
+  ],
+  "relatedNodes": ["Filter Collection", "Collection2", "Static Data", "JavaScriptFunction"]
+}

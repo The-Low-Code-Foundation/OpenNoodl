@@ -1,0 +1,19 @@
+{
+  "typeName": "Substring",
+  "summary": "Extracts part of a string between a start index (inclusive) and end index (exclusive).",
+  "description": "Substring takes a `string` (String) input and outputs the characters from index `start` (Start, 0-based, inclusive) up to but not including index `end` (End) on the `result` (Result) string value output. While `end` has never been set, the substring runs from `start` to the end of the string — so a node with only `start` configured behaves like 'drop the first N characters'. Setting `end` to -1 also means 'to the end of the string'. Non-string inputs are converted with toString() first, and any input change updates the result immediately.",
+  "whenToUse": "Use it for simple positional trims: a short prefix of an id, truncating a preview, slicing fixed-width data. For pattern-based extraction, case changes or search-and-replace, use Expression or a Function; for assembling text from parts, use String Format.",
+  "ports": {
+    "start": "Number value, 0-based inclusive start index (default 0).",
+    "end": "Number value, exclusive end index. Left unset (or set to -1) the substring extends to the end of the string; note that an explicit 0 means an empty result, not 'to the end'.",
+    "result": "String value with the extracted range."
+  },
+  "examples": ["logic-autosave-after-typing"],
+  "patterns": [
+    "Unique Id `guid` → `string` with `start` 0 / `end` 4: a short human-readable tag from a longer id."
+  ],
+  "antiPatterns": [
+    "Setting `end` to 0 expecting 'until the end' — 0 is a real exclusive index and yields an empty string; leave `end` unset or use -1 instead."
+  ],
+  "relatedNodes": ["String Format", "String Mapper", "Expression", "JavaScriptFunction"]
+}

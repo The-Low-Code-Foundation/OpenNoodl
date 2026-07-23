@@ -1,0 +1,107 @@
+{
+  "id": "nav-url-product-page",
+  "title": "URL-driven detail page: Router, Page Inputs, Navigate To Path and External Link",
+  "description": "URL-style navigation end to end. A Router named 'Main' hosts /Home and /Product (its `pages` parameter is `{ routes, startPage }`); each page component is rooted by a Page node whose `urlPath` defines its URL pattern — /Product uses 'product/{productId}', so the id lives in the URL. On /Home, a Navigate To Path node (PageStackNavigateToPath) builds the URL from its `path` parameter: the '{productId}' placeholder becomes the `p-productId` input, set here as a parameter, and clicking the button pushes the compiled path into browser history, which the Router picks up. On /Product, a Page Inputs node declares `pathParams: \"productId\"` so the value parsed from the URL is exposed as its `pm-productId` output, wired into a Text. An External Link node (net.noodl.externallink) opens an outside URL in a new tab — external URLs never go through the Router.",
+  "demonstrates": ["Router", "PageInputs", "PageStackNavigateToPath", "net.noodl.externallink"],
+  "components": [
+    {
+      "name": "/App",
+      "nodes": [
+        {
+          "id": "app_root",
+          "type": "Group",
+          "label": "App root",
+          "parameters": { "flexDirection": "column" },
+          "children": ["main_router"]
+        },
+        {
+          "id": "main_router",
+          "type": "Router",
+          "label": "Main router",
+          "parent": "app_root",
+          "parameters": {
+            "name": "Main",
+            "pages": { "routes": ["/Home", "/Product"], "startPage": "/Home" }
+          }
+        }
+      ],
+      "connections": []
+    },
+    {
+      "name": "/Home",
+      "nodes": [
+        {
+          "id": "home_page",
+          "type": "Page",
+          "label": "Home page",
+          "parameters": { "title": "Home", "urlPath": "home" },
+          "children": ["home_text", "view_product_button"]
+        },
+        {
+          "id": "home_text",
+          "type": "Text",
+          "label": "Heading",
+          "parent": "home_page",
+          "parameters": { "text": "Featured product" }
+        },
+        {
+          "id": "view_product_button",
+          "type": "net.noodl.controls.button",
+          "label": "View product",
+          "parent": "home_page",
+          "parameters": { "label": "View product 42" }
+        },
+        {
+          "id": "goto_product",
+          "type": "PageStackNavigateToPath",
+          "label": "Go to product page",
+          "parameters": { "path": "/product/{productId}", "p-productId": "42" }
+        }
+      ],
+      "connections": [
+        { "fromId": "view_product_button", "fromProperty": "onClick", "toId": "goto_product", "toProperty": "navigate" }
+      ]
+    },
+    {
+      "name": "/Product",
+      "nodes": [
+        {
+          "id": "product_page",
+          "type": "Page",
+          "label": "Product page",
+          "parameters": { "title": "Product", "urlPath": "product/{productId}" },
+          "children": ["product_id_text", "buy_button"]
+        },
+        {
+          "id": "product_inputs",
+          "type": "PageInputs",
+          "label": "Read URL params",
+          "parameters": { "pathParams": "productId" }
+        },
+        {
+          "id": "product_id_text",
+          "type": "Text",
+          "label": "Product id",
+          "parent": "product_page"
+        },
+        {
+          "id": "buy_button",
+          "type": "net.noodl.controls.button",
+          "label": "Buy",
+          "parent": "product_page",
+          "parameters": { "label": "Buy on partner site" }
+        },
+        {
+          "id": "partner_link",
+          "type": "net.noodl.externallink",
+          "label": "Partner shop",
+          "parameters": { "link": "https://example.com/buy", "openInNewTab": true }
+        }
+      ],
+      "connections": [
+        { "fromId": "product_inputs", "fromProperty": "pm-productId", "toId": "product_id_text", "toProperty": "text" },
+        { "fromId": "buy_button", "fromProperty": "onClick", "toId": "partner_link", "toProperty": "do" }
+      ]
+    }
+  ]
+}

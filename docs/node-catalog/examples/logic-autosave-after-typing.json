@@ -1,0 +1,67 @@
+{
+  "id": "logic-autosave-after-typing",
+  "title": "Debounced autosave with timestamped status",
+  "description": "The debounce idiom: every keystroke fires Value Changed, whose signal restarts a 1.5-second Timer — the save only runs when the user pauses. The save Function stamps the moment; Date To String formats it, Unique Id issues a save id shortened by Substring, and String Format assembles the status line. Signals sequence the flow; values shape the display.",
+  "demonstrates": ["Date To String", "String Format", "Substring", "Timer", "Unique Id", "Value Changed"],
+  "components": [
+    {
+      "name": "/Note Editor",
+      "nodes": [
+        {
+          "id": "root",
+          "type": "Group",
+          "label": "Editor",
+          "parameters": { "flexDirection": "column" },
+          "children": ["note_input", "status_text"]
+        },
+        { "id": "note_input", "type": "net.noodl.controls.textinput", "label": "Note", "parent": "root", "parameters": { "placeholder": "Type your note…" } },
+        { "id": "status_text", "type": "Text", "label": "Save status", "parent": "root" },
+        { "id": "typing_changed", "type": "Value Changed", "label": "Keystroke edge" },
+        {
+          "id": "debounce",
+          "type": "Timer",
+          "label": "1.5s quiet period",
+          "parameters": { "duration": 1500 }
+        },
+        {
+          "id": "do_save",
+          "type": "JavaScriptFunction",
+          "label": "Save draft",
+          "parameters": {
+            "functionScript": "Outputs.savedAt = new Date();\nOutputs.done();"
+          }
+        },
+        { "id": "save_id", "type": "Unique Id", "label": "Save id" },
+        {
+          "id": "short_id",
+          "type": "Substring",
+          "label": "First 8 chars",
+          "parameters": { "start": 0, "end": 8 }
+        },
+        {
+          "id": "saved_time",
+          "type": "Date To String",
+          "label": "Format time",
+          "parameters": { "formatString": "HH:mm:ss" }
+        },
+        {
+          "id": "status_line",
+          "type": "String Format",
+          "label": "Status line",
+          "parameters": { "format": "Saved {id} at {time}" }
+        }
+      ],
+      "connections": [
+        { "fromId": "note_input", "fromProperty": "onTextChanged", "toId": "typing_changed", "toProperty": "value" },
+        { "fromId": "typing_changed", "fromProperty": "valueChanged", "toId": "debounce", "toProperty": "restart" },
+        { "fromId": "debounce", "fromProperty": "timerFinished", "toId": "do_save", "toProperty": "run" },
+        { "fromId": "do_save", "fromProperty": "done", "toId": "save_id", "toProperty": "new" },
+        { "fromId": "do_save", "fromProperty": "savedAt", "toId": "saved_time", "toProperty": "input" },
+        { "fromId": "save_id", "fromProperty": "guid", "toId": "short_id", "toProperty": "string" },
+        { "fromId": "short_id", "fromProperty": "result", "toId": "status_line", "toProperty": "id" },
+        { "fromId": "saved_time", "fromProperty": "currentValue", "toId": "status_line", "toProperty": "time" },
+        { "fromId": "status_line", "fromProperty": "formatted", "toId": "status_text", "toProperty": "text" }
+      ]
+    }
+  ]
+}

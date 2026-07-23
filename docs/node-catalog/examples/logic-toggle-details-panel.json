@@ -1,0 +1,74 @@
+{
+  "id": "logic-toggle-details-panel",
+  "title": "Toggle a details panel with a self-labelling button",
+  "description": "The standard show/hide toggle: one button flips a Switch, and everything else derives from the Switch's boolean `state` as levels — the details Group's visibility directly, the summary text's visibility through an Inverter (visible only while collapsed), and the button's own label through Boolean To String so the button always names what it will do next. Note the split of flow kinds: `onClick` → `flip` is a signal (momentary), while every `state`-derived wire is a value that holds its level.",
+  "demonstrates": ["Switch", "Inverter", "Boolean To String"],
+  "components": [
+    {
+      "name": "/Order Details Toggle",
+      "nodes": [
+        {
+          "id": "root",
+          "type": "Group",
+          "label": "Card layout",
+          "parameters": { "flexDirection": "column", "paddingLeft": 16, "paddingTop": 16 },
+          "children": ["toggle_button", "summary_text", "details_group"]
+        },
+        {
+          "id": "toggle_button",
+          "type": "net.noodl.controls.button",
+          "label": "Toggle details",
+          "parent": "root",
+          "parameters": { "label": "Show details" }
+        },
+        {
+          "id": "summary_text",
+          "type": "Text",
+          "label": "Collapsed summary",
+          "parent": "root",
+          "parameters": { "text": "3 items — tap the button for a full breakdown." }
+        },
+        {
+          "id": "details_group",
+          "type": "Group",
+          "label": "Details panel",
+          "parent": "root",
+          "parameters": { "flexDirection": "column", "paddingTop": 8 },
+          "children": ["details_text"]
+        },
+        {
+          "id": "details_text",
+          "type": "Text",
+          "label": "Full breakdown",
+          "parent": "details_group",
+          "parameters": { "text": "2 × Coffee beans, 1 × Filter papers. Free shipping." }
+        },
+        {
+          "id": "expanded",
+          "type": "Switch",
+          "label": "Panel expanded?",
+          "parameters": { "onFromStart": false }
+        },
+        {
+          "id": "not_expanded",
+          "type": "Inverter",
+          "label": "Panel collapsed?"
+        },
+        {
+          "id": "button_label",
+          "type": "Boolean To String",
+          "label": "Button copy",
+          "parameters": { "trueString": "Hide details", "falseString": "Show details" }
+        }
+      ],
+      "connections": [
+        { "fromId": "toggle_button", "fromProperty": "onClick", "toId": "expanded", "toProperty": "flip" },
+        { "fromId": "expanded", "fromProperty": "state", "toId": "details_group", "toProperty": "visible" },
+        { "fromId": "expanded", "fromProperty": "state", "toId": "not_expanded", "toProperty": "value" },
+        { "fromId": "not_expanded", "fromProperty": "result", "toId": "summary_text", "toProperty": "visible" },
+        { "fromId": "expanded", "fromProperty": "state", "toId": "button_label", "toProperty": "input" },
+        { "fromId": "button_label", "fromProperty": "currentValue", "toId": "toggle_button", "toProperty": "label" }
+      ]
+    }
+  ]
+}

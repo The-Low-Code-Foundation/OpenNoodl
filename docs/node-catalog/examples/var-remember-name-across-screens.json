@@ -1,0 +1,85 @@
+{
+  "id": "var-remember-name-across-screens",
+  "title": "Share a value between components with Set Variable and Variable",
+  "description": "The idiomatic shared-state shape, contrasting per-instance and app-wide storage. In the form component, a String node snapshots the text field: because its saveValue (Set) is connected, keystrokes only latch a pending value, and the Button click commits it. The String's stored signal then fires the Set Variable's do, writing the committed text into the app-wide variable 'userName' (setWith 'string' types the dynamic value input). In a completely separate component, a Variable2 node bound to the same name reads the value reactively — its changed/value update the greeting automatically whenever the variable is written, with no connection between the two components.",
+  "demonstrates": ["String", "Set Variable", "Variable2"],
+  "components": [
+    {
+      "name": "/Name Form",
+      "nodes": [
+        {
+          "id": "form_root",
+          "type": "Group",
+          "label": "Form layout",
+          "parameters": { "flexDirection": "column", "paddingLeft": 16, "paddingTop": 16 },
+          "children": ["name_input", "save_button"]
+        },
+        {
+          "id": "name_input",
+          "type": "net.noodl.controls.textinput",
+          "label": "Name field",
+          "parent": "form_root",
+          "parameters": { "placeholder": "Your name" }
+        },
+        {
+          "id": "save_button",
+          "type": "net.noodl.controls.button",
+          "label": "Save",
+          "parent": "form_root",
+          "parameters": { "label": "Save" }
+        },
+        {
+          "id": "draft",
+          "type": "String",
+          "label": "Committed name"
+        },
+        {
+          "id": "store_name",
+          "type": "Set Variable",
+          "label": "Write userName",
+          "parameters": { "name": "userName", "setWith": "string" }
+        }
+      ],
+      "connections": [
+        { "fromId": "name_input", "fromProperty": "onTextChanged", "toId": "draft", "toProperty": "value" },
+        { "fromId": "save_button", "fromProperty": "onClick", "toId": "draft", "toProperty": "saveValue" },
+        { "fromId": "draft", "fromProperty": "savedValue", "toId": "store_name", "toProperty": "value" },
+        { "fromId": "draft", "fromProperty": "stored", "toId": "store_name", "toProperty": "do" }
+      ]
+    },
+    {
+      "name": "/Greeting Header",
+      "nodes": [
+        {
+          "id": "header_root",
+          "type": "Group",
+          "label": "Header layout",
+          "parameters": { "paddingLeft": 16, "paddingTop": 16 },
+          "children": ["greeting_text"]
+        },
+        {
+          "id": "greeting_text",
+          "type": "Text",
+          "label": "Greeting",
+          "parent": "header_root"
+        },
+        {
+          "id": "read_name",
+          "type": "Variable2",
+          "label": "Read userName",
+          "parameters": { "name": "userName" }
+        },
+        {
+          "id": "greet",
+          "type": "Expression",
+          "label": "Compose greeting",
+          "parameters": { "expression": "name ? 'Hello, ' + name + '!' : 'Hello, stranger!'" }
+        }
+      ],
+      "connections": [
+        { "fromId": "read_name", "fromProperty": "value", "toId": "greet", "toProperty": "name" },
+        { "fromId": "greet", "fromProperty": "result", "toId": "greeting_text", "toProperty": "text" }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "typeName": "Page",
+  "summary": "The root visual node of a Router page component: declares the page's title, URL pattern and meta tags.",
+  "description": "Page is the mandatory root of every page component shown by a Router (Page Router) — a Router only mounts components whose graph contains exactly one Page node. It is not in the node picker because the editor creates it automatically when a page is added to a Router; there is no replacement node, you configure the existing one. Its `title` sets the document title and the Router's `currentPageTitle`; its `urlPath` is the page's URL pattern and may contain `{param}` placeholders that Page Inputs (PageInputs) nodes read; the remaining inputs are SEO meta tags (description, robots, og:*, twitter:*, sitemap hints) plus padding and CSS styling for the page surface.",
+  "whenToUse": "Do not add Page from the node picker or use it outside a Router page component — it is created automatically as the root when a page is added to a Router. Edit that existing node to set the page's title, `urlPath` and meta tags.",
+  "ports": {
+    "title": "String value; the page title, shown as the document title when the page is active. Defaults to the component name.",
+    "urlPath": "String value; the URL pattern that routes to this page, e.g. \"product/{productId}\" — placeholders become path parameters readable via PageInputs. Defaults to the title, lowercased and hyphenated."
+  },
+  "runtimeBehavior": "Runtime-determined inputs (runtime-discovered): `title` and `urlPath` are registered per instance by the editor connection, with defaults derived from the component name. The static catalog lists only the meta-tag, sitemap and padding inputs.",
+  "relatedNodes": ["Router", "RouterNavigate", "PageInputs"]
+}

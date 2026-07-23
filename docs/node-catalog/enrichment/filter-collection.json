@@ -1,0 +1,22 @@
+{
+  "typeName": "Filter Collection",
+  "summary": "Array Filter: filters, sorts and limits an input array into a new output array, re-running automatically when the source changes.",
+  "description": "Takes an array on `items`, applies the filter, sort and limit configured in its parameters, and outputs the result as a new array on `items` — the input array is never mutated, and each run produces a fresh array object. It re-runs automatically whenever the input array's contents change, unless the `filter` (Filter) signal input is connected, in which case filtering happens only when that signal fires. With `enabled` false the input passes through unfiltered (still as a copy). After each run `modified` (Filtered) fires and `count`/`firstItemId` describe the output. Filter operators: eq/neq for all types, lt/gt/lte/gte for numbers, regex (with optional case sensitivity) for strings.",
+  "whenToUse": "Client-side filtering, searching and sorting of arrays already in memory — e.g. a live search box over a Static Array or shared Array. For server data prefer filtering in the Query Records node so the database does the work; for reshaping item properties use Array Map.",
+  "ports": {
+    "items": "Input (value): the source array. Output (value): a new filtered/sorted array — this is what you feed a Repeater.",
+    "filter": "Signal input; when connected, disables automatic re-filtering and runs the filter only on this signal.",
+    "enabled": "Boolean value; false passes the input through without filtering, sorting or limiting.",
+    "modified": "Signal (Filtered); fires after each filter run."
+  },
+  "runtimeBehavior": "The filter/sort/limit configuration creates its own input ports, pushed to the editor per instance: `filterFilter` (a stringlist of property names) generates, per property <p>, `filterFilterType-<p>` (string/number/boolean), `filterFilterOp-<p>` (eq, neq, regex for strings; eq, neq, lt, gt, gte, lte for numbers), `filterFilterValue-<p>` (a connectable value — wire a text input here for live search) and, for regex, `filterFilterOption-case-<p>`. `filterSort` (stringlist) generates `filterSort-<p>` (ascending/descending) per property. `filterEnableLimit` (boolean) reveals `filterLimit` (default 10) and `filterSkip` (default 0). An authoring tool must set `filterFilter`/`filterSort` first and use exactly these generated names.",
+  "examples": ["data-static-array-filter-repeater"],
+  "patterns": [
+    "Static Array or Array `items` → Array Filter `items` → Repeater `items`: a filtered local list.",
+    "Text Input `text` → `filterFilterValue-<prop>` with op regex: live search-as-you-type."
+  ],
+  "antiPatterns": [
+    "Filtering large cloud datasets client-side — put the filter in Query Records instead so only matching records are fetched."
+  ],
+  "relatedNodes": ["Collection2", "Static Data", "Map Collection", "For Each", "DbCollection2"]
+}

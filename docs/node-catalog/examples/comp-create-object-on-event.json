@@ -1,0 +1,39 @@
+{
+  "id": "comp-create-object-on-event",
+  "title": "Create a client-side object and bind to it by id",
+  "description": "Create New Object (NewModel) makes a fresh client-side object with the property values on its schema-declared inputs and outputs the new `id`. An Object node (Model2) bound to that id then exposes the object's properties reactively — the create node acts, the Object node observes. This id-handoff is the core client-data shape: writers and readers connect through ids, not direct wires.",
+  "demonstrates": ["NewModel", "Model2"],
+  "components": [
+    {
+      "name": "/Draft Creator",
+      "nodes": [
+        {
+          "id": "root",
+          "type": "Group",
+          "label": "Creator",
+          "parameters": { "flexDirection": "column" },
+          "children": ["create_btn", "draft_title_text"]
+        },
+        { "id": "create_btn", "type": "net.noodl.controls.button", "label": "New draft", "parent": "root", "parameters": { "label": "New draft" } },
+        { "id": "draft_title_text", "type": "Text", "label": "Draft title", "parent": "root" },
+        {
+          "id": "make_draft",
+          "type": "NewModel",
+          "label": "Create draft object",
+          "parameters": { "properties": "title", "title": "Untitled draft" }
+        },
+        {
+          "id": "draft_object",
+          "type": "Model2",
+          "label": "Draft object",
+          "parameters": { "properties": "title" }
+        }
+      ],
+      "connections": [
+        { "fromId": "create_btn", "fromProperty": "onClick", "toId": "make_draft", "toProperty": "new" },
+        { "fromId": "make_draft", "fromProperty": "id", "toId": "draft_object", "toProperty": "modelId" },
+        { "fromId": "draft_object", "fromProperty": "title", "toId": "draft_title_text", "toProperty": "text" }
+      ]
+    }
+  ]
+}

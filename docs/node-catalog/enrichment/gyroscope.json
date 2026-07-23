@@ -1,0 +1,7 @@
+{
+  "typeName": "Gyroscope",
+  "summary": "Deprecated device-orientation sensor exposing rotation X/Y/Z. No direct successor; use a Function node over the DeviceOrientation API.",
+  "description": "The legacy Device Orientation node streams the device's rotation on three number outputs. It is deprecated and hidden from the picker; modern browsers gate the underlying API behind permission prompts the node predates.",
+  "whenToUse": "Do not use in new graphs — read the DeviceOrientation API from a Function node, handling the permission request explicitly.",
+  "relatedNodes": ["JavaScriptFunction"]
+}

@@ -1,0 +1,14 @@
+{
+  "typeName": "net.noodl.SetParentComponentObjectProperties",
+  "summary": "Set Parent Component Object Properties: writes declared values onto the enclosing parent component's object from a child.",
+  "description": "The child-side writer for a parent's instance state: values on the declared property inputs are committed to the nearest ancestor component instance's object when `store` fires, updating every reader of that object (the parent's Component Object, sibling children's Parent Component Object). `stored` confirms.",
+  "whenToUse": "Child components that advance or edit their host's state — 'next step' controls, embedded editors. Keep writes coarse (one store per user action); each store fans out to all readers.",
+  "ports": {
+    "properties": "Declared property names; each becomes a value input written on store.",
+    "store": "Signal; commits to the parent instance's object.",
+    "stored": "Signal; the write completed."
+  },
+  "runtimeBehavior": "Property inputs are generated from the per-instance `properties` list (runtime-discovered); resolution targets the nearest ancestor component instance.",
+  "examples": ["comp-wizard-component-object"],
+  "relatedNodes": ["net.noodl.ParentComponentObject", "net.noodl.ComponentObject", "net.noodl.SetComponentObjectProperties"]
+}

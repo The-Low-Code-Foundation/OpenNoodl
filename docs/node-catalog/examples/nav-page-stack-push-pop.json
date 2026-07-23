@@ -1,0 +1,122 @@
+{
+  "id": "nav-page-stack-push-pop",
+  "title": "Push and pop a Component Stack (wizard flow)",
+  "description": "Stack-style navigation: a Page Stack (Component Stack) named 'Checkout' hosts two components, defined in its `pages` parameter with `pageComp-<id>` entries mapping each page to a component in this file. Inside /Cart, a Push Component To Stack node (PageStackNavigate) pushes /Confirm with a transition when the Continue button is clicked. Inside /Confirm, a Pop Component Stack node (PageStackNavigateBack) pops back: the Back button triggers its plain `navigate` signal, while the Place-order button triggers the `backAction-confirmed` signal input declared via the `backActions` parameter — that same action surfaces as the `backAction-confirmed` signal output on the Push node in /Cart, where it fires an Event Sender. This is the round-trip: back actions are declared on the Pop node inside the pushed component and consumed on the Push node that pushed it.",
+  "demonstrates": ["Page Stack", "PageStackNavigate", "PageStackNavigateBack"],
+  "components": [
+    {
+      "name": "/Checkout",
+      "nodes": [
+        {
+          "id": "checkout_root",
+          "type": "Group",
+          "label": "Checkout area",
+          "parameters": { "flexDirection": "column" },
+          "children": ["checkout_stack"]
+        },
+        {
+          "id": "checkout_stack",
+          "type": "Page Stack",
+          "label": "Checkout stack",
+          "parent": "checkout_root",
+          "parameters": {
+            "name": "Checkout",
+            "pages": [
+              { "id": "cart", "label": "Cart" },
+              { "id": "confirm", "label": "Confirm" }
+            ],
+            "pageComp-cart": "/Cart",
+            "pageComp-confirm": "/Confirm",
+            "startPage": "cart"
+          }
+        }
+      ],
+      "connections": []
+    },
+    {
+      "name": "/Cart",
+      "nodes": [
+        {
+          "id": "cart_root",
+          "type": "Group",
+          "label": "Cart layout",
+          "parameters": { "flexDirection": "column", "paddingLeft": 16, "paddingTop": 16 },
+          "children": ["cart_title", "continue_button"]
+        },
+        {
+          "id": "cart_title",
+          "type": "Text",
+          "label": "Title",
+          "parent": "cart_root",
+          "parameters": { "text": "Your cart" }
+        },
+        {
+          "id": "continue_button",
+          "type": "net.noodl.controls.button",
+          "label": "Continue",
+          "parent": "cart_root",
+          "parameters": { "label": "Continue" }
+        },
+        {
+          "id": "push_confirm",
+          "type": "PageStackNavigate",
+          "label": "Push Confirm page",
+          "parameters": { "stack": "Checkout", "mode": "push", "target": "confirm", "transition": "Push" }
+        },
+        {
+          "id": "order_confirmed",
+          "type": "Event Sender",
+          "label": "Order confirmed",
+          "parameters": { "channelName": "OrderConfirmed" }
+        }
+      ],
+      "connections": [
+        { "fromId": "continue_button", "fromProperty": "onClick", "toId": "push_confirm", "toProperty": "navigate" },
+        { "fromId": "push_confirm", "fromProperty": "backAction-confirmed", "toId": "order_confirmed", "toProperty": "sendEvent" }
+      ]
+    },
+    {
+      "name": "/Confirm",
+      "nodes": [
+        {
+          "id": "confirm_root",
+          "type": "Group",
+          "label": "Confirm layout",
+          "parameters": { "flexDirection": "column", "paddingLeft": 16, "paddingTop": 16 },
+          "children": ["confirm_title", "back_button", "place_order_button"]
+        },
+        {
+          "id": "confirm_title",
+          "type": "Text",
+          "label": "Title",
+          "parent": "confirm_root",
+          "parameters": { "text": "Confirm your order" }
+        },
+        {
+          "id": "back_button",
+          "type": "net.noodl.controls.button",
+          "label": "Back",
+          "parent": "confirm_root",
+          "parameters": { "label": "Back" }
+        },
+        {
+          "id": "place_order_button",
+          "type": "net.noodl.controls.button",
+          "label": "Place order",
+          "parent": "confirm_root",
+          "parameters": { "label": "Place order" }
+        },
+        {
+          "id": "pop_back",
+          "type": "PageStackNavigateBack",
+          "label": "Pop this page",
+          "parameters": { "backActions": "confirmed" }
+        }
+      ],
+      "connections": [
+        { "fromId": "back_button", "fromProperty": "onClick", "toId": "pop_back", "toProperty": "navigate" },
+        { "fromId": "place_order_button", "fromProperty": "onClick", "toId": "pop_back", "toProperty": "backAction-confirmed" }
+      ]
+    }
+  ]
+}

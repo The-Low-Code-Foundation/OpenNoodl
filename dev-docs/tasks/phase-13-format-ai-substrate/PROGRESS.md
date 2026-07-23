@@ -2,7 +2,7 @@
 
 **Created:** 2026-07-22 (from [NOODL-REVIVAL-ROADMAP.md](../../reviews/NOODL-REVIVAL-ROADMAP.md), Track A)
 **Last Updated:** 2026-07-23
-**Overall Status:** 🟡 In Progress (SUB-001, SUB-002, SUB-003, SUB-004, SUB-006 complete)
+**Overall Status:** 🟡 In Progress (SUB-001..SUB-006 complete)
 
 ---
 
@@ -11,10 +11,10 @@
 | Metric       | Value  |
 | ------------ | ------ |
 | Total Tasks  | 8      |
-| Completed    | 5      |
+| Completed    | 6      |
 | In Progress  | 0      |
-| Not Started  | 3      |
-| **Progress** | **62.5%** |
+| Not Started  | 2      |
+| **Progress** | **75%** |
 
 ---
 
@@ -44,7 +44,7 @@ call sites** — they are exercised only from tests. Making them real is SUB-001
 | SUB-002 | Round-Trip Fidelity | 1-2 wks | 🟢 Complete |
 | SUB-003 | Migration Wizard & Real-Project Tests (STRUCT-007/008) | 3-4 wks | 🟢 Complete (engine + STRUCT-008; wizard UI deferred) |
 | SUB-004 | Node Catalog Generator | 1-2 wks | 🟢 Complete |
-| SUB-005 | Catalog Enrichment | 3-4 wks | 🔴 Not Started |
+| SUB-005 | Catalog Enrichment | 3-4 wks | 🟢 Complete (comparative LLM acceptance run pending — see docs/node-catalog/ACCEPTANCE.md) |
 | SUB-006 | Semantic Validator | 2-3 wks | 🟢 Complete |
 | SUB-007 | Graph-Native Git | 4-6 wks | 🔴 Not Started |
 | SUB-008 | Noodl MCP Server | 3-4 wks | 🔴 Not Started |
@@ -61,6 +61,40 @@ call sites** — they are exercised only from tests. Making them real is SUB-001
 
 ## Change Log
 
+- **2026-07-23** — **SUB-005 complete** (one open item: the comparative LLM
+  acceptance run, protocol ready in `docs/node-catalog/ACCEPTANCE.md`, blocked
+  by an API spend limit on the day). The structural catalog is now a semantic
+  one. **Authored corpus** under `docs/node-catalog/`: `enrichment/` — one JSON
+  per node type, **135/135 covered** (summary, description, whenToUse, port
+  semantics, runtimeBehavior required exactly when the node has dynamic ports;
+  deprecated/hidden types get minimal do-not-use entries naming the successor);
+  `examples/` — **40 real v2 graph fragments**, every one validated **error- and
+  warning-free in strict mode** by SUB-006's validator via the new
+  `npm run catalog:examples` gate (`scripts/validate-examples.ts`, `--dir` flag
+  for scoring arbitrary candidate graphs); `compatibility.json` — the connection
+  rules as the editor actually enforces them (`canCastPortTypes`: same-type ∨
+  `*` ∨ runtime-exported typecast table) with the *meaning* of all 23 casts,
+  signal edge semantics read from `Node.prototype.sendSignalOnOutput`
+  (true-then-false pulse, per-update suppression), and 25 permitted/rejected
+  pairs asserted against the rule implementation on every merge; `patterns.md` —
+  mined from the 17-project corpus with occurrence counts (nested-Group layout
+  713×, String Format→Text 43×, conditional UI via `mounted` not `visible` 20×+,
+  Expression-chain anti-pattern 13×). **Merge tooling**: `scripts/node-catalog/`
+  `merge.js` combines generated + authored into
+  `packages/noodl-types/src/node-catalog-enriched.json` (+`.d.ts`),
+  deterministically; `npm run catalog:merge:check` (wired into the CI
+  `node-catalog` job) fails on staleness AND on any undocumented node
+  (`--require-coverage`), so new nodes cannot ship without semantics. Regenerating
+  the structural catalog never touches the authored corpus — separate files,
+  merged at build time. Entry-level validation is strict: unknown typeName,
+  bad port note on a static node, runtimeBehavior on the wrong side of the
+  dynamic split, unknown example/relatedNodes refs are all merge errors.
+  Authoring notes: the 10-node pilot (Condition, Group, Text, Button control,
+  Query Records, Send Event, Navigate, Function, Expression, Repeater) fixed the
+  voice before scaling; source-reading surfaced real corrections (text input's
+  string output is `onTextChanged`, not `text`; Variable2's `fetch` connection
+  *disables* auto-propagation; Set Variable force-fires `changed` on identical
+  values; "Screen Resolution" reports the viewport).
 - **2026-07-23** — **SUB-006 complete.** The semantic validator exists: a
   framework-agnostic rule engine in
   **`packages/noodl-editor/src/editor/src/validation/`** that checks a project

@@ -1,0 +1,15 @@
+{
+  "typeName": "net.noodl.controls.radiobutton",
+  "summary": "Radio Button control: one selectable option; place several inside a Radio Button Group, which reports the chosen value.",
+  "description": "A Radio Button is one option in a mutually-exclusive set. Each carries a `value` parameter; the enclosing Radio Button Group enforces single selection among its child radio buttons and outputs the selected `value`. The button itself exposes `checked` (is this one selected) and the usual interaction/styling surface.",
+  "whenToUse": "Small option sets where all choices should be visible at once. The group, not the individual buttons, is what logic listens to; without a Radio Button Group ancestor the buttons cannot coordinate exclusivity.",
+  "ports": {
+    "checked": "Boolean level; whether this particular option is the selected one."
+  },
+  "runtimeBehavior": "Declared-port-groups: label and per-visual-state styling ports appear per configuration, matching the other controls.",
+  "examples": ["ctl-settings-form"],
+  "antiPatterns": [
+    "Wiring logic to each radio button's `checked` — listen to the group's `value` instead."
+  ],
+  "relatedNodes": ["Radio Button Group", "net.noodl.controls.checkbox", "net.noodl.controls.options"]
+}

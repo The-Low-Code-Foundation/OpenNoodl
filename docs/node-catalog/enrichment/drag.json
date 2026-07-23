@@ -1,0 +1,25 @@
+{
+  "typeName": "Drag",
+  "summary": "Makes its child subtree draggable along X and/or Y, reporting position and drag signals, with animated snap-to-position.",
+  "description": "Drag is a visual container: whatever you place inside it can be dragged with the pointer. `axis` restricts movement ('x' by default, 'y' or 'both'), `enabled` turns dragging on/off, and `useParentBounds` (Constrain to parent, default true) keeps the content inside its parent's box. While dragging, `positionX`/`positionY` (Drag X/Y) hold the current offset in pixels and `deltaX`/`deltaY` the per-move change; `onStart` (Drag Started), `onDrag` (Drag Moved) and `onStop` (Drag Ended) are signals bracketing the gesture. The position can also be driven from the graph: setting `inputPositionX`/`inputPositionY` (Start Drag X/Y) moves the content and updates the outputs, and the `snapToPositionX.do`/`snapToPositionY.do` signals animate to `snapToPositionX.value` over `snapToPositionX.duration` milliseconds (default 300).",
+  "whenToUse": "Sliders, swipeable cards, drawers, reorder handles — any direct-manipulation gesture where you need the live drag offset. For scrolling content use a Group with scrolling enabled instead; for purely programmatic motion use an Animation on a node's Pos X/Y rather than a Drag no one touches.",
+  "ports": {
+    "axis": "Enum value: 'x' (default), 'y' or 'both' — which axes the pointer can move the content along.",
+    "useParentBounds": "Boolean value (Constrain to parent, default true); keeps the dragged content within the parent element's bounds.",
+    "inputPositionX": "Number value (Start Drag X); writing it repositions the content programmatically and re-emits `positionX`/`deltaX`.",
+    "scale": "Number value (default 1); set it when the drag area is visually scaled so pointer movement maps 1:1 to position.",
+    "snapToPositionX.do": "Signal; animates the X position to `snapToPositionX.value` over `snapToPositionX.duration` ms. Starting a new drag cancels the animation.",
+    "positionX": "Number value (Drag X): current X offset in pixels; keeps its last value after the gesture ends.",
+    "deltaX": "Number value (Delta X): change in X since the previous drag event — useful for velocity-style logic.",
+    "onStop": "Signal (Drag Ended); fires when the pointer releases — the usual place to decide whether to snap back or snap to a slot."
+  },
+  "examples": ["vis-drag-snap-back"],
+  "patterns": [
+    "Snap back: `onStop` → `snapToPositionX.do` with `snapToPositionX.value` 0 — released content animates home.",
+    "Swipe threshold: `positionX` → Expression/Condition deciding on `onStop` whether to snap to the open or closed position."
+  ],
+  "antiPatterns": [
+    "Rebuilding a scroll view out of Drag — a Group with scrolling enabled handles momentum, wheel and touch for free."
+  ],
+  "relatedNodes": ["Group", "Animation", "Condition", "States"]
+}

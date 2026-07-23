@@ -1,0 +1,17 @@
+{
+  "typeName": "CollectionRemove",
+  "summary": "Remove Object From Array: removes an object, referenced by its id, from a shared array when Do fires.",
+  "description": "When `remove` (Do) fires, resolves `collectionId` (Array Id) to the shared array and `modifyId` (Object Id) to the shared object, removes that object from the array, and fires `modified` (Done). If either id is unset, nothing happens. Only the array membership changes — the object itself continues to exist and can still be reached by its id. Every Array node and Repeater bound to the same Array Id updates immediately.",
+  "whenToUse": "Per-item delete actions in local lists. Inside a Repeater's item component, feed `modifyId` from Repeater Item's `itemId` — that is the idiomatic 'remove this row'. For clearing everything use Clear Array; for cloud records use Delete Record.",
+  "ports": {
+    "remove": "Signal input (Do); performs the removal after other inputs have settled.",
+    "collectionId": "Value input: id of the shared array to remove from.",
+    "modifyId": "Connection-only value input: the id of the object to remove — inside a repeater item, wire Repeater Item `itemId` here.",
+    "modified": "Signal (Done); fires after the object has been removed."
+  },
+  "examples": ["data-shared-array-add-remove"],
+  "patterns": [
+    "Repeater Item `itemId` → `modifyId`, delete button `onClick` → `remove`, with the list's Array Id on `collectionId`: a per-row delete button."
+  ],
+  "relatedNodes": ["Collection2", "CollectionInsert", "CollectionClear", "For Each Actions", "For Each"]
+}

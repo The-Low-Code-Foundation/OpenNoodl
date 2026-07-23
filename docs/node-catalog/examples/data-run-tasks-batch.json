@@ -1,0 +1,65 @@
+{
+  "id": "data-run-tasks-batch",
+  "title": "Run Tasks: batch-process an array with a worker component",
+  "description": "Run Tasks executes its `taskTemplate` component once per element of `items`, up to `maxRunningTasks` at a time, and fires `done` when the whole batch has finished. The worker is a plain component: it receives the item's properties through Component Inputs and reports completion through Component Outputs signals (success/failure), which Run Tasks consumes to schedule the next task. Here a fresh array is assembled with New Array and processed on click.",
+  "demonstrates": ["RunTasks", "CollectionNew", "Collection2"],
+  "components": [
+    {
+      "name": "/Import Screen",
+      "nodes": [
+        {
+          "id": "root",
+          "type": "Group",
+          "label": "Screen",
+          "parameters": { "flexDirection": "column" },
+          "children": ["run_btn", "done_text"]
+        },
+        { "id": "run_btn", "type": "net.noodl.controls.button", "label": "Run import", "parent": "root", "parameters": { "label": "Import all" } },
+        { "id": "done_text", "type": "Text", "label": "Done message", "parent": "root", "parameters": { "text": "Import complete." } },
+        {
+          "id": "make_batch",
+          "type": "CollectionNew",
+          "label": "New batch array"
+        },
+        {
+          "id": "batch_array",
+          "type": "Collection2",
+          "label": "Batch items",
+          "parameters": { "collectionId": "import-batch" }
+        },
+        {
+          "id": "import_tasks",
+          "type": "RunTasks",
+          "label": "Process batch",
+          "parameters": { "taskTemplate": "/Import Task", "maxRunningTasks": 2, "stopOnFailure": false }
+        },
+        { "id": "done_gate", "type": "Condition", "label": "Show done" }
+      ],
+      "connections": [
+        { "fromId": "run_btn", "fromProperty": "onClick", "toId": "make_batch", "toProperty": "new" },
+        { "fromId": "make_batch", "fromProperty": "id", "toId": "batch_array", "toProperty": "collectionId" },
+        { "fromId": "batch_array", "fromProperty": "items", "toId": "import_tasks", "toProperty": "items" },
+        { "fromId": "make_batch", "fromProperty": "created", "toId": "import_tasks", "toProperty": "run" },
+        { "fromId": "import_tasks", "fromProperty": "done", "toId": "done_gate", "toProperty": "eval" },
+        { "fromId": "done_gate", "fromProperty": "result", "toId": "done_text", "toProperty": "visible" }
+      ]
+    },
+    {
+      "name": "/Import Task",
+      "nodes": [
+        { "id": "task_inputs", "type": "Component Inputs", "label": "Item in" },
+        {
+          "id": "process_item",
+          "type": "JavaScriptFunction",
+          "label": "Process one item",
+          "parameters": { "functionScript": "const row = Inputs.title;\nOutputs.success();" }
+        },
+        { "id": "task_outputs", "type": "Component Outputs", "label": "Task result" }
+      ],
+      "connections": [
+        { "fromId": "task_inputs", "fromProperty": "title", "toId": "process_item", "toProperty": "title" },
+        { "fromId": "process_item", "fromProperty": "success", "toId": "task_outputs", "toProperty": "success" }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+{
+  "typeName": "Cloud Function",
+  "summary": "Deprecated v1 caller of named server functions. Superseded by CloudFunction2 (also displayed as 'Cloud Function').",
+  "description": "The original cloud-function caller: it POSTs the values of its `params` list to a server function addressed by the `functionName` string input and exposes the raw reply on `result`. It is deprecated and hidden from the node picker; CloudFunction2 supersedes it, targeting a cloud function component built with `noodl.cloud.request`/`noodl.cloud.response` and mirroring that component's declared parameters and results as typed ports instead of a free-form name and result blob.",
+  "whenToUse": "Do not use in new graphs — use CloudFunction2 instead.",
+  "runtimeBehavior": "Each name in the `params` stringlist becomes a `pm-<name>` input; the reply is exposed on the static `result` output. Ports are runtime-discovered per instance; only existing projects should still contain this node."
+}

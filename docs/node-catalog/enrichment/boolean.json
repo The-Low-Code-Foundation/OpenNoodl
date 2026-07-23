@@ -1,0 +1,22 @@
+{
+  "typeName": "Boolean",
+  "summary": "Per-instance true/false holder: stores one boolean locally, optionally latching new values until a Set signal fires.",
+  "description": "Boolean holds a single true/false value that belongs to this node instance alone — it is not named or shared (for an app-wide named value use Variable2). The `value` input sets it and `savedValue` (Value) reads it back. While the `saveValue` (Set) signal input is unconnected, values written to `value` apply immediately; once `saveValue` is connected the node latches: incoming values are held pending and only applied when Set fires. Incoming values are cast with JavaScript Boolean(). `changed` fires only when the stored value actually changes; `stored` fires after every Set trigger, changed or not.",
+  "whenToUse": "Use it for a local flag inside one component — 'has clicked', 'panel expanded' — especially the latch shape (pin `value` to true, fire Set from a signal) that turns a momentary signal into a level. For state shared across components use Variable2 + Set Variable; for multi-state logic use States.",
+  "ports": {
+    "value": "Boolean value input. Applies immediately when `saveValue` is unconnected; otherwise held until Set fires.",
+    "saveValue": "Signal; applies the most recently received `value`, then fires `stored`. Connecting it switches the node from pass-through to latch mode.",
+    "savedValue": "Boolean level with the currently stored value; wire to inputs like `visible` or `enabled`.",
+    "changed": "Signal; fires only when the stored value actually changes, not on every Set.",
+    "stored": "Signal; fires after every Set trigger, even when the value did not change."
+  },
+  "examples": ["var-click-counter"],
+  "patterns": [
+    "Latch a signal into a level: set `value` to true in parameters, wire the signal to `saveValue`, and read `savedValue` — a sticky 'this has happened' flag.",
+    "`savedValue` → Condition `condition` to branch signal flow on the stored flag."
+  ],
+  "antiPatterns": [
+    "Using two Boolean nodes in different components to 'share' a flag — each instance has its own value and they never sync. Use Variable2 for shared state."
+  ],
+  "relatedNodes": ["Number", "String", "Color", "Variable2", "Condition", "Switch", "States"]
+}

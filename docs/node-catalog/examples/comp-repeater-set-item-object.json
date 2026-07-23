@@ -1,0 +1,66 @@
+{
+  "id": "comp-repeater-set-item-object",
+  "title": "Repeater item writes back to its own record object",
+  "description": "Inside a Repeater item component, Repeater Item (For Each Actions) exposes `itemId` — the id of this row's object. Wiring it into Set Object Properties (SetModelProperties) `modelId` makes the write target exactly this row: toggling the checkbox stores `done` on the row's object, and every other node bound to that object updates. The row never needs to know which list it belongs to.",
+  "demonstrates": ["For Each Actions", "SetModelProperties", "Model2"],
+  "components": [
+    {
+      "name": "/Task List Page",
+      "nodes": [
+        {
+          "id": "page_root",
+          "type": "Group",
+          "label": "Page",
+          "parameters": { "flexDirection": "column" },
+          "children": ["rows_repeater"]
+        },
+        { "id": "rows_repeater", "type": "For Each", "label": "Task rows", "parent": "page_root", "parameters": { "template": "/Task Row" } },
+        {
+          "id": "tasks",
+          "type": "Static Data",
+          "label": "Tasks",
+          "parameters": { "type": "json", "json": "[{\"title\":\"Ship catalog\",\"done\":false},{\"title\":\"Write docs\",\"done\":false}]" }
+        }
+      ],
+      "connections": [
+        { "fromId": "tasks", "fromProperty": "items", "toId": "rows_repeater", "toProperty": "items" }
+      ]
+    },
+    {
+      "name": "/Task Row",
+      "nodes": [
+        {
+          "id": "row",
+          "type": "Group",
+          "label": "Row",
+          "parameters": { "flexDirection": "row", "alignItems": "center" },
+          "children": ["done_checkbox", "title_text"]
+        },
+        { "id": "done_checkbox", "type": "net.noodl.controls.checkbox", "label": "Done", "parent": "row" },
+        { "id": "title_text", "type": "Text", "label": "Title", "parent": "row" },
+        { "id": "row_inputs", "type": "Component Inputs", "label": "Row data" },
+        { "id": "this_item", "type": "For Each Actions", "label": "This row's item" },
+        {
+          "id": "row_object",
+          "type": "Model2",
+          "label": "Row object",
+          "parameters": { "properties": "done" }
+        },
+        {
+          "id": "save_done",
+          "type": "SetModelProperties",
+          "label": "Store done flag",
+          "parameters": { "properties": "done" }
+        }
+      ],
+      "connections": [
+        { "fromId": "row_inputs", "fromProperty": "title", "toId": "title_text", "toProperty": "text" },
+        { "fromId": "this_item", "fromProperty": "itemId", "toId": "row_object", "toProperty": "modelId" },
+        { "fromId": "this_item", "fromProperty": "itemId", "toId": "save_done", "toProperty": "modelId" },
+        { "fromId": "row_object", "fromProperty": "done", "toId": "done_checkbox", "toProperty": "checked" },
+        { "fromId": "done_checkbox", "fromProperty": "checked", "toId": "save_done", "toProperty": "done" },
+        { "fromId": "done_checkbox", "fromProperty": "onChange", "toId": "save_done", "toProperty": "store" }
+      ]
+    }
+  ]
+}

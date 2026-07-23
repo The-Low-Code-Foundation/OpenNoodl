@@ -1,0 +1,13 @@
+{
+  "typeName": "CollectionClear",
+  "summary": "Clear Array: empties a shared array (removes all items) when Do fires.",
+  "description": "When `clear` (Do) fires, resolves `collectionId` (Array Id) to the shared array, replaces its contents with an empty list, and fires `modified` (Done). The Array Id must be set before the signal arrives. The objects that were in the array are not destroyed — only the array is emptied — and every node bound to the same Array Id sees the empty array immediately.",
+  "whenToUse": "Reset-style actions on local shared arrays ('clear the list', 'empty the cart'). To remove a single item use Remove Object From Array; this node is all-or-nothing.",
+  "ports": {
+    "clear": "Signal input (Do); empties the array. Requires `collectionId` to be set.",
+    "collectionId": "Value input: id of the shared array to empty.",
+    "modified": "Signal (Done); fires after the array has been emptied."
+  },
+  "examples": ["data-shared-array-add-remove"],
+  "relatedNodes": ["Collection2", "CollectionInsert", "CollectionRemove", "CollectionNew"]
+}

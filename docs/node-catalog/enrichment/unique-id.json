@@ -1,0 +1,15 @@
+{
+  "typeName": "Unique Id",
+  "summary": "Provides a random 10-character alphanumeric id, with a signal to generate a fresh one on demand.",
+  "description": "Unique Id holds a randomly generated id string — 10 characters of A–Z, a–z, 0–9, the same generator the runtime uses for model ids — on its `guid` (Id) string value output. One id is generated when the node initializes, so `guid` is usable immediately; triggering the `new` (New) signal input replaces it with a fresh id and pushes the change downstream. The ids are random, not sequential, and are not standard UUIDs.",
+  "whenToUse": "Use it when client-side logic needs a throwaway identifier: keying a locally created list item, tagging a request or draft before it is persisted. Cloud records get real ids from the database on creation — do not use this to fabricate record ids.",
+  "ports": {
+    "new": "Signal; generates a fresh id and updates `guid`.",
+    "guid": "String value with the current id; already populated at startup, changes only when `new` is triggered."
+  },
+  "examples": ["logic-autosave-after-typing"],
+  "patterns": [
+    "The signal that creates a local item also triggers `new`, and `guid` is stored with the item: every item gets its own key."
+  ],
+  "relatedNodes": ["Substring", "String Format", "JavaScriptFunction"]
+}

@@ -1,0 +1,23 @@
+{
+  "typeName": "noodl.cloud.request",
+  "summary": "Entry point of a cloud function component: receives the call's parameters and fires Received to start the server-side flow.",
+  "description": "Request is the entry node of a cloud function — it only exists in the cloud runtime, and a component containing one becomes callable from the browser through a Cloud Function (CloudFunction2) node. Declare the function's parameters as a name list in `params`; each name becomes an output carrying the value the caller sent, and a matching `in-<name>` input appears on the browser-side caller. When a call arrives the node checks authentication (rejecting unauthenticated calls unless `allowNoAuth` is true), publishes each parameter, then fires `receive` (Received, signal) — wire that signal into your logic and end the flow at a Response node. The caller's identity, parameters and headers are also placed on a 'Request' model readable elsewhere in the function.",
+  "whenToUse": "Place exactly one at the start of every cloud function component. It is meaningless in browser components — there, use Component Inputs for inputs and CloudFunction2 to call the function.",
+  "ports": {
+    "receive": "Signal; fires once per incoming call, after authentication has been checked and all parameter outputs hold the call's values. Start the function's logic from here.",
+    "allowNoAuth": "Boolean value (default false). When false, calls without a valid user session are rejected before the graph runs.",
+    "auth": "Boolean value; true when the call carried a valid user session.",
+    "userId": "Value holding the authenticated caller's user id (undefined for unauthenticated calls); use it to scope queries to the calling user.",
+    "params": "Edit-only name list declaring the function's parameters; drives both this node's outputs and the caller's inputs."
+  },
+  "runtimeBehavior": "Each name in the `params` stringlist becomes a runtime-registered output (stored as `pm-<name>`, type '*') holding that parameter's value from the current call. The same list is what CloudFunctionAdapter mirrors onto browser-side CloudFunction2 callers as `in-<name>` inputs, so editing `params` changes both sides.",
+  "examples": ["fn-cloud-function-roundtrip", "fn-aggregate-stats-function"],
+  "patterns": [
+    "`receive` → your logic → Response `send`: every cloud function is this shape; the reply is not sent until a Response node sends it.",
+    "`userId` → a query filter parameter: trust the session-derived id, never an id passed in `params`, for per-user data."
+  ],
+  "antiPatterns": [
+    "Leaving `allowNoAuth` false and then calling the function from a logged-out browser session — the call is rejected before `receive` ever fires."
+  ],
+  "relatedNodes": ["noodl.cloud.response", "CloudFunction2", "noodl.cloud.aggregate", "net.noodl.user.User"]
+}

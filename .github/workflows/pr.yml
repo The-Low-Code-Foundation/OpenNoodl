@@ -79,6 +79,12 @@ jobs:
       # the committed artifact (packages/noodl-types/src/node-catalog.*)
       # doesn't match — i.e. node definitions changed without regenerating.
       - run: npm run catalog:check
+      # Enrichment (SUB-005): every example fragment must validate clean
+      # against the semantic validator, and the committed enriched catalog
+      # (node-catalog-enriched.*) must match the authored inputs, with every
+      # node documented — new nodes cannot ship without an enrichment entry.
+      - run: npm run catalog:examples
+      - run: npm run catalog:merge:check
 
   artefacts:
     name: Check build artefacts

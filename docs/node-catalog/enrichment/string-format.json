@@ -1,0 +1,19 @@
+{
+  "typeName": "String Format",
+  "summary": "Builds a string from a template: each {tag} in the Format text becomes an input port whose value is spliced in.",
+  "description": "String Format takes a template on its `format` (Format) parameter and outputs the filled-in text on `formatted` (Formatted), a string value. Every {tag} in the template (tag characters: letters, digits, underscore) becomes a string input port named exactly like the tag, and each occurrence is replaced by that input's current value — or by nothing while the input is still undefined. The same tag may appear multiple times; every occurrence is filled. The output recomputes after any input or the template changes, once per update cycle. The node displays its format text as its label in the editor.",
+  "whenToUse": "The idiomatic way to put values inside text: 'Saved at {time}', '{count} items', building URLs or messages from parts. For two fixed alternatives use Boolean To String; for value-keyed lookup use String Mapper; for transformations of the values themselves (padding, casing, math) do that upstream in an Expression or Function.",
+  "runtimeBehavior": "Input ports are created from the `format` parameter: each unique {tag} yields one string input named exactly <tag> (no braces). The editor updates the port list live as the format is edited. An authoring tool must first set `format`, then may connect to or set parameters for each tag name it wrote; no other inputs exist.",
+  "ports": {
+    "format": "String parameter with {tag} placeholders; changing it re-registers the input ports and reformats.",
+    "formatted": "String value output: the template with every {tag} replaced by its input's value (empty where an input is still undefined)."
+  },
+  "examples": ["logic-quantity-stepper", "logic-autosave-after-typing"],
+  "patterns": [
+    "Counter `currentCount` → the {n} input of format \"{n} pcs\" → a Text's `text`: numbers cast to string on connection, so no converter node is needed."
+  ],
+  "antiPatterns": [
+    "Tags with spaces or dashes ({item-count}) — tag names are limited to [A-Za-z0-9_]; anything else stays literal text."
+  ],
+  "relatedNodes": ["Boolean To String", "String Mapper", "Substring", "Date To String", "Expression"]
+}

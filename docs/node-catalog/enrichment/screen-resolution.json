@@ -1,0 +1,16 @@
+{
+  "typeName": "Screen Resolution",
+  "summary": "Outputs the browser viewport's width, height and aspect ratio, updating live on every window resize.",
+  "description": "Screen Resolution reports the size of the browser viewport — despite the name it reads window.innerWidth/innerHeight, not the physical screen. `width` and `height` are levels in CSS pixels, `aspectRatio` is width divided by height, and all three update automatically whenever the window resizes (including device rotation). The node has no inputs.",
+  "whenToUse": "Use it to drive responsive logic in the graph: feed `width` into an Expression or Condition to produce breakpoint booleans ('narrow layout?') that control visibility or layout inputs. For purely visual responsiveness, prefer the built-in sizing/variants of visual nodes; reach for this node when logic must know the viewport size.",
+  "ports": {
+    "width": "Number level; current viewport width in CSS pixels (window.innerWidth), updated on resize.",
+    "height": "Number level; current viewport height in CSS pixels (window.innerHeight), updated on resize.",
+    "aspectRatio": "Number level; width / height — greater than 1 in landscape, less than 1 in portrait."
+  },
+  "examples": ["var-avatar-picker-responsive"],
+  "patterns": [
+    "`width` → Expression `width < 600` → a Group's or Text's `visible`: show compact-layout elements only on narrow viewports."
+  ],
+  "relatedNodes": ["Expression", "Condition", "States", "Group"]
+}

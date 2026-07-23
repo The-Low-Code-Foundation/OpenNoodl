@@ -1,0 +1,18 @@
+{
+  "typeName": "AddDbModelRelation",
+  "summary": "Add Record Relation: links a target record onto a named relation field of an owner record in the cloud database.",
+  "description": "Add Record Relation writes a relation — a typed link between database records — rather than a property value: when `store` fires, the record identified by `targetId` is added to the configured relation field of the record identified by `modelId`. `relationAdded` confirms; `failure`/`error` report rejection (missing ids, access control). The reverse operation is Remove Record Relation with identical wiring.",
+  "whenToUse": "Many-to-many and one-to-many links the schema models as relations: project members, favourites, tags. For plain foreign-key style references stored as a string property, Set Record Properties on an id property is simpler.",
+  "ports": {
+    "modelId": "Id of the owner record (the one whose relation field gains a link).",
+    "targetId": "Id of the record being linked.",
+    "store": "Signal; performs the write against the cloud database.",
+    "relationAdded": "Signal; the server confirmed the link."
+  },
+  "runtimeBehavior": "The class and relation-name choices come from the project's database schema (declared-port-groups + runtime-discovered): the editor generates the pickers and any per-class ports from the schema, so the port set depends on the configured backend, not the node type.",
+  "examples": ["cloud-record-relations"],
+  "patterns": [
+    "Ids arrive over wires (component inputs, query outputs); the relation nodes only act on them."
+  ],
+  "relatedNodes": ["RemoveDbModelRelation", "SetDbModelProperties", "DbModel2", "DbCollection2"]
+}

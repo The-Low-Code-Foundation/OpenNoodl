@@ -1,0 +1,24 @@
+{
+  "typeName": "For Each",
+  "summary": "Repeater: instantiates a template component once per item of an input array, inserting the instances as children at its position.",
+  "description": "The Repeater consumes an array on `items` and creates one instance of its template component per item, placed into the visual tree where the Repeater sits (it must therefore be a child of a visual container). With `templateType` explicit (the default) the template is one component chosen on the `template` input; with `templateType` dynamic, a `templateScript` chooses a component per item at runtime. Item data flows into each instance through the instance's Component Inputs whose names match the item object's property names. The repeater diffs changes to the array, adding/removing instances rather than rebuilding everything.",
+  "whenToUse": "Any repeated UI: lists, grids, menus, table rows. Its idiomatic partner is Query Records for cloud data or a Static Data/Variable2 array for local data. Not for repeating pure logic without visuals — see For Each Actions.",
+  "ports": {
+    "items": "The array to repeat over. Each element should be an object; its properties feed the item component's matching Component Inputs.",
+    "template": "The item component (visible when `templateType` is explicit). Component names start with '/'; components in a sheet are '/#Sheet Name/Component Name'.",
+    "templateScript": "JavaScript choosing a component per item (visible when `templateType` is dynamic): set `component` using the `item` variable.",
+    "refresh": "Signal; tears down and rebuilds all instances. Rarely needed — the repeater tracks array changes itself.",
+    "itemActionItemId": "Outputs the id of the item whose instance triggered a For Each Actions flow."
+  },
+  "runtimeBehavior": "Two dynamic mechanisms: `template`/`templateScript` swap in and out based on `templateType` (declared-port-groups), and outputs named after signals sent by item components are registered on demand (runtime-discovered) — an item component's Component Outputs signal appears as an output port here so a list can bubble events up.",
+  "examples": ["repeater-query-records"],
+  "patterns": [
+    "Query Records `items` → Repeater `items`: the canonical data-driven list.",
+    "Item component declares Component Inputs matching record property names — no explicit per-field wiring at the list level."
+  ],
+  "antiPatterns": [
+    "Triggering `refresh` whenever data changes: the repeater already diffs `items`; refresh forces a full rebuild and loses instance state.",
+    "Binding huge unpaged query results into a repeater; page or limit the query instead."
+  ],
+  "relatedNodes": ["DbCollection2", "Component Inputs", "Component Outputs", "For Each Actions", "Static Data"]
+}

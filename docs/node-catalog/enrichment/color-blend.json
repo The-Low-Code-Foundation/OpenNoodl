@@ -1,0 +1,16 @@
+{
+  "typeName": "Color Blend",
+  "summary": "Interpolates between configured colors as blendValue moves 0→1, outputting the mixed color.",
+  "description": "Color Blend holds a list of colors (`color-0`, `color-1`, … per its `colors` count) and outputs on `result` the interpolation selected by `blendValue`: 0 is the first color, 1 the last, values between blend smoothly across the sequence. Feed `blendValue` from an animated source and the color animates.",
+  "whenToUse": "Any color that should respond continuously to a value: hover highlights, scroll-linked tints, state colors with smooth transitions. For discrete color switches with no blending, States values are simpler.",
+  "ports": {
+    "blendValue": "Number 0–1 selecting the position along the color sequence.",
+    "result": "The interpolated color; wire to any color input (backgroundColor, fillColor, text color)."
+  },
+  "runtimeBehavior": "Numbered inputs: the `colors` count parameter generates `color-N` inputs (numbered-inputs mechanism); only `blendValue` is static.",
+  "examples": ["anim-hover-highlight"],
+  "patterns": [
+    "Animate To Value `currentValue` → `blendValue` → a background color: the corpus's standard smooth-hover wiring (Color Blend → color inputs appears 21× in real projects)."
+  ],
+  "relatedNodes": ["net.noodl.animatetovalue", "States", "Switch"]
+}

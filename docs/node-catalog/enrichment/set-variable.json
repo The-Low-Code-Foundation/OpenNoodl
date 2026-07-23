@@ -1,0 +1,22 @@
+{
+  "typeName": "Set Variable",
+  "summary": "Writes one named app-wide variable when its Do signal fires, converting the value per the 'Set as' type choice.",
+  "description": "Set Variable stores a value into the named app-wide variable — the same store Variable2 reads — only when the `do` (Do) signal fires; the incoming value is held but nothing is written before that. `setWith` (Set as, parameters-only) selects the value type: it types the node's dynamic `value` input and controls conversion on store — 'boolean' coerces with !!, 'emptyString' writes '' and removes the value input entirely, and 'object'/'array' accept a shared Object/Array id string and resolve it to the actual object or collection before storing. Writes always use force-change semantics, so Variable2 nodes bound to that name fire `changed` even when the new value equals the old one. `done` fires after the store completes.",
+  "whenToUse": "Use it when writing shared state should happen at an explicit moment — on click, on submit, after a fetch — or when you need the type conversions ('Set as'). For continuous write-on-change semantics, wire into a Variable2 node's `value` input instead; to clear a variable, choose Set as 'Empty string'.",
+  "ports": {
+    "do": "Signal; performs the store, then fires `done`. Nothing is written until this fires.",
+    "name": "String value input naming the variable to write; shares the same namespace as Variable2.",
+    "setWith": "Editor-only enum ('Set as'); selects the dynamic value input's type and the conversion applied when storing. Cannot be connected.",
+    "done": "Signal; fires after the value has been stored."
+  },
+  "runtimeBehavior": "The value input is runtime-determined: the editor pushes a single dynamic input port named `value` whose type follows the `setWith` parameter ('*' when unset), and no value port exists at all when setWith is 'emptyString'. The runtime registers `value` on demand when a connection or parameter references it. An authoring tool may wire or set `value` (except in emptyString mode) and must set `setWith` via parameters, never a connection.",
+  "examples": ["var-remember-name-across-screens"],
+  "patterns": [
+    "Button `onClick` → `do` with the form's data on `value`: commit shared state at the moment of a user action.",
+    "`done` → a navigation or feedback signal: sequence 'store, then move on' explicitly."
+  ],
+  "antiPatterns": [
+    "Expecting the write to happen when `value` changes — Set Variable only writes on `do`. Use Variable2's value input for write-on-change."
+  ],
+  "relatedNodes": ["Variable2", "Model2", "String", "Boolean", "Number"]
+}

@@ -1,0 +1,22 @@
+{
+  "typeName": "NewModel",
+  "summary": "Create New Object: creates a new client-side object with the declared properties set and outputs the new object's id.",
+  "description": "Create New Object makes a new object in the app's client-side object store when the `new` (Do) signal fires. Objects are in-memory key/value records addressable by id from anywhere in the app — Object (Model2) nodes, Set Object Properties, repeaters and Component Inputs all bind to the same store. Which properties the new object gets is declared in the `properties` parameter; each declared name becomes a value input whose current value is written onto the object at creation time. After creation the object's id is available on the `id` output and `created` (Done) fires — creation is deferred until all inputs updated in the same cycle have settled, so payload values wired alongside the trigger are included.",
+  "whenToUse": "Use it to mint new client-side state records: items added to a local list, draft objects before saving, per-session working data. Objects are in-memory only — for persistent cloud data use the record nodes (e.g. Create New Record / NewDbModelProperties) instead; for a single named value a Variable (Variable2) is simpler.",
+  "ports": {
+    "new": "Signal input; schedules creation after pending input updates, then creates the object, writes the declared properties and fires `created`.",
+    "created": "Signal; fires once per creation, after the object exists and its properties are set.",
+    "id": "String value; the id of the most recently created object. Feed it to Object (Model2) or Set Object Properties `modelId` to keep working with it.",
+    "properties": "Edit-only stringlist declaring the property names to set; each name becomes a `prop-<name>` input."
+  },
+  "runtimeBehavior": "Property inputs are runtime-discovered from the `properties` parameter: each declared name p produces a value input `prop-<p>` (group Property Values) and an edit-only enum `type-<p>` (String/Boolean/Number/Date/Array/Object/Any, default Any). At creation each declared property receives its input value, or a type-based default (false, empty string, 0, current date) when no value was provided. Array-typed values given as strings are evaluated as JavaScript literals; object-typed values given as strings are resolved as object ids. An authoring tool must set `properties` first — the `prop-`/`type-` ports do not exist without it.",
+  "examples": ["comp-create-object-on-event"],
+  "patterns": [
+    "Receive Event payload outputs → `prop-` inputs, `eventReceived` → `new`: create an object from an event's payload.",
+    "`id` → Set Object Properties `modelId`: continue mutating the object you just created."
+  ],
+  "antiPatterns": [
+    "Expecting created objects to persist — the object store is client-side and in-memory; reloading the app clears it. Use cloud record nodes for persistence."
+  ],
+  "relatedNodes": ["Model2", "SetModelProperties", "NewDbModelProperties", "Variable2", "CollectionNew"]
+}

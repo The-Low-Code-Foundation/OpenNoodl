@@ -1,0 +1,24 @@
+{
+  "typeName": "Collection2",
+  "summary": "Array: binds to a shared client-side array by id — read its items and count, seed its contents, and react to changes made anywhere.",
+  "description": "Client-side arrays live in a global registry keyed by id: every node that names the same id — this node, Insert/Remove/Clear Array nodes, other components — reads and mutates the same underlying array. Collection2 binds to the array named on `collectionId` (Id) and exposes it on `items` (the live array), plus `count`, `firstItemId` and `id`. Whenever the array's contents change — from any node or code, anywhere in the app — `changed` fires and `count`/`firstItemId` update. Connecting an array to the `items` input copies that source array's contents into this array, and keeps re-copying while the source changes. If `fetch` (signal) is connected the node defers: a new `collectionId` only takes effect when `fetch` fires (then `fetched` fires), and automatic `changed` events are suppressed.",
+  "whenToUse": "Local list state shared across components without any wiring between them: give every interested node the same Array Id. For server data use DbCollection2 (Query Records); for a single object use Model2 (Object); to mutate the array use Insert/Remove/Clear Array nodes rather than manipulating `items` in code.",
+  "ports": {
+    "collectionId": "Value input: the shared array's id. Every node using the same id operates on the same array.",
+    "items": "As input (value): copies the connected source array's contents into this array, tracking later source changes. As output (value): the shared array itself — feed a Repeater's `items`.",
+    "fetch": "Signal input; when connected, id changes are deferred until this fires, and the automatic `changed` output is suppressed — use for explicit control over when the node (re)binds.",
+    "changed": "Signal; fires after the array's contents change from anywhere in the app (suppressed while `fetch` is connected).",
+    "fetched": "Signal; fires after an explicit `fetch` has re-bound the array.",
+    "firstItemId": "String value: the id of the array's first object, or empty when the array is empty."
+  },
+  "examples": ["data-shared-array-add-remove", "data-run-tasks-batch"],
+  "patterns": [
+    "Same `collectionId` in many components: a list page shows the array while a form elsewhere inserts into it — no connections needed between them.",
+    "`items` → For Each `items`: the canonical local list.",
+    "Feed `collectionId` from Create New Array `id` to bind to a dynamically created array."
+  ],
+  "antiPatterns": [
+    "Using it for cloud data — it is purely client-side, nothing is persisted; use DbCollection2 (Query Records) instead."
+  ],
+  "relatedNodes": ["CollectionNew", "CollectionInsert", "CollectionRemove", "CollectionClear", "Filter Collection", "Map Collection", "For Each", "Model2", "DbCollection2"]
+}

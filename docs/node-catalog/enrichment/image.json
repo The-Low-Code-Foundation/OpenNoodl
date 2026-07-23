@@ -1,0 +1,24 @@
+{
+  "typeName": "Image",
+  "summary": "Displays an image from a project asset or URL, with fit control, srcSet support and load/error signals.",
+  "description": "Image renders an HTML `img` element. `src` takes a project asset path or a full URL (relative paths are resolved against the app's base URL); `srcSet` optionally provides responsive candidate images and `alt` the accessibility text. When `sizeMode` gives the image an explicit size, `objectFit` (Image Fit) chooses how the picture fills that box ('contain' by default, 'cover' for thumbnails). `onLoad` and `onError` are signals that fire when the browser finishes or fails loading the current source. It cannot have children and supports hover visual states for per-state styling.",
+  "whenToUse": "Any bitmap content: photos, thumbnails, logos, user uploads (a cloud file output connects straight to `src`). For vector glyphs from an icon set use net.noodl.visual.icon; for a decorative background prefer a Group's background image/color so children can sit on top; for video use Video.",
+  "ports": {
+    "src": "Image value: a project asset path or URL. This is the only image input that matters in most graphs — bind record data or a cloud file here.",
+    "srcSet": "String value in HTML `srcset` syntax for responsive images; when set it takes precedence in the inspector and lets the browser pick a candidate.",
+    "alt": "String value read by screen readers and shown if the image cannot load; empty by default, set it for meaningful images.",
+    "objectFit": "Enum (Image Fit): how the bitmap fills an explicitly sized box — 'contain' (default), 'cover', 'fill', 'none', 'scale-down'. Only present when the size mode gives the node explicit dimensions.",
+    "onLoad": "Signal; fires when the current `src` has finished loading — useful to fade the image in.",
+    "onError": "Signal; fires when loading fails — swap in a placeholder source here."
+  },
+  "runtimeBehavior": "Declared-port-groups: `objectFit`, `width` and `height` appear based on `sizeMode`; per-side border width/color ports appear once a border style is chosen; box-shadow ports appear when `boxShadowEnabled` is true; `pointerEventsEnabled` appears when `pointerEventsMode` is 'explicit'. Treat the catalog's input list as the superset the editor filters by current parameters.",
+  "examples": ["vis-columns-media-cards"],
+  "patterns": [
+    "Inside a Repeater item component: Component Inputs property → `src` to show per-record images.",
+    "Thumbnail grid: explicit size mode + `objectFit` 'cover' so mixed aspect ratios crop instead of distort."
+  ],
+  "antiPatterns": [
+    "Using Image for icon-font glyphs — net.noodl.visual.icon renders them sharper and tintable via `iconColor`."
+  ],
+  "relatedNodes": ["Group", "net.noodl.visual.icon", "Video", "Circle"]
+}

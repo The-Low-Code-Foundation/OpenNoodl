@@ -1,0 +1,14 @@
+{
+  "typeName": "net.noodl.ParentComponentObject",
+  "summary": "Parent Component Object: reads the enclosing parent component's instance-scoped object from inside a child component.",
+  "description": "Parent Component Object opens the same per-instance store as the parent's Component Object, from within a child. Properties declared on the node become value outputs that update reactively as anything writes the parent's object; `changed` fires per write. This is how reusable child components (controls, toolbars, wizard steps) participate in their host's state without dedicated ports for every value.",
+  "whenToUse": "Child components that are conceptually part of their parent and share its state — wizard controls, list toolbars. For unrelated components use Objects by id or events; for one-off values a Component Input is more explicit.",
+  "ports": {
+    "properties": "Declared property names; each becomes a reactive value output.",
+    "changed": "Signal; the parent's object was written by anyone.",
+    "fetch": "Signal; re-emit current values on demand."
+  },
+  "runtimeBehavior": "Property ports are generated from the per-instance `properties` list (runtime-discovered). Resolution walks up to the nearest ancestor component instance — the node is inert at the app root.",
+  "examples": ["comp-wizard-component-object"],
+  "relatedNodes": ["net.noodl.ComponentObject", "net.noodl.SetParentComponentObjectProperties", "Component Inputs"]
+}

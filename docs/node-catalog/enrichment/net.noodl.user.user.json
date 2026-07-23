@@ -1,0 +1,22 @@
+{
+  "typeName": "net.noodl.user.User",
+  "summary": "Reads the currently signed-in user: id, username, email, custom properties, and an authenticated boolean, kept live across session changes.",
+  "description": "User mirrors the current session's user. Its value outputs — `id`, `username`, `email` (strings) and one output per custom property on the User class — always reflect the signed-in user, and `authenticated` (boolean) is true exactly while a user is signed in. The node tracks the app-wide user service: it updates when Log In or Sign Up succeeds, when a stored session is restored, and when Log Out runs or the session is lost, so a single connection from `authenticated` can gate an entire logged-in UI. `changed` (signal) fires when the user's data changes. Triggering `fetch` (signal) re-reads the user from the server, firing `fetched` on completion or `failure` with `error` (string value) set. It also works inside cloud functions, where it reflects the calling user's session.",
+  "whenToUse": "The one node to read who is logged in and their properties, anywhere in the app. It performs no actions — pair it with Log In, Sign Up, Log Out and Set User Properties for those.",
+  "ports": {
+    "authenticated": "Boolean value; true while a user is signed in. The canonical driver for logged-in/logged-out UI, including sessions restored on page load.",
+    "fetch": "Signal input; re-fetches the current user from the server (e.g. after another device may have changed it). While connected, the node suppresses its automatic per-change outputs and updates on fetch instead.",
+    "fetched": "Signal; fires when a `fetch` round-trip completes successfully.",
+    "changed": "Signal; fires when any property of the current user's data changes locally."
+  },
+  "runtimeBehavior": "Beyond the static ports, the editor generates one value output per custom property in the User class schema (stored as `prop-<name>`, typed from the schema) plus a `changed-<name>` signal per property (built-ins authData/password/username/email are excluded — username and email have static outputs). In the browser it additionally registers the signal outputs `loggedIn` (Logged In), `loggedOut` (Logged Out) and `sessionLost` (Session Lost), which fire on the corresponding session transitions; these do not exist in the cloud runtime.",
+  "examples": ["user-login-flow"],
+  "patterns": [
+    "`authenticated` → a Group's `visible` (and through an inverter to the login form): one boolean drives both faces of the UI.",
+    "`loggedOut`/`sessionLost` signal outputs → navigation to the login page: handle forced sign-outs globally."
+  ],
+  "antiPatterns": [
+    "Storing the user id in your own variable at login time — read `id` from this node instead so restored and switched sessions stay correct."
+  ],
+  "relatedNodes": ["net.noodl.user.LogIn", "net.noodl.user.LogOut", "net.noodl.user.SignUp", "net.noodl.user.SetUserProperties", "Condition"]
+}

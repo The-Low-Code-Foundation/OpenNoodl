@@ -1,0 +1,12 @@
+{
+  "typeName": "Component Outputs",
+  "summary": "Declares the component's own output ports; what the graph wires into this node is exposed on the component's instances.",
+  "description": "Component Outputs is the sending half of a component's port surface: every port added here becomes an output of the component itself, readable (values) or receivable (signals) wherever an instance of the component is placed. A Repeater additionally surfaces item components' output signals as ports on itself, so list events bubble up without extra plumbing.",
+  "whenToUse": "Expose results and events to the parent: a form component's 'Submitted' signal, a card's 'Selected' with the wired value, a wizard's completion. If several unrelated components must react, send an event instead.",
+  "runtimeBehavior": "All ports are author-declared on the node instance (component-ports mechanism); the catalog lists none. The instance's ports define the component's external outputs — read them from the node instance, never the catalog.",
+  "examples": ["data-run-tasks-batch"],
+  "patterns": [
+    "Worker/task components report 'success'/'failure' signals through Component Outputs; Run Tasks consumes exactly that surface."
+  ],
+  "relatedNodes": ["Component Inputs", "Event Sender", "For Each", "RunTasks"]
+}

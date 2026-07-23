@@ -1,0 +1,22 @@
+{
+  "typeName": "noodl.cloud.response",
+  "summary": "Exit point of a cloud function component: collects result values and sends the reply back to the caller.",
+  "description": "Response ends a cloud function — it only exists in the cloud runtime. Declare the function's result values as a name list in `params`; each name becomes an input to feed, and a matching `out-<name>` output appears on the browser-side Cloud Function (CloudFunction2) caller. Triggering `send` (Send, signal) replies to the pending call: with `status` 'success' (the default) it returns HTTP 200 with the collected result values, with `status` 'failure' it returns HTTP 400 carrying `errorMessage`, which the caller surfaces on its `error` output before firing `failure`. A function can contain several Response nodes — for example one success and one failure path — but exactly one should send per call.",
+  "whenToUse": "End every path through a cloud function with one. Without a `send`, the caller's request never completes. In browser components use Component Outputs instead.",
+  "ports": {
+    "send": "Signal input; sends the reply for the current call using the current status, result values and error message. Trigger it exactly once per call.",
+    "status": "Enum value 'success' or 'failure' (default 'success'); selects between a 200 reply with results and a 400 reply with `errorMessage`, and switches which inputs the editor shows.",
+    "errorMessage": "String value returned to the caller when `status` is 'failure'; it appears on the caller's `error` output.",
+    "params": "Edit-only name list declaring the result values; drives both this node's inputs and the caller's outputs."
+  },
+  "runtimeBehavior": "Each name in the `params` stringlist becomes a runtime-registered input (stored as `pm-<name>`, type '*') collected into the success reply. Declared port groups make the ports conditional on `status`: `params` (and its `pm-` inputs) exist while status is 'success' or unset, `errorMessage` exists while status is 'failure'. CloudFunctionAdapter mirrors the union of all Response nodes' `params` onto the browser-side caller as `out-<name>` outputs.",
+  "examples": ["fn-cloud-function-roundtrip", "fn-aggregate-stats-function"],
+  "patterns": [
+    "Two Response nodes — one with status 'success', one with status 'failure' and an `errorMessage` — triggered from the two branches of a Condition: explicit success/failure replies.",
+    "Feed `pm-` inputs as values as your logic computes them; only `send` decides when the reply goes out."
+  ],
+  "antiPatterns": [
+    "Finishing a function path without triggering any Response `send` — the browser-side caller hangs until the request times out."
+  ],
+  "relatedNodes": ["noodl.cloud.request", "CloudFunction2", "Condition"]
+}

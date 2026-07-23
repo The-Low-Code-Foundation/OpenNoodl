@@ -1,0 +1,21 @@
+{
+  "typeName": "Date To String",
+  "summary": "Formats a date into a string using {year}/{month}/{date}/{hours}-style tokens.",
+  "description": "Date To String takes a date on `input` (Date) — a Date object, or a date string which it converts with `new Date()` — and writes a formatted string to `currentValue` (Date String) according to `formatString` (Format). Supported tokens: {date} (day of month, 2-digit), {month} (2-digit), {monthShort} (e.g. \"Jan\", en-US), {year} (4-digit), {yearShort} (2-digit), {hours}, {minutes}, {seconds} (all 2-digit, 24-hour); anything else in the format passes through literally. The default format is \"{year}-{month}-{date}\". Each time formatting runs, `inputChanged` (Date Changed) fires; if the input is not a usable date, `currentValue` becomes an empty string and `onError` (Invalid Date) fires instead of throwing.",
+  "whenToUse": "Use it to display timestamps — record creation dates, 'last saved' times — without writing code. For formats beyond these tokens (locale-aware dates, relative times like '2 h ago'), use a Function node with Intl or a date library. Note there is no {day}-of-week token.",
+  "ports": {
+    "input": "Date value input; also accepts a date string, converted with new Date(). An unparsable value routes to `onError`.",
+    "formatString": "String value with the tokens above; changing it reformats the current date immediately.",
+    "currentValue": "String value with the formatted result; empty string after a formatting error.",
+    "inputChanged": "Signal; fires each time formatting runs (new date, and reformat after a format change).",
+    "onError": "Signal; fires when formatting fails (e.g. invalid date), in which case `currentValue` is emptied."
+  },
+  "examples": ["logic-autosave-after-typing"],
+  "patterns": [
+    "A Function output producing `new Date()` on demand → `input`: timestamp an event, then show `currentValue` in a String Format sentence."
+  ],
+  "antiPatterns": [
+    "Wiring a number (epoch milliseconds) to `input` — number does not cast to date; convert to a Date in a Function or Expression first."
+  ],
+  "relatedNodes": ["String Format", "JavaScriptFunction", "Expression"]
+}

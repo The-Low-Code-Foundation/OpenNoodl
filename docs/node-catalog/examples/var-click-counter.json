@@ -1,0 +1,65 @@
+{
+  "id": "var-click-counter",
+  "title": "Click counter with a latched Number and a Boolean flag",
+  "description": "The canonical per-instance counter: a Number node's savedValue feeds an Expression (count + 1) whose result loops back into the Number's value input. Because saveValue (Set) is connected, the incremented value is only committed when the Button's onClick fires — the latch is what makes the feedback loop safe. The count renders directly in a Text (number casts to string on delivery). A Boolean node shows the latch-a-signal-into-a-level shape: its value is pinned to true in parameters, the same click fires its Set, and its savedValue permanently reveals the hint text — a level, unlike the momentary click signal.",
+  "demonstrates": ["Number", "Boolean", "Expression"],
+  "components": [
+    {
+      "name": "/Click Counter",
+      "nodes": [
+        {
+          "id": "root",
+          "type": "Group",
+          "label": "Layout",
+          "parameters": { "flexDirection": "column", "paddingLeft": 16, "paddingTop": 16 },
+          "children": ["count_text", "add_button", "clicked_hint"]
+        },
+        {
+          "id": "count_text",
+          "type": "Text",
+          "label": "Count display",
+          "parent": "root"
+        },
+        {
+          "id": "add_button",
+          "type": "net.noodl.controls.button",
+          "label": "Add one",
+          "parent": "root",
+          "parameters": { "label": "Add one" }
+        },
+        {
+          "id": "clicked_hint",
+          "type": "Text",
+          "label": "Clicked hint",
+          "parent": "root",
+          "parameters": { "text": "You have clicked at least once." }
+        },
+        {
+          "id": "counter",
+          "type": "Number",
+          "label": "Count"
+        },
+        {
+          "id": "plus_one",
+          "type": "Expression",
+          "label": "Increment",
+          "parameters": { "expression": "count + 1" }
+        },
+        {
+          "id": "has_clicked",
+          "type": "Boolean",
+          "label": "Has clicked?",
+          "parameters": { "value": true }
+        }
+      ],
+      "connections": [
+        { "fromId": "counter", "fromProperty": "savedValue", "toId": "plus_one", "toProperty": "count" },
+        { "fromId": "plus_one", "fromProperty": "result", "toId": "counter", "toProperty": "value" },
+        { "fromId": "add_button", "fromProperty": "onClick", "toId": "counter", "toProperty": "saveValue" },
+        { "fromId": "counter", "fromProperty": "savedValue", "toId": "count_text", "toProperty": "text" },
+        { "fromId": "add_button", "fromProperty": "onClick", "toId": "has_clicked", "toProperty": "saveValue" },
+        { "fromId": "has_clicked", "fromProperty": "savedValue", "toId": "clicked_hint", "toProperty": "visible" }
+      ]
+    }
+  ]
+}

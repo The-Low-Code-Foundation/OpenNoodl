@@ -1,0 +1,7 @@
+{
+  "typeName": "Checkbox",
+  "summary": "Legacy checkbox visual, hidden from the node picker — superseded by net.noodl.controls.checkbox.",
+  "description": "The original Checkbox visual, kept only so old projects load. The Checkbox control (net.noodl.controls.checkbox) supersedes it with visual states and accessibility.",
+  "whenToUse": "Do not use in new graphs — use net.noodl.controls.checkbox instead.",
+  "relatedNodes": ["net.noodl.controls.checkbox"]
+}

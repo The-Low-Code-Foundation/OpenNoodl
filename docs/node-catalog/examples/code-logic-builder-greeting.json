@@ -1,0 +1,33 @@
+{
+  "id": "code-logic-builder-greeting",
+  "title": "Logic Builder: block-built logic with generated ports",
+  "description": "Logic Builder holds a visual block workspace (`workspace`) from which it generates JavaScript (`generatedCode`); the blocks' declared inputs and outputs become the node's ports, exactly like a Function node's script does. Here the generated logic turns a name into a greeting: the text input feeds the block-declared `name` input, `run` executes, and the block-declared `greeting` output lands in a Text. Use it where non-programmers must be able to read and edit the logic; use Function for anything a programmer maintains.",
+  "demonstrates": ["Logic Builder"],
+  "components": [
+    {
+      "name": "/Greeter",
+      "nodes": [
+        {
+          "id": "root",
+          "type": "Group",
+          "label": "Greeter",
+          "parameters": { "flexDirection": "column" },
+          "children": ["name_input", "greet_btn", "greeting_text"]
+        },
+        { "id": "name_input", "type": "net.noodl.controls.textinput", "label": "Name", "parent": "root", "parameters": { "placeholder": "Name" } },
+        { "id": "greet_btn", "type": "net.noodl.controls.button", "label": "Greet", "parent": "root", "parameters": { "label": "Greet" } },
+        { "id": "greeting_text", "type": "Text", "label": "Greeting", "parent": "root" },
+        {
+          "id": "build_greeting",
+          "type": "Logic Builder",
+          "label": "Build greeting"
+        }
+      ],
+      "connections": [
+        { "fromId": "name_input", "fromProperty": "onTextChanged", "toId": "build_greeting", "toProperty": "name" },
+        { "fromId": "greet_btn", "fromProperty": "onClick", "toId": "build_greeting", "toProperty": "run" },
+        { "fromId": "build_greeting", "fromProperty": "greeting", "toId": "greeting_text", "toProperty": "text" }
+      ]
+    }
+  ]
+}

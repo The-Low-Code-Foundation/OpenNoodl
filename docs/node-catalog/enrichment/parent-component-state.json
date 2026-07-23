@@ -1,0 +1,8 @@
+{
+  "typeName": "Parent Component State",
+  "summary": "Deprecated access to the parent component's instance state. Use Parent Component Object (net.noodl.ParentComponentObject).",
+  "description": "The legacy Parent Component State node read and wrote the enclosing parent component's instance-scoped state — the role now filled by Parent Component Object and Set Parent Component Object Properties. Deprecated and hidden from the picker.",
+  "whenToUse": "Do not use in new graphs — use net.noodl.ParentComponentObject (with Set Parent Component Object Properties) instead.",
+  "runtimeBehavior": "Property ports are generated from the per-instance `properties` list (runtime-discovered).",
+  "relatedNodes": ["net.noodl.ParentComponentObject", "net.noodl.SetParentComponentObjectProperties"]
+}

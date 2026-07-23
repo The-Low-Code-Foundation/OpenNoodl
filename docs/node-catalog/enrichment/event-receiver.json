@@ -1,0 +1,20 @@
+{
+  "typeName": "Event Receiver",
+  "summary": "Receive Event: fires when a Send Event broadcasts on the same channel, delivering the event's payload values as outputs.",
+  "description": "Event Receiver listens on `channelName` and fires its `eventReceived` signal each time an Event Sender sends on that channel, from anywhere in the app. Payload values declared by the sender appear as value outputs holding the payload of the most recent event. `enabled` mutes the receiver; `consume` controls whether this receiver swallows the event or lets other receivers on the channel also fire.",
+  "whenToUse": "The reacting end of decoupled notifications: refresh triggers, toasts, logout cleanup. For parent↔child flow use Component Inputs/Outputs; for continuously-shared state use Variables/Objects.",
+  "ports": {
+    "eventReceived": "Signal; fires once per received event, after the payload outputs have been updated.",
+    "channelName": "Exact, case-sensitive channel to listen on.",
+    "consume": "Whether receiving stops propagation to other receivers ('never' broadcasts to all)."
+  },
+  "runtimeBehavior": "Payload value outputs are runtime-registered from the channel's payload declaration on the sending side; only `eventReceived` is static. A tool authoring a receiver should mirror the sender's payload names.",
+  "examples": ["send-event-across-components"],
+  "patterns": [
+    "`eventReceived` → a query's fetch input: app-wide refresh without wiring panels together."
+  ],
+  "antiPatterns": [
+    "Reading payload outputs outside the moment of the event as if they were state — they hold only the last event's values; use a Variable/Object for state."
+  ],
+  "relatedNodes": ["Event Sender", "Component Outputs", "Variable2"]
+}

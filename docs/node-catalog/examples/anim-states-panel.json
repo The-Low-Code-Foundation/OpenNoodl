@@ -1,0 +1,40 @@
+{
+  "id": "anim-states-panel",
+  "title": "States: a collapsible panel with transitioned values",
+  "description": "States is the interaction state machine: the `states` parameter names the states ('collapsed,expanded'), the `values` parameter names the outputs each state assigns ('panelHeight'), and with `useTransitions` on, changing state tweens each value. `toggle` flips between two states; the per-value output drives the layout input (number→dimension cast gives pixels). Signal outputs per state and `stateChanged` are registered from the same configuration — this is the current replacement for the deprecated Animation node.",
+  "demonstrates": ["States"],
+  "components": [
+    {
+      "name": "/Collapsible Panel",
+      "nodes": [
+        {
+          "id": "root",
+          "type": "Group",
+          "label": "Panel",
+          "parameters": { "flexDirection": "column" },
+          "children": ["header_btn", "body_group"]
+        },
+        { "id": "header_btn", "type": "net.noodl.controls.button", "label": "Header", "parent": "root", "parameters": { "label": "Details" } },
+        {
+          "id": "body_group",
+          "type": "Group",
+          "label": "Panel body",
+          "parent": "root",
+          "parameters": { "clip": true },
+          "children": ["body_text"]
+        },
+        { "id": "body_text", "type": "Text", "label": "Body", "parent": "body_group", "parameters": { "text": "Panel content…" } },
+        {
+          "id": "panel_states",
+          "type": "States",
+          "label": "Collapsed/expanded",
+          "parameters": { "states": "collapsed,expanded", "values": "panelHeight", "useTransitions": true }
+        }
+      ],
+      "connections": [
+        { "fromId": "header_btn", "fromProperty": "onClick", "toId": "panel_states", "toProperty": "toggle" },
+        { "fromId": "panel_states", "fromProperty": "panelHeight", "toId": "body_group", "toProperty": "height" }
+      ]
+    }
+  ]
+}

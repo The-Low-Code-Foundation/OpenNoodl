@@ -1,0 +1,14 @@
+{
+  "typeName": "CSS Definition",
+  "summary": "Injects a raw CSS stylesheet into the app; visual nodes opt in via their cssClassName input.",
+  "description": "CSS Definition adds the stylesheet in its `style` parameter to the running app. It has no outputs and needs no connections — its presence is its effect. Selectors take effect wherever visual nodes carry the matching `cssClassName`, unlocking what node parameters cannot express: pseudo-classes, keyframe animations, media queries, child selectors.",
+  "whenToUse": "The escape hatch for real CSS. Prefer node style parameters wherever they suffice — the editor can inspect and vary those, while CSS effects are invisible to it. Keep one or few definition nodes per project rather than scattering fragments.",
+  "ports": {
+    "style": "The CSS source injected into the page."
+  },
+  "examples": ["code-css-definition"],
+  "antiPatterns": [
+    "Recreating per-node styling (colors, margins) in CSS — you lose variants, visual states and editor visibility for no gain."
+  ],
+  "relatedNodes": ["Group", "Text", "net.noodl.controls.button"]
+}

@@ -1,0 +1,6 @@
+{
+  "typeName": "net.noodl.user.SendEmailVerification",
+  "summary": "Deprecated: asks the backend to send a verification email to the given address. Superseded by cloud-function-based flows.",
+  "description": "Send Email Verification sends the `email` (string value) to the backend when `send` (Do, signal) is triggered, causing a verification email to be sent; `success`/`failure` (signals) and `error` (string value) report the outcome. It is marked deprecated in the runtime — the source directs new work to cloud functions, where a component called via CloudFunction2 controls the verification email and token server-side.",
+  "whenToUse": "Do not use in new graphs — implement email verification in a cloud function called via CloudFunction2 instead."
+}

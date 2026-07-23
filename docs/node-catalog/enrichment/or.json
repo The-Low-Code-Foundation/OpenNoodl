@@ -1,0 +1,16 @@
+{
+  "typeName": "Or",
+  "summary": "Logical OR over any number of boolean inputs: Result is true while at least one connected input is true.",
+  "description": "Or combines an unbounded series of boolean inputs into one boolean `result` (Result) value output, which is true while any input is truthy. Inputs are coerced with plain JavaScript truthiness, so an input that has never received a value counts as false, and with nothing connected the result is false. Whenever any input changes, the result is recomputed and pushed downstream. It is a pure value node with no signals and no state of its own.",
+  "whenToUse": "Use it when any one of several conditions should be enough — e.g. show a section if either of two checkboxes is ticked. For 'all of' semantics use And; for negating one boolean use Inverter; for conditions that need comparisons or arithmetic first, compute them in an Expression and combine here.",
+  "runtimeBehavior": "Inputs are numbered ports named \"input 0\", \"input 1\", … counting from 0 (displayed as \"Input 0\", \"Input 1\"). The editor always offers one more port than is currently connected, so connecting to the highest port makes the next one appear. An authoring tool should connect booleans to \"input N\" names, using consecutive indices starting at 0.",
+  "ports": {
+    "result": "Boolean value; true while at least one connected input is true. With no inputs connected it is false."
+  },
+  "examples": ["logic-consent-gate"],
+  "patterns": [
+    "Several error booleans → \"input 0\", \"input 1\", … with `result` → an error banner's `visible`: show it while anything is wrong.",
+    "`result` → Inverter → `enabled`: disable an action while any blocker is active."
+  ],
+  "relatedNodes": ["And", "Inverter", "Condition", "Expression"]
+}

@@ -1,0 +1,13 @@
+{
+  "typeName": "Cloud File",
+  "summary": "Unwraps a cloudfile value into its name and URL, for display or download links.",
+  "description": "Cloud File takes a `cloudfile`-typed value — produced by Upload File or stored on a record's file property — and exposes its `name` and `url` as strings. It performs no requests; it is a value adapter between the opaque cloud-file handle and the string-typed inputs the UI actually wants (an Image `src`, a link, a caption).",
+  "whenToUse": "Whenever a file handle needs to become a URL or filename. Note the cloudfile→image typecast lets a cloudfile feed an Image `src` directly; reach for Cloud File when you need the URL as a *string* or the file's name.",
+  "ports": {
+    "file": "The cloudfile value to unwrap.",
+    "url": "The file's public URL as a string.",
+    "name": "The stored file's name."
+  },
+  "examples": ["cloud-create-record-with-upload"],
+  "relatedNodes": ["Upload File", "Image", "net.noodl.externallink"]
+}

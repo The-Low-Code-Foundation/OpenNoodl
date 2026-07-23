@@ -1,0 +1,19 @@
+{
+  "typeName": "Color",
+  "summary": "Per-instance color holder: stores one color locally so many visual inputs can share a single editable source.",
+  "description": "Color holds a single color value that belongs to this node instance alone, defaulting to '#f1f2f4'. The `value` input sets it (via the editor's color picker or a connection) and `savedValue` (Value) reads it back. While the `saveValue` (Set) signal input is unconnected, values written to `value` apply immediately; once `saveValue` is connected the node latches: incoming values are held pending and only applied when Set fires. Unlike the Boolean/Number/String holders it applies no cast — the value passes through unchanged. Browser-only; not available in cloud functions. `changed` fires only when the stored value actually changes; `stored` fires after every Set trigger.",
+  "whenToUse": "Use it as a single source of truth for a color used in several places — wire `savedValue` to every `backgroundColor`, `color` or border input that should match, and edit one node to restyle them all. For project-wide theming prefer style colors; a String can also drive color inputs (any CSS color string casts), but Color gives you the picker.",
+  "ports": {
+    "value": "Color value input with the editor's color picker. Applies immediately when `saveValue` is unconnected; otherwise held until Set fires.",
+    "saveValue": "Signal; applies the most recently received `value`, then fires `stored`.",
+    "savedValue": "Color level with the currently stored color; fan it out to any number of visual color inputs.",
+    "changed": "Signal; fires only when the stored value actually changes.",
+    "stored": "Signal; fires after every Set trigger, even when the value did not change."
+  },
+  "examples": ["var-avatar-picker-responsive"],
+  "patterns": [
+    "One accent color: `savedValue` → several nodes' `backgroundColor`/`color` inputs, so a design tweak is one edit.",
+    "Runtime theme switch: a Switch or States feeds `value`, and every connected visual updates together."
+  ],
+  "relatedNodes": ["Boolean", "Number", "String", "Variable2", "Group", "Text"]
+}

@@ -1,0 +1,24 @@
+{
+  "typeName": "Router",
+  "summary": "Page Router: a visual region that shows one page component at a time, driven by the browser URL and Navigate nodes.",
+  "description": "Router (Page Router) renders exactly one of its configured page components inside its own bounds. Its `pages` parameter is `{ routes: [component names], startPage: component name }`; each page component is rooted by a Page node whose `urlPath` defines the page's URL pattern, which may contain `{param}` placeholders. On mount the Router matches the current browser URL (hash-based by default, or real paths depending on the project's `navigationPathType` setting) and shows the matching page, falling back to `startPage`; a RouterNavigate node or a URL change switches pages, updates the browser URL and the document title, and delivers path/query parameters to Page Inputs (PageInputs) nodes inside the mounted page. Several Routers can coexist if given different `name`s; Navigate nodes address a router by that name (default \"Main\").",
+  "whenToUse": "The standard top-level navigation of an app: distinct pages with URLs, deep-linkable and back-button friendly. For push/pop sub-flows with transitions (wizards, drill-in) use Page Stack instead; a Router can nest inside another Router's page via its `urlPath` base-path input.",
+  "ports": {
+    "name": "String value identifying this router; RouterNavigate nodes target it by this name. Unset is treated as \"Main\".",
+    "pages": "Edit-only parameter `{ routes, startPage }` listing the page components this router can show. The URL pattern of each page comes from that page's own Page node, not from here.",
+    "urlPath": "String value prepended as a base path to every page's URL — used when this router is nested inside another router's page.",
+    "reset": "Signal input; re-evaluates the URL and rebuilds the current page (also updates Page Inputs if only params changed).",
+    "currentPageTitle": "String value; the title of the page currently shown (also written to the document title).",
+    "currentPageComponent": "String value; the component name of the page currently shown."
+  },
+  "runtimeBehavior": "Runtime-determined ports (runtime-discovered + editor-adapter, RouterAdapter): the `pages` parameter decides which page components exist, and the editor derives navigation metadata — page titles, URL patterns, parameters — from each page component's Page node. An authoring tool should set `name` and `pages` on the Router and declare titles/paths on the Page node inside each page component; it cannot enumerate page-dependent ports statically.",
+  "examples": ["navigate-on-click", "nav-url-product-page"],
+  "patterns": [
+    "One Router named \"Main\" at the app root, with RouterNavigate nodes anywhere in the app switching it by name.",
+    "Declare `urlPath` with `{param}` placeholders on a page's Page node, then read the values with a Page Inputs node inside that page."
+  ],
+  "antiPatterns": [
+    "Adding a Router per app section when one Router plus pages suffices — multiple routers are for genuinely independent regions (e.g. a main area and a side panel)."
+  ],
+  "relatedNodes": ["RouterNavigate", "Page", "PageInputs", "PageStackNavigateToPath", "Page Stack"]
+}

@@ -1,0 +1,77 @@
+{
+  "id": "data-shared-array-add-remove",
+  "title": "Named shared array with insert, remove and clear",
+  "description": "A client-side list without a backend: an Array node (Collection2) binds to the named shared array 'todos' and feeds a Repeater. Add Item (CollectionInsert), Remove Item (CollectionRemove) and Clear (CollectionClear) mutate the same array by its `collectionId`; every node bound to that id — including the Array feeding the list — sees the change immediately. Ids on wires tie the writers to the store.",
+  "demonstrates": ["Collection2", "CollectionInsert", "CollectionRemove", "CollectionClear", "Static Data"],
+  "components": [
+    {
+      "name": "/Todo List",
+      "nodes": [
+        {
+          "id": "root",
+          "type": "Group",
+          "label": "Page",
+          "parameters": { "flexDirection": "column" },
+          "children": ["add_btn", "clear_btn", "list_repeater"]
+        },
+        { "id": "add_btn", "type": "net.noodl.controls.button", "label": "Add", "parent": "root", "parameters": { "label": "Add todo" } },
+        { "id": "clear_btn", "type": "net.noodl.controls.button", "label": "Clear", "parent": "root", "parameters": { "label": "Clear all" } },
+        { "id": "list_repeater", "type": "For Each", "label": "Todo rows", "parent": "root", "parameters": { "template": "/Todo Row" } },
+        {
+          "id": "seed_items",
+          "type": "Static Data",
+          "label": "Seed todos",
+          "parameters": { "type": "json", "json": "[{\"title\":\"Buy milk\"},{\"title\":\"Write specs\"}]" }
+        },
+        {
+          "id": "todos_array",
+          "type": "Collection2",
+          "label": "Shared 'todos'",
+          "parameters": { "collectionId": "todos" }
+        },
+        {
+          "id": "add_todo",
+          "type": "CollectionInsert",
+          "label": "Insert new todo",
+          "parameters": { "collectionId": "todos" }
+        },
+        {
+          "id": "remove_todo",
+          "type": "CollectionRemove",
+          "label": "Remove by id",
+          "parameters": { "collectionId": "todos" }
+        },
+        {
+          "id": "clear_todos",
+          "type": "CollectionClear",
+          "label": "Clear 'todos'",
+          "parameters": { "collectionId": "todos" }
+        }
+      ],
+      "connections": [
+        { "fromId": "seed_items", "fromProperty": "items", "toId": "todos_array", "toProperty": "items" },
+        { "fromId": "todos_array", "fromProperty": "items", "toId": "list_repeater", "toProperty": "items" },
+        { "fromId": "add_btn", "fromProperty": "onClick", "toId": "add_todo", "toProperty": "add" },
+        { "fromId": "clear_btn", "fromProperty": "onClick", "toId": "clear_todos", "toProperty": "clear" },
+        { "fromId": "list_repeater", "fromProperty": "itemActionItemId", "toId": "remove_todo", "toProperty": "modifyId" }
+      ]
+    },
+    {
+      "name": "/Todo Row",
+      "nodes": [
+        {
+          "id": "row",
+          "type": "Group",
+          "label": "Row",
+          "parameters": { "flexDirection": "row" },
+          "children": ["title_text"]
+        },
+        { "id": "title_text", "type": "Text", "label": "Title", "parent": "row" },
+        { "id": "row_inputs", "type": "Component Inputs", "label": "Item properties" }
+      ],
+      "connections": [
+        { "fromId": "row_inputs", "fromProperty": "title", "toId": "title_text", "toProperty": "text" }
+      ]
+    }
+  ]
+}

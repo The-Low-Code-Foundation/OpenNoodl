@@ -1,0 +1,8 @@
+{
+  "typeName": "Signal To Index",
+  "summary": "Deprecated: outputs the index of the most recently triggered numbered signal input.",
+  "description": "Signal To Index accepts a numbered series of signal inputs and outputs the index of the one that fired most recently on `index`, firing `signalTriggered` on every trigger. It is deprecated and hidden from the node picker: the States node covers the same need — mapping several triggers to one of a set of values — with named states and per-state values instead of bare indices.",
+  "whenToUse": "Do not use in new graphs — use States instead.",
+  "runtimeBehavior": "Inputs are numbered ports named \"input 0\", \"input 1\", … counting from 0 (displayed as \"Signal 0\", \"Signal 1\"); each is edge-triggered, and a per-port \"Start Index\" selector sets the initial index. Deprecated — an authoring tool should not create this node.",
+  "relatedNodes": ["States", "Switch"]
+}

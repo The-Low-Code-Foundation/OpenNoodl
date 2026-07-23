@@ -1,0 +1,63 @@
+{
+  "id": "vis-columns-media-cards",
+  "title": "Media card row: Columns layout with Image, Icon and Circle",
+  "description": "A card layout composed from the visual primitives: Columns (net.noodl.visual.columns) distributes its children by a layout string ('1 2' — the second column twice as wide), the Image shows a picture from a URL/asset on `src`, the Icon (net.noodl.visual.icon) renders a themed glyph, and the Circle doubles as a status dot whose `fillColor` is data-driven. Layout is containment; only the dynamic bits (image source, status color) are wired.",
+  "demonstrates": ["net.noodl.visual.columns", "Image", "net.noodl.visual.icon", "Circle"],
+  "components": [
+    {
+      "name": "/Media Card",
+      "nodes": [
+        {
+          "id": "card_root",
+          "type": "Group",
+          "label": "Card",
+          "parameters": { "flexDirection": "column", "paddingLeft": 12, "paddingTop": 12 },
+          "children": ["columns"]
+        },
+        {
+          "id": "columns",
+          "type": "net.noodl.visual.columns",
+          "label": "1:2 columns",
+          "parent": "card_root",
+          "parameters": { "layoutString": "1 2", "marginX": 8 },
+          "children": ["cover_image", "detail_group"]
+        },
+        {
+          "id": "cover_image",
+          "type": "Image",
+          "label": "Cover",
+          "parent": "columns"
+        },
+        {
+          "id": "detail_group",
+          "type": "Group",
+          "label": "Details",
+          "parent": "columns",
+          "parameters": { "flexDirection": "row", "alignItems": "center" },
+          "children": ["status_dot", "title_text", "fav_icon"]
+        },
+        {
+          "id": "status_dot",
+          "type": "Circle",
+          "label": "Status dot",
+          "parent": "detail_group",
+          "parameters": { "size": 10, "fillEnabled": true }
+        },
+        { "id": "title_text", "type": "Text", "label": "Title", "parent": "detail_group" },
+        {
+          "id": "fav_icon",
+          "type": "net.noodl.visual.icon",
+          "label": "Favourite",
+          "parent": "detail_group",
+          "parameters": { "iconSize": 16 }
+        },
+        { "id": "card_inputs", "type": "Component Inputs", "label": "Card data" }
+      ],
+      "connections": [
+        { "fromId": "card_inputs", "fromProperty": "coverUrl", "toId": "cover_image", "toProperty": "src" },
+        { "fromId": "card_inputs", "fromProperty": "title", "toId": "title_text", "toProperty": "text" },
+        { "fromId": "card_inputs", "fromProperty": "statusColor", "toId": "status_dot", "toProperty": "fillColor" }
+      ]
+    }
+  ]
+}

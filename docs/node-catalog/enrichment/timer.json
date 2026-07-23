@@ -1,0 +1,25 @@
+{
+  "typeName": "Timer",
+  "summary": "Delay: fires a Finished signal a set number of milliseconds after being started; restartable for debouncing.",
+  "description": "Timer (displayed as Delay) turns one signal into a later signal. Triggering `start` (Start) begins a countdown of `duration` milliseconds (after an optional `startDelay`, also milliseconds); when it completes, `timerFinished` (Finished) fires. `timerStarted` (Started) fires at the moment the countdown actually begins. `start` does nothing while the timer is already running, whereas `restart` (Restart) always begins the countdown again from zero — that difference is what makes `restart` the debounce input. `stop` (Stop) cancels a running countdown without firing `timerFinished`. With the default `duration` of 0 the finish fires on the next tick, which still defers the signal until after the current update.",
+  "whenToUse": "Use it to defer an action (auto-dismiss a toast, poll once after mount) or, via `restart`, to debounce a noisy source such as typing. For repeating ticks, loop `timerFinished` back into `restart`. For animating a value over time use Animation instead — Timer carries no value, only timing.",
+  "ports": {
+    "start": "Signal; starts the countdown only if the timer is not already running.",
+    "restart": "Signal; starts the countdown unconditionally, restarting from zero if already running — use for debouncing.",
+    "stop": "Signal; cancels the countdown; `timerFinished` will not fire.",
+    "duration": "Number value in milliseconds (default 0).",
+    "startDelay": "Number value in milliseconds added before the countdown begins (default 0).",
+    "timerStarted": "Signal; fires when the countdown actually starts (also on each restart).",
+    "timerFinished": "Signal; fires once when the countdown completes; suppressed by `stop`."
+  },
+  "examples": ["logic-autosave-after-typing"],
+  "patterns": [
+    "Value Changed `valueChanged` → `restart`, act on `timerFinished`: debounce — the action runs only after the input has been quiet for `duration` ms.",
+    "`timerFinished` → its own `restart`: a simple repeating tick."
+  ],
+  "antiPatterns": [
+    "Using `start` for debouncing — while running it ignores triggers, so the action fires on the first quiet gap after the *first* event, not the last. Use `restart`.",
+    "Treating `duration` as seconds — it is milliseconds."
+  ],
+  "relatedNodes": ["Value Changed", "Animation", "States", "Switch"]
+}

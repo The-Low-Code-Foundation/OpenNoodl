@@ -1,0 +1,8 @@
+{
+  "typeName": "Script Downloader",
+  "summary": "Deprecated loader for external script URLs. Use project modules or a Function node injecting a script tag.",
+  "description": "The legacy Script Downloader fetches the JavaScript files listed on its numbered inputs and fires `loaded` when they are available. Deprecated and hidden from the picker.",
+  "whenToUse": "Do not use in new graphs — prefer bundled project modules; where a runtime script tag is unavoidable, inject it from a Function node and gate downstream work on its load event.",
+  "runtimeBehavior": "Script-URL inputs are generated from the configured count (numbered-inputs mechanism).",
+  "relatedNodes": ["JavaScriptFunction", "Javascript2"]
+}

@@ -1,0 +1,8 @@
+{
+  "typeName": "Animation",
+  "summary": "Deprecated keyframe animation player. Use States (with transitions) or Animate To Value in new graphs.",
+  "description": "The legacy Animation node plays an editor-authored keyframe animation over its target values, with play/jump/replay signal controls in both directions. It is deprecated and hidden from the node picker; States covers state-shaped animation and Animate To Value covers single-value tweens.",
+  "whenToUse": "Do not use in new graphs — use States or net.noodl.animatetovalue instead.",
+  "runtimeBehavior": "Animated value outputs are runtime-registered from the keyframe tracks authored on the node instance; easing ports swap by curve type (declared-port-groups).",
+  "relatedNodes": ["States", "net.noodl.animatetovalue", "Color Blend"]
+}

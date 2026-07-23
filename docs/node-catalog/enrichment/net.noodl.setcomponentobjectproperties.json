@@ -1,0 +1,14 @@
+{
+  "typeName": "net.noodl.SetComponentObjectProperties",
+  "summary": "Set Component Object Properties: writes declared values onto this component instance's own object when store fires.",
+  "description": "The writing half of Component Object: property values set on this node's declared inputs are committed to the enclosing component instance's object when `store` fires, and every Component Object / Parent Component Object reader of that instance sees the change immediately. `stored` confirms the write.",
+  "whenToUse": "Mutating instance-scoped state: resetting a wizard, recording a selection local to this instance. For state shared across instances or screens use Objects (Model2) or Variables instead.",
+  "ports": {
+    "properties": "Declared property names; each becomes a value input written on store.",
+    "store": "Signal; commits the current input values to the instance's object.",
+    "stored": "Signal; the write completed."
+  },
+  "runtimeBehavior": "Property inputs are generated from the per-instance `properties` list (runtime-discovered).",
+  "examples": ["comp-wizard-component-object"],
+  "relatedNodes": ["net.noodl.ComponentObject", "net.noodl.SetParentComponentObjectProperties", "SetModelProperties"]
+}

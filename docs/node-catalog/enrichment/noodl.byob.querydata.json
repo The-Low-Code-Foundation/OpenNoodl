@@ -1,0 +1,17 @@
+{
+  "typeName": "noodl.byob.QueryData",
+  "summary": "Query Data (BYOB): fetches records from a self-hosted backend class on demand into a records array.",
+  "description": "The bring-your-own-backend query: when `fetch` fires it runs the configured query against the BYOB backend and emits `records` (array), `count`, `totalCount`, and `firstRecord`. `loading` covers the request window; `success`/`failure` sequence follow-ups. Results are a snapshot — there is no live re-query on remote changes, so writers re-trigger `fetch` when they finish.",
+  "whenToUse": "Reading lists from a self-hosted backend. On the managed cloud backend prefer Query Records (DbCollection2), which additionally keeps results live.",
+  "ports": {
+    "fetch": "Signal; runs the query. Wire a mount signal or a refresh event here.",
+    "records": "The result array; feeds a Repeater like any items source.",
+    "totalCount": "Total matching records server-side, independent of paging — drive pagination from this."
+  },
+  "runtimeBehavior": "Class selection, filter-value inputs and paging inputs are generated from the backend schema and the query configuration (runtime-discovered); only the trigger/result surface is static.",
+  "examples": ["cloud-byob-crud"],
+  "antiPatterns": [
+    "Expecting live updates after writes — BYOB queries refresh only when `fetch` fires."
+  ],
+  "relatedNodes": ["noodl.byob.CreateRecord", "noodl.byob.UpdateRecord", "noodl.byob.DeleteRecord", "DbCollection2", "For Each"]
+}

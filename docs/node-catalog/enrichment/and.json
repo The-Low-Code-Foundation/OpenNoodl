@@ -1,0 +1,16 @@
+{
+  "typeName": "And",
+  "summary": "Logical AND over any number of boolean inputs: Result is true only while every connected input is true.",
+  "description": "And combines an unbounded series of boolean inputs into one boolean `result` (Result) value output. The result is true only when at least one input is connected and none of them is false — inputs are coerced with plain JavaScript truthiness, so an input that has never received a value counts as false. Whenever any input changes, the result is recomputed and pushed downstream. This is a pure value node: it has no signals and no memory beyond its inputs' latest values.",
+  "whenToUse": "Use it to require several conditions at once — e.g. two checkboxes both ticked before enabling a button. For 'any of' semantics use Or; for a single negation use Inverter; for arithmetic or comparisons that produce the booleans in the first place, use Expression, then combine here (or fold the whole thing into one Expression if it reads better).",
+  "runtimeBehavior": "Inputs are numbered ports named \"input 0\", \"input 1\", … counting from 0 (displayed as \"Input 0\", \"Input 1\"). The editor always offers one more port than is currently connected, so connecting to the highest port makes the next one appear. An authoring tool should connect booleans to \"input N\" names, using consecutive indices starting at 0.",
+  "ports": {
+    "result": "Boolean value; true only while every connected input is true. With no inputs connected it is false."
+  },
+  "examples": ["logic-consent-gate"],
+  "patterns": [
+    "Several `checked` outputs → \"input 0\", \"input 1\", … with `result` → a button's `enabled`: require every consent before proceeding.",
+    "`result` → a Condition's `condition` when you need signal outputs (fired on evaluation) instead of a level."
+  ],
+  "relatedNodes": ["Or", "Inverter", "Condition", "Expression"]
+}

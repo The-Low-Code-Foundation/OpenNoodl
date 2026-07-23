@@ -1,0 +1,13 @@
+{
+  "typeName": "Radio Button Group",
+  "summary": "Layout container that makes its child Radio Buttons mutually exclusive and outputs the selected value.",
+  "description": "Radio Button Group is a flex container (like a Group) whose special duty is coordinating child Radio Buttons: exactly one can be checked, and the group's `value` output holds the `value` parameter of the selected one. `onChange` fires when the selection changes. Set `value` as an input to select programmatically.",
+  "whenToUse": "Always wrap radio buttons in one — it is the single point logic should read. Nest plain Groups inside for layout; the grouping behaviour spans descendants.",
+  "ports": {
+    "value": "String level: the selected child's value (input to preselect, output to read).",
+    "onChange": "Signal; the selection changed by user action."
+  },
+  "runtimeBehavior": "Declared-port-groups: sizing/layout port variants follow the size-mode parameters, as with other visual containers.",
+  "examples": ["ctl-settings-form"],
+  "relatedNodes": ["net.noodl.controls.radiobutton", "net.noodl.controls.options", "Group"]
+}

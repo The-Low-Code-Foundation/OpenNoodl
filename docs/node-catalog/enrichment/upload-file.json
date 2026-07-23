@@ -1,0 +1,20 @@
+{
+  "typeName": "Upload File",
+  "summary": "Uploads a browser file to cloud storage when triggered, reporting progress and yielding a cloudfile handle.",
+  "description": "Upload File takes a browser File (typically from Open File Picker) on its untyped `file` input and, when `upload` fires, stores it in the cloud backend's file storage. Progress streams out (`progressLoadedPercent`, byte counts, `progressChanged`), and on `success` the stored file is available as `cloudFile` — the handle to attach to a record's file property or unwrap with Cloud File. `failure` carries `error` and `errorStatus`.",
+  "whenToUse": "Attachments, avatars, imports — any user-picked file that must persist server-side. The upload stores the file only; associating it with a record is a separate write (Create/Set Record).",
+  "ports": {
+    "file": "The browser file to upload; untyped so any file source connects.",
+    "upload": "Signal; starts the upload.",
+    "cloudFile": "The stored file's handle, valid from `success` onward.",
+    "progressLoadedPercent": "Number level 0–100 while uploading; drive progress UI from here."
+  },
+  "examples": ["cloud-create-record-with-upload"],
+  "patterns": [
+    "Picker `success` → `upload`, upload `success` → record write: three nodes, each owning one step."
+  ],
+  "antiPatterns": [
+    "Treating `cloudFile` as set before `success` fired — sequence record writes on the success signal."
+  ],
+  "relatedNodes": ["Open File Picker", "Cloud File", "NewDbModelProperties", "SetDbModelProperties"]
+}

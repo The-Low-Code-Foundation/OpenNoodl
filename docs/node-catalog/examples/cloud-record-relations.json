@@ -1,0 +1,52 @@
+{
+  "id": "cloud-record-relations",
+  "title": "Add and remove a relation between records; delete a record",
+  "description": "Relations link records without embedding them: Add Record Relation points `modelId` (the owner) at `targetId` (the related record) on a named relation field, Remove Record Relation severs the same pair, and Delete Record removes a record entirely. All three act on ids delivered by wires — here from the enclosing component's inputs — and fire a confirmation signal (`relationAdded`, `relationRemoved`, `deleted`) or `failure` with `error`.",
+  "demonstrates": ["AddDbModelRelation", "RemoveDbModelRelation", "DeleteDbModelProperties"],
+  "components": [
+    {
+      "name": "/Project Membership",
+      "nodes": [
+        {
+          "id": "root",
+          "type": "Group",
+          "label": "Actions",
+          "parameters": { "flexDirection": "row" },
+          "children": ["join_btn", "leave_btn", "delete_btn"]
+        },
+        { "id": "join_btn", "type": "net.noodl.controls.button", "label": "Join", "parent": "root", "parameters": { "label": "Join project" } },
+        { "id": "leave_btn", "type": "net.noodl.controls.button", "label": "Leave", "parent": "root", "parameters": { "label": "Leave project" } },
+        { "id": "delete_btn", "type": "net.noodl.controls.button", "label": "Delete", "parent": "root", "parameters": { "label": "Delete project" } },
+        { "id": "ids_in", "type": "Component Inputs", "label": "Project & member ids" },
+        {
+          "id": "add_member",
+          "type": "AddDbModelRelation",
+          "label": "Add member relation",
+          "parameters": { "collectionName": "Project", "relationName": "members" }
+        },
+        {
+          "id": "remove_member",
+          "type": "RemoveDbModelRelation",
+          "label": "Remove member relation",
+          "parameters": { "collectionName": "Project", "relationName": "members" }
+        },
+        {
+          "id": "delete_project",
+          "type": "DeleteDbModelProperties",
+          "label": "Delete project record",
+          "parameters": { "collectionName": "Project" }
+        }
+      ],
+      "connections": [
+        { "fromId": "ids_in", "fromProperty": "projectId", "toId": "add_member", "toProperty": "modelId" },
+        { "fromId": "ids_in", "fromProperty": "memberId", "toId": "add_member", "toProperty": "targetId" },
+        { "fromId": "join_btn", "fromProperty": "onClick", "toId": "add_member", "toProperty": "store" },
+        { "fromId": "ids_in", "fromProperty": "projectId", "toId": "remove_member", "toProperty": "modelId" },
+        { "fromId": "ids_in", "fromProperty": "memberId", "toId": "remove_member", "toProperty": "targetId" },
+        { "fromId": "leave_btn", "fromProperty": "onClick", "toId": "remove_member", "toProperty": "store" },
+        { "fromId": "ids_in", "fromProperty": "projectId", "toId": "delete_project", "toProperty": "modelId" },
+        { "fromId": "delete_btn", "fromProperty": "onClick", "toId": "delete_project", "toProperty": "store" }
+      ]
+    }
+  ]
+}

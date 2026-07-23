@@ -1,0 +1,19 @@
+{
+  "typeName": "net.noodl.visual.icon",
+  "summary": "Displays a glyph from a project icon font, or an image, at a given size — tintable via color for font icons.",
+  "description": "Icon renders a single icon. With `iconSourceType` (Type) set to 'icon' (the default) it shows a glyph from an icon set enabled in the project — `iconIconSource` (Icon Source) identifies the glyph (a CSS class plus code) and `iconColor` tints it, `iconSize` setting the font size in pixels. With `iconSourceType` 'image' it instead shows `iconImageSource` (Image Source) as a square image of `iconSize`; `iconColor` has no effect on images. The node cannot have children and carries the usual margin/padding, alignment and transform parameters (with a default 5px padding on all sides).",
+  "whenToUse": "Decorative or informative glyphs next to text, in cards, headers and list rows. For a clickable icon button prefer net.noodl.controls.button with its icon settings (states and accessibility included) — or wire this node's parent Group's `onClick`. For full pictures use Image.",
+  "ports": {
+    "iconSourceType": "Enum value (Type): 'icon' (glyph from a project icon set, default) or 'image'. Chooses which source/color ports are shown.",
+    "iconIconSource": "Icon value (Icon Source): the glyph, picked from the project's enabled icon fonts; stored as class + code.",
+    "iconColor": "Color value; tints font-icon glyphs only — image sources keep their own colors.",
+    "iconSize": "Number value in px: font size for glyphs, width and height for image sources."
+  },
+  "runtimeBehavior": "Declared-port-groups keyed on `iconSourceType`: 'icon' exposes `iconIconSource` and `iconColor`, 'image' exposes `iconImageSource`; `iconSize` and `iconSourceType` are always shown. (An internal `useIcon` flag defaults to true and has no editor input on this node.)",
+  "examples": ["vis-columns-media-cards"],
+  "patterns": [
+    "Icon + Text in a row Group: the standard labeled-metadata row in cards and lists.",
+    "Bind `iconColor` from state (e.g. a Condition's boolean via a Switch/States color) to reflect status."
+  ],
+  "relatedNodes": ["Image", "Text", "Circle", "net.noodl.controls.button"]
+}

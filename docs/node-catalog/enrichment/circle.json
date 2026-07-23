@@ -1,0 +1,19 @@
+{
+  "typeName": "Circle",
+  "summary": "An SVG circle or arc with fill, stroke and start/end angles — the quick way to dots, rings and progress arcs.",
+  "description": "Circle draws a circular shape as inline SVG. `size` is the diameter in pixels; `fillEnabled`/`fillColor` and `strokeEnabled`/`strokeColor`/`strokeWidth` control the two paint layers independently. `startAngle` and `endAngle` (degrees, measured clockwise from 12 o'clock, defaults 0–360) cut the shape into an arc: a partial angle range with fill gives a pie slice, with stroke only it gives an arc — driving `endAngle` from a number is the standard way to build a progress ring. It cannot have children; like other visual nodes it reports `onClick`, hover and pointer signals.",
+  "whenToUse": "Status dots, avatars' presence badges, decorative shapes, and progress rings/pie indicators. For rectangular surfaces or anything that needs children use Group (with corner radius for rounded shapes); for pictures use Image; for glyphs use net.noodl.visual.icon.",
+  "ports": {
+    "size": "Number value; the circle's diameter in pixels (default 100).",
+    "startAngle": "Number value in degrees, 0 at the top and increasing clockwise; together with `endAngle` restricts the shape to an arc.",
+    "endAngle": "Number value in degrees (default 360). Animate or bind 0–360 here for a progress ring.",
+    "strokeLineCap": "Enum 'butt' or 'round'; 'round' gives arcs soft ends, visible on partial angle ranges."
+  },
+  "runtimeBehavior": "Declared-port-groups: the only conditional port is `pointerEventsEnabled`, which appears when `pointerEventsMode` is set to 'explicit'. Everything else in the catalog's port list is always present.",
+  "examples": ["vis-columns-media-cards", "vis-drag-snap-back"],
+  "patterns": [
+    "Progress ring: stroke enabled, fill disabled, a 0–100 value remapped to 0–360 (Number Remapper or Expression) driving `endAngle`.",
+    "Status dot: small `size`, `fillColor` bound from state — cheaper than an image asset."
+  ],
+  "relatedNodes": ["Group", "Image", "net.noodl.visual.icon", "Number Remapper"]
+}

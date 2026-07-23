@@ -1,0 +1,27 @@
+{
+  "typeName": "Video",
+  "summary": "Plays video from a URL or MediaStream, with play/pause/restart/reset signals and playback-position output.",
+  "description": "Video renders an HTML `video` element. `src` (a string URL or project asset path) or `srcObject` (a MediaStream, e.g. a camera feed) supplies the media; `poster` shows an image before playback; `autoplay`, `loop`, `muted`, `controls` and `volume` map directly onto the element. Playback is driven by four signal inputs: `play` resumes, `pause` pauses, `restart` seeks to the start and plays, `reset` seeks to the start and pauses. Outputs report state: `onPlay`/`onPause`/`onCanPlay` are signals from the element's events, `onTimeUpdate` (Playback Position) is a number holding the current time in seconds, and `videoWidth`/`videoHeight` give the intrinsic size once known.",
+  "whenToUse": "Embedded video content, background/hero loops, and camera previews (wire a media stream to `srcObject`). For still pictures use Image. Browsers block unmuted autoplay — combine `autoplay` with `muted` for background video, or start playback from a user action via `play`.",
+  "ports": {
+    "src": "String value: URL or project asset path of the video file.",
+    "srcObject": "MediaStream value; when set, the element plays the stream instead of `src` — used for camera/microphone previews.",
+    "play": "Signal; resumes playback of the current source.",
+    "pause": "Signal; pauses playback (fires `onPause`).",
+    "restart": "Signal; seeks to time 0 and plays.",
+    "reset": "Signal; seeks to time 0 and pauses — 'stop'.",
+    "onTimeUpdate": "Number value (Playback Position): current playback time in seconds, updated as the video plays.",
+    "onCanPlay": "Signal; fires when enough data is buffered to start playing — a good moment to reveal the player.",
+    "onVideoElementCreated": "DOM-element reference to the underlying `video` element, for custom JavaScript integration."
+  },
+  "runtimeBehavior": "Declared-port-groups: `width`/`height` appear based on `sizeMode`, per-side border width/color ports appear once a border style is chosen, and `pointerEventsEnabled` appears when `pointerEventsMode` is 'explicit'. The playback and event ports are always present.",
+  "examples": ["vis-wrapper-component-children"],
+  "patterns": [
+    "Button `onClick` → `play`: user-initiated playback that satisfies browser autoplay policies.",
+    "Background hero: `autoplay` + `muted` + `loop` true, `controls` false, `objectFit` 'cover'."
+  ],
+  "antiPatterns": [
+    "Expecting `autoplay` alone to start sound-on playback — browsers refuse; either set `muted` or trigger `play` from a user gesture."
+  ],
+  "relatedNodes": ["Image", "Group", "net.noodl.controls.button"]
+}

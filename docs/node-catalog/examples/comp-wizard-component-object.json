@@ -1,0 +1,81 @@
+{
+  "id": "comp-wizard-component-object",
+  "title": "Wizard step state shared via Component Object",
+  "description": "Component Object is per-component-instance shared state: every node in the same component instance — and, via the Parent variants, in its child components — reads and writes the same object without wires between them. The wizard holds `step` in its Component Object; the embedded controls component advances it with Set Parent Component Object Properties and reads it with Parent Component Object. Two wizard instances on one page would each have their own independent `step`, which is exactly what plain shared Objects would not give you.",
+  "demonstrates": ["net.noodl.ComponentObject", "net.noodl.ParentComponentObject", "net.noodl.SetParentComponentObjectProperties", "net.noodl.SetComponentObjectProperties"],
+  "components": [
+    {
+      "name": "/Wizard",
+      "nodes": [
+        {
+          "id": "wizard_root",
+          "type": "Group",
+          "label": "Wizard",
+          "parameters": { "flexDirection": "column" },
+          "children": ["step_text", "controls_instance"]
+        },
+        { "id": "step_text", "type": "Text", "label": "Step heading", "parent": "wizard_root" },
+        { "id": "controls_instance", "type": "/Wizard Controls", "label": "Controls", "parent": "wizard_root" },
+        {
+          "id": "wizard_state",
+          "type": "net.noodl.ComponentObject",
+          "label": "Wizard state",
+          "parameters": { "properties": "step" }
+        },
+        {
+          "id": "reset_state",
+          "type": "net.noodl.SetComponentObjectProperties",
+          "label": "Reset to step 1",
+          "parameters": { "properties": "step" }
+        },
+        {
+          "id": "step_caption",
+          "type": "String Format",
+          "label": "Step caption",
+          "parameters": { "format": "Step {step}" }
+        }
+      ],
+      "connections": [
+        { "fromId": "wizard_state", "fromProperty": "step", "toId": "step_caption", "toProperty": "step" },
+        { "fromId": "step_caption", "fromProperty": "formatted", "toId": "step_text", "toProperty": "text" },
+        { "fromId": "wizard_root", "fromProperty": "didMount", "toId": "reset_state", "toProperty": "store" }
+      ]
+    },
+    {
+      "name": "/Wizard Controls",
+      "nodes": [
+        {
+          "id": "controls_root",
+          "type": "Group",
+          "label": "Controls row",
+          "parameters": { "flexDirection": "row" },
+          "children": ["next_btn"]
+        },
+        { "id": "next_btn", "type": "net.noodl.controls.button", "label": "Next", "parent": "controls_root", "parameters": { "label": "Next step" } },
+        {
+          "id": "parent_state",
+          "type": "net.noodl.ParentComponentObject",
+          "label": "Wizard state (parent)",
+          "parameters": { "properties": "step" }
+        },
+        {
+          "id": "advance",
+          "type": "net.noodl.SetParentComponentObjectProperties",
+          "label": "Advance step",
+          "parameters": { "properties": "step" }
+        },
+        {
+          "id": "next_step",
+          "type": "Expression",
+          "label": "step + 1",
+          "parameters": { "expression": "step + 1" }
+        }
+      ],
+      "connections": [
+        { "fromId": "parent_state", "fromProperty": "step", "toId": "next_step", "toProperty": "step" },
+        { "fromId": "next_step", "fromProperty": "result", "toId": "advance", "toProperty": "step" },
+        { "fromId": "next_btn", "fromProperty": "onClick", "toId": "advance", "toProperty": "store" }
+      ]
+    }
+  ]
+}

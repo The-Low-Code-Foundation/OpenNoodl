@@ -1,0 +1,86 @@
+{
+  "id": "var-avatar-picker-responsive",
+  "title": "File picker with a shared accent color and a viewport-aware hint",
+  "description": "Three utility shapes in one small screen. A Color node is the single source of truth for the accent: its savedValue fans out to the title's text color and the button's background, so one edit restyles both. The Button's onClick fires Open File Picker's open — the dialog must come from a user gesture — and after a pick the file's name flows into a Text while success latches a Boolean (value pinned true) that reveals the result row as a level; cancelling the dialog fires nothing. Screen Resolution's width feeds an Expression (width < 600) whose boolean drives the compact hint's visibility, updating live as the window resizes.",
+  "demonstrates": ["Open File Picker", "Color", "Screen Resolution", "Boolean"],
+  "components": [
+    {
+      "name": "/Avatar Upload",
+      "nodes": [
+        {
+          "id": "root",
+          "type": "Group",
+          "label": "Layout",
+          "parameters": { "flexDirection": "column", "paddingLeft": 16, "paddingTop": 16 },
+          "children": ["title_text", "pick_button", "file_name_text", "compact_hint"]
+        },
+        {
+          "id": "title_text",
+          "type": "Text",
+          "label": "Title",
+          "parent": "root",
+          "parameters": { "text": "Choose an avatar" }
+        },
+        {
+          "id": "pick_button",
+          "type": "net.noodl.controls.button",
+          "label": "Pick file",
+          "parent": "root",
+          "parameters": { "label": "Choose image..." }
+        },
+        {
+          "id": "file_name_text",
+          "type": "Text",
+          "label": "Picked file name",
+          "parent": "root"
+        },
+        {
+          "id": "compact_hint",
+          "type": "Text",
+          "label": "Narrow-screen hint",
+          "parent": "root",
+          "parameters": { "text": "Tip: rotate your device for a larger preview." }
+        },
+        {
+          "id": "accent",
+          "type": "Color",
+          "label": "Accent color",
+          "parameters": { "value": "#3366ff" }
+        },
+        {
+          "id": "picker",
+          "type": "Open File Picker",
+          "label": "Avatar picker",
+          "parameters": { "acceptedFileTypes": "image/*" }
+        },
+        {
+          "id": "has_picked",
+          "type": "Boolean",
+          "label": "Picked a file?",
+          "parameters": { "value": true }
+        },
+        {
+          "id": "viewport",
+          "type": "Screen Resolution",
+          "label": "Viewport size"
+        },
+        {
+          "id": "is_narrow",
+          "type": "Expression",
+          "label": "Narrow viewport?",
+          "parameters": { "expression": "width < 600" }
+        }
+      ],
+      "connections": [
+        { "fromId": "accent", "fromProperty": "savedValue", "toId": "title_text", "toProperty": "color" },
+        { "fromId": "accent", "fromProperty": "savedValue", "toId": "pick_button", "toProperty": "backgroundColor" },
+        { "fromId": "pick_button", "fromProperty": "onClick", "toId": "picker", "toProperty": "open" },
+        { "fromId": "picker", "fromProperty": "name", "toId": "file_name_text", "toProperty": "text" },
+        { "fromId": "picker", "fromProperty": "success", "toId": "has_picked", "toProperty": "saveValue" },
+        { "fromId": "has_picked", "fromProperty": "savedValue", "toId": "file_name_text", "toProperty": "visible" },
+        { "fromId": "viewport", "fromProperty": "width", "toId": "is_narrow", "toProperty": "width" },
+        { "fromId": "is_narrow", "fromProperty": "result", "toId": "compact_hint", "toProperty": "visible" }
+      ]
+    }
+  ]
+}

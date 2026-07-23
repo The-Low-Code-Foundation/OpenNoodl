@@ -1,0 +1,19 @@
+{
+  "typeName": "PageInputs",
+  "summary": "Page Inputs: exposes the URL path and query parameters of the containing page as value outputs.",
+  "description": "Page Inputs receives the navigation parameters delivered to the page component it sits in and republishes them as value outputs. Declare the expected names in the edit-only `pathParams` and `queryParams` string lists; each declared name becomes an output `pm-<name>` holding the value parsed from the URL (path placeholders like `{productId}` on the page's `urlPath`, or query-string entries) or passed by the Navigate node that opened the page. The Router pushes new values into these outputs on every navigation, including when only the parameters change while the page stays mounted.",
+  "whenToUse": "Inside a Router page component, whenever the page needs data that lives in the URL — a record id, a tab name, a search term. It only receives values pushed by the navigation system, so it does nothing outside a page component; for values passed to ordinary component instances use Component Inputs.",
+  "ports": {
+    "pathParams": "Edit-only string list; the path-parameter names to expose. Each name `x` becomes a `pm-x` value output.",
+    "queryParams": "Edit-only string list; the query-parameter names to expose, also surfaced as `pm-<name>` outputs."
+  },
+  "runtimeBehavior": "All outputs are runtime-determined (runtime-discovered + editor-adapter, PageInputsAdapter): declaring a name in `pathParams`/`queryParams` registers an untyped `pm-<name>` output on demand. The values themselves arrive when the Router (or a route-enabled Component Stack) navigates to the containing page and calls into this node; a generator can only rely on the names it declared itself.",
+  "examples": ["nav-url-product-page"],
+  "patterns": [
+    "`pm-<id>` → a Query Records filter input: the canonical detail page, where the record to show is chosen by the URL."
+  ],
+  "antiPatterns": [
+    "Using Page Inputs to receive values from a normal component instance — that is what Component Inputs is for; Page Inputs is only fed by navigation."
+  ],
+  "relatedNodes": ["Page", "Router", "RouterNavigate", "PageStackNavigateToPath", "Component Inputs"]
+}

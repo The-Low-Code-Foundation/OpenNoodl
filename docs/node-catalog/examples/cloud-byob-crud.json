@@ -1,0 +1,68 @@
+{
+  "id": "cloud-byob-crud",
+  "title": "Bring-your-own-backend: query, create, update, delete",
+  "description": "The noodl.byob.* family talks to a self-hosted backend with the same shapes as the classic cloud-data nodes but generic record objects: Query Data fetches on demand into `records` (no live re-query — refetch explicitly), Create/Update/Delete Record act on ids and fire success/failure, and every node exposes a `loading` boolean for progress UI. After any write, the query's `fetch` is re-triggered to refresh the list.",
+  "demonstrates": ["noodl.byob.QueryData", "noodl.byob.CreateRecord", "noodl.byob.UpdateRecord", "noodl.byob.DeleteRecord"],
+  "components": [
+    {
+      "name": "/Notes Admin",
+      "nodes": [
+        {
+          "id": "root",
+          "type": "Group",
+          "label": "Admin",
+          "parameters": { "flexDirection": "column" },
+          "children": ["add_btn", "rename_btn", "delete_btn", "notes_repeater"]
+        },
+        { "id": "add_btn", "type": "net.noodl.controls.button", "label": "Add", "parent": "root", "parameters": { "label": "New note" } },
+        { "id": "rename_btn", "type": "net.noodl.controls.button", "label": "Rename", "parent": "root", "parameters": { "label": "Rename selected" } },
+        { "id": "delete_btn", "type": "net.noodl.controls.button", "label": "Delete", "parent": "root", "parameters": { "label": "Delete selected" } },
+        { "id": "notes_repeater", "type": "For Each", "label": "Notes", "parent": "root", "parameters": { "template": "/Note Row" } },
+        {
+          "id": "notes_query",
+          "type": "noodl.byob.QueryData",
+          "label": "Fetch notes",
+          "parameters": { "class": "Note" }
+        },
+        {
+          "id": "create_note",
+          "type": "noodl.byob.CreateRecord",
+          "label": "Create note",
+          "parameters": { "class": "Note" }
+        },
+        {
+          "id": "update_note",
+          "type": "noodl.byob.UpdateRecord",
+          "label": "Update note",
+          "parameters": { "class": "Note" }
+        },
+        {
+          "id": "delete_note",
+          "type": "noodl.byob.DeleteRecord",
+          "label": "Delete note",
+          "parameters": { "class": "Note" }
+        }
+      ],
+      "connections": [
+        { "fromId": "notes_query", "fromProperty": "records", "toId": "notes_repeater", "toProperty": "items" },
+        { "fromId": "add_btn", "fromProperty": "onClick", "toId": "create_note", "toProperty": "create" },
+        { "fromId": "rename_btn", "fromProperty": "onClick", "toId": "update_note", "toProperty": "update" },
+        { "fromId": "delete_btn", "fromProperty": "onClick", "toId": "delete_note", "toProperty": "delete" },
+        { "fromId": "create_note", "fromProperty": "success", "toId": "notes_query", "toProperty": "fetch" },
+        { "fromId": "update_note", "fromProperty": "success", "toId": "notes_query", "toProperty": "fetch" },
+        { "fromId": "delete_note", "fromProperty": "success", "toId": "notes_query", "toProperty": "fetch" }
+      ]
+    },
+    {
+      "name": "/Note Row",
+      "nodes": [
+        { "id": "row", "type": "Group", "label": "Row", "parameters": { "flexDirection": "row" }, "children": ["title_text"] },
+        { "id": "title_text", "type": "Text", "label": "Title", "parent": "row" },
+        { "id": "row_inputs", "type": "Component Inputs", "label": "Record in" }
+      ],
+      "connections": [
+        { "fromId": "row_inputs", "fromProperty": "title", "toId": "title_text", "toProperty": "text" }
+      ]
+    }
+  ]
+}
