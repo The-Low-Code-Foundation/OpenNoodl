@@ -72,5 +72,58 @@ Verification after the fix, before committing:
 - `npm run test:ci` (Electron/Jasmine suite): **712 specs, 0 failures**.
 - `npm run build:editor`: refused to run against a dirty tree (the build
   script's own git-status gate) — this is exactly why step 2 says to commit
-  the fix as its own changeset before continuing. Committed, then re-ran
-  (see below).
+  the fix as its own changeset before continuing. Committed
+  (`dfde45c`), then re-ran clean: full viewer + editor build, signed
+  (ad-hoc) `.dmg`/`.zip` produced.
+
+## Step 3/4 — TypeScript unification + webpack-cli dedupe
+
+Did these together per package, since `noodl-viewer-react` sits at the
+intersection of both split-majors.
+
+- `noodl-viewer-cloud`: `typescript` 4.9.5 → 5.9.3. Verified: package builds
+  clean (`npm run build:cloud-runtime`, webpack 0 errors).
+- `noodl-core-ui`: `typescript` 4.9.5 → 5.9.3, `@types/node` 16.11.42 →
+  18.19.123 (matching root). `typecheck:core-ui` produces the exact same 21
+  pre-existing `@noodl-store`/`@noodl-viewer-cloud` path-alias errors as
+  before the bump (confirmed via `git stash` A/B) — this tsconfig
+  incidentally type-checks files under `noodl-editor/src` through its path
+  mapping and always had these; not introduced here, not fixed here (path
+  aliasing is an editor-config issue, not a TS-version issue).
+  `storybook build` fails identically before and after
+  (`SB_CORE-SERVER_0007`, `.storybook/main.ts` uses `import.meta.url` under
+  a CJS-loaded `.ts` file — an esbuild-register/Node ESM interop bug,
+  unrelated to the TS bump and out of scope; Storybook 8→10 migration is
+  explicitly out of scope for this task).
+- `noodl-viewer-react`: `typescript` 4.9.5 → 5.9.3, `webpack-cli` 4.10.0 →
+  5.1.4. `typecheck:viewer` (root script) shows the same 40 pre-existing
+  errors as baseline (jasmine/jest ambient-type collisions + `@types/mdx`
+  JSX namespace issues — a mis-scoped root tsc invocation, not a real
+  per-package regression). The package's own build
+  (`webpack --config webpack-configs/webpack.prod.js`) is clean — 0 errors,
+  only the pre-existing bundle-size warnings. `npx jest` in this package has
+  one pre-existing failure, `tests/collection.test.js`, requiring a module
+  (`src/nodes/std-library/data/collection`) that doesn't exist under that
+  name anymore (renamed to `collectionnode2.js` at some point); confirmed
+  via `git stash` A/B this fails identically on the unmodified tree. Stale
+  test, not caused by or fixed in this task.
+- `noodl-editor`: `webpack-cli` 4.10.0 → 5.1.4 (this is the package whose
+  `test:ci` script shells out to `webpack-cli` directly, and whose
+  packaging pipeline is highest-risk, so it got the most scrutiny).
+  Verified: `typecheck:editor` clean, `npm run test:ci` **712 specs, 0
+  failures** (same as pre-bump baseline), full `npm run build:editor`
+  (viewer + editor bundles, signed ad-hoc `.dmg`/`.zip`) completes with 0
+  errors.
+
+Root and `noodl-viewer-cloud` were already on `webpack-cli@5.1.4` before
+this task; all four packages now match. `typescript` is `^5.9.3`
+everywhere. No `package.json` scripts or webpack configs needed changing —
+the CLI-flag surface used here (`--config=`) is unchanged between
+webpack-cli 4 and 5.
+
+Found but out of scope: `.github/workflows/build-noodl-editor.yml`,
+`publish-cloud-runtime.yml`, and `test-noodl-editor.yml` are pre-REV-003
+leftovers that still hardcode `node-version: 16`. They're
+`workflow_dispatch`-only or duplicate jobs `pr.yml` already runs under
+different names. Not touched — this is CI-workflow cleanup, not dependency
+hygiene; flagging for whoever next touches `.github/workflows/`.
