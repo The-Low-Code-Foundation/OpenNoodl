@@ -13,6 +13,33 @@
 | **Branch** | `cline-dev` — work directly on it, no task branch (see `.clinerules`) |
 | **Recommended executor** | 🟠 **Opus 4.8** — technically moderate but full of platform-specific failure modes (notarisation, entitlements, code-signing identities, update feeds) where errors are opaque and partial states are dangerous. Requires a human for credential/account steps regardless of model. |
 
+## Implementation Status (landed on `cline-dev`, 2026-07-23)
+
+**Release infrastructure is complete, wired, and locally verified as far as is possible without credentials.** The parts of this task that require an Apple Developer account, a Windows code-signing certificate, CI secrets, and clean test machines are, by their nature, human steps — the task metadata says as much ("Requires a human for credential/account steps regardless of model"). Those are handed off via [`RELEASE-PROCESS.md`](../../guidelines/RELEASE-PROCESS.md), not faked as done.
+
+**Also decided during this task:** the product was **rebranded OpenNoodl → NodeGX** (`com.nodegx.app`, `nodegx://`, v0.1.0), at the user's explicit direction. This *overrides* the "Ship under the current name" instruction in the Background below and pre-empts ECO-005 — a deliberate, recorded override. Scope was limited to user-facing branding + packaging identity (productName, appId, protocol, window titles, installer names); internal package names, source dirs, schema `$id` URIs, and the repo name are unchanged. The GitHub OAuth callback scheme stays `noodl://` (bound to an external OAuth-app registration).
+
+**Done and verified:**
+- ✅ Rebrand to NodeGX across packaging identity + app shell; version → 0.1.0. Verified in the packaged `.app` Info.plist (`com.nodegx.app`, `CFBundleName=NodeGX`, `nodegx` URL scheme).
+- ✅ `electron-builder` config: mac `dmg`+`zip` (zip needed for auto-update), hardened runtime + entitlements + `gatekeeperAssess:false`, Windows NSIS, Linux **AppImage**+deb (AppImage restored after the Dec-2024 revert), GitHub `publish` feed (draft-first), deterministic `artifactName`.
+- ✅ Real notarisation hook (`build/macos-notarize.js`) using `@electron/notarize` (now a declared devDep), gated on Apple creds / `DISABLE_SIGNING` — skips cleanly and loudly when creds are absent.
+- ✅ `build.ts` now actually honours `DISABLE_SIGNING` (`CSC_IDENTITY_AUTO_DISCOVERY=false`) and gates publishing on `PUBLISH_RELEASE`.
+- ✅ `electron-updater` (already wired into `main.js`) now has a real feed via the `publish` block; `latest-mac.yml` manifest confirmed generated.
+- ✅ Tag-triggered `.github/workflows/release.yml`: 4-way matrix, secret-gated signing, draft publish, `contents:write`.
+- ✅ `RELEASE-PROCESS.md` incl. rollback and a human credential-provisioning checklist.
+- ✅ Local macOS packaging build (unsigned) green end-to-end, producing rebranded `NodeGX-0.1.0-mac-arm64.{dmg,zip}` + update manifest.
+
+**Human-gated — cannot be done in this environment (see `RELEASE-PROCESS.md` §1):**
+- ⬜ Apple Developer ID cert + notarisation credentials → CI secrets.
+- ⬜ Windows code-signing certificate → CI secrets.
+- ⬜ First *signed* build; verification on clean machines (dev machines mask signing problems).
+- ⬜ Auto-update end-to-end across two *published* releases.
+- ⬜ Cut & publish v0.1.0 publicly (draft workflow is ready; a human confirms the draft).
+
+**Known limitation flagged, not silently shipped:** the mac matrix builds arm64 and x64 as separate jobs that each overwrite `latest-mac.yml`, so the published feed points at one arch. Harmless for the *first* release (nobody is auto-updating yet) but **must be fixed before v0.1.1** (universal build). See `RELEASE-PROCESS.md` §6.
+
+---
+
 ## Objective
 
 Produce signed, installable, auto-updating OpenNoodl builds for macOS, Windows, and Linux, published from CI, so that every subsequent milestone can ship to real users.

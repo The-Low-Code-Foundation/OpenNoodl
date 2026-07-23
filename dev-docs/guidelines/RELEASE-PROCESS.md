@@ -1,0 +1,231 @@
+# Release Process — NodeGX
+
+How to cut, verify, publish, and roll back a signed NodeGX release.
+
+> **Status (REV-007):** the release *infrastructure* is complete and wired —
+> tag-triggered CI, per-platform signing hooks, notarisation, auto-update feed,
+> draft-then-publish. What is **not** done, and cannot be done in code, is the
+> **credential provisioning**: an Apple Developer account, a Windows
+> code-signing certificate, and the CI secrets built from them. Until a human
+> completes [§1](#1-one-time-credential-setup-human-required), releases produced
+> by CI are **unsigned** (they still build and publish as drafts, but macOS
+> Gatekeeper will warn and Windows SmartScreen will block). Nothing ships to
+> users until someone provisions credentials and publishes a draft.
+
+---
+
+## 0. TL;DR
+
+```bash
+# 1. Bump the version in packages/noodl-editor/package.json (e.g. 0.1.0 -> 0.1.1).
+# 2. Commit it.
+# 3. Tag and push:
+git tag v0.1.1
+git push origin v0.1.1
+# 4. Watch the "Release" workflow in GitHub Actions.
+# 5. Go to GitHub → Releases → the new DRAFT release.
+# 6. Download and smoke-test each platform artifact on a CLEAN machine.
+# 7. Click "Publish release". Only now can existing installs auto-update.
+```
+
+The tag **must** match the `version` in `packages/noodl-editor/package.json`
+prefixed with `v`. electron-builder names the release from the package version,
+not the tag; a mismatch produces a confusing release.
+
+---
+
+## 1. One-time credential setup (human required)
+
+None of this can be automated — each step involves an external account,
+payment, or identity verification. Do it once; the secrets then live in GitHub
+and every release uses them.
+
+### 1a. macOS — Apple Developer ID + notarisation
+
+1. Enrol in the [Apple Developer Program](https://developer.apple.com/programs/)
+   (~US$99/year). Allow days for approval.
+2. In the Apple Developer portal, create a **Developer ID Application**
+   certificate. Download it and export it from Keychain Access as a `.p12`
+   (set a strong password).
+3. Base64-encode the `.p12`: `base64 -i DeveloperID.p12 | pbcopy`.
+4. Create an **app-specific password** for notarisation at
+   <https://account.apple.com> → Sign-In and Security → App-Specific Passwords.
+5. Find your **Team ID** in the Apple Developer portal (Membership details).
+
+Add these **repository secrets** (Settings → Secrets and variables → Actions):
+
+| Secret | Value |
+|--------|-------|
+| `CSC_LINK` | base64 of the Developer ID `.p12` |
+| `CSC_KEY_PASSWORD` | the `.p12` export password |
+| `APPLE_ID` | Apple account email |
+| `APPLE_APP_SPECIFIC_PASSWORD` | the app-specific password from step 4 |
+| `APPLE_TEAM_ID` | your Team ID |
+
+(Alternatively, notarisation can use an App Store Connect API key —
+`APPLE_API_KEY` / `APPLE_API_KEY_ID` / `APPLE_API_ISSUER`. See
+`packages/noodl-editor/build/macos-notarize.js`.)
+
+### 1b. Windows — code signing
+
+1. Buy an **OV or EV code-signing certificate** from a CA (DigiCert, Sectigo,
+   SSL.com, …). EV builds SmartScreen reputation faster but needs a hardware
+   token / cloud-HSM flow that does not drop cleanly into `WIN_CSC_LINK`; an OV
+   `.pfx` is the simplest fit for this pipeline. Allow days-to-weeks for
+   identity vetting.
+2. Export the certificate as a `.pfx` and base64-encode it.
+
+Add:
+
+| Secret | Value |
+|--------|-------|
+| `WIN_CSC_LINK` | base64 of the `.pfx` |
+| `WIN_CSC_KEY_PASSWORD` | the `.pfx` password |
+
+> **SmartScreen reputation:** even a correctly-signed installer from a *new*
+> certificate will show a SmartScreen warning until enough users have installed
+> it. This is expected and improves over time. Do not treat an early SmartScreen
+> prompt as a signing failure.
+
+### 1c. Linux
+
+No signing credentials required. AppImage and `.deb` are produced unsigned;
+this is normal for Linux desktop distribution.
+
+### 1d. GitHub token
+
+Publishing uses the workflow's built-in `GITHUB_TOKEN` (granted `contents:
+write` in `release.yml`). No secret to add. For publishing from a *fork* or a
+different repo you would need a PAT in `GH_TOKEN`.
+
+---
+
+## 2. What the release workflow does
+
+`.github/workflows/release.yml`, triggered by a `v*.*.*` tag (or manual
+dispatch):
+
+1. Builds on a 4-way matrix: `linux-x64`, `win32-x64`, `darwin-arm64`,
+   `darwin-x64`.
+2. Runs the editor build with `DISABLE_SIGNING=false` and `PUBLISH_RELEASE=true`.
+   - macOS: signs with the Developer ID (`CSC_LINK`), then `build/macos-notarize.js`
+     notarises with Apple and electron-builder staples the ticket.
+   - Windows: signs the NSIS installer (`WIN_CSC_LINK`).
+   - Linux: builds AppImage + deb (unsigned).
+3. electron-builder publishes every artifact **plus the update manifests**
+   (`latest.yml`, `latest-mac.yml`, `latest-linux.yml`) to a **draft** GitHub
+   Release named for the package version.
+
+Because the release is a **draft**, it is invisible to the public and to
+electron-updater until a human clicks Publish. An unsigned or broken build
+therefore can never reach a user by accident.
+
+**If a signing secret is missing,** that platform still builds and publishes,
+but the artifact is unsigned (macOS: not notarised; Windows: unsigned). The
+`macos-notarize.js` hook logs a clear "skipping notarisation" line in that case.
+
+---
+
+## 3. Cutting a release
+
+1. Decide the new version (semver). Update `version` in
+   `packages/noodl-editor/package.json`. **The version must only ever increase** —
+   electron-updater compares semver and will never offer a lower version.
+2. Commit on `cline-dev` (per `.clinerules`): `chore(release): v0.1.1`.
+3. Tag and push:
+   ```bash
+   git tag v0.1.1
+   git push origin cline-dev
+   git push origin v0.1.1
+   ```
+4. Watch **Actions → Release**. All four matrix jobs must go green.
+
+---
+
+## 4. Verifying before publishing (do NOT skip)
+
+The whole point of REV-007's ordering is to debug releases while the stakes are
+low. Verify on **clean** machines/VMs, never a development machine — dev
+machines have already trusted the app and mask signing problems.
+
+- **macOS:** download the `.dmg`, install on a Mac that has never seen the app.
+  - No Gatekeeper prompt on first launch.
+  - `spctl -a -vvv /Applications/NodeGX.app` → `accepted`, `source=Notarized Developer ID`.
+  - `xcrun stapler validate /Applications/NodeGX.app` → `The validate action worked!`.
+- **Windows:** run the `.exe` installer on a clean Windows VM. It should install
+  without a *blocked-publisher* error (an early SmartScreen "unrecognized app"
+  prompt is expected for a new cert — see §1b).
+- **Linux:** `chmod +x NodeGX-*.AppImage && ./NodeGX-*.AppImage` on a clean
+  Ubuntu 22.04+ box; it should launch with no extra dependencies.
+- **Auto-update (needs two releases):** install version N, publish version N+1,
+  confirm the running app detects it, downloads it, shows the update popup, and
+  that **declining** leaves N running while **accepting** restarts into N+1.
+
+Only when every platform you intend to ship passes: **GitHub → Releases → the
+draft → Publish release.**
+
+---
+
+## 5. Rollback
+
+If a bad release has been published:
+
+1. **Stop new installs / auto-updates immediately.** In GitHub → Releases, edit
+   the bad release and either **delete** it or set it back to **draft**.
+   electron-updater reads the *latest published* release; removing it stops it
+   being served. Deleting the release does **not** delete the git tag.
+2. If a good older release exists, it becomes "latest" again automatically once
+   the bad one is unpublished — clients will not downgrade (semver), but new
+   downloads get the good one.
+3. **Ship a forward fix, do not rely on downgrade.** Because electron-updater
+   never moves users to a lower version, the real remedy for a bad N is to
+   publish a fixed N+1 quickly. Bump the version, fix, re-tag, re-release.
+4. Delete the bad git tag if you want to reuse the number *before* anyone pulled
+   it (rare — prefer a new number):
+   ```bash
+   git push origin :refs/tags/v0.1.1   # delete remote tag
+   git tag -d v0.1.1                    # delete local tag
+   ```
+
+---
+
+## 6. Known limitations & follow-ups (REV-007)
+
+These are documented deliberately rather than silently shipped:
+
+- **macOS multi-arch auto-update feed.** The matrix builds `darwin-arm64` and
+  `darwin-x64` as separate jobs, and each writes `latest-mac.yml`. The second to
+  finish overwrites the first, so the published `latest-mac.yml` points at only
+  one arch's `.zip`. This is **harmless for the very first release** (no client
+  is auto-updating yet) but **must be fixed before the second release**, or half
+  of macOS users will be offered the wrong-arch update. The fix is a single
+  **universal** macOS build (`--universal`) or arch-scoped update channels.
+  Tracked as a follow-up; do not publish a v0.1.1 to mac users until it is done.
+- **Signing is credential-gated, not verified end-to-end.** No Apple/Windows
+  certificates exist yet, so the signed/notarised path has never actually run.
+  The hooks are wired and will engage the moment the secrets in §1 are present,
+  but the first real signed build is where notarisation/entitlement problems
+  surface — expect to iterate there.
+- **AppImage build is CI-verified only.** AppImage cannot be built on macOS, so
+  it is exercised by the Linux runner, not locally. Local verification here
+  covered the macOS packaging path only.
+- **App icons.** The build uses the 256×256 `src/assets/images/icon.png`. That
+  satisfies AppImage's icon requirement, but for crisp macOS/Windows icons a
+  proper multi-resolution `.icns`/`.ico` (or a ≥512px master) should be added
+  under `build/`. Not blocking for v0.
+- **GitHub OAuth deep-link scheme is still `noodl://`.** The app's own protocol
+  was rebranded to `nodegx://`, but the GitHub OAuth callback
+  (`github-oauth-handler.js`) deliberately keeps `noodl://` because it is bound
+  to the externally-registered OAuth app's redirect URI. Changing it requires
+  updating that registration in the GitHub OAuth app settings first, then the
+  `OAUTH_PROTOCOL` constant — an external-credential step, out of REV-007 scope.
+
+---
+
+## 7. Security notes
+
+- **No credentials in the repo.** All signing material lives in GitHub Actions
+  secrets. `.p12`/`.pfx` files and passwords are never committed.
+- Workflow logs must never echo secret-bearing commands; electron-builder masks
+  them, and the notarize hook logs only non-secret status.
+- Secrets are only exposed to the `release.yml` workflow, which runs on tags.

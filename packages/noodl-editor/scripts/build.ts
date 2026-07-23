@@ -39,18 +39,32 @@ import { BuildTarget, getDistPlatform } from './platform/build-platforms';
   console.log('--- done!');
 
   const platformName = getDistPlatform(target.platform);
-  const args = [`--${platformName}`, `--${target.arch}`].join(' ');
+
+  // Publish to the configured feed (GitHub Releases) only when explicitly asked
+  // — the tag-triggered release workflow sets PUBLISH_RELEASE=true and provides
+  // GH_TOKEN. Nightly and local builds leave it unset and stay local-only.
+  // `onTagOrDraft` respects the `releaseType: draft` in package.json, so a
+  // release lands as a draft for a human to confirm before it goes public.
+  const PUBLISH_RELEASE = valueToBoolean(process.env.PUBLISH_RELEASE);
+  const publishArg = PUBLISH_RELEASE ? '--publish onTagOrDraft' : '--publish never';
+
+  const args = [`--${platformName}`, `--${target.arch}`, publishArg].join(' ');
+
+  // Signing:
+  //  - DISABLE_SIGNING=true  → force signing off (CSC_IDENTITY_AUTO_DISCOVERY=false).
+  //    Without this, electron-builder would try to sign with whatever identity it
+  //    finds in the local keychain, so "unsigned" nightly/dev builds were only
+  //    unsigned by accident. Now they are unsigned by contract.
+  //  - DISABLE_SIGNING=false → electron-builder reads signing material from the
+  //    environment: CSC_LINK/CSC_KEY_PASSWORD (macOS Developer ID) and
+  //    WIN_CSC_LINK/WIN_CSC_KEY_PASSWORD (Windows). Notarisation is handled by
+  //    the afterSign hook (build/macos-notarize.js). No credentials are read here.
+  const signingEnv = DISABLE_SIGNING ? { CSC_IDENTITY_AUTO_DISCOVERY: 'false' } : {};
 
   console.log(`--- Run: 'npx electron-builder ${args}' ...`);
+  console.log(`> DISABLE_SIGNING: ${DISABLE_SIGNING} | PUBLISH_RELEASE: ${PUBLISH_RELEASE}`);
   execSync('npx electron-builder ' + args, {
     stdio: [0, 1, 2],
-    env: Object.assign(
-      DISABLE_SIGNING
-        ? {}
-        : {
-            // CSC_NAME: 'Add signing name here'
-          },
-      process.env
-    )
+    env: Object.assign({}, process.env, signingEnv)
   });
 })();

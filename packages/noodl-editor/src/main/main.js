@@ -98,7 +98,10 @@ function launchApp() {
 
   const appPath = app.getAppPath();
 
-  app.setAsDefaultProtocolClient('noodl');
+  // App deep-link scheme (rebranded to NodeGX in REV-007). The GitHub OAuth
+  // callback scheme stays `noodl://` (see github-oauth-handler.js) because it is
+  // bound to the externally-registered OAuth app redirect URI.
+  app.setAsDefaultProtocolClient('nodegx');
 
   let win;
 
