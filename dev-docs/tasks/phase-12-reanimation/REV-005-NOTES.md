@@ -127,3 +127,90 @@ leftovers that still hardcode `node-version: 16`. They're
 `workflow_dispatch`-only or duplicate jobs `pr.yml` already runs under
 different names. Not touched — this is CI-workflow cleanup, not dependency
 hygiene; flagging for whoever next touches `.github/workflows/`.
+
+## Step 5 — case-by-case review of remaining `--omit=dev` findings
+
+Baseline after the safe fix + TS/webpack-cli unification: 16 findings (4
+critical, 6 high, 4 moderate, 2 low). Investigated each by tracing the
+`npm audit --json` `nodes` field back to an actual `require`/`import` in
+tracked source (excluding compiled bundles), not just the declared
+dependency graph:
+
+- **`mkdirp`/`minimist`** (critical): `noodl-editor` pinned `mkdirp` to an
+  exact `"0.5.1"` (no caret) — real usage confirmed in
+  `src/editor/src/utils/filesystem.js` (`mkdirp(path, cb)` /
+  `mkdirp.sync(path)`, the classic 0.5.x callback/sync API). Bumped to
+  `^0.5.6`, the last 0.5.x release, which keeps the exact same API and
+  fixes both the `mkdirp` prototype-pollution advisory and the nested
+  vulnerable `minimist` it pulled in. **Fixed directly.**
+- **`cookie-session`** (low, pulls in `on-headers`): `noodl-parse-dashboard`
+  pinned exact `"2.0.0"`. `npm audit`'s suggested fix (2.1.1) is a non-major
+  patch. Bumped to `^2.1.1`. **Fixed directly.**
+- **`aws-sdk`, `s3`, `mime`, `xml2js`, `xmlbuilder`, and the nested critical
+  `lodash`** (the `node_modules/aws-sdk/node_modules/lodash` copy, not the
+  top-level one `noodl-parse-dashboard` uses — that one already resolved to
+  the patched 4.18.1 via its own `^4.17.21` range): all six traced to a
+  single source — `noodl-editor`'s direct dependency on
+  `s3: github:noodlapp/node-s3-client`, which vendors `aws-sdk@2.4.14`
+  (a 2015-era release). Searched the entire tracked source tree (excluding
+  `node_modules` and compiled `.bundle.js`) for any `require('s3')` /
+  `import ... from 's3'` and found **zero consumers** — not in
+  `noodl-editor/src`, not in any build script, nowhere. Checked full git
+  history for the same pattern: never used in this repo's tracked history
+  either. The only trace was a hand-written `@include-types/s3.d.ts`
+  ambient declaration, itself unused. This reads as a leftover from an S3
+  auto-publish feature that predates this codebase's history and was never
+  wired up (or was removed before it was ever committed). **Removed** the
+  `s3` dependency and its `.d.ts` file entirely rather than documenting it
+  as accepted risk — deleting genuinely dead code that carries six
+  vulnerabilities is strictly better than carrying the risk on paper. If a
+  real S3-publish feature is wanted later, it should be added fresh against
+  a maintained client (`@aws-sdk/client-s3` v3), not by reviving this.
+- **`websocket-stream`, `ws`** (high; the vulnerable `ws@3.3.3` nested
+  inside `websocket-stream`, not the top-level `ws@^8.18.3` that
+  `design-tool-import-server.js` and `web-server.js` genuinely `require`
+  directly and which was already unaffected): `noodl-editor` also declared
+  `websocket-stream` as a direct dependency, and the same search came up
+  empty — no `require('websocket-stream')` anywhere in tracked source or
+  history. `websocket-stream`'s latest release (5.5.2, matching the
+  existing `^5.5.2` range) permanently pins `ws@^3.2.0` with no newer
+  release available, so there was no non-major fix even if it had been
+  used. **Removed** — same reasoning as `s3`: dead dependency, delete
+  rather than document.
+- **`dugite`, `got`, `tar`** (high/moderate/critical): `dugite` is
+  `@noodl/git`'s embedded-git wrapper — genuinely used, this is not dead
+  code. But `got` and `tar` are pulled in only through dugite's own
+  `postinstall` script (`script/download-git.js`), which downloads and
+  extracts the embedded git binary from a fixed GitHub Releases URL once,
+  at `npm install` time. Confirmed via `node_modules/dugite/package.json`:
+  neither package appears in dugite's runtime code paths, only in
+  `postinstall`. An end user running the packaged app never executes
+  `npm install` and never touches this code path; the exposure is limited
+  to a maintainer's machine during dependency installation, trusting the
+  same GitHub Releases source the whole toolchain already trusts. The
+  available fix is `dugite@3.2.2`, a semver-major jump that changes the
+  embedded git version — real risk to the git integration REV-002/REV-003
+  spent significant effort hardening, for a vulnerability that isn't
+  reachable at runtime. **Accepted risk, documented, not bumped** — see
+  `DEPENDENCY-POLICY.md`. Worth a dedicated task if/when dugite ships a
+  minor that resolves it without the major jump.
+- **`passport`** (moderate): genuinely reachable — `noodl-editor` bundles
+  `@noodl/noodl-parse-dashboard` (a local Parse backend the editor spins up
+  for a project's cloud functions/auth), which pins `passport@0.5.3` and
+  `passport-local@1.0.0`. The advisory (session not regenerated on
+  login/logout, CVSS 4.8) is real but the only available fix is
+  `passport@0.7.0`, a major version bump to session/auth-handling code with
+  no existing test coverage for the local backend's auth flow to catch a
+  regression. This is exactly the "single dependency that turns into a
+  migration project" case the task doc calls out to hand off rather than
+  rush. **Accepted risk, documented, deferred as its own task** — see
+  `DEPENDENCY-POLICY.md`.
+
+Net effect: `--omit=dev` findings went from 35 (post safe-fix baseline) to
+**4** (1 critical, 1 high, 2 moderate) — `dugite`/`got`/`tar` (one accepted
+risk cluster) and `passport` (one deferred migration). Both are documented
+with reasoning in `DEPENDENCY-POLICY.md`, not silently carried.
+
+Re-verified after the removals: `typecheck:editor` clean, `test:ci` 712/0
+specs (unchanged — confirms `s3`/`websocket-stream` truly had zero runtime
+consumers), full `build:editor` green.
