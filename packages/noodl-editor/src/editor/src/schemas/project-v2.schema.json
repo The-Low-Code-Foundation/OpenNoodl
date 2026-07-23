@@ -100,7 +100,7 @@
     },
     "rootNodeId": {
       "type": "string",
-      "description": "ID of the component the runtime mounts as the app root"
+      "description": "ID of the NODE the runtime mounts as the app root (not a component id). Names one top-level node inside one component, typically the Page Router in /App; the export derives rootComponent from whichever component owns it. Without it the export produces nothing and the app renders blank, so a tool authoring a project from scratch must set it."
     },
     "lesson": {
       "description": "Lesson/tutorial payload attached to the project (interactive-lesson projects)"

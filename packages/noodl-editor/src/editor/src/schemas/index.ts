@@ -65,7 +65,13 @@ export interface ProjectV2File {
     modelsDir?: string;
     assetsDir?: string;
   };
-  /** ID of the component the runtime mounts as the app root. */
+  /**
+   * ID of the **node** the runtime mounts as the app root — not a component id.
+   * It names one top-level node inside one component (typically the Page Router
+   * in `/App`); the export derives `rootComponent` from whichever component owns
+   * it. Without it `Exporter.exportToJSON` returns nothing and the app renders
+   * blank, so any tool authoring a project from scratch must set it.
+   */
   rootNodeId?: string;
   /** Lesson/tutorial payload attached to the project (interactive-lesson projects). */
   lesson?: unknown;
