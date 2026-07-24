@@ -5,6 +5,7 @@
   "scripts": {
     "start": "webpack --config webpack-configs/webpack.dev.js",
     "build": "webpack --config webpack-configs/webpack.prod.js",
+    "build:react-globals": "node scripts/build-react-globals.js",
     "test": "jest"
   },
   "dependencies": {
