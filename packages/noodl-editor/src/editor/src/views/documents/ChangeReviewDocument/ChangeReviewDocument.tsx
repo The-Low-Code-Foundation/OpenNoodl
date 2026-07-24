@@ -45,6 +45,7 @@ import { toLegacyComponent, type GraphChange, type ParamDelta } from '@noodl-ver
 import { Frame } from '../../common/Frame';
 import { NodeGraphEditor } from '../../nodegrapheditor';
 import {
+  ChangeGroup,
   countCosmetic,
   createDisplayNameProvider,
   describeSide,
@@ -66,6 +67,9 @@ export interface ChangeReviewDocumentProps {
 }
 
 type ViewMode = 'before' | 'review' | 'after';
+
+/** Above this many changes, groups start collapsed and the walkthrough matters. */
+const LARGE_CHANGE_SET = 20;
 
 /** The node an entry centres on canvas — undefined for component-level rows. */
 function anchorNodeId(change: GraphChange): string | undefined {
@@ -153,6 +157,12 @@ function ChangeReviewDocument({ changeSet, files, title, onAcceptFiles, onReject
   const [viewMode, setViewMode] = useState<ViewMode>('review');
   const [rejected, setRejected] = useState<ReadonlySet<string>>(new Set());
   const [applyError, setApplyError] = useState<string | null>(null);
+  // Large sets start folded to their group summaries; the reader drills in.
+  const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(() =>
+    changeSet.changes.length > LARGE_CHANGE_SET ? new Set(Object.values(ChangeGroup)) : new Set()
+  );
+  /** Walkthrough position: index into the anchored changes, or -1 before start. */
+  const [walkIndex, setWalkIndex] = useState(-1);
 
   const reviewComponent = useMemo(() => componentFromLegacy(buildReviewComponent(changeSet)), [changeSet]);
   const beforeComponent = useMemo(() => {
@@ -198,6 +208,27 @@ function ChangeReviewDocument({ changeSet, files, title, onAcceptFiles, onReject
     if (!id) return;
     if (viewMode !== 'review') setViewMode('review');
     nodeGraph.switchToComponent(reviewComponent, { node: { id } as never });
+  };
+
+  // The walkthrough steps through every change that has a canvas anchor, in
+  // list order — the guided way through a set too large to eyeball.
+  const anchored = useMemo(
+    () => groups.flatMap((group) => group.changes).filter((presented) => anchorNodeId(presented.change) !== undefined),
+    [groups]
+  );
+
+  const step = (direction: 1 | -1) => {
+    if (anchored.length === 0) return;
+    const next = Math.min(Math.max(walkIndex + direction, 0), anchored.length - 1);
+    setWalkIndex(next);
+    focus(anchored[next].change);
+  };
+
+  const toggleGroup = (group: string) => {
+    const next = new Set(collapsed);
+    if (next.has(group)) next.delete(group);
+    else next.add(group);
+    setCollapsed(next);
   };
 
   const exclude = (changeId: string) => {
@@ -267,6 +298,25 @@ function ChangeReviewDocument({ changeSet, files, title, onAcceptFiles, onReject
             <Text textType={TextType.Shy}>
               Click a change to see it on the canvas. Exclude what you don’t want — the rest is accepted.
             </Text>
+            {anchored.length > 1 && (
+              <div className={css.Walkthrough}>
+                <PrimaryButton
+                  label="Previous"
+                  variant={PrimaryButtonVariant.MutedOnLowBg}
+                  isDisabled={walkIndex <= 0}
+                  onClick={() => step(-1)}
+                />
+                <PrimaryButton
+                  label={walkIndex < 0 ? 'Walk through' : 'Next'}
+                  variant={PrimaryButtonVariant.MutedOnLowBg}
+                  isDisabled={walkIndex >= anchored.length - 1}
+                  onClick={() => step(1)}
+                />
+                <Text textType={TextType.Shy}>
+                  {walkIndex < 0 ? `${anchored.length} on canvas` : `${walkIndex + 1} of ${anchored.length}`}
+                </Text>
+              </div>
+            )}
             {applyError && (
               <div className={css.ApplyError}>
                 <Icon icon={IconName.WarningCircleFilled} variant={FeedbackType.Danger} size={IconSize.Small} />
@@ -278,10 +328,16 @@ function ChangeReviewDocument({ changeSet, files, title, onAcceptFiles, onReject
           <div style={{ overflowY: 'auto', flex: 1, minHeight: 0 }}>
             {groups.map((group) => (
               <div key={group.group}>
-                <div className={css.GroupHeader}>
+                <button type="button" className={css.GroupHeader} onClick={() => toggleGroup(String(group.group))}>
+                  <Icon
+                    icon={collapsed.has(String(group.group)) ? IconName.CaretRight : IconName.CaretDown}
+                    size={IconSize.Tiny}
+                  />
                   <Label>{group.group}</Label>
-                </div>
-                {group.changes.map((presented) => {
+                  <Text textType={TextType.Shy}>{`${group.changes.length}`}</Text>
+                </button>
+                {!collapsed.has(String(group.group)) &&
+                  group.changes.map((presented) => {
                   const changeId = changeIdByObject.get(presented.change);
                   const clickable = anchorNodeId(presented.change) !== undefined;
                   const excludable = isExcludable(presented.change) && changeId !== undefined;

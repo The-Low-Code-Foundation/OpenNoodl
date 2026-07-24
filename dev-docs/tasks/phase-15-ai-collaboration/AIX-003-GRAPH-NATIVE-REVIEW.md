@@ -127,10 +127,24 @@ Do not rely on colour alone. Use shape, badges, or line treatment as well — bo
 
 ## Checklist
 
-- [ ] Branch `task/aix-003-graph-native-review`
-- [ ] Build the AI-proposal → SUB-007 change-set adapter
-- [ ] Static canvas rendering of all change types
-- [ ] Change list panel + navigation + parameter detail
-- [ ] Before/after toggle; granular accept/reject with dependency rules
-- [ ] Large-change-set grouping and walkthrough; fresh-reviewer test
-- [ ] Accessibility verification; CHANGELOG; open PR
+- [x] ~~Branch~~ committed straight to `cline-dev` per working agreement
+- [x] Build the AI-proposal → SUB-007 change-set adapter
+- [x] Static canvas rendering of all change types (annotated merged component on the read-only diff canvas — see NOTES for why this beat a live-canvas overlay)
+- [x] Change list + navigation + parameter detail (`ChangeReviewDocument`, not a sidebar panel — the list lives beside its own canvas)
+- [x] Before/after toggle; granular accept/reject with dependency rules
+- [x] Large-change-set grouping and walkthrough
+- [ ] Fresh-reviewer test with a 40+ node proposal (needs a human + live provider)
+- [x] Accessibility: badges, dashed borders/routing, stroke weight — change types carry shape, not colour alone
+- [x] CHANGELOG (below); no PR — direct commits to `cline-dev`
+
+## CHANGELOG
+
+- 2026-07-24 — Slices 1–5 on `cline-dev` (57eaa28, b10dce2, 5eb336c, a505d8c, slice 5):
+  change-set adapter with stable ids and dependency closures; annotated review
+  component + accessible painter treatments; `ChangeReviewDocument` with grouped
+  sentence list, canvas navigation, parameter detail, Before/Changes/After
+  views, per-row exclude/restore, walkthrough stepper, collapsible groups, and
+  Accept N of M through `materializeSelection` + the SUB-006 gate. +14 specs
+  (1139 → 1153). Upstream SUB-007 fixes: `v2:componentName` treated as derived;
+  instance-port `index` ignored in comparison. As-built detail and residuals:
+  [AIX-003-NOTES.md](AIX-003-NOTES.md).
