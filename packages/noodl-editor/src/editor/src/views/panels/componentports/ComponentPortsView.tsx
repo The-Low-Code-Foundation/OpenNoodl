@@ -110,7 +110,7 @@ function NameEditInput({ value, onCommit }: { value: string; onCommit: (newName:
         autoFocus
         defaultValue={value}
         onBlur={(e) => commit(e.target.value)}
-        onKeyPress={(e) => {
+        onKeyDown={(e) => {
           if (e.key === 'Enter') commit(e.currentTarget.value);
         }}
       />

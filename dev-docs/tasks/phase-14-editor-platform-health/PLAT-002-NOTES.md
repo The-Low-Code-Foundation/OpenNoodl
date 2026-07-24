@@ -308,25 +308,77 @@ propertyeditor/* (12) in waves 1b–2c; `componentports`, `importpopup`,
   `UndoQueue`/`EventDispatcher` singletons are reachable by grabbing webpack's require via
   `webpackChunknoodl_editor.push([[Symbol()],{},r=>window.__req=r])`.
 
+- 2026-07-24: Wave 2g + wave 3 (partial) (61414da) — **Group A is done.**
+  `colorpicker.js` + `templates/propertyeditor/colorpicker.html` → `colorpicker.ts`: iro
+  stays imperative (it owns a canvas and call sites drive `setColor`/
+  `setColorChangedListener` synchronously right after `render()`, so it cannot move into a
+  React effect), and only the hex/opacity row is React (`components/ColorPickerFields.tsx`).
+  Those fields commit on blur/Enter **only when the value changed** (legacy `change`
+  semantics) and re-sync on a `revision` prop, which is what re-formats an invalid entry
+  the way the legacy `_setInputFieldsToColor` did. `colorstylepicker.jsx` now disposes the
+  picker it opens (it never did — iro listeners leaked per style edit).
+  **PopupLayer normalization brought forward from wave 4** (the positioning half of the
+  rewrite is untouched): `showPopup`/`showPopout`/`showModal` accept `content.el` as a raw
+  element (`content[0] || content`, `detach?.() : remove()`) and `attachTo` as a raw element
+  (new `attachToRect()` helper — jQuery objects still go through `offset()`/`outerWidth(true)`,
+  so existing call sites are bit-identical). That let 15 call sites drop `$()` mechanically.
+  Wave 3 proper: `CanvasDOMBindings` uses native listeners keyed by an `AbortController` per
+  canvas (replaces jQuery `.off(type)` on the resize rebind; also fixes the mouseover
+  `topLeft` handler being bound 5× — it was inside the event loop), `lessonlayer2`'s
+  image/video loading is native DOM, and `componentports.tsx` (the "Inputs"/"Outputs" panel
+  reachable from Component Inputs/Outputs, Globals and the deprecated animation node) is
+  React: `panels/componentports/ComponentPortsView.tsx` owns the rows, inline rename,
+  PopupLayer drag/drop and the footer, the class keeps the model logic, and
+  `templates/componentports.html` is deleted. 236 → 192 `$(`, 49 → 39 files.
+  **Bug found while smoke-testing and fixed** (pre-existing, not from this wave): the
+  property panel's `NodeLabel` committed the label on *every* blur, and `setLabel` pushes an
+  undo entry unconditionally — so merely opening a popout pushed a "change label" entry and
+  the user's next Cmd+Z undid nothing. Now it commits only when it was actually editing and
+  the text changed. Same failure mode as the wave-2d core-ui input bug; worth grepping for
+  more `onBlur → commit` without a value-differs guard.
+  **Verified live via CDP** (scripted, one connection; 15/17 checks green, the 2 reds were
+  the test driving a stale HMR bundle): colour popout opens with the iro box + 2 sliders at
+  228×343 with the `.IroBox` radius override applied, shows the current colour, a hex commit
+  writes the parameter and pushes **exactly one** "edit parameter" entry, a blur with no
+  change pushes **none**, an opacity commit writes `#RRGGBBAA`, the popout closes; the ports
+  panel renders header "Inputs" + the Port/Group footer for a Component Inputs node, the
+  add-port `StringInputPopup` opens anchored above the button, and the raw-element
+  `attachTo` measures the same rect as `$(btn).offset()/outerWidth(true)` (±0.1px).
+  **Smoke traps (new):** `editor.selectNode()` takes a `NodeGraphEditorNode` **view**, not a
+  model node — use `ed.selectNode(ed.findNodeWithId(model.id))`. `NodeLibrary.instance` can
+  still be empty right after boot (it loads `window.NodeLibraryData` in its constructor);
+  call `NodeLibrary.instance.reload()` before asserting on property rows. Several panels are
+  `.sidebar-panel`, so scope queries (the ports panel is the one with
+  `.sidebar-panel-footer-button`). React drops synthetic `keypress` events with charCode 0,
+  so `KeyboardEvent('keypress')` from CDP never reaches an `onKeyPress` handler — dispatch
+  `keydown` (and prefer `onKeyDown` in new code). Editing a file only reaches the running
+  app if webpack recompiles **and** the owning module is re-evaluated: a class that renders
+  a React component holds the old function across HMR, so restart Electron before trusting
+  a UI change.
+
 ## 8. Handoff — next session starts here
 
-Remaining, in the planned order (waves 2d–2f complete; count now 236 `$(` / 49 files):
+Remaining, in the planned order (waves 2a–2g and part of wave 3 complete; count now
+192 `$(` / 39 files):
 
-1. **Wave 2g — the colour picker**, the last of Group A: `DataTypes/ColorPicker/colorpicker.js`
-   (12 `$(`) + `templates/propertyeditor/colorpicker.html`, plus `colorstylepicker.jsx`(1) and
-   `ColorType.ts`(3, all `attachTo`/`content.el` feeding PopupLayer — those go in wave 4).
-   It was skipped in wave 2b, which converted the `ColorType` row but left the picker popout.
-2. **Wave 3**: canvas group (CanvasDOMBindings 6, ConnectionPopups 3, nodegrapheditor 1,
-   NodeGraphEditorNode 1, CanvasView 1, lessonlayer2 6), `componentports.tsx`(4),
-   `createnewnodepanel.ts`(1), `ComponentTemplates.ts`(1), `importpopup.js`(9) + its
-   templates, `exportProjectComponets.ts` (exportpopup.html).
-3. **Wave 4**: PopupLayer rewrite (contract = `popuplayer.d.ts`; §3 strategy: same API, one
-   React root, normalize `attachTo`/`content.el` accepting raw elements) then sweep the 19
-   Group D files' `$()` calls; convert confirmmodal/errormodal/yesnopopup/stringinputpopup.
-4. **Wave 5**: delete `shared/view.js`+`view.d.ts`, de-jQuery `ReactView.ts`, remove the two
-   `<script>` tags from `src/editor/index.html` + `src/assets/lib/jquery-min.js` +
-   `jquery.autosize.min.js`, delete remaining orphan templates, repo-wide grep, CHANGELOG
-   in the task doc (record before/after counts: baseline 547/68), update PROGRESS.md.
+1. **Wave 3 remainder**: `importpopup.js`(9) + `templates/importpopup.html` +
+   `importoverwritepopup.html` (one view class rendered with two templates — the folder/item
+   tree with implicit-dependency checkmarks), `exportProjectComponets.ts` +
+   `templates/exportpopup.html`, `NodeGraphEditorNode.ts`(1, the comment `StringInputPopup` —
+   easier once wave 4 converts that popup), and the `editor.$('#nodegraphcanvas')` lookups in
+   `CanvasDOMBindings`/`ConnectionPopups` (they need `nodegrapheditor.ts`'s own `el`, i.e.
+   wave 5).
+2. **Wave 4**: PopupLayer rewrite (contract = `popuplayer.d.ts`; §3 strategy: same API, one
+   React root). The `content.el`/`attachTo` normalization is already done, so what is left is
+   the layer itself (101 `$(`), plus converting confirmmodal/errormodal/yesnopopup/
+   stringinputpopup, and the remaining Group D `attachTo: $(x)` call sites — those are now a
+   pure deletion of the `$()` wrapper.
+3. **Wave 5**: delete `shared/view.js`+`view.d.ts` (30 `$(`), de-jQuery `ReactView.ts`,
+   `router.tsx`(4), `filesystem.js`(5), `thumbnailcache.js`(3), `docs-parser.ts`(3),
+   `keyboardhandler.ts`(2), `fontloader.js`(1), remove the two `<script>` tags from
+   `src/editor/index.html` + `src/assets/lib/jquery-min.js` + `jquery.autosize.min.js`,
+   delete remaining orphan templates, repo-wide grep, CHANGELOG in the task doc (record
+   before/after counts: baseline 547/68), update PROGRESS.md.
 
 Working notes for the next session:
 - Smoke-test flow: `npm run dev:debug -- --quiet`, wait for "launching Electron" in
