@@ -1,15 +1,9 @@
-import { NodeLibrary } from '@noodl-models/nodelibrary';
-
 import ImagePicker from '../imagepicker';
-import { TypeView } from '../TypeView';
 import { getEditType } from '../utils';
+import { PickerTypeView } from './PickerTypeView';
 
-function firstType(type) {
-  return NodeLibrary.nameForPortType(type);
-}
-
-export class ImageType extends TypeView {
-  el: TSFixme;
+export class ImageType extends PickerTypeView {
+  private imagePicker: TSFixme;
 
   static fromPort(args) {
     const view = new ImageType();
@@ -29,52 +23,25 @@ export class ImageType extends TypeView {
 
     return view;
   }
-  render() {
-    const _this = this;
 
-    this.el = this.bindView(this.parent.cloneTemplate(firstType(this.type)), this);
-    TypeView.prototype.render.call(this);
+  protected openPicker(anchor: HTMLElement) {
+    this.imagePicker = new ImagePicker({
+      onItemSelected: (name: string) => {
+        this.commit(name);
+        this.parent.hidePopout();
+      }
+    });
 
-    let imagePicker;
-    this.$('input')
-      .on('focus', function (e) {
-        e.stopPropagation();
-      })
-      .on('click', function (e) {
-        imagePicker = new ImagePicker({
-          onItemSelected: function (name) {
-            _this.$('input').val(name);
-            _this.$('input').trigger('change');
-            _this.parent.hidePopout();
-            // _this.$('input').blur();
-          }
-        });
-        //imagePicker.setFilter($(this).val());
-        imagePicker.render();
+    this.imagePicker.render();
 
-        const el = $(this);
-        _this.parent.showPopout({
-          content: imagePicker,
-          attachTo: el,
-          position: 'right'
-        });
-
-        e.stopPropagation(); // Most stop propagation here otherwise the popup will close
-      })
-      .on('keyup', function (e) {
-        imagePicker && imagePicker.setFilter($(this).val());
-      });
-
-    return this.el;
+    this.parent.showPopout({
+      content: this.imagePicker,
+      attachTo: $(anchor),
+      position: 'right'
+    });
   }
-  onPropertyChanged(scope, el) {
-    this.parent.setParameter(scope.name, el.val() === '' ? undefined : el.val());
 
-    // Update current value and if it is default or not
-    const current = this.getCurrentValue();
-    el.val(current.value);
-    this.isDefault = current.isDefault;
-
-    el.blur();
+  protected filterPicker(text: string) {
+    this.imagePicker && this.imagePicker.setFilter(text);
   }
 }

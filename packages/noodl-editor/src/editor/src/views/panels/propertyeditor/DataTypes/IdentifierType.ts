@@ -1,10 +1,10 @@
 import IdentifierPicker from '../identifierpicker';
-import { TypeView } from '../TypeView';
 import { getEditType } from '../utils';
+import { PickerTypeView } from './PickerTypeView';
 
-export class IdentifierType extends TypeView {
-  el: TSFixme;
+export class IdentifierType extends PickerTypeView {
   identifierType: TSFixme;
+  private identifierPicker: TSFixme;
 
   static fromPort(args) {
     const view = new IdentifierType();
@@ -25,52 +25,26 @@ export class IdentifierType extends TypeView {
 
     return view;
   }
-  render() {
-    const _this = this;
 
-    this.el = this.bindView(this.parent.cloneTemplate('identifier'), this);
-    TypeView.prototype.render.call(this);
+  protected openPicker(anchor: HTMLElement) {
+    this.identifierPicker = new IdentifierPicker({
+      title: this.type.identifierDisplayName || 'Identifiers',
+      identifierType: this.identifierType,
+      onItemSelected: (name: string) => {
+        this.commit(name);
+        this.parent.hidePopout();
+      }
+    });
+    this.identifierPicker.render();
 
-    let identifierPicker;
-    this.$('input')
-      .on('focus', function (e) {
-        e.stopPropagation();
-      })
-      .on('click', function (e) {
-        identifierPicker = new IdentifierPicker({
-          title: _this.type.identifierDisplayName || 'Identifiers',
-          identifierType: _this.identifierType,
-          onItemSelected: function (name) {
-            _this.$('input').val(name);
-            _this.$('input').trigger('change');
-            _this.parent.hidePopout();
-          }
-        });
-        identifierPicker.render();
-
-        const el = $(this);
-        _this.parent.showPopout({
-          content: identifierPicker,
-          attachTo: el,
-          position: 'right'
-        });
-
-        e.stopPropagation(); // Most stop propagation here otherwise the popup will close
-      })
-      .on('keyup', function (e) {
-        identifierPicker && identifierPicker.setFilter($(this).val());
-      });
-
-    return this.el;
+    this.parent.showPopout({
+      content: this.identifierPicker,
+      attachTo: $(anchor),
+      position: 'right'
+    });
   }
-  onPropertyChanged(scope, el) {
-    this.parent.setParameter(scope.name, el.val() === '' ? undefined : el.val());
 
-    // Update current value and if it is default or not
-    const current = this.getCurrentValue();
-    el.val(current.value);
-    this.isDefault = current.isDefault;
-
-    el.blur();
+  protected filterPicker(text: string) {
+    this.identifierPicker && this.identifierPicker.setFilter(text);
   }
 }

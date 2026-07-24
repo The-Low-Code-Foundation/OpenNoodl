@@ -1,15 +1,9 @@
-import { NodeLibrary } from '@noodl-models/nodelibrary';
-
 import FontPicker from '../fontpicker';
-import { TypeView } from '../TypeView';
 import { getEditType } from '../utils';
+import { PickerTypeView } from './PickerTypeView';
 
-function firstType(type) {
-  return NodeLibrary.nameForPortType(type);
-}
-
-export class FontType extends TypeView {
-  el: TSFixme;
+export class FontType extends PickerTypeView {
+  private fontPicker: TSFixme;
 
   static fromPort(args) {
     const view = new FontType();
@@ -21,6 +15,7 @@ export class FontType extends TypeView {
     view.displayName = p.displayName ? p.displayName : p.name;
     view.name = p.name;
     view.type = getEditType(p);
+    view.default = p.default;
     view.group = p.group;
     view.value = parent.model.getParameter(p.name);
     view.parent = parent;
@@ -29,48 +24,25 @@ export class FontType extends TypeView {
 
     return view;
   }
-  render() {
-    this.el = this.bindView(this.parent.cloneTemplate(firstType(this.type)), this);
-    TypeView.prototype.render.call(this);
 
-    let fontPicker;
-    this.$('input')
-      .on('focus', (e) => {
-        e.stopPropagation();
-      })
-      .on('click', (e) => {
-        fontPicker = new FontPicker({
-          onItemSelected: (name) => {
-            this.$('input').val(name);
-            this.$('input').trigger('change');
-            this.parent.hidePopout();
-          }
-        });
+  protected openPicker(anchor: HTMLElement) {
+    this.fontPicker = new FontPicker({
+      onItemSelected: (name: string) => {
+        this.commit(name);
+        this.parent.hidePopout();
+      }
+    });
 
-        fontPicker.render();
+    this.fontPicker.render();
 
-        this.parent.showPopout({
-          content: fontPicker,
-          attachTo: this.el,
-          position: 'right'
-        });
-
-        e.stopPropagation(); // Most stop propagation here otherwise the popup will close
-      })
-      .on('keyup', (e) => {
-        fontPicker && fontPicker.setFilter(e.target.value);
-      });
-
-    return this.el;
+    this.parent.showPopout({
+      content: this.fontPicker,
+      attachTo: $(this.el),
+      position: 'right'
+    });
   }
-  onPropertyChanged(scope, el) {
-    this.parent.setParameter(scope.name, el.val() === '' ? undefined : el.val());
 
-    // Update current value and if it is default or not
-    const current = this.getCurrentValue();
-    el.val(current.value);
-    this.isDefault = current.isDefault;
-
-    el.blur();
+  protected filterPicker(text: string) {
+    this.fontPicker && this.fontPicker.setFilter(text);
   }
 }
