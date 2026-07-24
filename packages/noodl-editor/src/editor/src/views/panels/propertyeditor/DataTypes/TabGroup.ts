@@ -1,5 +1,14 @@
 import View from '../../../../../../shared/view';
 
+/** Converted child views expose a raw HTMLElement as `el`; legacy ones a jQuery set. */
+function setElementVisible(el: TSFixme, visible: boolean) {
+  if (el && el.jquery) {
+    visible ? el.show() : el.hide();
+  } else if (el) {
+    el.style.display = visible ? '' : 'none';
+  }
+}
+
 export class TabGroup extends View {
   tabGroup: TSFixme;
   views: TSFixme[];
@@ -34,7 +43,7 @@ export class TabGroup extends View {
       v.render();
       this.$('.properties').append(v.el);
 
-      if (v.port.tab.tab !== selectedTab) v.el.hide();
+      if (v.port.tab.tab !== selectedTab) setElementVisible(v.el, false);
     });
 
     return this.el;
@@ -42,8 +51,7 @@ export class TabGroup extends View {
   onTabClicked(scope, el, evt) {
     const selectedTab = (this.parent._selectedTabForGroup[this.tabGroup] = scope.tab);
     this.views.forEach((v) => {
-      if (v.port.tab.tab !== selectedTab) v.el.hide();
-      else v.el.show();
+      setElementVisible(v.el, v.port.tab.tab === selectedTab);
     });
 
     this.$('.property-tab').removeClass('selected');
