@@ -1,0 +1,324 @@
+import { ProjectModel } from '../../models/projectmodel';
+import DebugInspector from '../../utils/debuginspector';
+import { ViewerConnection } from '../../ViewerConnection';
+import Inspectors from '../nodegrapheditor.debuginspectors';
+import { NodeGraphEditorConnection } from './NodeGraphEditorConnection';
+import { NodeGraphEditorNode } from './NodeGraphEditorNode';
+
+import type { NodeGraphModel } from '../../models/nodegraphmodel';
+import type { NodeGraphEditor } from '../nodegrapheditor';
+
+/**
+ * Model→view synchronisation for the node graph editor (PLAT-001 wave 2
+ * extraction — bodies moved verbatim from nodegrapheditor.ts bindModel /
+ * bindNodeModel / bindDebugInspector / bindProjectModel).
+ *
+ * IMPORTANT: every subscription made here uses the *editor* as the listener
+ * context (`model.on(event, fn, this.editor)`), not this class. The editor's
+ * pre-existing teardown paths — `reset()` calling `model.off(this)` and
+ * `dispose()` calling `off(this)` on the singletons — rely on that context to
+ * detach these listeners; binding with a different context would silently
+ * leak them.
+ */
+export class ModelBindings {
+  constructor(private editor: NodeGraphEditor) {}
+
+  bindModel(model?: NodeGraphModel) {
+    const _this = this.editor;
+    const owner = this.editor;
+
+    owner.reset();
+
+    owner.model = model;
+    owner.stateText = owner.readOnly ? 'Read Only' : null;
+    owner.updateTitle();
+    if (!model) return;
+
+    // Create views for the content of the model
+    owner.roots = [];
+    for (const i in model.roots) {
+      const node = NodeGraphEditorNode.createFromModel(model.roots[i], owner);
+
+      model.roots[i].forEach(function (model) {
+        _this.modelBindings.bindNodeModel(model);
+      });
+
+      owner.roots.push(node);
+    }
+
+    owner.connections = [];
+    for (const i in model.connections) {
+      NodeGraphEditorConnection.createFromModel(model.connections[i], owner);
+    }
+
+    // Listen to when a node is attached in the model and
+    // change the view accordingly
+    model.on(
+      'nodeAdded',
+      function (args) {
+        const node = NodeGraphEditorNode.createFromModel(args.model, _this);
+        _this.modelBindings.bindNodeModel(args.model);
+
+        if (args.model.parent) {
+          const parent = _this.findNodeWithId(args.model.parent.id);
+          const index = args.model.parent.children.indexOf(args.model);
+          parent.insertChild(node, index);
+        } else {
+          _this.roots.push(node);
+        }
+
+        if (!args?.disableSelect) {
+          _this.clearSelection();
+
+          //let the event loop do one tick before selecting, there might be other listeners that want to modify some paramters (like the router adapter)
+          setTimeout(() => {
+            if (_this.selector.active) {
+              return;
+            }
+            _this.selectNode(node);
+            _this.relayout();
+            _this.repaint();
+          }, 1);
+        } else {
+          _this.relayout();
+          _this.repaint();
+        }
+      },
+      this.editor
+    );
+
+    model.commentsModel.on(
+      'commentAdded',
+      ({ comment, args }) => {
+        owner.clearSelection();
+
+        if (args && args.focusComment) {
+          owner.commentLayer && owner.commentLayer.focusComment(comment.id);
+        }
+      },
+      this.editor
+    );
+
+    model.on(
+      'nodeRemoved',
+      (args) => {
+        const node = owner.findNodeWithId(args.model.id);
+        if (!node) return; // The node was not found
+
+        // If the highlighted node is delete empty the reference
+        if (owner.highlighted === node) {
+          owner.highlighted && ViewerConnection.instance.sendNodeHighlighted(owner.highlighted.model, false);
+          owner.highlighted = undefined;
+        }
+
+        //de-select in case it's active
+        owner.selector.unselectNode(node);
+
+        const inspector = owner.getInspectorForNode(node);
+        inspector && inspector.remove();
+
+        this.unbindNodeModel(args.model);
+
+        if (node.parent) {
+          node.parent.removeChild(node);
+          node.destruct();
+        } else {
+          owner.removeRoot(node);
+          node.destruct();
+        }
+
+        owner.clearSelection();
+        owner.relayout();
+        owner.repaint();
+
+        if (!owner.selector.active) {
+          owner.updateNodeToolbar();
+        }
+      },
+      this.editor
+    );
+
+    model.on(
+      'nodeAttached',
+      function (args) {
+        const node = _this.findNodeWithId(args.model.id);
+        const parent = _this.findNodeWithId(args.parent.id);
+        parent.insertChild(node, args.index);
+        _this.removeRoot(node);
+
+        _this.relayout();
+        _this.repaint();
+      },
+      this.editor
+    );
+
+    // Listen to when a node is detached in the model
+    model.on(
+      'nodeDetached',
+      function (args) {
+        const node = _this.findNodeWithId(args.model.id);
+        node && node.detach();
+        _this.roots.push(node);
+
+        _this.relayout();
+        _this.repaint();
+      },
+      this.editor
+    );
+
+    // Connections
+    model.on(
+      'connectionAdded',
+      function (args) {
+        NodeGraphEditorConnection.createFromModel(args.model, _this, _this.canvas.ctx);
+
+        _this.relayout();
+        _this.repaint();
+      },
+      this.editor
+    );
+
+    model.on(
+      'connectionRemoved',
+      function (args) {
+        const con = _this.findConnectionWithModel(args.model);
+        con && con.disconnect();
+
+        const inspector = _this.getInspectorForConnection(con);
+        inspector && inspector.remove();
+
+        _this.relayout();
+        _this.repaint();
+      },
+      this.editor
+    );
+
+    model.on(
+      'connectionPortChanged',
+      function (args) {
+        const con = _this.findConnectionWithModel(args.model);
+        con.fromProperty = args.model.fromProperty;
+        con.toProperty = args.model.toProperty;
+
+        con.resolvePorts();
+
+        _this.relayout();
+        _this.repaint();
+      },
+      this.editor
+    );
+
+    owner.layout();
+    owner.paint();
+
+    // Bind connection inspector and models after the first paint so they know what x and y position to attach to
+    this.bindDebugInspector();
+  }
+
+  bindNodeModel(model) {
+    const _this = this.editor;
+
+    model.on(
+      ['labelChanged', 'portRearranged', 'typeRenamed'],
+      function () {
+        _this.relayout();
+        _this.repaint();
+      },
+      this.editor
+    );
+  }
+
+  unbindNodeModel(model) {
+    model.off(this.editor);
+  }
+
+  bindDebugInspector() {
+    const _this = this.editor;
+
+    // Add inspector views
+    function createConnectionInspector(model) {
+      const connection = _this.findConnectionWithKey(model.connectionKey);
+      if (connection && connection.isHealthy()) {
+        // Is this a connection in this graph
+        return new Inspectors.ConnectionInspector({
+          model,
+          connection,
+          owner: _this,
+          parentElement: _this.domElementContainer
+        });
+      }
+    }
+
+    function createNodeInspector(model) {
+      const node = _this.findNodeWithId(model.nodeId);
+      if (node) {
+        return new Inspectors.NodeInspector({
+          model,
+          node,
+          owner: _this,
+          parentElement: _this.domElementContainer
+        });
+      }
+    }
+
+    function createInspector(model) {
+      if (model.type === 'connection') {
+        return createConnectionInspector(model);
+      } else {
+        return createNodeInspector(model);
+      }
+    }
+
+    const inspectorsModel = DebugInspector.InspectorsModel.instanceForProject(ProjectModel.instance);
+    _this.inspectorsModel = inspectorsModel;
+    inspectorsModel.getInspectors().forEach((model) => {
+      const inspector = createInspector(model);
+      if (inspector) {
+        _this.inspectors.push(inspector);
+        inspector.render();
+      }
+    });
+
+    inspectorsModel.off(this.editor);
+    inspectorsModel.on(
+      'inspectorAdded',
+      (args) => {
+        const inspector = createInspector(args.model);
+        if (inspector) {
+          _this.inspectors.push(inspector);
+          inspector.render();
+        }
+      },
+      this.editor
+    );
+
+    inspectorsModel.on(
+      'inspectorRemoved',
+      (args) => {
+        const inspector = _this.findInspectorWithModel(args.model);
+        _this.removeInspector(inspector);
+      },
+      this.editor
+    );
+  }
+
+  bindProjectModel() {
+    const _this = this.editor;
+
+    ProjectModel.instance.on(
+      'componentRemoved',
+      (e) => {
+        _this.navigationHistory.onComponentRemoved(e.model);
+      },
+      this.editor
+    );
+
+    ProjectModel.instance.on(
+      'componentRenamed',
+      (e) => {
+        _this.updateTitle();
+      },
+      this.editor
+    );
+  }
+}

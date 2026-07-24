@@ -1,28 +1,14 @@
-import { clipboard, ipcRenderer } from 'electron';
 import _ from 'underscore';
-import React from 'react';
 
 import { AiAssistantEvent, AiAssistantModel } from '@noodl-models/AiAssistant/AiAssistantModel';
-import { BasicNodeType } from '@noodl-models/nodelibrary/BasicNodeType';
 import { RuntimeType } from '@noodl-models/nodelibrary/NodeLibraryData';
 import { SidebarModel } from '@noodl-models/sidebar';
-import { SidebarModelEvent } from '@noodl-models/sidebar/sidebarmodel';
 import { UndoQueue, UndoActionGroup } from '@noodl-models/undo-queue-model';
-import { EditorSettings } from '@noodl-utils/editorsettings';
-import { canExtractToComponent, extractToComponent } from '@noodl-utils/ExtractToComponent';
-import { KeyCode } from '@noodl-utils/keyboard/KeyCode';
 import KeyboardHandler, { KeyboardCommand } from '@noodl-utils/keyboardhandler';
-import { Model } from '@noodl-utils/model';
 import { getComponentModelRuntimeType } from '@noodl-utils/NodeGraph';
-
-import { IconName } from '@noodl-core-ui/components/common/Icon';
-import { DialogRenderDirection } from '@noodl-core-ui/components/layout/BaseDialog';
-import { MenuDialogWidth } from '@noodl-core-ui/components/popups/MenuDialog';
-import { PopupToolbar, PopupToolbarProps } from '@noodl-core-ui/components/popups/PopupToolbar';
 
 import { EventDispatcher } from '../../../shared/utils/EventDispatcher';
 import View from '../../../shared/view';
-import { CanvasTabsProvider } from '../contexts/CanvasTabsContext';
 import { ComponentModel } from '../models/componentmodel';
 import {
   Connection,
@@ -38,41 +24,33 @@ import { HighlightManager } from '../services/HighlightManager';
 // Initialize Blockly globals early (must run before runtime nodes load)
 import { initBlocklyEditorGlobals } from '../utils/BlocklyEditorGlobals';
 import DebugInspector from '../utils/debuginspector';
-import { guid } from '../utils/utils';
 import { ViewerConnection } from '../ViewerConnection';
-import { ExecutionOverlay } from './CanvasOverlays/ExecutionOverlay';
-import { HighlightOverlay } from './CanvasOverlays/HighlightOverlay';
-import { CanvasTabs } from './CanvasTabs';
 import CommentLayer from './commentlayer';
-import { EditorBanner } from './EditorBanner';
 // Import test utilities for console debugging (dev only)
 import '../services/HighlightManager/test-highlights';
-import { ConnectionPopup } from './ConnectionPopup';
 import { CreateNewNodePanel } from './createnewnodepanel';
 import { TitleBar } from './documents/EditorDocument/titlebar';
-import { NodeGraphComponentTrail } from './NodeGraphComponentTrail';
-import Inspectors from './nodegrapheditor.debuginspectors';
 import { CanvasIcons } from './nodegrapheditor/canvas/CanvasIcons';
 import { CanvasRenderer } from './nodegrapheditor/canvas/CanvasRenderer';
 import { CanvasViewport } from './nodegrapheditor/canvas/CanvasViewport';
 import * as HitTester from './nodegrapheditor/canvas/HitTester';
 import { InteractionController } from './nodegrapheditor/canvas/InteractionController';
-import {
-  AABB,
-  CenterToFitMode,
-  IVector2,
-  MouseEventType,
-  PanAndScale,
-  Rect,
-  SnapSpacing
-} from './nodegrapheditor/canvas/types';
-import { OverlayHandle, OverlayHost } from './nodegrapheditor/canvas/OverlayHost';
+import { NodeSelector } from './nodegrapheditor/canvas/NodeSelector';
+import { AABB, CenterToFitMode, IVector2, MouseEventType, PanAndScale, Rect } from './nodegrapheditor/canvas/types';
+import { OverlayHost } from './nodegrapheditor/canvas/OverlayHost';
+import { ConnectionPopups } from './nodegrapheditor/ConnectionPopups';
+import { EditorClipboard } from './nodegrapheditor/EditorClipboard';
+import { registerEditorEventBindings } from './nodegrapheditor/EditorEventBindings';
+import { InspectorActions } from './nodegrapheditor/InspectorActions';
+import { ModelBindings } from './nodegrapheditor/ModelBindings';
 import MouseWheelModeDetector from './nodegrapheditor/MouseWheelModeDetector';
 import { NavigationHistory } from './nodegrapheditor/NavigationHistory';
+import { NodeContextMenu } from './nodegrapheditor/NodeContextMenu';
 import { NodeGraphEditorConnection } from './nodegrapheditor/NodeGraphEditorConnection';
 import { NodeGraphEditorNode } from './nodegrapheditor/NodeGraphEditorNode';
-import PopupLayer from './popuplayer';
-import { showContextMenuInPopup } from './ShowContextMenuInPopup';
+import { NodeOperations } from './nodegrapheditor/NodeOperations';
+import { OverlayViews } from './nodegrapheditor/OverlayViews';
+import { SelectionActions } from './nodegrapheditor/SelectionActions';
 import { ToastLayer } from './ToastLayer/ToastLayer';
 
 initBlocklyEditorGlobals();
@@ -95,49 +73,6 @@ type MousePosition = {
 
 type NodeGraphMouseEvent = JQuery.Event & { consumed?: boolean; spaceKey?: boolean };
 
-class Selector {
-  private _selected: NodeGraphEditorNode[] = [];
-
-  public get active() {
-    return this._selected.length > 0;
-  }
-
-  public get nodes(): readonly NodeGraphEditorNode[] {
-    return this._selected;
-  }
-
-  public isActive(node: NodeGraphEditorNode) {
-    return this._selected.indexOf(node) !== -1;
-  }
-
-  public select(nodes: NodeGraphEditorNode[]) {
-    this._selected = nodes;
-  }
-
-  public unselect() {
-    //remove selection highlight, if any
-    if (this._selected.length === 1) {
-      this._selected[0].selected = false;
-    }
-
-    this._selected = [];
-  }
-
-  public unselectNode(node: NodeGraphEditorNode) {
-    const index = this._selected.indexOf(node);
-    if (index === -1) {
-      return;
-    }
-
-    //remove selection highlight, if any
-    if (node.selected) {
-      node.selected = false;
-    }
-
-    this._selected.splice(index, 1);
-  }
-}
-
 export class NodeGraphEditor extends View {
   el: TSFixme;
   model: NodeGraphModel;
@@ -156,7 +91,7 @@ export class NodeGraphEditor extends View {
     ctx: CanvasRenderingContext2D;
   };
 
-  selector = new Selector();
+  selector = new NodeSelector();
 
   /** Pan/zoom state and coordinate math (PLAT-001 extraction). */
   viewport = new CanvasViewport();
@@ -167,16 +102,38 @@ export class NodeGraphEditor extends View {
   /** Input state machines: drag, connection drag, multiselect, pan (PLAT-001 extraction). */
   interaction = new InteractionController(this);
 
+  /** Copy/cut/paste/delete and node-set insertion (PLAT-001 wave 2 extraction). */
+  clipboardActions = new EditorClipboard(this);
+
+  /** Connection port-picker popouts shown when a dragged connection lands (PLAT-001 wave 2 extraction). */
+  connectionPopups = new ConnectionPopups(this);
+
+  /** Node toolbar + right-click context menu (PLAT-001 wave 2 extraction). */
+  contextMenu = new NodeContextMenu(this);
+
+  /** Model→view event bindings (PLAT-001 wave 2 extraction). */
+  modelBindings = new ModelBindings(this);
+
+  /** Long-lived React overlays: tabs, banner, highlight/execution, title trail (PLAT-001 wave 2 extraction). */
+  overlayViews = new OverlayViews(this);
+
+  /** Selection policy: click/multiselect semantics + panel side effects (PLAT-001 wave 2 extraction). */
+  selectionActions = new SelectionActions(this);
+
+  /** Debug-inspector hover/show behaviour and inspector registry (PLAT-001 wave 2 extraction). */
+  inspectorActions = new InspectorActions(this);
+
+  /** Model mutations from canvas gestures: create/attach/detach/commit-move (PLAT-001 wave 2 extraction). */
+  nodeOperations = new NodeOperations(this);
+
   commentLayer: CommentLayer;
   _disposed: boolean;
   highlighted: NodeGraphEditorNode;
   stateText: string;
   domElementContainer: HTMLDivElement;
   currentLayout: TSFixme;
-  clipboard: TSFixme;
   topLeftCanvasPos: number[];
   mouseWheelDetector: TSFixme;
-  curtop = 0;
   inspectorsModel: DebugInspector.InspectorsModel;
   clearDeleteModeTimer: NodeJS.Timeout;
   lastBlocklyTabCloseTime: number = 0; // Track when Blockly tabs close to prevent accidental deletions
@@ -327,7 +284,6 @@ export class NodeGraphEditor extends View {
   relayoutNeeded: boolean;
   layoutAndPaintScheduled: boolean;
   activeComponent: ComponentModel;
-  showInspectorTimeout: NodeJS.Timeout;
 
   // Pan/zoom state lives on the viewport; these accessors preserve the
   // pre-decomposition public surface (tests and consumers read/assign both).
@@ -380,7 +336,6 @@ export class NodeGraphEditor extends View {
 
   /** All React roots over the canvas go through this host (PLAT-001 extraction). */
   overlays = new OverlayHost();
-  private toolbarOverlay: OverlayHandle | null = null;
 
   constructor(args) {
     super();
@@ -411,141 +366,17 @@ export class NodeGraphEditor extends View {
       maxY: -Number.MAX_VALUE
     };
 
-    EventDispatcher.instance.on(
-      ['DebugInspectorConnectionPulseChanged'],
-      () => {
-        this.repaint();
-      },
-      this
-    );
-
-    EventDispatcher.instance.on(
-      'ProjectModel.instanceHasChanged',
-      (args) => {
-        args.oldInstance && args.oldInstance.off(this);
-        if (ProjectModel.instance === undefined) return;
-
-        this.bindProjectModel();
-        this.navigationHistory.discardInvalidEntries();
-      },
-      this
-    );
-
-    // Listen for component switch requests from ComponentsPanel
-    EventDispatcher.instance.on(
-      'ComponentPanel.SwitchToComponent',
-      (args: { component: ComponentModel; pushHistory?: boolean }) => {
-        if (args.component) {
-          this.switchToComponent(args.component, {
-            pushHistory: args.pushHistory
-          });
-        }
-      },
-      this
-    );
-
-    // Listen for Logic Builder tab opened - hide canvas
-    EventDispatcher.instance.on(
-      'LogicBuilder.TabOpened',
-      () => {
-        console.log('[NodeGraphEditor] Logic Builder tab opened - hiding canvas');
-        this.setCanvasVisibility(false);
-      },
-      this
-    );
-
-    // Listen for all Logic Builder tabs closed - show canvas
-    EventDispatcher.instance.on(
-      'LogicBuilder.AllTabsClosed',
-      () => {
-        console.log('[NodeGraphEditor] All Logic Builder tabs closed - showing canvas');
-        // Track close time to prevent accidental node deletions during focus transition
-        this.lastBlocklyTabCloseTime = Date.now();
-        this.setCanvasVisibility(true);
-      },
-      this
-    );
-
-    // Listen for Logic Builder tab open requests (for opening tabs from property panel)
-    EventDispatcher.instance.on(
-      'LogicBuilder.OpenTab',
-      (args: { nodeId: string; nodeName: string; workspace: string }) => {
-        console.log('[NodeGraphEditor] Opening Logic Builder tab for node:', args.nodeId);
-        // The CanvasTabs context will handle the actual tab opening
-      },
-      this
-    );
-
     if (import.meta.webpackHot) {
       import.meta.webpackHot.accept('./createnewnodepanel');
     }
 
-    this.keyboardCommands = [
-      {
-        handler: () => this.setSpaceKeyDown(true),
-        keybinding: KeyCode.Space,
-        type: 'down'
-      },
-      {
-        handler: () => this.setSpaceKeyDown(false),
-        keybinding: KeyCode.Space,
-        type: 'up'
-      },
-      {
-        handler: () => {
-          for (const node of this.selector.nodes) {
-            this.nudgeNode(node, node.x + SnapSpacing, node.y);
-          }
-        },
-        keybinding: KeyCode.RightArrow,
-        type: 'down'
-      },
-      {
-        handler: () => {
-          for (const node of this.selector.nodes) {
-            this.nudgeNode(node, node.x - SnapSpacing, node.y);
-          }
-        },
-        keybinding: KeyCode.LeftArrow,
-        type: 'down'
-      },
-      {
-        handler: () => {
-          for (const node of this.selector.nodes) {
-            this.nudgeNode(node, node.x, node.y - SnapSpacing);
-          }
-        },
-        keybinding: KeyCode.UpArrow,
-        type: 'down'
-      },
-      {
-        handler: () => {
-          for (const node of this.selector.nodes) {
-            this.nudgeNode(node, node.x, node.y + SnapSpacing);
-          }
-        },
-        keybinding: KeyCode.DownArrow,
-        type: 'down'
-      }
-    ];
-
+    // EventDispatcher/Sidebar subscriptions (context = this editor, detached
+    // in dispose) and the canvas keyboard commands.
+    this.keyboardCommands = registerEditorEventBindings(this);
     KeyboardHandler.instance.registerCommands(this.keyboardCommands);
 
     // Load icons using webpack require to ensure proper bundling
     this.icons = new CanvasIcons(() => this.repaint());
-
-    SidebarModel.instance.on(
-      SidebarModelEvent.activeChanged,
-      (activeId) => {
-        const isNodePanel = activeId === 'PropertyEditor' || activeId === 'PortEditor';
-        if (isNodePanel === false) {
-          //deselect nodes when switching away from property editor or port editor
-          this.deselect({ disableHidePanels: true });
-          this.repaint();
-        }
-      },
-      this
-    );
   }
 
   dispose() {
@@ -565,7 +396,7 @@ export class NodeGraphEditor extends View {
     // overlay and canvas tabs roots; the banner, execution overlay and title
     // roots leaked. unmountAll covers every root registered with the host.
     this.overlays.unmountAll();
-    this.toolbarOverlay = null;
+    this.contextMenu.releaseToolbarHandle();
 
     SidebarModel.instance.off(this);
 
@@ -580,7 +411,7 @@ export class NodeGraphEditor extends View {
 
     // Update banner visibility when read-only status changes
     if (this.overlays.hasSlot('editor-banner')) {
-      this.renderEditorBanner();
+      this.overlayViews.renderEditorBanner();
     }
   }
 
@@ -613,308 +444,18 @@ export class NodeGraphEditor extends View {
       this.model.commentsModel.off(this);
       for (const i in this.model.roots) {
         this.model.roots[i].forEach((model) => {
-          this.unbindNodeModel(model);
+          this.modelBindings.unbindNodeModel(model);
         });
       }
     }
   }
 
   bindModel(model?: NodeGraphModel) {
-    const _this = this;
-
-    this.reset();
-
-    this.model = model;
-    this.stateText = this.readOnly ? 'Read Only' : null;
-    this.updateTitle();
-    if (!model) return;
-
-    // Create views for the content of the model
-    this.roots = [];
-    for (const i in model.roots) {
-      const node = NodeGraphEditorNode.createFromModel(model.roots[i], this);
-
-      model.roots[i].forEach(function (model) {
-        _this.bindNodeModel(model);
-      });
-
-      this.roots.push(node);
-    }
-
-    this.connections = [];
-    for (const i in model.connections) {
-      NodeGraphEditorConnection.createFromModel(model.connections[i], this);
-    }
-
-    // Listen to when a node is attached in the model and
-    // change the view accordingly
-    model.on(
-      'nodeAdded',
-      function (args) {
-        const node = NodeGraphEditorNode.createFromModel(args.model, _this);
-        _this.bindNodeModel(args.model);
-
-        if (args.model.parent) {
-          const parent = _this.findNodeWithId(args.model.parent.id);
-          const index = args.model.parent.children.indexOf(args.model);
-          parent.insertChild(node, index);
-        } else {
-          _this.roots.push(node);
-        }
-
-        if (!args?.disableSelect) {
-          _this.clearSelection();
-
-          //let the event loop do one tick before selecting, there might be other listeners that want to modify some paramters (like the router adapter)
-          setTimeout(() => {
-            if (_this.selector.active) {
-              return;
-            }
-            _this.selectNode(node);
-            _this.relayout();
-            _this.repaint();
-          }, 1);
-        } else {
-          _this.relayout();
-          _this.repaint();
-        }
-      },
-      this
-    );
-
-    model.commentsModel.on(
-      'commentAdded',
-      ({ comment, args }) => {
-        this.clearSelection();
-
-        if (args && args.focusComment) {
-          this.commentLayer && this.commentLayer.focusComment(comment.id);
-        }
-      },
-      this
-    );
-
-    model.on(
-      'nodeRemoved',
-      (args) => {
-        const node = this.findNodeWithId(args.model.id);
-        if (!node) return; // The node was not found
-
-        // If the highlighted node is delete empty the reference
-        if (this.highlighted === node) {
-          this.highlighted && ViewerConnection.instance.sendNodeHighlighted(this.highlighted.model, false);
-          this.highlighted = undefined;
-        }
-
-        //de-select in case it's active
-        this.selector.unselectNode(node);
-
-        const inspector = this.getInspectorForNode(node);
-        inspector && inspector.remove();
-
-        this.unbindNodeModel(args.model);
-
-        if (node.parent) {
-          node.parent.removeChild(node);
-          node.destruct();
-        } else {
-          this.removeRoot(node);
-          node.destruct();
-        }
-
-        this.clearSelection();
-        this.relayout();
-        this.repaint();
-
-        if (!this.selector.active) {
-          this.updateNodeToolbar();
-        }
-      },
-      this
-    );
-
-    model.on(
-      'nodeAttached',
-      function (args) {
-        const node = _this.findNodeWithId(args.model.id);
-        const parent = _this.findNodeWithId(args.parent.id);
-        parent.insertChild(node, args.index);
-        _this.removeRoot(node);
-
-        _this.relayout();
-        _this.repaint();
-      },
-      this
-    );
-
-    // Listen to when a node is detached in the model
-    model.on(
-      'nodeDetached',
-      function (args) {
-        const node = _this.findNodeWithId(args.model.id);
-        node && node.detach();
-        _this.roots.push(node);
-
-        _this.relayout();
-        _this.repaint();
-      },
-      this
-    );
-
-    // Connections
-    model.on(
-      'connectionAdded',
-      function (args) {
-        NodeGraphEditorConnection.createFromModel(args.model, _this, _this.canvas.ctx);
-
-        _this.relayout();
-        _this.repaint();
-      },
-      this
-    );
-
-    model.on(
-      'connectionRemoved',
-      function (args) {
-        const con = _this.findConnectionWithModel(args.model);
-        con && con.disconnect();
-
-        const inspector = _this.getInspectorForConnection(con);
-        inspector && inspector.remove();
-
-        _this.relayout();
-        _this.repaint();
-      },
-      this
-    );
-
-    model.on(
-      'connectionPortChanged',
-      function (args) {
-        const con = _this.findConnectionWithModel(args.model);
-        con.fromProperty = args.model.fromProperty;
-        con.toProperty = args.model.toProperty;
-
-        con.resolvePorts();
-
-        _this.relayout();
-        _this.repaint();
-      },
-      this
-    );
-
-    this.layout();
-    this.paint();
-
-    // Bind connection inspector and models after the first paint so they know what x and y position to attach to
-    this.bindDebugInspector();
-  }
-
-  bindNodeModel(model) {
-    const _this = this;
-
-    model.on(
-      ['labelChanged', 'portRearranged', 'typeRenamed'],
-      function () {
-        _this.relayout();
-        _this.repaint();
-      },
-      this
-    );
-  }
-
-  unbindNodeModel(model) {
-    model.off(this);
-  }
-
-  bindDebugInspector() {
-    const _this = this;
-
-    // Add inspector views
-    function createConnectionInspector(model) {
-      const connection = _this.findConnectionWithKey(model.connectionKey);
-      if (connection && connection.isHealthy()) {
-        // Is this a connection in this graph
-        return new Inspectors.ConnectionInspector({
-          model,
-          connection,
-          owner: _this,
-          parentElement: _this.domElementContainer
-        });
-      }
-    }
-
-    function createNodeInspector(model) {
-      const node = _this.findNodeWithId(model.nodeId);
-      if (node) {
-        return new Inspectors.NodeInspector({
-          model,
-          node,
-          owner: _this,
-          parentElement: _this.domElementContainer
-        });
-      }
-    }
-
-    function createInspector(model) {
-      if (model.type === 'connection') {
-        return createConnectionInspector(model);
-      } else {
-        return createNodeInspector(model);
-      }
-    }
-
-    const inspectorsModel = DebugInspector.InspectorsModel.instanceForProject(ProjectModel.instance);
-    this.inspectorsModel = inspectorsModel;
-    inspectorsModel.getInspectors().forEach((model) => {
-      const inspector = createInspector(model);
-      if (inspector) {
-        this.inspectors.push(inspector);
-        inspector.render();
-      }
-    });
-
-    inspectorsModel.off(this);
-    inspectorsModel.on(
-      'inspectorAdded',
-      (args) => {
-        const inspector = createInspector(args.model);
-        if (inspector) {
-          this.inspectors.push(inspector);
-          inspector.render();
-        }
-      },
-      this
-    );
-
-    inspectorsModel.on(
-      'inspectorRemoved',
-      (args) => {
-        const inspector = this.findInspectorWithModel(args.model);
-        this.removeInspector(inspector);
-      },
-      this
-    );
+    this.modelBindings.bindModel(model);
   }
 
   bindProjectModel() {
-    const _this = this;
-
-    ProjectModel.instance.on(
-      'componentRemoved',
-      (e) => {
-        _this.navigationHistory.onComponentRemoved(e.model);
-      },
-      this
-    );
-
-    ProjectModel.instance.on(
-      'componentRenamed',
-      (e) => {
-        _this.updateTitle();
-      },
-      this
-    );
+    this.modelBindings.bindProjectModel();
   }
 
   //A request animation frame timer that renders the entire node graph while there are animations to play
@@ -1039,22 +580,22 @@ export class NodeGraphEditor extends View {
 
     // Render the highlight overlay
     setTimeout(() => {
-      this.renderHighlightOverlay();
+      this.overlayViews.renderHighlightOverlay();
     }, 1);
 
     // Render the canvas tabs
     setTimeout(() => {
-      this.renderCanvasTabs();
+      this.overlayViews.renderCanvasTabs();
     }, 1);
 
     // Render the editor banner (for read-only mode)
     setTimeout(() => {
-      this.renderEditorBanner();
+      this.overlayViews.renderEditorBanner();
     }, 1);
 
     // Render the execution overlay (CF11-007)
     setTimeout(() => {
-      this.renderExecutionOverlay();
+      this.overlayViews.renderExecutionOverlay();
     }, 1);
 
     this.relayout();
@@ -1064,179 +605,16 @@ export class NodeGraphEditor extends View {
   }
 
   /**
-   * Render the CanvasTabs React component
+   * Get node bounds for the viewport-tracking overlays (documented overlay
+   * contract). Maps a node id to its current graph-space bounds.
    */
-  renderCanvasTabs() {
-    this.overlays.renderSlot(
-      'canvas-tabs',
-      this.el.find('#canvas-tabs-root').get(0),
-      React.createElement(
-        CanvasTabsProvider,
-        null,
-        React.createElement(CanvasTabs, {
-          onWorkspaceChange: this.handleBlocklyWorkspaceChange.bind(this)
-        })
-      )
-    );
-  }
-
-  /**
-   * Handle workspace changes from Blockly editor
-   */
-  handleBlocklyWorkspaceChange(nodeId: string, workspace: string, code: string) {
-    console.log(`[NodeGraphEditor] Workspace changed for node ${nodeId}`);
-
-    const node = this.findNodeWithId(nodeId);
-    if (!node) {
-      console.warn(`[NodeGraphEditor] Node ${nodeId} not found`);
-      return;
-    }
-
-    // Save workspace JSON to node model
-    node.model.setParameter('workspace', workspace);
-
-    // Save generated JavaScript code to node model
-    // This triggers the runtime's parameterUpdated listener which calls updatePorts()
-    node.model.setParameter('generatedCode', code);
-
-    console.log(`[NodeGraphEditor] Saved workspace and generated code for node ${nodeId}`);
-  }
-
-  /**
-   * Render the EditorBanner React component (for read-only mode)
-   */
-  renderEditorBanner() {
-    // Only show banner if in read-only mode
-    this.overlays.renderSlot(
-      'editor-banner',
-      this.el.find('#editor-banner-root').get(0),
-      this.readOnly
-        ? React.createElement(EditorBanner, {
-            onDismiss: this.handleDismissBanner.bind(this)
-          })
-        : null
-    );
-  }
-
-  /**
-   * Handle banner dismiss
-   */
-  handleDismissBanner() {
-    console.log('[NodeGraphEditor] Banner dismissed');
-    // Banner handles its own visibility via state
-  }
-
-  /**
-   * Get node bounds for the highlight overlay
-   * Maps node IDs to their screen coordinates
-   */
-  getNodeBounds = (nodeId: string) => {
-    const node = this.findNodeWithId(nodeId);
-    if (!node) return null;
-
-    return {
-      x: node.global.x,
-      y: node.global.y,
-      width: node.nodeSize.width,
-      height: node.nodeSize.height
-    };
-  };
-
-  /**
-   * Render the HighlightOverlay React component
-   */
-  renderHighlightOverlay() {
-    // Get current viewport state
-    const panAndScale = this.getPanAndScale();
-    const viewport = {
-      x: panAndScale.x,
-      y: panAndScale.y,
-      zoom: panAndScale.scale
-    };
-
-    // Render the overlay
-    this.overlays.renderSlot(
-      'highlight-overlay',
-      this.el.find('#highlight-overlay-layer').get(0),
-      React.createElement(HighlightOverlay, {
-        viewport,
-        getNodeBounds: this.getNodeBounds
-      })
-    );
-  }
-
-  /**
-   * Update the highlight overlay with new viewport state
-   * Called whenever pan/zoom changes
-   */
-  updateHighlightOverlay() {
-    if (this.overlays.hasSlot('highlight-overlay')) {
-      this.renderHighlightOverlay();
-    }
-  }
-
-  /**
-   * Render the ExecutionOverlay React component (CF11-007)
-   *
-   * Mounts into #execution-overlay-layer. The React component manages its own
-   * pinned-execution state via EventDispatcher ('execution:pinToCanvas').
-   * We re-render on every pan/zoom so the viewport prop stays current.
-   */
-  renderExecutionOverlay() {
-    const panAndScale = this.getPanAndScale();
-    const viewport = {
-      x: panAndScale.x,
-      y: panAndScale.y,
-      zoom: panAndScale.scale
-    };
-
-    this.overlays.renderSlot(
-      'execution-overlay',
-      this.el.find('#execution-overlay-layer').get(0),
-      React.createElement(ExecutionOverlay, {
-        viewport,
-        getNodeBounds: this.getNodeBounds
-      })
-    );
-  }
-
-  /**
-   * Update the execution overlay with new viewport state.
-   * Called whenever pan/zoom changes (same cadence as updateHighlightOverlay).
-   */
-  updateExecutionOverlay() {
-    if (this.overlays.hasSlot('execution-overlay')) {
-      this.renderExecutionOverlay();
-    }
-  }
+  getNodeBounds = (nodeId: string) => this.overlayViews.getNodeBounds(nodeId);
 
   /**
    * Set canvas visibility (hide when Logic Builder is open, show when closed)
    */
   setCanvasVisibility(visible: boolean) {
-    const canvasElement = this.el.find('#nodegraphcanvas');
-    const commentLayerBg = this.el.find('#comment-layer-bg');
-    const commentLayerFg = this.el.find('#comment-layer-fg');
-    const highlightOverlay = this.el.find('#highlight-overlay-layer');
-    const componentTrail = this.el.find('.nodegraph-component-trail-root');
-
-    if (visible) {
-      // Show canvas and related elements
-      canvasElement.css('display', 'block');
-      commentLayerBg.css('display', 'block');
-      commentLayerFg.css('display', 'block');
-      highlightOverlay.css('display', 'block');
-      componentTrail.css('display', 'flex');
-      this.domElementContainer.style.display = '';
-    } else {
-      // Hide canvas and related elements
-      canvasElement.css('display', 'none');
-      commentLayerBg.css('display', 'none');
-      commentLayerFg.css('display', 'none');
-      highlightOverlay.css('display', 'none');
-      componentTrail.css('display', 'none');
-      this.domElementContainer.style.display = 'none';
-    }
+    this.overlayViews.setCanvasVisibility(visible);
   }
 
   // This is called by the parent view (frames view) when the size and position
@@ -1256,219 +634,33 @@ export class NodeGraphEditor extends View {
     }
   }
 
-  // --------------------------------- Cut n paste ------------------------------------------
+  // ------------------------- Cut n paste (EditorClipboard) --------------------------------
   getSelectedNodes(): NodeGraphEditorNode[] {
-    return [...this.selector.nodes];
+    return this.clipboardActions.getSelectedNodes();
   }
 
   copySelected() {
-    const nodes = this.selector.nodes;
-
-    // Make sure all nodes can be copied
-    const _invalid = nodes.filter((n) => !n.model.canBeCopied());
-    if (_invalid.length !== 0) {
-      ToastLayer.showError('One or more of these nodes cannot be copied.');
-      return;
-    }
-
-    // Update coordinates so they are pasted correctly
-    const nodeModels = nodes.map((n) => {
-      n.x = n.global.x;
-      n.y = n.global.y;
-      n.updateModel();
-      return n.model;
-    });
-
-    const nodeset = this.model.getNodeSetWithNodes(nodeModels);
-    nodeset.comments = this.commentLayer.getSelectedComments();
-
-    if (nodes.length > 0 || nodeset.comments.length > 0) {
-      this.clipboard = nodeset.clone();
-      this.clipboard.strip();
-      clipboard.writeText(JSON.stringify(this.clipboard.toJSON()));
-    } else {
-      this.clipboard = undefined;
-    }
-
-    ToastLayer.showInteraction('Copied');
-
-    return nodeset;
+    return this.clipboardActions.copySelected();
   }
 
   delete() {
-    if (this.readOnly) {
-      return false;
-    }
-
-    // Guard against accidental deletions during Blockly tab close transition
-    // This prevents nodes from being deleted if a Blockly tab was just closed
-    const timeSinceBlocklyClose = Date.now() - this.lastBlocklyTabCloseTime;
-    if (timeSinceBlocklyClose < 200) {
-      console.warn('[NodeGraphEditor] Ignoring delete during Blockly tab close transition');
-      return false;
-    }
-
-    const nodes = [...this.selector.nodes];
-
-    // Make sure all nodes can be deleted
-    const _invalid = nodes.filter((n) => !n.model.canBeDeleted());
-    if (_invalid.length !== 0) {
-      ToastLayer.showError('One or more of these nodes cannot be deleted.');
-      return;
-    }
-
-    const undo = new UndoActionGroup({ label: 'delete nodes' });
-
-    if (this.commentLayer && this.commentLayer.hasSelection()) {
-      this.commentLayer.deleteSelection({ undo: undo });
-    }
-
-    const models = _.pluck(nodes, 'model');
-    this.model.removeNodeSet(this.model.getNodeSetWithNodes(models), {
-      undo: undo
-    });
-
-    UndoQueue.instance.push(undo);
+    return this.clipboardActions.delete();
   }
 
   copy() {
-    this.copySelected();
+    this.clipboardActions.copy();
   }
 
   cut() {
-    if (this.readOnly) {
-      return false;
-    }
-
-    const nodeset = this.copySelected();
-    if (nodeset === undefined) return;
-
-    const undoCut = new UndoActionGroup({ label: 'cut' });
-    this.model.removeNodeSet(nodeset, { undo: undoCut });
-    UndoQueue.instance.push(undoCut);
-
-    ToastLayer.showInteraction('Cut');
+    return this.clipboardActions.cut();
   }
 
-  getNodeSetFromClipboard() {
-    try {
-      const text = clipboard.readText();
-      if (!text) return;
-
-      var json = JSON.parse(text);
-    } catch (e) {
-      // Failed to parse clipboard text as json
-      return;
-    }
-
-    return NodeGraphNodeSet.fromJSON(json);
-  }
-
-  insertNodeSet({
-    nodeset,
-    x,
-    y,
-    toastMessage
-  }: {
-    nodeset: NodeGraphNodeSet;
-    x: number;
-    y: number;
-    toastMessage: string;
-  }): NodeGraphNodeSet | null {
-    if (this.readOnly) {
-      return null;
-    }
-
-    const ns = nodeset.clone();
-
-    // Check create status for all node types
-    const component = this.model.owner;
-    const errors: string[] = [];
-
-    const _this = this;
-    function checkCreateStatus(nodes: NodeGraphNodeSet['nodes']) {
-      for (const node of nodes) {
-        if (node.type instanceof ComponentModel) {
-          const status = component.getCreateStatus({
-            type: node.type
-          });
-
-          if (!status.creatable) {
-            errors.push(status.message);
-          }
-        } else if (node.type instanceof BasicNodeType) {
-          if (node.type.runtimeTypes && !node.type.runtimeTypes.includes(_this.runtimeType)) {
-            errors.push('One or more of these nodes cannot be created here.');
-          }
-        }
-
-        checkCreateStatus(node.children);
-      }
-    }
-
-    checkCreateStatus(ns.nodes);
-
-    if (errors.length > 0) {
-      // There were create errors
-      const msg = {};
-      for (let j = 0; j < errors.length; j++) {
-        msg[errors[j]] = true;
-      }
-      let _msg = '';
-      for (const i in msg) {
-        _msg += i;
-      }
-      ToastLayer.showError(_msg);
-      return;
-    }
-
-    ns.setOriginPosition({ x, y });
-
-    const undoNodeSet = new UndoActionGroup({ label: 'paste' });
-    this.model.insertNodeSet(ns, { undo: undoNodeSet });
-    undoNodeSet.push({
-      undo: () => {
-        this.clearSelection();
-        this.commentLayer.clearSelection();
-      }
-    });
-    UndoQueue.instance.push(undoNodeSet);
-
-    // Select all nodes
-    const multiselected = [];
-    for (const i in ns.nodes) {
-      const model = ns.nodes[i];
-      model.forEach((m) => {
-        multiselected.push(this.findNodeWithId(m.id));
-      });
-    }
-
-    this.selector.select(multiselected);
-
-    //and comments
-    if (ns.comments) {
-      this.commentLayer.setSelectedCommentIds(ns.comments.map((c) => c.id));
-    }
-
-    this.layout();
-    this.updateNodeToolbar();
-    this.repaint();
-
-    ToastLayer.showInteraction(toastMessage);
-
-    return ns;
+  insertNodeSet(args: { nodeset: NodeGraphNodeSet; x: number; y: number; toastMessage: string }) {
+    return this.clipboardActions.insertNodeSet(args);
   }
 
   paste() {
-    const ns = this.getNodeSetFromClipboard() || this.clipboard;
-    if (!ns) return;
-
-    this.insertNodeSet({
-      nodeset: ns,
-      x: this.latestMousePos.x,
-      y: this.latestMousePos.y,
-      toastMessage: 'Paste'
-    });
+    this.clipboardActions.paste();
   }
 
   // --------------------------------- Undo n redo ------------------------------------------
@@ -1588,7 +780,7 @@ export class NodeGraphEditor extends View {
     let panAndScale = this.viewport.zoomAtPoint(x, y, deltaZ, this.getPanAndScale());
     panAndScale = this.clampPanAndScale(panAndScale);
     this.setPanAndScale(panAndScale);
-    this.updateHighlightOverlay();
+    this.overlayViews.updateHighlightOverlay();
 
     this.relayout();
     this.repaint();
@@ -1599,24 +791,7 @@ export class NodeGraphEditor extends View {
   }
 
   addNodeToSelection(node: NodeGraphEditorNode) {
-    if (this.readOnly) {
-      return;
-    }
-
-    const currentMultiselect = [...this.selector.nodes];
-
-    this.deselect();
-
-    const index = currentMultiselect.indexOf(node);
-    if (index === -1) {
-      currentMultiselect.push(node);
-    } else {
-      currentMultiselect.splice(index, 1);
-    }
-
-    this.selector.select(currentMultiselect);
-
-    this.repaint();
+    this.selectionActions.addNodeToSelection(node);
   }
 
   startDraggingNode(node: NodeGraphEditorNode) {
@@ -1652,7 +827,7 @@ export class NodeGraphEditor extends View {
     panAndScale.y += dy;
     panAndScale = this.clampPanAndScale(panAndScale);
     this.setPanAndScale(panAndScale);
-    this.updateHighlightOverlay();
+    this.overlayViews.updateHighlightOverlay();
 
     /* for(var i in this.roots) {
       this.roots[i].x += dx;
@@ -1663,108 +838,19 @@ export class NodeGraphEditor extends View {
   }
 
   createNewNode(type: ComponentModel, pos: IVector2, options: Partial<NodeGraphNodeJSON> = {}) {
-    const node = NodeGraphNode.fromJSON({
-      type: type.name,
-      x: pos.x,
-      y: pos.y,
-      id: guid(),
-      ...options
-    });
-
-    if (this.highlighted) {
-      this.highlighted.model.addChild(node, { undo: true, label: 'create' });
-    } else {
-      this.model.addRoot(node, { undo: true, label: 'create' });
-    }
-
-    this.clearSelection();
-    this.relayout();
-    this.repaint();
+    this.nodeOperations.createNewNode(type, pos, options);
   }
 
   deselect(args?: { disableHidePanels: boolean }) {
-    this.commentLayer?.clearMultiselection();
-    this.selector.unselect();
-
-    if (!args?.disableHidePanels) {
-      SidebarModel.instance?.hidePanels();
-    }
-
-    // Broadcast a deselect event
-    this.notifyListeners('deselect');
+    this.selectionActions.deselect(args);
   }
 
   clearSelection(args?: { disableHidePanels: boolean }) {
-    this.deselect(args);
-
-    // Clear dragging connection
-    if (this.draggingConnection) {
-      this.closeConnectionPanels();
-      this.draggingConnection.fromNode.borderHighlighted = false;
-      this.draggingConnection.toNode.borderHighlighted = false;
-      this.draggingConnection = undefined;
-    }
-
-    // Clear any connections that are being deleted
-    this.setHighlightedConnection(undefined);
-    this.deleteModeConnection = undefined;
-
-    // Close open popup
-    PopupLayer.instance.hideAllModalsAndPopups();
-    PopupLayer.instance.hideTooltip();
+    this.selectionActions.clearSelection(args);
   }
 
   updateTitle() {
-    const rootElem = this.el[0].querySelector('.nodegraph-component-trail-root') as HTMLElement;
-
-    if (this.activeComponent) {
-      const fullName = this.activeComponent.fullName;
-      const nameParts = fullName.split('/');
-      const firstItem = nameParts.shift();
-      const componentTrail = [];
-
-      for (let i = 0; i < nameParts.length; i++) {
-        let part = '';
-
-        for (let j = 0; j <= i; j++) {
-          part += '/' + nameParts[j];
-        }
-
-        componentTrail.push({
-          name: nameParts[i],
-          fullName: part,
-          stateText: this.stateText,
-          // TODO: this returns undefined if the component is a folder,
-          // but if a folder and a component has the same name the result
-          // of this check will be wrong. i think this is a rare edge case though
-          component: ProjectModel.instance.getComponentWithName(part),
-          isCurrent: i === nameParts.length - 1,
-          isFolderComponent: nameParts.length > 1 && !fullName.endsWith(part)
-        });
-      }
-
-      const componentName = nameParts.pop();
-      this.componentName = componentName;
-
-      if (nameParts.length) {
-        this.componentFolder = nameParts.join(' / ') + ' /';
-      } else {
-        this.componentFolder = '';
-      }
-
-      const props = {
-        componentTrail,
-        onSwitchToComponent: this.switchToComponent.bind(this),
-        onHistoryForward: this.navigationHistory.goForward.bind(this.navigationHistory),
-        onHistoryBack: this.navigationHistory.goBack.bind(this.navigationHistory),
-        canNavigateBack: this.navigationHistory.canNavigateBack,
-        canNavigateForward: this.navigationHistory.canNavigateForward
-      };
-
-      this.overlays.renderSlot('title', rootElem, React.createElement(NodeGraphComponentTrail, props));
-    } else {
-      this.overlays.renderSlot('title', rootElem, null);
-    }
+    this.overlayViews.updateTitle();
   }
 
   switchToComponent(
@@ -1866,118 +952,32 @@ export class NodeGraphEditor extends View {
   }
 
   selectNode(node: NodeGraphEditorNode) {
-    if (this.readOnly) {
-      this.notifyListeners('readOnlyNodeClicked', node.model);
-      return;
-    }
-
-    // Always select the node in the selector if not already selected
-    if (!node.selected) {
-      this.clearSelection();
-      this.commentLayer?.clearSelection();
-      node.selected = true;
-      this.selector.select([node]);
-      this.repaint();
-    }
-
-    // Always switch to the node in the sidebar (fixes property panel stuck issue)
-    SidebarModel.instance.switchToNode(node.model);
-
-    // Handle double-click navigation
-    if (this.leftButtonIsDoubleClicked) {
-      if (node.model.type instanceof ComponentModel) {
-        this.switchToComponent(node.model.type, { pushHistory: true });
-      } else {
-        const componentPorts = node.model
-          .getPorts()
-          .filter((p) => p.plug === 'input' && NodeLibrary.nameForPortType(p.type) === 'component');
-
-        //check if there's a type with the component name, if so switch to it
-        const component = componentPorts.map((port) => node.model.parameters[port.name]).filter((c) => c !== undefined);
-        const type = component.length && NodeLibrary.instance.getNodeTypeWithName(component[0]);
-
-        if (type) {
-          // @ts-expect-error TODO: this is wrong!
-          this.switchToComponent(type, { pushHistory: true });
-        } else {
-          //there was no type that matched, so forward the double click event to the sidebar
-          SidebarModel.instance.invokeActive('doubleClick', node);
-        }
-      }
-    }
+    this.selectionActions.selectNode(node);
   }
 
   setHighlightedNode(node: NodeGraphEditorNode, atPosition?) {
-    // Node inspector
-    if (this.model && !this.readOnly) {
-      // Don't show node inspection in read only mode
-      clearTimeout(this.showInspectorTimeout);
-      if (node) {
-        // We have a new node selected, show inspector
-        if (!this.getInspectorForNode(node)) {
-          this.showInspectorTimeout = setTimeout(() => {
-            this.hideInspectors();
-
-            //and add new inspector
-            DebugInspector.InspectorsModel.instanceForProject(ProjectModel.instance).addInspectorForNode({
-              node: node.model,
-              position: atPosition
-            });
-          }, 200);
-        }
-      }
-    }
-
-    this.highlighted = node;
+    this.inspectorActions.setHighlightedNode(node, atPosition);
   }
 
   setHighlightedConnection(c: NodeGraphEditorConnection, atPosition?) {
-    // Don't show connection inspection in read only mode
-    if (this.readOnly) {
-      return false;
-    }
-
-    // Connection inspector
-    clearTimeout(this.showInspectorTimeout);
-    if (c) {
-      // We have a new connection selected, show inspector
-      if (c.isHealthy() && !this.getInspectorForConnection(c)) {
-        this.showInspectorTimeout = setTimeout(() => {
-          this.hideInspectors();
-
-          DebugInspector.InspectorsModel.instanceForProject(ProjectModel.instance).addInspectorForConnection({
-            connection: c.model,
-            position: c.findClosestPointOnCurve(atPosition)
-          });
-        }, 200);
-      }
-    }
-
-    this.highlightedConnection = c;
+    return this.inspectorActions.setHighlightedConnection(c, atPosition);
   }
 
   //hide all other inspectors that aren't pinned
   hideInspectors() {
-    const inspectorsToRemove = this.inspectors.filter((inspector) => !inspector.isPinned());
-    for (const inspector of inspectorsToRemove) {
-      inspector.remove();
-    }
+    this.inspectorActions.hideInspectors();
   }
 
   getInspectorForConnection(c) {
-    return this.inspectors.find((p) => p.connection === c);
+    return this.inspectorActions.getInspectorForConnection(c);
   }
 
   getInspectorForNode(node) {
-    return this.inspectors.find((p) => p.node === node);
+    return this.inspectorActions.getInspectorForNode(node);
   }
 
   removeInspector(inspector) {
-    const idx = this.inspectors.indexOf(inspector);
-    if (idx !== -1) {
-      inspector.dispose();
-      this.inspectors.splice(idx, 1);
-    }
+    this.inspectorActions.removeInspector(inspector);
   }
 
   isPointInsideNodes(pos: { x: number; y: number }, nodes: readonly NodeGraphEditorNode[]) {
@@ -1985,343 +985,51 @@ export class NodeGraphEditor extends View {
   }
 
   multiselectNodes(x, y, x2, y2, mode) {
-    const selectRect = { x: Math.min(x, x2), y: Math.min(y, y2), width: Math.abs(x2 - x), height: Math.abs(y2 - y) };
-
-    //select all comments
-    this.commentLayer.performMultiSelect(selectRect, mode);
-
-    // Select all nodes with a vertex inside of the multiselect area
-    const selected = HitTester.nodesInRect(this.roots, selectRect);
-    this.selector.select(HitTester.resolveMultiselect(mode, this.lastMultiselected, selected));
+    this.selectionActions.multiselectNodes(x, y, x2, y2, mode);
   }
 
   isHighlighted(node) {
-    return this.highlighted === node || this.selector.isActive(node);
+    return this.selectionActions.isHighlighted(node);
   }
 
   openConnectionPanels() {
-    // Hide viewer
-    ipcRenderer.send('viewer-hide');
-
-    // If a single or multiselect node is selected, deselect them
-    this.deselect();
-
-    const _this = this;
-    setTimeout(() => {
-      const topLeft = function (obj) {
-        let curleft = (_this.curtop = 0);
-        if (obj.offsetParent) {
-          do {
-            curleft += obj.offsetLeft;
-            _this.curtop += obj.offsetTop;
-          } while ((obj = obj.offsetParent));
-        }
-        return [curleft, _this.curtop];
-      };
-
-      const canvas = this.$('#nodegraphcanvas')[0];
-      const tl = topLeft(canvas);
-
-      const panAndScale = this.getPanAndScale();
-
-      const fromNode = this.draggingConnection.fromNode;
-      const toNode = this.draggingConnection.toNode;
-
-      const fromNodeXPos = fromNode.global.x - 10;
-
-      fromNode.borderHighlighted = true;
-      toNode.borderHighlighted = false;
-
-      let activePanel = 'from';
-
-      function isPanelActive(id: string) {
-        return activePanel === id;
-      }
-
-      // Show source node port picker
-      const fromProps = {
-        model: fromNode.model,
-        type: 'from',
-        disabled: false,
-        isPanelActive,
-        onPortSelected: (fromPort) => {
-          activePanel = 'to';
-          // @ts-expect-error
-          toProps.sourcePort = fromPort;
-          toProps.disabled = false;
-          toOverlay.update(React.createElement(ConnectionPopup, toProps));
-
-          fromProps.disabled = true;
-          fromOverlay.update(React.createElement(ConnectionPopup, fromProps));
-
-          fromNode.borderHighlighted = false;
-          toNode.borderHighlighted = true;
-          this.repaint();
-        }
-      };
-      const fromDiv = document.createElement('div');
-      const fromOverlay = this.overlays.mount(fromDiv, React.createElement(ConnectionPopup, fromProps));
-
-      const fromPosition = toNode.global.x > fromNodeXPos ? 'left' : 'right';
-
-      ipcRenderer.send('viewer-hide');
-
-      const fromPopout = PopupLayer.instance.showPopout({
-        content: { el: $(fromDiv) },
-        position: fromPosition,
-        arrowColor: '#464648',
-        attachToPoint: {
-          x:
-            (fromNode.global.x + panAndScale.x) * panAndScale.scale +
-            tl[0] +
-            fromNode.nodeSize.width * (fromPosition === 'left' ? 0 : 1.0) * panAndScale.scale,
-          y: (fromNode.global.y + panAndScale.y) * panAndScale.scale + tl[1] + 20 * panAndScale.scale
-        },
-        onClose: () => {
-          fromOverlay.unmount();
-          ipcRenderer.send('viewer-show');
-        }
-      });
-
-      // Show target node port picker
-      const toProps = {
-        model: toNode.model,
-        fromNode: fromNode.model,
-        type: 'to',
-        disabled: true,
-        isPanelActive,
-        onPortSelected: (toPort) => {
-          activePanel = 'from';
-          // Make the connection
-          // Create the connection, this must be undoable
-          // @ts-expect-error
-          if (toProps.sourcePort !== undefined) {
-            const c = {
-              fromId: fromNode.model.id,
-              // @ts-expect-error
-              fromProperty: toProps.sourcePort,
-              toId: toNode.model.id,
-              toProperty: toPort
-            };
-
-            this.model.addConnection(c, {
-              undo: true,
-              label: 'connect'
-            });
-
-            // @ts-expect-error
-            toProps.sourcePort = undefined;
-            toProps.disabled = true;
-            toOverlay.update(React.createElement(ConnectionPopup, toProps));
-
-            fromProps.disabled = false;
-            fromOverlay.update(React.createElement(ConnectionPopup, fromProps));
-
-            fromNode.borderHighlighted = true;
-            toNode.borderHighlighted = false;
-            this.repaint();
-          }
-        }
-      };
-      const toDiv = document.createElement('div');
-      const toOverlay = this.overlays.mount(toDiv, React.createElement(ConnectionPopup, toProps));
-
-      const toPosition = fromNodeXPos >= toNode.global.x ? 'left' : 'right';
-      const toPopout = PopupLayer.instance.showPopout({
-        content: { el: $(toDiv) },
-        position: toPosition,
-        arrowColor: '#464648',
-        attachToPoint: {
-          x:
-            (toNode.global.x + panAndScale.x) * panAndScale.scale +
-            tl[0] +
-            toNode.nodeSize.width * (toPosition === 'left' ? 0 : 1.0) * panAndScale.scale,
-          y: (toNode.global.y + panAndScale.y) * panAndScale.scale + tl[1] + 20 * panAndScale.scale
-        },
-        onClose: () => {
-          toOverlay.unmount();
-          this.clearSelection();
-          this.repaint();
-        }
-      });
-    }, 0);
+    this.connectionPopups.open();
   }
 
   closeConnectionPanels() {
-    ipcRenderer.send('viewer-show');
+    this.connectionPopups.close();
   }
 
   detachNode(node) {
-    this.model.detachNode(node, { undo: this.dragNodesUndoGroup });
+    this.nodeOperations.detachNode(node);
   }
 
   attachNode(parent, node, index) {
-    this.model.attachNode(parent, node, index, {
-      undo: this.dragNodesUndoGroup
-    });
+    this.nodeOperations.attachNode(parent, node, index);
   }
 
   nudgeNode(node: NodeGraphEditorNode, x: number, y: number) {
-    const enabled = EditorSettings.instance.get('nodeGraphEditor.snapToGrid');
-    if (!enabled) return;
-
-    //nodes with parent's don't use their x and y coords, so just bail out
-    if (node.parent || (node.x === x && node.y === y)) return;
-
-    const startX = node.x;
-    const startY = node.y;
-
-    const startTime = performance.now();
-    const anim = () => {
-      const linearT = Math.min(1, (performance.now() - startTime) / 200);
-      const easeOutT = 1 - Math.pow(1 - linearT, 4);
-
-      node.x = startX * (1 - easeOutT) + x * easeOutT;
-      node.y = startY * (1 - easeOutT) + y * easeOutT;
-
-      this.relayout();
-      this.repaint();
-
-      if (easeOutT < 1) requestAnimationFrame(anim);
-    };
-
-    requestAnimationFrame(anim);
+    this.nodeOperations.nudgeNode(node, x, y);
   }
 
   snapNodeToGrid(node: NodeGraphEditorNode) {
-    const enabled = EditorSettings.instance.get('nodeGraphEditor.snapToGrid');
-    if (!enabled) return;
-
-    this.nudgeNode(
-      node,
-      Math.round(node.x / SnapSpacing) * SnapSpacing,
-      Math.round(node.y / SnapSpacing) * SnapSpacing
-    );
+    this.nodeOperations.snapNodeToGrid(node);
   }
 
   commitMoveNode(node) {
-    const from = { x: node.model.x, y: node.model.y };
-    const to = { x: node.x, y: node.y };
-
-    const move = (to) => {
-      node.model.set(to);
-
-      node.x = to.x;
-      node.y = to.y;
-
-      this.snapNodeToGrid(node);
-
-      this.relayout();
-      this.repaint();
-    };
-
-    // Make sure we can undo move nodes
-    if (from.x !== to.x || from.y !== to.y) {
-      move(to);
-      this.dragNodesUndoGroup.push({
-        do: function () {
-          move(to);
-        },
-        undo: function () {
-          move(from);
-        }
-      });
-    }
+    this.nodeOperations.commitMoveNode(node);
   }
 
   removeConnection(con) {
-    this.model.removeConnection(con, { undo: true, label: 'disconnect' });
+    this.nodeOperations.removeConnection(con);
   }
 
   updateNodeToolbar() {
-    this.hideNodeToolbar(); //hide existing toolbar, if any
-
-    const selection = this.selector.nodes;
-
-    if (selection.length > 0 && !selection[0].selected) {
-      const aabb = this.calculateNodesAABB(selection);
-      this.showNodeToolbar(selection, aabb);
-    }
-  }
-
-  showNodeToolbar(selectedNodes: readonly NodeGraphEditorNode[], aabb: AABB) {
-    const menuItems: PopupToolbarProps['menuItems'] = [];
-
-    const canExtract = canExtractToComponent(this.model, selectedNodes);
-    if (canExtract.allow) {
-      menuItems.push({
-        tooltip: 'Extract to component',
-        icon: IconName.Component,
-        onClick: () => {
-          this.hideNodeToolbar();
-          this.extractSelectionToComponent();
-        }
-      });
-    }
-
-    if (
-      selectedNodes.length === 1 &&
-      CreateNewNodePanel.shouldShow({
-        component: this.model.owner,
-        parentModel: selectedNodes[0].model
-      })
-    ) {
-      menuItems.push({
-        tooltip: 'Add new child',
-        onClick: () => {
-          this.hideNodeToolbar();
-
-          this.createNewNodePanel = new CreateNewNodePanel({
-            model: this.model,
-            parentModel: this.highlighted ? this.highlighted.model : undefined,
-            pos: { x: 0, y: 0 },
-            runtimeType: this.runtimeType
-          });
-          this.createNewNodePanel.render();
-
-          setTimeout(() => {
-            PopupLayer.instance.showPopup({
-              content: this.createNewNodePanel,
-              position: 'screen-center',
-              isBackgroundDimmed: true,
-              onClose: () => this.createNewNodePanel.dispose()
-            });
-          }, 1);
-        },
-        icon: IconName.Plus
-      });
-    }
-
-    const div = document.createElement('div');
-    div.className = 'nodegraph-node-toolbar';
-    this.domElementContainer.appendChild(div);
-
-    const pos = {
-      x: (aabb.minX + aabb.maxX) / 2,
-      y: aabb.minY
-    };
-
-    div.style.width = 'max-content';
-    div.style.transform = 'translate(-50%, calc(-100% - 10px))';
-    div.style.position = 'absolute';
-    div.style.left = pos.x + 'px';
-    div.style.top = pos.y + 'px';
-    this.toolbarOverlay = this.overlays.mount(
-      div,
-      React.createElement(PopupToolbar, {
-        menuItems,
-        contextMenuItems: this.getContextMenuActions()
-      } as PopupToolbarProps)
-    );
+    this.contextMenu.updateNodeToolbar();
   }
 
   hideNodeToolbar() {
-    this.toolbarOverlay?.unmount();
-    this.toolbarOverlay = null;
-    const toolbars = this.domElementContainer.querySelectorAll('.nodegraph-node-toolbar');
-    for (const toolbar of toolbars) {
-      this.domElementContainer.removeChild(toolbar);
-    }
+    this.contextMenu.hideNodeToolbar();
   }
 
   setMouseEventsEnabled(enabled) {
@@ -2340,89 +1048,8 @@ export class NodeGraphEditor extends View {
     this.canvas.ctx.canvas.style.cursor = cursor;
   }
 
-  getContextMenuActions() {
-    const items = [];
-
-    const selectedNodes = this.selector.nodes;
-
-    const canExtract = canExtractToComponent(this.model, selectedNodes);
-    items.push({
-      label: 'Extract to component',
-      icon: IconName.Component,
-      onClick: () => this.extractSelectionToComponent(),
-      isDisabled: !canExtract.allow,
-      tooltip: canExtract.reason,
-      tooltipShowAfterMs: 300
-    });
-
-    items.push('divider');
-
-    // Data Lineage - DISABLED: Not production ready, requires more work
-    // TODO: Re-enable when lineage filtering and event handling are fixed
-    // items.push({
-    //   label: 'Show Data Lineage',
-    //   icon: IconName.Link,
-    //   onClick: () => {
-    //     const selectedNode = this.selector.nodes[0];
-    //     if (selectedNode) {
-    //       EventDispatcher.instance.emit('DataLineage.ShowForNode', {
-    //         nodeId: selectedNode.model.id,
-    //         componentName: this.activeComponent?.fullName
-    //       });
-    //       SidebarModel.instance.switch('data-lineage');
-    //     }
-    //   },
-    //   isDisabled: selectedNodes.length !== 1,
-    //   tooltip: selectedNodes.length !== 1 ? 'Select a single node to trace its data lineage' : undefined,
-    //   tooltipShowAfterMs: 300
-    // });
-    // items.push('divider');
-
-    if (
-      selectedNodes.length === 1 &&
-      CreateNewNodePanel.shouldShow({
-        component: this.model.owner,
-        parentModel: selectedNodes[0].model
-      })
-    ) {
-      items.push({
-        label: 'Add new child',
-        onClick: () => {
-          const selectedNode = this.selector.nodes[0];
-          this.createNewNodePanel = new CreateNewNodePanel({
-            model: this.model,
-            parentModel: selectedNode?.model,
-            pos: { x: 0, y: 0 },
-            runtimeType: this.runtimeType
-          });
-          this.createNewNodePanel.render();
-
-          PopupLayer.instance.showPopup({
-            content: this.createNewNodePanel,
-            position: 'screen-center',
-            isBackgroundDimmed: true,
-            onClose: () => this.createNewNodePanel.dispose()
-          });
-        },
-        icon: IconName.Plus
-      });
-    }
-
-    items.push({
-      label: 'Delete',
-      onClick: () => this.delete(),
-      icon: IconName.Trash
-    });
-
-    return items;
-  }
-
   openRightClickMenu() {
-    showContextMenuInPopup({
-      items: this.getContextMenuActions(),
-      width: MenuDialogWidth.Default,
-      renderDirection: DialogRenderDirection.Horizontal
-    });
+    this.contextMenu.openRightClickMenu();
   }
 
   layoutAndPaint() {
@@ -2621,8 +1248,8 @@ export class NodeGraphEditor extends View {
   setPanAndScale(panAndScale: PanAndScale) {
     this.panAndScale = panAndScale;
     this.commentLayer && this.commentLayer.setPanAndScale(panAndScale);
-    this.updateHighlightOverlay();
-    this.updateExecutionOverlay();
+    this.overlayViews.updateHighlightOverlay();
+    this.overlayViews.updateExecutionOverlay();
   }
 
   clampPanAndScale(panAndScale: PanAndScale) {
@@ -2638,44 +1265,10 @@ export class NodeGraphEditor extends View {
   }
 
   nodesetFromSelection() {
-    const nodes = this.selector.nodes;
-
-    // Make sure all nodes can be copied
-    const _invalid = nodes.filter((n) => !n.model.canBeCopied());
-    if (_invalid.length !== 0) {
-      PopupLayer.instance.showToast('One of more of these nodes cannot be copied');
-      return;
-    }
-
-    // Update coordinates so they are pasted correctly
-    const nodeModels = nodes.map((n) => {
-      n.x = n.global.x;
-      n.y = n.global.y;
-      n.updateModel();
-      return n.model;
-    });
-
-    const nodeset = this.model.getNodeSetWithNodes(nodeModels);
-    nodeset.comments = this.commentLayer.getSelectedComments();
-
-    return nodeset;
+    return this.clipboardActions.nodesetFromSelection();
   }
 
   extractSelectionToComponent() {
-    const nodeset = this.nodesetFromSelection();
-    const selection = this.selector.nodes;
-
-    const aabb = this.calculateNodesAABB(selection);
-
-    const pos = {
-      x: (aabb.minX + aabb.maxX) / 2 - NodeGraphEditorNode.size.width / 2,
-      y: aabb.minY
-    };
-
-    extractToComponent(ProjectModel.instance, this.model, nodeset, selection, pos);
-
-    this.clearSelection();
-    this.relayout();
-    this.repaint();
+    this.clipboardActions.extractSelectionToComponent();
   }
 }

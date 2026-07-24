@@ -8,6 +8,8 @@ exist so its responsibilities are separated and individually testable.
 
 ## Modules
 
+### `canvas/` — rendering, input and viewport (wave 1)
+
 | Module | Responsibility |
 |---|---|
 | `types.ts` | Shared types (`IVector2`, `PanAndScale`, `AABB`, `Rect`, `CenterToFitMode`) and constants |
@@ -15,8 +17,28 @@ exist so its responsibilities are separated and individually testable.
 | `HitTester.ts` | Spatial queries over the scene as pure functions: node/connection lookup, point and rect hit-testing, multiselect mode resolution |
 | `CanvasRenderer.ts` | Per-frame painting from a `FrameState` snapshot: hierarchy lines, connections, nodes, drag ghosts, connection-drag indicator, multiselect box |
 | `CanvasIcons.ts` | The five canvas-painted icon images |
+| `NodeSelector.ts` | Raw selection state (which node views are selected) |
 | `InteractionController.ts` | Input state machines: mouse dispatch, double-click, node/connection drag, rect multiselect, pan, wheel routing. Owns all interaction state |
 | `OverlayHost.ts` | The one mechanism for React roots over the canvas: named slots for long-lived overlays, handles for ephemeral ones, unmount-all on dispose |
+
+### `nodegrapheditor/` — coordinator collaborators (wave 2)
+
+Each holds a back-reference to the editor and is reached through the editor's
+delegating methods (the public names below stay on `NodeGraphEditor`). Every
+model/EventDispatcher subscription these make uses the *editor* as listener
+context, so `reset()`/`dispose()` teardown is unchanged.
+
+| Module | Responsibility |
+|---|---|
+| `ModelBindings.ts` | Model→view sync: `bindModel`, per-node model listeners, debug-inspector creation, project-model listeners |
+| `EditorClipboard.ts` | Copy/cut/paste/delete, node-set insertion, extract-to-component (all undo-grouped) |
+| `SelectionActions.ts` | Selection policy: click-select, add-to-selection, clear/deselect, rect multiselect, double-click navigation |
+| `NodeOperations.ts` | Model mutations from canvas gestures: create, attach/detach, drag-commit with undo, snap/nudge |
+| `InspectorActions.ts` | Debug-inspector hover/show timers and the inspector view registry |
+| `NodeContextMenu.ts` | Floating node toolbar + right-click context menu |
+| `ConnectionPopups.ts` | The two connection port-picker popouts on connection drop |
+| `OverlayViews.ts` | The long-lived overlays: canvas tabs, banner, highlight/execution overlays, component-trail title, canvas show/hide |
+| `EditorEventBindings.ts` | Editor-wide EventDispatcher/Sidebar subscriptions and canvas keyboard commands |
 
 Scene item views (`../NodeGraphEditorNode.ts`, `../NodeGraphEditorConnection.ts`)
 keep their own local paint and hit logic; they reach the editor through the
