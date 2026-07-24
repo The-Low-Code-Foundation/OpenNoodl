@@ -1,3 +1,4 @@
+export * from './canvas-characterisation.spec';
 export * from './conflictwarnings';
 export * from './createnewnode';
 export * from './createstatus';
