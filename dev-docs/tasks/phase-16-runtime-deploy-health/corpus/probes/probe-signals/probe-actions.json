@@ -1,0 +1,6 @@
+[
+  { "wait": 300 },
+  { "click": "button" },
+  { "wait": 600 },
+  { "click": "button" }
+]

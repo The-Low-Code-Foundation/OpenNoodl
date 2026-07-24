@@ -1,0 +1,12 @@
+[
+  { "wait": 300 },
+  { "eval": "(window.__probe = window.__probe || { events: [] }).events.push('start onA:' + document.body.innerText.includes('STACK-A'))" },
+  { "eval": "[...document.querySelectorAll('button')].find(b => b.textContent.includes('Push'))?.click()" },
+  { "wait": 120 },
+  { "eval": "(() => { const els = [...document.querySelectorAll('div')]; const moving = els.filter(d => getComputedStyle(d).transform !== 'none').length; const clipped = els.some(d => getComputedStyle(d).overflow === 'hidden'); window.__probe.events.push('mid-push moving:' + (moving > 0) + ' clipped:' + clipped); })()" },
+  { "wait": 700 },
+  { "eval": "window.__probe.events.push('after-push onB:' + document.body.innerText.includes('STACK-B'))" },
+  { "eval": "[...document.querySelectorAll('button')].find(b => b.textContent.includes('Pop'))?.click()" },
+  { "wait": 900 },
+  { "eval": "window.__probe.events.push('after-pop onA:' + document.body.innerText.includes('STACK-A')); window.__probeDone = true" }
+]

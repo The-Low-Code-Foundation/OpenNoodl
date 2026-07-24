@@ -191,10 +191,26 @@ Slices, each independently landable on `cline-dev`:
      `LocalProjectsModel` runtime cache (harmless, now stores truthful values).
 5. **Corpus comparison** on 18 vs 19 preview: the SUB-004/SUB-009 project corpus + signal-heavy
    and animation-heavy projects; diff behaviour, not just absence of crashes.
+   ✅ DONE (2026-07-25) — harness + probes + results at [corpus/](./corpus/) (dep-free CDP
+   driver over noodl-preview; renders every project on both runtimes and diffs probe-event
+   ordering, DOM, computed styles, console, screenshots). 16 projects: **no behavioural
+   differences** after one real find. **The slice-2 Router residual was a live 19 defect**:
+   Router and Page Stack never got the setDOMElement contract, so under 19 their
+   `boundingWidth`/`screenPosition*` outputs never fired and their own `setStyle` calls
+   (stack `overflow:hidden` during transitions) had no element — proven by probe
+   (`routerWidth:false→true` on 18, stuck `false` on 19), fixed via `noodlRootRef` +
+   `noodlNodeAsProp` on both, re-probed identical. A sweep of every `getReactComponent`
+   confirms no other built-in lacks the contract. Remaining known deltas, both benign and
+   documented: `<input>` attribute order (React 19 writes `type` last; cosmetic), and the
+   third-party-module `findDOMNode` degradation (by design, slice 2). Failure parity
+   verified on the DEBT-008 fixture (identical module crash on both runtimes).
 6. ~~Cloud runtime decision~~ **Resolved by the §4 survey**: `noodl-viewer-cloud` uses no
    React (excluded, with reasoning recorded); the SSR harness is unwired and npm-based
    (deferred to RUN-002).
 7. **Docs:** user-facing behavioural-difference notes (18→19 is a far shorter list than 17→19).
+   ✅ DONE (2026-07-25) — [docs/runtime/REACT-19-RUNTIME.md](../../../docs/runtime/REACT-19-RUNTIME.md):
+   how to switch (and back), what was verified identical, the removed-API list for module
+   authors, the two known deltas.
 
 **Estimate impact:** spec said 4–6 weeks assuming an untyped 17-era runtime and an unstarted
 design. With the source already 19-clean, the binding hub typed, and delivery proven, slices

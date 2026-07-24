@@ -1,0 +1,10 @@
+[
+  { "wait": 300 },
+  { "eval": "(window.__probe = window.__probe || { events: [] }).events.push('pre-click url:' + location.pathname + ' buttons:' + document.querySelectorAll('button').length)" },
+  { "eval": "[...document.querySelectorAll('button')].find(b => b.textContent.includes('Go'))?.click()" },
+  { "wait": 800 },
+  { "eval": "(window.__probe = window.__probe || { events: [] }).events.push('post-click url:' + location.pathname + ' onSecond:' + document.body.innerText.includes('SECOND'))" },
+  { "eval": "[...document.querySelectorAll('button')].find(b => b.textContent.includes('Back'))?.click()" },
+  { "wait": 800 },
+  { "eval": "(window.__probe = window.__probe || { events: [] }).events.push('back url:' + location.pathname + ' onHome:' + document.body.innerText.includes('HOME'))" }
+]

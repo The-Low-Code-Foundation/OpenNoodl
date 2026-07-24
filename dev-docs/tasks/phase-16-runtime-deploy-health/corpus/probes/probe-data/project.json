@@ -1,0 +1,167 @@
+{
+  "name": "RUN-001 probe: data and repeater",
+  "id": "run001-probe-data",
+  "version": "4",
+  "rootNodeId": "root",
+  "settings": { "htmlTitle": "probe-data" },
+  "components": [
+    {
+      "name": "/App",
+      "id": "c_app",
+      "graph": {
+        "roots": [
+          {
+            "id": "root",
+            "type": "Group",
+            "label": "Root",
+            "x": 0,
+            "y": 0,
+            "parameters": { "flexDirection": "column" },
+            "ports": [],
+            "children": [
+              {
+                "id": "btn_add",
+                "type": "net.noodl.controls.button",
+                "label": "Add",
+                "x": 0,
+                "y": 100,
+                "parameters": { "label": "Add" },
+                "ports": [],
+                "children": []
+              },
+              {
+                "id": "static_list",
+                "type": "Group",
+                "label": "Static list",
+                "x": 0,
+                "y": 200,
+                "parameters": { "flexDirection": "column" },
+                "ports": [],
+                "children": [
+                  {
+                    "id": "static_repeater",
+                    "type": "For Each",
+                    "label": "Static rows",
+                    "x": 0,
+                    "y": 250,
+                    "parameters": { "template": "/Row" },
+                    "ports": [],
+                    "children": []
+                  }
+                ]
+              },
+              {
+                "id": "dynamic_list",
+                "type": "Group",
+                "label": "Dynamic list",
+                "x": 0,
+                "y": 300,
+                "parameters": { "flexDirection": "column" },
+                "ports": [],
+                "children": [
+                  {
+                    "id": "dyn_repeater",
+                    "type": "For Each",
+                    "label": "Dynamic rows",
+                    "x": 0,
+                    "y": 350,
+                    "parameters": { "template": "/Row" },
+                    "ports": [],
+                    "children": []
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "products",
+            "type": "Static Data",
+            "label": "Products",
+            "x": 300,
+            "y": 0,
+            "parameters": {
+              "type": "json",
+              "json": "[{\"label\":\"alpha\"},{\"label\":\"beta\"},{\"label\":\"gamma\"}]"
+            },
+            "ports": [],
+            "children": []
+          },
+          {
+            "id": "counter",
+            "type": "Counter",
+            "label": "Add count",
+            "x": 300,
+            "y": 100,
+            "parameters": {},
+            "ports": [],
+            "children": []
+          },
+          {
+            "id": "fn_items",
+            "type": "JavaScriptFunction",
+            "label": "build items",
+            "x": 300,
+            "y": 200,
+            "parameters": {
+              "functionScript": "const n = Number(Inputs.n) || 0;\nconst a = [];\nfor (let i = 0; i < n; i++) a.push({ label: 'item' + i });\nOutputs.items = a;\nwindow.__probe = window.__probe || { events: [] };\nwindow.__probe.events.push('built:' + n);\nif (n >= 2) window.__probeDone = true;"
+            },
+            "ports": [
+              { "name": "in-n", "plug": "input", "type": "number" },
+              { "name": "out-items", "plug": "output", "type": "array" }
+            ],
+            "children": []
+          }
+        ],
+        "connections": [
+          { "fromId": "products", "fromProperty": "items", "toId": "static_repeater", "toProperty": "items" },
+          { "fromId": "btn_add", "fromProperty": "onClick", "toId": "counter", "toProperty": "increase" },
+          { "fromId": "counter", "fromProperty": "currentCount", "toId": "fn_items", "toProperty": "in-n" },
+          { "fromId": "fn_items", "fromProperty": "out-items", "toId": "dyn_repeater", "toProperty": "items" }
+        ]
+      }
+    },
+    {
+      "name": "/Row",
+      "id": "c_row",
+      "graph": {
+        "roots": [
+          {
+            "id": "row",
+            "type": "Group",
+            "label": "Row",
+            "x": 0,
+            "y": 0,
+            "parameters": { "flexDirection": "row" },
+            "ports": [],
+            "children": [
+              {
+                "id": "label_text",
+                "type": "Text",
+                "label": "Label",
+                "x": 0,
+                "y": 100,
+                "parameters": {},
+                "ports": [],
+                "children": []
+              }
+            ]
+          },
+          {
+            "id": "row_inputs",
+            "type": "Component Inputs",
+            "label": "Item in",
+            "x": 300,
+            "y": 0,
+            "parameters": {},
+            "ports": [{ "name": "label", "plug": "output", "type": "*", "index": 0 }],
+            "children": []
+          }
+        ],
+        "connections": [
+          { "fromId": "row_inputs", "fromProperty": "label", "toId": "label_text", "toProperty": "text" }
+        ]
+      }
+    }
+  ],
+  "metadata": {}
+}

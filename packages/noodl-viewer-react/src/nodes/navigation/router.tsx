@@ -1,7 +1,10 @@
 import React, { useEffect } from 'react';
 import NoodlRuntime from '@noodl/runtime';
 
+import type { TSFixme } from '../../../typings/global';
+
 import ASyncQueue from '../../async-queue';
+import { noodlRootRef } from '../../components/noodl-root-ref';
 import guid from '../../guid';
 import { createNodeFromReactComponent } from '../../react-component-node';
 import { Noodl, Slot } from '../../types';
@@ -25,7 +28,7 @@ function RouterReactComponent(props: RouterReactComponentProps) {
   }, []);
 
   return (
-    <div className={props.className} style={style}>
+    <div ref={noodlRootRef((props as TSFixme).noodlNode)} className={props.className} style={style}>
       {children}
     </div>
   );
@@ -61,6 +64,7 @@ const RouterNode = {
   docs: 'https://docs.noodl.net/nodes/navigation/page-router',
   allowAsExportRoot: true,
   useVariants: false,
+  noodlNodeAsProp: true,
   connectionPanel: {
     groupPriority: ['General', 'Actions', 'Events', 'Mounted']
   },

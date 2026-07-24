@@ -1,0 +1,149 @@
+{
+  "name": "RUN-001 probe: animation / setStyle fast path",
+  "id": "run001-probe-animation",
+  "version": "4",
+  "rootNodeId": "root",
+  "settings": {
+    "htmlTitle": "probe-animation"
+  },
+  "components": [
+    {
+      "name": "/App",
+      "id": "c_app",
+      "graph": {
+        "roots": [
+          {
+            "id": "root",
+            "type": "Group",
+            "label": "Root",
+            "x": 0,
+            "y": 0,
+            "parameters": {
+              "flexDirection": "column"
+            },
+            "ports": [],
+            "children": [
+              {
+                "id": "btn_animate",
+                "type": "net.noodl.controls.button",
+                "label": "Animate",
+                "x": 0,
+                "y": 100,
+                "parameters": {
+                  "label": "Animate"
+                },
+                "ports": [],
+                "children": []
+              },
+              {
+                "id": "box",
+                "type": "Group",
+                "label": "Box",
+                "x": 0,
+                "y": 200,
+                "parameters": {
+                  "backgroundColor": "#ff3333",
+                  "width": {
+                    "value": 100,
+                    "unit": "px"
+                  },
+                  "height": {
+                    "value": 50,
+                    "unit": "px"
+                  }
+                },
+                "ports": [],
+                "children": []
+              }
+            ]
+          },
+          {
+            "id": "sw",
+            "type": "Switch",
+            "label": "Toggled",
+            "x": 300,
+            "y": 0,
+            "parameters": {},
+            "ports": [],
+            "children": []
+          },
+          {
+            "id": "fn_scale",
+            "type": "JavaScriptFunction",
+            "label": "scale to 120",
+            "x": 300,
+            "y": 100,
+            "parameters": {
+              "functionScript": "Outputs.target = Inputs.on ? 120 : 0;"
+            },
+            "ports": [],
+            "children": []
+          },
+          {
+            "id": "anim",
+            "type": "net.noodl.animatetovalue",
+            "label": "Animate x",
+            "x": 300,
+            "y": 200,
+            "parameters": {
+              "duration": 400
+            },
+            "ports": [],
+            "children": []
+          },
+          {
+            "id": "fn_at_target",
+            "type": "JavaScriptFunction",
+            "label": "at target",
+            "x": 300,
+            "y": 300,
+            "parameters": {
+              "functionScript": "window.__probe = window.__probe || { events: [] };\nwindow.__probe.events.push('atTarget:' + Inputs.v);\nif (Inputs.v > 0) window.__probeDone = true;"
+            },
+            "ports": [],
+            "children": []
+          }
+        ],
+        "connections": [
+          {
+            "fromId": "btn_animate",
+            "fromProperty": "onClick",
+            "toId": "sw",
+            "toProperty": "flip"
+          },
+          {
+            "fromId": "sw",
+            "fromProperty": "state",
+            "toId": "fn_scale",
+            "toProperty": "in-on"
+          },
+          {
+            "fromId": "fn_scale",
+            "fromProperty": "out-target",
+            "toId": "anim",
+            "toProperty": "targetValue"
+          },
+          {
+            "fromId": "anim",
+            "fromProperty": "currentValue",
+            "toId": "box",
+            "toProperty": "transformX"
+          },
+          {
+            "fromId": "anim",
+            "fromProperty": "atTargetValue",
+            "toId": "fn_at_target",
+            "toProperty": "run"
+          },
+          {
+            "fromId": "anim",
+            "fromProperty": "currentValue",
+            "toId": "fn_at_target",
+            "toProperty": "in-v"
+          }
+        ]
+      }
+    }
+  ],
+  "metadata": {}
+}

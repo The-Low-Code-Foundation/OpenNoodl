@@ -9,7 +9,9 @@ import type {
   NodeInstance
 } from '@noodl/types';
 
+import type { TSFixme } from '../../../typings/global';
 import ASyncQueue from '../../async-queue';
+import { noodlRootRef } from '../../components/noodl-root-ref';
 import guid from '../../guid';
 import { createNodeFromReactComponent, ReactNodeInstance } from '../../react-component-node';
 import { Noodl, Slot } from '../../types';
@@ -34,7 +36,11 @@ function PageStackReactComponent(props: PageStackReactComponentProps) {
     };
   }, []);
 
-  return <div style={style}>{children}</div>;
+  return (
+    <div ref={noodlRootRef((props as TSFixme).noodlNode)} style={style}>
+      {children}
+    </div>
+  );
 }
 
 /** One row of this node's `pages` proplist parameter. */
@@ -120,6 +126,7 @@ const PageStack = {
   category: 'Visuals',
   docs: 'https://docs.noodl.net/nodes/component-stack/component-stack-node',
   useVariants: false,
+  noodlNodeAsProp: true,
   initialize(this: PageStackInstance) {
     this._internal.stack = [];
 
