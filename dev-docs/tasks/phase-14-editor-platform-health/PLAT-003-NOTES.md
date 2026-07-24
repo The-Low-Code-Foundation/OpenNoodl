@@ -1,13 +1,20 @@
 # PLAT-003 NOTES — Type the Runtime and Viewer
 
-Status: slices 1, 2 and 3 landed 2026-07-24. Slice 1 restored the test toolchain (§1–§4). Slice 2
+Status: slices 1–5 landed 2026-07-24. Slice 1 restored the test toolchain (§1–§4). Slice 2
 published the node-definition API and typed the runtime core — spec steps 1, 3 and 4 (§5–§7).
-Slice 3 typed the React binding hub — spec step 6 (§9). Resume from **§10**.
+Slice 3 typed the React binding hub — spec step 6 (§9). Slice 4 typed the visual nodes — spec step 7
+(§11). Slice 5 typed the standard library's top level and published the graph-model /
+node-module types its `setup` functions needed (§13). Resume from **§14**.
 
-Run in parallel with PLAT-002 (jQuery retirement). Boundary: PLAT-002 owns `packages/noodl-editor`
-entirely; PLAT-003 stays in `packages/noodl-runtime`, `packages/noodl-viewer-react`, and
-`packages/noodl-types`. The one overlap the task spec names — sweeping editor-side `TSFixme`s at the
-runtime boundary (Step 9) — is deferred until PLAT-002 lands.
+> **Before running any gate, read §13.1.** The `typecheck:viewer` filter used in slices 3 and 4
+> could never match, so that gate reported zero regardless of what tsc said. The corrected
+> command and the trap that hides behind a HEAD worktree are both there.
+
+Run in parallel with PLAT-002 (jQuery retirement) and PLAT-004 (TSFixme ratchet), all in the same
+working tree — **commit by pathspec, never `git add -A`**. Boundary: PLAT-002 owns
+`packages/noodl-editor` entirely; PLAT-003 stays in `packages/noodl-runtime`,
+`packages/noodl-viewer-react`, and `packages/noodl-types`. The one overlap the task spec names —
+sweeping editor-side `TSFixme`s at the runtime boundary (Step 9) — is deferred until PLAT-002 lands.
 
 ## 1. The finding that reordered the work
 
@@ -514,9 +521,9 @@ package mid-conversion with uncommitted work, so a live run would exercise their
   `react-component-node.ts` and `node-definition.d.ts`; neither file was prettier-clean at HEAD.
   Formatting noise in the diff, no behaviour.
 
-## 12. Next slice
+## 12. Slice 4's plan for slice 5 (item 2 started; see §13)
 
-File counts now: `noodl-runtime` **73 `.js` / 19 `.ts`** (unchanged — slice 4 was viewer-side).
+File counts at the end of slice 4: `noodl-runtime` **73 `.js` / 19 `.ts`** (unchanged — slice 4 was viewer-side).
 `noodl-viewer-react` **97 `.js` / 12 `.jsx` / 41 `.ts` / 35 `.tsx`** (was 106/12/32/35).
 
 1. **Live editor pass** — the one gate no slice has run. Still blocked on PLAT-002 committing its
@@ -535,3 +542,246 @@ File counts now: `noodl-runtime` **73 `.js` / 19 `.ts`** (unchanged — slice 4 
 5. **Do not raise `strict` yet** (spec step 8).
 6. **Step 9 (editor-side `TSFixme` sweep) stays deferred** until PLAT-002 lands. Note PLAT-004 has
    started its own escape-hatch ratchet in parallel; agree the boundary before sweeping.
+
+## 13. Slice 5 — the standard library's top level (spec step 7, continued)
+
+All 14 top-level files under `noodl-viewer-react/src/nodes/std-library/` converted to `.ts`
+(~2,700 lines): `animate-to-value`, `colorblend`, `eventreceiver`, `eventsender`,
+`externallink`, `javascript`, `numberremapper`, `openfilepicker`, `screenresolution`,
+`states`, `switch`, `timer`, `uploadfile`, `valuechanged`, plus `variables/color`.
+
+The conversion itself was the smaller half of this slice. These are the first files in the
+project whose `setup` functions were typed, and `setup` is where a node type talks to the
+*project* rather than to any one instance — the graph model, the editor connection, the
+dynamic-port machinery. None of that had a published type. Roughly a third of the diff is
+`@noodl/types` catching up with what the standard library has been doing all along.
+
+### 13.1 The gate that was never actually running
+
+Slices 3 and 4 both report "**0 errors in `src`**" for `typecheck:viewer`. The filter behind
+that number was `grep "^src/"`, and `tsc -p packages/noodl-viewer-react` prints paths
+relative to the **repo root**, not the project — `packages/noodl-viewer-react/src/…`. The
+pattern could never match. Every run of that gate reported zero regardless of what tsc said.
+
+This surfaced when the webpack build failed with nine `ts-loader` errors while the "gate" was
+still reporting clean. ts-loader runs the same program and does not filter.
+
+To find out whether those nine were pre-existing, HEAD was checked out into a temporary
+worktree — and the first answer was wrong. A worktree that symlinks the main tree's
+`node_modules` resolves `@noodl/types` through `node_modules/@noodl/types`, which is a
+workspace symlink back into the *live* `packages/noodl-types`. The "baseline" was compiled
+against the working tree's edited types and reproduced all nine errors. Only after giving the
+worktree its own `node_modules` with `@noodl/*` relinked inside it did the real baseline come
+back: **0**. All nine were introduced by this slice, and all nine were fixed (§13.4).
+
+> Two rules from this. Filter tsc output on `packages/<pkg>/src/`, never `^src/`. And a HEAD
+> worktree used for baselining must not share `node_modules` with the tree under test — in a
+> workspace repo, that symlink is a hole straight back into the code you are trying to
+> exclude.
+
+The corrected gate for every future slice:
+
+```
+npx tsc -p packages/noodl-viewer-react --noEmit 2>&1 | grep "packages/noodl-viewer-react/src/"
+```
+
+Baseline is **0**. The 40 remaining errors are all `node_modules` `@types` conflicts
+(`jasmine` vs `jest`, `css-font-loading-module`, `mdx`) and are genuinely pre-existing.
+
+### 13.2 What a node file exports, finally typed
+
+`NoodlRuntime.registerNode` accepts `{ node?, setup? }` — the shape almost every file in the
+standard library exports — and nothing described it. Published as **`NodeModule`**, with the
+`setup` contract spelled out: it runs once at registration, it is the `runtime-discovered`
+dynamic-port mechanism's home, and it must be guarded with
+`editorConnection.isRunningLocally()` because there is no editor to talk to in a deployed app.
+
+Supporting it meant publishing the graph model, which is what `setup` actually manipulates:
+
+| Type | What it is |
+|---|---|
+| `GraphModelLike` | The project's whole node graph. Query methods, plus the type-scoped events (`'nodeAdded.<type>'`) that let a node type hear about its own instances without filtering |
+| `GraphNodeModel` | A node **as authored** — the editor's persisted node, with `parameters`, `inputPorts`, `outputPorts`, `component`. `NodeInstance` is the running object; this is its blueprint |
+| `GraphPortModel` | A port on that model |
+| `ComponentModelLike` | One component in the graph |
+| `EventSenderLike` | The runtime's ref-scoped emitter, which both models extend |
+| `RuntimeEventEmitter` | The *other* emitter — the vendored Node one on `context.eventEmitter` / `context.eventSenderEmitter`. Distinct from the above, and worth keeping distinct: they have different `on` signatures |
+
+`NodeInstance.model` was `unknown`; it is now `GraphNodeModel`. That is what the Script node
+reads to discover which ports the editor thinks it has.
+
+`NodeContextLike` and `NodeScopeLike` gained the members these files call and previously got
+back as `unknown` from the index signature: `timerScheduler`, `eventEmitter`,
+`eventSenderEmitter`, `scheduleNextFrame`, `isWarningTypeEnabled`,
+`sendGlobalEventFromEventSender`, `createNode`, `deleteNode`, `sendEventFromThisScope`, and
+`styles` (see below). Each was mirrored onto `RuntimeNodeContext` in
+`noodl-runtime/src/internal.d.ts` — adding a *required* member to the published type breaks
+the runtime's own assignment unless the internal type supplies it too, which is how three of
+these were found.
+
+### 13.3 Three published types that disagreed with the implementation
+
+These are the slice's real findings. All three are declaration-only corrections: no runtime
+code changed, and each is checked against the implementation rather than inferred.
+
+**`TimerScheduler` had the wrong callback name.** `timer_scheduler.d.ts` declared
+`onFinished`. `timerscheduler.js` calls `onFinish` — and its `Timer` constructor copies every
+key of the options object onto the timer (`for (var arg in args) this[arg] = args[arg]`), so
+a callback under any other name is silently stored and never invoked. Anyone writing a new
+timer against the published type would have got a completion callback that never fired. Also
+corrected: `onStop` was missing entirely, `onRunning` was declared required but is optional,
+and all four callbacks are invoked as methods on the timer, so they now declare `this: Timer`.
+The copy-all behaviour is now documented as the intended way to give a timer per-use state —
+which is exactly what `animate-to-value` (`startValue`/`endValue`/`ease`) and `states`
+(`transitionCurves`/`startValues`/`targetValues`/`valueTypes`) do, reading them back through
+`this` inside `onRunning`.
+
+**`InspectInfo` was too narrow, and the truth is worse than that.** It was
+`string | Array<entry>`. `InspectPopup.tsx` normalises in three steps: a string becomes
+`{ type: 'value', value }`, a non-array is wrapped in a one-element array, and each entry is
+rendered by its `type`. The consequence, stated plainly because several nodes get it wrong:
+
+> Returning a bare `boolean`, `number` or plain object produces an inspector that shows
+> **nothing**. The wrapped value has no `.value` property, `hasValuesToShow` is false, and the
+> popup returns `null`.
+
+Confirmed in this slice's own files: **Switch** returns a boolean, **Number Remapper** and
+**Animate To Value** return numbers. All three have a debug inspector that has never
+displayed anything. The same pattern exists in `noodl-runtime`'s `and`, `or` and `expression`
+nodes, which are out of this slice's scope. Not fixed — it changes what the editor shows, so
+it follows the §9.3 / §11.3 precedent: the type says so, the call sites carry a cast and a
+comment pointing here, and the decision is left where it belongs.
+
+**`Upload File`'s inspector reads a field nothing writes.** `getInspectInfo` returns
+`this._internal.response`, and `response` is assigned nowhere in the file — the upload
+success handler stores `cloudFile`, not `response`. Always `undefined`. Recorded in the
+source, not corrected.
+
+### 13.4 The nine errors, and why widening a type broke `react-component-node.ts`
+
+Each of the nine came from the same cause: `react-component-node.ts` (slice 3) declared local
+shapes for things `@noodl/types` had no name for, and once those names existed the two
+descriptions had to be reconciled.
+
+- **`ReactNodeModel` and `GraphNodeModel` were the same object.** Slice 3 had no published
+  graph-node type and wrote its own. Now an alias — one model, not two opinions.
+- **`ReactNodeContext.eventEmitter`** declared a two-method shape; the published one declares
+  six. The local declaration was deleted and the inherited one kept.
+- **`StylesLike` may not carry an index signature.** `context.styles` is the viewer's `Styles`
+  *class*, and a class has no string index signature, so `[extra: string]: unknown` on the
+  published type made `ReactNodeContext extends NodeContextLike` fail. `StylesLike` publishes
+  exactly the two total lookups (`resolveColor`, `getTextStyle`) and nothing else.
+
+The remaining six errors were cascade: once `ReactNodeInstance extends NodeInstance` failed,
+every callback typed `this: ReactNodeInstance` stopped being assignable to one typed
+`this: NodeInstance`. Fixing the model type cleared all six at once. Worth remembering — a
+single bad `extends` in this file produces a page of unrelated-looking errors downstream.
+
+### 13.5 The `require()` / `export default` boundary
+
+`register-nodes.js` loads most node files with `require()`. A converted file compiles as an ES
+module, and webpack's `require()` of an ES module hands back the *namespace object* — so
+`registerNode` would have received `{ default: { node } }`. One line in the `forEach` unwraps
+it, and works for both shapes so the migration can proceed file by file:
+
+```js
+noodlRuntime.registerNode(module.default || module);
+```
+
+Verified through both loaders before converting anything else: `catalog:check` (esbuild) and a
+full webpack prod build, on a single-file pilot (`switch.ts`). Remove the unwrap once every
+entry in that array is converted.
+
+Two smaller boundary notes. `variables/color.ts` imports `variablebase` — a runtime `.js`
+module — as a default import; `allowJs: false` keeps tsc from following it, so it arrives
+untyped and the *annotation on the result* is what does the work. And `@noodl/runtime/src/utils`
+was already fixed to named exports in slice 4 (§11.1), so `javascript.ts` importing
+`logJavaScriptNodeError` needed nothing new.
+
+### 13.6 Verification
+
+| Gate | Result |
+|---|---|
+| `typecheck:viewer` (**corrected filter**) | **0 errors** in `packages/noodl-viewer-react/src/`, matching the isolated HEAD baseline |
+| `typecheck:runtime` / `typecheck:cloud` / `typecheck:editor` | clean |
+| `catalog:check` | **byte-identical**, 135 node types, 89 dynamic |
+| `noodl-runtime` jest | 225 passing / 20 failing — the §4 baseline, unchanged |
+| viewer + deploy + ssr prod bundles | green, 0 errors |
+| cloud viewer bundle, `noodl-preview` esbuild | green |
+| `prettier --check` | clean on every file this slice touched |
+
+`typecheck:preview` reports 2 errors in `noodl-editor/src/utils/keyboardhandler.ts` (`Cannot
+find name '$'`). Those are PLAT-002's in-flight jQuery work in the shared tree, not this
+slice's.
+
+`catalog:check` is again the load-bearing gate: byte-identical output across 135 node types
+proves the `.default` unwrap resolves correctly, that `states`'s and the Script node's
+dynamic-port machinery still produces the same metadata, and that nothing in the conversion
+changed a port name, type or default.
+
+### 13.7 eslint: these files were never clean, and now it shows
+
+`eslint` on the converted files reported 122 errors — almost all `no-var` and `prefer-const`
+on the *original* code. The `.js` files were never linted (the ratchet's only target is
+`packages/noodl-editor/src`; the viewer package is not gated at all), and the rules only bite
+once the extension changes.
+
+`eslint --fix` cleared 105 of them. Its `no-var` fixer is semantics-aware — it declines any
+declaration whose scope would change — and `catalog:check` byte-identical plus a green build
+and unchanged test results is the evidence that nothing moved.
+
+**17 remain, deliberately:**
+
+- 12 × `@typescript-eslint/no-this-alias` (`var self = this` feeding `function()` callbacks).
+  Converting those to arrows would rebind `this` inside them; a typing slice is the wrong
+  place to make that call.
+- 5 × `@typescript-eslint/no-explicit-any`, each on a `Record<string, any>` where the values
+  genuinely are arbitrary user data (`states`'s `stateParameters`, the Script node's
+  parameters).
+
+For reference, slice 4's visual nodes are eslint-clean — that code was already modern. The
+std-library is older, and the remaining `.js` files there should be expected to behave like
+these did.
+
+### 13.8 Traps
+
+- **Do not name a module-scope constant `module`** in a converted node file. It compiles (the
+  file is ESM, so there is no CommonJS `module` to shadow), but it reads as a bug at every
+  glance. `EventSenderModule`, `StatesModule`, `JavascriptModule` instead.
+- **Narrowing `context.editorConnection` does not survive into a callback.** Every `setup`
+  function here does `if (!context.editorConnection …) return;` and then uses it inside a
+  graph-model listener, where TypeScript has forgotten the check. Hoist it to a local
+  (`const editorConnection = context.editorConnection`) and close over that.
+- **`eventreceiver.js` assigned `module.exports` twice** — first `{ node }`, then the same
+  object plus `setup`. The first was dead. Dropped in the conversion.
+- **`data/collectionnode-clear` has no file extension at all.** It is `require`d
+  extensionless and both webpack and esbuild resolve the literal filename. Leave it alone
+  until it is converted, and give it `.ts` when it is.
+- `prettier --write` reorders imports in these files (there is an import-sort plugin). Expect
+  the import block to move even when nothing else does.
+
+## 14. Next slice
+
+File counts now: `noodl-runtime` **73 `.js` / 19 `.ts`** (unchanged — no runtime source moved;
+`internal.d.ts` was edited in place). `noodl-viewer-react` **83 `.js` / 12 `.jsx` / 55 `.ts` /
+35 `.tsx`** (was 97/12/41/35).
+
+1. **The rest of `nodes/std-library/`** — 26 files in three groups, all of which should now be
+   mechanical because the types their `setup` functions need exist:
+   - `componentutils/` (5 files, ~758 lines) — smallest, share `base.js`; do these first.
+   - `user/` (8 files, ~1,159 lines) — formulaic, all funnel through `userservice.js`.
+   - `data/` (13 files, ~2,300 lines) — the hard group. `foreach.jsx` (694 lines) is the only
+     `.jsx` and will need `.tsx`; `filtercollectionnode`, `cloudfunction` and `persisthelper`
+     are the other large ones.
+2. **`nodes/navigation/`** (15 files, ~2,900 lines) — `navigation-stack.jsx` (771) and
+   `navigate.js` (331) dominate. `router-handler.ts` and `router.tsx` are already converted.
+3. **Live editor pass** — still the one gate no slice has run, still blocked on PLAT-002's
+   editor package. Note PLAT-004 is also active in the same tree; commit by pathspec.
+4. **Make `@noodl/runtime` ship declarations** (carried from §12 item 3). Less urgent after
+   this slice — the published `@noodl/types` surface now covers most of what viewer nodes
+   reach for — but still the right answer for runtime *modules* like `variablebase`,
+   `javascriptnodeparser` and `api/cloudstore`, which arrive as implicit `any`.
+5. **Decide on the accumulated findings.** Now four: `def.deprecated` dropped and `def.frame`
+   dead (§9.3), `Noodl.runDeployed` never set (§11.3), and the `getInspectInfo` nodes that
+   render nothing (§13.3). Each changes observable behaviour, so each wants its own commit.
+6. **Do not raise `strict` yet** (spec step 8), and step 9 stays deferred.

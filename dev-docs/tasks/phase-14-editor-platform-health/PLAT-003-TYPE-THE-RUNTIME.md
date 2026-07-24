@@ -46,9 +46,9 @@ There is a further reason to do this now rather than later, and it is the sequen
 ### In Scope
 - [x] Type the core runtime: `Node`, node definition, register, scope, context/scheduler
 - [x] Publish the node-definition API types (usable from `noodl-types` or an equivalent shared package)
-- [ ] Convert standard-library nodes incrementally
+- [ ] Convert standard-library nodes incrementally *(viewer std-library top level done; `componentutils/`, `data/`, `user/` and `navigation/` remain)*
 - [x] Type `react-component-node.js` (the React binding hub)
-- [ ] Convert `noodl-viewer-react` visual and logic nodes
+- [ ] Convert `noodl-viewer-react` visual and logic nodes *(visual done, slice 4; logic in progress, slice 5)*
 - [ ] Write characterisation tests before converting each significant unit
 - [x] Coordinate the port/type model with SUB-004 so catalog and types agree
 - [ ] Remove editor-side `TSFixme`s that existed only because the runtime was untyped
@@ -127,6 +127,44 @@ Do not chase `strict: true` initially. Get accurate types with `strict: false`, 
 ## CHANGELOG
 
 In progress. Full as-built record in [PLAT-003-NOTES.md](./PLAT-003-NOTES.md).
+
+### Slice 5 — 2026-07-24 — the standard library's top level (step 7, second group)
+
+- All 14 top-level `noodl-viewer-react/src/nodes/std-library/*.js` → `.ts` (~2,700 lines), each
+  annotated against `NodeDefinitionOptions` or the new `NodeModule`.
+- **The published types were the larger half of the work.** These are the first files whose
+  `setup` functions were typed, and `setup` is where a node type talks to the *project* — the
+  graph model, the editor connection, dynamic ports. None of it had a type. Added to
+  `@noodl/types`: `NodeModule` (what a node file exports and `registerNode` accepts),
+  `GraphModelLike`, `GraphNodeModel`, `GraphPortModel`, `ComponentModelLike`, `EventSenderLike`,
+  `RuntimeEventEmitter`, `StylesLike`, `InspectInfoEntry`, `EventPropagation`.
+  `NodeInstance.model` `unknown` → `GraphNodeModel`; `NodeContextLike`/`NodeScopeLike` gained the
+  nine members these nodes call and previously got back as `unknown`.
+- **The `typecheck:viewer` gate was never running.** Slices 3 and 4 filtered tsc output on
+  `^src/`, but tsc prints repo-root-relative paths — the pattern could not match, so the gate
+  reported zero regardless. Found when webpack failed with nine errors while the gate read clean.
+  Corrected filter and the isolated-baseline recipe are in NOTES §13.1. True HEAD baseline is 0.
+- **Three published types disagreed with the implementation**, all corrected declaration-only:
+  `TimerScheduler` declared `onFinished` where the scheduler calls `onFinish` (so a completion
+  callback written against the type would never fire); `InspectInfo` omitted the single-entry form
+  and hid the fact that any other value renders as *nothing*; `ReactNodeModel` and `GraphNodeModel`
+  were two names for one object, now an alias.
+- Two latent defects found and documented, not fixed: Switch, Number Remapper and Animate To Value
+  return bare booleans/numbers from `getInspectInfo`, so their debug inspectors have never shown
+  anything; Upload File's `getInspectInfo` reads `_internal.response`, which nothing assigns. See
+  NOTES §13.3.
+- `require()` of a converted file yields an ES-module namespace, so `register-nodes.js` unwraps
+  `.default` for the duration of the migration. Validated on a single-file pilot through both the
+  esbuild (catalog) and webpack (bundle) loaders before converting the rest.
+
+File counts: `noodl-viewer-react` 97/12/41/35 → **83 `.js` / 12 `.jsx` / 55 `.ts` / 35 `.tsx`**.
+`noodl-runtime` unchanged at 73 `.js` / 19 `.ts`.
+
+Gates: `catalog:check` byte-identical (135 node types); `typecheck:viewer` **0 errors** under the
+corrected filter, matching an isolated HEAD baseline; runtime/cloud/editor typechecks clean; runtime
+jest 225 pass / 20 pre-existing fail; viewer, deploy, ssr, cloud and preview builds green; prettier
+clean. `eslint --fix` cleared 105 of 122 pre-existing lint errors in these files; the 17 left are
+`no-this-alias` and `no-explicit-any`, both deliberate (NOTES §13.7). Live editor pass still owed.
 
 ### Slice 4 — 2026-07-24 — the visual nodes (step 7, first group)
 
