@@ -42,6 +42,7 @@ export abstract class PickerTypeView extends TypeView {
         onCommit: (value: string) => this.commit(value),
         onOpenPicker: (anchor: HTMLElement) => this.openPicker(anchor),
         onFilter: (text: string) => this.filterPicker(text),
+        onEnter: () => this.onEnterPressed(),
         onReset: () => {
           this.parent.model.setParameter(this.name, undefined, {
             undo: true,
@@ -66,6 +67,10 @@ export abstract class PickerTypeView extends TypeView {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   protected filterPicker(text: string): void {
     // Overridden by subclasses whose picker supports live filtering
+  }
+
+  protected onEnterPressed(): void {
+    // Overridden by subclasses that close their popout on Enter
   }
 
   resetToDefault() {

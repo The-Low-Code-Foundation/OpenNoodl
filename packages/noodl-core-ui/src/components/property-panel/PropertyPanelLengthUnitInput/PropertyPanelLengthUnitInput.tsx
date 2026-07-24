@@ -38,7 +38,7 @@ export function PropertyPanelLengthUnitInput({
   const [displayedInputValue, setDisplayedInputValue] = useState(numberValue);
 
   useEffect(() => {
-    handleInputUpdate(value);
+    setDisplayedInputValue(extractNumber(normalizeAlphanumericString(value)) || '');
   }, [value]);
 
   // FIXME: this is very temporary and should be fetched from the panel config
@@ -64,8 +64,13 @@ export function PropertyPanelLengthUnitInput({
     // TODO: handle drag up/down to increase/decrease
     // TODO: handle Arithmetic Error nicer!
 
+    // Only commit real edits — committing unconditionally would push a
+    // spurious undo entry on every mount/blur and neutralize app undo
     if (inputValue === '') {
-      onChange && onChange(inputValue + unitValue);
+      setDisplayedInputValue('');
+      if (numberValue !== '') {
+        onChange && onChange(inputValue + unitValue);
+      }
       return;
     }
 
@@ -94,13 +99,17 @@ export function PropertyPanelLengthUnitInput({
       const finalNumber = newNumber === 'Error' ? strippedValue : newNumber;
       const finalUnit = newUnitValue || unitValue;
 
-      onChange && onChange(finalNumber + finalUnit);
       setDisplayedInputValue(finalNumber);
+      if (finalNumber + finalUnit !== cleanedValue?.toString()) {
+        onChange && onChange(finalNumber + finalUnit);
+      }
     }
   }
 
   function handleUnitUpdate(unit: string) {
-    onChange && onChange(numberValue + unit);
+    if (numberValue + unit !== cleanedValue?.toString()) {
+      onChange && onChange(numberValue + unit);
+    }
   }
 
   return (

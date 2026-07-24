@@ -22,7 +22,7 @@ export function PropertyPanelNumberInput({
   const [displayedInputValue, setDisplayedInputValue] = useState(value?.toString() || '');
 
   useEffect(() => {
-    handleUpdate(value?.toString() || '');
+    setDisplayedInputValue(value?.toString() || '');
   }, [value]);
 
   function handleUpdate(inputValue: string) {
@@ -30,16 +30,23 @@ export function PropertyPanelNumberInput({
     // TODO: handle drag up/down to increase/decrease
     // TODO: add basic arithmetic
 
+    // Only commit real edits — committing unconditionally would push a
+    // spurious undo entry on every mount/blur and neutralize app undo
     if (inputValue === '') {
-      onChange && onChange(inputValue);
+      setDisplayedInputValue('');
+      if ((value?.toString() || '') !== '') {
+        onChange && onChange(inputValue);
+      }
       return;
     }
 
     const newNumber = extractNumber(inputValue);
 
     if (!isNaN(newNumber)) {
-      onChange && onChange(newNumber);
       setDisplayedInputValue(newNumber.toString());
+      if (newNumber.toString() !== (value?.toString() || '')) {
+        onChange && onChange(newNumber);
+      }
     }
   }
 

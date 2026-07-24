@@ -208,33 +208,51 @@ propertyeditor/* (12) in waves 1b–2c; `componentports`, `importpopup`,
 - 2026-07-24: Wave 2d partial (90bcdb5) — VariableType via `components/VariableInput.tsx`;
   TabGroup show/hide now tolerates raw-element child els (needed once converted rows appear
   inside tab groups). Session ended here; count 481 → 379 `$(` calls.
+- 2026-07-24: Wave 2d complete — IconType via new `components/IconInput.tsx` (label +
+  clickable thumbnail box; IconPicker popout root now unmounted on close); TextStyleType
+  rewritten as a `PickerTypeView` subclass (create-style UndoQueue block and sibling
+  child-port refresh preserved verbatim; picker live-filter re-render kept; Enter closes
+  the popout via a new `PickerTypeView.onEnterPressed` hook — no-op for the other pickers);
+  LogicBuilderWorkspaceType via two stacked `PropertyPanelButton`s (dropped its injected
+  `.property-editor-group-name:empty` CSS hack — that class exists nowhere in the repo, the
+  rule was dead); CodeEditorType bindView shell removed (`this.el` is now the React Property
+  div; `attachTo: $(el)` remains for the wave-4 sweep). 379 → 360 `$(` calls, 66 → 62 files.
+  **Undo-corruption bug found and fixed while verifying** (noodl-core-ui, pre-existing, NOT
+  from this wave's conversions): `PropertyPanelTextInput`, `PropertyPanelNumberInput`,
+  `PropertyPanelLengthUnitInput` and `PropertyPanelPasswordInput` all called `onChange` from
+  their `useEffect(..., [value])` — so every property-panel mount/re-render committed each
+  row's own value back through `setParameter`, pushing a phantom "edit parameter" undo entry
+  per row, and undoing anything re-triggered the commits: app undo was effectively a no-op
+  while the property panel was open. Fix: the effect now only syncs display state, and
+  blur/Enter commits fire `onChange` only when the value actually differs (matches legacy
+  change-event semantics). Verified live via CDP: selecting a node pushes 0 undo entries
+  (was 4+); create-text-style pushes exactly 1; undo reverts it and redo reapplies, no
+  cascade. Also smoke-tested: TextStyle picker open/filter/create + Font Size changed-dot
+  absorbed into style and restored on undo; IconType row + picker popout on a Button node's
+  dynamic `iconIconSource` port; LogicBuilder both buttons + generated-code modal open/close;
+  CodeEditor Edit-button popout open/close. tsc clean in noodl-editor and noodl-core-ui;
+  0 renderer exceptions.
 
 ## 8. Handoff — next session starts here
 
-Remaining, in the planned order:
+Remaining, in the planned order (wave 2d is complete; count now 360 `$(` / 62 files):
 
-1. **Wave 2d rest**: `IconType.ts` (thumbnail span + IconPicker popout — READ §its file first,
-   popout content is already React), `TextStyleType.ts` (childPorts + create-style undo logic —
-   the hardest row; copy behaviours exactly, incl. `_valueUpdated` refreshing sibling child-port
-   rows), `LogicBuilderWorkspaceType.ts` (203 ln, bindView + data-click), `CodeEditorType.ts`
-   (393 ln; only 2 `$(` — bindView shell + `attachTo: $(el)`; may just need an el swap, not a
-   rewrite).
-2. **Wave 2e**: `marginpaddingview.js`(32), `resizingview.js`(33), `aligntools.js`(14),
+1. **Wave 2e**: `marginpaddingview.js`(32), `resizingview.js`(33), `aligntools.js`(14),
    `stringlist.js`(3), `proplist.js`(3) + the legacy pickers (`fontpicker.js`, `imagepicker.js`,
    `identifierpicker.js`, `filepicker.js`, `colorpicker.js`, `iconpicker` is already React).
    Note core-ui has `PropertyPanelMarginPadding` + `SizePicker` components — check before
    writing new ones.
-3. **Wave 2f hosts**: `TypeView.js` → TS (only chrome/logic left), `Ports.ts` (drop bindView
+2. **Wave 2f hosts**: `TypeView.js` → TS (only chrome/logic left), `Ports.ts` (drop bindView
    group templates → React group host), `propertyeditor.ts`. When Ports converts, drop the
    `$()`-wrapper tolerance and delete `templates/propertyeditor/*.html`.
-4. **Wave 3**: canvas group (CanvasDOMBindings 6, ConnectionPopups 3, nodegrapheditor 1,
+3. **Wave 3**: canvas group (CanvasDOMBindings 6, ConnectionPopups 3, nodegrapheditor 1,
    NodeGraphEditorNode 1, CanvasView 1, lessonlayer2 6), `componentports.tsx`(4),
    `createnewnodepanel.ts`(1), `ComponentTemplates.ts`(1), `importpopup.js`(9) + its
    templates, `exportProjectComponets.ts` (exportpopup.html).
-5. **Wave 4**: PopupLayer rewrite (contract = `popuplayer.d.ts`; §3 strategy: same API, one
+4. **Wave 4**: PopupLayer rewrite (contract = `popuplayer.d.ts`; §3 strategy: same API, one
    React root, normalize `attachTo`/`content.el` accepting raw elements) then sweep the 19
    Group D files' `$()` calls; convert confirmmodal/errormodal/yesnopopup/stringinputpopup.
-6. **Wave 5**: delete `shared/view.js`+`view.d.ts`, de-jQuery `ReactView.ts`, remove the two
+5. **Wave 5**: delete `shared/view.js`+`view.d.ts`, de-jQuery `ReactView.ts`, remove the two
    `<script>` tags from `src/editor/index.html` + `src/assets/lib/jquery-min.js` +
    `jquery.autosize.min.js`, delete remaining orphan templates, repo-wide grep, CHANGELOG
    in the task doc (record before/after counts: baseline 547/68), update PROGRESS.md.

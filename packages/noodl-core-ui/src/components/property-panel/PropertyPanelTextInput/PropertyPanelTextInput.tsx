@@ -20,12 +20,16 @@ export function PropertyPanelTextInput({
   const [displayedInputValue, setDisplayedInputValue] = useState(value);
 
   function handleUpdate(inputValue: string) {
-    onChange && onChange(inputValue);
     setDisplayedInputValue(inputValue);
+    // Only commit real edits — committing unconditionally would push a
+    // spurious undo entry on every mount/blur and neutralize app undo
+    if (inputValue !== value) {
+      onChange && onChange(inputValue);
+    }
   }
 
   useEffect(() => {
-    handleUpdate(value);
+    setDisplayedInputValue(value);
   }, [value]);
 
   return (

@@ -117,9 +117,6 @@ export class CodeEditorType extends TypeView {
   }
 
   render(): TSFixme {
-    this.el = this.bindView($(`<div></div>`), this);
-    super.render();
-
     const self = this;
 
     const propertyProps: PropertyProps = {
@@ -136,6 +133,7 @@ export class CodeEditorType extends TypeView {
     this.propertyRoot = createRoot(this.propertyDiv);
     this.propertyRoot.render(React.createElement(Property, propertyProps));
 
+    this.el = this.propertyDiv;
     return this.propertyDiv;
   }
 

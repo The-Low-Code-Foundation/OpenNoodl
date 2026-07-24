@@ -1,6 +1,8 @@
 import React from 'react';
 import { createRoot, Root } from 'react-dom/client';
 
+import { PropertyPanelButton } from '@noodl-core-ui/components/property-panel/PropertyPanelButton';
+
 import { EventDispatcher } from '../../../../../../shared/utils/EventDispatcher';
 import { GeneratedCodeModal } from '../GeneratedCodeModal';
 import { TypeView } from '../TypeView';
@@ -13,11 +15,10 @@ import { getEditType } from '../utils';
  */
 export class LogicBuilderWorkspaceType extends TypeView {
   el: TSFixme;
-  editButton: JQuery;
-  viewCodeButton: JQuery;
   modalContainer: HTMLDivElement | null = null;
   modalRoot: Root | null = null;
   isModalOpen: boolean = false;
+  private root: Root | null = null;
 
   static fromPort(args) {
     const view = new LogicBuilderWorkspaceType();
@@ -40,78 +41,45 @@ export class LogicBuilderWorkspaceType extends TypeView {
   }
 
   render() {
-    // Hide empty group labels
-    const hideEmptyGroupsCSS = `
-      <style>
-        /* Hide empty group labels */
-        .property-editor-group-name:empty {
-          display: none !important;
-        }
-      </style>
-    `;
+    const div = document.createElement('div');
+    div.style.width = '100%';
 
-    // Create a simple container with two buttons
-    const html =
-      hideEmptyGroupsCSS +
-      `
-      <div class="property-basic-container logic-builder-workspace-editor" style="display: flex; flex-direction: column; gap: 8px;">
-        <button class="edit-blocks-button" 
-                style="
-                  padding: 8px 16px;
-                  background: var(--theme-color-primary);
-                  color: white;
-                  border: none;
-                  border-radius: 4px;
-                  cursor: pointer;
-                  font-size: 13px;
-                  font-weight: 500;
-                  transition: background-color 0.2s;
-                "
-                onmouseover="this.style.backgroundColor='var(--theme-color-primary-hover)'"
-                onmouseout="this.style.backgroundColor='var(--theme-color-primary)'">
-          Edit Logic Blocks
-        </button>
-        <button class="view-code-button" 
-                style="
-                  padding: 8px 16px;
-                  background: var(--theme-color-bg-3);
-                  color: var(--theme-color-fg-default);
-                  border: 1px solid var(--theme-color-border-default);
-                  border-radius: 4px;
-                  cursor: pointer;
-                  font-size: 13px;
-                  font-weight: 500;
-                  transition: background-color 0.2s;
-                "
-                onmouseover="this.style.backgroundColor='var(--theme-color-bg-4)'"
-                onmouseout="this.style.backgroundColor='var(--theme-color-bg-3)'">
-          View Generated Code
-        </button>
-      </div>
-    `;
+    if (!this.root) {
+      this.root = createRoot(div);
+    }
 
-    this.el = this.bindView($(html), this);
+    this.renderReact();
 
-    // Get references to buttons
-    this.editButton = this.el.find('.edit-blocks-button');
-    this.viewCodeButton = this.el.find('.view-code-button');
-
-    // Handle button clicks
-    this.editButton.on('click', () => {
-      this.onEditBlocksClicked();
-    });
-
-    this.viewCodeButton.on('click', () => {
-      this.onViewCodeClicked();
-    });
-
-    // Call parent render for common functionality (tooltips, etc.)
-    TypeView.prototype.render.call(this);
-
-    // Show/hide the "changed" dot based on whether value is default
-    this.updateChangedDot();
-
+    this.el = div;
     return this.el;
+  }
+
+  private renderReact() {
+    if (!this.root) return;
+
+    this.root.render(
+      React.createElement(
+        'div',
+        {
+          className: 'logic-builder-workspace-editor',
+          style: { display: 'flex', flexDirection: 'column', gap: '8px', width: '100%' }
+        },
+        React.createElement(PropertyPanelButton, {
+          properties: {
+            isPrimary: true,
+            buttonLabel: 'Edit Logic Blocks',
+            dataIdentifier: this.name,
+            onClick: () => this.onEditBlocksClicked()
+          }
+        }),
+        React.createElement(PropertyPanelButton, {
+          properties: {
+            buttonLabel: 'View Generated Code',
+            onClick: () => this.onViewCodeClicked()
+          }
+        })
+      )
+    );
   }
 
   onEditBlocksClicked() {
@@ -170,23 +138,9 @@ export class LogicBuilderWorkspaceType extends TypeView {
     );
   }
 
-  updateChangedDot() {
-    const dot = this.el.find('.property-changed-dot');
-    if (this.isDefault) {
-      dot.hide();
-    } else {
-      dot.show();
-    }
-  }
-
   resetToDefault() {
-    // Reset workspace to empty
-    this.parent.model.setParameter(this.name, undefined, {
-      undo: true,
-      label: 'reset workspace'
-    });
-    this.isDefault = true;
-    this.updateChangedDot();
+    this.isDefault = this.getCurrentValue().isDefault;
+    this.renderReact();
   }
 
   dispose() {
@@ -199,5 +153,10 @@ export class LogicBuilderWorkspaceType extends TypeView {
       this.modalContainer.parentNode.removeChild(this.modalContainer);
       this.modalContainer = null;
     }
+    if (this.root) {
+      this.root.unmount();
+      this.root = null;
+    }
+    super.dispose();
   }
 }
