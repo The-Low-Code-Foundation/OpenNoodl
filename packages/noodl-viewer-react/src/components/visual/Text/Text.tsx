@@ -3,6 +3,7 @@ import React from 'react';
 import Layout from '../../../layout';
 import PointerListeners from '../../../pointerlisteners';
 import { Noodl } from '../../../types';
+import { noodlRootRef } from '../../noodl-root-ref';
 
 export interface TextProps extends Noodl.ReactProps {
   as?: keyof React.JSX.IntrinsicElements | React.ComponentType<unknown>;
@@ -47,6 +48,7 @@ export function Text(props: TextProps) {
 
   return (
     <Component
+      ref={noodlRootRef(props.noodlNode)}
       className={['ndl-visual-text', props.className].join(' ')}
       {...props.dom}
       {...PointerListeners(props)}

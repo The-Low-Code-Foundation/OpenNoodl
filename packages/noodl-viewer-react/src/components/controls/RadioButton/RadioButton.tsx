@@ -4,6 +4,7 @@ import RadioButtonContext from '../../../contexts/radiobuttoncontext';
 import Layout from '../../../layout';
 import Utils from '../../../nodes/controls/utils';
 import { Noodl } from '../../../types';
+import { noodlRootRef } from '../../noodl-root-ref';
 
 export interface RadioButtonProps extends Noodl.ReactProps {
   id: string;
@@ -110,7 +111,12 @@ export function RadioButton(props: RadioButtonProps) {
   };
 
   const radioButton = (
-    <div className="ndl-controls-pointer" style={inputWrapperStyle} noodl-style-tag="radio">
+    <div
+      ref={noodlRootRef(props.noodlNode)}
+      className="ndl-controls-pointer"
+      style={inputWrapperStyle}
+      noodl-style-tag="radio"
+    >
       <div style={fillStyle} noodl-style-tag="fill" />
       {props.useIcon ? _renderIcon() : null}
       <input
@@ -144,7 +150,7 @@ export function RadioButton(props: RadioButtonProps) {
     }
 
     return (
-      <div style={wrapperStyle} {...Utils.controlEvents(props)}>
+      <div ref={noodlRootRef(props.noodlNode)} style={wrapperStyle} {...Utils.controlEvents(props)}>
         {radioButton}
         <label className="ndl-controls-pointer" style={labelStyle} htmlFor={props.id} noodl-style-tag="label">
           {props.label}

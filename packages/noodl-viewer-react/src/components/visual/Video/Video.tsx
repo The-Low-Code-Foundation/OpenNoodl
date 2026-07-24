@@ -148,6 +148,7 @@ export class Video extends React.Component<VideoProps> {
         style={style}
         innerRef={(video) => {
           this.video = video;
+          this.props.noodlNode?.setDOMElement(video);
           this.props.onVideoElementCreated && this.props.onVideoElementCreated(video);
         }}
         onCanPlay={() => {

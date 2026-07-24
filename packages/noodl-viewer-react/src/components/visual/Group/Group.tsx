@@ -50,6 +50,11 @@ export class Group extends React.Component<GroupProps> {
     this.scrollRef = React.createRef();
   }
 
+  rootRef = (el: ScrollRef | null) => {
+    (this.scrollRef as React.MutableRefObject<ScrollRef | null>).current = el;
+    this.props.noodlNode?.setDOMElement(el);
+  };
+
   componentDidMount() {
     if (this.props.scrollEnabled && this.props.nativeScroll !== true) {
       this.setupIScroll();
@@ -277,7 +282,7 @@ export class Group extends React.Component<GroupProps> {
         {...props.dom}
         {...PointerListeners(props)}
         style={style}
-        ref={this.scrollRef}
+        ref={this.rootRef}
       >
         {children}
       </Component>

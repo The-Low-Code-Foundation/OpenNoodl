@@ -2,6 +2,7 @@ import React from 'react';
 
 import Layout from '../../../layout';
 import { Noodl } from '../../../types';
+import { noodlRootRef } from '../../noodl-root-ref';
 
 export interface IconProps extends Noodl.ReactProps {
   iconSourceType: 'image' | 'icon';
@@ -46,7 +47,7 @@ export function Icon(props: IconProps) {
   if (props.className) className = className + ' ' + props.className;
 
   return (
-    <div className={className} style={style}>
+    <div ref={noodlRootRef(props.noodlNode)} className={className} style={style}>
       {_renderIcon()}
     </div>
   );

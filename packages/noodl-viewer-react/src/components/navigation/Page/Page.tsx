@@ -3,6 +3,7 @@ import React from 'react';
 import type { TSFixme } from '../../../../typings/global';
 import Layout from '../../../layout';
 import { Noodl, Slot } from '../../../types';
+import { noodlRootRef } from '../../noodl-root-ref';
 
 type MetaTag = {
   isProperty: boolean;
@@ -151,7 +152,7 @@ export function Page(props: PageProps) {
   });
 
   return (
-    <div style={style} className={props.className}>
+    <div ref={noodlRootRef((props as TSFixme).noodlNode)} style={style} className={props.className}>
       {children}
     </div>
   );

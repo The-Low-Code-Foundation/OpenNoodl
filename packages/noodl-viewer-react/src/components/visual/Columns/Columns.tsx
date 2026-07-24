@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect, isValidElement } from 'react';
+import React, { useRef, useState, useEffect, useCallback, isValidElement } from 'react';
 
 import { ForEachComponent } from '../../../nodes/std-library/data/foreach';
 import { Noodl, Slot } from '../../../types';
@@ -65,6 +65,12 @@ export function Columns(props: ColumnsProps) {
   const containerRef = useRef(null);
   const [containerWidth, setContainerWidth] = useState(null);
 
+  const rootRef = useCallback((el: HTMLDivElement | null) => {
+    containerRef.current = el;
+    props.noodlNode?.setDOMElement(el);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     const container = containerRef?.current;
     if (!container) return;
@@ -130,7 +136,7 @@ export function Columns(props: ColumnsProps) {
   return (
     <div
       className={['columns-container', props.className].join(' ')}
-      ref={containerRef}
+      ref={rootRef}
       style={{
         visibility: containerWidth === null ? "hidden" : "visible",
         marginTop: parseFloat(props.marginY) * -1,

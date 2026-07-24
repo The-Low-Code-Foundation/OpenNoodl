@@ -1,5 +1,3 @@
-import ReactDOM from 'react-dom';
-
 export class Highlighter {
   constructor(noodlRuntime) {
     this.highlightedNodes = new Map();
@@ -55,7 +53,7 @@ export class Highlighter {
     const items = Array.from(this.highlightedNodes.entries()).concat(Array.from(this.selectedNodes.entries()));
 
     for (const item of items) {
-      const domNode = item[0].getRef() && ReactDOM.findDOMNode(item[0].getRef());
+      const domNode = item[0].getDOMElement && item[0].getDOMElement();
 
       if (!domNode) {
         //user has deleted this node, just remove it

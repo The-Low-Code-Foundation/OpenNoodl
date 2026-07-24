@@ -3,6 +3,7 @@ import React from 'react';
 import Layout from '../../../layout';
 import PointerListeners from '../../../pointerlisteners';
 import { Noodl } from '../../../types';
+import { noodlRootRef } from '../../noodl-root-ref';
 
 export interface CircleProps extends Noodl.ReactProps {
   size: number;
@@ -119,7 +120,13 @@ export class Circle extends React.Component<CircleProps> {
     //the SVG element lack some properties like offsetLeft, offsetTop that the drag node depends on.
     //Let's wrap it in a div to make it work properly
     return (
-      <div className={this.props.className} {...this.props.dom} {...PointerListeners(this.props)} style={style}>
+      <div
+        ref={noodlRootRef(this.props.noodlNode)}
+        className={this.props.className}
+        {...this.props.dom}
+        {...PointerListeners(this.props)}
+        style={style}
+      >
         <svg xmlns="http://www.w3.org/2000/svg" width={this.props.size} height={this.props.size}>
           {fill}
           {stroke}

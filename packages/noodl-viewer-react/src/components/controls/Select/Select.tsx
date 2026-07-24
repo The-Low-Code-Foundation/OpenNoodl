@@ -4,6 +4,7 @@ import type { TSFixme } from '../../../../typings/global';
 import Layout from '../../../layout';
 import Utils from '../../../nodes/controls/utils';
 import { Noodl } from '../../../types';
+import { noodlRootRef } from '../../noodl-root-ref';
 
 export interface SelectProps extends Noodl.ReactProps {
   id: string;
@@ -135,7 +136,12 @@ export function Select(props: SelectProps) {
 
   //A hidden first option is preselected and added to the list of options, it makes it possible to select the first item in the dropdown
   const inputWrapper = (
-    <div className="ndl-controls-pointer" style={inputWrapperStyle} noodl-style-tag="inputWrapper">
+    <div
+      ref={noodlRootRef(props.noodlNode)}
+      className="ndl-controls-pointer"
+      style={inputWrapperStyle}
+      noodl-style-tag="inputWrapper"
+    >
       {props.useIcon && props.iconPlacement === 'left' ? _renderIcon() : null}
       <div
         style={{
@@ -176,7 +182,7 @@ export function Select(props: SelectProps) {
     }
 
     return (
-      <div style={outerWrapperStyle}>
+      <div ref={noodlRootRef(props.noodlNode)} style={outerWrapperStyle}>
         <label
           htmlFor={props.id}
           style={{

@@ -40,6 +40,9 @@ const PageNode = {
   getReactComponent() {
     return Page;
   },
+  // Needed so Page can report its root DOM element via setDOMElement
+  // (findDOMNode is gone in React 19).
+  noodlNodeAsProp: true,
   inputs: {
     // TODO: Enable with SSR
     // onPageReady: {

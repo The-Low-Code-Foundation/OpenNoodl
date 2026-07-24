@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import Layout from '../../../layout';
 import Utils from '../../../nodes/controls/utils';
 import { Noodl } from '../../../types';
+import { noodlRootRef } from '../../noodl-root-ref';
 
 export interface SliderProps extends Noodl.ReactProps {
   _nodeId: string;
@@ -166,7 +167,7 @@ export function Slider(props: SliderProps) {
   setShadow(thumbStyle, 'thumb', props);
 
   return (
-    <div style={divStyle}>
+    <div ref={noodlRootRef(props.noodlNode)} style={divStyle}>
       <div style={trackStyle} />
       <div style={thumbStyle} />
       <input

@@ -1,6 +1,9 @@
 'use strict';
 
 import React from 'react';
+import ReactDOM from 'react-dom';
+
+import type { TSFixme } from '../typings/global';
 import type {
   ComponentInstanceLike,
   DynamicPortEntry,
@@ -168,8 +171,13 @@ export interface ReactNodeInstance extends NodeInstance {
    * is no one type here, only a per-node contract the author holds.
    */
   innerReactComponentRef: any;
-  /** Set by the wrapper's ref callback when the ref turns out to be a DOM node. */
-  _domElement?: HTMLElement;
+  /**
+   * The node's root DOM element. Set either by the wrapper's ref callback (when
+   * the inner component is a host element) or by the component itself calling
+   * {@link setDOMElement} from a ref on its root — the contract every built-in
+   * visual/control component follows now that findDOMNode is gone in React 19.
+   */
+  _domElement?: Element;
   /** The frame this node last rendered on; used to render at most once per frame. */
   renderedAtFrame: number;
   forceUpdateScheduled: boolean;
@@ -238,6 +246,13 @@ export interface ReactNodeInstance extends NodeInstance {
   updateAdvancedStyle(params: { content?: string }): void;
   getRef(): NoodlReactComponent | null;
   getDOMElement(): HTMLElement | null;
+  /**
+   * Root-element reporting contract: built-in components attach
+   * `ref={(el) => props.noodlNode?.setDOMElement(el)}` on their root host
+   * element. Keeps `_domElement` and the bounding-box observer in sync,
+   * including the null on unmount.
+   */
+  setDOMElement(element: Element | null): void;
   /** The node this one renders inside, hopping out of the component if it is a root. */
   getVisualParentNode(): ReactNodeInstance | undefined;
 
@@ -577,13 +592,12 @@ class NoodlReactComponent extends React.Component<NoodlReactComponentProps> {
     const props: Record<string, any> = {
       ref: (ref: unknown) => {
         noodlNode.innerReactComponentRef = ref;
-        // React 19: Store DOM element reference directly for getDOMElement()
-        // This avoids using the deprecated findDOMNode
-        if (ref && ref instanceof Element) {
-          noodlNode._domElement = ref as HTMLElement;
-        } else if (ref && typeof ref === 'object' && (ref as Node).nodeType === 1) {
-          // ref is already a DOM element
-          noodlNode._domElement = ref as HTMLElement;
+        // When the inner component is itself a host element this ref IS the
+        // root DOM node. Class/function components report their root through
+        // setDOMElement instead (their own root ref commits before this one,
+        // so this must not clobber what they already set).
+        if (ref instanceof Element || (ref && typeof ref === 'object' && (ref as Node).nodeType === 1)) {
+          noodlNode.setDOMElement(ref as Element);
         }
       },
       style: finalStyle,
@@ -1145,14 +1159,21 @@ function createNodeFromReactComponent(def: ReactNodeDefinition): ReactNodeModule
           noodlNode: this,
           ref: (ref) => {
             this.reactComponentRef = ref;
-            // React 19: Use stored DOM element instead of findDOMNode
-            // The _domElement is set by the ref callback in NoodlReactComponent
-            // We need to wait a frame for the inner ref to be set
             if (ref) {
-              requestAnimationFrame(() => {
-                const domElement = this._domElement || this.getDOMElement();
-                this.boundingBoxObserver.setTarget(domElement);
-              });
+              // Built-ins and host elements have already reported their root
+              // via setDOMElement (child refs commit first), which also set
+              // the observer target. The deferred fallback only matters for
+              // third-party components, where getDOMElement() may need the
+              // findDOMNode escape hatch on the React 18 runtime.
+              if (!this._domElement) {
+                requestAnimationFrame(() => {
+                  if (!this._domElement) {
+                    this.boundingBoxObserver.setTarget(this.getDOMElement());
+                  }
+                });
+              }
+            } else if (!this._domElement) {
+              this.boundingBoxObserver.setTarget(null);
             }
           }
         });
@@ -1293,26 +1314,44 @@ function createNodeFromReactComponent(def: ReactNodeDefinition): ReactNodeModule
       getRef() {
         return this.reactComponentRef;
       },
+      setDOMElement(element) {
+        this._domElement = element || undefined;
+        if (this.boundingBoxObserver) {
+          this.boundingBoxObserver.setTarget((element as HTMLElement) || null);
+        }
+      },
       getDOMElement() {
-        // React 19: Use stored DOM element reference instead of findDOMNode
-        // The _domElement is set by the ref callback in NoodlReactComponent
+        // Built-ins report their root through setDOMElement; host-element
+        // inner components are caught by the wrapper's ref callback.
         if (this._domElement) {
-          return this._domElement;
+          return this._domElement as HTMLElement;
         }
 
-        // Fallback: try to get DOM element from innerReactComponentRef
         const innerRef = this.innerReactComponentRef;
         if (innerRef && innerRef instanceof Element) {
-          return innerRef;
+          return innerRef as HTMLElement;
         }
 
-        // Legacy fallback for backwards compatibility (will be removed)
+        // Third-party module components that neither render a host root nor
+        // forward a ref: on the React 18 runtime findDOMNode still exists and
+        // restores the pre-19 behaviour. On React 19 it is undefined and such
+        // components simply have no reachable root (documented behavioural
+        // difference).
         const ref = this.getRef();
         if (!ref) return null;
 
-        // If ref is a DOM element, return it directly
         if (ref instanceof Element) {
-          return ref;
+          return ref as unknown as HTMLElement;
+        }
+
+        const findDOMNode = (ReactDOM as TSFixme).findDOMNode;
+        if (typeof findDOMNode === 'function') {
+          try {
+            // eslint-disable-next-line react/no-find-dom-node -- deliberate: only reachable on the React 18 runtime, where it restores pre-19 behaviour for third-party components; undefined (and skipped) on React 19
+            return findDOMNode(ref);
+          } catch (e) {
+            return null;
+          }
         }
 
         return null;

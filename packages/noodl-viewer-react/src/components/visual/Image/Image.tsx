@@ -3,6 +3,7 @@ import React from 'react';
 import Layout from '../../../layout';
 import PointerListeners from '../../../pointerlisteners';
 import { Noodl } from '../../../types';
+import { noodlRootRef } from '../../noodl-root-ref';
 
 export interface ImageProps extends Noodl.ReactProps {
   dom: {
@@ -30,5 +31,13 @@ export function Image(props: ImageProps) {
     }
   }
 
-  return <img className={props.className} {...props.dom} {...PointerListeners(props)} style={style} />;
+  return (
+    <img
+      ref={noodlRootRef(props.noodlNode)}
+      className={props.className}
+      {...props.dom}
+      {...PointerListeners(props)}
+      style={style}
+    />
+  );
 }

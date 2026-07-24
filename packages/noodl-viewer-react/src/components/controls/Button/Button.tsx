@@ -3,6 +3,7 @@ import React from 'react';
 import Layout from '../../../layout';
 import Utils from '../../../nodes/controls/utils';
 import { Noodl, Slot } from '../../../types';
+import { noodlRootRef } from '../../noodl-root-ref';
 
 export interface ButtonProps extends Noodl.ReactProps {
   enabled: boolean;
@@ -96,6 +97,7 @@ export function Button(props: ButtonProps) {
 
   return (
     <button
+      ref={noodlRootRef(props.noodlNode)}
       className={className}
       disabled={!props.enabled}
       {...Utils.controlEvents(props)}

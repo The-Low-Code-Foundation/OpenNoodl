@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import Layout from '../../../layout';
 import Utils from '../../../nodes/controls/utils';
 import { Noodl } from '../../../types';
+import { noodlRootRef } from '../../noodl-root-ref';
 
 export interface CheckboxProps extends Noodl.ReactProps {
   id: string;
@@ -107,7 +108,12 @@ export function Checkbox(props: CheckboxProps) {
   }
 
   const checkbox = (
-    <div className="ndl-controls-pointer" style={inputWrapperStyle} noodl-style-tag="checkbox">
+    <div
+      ref={noodlRootRef(props.noodlNode)}
+      className="ndl-controls-pointer"
+      style={inputWrapperStyle}
+      noodl-style-tag="checkbox"
+    >
       {props.useIcon ? _renderIcon() : null}
       <input
         type="checkbox"
@@ -135,7 +141,11 @@ export function Checkbox(props: CheckboxProps) {
     labelStyle.color = props.noodlNode.context.styles.resolveColor(labelStyle.color);
 
     return (
-      <div style={{ display: 'flex', alignItems: 'center', ...style }} {...Utils.controlEvents(props)}>
+      <div
+        ref={noodlRootRef(props.noodlNode)}
+        style={{ display: 'flex', alignItems: 'center', ...style }}
+        {...Utils.controlEvents(props)}
+      >
         {checkbox}
         <label className="ndl-controls-pointer" style={labelStyle} htmlFor={props.id} noodl-style-tag="label">
           {props.label}

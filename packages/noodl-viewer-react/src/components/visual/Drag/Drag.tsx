@@ -42,9 +42,26 @@ export class Drag extends React.Component<DragProps, State> {
   snapToPositionXTimer: any;
   snapToPositionYTimer: any;
 
+  /**
+   * react-draggable falls back to findDOMNode (removed in React 19) unless
+   * given a nodeRef. Drag renders no host element of its own — the element
+   * being dragged is its child node's root — so the ref delegates to the
+   * child's getDOMElement() at read time.
+   */
+  draggableNodeRef: React.RefObject<HTMLElement>;
+
   constructor(props: DragProps) {
     super(props);
     this.state = { x: 0, y: 0 } satisfies State;
+
+    const self = this;
+    this.draggableNodeRef = {
+      get current() {
+        const noodlNode = self.props.noodlNode;
+        const child = noodlNode && noodlNode.children && noodlNode.children[0];
+        return child && child.getDOMElement ? child.getDOMElement() : null;
+      }
+    } as React.RefObject<HTMLElement>;
   }
 
   snapToPosition({ timerScheduler, propCallback, duration, axis, endValue }) {
@@ -127,6 +144,7 @@ export class Drag extends React.Component<DragProps, State> {
 
     return (
       <Draggable
+        nodeRef={this.draggableNodeRef}
         axis={props.axis}
         bounds={bounds}
         disabled={props.enabled === false}
