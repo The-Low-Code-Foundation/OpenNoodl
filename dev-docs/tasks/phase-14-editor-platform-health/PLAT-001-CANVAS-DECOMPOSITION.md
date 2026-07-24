@@ -152,10 +152,11 @@ Characterisation tests come first. Before extracting anything, write tests that 
 - [x] Coordinator ≤800: wave 3 — accessor-compat layer retired; ViewportActions / CanvasPainter / CanvasDOMBindings extracted; 1,274 → 790 (see NOTES §8)
 - [x] Full manual regression + large-graph performance check (see NOTES §9)
 - [x] CHANGELOG with before/after line counts (below)
-- [ ] Wave 4 (optional follow-up, agreed 2026-07-24): split
+- [x] Wave 4 (optional follow-up, agreed 2026-07-24): split
       `NodeGraphEditorNode.ts` (1,290) — attach-point helpers →
-      `nodeAttachment.ts`, `paint()` → `NodeGraphEditorNodePainter.ts` —
-      plan, traps and gates in NOTES §10
+      `nodeAttachment.ts` (228), `paint()` + text helpers →
+      `NodeGraphEditorNodePainter.ts` (466); node view → 610 — done
+      2026-07-24, as-built in NOTES §11
 
 ### Status 2026-07-24 (complete)
 
@@ -185,8 +186,16 @@ delete via popups, clipboard, pan/zoom extremes, comments, all five overlay
 slots, component switch — zero renderer exceptions) and large-graph perf
 verified on a synthesised 500-node/250-wire graph: worst-case paint 5.0 ms
 avg / 10.4 ms max with everything visible, ~⅓ of frame budget. Details and
-observations in NOTES §9. Known exception: `NodeGraphEditorNode.ts` (1,290,
-pre-existing) — optional paint-vs-hit/measure split left as follow-up.
+observations in NOTES §9.
+
+Wave 4 (2026-07-24): the last ≤800 exception closed.
+`NodeGraphEditorNode.ts` 1,290 → **610** via two verbatim extractions
+(attach-point machinery → `nodeAttachment.ts` 228; `paint()` + text helpers +
+`_getColorForAnnotation` → stateless `NodeGraphEditorNodePainter.ts` 466).
+Suite 965/0 after each; live smoke passed (hover highlight, painter-written
+`commentIconBounds` → comment popup, connection drag area, attach info,
+repaint clean, zero renderer exceptions). As-built in NOTES §11. **Every
+canvas-subsystem file is now under the ~800-line target.**
 
 ## CHANGELOG
 
@@ -205,6 +214,11 @@ dispose now unmounts all 7 React overlay roots; previously 5 leaked).
 | Suite | — | 965 specs / 0 failures after each wave |
 | 500-node paint (all visible) | n/a (not measured pre-wave) | 5.0 ms avg / 10.4 ms max |
 
-Pre-existing files unchanged: `NodeGraphEditorNode.ts` 1,290 (over the ~800
-target; split deferred), `NodeGraphEditorConnection.ts` 416,
+Wave 4 (2026-07-24): `NodeGraphEditorNode.ts` **1,290 → 610**, +
+`nodeAttachment.ts` 228 (attach-point machinery, pure functions) +
+`NodeGraphEditorNodePainter.ts` 466 (stateless painter; keeps writing
+`commentIconBounds` back to the node for hit-testing). No canvas-subsystem
+file remains over the ~800 target.
+
+Pre-existing files unchanged: `NodeGraphEditorConnection.ts` 416,
 `nodegrapheditor.drag.ts`, `nodegrapheditor.debuginspectors.js`.

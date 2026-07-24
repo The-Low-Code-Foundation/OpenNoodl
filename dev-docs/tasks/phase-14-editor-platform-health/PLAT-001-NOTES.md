@@ -445,3 +445,58 @@ collaborator must pass the *editor* as listener context; dugite symlink
 (`ln -sfn ../../node_modules/dugite packages/node_modules/dugite`); specs
 constructing NodeGraphEditor must stub `SidebarModel.instance.switchToNode`;
 React-19 root renders need poll-based waits.
+
+## 11. Wave 4 as-built (2026-07-24 — NodeGraphEditorNode split)
+
+Executed exactly as planned in §10; both extractions landed verbatim, one
+commit each (9863c08, a748b5b), suite 965/0 after each.
+
+| File | Before | After |
+|---|---|---|
+| `NodeGraphEditorNode.ts` | 1,290 | **610** |
+| `nodeAttachment.ts` | — | 228 |
+| `NodeGraphEditorNodePainter.ts` | — | 466 |
+
+**Extraction 1** — attach-point machinery (`nodeShouldAttach`,
+`_nodeShouldAttachRecurse`, `canAcceptChildNodes`, `getAttachPoint*`) moved
+unchanged to `nodeAttachment.ts`; only `nodeShouldAttach` is exported and
+`shouldAttach` on the node keeps delegating. The module imports
+`NodeGraphEditorNode` for the layout statics (`childMargin`/`childSpacing`) —
+a deliberate circular import; safe because access is inside function bodies
+(runtime-deferred), same pattern as the existing node ↔ editor cycle.
+
+**Extraction 2** — `paint()` (405 lines) + `measureTextHeight`/`textWordWrap`
++ `_getColorForAnnotation` moved to `NodeGraphEditorNodePainter.ts` as
+stateless `paintNode(node, ctx, paintRect, options)`; `node.paint()` is now a
+one-line delegate. As §10 warned, the painter **keeps writing
+`node.commentIconBounds`** (set when comment icon drawn, cleared otherwise) —
+hit-testing (`isPointInCommentIcon` → comment popup) reads it; a grep
+confirmed that is the only `this.*=` write inside the old paint body
+(`updateIcon()` writes stay on the node as a method call). Child recursion
+stays `node.children[i].paint(...)` so the delegate remains the single entry
+point. `measure()`/`layout()`/titlebar-height caches stayed on the node;
+the node imports `measureTextHeight` back from the painter module.
+`NodeLibrary` and the `canvasHelpers` imports moved out of the node file
+with the paint body.
+
+**Gates run:** `typecheck:editor` clean after each extraction; full
+`test:ci` 965/0 after each; live smoke on Shine Phase 2 `/Pages/Home` via
+run-editor + a scratchpad CDP driver (coordinate `Input.dispatchMouseEvent`,
+`--target=NodeGX`, graph→page mapping `(g + pan) * scale` + canvas rect):
+
+- hover node header → `highlighted` true, `commentIconBounds` written by the
+  painter (x = width − 10 − 14 − 10, correct);
+- top-right 20×20 hover → `connectionDragAreaHighlighted` true;
+- real click on the comment icon centre → `StringInputPopup` opened,
+  cancelled clean — the full painter-writes → hit-test → popup path;
+- `shouldAttach` over the live scene returns well-formed attach info
+  (parent Page, index = children.length) through the moved module;
+- `relayout()+repaint()` clean; screenshot verified (labels, sublabels,
+  wire, hover border, comment icon); zero `[renderer:exception]` lines.
+
+Perf re-check skipped: paint body byte-identical modulo `this`→`node`, no
+new allocations per frame; §9 numbers remain the baseline.
+
+**One trap not in §10:** the cdp.js REPL shares the page's global scope
+across `eval` calls — top-level `const` in one eval collides with the next.
+Wrap scripted evals in IIFEs.
