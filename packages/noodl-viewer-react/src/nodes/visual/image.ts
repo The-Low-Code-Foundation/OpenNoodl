@@ -2,9 +2,9 @@ import { getAbsoluteUrl } from '@noodl/runtime/src/utils';
 
 import { Image } from '../../components/visual/Image';
 import NodeSharedPortDefinitions from '../../node-shared-port-definitions';
-import { createNodeFromReactComponent } from '../../react-component-node';
+import { createNodeFromReactComponent, type ReactNodeDefinition } from '../../react-component-node';
 
-const ImageNode = {
+const ImageNode: ReactNodeDefinition = {
   name: 'Image',
   docs: 'https://docs.noodl.net/nodes/basic-elements/image',
   noodlNodeAsProp: true,
@@ -73,10 +73,12 @@ const ImageNode = {
     }
   ],
   inputs: {
+    // `propPath` is deliberately absent: this is an ordinary runtime input, and
+    // `propPath` is only read from `inputProps`/`outputProps`. The `set` below
+    // writes `props.dom` itself, which is what actually put the value there.
     src: {
       displayName: 'Source',
       group: 'Image',
-      propPath: 'dom',
       type: {
         name: 'image'
       },

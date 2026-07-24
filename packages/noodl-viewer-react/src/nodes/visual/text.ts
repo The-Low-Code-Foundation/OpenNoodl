@@ -1,9 +1,9 @@
 import { Text } from '../../components/visual/Text';
 import NodeSharedPortDefinitions from '../../node-shared-port-definitions';
-import { createNodeFromReactComponent } from '../../react-component-node';
+import { createNodeFromReactComponent, type ReactNodeDefinition } from '../../react-component-node';
 import { createTooltip } from '../../tooltips';
 
-const TextNode = {
+const TextNode: ReactNodeDefinition = {
   name: 'Text',
   docs: 'https://docs.noodl.net/nodes/basic-elements/text',
   visualStates: [

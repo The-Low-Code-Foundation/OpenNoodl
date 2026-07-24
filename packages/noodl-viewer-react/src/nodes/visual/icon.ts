@@ -1,8 +1,8 @@
 import { Icon } from '../../components/visual/Icon';
 import NodeSharedPortDefinitions from '../../node-shared-port-definitions';
-import { createNodeFromReactComponent } from '../../react-component-node';
+import { createNodeFromReactComponent, type ReactNodeDefinition } from '../../react-component-node';
 
-const IconNode = {
+const IconNode: ReactNodeDefinition = {
   name: 'net.noodl.visual.icon',
   displayName: 'Icon',
   docs: 'https://docs.noodl.net/nodes/basic-elements/icon',

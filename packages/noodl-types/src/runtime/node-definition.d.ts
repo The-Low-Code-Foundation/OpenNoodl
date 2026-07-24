@@ -67,6 +67,16 @@ export type NodeColorName = 'data' | 'visual' | 'logic' | 'component' | 'javascr
 export type PortLabelTruncationMode = 'length' | 'path' | (string & {});
 
 /**
+ * A port's hover tooltip.
+ *
+ * The bare string is HTML, and is what `createTooltip` in the React viewer builds. The
+ * object form separates the short text from the expanded one; the editor reads
+ * `standard` when it is given an object (`shared/view.js`, `SizeModeInput.tsx`) and both
+ * `node-shared-port-definitions.js` and the Video node author it.
+ */
+export type PortTooltip = string | { standard?: string; extended?: string };
+
+/**
  * `this` inside every author-supplied callback on a node definition.
  *
  * This is the runtime `Node` instance. It is declared structurally rather than imported
@@ -193,7 +203,7 @@ export interface InputPortDefinition {
   /** Property-panel popout group this port belongs to. */
   popout?: unknown;
   index?: number;
-  tooltip?: string;
+  tooltip?: PortTooltip;
   /** Defaults to `true`. Set `false` to keep the port out of the editor entirely. */
   exportToEditor?: boolean;
   /** Higher priority inputs are applied first within one update. Defaults to `0`. */
@@ -358,9 +368,7 @@ export type NodePanels = Record<string, unknown>;
 export type PrototypeExtensions = Record<string, ((this: NodeInstance, ...args: any[]) => any) | PropertyDescriptor>;
 
 /** One line of the editor's node inspector. */
-export type InspectInfo =
-  | string
-  | Array<{ type: 'text' | 'value' | string; value: unknown; [extra: string]: unknown }>;
+export type InspectInfo = string | Array<{ type: 'text' | 'value' | string; value: unknown; [extra: string]: unknown }>;
 
 /**
  * The object passed to `defineNode`.
@@ -442,7 +450,7 @@ export interface InputPortMetadata {
   index?: number;
   exportToEditor: boolean;
   inputPriority: number;
-  tooltip?: string;
+  tooltip?: PortTooltip;
   tab?: string;
   popout?: unknown;
   allowVisualStates?: boolean;

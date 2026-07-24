@@ -2,9 +2,9 @@ import { getAbsoluteUrl } from '@noodl/runtime/src/utils';
 
 import { Video } from '../../components/visual/Video';
 import NodeSharedPortDefinitions from '../../node-shared-port-definitions';
-import { createNodeFromReactComponent } from '../../react-component-node';
+import { createNodeFromReactComponent, type ReactNodeDefinition } from '../../react-component-node';
 
-const VideoNode = {
+const VideoNode: ReactNodeDefinition = {
   name: 'Video',
   docs: 'https://docs.noodl.net/nodes/basic-elements/video',
   connectionPanel: {

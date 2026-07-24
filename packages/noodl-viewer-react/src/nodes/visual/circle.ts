@@ -1,8 +1,8 @@
 import { Circle } from '../../components/visual/Circle';
 import NodeSharedPortDefinitions from '../../node-shared-port-definitions';
-import { createNodeFromReactComponent } from '../../react-component-node';
+import { createNodeFromReactComponent, type ReactNodeDefinition } from '../../react-component-node';
 
-const CircleNode = {
+const CircleNode: ReactNodeDefinition = {
   name: 'Circle',
   docs: 'https://docs.noodl.net/nodes/basic-elements/circle',
   connectionPanel: {

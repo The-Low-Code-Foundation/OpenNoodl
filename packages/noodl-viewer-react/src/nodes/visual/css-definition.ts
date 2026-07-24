@@ -1,6 +1,22 @@
-const _refCount = new Map(); //node id to ref count
+import type { NodeDefinitionOptions, NodeInstance } from '@noodl/types';
 
-const CSSDefinition = {
+/**
+ * This node's own instance shape.
+ *
+ * `NodeInstance` is deliberately closed — it describes what the *runtime*
+ * guarantees, and widening it would cost every node its typo detection. A node
+ * that hangs its own members off the prototype via `methods` declares them here
+ * instead, and binds its callbacks to that.
+ */
+interface CssDefinitionInstance extends NodeInstance {
+  getStyleRefId(): string;
+  removeStyleDeclaration(): void;
+  updateStyle(style: string | null): void;
+}
+
+const _refCount = new Map<string, number>(); //node id to ref count
+
+const CSSDefinition: NodeDefinitionOptions = {
   name: 'CSS Definition',
   docs: 'https://docs.noodl.net/nodes/utilities/css-definition',
   category: 'CustomCode',
@@ -8,8 +24,8 @@ const CSSDefinition = {
   nodeDoubleClickAction: {
     focusPort: 'Style'
   },
-  initialize: function () {
-    var internal = this._internal;
+  initialize: function (this: CssDefinitionInstance) {
+    const internal = this._internal;
     internal.style = '';
 
     const styleId = this.getStyleRefId();
@@ -36,36 +52,36 @@ const CSSDefinition = {
       group: 'Content',
       default: '',
 
-      set: function (value) {
+      set: function (this: CssDefinitionInstance, value: string) {
         this.updateStyle(value);
       }
     }
   },
   outputs: {},
   methods: {
-    getStyleRefId: function () {
+    getStyleRefId: function (this: CssDefinitionInstance) {
       return 'style_' + this.id;
     },
-    removeStyleDeclaration: function () {
+    removeStyleDeclaration: function (this: CssDefinitionInstance) {
       // Add SSR Support
       if (typeof document === 'undefined') return;
 
-      var styleRefId = this.getStyleRefId();
-      var styleObj = document.getElementById(styleRefId);
+      const styleRefId = this.getStyleRefId();
+      const styleObj = document.getElementById(styleRefId);
       if (styleObj !== null) {
         styleObj.parentNode.removeChild(styleObj);
       }
     },
-    updateStyle: function (style) {
+    updateStyle: function (this: CssDefinitionInstance, style: string | null) {
       // Add SSR Support
       if (typeof document === 'undefined') return;
 
-      var internal = this._internal;
-      var styleRefId = this.getStyleRefId();
+      const internal = this._internal;
+      const styleRefId = this.getStyleRefId();
       internal.style = style;
 
       if (style !== null) {
-        var styleObj = document.getElementById(styleRefId);
+        let styleObj = document.getElementById(styleRefId) as HTMLStyleElement | null;
         if (styleObj === null) {
           styleObj = document.createElement('style');
           styleObj.id = styleRefId;
@@ -81,6 +97,9 @@ const CSSDefinition = {
   }
 };
 
-module.exports = {
+// `export default`, not `module.exports`: this file is now part of the viewer's
+// ESM program. `register-nodes.js` default-imports it, which webpack resolves to
+// the same object either way.
+export default {
   node: CSSDefinition
 };

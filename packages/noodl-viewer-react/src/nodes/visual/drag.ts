@@ -1,7 +1,7 @@
 import { Drag } from '../../components/visual/Drag';
-import { createNodeFromReactComponent } from '../../react-component-node';
+import { createNodeFromReactComponent, type ReactNodeDefinition } from '../../react-component-node';
 
-const DragNode = {
+const DragNode: ReactNodeDefinition = {
   name: 'Drag',
   docs: 'https://docs.noodl.net/nodes/utilities/drag',
   allowChildren: true,

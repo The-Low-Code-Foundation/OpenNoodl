@@ -6,7 +6,7 @@
 declare const Noodl: { baseUrl?: string } | undefined;
 
 //this just assumes the base url is '/' always
-function getAbsoluteUrl(_url: unknown): string {
+export function getAbsoluteUrl(_url: unknown): string {
   //convert to string in case the _url is a Cloud File (which is an object with a custom toString())
   const url = String(_url);
 
@@ -21,7 +21,7 @@ function getAbsoluteUrl(_url: unknown): string {
 /**
  * Log an error thrown by the JavaScript nodes.
  */
-function logJavaScriptNodeError(error: unknown): void {
+export function logJavaScriptNodeError(error: unknown): void {
   if (typeof error === 'string') {
     console.log('Error in JS node run code.', error);
   } else {
@@ -34,7 +34,9 @@ function logJavaScriptNodeError(error: unknown): void {
   }
 }
 
-export = {
-  getAbsoluteUrl,
-  logJavaScriptNodeError
-};
+// Named exports, not `export =`. The rule for this package: a module whose export
+// *is* a value (a class, a function) must use `export =`, because consumers
+// `require()` it and would otherwise get a namespace object. This module's export
+// already is a namespace, so both forms emit the same CommonJS — and only this form
+// can be imported from the viewers, which compile as ESM. Every consumer
+// destructures (`const { getAbsoluteUrl } = require('./utils')`), which is unchanged.

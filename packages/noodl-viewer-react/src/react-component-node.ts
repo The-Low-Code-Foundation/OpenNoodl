@@ -1,7 +1,6 @@
 'use strict';
 
 import React from 'react';
-
 import type {
   DynamicPortEntry,
   InputPortDefinition,
@@ -160,8 +159,16 @@ export interface ReactNodeInstance extends NodeInstance {
   reactComponent: React.ComponentType<any> | string;
   /** The `NoodlReactComponent` wrapper instance. */
   reactComponentRef: NoodlReactComponent | null;
-  /** Whatever the *inner* component put in its `ref` — often, but not always, a DOM node. */
-  innerReactComponentRef: unknown;
+  /**
+   * Whatever the *inner* component put in its `ref` — often, but not always, a
+   * DOM node.
+   *
+   * `any` rather than `unknown`: node definitions call imperative methods on it
+   * (`scrollToIndex`, `snapToPositionX`, `play`), and which methods exist is
+   * decided by the component each node returns from `getReactComponent`. There
+   * is no one type here, only a per-node contract the author holds.
+   */
+  innerReactComponentRef: any;
   /** Set by the wrapper's ref callback when the ref turns out to be a DOM node. */
   _domElement?: HTMLElement;
   /** The frame this node last rendered on; used to render at most once per frame. */
@@ -264,6 +271,31 @@ type ReactNodeCallback<TArgs extends any[] = any[], TResult = void> = (
   this: ReactNodeInstance,
   ...args: TArgs
 ) => TResult;
+
+/**
+ * An ordinary runtime input, declared on a React node.
+ *
+ * Structurally this is {@link InputPortDefinition} — the definition is passed
+ * straight through to `defineNode` — but the callbacks run with the *React*
+ * instance as `this`, and every one of them relies on it: `setStyle`,
+ * `forceUpdate`, `innerReactComponentRef`, `props`. Declaring the runtime
+ * `this` here would reject the node bodies this module exists to compile.
+ */
+export interface ReactInputDefinition extends Omit<InputPortDefinition, 'set' | 'valueChangedToTrue' | 'setUnitType'> {
+  set?: ReactNodeCallback<[any]>;
+  valueChangedToTrue?: ReactNodeCallback;
+  setUnitType?: ReactNodeCallback<[string]>;
+}
+
+/** An ordinary runtime output, declared on a React node. See {@link ReactInputDefinition}. */
+export interface ReactOutputDefinition
+  extends Omit<OutputPortDefinition, 'get' | 'getter' | 'onFirstConnectionAdded' | 'onLastConnectionRemoved'> {
+  get?: ReactNodeCallback<[], unknown>;
+  /** @deprecated Historical spelling of {@link get}; still honoured. */
+  getter?: ReactNodeCallback<[], unknown>;
+  onFirstConnectionAdded?: ReactNodeCallback;
+  onLastConnectionRemoved?: ReactNodeCallback;
+}
 
 /**
  * An input that writes a React prop.
@@ -381,13 +413,13 @@ export interface ReactNodeDefinition {
   defaultCss?: StyleObject;
 
   /** Ports written as ordinary runtime inputs, with their own `set`. */
-  inputs?: Record<string, InputPortDefinition>;
+  inputs?: Record<string, ReactInputDefinition>;
   /** Ports that write React props. */
   inputProps?: Record<string, ReactInputPropDefinition>;
   /** Ports that write CSS properties. */
   inputCss?: Record<string, ReactInputCssDefinition>;
   /** Ports written as ordinary runtime outputs, with their own `get`. */
-  outputs?: Record<string, OutputPortDefinition>;
+  outputs?: Record<string, ReactOutputDefinition>;
   /** Ports driven by React prop callbacks. */
   outputProps?: Record<string, ReactOutputPropDefinition>;
 
@@ -1268,22 +1300,22 @@ function createNodeFromReactComponent(def: ReactNodeDefinition): ReactNodeModule
         if (this._domElement) {
           return this._domElement;
         }
-        
+
         // Fallback: try to get DOM element from innerReactComponentRef
         const innerRef = this.innerReactComponentRef;
         if (innerRef && innerRef instanceof Element) {
           return innerRef;
         }
-        
+
         // Legacy fallback for backwards compatibility (will be removed)
         const ref = this.getRef();
         if (!ref) return null;
-        
+
         // If ref is a DOM element, return it directly
         if (ref instanceof Element) {
           return ref;
         }
-        
+
         return null;
       },
       getVisualParentNode() {

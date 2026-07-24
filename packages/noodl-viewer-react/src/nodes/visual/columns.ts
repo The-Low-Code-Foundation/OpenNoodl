@@ -1,7 +1,7 @@
 import { Columns } from '../../components/visual/Columns';
-import { createNodeFromReactComponent } from '../../react-component-node';
+import { createNodeFromReactComponent, type ReactNodeDefinition } from '../../react-component-node';
 
-const ColumnsNode = {
+const ColumnsNode: ReactNodeDefinition = {
   name: 'net.noodl.visual.columns',
   displayName: 'Columns',
   docs: 'https://docs.noodl.net/nodes/basic-elements/columns',

@@ -1,10 +1,10 @@
 import { Group } from '../../components/visual/Group';
 import { flexDirectionValues } from '../../constants/flex';
 import NodeSharedPortDefinitions from '../../node-shared-port-definitions';
-import { createNodeFromReactComponent } from '../../react-component-node';
+import { createNodeFromReactComponent, type ReactNodeDefinition } from '../../react-component-node';
 import { createTooltip } from '../../tooltips';
 
-const GroupNode = {
+const GroupNode: ReactNodeDefinition = {
   name: 'Group',
   docs: 'https://docs.noodl.net/nodes/basic-elements/group',
   connectionPanel: {
