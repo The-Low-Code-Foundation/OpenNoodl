@@ -22,6 +22,21 @@
   }
 }
 
+.ResetDot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-left: 6px;
+  border-radius: 50%;
+  background-color: var(--theme-color-secondary-as-fg);
+  cursor: pointer;
+  flex-shrink: 0;
+
+  &:hover {
+    opacity: 0.6;
+  }
+}
+
 .InputContainer {
   flex: 1 1 auto;
   min-width: 0; // Allow flex item to shrink below content size

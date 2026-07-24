@@ -83,6 +83,14 @@ export class BasicType extends TypeView {
       properties: undefined, // No special properties needed for basic types
       isChanged: !this.isDefault,
       isConnected: this.isConnected,
+      onReset: () => {
+        this.parent.model.setParameter(this.name, undefined, {
+          undo: true,
+          label: 'reset parameter'
+        });
+        this.isDefault = true;
+        setTimeout(() => this.renderReact(), 0);
+      },
       onChange: (value: unknown) => {
         // Handle standard value change
         if (firstType(this.type) === 'number') {

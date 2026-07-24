@@ -174,3 +174,22 @@ propertyeditor/* (12) in waves 1b–2c; `componentports`, `importpopup`,
 ## 7. As-built log
 
 - 2026-07-24: Wave 0 — this document. Baselines in §1.
+- 2026-07-24: Wave 1a — dead code deleted (projectsview, newupdatepopup, `.bak`/`.legacy`,
+  11 orphan templates + their orphaned CSS). 547→481 `$(` calls, 68→66 files. tsc clean.
+- 2026-07-24: Wave 1b — idiom established. Found `BasicType.ts` was already React
+  (PropertyPanelInputWithExpressionModal) and is the real precedent — converted rows set
+  `this.el` to a **raw div** (no `$()` wrapper needed; jQuery `.append()` accepts nodes).
+  Converted `EnumType.ts` (PropertyPanelInput/Select — the BaseDialog select makes the
+  legacy `.property-drop-down-padding` scroll hack obsolete) and `TextAreaType.ts` (new
+  core-ui `PropertyPanelTextArea`, autosize via CSS `field-sizing: content`, commit on
+  blur only when the value actually changed — matches the legacy `change`-event
+  semantics). Restored the lost **reset-to-default** behaviour at the primitive level:
+  `PropertyPanelInput`/`PropertyPanelRow` now take `onReset` and render a clickable
+  changed-dot in the label (legacy `.property-changed-dot` equivalent); wired it in
+  BasicType, EnumType, TextAreaType. Verified live via CDP in the running editor:
+  enum select commits + resets, textarea commits on blur, dots appear/disappear.
+  Known deviations, deliberate: label hover-tooltips (`data-tooltip`) and the
+  connected-port hover tooltip are not yet in PropertyPanelInput — tracked for wave 2;
+  BasicType had already shipped without them.
+  TextAreaType was the only `jquery.autosize` user — the vendored file is now orphaned
+  (deleted in wave 5 with the script tags).

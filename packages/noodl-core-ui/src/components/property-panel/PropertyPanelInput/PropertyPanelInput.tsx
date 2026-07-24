@@ -76,6 +76,9 @@ export interface PropertyPanelInputProps extends Omit<PropertyPanelBaseInputProp
   expressionError?: string;
   /** Callback when expand button is clicked (opens expression in full editor) */
   onExpressionExpand?: () => void;
+
+  /** When set and the value is changed from its default, a dot is shown that resets the value on click */
+  onReset?: () => void;
 }
 
 export function PropertyPanelInput({
@@ -93,7 +96,8 @@ export function PropertyPanelInput({
   onExpressionModeChange,
   onExpressionChange,
   expressionError,
-  onExpressionExpand
+  onExpressionExpand,
+  onReset
 }: PropertyPanelInputProps) {
   const Input = useMemo(() => {
     switch (inputType) {
@@ -167,7 +171,10 @@ export function PropertyPanelInput({
 
   return (
     <div className={css['Root']}>
-      <div className={classNames(css['Label'], isChanged && css['is-changed'])}>{label}</div>
+      <div className={classNames(css['Label'], isChanged && css['is-changed'])}>
+        {label}
+        {isChanged && onReset && <span className={css['ResetDot']} title="Reset to default" onClick={onReset} />}
+      </div>
       <div className={css['InputContainer']}>
         <div style={{ display: 'flex', gap: '4px', alignItems: 'center', minWidth: 0 }}>
           {renderInput()}
@@ -184,12 +191,17 @@ export interface PropertyPanelRowProps {
   isChanged?: boolean;
   label: string;
   children: Slot;
+  /** When set and the value is changed from its default, a dot is shown that resets the value on click */
+  onReset?: () => void;
 }
 
-export function PropertyPanelRow({ isChanged, label, children }: PropertyPanelRowProps) {
+export function PropertyPanelRow({ isChanged, label, children, onReset }: PropertyPanelRowProps) {
   return (
     <div className={css['Root']}>
-      <div className={classNames(css['Label'], isChanged && css['is-changed'])}>{label}</div>
+      <div className={classNames(css['Label'], isChanged && css['is-changed'])}>
+        {label}
+        {isChanged && onReset && <span className={css['ResetDot']} title="Reset to default" onClick={onReset} />}
+      </div>
       <div className={css['InputContainer']}>{children}</div>
     </div>
   );

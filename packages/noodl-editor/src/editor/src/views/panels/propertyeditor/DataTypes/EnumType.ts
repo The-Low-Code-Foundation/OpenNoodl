@@ -1,10 +1,15 @@
+import React from 'react';
+import { createRoot, Root } from 'react-dom/client';
 import { find } from 'underscore';
+
+import { PropertyPanelInput, PropertyPanelInputType } from '@noodl-core-ui/components/property-panel/PropertyPanelInput';
 
 import { TypeView } from '../TypeView';
 import { getEditType } from '../utils';
 
 export class EnumType extends TypeView {
   el: TSFixme;
+  private root: Root | null = null;
 
   static fromPort(args) {
     const view = new EnumType();
@@ -18,13 +23,14 @@ export class EnumType extends TypeView {
     view.type = getEditType(p);
     view.group = p.group;
     view.tooltip = p.tooltip;
-    view.value = view.labelForValue(parent.model.getParameter(p.name));
+    view.value = parent.model.getParameter(p.name);
     view.parent = parent;
     view.isConnected = parent.model.isPortConnected(p.name, 'target');
     view.isDefault = parent.model.parameters[p.name] === undefined;
 
     return view;
   }
+
   labelForValue(value) {
     if (value === undefined) return '';
 
@@ -35,57 +41,66 @@ export class EnumType extends TypeView {
 
     return e.label ? e.label : e;
   }
+
   render() {
-    const _this = this;
-    this.el = this.bindView(this.parent.cloneTemplate('enum'), this);
-    TypeView.prototype.render.call(this);
+    const div = document.createElement('div');
+    div.style.width = '100%';
 
-    this.$('.property-input-dropdown').html('');
-    const enums = this.type.enums;
-    for (const i in enums) {
-      const value = typeof enums[i] === 'object' ? enums[i].value : enums[i];
-      const label = typeof enums[i] === 'object' ? enums[i].label : enums[i];
-
-      this.$('.property-input-dropdown').append(
-        this.bindView(
-          $(
-            '<div class="property-input-enum" data-click="onPropertyChanged" data-value="' + value + '"></div>'
-          ).text(label)
-        )
-      );
+    if (!this.root) {
+      this.root = createRoot(div);
     }
 
-    this.$('.property-input-dropdown').on('mousedown', function (event) {
-      event.preventDefault(); // make sure drop down doesn't blur input until after "onPropertyChanged" has been triggered
-    });
+    this.renderReact();
 
-    this.$('input').on('blur', function () {
-      _this.$('.property-input-dropdown').hide();
-    });
-
+    this.el = div;
     return this.el;
   }
-  onDropDownClicked(scope, el) {
-    // Close other dropdowns
-    const showShould = !this.$('.property-input-dropdown').is(':visible');
-    this.parent.$('.property-input-dropdown').hide();
-    showShould && this.$('.property-input-dropdown').show();
 
-    // Hide show the padding so drop downs can be scrolled to if at the bottom of the prop editor
-    this.parent.$('.property-drop-down-padding').hide();
-    showShould && this.parent.$('.property-drop-down-padding').show();
-    this.parent.notifyListeners('panelResized');
-  }
-  onPropertyChanged(scope, el) {
-    this.parent.setParameter(this.name, el.attr('data-value'));
+  renderReact() {
+    if (!this.root) return;
 
-    // Update current value
-    const current = this.getCurrentValue();
-    this.$('input').val(this.labelForValue(current.value));
-    this.isDefault = current.isDefault;
+    const options = (this.type.enums || []).map((e) => ({
+      label: typeof e === 'object' ? e.label : e,
+      value: typeof e === 'object' ? e.value : e
+    }));
+
+    const props = {
+      label: this.displayName,
+      value: this.parent.model.getParameter(this.name),
+      inputType: PropertyPanelInputType.Select,
+      properties: { options },
+      isChanged: !this.isDefault,
+      isConnected: this.isConnected,
+      supportsExpression: false,
+      onChange: (value: string | number) => {
+        this.parent.setParameter(this.name, value);
+
+        const current = this.getCurrentValue();
+        this.isDefault = current.isDefault;
+        this.renderReact();
+      },
+      onReset: () => {
+        this.parent.model.setParameter(this.name, undefined, {
+          undo: true,
+          label: 'reset parameter'
+        });
+        this.isDefault = true;
+        this.renderReact();
+      }
+    };
+
+    this.root.render(React.createElement(PropertyPanelInput, props));
   }
+
   resetToDefault() {
-    const current = this.getCurrentValue();
-    this.$('input').val(this.labelForValue(current.value));
+    this.renderReact();
+  }
+
+  dispose() {
+    if (this.root) {
+      this.root.unmount();
+      this.root = null;
+    }
+    super.dispose();
   }
 }
