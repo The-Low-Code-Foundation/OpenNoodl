@@ -64,12 +64,13 @@ The target pattern already exists and works: `src/shared/ReactView.ts` (React in
 ## Scope
 
 ### In Scope
-- [ ] Convert PopupLayer to React (the largest and most-depended-upon piece)
-- [ ] Convert the property-editor legacy views and `DataTypes/*` rows
-- [ ] Convert the remaining smaller views (import popup, pickers, align tools)
-- [ ] Convert `projectsview.ts`'s jQuery usage
+- [x] Convert PopupLayer to React (the largest and most-depended-upon piece) — wave 4; the
+      layer itself is TypeScript + native DOM (it hosts foreign content), its popups are React
+- [x] Convert the property-editor legacy views and `DataTypes/*` rows — waves 1b–2g
+- [x] Convert the remaining smaller views (import popup, pickers, align tools) — waves 2e–3
+- [x] Convert `projectsview.ts`'s jQuery usage — wave 1a; it had zero importers and was deleted
 - [ ] Delete `src/shared/view.js`, vendored jQuery, the webpack global, and orphaned `.html` templates
-- [ ] Type everything converted (no new `TSFixme`)
+- [x] Type everything converted (no new `TSFixme`) — the ratchet is 19 markers below baseline
 - [ ] Tests for converted components
 
 ### Out of Scope
@@ -135,10 +136,11 @@ New: React components under `views/panels/propertyeditor/` and a React `PopupLay
 
 ## Checklist
 
-- [ ] Branch `task/plat-002-retire-jquery-islands`
-- [ ] Inventory all `View` subclasses and `$(` call sites; triage
-- [ ] Establish conversion idiom on 2–3 small views; review
-- [ ] Convert property editor, then popups/pickers, then `projectsview`
-- [ ] Convert PopupLayer last
-- [ ] Delete framework, vendored jQuery, webpack global, orphan templates
-- [ ] Verify with repo-wide grep; CHANGELOG with before/after counts; open PR
+- [x] ~~Branch `task/plat-002-retire-jquery-islands`~~ — work lands directly on `cline-dev`
+- [x] Inventory all `View` subclasses and `$(` call sites; triage (PLAT-002-NOTES §1–§2)
+- [x] Establish conversion idiom on 2–3 small views; review (wave 1b)
+- [x] Convert property editor, then popups/pickers, then `projectsview` (waves 1a–3)
+- [x] Convert PopupLayer last (wave 4)
+- [ ] Delete framework, vendored jQuery, webpack global, orphan templates (wave 5 — 51 `$(`
+      left in 12 files, itemised in PLAT-002-NOTES §8)
+- [ ] Verify with repo-wide grep; CHANGELOG with before/after counts

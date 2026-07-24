@@ -1,7 +1,8 @@
 # PLAT-002 NOTES — Retire the jQuery Islands
 
-Status: inventory + strategy recorded 2026-07-24 (Implementation Step 1 deliverable).
-Updated as waves land — §7 is the as-built log.
+Status: waves 1a–4 landed 2026-07-24. **547 → 51 `$(` calls, 68 → 12 files.** Only wave 5
+(the `View` framework, the utility one-liners and the vendored jQuery itself) is left; §8 has
+the file-by-file list. §7 is the as-built log.
 
 ## 0. Corrections to the task spec (verified 2026-07-24)
 
@@ -141,6 +142,9 @@ regression harness for it already exists).
 | 3 | Canvas shell group C + `componentports.tsx`, `createnewnodepanel.ts`, `ComponentTemplates.ts`, `importpopup.js`, `exportProjectComponets.ts` | ~35 `$(` |
 | 4 | PopupLayer rewrite (+ confirm/error/yesno/stringinput popups) then Group D `$()` sweep | ~125 `$(` |
 | 5 | Delete `view.js`/`view.d.ts`, de-jQuery `ReactView.ts`, drop script tags + vendored files, remaining templates, final grep, CHANGELOG | rest |
+
+Waves 1a–4 are done (§7). Wave 4 landed the whole of its row: PopupLayer, its four popups
+and the Group D sweep, plus `router.tsx` and `whats-new.ts` pulled forward from wave 5.
 
 Each wave: behaviour checklist before, `npm run typecheck` + targeted tests + editor
 smoke (run-editor skill) after, own commit(s) to `cline-dev`.
@@ -371,28 +375,91 @@ propertyeditor/* (12) in waves 1b–2c; `componentports`, `importpopup`,
   tsc + eslint clean (ratchet: 209 below baseline). **Not smoke-tested** — the import flow
   needs a second project to import from, and the shared dev stack was unavailable.
 
+- 2026-07-24: Wave 4 (4907242) — **PopupLayer is TypeScript.** `views/popuplayer.js` +
+  `popuplayer.d.ts` (1,044 ln, 101 `$(`) → `views/popuplayer.ts`, same public API, shell
+  built in code (`buildShell()`), native DOM throughout. Decisive design call: the layer
+  hosts *foreign* content elements, so it is **not** a React root — a portal layer would only
+  add indirection around imperative measurement. React is used where there is a component:
+  `PopupLayer/ConfirmModal.tsx` (confirm + error modals) and `PopupLayer/StringInputPopup.tsx`.
+  `confirmmodal.js`, `errormodal.js` and 5 templates deleted; `YesNoPopup` had **no callers
+  anywhere** and went with its template and its CSS block in `assets/css/style.css`.
+  Geometry is preserved by construction: `outerSize()` reproduces jQuery `outerWidth(true)`
+  (margin box for popups/popouts, border box for tooltips — the legacy code measured them
+  differently and that difference is kept), and `attachToRect()` still accepts a jQuery anchor
+  for the views that have not converted. Outside-click handling keeps the legacy listener
+  *registration order* (popup → popout → modal → file-drop; the handlers depend on each
+  other's state within one event) and the strict-descendant semantics of
+  `.parents().is(el)` as `isInside()`. Drag listeners moved to an `AbortController` instead
+  of jQuery's global `.off('mousemove')`, which used to rip out every other body handler.
+  Group D swept: 23 `attachTo: $(x)` call sites lost the wrapper, `router.tsx` (4) and
+  `whats-new.ts` went native. **236 → 51 `$(`, 38 → 12 files.** tsc clean, 1060 specs green,
+  lint ratchet −275, TSFixme −19.
+  **Bug fixed while converting**: the comment editor ran its text through the
+  `split(',').map(trim).join()` that the port-name call sites need — "Hello, world" was saved
+  as "Hello,world". `StringInputPopup` now takes `splitCommaSeparated` (false for comments)
+  and seeds `value` through options instead of a jQuery `.val()` after `render()`.
+  **Trap found in the running app**: `root.render()` is asynchronous, but `showPopup`
+  measures its content the instant it is appended — a React-rendered popup measured 0×0.
+  `StringInputPopup.render()` therefore uses `flushSync`. The same trap still applies to the
+  call sites that build their own root (Pages, TextStylePicker, …) — pre-existing, listed
+  below.
+  **Trap for future conversions**: turning a legacy CJS view into an ESM TS module breaks
+  every `require('…/popuplayer')` (they get the namespace, so `PopupLayer.instance = …`
+  silently writes to the wrong object). Six source files and **two spec files** needed
+  `.default`; grep `packages/noodl-editor/tests` too, not just `src`.
+  Deliberate deviations, all recorded: the no-op `popoutEl.find('.popup-layer-popout')
+  .css({visibility})` line is gone (the template root *is* that element, so the selector never
+  matched); `View.showTooltip`/`hideTooltip` are no longer assigned because no remaining
+  template carries a `data-tooltip` attribute; the deprecated `showToast`/`showActivity`
+  center on the border box rather than jQuery's content-box `.width()`; the default
+  `arrowColor` stays `'313131'` (no `#`, so it is an invalid declaration that the browser
+  drops — exactly as before).
+  Incidental fixes: `SizeModeInput`'s icon array had no React keys, and
+  `PropertyPanelBaseInput` rendered a null `value` — both were logging on every property
+  panel render.
+  **Verified live via CDP** (cold boot, 0 renderer exceptions): shell builds in the legacy
+  child order; tooltip x/y match the legacy formula to 0.01px; a `StringInputPopup` opened
+  with `attachTo` measures 532×324, centres on the anchor, points its arrow down, focuses its
+  textarea, and returns its value unsplit; screen-center popups land at exactly
+  `(w/2 − cw/2, h/2 − ch/2)` and dim the background; `showConfirmModal` renders, dims,
+  fires `onConfirm`, closes, undims and unmounts its root; Escape closes a modal; a popout
+  positions from `attachToPoint`, colours its arrow, sets `has-popouts`, and the
+  ResizeObserver resizes + repositions it when its React content arrives; clicking **inside**
+  a popout keeps it open and clicking outside closes it and clears the blocker.
+  **Owed wave-3 verification, partly paid**: the **export** variant of the import popup was
+  driven (`exportProjectComponents()` → sticky "COMPONENTS" label, `#__page__` folder with
+  indented children, checkboxes, EXPORT/CANCEL, 500px modal). The import and collisions
+  variants still need a second project.
+
 ## 8. Handoff — next session starts here
 
-Remaining, in the planned order (waves 2a–2g and most of wave 3 complete; count now
-183 `$(` / 38 files):
+Waves 1a–4 are complete. **51 `$(` calls across 12 files remain**, and every one of them
+is wave 5:
 
-1. **Wave 3 remainder**: `NodeGraphEditorNode.ts`(1, the comment `StringInputPopup` — easier
-   once wave 4 converts that popup) and the `editor.$('#nodegraphcanvas')` lookups in
-   `CanvasDOMBindings`/`ConnectionPopups` (they need `nodegrapheditor.ts`'s own `el`, i.e.
-   wave 5). **Owed verification:** the import/overwrite/export popups have not been driven in
-   the running app — check the tree/indentation, the implicit-dependency checkmarks, folder
-   toggles, and that the collisions popup still filters what gets imported.
-2. **Wave 4**: PopupLayer rewrite (contract = `popuplayer.d.ts`; §3 strategy: same API, one
-   React root). The `content.el`/`attachTo` normalization is already done, so what is left is
-   the layer itself (101 `$(`), plus converting confirmmodal/errormodal/yesnopopup/
-   stringinputpopup, and the remaining Group D `attachTo: $(x)` call sites — those are now a
-   pure deletion of the `$()` wrapper.
-3. **Wave 5**: delete `shared/view.js`+`view.d.ts` (30 `$(`), de-jQuery `ReactView.ts`,
-   `router.tsx`(4), `filesystem.js`(5), `thumbnailcache.js`(3), `docs-parser.ts`(3),
-   `keyboardhandler.ts`(2), `fontloader.js`(1), remove the two `<script>` tags from
-   `src/editor/index.html` + `src/assets/lib/jquery-min.js` + `jquery.autosize.min.js`,
-   delete remaining orphan templates, repo-wide grep, CHANGELOG in the task doc (record
-   before/after counts: baseline 547/68), update PROGRESS.md.
+| File | `$(` | What it needs |
+|---|---|---|
+| `shared/view.js` + `view.d.ts` | 32 | delete; last consumers are `nodegrapheditor.ts` (one `bindView`) and `ReactView.ts` |
+| `utils/filesystem.js` | 5 | `#__hiddenFileInput__` create/remove → native DOM |
+| `utils/thumbnailcache.js` | 3 | `#tnumbnailCacheCanvas` → native DOM |
+| `utils/docs-parser.ts` | 3 | `$('<div>' + html + '</div>')` + `.each` → `DOMParser`/`querySelectorAll` |
+| `utils/keyboardhandler.ts` | 2 | `$(':focus')` → `document.activeElement` |
+| `views/nodegrapheditor.ts` | 1 | the last `bindView($(template))` + `templates/nodegrapheditor.html` |
+| `views/nodegrapheditor/CanvasDOMBindings.ts` | 1 | `editor.$('#nodegraphcanvas')` — falls out when nodegrapheditor's `el` is raw |
+| `views/nodegrapheditor/ConnectionPopups.ts` | 1 | same lookup |
+| `shared/ReactView.ts` | 1 | `this.el = $(div)` → raw div; only subclass is `PopupLayer/PopupMenu` |
+| `utils/fontloader.js` | 1 | `$(document.head).append` |
+| `pages/EditorPage/EditorPage.tsx` | 1 | commented-out line, just delete |
+
+Then: remove the two `<script>` tags from `src/editor/index.html` and delete
+`src/assets/lib/jquery-min.js` + `jquery.autosize.min.js` (orphaned since wave 1b),
+`@types/jquery` from `packages/noodl-editor/package.json`, repo-wide grep, CHANGELOG in
+the task doc (before/after: baseline **547 `$(` / 68 files**), update PROGRESS.md.
+
+Owed verification carried forward: the **import** and **collisions/overwrite** variants of
+`importpopup.ts` still have not been driven in the running app (the export variant was, in
+wave 4) — they need a second project to import from. Check the tree indentation, the
+implicit-dependency markers, folder toggles, and that the collisions popup still filters
+what gets imported.
 
 Working notes for the next session:
 - Smoke-test flow: `npm run dev:debug -- --quiet`, wait for "launching Electron" in
@@ -415,9 +482,27 @@ Working notes for the next session:
   The scroll-position restore already does this via `setTimeout(0)`.
 - Known deliberate deviations so far: label hover-tooltips (`data-tooltip`) and the
   connected-input hover tooltip are not reproduced in React rows (BasicType precedent);
-  sizemode tooltips use `title=`. Wave 2f did not add them — a PopupLayer-backed tooltip in
-  `PropertyPanelInput` is best done after the wave-4 rewrite, when PopupLayer is React.
-- **Shared working tree:** PLAT-003 (and any other parallel session) edits the same checkout.
-  `npm run dev:debug` only launches Electron on an **error-free** webpack compile, so an
-  unrelated in-flight TS error elsewhere blocks the smoke test entirely. Check
-  `grep "ERROR in" .logs/dev.log` before blaming your own change.
+  sizemode tooltips use `title=`. PopupLayer's `showTooltip` is now plain TS and takes a raw
+  element as `attachTo`, so a `PropertyPanelInput` hover tooltip is a small, self-contained
+  follow-up whenever it is wanted.
+- **`showPopup` measures its content synchronously**, so any caller that renders its content
+  through React must flush before showing it. `StringInputPopup` does (`flushSync`); the
+  call sites that build their own root — `Pages.tsx`, `TextStylePicker.jsx`,
+  `propertyeditors.jsx`, `useComponentActions` — do not, so their popup box is sized 0×0
+  while the content (absolutely positioned) still paints. Pre-existing, unchanged by wave 4,
+  and worth a sweep: `flushSync(() => root.render(...))` at each site.
+- A `value` prop on `input` should not be null warning still fires once on the first
+  property-panel render. `PropertyPanelBaseInput` was fixed in wave 4, so the remaining
+  source is one of the editor-side inputs (`PickerTextInput`/`NumberUnitInput`/`ColorInput`/
+  `VariableInput`/`ResizingInput`); React de-duplicates the warning per element type, so it
+  cannot be caught by re-selecting a node — catch it on a cold boot instead.
+- **Shared working tree:** PLAT-003/PLAT-004 (and any other parallel session) edit the same
+  checkout. `npm run dev:debug` only launches Electron on an **error-free** webpack compile,
+  so an unrelated in-flight TS error elsewhere blocks the smoke test entirely. Check
+  `grep "ERROR in" .logs/dev.log` before blaming your own change — in wave 4 the *Viewer*
+  bundle had 12 errors from PLAT-003 while the Editor bundle compiled and launched fine, so
+  read the `[Editor]`/`[Viewer]` prefix before reacting. Commit with an explicit pathspec
+  (`git commit -- <your paths>`); the index will contain other sessions' staged work.
+- Editing files while the app is running can leave the renderer in the "Aw, Snap!"
+  (`chrome-error://chromewebdata`) state mid-session; `webpackChunknoodl_editor` disappears
+  and every cdp eval fails. Kill Electron + `dev:debug` and relaunch — do not chase it.
