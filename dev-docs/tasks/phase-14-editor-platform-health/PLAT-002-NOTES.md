@@ -1,6 +1,6 @@
 # PLAT-002 NOTES — Retire the jQuery Islands
 
-Status: waves 1a–4 landed 2026-07-24. **547 → 51 `$(` calls, 68 → 12 files.** Only wave 5
+Status: waves 1a–5a landed 2026-07-24. **547 → 38 jQuery uses, 68 → 7 files.** Only wave 5b
 (the `View` framework, the utility one-liners and the vendored jQuery itself) is left; §8 has
 the file-by-file list. §7 is the as-built log.
 
@@ -33,9 +33,10 @@ the file-by-file list. §7 is the as-built log.
 | `shared/view.js` | 278 lines |
 | `views/popuplayer.js` | 1,044 lines, 101 `$(` calls |
 
-Final verification greps (run at close):
-`grep -rn '\$(' packages/noodl-editor/src/editor/src packages/noodl-editor/src/shared`
-plus confirming `jquery` absent from `index.html` and `src/assets/lib/`.
+Final verification greps (run at close) — note the widened pattern, `$(` alone misses
+`$.ajax` and the `JQuery.Event` type:
+`grep -rn '\$(\|\$\.\|JQuery' packages/noodl-editor/src/editor/src packages/noodl-editor/src/shared`
+plus confirming `jquery` absent from `index.html`, `src/assets/lib/` and `package.json`.
 
 ## 2. Inventory and triage
 
@@ -113,11 +114,14 @@ conventions; shared row chrome (label, connected-dot, reset-to-default dot, tool
 today's `TypeView.render()` behaviour) becomes a `PropertyRow` wrapper component built
 once in wave 1.
 
-### PopupLayer strategy (decided, wave 4)
+### PopupLayer strategy (decided wave 4 — amended by what was actually built)
 
-Rewrite as a TypeScript singleton with the **same public API** (`popuplayer.d.ts` is the
-contract), rendering through a single persistent React root (portal-style layer stack).
-During transition it normalizes `attachTo`/`content.el` inputs:
+Rewrite as a TypeScript singleton with the **same public API** (`popuplayer.d.ts` was the
+contract). The plan said "one persistent React root"; **that is not what shipped**. The layer
+exists to position *foreign* content elements handed in by callers, so a React root would
+only wrap imperative measurement in indirection. The shell is built in code and the layer is
+native DOM; React is used for the pieces that are components (the confirm/error modals and
+`StringInputPopup`). During transition it normalizes `attachTo`/`content.el` inputs:
 `const node = el.jquery ? el[0] : el` — so Group D callers can drop `$()` immediately
 after it lands, and un-converted legacy callers (which pass jQuery-wrapped
 `view.render()` output) keep working. `confirmmodal.js`/`errormodal.js`/`yesnopopup`/
@@ -431,24 +435,41 @@ propertyeditor/* (12) in waves 1b–2c; `componentports`, `importpopup`,
   indented children, checkboxes, EXPORT/CANCEL, 500px modal). The import and collisions
   variants still need a second project.
 
+- 2026-07-24: Wave 5a (3446c33) — the utility modules. `filesystem.js` builds its hidden file
+  input with `createElement` + a `{once:true}` listener; `keyboardhandler.ts` replaces
+  `$(':focus')` with `getFocusedElement()` (reproduces jQuery's `:focus` filter, including
+  that `<body>` does not count because its tabIndex is -1); **both** docs parsers
+  (`utils/docs-parser.ts` and `views/ConnectionPopup/DocsParser.ts`) drop `$.ajax` + the
+  `async` library for fetch/`Promise.all` and parse into a real div, keeping the deliberate
+  401-stays-silent-and-never-calls-back path and the skip-a-failed-`@include` path;
+  `lessonmodel.js` uses fetch with `cache: 'no-store'`; `fontloader.js` appends a real
+  `<style>`; `thumbnailcache.js` and `EditorPage.tsx` lose commented-out jQuery.
+  **The `$(` grep this task has been counting with is not the whole story**:
+  `views/ConnectionPopup/DocsParser.ts` never appeared in any inventory because its jQuery
+  was `$.ajax`. Widen the pattern to `'\$\(|\$\.'` — and `nodegrapheditor.ts` additionally
+  uses the `JQuery.Event` *type*, so `@types/jquery` has to go with the script tags.
+  51 → 38, 12 → 7 files. tsc clean, 1060 specs green.
+  Not verifiable headlessly: under CDP the Electron window has no OS focus, so
+  `document.hasFocus()` is false and both the old and new keyboard code take the
+  "nothing is focused" branch. The two agree in every state reachable that way.
+
 ## 8. Handoff — next session starts here
 
-Waves 1a–4 are complete. **51 `$(` calls across 12 files remain**, and every one of them
-is wave 5:
+Waves 1a–4 and 5a are complete. **38 jQuery uses across 7 files remain** (count with
+`grep -rn '\$(\|\$\.' packages/noodl-editor/src/editor/src packages/noodl-editor/src/shared`),
+and they are all one job — retiring the `View` framework:
 
-| File | `$(` | What it needs |
+| File | uses | What it needs |
 |---|---|---|
-| `shared/view.js` + `view.d.ts` | 32 | delete; last consumers are `nodegrapheditor.ts` (one `bindView`) and `ReactView.ts` |
-| `utils/filesystem.js` | 5 | `#__hiddenFileInput__` create/remove → native DOM |
-| `utils/thumbnailcache.js` | 3 | `#tnumbnailCacheCanvas` → native DOM |
-| `utils/docs-parser.ts` | 3 | `$('<div>' + html + '</div>')` + `.each` → `DOMParser`/`querySelectorAll` |
-| `utils/keyboardhandler.ts` | 2 | `$(':focus')` → `document.activeElement` |
-| `views/nodegrapheditor.ts` | 1 | the last `bindView($(template))` + `templates/nodegrapheditor.html` |
-| `views/nodegrapheditor/CanvasDOMBindings.ts` | 1 | `editor.$('#nodegraphcanvas')` — falls out when nodegrapheditor's `el` is raw |
+| `shared/view.js` + `view.d.ts` | 32 | delete. `bindView`/`cloneTemplate`/`this.$()` die with the last template; the `on`/`off`/`notifyListeners` bus does **not** — 9 classes still extend `View` for it, so give them a jQuery-free base (or fold the bus into each) |
+| `views/nodegrapheditor.ts` | 1 (+ a `JQuery.Event` type) | the last `bindView($(template))`; convert `templates/nodegrapheditor.html` — the final runtime template |
+| `views/nodegrapheditor/CanvasDOMBindings.ts` | 1 | `editor.$('#nodegraphcanvas')` — falls out once nodegrapheditor's `el` is raw |
 | `views/nodegrapheditor/ConnectionPopups.ts` | 1 | same lookup |
-| `shared/ReactView.ts` | 1 | `this.el = $(div)` → raw div; only subclass is `PopupLayer/PopupMenu` |
-| `utils/fontloader.js` | 1 | `$(document.head).append` |
-| `pages/EditorPage/EditorPage.tsx` | 1 | commented-out line, just delete |
+| `shared/ReactView.ts` | 1 | `this.el = $(div)` → raw div; the only subclass is `PopupLayer/PopupMenu`, and PopupLayer already normalizes both |
+
+Still extending `View` (all jQuery-free apart from the bus): `nodegrapheditor.ts`,
+`createnewnodepanel.ts`, `componentports.tsx`, `propertyeditor.ts`, `TypeView.ts`,
+`TabGroup.ts`, `PopoutGroup.ts`, `Ports.ts`, `CanvasView.ts`, plus `ReactView`.
 
 Then: remove the two `<script>` tags from `src/editor/index.html` and delete
 `src/assets/lib/jquery-min.js` + `jquery.autosize.min.js` (orphaned since wave 1b),
