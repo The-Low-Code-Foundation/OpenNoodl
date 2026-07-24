@@ -51,18 +51,6 @@ module.exports = {
           }
         ]
       },
-      //requiring html-files will return a string of the html
-      {
-        test: /\.(html)$/,
-        exclude: /node_modules/,
-        use: {
-          loader: 'html-loader',
-          options: {
-            sources: false,
-            esModule: false
-          }
-        }
-      },
       {
         test: /(\.module)?.(sass|scss)$/,
         use: [

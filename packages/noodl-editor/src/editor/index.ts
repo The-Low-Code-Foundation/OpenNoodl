@@ -48,9 +48,12 @@ window.addEventListener('DOMContentLoaded', () => {
   // Register node adapters
   require('./src/models/NodeTypeAdapters/registeradapters');
 
-  // Disable context menu
-  $('body').on('contextmenu', function () {
-    return false;
+  // Disable context menu. `return false` from the jQuery handler this replaces
+  // meant preventDefault + stopPropagation; PopupLayer's own body-level
+  // contextmenu listener is on the same element, so it still runs.
+  document.body.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
   });
 
   ipcRenderer.on('showAutoUpdatePopup', () => {

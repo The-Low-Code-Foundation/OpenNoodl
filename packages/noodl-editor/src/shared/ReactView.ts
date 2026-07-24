@@ -10,7 +10,7 @@ export abstract class ReactView<TProps extends ReactViewDefaultProps> extends Vi
   private props: TProps;
   private root: Root | null = null;
 
-  public el: any;
+  public el: HTMLElement;
 
   constructor(props: TProps) {
     super();
@@ -25,15 +25,13 @@ export abstract class ReactView<TProps extends ReactViewDefaultProps> extends Vi
 
   public render() {
     if (!this.el) {
-      this.el = $(document.createElement('div'));
-      this.el.css({
-        width: '100%',
-        height: '100%'
-      });
+      this.el = document.createElement('div');
+      this.el.style.width = '100%';
+      this.el.style.height = '100%';
     }
 
     if (!this.root) {
-      this.root = createRoot(this.el[0]);
+      this.root = createRoot(this.el);
     }
     this.root.render(React.createElement(this.renderReact.bind(this), this.props));
 

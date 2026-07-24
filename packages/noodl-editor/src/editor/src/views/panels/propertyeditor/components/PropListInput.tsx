@@ -48,8 +48,7 @@ function PropListRow({
     const container = propsRef.current;
     if (!container) return;
     childEls.forEach((el) => {
-      const node = el && el.jquery ? el[0] : el;
-      node && container.appendChild(node);
+      el && container.appendChild(el);
     });
   }, [childEls]);
 

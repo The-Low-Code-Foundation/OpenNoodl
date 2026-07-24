@@ -7,12 +7,12 @@ import Viewer from './src/views/viewer';
 
 Viewer.instance = new Viewer();
 Viewer.instance.render();
-$('body').append(Viewer.instance.el);
+document.body.appendChild(Viewer.instance.el);
 
 //add popup and dialog layers for the right click inspect menu to work
 PopupLayer.instance = new PopupLayer();
-document.body.appendChild(PopupLayer.instance.render().get(0));
+document.body.appendChild(PopupLayer.instance.render());
 
 const dialogLayer = document.createElement('div');
 dialogLayer.classList.add('dialog-layer');
-$('body').append(dialogLayer);
+document.body.appendChild(dialogLayer);

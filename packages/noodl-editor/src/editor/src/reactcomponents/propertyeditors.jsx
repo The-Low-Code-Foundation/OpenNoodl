@@ -193,7 +193,7 @@ function FontProperty(props) {
     };
 
     const popout = PopupLayer.instance.showPopout({
-      content: { el: [div] },
+      content: { el: div },
       attachTo: ref.current,
       position: 'right'
     });

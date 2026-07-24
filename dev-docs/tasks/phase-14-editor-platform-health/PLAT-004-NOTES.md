@@ -39,8 +39,15 @@ lint ratchet it sits beside in the same job.
 
 Measured at `3a302b9` when the mechanism landed. Since then: slice 1 (§7) lowered `TSFixme` to 568
 at `0395b24`; slice 2 (§8) set it to 571 / 393 `any` at `5b3cca0`; slice 3 (§11) brought it to
-561 / 314 at `7a49cae`; slices 4 and 5 (§12, §13) bring it to **538 `TSFixme` / 287 `any`** at
-`c354d4e`. The table below is the original measurement.
+561 / 314 at `7a49cae`; slices 4 and 5 (§12, §13) bring it to 538 / 287 at `c354d4e`, then
+**538 `TSFixme` / 288 `any`** at `6f9b79b`. The table below is the original measurement.
+
+That last `+1 any` is PLAT-003's slice 6, which landed in the minutes between measuring and
+committing and put a marker in `noodl-viewer-react/src/nodes/std-library/user/userservice.ts`. It is
+absorbed rather than fixed — the file is live for that task and a third editor in it buys nothing —
+which is the escape valve used exactly as §8 used it. Re-baselining against two active sessions is a
+moving target by nature; the rule that makes it tractable is that the *number* may drift up by
+someone else's in-flight work, but never silently.
 
 Each re-measurement also banks whatever PLAT-002 and PLAT-003 landed in between — 1 `TSFixme` and
 2 `any` this time, on top of the 35 markers slices 4 and 5 removed. The gate only blocks increases,

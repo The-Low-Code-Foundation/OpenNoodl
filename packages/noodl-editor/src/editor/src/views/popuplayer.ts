@@ -19,8 +19,7 @@ require('../styles/popuplayer.css');
 
 export type PopoutPosition = 'bottom' | 'top' | 'left' | 'right';
 
-/** A jQuery object, a raw element, or an array of elements. */
-type ElementLike = TSFixme;
+type ElementLike = HTMLElement;
 
 export interface PopupContent {
   el: ElementLike;
@@ -38,7 +37,7 @@ export interface Rect {
 
 export interface PopupArgs {
   content: PopupContent;
-  /** Anchor element (jQuery or raw). Ignored when `position` is 'screen-center'. */
+  /** Anchor element. Ignored when `position` is 'screen-center'. */
   attachTo?: ElementLike;
   /** Document coordinates to anchor to, when there is no anchor element. */
   attachToPoint?: { x: number; y: number };
@@ -101,15 +100,6 @@ function el(tag: string, className?: string): HTMLElement {
   return node;
 }
 
-/** `content.el` is a jQuery object, a raw element, or an array of elements. */
-function toElement(content: ElementLike): HTMLElement {
-  return content && (content[0] || content);
-}
-
-function isJQuery(value: ElementLike): boolean {
-  return !!value && !!value.jquery;
-}
-
 /** Border box size, plus margins when `includeMargin` — jQuery's outerWidth(true). */
 function outerSize(node: HTMLElement, includeMargin: boolean): { width: number; height: number } {
   const rect = node.getBoundingClientRect();
@@ -123,22 +113,13 @@ function outerSize(node: HTMLElement, includeMargin: boolean): { width: number; 
 }
 
 /**
- * Document-relative rect of a popup/popout/tooltip anchor. `attachTo` is either
- * a jQuery object (the few remaining legacy views) or a raw element.
+ * Document-relative rect of a popup/popout/tooltip anchor.
  *
  * Popups and popouts measure the margin box (jQuery `outerWidth(true)`),
  * tooltips the border box — preserved from the legacy implementation.
  */
 function attachToRect(attachTo: ElementLike, includeMargin = true): Rect {
-  if (isJQuery(attachTo)) {
-    const offset = attachTo.offset();
-    const size = includeMargin
-      ? { width: attachTo.outerWidth(true), height: attachTo.outerHeight(true) }
-      : outerSize(attachTo[0], false);
-    return { left: offset.left, top: offset.top, width: size.width, height: size.height };
-  }
-
-  const node = toElement(attachTo);
+  const node = attachTo;
   const rect = node.getBoundingClientRect();
   const size = outerSize(node, includeMargin);
   return {
@@ -492,9 +473,8 @@ export class PopupLayer {
   public hidePopup() {
     if (this.popup && this.isShowingPopup) {
       this._undimBackground();
-      // content.el is a jQuery object or a raw element
       const popupContent = this.popup.content.el;
-      popupContent && (popupContent.detach ? popupContent.detach() : popupContent.remove());
+      popupContent && popupContent.remove();
       this.popupEl.style.visibility = 'hidden';
       this.popup.onClose && this.popup.onClose();
       this.popup.content.onClose && this.popup.content.onClose();
@@ -538,7 +518,7 @@ export class PopupLayer {
     const content = args.content.el;
     args.content.owner = this;
 
-    this.popupContent.append(toElement(content));
+    this.popupContent.append(content);
 
     // Force a reflow to ensure the element is measurable
     void this.popupContent.offsetHeight;
@@ -743,7 +723,7 @@ export class PopupLayer {
     popoutEl.append(el('div', 'popup-layer-popout-arrow'), el('div', 'popup-layer-popout-content'));
     this.popoutsEl.appendChild(popoutEl);
 
-    popoutEl.querySelector('.popup-layer-popout-content').append(toElement(content));
+    popoutEl.querySelector('.popup-layer-popout-content').append(content);
 
     const resizeObserver = new ResizeObserver(() => {
       this._resizePopout(popout);
@@ -769,7 +749,7 @@ export class PopupLayer {
 
     this._resizePopout(popout);
     this._positionPopout(popout, args);
-    resizeObserver.observe(toElement(content));
+    resizeObserver.observe(content);
 
     this.popouts.push(popout);
 
@@ -843,7 +823,7 @@ export class PopupLayer {
     const content = args.content.el;
     args.content.owner = this;
 
-    this.modalContent.replaceChildren(toElement(content));
+    this.modalContent.replaceChildren(content);
 
     //If the previous popup is being hidden, cancel that timer
     this._hideTimeoutId && clearTimeout(this._hideTimeoutId);

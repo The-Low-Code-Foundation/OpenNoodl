@@ -27,8 +27,7 @@ function RowHost({ els, className, style }: { els: TSFixme[]; className?: string
     while (container.firstChild) container.removeChild(container.firstChild);
 
     els.forEach((el) => {
-      const node = el && el.jquery ? el[0] : el;
-      node && container.appendChild(node);
+      el && container.appendChild(el);
     });
   }, [els]);
 

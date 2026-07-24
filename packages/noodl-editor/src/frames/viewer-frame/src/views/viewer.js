@@ -1,6 +1,5 @@
-const View = require('../../../../shared/view');
+const View = require('../../../../shared/view').default;
 const Config = require('../../../../shared/config/config');
-const ViewerTemplate = require('../templates/viewer.html');
 const { ipcRenderer } = require('electron');
 
 const remote = require('@electron/remote');
@@ -92,18 +91,75 @@ class Viewer extends View {
     });
   }
 
+  /**
+   * Builds the viewer chrome: a title bar (the preview URL plus the pop-out and
+   * attach icons) over the webview container.
+   *
+   * Replaces `templates/viewer.html` and the `View.bindView` call that parsed
+   * it (PLAT-002 wave 5b). The template's only bindings were two `data-click`
+   * attributes, now plain click listeners. The class names are load-bearing —
+   * `assets/style.css` selects on all of them.
+   */
+  _buildChrome() {
+    const container = document.createElement('div');
+    container.className = 'container';
+
+    const header = document.createElement('div');
+    header.className = 'sidebar-panel-header';
+
+    this.titleEl = document.createElement('div');
+    this.titleEl.className = 'title weburl';
+    this.titleEl.textContent = 'Viewer';
+    this.titleEl.addEventListener('click', () => this.onTitleClicked());
+
+    const spacer = document.createElement('div');
+    spacer.style.flexGrow = '1';
+
+    const iconContainer = (iconClass, onClick) => {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'icon-container';
+      wrapper.addEventListener('click', onClick);
+
+      const icon = document.createElement('div');
+      icon.className = `titlebar-icon ${iconClass}`;
+      wrapper.appendChild(icon);
+
+      return wrapper;
+    };
+
+    header.append(
+      this.titleEl,
+      spacer,
+      iconContainer('titlebar-icon-external', () => this.onTitleClicked()),
+      iconContainer('titlebar-icon-close', () => this.onAttachIconClicked())
+    );
+
+    this.webviewContainer = document.createElement('div');
+    this.webviewContainer.className = 'webview-container';
+
+    container.append(header, this.webviewContainer);
+    return container;
+  }
+
   render() {
-    const el = this.bindView($(ViewerTemplate), this);
-    if (this.el) this.el.append(el);
+    const el = this._buildChrome();
+    if (this.el) this.el.appendChild(el);
     else this.el = el;
 
-    this.$('.webview-container').append(this.canvasView.render());
+    this.webviewContainer.appendChild(this.canvasView.render());
+
     //make sure webview is never blurred so keyboard shortcuts always work (the webview is sending key input to the editor)
     setTimeout(() => {
       //give react a chance to render before focusing the first time
-      this.$('.webview-container webview')?.focus();
+      this.webviewContainer.querySelector('webview')?.focus();
     }, 100);
-    this.$('.webview-container webview').on('blur', (e) => {
+
+    // NOTE (PLAT-002 wave 5b): this binding has never taken effect. The webview
+    // is rendered by React inside CanvasView, so — for exactly the reason the
+    // focus call above is deferred — it is not in the DOM on this tick, and the
+    // jQuery version silently no-oped on an empty set. Converted as found:
+    // switching the focus trap on is a behaviour change, not a conversion.
+    this.webviewContainer.querySelector('webview')?.addEventListener('blur', (e) => {
       e.target.focus();
     });
 
@@ -111,7 +167,8 @@ class Viewer extends View {
       const ipAddress = result && result.length > 0 ? result[result.length - 1] : 'localhost';
       const protocol = process.env.ssl ? 'https://' : 'http://';
       const webUrl = `${protocol}${ipAddress}:${Config.PreviewServer.port}`;
-      this.$('.weburl').text(webUrl).attr('href', webUrl);
+      this.titleEl.textContent = webUrl;
+      this.titleEl.setAttribute('href', webUrl);
     });
 
     this._blockClicksAfterMovingWindow();
@@ -138,7 +195,7 @@ class Viewer extends View {
     ipcRenderer.send('viewer-attach');
   }
   onTitleClicked() {
-    platform.openExternal(this.$('.title').text());
+    platform.openExternal(this.titleEl.textContent);
   }
 }
 

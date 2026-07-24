@@ -37,6 +37,7 @@ import { AABB, CenterToFitMode, IVector2, MouseEventType, PanAndScale } from './
 import { OverlayHost } from './nodegrapheditor/canvas/OverlayHost';
 import { bindNodeGraphCanvas } from './nodegrapheditor/CanvasDOMBindings';
 import { CanvasPainter } from './nodegrapheditor/CanvasPainter';
+import { CanvasShell, createCanvasShell } from './nodegrapheditor/CanvasShell';
 import { ConnectionPopups } from './nodegrapheditor/ConnectionPopups';
 import { EditorClipboard } from './nodegrapheditor/EditorClipboard';
 import { registerEditorEventBindings, registerRenderEventBindings } from './nodegrapheditor/EditorEventBindings';
@@ -54,9 +55,6 @@ import { ToastLayer } from './ToastLayer/ToastLayer';
 
 initBlocklyEditorGlobals();
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const NodeGraphEditorTemplate = require('../templates/nodegrapheditor.html');
-
 // Styles
 require('../styles/nodegrapheditor.css');
 
@@ -70,10 +68,19 @@ type MousePosition = {
   pageY: number;
 };
 
-type NodeGraphMouseEvent = JQuery.Event & { consumed?: boolean; spaceKey?: boolean };
+/**
+ * A mouse event as the canvas sees it: usually the native `MouseEvent` handed
+ * over by `CanvasDOMBindings`, but the comment layer and the canvas specs also
+ * synthesise partial stand-ins. `consumed` is the editor's own propagation flag
+ * and `spaceKey` is set from the keyboard handler's space-is-held state.
+ */
+type NodeGraphMouseEvent = Partial<MouseEvent> & { consumed?: boolean; spaceKey?: boolean };
 
 export class NodeGraphEditor extends View {
-  el: TSFixme;
+  el: HTMLElement;
+
+  /** Typed handles on the DOM shell built by `render()`. */
+  shell: CanvasShell;
   model: NodeGraphModel;
   roots: NodeGraphEditorNode[];
   connections: TSFixme[];
@@ -262,9 +269,10 @@ export class NodeGraphEditor extends View {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (window as any).__nodeGraphEditor = this;
 
-    this.el = this.bindView($(NodeGraphEditorTemplate), this);
+    this.shell = createCanvasShell();
+    this.el = this.shell.root;
 
-    this.domElementContainer = this.el.find('#nodegraph-dom-layer').get(0);
+    this.domElementContainer = this.shell.domLayer;
     this.commentLayer = new CommentLayer(this);
     this.commentLayer.setReadOnly(this.readOnly);
 
@@ -282,7 +290,7 @@ export class NodeGraphEditor extends View {
     //the comment layer is using react-dnd which caches the parent position the first time a comment is rendered.
     //it's crucial that the parent position is correct, so delay the rendering a tick so all the DOM elements are in the right place
     setTimeout(() => {
-      this.commentLayer.renderTo(this.el.find('#comment-layer-bg').get(0), this.el.find('#comment-layer-fg').get(0));
+      this.commentLayer.renderTo(this.shell.commentLayerBg, this.shell.commentLayerFg);
     }, 1);
 
     // Render the highlight overlay

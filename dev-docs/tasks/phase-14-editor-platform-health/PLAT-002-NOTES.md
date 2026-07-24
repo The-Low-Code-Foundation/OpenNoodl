@@ -1,8 +1,9 @@
 # PLAT-002 NOTES — Retire the jQuery Islands
 
-Status: waves 1a–5a landed 2026-07-24. **547 → 38 jQuery uses, 68 → 7 files.** Only wave 5b
-(the `View` framework, the utility one-liners and the vendored jQuery itself) is left; §8 has
-the file-by-file list. §7 is the as-built log.
+Status: **COMPLETE — waves 1a–5b landed 2026-07-24. 547 → 0 jQuery uses, 68 → 0 files.**
+jQuery is gone from the repository: no `$(`/`$.`/`JQuery` in source, no vendored bundle, no
+script tags, no `@types/jquery`, no template-binding framework, no runtime `.html` templates.
+§7 is the as-built log; §8 is what the task leaves behind.
 
 ## 0. Corrections to the task spec (verified 2026-07-24)
 
@@ -21,6 +22,15 @@ the file-by-file list. §7 is the as-built log.
   `views/popuplayer.js.bak`, `views/panels/ComponentsPanelNew/ComponentsPanel.ts.legacy`.
 - Prerequisite REV-003 (CI gates) is complete, and PLAT-001 has landed — so the canvas
   shell's jQuery is **in scope** per the spec's own boundary rule.
+- **(added wave 5b) The inventory's search path was too narrow.** Every count in §1–§2 was
+  taken over `src/editor/src` + `src/shared`, which silently excluded three live areas:
+  `src/frames/viewer-frame/` (the detached viewer window — `views/viewer.js`, a second
+  `View` subclass with its **own** `bindView` + `templates/viewer.html`, plus `index.js`),
+  the package entry points `src/editor/index.ts` and `src/frames/viewer-frame/index.js`,
+  and `tests/` (two spec harnesses and `SpecRunner.html`). The final grep must be run over
+  `packages/noodl-editor/src` **and** `tests` **and** `webpackconfigs` **and** `package.json`.
+- jQuery had a **third** consumer beyond the two script tags: `tests/SpecRunner.html` loaded
+  both vendored files too, so the spec runner had a jQuery global the app no longer needs.
 
 ## 1. Baseline (2026-07-24, excluding `.bak`/`.legacy`/vendored bundles)
 
@@ -453,77 +463,148 @@ propertyeditor/* (12) in waves 1b–2c; `componentports`, `importpopup`,
   `document.hasFocus()` is false and both the old and new keyboard code take the
   "nothing is focused" branch. The two agree in every state reachable that way.
 
-## 8. Handoff — next session starts here
+- 2026-07-24: Wave 5b — **the framework itself, and the end of jQuery.**
+  `shared/view.js` + `view.d.ts` → `shared/view.ts`: the template-binding half is deleted
+  (`bindView`, `cloneTemplate`, `this.$()`, `View.$`, the `data-*` attribute walker, the
+  getter/setter `watch`/`unwatch` pair, and the never-assigned `View.showTooltip`/
+  `hideTooltip` statics), leaving a ~35-line typed class that is **only** the per-instance
+  listener bus (`on`/`off`/`notifyListeners`) plus `el: HTMLElement`. Ten classes still
+  extend it; none of them touch anything that was removed. `notifyListeners` now iterates a
+  copy of the array — the old `for..in` over a live array relied on V8 snapshotting keys
+  when a listener removed itself.
+  The **two** remaining runtime templates were converted, not just the one §8 predicted:
+  `templates/nodegrapheditor.html` → `views/nodegrapheditor/CanvasShell.ts`
+  (`createCanvasShell()` returns the root **plus typed handles** on all nine layers, so the
+  `el.find('#...')` lookups in `OverlayViews`/`CanvasDOMBindings`/`ConnectionPopups` become
+  `editor.shell.canvas` etc.), and `viewer-frame/templates/viewer.html` →
+  `Viewer._buildChrome()`. Both templates were static apart from two `data-click`
+  attributes, so `bindView` was doing nothing for either. `src/editor/src/templates/` and
+  `src/frames/viewer-frame/src/templates/` are both gone, and with them the last user of
+  webpack's `html-loader` rule (rule + devDependency removed).
+  `ReactView.ts` drops its `$(div)` wrapper; `NodeGraphEditorNode`'s `owner.el.css({cursor})`
+  becomes `.style.cursor`; `OverlayViews.setCanvasVisibility` collapses to a loop;
+  `editor/index.ts`'s `$('body').on('contextmenu', () => false)` becomes
+  `preventDefault + stopPropagation` (jQuery's `return false` is both, and PopupLayer's own
+  body-level contextmenu listener is on the same element so it still runs).
+  Then the sweep: both `<script>` tags, `tests/SpecRunner.html`'s copies,
+  `src/assets/lib/jquery-min.js` + `jquery.autosize.min.js`, `@types/jquery`, and every
+  `el.jquery ? el[0] : el` normaliser (`Frame`, `TabGroup`, `PropListInput`,
+  `VariableInput`, `PropertyGroups`, `ComponentTemplates`'s return type, and PopupLayer's
+  `isJQuery`/`attachToRect` branch).
+  **Two live bugs fell out of the type narrowing** — both wave-4 leftovers that `TSFixme`
+  had been hiding:
+  1. `viewer-frame/index.js` still called `PopupLayer.instance.render().get(0)`, but wave 4
+     made `render()` return a raw element. The detached viewer window threw on boot and
+     never got its popup or dialog layers, so its right-click inspect menu was dead.
+  2. `popuplayer.hidePopup` still had a `content.detach ? … : content.remove()` jQuery
+     branch, and three callers (`propertyeditors.jsx`, `VariablesSection`,
+     `VersionControlPanel`) passed `content: { el: [div] }` — a jQuery-era single-element
+     array that only worked because `toElement` unwrapped `content[0]`. Narrowing
+     `ElementLike` to `HTMLElement` made tsc name all four; `toElement` is now gone.
+  **Deliberately not fixed:** `viewer.js`'s webview blur→refocus binding has never taken
+  effect. The webview is rendered by React inside `CanvasView`, so — for the same reason
+  the sibling `focus()` call is deferred by 100ms — it is not in the DOM on that tick, and
+  the jQuery version silently no-oped on an empty set. Converted as found and commented in
+  place: switching a focus trap on is a behaviour change, not a conversion.
+  **547 → 0 `$(`, 68 → 0 files.** tsc clean (editor + tests), **1060 specs, 0 failures**.
+  **Verified live via CDP** in the running editor: the shell builds with the template's exact
+  11-child order and per-layer `pointer-events`/`overflow`; `topLeftCanvasPos` resolves from
+  `shell.canvas`; clicking the canvas selects the node and opens the property panel (so
+  `CanvasDOMBindings` still feeds `editor.mouse()`); hovering the node's connection-drag
+  corner flips the cursor `initial → crosshair → initial`; `setCanvasVisibility(false/true)`
+  reproduces the legacy `display` values exactly (`block` ×4, `flex` for the trail, `''` for
+  the DOM layer); pan/zoom round-trips. The **detached viewer window** was opened
+  (`viewer-detach`) and renders the converted chrome — header with title + spacer + two
+  icon containers, the resolved preview URL in `.title.weburl` with its `href`, the webview
+  mounted in `.webview-container`, and `body` carrying `.container` + `.popup-layer` +
+  `.dialog-layer` (which is bug 1 above, fixed) — and clicking its attach icon closed the
+  window, so the converted `data-click` handlers fire.
 
-Waves 1a–4 and 5a are complete. **38 jQuery uses across 7 files remain** (count with
-`grep -rn '\$(\|\$\.' packages/noodl-editor/src/editor/src packages/noodl-editor/src/shared`),
-and they are all one job — retiring the `View` framework:
+## 8. What this task leaves behind
 
-| File | uses | What it needs |
-|---|---|---|
-| `shared/view.js` + `view.d.ts` | 32 | delete. `bindView`/`cloneTemplate`/`this.$()` die with the last template; the `on`/`off`/`notifyListeners` bus does **not** — 9 classes still extend `View` for it, so give them a jQuery-free base (or fold the bus into each) |
-| `views/nodegrapheditor.ts` | 1 (+ a `JQuery.Event` type) | the last `bindView($(template))`; convert `templates/nodegrapheditor.html` — the final runtime template |
-| `views/nodegrapheditor/CanvasDOMBindings.ts` | 1 | `editor.$('#nodegraphcanvas')` — falls out once nodegrapheditor's `el` is raw |
-| `views/nodegrapheditor/ConnectionPopups.ts` | 1 | same lookup |
-| `shared/ReactView.ts` | 1 | `this.el = $(div)` → raw div; the only subclass is `PopupLayer/PopupMenu`, and PopupLayer already normalizes both |
+jQuery is gone. Verification grep (run at close, zero hits outside a doc comment in
+`shared/view.ts` that names the removed APIs):
 
-Still extending `View` (all jQuery-free apart from the bus): `nodegrapheditor.ts`,
-`createnewnodepanel.ts`, `componentports.tsx`, `propertyeditor.ts`, `TypeView.ts`,
-`TabGroup.ts`, `PopoutGroup.ts`, `Ports.ts`, `CanvasView.ts`, plus `ReactView`.
+```
+grep -rnI '\$(\|\$\.\|JQuery\|jquery' packages/noodl-editor/src packages/noodl-editor/tests \
+  packages/noodl-editor/webpackconfigs packages/noodl-editor/package.json \
+  --include='*.ts' --include='*.tsx' --include='*.js' --include='*.jsx' \
+  --include='*.html' --include='*.json' \
+  | grep -v 'bundle.js' | grep -v '\${' | grep -v 'src/external/' | grep -v 'tests/lib/'
+```
 
-Then: remove the two `<script>` tags from `src/editor/index.html` and delete
-`src/assets/lib/jquery-min.js` + `jquery.autosize.min.js` (orphaned since wave 1b),
-`@types/jquery` from `packages/noodl-editor/package.json`, repo-wide grep, CHANGELOG in
-the task doc (before/after: baseline **547 `$(` / 68 files**), update PROGRESS.md.
+(`src/external/` holds shipped third-party viewer/deploy bundles and `tests/lib/` vendored
+Jasmine; neither is editor source. `${` filters template literals; `bundle.js` filters
+committed build output.)
 
-Owed verification carried forward: the **import** and **collisions/overwrite** variants of
-`importpopup.ts` still have not been driven in the running app (the export variant was, in
-wave 4) — they need a second project to import from. Check the tree indentation, the
-implicit-dependency markers, folder toggles, and that the collisions popup still filters
-what gets imported.
+### Still standing, deliberately
 
-Working notes for the next session:
-- Smoke-test flow: `npm run dev:debug -- --quiet`, wait for "launching Electron" in
-  `.logs/dev.log` + 35s; `npm run cdp -- health`; open the "test" project by tagging its
-  launcher card (`h2` text 'test' → closest `LauncherProjectCard-module__Root`) and cdp click;
-  select the Text node by dispatching mousedown/up/click on the canvas at its screen coords
-  (screenshot first — window size varies); property rows are found via
-  `[class*=PropertyPanelInput-module__Label]`. Use `--target=dashboard` (URL substring) —
-  `--target=NodeGX`/default fall back to the wrong page after navigation. Don't use
-  `cdp reload` (the app can't cold-boot from the rewritten dashboard URL and HMR can leave
-  the panel in a fake "Aw, Snap!" state) — kill Electron + relaunch dev:debug instead.
-  React blur commits need `focusout` (bubbling), not `blur`.
-- Ports.ts re-creates all row views on every renderGroups (no reuse), so per-instance
-  `render()` runs once; guarded `createRoot` is safe. Old row views and their React roots are
-  still not disposed on panel re-render — the legacy `el.html('')` dropped them the same way,
-  so wave 2f left the leak alone rather than change lifetimes while converting the hosts.
-  Worth a dedicated pass (`Ports.renderGroups` could dispose `this.views` before rebuilding).
-- Anything that measures the property rows must now wait a frame: `Ports.renderGroups`
-  renders through React, so the rows land in `RowHost`'s layout effect, not synchronously.
-  The scroll-position restore already does this via `setTimeout(0)`.
-- Known deliberate deviations so far: label hover-tooltips (`data-tooltip`) and the
-  connected-input hover tooltip are not reproduced in React rows (BasicType precedent);
-  sizemode tooltips use `title=`. PopupLayer's `showTooltip` is now plain TS and takes a raw
-  element as `attachTo`, so a `PropertyPanelInput` hover tooltip is a small, self-contained
-  follow-up whenever it is wanted.
-- **`showPopup` measures its content synchronously**, so any caller that renders its content
-  through React must flush before showing it. `StringInputPopup` does (`flushSync`); the
-  call sites that build their own root — `Pages.tsx`, `TextStylePicker.jsx`,
-  `propertyeditors.jsx`, `useComponentActions` — do not, so their popup box is sized 0×0
-  while the content (absolutely positioned) still paints. Pre-existing, unchanged by wave 4,
-  and worth a sweep: `flushSync(() => root.render(...))` at each site.
-- A `value` prop on `input` should not be null warning still fires once on the first
-  property-panel render. `PropertyPanelBaseInput` was fixed in wave 4, so the remaining
-  source is one of the editor-side inputs (`PickerTextInput`/`NumberUnitInput`/`ColorInput`/
-  `VariableInput`/`ResizingInput`); React de-duplicates the warning per element type, so it
-  cannot be caught by re-selecting a node — catch it on a cold boot instead.
-- **Shared working tree:** PLAT-003/PLAT-004 (and any other parallel session) edit the same
-  checkout. `npm run dev:debug` only launches Electron on an **error-free** webpack compile,
-  so an unrelated in-flight TS error elsewhere blocks the smoke test entirely. Check
-  `grep "ERROR in" .logs/dev.log` before blaming your own change — in wave 4 the *Viewer*
-  bundle had 12 errors from PLAT-003 while the Editor bundle compiled and launched fine, so
-  read the `[Editor]`/`[Viewer]` prefix before reacting. Commit with an explicit pathspec
-  (`git commit -- <your paths>`); the index will contain other sessions' staged work.
-- Editing files while the app is running can leave the renderer in the "Aw, Snap!"
-  (`chrome-error://chromewebdata`) state mid-session; `webpackChunknoodl_editor` disappears
-  and every cdp eval fails. Kill Electron + `dev:debug` and relaunch — do not chase it.
+- **`shared/view.ts` (~35 lines).** Ten classes extend it purely for `on`/`off`/
+  `notifyListeners`: `nodegrapheditor`, `createnewnodepanel`, `componentports`,
+  `propertyeditor`, `TypeView`, `TabGroup`, `PopoutGroup`, `Ports`, `CanvasView`,
+  `ReactView` (plus `viewer-frame/views/viewer.js`). The name is now misleading — it is an
+  event bus, not a view framework. Renaming it (or folding the bus into each class, or
+  onto the existing `EventDispatcher`) is a clean, mechanical follow-up; it was kept as-is
+  here to avoid a 13-file rename in the same wave that rewrote the canvas shell.
+  Note `viewer.js` is CommonJS and must keep `require('.../shared/view').default` — the
+  ESM-default trap from wave 4.
+- **`ReactView.ts`** is still the bridge for `PopupLayer/PopupMenu`, its only subclass.
+
+### Owed verification, never paid
+
+- The **import** and **collisions/overwrite** variants of `importpopup.ts` (wave 3) have
+  still never been driven in the running app — they need a second project to import from.
+  Check the tree indentation, implicit-dependency markers, folder toggles, and that the
+  collisions popup still filters what gets imported. The **export** variant was verified in
+  wave 4.
+
+### Known deviations and follow-ups inherited by whoever touches this UI next
+
+- **Hover tooltips on converted property rows.** Label `data-tooltip`s and the
+  connected-input hover tooltip are not reproduced in the React rows (the `BasicType`
+  precedent); sizemode tooltips use `title=`. `PopupLayer.showTooltip` is plain TS now and
+  takes a raw element as `attachTo`, so a `PropertyPanelInput` hover tooltip is small and
+  self-contained whenever it is wanted.
+- **`showPopup` measures its content synchronously**, but `root.render()` is async, so any
+  caller that renders popup content through React must flush first. `StringInputPopup` does
+  (`flushSync`); `Pages.tsx`, `TextStylePicker.jsx`, `propertyeditors.jsx` and
+  `useComponentActions` build their own roots and do not, so their popup **box** is sized
+  0×0 while the absolutely-positioned content still paints. Pre-existing; worth a sweep of
+  `flushSync(() => root.render(...))` at each site.
+- **`Ports.renderGroups` leaks React roots.** It rebuilds every row view on each panel
+  render without disposing the old ones; the legacy `el.html('')` dropped them the same
+  way, so wave 2f left the lifetime alone rather than change it mid-conversion.
+  `renderGroups` could dispose `this.views` before rebuilding.
+- **Anything measuring the property rows must wait a frame** — they land in `RowHost`'s
+  layout effect now, not synchronously. The scroll-position restore already does this via
+  `setTimeout(0)`.
+- A `value` prop on `input` should not be null warning still fires once per cold boot.
+  `PropertyPanelBaseInput` was fixed in wave 4, so the source is one of the editor-side
+  inputs (`PickerTextInput`/`NumberUnitInput`/`ColorInput`/`VariableInput`/`ResizingInput`);
+  React de-duplicates per element type, so it cannot be caught by re-selecting a node.
+- **`viewer.js`'s webview blur→refocus binding is dead** (see wave 5b in §7). Turning it on
+  is a deliberate behaviour decision, not a conversion.
+
+### Working notes worth keeping (the smoke-test recipe)
+
+- `npm run dev:debug -- --quiet` works fine alongside other sessions. Wait for
+  "launching Electron" in `.logs/dev.log`, then ~35s, then `npm run cdp -- health`.
+  Open a project by tagging its launcher card with an id
+  (`h2` text → `closest('[class*=Card-module__Root]')`, set `el.id`) then `cdp click #id` —
+  `cdp click` takes a **selector**, not coordinates. After navigation use
+  `--target=dashboard` (URL substring); `--target=NodeGX` matches the wrong page. Reach the
+  canvas as `window.__nodeGraphEditor`, and the detached viewer via
+  `require('electron').ipcRenderer.send('viewer-detach', {...})` + `--target="NodeGX Viewer"`.
+- **Keep CDP eval return values small.** `ed.roots.map(n => n.model.type)` returns whole
+  node *definitions* — tens of KB each. Return ids, not models.
+- Editing files while the dev server watches produces a transient failed compile whose
+  errors stay in `.logs/dev.log` forever. Check the **last** `compiled successfully/with`
+  line for the Editor bundle, not any `ERROR in` line.
+- `document.hasFocus()` is **false** under CDP, so focus-dependent paths cannot be
+  exercised headlessly. React blur commits need `focusout` (bubbling), not `blur`. HMR does
+  not update a React component rendered by a legacy class, and editing files while the app
+  runs can drop the renderer into `chrome-error://chromewebdata` — restart rather than chase.
+- **Shared working tree:** PLAT-003/PLAT-004 edit the same checkout. `dev:debug` only
+  launches Electron on an error-free compile, so read the `[Editor]`/`[Viewer]` prefix in
+  `.logs/dev.log` before blaming your own change, and commit with an explicit pathspec
+  (`git commit -m … -- <your paths>`) because the index holds other sessions' staged work.

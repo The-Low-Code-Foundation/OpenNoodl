@@ -69,11 +69,9 @@ export function Frame({
       rootRef.current.removeChild(rootRef.current.firstChild);
     }
 
-    // Converted views expose a raw element as `el`; legacy ones a jQuery set.
-    const el = instance?.el as TSFixme;
-    const node: HTMLElement | undefined = el ? (el.jquery ? el[0] : el) : undefined;
-    if (node) {
-      rootRef.current.appendChild(node);
+    const el = instance?.el;
+    if (el) {
+      rootRef.current.appendChild(el);
       bounds && onResize && onResize(bounds);
     }
   }, [rootRef, instance, refresh]);

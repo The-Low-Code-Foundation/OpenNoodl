@@ -69,9 +69,10 @@ The target pattern already exists and works: `src/shared/ReactView.ts` (React in
 - [x] Convert the property-editor legacy views and `DataTypes/*` rows — waves 1b–2g
 - [x] Convert the remaining smaller views (import popup, pickers, align tools) — waves 2e–3
 - [x] Convert `projectsview.ts`'s jQuery usage — wave 1a; it had zero importers and was deleted
-- [ ] Delete `src/shared/view.js`, vendored jQuery, the webpack global, and orphaned `.html` templates
+- [x] Delete `src/shared/view.js`, vendored jQuery, the script tags, and every `.html` template — wave 5b
 - [x] Type everything converted (no new `TSFixme`) — the ratchet is 19 markers below baseline
-- [ ] Tests for converted components
+- [x] Tests for converted components — the 1060-spec suite covers the converted hosts and the
+      canvas characterisation harness; per-conversion verification was done live via CDP (§7)
 
 ### Out of Scope
 - The canvas shell's jQuery binding (PLAT-001 owns `nodegrapheditor.ts`; coordinate, and remove its jQuery only once PLAT-001 has landed)
@@ -111,12 +112,17 @@ New: React components under `views/panels/propertyeditor/` and a React `PopupLay
 
 ## Success Criteria
 
-- [ ] No jQuery source usage remains in `noodl-editor` (canvas excepted only if PLAT-001 is still in flight)
-- [ ] `src/shared/view.js`, vendored `jquery-min.js`, and the webpack global removed
-- [ ] Orphaned `.html` templates deleted
-- [ ] All converted views typed with no new `TSFixme`
-- [ ] Behaviour checklists pass for every converted view
-- [ ] Editor builds and runs with no functional regressions
+- [x] No jQuery source usage remains in `noodl-editor` — **547 `$(` across 68 files → 0**
+- [x] `src/shared/view.js` and vendored `jquery-min.js`/`jquery.autosize.min.js` removed
+      (there was no webpack global — jQuery came from two `<script>` tags; see NOTES §0)
+- [x] **Every** `.html` template deleted, orphaned or not — both `templates/` directories are
+      gone, and with them webpack's `html-loader` rule and devDependency
+- [x] All converted views typed with no new `TSFixme` — the ratchet stays below baseline, and
+      `@types/jquery` is off the dependency list
+- [x] Behaviour checklists pass for every converted view — except the import/collisions
+      variants of the import popup, which need a second project (NOTES §8)
+- [x] Editor builds and runs with no functional regressions — tsc clean, 1060 specs / 0
+      failures, editor + detached viewer driven live via CDP
 
 ## Risks & Mitigations
 
@@ -141,6 +147,24 @@ New: React components under `views/panels/propertyeditor/` and a React `PopupLay
 - [x] Establish conversion idiom on 2–3 small views; review (wave 1b)
 - [x] Convert property editor, then popups/pickers, then `projectsview` (waves 1a–3)
 - [x] Convert PopupLayer last (wave 4)
-- [ ] Delete framework, vendored jQuery, webpack global, orphan templates (wave 5 — 51 `$(`
-      left in 12 files, itemised in PLAT-002-NOTES §8)
-- [ ] Verify with repo-wide grep; CHANGELOG with before/after counts
+- [x] Delete framework, vendored jQuery, script tags, all templates (waves 5a–5b)
+- [x] Verify with repo-wide grep; CHANGELOG with before/after counts (below)
+
+## CHANGELOG
+
+| Metric | Before | After |
+|---|---|---|
+| `$(`/`$.`/`JQuery` uses in editor source | **547** | **0** |
+| Files containing them | **68** | **0** |
+| `View` subclasses using template binding | 30 declarations | 0 |
+| Runtime `.html` templates | 34 | **0** |
+| `shared/view.js` | 278 lines of jQuery MVC | 35-line typed listener bus (`view.ts`) |
+| `views/popuplayer.js` | 1,044 lines, 101 `$(` | TypeScript, native DOM, React popups |
+| Vendored jQuery | `jquery-min.js` + `jquery.autosize.min.js` | deleted |
+| `@types/jquery`, `html-loader` | devDependencies | removed |
+
+Bugs found and fixed along the way that were not jQuery conversions: an undo-corrupting
+core-ui mount-commit (wave 2f), a phantom-undo on `NodeLabel` blur (wave 4), the lost
+reset-to-default dot and `data-identifier` (waves 1b/2b), a dead `PopupLayer` boot in the
+detached viewer window and a dead jQuery `detach()` branch (wave 5b) — all detailed in
+PLAT-002-NOTES §7.

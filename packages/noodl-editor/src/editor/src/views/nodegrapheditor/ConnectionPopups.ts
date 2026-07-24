@@ -41,7 +41,7 @@ export class ConnectionPopups {
         return [curleft, curtop];
       };
 
-      const canvas = _this.$('#nodegraphcanvas')[0];
+      const canvas = _this.shell.canvas;
       const tl = topLeft(canvas);
 
       const panAndScale = _this.getPanAndScale();

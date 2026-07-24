@@ -109,13 +109,14 @@ describe('Canvas characterisation (PLAT-001)', function () {
     // not registered in the test runner — stub it out (auto-restored by jasmine).
     spyOn(SidebarModel.instance, 'switchToNode');
 
-    $('body').append(
-      '<div id="canvas-char-test" style="position:absolute; top:0px; left:0px; width:400px; height:800px;"></div>'
-    );
+    const host = document.createElement('div');
+    host.id = 'canvas-char-test';
+    host.setAttribute('style', 'position:absolute; top:0px; left:0px; width:400px; height:800px;');
+    document.body.appendChild(host);
 
     editor = new NodeGraphEditor({ model: graph });
     editor.render();
-    $('#canvas-char-test').append(editor.el);
+    host.appendChild(editor.el);
     editor.resize({ x: 0, y: 0, width: 400, height: 800 });
     editor.setPanAndScale({ scale: 1, x: 0, y: 0 });
 
@@ -126,7 +127,7 @@ describe('Canvas characterisation (PLAT-001)', function () {
   afterEach(function () {
     editor.setHighlightedNode(undefined); // cancel any pending inspector timer
     editor.dispose();
-    $('#canvas-char-test').remove();
+    document.getElementById('canvas-char-test').remove();
     editor = undefined;
   });
 

@@ -24,8 +24,7 @@ export function VariableInput({ types, currentType, childEl, onTypeChange }: Var
     if (!host) return;
 
     host.innerHTML = '';
-    const node = childEl && childEl.jquery ? childEl[0] : childEl;
-    if (node) host.appendChild(node);
+    if (childEl) host.appendChild(childEl);
   }, [childEl]);
 
   return (

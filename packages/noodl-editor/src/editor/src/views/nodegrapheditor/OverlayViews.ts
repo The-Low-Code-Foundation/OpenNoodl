@@ -30,7 +30,7 @@ export class OverlayViews {
   renderCanvasTabs() {
     this.editor.overlays.renderSlot(
       'canvas-tabs',
-      this.editor.el.find('#canvas-tabs-root').get(0),
+      this.editor.shell.canvasTabsRoot,
       React.createElement(
         CanvasTabsProvider,
         null,
@@ -70,7 +70,7 @@ export class OverlayViews {
     // Only show banner if in read-only mode
     this.editor.overlays.renderSlot(
       'editor-banner',
-      this.editor.el.find('#editor-banner-root').get(0),
+      this.editor.shell.editorBannerRoot,
       this.editor.readOnly
         ? React.createElement(EditorBanner, {
             onDismiss: this.handleDismissBanner.bind(this)
@@ -118,7 +118,7 @@ export class OverlayViews {
     // Render the overlay
     this.editor.overlays.renderSlot(
       'highlight-overlay',
-      this.editor.el.find('#highlight-overlay-layer').get(0),
+      this.editor.shell.highlightOverlayLayer,
       React.createElement(HighlightOverlay, {
         viewport,
         getNodeBounds: this.getNodeBounds
@@ -153,7 +153,7 @@ export class OverlayViews {
 
     this.editor.overlays.renderSlot(
       'execution-overlay',
-      this.editor.el.find('#execution-overlay-layer').get(0),
+      this.editor.shell.executionOverlayLayer,
       React.createElement(ExecutionOverlay, {
         viewport,
         getNodeBounds: this.getNodeBounds
@@ -176,34 +176,19 @@ export class OverlayViews {
    */
   setCanvasVisibility(visible: boolean) {
     const editor = this.editor;
-    const canvasElement = editor.el.find('#nodegraphcanvas');
-    const commentLayerBg = editor.el.find('#comment-layer-bg');
-    const commentLayerFg = editor.el.find('#comment-layer-fg');
-    const highlightOverlay = editor.el.find('#highlight-overlay-layer');
-    const componentTrail = editor.el.find('.nodegraph-component-trail-root');
+    const { canvas, commentLayerBg, commentLayerFg, highlightOverlayLayer, componentTrailRoot } = editor.shell;
 
-    if (visible) {
-      // Show canvas and related elements
-      canvasElement.css('display', 'block');
-      commentLayerBg.css('display', 'block');
-      commentLayerFg.css('display', 'block');
-      highlightOverlay.css('display', 'block');
-      componentTrail.css('display', 'flex');
-      editor.domElementContainer.style.display = '';
-    } else {
-      // Hide canvas and related elements
-      canvasElement.css('display', 'none');
-      commentLayerBg.css('display', 'none');
-      commentLayerFg.css('display', 'none');
-      highlightOverlay.css('display', 'none');
-      componentTrail.css('display', 'none');
-      editor.domElementContainer.style.display = 'none';
+    // Show/hide the canvas and related elements.
+    for (const el of [canvas, commentLayerBg, commentLayerFg, highlightOverlayLayer]) {
+      el.style.display = visible ? 'block' : 'none';
     }
+    componentTrailRoot.style.display = visible ? 'flex' : 'none';
+    editor.domElementContainer.style.display = visible ? '' : 'none';
   }
 
   updateTitle() {
     const editor = this.editor;
-    const rootElem = editor.el[0].querySelector('.nodegraph-component-trail-root') as HTMLElement;
+    const rootElem = editor.shell.componentTrailRoot;
 
     if (editor.activeComponent) {
       const fullName = editor.activeComponent.fullName;

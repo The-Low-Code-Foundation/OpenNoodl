@@ -228,16 +228,14 @@ export class NodeGraphEditorNode {
         this.connectionDragAreaHighlighted = pos.x > this.nodeSize.width - 20 && pos.y < 20;
 
         const showCrosshairCursor = this.connectionDragAreaHighlighted || this.borderHighlighted;
-        this.owner.el.css({
-          cursor: showCrosshairCursor ? 'crosshair' : 'initial'
-        });
+        this.owner.el.style.cursor = showCrosshairCursor ? 'crosshair' : 'initial';
 
         this.owner.repaint();
         break;
       case 'move-out':
         PopupLayer.instance.hideTooltip();
 
-        this.owner.el.css({ cursor: 'initial' });
+        this.owner.el.style.cursor = 'initial';
 
         // Clear highlight on move out
         if (this.owner.highlighted === this) {

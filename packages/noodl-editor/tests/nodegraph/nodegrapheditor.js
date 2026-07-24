@@ -118,13 +118,18 @@ describe('Node graph editor auto tests', function () {
 
   // Sets up a fresh node graph editor
   function setup() {
-    $('body').append(
-      '<div id="node-graph-editor" style="position:absolute; top:0px; right:0px; width:400px; height:800px; background-color:white;"></div>'
+    const host = document.createElement('div');
+    host.id = 'node-graph-editor';
+    host.setAttribute(
+      'style',
+      'position:absolute; top:0px; right:0px; width:400px; height:800px; background-color:white;'
     );
+    document.body.appendChild(host);
 
     // Disable context menu
-    $('body').on('contextmenu', function () {
-      return false;
+    document.body.addEventListener('contextmenu', function (e) {
+      e.preventDefault();
+      e.stopPropagation();
     });
 
     // NodeLibrary.instance = new NodeLibrary();
@@ -166,7 +171,7 @@ describe('Node graph editor auto tests', function () {
       y: 0
     });
     NodeGraphEditor.instance.render();
-    $('#node-graph-editor').append(NodeGraphEditor.instance.el);
+    document.getElementById('node-graph-editor').appendChild(NodeGraphEditor.instance.el);
     NodeGraphEditor.instance.resize({
       x: 0,
       y: 0,
@@ -266,7 +271,7 @@ describe('Node graph editor auto tests', function () {
 
   // Closes and tears the node graph editor down
   function teardown() {
-    $('#node-graph-editor').remove();
+    document.getElementById('node-graph-editor').remove();
     NodeGraphEditor.instance = undefined;
   }
 

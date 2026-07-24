@@ -5,7 +5,7 @@ import type { NodeGraphEditor } from '../nodegrapheditor';
 
 /**
  * bindNodeGraphCanvas runs again on every resize, so each run has to drop the
- * previous set of listeners (the jQuery version did it with `.off(type)`).
+ * previous set of listeners.
  */
 const boundCanvases = new WeakMap<HTMLCanvasElement, AbortController>();
 
@@ -16,7 +16,7 @@ const boundCanvases = new WeakMap<HTMLCanvasElement, AbortController>();
  * this module only wires them, so re-binding on resize keeps working the same.
  */
 export function bindNodeGraphCanvas(editor: NodeGraphEditor): void {
-  const canvas = editor.$('#nodegraphcanvas')[0] as HTMLCanvasElement;
+  const canvas = editor.shell.canvas;
   const ctx = (editor.canvas.ctx = canvas.getContext('2d', { alpha: true }));
 
   // Support retina display

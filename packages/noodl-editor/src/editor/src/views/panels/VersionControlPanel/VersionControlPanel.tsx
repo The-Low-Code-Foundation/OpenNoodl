@@ -133,7 +133,7 @@ function BaseVersionControlPanel() {
     //it causes timing issues between native events and react where the popout is instantly closed
     setTimeout(() => {
       PopupLayer.instance.showPopout({
-        content: { el: [popoutDiv] },
+        content: { el: popoutDiv },
         attachTo: settingsButtonRef.current,
         position: 'right',
         disableDynamicPositioning: true,

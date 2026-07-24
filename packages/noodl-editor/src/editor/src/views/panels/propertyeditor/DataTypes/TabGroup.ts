@@ -4,21 +4,12 @@ import { createRoot, Root } from 'react-dom/client';
 import View from '../../../../../../shared/view';
 import { PropertyTabs } from '../components/PropertyTabs';
 
-/** Converted child views expose a raw HTMLElement as `el`; legacy ones a jQuery set. */
-function setElementVisible(el: TSFixme, visible: boolean) {
-  if (el && el.jquery) {
-    visible ? el.show() : el.hide();
-  } else if (el) {
-    el.style.display = visible ? '' : 'none';
-  }
+function setElementVisible(el: HTMLElement, visible: boolean) {
+  if (el) el.style.display = visible ? '' : 'none';
 }
 
-function appendChildEl(parent: HTMLElement, el: TSFixme) {
-  if (el && el.jquery) {
-    parent.appendChild(el[0]);
-  } else if (el) {
-    parent.appendChild(el);
-  }
+function appendChildEl(parent: HTMLElement, el: HTMLElement) {
+  if (el) parent.appendChild(el);
 }
 
 export class TabGroup extends View {
