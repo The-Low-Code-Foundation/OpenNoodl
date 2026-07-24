@@ -4,10 +4,10 @@
     "scripts"
   ],
   "exclude": [],
-  "commit": "5b3cca0",
+  "commit": "7a49cae",
   "max": {
-    "TSFixme": 571,
-    "any": 393,
+    "TSFixme": 561,
+    "any": 314,
     "@ts-ignore": 22,
     "@ts-nocheck": 0,
     "@ts-expect-error": 88
@@ -21,8 +21,8 @@
       "@ts-expect-error": 11
     },
     "noodl-editor": {
-      "TSFixme": 536,
-      "any": 234,
+      "TSFixme": 526,
+      "any": 155,
       "@ts-ignore": 11,
       "@ts-nocheck": 0,
       "@ts-expect-error": 64
@@ -862,6 +862,13 @@
       "@ts-nocheck": 0,
       "@ts-expect-error": 0
     },
+    "packages/noodl-editor/src/editor/src/views/PopupLayer/StringInputPopup.tsx": {
+      "TSFixme": 1,
+      "any": 0,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
     "packages/noodl-editor/src/editor/src/views/VisualCanvas/CanvasView.ts": {
       "TSFixme": 0,
       "any": 3,
@@ -1632,9 +1639,9 @@
       "@ts-nocheck": 0,
       "@ts-expect-error": 0
     },
-    "packages/noodl-editor/src/editor/src/views/popuplayer.d.ts": {
-      "TSFixme": 18,
-      "any": 13,
+    "packages/noodl-editor/src/editor/src/views/popuplayer.ts": {
+      "TSFixme": 7,
+      "any": 0,
       "@ts-ignore": 0,
       "@ts-nocheck": 0,
       "@ts-expect-error": 0
@@ -1698,34 +1705,6 @@
     "packages/noodl-editor/tests/index.ts": {
       "TSFixme": 2,
       "any": 0,
-      "@ts-ignore": 0,
-      "@ts-nocheck": 0,
-      "@ts-expect-error": 0
-    },
-    "packages/noodl-editor/tests/io/ProjectExporter.test.ts": {
-      "TSFixme": 0,
-      "any": 22,
-      "@ts-ignore": 0,
-      "@ts-nocheck": 0,
-      "@ts-expect-error": 0
-    },
-    "packages/noodl-editor/tests/io/ProjectImporter.test.ts": {
-      "TSFixme": 0,
-      "any": 15,
-      "@ts-ignore": 0,
-      "@ts-nocheck": 0,
-      "@ts-expect-error": 0
-    },
-    "packages/noodl-editor/tests/io/roundtrip-fidelity.test.ts": {
-      "TSFixme": 0,
-      "any": 21,
-      "@ts-ignore": 0,
-      "@ts-nocheck": 0,
-      "@ts-expect-error": 0
-    },
-    "packages/noodl-editor/tests/io/schema-drift.test.ts": {
-      "TSFixme": 0,
-      "any": 8,
       "@ts-ignore": 0,
       "@ts-nocheck": 0,
       "@ts-expect-error": 0

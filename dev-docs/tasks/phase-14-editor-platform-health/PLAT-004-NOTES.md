@@ -1,8 +1,9 @@
 # PLAT-004 NOTES — Type Escape-Hatch Ratchet
 
-Status: the mechanism landed 2026-07-24 (spec steps 1–4, 6), plus two burn-down slices —
-`noodl-preview`, 16 `TSFixme` → 3 (§7), and the AI client, 44 → 0 (§8). The rest of the burn-down
-mostly happens inside PLAT-002 and PLAT-003. Resume from **§6**.
+Status: the mechanism landed 2026-07-24 (spec steps 1–4, 6), plus three burn-down slices —
+`noodl-preview` 16 `TSFixme` → 3 (§7), the AI client 44 → 0 (§8), and the io specs 66 `any` → 0
+(§11) — and a typecheck gate for the editor's specs, which nothing checked before (§9). The rest of
+the burn-down mostly happens inside PLAT-002 and PLAT-003. Resume from **§6** and **§10**.
 
 Run in parallel with PLAT-002 and PLAT-003. Boundary: PLAT-004 owns the counter, the baseline, the
 CI job and the policy, plus burn-down in code no concurrent task is editing. It deliberately does
@@ -33,8 +34,11 @@ lint ratchet it sits beside in the same job.
 ## 2. Baseline
 
 Measured at `3a302b9` when the mechanism landed. Since then: slice 1 (§7) lowered `TSFixme` to 568
-at `0395b24`, and slice 2 (§8) set it to **571 / 393 `any`** at `5b3cca0`. The table below is the
-original measurement.
+at `0395b24`; slice 2 (§8) set it to 571 / 393 `any` at `5b3cca0`; slice 3 (§11) brought it to
+**561 `TSFixme` / 314 `any`** at `7a49cae`. The table below is the original measurement.
+
+Slice 3's re-measurement also banked PLAT-002's wave 4, which landed in between — the gate only
+blocks increases, so a win nobody records simply evaporates. That is §6.2 in practice.
 
 Slice 2's number went *up* by 3 `TSFixme` and 1 `any` against slice 1's, and that is deliberate —
 see §8. It is the escape valve being used as designed: HEAD had drifted 47 markers above the
@@ -272,8 +276,52 @@ several other packages likely have the same hole.
   done here on purpose: it means editing those tasks' spec documents while both sessions are live in
   the same working tree, and their NOTES files are exactly what those sessions are writing to. It is
   a two-line change to each checklist once they are quiet.
-- **The `tests/` clusters** are the next burn-down slice with no owner: `tests/io` (66 `any`,
-  almost all one idiom — `?.content as any`, where the export engine publishes `ProjectV2File`,
-  `ComponentV2File`, `RegistryV2File` and friends), `tests/services/github` (15),
-  `tests/models/EmbeddedTemplate.test.ts` (12). Now typecheck-gated by §9, so typing them means
-  something.
+- **The remaining `tests/` clusters**, all still unowned: `tests/services/github` (15),
+  `tests/models/EmbeddedTemplate.test.ts` (12), `tests/canvas/InteractionController.test.ts` (8,
+  PLAT-001 is finished so it is free), `noodl-mcp/tests/tools.test.ts` (9). `tests/io` is done
+  (§11). They are typecheck-gated by §9, so typing them means something.
+- **PLAT-003's in-flight work is above the baseline again** as of the slice-3 re-measure: +5
+  `TSFixme` in `noodl-types/src/runtime/node-definition.d.ts` and +2 `any` in
+  `noodl-viewer-react/src/nodes/std-library/states.ts`, both uncommitted in the shared tree. Theirs
+  to resolve when they land — §5 all over again, which is why §6.2 matters.
+
+## 11. Burn-down slice 3 — the io specs, 66 `any` → 0
+
+`tests/io` was the largest cluster with no owning task, and 60 of its 66 markers were a single
+idiom: `result.files.find((f) => f.relativePath === path)?.content as any`.
+
+`ExportFile.content` is `unknown` for a good reason — one export produces a heterogeneous list
+(project, registry, routes, styles, three files per component) — so every assertion narrowed it
+inline. `tests/io/v2-files.ts` now holds that narrowing once, and narrows to the schemas the
+exporter publishes: `ProjectV2File`, `ComponentV2File`, `NodesV2File`, `ConnectionsV2File`,
+`RegistryV2File`, `RoutesV2File`, `StylesV2File`.
+
+The point is not tidiness. Those are the same types `ImportInput` demands, so the round-trip specs
+now fail to *compile* if the two engines drift apart, where before they would have round-tripped and
+silently dropped a field. `fileAt()` also throws naming the paths that were exported, instead of
+surfacing two lines later as a property read on `undefined`.
+
+| Was | Now | Why it was removable |
+|---|---|---|
+| `?.content as any` ×~60 | `contentAt<T>` / `fileAt<T>` / `firstFileMatching<T>` | The schemas exist and the importer already demands them |
+| `(c.graph as any).comments`, `.visualRoots`, `(thumbnail as any).thumbnailURI` | Direct access | All declared on `LegacyGraph` / `LegacyProject` — the casts were stale |
+| `keyUnion(FIXTURES as any)` ×4 | `keyUnion(objects: Array<object \| undefined>)` | The parameter was `Record<string, unknown>`, which **no interface satisfies** — interfaces get no implicit index signature, so the type forced every caller to cast |
+| `(p.metadata as any)?.styles?.colors` | `metadataAt(project, ['styles', 'colors'])` | The legacy `metadata` bag is genuinely untyped; a guard-based walk beats a cast |
+| `(comp as any).graph = undefined` | `delete (comp as Partial<LegacyComponent>).graph` | Says "degrading the fixture on purpose" rather than "silence the compiler" |
+| `walkNodes(roots: any[], visit: (n: any) => void)` | `LegacyNode` | The type was one import away |
+
+`keyUnion` is the one worth remembering: a helper typed `Record<string, unknown>` looks stricter than
+`object` but is *less* usable, because the model interfaces cannot satisfy it. Every call site paid
+for that with an `any`. When a helper's parameter type forces casts at every call, the helper is
+usually what is wrong.
+
+### Verification
+
+Same recipe as §8 — esbuild-bundle the specs for node, run against the shim, then run the identical
+bundle built from a clean pre-change `git archive HEAD` export. **174 passed, 0 failed on both.**
+
+The io specs use nested `describe` blocks with an outer `beforeEach`, which the throwaway shim did
+not implement (the AI specs are flat). It reported 20 failures that were entirely its own —
+`Cannot read properties of undefined`. Worth stating plainly: a green run from a hand-rolled harness
+proves nothing until the harness is checked against a known-good control. The control run is the
+part that matters, not the run.

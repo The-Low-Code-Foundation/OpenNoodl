@@ -110,8 +110,8 @@ The counter uses the TypeScript parser rather than grep. Grep cannot tell `any` 
 - [x] Baseline committed; CI fails on increases
 - [x] Policy documented in coding standards, including the escape valve
 - [x] Clustering report available to other tasks
-- [x] Easy-win markers removed — everywhere no concurrent task is editing (`noodl-preview` 16 → 3; the AI client 44 → 0). The rest sit in PLAT-002/003 files and are theirs to remove
-- [ ] Count trending down; target under 100 by the end of PLAT-002 and PLAT-003, with the remainder documented — 581 → 568 → 571 recorded, against a HEAD that had drifted to 615
+- [x] Easy-win markers removed — everywhere no concurrent task is editing (`noodl-preview` 16 → 3; the AI client 44 → 0; the io specs 66 `any` → 0). The rest sit in PLAT-002/003 files and are theirs to remove
+- [ ] Count trending down; target under 100 by the end of PLAT-002 and PLAT-003, with the remainder documented — `TSFixme` 581 → 561 and `any` 392 → 314 recorded, against a HEAD that had drifted to 615
 
 ## Risks & Mitigations
 
@@ -125,6 +125,22 @@ The counter uses the TypeScript parser rather than grep. Grep cannot tell `any` 
 ## CHANGELOG
 
 In progress. Full as-built record in [PLAT-004-NOTES.md](./PLAT-004-NOTES.md).
+
+### Slice 3 — 2026-07-24 — the io specs, 66 `any` → 0 (step 5)
+
+- `tests/io` was the largest cluster with no owning task. Sixty of its markers were one idiom:
+  `?.content as any` on the exporter's heterogeneous file list. `tests/io/v2-files.ts` holds that
+  narrowing once and narrows to the schemas the exporter publishes — which are the same types
+  `ImportInput` demands, so the two engines drifting apart is now a compile error in the spec
+  rather than a round-trip that quietly drops a field.
+- Most of the rest were stale casts over fields that are declared (`LegacyGraph.comments`,
+  `visualRoots`, `thumbnailURI`, `dynamicports`). One was a helper typed `Record<string, unknown>`,
+  which no interface satisfies — it had forced an `any` at every call site.
+- 174 io specs pass, identical to a clean pre-change `HEAD` export.
+- Also landed: `npm run typecheck:editor-tests` (NOTES §9) — the editor's specs were outside every
+  tsconfig, so nothing typechecked them. They were already clean; the gate starts at zero.
+- Baseline re-measured at `7a49cae`: **561 `TSFixme`, 314 `any`**, which also banks PLAT-002's
+  wave 4.
 
 ### Slice 2 — 2026-07-24 — the AI client, 44 `TSFixme` → 0 (step 5)
 
