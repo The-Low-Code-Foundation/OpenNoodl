@@ -19,10 +19,39 @@ import { EmbeddedTemplateProvider } from '../../src/editor/src/models/template/E
 import { helloWorldTemplate } from '../../src/editor/src/models/template/templates/hello-world.template';
 import { guid } from '../../src/editor/src/utils/utils';
 
+import type { NodeDefinition, ProjectContent } from '../../src/editor/src/models/template/ProjectTemplate';
+
 const fs = require('fs');
 
 function tempDir(): string {
   return path.join(app.getPath('temp'), `noodl-rev008-template-${guid()}`);
+}
+
+/**
+ * `download()` writes `JSON.stringify(projectContent)`, so the file on disk is a
+ * `ProjectContent` — the provider's own published output type. Reading it as one
+ * means a field these specs assert on cannot be renamed without a compile error.
+ */
+function readProject(dir: string): ProjectContent {
+  return JSON.parse(fs.readFileSync(path.join(dir, 'project.json'), 'utf8'));
+}
+
+/**
+ * The Router's `pages` parameter — `{ startPage, routes }`, the shape the runtime
+ * and the exporter expect (see utils/exporter/router.ts). Nothing in the editor
+ * names it: `NodeDefinition.parameters` is a `Record<string, unknown>` bag, and the
+ * four places that read `pages` are untyped. A guard-based read beats a cast here
+ * for the same reason `metadataAt` did in the io specs — it reports a malformed
+ * fixture as a failed assertion rather than a crash two lines later.
+ */
+interface RouterPages {
+  startPage?: string;
+  routes?: string[];
+}
+
+function routerPages(router: NodeDefinition | undefined): RouterPages {
+  const pages = router?.parameters?.pages;
+  return pages && typeof pages === 'object' ? (pages as RouterPages) : {};
 }
 
 describe('EmbeddedTemplateProvider', () => {
@@ -49,12 +78,12 @@ describe('EmbeddedTemplateProvider', () => {
 
   describe('download("embedded://hello-world")', () => {
     let dir: string;
-    let project: TSFixme;
+    let project: ProjectContent;
 
     beforeEach(async () => {
       dir = tempDir();
       await provider.download('embedded://hello-world', dir);
-      project = JSON.parse(fs.readFileSync(path.join(dir, 'project.json'), 'utf8'));
+      project = readProject(dir);
     });
 
     afterEach(() => {
@@ -86,7 +115,7 @@ describe('EmbeddedTemplateProvider', () => {
     });
 
     it('names the root component so the router has something to mount', () => {
-      const names = project.components.map((c: TSFixme) => c.name);
+      const names = project.components.map((c) => c.name);
       expect(names).toContain('App');
     });
 
@@ -102,7 +131,7 @@ describe('EmbeddedTemplateProvider', () => {
     });
 
     it('points rootNodeId at the root component’s first root node', () => {
-      const rootComp = project.components.find((c: TSFixme) => c.name === project.rootComponent);
+      const rootComp = project.components.find((c) => c.name === project.rootComponent);
       expect(rootComp).toBeDefined();
       expect(rootComp.graph.roots[0].id).toBe(project.rootNodeId);
     });
@@ -113,24 +142,25 @@ describe('EmbeddedTemplateProvider', () => {
     // the runtime only renders a page component that contains exactly one Page
     // node — see utils/exporter/router.ts and viewer router.tsx resetAsync.
     it('configures the App router as a named page router pointing at the home page', () => {
-      const app = project.components.find((c: TSFixme) => c.name === 'App');
-      const router = app.graph.roots.find((n: TSFixme) => n.type === 'Router');
+      const app = project.components.find((c) => c.name === 'App');
+      const router = app.graph.roots.find((n) => n.type === 'Router');
       expect(router).toBeDefined();
       expect(router.parameters.name).toBeTruthy();
-      expect(router.parameters.pages.routes).toContain('/#__page__/Home');
-      expect(router.parameters.pages.startPage).toBe('/#__page__/Home');
+      const pages = routerPages(router);
+      expect(pages.routes).toContain('/#__page__/Home');
+      expect(pages.startPage).toBe('/#__page__/Home');
       // every route must resolve to a real component
-      for (const route of router.parameters.pages.routes) {
-        expect(project.components.some((c: TSFixme) => c.name === route)).toBe(true);
+      for (const route of pages.routes) {
+        expect(project.components.some((c) => c.name === route)).toBe(true);
       }
     });
 
     it('gives the home page a single Page node with the greeting inside it', () => {
-      const home = project.components.find((c: TSFixme) => c.name === '/#__page__/Home');
+      const home = project.components.find((c) => c.name === '/#__page__/Home');
       expect(home).toBeDefined();
-      const pageNodes = home.graph.roots.filter((n: TSFixme) => n.type === 'Page');
+      const pageNodes = home.graph.roots.filter((n) => n.type === 'Page');
       expect(pageNodes.length).toBe(1); // runtime requires exactly one Page root
-      const text = pageNodes[0].children.find((n: TSFixme) => n.type === 'Text');
+      const text = pageNodes[0].children.find((n) => n.type === 'Text');
       expect(text).toBeDefined();
       expect(text.parameters.text).toContain('Hello World');
     });
@@ -144,14 +174,14 @@ describe('EmbeddedTemplateProvider', () => {
     try {
       await provider.download('embedded://hello-world', dirA);
       await provider.download('embedded://hello-world', dirB);
-      const a = JSON.parse(fs.readFileSync(path.join(dirA, 'project.json'), 'utf8'));
-      const b = JSON.parse(fs.readFileSync(path.join(dirB, 'project.json'), 'utf8'));
+      const a = readProject(dirA);
+      const b = readProject(dirB);
 
-      const idsOf = (proj: TSFixme) => proj.components.flatMap((c: TSFixme) => c.graph.roots.map((r: TSFixme) => r.id));
+      const idsOf = (proj: ProjectContent) => proj.components.flatMap((c) => c.graph.roots.map((r) => r.id));
       const idsA = idsOf(a);
       const idsB = idsOf(b);
 
-      expect(idsA.every((id: string) => !idsB.includes(id))).toBe(true);
+      expect(idsA.every((id) => !idsB.includes(id))).toBe(true);
       expect(a.rootNodeId).not.toBe(b.rootNodeId);
     } finally {
       fs.rmSync(dirA, { recursive: true, force: true });

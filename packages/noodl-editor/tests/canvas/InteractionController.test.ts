@@ -1,15 +1,98 @@
 import { InteractionController } from '../../src/editor/src/views/nodegrapheditor/canvas/InteractionController';
 import PopupLayer from '../../src/editor/src/views/popuplayer';
 
+import type { NodeGraphModel } from '../../src/editor/src/models/nodegraphmodel';
+import type { NodeGraphEditorNode } from '../../src/editor/src/views/nodegrapheditor/NodeGraphEditorNode';
+import type { IVector2, MouseEventType, PanAndScale } from '../../src/editor/src/views/nodegrapheditor/canvas/types';
+import type { NodeGraphEditor } from '../../src/editor/src/views/nodegrapheditor';
+
 /**
  * Unit tests with a stubbed owner. Full-stack behaviour (against a real
  * NodeGraphEditor) is covered by tests/nodegraph/canvas-characterisation.spec.js;
  * these pin the controller's state machines in isolation.
  */
-function stubOwner() {
-  const owner: TSFixme = {
+
+/**
+ * Fails to compile — naming the offending member — if `T` declares anything the
+ * editor does not have. The stub cannot be a `Partial<NodeGraphEditor>`: it
+ * supplies jasmine spies where the editor has methods, and a partial of the real
+ * class would demand the real signatures. This keeps the member *names* honest,
+ * which is the check the `TSFixme` here used to cost.
+ */
+type MembersOf<Base, T> = keyof T extends keyof Base
+  ? T
+  : ['not a member of the editor:', Exclude<keyof T, keyof Base>];
+
+/** The slice of `NodeGraphEditor` that `InteractionController` reaches through `owner`. */
+interface StubOwnerShape {
+  readOnly: boolean;
+  model: NodeGraphModel | undefined;
+  roots: NodeGraphEditorNode[];
+  connections: unknown[];
+  highlighted: NodeGraphEditorNode | undefined;
+  highlightedConnection: unknown;
+  selector: {
+    nodes: NodeGraphEditorNode[];
+    active: boolean;
+    select: jasmine.Spy;
+    unselect: jasmine.Spy;
+    isActive(): boolean;
+  };
+  commentLayer: {
+    clearSelection: jasmine.Spy;
+    clearMultiselection: jasmine.Spy;
+    moveSelectedComments: jasmine.Spy;
+    commitSelectedComments: jasmine.Spy;
+    getSelectedComments(): unknown[];
+  };
+  mouseWheelDetector: { changeMode(): 'mouse' | 'trackpad' };
+  getPanAndScale(): PanAndScale;
+  relativeCoordsToNodeGraphCords(pos: IVector2): IVector2;
+  hideInspectors: jasmine.Spy;
+  hideNodeToolbar: jasmine.Spy;
+  setDOMLayerVisible: jasmine.Spy;
+  updateNodeToolbar: jasmine.Spy;
+  clearSelection: jasmine.Spy;
+  multiselectNodes: jasmine.Spy;
+  moveRoots: jasmine.Spy;
+  setCanvasCursor: jasmine.Spy;
+  updateZoomLevel: jasmine.Spy;
+  openRightClickMenu: jasmine.Spy;
+  relayout: jasmine.Spy;
+  repaint: jasmine.Spy;
+}
+
+type StubOwner = MembersOf<NodeGraphEditor, StubOwnerShape>;
+
+/**
+ * The fields of the canvas mouse event these specs vary. `spaceKey` is the
+ * editor's own addition, not a DOM one. `InteractionController.mouse` still takes
+ * `TSFixme` for this argument — that marker belongs to the source, and to PLAT-002.
+ */
+interface MouseEventStub {
+  button?: number;
+  type?: string;
+  shiftKey?: boolean;
+  ctrlKey?: boolean;
+  metaKey?: boolean;
+  spaceKey?: boolean;
+}
+
+/** The wheel-event fields the controller reads in `handleMouseWheelEvent`. */
+interface WheelEventStub {
+  preventDefault(): void;
+  ctrlKey: boolean;
+  metaKey: boolean;
+  deltaX?: number;
+  deltaY: number;
+  offsetX?: number;
+  offsetY?: number;
+}
+
+function stubOwner(): StubOwner {
+  return {
     readOnly: false,
-    model: {},
+    model: {} as NodeGraphModel,
     roots: [],
     connections: [],
     highlighted: undefined,
@@ -29,7 +112,7 @@ function stubOwner() {
       getSelectedComments: () => []
     },
     getPanAndScale: () => ({ scale: 2, x: 0, y: 0 }),
-    relativeCoordsToNodeGraphCords: (pos: TSFixme) => ({ x: pos.x / 2, y: pos.y / 2 }),
+    relativeCoordsToNodeGraphCords: (pos: IVector2) => ({ x: pos.x / 2, y: pos.y / 2 }),
     hideInspectors: jasmine.createSpy('hideInspectors'),
     hideNodeToolbar: jasmine.createSpy('hideNodeToolbar'),
     setDOMLayerVisible: jasmine.createSpy('setDOMLayerVisible'),
@@ -44,31 +127,34 @@ function stubOwner() {
     repaint: jasmine.createSpy('repaint'),
     mouseWheelDetector: { changeMode: () => 'mouse' }
   };
-  return owner;
 }
 
 describe('InteractionController', () => {
-  let owner: TSFixme;
+  let owner: StubOwner;
   let controller: InteractionController;
-  let popupLayerBefore: TSFixme;
+  let popupLayerBefore: PopupLayer;
 
   beforeEach(() => {
     popupLayerBefore = PopupLayer.instance;
-    PopupLayer.instance = {
+    const popupStub: Pick<PopupLayer, 'isDragging' | 'hidePopup' | 'hideTooltip'> = {
       isDragging: () => false,
       hidePopup() {},
       hideTooltip() {}
-    } as TSFixme;
+    };
+    // The controller only asks the popup layer these three questions; standing up
+    // a real one needs the editor's DOM.
+    PopupLayer.instance = popupStub as PopupLayer;
 
     owner = stubOwner();
-    controller = new InteractionController(owner);
+    // `owner` is deliberately a slice, not an editor — see StubOwnerShape.
+    controller = new InteractionController(owner as unknown as NodeGraphEditor);
   });
 
   afterEach(() => {
     PopupLayer.instance = popupLayerBefore;
   });
 
-  function mouse(type: TSFixme, x: number, y: number, evt?: TSFixme) {
+  function mouse(type: MouseEventType, x: number, y: number, evt?: MouseEventStub) {
     return controller.mouse(type, { x, y }, Object.assign({ button: 0 }, evt || {}));
   }
 
@@ -131,7 +217,7 @@ describe('InteractionController', () => {
     expect(controller.multiselectMouseDown).toBeUndefined();
 
     owner.readOnly = false;
-    owner.highlighted = { some: 'node' };
+    owner.highlighted = {} as NodeGraphEditorNode; // only its presence is checked
     mouse('down', 100, 100);
     expect(controller.multiselectMouseDown).toBeUndefined();
   });
@@ -145,26 +231,28 @@ describe('InteractionController', () => {
   });
 
   it('routes ctrl/meta or mouse-device wheel to zoom', () => {
-    controller.handleMouseWheelEvent({
+    const wheel: WheelEventStub = {
       preventDefault() {},
       ctrlKey: false,
       metaKey: false,
       deltaY: 100,
       offsetX: 10,
       offsetY: 20
-    });
+    };
+    controller.handleMouseWheelEvent(wheel);
     expect(owner.updateZoomLevel).toHaveBeenCalledWith(10, 20, -100 / 100);
   });
 
   it('routes trackpad wheel (non-zoom) to panning', () => {
     owner.mouseWheelDetector = { changeMode: () => 'trackpad' };
-    controller.handleMouseWheelEvent({
+    const wheel: WheelEventStub = {
       preventDefault() {},
       ctrlKey: false,
       metaKey: false,
       deltaX: 10,
       deltaY: 30
-    });
+    };
+    controller.handleMouseWheelEvent(wheel);
     // scale 2 → deltas divided by scale, negated
     expect(owner.moveRoots).toHaveBeenCalledWith(-5, -15);
     expect(owner.updateZoomLevel).not.toHaveBeenCalled();
@@ -181,7 +269,7 @@ describe('InteractionController', () => {
 
   it('startDragging* respect read-only mode', () => {
     owner.readOnly = true;
-    controller.startDraggingNode({} as TSFixme);
+    controller.startDraggingNode({} as NodeGraphEditorNode); // returns before touching it
     expect(controller.draggingNodes).toBeNull();
     expect(controller.startDraggingConnection({})).toBe(false);
     expect(controller.draggingConnection).toBeUndefined();

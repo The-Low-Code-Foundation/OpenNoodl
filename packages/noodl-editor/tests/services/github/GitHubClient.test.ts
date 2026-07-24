@@ -2,14 +2,67 @@
  * Unit tests for GitHubClient
  *
  * Tests caching, rate limiting, error handling, and auth integration
+ *
+ * NOTE: this is a Jest spec, and `noodl-editor` has no Jest runner — its suite is
+ * jasmine under Electron (`tests/index.ts` → webpack → run-electron-tests), and
+ * `tests/services/index.ts` deliberately does not export this file. So it is
+ * typechecked by `npm run typecheck:editor-tests` and never executed. Same for
+ * `tests/services/StyleAnalyzer.test.ts`, whose comment claiming it "runs via
+ * npm run test:editor" is wrong — that script is the Electron runner.
  */
-
-/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 
 import { GitHubClient } from '../../../src/editor/src/services/github/GitHubClient';
 import { GitHubOAuthService } from '../../../src/editor/src/services/GitHubOAuthService';
+
+import type { GitHubRateLimit } from '../../../src/editor/src/services/github/GitHubTypes';
+
+/**
+ * The private surface these specs drive. The behaviours under test — cache TTL
+ * expiry, invalidation on mutation, the 403 rate-limit path — are only reachable
+ * through members GitHubClient keeps private, and TypeScript offers no way to
+ * name a private member from outside the class. So the shape is declared once,
+ * here, and reached through a single documented cast instead of fifteen bare
+ * `as any` at the call sites.
+ */
+interface GitHubClientInternals {
+  initializeOctokit(): Promise<void>;
+  setCache<T>(key: string, data: T, etag?: string): void;
+  cache: Map<string, unknown>;
+  rateLimit: GitHubRateLimit | null;
+}
+
+function internals(client: GitHubClient): GitHubClientInternals {
+  return client as unknown as GitHubClientInternals;
+}
+
+/** The singleton slot, reset between specs. */
+interface GitHubClientStatics {
+  _instance: GitHubClient | undefined;
+}
+
+/**
+ * The Octokit methods the mock factory below installs. Declaring them means a
+ * typo in `mockOctokit.issues.listForRepo` fails to compile rather than silently
+ * stubbing nothing — which, with `as any`, is what would have happened.
+ */
+type MockedCall = jest.Mock<(...args: unknown[]) => Promise<unknown>>;
+
+interface MockOctokit {
+  repos: { get: MockedCall; listForAuthenticatedUser: MockedCall };
+  issues: {
+    listForRepo: MockedCall;
+    get: MockedCall;
+    create: MockedCall;
+    update: MockedCall;
+    listComments: MockedCall;
+    createComment: MockedCall;
+    listLabelsForRepo: MockedCall;
+  };
+  pulls: { list: MockedCall; get: MockedCall; listCommits: MockedCall };
+  rateLimit: { get: MockedCall };
+}
 
 // Mock Octokit
 jest.mock('@octokit/rest', () => ({
@@ -52,11 +105,11 @@ jest.mock('../../../src/editor/src/services/GitHubOAuthService', () => ({
 
 describe('GitHubClient', () => {
   let client: GitHubClient;
-  let mockOctokit: any;
+  let mockOctokit: MockOctokit;
 
   beforeEach(() => {
     // Reset singleton
-    (GitHubClient as any)._instance = undefined;
+    (GitHubClient as unknown as GitHubClientStatics)._instance = undefined;
 
     // Clear all mocks
     jest.clearAllMocks();
@@ -123,7 +176,7 @@ describe('GitHubClient', () => {
       });
 
       // Initialize client
-      await (client as any).initializeOctokit();
+      await internals(client).initializeOctokit();
     });
 
     it('should cache API responses', async () => {
@@ -191,14 +244,14 @@ describe('GitHubClient', () => {
 
     it('should clear all cache on disconnect', () => {
       // Add some cache entries
-      (client as any).setCache('test-key', { data: 'test' });
-      expect((client as any).cache.size).toBeGreaterThan(0);
+      internals(client).setCache('test-key', { data: 'test' });
+      expect(internals(client).cache.size).toBeGreaterThan(0);
 
       // Disconnect
       client.clearCache();
 
       // Cache should be empty
-      expect((client as any).cache.size).toBe(0);
+      expect(internals(client).cache.size).toBe(0);
     });
   });
 
@@ -217,7 +270,7 @@ describe('GitHubClient', () => {
         }
       });
 
-      await (client as any).initializeOctokit();
+      await internals(client).initializeOctokit();
     });
 
     it('should track rate limit from response headers', async () => {
@@ -305,7 +358,7 @@ describe('GitHubClient', () => {
         }
       });
 
-      await (client as any).initializeOctokit();
+      await internals(client).initializeOctokit();
     });
 
     it('should handle 404 errors with friendly message', async () => {
@@ -332,7 +385,7 @@ describe('GitHubClient', () => {
       const resetTime = Math.floor(Date.now() / 1000) + 1800;
 
       // Set rate limit in client
-      (client as any).rateLimit = {
+      internals(client).rateLimit = {
         limit: 5000,
         remaining: 0,
         reset: resetTime,
@@ -381,7 +434,7 @@ describe('GitHubClient', () => {
         }
       });
 
-      await (client as any).initializeOctokit();
+      await internals(client).initializeOctokit();
     });
 
     it('should list issues with filters', async () => {
@@ -481,20 +534,20 @@ describe('GitHubClient', () => {
         }
       });
 
-      await (client as any).initializeOctokit();
+      await internals(client).initializeOctokit();
 
       expect(client.isReady()).toBe(true);
     });
 
     it('should clear cache on demand', () => {
-      (client as any).setCache('test-1', { data: 'value1' });
-      (client as any).setCache('test-2', { data: 'value2' });
+      internals(client).setCache('test-1', { data: 'value1' });
+      internals(client).setCache('test-2', { data: 'value2' });
 
-      expect((client as any).cache.size).toBe(2);
+      expect(internals(client).cache.size).toBe(2);
 
       client.clearCache();
 
-      expect((client as any).cache.size).toBe(0);
+      expect(internals(client).cache.size).toBe(0);
     });
   });
 });
