@@ -13,7 +13,7 @@ export * from './model';
 export { CatalogIndex, levenshtein, nearest } from './CatalogIndex';
 export type { NodeCatalog, CatalogNode, CatalogPort, Plug } from './CatalogIndex';
 export { defaultCatalog, loadDefaultCatalog } from './catalog';
-export { fromLegacyProject } from './normalize';
+export { fromLegacyProject, normalizeV2Component } from './normalize';
 export type { LegacyProjectLike } from './normalize';
 export { SemanticValidator, validateProject } from './SemanticValidator';
 export { ALL_RULES } from './rules';

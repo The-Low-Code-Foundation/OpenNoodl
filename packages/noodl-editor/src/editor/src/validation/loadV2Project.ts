@@ -17,41 +17,15 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-import { NormComponent, NormConnection, NormNode, NormProject, buildComponentRefs } from './model';
-import { fromLegacyProject, LegacyProjectLike } from './normalize';
+import { NormComponent, NormProject, buildComponentRefs } from './model';
+import { fromLegacyProject, LegacyProjectLike, normalizeV2Component } from './normalize';
+
+// Moved to ./normalize (it is pure); re-exported here so existing consumers
+// (the MCP server's editor-deps, the CLI) keep their import path.
+export { normalizeV2Component };
 
 function readJson(file: string): any {
   return JSON.parse(fs.readFileSync(file, 'utf8'));
-}
-
-function instancePortNames(node: any): string[] {
-  const names: string[] = [];
-  for (const p of node.ports ?? []) if (p && typeof p.name === 'string') names.push(p.name);
-  for (const p of node.dynamicports ?? []) if (p && typeof p.name === 'string') names.push(p.name);
-  return names;
-}
-
-/**
- * Normalise one v2 component (already-flat nodes.json + connections.json).
- * Exported for consumers that hold v2 files in memory rather than on disk
- * (the MCP server validates candidate writes before anything hits the disk).
- */
-export function normalizeV2Component(name: string, nodesFile: any, connectionsFile: any): NormComponent {
-  const nodes: NormNode[] = (nodesFile?.nodes ?? []).map((n: any) => ({
-    id: n.id,
-    type: n.type,
-    label: n.label,
-    parent: n.parent,
-    children: Array.isArray(n.children) ? n.children : [],
-    instancePorts: instancePortNames(n)
-  }));
-  const connections: NormConnection[] = (connectionsFile?.connections ?? []).map((c: any) => ({
-    fromId: c.fromId,
-    fromProperty: c.fromProperty,
-    toId: c.toId,
-    toProperty: c.toProperty
-  }));
-  return { name, nodes, connections };
 }
 
 function isV2Directory(dir: string): boolean {

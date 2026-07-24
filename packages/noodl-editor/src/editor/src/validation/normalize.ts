@@ -70,6 +70,31 @@ function flatten(roots: LegacyNodeLike[]): NormNode[] {
   return out;
 }
 
+/**
+ * Normalise one v2 component (already-flat nodes.json + connections.json).
+ * Lives here (not in ./loadV2Project) because it is pure: consumers that hold
+ * v2 files in memory — the MCP server's write-gate, and AIX-002's authoring
+ * loop validating a candidate before anything exists on disk — must be able to
+ * use it from the renderer, where the fs-importing loader is off-limits.
+ */
+export function normalizeV2Component(name: string, nodesFile: any, connectionsFile: any): NormComponent {
+  const nodes: NormNode[] = (nodesFile?.nodes ?? []).map((n: any) => ({
+    id: n.id,
+    type: n.type,
+    label: n.label,
+    parent: n.parent,
+    children: Array.isArray(n.children) ? n.children : [],
+    instancePorts: instancePortNames(n)
+  }));
+  const connections: NormConnection[] = (connectionsFile?.connections ?? []).map((c: any) => ({
+    fromId: c.fromId,
+    fromProperty: c.fromProperty,
+    toId: c.toId,
+    toProperty: c.toProperty
+  }));
+  return { name, nodes, connections };
+}
+
 /** Convert a legacy / in-memory project object into the normalized model. */
 export function fromLegacyProject(project: LegacyProjectLike): NormProject {
   const components: NormComponent[] = [];

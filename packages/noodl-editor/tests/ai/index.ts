@@ -12,3 +12,9 @@ export * from './client.test';
 // the one spec that drives a response stubs the client.
 export * from './explain-context.test';
 export * from './explain-session.test';
+
+// AIX-002: the authoring loop. Fully offline — the chat function is a script;
+// the validation gate runs against the real project corpus.
+export * from './authoring-candidate.test';
+export * from './authoring-validate.test';
+export * from './authoring-session.test';
