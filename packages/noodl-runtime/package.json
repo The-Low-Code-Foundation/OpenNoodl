@@ -3,13 +3,16 @@
   "version": "2.7.0",
   "main": "noodl-runtime.js",
   "scripts": {
-    "test": "jest"
+    "test": "jest",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
     "lodash.difference": "^4.5.0",
     "lodash.isequal": "^4.5.0"
   },
   "devDependencies": {
-    "jest": "^28.1.0"
+    "jest": "^28.1.0",
+    "ts-jest": "^29.4.1",
+    "typescript": "^5.9.3"
   }
 }

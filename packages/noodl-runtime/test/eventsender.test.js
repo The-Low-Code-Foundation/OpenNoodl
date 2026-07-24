@@ -1,4 +1,4 @@
-const EventSender = require('./eventsender');
+const EventSender = require('../src/eventsender');
 
 describe('EventSender', ()=> {
 

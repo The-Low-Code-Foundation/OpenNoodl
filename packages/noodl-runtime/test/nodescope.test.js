@@ -1,8 +1,8 @@
-const NodeScope = require('./nodescope');
-const NodeContext = require('./nodecontext');
-const NodeDefinition = require('./nodedefinition');
-const { ComponentModel } = require('./models/componentmodel');
-const GraphModel = require('./models/graphmodel');
+const NodeScope = require('../src/nodescope');
+const NodeContext = require('../src/nodecontext');
+const NodeDefinition = require('../src/nodedefinition');
+const ComponentModel = require('../src/models/componentmodel');
+const GraphModel = require('../src/models/graphmodel');
 
 function createTestNodeDefinition({onInit, onDelete}) {
     return NodeDefinition.defineNode({

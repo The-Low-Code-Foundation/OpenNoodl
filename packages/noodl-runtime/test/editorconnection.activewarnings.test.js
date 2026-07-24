@@ -1,4 +1,4 @@
-const ActiveWarnings = require('./editorconnection.activewarnings');
+const ActiveWarnings = require('../src/editorconnection.activewarnings');
 
 describe('Tracks active warnings that are sent to the editor', ()=>{
     let activeWarnings;

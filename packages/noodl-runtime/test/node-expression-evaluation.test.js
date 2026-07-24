@@ -4,7 +4,8 @@
  * Tests the integration of expression parameters with the Node base class.
  * Verifies that expressions are evaluated correctly and results are type-coerced.
  *
- * @jest-environment jsdom
+ * The runtime is framework-neutral and touches no DOM APIs, so these run in the
+ * default node environment.
  */
 
 /* eslint-env jest */
