@@ -608,3 +608,15 @@ committed build output.)
   launches Electron on an error-free compile, so read the `[Editor]`/`[Viewer]` prefix in
   `.logs/dev.log` before blaming your own change, and commit with an explicit pathspec
   (`git commit -m … -- <your paths>`) because the index holds other sessions' staged work.
+  Wave 5b hit **two attribution failures** that the pathspec rule alone does not prevent:
+  1. **Never `git rm` in a shared tree.** It stages the deletion into the shared index, so
+     the next session to commit without a pathspec takes it. All six of this wave's
+     deletions (`view.js`, `view.d.ts`, both templates, both vendored jQuery files) landed
+     in `b483d85`, a PLAT-004 commit, minutes before `cdc7e8f`. Use plain `rm` and let your
+     own pathspec commit record the deletion.
+  2. **Pathspec by file, not by directory, for docs.** `-- dev-docs/tasks/phase-14-…/`
+     swept PLAT-004's uncommitted `PLAT-004-NOTES.md` edit into `cdc7e8f`; their own commit
+     `78ba241` then carried only the baseline files its message describes.
+  Neither hurt the tree — the content is all present and correct — but both split the
+  history. Left as-is rather than rewritten: rebasing shared history while two sessions are
+  actively committing is worse than a misattributed diff.
