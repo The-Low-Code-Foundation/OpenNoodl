@@ -61,10 +61,10 @@ const AnimateToValue: NodeDefinitionOptions = {
       }
     }) as AnimationTimer;
   },
-  // Returns a bare number, which the editor's inspector popup renders as nothing —
-  // see PLAT-003 NOTES §13. Kept as-is: correcting it changes what the editor shows.
-  getInspectInfo(this: AnimateToValueInstance) {
-    return this._internal.currentNumber as unknown as InspectInfo;
+  getInspectInfo(this: AnimateToValueInstance): InspectInfo {
+    // Wrapped as a value entry — a bare number renders as nothing in the
+    // editor's inspector popup (DEBT-006, PLAT-003 NOTES §13.3).
+    return [{ type: 'value', value: this._internal.currentNumber }];
   },
   inputs: {
     targetValue: {

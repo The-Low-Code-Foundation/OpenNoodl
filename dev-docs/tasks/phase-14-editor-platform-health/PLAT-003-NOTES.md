@@ -1280,3 +1280,48 @@ by DEBT-006).
 3. **Make `@noodl/runtime` ship declarations** (carried from §16/§18).
 4. **Do not raise `strict` yet** (spec step 8), and step 9 (editor-side `TSFixme` sweep)
    stays deferred.
+
+## 20. The findings ledger, closed out (DEBT-006, 2026-07-25)
+
+Every accumulated finding (§9.3, §11.3, §13.3, §15.3, §17.6, §17.7, §19.4) is now fixed or
+closed with a recorded decision. Item-by-item:
+
+- **§17.7 #1 cloudfunction2** — fixed earlier by DEBT-001 (see §17.7).
+- **§19.4 #1 navigate-back `_createSignal`** — fixed: `EdgeTriggeredInput.createSetter`,
+  `@ts-expect-error` removed. Back Actions no longer throw at load.
+- **§19.4 #2 Component Stack URL write** — fixed: `_findPage` now carries the per-page
+  `path`, so written URLs use the same custom `pagePath-…` that inbound matching honours.
+- **§19.4 #3 PopupTransition crossfade** — fixed by wiring the node's real `fadein` into
+  the In/Out branch (default false → untouched projects render identically).
+- **§9.3 `def.deprecated` dropped** — fixed; catalog regenerated in its own commit
+  (Form/Fieldset/Label now `isDeprecated: true`).
+- **§9.3 `def.frame` dead path** — **decision: retained.** The port-registration half is
+  historical module-facing API surface; deletion only saves dead in-repo branches and risks
+  third-party React nodes. Recorded at the interface.
+- **§11.3 `Noodl.runDeployed`** — fixed: group/text now read `Noodl.deployed`. Deployed
+  apps no longer build tooltip HTML (verified by rebuilding the deploy bundle). Side
+  effect: the catalog generator (whose `Noodl` proxy returned a truthy noop for
+  `runDeployed`) now runs the tooltip path and the catalog gains real port descriptions.
+- **§13.3/§17.7 #4 bare-value inspectors** — fixed across the cluster (Switch, Number
+  Remapper, Animate To Value, variablenode2) plus the trivial runtime siblings (and/or/
+  expression): all wrap as `[{ type: 'value', value }]`. Upload File's inspector now shows
+  the `cloudFile` it actually tracks instead of the never-written `_internal.response`.
+- **§17.7 #2 foreachactions** — deleted: the `itemAction` mechanism (dead publishing block,
+  broken `signalItemAction` call) is gone; the node keeps its real Repeater handshake.
+- **§17.7 #3 collectionnode2 `store`** — **decision: deleted** (declaring the port is a
+  product decision a debt task shouldn't make). Auto-copy is now unconditional in code as
+  it always was in behaviour.
+- **§17.7 #5 collectionnode-new** — deleted `setCollectionID` and the unreachable
+  `collectionId` fallback on the `id` output.
+- **§15.3 tidy** — the dead `parentComponentName` write is gone;
+  `verifyemail`'s guard flag is named `verifyEmailScheduled`; `resetpassword` and
+  `requestpasswordreset` use their own warning keys.
+- **§17.6 persisthelper.js** — deleted (orphaned, zero importers).
+- **§4 QueryBuilder `id` vs `objectId`** — **decision: real adapter bug, tests were
+  right.** SchemaManager creates `"objectId" TEXT PRIMARY KEY` and the relation subquery
+  already used it, but the CRUD builders (and LocalSQLAdapter's raw lookups) emitted a
+  nonexistent `"id"` column — only the mock-mode regex accepting both hid it. All aligned
+  to `objectId`.
+
+Runtime jest baseline after the batch: **247 passing / 0 failing** (was 225/20 at the
+start of phase 14.5, 243/4 after DEBT-003). `catalog:check` green after regeneration.

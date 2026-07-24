@@ -7317,12 +7317,7 @@
           "isSignal": true
         }
       ],
-      "dynamicPorts": {
-        "mechanisms": [
-          "runtime-discovered"
-        ],
-        "description": "Some ports are discovered at runtime from user code, parameters or connected components, and are pushed to the editor per instance; the static port list below is incomplete for such instances."
-      }
+      "dynamicPorts": null
     },
     {
       "typeName": "Form",
@@ -8893,6 +8888,7 @@
           },
           "isSignal": false,
           "default": false,
+          "description": "Clip content Controls if elements that are too big to fit will be clipped Enabled Disabled",
           "index": 19
         },
         {
@@ -8975,6 +8971,7 @@
           },
           "isSignal": false,
           "default": "nowrap",
+          "description": "Multiline wrap Elements will wrap to the next line when there's not enough space Using a horizontal layout Using a vertical layout",
           "index": 15
         },
         {
@@ -21847,6 +21844,7 @@
           },
           "isSignal": false,
           "default": "normal",
+          "description": "Word break Control where line breaks are allowed - Normal: Break on spaces and other whitespace characters - Break All: Allow line breaks between any two characters, including inside words",
           "index": 27
         },
         {

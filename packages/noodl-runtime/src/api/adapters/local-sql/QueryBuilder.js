@@ -339,8 +339,10 @@ function buildSelect(options, schema) {
   let selectClause = '*';
   if (options.select) {
     const selectArray = Array.isArray(options.select) ? options.select : options.select.split(',');
-    // Always include id
-    const fields = new Set(['id', ...selectArray.map((s) => s.trim())]);
+    // Always include the record key. DEBT-006: this said 'id', a column the
+    // schema never creates — tables key on "objectId" (SchemaManager), which the
+    // relation subquery in buildWhere already used.
+    const fields = new Set(['objectId', ...selectArray.map((s) => s.trim())]);
     selectClause = Array.from(fields)
       .map((f) => escapeColumn(f))
       .join(', ');
@@ -418,7 +420,7 @@ function buildInsert(options, id) {
 
   const now = new Date().toISOString();
   const data = {
-    id,
+    objectId: id,
     createdAt: now,
     updatedAt: now,
     ...options.data
@@ -477,7 +479,7 @@ function buildUpdate(options) {
   const recordId = options.id || options.objectId;
   params.push(recordId);
 
-  const sql = `UPDATE ${table} SET ${setClause.join(', ')} WHERE "id" = ?`;
+  const sql = `UPDATE ${table} SET ${setClause.join(', ')} WHERE "objectId" = ?`;
 
   return { sql, params };
 }
@@ -494,7 +496,7 @@ function buildDelete(options) {
   const table = escapeTable(options.collection);
   // Use id or objectId for backwards compatibility
   const recordId = options.id || options.objectId;
-  const sql = `DELETE FROM ${table} WHERE "id" = ?`;
+  const sql = `DELETE FROM ${table} WHERE "objectId" = ?`;
   return { sql, params: [recordId] };
 }
 
@@ -527,7 +529,7 @@ function buildIncrement(options) {
   const recordId = options.id || options.objectId;
   params.push(recordId);
 
-  const sql = `UPDATE ${table} SET ${setClause.join(', ')} WHERE "id" = ?`;
+  const sql = `UPDATE ${table} SET ${setClause.join(', ')} WHERE "objectId" = ?`;
 
   return { sql, params };
 }

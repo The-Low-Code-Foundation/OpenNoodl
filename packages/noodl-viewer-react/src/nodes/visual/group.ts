@@ -435,8 +435,11 @@ function defineTooltips(node) {
   });
 }
 
+// The deploy bootstrap sets `Noodl.deployed` (static/deploy/index.js); the old
+// `Noodl.runDeployed` read was never set anywhere, so editor-only tooltip HTML
+// was built and shipped inside deployed apps (DEBT-006, PLAT-003 NOTES §11.3).
 // eslint-disable-next-line no-undef
-if (!Noodl.runDeployed) {
+if (!Noodl.deployed) {
   defineTooltips(GroupNode);
 }
 

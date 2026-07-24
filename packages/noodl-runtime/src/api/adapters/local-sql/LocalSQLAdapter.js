@@ -428,7 +428,7 @@ class LocalSQLAdapter {
     try {
       this._ensureTable(options.collection);
 
-      const sql = `SELECT * FROM ${QueryBuilder.escapeTable(options.collection)} WHERE "id" = ?`;
+      const sql = `SELECT * FROM ${QueryBuilder.escapeTable(options.collection)} WHERE "objectId" = ?`;
       const recordId = options.id || options.objectId;
       const row = this.db.prepare(sql).get(recordId);
 
@@ -479,7 +479,7 @@ class LocalSQLAdapter {
 
       // Fetch the created record to get all fields
       const createdRow = this.db
-        .prepare(`SELECT * FROM ${QueryBuilder.escapeTable(options.collection)} WHERE "id" = ?`)
+        .prepare(`SELECT * FROM ${QueryBuilder.escapeTable(options.collection)} WHERE "objectId" = ?`)
         .get(recordId);
 
       const record = this._rowToRecord(createdRow, options.collection);
@@ -523,7 +523,7 @@ class LocalSQLAdapter {
 
       // Fetch the updated record
       const updatedRow = this.db
-        .prepare(`SELECT * FROM ${QueryBuilder.escapeTable(options.collection)} WHERE "id" = ?`)
+        .prepare(`SELECT * FROM ${QueryBuilder.escapeTable(options.collection)} WHERE "objectId" = ?`)
         .get(recordId);
 
       const record = this._rowToRecord(updatedRow, options.collection);
@@ -650,7 +650,7 @@ class LocalSQLAdapter {
       // Fetch the updated record
       const recordId = options.id || options.objectId;
       const updatedRow = this.db
-        .prepare(`SELECT * FROM ${QueryBuilder.escapeTable(options.collection)} WHERE "id" = ?`)
+        .prepare(`SELECT * FROM ${QueryBuilder.escapeTable(options.collection)} WHERE "objectId" = ?`)
         .get(recordId);
 
       const record = this._rowToRecord(updatedRow, options.collection);

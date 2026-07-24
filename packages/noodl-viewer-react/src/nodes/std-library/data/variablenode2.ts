@@ -55,13 +55,12 @@ const VariableNodeDefinition: NodeDefinitionOptions = {
     internal.variablesModel = Model.get('--ndl--global-variables');
     internal.variablesModel.on('change', this._internal.onModelChangedCallback);
   },
-  // Returns the raw variable value, so any variable holding a number, boolean or object
-  // renders as nothing in the editor's inspector popup — see PLAT-003 NOTES §13. Only a
-  // string variable inspects correctly. Kept as-is: correcting it changes what the editor
-  // shows.
   getInspectInfo(this: VariableNodeInstance): InspectInfo {
+    // Wrapped as a value entry — the raw value only rendered for string
+    // variables; numbers, booleans and objects showed nothing in the editor's
+    // inspector popup (DEBT-006, PLAT-003 NOTES §13.3 / §17.7 #4).
     if (this._internal.name) {
-      return this._internal.variablesModel.get(this._internal.name) as InspectInfo;
+      return [{ type: 'value', value: this._internal.variablesModel.get(this._internal.name) }];
     }
 
     return '[No value set]';

@@ -8,7 +8,8 @@ const AndNode = {
     this._internal.inputs = [];
   },
   getInspectInfo() {
-    return and(this._internal.inputs);
+    // Wrapped: a bare boolean renders as nothing in the inspector (DEBT-006).
+    return [{ type: 'value', value: and(this._internal.inputs) }];
   },
   numberedInputs: {
     input: {

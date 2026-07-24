@@ -21,10 +21,10 @@ const Switch: NodeDefinitionOptions = {
     this._internal.state = false;
     this._internal.initialized = false;
   },
-  // Returns a bare boolean, which the editor's inspector popup renders as nothing —
-  // see PLAT-003 NOTES §13. Kept as-is: correcting it changes what the editor shows.
-  getInspectInfo(this: SwitchInstance) {
-    return this._internal.state as unknown as InspectInfo;
+  getInspectInfo(this: SwitchInstance): InspectInfo {
+    // Wrapped as a value entry — a bare boolean renders as nothing in the
+    // editor's inspector popup (DEBT-006, PLAT-003 NOTES §13.3).
+    return [{ type: 'value', value: this._internal.state }];
   },
   inputs: {
     on: {

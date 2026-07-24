@@ -12,11 +12,7 @@ interface VerifyEmailInstance extends NodeInstance {
     /** Message from the last failed attempt. */
     error?: string;
   };
-  /**
-   * Copy-pasted from the Log Out node, which is why it is named for logging out. Harmless —
-   * it is a private per-instance flag and this node has nothing else using the name.
-   */
-  logOutScheduled?: boolean;
+  verifyEmailScheduled?: boolean;
   setError(err: string): void;
   scheduleVerifyEmail(): void;
 }
@@ -104,11 +100,11 @@ const VerifyEmailNodeDefinition: NodeDefinitionOptions = {
       }
     },
     scheduleVerifyEmail: function (this: VerifyEmailInstance) {
-      if (this.logOutScheduled === true) return;
-      this.logOutScheduled = true;
+      if (this.verifyEmailScheduled === true) return;
+      this.verifyEmailScheduled = true;
 
       this.scheduleAfterInputsHaveUpdated(() => {
-        this.logOutScheduled = false;
+        this.verifyEmailScheduled = false;
 
         UserService.instance.verifyEmail({
           token: this._internal.token,

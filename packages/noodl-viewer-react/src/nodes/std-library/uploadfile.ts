@@ -26,10 +26,11 @@ const UploadFile: NodeDefinitionOptions = {
   docs: 'https://docs.noodl.net/nodes/data/cloud-data/upload-file',
   category: 'Cloud Services',
   color: 'data',
-  // `_internal.response` is never assigned anywhere in this node, so this always returns
-  // `undefined` and the inspector shows nothing. Left alone — see PLAT-003 NOTES §13.
-  getInspectInfo(this: UploadFileInstance) {
-    return (this._internal as { response?: unknown }).response as InspectInfo;
+  // DEBT-006: the old inspector read `_internal.response`, which nothing ever
+  // wrote (PLAT-003 NOTES §13.3). Inspect the state the node actually tracks.
+  getInspectInfo(this: UploadFileInstance): InspectInfo {
+    if (this._internal.cloudFile) return [{ type: 'value', value: this._internal.cloudFile }];
+    return '[Not uploaded yet]';
   },
   inputs: {
     file: {

@@ -371,8 +371,13 @@ export interface ReactOutputPropDefinition extends Omit<OutputPortDefinition, 'g
  * Nothing in the repository sets this, so `useFrame` is always false and the
  * `Layout.size`/`Layout.align` pass in {@link NoodlReactComponent.render} never
  * runs. Layout reaches nodes through `inputCss` and
- * `node-shared-port-definitions` instead. Kept because it is a documented part
- * of the shape and removing it is a behavioural change, not a typing one.
+ * `node-shared-port-definitions` instead.
+ *
+ * DEBT-006 decision (2026-07-25): **retained**. Deleting it would only save a
+ * few dead branches in-repo, while third-party modules that define React nodes
+ * could legitimately pass `frame` (the port-registration half works and is part
+ * of the historical module API surface). Revisit if DEBT-008's module-compat
+ * work establishes that no module can reach this path.
  */
 export interface ReactNodeFrame {
   /** `true`, or an options object forwarded to `addDimensions`. */

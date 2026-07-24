@@ -13,7 +13,7 @@ export default extendSetComponentObjectProperties({
   name: 'net.noodl.SetParentComponentObjectProperties',
   displayName: 'Set Parent Component Object Properties',
   docs: 'https://docs.noodl.net/nodes/component-utilities/set-parent-component-object-properties',
-  getComponentObjectId: function (this: NodeInstance & { _internal: { parentComponentName?: string } }) {
+  getComponentObjectId: function (this: NodeInstance) {
     function getParentComponent(component: ComponentInstanceLike): ComponentInstanceLike | undefined {
       let parent: ComponentInstanceLike | undefined;
       if (component.getRoots().length > 0) {
@@ -47,8 +47,6 @@ export default extendSetComponentObjectProperties({
 
     const parent = getParentComponent(this.nodeScope.componentOwner);
     if (!parent) return;
-
-    this._internal.parentComponentName = parent.name;
 
     return 'componentState' + parent.getInstanceId();
   }

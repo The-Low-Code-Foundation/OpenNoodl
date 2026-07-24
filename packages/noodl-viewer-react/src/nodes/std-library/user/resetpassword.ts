@@ -91,7 +91,7 @@ const ResetPasswordNodeDefinition: NodeDefinitionOptions = {
         this.context.editorConnection.sendWarning(
           this.nodeScope.componentOwner.name,
           this.id,
-          'user-verify-email-warning',
+          'user-reset-password-warning',
           {
             message: err,
             showGlobally: true
@@ -104,7 +104,7 @@ const ResetPasswordNodeDefinition: NodeDefinitionOptions = {
         this.context.editorConnection.clearWarning(
           this.nodeScope.componentOwner.name,
           this.id,
-          'user-verify-email-warning'
+          'user-reset-password-warning'
         );
       }
     },

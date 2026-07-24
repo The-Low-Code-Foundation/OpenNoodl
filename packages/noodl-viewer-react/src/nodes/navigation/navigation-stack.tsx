@@ -50,12 +50,11 @@ interface PageListItem {
 }
 
 /**
- * What `_findPage` returns. Note there is no `path` here: the per-page `pagePath-…`
- * input lands in `_internal.pageInfo[id].path`, which `matchPageFromUrl` reads — but
- * `getRelativeURL` reads `top.pageInfo.path`, i.e. *this* object, where it is always
- * `undefined`. URL matching therefore honours a custom path while URL writing falls
- * back to the label-derived slug. Pre-existing asymmetry, kept as-is; see PLAT-003
- * NOTES §19.
+ * What `_findPage` returns. `path` carries the per-page `pagePath-…` input (from
+ * `_internal.pageInfo[id].path`) so that `getRelativeURL` writes the same custom
+ * path `matchPageFromUrl` matches on. The two were asymmetric until DEBT-006:
+ * inbound URLs honoured a custom path while written URLs always used the
+ * label-derived slug (PLAT-003 NOTES §19.4 #2).
  */
 interface FoundPage {
   component: string;
@@ -299,7 +298,8 @@ const PageStack = {
         return {
           component: String(pageInfo.component),
           label: String(pageRef.label),
-          id: String(pageIdOrLabel)
+          id: String(pageIdOrLabel),
+          path: pageInfo.path !== undefined ? String(pageInfo.path) : undefined
         };
       }
 
@@ -309,7 +309,8 @@ const PageStack = {
         return {
           component: String(pageInfo.component),
           label: String(pageRef.label),
-          id: String(pageRef.id)
+          id: String(pageRef.id),
+          path: pageInfo.path !== undefined ? String(pageInfo.path) : undefined
         };
       }
 

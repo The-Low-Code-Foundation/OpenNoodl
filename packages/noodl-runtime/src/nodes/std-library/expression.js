@@ -118,7 +118,8 @@ const ExpressionNode = {
     }
   },
   getInspectInfo() {
-    return this._internal.cachedValue;
+    // Wrapped: bare numbers/booleans render as nothing in the inspector (DEBT-006).
+    return [{ type: 'value', value: this._internal.cachedValue }];
   },
   inputs: {
     expression: {

@@ -1,5 +1,4 @@
-import { EdgeTriggeredInput } from '@noodl/runtime';
-import type { NodeContextLike, NodeDefinitionOptions, NodeInstance, NodeModule } from '@noodl/types';
+import type { NodeDefinitionOptions, NodeInstance, NodeModule } from '@noodl/types';
 
 /** `this` inside the Repeater Item node. */
 interface ForEachActionsInstance extends NodeInstance {
@@ -9,13 +8,10 @@ interface ForEachActionsInstance extends NodeInstance {
      * `Try Remove` handshake to complete.
      */
     removeCompletedCallback?(): void;
-    actionParameters?: Record<string, string>;
   };
   getItemId(): string | undefined;
   signalAdded(): void;
   tryRemove(callback: () => void): void;
-  itemActionTriggered(name: string): void;
-  setItemActionParameter(name: string): void;
 }
 
 /**
@@ -42,18 +38,6 @@ const ForEachActionsDefinition: NodeDefinitionOptions = {
         this._internal.removeCompletedCallback && this._internal.removeCompletedCallback();
       }
     }
-    /*   itemActions:{
-        type:{name:'stringlist',allowEditOnly:true},
-        group:'Actions',
-        set:function(value) {
-        }
-      },
-      itemActionParameters:{
-        type:{name:'stringlist',allowEditOnly:true},
-        group:'Action Parameters',
-        set:function(value) {
-        }
-      }    */
   },
   outputs: {
     added: {
@@ -95,89 +79,18 @@ const ForEachActionsDefinition: NodeDefinitionOptions = {
           callback();
         });
       }
-    },
-    // Calls `signalItemAction`, which no node defines — see PLAT-003 NOTES §17. Unreachable
-    // today because the `itemAction-` ports that would register this input are only created
-    // by the commented-out `setup` below.
-    itemActionTriggered(this: ForEachActionsInstance, name: string) {
-      this.scheduleAfterInputsHaveUpdated(() => {
-        const itemId = this.getItemId();
-        const parentForEach = this.nodeScope.componentOwner._forEachNode as NodeInstance & {
-          signalItemAction(name: string, itemId: string, parameters: Record<string, string>): void;
-        };
-        parentForEach.signalItemAction(name, itemId, this._internal.actionParameters || {});
-      });
-    },
-    setItemActionParameter(this: ForEachActionsInstance, name: string) {
-      if (!this._internal.actionParameters) this._internal.actionParameters = {};
-      this._internal.actionParameters[name] = name;
-    },
-    registerInputIfNeeded: function (this: ForEachActionsInstance, name: string) {
-      if (this.hasInput(name)) {
-        return;
-      }
-
-      if (name.startsWith('itemAction-'))
-        return this.registerInput(name, {
-          set: EdgeTriggeredInput.createSetter({
-            valueChangedToTrue: this.itemActionTriggered.bind(this, name)
-          })
-        });
-
-      if (name.startsWith('itemActionParameter-'))
-        return this.registerInput(name, {
-          set: this.setItemActionParameter.bind(this, name)
-        });
     }
   }
 };
 
+// DEBT-006: this module's setup published `itemAction-…` ports and the node's
+// `itemActionTriggered` called `signalItemAction`, which no node has ever
+// defined — the publishing block itself had been commented out for years
+// (PLAT-003 NOTES §17.7 #2, "dead *and* broken"). The whole mechanism is gone.
 const ForEachActionsModule: NodeModule = {
   node: ForEachActionsDefinition,
-  setup: function (context: NodeContextLike) {
-    if (!context.editorConnection || !context.editorConnection.isRunningLocally()) {
-      return;
-    }
-
-    /*  graphModel.on("nodeAdded.For Each Actions", function (node) {
-      function _updatePorts() {
-        var ports = [];
-
-        var actions = node.parameters['itemActions'];
-        if(actions) {
-          actions.split(',').forEach((a) => {
-            ports.push({
-              name:'itemAction-' + a,
-              displayName:a,
-              plug:'input',
-              type:'signal',
-              group:'Actions',
-            })
-          })
-        }
-
-        var parameters = node.parameters['itemActionParameters'];
-        if(parameters) {
-          parameters.split(',').forEach((p) => {
-            ports.push({
-              name:'itemActionParameter-' + p,
-              displayName:p,
-              plug:'input',
-              type:'*',
-              group:'Parameters',
-            })
-          })
-        }
-
-        context.editorConnection.sendDynamicPorts(node.id, ports);
-      }
-
-      _updatePorts();
-      node.on('parameterUpdated',function(event) {
-        if(event.name === 'itemActions' || event.name === 'itemActionParameters') _updatePorts();
-      })
-
-    })*/
+  setup() {
+    // Handled in editor adapter
   }
 };
 

@@ -28,13 +28,11 @@ interface CollectionNodeInstance extends NodeInstance {
     sourceCollectionChangedCallback(): void;
   };
   hasScheduledSetCollection?: boolean;
-  hasScheduledStore?: boolean;
   hasScheduledCopyItems?: boolean;
   setCollectionID(id: string): void;
   setCollection(collection: CollectionLike): void;
   setSourceCollection(collection: CollectionLike): void;
   scheduleSetCollection(): void;
-  scheduleStore(): void;
   scheduleCopyItems(): void;
   _copySourceItems(): void;
 }
@@ -65,12 +63,11 @@ const CollectionNode: NodeDefinitionOptions = {
       });
     };
 
-    // When the source collection has changed, simply copy items into this collection
-    // Unreachable in practice: this node declares no `store` input, so
-    // `isInputConnected('store')` is always false. See PLAT-003 NOTES §17.
+    // When the source collection has changed, simply copy items into this collection.
+    // DEBT-006: the old `store`-connection guard here (and the scheduleStore method it
+    // paired with) tested a port this node never declared — deleted; auto-copy is, and
+    // always was, the only behaviour (PLAT-003 NOTES §17.7 #3).
     this._internal.sourceCollectionChangedCallback = () => {
-      if (this.isInputConnected('store') === true) return; // Ignore if we have explicit store connection
-
       this.scheduleCopyItems();
     };
   },
@@ -118,12 +115,9 @@ const CollectionNode: NodeDefinitionOptions = {
         if (value === this._internal.collection) return;
 
         this._internal.pendingSourceCollection = value;
-        if (this.isInputConnected('store') === false) {
-          // Don't auto copy if we have connections to store
-          this.scheduleAfterInputsHaveUpdated(() => {
-            this.setSourceCollection(value);
-          });
-        }
+        this.scheduleAfterInputsHaveUpdated(() => {
+          this.setSourceCollection(value);
+        });
       }
     },
     fetch: {
@@ -219,18 +213,6 @@ const CollectionNode: NodeDefinitionOptions = {
         this.hasScheduledSetCollection = false;
         this.setCollectionID(this._internal.collectionId);
         this.sendSignalOnOutput('fetched');
-      });
-    },
-    // Unreachable: nothing calls this. It is the `store` half of the input pair the
-    // `store` port would have driven — see PLAT-003 NOTES §17.
-    scheduleStore: function (this: CollectionNodeInstance) {
-      if (this.hasScheduledStore) return;
-      this.hasScheduledStore = true;
-
-      const internal = this._internal;
-      this.scheduleAfterInputsHaveUpdated(() => {
-        this.hasScheduledStore = false;
-        this.setSourceCollection(internal.pendingSourceCollection);
       });
     },
     _copySourceItems: function (this: CollectionNodeInstance) {

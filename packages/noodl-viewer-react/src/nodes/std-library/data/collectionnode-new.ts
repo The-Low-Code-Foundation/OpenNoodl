@@ -9,16 +9,10 @@ const Collection = CollectionImport as CollectionModule;
 interface CollectionNewInstance extends NodeInstance {
   _internal: {
     collection?: CollectionLike;
-    /**
-     * Never assigned: this node has no `collectionId` input, so the `id` output's
-     * fallback branch and {@link setCollectionID} below are both unreachable.
-     */
-    collectionId?: string;
     /** Whatever arrived on `items` — an array, or another node's collection. */
     sourceCollection?: CollectionLike;
   };
   hasScheduledNew?: boolean;
-  setCollectionID(id: string): void;
   setCollection(collection: CollectionLike): void;
   scheduleNew(): void;
 }
@@ -54,7 +48,9 @@ const CollectionNewNode: NodeDefinitionOptions = {
       displayName: 'Id',
       group: 'General',
       getter: function (this: CollectionNewInstance) {
-        return this._internal.collection ? this._internal.collection.getId() : this._internal.collectionId;
+        // DEBT-006: the old fallback read `_internal.collectionId`, which nothing
+        // could assign — the node has no `collectionId` input (PLAT-003 NOTES §17.7 #5).
+        return this._internal.collection ? this._internal.collection.getId() : undefined;
       }
     },
     created: {
@@ -64,9 +60,6 @@ const CollectionNewNode: NodeDefinitionOptions = {
     }
   },
   prototypeExtensions: {
-    setCollectionID: function (this: CollectionNewInstance, id: string) {
-      this.setCollection(Collection.get(id));
-    },
     setCollection: function (this: CollectionNewInstance, collection: CollectionLike) {
       this._internal.collection = collection;
       this.flagOutputDirty('id');

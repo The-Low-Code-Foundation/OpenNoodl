@@ -73,7 +73,7 @@ const RequestPasswordResetNodeDefinition: NodeDefinitionOptions = {
         this.context.editorConnection.sendWarning(
           this.nodeScope.componentOwner.name,
           this.id,
-          'user-send-email-verification-warning',
+          'user-request-password-reset-warning',
           {
             message: err,
             showGlobally: true
@@ -86,7 +86,7 @@ const RequestPasswordResetNodeDefinition: NodeDefinitionOptions = {
         this.context.editorConnection.clearWarning(
           this.nodeScope.componentOwner.name,
           this.id,
-          'user-send-email-verification-warning'
+          'user-request-password-reset-warning'
         );
       }
     },

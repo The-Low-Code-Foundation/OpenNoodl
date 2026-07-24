@@ -27,10 +27,10 @@ const NumberRemapperNode: NodeDefinitionOptions = {
     internal._maxOutputValue = 1;
     internal._clampOutput = true;
   },
-  // Returns a bare number, which the editor's inspector popup renders as nothing —
-  // see PLAT-003 NOTES §13. Kept as-is: correcting it changes what the editor shows.
-  getInspectInfo(this: NumberRemapperInstance) {
-    return this._internal._remappedValue as unknown as InspectInfo;
+  getInspectInfo(this: NumberRemapperInstance): InspectInfo {
+    // Wrapped as a value entry — a bare number renders as nothing in the
+    // editor's inspector popup (DEBT-006, PLAT-003 NOTES §13.3).
+    return [{ type: 'value', value: this._internal._remappedValue }];
   },
   inputs: {
     inputValue: {

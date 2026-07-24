@@ -7,6 +7,7 @@ import type {
   NodeInstance,
   NodeModule
 } from '@noodl/types';
+import { EdgeTriggeredInput } from '@noodl/runtime';
 
 interface NavigateBackInstance extends NodeInstance {
   _internal: {
@@ -97,13 +98,7 @@ const NavigateBack: NodeDefinitionOptions = {
 
       if (name.startsWith('backAction-'))
         return this.registerInput(name, {
-          // Latent defect, PLAT-003 NOTES §19: `_createSignal` is not defined in this
-          // file or anywhere else in the repository, so registering a `backAction-…`
-          // input throws a ReferenceError at runtime. The working equivalent is
-          // `EdgeTriggeredInput.createSetter` (see closepopup.ts). Left broken here
-          // because fixing it changes runtime behaviour, which a typing slice must not.
-          // @ts-expect-error -- see above
-          set: _createSignal({
+          set: EdgeTriggeredInput.createSetter({
             valueChangedToTrue: this.backActionTriggered.bind(this, name)
           })
         });

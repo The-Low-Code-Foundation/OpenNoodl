@@ -8,7 +8,8 @@ const OrNode = {
     this._internal.inputs = [];
   },
   getInspectInfo() {
-    return this._internal.inputs.some(isTrue);
+    // Wrapped: a bare boolean renders as nothing in the inspector (DEBT-006).
+    return [{ type: 'value', value: this._internal.inputs.some(isTrue) }];
   },
   numberedInputs: {
     input: {

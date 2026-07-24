@@ -11,15 +11,6 @@ class PopupTransition extends Transition {
   ease: (t: number) => number;
   fadein: boolean;
   zoom: { value: number; unit: string };
-  /**
-   * Read in `update` for the In/Out branch but assigned nowhere in this class — it is
-   * `PushTransition`'s parameter, seemingly copied along with the zoom branch. Always
-   * `undefined`, so the In/Out popup transition never crossfades; `tr-fadein` is the
-   * parameter this class actually exposes, and only the translate branch reads it.
-   * Kept as-is: making In/Out honour `fadein` would change visible behaviour.
-   */
-  crossfade?: boolean;
-
   constructor(from: ReactNodeInstance, to: ReactNodeInstance, params: TransitionParams) {
     super();
 
@@ -49,7 +40,13 @@ class PopupTransition extends Transition {
 
       this.to.setStyle({
         transform: 'scale(' + (1 - zoom * (1 - t)) + ')',
-        opacity: this.crossfade ? t : 1
+        // DEBT-006: this branch used to read `this.crossfade`, PushTransition's
+        // parameter, which nothing here ever assigned — so In/Out popups never
+        // faded and the node's own `tr-fadein` parameter was only honoured by
+        // the translate branch (PLAT-003 NOTES §19.4 #3). `fadein` now applies
+        // to both branches; it defaults to false, so untouched projects render
+        // exactly as before.
+        opacity: this.fadein ? t : 1
       });
     } else {
       const dist = this.distance.value;
