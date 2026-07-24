@@ -8,8 +8,6 @@ declare module 'react' {
 
 type TSFixme = any;
 
-type NodeConstructor = any;
-
 type NodeContext = any;
 
 type GraphModel = any;

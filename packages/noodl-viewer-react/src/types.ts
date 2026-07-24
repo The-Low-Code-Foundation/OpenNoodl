@@ -1,6 +1,6 @@
 import React, { ReactElement, ReactPortal } from 'react';
 
-import type { NodeConstructor } from '../typings/global';
+import type { ReactNodeInstance } from './react-component-node';
 
 export namespace Noodl {
   export type SizeMode = 'explicit' | 'contentWidth' | 'contentHeight' | 'contentSize';
@@ -25,7 +25,11 @@ export namespace Noodl {
   };
 
   export interface ReactProps {
-    noodlNode: NodeConstructor;
+    /**
+     * The node rendering this component. Present only when the node definition
+     * sets `noodlNodeAsProp`.
+     */
+    noodlNode: ReactNodeInstance;
     style: React.CSSProperties;
     styles: Record<string, React.CSSProperties>;
     className: string;

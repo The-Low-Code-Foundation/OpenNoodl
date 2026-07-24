@@ -1,6 +1,6 @@
 import NoodlRuntime from '@noodl/runtime';
 
-import type { NodeConstructor } from '../../../typings/global';
+import type { ReactNodeInstance } from '../../react-component-node';
 
 export type NavigateArgs = {
   target: string;
@@ -44,7 +44,7 @@ export class RouterHandler {
     }, 1);
   }
 
-  registerRouter(name: string, router: NodeConstructor) {
+  registerRouter(name: string, router: ReactNodeInstance) {
     name = name || 'Main';
     if (!this._routers[name]) {
       this._routers[name] = [];
@@ -71,7 +71,7 @@ export class RouterHandler {
     }
   }
 
-  deregisterRouter(name: string, router: NodeConstructor) {
+  deregisterRouter(name: string, router: ReactNodeInstance) {
     name = name || 'Main';
 
     if (!this._routers[name]) {

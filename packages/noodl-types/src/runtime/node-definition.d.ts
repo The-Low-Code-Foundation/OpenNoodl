@@ -301,6 +301,22 @@ export interface VisualStateDefinition {
 }
 
 /**
+ * How a parameter animates when the node changes visual state.
+ *
+ * A transition without a `curve` is not a transition: both the runtime and the editor
+ * treat `curve` as the marker of a real entry, so `{}` means "snap to the new value".
+ */
+export interface StateTransition {
+  /** Cubic-bezier control points. Its presence is what makes the entry count. */
+  curve?: number[];
+  /** Duration in milliseconds. */
+  dur?: number;
+  /** Delay before starting, in milliseconds. */
+  delay?: number;
+  [extra: string]: unknown;
+}
+
+/**
  * A named, shared parameter set that any node of `typename` can adopt.
  *
  * `parameters` are the neutral values; `stateParameters` holds per-visual-state overrides,
@@ -312,6 +328,17 @@ export interface NodeVariant {
   typename: string;
   parameters: Record<string, unknown>;
   stateParameters: Record<string, Record<string, unknown>>;
+
+  /**
+   * Per-state, per-parameter transitions, keyed by state name and then by parameter.
+   * Merged with — and overridden by — the same field on the node's own model.
+   */
+  stateTransitions?: Record<string, Record<string, StateTransition>>;
+  /**
+   * Fallback transition for every parameter of a state, keyed by state name. Used only
+   * when {@link stateTransitions} has nothing for the parameter in question.
+   */
+  defaultStateTransitions?: Record<string, StateTransition>;
 }
 
 /**

@@ -2,13 +2,425 @@
 
 import React from 'react';
 
+import type {
+  DynamicPortEntry,
+  InputPortDefinition,
+  InspectInfo,
+  NodeContextLike,
+  NodeDefinitionOptions,
+  NodeInstance,
+  NodeScopeLike,
+  NodeVariant,
+  OutputPortDefinition,
+  PortLabelTruncationMode,
+  PortType,
+  StateTransition,
+  VisualStateDefinition
+} from '@noodl/types';
+
 import DOMBoundingBoxObserver from './dom-boundingbox-oberver';
 import Layout from './layout';
 import mergeDeep from './mergedeep';
 import NodeSharedPortDefinitions from './node-shared-port-definitions';
 import transitionParameter from './node-transitions';
+import type Styles from './styles';
 
-function addOutputPropHandler(node, propCallbacks, propPath) {
+// ===========================================================================
+// The React node-definition API
+//
+// `createNodeFromReactComponent` is the bridge between two authoring models.
+// A node author writes a *React* node definition ({@link ReactNodeDefinition})
+// — a React component plus port declarations phrased in terms of React props
+// and CSS — and this module compiles it into the *runtime* node definition
+// (`NodeDefinitionOptions` from `@noodl/types`) that `defineNode` understands.
+//
+// The two models differ in one important way, and it is the reason this file
+// exists: a runtime input port is a `set(value)` callback, whereas a React node
+// declares *where the value goes* (`inputProps` → a React prop, `inputCss` → a
+// style property) and lets this module synthesise the setter. Authors
+// therefore never write `set` on `inputProps`/`inputCss`; it is generated onto
+// the very object they wrote, in place. The types below mark those fields as
+// generated rather than pretending they are absent.
+//
+// Types are declared here rather than in `@noodl/types` on purpose: this is a
+// React-specific authoring surface, and `@noodl/types` is shared with the
+// cloud runtime, which has neither React nor a DOM.
+// ===========================================================================
+
+/**
+ * A style object as this module manipulates it.
+ *
+ * Deliberately *not* `React.CSSProperties`. Styles here are read and written by
+ * computed name (`styleObject[p] = …`), and their values have already had units
+ * appended (`'12px'`, `'translateX(-50%) …'`), so every useful property would
+ * end up widened to `string` anyway. Claiming `CSSProperties` would assert a
+ * precision this code does not have — and would reject the plain `{ display:
+ * 'flex', flexDirection: 'column' }` literals that nodes actually write, whose
+ * values widen to `string`.
+ */
+export type StyleObject = Record<string, any>;
+
+/** The props a React node's component receives. */
+export interface ReactNodeProps {
+  /** Per-`styleTag` style objects, for nodes that style more than one element. */
+  styles: Record<string, StyleObject>;
+  [prop: string]: any;
+}
+
+/** The subset of `NodeContext` a visual node reaches for. */
+export interface ReactNodeContext extends NodeContextLike {
+  frameNumber: number;
+  eventEmitter: {
+    once(event: string, listener: (...args: any[]) => void): void;
+    emit(event: string, ...args: any[]): void;
+    [extra: string]: any;
+  };
+  scheduleUpdate(): void;
+  getDefaultValueForInput(nodeType: string, inputName: string): unknown;
+  variants: {
+    getVariant(typename: string, variantName: string): NodeVariant | undefined;
+    [extra: string]: any;
+  };
+  /**
+   * Project-wide colours, text styles and variants.
+   *
+   * `NodeContextLike` leaves this `unknown` because the cloud runtime has no
+   * styles at all; in the browser viewer it is always the `Styles` service.
+   */
+  styles: Styles;
+  /**
+   * Records which node currently holds keyboard focus. Installed by `viewer.jsx`,
+   * so it exists only in the browser viewer.
+   */
+  setNodeFocused(node: ReactNodeInstance, focused: boolean): void;
+  /** True when the runtime is rendering inside the editor's canvas preview. */
+  runningInCanvas?: boolean;
+}
+
+/** The component instance that owns a node scope, as this file walks it. */
+export interface ComponentOwnerLike {
+  name: string;
+  parent?: ReactNodeInstance;
+  parentNodeScope?: ReactNodeScope;
+  [extra: string]: unknown;
+}
+
+/** The subset of `NodeScope` a visual node reaches for. */
+export interface ReactNodeScope extends NodeScopeLike {
+  componentOwner: ComponentOwnerLike;
+  context: ReactNodeContext;
+}
+
+/**
+ * The graph-model entry behind a node, which is where variants and per-visual-
+ * state parameters live.
+ *
+ * Absent on nodes the runtime synthesises rather than reads from the project —
+ * a Router's page instances, for example. {@link ReactNodeInstance.setVisualStates}
+ * checks for exactly that and gives up early.
+ */
+export interface ReactNodeModel {
+  type: string;
+  parameters: Record<string, any>;
+  stateParameters?: Record<string, Record<string, any>>;
+  stateTransitions?: Record<string, Record<string, StateTransition>>;
+  defaultStateTransitions?: Record<string, StateTransition>;
+  children?: unknown[];
+  [extra: string]: unknown;
+}
+
+/** A running parameter transition, as `node-transitions` hands it back. */
+export interface RunningTransition {
+  stop(): void;
+}
+
+/**
+ * `this` inside every callback on a React node definition, and the type of
+ * `props.noodlNode` in the React component the node renders.
+ *
+ * It is the runtime `NodeInstance` plus everything `createNodeFromReactComponent`
+ * mixes in below — child management, styling, variants and visual states.
+ *
+ * The index signature is deliberate and load-bearing: `def.methods` puts
+ * author-defined members straight onto the prototype, and `initialize` is free
+ * to hang per-instance scratch state off `this`. Typing that away would make
+ * roughly every node in the standard library fail to compile. It costs typo
+ * detection on *undeclared* members only — the members declared here are still
+ * checked.
+ */
+export interface ReactNodeInstance extends NodeInstance {
+  context: ReactNodeContext;
+  nodeScope: ReactNodeScope;
+  model?: ReactNodeModel;
+
+  // --- react plumbing -----------------------------------------------------
+  /** Identity of this node's React element; changing it forces a full remount. */
+  reactKey: string;
+  /** The component `def.getReactComponent()` returned. */
+  reactComponent: React.ComponentType<any> | string;
+  /** The `NoodlReactComponent` wrapper instance. */
+  reactComponentRef: NoodlReactComponent | null;
+  /** Whatever the *inner* component put in its `ref` — often, but not always, a DOM node. */
+  innerReactComponentRef: unknown;
+  /** Set by the wrapper's ref callback when the ref turns out to be a DOM node. */
+  _domElement?: HTMLElement;
+  /** The frame this node last rendered on; used to render at most once per frame. */
+  renderedAtFrame: number;
+  forceUpdateScheduled: boolean;
+
+  props: ReactNodeProps;
+  /** The node's own inline styles, applied to the root element. */
+  style: StyleObject;
+  /** Values pushed from React props, read back by the generated output getters. */
+  outputPropValues: Record<string, unknown>;
+  /** Styles parsed out of the `styleCss` input, so they can be removed on change. */
+  customCssStyles?: Record<string, string>;
+  /** True when the node passes itself to its React component as a prop. */
+  noodlNodeAsProp: boolean;
+
+  // --- children -----------------------------------------------------------
+  children: ReactNodeInstance[];
+  parent?: ReactNodeInstance;
+  childIndex: number;
+  childrenCount: number;
+  /** Memoised result of {@link renderChildren}; cleared whenever children change. */
+  cachedChildren: React.ReactNode;
+  updateChildIndiciesScheduled: boolean;
+
+  addChild(child: ReactNodeInstance, index?: number): void;
+  removeChild(child: ReactNodeInstance): void;
+  contains(node: ReactNodeInstance): boolean;
+  getChildren(): ReactNodeInstance[];
+  isChild(child: ReactNodeInstance): boolean;
+  getChildRoot(): ReactNodeInstance;
+  setChildIndex(index: number): void;
+  updateChildIndices(): void;
+  updateChildrenCount(): void;
+  scheduleUpdateChildCountAndIndicies(): void;
+
+  // --- mounting and rendering ---------------------------------------------
+  /** Mirrors the `mounted` input. A false value keeps the node out of the tree. */
+  wantsToBeMounted: boolean;
+  didCallTriggerDidMount?: boolean;
+  /**
+   * Whether the node participates in frame-based layout — see
+   * {@link ReactNodeDefinition.frame}, which nothing currently sets.
+   */
+  useFrame: boolean;
+
+  render(): React.ReactElement | undefined;
+  renderChildren(): React.ReactNode;
+  forceUpdate(): void;
+  /** Re-key the node so React rebuilds its subtree from scratch. */
+  _resetReactVirtualDOM(): void;
+  /** SSR only: fire `didMount` without a browser lifecycle to hang it off. */
+  triggerDidMount(): void;
+
+  // --- geometry -----------------------------------------------------------
+  boundingBoxObserver: {
+    addObserver(): void;
+    removeObserver(): void;
+    setTarget(element: HTMLElement | null): void;
+    [extra: string]: any;
+  };
+  clientBoundingRect: Partial<DOMRect>;
+
+  // --- styling ------------------------------------------------------------
+  setStyle(newStyles: Record<string, any>, styleTag?: string): void;
+  removeStyle(styles: string[], styleTag?: string): void;
+  getStyle(style: string): unknown;
+  updateAdvancedStyle(params: { content?: string }): void;
+  getRef(): NoodlReactComponent | null;
+  getDOMElement(): HTMLElement | null;
+  /** The node this one renders inside, hopping out of the component if it is a root. */
+  getVisualParentNode(): ReactNodeInstance | undefined;
+
+  // --- variants and visual states -----------------------------------------
+  variant?: NodeVariant;
+  currentVisualStates?: string[];
+  _transitions?: Record<string, RunningTransition>;
+
+  setVariant(variant: NodeVariant): void;
+  getParameter(name: string): unknown;
+  getParametersForStates(states: string[]): Record<string, any>;
+  setVisualStates(newStates: string[]): void;
+  _getVisualStates(): string[];
+  _getNewState(prevStates: string[] | undefined, newStates: string[]): string;
+  _getDefaultTransition(state: string): StateTransition | undefined;
+  _getStateTransition(state: string): Record<string, StateTransition>;
+  _stopStateTransitions(): void;
+
+  /**
+   * True when the input's value arrives over a connection, in which case
+   * variants and visual states must not overwrite it. Runtime internal.
+   */
+  _hasInputBeenSetFromAConnection(inputName: string): boolean;
+
+  [extra: string]: any;
+}
+
+/** A callback an author writes on a React node definition. */
+type ReactNodeCallback<TArgs extends any[] = any[], TResult = void> = (
+  this: ReactNodeInstance,
+  ...args: TArgs
+) => TResult;
+
+/**
+ * An input that writes a React prop.
+ *
+ * The value is stored at `this.props[name]`, or at `this.props[propPath][name]`
+ * when {@link propPath} is set. A `type` of `'node'` is special: the connected
+ * node is rendered and the resulting element passed as the prop.
+ */
+export interface ReactInputPropDefinition extends Omit<InputPortDefinition, 'set'> {
+  /** Nests the prop one level down, e.g. `propPath: 'inputProps'`. */
+  propPath?: string;
+  /** Called after the prop is written. */
+  onChange?: ReactNodeCallback<[any]>;
+  /** Generated by this module. Authors do not write it. */
+  set?: ReactNodeCallback<[any]>;
+}
+
+/**
+ * An input that writes a CSS property.
+ *
+ * The value goes to `this.style`, or to `this.props.styles[styleTag]` when
+ * {@link styleTag} is set — which is how a node styles more than one element.
+ */
+export interface ReactInputCssDefinition extends Omit<InputPortDefinition, 'set'> {
+  /** The style property to write; defaults to the port's own name. */
+  targetStyleProperty?: string;
+  /** Marks the element (via a `noodl-style-tag` attribute) this style applies to. */
+  styleTag?: string;
+  /** Set `false` to declare a default for the editor without applying it at runtime. */
+  applyDefault?: boolean;
+  /** Called after the style is written. */
+  onChange?: ReactNodeCallback<[any]>;
+  /** Generated by this module. Authors do not write it. */
+  set?: ReactNodeCallback<[any]>;
+}
+
+/**
+ * An output driven by a React prop — a callback the component invokes.
+ *
+ * Either the port *is* the prop (the component calls `props.onClick()`), or
+ * {@link props} declares a group of prop callbacks that all feed this one port.
+ */
+export interface ReactOutputPropDefinition extends Omit<OutputPortDefinition, 'get'> {
+  /** Nests the prop one level down, matching {@link ReactInputPropDefinition.propPath}. */
+  propPath?: string;
+  /** Several prop callbacks handled together, keyed by prop name. */
+  props?: Record<string, ReactNodeCallback>;
+  /** Derives the port's value from the prop callback's arguments; defaults to the first. */
+  getValue?: ReactNodeCallback<any[], unknown>;
+  /** Called after the value is stored and the port flagged dirty. */
+  onChange?: ReactNodeCallback<[any]>;
+  /** Generated by this module for non-signal outputs. Authors do not write it. */
+  get?: (this: ReactNodeInstance) => unknown;
+}
+
+/**
+ * Frame-based layout opt-in.
+ *
+ * Nothing in the repository sets this, so `useFrame` is always false and the
+ * `Layout.size`/`Layout.align` pass in {@link NoodlReactComponent.render} never
+ * runs. Layout reaches nodes through `inputCss` and
+ * `node-shared-port-definitions` instead. Kept because it is a documented part
+ * of the shape and removing it is a behavioural change, not a typing one.
+ */
+export interface ReactNodeFrame {
+  /** `true`, or an options object forwarded to `addDimensions`. */
+  dimensions?: boolean | Record<string, unknown>;
+  position?: boolean;
+  margins?: boolean;
+  padding?: boolean;
+  align?: boolean;
+}
+
+/**
+ * What an author passes to {@link createNodeFromReactComponent}.
+ *
+ * Fields not listed here are **not** forwarded to the runtime definition. Two
+ * are worth calling out because nodes in this repository set them and they do
+ * nothing:
+ *
+ * - `category` — every React node is registered as `'Visual'`, regardless.
+ * - `deprecated` — dropped, so the node still reports itself as current.
+ *
+ * Both are declared below so the mistake is visible at the call site rather
+ * than only in the catalog.
+ */
+export interface ReactNodeDefinition {
+  /** Canonical type string, as it appears in project files. */
+  name: string;
+  /** Returns the React component to render. Called once per instance. */
+  getReactComponent: ReactNodeCallback<[], React.ComponentType<any> | string>;
+
+  displayName?: string;
+  displayNodeName?: string;
+  docs?: string;
+  allowChildren?: boolean;
+  allowAsExportRoot?: boolean;
+  singleton?: boolean;
+  useVariants?: boolean;
+  visualStates?: VisualStateDefinition[];
+  usePortAsLabel?: string;
+  portLabelTruncationMode?: PortLabelTruncationMode;
+  connectionPanel?: unknown;
+  nodeDoubleClickAction?: unknown;
+  dynamicports?: DynamicPortEntry[];
+
+  /** Passes the node itself to the React component as `props.noodlNode`. */
+  noodlNodeAsProp?: boolean;
+  /** Set `false` to omit the standard `mounted` input. */
+  mountedInput?: boolean;
+  /** See {@link ReactNodeFrame} — currently unused. */
+  frame?: ReactNodeFrame;
+
+  /** Styles applied to every instance before any input is set. */
+  defaultCss?: StyleObject;
+
+  /** Ports written as ordinary runtime inputs, with their own `set`. */
+  inputs?: Record<string, InputPortDefinition>;
+  /** Ports that write React props. */
+  inputProps?: Record<string, ReactInputPropDefinition>;
+  /** Ports that write CSS properties. */
+  inputCss?: Record<string, ReactInputCssDefinition>;
+  /** Ports written as ordinary runtime outputs, with their own `get`. */
+  outputs?: Record<string, OutputPortDefinition>;
+  /** Ports driven by React prop callbacks. */
+  outputProps?: Record<string, ReactOutputPropDefinition>;
+
+  initialize?: ReactNodeCallback;
+  methods?: Record<string, ReactNodeCallback<any[], any>>;
+  getInspectInfo?: ReactNodeCallback<[], InspectInfo>;
+  nodeScopeDidInitialize?: ReactNodeCallback;
+  /** Runs once at registration, not per instance. */
+  setup?: (context: ReactNodeContext, graphModel: unknown) => void;
+
+  /** @deprecated Ignored — React nodes are always registered as `'Visual'`. */
+  category?: string;
+  /** @deprecated Ignored — not forwarded to the runtime definition. */
+  deprecated?: boolean;
+
+  [extra: string]: unknown;
+}
+
+/**
+ * What `createNodeFromReactComponent` returns: the shape
+ * `NoodlRuntime.registerNode` expects for a definition that also needs
+ * registration-time setup.
+ */
+export interface ReactNodeModule {
+  node: NodeDefinitionOptions;
+  setup?: (context: ReactNodeContext, graphModel: unknown) => void;
+}
+
+function addOutputPropHandler(
+  node: ReactNodeInstance,
+  propCallbacks: Record<string, ReactNodeCallback>,
+  propPath?: string
+) {
   const props = propPath ? node.props[propPath] : node.props;
 
   for (const propName in propCallbacks) {
@@ -25,7 +437,7 @@ function addOutputPropHandler(node, propCallbacks, propPath) {
   node.forceUpdate();
 }
 
-function addPrimitiveOutputPropHandler(node, name, output) {
+function addPrimitiveOutputPropHandler(node: ReactNodeInstance, name: string, output: ReactOutputPropDefinition) {
   let prop;
 
   if (output.type === 'signal') {
@@ -33,7 +445,7 @@ function addPrimitiveOutputPropHandler(node, name, output) {
       node.sendSignalOnOutput(name);
     };
   } else {
-    prop = (...args) => {
+    prop = (...args: any[]) => {
       node.outputPropValues[name] = output.getValue ? output.getValue.call(node, ...args) : args[0];
       node.flagOutputDirty(name);
       output.onChange && output.onChange.call(node, node.outputPropValues[name]);
@@ -43,10 +455,10 @@ function addPrimitiveOutputPropHandler(node, name, output) {
   addOutputPropHandler(node, { [name]: prop }, output.propPath);
 }
 
-function defineRegularInputProp(input, name) {
+function defineRegularInputProp(input: ReactInputPropDefinition, name: string) {
   if (!input.type) throw new Error(`input ${name} is missing a type`);
 
-  if (input.type.units) {
+  if ((input.type as PortType).units) {
     input.set = function (value) {
       const props = input.propPath ? this.props[input.propPath] : this.props;
       if (value && value.value !== undefined) {
@@ -75,7 +487,7 @@ function defineRegularInputProp(input, name) {
   }
 }
 
-function flattenArray(target, array) {
+function flattenArray(target: React.ReactNode[], array: React.ReactNode[]) {
   for (const e of array) {
     if (Array.isArray(e)) {
       flattenArray(target, e);
@@ -85,7 +497,15 @@ function flattenArray(target, array) {
   }
 }
 
-class NoodlReactComponent extends React.Component {
+/** Props the wrapper itself needs; anything else is forwarded to the inner component. */
+export interface NoodlReactComponentProps {
+  noodlNode: ReactNodeInstance;
+  /** Styling contributed by the *React* parent, which wins over the node's own. */
+  style?: React.CSSProperties;
+  [prop: string]: any;
+}
+
+class NoodlReactComponent extends React.Component<NoodlReactComponentProps> {
   componentDidMount() {
     this.props.noodlNode.sendSignalOnOutput('didMount');
   }
@@ -123,16 +543,16 @@ class NoodlReactComponent extends React.Component {
       };
     }
 
-    const props = {
-      ref: (ref) => {
+    const props: Record<string, any> = {
+      ref: (ref: unknown) => {
         noodlNode.innerReactComponentRef = ref;
         // React 19: Store DOM element reference directly for getDOMElement()
         // This avoids using the deprecated findDOMNode
         if (ref && ref instanceof Element) {
-          noodlNode._domElement = ref;
-        } else if (ref && typeof ref === 'object' && ref.nodeType === 1) {
+          noodlNode._domElement = ref as HTMLElement;
+        } else if (ref && typeof ref === 'object' && (ref as Node).nodeType === 1) {
           // ref is already a DOM element
-          noodlNode._domElement = ref;
+          noodlNode._domElement = ref as HTMLElement;
         }
       },
       style: finalStyle,
@@ -177,13 +597,13 @@ class NoodlReactComponent extends React.Component {
   }
 }
 
-function setStylesOnDOMNode(rootElement, styles, styleTag) {
+function setStylesOnDOMNode(rootElement: HTMLElement, styles: Record<string, any>, styleTag?: string) {
   let element = rootElement;
 
   if (styleTag) {
     //check if the root element has the style tag, if not, find the child that does
     if (element.getAttribute('noodl-style-tag') !== styleTag) {
-      element = rootElement.querySelector(`[noodl-style-tag=${styleTag}]`);
+      element = rootElement.querySelector<HTMLElement>(`[noodl-style-tag=${styleTag}]`);
     }
   }
 
@@ -194,9 +614,33 @@ function setStylesOnDOMNode(rootElement, styles, styleTag) {
   }
 }
 
+// --- the compiled side -----------------------------------------------------
+// Same ports as `@noodl/types` describes, but with `this` bound to the React
+// node instance rather than the bare runtime one. Declaring the assembled
+// object with these types is what gives every method below a checked `this`
+// without a single annotation inside the literal.
+
+interface CompiledInputDefinition extends Omit<InputPortDefinition, 'set'> {
+  set?: ReactNodeCallback<[any]>;
+}
+
+interface CompiledOutputDefinition
+  extends Omit<OutputPortDefinition, 'get' | 'onFirstConnectionAdded' | 'onLastConnectionRemoved'> {
+  get?: (this: ReactNodeInstance) => unknown;
+  onFirstConnectionAdded?: ReactNodeCallback;
+  onLastConnectionRemoved?: ReactNodeCallback;
+}
+
+interface CompiledReactNodeDefinition extends NodeDefinitionOptions {
+  initialize: ReactNodeCallback;
+  inputs: Record<string, CompiledInputDefinition>;
+  outputs: Record<string, CompiledOutputDefinition>;
+  methods: Record<string, ReactNodeCallback<any[], any>>;
+}
+
 let reactKeyCounter = 0;
 
-function createNodeFromReactComponent(def) {
+function createNodeFromReactComponent(def: ReactNodeDefinition): ReactNodeModule {
   // visual frame props
   const { frame } = def;
   if (frame !== undefined) {
@@ -230,8 +674,8 @@ function createNodeFromReactComponent(def) {
   } = def;
 
   //assign default values to style
-  const startStyle = Object.assign({}, defaultCss);
-  const startStyles = {};
+  const startStyle: StyleObject = Object.assign({}, defaultCss);
+  const startStyles: Record<string, StyleObject> = {};
 
   for (const name in inputCss) {
     const input = inputCss[name];
@@ -242,7 +686,8 @@ function createNodeFromReactComponent(def) {
     }
 
     if (hasDefault) {
-      const value = input.type.units ? input.default + input.type.defaultUnit : input.default;
+      const type = input.type as PortType;
+      const value = type.units ? input.default + type.defaultUnit : input.default;
       if (input.styleTag) {
         startStyles[input.styleTag][name] = value;
       } else {
@@ -251,7 +696,7 @@ function createNodeFromReactComponent(def) {
     }
   }
 
-  function boundingBoxObserverCallback(attribute, rect) {
+  function boundingBoxObserverCallback(this: ReactNodeInstance, attribute: string, rect: DOMRect) {
     this.clientBoundingRect = rect;
     if (attribute === 'x') {
       this.flagOutputDirty('screenPositionX');
@@ -266,7 +711,7 @@ function createNodeFromReactComponent(def) {
 
   const useVariants = def.useVariants !== undefined ? def.useVariants : true;
 
-  const ReactComponentNode = {
+  const ReactComponentNode: CompiledReactNodeDefinition = {
     name: def.name,
     docs: def.docs,
     displayNodeName: def.displayNodeName || def.displayName,
@@ -318,8 +763,11 @@ function createNodeFromReactComponent(def) {
         const props = input.propPath ? this.props[input.propPath] : this.props;
 
         if (input.hasOwnProperty('default')) {
-          if (input.type.defaultUnit && input.default !== undefined) {
-            props[name] = input.default + input.type.defaultUnit;
+          // Only the object form of a port type carries units; the bare-name form
+          // never does, so reading through it is safe and yields undefined.
+          const type = input.type as PortType;
+          if (type.defaultUnit && input.default !== undefined) {
+            props[name] = input.default + type.defaultUnit;
           } else {
             props[name] = input.default;
           }
@@ -1117,11 +1565,13 @@ function createNodeFromReactComponent(def) {
   for (const name in inputCss) {
     const input = inputCss[name];
     const styleTargetName = input.targetStyleProperty || name;
+    // See the note in `initialize`: units only ever appear on the object form.
+    const type = input.type as PortType;
 
-    if (input.type.units) {
+    if (type.units) {
       input.set = function (value) {
-        if (typeof value !== 'object' && input.type.defaultUnit) {
-          value = { value, unit: input.type.defaultUnit };
+        if (typeof value !== 'object' && type.defaultUnit) {
+          value = { value, unit: type.defaultUnit };
         }
 
         if (typeof value === 'object' && value.value !== undefined) {

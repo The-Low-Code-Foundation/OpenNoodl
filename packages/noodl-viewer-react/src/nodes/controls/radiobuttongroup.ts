@@ -4,7 +4,7 @@ import guid from '../../guid';
 import NodeSharedPortDefinitions from '../../node-shared-port-definitions';
 import { createNodeFromReactComponent } from '../../react-component-node';
 
-let RadioButtonGroupNode = {
+const RadioButtonGroupNode = {
   name: 'Radio Button Group',
   displayName: 'Radio Button Group',
   docs: 'https://docs.noodl.net/nodes/ui-controls/radio-button-group',
@@ -121,5 +121,4 @@ NodeSharedPortDefinitions.addMarginInputs(RadioButtonGroupNode);
 NodeSharedPortDefinitions.addPaddingInputs(RadioButtonGroupNode);
 NodeSharedPortDefinitions.addSharedVisualInputs(RadioButtonGroupNode);
 
-RadioButtonGroupNode = createNodeFromReactComponent(RadioButtonGroupNode);
-export default RadioButtonGroupNode;
+export default createNodeFromReactComponent(RadioButtonGroupNode);
