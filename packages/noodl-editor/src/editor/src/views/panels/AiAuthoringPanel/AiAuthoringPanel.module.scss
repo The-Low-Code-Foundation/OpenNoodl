@@ -1,0 +1,16 @@
+.User {
+  padding: 6px 8px;
+  border-left: 2px solid var(--theme-color-primary);
+  background-color: var(--theme-color-bg-2);
+  border-radius: 0 2px 2px 0;
+}
+
+.Assistant {
+  white-space: pre-wrap;
+}
+
+.Event {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}

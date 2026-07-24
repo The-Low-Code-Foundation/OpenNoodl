@@ -17,7 +17,14 @@ export { validateCandidateComponent } from './validate';
 export { AuthoringContextBuilder, DEFAULT_BUDGET } from './ContextBuilder';
 export { AUTHORING_TOOLS, GET_COMPONENT, GET_NODE_TYPES, SUBMIT_COMPONENT } from './tools';
 export { AuthoringSession, AuthoringSetupError, AuthoringStateError } from './AuthoringSession';
-export type { AuthoringChatFn, AuthoringSessionOptions } from './AuthoringSession';
+export type {
+  AuthoringActivity,
+  AuthoringChatFn,
+  AuthoringPhase,
+  AuthoringSessionOptions,
+  AuthoringSessionState,
+  StagedSummary
+} from './AuthoringSession';
 export { acceptAuthoredComponent, StagingError } from './staging';
 export type { AcceptOptions } from './staging';
 export { initialUserMessage, refineMessage, systemPrompt } from './prompts/authoring';

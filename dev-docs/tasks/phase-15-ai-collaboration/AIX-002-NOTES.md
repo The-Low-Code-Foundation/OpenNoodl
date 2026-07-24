@@ -115,15 +115,63 @@ project, crossed only on accept) and a conversational `refine()` on the session
   loaded into a real `ProjectModel` with the real `UndoQueue`, and assert
   undo-restores-byte-identical and reject-leaves-byte-identical.
 
+## Slice 3 (2026-07-24): the conversation UI
+
+Spec step 4. The session becomes observable and streaming; a new sidebar panel
+("Build", id `ai-authoring`, registered after Explain) renders what it publishes.
+
+### What changed
+
+| File | Change |
+|------|--------|
+| `AuthoringSession.ts` | Publishes `AuthoringSessionState` via `onChange` (ExplainSession's pattern): an activity feed (`user` / `assistant` / `tool` / `submit`), a phase, and a `StagedSummary`. `AuthoringChatFn` gained an optional `AiStreamCallbacks` arg; the default binding moved `AiClient.chat` → `AiClient.chatStream`, so prose streams into the feed. `cancel()`/`dispose()` added; the session owns an AbortController per round |
+| `types.ts` | `AuthoringStatus` gained `'cancelled'` — a cancelled round is not an error, and a candidate staged earlier survives it |
+| `views/panels/AiAuthoringPanel/` | New: form (component path + description) → streaming activity feed → staged bar with Accept / Refine / Reject. Accept calls `acceptAuthoredComponent` then `switchToComponent` so the graph is on canvas immediately; reject disposes the session and nothing else |
+| `router.setup.ts` | Panel registered, experimental, order 4.7 (next to Explain) |
+
+### Decisions worth keeping
+
+- **The panel owns no conversation state.** Same split as Explain: the session
+  publishes, the panel renders. Scripted (non-streaming) chat functions still
+  work unchanged — streaming is a progressive rendering of the same response,
+  so every existing spec binds the same seam.
+- **Empty assistant bubbles are dropped.** A model that goes straight to tools
+  produces `text: ''`; feeding that to the feed reads as a stutter. The feed
+  shows prose only when there is prose.
+- **Cancelled ≠ error, and cancel keeps the last good candidate.** `cancel()`
+  aborts the in-flight round; `stagedFiles` (and the published `staged`
+  summary) still hold the pre-cancel candidate, so Accept remains available
+  after stopping a refinement you regret asking for.
+- **Accept navigates.** `switchToComponent(component, { pushHistory: true })`
+  right after `acceptAuthoredComponent` — the component appearing on canvas is
+  the payoff moment; until step 5 lands live rendering, this is the reveal.
+- **A stopped run with nothing staged offers "Start over"**, which is the same
+  code path as Reject — the absence of an accept call — with the form values
+  retained for a rewording.
+
+### Verified
+
+- `npx tsc --noEmit` clean; `npm run test:ci` **1139 specs, 0 failures** (+3:
+  feed ordering + phase progression, streamed prose deltas publishing, cancel
+  keeps the staged candidate); `npm run catalog:check` green.
+- Live smoke (CDP-driven editor, Shine Phase 2 project): "Enable Build" appears
+  under Experimental panels with its description; toggling it adds the pencil
+  icon; the panel renders the form, the disabled Build button, and the
+  no-provider notice (this environment has no AI provider configured — a live
+  authoring run through the panel is still pending, same gap as spec step 2).
+  No renderer exceptions.
+- Trap for the next smoke: with a project open, `cdp.js`'s default `editor`
+  target can resolve to the "Noodl Editor Cloud Runtime" page — pass
+  `--target=NodeGX` explicitly.
+
 ### Not yet done (later slices)
 
 1. **Live provider runs** (spec step 2) — prompt/context iteration measuring validity
    rate, rounds, context size against real models. Needs keys; also the first live
    exercise of AIX-001's adapters.
-2. Conversation UI with streaming (step 4) — `AuthoringSession` publishes no state yet;
-   add an `onChange` like `ExplainSession` when the panel lands.
-3. Live canvas rendering during authoring (step 5).
-4. Post-accept refinement of an existing component (step 6) — needs an
+2. Live canvas rendering during authoring (step 5) — today the graph appears on
+   accept, not during the build.
+3. Post-accept refinement of an existing component (step 6) — needs an
    update-shaped submit (MCP's `applyOperations` is the substrate to share);
    pre-accept refinement shipped in slice 2.
-5. Opt-in Gate-G2 telemetry (step 7).
+4. Opt-in Gate-G2 telemetry (step 7).

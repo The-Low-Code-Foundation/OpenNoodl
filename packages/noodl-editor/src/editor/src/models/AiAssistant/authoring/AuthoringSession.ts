@@ -14,21 +14,34 @@
  * refinement round never loses the last good one. Applying to the live
  * project is `staging.ts`'s job, and only on accept.
  *
- * The chat function is injected: the editor binds `AiClient.chat`, specs bind
- * a script, and the measurement harness binds a directly-constructed provider.
+ * The panel renders whatever the session publishes: an activity feed
+ * (assistant text streamed as it arrives, tool reads and submissions as
+ * one-line events) plus a phase. The panel owns none of the conversation.
+ *
+ * The chat function is injected: the editor binds `AiClient.chatStream`, specs
+ * bind a script, and the measurement harness binds a directly-constructed
+ * provider. A scripted chat that ignores the callbacks argument still works —
+ * streaming is a progressive rendering of the same response.
  *
  * @module AiAssistant/authoring/AuthoringSession
  */
 
 import { formatDiagnosticLine } from '../../../validation';
 import { AiClient } from '../client';
-import type { AiChatRequest, AiChatResponse, AiMessage, AiToolCall } from '../client/types';
+import type { AiChatRequest, AiChatResponse, AiMessage, AiStreamCallbacks, AiToolCall } from '../client/types';
 import { findComponent } from '../explain/graph';
 import type { ExplainGraph } from '../explain/types';
 import { buildCandidate, pathToLegacyName } from './candidate';
 import { AuthoringContextBuilder } from './ContextBuilder';
 import { initialUserMessage, nudgeMessage, refineMessage, systemPrompt } from './prompts/authoring';
-import { AUTHORING_TOOLS, dispatchReadTool, SUBMIT_COMPONENT, toSubmitPayload } from './tools';
+import {
+  AUTHORING_TOOLS,
+  dispatchReadTool,
+  GET_COMPONENT,
+  GET_NODE_TYPES,
+  SUBMIT_COMPONENT,
+  toSubmitPayload
+} from './tools';
 import type {
   AuthoringMetrics,
   AuthoringOutcome,
@@ -40,10 +53,10 @@ import type {
 } from './types';
 import { validateCandidateComponent } from './validate';
 
-export type AuthoringChatFn = (request: AiChatRequest) => Promise<AiChatResponse>;
+export type AuthoringChatFn = (request: AiChatRequest, callbacks?: AiStreamCallbacks) => Promise<AiChatResponse>;
 
 export interface AuthoringSessionOptions {
-  /** Injection seam; defaults to the configured AiClient. */
+  /** Injection seam; defaults to the configured AiClient, streaming. */
   chat?: AuthoringChatFn;
   budget?: Partial<ContextBudget>;
   /** Model round-trips per round (initial run or one refinement) before giving up. */
@@ -71,6 +84,50 @@ export class AuthoringStateError extends Error {
   }
 }
 
+// ── Published state ───────────────────────────────────────────────────────────
+
+/** One entry in the feed the panel renders. */
+export type AuthoringActivity =
+  /** The user's request or refinement instruction, verbatim. */
+  | { kind: 'user'; text: string }
+  /** Assistant prose; `text` grows while `streaming` is set. */
+  | { kind: 'assistant'; text: string; streaming?: boolean }
+  /** A context read, as a one-line event. */
+  | { kind: 'tool'; label: string }
+  /** A submission and the gate's verdict. */
+  | { kind: 'submit'; ok: boolean; errorLines: string[] };
+
+export type AuthoringPhase = 'idle' | 'working' | 'staged' | 'exhausted' | 'error' | 'cancelled';
+
+export interface StagedSummary {
+  nodeCount: number;
+  connectionCount: number;
+}
+
+/** Everything the panel renders, recomputed and published on every change. */
+export interface AuthoringSessionState {
+  busy: boolean;
+  phase: AuthoringPhase;
+  activities: AuthoringActivity[];
+  legacyName: string;
+  /** Present whenever some candidate has passed validation — it survives a failed refinement. */
+  staged?: StagedSummary;
+  error?: string;
+}
+
+type Listener = (state: AuthoringSessionState) => void;
+
+function readToolLabel(call: AiToolCall): string {
+  if (call.name === GET_NODE_TYPES) {
+    const names = Array.isArray(call.arguments.typeNames) ? call.arguments.typeNames.map(String) : [];
+    return names.length > 0 ? `Read node documentation: ${names.join(', ')}` : 'Read node documentation';
+  }
+  if (call.name === GET_COMPONENT) {
+    return typeof call.arguments.name === 'string' ? `Read component ${call.arguments.name}` : 'Read a component';
+  }
+  return `Called ${call.name}`;
+}
+
 interface SubmitResult {
   ok: boolean;
   text: string;
@@ -96,12 +153,19 @@ export class AuthoringSession {
   private inFlight = false;
   private staged?: ComponentFiles;
 
+  // Published state.
+  private readonly activities: AuthoringActivity[] = [];
+  private readonly listeners = new Set<Listener>();
+  private lastStatus?: AuthoringStatus;
+  private lastError?: string;
+  private currentAbort?: AbortController;
+
   private constructor(
     private readonly graph: ExplainGraph,
     private readonly request: AuthoringRequest,
     options: AuthoringSessionOptions
   ) {
-    this.chat = options.chat ?? ((req) => AiClient.chat(req));
+    this.chat = options.chat ?? ((req, callbacks) => AiClient.chatStream(req, callbacks ?? {}));
     this.maxTurns = options.maxTurns ?? DEFAULT_MAX_TURNS;
     this.maxSubmits = options.maxSubmits ?? DEFAULT_MAX_SUBMITS;
     this.context = new AuthoringContextBuilder(graph, options.budget);
@@ -132,6 +196,47 @@ export class AuthoringSession {
     return this.staged;
   }
 
+  get state(): AuthoringSessionState {
+    const phase: AuthoringPhase = this.inFlight
+      ? 'working'
+      : this.lastStatus === 'authored'
+      ? 'staged'
+      : this.lastStatus ?? 'idle';
+    return {
+      busy: this.inFlight,
+      phase,
+      activities: [...this.activities],
+      legacyName: this.legacyName,
+      staged: this.staged
+        ? {
+            nodeCount: this.staged.nodes.nodes.length,
+            connectionCount: this.staged.connections.connections.length
+          }
+        : undefined,
+      error: this.lastError
+    };
+  }
+
+  onChange(listener: Listener): () => void {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
+  }
+
+  private publish(): void {
+    const state = this.state;
+    for (const listener of this.listeners) listener(state);
+  }
+
+  /** Abort the in-flight round. A previously staged candidate survives. */
+  cancel(): void {
+    this.currentAbort?.abort();
+  }
+
+  dispose(): void {
+    this.cancel();
+    this.listeners.clear();
+  }
+
   /** Run the loop to an outcome. Never throws for loop-shaped failures. */
   async run(options: { abortController?: AbortController } = {}): Promise<AuthoringOutcome> {
     if (this.started) {
@@ -145,6 +250,7 @@ export class AuthoringSession {
         content: initialUserMessage(this.request, this.context.projectOverview(), this.context.catalogOverview())
       }
     );
+    this.activities.push({ kind: 'user', text: this.request.description });
     return this.round(options);
   }
 
@@ -160,6 +266,7 @@ export class AuthoringSession {
       throw new AuthoringStateError('The refinement has no instruction — nothing to change.');
     }
     this.messages.push({ role: 'user', content: refineMessage(instruction) });
+    this.activities.push({ kind: 'user', text: instruction });
     return this.round(options);
   }
 
@@ -169,14 +276,19 @@ export class AuthoringSession {
       throw new AuthoringStateError('A round is already in flight — await it before starting another.');
     }
     this.inFlight = true;
+    const abortController = options.abortController ?? new AbortController();
+    this.currentAbort = abortController;
+    this.publish();
     try {
-      return await this.loop(options);
+      return await this.loop(abortController);
     } finally {
       this.inFlight = false;
+      this.currentAbort = undefined;
+      this.publish();
     }
   }
 
-  private async loop(options: { abortController?: AbortController }): Promise<AuthoringOutcome> {
+  private async loop(abortController: AbortController): Promise<AuthoringOutcome> {
     let roundTurns = 0;
     let roundSubmits = 0;
     let nudges = 0;
@@ -184,15 +296,33 @@ export class AuthoringSession {
     while (roundTurns < this.maxTurns) {
       roundTurns++;
       this.turns++;
+
+      // The assistant's prose for this turn, streamed into the feed as it arrives.
+      const prose: AuthoringActivity = { kind: 'assistant', text: '', streaming: true };
+      this.activities.push(prose);
+      this.publish();
+
       let response: AiChatResponse;
       try {
-        response = await this.chat({
-          messages: [...this.messages],
-          tools: AUTHORING_TOOLS,
-          toolChoice: 'auto',
-          abortController: options.abortController
-        });
+        response = await this.chat(
+          {
+            messages: [...this.messages],
+            tools: AUTHORING_TOOLS,
+            toolChoice: 'auto',
+            abortController
+          },
+          {
+            onText: (fullText) => {
+              prose.text = fullText;
+              this.publish();
+            }
+          }
+        );
       } catch (error) {
+        // A cancelled turn keeps whatever prose arrived; an empty bubble helps no one.
+        prose.streaming = false;
+        if (!prose.text.trim()) this.dropActivity(prose);
+        if (abortController.signal.aborted) return this.finish('cancelled');
         return this.finish('error', undefined, error instanceof Error ? error.message : String(error));
       }
 
@@ -207,6 +337,10 @@ export class AuthoringSession {
         ...(response.toolCalls.length > 0 ? { toolCalls: response.toolCalls } : {})
       });
 
+      prose.text = response.text ?? prose.text;
+      prose.streaming = false;
+      if (!prose.text.trim()) this.dropActivity(prose);
+
       if (response.toolCalls.length === 0) {
         // Prose instead of action. Nudge once; a model that keeps talking is done.
         nudges++;
@@ -220,19 +354,23 @@ export class AuthoringSession {
           const result = this.handleSubmit(call);
           roundSubmits++;
           this.rounds.push({ attempt: this.rounds.length + 1, ok: result.ok, errorLines: result.errorLines });
+          this.activities.push({ kind: 'submit', ok: result.ok, errorLines: result.errorLines });
           this.messages.push({ role: 'tool', toolCallId: call.id, name: call.name, content: result.text });
           if (result.ok) {
             this.staged = result.files;
             return this.finish('authored', result.files);
           }
+          this.publish();
           if (roundSubmits >= this.maxSubmits) return this.finish('exhausted');
         } else {
+          this.activities.push({ kind: 'tool', label: readToolLabel(call) });
           this.messages.push({
             role: 'tool',
             toolCallId: call.id,
             name: call.name,
             content: dispatchReadTool(call, this.context)
           });
+          this.publish();
         }
       }
     }
@@ -240,7 +378,14 @@ export class AuthoringSession {
     return this.finish('exhausted');
   }
 
+  private dropActivity(activity: AuthoringActivity): void {
+    const index = this.activities.indexOf(activity);
+    if (index !== -1) this.activities.splice(index, 1);
+  }
+
   private finish(status: AuthoringStatus, files?: ComponentFiles, error?: string): AuthoringOutcome {
+    this.lastStatus = status;
+    this.lastError = error;
     const transcriptChars = this.messages.reduce((sum, m) => sum + m.content.length, 0);
     const metrics: AuthoringMetrics = {
       turns: this.turns,

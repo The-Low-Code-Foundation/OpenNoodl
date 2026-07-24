@@ -9,7 +9,9 @@
 import {
   AuthoringSession,
   AuthoringSetupError,
-  AuthoringStateError
+  AuthoringStateError,
+  type AuthoringChatFn,
+  type AuthoringSessionState
 } from '../../src/editor/src/models/AiAssistant/authoring/AuthoringSession';
 import type { AuthoringRequest } from '../../src/editor/src/models/AiAssistant/authoring/types';
 import { fromSerialisedProject } from '../../src/editor/src/models/AiAssistant/explain/graph';
@@ -240,6 +242,10 @@ describe('AIX-002 authoring session', () => {
     // The refinement failed, but the accepted-on-run candidate is still there to accept.
     expect(session.stagedFiles).toBe(first.files);
     expect(second.rounds.map((r) => r.ok)).toEqual([true, false, false]);
+
+    // The published state agrees: the round is exhausted, the candidate survives.
+    expect(session.state.phase).toBe('exhausted');
+    expect(session.state.staged).toBeDefined();
   });
 
   it('refuses run/refine called out of order', async () => {
@@ -250,6 +256,99 @@ describe('AIX-002 authoring session', () => {
     await session.run();
     await expectAsync(session.run()).toBeRejectedWithError(AuthoringStateError);
     await expectAsync(session.refine('   ')).toBeRejectedWithError(AuthoringStateError);
+  });
+
+  describe('published state (the panel contract)', () => {
+    /** Deep-copy each published state: activity objects mutate while streaming. */
+    function record(session: AuthoringSession): AuthoringSessionState[] {
+      const seen: AuthoringSessionState[] = [];
+      session.onChange((state) => seen.push(JSON.parse(JSON.stringify(state))));
+      return seen;
+    }
+
+    it('publishes the feed: request, prose, reads, rejected and accepted submissions', async () => {
+      const { chat } = scriptedChat([
+        () =>
+          respond({
+            text: 'Let me check the node docs first.',
+            toolCalls: [call('get_node_types', { typeNames: ['Group'] })]
+          }),
+        () => respond({ toolCalls: [call('submit_component', goodSubmitArgs([{ id: 'g', type: 'Grouo' }]))] }),
+        () => respond({ toolCalls: [call('submit_component', goodSubmitArgs([{ id: 'g', type: 'Group' }]))] })
+      ]);
+
+      const session = AuthoringSession.create(GRAPH, REQUEST, { chat });
+      const seen = record(session);
+      await session.run();
+
+      const state = session.state;
+      expect(state.busy).toBe(false);
+      expect(state.phase).toBe('staged');
+      expect(state.legacyName).toBe('/Pages/Authored');
+      expect(state.staged).toEqual({ nodeCount: 3, connectionCount: 1 });
+
+      // Empty assistant bubbles are dropped; everything else is in order.
+      expect(state.activities.map((a) => a.kind)).toEqual(['user', 'assistant', 'tool', 'submit', 'submit']);
+      expect(state.activities[0]).toEqual({ kind: 'user', text: REQUEST.description });
+      expect(state.activities[2]).toEqual({ kind: 'tool', label: 'Read node documentation: Group' });
+      expect(state.activities[3]).toEqual(jasmine.objectContaining({ kind: 'submit', ok: false }));
+      expect((state.activities[3] as { errorLines: string[] }).errorLines.length).toBeGreaterThan(0);
+      expect(state.activities[4]).toEqual(jasmine.objectContaining({ kind: 'submit', ok: true, errorLines: [] }));
+
+      // The session was busy while working, and published along the way.
+      expect(seen.some((s) => s.busy && s.phase === 'working')).toBe(true);
+      expect(seen[seen.length - 1].phase).toBe('staged');
+    });
+
+    it('streams assistant prose into the feed as it arrives', async () => {
+      const chat: AuthoringChatFn = async (_request, callbacks) => {
+        callbacks?.onText?.('Building', 'Building');
+        callbacks?.onText?.('Building a page', ' a page');
+        return respond({ text: 'Building a page', toolCalls: [call('submit_component', goodSubmitArgs())] });
+      };
+
+      const session = AuthoringSession.create(GRAPH, REQUEST, { chat });
+      const seen = record(session);
+      await session.run();
+
+      const partial = seen.find((s) =>
+        s.activities.some((a) => a.kind === 'assistant' && a.streaming && a.text === 'Building')
+      );
+      expect(partial).toBeDefined();
+
+      const finalProse = session.state.activities.find((a) => a.kind === 'assistant');
+      expect(finalProse).toEqual(
+        jasmine.objectContaining({ kind: 'assistant', text: 'Building a page', streaming: false })
+      );
+    });
+
+    it('cancel aborts the round and publishes a cancelled phase, keeping any staged candidate', async () => {
+      let turn = 0;
+      const chat: AuthoringChatFn = (request) => {
+        turn++;
+        if (turn === 1) {
+          return Promise.resolve(respond({ toolCalls: [call('submit_component', goodSubmitArgs())] }));
+        }
+        return new Promise((_, reject) => {
+          request.abortController!.signal.addEventListener('abort', () => reject(new Error('aborted')));
+        });
+      };
+
+      const session = AuthoringSession.create(GRAPH, REQUEST, { chat });
+      const first = await session.run();
+      expect(first.status).toBe('authored');
+
+      const refining = session.refine('Add a search field.');
+      session.cancel();
+      const outcome = await refining;
+
+      expect(outcome.status).toBe('cancelled');
+      expect(session.state.phase).toBe('cancelled');
+      expect(session.state.busy).toBe(false);
+      // The candidate staged before the cancelled refinement is untouched.
+      expect(session.stagedFiles).toBe(first.files);
+      expect(session.state.staged).toBeDefined();
+    });
   });
 
   it('reports unknown cost as null, never as zero', async () => {

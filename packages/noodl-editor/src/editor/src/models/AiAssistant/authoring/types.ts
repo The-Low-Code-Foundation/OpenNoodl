@@ -132,6 +132,8 @@ export type AuthoringStatus =
   | 'authored'
   /** Turn/submission budget ran out before a valid candidate. */
   | 'exhausted'
+  /** The user cancelled the round; a candidate staged earlier survives. */
+  | 'cancelled'
   /** The provider or loop failed; see `error`. */
   | 'error';
 

@@ -12,6 +12,7 @@ import { AppSetupPanel } from './views/panels/AppSetupPanel/AppSetupPanel';
 import { BackendServicesPanel } from './views/panels/BackendServicesPanel/BackendServicesPanel';
 import { CloudFunctionsPanel } from './views/panels/CloudFunctionsPanel/CloudFunctionsPanel';
 import { CloudServicePanel } from './views/panels/CloudServicePanel/CloudServicePanel';
+import { AiAuthoringPanel, AiAuthoringPanel_ID } from './views/panels/AiAuthoringPanel';
 import { ComponentPortsComponent } from './views/panels/componentports';
 import { ComponentsPanel } from './views/panels/componentspanel';
 import { ComponentXRayPanel } from './views/panels/ComponentXRayPanel';
@@ -134,6 +135,18 @@ export function installSidePanel({ isLesson }: SetupEditorOptions) {
     order: 4.6,
     icon: IconName.MagicWand,
     panel: ExplainPanel
+  });
+
+  SidebarModel.instance.register({
+    experimental: true,
+    id: AiAuthoringPanel_ID,
+    name: 'Build',
+    description:
+      'Describe a new component and watch an AI build it as nodes, validated against your project. ' +
+      'Nothing is added until you accept — rejecting leaves no trace, accepting is undoable.',
+    order: 4.7,
+    icon: IconName.Pencil,
+    panel: AiAuthoringPanel
   });
 
   SidebarModel.instance.register({
