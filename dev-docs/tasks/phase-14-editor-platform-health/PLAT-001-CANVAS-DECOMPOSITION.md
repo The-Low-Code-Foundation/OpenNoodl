@@ -148,15 +148,22 @@ Characterisation tests come first. Before extracting anything, write tests that 
 - [x] Write characterisation tests for at-risk behaviours → `tests/nodegraph/canvas-characterisation.spec.js`
 - [x] Extract viewport → hit-testing → rendering → interaction (landed as one validated wave; see NOTES §6 on commit granularity)
 - [x] Unify overlay hosting (`canvas/OverlayHost.ts`); document the public API (`canvas/README.md`)
-- [ ] Coordinator slim-down to ≤800 lines (wave 2: clipboard, connection popups, toolbar/menus, model binding — see NOTES §6 remaining work)
+- [x] Wave 2 coordinator slim-down: clipboard, connection popups, toolbar/menus, model binding, overlay glue, selection, node ops, inspectors, event wiring → 2,681 → 1,274 (see NOTES §7)
+- [ ] Coordinator ≤800: wave 3 — retire the accessor-compat layer by migrating the comment layer / drag helpers (NOTES §7 remaining work)
 - [ ] Full manual regression + large-graph performance check
 - [ ] CHANGELOG with before/after line counts
 
-### Status 2026-07-24 (wave 1 landed)
+### Status 2026-07-24 (waves 1+2 landed)
 
-`nodegrapheditor.ts` 3,481 → 2,681; new `views/nodegrapheditor/canvas/` modules
-(InteractionController 568, CanvasRenderer 269, CanvasViewport 203, HitTester 124,
-OverlayHost 99, CanvasIcons 49, types 41), each unit-tested. Characterisation
-suite (19 specs) + full Electron suite green: 961 specs, 0 failures.
-Behaviour preserved except one deliberate leak fix (dispose now unmounts all
-overlay roots). Remaining work tracked in `PLAT-001-NOTES.md` §6.
+Wave 1: `nodegrapheditor.ts` 3,481 → 2,681; `views/nodegrapheditor/canvas/`
+modules (InteractionController 568, CanvasRenderer 269, CanvasViewport 203,
+HitTester 124, OverlayHost 99, CanvasIcons 49, types 41), each unit-tested.
+One deliberate behaviour delta: dispose now unmounts all overlay roots.
+
+Wave 2: coordinator 2,681 → 1,274 via ten collaborator modules
+(ModelBindings, EditorClipboard, OverlayViews, NodeContextMenu,
+ConnectionPopups, EditorEventBindings, SelectionActions, NodeOperations,
+InspectorActions, canvas/NodeSelector — see NOTES §7). All extractions keep
+the editor as event-listener context and leave delegating stubs for the
+documented public API / owner contract. No behaviour change intended.
+Remaining to ≤800: the accessor-compat layer (wave 3).

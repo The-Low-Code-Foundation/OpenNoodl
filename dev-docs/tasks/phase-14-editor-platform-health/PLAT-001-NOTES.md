@@ -201,18 +201,62 @@ Characterisation-harness findings worth keeping:
   property on the module namespace, not the class static — mock
   `ViewerConnection.instance` (the named export) instead.
 
+## 7. As-built record (second extraction wave, 2026-07-24)
+
+Coordinator slim-down: `nodegrapheditor.ts` **2,681 → 1,274**. Ten modules
+extracted, all under `views/nodegrapheditor/` (coordinator collaborators) or
+`views/nodegrapheditor/canvas/` (the `Selector` move planned in §3):
+
+| File | Lines | Contents |
+|---|---|---|
+| `ModelBindings.ts` | 324 | bindModel / bindNodeModel / bindDebugInspector / bindProjectModel |
+| `EditorClipboard.ts` | 293 | copy/cut/paste/delete, insertNodeSet, extract-to-component |
+| `OverlayViews.ts` | 257 | five long-lived overlay renders + title trail + canvas show/hide |
+| `NodeContextMenu.ts` | 216 | node toolbar, context-menu actions, right-click menu |
+| `ConnectionPopups.ts` | 175 | the two port-picker popouts |
+| `EditorEventBindings.ts` | 152 | constructor EventDispatcher/Sidebar wiring + keyboard commands |
+| `SelectionActions.ts` | 145 | selection policy incl. double-click navigation |
+| `NodeOperations.ts` | 131 | create/attach/detach/commit-move/nudge/snap/removeConnection |
+| `InspectorActions.ts` | 100 | inspector hover timers + registry actions |
+| `canvas/NodeSelector.ts` | 52 | the `Selector` class, verbatim (unit-tested) |
+
+Decisions:
+
+- **Listener-context discipline.** Every subscription made inside a module
+  passes the *editor* as the listener context. `reset()` (`model.off(this)`)
+  and `dispose()` (`off(this)` on the singletons) are unchanged and still
+  detach everything. This is the one rule that makes these moves safe;
+  binding with module context would silently leak listeners.
+- **The editor keeps delegating stubs** for every name with external callers:
+  the public API (copy/cut/paste/delete/undo/redo, insertNodeSet,
+  switchToComponent, getNodeBounds, bindModel, …), the owner contract used by
+  scene items (setHighlightedNode/Connection, isHighlighted, removeConnection,
+  addNodeToSelection, …) and the InteractionController surface
+  (openConnectionPanels, updateNodeToolbar, hideNodeToolbar, hideInspectors,
+  openRightClickMenu, selectNode, commitMoveNode, attach/detachNode, …).
+  Verified by grep before extraction; `canvas/README.md` documents the split.
+- `import.meta.webpackHot.accept('./createnewnodepanel')` stayed in the
+  coordinator constructor — the accept path is resolved relative to the
+  calling module, so moving it would change HMR behaviour.
+- The `curtop` editor field (written by the popup `topLeft` walker) became a
+  local; nothing read it.
+- `NodeGraphEditor.clipboard` (the in-memory fallback nodeset) moved into
+  `EditorClipboard` as a private field; no external readers (grep-verified).
+
+What keeps the coordinator above the ~800 target (≈1,274 now): the
+accessor-compat layer (~215 lines, retirement scheduled below), the delegating
+stubs themselves (~180 lines — the documented public surface), `render()` +
+`bindCanvas()` + viewport/paint/layout coordination, and `switchToComponent`
+(genuine coordination). Getting under 800 is wave-3 work, mostly accessor
+retirement.
+
 ### Remaining work (next waves)
 
-1. **Coordinator slim-down** — clipboard block (~200 lines), connection
-   popups (~150), node toolbar + context menus (~180), model binding
-   (~280), overlay renderers glue (~120) are the next candidates; target
-   the ≤800-line ceiling for `nodegrapheditor.ts`.
+1. Retire accessor-compat fields by migrating the comment layer and drag
+   helpers to explicit editor methods, then shrink the owner contract.
+   (~215 lines of accessors + lets some delegating stubs go too.)
 2. **`NodeGraphEditorNode.ts` (1,290)** is still over the ceiling; splitting
    paint from hit/measure inside the node view is the likely seam, but only
    worth it with the characterisation suite green as the gate.
-3. Retire accessor-compat fields by migrating the comment layer and drag
-   helpers to explicit editor methods, then shrink the owner contract.
-   Also still pending from §3: move the `Selector` class out to
-   `canvas/NodeSelector.ts` (stayed in the coordinator in wave 1).
-4. Manual regression matrix + large-graph performance check (task Testing
+3. Manual regression matrix + large-graph performance check (task Testing
    Plan) before the task is closed.
