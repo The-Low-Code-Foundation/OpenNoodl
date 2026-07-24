@@ -3,13 +3,16 @@
  *
  * One session is one attempt to author one component: context → author →
  * validate → repair → present, with bounded turns and bounded submissions.
+ * After `run()`, `refine()` continues the same conversation with the user's
+ * feedback — each refinement is a fresh round with its own turn and submission
+ * budget, and the agent resubmits the FULL component, never a delta.
  *
  * Like ExplainSession, a session holds plain data (`ExplainGraph`), never an
  * editor model — and unlike ExplainSession it produces something: staged
- * `ComponentFiles` in the outcome. It still writes nothing. Staging to the
- * live project, accept/refine/reject, and canvas rendering are later slices;
- * the loop is deliberately headless-first so validity, iteration count, and
- * context size can be measured before any UI exists.
+ * `ComponentFiles` in the outcome. It still writes nothing. `stagedFiles`
+ * always holds the latest candidate that passed validation, so an exhausted
+ * refinement round never loses the last good one. Applying to the live
+ * project is `staging.ts`'s job, and only on accept.
  *
  * The chat function is injected: the editor binds `AiClient.chat`, specs bind
  * a script, and the measurement harness binds a directly-constructed provider.
@@ -24,7 +27,7 @@ import { findComponent } from '../explain/graph';
 import type { ExplainGraph } from '../explain/types';
 import { buildCandidate, pathToLegacyName } from './candidate';
 import { AuthoringContextBuilder } from './ContextBuilder';
-import { initialUserMessage, nudgeMessage, systemPrompt } from './prompts/authoring';
+import { initialUserMessage, nudgeMessage, refineMessage, systemPrompt } from './prompts/authoring';
 import { AUTHORING_TOOLS, dispatchReadTool, SUBMIT_COMPONENT, toSubmitPayload } from './tools';
 import type {
   AuthoringMetrics,
@@ -43,9 +46,9 @@ export interface AuthoringSessionOptions {
   /** Injection seam; defaults to the configured AiClient. */
   chat?: AuthoringChatFn;
   budget?: Partial<ContextBudget>;
-  /** Model round-trips before giving up. */
+  /** Model round-trips per round (initial run or one refinement) before giving up. */
   maxTurns?: number;
-  /** Submission attempts before giving up. */
+  /** Submission attempts per round before giving up. */
   maxSubmits?: number;
 }
 
@@ -57,6 +60,14 @@ export class AuthoringSetupError extends Error {
   constructor(message: string) {
     super(message);
     this.name = 'AuthoringSetupError';
+  }
+}
+
+/** Thrown when run/refine are called out of order — a caller bug, not a loop outcome. */
+export class AuthoringStateError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'AuthoringStateError';
   }
 }
 
@@ -73,6 +84,17 @@ export class AuthoringSession {
   private readonly maxSubmits: number;
   readonly context: AuthoringContextBuilder;
   readonly legacyName: string;
+
+  // Conversation state, cumulative across run() and every refine().
+  private readonly messages: AiMessage[] = [];
+  private readonly rounds: SubmitRound[] = [];
+  private turns = 0;
+  private promptTokens = 0;
+  private completionTokens = 0;
+  private costUsd: number | null = 0;
+  private started = false;
+  private inFlight = false;
+  private staged?: ComponentFiles;
 
   private constructor(
     private readonly graph: ExplainGraph,
@@ -105,61 +127,81 @@ export class AuthoringSession {
     return new AuthoringSession(graph, request, options);
   }
 
+  /** The latest candidate that passed validation, across all rounds. */
+  get stagedFiles(): ComponentFiles | undefined {
+    return this.staged;
+  }
+
   /** Run the loop to an outcome. Never throws for loop-shaped failures. */
   async run(options: { abortController?: AbortController } = {}): Promise<AuthoringOutcome> {
-    const messages: AiMessage[] = [
+    if (this.started) {
+      throw new AuthoringStateError('run() was already called — continue with refine() instead.');
+    }
+    this.started = true;
+    this.messages.push(
       { role: 'system', content: systemPrompt() },
       {
         role: 'user',
         content: initialUserMessage(this.request, this.context.projectOverview(), this.context.catalogOverview())
       }
-    ];
+    );
+    return this.round(options);
+  }
 
-    const rounds: SubmitRound[] = [];
-    let turns = 0;
+  /**
+   * Continue the conversation with the user's feedback on the staged component.
+   * A fresh round: full turn and submission budget, full resubmission required.
+   */
+  async refine(instruction: string, options: { abortController?: AbortController } = {}): Promise<AuthoringOutcome> {
+    if (!this.started) {
+      throw new AuthoringStateError('refine() before run() — there is nothing to refine yet.');
+    }
+    if (!instruction.trim()) {
+      throw new AuthoringStateError('The refinement has no instruction — nothing to change.');
+    }
+    this.messages.push({ role: 'user', content: refineMessage(instruction) });
+    return this.round(options);
+  }
+
+  /** One bounded round of the loop: author → validate → repair until an outcome. */
+  private async round(options: { abortController?: AbortController }): Promise<AuthoringOutcome> {
+    if (this.inFlight) {
+      throw new AuthoringStateError('A round is already in flight — await it before starting another.');
+    }
+    this.inFlight = true;
+    try {
+      return await this.loop(options);
+    } finally {
+      this.inFlight = false;
+    }
+  }
+
+  private async loop(options: { abortController?: AbortController }): Promise<AuthoringOutcome> {
+    let roundTurns = 0;
+    let roundSubmits = 0;
     let nudges = 0;
-    let promptTokens = 0;
-    let completionTokens = 0;
-    let costUsd: number | null = 0;
 
-    const finish = (status: AuthoringStatus, files?: ComponentFiles, error?: string): AuthoringOutcome => {
-      const transcriptChars = messages.reduce((sum, m) => sum + m.content.length, 0);
-      const metrics: AuthoringMetrics = {
-        turns,
-        submits: rounds.length,
-        contextLog: [...this.context.log],
-        totalContextChars: this.context.totalChars(),
-        transcriptChars,
-        promptTokens,
-        completionTokens,
-        costUsd
-      };
-      console.debug(
-        `[authoring] ${this.legacyName} → ${status} — ${turns} turns, ${rounds.length} submits, ` +
-          `${metrics.totalContextChars} context chars, ${transcriptChars} transcript chars`
-      );
-      return { status, files, legacyName: this.legacyName, rounds, metrics, transcript: messages, error };
-    };
-
-    while (turns < this.maxTurns) {
-      turns++;
+    while (roundTurns < this.maxTurns) {
+      roundTurns++;
+      this.turns++;
       let response: AiChatResponse;
       try {
         response = await this.chat({
-          messages: [...messages],
+          messages: [...this.messages],
           tools: AUTHORING_TOOLS,
           toolChoice: 'auto',
           abortController: options.abortController
         });
       } catch (error) {
-        return finish('error', undefined, error instanceof Error ? error.message : String(error));
+        return this.finish('error', undefined, error instanceof Error ? error.message : String(error));
       }
 
-      promptTokens += response.usage.promptTokens;
-      completionTokens += response.usage.completionTokens;
-      costUsd = costUsd === null || response.usage.costUsd === null ? null : costUsd + response.usage.costUsd;
+      this.promptTokens += response.usage.promptTokens;
+      this.completionTokens += response.usage.completionTokens;
+      this.costUsd =
+        this.costUsd === null || response.usage.costUsd === null ? null : this.costUsd + response.usage.costUsd;
 
-      messages.push({
+      this.messages.push({
         role: 'assistant',
         content: response.text ?? '',
         ...(response.toolCalls.length > 0 ? { toolCalls: response.toolCalls } : {})
@@ -168,20 +210,24 @@ export class AuthoringSession {
       if (response.toolCalls.length === 0) {
         // Prose instead of action. Nudge once; a model that keeps talking is done.
         nudges++;
-        if (nudges > 1) return finish('exhausted');
-        messages.push({ role: 'user', content: nudgeMessage() });
+        if (nudges > 1) return this.finish('exhausted');
+        this.messages.push({ role: 'user', content: nudgeMessage() });
         continue;
       }
 
       for (const call of response.toolCalls) {
         if (call.name === SUBMIT_COMPONENT) {
           const result = this.handleSubmit(call);
-          rounds.push({ attempt: rounds.length + 1, ok: result.ok, errorLines: result.errorLines });
-          messages.push({ role: 'tool', toolCallId: call.id, name: call.name, content: result.text });
-          if (result.ok) return finish('authored', result.files);
-          if (rounds.length >= this.maxSubmits) return finish('exhausted');
+          roundSubmits++;
+          this.rounds.push({ attempt: this.rounds.length + 1, ok: result.ok, errorLines: result.errorLines });
+          this.messages.push({ role: 'tool', toolCallId: call.id, name: call.name, content: result.text });
+          if (result.ok) {
+            this.staged = result.files;
+            return this.finish('authored', result.files);
+          }
+          if (roundSubmits >= this.maxSubmits) return this.finish('exhausted');
         } else {
-          messages.push({
+          this.messages.push({
             role: 'tool',
             toolCallId: call.id,
             name: call.name,
@@ -191,7 +237,34 @@ export class AuthoringSession {
       }
     }
 
-    return finish('exhausted');
+    return this.finish('exhausted');
+  }
+
+  private finish(status: AuthoringStatus, files?: ComponentFiles, error?: string): AuthoringOutcome {
+    const transcriptChars = this.messages.reduce((sum, m) => sum + m.content.length, 0);
+    const metrics: AuthoringMetrics = {
+      turns: this.turns,
+      submits: this.rounds.length,
+      contextLog: [...this.context.log],
+      totalContextChars: this.context.totalChars(),
+      transcriptChars,
+      promptTokens: this.promptTokens,
+      completionTokens: this.completionTokens,
+      costUsd: this.costUsd
+    };
+    console.debug(
+      `[authoring] ${this.legacyName} → ${status} — ${this.turns} turns, ${this.rounds.length} submits, ` +
+        `${metrics.totalContextChars} context chars, ${transcriptChars} transcript chars`
+    );
+    return {
+      status,
+      files,
+      legacyName: this.legacyName,
+      rounds: [...this.rounds],
+      metrics,
+      transcript: [...this.messages],
+      error
+    };
   }
 
   private handleSubmit(call: AiToolCall): SubmitResult {
@@ -220,9 +293,7 @@ export class AuthoringSession {
     }
 
     const errorLines = [
-      ...(validation.structural ?? []).flatMap((f) =>
-        f.errors.map((e) => `SCHEMA ${f.file} ${e.path}: ${e.message}`)
-      ),
+      ...(validation.structural ?? []).flatMap((f) => f.errors.map((e) => `SCHEMA ${f.file} ${e.path}: ${e.message}`)),
       ...validation.errors.map(formatDiagnosticLine)
     ];
     return {

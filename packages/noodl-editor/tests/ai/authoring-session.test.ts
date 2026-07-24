@@ -6,7 +6,11 @@
  * the context accounting proves the agent never received the whole project.
  */
 
-import { AuthoringSession, AuthoringSetupError } from '../../src/editor/src/models/AiAssistant/authoring/AuthoringSession';
+import {
+  AuthoringSession,
+  AuthoringSetupError,
+  AuthoringStateError
+} from '../../src/editor/src/models/AiAssistant/authoring/AuthoringSession';
 import type { AuthoringRequest } from '../../src/editor/src/models/AiAssistant/authoring/types';
 import { fromSerialisedProject } from '../../src/editor/src/models/AiAssistant/explain/graph';
 import type { AiChatRequest, AiChatResponse, AiToolCall } from '../../src/editor/src/models/AiAssistant/client/types';
@@ -186,6 +190,66 @@ describe('AIX-002 authoring session', () => {
     const outcome = await AuthoringSession.create(GRAPH, REQUEST, { chat }).run();
     expect(outcome.status).toBe('error');
     expect(outcome.error).toContain('provider unreachable');
+  });
+
+  it('refine continues the conversation and stages a revised full candidate', async () => {
+    const { chat, requests } = scriptedChat([
+      // Round 1: a clean submission.
+      () => respond({ toolCalls: [call('submit_component', goodSubmitArgs())] }),
+      // Round 2 opens with the user's feedback; the agent resubmits in full.
+      (request) => {
+        const feedback = request.messages[request.messages.length - 1];
+        expect(feedback.role).toBe('user');
+        expect(feedback.content).toContain('Add a Group container');
+        expect(feedback.content).toContain('resubmit the FULL component');
+        return respond({ toolCalls: [call('submit_component', goodSubmitArgs([{ id: 'g', type: 'Group' }]))] });
+      }
+    ]);
+
+    const session = AuthoringSession.create(GRAPH, REQUEST, { chat });
+    const first = await session.run();
+    expect(first.status).toBe('authored');
+    expect(first.files!.nodes.nodes.some((n) => n.type === 'Group')).toBe(false);
+
+    const second = await session.refine('Add a Group container around everything.');
+    expect(second.status).toBe('authored');
+    expect(second.files!.nodes.nodes.some((n) => n.type === 'Group')).toBe(true);
+    expect(session.stagedFiles).toBe(second.files);
+
+    // Metrics and rounds are cumulative; the transcript is one conversation.
+    expect(second.metrics.turns).toBe(2);
+    expect(second.rounds.map((r) => r.ok)).toEqual([true, true]);
+    expect(second.transcript.filter((m) => m.role === 'system').length).toBe(1);
+    expect(requests.length).toBe(2);
+  });
+
+  it('an exhausted refinement round keeps the last good candidate staged', async () => {
+    const { chat } = scriptedChat([
+      () => respond({ toolCalls: [call('submit_component', goodSubmitArgs())] }),
+      // Every refinement attempt submits a typo'd type, forever.
+      () => respond({ toolCalls: [call('submit_component', goodSubmitArgs([{ id: 'g', type: 'Grouo' }]))] })
+    ]);
+
+    const session = AuthoringSession.create(GRAPH, REQUEST, { chat, maxSubmits: 2 });
+    const first = await session.run();
+    expect(first.status).toBe('authored');
+
+    const second = await session.refine('Add a group.');
+    expect(second.status).toBe('exhausted');
+    expect(second.files).toBeUndefined();
+    // The refinement failed, but the accepted-on-run candidate is still there to accept.
+    expect(session.stagedFiles).toBe(first.files);
+    expect(second.rounds.map((r) => r.ok)).toEqual([true, false, false]);
+  });
+
+  it('refuses run/refine called out of order', async () => {
+    const { chat } = scriptedChat([() => respond({ toolCalls: [call('submit_component', goodSubmitArgs())] })]);
+    const session = AuthoringSession.create(GRAPH, REQUEST, { chat });
+
+    await expectAsync(session.refine('too early')).toBeRejectedWithError(AuthoringStateError);
+    await session.run();
+    await expectAsync(session.run()).toBeRejectedWithError(AuthoringStateError);
+    await expectAsync(session.refine('   ')).toBeRejectedWithError(AuthoringStateError);
   });
 
   it('reports unknown cost as null, never as zero', async () => {

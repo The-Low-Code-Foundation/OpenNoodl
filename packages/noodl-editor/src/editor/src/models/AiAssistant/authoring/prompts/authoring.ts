@@ -96,6 +96,23 @@ export function initialUserMessage(
   ].join('\n');
 }
 
+/**
+ * The user's feedback on the staged component, opening a refinement round.
+ * The contract stays whole-candidate: the agent resubmits everything, so the
+ * gate validates a complete component and staging stays a simple swap.
+ */
+export function refineMessage(instruction: string): string {
+  return [
+    'The user reviewed your component and wants changes:',
+    '',
+    instruction,
+    '',
+    'Revise and resubmit the FULL component via submit_component — every node and connection, ' +
+      'not just the changed ones. Keep what the user did not ask you to change. ' +
+      'Fetch documentation with get_node_types before using any node type you have not already fetched.'
+  ].join('\n');
+}
+
 /** Sent when the model replies with prose instead of acting. Once. */
 export function nudgeMessage(): string {
   return (

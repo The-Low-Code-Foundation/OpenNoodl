@@ -68,15 +68,62 @@ Spec step 1: prompt → context → author → validate → repair, no UI. Lives
 - `npx tsc --noEmit` clean (editor + noodl-mcp); `noodl-mcp` jest 31/31 and bundle build
   green after the normalize move; `npm run catalog:check` green.
 
+## Slice 2 (2026-07-24): staging + accept/refine/reject + undo
+
+Spec step 3. Two additions: `staging.ts` (the only code that touches the live
+project, crossed only on accept) and a conversational `refine()` on the session
+(pre-accept refinement, before the post-accept update-shaped flow of step 6).
+
+### What changed
+
+| File | Change |
+|------|--------|
+| `staging.ts` | New: `acceptAuthoredComponent(project, files)` — staged v2 files → `reconstructLegacyComponent` → `ComponentModel.fromJSON` → `addComponent({ undo: true })`; `StagingError` on name collision |
+| `AuthoringSession.ts` | Conversation state promoted to the instance; `refine(instruction)` opens a fresh round (own turn/submit budget) in the same transcript; `stagedFiles` getter keeps the last good candidate; `AuthoringStateError` for out-of-order calls |
+| `prompts/authoring.ts` | `refineMessage()` — feedback + "resubmit the FULL component" |
+
+### Decisions worth keeping
+
+- **Reject is the absence of a call.** Staging is the only module that touches
+  `ProjectModel`, and only `acceptAuthoredComponent` crosses. The spec's "reject
+  leaves the project byte-identical" is asserted by running a full authoring
+  session against a real `ProjectModel` corpus and comparing `toJSON()` strings.
+- **Accept reuses the loader's own path.** `reconstructLegacyComponent` (the
+  exact function `ComponentLoader`/`ProjectImporter` use to read v2 files from
+  disk) converts the staged trio in memory — no disk round-trip, no second
+  converter to drift. `candidate.ts` sets `component.path`, so `toLegacyName`
+  round-trips the name perfectly.
+- **Undo comes free from `addComponent({ undo: true })`** — the same mechanism
+  the components panel uses, so an accepted AI component undoes/redoes exactly
+  like a hand-made one. A spec asserts undo restores the project byte-identically.
+- **Refinement keeps the whole-candidate contract.** `refine()` continues the
+  same conversation (system prompt and fetched documentation stay in force) and
+  requires a full resubmission — the gate always validates a complete component
+  and staging stays a simple swap. Per-round budgets reset; metrics and rounds
+  are cumulative. An exhausted refinement round does not lose the previous good
+  candidate: `stagedFiles` still holds it.
+- **`reloadComponentFromDisk` was deliberately not used.** It exists as a
+  file-watch seam but has no callers; in-memory `addComponent` is the live-apply
+  path — it fires `componentAdded`/`typeAdded`, so the canvas and node picker
+  see the component immediately.
+
+### Verified
+
+- `npx tsc --noEmit` clean; `npm run test:ci` **1136 specs, 0 failures** (+7:
+  4 staging in `authoring-staging.test.ts`, 3 refine in
+  `authoring-session.test.ts`). Staging specs run against the real corpus
+  loaded into a real `ProjectModel` with the real `UndoQueue`, and assert
+  undo-restores-byte-identical and reject-leaves-byte-identical.
+
 ### Not yet done (later slices)
 
 1. **Live provider runs** (spec step 2) — prompt/context iteration measuring validity
    rate, rounds, context size against real models. Needs keys; also the first live
    exercise of AIX-001's adapters.
-2. Staging into the live project + accept/refine/reject + undo (spec step 3).
-3. Conversation UI with streaming (step 4) — `AuthoringSession` publishes no state yet;
+2. Conversation UI with streaming (step 4) — `AuthoringSession` publishes no state yet;
    add an `onChange` like `ExplainSession` when the panel lands.
-4. Live canvas rendering during authoring (step 5).
-5. Refinement flow against the just-authored component (step 6) — needs an
-   update-shaped submit (MCP's `applyOperations` is the substrate to share).
-6. Opt-in Gate-G2 telemetry (step 7).
+3. Live canvas rendering during authoring (step 5).
+4. Post-accept refinement of an existing component (step 6) — needs an
+   update-shaped submit (MCP's `applyOperations` is the substrate to share);
+   pre-accept refinement shipped in slice 2.
+5. Opt-in Gate-G2 telemetry (step 7).

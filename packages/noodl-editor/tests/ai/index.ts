@@ -18,3 +18,4 @@ export * from './explain-session.test';
 export * from './authoring-candidate.test';
 export * from './authoring-validate.test';
 export * from './authoring-session.test';
+export * from './authoring-staging.test';
