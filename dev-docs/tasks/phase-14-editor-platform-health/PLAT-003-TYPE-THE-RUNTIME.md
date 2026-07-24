@@ -44,13 +44,13 @@ There is a further reason to do this now rather than later, and it is the sequen
 ## Scope
 
 ### In Scope
-- [ ] Type the core runtime: `Node`, node definition, register, scope, context/scheduler
-- [ ] Publish the node-definition API types (usable from `noodl-types` or an equivalent shared package)
+- [x] Type the core runtime: `Node`, node definition, register, scope, context/scheduler
+- [x] Publish the node-definition API types (usable from `noodl-types` or an equivalent shared package)
 - [ ] Convert standard-library nodes incrementally
-- [ ] Type `react-component-node.js` (the React binding hub)
+- [x] Type `react-component-node.js` (the React binding hub)
 - [ ] Convert `noodl-viewer-react` visual and logic nodes
 - [ ] Write characterisation tests before converting each significant unit
-- [ ] Coordinate the port/type model with SUB-004 so catalog and types agree
+- [x] Coordinate the port/type model with SUB-004 so catalog and types agree
 - [ ] Remove editor-side `TSFixme`s that existed only because the runtime was untyped
 
 ### Out of Scope
@@ -91,9 +91,9 @@ Do not chase `strict: true` initially. Get accurate types with `strict: false`, 
 ## Success Criteria
 
 - [ ] `noodl-runtime` and `noodl-viewer-react` compile as TypeScript with meaningful types
-- [ ] Node-definition API types published and documented
-- [ ] Dynamic ports modelled honestly rather than falsely typed
-- [ ] Port/type model agrees with SUB-004's catalog
+- [x] Node-definition API types published and documented
+- [x] Dynamic ports modelled honestly rather than falsely typed
+- [x] Port/type model agrees with SUB-004's catalog
 - [ ] Characterisation tests written and passing; overall coverage measurably higher
 - [ ] No behavioural regressions in real projects
 - [ ] Editor-side boundary `TSFixme`s removed
@@ -116,10 +116,49 @@ Do not chase `strict: true` initially. Get accurate types with `strict: false`, 
 ## Checklist
 
 - [ ] Branch `task/plat-003-type-the-runtime`; agree port/type model with SUB-004
-- [ ] Characterisation tests for core runtime behaviours
-- [ ] Type core: Node, definition, register, scope, context
-- [ ] Publish and validate node-definition API types
+- [x] Characterisation tests for core runtime behaviours
+- [x] Type core: Node, definition, register, scope, context
+- [x] Publish and validate node-definition API types
 - [ ] Convert standard library and viewer nodes incrementally
-- [ ] Type `react-component-node.js`
+- [x] Type `react-component-node.js`
 - [ ] Tighten strictness; sweep boundary `TSFixme`s
 - [ ] CHANGELOG with before/after file counts; open PR
+
+## CHANGELOG
+
+In progress. Full as-built record in [PLAT-003-NOTES.md](./PLAT-003-NOTES.md).
+
+### Slice 3 — 2026-07-24 — the React binding hub (step 6)
+
+- `noodl-viewer-react/src/react-component-node.js` → `.ts` (1,189 lines), the compiler between the
+  React node-authoring model and the runtime node definition. 28 standard-library node files author
+  against its `def` parameter, which was previously undocumented.
+- Published from that file: `ReactNodeDefinition`, `ReactNodeInstance`, `ReactInputPropDefinition`,
+  `ReactInputCssDefinition`, `ReactOutputPropDefinition`, `ReactNodeContext`, `ReactNodeModel`,
+  `StyleObject`. Kept out of `@noodl/types` so the shared runtime types stay renderer-neutral.
+- `@noodl/types`: `NodeVariant` gains `stateTransitions`/`defaultStateTransitions` and a new
+  `StateTransition` interface — a gap in slice 2, exercised by `setVisualStates`.
+- Boundary `TSFixme` removed: `Noodl.ReactProps.noodlNode` was `any`; it is now `ReactNodeInstance`,
+  so every React component in the viewer gets a real type for its node. `type NodeConstructor = any`
+  deleted.
+- Four latent defects found and documented (not fixed — three change published metadata): `def.category`
+  and `def.deprecated` are silently dropped, `def.frame` is dead code, and `hasChildCountOutput`
+  reads a property that never exists. See NOTES §9.3.
+
+File counts: `noodl-viewer-react` 107/31/35 → **106 `.js` / 32 `.ts` / 35 `.tsx`**.
+`noodl-runtime` unchanged at 73 `.js` / 19 `.ts`.
+
+Gates: `catalog:check` byte-identical (135 node types); `typecheck:viewer` 0 `src` errors before and
+after; runtime jest 225 pass / 20 pre-existing fail; viewer, deploy, ssr and preview builds green.
+Live editor pass still owed.
+
+### Slice 2 — 2026-07-24 — published API and runtime core (steps 1, 3, 4)
+
+12 core runtime files converted (~2,500 lines); node-definition API published at
+`packages/noodl-types/src/runtime/node-definition.d.ts`; runtime internals kept unpublished. See
+NOTES §5.
+
+### Slice 1 — 2026-07-24 — test toolchain (step 2)
+
+The runtime's test harness was broken and its tests had never run: 11 of 14 suites collected zero
+tests, and the package had no TypeScript toolchain at all. Tests collected 132 → 235. See NOTES §1–§4.

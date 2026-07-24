@@ -1,8 +1,8 @@
 # PLAT-003 NOTES — Type the Runtime and Viewer
 
-Status: slices 1 and 2 landed 2026-07-24. Slice 1 restored the test toolchain (§1–§4). Slice 2
+Status: slices 1, 2 and 3 landed 2026-07-24. Slice 1 restored the test toolchain (§1–§4). Slice 2
 published the node-definition API and typed the runtime core — spec steps 1, 3 and 4 (§5–§7).
-Resume from **§7**.
+Slice 3 typed the React binding hub — spec step 6 (§9). Resume from **§10**.
 
 Run in parallel with PLAT-002 (jQuery retirement). Boundary: PLAT-002 owns `packages/noodl-editor`
 entirely; PLAT-003 stays in `packages/noodl-runtime`, `packages/noodl-viewer-react`, and
@@ -210,7 +210,7 @@ for **every signal input in every project, every frame**, and `node.setInputValu
 whether to print. The rest were `🚀 INITIALIZE called` / `⚡ SIGNAL RECEIVED` prints in the HTTP node
 and the four BYOB record nodes.
 
-## 7. Next slice
+## 7. Slice 2's plan for slice 3 (partly done; see §10 for what is actually next)
 
 File counts now: `noodl-runtime` **73 `.js` / 19 `.ts`** (was 85/6 at slice 1; the core is done and
 the standard library is the long tail). `noodl-viewer-react` untouched at 107 `.js` / 31 `.ts` /
@@ -260,3 +260,153 @@ the standard library is the long tail). `noodl-viewer-react` untouched at 107 `.
 runtime resolves through the existing `require('./node')` call sites when bundled. Combined with the
 new ts-jest transform, renaming a runtime file `.js` → `.ts` should be safe for both tests and
 bundling. Verify against a real build at the first conversion.
+
+## 9. Slice 3 — the React binding hub
+
+Spec step 6. `packages/noodl-viewer-react/src/react-component-node.js` → `.ts` (1,189 lines), plus
+the type surface it makes possible.
+
+`createNodeFromReactComponent` is a compiler between two authoring models. An author writes a
+*React* node — a component plus ports phrased as React props (`inputProps`) and CSS
+(`inputCss`) — and this file turns it into the *runtime* node definition `defineNode` accepts.
+Twenty-eight node files in the standard library go through it, so its `def` parameter is the most
+widely-used undocumented shape in the viewer.
+
+### 9.1 Where the types live, and why not in `@noodl/types`
+
+Slice 2 published the runtime authoring API in `@noodl/types`. The React types stayed in
+`react-component-node.ts` and are exported from there. `@noodl/types` is shared with the cloud
+runtime, which has neither React nor a DOM; putting `React.ComponentType` and `HTMLElement` in it
+would make a package that describes *the runtime* depend on one particular renderer. Consumers
+`import type { ReactNodeInstance } from '../../react-component-node'`, which erases at build time.
+
+Published from there: `ReactNodeDefinition` (the `def`), `ReactNodeInstance` (`this` in every
+callback, and `props.noodlNode` in every component), `ReactInputPropDefinition`,
+`ReactInputCssDefinition`, `ReactOutputPropDefinition`, `ReactNodeContext`, `ReactNodeModel`,
+`StyleObject`.
+
+### 9.2 Three modelling decisions
+
+**Generated members are typed as generated, not hidden.** Authors never write `set` on an
+`inputProps`/`inputCss` port — this module synthesises it onto the very object the author wrote,
+mutating the definition in place. The type declares `set?` with a doc comment saying so, rather
+than omitting it (which would break the assignment) or requiring it (which would break every
+author).
+
+**`ReactNodeInstance` carries an `any` index signature, deliberately.** `def.methods` puts
+author-defined members straight onto the prototype and `initialize` hangs arbitrary scratch state
+off `this`. A closed interface would fail to compile against roughly every node in the standard
+library. The cost is typo detection on *undeclared* members only; the ~50 declared members are
+still checked, which is what catches real mistakes.
+
+**`StyleObject` is `Record<string, any>`, not `React.CSSProperties`.** Styles here are read and
+written by computed name and their values already have units appended (`'12px'`,
+`'translateX(-50%) …'`). `CSSProperties` would also reject the plain `{ flexDirection: 'column' }`
+literals nodes write, whose values widen to `string`. Claiming it would assert precision this code
+does not have.
+
+### 9.3 What typing found
+
+Four things that were invisible while the file was untyped. None are fixed here — this slice is
+type-only, and three of the four change published metadata:
+
+| Finding | Evidence | Effect |
+|---|---|---|
+| `def.category` is silently dropped | `Page`, `NavigationStack`, `Router` declare `category: 'Visuals'`; the compiled definition hardcodes `category: 'Visual'` | Cosmetic. The catalog records `Visual` for all three. |
+| `def.deprecated` is silently dropped | `form.jsx`, `fieldset.jsx`, `label.jsx` set `deprecated: true` | **Real.** The catalog reports `isDeprecated: false` for `Form` and `Label`. They are out of the node picker by another route, so the practical damage is limited to the flag being wrong for catalog consumers (SUB-005/SUB-006). |
+| `def.frame` is dead | Nothing in the repository sets it, so `useFrame` is always `false` | The `Layout.size`/`Layout.align` pass and the `textStyle` merge in `NoodlReactComponent.render()` never run. Layout reaches nodes through `inputCss` and `node-shared-port-definitions` instead. |
+| `hasChildCountOutput` reads a property that does not exist | `ReactComponentNode.allowChildren \|\| ReactComponentNode.displayName` — the compiled object has `displayNodeName`, never `displayName` | The second clause is always `undefined`, so the `childrenCount` output depends on `allowChildren` alone. Probably meant `def.displayName`. |
+
+The first two are declared on `ReactNodeDefinition` with `@deprecated` JSDoc, so the mistake now
+surfaces at the call site instead of only in the catalog.
+
+A fifth was a genuine gap in slice 2's published types: `NodeVariant` was missing
+`stateTransitions` and `defaultStateTransitions`, which `setVisualStates` reads and the editor's
+`VariantModel` writes. Added to `@noodl/types`, along with a `StateTransition` interface — the
+runtime and the editor now name the same shape.
+
+### 9.4 Boundary `TSFixme` removed
+
+`Noodl.ReactProps.noodlNode` was `NodeConstructor`, which `typings/global.d.ts` defined as `any`.
+It is now `ReactNodeInstance`, so every React component in the viewer gets a real type for the node
+rendering it. `router-handler.ts` followed, and `type NodeConstructor = any` is deleted — it had no
+remaining users.
+
+That change surfaced eight errors in seven components, all the same one: `context.styles` is
+`unknown` in `NodeContextLike` (correctly — the cloud runtime has no styles). `ReactNodeContext`
+narrows it to the viewer's `Styles` service and declares `setNodeFocused`, which `viewer.jsx`
+installs onto the context at startup.
+
+Note this is *viewer*-side. Spec step 9's editor-side sweep is still deferred until PLAT-002 lands.
+
+### 9.5 Source changes, and why each is behaviour-preserving
+
+The conversion is type-only apart from four edits:
+
+- Three `const type = input.type as PortType` aliases, replacing repeated `input.type.units` /
+  `.defaultUnit` reads. Only the object form of a port type carries units; reading through the
+  bare-name form yields `undefined`, which is what the original code relied on. `input.type` is
+  never reassigned in these loops.
+- `radiobuttongroup.ts` did `RadioButtonGroupNode = createNodeFromReactComponent(RadioButtonGroupNode)`
+  — reusing one variable for both the definition and the compiled module, which no type can
+  describe. Now `export default createNodeFromReactComponent(RadioButtonGroupNode)`. Nothing read
+  the variable afterwards; it was the last line.
+
+### 9.6 Verification
+
+| Gate | Result |
+|---|---|
+| `typecheck:viewer` | **0 errors in `src`**, before and after (40 pre-existing `node_modules` `@types` conflicts, unchanged) |
+| `typecheck:runtime` | clean |
+| `typecheck:cloud` | clean |
+| root `typecheck` | 14 errors, all the pre-existing `@noodl-versioning` alias |
+| `catalog:check` | **byte-identical**, 135 node types |
+| `noodl-runtime` jest | 225 passing / 20 failing — the §4 baseline, unchanged |
+| viewer + deploy + ssr prod bundles | green |
+| `noodl-preview` build | green |
+
+The baseline had to be measured rather than trusted: a first `npm run typecheck:viewer` reported
+exit 0 with 20 error lines, which cannot both be true. Re-running with the slice stashed gave the
+real figure — 40 lines, all in `node_modules`, in both directions.
+
+Two test failures are pre-existing and were confirmed so by reproducing them with the slice stashed:
+
+- `noodl-viewer-react`'s only jest suite, `tests/collection.test.js`, still cannot resolve a node
+  that moved to the runtime (§7 trap 4).
+- `noodl-preview`'s `preview.test.ts:97` asserts `noodl.deploy.js` exceeds 1 MB. A **production**
+  deploy build is ~870 KB, at HEAD as well as with this slice. The assertion passes only when the
+  on-disk artifact happens to be a *development* build (~4.9 MB), which is what was there when
+  slice 2 recorded "14 tests green". The test is environment-dependent, not a regression — same
+  class as the stale `collection.test.js` path.
+
+The editor still has **not** been smoke-tested live; a concurrent PLAT-002 session owns the editor
+package and has ~30 uncommitted files in it, so a live pass would exercise their work in progress
+rather than this slice. Still owed.
+
+## 10. Next slice
+
+File counts now: `noodl-runtime` **73 `.js` / 19 `.ts`** (unchanged — slice 3 was viewer-side).
+`noodl-viewer-react` **106 `.js` / 32 `.ts` / 35 `.tsx`** (was 107/31/35).
+
+1. **Live editor pass** — still the one gate no slice has run. Open a real project; exercise
+   signals, dynamic-port nodes (Function, Expression, numbered inputs), variants and visual
+   states. Best done once PLAT-002's editor work is committed.
+2. **Viewer nodes** (spec step 7). Now mechanical: `ReactNodeDefinition` types the shape they all
+   author against, so each conversion is a rename plus whatever the compiler objects to. Start with
+   the `nodes/visual/*.js` group — `group.js`, `text.js`, `image.js` — which are the most used.
+3. **Standard library in the runtime** (spec step 5), still the opportunistic long tail.
+4. **Decide on the four §9.3 findings.** `def.deprecated` being dropped is the one worth fixing;
+   it changes `node-catalog.json`, so it needs its own commit and a regenerated catalog, not a
+   quiet edit inside a typing slice.
+5. **Do not raise `strict` yet** (spec step 8).
+6. **Step 9 (editor-side `TSFixme` sweep) stays deferred** until PLAT-002 lands.
+
+### Traps for the next session
+
+All of §7's traps still apply. One more:
+
+- `packages/noodl-viewer-react/tsconfig.json` sets `noImplicitAny: false` and no `strict`. That is
+  why converting a 1,200-line file cost so little: untyped `.js` imports (`layout`, `mergedeep`,
+  `node-shared-port-definitions`) silently become `any` instead of erroring, and null checks are
+  off. Raising either flag is a separate, much larger piece of work — do not do it incidentally
+  while converting a file.
