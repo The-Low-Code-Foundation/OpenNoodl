@@ -26,6 +26,11 @@ jobs:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
       - run: npm run typecheck
+      # The editor's specs are outside its tsconfig so they stay out of the app
+      # bundle, which left them unchecked entirely (PLAT-004). They are clean
+      # today; this keeps them that way, so a type written in a spec means
+      # something.
+      - run: npm run typecheck:editor-tests
 
   lint:
     name: Lint

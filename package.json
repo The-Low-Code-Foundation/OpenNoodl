@@ -56,6 +56,7 @@
     "typecheck:preview": "tsc -p packages/noodl-preview --noEmit",
     "typecheck:core-ui": "tsc -p packages/noodl-core-ui --noEmit",
     "typecheck:editor": "tsc -p packages/noodl-editor --noEmit",
+    "typecheck:editor-tests": "tsc -p packages/noodl-editor/tsconfig.tests.json --noEmit",
     "typecheck:viewer": "tsc -p packages/noodl-viewer-react --noEmit",
     "typecheck:runtime": "tsc -p packages/noodl-runtime --noEmit",
     "typecheck:cloud": "tsc -p packages/noodl-viewer-cloud --noEmit"

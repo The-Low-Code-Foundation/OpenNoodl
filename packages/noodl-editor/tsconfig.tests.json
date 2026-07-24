@@ -1,0 +1,13 @@
+{
+  // The editor's specs are excluded from `tsconfig.json` because they must not
+  // reach the app bundle — which also meant nothing typechecked them at all.
+  // A `TSFixme` swapped for a wrong type in a spec would have gone unnoticed.
+  //
+  // Only `tests` is listed: the sources under test come in through the imports,
+  // and `npm run typecheck` already covers the rest of them.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true
+  },
+  "include": ["tests", "@include-types"]
+}
