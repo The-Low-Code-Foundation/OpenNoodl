@@ -28,6 +28,12 @@ module.exports = merge(common, {
           info: { minimized: true }
         },
         {
+          from: 'static/shared-react19',
+          to: 'react19',
+          noErrorOnMissing: true,
+          info: { minimized: true }
+        },
+        {
           from: 'static/viewer',
           to: '.',
           noErrorOnMissing: true,

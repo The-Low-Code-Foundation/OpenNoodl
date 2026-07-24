@@ -22,7 +22,9 @@ export interface TextProps extends Noodl.ReactProps {
 }
 
 export function Text(props: TextProps) {
-  const Component = props.as || 'div';
+  // React.ElementType collapses the intrinsic-elements union; with the ref prop added,
+  // the raw union exceeds the compiler's representation limit (TS2590).
+  const Component = (props.as || 'div') as React.ElementType;
 
   const style = {
     ...props.textStyle,

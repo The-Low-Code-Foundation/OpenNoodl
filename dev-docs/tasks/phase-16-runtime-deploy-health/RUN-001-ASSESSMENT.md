@@ -132,8 +132,32 @@ Slices, each independently landable on `cline-dev`:
    react-draggable, Page gains noodlNodeAsProp. Also fixes the live setStyle P1 (§3 update).
    Residual: Router/navigation-stack (childless roots, like Drag) rely on the findDOMNode
    fallback under 18 and have no reachable root under 19 — revisit in the corpus pass.
-3. **Per-project runtime version setting** (project.json), plumbed through preview + deploy
-   file selection. New projects default 19; absent setting = 18 (existing projects unchanged).
+3. **Per-project runtime version setting**, plumbed through preview + deploy file selection.
+   ✅ DONE (2026-07-24) — turned out to be half-built already: `project.runtimeVersion`
+   (`'react17' | 'react19'`) existed end-to-end (ProjectModel field, importer/exporter/schema,
+   REV-008 stamps new projects `react19`, a whole `models/migration/` scanner) but **nothing
+   consumed it** — every project got the 18.3.1 files regardless. The slice wired delivery:
+   - Both viewer/deploy webpack configs copy `static/shared-react19/` → `react19/` subdir of
+     `external/viewer/` and `external/deploy/`; the 18.3.1 pair stays at the root. Selection
+     semantics everywhere: `runtimeVersion === 'react19'` → the react19 pair; anything else
+     (absent, `'react17'`) → the 18.3.1 pair, byte-identical to before.
+   - Editor preview: `projectGetInfo` (editorapi.js) now carries `runtimeVersion`;
+     `web-server.js#serveIndexFile` rewrites the two script srcs to `/react19/…` (distinct
+     URLs so the browser cache can't serve the wrong React after switching projects).
+   - Deploy: `deploy-index.ts` maps the two react file urls to the `react19/` source while
+     writing the **same filenames** — deployed layout, index.html, and the external-module
+     `window.React` contract are untouched.
+   - noodl-preview: loader rewrites the processed html the same way; the react19 pair joined
+     `DEPLOY_ASSETS` (served + hard-asserted at startup).
+   Verified live (editor preview webview): react19 project → `React.version === '19.0.0'`
+   loaded from `/react19/…`, renders; `runtimeVersion` cleared + reload → `18.3.1`, renders.
+   Deploy probed both ways from the running renderer: react-dom lands as the 177 KB 19 bundle
+   vs the 129 KB 18.3.1 UMD under the same name. noodl-preview serves the rewritten html +
+   assets. Also fixed in passing: two latent viewer-prod-build TS errors from slice 2
+   (`Group.tsx`/`Text.tsx` — the dynamic-tag `as` union now exceeds TS's representation limit
+   once a ref prop is present; collapsed via `React.ElementType`). Note for slice 4: the
+   read-only canvas banner (`EditorBanner.tsx`) hardcodes "Legacy Project (React 17)" copy but
+   is shown for *any* read-only canvas (e.g. review documents) — fix the copy or condition.
 4. **Editor surface:** version selector in deploy flow + migration scan (design doc's
    detector patterns, trimmed to what's actually removed in 19 relative to *18*, not 17).
 5. **Corpus comparison** on 18 vs 19 preview: the SUB-004/SUB-009 project corpus + signal-heavy

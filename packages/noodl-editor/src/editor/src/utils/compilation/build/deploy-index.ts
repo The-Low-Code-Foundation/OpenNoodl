@@ -41,6 +41,21 @@ function addSuffix(url: string, suffix: string) {
   return parts.join('.');
 }
 
+/**
+ * RUN-001: the vendored React pair exists in two variants — the 18.3.1 default at the
+ * runtime folder root, and the React 19 set under `react19/`. Projects opted in via
+ * `runtimeVersion: 'react19'` source the 19 files; the deployed filenames stay identical,
+ * so index.html and every external-module contract are untouched.
+ */
+const REACT_RUNTIME_FILES = ['react.production.min.js', 'react-dom.production.min.js'];
+
+function resolveSourceUrl(project: ProjectModel, url: string): string {
+  if (project?.runtimeVersion === 'react19' && REACT_RUNTIME_FILES.includes(url)) {
+    return 'react19/' + url;
+  }
+  return url;
+}
+
 type WriteFileToFolderArgs = {
   project: ProjectModel;
   direntry: string;
@@ -52,6 +67,8 @@ type WriteFileToFolderArgs = {
   enableHash?: boolean;
   envVariables?: Record<string, string>;
   runtimeType: string;
+  /** Path to read from within the runtime folder, when it differs from the written `url`. */
+  sourceUrl?: string;
 };
 
 async function _writeFileToFolder({
@@ -64,9 +81,10 @@ async function _writeFileToFolder({
   baseUrl,
   enableHash = true,
   envVariables,
-  runtimeType
+  runtimeType,
+  sourceUrl
 }: WriteFileToFolderArgs) {
-  const fullPath = filesystem.join(getExternalFolderPath(), runtimeType, url);
+  const fullPath = filesystem.join(getExternalFolderPath(), runtimeType, sourceUrl ?? url);
   let content = await filesystem.readFile(fullPath);
   let filename = url;
 
@@ -168,7 +186,14 @@ export async function copyDeployFilesToFolder({
   const otherFiles = files.filter((f) => f !== indexJsFile && f !== indexHtmlFile);
 
   const otherFilesPromises = otherFiles.map((file) =>
-    _writeFileToFolder({ project, direntry, url: file.url, envVariables, runtimeType })
+    _writeFileToFolder({
+      project,
+      direntry,
+      url: file.url,
+      envVariables,
+      runtimeType,
+      sourceUrl: resolveSourceUrl(project, file.url)
+    })
   );
 
   await Promise.all([

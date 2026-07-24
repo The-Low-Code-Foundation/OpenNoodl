@@ -70,6 +70,14 @@ function startServer(app, projectGetSettings, projectGetInfo, projectGetComponen
             injected = injected.replace('{{#title#}}', settings.htmlTitle || 'Noodl Viewer');
             injected = injected.replace('{{#customHeadCode#}}', settings.headCode || '');
 
+            //RUN-001: projects on the React 19 runtime load the react19/ pair instead of the
+            //vendored 18.3.1 default; distinct URLs keep the browser cache honest when switching
+            if (info.runtimeVersion === 'react19') {
+              injected = injected
+                .replace('src="/react.production.min.js"', 'src="/react19/react.production.min.js"')
+                .replace('src="/react-dom.production.min.js"', 'src="/react19/react-dom.production.min.js"');
+            }
+
             response.writeHead(200, {
               'Content-Type': 'text/html'
             });

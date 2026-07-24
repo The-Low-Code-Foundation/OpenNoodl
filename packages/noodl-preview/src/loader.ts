@@ -222,10 +222,18 @@ export async function loadPreview(dir: string, format: ProjectFormat): Promise<P
     }
 
     const template = fs.readFileSync(deployAssetPath('index.html'), 'utf8');
-    const html = await new HtmlProcessor(project).process(template, {
+    let html = await new HtmlProcessor(project).process(template, {
       baseUrl: '/',
       indexJsPath: 'index.js'
     });
+
+    // RUN-001: projects on the React 19 runtime load the react19/ pair instead of the
+    // vendored 18.3.1 default. Distinct URLs, same filenames on disk.
+    if (project.runtimeVersion === 'react19') {
+      html = html
+        .replace('src="/react.production.min.js"', 'src="/react19/react.production.min.js"')
+        .replace('src="/react-dom.production.min.js"', 'src="/react19/react-dom.production.min.js"');
+    }
 
     return {
       status: 'ok',
@@ -261,6 +269,8 @@ export const DEPLOY_ASSETS = [
   'noodl.deploy.js',
   'react.production.min.js',
   'react-dom.production.min.js',
+  'react19/react.production.min.js',
+  'react19/react-dom.production.min.js',
   'load_terminator.js',
   'noodl-app.png'
 ];

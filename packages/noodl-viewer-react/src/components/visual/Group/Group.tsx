@@ -243,10 +243,10 @@ export class Group extends React.Component<GroupProps> {
   }
 
   render() {
-    const {
-      as: Component = 'div',
-      ...props
-    } = this.props;
+    // React.ElementType collapses the intrinsic-elements union; with the ref prop added,
+    // the raw union exceeds the compiler's representation limit (TS2590).
+    const { as = 'div', ...props } = this.props;
+    const Component = as as React.ElementType;
 
     const children = props.scrollEnabled && !props.nativeScroll ? this.renderIScroll() : props.children;
     
@@ -277,7 +277,6 @@ export class Group extends React.Component<GroupProps> {
 
     return (
       <Component
-        // @ts-expect-error Lets hope that the type passed here is always static!
         className={props.className}
         {...props.dom}
         {...PointerListeners(props)}

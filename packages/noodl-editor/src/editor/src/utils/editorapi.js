@@ -18,9 +18,13 @@ class EditorAPI {
 
   projectGetInfo(args, cb) {
     if (ProjectModel.instance) {
-      cb({ id: ProjectModel.instance.id, projectDirectory: ProjectModel.instance._retainedProjectDirectory });
+      cb({
+        id: ProjectModel.instance.id,
+        projectDirectory: ProjectModel.instance._retainedProjectDirectory,
+        runtimeVersion: ProjectModel.instance.runtimeVersion
+      });
     } else {
-      cb({ id: null, projectDirectory: null });
+      cb({ id: null, projectDirectory: null, runtimeVersion: null });
     }
   }
 
