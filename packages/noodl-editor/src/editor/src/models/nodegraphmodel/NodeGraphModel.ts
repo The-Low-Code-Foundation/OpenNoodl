@@ -34,7 +34,7 @@ export class NodeGraphModel extends Model {
   nodeMap: Map<string, NodeGraphNode>;
 
   public owner: ComponentModel;
-  typeModel: TSFixme;
+  boundTypeModels: Set<TSFixme>;
 
   private evaluatehealthScheduled: boolean;
   private updateTypesScheduled: boolean;
@@ -49,6 +49,7 @@ export class NodeGraphModel extends Model {
 
     //keep track of all nodes in a an id=>model map for better findNodeWithId() performance
     this.nodeMap = new Map();
+    this.boundTypeModels = new Set();
 
     this.bindModels();
   }
@@ -69,7 +70,8 @@ export class NodeGraphModel extends Model {
   dispose() {
     EventDispatcher.instance.off(this);
     NodeLibrary.instance.off(this);
-    this.typeModel?.off(this);
+    this.boundTypeModels.forEach((type) => type.off && type.off(this));
+    this.boundTypeModels.clear();
     this.removeAllListeners();
   }
 
@@ -161,21 +163,22 @@ export class NodeGraphModel extends Model {
     this.scheduleEvaluateHealth();
   }
 
-  // When a node instances of a ceratain type is used the type
-  // is bound, if port names are changed both connections and
-  // parameters must be updated
+  // When a node instance of a certain type is used the type is bound; if port
+  // names are changed both connections and parameters must be updated.
+  //
+  // A graph contains nodes of many types, so every distinct type stays bound
+  // (DEBT-004). The previous single `typeModel` slot meant each bind evicted
+  // the last one — whichever node type resolved most recently was the only one
+  // whose port renames propagated, which is why renaming a component port
+  // silently broke existing instance wirings.
   bindTypeModel(type) {
     const _this = this;
 
-    if (this.typeModel) {
-      this.typeModel.off(this);
-      this.typeModel = null;
-    }
-
     if (!type) return;
+    if (this.boundTypeModels.has(type)) return;
+    this.boundTypeModels.add(type);
 
-    this.typeModel = type;
-    this.typeModel.on(
+    type.on(
       'portRenamed',
       function (args) {
         // Rename all parameters for all nodes referencing

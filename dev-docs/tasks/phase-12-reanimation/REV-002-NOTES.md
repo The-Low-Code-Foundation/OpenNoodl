@@ -47,6 +47,20 @@ instances of the renamed component, versus only for the graph's own type.
 User-visible impact: renaming a component input in the property panel silently
 breaks every existing wiring to it. Needs its own task.
 
+> **FIXED 2026-07-25 by DEBT-004.** The step-3 suspicion was exactly right, one
+> level deeper: `bindTypeModel` *was* called for the instance graph, but the
+> graph held a **single** `typeModel` slot, so every later node type that
+> resolved evicted the component's `portRenamed` listener — only the
+> last-bound type in a graph ever propagated renames. Graphs now keep every
+> distinct node type bound (`boundTypeModels` set, released in `dispose`).
+> All three `xit` quarantines in `componentinstances.js` are re-enabled and
+> passing (1153 specs, 0 failures). Two test-side causes were also fixed and
+> recorded in the spec file: `ProjectModel.fromJSON` keeps references into the
+> fixture, so the rename spec mutated the shared fixture for every later spec
+> (now deep-copied per spec), and the unhealthy-connections spec had encoded
+> that leakage (`p3b`) plus connection-derived port semantics that no longer
+> exist (rewritten against today's WarningsModel behaviour).
+
 ## Order-dependent specs (not quarantined)
 
 `tests/nodegraph/export.js` — "calculated dependencies for bundles" and "can export
