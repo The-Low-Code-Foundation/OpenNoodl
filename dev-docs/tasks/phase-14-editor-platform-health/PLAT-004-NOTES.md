@@ -1,7 +1,8 @@
 # PLAT-004 NOTES — Type Escape-Hatch Ratchet
 
-Status: the mechanism landed 2026-07-24 (spec steps 1–4, 6). The burn-down itself (steps 5, 7) is
-ongoing and mostly happens inside PLAT-002 and PLAT-003. Resume from **§6**.
+Status: the mechanism landed 2026-07-24 (spec steps 1–4, 6), plus the first burn-down slice —
+`noodl-preview`, 16 `TSFixme` → 3 (§7). The rest of the burn-down mostly happens inside PLAT-002 and
+PLAT-003. Resume from **§6**.
 
 Run in parallel with PLAT-002 and PLAT-003. Boundary: PLAT-004 owns the counter, the baseline, the
 CI job and the policy — nothing in `packages/`. It deliberately does **not** sweep markers in
@@ -25,7 +26,10 @@ down to the `--update` flag and the failure-message wording. The spec proposed
 `scripts/count-tsfixme.ts`; plain JS was used instead so CI needs no `ts-node` hop, matching the
 lint ratchet it sits beside in the same job.
 
-## 2. Baseline at `3a302b9`
+## 2. Baseline
+
+Measured at `3a302b9` when the mechanism landed; now `0395b24` after slice 1 (§7) lowered
+`TSFixme` to **568**. The table below is the original measurement.
 
 | Marker | Count |
 |---|---|
@@ -103,9 +107,9 @@ the types are knowable (SDK response shapes), so typing them is the better answe
 
 ## 6. Where to resume
 
-1. **Harvest the easy wins** (spec step 5) in packages no one else is editing. `noodl-preview` (16
-   `TSFixme`) and `noodl-types` (11) are the safe targets; everything else is live territory for
-   PLAT-002/003.
+1. **Harvest the easy wins** (spec step 5) in packages no one else is editing. `noodl-preview` is
+   done (§7). `noodl-types`' remaining 11 are in `src/runtime/*.d.ts`, which is PLAT-003's published
+   API — leave those to that task. Everything else is live territory for PLAT-002/003.
 2. **Lower the baseline as PLAT-002/003 land.** Neither task is required to update it — the gate
    only blocks increases — so the number will drift high unless someone re-runs
    `npm run tsfixme:baseline` after each merge. Worth adding to those tasks' definition of done.
@@ -114,3 +118,35 @@ the types are knowable (SDK response shapes), so typing them is the better answe
 4. The target is under 100 `TSFixme` by the end of PLAT-002 and PLAT-003, with the residue
    documented as genuinely ambiguous. The clustering report shows the residue is concentrated in
    `noodl-editor/src/editor/src/views` (422 markers) — i.e. mostly PLAT-002's deletion path.
+
+## 7. Burn-down slice 1 — `noodl-preview`, 16 → 3
+
+Chosen because no concurrent task owns it (SUB-009 is complete), so it could be typed without
+racing PLAT-002 or PLAT-003. Baseline lowered to 568 `TSFixme` at `0395b24`.
+
+| Was | Now | Why it was removable |
+|---|---|---|
+| `(project as TSFixme)._retainedProjectDirectory` | `project._retainedProjectDirectory` | Declared `public` on `ProjectModel` — the cast was stale |
+| `(legacy as TSFixme).name` | `legacy.name` | `LegacyProject.name` is a required field |
+| `readV2`'s 4 markers | `RegistryV2File`, `ImportInput['components']`, generic `readJson<T>` | The io engine already publishes a schema for every v2 file it reads |
+| test helpers' 6 markers | `PreviewStatus`, `PreviewEvent` | These types did not exist; `server.ts` now names its own HTTP contract |
+| 3 of `preview.test.ts`'s 4 | `ExportedComponent` | Only `name` was actually needed at the call sites |
+
+The helpers were the interesting case. The right type did not exist, so the fix was to name the
+server's public contract rather than to invent a shape in the tests: `PreviewStatus` for
+`GET /__preview/state`, and a `PreviewEvent` union for the SSE frames. `helloFrame()` and
+`broadcast()` were returning/accepting `unknown`. Typing them found four real defects in the specs,
+including reaching for `.report` on a `PreviewState` union with no narrowing — which only compiled
+because the value arrived as `TSFixme`.
+
+**The three that stay** are documented in place, which is the standard the success criteria set
+("the remainder documented as genuinely ambiguous rather than merely unconverted"):
+`PreviewBuild.exportJson`, `parseProjectData`'s return, and `ExportedComponent.nodes`. All three
+describe the output of the editor's `Exporter.exportToJSON`, which is itself untyped and returns
+`TSFixme`. A type there would be an assertion about someone else's return value, not a real type.
+
+Verification: `typecheck:preview` clean; preview suite 13/14. The one failure is pre-existing and
+unrelated — `expect(content-length).toBeGreaterThan(1_000_000)` on `noodl.deploy.js`, which is
+872KB in this tree because PLAT-003 is rebuilding the viewer. Confirmed pre-existing by running the
+same suite against the unmodified files. An earlier run showed 4 failures; those were timeouts from
+two other sessions saturating the machine, and did not reproduce.

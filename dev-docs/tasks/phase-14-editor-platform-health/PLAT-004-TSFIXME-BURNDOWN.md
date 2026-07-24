@@ -47,7 +47,7 @@ The ratchet is the durable part. Without it, every future contributor — and ev
 - [x] A committed baseline file
 - [x] CI check failing on any increase
 - [x] Documentation of the policy in the coding standards
-- [ ] Opportunistic removal of markers whose real type is already knowable
+- [x] Opportunistic removal of markers whose real type is already knowable (`noodl-preview` done; rest belongs to PLAT-002/003)
 - [x] A reporting view of where markers cluster, so later tasks can target them
 - [x] Same treatment for bare `: any` in new code (policy, not retroactive cleanup)
 
@@ -110,8 +110,8 @@ The counter uses the TypeScript parser rather than grep. Grep cannot tell `any` 
 - [x] Baseline committed; CI fails on increases
 - [x] Policy documented in coding standards, including the escape valve
 - [x] Clustering report available to other tasks
-- [ ] Easy-win markers removed
-- [ ] Count trending down; target under 100 by the end of PLAT-002 and PLAT-003, with the remainder documented
+- [x] Easy-win markers removed — in every package no concurrent task owns (`noodl-preview`, 16 → 3). The rest sit in PLAT-002/003 files and are theirs to remove
+- [ ] Count trending down; target under 100 by the end of PLAT-002 and PLAT-003, with the remainder documented — 581 → 568 so far
 
 ## Risks & Mitigations
 
@@ -125,6 +125,20 @@ The counter uses the TypeScript parser rather than grep. Grep cannot tell `any` 
 ## CHANGELOG
 
 In progress. Full as-built record in [PLAT-004-NOTES.md](./PLAT-004-NOTES.md).
+
+### Slice 1 — 2026-07-24 — burn-down in `noodl-preview` (step 5)
+
+- 16 `TSFixme` → 3. Two casts were simply stale (`_retainedProjectDirectory` is a declared public
+  field; `LegacyProject.name` is required); four more came from `readV2` reading the v2 files
+  untyped when the io engine already publishes a schema for each.
+- `server.ts` now names its HTTP contract — `PreviewStatus` for `GET /__preview/state` and a
+  `PreviewEvent` union for the SSE frames — because the test helpers' markers had no existing type
+  to point at. Typing them found four real defects in the specs, including reaching for `.report`
+  on a `PreviewState` union with no narrowing.
+- The 3 remaining markers are documented in place: all describe `Exporter.exportToJSON`'s output,
+  which is untyped in the editor and returns `TSFixme` itself.
+- Baseline lowered to **568** at `0395b24`. `typecheck:preview` clean; preview suite 13/14, the one
+  failure pre-existing and unrelated (bundle-size assertion, viewer mid-rebuild by PLAT-003).
 
 ### Mechanism — 2026-07-24 — steps 1–4 and 6
 
@@ -157,6 +171,6 @@ In progress. Full as-built record in [PLAT-004-NOTES.md](./PLAT-004-NOTES.md).
 - [x] Write and verify the counter script
 - [x] Commit the baseline; add the CI check
 - [x] Document the policy and escape valve
-- [x] Publish the clustering report / [ ] harvest easy wins (ongoing)
+- [x] Publish the clustering report; harvest easy wins (`noodl-preview` done, rest ongoing)
 - [ ] Wire baseline updates into other tasks' definition of done
 - [ ] CHANGELOG; open PR

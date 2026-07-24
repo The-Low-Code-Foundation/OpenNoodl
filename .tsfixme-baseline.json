@@ -4,9 +4,9 @@
     "scripts"
   ],
   "exclude": [],
-  "commit": "3a302b9",
+  "commit": "0395b24",
   "max": {
-    "TSFixme": 581,
+    "TSFixme": 568,
     "any": 392,
     "@ts-ignore": 22,
     "@ts-nocheck": 0,
@@ -56,7 +56,7 @@
       "@ts-expect-error": 0
     },
     "noodl-preview": {
-      "TSFixme": 16,
+      "TSFixme": 3,
       "any": 0,
       "@ts-ignore": 0,
       "@ts-nocheck": 0,
@@ -1864,21 +1864,14 @@
       "@ts-expect-error": 0
     },
     "packages/noodl-preview/src/loader.ts": {
-      "TSFixme": 6,
-      "any": 0,
-      "@ts-ignore": 0,
-      "@ts-nocheck": 0,
-      "@ts-expect-error": 0
-    },
-    "packages/noodl-preview/tests/helpers.ts": {
-      "TSFixme": 6,
+      "TSFixme": 1,
       "any": 0,
       "@ts-ignore": 0,
       "@ts-nocheck": 0,
       "@ts-expect-error": 0
     },
     "packages/noodl-preview/tests/preview.test.ts": {
-      "TSFixme": 4,
+      "TSFixme": 2,
       "any": 0,
       "@ts-ignore": 0,
       "@ts-nocheck": 0,
