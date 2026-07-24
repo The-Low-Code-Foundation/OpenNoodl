@@ -1,9 +1,13 @@
 # PLAT-004 NOTES — Type Escape-Hatch Ratchet
 
-Status: the mechanism landed 2026-07-24 (spec steps 1–4, 6), plus three burn-down slices —
-`noodl-preview` 16 `TSFixme` → 3 (§7), the AI client 44 → 0 (§8), and the io specs 66 `any` → 0
-(§11) — and a typecheck gate for the editor's specs, which nothing checked before (§9). The rest of
-the burn-down mostly happens inside PLAT-002 and PLAT-003. Resume from **§6** and **§10**.
+Status: the mechanism landed 2026-07-24 (spec steps 1–4, 6), plus five burn-down slices —
+`noodl-preview` 16 `TSFixme` → 3 (§7), the AI client 44 → 0 (§8), the io specs 66 `any` → 0 (§11),
+the unowned editor spec clusters 20/15 → 0 (§12) and the MCP response payloads 12 `any` → 0 (§13) —
+and a typecheck gate for the editor's specs, which nothing checked before (§9).
+
+**Every cluster PLAT-004 owns is now done.** What remains of the burn-down belongs to PLAT-002 and
+PLAT-003, and what remains of *this* task is §6.2: lowering the baseline as they land. Resume
+from **§10**.
 
 Run in parallel with PLAT-002 and PLAT-003. Boundary: PLAT-004 owns the counter, the baseline, the
 CI job and the policy, plus burn-down in code no concurrent task is editing. It deliberately does
@@ -35,10 +39,13 @@ lint ratchet it sits beside in the same job.
 
 Measured at `3a302b9` when the mechanism landed. Since then: slice 1 (§7) lowered `TSFixme` to 568
 at `0395b24`; slice 2 (§8) set it to 571 / 393 `any` at `5b3cca0`; slice 3 (§11) brought it to
-**561 `TSFixme` / 314 `any`** at `7a49cae`. The table below is the original measurement.
+561 / 314 at `7a49cae`; slices 4 and 5 (§12, §13) bring it to **538 `TSFixme` / 287 `any`** at
+`c354d4e`. The table below is the original measurement.
 
-Slice 3's re-measurement also banked PLAT-002's wave 4, which landed in between — the gate only
-blocks increases, so a win nobody records simply evaporates. That is §6.2 in practice.
+Each re-measurement also banks whatever PLAT-002 and PLAT-003 landed in between — 1 `TSFixme` and
+2 `any` this time, on top of the 35 markers slices 4 and 5 removed. The gate only blocks increases,
+so a win nobody records simply evaporates. That is §6.2 in practice, and it is now the whole of
+what this task has left to do.
 
 Slice 2's number went *up* by 3 `TSFixme` and 1 `any` against slice 1's, and that is deliberate —
 see §8. It is the escape valve being used as designed: HEAD had drifted 47 markers above the
@@ -272,18 +279,35 @@ several other packages likely have the same hole.
 
 ## 10. Still open
 
-- **Baseline updates in PLAT-002/003's definition of done** (§6.2, and a spec checklist item). Not
-  done here on purpose: it means editing those tasks' spec documents while both sessions are live in
-  the same working tree, and their NOTES files are exactly what those sessions are writing to. It is
-  a two-line change to each checklist once they are quiet.
-- **The remaining `tests/` clusters**, all still unowned: `tests/services/github` (15),
-  `tests/models/EmbeddedTemplate.test.ts` (12), `tests/canvas/InteractionController.test.ts` (8,
-  PLAT-001 is finished so it is free), `noodl-mcp/tests/tools.test.ts` (9). `tests/io` is done
-  (§11). They are typecheck-gated by §9, so typing them means something.
-- **PLAT-003's in-flight work is above the baseline again** as of the slice-3 re-measure: +5
-  `TSFixme` in `noodl-types/src/runtime/node-definition.d.ts` and +2 `any` in
-  `noodl-viewer-react/src/nodes/std-library/states.ts`, both uncommitted in the shared tree. Theirs
-  to resolve when they land — §5 all over again, which is why §6.2 matters.
+- **Baseline updates in PLAT-002/003's definition of done** (§6.2, and a spec checklist item). Still
+  not done, for the same reason: it means editing those tasks' spec documents while both sessions are
+  live in the same working tree, and their NOTES files are exactly what those sessions are writing
+  to. It is a two-line change to each checklist once they are quiet. **This is the last open item
+  that belongs to PLAT-004 itself.**
+- **Keep lowering the baseline.** 538 / 287 at `c354d4e`. The target is under 100 `TSFixme`, and the
+  clustering report still puts 400-odd of them in `noodl-editor/src/editor/src/views` — PLAT-002's
+  deletion path. Re-run `npm run tsfixme:baseline` and `npm run tsfixme:report` from a clean export
+  after each of their merges.
+- **PLAT-002's in-flight work sits above the baseline again**, as it did at every previous
+  re-measure: +7 `TSFixme` in the new `noodl-editor/src/shared/view.ts` (wave 5b's View-framework
+  replacement), uncommitted in the shared tree at the time of measuring. Theirs to resolve when it
+  lands — §5 all over again, which is exactly why §6.2 matters.
+
+Nothing is left in the `tests/` clusters: `tests/io` (§11), `tests/services/github`,
+`tests/models/EmbeddedTemplate.test.ts`, `tests/canvas/InteractionController.test.ts` (§12) and
+`noodl-mcp/tests` (§13) are all at zero.
+
+### An unrelated finding worth acting on
+
+`noodl-editor/tests/services/github/GitHubClient.test.ts` and `tests/services/StyleAnalyzer.test.ts`
+are **Jest** specs, and `noodl-editor` has no Jest runner. Its suite is jasmine under Electron
+(`tests/index.ts` → webpack → `run-electron-tests`), and `tests/services/index.ts` deliberately does
+not export them because importing them crashes that runner. So they are typechecked (§9) and never
+executed — 500 lines of GitHub client coverage that has never run. `services/index.ts`'s comment
+saying StyleAnalyzer "runs via `npm run test:editor`" is wrong; that script *is* the Electron runner.
+
+Out of scope here — PLAT-004 types markers, it does not choose test runners — but it belongs in
+whatever owns the editor's test infrastructure. Noted in both files' headers.
 
 ## 11. Burn-down slice 3 — the io specs, 66 `any` → 0
 
@@ -325,3 +349,118 @@ not implement (the AI specs are flat). It reported 20 failures that were entirel
 `Cannot read properties of undefined`. Worth stating plainly: a green run from a hand-rolled harness
 proves nothing until the harness is checked against a known-good control. The control run is the
 part that matters, not the run.
+
+## 12. Burn-down slice 4 — the unowned editor spec clusters, 20 `TSFixme` + 15 `any` → 0
+
+The three `tests/` clusters §10 listed as unowned. Ownership was checked, not assumed (§6.1):
+PLAT-001 is finished so the canvas spec is free, and neither the template nor the GitHub spec is
+anywhere near what PLAT-002 and PLAT-003 are editing.
+
+| File | Was | Now |
+|---|---|---|
+| `tests/canvas/InteractionController.test.ts` | 8 `TSFixme` | `StubOwnerShape` + `MembersOf` |
+| `tests/models/EmbeddedTemplate.test.ts` | 12 `TSFixme` | `ProjectContent` + `routerPages()` |
+| `tests/services/github/GitHubClient.test.ts` | 15 `any` | `GitHubClientInternals` + `MockOctokit` |
+
+**The canvas spec.** `owner: TSFixme` was a hand-written stub of `NodeGraphEditor`; a typo in
+`setCanvasCursor` would have produced a spy nothing ever called and an assertion that quietly never
+ran. It cannot be a `Partial<NodeGraphEditor>` — the stub supplies jasmine spies where the editor has
+methods, and a partial of the real class demands the real signatures. So `StubOwnerShape` declares
+the slice structurally and `MembersOf<NodeGraphEditor, StubOwnerShape>` checks the *names*:
+
+```ts
+type MembersOf<Base, T> = keyof T extends keyof Base
+  ? T
+  : ['not a member of the editor:', Exclude<keyof T, keyof Base>];
+```
+
+If the editor renames a member, `stubOwner()`'s return type becomes that tuple and the object literal
+fails to compile with the offending key in the error message. That is the check `TSFixme` was
+costing. `mouse()` takes the existing `MouseEventType`; the mouse and wheel event bags are named
+locally, because `InteractionController.mouse` itself still takes `TSFixme` for its event argument
+and that marker is the source's — `views/` is PLAT-002's.
+
+**The template spec.** `download()` writes `JSON.stringify(projectContent)`, so the file it reads
+back is a `ProjectContent` — the provider's own published output type, not a shape invented for the
+test. The one genuinely untyped thing is the Router's `pages` parameter: `NodeDefinition.parameters`
+is a `Record<string, unknown>` bag, and all four places in the editor that read `pages` are untyped
+JS-in-TS (`RouterAdapter`, `utils/exporter/router.ts`). A guard-based `routerPages()` reader beats a
+cast for the same reason `metadataAt` did in slice 3 — it reports a malformed fixture as a failed
+assertion rather than a crash two lines later. Inventing a shared `RouterPages` type in the editor
+would have been an assertion about four call sites this task is not typing.
+
+**The GitHub spec.** All fifteen were `(client as any).<private member>`. TypeScript offers no way to
+*name* a private member from outside its class — `GitHubClient['setCache']` is an error, not an
+escape hatch — so the cast has to stay. What changes is that the surface is now written down once,
+as `GitHubClientInternals`, behind a single `internals(client)` helper with the reason in a comment.
+`MockOctokit` is the better half of the trade: the mock was `any`, so `mockOctokit.issues.listForRepo`
+could have been misspelled and would have stubbed nothing while the spec still "passed".
+
+### Running editor specs headlessly, extended
+
+§8's recipe (esbuild-bundle for node + a jasmine shim + a control run from a pristine export) works
+for specs that touch only models. These two reach further, and needed four more things:
+
+1. **A platform.** `tests/index.ts` imports `@noodl/platform-electron` before anything else; the
+   headless equivalent is importing `@noodl/platform-node` first in the generated entry. Without it
+   `filesystem` is undefined and every spec fails on `.exists`.
+2. **jsdom.** `keyboardhandler.ts` adds a `document` listener in a static initialiser, so the module
+   graph will not even load without a DOM. jsdom needs `url: 'http://localhost/'` or `localStorage`
+   throws `SecurityError` on an opaque origin.
+3. **`require.context`.** The core-ui icon registry uses webpack's, so it is injected via esbuild's
+   `banner` — which runs in the bundle's own module scope, the same `require` those call sites see.
+   Patching it from the runner file does not work: node builds a fresh `require` per module.
+4. **tsconfig `paths` as a plugin, not `alias`.** esbuild's `alias` matches by prefix, so the exact
+   entry `"@noodl/git"` swallowed `@noodl/git/src/core/open` and rewrote it under `index.ts`. An
+   `onResolve` plugin that honours exact keys exactly and `x/*` keys as wildcards is required.
+
+Also worth knowing: `jsdom`, `electron-store` and `@anthropic-ai/sdk` must be `external`, and the
+bundle must be **written inside the export tree** so those externals resolve through its symlinked
+`node_modules`.
+
+Results, each against the identical bundle built from a pristine `git archive HEAD` export:
+`InteractionController` 11/11 both, `EmbeddedTemplate` 14/14 both. `typecheck:editor-tests` clean.
+
+**The trap that nearly ate the control**, and it is worth stating because it is the second time:
+the first "control" run used an export that already had the changed files copied into it for
+typechecking. It was green, and it proved nothing. A control has to be a *separate* pristine
+directory, verified against `git show HEAD:<path>` before it is trusted.
+
+## 13. Burn-down slice 5 — the MCP server's response payloads, 12 `any` → 0
+
+Every one of `noodl-mcp`'s markers traced to a single cause: `call()` in `tests/helpers.ts` returned
+`data: any`, so nine call sites in `tools.test.ts` paid for it with `(n: any) => n.id`.
+
+`call()` was `any` because there was nothing to point it at. The tools build their JSON payloads as
+inline object literals inside `registerTool`, so nothing named them and nothing checked them — which
+means the end-to-end specs, the closest thing this package has to a contract test, would have kept
+passing through a field rename on either side.
+
+The fix is the one slice 1 and slice 3 both arrived at from different directions: when a helper's
+type forces a cast at every call site, the helper is what is wrong, and the type belongs at the
+**producer**. `src/tools/responses.ts` now declares the success payload of every tool, the error
+envelope `errorResult` builds, and the two `details` bags that carry structure
+(`ValidationFailureDetails`, `DeletionRefusalDetails`). Most of it composes types the package already
+published — `ComponentDescription`, `NodeTypeRow`, `NodeTypeDetail`, `ExampleRow`,
+`ComponentListRow`, `Usage`, `Diagnostic`. Each handler annotates the object it hands to
+`jsonResult`, so drift fails to compile at the producer rather than silently at the consumer.
+
+`call<T>()` and `readJson<T>()` are then generic and the specs name what they expect. `get_node_type`
+returns a union per requested name, so `asDetail()` / `asMiss()` narrow it and throw a readable
+message on the wrong branch, instead of the old positional destructure reading `.outputs` off a miss.
+
+### Writing the types down found four disagreements
+
+None of these were guesses about the future — they are places where what the payload *is* and what a
+reader would reasonably assume differ:
+
+| Declared | Actual | Consequence |
+|---|---|---|
+| `brokenReferences: Usage[]` | `Diagnostic[]` | `validateDeletion` reports diagnostics against the *other* components, not the deleted one's usages. A consumer treating them as usages reads `.nodeId` off the wrong shape. |
+| `target: string` | `string \| undefined` | `validate_component` can resolve no target. |
+| `ports: NodePort[]` | `{ inputs?, outputs? }` | `get_component` forwards `component.json`'s object, not an array. |
+| `summary: ValidationSummary` | `{ errors, warnings, infos }` | The write path's summary is the three-count subset; it has no `nodesChecked` / `endpointsChecked`. |
+
+Verified: `tsc --noEmit` clean, `npm run build` clean, jest 31/31 — identical to the same suite run
+from a pristine pre-change export. `noodl-mcp`'s tsconfig already includes `tests/**/*` and has
+`strictNullChecks`, which is why this package's specs typecheck harder than the editor's do (§9).

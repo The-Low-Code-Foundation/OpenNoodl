@@ -110,8 +110,8 @@ The counter uses the TypeScript parser rather than grep. Grep cannot tell `any` 
 - [x] Baseline committed; CI fails on increases
 - [x] Policy documented in coding standards, including the escape valve
 - [x] Clustering report available to other tasks
-- [x] Easy-win markers removed — everywhere no concurrent task is editing (`noodl-preview` 16 → 3; the AI client 44 → 0; the io specs 66 `any` → 0). The rest sit in PLAT-002/003 files and are theirs to remove
-- [ ] Count trending down; target under 100 by the end of PLAT-002 and PLAT-003, with the remainder documented — `TSFixme` 581 → 561 and `any` 392 → 314 recorded, against a HEAD that had drifted to 615
+- [x] Easy-win markers removed — everywhere no concurrent task is editing (`noodl-preview` 16 → 3; the AI client 44 → 0; the io specs 66 `any` → 0; the unowned editor spec clusters 20 + 15 → 0; the MCP response payloads 12 → 0). **Every cluster this task owns is now at zero**; the rest sit in PLAT-002/003 files and are theirs to remove
+- [ ] Count trending down; target under 100 by the end of PLAT-002 and PLAT-003, with the remainder documented — `TSFixme` 581 → 538 and `any` 392 → 287 recorded, against a HEAD that had drifted to 615
 
 ## Risks & Mitigations
 
@@ -125,6 +125,42 @@ The counter uses the TypeScript parser rather than grep. Grep cannot tell `any` 
 ## CHANGELOG
 
 In progress. Full as-built record in [PLAT-004-NOTES.md](./PLAT-004-NOTES.md).
+
+### Slice 5 — 2026-07-24 — the MCP server's response payloads, 12 `any` → 0 (step 5)
+
+- Every marker in `noodl-mcp` traced to one cause: `call()` in the test helpers returned `data: any`,
+  because the tools built their JSON payloads as inline object literals and nothing named them. The
+  end-to-end specs — this package's only contract test — asserted against `any` and would have kept
+  passing through a field rename on either side.
+- New `src/tools/responses.ts` names every tool's success payload, the error envelope, and the two
+  `details` bags that carry structure. Each handler annotates the object it hands to `jsonResult`, so
+  drift is a compile error at the *producer*. `call<T>()` and `readJson<T>()` are now generic.
+- Writing the types down caught four disagreements between the documented and actual shapes:
+  `delete_component`'s `brokenReferences` are diagnostics against the *other* components rather than
+  the deleted one's usages; `validate_component`'s `target` can be absent; `get_component.ports` is
+  the `{ inputs, outputs }` object, not an array; and the write-validation summary is the three-count
+  subset, not the validator's full `ValidationSummary`.
+- Verified: `tsc --noEmit` and `npm run build` clean, jest 31/31 — identical to a pre-change export.
+
+### Slice 4 — 2026-07-24 — the unowned editor spec clusters, 20 `TSFixme` + 15 `any` → 0 (step 5)
+
+- The three `tests/` clusters NOTES §10 listed as unowned. `InteractionController.test.ts`'s stub
+  owner is now a named slice of `NodeGraphEditor` whose member *names* are compiler-checked, so a
+  rename on the editor can no longer leave a spy nothing calls and an assertion that never runs.
+- `EmbeddedTemplate.test.ts` reads back a `ProjectContent` — the provider's own output type. The
+  Router's `pages` parameter is the one genuinely untyped thing (four untyped readers in the editor),
+  so it gets a guard-based reader rather than an invented shared type.
+- `GitHubClient.test.ts`'s fifteen `(client as any).<private>` become one `GitHubClientInternals`
+  interface behind a single documented cast — TypeScript cannot name a private member from outside a
+  class, so the cast stays and the surface gets written down. `MockOctokit` makes a typo in a stubbed
+  Octokit method a compile error instead of a silently absent stub.
+- Found in passing: `GitHubClient.test.ts` and `StyleAnalyzer.test.ts` are Jest specs in a package
+  with **no Jest runner** — 500 lines of coverage that has never executed. Recorded in NOTES §10; it
+  belongs to whoever owns the editor's test infrastructure, not to this task.
+- Verified: `typecheck:editor-tests` clean; the two runnable specs give 11/11 and 14/14, identical to
+  the same bundles built from a pristine pre-change export. NOTES §12 extends §8's headless recipe
+  with the four things specs that reach into the editor's views additionally need.
+- Baseline re-measured at `c354d4e`: **538 `TSFixme`, 287 `any`**.
 
 ### Slice 3 — 2026-07-24 — the io specs, 66 `any` → 0 (step 5)
 
@@ -208,6 +244,7 @@ In progress. Full as-built record in [PLAT-004-NOTES.md](./PLAT-004-NOTES.md).
 - [x] Write and verify the counter script
 - [x] Commit the baseline; add the CI check
 - [x] Document the policy and escape valve
-- [x] Publish the clustering report; harvest easy wins (`noodl-preview` done, rest ongoing)
-- [ ] Wire baseline updates into other tasks' definition of done
+- [x] Publish the clustering report; harvest easy wins — every cluster this task owns is at zero
+- [ ] Wire baseline updates into other tasks' definition of done — a two-line change to each of
+      PLAT-002's and PLAT-003's checklists, deferred while both sessions are live in the shared tree
 - [ ] CHANGELOG; open PR
