@@ -73,7 +73,7 @@ export class PopoutGroup extends View {
     const anchor = this.el.querySelector('button') || this.el;
 
     this.parent.showPopout({
-      content: { el: [this.view.el] },
+      content: { el: this.view.el },
       attachTo: $(anchor),
       position: 'right',
       onClose: () => {

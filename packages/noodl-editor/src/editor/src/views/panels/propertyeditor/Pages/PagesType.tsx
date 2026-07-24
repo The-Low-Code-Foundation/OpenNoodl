@@ -54,7 +54,7 @@ export class PagesType extends TypeView {
     this.root = createRoot(div);
     this.root.render(React.createElement(Pages, props));
 
-    this.el = $(div);
+    this.el = div;
 
     return this.el;
   }

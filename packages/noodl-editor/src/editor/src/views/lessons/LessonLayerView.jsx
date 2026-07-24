@@ -25,7 +25,7 @@ function LessonLayerView({ steps, currentStepIndex }) {
     let videos = [];
 
     PopupLayer.instance.showModal({
-      content: { el: $(popupContainer) },
+      content: { el: popupContainer },
       position: 'screen-center',
       onClose() {
         ipcRenderer.send('viewer-show');

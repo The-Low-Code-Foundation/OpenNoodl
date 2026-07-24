@@ -14,7 +14,7 @@ export function showInspectMenu(items: TSFixme) {
   let root: Root | null = null;
 
   const popout = PopupLayer.instance.showPopout({
-    content: { el: $(container) },
+    content: { el: container },
     arrowColor: 'transparent',
     attachToPoint: {
       x: screenPoint.x - winX,

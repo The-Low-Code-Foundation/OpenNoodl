@@ -18,6 +18,29 @@ const { webUtils } = require('electron');
 // Styles
 require('../styles/popuplayer.css');
 
+/**
+ * Document-relative rect of a popup/popout anchor. `attachTo` is either a
+ * jQuery object (legacy call sites) or a raw element (converted ones).
+ */
+function attachToRect(attachTo) {
+  if (attachTo.offset) {
+    return {
+      left: attachTo.offset().left,
+      top: attachTo.offset().top,
+      width: attachTo.outerWidth(true),
+      height: attachTo.outerHeight(true)
+    };
+  }
+
+  const rect = attachTo.getBoundingClientRect();
+  return {
+    left: rect.left + window.scrollX,
+    top: rect.top + window.scrollY,
+    width: rect.width,
+    height: rect.height
+  };
+}
+
 // ---------------------------------------------------------------------
 // PopupLayer
 // ---------------------------------------------------------------------
@@ -240,7 +263,9 @@ PopupLayer.prototype._undimBackground = function () {
 PopupLayer.prototype.hidePopup = function (args) {
   if (this.popup && this.isShowingPopup) {
     this._undimBackground();
-    this.popup && this.popup.content.el.detach();
+    // content.el is a jQuery object or a raw element
+    const popupContent = this.popup && this.popup.content.el;
+    popupContent && (popupContent.detach ? popupContent.detach() : popupContent.remove());
     this.$('.popup-layer-popup').css({ visibility: 'hidden' });
     this.popup.onClose && this.popup.onClose();
     this.popup.content.onClose && this.popup.content.onClose();
@@ -323,10 +348,13 @@ PopupLayer.prototype.showPopup = function (args) {
     this.$('.popup-layer-popup-arrow').css({ display: 'none' });
     this.$('.popup-layer-popup').css({ visibility: 'visible' });
   } else {
-    var attachToLeft = args.attachTo ? args.attachTo.offset().left : args.attachToPoint.x;
-    var attachToTop = args.attachTo ? args.attachTo.offset().top : args.attachToPoint.y;
-    var attachToWidth = args.attachTo ? args.attachTo.outerWidth(true) : 0;
-    var attachToHeight = args.attachTo ? args.attachTo.outerHeight(true) : 0;
+    var anchorRect = args.attachTo
+      ? attachToRect(args.attachTo)
+      : { left: args.attachToPoint.x, top: args.attachToPoint.y, width: 0, height: 0 };
+    var attachToLeft = anchorRect.left;
+    var attachToTop = anchorRect.top;
+    var attachToWidth = anchorRect.width;
+    var attachToHeight = anchorRect.height;
 
     // Figure out the position of the popup
     var x, y;
@@ -520,19 +548,17 @@ PopupLayer.prototype.showPopout = function (args) {
     position: args.position,
     animate: args.animate,
     manualClose: args.manualClose,
-    attachToRect: {
-      left: args.attachTo ? args.attachTo.offset().left : args.attachToPoint.x,
-      top: args.attachTo ? args.attachTo.offset().top : args.attachToPoint.y,
-      width: args.attachTo ? args.attachTo.outerWidth(true) : 0,
-      height: args.attachTo ? args.attachTo.outerHeight(true) : 0
-    },
+    attachToRect: args.attachTo
+      ? attachToRect(args.attachTo)
+      : { left: args.attachToPoint.x, top: args.attachToPoint.y, width: 0, height: 0 },
     resizeObserver
   };
   this.setPopoutArrowColor(popout, args.arrowColor || '313131');
 
   this._resizePopout(popout, args);
   this._positionPopout(popout, args);
-  resizeObserver.observe(content[0]);
+  // content is a jQuery object, a raw element, or an array of elements
+  resizeObserver.observe(content[0] || content);
 
   this.popouts.push(popout);
 

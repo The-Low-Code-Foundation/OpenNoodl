@@ -238,7 +238,7 @@ export class Pages extends React.Component {
     root.render(React.createElement(AddNewPagePopup, props));
 
     PopupLayer.instance.showPopup({
-      content: { el: $(div) },
+      content: { el: div },
       // @ts-expect-error - Legacy class component without proper typing
       attachTo: $(this.popupAnchor),
       position: 'right',

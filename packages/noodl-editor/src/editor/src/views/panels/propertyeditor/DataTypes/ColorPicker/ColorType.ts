@@ -198,7 +198,7 @@ export class ColorType extends TypeView {
     this.stylePickerRoot.render(React.createElement(ColorStylePicker, props));
 
     this.parent.showPopout({
-      content: { el: $(div) },
+      content: { el: div },
       attachTo: $(this.el),
       position: 'right',
       onClose: () => {

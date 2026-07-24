@@ -351,7 +351,7 @@ export class CodeEditorType extends TypeView {
 
     const popoutDiv = this.popoutDiv;
     this.parent.showPopout({
-      content: { el: [this.popoutDiv] },
+      content: { el: this.popoutDiv },
       attachTo: $(el),
       position: 'right',
       disableDynamicPositioning: true,

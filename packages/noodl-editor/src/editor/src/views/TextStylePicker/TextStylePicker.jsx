@@ -45,7 +45,7 @@ function TextStylePicker(props) {
     root.render(<TextStylePopup style={styleToEdit} stylesModel={stylesModel} />);
 
     const popout = PopupLayer.instance.showPopout({
-      content: { el: $(div) },
+      content: { el: div },
       attachTo: $(popupAnchor),
       position: 'right',
       onClose: () => {

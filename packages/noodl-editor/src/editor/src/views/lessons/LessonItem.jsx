@@ -45,7 +45,7 @@ function LessonItem({
     PopupLayer.instance.hidePopouts(); //hide all other popouts that might be showing
 
     popoutRef.current = PopupLayer.instance.showPopout({
-      content: { el: $(container) },
+      content: { el: container },
       attachTo: $(ref.current),
       position: 'top',
       arrowColor: 'var(--theme-color-secondary)',

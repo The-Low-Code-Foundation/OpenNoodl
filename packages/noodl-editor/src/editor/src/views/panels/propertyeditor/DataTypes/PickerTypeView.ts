@@ -103,7 +103,7 @@ export abstract class PickerTypeView extends TypeView {
     state.rerender();
 
     this.parent.showPopout({
-      content: { el: [div] },
+      content: { el: div },
       attachTo: $(this.el),
       position: 'right',
       onClose: () => {

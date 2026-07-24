@@ -143,7 +143,7 @@ export class TextStyleType extends PickerTypeView {
     this.pickerRoot.render(React.createElement(TextStylePicker, props));
 
     this.parent.showPopout({
-      content: { el: [div] },
+      content: { el: div },
       attachTo: $(this.el),
       position: 'right',
       onClose: () => {

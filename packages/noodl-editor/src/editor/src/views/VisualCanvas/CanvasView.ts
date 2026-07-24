@@ -142,7 +142,7 @@ export class CanvasView extends View {
     div.style.height = '100%';
     div.style.overflow = 'hidden';
 
-    this.el = $(div);
+    this.el = div;
 
     // If there is an api response from the main thread, pass it along to the webview
     this._onEditorApiResponse = (event, args) => {
@@ -159,7 +159,7 @@ export class CanvasView extends View {
   }
   renderReact() {
     if (!this.root) {
-      this.root = createRoot(this.el[0]);
+      this.root = createRoot(this.el as HTMLElement);
     }
     this.root.render(React.createElement(VisualCanvas, this.props as any));
   }

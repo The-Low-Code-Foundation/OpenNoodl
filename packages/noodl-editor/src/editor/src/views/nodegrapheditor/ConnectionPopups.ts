@@ -89,7 +89,7 @@ export class ConnectionPopups {
       ipcRenderer.send('viewer-hide');
 
       const fromPopout = PopupLayer.instance.showPopout({
-        content: { el: $(fromDiv) },
+        content: { el: fromDiv },
         position: fromPosition,
         arrowColor: '#464648',
         attachToPoint: {
@@ -150,7 +150,7 @@ export class ConnectionPopups {
 
       const toPosition = fromNodeXPos >= toNode.global.x ? 'left' : 'right';
       const toPopout = PopupLayer.instance.showPopout({
-        content: { el: $(toDiv) },
+        content: { el: toDiv },
         position: toPosition,
         arrowColor: '#464648',
         attachToPoint: {

@@ -93,7 +93,7 @@ export class CurveType extends TypeView {
     root.render(React.createElement(require('./curveeditor.jsx'), props));
 
     this.parent.showPopout({
-      content: { el: $(div) },
+      content: { el: div },
       attachTo: $(this.el),
       position: 'right'
     });

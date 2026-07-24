@@ -93,7 +93,7 @@ export class CreateNewNodePanel extends View {
 
     this.renderReact(div);
 
-    this.el = $(div);
+    this.el = div;
     return this.el;
   }
 }

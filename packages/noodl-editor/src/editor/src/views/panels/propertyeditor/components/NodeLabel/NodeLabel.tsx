@@ -60,9 +60,16 @@ export function NodeLabel({ model, showHelp = true }: NodeLabelProps) {
   }
 
   function onSaveLabel() {
-    NodeGraphNodeRename(model, label);
+    // Only commit an actual edit: the input also blurs when it was never being
+    // edited (opening a popout moves focus), and `setLabel` pushes an undo
+    // entry unconditionally — so committing here would fill the undo queue
+    // with phantom "change label" entries.
+    if (isEditingLabel && label !== ParameterValueResolver.toString(model.label)) {
+      NodeGraphNodeRename(model, label);
+    }
+
     setIsEditingLabel(false);
-    setLabel(model.label);
+    setLabel(ParameterValueResolver.toString(model.label));
 
     // Unselect text
     window.getSelection().removeAllRanges();

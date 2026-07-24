@@ -26,7 +26,7 @@ export function showContextMenuInPopup({
   const root = createRoot(container)
 
   const popout = PopupLayer.instance.showPopout({
-    content: { el: $(container) },
+    content: { el: container },
     arrowColor: 'transparent',
     attachToPoint: {
       x: screenPoint.x - winX,

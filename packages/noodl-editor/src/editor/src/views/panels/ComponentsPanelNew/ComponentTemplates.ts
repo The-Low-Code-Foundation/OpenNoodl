@@ -233,7 +233,7 @@ class PageComponentTemplate extends ComponentTemplate {
     const root = createRoot(div);
     root.render(React.createElement(PageComponentTemplatePopup, props));
 
-    return { el: $(div) };
+    return { el: div };
   }
 }
 

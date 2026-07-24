@@ -88,7 +88,7 @@ export class IconType extends TypeView {
     );
 
     this.parent.showPopout({
-      content: { el: [div] },
+      content: { el: div },
       attachTo: $(anchor),
       position: 'right',
       onClose: () => {
