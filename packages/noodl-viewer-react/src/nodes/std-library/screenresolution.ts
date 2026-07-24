@@ -1,10 +1,18 @@
-'use strict';
+import type { NodeDefinitionOptions, NodeInstance } from '@noodl/types';
 
-const ScreenResolution = {
+interface ScreenResolutionInstance extends NodeInstance {
+  _internal: {
+    width: number;
+    height: number;
+  };
+  _viewportSizeChanged(): void;
+}
+
+const ScreenResolution: NodeDefinitionOptions = {
   name: 'Screen Resolution',
   docs: 'https://docs.noodl.net/nodes/utilities/screen-resolution',
   category: 'Utilities',
-  initialize() {
+  initialize(this: ScreenResolutionInstance) {
     // Add SSR Support
     if (typeof window === 'undefined') return;
 
@@ -13,34 +21,34 @@ const ScreenResolution = {
     });
     this._viewportSizeChanged();
   },
-  getInspectInfo() {
+  getInspectInfo(this: ScreenResolutionInstance) {
     return this._internal.width + ' x ' + this._internal.height;
   },
   outputs: {
     width: {
       type: 'number',
       displayName: 'Width',
-      get() {
+      get(this: ScreenResolutionInstance) {
         return this._internal.width;
       }
     },
     height: {
       type: 'number',
       displayName: 'Height',
-      get() {
+      get(this: ScreenResolutionInstance) {
         return this._internal.height;
       }
     },
     aspectRatio: {
       type: 'number',
       displayName: 'Aspect Ratio',
-      get() {
+      get(this: ScreenResolutionInstance) {
         return this._internal.width / this._internal.height;
       }
     }
   },
   methods: {
-    _viewportSizeChanged() {
+    _viewportSizeChanged(this: ScreenResolutionInstance) {
       this._internal.width = window.innerWidth;
       this._internal.height = window.innerHeight;
       this.flagAllOutputsDirty();
@@ -48,6 +56,6 @@ const ScreenResolution = {
   }
 };
 
-module.exports = {
+export default {
   node: ScreenResolution
 };

@@ -157,8 +157,11 @@ export default function registerNodes(noodlRuntime) {
     require('./nodes-deprecated/std-library/data/dbcollectionnode'),
     require('./nodes-deprecated/std-library/data/collectionnode'),
     require('./nodes-deprecated/std-library/scriptdownloader')
-  ].forEach(function (nodeDefinition) {
-    noodlRuntime.registerNode(nodeDefinition);
+  ].forEach(function (module) {
+    // Node files converted to TypeScript compile as ES modules and `export default`;
+    // the ones still on `module.exports` do not. `require()` of an ES module hands back
+    // the namespace object, so unwrap it. Remove this once every file above is converted.
+    noodlRuntime.registerNode(module.default || module);
   });
 
   noodlRuntime.registerNode(CSSDefinition);

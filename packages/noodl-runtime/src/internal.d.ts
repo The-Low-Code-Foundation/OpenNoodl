@@ -9,7 +9,15 @@
  * to depend on internals that exist to be changed.
  */
 
-import type { EditorConnectionLike, InputPortDefinition, NodeInstance, NodeVariant } from '@noodl/types';
+import type {
+  EditorConnectionLike,
+  InputPortDefinition,
+  NodeInstance,
+  NodeVariant,
+  RuntimeEventEmitter,
+  StylesLike,
+  TimerScheduler
+} from '@noodl/types';
 
 /**
  * The editor channel as the runtime core uses it.
@@ -35,7 +43,8 @@ export interface RuntimeEditorConnection extends EditorConnectionLike {
  */
 export interface RuntimeNodeContext {
   editorConnection?: RuntimeEditorConnection;
-  styles?: unknown;
+  /** Supplied by the viewer, which owns the implementation; absent in the cloud runtime. */
+  styles?: StylesLike;
 
   /** Monotonic counter used to scope cyclic-loop detection to a single update pass. */
   updateIteration: number;
@@ -51,6 +60,14 @@ export interface RuntimeNodeContext {
   nodeRegister: any;
   /** Shared parameter sets. See `variants.ts`. */
   variants: any;
+  /** The frame-driven timer service. See `timerscheduler.js`. */
+  timerScheduler: TimerScheduler;
+  /** Broadcasts an Event Sender's payload to every receiver in the project. */
+  sendGlobalEventFromEventSender(channelName: string, inputValues: unknown): void;
+  /** Runtime lifecycle events. See `nodecontext.ts`. */
+  eventEmitter: RuntimeEventEmitter;
+  /** The Event Sender / Event Receiver channel bus. */
+  eventSenderEmitter: RuntimeEventEmitter;
 
   /**
    * Builds an instance of a *component* rather than a registered node type. Lives on the

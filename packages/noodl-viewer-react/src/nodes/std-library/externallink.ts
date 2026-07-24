@@ -1,4 +1,6 @@
-const ExternalLinkNode = {
+import type { NodeDefinitionOptions } from '@noodl/types';
+
+const ExternalLinkNode: NodeDefinitionOptions = {
   name: 'net.noodl.externallink',
   displayNodeName: 'External Link',
   docs: 'https://docs.noodl.net/nodes/navigation/external-link',
@@ -24,7 +26,7 @@ const ExternalLinkNode = {
         const params = openInNewTab ? 'noopener,noreferrer' : '';
         const target = openInNewTab === true || openInNewTab === undefined ? '_blank' : '_self';
 
-        window.open(this.getInputValue('link'), target, params);
+        window.open(this.getInputValue('link') as string, target, params);
       }
     }
   }

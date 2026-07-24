@@ -1,9 +1,16 @@
-'use strict';
+import { Node } from '@noodl/runtime';
+import JavascriptNodeParser from '@noodl/runtime/src/javascriptnodeparser';
+import { logJavaScriptNodeError } from '@noodl/runtime/src/utils';
+import type {
+  GraphNodeModel,
+  NodeContextLike,
+  NodeDefinitionOptions,
+  NodeInstance,
+  NodeModule,
+  PortTypeSpec
+} from '@noodl/types';
 
-const Node = require('@noodl/runtime').Node;
-const JavascriptNodeParser = require('@noodl/runtime/src/javascriptnodeparser');
-const { logJavaScriptNodeError } = require('@noodl/runtime/src/utils');
-const guid = require('../../guid');
+import guid from '../../guid';
 
 /*const defaultCode = "define({\n"+
 "\t// The input ports of the Javascript node, name of input and type\n"+
@@ -64,9 +71,91 @@ const defaultCode = "script({\n"+
 "})\n";
 */
 
+/** A function the user wrote, called with `userFunctionScope` as `this`. */
+type UserFunction = (
+  this: UserFunctionScope,
+  inputs: Record<string, unknown>,
+  outputs: Record<string, unknown>,
+  changedInputs?: Record<string, boolean>
+) => void;
+
+/** The `this` the runtime exposes to user code. Deliberately small — it is a public API. */
+interface UserFunctionScope {
+  createComponent(componentName: string): Promise<NodeInstance>;
+  deleteComponent(component: NodeInstance): void;
+  flagOutputDirty(name: string): void;
+  runNextFrame(): void;
+  sendSignalOnOutput(name: string): void;
+}
+
+/**
+ * The parser's result. `@noodl/runtime/src/javascriptnodeparser` is still `.js`, so this
+ * describes what the Script node uses rather than importing a declaration.
+ */
+interface ParsedScript {
+  error?: string;
+  setup?: UserFunction;
+  /** The run function. Named `change` because it fires when any input changed. */
+  change?: UserFunction;
+  destroy?: UserFunction;
+  definedObject?: Record<string, unknown>;
+  apis: { Node: { Inputs?: unknown; Outputs?: unknown; [extra: string]: unknown } };
+  getPorts(): DynamicPort[];
+}
+
+/** A port in the editor's wire format, as pushed by `sendDynamicPorts`. */
+interface DynamicPort {
+  name: string;
+  plug: 'input' | 'output';
+  type?: PortTypeSpec;
+  displayName?: string;
+  group?: string;
+  default?: unknown;
+  parent?: string;
+  parentItemId?: string;
+}
+
+/** One row of a `proplist` parameter — the editor's repeatable name/id pairs. */
+interface ScriptPropListItem {
+  id: string;
+  label: string;
+}
+
+interface JavascriptInstance extends NodeInstance {
+  _internal: {
+    inputValues: Record<string, unknown>;
+    outputValues: Record<string, unknown>;
+    outputProperties: Record<string, unknown>;
+    runScheduled: boolean;
+    setupScheduled: boolean;
+    runNextFrameScheduled: boolean;
+    isWaitingForExternalFileToLoad: boolean;
+    useExternalFile: boolean;
+    runFunction?: UserFunction;
+    destroyFunction?: UserFunction;
+    setupFunction?: UserFunction;
+    definedObject?: Record<string, unknown>;
+    hasParsedCode: boolean;
+    changedInputs: Record<string, boolean>;
+    signalScheduled: Record<string, boolean>;
+    killed: boolean;
+    inputQueue?: { name: string; value: unknown }[];
+    userFunctionScope: UserFunctionScope;
+    onFrameStart: () => void;
+    runNextFrame?: boolean;
+  };
+  /** `Node`'s own dirty flag, cleared directly by the `update` override below. */
+  _dirty: boolean;
+  _onCodeParsed(parser: ParsedScript): void;
+  _callRunFunction(): void;
+  _callSignalFunction(name: string): void;
+  _callDestroyFunction(): void;
+  _callSetupFunction(): void;
+}
+
 const defaultCode = '';
 
-var Javascript = {
+const Javascript: NodeDefinitionOptions = {
   name: 'Javascript2',
   docs: 'https://docs.noodl.net/nodes/javascript/script',
   displayNodeName: 'Script',
@@ -77,8 +166,8 @@ var Javascript = {
   },
   searchTags: ['javascript'],
   exportDynamicPorts: true,
-  initialize: function () {
-    var internal = this._internal;
+  initialize: function (this: JavascriptInstance) {
+    const internal = this._internal;
     internal.inputValues = {};
     internal.outputValues = {};
     internal.outputProperties = {};
@@ -96,19 +185,19 @@ var Javascript = {
     internal.killed = false;
     internal.inputQueue = [];
 
-    var self = this;
+    const self = this;
     internal.userFunctionScope = {
-      createComponent(componentName) {
+      createComponent(componentName: string) {
         if (componentName && componentName.length > 0 && componentName[0] !== '/') {
           componentName = '/' + componentName;
         }
 
         return self.nodeScope.createNode(componentName, guid());
       },
-      deleteComponent(component) {
+      deleteComponent(component: NodeInstance) {
         self.nodeScope.deleteNode(component);
       },
-      flagOutputDirty: function (name) {
+      flagOutputDirty: function (name: string) {
         if (!name) {
           throw new Error('Output port name must be specified');
         }
@@ -127,7 +216,7 @@ var Javascript = {
           }
         });
       },
-      sendSignalOnOutput: function (name) {
+      sendSignalOnOutput: function (name: string) {
         self.sendSignalOnOutput(name);
       }
     };
@@ -151,7 +240,7 @@ var Javascript = {
         allowEditOnly: true
       },
       group: 'Script Inputs',
-      set: function (value) {
+      set: function () {
         //  ignore
       }
     },
@@ -161,7 +250,7 @@ var Javascript = {
         allowEditOnly: true
       },
       group: 'Script Outputs',
-      set: function (value) {
+      set: function () {
         //  ignore
       }
     },
@@ -183,7 +272,7 @@ var Javascript = {
       default: 'no',
       displayName: 'Use External File',
       group: 'Code',
-      set: function (value) {
+      set: function (this: JavascriptInstance, value: string) {
         this._internal.isWaitingForExternalFileToLoad = value === 'yes';
         this._internal.useExternalFile = value === 'yes';
       }
@@ -197,15 +286,15 @@ var Javascript = {
         codeeditor: 'javascript'
       },
       default: defaultCode,
-      set: function (value) {
+      set: function (this: JavascriptInstance, value: string) {
         if (!value) {
           return;
         }
-        var self = this;
-        this.scheduleAfterInputsHaveUpdated(function () {
+        const self = this;
+        this.scheduleAfterInputsHaveUpdated(function (this: JavascriptInstance) {
           if (this._internal.useExternalFile === false) {
             this._callDestroyFunction();
-            var parser = JavascriptNodeParser.createFromCode(value, {
+            const parser = JavascriptNodeParser.createFromCode(value, {
               node: this
             });
             self._onCodeParsed(parser);
@@ -220,15 +309,15 @@ var Javascript = {
         name: 'source',
         allowEditOnly: true
       },
-      set: function (url) {
+      set: function (this: JavascriptInstance, url: string) {
         if (this._internal.useExternalFile === false) {
           return;
         }
 
-        var self = this;
+        const self = this;
         JavascriptNodeParser.createFromURL(
           url,
-          function (parser) {
+          function (parser: ParsedScript) {
             self._internal.isWaitingForExternalFileToLoad = false;
             self._onCodeParsed(parser);
           },
@@ -240,19 +329,19 @@ var Javascript = {
     }
   },
   prototypeExtensions: {
-    _onNodeDeleted: function () {
+    _onNodeDeleted: function (this: JavascriptInstance) {
       Node.prototype._onNodeDeleted.call(this);
       this._internal.killed = true;
       this._callDestroyFunction();
     },
-    update: function () {
+    update: function (this: JavascriptInstance) {
       if (this._internal.isWaitingForExternalFileToLoad === true) {
         this._dirty = false;
       } else {
         Node.prototype.update.call(this);
       }
     },
-    _onCodeParsed: function (parser) {
+    _onCodeParsed: function (this: JavascriptInstance, parser: ParsedScript) {
       const editorConnection = this.context.editorConnection;
 
       if (editorConnection) {
@@ -268,7 +357,7 @@ var Javascript = {
       //register all color inputs with type 'color' to enable color resolving
       Object.keys(this.model.inputPorts).forEach((name) => {
         const type = this.model.inputPorts[name].type;
-        if (type === 'color' || type.name === 'color') {
+        if (type === 'color' || (type as { name?: string }).name === 'color') {
           this._internal.inputValues[name] = undefined;
 
           if (!this.hasInput(name)) {
@@ -318,7 +407,7 @@ var Javascript = {
       parser.apis.Node.Inputs = this._internal.inputValues;
       parser.apis.Node.Outputs = this._internal.outputProperties;
     },
-    registerInputIfNeeded: function (name) {
+    registerInputIfNeeded: function (this: JavascriptInstance, name: string) {
       if (this.hasInput(name)) {
         return;
       }
@@ -329,12 +418,12 @@ var Javascript = {
         set: userInputSetter.bind(this, name)
       });
     },
-    registerOutputIfNeeded: function (name) {
+    registerOutputIfNeeded: function (this: JavascriptInstance, name: string) {
       if (this.hasOutput(name)) {
         return;
       }
 
-      var self = this;
+      const self = this;
 
       const isSignal = _typename(this.model.outputPorts[name].type) === 'signal';
 
@@ -358,8 +447,8 @@ var Javascript = {
         getter: userOutputGetter.bind(this, name)
       });
     },
-    _callRunFunction: function () {
-      var internal = this._internal;
+    _callRunFunction: function (this: JavascriptInstance) {
+      const internal = this._internal;
       if (!internal.runFunction || internal.killed) {
         return;
       }
@@ -382,8 +471,8 @@ var Javascript = {
         }
       }
     },
-    _callSignalFunction: function (name) {
-      var internal = this._internal;
+    _callSignalFunction: function (this: JavascriptInstance, name: string) {
+      const internal = this._internal;
       if (!internal.definedObject || internal.killed) {
         return;
       }
@@ -393,7 +482,11 @@ var Javascript = {
       }
 
       try {
-        internal.definedObject[name].call(internal.userFunctionScope, internal.inputValues, internal.outputProperties);
+        (internal.definedObject[name] as UserFunction).call(
+          internal.userFunctionScope,
+          internal.inputValues,
+          internal.outputProperties
+        );
       } catch (e) {
         console.log(
           'Error in JS node signal function code.',
@@ -407,8 +500,8 @@ var Javascript = {
         }
       }
     },
-    _callDestroyFunction: function () {
-      var internal = this._internal;
+    _callDestroyFunction: function (this: JavascriptInstance) {
+      const internal = this._internal;
 
       if (!internal.destroyFunction) {
         return;
@@ -426,8 +519,8 @@ var Javascript = {
         }
       }
     },
-    _callSetupFunction: function () {
-      var internal = this._internal;
+    _callSetupFunction: function (this: JavascriptInstance) {
+      const internal = this._internal;
       if (!internal.setupFunction || internal.killed) {
         return;
       }
@@ -447,14 +540,14 @@ var Javascript = {
   }
 };
 
-function scheduleSetup() {
+function scheduleSetup(this: JavascriptInstance) {
   /* jshint validthis:true */
   if (this._internal.setupScheduled) {
     return;
   }
 
   this._internal.setupScheduled = true;
-  this.scheduleAfterInputsHaveUpdated(function () {
+  this.scheduleAfterInputsHaveUpdated(function (this: JavascriptInstance) {
     if (!this._internal.killed) {
       this._callSetupFunction();
       this._internal.setupScheduled = false;
@@ -462,14 +555,14 @@ function scheduleSetup() {
   });
 }
 
-function scheduleRun() {
+function scheduleRun(this: JavascriptInstance) {
   /* jshint validthis:true */
   if (this._internal.runScheduled || this._internal.killed) {
     return;
   }
 
   this._internal.runScheduled = true;
-  this.scheduleAfterInputsHaveUpdated(function () {
+  this.scheduleAfterInputsHaveUpdated(function (this: JavascriptInstance) {
     if (!this._internal.killed) {
       this._callRunFunction();
       this._internal.changedInputs = {};
@@ -478,14 +571,14 @@ function scheduleRun() {
   });
 }
 
-function scheduleSignal(name) {
+function scheduleSignal(this: JavascriptInstance, name: string) {
   /* jshint validthis:true */
   if (this._internal.signalScheduled[name] || this._internal.killed) {
     return;
   }
 
   this._internal.signalScheduled[name] = true;
-  this.scheduleAfterInputsHaveUpdated(function () {
+  this.scheduleAfterInputsHaveUpdated(function (this: JavascriptInstance) {
     if (!this._internal.killed) {
       this._callSignalFunction(name);
       this._internal.signalScheduled[name] = false;
@@ -493,18 +586,18 @@ function scheduleSignal(name) {
   });
 }
 
-function onFrameStart() {
+function onFrameStart(this: JavascriptInstance) {
   /* jshint validthis:true */
   this._internal.runNextFrame = false;
   scheduleRun.call(this);
 }
 
-function _typename(type) {
+function _typename(type: PortTypeSpec) {
   if (typeof type === 'string') return type;
   else return type.name;
 }
 
-function userInputSetter(name, value) {
+function userInputSetter(this: JavascriptInstance, name: string, value: unknown) {
   /* jshint validthis:true */
 
   if (this._internal.hasParsedCode === true) {
@@ -530,13 +623,17 @@ function userInputSetter(name, value) {
   }
 }
 
-function userOutputGetter(name) {
+function userOutputGetter(this: JavascriptInstance, name: string) {
   /* jshint validthis:true */
   return this._internal.outputValues[name];
 }
 
-function _parseAndSourceJavascript(nodeModel, context, fn) {
-  var editorConnection = context.editorConnection;
+function _parseAndSourceJavascript(
+  nodeModel: GraphNodeModel,
+  context: NodeContextLike,
+  fn: (ports: DynamicPort[]) => void
+) {
+  const editorConnection = context.editorConnection;
 
   if (!nodeModel.parameters) {
     return;
@@ -548,7 +645,7 @@ function _parseAndSourceJavascript(nodeModel, context, fn) {
     }
   }
 
-  function onCodeParsed(parser) {
+  function onCodeParsed(parser: ParsedScript) {
     if (parser.error) {
       editorConnection.sendWarning(nodeModel.component.name, nodeModel.id, 'js-parse-waring', {
         showGlobally: true,
@@ -562,10 +659,10 @@ function _parseAndSourceJavascript(nodeModel, context, fn) {
   }
 
   if (nodeModel.parameters.externalFile && nodeModel.parameters.useExternalFile === 'yes') {
-    var url = nodeModel.parameters.externalFile;
+    const url = nodeModel.parameters.externalFile as string;
     JavascriptNodeParser.createFromURL(url, onCodeParsed);
   } else if (nodeModel.parameters.code) {
-    var parser = JavascriptNodeParser.createFromCode(nodeModel.parameters.code);
+    const parser = JavascriptNodeParser.createFromCode(nodeModel.parameters.code);
     onCodeParsed(parser);
   } else {
     //no code, just send empty port list
@@ -573,16 +670,18 @@ function _parseAndSourceJavascript(nodeModel, context, fn) {
     fn([]);
   }
 }
-module.exports = {
+
+const JavascriptModule: NodeModule = {
   node: Javascript,
-  setup: function (context, graphModel) {
-    if (!context.editorConnection || !context.editorConnection.isRunningLocally()) {
+  setup: function (context: NodeContextLike, graphModel) {
+    const editorConnection = context.editorConnection;
+    if (!editorConnection || !editorConnection.isRunningLocally()) {
       return;
     }
 
-    function _managePortsForNode(node) {
+    function _managePortsForNode(node: GraphNodeModel) {
       function _updatePorts() {
-        var ports = [];
+        const ports: DynamicPort[] = [];
 
         const _inputTypeEnums = [
           {
@@ -634,9 +733,12 @@ module.exports = {
           }
         ];
 
+        const scriptOutputs = node.parameters['scriptOutputs'] as ScriptPropListItem[] | undefined;
+        const scriptInputs = node.parameters['scriptInputs'] as ScriptPropListItem[] | undefined;
+
         // Outputs
-        if (node.parameters['scriptOutputs'] !== undefined && node.parameters['scriptOutputs'].length > 0) {
-          node.parameters['scriptOutputs'].forEach((p) => {
+        if (scriptOutputs !== undefined && scriptOutputs.length > 0) {
+          scriptOutputs.forEach((p) => {
             // Type for output
             ports.push({
               name: 'outtype-' + p.label,
@@ -656,15 +758,15 @@ module.exports = {
             ports.push({
               name: p.label,
               plug: 'output',
-              type: node.parameters['outtype-' + p.label] || '*',
+              type: (node.parameters['outtype-' + p.label] as PortTypeSpec) || '*',
               group: 'Outputs'
             });
           });
         }
 
         // Inputs
-        if (node.parameters['scriptInputs'] !== undefined && node.parameters['scriptInputs'].length > 0) {
-          node.parameters['scriptInputs'].forEach((p) => {
+        if (scriptInputs !== undefined && scriptInputs.length > 0) {
+          scriptInputs.forEach((p) => {
             // Type for input
             ports.push({
               name: 'intype-' + p.label,
@@ -684,7 +786,7 @@ module.exports = {
             ports.push({
               name: p.label,
               plug: 'input',
-              type: node.parameters['intype-' + p.label] || 'string',
+              type: (node.parameters['intype-' + p.label] as PortTypeSpec) || 'string',
               group: 'Inputs'
             });
           });
@@ -698,18 +800,18 @@ module.exports = {
             ports.push(p);
           });
 
-          context.editorConnection.sendDynamicPorts(node.id, ports);
+          editorConnection.sendDynamicPorts(node.id, ports);
         });
       }
 
       _updatePorts();
-      node.on('parameterUpdated', function (ev) {
+      node.on('parameterUpdated', function () {
         _updatePorts();
       });
     }
 
     graphModel.on('editorImportComplete', () => {
-      graphModel.on('nodeAdded.Javascript2', function (node) {
+      graphModel.on('nodeAdded.Javascript2', function (node: GraphNodeModel) {
         _managePortsForNode(node);
       });
 
@@ -719,3 +821,5 @@ module.exports = {
     });
   }
 };
+
+export default JavascriptModule;

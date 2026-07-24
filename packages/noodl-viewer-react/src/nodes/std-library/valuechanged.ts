@@ -1,14 +1,21 @@
-'use strict';
+import type { NodeDefinitionOptions, NodeInstance } from '@noodl/types';
 
-const ValueChangedNode = {
+interface ValueChangedInstance extends NodeInstance {
+  _internal: {
+    lastValue: unknown;
+    changeCount: number;
+  };
+}
+
+const ValueChangedNode: NodeDefinitionOptions = {
   name: 'Value Changed',
   docs: 'https://docs.noodl.net/nodes/logic/value-changed',
   category: 'Logic',
-  initialize: function () {
+  initialize: function (this: ValueChangedInstance) {
     this._internal.lastValue = undefined;
     this._internal.changeCount = 0;
   },
-  getInspectInfo() {
+  getInspectInfo(this: ValueChangedInstance) {
     if (this._internal.changeCount) {
       return 'Triggered ' + this._internal.changeCount + (this._internal.changeCount === 1 ? ' time' : ' times');
     }
@@ -18,7 +25,7 @@ const ValueChangedNode = {
     value: {
       type: '*',
       displayName: 'Input',
-      set: function (value) {
+      set: function (this: ValueChangedInstance, value: unknown) {
         if (this._internal.lastValue === value) {
           return;
         }
@@ -37,6 +44,6 @@ const ValueChangedNode = {
   }
 };
 
-module.exports = {
+export default {
   node: ValueChangedNode
 };

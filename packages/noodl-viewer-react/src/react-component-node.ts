@@ -3,6 +3,7 @@
 import React from 'react';
 import type {
   DynamicPortEntry,
+  GraphNodeModel,
   InputPortDefinition,
   InspectInfo,
   NodeContextLike,
@@ -69,11 +70,6 @@ export interface ReactNodeProps {
 /** The subset of `NodeContext` a visual node reaches for. */
 export interface ReactNodeContext extends NodeContextLike {
   frameNumber: number;
-  eventEmitter: {
-    once(event: string, listener: (...args: any[]) => void): void;
-    emit(event: string, ...args: any[]): void;
-    [extra: string]: any;
-  };
   scheduleUpdate(): void;
   getDefaultValueForInput(nodeType: string, inputName: string): unknown;
   variants: {
@@ -83,8 +79,9 @@ export interface ReactNodeContext extends NodeContextLike {
   /**
    * Project-wide colours, text styles and variants.
    *
-   * `NodeContextLike` leaves this `unknown` because the cloud runtime has no
-   * styles at all; in the browser viewer it is always the `Styles` service.
+   * `NodeContextLike` publishes only the two lookups every runtime has and marks it
+   * optional, because the cloud runtime has no styles at all; in the browser viewer it is
+   * always the full `Styles` service.
    */
   styles: Styles;
   /**
@@ -117,16 +114,13 @@ export interface ReactNodeScope extends NodeScopeLike {
  * Absent on nodes the runtime synthesises rather than reads from the project —
  * a Router's page instances, for example. {@link ReactNodeInstance.setVisualStates}
  * checks for exactly that and gives up early.
+ *
+ * Slice 3 declared this shape locally because nothing published it. `@noodl/types` now
+ * does, as `GraphNodeModel`, and the two were describing the same object — so this is an
+ * alias rather than a second opinion. Kept as a name because this file and the nodes that
+ * import from it read better with it.
  */
-export interface ReactNodeModel {
-  type: string;
-  parameters: Record<string, any>;
-  stateParameters?: Record<string, Record<string, any>>;
-  stateTransitions?: Record<string, Record<string, StateTransition>>;
-  defaultStateTransitions?: Record<string, StateTransition>;
-  children?: unknown[];
-  [extra: string]: unknown;
-}
+export type ReactNodeModel = GraphNodeModel;
 
 /** A running parameter transition, as `node-transitions` hands it back. */
 export interface RunningTransition {

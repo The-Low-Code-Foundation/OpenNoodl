@@ -1,11 +1,24 @@
-'use strict';
+import type { InspectInfo, NodeDefinitionOptions, NodeInstance } from '@noodl/types';
 
-const NumberRemapperNode = {
+interface NumberRemapperInstance extends NodeInstance {
+  _internal: {
+    _currentInputValue: number;
+    _remappedValue: number;
+    _minInputValue: number;
+    _maxInputValue: number;
+    _minOutputValue: number;
+    _maxOutputValue: number;
+    _clampOutput: boolean;
+  };
+  _calculateNewOutputValue(): void;
+}
+
+const NumberRemapperNode: NodeDefinitionOptions = {
   name: 'Number Remapper',
   docs: 'https://docs.noodl.net/nodes/math/number-remapper',
   category: 'Math',
-  initialize: function () {
-    var internal = this._internal;
+  initialize: function (this: NumberRemapperInstance) {
+    const internal = this._internal;
     internal._currentInputValue = 0;
     internal._remappedValue = 0;
     internal._minInputValue = 0;
@@ -14,8 +27,10 @@ const NumberRemapperNode = {
     internal._maxOutputValue = 1;
     internal._clampOutput = true;
   },
-  getInspectInfo() {
-    return this._internal._remappedValue;
+  // Returns a bare number, which the editor's inspector popup renders as nothing —
+  // see PLAT-003 NOTES §13. Kept as-is: correcting it changes what the editor shows.
+  getInspectInfo(this: NumberRemapperInstance) {
+    return this._internal._remappedValue as unknown as InspectInfo;
   },
   inputs: {
     inputValue: {
@@ -26,7 +41,7 @@ const NumberRemapperNode = {
       },
       default: 0,
       displayName: 'Input Value',
-      set: function (value) {
+      set: function (this: NumberRemapperInstance, value: number) {
         this._internal._currentInputValue = value;
         this._calculateNewOutputValue();
       }
@@ -38,7 +53,7 @@ const NumberRemapperNode = {
       },
       default: 0,
       displayName: 'Input Minimum',
-      set: function (value) {
+      set: function (this: NumberRemapperInstance, value: number) {
         this._internal._minInputValue = value;
         this._calculateNewOutputValue();
       }
@@ -50,7 +65,7 @@ const NumberRemapperNode = {
       },
       default: 0,
       displayName: 'Input Maximum',
-      set: function (value) {
+      set: function (this: NumberRemapperInstance, value: number) {
         this._internal._maxInputValue = value;
         this._calculateNewOutputValue();
       }
@@ -62,7 +77,7 @@ const NumberRemapperNode = {
       },
       default: 0,
       displayName: 'Output Minimum',
-      set: function (value) {
+      set: function (this: NumberRemapperInstance, value: number) {
         this._internal._minOutputValue = value;
         this._calculateNewOutputValue();
       }
@@ -74,7 +89,7 @@ const NumberRemapperNode = {
       },
       default: 1,
       displayName: 'Output Maximum',
-      set: function (value) {
+      set: function (this: NumberRemapperInstance, value: number) {
         this._internal._maxOutputValue = value;
         this._calculateNewOutputValue();
       }
@@ -87,7 +102,7 @@ const NumberRemapperNode = {
       },
       default: true,
       displayName: 'Clamp Output',
-      set: function (value) {
+      set: function (this: NumberRemapperInstance, value: unknown) {
         this._internal._clampOutput = value ? true : false;
         this._calculateNewOutputValue();
       }
@@ -98,15 +113,15 @@ const NumberRemapperNode = {
       type: 'number',
       displayName: 'Remapped Value',
       group: 'Outputs',
-      getter: function () {
+      getter: function (this: NumberRemapperInstance) {
         return this._internal._remappedValue;
       }
     }
   },
   prototypeExtensions: {
     _calculateNewOutputValue: {
-      value: function () {
-        var normalizedValue,
+      value: function (this: NumberRemapperInstance) {
+        let normalizedValue,
           _internal = this._internal;
 
         if (_internal._maxInputValue === _internal._minInputValue) {
@@ -128,6 +143,6 @@ const NumberRemapperNode = {
   }
 };
 
-module.exports = {
+export default {
   node: NumberRemapperNode
 };

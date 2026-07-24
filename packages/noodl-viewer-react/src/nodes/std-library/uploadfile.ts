@@ -1,22 +1,42 @@
-'use strict';
+import CloudFile from '@noodl/runtime/src/api/cloudfile';
+import CloudStore from '@noodl/runtime/src/api/cloudstore';
+import type { InspectInfo, NodeDefinitionOptions, NodeInstance } from '@noodl/types';
 
-const CloudFile = require('@noodl/runtime/src/api/cloudfile');
-const CloudStore = require('@noodl/runtime/src/api/cloudstore');
+/** What `CloudStore.uploadFile`'s `error` callback is given, and what `setError` reads. */
+interface UploadError {
+  error?: string;
+  code?: number;
+  status?: number;
+}
 
-const UploadFile = {
+interface UploadFileInstance extends NodeInstance {
+  _internal: {
+    file?: File;
+    cloudFile?: unknown;
+    error?: unknown;
+    errorStatus?: number;
+    progressTotal?: number;
+    progressLoaded?: number;
+  };
+  setError(err: UploadError | string): void;
+}
+
+const UploadFile: NodeDefinitionOptions = {
   name: 'Upload File',
   docs: 'https://docs.noodl.net/nodes/data/cloud-data/upload-file',
   category: 'Cloud Services',
   color: 'data',
-  getInspectInfo() {
-    return this._internal.response;
+  // `_internal.response` is never assigned anywhere in this node, so this always returns
+  // `undefined` and the inspector shows nothing. Left alone — see PLAT-003 NOTES §13.
+  getInspectInfo(this: UploadFileInstance) {
+    return (this._internal as { response?: unknown }).response as InspectInfo;
   },
   inputs: {
     file: {
       group: 'General',
       displayName: 'File',
       type: '*',
-      set(file) {
+      set(this: UploadFileInstance, file: File) {
         this._internal.file = file;
       }
     },
@@ -24,7 +44,7 @@ const UploadFile = {
       type: 'signal',
       displayName: 'Upload',
       group: 'Actions',
-      valueChangedToTrue() {
+      valueChangedToTrue(this: UploadFileInstance) {
         this.scheduleAfterInputsHaveUpdated(() => {
           const file = this._internal.file;
 
@@ -35,7 +55,7 @@ const UploadFile = {
 
           CloudStore.instance.uploadFile({
             file,
-            onUploadProgress: (p) => {
+            onUploadProgress: (p: { total: number; loaded: number }) => {
               this._internal.progressTotal = p.total;
               this._internal.progressLoaded = p.loaded;
 
@@ -44,12 +64,12 @@ const UploadFile = {
               this.flagOutputDirty('progressLoadedPercent');
               this.sendSignalOnOutput('progressChanged');
             },
-            success: (response) => {
+            success: (response: unknown) => {
               this._internal.cloudFile = new CloudFile(response);
               this.flagOutputDirty('cloudFile');
               this.sendSignalOnOutput('success');
             },
-            error: (e) => this.setError(e)
+            error: (e: UploadError) => this.setError(e)
           });
         });
       }
@@ -60,7 +80,7 @@ const UploadFile = {
       group: 'General',
       displayName: 'Cloud File',
       type: 'cloudfile',
-      get() {
+      get(this: UploadFileInstance) {
         return this._internal.cloudFile;
       }
     },
@@ -78,7 +98,7 @@ const UploadFile = {
       type: 'string',
       displayName: 'Error',
       group: 'Error',
-      get() {
+      get(this: UploadFileInstance) {
         return this._internal.error;
       }
     },
@@ -86,7 +106,7 @@ const UploadFile = {
       type: 'number',
       displayName: 'Error Status Code',
       group: 'Error',
-      get() {
+      get(this: UploadFileInstance) {
         return this._internal.errorStatus;
       }
     },
@@ -99,7 +119,7 @@ const UploadFile = {
       type: 'number',
       displayName: 'Total Bytes',
       group: 'Progress',
-      get() {
+      get(this: UploadFileInstance) {
         return this._internal.progressTotal;
       }
     },
@@ -107,7 +127,7 @@ const UploadFile = {
       type: 'number',
       displayName: 'Uploaded Bytes',
       group: 'Progress',
-      get() {
+      get(this: UploadFileInstance) {
         return this._internal.progressLoaded;
       }
     },
@@ -115,17 +135,19 @@ const UploadFile = {
       type: 'number',
       displayName: 'Uploaded Percent',
       group: 'Progress',
-      get() {
+      get(this: UploadFileInstance) {
         if (!this._internal.progressTotal) return 0;
         return (this._internal.progressLoaded / this._internal.progressTotal) * 100;
       }
     }
   },
   methods: {
-    setError(err) {
-      this._internal.error = err.hasOwnProperty('error') ? err.error : err;
+    // `err` is a string on the "no file" path and an object from CloudStore. `hasOwnProperty`
+    // on a string primitive boxes it and returns false, so both paths work.
+    setError(this: UploadFileInstance, err: UploadError | string) {
+      this._internal.error = err.hasOwnProperty('error') ? (err as UploadError).error : err;
       //use the error code. If there is none, use the http status
-      this._internal.errorStatus = err.code || err.status || 0;
+      this._internal.errorStatus = (err as UploadError).code || (err as UploadError).status || 0;
       this.flagOutputDirty('error');
       this.flagOutputDirty('errorStatus');
       this.sendSignalOnOutput('failure');
@@ -133,6 +155,6 @@ const UploadFile = {
   }
 };
 
-module.exports = {
+export default {
   node: UploadFile
 };

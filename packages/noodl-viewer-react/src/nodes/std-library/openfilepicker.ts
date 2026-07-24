@@ -1,15 +1,30 @@
-'use strict';
+import type { NodeDefinitionOptions, NodeInstance } from '@noodl/types';
 
-const OpenFilePicker = {
+/**
+ * `path` is not a standard `File` member — it is Electron's addition, and the `path`
+ * output below is undefined in a browser. Declared rather than cast so the source says so.
+ */
+type PickedFile = File & { path?: string };
+
+interface OpenFilePickerInstance extends NodeInstance {
+  _internal: {
+    inputElement: HTMLInputElement;
+    file?: PickedFile;
+    acceptedFileTypes?: string;
+    capture?: string;
+  };
+}
+
+const OpenFilePicker: NodeDefinitionOptions = {
   name: 'Open File Picker',
   docs: 'https://docs.noodl.net/nodes/utilities/open-file-picker',
   category: 'Utilities',
-  getInspectInfo() {
+  getInspectInfo(this: OpenFilePickerInstance) {
     if (this._internal.file) {
       return this._internal.file.path;
     }
   },
-  initialize() {
+  initialize(this: OpenFilePickerInstance) {
     //for some reason the input element has to be created here, it doesn't
     //work predictably in Safari when created in the open signal function.
     //Creating it here and reusing it seems to work correctly in all browsers.
@@ -23,11 +38,11 @@ const OpenFilePicker = {
       type: 'signal',
       displayName: 'Open',
       group: 'Actions',
-      valueChangedToTrue() {
+      valueChangedToTrue(this: OpenFilePickerInstance) {
         const input = this._internal.inputElement;
 
-        const onChange = (e) => {
-          this._internal.file = e.target.files[0];
+        const onChange = (e: Event) => {
+          this._internal.file = (e.target as HTMLInputElement).files[0];
 
           this.flagOutputDirty('file');
           this.flagOutputDirty('path');
@@ -55,7 +70,7 @@ const OpenFilePicker = {
       group: 'General',
       type: 'string',
       displayName: 'Accepted file types',
-      set(value) {
+      set(this: OpenFilePickerInstance, value: string) {
         this._internal.acceptedFileTypes = value;
       }
     },
@@ -63,7 +78,7 @@ const OpenFilePicker = {
       group: 'General',
       type: 'string',
       displayName: 'Capture',
-      set(value) {
+      set(this: OpenFilePickerInstance, value: string) {
         this._internal.capture = value;
       }
     }
@@ -73,7 +88,7 @@ const OpenFilePicker = {
       type: '*',
       displayName: 'File',
       group: 'General',
-      get() {
+      get(this: OpenFilePickerInstance) {
         return this._internal.file;
       }
     },
@@ -81,7 +96,7 @@ const OpenFilePicker = {
       displayName: 'Path',
       group: 'Metadata',
       type: 'string',
-      get() {
+      get(this: OpenFilePickerInstance) {
         return this._internal.file && this._internal.file.path;
       }
     },
@@ -89,7 +104,7 @@ const OpenFilePicker = {
       displayName: 'Name',
       group: 'Metadata',
       type: 'string',
-      get() {
+      get(this: OpenFilePickerInstance) {
         return this._internal.file && this._internal.file.name;
       }
     },
@@ -97,7 +112,7 @@ const OpenFilePicker = {
       displayName: 'Size in bytes',
       group: 'Metadata',
       type: 'number',
-      get() {
+      get(this: OpenFilePickerInstance) {
         return this._internal.file && this._internal.file.size;
       }
     },
@@ -105,7 +120,7 @@ const OpenFilePicker = {
       displayName: 'Type',
       group: 'Metadata',
       type: 'string',
-      get() {
+      get(this: OpenFilePickerInstance) {
         return this._internal.file && this._internal.file.type;
       }
     },
@@ -117,6 +132,6 @@ const OpenFilePicker = {
   }
 };
 
-module.exports = {
+export default {
   node: OpenFilePicker
 };

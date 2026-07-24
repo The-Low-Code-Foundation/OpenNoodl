@@ -1,17 +1,41 @@
-'use strict';
+import type { InspectInfo, NodeDefinitionOptions, NodeInstance, Timer } from '@noodl/types';
 
-var EaseCurves = require('../../easecurves');
+import EaseCurves from '../../easecurves';
 
-var defaultDuration = 300;
+type EaseFn = (start: number, end: number, t: number) => number;
 
-var AnimateToValue = {
+/**
+ * The extra state this node hangs off its timer. `TimerOptions` copies unknown keys onto
+ * the timer verbatim and the callbacks run as methods on it, so `onRunning` reads these
+ * back through `this`.
+ */
+interface AnimationTimer extends Timer {
+  startValue: number;
+  endValue: number;
+  ease: EaseFn;
+}
+
+interface AnimateToValueInstance extends NodeInstance {
+  _internal: {
+    currentNumber: number;
+    numberInitialized: boolean;
+    animationStarted: boolean;
+    setCurrentNumberEnabled: boolean;
+    overrideValue: number;
+    _animation: AnimationTimer;
+  };
+}
+
+const defaultDuration = 300;
+
+const AnimateToValue: NodeDefinitionOptions = {
   name: 'net.noodl.animatetovalue',
   docs: 'https://docs.noodl.net/nodes/logic/animate-to-value',
   displayName: 'Animate To Value',
   shortDesc: 'This node can interpolate smooothely from the current value to a target value.',
   category: 'Animation',
-  initialize: function () {
-    var self = this,
+  initialize: function (this: AnimateToValueInstance) {
+    const self = this,
       _internal = this._internal;
 
     _internal.currentNumber = 0;
@@ -28,17 +52,19 @@ var AnimateToValue = {
       onStart: function () {
         _internal.animationStarted = true;
       },
-      onRunning: function (t) {
+      onRunning: function (this: AnimationTimer, t: number) {
         _internal.currentNumber = this.ease(this.startValue, this.endValue, t);
         self.flagOutputDirty('currentValue');
       },
       onFinish: function () {
         self.sendSignalOnOutput('atTargetValue');
       }
-    });
+    }) as AnimationTimer;
   },
-  getInspectInfo() {
-    return this._internal.currentNumber;
+  // Returns a bare number, which the editor's inspector popup renders as nothing —
+  // see PLAT-003 NOTES §13. Kept as-is: correcting it changes what the editor shows.
+  getInspectInfo(this: AnimateToValueInstance) {
+    return this._internal.currentNumber as unknown as InspectInfo;
   },
   inputs: {
     targetValue: {
@@ -48,35 +74,35 @@ var AnimateToValue = {
       displayName: 'Target Value',
       group: 'Target Value',
       default: undefined, //default is undefined so transition initializes to the first input value
-      set: function (value) {
+      set: function (this: AnimateToValueInstance, value: unknown) {
         if (value === true) {
           value = 1;
         } else if (value === false) {
           value = 0;
         }
 
-        value = Number(value);
+        const numeric = Number(value);
 
-        if (isNaN(value)) {
+        if (isNaN(numeric)) {
           //bail out on NaN values
           return;
         }
 
-        var internal = this._internal;
+        const internal = this._internal;
 
         if (internal.numberInitialized === false) {
-          internal.currentNumber = value;
+          internal.currentNumber = numeric;
           internal.numberInitialized = true;
-          internal._animation.endValue = value;
+          internal._animation.endValue = numeric;
           this.flagOutputDirty('currentValue');
           return;
-        } else if (value === internal._animation.endValue) {
+        } else if (numeric === internal._animation.endValue) {
           //same as previous value
           return;
         }
 
         internal._animation.startValue = internal.currentNumber;
-        internal._animation.endValue = value;
+        internal._animation.endValue = numeric;
         internal._animation.start();
       }
     },
@@ -85,7 +111,7 @@ var AnimateToValue = {
       group: 'Parameters',
       displayName: 'Duration',
       default: defaultDuration,
-      set: function (value) {
+      set: function (this: AnimateToValueInstance, value: number) {
         this._internal._animation.duration = value;
       }
     },
@@ -94,7 +120,7 @@ var AnimateToValue = {
       group: 'Parameters',
       displayName: 'Delay',
       default: 0,
-      set: function (value) {
+      set: function (this: AnimateToValueInstance, value: number) {
         this._internal._animation.delay = value;
       }
     },
@@ -111,7 +137,7 @@ var AnimateToValue = {
       default: 'easeOut',
       displayName: 'Easing Curve',
       group: 'Parameters',
-      set: function (value) {
+      set: function (this: AnimateToValueInstance, value: string) {
         this._internal._animation.ease = EaseCurves[value];
       }
     }
@@ -121,7 +147,7 @@ var AnimateToValue = {
       type: 'number',
       displayName: 'Current Value',
       group: 'Current State',
-      getter: function () {
+      getter: function (this: AnimateToValueInstance) {
         return this._internal.currentNumber;
       }
     },
@@ -133,6 +159,6 @@ var AnimateToValue = {
   }
 };
 
-module.exports = {
+export default {
   node: AnimateToValue
 };

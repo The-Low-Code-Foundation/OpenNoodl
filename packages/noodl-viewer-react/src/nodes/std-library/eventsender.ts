@@ -1,6 +1,24 @@
-'use strict';
+import type {
+  EditorConnectionLike,
+  GraphNodeModel,
+  NodeContextLike,
+  NodeDefinitionOptions,
+  NodeInstance,
+  NodeModule
+} from '@noodl/types';
 
-const EventSender = {
+type Propagation = 'global' | 'parent' | 'children' | 'siblings';
+
+interface EventSenderInstance extends NodeInstance {
+  _internal: {
+    /** Payload port values by port name, plus `_channelName`, which travels with the event. */
+    inputValues: Record<string, unknown>;
+    channelName: string;
+    propagation: Propagation;
+  };
+}
+
+const EventSender: NodeDefinitionOptions = {
   name: 'Event Sender',
   docs: 'https://docs.noodl.net/nodes/events/send-event',
   displayNodeName: 'Send Event',
@@ -8,7 +26,7 @@ const EventSender = {
   usePortAsLabel: 'channelName',
   color: 'component',
   exportDynamicPorts: true,
-  initialize: function () {
+  initialize: function (this: EventSenderInstance) {
     this._internal.inputValues = {};
     this._internal.channelName = '';
     this._internal.propagation = 'global';
@@ -16,8 +34,8 @@ const EventSender = {
   inputs: {
     sendEvent: {
       displayName: 'Send',
-      valueChangedToTrue: function () {
-        var self = this;
+      valueChangedToTrue: function (this: EventSenderInstance) {
+        const self = this;
 
         //wait for all other inputs to update before sending
         this.scheduleAfterInputsHaveUpdated(function () {
@@ -43,7 +61,7 @@ const EventSender = {
       default: '',
       group: 'Settings',
       displayName: 'Channel Name',
-      set: function (value) {
+      set: function (this: EventSenderInstance, value: string) {
         this._internal.channelName = value;
         this._internal.inputValues._channelName = value;
       }
@@ -61,7 +79,7 @@ const EventSender = {
       default: 'global',
       group: 'Settings',
       displayName: 'Send to',
-      set: function (value) {
+      set: function (this: EventSenderInstance, value: Propagation) {
         this._internal.propagation = value;
       }
     },
@@ -74,14 +92,16 @@ const EventSender = {
     }
   },
   prototypeExtensions: {
+    // The `runtime-discovered` dynamic-port mechanism: every payload name the author typed
+    // becomes an input the first time the graph asks for it.
     registerInputIfNeeded: {
-      value: function (name) {
+      value: function (this: EventSenderInstance, name: string) {
         if (this.hasInput(name)) {
           return;
         }
-        var self = this;
+        const self = this;
         this.registerInput(name, {
-          set: function (value) {
+          set: function (value: unknown) {
             self._internal.inputValues[name] = value;
           }
         });
@@ -90,14 +110,13 @@ const EventSender = {
   }
 };
 
-function updatePorts(nodeId, parameters, editorConnection) {
-  var ports = [];
+function updatePorts(nodeId: string, parameters: Record<string, unknown>, editorConnection: EditorConnectionLike) {
+  const ports = [];
 
   // Add payload inputs
-  var payload = parameters.payload;
+  const payload = parameters.payload as string | undefined;
   if (payload) {
-    payload = payload.split(',');
-    for (const p of payload) {
+    for (const p of payload.split(',')) {
       ports.push({
         type: {
           name: '*',
@@ -118,19 +137,22 @@ function updatePorts(nodeId, parameters, editorConnection) {
   });
 }
 
-module.exports = {
+const EventSenderModule: NodeModule = {
   node: EventSender,
-  setup: function (context, graphModel) {
-    if (!context.editorConnection || !context.editorConnection.isRunningLocally()) {
+  setup: function (context: NodeContextLike, graphModel) {
+    const editorConnection = context.editorConnection;
+    if (!editorConnection || !editorConnection.isRunningLocally()) {
       return;
     }
 
-    graphModel.on('nodeAdded.Event Sender', function (node) {
-      updatePorts(node.id, node.parameters, context.editorConnection);
+    graphModel.on('nodeAdded.Event Sender', function (node: GraphNodeModel) {
+      updatePorts(node.id, node.parameters, editorConnection);
 
-      node.on('parameterUpdated', function (event) {
-        updatePorts(node.id, node.parameters, context.editorConnection);
+      node.on('parameterUpdated', function () {
+        updatePorts(node.id, node.parameters, editorConnection);
       });
     });
   }
 };
+
+export default EventSenderModule;

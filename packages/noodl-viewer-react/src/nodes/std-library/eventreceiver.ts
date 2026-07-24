@@ -1,16 +1,33 @@
-'use strict';
+import { Node } from '@noodl/runtime';
+import type { GraphNodeModel, NodeContextLike, NodeDefinitionOptions, NodeInstance, NodeModule } from '@noodl/types';
 
-const { Node } = require('@noodl/runtime');
+type EventData = Record<string, unknown>;
 
-const EventReceiver = {
+interface EventReceiverInstance extends NodeInstance {
+  _internal: {
+    outputValues: EventData;
+    outputNames: string[];
+    eventReceived: boolean;
+    _isEnabled: boolean;
+    channelName: string;
+    consume?: 'never' | 'always';
+    onEventReceivedCallback?: ((eventData: EventData) => void) | null;
+  };
+  handleEvent(eventData: EventData): boolean;
+  onEventReceived(eventData: EventData): void;
+  registerListenersForChannel(channelName: string): void;
+  getChannelName(): string;
+}
+
+const EventReceiver: NodeDefinitionOptions = {
   name: 'Event Receiver',
   docs: 'https://docs.noodl.net/nodes/events/receive-event',
   displayNodeName: 'Receive Event',
   category: 'Events',
   usePortAsLabel: 'channelName',
   color: 'component',
-  initialize: function () {
-    var internal = this._internal;
+  initialize: function (this: EventReceiverInstance) {
+    const internal = this._internal;
     internal.outputValues = {};
     internal.outputNames = [];
     internal.eventReceived = false;
@@ -22,7 +39,7 @@ const EventReceiver = {
       displayName: 'Enabled',
       type: 'boolean',
       default: true,
-      set: function (value) {
+      set: function (this: EventReceiverInstance, value: unknown) {
         this._internal._isEnabled = value ? true : false;
       }
     },
@@ -36,14 +53,14 @@ const EventReceiver = {
         ]
       },
       default: 'never',
-      set: function (value) {
+      set: function (this: EventReceiverInstance, value: 'never' | 'always') {
         this._internal.consume = value;
       }
     },
     channelName: {
       type: { name: 'string', identifierOf: 'EventChannelName' },
       displayName: 'Channel',
-      set: function (value) {
+      set: function (this: EventReceiverInstance, value: string) {
         if (this._internal.onEventReceivedCallback) {
           //remove old listener
           this.context.eventSenderEmitter.removeListener(
@@ -65,12 +82,15 @@ const EventReceiver = {
     }
   },
   prototypeExtensions: {
-    registerOutputIfNeeded: function (name) {
+    // The `runtime-discovered` dynamic-port mechanism, output side: the payload names come
+    // from whichever Event Senders share this node's channel, so they are known only per
+    // project. `setup` below is what tells the editor about them.
+    registerOutputIfNeeded: function (this: EventReceiverInstance, name: string) {
       if (this.hasOutput(name)) {
         return;
       }
 
-      var self = this;
+      const self = this;
 
       this._internal.outputNames.push(name);
       this.registerOutput(name, {
@@ -79,13 +99,13 @@ const EventReceiver = {
         }
       });
     },
-    handleEvent: function (eventData) {
+    handleEvent: function (this: EventReceiverInstance, eventData: EventData) {
       if (this._internal._isEnabled === false) {
         return;
       }
       this.sendSignalOnOutput('eventReceived');
 
-      for (var name in eventData) {
+      for (const name in eventData) {
         if (this.hasOutput(name)) {
           this._internal.outputValues[name] = eventData[name];
           this.flagOutputDirty(name);
@@ -94,62 +114,62 @@ const EventReceiver = {
 
       return this._internal.consume === 'always';
     },
-    onEventReceived: function (eventData) {
+    onEventReceived: function (this: EventReceiverInstance, eventData: EventData) {
       this.handleEvent(eventData);
     },
-    _onNodeDeleted: function () {
+    _onNodeDeleted: function (this: EventReceiverInstance) {
       Node.prototype._onNodeDeleted.call(this);
       if (this._internal.onEventReceivedCallback) {
-        var eventEmitter = this.context.eventSenderEmitter;
+        const eventEmitter = this.context.eventSenderEmitter;
         eventEmitter.removeListener(this._internal.channelName, this._internal.onEventReceivedCallback);
       }
     },
-    registerListenersForChannel: function (channelName) {
-      var eventEmitter = this.context.eventSenderEmitter;
+    registerListenersForChannel: function (this: EventReceiverInstance, channelName: string) {
+      const eventEmitter = this.context.eventSenderEmitter;
       this._internal.onEventReceivedCallback = this.onEventReceived.bind(this);
       eventEmitter.on(channelName, this._internal.onEventReceivedCallback);
 
-      var self = this;
+      const self = this;
       this.context.eventEmitter.once('applicationDataReloaded', function () {
         if (self._internal.onEventReceivedCallback) {
           eventEmitter.removeListener(channelName, self._internal.onEventReceivedCallback);
         }
       });
     },
-    getChannelName: function () {
+    getChannelName: function (this: EventReceiverInstance) {
       return this._internal.channelName;
     }
   }
 };
 
-module.exports = {
-  node: EventReceiver
-};
-
-module.exports = {
+// The `.js` original assigned `module.exports` twice — first `{ node }`, then the same
+// object plus `setup`. The first assignment was dead and is dropped here.
+const EventReceiverModule: NodeModule = {
   node: EventReceiver,
-  setup: function (context, graphModel) {
-    if (!context.editorConnection || !context.editorConnection.isRunningLocally()) {
+  setup: function (context: NodeContextLike, graphModel) {
+    const editorConnection = context.editorConnection;
+    if (!editorConnection || !editorConnection.isRunningLocally()) {
       return;
     }
 
-    function onEventReceiver(node) {
-      var channelName = node.parameters.channelName;
+    function onEventReceiver(node: GraphNodeModel) {
+      let channelName = node.parameters.channelName;
 
       function _collectPayloadPorts() {
-        var eventSenders = graphModel.getNodesWithType('Event Sender');
-        var matching = eventSenders.filter((node) => node.parameters.channelName === channelName);
+        const eventSenders = graphModel.getNodesWithType('Event Sender');
+        const matching = eventSenders.filter((sender) => sender.parameters.channelName === channelName);
 
-        var portKeys = {};
-        matching.forEach((node) => {
-          const ports = node.parameters.payload ? node.parameters.payload.split(',') : [];
-          for (let key of ports) {
+        const portKeys: Record<string, boolean> = {};
+        matching.forEach((sender) => {
+          const payload = sender.parameters.payload as string | undefined;
+          const ports = payload ? payload.split(',') : [];
+          for (const key of ports) {
             portKeys[key] = true;
           }
         });
 
-        var ports = [];
-        for (var key in portKeys) {
+        const ports = [];
+        for (const key in portKeys) {
           ports.push({
             name: key,
             type: '*',
@@ -158,7 +178,7 @@ module.exports = {
           });
         }
 
-        context.editorConnection.sendDynamicPorts(node.id, ports, {
+        editorConnection.sendDynamicPorts(node.id, ports, {
           detectRenamed: {
             plug: 'output'
           }
@@ -166,7 +186,7 @@ module.exports = {
       }
 
       _collectPayloadPorts();
-      node.on('parameterUpdated', function (event) {
+      node.on('parameterUpdated', function (event: { name: string; value: unknown }) {
         if (event.name === 'channelName') {
           channelName = event.value;
           _collectPayloadPorts();
@@ -174,18 +194,18 @@ module.exports = {
       });
 
       // Track all event senders and update ports when they change
-      function _trackEventSender(node) {
+      function _trackEventSender(sender: GraphNodeModel) {
         //_collectPayloadPorts();
 
-        node.on('inputPortAdded', function (event) {
+        sender.on('inputPortAdded', function () {
           _collectPayloadPorts();
         });
 
-        node.on('inputPortRemoved', function (event) {
+        sender.on('inputPortRemoved', function () {
           _collectPayloadPorts();
         });
 
-        node.on('parameterUpdated', function (event) {
+        sender.on('parameterUpdated', function (event: { name: string }) {
           if (event.name === 'channelName') {
             _collectPayloadPorts();
           }
@@ -196,7 +216,7 @@ module.exports = {
 
       graphModel.on('nodeAdded.Event Sender', _trackEventSender);
 
-      graphModel.on('nodeRemoved.Event Sender', (node) => {
+      graphModel.on('nodeRemoved.Event Sender', () => {
         _collectPayloadPorts();
       });
     }
@@ -204,10 +224,12 @@ module.exports = {
     //wait with dynamic ports until the entire graph is loaded
     graphModel.on('editorImportComplete', () => {
       //all future added nodes though delta updates
-      graphModel.on('nodeAdded.Event Receiver', (node) => onEventReceiver(node));
+      graphModel.on('nodeAdded.Event Receiver', (node: GraphNodeModel) => onEventReceiver(node));
 
       //existing nodes from the initial export
       graphModel.getNodesWithType('Event Receiver').forEach((node) => onEventReceiver(node));
     });
   }
 };
+
+export default EventReceiverModule;

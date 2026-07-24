@@ -1,42 +1,53 @@
-'use strict';
+import type { NodeDefinitionOptions, NodeInstance } from '@noodl/types';
 
-const EaseCurves = require('../../easecurves');
+import EaseCurves from '../../easecurves';
 
-function clamp(min, max, value) {
+type RGB = [number, number, number];
+
+interface ColorBlendInstance extends NodeInstance {
+  _internal: {
+    resultColor: string;
+    blendValue: number;
+    colors: string[];
+  };
+  updateColor(): void;
+}
+
+function clamp(min: number, max: number, value: number) {
   return Math.max(min, Math.min(max, value));
 }
 
-function setRGB(result, hex) {
-  for (var i = 0; i < 3; ++i) {
-    var index = 1 + i * 2;
+function setRGB(result: RGB, hex: string) {
+  for (let i = 0; i < 3; ++i) {
+    const index = 1 + i * 2;
     result[i] = parseInt(hex.substring(index, index + 2), 16);
   }
 }
 
-function componentToHex(c) {
-  var hex = c.toString(16);
+function componentToHex(c: number) {
+  const hex = c.toString(16);
   return hex.length == 1 ? '0' + hex : hex;
 }
 
-function rgbToHex(rgb) {
+function rgbToHex(rgb: RGB) {
   return '#' + componentToHex(rgb[0]) + componentToHex(rgb[1]) + componentToHex(rgb[2]);
 }
 
 //reusing these to reduce GC pressure
-let rgb0 = [0, 0, 0];
-let rgb1 = [0, 0, 0];
-let rgb2 = [0, 0, 0];
+const rgb0: RGB = [0, 0, 0];
+const rgb1: RGB = [0, 0, 0];
+const rgb2: RGB = [0, 0, 0];
 
-const ColorBlendNode = {
+const ColorBlendNode: NodeDefinitionOptions = {
   name: 'Color Blend',
   docs: 'https://docs.noodl.net/nodes/utilities/color-blend',
   shortDesc:
     'Given any number of input colors this node can interpolate between these and give the result color as output.',
   category: 'Interpolation',
-  getInspectInfo() {
+  getInspectInfo(this: ColorBlendInstance) {
     return [{ type: 'color', value: this._internal.resultColor }];
   },
-  initialize() {
+  initialize(this: ColorBlendInstance) {
     const internal = this._internal;
 
     internal.resultColor = '#000000';
@@ -47,8 +58,8 @@ const ColorBlendNode = {
     color: {
       type: 'color',
       displayPrefix: 'Color',
-      createSetter(index) {
-        return function (value) {
+      createSetter(index: number) {
+        return function (this: ColorBlendInstance, value: string) {
           this._internal.colors[index] = value;
           this.updateColor();
         };
@@ -60,7 +71,7 @@ const ColorBlendNode = {
       type: 'number',
       displayName: 'Blend Value',
       default: 0,
-      set: function (value) {
+      set: function (this: ColorBlendInstance, value: number) {
         this._internal.blendValue = value;
         this.updateColor();
       }
@@ -70,25 +81,25 @@ const ColorBlendNode = {
     result: {
       type: 'color',
       displayName: 'Result',
-      getter: function () {
+      getter: function (this: ColorBlendInstance) {
         return this._internal.resultColor;
       }
     }
   },
   methods: {
-    updateColor() {
-      var colors = this._internal.colors;
+    updateColor(this: ColorBlendInstance) {
+      const colors = this._internal.colors;
       if (colors.length === 0) {
         return;
       }
 
-      function getColor(index) {
+      function getColor(index: number) {
         return colors[index] ? colors[index] : '#000000';
       }
 
-      var clampedBlendValue = clamp(0, colors.length - 1, this._internal.blendValue);
-      var index = Math.floor(clampedBlendValue);
-      var t = clampedBlendValue - index;
+      const clampedBlendValue = clamp(0, colors.length - 1, this._internal.blendValue);
+      const index = Math.floor(clampedBlendValue);
+      const t = clampedBlendValue - index;
 
       if (t === 0) {
         this._internal.resultColor = getColor(index);
@@ -107,6 +118,6 @@ const ColorBlendNode = {
   }
 };
 
-module.exports = {
+export default {
   node: ColorBlendNode
 };

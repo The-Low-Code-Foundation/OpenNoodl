@@ -47,6 +47,7 @@
  */
 
 import { NodeCategory, NumberedInputSpec, PortType, PortTypeName } from '../node-catalog';
+import { TimerScheduler } from './timer_scheduler.d';
 
 export { NodeCategory, NumberedInputSpec, PortType, PortTypeName };
 
@@ -92,7 +93,13 @@ export interface NodeInstance {
 
   context: NodeContextLike;
   nodeScope: NodeScopeLike;
-  model?: unknown;
+  /**
+   * The authored node this instance was built from. Present for nodes that came from the
+   * project graph; absent for ones the runtime created directly. Nodes with
+   * `runtime-discovered` ports read `model.inputPorts` / `model.outputPorts` to find out
+   * which ports the editor believes they have.
+   */
+  model?: GraphNodeModel;
 
   // --- inputs -------------------------------------------------------------
   hasInput(name: string): boolean;
@@ -134,17 +141,93 @@ export interface NodeInstance {
   addDeleteListener(listener: (this: NodeInstance) => void): void;
 }
 
+/**
+ * The vendored Node `EventEmitter` (`noodl-runtime/src/events.js`), as node definitions use
+ * it. Distinct from {@link EventSenderLike}, which is the runtime's own ref-scoped emitter
+ * used by the graph and node *models*.
+ */
+export interface RuntimeEventEmitter {
+  on(eventName: string, listener: (...args: any[]) => void): this;
+  once(eventName: string, listener: (...args: any[]) => void): this;
+  removeListener(eventName: string, listener: (...args: any[]) => void): this;
+  removeAllListeners(eventName?: string): this;
+  emit(eventName: string, ...args: any[]): boolean;
+  setMaxListeners(n: number): this;
+}
+
+/**
+ * The project's style tokens, as node definitions read them.
+ *
+ * Both lookups are total: an unknown colour name comes back unchanged (so a literal
+ * `'#ff0000'` passes straight through), and an unknown text style yields `{}`. Neither
+ * throws, so there is nothing to guard beyond `styles` itself being present.
+ */
+export interface StylesLike {
+  /** Maps a named project colour to its value; returns `color` unchanged if unnamed. */
+  resolveColor(color: string): string;
+  getTextStyle(styleName: string): Record<string, unknown>;
+}
+
 /** The subset of `NodeContext` node definitions actually reach for. */
 export interface NodeContextLike {
   editorConnection?: EditorConnectionLike;
-  /** Present in the browser viewer; absent in the cloud runtime. */
-  styles?: unknown;
+  /**
+   * Runtime lifecycle events. The one node definitions listen for is
+   * `'applicationDataReloaded'`, which is their cue to drop listeners they registered
+   * against the previous project data.
+   */
+  eventEmitter: RuntimeEventEmitter;
+  /**
+   * The Event Sender / Event Receiver channel bus, keyed by channel name. Separate from
+   * {@link eventEmitter} so application events cannot collide with lifecycle ones.
+   */
+  eventSenderEmitter: RuntimeEventEmitter;
+  /**
+   * Project-level style tokens. Present in the browser viewer; absent in the cloud runtime,
+   * so guard before use.
+   */
+  styles?: StylesLike;
+  /** The frame-driven timer service. Delay, animation and transition nodes all use it. */
+  timerScheduler: TimerScheduler;
+  /**
+   * Broadcasts an event to every Event Receiver in the project, regardless of scope.
+   * The scoped alternative is {@link NodeScopeLike.sendEventFromThisScope}.
+   */
+  sendGlobalEventFromEventSender(channelName: string, inputValues: unknown): void;
+  /** Runs `callback` at the start of the next frame. */
+  scheduleNextFrame(callback: () => void): void;
+  /**
+   * Whether the editor wants warnings of this kind. Guard `editorConnection.sendWarning`
+   * with it — the categories are user-toggleable.
+   */
+  isWarningTypeEnabled(warningType: string): boolean;
   [extra: string]: unknown;
 }
+
+/** How far a scoped event travels from the scope that sent it. */
+export type EventPropagation = 'parent' | 'children' | 'siblings' | null | undefined;
 
 /** The subset of `NodeScope` node definitions actually reach for. */
 export interface NodeScopeLike {
   componentOwner: { name: string; [extra: string]: unknown };
+  /**
+   * Sends an event to a *related* scope rather than the whole project. Returns whether a
+   * receiver consumed it. `sendEventInThisScope` is set by the recursive calls the runtime
+   * makes as it walks up or down; node definitions leave it alone.
+   */
+  sendEventFromThisScope(
+    eventName: string,
+    data: unknown,
+    propagation: EventPropagation,
+    sendEventInThisScope?: boolean,
+    _exclude?: unknown
+  ): boolean | undefined;
+  /**
+   * Instantiates a node — or, when `name` is a component path, a whole component — inside
+   * this scope. Asynchronous because a component may still need loading.
+   */
+  createNode(name: string, id?: string, extraProps?: Record<string, unknown>): Promise<NodeInstance>;
+  deleteNode(nodeInstance: NodeInstance): void;
   [extra: string]: unknown;
 }
 
@@ -367,8 +450,33 @@ export type NodePanels = Record<string, unknown>;
  */
 export type PrototypeExtensions = Record<string, ((this: NodeInstance, ...args: any[]) => any) | PropertyDescriptor>;
 
-/** One line of the editor's node inspector. */
-export type InspectInfo = string | Array<{ type: 'text' | 'value' | string; value: unknown; [extra: string]: unknown }>;
+/**
+ * One entry in the editor's node inspector popup.
+ *
+ * `type` selects the renderer: `image` and `color` get dedicated ones, everything else
+ * falls through to a JSON view for objects and a plain value view for primitives.
+ */
+export interface InspectInfoEntry {
+  type?: 'text' | 'value' | 'image' | 'color' | (string & {});
+  value: unknown;
+  [extra: string]: unknown;
+}
+
+/**
+ * What `getInspectInfo` may return.
+ *
+ * The editor's `InspectPopup` normalises in exactly three steps: a `string` becomes
+ * `{ type: 'value', value }`, a non-array becomes a one-element array, and each entry is
+ * then rendered by its `type`. An entry with no `value` key renders nothing, and the popup
+ * hides itself when no entry has one.
+ *
+ * The consequence is worth stating plainly, because several nodes get it wrong: returning a
+ * bare `boolean`, `number` or plain object — anything that is neither a string nor an
+ * `{ type, value }` entry — produces an inspector that shows *nothing*. It is not an error
+ * and never has been; the value simply has no `.value` property to read. Those sites are
+ * typed against this union so the compiler says so, and are listed in PLAT-003 NOTES §13.
+ */
+export type InspectInfo = string | InspectInfoEntry | InspectInfoEntry[];
 
 /**
  * The object passed to `defineNode`.
@@ -430,7 +538,7 @@ export interface NodeDefinitionOptions {
   /** @deprecated Historical spelling of {@link methods}; still honoured. */
   prototypeExtensions?: PrototypeExtensions;
   /** Supplies the editor's node inspector with what to show for this instance. */
-  getInspectInfo?(this: NodeInstance): InspectInfo;
+  getInspectInfo?(this: NodeInstance): InspectInfo | void;
   /** Called once the enclosing node scope has finished initialising. */
   nodeScopeDidInitialize?(this: NodeInstance): void;
 
@@ -517,6 +625,112 @@ export interface NodeDefinition {
    * numbered inputs actually in use.
    */
   setupNumberedInputDynamicPorts?(context: NodeContextLike, graphModel: unknown): void;
+}
+
+/**
+ * The runtime's event emitter, as node modules use it.
+ *
+ * `emit` is asynchronous and sequential — it awaits each listener before calling the next.
+ * Registering with a `ref` lets every listener belonging to that ref be dropped in one
+ * call, which is how nodes detach from their models. See `eventsender.ts`.
+ */
+export interface EventSenderLike {
+  on(eventName: string, callback: (data?: any) => unknown, ref?: unknown): void;
+  removeListenersWithRef(ref: unknown): void;
+  removeAllListeners(eventName?: string): void;
+  emit(eventName: string, data?: unknown): Promise<void>;
+}
+
+/**
+ * A node as the *graph model* sees it: the authored node the editor persisted, not a live
+ * instance. `NodeInstance` is the running object; this is its blueprint.
+ *
+ * Only reachable from a {@link NodeModule.setup} function, and only when running against a
+ * live editor — the graph model exists in deployed bundles but nothing pushes ports to it.
+ *
+ * The event a `setup` function almost always wants is `'parameterUpdated'`, emitted with
+ * `{ name, value, state }` whenever a parameter changes.
+ */
+export interface GraphNodeModel extends EventSenderLike {
+  readonly id: string;
+  readonly type: string;
+  /** Values the editor persisted for this node's input ports. */
+  parameters: Record<string, unknown>;
+  /** Per-visual-state parameter overrides. Absent until a state value is set. */
+  stateParameters?: Record<string, Record<string, unknown>>;
+  /** Per-state, per-parameter transitions. Merged with the node's variant, if any. */
+  stateTransitions?: Record<string, Record<string, StateTransition>>;
+  /** Fallback transition for every parameter of a state, keyed by state name. */
+  defaultStateTransitions?: Record<string, StateTransition>;
+  children: GraphNodeModel[];
+  /** Ports the editor knows about, keyed by port name. Includes dynamic ones. */
+  inputPorts: Record<string, GraphPortModel>;
+  outputPorts: Record<string, GraphPortModel>;
+  /** Set by `ComponentModel.addNode`, so present on any node that reached the graph. */
+  component?: ComponentModelLike;
+  [extra: string]: unknown;
+}
+
+/** A port as recorded on a {@link GraphNodeModel}. */
+export interface GraphPortModel {
+  name: string;
+  /** Either the bare type name or the configured object form — check both. */
+  type: PortTypeSpec;
+  plug?: 'input' | 'output';
+  [extra: string]: unknown;
+}
+
+/** One component in the graph model. */
+export interface ComponentModelLike extends EventSenderLike {
+  readonly name: string;
+  nodes: GraphNodeModel[];
+  /** Ids of the component's root nodes. */
+  roots: string[];
+  getNodeWithId(id: string): GraphNodeModel | undefined;
+  getAllNodes(): GraphNodeModel[];
+  getNodesWithType(type: string): GraphNodeModel[];
+  [extra: string]: unknown;
+}
+
+/**
+ * The project's whole node graph, as a {@link NodeModule.setup} function sees it.
+ *
+ * Beyond the query methods, `setup` functions subscribe to *type-scoped* events: the model
+ * emits both `'nodeAdded'` and `'nodeAdded.<node type>'`, and likewise for `'nodeRemoved'`
+ * and `'nodeWasRemoved'`. Subscribing to the scoped form is how a node type learns about
+ * its own instances without filtering.
+ */
+export interface GraphModelLike extends EventSenderLike {
+  /** Keyed by component name. */
+  components: Record<string, ComponentModelLike>;
+
+  getNodesWithType(type: string): GraphNodeModel[];
+  getAllNodes(): GraphNodeModel[];
+  getComponentWithName(name: string): ComponentModelLike | undefined;
+  hasComponentWithName(name: string): boolean;
+  getAllComponents(): ComponentModelLike[];
+  getSettings(): Record<string, unknown>;
+  getMetaData(key: string): unknown;
+  getRootComponentName?(): string | undefined;
+  [extra: string]: unknown;
+}
+
+/**
+ * What a node *file* exports, and what `NoodlRuntime.registerNode` accepts.
+ *
+ * Almost every node file in the standard library exports this shape. `registerNode`
+ * compiles `node` with `defineNode` and registers the result; a module with no `node` is
+ * treated as an already-compiled {@link NodeDefinition} and registered as-is.
+ *
+ * `setup` runs once, at registration, and is the node type's hook into the *project* rather
+ * than into any one instance. It is where `runtime-discovered` dynamic ports come from:
+ * subscribe to the graph model, read the parameters the author typed, and push the
+ * resulting port set back with `editorConnection.sendDynamicPorts`. Guard it with
+ * `editorConnection.isRunningLocally()` — there is no editor to talk to in a deployed app.
+ */
+export interface NodeModule {
+  node?: NodeDefinitionOptions;
+  setup?(context: NodeContextLike, graphModel: GraphModelLike): void;
 }
 
 /** The module `@noodl/runtime`'s `NodeDefinition` export exposes. */

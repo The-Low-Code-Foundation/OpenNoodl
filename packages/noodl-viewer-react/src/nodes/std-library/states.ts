@@ -1,14 +1,71 @@
-'use strict';
+import BezierEasing from 'bezier-easing';
+import { EdgeTriggeredInput } from '@noodl/runtime';
+import type {
+  EditorConnectionLike,
+  GraphNodeModel,
+  NodeContextLike,
+  NodeDefinitionOptions,
+  NodeInstance,
+  NodeModule,
+  StateTransition,
+  Timer
+} from '@noodl/types';
 
-const { EdgeTriggeredInput } = require('@noodl/runtime');
-const EaseCurves = require('../../easecurves');
-const BezierEasing = require('bezier-easing');
+import EaseCurves from '../../easecurves';
+
+/** `[r, g, b, a]`, each 0–255. */
+type RGBA = [number, number, number, number];
+
+/** The value types a state parameter can carry, as chosen by the `type-<value>` port. */
+type StateValueType = 'number' | 'string' | 'boolean' | 'color' | 'textStyle';
+
+/**
+ * The extra state this node hangs off its transition timer. `TimerOptions` copies unknown
+ * keys onto the timer, and the callbacks run as methods on it, so `onStart`/`onRunning`
+ * reach these through `this`.
+ */
+interface StatesTimer extends Timer {
+  transitionCurves: Record<string, StateTransition>;
+  startValues: Record<string, number | RGBA>;
+  targetValues: Record<string, number | RGBA>;
+  valueTypes: Record<string, 'number' | 'color'>;
+}
+
+interface StatesInstance extends NodeInstance {
+  _internal: {
+    useTransitions: boolean;
+    currentValues: Record<string, unknown>;
+    /** Every `value-<state>-<name>`, `transition-…` and `duration-…` port value, by port name. */
+    stateParameters: Record<string, any>;
+    /** Every `type-<name>` port value, by port name. */
+    stateParameterTypes: Record<string, StateValueType>;
+    startValues: Record<string, unknown>;
+    bezierEaseCurves: Record<string, unknown>;
+    transitionFuncs: Record<string, { get(t: number): number }>;
+    valuesAreInitialised: boolean;
+    animation: StatesTimer;
+    states?: string[];
+    values?: string[];
+    state?: string;
+    startState?: string;
+    goToState?: string;
+  };
+  /**
+   * Set directly on the instance rather than in `_internal` — the original does this and
+   * it is load-bearing, so it is declared rather than moved.
+   */
+  hasScheduledGoToState?: boolean;
+  scheduleGoToState(state: string): void;
+  goToState(state: string): void;
+  jumpToState(state?: string): void;
+  updateAtStatePorts(): void;
+}
 
 const defaultDuration = 300;
-const previousStates = {},
-  previousValues = {};
+const previousStates: Record<string, string[] | undefined> = {},
+  previousValues: Record<string, string[] | undefined> = {};
 
-function setRGBA(result, hex) {
+function setRGBA(result: RGBA, hex: string) {
   if (hex === 'transparent' || !hex) {
     result[3] = 0;
     return;
@@ -22,22 +79,22 @@ function setRGBA(result, hex) {
   }
 }
 
-function componentToHex(c) {
-  var hex = c.toString(16);
+function componentToHex(c: number) {
+  const hex = c.toString(16);
   return hex.length == 1 ? '0' + hex : hex;
 }
 
-function rgbaToHex(rgba) {
+function rgbaToHex(rgba: RGBA) {
   return '#' + componentToHex(rgba[0]) + componentToHex(rgba[1]) + componentToHex(rgba[2]) + componentToHex(rgba[3]);
 }
 
-const StatesNode = {
+const StatesNode: NodeDefinitionOptions = {
   name: 'States',
   docs: 'https://docs.noodl.net/nodes/utilities/logic/states',
   shortDesc: 'Define states with values and this node can interpolate between these values when the state is changed.',
   category: 'Animation',
-  initialize: function () {
-    var _this = this,
+  initialize: function (this: StatesInstance) {
+    const _this = this,
       _internal = this._internal;
 
     _internal.useTransitions = true;
@@ -52,55 +109,61 @@ const StatesNode = {
     _internal.animation = this.context.timerScheduler.createTimer({
       duration: defaultDuration,
       ease: EaseCurves.easeOut,
-      onStart: function () {
-        var values = _internal.values;
-        var startValues = _internal.startValues;
-        var stateValues = _internal.stateParameters;
-        var valueTypes = _internal.stateParameterTypes;
-        var prefix = 'value-' + _internal.state + '-';
+      onStart: function (this: StatesTimer) {
+        const startValues = _internal.startValues;
+        const stateValues = _internal.stateParameters;
+        const valueTypes = _internal.stateParameterTypes;
+        const prefix = 'value-' + _internal.state + '-';
 
         this.targetValues = {};
         this.startValues = {};
         this.valueTypes = {};
 
-        for (var v in this.transitionCurves) {
+        for (const v in this.transitionCurves) {
           // var v = values[i];
 
           if (valueTypes['type-' + v] === 'number' || valueTypes['type-' + v] === undefined) {
             this.valueTypes[v] = 'number';
-            this.startValues[v] = startValues[v];
+            this.startValues[v] = startValues[v] as number;
             this.targetValues[v] = stateValues[prefix + v] || 0;
           } else if (valueTypes['type-' + v] === 'color') {
             this.valueTypes[v] = 'color';
 
             this.startValues[v] = [0, 0, 0, 255];
-            setRGBA(this.startValues[v], _this.context.styles.resolveColor(startValues[v] || '#000000'));
+            setRGBA(
+              this.startValues[v] as RGBA,
+              _this.context.styles.resolveColor((startValues[v] as string) || '#000000')
+            );
 
             this.targetValues[v] = [0, 0, 0, 255];
-            setRGBA(this.targetValues[v], _this.context.styles.resolveColor(stateValues[prefix + v] || '#000000'));
+            setRGBA(
+              this.targetValues[v] as RGBA,
+              _this.context.styles.resolveColor(stateValues[prefix + v] || '#000000')
+            );
           }
         }
       },
-      onRunning: function (t) {
-        var ms = t * this.duration;
-        var currentValues = _internal.currentValues;
+      onRunning: function (this: StatesTimer, t: number) {
+        const ms = t * this.duration;
+        const currentValues = _internal.currentValues;
 
-        var rgba2 = [0, 0, 0, 255];
-        for (var v in this.transitionCurves) {
-          var c = this.transitionCurves[v];
+        const rgba2: RGBA = [0, 0, 0, 255];
+        for (const v in this.transitionCurves) {
+          const c = this.transitionCurves[v];
           //  var v = values[i];
 
           if (ms < c.delay) currentValues[v] = this.startValues[v];
           else if (ms >= c.delay + c.dur)
-            currentValues[v] = this.valueTypes[v] === 'color' ? rgbaToHex(this.targetValues[v]) : this.targetValues[v];
+            currentValues[v] =
+              this.valueTypes[v] === 'color' ? rgbaToHex(this.targetValues[v] as RGBA) : this.targetValues[v];
           else {
-            var _t = _internal.transitionFuncs[v].get((ms - c.delay) / c.dur);
+            const _t = _internal.transitionFuncs[v].get((ms - c.delay) / c.dur);
             if (this.valueTypes[v] === 'number') {
               //convert values to Numers, since they might be strings, which can cause NaN
               currentValues[v] = EaseCurves.linear(Number(this.startValues[v]), Number(this.targetValues[v]), _t);
             } else if (this.valueTypes[v] === 'color') {
-              let rgba0 = this.startValues[v];
-              let rgba1 = this.targetValues[v];
+              const rgba0 = this.startValues[v] as RGBA;
+              const rgba1 = this.targetValues[v] as RGBA;
               rgba2[0] = Math.floor(EaseCurves.linear(rgba0[0], rgba1[0], _t));
               rgba2[1] = Math.floor(EaseCurves.linear(rgba0[1], rgba1[1], _t));
               rgba2[2] = Math.floor(EaseCurves.linear(rgba0[2], rgba1[2], _t));
@@ -113,12 +176,12 @@ const StatesNode = {
         }
       },
       onFinish: function () {
-        var port = 'reached-' + _internal.state;
+        const port = 'reached-' + _internal.state;
         if (_this.hasOutput(port)) _this.sendSignalOnOutput(port);
       }
-    });
+    }) as StatesTimer;
   },
-  getInspectInfo() {
+  getInspectInfo(this: StatesInstance) {
     return `Current state: ${this._internal.state}`;
   },
   inputs: {
@@ -126,13 +189,13 @@ const StatesNode = {
       type: { name: 'stringlist', allowEditOnly: true },
       displayName: 'States',
       group: 'States',
-      set: function (value) {
+      set: function (this: StatesInstance, value: string) {
         this._internal.states = value ? value.split(',') : [];
 
         // Set the state to first value if no state change is scheduled during
         // input updates
         if (this._internal.states.length > 0) {
-          var _this = this;
+          const _this = this;
           if (!_this._internal.state) this.scheduleGoToState(_this._internal.startState || _this._internal.states[0]);
           /*  this.scheduleAfterInputsHaveUpdated(function () {
                         if (!_this._internal.state) _this.goToState(_this._internal.startState ||_this._internal.states[0]);
@@ -144,12 +207,12 @@ const StatesNode = {
       type: { name: 'stringlist', allowEditOnly: true },
       displayName: 'Values',
       group: 'Values',
-      set: function (value) {
-        var internal = this._internal;
+      set: function (this: StatesInstance, value: string) {
+        const internal = this._internal;
         internal.values = value.split(',');
 
         // Register output values at this point
-        for (var i in internal.values) {
+        for (const i in internal.values) {
           this.registerOutputIfNeeded(internal.values[i]);
         }
       }
@@ -157,15 +220,14 @@ const StatesNode = {
     toggle: {
       group: 'Go to state',
       displayName: 'Toggle',
-      valueChangedToTrue: function () {
-        var internal = this._internal;
-        var _this = this;
+      valueChangedToTrue: function (this: StatesInstance) {
+        const internal = this._internal;
 
         if (!internal.states) return;
 
         // Figure out which state to toggle to
-        var idx = internal.states.indexOf(internal.state);
-        var nextIdx = (idx + 1) % internal.states.length;
+        const idx = internal.states.indexOf(internal.state);
+        const nextIdx = (idx + 1) % internal.states.length;
 
         // Go to state when all updates have updated
         //this._internal.scheduledToGoToState = internal.states[nextIdx];
@@ -180,8 +242,8 @@ const StatesNode = {
       displayName: 'Use Transitions',
       group: 'General',
       default: true,
-      set: function (value) {
-        var internal = this._internal;
+      set: function (this: StatesInstance, value: boolean) {
+        const internal = this._internal;
         internal.useTransitions = value;
       }
     }
@@ -191,7 +253,7 @@ const StatesNode = {
       type: 'string',
       displayName: 'State',
       group: 'Current State',
-      getter: function () {
+      getter: function (this: StatesInstance) {
         return this._internal.state;
       }
     },
@@ -202,8 +264,8 @@ const StatesNode = {
     }
   },
   prototypeExtensions: {
-    registerOutputIfNeeded: function (name) {
-      var internal = this._internal;
+    registerOutputIfNeeded: function (this: StatesInstance, name: string) {
+      const internal = this._internal;
 
       if (this.hasOutput(name)) return;
 
@@ -213,20 +275,23 @@ const StatesNode = {
         }
       });
     },
-    registerInputIfNeeded: function (name) {
-      var _this = this;
-      var internal = this._internal;
+    // The `runtime-discovered` mechanism, and the widest use of it in the library: the port
+    // name itself encodes what the port is. Every branch below is a different naming scheme,
+    // and `updatePorts` at the bottom of this file is what tells the editor they exist.
+    registerInputIfNeeded: function (this: StatesInstance, name: string) {
+      const _this = this;
+      const internal = this._internal;
 
       if (this.hasInput(name)) return;
 
       if (name.indexOf('to-') === 0) {
         // This is a go to state signal input
-        var state = name.substring(3);
+        const toState = name.substring(3);
         this.registerInput(name, {
           set: EdgeTriggeredInput.createSetter({
-            valueChangedToTrue: function () {
+            valueChangedToTrue: function (this: StatesInstance) {
               //this._internal.scheduledToGoToState = state;
-              this.scheduleGoToState(state);
+              this.scheduleGoToState(toState);
               //this.scheduleAfterInputsHaveUpdated(function () { _this.goToState(state) });
             }
           })
@@ -235,7 +300,7 @@ const StatesNode = {
         // Note: this is kept for backwards compatability, but this port is no longer part of the dynamic ports def
         // Other state parameters are stored
         this.registerInput(name, {
-          set: function (value) {
+          set: function (this: StatesInstance, value: string) {
             //this._internal.scheduledToGoToState = value;
             this._internal.startState = value;
             this.scheduleGoToState(value);
@@ -248,20 +313,20 @@ const StatesNode = {
         });
       } else if (name.indexOf('type-') === 0) {
         this.registerInput(name, {
-          set: function (value) {
+          set: function (value: StateValueType) {
             internal.stateParameterTypes[name] = value;
           }
         });
       } else if (name.indexOf('value-') === 0) {
         // Other state parameters are stored
-        var parts = name.split('-');
-        var state = parts[1];
-        var valueName = parts[2];
+        const parts = name.split('-');
+        const valueState = parts[1];
+        const valueName = parts[2];
 
         this.registerInput(name, {
-          set: function (value) {
+          set: function (value: unknown) {
             internal.stateParameters[name] = value;
-            if (internal.state === state) {
+            if (internal.state === valueState) {
               // If we are at the state, update the current value immediately
               internal.currentValues[valueName] = value;
               _this.flagOutputDirty(valueName);
@@ -270,14 +335,13 @@ const StatesNode = {
         });
       } else if (name.search(/duration-/g) === 0) {
         this.registerInput(name, {
-          set: function (value) {
+          set: function (value: unknown) {
             internal.stateParameters[name] = value;
           }
         });
       } else if (name.search(/transition/g) === 0) {
-        var state = name.substring(11);
         this.registerInput(name, {
-          set: function (value) {
+          set: function (value: unknown) {
             internal.stateParameters[name] = value;
             /*   if (value === 'cubicBezier') {
                             this.updateCubicBezierFunction(state); //create a default bezier easing curve
@@ -312,20 +376,20 @@ const StatesNode = {
                 return EaseCurves.linear(start, end, cubicBezierEase.get(t));
             };
         },*/
-    setCurrentState: function (value) {
+    setCurrentState: function (this: StatesInstance, value: string) {
       this.scheduleGoToState(value);
     },
-    jumpToState: function (state) {
-      var internal = this._internal;
+    jumpToState: function (this: StatesInstance, state?: string) {
+      const internal = this._internal;
       if (!internal.states) return;
       if (!state) state = internal.states[0];
       if (internal.state === state) return;
 
       internal.animation.stop();
 
-      var prefix = 'value-' + state + '-';
-      for (var i in internal.values) {
-        var v = internal.values[i];
+      const prefix = 'value-' + state + '-';
+      for (const i in internal.values) {
+        const v = internal.values[i];
 
         internal.currentValues[v] = internal.stateParameters[prefix + v] || 0;
 
@@ -345,8 +409,8 @@ const StatesNode = {
 
       this.updateAtStatePorts();
     },
-    scheduleGoToState: function (state) {
-      var _this = this;
+    scheduleGoToState: function (this: StatesInstance, state: string) {
+      const _this = this;
 
       this._internal.goToState = state;
 
@@ -359,8 +423,8 @@ const StatesNode = {
         _this.goToState(_this._internal.goToState);
       });
     },
-    goToState: function (state) {
-      var internal = this._internal;
+    goToState: function (this: StatesInstance, state?: string) {
+      const internal = this._internal;
       if (!internal.states) return;
       if (!state) state = internal.states[0];
       if (internal.state === state) return;
@@ -371,18 +435,18 @@ const StatesNode = {
         this.jumpToState(state);
       } else {
         // Copy current values as start values
-        var delay = 0;
-        var dur = 0;
-        var transitionCurves = {};
-        for (var i in internal.values) {
-          var v = internal.values[i];
+        let delay = 0;
+        let dur = 0;
+        const transitionCurves: Record<string, StateTransition> = {};
+        for (const i in internal.values) {
+          const v = internal.values[i];
 
           internal.startValues[v] = internal.currentValues[v];
 
           const parameterType = internal.stateParameterTypes['type-' + v];
           if (parameterType === 'boolean') {
             // These types don't transition, just set them
-            var _b = internal.stateParameters['value-' + state + '-' + v];
+            const _b = internal.stateParameters['value-' + state + '-' + v];
             internal.currentValues[v] = _b === undefined ? false : !!_b;
             this.flagOutputDirty(v);
           } else if (parameterType === 'string' || parameterType === 'textStyle') {
@@ -391,7 +455,7 @@ const StatesNode = {
             this.flagOutputDirty(v);
           } else {
             // Figure out transition curve
-            var transitionCurve = internal.stateParameters['transition-' + state + '-' + v];
+            let transitionCurve: StateTransition = internal.stateParameters['transition-' + state + '-' + v];
             if (!transitionCurve)
               transitionCurve = internal.stateParameters['transitiondef-' + state] || {
                 curve: [0.0, 0.0, 0.58, 1.0],
@@ -435,17 +499,17 @@ const StatesNode = {
 
         if (dur == 0 && delay == 0) {
           // Send reached signal if no transition
-          var port = 'reached-' + internal.state;
+          const port = 'reached-' + internal.state;
           if (this.hasOutput(port)) this.sendSignalOnOutput(port);
         }
       }
     },
-    updateAtStatePorts: function () {
-      var internal = this._internal;
-      var states = internal.states;
-      for (var i in states) {
-        var s = states[i];
-        var port = 'at-' + s;
+    updateAtStatePorts: function (this: StatesInstance) {
+      const internal = this._internal;
+      const states = internal.states;
+      for (const i in states) {
+        const s = states[i];
+        const port = 'at-' + s;
 
         internal.currentValues[port] = internal.state === s;
         if (this.hasOutput(port)) this.flagOutputDirty(port);
@@ -454,13 +518,19 @@ const StatesNode = {
   }
 };
 
-function detectRename(before, after) {
+/** The one name that moved between two same-length lists, if exactly one did. */
+interface RenameResult {
+  before?: string;
+  after?: string;
+}
+
+function detectRename(before: string[] | undefined, after: string[] | undefined): RenameResult | undefined {
   if (!before || !after) return;
 
   if (before.length !== after.length) return; // Must be of same length
 
-  var res = {};
-  for (var i = 0; i < before.length; i++) {
+  const res: RenameResult = {};
+  for (let i = 0; i < before.length; i++) {
     if (after.indexOf(before[i]) === -1) {
       if (res.before) return; // Can only be one from before that is missing
       res.before = before[i];
@@ -475,16 +545,24 @@ function detectRename(before, after) {
   return res.before && res.after ? res : undefined;
 }
 
-function updatePorts(nodeId, parameters, editorConnection) {
-  var states = parameters.states;
-  var values = parameters.values;
+/** A rename hint the editor uses to carry connections across a port rename. */
+interface RenamePattern {
+  plug: 'input' | 'output';
+  before: string;
+  after: string;
+  patterns: string[] | undefined;
+}
 
-  var ports = [];
+function updatePorts(nodeId: string, parameters: Record<string, any>, editorConnection: EditorConnectionLike) {
+  let states: string[] | undefined = parameters.states;
+  let values: string[] | undefined = parameters.values;
+
+  const ports = [];
 
   // Add value outputs
-  values = values ? values.split(',') : undefined;
-  for (var i in values) {
-    var p = values[i];
+  values = values ? (values as unknown as string).split(',') : undefined;
+  for (const i in values) {
+    const p = values[i];
 
     ports.push({
       type: {
@@ -518,7 +596,7 @@ function updatePorts(nodeId, parameters, editorConnection) {
   }
 
   // Add state value inputs
-  states = states ? states.split(',') : undefined;
+  states = states ? (states as unknown as string).split(',') : undefined;
   states &&
     states.forEach(function (state) {
       values &&
@@ -677,15 +755,15 @@ function updatePorts(nodeId, parameters, editorConnection) {
   }
 
   // Detect state and value rename
-  var stateRenamed = detectRename(previousStates[nodeId], states);
+  const stateRenamed = detectRename(previousStates[nodeId], states);
   previousStates[nodeId] = states;
 
-  var valueRenamed = detectRename(previousValues[nodeId], values);
+  const valueRenamed = detectRename(previousValues[nodeId], values);
   previousValues[nodeId] = values;
 
-  let renamed;
+  let renamed: RenamePattern | RenamePattern[];
   if (stateRenamed) {
-    renamed = {
+    const stateRename: RenamePattern = {
       plug: 'input',
       before: stateRenamed.before,
       after: stateRenamed.after,
@@ -701,11 +779,12 @@ function updatePorts(nodeId, parameters, editorConnection) {
         'reached-{{*}}'
       ]
     };
+    renamed = stateRename;
 
     // A state has been renamed
     values &&
       values.forEach(function (value) {
-        renamed.patterns.push('value-{{*}}-' + value);
+        stateRename.patterns.push('value-{{*}}-' + value);
       });
   } else if (valueRenamed) {
     renamed = [
@@ -737,18 +816,19 @@ function updatePorts(nodeId, parameters, editorConnection) {
   editorConnection.sendDynamicPorts(nodeId, ports, { renamed: renamed });
 }
 
-module.exports = {
+const StatesModule: NodeModule = {
   node: StatesNode,
-  setup: function (context, graphModel) {
-    if (!context.editorConnection || !context.editorConnection.isRunningLocally()) {
+  setup: function (context: NodeContextLike, graphModel) {
+    const editorConnection = context.editorConnection;
+    if (!editorConnection || !editorConnection.isRunningLocally()) {
       return;
     }
 
-    graphModel.on('nodeAdded.States', function (node) {
+    graphModel.on('nodeAdded.States', function (node: GraphNodeModel) {
       if (node.parameters.states) {
-        updatePorts(node.id, node.parameters, context.editorConnection);
+        updatePorts(node.id, node.parameters, editorConnection);
       }
-      node.on('parameterUpdated', function (event) {
+      node.on('parameterUpdated', function (event: { name: string }) {
         if (
           event.name === 'useTransitions' ||
           event.name === 'states' ||
@@ -756,9 +836,11 @@ module.exports = {
           event.name.startsWith('transition') ||
           event.name.startsWith('type-')
         ) {
-          updatePorts(node.id, node.parameters, context.editorConnection);
+          updatePorts(node.id, node.parameters, editorConnection);
         }
       });
     });
   }
 };
+
+export default StatesModule;

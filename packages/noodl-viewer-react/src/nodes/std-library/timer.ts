@@ -1,6 +1,17 @@
-'use strict';
+import type { NodeDefinitionOptions, NodeInstance, Timer as SchedulerTimer } from '@noodl/types';
 
-const Timer = {
+interface TimerInstance extends NodeInstance {
+  _internal: {
+    /**
+     * `_isRunning` is the scheduler's own private flag, read directly by the `start`
+     * input below. It is not on the published `Timer` interface — `isRunning()` is —
+     * so it is declared here rather than widening the shared type.
+     */
+    _animation: SchedulerTimer & { _isRunning: boolean };
+  };
+}
+
+const Timer: NodeDefinitionOptions = {
   name: 'Timer',
   docs: 'https://docs.noodl.net/nodes/utilities/delay',
   displayName: 'Delay',
@@ -8,8 +19,8 @@ const Timer = {
   nodeDoubleClickAction: {
     focusPort: 'duration'
   },
-  initialize: function () {
-    var self = this;
+  initialize: function (this: TimerInstance) {
+    const self = this;
     this._internal._animation = this.context.timerScheduler.createTimer({
       duration: 0,
       onStart: function () {
@@ -18,13 +29,13 @@ const Timer = {
       onFinish: function () {
         self.sendSignalOnOutput('timerFinished');
       }
-    });
+    }) as TimerInstance['_internal']['_animation'];
 
     this.addDeleteListener(() => {
       this._internal._animation.stop();
     });
   },
-  getInspectInfo() {
+  getInspectInfo(this: TimerInstance) {
     if (this._internal._animation.isRunning()) {
       return Math.floor(this._internal._animation.durationLeft() / 10) / 100 + ' seconds';
     }
@@ -33,7 +44,7 @@ const Timer = {
   inputs: {
     start: {
       displayName: 'Start',
-      valueChangedToTrue: function () {
+      valueChangedToTrue: function (this: TimerInstance) {
         if (this._internal._animation._isRunning === false) {
           this._internal._animation.start();
         }
@@ -41,7 +52,7 @@ const Timer = {
     },
     restart: {
       displayName: 'Restart',
-      valueChangedToTrue: function () {
+      valueChangedToTrue: function (this: TimerInstance) {
         this._internal._animation.start();
       }
     },
@@ -49,7 +60,7 @@ const Timer = {
       type: 'number',
       displayName: 'Duration',
       default: 0,
-      set: function (value) {
+      set: function (this: TimerInstance, value: number) {
         this._internal._animation.duration = value;
       }
     },
@@ -57,13 +68,13 @@ const Timer = {
       type: 'number',
       displayName: 'Start Delay',
       default: 0,
-      set: function (value) {
+      set: function (this: TimerInstance, value: number) {
         this._internal._animation.delay = value;
       }
     },
     stop: {
       displayName: 'Stop',
-      valueChangedToTrue: function () {
+      valueChangedToTrue: function (this: TimerInstance) {
         this._internal._animation.stop();
       }
     }
@@ -80,6 +91,6 @@ const Timer = {
   }
 };
 
-module.exports = {
+export default {
   node: Timer
 };
