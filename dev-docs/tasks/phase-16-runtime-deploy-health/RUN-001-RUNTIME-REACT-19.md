@@ -29,12 +29,23 @@ The existing design document, `dev-docs/future-projects/PHASE-RUNTIME-REACT-19-M
 
 ## Current State
 
-- `packages/noodl-viewer-react` — the React runtime for deployed apps, pinned to React 17.
-- `packages/noodl-editor` and `packages/noodl-core-ui` — already on React 19.0.0, so the editor and runtime now run different React majors (they are separate windows/contexts, which is why this is tolerable today).
-- The runtime binding hub is `react-component-node.js` (roughly 1,190 lines), plus visual node definitions and the component library under `src/components/`.
-- `packages/noodl-viewer-cloud` — the cloud runtime, which will need the same treatment or explicit exclusion.
-- The design document exists and is unstarted.
-- Note `packages/noodl-viewer-react` is largely untyped JavaScript (131 `.js` files), which makes migration harder — hence the coordination note with PLAT-003.
+> **Corrected 2026-07-24 — see [RUN-001-ASSESSMENT.md](./RUN-001-ASSESSMENT.md), which
+> supersedes this section's original claims and carries the verified plan.**
+
+- `packages/noodl-viewer-react` ships **vendored React 18.3.1 UMD files** (not 17) from
+  `static/shared/`, loaded via `<script>` tags with webpack `externals` — there is no react
+  npm dependency in the package. Upstream commit `1477a29` already half-migrated the source
+  (createRoot/hydrateRoot entry, findDOMNode removal in the binding hub, lifecycle
+  conversions) — unvalidated but sound.
+- The source is already React 19-clean on every scannable axis except one `findDOMNode`
+  (`src/highlighter.js:58`) and `react-draggable` missing `nodeRef` in `Drag.tsx`.
+- **React 19 ships no UMD builds** — the real work is the delivery architecture. Feasibility
+  of self-built global bundles is proven (assessment §2).
+- The binding hub is `react-component-node.ts`, typed by PLAT-003 along with all of
+  `src/nodes/`; 43 non-node `.js` files remain.
+- `packages/noodl-viewer-cloud` uses **no React** — excluded, nothing to migrate.
+- "Dual runtime" means **18.3.1 vs 19**, not 17 vs 19; deployed apps freeze their React at
+  deploy time.
 
 ## Desired State
 
