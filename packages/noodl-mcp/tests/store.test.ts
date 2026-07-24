@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
+import type { NodesV2File, RegistryV2File } from '../src/editor-deps';
 import { ToolError } from '../src/errors';
 import { ProjectStore } from '../src/project/ProjectStore';
 import { copyFixture, readJson } from './helpers';
@@ -83,11 +84,11 @@ describe('ProjectStore', () => {
     const { revision } = store.writeComponent('Card', files, { ifRevision: stored.revision });
     expect(revision).not.toBe(stored.revision);
 
-    const registry = readJson(dir, 'components/_registry.json');
+    const registry = readJson<RegistryV2File>(dir, 'components/_registry.json');
     expect(registry.components['Card'].nodeCount).toBe(3);
-    expect(registry.stats.totalNodes).toBe(11);
+    expect(registry.stats?.totalNodes).toBe(11);
     // File on disk actually updated
-    const onDisk = readJson(dir, 'components/Card/nodes.json');
+    const onDisk = readJson<NodesV2File>(dir, 'components/Card/nodes.json');
     expect(onDisk.nodes).toHaveLength(3);
   });
 
@@ -107,8 +108,8 @@ describe('ProjectStore', () => {
     expect(stored.key).toBe('Pages/Home');
     store.deleteComponent('Pages/Home');
     expect(fs.existsSync(path.join(dir, 'components', 'Pages', 'Home', 'nodes.json'))).toBe(false);
-    const registry = readJson(dir, 'components/_registry.json');
+    const registry = readJson<RegistryV2File>(dir, 'components/_registry.json');
     expect(registry.components['Pages/Home']).toBeUndefined();
-    expect(registry.stats.totalComponents).toBe(2);
+    expect(registry.stats?.totalComponents).toBe(2);
   });
 });

@@ -10,6 +10,14 @@ import { describeComponent } from '../describe';
 import { isComponentRef, refToPath } from '../editor-deps';
 import { ToolError } from '../errors';
 import type { ProjectStore } from '../project/ProjectStore';
+import type {
+  ExplainComponentResponse,
+  GetComponentResponse,
+  ListComponentsResponse,
+  ProjectInfoResponse,
+  SearchMatch,
+  SearchProjectResponse
+} from './responses';
 import { guarded, jsonResult } from './util';
 
 const SEARCH_RESULT_CAP = 200;
@@ -30,7 +38,7 @@ export function registerReadTools(server: McpServer, store: ProjectStore, option
       const routes = store.readRoutes();
       const styles = store.readStyles();
       const rootEntry = Object.entries(registry.components).find(([, e]) => e.type === 'root');
-      return jsonResult({
+      const payload: ProjectInfoResponse = {
         name: project?.name,
         id: project?.id,
         version: project?.version,
@@ -50,7 +58,8 @@ export function registerReadTools(server: McpServer, store: ProjectStore, option
         note:
           'Component identifiers: tools accept the path form ("Pages/Home") or the legacy name ("/Pages/Home"). ' +
           'A node that instantiates a project component uses the component\'s legacyName as its node type.'
-      });
+      };
+      return jsonResult(payload);
     })
   );
 
@@ -71,7 +80,7 @@ export function registerReadTools(server: McpServer, store: ProjectStore, option
       let rows = all;
       if (args.type) rows = rows.filter((r) => r.type === args.type);
       if (args.path_prefix) rows = rows.filter((r) => r.path.startsWith(args.path_prefix!));
-      const result: Record<string, unknown> = { components: rows };
+      const result: ListComponentsResponse = { components: rows };
       if (rows.length === 0 && all.length > 0 && args.type) {
         // Legacy-exported projects often type everything "visual" and mark
         // pages only by naming convention — say so instead of a bare [].
@@ -104,7 +113,7 @@ export function registerReadTools(server: McpServer, store: ProjectStore, option
     guarded((args: { path: string; include_usages?: boolean }) => {
       const stored = store.readComponent(args.path);
       const c = stored.files.component;
-      return jsonResult({
+      const payload: GetComponentResponse = {
         path: stored.key,
         legacyName: stored.legacyName,
         type: c.type,
@@ -117,7 +126,8 @@ export function registerReadTools(server: McpServer, store: ProjectStore, option
         comments: stored.files.nodes.comments,
         connections: stored.files.connections.connections,
         ...(args.include_usages ? { usages: store.findUsages(stored.key) } : {})
-      });
+      };
+      return jsonResult(payload);
     })
   );
 
@@ -143,7 +153,7 @@ export function registerReadTools(server: McpServer, store: ProjectStore, option
       }
       const text = args.text?.toLowerCase();
       const wantedType = args.node_type;
-      const matches: unknown[] = [];
+      const matches: SearchMatch[] = [];
       let truncated = false;
 
       for (const row of store.listComponents()) {
@@ -186,7 +196,8 @@ export function registerReadTools(server: McpServer, store: ProjectStore, option
         }
         if (truncated) break;
       }
-      return jsonResult({ matches, ...(truncated ? { truncated: true } : {}) });
+      const payload: SearchProjectResponse = { matches, ...(truncated ? { truncated: true } : {}) };
+      return jsonResult(payload);
     })
   );
 
@@ -204,7 +215,8 @@ export function registerReadTools(server: McpServer, store: ProjectStore, option
     },
     guarded((args: { path: string }) => {
       const stored = store.readComponent(args.path);
-      return jsonResult(describeComponent(stored.key, stored.files));
+      const payload: ExplainComponentResponse = describeComponent(stored.key, stored.files);
+      return jsonResult(payload);
     })
   );
 }

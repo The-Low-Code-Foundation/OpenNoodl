@@ -22,6 +22,14 @@ import { pathToLegacyName, validateComponentPath } from '../paths';
 import type { ProjectStore } from '../project/ProjectStore';
 import type { WriteValidation } from '../validate';
 import { validateCandidate, validateDeletion } from '../validate';
+import type {
+  CreateComponentResponse,
+  DeletionRefusalDetails,
+  ValidationFailureDetails,
+  DeleteComponentResponse,
+  UpdateComponentResponse,
+  WriteValidationSummary
+} from './responses';
 import { guarded, jsonResult } from './util';
 
 // ─── Zod shapes ───────────────────────────────────────────────────────────────
@@ -125,15 +133,16 @@ function rejectWith(validation: WriteValidation, intent: string): never {
     ...validation.newErrors.map(formatDiagnosticLine),
     ...(validation.structural ?? []).flatMap((f) => f.errors.map((e) => `SCHEMA ${f.file} ${e.path}: ${e.message}`))
   ];
-  throw new ToolError('validation-failed', `${intent} rejected — nothing was written.`, {
+  const details: ValidationFailureDetails = {
     readable: lines,
     structural: validation.structural,
     newErrors: validation.newErrors,
     allDiagnostics: validation.diagnostics
-  });
+  };
+  throw new ToolError('validation-failed', `${intent} rejected — nothing was written.`, { ...details });
 }
 
-function successPayload(validation: WriteValidation): Record<string, unknown> {
+function successPayload(validation: WriteValidation): WriteValidationSummary {
   const nonErrors = validation.diagnostics.filter((d) => d.severity !== 'error');
   return {
     validation: {
@@ -235,14 +244,15 @@ export function registerAuthorTools(server: McpServer, store: ProjectStore): voi
         if (!validation.ok) rejectWith(validation, `create_component "${args.path}"`);
 
         const { revision } = store.writeComponent(args.path, candidate, { expectNew: true });
-        return jsonResult({
+        const payload: CreateComponentResponse = {
           created: args.path,
           legacyName,
           type: component.type,
           revision,
           registry: 'updated',
           ...successPayload(validation)
-        });
+        };
+        return jsonResult(payload);
       }
     )
   );
@@ -323,12 +333,13 @@ export function registerAuthorTools(server: McpServer, store: ProjectStore): voi
         if (!validation.ok) rejectWith(validation, `update_component "${stored.key}"`);
 
         const { revision } = store.writeComponent(stored.key, candidate, { ifRevision: args.if_revision });
-        return jsonResult({
+        const payload: UpdateComponentResponse = {
           updated: stored.key,
           revision,
           ...(applied ? { applied } : {}),
           ...successPayload(validation)
-        });
+        };
+        return jsonResult(payload);
       }
     )
   );
@@ -350,20 +361,22 @@ export function registerAuthorTools(server: McpServer, store: ProjectStore): voi
       const stored = store.readComponent(args.path);
       const usages = store.findUsages(stored.key);
       if (usages.length > 0 && !args.force) {
+        const refusal: DeletionRefusalDetails = { usages };
         throw new ToolError(
           'validation-failed',
           `"${stored.key}" is instantiated by other components. Remove those nodes first, or pass force: true.`,
-          { usages }
+          { ...refusal }
         );
       }
       const brokenRefs = usages.length > 0 ? validateDeletion(store, stored.key) : [];
       const { removed } = store.deleteComponent(stored.key);
-      return jsonResult({
+      const payload: DeleteComponentResponse = {
         deleted: stored.key,
         removedFiles: removed,
         registry: 'updated',
         ...(brokenRefs.length > 0 ? { brokenReferences: brokenRefs, note: 'force-deleted while still referenced' } : {})
-      });
+      };
+      return jsonResult(payload);
     })
   );
 }

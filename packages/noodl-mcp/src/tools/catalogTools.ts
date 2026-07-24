@@ -9,6 +9,7 @@ import { z } from 'zod';
 
 import { getExample, getNodeTypeDetail, listCategories, listExamples, listNodeTypes } from '../catalog';
 import { ToolError } from '../errors';
+import type { GetNodeTypeResponse, ListExamplesResponse, ListNodeTypesResponse } from './responses';
 import { guarded, jsonResult } from './util';
 
 const MAX_TYPES_PER_CALL = 8;
@@ -36,7 +37,8 @@ export function registerCatalogTools(server: McpServer): void {
         visualOnly: args.visual_only,
         includeHidden: args.include_hidden
       });
-      return jsonResult({ nodeTypes: rows, categories: listCategories() });
+      const payload: ListNodeTypesResponse = { nodeTypes: rows, categories: listCategories() };
+      return jsonResult(payload);
     })
   );
 
@@ -59,7 +61,8 @@ export function registerCatalogTools(server: McpServer): void {
       }
     },
     guarded((args: { type_names: string[] }) => {
-      return jsonResult({ types: args.type_names.map(getNodeTypeDetail) });
+      const payload: GetNodeTypeResponse = { types: args.type_names.map(getNodeTypeDetail) };
+      return jsonResult(payload);
     })
   );
 
@@ -76,7 +79,8 @@ export function registerCatalogTools(server: McpServer): void {
       }
     },
     guarded((args: { node_type?: string; query?: string }) => {
-      return jsonResult({ examples: listExamples({ nodeType: args.node_type, query: args.query }) });
+      const payload: ListExamplesResponse = { examples: listExamples({ nodeType: args.node_type, query: args.query }) };
+      return jsonResult(payload);
     })
   );
 

@@ -9,6 +9,7 @@
  */
 
 import { ToolError } from '../errors';
+import type { ToolErrorPayload } from './responses';
 
 export interface ToolResult {
   [key: string]: unknown;
@@ -21,18 +22,12 @@ export function jsonResult(payload: unknown): ToolResult {
 }
 
 export function errorResult(error: ToolError): ToolResult {
+  const payload: ToolErrorPayload = {
+    error: { code: error.code, message: error.message, ...(error.data ? { details: error.data } : {}) }
+  };
   return {
     isError: true,
-    content: [
-      {
-        type: 'text',
-        text: JSON.stringify(
-          { error: { code: error.code, message: error.message, ...(error.data ? { details: error.data } : {}) } },
-          null,
-          2
-        )
-      }
-    ]
+    content: [{ type: 'text', text: JSON.stringify(payload, null, 2) }]
   };
 }
 

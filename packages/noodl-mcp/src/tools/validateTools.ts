@@ -9,6 +9,7 @@ import { z } from 'zod';
 import { sortDiagnostics } from '../editor-deps';
 import type { ProjectStore } from '../project/ProjectStore';
 import { validateOnDisk } from '../validate';
+import type { ValidateComponentResponse, ValidateProjectResponse } from './responses';
 import { guarded, jsonResult } from './util';
 
 export function registerValidateTools(server: McpServer, store: ProjectStore): void {
@@ -32,11 +33,12 @@ export function registerValidateTools(server: McpServer, store: ProjectStore): v
     },
     guarded((args: { path: string; strict?: boolean }) => {
       const { report, target } = validateOnDisk(store, { component: args.path, strict: args.strict });
-      return jsonResult({
+      const payload: ValidateComponentResponse = {
         target,
         summary: report.summary,
         diagnostics: sortDiagnostics(report.diagnostics)
-      });
+      };
+      return jsonResult(payload);
     })
   );
 
@@ -51,10 +53,11 @@ export function registerValidateTools(server: McpServer, store: ProjectStore): v
     },
     guarded((args: { strict?: boolean }) => {
       const { report } = validateOnDisk(store, { strict: args.strict });
-      return jsonResult({
+      const payload: ValidateProjectResponse = {
         summary: report.summary,
         diagnostics: sortDiagnostics(report.diagnostics)
-      });
+      };
+      return jsonResult(payload);
     })
   );
 }

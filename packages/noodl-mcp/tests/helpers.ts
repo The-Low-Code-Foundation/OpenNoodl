@@ -40,29 +40,44 @@ export async function connect(projectDir: string, allowWrites = true): Promise<T
   };
 }
 
-export interface ToolCallResult {
+/**
+ * `T` is the tool's success payload — see `src/tools/responses.ts`. A failing call
+ * returns `ToolErrorPayload` instead, so callers that assert on both name the
+ * union: `call<CreateComponentResponse | ToolErrorPayload>(...)`. `RawText` covers
+ * the third case below.
+ */
+export interface ToolCallResult<T> {
   isError: boolean;
-  data: any;
+  data: T;
+}
+
+/** A protocol-level failure (e.g. zod rejecting an argument) arrives as prose. */
+export interface RawText {
+  raw?: string;
 }
 
 /** Call a tool and parse its JSON payload. */
-export async function call(session: TestSession, name: string, args: Record<string, unknown> = {}): Promise<ToolCallResult> {
+export async function call<T>(
+  session: TestSession,
+  name: string,
+  args: Record<string, unknown> = {}
+): Promise<ToolCallResult<T>> {
   const res = (await session.client.callTool({ name, arguments: args })) as {
     isError?: boolean;
     content: Array<{ type: string; text: string }>;
   };
   const text = res.content?.[0]?.text;
-  let data: any;
+  let data: T;
   try {
-    data = text ? JSON.parse(text) : undefined;
+    data = (text ? JSON.parse(text) : undefined) as T;
   } catch {
-    data = { raw: text }; // protocol-level errors (e.g. zod arg rejection) are plain text
+    data = { raw: text } as T; // protocol-level errors (e.g. zod arg rejection) are plain text
   }
   return { isError: !!res.isError, data };
 }
 
-export function readJson(projectDir: string, rel: string): any {
-  return JSON.parse(fs.readFileSync(path.join(projectDir, rel), 'utf8'));
+export function readJson<T>(projectDir: string, rel: string): T {
+  return JSON.parse(fs.readFileSync(path.join(projectDir, rel), 'utf8')) as T;
 }
 
 export function exists(projectDir: string, rel: string): boolean {

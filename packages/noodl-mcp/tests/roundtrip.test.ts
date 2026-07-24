@@ -8,6 +8,8 @@ import * as fs from 'fs';
 
 import { reconstructLegacyComponent } from '../../noodl-editor/src/editor/src/io/ProjectImporter';
 
+import type { ComponentV2File, ConnectionsV2File, NodesV2File } from '../src/editor-deps';
+import type { CreateComponentResponse } from '../src/tools/responses';
 import { call, connect, copyFixture, readJson, TestSession } from './helpers';
 
 describe('MCP-authored components load through the editor import path', () => {
@@ -25,7 +27,7 @@ describe('MCP-authored components load through the editor import path', () => {
   });
 
   it('reconstructs an MCP-created page into a legacy component graph', async () => {
-    const res = await call(session, 'create_component', {
+    const res = await call<CreateComponentResponse>(session, 'create_component', {
       path: 'Pages/Settings',
       nodes: [
         { id: 'page', type: 'Page', parameters: { title: 'Settings' } },
@@ -38,9 +40,9 @@ describe('MCP-authored components load through the editor import path', () => {
     });
     expect(res.isError).toBe(false);
 
-    const component = readJson(dir, 'components/Pages/Settings/component.json');
-    const nodes = readJson(dir, 'components/Pages/Settings/nodes.json');
-    const connections = readJson(dir, 'components/Pages/Settings/connections.json');
+    const component = readJson<ComponentV2File>(dir, 'components/Pages/Settings/component.json');
+    const nodes = readJson<NodesV2File>(dir, 'components/Pages/Settings/nodes.json');
+    const connections = readJson<ConnectionsV2File>(dir, 'components/Pages/Settings/connections.json');
 
     const legacy = reconstructLegacyComponent('Pages/Settings', component, nodes, connections);
 
