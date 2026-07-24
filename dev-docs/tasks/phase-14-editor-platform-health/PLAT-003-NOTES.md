@@ -1086,14 +1086,16 @@ only remaining `.js` in `data/`.
 Each changes observable behaviour, so each wants its own commit (§16 item 5's list is now
 eleven).
 
-1. **`cloudfunction2` throws instead of reporting.** `doCall` warns when `cloudServices` is
-   `undefined`, then unconditionally reads `cloudServices.appId` — and calls
-   `this.context.editorConnection.isRunningLocally()` outside the `if (this.context
-   .editorConnection)` guard immediately above it. So the Cloud Function node throws a
-   `TypeError` on **every call in a deployed app**, where there is no editor connection at
-   all, and throws rather than signalling `failure` when a project has no cloud services. The
-   deprecated `cloudfunction` node handles both cases correctly, which is how the shape of the
-   intended code is known.
+1. ~~**`cloudfunction2` throws instead of reporting.**~~ **RESOLVED 2026-07-24 by DEBT-001.**
+   `doCall` warned when `cloudServices` was `undefined`, then unconditionally read
+   `cloudServices.appId` — and called `this.context.editorConnection.isRunningLocally()`
+   outside the `if (this.context.editorConnection)` guard immediately above it. So the Cloud
+   Function node threw a `TypeError` on **every call in a deployed app**, where there is no
+   editor connection at all, and threw rather than signalling `failure` when a project had no
+   cloud services. Fixed: the missing-`cloudServices` path now sets `lastCallResult`, calls
+   `setError` (which signals `failure`) and returns; the `isRunningLocally()` read is guarded
+   by `this.context.editorConnection &&`. Characterisation test:
+   `noodl-viewer-react/tests/cloudfunction2.test.ts`.
 2. **`foreachactions.itemActionTriggered` calls `signalItemAction`, which no node defines.**
    Unreachable today: the `itemAction-` ports that would register the input are only created
    by the `setup` block that is entirely commented out. Dead *and* broken.

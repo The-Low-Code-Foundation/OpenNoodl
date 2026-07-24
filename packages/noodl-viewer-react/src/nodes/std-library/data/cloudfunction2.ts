@@ -193,12 +193,6 @@ const CloudFunctionNode: NodeDefinitionOptions = {
         this.scheduleAfterInputsHaveUpdated(this.doCall.bind(this));
       }
     },
-    // Both reads below the warning block assume `context.editorConnection` and
-    // `cloudServices` are present, having just handled the case where they are not: the
-    // node throws rather than reporting a failure when the project has no cloud services,
-    // and throws on every call in a deployed app, where there is no editor connection at
-    // all. See PLAT-003 NOTES §17 — deliberately not fixed here, since either repair
-    // changes what a running app does.
     doCall: function (this: CloudFunction2Instance) {
       this._internal.hasScheduledCall = false;
 
@@ -217,10 +211,21 @@ const CloudFunctionNode: NodeDefinitionOptions = {
         }
       }
 
+      if (cloudServices === undefined || cloudServices.endpoint === undefined) {
+        const error = 'No cloud services defined in this project.';
+        this._internal.lastCallResult = {
+          status: 'failure',
+          error
+        };
+        this.setError(error);
+        return;
+      }
+
       const appId = cloudServices.appId;
-      const endpoint = this.context.editorConnection.isRunningLocally()
-        ? `http://${window.location.hostname}:8577`
-        : cloudServices.endpoint;
+      const endpoint =
+        this.context.editorConnection && this.context.editorConnection.isRunningLocally()
+          ? `http://${window.location.hostname}:8577`
+          : cloudServices.endpoint;
 
       _makeRequest('/functions/' + encodeURIComponent(this._internal.functionName), {
         appId,
