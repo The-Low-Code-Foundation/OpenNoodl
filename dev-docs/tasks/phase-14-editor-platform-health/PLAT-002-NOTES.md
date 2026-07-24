@@ -193,3 +193,67 @@ propertyeditor/* (12) in waves 1b–2c; `componentports`, `importpopup`,
   BasicType had already shipped without them.
   TextAreaType was the only `jquery.autosize` user — the vendored file is now orphaned
   (deleted in wave 5 with the script tags).
+- 2026-07-24: Wave 2a (737101f) — FontType, ImageType, IdentifierType, ComponentType via new
+  shared `DataTypes/PickerTypeView.ts` + `components/PickerTextInput.tsx`; SizeModeType via
+  `components/SizeModeInput.tsx` (reuses global `size-icon`/`resizing-*` CSS). Verified live.
+- 2026-07-24: Wave 2b (206fe66) — ColorType (`components/ColorInput.tsx`; module-level
+  colorPicker rebinding preserved), SourceCodeType, CurveType (PropertyPanelButton),
+  QueryFilter/QuerySorting/LogicBuilderHidden/ByobFilter de-jQueried (raw `el`).
+  **data-identifier restored**: threaded through PropertyPanelBaseInput/TextInput/
+  NumberInput/Button/TextArea (+`data-type="color"`); BasicType's earlier conversion had
+  silently dropped it, breaking `_tryPropertyPanelInputInteraction` (node double-click
+  focusPort). All converted rows now pass `dataIdentifier: this.name`.
+- 2026-07-24: Wave 2c (3045544) — NumberWithUnits + Dimension via
+  `components/NumberUnitInput.tsx` (unit-suffix parsing, Fixed checkbox for %).
+- 2026-07-24: Wave 2d partial (90bcdb5) — VariableType via `components/VariableInput.tsx`;
+  TabGroup show/hide now tolerates raw-element child els (needed once converted rows appear
+  inside tab groups). Session ended here; count 481 → 379 `$(` calls.
+
+## 8. Handoff — next session starts here
+
+Remaining, in the planned order:
+
+1. **Wave 2d rest**: `IconType.ts` (thumbnail span + IconPicker popout — READ §its file first,
+   popout content is already React), `TextStyleType.ts` (childPorts + create-style undo logic —
+   the hardest row; copy behaviours exactly, incl. `_valueUpdated` refreshing sibling child-port
+   rows), `LogicBuilderWorkspaceType.ts` (203 ln, bindView + data-click), `CodeEditorType.ts`
+   (393 ln; only 2 `$(` — bindView shell + `attachTo: $(el)`; may just need an el swap, not a
+   rewrite).
+2. **Wave 2e**: `marginpaddingview.js`(32), `resizingview.js`(33), `aligntools.js`(14),
+   `stringlist.js`(3), `proplist.js`(3) + the legacy pickers (`fontpicker.js`, `imagepicker.js`,
+   `identifierpicker.js`, `filepicker.js`, `colorpicker.js`, `iconpicker` is already React).
+   Note core-ui has `PropertyPanelMarginPadding` + `SizePicker` components — check before
+   writing new ones.
+3. **Wave 2f hosts**: `TypeView.js` → TS (only chrome/logic left), `Ports.ts` (drop bindView
+   group templates → React group host), `propertyeditor.ts`. When Ports converts, drop the
+   `$()`-wrapper tolerance and delete `templates/propertyeditor/*.html`.
+4. **Wave 3**: canvas group (CanvasDOMBindings 6, ConnectionPopups 3, nodegrapheditor 1,
+   NodeGraphEditorNode 1, CanvasView 1, lessonlayer2 6), `componentports.tsx`(4),
+   `createnewnodepanel.ts`(1), `ComponentTemplates.ts`(1), `importpopup.js`(9) + its
+   templates, `exportProjectComponets.ts` (exportpopup.html).
+5. **Wave 4**: PopupLayer rewrite (contract = `popuplayer.d.ts`; §3 strategy: same API, one
+   React root, normalize `attachTo`/`content.el` accepting raw elements) then sweep the 19
+   Group D files' `$()` calls; convert confirmmodal/errormodal/yesnopopup/stringinputpopup.
+6. **Wave 5**: delete `shared/view.js`+`view.d.ts`, de-jQuery `ReactView.ts`, remove the two
+   `<script>` tags from `src/editor/index.html` + `src/assets/lib/jquery-min.js` +
+   `jquery.autosize.min.js`, delete remaining orphan templates, repo-wide grep, CHANGELOG
+   in the task doc (record before/after counts: baseline 547/68), update PROGRESS.md.
+
+Working notes for the next session:
+- Smoke-test flow: `npm run dev:debug -- --quiet`, wait for "launching Electron" in
+  `.logs/dev.log` + 35s; `npm run cdp -- health`; open the "test" project by tagging its
+  launcher card (`h2` text 'test' → closest `LauncherProjectCard-module__Root`) and cdp click;
+  select the Text node by dispatching mousedown/up/click on the canvas at its screen coords
+  (screenshot first — window size varies); property rows are found via
+  `[class*=PropertyPanelInput-module__Label]`. Use `--target=dashboard` (URL substring) —
+  `--target=NodeGX`/default fall back to the wrong page after navigation. Don't use
+  `cdp reload` (the app can't cold-boot from the rewritten dashboard URL and HMR can leave
+  the panel in a fake "Aw, Snap!" state) — kill Electron + relaunch dev:debug instead.
+  React blur commits need `focusout` (bubbling), not `blur`.
+- Ports.ts re-creates all row views on every renderGroups (no reuse), so per-instance
+  `render()` runs once; guarded `createRoot` is safe. Old React roots are not unmounted on
+  panel re-render (pre-existing; BasicType shipped that way) — acceptable until wave 2f.
+- Known deliberate deviations so far: label hover-tooltips (`data-tooltip`) and the
+  connected-input hover tooltip are not yet reproduced in React rows (BasicType precedent);
+  sizemode tooltips use `title=`. Decide in wave 2f whether to add a PopupLayer-backed
+  tooltip to PropertyPanelInput.
