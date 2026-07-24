@@ -1,10 +1,11 @@
-import IdentifierPicker from '../identifierpicker';
+import { ProjectModel } from '@noodl-models/projectmodel';
+
+import { ContentPickerItem } from '../components/ContentPicker';
 import { getEditType } from '../utils';
 import { PickerTypeView } from './PickerTypeView';
 
 export class IdentifierType extends PickerTypeView {
   identifierType: TSFixme;
-  private identifierPicker: TSFixme;
 
   static fromPort(args) {
     const view = new IdentifierType();
@@ -26,25 +27,29 @@ export class IdentifierType extends PickerTypeView {
     return view;
   }
 
-  protected openPicker(anchor: HTMLElement) {
-    this.identifierPicker = new IdentifierPicker({
+  protected openPicker() {
+    const picker = this.openContentPicker({
       title: this.type.identifierDisplayName || 'Identifiers',
-      identifierType: this.identifierType,
-      onItemSelected: (name: string) => {
-        this.commit(name);
-        this.parent.hidePopout();
-      }
+      sortMode: 'nameDesc'
     });
-    this.identifierPicker.render();
 
-    this.parent.showPopout({
-      content: this.identifierPicker,
-      attachTo: $(anchor),
-      position: 'right'
+    // Collect every value used for this identifier type across the project
+    const identifiers: Record<string, boolean> = {};
+    ProjectModel.instance.forEachComponent((c) => {
+      c.forEachNode((n) => {
+        n.getPorts().forEach((p) => {
+          if (typeof p.type === 'object' && p.type.name === 'string' && p.type.identifierOf === this.identifierType) {
+            const _id = n.parameters[p.name];
+            if (_id !== undefined) identifiers[_id] = true;
+          }
+        });
+      });
     });
-  }
 
-  protected filterPicker(text: string) {
-    this.identifierPicker && this.identifierPicker.setFilter(text);
+    const items: ContentPickerItem[] = Object.keys(identifiers).map((_id) => ({
+      name: _id,
+      fullPath: _id
+    }));
+    picker.addItems(items);
   }
 }

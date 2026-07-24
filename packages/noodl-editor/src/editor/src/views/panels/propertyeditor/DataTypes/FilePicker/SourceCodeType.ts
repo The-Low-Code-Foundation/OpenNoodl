@@ -1,10 +1,11 @@
+import { ProjectModel } from '@noodl-models/projectmodel';
+
+import { ContentPickerItem } from '../../components/ContentPicker';
 import { getEditType } from '../../utils';
+import { folderForProjectPath } from '../../components/fontItems';
 import { PickerTypeView } from '../PickerTypeView';
-import FilePicker from './filepicker';
 
 export class SourceCodeType extends PickerTypeView {
-  private filePicker: TSFixme;
-
   static fromPort(args) {
     const view = new SourceCodeType();
 
@@ -24,24 +25,21 @@ export class SourceCodeType extends PickerTypeView {
     return view;
   }
 
-  protected openPicker(anchor: HTMLElement) {
-    this.filePicker = new FilePicker({
-      onItemSelected: (name: string) => {
-        this.commit(name);
-        this.parent.hidePopout();
-      },
-      fileTypes: ['js']
-    });
-    this.filePicker.render();
+  protected openPicker() {
+    const picker = this.openContentPicker({ title: 'Choose file' });
 
-    this.parent.showPopout({
-      content: this.filePicker,
-      attachTo: $(anchor),
-      position: 'right'
-    });
-  }
-
-  protected filterPicker(text: string) {
-    this.filePicker && this.filePicker.setFilter(text);
+    ProjectModel.instance.listFilesInProjectDirectory((files) => {
+      const items: ContentPickerItem[] = files.map((fileEntry) => {
+        const pathInProjectFolder = fileEntry.fullPath.substring(
+          ProjectModel.instance._retainedProjectDirectory.length + 1
+        );
+        return {
+          name: fileEntry.name,
+          fullPath: pathInProjectFolder,
+          folder: folderForProjectPath(pathInProjectFolder)
+        };
+      });
+      picker.addItems(items);
+    }, ['js']);
   }
 }

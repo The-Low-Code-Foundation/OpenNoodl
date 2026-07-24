@@ -1,6 +1,7 @@
 import React from 'react';
 import { createRoot, Root } from 'react-dom/client';
 
+import { ContentPicker, ContentPickerItem } from '../components/ContentPicker';
 import { PickerTextInput } from '../components/PickerTextInput';
 import { TypeView } from '../TypeView';
 
@@ -64,9 +65,67 @@ export abstract class PickerTypeView extends TypeView {
 
   protected abstract openPicker(anchor: HTMLElement): void;
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  private contentPicker: {
+    root: Root;
+    items: ContentPickerItem[];
+    filter: string;
+    rerender: () => void;
+  } | null = null;
+
+  /**
+   * Open a ContentPicker popout attached to this row. Returns an `addItems`
+   * handle so async loaders can stream items in as they resolve.
+   */
+  protected openContentPicker(opts: { title: string; sortMode?: 'folder' | 'nameDesc' }) {
+    const div = document.createElement('div');
+    const root = createRoot(div);
+
+    const state = {
+      root,
+      items: [] as ContentPickerItem[],
+      filter: '',
+      rerender: () => {
+        root.render(
+          React.createElement(ContentPicker, {
+            title: opts.title,
+            sortMode: opts.sortMode,
+            items: [...state.items],
+            filter: state.filter,
+            onSelect: (item: ContentPickerItem) => {
+              this.commit(item.fullPath);
+              this.parent.hidePopout();
+            }
+          })
+        );
+      }
+    };
+    this.contentPicker = state;
+    state.rerender();
+
+    this.parent.showPopout({
+      content: { el: [div] },
+      attachTo: $(this.el),
+      position: 'right',
+      onClose: () => {
+        root.unmount();
+        if (this.contentPicker === state) this.contentPicker = null;
+      }
+    });
+
+    return {
+      addItems: (items: ContentPickerItem[]) => {
+        state.items.push(...items);
+        state.rerender();
+      }
+    };
+  }
+
   protected filterPicker(text: string): void {
-    // Overridden by subclasses whose picker supports live filtering
+    // Live-filter the shared ContentPicker; subclasses with custom pickers override
+    if (this.contentPicker) {
+      this.contentPicker.filter = text;
+      this.contentPicker.rerender();
+    }
   }
 
   protected onEnterPressed(): void {

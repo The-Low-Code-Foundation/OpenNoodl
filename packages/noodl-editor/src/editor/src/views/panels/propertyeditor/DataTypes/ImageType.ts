@@ -1,10 +1,12 @@
-import ImagePicker from '../imagepicker';
+import { ProjectModel } from '@noodl-models/projectmodel';
+import ThumbnailCache from '@noodl-utils/thumbnailcache';
+
+import { ContentPickerItem } from '../components/ContentPicker';
+import { folderForProjectPath } from '../components/fontItems';
 import { getEditType } from '../utils';
 import { PickerTypeView } from './PickerTypeView';
 
 export class ImageType extends PickerTypeView {
-  private imagePicker: TSFixme;
-
   static fromPort(args) {
     const view = new ImageType();
 
@@ -24,24 +26,33 @@ export class ImageType extends PickerTypeView {
     return view;
   }
 
-  protected openPicker(anchor: HTMLElement) {
-    this.imagePicker = new ImagePicker({
-      onItemSelected: (name: string) => {
-        this.commit(name);
-        this.parent.hidePopout();
-      }
-    });
+  protected openPicker() {
+    const picker = this.openContentPicker({ title: 'Choose image' });
 
-    this.imagePicker.render();
+    ProjectModel.instance.listFilesInProjectDirectory(
+      (files) => {
+        const items: ContentPickerItem[] = [];
+        let filesLeft = files.length;
+        if (!filesLeft) return;
 
-    this.parent.showPopout({
-      content: this.imagePicker,
-      attachTo: $(anchor),
-      position: 'right'
-    });
-  }
+        files.forEach((fileEntry) => {
+          ThumbnailCache.instance.getThumbnailForFile(fileEntry, (thumbnail) => {
+            const pathInProjectFolder = fileEntry.fullPath.substring(
+              ProjectModel.instance._retainedProjectDirectory.length + 1
+            );
 
-  protected filterPicker(text: string) {
-    this.imagePicker && this.imagePicker.setFilter(text);
+            items.push({
+              name: fileEntry.name,
+              fullPath: pathInProjectFolder,
+              folder: folderForProjectPath(pathInProjectFolder),
+              thumbnail: thumbnail ? thumbnail.dataUrl : ''
+            });
+
+            if (--filesLeft === 0) picker.addItems(items);
+          });
+        });
+      },
+      ['png', 'jpeg', 'jpg', 'svg', 'gif', 'webp']
+    );
   }
 }

@@ -1,10 +1,8 @@
-import FontPicker from '../fontpicker';
+import { loadFontItems } from '../components/fontItems';
 import { getEditType } from '../utils';
 import { PickerTypeView } from './PickerTypeView';
 
 export class FontType extends PickerTypeView {
-  private fontPicker: TSFixme;
-
   static fromPort(args) {
     const view = new FontType();
 
@@ -25,24 +23,8 @@ export class FontType extends PickerTypeView {
     return view;
   }
 
-  protected openPicker(anchor: HTMLElement) {
-    this.fontPicker = new FontPicker({
-      onItemSelected: (name: string) => {
-        this.commit(name);
-        this.parent.hidePopout();
-      }
-    });
-
-    this.fontPicker.render();
-
-    this.parent.showPopout({
-      content: this.fontPicker,
-      attachTo: $(this.el),
-      position: 'right'
-    });
-  }
-
-  protected filterPicker(text: string) {
-    this.fontPicker && this.fontPicker.setFilter(text);
+  protected openPicker() {
+    const picker = this.openContentPicker({ title: 'Choose font' });
+    loadFontItems(picker.addItems);
   }
 }
