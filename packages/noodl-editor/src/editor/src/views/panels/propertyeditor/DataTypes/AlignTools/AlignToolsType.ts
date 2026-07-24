@@ -1,11 +1,15 @@
+import React from 'react';
+import { createRoot, Root } from 'react-dom/client';
+
+import { AlignToolsInput } from '../../components/AlignToolsInput';
 import { TypeView } from '../../TypeView';
-import AlignTools from './aligntools';
 
 export class AlignToolsType extends TypeView {
   defaults: TSFixme;
   values: TSFixme;
   ports: TSFixme;
-  alignToolsView: TSFixme;
+  el: TSFixme;
+  private root: Root | null = null;
 
   constructor() {
     super();
@@ -40,32 +44,79 @@ export class AlignToolsType extends TypeView {
       parent._toolsType[toolTypeId].addComponentPort(p);
     }
   }
+
+  private isVertical() {
+    return this.parent.model.parameters.flexDirection !== 'row';
+  }
+
   render() {
-    const _this = this;
+    const div = document.createElement('div');
+    div.style.width = '100%';
 
-    this.alignToolsView = new AlignTools({
-      values: this.values,
-      defaults: this.defaults,
-      parent: this.parent,
-      onUpdate: function (comp, value, opts) {
-        const undoArgs = {
-          undo: true,
-          label: 'alignment changed',
-          oldValue: opts ? opts.oldValue : undefined
-        };
-        _this.parent.model.setParameter(_this.ports[comp].name, value, undoArgs);
-      }
-    });
-    this.alignToolsView.render();
+    if (!this.root) {
+      this.root = createRoot(div);
+    }
 
-    this.el = this.alignToolsView.el;
+    // The align-items/justify-content icons rotate with the flex direction,
+    // and undo/redo changes the alignment parameters under us
+    this.parent.model.on(
+      'parametersChanged',
+      () => {
+        Object.keys(this.ports).forEach((comp) => {
+          this.values[comp] = this.parent.model.parameters[this.ports[comp].name];
+        });
+        this.renderReact();
+      },
+      this
+    );
 
+    this.renderReact();
+
+    this.el = div;
     return this.el;
   }
-  dispose() {
-    TypeView.prototype.dispose.call(this);
-    this.alignToolsView.dispose();
+
+  private renderReact() {
+    if (!this.root) return;
+
+    this.root.render(
+      React.createElement(AlignToolsInput, {
+        values: { ...this.values },
+        defaults: this.defaults,
+        isVertical: this.isVertical(),
+        onToggle: (comp: string, value: string | undefined) => {
+          this.values[comp] = value;
+          this.parent.model.setParameter(this.ports[comp].name, value, {
+            undo: true,
+            label: 'alignment changed'
+          });
+          this.renderReact();
+        },
+        onReset: () => {
+          Object.keys(this.defaults).forEach((comp) => {
+            if (this.values[comp] !== undefined) {
+              this.values[comp] = undefined;
+              this.parent.model.setParameter(this.ports[comp].name, undefined, {
+                undo: true,
+                label: 'alignment changed'
+              });
+            }
+          });
+          this.renderReact();
+        }
+      })
+    );
   }
+
+  dispose() {
+    this.parent.model.off(this);
+    if (this.root) {
+      this.root.unmount();
+      this.root = null;
+    }
+    super.dispose();
+  }
+
   addComponentPort(p) {
     const comp = p.type.alignComp;
 
