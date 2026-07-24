@@ -90,7 +90,7 @@ export class VisualStates extends React.Component<VisualStatesProps, State> {
     this.props.portsView.showPopout({
       arrowColor: '#444444',
       content: { el: div },
-      attachTo: $(this.popupAnchor),
+      attachTo: this.popupAnchor,
       position: 'right',
       onClose: () => {
         if (this.popupRoot) {

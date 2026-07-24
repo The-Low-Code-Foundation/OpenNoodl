@@ -173,7 +173,7 @@ export class ColorType extends TypeView {
 
     this.parent.showPopout({
       content: colorPicker,
-      attachTo: $(anchor),
+      attachTo: anchor,
       position: 'right',
       onClose: () => {
         colorPicker && colorPicker.dispose();
@@ -199,7 +199,7 @@ export class ColorType extends TypeView {
 
     this.parent.showPopout({
       content: { el: div },
-      attachTo: $(this.el),
+      attachTo: this.el,
       position: 'right',
       onClose: () => {
         if (this.stylePickerRoot) {

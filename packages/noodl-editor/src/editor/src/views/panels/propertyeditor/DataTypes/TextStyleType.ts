@@ -144,7 +144,7 @@ export class TextStyleType extends PickerTypeView {
 
     this.parent.showPopout({
       content: { el: div },
-      attachTo: $(this.el),
+      attachTo: this.el,
       position: 'right',
       onClose: () => {
         if (this.pickerRoot) {

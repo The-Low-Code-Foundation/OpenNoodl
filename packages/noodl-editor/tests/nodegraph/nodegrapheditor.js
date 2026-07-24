@@ -2,7 +2,7 @@ const NodeGraphNode = require('@noodl-models/nodegraphmodel').NodeGraphNode;
 const NodeGraphEditor = require('@noodl-views/nodegrapheditor').NodeGraphEditor;
 const { ProjectModel } = require('@noodl-models/projectmodel');
 const NodeLibrary = require('@noodl-models/nodelibrary').NodeLibrary;
-const PopupLayer = require('@noodl-views/popuplayer');
+const PopupLayer = require('@noodl-views/popuplayer').default;
 const DebugInspector = require('@noodl-utils/debuginspector');
 const ViewerConnection = require('../../src/editor/src/ViewerConnection');
 

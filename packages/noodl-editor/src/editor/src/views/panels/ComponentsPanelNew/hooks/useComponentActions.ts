@@ -19,7 +19,7 @@ import { ToastLayer } from '../../../ToastLayer/ToastLayer';
 import { TreeNode } from '../types';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const PopupLayer = require('@noodl-views/popuplayer');
+const PopupLayer = require('@noodl-views/popuplayer').default;
 
 export function useComponentActions() {
   const handleMakeHome = useCallback((node: TreeNode) => {

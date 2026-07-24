@@ -1,7 +1,7 @@
 const { ipcRenderer } = require('electron');
 const { useEffect } = require('react');
 const React = require('react');
-const PopupLayer = require('../popuplayer');
+const PopupLayer = require('../popuplayer').default;
 const LessonItem = require('./LessonItem');
 const { EventDispatcher } = require('../../../../shared/utils/EventDispatcher');
 

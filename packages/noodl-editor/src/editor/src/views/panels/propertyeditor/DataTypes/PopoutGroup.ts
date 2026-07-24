@@ -74,7 +74,7 @@ export class PopoutGroup extends View {
 
     this.parent.showPopout({
       content: { el: this.view.el },
-      attachTo: $(anchor),
+      attachTo: anchor,
       position: 'right',
       onClose: () => {
         this.view && this.view.dispose();

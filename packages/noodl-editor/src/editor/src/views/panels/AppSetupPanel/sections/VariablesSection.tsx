@@ -88,7 +88,7 @@ function JSONEditorButton({ value, varType, onSave }: JSONEditorButtonProps) {
 
     const popout = PopupLayer.instance.showPopout({
       content: { el: [popupDiv] },
-      attachTo: $(buttonRef.current),
+      attachTo: buttonRef.current,
       position: 'right',
       onClose: handleClose
     });

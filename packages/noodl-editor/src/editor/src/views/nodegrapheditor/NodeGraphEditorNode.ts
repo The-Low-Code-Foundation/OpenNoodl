@@ -572,6 +572,9 @@ export class NodeGraphEditorNode {
       label: `Comment for "${nodeLabel}"`,
       okLabel: 'Save',
       cancelLabel: 'Cancel',
+      value: currentComment,
+      // A comment is free text, not the comma separated list the other call sites edit
+      splitCommaSeparated: false,
       onOk: (newComment: string) => {
         // Set comment with undo support
         model.setComment(newComment || undefined, {
@@ -590,9 +593,6 @@ export class NodeGraphEditorNode {
 
     // Render popup BEFORE showing it
     popup.render();
-
-    // Set initial value after render
-    popup.$('.string-input-popup-input').val(currentComment);
 
     // Use requestAnimationFrame + setTimeout to ensure we're past both the current
     // event cycle AND any pending DOM updates. This prevents the PopupLayer's body

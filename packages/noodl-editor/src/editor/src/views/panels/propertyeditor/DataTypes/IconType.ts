@@ -89,7 +89,7 @@ export class IconType extends TypeView {
 
     this.parent.showPopout({
       content: { el: div },
-      attachTo: $(anchor),
+      attachTo: anchor,
       position: 'right',
       onClose: () => {
         if (this.pickerRoot) {

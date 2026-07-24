@@ -16,7 +16,7 @@ const { ProjectModel } = require('@noodl-models/projectmodel');
 const { NodeLibrary } = require('@noodl-models/nodelibrary');
 const { UndoQueue } = require('@noodl-models/undo-queue-model');
 const { SidebarModel } = require('@noodl-models/sidebar');
-const PopupLayer = require('@noodl-views/popuplayer');
+const PopupLayer = require('@noodl-views/popuplayer').default;
 const { ViewerConnection } = require('../../src/editor/src/ViewerConnection');
 
 describe('Canvas characterisation (PLAT-001)', function () {

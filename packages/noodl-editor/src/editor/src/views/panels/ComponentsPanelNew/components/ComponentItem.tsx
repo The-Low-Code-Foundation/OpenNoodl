@@ -17,7 +17,7 @@ import { ComponentItemData, Sheet, TreeNode } from '../types';
 import { RenameInput } from './RenameInput';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const PopupLayer = require('@noodl-views/popuplayer');
+const PopupLayer = require('@noodl-views/popuplayer').default;
 
 interface ComponentItemProps {
   component: ComponentItemData;

@@ -94,7 +94,7 @@ export class CurveType extends TypeView {
 
     this.parent.showPopout({
       content: { el: div },
-      attachTo: $(this.el),
+      attachTo: this.el,
       position: 'right'
     });
   }

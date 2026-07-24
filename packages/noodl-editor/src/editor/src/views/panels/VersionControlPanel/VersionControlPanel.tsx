@@ -134,7 +134,7 @@ function BaseVersionControlPanel() {
     setTimeout(() => {
       PopupLayer.instance.showPopout({
         content: { el: [popoutDiv] },
-        attachTo: $(settingsButtonRef.current),
+        attachTo: settingsButtonRef.current,
         position: 'right',
         disableDynamicPositioning: true,
         onClose: () => {

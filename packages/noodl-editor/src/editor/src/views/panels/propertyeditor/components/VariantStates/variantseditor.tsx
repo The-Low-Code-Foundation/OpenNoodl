@@ -191,7 +191,7 @@ export class VariantsEditor extends React.Component<VariantsEditorProps, State> 
 
     this.popout = PopupLayer.instance.showPopout({
       content: { el: div },
-      attachTo: $(this.popupAnchor),
+      attachTo: this.popupAnchor,
       position: 'right',
       onClose: () => {
         if (this.popupRoot) {

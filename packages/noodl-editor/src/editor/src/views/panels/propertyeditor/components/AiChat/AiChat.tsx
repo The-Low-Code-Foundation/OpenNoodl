@@ -337,7 +337,7 @@ function AiMessageFunctionNodeAffix({ context, onUpdated }: AiMessageFunctionNod
 
     const popout = PopupLayer.instance.showPopout({
       content: { el: popoutDiv },
-      attachTo: $(rootRef.current),
+      attachTo: rootRef.current,
       position: 'right',
       onClose: function () {
         save();

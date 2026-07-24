@@ -134,7 +134,7 @@ export class StringListType extends TypeView {
 
           PopupLayer.instance.showPopup({
             content: popup,
-            attachTo: $(anchor),
+            attachTo: anchor,
             position: 'top'
           });
         },

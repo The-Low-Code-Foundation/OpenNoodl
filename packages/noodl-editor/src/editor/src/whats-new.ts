@@ -33,7 +33,8 @@ export async function whatsnewRender() {
 
   const modalContainer = document.createElement('div');
   modalContainer.classList.add('popup-layer-react-modal');
-  PopupLayer.instance.el.find('.popup-layer-modal').before(modalContainer);
+  const modalEl = PopupLayer.instance.el.querySelector('.popup-layer-modal');
+  PopupLayer.instance.el.insertBefore(modalContainer, modalEl);
 
   // Create root once and properly unmount when finished
   const modalRoot = createRoot(modalContainer);

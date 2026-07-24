@@ -35,7 +35,7 @@ export function openPopup(args) {
 
   PopupLayer.instance.showPopout({
     content: { el: div },
-    attachTo: $(args.attachTo),
+    attachTo: args.attachTo,
     position: 'right',
     onClose() {
       if (root) {

@@ -6,7 +6,7 @@ const { createRoot } = require('react-dom/client');
 const ColorPicker = require('../views/panels/propertyeditor/DataTypes/ColorPicker/colorpicker').default;
 const { ContentPicker } = require('../views/panels/propertyeditor/components/ContentPicker');
 const { loadFontItems } = require('../views/panels/propertyeditor/components/fontItems');
-const PopupLayer = require('../views/popuplayer');
+const PopupLayer = require('../views/popuplayer').default;
 
 require('./propertyeditors.css');
 
@@ -119,7 +119,7 @@ function ColorProperty(props) {
 
     const popout = PopupLayer.instance.showPopout({
       content: colorPicker,
-      attachTo: $(popupAnchor.current),
+      attachTo: popupAnchor.current,
       position: 'right',
       onClose: () => {
         colorPicker.dispose();
@@ -194,7 +194,7 @@ function FontProperty(props) {
 
     const popout = PopupLayer.instance.showPopout({
       content: { el: [div] },
-      attachTo: $(ref.current),
+      attachTo: ref.current,
       position: 'right'
     });
 

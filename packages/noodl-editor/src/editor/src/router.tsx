@@ -26,7 +26,7 @@ let dialogLayerRoot: ReturnType<typeof createRoot> | null = null;
 function createToastLayer() {
   const toastLayer = document.createElement('div');
   toastLayer.classList.add('toast-layer');
-  $('body').append(toastLayer);
+  document.body.appendChild(toastLayer);
 
   toastLayerRoot = createRoot(toastLayer);
   toastLayerRoot.render(React.createElement(ToastLayerContainer));
@@ -47,13 +47,13 @@ function createDialogLayer() {
   // to be added to the DOM now!
   const dialogLayerPortalTarget = document.createElement('div');
   dialogLayerPortalTarget.classList.add('dialog-layer-portal-target');
-  $('body').append(dialogLayerPortalTarget);
+  document.body.appendChild(dialogLayerPortalTarget);
 
   // ---
   // Add the Dialog Layer
   const dialogLayer = document.createElement('div');
   dialogLayer.classList.add('dialog-layer');
-  $('body').append(dialogLayer);
+  document.body.appendChild(dialogLayer);
 
   dialogLayerRoot = createRoot(dialogLayer);
   dialogLayerRoot.render(React.createElement(DialogLayerContainer));
@@ -117,7 +117,7 @@ export default class Router
     );
 
     PopupLayer.instance = new PopupLayer();
-    $('body').append(PopupLayer.instance.render());
+    document.body.appendChild(PopupLayer.instance.render());
 
     createDialogLayer();
     createToastLayer();

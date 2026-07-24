@@ -21,14 +21,17 @@ function tooltipText(tooltip: TooltipValue | undefined): string | undefined {
   return typeof tooltip === 'object' ? tooltip.standard : tooltip;
 }
 
+// Keyed: 'explicit' renders both as an array
 const VLINE = (
   <div
+    key="vline"
     className="resizing-top resizing-bottom resizing-vline"
     style={{ position: 'absolute', top: 2, left: 10, width: 10, height: 22 }}
   />
 );
 const HLINE = (
   <div
+    key="hline"
     className="resizing-left resizing-right resizing-hline"
     style={{ position: 'absolute', top: 10, left: 2, width: 22, height: 10 }}
   />

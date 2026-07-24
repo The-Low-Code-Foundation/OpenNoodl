@@ -171,7 +171,7 @@ export function ComponentsPanel({ options }: ComponentsPanelProps) {
   // So if we receive mouseUp here, it means no item claimed the drop
   const handleTreeMouseUp = useCallback(() => {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const PopupLayer = require('@noodl-views/popuplayer');
+    const PopupLayer = require('@noodl-views/popuplayer').default;
 
     // If we're dragging and no specific item claimed the drop, it's a root drop
     if (draggedItem && PopupLayer.instance.isDragging()) {

@@ -46,7 +46,7 @@ function TextStylePicker(props) {
 
     const popout = PopupLayer.instance.showPopout({
       content: { el: div },
-      attachTo: $(popupAnchor),
+      attachTo: popupAnchor,
       position: 'right',
       onClose: () => {
         root.unmount();

@@ -10,7 +10,7 @@ import { useCallback, useState } from 'react';
 import { TreeNode } from '../types';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const PopupLayer = require('@noodl-views/popuplayer');
+const PopupLayer = require('@noodl-views/popuplayer').default;
 
 export function useDragDrop() {
   const [draggedItem, setDraggedItem] = useState<TreeNode | null>(null);

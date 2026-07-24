@@ -788,49 +788,6 @@ button {
   background-color: #292929;
 }
 
-/* -------------------------------------------------------------------
-   Yes no popup
-   ------------------------------------------------------------------- */
-.yes-no-popup {
-  width: 250px;
-}
-
-.yes-no-popup-label {
-  display: block;
-  color: #dddddd;
-  margin: 5px;
-}
-
-.yes-no-popup-buttons {
-  height: 30px;
-  padding: 5px;
-  padding-bottom: 10px;
-}
-
-.yes-no-popup-button-yes {
-  background-color: #222222;
-  border: none;
-  color: #aaaaaa;
-  height: 100%;
-  margin: 0px;
-}
-
-.yes-no-popup-button-yes:hover {
-  background-color: #333333;
-}
-
-.yes-no-popup-button-no {
-  background-color: #222222;
-  border: none;
-  color: #aaaaaa;
-  height: 100%;
-  margin: 0px;
-}
-
-.yes-no-popup-button-no:hover {
-  background-color: #333333;
-}
-
 .search-bg {
   background-color: #2e2e2e;
 }

@@ -240,7 +240,7 @@ export class Pages extends React.Component {
     PopupLayer.instance.showPopup({
       content: { el: div },
       // @ts-expect-error - Legacy class component without proper typing
-      attachTo: $(this.popupAnchor),
+      attachTo: this.popupAnchor,
       position: 'right',
       onClose: function () {
         root.unmount();
@@ -271,7 +271,7 @@ export class Pages extends React.Component {
 
     PopupLayer.instance.showPopup({
       content: menu,
-      attachTo: $(popupAnchor),
+      attachTo: popupAnchor,
       position: 'bottom',
       onOpen: function () {
         //   el.removeClass('sidebar-panel-item-show-on-hover');

@@ -97,7 +97,7 @@ function CommentForeground(props) {
     if (hover) {
       const text = props.annotation[0].toUpperCase() + props.annotation.slice(1);
       PopupLayer.instance.showTooltip({
-        attachTo: $(ref.current),
+        attachTo: ref.current,
         position: 'bottom',
         content: text
       });

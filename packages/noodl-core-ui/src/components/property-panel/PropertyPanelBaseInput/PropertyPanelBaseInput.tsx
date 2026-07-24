@@ -64,7 +64,8 @@ export function PropertyPanelBaseInput({
         hasSmallText && css['has-small-text']
       )}
       type={type}
-      value={value}
+      // A port with no value resolves to null; React wants '' for a controlled input
+      value={value === null ? '' : value}
       data-identifier={dataIdentifier}
       data-type={dataType}
       onChange={(e) => onChange(e.target.value)}
