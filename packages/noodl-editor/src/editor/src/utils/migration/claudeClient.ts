@@ -1,11 +1,17 @@
 /**
- * Claude API Client for Component Migration
+ * Claude client for component migration.
  *
- * Handles communication with Anthropic's Claude API for
- * AI-assisted React component migration.
+ * AIX-001: this now runs on the shared provider adapter rather than
+ * constructing its own SDK client against a hardcoded model. The model id and
+ * its pricing come from the central registry, so this feature stops rotting
+ * independently of the rest of the editor's AI.
  *
  * @module migration/claudeClient
  */
+
+import { createProvider } from '@noodl-models/AiAssistant/client/AiClient';
+import { calculateCostUsd, getDefaultModel, resolveModel } from '@noodl-models/AiAssistant/client/models';
+import { AiProvider } from '@noodl-models/AiAssistant/client/types';
 
 import type { MigrationIssue } from '../../models/migration/types';
 import { MIGRATION_SYSTEM_PROMPT, HELP_PROMPT_TEMPLATE } from './claudePrompts';
@@ -52,49 +58,37 @@ export interface HelpRequest {
 }
 
 export class ClaudeClient {
-  private client: any;
-  private model = 'claude-sonnet-4-20250514';
+  private readonly provider: AiProvider;
+  private readonly model: string;
 
-  // Pricing per 1M tokens (as of Dec 2024)
-  private pricing = {
-    input: 3.0, // $3 per 1M input tokens
-    output: 15.0 // $15 per 1M output tokens
-  };
-
-  constructor(apiKey: string) {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const Anthropic = require('@anthropic-ai/sdk');
-    this.client = new Anthropic({
-      apiKey,
-      dangerouslyAllowBrowser: true // Safe in Electron - code runs locally, not in public browser
-    });
+  constructor(apiKey: string, model?: string) {
+    this.provider = createProvider('anthropic', { apiKey });
+    this.model = model || getDefaultModel('anthropic').id;
   }
 
   async migrateComponent(request: MigrationRequest): Promise<MigrationResponse> {
     const userPrompt = this.buildUserPrompt(request);
 
-    const response = await this.client.messages.create({
+    const response = await this.provider.chat({
       model: this.model,
-      max_tokens: 4096,
-      system: MIGRATION_SYSTEM_PROMPT,
-      messages: [{ role: 'user', content: userPrompt }]
+      maxTokens: 4096,
+      messages: [
+        { role: 'system', content: MIGRATION_SYSTEM_PROMPT },
+        { role: 'user', content: userPrompt }
+      ]
     });
 
     const tokensUsed = {
-      input: response.usage.input_tokens,
-      output: response.usage.output_tokens
+      input: response.usage.promptTokens,
+      output: response.usage.completionTokens
     };
 
-    const cost = this.calculateCost(tokensUsed);
-
-    // Parse the response
-    const content = response.content[0];
-    if (content.type !== 'text') {
-      throw new Error('Unexpected response type');
-    }
+    // The registry may not price a model the user pinned; report 0 rather than
+    // letting a null propagate into the migration budget arithmetic.
+    const cost = response.usage.costUsd ?? 0;
 
     try {
-      const parsed = this.parseResponse(content.text);
+      const parsed = this.parseResponse(response.text);
       return {
         ...parsed,
         tokensUsed,
@@ -108,7 +102,7 @@ export class ClaudeClient {
         warnings: [],
         confidence: 0,
         reason: 'Failed to parse AI response',
-        suggestion: content.text.slice(0, 500), // Include raw response for debugging
+        suggestion: response.text.slice(0, 500), // Include raw response for debugging
         tokensUsed,
         cost
       };
@@ -120,18 +114,13 @@ export class ClaudeClient {
       .replace('{originalCode}', request.originalCode)
       .replace('{attemptHistory}', request.attemptHistory.map((a, i) => `Attempt ${i + 1}: ${a.error}`).join('\n'));
 
-    const response = await this.client.messages.create({
+    const response = await this.provider.chat({
       model: this.model,
-      max_tokens: 2048,
+      maxTokens: 2048,
       messages: [{ role: 'user', content: prompt }]
     });
 
-    const content = response.content[0];
-    if (content.type !== 'text') {
-      throw new Error('Unexpected response type');
-    }
-
-    return content.text;
+    return response.text;
   }
 
   private buildUserPrompt(request: MigrationRequest): string {
@@ -180,9 +169,7 @@ export class ClaudeClient {
   }
 
   private calculateCost(tokens: { input: number; output: number }): number {
-    const inputCost = (tokens.input / 1_000_000) * this.pricing.input;
-    const outputCost = (tokens.output / 1_000_000) * this.pricing.output;
-    return inputCost + outputCost;
+    return calculateCostUsd(resolveModel(this.model, 'anthropic'), tokens.input, tokens.output) ?? 0;
   }
 
   estimateCost(codeLength: number): number {

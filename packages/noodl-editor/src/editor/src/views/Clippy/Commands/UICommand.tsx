@@ -137,8 +137,6 @@ export async function handleUICommand(
   await ctx.chatStreamXml({
     messages: messages,
     provider: {
-      model: 'gpt-4o-mini',
-      // The next context doesnt work with GPT-3.5
       temperature: 0.1
     },
     ...callbacks

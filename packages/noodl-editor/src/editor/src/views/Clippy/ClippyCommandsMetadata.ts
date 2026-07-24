@@ -16,7 +16,7 @@ export type CommandMetadata = {
   examples: string[];
   availableOnFrontend: boolean;
   availableOnBackend: boolean;
-  requireGPT4: boolean;
+  requiresCapableModel: boolean;
 };
 
 type CopilotCommandMetadata = CommandMetadata & {
@@ -33,7 +33,7 @@ export const promptToNodeCommands: CommandMetadata[] = [
     icon: IconName.UI,
     availableOnFrontend: true,
     availableOnBackend: false,
-    requireGPT4: true,
+    requiresCapableModel: true,
     examples: [
       'A login form',
       'A dropdown with values 1 to 10',
@@ -52,7 +52,7 @@ export const promptToNodeCommands: CommandMetadata[] = [
     icon: IconName.Image,
     availableOnFrontend: true,
     availableOnBackend: false,
-    requireGPT4: true,
+    requiresCapableModel: true,
     examples: [
       'A big, steaming bowl of noodles',
       'Four kittens with cool sunshades',
@@ -64,7 +64,7 @@ export const promptToNodeCommands: CommandMetadata[] = [
 export const copilotNodeInstaPromptable = ['/function', '/read from database', '/write to database'];
 export const copilotNodeCommands: CopilotCommandMetadata[] = [
   {
-    requireGPT4: false,
+    requiresCapableModel: false,
     templateId: 'function',
     title: '/Function',
     tag: 'Function',
@@ -81,7 +81,7 @@ export const copilotNodeCommands: CopilotCommandMetadata[] = [
     ]
   },
   {
-    requireGPT4: true,
+    requiresCapableModel: true,
     templateId: 'function-query-database',
     title: '/Read from database',
     tag: 'Read from database',
@@ -111,7 +111,7 @@ export const copilotNodeCommands: CopilotCommandMetadata[] = [
   //   ]
   // },
   {
-    requireGPT4: true,
+    requiresCapableModel: true,
     templateId: 'function-crud',
     title: '/Write to database',
     tag: 'Write to database',
@@ -127,7 +127,7 @@ export const copilotNodeCommands: CopilotCommandMetadata[] = [
 
 export const comingSoonCommands: CommandMetadata[] = [
   {
-    requireGPT4: true,
+    requiresCapableModel: true,
     // templateId: 'chart',
     title: '/Chart',
     tag: 'Chart Prompt',
@@ -141,7 +141,7 @@ export const comingSoonCommands: CommandMetadata[] = [
   },
   {
     title: '/Suggest',
-    requireGPT4: true,
+    requiresCapableModel: true,
     tag: 'Suggest Prompt',
     description: 'Get suggestions',
     placeholder: 'What to get suggestions for',

@@ -1,55 +1,34 @@
-export type AiAssistantModel = {
-  name: string;
-  displayName: string;
-  promptTokenCost: number;
-  completionTokenCost: number;
-};
+/**
+ * Public surface for querying which AI models are available.
+ *
+ * Before AIX-001 this file hardcoded two OpenAI models with wrong prices and a
+ * verification call that only ever asked OpenAI. Both now come from the model
+ * registry and the provider adapters.
+ *
+ * @module AiAssistant/api
+ */
 
-export interface AiAssistantConfig {
-  version: string;
-  models: AiAssistantModel[];
-}
+import { AiConfigStore } from '@noodl-store/AiAssistantStore';
 
-export async function verifyOpenAiApiKey(apiKey: string): Promise<Record<string, { id: string }> | null> {
-  const response = await fetch(`https://api.openai.com/v1/models`, {
-    method: 'GET',
-    headers: {
-      Authorization: 'Bearer ' + apiKey
-    }
-  });
-
-  if (response.status !== 200) {
-    return null;
-  }
-
-  const json = await response.json();
-
-  const models = json.data.reduce((acc, item) => {
-    acc[item.id] = item;
-    return acc;
-  }, {});
-
-  return models;
-}
+import { AiClient } from '@noodl-models/AiAssistant/client/AiClient';
+import { AiModelDefinition, getModelsForProvider } from '@noodl-models/AiAssistant/client/models';
+import { AiProviderId, AiProviderVerification } from '@noodl-models/AiAssistant/client/types';
 
 export namespace AiAssistantApi {
-  export async function getConfig(): Promise<AiAssistantConfig> {
-    return {
-      version: '0.0.0',
-      models: [
-        {
-          name: 'gpt-4o-mini',
-          displayName: 'gpt-4 (8k context)',
-          promptTokenCost: 0.03,
-          completionTokenCost: 0.06
-        },
-        {
-          name: 'gpt-3.5-turbo',
-          displayName: 'gpt-3.5-turbo',
-          promptTokenCost: 0.002,
-          completionTokenCost: 0.03
-        }
-      ]
-    };
+  /** Models known to the registry for a provider. */
+  export function getModels(provider?: AiProviderId): AiModelDefinition[] {
+    const target = provider || AiConfigStore.getActiveProvider();
+    return target ? getModelsForProvider(target) : [];
+  }
+
+  /**
+   * Check that a provider's credentials/endpoint work. Pass `override` to test
+   * values the user has typed but not yet saved.
+   */
+  export function verify(
+    provider?: AiProviderId,
+    override?: { apiKey?: string; baseUrl?: string }
+  ): Promise<AiProviderVerification> {
+    return AiClient.verify(provider, override);
   }
 }

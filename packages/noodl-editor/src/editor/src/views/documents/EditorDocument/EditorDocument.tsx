@@ -1,7 +1,7 @@
 import { useNodeGraphContext } from '@noodl-contexts/NodeGraphContext/NodeGraphContext';
 import { useKeyboardCommands } from '@noodl-hooks/useKeyboardCommands';
 import usePrevious from '@noodl-hooks/usePrevious';
-import { OpenAiStore } from '@noodl-store/AiAssistantStore';
+import { AiConfigStore } from '@noodl-store/AiAssistantStore';
 import { ipcRenderer } from 'electron';
 import React, { useCallback, useEffect, useState } from 'react';
 
@@ -52,15 +52,14 @@ function EditorDocument() {
   const [viewportSize, setViewportSize] = useState({ width: null, height: null, deviceName: null });
   const [frameDividerSize, setFrameDividerSize] = useState(undefined);
 
-  const [enableAi, setEnableAi] = useState(OpenAiStore.getVersion() !== 'disabled');
+  const [enableAi, setEnableAi] = useState(AiConfigStore.isEnabled());
 
   useEffect(() => {
     const group = {};
     EditorSettings.instance.on(
       'updated',
       () => {
-        console.log('ai', OpenAiStore.getVersion());
-        setEnableAi(OpenAiStore.getVersion() !== 'disabled');
+        setEnableAi(AiConfigStore.isEnabled());
       },
       group
     );

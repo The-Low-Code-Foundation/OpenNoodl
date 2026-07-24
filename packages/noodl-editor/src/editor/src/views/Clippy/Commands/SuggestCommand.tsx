@@ -1,5 +1,7 @@
 import { NodeGraphContextTmp } from '@noodl-contexts/NodeGraphContext/NodeGraphContext';
 
+import { AiMessage } from '@noodl-models/AiAssistant/client/types';
+
 import { makeChatRequest } from './utils';
 
 export async function handleSuggestionCommand(prompt: string, statusCallback: (status: string) => void) {
@@ -39,13 +41,15 @@ export async function handleSuggestionCommand(prompt: string, statusCallback: (s
   ${JSON.stringify(cleanNode, null, 2)}
   `;
 
-  const messages = [
+  const messages: AiMessage[] = [
     { role: 'system', content: suggestPrimer },
     { role: 'user', content: p }
   ];
 
-  const response = await makeChatRequest('gpt-4o-mini', messages);
-  console.log(response);
+  const response = await makeChatRequest(messages);
+  if (!response) {
+    throw new Error('The AI provider did not return a suggestion.');
+  }
 
   return JSON.parse(response.content);
 }

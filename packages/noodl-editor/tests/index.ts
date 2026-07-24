@@ -14,6 +14,7 @@ if (typeof jasmine !== 'undefined' && jasmine.getEnv) {
   });
 }
 
+export * from './ai';
 export * from './canvas';
 export * from './cloud';
 export * from './components';

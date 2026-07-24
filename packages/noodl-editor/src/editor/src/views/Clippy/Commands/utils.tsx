@@ -1,13 +1,27 @@
 import path from 'node:path';
-import { OpenAiStore } from '@noodl-store/AiAssistantStore';
+import { AiConfigStore } from '@noodl-store/AiAssistantStore';
 import { filesystem } from '@noodl/platform';
 
+import { AiClient } from '@noodl-models/AiAssistant/client/AiClient';
+import { AiMessage, AiNotConfiguredError } from '@noodl-models/AiAssistant/client/types';
 import { ProjectModel } from '@noodl-models/projectmodel';
 import FileSystem from '@noodl-utils/filesystem';
 import { guid } from '@noodl-utils/utils';
 
+/**
+ * Image generation is still OpenAI-only: it is not a chat completion, so it
+ * does not go through the provider-agnostic client. It requires an OpenAI key
+ * regardless of which provider is selected for chat, and says so rather than
+ * failing with an opaque 401.
+ */
 export async function makeImageGenerationRequest(prompt: string): Promise<{ type: string; data: Buffer }> {
-  const OPENAI_API_KEY = OpenAiStore.getApiKey();
+  const OPENAI_API_KEY = await AiConfigStore.getApiKey('openai');
+  if (!OPENAI_API_KEY) {
+    throw new AiNotConfiguredError(
+      'Image generation needs an OpenAI API key. Add one under the OpenAI provider in Editor Settings.'
+    );
+  }
+
   const response = await fetch(`https://api.openai.com/v1/images/generations`, {
     method: 'POST',
     headers: {
@@ -49,39 +63,24 @@ export async function saveImageDataToDisk(imageData: { type: string; data: Buffe
   return relativeFilePath;
 }
 
-export async function makeChatRequest(model: string, messages: unknown[]) {
-  const OPENAI_API_KEY = OpenAiStore.getApiKey();
-  const response = await fetch(`https://api.openai.com/v1/chat/completions`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: 'Bearer ' + OPENAI_API_KEY
-    },
-    body: JSON.stringify({
-      model,
+/**
+ * Single-shot chat through the configured provider. Cost accounting and model
+ * selection now live in the client, so callers pass messages and nothing else.
+ */
+export async function makeChatRequest(messages: AiMessage[]) {
+  try {
+    const response = await AiClient.chat({
       messages,
       temperature: 0.5,
-      max_tokens: 2048
-    })
-  });
-
-  const json = await response.json();
-  if (json.error) {
-    console.error(json.error);
-    return null;
-  } else {
-    const promptTokenCost = model === 'gpt-4o-mini' ? 0.03 : 0.002;
-    const completionTokenCost = model === 'gpt-4o-mini' ? 0.06 : 0.002;
-    let cost =
-      (json.usage.completion_tokens * completionTokenCost) / 1000 + (json.usage.prompt_tokens * promptTokenCost) / 1000;
-
-    cost = Math.round(cost * 10000) / 10000; //round to 4 decimals
-
-    console.log('prompt cost', `$${cost}`);
+      maxTokens: 2048
+    });
 
     return {
-      content: json.choices[0].message.content,
-      usage: json.usage
+      content: response.text,
+      usage: response.usage
     };
+  } catch (error) {
+    console.error(error);
+    return null;
   }
 }

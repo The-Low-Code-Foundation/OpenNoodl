@@ -1,12 +1,12 @@
 import { useNodeGraphContext } from '@noodl-contexts/NodeGraphContext/NodeGraphContext';
 import { useModernModel } from '@noodl-hooks/useModel';
-import { OpenAiStore } from '@noodl-store/AiAssistantStore';
+import { AiConfigStore } from '@noodl-store/AiAssistantStore';
 import classNames from 'classnames';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 import { FeedbackType } from '@noodl-constants/FeedbackType';
 import { AiAssistantModel } from '@noodl-models/AiAssistant';
-import { verifyOpenAiApiKey } from '@noodl-models/AiAssistant/api';
+import { AiClient } from '@noodl-models/AiAssistant/client/AiClient';
 import { SidebarModel } from '@noodl-models/sidebar';
 import getDocsEndpoint from '@noodl-utils/getDocsEndpoint';
 import { LocalUserIdentity } from '@noodl-utils/LocalUserIdentity';
@@ -47,62 +47,39 @@ export default function Clippy() {
   const [shouldFirstInputAutofocus, setShouldFirstInputAutofocus] = useState(false);
   const [isTextareaInsteadOfInput, setIsTextareaInsteadOfInput] = useState(false);
   const [commandResultItems, setCommandResultItems] = useState<CommandResultItem[]>(null); //commands might generate follow-up items
-  const [hasGPT4, setHasGPT4] = useState(false);
+  // "Capable" replaces the old hasGPT4 flag: whether the configured model can
+  // carry the multi-step agent commands. That is a registry capability now,
+  // not a model-id match, so a new frontier model needs no change here.
+  const [hasCapableModel, setHasCapableModel] = useState(false);
   const firstInputRef = useRef(null);
   const secondInputRef = useRef(null);
   const secondTextAreaRef = useRef(null);
   const ref = useRef<HTMLDivElement>(undefined);
-  const [hasApiKey, setHasApiKey] = useState(false);
+  const [isAiConfigured, setIsAiConfigured] = useState(false);
   const aiAssistantModel = useModernModel(AiAssistantModel.instance);
   const nodeGraphContext = useNodeGraphContext();
-
-  const version = OpenAiStore.getVersion();
 
   const isFrontend = nodeGraphContext.active === 'frontend';
   const commandFilter = (x) =>
     ((x.availableOnFrontend && isFrontend) || (x.availableOnBackend && !isFrontend)) &&
-    (!x.requireGPT4 || (x.requireGPT4 && hasGPT4));
+    (!x.requiresCapableModel || (x.requiresCapableModel && hasCapableModel));
 
   const promptToNode = promptToNodeCommands.filter(commandFilter);
   const copilotNodes = copilotNodeCommands.filter(commandFilter);
   const comingSoonItems = comingSoonCommands.filter(commandFilter);
-  const disabledDueToGpt3Items = promptToNodeCommands
+  const disabledByModelItems = promptToNodeCommands
     .concat(copilotNodeCommands)
     .concat(comingSoonCommands)
-    .filter((x) => x.requireGPT4 && !hasGPT4);
+    .filter((x) => x.requiresCapableModel && !hasCapableModel);
 
   const ALL_OPTIONS = [...promptToNode, ...copilotNodes];
 
   const user = LocalUserIdentity.getUserInfo();
 
   useEffect(() => {
-    const version = OpenAiStore.getVersion();
-    if (version === 'enterprise') {
-      setHasApiKey(true);
-      setHasGPT4(OpenAiStore.getModel() === 'gpt-4o-mini');
-    } else if (version === 'full-beta') {
-      setHasApiKey(OpenAiStore.getIsAiApiKeyVerified());
-    } else {
-      setHasGPT4(false);
-      setHasApiKey(false);
-    }
+    setIsAiConfigured(AiClient.isConfigured());
+    setHasCapableModel(AiClient.isConfigured() && AiClient.supportsAgentFlow());
   }, [isInputOpen]);
-
-  useEffect(() => {
-    if (!hasApiKey) return;
-
-    async function doIt() {
-      const version = OpenAiStore.getVersion();
-      if (version === 'enterprise') {
-        setHasGPT4(OpenAiStore.getModel() === 'gpt-4o-mini');
-      } else {
-        const models = await verifyOpenAiApiKey(OpenAiStore.getApiKey());
-        setHasGPT4(!!models['gpt-4o-mini']);
-      }
-    }
-
-    doIt();
-  }, [hasApiKey]);
 
   //check for clicks outside clippy, which should close it if it's open and not thinking
   useEffect(() => {
@@ -213,28 +190,15 @@ export default function Clippy() {
 
   const initialPlaceholder = isInputOpen ? 'Select (or type) a command below' : 'Ask Noodl AI';
   const isPromptInWrongOrder = Boolean(!selectedOption) && Boolean(secondInputValue);
-  const isFullBeta = ['full-beta', 'enterprise'].includes(version);
-  const isLimitedBeta = false; // TODO: version === 'limited-beta';
 
-  let isCommandsEnabled = isLimitedBeta;
-  if (version === 'enterprise') {
-    isCommandsEnabled = true;
-  } else if (isFullBeta) {
-    if (!hasGPT4 || !hasApiKey) {
-      isCommandsEnabled = false;
-    } else {
-      isCommandsEnabled = true;
-    }
-  }
+  // Commands run whenever a provider is configured. Individual commands that
+  // need a more capable model are filtered out above rather than disabling the
+  // whole panel — a local model should still get the commands it can handle.
+  const isCommandsEnabled = isAiConfigured;
 
-  let versionLabel = '';
-  if (version === 'enterprise') {
-    versionLabel = `Enterprise (${OpenAiStore.getModel()})`;
-  } else if (isLimitedBeta) {
-    versionLabel = 'Limited Beta (gpt-3)';
-  } else if (isFullBeta && hasApiKey && hasGPT4) {
-    versionLabel = 'Full beta (gpt-4)';
-  }
+  const activeModel = AiClient.getActiveModel();
+  const providerLabel = AiConfigStore.getPrettyProvider();
+  const versionLabel = isAiConfigured && activeModel ? `${providerLabel} (${activeModel.displayName})` : '';
 
   return (
     <Portal portalRoot={portalRoot}>
@@ -397,24 +361,16 @@ export default function Clippy() {
         <div className={css.UglySpacingHackPleaseLookAway} />
 
         <div className={classNames(css.ClippyPopup, isInputOpen && !isAiThinking && css.__isVisible)}>
-          {isFullBeta && !isCommandsEnabled && (
+          {!isCommandsEnabled && (
             <div className={css.ClippyNoApiKey}>
-              <Title hasBottomSpacing>Add your OpenAI API key</Title>
-              <Text hasBottomSpacing>You need a GPT-4 API key to access the full beta features.</Text>
-              <Text>
-                1. Get your API key from your{' '}
-                <a href="https://platform.openai.com/account/api-keys" target="_blank" rel="noreferrer">
-                  OpenAI account
-                </a>
-              </Text>
-              <Text>2. Make sure GPT-4 is enabled for your account</Text>
-              <Text>3. Paste the key into the AI section in the Editor Settings panel</Text>
-              <Text hasBottomSpacing>4. Click the "Verify API Key" button</Text>
-
+              <Title hasBottomSpacing>Set up an AI provider</Title>
               <Text hasBottomSpacing>
-                If you dont have an API key with GPT-4 access, you can set the Noodl AI to use the Limited Beta in the
-                editor settings.
+                AI commands need a provider. Open the AI section in Editor Settings and pick one:
               </Text>
+              <Text>• Anthropic or OpenAI — paste an API key</Text>
+              <Text>• OpenAI-compatible — point at your own endpoint</Text>
+              <Text hasBottomSpacing>• Ollama — run a model locally, no key and no cost</Text>
+
               <PrimaryButton
                 size={PrimaryButtonSize.Small}
                 variant={PrimaryButtonVariant.MutedOnLowBg}
@@ -485,10 +441,10 @@ export default function Clippy() {
                 </>
               )}
 
-              {Boolean(disabledDueToGpt3Items.length) && (
+              {Boolean(disabledByModelItems.length) && (
                 <>
-                  <SectionTitle title="Requires a key with GPT4 support" />
-                  {disabledDueToGpt3Items.map((item, i) => (
+                  <SectionTitle title="Requires a more capable model" />
+                  {disabledByModelItems.map((item, i) => (
                     <PromptTagSuggestion
                       isDisabled={true}
                       title={item.title}
@@ -590,22 +546,22 @@ export default function Clippy() {
             </>
           )}
 
-          {!isFullBeta && (
+          {isAiConfigured && !hasCapableModel && (
             <div className={css.LimitedBetaCard}>
               <Label size={LabelSize.Medium} variant={TextType.Proud} hasBottomSpacing>
-                Limited beta
+                Limited model
               </Label>
 
               <Text hasBottomSpacing size={TextSize.Medium}>
-                You are running the limited beta of Noodl AI. If features fewer commands and a less capable AI. Get full
-                beta access by bringing your own GPT-4 API key.
+                {activeModel?.displayName} is a smaller model, so the multi-step commands are hidden — they need a
+                frontier model to be reliable. Switch model in Editor Settings to enable them.
               </Text>
 
               <PrimaryButton
                 size={PrimaryButtonSize.Small}
                 variant={PrimaryButtonVariant.Muted}
-                label="Full beta setup instructions"
-                href={getDocsEndpoint() + '/docs/getting-started/noodl-ai#full-beta'}
+                label="AI setup instructions"
+                href={getDocsEndpoint() + '/docs/getting-started/noodl-ai'}
               />
             </div>
           )}

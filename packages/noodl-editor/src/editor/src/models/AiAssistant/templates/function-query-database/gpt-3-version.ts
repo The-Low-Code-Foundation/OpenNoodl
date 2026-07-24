@@ -4,7 +4,7 @@ import { IAiCopilotContext } from '@noodl-models/AiAssistant/interfaces';
 import { extractCodeBlock, wrapInput, wrapOutput } from '@noodl-models/AiAssistant/templates/helper';
 import { guid } from '@noodl-utils/utils';
 
-export async function generate(
+export async function execute(
   { node, chatHistory, chatStream, chatStreamXml }: IAiCopilotContext,
   dbCollectionsSource
 ) {
@@ -39,7 +39,6 @@ export async function generate(
 
   const fullCodeText = await chatStream({
     provider: {
-      model: 'gpt-3.5-turbo',
       temperature: 0.0,
       max_tokens: 2048
     },
@@ -113,7 +112,6 @@ export async function generate(
       { role: 'user', content: codeText }
     ],
     provider: {
-      model: 'gpt-3.5-turbo',
       temperature: 0.0,
       max_tokens: 2048
     },

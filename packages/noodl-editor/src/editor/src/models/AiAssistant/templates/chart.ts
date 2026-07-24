@@ -49,7 +49,6 @@ export const template: AiNodeTemplate = {
 
     const fullCodeText = await chatStream({
       provider: {
-        model: 'gpt-4o-mini',
         temperature: 0.0,
         max_tokens: 2048
       },
@@ -119,7 +118,6 @@ export const template: AiNodeTemplate = {
         { role: 'user', content: codeText }
       ],
       provider: {
-        model: 'gpt-3.5-turbo',
         temperature: 0.0,
         max_tokens: 2048
       },

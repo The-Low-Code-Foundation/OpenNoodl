@@ -1,7 +1,7 @@
 # Phase 15: AI Collaboration Experience - Progress Tracker
 
-**Last Updated:** 2026-07-22
-**Overall Status:** 🔴 Not Started
+**Last Updated:** 2026-07-24
+**Overall Status:** 🟡 In Progress
 
 ---
 
@@ -10,10 +10,10 @@
 | Metric       | Value  |
 | ------------ | ------ |
 | Total Tasks  | 5      |
-| Completed    | 0      |
+| Completed    | 1      |
 | In Progress  | 0      |
-| Not Started  | 5      |
-| **Progress** | **0%** |
+| Not Started  | 4      |
+| **Progress** | **20%** |
 
 ---
 
@@ -21,10 +21,10 @@
 
 | Task    | Name                | Status         | Notes                                              |
 | ------- | ------------------- | -------------- | -------------------------------------------------- |
-| AIX-001 | Modern AI Client    | 🔴 Not Started | No prerequisites; do first                         |
-| AIX-002 | The Authoring Loop  | 🔴 Not Started | Blocked on AIX-001 + phase-13 SUB-004/SUB-006      |
+| AIX-001 | Modern AI Client    | 🟢 Complete    | Client + registry + 4 providers; live runs unverified |
+| AIX-002 | The Authoring Loop  | 🔴 Not Started | Unblocked on AIX-001; still needs SUB-004/SUB-006  |
 | AIX-003 | Graph-Native Review | 🔴 Not Started | Blocked on AIX-002 + phase-13 SUB-007              |
-| AIX-004 | Explain Mode        | 🔴 Not Started | Blocked on AIX-001 + phase-13 SUB-004              |
+| AIX-004 | Explain Mode        | 🔴 Not Started | Unblocked on AIX-001; still needs SUB-004          |
 | AIX-005 | Agentic UI Nodes    | 🔴 Not Started | Deliberately last; only after AIX-002 proves out   |
 
 ---
@@ -42,6 +42,7 @@
 | Date       | Update                                                                 |
 | ---------- | ---------------------------------------------------------------------- |
 | 2026-07-22 | Phase created from NOODL-REVIVAL-ROADMAP.md Track C (C-01..C-05)       |
+| 2026-07-24 | AIX-001 complete — provider-agnostic client, model registry, Anthropic/OpenAI/compatible/Ollama adapters, secure credential storage, settings UI, 69 specs. See NOTES.md. |
 
 ---
 

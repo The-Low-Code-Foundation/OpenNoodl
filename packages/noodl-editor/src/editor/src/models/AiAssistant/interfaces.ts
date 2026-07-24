@@ -7,28 +7,16 @@ import { IModel } from '@noodl-utils/model';
 
 export type AiNodeTemplateType = 'pink' | 'purple' | 'green' | 'grey' | 'blue';
 
-export type AiCopilotTextProviders = {
-  model: 'text-davinci-003',
-  temperature?: number;
-  max_tokens?: number;
-}
-
-export type ModelName = 'gpt-3.5-turbo' | 'gpt-4o-mini';
-
+/**
+ * Per-request overrides. Model ids are plain strings resolved against the
+ * central registry — see `AiAssistant/client/models`. Leave `model` unset and
+ * the user's configured model is used, which is what features should do.
+ */
 export type AiCopilotChatProviders = {
-  model: 'gpt-3.5-turbo',
+  model?: string;
   temperature?: number;
   max_tokens?: number;
-} | {
-  model: 'gpt-4o-mini',
-  temperature?: number;
-  max_tokens?: number;
-}
-
-export type AiCopilotTextArgs = {
-  content: string;
-  provider?: AiCopilotTextProviders;
-}
+};
 
 export type AiCopilotChatMessage = {
   role: 'system' | 'user' | 'assistant' | string;

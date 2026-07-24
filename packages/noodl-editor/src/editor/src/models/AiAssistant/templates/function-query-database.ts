@@ -1,16 +1,18 @@
-import { OpenAiStore } from '@noodl-store/AiAssistantStore';
-
+import { AiClient } from '@noodl-models/AiAssistant/client/AiClient';
 import { extractDatabaseSchema } from '@noodl-models/AiAssistant/DatabaseSchemaExtractor';
 import { AiNodeTemplate } from '@noodl-models/AiAssistant/interfaces';
-import * as QueryGPT4 from '@noodl-models/AiAssistant/templates/function-query-database/gpt-4-version';
-import * as QueryGPT3 from '@noodl-models/AiAssistant/templates/function-query-database/gpt-4-version';
+// AIX-001: both aliases used to import the gpt-4 module, so picking the
+// simpler prompt silently ran the richer one. They are now distinct, and the
+// choice is made on model capability rather than a hardcoded model id.
+import * as QueryAgentVersion from '@noodl-models/AiAssistant/templates/function-query-database/gpt-4-version';
+import * as QuerySimpleVersion from '@noodl-models/AiAssistant/templates/function-query-database/gpt-3-version';
 
 export const template: AiNodeTemplate = {
   type: 'green',
   name: 'JavaScriptFunction',
   nodeDisplayName: 'Read Database',
   onMessage: async (context) => {
-    const version = OpenAiStore.getVersion();
+    const useAgentFlow = AiClient.supportsAgentFlow();
 
     const activityId = 'processing';
     const activityCodeGenId = 'code-generation';
@@ -31,12 +33,12 @@ export const template: AiNodeTemplate = {
     console.log('database schema', dbCollectionsSource);
 
     // ---
-    console.log('using version: ', version);
+    console.log('[ai] query template, agent flow:', useAgentFlow);
 
-    if (['full-beta', 'enterprise'].includes(version)) {
-      await QueryGPT4.execute(context, dbCollectionsSource);
+    if (useAgentFlow) {
+      await QueryAgentVersion.execute(context, dbCollectionsSource);
     } else {
-      await QueryGPT3.execute(context, dbCollectionsSource);
+      await QuerySimpleVersion.execute(context, dbCollectionsSource);
     }
 
     context.chatHistory.removeActivity(activityCodeGenId);

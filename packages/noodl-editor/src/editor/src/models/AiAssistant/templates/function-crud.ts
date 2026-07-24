@@ -71,9 +71,6 @@ export const template: AiNodeTemplate = {
     const fullText = await chatStreamXml({
       messages,
       provider: {
-        model: 'gpt-4o-mini',
-        // model: 'gpt-3.5-turbo',
-        // The next context doesnt work with GPT-3.5
         temperature: 0.5,
         max_tokens: 2048
       },
