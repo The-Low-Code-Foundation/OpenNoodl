@@ -4,10 +4,10 @@
     "scripts"
   ],
   "exclude": [],
-  "commit": "c354d4e",
+  "commit": "6f9b79b",
   "max": {
     "TSFixme": 538,
-    "any": 287,
+    "any": 288,
     "@ts-ignore": 22,
     "@ts-nocheck": 0,
     "@ts-expect-error": 88
@@ -78,7 +78,7 @@
     },
     "noodl-viewer-react": {
       "TSFixme": 17,
-      "any": 37,
+      "any": 38,
       "@ts-ignore": 0,
       "@ts-nocheck": 0,
       "@ts-expect-error": 11
@@ -1943,6 +1943,13 @@
     "packages/noodl-viewer-react/src/nodes/std-library/states.ts": {
       "TSFixme": 0,
       "any": 2,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-viewer-react/src/nodes/std-library/user/userservice.ts": {
+      "TSFixme": 0,
+      "any": 1,
       "@ts-ignore": 0,
       "@ts-nocheck": 0,
       "@ts-expect-error": 0
