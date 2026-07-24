@@ -14,6 +14,7 @@ import { Frame } from '../../common/Frame';
 import { Ports } from '../propertyeditor/DataTypes/Ports';
 import { ProjectSettingsModel } from './ProjectSettingsModel';
 import { DeploySection } from './sections/DeploySection';
+import { RuntimeSection } from './sections/RuntimeSection';
 import { SitemapSection } from './sections/SitemapSection';
 
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
@@ -64,6 +65,7 @@ export function ProjectSettingsPanel({}: ProjectSettingsPanelProps) {
 
       <Frame instance={propertyView} refresh={renderIndex} />
 
+      <RuntimeSection />
       <SitemapSection />
       <DeploySection />
     </BasePanel>

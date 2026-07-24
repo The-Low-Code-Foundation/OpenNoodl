@@ -18,24 +18,16 @@
   cursor: default;
 }
 
-// Legacy project styles
-.LegacyCard {
-  border-color: var(--theme-color-border-danger) !important;
-
-  &:hover {
-    border-color: var(--theme-color-border-danger) !important;
-  }
-}
-
-.LegacyBanner {
+// Runtime info strip (default-runtime projects; informational, not a warning)
+.RuntimeBanner {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--spacing-2);
   margin-top: var(--spacing-3);
   padding: var(--spacing-2) var(--spacing-3);
-  background-color: var(--theme-color-bg-danger-subtle);
-  border: 1px solid var(--theme-color-border-danger);
+  background-color: var(--theme-color-bg-2);
+  border: 1px solid var(--theme-color-border-default);
   border-radius: var(--border-radius-medium);
 }
 

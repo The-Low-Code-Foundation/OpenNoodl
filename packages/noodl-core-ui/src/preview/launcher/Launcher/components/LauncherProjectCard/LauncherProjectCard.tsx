@@ -107,30 +107,19 @@ export function LauncherProjectCard({
   onOpenReadOnly
 }: LauncherProjectCardProps) {
   const { tags, getProjectMeta } = useProjectOrganization();
-  const [showLegacyDetails, setShowLegacyDetails] = useState(false);
+  const [showRuntimeDetails, setShowRuntimeDetails] = useState(false);
 
   // Get project tags
   const projectMeta = getProjectMeta(localPath);
   const projectTags = projectMeta ? tags.filter((tag) => projectMeta.tagIds.includes(tag.id)) : [];
 
-  // Determine if this is a legacy project
-  const isLegacy = runtimeInfo?.version === 'react17';
-  const isDetecting = runtimeInfo === undefined;
+  // Projects without a react19 marker run on the default (React 18.3) runtime.
+  // That is the unchanged, fully supported baseline — the card opens normally
+  // and only offers an optional upgrade path.
+  const isDefaultRuntime = runtimeInfo?.version === 'react17';
 
   return (
-    <Card
-      background={CardBackground.Bg2}
-      hoverBackground={CardBackground.Bg3}
-      onClick={
-        isLegacy
-          ? () => {
-              // Auto-expand details when user clicks legacy project
-              setShowLegacyDetails(true);
-            }
-          : onClick
-      }
-      UNSAFE_className={isLegacy ? css.LegacyCard : undefined}
-    >
+    <Card background={CardBackground.Bg2} hoverBackground={CardBackground.Bg3} onClick={onClick}>
       <Stack direction="row">
         <div className={css.Image} style={{ backgroundImage: `url(${imageSrc})` }} />
 
@@ -141,13 +130,6 @@ export function LauncherProjectCard({
                 <Title hasBottomSpacing size={TitleSize.Medium}>
                   {title}
                 </Title>
-
-                {/* Legacy warning icon */}
-                {isLegacy && (
-                  <Tooltip content="This project uses React 17 and needs migration">
-                    <Icon icon={IconName.WarningCircle} variant={FeedbackType.Danger} size={IconSize.Default} />
-                  </Tooltip>
-                )}
               </HStack>
 
               {/* Tags */}
@@ -260,36 +242,38 @@ export function LauncherProjectCard({
             </HStack>
           </Columns>
 
-          {/* Legacy warning banner */}
-          {isLegacy && (
-            <div className={css.LegacyBanner}>
+          {/* Runtime info strip — informational, never a warning */}
+          {isDefaultRuntime && (
+            <div className={css.RuntimeBanner}>
               <HStack hasSpacing={2} UNSAFE_style={{ alignItems: 'center', flex: 1 }}>
-                <Icon icon={IconName.WarningCircle} variant={FeedbackType.Danger} size={IconSize.Small} />
-                <Text size={TextSize.Small}>React 17 (Legacy Runtime)</Text>
+                <Text size={TextSize.Small}>Default runtime (React 18.3)</Text>
               </HStack>
 
               <TextButton
-                label={showLegacyDetails ? 'Less' : 'Options'}
+                label={showRuntimeDetails ? 'Less' : 'Options'}
                 size={TextButtonSize.Small}
                 onClick={(e) => {
                   e.stopPropagation();
-                  setShowLegacyDetails(!showLegacyDetails);
+                  setShowRuntimeDetails(!showRuntimeDetails);
                 }}
               />
             </div>
           )}
 
-          {/* Expanded legacy details */}
-          {isLegacy && showLegacyDetails && (
+          {/* Expanded runtime details */}
+          {isDefaultRuntime && showRuntimeDetails && (
             <div className={css.LegacyDetails}>
               <Label variant={TextType.Shy} size={LabelSize.Default}>
-                This project needs migration to work with OpenNoodl 1.2+. Your original project will remain untouched.
+                This project runs on the default React 18.3 runtime and works as-is. To upgrade to React 19, open the
+                project and switch runtime in Project Settings — or use the assisted migration, which upgrades a copy
+                and leaves this project untouched.
               </Label>
 
               <HStack hasSpacing={2} UNSAFE_style={{ marginTop: 'var(--spacing-3)' }}>
                 <PrimaryButton
-                  label="Migrate Project"
+                  label="Assisted Migration"
                   size={PrimaryButtonSize.Small}
+                  variant={PrimaryButtonVariant.Muted}
                   onClick={(e) => {
                     e.stopPropagation();
                     onMigrateProject?.();
@@ -297,23 +281,12 @@ export function LauncherProjectCard({
                 />
 
                 <PrimaryButton
-                  label="View Read-Only"
+                  label="Open Read-Only"
                   size={PrimaryButtonSize.Small}
                   variant={PrimaryButtonVariant.Muted}
                   onClick={(e) => {
                     e.stopPropagation();
                     onOpenReadOnly?.();
-                  }}
-                />
-
-                <TextButton
-                  label="Learn More"
-                  size={TextButtonSize.Small}
-                  icon={IconName.ExternalLink}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    // TODO: Open documentation
-                    window.open('https://docs.opennoodl.com/migration', '_blank');
                   }}
                 />
               </HStack>

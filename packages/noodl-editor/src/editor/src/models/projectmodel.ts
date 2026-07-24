@@ -577,6 +577,20 @@ export class ProjectModel extends Model {
     this.notifyListeners('settingsChanged');
   }
 
+  /**
+   * Select which runtime React pair this project gets (RUN-001). 'react19'
+   * opts into the React 19 globals; undefined clears the marker so the project
+   * returns to the default (React 18.3.1) pair. Persisted via the regular
+   * autosave (the notify below reaches the global Model.* save listener).
+   */
+  setRuntimeVersion(version: 'react17' | 'react19' | undefined) {
+    if (this.runtimeVersion === version) {
+      return;
+    }
+    this.runtimeVersion = version;
+    this.notifyListeners('runtimeVersionChanged', { version });
+  }
+
   resolveColor(color: string) {
     const styles = this.getMetaData('styles');
     return styles && styles.colors && styles.colors[color] ? styles.colors[color] : color;

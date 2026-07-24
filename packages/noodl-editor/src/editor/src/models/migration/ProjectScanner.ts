@@ -1,8 +1,21 @@
 /**
  * ProjectScanner
  *
- * Handles detection of project runtime versions and scanning for legacy React patterns
- * that need migration. Uses a 5-tier detection system with confidence levels.
+ * Detects which runtime React pair a project selects and scans user code for
+ * APIs that React 19 removed.
+ *
+ * Detection mirrors the delivery semantics exactly (RUN-001 slice 3): a project
+ * with `runtimeVersion === 'react19'` gets the vendored React 19 globals;
+ * anything else (absent field, `'react17'`) gets the default React 18.3.1 pair —
+ * the same files every project has received since Dec 2025. There is no
+ * heuristic tier anymore: nothing besides the explicit field changes which
+ * React a project runs on, so guessing from editor versions or file dates only
+ * produced false "legacy" alarms.
+ *
+ * The pattern scan lists what is *removed in React 19 relative to React 18* —
+ * the only breakage surface that matters when a project opts in. APIs that died
+ * before 18 (unprefixed componentWill* lifecycles) or that still work in 19
+ * (UNSAFE_* lifecycles) are deliberately not flagged.
  *
  * @module noodl-editor/models/migration
  * @since 1.2.0
@@ -25,65 +38,18 @@ import {
 // =============================================================================
 
 /**
- * OpenNoodl version number that introduced React 19
- * Projects created with this version or later use React 19
- */
-const REACT19_MIN_VERSION = '1.2.0';
-
-/**
- * Date when OpenNoodl fork was created
- * Projects before this date are assumed to be legacy React 17
- */
-const OPENNOODL_FORK_DATE = new Date('2024-01-01');
-
-/**
- * Patterns to detect legacy React code that needs migration
+ * User-code patterns that break when a project opts into React 19.
+ *
+ * Everything here works on the default React 18.3.1 runtime and is *removed*
+ * in React 19 — this is the 18→19 delta, nothing older. Not listed on purpose:
+ * unprefixed componentWill* lifecycles (already gone since React 17, so they
+ * are equally dead on the current default runtime) and UNSAFE_* lifecycles
+ * (still supported in React 19, warning only).
  */
 const LEGACY_PATTERNS: LegacyPattern[] = [
   {
-    regex: /componentWillMount\s*\(/,
-    name: 'componentWillMount',
-    type: 'componentWillMount',
-    description: 'componentWillMount lifecycle method (removed in React 19)',
-    autoFixable: false
-  },
-  {
-    regex: /componentWillReceiveProps\s*\(/,
-    name: 'componentWillReceiveProps',
-    type: 'componentWillReceiveProps',
-    description: 'componentWillReceiveProps lifecycle method (removed in React 19)',
-    autoFixable: false
-  },
-  {
-    regex: /componentWillUpdate\s*\(/,
-    name: 'componentWillUpdate',
-    type: 'componentWillUpdate',
-    description: 'componentWillUpdate lifecycle method (removed in React 19)',
-    autoFixable: false
-  },
-  {
-    regex: /UNSAFE_componentWillMount/,
-    name: 'UNSAFE_componentWillMount',
-    type: 'unsafeLifecycle',
-    description: 'UNSAFE_componentWillMount lifecycle method (removed in React 19)',
-    autoFixable: false
-  },
-  {
-    regex: /UNSAFE_componentWillReceiveProps/,
-    name: 'UNSAFE_componentWillReceiveProps',
-    type: 'unsafeLifecycle',
-    description: 'UNSAFE_componentWillReceiveProps lifecycle method (removed in React 19)',
-    autoFixable: false
-  },
-  {
-    regex: /UNSAFE_componentWillUpdate/,
-    name: 'UNSAFE_componentWillUpdate',
-    type: 'unsafeLifecycle',
-    description: 'UNSAFE_componentWillUpdate lifecycle method (removed in React 19)',
-    autoFixable: false
-  },
-  {
-    regex: /ref\s*=\s*["'][^"']+["']/,
+    // Lookbehind keeps `href="..."` / `data-ref="..."` from matching.
+    regex: /(?<![\w.-])ref\s*=\s*["'][^"']+["']/,
     name: 'String ref',
     type: 'stringRef',
     description: 'String refs are removed in React 19, use createRef() or useRef()',
@@ -118,17 +84,31 @@ const LEGACY_PATTERNS: LegacyPattern[] = [
     autoFixable: true
   },
   {
-    regex: /ReactDOM\.findDOMNode/,
+    regex: /\bfindDOMNode\s*\(/,
     name: 'findDOMNode',
     type: 'findDOMNode',
-    description: 'ReactDOM.findDOMNode is removed in React 19',
+    description: 'findDOMNode is removed in React 19, capture the element with a ref instead',
     autoFixable: false
   },
   {
-    regex: /ReactDOM\.render\s*\(/,
+    regex: /\bReactDOM\.render\s*\(/,
     name: 'ReactDOM.render',
     type: 'reactDomRender',
     description: 'ReactDOM.render is removed in React 19, use createRoot',
+    autoFixable: true
+  },
+  {
+    regex: /\bReactDOM\.hydrate\s*\(/,
+    name: 'ReactDOM.hydrate',
+    type: 'reactDomRender',
+    description: 'ReactDOM.hydrate is removed in React 19, use hydrateRoot',
+    autoFixable: true
+  },
+  {
+    regex: /\bunmountComponentAtNode\s*\(/,
+    name: 'unmountComponentAtNode',
+    type: 'reactDomRender',
+    description: 'unmountComponentAtNode is removed in React 19, use root.unmount()',
     autoFixable: true
   }
 ];
@@ -163,23 +143,6 @@ interface ProjectJson {
 // =============================================================================
 
 /**
- * Compares two semantic version strings
- * @returns -1 if a < b, 0 if a == b, 1 if a > b
- */
-function compareVersions(a: string, b: string): number {
-  const partsA = a.split('.').map(Number);
-  const partsB = b.split('.').map(Number);
-
-  for (let i = 0; i < Math.max(partsA.length, partsB.length); i++) {
-    const numA = partsA[i] || 0;
-    const numB = partsB[i] || 0;
-    if (numA < numB) return -1;
-    if (numA > numB) return 1;
-  }
-  return 0;
-}
-
-/**
  * Reads the project.json file from a project directory
  */
 async function readProjectJson(projectPath: string): Promise<ProjectJson | null> {
@@ -194,39 +157,18 @@ async function readProjectJson(projectPath: string): Promise<ProjectJson | null>
 }
 
 /**
- * Gets the creation date of a project from filesystem metadata
- * Note: The IFileSystem interface doesn't expose birthtime, so this returns null
- * and relies on other detection methods. Could be enhanced in platform-electron.
- */
-async function getProjectCreationDate(_projectPath: string): Promise<Date | null> {
-  // IFileSystem doesn't have stat or birthtime access
-  // This would need platform-specific implementation
-  return null;
-}
-
-/**
- * Detects the runtime version of a project using a 5-tier detection system.
- *
- * Detection order:
- * 1. Explicit runtimeVersion field in project.json (highest confidence)
- * 2. migratedFrom metadata (indicates already migrated)
- * 3. Editor version number comparison
- * 4. Legacy code pattern scanning
- * 5. Project creation date heuristic (lowest confidence)
+ * Reports which runtime React pair a project selects. This is not a guess: it
+ * applies the exact rule the delivery code uses (`runtimeVersion === 'react19'`
+ * → the React 19 globals, anything else → the default React 18.3.1 pair), so
+ * the answer is always high-confidence except when project.json is unreadable.
  *
  * @param projectPath - Path to the project directory
  * @returns Runtime version info with confidence level
  */
 export async function detectRuntimeVersion(projectPath: string): Promise<RuntimeVersionInfo> {
-  const indicators: string[] = [];
-
-  console.log('🔍 [detectRuntimeVersion] Starting detection for:', projectPath);
-
-  // Read project.json
   const projectJson = await readProjectJson(projectPath);
 
   if (!projectJson) {
-    console.log('❌ [detectRuntimeVersion] Could not read project.json');
     return {
       version: 'unknown',
       confidence: 'low',
@@ -234,18 +176,6 @@ export async function detectRuntimeVersion(projectPath: string): Promise<Runtime
     };
   }
 
-  console.log('📄 [detectRuntimeVersion] Project JSON loaded:', {
-    name: projectJson.name,
-    version: projectJson.version,
-    editorVersion: projectJson.editorVersion,
-    runtimeVersion: projectJson.runtimeVersion,
-    migratedFrom: projectJson.migratedFrom,
-    createdAt: projectJson.createdAt
-  });
-
-  // ==========================================================================
-  // Check 1: Explicit runtimeVersion field (most reliable)
-  // ==========================================================================
   if (projectJson.runtimeVersion) {
     return {
       version: projectJson.runtimeVersion,
@@ -254,9 +184,6 @@ export async function detectRuntimeVersion(projectPath: string): Promise<Runtime
     };
   }
 
-  // ==========================================================================
-  // Check 2: Look for migratedFrom field (indicates already migrated)
-  // ==========================================================================
   if (projectJson.migratedFrom) {
     return {
       version: 'react19',
@@ -265,75 +192,12 @@ export async function detectRuntimeVersion(projectPath: string): Promise<Runtime
     };
   }
 
-  // ==========================================================================
-  // Check 3: Check editor version number
-  // OpenNoodl 1.2+ = React 19, earlier = React 17
-  // ==========================================================================
-  const editorVersion = projectJson.editorVersion || projectJson.version;
-  if (editorVersion && typeof editorVersion === 'string') {
-    // Clean up version string (remove 'v' prefix if present)
-    const cleanVersion = editorVersion.replace(/^v/, '');
-
-    // Check if it's a valid semver-like string
-    if (/^\d+\.\d+/.test(cleanVersion)) {
-      const comparison = compareVersions(cleanVersion, REACT19_MIN_VERSION);
-
-      if (comparison >= 0) {
-        indicators.push(`Editor version ${editorVersion} >= ${REACT19_MIN_VERSION}`);
-        return {
-          version: 'react19',
-          confidence: 'high',
-          indicators
-        };
-      } else {
-        indicators.push(`Editor version ${editorVersion} < ${REACT19_MIN_VERSION}`);
-        return {
-          version: 'react17',
-          confidence: 'high',
-          indicators
-        };
-      }
-    }
-  }
-
-  // ==========================================================================
-  // Check 4: Heuristic - scan for React 17 specific patterns in custom code
-  // ==========================================================================
-  const legacyPatterns = await scanForLegacyPatterns(projectPath);
-  if (legacyPatterns.found) {
-    indicators.push(`Found legacy React patterns: ${legacyPatterns.patterns.join(', ')}`);
-    return {
-      version: 'react17',
-      confidence: 'medium',
-      indicators
-    };
-  }
-
-  // ==========================================================================
-  // Check 5: Project creation date heuristic
-  // Projects created before OpenNoodl fork are assumed React 17
-  // ==========================================================================
-  const createdAt = projectJson.createdAt ? new Date(projectJson.createdAt) : await getProjectCreationDate(projectPath);
-
-  if (createdAt && createdAt < OPENNOODL_FORK_DATE) {
-    indicators.push(`Project created ${createdAt.toISOString()} (before OpenNoodl fork)`);
-    return {
-      version: 'react17',
-      confidence: 'medium',
-      indicators
-    };
-  }
-
-  // ==========================================================================
-  // Default: Assume React 17 for older projects without explicit markers
-  // Any project without runtimeVersion, migratedFrom, or a recent editorVersion
-  // is most likely a legacy project from before OpenNoodl
-  // ==========================================================================
-  console.log('✅ [detectRuntimeVersion] FINAL: Assuming React 17 (no markers found)');
+  // No marker: the project runs on the default runtime (React 18.3.1), exactly
+  // as every project has since Dec 2025. This is normal, not a legacy hazard.
   return {
     version: 'react17',
-    confidence: 'low',
-    indicators: ['No React 19 markers found - assuming legacy React 17 project']
+    confidence: 'high',
+    indicators: ['No runtimeVersion marker - project uses the default (React 18.3) runtime']
   };
 }
 
@@ -623,6 +487,6 @@ function estimateAICost(issueCount: number): number {
 // Exports
 // =============================================================================
 
-export { LEGACY_PATTERNS, REACT19_MIN_VERSION, OPENNOODL_FORK_DATE, readProjectJson, compareVersions };
+export { LEGACY_PATTERNS, readProjectJson };
 
 export type { ProjectJson };

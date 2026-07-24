@@ -160,6 +160,35 @@ Slices, each independently landable on `cline-dev`:
    is shown for *any* read-only canvas (e.g. review documents) — fix the copy or condition.
 4. **Editor surface:** version selector in deploy flow + migration scan (design doc's
    detector patterns, trimmed to what's actually removed in 19 relative to *18*, not 17).
+   ✅ DONE (2026-07-24) — larger than expected because a whole Phase-2-era "legacy project"
+   system was built on the stale premise and had to be brought to truth:
+   - **Selector**: new `RuntimeSection` in Project Settings (React 18.3 default / React 19)
+     driving `ProjectModel.setRuntimeVersion` — 'react19' writes the marker, default *clears*
+     it (absent = unchanged behaviour). Persists via the regular `Model.*` autosave, emits
+     `viewer-refresh`. `DeployToFolderTab` shows the effective runtime (deploy always matches
+     preview by design — one setting drives both; a deploy-time-only selector would ship what
+     you never previewed). Verified live both directions: preview HTML flips `/react19/…` ↔
+     root pair, webview `React.version` 19.0.0 ↔ 18.3.1, "Project saved" fires.
+   - **Scan**: `ProjectScanner.LEGACY_PATTERNS` trimmed to the real 18→19 removals
+     (findDOMNode, ReactDOM.render/hydrate/unmountComponentAtNode, string refs, legacy
+     context, createFactory); dropped unprefixed componentWill* (dead since React 17, not a
+     19 delta) and UNSAFE_* (still legal in 19). Fixed the string-ref regex matching every
+     `href=` (unanchored substring). Scan runs informationally on opt-in, never blocks.
+   - **Detection = delivery semantics**: `detectRuntimeVersion` no longer guesses from editor
+     versions/dates/patterns — explicit field, else migratedFrom, else "default runtime",
+     always high-confidence. The old default ("assume legacy React 17, low confidence") was
+     the root of the stale-premise UX.
+   - **Defanged the forced gates**: ProjectsPage open + clone flows dropped the scary
+     "Legacy Project Detected" confirm() chains (migrate/read-only/cancel) — marker-less
+     projects open normally and editable; verified live (card click → editor, preview runs).
+     LauncherProjectCard: danger styling + click-blocked card (a legacy card could not even
+     be opened!) replaced with a neutral "Default runtime (React 18.3)" strip; Migration
+     Wizard stays reachable there as "Assisted Migration". EditorBanner: copy de-React-17'd
+     and gated on `ProjectModel._isReadOnly`, so diff/review canvases (readOnly canvases in
+     an editable project) no longer get the banner — closes the slice-3 note.
+   - Not touched: the MigrationWizard internals (still copies + auto-fixes on the old
+     pattern list's shape — works, but its copy still says React 17; worth a later pass),
+     `LocalProjectsModel` runtime cache (harmless, now stores truthful values).
 5. **Corpus comparison** on 18 vs 19 preview: the SUB-004/SUB-009 project corpus + signal-heavy
    and animation-heavy projects; diff behaviour, not just absence of crashes.
 6. ~~Cloud runtime decision~~ **Resolved by the §4 survey**: `noodl-viewer-cloud` uses no

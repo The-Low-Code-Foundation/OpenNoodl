@@ -1,8 +1,9 @@
 /**
  * Migration Module
  *
- * Provides tools for migrating legacy Noodl projects (React 17)
- * to the new OpenNoodl runtime (React 19).
+ * Runtime-pair detection (default React 18.3 vs opt-in React 19) and tools for
+ * upgrading a project to the React 19 runtime, including a scan for the APIs
+ * React 19 removed relative to 18.
  *
  * @module noodl-editor/models/migration
  * @since 1.2.0
@@ -17,10 +18,7 @@ export {
   scanForLegacyPatterns,
   scanProjectForMigration,
   LEGACY_PATTERNS,
-  REACT19_MIN_VERSION,
-  OPENNOODL_FORK_DATE,
-  readProjectJson,
-  compareVersions
+  readProjectJson
 } from './ProjectScanner';
 export type { ProjectJson } from './ProjectScanner';
 

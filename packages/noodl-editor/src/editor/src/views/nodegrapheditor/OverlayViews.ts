@@ -64,14 +64,18 @@ export class OverlayViews {
   }
 
   /**
-   * Render the EditorBanner React component (for read-only mode)
+   * Render the EditorBanner React component (for read-only mode).
+   *
+   * Gated on the *project* being read-only, not just this canvas: diff and
+   * review documents also run their canvases with readOnly=true, and those
+   * must not get the "opened read-only" banner.
    */
   renderEditorBanner() {
-    // Only show banner if in read-only mode
+    const projectIsReadOnly = Boolean(ProjectModel.instance?._isReadOnly);
     this.editor.overlays.renderSlot(
       'editor-banner',
       this.editor.shell.editorBannerRoot,
-      this.editor.readOnly
+      this.editor.readOnly && projectIsReadOnly
         ? React.createElement(EditorBanner, {
             onDismiss: this.handleDismissBanner.bind(this)
           })

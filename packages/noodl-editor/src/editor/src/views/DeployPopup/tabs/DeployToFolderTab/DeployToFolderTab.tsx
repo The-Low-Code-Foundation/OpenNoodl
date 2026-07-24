@@ -77,6 +77,11 @@ export function DeployToFolderTab() {
           Deploy your frontend to a local folder
         </Text>
 
+        <Text hasBottomSpacing textType={TextType.Shy}>
+          Runtime: {ProjectModel.instance.runtimeVersion === 'react19' ? 'React 19' : 'React 18.3 (default)'} — change
+          it under Project Settings → Runtime.
+        </Text>
+
         {Boolean(cloudService.backend.items?.length) && (
           <Select
             options={environmentOptions}

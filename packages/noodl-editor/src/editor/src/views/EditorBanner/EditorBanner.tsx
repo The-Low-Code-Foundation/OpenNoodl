@@ -1,8 +1,9 @@
 /**
  * EditorBanner
  *
- * Warning banner that appears when a legacy (React 17) project is opened in read-only mode.
- * Provides clear messaging and actions for the user to migrate the project.
+ * Warning banner shown when the whole project is opened in read-only mode
+ * (an explicit choice from the launcher). Only says what read-only means —
+ * it makes no claim about *why* the project was opened that way.
  *
  * @module noodl-editor/views/EditorBanner
  * @since 1.2.0
@@ -59,11 +60,11 @@ export function EditorBanner({ onDismiss }: EditorBannerProps) {
       {/* Message Content */}
       <div className={css['Content']}>
         <div className={css['Title']}>
-          <Text textType={TextType.Default}>Legacy Project (React 17) - Read-Only Mode</Text>
+          <Text textType={TextType.Default}>Read-Only Mode</Text>
         </div>
         <div className={css['Description']}>
           <Text textType={TextType.Secondary}>
-            This project uses React 17. Return to the launcher to migrate it before editing.
+            This project was opened read-only — changes will not be saved. Reopen it from the launcher to edit.
           </Text>
         </div>
       </div>
