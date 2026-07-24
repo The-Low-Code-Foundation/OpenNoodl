@@ -7,7 +7,7 @@ import { AppRegistry } from '@noodl-models/app_registry';
 import { ProjectModel } from '@noodl-models/projectmodel';
 import { WarningsModel } from '@noodl-models/warningsmodel';
 import { LocalProjectsModel } from '@noodl-utils/LocalProjectsModel';
-import { mergeProject, mergeV2ComponentFiles } from '@noodl-versioning';
+import { MERGE_CONFLICTS_KEY, mergeProject, mergeV2ComponentFiles, readMergeConflicts } from '@noodl-versioning';
 
 import { IconName, IconSize } from '@noodl-core-ui/components/common/Icon';
 import { IconButton, IconButtonVariant } from '@noodl-core-ui/components/inputs/IconButton';
@@ -273,23 +273,39 @@ export function useHasConflictsInProject() {
 
   // Listen for changes to conflicts
   useEffect(() => {
-    const checkForWarnings = () => {
-      setHasConflicts(
-        WarningsModel.instance.getTotalNumberOfWarningsMatching(
-          (_key, _ref, warning) =>
-            warning.warning.type === 'conflict' || warning.warning.type === 'conflict-source-code'
-        ) > 0
+    const check = () => {
+      const warningConflicts = WarningsModel.instance.getTotalNumberOfWarningsMatching(
+        (_key, _ref, warning) => warning.warning.type === 'conflict' || warning.warning.type === 'conflict-source-code'
       );
+
+      // Warnings only exist for the seven conflict kinds the legacy merger
+      // stamped onto nodes. SUB-007 raises twelve more — delete-vs-edit,
+      // reparents, rewiring against a deleted node, component renames, project
+      // settings — which have no node to hang a warning on. Those arrive in
+      // the project's own metadata, so a merge producing only structural
+      // conflicts still puts the panel into conflict mode.
+      const structuralConflicts = ProjectModel.instance
+        ? readMergeConflicts({ metadata: { [MERGE_CONFLICTS_KEY]: ProjectModel.instance.getMetaData(MERGE_CONFLICTS_KEY) } })
+            .length
+        : 0;
+
+      setHasConflicts(warningConflicts > 0 || structuralConflicts > 0);
     };
 
     const eventGroup = {};
 
-    WarningsModel.instance.on('warningsChanged', checkForWarnings, eventGroup);
+    WarningsModel.instance.on('warningsChanged', check, eventGroup);
+    EventDispatcher.instance.on(
+      ['ProjectModel.metadataChanged', 'ProjectModel.instanceHasChanged', 'projectChangedOnDisk'],
+      check,
+      eventGroup
+    );
 
-    checkForWarnings();
+    check();
 
     return () => {
       WarningsModel.instance.off(eventGroup);
+      EventDispatcher.instance.off(eventGroup);
     };
   }, []);
 

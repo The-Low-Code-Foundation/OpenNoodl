@@ -182,6 +182,33 @@ function metadataDeltas(prefix: string, base: unknown, target: unknown, out: Gra
   }
 }
 
+/**
+ * Snapshot `extras` mixes two kinds of thing: real component-level content
+ * (ports, component type) and bookkeeping the editor derives or the format
+ * requires. Only the first belongs in a change list a human reads — showing
+ * `legacyGraph:visualRoots: [] → ["ae0d…"]` tells the reader nothing about
+ * what anyone did, and it changes as a side effect of ordinary edits.
+ *
+ * Found by reviewing the diff panel against a real project rather than a
+ * fixture; the round-trip still preserves every one of these verbatim.
+ */
+const DERIVED_EXTRAS = new Set([
+  'legacyGraph:visualRoots',
+  'v2:visualRoots',
+  'v2:modified',
+  'v2:nodesVersion',
+  'v2:connectionsVersion',
+  'v2:componentId',
+  'v2:componentJsonId',
+  'legacy:id',
+  'hasCommentsArray'
+]);
+
+/** Strip the adapter prefix so paths read as the user's vocabulary. */
+function displayExtrasKey(key: string): string {
+  return key.replace(/^(legacyGraph:|legacy:|v2:)/, '');
+}
+
 export interface DiffOptions {
   /** Disable the structural recreated-node matcher (design doc §2.2). */
   structuralMatching?: boolean;
@@ -341,8 +368,8 @@ export function diffGraphs(base: GraphSnapshot, target: GraphSnapshot, options: 
   metadataDeltas('metadata', base.metadata, target.metadata, changes);
   const extraKeys = new Set([...Object.keys(base.extras), ...Object.keys(target.extras)]);
   for (const key of [...extraKeys].sort()) {
-    if (key === 'v2:modified') continue; // timestamp bookkeeping, never meaningful
-    metadataDeltas(key, base.extras[key], target.extras[key], changes);
+    if (DERIVED_EXTRAS.has(key)) continue;
+    metadataDeltas(displayExtrasKey(key), base.extras[key], target.extras[key], changes);
   }
 
   return { component: target.name || base.name, changes };

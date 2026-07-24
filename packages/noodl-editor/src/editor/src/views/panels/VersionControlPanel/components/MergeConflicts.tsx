@@ -24,6 +24,7 @@ import { MERGE_CONFLICTS_KEY, readMergeConflicts } from '@noodl-versioning';
 import type { ConflictSide, ProjectMergeConflict } from '@noodl-versioning';
 
 import { Icon, IconName, IconSize } from '@noodl-core-ui/components/common/Icon';
+import { PrimaryButton, PrimaryButtonSize } from '@noodl-core-ui/components/inputs/PrimaryButton';
 import { Box } from '@noodl-core-ui/components/layout/Box';
 import { Container } from '@noodl-core-ui/components/layout/Container';
 import { VStack } from '@noodl-core-ui/components/layout/Stack';
@@ -97,7 +98,11 @@ export function MergeConflicts() {
   );
 
   if (conflicts.length === 0) {
-    return null;
+    // A project merged by a build older than SUB-007 has the legacy
+    // `node.conflicts` stamps (which raised the warnings that got us here) but
+    // no structured list to render. Fall back to the banner rather than
+    // showing an empty panel.
+    return <LegacyConflictBanner />;
   }
 
   const reviewOnly = unresolved.filter((conflict) => !APPLICABLE_KINDS.has(conflict.kind)).length;
@@ -129,6 +134,36 @@ export function MergeConflicts() {
       </Section>
 
       <GraphConflictList conflicts={conflicts} onResolve={resolve} onResolveAll={resolveAll} />
+    </VStack>
+  );
+}
+
+/** The pre-SUB-007 view: point the user at the per-node warnings. */
+function LegacyConflictBanner() {
+  return (
+    <VStack>
+      <Section hasVisibleOverflow hasGutter>
+        <Container>
+          <Icon icon={IconName.WarningTriangle} size={IconSize.Small} />
+          <Box hasLeftSpacing>
+            <Label variant={TextType.Shy}>Warning</Label>
+            <Label>Merge conflict</Label>
+          </Box>
+        </Container>
+      </Section>
+      <Section hasVisibleOverflow hasGutter>
+        <Text hasBottomSpacing>
+          You and your collaborators have made changes to the same nodes and you need to resolve them
+        </Text>
+        <PrimaryButton
+          label="Open warnings"
+          isGrowing
+          size={PrimaryButtonSize.Small}
+          onClick={() => {
+            document.getElementById('editortopbar-warning-button').click();
+          }}
+        />
+      </Section>
     </VStack>
   );
 }

@@ -526,3 +526,64 @@ describe('SUB-007: v2 component merge', () => {
     expect(merged.parameters.p).toBe('ours');
   });
 });
+
+describe('SUB-007: structural-only merges are still detectable', () => {
+  // The version-control panel used to decide "this project has conflicts"
+  // purely from the warnings model, which is fed by the legacy node.conflicts
+  // stamps. Those exist for seven kinds only. A merge that produces nothing
+  // but structural conflicts leaves no node to hang a warning on, so the panel
+  // has to consult the structured channel too — these specs pin that such a
+  // merge really does produce no stamps and a non-empty channel.
+  const node = (id: string, params: Json = {}): Json => ({ type: '0', id, parameters: params });
+  const component = (roots: Json[]): Json => ({ components: [{ name: 'comp1', graph: { roots, connections: [] } }] });
+
+  function stampsIn(project: Json): Json[] {
+    const out: Json[] = [];
+    const walk = (nodes: Json[] = []) => {
+      nodes.forEach((n) => {
+        if (n.conflicts) out.push(...n.conflicts);
+        walk(n.children);
+      });
+    };
+    project.components.forEach((c: Json) => walk(c.graph.roots));
+    return out;
+  }
+
+  it('a delete-vs-edit merge produces no node stamps but a populated channel', () => {
+    const base = component([node('A', { p: 'base' })]);
+    const ours = component([]);
+    const theirs = component([node('A', { p: 'theirs' })]);
+
+    const merged = mergeProject(base, ours, theirs);
+
+    expect(stampsIn(merged)).toEqual([]);
+    const carried = readMergeConflicts(merged);
+    expect(carried.length).toBe(1);
+    expect(carried[0].kind).toBe('delete-vs-edit');
+  });
+
+  it('a project-setting conflict produces no node stamps but a populated channel', () => {
+    const withSetting = (title: string): Json => ({ components: [], settings: { title } });
+
+    const merged = mergeProject(withSetting('base'), withSetting('ours'), withSetting('theirs'));
+
+    expect(stampsIn(merged)).toEqual([]);
+    expect(readMergeConflicts(merged).some((c) => c.kind === 'project-setting')).toBe(true);
+  });
+
+  it('resolving every conflict clears the channel so the panel closes', () => {
+    const base = component([node('A', { p: 'base' })]);
+    const ours = component([node('A', { p: 'ours' })]);
+    const theirs = component([node('A', { p: 'theirs' })]);
+
+    const state = mergeProjectGraph(base, ours, theirs);
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { resolveAllProjectConflicts, serializeMergedProject } = require('../../src/editor/src/versioning');
+    resolveAllProjectConflicts(state, 'ours');
+
+    const merged = serializeMergedProject(state);
+
+    expect(readMergeConflicts(merged)).toEqual([]);
+    expect(stampsIn(merged)).toEqual([]);
+  });
+});
