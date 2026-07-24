@@ -24,3 +24,4 @@ export * from './authoring-staging.test';
 // proposals through SUB-007's diff engine; specs diff against components
 // accepted through the real staging path.
 export * from './authoring-changeset.test';
+export * from './authoring-review.test';

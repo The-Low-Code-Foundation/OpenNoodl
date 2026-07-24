@@ -29,4 +29,5 @@ export { acceptAuthoredComponent, StagingError } from './staging';
 export type { AcceptOptions } from './staging';
 export { buildChangeSet, requiredWith, excludedWith } from './ChangeSet';
 export type { AuthoringChangeSet, ReviewChange } from './ChangeSet';
+export { buildReviewComponent } from './reviewComponent';
 export { initialUserMessage, refineMessage, systemPrompt } from './prompts/authoring';

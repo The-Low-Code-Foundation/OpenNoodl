@@ -318,12 +318,28 @@ export function paintNode(node: NodeGraphEditorNode, ctx: CanvasRenderingContext
     }
 
     if (node.model.annotation) {
-      if (node.model.annotation === 'Deleted') ctx.strokeStyle = '#F57569';
-      else if (node.model.annotation === 'Changed') ctx.strokeStyle = '#83B8BA';
-      else if (node.model.annotation === 'Created') ctx.strokeStyle = '#5BF59E';
-
+      const annotationColor = _getColorForAnnotation(node.model.annotation);
+      ctx.strokeStyle = annotationColor;
       ctx.lineWidth = 2;
+      // Shape as well as colour (AIX-003): deletions get a dashed border...
+      if (node.model.annotation === 'Deleted') ctx.setLineDash([6, 4]);
       strokeRoundRect(ctx, x, y, node.nodeSize.width, node.nodeSize.height, NodeGraphEditorNode.cornerRadius);
+      ctx.setLineDash([]);
+
+      // ...and every annotation a corner badge with a glyph: + added, - removed,
+      // ~ changed.
+      const glyph = node.model.annotation === 'Deleted' ? '-' : node.model.annotation === 'Created' ? '+' : '~';
+      ctx.save();
+      ctx.fillStyle = annotationColor;
+      ctx.beginPath();
+      ctx.arc(x, y, 8, 0, 2 * Math.PI, false);
+      ctx.fill();
+      ctx.fillStyle = '#1c1c1c';
+      ctx.font = '12px Inter-Medium';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(glyph, x, y + 1);
+      ctx.restore();
     }
 
     // Paint plugs

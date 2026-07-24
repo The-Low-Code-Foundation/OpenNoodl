@@ -369,10 +369,16 @@ export class NodeGraphEditorConnection {
       if (this.model.annotation === 'Deleted') ctx.strokeStyle = '#F57569';
       else if (this.model.annotation === 'Changed') ctx.strokeStyle = '#83B8BA';
       else if (this.model.annotation === 'Created') ctx.strokeStyle = '#5BF59E';
+
+      // Shape as well as colour (AIX-003): removed routing is dashed; the
+      // dash restore below already runs for all paths.
+      if (this.model.annotation === 'Deleted') ctx.setLineDash([6, 4]);
     }
 
     const lineWidth = 1.5;
     ctx.lineWidth = this.lineWidth ? this.lineWidth : lineWidth;
+    // Added routing is thicker (shape cue, AIX-003).
+    if (this.model.annotation === 'Created') ctx.lineWidth = 3;
 
     this.drawCurve();
     ctx.stroke();
