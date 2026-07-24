@@ -1,3 +1,7 @@
+import React from 'react';
+import { createRoot, Root } from 'react-dom/client';
+
+import { NumberUnitInput } from '../components/NumberUnitInput';
 import { TypeView } from '../TypeView';
 import { getEditType } from '../utils';
 
@@ -27,6 +31,7 @@ function parseNumberWithUnit(stringValue, permittedUnits) {
 export class NumberWithUnits extends TypeView {
   numberWithUnits: TSFixme;
   el: TSFixme;
+  private root: Root | null = null;
 
   static fromPort(args) {
     const view = new NumberWithUnits();
@@ -60,86 +65,78 @@ export class NumberWithUnits extends TypeView {
   }
 
   render() {
-    const _this = this;
-    this.el = this.bindView(this.parent.cloneTemplate('number-units'), this);
-    TypeView.prototype.render.call(this);
+    const div = document.createElement('div');
+    div.style.width = '100%';
 
-    // Render units dropdown
-    this.$('.property-input-dropdown').html('');
-    const units = this.type.units;
-    for (const i in units) {
-      this.$('.property-input-dropdown').append(
-        this.bindView(
-          $(
-            '<div class="property-number-unit-enum" data-click="onUnitChanged" data-value="' +
-              units[i] +
-              '">' +
-              units[i] +
-              '</div>'
-          )
-        )
-      );
+    if (!this.root) {
+      this.root = createRoot(div);
     }
 
-    this.$('.property-input-dropdown').on('mousedown', function (event) {
-      event.preventDefault(); // make sure drop down doesn't blur input until after "onPropertyChanged" has been triggered
-    });
+    this.renderReact();
 
-    this.$('.property-number-units').on('blur', function () {
-      _this.$('.property-input-dropdown').hide();
-    });
-
+    this.el = div;
     return this.el;
   }
-  onDropDownClicked(scope, el) {
-    const showShould = !this.$('.property-input-dropdown').is(':visible');
-    this.parent.$('.property-input-dropdown').hide();
-    if (showShould) {
-      this.$('.property-number-units')[0].focus();
-      this.$('.property-input-dropdown').show();
-    }
 
-    // Hide show the padding so drop downs can be scrolled to if at the bottom of the prop editor
-    this.parent.$('.property-drop-down-padding').hide();
-    showShould && this.parent.$('.property-drop-down-padding').show();
-    this.parent.notifyListeners('panelResized');
+  renderReact() {
+    if (!this.root) return;
+
+    this.root.render(
+      React.createElement(NumberUnitInput, {
+        label: this.displayName,
+        value: this.value === undefined ? '' : String(this.value),
+        unit: this.unit,
+        units: this.type.units || [],
+        isChanged: !this.isDefault,
+        isConnected: this.isConnected,
+        dataIdentifier: this.name,
+        onCommit: (text: string) => this.updateValue(text, this.unit),
+        onUnitChange: (unit: string, currentText: string) => this.updateValue(currentText, unit),
+        onReset: () => {
+          this.parent.model.setParameter(this.name, undefined, {
+            undo: true,
+            label: 'reset parameter'
+          });
+          this.refreshFromModel();
+        }
+      })
+    );
   }
-  updateValue() {
-    const v = parseNumberWithUnit(this.$('input').val(), this.type.units);
-    const value = v.value;
 
-    const unit = v.unit ? v.unit : this.$('[data-text=unit]').text();
+  private updateValue(text: string, fallbackUnit: string) {
+    const v = parseNumberWithUnit(text, this.type.units || []);
+    const unit = v.unit ? v.unit : fallbackUnit;
 
     // If the input is not a valid value, then set undefined
-    if (value !== undefined)
+    if (v.value !== undefined) {
       this.parent.setParameter(this.name, {
-        value: value,
+        value: v.value,
         unit: unit ? unit : this.type.defaultUnit
       });
-    else this.parent.setParameter(this.name, undefined);
+    } else {
+      this.parent.setParameter(this.name, undefined);
+    }
 
-    // Update current value and if it is default or not
+    this.refreshFromModel();
+  }
+
+  private refreshFromModel() {
     const current = this.getCurrentValue();
     this.numberWithUnits = current.value;
-    this.$('input').val(this.value);
-    this.$('[data-text=unit]').text(this.unit);
     this.isDefault = current.isDefault;
+    this.renderReact();
   }
+
   resetToDefault() {
-    const current = this.getCurrentValue();
-    this.numberWithUnits = current.value;
-    this.$('input').val(this.value);
-    this.$('[data-text=unit]').text(this.unit);
+    this.numberWithUnits = this.getCurrentValue().value;
+    this.renderReact();
   }
-  onUnitChanged(scope, el) {
-    const unit = el.attr('data-value');
-    this.$('[data-text=unit]').text(unit);
 
-    this.updateValue();
-  }
-  onPropertyChanged(scope, el) {
-    this.updateValue();
-
-    el.blur();
+  dispose() {
+    if (this.root) {
+      this.root.unmount();
+      this.root = null;
+    }
+    super.dispose();
   }
 }
