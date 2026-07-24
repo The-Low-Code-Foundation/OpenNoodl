@@ -258,13 +258,64 @@ propertyeditor/* (12) in waves 1b–2c; `componentports`, `importpopup`,
   **Smoke trap:** cdp `type` re-focuses the input and closes the popout — drive the filter by
   dispatching a native `input` event with the value setter instead.
 
+- 2026-07-24: Wave 2f — the property-editor **hosts**. `TypeView.js`+`TypeView.d.ts` →
+  `TypeView.ts`: the hand-wired chrome (connected-port tooltip, `.property-input-focused`
+  toggle, `.property-changed-dot` click/tooltip) is gone — the React rows own it — leaving
+  the model-side behaviour. `BooleanType` → `PropertyPanelInput` (Checkbox), the last
+  `cloneTemplate` row. `TabGroup` → `components/PropertyTabs.tsx` (tab name doubles as the
+  icon class) with the child-view container built in code. `PopoutGroup` → `PropertyPanelRow`
+  + `PropertyPanelButton`. `Ports.ts` → new `components/PropertyGroups.tsx` renders the group
+  chrome and hosts each group's row elements via a `useLayoutEffect` (`RowHost`); `el` is now
+  a raw div and the input-focus z-index hack is a `focusin`/`focusout` pair on it.
+  `propertyeditor.ts` builds its shell in code (`buildShell()`). `Frame.tsx` now accepts a raw
+  `el` as well as a jQuery one; `view.d.ts`'s `el` widened to `HTMLElement | JQuery` (the two
+  views that still need jQuery — `componentports`, `popuplayer` — pin it locally).
+  Deleted `templates/propertyeditor/propertyeditorports.html` (the last multi-template file)
+  and `propertyeditor.html`; only `colorpicker.html` is left. 262 → 236 `$(`, 52 → 49 files.
+  **Regression found and fixed while converting** (introduced by waves 1b–2e, not by this
+  one): the converted rows never chain to `TypeView.render()`, so the `parentPort` watch —
+  "this row's default comes from a text style, refresh it when the style changes" — had been
+  dead for every React row. It is now `TypeView.bindStyleDefaultWatch()`, called centrally
+  from `Ports.getViewGroupsFromPorts()` for every row it creates, and it uses its own
+  listener group so a subclass's `EventDispatcher.off(this)` cannot take it with it.
+  Base `resetToDefault()` (which does not reset — it re-reads the model) now calls the row's
+  `renderReact()`, so rows without an override no longer hit `this.$('input')` on a raw el.
+  Incidental fix: `PropertyEditor.render()` used to rebuild its shell, which left
+  `variantsRoot`/`visualStatesRoot`/`elementStyleRoot` pointing at detached containers on any
+  re-render (AiChat's `onUpdated`); the shell is now stable so those sections survive.
+  Deliberate deviation: `onEditVariant`/`onDoneEditingVariant` hid `.property-editor-label-and-
+  buttons`, which lives in `NodeLabel.tsx` **outside** `PropertyEditor.el` — `this.$()` never
+  matched it, so the calls were no-ops and are simply gone.
+  Verified live via CDP (tsc clean, 0 renderer exceptions): shell is
+  `.sidebar-panel > .sidebar-property-editor > {variants, element-style-section, visual-states,
+  groups}` with all four populated; a Text node renders 13 group headers and 30 rows; a Group
+  node renders both tab groups (`borders-*`, `corners-*`) with the right tab selected, and
+  clicking `corners-top-left` swaps which row is visible **and** moves the `selected` class;
+  a Button node's "Text Style" popout group opens a nested `Ports` view (300px, 7 rows) and
+  the click no longer closes it. BooleanType: toggling **Visible** writes `false`, shows the
+  changed dot, and pushes exactly one "edit parameter"; its reset dot restores the default and
+  pushes "reset parameter". Selecting three nodes in a row still pushes **0** undo entries
+  (the wave-2d fix survives the host rewrite). 21 `ProjectModel.metadataChanged` listeners are
+  live, 16 of them the new per-row style watchers, and emitting `{key:'styles'}` refreshes
+  every row without throwing.
+  **Smoke traps:** React commits asynchronously, so anything asserted straight after a click
+  (e.g. the tab's `selected` class) needs a second CDP round-trip. `npm run dev:debug` only
+  launches Electron on an error-free compile, and ts-loader's watch can hold a **stale** copy
+  of a file another session rewrote — the fix is to restart the dev stack, not to chase the
+  error. The launcher card's root class is `LauncherProjectCard-module__Details`, not `Root`.
+  Fixtures can be created without fighting the node picker:
+  `window.__nodeGraphEditor.createNewNode({name:'Group'}, {x,y})` then `selectNode(findNodeWithId(id))`;
+  `UndoQueue`/`EventDispatcher` singletons are reachable by grabbing webpack's require via
+  `webpackChunknoodl_editor.push([[Symbol()],{},r=>window.__req=r])`.
+
 ## 8. Handoff — next session starts here
 
-Remaining, in the planned order (waves 2d–2e complete; count now 262 `$(` / 52 files):
+Remaining, in the planned order (waves 2d–2f complete; count now 236 `$(` / 49 files):
 
-1. **Wave 2f hosts**: `TypeView.js` → TS (only chrome/logic left), `Ports.ts` (drop bindView
-   group templates → React group host), `propertyeditor.ts`. When Ports converts, drop the
-   `$()`-wrapper tolerance and delete `templates/propertyeditor/*.html`.
+1. **Wave 2g — the colour picker**, the last of Group A: `DataTypes/ColorPicker/colorpicker.js`
+   (12 `$(`) + `templates/propertyeditor/colorpicker.html`, plus `colorstylepicker.jsx`(1) and
+   `ColorType.ts`(3, all `attachTo`/`content.el` feeding PopupLayer — those go in wave 4).
+   It was skipped in wave 2b, which converted the `ColorType` row but left the picker popout.
 2. **Wave 3**: canvas group (CanvasDOMBindings 6, ConnectionPopups 3, nodegrapheditor 1,
    NodeGraphEditorNode 1, CanvasView 1, lessonlayer2 6), `componentports.tsx`(4),
    `createnewnodepanel.ts`(1), `ComponentTemplates.ts`(1), `importpopup.js`(9) + its
@@ -289,9 +340,18 @@ Working notes for the next session:
   the panel in a fake "Aw, Snap!" state) — kill Electron + relaunch dev:debug instead.
   React blur commits need `focusout` (bubbling), not `blur`.
 - Ports.ts re-creates all row views on every renderGroups (no reuse), so per-instance
-  `render()` runs once; guarded `createRoot` is safe. Old React roots are not unmounted on
-  panel re-render (pre-existing; BasicType shipped that way) — acceptable until wave 2f.
+  `render()` runs once; guarded `createRoot` is safe. Old row views and their React roots are
+  still not disposed on panel re-render — the legacy `el.html('')` dropped them the same way,
+  so wave 2f left the leak alone rather than change lifetimes while converting the hosts.
+  Worth a dedicated pass (`Ports.renderGroups` could dispose `this.views` before rebuilding).
+- Anything that measures the property rows must now wait a frame: `Ports.renderGroups`
+  renders through React, so the rows land in `RowHost`'s layout effect, not synchronously.
+  The scroll-position restore already does this via `setTimeout(0)`.
 - Known deliberate deviations so far: label hover-tooltips (`data-tooltip`) and the
-  connected-input hover tooltip are not yet reproduced in React rows (BasicType precedent);
-  sizemode tooltips use `title=`. Decide in wave 2f whether to add a PopupLayer-backed
-  tooltip to PropertyPanelInput.
+  connected-input hover tooltip are not reproduced in React rows (BasicType precedent);
+  sizemode tooltips use `title=`. Wave 2f did not add them — a PopupLayer-backed tooltip in
+  `PropertyPanelInput` is best done after the wave-4 rewrite, when PopupLayer is React.
+- **Shared working tree:** PLAT-003 (and any other parallel session) edits the same checkout.
+  `npm run dev:debug` only launches Electron on an **error-free** webpack compile, so an
+  unrelated in-flight TS error elsewhere blocks the smoke test entirely. Check
+  `grep "ERROR in" .logs/dev.log` before blaming your own change.

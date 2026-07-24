@@ -1,9 +1,13 @@
+import React from 'react';
+import { createRoot, Root } from 'react-dom/client';
+
 import { NodeLibrary } from '@noodl-models/nodelibrary';
 
 import { EventDispatcher } from '../../../../../../shared/utils/EventDispatcher';
 import View from '../../../../../../shared/view';
 import PopupLayer from '../../../popuplayer';
 import { CodeEditorType } from '../CodeEditor';
+import { PropertyGroups, PropertyGroupModel } from '../components/PropertyGroups';
 import { ModelProxy } from '../models/modelProxy';
 import { PagesType } from '../Pages';
 import { getEditType } from '../utils';
@@ -37,9 +41,6 @@ import { TextAreaType } from './TextAreaType';
 import { TextStyleType } from './TextStyleType';
 import { VariableType } from './VariableType';
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const PropertyEditorPortsTemplate = require('../../../../templates/propertyeditor/propertyeditorports.html');
-
 const groupExpansions = {};
 
 type Port = {
@@ -61,6 +62,8 @@ export class Ports extends View {
   views: TSFixme;
   _toolsType: TSFixme;
   groups: TSFixme[];
+  el: HTMLElement;
+  private root: Root | null = null;
 
   constructor(args) {
     super();
@@ -129,21 +132,25 @@ export class Ports extends View {
 
     this.views.forEach((v) => v.dispose && v.dispose());
 
+    if (this.root) {
+      this.root.unmount();
+      this.root = null;
+    }
+
     this.hidePopout();
   }
-  renderParams(views, appendTo) {
+  /** Render a group's views (and their child views) and collect their elements. */
+  renderParams(views): TSFixme[] {
+    const els = [];
     for (const j in views) {
       const v = views[j];
       v.childViews && v.childViews.forEach((v) => v.render()); // Render any child views first
-      appendTo.append(v.render());
+      els.push(v.render());
     }
-  }
-  onGroupClicked(group) {
-    // group.isExpanded = !group.isExpanded;
-    // groupExpansions[group.name] = group.isExpanded;
+    return els;
   }
   renderGroups() {
-    const _this = this;
+    if (!this.root) return; // not rendered yet
 
     const inputData = {
       ports: this._getPorts(),
@@ -159,54 +166,62 @@ export class Ports extends View {
 
     //remember the scrolling so a re-render doesn't reset the scroll position
     let scrollTop = 0;
-    if (this.el[0].parentElement) {
-      scrollTop = this.el[0].parentElement.parentElement.scrollTop;
+    if (this.el.parentElement) {
+      scrollTop = this.el.parentElement.parentElement.scrollTop;
     }
-
-    //this will reset any scrolling that might've occurred
-    //let's set it back later when the the ports have rendered
-    this.el.html('');
 
     const groups = this.getViewGroupsFromPorts();
-    if (groups.length === 1 && groups[0].name === 'Other') {
-      // If only one group then don't render group sections
-      this.renderParams(groups[0].views, this.el);
-    } else {
-      // Render prop groups
-      for (const i in groups) {
-        const g = groups[i];
-        if (groupExpansions.hasOwnProperty(g.name)) {
-          g.isExpanded = groupExpansions[g.name];
-        }
 
-        const groupEl = this.bindView(this.cloneTemplate('group'), g);
-        this.el.append(groupEl);
+    // If only one group then don't render group sections
+    const showHeaders = !(groups.length === 1 && groups[0].name === 'Other');
 
-        this.renderParams(g.views, groupEl.find('.properties'));
+    const groupModels: PropertyGroupModel[] = groups.map((g) => {
+      if (groupExpansions.hasOwnProperty(g.name)) {
+        g.isExpanded = groupExpansions[g.name];
       }
-    }
 
-    //and now the rendering is done. In case any scrolling was done, set the scrolling again
+      return {
+        name: g.name,
+        isExpanded: g.isExpanded,
+        els: this.renderParams(g.views)
+      };
+    });
+
+    this.root.render(React.createElement(PropertyGroups, { groups: groupModels, showHeaders }));
+
+    //and now the rendering is done. In case any scrolling was done, set the scrolling again.
+    //React commits asynchronously, so this has to wait for the rows to be in the DOM.
     if (scrollTop) {
-      this.el[0].parentElement.parentElement.scrollTop = scrollTop;
+      setTimeout(() => {
+        if (this.el.parentElement) {
+          this.el.parentElement.parentElement.scrollTop = scrollTop;
+        }
+      }, 0);
     }
-
-    this.$('input')
-      .on('focus', function () {
-        // Some element in the prop editor has gained focus
-        // move to front
-        _this.el.css({ 'z-index': '1000' });
-      })
-      .on('blur', function () {
-        // Move back when blurred (wait 500ms)
-        setTimeout(function () {
-          _this.el.css({ 'z-index': '' });
-        }, 500);
-      });
   }
   render() {
     this._portsHash = undefined; // Clear cache
-    this.el = this.bindView($(PropertyEditorPortsTemplate), this);
+
+    if (!this.el) {
+      this.el = document.createElement('div');
+
+      // Some element in the prop editor has gained focus — move the ports to
+      // the front so dropdowns are not clipped by the panels below.
+      this.el.addEventListener('focusin', () => {
+        this.el.style.zIndex = '1000';
+      });
+      this.el.addEventListener('focusout', () => {
+        // Move back when blurred (wait 500ms)
+        setTimeout(() => {
+          this.el.style.zIndex = '';
+        }, 500);
+      });
+    }
+
+    if (!this.root) {
+      this.root = createRoot(this.el);
+    }
+
     this.renderGroups();
   }
   setParameterEx(name, newvalue, oldvalue, skipundo) {
@@ -453,6 +468,11 @@ export class Ports extends View {
       if (viewClass !== undefined) {
         v = viewClass.fromPort({ port: p, parent: this });
         if (v !== undefined) {
+          // Rows whose default comes from a text style refresh when it changes.
+          // Done here rather than in each row's render() because the converted
+          // (React) rows do not all chain up to TypeView.render().
+          v.bindStyleDefaultWatch && v.bindStyleDefaultWatch();
+
           this.views.push(v);
           _viewForPort[p.name] = v;
         }

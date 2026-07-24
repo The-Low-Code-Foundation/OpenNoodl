@@ -5,6 +5,8 @@ export type PopoutPosition = 'bottom' | 'top' | 'left' | 'right';
 export default class PopupLayer extends View {
   static instance: PopupLayer;
   dragItem: any;
+  /** Still a legacy jQuery view (PLAT-002 wave 4) */
+  el: JQuery<HTMLElement>;
 
   resize(): void;
   render(): TSFixme;

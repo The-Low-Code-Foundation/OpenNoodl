@@ -13,6 +13,9 @@ import { ToastLayer } from '../ToastLayer/ToastLayer';
 const ComponentPortsTemplate = require('../../templates/componentports.html');
 
 export class ComponentPorts extends View {
+  /** Still a legacy jQuery view (PLAT-002 wave 3) */
+  el: JQuery<HTMLElement>;
+
   parent: TSFixme;
   model: TSFixme;
   type: TSFixme;

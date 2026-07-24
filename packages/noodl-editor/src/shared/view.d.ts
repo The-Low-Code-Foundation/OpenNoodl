@@ -1,5 +1,9 @@
 export default class View {
-  el: JQuery<HTMLElement>;
+  /**
+   * Converted views expose a raw `HTMLElement`, legacy ones a jQuery set.
+   * Narrows back to `HTMLElement` once `view.js` is retired (PLAT-002 wave 5).
+   */
+  el: HTMLElement | JQuery<HTMLElement>;
 
   render(): TSFixme;
 

@@ -36,7 +36,7 @@ class ComponentTemplate {
     return component;
   }
 
-  createPopup(options: any): { el: JQuery<HTMLElement> } {
+  createPopup(options: any): { el: HTMLElement | JQuery<HTMLElement> } {
     const popup = new PopupLayer.StringInputPopup({
       label: 'New component name',
       okLabel: 'Add',

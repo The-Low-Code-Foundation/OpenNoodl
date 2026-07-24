@@ -16,9 +16,6 @@ import { VisualStates } from './components/VisualStates';
 import { Ports } from './DataTypes/Ports';
 import { ModelProxy } from './models/modelProxy';
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const PropertyEditorTemplate = require('../../../templates/propertyeditor/propertyeditor.html');
-
 // Styles
 require('../../../styles/propertyeditor/propertyeditor.css');
 
@@ -29,6 +26,13 @@ export class PropertyEditor extends View {
   allowAsRoot: TSFixme;
   portsView: TSFixme;
   renderPortsViewScheduled: TSFixme;
+  el: HTMLElement;
+  /** The scrolling body — carries the variant edit-mode class. */
+  private bodyEl: HTMLElement;
+  private variantsEl: HTMLElement;
+  private elementStyleEl: HTMLElement;
+  private visualStatesEl: HTMLElement;
+  private groupsEl: HTMLElement;
   variantsRoot: Root | null = null;
   visualStatesRoot: Root | null = null;
   /** React root for the ElementStyleSection (variant + size picker). */
@@ -63,30 +67,28 @@ export class PropertyEditor extends View {
   }
   renderPortsView() {
     this.portsView.render();
-    this.$('.groups').html(this.portsView.el);
+    if (this.portsView.el.parentElement !== this.groupsEl) {
+      this.groupsEl.replaceChildren(this.portsView.el);
+    }
   }
   renderVariantsEditor() {
     if (this.model.type.useVariants) {
       const props = {
         model: this.model,
         onEditVariant: () => {
-          // Hide top panel when editing variant
-          this.$('.property-editor-label-and-buttons').hide();
           this.modelProxy.setEditMode('variant');
           this.scheduleRenderPortsView();
 
-          this.$('.sidebar-property-editor').addClass('variants-sidepanel-edit-mode');
+          this.bodyEl.classList.add('variants-sidepanel-edit-mode');
         },
         onDoneEditingVariant: () => {
-          this.$('.property-editor-label-and-buttons').show();
           this.modelProxy.setEditMode('node');
           this.scheduleRenderPortsView();
-          this.$('.sidebar-property-editor').removeClass('variants-sidepanel-edit-mode');
+          this.bodyEl.classList.remove('variants-sidepanel-edit-mode');
         }
       };
-      const container = this.$('.variants')[0];
       if (!this.variantsRoot) {
-        this.variantsRoot = createRoot(container);
+        this.variantsRoot = createRoot(this.variantsEl);
       }
       this.variantsRoot.render(React.createElement(VariantsEditor, props));
     }
@@ -98,9 +100,8 @@ export class PropertyEditor extends View {
         onVisualStateChanged: this.onVisualStateChanged.bind(this),
         portsView: this.portsView
       };
-      const container = this.$('.visual-states')[0];
       if (!this.visualStatesRoot) {
-        this.visualStatesRoot = createRoot(container);
+        this.visualStatesRoot = createRoot(this.visualStatesEl);
       }
       this.visualStatesRoot.render(React.createElement(VisualStates, props));
     }
@@ -135,11 +136,10 @@ export class PropertyEditor extends View {
       onSizeChange: sizes.length > 0 ? this.onElementSizeChange.bind(this) : undefined
     };
 
-    const container = this.$('.element-style-section')[0];
-    if (!container) return;
+    if (!this.elementStyleEl) return;
 
     if (!this.elementStyleRoot) {
-      this.elementStyleRoot = createRoot(container);
+      this.elementStyleRoot = createRoot(this.elementStyleEl);
     }
     this.elementStyleRoot.render(React.createElement(ElementStyleSectionHost, props));
   }
@@ -198,8 +198,34 @@ export class PropertyEditor extends View {
     this.renderElementStyleSection();
   }
 
+  /** Build the panel shell (legacy `propertyeditor.html`). */
+  private buildShell() {
+    const root = document.createElement('div');
+    root.className = 'sidebar-panel';
+
+    this.bodyEl = document.createElement('div');
+    this.bodyEl.className = 'sidebar-property-editor';
+    root.appendChild(this.bodyEl);
+
+    const section = (className: string) => {
+      const el = document.createElement('div');
+      el.className = className;
+      this.bodyEl.appendChild(el);
+      return el;
+    };
+
+    this.variantsEl = section('variants');
+    this.elementStyleEl = section('element-style-section');
+    this.visualStatesEl = section('visual-states');
+    this.groupsEl = section('groups');
+
+    return root;
+  }
+
   render() {
-    this.el = this.bindView($(PropertyEditorTemplate), this);
+    if (!this.el) {
+      this.el = this.buildShell();
+    }
 
     this.portsView = new Ports({
       model: this.modelProxy
@@ -285,7 +311,7 @@ export class PropertyEditor extends View {
       if (aiButton) {
         setTimeout(() => {
           aiButton.click();
-          $('.monaco-editor .inputarea')[0].focus();
+          document.querySelector<HTMLTextAreaElement>('.monaco-editor .inputarea')?.focus();
         }, 1);
       }
     } else if (node.type.name === 'CloudFunction2') {
