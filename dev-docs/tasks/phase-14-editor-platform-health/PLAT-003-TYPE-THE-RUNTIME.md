@@ -46,7 +46,7 @@ There is a further reason to do this now rather than later, and it is the sequen
 ### In Scope
 - [x] Type the core runtime: `Node`, node definition, register, scope, context/scheduler
 - [x] Publish the node-definition API types (usable from `noodl-types` or an equivalent shared package)
-- [ ] Convert standard-library nodes incrementally *(viewer std-library top level done; `componentutils/`, `data/`, `user/` and `navigation/` remain)*
+- [ ] Convert standard-library nodes incrementally *(viewer std-library top level, `componentutils/` and `user/` done; `data/` and `navigation/` remain)*
 - [x] Type `react-component-node.js` (the React binding hub)
 - [ ] Convert `noodl-viewer-react` visual and logic nodes *(visual done, slice 4; logic in progress, slice 5)*
 - [ ] Write characterisation tests before converting each significant unit
@@ -127,6 +127,47 @@ Do not chase `strict: true` initially. Get accurate types with `strict: false`, 
 ## CHANGELOG
 
 In progress. Full as-built record in [PLAT-003-NOTES.md](./PLAT-003-NOTES.md).
+
+### Slice 6 — 2026-07-24 — `componentutils/` and `user/` (step 7, third group)
+
+- All 5 `std-library/componentutils/*.js` and all 8 `std-library/user/*.js` → `.ts`
+  (~1,900 lines): the Component Object family and the user/session nodes.
+- **Two runtime concepts that had never been named.** `ComponentInstanceLike` — what
+  `nodeScope.componentOwner` actually is — replaces the `{ name, [extra]: unknown }`
+  placeholder slice 2 left. `getInstanceId()` (the key component state is stored under) and
+  `getRoots()` (the first step of the walk up the component tree) were `unknown` and therefore
+  uncallable. `ComponentRootNode` goes with it and encodes *why* the walk is shaped as it is:
+  a visual component is reached from above through `getVisualParentNode()`, a non-visual one
+  through `parentNodeScope`, so both members are optional and the code tests each in turn.
+- **`ModelLike`** publishes `@noodl/runtime/src/model`, the id-keyed observable record behind
+  the Object node, component state and every collection entry — the type the `data/` group
+  will be built on. It documents the three surprising things: `Model.get` *creates* on read,
+  what comes back is a Proxy (hence the honest index signature), and `{ resolve: true }`
+  walks nested Models only, abandoning the path silently otherwise.
+  Also added: `NodeScopeLike.getNodesWithType` and `NodeContextLike.scheduleAfterUpdate`.
+- **§13.4 repeated exactly.** Pointing `componentOwner` at the new type produced nine errors,
+  all in `react-component-node.ts`, all cascade from one failing `extends` — its local
+  `ComponentOwnerLike` was a second description of the same object. One line fixed all nine.
+  Second occurrence of this shape; NOTES §15.2 says to go straight to the `extends` clauses.
+- **`UserService`'s `error` callback always receives a string**, not an error object: every
+  method unwraps the backend's `{ error, code }`, and the two HTML-answering endpoints
+  substitute a message. Typing it honestly cleared seven call-site errors.
+- Two cosmetic findings documented, not fixed: `setparentcomponentobjectproperties` writes an
+  `_internal.parentComponentName` that nothing on that node reads, and three of the deprecated
+  user nodes guard on flags named after the wrong node (copy-paste). See NOTES §15.3.
+- **A `for…in` a mechanical rewrite would have broken**: `parentcomponentobject`'s port loop
+  iterates a value that is `undefined` when no properties are set. `for…in` tolerates that,
+  `for…of` throws. NOTES §15.4 — the `data/` group is full of these.
+
+File counts: `noodl-viewer-react` 83/12/55/35 → **69 `.js` / 12 `.jsx` / 69 `.ts` / 35 `.tsx`**
+— `.ts` equals `.js` in that package for the first time. `noodl-runtime` unchanged at
+73 `.js` / 19 `.ts`.
+
+Gates: `catalog:check` byte-identical (135 node types); `typecheck:viewer` **0 errors** before
+and after; runtime/cloud/editor/preview typechecks clean; runtime jest 225 pass / 20
+pre-existing fail; viewer, deploy, ssr, cloud and preview builds green; **eslint clean on all
+13 files** (28 errors fixed, all unused params/locals — none whose fix could change
+behaviour); prettier clean. Live editor pass still owed.
 
 ### Slice 5 — 2026-07-24 — the standard library's top level (step 7, second group)
 

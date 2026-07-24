@@ -785,3 +785,202 @@ File counts now: `noodl-runtime` **73 `.js` / 19 `.ts`** (unchanged — no runti
    dead (§9.3), `Noodl.runDeployed` never set (§11.3), and the `getInspectInfo` nodes that
    render nothing (§13.3). Each changes observable behaviour, so each wants its own commit.
 6. **Do not raise `strict` yet** (spec step 8), and step 9 stays deferred.
+
+## 15. Slice 6 — `componentutils/` and `user/` (spec step 7, continued)
+
+13 files, ~1,900 lines: the five Component Object nodes and the eight user/session ones. §14
+predicted both groups would be mechanical "because the types their `setup` functions need
+exist." Half true. The `setup` functions needed nothing new. What these files needed was a
+type for the thing `setup` *cannot* reach — the running component instance — and for the
+data record every one of the Component Object nodes is built around.
+
+### 15.1 Two runtime concepts that had never been named
+
+**`ComponentInstanceLike`** — `nodeScope.componentOwner`. Slice 2 typed it as
+`{ name: string; [extra: string]: unknown }`, which was enough for the one thing everything
+else does with it (pass `.name` to `sendWarning`) and useless for anything else. All five
+componentutils files do more: `getInstanceId()` is the key component state is stored under,
+and `getRoots()` is the first step of the walk up the component tree. Both came back as
+`unknown` and were therefore uncallable.
+
+The walk is the interesting part, and the type now says why it is shaped as it is. A
+component instance is reached from *above* in two different ways depending on what kind of
+component it is — a visual one through its roots' `getVisualParentNode()`, a non-visual one
+through `parentNodeScope` — so `ComponentRootNode` declares both members optional and the
+code tests for each in turn. That is not defensive coding; it is the only correct way to
+walk, and it now reads as such.
+
+**`ModelLike`** — `@noodl/runtime/src/model`, the id-keyed observable record behind the
+Object node, component state, and every collection entry. Central enough that the `data/`
+group (slice 7) is largely a study in it, and until now entirely `any`. Three things about
+it are surprising enough that the type documents them rather than just listing methods:
+`Model.get(id)` *creates* the record if absent, so there is no existence check to make; what
+it returns is a **Proxy**, not the bare model, which is why unknown property reads work and
+why an index signature is honest here rather than lazy; and `{ resolve: true }` resolves a
+dotted path through *nested Models only*, abandoning the path silently if it meets anything
+else.
+
+Also added: `NodeScopeLike.getNodesWithType` (how a node asks whether its parent component
+has a Component Object at all) and `NodeContextLike.scheduleAfterUpdate` — mirrored onto
+`RuntimeNodeContext` in `internal.d.ts`, per §13.2.
+
+### 15.2 §13.4 repeated itself exactly
+
+Pointing `NodeScopeLike.componentOwner` at `ComponentInstanceLike` produced **nine errors in
+`react-component-node.ts`** and none anywhere else. The same nine-error shape as slice 5, from
+the same cause: that file's local `ComponentOwnerLike` was a second description of one object,
+so `ReactNodeScope extends NodeScopeLike` stopped holding, and every callback typed
+`this: ReactNodeInstance` stopped being assignable in cascade.
+
+The fix was one line — `ComponentOwnerLike extends ComponentInstanceLike`, keeping only the two
+members it genuinely narrows (`parent` and `parentNodeScope` are React types there). All nine
+cleared at once.
+
+> This is now twice. When a slice publishes a type for something `react-component-node.ts`
+> already described locally, expect a page of unrelated-looking errors and go straight to the
+> `extends` clauses. Do not start at the bottom of the list.
+
+### 15.3 What typing found
+
+**`UserService`'s `error` callback always receives a string.** Every method unwraps the
+backend's `{ error, code }` and forwards `error`; the two endpoints that answer with HTML
+rather than JSON substitute a message of their own. Typing it `unknown` produced seven errors
+at `setError(err: string)` call sites — which is the compiler asking a real question, and the
+answer is that `error(error?: string)` is the truth. The user nodes wire it straight to a
+`string` output port and have always been right to.
+
+**A dead write.** `setparentcomponentobjectproperties`'s `getComponentObjectId` sets
+`this._internal.parentComponentName` as it walks up. Nothing on that node reads it. The Parent
+Component Object node has a field of the same name that its inspector *does* read, and this
+is a copy of that walk which kept the assignment. Harmless; declared as optional with a
+comment rather than removed, since removing it is a behaviour change however inert.
+
+**Two guard flags named after the wrong node.** `verifyemail`'s scheduler guards on
+`this.logOutScheduled`, copy-pasted from the Log Out node. Private per-instance state and
+nothing else uses the name, so it is harmless — but it is the kind of thing that reads as a
+bug in six months, so the declaration says what it is. Same story with `resetpassword` and
+`requestpasswordreset` using each other's warning keys: within each file `setError` and
+`clearWarnings` agree, and warnings are keyed per node id, so nothing collides.
+
+**Dead imports and dead locals.** The four deprecated user nodes each imported
+`{ Node, EdgeTriggeredInput }` and used neither, and each opened its scheduler with a
+`var internal = this._internal` that nothing then read. Dropped.
+
+### 15.4 A `for…in` that a `for…of` would have broken
+
+`parentcomponentobject`'s `updatePorts` did:
+
+```js
+var properties = parameters.properties && parameters.properties.split(',');
+for (var i in properties) { … }
+```
+
+`properties` is `undefined` when the author has typed no property names. `for…in` over
+`undefined` is a no-op; `for…of` **throws**. The conversion uses `for (const p of properties
+|| [])` and says so in a comment. `base.ts` and `componentobject.ts` have the same loop
+already guarded by an `if`, so only this one needed the `|| []`.
+
+> Worth carrying into the `data/` group, which is full of these. `for…in` over a
+> possibly-undefined value is silently fine and a mechanical rewrite to `for…of` is not.
+
+### 15.5 The `require()` boundary, second instance
+
+`userservice` is not in `register-nodes.js`'s array — the user nodes import it directly, and
+they are all converted, so those are ESM-to-ESM. But `src/api/users.js` (the `Noodl.Users`
+public API) also `require`s it and is still `.js`, so it needed the §13.5 unwrap:
+
+```js
+const UserServiceModule = require('../nodes/std-library/user/userservice')
+const UserService = UserServiceModule.default || UserServiceModule
+```
+
+`base.ts` needed no such thing despite being `require`d by name from `.js` at the time —
+`Base.extendSetComponentObjectProperties` is a *named* access, and webpack's namespace object
+carries named exports. Only default exports need the unwrap.
+
+> And a trap of my own making: `prettier --write` on `api/users.js` reformatted all 177 lines,
+> because that file had never been formatted. Reverted and the four-line change reapplied by
+> hand. Do not run prettier over a `.js` file you are only touching one line of.
+
+### 15.6 Verification
+
+| Gate | Result |
+|---|---|
+| `typecheck:viewer` (§13.1 filter) | **0 errors** in `packages/noodl-viewer-react/src/`, before and after |
+| `typecheck:runtime` / `typecheck:cloud` / `typecheck:editor` / `typecheck:preview` | clean |
+| `catalog:check` | **byte-identical**, 135 node types, 89 dynamic |
+| `noodl-runtime` jest | 225 passing / 20 failing — the §4 baseline, unchanged |
+| viewer + deploy + ssr prod bundles | green, 0 errors |
+| cloud viewer bundle, `noodl-preview` esbuild | green |
+| `eslint` on all 13 converted files | **clean** — 0 errors |
+| `prettier --check` | clean on every file this slice touched |
+
+`catalog:check` byte-identical is again the load-bearing evidence: it proves the `.default`
+unwrap resolves for all five componentutils modules and all seven user node modules, that
+`base.ts`'s shared factory still compiles two node types with the same metadata, and that
+Sign Up's schema-driven dynamic ports are unchanged.
+
+`noodl-viewer-react`'s own jest suite fails to collect — `tests/collection.test.js` requires
+`../src/nodes/std-library/data/collection`, which does not exist at HEAD either. Pre-existing
+and unrelated; worth fixing when slice 7 reaches `data/`.
+
+Live editor pass still owed — the same gate no slice has run.
+
+### 15.7 eslint, and a different answer from slice 5
+
+Slice 5 left 17 errors deliberately. This slice left **none**. The difference is what the
+errors were: 28 here, and every one was an unused parameter, an unused local, an empty catch,
+or a `.apply(this, arguments)` forwarder — nothing whose fix could change behaviour.
+
+Two checks before dropping unused parameters wholesale: `defineNode` does not inspect callback
+arity anywhere (grepped), so `set(value) {}` → `set() {}` is inert; and `EventEmitter.on` takes
+exactly two arguments, so `on(eventName, listener)` forwards everything
+`on.apply(this.events, arguments)` ever did. One `no-explicit-any` remains, on
+`RequestOptions.success`, with an inline disable and a reason: its callers both index the
+response as an object and call `indexOf` on it as a string, and no single type covers that
+honestly.
+
+### 15.8 Traps
+
+- **`git stash` is not `git stash list`.** A compound command meant to inspect the stash
+  stashed the entire slice mid-verification. Recovered with `git stash pop`, no loss — but in
+  a tree shared with two other active tasks this could have been expensive. Read-only git
+  inspection only, in its own call.
+- **Bash working directory persists between calls.** A `cd packages/noodl-viewer-react/...`
+  earlier in the session made a later `npx tsc -p packages/noodl-viewer-react` silently find
+  no project — and the output filter matched nothing, so the gate read *clean*. This is §13.1
+  in a second costume: a gate that cannot fail is not a gate. `cd` back, or use absolute paths.
+- **Do not `prettier --write` an unformatted `.js` file** you are editing one line of (§15.5).
+
+## 16. Next slice
+
+File counts now: `noodl-runtime` **73 `.js` / 19 `.ts`** (unchanged again — only
+`internal.d.ts`, edited in place). `noodl-viewer-react` **69 `.js` / 12 `.jsx` / 69 `.ts` /
+35 `.tsx`** (was 83/12/55/35). `.ts` now equals `.js` in that package for the first time.
+
+1. **`nodes/std-library/data/`** — 13 files, ~2,300 lines, the group §14 called hard and still
+   is. What slice 6 built for it: `ModelLike` is the type most of these nodes are about, and
+   §15.4's `for…in` warning applies throughout. Specifics:
+   - `foreach.jsx` (694 lines) is the only `.jsx` here and needs `.tsx`. It is also the file
+     that reaches for `nodeScope.createNode`/`deleteNode`/`getNodeWithId` and
+     `componentOwner._forEachModel` — the last of which is an ad-hoc property, so expect to
+     either publish it or cast at the two sites in `foreachactions.js`.
+   - `collectionnode-clear` **has no file extension at all** (§13.8). Give it `.ts`.
+   - `filtercollectionnode`, `cloudfunction` and `persisthelper` are the other large ones.
+   - `signup.ts`'s local `SystemCollection` interface describes the `systemCollections`
+     project metadata; `cloudfunction`/`collectionnode2` read the same metadata, so promote it
+     to `@noodl/types` when the second consumer appears.
+2. **`nodes/navigation/`** (15 files, ~2,900 lines) — unchanged from §14. `navigation-stack.jsx`
+   (771) and `navigate.js` (331) dominate.
+3. **Live editor pass** — still owed, still the one gate no slice has run.
+4. **Make `@noodl/runtime` ship declarations** (carried from §12/§14). `ModelLike` reduced the
+   pressure again — `model.js` was the largest untyped runtime module viewer nodes touch — but
+   `variablebase`, `javascriptnodeparser` and `api/cloudstore` still arrive as implicit `any`.
+5. **Decide on the accumulated findings.** Now six: `def.deprecated` dropped and `def.frame`
+   dead (§9.3), `Noodl.runDeployed` never set (§11.3), the `getInspectInfo` nodes that render
+   nothing (§13.3), and from this slice the dead `parentComponentName` write and the
+   misnamed guard flags (§15.3). The last two are cosmetic; the first four are not. Each
+   changes observable behaviour, so each wants its own commit.
+6. **Fix `noodl-viewer-react`'s jest suite** while in `data/` — its one spec requires a module
+   that does not exist (§15.6).
+7. **Do not raise `strict` yet** (spec step 8), and step 9 stays deferred.
