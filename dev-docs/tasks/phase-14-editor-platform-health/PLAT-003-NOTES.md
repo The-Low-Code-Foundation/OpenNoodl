@@ -1,8 +1,8 @@
 # PLAT-003 NOTES — Type the Runtime and Viewer
 
-Status: slice 1 (toolchain restoration) landed 2026-07-24. This records the as-built state of
-Implementation Step 2's prerequisite — the characterisation safety net — which turned out not to
-exist in runnable form.
+Status: slices 1 and 2 landed 2026-07-24. Slice 1 restored the test toolchain (§1–§4). Slice 2
+published the node-definition API and typed the runtime core — spec steps 1, 3 and 4 (§5–§7).
+Resume from **§7**.
 
 Run in parallel with PLAT-002 (jQuery retirement). Boundary: PLAT-002 owns `packages/noodl-editor`
 entirely; PLAT-003 stays in `packages/noodl-runtime`, `packages/noodl-viewer-react`, and
@@ -86,7 +86,160 @@ suites did not load. Nothing regressed.
 tests in the expression engine is a real signal, and the expression subsystem is on SUB-004's and
 the AI-authoring path. It is not, however, a typing problem.
 
-## 5. Next slice
+## 5. Slice 2 — the published API and the core conversion
+
+Spec steps 1, 3 and 4. Two commits: one strictly type-only, one removing debug output.
+
+### 5.1 The port/type model is shared by import, not by agreement
+
+Step 1 of the spec says to *agree* the port/type model with SUB-004 before writing types. Agreement
+between two hand-maintained files is exactly the thing that drifts, so instead
+`packages/noodl-types/src/runtime/node-definition.d.ts` **imports** `PortType`, `PortTypeName`,
+`NumberedInputSpec` and `NodeCategory` from the generated `node-catalog.d.ts` and re-exports them.
+The catalog describes nodes *as observed* after the runtime compiled them; the new file describes
+the same nodes *as authored*. They are two views of one model, and the vocabulary now has one home.
+
+The file also carries the mapping table between the two views, so the correspondence is documented
+rather than folklore.
+
+### 5.2 Dynamic ports: what is data and what is behaviour
+
+The catalog names five `DynamicPortMechanism` values. Each is now mapped to the concrete thing an
+author writes:
+
+| Mechanism | Authored as | Expressible as data? |
+|---|---|---|
+| `declared-port-groups` | `dynamicports: [{ condition, inputs, outputs }]` | **Yes** — the ports are static, only their visibility is conditional |
+| `numbered-inputs` | `numberedInputs: { value: { createSetter } }` | No — the set is unbounded by construction |
+| `component-ports` | `haveComponentPorts: true` | No — comes from the project's components |
+| `runtime-discovered` | overriding `registerInputIfNeeded` / `sendDynamicPorts` | No — depends on user code or user text |
+| `editor-adapter` | nothing in the runtime | No — lives in the editor |
+
+Only the first is data. The rest are behaviour, so the honest type for a dynamic node's port set is
+"the declared ports, **plus more**" — never a closed record. Consumers that need the closed set must
+read the catalog, which records which mechanism applies. This is written into the file's header so
+the next person does not have to rediscover it.
+
+### 5.3 What was converted
+
+Twelve files, roughly 2,500 lines: `node`, `nodedefinition`, `nodescope`, `nodecontext`,
+`noderegister`, `outputproperty`, `eventsender`, `edgetriggeredinput`, `variants`, `guid`, `utils`,
+`async-pool`.
+
+Three decisions worth keeping:
+
+**`Node` stays a constructor function.** `nodedefinition` builds every node type with
+`Node.call(this, context, id)` and `Object.create(Node.prototype, extensions)`, and neither works
+against an ES class. It is typed as a callable-and-newable interface
+(`const Node = function Node(this: RuntimeNode, …) {} as unknown as NodeConstructor`), which emits
+byte-for-byte the same JavaScript while still typechecking every `Node.prototype.x = …` assignment
+against the declared shape. The same pattern is used for `NodeScope`, `NodeContext`, `NodeRegister`,
+`EventSender` and `OutputProperty`.
+
+**Internals are not published.** `packages/noodl-runtime/src/internal.d.ts` holds `RuntimeNode`,
+`RuntimeOutputProperty`, `RuntimeNodeContext` and `RuntimeEditorConnection` — the underscore-prefixed
+machinery the core files use to talk to each other. Putting these in `@noodl/types` would invite node
+authors to depend on things that exist in order to be changed. `@noodl/types` publishes only what a
+node author may write and call.
+
+**Three no-op source edits.** `nodescope` had two `var` declarations shadowing each other in
+different branches of one function (`nodes`, `children`) and two zero-parameter closures called with
+a stray argument. TypeScript rejects both; both were resolved by renaming/dropping, with no
+behavioural effect. Nothing else in the twelve files changed shape.
+
+### 5.4 The conversion pipeline (this is the part that bites)
+
+The prediction in slice 1's §"Conversion pipeline is de-risked" — that webpack's `.ts` resolution
+would make renaming safe — was **half right**. Resolution works; compilation does not.
+
+The runtime is CommonJS: its modules `require()` each other and so do its consumers. A converted
+file therefore exports with `export =`, which TypeScript permits **only** under `module: commonjs`.
+Both viewers compile at `module: es6`/`es2020`, so the first conversion failed the viewer build with
+`TS1203: Export assignment cannot be used when targeting ECMAScript modules`.
+
+The fix, in order of what each piece solves:
+
+| Piece | Why |
+|---|---|
+| `packages/noodl-runtime/webpack-ts-rule.js` | Exports a webpack rule giving the runtime's `.ts` files their **own ts-loader instance** with its own config. Lives in the runtime because both viewers need it. |
+| `packages/noodl-runtime/tsconfig.build.json` | ts-loader does **not** override `noEmit`, so the typecheck config cannot be reused — "TypeScript emitted no output for …". This variant sets `noEmit: false` and excludes tests. |
+| `include: runtimePath` on the new rule | The runtime resolves through a `node_modules/@noodl/runtime` symlink, but webpack resolves symlinks to their real path, so a `node_modules` pattern never fires. Match the real package directory. |
+| `exclude: [/node_modules/, runtimePath]` on each viewer's own `.tsx?` rule | Two ts-loader instances fighting over the same file is a silent, confusing failure. |
+| `noodl-viewer-cloud/tsconfig.json` → `module: CommonJS` | Unlike `noodl-viewer-react` (which reaches the runtime from `.js` files that root `tsc` does not follow), the cloud runner `import`s runtime sources directly from `.ts`. It targets Node and its webpack bundles are CJS anyway, so this costs nothing. |
+| Root `tsconfig.json` drops `noodl-viewer-cloud/src`; new `typecheck:cloud` script | The root config is ESM-oriented for the editor; the cloud package now needs CommonJS. Root `tsc --noEmit` is back to its prior 14 errors, all pre-existing and unrelated. |
+
+**Consequence for anyone with a dev server running:** `webpack.common.js` changed, and webpack does
+not reload its own config. A dev server started before slice 2 will fail to compile the runtime's
+`.ts` files until it is restarted.
+
+### 5.5 Verification
+
+| Gate | Result |
+|---|---|
+| `noodl-runtime` jest | **225 passing** (was 215) / 20 failing — the same 20 from §4 |
+| `typecheck:runtime` | clean |
+| `typecheck:cloud` | clean |
+| root `typecheck` | 14 errors, all pre-existing (`@noodl-versioning` alias, unrelated work in flight) |
+| viewer + deploy + ssr bundles | green |
+| cloud viewer + isolate bundles | green |
+| `noodl-preview` esbuild + its 14 tests | green |
+| `catalog:check` | **byte-identical**, 135 node types |
+
+`catalog:check` is the strongest of these: it loads the whole runtime headlessly, registers every
+shipped node type through the converted `defineNode`/`NodeRegister`/`Node`, and regenerates the
+committed catalog. Byte-identical output means the metadata every node produces is unchanged.
+
+The editor itself was **not** smoke-tested — a concurrent PLAT-002 session owned the dev server. The
+bundles all build and the catalog is identical, but a live editor pass is still owed.
+
+### 5.6 New tests
+
+`packages/noodl-runtime/test/node-definition-api.test.ts` (10 tests) authors two nodes using **only**
+the published types — one with a signal input, one with numbered inputs — and runs them. It serves
+two purposes at once: it stops compiling if the published types drift from what `defineNode` accepts
+(spec step 4's "validate them by retro-fitting existing nodes"), and it characterises behaviours the
+rest of PLAT-003 must preserve — rising-edge-only signals, per-instance edge state, defaults applied
+before `initialize`, on-demand numbered-input registration, and `extend`'s initialize chaining.
+
+## 6. Side catch: 16 leftover debug `console.log`s
+
+Committed separately so the typing commit stays type-only. Three were on the hottest path in the
+engine: `edgetriggeredinput` logged three times per signal (setter created, value set, rising edge)
+for **every signal input in every project, every frame**, and `node.setInputValue` ran a
+`this.name === 'net.noodl.HTTP'` string comparison on every input set of every node just to decide
+whether to print. The rest were `🚀 INITIALIZE called` / `⚡ SIGNAL RECEIVED` prints in the HTTP node
+and the four BYOB record nodes.
+
+## 7. Next slice
+
+File counts now: `noodl-runtime` **73 `.js` / 19 `.ts`** (was 85/6 at slice 1; the core is done and
+the standard library is the long tail). `noodl-viewer-react` untouched at 107 `.js` / 31 `.ts` /
+35 `.tsx`.
+
+1. **Live editor pass** — the one gate slice 2 could not run. Open a real project, exercise signals,
+   dynamic-port nodes (Function, Expression, numbered inputs) and variants.
+2. **`react-component-node.js`** (spec step 6), the React binding hub and the most intricate single
+   file in `noodl-viewer-react`. It is the natural next core-outward step and the one that unblocks
+   the viewer node conversions.
+3. **Standard library, file by file** (spec step 5). Now mechanical: the core types exist, and the
+   pipeline is proven. Treat as an opportunistic long tail — the value was front-loaded.
+4. **Do not raise `strict` yet** (spec step 8). Shapes first.
+5. **Step 9 (editor-side `TSFixme` sweep) stays deferred** until PLAT-002 lands.
+
+### Traps for the next session
+
+- Renaming a runtime file `.js` → `.ts` is safe for jest and both viewers **only** because of the
+  dedicated ts-loader instance in §5.4. If a new bundler starts consuming the runtime, it needs the
+  same treatment.
+- A `.ts` file in the runtime must use `export =` / `import x = require(…)`. ESM syntax compiles,
+  but consumers `require()` these modules and would get a namespace object instead of the value.
+- Anything importing runtime sources from a `module: es*` package will fail to typecheck. Either give
+  that package `module: commonjs` or keep it out of the ESM program (see the cloud viewer).
+- `packages/noodl-viewer-react/tests/collection.test.js` fails to resolve
+  `../src/nodes/std-library/data/collection` — that node moved to the runtime and the test path is
+  stale. Pre-existing, same class of dead test slice 1 found; not fixed here.
+
+## 8. Slice 1's plan for slice 2 (superseded, kept for the record)
 
 1. Design the core types against SUB-004's catalog representation in `packages/noodl-types`
    (`node-catalog.d.ts`, `node-catalog-enriched.d.ts`) so the two do not drift — this is Step 1 of
