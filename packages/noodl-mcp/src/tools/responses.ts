@@ -12,7 +12,7 @@
  * than silently at the consumer.
  */
 
-import type { CatalogExample, ExampleRow, NodeTypeDetail, NodeTypeLookupMiss, NodeTypeRow } from '../catalog';
+import type { CatalogExample, ExampleRow, NodeTypeDetail, NodeTypeLookupMiss, NodeTypeRow, NodeTypeSummary } from '../catalog';
 import type { ComponentDescription } from '../describe';
 import type { ComponentV2File, ConnectionV2, Diagnostic, NodeV2, RegistryV2File, ValidationReport } from '../editor-deps';
 import type { ToolError } from '../errors';
@@ -108,7 +108,11 @@ export interface ListNodeTypesResponse {
 }
 
 export interface GetNodeTypeResponse {
-  types: Array<NodeTypeDetail | NodeTypeLookupMiss>;
+  types: Array<NodeTypeDetail | NodeTypeSummary | NodeTypeLookupMiss>;
+  /** Types degraded to summaries because the full response would blow the
+   * host's tool-result cap (DEBT-009). Re-request these individually. */
+  summarized?: string[];
+  hint?: string;
 }
 
 export interface ListExamplesResponse {

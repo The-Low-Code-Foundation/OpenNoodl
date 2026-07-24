@@ -205,6 +205,44 @@ function portDetail(p: CatalogPort, enrichmentPorts?: Record<string, string>): P
   return d;
 }
 
+/**
+ * Compact per-type shape for breadth-first exploration (DEBT-009): ports as
+ * one-line strings instead of objects, prose fields capped. A full
+ * `get_node_type` response for 7 enriched types ran ~126 KB and blew MCP
+ * hosts' tool-result caps; this stays orders of magnitude under them.
+ */
+export interface NodeTypeSummary {
+  typeName: string;
+  displayName: string;
+  category?: string;
+  isVisual: boolean;
+  deprecated?: boolean;
+  summary?: string;
+  /** `"in name: type"` / `"out name: type (signal)"` one-liners. */
+  ports: string[];
+  hasDynamicPorts?: boolean;
+  exampleIds: string[];
+}
+
+export function getNodeTypeSummary(typeName: string): NodeTypeSummary | NodeTypeLookupMiss {
+  const full = getNodeTypeDetail(typeName);
+  if ('error' in full) return full;
+  const portLine = (p: PortDetail, dir: 'in' | 'out') =>
+    `${dir} ${p.name}: ${String(p.type)}${p.isSignal ? ' (signal)' : ''}`;
+  const s: NodeTypeSummary = {
+    typeName: full.typeName,
+    displayName: full.displayName,
+    isVisual: full.isVisual,
+    ports: [...full.inputs.map((p) => portLine(p, 'in')), ...full.outputs.map((p) => portLine(p, 'out'))],
+    exampleIds: full.exampleIds
+  };
+  if (full.category) s.category = full.category;
+  if (full.deprecated) s.deprecated = true;
+  if (full.summary) s.summary = full.summary;
+  if (full.dynamicPorts) s.hasDynamicPorts = true;
+  return s;
+}
+
 export function getNodeTypeDetail(typeName: string): NodeTypeDetail | NodeTypeLookupMiss {
   const n = byType().get(typeName);
   if (!n) {

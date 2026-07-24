@@ -4,7 +4,7 @@
  */
 import * as fs from 'fs';
 
-import type { NodeTypeDetail, NodeTypeLookupMiss } from '../src/catalog';
+import type { NodeTypeDetail, NodeTypeLookupMiss, NodeTypeSummary } from '../src/catalog';
 import type { ComponentV2File, ConnectionsV2File, NodesV2File, RegistryV2File } from '../src/editor-deps';
 import type {
   CreateComponentResponse,
@@ -31,11 +31,13 @@ import { call, connect, copyFixture, exists, readJson, TestSession } from './hel
  * miss. The specs know which they asked for; these say so, and report the other
  * case as a readable failure instead of a property read on the wrong branch.
  */
-type NodeTypeResult = NodeTypeDetail | NodeTypeLookupMiss;
+type NodeTypeResult = NodeTypeDetail | NodeTypeSummary | NodeTypeLookupMiss;
 const isMiss = (t: NodeTypeResult): t is NodeTypeLookupMiss => 'error' in t;
+const isSummary = (t: NodeTypeResult): t is NodeTypeSummary => !isMiss(t) && 'ports' in t;
 
 function asDetail(t: NodeTypeResult): NodeTypeDetail {
   if (isMiss(t)) throw new Error(`Expected a node type entry, got a miss: ${t.error}`);
+  if (isSummary(t)) throw new Error(`Expected full detail, got a summary for ${t.typeName}`);
   return t;
 }
 
@@ -141,6 +143,47 @@ describe('noodl-mcp tools (end to end)', () => {
     expect(button.outputs.map((p) => p.name)).toContain('onClick');
     expect(miss.error).toContain('Unknown');
     expect(miss.suggestion).toBe('Group');
+  });
+
+  it('get_node_type stays in-band for heavy multi-type requests (DEBT-009)', async () => {
+    // The SUB-010 demo's failure mode: several enriched types in one call blew
+    // the MCP host's tool-result cap (~126 KB observed), and the host's
+    // "saved to file" overflow hint is useless to a filesystem-less agent.
+    const heavy = [
+      'Group',
+      'Text',
+      'Image',
+      'Page Stack',
+      'For Each',
+      'net.noodl.controls.button',
+      'net.noodl.controls.textinput',
+      'net.noodl.controls.options'
+    ];
+
+    // Summary mode: compact shape, always small.
+    const summary = await call<GetNodeTypeResponse>(session, 'get_node_type', {
+      type_names: heavy,
+      detail: 'summary'
+    });
+    expect(summary.data.types).toHaveLength(heavy.length);
+    for (const t of summary.data.types) {
+      if (isMiss(t)) throw new Error(`Unexpected miss: ${t.error}`);
+      expect(isSummary(t)).toBe(true);
+    }
+    expect(JSON.stringify(summary.data).length).toBeLessThan(30_000);
+
+    // Full mode: the byte budget degrades the tail to summaries in-band
+    // rather than letting the response blow the cap.
+    const full = await call<GetNodeTypeResponse>(session, 'get_node_type', { type_names: heavy });
+    expect(full.data.types).toHaveLength(heavy.length);
+    expect(JSON.stringify(full.data).length).toBeLessThan(90_000);
+    if (full.data.summarized && full.data.summarized.length > 0) {
+      expect(full.data.hint).toContain('individually');
+      for (const name of full.data.summarized) {
+        const entry = full.data.types.find((t) => !isMiss(t) && t.typeName === name);
+        expect(entry && isSummary(entry)).toBe(true);
+      }
+    }
   });
 
   it('examples are browsable and fetchable', async () => {

@@ -7,7 +7,7 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 
-import { getExample, getNodeTypeDetail, listCategories, listExamples, listNodeTypes } from '../catalog';
+import { getExample, getNodeTypeDetail, getNodeTypeSummary, listCategories, listExamples, listNodeTypes } from '../catalog';
 import { ToolError } from '../errors';
 import type { GetNodeTypeResponse, ListExamplesResponse, ListNodeTypesResponse } from './responses';
 import { guarded, jsonResult } from './util';
@@ -51,17 +51,52 @@ export function registerCatalogTools(server: McpServer): void {
         MAX_TYPES_PER_CALL +
         ' named node types: every input/output port with type, signal flag and authored semantics, when to use ' +
         'the node, runtime behavior, related nodes, and ids of validated examples (fetch via get_example). ' +
-        'Unknown names return a nearest-match suggestion.',
+        'Unknown names return a nearest-match suggestion. Pass detail: "summary" for a compact per-type shape ' +
+        'when surveying several types; oversized full responses degrade the tail to summaries in-band ' +
+        '(see `summarized` in the response) — re-request those types individually for full detail.',
       inputSchema: {
         type_names: z
           .array(z.string())
           .min(1)
           .max(MAX_TYPES_PER_CALL)
-          .describe('Exact catalog typeNames, e.g. ["Group", "net.noodl.controls.button"]')
+          .describe('Exact catalog typeNames, e.g. ["Group", "net.noodl.controls.button"]'),
+        detail: z
+          .enum(['summary', 'full'])
+          .optional()
+          .describe('summary = compact ports + one-line prose (default full)')
       }
     },
-    guarded((args: { type_names: string[] }) => {
-      const payload: GetNodeTypeResponse = { types: args.type_names.map(getNodeTypeDetail) };
+    guarded((args: { type_names: string[]; detail?: 'summary' | 'full' }) => {
+      if (args.detail === 'summary') {
+        const payload: GetNodeTypeResponse = { types: args.type_names.map(getNodeTypeSummary) };
+        return jsonResult(payload);
+      }
+
+      // Full detail, with a byte budget (DEBT-009): seven enriched types once
+      // produced a ~126 KB response that blew the MCP host's tool-result cap,
+      // and the host's "saved to file" overflow hint is useless to a
+      // filesystem-less agent. Degrade the tail to summaries in-band instead —
+      // the agent re-requests those types individually.
+      const BYTE_BUDGET = 60_000;
+      let spent = 0;
+      const types: GetNodeTypeResponse['types'] = [];
+      const summarized: string[] = [];
+      for (const name of args.type_names) {
+        const full = getNodeTypeDetail(name);
+        const size = JSON.stringify(full).length;
+        if (spent + size > BYTE_BUDGET && types.length > 0) {
+          summarized.push(name);
+          types.push(getNodeTypeSummary(name));
+        } else {
+          spent += size;
+          types.push(full);
+        }
+      }
+      const payload: GetNodeTypeResponse = { types };
+      if (summarized.length > 0) {
+        payload.summarized = summarized;
+        payload.hint = 'Response would exceed the tool-result size cap; the listed types were returned as summaries. Request them individually for full detail.';
+      }
       return jsonResult(payload);
     })
   );

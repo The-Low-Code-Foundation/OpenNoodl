@@ -189,3 +189,26 @@ reference forms subscribe correctly, runtime errors surface as node warnings
 (`expression-error-<port>`), and compile failures warn with the syntax error. Policy the loop
 can assume: `Objects.X` auto-creates (never undefined); a null/undefined expression result
 yields the port's fallback.
+
+## Note from DEBT-009 (2026-07-25) — onboarding papercuts closed (3 of 4)
+
+- `get_node_type` can no longer blow the host's tool-result cap: a
+  `detail: "summary"` mode exists for breadth, and full responses enforce a
+  ~60 KB in-band budget — the tail degrades to summaries with a `summarized`
+  list + hint instead of the host's useless "saved to file" pointer.
+- A v2 hand-off with `formatV2.enabled` off now fails **loudly**: opening a
+  directory with `nodegx.project.json` while the flag is off produces a toast +
+  console error naming the setting, instead of the silent blank failure SUB-010
+  hit. The default-flip itself still needs human sign-off (and SUB-001's
+  large-project checks, still open in DEBT-002).
+- Preview/deploy token parity: already unified by REV-009 — both paths generate
+  `:root` from the same `buildEffectiveTokens`, and the `noodl-design-tokens`
+  stamp is confirmed present in real exports. Bounded residual: the preview
+  injector reads the *live* StyleTokensModel (unsaved token edits included),
+  deploy reads persisted metadata — they diverge only while token edits are
+  unsaved, which is expected editor semantics.
+- **Still open:** first-editor-save normalization noise (zero-diff round trip).
+  Recommended path stands: make the MCP/export emit the editor-normalized shape
+  and add an export → headless open/save → empty-diff CI check. Deliberately
+  not rushed in at the tail of the debt pass — it is fidelity-critical and sits
+  on surfaces this task is actively changing.
