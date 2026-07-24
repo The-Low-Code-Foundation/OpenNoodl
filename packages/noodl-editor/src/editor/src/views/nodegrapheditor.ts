@@ -1,9 +1,7 @@
 import { clipboard, ipcRenderer } from 'electron';
 import _ from 'underscore';
 import React from 'react';
-import { createRoot, Root } from 'react-dom/client';
 
-import { NodeGraphColors } from '@noodl-constants/NodeGraphColors';
 import { AiAssistantEvent, AiAssistantModel } from '@noodl-models/AiAssistant/AiAssistantModel';
 import { BasicNodeType } from '@noodl-models/nodelibrary/BasicNodeType';
 import { RuntimeType } from '@noodl-models/nodelibrary/NodeLibraryData';
@@ -40,7 +38,7 @@ import { HighlightManager } from '../services/HighlightManager';
 // Initialize Blockly globals early (must run before runtime nodes load)
 import { initBlocklyEditorGlobals } from '../utils/BlocklyEditorGlobals';
 import DebugInspector from '../utils/debuginspector';
-import { rectanglesOverlap, guid } from '../utils/utils';
+import { guid } from '../utils/utils';
 import { ViewerConnection } from '../ViewerConnection';
 import { ExecutionOverlay } from './CanvasOverlays/ExecutionOverlay';
 import { HighlightOverlay } from './CanvasOverlays/HighlightOverlay';
@@ -54,7 +52,21 @@ import { CreateNewNodePanel } from './createnewnodepanel';
 import { TitleBar } from './documents/EditorDocument/titlebar';
 import { NodeGraphComponentTrail } from './NodeGraphComponentTrail';
 import Inspectors from './nodegrapheditor.debuginspectors';
-import { canAcceptDrop, onDrop } from './nodegrapheditor.drag';
+import { CanvasIcons } from './nodegrapheditor/canvas/CanvasIcons';
+import { CanvasRenderer } from './nodegrapheditor/canvas/CanvasRenderer';
+import { CanvasViewport } from './nodegrapheditor/canvas/CanvasViewport';
+import * as HitTester from './nodegrapheditor/canvas/HitTester';
+import { InteractionController } from './nodegrapheditor/canvas/InteractionController';
+import {
+  AABB,
+  CenterToFitMode,
+  IVector2,
+  MouseEventType,
+  PanAndScale,
+  Rect,
+  SnapSpacing
+} from './nodegrapheditor/canvas/types';
+import { OverlayHandle, OverlayHost } from './nodegrapheditor/canvas/OverlayHost';
 import MouseWheelModeDetector from './nodegrapheditor/MouseWheelModeDetector';
 import { NavigationHistory } from './nodegrapheditor/NavigationHistory';
 import { NodeGraphEditorConnection } from './nodegrapheditor/NodeGraphEditorConnection';
@@ -71,37 +83,15 @@ const NodeGraphEditorTemplate = require('../templates/nodegrapheditor.html');
 // Styles
 require('../styles/nodegrapheditor.css');
 
-type MouseEventType = 'down' | 'up' | 'move' | 'over' | 'out';
+export { CenterToFitMode };
+export type { IVector2 };
+
 type MousePosition = {
   x: number;
   y: number;
   pageX: number;
   pageY: number;
 };
-export type IVector2 = {
-  x: number;
-  y: number;
-};
-
-type PanAndScale = {
-  scale: number;
-  x: number;
-  y: number;
-};
-
-type AABB = {
-  minX: number;
-  minY: number;
-  maxX: number;
-  maxY: number;
-};
-
-export enum CenterToFitMode {
-  RootNodes,
-  AllNodes
-}
-
-const SnapSpacing = 8;
 
 type NodeGraphMouseEvent = JQuery.Event & { consumed?: boolean; spaceKey?: boolean };
 
@@ -168,8 +158,15 @@ export class NodeGraphEditor extends View {
 
   selector = new Selector();
 
-  mouseEventsEnabled: boolean;
-  graphAABB: { minX: number; maxX: number; minY: number; maxY: number };
+  /** Pan/zoom state and coordinate math (PLAT-001 extraction). */
+  viewport = new CanvasViewport();
+
+  /** Per-frame canvas painting (PLAT-001 extraction). */
+  renderer = new CanvasRenderer();
+
+  /** Input state machines: drag, connection drag, multiselect, pan (PLAT-001 extraction). */
+  interaction = new InteractionController(this);
+
   commentLayer: CommentLayer;
   _disposed: boolean;
   highlighted: NodeGraphEditorNode;
@@ -177,75 +174,213 @@ export class NodeGraphEditor extends View {
   domElementContainer: HTMLDivElement;
   currentLayout: TSFixme;
   clipboard: TSFixme;
-  latestMousePos: IVector2;
   topLeftCanvasPos: number[];
   mouseWheelDetector: TSFixme;
-  spaceKeyDown: boolean;
   curtop = 0;
   inspectorsModel: DebugInspector.InspectorsModel;
   clearDeleteModeTimer: NodeJS.Timeout;
   lastBlocklyTabCloseTime: number = 0; // Track when Blockly tabs close to prevent accidental deletions
 
-  draggingNodes: NodeGraphEditorNode[] | null = null;
-
-  lastDraggingMousePos: {
-    x: number;
-    y: number;
-  } = { x: 0, y: 0 };
-
-  startDraggingMousePos: {
-    x: number;
-    y: number;
-  } = { x: 0, y: 0 };
-
-  dragNodesUndoGroup: UndoActionGroup;
-  draggingConnection: {
-    fromNode: TSFixme;
-    toNode?: TSFixme;
-    mouseTarget?: TSFixme;
-    pos?: TSFixme;
-    popupOpen?: TSFixme;
-  };
   deleteModeConnection: TSFixme;
   componentName: TSFixme;
   componentFolder: string;
-  leftButtonIsDoubleClicked: boolean;
   highlightedConnection: TSFixme;
-  lastMultiselected: TSFixme;
-  insertLocation: TSFixme;
-  multiselectMouseDown: { x: number; y: number };
-  multiselectMouseMove: { x: number; y: number };
-  lastLeftButtonPressedTime: TSFixme;
-  panMouseDown: { x: number; y: number };
-  originMouseDown: TSFixme;
-  rightClickPos: TSFixme;
   createNewNodePanel: CreateNewNodePanel;
+
+  // Interaction state lives on the controller; these accessors preserve the
+  // pre-decomposition public surface (comment layer, drag helpers, tests).
+  get mouseEventsEnabled() {
+    return this.interaction.mouseEventsEnabled;
+  }
+
+  set mouseEventsEnabled(enabled: boolean) {
+    this.interaction.mouseEventsEnabled = enabled;
+  }
+
+  get latestMousePos(): IVector2 {
+    return this.interaction.latestMousePos;
+  }
+
+  set latestMousePos(pos: IVector2) {
+    this.interaction.latestMousePos = pos;
+  }
+
+  get spaceKeyDown(): boolean {
+    return this.interaction.spaceKeyDown;
+  }
+
+  set spaceKeyDown(pressed: boolean) {
+    this.interaction.spaceKeyDown = pressed;
+  }
+
+  get draggingNodes(): NodeGraphEditorNode[] | null {
+    return this.interaction.draggingNodes;
+  }
+
+  set draggingNodes(nodes: NodeGraphEditorNode[] | null) {
+    this.interaction.draggingNodes = nodes;
+  }
+
+  get lastDraggingMousePos(): IVector2 {
+    return this.interaction.lastDraggingMousePos;
+  }
+
+  set lastDraggingMousePos(pos: IVector2) {
+    this.interaction.lastDraggingMousePos = pos;
+  }
+
+  get startDraggingMousePos(): IVector2 {
+    return this.interaction.startDraggingMousePos;
+  }
+
+  set startDraggingMousePos(pos: IVector2) {
+    this.interaction.startDraggingMousePos = pos;
+  }
+
+  get dragNodesUndoGroup(): UndoActionGroup {
+    return this.interaction.dragNodesUndoGroup;
+  }
+
+  set dragNodesUndoGroup(group: UndoActionGroup) {
+    this.interaction.dragNodesUndoGroup = group;
+  }
+
+  get draggingConnection() {
+    return this.interaction.draggingConnection;
+  }
+
+  set draggingConnection(connection) {
+    this.interaction.draggingConnection = connection;
+  }
+
+  get leftButtonIsDoubleClicked(): boolean {
+    return this.interaction.leftButtonIsDoubleClicked;
+  }
+
+  set leftButtonIsDoubleClicked(doubleClicked: boolean) {
+    this.interaction.leftButtonIsDoubleClicked = doubleClicked;
+  }
+
+  get lastMultiselected(): TSFixme {
+    return this.interaction.lastMultiselected;
+  }
+
+  set lastMultiselected(nodes: TSFixme) {
+    this.interaction.lastMultiselected = nodes;
+  }
+
+  get insertLocation(): TSFixme {
+    return this.interaction.insertLocation;
+  }
+
+  set insertLocation(location: TSFixme) {
+    this.interaction.insertLocation = location;
+  }
+
+  get multiselectMouseDown(): IVector2 {
+    return this.interaction.multiselectMouseDown;
+  }
+
+  set multiselectMouseDown(pos: IVector2) {
+    this.interaction.multiselectMouseDown = pos;
+  }
+
+  get multiselectMouseMove(): IVector2 {
+    return this.interaction.multiselectMouseMove;
+  }
+
+  set multiselectMouseMove(pos: IVector2) {
+    this.interaction.multiselectMouseMove = pos;
+  }
+
+  get lastLeftButtonPressedTime(): TSFixme {
+    return this.interaction.lastLeftButtonPressedTime;
+  }
+
+  set lastLeftButtonPressedTime(time: TSFixme) {
+    this.interaction.lastLeftButtonPressedTime = time;
+  }
+
+  get panMouseDown(): IVector2 {
+    return this.interaction.panMouseDown;
+  }
+
+  set panMouseDown(pos: IVector2) {
+    this.interaction.panMouseDown = pos;
+  }
+
+  get originMouseDown(): TSFixme {
+    return this.interaction.originMouseDown;
+  }
+
+  set originMouseDown(value: TSFixme) {
+    this.interaction.originMouseDown = value;
+  }
+
+  get rightClickPos(): TSFixme {
+    return this.interaction.rightClickPos;
+  }
+
+  set rightClickPos(pos: TSFixme) {
+    this.interaction.rightClickPos = pos;
+  }
   relayoutNeeded: boolean;
   layoutAndPaintScheduled: boolean;
   activeComponent: ComponentModel;
-  panAndScale: PanAndScale;
   showInspectorTimeout: NodeJS.Timeout;
+
+  // Pan/zoom state lives on the viewport; these accessors preserve the
+  // pre-decomposition public surface (tests and consumers read/assign both).
+  get panAndScale(): PanAndScale | undefined {
+    return this.viewport.panAndScale;
+  }
+
+  set panAndScale(panAndScale: PanAndScale | undefined) {
+    this.viewport.panAndScale = panAndScale;
+  }
+
+  get graphAABB(): AABB {
+    return this.viewport.graphAABB;
+  }
+
+  set graphAABB(aabb: AABB) {
+    this.viewport.graphAABB = aabb;
+  }
 
   public runtimeType: RuntimeType = undefined;
   keyboardCommands: KeyboardCommand[];
 
-  homeIcon: HTMLImageElement;
-  componentIcon: HTMLImageElement;
-  aiAssistantInnerIcon: HTMLImageElement;
-  aiAssistantOuterIcon: HTMLImageElement;
-  warningIcon: HTMLImageElement;
+  /** Canvas-painted icon images; NodeGraphEditorNode reads these through the owner contract. */
+  icons: CanvasIcons;
+
+  get homeIcon() {
+    return this.icons.home;
+  }
+
+  get componentIcon() {
+    return this.icons.component;
+  }
+
+  get aiAssistantInnerIcon() {
+    return this.icons.aiAssistantInner;
+  }
+
+  get aiAssistantOuterIcon() {
+    return this.icons.aiAssistantOuter;
+  }
+
+  get warningIcon() {
+    return this.icons.warning;
+  }
 
   readOnly: boolean;
 
   nodesIdsAnimating: string[];
   isPlayingNodeAnimations: boolean;
 
-  toolbarRoots: Root[] = [];
-  titleRoot: Root = null;
-  highlightOverlayRoot: Root = null;
-  executionOverlayRoot: Root = null;
-  canvasTabsRoot: Root = null;
-  editorBannerRoot: Root = null;
+  /** All React roots over the canvas go through this host (PLAT-001 extraction). */
+  overlays = new OverlayHost();
+  private toolbarOverlay: OverlayHandle | null = null;
 
   constructor(args) {
     super();
@@ -397,32 +532,7 @@ export class NodeGraphEditor extends View {
     KeyboardHandler.instance.registerCommands(this.keyboardCommands);
 
     // Load icons using webpack require to ensure proper bundling
-    this.homeIcon = new Image();
-    this.homeIcon.src = require('../../../assets/icons/core-ui-temp/home--nodegraph.svg').default;
-    this.homeIcon.onload = () => this.repaint();
-    this.homeIcon.onerror = (e) => console.error('Failed to load home icon:', e);
-
-    this.componentIcon = new Image();
-    this.componentIcon.src = require('../../../assets/icons/core-ui-temp/component--nodegraph.svg').default;
-    this.componentIcon.onload = () => this.repaint();
-    this.componentIcon.onerror = (e) => console.error('Failed to load component icon:', e);
-
-    this.aiAssistantInnerIcon = new Image();
-    this.aiAssistantInnerIcon.src =
-      require('../../../assets/icons/core-ui-temp/aiAssistant--nodegraph-inner.svg').default;
-    this.aiAssistantInnerIcon.onload = () => this.repaint();
-    this.aiAssistantInnerIcon.onerror = (e) => console.error('Failed to load AI assistant inner icon:', e);
-
-    this.aiAssistantOuterIcon = new Image();
-    this.aiAssistantOuterIcon.src =
-      require('../../../assets/icons/core-ui-temp/aiAssistant--nodegraph-outer.svg').default;
-    this.aiAssistantOuterIcon.onload = () => this.repaint();
-    this.aiAssistantOuterIcon.onerror = (e) => console.error('Failed to load AI assistant outer icon:', e);
-
-    this.warningIcon = new Image();
-    this.warningIcon.src = require('../../../assets/icons/core-ui-temp/warning_triangle.svg').default;
-    this.warningIcon.onload = () => this.repaint();
-    this.warningIcon.onerror = (e) => console.error('Failed to load warning icon:', e);
+    this.icons = new CanvasIcons(() => this.repaint());
 
     SidebarModel.instance.on(
       SidebarModelEvent.activeChanged,
@@ -451,16 +561,11 @@ export class NodeGraphEditor extends View {
 
     this.commentLayer && this.commentLayer.dispose();
 
-    // Clean up React roots
-    if (this.highlightOverlayRoot) {
-      this.highlightOverlayRoot.unmount();
-      this.highlightOverlayRoot = null;
-    }
-
-    if (this.canvasTabsRoot) {
-      this.canvasTabsRoot.unmount();
-      this.canvasTabsRoot = null;
-    }
+    // Clean up React roots. Pre-PLAT-001 this only unmounted the highlight
+    // overlay and canvas tabs roots; the banner, execution overlay and title
+    // roots leaked. unmountAll covers every root registered with the host.
+    this.overlays.unmountAll();
+    this.toolbarOverlay = null;
 
     SidebarModel.instance.off(this);
 
@@ -474,7 +579,7 @@ export class NodeGraphEditor extends View {
     this.commentLayer?.setReadOnly(readOnly);
 
     // Update banner visibility when read-only status changes
-    if (this.editorBannerRoot) {
+    if (this.overlays.hasSlot('editor-banner')) {
       this.renderEditorBanner();
     }
   }
@@ -962,19 +1067,9 @@ export class NodeGraphEditor extends View {
    * Render the CanvasTabs React component
    */
   renderCanvasTabs() {
-    const tabsElement = this.el.find('#canvas-tabs-root').get(0);
-    if (!tabsElement) {
-      console.warn('Canvas tabs root not found in DOM');
-      return;
-    }
-
-    // Create React root if it doesn't exist
-    if (!this.canvasTabsRoot) {
-      this.canvasTabsRoot = createRoot(tabsElement);
-    }
-
-    // Render the tabs with provider
-    this.canvasTabsRoot.render(
+    this.overlays.renderSlot(
+      'canvas-tabs',
+      this.el.find('#canvas-tabs-root').get(0),
       React.createElement(
         CanvasTabsProvider,
         null,
@@ -1011,28 +1106,16 @@ export class NodeGraphEditor extends View {
    * Render the EditorBanner React component (for read-only mode)
    */
   renderEditorBanner() {
-    const bannerElement = this.el.find('#editor-banner-root').get(0);
-    if (!bannerElement) {
-      console.warn('Editor banner root not found in DOM');
-      return;
-    }
-
-    // Create React root if it doesn't exist
-    if (!this.editorBannerRoot) {
-      this.editorBannerRoot = createRoot(bannerElement);
-    }
-
     // Only show banner if in read-only mode
-    if (this.readOnly) {
-      this.editorBannerRoot.render(
-        React.createElement(EditorBanner, {
-          onDismiss: this.handleDismissBanner.bind(this)
-        })
-      );
-    } else {
-      // Clear banner if not in read-only mode
-      this.editorBannerRoot.render(null);
-    }
+    this.overlays.renderSlot(
+      'editor-banner',
+      this.el.find('#editor-banner-root').get(0),
+      this.readOnly
+        ? React.createElement(EditorBanner, {
+            onDismiss: this.handleDismissBanner.bind(this)
+          })
+        : null
+    );
   }
 
   /**
@@ -1063,17 +1146,6 @@ export class NodeGraphEditor extends View {
    * Render the HighlightOverlay React component
    */
   renderHighlightOverlay() {
-    const overlayElement = this.el.find('#highlight-overlay-layer').get(0);
-    if (!overlayElement) {
-      console.warn('Highlight overlay layer not found in DOM');
-      return;
-    }
-
-    // Create React root if it doesn't exist
-    if (!this.highlightOverlayRoot) {
-      this.highlightOverlayRoot = createRoot(overlayElement);
-    }
-
     // Get current viewport state
     const panAndScale = this.getPanAndScale();
     const viewport = {
@@ -1083,7 +1155,9 @@ export class NodeGraphEditor extends View {
     };
 
     // Render the overlay
-    this.highlightOverlayRoot.render(
+    this.overlays.renderSlot(
+      'highlight-overlay',
+      this.el.find('#highlight-overlay-layer').get(0),
       React.createElement(HighlightOverlay, {
         viewport,
         getNodeBounds: this.getNodeBounds
@@ -1096,7 +1170,7 @@ export class NodeGraphEditor extends View {
    * Called whenever pan/zoom changes
    */
   updateHighlightOverlay() {
-    if (this.highlightOverlayRoot) {
+    if (this.overlays.hasSlot('highlight-overlay')) {
       this.renderHighlightOverlay();
     }
   }
@@ -1109,16 +1183,6 @@ export class NodeGraphEditor extends View {
    * We re-render on every pan/zoom so the viewport prop stays current.
    */
   renderExecutionOverlay() {
-    const overlayElement = this.el.find('#execution-overlay-layer').get(0);
-    if (!overlayElement) {
-      console.warn('[ExecutionOverlay] #execution-overlay-layer not found in DOM');
-      return;
-    }
-
-    if (!this.executionOverlayRoot) {
-      this.executionOverlayRoot = createRoot(overlayElement);
-    }
-
     const panAndScale = this.getPanAndScale();
     const viewport = {
       x: panAndScale.x,
@@ -1126,7 +1190,9 @@ export class NodeGraphEditor extends View {
       zoom: panAndScale.scale
     };
 
-    this.executionOverlayRoot.render(
+    this.overlays.renderSlot(
+      'execution-overlay',
+      this.el.find('#execution-overlay-layer').get(0),
       React.createElement(ExecutionOverlay, {
         viewport,
         getNodeBounds: this.getNodeBounds
@@ -1139,7 +1205,7 @@ export class NodeGraphEditor extends View {
    * Called whenever pan/zoom changes (same cadence as updateHighlightOverlay).
    */
   updateExecutionOverlay() {
-    if (this.executionOverlayRoot) {
+    if (this.overlays.hasSlot('execution-overlay')) {
       this.renderExecutionOverlay();
     }
   }
@@ -1433,16 +1499,7 @@ export class NodeGraphEditor extends View {
   }
 
   getDevicePixelRatio(ctx) {
-    const dpr = window.devicePixelRatio || 1;
-    const bsr =
-      ctx.webkitBackingStorePixelRatio ||
-      ctx.mozBackingStorePixelRatio ||
-      ctx.msBackingStorePixelRatio ||
-      ctx.oBackingStorePixelRatio ||
-      ctx.backingStorePixelRatio ||
-      1;
-    const r = dpr / bsr;
-    return r;
+    return CanvasViewport.devicePixelRatio(ctx);
   }
 
   bindCanvas() {
@@ -1462,6 +1519,8 @@ export class NodeGraphEditor extends View {
 
     this.canvas.width = canvas.width;
     this.canvas.height = canvas.height;
+
+    this.viewport.setCanvasMetrics(canvas.width, canvas.height, this.canvas.ratio);
 
     // Bind mouse events
     const topLeft = function (canvas: HTMLCanvasElement) {
@@ -1522,57 +1581,11 @@ export class NodeGraphEditor extends View {
   }
 
   handleMouseWheelEvent(event, args?) {
-    event.preventDefault();
-
-    const pointerDeviceType = this.mouseWheelDetector.changeMode(event);
-
-    if (pointerDeviceType === 'mouse' || event.ctrlKey || event.metaKey) {
-      const zoomFactor = pointerDeviceType === 'mouse' ? 1 / 100 : 1 / 10;
-
-      //this function can be called by the comment layer (when a mousewheel event is fired on a comment DOM node)
-      //this will send it's own offsets that should override the event offset
-      const offsetX = args && args.hasOwnProperty('offsetX') ? args.offsetX : event.offsetX;
-      const offsetY = args && args.hasOwnProperty('offsetY') ? args.offsetY : event.offsetY;
-
-      this.updateZoomLevel(offsetX, offsetY, -event.deltaY * zoomFactor);
-    } else {
-      // Move all roots and relayout
-      const panAndScale = this.getPanAndScale();
-      const scale = panAndScale.scale;
-
-      this.moveRoots(-event.deltaX / scale, -event.deltaY / scale);
-      this.relayout();
-      this.repaint();
-    }
+    this.interaction.handleMouseWheelEvent(event, args);
   }
 
   updateZoomLevel(x, y, deltaZ) {
-    let panAndScale = this.getPanAndScale();
-    const oldScale = panAndScale.scale;
-
-    //Scale by multiplying with a factor to make zooming linear
-    // (e.g. 0.5->0.6 is 20% increase, 1.0 -> 1.1 is only 10%)
-    let scale = oldScale * Math.pow(0.95, -deltaZ);
-
-    //Restrict scaling to max 1, and minimum so you can see the entire component plus some padding OR 0.33 (to always allow some zoom)
-    const graphAABB = this.graphAABB;
-
-    const canvasWidth = this.canvas.width / this.canvas.ratio;
-    const canvasHeight = this.canvas.height / this.canvas.ratio;
-
-    const ScalePadding = 200;
-
-    const minXScale = canvasWidth / (graphAABB.maxX - graphAABB.minX + 2 * ScalePadding);
-    const minYScale = canvasHeight / (graphAABB.maxY - graphAABB.minY + 2 * ScalePadding);
-    const minScale = Math.min(minXScale, minYScale, 0.33);
-    scale = Math.max(minScale, Math.min(1, scale));
-
-    //apply scaling
-    panAndScale = {
-      scale: scale,
-      x: panAndScale.x + (x / scale - x / oldScale),
-      y: panAndScale.y + (y / scale - y / oldScale)
-    };
+    let panAndScale = this.viewport.zoomAtPoint(x, y, deltaZ, this.getPanAndScale());
     panAndScale = this.clampPanAndScale(panAndScale);
     this.setPanAndScale(panAndScale);
     this.updateHighlightOverlay();
@@ -1582,9 +1595,7 @@ export class NodeGraphEditor extends View {
   }
 
   forEachNode(callback) {
-    for (const i in this.roots) {
-      if (this.roots[i].forEach(callback)) return;
-    }
+    HitTester.forEachNode(this.roots, callback);
   }
 
   addNodeToSelection(node: NodeGraphEditorNode) {
@@ -1609,33 +1620,7 @@ export class NodeGraphEditor extends View {
   }
 
   startDraggingNode(node: NodeGraphEditorNode) {
-    if (this.readOnly) {
-      return;
-    }
-
-    if (!this.draggingNodes) {
-      // Collect all highlighted/selected nodes that are roots in the selection
-      let selected = [];
-      if (this.selector.isActive(node)) {
-        selected = [...this.selector.nodes];
-      } else {
-        this.selector.unselect();
-        this.commentLayer?.clearSelection();
-        selected = [node];
-      }
-
-      const nodes = [];
-
-      //add the roots
-      for (const i in selected) {
-        const n = selected[i];
-        if (!n.parent || selected.indexOf(n.parent) === -1) {
-          nodes.push(n);
-        }
-      }
-
-      this.startDraggingNodes(nodes);
-    }
+    this.interaction.startDraggingNode(node);
   }
 
   setDOMLayerVisible(visible) {
@@ -1649,38 +1634,11 @@ export class NodeGraphEditor extends View {
   }
 
   startDraggingNodes(nodes) {
-    this.draggingNodes = nodes || [];
-
-    this.setDOMLayerVisible(false);
-
-    this.lastDraggingMousePos = this.startDraggingMousePos = this.latestMousePos;
-
-    this.dragNodesUndoGroup = new UndoActionGroup({
-      label: 'drag nodes'
-    });
+    this.interaction.startDraggingNodes(nodes);
   }
 
   startDraggingConnection(fromNode) {
-    if (this.readOnly) {
-      return false;
-    }
-
-    // Clear multiselect
-    this.selector.unselect();
-
-    this.setDOMLayerVisible(false);
-
-    this.highlighted && ViewerConnection.instance.sendNodeHighlighted(this.highlighted.model, false);
-    this.highlighted = undefined; // Clear highlighted
-
-    this.draggingConnection = { fromNode: fromNode };
-
-    this.draggingConnection.mouseTarget = {
-      global: {
-        x: this.latestMousePos.x,
-        y: this.latestMousePos.y
-      }
-    };
+    return this.interaction.startDraggingConnection(fromNode);
   }
 
   removeRoot(node) {
@@ -1757,12 +1715,7 @@ export class NodeGraphEditor extends View {
   }
 
   updateTitle() {
-    const rootElem = this.el[0].querySelector('.nodegraph-component-trail-root');
-
-    // Create root only once, reuse for subsequent renders
-    if (!this.titleRoot) {
-      this.titleRoot = createRoot(rootElem);
-    }
+    const rootElem = this.el[0].querySelector('.nodegraph-component-trail-root') as HTMLElement;
 
     if (this.activeComponent) {
       const fullName = this.activeComponent.fullName;
@@ -1808,9 +1761,9 @@ export class NodeGraphEditor extends View {
         canNavigateForward: this.navigationHistory.canNavigateForward
       };
 
-      this.titleRoot.render(React.createElement(NodeGraphComponentTrail, props));
+      this.overlays.renderSlot('title', rootElem, React.createElement(NodeGraphComponentTrail, props));
     } else {
-      this.titleRoot.render(null);
+      this.overlays.renderSlot('title', rootElem, null);
     }
   }
 
@@ -2028,15 +1981,7 @@ export class NodeGraphEditor extends View {
   }
 
   isPointInsideNodes(pos: { x: number; y: number }, nodes: readonly NodeGraphEditorNode[]) {
-    return nodes.some((node) => {
-      const nodeRect = { x: node.global.x, y: node.global.y, width: node.nodeSize.width, height: node.nodeSize.height };
-      return (
-        pos.x >= nodeRect.x &&
-        pos.x <= nodeRect.x + nodeRect.width &&
-        pos.y >= nodeRect.y &&
-        pos.y <= nodeRect.y + nodeRect.height
-      );
-    });
+    return HitTester.isPointInsideNodes(pos, nodes);
   }
 
   multiselectNodes(x, y, x2, y2, mode) {
@@ -2046,21 +1991,8 @@ export class NodeGraphEditor extends View {
     this.commentLayer.performMultiSelect(selectRect, mode);
 
     // Select all nodes with a vertex inside of the multiselect area
-    const selected = [];
-    this.forEachNode((node) => {
-      const nodeRect = { x: node.global.x, y: node.global.y, width: node.nodeSize.width, height: node.nodeSize.height };
-      if (rectanglesOverlap(nodeRect, selectRect)) {
-        selected.push(node);
-      }
-    });
-
-    if (mode === 'select') {
-      this.selector.select(selected);
-    } else if (mode === 'union') {
-      this.selector.select(this.lastMultiselected ? _.union(this.lastMultiselected, selected) : selected);
-    } else if (mode === 'reduce') {
-      this.selector.select(this.lastMultiselected ? _.difference(this.lastMultiselected, selected) : []);
-    }
+    const selected = HitTester.nodesInRect(this.roots, selectRect);
+    this.selector.select(HitTester.resolveMultiselect(mode, this.lastMultiselected, selected));
   }
 
   isHighlighted(node) {
@@ -2117,10 +2049,10 @@ export class NodeGraphEditor extends View {
           // @ts-expect-error
           toProps.sourcePort = fromPort;
           toProps.disabled = false;
-          toRoot.render(React.createElement(ConnectionPopup, toProps));
+          toOverlay.update(React.createElement(ConnectionPopup, toProps));
 
           fromProps.disabled = true;
-          fromRoot.render(React.createElement(ConnectionPopup, fromProps));
+          fromOverlay.update(React.createElement(ConnectionPopup, fromProps));
 
           fromNode.borderHighlighted = false;
           toNode.borderHighlighted = true;
@@ -2128,8 +2060,7 @@ export class NodeGraphEditor extends View {
         }
       };
       const fromDiv = document.createElement('div');
-      const fromRoot = createRoot(fromDiv);
-      fromRoot.render(React.createElement(ConnectionPopup, fromProps));
+      const fromOverlay = this.overlays.mount(fromDiv, React.createElement(ConnectionPopup, fromProps));
 
       const fromPosition = toNode.global.x > fromNodeXPos ? 'left' : 'right';
 
@@ -2147,7 +2078,7 @@ export class NodeGraphEditor extends View {
           y: (fromNode.global.y + panAndScale.y) * panAndScale.scale + tl[1] + 20 * panAndScale.scale
         },
         onClose: () => {
-          fromRoot.unmount();
+          fromOverlay.unmount();
           ipcRenderer.send('viewer-show');
         }
       });
@@ -2181,10 +2112,10 @@ export class NodeGraphEditor extends View {
             // @ts-expect-error
             toProps.sourcePort = undefined;
             toProps.disabled = true;
-            toRoot.render(React.createElement(ConnectionPopup, toProps));
+            toOverlay.update(React.createElement(ConnectionPopup, toProps));
 
             fromProps.disabled = false;
-            fromRoot.render(React.createElement(ConnectionPopup, fromProps));
+            fromOverlay.update(React.createElement(ConnectionPopup, fromProps));
 
             fromNode.borderHighlighted = true;
             toNode.borderHighlighted = false;
@@ -2193,8 +2124,7 @@ export class NodeGraphEditor extends View {
         }
       };
       const toDiv = document.createElement('div');
-      const toRoot = createRoot(toDiv);
-      toRoot.render(React.createElement(ConnectionPopup, toProps));
+      const toOverlay = this.overlays.mount(toDiv, React.createElement(ConnectionPopup, toProps));
 
       const toPosition = fromNodeXPos >= toNode.global.x ? 'left' : 'right';
       const toPopout = PopupLayer.instance.showPopout({
@@ -2209,7 +2139,7 @@ export class NodeGraphEditor extends View {
           y: (toNode.global.y + panAndScale.y) * panAndScale.scale + tl[1] + 20 * panAndScale.scale
         },
         onClose: () => {
-          toRoot.unmount();
+          toOverlay.unmount();
           this.clearSelection();
           this.repaint();
         }
@@ -2303,191 +2233,6 @@ export class NodeGraphEditor extends View {
     this.model.removeConnection(con, { undo: true, label: 'disconnect' });
   }
 
-  doDragNodesAndComments(draggingNodes, type, pos, evt) {
-    if (type === 'move') {
-      // Move all dragging nodes that are root nodes
-      const dx = pos.x - this.lastDraggingMousePos.x;
-      const dy = pos.y - this.lastDraggingMousePos.y;
-
-      for (const n of draggingNodes) {
-        if (!n.parent) {
-          n.x += dx;
-          n.y += dy;
-        }
-      }
-
-      this.commentLayer.moveSelectedComments(dx, dy);
-
-      this.lastDraggingMousePos = pos;
-
-      // If we have dragged more than a given threshold, disconnect all nodes that are
-      // currently in the hierarchy.
-      if (
-        Math.abs(pos.x - this.startDraggingMousePos.x) > NodeGraphEditorNode.attachedThreshold ||
-        Math.abs(pos.y - this.startDraggingMousePos.y) > NodeGraphEditorNode.attachedThreshold
-      ) {
-        for (const n of draggingNodes) {
-          if (n.parent) this.detachNode(n.model);
-        }
-      }
-
-      // If the nodes are detached
-      const detached = draggingNodes.length && !_.some(draggingNodes, (n) => n.parent);
-      if (detached) {
-        for (const i in this.roots) {
-          // Don't attached to any nodes that are part of the current dragging
-          // nodes
-          if (draggingNodes.indexOf(this.roots[i]) !== -1) continue;
-
-          this.insertLocation = this.roots[i].shouldAttach(pos, draggingNodes);
-          if (this.insertLocation) break;
-        }
-      }
-
-      evt.consumed = true;
-      this.relayout();
-      this.repaint();
-    } else if (type === 'up') {
-      const isClick =
-        Math.abs(pos.x - this.startDraggingMousePos.x) < 5 && Math.abs(pos.y - this.startDraggingMousePos.y) < 5;
-
-      // No insert location simply move the nodes
-      // Update the model for all dragging nodes
-      if (!isClick && (this.commentLayer.getSelectedComments().length || draggingNodes.length)) {
-        //nodes or comments are selected, and we've moved the mouse since the down event
-        //this means we've dragged elements around, so consume the event
-        for (const n of draggingNodes) {
-          this.commitMoveNode(n);
-        }
-
-        this.commentLayer.commitSelectedComments({ undo: this.dragNodesUndoGroup });
-
-        evt.consumed = true;
-      }
-
-      if (this.insertLocation) {
-        // We have a new location for the insert it and relayout
-        // Notify the model that a node should be attached
-        const loc = this.insertLocation;
-        for (let index = draggingNodes.length - 1; index >= 0; index--) {
-          const n = draggingNodes[index];
-          this.attachNode(loc.parent.model, n.model, loc.index);
-        }
-        this.insertLocation = undefined;
-        evt.consumed = true;
-      }
-
-      // Commit undo action group
-      if (this.dragNodesUndoGroup && !this.dragNodesUndoGroup.isEmpty()) {
-        this.dragNodesUndoGroup.pushAndDo({
-          do: () => {
-            setTimeout(() => {
-              this.layout();
-              this.updateNodeToolbar();
-            }, 1);
-          },
-          undo: () => {
-            setTimeout(() => {
-              this.layout();
-              this.updateNodeToolbar();
-            }, 1);
-          }
-        });
-
-        UndoQueue.instance.push(this.dragNodesUndoGroup);
-      }
-      this.dragNodesUndoGroup = undefined;
-
-      this.draggingNodes = undefined;
-    }
-  }
-
-  doDragging(type: MouseEventType, pos: IVector2, evt: TSFixme) {
-    // Node is being dragged to a new position
-    if (this.draggingNodes) {
-      this.doDragNodesAndComments(this.draggingNodes, type, pos, evt);
-      if (evt.consumed) return true;
-    }
-
-    // A new connections is being dragged
-    if (this.draggingConnection && !this.draggingConnection.popupOpen) {
-      if (type === 'move') {
-        // Hide viewer to get it out of the way
-        ipcRenderer.send('viewer-hide');
-
-        this.draggingConnection.pos = pos;
-
-        this.draggingConnection.mouseTarget.global = pos;
-        if (this.draggingConnection.toNode) this.draggingConnection.toNode.borderHighlighted = false;
-
-        let toNode;
-        for (const i in this.roots) {
-          toNode = this.roots[i].shouldConnect(pos, this.draggingConnection.fromNode);
-          if (toNode) break;
-        }
-
-        if (toNode && toNode != this.draggingConnection.fromNode) {
-          toNode.borderHighlighted = true;
-          this.draggingConnection.toNode = toNode;
-        } else {
-          this.draggingConnection.toNode = undefined;
-        }
-
-        this.repaint();
-      } else if (type === 'up') {
-        // Show the viewer again
-        ipcRenderer.send('viewer-show');
-
-        if (this.draggingConnection.toNode) {
-          // We have a potential new connection
-          this.draggingConnection.popupOpen = true;
-
-          this.openConnectionPanels();
-          evt.stopPropagation();
-        } else {
-          // No new connection, clear it
-          this.draggingConnection.fromNode.borderHighlighted = false;
-          this.draggingConnection = undefined;
-        }
-
-        this.repaint();
-      }
-      return true;
-    }
-
-    // Multi select in action
-    if (this.multiselectMouseDown) {
-      if (type === 'move') {
-        let mode = 'select';
-        if (evt.shiftKey) mode = 'union';
-        else if (evt.ctrlKey) mode = 'reduce';
-
-        this.multiselectMouseMove = pos;
-        this.multiselectNodes(
-          this.multiselectMouseDown.x,
-          this.multiselectMouseDown.y,
-          this.multiselectMouseMove.x,
-          this.multiselectMouseMove.y,
-          mode
-        );
-        this.repaint();
-      } else if (type === 'up') {
-        const isClick =
-          Math.abs(pos.x - this.multiselectMouseDown.x) < 5 && Math.abs(pos.y - this.multiselectMouseDown.y) < 5;
-
-        if (isClick) {
-          this.commentLayer.clearSelection();
-        }
-
-        this.multiselectMouseDown = this.multiselectMouseMove = undefined;
-        if (!this.selector.active) this.selector.unselect();
-
-        this.repaint();
-      }
-      return true;
-    }
-  }
-
   updateNodeToolbar() {
     this.hideNodeToolbar(); //hide existing toolbar, if any
 
@@ -2561,9 +2306,8 @@ export class NodeGraphEditor extends View {
     div.style.position = 'absolute';
     div.style.left = pos.x + 'px';
     div.style.top = pos.y + 'px';
-    const root = createRoot(div);
-    this.toolbarRoots.push(root);
-    root.render(
+    this.toolbarOverlay = this.overlays.mount(
+      div,
       React.createElement(PopupToolbar, {
         menuItems,
         contextMenuItems: this.getContextMenuActions()
@@ -2572,10 +2316,8 @@ export class NodeGraphEditor extends View {
   }
 
   hideNodeToolbar() {
-    for (const root of this.toolbarRoots) {
-      root.unmount();
-    }
-    this.toolbarRoots = [];
+    this.toolbarOverlay?.unmount();
+    this.toolbarOverlay = null;
     const toolbars = this.domElementContainer.querySelectorAll('.nodegraph-node-toolbar');
     for (const toolbar of toolbars) {
       this.domElementContainer.removeChild(toolbar);
@@ -2587,262 +2329,15 @@ export class NodeGraphEditor extends View {
   }
 
   relativeCoordsToNodeGraphCords(pos: { x: number; y: number }): { x: number; y: number } {
-    const panAndScale = this.getPanAndScale();
-    return {
-      x: pos.x / panAndScale.scale - panAndScale.x,
-      y: pos.y / panAndScale.scale - panAndScale.y
-    };
+    return this.viewport.canvasToGraph(pos, this.getPanAndScale());
   }
 
   mouse(type: MouseEventType, pos: MousePosition, evt: NodeGraphMouseEvent, args?: TSFixme) {
-    if (!this.mouseEventsEnabled || !this.model) {
-      return false;
-    }
+    return this.interaction.mouse(type, pos, evt, args);
+  }
 
-    const _this = this;
-    const panAndScale = this.getPanAndScale();
-    const scale = panAndScale.scale;
-    const scaledPos = this.relativeCoordsToNodeGraphCords(pos);
-
-    if (type === 'down' && evt.button === 0) {
-      //hide inspectors that aren't pinned
-      this.hideInspectors();
-      this.hideNodeToolbar();
-    }
-
-    //Elements in the dom layer (e.g. inspectors) are hidden when a node or connection is being dragged
-    //Show them again if a mouse up event is triggered
-    else if (type === 'up') {
-      this.setDOMLayerVisible(true);
-      this.updateNodeToolbar();
-    }
-
-    // Check for double clicks
-    if (evt.button === 0 && evt.type === 'mousedown') {
-      const lastPressed = this.lastLeftButtonPressedTime;
-      const now = Date.now();
-
-      if (now - lastPressed < 500) {
-        // click interval here!
-        this.leftButtonIsDoubleClicked = true;
-      } else {
-        this.leftButtonIsDoubleClicked = false;
-      }
-
-      this.lastLeftButtonPressedTime = now;
-    }
-
-    this.latestMousePos = scaledPos;
-
-    if (!this.doDragging(type, scaledPos, evt)) {
-      // If we are in "connection mode" then don't do any mouse tracking
-      // until it is canceled
-      const isPanning = this.panMouseDown || (evt.spaceKey && evt.button === 0);
-
-      if (!isPanning && !(this.draggingConnection && this.draggingConnection.popupOpen)) {
-        for (const i in this.roots) {
-          this.roots[i].propagateMouse(type, scaledPos, evt);
-        }
-      }
-
-      // Pass mouse to connections
-      if (!evt.consumed) {
-        for (const i in this.connections) {
-          this.connections[i].mouse(type, scaledPos, evt);
-        }
-      }
-
-      // If a drag item is current in place indicate if
-      // a drop can be accepted
-      if (PopupLayer.instance.isDragging()) {
-        const dragItem = PopupLayer.instance.dragItem;
-
-        // Indicate drop acceptable
-        if (type === 'move') {
-          if (canAcceptDrop(_this, dragItem)) {
-            PopupLayer.instance.indicateDropType('add');
-          } else {
-            PopupLayer.instance.indicateDropType('none');
-          }
-        } else if (type === 'out') {
-          PopupLayer.instance.indicateDropType('none');
-          PopupLayer.instance.setDragMessage();
-        }
-        // Make the drop
-        else if (type === 'up') {
-          // Create the new component that was dropped
-          if (canAcceptDrop(_this, dragItem)) {
-            evt.consumed = onDrop(this, dragItem, scaledPos);
-          }
-        }
-      }
-
-      if (evt.consumed) {
-        return true;
-      }
-
-      // Clear selection on left mouse up when no node is
-      // highlighted
-      if (
-        !this.readOnly &&
-        type === 'up' &&
-        evt.button === 0 &&
-        !evt.shiftKey &&
-        this.highlighted === undefined &&
-        this.highlightedConnection === undefined
-      ) {
-        this.clearSelection();
-        this.repaint();
-      }
-
-      // Pan view on right mouse drag, middle mouse drag, or space + left mouse
-      if (type === 'down' && (evt.button === 2 || evt.button === 1 || (evt.spaceKey && evt.button === 0))) {
-        this.panMouseDown = pos;
-        this.canvas.ctx.canvas.style.cursor = 'grabbing';
-        evt.consumed = true;
-      } else if (type === 'move' && this.panMouseDown) {
-        // Move all roots and relayout
-        this.moveRoots((pos.x - this.panMouseDown.x) / scale, (pos.y - this.panMouseDown.y) / scale);
-        this.panMouseDown = pos;
-        this.relayout();
-        this.repaint();
-        evt.consumed = true;
-      } else if ((type === 'up' || type === 'out') && this.panMouseDown) {
-        this.panMouseDown = this.originMouseDown = undefined;
-        this.canvas.ctx.canvas.style.cursor = 'inherit';
-      }
-
-      // Handle right click
-      if (type === 'down' && evt.button === 2) {
-        this.rightClickPos = pos;
-      } else if (type === 'up' && evt.button === 2 && this.rightClickPos) {
-        if (
-          this.model &&
-          !this.readOnly &&
-          Math.abs(pos.x - this.rightClickPos.x) + Math.abs(pos.y - this.rightClickPos.y) < 10
-        ) {
-          PopupLayer.instance.hidePopup();
-          evt.consumed = true;
-
-          // Check if we're right-clicking on a node (selected or not)
-          let nodeUnderCursor: NodeGraphEditorNode = null;
-
-          // First check if clicking on already selected nodes
-          if (this.isPointInsideNodes(scaledPos, this.selector.nodes)) {
-            nodeUnderCursor = this.selector.nodes.find((node) => {
-              const nodeRect = {
-                x: node.global.x,
-                y: node.global.y,
-                width: node.nodeSize.width,
-                height: node.nodeSize.height
-              };
-              return (
-                scaledPos.x >= nodeRect.x &&
-                scaledPos.x <= nodeRect.x + nodeRect.width &&
-                scaledPos.y >= nodeRect.y &&
-                scaledPos.y <= nodeRect.y + nodeRect.height
-              );
-            });
-          }
-
-          // If not on a selected node, check all nodes
-          if (!nodeUnderCursor) {
-            this.forEachNode((node) => {
-              const nodeRect = {
-                x: node.global.x,
-                y: node.global.y,
-                width: node.nodeSize.width,
-                height: node.nodeSize.height
-              };
-              if (
-                scaledPos.x >= nodeRect.x &&
-                scaledPos.x <= nodeRect.x + nodeRect.width &&
-                scaledPos.y >= nodeRect.y &&
-                scaledPos.y <= nodeRect.y + nodeRect.height
-              ) {
-                nodeUnderCursor = node;
-                return true; // Stop iteration
-              }
-            });
-          }
-
-          if (nodeUnderCursor) {
-            // Select the node if it isn't already selected
-            if (!this.selector.isActive(nodeUnderCursor)) {
-              this.clearSelection();
-              this.commentLayer?.clearSelection();
-              nodeUnderCursor.selected = true;
-              this.selector.select([nodeUnderCursor]);
-              this.repaint();
-            }
-
-            // Show context menu
-            this.openRightClickMenu();
-          } else if (
-            CreateNewNodePanel.shouldShow({
-              component: this.model.owner,
-              parentModel: this.highlighted ? this.highlighted.model : undefined
-            })
-          ) {
-            this.createNewNodePanel = new CreateNewNodePanel({
-              model: this.model,
-              parentModel: this.highlighted ? this.highlighted.model : undefined,
-              pos: scaledPos,
-              runtimeType: this.runtimeType
-            });
-            this.createNewNodePanel.render();
-
-            PopupLayer.instance.showPopup({
-              content: this.createNewNodePanel,
-              /*attachToPoint:{x:pos.pageX, y:pos.pageY},*/
-              position: 'screen-center',
-              isBackgroundDimmed: true,
-              onClose: () => this.createNewNodePanel.dispose()
-            });
-          }
-          // If clicking empty space with no valid actions, do nothing (no broken tooltip)
-        }
-        this.rightClickPos = undefined;
-      }
-
-      // Start multi select, move is handled in the do dragging function
-      if (
-        !this.readOnly &&
-        !evt.consumed &&
-        type === 'down' &&
-        evt.button === 0 &&
-        !evt.spaceKey &&
-        this.highlighted === undefined &&
-        this.highlightedConnection === undefined &&
-        this.draggingConnection === undefined &&
-        !(args && args.eventPropagatedFromCommentLayer)
-      ) {
-        // Store last multi select reduce and union operations
-        this.lastMultiselected = this.selector.nodes;
-
-        // reset current multi selection if it's not the start of a new multi select operation (ctrl or shift is pressed)
-        if (!evt.ctrlKey && !evt.shiftKey) {
-          this.commentLayer.clearMultiselection();
-          this.clearSelection();
-        } else {
-          this.selector.select(this.lastMultiselected);
-        }
-
-        this.multiselectMouseDown = scaledPos;
-
-        this.repaint();
-      }
-    }
-
-    const needRepaint =
-      type != 'over' && type !== 'out' && !(type === 'move' && !this.rightClickPos && evt.button !== 0);
-
-    if (needRepaint) {
-      this.relayout();
-      this.repaint();
-    }
-
-    return evt.consumed;
+  setCanvasCursor(cursor: string) {
+    this.canvas.ctx.canvas.style.cursor = cursor;
   }
 
   getContextMenuActions() {
@@ -2974,64 +2469,29 @@ export class NodeGraphEditor extends View {
   }
 
   calculateAABB() {
-    const _this = this;
-    this.graphAABB = {
-      minX: Number.MAX_VALUE,
-      maxX: -Number.MAX_VALUE,
-      minY: Number.MAX_VALUE,
-      maxY: -Number.MAX_VALUE
-    };
+    const rects: Rect[] = this.roots.map((node) => ({
+      x: node.x,
+      y: node.y,
+      width: node.measuredSize.width,
+      height: node.measuredSize.height
+    }));
 
-    _.each(this.roots, function (node) {
-      if (node.x < _this.graphAABB.minX) {
-        _this.graphAABB.minX = node.x;
-      }
-      if (node.x + node.measuredSize.width > _this.graphAABB.maxX) {
-        _this.graphAABB.maxX = node.x + node.measuredSize.width;
-      }
-      if (node.y < _this.graphAABB.minY) {
-        _this.graphAABB.minY = node.y;
-      }
-      if (node.y + node.measuredSize.height > _this.graphAABB.maxY) {
-        _this.graphAABB.maxY = node.y + node.measuredSize.height;
-      }
-    });
+    for (const comment of this.model.commentsModel.comments) {
+      rects.push({ x: comment.x, y: comment.y, width: comment.width, height: comment.height });
+    }
 
-    _.each(this.model.commentsModel.comments, function (comment) {
-      if (comment.x < _this.graphAABB.minX) {
-        _this.graphAABB.minX = comment.x;
-      }
-      if (comment.x + comment.width > _this.graphAABB.maxX) {
-        _this.graphAABB.maxX = comment.x + comment.width;
-      }
-      if (comment.y < _this.graphAABB.minY) {
-        _this.graphAABB.minY = comment.y;
-      }
-      if (comment.y + comment.height > _this.graphAABB.maxY) {
-        _this.graphAABB.maxY = comment.y + comment.height;
-      }
-    });
+    this.viewport.updateGraphAABB(rects);
   }
   findNodeWithId(id: string): NodeGraphEditorNode {
-    let res;
-    this.forEachNode(function (node) {
-      if (id === node.id) {
-        res = node;
-        return true;
-      }
-    });
-    return res;
+    return HitTester.findNodeWithId(this.roots, id);
   }
 
   findConnectionWithModel(model: Connection): NodeGraphEditorConnection {
-    for (const i in this.connections) if (this.connections[i].model === model) return this.connections[i];
+    return HitTester.findConnectionWithModel(this.connections, model);
   }
 
   findConnectionWithKey(key: string): NodeGraphEditorConnection {
-    for (const i in this.connections) {
-      const m = this.connections[i].model;
-      if (m.fromId + m.fromProperty + m.toId + m.toProperty === key) return this.connections[i];
-    }
+    return HitTester.findConnectionWithKey(this.connections, key);
   }
 
   findInspectorWithModel(model) {
@@ -3045,7 +2505,6 @@ export class NodeGraphEditor extends View {
 
     const ctx = this.canvas.ctx;
     const panAndScale = this.getPanAndScale();
-    const scale = this.getPanAndScale().scale;
 
     const transform = `scale(${panAndScale.scale}) translate(${panAndScale.x}px, ${panAndScale.y}px)`;
     this.domElementContainer.style.transform = transform;
@@ -3059,217 +2518,24 @@ export class NodeGraphEditor extends View {
       return;
     }
 
-    ctx.save();
-    ctx.scale(this.canvas.ratio * scale, this.canvas.ratio * scale);
-    ctx.translate(panAndScale.x, panAndScale.y);
+    // Draw a multiselect box when there is a multi-selection (single-node
+    // selections draw their own highlight)
+    const showMultiselectBox = this.selector.nodes.length > 0 && !this.selector.nodes[0].selected;
 
-    const paintRect = {
-      minX: -panAndScale.x,
-      maxX: this.canvas.width / (this.canvas.ratio * scale) - panAndScale.x,
-      minY: -panAndScale.y,
-      maxY: this.canvas.height / (this.canvas.ratio * scale) - panAndScale.y
-    };
-
-    ctx.font = '10px Helvetica';
-
-    // Paint hierarchy
-    function paintHierarchy(node) {
-      const x = node.global.x;
-      const y = node.global.y;
-
-      // Draw hierarchy indicators
-      let hy = y + node.nodeSize.height + 5;
-      ctx.strokeStyle = '#504f4f'; //Grey 700
-      ctx.lineWidth = 1;
-      for (const i in node.children) {
-        const child = node.children[i];
-
-        ctx.beginPath();
-        ctx.moveTo(x + NodeGraphEditorNode.childMargin / 2, hy);
-
-        hy = child.global.y + child.nodeSize.height / 2;
-        ctx.lineTo(x + NodeGraphEditorNode.childMargin / 2, hy);
-
-        ctx.lineTo(x + NodeGraphEditorNode.childMargin - 5, hy);
-        ctx.stroke();
-      }
-      ctx.globalAlpha = 1;
-
-      _.each(node.children, paintHierarchy);
-    }
-
-    // Paint hierarchy
-    _.each(this.roots, paintHierarchy);
-
-    // Paint connections
-    _.each(this.connections, function (con) {
-      con.paint(ctx, paintRect);
+    this.renderer.paint(ctx, {
+      panAndScale,
+      canvasWidth: this.canvas.width,
+      canvasHeight: this.canvas.height,
+      ratio: this.canvas.ratio,
+      roots: this.roots,
+      connections: this.connections,
+      draggingNodes: this.draggingNodes,
+      draggingConnection: this.draggingConnection,
+      insertLocation: this.insertLocation,
+      multiselectAABB: showMultiselectBox ? this.calculateNodesAABB(this.selector.nodes) : undefined,
+      multiselectMouseDown: this.multiselectMouseDown,
+      multiselectMouseMove: this.multiselectMouseMove
     });
-
-    // Paint all highlighted connections (so they always show up on top)
-    _.each(this.connections, function (con) {
-      if (con.isHighlighted()) con.paint(ctx, paintRect);
-    });
-
-    // Paint nodes
-    const _this = this;
-    _.each(this.roots, function (node) {
-      if (!_this.draggingNodes || _this.draggingNodes.indexOf(node) === -1) {
-        node.paint(ctx, paintRect);
-      }
-    });
-
-    if (this.insertLocation) {
-      // Indicate that we have an insert location when
-      // dragging this node
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(
-        this.insertLocation.pos.x,
-        this.insertLocation.pos.y + (NodeGraphEditorNode.childSpacing - 5) / 2,
-        NodeGraphEditorNode.size.width,
-        5
-      );
-    }
-
-    // Paint multiselect box
-    if (this.selector.nodes.length > 0 && !this.selector.nodes[0].selected) {
-      this.paintMultiselectBox(ctx, this.calculateNodesAABB(this.selector.nodes));
-    }
-
-    // if (window._debugNodeGraphAttachPoints) {
-    //   ctx.save();
-    //   for (const attach of window._debugNodeGraphAttachPoints) {
-    //     ctx.fillStyle = '#ff00ff';
-    //     ctx.fillRect(attach.anchorPoint.x - 6, attach.anchorPoint.y - 6, 12, 12);
-    //   }
-    //   ctx.restore();
-    // }
-    ctx.globalAlpha = 0.5;
-
-    // Paint nodes that are being dragged
-    _.each(this.draggingNodes, function (node) {
-      node.paint(ctx, paintRect);
-    });
-
-    ctx.globalAlpha = 1;
-
-    // Paint the new connection indicator if we have one
-    if (this.draggingConnection) {
-      // Make background darker
-      if (this.draggingConnection.fromNode !== undefined && this.draggingConnection.toNode !== undefined) {
-        ctx.fillStyle = '#000';
-        ctx.globalAlpha = 0.6;
-        ctx.fillRect(paintRect.minX, paintRect.minY, paintRect.maxX - paintRect.minX, paintRect.maxY - paintRect.minY);
-        ctx.globalAlpha = 1;
-
-        // First the two nodes where a connection is being made
-        _.each([this.draggingConnection.fromNode, this.draggingConnection.toNode], function (node) {
-          node.paint(ctx, paintRect, { dontPaintChildren: true });
-        });
-
-        // Draw all connections between these nodes
-        _.each(this.connections, (con) => {
-          if (con.fromNode === this.draggingConnection.fromNode && con.toNode === this.draggingConnection.toNode)
-            con.paint(ctx, paintRect);
-        });
-      }
-
-      ctx.globalAlpha = 1;
-
-      // Draw line between from node and mouse position, if a target node is hovered
-      // draw to the center of the target node
-      ctx.strokeStyle = NodeGraphColors.yellow;
-      ctx.setLineDash([5]);
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      const from = {
-        x: this.draggingConnection.fromNode.global.x + this.draggingConnection.fromNode.nodeSize.width,
-        y: this.draggingConnection.fromNode.global.y + this.draggingConnection.fromNode.titlebarHeight() / 2
-      };
-      if (this.draggingConnection.toNode) {
-        var to = {
-          x: this.draggingConnection.toNode.global.x + this.draggingConnection.toNode.nodeSize.width / 2,
-          y: this.draggingConnection.toNode.global.y + this.draggingConnection.toNode.nodeSize.height / 2
-        };
-      } else {
-        to = this.draggingConnection.mouseTarget.global;
-      }
-
-      const d = { x: to.x - from.x, y: to.y - from.y };
-      const dl = Math.sqrt(d.x * d.x + d.y * d.y);
-      d.x /= dl;
-      d.y /= dl;
-      const n = { x: d.y, y: -d.x };
-
-      ctx.moveTo(from.x + d.x * 4, from.y + d.y * 4); // Don't draw over source circle, looks weird when alpha is down
-      ctx.lineTo(to.x - d.x * 6, to.y - d.y * 6);
-      ctx.stroke();
-
-      // Draw the circle at the source node and the arrow head
-      // at the target node
-      ctx.beginPath();
-      ctx.fillStyle = NodeGraphColors.yellow;
-      ctx.arc(from.x, from.y, 4, 0, 2 * Math.PI, false);
-
-      ctx.moveTo(to.x + d.x * 2, to.y + d.y * 2);
-      ctx.lineTo(to.x - d.x * 6 - n.x * 4, to.y - d.y * 6 - n.y * 4);
-      ctx.lineTo(to.x - d.x * 6 + n.x * 4, to.y - d.y * 6 + n.y * 4);
-      ctx.fill();
-
-      ctx.globalAlpha = 1;
-    }
-
-    // Paint multiselect
-    if (this.multiselectMouseMove) {
-      ctx.strokeStyle = NodeGraphColors.multiSelect;
-      ctx.setLineDash([5]);
-      ctx.beginPath();
-      ctx.rect(
-        this.multiselectMouseDown.x,
-        this.multiselectMouseDown.y,
-        this.multiselectMouseMove.x - this.multiselectMouseDown.x,
-        this.multiselectMouseMove.y - this.multiselectMouseDown.y
-      );
-      ctx.stroke();
-      ctx.setLineDash([]);
-    }
-
-    ctx.restore();
-  }
-
-  paintMultiselectBox(ctx: CanvasRenderingContext2D, aabb: AABB) {
-    const pad = 8;
-
-    const shadowSize = 150;
-
-    //draw a shadow
-    //mask away everything inside the selection bounding box...
-    const w = aabb.maxX - aabb.minX;
-    const h = aabb.maxY - aabb.minY;
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(aabb.minX - shadowSize, aabb.minY - shadowSize, 2 * shadowSize + w, shadowSize - pad);
-    ctx.rect(aabb.minX - shadowSize, aabb.minY - pad, shadowSize - pad, h + 2 * pad + 2 * shadowSize);
-    ctx.rect(aabb.maxX + pad, aabb.minY - pad, shadowSize, h + 2 * pad);
-    ctx.rect(aabb.minX - shadowSize, aabb.maxY + pad, 2 * shadowSize + w, shadowSize);
-    ctx.clip();
-
-    //...and draw a shadow
-    ctx.shadowColor = 'black';
-    ctx.shadowBlur = shadowSize;
-    ctx.shadowOffsetX = 0;
-    ctx.shadowOffsetY = 0;
-
-    ctx.fillStyle = 'white'; //the color doesn't matter, just need full opacity. The rect is clipped and just the shadow remains
-    ctx.beginPath();
-    ctx.fillRect(aabb.minX - pad, aabb.minY - pad, w + 2 * pad, h + 2 * pad);
-
-    //draw selection box
-    ctx.lineWidth = 1;
-    ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--theme-color-fg-default').trim();
-    ctx.strokeRect(aabb.minX - pad, aabb.minY - pad, w + 2 * pad, h + 2 * pad);
-
-    ctx.restore();
   }
 
   // This function is used during the tests to verify that the view of the node graph editor
@@ -3299,49 +2565,23 @@ export class NodeGraphEditor extends View {
    * @returns The center of all the root nodes in the graph.
    */
   public getCenterRootPanAndScale(): PanAndScale {
-    let centerX = 0;
-    let centerY = 0;
-    let count = 0;
-
-    _.each(this.roots, function (root) {
-      centerX += root.x + root.nodeSize.width / 2;
-      centerY += root.y + root.nodeSize.height / 2;
-      count++;
-    });
-
-    const centerViewX = this.canvas.width / this.canvas.ratio / 2;
-    const centerViewY = this.canvas.height / this.canvas.ratio / 2;
-
-    return {
-      x: centerViewX - centerX / count,
-      y: centerViewY - centerY / count,
-      scale: 1
-    };
+    return this.viewport.centerOn(
+      this.roots.map((root) => ({ x: root.x, y: root.y, width: root.nodeSize.width, height: root.nodeSize.height }))
+    );
   }
 
   /**
    * @returns The center of all the nodes in the graph.
    */
   public getCenterPanAndScale(): PanAndScale {
-    let centerX = 0;
-    let centerY = 0;
-    let count = 0;
-
-    _.each(this.roots, function (root) {
-      centerX += root.x + root.measuredSize.width / 2;
-      centerY += root.y + root.measuredSize.height / 2;
-      count++;
-    });
-
-    const centerViewX = this.canvas.width / this.canvas.ratio / 2;
-    const centerViewY = this.canvas.height / this.canvas.ratio / 2;
-
-    return {
-      x: centerViewX - centerX / count,
-      y: centerViewY - centerY / count,
-      // TODO: Do we want to figure out the scale here too?
-      scale: 1
-    };
+    return this.viewport.centerOn(
+      this.roots.map((root) => ({
+        x: root.x,
+        y: root.y,
+        width: root.measuredSize.width,
+        height: root.measuredSize.height
+      }))
+    );
   }
 
   /**
@@ -3388,53 +2628,13 @@ export class NodeGraphEditor extends View {
   clampPanAndScale(panAndScale: PanAndScale) {
     if (!this.model || this.model.roots.length === 0) return panAndScale;
 
-    const ClampPadding = 100;
-
-    const graphAABB = this.graphAABB;
-
-    const canvasWidth = this.canvas.width / (this.canvas.ratio * panAndScale.scale);
-    const canvasHeight = this.canvas.height / (this.canvas.ratio * panAndScale.scale);
-
-    const visiblePixelsAtLeftBorder = panAndScale.x + graphAABB.maxX;
-    const visiblePixelsAtTopBorder = panAndScale.y + graphAABB.maxY;
-    const visiblePixelsAtRightBorder = canvasWidth - panAndScale.x - graphAABB.minX;
-    const visiblePixelsAtBottomBorder = canvasHeight - panAndScale.y - graphAABB.minY;
-
-    if (visiblePixelsAtLeftBorder < ClampPadding) {
-      panAndScale.x = ClampPadding - graphAABB.maxX;
-    }
-    if (visiblePixelsAtRightBorder < ClampPadding) {
-      panAndScale.x = canvasWidth - graphAABB.minX - ClampPadding;
-    }
-
-    if (visiblePixelsAtTopBorder < ClampPadding) {
-      panAndScale.y = ClampPadding - graphAABB.maxY;
-    }
-    if (visiblePixelsAtBottomBorder < ClampPadding) {
-      panAndScale.y = canvasHeight - graphAABB.minY - ClampPadding;
-    }
-
-    return panAndScale;
+    return this.viewport.clamp(panAndScale);
   }
 
   calculateNodesAABB(nodes: readonly NodeGraphEditorNode[]): AABB {
-    const firstNode = nodes[0];
-
-    const aabb = {
-      minX: firstNode.global.x,
-      minY: firstNode.global.y,
-      maxX: firstNode.global.x + firstNode.nodeSize.width,
-      maxY: firstNode.global.y + firstNode.nodeSize.height
-    };
-    for (let i = 1; i < nodes.length; i++) {
-      const n = nodes[i];
-      aabb.minX = Math.min(aabb.minX, n.global.x);
-      aabb.minY = Math.min(aabb.minY, n.global.y);
-      aabb.maxX = Math.max(aabb.maxX, n.global.x + n.nodeSize.width);
-      aabb.maxY = Math.max(aabb.maxY, n.global.y + n.nodeSize.height);
-    }
-
-    return aabb;
+    return CanvasViewport.rectsAABB(
+      nodes.map((n) => ({ x: n.global.x, y: n.global.y, width: n.nodeSize.width, height: n.nodeSize.height }))
+    );
   }
 
   nodesetFromSelection() {

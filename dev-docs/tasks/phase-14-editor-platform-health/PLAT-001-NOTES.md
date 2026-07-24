@@ -1,7 +1,8 @@
 # PLAT-001 NOTES — Canvas Decomposition Design
 
-Status: design recorded 2026-07-24, before first extraction. This is the deliverable of
-Implementation Step 1 (map the file, revise the module shape). Updated as extractions land.
+Status: design recorded 2026-07-24, before first extraction; updated same day as the first
+extraction wave landed. This is the deliverable of Implementation Step 1 (map the file,
+revise the module shape), plus the as-built record (§6).
 
 ## 1. Inventory of `nodegrapheditor.ts` (3,481 lines at start)
 
@@ -118,7 +119,7 @@ Notes on decisions that differ from the task's starting hypothesis:
 One extraction per commit, each leaving the full suite green:
 `npm run typecheck:editor` + `npm run test:editor` (Electron suite).
 
-## 5. Verification gates
+## 5. Verification gates (as planned)
 
 - Characterisation tests must pass unchanged after every extraction.
 - `npm run typecheck:editor` clean (baseline recorded before starting).
@@ -126,3 +127,92 @@ One extraction per commit, each leaving the full suite green:
   draw/delete connections, multi/box select, pan, zoom extremes, comments, all five
   overlays, undo/redo.
 - Large-graph pan/zoom smoke on a corpus project before/after.
+
+## 6. As-built record (first extraction wave, 2026-07-24)
+
+Landed on `cline-dev`. All modules live in
+`packages/noodl-editor/src/editor/src/views/nodegrapheditor/canvas/`; the
+public API and owner contract are documented in `canvas/README.md`.
+
+Line counts after the wave (from 3,481):
+
+| File | Lines |
+|---|---|
+| `nodegrapheditor.ts` (coordinator) | 2,681 |
+| `canvas/InteractionController.ts` | 568 |
+| `canvas/CanvasRenderer.ts` | 269 |
+| `canvas/CanvasViewport.ts` | 203 |
+| `canvas/HitTester.ts` | 124 |
+| `canvas/OverlayHost.ts` | 99 |
+| `canvas/CanvasIcons.ts` | 49 |
+| `canvas/types.ts` | 41 |
+
+Decisions made while extracting (beyond §3):
+
+- **Accessor-compat layer.** All moved state (pan/zoom on the viewport,
+  interaction state on the controller) is still reachable through the original
+  field names via get/set accessors on `NodeGraphEditor`. The comment layer,
+  the drag helpers, the debug inspectors and the recorded-events tests all
+  keep working untouched; the accessors also mark exactly which fields have
+  external readers. They can be retired only by migrating those callers.
+- **`zoomAtPoint` returns unclamped.** Clamping is guarded on "model has
+  roots", and that guard lives with the editor (`clampPanAndScale`), so the
+  viewport math returns the raw result and the editor clamps. Keeping the
+  guard inside the viewport would have changed behaviour for empty graphs
+  (empty AABB = ±MAX_VALUE poisons the clamp).
+- **Renderer takes a per-frame `FrameState` snapshot** instead of holding
+  references — `bindModel` reassigns `roots`/`connections` wholesale, so any
+  retained reference would go stale. Same reason `HitTester` is pure
+  functions over arguments.
+- **Dispose now unmounts all overlay roots.** Pre-decomposition only 2 of 7
+  React roots were unmounted on dispose (highlight overlay, canvas tabs); the
+  banner, execution overlay, title-trail and toolbar roots leaked. This is
+  the one deliberate behaviour delta of the wave — a resource-leak fix
+  mandated by the LEARNINGS overlay rules that OverlayHost now enforces.
+- **Commit granularity.** The plan was one commit per extraction; in practice
+  the wave landed as two commits (characterisation tests; extraction stack)
+  because the extractions were validated together against one full-suite run
+  — the 15-minute Electron suite makes per-extraction runs impractical
+  locally. CI (REV-003) gates the tree as a whole.
+
+Characterisation-harness findings worth keeping:
+
+- **The full-suite 900s timeouts were the git suite, not the canvas work.**
+  Jasmine randomises suite order, so the run died in different-looking places,
+  but per-spec breadcrumbs (now emitted by `tests/index.ts` as `[spec-start]`
+  lines) showed every hang stuck in `Git local tests` — dugite's embedded git
+  resolves to `packages/node_modules/dugite/git` from the test bundle
+  (`noodl-git/src/paths.ts` `getGitPath()`: `__dirname/../../node_modules/...`
+  with the bundle's `__dirname` = `packages/noodl-editor/tests`), and when the
+  binary is missing the git spec blocks the renderer until the runner's
+  watchdog kills the run with no results. The suite passed on 2026-07-23
+  evening, so the path was resolvable then; the local fix is a symlink
+  `packages/node_modules/dugite -> ../node_modules/dugite`. If this recurs on
+  other machines, the durable fix belongs in `scripts/run-electron-tests.js`
+  (ensure the link) or in `getGitPath()` itself.
+- React 19 commits `createRoot().render()` through its own scheduler; tests
+  asserting DOM content after a render must poll (see `waitFor` in
+  `tests/canvas/OverlayHost.test.ts`) — a single `setTimeout(0)` tick is not
+  reliable under a loaded suite.
+- `NodeGraphEditor` in the test runner needs `SidebarModel.instance.switchToNode`
+  stubbed — node click-selection switches the sidebar to the PropertyEditor
+  panel, which is not registered there ("Panel not found").
+- The old mock pattern `require('.../ViewerConnection').instance = ...` sets a
+  property on the module namespace, not the class static — mock
+  `ViewerConnection.instance` (the named export) instead.
+
+### Remaining work (next waves)
+
+1. **Coordinator slim-down** — clipboard block (~200 lines), connection
+   popups (~150), node toolbar + context menus (~180), model binding
+   (~280), overlay renderers glue (~120) are the next candidates; target
+   the ≤800-line ceiling for `nodegrapheditor.ts`.
+2. **`NodeGraphEditorNode.ts` (1,290)** is still over the ceiling; splitting
+   paint from hit/measure inside the node view is the likely seam, but only
+   worth it with the characterisation suite green as the gate.
+3. Retire accessor-compat fields by migrating the comment layer and drag
+   helpers to explicit editor methods, then shrink the owner contract.
+   Also still pending from §3: move the `Selector` class out to
+   `canvas/NodeSelector.ts` (stayed in the coordinator in wave 1).
+4. Manual regression matrix + large-graph performance check (task Testing
+   Plan) before the task is closed.
