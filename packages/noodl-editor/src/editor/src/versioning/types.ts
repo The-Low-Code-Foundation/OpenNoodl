@@ -177,7 +177,9 @@ export type ConflictKind =
   | 'connection-to-deleted'
   | 'comment'
   | 'component-rename'
-  | 'component-metadata';
+  | 'component-metadata'
+  /** Project-level scalar (settings, styles, metadata) — see ProjectMerge.ts. */
+  | 'project-setting';
 
 export type ConflictSide = 'ours' | 'theirs';
 

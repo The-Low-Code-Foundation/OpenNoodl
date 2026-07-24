@@ -200,5 +200,7 @@ export function formatConflict(conflict: GraphConflict, options: FormatOptions =
       return `Both sides renamed the component ('${conflict.ours}' vs '${conflict.theirs}')`;
     case 'component-metadata':
       return `Both sides changed ${conflict.name}`;
+    case 'project-setting':
+      return `Both sides changed the project setting '${conflict.name}'`;
   }
 }

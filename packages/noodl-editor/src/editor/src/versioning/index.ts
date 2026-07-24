@@ -21,6 +21,15 @@ export { matchRecreatedNodes } from './NodeIdentity';
 export { mergeGraphs, mergeProjectSnapshots, applyResolution, resolveAll } from './GraphMerge';
 export type { ProjectMergeResult } from './GraphMerge';
 export {
+  mergeProject,
+  mergeProjectGraph,
+  serializeMergedProject,
+  resolveProjectConflict,
+  resolveAllProjectConflicts,
+  diffProjects
+} from './ProjectMerge';
+export type { LegacyProject, ProjectMergeConflict, ProjectMergeState, SerializeOptions } from './ProjectMerge';
+export {
   formatChange,
   formatComponentDiff,
   formatConflict,

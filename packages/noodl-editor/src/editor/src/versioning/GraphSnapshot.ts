@@ -136,6 +136,10 @@ export function fromLegacyComponent(component: Record<string, unknown>): GraphSn
   for (const key of Object.keys(graph)) {
     if (key !== 'roots' && key !== 'connections' && key !== 'comments') extras[`legacyGraph:${key}`] = graph[key];
   }
+  // Remember that the source carried a comments array even if it was empty, so
+  // a component whose last comment is deleted serializes back to `comments: []`
+  // rather than losing the key. Unprefixed, so neither serializer replays it.
+  if (Array.isArray(graph.comments)) extras.hasCommentsArray = true;
 
   return {
     name: String(component.name ?? ''),
@@ -291,7 +295,9 @@ export function toLegacyComponent(snapshot: GraphSnapshot): Record<string, unkno
     roots: buildTree(undefined),
     connections: snapshot.connections.map(denormalizeConnection)
   };
-  if (snapshot.comments.length > 0) graph.comments = snapshot.comments.map(denormalizeComment);
+  if (snapshot.comments.length > 0 || snapshot.extras.hasCommentsArray === true) {
+    graph.comments = snapshot.comments.map(denormalizeComment);
+  }
   for (const key of Object.keys(snapshot.extras)) {
     if (key.startsWith('legacyGraph:')) graph[key.slice('legacyGraph:'.length)] = snapshot.extras[key];
   }
