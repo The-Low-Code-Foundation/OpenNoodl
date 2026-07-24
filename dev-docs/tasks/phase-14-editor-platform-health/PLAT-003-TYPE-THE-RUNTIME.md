@@ -128,6 +128,36 @@ Do not chase `strict: true` initially. Get accurate types with `strict: false`, 
 
 In progress. Full as-built record in [PLAT-003-NOTES.md](./PLAT-003-NOTES.md).
 
+### Slice 4 — 2026-07-24 — the visual nodes (step 7, first group)
+
+- All nine `noodl-viewer-react/src/nodes/visual/*.js` → `.ts` (1,637 lines), each annotated against
+  the type it authors: `ReactNodeDefinition` for the eight React nodes, `NodeDefinitionOptions` for
+  `css-definition`, which is a plain runtime node. Annotation is the point — an unannotated object
+  literal is checked against nothing under this tsconfig.
+- **The ESM/CJS boundary bit for the first time.** `image`/`video` import `@noodl/runtime/src/utils`,
+  and as `.ts` they pulled a `module: commonjs` runtime file into the viewer's ESM program
+  (`TS1203` + `TS2497`). Fixed in `utils.ts`: `export =` → named exports. The §7 trap applies to
+  runtime modules that export a *value*; a module exporting a namespace must use named exports so
+  ESM consumers can import it. Emitting real `.d.ts` from `@noodl/runtime` is the general fix and is
+  now item 3 on the next-slice list.
+- `react-component-node.ts` gains `ReactInputDefinition`/`ReactOutputDefinition`: slice 3 pointed
+  `inputs`/`outputs` at the runtime port types, whose callbacks declare `this: NodeInstance`, and
+  every node body here needs the React instance. Its first real consumers found it.
+  `innerReactComponentRef` `unknown` → `any` for the same reason.
+- `@noodl/types`: new `PortTooltip` — `tooltip` was `string`, but the `{ standard, extended }` object
+  form is written by `node-shared-port-definitions.js` and the Video node and read by the editor.
+- Two latent defects found and documented, not fixed: `Noodl.runDeployed` is never set (so deployed
+  bundles still carry editor-only tooltip HTML — the real flag is `Noodl.deployed`), and `propPath`
+  on an ordinary input port is inert. See NOTES §11.3.
+
+File counts: `noodl-viewer-react` 106/32/35 → **97 `.js` / 41 `.ts` / 35 `.tsx`** (+12 `.jsx`,
+unchanged). `noodl-runtime` unchanged at 73 `.js` / 19 `.ts`.
+
+Gates: `catalog:check` byte-identical (135 node types); `typecheck:viewer` 0 `src` errors before and
+after; runtime/cloud/editor typechecks clean; runtime jest 225 pass / 20 pre-existing fail; viewer,
+deploy, ssr, cloud and preview builds green; eslint clean on every converted file. Live editor pass
+still owed — PLAT-002 has the editor package mid-conversion.
+
 ### Slice 3 — 2026-07-24 — the React binding hub (step 6)
 
 - `noodl-viewer-react/src/react-component-node.js` → `.ts` (1,189 lines), the compiler between the

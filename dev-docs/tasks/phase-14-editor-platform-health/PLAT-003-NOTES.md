@@ -383,10 +383,10 @@ The editor still has **not** been smoke-tested live; a concurrent PLAT-002 sessi
 package and has ~30 uncommitted files in it, so a live pass would exercise their work in progress
 rather than this slice. Still owed.
 
-## 10. Next slice
+## 10. Slice 3's plan for slice 4 (item 2 done; see §11)
 
-File counts now: `noodl-runtime` **73 `.js` / 19 `.ts`** (unchanged — slice 3 was viewer-side).
-`noodl-viewer-react` **106 `.js` / 32 `.ts` / 35 `.tsx`** (was 107/31/35).
+File counts at the end of slice 3: `noodl-runtime` **73 `.js` / 19 `.ts`** (unchanged — slice 3 was
+viewer-side). `noodl-viewer-react` **106 `.js` / 32 `.ts` / 35 `.tsx`** (was 107/31/35).
 
 1. **Live editor pass** — still the one gate no slice has run. Open a real project; exercise
    signals, dynamic-port nodes (Function, Expression, numbered inputs), variants and visual
@@ -401,7 +401,7 @@ File counts now: `noodl-runtime` **73 `.js` / 19 `.ts`** (unchanged — slice 3 
 5. **Do not raise `strict` yet** (spec step 8).
 6. **Step 9 (editor-side `TSFixme` sweep) stays deferred** until PLAT-002 lands.
 
-### Traps for the next session
+### Traps recorded by slice 3
 
 All of §7's traps still apply. One more:
 
@@ -410,3 +410,128 @@ All of §7's traps still apply. One more:
   `node-shared-port-definitions`) silently become `any` instead of erroring, and null checks are
   off. Raising either flag is a separate, much larger piece of work — do not do it incidentally
   while converting a file.
+
+## 11. Slice 4 — the visual nodes (spec step 7)
+
+All nine files in `noodl-viewer-react/src/nodes/visual/` converted to `.ts`: `circle`, `columns`,
+`css-definition`, `drag`, `group`, `icon`, `image`, `text`, `video` (1,637 lines). Eight are React
+nodes and are now annotated `const X: ReactNodeDefinition = {…}`, which is where the value is — a
+bare rename buys almost nothing under this tsconfig, since an unannotated object literal is checked
+against nothing. `css-definition` is not a React node and types against `NodeDefinitionOptions`
+directly.
+
+### 11.1 The wall this slice hit: ESM viewer importing a CommonJS runtime
+
+`image` and `video` import `getAbsoluteUrl` from `@noodl/runtime/src/utils`, and they are the first
+**TypeScript** files in the viewer to import a runtime *source* file. That pulled `utils.ts` into the
+viewer's program, which compiles at `module: es6`, and it failed two ways at once: `TS1203` on the
+file's own `export =`, and `TS2497` on the named import of an `export =` module. `.js` node files
+never triggered it because `allowJs: false` keeps tsc from following them.
+
+The fix is in `utils.ts`: `export =` → named `export function`s. The §7 trap ("a `.ts` file in the
+runtime must use `export =`") is right about modules whose export *is* a value — a class or a
+function — because consumers `require()` them. It does not apply to a module whose export is already
+a namespace of functions: both forms emit identical CommonJS, every consumer already destructures
+(`const { getAbsoluteUrl } = require('./utils')`), and only the named form can be imported from a
+package that compiles as ESM. The rule, refined:
+
+> Runtime module exports a single value → `export =`. Runtime module exports a namespace → named
+> exports, so viewer `.ts` files can import it.
+
+This will recur for every runtime module a converted viewer file reaches for. The general fix — have
+`@noodl/runtime` emit and ship `.d.ts` — is a build-pipeline change and belongs in its own slice, not
+inside a node conversion.
+
+### 11.2 Type surface added
+
+Two React-flavoured port definitions in `react-component-node.ts`, and slice 3's own first real test:
+
+- **`ReactInputDefinition` / `ReactOutputDefinition`.** `ReactNodeDefinition.inputs`/`outputs` pointed
+  at the runtime's `InputPortDefinition`/`OutputPortDefinition`, whose callbacks declare
+  `this: NodeInstance`. Every `set`/`valueChangedToTrue` in these nodes calls `setStyle`,
+  `forceUpdate`, `props` or `innerReactComponentRef` — React members. `NodeInstance` is closed (no
+  index signature, deliberately), so the runtime types rejected the very node bodies this module
+  exists to compile. The two new interfaces are the runtime shapes with the callbacks re-declared
+  against `ReactNodeInstance`. Slice 3 got this wrong because it had no consumers yet.
+- **`innerReactComponentRef` `unknown` → `any`.** Nodes call imperative methods on it
+  (`scrollToIndex`, `snapToPositionX`, `play`) and which methods exist is decided by the component
+  each node returns from `getReactComponent`. There is no one type — only a per-node contract.
+- **`PortTooltip` in `@noodl/types`.** `tooltip` was typed `string`, but the object form
+  `{ standard, extended }` is real: `node-shared-port-definitions.js` writes it for sizeMode/width/
+  height, the Video node writes it for its playback signals, and the editor reads it
+  (`shared/view.js:145`, `SizeModeInput.tsx:21`). Widened on `InputPortDefinition` and on
+  `InputPortMetadata`, which is where `nodedefinition.ts` copies it to.
+- **`declare const Noodl`** in `noodl-viewer-react/typings/global.d.ts`, inside `declare global` —
+  the file has a top-level `import`, so a bare declaration would have been module-scoped and invisible.
+
+### 11.3 What typing found
+
+| Finding | Evidence | Effect |
+|---|---|---|
+| `Noodl.runDeployed` is never set | Group and Text skip building their tooltips `if (!Noodl.runDeployed)`. `runDeployed` is a *constructor argument* to `NoodlRuntime`; the flag the deploy bootstrap sets is `Noodl.deployed` (`static/deploy/index.js`) | The skip never happens, so editor-only tooltip HTML is built and shipped in deployed apps. Recorded on `GlobalNoodl` with `@deprecated`, not fixed — correcting it changes deployed output |
+| `propPath` on an ordinary input does nothing | Image's `inputs.src` declared `propPath: 'dom'`; `propPath` is only read from `inputProps`/`outputProps` | None. The port's own `set` writes `props.dom.src` itself, which is what actually put the value there. The inert key is removed and the reason recorded in the source |
+
+Both follow slice 3's §9.3 precedent: a mistake that changes published behaviour gets declared and
+documented so it surfaces at the call site, not quietly corrected inside a typing slice.
+
+### 11.4 Verification
+
+| Gate | Result |
+|---|---|
+| `typecheck:viewer` | **0 errors in `src`**, before and after (40 pre-existing `node_modules` `@types` conflicts) |
+| `typecheck:runtime` / `typecheck:cloud` / `typecheck:editor` | clean |
+| root `typecheck` | 14 errors, all the pre-existing `@noodl-versioning` alias |
+| `catalog:check` | **byte-identical**, 135 node types |
+| `noodl-runtime` jest | 225 passing / 20 failing — the §4 baseline, unchanged |
+| viewer + deploy + ssr prod bundles | green |
+| cloud viewer + isolate bundles, `noodl-preview` esbuild | green |
+| `eslint` on every converted file | clean |
+
+`catalog:check` is again the load-bearing gate: byte-identical output proves all nine nodes still
+register with identical metadata, that removing Image's inert `propPath` changed nothing, that
+`css-definition`'s `module.exports` → `export default` still resolves through `register-nodes.js`, and
+that the runtime `utils.ts` export change did not break headless loading.
+
+Pre-existing failures reproduced unchanged: `noodl-viewer-react`'s `collection.test.js` (stale path,
+§7 trap 4) and `noodl-preview`'s `preview.test.ts:97` (the >1 MB assertion, which fails whenever the
+on-disk artifact is a production build — §9.6).
+
+The **live editor pass is still owed**, and still cannot be run honestly: PLAT-002 has the editor
+package mid-conversion with uncommitted work, so a live run would exercise theirs, not this.
+
+### 11.5 Traps
+
+- **`register-nodes.js` imports with explicit extensions** (`'./nodes/visual/circle.js'`). Webpack
+  does not substitute `.ts` for a request that spells `.js`, so a rename there is a silent
+  module-not-found at build time. Drop the extension when converting; `tsc` never sees this file
+  (`allowJs: false`), so only the bundler's opinion counts.
+- **The working tree is shared and other sessions commit with `git add -A`.** The nine `git mv`
+  renames in this slice were staged, and a concurrent AIX-001 commit (`d004edd`) swept them in as
+  pure renames before this slice committed its content. Nothing was lost — the content landed in the
+  slice's own commit — but stage renames as late as possible, or expect them to belong to someone
+  else's commit.
+- Running `prettier --write` on these files also reflowed a few pre-existing lines in
+  `react-component-node.ts` and `node-definition.d.ts`; neither file was prettier-clean at HEAD.
+  Formatting noise in the diff, no behaviour.
+
+## 12. Next slice
+
+File counts now: `noodl-runtime` **73 `.js` / 19 `.ts`** (unchanged — slice 4 was viewer-side).
+`noodl-viewer-react` **97 `.js` / 12 `.jsx` / 41 `.ts` / 35 `.tsx`** (was 106/12/32/35).
+
+1. **Live editor pass** — the one gate no slice has run. Still blocked on PLAT-002 committing its
+   editor work; take it the moment they land.
+2. **The rest of the viewer nodes** (spec step 7 continued): `nodes/std-library/` (~30 files) and
+   `nodes/navigation/` (~10). Same recipe as §11 — rename, annotate `ReactNodeDefinition`, fix what
+   the compiler objects to, drop the extension in `register-nodes.js`. Expect §11.1 to recur: each
+   runtime module a converted file imports needs its export style checked.
+3. **Make `@noodl/runtime` ship declarations.** The proper fix for §11.1, and the thing that stops
+   the ESM/CJS boundary being renegotiated file by file. Its own slice: it changes how every
+   consumer resolves the runtime.
+4. **Decide on the §9.3 and §11.3 findings.** `def.deprecated` being dropped is still the one worth
+   fixing (it changes `node-catalog.json`, so: own commit, regenerated catalog). `Noodl.runDeployed`
+   is the cheapest — rename to `deployed` and deployed bundles stop carrying tooltip HTML — but it
+   changes deployed output, so it needs its own commit too.
+5. **Do not raise `strict` yet** (spec step 8).
+6. **Step 9 (editor-side `TSFixme` sweep) stays deferred** until PLAT-002 lands. Note PLAT-004 has
+   started its own escape-hatch ratchet in parallel; agree the boundary before sweeping.
