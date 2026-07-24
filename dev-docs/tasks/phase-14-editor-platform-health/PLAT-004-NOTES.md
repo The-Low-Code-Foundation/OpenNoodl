@@ -1,14 +1,18 @@
 # PLAT-004 NOTES — Type Escape-Hatch Ratchet
 
-Status: the mechanism landed 2026-07-24 (spec steps 1–4, 6), plus the first burn-down slice —
-`noodl-preview`, 16 `TSFixme` → 3 (§7). The rest of the burn-down mostly happens inside PLAT-002 and
-PLAT-003. Resume from **§6**.
+Status: the mechanism landed 2026-07-24 (spec steps 1–4, 6), plus two burn-down slices —
+`noodl-preview`, 16 `TSFixme` → 3 (§7), and the AI client, 44 → 0 (§8). The rest of the burn-down
+mostly happens inside PLAT-002 and PLAT-003. Resume from **§6**.
 
 Run in parallel with PLAT-002 and PLAT-003. Boundary: PLAT-004 owns the counter, the baseline, the
-CI job and the policy — nothing in `packages/`. It deliberately does **not** sweep markers in
-`packages/noodl-editor` (PLAT-002's territory) or `packages/noodl-runtime` /
-`packages/noodl-viewer-react` (PLAT-003's), because both tasks are removing those markers as a side
-effect of work already in flight, and a third editor would only cause conflicts.
+CI job and the policy, plus burn-down in code no concurrent task is editing. It deliberately does
+**not** sweep markers in the files PLAT-002 is converting (`noodl-editor/src/editor/src/views`) or
+PLAT-003 is typing (`noodl-runtime`, `noodl-viewer-react`, `noodl-types/src/runtime`), because both
+tasks remove those markers as a side effect of work already in flight and a third editor would only
+cause conflicts.
+
+The boundary is by **task, not by package** — see §6.1. The AI client sits inside `noodl-editor` but
+belongs to AIX-001, which is finished, so slice 2 typed it without racing anyone.
 
 ## 1. What shipped
 
@@ -28,8 +32,14 @@ lint ratchet it sits beside in the same job.
 
 ## 2. Baseline
 
-Measured at `3a302b9` when the mechanism landed; now `0395b24` after slice 1 (§7) lowered
-`TSFixme` to **568**. The table below is the original measurement.
+Measured at `3a302b9` when the mechanism landed. Since then: slice 1 (§7) lowered `TSFixme` to 568
+at `0395b24`, and slice 2 (§8) set it to **571 / 393 `any`** at `5b3cca0`. The table below is the
+original measurement.
+
+Slice 2's number went *up* by 3 `TSFixme` and 1 `any` against slice 1's, and that is deliberate —
+see §8. It is the escape valve being used as designed: HEAD had drifted 47 markers above the
+baseline, 44 of them the AI client's (now typed) and 4 belonging to files PLAT-002 and PLAT-003 are
+mid-way through. A baseline that stays below reality is a gate that everyone learns to ignore.
 
 | Marker | Count |
 |---|---|
@@ -87,29 +97,38 @@ no generated `.ts` in the repo carries a marker.
 | Remove a marker | Exit 0, prompts to lower the baseline |
 | Swap a `TSFixme` for a bare `any` | Exit 1 — the trade does not pass |
 
-## 5. Known live consequence — read before the next commit lands
+## 5. Known live consequence — resolved by slice 2
 
 The baseline was measured from a clean `git archive` of `3a302b9`, **not** from the working tree,
 which was dirty with two other sessions' in-flight work at the time. A tree-measured baseline would
 have baked in uncommitted markers and would not be reproducible from any commit.
 
-The consequence is that work already in flight will trip the gate when it lands. As of writing:
+The consequence was that work already in flight would trip the gate when it landed, and it did —
+HEAD sat 47 `TSFixme` and 1 `any` above the baseline once AIX-001 and PLAT-002's wave 3 were in.
 
-| In-flight work | Markers over baseline |
-|---|---|
-| AI assistant client (`models/AiAssistant/client/**`, `tests/ai/**`) | +44 `TSFixme` |
-| PLAT-003 `react-component-node.ts` | +2 `any` |
+| In-flight work | Markers over baseline | Outcome |
+|---|---|---|
+| AI assistant client (`models/AiAssistant/client/**`, `tests/ai/**`) | +44 `TSFixme` | Typed — §8 |
+| PLAT-002 `views/importpopup.ts` | +3 `TSFixme` | Absorbed into the baseline; PLAT-002's to remove |
+| PLAT-003 `react-component-node.ts` | +1 `any` net | Absorbed into the baseline; PLAT-003's to remove |
 
-Neither is a defect in the ratchet — it is the ratchet doing its job on new code. Whoever lands
-those either gives the values real types or runs `npm run tsfixme:baseline` and commits the raised
-baseline with a reason, per the policy. The AI assistant markers are in fresh provider code where
-the types are knowable (SDK response shapes), so typing them is the better answer there.
+None of it was a defect in the ratchet — it was the ratchet doing its job on new code. The
+prediction that the AI markers were "in fresh provider code where the types are knowable" held: all
+44 came out, and typing them found two latent defects (§8).
+
+**The lesson to carry**: a ratchet whose baseline is measured from a commit *will* go red the moment
+concurrent work lands, and a gate left red is a gate nobody reads. Someone has to close the loop
+promptly — which is the argument for §6's point 2 rather than a reason to measure from the tree.
 
 ## 6. Where to resume
 
 1. **Harvest the easy wins** (spec step 5) in packages no one else is editing. `noodl-preview` is
-   done (§7). `noodl-types`' remaining 11 are in `src/runtime/*.d.ts`, which is PLAT-003's published
-   API — leave those to that task. Everything else is live territory for PLAT-002/003.
+   done (§7); the AI client is done (§8). `noodl-types`' remaining 11 are in `src/runtime/*.d.ts`,
+   which is PLAT-003's published API — leave those to that task. Everything else is live territory
+   for PLAT-002/003.
+   Ownership is by *task*, not by package: the AI client lives in `noodl-editor` but belongs to
+   AIX-001, and PLAT-002 is nowhere near `models/AiAssistant`, so typing it raced nobody. Check what
+   the concurrent task is actually editing before assuming a whole package is off limits.
 2. **Lower the baseline as PLAT-002/003 land.** Neither task is required to update it — the gate
    only blocks increases — so the number will drift high unless someone re-runs
    `npm run tsfixme:baseline` after each merge. Worth adding to those tasks' definition of done.
@@ -150,3 +169,80 @@ unrelated — `expect(content-length).toBeGreaterThan(1_000_000)` on `noodl.depl
 872KB in this tree because PLAT-003 is rebuilding the viewer. Confirmed pre-existing by running the
 same suite against the unmodified files. An earlier run showed 4 failures; those were timeouts from
 two other sessions saturating the machine, and did not reproduce.
+
+## 8. Burn-down slice 2 — the AI client, 44 → 0
+
+Chosen because the gate was **red at HEAD**: AIX-001 landed after the baseline was measured and
+brought 44 `TSFixme` with it, so `npm run tsfixme` failed for everyone, on work that was nobody's
+fault. Fixing a red gate outranks harvesting a quiet package.
+
+Ownership was checked first, not assumed. The client is `packages/noodl-editor`, which §6 calls
+PLAT-002's territory — but PLAT-002 is retiring jQuery in `views/` and has never touched
+`models/AiAssistant`. Both files were clean in the shared working tree when the work started.
+
+| Was | Now | Why it was removable |
+|---|---|---|
+| `raw: TSFixme` / `block: TSFixme` ×5 (anthropic) | `AnthropicMessage`, `AnthropicContentBlock` + two type guards | The response shape is knowable; `.filter(isTextBlock)` narrows the array properly |
+| `as AsyncIterable<TSFixme>` | `AnthropicCreateResult` union + `isEventStream` | See below — this one was hiding a real failure mode |
+| `json: TSFixme` ×4, `call/item/block: TSFixme` ×5 (openai, ollama) | Per-provider wire interfaces | Every field the adapters read, named in the adapter that reads it |
+| `error: TSFixme` ×6 | `providers/errors.ts` | Structural readers over `unknown` |
+| tests' `let caught: TSFixme` ×6 | `expectAiClientError()` | The helper the specs were missing |
+| tests' `emitted: TSFixme[]` ×3 | `AiToolCall[]` | The type already existed |
+| tests' `(message as TSFixme)` ×3, `content as TSFixme[]` ×2 | Typed builder returns + `blocksOf()` | The builders were returning `Record<string, unknown>[]` |
+
+**Wire types are hand-written, not imported from the SDK.** `anthropic.ts` already documented why —
+a structural client type keeps the adapter testable against a stub and immune to SDK type churn —
+and importing `Anthropic.Message` just to type the response would have undone that. Every field is
+optional, because it comes off the wire; what the types buy is a typo check and a written-down
+contract, not a guarantee that the server sent anything.
+
+**Two latent defects fell out**, both of the kind `TSFixme` exists to hide:
+
+- `messages.create` was cast to `AsyncIterable<TSFixme>` in `chatStream` and read as an object in
+  `chat`. Nothing checked which it actually was, so a gateway that ignored `stream: true` would have
+  produced `for await (const event of {...})` — "is not async iterable" — rather than anything a
+  user could act on. It is now declared to return either, and both entry points narrow with a
+  runtime check that throws an `AiClientError`.
+- `(error as TSFixme)?.name === 'AbortError'` looks like it works and mostly does, but the cast was
+  standing in for a judgement nobody made: `instanceof Error` is *not* sufficient here, because
+  fetch raises abort as a `DOMException`, which is not an `Error` in every environment the editor
+  runs in. `providers/errors.ts` reads the fields structurally instead, and `wrapError` now passes
+  an `AiClientError` through rather than re-wrapping its message under a generic "request failed".
+
+### Verification without Electron
+
+The editor's specs run under jasmine in Electron via webpack, which is a heavy thing to boot while
+two other sessions are building in the same tree. Instead: esbuild-bundle `tests/ai/*.test.ts` for
+node (esbuild reads the `paths` aliases straight from `packages/noodl-editor/tsconfig.json`, and
+`@anthropic-ai/sdk` must be marked `external` — it is `require`d lazily and never loaded by the
+specs), with a ~70-line `describe`/`it`/`expect` shim. All 66 specs pass.
+
+The control matters more than the run: the same bundle was built from a clean `git archive HEAD`
+export of the *pre-change* sources and produced identical output — 66 passed, same two expected
+console warnings. That is what makes "no behaviour change" a measurement rather than a claim.
+
+`client.test.ts` is excluded from the headless run because it pulls in `AiConfigStore` and therefore
+electron-store; it is typechecked and unchanged in behaviour, but it has only been *run* in the
+Electron suite.
+
+Typechecking needed a throwaway tsconfig: `packages/noodl-editor/tsconfig.json` includes
+`src/editor` only, so `tsc -p packages/noodl-editor` never sees `tests/`. Nothing in CI typechecks
+the editor's tests today — worth knowing before trusting a green `typecheck:editor` on a test-only
+change.
+
+### The baseline went up by 3, on purpose
+
+After the 44 came out, HEAD still sat +3 `TSFixme` and +1 `any` over the old baseline: 3 in
+`views/importpopup.ts` (PLAT-002's wave-3 conversion, and all three describe the untyped import
+payload — the same `Exporter.exportToJSON` residue slice 1 documented as genuinely unknowable) and
+a net +1 `any` in `react-component-node.ts` (PLAT-003's live file, mid-slice). Both were left alone
+per §6: they are those tasks' to remove, and a third editor in the same files buys nothing.
+
+So the baseline records reality at `5b3cca0` — **571 `TSFixme`, 393 `any`** — which is the escape
+valve the policy provides, used with the reason written down. The alternative was leaving the gate
+red on other people's work, and a red gate teaches everyone to skip it.
+
+Measured, as always, from a clean `git archive HEAD` export rather than the working tree (§5). Two
+mechanical notes for next time: the export needs a `node_modules` symlink for the script's
+`typescript` require, and it has no `.git`, so the script records `commit: "unknown"` — patch the
+real short SHA into `.tsfixme-baseline.json` and the report header before copying them back.

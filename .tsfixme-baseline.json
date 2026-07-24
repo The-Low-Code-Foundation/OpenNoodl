@@ -4,10 +4,10 @@
     "scripts"
   ],
   "exclude": [],
-  "commit": "0395b24",
+  "commit": "5b3cca0",
   "max": {
-    "TSFixme": 568,
-    "any": 392,
+    "TSFixme": 571,
+    "any": 393,
     "@ts-ignore": 22,
     "@ts-nocheck": 0,
     "@ts-expect-error": 88
@@ -21,8 +21,8 @@
       "@ts-expect-error": 11
     },
     "noodl-editor": {
-      "TSFixme": 533,
-      "any": 235,
+      "TSFixme": 536,
+      "any": 234,
       "@ts-ignore": 11,
       "@ts-nocheck": 0,
       "@ts-expect-error": 64
@@ -85,7 +85,7 @@
     },
     "noodl-viewer-react": {
       "TSFixme": 17,
-      "any": 38,
+      "any": 40,
       "@ts-ignore": 0,
       "@ts-nocheck": 0,
       "@ts-expect-error": 11
@@ -701,13 +701,6 @@
       "@ts-nocheck": 0,
       "@ts-expect-error": 0
     },
-    "packages/noodl-editor/src/editor/src/utils/migration/claudeClient.ts": {
-      "TSFixme": 0,
-      "any": 1,
-      "@ts-ignore": 0,
-      "@ts-nocheck": 0,
-      "@ts-expect-error": 0
-    },
     "packages/noodl-editor/src/editor/src/utils/model.ts": {
       "TSFixme": 0,
       "any": 8,
@@ -912,6 +905,13 @@
       "@ts-expect-error": 0
     },
     "packages/noodl-editor/src/editor/src/views/documents/EditorDocument/titlebar.ts": {
+      "TSFixme": 3,
+      "any": 0,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-editor/src/editor/src/views/importpopup.ts": {
       "TSFixme": 3,
       "any": 0,
       "@ts-ignore": 0,
@@ -2005,7 +2005,7 @@
     },
     "packages/noodl-viewer-react/src/react-component-node.ts": {
       "TSFixme": 0,
-      "any": 31,
+      "any": 33,
       "@ts-ignore": 0,
       "@ts-nocheck": 0,
       "@ts-expect-error": 0

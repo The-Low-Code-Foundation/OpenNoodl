@@ -110,8 +110,8 @@ The counter uses the TypeScript parser rather than grep. Grep cannot tell `any` 
 - [x] Baseline committed; CI fails on increases
 - [x] Policy documented in coding standards, including the escape valve
 - [x] Clustering report available to other tasks
-- [x] Easy-win markers removed — in every package no concurrent task owns (`noodl-preview`, 16 → 3). The rest sit in PLAT-002/003 files and are theirs to remove
-- [ ] Count trending down; target under 100 by the end of PLAT-002 and PLAT-003, with the remainder documented — 581 → 568 so far
+- [x] Easy-win markers removed — everywhere no concurrent task is editing (`noodl-preview` 16 → 3; the AI client 44 → 0). The rest sit in PLAT-002/003 files and are theirs to remove
+- [ ] Count trending down; target under 100 by the end of PLAT-002 and PLAT-003, with the remainder documented — 581 → 568 → 571 recorded, against a HEAD that had drifted to 615
 
 ## Risks & Mitigations
 
@@ -125,6 +125,27 @@ The counter uses the TypeScript parser rather than grep. Grep cannot tell `any` 
 ## CHANGELOG
 
 In progress. Full as-built record in [PLAT-004-NOTES.md](./PLAT-004-NOTES.md).
+
+### Slice 2 — 2026-07-24 — the AI client, 44 `TSFixme` → 0 (step 5)
+
+- The gate was **red at HEAD**: AIX-001 landed after the baseline was measured and brought 44
+  markers, so `npm run tsfixme` failed for everyone. NOTES §5 had predicted exactly this, including
+  that the types were knowable there. They were: all 44 came out.
+- Each adapter now names the wire shapes it reads, hand-written rather than imported from a vendor
+  SDK — `anthropic.ts` had already documented why a structural client type is worth keeping. New
+  `providers/errors.ts` holds the structural readers for caught throwables that `(error as
+  TSFixme)?.name` was standing in for.
+- Typing found two latent defects: `messages.create` was cast to `AsyncIterable<TSFixme>` with
+  nothing checking that a stream actually came back, and the abort check relied on a cast where
+  `instanceof Error` would have been wrong anyway (fetch aborts are a `DOMException`).
+- The specs gained `expectAiClientError()`, replacing six `let caught: TSFixme` try/catch blocks
+  that could not fail when the call resolved.
+- Verified by esbuild-bundling the specs for node with a jasmine shim: 66/66 pass, output identical
+  to the same specs built from a clean pre-change `git archive HEAD` export.
+- Baseline re-measured at `5b3cca0`: **571 `TSFixme`, 393 `any`** — up 3 and 1 against slice 1's,
+  deliberately. Those 4 are PLAT-002's `importpopup.ts` and PLAT-003's `react-component-node.ts`,
+  left to their owners; absorbing them is the documented escape valve, and it beats leaving the gate
+  red on other people's in-flight work.
 
 ### Slice 1 — 2026-07-24 — burn-down in `noodl-preview` (step 5)
 
