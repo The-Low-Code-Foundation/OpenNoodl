@@ -232,27 +232,47 @@ propertyeditor/* (12) in waves 1b–2c; `componentports`, `importpopup`,
   dynamic `iconIconSource` port; LogicBuilder both buttons + generated-code modal open/close;
   CodeEditor Edit-button popout open/close. tsc clean in noodl-editor and noodl-core-ui;
   0 renderer exceptions.
+- 2026-07-24: Wave 2e part 1 (6e8d252) — the four composite widgets to React:
+  `AlignToolsInput` (icon set generated from the template into `components/alignToolsIcons.ts`;
+  values now refresh on `parametersChanged` so undo updates the icons — the legacy view never
+  did), `ResizingInput` (constraint rules extracted to a pure `computeResizingModes`; compact
+  W/H unit inputs), `MarginPaddingInput` (drag-to-adjust + inline edit box; a completed drag
+  no longer also opens the edit box via a `suppressClick` guard), `StringListInput` (inline
+  rename/delete/add via `StringInputPopup`). Legacy `aligntools.js`/`resizingview.js`/
+  `marginpaddingview.js`/`stringlist.js` + 4 templates deleted. 360 → 279 `$(`.
+  **Did NOT reuse core-ui `PropertyPanelMarginPadding`** — it models CSS margin/padding
+  (top/left/right/bottom nesting) but Noodl's marginpadding widget is 8 independent named
+  drag-handles bound to arbitrary ports; wrong shape, faithful conversion instead.
+- 2026-07-24: Wave 2e part 2 (4dd8d0a) — pickers + proplist. New shared `components/
+  ContentPicker.tsx` (header + folder-group labels + clickable items; `sortMode` folder vs
+  nameDesc) replaces fontpicker/imagepicker/identifierpicker/filepicker. `PickerTypeView.
+  openContentPicker()` owns the popout: it returns an `addItems` handle so async loaders
+  (thumbnails, font data URLs) stream in, and `filterPicker` re-renders the picker live.
+  Font @font-face injection + common-font list moved to `components/fontItems.ts`, reused by
+  `reactcomponents/propertyeditors.jsx`'s `FontProperty` (which also built a FontPicker —
+  its `require('.../fontpicker')` is gone). `PropListInput` hosts each item's child property
+  rows (appends the raw/jQuery `view.el` into a `.props` div) and keeps the PopupLayer
+  drag-reorder. Legacy 5 views + 5 templates deleted. 279 → 262 `$(`, 62 → 52 files.
+  Verified live via CDP: font picker open/filter(input-event, not cdp `type`)/select/reset
+  on a Text node; proplist add/rename/delete on a Script (`Javascript2`) node's `scriptInputs`.
+  **Smoke trap:** cdp `type` re-focuses the input and closes the popout — drive the filter by
+  dispatching a native `input` event with the value setter instead.
 
 ## 8. Handoff — next session starts here
 
-Remaining, in the planned order (wave 2d is complete; count now 360 `$(` / 62 files):
+Remaining, in the planned order (waves 2d–2e complete; count now 262 `$(` / 52 files):
 
-1. **Wave 2e**: `marginpaddingview.js`(32), `resizingview.js`(33), `aligntools.js`(14),
-   `stringlist.js`(3), `proplist.js`(3) + the legacy pickers (`fontpicker.js`, `imagepicker.js`,
-   `identifierpicker.js`, `filepicker.js`, `colorpicker.js`, `iconpicker` is already React).
-   Note core-ui has `PropertyPanelMarginPadding` + `SizePicker` components — check before
-   writing new ones.
-2. **Wave 2f hosts**: `TypeView.js` → TS (only chrome/logic left), `Ports.ts` (drop bindView
+1. **Wave 2f hosts**: `TypeView.js` → TS (only chrome/logic left), `Ports.ts` (drop bindView
    group templates → React group host), `propertyeditor.ts`. When Ports converts, drop the
    `$()`-wrapper tolerance and delete `templates/propertyeditor/*.html`.
-3. **Wave 3**: canvas group (CanvasDOMBindings 6, ConnectionPopups 3, nodegrapheditor 1,
+2. **Wave 3**: canvas group (CanvasDOMBindings 6, ConnectionPopups 3, nodegrapheditor 1,
    NodeGraphEditorNode 1, CanvasView 1, lessonlayer2 6), `componentports.tsx`(4),
    `createnewnodepanel.ts`(1), `ComponentTemplates.ts`(1), `importpopup.js`(9) + its
    templates, `exportProjectComponets.ts` (exportpopup.html).
-4. **Wave 4**: PopupLayer rewrite (contract = `popuplayer.d.ts`; §3 strategy: same API, one
+3. **Wave 4**: PopupLayer rewrite (contract = `popuplayer.d.ts`; §3 strategy: same API, one
    React root, normalize `attachTo`/`content.el` accepting raw elements) then sweep the 19
    Group D files' `$()` calls; convert confirmmodal/errormodal/yesnopopup/stringinputpopup.
-5. **Wave 5**: delete `shared/view.js`+`view.d.ts`, de-jQuery `ReactView.ts`, remove the two
+4. **Wave 5**: delete `shared/view.js`+`view.d.ts`, de-jQuery `ReactView.ts`, remove the two
    `<script>` tags from `src/editor/index.html` + `src/assets/lib/jquery-min.js` +
    `jquery.autosize.min.js`, delete remaining orphan templates, repo-wide grep, CHANGELOG
    in the task doc (record before/after counts: baseline 547/68), update PROGRESS.md.
