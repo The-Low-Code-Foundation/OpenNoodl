@@ -386,15 +386,14 @@ export interface ReactNodeFrame {
 /**
  * What an author passes to {@link createNodeFromReactComponent}.
  *
- * Fields not listed here are **not** forwarded to the runtime definition. Two
- * are worth calling out because nodes in this repository set them and they do
+ * Fields not listed here are **not** forwarded to the runtime definition. One
+ * is worth calling out because nodes in this repository set it and it does
  * nothing:
  *
  * - `category` — every React node is registered as `'Visual'`, regardless.
- * - `deprecated` — dropped, so the node still reports itself as current.
  *
- * Both are declared below so the mistake is visible at the call site rather
- * than only in the catalog.
+ * (`deprecated` used to be dropped the same way; DEBT-006 forwards it, so
+ * Form/Label now report themselves deprecated in the catalog.)
  */
 export interface ReactNodeDefinition {
   /** Canonical type string, as it appears in project files. */
@@ -446,7 +445,7 @@ export interface ReactNodeDefinition {
 
   /** @deprecated Ignored — React nodes are always registered as `'Visual'`. */
   category?: string;
-  /** @deprecated Ignored — not forwarded to the runtime definition. */
+  /** Marks the node deprecated in the runtime definition and the catalog. */
   deprecated?: boolean;
 
   [extra: string]: unknown;
@@ -762,6 +761,7 @@ function createNodeFromReactComponent(def: ReactNodeDefinition): ReactNodeModule
     displayNodeName: def.displayNodeName || def.displayName,
     shortDesc: '',
     category: 'Visual',
+    deprecated: def.deprecated,
     allowChildren: def.allowChildren === undefined ? true : def.allowChildren, //default to true
     visualStates: def.visualStates,
     allowAsExportRoot: def.allowAsExportRoot,

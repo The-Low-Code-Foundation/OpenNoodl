@@ -6156,7 +6156,7 @@
       "displayName": "Field Set",
       "category": "Visual",
       "isVisual": true,
-      "isDeprecated": false,
+      "isDeprecated": true,
       "inNodePicker": false,
       "availableIn": [
         "browser"
@@ -7329,7 +7329,7 @@
       "displayName": "Form",
       "category": "Visual",
       "isVisual": true,
-      "isDeprecated": false,
+      "isDeprecated": true,
       "inNodePicker": false,
       "availableIn": [
         "browser"
@@ -11861,7 +11861,7 @@
       "displayName": "Label",
       "category": "Visual",
       "isVisual": true,
-      "isDeprecated": false,
+      "isDeprecated": true,
       "inNodePicker": false,
       "availableIn": [
         "browser"
