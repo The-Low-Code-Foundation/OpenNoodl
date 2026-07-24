@@ -21,7 +21,6 @@ var DeleteRecordNode = {
   searchTags: ['byob', 'delete', 'remove', 'data', 'database', 'records', 'directus', 'api', 'backend'],
 
   initialize: function () {
-    console.log('[BYOB Delete Record] 🚀 INITIALIZE called');
     this._internal.loading = false;
     this._internal.apiPathMode = 'items';
   },
@@ -39,7 +38,6 @@ var DeleteRecordNode = {
       displayName: 'Delete',
       group: 'Actions',
       valueChangedToTrue: function () {
-        console.log('[BYOB Delete Record] ⚡ DELETE SIGNAL RECEIVED');
         this.scheduleDelete();
       }
     }

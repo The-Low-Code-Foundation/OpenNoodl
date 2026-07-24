@@ -91,7 +91,6 @@ var HttpNode = {
   searchTags: ['http', 'request', 'fetch', 'api', 'rest', 'curl'],
 
   initialize: function () {
-    console.log('[HTTP Node] 🚀 INITIALIZE called - node instance created');
     this._internal.inputValues = {};
     this._internal.outputValues = {};
     this._internal.headers = '';
@@ -124,7 +123,6 @@ var HttpNode = {
       displayName: 'Fetch',
       group: 'Actions',
       valueChangedToTrue: function () {
-        console.log('[HTTP Node] ⚡ FETCH SIGNAL RECEIVED - valueChangedToTrue triggered!');
         this.scheduleFetch();
       }
     },

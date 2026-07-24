@@ -21,7 +21,6 @@ var CreateRecordNode = {
   searchTags: ['byob', 'create', 'insert', 'add', 'data', 'database', 'records', 'directus', 'api', 'backend'],
 
   initialize: function () {
-    console.log('[BYOB Create Record] 🚀 INITIALIZE called');
     this._internal.fieldValues = {};
     this._internal.loading = false;
     this._internal.apiPathMode = 'items';
@@ -40,7 +39,6 @@ var CreateRecordNode = {
       displayName: 'Create',
       group: 'Actions',
       valueChangedToTrue: function () {
-        console.log('[BYOB Create Record] ⚡ CREATE SIGNAL RECEIVED');
         this.scheduleCreate();
       }
     }

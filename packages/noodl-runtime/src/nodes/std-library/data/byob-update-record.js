@@ -21,7 +21,6 @@ var UpdateRecordNode = {
   searchTags: ['byob', 'update', 'edit', 'modify', 'data', 'database', 'records', 'directus', 'api', 'backend'],
 
   initialize: function () {
-    console.log('[BYOB Update Record] 🚀 INITIALIZE called');
     this._internal.fieldValues = {};
     this._internal.loading = false;
     this._internal.apiPathMode = 'items';
@@ -40,7 +39,6 @@ var UpdateRecordNode = {
       displayName: 'Update',
       group: 'Actions',
       valueChangedToTrue: function () {
-        console.log('[BYOB Update Record] ⚡ UPDATE SIGNAL RECEIVED');
         this.scheduleUpdate();
       }
     }

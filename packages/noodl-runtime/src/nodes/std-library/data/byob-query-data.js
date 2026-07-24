@@ -24,7 +24,6 @@ var QueryDataNode = {
   searchTags: ['byob', 'query', 'data', 'database', 'records', 'directus', 'supabase', 'api', 'backend', 'rest'],
 
   initialize: function () {
-    console.log('[BYOB Query Data] 🚀 INITIALIZE called');
     this._internal.inputValues = {};
     this._internal.loading = false;
     this._internal.records = [];
@@ -48,7 +47,6 @@ var QueryDataNode = {
       displayName: 'Fetch',
       group: 'Actions',
       valueChangedToTrue: function () {
-        console.log('[BYOB Query Data] ⚡ FETCH SIGNAL RECEIVED');
         this.scheduleFetch();
       }
     }
