@@ -24,12 +24,34 @@ import {
   writeJson,
   type RunningPreview
 } from './helpers';
+import type {
+  ConnectionsV2File,
+  NodesV2File,
+  ProjectV2File
+} from '../../noodl-editor/src/editor/src/schemas';
 
 beforeAll(() => assertPrerequisites());
 
 const MARKER = 'window.projectData = ';
 
-/** Pulls `window.projectData` back out of the served index.js. */
+/**
+ * The slice of an exported component these assertions touch.
+ *
+ * `nodes` stays `TSFixme` (PLAT-004): the export node format is produced by the
+ * editor's untyped `Exporter.exportToJSON`, so there is no published type to
+ * point at. It becomes knowable when the exporter is typed.
+ */
+interface ExportedComponent {
+  name: string;
+  nodes: TSFixme[];
+}
+
+/**
+ * Pulls `window.projectData` back out of the served index.js.
+ *
+ * Returns `TSFixme` for the same reason — this is the exporter's own output
+ * shape, and asserting a type here would be inventing one.
+ */
 function parseProjectData(indexJs: string): TSFixme {
   return JSON.parse(indexJs.slice(indexJs.indexOf(MARKER) + MARKER.length).replace(/;\s*$/, ''));
 }
@@ -75,7 +97,7 @@ describe('static render (no editor process)', () => {
     expect(json.routerIndex.pages).toEqual([{ path: 'home', title: 'Home', component: '/#__page__/Home' }]);
     // The root component is inlined; the page arrives in a bundle, exactly as
     // deployToFolder splits it.
-    expect(json.components.map((c: TSFixme) => c.name)).toEqual(['/App']);
+    expect(json.components.map((c: ExportedComponent) => c.name)).toEqual(['/App']);
     expect(Object.keys(json.componentIndex)).toHaveLength(1);
   });
 
@@ -84,10 +106,10 @@ describe('static render (no editor process)', () => {
     expect(index.state.kind).toBe('ok');
 
     const components = JSON.parse(await fetchOnlyBundle(preview.port));
-    expect(components.map((c: TSFixme) => c.name)).toContain('/#__page__/Home');
+    expect(components.map((c: ExportedComponent) => c.name)).toContain('/#__page__/Home');
     // The Text node with its parameters, nested under the Page — i.e. a
     // renderable graph, not just a name list.
-    const home = components.find((c: TSFixme) => c.name === '/#__page__/Home');
+    const home = components.find((c: ExportedComponent) => c.name === '/#__page__/Home');
     expect(home.nodes[0].children[0].parameters.text).toBe('Hello World!');
   });
 
@@ -135,7 +157,7 @@ describe('watching', () => {
     await new Promise((r) => setTimeout(r, 100)); // let the hello frame land
     expect(events.frames).toEqual([{ type: 'ok' }]);
 
-    writeJson(homeNodes, (json) => {
+    writeJson<NodesV2File>(homeNodes, (json) => {
       json.nodes[1].parameters.text = 'Edited from outside';
     });
 
@@ -153,11 +175,12 @@ describe('watching', () => {
     const events = openEvents(preview.port);
     await new Promise((r) => setTimeout(r, 100));
 
-    writeJson(path.join(dir, 'components/__page__/Home/connections.json'), (json) => {
+    writeJson<ConnectionsV2File>(path.join(dir, 'components/__page__/Home/connections.json'), (json) => {
       json.connections = [{ fromId: 'ghost', fromProperty: 'value', toId: 'greeting', toProperty: 'text' }];
     });
 
     const state = await waitForState(preview.port, (s) => s.state.kind === 'invalid');
+    if (state.state.kind !== 'invalid') throw new Error(`Expected an invalid state, got ${state.state.kind}`);
     expect(state.state.report.summary.errors).toBe(1);
     expect(state.state.report.diagnostics[0].code).toBe('dangling-connection');
     // The previous good build is still installed — that is what keeps the
@@ -186,7 +209,7 @@ describe('watching', () => {
     const events = openEvents(preview.port);
     await new Promise((r) => setTimeout(r, 100));
 
-    writeJson(path.join(dir, 'components/__page__/Home/connections.json'), (json) => {
+    writeJson<ConnectionsV2File>(path.join(dir, 'components/__page__/Home/connections.json'), (json) => {
       json.connections = [];
     });
 
@@ -202,7 +225,7 @@ describe('watching', () => {
     const broken = await waitForState(preview.port, (s) => s.state.kind === 'error');
     expect(broken.hasBuild).toBe(true);
 
-    writeJson(path.join(dir, 'nodegx.project.json'), (json) => json); // no-op rewrite
+    writeJson<ProjectV2File>(path.join(dir, 'nodegx.project.json'), (json) => json); // no-op rewrite
     fs.writeFileSync(
       path.join(dir, 'components/__page__/Home/nodes.json'),
       JSON.stringify(

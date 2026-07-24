@@ -29,6 +29,25 @@ export type PreviewState =
   | { kind: 'invalid'; report: PreviewReport }
   | { kind: 'error'; message: string };
 
+/**
+ * The body of `GET /__preview/state` — the server's machine-readable status.
+ * The CLI polls this in `--once` mode and the tests assert against it, so it is
+ * a public contract rather than an implementation detail.
+ */
+export interface PreviewStatus {
+  state: PreviewState;
+  hasBuild: boolean;
+  warnings: string[];
+  projectDir: string;
+}
+
+/** One frame pushed down the SSE channel at `/__preview/events`. */
+export type PreviewEvent =
+  | { type: 'ok' }
+  | { type: 'reload' }
+  | { type: 'diagnostics'; diagnostics: PreviewReport['diagnostics']; summary: PreviewReport['summary'] }
+  | { type: 'error'; message: string };
+
 export interface PreviewServerOptions {
   projectDir: string;
   port: number;
@@ -132,13 +151,13 @@ export class PreviewServer {
 
   // ─── Wire ──────────────────────────────────────────────────────────────────
 
-  private broadcast(message: unknown): void {
+  private broadcast(message: PreviewEvent): void {
     const frame = `data: ${JSON.stringify(message)}\n\n`;
     for (const client of this.clients) client.write(frame);
   }
 
   /** The frame a browser gets the moment it connects — never `reload`, which would loop. */
-  private helloFrame(): unknown {
+  private helloFrame(): PreviewEvent {
     switch (this.state.kind) {
       case 'invalid':
         return { type: 'diagnostics', diagnostics: this.state.report.diagnostics, summary: this.state.report.summary };
@@ -157,12 +176,13 @@ export class PreviewServer {
 
     // Machine-readable status: what the CLI polls in --once mode and tests read.
     if (pathname === '/__preview/state') {
-      return this.sendJson(res, {
+      const status: PreviewStatus = {
         state: this.state,
         hasBuild: this.build !== null,
         warnings: this.build?.warnings ?? [],
         projectDir: this.projectDir
-      });
+      };
+      return this.sendJson(res, status);
     }
 
     if (pathname === '/' || pathname === '/index.html') {

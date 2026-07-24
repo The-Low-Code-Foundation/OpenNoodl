@@ -13,6 +13,8 @@ import * as http from 'http';
 import * as os from 'os';
 import * as path from 'path';
 
+import type { PreviewEvent, PreviewStatus } from '../src/server';
+
 export const PKG_ROOT = path.resolve(__dirname, '..');
 export const DIST = path.join(PKG_ROOT, 'dist/noodl-preview.cjs');
 export const FIXTURES = path.join(PKG_ROOT, 'tests/fixtures');
@@ -100,18 +102,19 @@ export function get(port: number, urlPath: string, headers: Record<string, strin
   });
 }
 
-export const getJson = async (port: number, urlPath: string) => JSON.parse((await get(port, urlPath)).body);
+export const getJson = async <T>(port: number, urlPath: string): Promise<T> =>
+  JSON.parse((await get(port, urlPath)).body) as T;
 
 /** Polls the preview's state endpoint until `predicate` holds, or times out. */
 export async function waitForState(
   port: number,
-  predicate: (state: TSFixme) => boolean,
+  predicate: (state: PreviewStatus) => boolean,
   timeoutMs = 8000
-): Promise<TSFixme> {
+): Promise<PreviewStatus> {
   const deadline = Date.now() + timeoutMs;
-  let last: TSFixme;
+  let last: PreviewStatus | undefined;
   while (Date.now() < deadline) {
-    last = await getJson(port, '/__preview/state');
+    last = await getJson<PreviewStatus>(port, '/__preview/state');
     if (predicate(last)) return last;
     await new Promise((r) => setTimeout(r, 50));
   }
@@ -119,8 +122,8 @@ export async function waitForState(
 }
 
 /** Opens the SSE channel and collects frames until `stop()` is called. */
-export function openEvents(port: number): { frames: TSFixme[]; close: () => void } {
-  const frames: TSFixme[] = [];
+export function openEvents(port: number): { frames: PreviewEvent[]; close: () => void } {
+  const frames: PreviewEvent[] = [];
   const req = http.get({ host: '127.0.0.1', port, path: '/__preview/events' }, (res) => {
     let buffer = '';
     res.on('data', (chunk) => {
@@ -137,8 +140,8 @@ export function openEvents(port: number): { frames: TSFixme[]; close: () => void
   return { frames, close: () => req.destroy() };
 }
 
-export function writeJson(file: string, mutate: (json: TSFixme) => void): void {
-  const json = JSON.parse(fs.readFileSync(file, 'utf8'));
+export function writeJson<T>(file: string, mutate: (json: T) => void): void {
+  const json = JSON.parse(fs.readFileSync(file, 'utf8')) as T;
   mutate(json);
   fs.writeFileSync(file, JSON.stringify(json, null, 2));
 }

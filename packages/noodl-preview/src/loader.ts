@@ -23,8 +23,17 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-import { ProjectImporter } from '../../noodl-editor/src/editor/src/io/ProjectImporter';
+import { ProjectImporter, type ImportInput } from '../../noodl-editor/src/editor/src/io/ProjectImporter';
 import type { LegacyProject } from '../../noodl-editor/src/editor/src/io/ProjectExporter';
+import type {
+  ComponentV2File,
+  ConnectionsV2File,
+  NodesV2File,
+  ProjectV2File,
+  RegistryV2File,
+  RoutesV2File,
+  StylesV2File
+} from '../../noodl-editor/src/editor/src/schemas';
 import { ProjectModel } from '@noodl-models/projectmodel';
 import * as Exporter from '@noodl-utils/exporter';
 import { HtmlProcessor } from '@noodl-utils/compilation/build/processors/html-processor';
@@ -35,7 +44,14 @@ import { validateLegacyProject, type PreviewReport } from './validate';
 export interface PreviewBuild {
   /** Display name, for the CLI banner and the browser tab fallback. */
   projectName: string;
-  /** The `window.projectData` object `renderDeployed` consumes. */
+  /**
+   * The `window.projectData` object `renderDeployed` consumes.
+   *
+   * Stays `TSFixme` deliberately (PLAT-004): the editor's `Exporter.exportToJSON`
+   * builds this object untyped and returns `TSFixme` itself, so a type here would
+   * be an assertion about someone else's return value rather than a real type.
+   * It becomes knowable when the exporter is typed.
+   */
   exportJson: TSFixme;
   /** Lazily-fetched component bundles, keyed by the id in `componentIndex`. */
   bundles: Record<string, string>;
@@ -55,7 +71,7 @@ export type PreviewLoad =
 
 export type ProjectFormat = 'v2' | 'legacy';
 
-const readJson = (file: string) => JSON.parse(fs.readFileSync(file, 'utf8'));
+const readJson = <T>(file: string): T => JSON.parse(fs.readFileSync(file, 'utf8')) as T;
 
 /**
  * Classifies the target and returns the project directory.
@@ -82,29 +98,29 @@ export function resolveTarget(target: string): { dir: string; format: ProjectFor
 
 /** Reads a v2 directory into the legacy project object, via the io engine. */
 function readV2(dir: string): { project: LegacyProject; warnings: string[] } {
-  const registry = readJson(path.join(dir, 'components', '_registry.json'));
+  const registry = readJson<RegistryV2File>(path.join(dir, 'components', '_registry.json'));
   const componentsDir = path.join(dir, 'components');
 
-  const components: Record<string, TSFixme> = {};
-  for (const [key, entry] of Object.entries<TSFixme>(registry.components ?? {})) {
+  const components: ImportInput['components'] = {};
+  for (const [key, entry] of Object.entries(registry.components ?? {})) {
     const compDir = path.join(componentsDir, entry.path);
-    const maybe = (name: string, fallback: TSFixme) =>
-      fs.existsSync(path.join(compDir, name)) ? readJson(path.join(compDir, name)) : fallback;
+    const maybe = <T>(name: string, fallback: T): T =>
+      fs.existsSync(path.join(compDir, name)) ? readJson<T>(path.join(compDir, name)) : fallback;
     components[key] = {
-      component: maybe('component.json', {}),
-      nodes: maybe('nodes.json', { nodes: [] }),
-      connections: maybe('connections.json', { connections: [] })
+      component: maybe('component.json', {} as ComponentV2File),
+      nodes: maybe('nodes.json', { nodes: [] } as NodesV2File),
+      connections: maybe('connections.json', { connections: [] } as ConnectionsV2File)
     };
   }
 
-  const optional = (name: string) =>
-    fs.existsSync(path.join(dir, name)) ? readJson(path.join(dir, name)) : undefined;
+  const optional = <T>(name: string): T | undefined =>
+    fs.existsSync(path.join(dir, name)) ? readJson<T>(path.join(dir, name)) : undefined;
 
   const result = new ProjectImporter().import({
-    project: readJson(path.join(dir, 'nodegx.project.json')),
+    project: readJson<ProjectV2File>(path.join(dir, 'nodegx.project.json')),
     registry,
-    routes: optional('nodegx.routes.json'),
-    styles: optional('nodegx.styles.json'),
+    routes: optional<RoutesV2File>('nodegx.routes.json'),
+    styles: optional<StylesV2File>('nodegx.styles.json'),
     components
   });
 
@@ -155,7 +171,7 @@ export async function loadPreview(dir: string, format: ProjectFormat): Promise<P
       legacy = read.project;
       warnings.push(...read.warnings);
     } else {
-      legacy = readJson(path.join(dir, 'project.json'));
+      legacy = readJson<LegacyProject>(path.join(dir, 'project.json'));
     }
   } catch (err) {
     return { status: 'error', message: err instanceof Error ? err.message : String(err) };
@@ -171,7 +187,7 @@ export async function loadPreview(dir: string, format: ProjectFormat): Promise<P
     const project = ProjectModel.fromJSON(legacy);
     // The HtmlProcessor reads noodl_modules from here, and asset URLs resolve
     // against it — the deploy path sets the same field.
-    (project as TSFixme)._retainedProjectDirectory = dir;
+    project._retainedProjectDirectory = dir;
 
     if (!project.getRootNode()) {
       const note = resolveRootNode(project);
@@ -215,7 +231,7 @@ export async function loadPreview(dir: string, format: ProjectFormat): Promise<P
       status: 'ok',
       report,
       build: {
-        projectName: (legacy as TSFixme).name ?? path.basename(dir),
+        projectName: legacy.name ?? path.basename(dir),
         exportJson,
         bundles,
         html,

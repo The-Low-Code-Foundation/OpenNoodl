@@ -246,6 +246,20 @@ function headCommit() {
   }
 }
 
+/** Uncommitted `.ts`/`.tsx` changes, which a recorded baseline would silently include. */
+function dirtySources() {
+  try {
+    return require('child_process')
+      .execSync('git status --porcelain -- "*.ts" "*.tsx"', { cwd: ROOT })
+      .toString()
+      .trim()
+      .split('\n')
+      .filter(Boolean).length;
+  } catch {
+    return 0;
+  }
+}
+
 function main() {
   const update = process.argv.includes('--update');
   const report = process.argv.includes('--report');
@@ -266,6 +280,15 @@ function main() {
   if (report) writeReport(result, headCommit());
 
   if (update) {
+    // The baseline records a commit, so it should describe that commit. Writing
+    // it from a tree with uncommitted work bakes in markers nobody has reviewed
+    // — and if the work is later dropped, the baseline stays permanently loose.
+    const dirty = dirtySources();
+    if (dirty > 0) {
+      console.warn(`! ${dirty} uncommitted .ts/.tsx file(s) — their markers are being written into`);
+      console.warn(`  the baseline as if they were part of ${headCommit()}. Commit first if that is wrong.\n`);
+    }
+
     const next = {
       ...baseline,
       commit: headCommit(),
