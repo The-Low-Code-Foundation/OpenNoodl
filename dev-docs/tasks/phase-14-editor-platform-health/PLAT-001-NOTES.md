@@ -306,3 +306,77 @@ public API + owner contract. Deliberately *not* moved: undo/redo (trivial,
 no better home), the scheduling methods (hot path, scene items call them
 constantly), `switchToComponent` (touches nav history, comment layer,
 highlights, viewport and model binding — it *is* coordination).
+
+## 9. Manual regression + large-graph performance (2026-07-24)
+
+Run live against the built editor (run-editor skill, CDP-driven real input:
+`Input.dispatchMouseEvent`/`dispatchKeyEvent` at coordinates) on the
+"Shine Phase 2" project, `/Pages/Home`. Model state verified through a live
+`NodeGraphEditor` handle after every gesture. Full matrix passed:
+
+- **Selection**: click-select; shift-click multiselect; rubber-band box-select
+  (5 nodes captured, intersection semantics correct).
+- **Node move**: drag by header (+60,+40 landed exactly), model committed,
+  undo → original, redo → moved. Undo queue labels correct ("drag nodes").
+- **Create**: right-click empty canvas → CreateNewNodePanel (search, docs
+  pane, category expand) → node created at the right-click graph position and
+  auto-selected. Keyboard Delete removes it; undo restores; redo re-deletes.
+- **Connections**: hover top-right drag area sets
+  `connectionDragAreaHighlighted`/`borderHighlighted`; drag sets
+  `interaction.draggingConnection`; drop on target opens the two-step
+  output→input popups (compatible-port filtering verified); connection lands
+  in the model. Wire hover-highlight via `isPointInStroke` works (graph-space
+  pos routing exact); click → delete-mode, second click → removed; undo
+  restores; redo re-deletes (with "Redo disconnect" toast).
+- **Clipboard**: copy/paste of a multiselection pastes correct types as new
+  roots; undo clean.
+- **Pan/zoom**: space+drag pan (and the new `isSpaceKeyDown()` contract
+  method); wheel zoom + ctrl-wheel pinch, zoom-at-point pan compensation;
+  clamps hold (max 1.0; min adapts to graph AABB — 0.33 on the small graph,
+  0.096 on the 500-node graph so the whole graph stays reachable); rendering
+  correct at both extremes.
+- **Comments**: picker "Comment" entry → comment layer edit mode (toolbar +
+  editable box over canvas), typed text committed to `commentsModel`,
+  select + Delete removes.
+- **Overlays**: all five slots mounted through `OverlayHost`
+  (`title`, `highlight-overlay`, `canvas-tabs`, `editor-banner`,
+  `execution-overlay`) + comment layer fg/bg roots; canvas-tabs updated on
+  `switchToComponent`; annotation tooltip shows on node hover.
+- **Component switch**: `/Pages/Home` → `/App` → back; per-component viewport
+  restored.
+- **Session hygiene**: zero renderer exceptions/errors across the whole run
+  (only the pre-existing React key dev-warning, unrelated to canvas).
+
+**Large-graph perf** (no big corpus project exists locally; load synthesised
+in-editor): scratch component with 500 nodes (250 Button + 250
+RouterNavigate) and 250 connections. Paint instrumented around
+`editor.paint()`:
+
+| Scenario | paints | avg | p95 | max |
+|---|---|---|---|---|
+| Pan sweep, scale 1 (culling active) | 87 | 1.1 ms | 1.5 ms | 1.9 ms |
+| Pan + zoom cycles at min zoom 0.096 — **all 500 nodes + 250 wires visible** | 84 | 5.0 ms | 7.8 ms | 10.4 ms |
+
+Worst case is ~⅓ of the 16.7 ms/60 fps budget. No regression concern.
+
+Observations (not regressions, worth knowing):
+
+- `centerToFit` animates pan over several hundred ms. Coordinates computed
+  from a mid-animation `panAndScale` read land in the wrong place — this
+  produced stray node-drags during testing (all undone). Any scripted driving
+  of the canvas must read the viewport immediately before dispatching, after
+  animations settle.
+- One transient blank-canvas state was seen after batching 6 synchronous
+  `undo()` calls in one tick while a layout animation ran: scene items kept
+  undefined positions until the next `bindModel` (component switch restored
+  everything; model was never corrupted). Not reproducible through normal
+  gestures, including drag→undo and double-drag→double-undo. Filed here as an
+  observation only.
+- The cdp.js `--target=editor` matcher (`/src/editor/index.html`) misses once
+  a project is open — the router rewrites the URL to `file:///dashboard/...`
+  and the fallback silently attaches to the cloud-runtime page. Use
+  `--target=NodeGX` (title match) after opening a project.
+
+Remaining known exception to the ≤800 rule: `NodeGraphEditorNode.ts` (1,290,
+pre-existing file, untouched by the waves). The paint vs hit/measure seam is
+the candidate split; optional follow-up, not blocking closure.

@@ -150,10 +150,10 @@ Characterisation tests come first. Before extracting anything, write tests that 
 - [x] Unify overlay hosting (`canvas/OverlayHost.ts`); document the public API (`canvas/README.md`)
 - [x] Wave 2 coordinator slim-down: clipboard, connection popups, toolbar/menus, model binding, overlay glue, selection, node ops, inspectors, event wiring → 2,681 → 1,274 (see NOTES §7)
 - [x] Coordinator ≤800: wave 3 — accessor-compat layer retired; ViewportActions / CanvasPainter / CanvasDOMBindings extracted; 1,274 → 790 (see NOTES §8)
-- [ ] Full manual regression + large-graph performance check
-- [ ] CHANGELOG with before/after line counts
+- [x] Full manual regression + large-graph performance check (see NOTES §9)
+- [x] CHANGELOG with before/after line counts (below)
 
-### Status 2026-07-24 (waves 1+2+3 landed)
+### Status 2026-07-24 (complete)
 
 Wave 1: `nodegrapheditor.ts` 3,481 → 2,681; `views/nodegrapheditor/canvas/`
 modules (InteractionController 568, CanvasRenderer 269, CanvasViewport 203,
@@ -173,5 +173,34 @@ retired — interaction/viewport state is read from `editor.interaction` /
 (`isSpaceKeyDown()`, `getLatestMousePos()`); scene items read `owner.icons.*`.
 Three further collaborators (ViewportActions 141, CanvasPainter 122,
 CanvasDOMBindings 77), `reset()` → ModelBindings, render()-time subscriptions
-→ EditorEventBindings. Suite 965/0 after the wave (see NOTES §8). Remaining:
-manual regression matrix + large-graph perf check, then CHANGELOG.
+→ EditorEventBindings. Suite 965/0 after the wave (see NOTES §8).
+
+Closure (2026-07-24): full manual regression matrix passed live (real CDP
+input; selection, drag+undo/redo, create/delete, connection draw/highlight/
+delete via popups, clipboard, pan/zoom extremes, comments, all five overlay
+slots, component switch — zero renderer exceptions) and large-graph perf
+verified on a synthesised 500-node/250-wire graph: worst-case paint 5.0 ms
+avg / 10.4 ms max with everything visible, ~⅓ of frame budget. Details and
+observations in NOTES §9. Known exception: `NodeGraphEditorNode.ts` (1,290,
+pre-existing) — optional paint-vs-hit/measure split left as follow-up.
+
+## CHANGELOG
+
+Structural refactor only — no intended behaviour change (one deliberate fix:
+dispose now unmounts all 7 React overlay roots; previously 5 leaked).
+
+| | Before (a96688c~5) | After |
+|---|---|---|
+| `nodegrapheditor.ts` (coordinator) | **3,481** | **790** |
+| Canvas-subsystem modules | 1 god file (+ node/connection views) | 20 focused modules |
+| `views/nodegrapheditor/canvas/` | — | InteractionController 568, CanvasRenderer 269, CanvasViewport 203, HitTester 124, OverlayHost 99, NodeSelector 52, CanvasIcons 49, types 41 |
+| Coordinator collaborators (`views/nodegrapheditor/`) | — | ModelBindings 362, EditorClipboard 293, OverlayViews 257, EditorEventBindings 232, NodeContextMenu 216, ConnectionPopups 175, ViewportActions 141, SelectionActions 140, NodeOperations 129, CanvasPainter 122, InspectorActions 99, CanvasDOMBindings 77 |
+| Unit tests | none | `tests/canvas/` 740 lines (6 suites) + 455-line characterisation spec |
+| Overlay mounting | 5 ad-hoc React mounts | 1 documented `OverlayHost` (5 slots + ephemeral) |
+| Public API | implicit via `this` | documented in `canvas/README.md` |
+| Suite | — | 965 specs / 0 failures after each wave |
+| 500-node paint (all visible) | n/a (not measured pre-wave) | 5.0 ms avg / 10.4 ms max |
+
+Pre-existing files unchanged: `NodeGraphEditorNode.ts` 1,290 (over the ~800
+target; split deferred), `NodeGraphEditorConnection.ts` 416,
+`nodegrapheditor.drag.ts`, `nodegrapheditor.debuginspectors.js`.

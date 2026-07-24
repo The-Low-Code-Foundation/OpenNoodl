@@ -1,7 +1,7 @@
 # Phase 14 Progress — Editor Platform Health
 
 **Created:** 2026-07-22, from [NOODL-REVIVAL-ROADMAP.md](../../reviews/NOODL-REVIVAL-ROADMAP.md) Track B
-**Overall status:** 🔴 Not started — 0 / 5 tasks
+**Overall status:** 🟡 In progress — 1 / 5 tasks complete (PLAT-001, 2026-07-24)
 
 ## Status vocabulary
 
@@ -13,7 +13,7 @@ Not started · In progress · **Built–not wired** · Complete · Superseded
 
 | ID | Title | Status | Estimate | Notes |
 |---|---|---|---|---|
-| PLAT-001 | Canvas decomposition | Not started | 6–8 wks | Implements the existing `CANVAS-MODERNISATION-PROJECT.md` design; in-place, not a React Flow migration |
+| PLAT-001 | Canvas decomposition | **Complete** (2026-07-24) | 6–8 wks | Coordinator 3,481 → 790; 20 modules; unit + characterisation tests; regression + 500-node perf verified; CHANGELOG in task doc. Optional follow-up: `NodeGraphEditorNode.ts` split (1,290) |
 | PLAT-002 | Retire the jQuery islands | Not started | 6–8 wks | PopupLayer (1,043 lines) + property-editor legacy views + delete `src/shared/view.js` |
 | PLAT-003 | Type the runtime and viewer | Not started | 8–12 wks | 98 `.js` in `noodl-runtime`, 131 in `noodl-viewer-react`; align with SUB-004 |
 | PLAT-004 | `TSFixme` burn-down | Not started | Ongoing | 554 today; CI ratchet, then falls out of PLAT-002/003 |
