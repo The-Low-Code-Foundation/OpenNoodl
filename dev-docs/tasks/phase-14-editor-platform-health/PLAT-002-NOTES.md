@@ -356,18 +356,32 @@ propertyeditor/* (12) in waves 1b–2c; `componentports`, `importpopup`,
   a React component holds the old function across HMR, so restart Electron before trusting
   a UI change.
 
+- 2026-07-24: Wave 3, import/export popups (940e41d) — `importpopup.js` +
+  `importpopup.html` + `importoverwritepopup.html` + `exportpopup.html` →
+  `importpopup.ts` + `importpopup/ImportPopupView.tsx`. The three templates were the same
+  list with different copy, so the view takes a `variant: 'import' | 'overwrite' | 'export'`
+  and the four call sites pass that instead of a template require. Folder open/import state
+  moved onto the popup object (it used to live in the DOM, kept alive by `bindView`'s
+  `watch()` bindings), and `buildTree()` reproduces the legacy append order (items sorted by
+  name, folders created on demand, parents first). Kept faithfully: the collisions variant
+  omits text styles and shows the "cannot be undone" warning, export keeps sticky section
+  labels and the 700px scroll area, an item that is both implicit and explicitly imported
+  still gets **both** marker classes, cancel still fires on a 10 ms timeout, and consumers
+  now do `popup.el.style.width = '500px'` instead of `.css()`. 192 → 183 `$(`, 39 → 38 files.
+  tsc + eslint clean (ratchet: 209 below baseline). **Not smoke-tested** — the import flow
+  needs a second project to import from, and the shared dev stack was unavailable.
+
 ## 8. Handoff — next session starts here
 
-Remaining, in the planned order (waves 2a–2g and part of wave 3 complete; count now
-192 `$(` / 39 files):
+Remaining, in the planned order (waves 2a–2g and most of wave 3 complete; count now
+183 `$(` / 38 files):
 
-1. **Wave 3 remainder**: `importpopup.js`(9) + `templates/importpopup.html` +
-   `importoverwritepopup.html` (one view class rendered with two templates — the folder/item
-   tree with implicit-dependency checkmarks), `exportProjectComponets.ts` +
-   `templates/exportpopup.html`, `NodeGraphEditorNode.ts`(1, the comment `StringInputPopup` —
-   easier once wave 4 converts that popup), and the `editor.$('#nodegraphcanvas')` lookups in
+1. **Wave 3 remainder**: `NodeGraphEditorNode.ts`(1, the comment `StringInputPopup` — easier
+   once wave 4 converts that popup) and the `editor.$('#nodegraphcanvas')` lookups in
    `CanvasDOMBindings`/`ConnectionPopups` (they need `nodegrapheditor.ts`'s own `el`, i.e.
-   wave 5).
+   wave 5). **Owed verification:** the import/overwrite/export popups have not been driven in
+   the running app — check the tree/indentation, the implicit-dependency checkmarks, folder
+   toggles, and that the collisions popup still filters what gets imported.
 2. **Wave 4**: PopupLayer rewrite (contract = `popuplayer.d.ts`; §3 strategy: same API, one
    React root). The `content.el`/`attachTo` normalization is already done, so what is left is
    the layer itself (101 `$(`), plus converting confirmmodal/errormodal/yesnopopup/
