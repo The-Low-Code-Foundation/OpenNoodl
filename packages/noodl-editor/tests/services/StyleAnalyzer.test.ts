@@ -7,9 +7,11 @@
  * - analyzeNode — per-node variant candidate detection
  *
  * ProjectModel.instance is monkey-patched per test; restored in afterEach.
+ *
+ * Converted from Jest to the Electron/Jasmine suite by DEBT-005 (2026-07-25):
+ * the Jest import is gone (Jasmine provides the globals) and toHaveLength
+ * became .length checks. These specs had never executed before that.
  */
-
-import { afterEach, beforeEach, describe, expect, it } from '@jest/globals';
 
 import { ProjectModel } from '../../src/editor/src/models/projectmodel';
 import { StyleAnalyzer } from '../../src/editor/src/services/StyleAnalyzer/StyleAnalyzer';
@@ -20,6 +22,17 @@ import { SUGGESTION_THRESHOLDS, type StyleAnalysisResult } from '../../src/edito
 /** Build a minimal mock node for the analyzer. */
 function makeNode(id: string, typename: string, parameters: Record<string, string>) {
   return { id, typename, parameters };
+}
+
+/**
+ * The specs patch ProjectModel._instance (the private slot) rather than the
+ * public `instance` setter: the setter unregisters/registers the value as a
+ * NodeLibrary module, which a plain mock object cannot survive. Discovered by
+ * DEBT-005 when these specs ran for the first time — the original Jest
+ * versions would have failed identically.
+ */
+function setProjectInstance(value: unknown) {
+  (ProjectModel as unknown as { _instance: unknown })._instance = value;
 }
 
 /**
@@ -70,7 +83,7 @@ describe('StyleAnalyzer.toSuggestions', () => {
       variantCandidates: []
     };
     const suggestions = StyleAnalyzer.toSuggestions(result);
-    expect(suggestions).toHaveLength(1);
+    expect(suggestions.length).toBe(1);
     expect(suggestions[0].type).toBe('repeated-color');
     expect(suggestions[0].id).toBe('repeated-color:#3b82f6');
     expect(suggestions[0].acceptLabel).toBe('Create Token');
@@ -188,19 +201,19 @@ describe('StyleAnalyzer.analyzeProject', () => {
   let originalInstance: unknown;
 
   beforeEach(() => {
-    originalInstance = (ProjectModel as unknown as { instance: unknown }).instance;
+    originalInstance = (ProjectModel as unknown as { _instance: unknown })._instance;
   });
 
   afterEach(() => {
-    (ProjectModel as unknown as { instance: unknown }).instance = originalInstance;
+    setProjectInstance(originalInstance);
   });
 
   it('returns empty result when ProjectModel.instance is null', () => {
-    (ProjectModel as unknown as { instance: unknown }).instance = null;
+    setProjectInstance(null);
     const result = StyleAnalyzer.analyzeProject();
-    expect(result.repeatedColors).toHaveLength(0);
-    expect(result.repeatedSpacing).toHaveLength(0);
-    expect(result.variantCandidates).toHaveLength(0);
+    expect(result.repeatedColors.length).toBe(0);
+    expect(result.repeatedSpacing.length).toBe(0);
+    expect(result.variantCandidates.length).toBe(0);
   });
 
   it('detects repeated colour above threshold (3+)', () => {
@@ -209,13 +222,13 @@ describe('StyleAnalyzer.analyzeProject', () => {
       makeNode('n2', 'Group', { backgroundColor: '#3b82f6' }),
       makeNode('n3', 'Group', { backgroundColor: '#3b82f6' })
     ];
-    (ProjectModel as unknown as { instance: unknown }).instance = makeMockProject([nodes]);
+    setProjectInstance(makeMockProject([nodes]));
 
     const result = StyleAnalyzer.analyzeProject();
-    expect(result.repeatedColors).toHaveLength(1);
+    expect(result.repeatedColors.length).toBe(1);
     expect(result.repeatedColors[0].value).toBe('#3b82f6');
     expect(result.repeatedColors[0].count).toBe(3);
-    expect(result.repeatedColors[0].elements).toHaveLength(3);
+    expect(result.repeatedColors[0].elements.length).toBe(3);
   });
 
   it('does NOT report repeated colour below threshold (<3)', () => {
@@ -223,10 +236,10 @@ describe('StyleAnalyzer.analyzeProject', () => {
       makeNode('n1', 'Group', { backgroundColor: '#3b82f6' }),
       makeNode('n2', 'Group', { backgroundColor: '#3b82f6' })
     ];
-    (ProjectModel as unknown as { instance: unknown }).instance = makeMockProject([nodes]);
+    setProjectInstance(makeMockProject([nodes]));
 
     const result = StyleAnalyzer.analyzeProject();
-    expect(result.repeatedColors).toHaveLength(0);
+    expect(result.repeatedColors.length).toBe(0);
   });
 
   it('skips CSS var() token references', () => {
@@ -235,11 +248,11 @@ describe('StyleAnalyzer.analyzeProject', () => {
       makeNode('n2', 'Group', { backgroundColor: 'var(--primary)' }),
       makeNode('n3', 'Group', { backgroundColor: 'var(--primary)' })
     ];
-    (ProjectModel as unknown as { instance: unknown }).instance = makeMockProject([nodes]);
+    setProjectInstance(makeMockProject([nodes]));
 
     const result = StyleAnalyzer.analyzeProject();
     // var() references must never appear in repeated values
-    expect(result.repeatedColors).toHaveLength(0);
+    expect(result.repeatedColors.length).toBe(0);
   });
 
   it('detects repeated spacing value above threshold', () => {
@@ -248,10 +261,10 @@ describe('StyleAnalyzer.analyzeProject', () => {
       makeNode('n2', 'Group', { paddingTop: '16px' }),
       makeNode('n3', 'Group', { paddingTop: '16px' })
     ];
-    (ProjectModel as unknown as { instance: unknown }).instance = makeMockProject([nodes]);
+    setProjectInstance(makeMockProject([nodes]));
 
     const result = StyleAnalyzer.analyzeProject();
-    expect(result.repeatedSpacing).toHaveLength(1);
+    expect(result.repeatedSpacing.length).toBe(1);
     expect(result.repeatedSpacing[0].value).toBe('16px');
     expect(result.repeatedSpacing[0].count).toBe(3);
   });
@@ -265,10 +278,10 @@ describe('StyleAnalyzer.analyzeProject', () => {
         // exactly SUGGESTION_THRESHOLDS.variantCandidateMinOverrides
       })
     ];
-    (ProjectModel as unknown as { instance: unknown }).instance = makeMockProject([nodes]);
+    setProjectInstance(makeMockProject([nodes]));
 
     const result = StyleAnalyzer.analyzeProject();
-    expect(result.variantCandidates).toHaveLength(1);
+    expect(result.variantCandidates.length).toBe(1);
     expect(result.variantCandidates[0].nodeId).toBe('n1');
     expect(result.variantCandidates[0].overrideCount).toBe(3);
   });
@@ -281,10 +294,10 @@ describe('StyleAnalyzer.analyzeProject', () => {
         // only 2 overrides — below threshold of 3
       })
     ];
-    (ProjectModel as unknown as { instance: unknown }).instance = makeMockProject([nodes]);
+    setProjectInstance(makeMockProject([nodes]));
 
     const result = StyleAnalyzer.analyzeProject();
-    expect(result.variantCandidates).toHaveLength(0);
+    expect(result.variantCandidates.length).toBe(0);
   });
 
   it('counts each occurrence across multiple nodes', () => {
@@ -295,7 +308,7 @@ describe('StyleAnalyzer.analyzeProject', () => {
       makeNode('n4', 'Group', { backgroundColor: '#ff0000' }),
       makeNode('n5', 'Group', { backgroundColor: '#ff0000' })
     ];
-    (ProjectModel as unknown as { instance: unknown }).instance = makeMockProject([nodes]);
+    setProjectInstance(makeMockProject([nodes]));
 
     const result = StyleAnalyzer.analyzeProject();
     expect(result.repeatedColors[0].count).toBe(5);
@@ -307,7 +320,7 @@ describe('StyleAnalyzer.analyzeProject', () => {
       makeNode('n2', 'Group', { backgroundColor: '#3b82f6' }),
       makeNode('n3', 'Group', { backgroundColor: '#3b82f6' })
     ];
-    (ProjectModel as unknown as { instance: unknown }).instance = makeMockProject([nodes]);
+    setProjectInstance(makeMockProject([nodes]));
 
     const mockTokenModel = {
       getTokens: () => [{ name: '--brand-primary' }],
@@ -330,23 +343,23 @@ describe('StyleAnalyzer.analyzeNode', () => {
   let originalInstance: unknown;
 
   beforeEach(() => {
-    originalInstance = (ProjectModel as unknown as { instance: unknown }).instance;
+    originalInstance = (ProjectModel as unknown as { _instance: unknown })._instance;
   });
 
   afterEach(() => {
-    (ProjectModel as unknown as { instance: unknown }).instance = originalInstance;
+    setProjectInstance(originalInstance);
   });
 
   it('returns empty when ProjectModel.instance is null', () => {
-    (ProjectModel as unknown as { instance: unknown }).instance = null;
+    setProjectInstance(null);
     const result = StyleAnalyzer.analyzeNode('any-id');
-    expect(result.variantCandidates).toHaveLength(0);
+    expect(result.variantCandidates.length).toBe(0);
   });
 
   it('returns empty when node not found', () => {
-    (ProjectModel as unknown as { instance: unknown }).instance = makeMockProject([[]]);
+    setProjectInstance(makeMockProject([[]]));
     const result = StyleAnalyzer.analyzeNode('nonexistent');
-    expect(result.variantCandidates).toHaveLength(0);
+    expect(result.variantCandidates.length).toBe(0);
   });
 
   it('returns variant candidate for node with 3+ non-token overrides', () => {
@@ -356,10 +369,10 @@ describe('StyleAnalyzer.analyzeNode', () => {
       borderRadius: '9999px',
       fontSize: '14px'
     });
-    (ProjectModel as unknown as { instance: unknown }).instance = makeMockProject([[node]]);
+    setProjectInstance(makeMockProject([[node]]));
 
     const result = StyleAnalyzer.analyzeNode('btn-1');
-    expect(result.variantCandidates).toHaveLength(1);
+    expect(result.variantCandidates.length).toBe(1);
     expect(result.variantCandidates[0].nodeId).toBe('btn-1');
     expect(result.variantCandidates[0].overrideCount).toBe(4);
   });
@@ -370,10 +383,10 @@ describe('StyleAnalyzer.analyzeNode', () => {
       color: '#ffffff'
       // 2 overrides — below threshold
     });
-    (ProjectModel as unknown as { instance: unknown }).instance = makeMockProject([[node]]);
+    setProjectInstance(makeMockProject([[node]]));
 
     const result = StyleAnalyzer.analyzeNode('btn-2');
-    expect(result.variantCandidates).toHaveLength(0);
+    expect(result.variantCandidates.length).toBe(0);
   });
 
   it('ignores var() token references when counting overrides', () => {
@@ -384,11 +397,11 @@ describe('StyleAnalyzer.analyzeNode', () => {
       fontSize: '14px', // raw
       paddingTop: '12px' // raw
     });
-    (ProjectModel as unknown as { instance: unknown }).instance = makeMockProject([[node]]);
+    setProjectInstance(makeMockProject([[node]]));
 
     const result = StyleAnalyzer.analyzeNode('btn-3');
     // Only 3 raw overrides count — should hit threshold exactly
-    expect(result.variantCandidates).toHaveLength(1);
+    expect(result.variantCandidates.length).toBe(1);
     expect(result.variantCandidates[0].overrideCount).toBe(3);
   });
 });

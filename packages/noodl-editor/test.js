@@ -68,10 +68,13 @@ const overallTimeout = setTimeout(() => {
 overallTimeout.unref?.();
 
 ipcMain.on('noodl-test-results', (_event, results) => {
-  const { failedCount = 0, totalCount = 0, overallStatus, failures = [] } = results || {};
+  const { failedCount = 0, totalCount = 0, overallStatus, failures = [], seed } = results || {};
 
   report('');
   report(`Jasmine: ${totalCount} specs, ${failedCount} failures (${overallStatus}).`);
+  // Order is randomized (DEBT-005); the seed reproduces an order-dependent
+  // failure via `jasmine.getEnv().configure({ random: true, seed })`.
+  if (seed !== undefined && seed !== null) report(`Randomized with seed ${seed}.`);
 
   for (const failure of failures) {
     report('');

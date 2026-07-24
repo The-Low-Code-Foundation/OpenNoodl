@@ -1,17 +1,15 @@
 /**
  * Unit tests for GitHubClient
  *
- * Tests caching, rate limiting, error handling, and auth integration
+ * Tests caching, rate limiting, error handling, and auth integration.
  *
- * NOTE: this is a Jest spec, and `noodl-editor` has no Jest runner — its suite is
- * jasmine under Electron (`tests/index.ts` → webpack → run-electron-tests), and
- * `tests/services/index.ts` deliberately does not export this file. So it is
- * typechecked by `npm run typecheck:editor-tests` and never executed. Same for
- * `tests/services/StyleAnalyzer.test.ts`, whose comment claiming it "runs via
- * npm run test:editor" is wrong — that script is the Electron runner.
+ * Converted from Jest to the Electron/Jasmine suite by DEBT-005 (2026-07-25).
+ * The original was a Jest spec in a package with no Jest runner, so none of it
+ * had ever executed. Jest's module mocks are replaced by seeding the
+ * GitHubOAuthService singleton slot with a stub before the client constructs,
+ * and by installing the mock Octokit directly on the client instead of letting
+ * `initializeOctokit` build a real one (which would hit the network).
  */
-
-import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 
 import { GitHubClient } from '../../../src/editor/src/services/github/GitHubClient';
 import { GitHubOAuthService } from '../../../src/editor/src/services/GitHubOAuthService';
@@ -27,7 +25,8 @@ import type { GitHubRateLimit } from '../../../src/editor/src/services/github/Gi
  * `as any` at the call sites.
  */
 interface GitHubClientInternals {
-  initializeOctokit(): Promise<void>;
+  octokit: unknown;
+  updateRateLimit(): Promise<GitHubRateLimit>;
   setCache<T>(key: string, data: T, etag?: string): void;
   cache: Map<string, unknown>;
   rateLimit: GitHubRateLimit | null;
@@ -37,90 +36,123 @@ function internals(client: GitHubClient): GitHubClientInternals {
   return client as unknown as GitHubClientInternals;
 }
 
-/** The singleton slot, reset between specs. */
+/** The singleton slots, reset between specs. */
 interface GitHubClientStatics {
   _instance: GitHubClient | undefined;
 }
 
-/**
- * The Octokit methods the mock factory below installs. Declaring them means a
- * typo in `mockOctokit.issues.listForRepo` fails to compile rather than silently
- * stubbing nothing — which, with `as any`, is what would have happened.
- */
-type MockedCall = jest.Mock<(...args: unknown[]) => Promise<unknown>>;
-
-interface MockOctokit {
-  repos: { get: MockedCall; listForAuthenticatedUser: MockedCall };
-  issues: {
-    listForRepo: MockedCall;
-    get: MockedCall;
-    create: MockedCall;
-    update: MockedCall;
-    listComments: MockedCall;
-    createComment: MockedCall;
-    listLabelsForRepo: MockedCall;
-  };
-  pulls: { list: MockedCall; get: MockedCall; listCommits: MockedCall };
-  rateLimit: { get: MockedCall };
+interface GitHubOAuthServiceStatics {
+  _instance: unknown;
 }
 
-// Mock Octokit
-jest.mock('@octokit/rest', () => ({
-  Octokit: jest.fn().mockImplementation(() => ({
+/**
+ * The Octokit methods the mock below installs. Declaring them means a typo in
+ * `mockOctokit.issues.listForRepo` fails to compile rather than silently
+ * stubbing nothing.
+ */
+interface MockOctokit {
+  repos: { get: jasmine.Spy; listForAuthenticatedUser: jasmine.Spy };
+  issues: {
+    listForRepo: jasmine.Spy;
+    get: jasmine.Spy;
+    create: jasmine.Spy;
+    update: jasmine.Spy;
+    listComments: jasmine.Spy;
+    createComment: jasmine.Spy;
+    listLabelsForRepo: jasmine.Spy;
+  };
+  pulls: { list: jasmine.Spy; get: jasmine.Spy; listCommits: jasmine.Spy };
+  rateLimit: { get: jasmine.Spy };
+}
+
+function makeMockOctokit(): MockOctokit {
+  return {
     repos: {
-      get: jest.fn(),
-      listForAuthenticatedUser: jest.fn()
+      get: jasmine.createSpy('repos.get'),
+      listForAuthenticatedUser: jasmine.createSpy('repos.listForAuthenticatedUser')
     },
     issues: {
-      listForRepo: jest.fn(),
-      get: jest.fn(),
-      create: jest.fn(),
-      update: jest.fn(),
-      listComments: jest.fn(),
-      createComment: jest.fn(),
-      listLabelsForRepo: jest.fn()
+      listForRepo: jasmine.createSpy('issues.listForRepo'),
+      get: jasmine.createSpy('issues.get'),
+      create: jasmine.createSpy('issues.create'),
+      update: jasmine.createSpy('issues.update'),
+      listComments: jasmine.createSpy('issues.listComments'),
+      createComment: jasmine.createSpy('issues.createComment'),
+      listLabelsForRepo: jasmine.createSpy('issues.listLabelsForRepo')
     },
     pulls: {
-      list: jest.fn(),
-      get: jest.fn(),
-      listCommits: jest.fn()
+      list: jasmine.createSpy('pulls.list'),
+      get: jasmine.createSpy('pulls.get'),
+      listCommits: jasmine.createSpy('pulls.listCommits')
     },
     rateLimit: {
-      get: jest.fn()
+      get: jasmine.createSpy('rateLimit.get')
     }
-  }))
-}));
+  };
+}
 
-// Mock GitHubOAuthService
-jest.mock('../../../src/editor/src/services/GitHubOAuthService', () => ({
-  GitHubOAuthService: {
-    instance: {
-      isAuthenticated: jest.fn(() => false),
-      getToken: jest.fn(() => Promise.resolve('mock-token')),
-      on: jest.fn(),
-      off: jest.fn()
-    }
-  }
-}));
+/** Stubbed auth service, seeded into the singleton slot before the client constructs. */
+interface MockAuthService {
+  isAuthenticated: jasmine.Spy;
+  getToken: jasmine.Spy;
+  on: jasmine.Spy;
+  off: jasmine.Spy;
+}
+
+function makeMockAuthService(): MockAuthService {
+  return {
+    isAuthenticated: jasmine.createSpy('isAuthenticated').and.returnValue(false),
+    getToken: jasmine.createSpy('getToken').and.resolveTo('mock-token'),
+    on: jasmine.createSpy('on'),
+    off: jasmine.createSpy('off')
+  };
+}
 
 describe('GitHubClient', () => {
   let client: GitHubClient;
   let mockOctokit: MockOctokit;
+  let mockAuth: MockAuthService;
+  let originalAuthInstance: unknown;
+
+  /**
+   * What `initializeOctokit` does, minus constructing a real Octokit (which
+   * would sign a request with the stub token and hit the network): install the
+   * mock and fetch the initial rate limit through it.
+   */
+  async function initWithMockOctokit(): Promise<void> {
+    internals(client).octokit = mockOctokit;
+    await internals(client).updateRateLimit();
+  }
+
+  function rateLimitResponse() {
+    return {
+      data: {
+        rate: {
+          limit: 5000,
+          remaining: 4999,
+          reset: Math.floor(Date.now() / 1000) + 3600,
+          used: 1
+        }
+      }
+    };
+  }
 
   beforeEach(() => {
-    // Reset singleton
+    // Seed the auth-service singleton with the stub, then reset the client
+    // singleton so its constructor binds against the stub.
+    originalAuthInstance = (GitHubOAuthService as unknown as GitHubOAuthServiceStatics)._instance;
+    mockAuth = makeMockAuthService();
+    (GitHubOAuthService as unknown as GitHubOAuthServiceStatics)._instance = mockAuth;
+
     (GitHubClient as unknown as GitHubClientStatics)._instance = undefined;
-
-    // Clear all mocks
-    jest.clearAllMocks();
-
-    // Get client instance
     client = GitHubClient.instance;
 
-    // Get mock Octokit instance
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { Octokit } = require('@octokit/rest');
-    mockOctokit = new Octokit();
+    mockOctokit = makeMockOctokit();
+  });
+
+  afterEach(() => {
+    (GitHubClient as unknown as GitHubClientStatics)._instance = undefined;
+    (GitHubOAuthService as unknown as GitHubOAuthServiceStatics)._instance = originalAuthInstance;
   });
 
   describe('initialization', () => {
@@ -131,41 +163,20 @@ describe('GitHubClient', () => {
     });
 
     it('should listen for auth state changes', () => {
-      expect(GitHubOAuthService.instance.on).toHaveBeenCalledWith(
-        'auth-state-changed',
-        expect.any(Function),
-        expect.anything()
-      );
+      expect(mockAuth.on).toHaveBeenCalledWith('auth-state-changed', jasmine.any(Function), jasmine.anything());
     });
 
     it('should listen for disconnection', () => {
-      expect(GitHubOAuthService.instance.on).toHaveBeenCalledWith(
-        'disconnected',
-        expect.any(Function),
-        expect.anything()
-      );
+      expect(mockAuth.on).toHaveBeenCalledWith('disconnected', jasmine.any(Function), jasmine.anything());
     });
   });
 
   describe('caching', () => {
     beforeEach(async () => {
-      // Setup authenticated state
-      (GitHubOAuthService.instance.isAuthenticated as jest.Mock).mockReturnValue(true);
+      mockAuth.isAuthenticated.and.returnValue(true);
+      mockOctokit.rateLimit.get.and.resolveTo(rateLimitResponse());
 
-      // Mock rate limit response
-      mockOctokit.rateLimit.get.mockResolvedValue({
-        data: {
-          rate: {
-            limit: 5000,
-            remaining: 4999,
-            reset: Math.floor(Date.now() / 1000) + 3600,
-            used: 1
-          }
-        }
-      });
-
-      // Mock repo response
-      mockOctokit.repos.get.mockResolvedValue({
+      mockOctokit.repos.get.and.resolveTo({
         data: { id: 1, name: 'test-repo' },
         headers: {
           'x-ratelimit-limit': '5000',
@@ -175,15 +186,11 @@ describe('GitHubClient', () => {
         }
       });
 
-      // Initialize client
-      await internals(client).initializeOctokit();
+      await initWithMockOctokit();
     });
 
     it('should cache API responses', async () => {
-      // First call
       await client.getRepository('owner', 'repo');
-
-      // Second call (should use cache)
       await client.getRepository('owner', 'repo');
 
       // API should only be called once
@@ -191,25 +198,24 @@ describe('GitHubClient', () => {
     });
 
     it('should respect cache TTL', async () => {
-      // First call
-      await client.getRepository('owner', 'repo');
+      jasmine.clock().install();
+      jasmine.clock().mockDate(new Date());
+      try {
+        await client.getRepository('owner', 'repo');
 
-      // Wait for cache to expire (mock time)
-      jest.useFakeTimers();
-      jest.advanceTimersByTime(61000); // 61 seconds > 60 second TTL
+        // Advance past the cache TTL
+        jasmine.clock().tick(61000);
 
-      // Second call (cache expired)
-      await client.getRepository('owner', 'repo');
+        await client.getRepository('owner', 'repo');
 
-      // API should be called twice
-      expect(mockOctokit.repos.get).toHaveBeenCalledTimes(2);
-
-      jest.useRealTimers();
+        expect(mockOctokit.repos.get).toHaveBeenCalledTimes(2);
+      } finally {
+        jasmine.clock().uninstall();
+      }
     });
 
     it('should invalidate cache on mutations', async () => {
-      // Mock issue responses
-      mockOctokit.issues.listForRepo.mockResolvedValue({
+      mockOctokit.issues.listForRepo.and.resolveTo({
         data: [{ id: 1, number: 1 }],
         headers: {
           'x-ratelimit-limit': '5000',
@@ -219,7 +225,7 @@ describe('GitHubClient', () => {
         }
       });
 
-      mockOctokit.issues.create.mockResolvedValue({
+      mockOctokit.issues.create.and.resolveTo({
         data: { id: 2, number: 2 },
         headers: {
           'x-ratelimit-limit': '5000',
@@ -238,43 +244,28 @@ describe('GitHubClient', () => {
       // List again (cache invalidated, should call API)
       await client.listIssues('owner', 'repo');
 
-      // Should be called twice (once before create, once after)
       expect(mockOctokit.issues.listForRepo).toHaveBeenCalledTimes(2);
     });
 
     it('should clear all cache on disconnect', () => {
-      // Add some cache entries
       internals(client).setCache('test-key', { data: 'test' });
       expect(internals(client).cache.size).toBeGreaterThan(0);
 
-      // Disconnect
       client.clearCache();
 
-      // Cache should be empty
       expect(internals(client).cache.size).toBe(0);
     });
   });
 
   describe('rate limiting', () => {
     beforeEach(async () => {
-      (GitHubOAuthService.instance.isAuthenticated as jest.Mock).mockReturnValue(true);
-
-      mockOctokit.rateLimit.get.mockResolvedValue({
-        data: {
-          rate: {
-            limit: 5000,
-            remaining: 4999,
-            reset: Math.floor(Date.now() / 1000) + 3600,
-            used: 1
-          }
-        }
-      });
-
-      await internals(client).initializeOctokit();
+      mockAuth.isAuthenticated.and.returnValue(true);
+      mockOctokit.rateLimit.get.and.resolveTo(rateLimitResponse());
+      await initWithMockOctokit();
     });
 
     it('should track rate limit from response headers', async () => {
-      mockOctokit.repos.get.mockResolvedValue({
+      mockOctokit.repos.get.and.resolveTo({
         data: { id: 1 },
         headers: {
           'x-ratelimit-limit': '5000',
@@ -287,20 +278,22 @@ describe('GitHubClient', () => {
       await client.getRepository('owner', 'repo');
 
       const rateLimit = client.getRateLimit();
-      expect(rateLimit).toEqual({
-        limit: 5000,
-        remaining: 4500,
-        reset: expect.any(Number),
-        used: 500
-      });
+      expect(rateLimit).toEqual(
+        jasmine.objectContaining({
+          limit: 5000,
+          remaining: 4500,
+          used: 500
+        })
+      );
+      expect(typeof rateLimit!.reset).toBe('number');
     });
 
     it('should emit warning when approaching rate limit', async () => {
-      const warningListener = jest.fn();
+      const warningListener = jasmine.createSpy('rate-limit-warning');
       client.on('rate-limit-warning', warningListener, client);
 
       // Mock low remaining rate limit (9% = below 10% threshold)
-      mockOctokit.repos.get.mockResolvedValue({
+      mockOctokit.repos.get.and.resolveTo({
         data: { id: 1 },
         headers: {
           'x-ratelimit-limit': '5000',
@@ -312,8 +305,11 @@ describe('GitHubClient', () => {
 
       await client.getRepository('owner', 'repo');
 
-      expect(warningListener).toHaveBeenCalledWith({
-        rateLimit: expect.objectContaining({
+      // EventDispatcher passes the event name as a trailing argument, so
+      // assert on the payload rather than the exact call shape.
+      expect(warningListener).toHaveBeenCalled();
+      expect(warningListener.calls.mostRecent().args[0]).toEqual({
+        rateLimit: jasmine.objectContaining({
           remaining: 450,
           limit: 5000
         })
@@ -323,7 +319,7 @@ describe('GitHubClient', () => {
     it('should calculate time until rate limit reset', async () => {
       const resetTime = Math.floor(Date.now() / 1000) + 3600; // 1 hour from now
 
-      mockOctokit.repos.get.mockResolvedValue({
+      mockOctokit.repos.get.and.resolveTo({
         data: { id: 1 },
         headers: {
           'x-ratelimit-limit': '5000',
@@ -345,38 +341,29 @@ describe('GitHubClient', () => {
 
   describe('error handling', () => {
     beforeEach(async () => {
-      (GitHubOAuthService.instance.isAuthenticated as jest.Mock).mockReturnValue(true);
-
-      mockOctokit.rateLimit.get.mockResolvedValue({
-        data: {
-          rate: {
-            limit: 5000,
-            remaining: 4999,
-            reset: Math.floor(Date.now() / 1000) + 3600,
-            used: 1
-          }
-        }
-      });
-
-      await internals(client).initializeOctokit();
+      mockAuth.isAuthenticated.and.returnValue(true);
+      mockOctokit.rateLimit.get.and.resolveTo(rateLimitResponse());
+      await initWithMockOctokit();
     });
 
     it('should handle 404 errors with friendly message', async () => {
-      mockOctokit.repos.get.mockRejectedValue({
+      mockOctokit.repos.get.and.rejectWith({
         status: 404,
         response: { data: { message: 'Not Found' } }
       });
 
-      await expect(client.getRepository('owner', 'repo')).rejects.toThrow('Repository or resource not found.');
+      await expectAsync(client.getRepository('owner', 'repo')).toBeRejectedWithError(
+        'Repository or resource not found.'
+      );
     });
 
     it('should handle 401 errors with friendly message', async () => {
-      mockOctokit.repos.get.mockRejectedValue({
+      mockOctokit.repos.get.and.rejectWith({
         status: 401,
         response: { data: { message: 'Unauthorized' } }
       });
 
-      await expect(client.getRepository('owner', 'repo')).rejects.toThrow(
+      await expectAsync(client.getRepository('owner', 'repo')).toBeRejectedWithError(
         'Authentication failed. Please reconnect your GitHub account.'
       );
     });
@@ -384,7 +371,6 @@ describe('GitHubClient', () => {
     it('should handle 403 rate limit errors', async () => {
       const resetTime = Math.floor(Date.now() / 1000) + 1800;
 
-      // Set rate limit in client
       internals(client).rateLimit = {
         limit: 5000,
         remaining: 0,
@@ -392,7 +378,7 @@ describe('GitHubClient', () => {
         used: 5000
       };
 
-      mockOctokit.repos.get.mockRejectedValue({
+      mockOctokit.repos.get.and.rejectWith({
         status: 403,
         response: {
           data: {
@@ -401,11 +387,11 @@ describe('GitHubClient', () => {
         }
       });
 
-      await expect(client.getRepository('owner', 'repo')).rejects.toThrow(/Rate limit exceeded/);
+      await expectAsync(client.getRepository('owner', 'repo')).toBeRejectedWithError(/Rate limit exceeded/);
     });
 
     it('should handle 422 validation errors', async () => {
-      mockOctokit.issues.create.mockRejectedValue({
+      mockOctokit.issues.create.and.rejectWith({
         status: 422,
         response: {
           data: {
@@ -415,30 +401,19 @@ describe('GitHubClient', () => {
         }
       });
 
-      await expect(client.createIssue('owner', 'repo', { title: '' })).rejects.toThrow(/Invalid request/);
+      await expectAsync(client.createIssue('owner', 'repo', { title: '' })).toBeRejectedWithError(/Invalid request/);
     });
   });
 
   describe('API methods', () => {
     beforeEach(async () => {
-      (GitHubOAuthService.instance.isAuthenticated as jest.Mock).mockReturnValue(true);
-
-      mockOctokit.rateLimit.get.mockResolvedValue({
-        data: {
-          rate: {
-            limit: 5000,
-            remaining: 4999,
-            reset: Math.floor(Date.now() / 1000) + 3600,
-            used: 1
-          }
-        }
-      });
-
-      await internals(client).initializeOctokit();
+      mockAuth.isAuthenticated.and.returnValue(true);
+      mockOctokit.rateLimit.get.and.resolveTo(rateLimitResponse());
+      await initWithMockOctokit();
     });
 
     it('should list issues with filters', async () => {
-      mockOctokit.issues.listForRepo.mockResolvedValue({
+      mockOctokit.issues.listForRepo.and.resolveTo({
         data: [{ id: 1, number: 1, title: 'Test' }],
         headers: {
           'x-ratelimit-limit': '5000',
@@ -453,7 +428,7 @@ describe('GitHubClient', () => {
         sort: 'updated'
       });
 
-      expect(result.data).toHaveLength(1);
+      expect(result.data.length).toBe(1);
       expect(result.data[0].title).toBe('Test');
 
       // Verify filters were converted correctly
@@ -468,7 +443,7 @@ describe('GitHubClient', () => {
     });
 
     it('should create issue with options', async () => {
-      mockOctokit.issues.create.mockResolvedValue({
+      mockOctokit.issues.create.and.resolveTo({
         data: { id: 1, number: 1, title: 'New Issue' },
         headers: {
           'x-ratelimit-limit': '5000',
@@ -496,7 +471,7 @@ describe('GitHubClient', () => {
     });
 
     it('should list pull requests with converted filters', async () => {
-      mockOctokit.pulls.list.mockResolvedValue({
+      mockOctokit.pulls.list.and.resolveTo({
         data: [{ id: 1, number: 1, title: 'PR' }],
         headers: {
           'x-ratelimit-limit': '5000',
@@ -526,15 +501,10 @@ describe('GitHubClient', () => {
     it('should report ready status', async () => {
       expect(client.isReady()).toBe(false);
 
-      (GitHubOAuthService.instance.isAuthenticated as jest.Mock).mockReturnValue(true);
+      mockAuth.isAuthenticated.and.returnValue(true);
+      mockOctokit.rateLimit.get.and.resolveTo(rateLimitResponse());
 
-      mockOctokit.rateLimit.get.mockResolvedValue({
-        data: {
-          rate: { limit: 5000, remaining: 4999, reset: Date.now() / 1000 + 3600, used: 1 }
-        }
-      });
-
-      await internals(client).initializeOctokit();
+      await initWithMockOctokit();
 
       expect(client.isReady()).toBe(true);
     });

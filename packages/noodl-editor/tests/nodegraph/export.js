@@ -46,6 +46,20 @@ describe('export tests', function () {
     return Object.values(componentIndex).some((b) => arrayHasSameElements(bundle, b));
   }
 
+  // DEBT-005: bundle names (b0, b1, ...) come from a counter whose start value
+  // depends on how many exports ran before this spec, so asserting them made
+  // these specs order-dependent. Normalize the index into an order-independent
+  // shape: each bundle keyed by its sorted component list, dependencies
+  // expressed as those keys.
+  function normalizeComponentIndex(componentIndex) {
+    const keyOf = (bundleName) => componentIndex[bundleName].components.slice().sort().join(',');
+    const out = {};
+    for (const name of Object.keys(componentIndex)) {
+      out[keyOf(name)] = componentIndex[name].dependencies.map(keyOf).sort();
+    }
+    return out;
+  }
+
   it('can export an index that includes pages and for each nodes', function () {
     ProjectModel.instance = ProjectModel.fromJSON({
       components: [
@@ -104,6 +118,11 @@ describe('export tests', function () {
       ]
     });
 
+    // DEBT-005: resolve node types synchronously — bundle dependency discovery
+    // checks `n.type instanceof ComponentModel`, and lazy resolution against the
+    // singleton NodeLibrary made bundle grouping depend on spec order.
+    ProjectModel.instance.getComponents().forEach((c) => c.graph.updateTypes());
+
     ProjectModel.instance.setRootNode(ProjectModel.instance.findNodeWithId('nav-stack'));
 
     const json = Exporter.exportToJSON(ProjectModel.instance);
@@ -112,24 +131,11 @@ describe('export tests', function () {
     expect(json.components.find((c) => c.name === '/root'));
     expect(json.components.find((c) => c.name === '/shared-comp'));
 
-    //this test assume the bundles are emitted in a specific order
-    //it makes the test tied to implementation specifics, so not great
-    const bundles = {
-      b2: {
-        components: ['/page1'],
-        dependencies: []
-      },
-      b3: {
-        components: ['/page2'],
-        dependencies: []
-      },
-      b4: {
-        components: ['/remaining-comp'],
-        dependencies: []
-      }
-    };
-
-    expect(json.componentIndex).toEqual(bundles);
+    expect(normalizeComponentIndex(json.componentIndex)).toEqual({
+      '/page1': [],
+      '/page2': [],
+      '/remaining-comp': []
+    });
   });
 
   it('can follow For Each nodes when collecting dependencies', function () {
@@ -155,6 +161,11 @@ describe('export tests', function () {
         }
       ]
     });
+
+    // DEBT-005: resolve node types synchronously — bundle dependency discovery
+    // checks `n.type instanceof ComponentModel`, and lazy resolution against the
+    // singleton NodeLibrary made bundle grouping depend on spec order.
+    ProjectModel.instance.getComponents().forEach((c) => c.graph.updateTypes());
 
     const allComponents = ProjectModel.instance.getComponents();
     const rootComponent = allComponents.find((c) => c.name === '/root');
@@ -237,6 +248,11 @@ describe('export tests', function () {
         }
       ]
     });
+
+    // DEBT-005: resolve node types synchronously — bundle dependency discovery
+    // checks `n.type instanceof ComponentModel`, and lazy resolution against the
+    // singleton NodeLibrary made bundle grouping depend on spec order.
+    ProjectModel.instance.getComponents().forEach((c) => c.graph.updateTypes());
 
     ProjectModel.instance.setRootNode(ProjectModel.instance.findNodeWithId('nav-stack'));
 
@@ -326,6 +342,11 @@ describe('export tests', function () {
       ]
     });
 
+    // DEBT-005: resolve node types synchronously — bundle dependency discovery
+    // checks `n.type instanceof ComponentModel`, and lazy resolution against the
+    // singleton NodeLibrary made bundle grouping depend on spec order.
+    ProjectModel.instance.getComponents().forEach((c) => c.graph.updateTypes());
+
     ProjectModel.instance.setRootNode(ProjectModel.instance.findNodeWithId('nav-stack'));
 
     const allComponents = ProjectModel.instance.getComponents();
@@ -333,32 +354,13 @@ describe('export tests', function () {
 
     const componentIndex = Exporter.getComponentIndex(rootComponent, allComponents);
 
-    //this test assume the bundles are emitted in a specific order
-    //it makes the test tied to implementation specifics, so not great
-    const bundles = {
-      b0: {
-        components: ['/comp1'],
-        dependencies: ['b1']
-      },
-      b1: {
-        components: ['/shared-comp'],
-        dependencies: []
-      },
-      b2: {
-        components: ['/page1'],
-        dependencies: ['b1', 'b3']
-      },
-      b3: {
-        components: ['/comp-used-on-both-pages'],
-        dependencies: []
-      },
-      b4: {
-        components: ['/page2'],
-        dependencies: ['b3']
-      }
-    };
-
-    expect(componentIndex).toEqual(bundles);
+    expect(normalizeComponentIndex(componentIndex)).toEqual({
+      '/comp1': ['/shared-comp'],
+      '/shared-comp': [],
+      '/page1': ['/comp-used-on-both-pages', '/shared-comp'],
+      '/comp-used-on-both-pages': [],
+      '/page2': ['/comp-used-on-both-pages']
+    });
   });
 
   xit('ignores project settings flagged to be excluded', function () {
@@ -382,6 +384,11 @@ describe('export tests', function () {
         settingIgnoredInExport: 'test3'
       }
     });
+
+    // DEBT-005: resolve node types synchronously — bundle dependency discovery
+    // checks `n.type instanceof ComponentModel`, and lazy resolution against the
+    // singleton NodeLibrary made bundle grouping depend on spec order.
+    ProjectModel.instance.getComponents().forEach((c) => c.graph.updateTypes());
 
     NodeLibrary.instance.registerModule(ProjectModel.instance);
 

@@ -29,11 +29,13 @@
   <script type="text/javascript">
     jasmine.DEFAULT_TIMEOUT_INTERVAL = 60 * 1000;
 
-    // Jasmine randomizes spec order by default. Parts of this suite share global
-    // state (ProjectModel.instance, NodeLibrary registration) and pass or fail
-    // depending on the seed, which makes the run useless as a merge gate.
-    // Pin the order until those dependencies are untangled — see REV-002 NOTES.
-    jasmine.getEnv().configure({ random: false });
+    // Randomized order re-enabled by DEBT-005 (2026-07-25). The couplings that
+    // forced REV-002 to pin the order were shared-fixture mutation (fixed in
+    // DEBT-004: componentinstances deep-copies its fixture) and export-bundle
+    // assertions that assumed a prior spec's state (made order-independent by
+    // DEBT-005). The seed is logged by jasmine on failure — to reproduce an
+    // order-dependent failure, pin it here temporarily: { random: true, seed: N }.
+    jasmine.getEnv().configure({ random: true });
 
     // Report results back to the main process so the run exits with a real status
     // code. Without this the harness is silently green no matter what happens.
@@ -57,7 +59,10 @@
             overallStatus: result.overallStatus,
             totalCount: specCount,
             failedCount: failures.length,
-            failures
+            failures,
+            // With randomized order (DEBT-005) the seed is what makes an
+            // order-dependent failure reproducible.
+            seed: result.order && result.order.seed
           });
         }
       });

@@ -275,9 +275,15 @@ describe('Node graph editor auto tests', function () {
     NodeGraphEditor.instance = undefined;
   }
 
-  it('can setup view', function () {
+  // DEBT-005: setup and teardown were separate specs that only passed in
+  // declaration order; with randomized order 'can tear down' could run first
+  // and remove() a DOM node that was never created. One self-contained spec.
+  it('can set up and tear down the view', function () {
     setup();
     expect(NodeGraphEditor.instance).not.toBe(undefined);
+
+    teardown();
+    expect(NodeGraphEditor.instance).toBe(undefined);
   });
 
   /* it('can record events',function(done) {
@@ -571,9 +577,4 @@ describe('Node graph editor auto tests', function () {
     ); // Play in real time
   });
 
-  // Multi select and mode nodes
-  it('can tear down', function () {
-    teardown();
-    expect(NodeGraphEditor.instance).toBe(undefined);
-  });
 });
