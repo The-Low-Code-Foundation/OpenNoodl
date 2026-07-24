@@ -14,7 +14,7 @@ Not started · In progress · **Built–not wired** · Complete · Superseded
 | ID | Title | Status | Estimate | Notes |
 |---|---|---|---|---|
 | PLAT-001 | Canvas decomposition | **Complete** (2026-07-24) | 6–8 wks | Coordinator 3,481 → 790; 20 modules; unit + characterisation tests; regression + 500-node perf verified; CHANGELOG in task doc. Optional follow-up: `NodeGraphEditorNode.ts` split (1,290) |
-| PLAT-002 | Retire the jQuery islands | Not started | 6–8 wks | PopupLayer (1,043 lines) + property-editor legacy views + delete `src/shared/view.js` |
+| PLAT-002 | Retire the jQuery islands | In progress (2026-07-24) | 6–8 wks | Baseline 547 `$(` / 68 files. Inventory + wave plan in PLAT-002-NOTES.md; projectsview + newupdatepopup found dead (deleted, not converted) |
 | PLAT-003 | Type the runtime and viewer | Not started | 8–12 wks | 98 `.js` in `noodl-runtime`, 131 in `noodl-viewer-react`; align with SUB-004 |
 | PLAT-004 | `TSFixme` burn-down | Not started | Ongoing | 554 today; CI ratchet, then falls out of PLAT-002/003 |
 | PLAT-005 | Editor UX loose ends | Not started | 2–3 wks | Includes wiring the built-but-dangling STYLE-005 banner from Phase 9 |

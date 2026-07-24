@@ -1,0 +1,176 @@
+# PLAT-002 NOTES — Retire the jQuery Islands
+
+Status: inventory + strategy recorded 2026-07-24 (Implementation Step 1 deliverable).
+Updated as waves land — §7 is the as-built log.
+
+## 0. Corrections to the task spec (verified 2026-07-24)
+
+- jQuery is **not** provided by a webpack `ProvidePlugin` — there is none in any config.
+  It is two `<script>` tags in `src/editor/index.html` (lines 10–11: `jquery-min.js`,
+  `jquery.autosize.min.js`) creating window globals. Removal = delete the script tags
+  and the two files in `src/assets/lib/`.
+- `views/projectsview.ts` (922 lines, 65 `$(` calls) has **zero importers** — no import,
+  no require, no string mention anywhere in source. It is dead code and gets deleted,
+  not converted. Same for `views/newupdatepopup.js` (51 lines) and its template.
+- `lessonevalconditions.js` (flagged in the spec) contains **no jQuery at all**; it is
+  imported by the live `lessonlayer2.ts`. Nothing to do here; the file belongs to
+  LEARN-001 regardless.
+- `colorpicker.js` now lives at `DataTypes/ColorPicker/colorpicker.js`; `filepicker.js`
+  at `DataTypes/FilePicker/`. Two stale artifacts exist and should be deleted:
+  `views/popuplayer.js.bak`, `views/panels/ComponentsPanelNew/ComponentsPanel.ts.legacy`.
+- Prerequisite REV-003 (CI gates) is complete, and PLAT-001 has landed — so the canvas
+  shell's jQuery is **in scope** per the spec's own boundary rule.
+
+## 1. Baseline (2026-07-24, excluding `.bak`/`.legacy`/vendored bundles)
+
+| Metric | Value |
+|---|---|
+| `$(` calls in editor source | **547** across **68 files** |
+| `View` subclasses (incl. via `View.call`) | 30 declarations (incl. d.ts shadows) |
+| Runtime `.html` templates | 34 files (19 in `templates/`, 14 in `templates/propertyeditor/`, 1 viewer-frame) |
+| Orphan templates (no require) | 11 (see §5) |
+| `shared/view.js` | 278 lines |
+| `views/popuplayer.js` | 1,044 lines, 101 `$(` calls |
+
+Final verification greps (run at close):
+`grep -rn '\$(' packages/noodl-editor/src/editor/src packages/noodl-editor/src/shared`
+plus confirming `jquery` absent from `index.html` and `src/assets/lib/`.
+
+## 2. Inventory and triage
+
+### Group DEAD — delete, no conversion (wave 1a)
+
+| File | $( | Why dead |
+|---|---|---|
+| `views/projectsview.ts` (922 ln) | 65 | zero importers; launcher superseded it |
+| `views/newupdatepopup.js` (51 ln) | 1 | zero importers |
+| `views/popuplayer.js.bak` | ~101 | stale backup |
+| `views/panels/ComponentsPanelNew/ComponentsPanel.ts.legacy` | many | stale legacy copy |
+| 11 orphan templates (§5) | — | no requires |
+
+### Group A — property-editor DataTypes rows (TypeView subclasses; leaves)
+
+All render via `cloneTemplate`/`bindView` against `templates/propertyeditor/*.html`
+fragments, hosted by `Ports.ts` (the dispatcher, 502 ln) → `propertyeditor.ts`.
+
+TS rows (in rough conversion order — simplest first):
+`FontType`(3), `TextAreaType`(2), `IdentifierType`(5), `EnumType`(13), `SizeModeType`(7),
+`ImageType`(7), `IconType`(8), `TextStyleType`(8), `ColorType`(7), `ComponentType`(4),
+`SourceCodeType`(5), `Dimension`(19), `NumberWithUnits`(19), `VariableType`(15),
+`QueryFilterType`(1), `QuerySortingType`(1), `LogicBuilderHiddenType`(1),
+`LogicBuilderWorkspaceType`(1), `CurveType`(1), `ByobFilterType`(1), `CodeEditorType`(2),
+`TabGroup`(6), `PopoutGroup`(0 direct, uses PopupLayer), `Ports.ts` itself (2).
+
+JS legacy views in the same subsystem:
+`aligntools.js`(14), `colorpicker.js`(12), `stringlist.js`(3), `filepicker.js`(4),
+`fontpicker.js`(2), `imagepicker.js`(4), `identifierpicker.js`(2), `proplist.js`(3),
+`marginpaddingview.js`(32), `resizingview.js`(33), `TypeView.js`(9, the row base class),
+`propertyeditor.ts`(10, the panel host).
+
+### Group B — standalone popups/panels
+
+`importpopup.js`(9) — live: EditorPage, module/projectlibrarymodel, exportProjectComponets.
+`confirmmodal.js`(1), `errormodal.js`(1) — used **only by popuplayer.js**; convert with it.
+`createnewnodepanel.ts`(1), `componentports.tsx`(4), `ComponentTemplates.ts`(1),
+`utils/exportProjectComponets.ts` (exportpopup.html host).
+
+### Group C — canvas shell (unblocked by PLAT-001 landing)
+
+`nodegrapheditor.ts`(1), `nodegrapheditor/CanvasDOMBindings.ts`(6),
+`nodegrapheditor/ConnectionPopups.ts`(3), `nodegrapheditor/NodeGraphEditorNode.ts`(1),
+`VisualCanvas/CanvasView.ts`(1), `lessonlayer2.ts`(6).
+Small, surgical: mostly `$(template)` binds and `.on()` wiring at the shell edge.
+
+### Group D — React files whose ONLY jQuery is feeding PopupLayer's API (19 files, 1–2 calls each)
+
+`VersionControlPanel.tsx`, `AiChat.tsx`, `CommentForeground.tsx`, `VariablesSection.tsx`,
+`ShowContextMenuInPopup.tsx`, `ShowInspectMenu.tsx`, `LessonLayerView.jsx`, `LessonItem.jsx`,
+`TextStylePicker.jsx`, `PagesType.tsx`, `QueryEditor/utils.ts`, `visualstates.tsx`,
+`variantseditor.tsx`, `colorstylepicker.jsx`, plus `ReactView.ts` itself.
+**Key finding:** every one is `attachTo: $(ref)` or `content: { el: $(div) }`. They all
+disappear mechanically once PopupLayer accepts raw `HTMLElement` — no per-file thought
+needed. PopupLayer today genuinely requires jQuery objects (`.offset()`, `.outerWidth(true)`,
+`.detach()`).
+
+### Group E — the hub and the framework (endgame)
+
+`views/popuplayer.js` (1,044 ln; popouts, modals, tooltips, toasts, drag/drop, activity,
+file-drop; singleton + `PopupMenu`/`StringInputPopup`/`YesNoPopup` inner Views),
+`popuplayer.d.ts` (its API is fully documented here — the rewrite contract),
+`shared/view.js` + `view.d.ts`, `shared/ReactView.ts` (drops its `$(div)` wrapper last).
+
+## 3. Conversion architecture
+
+### The row idiom (already proven in-tree by `PagesType.tsx`)
+
+A converted property row stays a `TypeView` subclass whose `render()` mounts a React
+component into a fresh div and sets `this.el = $(div)`. The `$()` wrapper stays until
+`Ports.ts`/`propertyeditor.ts` themselves convert (they call `.append(v.el)`, `.find()`).
+This lets rows convert **one at a time** with zero host changes and regressions
+attributable per-row. React components go in `DataTypes/<Name>/` per `noodl-core-ui`
+conventions; shared row chrome (label, connected-dot, reset-to-default dot, tooltips —
+today's `TypeView.render()` behaviour) becomes a `PropertyRow` wrapper component built
+once in wave 1.
+
+### PopupLayer strategy (decided, wave 4)
+
+Rewrite as a TypeScript singleton with the **same public API** (`popuplayer.d.ts` is the
+contract), rendering through a single persistent React root (portal-style layer stack).
+During transition it normalizes `attachTo`/`content.el` inputs:
+`const node = el.jquery ? el[0] : el` — so Group D callers can drop `$()` immediately
+after it lands, and un-converted legacy callers (which pass jQuery-wrapped
+`view.render()` output) keep working. `confirmmodal.js`/`errormodal.js`/`yesnopopup`/
+`stringinputpopup` templates become React components inside it.
+`View.showTooltip`/`hideTooltip` statics (used by `bindView`'s `data-tooltip`) die when
+view.js dies.
+
+### Ordering rationale
+
+Leaves→host as the spec says, with one amendment: dead-code deletion first (free 12%+
+of the call count), and the canvas group early (small, PLAT-001 fresh in memory,
+regression harness for it already exists).
+
+## 4. Wave plan
+
+| Wave | Content | Deletes |
+|---|---|---|
+| 1a | Dead code: projectsview, newupdatepopup, .bak, .legacy, 11 orphan templates | ~170 `$(`, ~2,400 ln |
+| 1b | Idiom: `PropertyRow` chrome component + convert `FontType`, `EnumType`, `TextAreaType` | 18 `$(` |
+| 2 | Remaining DataTypes rows + pickers (fontpicker/imagepicker/identifierpicker/filepicker/colorpicker/aligntools/stringlist/marginpadding/resizing) + `TypeView.js` → TS React chrome | ~200 `$(` |
+| 2c | `proplist.js`, `Ports.ts`, `propertyeditor.ts` (the hosts) | ~15 `$(` |
+| 3 | Canvas shell group C + `componentports.tsx`, `createnewnodepanel.ts`, `ComponentTemplates.ts`, `importpopup.js`, `exportProjectComponets.ts` | ~35 `$(` |
+| 4 | PopupLayer rewrite (+ confirm/error/yesno/stringinput popups) then Group D `$()` sweep | ~125 `$(` |
+| 5 | Delete `view.js`/`view.d.ts`, de-jQuery `ReactView.ts`, drop script tags + vendored files, remaining templates, final grep, CHANGELOG | rest |
+
+Each wave: behaviour checklist before, `npm run typecheck` + targeted tests + editor
+smoke (run-editor skill) after, own commit(s) to `cline-dev`.
+
+## 5. Template disposition (34 files)
+
+Orphans, delete in wave 1a: `componentspanel.html`, `createnewnodepanel.html`,
+`framesview.html`, `lessonlayer.html`, `lessonpopup.html`, `nodepanel.html`,
+`templates/viewer.html` (editor copy; viewer-frame has its own), `projectsview.html`*,
+`newupdatepopup.html`*, `propertyeditor/sizetools.html`, `propertyeditor/textstylepicker.html`.
+(* orphaned by wave 1a's own deletions.)
+
+Live templates die with their consumers in the wave that converts them:
+propertyeditor/* (12) in waves 1b–2c; `componentports`, `importpopup`,
+`importoverwritepopup`, `exportpopup`, `nodegrapheditor` in wave 3; `popuplayer`,
+`confirmmodal`, `errormodal`, `stringinputpopup`, `yesnopopup` in wave 4.
+
+## 6. Behaviour-preservation notes (filled per wave, before converting)
+
+### TypeView chrome (applies to every Group A row)
+- `.property-input-connected` hover → tooltip "port is connected…" (right side)
+- `.property-changed-dot` click → `setParameter(name, undefined, {undo})` + reset;
+  hover 1s → "Reset to default" tooltip
+- input focus/blur → `.property-input-focused` class toggle
+- `parentPort` styles: re-render on `ProjectModel.metadataChanged(styles)` when at default
+- `getCurrentValue` returns `{value, isDefault}`; dynamic ports may lack `hasParameter`
+- buttons blur on focus (global `bindView` rule — preserve per-component where relevant)
+
+(Per-view checklists appended in each wave's section of §7.)
+
+## 7. As-built log
+
+- 2026-07-24: Wave 0 — this document. Baselines in §1.
