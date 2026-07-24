@@ -212,6 +212,11 @@ harness earning its keep: the full path (module injection → asset serving →
 runtime setup) ran and the failure surfaced exactly where a real one would.
 Worth a look if that corpus project is ever wanted as a demo target.
 
+> **Update 2026-07-25 (DEBT-008):** the incompatibility is fixed. `Collection`'s export is
+> now a Proxy whose `apply` trap makes Backbone-style `Noodl.Collection.apply(this, …)` a
+> supported no-op (the class constructor contributed nothing; instances stay real Arrays).
+> The corpus project now loads through the deploy runtime with zero uncaught errors.
+
 `npm --prefix packages/noodl-preview test` — 14/14 — drives the **built CLI** over
 HTTP rather than the TS sources, because the risk in this package is the bundle
 (platform binding, stubs, headless register load), which source-level tests would

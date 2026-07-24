@@ -461,4 +461,20 @@ Collection.exists = function (name) {
   return collections[name] !== undefined;
 };
 
-module.exports = Collection;
+// Legacy-module compatibility (DEBT-008). Backbone-era Noodl modules subclass
+// Collection in ES5 style and chain the base constructor with
+// `Noodl.Collection.apply(this, arguments)` — which throws against a class
+// constructor. The class body is empty (everything lives on the patched
+// Array.prototype), so being invoked as a function is a supported no-op: the
+// subclass instance keeps its own prototype chain and picks the methods up
+// from Array.prototype. `new`, statics, `instanceof` and `extends` all pass
+// through the proxy untouched, and real instances stay genuine Arrays (which
+// a function-style constructor could not provide — that is why Collection is
+// a class in the first place).
+const CallableCollection = new Proxy(Collection, {
+  apply() {
+    return undefined;
+  }
+});
+
+module.exports = CallableCollection;
