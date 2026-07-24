@@ -4,10 +4,10 @@
     "scripts"
   ],
   "exclude": [],
-  "commit": "6f9b79b",
+  "commit": "78ba241",
   "max": {
-    "TSFixme": 538,
-    "any": 288,
+    "TSFixme": 540,
+    "any": 287,
     "@ts-ignore": 22,
     "@ts-nocheck": 0,
     "@ts-expect-error": 88
@@ -21,8 +21,8 @@
       "@ts-expect-error": 11
     },
     "noodl-editor": {
-      "TSFixme": 503,
-      "any": 138,
+      "TSFixme": 505,
+      "any": 137,
       "@ts-ignore": 11,
       "@ts-nocheck": 0,
       "@ts-expect-error": 64
@@ -897,13 +897,6 @@
       "@ts-nocheck": 0,
       "@ts-expect-error": 0
     },
-    "packages/noodl-editor/src/editor/src/views/common/Frame/Frame.tsx": {
-      "TSFixme": 1,
-      "any": 0,
-      "@ts-ignore": 0,
-      "@ts-nocheck": 0,
-      "@ts-expect-error": 0
-    },
     "packages/noodl-editor/src/editor/src/views/documents/EditorDocument/EditorDocument.tsx": {
       "TSFixme": 1,
       "any": 0,
@@ -940,7 +933,7 @@
       "@ts-expect-error": 0
     },
     "packages/noodl-editor/src/editor/src/views/nodegrapheditor.ts": {
-      "TSFixme": 9,
+      "TSFixme": 8,
       "any": 1,
       "@ts-ignore": 0,
       "@ts-nocheck": 0,
@@ -1388,7 +1381,7 @@
       "@ts-expect-error": 0
     },
     "packages/noodl-editor/src/editor/src/views/panels/propertyeditor/DataTypes/TabGroup.ts": {
-      "TSFixme": 6,
+      "TSFixme": 4,
       "any": 0,
       "@ts-ignore": 0,
       "@ts-nocheck": 0,
@@ -1640,7 +1633,7 @@
       "@ts-expect-error": 0
     },
     "packages/noodl-editor/src/editor/src/views/popuplayer.ts": {
-      "TSFixme": 7,
+      "TSFixme": 6,
       "any": 0,
       "@ts-ignore": 0,
       "@ts-nocheck": 0,
@@ -1648,7 +1641,7 @@
     },
     "packages/noodl-editor/src/shared/ReactView.ts": {
       "TSFixme": 2,
-      "any": 1,
+      "any": 0,
       "@ts-ignore": 0,
       "@ts-nocheck": 0,
       "@ts-expect-error": 0
@@ -1663,6 +1656,13 @@
     "packages/noodl-editor/src/shared/utils/EventDispatcher.ts": {
       "TSFixme": 0,
       "any": 1,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-editor/src/shared/view.ts": {
+      "TSFixme": 7,
+      "any": 0,
       "@ts-ignore": 0,
       "@ts-nocheck": 0,
       "@ts-expect-error": 0

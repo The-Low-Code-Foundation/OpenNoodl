@@ -42,12 +42,26 @@ at `0395b24`; slice 2 (§8) set it to 571 / 393 `any` at `5b3cca0`; slice 3 (§1
 561 / 314 at `7a49cae`; slices 4 and 5 (§12, §13) bring it to 538 / 287 at `c354d4e`, then
 **538 `TSFixme` / 288 `any`** at `6f9b79b`. The table below is the original measurement.
 
-That last `+1 any` is PLAT-003's slice 6, which landed in the minutes between measuring and
-committing and put a marker in `noodl-viewer-react/src/nodes/std-library/user/userservice.ts`. It is
-absorbed rather than fixed — the file is live for that task and a third editor in it buys nothing —
-which is the escape valve used exactly as §8 used it. Re-baselining against two active sessions is a
-moving target by nature; the rule that makes it tractable is that the *number* may drift up by
-someone else's in-flight work, but never silently.
+…and then **540 `TSFixme` / 287 `any`** at `78ba241`, which is where it stands.
+
+The last two moves are worth recording as a pattern rather than as events, because closing the loop
+against two live sessions took three passes in under an hour:
+
+| Pass | HEAD | What moved |
+|---|---|---|
+| 1 | `c354d4e` | Slices 4 + 5 land: 538 / 287 |
+| 2 | `6f9b79b` | PLAT-003's slice 6 lands `+1 any` in `user/userservice.ts` — absorbed, 538 / 288 |
+| 3 | `78ba241` | PLAT-002's wave 5b lands `+7 TSFixme` in the new `shared/view.ts` and removes that `any` — absorbed, 540 / 287 |
+
+Both increases were absorbed rather than fixed: those files are live for their tasks, and a third
+editor in them buys nothing. That is §8's escape valve used as designed, and the rule that makes it
+tractable is that the number may drift up on someone else's in-flight work — but never *silently*.
+
+The real lesson is §6.2's, sharpened: **re-baselining is not a step you do once at the end of a
+slice.** With concurrent tasks landing, the gate goes red within the hour, every hour. Chasing it
+commit-by-commit from a third session is a treadmill; the durable fix is the deferred item in §10 —
+a baseline-update line in PLAT-002's and PLAT-003's own definition of done, so the task that moved
+the number is the one that records it.
 
 Each re-measurement also banks whatever PLAT-002 and PLAT-003 landed in between — 1 `TSFixme` and
 2 `any` this time, on top of the 35 markers slices 4 and 5 removed. The gate only blocks increases,
