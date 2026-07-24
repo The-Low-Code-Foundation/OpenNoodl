@@ -12,7 +12,7 @@ import { Git } from '@noodl/git';
 
 import { ProjectModel } from '@noodl-models/projectmodel';
 import { LocalProjectsModel } from '@noodl-utils/LocalProjectsModel';
-import { mergeProject } from '@noodl-utils/projectmerger';
+import { mergeProject } from '@noodl-versioning';
 
 import { GitHubClient, GitHubOAuthService } from '../../../../../services/github';
 import type { ProjectGitState } from '../../hooks/useGitHubRepository';

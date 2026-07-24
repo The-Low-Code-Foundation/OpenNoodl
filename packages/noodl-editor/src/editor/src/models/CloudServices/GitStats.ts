@@ -1,6 +1,6 @@
 import { Git } from '@noodl/git';
 
-import { mergeProject } from '@noodl-utils/projectmerger';
+import { mergeProject } from '@noodl-versioning';
 
 import { ProjectModel } from '../projectmodel';
 

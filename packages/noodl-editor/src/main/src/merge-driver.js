@@ -18,7 +18,7 @@ module.exports = {
     cleanMergeDriverOptionsSync();
 
     if (ancestorFileName && currentFileName && branchFileName) {
-      const { mergeProject } = require('../../editor/src/utils/projectmerger');
+      const { mergeProject } = require('../../editor/src/versioning/ProjectMerge');
       const { applyPatches } = require('../../editor/src/models/ProjectPatches/applypatches');
 
       console.log('Merging Noodl project');

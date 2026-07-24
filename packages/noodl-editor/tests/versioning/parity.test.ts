@@ -17,9 +17,19 @@ import * as fs from 'fs';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const legacyMerger = require('@noodl-utils/projectmerger');
 
-import { mergeProject, mergeProjectGraph } from '../../src/editor/src/versioning';
+import { mergeProject as mergeProjectRaw, mergeProjectGraph } from '../../src/editor/src/versioning';
 
 const FIXTURES = process.cwd() + '/tests/testfs/merge-tests';
+
+type Json = Record<string, any>;
+
+/**
+ * The merger returns `Record<string, unknown>`; these specs walk deep into the
+ * result, so index it as loose JSON rather than casting at every access.
+ */
+function mergeProject(base: Json, ours: Json, theirs: Json): Json {
+  return mergeProjectRaw(base, ours, theirs) as Json;
+}
 
 interface FixtureCase {
   name: string;
@@ -66,8 +76,6 @@ const FIXTURE_CASES: FixtureCase[] = [
     theirs: 'remove-moved-nodes/remote-merge-project-Wed--03-Feb-2021-13-33-47-GMT.json'
   }
 ];
-
-type Json = Record<string, any>;
 
 function read(file: string): Json {
   return JSON.parse(fs.readFileSync(`${FIXTURES}/${file}`, 'utf8'));

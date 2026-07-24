@@ -9,7 +9,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Git } from '@noodl/git';
 
 import { ProjectModel } from '@noodl-models/projectmodel';
-import { mergeProject } from '@noodl-utils/projectmerger';
+import { mergeProject } from '@noodl-versioning';
 
 /**
  * Possible states for a project's git connection

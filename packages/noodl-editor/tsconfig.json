@@ -15,7 +15,9 @@
       "@noodl-constants/*": ["./src/editor/src/constants/*"],
       "@noodl-contexts/*": ["./src/editor/src/contexts/*"],
       "@noodl-types/*": ["./src/editor/src/types/*"],
-      "@noodl-store/*": ["./src/editor/src/store/*"]
+      "@noodl-store/*": ["./src/editor/src/store/*"],
+      "@noodl-versioning": ["./src/editor/src/versioning/index.ts"],
+      "@noodl-versioning/*": ["./src/editor/src/versioning/*"]
     }
   },
   "include": ["src/editor", "src/shared", "src/main", "@include-types"],

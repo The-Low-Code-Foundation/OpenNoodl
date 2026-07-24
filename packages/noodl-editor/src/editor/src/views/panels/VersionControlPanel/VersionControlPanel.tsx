@@ -7,7 +7,7 @@ import { AppRegistry } from '@noodl-models/app_registry';
 import { ProjectModel } from '@noodl-models/projectmodel';
 import { WarningsModel } from '@noodl-models/warningsmodel';
 import { LocalProjectsModel } from '@noodl-utils/LocalProjectsModel';
-import { mergeProject } from '@noodl-utils/projectmerger';
+import { mergeProject } from '@noodl-versioning';
 
 import { IconName, IconSize } from '@noodl-core-ui/components/common/Icon';
 import { IconButton, IconButtonVariant } from '@noodl-core-ui/components/inputs/IconButton';

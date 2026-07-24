@@ -1,6 +1,7 @@
 const path = require('path');
 const merge = require('webpack-merge').default;
 const shared = require('./shared/webpack.shared.js');
+const sharedCore = require('./shared/webpack.main.core.js');
 const getExternalModules = require('./helpers/get-externals-modules');
 
 /**
@@ -11,7 +12,7 @@ const getExternalModules = require('./helpers/get-externals-modules');
  * been produced by a production build. Main-process changes silently did nothing
  * in dev. This config exists so the dev launcher can rebuild it.
  */
-module.exports = merge(shared, {
+module.exports = merge(sharedCore, merge(shared, {
   mode: 'development',
   target: 'electron-main',
   // Source maps so main-process stack traces point at src/main/*.js, not the bundle.
@@ -27,4 +28,5 @@ module.exports = merge(shared, {
     filename: '[name].bundle.js',
     libraryTarget: 'commonjs2'
   }
-});
+})
+);

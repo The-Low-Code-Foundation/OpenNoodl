@@ -22,7 +22,8 @@ const alias = {
   '@noodl-contexts': path.join(editorDir, 'src/editor/src/contexts'),
   '@noodl-types': path.join(editorDir, 'src/editor/src/types'),
   '@noodl-views': path.join(editorDir, 'src/editor/src/views'),
-  '@noodl-store': path.join(editorDir, 'src/editor/src/store')
+  '@noodl-store': path.join(editorDir, 'src/editor/src/store'),
+  '@noodl-versioning': path.join(editorDir, 'src/editor/src/versioning')
 };
 
 console.log('> alias:');

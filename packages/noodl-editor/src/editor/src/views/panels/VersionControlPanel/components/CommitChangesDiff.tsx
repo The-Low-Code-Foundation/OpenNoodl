@@ -8,7 +8,7 @@ import { revRange } from '@noodl/git/src/core/rev-list';
 
 import { ProjectModel } from '@noodl-models/projectmodel';
 import { applyPatches } from '@noodl-models/ProjectPatches/applypatches';
-import { mergeProject } from '@noodl-utils/projectmerger';
+import { mergeProject } from '@noodl-versioning';
 import { ProjectDiff, diffProject } from '@noodl-utils/projectmerger.diff';
 
 import { useVersionControlContext } from '../context';
