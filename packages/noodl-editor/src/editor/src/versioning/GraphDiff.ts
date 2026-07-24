@@ -86,6 +86,24 @@ function orderedIds(snapshot: GraphSnapshot, parent: string | undefined): string
   return ids.map((entry) => entry.id);
 }
 
+/**
+ * Instance ports compare with `index` stripped: the editor stamps a numeric
+ * `index` onto loaded ports while freshly authored ones (AI proposals, hand
+ * written v2 files) carry none, and the array order already expresses the
+ * ordering — so `index` never carries independent information. Found live in
+ * AIX-003 review, where every loaded Component Inputs node spuriously
+ * reported "ports changed" against its own re-proposal.
+ */
+function normalizedPorts(ports: unknown[]): unknown[] {
+  return ports.map((port) => {
+    if (port !== null && typeof port === 'object' && !Array.isArray(port) && 'index' in port) {
+      const { index: _index, ...rest } = port as Record<string, unknown>;
+      return rest;
+    }
+    return port;
+  });
+}
+
 function diffNodePair(base: SnapshotNode, target: SnapshotNode, baseGraph: GraphSnapshot, targetGraph: GraphSnapshot): GraphChange[] {
   const changes: GraphChange[] = [];
   const ref = nodeRef(target);
@@ -133,7 +151,7 @@ function diffNodePair(base: SnapshotNode, target: SnapshotNode, baseGraph: Graph
     });
   }
 
-  if (!deepEqual(base.ports, target.ports)) {
+  if (!deepEqual(normalizedPorts(base.ports), normalizedPorts(target.ports))) {
     changes.push({ kind: 'node-ports-changed', node: ref, category: 'semantic' });
   }
 

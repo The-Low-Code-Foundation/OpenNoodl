@@ -79,3 +79,61 @@
   flex-direction: column;
   gap: 2px;
 }
+
+.RowLine {
+  display: flex;
+  align-items: stretch;
+
+  &:hover .ExcludeButton,
+  &:focus-within .ExcludeButton {
+    opacity: 1;
+  }
+}
+
+.RowLine .Row {
+  flex: 1;
+  min-width: 0;
+}
+
+.RowText {
+  min-width: 0;
+}
+
+.ExcludeButton {
+  flex-shrink: 0;
+  width: 28px;
+  border: 0;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  opacity: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &:hover,
+  &:focus-visible {
+    background-color: var(--theme-color-bg-3);
+    opacity: 1;
+  }
+}
+
+.RowRejected {
+  opacity: 0.45;
+
+  .RowText {
+    text-decoration: line-through;
+  }
+
+  // Keep the restore affordance discoverable on excluded rows.
+  .ExcludeButton {
+    opacity: 1;
+  }
+}
+
+.ApplyError {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin-top: 6px;
+}

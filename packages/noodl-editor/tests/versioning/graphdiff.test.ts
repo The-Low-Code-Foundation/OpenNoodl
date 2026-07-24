@@ -32,6 +32,19 @@ describe('GraphDiff', () => {
     expect(change.params.map((p) => p.name).sort()).toEqual(['fresh', 'gone', 'text']);
   });
 
+  it('ignores the editor-stamped port index when comparing instance ports', () => {
+    // Loaded nodes carry ports with a numeric `index`; freshly authored ones
+    // (AI proposals, hand-written v2 files) do not. Array order carries the
+    // ordering, so index alone is not a change.
+    const base = comp([node('a', 'Component Inputs', { ports: [{ name: 'Trigger', plug: 'output', type: '*', index: 0 }] })]);
+    const target = comp([node('a', 'Component Inputs', { ports: [{ name: 'Trigger', plug: 'output', type: '*' }] })]);
+    expect(diffGraphs(base, target).changes).toEqual([]);
+
+    // A real ports change still reports.
+    const renamed = comp([node('a', 'Component Inputs', { ports: [{ name: 'Fire', plug: 'output', type: '*' }] })]);
+    expect(diffGraphs(base, renamed).changes.map((c) => c.kind)).toEqual(['node-ports-changed']);
+  });
+
   it('classifies pure canvas moves as cosmetic', () => {
     const base = comp([node('a', 'Group', { x: 0, y: 0 })]);
     const target = comp([node('a', 'Group', { x: 100, y: 50 })]);

@@ -19,13 +19,17 @@ import {
   AuthoringSetupError,
   buildChangeSet,
   StagingError,
+  validateCandidateComponent,
   type AuthoringActivity,
-  type AuthoringSessionState
+  type AuthoringSessionState,
+  type ComponentFiles
 } from '@noodl-models/AiAssistant/authoring';
 import { AiClient } from '@noodl-models/AiAssistant/client';
 import { fromProjectModel } from '@noodl-models/AiAssistant/explain/graph';
 import { AppRegistry } from '@noodl-models/app_registry';
 import { ProjectModel } from '@noodl-models/projectmodel';
+
+import { formatDiagnosticLine } from '../../../validation';
 
 import { FeedbackType } from '@noodl-constants/FeedbackType';
 import { Icon, IconName, IconSize } from '@noodl-core-ui/components/common/Icon';
@@ -190,11 +194,22 @@ export function AiAuthoringPanel() {
     await session.refine(text);
   }, [refineText, state?.busy]);
 
-  const accept = useCallback(() => {
+  /**
+   * Stage the given files into the project. The whole-candidate path (Accept
+   * in the panel) was validated by the session's gate already; a partial
+   * selection from the review document is re-validated through the same gate
+   * here. Returns an error message, or null on success.
+   */
+  const acceptFiles = useCallback((files: ComponentFiles): string | null => {
     const session = sessionRef.current;
     const project = ProjectModel.instance;
-    const files = session?.stagedFiles;
-    if (!session || !project || !files) return;
+    if (!session || !project) return 'The authoring session is no longer available.';
+
+    const validation = validateCandidateComponent(fromProjectModel(project), session.legacyName, files);
+    if (!validation.ok) {
+      const lines = validation.errors.slice(0, 3).map(formatDiagnosticLine);
+      return `The selected subset is not a valid component: ${lines.join(' · ')}`;
+    }
 
     try {
       const component = acceptAuthoredComponent(project, files);
@@ -205,10 +220,18 @@ export function AiAuthoringPanel() {
       setState(null);
       setComponentPath('');
       setDescription('');
+      return null;
     } catch (e) {
-      setSetupError(e instanceof StagingError ? e.message : e instanceof Error ? e.message : String(e));
+      const message = e instanceof StagingError ? e.message : e instanceof Error ? e.message : String(e);
+      setSetupError(message);
+      return message;
     }
   }, []);
+
+  const accept = useCallback(() => {
+    const files = sessionRef.current?.stagedFiles;
+    if (files) acceptFiles(files);
+  }, [acceptFiles]);
 
   const reject = useCallback(() => {
     // Reject is the absence of an accept call: drop the session, nothing was written.
@@ -225,11 +248,12 @@ export function AiAuthoringPanel() {
 
     AppRegistry.instance.openDocument(ChangeReviewDocumentProvider.ID, {
       changeSet: buildChangeSet(project, files),
+      files,
       title: `Review ${session.legacyName}`,
-      onAccept: accept,
+      onAcceptFiles: acceptFiles,
       onReject: reject
     });
-  }, [accept, reject]);
+  }, [acceptFiles, reject]);
 
   const note = state ? outcomeNote(state) : null;
   const canDecide = Boolean(state && !state.busy && state.staged);

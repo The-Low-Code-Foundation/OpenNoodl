@@ -30,4 +30,6 @@ export type { AcceptOptions } from './staging';
 export { buildChangeSet, requiredWith, excludedWith } from './ChangeSet';
 export type { AuthoringChangeSet, ReviewChange } from './ChangeSet';
 export { buildReviewComponent } from './reviewComponent';
+export { materializeSelection } from './applyChangeSet';
+export type { MaterializedSelection } from './applyChangeSet';
 export { initialUserMessage, refineMessage, systemPrompt } from './prompts/authoring';

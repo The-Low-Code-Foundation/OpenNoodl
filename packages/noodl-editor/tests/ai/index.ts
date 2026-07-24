@@ -25,3 +25,4 @@ export * from './authoring-staging.test';
 // accepted through the real staging path.
 export * from './authoring-changeset.test';
 export * from './authoring-review.test';
+export * from './authoring-apply.test';
