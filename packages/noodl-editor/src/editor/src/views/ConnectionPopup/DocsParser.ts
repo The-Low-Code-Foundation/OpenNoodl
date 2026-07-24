@@ -1,10 +1,21 @@
-import async from 'async';
 import { Remarkable } from 'remarkable';
 
 import getDocsEndpoint from '@noodl-utils/getDocsEndpoint';
 
 // Fetch and parse out documentation for inputs and outputs
 const _pages = {};
+
+/** GET a document as text. Resolves to `{ status }` only on a non-2xx or network error. */
+async function fetchText(url: string): Promise<{ text?: string; status?: number }> {
+  try {
+    const response = await fetch(url, { headers: { Accept: 'text/html' } });
+    if (!response.ok) return { status: response.status };
+    return { text: await response.text() };
+  } catch (error) {
+    console.warn(error);
+    return {};
+  }
+}
 
 class DocsParser {
   baseUrl: URL;
@@ -62,60 +73,35 @@ class DocsParser {
     });
   }
 
-  fetchPage(url: string, callback) {
+  async fetchPage(url: string, callback) {
     this.baseUrl = new URL(url);
 
-    $.ajax({
-      url: url,
-      headers: {
-        Accept: 'text/html'
-      },
-      success: function (md) {
-        // Find all filename references
-        const matches = md.matchAll(/\[filename\]\((.*?)\'\:include\'\)/g);
-        const refs = [];
-        for (const m of matches) {
-          let ref = m[1];
-          if (ref !== undefined) {
-            ref = ref.trim();
+    const page = await fetchText(url);
+    let md = page.text;
+    if (md === undefined) {
+      // Access denied stays silent and never calls back, as the jQuery version did
+      if (page.status !== 401) callback();
+      return;
+    }
 
-            const absoluteUrl = new URL(ref, url);
-            refs.push({ anchor: m[0], url: absoluteUrl.href });
-          }
-        }
+    // Find all filename references
+    const refs = [];
+    for (const m of md.matchAll(/\[filename\]\((.*?)':include'\)/g)) {
+      const ref = m[1];
+      if (ref !== undefined) {
+        refs.push({ anchor: m[0], url: new URL(ref.trim(), url).href });
+      }
+    }
 
-        async.each(
-          refs,
-          function (ref, cb) {
-            $.ajax({
-              url: ref.url,
-              headers: {
-                Accept: 'text/html'
-              },
-              success: function (refMd) {
-                md = md.replace(ref.anchor, refMd);
-                cb();
-              },
-              error: function () {
-                cb(); // Ignore error
-              }
-            });
-          },
-          function () {
-            // All done
-            callback(md);
-          }
-        );
-      },
-      error: function (err) {
-        if (err.status === 401) {
-          /* Access denied */
-        } else {
-          console.warn(err);
-          callback();
-        }
+    const included = await Promise.all(refs.map((ref) => fetchText(ref.url)));
+    refs.forEach((ref, index) => {
+      // Ignore the ones that failed, as the callback version did
+      if (included[index].text !== undefined) {
+        md = md.replace(ref.anchor, included[index].text);
       }
     });
+
+    callback(md);
   }
 }
 

@@ -129,9 +129,6 @@ export function EditorPage({ route }: EditorPageProps) {
 
     const eventGroup = {};
 
-    // Docs layer
-    //DocsLayer.instance.render();
-    //$('body').append(DocsLayer.instance.el);
     //broadcast new project name over udp to noodl-shells on the same network
     ipcRenderer.send('project-opened', ProjectModel.instance.name);
 

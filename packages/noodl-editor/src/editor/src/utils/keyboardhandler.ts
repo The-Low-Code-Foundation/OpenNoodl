@@ -19,6 +19,18 @@ function getKeyMod(evt: KeyboardEvent): number {
 type KeyEventHandler = (event: KeyboardEvent) => void;
 type MouseEventHandler = (event: MouseEvent) => void;
 
+/**
+ * The element that currently holds focus, or null if focus is only on the
+ * document. Reproduces jQuery's `:focus`, which required the element to be
+ * focusable in its own right — so `<body>` (tabIndex -1) does not count.
+ */
+function getFocusedElement(): HTMLElement | null {
+  const element = document.activeElement as TSFixme;
+  if (!element || !document.hasFocus()) return null;
+  const isFocusable = !!(element.type || element.href || element.tabIndex !== -1);
+  return isFocusable ? element : null;
+}
+
 export default class KeyboardHandler {
   static instance = new KeyboardHandler();
 
@@ -38,16 +50,16 @@ export default class KeyboardHandler {
 
       const code = getKeyMod(event) + KeyCodeUtils.fromString(event.key);
 
-      const focusedElements = $(':focus');
+      const focusedElement = getFocusedElement();
 
       if (code === KeyCode.Escape) {
-        if (focusedElements.length > 0) {
-          focusedElements[0].blur();
+        if (focusedElement) {
+          focusedElement.blur();
           return;
         }
       }
 
-      if (focusedElements.length > 0) {
+      if (focusedElement) {
         //something else has focus, e.g. a text input or similar
         return;
       }
@@ -60,7 +72,7 @@ export default class KeyboardHandler {
         return;
       }
 
-      if ($(':focus').length > 0) return; // Only do this if no other element is currently focused
+      if (getFocusedElement()) return; // Only do this if no other element is currently focused
 
       this.executeCommandMatchingKeyEvent(event, 'up');
     };

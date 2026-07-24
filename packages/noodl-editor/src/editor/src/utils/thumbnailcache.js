@@ -27,16 +27,6 @@ ThumbnailCache.prototype.getThumbnailForFile = function (fileEntry, callback) {
   );
 };
 
-/*ThumbnailCache.prototype.getThumbnailCanvas = function() {
-  var el = $('#tnumbnailCacheCanvas');
-  if(el.length === 0) {
-    $('body').append('<canvas id="tnumbnailCacheCanvas"></canvas>');
-    el = $('#tnumbnailCacheCanvas');
-  }
-
-  return el;
-}*/
-
 ThumbnailCache.prototype.createThumbnailForFile = function (fileEntry, metadata, callback) {
   var _this = this;
 

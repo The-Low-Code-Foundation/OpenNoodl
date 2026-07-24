@@ -40,26 +40,24 @@ LessonModel.prototype.fetch = function (callback) {
     }
   }
 
-  $.ajax({
-    url: url,
-    cache: false,
-    headers: {
-      Accept: 'text/html'
-    },
-    success: function (html) {
-      _this.lessons = html
-        .split('<!-- # -->')
-        .map((step) => step.trim())
-        .filter((step) => step.length > 0);
-      _this.numberOfLessons = _this.lessons.length;
-      extractAnnotations();
+  // cache: 'no-store' matches jQuery's `cache: false` (which appended a cache buster)
+  window
+    .fetch(url, { cache: 'no-store', headers: { Accept: 'text/html' } })
+    .then((response) => (response.ok ? response.text() : undefined))
+    .catch(() => undefined)
+    .then((html) => {
+      if (html === undefined) {
+        _this.lessons = undefined;
+      } else {
+        _this.lessons = html
+          .split('<!-- # -->')
+          .map((step) => step.trim())
+          .filter((step) => step.length > 0);
+        _this.numberOfLessons = _this.lessons.length;
+        extractAnnotations();
+      }
       callback && callback();
-    },
-    error: function (err) {
-      _this.lessons = undefined;
-      callback && callback();
-    }
-  });
+    });
 };
 
 LessonModel.prototype.start = function () {

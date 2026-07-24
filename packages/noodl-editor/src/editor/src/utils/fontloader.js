@@ -15,9 +15,9 @@ class FontLoader {
 
     const fullPath = ProjectModel.instance._retainedProjectDirectory + '/' + fontPath;
     FileSystem.instance.downloadAsDataURI(fullPath, (dataURL) => {
-      $(document.head).append(
-        '<style>@font-face {font-family: "' + familyName + '"; src: url(' + dataURL + ');}</style>'
-      );
+      const style = document.createElement('style');
+      style.textContent = '@font-face {font-family: "' + familyName + '"; src: url(' + dataURL + ');}';
+      document.head.appendChild(style);
     });
   }
 }

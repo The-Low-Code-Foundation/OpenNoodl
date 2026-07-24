@@ -1,8 +1,19 @@
-import async from 'async';
 import highlight from 'highlight.js';
 import { Remarkable } from 'remarkable';
 
 const getDocsEndpoint = require('../utils/getDocsEndpoint').default;
+
+/** GET a document as text. Resolves to `{ status }` only on a non-2xx or network error. */
+async function fetchText(url: string): Promise<{ text?: string; status?: number }> {
+  try {
+    const response = await fetch(url, { headers: { Accept: 'text/html' } });
+    if (!response.ok) return { status: response.status };
+    return { text: await response.text() };
+  } catch (error) {
+    console.warn(error);
+    return {};
+  }
+}
 
 export class DocsParser {
   baseUrl: URL;
@@ -10,7 +21,6 @@ export class DocsParser {
   dispose() {}
 
   parsePage(content: string, _options: TSFixme) {
-    const _this = this;
     const endpoint = getDocsEndpoint();
 
     const md = new Remarkable({
@@ -24,25 +34,24 @@ export class DocsParser {
     const regexMatch = content.match(/{\/\*##head##\*\/}([\s\S]*?){\/\*##head##\*\/}/);
     if (!regexMatch) return null;
 
-    const el = $('<div>' + md.render(regexMatch[1]) + '</div>');
+    const el = document.createElement('div');
+    el.innerHTML = md.render(regexMatch[1]);
 
     // Iterate over all images and load the src as a dataurl
-    el.find('img').each(function () {
-      const _el = $(this);
-      const url = _el.attr('src');
+    el.querySelectorAll('img').forEach((img) => {
+      const url = img.getAttribute('src');
 
       if (!url.startsWith('/')) {
-        _el.attr('src', _this.baseUrl.href.split('/').slice(0, -1).join('/') + '/' + url);
+        img.setAttribute('src', this.baseUrl.href.split('/').slice(0, -1).join('/') + '/' + url);
       } else {
-        _el.attr('src', endpoint + url);
+        img.setAttribute('src', endpoint + url);
       }
     });
 
-    el.find('a').each(function () {
-      const _el = $(this);
-      _el.attr('target', '_blank'); // Open external
+    el.querySelectorAll('a').forEach((anchor) => {
+      anchor.setAttribute('target', '_blank'); // Open external
 
-      let url = _el.attr('href');
+      let url = anchor.getAttribute('href');
 
       if (url.startsWith('https://docs.noodl.net')) {
         //add version number
@@ -50,67 +59,40 @@ export class DocsParser {
       } else {
         url = endpoint + url;
       }
-      _el.attr('href', url);
+      anchor.setAttribute('href', url);
     });
 
-    return el[0];
+    return el;
   }
 
-  fetchPage(url: string, callback) {
-    const _this = this;
-
+  async fetchPage(url: string, callback) {
     this.baseUrl = new URL(url);
 
-    $.ajax({
-      url: url,
-      headers: {
-        Accept: 'text/html'
-      },
-      success: function (html) {
-        // Find all filename references
-        const matches = html.matchAll(/@include\s\"(.*)\"/g);
-        const refs = [];
-        for (const m of matches) {
-          let ref = m[1];
-          if (ref !== undefined) {
-            ref = ref.trim();
+    const page = await fetchText(url);
+    let html = page.text;
+    if (html === undefined) {
+      // Access denied stays silent and never calls back, as the jQuery version did
+      if (page.status !== 401) callback();
+      return;
+    }
 
-            const absoluteUrl = new URL(ref, url);
-            refs.push({ anchor: m[0], url: absoluteUrl.href });
-          }
-        }
+    // Find all filename references
+    const refs = [];
+    for (const m of html.matchAll(/@include\s"(.*)"/g)) {
+      const ref = m[1];
+      if (ref !== undefined) {
+        refs.push({ anchor: m[0], url: new URL(ref.trim(), url).href });
+      }
+    }
 
-        async.each(
-          refs,
-          function (ref, cb) {
-            $.ajax({
-              url: ref.url,
-              headers: {
-                Accept: 'text/html'
-              },
-              success: function (refHtml) {
-                html = html.replace(ref.anchor, refHtml);
-                cb();
-              },
-              error: function () {
-                cb(); // Ignore error
-              }
-            });
-          },
-          function () {
-            // All done
-            callback(_this.parsePage(html, {}));
-          }
-        );
-      },
-      error: function (err) {
-        if (err.status === 401) {
-          /* Access denied */
-        } else {
-          console.warn(err);
-          callback();
-        }
+    const included = await Promise.all(refs.map((ref) => fetchText(ref.url)));
+    refs.forEach((ref, index) => {
+      // Ignore the ones that failed, as the callback version did
+      if (included[index].text !== undefined) {
+        html = html.replace(ref.anchor, included[index].text);
       }
     });
+
+    callback(this.parsePage(html, {}));
   }
 }

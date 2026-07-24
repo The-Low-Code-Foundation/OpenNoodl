@@ -465,18 +465,28 @@ FileSystem.instance = {
     });
   },
   chooseFile: function (callback, options) {
-    $('#__hiddenFileInput__').remove();
-    $('body').append('<input style="display:none" id="__hiddenFileInput__"  type="file" accept="application/json"  />');
+    const previous = document.getElementById('__hiddenFileInput__');
+    previous && previous.remove();
 
-    var hiddenFileInput = $('#__hiddenFileInput__');
-    hiddenFileInput.one('change', function () {
-      // Electron 32 removed the nonstandard `File.path` property; webUtils
-      // is the supported way to get a native path out of a File object.
-      var files = Array.from($('#__hiddenFileInput__')[0].files, (file) => webUtils.getPathForFile(file));
-      $('#__hiddenFileInput__').remove();
+    const hiddenFileInput = document.createElement('input');
+    hiddenFileInput.id = '__hiddenFileInput__';
+    hiddenFileInput.type = 'file';
+    hiddenFileInput.accept = 'application/json';
+    hiddenFileInput.style.display = 'none';
+    document.body.appendChild(hiddenFileInput);
 
-      callback(files[0]);
-    });
+    hiddenFileInput.addEventListener(
+      'change',
+      function () {
+        // Electron 32 removed the nonstandard `File.path` property; webUtils
+        // is the supported way to get a native path out of a File object.
+        const files = Array.from(hiddenFileInput.files, (file) => webUtils.getPathForFile(file));
+        hiddenFileInput.remove();
+
+        callback(files[0]);
+      },
+      { once: true }
+    );
     hiddenFileInput.click();
   },
   forEachFileRecursive: function (startPath, callback) {
