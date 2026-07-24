@@ -1,11 +1,31 @@
 'use strict';
 
-const { Node } = require('@noodl/runtime');
+import CollectionImport from '@noodl/runtime/src/collection';
+import ModelImport from '@noodl/runtime/src/model';
+import type {
+  CollectionLike,
+  CollectionModule,
+  ModelModule,
+  NodeDefinitionOptions,
+  NodeInstance,
+  NodeModule
+} from '@noodl/types';
 
-var Model = require('@noodl/runtime/src/model'),
-  Collection = require('@noodl/runtime/src/collection');
+const Model = ModelImport as ModelModule;
+const Collection = CollectionImport as CollectionModule;
 
-var CollectionInsertNode = {
+/** `this` inside the Insert Object Into Array node. */
+interface CollectionInsertInstance extends NodeInstance {
+  _internal: {
+    collection?: CollectionLike;
+    /** Id of the record to insert. Arrives by connection only. */
+    modifyId?: string;
+  };
+  setCollectionID(id: string): void;
+  setCollection(collection: CollectionLike): void;
+}
+
+const CollectionInsertNode: NodeDefinitionOptions = {
   name: 'CollectionInsert',
   docs: 'https://docs.noodl.net/nodes/data/array/insert-into-array',
   displayNodeName: 'Insert Object Into Array',
@@ -23,27 +43,26 @@ var CollectionInsertNode = {
       },
       displayName: 'Array Id',
       group: 'General',
-      set: function (value) {
+      set: function (this: CollectionInsertInstance, value: string | CollectionLike) {
         if (value instanceof Collection) value = value.getId(); // Can be passed as collection as well
-        this.setCollectionID(value);
+        this.setCollectionID(value as string);
       }
     },
     modifyId: {
       type: { name: 'string', allowConnectionsOnly: true },
       displayName: 'Object Id',
       group: 'Modify',
-      set: function (value) {
+      set: function (this: CollectionInsertInstance, value: string) {
         this._internal.modifyId = value;
       }
     },
     add: {
       displayName: 'Do',
       group: 'Actions',
-      valueChangedToTrue: function () {
-        var _this = this;
-        var internal = this._internal;
+      valueChangedToTrue: function (this: CollectionInsertInstance) {
+        const internal = this._internal;
 
-        this.scheduleAfterInputsHaveUpdated(function () {
+        this.scheduleAfterInputsHaveUpdated(() => {
           if (this.context.editorConnection) {
             this.context.editorConnection.clearWarning(this.nodeScope.componentOwner.name, this.id, 'insert-warning');
           }
@@ -68,9 +87,9 @@ var CollectionInsertNode = {
             return;
           }
 
-          var model = Model.get(internal.modifyId);
+          const model = Model.get(internal.modifyId);
           internal.collection.add(model);
-          _this.sendSignalOnOutput('modified');
+          this.sendSignalOnOutput('modified');
         });
       }
     }
@@ -83,15 +102,17 @@ var CollectionInsertNode = {
     }
   },
   prototypeExtensions: {
-    setCollectionID: function (id) {
+    setCollectionID: function (this: CollectionInsertInstance, id: string) {
       this.setCollection(Collection.get(id));
     },
-    setCollection: function (collection) {
+    setCollection: function (this: CollectionInsertInstance, collection: CollectionLike) {
       this._internal.collection = collection;
     }
   }
 };
 
-module.exports = {
+const CollectionInsertModule: NodeModule = {
   node: CollectionInsertNode
 };
+
+export default CollectionInsertModule;

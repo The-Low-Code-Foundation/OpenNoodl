@@ -1,7 +1,15 @@
-const NoodlRuntime = require('@noodl/runtime');
-const CloudStore = require('@noodl/runtime/src/api/cloudstore');
-
-('use strict');
+import NoodlRuntime from '@noodl/runtime';
+import CloudStore from '@noodl/runtime/src/api/cloudstore';
+import type {
+  EditorConnectionLike,
+  GraphModelLike,
+  GraphNodeModel,
+  InspectInfo,
+  NodeContextLike,
+  NodeDefinitionOptions,
+  NodeInstance,
+  NodeModule
+} from '@noodl/types';
 
 /*var defaultBeforeCallScript = "// Add custom code to setup the parameters send to the function\n"+
 "// The parameters are found in the object called 'Parameters'\n";
@@ -9,15 +17,45 @@ const CloudStore = require('@noodl/runtime/src/api/cloudstore');
 var defaultAfterCallScript = "// Add custom code modfiy the result from the cloud function\n"+
 "// The result is found in the object called 'Result'\n";*/
 
-function _makeRequest(path, options) {
-  var xhr = new XMLHttpRequest();
+/**
+ * The cloud services block of the project's metadata.
+ *
+ * Shared in practice with `cloudfunction2.ts` and the `user/` nodes; kept local until a
+ * third consumer needs it by name (PLAT-003 NOTES §16).
+ */
+interface CloudServicesMetadata {
+  appId: string;
+  endpoint: string;
+  /** Set only for a deployed backend; pinned onto every request as a header. */
+  deployVersion?: string;
+}
+
+interface RequestOptions {
+  appId: string;
+  endpoint: string;
+  method?: 'GET' | 'POST';
+  content?: unknown;
+  /**
+   * Receives the parsed JSON body, or `undefined` when the body would not parse.
+   * Deliberately `any`: the callers index it as an object without narrowing first.
+   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  success(response?: any): void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  error(response?: any): void;
+}
+
+function _makeRequest(path: string, options: RequestOptions): void {
+  const xhr = new XMLHttpRequest();
 
   xhr.onreadystatechange = function () {
     if (xhr.readyState === 4) {
-      var json;
+      let json;
       try {
         json = JSON.parse(xhr.response);
-      } catch (e) {}
+      } catch (e) {
+        // Not JSON — leave `json` undefined and let the handlers below decide.
+      }
 
       if (xhr.status === 200 || xhr.status === 201) {
         options.success(json);
@@ -31,7 +69,7 @@ function _makeRequest(path, options) {
   xhr.setRequestHeader('Content-Type', 'application/json');
 
   // Check for current users
-  var _cu = localStorage['Parse/' + options.appId + '/currentUser'];
+  const _cu = localStorage['Parse/' + options.appId + '/currentUser'];
   if (_cu !== undefined) {
     try {
       const currentUser = JSON.parse(_cu);
@@ -44,19 +82,44 @@ function _makeRequest(path, options) {
   xhr.send(JSON.stringify(options.content));
 }
 
-var CloudFunctionNode = {
+/** What the inspector shows after a call. */
+interface LastCallResult {
+  status: 'success' | 'failure';
+  result?: unknown;
+  /** The failure body, or the message explaining why no call was made. */
+  res?: unknown;
+}
+
+/** `this` inside the deprecated Cloud Function node. */
+interface CloudFunctionInstance extends NodeInstance {
+  _internal: {
+    functionName?: string;
+    /** The author's `params` stringlist, as typed. Drives the `pm-…` inputs. */
+    params?: string;
+    /** Values of the `pm-…` inputs, keyed without the prefix. */
+    paramsValues: Record<string, unknown>;
+    result?: unknown;
+    lastCallResult?: LastCallResult;
+    hasScheduledCall?: boolean;
+  };
+  setParamsValue(name: string, value: unknown): void;
+  scheduleCall(): void;
+  doCall(): void;
+}
+
+const CloudFunctionNode: NodeDefinitionOptions = {
   name: 'Cloud Function',
   category: 'Cloud Services',
   color: 'data',
   usePortAsLabel: 'functionName',
   docs: 'https://docs.noodl.net/nodes/data/cloud-data/cloud-function',
   deprecated: true,
-  initialize: function () {
+  initialize: function (this: CloudFunctionInstance) {
     this._internal.paramsValues = {};
     // this._internal.resultsValues = {};
     // this._internal.convertArraysAndObjects = true;
   },
-  getInspectInfo() {
+  getInspectInfo(this: CloudFunctionInstance): InspectInfo {
     const result = this._internal.lastCallResult;
     if (!result) return '[Not executed yet]';
 
@@ -67,14 +130,14 @@ var CloudFunctionNode = {
       type: 'string',
       displayName: 'Function Name',
       group: 'General',
-      set: function (value) {
+      set: function (this: CloudFunctionInstance, value: string) {
         this._internal.functionName = value;
       }
     },
     params: {
       group: 'Parameters',
       type: { name: 'stringlist', allowEditOnly: true },
-      set: function (value) {
+      set: function (this: CloudFunctionInstance, value: string) {
         this._internal.params = value;
       }
     },
@@ -84,7 +147,7 @@ var CloudFunctionNode = {
         set:function(value) {
             this._internal.results = value;
         }
-    },    
+    },
     beforeCallScript: {
         group:'Scripts',
         displayName:'Before Call',
@@ -100,7 +163,7 @@ var CloudFunctionNode = {
             catch(e) {
                 this._internal.scriptBeforeCallFunc = undefined;
                 console.log('Error while parsing script (before call): ' +  e);
-            }  
+            }
         }
     },
     afterCallScript: {
@@ -118,14 +181,14 @@ var CloudFunctionNode = {
             catch(e) {
                 this._internal.scriptAfterCallFunc = undefined;
                 console.log('Error while parsing script (after call): ' +  e);
-            }  
+            }
         }
     },*/
     call: {
       type: 'signal',
       displayName: 'Call',
       group: 'Actions',
-      valueChangedToTrue: function () {
+      valueChangedToTrue: function (this: CloudFunctionInstance) {
         this.scheduleCall();
       }
     }
@@ -136,7 +199,7 @@ var CloudFunctionNode = {
         default:true,
         set: function(value) {
             this._internal.convertArraysAndObjects = value;
-        } 
+        }
     }*/
   },
   outputs: {
@@ -154,7 +217,7 @@ var CloudFunctionNode = {
       type: '*',
       displayName: 'Result',
       group: 'Output',
-      getter: function () {
+      getter: function (this: CloudFunctionInstance) {
         return this._internal.result;
       }
     }
@@ -163,7 +226,7 @@ var CloudFunctionNode = {
     /* getResultsValue:function(name) {
         return this._internal.resultsValues[name];
     },*/
-    registerOutputIfNeeded: function (name) {
+    registerOutputIfNeeded: function (this: CloudFunctionInstance, name: string) {
       if (this.hasOutput(name)) {
         return;
       }
@@ -172,10 +235,10 @@ var CloudFunctionNode = {
           getter: this.getResultsValue.bind(this, name.substring('res-'.length))
       });*/
     },
-    setParamsValue: function (name, value) {
+    setParamsValue: function (this: CloudFunctionInstance, name: string, value: unknown) {
       this._internal.paramsValues[name] = value;
     },
-    registerInputIfNeeded: function (name) {
+    registerInputIfNeeded: function (this: CloudFunctionInstance, name: string) {
       if (this.hasInput(name)) {
         return;
       }
@@ -185,17 +248,17 @@ var CloudFunctionNode = {
           set: this.setParamsValue.bind(this, name.substring('pm-'.length))
         });
     },
-    scheduleCall: function () {
-      var internal = this._internal;
+    scheduleCall: function (this: CloudFunctionInstance) {
+      const internal = this._internal;
       if (!internal.hasScheduledCall) {
         internal.hasScheduledCall = true;
         this.scheduleAfterInputsHaveUpdated(this.doCall.bind(this));
       }
     },
-    doCall: function () {
+    doCall: function (this: CloudFunctionInstance) {
       this._internal.hasScheduledCall = false;
 
-      const cloudServices = NoodlRuntime.instance.getMetaData('cloudservices');
+      const cloudServices = NoodlRuntime.instance.getMetaData('cloudservices') as CloudServicesMetadata | undefined;
       if (cloudServices === undefined) {
         console.log('No cloud services defined in this project.');
         this._internal.lastCallResult = {
@@ -207,8 +270,8 @@ var CloudFunctionNode = {
         return;
       }
 
-      var appId = cloudServices.appId;
-      var endpoint = cloudServices.endpoint;
+      const appId = cloudServices.appId;
+      const endpoint = cloudServices.endpoint;
       // Run before call script
       /*  if(this._internal.scriptBeforeCallFunc !== undefined) {
             this._internal.scriptBeforeCallFunc(this._internal.paramsValues);
@@ -219,8 +282,8 @@ var CloudFunctionNode = {
         endpoint,
         content: this._internal.paramsValues,
         method: 'POST',
-        success: (res) => {
-          var res = res.result; // Cloud functions always return "result"
+        success: (response) => {
+          const res = response.result; // Cloud functions always return "result"
           if (res === undefined) {
             this.sendSignalOnOutput('failure');
             return;
@@ -270,16 +333,17 @@ var CloudFunctionNode = {
   }
 };
 
-module.exports = {
+const CloudFunctionModule: NodeModule = {
   node: CloudFunctionNode,
-  setup: function (context, graphModel) {
+  setup: function (context: NodeContextLike, graphModel: GraphModelLike) {
     if (!context.editorConnection || !context.editorConnection.isRunningLocally()) {
       return;
     }
+    const editorConnection: EditorConnectionLike = context.editorConnection;
 
-    function _managePortsForNode(node) {
+    function _managePortsForNode(node: GraphNodeModel) {
       function _updatePorts() {
-        var ports = [];
+        const ports = [];
 
         // Add results outputs
         /*    var results = node.parameters.results;
@@ -302,12 +366,9 @@ module.exports = {
                 }*/
 
         // Add params inputs
-        var params = node.parameters.params;
+        const params = node.parameters.params as string | undefined;
         if (params !== undefined) {
-          params = params.split(',');
-          for (var i in params) {
-            var p = params[i];
-
+          for (const p of params.split(',')) {
             ports.push({
               type: '*',
               plug: 'input',
@@ -318,11 +379,11 @@ module.exports = {
           }
         }
 
-        context.editorConnection.sendDynamicPorts(node.id, ports);
+        editorConnection.sendDynamicPorts(node.id, ports);
       }
 
       _updatePorts();
-      node.on('parameterUpdated', function (event) {
+      node.on('parameterUpdated', function (event: { name: string }) {
         if (event.name === 'params') {
           _updatePorts();
         }
@@ -330,7 +391,7 @@ module.exports = {
     }
 
     graphModel.on('editorImportComplete', () => {
-      graphModel.on('nodeAdded.Cloud Function', function (node) {
+      graphModel.on('nodeAdded.Cloud Function', function (node: GraphNodeModel) {
         _managePortsForNode(node);
       });
 
@@ -340,3 +401,5 @@ module.exports = {
     });
   }
 };
+
+export default CloudFunctionModule;

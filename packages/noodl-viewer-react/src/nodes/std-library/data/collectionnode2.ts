@@ -1,10 +1,45 @@
 'use strict';
 
-const { Node } = require('@noodl/runtime');
+import { Node } from '@noodl/runtime';
+import CollectionImport from '@noodl/runtime/src/collection';
+import type {
+  CollectionLike,
+  CollectionModule,
+  InspectInfo,
+  NodeDefinitionOptions,
+  NodeInstance,
+  NodeModule
+} from '@noodl/types';
 
-const Collection = require('@noodl/runtime/src/collection');
+const Collection = CollectionImport as CollectionModule;
 
-var CollectionNode = {
+/** `this` inside the Array node. */
+interface CollectionNodeInstance extends NodeInstance {
+  _internal: {
+    /** The collection this node owns and reports on. */
+    collection?: CollectionLike;
+    /** Latest id seen on the `collectionId` input, kept for the deferred `fetch`. */
+    collectionId?: string;
+    /** The collection connected to `items`, mirrored into {@link collection}. */
+    sourceCollection?: CollectionLike;
+    /** `items` as it arrived, before the scheduled copy runs. */
+    pendingSourceCollection?: CollectionLike;
+    collectionChangedCallback(): void;
+    sourceCollectionChangedCallback(): void;
+  };
+  hasScheduledSetCollection?: boolean;
+  hasScheduledStore?: boolean;
+  hasScheduledCopyItems?: boolean;
+  setCollectionID(id: string): void;
+  setCollection(collection: CollectionLike): void;
+  setSourceCollection(collection: CollectionLike): void;
+  scheduleSetCollection(): void;
+  scheduleStore(): void;
+  scheduleCopyItems(): void;
+  _copySourceItems(): void;
+}
+
+const CollectionNode: NodeDefinitionOptions = {
   name: 'Collection2',
   docs: 'https://docs.noodl.net/nodes/data/array/array-node',
   displayNodeName: 'Array',
@@ -12,34 +47,34 @@ var CollectionNode = {
   category: 'Data',
   usePortAsLabel: 'collectionId',
   color: 'data',
-  initialize: function () {
-    var _this = this;
-
-    var collectionChangedScheduled = false;
-    this._internal.collectionChangedCallback = function () {
-      if (_this.isInputConnected('fetch') === true) return; // Ignore if we have explicit fetch connection
+  initialize: function (this: CollectionNodeInstance) {
+    let collectionChangedScheduled = false;
+    this._internal.collectionChangedCallback = () => {
+      if (this.isInputConnected('fetch') === true) return; // Ignore if we have explicit fetch connection
 
       //this can be called multiple times when adding/removing more than one item
       //so optimize by only updating outputs once
       if (collectionChangedScheduled) return;
       collectionChangedScheduled = true;
 
-      _this.scheduleAfterInputsHaveUpdated(function () {
-        _this.sendSignalOnOutput('changed');
-        _this.flagOutputDirty('firstItemId');
-        _this.flagOutputDirty('count');
+      this.scheduleAfterInputsHaveUpdated(() => {
+        this.sendSignalOnOutput('changed');
+        this.flagOutputDirty('firstItemId');
+        this.flagOutputDirty('count');
         collectionChangedScheduled = false;
       });
     };
 
     // When the source collection has changed, simply copy items into this collection
-    this._internal.sourceCollectionChangedCallback = function () {
-      if (_this.isInputConnected('store') === true) return; // Ignore if we have explicit store connection
+    // Unreachable in practice: this node declares no `store` input, so
+    // `isInputConnected('store')` is always false. See PLAT-003 NOTES §17.
+    this._internal.sourceCollectionChangedCallback = () => {
+      if (this.isInputConnected('store') === true) return; // Ignore if we have explicit store connection
 
-      _this.scheduleCopyItems();
+      this.scheduleCopyItems();
     };
   },
-  getInspectInfo() {
+  getInspectInfo(this: CollectionNodeInstance): InspectInfo {
     const collection = this._internal.collection;
     if (!collection) {
       return { type: 'text', value: '[No Array]' };
@@ -65,10 +100,10 @@ var CollectionNode = {
       },
       displayName: 'Id',
       group: 'General',
-      set: function (value) {
+      set: function (this: CollectionNodeInstance, value: string | CollectionLike) {
         if (value instanceof Collection) value = value.getId(); // Can be passed as collection as well
-        this._internal.collectionId = value; // Wait to fetch data
-        if (this.isInputConnected('fetch') === false) this.setCollectionID(value);
+        this._internal.collectionId = value as string; // Wait to fetch data
+        if (this.isInputConnected('fetch') === false) this.setCollectionID(value as string);
         else {
           this.flagOutputDirty('id');
         }
@@ -78,16 +113,15 @@ var CollectionNode = {
       type: 'array',
       group: 'General',
       displayName: 'Items',
-      set: function (value) {
-        var _this = this;
+      set: function (this: CollectionNodeInstance, value: CollectionLike) {
         if (value === undefined) return;
         if (value === this._internal.collection) return;
 
         this._internal.pendingSourceCollection = value;
         if (this.isInputConnected('store') === false) {
           // Don't auto copy if we have connections to store
-          this.scheduleAfterInputsHaveUpdated(function () {
-            _this.setSourceCollection(value);
+          this.scheduleAfterInputsHaveUpdated(() => {
+            this.setSourceCollection(value);
           });
         }
       }
@@ -95,7 +129,7 @@ var CollectionNode = {
     fetch: {
       displayName: 'Fetch',
       group: 'Actions',
-      valueChangedToTrue: function () {
+      valueChangedToTrue: function (this: CollectionNodeInstance) {
         this.scheduleSetCollection();
       }
     }
@@ -105,7 +139,7 @@ var CollectionNode = {
       type: 'string',
       displayName: 'Id',
       group: 'General',
-      getter: function () {
+      getter: function (this: CollectionNodeInstance) {
         return this._internal.collection ? this._internal.collection.getId() : this._internal.collectionId;
       }
     },
@@ -113,7 +147,7 @@ var CollectionNode = {
       type: 'array',
       displayName: 'Items',
       group: 'General',
-      getter: function () {
+      getter: function (this: CollectionNodeInstance) {
         return this._internal.collection;
       }
     },
@@ -121,9 +155,9 @@ var CollectionNode = {
       type: 'string',
       displayName: 'First Item Id',
       group: 'General',
-      getter: function () {
+      getter: function (this: CollectionNodeInstance) {
         if (this._internal.collection) {
-          var firstItem = this._internal.collection.get(0);
+          const firstItem = this._internal.collection.get(0);
           if (firstItem !== undefined) return firstItem.getId();
         }
       }
@@ -132,7 +166,7 @@ var CollectionNode = {
       type: 'number',
       displayName: 'Count',
       group: 'General',
-      getter: function () {
+      getter: function (this: CollectionNodeInstance) {
         return this._internal.collection ? this._internal.collection.size() : 0;
       }
     },
@@ -148,10 +182,10 @@ var CollectionNode = {
     }
   },
   prototypeExtensions: {
-    setCollectionID: function (id) {
+    setCollectionID: function (this: CollectionNodeInstance, id: string) {
       this.setCollection(Collection.get(id));
     },
-    setCollection: function (collection) {
+    setCollection: function (this: CollectionNodeInstance, collection: CollectionLike) {
       if (this._internal.collection)
         // Remove old listener if existing
         this._internal.collection.off('change', this._internal.collectionChangedCallback);
@@ -164,8 +198,8 @@ var CollectionNode = {
       this.flagOutputDirty('firstItemId');
       this.flagOutputDirty('count');
     },
-    setSourceCollection: function (collection) {
-      var internal = this._internal;
+    setSourceCollection: function (this: CollectionNodeInstance, collection: CollectionLike) {
+      const internal = this._internal;
 
       if (internal.sourceCollection && internal.sourceCollection instanceof Collection)
         // Remove old listener if existing
@@ -177,49 +211,45 @@ var CollectionNode = {
 
       this._copySourceItems();
     },
-    scheduleSetCollection: function () {
-      var _this = this;
-
+    scheduleSetCollection: function (this: CollectionNodeInstance) {
       if (this.hasScheduledSetCollection) return;
       this.hasScheduledSetCollection = true;
 
-      this.scheduleAfterInputsHaveUpdated(function () {
-        _this.hasScheduledSetCollection = false;
-        _this.setCollectionID(_this._internal.collectionId);
-        _this.sendSignalOnOutput('fetched');
+      this.scheduleAfterInputsHaveUpdated(() => {
+        this.hasScheduledSetCollection = false;
+        this.setCollectionID(this._internal.collectionId);
+        this.sendSignalOnOutput('fetched');
       });
     },
-    scheduleStore: function () {
-      var _this = this;
+    // Unreachable: nothing calls this. It is the `store` half of the input pair the
+    // `store` port would have driven — see PLAT-003 NOTES §17.
+    scheduleStore: function (this: CollectionNodeInstance) {
       if (this.hasScheduledStore) return;
       this.hasScheduledStore = true;
 
-      var internal = this._internal;
-      this.scheduleAfterInputsHaveUpdated(function () {
-        _this.hasScheduledStore = false;
-        _this.setSourceCollection(internal.pendingSourceCollection);
+      const internal = this._internal;
+      this.scheduleAfterInputsHaveUpdated(() => {
+        this.hasScheduledStore = false;
+        this.setSourceCollection(internal.pendingSourceCollection);
       });
     },
-    _copySourceItems: function () {
-      var internal = this._internal;
+    _copySourceItems: function (this: CollectionNodeInstance) {
+      const internal = this._internal;
 
       if (internal.collection === undefined && this.isInputConnected('fetch') === false)
         this.setCollection(Collection.get());
       internal.collection && internal.collection.set(internal.sourceCollection);
     },
-    scheduleCopyItems: function () {
-      var _this = this;
-      var internal = this._internal;
-
+    scheduleCopyItems: function (this: CollectionNodeInstance) {
       if (this.hasScheduledCopyItems) return;
       this.hasScheduledCopyItems = true;
 
-      this.scheduleAfterInputsHaveUpdated(function () {
-        _this.hasScheduledCopyItems = false;
-        _this._copySourceItems();
+      this.scheduleAfterInputsHaveUpdated(() => {
+        this.hasScheduledCopyItems = false;
+        this._copySourceItems();
       });
     },
-    _onNodeDeleted: function () {
+    _onNodeDeleted: function (this: CollectionNodeInstance) {
       Node.prototype._onNodeDeleted.call(this);
 
       if (this._internal.collection)
@@ -229,6 +259,8 @@ var CollectionNode = {
   }
 };
 
-module.exports = {
+const CollectionNodeModule: NodeModule = {
   node: CollectionNode
 };
+
+export default CollectionNodeModule;

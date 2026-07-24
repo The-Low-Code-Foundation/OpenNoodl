@@ -1,18 +1,45 @@
 'use strict';
 
-const { Node } = require('@noodl/runtime');
+import CollectionImport from '@noodl/runtime/src/collection';
+import ModelImport from '@noodl/runtime/src/model';
+import type {
+  CollectionModule,
+  GraphNodeModel,
+  ModelLike,
+  ModelModule,
+  NodeContextLike,
+  NodeDefinitionOptions,
+  NodeInstance,
+  NodeModule
+} from '@noodl/types';
 
-const Model = require('@noodl/runtime/src/model');
-const Collection = require('@noodl/runtime/src/collection');
+const Model = ModelImport as ModelModule;
+const Collection = CollectionImport as CollectionModule;
 
-var SetVariableNodeDefinition = {
+/** How the author asked the value to be coerced before it is stored. */
+type SetVariableAs = 'string' | 'boolean' | 'number' | 'emptyString' | 'date' | 'object' | 'array' | '*';
+
+/** `this` inside the Set Variable node. See {@link VariableNodeInstance} for the record. */
+interface SetVariableInstance extends NodeInstance {
+  _internal: {
+    name?: string;
+    value?: unknown;
+    setWith?: SetVariableAs;
+    variablesModel: ModelLike;
+  };
+  hasScheduledStore?: boolean;
+  setValue(value: unknown): void;
+  scheduleStore(): void;
+}
+
+const SetVariableNodeDefinition: NodeDefinitionOptions = {
   name: 'Set Variable',
   docs: 'https://docs.noodl.net/nodes/data/variable/set-variable',
   category: 'Data',
   usePortAsLabel: 'name',
   color: 'data',
-  initialize: function () {
-    var internal = this._internal;
+  initialize: function (this: SetVariableInstance) {
+    const internal = this._internal;
 
     internal.variablesModel = Model.get('--ndl--global-variables');
   },
@@ -32,7 +59,7 @@ var SetVariableNodeDefinition = {
       },
       displayName: 'Name',
       group: 'General',
-      set: function (value) {
+      set: function (this: SetVariableInstance, value: string) {
         this._internal.name = value;
       }
     },
@@ -54,31 +81,31 @@ var SetVariableNodeDefinition = {
       displayName: 'Set as',
       default: '*',
       group: 'General',
-      set: function (value) {
+      set: function (this: SetVariableInstance, value: SetVariableAs) {
         this._internal.setWith = value;
       }
     },
     do: {
       displayName: 'Do',
       group: 'Actions',
-      valueChangedToTrue: function () {
+      valueChangedToTrue: function (this: SetVariableInstance) {
         this.scheduleStore();
       }
     }
   },
   methods: {
-    setValue: function (value) {
+    setValue: function (this: SetVariableInstance, value: unknown) {
       this._internal.value = value;
     },
-    scheduleStore: function () {
+    scheduleStore: function (this: SetVariableInstance) {
       if (this.hasScheduledStore) return;
       this.hasScheduledStore = true;
 
-      var internal = this._internal;
-      this.scheduleAfterInputsHaveUpdated(function () {
+      const internal = this._internal;
+      this.scheduleAfterInputsHaveUpdated(function (this: SetVariableInstance) {
         this.hasScheduledStore = false;
 
-        var value = internal.setWith === 'emptyString' ? '' : internal.value;
+        let value = internal.setWith === 'emptyString' ? '' : internal.value;
 
         if (internal.setWith === 'object' && typeof value === 'string') value = Model.get(value); // Can set arrays with "id" or array
         if (internal.setWith === 'array' && typeof value === 'string') value = Collection.get(value); // Can set arrays with "id" or array
@@ -91,7 +118,7 @@ var SetVariableNodeDefinition = {
         this.sendSignalOnOutput('done');
       });
     },
-    registerInputIfNeeded: function (name) {
+    registerInputIfNeeded: function (this: SetVariableInstance, name: string) {
       if (this.hasInput(name)) {
         return;
       }
@@ -104,16 +131,16 @@ var SetVariableNodeDefinition = {
   }
 };
 
-module.exports = {
+const SetVariableModule: NodeModule = {
   node: SetVariableNodeDefinition,
-  setup: function (context, graphModel) {
+  setup: function (context: NodeContextLike, graphModel) {
     if (!context.editorConnection || !context.editorConnection.isRunningLocally()) {
       return;
     }
 
-    graphModel.on('nodeAdded.Set Variable', function (node) {
+    graphModel.on('nodeAdded.Set Variable', function (node: GraphNodeModel) {
       function _updatePorts() {
-        var ports = [];
+        const ports = [];
 
         if (node.parameters.setWith === 'emptyString') {
           // No ports needed
@@ -132,9 +159,11 @@ module.exports = {
 
       _updatePorts();
 
-      node.on('parameterUpdated', function (event) {
+      node.on('parameterUpdated', function () {
         _updatePorts();
       });
     });
   }
 };
+
+export default SetVariableModule;

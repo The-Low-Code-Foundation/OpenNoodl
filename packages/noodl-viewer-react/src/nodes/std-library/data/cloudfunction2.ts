@@ -1,17 +1,43 @@
-const NoodlRuntime = require('@noodl/runtime');
-const CloudStore = require('@noodl/runtime/src/api/cloudstore');
+import NoodlRuntime from '@noodl/runtime';
+import type { InspectInfo, NodeDefinitionOptions, NodeInstance, NodeModule } from '@noodl/types';
 
-('use strict');
+/**
+ * The cloud services block of the project's metadata. See the note on the same interface
+ * in `cloudfunction.ts` — promote to `@noodl/types` when a third consumer needs it.
+ */
+interface CloudServicesMetadata {
+  appId: string;
+  endpoint: string;
+  /** Set only for a deployed backend; pinned onto every request as a header. */
+  deployVersion?: string;
+}
 
-function _makeRequest(path, options) {
-  var xhr = new XMLHttpRequest();
+interface RequestOptions {
+  appId: string;
+  endpoint: string;
+  method?: 'GET' | 'POST';
+  content?: unknown;
+  /**
+   * Receives the parsed JSON body, or `undefined` when the body would not parse.
+   * Deliberately `any`: the error handler treats it as both a string and an object.
+   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  success(response?: any): void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  error(response?: any): void;
+}
+
+function _makeRequest(path: string, options: RequestOptions): void {
+  const xhr = new XMLHttpRequest();
 
   xhr.onreadystatechange = function () {
     if (xhr.readyState === 4) {
-      var json;
+      let json;
       try {
         json = JSON.parse(xhr.response);
-      } catch (e) {}
+      } catch (e) {
+        // Not JSON — leave `json` undefined and let the handlers below decide.
+      }
 
       if (xhr.status === 200 || xhr.status === 201) {
         options.success(json);
@@ -24,13 +50,13 @@ function _makeRequest(path, options) {
   xhr.setRequestHeader('X-Parse-Application-Id', options.appId);
   xhr.setRequestHeader('Content-Type', 'application/json');
 
-  const cloudServices = NoodlRuntime.instance.getMetaData('cloudservices');
+  const cloudServices = NoodlRuntime.instance.getMetaData('cloudservices') as CloudServicesMetadata | undefined;
   if (cloudServices && cloudServices.deployVersion) {
     xhr.setRequestHeader('x-noodl-cloud-version', cloudServices.deployVersion);
   }
 
   // Check for current users
-  var _cu = localStorage['Parse/' + options.appId + '/currentUser'];
+  const _cu = localStorage['Parse/' + options.appId + '/currentUser'];
   if (_cu !== undefined) {
     try {
       const currentUser = JSON.parse(_cu);
@@ -43,18 +69,48 @@ function _makeRequest(path, options) {
   xhr.send(JSON.stringify(options.content));
 }
 
-var CloudFunctionNode = {
+/** What the inspector shows after a call. */
+interface LastCallResult {
+  status: 'success' | 'failure';
+  parameters?: Record<string, unknown>;
+  /** The result map, or the literal string `'empty'` when the function returned nothing. */
+  results?: Record<string, unknown> | 'empty';
+  error?: string;
+}
+
+/** `this` inside the Cloud Function node. */
+interface CloudFunction2Instance extends NodeInstance {
+  _internal: {
+    /** Arrives on the dynamic `function` input, not a declared port. */
+    functionName?: string;
+    /** Values of the `in-…` inputs, keyed without the prefix. Sent as the request body. */
+    paramsValues: Record<string, unknown>;
+    /** Values behind the `out-…` outputs, keyed without the prefix. */
+    resultsValues: Record<string, unknown>;
+    error?: string;
+    lastCallResult?: LastCallResult;
+    hasScheduledCall?: boolean;
+  };
+  setError(err: string): void;
+  getResultsValue(name: string): unknown;
+  setParamsValue(name: string, value: unknown): void;
+  setFunctionName(value: string): void;
+  scheduleCall(): void;
+  doCall(): void;
+}
+
+const CloudFunctionNode: NodeDefinitionOptions = {
   name: 'CloudFunction2',
   displayName: 'Cloud Function',
   category: 'Cloud Services',
   color: 'data',
   usePortAsLabel: 'function',
   docs: 'https://docs.noodl.net/nodes/data/cloud-data/cloud-function',
-  initialize: function () {
+  initialize: function (this: CloudFunction2Instance) {
     this._internal.paramsValues = {};
     this._internal.resultsValues = {};
   },
-  getInspectInfo() {
+  getInspectInfo(this: CloudFunction2Instance): InspectInfo {
     const result = this._internal.lastCallResult;
     if (!result) return '[Not executed yet]';
 
@@ -65,7 +121,7 @@ var CloudFunctionNode = {
       type: 'signal',
       displayName: 'Call',
       group: 'Actions',
-      valueChangedToTrue: function () {
+      valueChangedToTrue: function (this: CloudFunction2Instance) {
         this.scheduleCall();
       }
     }
@@ -85,21 +141,21 @@ var CloudFunctionNode = {
       type: 'string',
       displayName: 'Error',
       group: 'Error',
-      getter: function () {
+      getter: function (this: CloudFunction2Instance) {
         return this._internal.error;
       }
     }
   },
   methods: {
-    setError: function (err) {
+    setError: function (this: CloudFunction2Instance, err: string) {
       this._internal.error = err;
       this.flagOutputDirty('error');
       this.sendSignalOnOutput('failure');
     },
-    getResultsValue: function (name) {
+    getResultsValue: function (this: CloudFunction2Instance, name: string) {
       return this._internal.resultsValues[name];
     },
-    registerOutputIfNeeded: function (name) {
+    registerOutputIfNeeded: function (this: CloudFunction2Instance, name: string) {
       if (this.hasOutput(name)) {
         return;
       }
@@ -109,13 +165,13 @@ var CloudFunctionNode = {
           getter: this.getResultsValue.bind(this, name.substring('out-'.length))
         });
     },
-    setParamsValue: function (name, value) {
+    setParamsValue: function (this: CloudFunction2Instance, name: string, value: unknown) {
       this._internal.paramsValues[name] = value;
     },
-    setFunctionName: function (value) {
+    setFunctionName: function (this: CloudFunction2Instance, value: string) {
       this._internal.functionName = value;
     },
-    registerInputIfNeeded: function (name) {
+    registerInputIfNeeded: function (this: CloudFunction2Instance, name: string) {
       if (this.hasInput(name)) {
         return;
       }
@@ -130,17 +186,23 @@ var CloudFunctionNode = {
           set: this.setParamsValue.bind(this, name.substring('in-'.length))
         });
     },
-    scheduleCall: function () {
-      var internal = this._internal;
+    scheduleCall: function (this: CloudFunction2Instance) {
+      const internal = this._internal;
       if (!internal.hasScheduledCall) {
         internal.hasScheduledCall = true;
         this.scheduleAfterInputsHaveUpdated(this.doCall.bind(this));
       }
     },
-    doCall: function () {
+    // Both reads below the warning block assume `context.editorConnection` and
+    // `cloudServices` are present, having just handled the case where they are not: the
+    // node throws rather than reporting a failure when the project has no cloud services,
+    // and throws on every call in a deployed app, where there is no editor connection at
+    // all. See PLAT-003 NOTES §17 — deliberately not fixed here, since either repair
+    // changes what a running app does.
+    doCall: function (this: CloudFunction2Instance) {
       this._internal.hasScheduledCall = false;
 
-      const cloudServices = NoodlRuntime.instance.getMetaData('cloudservices');
+      const cloudServices = NoodlRuntime.instance.getMetaData('cloudservices') as CloudServicesMetadata | undefined;
       if (this.context.editorConnection) {
         if (cloudServices === undefined || cloudServices.endpoint === undefined) {
           this.context.editorConnection.sendWarning(this.nodeScope.componentOwner.name, this.id, 'cloud-function-2', {
@@ -176,7 +238,7 @@ var CloudFunctionNode = {
             };
           } else {
             const results = res.result || {};
-            for (let key in results) {
+            for (const key in results) {
               this._internal.resultsValues[key] = results[key];
               if (this.hasOutput('out-' + key)) this.flagOutputDirty('out-' + key);
             }
@@ -204,9 +266,11 @@ var CloudFunctionNode = {
   }
 };
 
-module.exports = {
+const CloudFunction2Module: NodeModule = {
   node: CloudFunctionNode,
-  setup: function (context, graphModel) {
+  setup: function () {
     // Handled in editor adapter
   }
 };
+
+export default CloudFunction2Module;

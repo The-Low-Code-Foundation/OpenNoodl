@@ -1,6 +1,33 @@
-const { EdgeTriggeredInput } = require('@noodl/runtime');
+import { EdgeTriggeredInput } from '@noodl/runtime';
+import type { NodeContextLike, NodeDefinitionOptions, NodeInstance, NodeModule } from '@noodl/types';
 
-const ForEachActionsDefinition = {
+/** `this` inside the Repeater Item node. */
+interface ForEachActionsInstance extends NodeInstance {
+  _internal: {
+    /**
+     * Set by {@link ForEachActionsInstance.tryRemove} while the Repeater waits for the
+     * `Try Remove` handshake to complete.
+     */
+    removeCompletedCallback?(): void;
+    actionParameters?: Record<string, string>;
+  };
+  getItemId(): string | undefined;
+  signalAdded(): void;
+  tryRemove(callback: () => void): void;
+  itemActionTriggered(name: string): void;
+  setItemActionParameter(name: string): void;
+}
+
+/**
+ * Sits inside a Repeater's template component and talks to the Repeater that created it,
+ * reaching it through the `_forEachModel`/`_forEachNode` pair the Repeater set on this
+ * component instance.
+ *
+ * Its `Try Remove` output is a handshake, not a notification: when it has connections the
+ * Repeater hands over a completion callback and waits, which is what lets a template run
+ * an exit animation before its node is destroyed.
+ */
+const ForEachActionsDefinition: NodeDefinitionOptions = {
   name: 'For Each Actions',
   docs: 'https://docs.noodl.net/nodes/ui-controls/repeater-item',
   displayNodeName: 'Repeater Item',
@@ -11,7 +38,7 @@ const ForEachActionsDefinition = {
       type: { name: 'boolean', allowConnectionsOnly: true },
       displayName: 'Remove Completed',
       group: 'Events',
-      valueChangedToTrue: function () {
+      valueChangedToTrue: function (this: ForEachActionsInstance) {
         this._internal.removeCompletedCallback && this._internal.removeCompletedCallback();
       }
     }
@@ -43,20 +70,20 @@ const ForEachActionsDefinition = {
       type: 'string',
       displayName: 'Item Id',
       group: 'General',
-      get() {
+      get(this: ForEachActionsInstance) {
         return this.getItemId();
       }
     }
   },
   prototypeExtensions: {
-    getItemId() {
+    getItemId(this: ForEachActionsInstance) {
       const model = this.nodeScope.componentOwner._forEachModel;
       return model && model.getId();
     },
-    signalAdded: function () {
+    signalAdded: function (this: ForEachActionsInstance) {
       this.sendSignalOnOutput('added');
     },
-    tryRemove: function (callback) {
+    tryRemove: function (this: ForEachActionsInstance, callback: () => void) {
       if (this.getOutput('tryRemove').hasConnections()) {
         this._internal.removeCompletedCallback = callback;
         this.sendSignalOnOutput('tryRemove');
@@ -69,18 +96,23 @@ const ForEachActionsDefinition = {
         });
       }
     },
-    itemActionTriggered(name) {
+    // Calls `signalItemAction`, which no node defines — see PLAT-003 NOTES §17. Unreachable
+    // today because the `itemAction-` ports that would register this input are only created
+    // by the commented-out `setup` below.
+    itemActionTriggered(this: ForEachActionsInstance, name: string) {
       this.scheduleAfterInputsHaveUpdated(() => {
         const itemId = this.getItemId();
-        const parentForEach = this.nodeScope.componentOwner._forEachNode;
+        const parentForEach = this.nodeScope.componentOwner._forEachNode as NodeInstance & {
+          signalItemAction(name: string, itemId: string, parameters: Record<string, string>): void;
+        };
         parentForEach.signalItemAction(name, itemId, this._internal.actionParameters || {});
       });
     },
-    setItemActionParameter(name) {
+    setItemActionParameter(this: ForEachActionsInstance, name: string) {
       if (!this._internal.actionParameters) this._internal.actionParameters = {};
       this._internal.actionParameters[name] = name;
     },
-    registerInputIfNeeded: function (name) {
+    registerInputIfNeeded: function (this: ForEachActionsInstance, name: string) {
       if (this.hasInput(name)) {
         return;
       }
@@ -100,9 +132,9 @@ const ForEachActionsDefinition = {
   }
 };
 
-module.exports = {
+const ForEachActionsModule: NodeModule = {
   node: ForEachActionsDefinition,
-  setup: function (context, graphModel) {
+  setup: function (context: NodeContextLike) {
     if (!context.editorConnection || !context.editorConnection.isRunningLocally()) {
       return;
     }
@@ -148,3 +180,5 @@ module.exports = {
     })*/
   }
 };
+
+export default ForEachActionsModule;

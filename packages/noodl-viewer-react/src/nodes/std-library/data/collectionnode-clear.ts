@@ -1,6 +1,18 @@
-const Collection = require('@noodl/runtime/src/collection');
+import CollectionImport from '@noodl/runtime/src/collection';
+import type { CollectionLike, CollectionModule, NodeDefinitionOptions, NodeInstance, NodeModule } from '@noodl/types';
 
-const CollectionClearNode = {
+const Collection = CollectionImport as CollectionModule;
+
+/** `this` inside the Clear Array node. */
+interface CollectionClearInstance extends NodeInstance {
+  _internal: {
+    collection?: CollectionLike;
+  };
+  setCollectionID(id: string): void;
+  setCollection(collection: CollectionLike): void;
+}
+
+const CollectionClearNode: NodeDefinitionOptions = {
   name: 'CollectionClear',
   docs: 'https://docs.noodl.net/nodes/data/array/clear-array',
   displayNodeName: 'Clear Array',
@@ -16,15 +28,15 @@ const CollectionClearNode = {
       },
       displayName: 'Array Id',
       group: 'General',
-      set: function (value) {
+      set: function (this: CollectionClearInstance, value: string | CollectionLike) {
         if (value instanceof Collection) value = value.getId(); // Can be passed as collection as well
-        this.setCollectionID(value);
+        this.setCollectionID(value as string);
       }
     },
     clear: {
       displayName: 'Do',
       group: 'Actions',
-      valueChangedToTrue() {
+      valueChangedToTrue(this: CollectionClearInstance) {
         this.scheduleAfterInputsHaveUpdated(() => {
           const collection = this._internal.collection;
 
@@ -42,15 +54,17 @@ const CollectionClearNode = {
     }
   },
   methods: {
-    setCollectionID: function (id) {
+    setCollectionID: function (this: CollectionClearInstance, id: string) {
       this.setCollection(Collection.get(id));
     },
-    setCollection: function (collection) {
+    setCollection: function (this: CollectionClearInstance, collection: CollectionLike) {
       this._internal.collection = collection;
     }
   }
 };
 
-module.exports = {
+const CollectionClearModule: NodeModule = {
   node: CollectionClearNode
 };
+
+export default CollectionClearModule;

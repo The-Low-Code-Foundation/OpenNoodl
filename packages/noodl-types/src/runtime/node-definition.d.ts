@@ -215,6 +215,114 @@ export interface ModelLike {
   [property: string]: unknown;
 }
 
+/**
+ * The `@noodl/runtime/src/model` module object — the factory side of {@link ModelLike}.
+ *
+ * It is a constructor function with statics hung off it, which is why `value instanceof
+ * Model` type-checks. Note that {@link instanceOf} is *not* null-safe: it evaluates
+ * `value.target` when the `instanceof` test fails, so passing `null` or `undefined`
+ * throws rather than returning `false`. Every call site in the standard library happens
+ * to pass a value it has already established is an object.
+ */
+export interface ModelModule {
+  new (id: string, data: Record<string, unknown>): ModelLike;
+  readonly prototype: ModelLike;
+  /** Fetches — or, for an unknown or omitted id, *creates* — the record. Never fails. */
+  get(id?: string): ModelLike;
+  /** Creates a record from a plain object. `data.id` picks the id; other keys are set. */
+  create(data?: Record<string, unknown>): ModelLike;
+  exists(id: string): boolean;
+  /** Throws on `null`/`undefined` — see the interface note. */
+  instanceOf(value: unknown): boolean;
+  /** A 10-character random id. The runtime's only id generator for records. */
+  guid(): string;
+}
+
+/**
+ * The payload of a {@link CollectionLike} `'add'` or `'remove'` notification.
+ *
+ * `'change'` carries no payload at all — it is notified with no argument immediately
+ * after every `'add'`/`'remove'`, so a listener that reads `args` on `'change'` reads
+ * `undefined`. The overloads on {@link CollectionLike.on} keep the two apart.
+ */
+export interface CollectionChangeEvent {
+  item: ModelLike;
+  /** Absent on the `'remove'` notification sent to the *item*, present on the rest. */
+  index?: number;
+}
+
+/**
+ * A Noodl Array at runtime — the ordered list of {@link ModelLike} behind the Array node,
+ * every query result and the Repeater's item source. `@noodl/runtime/src/collection`.
+ *
+ * **A Collection is a real `Array`** (`class Collection extends Array`), and the members
+ * below that a plain array does not have are installed by `collection.js` onto
+ * `Array.prototype` itself, for *every* array in the process. That is not incidental
+ * tidiness — it is load-bearing. Nodes bind to their `items` input by calling
+ * `value.on('change', …)` without first checking what `value` is, so a plain JavaScript
+ * array arriving from a Function node has to answer `on`, `size` and `set` too. Anything
+ * that "cleans up" the patch into an ordinary class breaks every one of those nodes, and
+ * it breaks them at runtime, in the viewer, where no type-check will have said a word.
+ *
+ * The consequence for typing: an `items` port carries a `CollectionLike` in practice
+ * whatever the author connected, so annotate the field rather than narrowing the input.
+ *
+ * `set` is a *diff*, not an assignment — it removes, reorders and adds so that identity is
+ * preserved for entries present in both, which is what lets the Repeater keep mounted
+ * components alive across an update. Entries that are not already Models are passed
+ * through `Model.create` on the way in.
+ */
+export interface CollectionLike extends Array<ModelLike> {
+  readonly id: string;
+  getId(): string;
+  /**
+   * The backing array — literally `this`. Present because node code and `getInspectInfo`
+   * read `collection.items`; assigning to it is the same as calling {@link set}.
+   */
+  items: ModelLike[];
+  size(): number;
+  get(index: number): ModelLike | undefined;
+  each(callback: (item: ModelLike, index: number) => void): void;
+  contains(item: ModelLike): boolean;
+  /** Diffs `src` into this collection. `undefined` is treated as an empty list. */
+  set(src: ArrayLike<ModelLike | Record<string, unknown>> | CollectionLike | undefined): void;
+  /**
+   * The four mutators are `async` and awaited internally so that listeners run to
+   * completion in order — but no caller in the standard library awaits them, so treat the
+   * returned promise as fire-and-forget and the mutation itself as already done.
+   */
+  add(item: ModelLike): Promise<void>;
+  addAtIndex(item: ModelLike, index: number): Promise<void>;
+  remove(item: ModelLike): void;
+  removeAtIndex(index: number): Promise<void>;
+
+  on(event: 'add' | 'remove', listener: (args: CollectionChangeEvent) => void): void;
+  on(event: 'change', listener: () => void): void;
+  off(event: 'add' | 'remove', listener: (args: CollectionChangeEvent) => void): void;
+  off(event: 'change', listener: () => void): void;
+  notify(event: string, args?: unknown): Promise<void>;
+}
+
+/**
+ * The `@noodl/runtime/src/collection` module object — the factory side of
+ * {@link CollectionLike}.
+ *
+ * Unlike {@link ModelModule.instanceOf}, {@link instanceOf} here is a plain
+ * `instanceof` test and so is null-safe *and* narrow: a plain array that carries every
+ * patched member is still not a `Collection`. Code that must accept both should test the
+ * member it needs, not the constructor.
+ */
+export interface CollectionModule {
+  new (): CollectionLike;
+  readonly prototype: CollectionLike;
+  /** Fetches — or, for an unknown or omitted id, *creates* — the collection. */
+  get(id?: string): CollectionLike;
+  /** A fresh collection with a generated id, seeded via {@link CollectionLike.set}. */
+  create(items?: ArrayLike<ModelLike | Record<string, unknown>> | CollectionLike): CollectionLike;
+  instanceOf(value: unknown): value is CollectionLike;
+  exists(id: string): boolean;
+}
+
 /** The subset of `NodeContext` node definitions actually reach for. */
 export interface NodeContextLike {
   editorConnection?: EditorConnectionLike;
@@ -304,6 +412,22 @@ export interface ComponentInstanceLike extends NodeInstance {
   parent?: NodeInstance;
   /** The scope this instance itself lives in — one level up from {@link nodeScope}. */
   parentNodeScope?: NodeScopeLike;
+
+  /**
+   * The record this component instance was repeated for, when a Repeater created it.
+   *
+   * Set as an `extraProps` entry on `nodeScope.createNode`, so it is present only on
+   * instances the Repeater (or Run Tasks) made. It is the runtime's *ambient item*
+   * protocol, not a private field of the Repeater: the Object, Record and Function nodes
+   * all resolve "the current item" by walking `parentNodeScope` upwards until they find a
+   * `componentOwner` that has one — see `javascriptnodeparser.js` and `modelcrudbase.js`.
+   * Anything that renames or stops setting it silently strips that ambient item from
+   * every node inside a Repeater template.
+   */
+  _forEachModel?: ModelLike;
+  /** The Repeater instance that created this one. Set alongside {@link _forEachModel}. */
+  _forEachNode?: NodeInstance;
+
   [extra: string]: unknown;
 }
 
@@ -330,6 +454,12 @@ export interface NodeScopeLike {
    */
   createNode(name: string, id?: string, extraProps?: Record<string, unknown>): Promise<NodeInstance>;
   deleteNode(nodeInstance: NodeInstance): void;
+  /**
+   * The live instance with this id in this scope, or `undefined`. Ids here are *instance*
+   * ids — the same id the graph model uses for a node the project persisted, but a
+   * generated one for anything created at runtime.
+   */
+  getNodeWithId(id: string): NodeInstance | undefined;
   [extra: string]: unknown;
 }
 
@@ -765,6 +895,13 @@ export interface GraphNodeModel extends EventSenderLike {
   /** Fallback transition for every parameter of a state, keyed by state name. */
   defaultStateTransitions?: Record<string, StateTransition>;
   children: GraphNodeModel[];
+  /**
+   * Visual parent in the authored graph, or `undefined` at the top of a component.
+   * Changes are announced as `'parentUpdated'` with the new parent (or `undefined`) —
+   * the Repeater listens for it, because its items are added to its *parent*, not to
+   * itself.
+   */
+  parent?: GraphNodeModel;
   /** Ports the editor knows about, keyed by port name. Includes dynamic ones. */
   inputPorts: Record<string, GraphPortModel>;
   outputPorts: Record<string, GraphPortModel>;
@@ -788,6 +925,17 @@ export interface ComponentModelLike extends EventSenderLike {
   nodes: GraphNodeModel[];
   /** Ids of the component's root nodes. */
   roots: string[];
+  /**
+   * The component's *own* ports — what an instance of it exposes to the graph around it,
+   * not the ports of the nodes inside it. Keyed by port name.
+   *
+   * A `setup` function that mirrors another component's interface has to track these
+   * rather than read them once: the six `inputPortAdded`/`outputPortAdded`/
+   * `…PortRemoved`/`…PortTypesUpdated` events all fire as the author edits, and the
+   * Repeater re-derives its forwarded item outputs from each one.
+   */
+  inputPorts: Record<string, GraphPortModel>;
+  outputPorts: Record<string, GraphPortModel>;
   getNodeWithId(id: string): GraphNodeModel | undefined;
   getAllNodes(): GraphNodeModel[];
   getNodesWithType(type: string): GraphNodeModel[];
