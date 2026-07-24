@@ -952,7 +952,7 @@ honestly.
   in a second costume: a gate that cannot fail is not a gate. `cd` back, or use absolute paths.
 - **Do not `prettier --write` an unformatted `.js` file** you are editing one line of (§15.5).
 
-## 16. Next slice
+## 16. Slice 6's plan for slice 7 (done; see §18 for what is actually next)
 
 File counts now: `noodl-runtime` **73 `.js` / 19 `.ts`** (unchanged again — only
 `internal.d.ts`, edited in place). `noodl-viewer-react` **69 `.js` / 12 `.jsx` / 69 `.ts` /
@@ -984,3 +984,170 @@ File counts now: `noodl-runtime` **73 `.js` / 19 `.ts`** (unchanged again — on
 6. **Fix `noodl-viewer-react`'s jest suite** while in `data/` — its one spec requires a module
    that does not exist (§15.6).
 7. **Do not raise `strict` yet** (spec step 8), and step 9 stays deferred.
+
+## 17. Slice 7 — `nodes/std-library/data/` (spec step 7, continued)
+
+14 files, ~3,000 lines: every registered node in the `data/` group. §14 and §16 both called
+this the hard group. It was, but not for the reason either predicted. The `for…in`/`for…of`
+hazard §15.4 warned about barely appeared (two sites, both already guarded), and
+`foreach.jsx` → `.tsx` was routine. What made it hard is that the group is built on a runtime
+concept that had never been written down and whose implementation is genuinely surprising.
+
+### 17.1 `CollectionLike`, and the `Array.prototype` patch that is load-bearing
+
+`@noodl/runtime/src/collection` is not a collection class. It is `class Collection extends
+Array {}` — thirty lines — sitting under ~200 lines of `Object.defineProperty` calls that
+install `on`, `off`, `set`, `add`, `remove`, `size`, `items`, `getId` and the rest onto
+**`Array.prototype`**, for every array in the process.
+
+The obvious reading is that this is old code nobody cleaned up. It is not. Nodes bind their
+`items` input by calling `value.on('change', …)` without first checking what `value` is —
+`mapcollectionnode`, `filtercollectionnode` and `collectionnode2` all do — so a plain array
+arriving from a Function node has to answer `on` and `size` too. Turning the patch into a
+proper class breaks every one of those nodes, at runtime, in the viewer, where no type-check
+would have said a word. `CollectionLike`'s doc comment now says this, because it is exactly
+the kind of thing a future reader "tidies up".
+
+The typing consequence is that `CollectionLike extends Array<ModelLike>` is the honest
+declaration, and that an `items` port carries one in practice whatever the author connected —
+so annotate the field, do not narrow the input.
+
+The other thing the type records is that `set` is a **diff**, not an assignment: it removes,
+reorders and adds so that entries present in both keep their identity. That is what lets the
+Repeater keep a mounted component alive across an update instead of rebuilding every item,
+and it is why `foreach` keeps an internal collection distinct from its `items` input.
+
+Published alongside it: `CollectionChangeEvent`, and `ModelModule`/`CollectionModule` for the
+two module objects. The module types are what make `Collection.get(id)` return a
+`CollectionLike` at ~15 call sites instead of `any`, and `Collection.instanceOf` a type
+predicate. They also record the asymmetry between the two `instanceOf` helpers:
+`Collection.instanceOf` is a plain `instanceof` test, but `Model.instanceOf` falls through to
+`value.target` and therefore **throws** on `null`/`undefined` rather than returning `false`.
+
+### 17.2 `_forEachModel` is a protocol, not a private field
+
+`foreachactions` reads `nodeScope.componentOwner._forEachModel`, which §16 predicted would
+need publishing or casting. Publishing was right, and for a bigger reason than that one call
+site: six files across the runtime walk `parentNodeScope` upwards looking for exactly this
+property — `javascriptnodeparser.js`, `modelcrudbase.js`, `dbmodelcrudbase.js`,
+`modelnode2.js`, `dbmodelnode2.js` and `runtasks.js`. It is how the Object, Record and
+Function nodes resolve "the current item" inside a Repeater template. `ComponentInstanceLike`
+now declares `_forEachModel` and `_forEachNode` with that written down, because anything that
+renames or stops setting them silently strips the ambient item from every node in a template.
+
+### 17.3 The nine-error cascade did not recur — a different one did
+
+§13.4/§15.2's rule (a page of unrelated-looking errors means a broken `extends`, go straight
+to the `extends` clauses) held, but the failing clause was in the *converted file*, not in
+`react-component-node.ts`. 43 errors, all in `foreach.tsx`, from two local interfaces
+redeclaring `model` — which `NodeInstance` already publishes as `GraphNodeModel`. Two
+deletions fixed 41 of them.
+
+The generalised rule: **before declaring a member on an interface that extends
+`NodeInstance`, check whether `NodeInstance` already has it.** The published surface has grown
+enough over six slices that guessing is now worse than looking.
+
+The four errors that survived were real gaps, and are now filled:
+`NodeScopeLike.getNodeWithId`, `GraphNodeModel.parent` (with the `'parentUpdated'` event that
+accompanies it), and `ComponentModelLike.inputPorts`/`outputPorts` — a component's *own*
+ports, which the Repeater tracks through six separate port events to keep its forwarded item
+outputs in step.
+
+### 17.4 `no-this-alias`: 18 sites, and why the arrow rewrite is safe
+
+Converting left 18 `const _this = this` aliases, which eslint rejects. The rewrite to arrow
+functions is only correct if the callback's `this` was already the node. It was: `node.ts:476`
+drains the queue with `afterInputCallbacks[i].call(this)`, so inside every
+`scheduleAfterInputsHaveUpdated` callback `this` and `_this` are the same object — several
+files mixed the two freely in one function, which is the tell. Collection listeners are
+invoked bare (`l[i](args)`), so those had to use `_this` and an arrow is likewise exact.
+Worth checking rather than assuming: had the runtime used `.apply(node, args)` on some paths
+and not others, the rewrite would have been a silent behaviour change.
+
+### 17.5 The viewer's jest suite runs again (§16 item 6)
+
+`tests/collection.test.js` required `../src/nodes/std-library/data/collection`, which has
+never existed — `Collection` lives in `@noodl/runtime/src/collection`. Repointing the import
+(and dropping a `new` applied to the `create` *function*) revives three tests, and they
+happen to cover precisely the `set`-as-diff behaviour §17.1 documents. **3 passed.** That
+retires one of the two "pre-existing failures that look like regressions but are not" from the
+task memory; `noodl-preview`'s `preview.test.ts:97` size assertion is still the other.
+
+### 17.6 `persisthelper.js` is dead and was left as `.js`
+
+307 lines, referenced by nothing anywhere in the repo — a Parse/MQTT-era sync helper orphaned
+when the model and collection nodes moved to the runtime. It is not required, so it is not
+bundled. Typing dead code buys nothing, so it was deliberately left unconverted rather than
+padding the slice; deleting it is a one-line commit of its own and is item 5 below. It is the
+only remaining `.js` in `data/`.
+
+### 17.7 Latent defects found — five more, none fixed
+
+Each changes observable behaviour, so each wants its own commit (§16 item 5's list is now
+eleven).
+
+1. **`cloudfunction2` throws instead of reporting.** `doCall` warns when `cloudServices` is
+   `undefined`, then unconditionally reads `cloudServices.appId` — and calls
+   `this.context.editorConnection.isRunningLocally()` outside the `if (this.context
+   .editorConnection)` guard immediately above it. So the Cloud Function node throws a
+   `TypeError` on **every call in a deployed app**, where there is no editor connection at
+   all, and throws rather than signalling `failure` when a project has no cloud services. The
+   deprecated `cloudfunction` node handles both cases correctly, which is how the shape of the
+   intended code is known.
+2. **`foreachactions.itemActionTriggered` calls `signalItemAction`, which no node defines.**
+   Unreachable today: the `itemAction-` ports that would register the input are only created
+   by the `setup` block that is entirely commented out. Dead *and* broken.
+3. **`collectionnode2` has no `store` input.** Three code paths test
+   `isInputConnected('store')` and one whole method (`scheduleStore`) exists to serve it. The
+   port was never declared, so the tests are always false and the method is unreachable.
+   Behaviour is self-consistent — auto-copy always happens — but a quarter of the file is
+   answering a question nobody asks.
+4. **`variablenode2.getInspectInfo` returns the raw variable value.** The §13.3 defect again:
+   only a *string* variable inspects correctly; a number, boolean or object variable shows
+   nothing.
+5. **`collectionnode-new`'s `setCollectionID` and its `id` output fallback are unreachable** —
+   the node has no `collectionId` input, so `_internal.collectionId` is never assigned.
+
+Also corrected in passing, and behaviour-neutral: `filtercollectionnode`'s `updatePorts` took
+a `dbCollections` argument it never read, threaded through two `graphModel.getMetaData`
+calls; both are gone.
+
+### 17.8 Traps
+
+- **Check the base interface before declaring a member** (§17.3). This is the slice's one
+  genuinely new rule and it cost 43 errors.
+- **A renamed file is a new path to the Write tool.** Every `mv`-ed file needs a fresh read
+  before it can be written, even though its content is already in context.
+- Plain `mv` rather than `git mv`, with the commit made by explicit pathspec, kept slice 4's
+  stolen-rename problem from recurring while another agent worked in the same tree.
+- `cd` into a package for a build **persists into the next tool call** (§15.8, third
+  occurrence). Every build here was followed by an explicit `cd` back and a `pwd`.
+
+## 18. Next slice
+
+File counts now: `noodl-runtime` **73 `.js` / 19 `.ts`** (unchanged — only the published
+`.d.ts` was edited). `noodl-viewer-react` **57 `.js` / 11 `.jsx` / 82 `.ts` / 36 `.tsx`**
+(was 69/12/69/35). `.ts` now outnumbers `.js` by a clear margin for the first time.
+
+1. **`nodes/navigation/`** — 15 files, ~2,900 lines, and now the largest untyped group.
+   `navigation-stack.jsx` (771) and `navigate.js` (331) dominate; `router.tsx` and
+   `router-handler.ts` are already converted, so the types those two settled on are the
+   starting point. **One hazard this group has that `data/` did not:**
+   `register-nodes.js` imports `./nodes/navigation/page.js` and
+   `./nodes/navigation/navigation-stack.jsx` with **explicit extensions** — the only two such
+   imports left in the file. Webpack will not substitute `.ts`/`.tsx` for a request that
+   spells `.js`/`.jsx`, and `tsc` never sees it. Rename without editing those two lines and
+   the build breaks silently at runtime, not at compile time.
+2. **Live editor pass** — still owed, still the one gate no slice has run. PLAT-002 has
+   landed (the View framework and jQuery are gone as of `cdc7e8f`), so the blocker named in
+   §12/§14/§16 is cleared. This should go first if anything does.
+3. **Make `@noodl/runtime` ship declarations.** `ModelModule`/`CollectionModule` (§17.1) were
+   the last two big module objects the viewer nodes reach for, so the pressure is lower again
+   — but the `X as XModule` cast at the top of ten files in `data/` is the workaround, and
+   real `.d.ts` is what removes it. `variablebase`, `javascriptnodeparser` and
+   `api/cloudstore` still arrive as implicit `any`.
+4. **Decide on the accumulated findings — now eleven** (§9.3, §11.3, §13.3, §15.3, §17.7).
+   The `cloudfunction2` deployed-app crash (§17.7 item 1) is the most serious thing typing has
+   turned up in seven slices and should not wait for a tidy batch.
+5. **Delete `persisthelper.js`** (§17.6) — orphaned, 307 lines, one commit.
+6. **Do not raise `strict` yet** (spec step 8), and step 9 stays deferred.

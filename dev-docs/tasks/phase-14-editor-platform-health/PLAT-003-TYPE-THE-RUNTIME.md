@@ -128,6 +128,48 @@ Do not chase `strict: true` initially. Get accurate types with `strict: false`, 
 
 In progress. Full as-built record in [PLAT-003-NOTES.md](./PLAT-003-NOTES.md).
 
+### Slice 7 — 2026-07-24 — `data/` (step 7, fourth group)
+
+- All 14 registered `std-library/data/*` node files → `.ts`/`.tsx` (~3,000 lines), including
+  `foreach.jsx` → `.tsx` (694 lines) and `collectionnode-clear`, which had **no file extension at
+  all**. `persisthelper.js` deliberately left as `.js`: it is referenced by nothing in the repo and
+  is never bundled — deleting it is its own commit (NOTES §17.6).
+- `@noodl/types`: **`CollectionLike`**, `CollectionChangeEvent`, **`CollectionModule`** and
+  **`ModelModule`** — the Noodl Array and the two module objects the whole group is built on. The
+  doc comment records that `Collection` is a real `Array` whose extra members are patched onto
+  `Array.prototype` for *every* array in the process, and that this is load-bearing rather than
+  legacy mess: nodes call `value.on('change', …)` on whatever reaches their `items` input, so a
+  plain array must answer it too. Also records that `set` is a diff, not an assignment — which is
+  what lets the Repeater keep mounted components alive across an update (NOTES §17.1).
+- `@noodl/types`: `ComponentInstanceLike` gains `_forEachModel`/`_forEachNode`. Not a Repeater
+  private — six runtime files walk `parentNodeScope` upwards looking for `_forEachModel`; it is how
+  Object, Record and Function nodes resolve "the current item" inside a template (NOTES §17.2).
+- `@noodl/types` gaps filled, all found by conversion: `NodeScopeLike.getNodeWithId`,
+  `GraphNodeModel.parent`, and `ComponentModelLike.inputPorts`/`outputPorts`.
+- **`noodl-viewer-react`'s jest suite runs again.** `tests/collection.test.js` required a module
+  that has never existed; repointed at `@noodl/runtime/src/collection`, its 3 tests pass and happen
+  to cover the `set`-as-diff behaviour above. This was next-slice item 6 from §16.
+- Five more latent defects found and documented, not fixed (NOTES §17.7). The serious one:
+  **`cloudfunction2.doCall` throws a `TypeError` on every call in a deployed app**, reading
+  `this.context.editorConnection.isRunningLocally()` outside the guard that establishes the
+  connection exists — and reads `cloudServices.appId` on the path that just warned it is undefined.
+  Also: `foreachactions` calls a `signalItemAction` method no node defines; `collectionnode2` tests
+  an `isInputConnected('store')` port it never declares; `variablenode2.getInspectInfo` returns a
+  raw value (§13.3 again); `collectionnode-new.setCollectionID` is unreachable.
+- New rule, cost 43 errors: **check whether `NodeInstance` already declares a member before adding
+  it to an interface that extends it.** Two local redeclarations of `model` in `foreach.tsx`
+  produced 43 unrelated-looking errors; deleting them fixed 41 (NOTES §17.3).
+
+File counts: `noodl-viewer-react` 69/12/69/35 → **57 `.js` / 11 `.jsx` / 82 `.ts` / 36 `.tsx`**.
+`noodl-runtime` unchanged at 73 `.js` / 19 `.ts`.
+
+Gates: `catalog:check` byte-identical (135 node types); `typecheck:viewer` 0 `src` errors before and
+after (gate proven able to fail — it reported 43 mid-slice); runtime, cloud, editor and preview
+typechecks clean; runtime jest 225 pass / 20 pre-existing fail; **viewer jest 3 pass, 0 fail (was 0
+pass, 1 suite failing to load)**; viewer, deploy, ssr, cloud and preview builds green; eslint clean
+on every converted file. Live editor pass still owed — but PLAT-002 has landed, so it is no longer
+blocked.
+
 ### Slice 6 — 2026-07-24 — `componentutils/` and `user/` (step 7, third group)
 
 - All 5 `std-library/componentutils/*.js` and all 8 `std-library/user/*.js` → `.ts`
