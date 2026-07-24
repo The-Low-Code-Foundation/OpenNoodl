@@ -43,13 +43,13 @@ The ratchet is the durable part. Without it, every future contributor — and ev
 ## Scope
 
 ### In Scope
-- [ ] A counting script producing a deterministic count and per-file breakdown
-- [ ] A committed baseline file
-- [ ] CI check failing on any increase
-- [ ] Documentation of the policy in the coding standards
+- [x] A counting script producing a deterministic count and per-file breakdown
+- [x] A committed baseline file
+- [x] CI check failing on any increase
+- [x] Documentation of the policy in the coding standards
 - [ ] Opportunistic removal of markers whose real type is already knowable
-- [ ] A reporting view of where markers cluster, so later tasks can target them
-- [ ] Same treatment for bare `: any` in new code (policy, not retroactive cleanup)
+- [x] A reporting view of where markers cluster, so later tasks can target them
+- [x] Same treatment for bare `: any` in new code (policy, not retroactive cleanup)
 
 ### Out of Scope
 - Bulk removal of markers blocked on untyped runtime code (PLAT-003 unblocks those)
@@ -70,6 +70,16 @@ Report per-file counts alongside the total, so the data is useful to PLAT-002 an
 |------|---------|
 | `scripts/count-tsfixme.ts` | Deterministic counter + per-file report |
 | `.tsfixme-baseline.json` | Committed baseline (total + per-file) |
+
+**As built** (2026-07-24) — see [PLAT-004-NOTES.md](./PLAT-004-NOTES.md):
+
+| File | Purpose |
+|------|---------|
+| `scripts/tsfixme-ratchet.js` | Counter + ratchet. Plain JS, named to match the existing `lint-ratchet.js` it sits beside in the same CI job; no `ts-node` hop needed |
+| `.tsfixme-baseline.json` | Baseline: per-marker totals + per-package + per-file |
+| `dev-docs/reference/TYPE-ESCAPE-HATCHES.md` | Generated clustering report |
+
+The counter uses the TypeScript parser rather than grep. Grep cannot tell `any` the keyword from `any` in a comment, a string, or inside "company", and it miscounts JSX and regex literals — see NOTES §3.
 
 ### Key Files to Modify
 
@@ -96,10 +106,10 @@ Report per-file counts alongside the total, so the data is useful to PLAT-002 an
 
 ## Success Criteria
 
-- [ ] Counter script deterministic and matching manual counts
-- [ ] Baseline committed; CI fails on increases
-- [ ] Policy documented in coding standards, including the escape valve
-- [ ] Clustering report available to other tasks
+- [x] Counter script deterministic and matching manual counts
+- [x] Baseline committed; CI fails on increases
+- [x] Policy documented in coding standards, including the escape valve
+- [x] Clustering report available to other tasks
 - [ ] Easy-win markers removed
 - [ ] Count trending down; target under 100 by the end of PLAT-002 and PLAT-003, with the remainder documented
 
@@ -112,6 +122,29 @@ Report per-file counts alongside the total, so the data is useful to PLAT-002 an
 | Markers are removed by weakening types elsewhere rather than fixing them | Code review; removal should accompany a real type, not a cast |
 | Effort is spent on markers that PLAT-002 will delete outright | Use the clustering report to avoid files scheduled for replacement |
 
+## CHANGELOG
+
+In progress. Full as-built record in [PLAT-004-NOTES.md](./PLAT-004-NOTES.md).
+
+### Mechanism — 2026-07-24 — steps 1–4 and 6
+
+- `scripts/tsfixme-ratchet.js`: parser-based counter for all five escape hatches (`TSFixme`, bare
+  `any`, `@ts-ignore`, `@ts-nocheck`, `@ts-expect-error`), with `--update` and `--report` flags.
+  Shape mirrors the existing `scripts/lint-ratchet.js`, which had already reserved the name.
+- `.tsfixme-baseline.json`: baseline at `3a302b9` — 581 `TSFixme`, 392 `any`, 22 `@ts-ignore`,
+  0 `@ts-nocheck`, 88 `@ts-expect-error`, plus per-package and per-file breakdowns.
+- Each marker is gated **separately**, so swapping a `TSFixme` for a bare `any` — or silencing the
+  resulting error with `@ts-ignore` — fails the gate rather than passing it. Verified by test.
+- `pr.yml`: `npm run tsfixme` added to the existing `lint` job (no new job; it shares the runner).
+- `CODING-STANDARDS.md`: new §"The escape-hatch ratchet" — the policy, the three-step escape valve,
+  and the rule that removal must come with a real type rather than a cast.
+- `dev-docs/reference/TYPE-ESCAPE-HATCHES.md`: generated clustering report. The markers concentrate
+  in `noodl-editor/src/editor/src/views` (422), which is PLAT-002's deletion path.
+- Counter validated against per-file grep across all 1,549 files: the only disagreements are the
+  three `type TSFixme = any` declarations, skipped by design. Runs are byte-identical; ~3.5s.
+- **Correction to the phase baseline**: the count is 581, not the 554 recorded at phase start. It
+  rose during Phase 14 despite PLAT-002/003 removing markers, because new work added them faster.
+
 ## References
 
 - [Viability report — §4.4, Appendix E (554 markers, clustered at seams)](../../reviews/NOODL-VIABILITY-REPORT.md)
@@ -120,10 +153,10 @@ Report per-file counts alongside the total, so the data is useful to PLAT-002 an
 
 ## Checklist
 
-- [ ] Branch `task/plat-004-tsfixme-burndown`
-- [ ] Write and verify the counter script
-- [ ] Commit the baseline; add the CI check
-- [ ] Document the policy and escape valve
-- [ ] Harvest easy wins; publish the clustering report
+- [x] ~~Branch `task/plat-004-tsfixme-burndown`~~ — work commits straight to `cline-dev`
+- [x] Write and verify the counter script
+- [x] Commit the baseline; add the CI check
+- [x] Document the policy and escape valve
+- [x] Publish the clustering report / [ ] harvest easy wins (ongoing)
 - [ ] Wire baseline updates into other tasks' definition of done
 - [ ] CHANGELOG; open PR

@@ -45,6 +45,48 @@ function handleExternalLib(input: any): void {
 }
 ```
 
+### The escape-hatch ratchet
+
+`TSFixme`, bare `any`, `@ts-ignore`, `@ts-nocheck` and `@ts-expect-error` are counted
+by CI and held to a committed baseline: **the counts may fall, but never rise.**
+
+```bash
+npm run tsfixme            # show the counts against the baseline
+npm run tsfixme:baseline   # rewrite the baseline from reality
+npm run tsfixme:report     # regenerate the clustering report
+```
+
+Each marker is counted separately, so replacing a `TSFixme` with a bare `any`, or
+silencing the resulting error with `@ts-ignore`, fails the gate exactly as adding one
+would. The counter uses the TypeScript parser, not grep: `any` in a comment, a string,
+or the middle of "company" is not counted, and JSX and regex literals do not confuse it.
+
+**Why a ratchet and not a ban.** These markers cluster at the seams where typed editor
+code calls into untyped runtime, viewer and legacy view code. A marker at a runtime call
+site cannot be given a real type until the runtime *has* real types, so a hard ban would
+be unpassable on day one and would simply get switched off. Holding the line is
+achievable today; the count then falls out of PLAT-002 and PLAT-003 as those land.
+
+**The escape valve.** Raising the baseline is allowed, but only as an explicit committed
+change a reviewer sees:
+
+1. Try to give the value a real type first. Most markers in new code are avoidable.
+2. If the type genuinely is not knowable yet — it comes from untyped code no one has
+   converted — run `npm run tsfixme:baseline` and commit the raised baseline.
+3. Say in the PR description *why*. "Raised the TSFixme baseline by 3" with no reason is
+   the one thing this gate exists to stop.
+
+A ratchet with no escape valve gets disabled entirely, which is worse than one that is
+occasionally, visibly, loosened.
+
+**Removing markers.** Removal should come with a real type, not a cast: replacing
+`TSFixme` with `as unknown as Foo` moves the lie rather than removing it. When you lower
+the count, run `npm run tsfixme:baseline` and commit the lower number in the same PR, so
+the next person inherits the tighter bound.
+
+See [`.tsfixme-baseline.json`](../../.tsfixme-baseline.json) for the current numbers and
+[TYPE-ESCAPE-HATCHES.md](../reference/TYPE-ESCAPE-HATCHES.md) for where they cluster.
+
 ### Interface Definitions
 
 ```typescript
