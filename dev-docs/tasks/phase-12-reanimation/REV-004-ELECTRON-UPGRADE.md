@@ -94,7 +94,7 @@ Work through the official Electron breaking-changes notes for each major from 32
 
 ## Success Criteria
 
-- [x] Editor runs on Electron 43.x; `electron-builder` 26.x packages successfully — verified on macOS via a `--dir` package (Electron Framework 43.2.0, config accepted with no migration); the three-platform installer build is the nightly workflow's job (REV-003)
+- [x] Editor runs on Electron 43.x; `electron-builder` 26.x packages successfully — verified on macOS via a `--dir` package (Electron Framework 43.2.0, config accepted with no migration); the three-platform installer build is the nightly workflow's job (REV-003). **DEBT-002 (2026-07-24) update:** the v0.1.0 Release run shows win32-x64 *does* build an installer; linux-x64 and darwin-arm64 fail (causes recorded in REV-003 / DEBT-007); **no installer on any platform has ever been installed and launched** — that check still needs hardware/VMs once DEBT-007 makes the builds green.
 - [x] `electron` version consistent across editor and platform-electron packages (both now pin/allow 43.x)
 - [x] Native modules rebuilt and functional — `dugite` (Git) works on the new Node 24 ABI (all Git specs green); `better-sqlite3` is not in the tree at all (the local backend never shipped it — no ABI work needed, RUN-004 unaffected)
 - [x] Full test suite green (712 specs / 0 failures, 4 consecutive runs); renderer regression clean (Projects page mounts, services init, no exceptions) in dev **and** in the packaged app

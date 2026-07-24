@@ -64,3 +64,14 @@ REV-005 accepted these as install-time-only risk, *"worth a dedicated task if/wh
 
 - [REV-007-SHIP-V0.md](../phase-12-reanimation/REV-007-SHIP-V0.md), RELEASE-PROCESS.md §6, [REV-005-NOTES.md](../phase-12-reanimation/REV-005-NOTES.md), DEPENDENCY-POLICY.md
 - Related: DEBT-002 verifies the three-platform nightly artifacts this task's workflows feed
+
+## New input from DEBT-002 (2026-07-24) — the v0.1.0 Release run, characterised
+
+Run 29995532502 (tag v0.1.0):
+
+- **win32-x64 built successfully** — the first evidence a Windows installer has ever been produced.
+- **linux-x64 fails**: `electron-builder: Please specify author 'email' in the application package.json` — one-line fix in `packages/noodl-editor/package.json`.
+- **darwin-arm64** failed inside electron-builder (pull the run log for the exact cause when fixing; likely signing-related since `--publish onTagOrDraft` ran unsigned).
+- **darwin-x64 hung 24 hours and was cancelled** — `release.yml` has no `timeout-minutes`; add one (nightly.yml already uses 90) before the next tag, this burned a full day of macOS runner spend.
+- No artifacts uploaded from the run, so installer *launch* verification (REV-004) stays blocked until these are green.
+- Also: `nightly.yml` only exists on `cline-dev`; schedules fire from the default branch only, so it has never run and cannot until it lands on `main` (human-gated).

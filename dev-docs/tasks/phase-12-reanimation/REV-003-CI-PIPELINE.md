@@ -100,7 +100,7 @@ Plus a **nightly** workflow producing unsigned packaged builds for all three pla
 - [x] PR workflow runs typecheck, lint, test, and builds on every PR
 - [x] All five gates (plus the artefacts check, a sixth) verified to actually fail on deliberately broken input — see below
 - [x] `main` protected; merges blocked when checks fail
-- [x] Nightly packaged builds produce downloadable artifacts for all three platforms (unverified in this task: no nightly run has executed yet, since the schedule trigger only fires on `main`'s default cron and this is the first time the workflow file exists — will confirm on its first scheduled run)
+- [ ] Nightly packaged builds produce downloadable artifacts for all three platforms — **DEBT-002 (2026-07-24) found this can never fire as-is**: `nightly.yml` exists only on `cline-dev`, and GitHub runs `schedule:`/`workflow_dispatch` only from the default branch (`main`). Unblock = land the workflow file on `main` (human-gated push). Meanwhile the v0.1.0 Release run (id 29995532502) gives partial packaging evidence: win32-x64 installer **built successfully** (first ever), linux-x64 fails on missing `author.email` in package.json, darwin-arm64 failed in electron-builder, darwin-x64 hung 24h (no `timeout-minutes` in release.yml) — fixes owned by DEBT-007.
 - [x] PR feedback time under ~15 minutes with warm cache — confirmed on a real GitHub-hosted runner: all six jobs green in ~2m30s wall-clock (jobs run in parallel; the slowest, `Build`, took ~2m20s alone)
 - [x] `GIT-WORKFLOW.md` documents the policy; README shows the badge
 

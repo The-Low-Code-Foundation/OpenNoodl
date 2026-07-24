@@ -552,11 +552,13 @@ committed build output.)
 
 ### Owed verification, never paid
 
-- The **import** and **collisions/overwrite** variants of `importpopup.ts` (wave 3) have
-  still never been driven in the running app — they need a second project to import from.
-  Check the tree indentation, implicit-dependency markers, folder toggles, and that the
-  collisions popup still filters what gets imported. The **export** variant was verified in
-  wave 4.
+- ~~The **import** and **collisions/overwrite** variants of `importpopup.ts` (wave 3) have
+  still never been driven in the running app~~ **PAID 2026-07-24 by DEBT-002**, driven live
+  against the `import_proj1` fixture: tree indentation, folder toggle, and the dimmed
+  implicit-dependency marker all render; the import lands on disk and in the components
+  panel and survives reload; the collisions popup filters to genuinely colliding items only
+  and partial overwrite works, with no exceptions. The **export** variant was verified in
+  wave 4, so all three variants are now paid.
 
 ### Known deviations and follow-ups inherited by whoever touches this UI next
 

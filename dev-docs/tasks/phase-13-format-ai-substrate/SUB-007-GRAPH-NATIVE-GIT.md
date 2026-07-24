@@ -171,11 +171,17 @@ an internal namespace, that moves whenever anything is edited), now excluded in
 not open for structural-only conflicts**, since its gate read the warnings model
 alone. Both fixed and covered by specs.
 
-**Still open:** the diff has only been read on a *small* project (three nodes,
-two changes). The success criterion asks for a large realistic change, where the
-open questions are volume — whether a hundred-change component needs collapsing
-or a summary line — and whether grouping still helps at that size. Nothing about
-correctness; entirely about legibility at scale.
+**Still open:** ~~the diff has only been read on a *small* project~~ **Answered
+2026-07-24 by DEBT-002.** (1) The conflict UI rendered live for the first time:
+engine-produced conflicts → `MERGE_CONFLICTS_KEY` metadata → `MergeConflicts`
+panel, grouped by component with Yours/Theirs values; "Use theirs" applied the
+value to the live graph with no JSON hand-editing. (2) The diff was read at 151
+changed components: a flat list with per-row add/change markers and a count in
+the tab header — rows navigate on click, but there is **no folder grouping, no
+collapse, and no kind rollup** ("150 added, 1 changed"). Those three are now
+filed as concrete asks against AIX-003 (phase-14.5 PROGRESS, DEBT-002 findings
+#5). Correctness held throughout; this was entirely about legibility, as
+predicted.
 
 **Known rough edge:** connection sentences read
 `Connected Text 'Continue'.onClick → Text.visible`. The label-qualified node name

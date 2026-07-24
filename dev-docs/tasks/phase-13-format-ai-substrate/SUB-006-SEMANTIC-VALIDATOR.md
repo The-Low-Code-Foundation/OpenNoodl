@@ -131,4 +131,4 @@ Keep rules independent and individually toggleable — a rule that produces fals
 - [x] Suggestions; CLI with JSON output and exit codes (`scripts/validate-project.ts`, `npm run validate:project`)
 - [x] Editor panel integration (`views/panels/ProblemsPanel/` + `ProjectValidationService`)
 - [x] Clean run across entire fixture corpus + real projects (`tests/validation/false-positive-corpus.test.ts`, zero errors)
-- [x] Progress tracker updated (PROGRESS.md Change Log). Live in-editor smoke test pending (dev stack too slow to boot in this session)
+- [x] Progress tracker updated (PROGRESS.md Change Log). ~~Live in-editor smoke test pending~~ **Live smoke passed 2026-07-24 (DEBT-002):** panel renders real diagnostics, badge count updates, click-to-navigate selects the offending node on canvas. Caveat found: the panel is registered `experimental: true` and hidden until `experimental.panel.problems` is enabled — decide whether it should be on by default.

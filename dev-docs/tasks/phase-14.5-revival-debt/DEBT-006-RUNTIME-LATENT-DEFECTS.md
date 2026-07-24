@@ -77,3 +77,13 @@ PLAT-003's discipline was correct: a typing slice that also changes behaviour is
 
 - [PLAT-003-NOTES.md](../phase-14-editor-platform-health/PLAT-003-NOTES.md) §9.3, §11.3, §13.3, §15.3, §17.6, §17.7, §19.4 — the ledger
 - Related: DEBT-001 (finding #1), DEBT-003 (§4's expression cluster)
+
+## New input from DEBT-002 (2026-07-24)
+
+- **Runtime-detection false positive (unconfirmed):** `DebtLivePass`, a fresh Quick Start
+  project with `runtimeVersion: "react19"` in project.json (detection check 1, high
+  confidence), showed the "Legacy Project (React 17) — Read-Only Mode" banner after 150
+  components were added on disk and the project reopened. If reproducible, fresh projects
+  can spuriously lock read-only. Suspects: the `project_runtime_cache` store vs. the
+  detection path in `models/migration/ProjectScanner.ts` / `utils/LocalProjectsModel.ts`.
+  Reproduce in a quiet session before hunting.

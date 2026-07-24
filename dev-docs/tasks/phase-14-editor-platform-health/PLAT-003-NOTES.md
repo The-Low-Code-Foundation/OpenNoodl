@@ -1142,9 +1142,11 @@ File counts now: `noodl-runtime` **73 `.js` / 19 `.ts`** (unchanged — only the
    imports left in the file. Webpack will not substitute `.ts`/`.tsx` for a request that
    spells `.js`/`.jsx`, and `tsc` never sees it. Rename without editing those two lines and
    the build breaks silently at runtime, not at compile time.
-2. **Live editor pass** — still owed, still the one gate no slice has run. PLAT-002 has
-   landed (the View framework and jQuery are gone as of `cdc7e8f`), so the blocker named in
-   §12/§14/§16 is cleared. This should go first if anything does.
+2. **Live editor pass** — ~~still owed~~ **PAID 2026-07-24 by DEBT-002.** A real project
+   (Shine Phase 2) and a fresh test project were opened and exercised in the running editor:
+   canvas paints, preview renders real content, imports/merges/validation all ran, and a
+   full session log shows zero renderer or viewer exceptions. See phase-14.5 PROGRESS
+   (DEBT-002 section) for the full checklist and findings.
 3. **Make `@noodl/runtime` ship declarations.** `ModelModule`/`CollectionModule` (§17.1) were
    the last two big module objects the viewer nodes reach for, so the pressure is lower again
    — but the `X as XModule` cast at the top of ten files in `data/` is the workaround, and
