@@ -35,7 +35,9 @@ jobs:
             platform: win32-x64
           - os: macos-latest
             platform: darwin-arm64
-          - os: macos-13
+          # macos-13 was retired by GitHub (Dec 2025); macos-15-intel is the
+          # supported Intel image (DEBT-007).
+          - os: macos-15-intel
             platform: darwin-x64
 
     steps:

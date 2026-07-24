@@ -67,10 +67,29 @@ import { BuildTarget, getDistPlatform } from './platform/build-platforms';
   //    the afterSign hook (build/macos-notarize.js). No credentials are read here.
   const signingEnv = DISABLE_SIGNING ? { CSC_IDENTITY_AUTO_DISCOVERY: 'false' } : {};
 
+  // CI passes the signing secrets unconditionally, so when a secret does not
+  // exist the variable arrives as an EMPTY STRING — and electron-builder treats
+  // an empty-but-set CSC_LINK as a certificate *path*, failing with
+  // "<cwd> not a file". That is what actually broke the v0.1.0 darwin legs
+  // (DEBT-007), not a signing misconfiguration. Strip empties so "secret
+  // absent" degrades to an unsigned build, as the release workflow promises.
+  const env = Object.assign({}, process.env, signingEnv);
+  for (const key of [
+    'CSC_LINK',
+    'CSC_KEY_PASSWORD',
+    'WIN_CSC_LINK',
+    'WIN_CSC_KEY_PASSWORD',
+    'APPLE_ID',
+    'APPLE_APP_SPECIFIC_PASSWORD',
+    'APPLE_TEAM_ID'
+  ]) {
+    if (env[key] !== undefined && String(env[key]).trim() === '') delete env[key];
+  }
+
   console.log(`--- Run: 'npx electron-builder ${args}' ...`);
   console.log(`> DISABLE_SIGNING: ${DISABLE_SIGNING} | PUBLISH_RELEASE: ${PUBLISH_RELEASE}`);
   execSync('npx electron-builder ' + args, {
     stdio: [0, 1, 2],
-    env: Object.assign({}, process.env, signingEnv)
+    env
   });
 })();

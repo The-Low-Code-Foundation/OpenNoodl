@@ -62,6 +62,20 @@ function initialize(app, options) {
       maxAge: (2 * 7 * 24 * 60 * 60 * 1000) // 2 weeks
     }
   }));
+  // passport 0.6+ regenerates the session on login/logout to prevent session
+  // fixation (the CVE that forced this upgrade — DEBT-007). cookie-session has
+  // no regenerate()/save(), so provide the no-op shims the passport README
+  // documents for cookie-session users; fixation is mitigated for cookie
+  // sessions by the signed cookie being replaced on login.
+  app.use(function (request, response, next) {
+    if (request.session && !request.session.regenerate) {
+      request.session.regenerate = (cb) => cb();
+    }
+    if (request.session && !request.session.save) {
+      request.session.save = (cb) => cb();
+    }
+    next();
+  });
   app.use(passport.initialize());
   app.use(passport.session());
 
@@ -73,9 +87,12 @@ function initialize(app, options) {
     })
   );
 
-  app.get('/logout', function(req, res){
-    req.logout();
-    res.redirect(`${self.mountPath}login`);
+  app.get('/logout', function(req, res, next){
+    // passport 0.6+ made logout asynchronous.
+    req.logout(function(err) {
+      if (err) { return next(err); }
+      res.redirect(`${self.mountPath}login`);
+    });
   });
 }
 

@@ -55,12 +55,20 @@ the declared dependency graph. In order:
 
 | Package(s) | Severity | Reachable at runtime? | Fix available | Decision | Reasoning |
 |---|---|---|---|---|---|
-| `dugite`'s nested `got`/`tar` | high / moderate / critical (tar) | No — only in dugite's `postinstall` (`script/download-git.js`), which downloads the embedded git binary from a fixed GitHub Releases URL once, at install time | `dugite@3.2.2` (semver-major, changes the embedded git version) | **Accepted, not bumped** | End users never run `npm install`; the exposure is limited to a maintainer's machine trusting the same GitHub Releases source the rest of the toolchain already trusts. A major bump risks the git integration REV-002/REV-003 spent significant effort hardening (the merge driver, the Git specs, `ELECTRON_DISABLE_SANDBOX` handling) for a vulnerability with no runtime exposure. Revisit if dugite ships a minor/patch that resolves it without the major jump. |
-| `passport` (+ `passport-local`) | moderate (CVSS 4.8, session not regenerated on login/logout) | Yes — `noodl-editor` bundles `@noodl/noodl-parse-dashboard`, a local Parse backend the editor spins up per-project, which pins `passport@0.5.3` | `passport@0.7.0` (semver-major) | **Accepted for now, deferred as its own task** | A major bump to session/auth-handling code with zero existing test coverage of the local backend's login/logout flow. This is exactly the "single dependency that turns into a migration project" case — needs a dedicated task with real auth-flow testing (manual or new automated coverage) before landing, not a drive-by bump inside a dependency-hygiene pass. |
+| `dugite`'s nested `got`/`tar` | high / moderate / critical (tar) | No — only in dugite's `postinstall` (`script/download-git.js`), which downloads the embedded git binary from a fixed GitHub Releases URL once, at install time | `dugite@3.2.2` (semver-major, changes the embedded git version) | **Accepted, not bumped** | End users never run `npm install`; the exposure is limited to a maintainer's machine trusting the same GitHub Releases source the rest of the toolchain already trusts. A major bump risks the git integration REV-002/REV-003 spent significant effort hardening (the merge driver, the Git specs, `ELECTRON_DISABLE_SANDBOX` handling) for a vulnerability with no runtime exposure. Revisit if dugite ships a minor/patch that resolves it without the major jump. Re-checked 2026-07-25 (DEBT-007): still no such release — the only fixed line is the 3.x major (3.2.2); decision stands. |
 
 When an entry here gets resolved, move it out of the table (into the
 resolving task's notes) rather than leaving a stale "fixed" row — this
 table should only ever list currently-accepted risk.
+
+Resolved and moved out: `passport` 0.5.3 → 0.7.0 (DEBT-007, 2026-07-25) —
+the session-fixation advisory (CVSS 4.8). The 0.6+ breaking changes were
+handled where they bite: `req.logout` now takes the required callback, and
+the cookie-session `regenerate`/`save` shims from the passport README are
+installed ahead of `passport.session()`. The dashboard login/logout flow
+was exercised end-to-end against 0.7.0 (login page, wrong-password reject,
+login redirect + session cookie, authenticated page load, logout redirect —
+all green); record in phase-14.5 PROGRESS under DEBT-007.
 
 ## Removed, not documented
 

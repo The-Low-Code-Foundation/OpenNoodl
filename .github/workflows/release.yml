@@ -45,7 +45,11 @@ jobs:
             platform: win32-x64
           - os: macos-latest
             platform: darwin-arm64
-          - os: macos-13
+          # macos-13, the previous Intel image, was retired by GitHub (Dec 2025);
+          # jobs targeting it queue for 24h and are cancelled — that is what
+          # "hung" the v0.1.0 darwin-x64 leg. macos-15-intel is the supported
+          # Intel continuation, keeping natives (dugite git, trampoline) x64.
+          - os: macos-15-intel
             platform: darwin-x64
 
     steps:
@@ -83,3 +87,62 @@ jobs:
           # --- Windows signing ---
           WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
           WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+
+      # The two macOS legs each publish a `latest-mac.yml`; whichever uploads
+      # last wins, so the auto-update feed would only serve one architecture
+      # (REV-007 known issue; DEBT-007). Preserve each leg's feed file as a
+      # build artifact so the merge job below can combine them.
+      - name: Save per-arch mac update feed
+        if: startsWith(matrix.platform, 'darwin-')
+        uses: actions/upload-artifact@v4
+        with:
+          name: mac-feed-${{ matrix.platform }}
+          path: packages/noodl-editor/dist/latest-mac.yml
+          if-no-files-found: warn
+
+  # Rebuild latest-mac.yml so its `files` list covers BOTH architectures —
+  # electron-updater picks the entry matching the running arch. Only meaningful
+  # on tag pushes (dispatch dry-runs may have no release to upload to).
+  merge-mac-update-feed:
+    name: merge mac update feed
+    needs: release
+    if: always() && startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Download per-arch feeds
+        uses: actions/download-artifact@v4
+        with:
+          pattern: mac-feed-*
+          path: feeds
+      - name: Merge feeds
+        id: merge
+        run: |
+          python3 - <<'EOF'
+          import glob, sys, yaml
+          paths = sorted(glob.glob('feeds/*/latest-mac.yml'))
+          if len(paths) < 2:
+              print(f'Only {len(paths)} per-arch feed(s) found - nothing to merge.')
+              sys.exit(0)
+          feeds = [yaml.safe_load(open(p)) for p in paths]
+          merged = feeds[0]
+          seen = {f['url'] for f in merged.get('files', [])}
+          for other in feeds[1:]:
+              for f in other.get('files', []):
+                  if f['url'] not in seen:
+                      merged['files'].append(f)
+                      seen.add(f['url'])
+          with open('latest-mac.yml', 'w') as out:
+              yaml.safe_dump(merged, out, sort_keys=False)
+          print(open('latest-mac.yml').read())
+          open('merged.flag', 'w').write('yes')
+          EOF
+      - name: Upload merged feed to the draft release
+        run: |
+          if [ -f merged.flag ]; then
+            gh release upload "${GITHUB_REF_NAME}" latest-mac.yml --clobber --repo "${GITHUB_REPOSITORY}"
+          else
+            echo "Skipping upload - merged feed not produced."
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
