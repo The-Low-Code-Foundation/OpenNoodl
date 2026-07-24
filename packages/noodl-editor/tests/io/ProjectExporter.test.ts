@@ -15,6 +15,16 @@ import {
   LegacyComponent,
   LegacyNode
 } from '../../src/editor/src/io/ProjectExporter';
+import type {
+  ComponentV2File,
+  ConnectionsV2File,
+  NodesV2File,
+  ProjectV2File,
+  RegistryV2File,
+  RoutesV2File,
+  StylesV2File
+} from '../../src/editor/src/schemas';
+import { fileAt, firstFileMatching } from './v2-files';
 
 // ---- Fixtures ----------------------------------------------------------------
 
@@ -210,7 +220,7 @@ describe('ProjectExporter', () => {
   describe('nodegx.project.json', () => {
     const getProjectFile = (project: LegacyProject) => {
       const result = exporter.export(project);
-      return result.files.find((f) => f.relativePath === 'nodegx.project.json')?.content as any;
+      return fileAt<ProjectV2File>(result, 'nodegx.project.json');
     };
 
     it('includes project name', () => {
@@ -249,7 +259,7 @@ describe('ProjectExporter', () => {
     it('routes file contains the routes array', () => {
       const routes = [{ path: '/home', component: 'pages/Home' }];
       const result = exporter.export(makeProject({ metadata: { routes } }));
-      const file = result.files.find((f) => f.relativePath === 'nodegx.routes.json')?.content as any;
+      const file = fileAt<RoutesV2File>(result, 'nodegx.routes.json');
       expect(file.routes).toEqual(routes);
     });
     it('does not produce routes file when metadata.routes is not an array', () => {
@@ -269,14 +279,14 @@ describe('ProjectExporter', () => {
     });
     it('includes colors from metadata.styles', () => {
       const result = exporter.export(makeProject({ metadata: { styles: { colors: { primary: '#3B82F6' } } } }));
-      const file = result.files.find((f) => f.relativePath === 'nodegx.styles.json')?.content as any;
+      const file = fileAt<StylesV2File>(result, 'nodegx.styles.json');
       expect(file.colors).toEqual({ primary: '#3B82F6' });
     });
     it('normalises legacy stateParamaters typo to stateParameters', () => {
       const result = exporter.export(makeProject({
         variants: [{ name: 'primary', typename: 'Button', stateParamaters: { hover: { opacity: 0.8 } } }]
       }));
-      const file = result.files.find((f) => f.relativePath === 'nodegx.styles.json')?.content as any;
+      const file = fileAt<StylesV2File>(result, 'nodegx.styles.json');
       expect(file.variants[0].stateParameters).toEqual({ hover: { opacity: 0.8 } });
       expect(file.variants[0].stateParamaters).toBeUndefined();
     });
@@ -298,38 +308,38 @@ describe('ProjectExporter', () => {
       const comp = makeComponent('/#Header');
       comp.id = 'comp_header_123';
       const result = exporter.export(makeProject({ components: [comp] }));
-      const file = result.files.find((f) => f.relativePath === 'components/Header/component.json')?.content as any;
+      const file = fileAt<ComponentV2File>(result, 'components/Header/component.json');
       expect(file.id).toBe('comp_header_123');
     });
     it('component.json preserves original legacy path', () => {
       const result = exporter.export(makeProject({ components: [makeComponent('/#Header')] }));
-      const file = result.files.find((f) => f.relativePath === 'components/Header/component.json')?.content as any;
+      const file = fileAt<ComponentV2File>(result, 'components/Header/component.json');
       expect(file.path).toBe('/#Header');
     });
     it('component.json infers correct type for page', () => {
       const result = exporter.export(makeProject({ components: [makeComponent('/Pages/Home')] }));
-      const file = result.files.find((f) => f.relativePath === 'components/Pages/Home/component.json')?.content as any;
+      const file = fileAt<ComponentV2File>(result, 'components/Pages/Home/component.json');
       expect(file.type).toBe('page');
     });
     it('nodes.json has componentId', () => {
       const comp = makeComponent('/#Header');
       comp.id = 'comp_header_123';
       const result = exporter.export(makeProject({ components: [comp] }));
-      const file = result.files.find((f) => f.relativePath === 'components/Header/nodes.json')?.content as any;
+      const file = fileAt<NodesV2File>(result, 'components/Header/nodes.json');
       expect(file.componentId).toBe('comp_header_123');
     });
     it('nodes.json flattens nested nodes', () => {
       const comp = makeComponent('/#Header');
       comp.graph.roots = [makeNode('root', 'Group', { children: [makeNode('child', 'Text')] })];
       const result = exporter.export(makeProject({ components: [comp] }));
-      const file = result.files.find((f) => f.relativePath === 'components/Header/nodes.json')?.content as any;
+      const file = fileAt<NodesV2File>(result, 'components/Header/nodes.json');
       expect(file.nodes.length).toBe(2);
     });
     it('connections.json maps legacy connections correctly', () => {
       const comp = makeComponent('/#Header');
       comp.graph.connections = [{ fromId: 'n1', fromProperty: 'onClick', toId: 'n2', toProperty: 'trigger' }];
       const result = exporter.export(makeProject({ components: [comp] }));
-      const file = result.files.find((f) => f.relativePath === 'components/Header/connections.json')?.content as any;
+      const file = fileAt<ConnectionsV2File>(result, 'components/Header/connections.json');
       expect(file.connections.length).toBe(1);
       expect(file.connections[0]).toEqual({ fromId: 'n1', fromProperty: 'onClick', toId: 'n2', toProperty: 'trigger' });
     });
@@ -337,7 +347,7 @@ describe('ProjectExporter', () => {
       const comp = makeComponent('/#Header');
       comp.graph.connections = [{ fromId: 'n1', fromProperty: 'out', toId: 'n2', toProperty: 'in', annotation: 'Created' }];
       const result = exporter.export(makeProject({ components: [comp] }));
-      const file = result.files.find((f) => f.relativePath === 'components/Header/connections.json')?.content as any;
+      const file = fileAt<ConnectionsV2File>(result, 'components/Header/connections.json');
       expect(file.connections[0].annotation).toBe('Created');
     });
   });
@@ -345,26 +355,26 @@ describe('ProjectExporter', () => {
   describe('_registry.json', () => {
     it('lists all components', () => {
       const result = exporter.export(makeProject({ components: [makeComponent('/#Header'), makeComponent('/Pages/Home')] }));
-      const file = result.files.find((f) => f.relativePath === 'components/_registry.json')?.content as any;
+      const file = fileAt<RegistryV2File>(result, 'components/_registry.json');
       expect(Object.keys(file.components).length).toBe(2);
       expect(file.components['Header']).toBeDefined();
       expect(file.components['Pages/Home']).toBeDefined();
     });
     it('registry entry has correct path', () => {
       const result = exporter.export(makeProject({ components: [makeComponent('/#Header')] }));
-      const file = result.files.find((f) => f.relativePath === 'components/_registry.json')?.content as any;
+      const file = fileAt<RegistryV2File>(result, 'components/_registry.json');
       expect(file.components['Header'].path).toBe('Header');
     });
     it('registry entry has correct type', () => {
       const result = exporter.export(makeProject({ components: [makeComponent('/Pages/Home')] }));
-      const file = result.files.find((f) => f.relativePath === 'components/_registry.json')?.content as any;
+      const file = fileAt<RegistryV2File>(result, 'components/_registry.json');
       expect(file.components['Pages/Home'].type).toBe('page');
     });
     it('registry entry has nodeCount', () => {
       const comp = makeComponent('/#Header');
       comp.graph.roots = [makeNode('n1'), makeNode('n2')];
       const result = exporter.export(makeProject({ components: [comp] }));
-      const file = result.files.find((f) => f.relativePath === 'components/_registry.json')?.content as any;
+      const file = fileAt<RegistryV2File>(result, 'components/_registry.json');
       expect(file.components['Header'].nodeCount).toBe(2);
     });
     it('registry entry has connectionCount', () => {
@@ -374,7 +384,7 @@ describe('ProjectExporter', () => {
         { fromId: 'n2', fromProperty: 'out', toId: 'n3', toProperty: 'in' }
       ];
       const result = exporter.export(makeProject({ components: [comp] }));
-      const file = result.files.find((f) => f.relativePath === 'components/_registry.json')?.content as any;
+      const file = fileAt<RegistryV2File>(result, 'components/_registry.json');
       expect(file.components['Header'].connectionCount).toBe(2);
     });
     it('registry stats are correct', () => {
@@ -384,14 +394,14 @@ describe('ProjectExporter', () => {
       const comp2 = makeComponent('/Pages/Home');
       comp2.graph.roots = [makeNode('n2'), makeNode('n3')];
       const result = exporter.export(makeProject({ components: [comp1, comp2] }));
-      const file = result.files.find((f) => f.relativePath === 'components/_registry.json')?.content as any;
+      const file = fileAt<RegistryV2File>(result, 'components/_registry.json');
       expect(file.stats.totalComponents).toBe(2);
       expect(file.stats.totalNodes).toBe(3);
       expect(file.stats.totalConnections).toBe(1);
     });
     it('registry has version 1', () => {
       const result = exporter.export(makeProject());
-      const file = result.files.find((f) => f.relativePath === 'components/_registry.json')?.content as any;
+      const file = fileAt<RegistryV2File>(result, 'components/_registry.json');
       expect(file.version).toBe(1);
     });
   });
@@ -411,14 +421,17 @@ describe('ProjectExporter', () => {
   describe('edge cases', () => {
     it('handles component with no graph gracefully', () => {
       const comp = makeComponent('/#Header');
-      (comp as any).graph = undefined;
+      // Legacy projects do contain components with no graph at all;
+      // `LegacyComponent` declares it required, so the fixture is degraded
+      // deliberately rather than by accident.
+      delete (comp as Partial<LegacyComponent>).graph;
       expect(() => exporter.export(makeProject({ components: [comp] }))).not.toThrow();
     });
     it('handles component with empty graph', () => {
       const comp = makeComponent('/#Header');
       comp.graph = { roots: [], connections: [] };
       const result = exporter.export(makeProject({ components: [comp] }));
-      const nodesFile = result.files.find((f) => f.relativePath === 'components/Header/nodes.json')?.content as any;
+      const nodesFile = fileAt<NodesV2File>(result, 'components/Header/nodes.json');
       expect(nodesFile.nodes.length).toBe(0);
     });
     it('handles multiple components correctly', () => {
@@ -434,14 +447,14 @@ describe('ProjectExporter', () => {
     });
     it('cloud component gets correct type', () => {
       const result = exporter.export(makeProject({ components: [makeComponent('/#__cloud__/SendGrid/Send')] }));
-      const file = result.files.find((f) => f.relativePath.includes('component.json'))?.content as any;
+      const file = firstFileMatching<ComponentV2File>(result, (p) => p.includes('component.json'), 'named component.json');
       expect(file.type).toBe('cloud');
     });
     it('node with variant is preserved', () => {
       const comp = makeComponent('/#Header');
       comp.graph.roots = [makeNode('n1', 'Button', { variant: 'primary' })];
       const result = exporter.export(makeProject({ components: [comp] }));
-      const nodesFile = result.files.find((f) => f.relativePath === 'components/Header/nodes.json')?.content as any;
+      const nodesFile = fileAt<NodesV2File>(result, 'components/Header/nodes.json');
       expect(nodesFile.nodes[0].variant).toBe('primary');
     });
   });

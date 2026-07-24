@@ -25,6 +25,16 @@
 
 import { ProjectExporter, LegacyProject, legacyNameToPath } from '../../src/editor/src/io/ProjectExporter';
 import { ProjectImporter, ImportInput } from '../../src/editor/src/io/ProjectImporter';
+import type {
+  ComponentV2File,
+  ConnectionsV2File,
+  NodesV2File,
+  ProjectV2File,
+  RegistryV2File,
+  RoutesV2File,
+  StylesV2File
+} from '../../src/editor/src/schemas';
+import { contentAt, metadataAt } from './v2-files';
 
 // Real fixtures loaded via require() to skip TypeScript's deep literal inference
 // (big-merge-test-mine is ~4.7MB — typing it as a literal would be pathological).
@@ -46,25 +56,23 @@ function roundTrip(project: LegacyProject): LegacyProject {
   const importer = new ProjectImporter();
   const result = exporter.export(project);
 
-  const getContent = (path: string) => result.files.find((f) => f.relativePath === path)?.content;
-
   const components: ImportInput['components'] = {};
   for (const comp of project.components) {
     const compPath = legacyNameToPath(comp.name);
-    const component = getContent(`components/${compPath}/component.json`) as any;
-    const nodes = getContent(`components/${compPath}/nodes.json`) as any;
-    const connections = getContent(`components/${compPath}/connections.json`) as any;
+    const component = contentAt<ComponentV2File>(result, `components/${compPath}/component.json`);
+    const nodes = contentAt<NodesV2File>(result, `components/${compPath}/nodes.json`);
+    const connections = contentAt<ConnectionsV2File>(result, `components/${compPath}/connections.json`);
     if (component && nodes && connections) {
       components[compPath] = { component, nodes, connections };
     }
   }
 
-  const routes = getContent('nodegx.routes.json') as any;
-  const styles = getContent('nodegx.styles.json') as any;
+  const routes = contentAt<RoutesV2File>(result, 'nodegx.routes.json');
+  const styles = contentAt<StylesV2File>(result, 'nodegx.styles.json');
 
   const input: ImportInput = {
-    project: getContent('nodegx.project.json') as any,
-    registry: getContent('components/_registry.json') as any,
+    project: contentAt<ProjectV2File>(result, 'nodegx.project.json'),
+    registry: contentAt<RegistryV2File>(result, 'components/_registry.json'),
     ...(routes ? { routes } : {}),
     ...(styles ? { styles } : {}),
     components
@@ -136,7 +144,7 @@ describe('round-trip fidelity — previously-dropped fields', () => {
   });
 
   it('carries project.thumbnailURI', () => {
-    expect((thumbnail as any).thumbnailURI).toBeDefined();
+    expect(thumbnail.thumbnailURI).toBeDefined();
     expect(roundTrip(thumbnail).thumbnailURI).toEqual(thumbnail.thumbnailURI);
   });
 
@@ -145,16 +153,16 @@ describe('round-trip fidelity — previously-dropped fields', () => {
   });
 
   it('carries graph.comments', () => {
-    const withComments = commentsLarge.components.find((c) => (c.graph as any)?.comments?.length);
+    const withComments = commentsLarge.components.find((c) => c.graph?.comments?.length);
     expect(withComments).toBeDefined();
     const out = roundTrip(commentsLarge);
     const outComp = out.components.find((c) => c.name === withComments!.name)!;
-    expect((outComp.graph as any).comments).toEqual((withComments!.graph as any).comments);
+    expect(outComp.graph.comments).toEqual(withComments!.graph.comments);
   });
 
   it('carries graph.visualRoots', () => {
     const out = roundTrip(syntheticAwkward);
-    expect((out.components[0].graph as any).visualRoots).toEqual(['node-a', 'node-c']);
+    expect(out.components[0].graph.visualRoots).toEqual(['node-a', 'node-c']);
   });
 
   it('carries variant conflicts', () => {
@@ -164,13 +172,13 @@ describe('round-trip fidelity — previously-dropped fields', () => {
 
   it('carries legacy styles.text (was read under the wrong key)', () => {
     const out = roundTrip(variantsStyles);
-    expect((out.metadata as any).styles.text).toEqual((variantsStyles.metadata as any).styles.text);
-    expect((variantsStyles.metadata as any).styles.text).toBeDefined();
+    expect(metadataAt(out, ['styles', 'text'])).toEqual(metadataAt(variantsStyles, ['styles', 'text']));
+    expect(metadataAt(variantsStyles, ['styles', 'text'])).toBeDefined();
   });
 
   it('carries non-array routes (stays in metadata)', () => {
     const out = roundTrip(syntheticAwkward);
-    expect((out.metadata as any).routes).toEqual((syntheticAwkward.metadata as any).routes);
+    expect(metadataAt(out, ['routes'])).toEqual(metadataAt(syntheticAwkward, ['routes']));
   });
 
   it('carries dynamic ports on nodes', () => {
@@ -195,19 +203,18 @@ describe('round-trip fidelity — assertion is sensitive to loss', () => {
     const components: ImportInput['components'] = {};
     for (const comp of commentsLarge.components) {
       const compPath = legacyNameToPath(comp.name);
-      const get = (p: string) => result.files.find((f) => f.relativePath === p)?.content as any;
-      const nodes = get(`components/${compPath}/nodes.json`);
+      const nodes = contentAt<NodesV2File>(result, `components/${compPath}/nodes.json`);
       if (nodes) delete nodes.comments; // <-- the simulated regression
       components[compPath] = {
-        component: get(`components/${compPath}/component.json`),
+        component: contentAt<ComponentV2File>(result, `components/${compPath}/component.json`),
         nodes,
-        connections: get(`components/${compPath}/connections.json`)
+        connections: contentAt<ConnectionsV2File>(result, `components/${compPath}/connections.json`)
       };
     }
     const damaged = importer.import({
-      project: result.files.find((f) => f.relativePath === 'nodegx.project.json')!.content as any,
-      registry: result.files.find((f) => f.relativePath === 'components/_registry.json')!.content as any,
-      styles: result.files.find((f) => f.relativePath === 'nodegx.styles.json')?.content as any,
+      project: contentAt<ProjectV2File>(result, 'nodegx.project.json'),
+      registry: contentAt<RegistryV2File>(result, 'components/_registry.json'),
+      styles: contentAt<StylesV2File>(result, 'nodegx.styles.json'),
       components
     }).project;
 

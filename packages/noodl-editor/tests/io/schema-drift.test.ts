@@ -15,7 +15,7 @@
  * @see dev-docs/tasks/phase-13-format-ai-substrate/NOTES.md
  */
 
-import { LegacyProject } from '../../src/editor/src/io/ProjectExporter';
+import { LegacyNode, LegacyProject } from '../../src/editor/src/io/ProjectExporter';
 
 import projectSchema from '../../src/editor/src/schemas/project-v2.schema.json';
 import nodesSchema from '../../src/editor/src/schemas/nodes.schema.json';
@@ -34,12 +34,21 @@ const FIXTURES: LegacyProject[] = [
 ];
 /* eslint-enable @typescript-eslint/no-var-requires */
 
-const schemaProps = (schema: any): string[] => Object.keys(schema.properties ?? {});
+/** The slice of a JSON Schema document this guard reads. */
+interface SchemaWithProperties {
+  properties?: Record<string, unknown>;
+}
+
+const schemaProps = (schema: SchemaWithProperties): string[] => Object.keys(schema.properties ?? {});
 const nodeDefProps = (): string[] => Object.keys(nodesSchema.definitions.node.properties);
 const variantDefProps = (): string[] => Object.keys(stylesSchema.definitions.variant.properties);
 
-/** Collect the union of own-property names across a set of objects. */
-function keyUnion(objects: Array<Record<string, unknown> | undefined>): Set<string> {
+/**
+ * Collect the union of own-property names across a set of objects. Takes
+ * `object`, not `Record<string, unknown>`: the model interfaces have no index
+ * signature, so the narrower type forced every caller to cast.
+ */
+function keyUnion(objects: Array<object | undefined>): Set<string> {
   const keys = new Set<string>();
   for (const o of objects) {
     if (o) for (const k of Object.keys(o)) keys.add(k);
@@ -47,7 +56,7 @@ function keyUnion(objects: Array<Record<string, unknown> | undefined>): Set<stri
   return keys;
 }
 
-function walkNodes(roots: any[] | undefined, visit: (n: any) => void): void {
+function walkNodes(roots: LegacyNode[] | undefined, visit: (n: LegacyNode) => void): void {
   for (const n of roots ?? []) {
     visit(n);
     walkNodes(n.children, visit);
@@ -70,7 +79,7 @@ function expectRepresentable(level: string, observed: Set<string>, allowed: stri
 
 describe('schema drift guard', () => {
   it('every project-level field is representable', () => {
-    const observed = keyUnion(FIXTURES as any);
+    const observed = keyUnion(FIXTURES);
     // Schema props + fields decomposed into their own files.
     const allowed = [
       ...schemaProps(projectSchema),
@@ -81,7 +90,7 @@ describe('schema drift guard', () => {
   });
 
   it('every component-level field is representable', () => {
-    const observed = keyUnion(FIXTURES.flatMap((p) => p.components) as any);
+    const observed = keyUnion(FIXTURES.flatMap((p) => p.components));
     const allowed = [
       ...schemaProps(require('../../src/editor/src/schemas/component.schema.json')),
       'graph' // → nodes.json + connections.json
@@ -91,7 +100,7 @@ describe('schema drift guard', () => {
 
   it('every graph-level field is representable', () => {
     const graphs = FIXTURES.flatMap((p) => p.components.map((c) => c.graph));
-    const observed = keyUnion(graphs as any);
+    const observed = keyUnion(graphs);
     // roots/connections are the graph body; visualRoots/comments live in nodes.json.
     const allowed = ['roots', 'connections', ...schemaProps(nodesSchema)];
     expectRepresentable('graph', observed, allowed);
@@ -108,14 +117,16 @@ describe('schema drift guard', () => {
   });
 
   it('every variant-level field is representable (accounting for the stateParamaters typo)', () => {
-    const observed = keyUnion(FIXTURES.flatMap((p) => p.variants ?? []) as any);
+    const observed = keyUnion(FIXTURES.flatMap((p) => p.variants ?? []));
     // Legacy uses the misspelling `stateParamaters`; v2 stores it as `stateParameters`.
     const allowed = [...variantDefProps(), 'stateParamaters'];
     expectRepresentable('variant', observed, allowed);
   });
 
   it('every metadata.styles sub-key is representable (colors + text→textStyles)', () => {
-    const styleObjs = FIXTURES.map((p) => (p.metadata as any)?.styles).filter(Boolean);
+    const styleObjs = FIXTURES.map((p) => p.metadata?.styles).filter(
+      (styles): styles is object => typeof styles === 'object' && styles !== null
+    );
     const observed = keyUnion(styleObjs);
     // Legacy `text` maps to schema `textStyles`; `colors` maps directly.
     const allowed = ['colors', 'text'];

@@ -21,6 +21,17 @@ import {
   LegacyNode,
   legacyNameToPath
 } from '../../src/editor/src/io/ProjectExporter';
+import type {
+  ComponentV2File,
+  ConnectionsV2File,
+  NodesV2File,
+  ProjectV2File,
+  RegistryV2File,
+  RoutesV2File,
+  StylesV2File
+} from '../../src/editor/src/schemas';
+
+import { contentAt, metadataAt } from './v2-files';
 
 // ---- Fixtures ----------------------------------------------------------------
 
@@ -48,21 +59,18 @@ function exportToImportInput(project: LegacyProject): ImportInput {
   const exporter = new ProjectExporter();
   const result = exporter.export(project);
 
-  const getContent = (path: string) =>
-    result.files.find((f) => f.relativePath === path)?.content;
-
-  const projectFile = getContent('nodegx.project.json') as any;
-  const registryFile = getContent('components/_registry.json') as any;
-  const routesFile = getContent('nodegx.routes.json') as any;
-  const stylesFile = getContent('nodegx.styles.json') as any;
+  const projectFile = contentAt<ProjectV2File>(result, 'nodegx.project.json');
+  const registryFile = contentAt<RegistryV2File>(result, 'components/_registry.json');
+  const routesFile = contentAt<RoutesV2File>(result, 'nodegx.routes.json');
+  const stylesFile = contentAt<StylesV2File>(result, 'nodegx.styles.json');
 
   const components: ImportInput['components'] = {};
 
   for (const comp of project.components) {
     const compPath = legacyNameToPath(comp.name);
-    const componentFile = getContent(`components/${compPath}/component.json`) as any;
-    const nodesFile = getContent(`components/${compPath}/nodes.json`) as any;
-    const connectionsFile = getContent(`components/${compPath}/connections.json`) as any;
+    const componentFile = contentAt<ComponentV2File>(result, `components/${compPath}/component.json`);
+    const nodesFile = contentAt<NodesV2File>(result, `components/${compPath}/nodes.json`);
+    const connectionsFile = contentAt<ConnectionsV2File>(result, `components/${compPath}/connections.json`);
 
     if (componentFile && nodesFile && connectionsFile) {
       components[compPath] = { component: componentFile, nodes: nodesFile, connections: connectionsFile };
@@ -243,7 +251,7 @@ describe('ProjectImporter', () => {
     it('reconstructs settings', () => {
       const input = exportToImportInput(makeProject({ settings: { bodyScroll: true } }));
       const { project } = importer.import(input);
-      expect((project.settings as any)?.bodyScroll).toBe(true);
+      expect(project.settings?.bodyScroll).toBe(true);
     });
 
     it('returns no warnings for clean input', () => {
@@ -264,7 +272,7 @@ describe('ProjectImporter', () => {
       const routes = [{ path: '/home', component: 'pages/Home' }];
       const input = exportToImportInput(makeProject({ metadata: { routes } }));
       const { project } = importer.import(input);
-      expect((project.metadata as any)?.routes).toEqual(routes);
+      expect(project.metadata?.routes).toEqual(routes);
     });
 
     it('restores styles.colors from nodegx.styles.json into metadata', () => {
@@ -272,7 +280,7 @@ describe('ProjectImporter', () => {
         metadata: { styles: { colors: { primary: '#3B82F6' } } }
       }));
       const { project } = importer.import(input);
-      expect((project.metadata as any)?.styles?.colors).toEqual({ primary: '#3B82F6' });
+      expect(metadataAt(project, ['styles', 'colors'])).toEqual({ primary: '#3B82F6' });
     });
 
     it('restores non-styles non-routes metadata keys', () => {
@@ -280,7 +288,7 @@ describe('ProjectImporter', () => {
         metadata: { cloudservices: { id: 'abc' }, routes: [] }
       }));
       const { project } = importer.import(input);
-      expect((project.metadata as any)?.cloudservices).toEqual({ id: 'abc' });
+      expect(project.metadata?.cloudservices).toEqual({ id: 'abc' });
     });
   });
 
@@ -440,7 +448,7 @@ describe('Round-trip: export -> import', () => {
 
   it('preserves settings', () => {
     const settings = { bodyScroll: true, favicon: '/favicon.ico' };
-    expect((roundTrip(makeProject({ settings })).settings as any)?.bodyScroll).toBe(true);
+    expect(roundTrip(makeProject({ settings })).settings?.bodyScroll).toBe(true);
   });
 
   it('preserves component count', () => {
@@ -497,13 +505,13 @@ describe('Round-trip: export -> import', () => {
   it('preserves routes in metadata', () => {
     const routes = [{ path: '/home', component: 'pages/Home' }, { path: '/profile', component: 'pages/Profile' }];
     const result = roundTrip(makeProject({ metadata: { routes } }));
-    expect((result.metadata as any)?.routes).toEqual(routes);
+    expect(result.metadata?.routes).toEqual(routes);
   });
 
   it('preserves styles colors in metadata', () => {
     const colors = { primary: '#3B82F6', secondary: '#10B981' };
     const result = roundTrip(makeProject({ metadata: { styles: { colors } } }));
-    expect((result.metadata as any)?.styles?.colors).toEqual(colors);
+    expect(metadataAt(result, ['styles', 'colors'])).toEqual(colors);
   });
 
   it('preserves variants with stateParamaters typo', () => {
@@ -517,7 +525,7 @@ describe('Round-trip: export -> import', () => {
 
   it('preserves non-styles non-routes metadata', () => {
     const result = roundTrip(makeProject({ metadata: { cloudservices: { id: 'abc' } } }));
-    expect((result.metadata as any)?.cloudservices).toEqual({ id: 'abc' });
+    expect(result.metadata?.cloudservices).toEqual({ id: 'abc' });
   });
 
   it('handles empty project cleanly', () => {
