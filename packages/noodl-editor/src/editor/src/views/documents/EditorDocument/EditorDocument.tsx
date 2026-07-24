@@ -545,8 +545,8 @@ function createKeyboardCommands(nodeGraph: NodeGraphEditor) {
           fill: true,
           width: 150,
           height: 100,
-          x: nodeGraph.latestMousePos.x,
-          y: nodeGraph.latestMousePos.y
+          x: nodeGraph.getLatestMousePos().x,
+          y: nodeGraph.getLatestMousePos().y
         },
         { undo: true, label: 'add comment', focusComment: true }
       ),

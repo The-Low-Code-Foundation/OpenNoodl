@@ -362,14 +362,14 @@ export class NodeGraphEditorNode {
     this.rotatingIcon = null;
 
     if (!health.healthy) {
-      this.icon = this.owner?.warningIcon;
-    } else if (this.model.type instanceof ComponentModel && this.owner?.componentIcon) {
-      this.icon = this.owner?.componentIcon;
+      this.icon = this.owner?.icons.warning;
+    } else if (this.model.type instanceof ComponentModel && this.owner?.icons.component) {
+      this.icon = this.owner?.icons.component;
     } else if (this.id === ProjectModel.instance.getRootNode()?.id) {
-      this.icon = this.owner?.homeIcon;
+      this.icon = this.owner?.icons.home;
     } else if (this.model.metadata?.AiAssistant) {
-      this.icon = this.owner?.aiAssistantInnerIcon;
-      this.rotatingIcon = this.owner?.aiAssistantOuterIcon;
+      this.icon = this.owner?.icons.aiAssistantInner;
+      this.rotatingIcon = this.owner?.icons.aiAssistantOuter;
       this.iconSize = 25;
       if (AiAssistantModel.instance.getProcessingNodeIds().includes(this.id)) {
         this.iconRotation = performance.now() / 400;

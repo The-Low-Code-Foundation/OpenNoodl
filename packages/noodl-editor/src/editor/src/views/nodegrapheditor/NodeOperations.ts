@@ -42,12 +42,12 @@ export class NodeOperations {
   }
 
   detachNode(node) {
-    this.editor.model.detachNode(node, { undo: this.editor.dragNodesUndoGroup });
+    this.editor.model.detachNode(node, { undo: this.editor.interaction.dragNodesUndoGroup });
   }
 
   attachNode(parent, node, index) {
     this.editor.model.attachNode(parent, node, index, {
-      undo: this.editor.dragNodesUndoGroup
+      undo: this.editor.interaction.dragNodesUndoGroup
     });
   }
 
@@ -112,7 +112,7 @@ export class NodeOperations {
     // Make sure we can undo move nodes
     if (from.x !== to.x || from.y !== to.y) {
       move(to);
-      editor.dragNodesUndoGroup.push({
+      editor.interaction.dragNodesUndoGroup.push({
         do: function () {
           move(to);
         },

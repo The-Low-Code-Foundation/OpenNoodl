@@ -11,7 +11,7 @@ import type { NodeGraphEditor } from '../nodegrapheditor';
  * dropped on a target node (PLAT-001 wave 2 extraction — body moved verbatim
  * from nodegrapheditor.ts openConnectionPanels/closeConnectionPanels).
  *
- * Reads the in-flight connection from `editor.draggingConnection` (owned by
+ * Reads the in-flight connection from `editor.interaction.draggingConnection` (owned by
  * InteractionController) and commits the chosen ports to the model with undo.
  * The React roots go through the editor's OverlayHost so they are covered by
  * dispose.
@@ -46,8 +46,8 @@ export class ConnectionPopups {
 
       const panAndScale = _this.getPanAndScale();
 
-      const fromNode = _this.draggingConnection.fromNode;
-      const toNode = _this.draggingConnection.toNode;
+      const fromNode = _this.interaction.draggingConnection.fromNode;
+      const toNode = _this.interaction.draggingConnection.toNode;
 
       const fromNodeXPos = fromNode.global.x - 10;
 

@@ -252,11 +252,57 @@ retirement.
 
 ### Remaining work (next waves)
 
-1. Retire accessor-compat fields by migrating the comment layer and drag
-   helpers to explicit editor methods, then shrink the owner contract.
-   (~215 lines of accessors + lets some delegating stubs go too.)
+1. ~~Retire accessor-compat fields~~ — done in wave 3 (§8).
 2. **`NodeGraphEditorNode.ts` (1,290)** is still over the ceiling; splitting
    paint from hit/measure inside the node view is the likely seam, but only
    worth it with the characterisation suite green as the gate.
 3. Manual regression matrix + large-graph performance check (task Testing
    Plan) before the task is closed.
+
+## 8. As-built record (third wave — accessor retirement + coordinator ≤800, 2026-07-24)
+
+Coordinator: `nodegrapheditor.ts` **1,274 → 790**. Two parts:
+
+**Accessor-compat retirement.** The wave-1 accessors (17 interaction fields,
+`panAndScale`/`graphAABB`, 5 icon getters — ~175 lines) are gone. Callers
+migrated to the owning module instead:
+
+- Wave-2 modules now read `editor.interaction.*` directly (EditorClipboard
+  `latestMousePos`; NodeOperations `dragNodesUndoGroup`; SelectionActions
+  `draggingConnection`/`leftButtonIsDoubleClicked`/`lastMultiselected`;
+  ConnectionPopups `draggingConnection`).
+- True external readers got explicit methods: `commentlayer.ts` →
+  `editor.isSpaceKeyDown()`, `EditorDocument.tsx` → `editor.getLatestMousePos()`.
+- Scene items read icons as `owner.icons.home` etc. (the `icons` field is the
+  contract now, not per-icon getters).
+- `canvas-characterisation.spec.js` reads `editor.interaction.*` /
+  `editor.viewport.*` — same assertions, new field paths. The unit suites
+  (`tests/canvas/*.test.ts`) already targeted the modules directly and needed
+  no changes.
+- Internal coordinator uses went to `this.interaction.*` / `this.viewport.*`;
+  the constructor's `graphAABB` init was dropped (CanvasViewport already
+  initialises it) as was `mouseEventsEnabled = true` (controller default).
+
+**Three more collaborators + one move**, same pattern as wave 2 (bodies moved
+verbatim, editor keeps delegating stubs for every public/owner-contract name):
+
+| File | Lines | Contents |
+|---|---|---|
+| `ViewportActions.ts` | 141 | resize, moveRoots, updateZoomLevel, centerToFit family, get/set/clampPanAndScale, calculateNodesAABB — every pan/zoom change funnels through here to sync comment layer + overlays |
+| `CanvasPainter.ts` | 122 | layout, calculateAABB, paint (FrameState assembly), node-animation rAF loop; scheduling (relayout/repaint/layoutAndPaint) stays on the editor |
+| `CanvasDOMBindings.ts` | 77 | bindCanvas body: DPI sizing + jQuery mouse/wheel bindings (`bindNodeGraphCanvas(editor)`) |
+| `ModelBindings.reset()` | — | the editor's `reset()` body (the inverse of bindModel) moved next to bindModel |
+
+Also: `registerRenderEventBindings(editor)` in `EditorEventBindings.ts` took
+the six render()-time model/library subscriptions (AiAssistant animation
+start/stop, warnings repaint, node-library re-resolve, port add/remove,
+module/type-removed switch-away). Same listener-context rule as ever.
+
+What remains in the 790-line coordinator: field/collaborator declarations
+(~160), constructor + dispose + render (~120), `switchToComponent` (~95,
+genuine coordination), repaint/relayout/layoutAndPaint scheduling,
+`verifyWithModel`, undo/redo, and ~65 delegating stubs — the documented
+public API + owner contract. Deliberately *not* moved: undo/redo (trivial,
+no better home), the scheduling methods (hot path, scene items call them
+constantly), `switchToComponent` (touches nav history, comment layer,
+highlights, viewport and model binding — it *is* coordination).

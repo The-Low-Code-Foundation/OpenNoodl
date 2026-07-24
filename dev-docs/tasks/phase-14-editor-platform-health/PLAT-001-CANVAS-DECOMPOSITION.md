@@ -149,11 +149,11 @@ Characterisation tests come first. Before extracting anything, write tests that 
 - [x] Extract viewport → hit-testing → rendering → interaction (landed as one validated wave; see NOTES §6 on commit granularity)
 - [x] Unify overlay hosting (`canvas/OverlayHost.ts`); document the public API (`canvas/README.md`)
 - [x] Wave 2 coordinator slim-down: clipboard, connection popups, toolbar/menus, model binding, overlay glue, selection, node ops, inspectors, event wiring → 2,681 → 1,274 (see NOTES §7)
-- [ ] Coordinator ≤800: wave 3 — retire the accessor-compat layer by migrating the comment layer / drag helpers (NOTES §7 remaining work)
+- [x] Coordinator ≤800: wave 3 — accessor-compat layer retired; ViewportActions / CanvasPainter / CanvasDOMBindings extracted; 1,274 → 790 (see NOTES §8)
 - [ ] Full manual regression + large-graph performance check
 - [ ] CHANGELOG with before/after line counts
 
-### Status 2026-07-24 (waves 1+2 landed)
+### Status 2026-07-24 (waves 1+2+3 landed)
 
 Wave 1: `nodegrapheditor.ts` 3,481 → 2,681; `views/nodegrapheditor/canvas/`
 modules (InteractionController 568, CanvasRenderer 269, CanvasViewport 203,
@@ -166,4 +166,12 @@ ConnectionPopups, EditorEventBindings, SelectionActions, NodeOperations,
 InspectorActions, canvas/NodeSelector — see NOTES §7). All extractions keep
 the editor as event-listener context and leave delegating stubs for the
 documented public API / owner contract. No behaviour change intended.
-Remaining to ≤800: the accessor-compat layer (wave 3).
+
+Wave 3: coordinator 1,274 → **790** (target met). Accessor-compat layer
+retired — interaction/viewport state is read from `editor.interaction` /
+`editor.viewport`; comment layer and EditorDocument got explicit methods
+(`isSpaceKeyDown()`, `getLatestMousePos()`); scene items read `owner.icons.*`.
+Three further collaborators (ViewportActions 141, CanvasPainter 122,
+CanvasDOMBindings 77), `reset()` → ModelBindings, render()-time subscriptions
+→ EditorEventBindings. Suite 965/0 after the wave (see NOTES §8). Remaining:
+manual regression matrix + large-graph perf check, then CHANGELOG.

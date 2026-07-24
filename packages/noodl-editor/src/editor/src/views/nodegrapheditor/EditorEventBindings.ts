@@ -1,3 +1,6 @@
+import _ from 'underscore';
+
+import { AiAssistantEvent, AiAssistantModel } from '@noodl-models/AiAssistant/AiAssistantModel';
 import { SidebarModel } from '@noodl-models/sidebar';
 import { SidebarModelEvent } from '@noodl-models/sidebar/sidebarmodel';
 import { KeyCode } from '@noodl-utils/keyboard/KeyCode';
@@ -5,7 +8,9 @@ import { KeyboardCommand } from '@noodl-utils/keyboardhandler';
 
 import { EventDispatcher } from '../../../../shared/utils/EventDispatcher';
 import { ComponentModel } from '../../models/componentmodel';
+import { NodeLibrary } from '../../models/nodelibrary';
 import { ProjectModel } from '../../models/projectmodel';
+import { WarningsModel } from '../../models/warningsmodel';
 import { SnapSpacing } from './canvas/types';
 
 import type { NodeGraphEditor } from '../nodegrapheditor';
@@ -21,6 +26,82 @@ import type { NodeGraphEditor } from '../nodegrapheditor';
  * The returned keyboard commands are registered and later deregistered by
  * the editor.
  */
+/**
+ * The model/library subscriptions previously set up inline in
+ * NodeGraphEditor.render() (PLAT-001 wave 3 — bodies moved verbatim). Same
+ * listener-context rule as above: every subscription binds with the editor as
+ * context so dispose's `off(this)` calls detach them.
+ */
+export function registerRenderEventBindings(editor: NodeGraphEditor): void {
+  //bind ai assistant
+  AiAssistantModel.instance.on(
+    AiAssistantEvent.ProcessingUpdated,
+    () => {
+      AiAssistantModel.instance.getProcessingNodeIds().length
+        ? editor.startNodeAnimations()
+        : editor.stopNodeAnimations();
+    },
+    editor
+  );
+
+  // Rerender if warnings model changed
+  WarningsModel.instance.on(
+    'warningsChanged',
+    () => {
+      editor.repaint();
+    },
+    editor
+  );
+
+  // When the node library is changed we may need to rerender
+  NodeLibrary.instance.on(
+    ['moduleRegistered', 'moduleUnregistered', 'typeAdded', 'typeRemoved', 'libraryUpdated'],
+    () => {
+      // We must re-resolve ports as they could have changed
+      _.each(editor.connections, function (c) {
+        c.resolvePorts();
+      });
+
+      // Relayout and paint
+      editor.relayout();
+      editor.repaint();
+    },
+    editor
+  );
+
+  // May change warning status
+  EventDispatcher.instance.on(
+    ['Model.portAdded', 'Model.portRemoved'],
+    () => {
+      editor.relayout();
+      editor.repaint();
+    },
+    editor
+  );
+
+  // The module for the graph we are editing has been unregistered
+  NodeLibrary.instance.on(
+    'moduleUnregistered',
+    (args) => {
+      if (editor.model && args.model === editor.model.owner.owner) {
+        editor.switchToComponent();
+      }
+    },
+    editor
+  );
+
+  // The component we are editing has been removed
+  NodeLibrary.instance.on(
+    'typeRemoved',
+    (args) => {
+      if (editor.model && args.model === editor.model.owner) {
+        editor.switchToComponent();
+      }
+    },
+    editor
+  );
+}
+
 export function registerEditorEventBindings(editor: NodeGraphEditor): KeyboardCommand[] {
   EventDispatcher.instance.on(
     ['DebugInspectorConnectionPulseChanged'],

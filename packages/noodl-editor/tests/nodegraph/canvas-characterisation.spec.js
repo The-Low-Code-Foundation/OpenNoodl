@@ -139,7 +139,7 @@ describe('Canvas characterisation (PLAT-001)', function () {
 
   it('getPanAndScale with no pan set centers the root nodes at scale 1', function () {
     addNodes();
-    editor.panAndScale = undefined;
+    editor.viewport.panAndScale = undefined;
 
     let cx = 0;
     let cy = 0;
@@ -162,7 +162,7 @@ describe('Canvas characterisation (PLAT-001)', function () {
     expect(ps.y).toBeCloseTo(expected.y, 6);
 
     // and the fallback stores the result
-    expect(editor.panAndScale).toEqual(ps);
+    expect(editor.viewport.panAndScale).toEqual(ps);
   });
 
   it('relativeCoordsToNodeGraphCords divides by scale then subtracts pan', function () {
@@ -211,7 +211,7 @@ describe('Canvas characterisation (PLAT-001)', function () {
 
   it('clampPanAndScale keeps 100 visible pixels of graph at each border', function () {
     addNodes();
-    const aabb = editor.graphAABB;
+    const aabb = editor.viewport.graphAABB;
     const canvasWidth = editor.canvas.width / editor.canvas.ratio;
 
     // Panned far right: clamped so the graph stays 100px inside the right edge
@@ -301,12 +301,12 @@ describe('Canvas characterisation (PLAT-001)', function () {
     expect(editor.selector.isActive(n3)).toBe(false);
 
     // union adds the third
-    editor.lastMultiselected = [...editor.selector.nodes];
+    editor.interaction.lastMultiselected = [...editor.selector.nodes];
     editor.multiselectNodes(0, n3.global.y, 400, n3.global.y + 5, 'union');
     expect(editor.selector.nodes.length).toBe(3);
 
     // reduce removes the first two again
-    editor.lastMultiselected = [...editor.selector.nodes];
+    editor.interaction.lastMultiselected = [...editor.selector.nodes];
     editor.multiselectNodes(0, 0, 400, midY, 'reduce');
     expect(editor.selector.nodes.length).toBe(1);
     expect(editor.selector.isActive(n3)).toBe(true);
@@ -319,7 +319,7 @@ describe('Canvas characterisation (PLAT-001)', function () {
     editor.setPanAndScale({ scale: 1, x: 0, y: 0 });
 
     mouse('down', 300, 700, { button: 2 });
-    expect(editor.panMouseDown).toEqual({ x: 300, y: 700, pageX: 300, pageY: 700 });
+    expect(editor.interaction.panMouseDown).toEqual({ x: 300, y: 700, pageX: 300, pageY: 700 });
 
     mouse('move', 290, 707, { button: 2 });
     const ps = editor.getPanAndScale();
@@ -327,7 +327,7 @@ describe('Canvas characterisation (PLAT-001)', function () {
     expect(ps.y).toBe(7);
 
     mouse('up', 290, 707, { button: 2 });
-    expect(editor.panMouseDown).toBeUndefined();
+    expect(editor.interaction.panMouseDown).toBeUndefined();
   });
 
   it('space+left-mouse drag also pans', function () {
@@ -335,7 +335,7 @@ describe('Canvas characterisation (PLAT-001)', function () {
     editor.setPanAndScale({ scale: 1, x: 0, y: 0 });
 
     mouse('down', 300, 700, { button: 0, spaceKey: true });
-    expect(editor.panMouseDown).toBeTruthy();
+    expect(editor.interaction.panMouseDown).toBeTruthy();
 
     mouse('move', 305, 695, { button: 0, spaceKey: true });
     const ps = editor.getPanAndScale();
@@ -343,7 +343,7 @@ describe('Canvas characterisation (PLAT-001)', function () {
     expect(ps.y).toBe(-5);
 
     mouse('up', 305, 695, { button: 0, spaceKey: true });
-    expect(editor.panMouseDown).toBeUndefined();
+    expect(editor.interaction.panMouseDown).toBeUndefined();
   });
 
   it('left-mouse drag on empty space box-selects nodes and keeps them selected on up', function () {
@@ -352,14 +352,14 @@ describe('Canvas characterisation (PLAT-001)', function () {
 
     mouse('move', 350, 700);
     mouse('down', 350, 700);
-    expect(editor.multiselectMouseDown).toEqual({ x: 350, y: 700 });
+    expect(editor.interaction.multiselectMouseDown).toEqual({ x: 350, y: 700 });
 
     mouse('move', 30, 60);
     expect(editor.selector.nodes.length).toBe(3);
 
     mouse('up', 30, 60);
-    expect(editor.multiselectMouseDown).toBeUndefined();
-    expect(editor.multiselectMouseMove).toBeUndefined();
+    expect(editor.interaction.multiselectMouseDown).toBeUndefined();
+    expect(editor.interaction.multiselectMouseMove).toBeUndefined();
     expect(editor.selector.nodes.length).toBe(3);
   });
 
@@ -378,7 +378,7 @@ describe('Canvas characterisation (PLAT-001)', function () {
     expect(editor.highlighted).toBe(n1);
 
     mouse('down', cx, cy);
-    expect(editor.draggingNodes).toEqual([n1]);
+    expect(editor.interaction.draggingNodes).toEqual([n1]);
 
     mouse('move', cx + 30, cy + 40);
     expect(n1.x).toBe(49 + 30);
@@ -388,7 +388,7 @@ describe('Canvas characterisation (PLAT-001)', function () {
     expect(n1.model.y).toBe(75);
 
     mouse('up', cx + 30, cy + 40);
-    expect(editor.draggingNodes).toBeUndefined();
+    expect(editor.interaction.draggingNodes).toBeUndefined();
     expect(n1.model.x).toBe(49 + 30);
     expect(n1.model.y).toBe(75 + 40);
 
@@ -412,7 +412,7 @@ describe('Canvas characterisation (PLAT-001)', function () {
 
     expect(n1.model.x).toBe(49);
     expect(n1.model.y).toBe(75);
-    expect(editor.draggingNodes).toBeUndefined();
+    expect(editor.interaction.draggingNodes).toBeUndefined();
   });
 
   it('dragging from the connection area starts a connection drag and releases on empty space', function () {
@@ -428,15 +428,15 @@ describe('Canvas characterisation (PLAT-001)', function () {
     expect(n1.connectionDragAreaHighlighted || n1.borderHighlighted).toBe(true);
 
     mouse('down', hx, hy);
-    expect(editor.draggingConnection).toBeDefined();
-    expect(editor.draggingConnection.fromNode).toBe(n1);
+    expect(editor.interaction.draggingConnection).toBeDefined();
+    expect(editor.interaction.draggingConnection.fromNode).toBe(n1);
 
     mouse('move', 350, 700);
-    expect(editor.draggingConnection.pos).toEqual({ x: 350, y: 700 });
-    expect(editor.draggingConnection.toNode).toBeUndefined();
+    expect(editor.interaction.draggingConnection.pos).toEqual({ x: 350, y: 700 });
+    expect(editor.interaction.draggingConnection.toNode).toBeUndefined();
 
     mouse('up', 350, 700);
-    expect(editor.draggingConnection).toBeUndefined();
+    expect(editor.interaction.draggingConnection).toBeUndefined();
   });
 
   it('latestMousePos tracks the graph-space mouse position under pan and zoom', function () {
@@ -444,7 +444,7 @@ describe('Canvas characterisation (PLAT-001)', function () {
     editor.setPanAndScale({ scale: 0.5, x: 100, y: 50 });
 
     mouse('move', 200, 400);
-    expect(editor.latestMousePos).toEqual({ x: 300, y: 750 });
+    expect(editor.interaction.latestMousePos).toEqual({ x: 300, y: 750 });
   });
 
   it('verifyWithModel holds for the base setup', function () {

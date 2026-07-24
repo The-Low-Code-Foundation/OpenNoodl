@@ -21,7 +21,7 @@ exist so its responsibilities are separated and individually testable.
 | `InteractionController.ts` | Input state machines: mouse dispatch, double-click, node/connection drag, rect multiselect, pan, wheel routing. Owns all interaction state |
 | `OverlayHost.ts` | The one mechanism for React roots over the canvas: named slots for long-lived overlays, handles for ephemeral ones, unmount-all on dispose |
 
-### `nodegrapheditor/` — coordinator collaborators (wave 2)
+### `nodegrapheditor/` — coordinator collaborators (waves 2–3)
 
 Each holds a back-reference to the editor and is reached through the editor's
 delegating methods (the public names below stay on `NodeGraphEditor`). Every
@@ -38,7 +38,10 @@ context, so `reset()`/`dispose()` teardown is unchanged.
 | `NodeContextMenu.ts` | Floating node toolbar + right-click context menu |
 | `ConnectionPopups.ts` | The two connection port-picker popouts on connection drop |
 | `OverlayViews.ts` | The long-lived overlays: canvas tabs, banner, highlight/execution overlays, component-trail title, canvas show/hide |
-| `EditorEventBindings.ts` | Editor-wide EventDispatcher/Sidebar subscriptions and canvas keyboard commands |
+| `EditorEventBindings.ts` | Editor-wide EventDispatcher/Sidebar/model-library subscriptions and canvas keyboard commands |
+| `ViewportActions.ts` | Pan/zoom side effects: every viewport change funnels through here to sync the comment layer and overlays, clamp against graph bounds, and schedule repaints |
+| `CanvasPainter.ts` | Layout/paint pipeline: node measuring + positioning, graph AABB, per-frame `FrameState` assembly for `CanvasRenderer`, the node-animation rAF loop |
+| `CanvasDOMBindings.ts` | Canvas element setup: device-pixel-ratio sizing and the jQuery mouse/wheel bindings that feed `editor.mouse()` |
 
 Scene item views (`../NodeGraphEditorNode.ts`, `../NodeGraphEditorConnection.ts`)
 keep their own local paint and hit logic; they reach the editor through the
@@ -67,7 +70,12 @@ JavaScript lets you reach it.
 **Input forwarding** (used by the comment layer, which shares the canvas
 surface) — `mouse(type, pos, evt, args?)`, `handleMouseWheelEvent(event, args?)`,
 `setMouseEventsEnabled(enabled)`, `startDraggingNodes(nodes)`,
-`spaceKeyDown`, `latestMousePos`, `topLeftCanvasPos`.
+`isSpaceKeyDown()`, `getLatestMousePos()`, `topLeftCanvasPos`.
+
+Interaction and viewport *state* is not part of the public surface: it lives
+on `editor.interaction` (InteractionController) and `editor.viewport`
+(CanvasViewport). The wave-1 accessor-compat layer that mirrored those fields
+onto the editor was retired in wave 3 — read the owning module directly.
 
 **Events** (via `View`'s `on`/`off`) — `'activeComponentChanged'`,
 `'deselect'`, `'readOnlyNodeClicked'`.
@@ -80,8 +88,8 @@ surface) — `mouse(type, pos, evt, args?)`, `handleMouseWheelEvent(event, args?
 `highlightedConnection` / `setHighlightedConnection`, `deleteModeConnection`,
 `clearDeleteModeTimer`, `isHighlighted(node)`, `connections`, `el`,
 `readOnly`, `startDraggingNode` / `startDraggingConnection`,
-`addNodeToSelection`, `removeConnection`, and the icon getters
-(`homeIcon`, `componentIcon`, `warningIcon`, `aiAssistant*Icon`).
+`addNodeToSelection`, `removeConnection`, and the icon images
+(`icons.home`, `icons.component`, `icons.warning`, `icons.aiAssistant*`).
 Don't grow this list — new needs should go through an explicit method.
 
 ## Overlay contract

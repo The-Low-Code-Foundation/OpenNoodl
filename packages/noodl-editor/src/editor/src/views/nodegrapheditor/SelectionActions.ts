@@ -38,11 +38,11 @@ export class SelectionActions {
     this.deselect(args);
 
     // Clear dragging connection
-    if (editor.draggingConnection) {
+    if (editor.interaction.draggingConnection) {
       editor.closeConnectionPanels();
-      editor.draggingConnection.fromNode.borderHighlighted = false;
-      editor.draggingConnection.toNode.borderHighlighted = false;
-      editor.draggingConnection = undefined;
+      editor.interaction.draggingConnection.fromNode.borderHighlighted = false;
+      editor.interaction.draggingConnection.toNode.borderHighlighted = false;
+      editor.interaction.draggingConnection = undefined;
     }
 
     // Clear any connections that are being deleted
@@ -98,7 +98,7 @@ export class SelectionActions {
     SidebarModel.instance.switchToNode(node.model);
 
     // Handle double-click navigation
-    if (editor.leftButtonIsDoubleClicked) {
+    if (editor.interaction.leftButtonIsDoubleClicked) {
       if (node.model.type instanceof ComponentModel) {
         editor.switchToComponent(node.model.type, { pushHistory: true });
       } else {
@@ -131,7 +131,7 @@ export class SelectionActions {
 
     // Select all nodes with a vertex inside of the multiselect area
     const selected = HitTester.nodesInRect(editor.roots, selectRect);
-    editor.selector.select(HitTester.resolveMultiselect(mode, editor.lastMultiselected, selected));
+    editor.selector.select(HitTester.resolveMultiselect(mode, editor.interaction.lastMultiselected, selected));
   }
 
   isHighlighted(node) {

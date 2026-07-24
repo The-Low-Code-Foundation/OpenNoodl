@@ -241,8 +241,8 @@ export class EditorClipboard {
 
     this.insertNodeSet({
       nodeset: ns,
-      x: this.editor.latestMousePos.x,
-      y: this.editor.latestMousePos.y,
+      x: this.editor.interaction.latestMousePos.x,
+      y: this.editor.interaction.latestMousePos.y,
       toastMessage: 'Paste'
     });
   }

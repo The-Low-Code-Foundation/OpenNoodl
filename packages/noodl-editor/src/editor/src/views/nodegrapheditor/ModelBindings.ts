@@ -23,6 +23,44 @@ import type { NodeGraphEditor } from '../nodegrapheditor';
 export class ModelBindings {
   constructor(private editor: NodeGraphEditor) {}
 
+  /** Tear down all views and unbind the current model (the inverse of bindModel). */
+  reset() {
+    const editor = this.editor;
+
+    editor.clearSelection({ disableHidePanels: true });
+    editor.highlighted && ViewerConnection.instance.sendNodeHighlighted(editor.highlighted.model, false);
+    editor.highlighted = undefined; // This is not cleared in clearSelection
+
+    // Delete existing nodes and connections
+    while (editor.roots.length > 0) {
+      const root = editor.roots[0];
+      editor.removeRoot(root);
+      root.destruct();
+    }
+
+    // Remove all connections
+    while (editor.connections.length > 0) {
+      const con = editor.connections[0];
+      con.disconnect(con);
+    }
+
+    // Remove all debug inspectors
+    while (editor.inspectors.length > 0) {
+      editor.removeInspector(editor.inspectors[0]);
+    }
+
+    if (editor.model) {
+      // Unbind from current model
+      editor.model.off(editor);
+      editor.model.commentsModel.off(editor);
+      for (const i in editor.model.roots) {
+        editor.model.roots[i].forEach((model) => {
+          this.unbindNodeModel(model);
+        });
+      }
+    }
+  }
+
   bindModel(model?: NodeGraphModel) {
     const _this = this.editor;
     const owner = this.editor;

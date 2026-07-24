@@ -1,9 +1,7 @@
-import _ from 'underscore';
-
-import { AiAssistantEvent, AiAssistantModel } from '@noodl-models/AiAssistant/AiAssistantModel';
+import { AiAssistantModel } from '@noodl-models/AiAssistant/AiAssistantModel';
 import { RuntimeType } from '@noodl-models/nodelibrary/NodeLibraryData';
 import { SidebarModel } from '@noodl-models/sidebar';
-import { UndoQueue, UndoActionGroup } from '@noodl-models/undo-queue-model';
+import { UndoQueue } from '@noodl-models/undo-queue-model';
 import KeyboardHandler, { KeyboardCommand } from '@noodl-utils/keyboardhandler';
 import { getComponentModelRuntimeType } from '@noodl-utils/NodeGraph';
 
@@ -24,7 +22,6 @@ import { HighlightManager } from '../services/HighlightManager';
 // Initialize Blockly globals early (must run before runtime nodes load)
 import { initBlocklyEditorGlobals } from '../utils/BlocklyEditorGlobals';
 import DebugInspector from '../utils/debuginspector';
-import { ViewerConnection } from '../ViewerConnection';
 import CommentLayer from './commentlayer';
 // Import test utilities for console debugging (dev only)
 import '../services/HighlightManager/test-highlights';
@@ -36,14 +33,15 @@ import { CanvasViewport } from './nodegrapheditor/canvas/CanvasViewport';
 import * as HitTester from './nodegrapheditor/canvas/HitTester';
 import { InteractionController } from './nodegrapheditor/canvas/InteractionController';
 import { NodeSelector } from './nodegrapheditor/canvas/NodeSelector';
-import { AABB, CenterToFitMode, IVector2, MouseEventType, PanAndScale, Rect } from './nodegrapheditor/canvas/types';
+import { AABB, CenterToFitMode, IVector2, MouseEventType, PanAndScale } from './nodegrapheditor/canvas/types';
 import { OverlayHost } from './nodegrapheditor/canvas/OverlayHost';
+import { bindNodeGraphCanvas } from './nodegrapheditor/CanvasDOMBindings';
+import { CanvasPainter } from './nodegrapheditor/CanvasPainter';
 import { ConnectionPopups } from './nodegrapheditor/ConnectionPopups';
 import { EditorClipboard } from './nodegrapheditor/EditorClipboard';
-import { registerEditorEventBindings } from './nodegrapheditor/EditorEventBindings';
+import { registerEditorEventBindings, registerRenderEventBindings } from './nodegrapheditor/EditorEventBindings';
 import { InspectorActions } from './nodegrapheditor/InspectorActions';
 import { ModelBindings } from './nodegrapheditor/ModelBindings';
-import MouseWheelModeDetector from './nodegrapheditor/MouseWheelModeDetector';
 import { NavigationHistory } from './nodegrapheditor/NavigationHistory';
 import { NodeContextMenu } from './nodegrapheditor/NodeContextMenu';
 import { NodeGraphEditorConnection } from './nodegrapheditor/NodeGraphEditorConnection';
@@ -51,6 +49,7 @@ import { NodeGraphEditorNode } from './nodegrapheditor/NodeGraphEditorNode';
 import { NodeOperations } from './nodegrapheditor/NodeOperations';
 import { OverlayViews } from './nodegrapheditor/OverlayViews';
 import { SelectionActions } from './nodegrapheditor/SelectionActions';
+import { ViewportActions } from './nodegrapheditor/ViewportActions';
 import { ToastLayer } from './ToastLayer/ToastLayer';
 
 initBlocklyEditorGlobals();
@@ -126,6 +125,12 @@ export class NodeGraphEditor extends View {
   /** Model mutations from canvas gestures: create/attach/detach/commit-move (PLAT-001 wave 2 extraction). */
   nodeOperations = new NodeOperations(this);
 
+  /** Pan/zoom side-effect coordination: comment layer + overlay sync, clamping (PLAT-001 wave 3 extraction). */
+  viewportActions = new ViewportActions(this);
+
+  /** Layout/paint pipeline: measure, AABB, per-frame FrameState assembly (PLAT-001 wave 3 extraction). */
+  painter = new CanvasPainter(this);
+
   commentLayer: CommentLayer;
   _disposed: boolean;
   highlighted: NodeGraphEditorNode;
@@ -144,190 +149,15 @@ export class NodeGraphEditor extends View {
   highlightedConnection: TSFixme;
   createNewNodePanel: CreateNewNodePanel;
 
-  // Interaction state lives on the controller; these accessors preserve the
-  // pre-decomposition public surface (comment layer, drag helpers, tests).
-  get mouseEventsEnabled() {
-    return this.interaction.mouseEventsEnabled;
-  }
-
-  set mouseEventsEnabled(enabled: boolean) {
-    this.interaction.mouseEventsEnabled = enabled;
-  }
-
-  get latestMousePos(): IVector2 {
-    return this.interaction.latestMousePos;
-  }
-
-  set latestMousePos(pos: IVector2) {
-    this.interaction.latestMousePos = pos;
-  }
-
-  get spaceKeyDown(): boolean {
-    return this.interaction.spaceKeyDown;
-  }
-
-  set spaceKeyDown(pressed: boolean) {
-    this.interaction.spaceKeyDown = pressed;
-  }
-
-  get draggingNodes(): NodeGraphEditorNode[] | null {
-    return this.interaction.draggingNodes;
-  }
-
-  set draggingNodes(nodes: NodeGraphEditorNode[] | null) {
-    this.interaction.draggingNodes = nodes;
-  }
-
-  get lastDraggingMousePos(): IVector2 {
-    return this.interaction.lastDraggingMousePos;
-  }
-
-  set lastDraggingMousePos(pos: IVector2) {
-    this.interaction.lastDraggingMousePos = pos;
-  }
-
-  get startDraggingMousePos(): IVector2 {
-    return this.interaction.startDraggingMousePos;
-  }
-
-  set startDraggingMousePos(pos: IVector2) {
-    this.interaction.startDraggingMousePos = pos;
-  }
-
-  get dragNodesUndoGroup(): UndoActionGroup {
-    return this.interaction.dragNodesUndoGroup;
-  }
-
-  set dragNodesUndoGroup(group: UndoActionGroup) {
-    this.interaction.dragNodesUndoGroup = group;
-  }
-
-  get draggingConnection() {
-    return this.interaction.draggingConnection;
-  }
-
-  set draggingConnection(connection) {
-    this.interaction.draggingConnection = connection;
-  }
-
-  get leftButtonIsDoubleClicked(): boolean {
-    return this.interaction.leftButtonIsDoubleClicked;
-  }
-
-  set leftButtonIsDoubleClicked(doubleClicked: boolean) {
-    this.interaction.leftButtonIsDoubleClicked = doubleClicked;
-  }
-
-  get lastMultiselected(): TSFixme {
-    return this.interaction.lastMultiselected;
-  }
-
-  set lastMultiselected(nodes: TSFixme) {
-    this.interaction.lastMultiselected = nodes;
-  }
-
-  get insertLocation(): TSFixme {
-    return this.interaction.insertLocation;
-  }
-
-  set insertLocation(location: TSFixme) {
-    this.interaction.insertLocation = location;
-  }
-
-  get multiselectMouseDown(): IVector2 {
-    return this.interaction.multiselectMouseDown;
-  }
-
-  set multiselectMouseDown(pos: IVector2) {
-    this.interaction.multiselectMouseDown = pos;
-  }
-
-  get multiselectMouseMove(): IVector2 {
-    return this.interaction.multiselectMouseMove;
-  }
-
-  set multiselectMouseMove(pos: IVector2) {
-    this.interaction.multiselectMouseMove = pos;
-  }
-
-  get lastLeftButtonPressedTime(): TSFixme {
-    return this.interaction.lastLeftButtonPressedTime;
-  }
-
-  set lastLeftButtonPressedTime(time: TSFixme) {
-    this.interaction.lastLeftButtonPressedTime = time;
-  }
-
-  get panMouseDown(): IVector2 {
-    return this.interaction.panMouseDown;
-  }
-
-  set panMouseDown(pos: IVector2) {
-    this.interaction.panMouseDown = pos;
-  }
-
-  get originMouseDown(): TSFixme {
-    return this.interaction.originMouseDown;
-  }
-
-  set originMouseDown(value: TSFixme) {
-    this.interaction.originMouseDown = value;
-  }
-
-  get rightClickPos(): TSFixme {
-    return this.interaction.rightClickPos;
-  }
-
-  set rightClickPos(pos: TSFixme) {
-    this.interaction.rightClickPos = pos;
-  }
   relayoutNeeded: boolean;
   layoutAndPaintScheduled: boolean;
   activeComponent: ComponentModel;
 
-  // Pan/zoom state lives on the viewport; these accessors preserve the
-  // pre-decomposition public surface (tests and consumers read/assign both).
-  get panAndScale(): PanAndScale | undefined {
-    return this.viewport.panAndScale;
-  }
-
-  set panAndScale(panAndScale: PanAndScale | undefined) {
-    this.viewport.panAndScale = panAndScale;
-  }
-
-  get graphAABB(): AABB {
-    return this.viewport.graphAABB;
-  }
-
-  set graphAABB(aabb: AABB) {
-    this.viewport.graphAABB = aabb;
-  }
-
   public runtimeType: RuntimeType = undefined;
   keyboardCommands: KeyboardCommand[];
 
-  /** Canvas-painted icon images; NodeGraphEditorNode reads these through the owner contract. */
+  /** Canvas-painted icon images; NodeGraphEditorNode reads these as `owner.icons.*`. */
   icons: CanvasIcons;
-
-  get homeIcon() {
-    return this.icons.home;
-  }
-
-  get componentIcon() {
-    return this.icons.component;
-  }
-
-  get aiAssistantInnerIcon() {
-    return this.icons.aiAssistantInner;
-  }
-
-  get aiAssistantOuterIcon() {
-    return this.icons.aiAssistantOuter;
-  }
-
-  get warningIcon() {
-    return this.icons.warning;
-  }
 
   readOnly: boolean;
 
@@ -355,15 +185,6 @@ export class NodeGraphEditor extends View {
       width: NaN,
       height: NaN,
       ctx: undefined
-    };
-
-    this.mouseEventsEnabled = true;
-
-    this.graphAABB = {
-      minX: Number.MAX_VALUE,
-      maxX: -Number.MAX_VALUE,
-      minY: Number.MAX_VALUE,
-      maxY: -Number.MAX_VALUE
     };
 
     if (import.meta.webpackHot) {
@@ -416,38 +237,7 @@ export class NodeGraphEditor extends View {
   }
 
   reset() {
-    this.clearSelection({ disableHidePanels: true });
-    this.highlighted && ViewerConnection.instance.sendNodeHighlighted(this.highlighted.model, false);
-    this.highlighted = undefined; // This is not cleared in clearSelection
-
-    // Delete existing nodes and connections
-    while (this.roots.length > 0) {
-      const root = this.roots[0];
-      this.removeRoot(root);
-      root.destruct();
-    }
-
-    // Remove all connections
-    while (this.connections.length > 0) {
-      const con = this.connections[0];
-      con.disconnect(con);
-    }
-
-    // Remove all debug inspectors
-    while (this.inspectors.length > 0) {
-      this.removeInspector(this.inspectors[0]);
-    }
-
-    if (this.model) {
-      // Unbind from current model
-      this.model.off(this);
-      this.model.commentsModel.off(this);
-      for (const i in this.model.roots) {
-        this.model.roots[i].forEach((model) => {
-          this.modelBindings.unbindNodeModel(model);
-        });
-      }
-    }
+    this.modelBindings.reset();
   }
 
   bindModel(model?: NodeGraphModel) {
@@ -458,33 +248,15 @@ export class NodeGraphEditor extends View {
     this.modelBindings.bindProjectModel();
   }
 
-  //A request animation frame timer that renders the entire node graph while there are animations to play
-  //TODO: only render when an animated node is visible
   startNodeAnimations() {
-    if (this.isPlayingNodeAnimations) {
-      return;
-    }
-
-    this.isPlayingNodeAnimations = true;
-
-    const animate = () => {
-      this.paint();
-
-      if (this.isPlayingNodeAnimations) {
-        requestAnimationFrame(animate);
-      }
-    };
-
-    requestAnimationFrame(animate);
+    this.painter.startNodeAnimations();
   }
 
   stopNodeAnimations() {
-    this.isPlayingNodeAnimations = false;
+    this.painter.stopNodeAnimations();
   }
 
   render() {
-    const _this = this;
-
     // Expose editor instance to window for console debugging (dev only)
     // Used by test utilities: window.testHighlightManager.testBasicHighlight()
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -504,73 +276,8 @@ export class NodeGraphEditor extends View {
 
     this.bindProjectModel();
 
-    //bind ai assistant
-    AiAssistantModel.instance.on(
-      AiAssistantEvent.ProcessingUpdated,
-      () => {
-        AiAssistantModel.instance.getProcessingNodeIds().length
-          ? this.startNodeAnimations()
-          : this.stopNodeAnimations();
-      },
-      this
-    );
-
-    // Rerender if warnings model changed
-    WarningsModel.instance.on(
-      'warningsChanged',
-      function () {
-        _this.repaint();
-      },
-      this
-    );
-
-    // When the node library is changed we may need to rerender
-    NodeLibrary.instance.on(
-      ['moduleRegistered', 'moduleUnregistered', 'typeAdded', 'typeRemoved', 'libraryUpdated'],
-      function () {
-        // We must re-resolve ports as they could have changed
-        _.each(_this.connections, function (c) {
-          c.resolvePorts();
-        });
-
-        // Relayout and paint
-        _this.relayout();
-        _this.repaint();
-      },
-      this
-    );
-
-    // May change warning status
-    EventDispatcher.instance.on(
-      ['Model.portAdded', 'Model.portRemoved'],
-      function () {
-        _this.relayout();
-        _this.repaint();
-      },
-      this
-    );
-
-    // The module for the graph we are editing has been unregistered
-    NodeLibrary.instance.on(
-      'moduleUnregistered',
-      function (args) {
-        if (_this.model && args.model === _this.model.owner.owner) {
-          _this.switchToComponent();
-        }
-      },
-      this
-    );
-
-    // The component we are editing has been removed
-    NodeLibrary.instance.on(
-      'typeRemoved',
-      function (args) {
-        if (_this.model && args.model === _this.model.owner) {
-          _this.switchToComponent();
-        }
-      },
-      this
-    );
+    // Model/library subscriptions (context = this editor, detached in dispose)
+    registerRenderEventBindings(this);
 
     //the comment layer is using react-dnd which caches the parent position the first time a comment is rendered.
     //it's crucial that the parent position is correct, so delay the rendering a tick so all the DOM elements are in the right place
@@ -620,18 +327,7 @@ export class NodeGraphEditor extends View {
   // This is called by the parent view (frames view) when the size and position
   // changes
   resize(layout) {
-    this.currentLayout = layout;
-
-    //make sure the canvas is bound and rendering happens at the same frame, otherwise it'll flicker
-    this.bindCanvas();
-    this.layout();
-    this.paint();
-
-    if (this.model && this.canvas.width && this.canvas.height) {
-      let panAndScale = this.getPanAndScale();
-      panAndScale = this.clampPanAndScale(panAndScale);
-      this.setPanAndScale(panAndScale);
-    }
+    this.viewportActions.resize(layout);
   }
 
   // ------------------------- Cut n paste (EditorClipboard) --------------------------------
@@ -695,81 +391,24 @@ export class NodeGraphEditor extends View {
   }
 
   bindCanvas() {
-    const _this = this;
-
-    const canvas = this.$('#nodegraphcanvas')[0];
-    const ctx = (this.canvas.ctx = canvas.getContext('2d', { alpha: true }));
-
-    // Support retina display
-    this.canvas.ratio = this.getDevicePixelRatio(ctx);
-
-    const width = $(canvas).width();
-    const height = $(canvas).height();
-
-    canvas.width = width * this.canvas.ratio;
-    canvas.height = height * this.canvas.ratio;
-
-    this.canvas.width = canvas.width;
-    this.canvas.height = canvas.height;
-
-    this.viewport.setCanvasMetrics(canvas.width, canvas.height, this.canvas.ratio);
-
-    // Bind mouse events
-    const topLeft = function (canvas: HTMLCanvasElement) {
-      const { x, y } = canvas.getBoundingClientRect();
-      return [x, y];
-    };
-
-    this.topLeftCanvasPos = topLeft(canvas);
-
-    const events = {
-      mousedown: 'down',
-      mouseup: 'up',
-      mousemove: 'move',
-      mouseout: 'out',
-      mouseover: 'over'
-    };
-
-    for (const i in events) {
-      const type = events[i];
-      $(canvas)
-        .off(i)
-        .on(i, (evt) => {
-          // @ts-expect-error
-          evt.spaceKey = _this.spaceKeyDown; // This is set by the KeyboardHandler
-          this.mouse(
-            type,
-            {
-              x: evt.pageX - this.topLeftCanvasPos[0],
-              y: evt.pageY - this.topLeftCanvasPos[1],
-              pageX: evt.pageX,
-              pageY: evt.pageY
-            },
-            evt
-          );
-        });
-
-      $(canvas).on('mouseover', (evt) => {
-        this.topLeftCanvasPos = topLeft(canvas);
-      });
-    }
-
-    this.mouseWheelDetector = new MouseWheelModeDetector();
-
-    $(canvas)
-      .off('wheel')
-      .on('wheel', (e) => {
-        this.handleMouseWheelEvent(e.originalEvent);
-      });
+    bindNodeGraphCanvas(this);
   }
 
   setSpaceKeyDown(pressed) {
-    if (this.spaceKeyDown === pressed) {
+    if (this.interaction.spaceKeyDown === pressed) {
       return;
     }
 
-    this.spaceKeyDown = pressed;
+    this.interaction.spaceKeyDown = pressed;
     this.canvas.ctx.canvas.style.cursor = pressed ? 'grab' : 'inherit';
+  }
+
+  isSpaceKeyDown(): boolean {
+    return this.interaction.spaceKeyDown;
+  }
+
+  getLatestMousePos(): IVector2 {
+    return this.interaction.latestMousePos;
   }
 
   handleMouseWheelEvent(event, args?) {
@@ -777,13 +416,7 @@ export class NodeGraphEditor extends View {
   }
 
   updateZoomLevel(x, y, deltaZ) {
-    let panAndScale = this.viewport.zoomAtPoint(x, y, deltaZ, this.getPanAndScale());
-    panAndScale = this.clampPanAndScale(panAndScale);
-    this.setPanAndScale(panAndScale);
-    this.overlayViews.updateHighlightOverlay();
-
-    this.relayout();
-    this.repaint();
+    this.viewportActions.updateZoomLevel(x, y, deltaZ);
   }
 
   forEachNode(callback) {
@@ -822,19 +455,7 @@ export class NodeGraphEditor extends View {
   }
 
   moveRoots(dx, dy) {
-    let panAndScale = this.getPanAndScale();
-    panAndScale.x += dx;
-    panAndScale.y += dy;
-    panAndScale = this.clampPanAndScale(panAndScale);
-    this.setPanAndScale(panAndScale);
-    this.overlayViews.updateHighlightOverlay();
-
-    /* for(var i in this.roots) {
-      this.roots[i].x += dx;
-      this.roots[i].y += dy;
-
-      this.roots[i].updateModel();
-    }*/
+    this.viewportActions.moveRoots(dx, dy);
   }
 
   createNewNode(type: ComponentModel, pos: IVector2, options: Partial<NodeGraphNodeJSON> = {}) {
@@ -924,7 +545,7 @@ export class NodeGraphEditor extends View {
     });
 
     // Should we select a node
-    this.panAndScale = undefined;
+    this.viewport.panAndScale = undefined;
     if (args?.node) {
       const node = this.findNodeWithId(args.node.id);
       if (node) {
@@ -1033,7 +654,7 @@ export class NodeGraphEditor extends View {
   }
 
   setMouseEventsEnabled(enabled) {
-    this.mouseEventsEnabled = enabled;
+    this.interaction.mouseEventsEnabled = enabled;
   }
 
   relativeCoordsToNodeGraphCords(pos: { x: number; y: number }): { x: number; y: number } {
@@ -1071,21 +692,7 @@ export class NodeGraphEditor extends View {
   }
 
   layout() {
-    if (!this.model) {
-      return;
-    }
-
-    this.forEachNode(function (node) {
-      node.measuredSize = undefined;
-    });
-
-    _.each(this.roots, function (node) {
-      node.measure();
-      node.setPosition(node.x, node.y);
-      node.layout();
-    });
-
-    this.calculateAABB();
+    this.painter.layout();
   }
 
   repaint() {
@@ -1096,19 +703,9 @@ export class NodeGraphEditor extends View {
   }
 
   calculateAABB() {
-    const rects: Rect[] = this.roots.map((node) => ({
-      x: node.x,
-      y: node.y,
-      width: node.measuredSize.width,
-      height: node.measuredSize.height
-    }));
-
-    for (const comment of this.model.commentsModel.comments) {
-      rects.push({ x: comment.x, y: comment.y, width: comment.width, height: comment.height });
-    }
-
-    this.viewport.updateGraphAABB(rects);
+    this.painter.calculateAABB();
   }
+
   findNodeWithId(id: string): NodeGraphEditorNode {
     return HitTester.findNodeWithId(this.roots, id);
   }
@@ -1126,89 +723,36 @@ export class NodeGraphEditor extends View {
   }
 
   paint() {
-    if (!this.canvas.width || !this.canvas.height) {
-      return;
-    }
-
-    const ctx = this.canvas.ctx;
-    const panAndScale = this.getPanAndScale();
-
-    const transform = `scale(${panAndScale.scale}) translate(${panAndScale.x}px, ${panAndScale.y}px)`;
-    this.domElementContainer.style.transform = transform;
-
-    this.commentLayer && this.commentLayer.setPanAndScale(panAndScale);
-
-    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-
-    if (!NodeLibrary.instance.isLoaded()) {
-      // Don't paint if we don't have a node library yet
-      return;
-    }
-
-    // Draw a multiselect box when there is a multi-selection (single-node
-    // selections draw their own highlight)
-    const showMultiselectBox = this.selector.nodes.length > 0 && !this.selector.nodes[0].selected;
-
-    this.renderer.paint(ctx, {
-      panAndScale,
-      canvasWidth: this.canvas.width,
-      canvasHeight: this.canvas.height,
-      ratio: this.canvas.ratio,
-      roots: this.roots,
-      connections: this.connections,
-      draggingNodes: this.draggingNodes,
-      draggingConnection: this.draggingConnection,
-      insertLocation: this.insertLocation,
-      multiselectAABB: showMultiselectBox ? this.calculateNodesAABB(this.selector.nodes) : undefined,
-      multiselectMouseDown: this.multiselectMouseDown,
-      multiselectMouseMove: this.multiselectMouseMove
-    });
+    this.painter.paint();
   }
 
   // This function is used during the tests to verify that the view of the node graph editor
   // matches the model
   verifyWithModel() {
-    const _this = this;
-
     let verified = true;
-    function assert(cond) {
+    const assert = (cond) => {
       if (!cond) verified = false;
-    }
+    };
 
-    this.forEachNode(function (node) {
+    this.forEachNode((node) => {
       const model = node.model;
 
-      assert(_this.findNodeWithId(model.id) == node);
+      assert(this.findNodeWithId(model.id) == node);
 
       // Make sure parent are correctly linked
-      if (node.parent) assert(_this.findNodeWithId(model.parent.id) === node.parent);
+      if (node.parent) assert(this.findNodeWithId(model.parent.id) === node.parent);
       else assert(!model.parent);
     });
 
     return verified;
   }
 
-  /**
-   * @returns The center of all the root nodes in the graph.
-   */
   public getCenterRootPanAndScale(): PanAndScale {
-    return this.viewport.centerOn(
-      this.roots.map((root) => ({ x: root.x, y: root.y, width: root.nodeSize.width, height: root.nodeSize.height }))
-    );
+    return this.viewportActions.getCenterRootPanAndScale();
   }
 
-  /**
-   * @returns The center of all the nodes in the graph.
-   */
   public getCenterPanAndScale(): PanAndScale {
-    return this.viewport.centerOn(
-      this.roots.map((root) => ({
-        x: root.x,
-        y: root.y,
-        width: root.measuredSize.width,
-        height: root.measuredSize.height
-      }))
-    );
+    return this.viewportActions.getCenterPanAndScale();
   }
 
   /**
@@ -1217,51 +761,23 @@ export class NodeGraphEditor extends View {
    * @returns The current pan and scale.
    */
   public centerToFit(mode: CenterToFitMode) {
-    switch (mode) {
-      default:
-      case CenterToFitMode.RootNodes: {
-        this.setPanAndScale(this.getCenterRootPanAndScale());
-        break;
-      }
-
-      case CenterToFitMode.AllNodes: {
-        this.setPanAndScale(this.getCenterPanAndScale());
-        break;
-      }
-    }
-
-    return this.panAndScale;
+    return this.viewportActions.centerToFit(mode);
   }
 
   getPanAndScale() {
-    if (this.panAndScale) {
-      return this.panAndScale;
-    }
-
-    if (!this.model || !this.canvas.width || !this.canvas.height || !this.roots.length) {
-      return { scale: 1, x: 0, y: 0 };
-    }
-
-    return this.centerToFit(CenterToFitMode.RootNodes);
+    return this.viewportActions.getPanAndScale();
   }
 
   setPanAndScale(panAndScale: PanAndScale) {
-    this.panAndScale = panAndScale;
-    this.commentLayer && this.commentLayer.setPanAndScale(panAndScale);
-    this.overlayViews.updateHighlightOverlay();
-    this.overlayViews.updateExecutionOverlay();
+    this.viewportActions.setPanAndScale(panAndScale);
   }
 
   clampPanAndScale(panAndScale: PanAndScale) {
-    if (!this.model || this.model.roots.length === 0) return panAndScale;
-
-    return this.viewport.clamp(panAndScale);
+    return this.viewportActions.clampPanAndScale(panAndScale);
   }
 
   calculateNodesAABB(nodes: readonly NodeGraphEditorNode[]): AABB {
-    return CanvasViewport.rectsAABB(
-      nodes.map((n) => ({ x: n.global.x, y: n.global.y, width: n.nodeSize.width, height: n.nodeSize.height }))
-    );
+    return this.viewportActions.calculateNodesAABB(nodes);
   }
 
   nodesetFromSelection() {

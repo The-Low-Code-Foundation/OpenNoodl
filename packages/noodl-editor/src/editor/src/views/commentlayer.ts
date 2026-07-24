@@ -372,7 +372,7 @@ export default class CommentLayer {
 
           //check if we're interacting with something in the canvas. If we aren't, then let the comment layer handle the mouse event
           //otherwise, forward the mouse even to the nodegraph
-          evt.spaceKey = this.nodegraphEditor.spaceKeyDown; // This is set by the KeyboardHandler
+          evt.spaceKey = this.nodegraphEditor.isSpaceKeyDown(); // This is set by the KeyboardHandler
 
           //nodeGraphEditor expects position argument that's relative to the top left of the canvas
           const tl = this.nodegraphEditor.topLeftCanvasPos;
