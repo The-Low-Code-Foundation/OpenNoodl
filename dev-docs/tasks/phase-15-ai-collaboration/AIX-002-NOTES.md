@@ -175,3 +175,17 @@ Spec step 4. The session becomes observable and streaming; a new sidebar panel
    update-shaped submit (MCP's `applyOperations` is the substrate to share);
    pre-accept refinement shipped in slice 2.
 4. Opt-in Gate-G2 telemetry (step 7).
+
+## Note from DEBT-003 (2026-07-24) — expression semantics the loop can rely on
+
+The feared "expressions cannot see Variables" defect was **not real** — the evaluator always
+resolved `Variables` from the global model store; only the tests were mis-wired. Two real
+defects that *did* affect authored expressions are now fixed: bracket-notation
+(`Variables["my var"]`) and template-literal (`${Variables.x}`) dependencies were invisible to
+dependency detection, so expressions using them evaluated correctly once but never re-evaluated
+when the variable changed; and expression errors were swallowed before reaching the editor's
+warning channel, so a broken authored expression failed silently. Both now behave: all three
+reference forms subscribe correctly, runtime errors surface as node warnings
+(`expression-error-<port>`), and compile failures warn with the syntax error. Policy the loop
+can assume: `Objects.X` auto-creates (never undefined); a null/undefined expression result
+yields the port's fallback.

@@ -286,9 +286,13 @@ describe('Expression Evaluator', () => {
       expect(context.Objects.TestUser.id).toBe('user-1');
     });
 
-    it('handles non-existent Objects', () => {
+    it('auto-creates non-existent Objects, matching Model.get semantics', () => {
+      // Model.get creates on first access — Noodl.Objects.Anything is always a
+      // model, never undefined. That is the platform's documented behaviour
+      // (Model.exists is the existence check); an earlier version of this test
+      // expected undefined, which the API never produced.
       const context = ExpressionEvaluator.createNoodlContext();
-      expect(context.Objects.NonExistent).toBeUndefined();
+      expect(context.Objects.NonExistentForThisTest).toEqual({});
     });
 
     it('handles empty Variables', () => {

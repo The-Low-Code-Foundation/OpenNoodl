@@ -95,6 +95,20 @@ suites did not load. Nothing regressed.
 tests in the expression engine is a real signal, and the expression subsystem is on SUB-004's and
 the AI-authoring path. It is not, however, a typing problem.
 
+> **RESOLVED 2026-07-24 by DEBT-003.** The engine's `Variables` resolution was **correct all
+> along** — expressions read the global `'--ndl--global-variables'` model, the same store the
+> Variable / Set Variable nodes and `Noodl.Variables` write to; the failing tests mocked a
+> `context.Variables` API that never existed. Two *real* engine defects were found and fixed in
+> the same pass: dependency detection destroyed bracket-notation keys and template-literal
+> interpolations before matching (so `Variables["my var"]` / `` `${Variables.x}` `` never
+> re-evaluated reactively), and expression errors were swallowed inside the evaluator so the
+> node's editor-warning path was unreachable (runtime errors now rethrow into it; compile
+> failures now warn too). Three tests encoded wrong semantics and were corrected with recorded
+> policy: `Objects.X` auto-creates (Model.get semantics), and null/undefined mean "no value" →
+> fallback, uniformly. `validateConfigValue`'s null-rejection expectation contradicted the
+> optional-empty rule and was likewise corrected. **New baseline: 243 passing / 4 failing** —
+> the remaining 4 are the `QueryBuilder` objectId cluster, owned by DEBT-006.
+
 ## 5. Slice 2 — the published API and the core conversion
 
 Spec steps 1, 3 and 4. Two commits: one strictly type-only, one removing debug output.

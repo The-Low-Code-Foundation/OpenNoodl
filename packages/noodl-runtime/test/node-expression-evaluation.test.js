@@ -11,6 +11,7 @@
 /* eslint-env jest */
 
 const Node = require('../src/node');
+const Model = require('../src/model');
 
 // Helper to create expression parameter
 function createExpressionParameter(expression, fallback, version = 1) {
@@ -27,7 +28,17 @@ describe('Node Expression Evaluation', () => {
   let node;
 
   beforeEach(() => {
-    // Create mock context with Variables
+    // Expressions read Variables from the global model store — the same
+    // '--ndl--global-variables' model the Variable / Set Variable nodes and the
+    // Noodl.Variables JS API write to. There is no context-level Variables API;
+    // an earlier version of this suite mocked one and tested nothing real.
+    delete Model._models['--ndl--global-variables'];
+    const variables = Model.get('--ndl--global-variables');
+    variables.set('x', 10);
+    variables.set('count', 5);
+    variables.set('isAdmin', true);
+    variables.set('message', 'Hello');
+
     mockContext = {
       updateIteration: 0,
       nodeIsDirty: jest.fn(),
@@ -38,13 +49,7 @@ describe('Node Expression Evaluation', () => {
         sendWarning: jest.fn(),
         clearWarning: jest.fn()
       },
-      getDefaultValueForInput: jest.fn(() => undefined),
-      Variables: {
-        x: 10,
-        count: 5,
-        isAdmin: true,
-        message: 'Hello'
-      }
+      getDefaultValueForInput: jest.fn(() => undefined)
     };
 
     // Create a test node
@@ -221,15 +226,19 @@ describe('Node Expression Evaluation', () => {
       });
 
       it('handles null expression result', () => {
+        // Policy (recorded by DEBT-003): a null result is treated as "no value"
+        // and yields the fallback. Coercing null to the literal string "null",
+        // as an earlier version of this test expected, was never the behaviour.
         const expr = createExpressionParameter('null', 'fallback');
         const result = node._evaluateExpressionParameter(expr, 'stringInput');
-        expect(result).toBe('null'); // Coerced to string
+        expect(result).toBe('fallback');
       });
 
       it('handles complex object expressions', () => {
-        mockContext.data = { items: [1, 2, 3] };
-        const expr = createExpressionParameter('data.items.length', 0);
-        node.context = mockContext;
+        // Expressions reach structured data through Noodl.Objects (the global
+        // model store) — arbitrary context properties were never in scope.
+        Model.get('ItemsHolder').set('items', [1, 2, 3]);
+        const expr = createExpressionParameter('Objects.ItemsHolder.items.length', 0);
         const result = node._evaluateExpressionParameter(expr, 'numberInput');
         expect(result).toBe(3);
       });

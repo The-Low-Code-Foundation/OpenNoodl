@@ -121,8 +121,16 @@ describe('validateConfigValue', () => {
 
     it('should reject non-objects', () => {
       expect(validateConfigValue([], 'object').valid).toBe(false);
-      expect(validateConfigValue(null, 'object').valid).toBe(false);
       expect(validateConfigValue('{}', 'object').valid).toBe(false);
+    });
+
+    it('treats null as an absent optional value, like every other type', () => {
+      // Policy (recorded by DEBT-003): the empty-and-not-required guard runs
+      // before type validation, so null is valid unless `required: true` —
+      // identical to the string/number behaviour asserted under "required
+      // validation" below.
+      expect(validateConfigValue(null, 'object').valid).toBe(true);
+      expect(validateConfigValue(null, 'object', { required: true }).valid).toBe(false);
     });
   });
 

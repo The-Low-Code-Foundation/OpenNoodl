@@ -62,44 +62,39 @@ function detectDependencies(expression) {
     arrays: []
   };
 
-  // Remove strings to avoid false matches
-  const exprWithoutStrings = expression
-    .replace(/"([^"\\]|\\.)*"/g, '""')
-    .replace(/'([^'\\]|\\.)*'/g, "''")
-    .replace(/`([^`\\]|\\.)*`/g, '``');
+  // Template-literal interpolations are code, not string content — pull them out
+  // before stripping strings so `${Variables.x}` still registers a dependency.
+  const interpolations = Array.from(expression.matchAll(/\$\{([^}]*)\}/g))
+    .map((m) => m[1])
+    .join(' ');
 
-  // Match Noodl.Variables.X or Noodl.Variables["X"] or Variables.X or Variables["X"]
-  const variableMatches = exprWithoutStrings.matchAll(
-    /(?:Noodl\.)?Variables\.([a-zA-Z_$][a-zA-Z0-9_$]*)|(?:Noodl\.)?Variables\[["']([^"']+)["']\]/g
-  );
-  for (const match of variableMatches) {
-    const varName = match[1] || match[2];
-    if (varName && !dependencies.variables.includes(varName)) {
-      dependencies.variables.push(varName);
-    }
-  }
+  // Remove strings to avoid false matches on dot-notation references.
+  const exprWithoutStrings =
+    expression
+      .replace(/"([^"\\]|\\.)*"/g, '""')
+      .replace(/'([^'\\]|\\.)*'/g, "''")
+      .replace(/`([^`\\]|\\.)*`/g, '``') +
+    ' ' +
+    interpolations;
 
-  // Match Noodl.Objects.X or Noodl.Objects["X"] or Objects.X or Objects["X"]
-  const objectMatches = exprWithoutStrings.matchAll(
-    /(?:Noodl\.)?Objects\.([a-zA-Z_$][a-zA-Z0-9_$]*)|(?:Noodl\.)?Objects\[["']([^"']+)["']\]/g
-  );
-  for (const match of objectMatches) {
-    const objId = match[1] || match[2];
-    if (objId && !dependencies.objects.includes(objId)) {
-      dependencies.objects.push(objId);
-    }
-  }
+  // Bracket-notation keys ARE string literals, so they must be matched against the
+  // original expression — stripping empties them (`Variables["x"]` → `Variables[""]`).
+  const bracketSource = expression + ' ' + interpolations;
 
-  // Match Noodl.Arrays.X or Noodl.Arrays["X"] or Arrays.X or Arrays["X"]
-  const arrayMatches = exprWithoutStrings.matchAll(
-    /(?:Noodl\.)?Arrays\.([a-zA-Z_$][a-zA-Z0-9_$]*)|(?:Noodl\.)?Arrays\[["']([^"']+)["']\]/g
-  );
-  for (const match of arrayMatches) {
-    const arrId = match[1] || match[2];
-    if (arrId && !dependencies.arrays.includes(arrId)) {
-      dependencies.arrays.push(arrId);
+  const collect = (list, dotSource, name) => {
+    const dotRe = new RegExp('(?:Noodl\\.)?' + name + '\\.([a-zA-Z_$][a-zA-Z0-9_$]*)', 'g');
+    for (const match of dotSource.matchAll(dotRe)) {
+      if (match[1] && !list.includes(match[1])) list.push(match[1]);
     }
-  }
+    const bracketRe = new RegExp('(?:Noodl\\.)?' + name + '\\[["\']([^"\']+)["\']\\]', 'g');
+    for (const match of bracketSource.matchAll(bracketRe)) {
+      if (match[1] && !list.includes(match[1])) list.push(match[1]);
+    }
+  };
+
+  collect(dependencies.variables, exprWithoutStrings, 'Variables');
+  collect(dependencies.objects, exprWithoutStrings, 'Objects');
+  collect(dependencies.arrays, exprWithoutStrings, 'Arrays');
 
   return dependencies;
 }
@@ -162,15 +157,13 @@ function compileExpression(expression) {
   // Build parameter list for the function
   const paramNames = ['Noodl', 'Variables', 'Objects', 'Arrays', ...Object.keys(mathHelpers)];
 
-  // Wrap expression in return statement with error handling
+  // Wrap expression in a return statement. Runtime errors propagate to
+  // evaluateExpression, which decides whether to swallow or rethrow them —
+  // catching here would make errors unobservable to callers that need to
+  // surface them (the node's editor-warning path).
   const functionBody = `
     "use strict";
-    try {
-      return (${expression});
-    } catch (e) {
-      console.error('Expression evaluation error:', e.message);
-      return undefined;
-    }
+    return (${expression});
   `;
 
   try {
@@ -188,9 +181,12 @@ function compileExpression(expression) {
  *
  * @param {Function|null} compiledFn - The compiled expression function
  * @param {Model.Scope} [modelScope] - Optional model scope
+ * @param {{ rethrow?: boolean }} [options] - `rethrow: true` propagates runtime
+ *   errors to the caller instead of logging and returning undefined; used by the
+ *   node's expression path so errors reach the editor as warnings.
  * @returns {*} The result of the expression evaluation
  */
-function evaluateExpression(compiledFn, modelScope) {
+function evaluateExpression(compiledFn, modelScope, options) {
   if (!compiledFn) return undefined;
 
   const noodlContext = createNoodlContext(modelScope);
@@ -200,6 +196,7 @@ function evaluateExpression(compiledFn, modelScope) {
     // Pass Noodl context plus shorthand accessors
     return compiledFn(noodlContext, noodlContext.Variables, noodlContext.Objects, noodlContext.Arrays, ...mathValues);
   } catch (e) {
+    if (options && options.rethrow) throw e;
     console.error('Expression evaluation error:', e.message);
     return undefined;
   }

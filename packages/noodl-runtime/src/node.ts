@@ -3,7 +3,13 @@ import type { NodeVariant } from '@noodl/types';
 import type { NodeModelParameterUpdatedEvent, RuntimeNode, RuntimeNodeContext } from './internal';
 
 import OutputProperty = require('./outputproperty');
-import { evaluateExpression, compileExpression, detectDependencies, subscribeToChanges } from './expression-evaluator';
+import {
+  evaluateExpression,
+  compileExpression,
+  detectDependencies,
+  subscribeToChanges,
+  validateExpression
+} from './expression-evaluator';
 import { coerceToType } from './expression-type-coercion';
 
 /**
@@ -159,9 +165,23 @@ Node.prototype._evaluateExpressionParameter = function (paramValue, portName) {
     const compiled = compileExpression(paramValue.expression);
     if (!compiled) {
       console.warn(`Expression compilation failed for ${this.name}.${portName}: ${paramValue.expression}`);
+      if (this.context && this.context.editorConnection) {
+        const syntax = validateExpression(paramValue.expression);
+        this.context.editorConnection.sendWarning(
+          this.nodeScope.componentOwner.name,
+          this.id,
+          'expression-error-' + portName,
+          {
+            showGlobally: true,
+            message: `Expression error: ${syntax.error || 'could not compile expression'}`
+          }
+        );
+      }
       return paramValue.fallback;
     }
-    const result = evaluateExpression(compiled, undefined);
+    // rethrow: runtime errors must reach the catch below so they surface as
+    // editor warnings instead of being silently logged inside the evaluator.
+    const result = evaluateExpression(compiled, undefined, { rethrow: true });
 
     // Coerce to expected type
     const coercedValue = coerceToType(result, input.type, paramValue.fallback);

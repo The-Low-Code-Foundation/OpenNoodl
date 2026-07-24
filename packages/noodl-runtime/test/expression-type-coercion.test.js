@@ -88,9 +88,15 @@ describe('Expression Type Coercion', () => {
     it('converts falsy values to false', () => {
       expect(coerceToType(0, 'boolean')).toBe(false);
       expect(coerceToType('', 'boolean')).toBe(false);
-      expect(coerceToType(null, 'boolean')).toBe(false);
-      expect(coerceToType(undefined, 'boolean')).toBe(false);
       expect(coerceToType(NaN, 'boolean')).toBe(false);
+    });
+
+    it('treats null and undefined as "no value" and yields the fallback', () => {
+      // Policy (recorded by DEBT-003): null/undefined are handled uniformly
+      // across all port types as an absent value, before type coercion runs.
+      expect(coerceToType(null, 'boolean', false)).toBe(false);
+      expect(coerceToType(undefined, 'boolean', true)).toBe(true);
+      expect(coerceToType(null, 'boolean')).toBeUndefined();
     });
 
     it('keeps boolean as-is', () => {
