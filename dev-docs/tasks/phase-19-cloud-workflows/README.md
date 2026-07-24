@@ -25,6 +25,7 @@ The discipline that survives from the original framing: this phase does its six 
 | 4 | [WF-002](./WF-002-WORKFLOW-NODES.md) | Workflow nodes (phase-11 Series 1) | 🟡 Medium | 3–4 wks | WF-001 | 🟢 Sonnet 5 |
 | 5 | [WF-005](./WF-005-TRIGGERS.md) | Triggers: schedule, webhook, DB-change | 🟠 High | 2–3 wks | WF-004; WF-001 for workflow targets | 🟠 Opus 4.8 |
 | 6 | [WF-003](./WF-003-MANAGED-DEPLOY.md) | One deploy target, done well | 🟡 Medium | 2–3 wks | WF-004; REV-007 | 🟠 Opus 4.8 |
+| 7 | [WF-007](./WF-007-PARSE-FRAMEWORK-RETIREMENT.md) | Retire the Parse framework | 🟡 Medium | ~1 wk | WF-004 (dashboard deletion: anytime) | 🟢 Sonnet 5 |
 
 ## Sequencing notes
 
@@ -44,7 +45,7 @@ A user — or an agent through MCP — can build a workflow that is triggered by
 - **Multi-provider deploys** — WF-003 picks one; export (Phase 18) is the general answer.
 - **Series 4 monitoring beyond the existing execution history** — the store + panel + overlay cover the practical need.
 - **An integration library** — permanently. See the assessment §5: integrations are generated artifacts, not maintained surface.
-- **Parse "Cloud Services"** — legacy, untouched, deprecated; removed later when it is free.
+- ~~**Parse "Cloud Services"** — legacy, untouched, deprecated; removed later when it is free.~~ **Superseded 2026-07-24** by the framework map: WF-004 speaks the Parse-wire subset (the record/user/function nodes finally work against the local backend, external-Parse users keep working for free), and WF-007 deletes the management framework — CloudServices model/panel, master-key deploy pass, the port-8577 hidden-window function server, the orphaned `noodl-parse-dashboard` package. See [BACKEND-GAP-ASSESSMENT.md](./BACKEND-GAP-ASSESSMENT.md) §3.4.
 
 ## References
 

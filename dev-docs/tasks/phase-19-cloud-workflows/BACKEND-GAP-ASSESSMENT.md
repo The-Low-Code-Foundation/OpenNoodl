@@ -57,8 +57,21 @@ Either route also un-blocks the orphaned `ExecutionStore`, which takes its datab
 ### 3.3 Crash isolation and honesty
 A hung workflow must not wedge the editor. A separate process makes cancellation and timeouts (WF-001's semantics) enforceable at the process boundary in the worst case, and makes the backend's status (running / stopped / failed) an honest, visible fact rather than an implicit property of the editor being open.
 
-### 3.4 What happens to Parse "Cloud Services"
-Declared **legacy, untouched, deprecated** — not ripped out. The adapter registry already stubs `parse` as unimplemented; the new service simply never grows a Parse mode. External backends remain RUN-003/UBA's territory. Removal happens later, when it is free; this phase spends nothing on it.
+### 3.4 What happens to Parse "Cloud Services" — revised 2026-07-24 after a code-level map
+
+A full map of the framework (run 2026-07-24) replaced the earlier "leave it untouched" position with a sharper one. Three findings drive it:
+
+1. **There is no Parse server anywhere in this repo and never was.** No `parse-server` or `parse` SDK dependency in any package; no broker; `packages/noodl-parse-dashboard` is a vendored Parse Dashboard that nothing references. The "framework" is only ever a set of *clients* pointed at an external server the user configures (`CloudServicePanel` → `{endpoint, appId, masterKey}` in local storage, `{endpoint, appId}` in project metadata).
+2. **There are two parallel data stacks that never meet.** The 9 current record nodes (`DbCollection2`/"Query Records", `DbModel2`/"Record", relations, etc.), the user/auth nodes, and cloud-function calls all speak **Parse REST** through four thin clients (`cloudstore.js` 626 lines — the object-CRUD choke point — plus `userservice.ts` 434, `cloudfunctions.js` 73, `configservice.js` 112). The local backend speaks a *different* protocol (`/api/:table`) consumed only by the separate BYOB nodes. Consequence: **"Query Records" against the local backend has never worked** — the flagship data nodes and the local database cannot see each other. The `AdapterRegistry`'s `parse` stub ("use existing CloudStore") is the seam where these were supposed to meet and never did.
+3. **The Parse surface the nodes actually use is a bounded subset**: ~15 endpoints (`/classes`, `/aggregate`, `/files`, `/functions`, `/config`, `/login`+7 session endpoints), one query grammar, five special types (Pointer/Date/File/GeoPoint/Relation + Increment). **No** live queries, push, GraphQL, or client-side schema/ACL management. And `LocalSQLAdapter`/`QueryBuilder` were already written CloudStore-shaped — the query-grammar logic half-exists.
+
+**The decision: the wire protocol is the contract; the framework is not.** `nodegx-backend` speaks the Parse-wire *subset* the four clients emit. That single choice:
+
+- makes the record/user/function nodes work against the local backend **with zero client-file changes** — healing the two-stack split (one node set, one backend, at last);
+- keeps existing external-Parse users working for free (protocol compatibility *is* the compat story — nothing to maintain beyond the subset we serve ourselves);
+- and licenses deleting the actual mess (WF-007): the `CloudServices` model + `CloudServicePanel`, the `deploy-cloud-functions` master-key POST pass, the hidden-BrowserWindow `cloud-function-server.js` on port 8577 (today's dev-time cloud-function runner — superseded by the service's `/functions` route), and the orphaned `noodl-parse-dashboard` package.
+
+What we explicitly do **not** build: master-key admin surface, ACL/CLP management, live queries, push — unused by the nodes, permanently out. The BYOB nodes and `backendServices` metadata remain the external-backend (Directus/Supabase) story, per RUN-003.
 
 ## 4. Why the backend matters strategically (the user's case, tested)
 
@@ -107,5 +120,6 @@ That sentence is the "last piece of the puzzle" made testable.
 | 4 | **WF-002** | Series 1 workflow nodes (logic, error handling, wait/delay) + catalog entries — largely as already specified | 3–4 wks |
 | 5 | **WF-005** | Triggers: cron scheduler, webhook routes, DB-change events; trigger-configuration UX in the editor | 2–3 wks |
 | 6 | **WF-003** | One deploy target done well (Docker Compose self-host default), now reduced to packaging the WF-004 service | 2–3 wks |
+| 7 | **WF-007** | Retire the Parse framework: relocate endpoint config, delete the dashboard package / CloudServices model + panel / deploy pass / port-8577 function server | ~1 wk |
 
-RUN-004's loud-failure deliverable is independent and should land immediately regardless of this phase's schedule; its engine-fix half merges into WF-004's decision.
+RUN-004's loud-failure deliverable is independent and should land immediately regardless of this phase's schedule; its engine-fix half merges into WF-004's decision. WF-004 grows one load-bearing scope item from §3.4: the service's data/auth/function routes speak the Parse-wire subset, which is what makes WF-007's deletions safe and the record nodes finally local-capable.

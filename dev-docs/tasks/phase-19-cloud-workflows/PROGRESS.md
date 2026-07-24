@@ -2,7 +2,7 @@
 
 **Created:** 2026-07-22, from [NOODL-REVIVAL-ROADMAP.md](../../reviews/NOODL-REVIVAL-ROADMAP.md) Track G
 **Re-scoped:** 2026-07-24, per [BACKEND-GAP-ASSESSMENT.md](./BACKEND-GAP-ASSESSMENT.md) — 3 tasks → 6, phase reframed from "bounded resurrection" to "the backend leg of the full stack"
-**Overall status:** 🔴 Not started — 0 / 6 tasks
+**Overall status:** 🔴 Not started — 0 / 7 tasks
 
 ## Status vocabulary
 
@@ -18,6 +18,7 @@ Not started · In progress · **Built–not wired** · Complete · Superseded
 | 4 | WF-002 | Workflow nodes (phase-11 Series 1) | Not started | 3–4 wks | Unblocked by WF-001; catalog entries mandatory |
 | 5 | WF-005 | Triggers: schedule, webhook, DB-change | Not started | 2–3 wks | The n8n-shaped capability; function triggers don't need WF-001 |
 | 6 | WF-003 | One deploy target | Not started | 2–3 wks | Reduced by WF-004 to packaging the service; Docker Compose self-host is the default candidate |
+| 7 | WF-007 | Retire the Parse framework | Not started | ~1 wk | After WF-004; `noodl-parse-dashboard` deletion is anytime (orphaned) |
 
 ## Already built (do not rebuild) — verified 2026-07-24 by the salvage audit
 
@@ -55,4 +56,5 @@ Unchanged in substance from the original framing, plus one addition:
 
 ## Log
 
+- **2026-07-24 (later)** — Framework map run (code-level, recorded in BACKEND-GAP-ASSESSMENT §3.4): no Parse server was ever in the repo; two data stacks that never meet (record nodes → Parse REST via `cloudstore.js`; local backend → `/api/:table` via BYOB nodes only — "Query Records" against a local backend has never worked); the used Parse surface is a bounded ~15-endpoint subset. Decision: WF-004 speaks the Parse-wire subset (zero client-file changes, heals the split); **WF-007 created** to delete the management framework (CloudServices model/panel ~55 KB, `deploy-cloud-functions.ts`, port-8577 `cloud-function-server.js` + cloudruntime bundle, orphaned `noodl-parse-dashboard`). The earlier "legacy, untouched" stance is superseded.
 - **2026-07-24** — Phase re-scoped. Trigger: the pre-revival salvage audit plus a strategic re-framing of the backend gap ([BACKEND-GAP-ASSESSMENT.md](./BACKEND-GAP-ASSESSMENT.md)). WF-004/005/006 created; WF-001 revised (lost-branch finding folded in, standalone-service premise); WF-003 reduced to packaging the WF-004 service; README rewritten. Exit criterion made concrete (webhook + schedule + DB + error route + observed + deployed).

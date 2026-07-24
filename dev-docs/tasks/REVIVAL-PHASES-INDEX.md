@@ -18,7 +18,7 @@ These nine phases document the unlimited-budget revival plan. They sit alongside
 | [16 — Runtime & Deploy Health](./phase-16-runtime-deploy-health/) | D | RUN-001…004 | Runtime React 19, SSR/SSG, finish UBA, fix local backend | Parallel; RUN-004 after REV-004 |
 | [17 — Noodl Learn](./phase-17-noodl-learn/) | E | LEARN-001…006 | Lessons engine, curriculum, web viewer, classroom mode, pilots | Horizon 2 |
 | [18 — Code Export v2](./phase-18-code-export-v2/) | F | EXP-001…005 | `@nodegx/core`, generators, AI translation with trace verification | After Phase 13 |
-| [19 — Cloud & Workflows](./phase-19-cloud-workflows/) | G | WF-001…006 | The backend leg of the full stack: standalone service, workflow engine, triggers, observability, one deploy target (re-scoped 2026-07-24 — see [BACKEND-GAP-ASSESSMENT](./phase-19-cloud-workflows/BACKEND-GAP-ASSESSMENT.md)) | After G2-critical work; WF-006 + RUN-004 loud-failure anytime |
+| [19 — Cloud & Workflows](./phase-19-cloud-workflows/) | G | WF-001…007 | The backend leg of the full stack: standalone service (speaks the Parse-wire subset), workflow engine, triggers, observability, one deploy target, Parse-framework retirement (re-scoped 2026-07-24 — see [BACKEND-GAP-ASSESSMENT](./phase-19-cloud-workflows/BACKEND-GAP-ASSESSMENT.md)) | After G2-critical work; WF-006 + RUN-004 loud-failure anytime |
 | [20 — Ecosystem](./phase-20-ecosystem/) | Horizon 3 | ECO-001…005 | Collaboration, marketplace, multi-project, hosting, rebrand | 🔒 **Gated on G3** |
 
 ## The critical path

@@ -51,6 +51,24 @@ Decide with RUN-004, record the reasoning in NOTES, and hold both tasks to the s
 
 Either way the swap surface is one `require` in one file plus whatever thin shim the chosen API needs. Bias: **A if it covers the API surface**, because a dependency that doesn't exist can't break — but verify, don't assume; record a small compatibility-test file either way.
 
+## The wire-protocol decision (added 2026-07-24 — see BACKEND-GAP-ASSESSMENT §3.4)
+
+The service's data/auth/function routes speak the **Parse-wire subset** that the four existing runtime clients emit (`cloudstore.js`, `userservice.ts`, `cloudfunctions.js`, `configservice.js`). This is load-bearing: it is what makes the 9 record nodes ("Query Records", "Record", relations…) and the user nodes work against the local backend **with zero client-file changes** — today they cannot talk to it at all — and what licenses WF-007's deletions.
+
+Concretely, the subset (from the 2026-07-24 framework map; verify against the clients, not Parse docs):
+
+- `/classes/<collection>` CRUD incl. POST+`_method:GET` queries with the operator grammar `QueryBuilder.js` already largely encodes; `order`, `limit`/`skip`, `include` (pointer expansion), `keys`, `count`
+- `/aggregate/<collection>` + `distinct`; `Increment`, `AddRelation`/`RemoveRelation` ops; Pointer/Date/File/GeoPoint types
+- `/files/<name>` upload/delete (store beside the SQLite data dir)
+- `/functions/<name>` (routes to CloudRunner — and later the WF-001 engine)
+- `/config` (serve from backend config)
+- Sessions: `/login`, `/logout`, `/users` (signup), `/users/me`, `/users/<id>` PUT; `X-Parse-Session-Token`; error code 209 for invalid session. Password-reset/email-verify endpoints may return 501 in v1 — record it. The two endpoints the client scrapes as HTML keep their shape.
+- Headers: `X-Parse-Application-Id` (the backend's id), session token. **No master-key surface** — the local service trusts localhost + WF-004's bearer token instead; deployed hardening is WF-003's.
+
+Explicitly **not** implemented: live queries, push, GraphQL, client schema/ACL management — the clients never call them. The existing `/api/:table` routes stay for the BYOB nodes; both protocols front the same `LocalSQLAdapter`.
+
+Sizing note: this replaces the "±2 wks" naive read of "implement Parse" — it is ~15 endpoints over a query builder that already exists. Budget it inside this task's 2–3 weeks by keeping sessions minimal (login/logout/signup/me) and deferring the long tail to 501s with honest errors.
+
 ## Scope
 
 ### In Scope
@@ -59,7 +77,9 @@ Either way the swap surface is one `require` in one file plus whatever thin shim
 - [ ] Process contract: spawn/supervise from the editor; health endpoint; port allocation; clean shutdown on editor exit (replacing `backendManager.stopAll()`)
 - [ ] Status surfaced honestly in the Backend Services panel: running / stopped / failed / ephemeral, replacing today's silent no-op paths (including the `findViewerCloudPath` one)
 - [ ] Localhost-by-default binding; token auth for non-localhost
-- [ ] Headless smoke path: `node`-run the service against a data dir, exercise `/health`, `/api/:table`, `/functions/:name`
+- [ ] **Parse-wire subset routes** per the wire-protocol section: `/classes`, `/aggregate`, `/files`, `/functions`, `/config`, minimal sessions — verified by pointing a real project's `cloudservices.endpoint` at the service and exercising Query Records / Record / login nodes live
+- [ ] Editor convenience: when a local backend is running, offer/auto-set the project's `cloudservices` metadata to it (the seam `projectmodel.editor.ts` `setCloudServices` already provides)
+- [ ] Headless smoke path: `node`-run the service against a data dir, exercise `/health`, `/api/:table`, `/classes/:collection`, `/functions/:name`
 - [ ] Wire the `deleteTable` IPC handler's UI caller or remove the dead handler (small; recorded in the salvage audit)
 - [ ] Persistence integrity test: write, restart the *service*, read back
 
