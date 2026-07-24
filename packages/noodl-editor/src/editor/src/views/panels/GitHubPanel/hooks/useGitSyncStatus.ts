@@ -10,7 +10,7 @@ import { Git } from '@noodl/git';
 
 import { ProjectModel } from '@noodl-models/projectmodel';
 import { LocalProjectsModel } from '@noodl-utils/LocalProjectsModel';
-import { mergeProject } from '@noodl-versioning';
+import { mergeProject, mergeV2ComponentFiles } from '@noodl-versioning';
 
 export interface GitSyncStatus {
   /** Number of commits ahead of remote */
@@ -62,7 +62,7 @@ export function useGitSyncStatus(): UseGitSyncStatusResult {
       const projectId = ProjectModel.instance?.id || 'temp';
       LocalProjectsModel.instance.setCurrentGlobalGitAuth(projectId);
 
-      const git = new Git(mergeProject);
+      const git = new Git(mergeProject, mergeV2ComponentFiles);
       await git.openRepository(projectDirectory);
 
       // Check for remote
@@ -131,7 +131,7 @@ export function useGitSyncStatus(): UseGitSyncStatusResult {
       const projectId = ProjectModel.instance?.id || 'temp';
       LocalProjectsModel.instance.setCurrentGlobalGitAuth(projectId);
 
-      const git = new Git(mergeProject);
+      const git = new Git(mergeProject, mergeV2ComponentFiles);
       await git.openRepository(projectDirectory);
 
       // Check for uncommitted changes first
@@ -172,7 +172,7 @@ export function useGitSyncStatus(): UseGitSyncStatusResult {
       const projectId = ProjectModel.instance?.id || 'temp';
       LocalProjectsModel.instance.setCurrentGlobalGitAuth(projectId);
 
-      const git = new Git(mergeProject);
+      const git = new Git(mergeProject, mergeV2ComponentFiles);
       await git.openRepository(projectDirectory);
 
       // Stash any uncommitted changes

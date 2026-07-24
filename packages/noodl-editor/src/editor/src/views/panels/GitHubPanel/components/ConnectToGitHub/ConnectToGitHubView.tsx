@@ -12,7 +12,7 @@ import { Git } from '@noodl/git';
 
 import { ProjectModel } from '@noodl-models/projectmodel';
 import { LocalProjectsModel } from '@noodl-utils/LocalProjectsModel';
-import { mergeProject } from '@noodl-versioning';
+import { mergeProject, mergeV2ComponentFiles } from '@noodl-versioning';
 
 import { GitHubClient, GitHubOAuthService } from '../../../../../services/github';
 import type { ProjectGitState } from '../../hooks/useGitHubRepository';
@@ -75,7 +75,7 @@ export function ConnectToGitHubView({ gitState, remoteUrl, provider, onConnected
         LocalProjectsModel.instance.setCurrentGlobalGitAuth(projectId);
 
         // 3. Initialize git if needed
-        const git = new Git(mergeProject);
+        const git = new Git(mergeProject, mergeV2ComponentFiles);
 
         if (gitState === 'no-git') {
           console.log('🔧 [ConnectToGitHub] Initializing git repository...');
@@ -133,7 +133,7 @@ export function ConnectToGitHubView({ gitState, remoteUrl, provider, onConnected
         LocalProjectsModel.instance.setCurrentGlobalGitAuth(projectId);
 
         // Initialize git if needed
-        const git = new Git(mergeProject);
+        const git = new Git(mergeProject, mergeV2ComponentFiles);
 
         if (gitState === 'no-git') {
           console.log('🔧 [ConnectToGitHub] Initializing git repository...');

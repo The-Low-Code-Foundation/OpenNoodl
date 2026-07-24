@@ -1,4 +1,4 @@
-var ProjectMerger = require('@noodl-utils/projectmerger');
+var ProjectMerger = require('@noodl-versioning');
 var NodeLibrary = require('@noodl-models/nodelibrary').NodeLibrary;
 var fs = require('fs');
 var Process = require('process');
@@ -149,18 +149,19 @@ describe('Project merger (states and transitions)', function () {
     expect(res.components[0].graph.roots[0]).toEqual({
       type: '0',
       id: 'A',
-      parameters: undefined,
       stateParameters: {
         hover: {
           p1: 'changed',
-          p2: 'added-string',
-          p3: undefined
+          p2: 'added-string'
+          // SUB-007: a parameter deleted by one side is removed outright; the
+          // legacy merger left the key behind with an explicit `undefined`.
         },
         pressed: {
           p4: 'new-param'
         }
       },
-      ports: [],
+      // SUB-007: the graph merger no longer injects an empty `ports` array
+      // into every node it merges; absent and [] are equivalent to readers.
       conflicts: [
         {
           type: 'stateParameter',
@@ -170,7 +171,6 @@ describe('Project merger (states and transitions)', function () {
           theirs: 10
         }
       ],
-      children: undefined
     });
   });
 
@@ -349,7 +349,6 @@ describe('Project merger (states and transitions)', function () {
     expect(res.components[0].graph.roots[0]).toEqual({
       type: '0',
       id: 'A',
-      parameters: undefined,
       stateTransitions: {
         hover: {
           p1: {
@@ -359,8 +358,9 @@ describe('Project merger (states and transitions)', function () {
           p2: {
             dur: 0,
             curve: 'added'
-          },
-          p3: undefined
+          }
+          // SUB-007: a parameter deleted by one side is removed outright; the
+          // legacy merger left the key behind with an explicit `undefined`.
         },
         pressed: {
           p4: {
@@ -369,7 +369,8 @@ describe('Project merger (states and transitions)', function () {
           }
         }
       },
-      ports: [],
+      // SUB-007: the graph merger no longer injects an empty `ports` array
+      // into every node it merges; absent and [] are equivalent to readers.
       conflicts: [
         {
           type: 'stateTransition',
@@ -385,7 +386,6 @@ describe('Project merger (states and transitions)', function () {
           }
         }
       ],
-      children: undefined
     });
   });
 
@@ -457,14 +457,14 @@ describe('Project merger (states and transitions)', function () {
     expect(res.components[0].graph.roots[0]).toEqual({
       type: '0',
       id: 'A',
-      parameters: undefined,
       defaultStateTransitions: {
         neutral: {
           dur: 100,
           curve: [0, 0, 1, 1]
         }
       },
-      ports: [],
+      // SUB-007: the graph merger no longer injects an empty `ports` array
+      // into every node it merges; absent and [] are equivalent to readers.
       conflicts: [
         {
           type: 'defaultStateTransition',
@@ -479,7 +479,6 @@ describe('Project merger (states and transitions)', function () {
           }
         }
       ],
-      children: undefined
     });
   });
 
@@ -541,9 +540,9 @@ describe('Project merger (states and transitions)', function () {
     expect(res.components[0].graph.roots[0]).toEqual({
       type: '0',
       id: 'A',
-      parameters: undefined,
       variant: 'VariantA',
-      ports: [],
+      // SUB-007: the graph merger no longer injects an empty `ports` array
+      // into every node it merges; absent and [] are equivalent to readers.
       conflicts: [
         {
           type: 'variant',
@@ -551,7 +550,6 @@ describe('Project merger (states and transitions)', function () {
           theirs: 'VariantB'
         }
       ],
-      children: undefined
     });
   });
 });

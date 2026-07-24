@@ -1,4 +1,4 @@
-var ProjectMerger = require('@noodl-utils/projectmerger');
+var ProjectMerger = require('@noodl-versioning');
 var NodeLibrary = require('@noodl-models/nodelibrary').NodeLibrary;
 var fs = require('fs');
 var Process = require('process');

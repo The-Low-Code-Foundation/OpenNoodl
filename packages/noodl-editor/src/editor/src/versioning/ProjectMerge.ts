@@ -20,8 +20,16 @@
  */
 
 import { diffGraphs } from './GraphDiff';
-import { applyResolution, mergeProjectSnapshots, resolveAll } from './GraphMerge';
-import { deepClone, deepEqual, fromLegacyComponent, toLegacyComponent } from './GraphSnapshot';
+import { applyResolution, mergeGraphs, mergeProjectSnapshots, resolveAll } from './GraphMerge';
+import {
+  deepClone,
+  deepEqual,
+  fromLegacyComponent,
+  fromV2Files,
+  toLegacyComponent,
+  toV2Files
+} from './GraphSnapshot';
+import type { V2ComponentFiles } from './GraphSnapshot';
 import { ConflictSide, GraphConflict, GraphSnapshot, MergeResult, ParamMap } from './types';
 
 export type LegacyProject = Record<string, unknown>;
@@ -379,7 +387,11 @@ export function mergeProjectGraph(
     const o = ourRaw.get(key);
     const t = theirRaw.get(key);
     const a = baseRaw.get(key);
-    if (!o || !t) continue;
+    if (!o || !t) {
+      // Added by exactly one side: that side's file is the answer as written.
+      if (!a) verbatimComponents.set(key, o ?? t);
+      continue;
+    }
     if (deepEqual(o, t) || deepEqual(t, a)) verbatimComponents.set(key, o);
     else if (deepEqual(o, a)) verbatimComponents.set(key, t);
   }
@@ -797,6 +809,57 @@ export function mergeProject(
 ): LegacyProject {
   const state = mergeProjectGraph(ancestors, ours, theirs);
   return serializeMergedProject(state);
+}
+
+// ---------------------------------------------------------------------------
+// v2 component files (SUB-001 decomposed layout)
+// ---------------------------------------------------------------------------
+
+/**
+ * Three-way merge of one v2 component — `component.json`, `nodes.json` and
+ * `connections.json` merged together rather than file by file.
+ *
+ * Together matters: a connection whose endpoint node the other side deleted is
+ * only detectable with both files in hand, and that case is a conflict rather
+ * than a silent drop. Callers that can only supply one file (git's per-file
+ * merge driver) may pass `{}` for the others; the merge then simply has less
+ * context to work with.
+ */
+export function mergeV2ComponentFiles(
+  base: Partial<V2ComponentFiles> | undefined,
+  ours: Partial<V2ComponentFiles>,
+  theirs: Partial<V2ComponentFiles>
+): { files: V2ComponentFiles; conflicts: GraphConflict[] } {
+  const normalize = (files: Partial<V2ComponentFiles> | undefined): V2ComponentFiles => ({
+    component: files?.component ?? {},
+    nodes: files?.nodes ?? {},
+    connections: files?.connections ?? {}
+  });
+
+  const result = mergeGraphs(
+    fromV2Files(normalize(base)),
+    fromV2Files(normalize(ours)),
+    fromV2Files(normalize(theirs))
+  );
+
+  const files = toV2Files(result.merged);
+
+  // Same transport as the project-level merge: the driver runs out of process,
+  // so unresolved conflicts ride along in the component's own metadata.
+  const unresolved = result.conflicts.filter((conflict) => !conflict.resolution);
+  if (unresolved.length > 0) {
+    const metadata = isPlainObject(files.component.metadata) ? { ...files.component.metadata } : {};
+    metadata[MERGE_CONFLICTS_KEY] = unresolved.map(portableConflict);
+    files.component.metadata = metadata;
+  }
+
+  return { files, conflicts: unresolved };
+}
+
+/** True for the three files that make up a decomposed v2 component. */
+export function isV2ComponentFile(filePath: string): boolean {
+  const name = filePath.split('/').pop();
+  return name === 'component.json' || name === 'nodes.json' || name === 'connections.json';
 }
 
 /**

@@ -1,6 +1,6 @@
 import { Git } from '@noodl/git';
 
-import { mergeProject } from '@noodl-versioning';
+import { mergeProject, mergeV2ComponentFiles } from '@noodl-versioning';
 
 import { ProjectModel } from '../projectmodel';
 
@@ -9,7 +9,7 @@ import { ProjectModel } from '../projectmodel';
  */
 export async function getGitStats() {
   try {
-    const git = new Git(mergeProject);
+    const git = new Git(mergeProject, mergeV2ComponentFiles);
     await git.openRepository(ProjectModel.instance._retainedProjectDirectory);
 
     const gitBranch: string = await git.getCurrentBranchName();

@@ -9,7 +9,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Git } from '@noodl/git';
 
 import { ProjectModel } from '@noodl-models/projectmodel';
-import { mergeProject } from '@noodl-versioning';
+import { mergeProject, mergeV2ComponentFiles } from '@noodl-versioning';
 
 /**
  * Possible states for a project's git connection
@@ -102,7 +102,7 @@ export function useGitHubRepository(): GitHubRepoInfo & { refetch: () => void } 
       }
 
       // Create Git instance and try to open repository
-      const git = new Git(mergeProject);
+      const git = new Git(mergeProject, mergeV2ComponentFiles);
 
       try {
         await git.openRepository(projectDirectory);

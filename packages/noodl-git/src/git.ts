@@ -15,7 +15,7 @@ import { createCommit } from './core/commit';
 import { getConfigValue, setConfigValue } from './core/config';
 import { getBranchesOld } from './core/for-each-ref';
 import { appendGitIgnore } from './core/ignore';
-import { init, installMergeDriver } from './core/init';
+import { init, installMergeDriver, NOODL_MERGE_ATTRIBUTES } from './core/init';
 import { getChangedFiles, getCommits } from './core/logs';
 import { merge, getMergeBase, mergeTree, mergeTreeCommit } from './core/merge';
 import { BranchType } from './core/models/branch';
@@ -33,7 +33,7 @@ import { popStashEntry, createStashEntry, getStashes, popStashEntryToBranch } fr
 import { getStatus } from './core/status';
 import { deleteRef } from './core/update-ref';
 import { cleanMergeDriverOptionsSync, writeMergeDriverOptions } from './merge-driver';
-import { MergeStrategy, MergeStrategyFunc } from './merge-strategy';
+import { MergeStrategy, MergeStrategyFunc, MergeV2ComponentFunc } from './merge-strategy';
 import {
   GitStatus,
   GitCommit,
@@ -88,7 +88,14 @@ export class Git {
     return this.originUrl;
   }
 
-  constructor(private readonly mergeProject: MergeStrategyFunc) {}
+  constructor(
+    private readonly mergeProject: MergeStrategyFunc,
+    /**
+     * SUB-007: merges a decomposed v2 component with all three of its files at
+     * once. Optional — without it v2 files fall back to taking one side.
+     */
+    private readonly mergeV2Component?: MergeV2ComponentFunc
+  ) {}
 
   /**
    * Initialize a new git repository in the given path.
@@ -324,7 +331,7 @@ export class Git {
     if (tree.kind === ComputedAction.Conflicts) {
       // Solve any conflicts if there are any after reapplying the stash
       // NOTE(?): "ours" and "theirs" are reveresed, since our changes are the incoming one from the stash
-      const solver = new MergeStrategy(this.baseDir, this.mergeProject);
+      const solver = new MergeStrategy(this.baseDir, this.mergeProject, 'our', this.mergeV2Component);
       await solver.solveConflicts(tree);
     } else if (tree.kind !== ComputedAction.Clean) {
       throw new Error('Failed to merge stash, ' + tree.kind);
@@ -835,7 +842,7 @@ export class Git {
     await appendGitIgnore(this.baseDir, ['project-tmp.json*', '.DS_Store', '__MACOSX']);
 
     // Create or append the .gitattributes file
-    await appendGitAttributes(this.baseDir, ['project.json merge=noodl']);
+    await appendGitAttributes(this.baseDir, NOODL_MERGE_ATTRIBUTES);
 
     const remoteName = await this.getRemoteName();
     if (remoteName) {
@@ -929,7 +936,7 @@ export class Git {
     const tree = await mergeTree(this.baseDir, ours, theirs);
     if (tree.kind === ComputedAction.Conflicts) {
       // Run our solve strategy
-      const solver = new MergeStrategy(this.baseDir, this.mergeProject);
+      const solver = new MergeStrategy(this.baseDir, this.mergeProject, 'our', this.mergeV2Component);
       await solver.solveConflicts(tree);
 
       // Create a merge commit

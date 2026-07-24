@@ -7,7 +7,7 @@ import { AppRegistry } from '@noodl-models/app_registry';
 import { ProjectModel } from '@noodl-models/projectmodel';
 import { WarningsModel } from '@noodl-models/warningsmodel';
 import { LocalProjectsModel } from '@noodl-utils/LocalProjectsModel';
-import { mergeProject } from '@noodl-versioning';
+import { mergeProject, mergeV2ComponentFiles } from '@noodl-versioning';
 
 import { IconName, IconSize } from '@noodl-core-ui/components/common/Icon';
 import { IconButton, IconButtonVariant } from '@noodl-core-ui/components/inputs/IconButton';
@@ -220,7 +220,7 @@ export function VersionControlPanel() {
   const [state, setState] = useState<'loading' | 'loaded' | 'not-git'>('loading');
 
   async function createGit() {
-    const gitClient = new Git(mergeProject);
+    const gitClient = new Git(mergeProject, mergeV2ComponentFiles);
     await gitClient.openRepository(ProjectModel.instance._retainedProjectDirectory);
     setGit(gitClient);
   }
@@ -239,7 +239,7 @@ export function VersionControlPanel() {
   }, []);
 
   async function setupGit() {
-    const gitClient = new Git(mergeProject);
+    const gitClient = new Git(mergeProject, mergeV2ComponentFiles);
     await gitClient.initNewRepo(ProjectModel.instance._retainedProjectDirectory);
     await gitClient.commit('Initial commit');
     setGit(gitClient);

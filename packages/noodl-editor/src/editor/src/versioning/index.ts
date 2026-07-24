@@ -28,6 +28,8 @@ export {
   resolveAllProjectConflicts,
   diffProjects,
   readMergeConflicts,
+  mergeV2ComponentFiles,
+  isV2ComponentFile,
   MERGE_CONFLICTS_KEY
 } from './ProjectMerge';
 export type {

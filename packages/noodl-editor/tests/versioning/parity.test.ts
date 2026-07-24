@@ -1,26 +1,32 @@
 /**
- * SUB-007 step 7: parity between the legacy `utils/projectmerger.js` and the
- * graph-engine merger in `versioning/ProjectMerge.ts`.
+ * SUB-007 step 7: parity between the deleted legacy `utils/projectmerger.js`
+ * and the graph-engine merger in `versioning/ProjectMerge.ts`.
  *
  * Two halves:
  *
- *  1. A/B over the captured real merge fixtures — both mergers must produce
- *     semantically identical projects (same nodes, parents, parameters and
- *     connections per component, same project scalars).
+ *  1. The captured real merge fixtures, merged and compared against goldens
+ *     recorded from the legacy merger before it was removed
+ *     (`tests/testfs/merge-tests/legacy-golden/`). The comparison is
+ *     semantic — same nodes, parents, parameters and connections per
+ *     component, same project scalars — not byte equality, because the
+ *     divergences below are intentional.
  *  2. The divergences, pinned. Where the new merger deliberately differs, the
  *     expected NEW behaviour is asserted here so a regression cannot pass as
  *     "one of the known differences". Each is justified in SUB-007-DESIGN.md.
+ *
+ * Regenerating the goldens is not a fix. They are the record of what the
+ * merger this replaced actually produced on real project histories; a
+ * difference appearing here means the new merger changed behaviour.
  */
 
 import * as fs from 'fs';
-
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const legacyMerger = require('@noodl-utils/projectmerger');
 
 import {
   MERGE_CONFLICTS_KEY,
   mergeProject as mergeProjectRaw,
   mergeProjectGraph,
+  mergeV2ComponentFiles,
+  isV2ComponentFile,
   readMergeConflicts
 } from '../../src/editor/src/versioning';
 
@@ -38,6 +44,8 @@ function mergeProject(base: Json, ours: Json, theirs: Json): Json {
 
 interface FixtureCase {
   name: string;
+  /** Basename under tests/testfs/merge-tests/legacy-golden/. */
+  golden: string;
   base: string;
   ours: string;
   theirs: string;
@@ -46,36 +54,42 @@ interface FixtureCase {
 const FIXTURE_CASES: FixtureCase[] = [
   {
     name: 'root capture (2020-08-06)',
+    golden: 'root-2020-08-06',
     base: 'base-merge-project-Thu--06-Aug-2020-15-29-38-GMT.json',
     ours: 'ours-merge-project-Thu--06-Aug-2020-15-29-38-GMT.json',
     theirs: 'remote-merge-project-Thu--06-Aug-2020-15-29-38-GMT.json'
   },
   {
     name: 'deleted-root-node',
+    golden: 'deleted-root-node',
     base: 'deleted-root-node/base.json',
     ours: 'deleted-root-node/ours.json',
     theirs: 'deleted-root-node/theirs.json'
   },
   {
     name: 'move-nodes',
+    golden: 'move-nodes',
     base: 'move-nodes/base-merge-project-Wed--03-Feb-2021-11-07-55-GMT.json',
     ours: 'move-nodes/ours-merge-project-Wed--03-Feb-2021-11-07-55-GMT.json',
     theirs: 'move-nodes/remote-merge-project-Wed--03-Feb-2021-11-07-55-GMT.json'
   },
   {
     name: 'remove-component',
+    golden: 'remove-component',
     base: 'remove-component/project-base.json',
     ours: 'remove-component/project-ours.json',
     theirs: 'remove-component/project-theirs.json'
   },
   {
     name: 'remove-moved-nodes (08-12)',
+    golden: 'remove-moved-nodes-08-12',
     base: 'remove-moved-nodes/base-merge-project-Wed--03-Feb-2021-08-12-22-GMT.json',
     ours: 'remove-moved-nodes/ours-merge-project-Wed--03-Feb-2021-08-12-22-GMT.json',
     theirs: 'remove-moved-nodes/remote-merge-project-Wed--03-Feb-2021-08-12-22-GMT.json'
   },
   {
     name: 'remove-moved-nodes (13-33)',
+    golden: 'remove-moved-nodes-13-33',
     base: 'remove-moved-nodes/base-merge-project-Wed--03-Feb-2021-13-33-47-GMT.json',
     ours: 'remove-moved-nodes/ours-merge-project-Wed--03-Feb-2021-13-33-47-GMT.json',
     theirs: 'remove-moved-nodes/remote-merge-project-Wed--03-Feb-2021-13-33-47-GMT.json'
@@ -194,16 +208,15 @@ function semanticDifferences(legacy: Json, next: Json): string[] {
   return differences;
 }
 
-describe('SUB-007 parity: graph merger vs legacy projectmerger', () => {
+describe('SUB-007 parity: graph merger vs the legacy merger it replaced', () => {
   FIXTURE_CASES.forEach((testCase) => {
-    it(`produces the same merge as the legacy merger — ${testCase.name}`, () => {
-      const base = read(testCase.base);
-      const ours = read(testCase.ours);
-      const theirs = read(testCase.theirs);
-
-      // The legacy merger mutates its arguments, so both get their own copies.
-      const legacyResult = legacyMerger.mergeProject(clone(base), clone(ours), clone(theirs));
-      const nextResult = mergeProject(clone(base), clone(ours), clone(theirs));
+    it(`matches the recorded legacy merge — ${testCase.name}`, () => {
+      const legacyResult = read(`legacy-golden/${testCase.golden}.json`);
+      const nextResult = mergeProject(
+        read(testCase.base),
+        clone(read(testCase.ours)),
+        read(testCase.theirs)
+      );
 
       const differences = semanticDifferences(legacyResult, nextResult);
       expect(differences).toEqual([]);
@@ -403,5 +416,113 @@ describe('SUB-007: structured conflict channel', () => {
 
     expect(readMergeConflicts(merged)).toEqual([]);
     expect(merged.metadata?.[MERGE_CONFLICTS_KEY]).toBeUndefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// v2 component files — what the git merge driver operates on (SUB-007 step 6).
+// ---------------------------------------------------------------------------
+
+describe('SUB-007: v2 component merge', () => {
+  const componentFile = (extra: Json = {}): Json => ({ id: 'c1', path: '/Login', type: 'component', ...extra });
+  const nodesFile = (nodes: Json[]): Json => ({ componentId: 'c1', version: 1, nodes });
+  const connectionsFile = (connections: Json[]): Json => ({ componentId: 'c1', version: 1, connections });
+
+  const wire = (from: string, to: string): Json => ({
+    fromId: from,
+    fromProperty: 'out',
+    toId: to,
+    toProperty: 'in'
+  });
+
+  it('recognises the three files a component is written to', () => {
+    expect(isV2ComponentFile('components/Login/nodes.json')).toBe(true);
+    expect(isV2ComponentFile('components/Login/connections.json')).toBe(true);
+    expect(isV2ComponentFile('components/Login/component.json')).toBe(true);
+    expect(isV2ComponentFile('project.json')).toBe(false);
+    expect(isV2ComponentFile('components/_registry.json')).toBe(false);
+  });
+
+  it('merges disjoint edits across the three files without conflict', () => {
+    const base = {
+      component: componentFile(),
+      nodes: nodesFile([{ id: 'A', type: 'Group', parameters: { p: 'base' } }]),
+      connections: connectionsFile([])
+    };
+    const ours = {
+      component: componentFile(),
+      nodes: nodesFile([{ id: 'A', type: 'Group', parameters: { p: 'ours' } }]),
+      connections: connectionsFile([])
+    };
+    const theirs = {
+      component: componentFile(),
+      nodes: nodesFile([
+        { id: 'A', type: 'Group', parameters: { p: 'base' } },
+        { id: 'B', type: 'Text', parameters: {} }
+      ]),
+      connections: connectionsFile([wire('A', 'B')])
+    };
+
+    const { files, conflicts } = mergeV2ComponentFiles(base, ours, theirs);
+
+    expect(conflicts).toEqual([]);
+    const ids = (files.nodes.nodes as Json[]).map((node) => node.id).sort();
+    expect(ids).toEqual(['A', 'B']);
+    const merged = (files.nodes.nodes as Json[]).find((node) => node.id === 'A');
+    expect(merged.parameters.p).toBe('ours');
+    expect((files.connections.connections as Json[]).length).toBe(1);
+  });
+
+  it('catches the cross-file case: a connection to a node the other side deleted', () => {
+    // This is why the three files are merged together rather than one at a
+    // time — connections.json alone cannot see that the node is gone.
+    const base = {
+      component: componentFile(),
+      nodes: nodesFile([
+        { id: 'A', type: 'Group', parameters: {} },
+        { id: 'B', type: 'Text', parameters: {} }
+      ]),
+      connections: connectionsFile([])
+    };
+    const ours = {
+      component: componentFile(),
+      nodes: nodesFile([{ id: 'A', type: 'Group', parameters: {} }]),
+      connections: connectionsFile([])
+    };
+    const theirs = {
+      component: componentFile(),
+      nodes: nodesFile([
+        { id: 'A', type: 'Group', parameters: {} },
+        { id: 'B', type: 'Text', parameters: {} }
+      ]),
+      connections: connectionsFile([wire('A', 'B')])
+    };
+
+    const { conflicts } = mergeV2ComponentFiles(base, ours, theirs);
+
+    expect(conflicts.some((conflict) => conflict.kind === 'connection-to-deleted')).toBe(true);
+  });
+
+  it('carries conflicts in component metadata for the out-of-process driver', () => {
+    const nodes = (value: string) => nodesFile([{ id: 'A', type: 'Group', parameters: { p: value } }]);
+    const { files, conflicts } = mergeV2ComponentFiles(
+      { component: componentFile(), nodes: nodes('base'), connections: connectionsFile([]) },
+      { component: componentFile(), nodes: nodes('ours'), connections: connectionsFile([]) },
+      { component: componentFile(), nodes: nodes('theirs'), connections: connectionsFile([]) }
+    );
+
+    expect(conflicts.length).toBe(1);
+    expect(files.component.metadata[MERGE_CONFLICTS_KEY].length).toBe(1);
+    expect(files.component.metadata[MERGE_CONFLICTS_KEY][0].kind).toBe('parameter');
+  });
+
+  it('still merges when only one file is available (git per-file driver)', () => {
+    // The CLI driver is handed one file at a time; the engine degrades to
+    // whatever context it has rather than refusing.
+    const nodes = (value: string) => nodesFile([{ id: 'A', type: 'Group', parameters: { p: value } }]);
+    const { files } = mergeV2ComponentFiles({ nodes: nodes('base') }, { nodes: nodes('ours') }, { nodes: nodes('base') });
+
+    const merged = (files.nodes.nodes as Json[])[0];
+    expect(merged.parameters.p).toBe('ours');
   });
 });

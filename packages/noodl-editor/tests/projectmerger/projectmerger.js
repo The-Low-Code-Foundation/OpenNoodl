@@ -1,4 +1,4 @@
-const ProjectMerger = require('@noodl-utils/projectmerger');
+const ProjectMerger = require('@noodl-versioning');
 const NodeLibrary = require('@noodl-models/nodelibrary').NodeLibrary;
 const { ProjectModel } = require('@noodl-models/projectmodel');
 const fs = require('fs');
@@ -180,27 +180,34 @@ describe('Project merger', function () {
 
     var res = ProjectMerger.mergeProject(a, o, t);
 
-    // Ids are used instead of names as keys
-    expect(res).toEqual({
-      components: [
-        {
-          id: 'A',
-          name: 'renamed1',
-          graph: {
-            roots: [],
-            connections: [],
-            comments: []
-          }
-        },
-        {
-          id: 'B',
-          name: 'comp2',
-          graph: {
-            roots: []
-          }
+    // Ids are used instead of names as keys.
+    // SUB-007: both sides renamed A differently. The legacy merger silently
+    // kept ours (its own source said "TODO: Conflic if both changes"); the
+    // graph merger still keeps ours but now reports it as a conflict. It also
+    // no longer injects an empty `comments` array into a component that never
+    // had one, and leaves components only one side touched (B) untouched.
+    expect(res.components).toEqual([
+      {
+        id: 'A',
+        name: 'renamed1',
+        graph: {
+          roots: [],
+          connections: []
         }
-      ]
-    });
+      },
+      {
+        id: 'B',
+        name: 'comp2',
+        graph: {
+          roots: []
+        }
+      }
+    ]);
+
+    const renameConflicts = res.metadata.mergeConflicts.filter((c) => c.kind === 'component-rename');
+    expect(renameConflicts.length).toBe(1);
+    expect(renameConflicts[0].ours).toBe('renamed1');
+    expect(renameConflicts[0].theirs).toBe('renamed2');
   });
 
   it('can merge labels', function () {
@@ -343,24 +350,19 @@ describe('Project merger', function () {
 
     var res = ProjectMerger.mergeProject(a, o, t);
 
-    // Local branch have deleted comp1 and their branch have created comp2
-    expect(res).toEqual({
-      components: [
-        {
-          name: 'comp3',
-          graph: {
-            roots: [],
-            connections: []
-          }
-        },
-        {
-          name: 'comp2',
-          graph: {
-            roots: []
-          }
+    // Local branch have deleted comp1 and their branch have created comp2.
+    // SUB-007: comp3 is now deleted too. Ours "changed" it only by gaining an
+    // empty `connections` array, which carries no semantics — so the soft-equal
+    // rule lets their deletion win rather than resurrecting the component on
+    // the strength of a meaningless JSON difference.
+    expect(res.components).toEqual([
+      {
+        name: 'comp2',
+        graph: {
+          roots: []
         }
-      ]
-    });
+      }
+    ]);
   });
 
   it('can merge connections', function () {
@@ -582,34 +584,36 @@ describe('Project merger', function () {
     };
 
     var res = ProjectMerger.mergeProject(a, o, t);
-    expect(res.components[0].graph.roots[0]).toEqual({
+    const roots = res.components[0].graph.roots;
+
+    // SUB-007, two changes from the legacy merger here:
+    //
+    //  - We deleted A; they changed its type. Legacy silently resurrected
+    //    their version. The graph merger keeps the merge ours-flavored (A
+    //    stays deleted) and reports a delete-vs-edit conflict, so the choice
+    //    is the user's rather than the merger's.
+    //  - Root order follows their insertion of F at the front, positioned by
+    //    surviving-neighbour order, instead of appending it after ours.
+    expect(roots.map((node) => node.id)).toEqual(['F', 'B']);
+
+    expect(roots[1]).toEqual({
       type: '0',
       id: 'B',
-      ports: [],
-      parameters: undefined,
       children: [
         {
-          children: undefined,
           type: '0',
           id: 'C'
         },
         {
-          children: undefined,
           type: '0',
           id: 'E'
         }
       ]
     });
-    expect(res.components[0].graph.roots[1]).toEqual({
-      children: undefined,
-      type: '0',
-      id: 'F'
-    });
-    expect(res.components[0].graph.roots[2]).toEqual({
-      children: undefined,
-      type: '1',
-      id: 'A'
-    });
+
+    const deleteVsEdit = res.metadata.mergeConflicts.filter((c) => c.kind === 'delete-vs-edit');
+    expect(deleteVsEdit.length).toBe(1);
+    expect(deleteVsEdit[0].nodeId).toBe('A');
   });
 
   it('can merge parameters', function () {
@@ -681,10 +685,12 @@ describe('Project merger', function () {
       id: 'A',
       parameters: {
         p1: 'changed',
-        p2: 'added-string',
-        p3: undefined
+        p2: 'added-string'
+        // SUB-007: a parameter deleted by one side is removed outright; the
+        // legacy merger left the key behind with an explicit `undefined`.
       },
-      ports: [],
+      // SUB-007: the graph merger no longer injects an empty `ports` array
+      // into every node it merges; absent and [] are equivalent to readers.
       conflicts: [
         {
           type: 'parameter',
@@ -693,7 +699,6 @@ describe('Project merger', function () {
           theirs: 10
         }
       ],
-      children: undefined
     });
   });
 
@@ -791,20 +796,23 @@ describe('Project merger', function () {
     });
 
     var res = ProjectMerger.mergeProject(a.toJSON(), o.toJSON(), t.toJSON());
-    expect(res.components[0].graph.roots[0].parameters['p2']).toBe(
-      'if(a==3){\n------------- Original -------------\nconsole.log("hej");\n------------- Ours -------------\nconsole.log("hej ho");\n------------- Theirs -------------\nconsole.log("new!!");\n-------------\n}\ntjo()\n'
-    );
-    expect(res.components[0].graph.roots[0].parameters['p1']).toBe(
-      '\n------------- Original -------------\nsome-string\n------------- Ours -------------\nchanged\n------------- Theirs -------------\nchanged2\n-------------\n'
-    );
+    const root = res.components[0].graph.roots[0];
 
-    expect(res.components[0].graph.roots[0].conflicts).toEqual([
+    // SUB-007 (design §4.2): source code still merges line-by-line via diff3,
+    // but a diff3 conflict no longer writes `------- Ours -------` markers into
+    // the parameter value. The value stays loadable code — ours — and the
+    // conflict is reported as a typed one carrying both full texts, so the UI
+    // can show them side by side instead of the user deleting markers by hand.
+    expect(root.parameters['p1']).toBe('changed');
+    expect(root.parameters['p2']).toBe('if(a==3){\nconsole.log("hej ho");\n}\ntjo()\n');
+
+    expect(root.conflicts).toEqual([
       {
         type: 'sourceCode',
         name: 'p1',
         oursDisplayName: '[Source code]',
         theirsDisplayName: '[Source code]',
-        ours: '\n------------- Original -------------\nsome-string\n------------- Ours -------------\nchanged\n------------- Theirs -------------\nchanged2\n-------------\n',
+        ours: 'changed',
         theirs: 'changed2'
       },
       {
@@ -812,7 +820,7 @@ describe('Project merger', function () {
         name: 'p2',
         oursDisplayName: '[Source code]',
         theirsDisplayName: '[Source code]',
-        ours: 'if(a==3){\n------------- Original -------------\nconsole.log("hej");\n------------- Ours -------------\nconsole.log("hej ho");\n------------- Theirs -------------\nconsole.log("new!!");\n-------------\n}\ntjo()\n',
+        ours: 'if(a==3){\nconsole.log("hej ho");\n}\ntjo()\n',
         theirs: 'if(a==3){\nconsole.log("new!!");\n}\ntjo()\n'
       }
     ]);
@@ -901,12 +909,17 @@ describe('Project merger', function () {
       ]
     });
 
-    //no conflicts, and ours should've "won"
+    // Ours still wins the value, but SUB-007 no longer discards their edit
+    // silently: with no ancestor to merge against, legacy logged a warning and
+    // dropped their side. That is the silent loss this task exists to remove,
+    // so it is now a reported conflict with both texts kept.
     var res = ProjectMerger.mergeProject(a.toJSON(), o.toJSON(), t.toJSON());
-    expect(res.components[0].graph.roots[0].parameters['p2']).toBe('if(a==3){\nconsole.log("hej ho");\n}\ntjo()\n');
-    expect(res.components[0].graph.roots[0].parameters['p1']).toBe('changed1');
+    const root = res.components[0].graph.roots[0];
+    expect(root.parameters['p2']).toBe('if(a==3){\nconsole.log("hej ho");\n}\ntjo()\n');
+    expect(root.parameters['p1']).toBe('changed1');
 
-    expect(res.components[0].graph.roots[0].conflicts).toEqual(undefined);
+    expect(root.conflicts.map((c) => c.name).sort()).toEqual(['p1', 'p2']);
+    expect(root.conflicts.every((c) => c.type === 'sourceCode')).toBe(true);
   });
 
   it('can merge type', function () {
@@ -987,7 +1000,8 @@ describe('Project merger', function () {
       {
         type: '1',
         id: 'A',
-        ports: [],
+        // SUB-007: the graph merger no longer injects an empty `ports` array
+        // into every node it merges; absent and [] are equivalent to readers.
         conflicts: [
           {
             type: 'typename',
@@ -995,18 +1009,14 @@ describe('Project merger', function () {
             theirs: '2'
           }
         ],
-        children: undefined,
-        parameters: undefined
       },
       {
         type: '1',
         id: 'B',
-        children: undefined
       },
       {
         type: '1',
         id: 'C',
-        children: undefined
       }
     ]);
   });
