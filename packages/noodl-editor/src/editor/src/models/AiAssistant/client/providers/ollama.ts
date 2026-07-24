@@ -28,11 +28,54 @@ import {
 } from '@noodl-models/AiAssistant/client/types';
 import { readNdjson } from '@noodl-models/AiAssistant/client/providers/stream-utils';
 
+import { errorMessage, isAbortError } from './errors';
 import { finalizeUsage } from './usage';
 
 export const OLLAMA_DEFAULT_BASE_URL = 'http://localhost:11434';
 
-export function toOllamaMessages(messages: AiMessage[]): Record<string, unknown>[] {
+/**
+ * The wire shapes this adapter reads. Optional throughout: Ollama omits the
+ * token counts on every frame but the last, and older builds omit fields
+ * newer ones send.
+ */
+export interface OllamaToolCall {
+  id?: string;
+  /** Arguments arrive as an object here, not as a JSON string. */
+  function?: { name?: string; arguments?: unknown };
+}
+
+export interface OllamaResponseMessage {
+  role?: string;
+  content?: string;
+  tool_calls?: OllamaToolCall[];
+}
+
+export interface OllamaChatResponse {
+  model?: string;
+  message?: OllamaResponseMessage;
+  /** Only the final frame of a stream sets this, along with the token counts. */
+  done?: boolean;
+  done_reason?: string;
+  prompt_eval_count?: number;
+  eval_count?: number;
+  error?: string;
+}
+
+export interface OllamaTagsResponse {
+  /** `name` on current builds, `model` on older ones. */
+  models?: { name?: string; model?: string }[];
+}
+
+/** A message in a request *we* build. */
+export interface OllamaRequestMessage {
+  role: string;
+  content: string;
+  /** Ollama matches tool results to calls by name, not by id. */
+  tool_name?: string;
+  tool_calls?: { function: { name: string; arguments: Record<string, unknown> } }[];
+}
+
+export function toOllamaMessages(messages: AiMessage[]): OllamaRequestMessage[] {
   return messages.map((message) => {
     if (message.role === 'tool') {
       return {
@@ -69,7 +112,7 @@ function toStopReason(doneReason: unknown): AiStopReason {
 }
 
 /** Ollama tool calls carry no id, so a stable synthetic one is minted. */
-function toToolCall(raw: TSFixme, index: number): AiToolCall {
+function toToolCall(raw: OllamaToolCall, index: number): AiToolCall {
   const name = raw?.function?.name || '';
   const args = raw?.function?.arguments;
   return {
@@ -138,9 +181,9 @@ export class OllamaProvider implements AiProvider {
         signal
       });
     } catch (error) {
-      if ((error as TSFixme)?.name === 'AbortError') throw error;
+      if (isAbortError(error)) throw error;
       throw new AiClientError(
-        `Could not reach Ollama at ${this.baseUrl}. Is it running? (${(error as Error).message})`,
+        `Could not reach Ollama at ${this.baseUrl}. Is it running? (${errorMessage(error)})`,
         this.id,
         error
       );
@@ -165,7 +208,7 @@ export class OllamaProvider implements AiProvider {
   async chat(request: AiChatRequest): Promise<AiChatResponse> {
     const body = this.buildBody(request, false);
     const response = await this.post(body, request.abortController?.signal);
-    const json: TSFixme = await response.json();
+    const json: OllamaChatResponse = await response.json();
 
     const toolCalls = (json.message?.tool_calls || []).map(toToolCall);
 
@@ -198,7 +241,7 @@ export class OllamaProvider implements AiProvider {
       for await (const line of readNdjson(response.body)) {
         if (signal?.aborted) break;
 
-        let chunk: TSFixme;
+        let chunk: OllamaChatResponse;
         try {
           chunk = JSON.parse(line);
         } catch {
@@ -233,7 +276,7 @@ export class OllamaProvider implements AiProvider {
         }
       }
     } catch (error) {
-      if ((error as TSFixme)?.name === 'AbortError' || signal?.aborted) {
+      if (isAbortError(error, signal)) {
         stopReason = 'aborted';
       } else {
         throw error;
@@ -259,8 +302,10 @@ export class OllamaProvider implements AiProvider {
       if (!response.ok) {
         return { ok: false, error: `Ollama responded with HTTP ${response.status}.` };
       }
-      const json: TSFixme = await response.json();
-      const models = (json.models || []).map((item: TSFixme) => item.name || item.model).filter(Boolean);
+      const json: OllamaTagsResponse = await response.json();
+      const models = (json.models || [])
+        .map((item) => item.name || item.model)
+        .filter((name): name is string => Boolean(name));
       if (models.length === 0) {
         return { ok: true, models, error: 'Ollama is running but has no models pulled. Try: ollama pull qwen2.5-coder' };
       }
@@ -268,7 +313,7 @@ export class OllamaProvider implements AiProvider {
     } catch (error) {
       return {
         ok: false,
-        error: `Could not reach Ollama at ${this.baseUrl}. Is it running? (${(error as Error).message})`
+        error: `Could not reach Ollama at ${this.baseUrl}. Is it running? (${errorMessage(error)})`
       };
     }
   }

@@ -6,9 +6,9 @@
  */
 
 import { OllamaProvider, toOllamaMessages } from '../../src/editor/src/models/AiAssistant/client/providers/ollama';
-import { AiClientError } from '../../src/editor/src/models/AiAssistant/client/types';
+import { AiClientError, AiToolCall } from '../../src/editor/src/models/AiAssistant/client/types';
 
-import { jsonResponse, recordingFetch, streamingResponse, textResponse } from './helpers';
+import { expectAiClientError, jsonResponse, recordingFetch, streamingResponse, textResponse } from './helpers';
 
 function ndjson(...payloads: unknown[]): string[] {
   return payloads.map((payload) => `${JSON.stringify(payload)}\n`);
@@ -24,7 +24,7 @@ describe('toOllamaMessages', () => {
     const [message] = toOllamaMessages([
       { role: 'assistant', content: '', toolCalls: [{ id: 'x', name: 'go', arguments: { a: 1 } }] }
     ]);
-    expect((message as TSFixme).tool_calls[0].function.arguments).toEqual({ a: 1 });
+    expect(message.tool_calls[0].function.arguments).toEqual({ a: 1 });
   });
 });
 
@@ -87,7 +87,7 @@ describe('OllamaProvider.chatStream', () => {
     ]);
 
     const provider = new OllamaProvider({ fetchImpl });
-    const emitted: TSFixme[] = [];
+    const emitted: AiToolCall[] = [];
     const response = await provider.chatStream(
       {
         model: 'llama3.1:8b',
@@ -121,18 +121,15 @@ describe('OllamaProvider.chatStream', () => {
   it('tells the user to pull the model when Ollama 404s', async () => {
     const { fetchImpl } = recordingFetch([textResponse('model not found', 404)]);
 
-    let caught: TSFixme;
-    try {
-      await new OllamaProvider({ fetchImpl }).chat({
+    const caught = await expectAiClientError(() =>
+      new OllamaProvider({ fetchImpl }).chat({
         model: 'missing-model',
         messages: [{ role: 'user', content: 'Hi' }]
-      });
-    } catch (error) {
-      caught = error;
-    }
+      })
+    );
 
     expect(caught instanceof AiClientError).toBe(true);
-    expect(String(caught.message)).toContain('ollama pull missing-model');
+    expect(caught.message).toContain('ollama pull missing-model');
   });
 
   it('explains that Ollama is not running when the connection fails', async () => {
@@ -140,17 +137,14 @@ describe('OllamaProvider.chatStream', () => {
       throw new Error('ECONNREFUSED');
     }) as unknown as typeof fetch;
 
-    let caught: TSFixme;
-    try {
-      await new OllamaProvider({ fetchImpl }).chat({
+    const caught = await expectAiClientError(() =>
+      new OllamaProvider({ fetchImpl }).chat({
         model: 'llama3.1:8b',
         messages: [{ role: 'user', content: 'Hi' }]
-      });
-    } catch (error) {
-      caught = error;
-    }
+      })
+    );
 
-    expect(String(caught.message)).toContain('Is it running?');
+    expect(caught.message).toContain('Is it running?');
   });
 });
 

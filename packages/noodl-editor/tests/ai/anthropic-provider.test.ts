@@ -6,19 +6,24 @@
  */
 
 import {
+  AnthropicCreateResult,
   AnthropicLike,
   AnthropicProvider,
+  AnthropicRequestBlock,
+  AnthropicRequestMessage,
   toAnthropicMessages
 } from '../../src/editor/src/models/AiAssistant/client/providers/anthropic';
-import { AiClientError, AiMessage } from '../../src/editor/src/models/AiAssistant/client/types';
+import { AiClientError, AiMessage, AiToolCall } from '../../src/editor/src/models/AiAssistant/client/types';
 
-import { asyncIterable } from './helpers';
+import { asyncIterable, expectAiClientError } from './helpers';
 
-function stubClient(handler: (params: TSFixme, options?: TSFixme) => unknown): {
+type CreateParams = Record<string, unknown>;
+
+function stubClient(handler: (params: CreateParams, options?: { signal?: AbortSignal }) => AnthropicCreateResult): {
   client: AnthropicLike;
-  calls: TSFixme[];
+  calls: CreateParams[];
 } {
-  const calls: TSFixme[] = [];
+  const calls: CreateParams[] = [];
   const client: AnthropicLike = {
     messages: {
       create: async (params, options) => {
@@ -28,6 +33,19 @@ function stubClient(handler: (params: TSFixme, options?: TSFixme) => unknown): {
     }
   };
   return { client, calls };
+}
+
+/** Assert a built message carries block content, and narrow it for the assertions. */
+function blocksOf(message: AnthropicRequestMessage): AnthropicRequestBlock[] {
+  if (!Array.isArray(message.content)) {
+    throw new Error(`Expected block content, got: ${JSON.stringify(message.content)}`);
+  }
+  return message.content;
+}
+
+/** An error shaped like the one the SDK throws for an HTTP failure. */
+function sdkError(message: string, status: number): Error & { status: number } {
+  return Object.assign(new Error(message), { status });
 }
 
 const TEXT_STREAM = [
@@ -69,7 +87,7 @@ describe('toAnthropicMessages', () => {
       }
     ];
 
-    const blocks = toAnthropicMessages(messages).messages[1].content as TSFixme[];
+    const blocks = blocksOf(toAnthropicMessages(messages).messages[1]);
     expect(blocks[0]).toEqual({ type: 'text', text: 'Checking' });
     expect(blocks[1]).toEqual({ type: 'tool_use', id: 'toolu_1', name: 'get_weather', input: { city: 'Malmo' } });
   });
@@ -86,7 +104,7 @@ describe('toAnthropicMessages', () => {
 
     const out = toAnthropicMessages(messages).messages;
     expect(out.length).toBe(3);
-    expect((out[2].content as TSFixme[]).length).toBe(2);
+    expect(blocksOf(out[2]).length).toBe(2);
   });
 
   it('prepends a user turn when the conversation opens with an assistant message', () => {
@@ -175,7 +193,7 @@ describe('AnthropicProvider.chatStream', () => {
     const { client } = stubClient(() => asyncIterable(events));
     const provider = new AnthropicProvider({ apiKey: 'test', client });
 
-    const emitted: TSFixme[] = [];
+    const emitted: AiToolCall[] = [];
     const response = await provider.chatStream(
       {
         model: 'claude-opus-4-8',
@@ -214,18 +232,13 @@ describe('AnthropicProvider.chatStream', () => {
 
   it('translates an auth failure into an actionable AiClientError', async () => {
     const { client } = stubClient(() => {
-      const error: TSFixme = new Error('unauthorized');
-      error.status = 401;
-      throw error;
+      throw sdkError('unauthorized', 401);
     });
     const provider = new AnthropicProvider({ apiKey: 'bad', client });
 
-    let caught: TSFixme;
-    try {
-      await provider.chatStream({ model: 'claude-opus-4-8', messages: [{ role: 'user', content: 'Hi' }] }, {});
-    } catch (error) {
-      caught = error;
-    }
+    const caught = await expectAiClientError(() =>
+      provider.chatStream({ model: 'claude-opus-4-8', messages: [{ role: 'user', content: 'Hi' }] }, {})
+    );
 
     expect(caught instanceof AiClientError).toBe(true);
     expect(caught.status).toBe(401);

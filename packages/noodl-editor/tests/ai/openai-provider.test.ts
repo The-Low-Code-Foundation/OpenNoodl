@@ -8,9 +8,9 @@ import {
   toModelsUrl,
   toOpenAiMessages
 } from '../../src/editor/src/models/AiAssistant/client/providers/openai';
-import { AiClientError } from '../../src/editor/src/models/AiAssistant/client/types';
+import { AiClientError, AiToolCall } from '../../src/editor/src/models/AiAssistant/client/types';
 
-import { jsonResponse, recordingFetch, streamingResponse, textResponse } from './helpers';
+import { expectAiClientError, jsonResponse, recordingFetch, streamingResponse, textResponse } from './helpers';
 
 function sse(...payloads: unknown[]): string[] {
   return payloads.map((payload) => `data: ${JSON.stringify(payload)}\n\n`);
@@ -40,7 +40,7 @@ describe('toOpenAiMessages', () => {
     const [message] = toOpenAiMessages([
       { role: 'assistant', content: '', toolCalls: [{ id: 'call_1', name: 'go', arguments: { a: 1 } }] }
     ]);
-    expect((message as TSFixme).tool_calls[0].function.arguments).toBe('{"a":1}');
+    expect(message.tool_calls[0].function.arguments).toBe('{"a":1}');
   });
 
   it('maps tool results onto tool_call_id', () => {
@@ -112,7 +112,7 @@ describe('OpenAiProvider.chatStream', () => {
     ]);
 
     const provider = new OpenAiProvider({ apiKey: 'sk-test', fetchImpl });
-    const emitted: TSFixme[] = [];
+    const emitted: AiToolCall[] = [];
     const response = await provider.chatStream(
       {
         model: 'gpt-4.1',
@@ -134,15 +134,12 @@ describe('OpenAiProvider.chatStream', () => {
 
     const provider = new OpenAiProvider({ apiKey: 'sk-test', fetchImpl });
 
-    let caught: TSFixme;
-    try {
-      await provider.chatStream({ model: 'gpt-4.1', messages: [{ role: 'user', content: 'Hi' }] }, {});
-    } catch (error) {
-      caught = error;
-    }
+    const caught = await expectAiClientError(() =>
+      provider.chatStream({ model: 'gpt-4.1', messages: [{ role: 'user', content: 'Hi' }] }, {})
+    );
 
     expect(caught instanceof AiClientError).toBe(true);
-    expect(String(caught.message)).toContain('overloaded');
+    expect(caught.message).toContain('overloaded');
   });
 
   it('skips an unparsable chunk rather than failing the whole stream', async () => {
@@ -186,12 +183,9 @@ describe('OpenAiProvider.chatStream', () => {
 
     const provider = new OpenAiProvider({ apiKey: 'bad', fetchImpl });
 
-    let caught: TSFixme;
-    try {
-      await provider.chatStream({ model: 'gpt-4.1', messages: [{ role: 'user', content: 'Hi' }] }, {});
-    } catch (error) {
-      caught = error;
-    }
+    const caught = await expectAiClientError(() =>
+      provider.chatStream({ model: 'gpt-4.1', messages: [{ role: 'user', content: 'Hi' }] }, {})
+    );
 
     expect(caught instanceof AiClientError).toBe(true);
     expect(caught.status).toBe(401);
@@ -200,15 +194,12 @@ describe('OpenAiProvider.chatStream', () => {
   it('refuses to run a custom provider with no endpoint', async () => {
     const provider = new OpenAiProvider({ providerId: 'openai-compatible' });
 
-    let caught: TSFixme;
-    try {
-      await provider.chat({ model: 'x', messages: [{ role: 'user', content: 'Hi' }] });
-    } catch (error) {
-      caught = error;
-    }
+    const caught = await expectAiClientError(() =>
+      provider.chat({ model: 'x', messages: [{ role: 'user', content: 'Hi' }] })
+    );
 
     expect(caught instanceof AiClientError).toBe(true);
-    expect(String(caught.message)).toContain('No endpoint configured');
+    expect(caught.message).toContain('No endpoint configured');
   });
 });
 

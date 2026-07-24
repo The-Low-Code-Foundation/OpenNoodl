@@ -24,9 +24,61 @@ import {
 } from '@noodl-models/AiAssistant/client/types';
 import { parseToolArguments, readSseData } from '@noodl-models/AiAssistant/client/providers/stream-utils';
 
+import { errorMessage, isAbortError } from './errors';
 import { finalizeUsage } from './usage';
 
 export const OPENAI_DEFAULT_BASE_URL = 'https://api.openai.com/v1';
+
+/**
+ * The wire shapes this adapter reads. Every field is optional: these describe
+ * an OpenAI-*compatible* endpoint, which may be a gateway, a proxy or a local
+ * server, and the only fields guaranteed are the ones the code already guards.
+ */
+export interface OpenAiToolCallFragment {
+  /** Which call this fragment belongs to — streamed calls arrive interleaved. */
+  index?: number;
+  id?: string;
+  function?: { name?: string; arguments?: string };
+}
+
+export interface OpenAiResponseMessage {
+  content?: string;
+  tool_calls?: OpenAiToolCallFragment[];
+}
+
+export interface OpenAiChoice {
+  /** Set on non-streamed responses. */
+  message?: OpenAiResponseMessage;
+  /** Set on streamed responses. */
+  delta?: OpenAiResponseMessage;
+  finish_reason?: string;
+}
+
+export interface OpenAiUsage {
+  prompt_tokens?: number;
+  completion_tokens?: number;
+}
+
+export interface OpenAiChatResponse {
+  model?: string;
+  choices?: OpenAiChoice[];
+  usage?: OpenAiUsage;
+  /** Gateways report mid-stream failures in-band, under HTTP 200. */
+  error?: { message?: string };
+}
+
+export interface OpenAiModelsResponse {
+  data?: { id?: string }[];
+}
+
+/** A message in a request *we* build. */
+export interface OpenAiRequestMessage {
+  role: string;
+  /** `null` on an assistant turn that is only tool calls — the API requires it. */
+  content?: string | null;
+  tool_call_id?: string;
+  tool_calls?: { id: string; type: 'function'; function: { name: string; arguments: string } }[];
+}
 
 const DEFAULT_MAX_TOKENS = 4_096;
 
@@ -49,7 +101,7 @@ export function toModelsUrl(baseUrl: string): string {
   return `${trimmed}/models`;
 }
 
-export function toOpenAiMessages(messages: AiMessage[]): Record<string, unknown>[] {
+export function toOpenAiMessages(messages: AiMessage[]): OpenAiRequestMessage[] {
   return messages.map((message) => {
     if (message.role === 'tool') {
       return {
@@ -172,8 +224,8 @@ export class OpenAiProvider implements AiProvider {
         signal
       });
     } catch (error) {
-      if ((error as TSFixme)?.name === 'AbortError') throw error;
-      throw new AiClientError(`Could not reach ${this.baseUrl}: ${(error as Error).message}`, this.id, error);
+      if (isAbortError(error)) throw error;
+      throw new AiClientError(`Could not reach ${this.baseUrl}: ${errorMessage(error)}`, this.id, error);
     }
 
     if (!response.ok) {
@@ -186,10 +238,10 @@ export class OpenAiProvider implements AiProvider {
   async chat(request: AiChatRequest): Promise<AiChatResponse> {
     const body = this.buildBody(request, false);
     const response = await this.post(body, request.abortController?.signal);
-    const json: TSFixme = await response.json();
+    const json: OpenAiChatResponse = await response.json();
 
     const choice = json.choices?.[0];
-    const toolCalls: AiToolCall[] = (choice?.message?.tool_calls || []).map((call: TSFixme) => ({
+    const toolCalls: AiToolCall[] = (choice?.message?.tool_calls || []).map((call) => ({
       id: call.id,
       name: call.function?.name,
       arguments: parseToolArguments(call.function?.arguments || '')
@@ -232,7 +284,7 @@ export class OpenAiProvider implements AiProvider {
       for await (const data of readSseData(response.body)) {
         if (signal?.aborted) break;
 
-        let chunk: TSFixme;
+        let chunk: OpenAiChatResponse;
         try {
           chunk = JSON.parse(data);
         } catch {
@@ -277,7 +329,7 @@ export class OpenAiProvider implements AiProvider {
         }
       }
     } catch (error) {
-      if ((error as TSFixme)?.name === 'AbortError' || signal?.aborted) {
+      if (isAbortError(error, signal)) {
         stopReason = 'aborted';
       } else {
         throw error;
@@ -316,7 +368,7 @@ export class OpenAiProvider implements AiProvider {
     try {
       url = toModelsUrl(this.baseUrl);
     } catch (error) {
-      return { ok: false, error: (error as Error).message };
+      return { ok: false, error: errorMessage(error) };
     }
 
     try {
@@ -325,11 +377,11 @@ export class OpenAiProvider implements AiProvider {
         const error = await toHttpError(response, this.id);
         return { ok: false, error: error.message };
       }
-      const json: TSFixme = await response.json();
-      const models = (json.data || []).map((item: TSFixme) => item.id).filter(Boolean);
+      const json: OpenAiModelsResponse = await response.json();
+      const models = (json.data || []).map((item) => item.id).filter((id): id is string => Boolean(id));
       return { ok: true, models };
     } catch (error) {
-      return { ok: false, error: `Could not reach ${url}: ${(error as Error).message}` };
+      return { ok: false, error: `Could not reach ${url}: ${errorMessage(error)}` };
     }
   }
 }

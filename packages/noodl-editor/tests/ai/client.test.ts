@@ -5,6 +5,7 @@
 
 import { createProvider } from '../../src/editor/src/models/AiAssistant/client/AiClient';
 import { AI_PROVIDER_IDS, AiNotConfiguredError } from '../../src/editor/src/models/AiAssistant/client/types';
+import { expectAiClientError } from './helpers';
 
 describe('createProvider', () => {
   it('builds an adapter for every registered provider id', () => {
@@ -24,15 +25,10 @@ describe('graceful degradation with no provider configured', () => {
     // environment, so this exercises the real "AI is off" path.
     const { AiClient } = require('../../src/editor/src/models/AiAssistant/client/AiClient');
 
-    let caught: TSFixme;
-    try {
-      await AiClient.getProvider();
-    } catch (error) {
-      caught = error;
-    }
+    const caught = await expectAiClientError(() => AiClient.getProvider());
 
     expect(caught instanceof AiNotConfiguredError).toBe(true);
-    expect(String(caught.message)).toContain('Editor Settings');
+    expect(caught.message).toContain('Editor Settings');
     expect(AiClient.isConfigured()).toBe(false);
     expect(AiClient.getActiveModel()).toBeNull();
     // Templates ask this before choosing the agent path; it must not throw.

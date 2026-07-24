@@ -28,13 +28,73 @@ import {
 } from '@noodl-models/AiAssistant/client/types';
 import { parseToolArguments } from '@noodl-models/AiAssistant/client/providers/stream-utils';
 
+import { errorMessage, errorStatus, isAbortError } from './errors';
 import { finalizeUsage } from './usage';
+
+/**
+ * The wire shapes below describe only what this adapter reads, and are written
+ * by hand rather than imported from the SDK — the same reason the client itself
+ * is a structural type. Every field is optional because it comes off the wire:
+ * naming them buys a typo check and an honest record of the contract, not a
+ * guarantee that the server sent them.
+ */
+export interface AnthropicUsage {
+  input_tokens?: number;
+  output_tokens?: number;
+}
+
+export interface AnthropicTextBlock {
+  type: 'text';
+  text: string;
+}
+
+export interface AnthropicToolUseBlock {
+  type: 'tool_use';
+  id: string;
+  name: string;
+  input?: Record<string, unknown>;
+}
+
+/** `thinking` and any block type added later land in the third member. */
+export type AnthropicContentBlock = AnthropicTextBlock | AnthropicToolUseBlock | { type: string };
+
+export interface AnthropicMessage {
+  model?: string;
+  stop_reason?: string;
+  content?: AnthropicContentBlock[];
+  usage?: AnthropicUsage;
+}
+
+export interface AnthropicStreamEvent {
+  type: string;
+  /** Which content block this event belongs to; blocks stream interleaved. */
+  index?: number;
+  message?: { model?: string; usage?: AnthropicUsage };
+  content_block?: { type?: string; id?: string; name?: string };
+  delta?: { type?: string; text?: string; partial_json?: string; stop_reason?: string };
+  usage?: AnthropicUsage;
+}
+
+/** `messages.create` returns a message, or an event stream when `stream: true`. */
+export type AnthropicCreateResult = AnthropicMessage | AsyncIterable<AnthropicStreamEvent>;
 
 /** The slice of `@anthropic-ai/sdk` this adapter uses. */
 export interface AnthropicLike {
   messages: {
-    create(params: Record<string, unknown>, options?: { signal?: AbortSignal }): Promise<unknown>;
+    create(params: Record<string, unknown>, options?: { signal?: AbortSignal }): Promise<AnthropicCreateResult>;
   };
+}
+
+function isEventStream(result: AnthropicCreateResult): result is AsyncIterable<AnthropicStreamEvent> {
+  return result != null && Symbol.asyncIterator in result;
+}
+
+function isTextBlock(block: AnthropicContentBlock): block is AnthropicTextBlock {
+  return block.type === 'text';
+}
+
+function isToolUseBlock(block: AnthropicContentBlock): block is AnthropicToolUseBlock {
+  return block.type === 'tool_use';
 }
 
 export interface AnthropicProviderConfig extends AiProviderConfig {
@@ -57,6 +117,17 @@ function createSdkClient(config: AnthropicProviderConfig): AnthropicLike {
   });
 }
 
+/** A block in a request *we* build — `text`, `tool_use` or `tool_result`. */
+export interface AnthropicRequestBlock {
+  type: string;
+  [field: string]: unknown;
+}
+
+export interface AnthropicRequestMessage {
+  role: 'user' | 'assistant';
+  content: string | AnthropicRequestBlock[];
+}
+
 /**
  * Translate our flat message list into Anthropic's system + messages split.
  *
@@ -67,10 +138,10 @@ function createSdkClient(config: AnthropicProviderConfig): AnthropicLike {
  */
 export function toAnthropicMessages(messages: AiMessage[]): {
   system: string | undefined;
-  messages: Record<string, unknown>[];
+  messages: AnthropicRequestMessage[];
 } {
   const systemParts: string[] = [];
-  const out: Record<string, unknown>[] = [];
+  const out: AnthropicRequestMessage[] = [];
 
   for (const message of messages) {
     if (message.role === 'system') {
@@ -87,7 +158,7 @@ export function toAnthropicMessages(messages: AiMessage[]): {
 
       const previous = out[out.length - 1];
       if (previous && previous.role === 'user' && Array.isArray(previous.content)) {
-        (previous.content as unknown[]).push(block);
+        previous.content.push(block);
       } else {
         out.push({ role: 'user', content: [block] });
       }
@@ -95,7 +166,7 @@ export function toAnthropicMessages(messages: AiMessage[]): {
     }
 
     if (message.role === 'assistant' && message.toolCalls?.length) {
-      const content: unknown[] = [];
+      const content: AnthropicRequestBlock[] = [];
       if (message.content) content.push({ type: 'text', text: message.content });
       for (const call of message.toolCalls) {
         content.push({ type: 'tool_use', id: call.id, name: call.name, input: call.arguments });
@@ -201,25 +272,29 @@ export class AnthropicProvider implements AiProvider {
   async chat(request: AiChatRequest): Promise<AiChatResponse> {
     const params = this.buildParams(request, false);
 
-    let raw: TSFixme;
+    let result: AnthropicCreateResult;
     try {
-      raw = await this.client.messages.create(params, { signal: request.abortController?.signal });
+      result = await this.client.messages.create(params, { signal: request.abortController?.signal });
     } catch (error) {
       throw wrapError(error);
     }
 
+    if (isEventStream(result)) {
+      throw new AiClientError('Anthropic streamed a response to a non-streaming request.', this.id);
+    }
+
+    const raw: AnthropicMessage = result;
+
     const text = (raw.content || [])
-      .filter((block: TSFixme) => block.type === 'text')
-      .map((block: TSFixme) => block.text)
+      .filter(isTextBlock)
+      .map((block) => block.text)
       .join('');
 
-    const toolCalls: AiToolCall[] = (raw.content || [])
-      .filter((block: TSFixme) => block.type === 'tool_use')
-      .map((block: TSFixme) => ({
-        id: block.id,
-        name: block.name,
-        arguments: (block.input || {}) as Record<string, unknown>
-      }));
+    const toolCalls: AiToolCall[] = (raw.content || []).filter(isToolUseBlock).map((block) => ({
+      id: block.id,
+      name: block.name,
+      arguments: block.input || {}
+    }));
 
     return {
       text,
@@ -252,7 +327,10 @@ export class AnthropicProvider implements AiProvider {
     const pendingTools = new Map<number, { id: string; name: string; json: string }>();
 
     try {
-      const stream = (await this.client.messages.create(params, { signal })) as AsyncIterable<TSFixme>;
+      const stream = await this.client.messages.create(params, { signal });
+      if (!isEventStream(stream)) {
+        throw new AiClientError('Anthropic returned a single message for a streaming request.', this.id);
+      }
 
       for await (const event of stream) {
         if (signal?.aborted) break;
@@ -266,7 +344,7 @@ export class AnthropicProvider implements AiProvider {
 
           case 'content_block_start':
             if (event.content_block?.type === 'tool_use') {
-              pendingTools.set(event.index, {
+              pendingTools.set(event.index ?? 0, {
                 id: event.content_block.id,
                 name: event.content_block.name,
                 json: ''
@@ -280,7 +358,7 @@ export class AnthropicProvider implements AiProvider {
               fullText += delta.text;
               callbacks.onText?.(fullText, delta.text);
             } else if (delta?.type === 'input_json_delta') {
-              const pending = pendingTools.get(event.index);
+              const pending = pendingTools.get(event.index ?? 0);
               if (pending) pending.json += delta.partial_json || '';
             }
             // `thinking_delta` is deliberately ignored: reasoning is requested
@@ -289,7 +367,7 @@ export class AnthropicProvider implements AiProvider {
           }
 
           case 'content_block_stop': {
-            const pending = pendingTools.get(event.index);
+            const pending = pendingTools.get(event.index ?? 0);
             if (pending) {
               const call: AiToolCall = {
                 id: pending.id,
@@ -298,7 +376,7 @@ export class AnthropicProvider implements AiProvider {
               };
               toolCalls.push(call);
               callbacks.onToolCall?.(call);
-              pendingTools.delete(event.index);
+              pendingTools.delete(event.index ?? 0);
             }
             break;
           }
@@ -313,7 +391,7 @@ export class AnthropicProvider implements AiProvider {
         }
       }
     } catch (error) {
-      if (isAbort(error, signal)) {
+      if (isAbortError(error, signal)) {
         stopReason = 'aborted';
       } else {
         throw wrapError(error);
@@ -353,12 +431,12 @@ export class AnthropicProvider implements AiProvider {
   }
 }
 
-function isAbort(error: TSFixme, signal?: AbortSignal): boolean {
-  return Boolean(signal?.aborted) || error?.name === 'AbortError' || error?.name === 'APIUserAbortError';
-}
+function wrapError(error: unknown): AiClientError {
+  // The adapter throws these itself for contract violations; re-wrapping one
+  // would bury its message under a generic "request failed".
+  if (error instanceof AiClientError) return error;
 
-function wrapError(error: TSFixme): AiClientError {
-  const status = error?.status;
+  const status = errorStatus(error);
   if (status === 401) {
     return new AiClientError('Anthropic rejected the API key.', 'anthropic', error, status);
   }
@@ -376,6 +454,5 @@ function wrapError(error: TSFixme): AiClientError {
   if (status === 429) {
     return new AiClientError('Anthropic rate limit reached. Try again shortly.', 'anthropic', error, status);
   }
-  const message = error?.error?.error?.message || error?.message || String(error);
-  return new AiClientError(`Anthropic request failed: ${message}`, 'anthropic', error, status);
+  return new AiClientError(`Anthropic request failed: ${errorMessage(error)}`, 'anthropic', error, status);
 }
