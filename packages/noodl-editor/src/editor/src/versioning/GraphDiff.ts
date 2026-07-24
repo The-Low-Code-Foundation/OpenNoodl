@@ -200,6 +200,10 @@ const DERIVED_EXTRAS = new Set([
   'v2:connectionsVersion',
   'v2:componentId',
   'v2:componentJsonId',
+  // The v2 display name is the path's last segment; a real rename surfaces as
+  // `component-renamed` through the snapshot name, so this never carries
+  // independent information (AIX-003's empty-base diffs made it visible).
+  'v2:componentName',
   'legacy:id',
   'hasCommentsArray'
 ]);

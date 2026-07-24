@@ -27,4 +27,6 @@ export type {
 } from './AuthoringSession';
 export { acceptAuthoredComponent, StagingError } from './staging';
 export type { AcceptOptions } from './staging';
+export { buildChangeSet, requiredWith, excludedWith } from './ChangeSet';
+export type { AuthoringChangeSet, ReviewChange } from './ChangeSet';
 export { initialUserMessage, refineMessage, systemPrompt } from './prompts/authoring';

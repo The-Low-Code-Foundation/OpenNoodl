@@ -19,3 +19,8 @@ export * from './authoring-candidate.test';
 export * from './authoring-validate.test';
 export * from './authoring-session.test';
 export * from './authoring-staging.test';
+
+// AIX-003: graph-native review. The change-set adapter expresses staged AI
+// proposals through SUB-007's diff engine; specs diff against components
+// accepted through the real staging path.
+export * from './authoring-changeset.test';
