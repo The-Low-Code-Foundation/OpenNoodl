@@ -1,0 +1,175 @@
+/**
+ * Contracts the core runtime files share with each other but that are *not* part of the
+ * node-definition API a node author writes against.
+ *
+ * `@noodl/types` publishes the authored surface — what `defineNode` accepts and what a
+ * node's own callbacks may call. This file describes the underscore-prefixed machinery
+ * `node.ts`, `outputproperty.ts`, `nodecontext.ts` and `nodescope.ts` use to talk to one
+ * another. Keeping the two apart is deliberate: publishing these would invite node authors
+ * to depend on internals that exist to be changed.
+ */
+
+import type { EditorConnectionLike, InputPortDefinition, NodeInstance, NodeVariant } from '@noodl/types';
+
+/**
+ * The editor channel as the runtime core uses it.
+ *
+ * {@link EditorConnectionLike} publishes only what a node definition may call; this adds
+ * the debugging and lifecycle surface the context drives — connection-value history,
+ * pulsing connections and inspector values all flow through here.
+ */
+export interface RuntimeEditorConnection extends EditorConnectionLike {
+  clientId?: string;
+  debugInspectorsEnabled?: boolean;
+
+  isConnected(): boolean;
+  on(eventName: string, callback: (data: any) => void): void;
+  sendConnectionValue(connectionId: string, value: unknown): void;
+  sendPulsingConnections(connections: unknown): void;
+  sendDebugInspectorValues(values: unknown[]): void;
+}
+
+/**
+ * The node context as the core sees it — the scheduler and editor channel the published
+ * {@link NodeContextLike} deliberately hides from node authors.
+ */
+export interface RuntimeNodeContext {
+  editorConnection?: RuntimeEditorConnection;
+  styles?: unknown;
+
+  /** Monotonic counter used to scope cyclic-loop detection to a single update pass. */
+  updateIteration: number;
+
+  nodeIsDirty(node: RuntimeNode): void;
+  scheduleNextFrame(callback: () => void): void;
+  connectionSentValue(sourcePort: RuntimeOutputProperty, value: unknown): void;
+  connectionSentSignal(sourcePort: RuntimeOutputProperty): void;
+  isWarningTypeEnabled(warningType: string): boolean;
+  getDefaultValueForInput(nodeType: string, inputName: string): unknown;
+
+  /** The node-type table. See `noderegister.ts`. */
+  nodeRegister: any;
+  /** Shared parameter sets. See `variants.ts`. */
+  variants: any;
+
+  /**
+   * Builds an instance of a *component* rather than a registered node type. Lives on the
+   * context because the implementation is framework-specific and ships with the viewer.
+   */
+  createComponentInstanceNode(
+    name: string,
+    id: string,
+    nodeScope: any,
+    extraProps?: Record<string, unknown>
+  ): Promise<any>;
+  hasComponentModelWithName(name: string): boolean;
+
+  [extra: string]: unknown;
+}
+
+/** A source port plus the input it feeds, as recorded on {@link RuntimeOutputProperty}. */
+export interface OutputConnection {
+  node: RuntimeNode;
+  inputPortName: string;
+}
+
+/** The runtime view of an output port. See `outputproperty.ts`. */
+export interface RuntimeOutputProperty {
+  readonly name: string;
+  readonly id: string;
+  readonly value: unknown;
+  getter: (this: RuntimeNode) => unknown;
+  owner: RuntimeNode;
+  connections: OutputConnection[];
+  onFirstConnectionAdded?: (this: RuntimeNode) => void;
+  onLastConnectionRemoved?: (this: RuntimeNode) => void;
+
+  registerConnection(node: RuntimeNode, inputPortName: string): void;
+  deregisterConnection(node: RuntimeNode, inputPortName: string): void;
+  flagDependeesDirty(): void;
+  sendValue(value: unknown): void;
+  hasConnections(): boolean;
+
+  /** Cyclic-loop bookkeeping; see the 500-values-per-iteration guard in `sendValue`. */
+  _lastUpdateIteration?: number;
+  valuesSendThisIteration?: number;
+  _id?: string;
+}
+
+/** A live expression binding on an input port. See `Node._evaluateExpressionParameter`. */
+export interface ExpressionSubscription {
+  unsub: () => void;
+  expression: string;
+}
+
+/**
+ * A node as the runtime sees it: the published {@link NodeInstance} surface plus the
+ * internal state the scheduler, connections and dirty-flagging depend on.
+ */
+export interface RuntimeNode extends NodeInstance {
+  /** Mutable here, read-only on the published surface: only the constructor assigns it. */
+  id: string;
+  name: string;
+  model?: any;
+  variant?: NodeVariant;
+  nodeScope: any;
+  context: RuntimeNodeContext;
+
+  _dirty: boolean;
+  _inputs: Record<string, InputPortDefinition>;
+  _inputValues: Record<string, unknown>;
+  _outputs: Record<string, RuntimeOutputProperty>;
+  _inputConnections: Record<string, RuntimeOutputProperty[]>;
+  _outputList: RuntimeOutputProperty[];
+  _isUpdating: boolean;
+  _inputValuesQueue: Record<string, unknown[]>;
+  _afterInputsHaveUpdatedCallbacks: Array<(this: RuntimeNode) => void>;
+  _signalsSentThisUpdate: Record<string, boolean>;
+  _deleted: boolean;
+  _deleteListeners: Array<(this: RuntimeNode) => void>;
+  _isFirstUpdate: boolean;
+  _valuesFromConnections: Record<string, unknown>;
+  _expressionSubscriptions: Record<string, ExpressionSubscription>;
+
+  /**
+   * Set false by the node scope while a component is being built, so nodes do not update
+   * before every connection is in place. See `Node.flagDirty`.
+   */
+  updateOnDirtyFlagging: boolean;
+
+  /** Iteration bookkeeping used to detect cyclic loops. */
+  _updatedAtIteration?: number;
+  _updateIteration?: number;
+  _cyclicLoop?: boolean;
+  _cyclicWarningSent?: boolean;
+
+  /** Present only on visual nodes; see `_onNodeModelParameterUpdated`. */
+  _getVisualStates?: () => string[];
+  /** Present only on React-backed nodes. */
+  _resetReactVirtualDOM?: () => void;
+
+  getOutput(name: string): RuntimeOutputProperty;
+  setVariant?(variant: NodeVariant): void;
+
+  /** Graph wiring. Called by the node scope as it builds a component, never by nodes. */
+  connectInput(inputName: string, sourceNode: RuntimeNode, sourcePortName: string): void;
+  removeInputConnection(inputName: string, sourceNodeId: string, sourcePortName: string): void;
+
+  _evaluateExpressionParameter(paramValue: unknown, portName: string): unknown;
+  _updateDependencies(): void;
+  _performDirtyUpdate(): void;
+  _setValueFromConnection(inputName: string, value: unknown): void;
+  _hasInputBeenSetFromAConnection(inputName: string): boolean;
+  _onNodeDeleted(): void;
+  _onNodeModelParameterUpdated(event: NodeModelParameterUpdatedEvent): void;
+  _onNodeModelVariantUpdated(variant: NodeVariant): void;
+  setNodeModel(nodeModel: any): void;
+}
+
+/** Payload of the model's `parameterUpdated` event. */
+export interface NodeModelParameterUpdatedEvent {
+  name: string;
+  value: unknown;
+  /** Set when the parameter applies only in a particular visual state. */
+  state?: string;
+}

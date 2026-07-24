@@ -30,7 +30,6 @@
     "packages/noodl-editor/src/**/*",
     "packages/noodl-editor/@include-types/**/*",
     "packages/noodl-viewer-react/src/**/*",
-    "packages/noodl-viewer-cloud/src/**/*",
     "packages/noodl-platform/src/**/*",
     "packages/noodl-platform-electron/src/**/*",
     "packages/noodl-platform-node/src/**/*",

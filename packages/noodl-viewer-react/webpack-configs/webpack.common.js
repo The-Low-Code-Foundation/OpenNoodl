@@ -1,5 +1,7 @@
 //config shared for both regular viewer and deploy versions
 
+const { runtimePath, runtimeTsRule } = require('@noodl/runtime/webpack-ts-rule');
+
 module.exports = {
   externals: {
     react: 'React',
@@ -26,9 +28,10 @@ module.exports = {
           }
         }
       },
+      runtimeTsRule,
       {
         test: /\.ts(x?)$/,
-        exclude: /node_modules/,
+        exclude: [/node_modules/, runtimePath],
         use: [
           {
             loader: 'ts-loader'

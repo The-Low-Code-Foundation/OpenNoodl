@@ -1,11 +1,97 @@
 'use strict';
 
-var EventEmitter = require('./events');
-var NodeRegister = require('./noderegister');
-var TimerScheduler = require('./timerscheduler');
-const Variants = require('./variants');
+import type { RuntimeNode, RuntimeNodeContext, RuntimeOutputProperty } from './internal';
 
-function NodeContext(args) {
+import EventEmitter = require('./events');
+import NodeRegister = require('./noderegister');
+import TimerScheduler = require('./timerscheduler');
+import Variants = require('./variants');
+
+/** Set by the viewer before any node runs; carries deploy-time environment values. */
+declare const Noodl: { Env: Record<string, string> };
+
+/** A value the editor is showing live, either on a connection or in a node inspector. */
+interface DebugInspector {
+  type: 'connection' | 'node';
+  id?: string;
+  nodeId?: string;
+  connection?: { fromId: string; fromProperty: string };
+}
+
+/**
+ * The runtime's single per-application object: node register, scheduler, global values,
+ * component models, and the editor channel.
+ *
+ * Everything the core needs from it is described by {@link RuntimeNodeContext}; this
+ * interface adds the members that only the context itself and its host (the viewer) use.
+ */
+interface NodeContext extends RuntimeNodeContext {
+  _dirtyNodes: RuntimeNode[];
+  callbacksAfterUpdate: Array<() => void>;
+  graphModel: any;
+  platform: any;
+  eventEmitter: any;
+  eventSenderEmitter: any;
+  globalValues: Record<string, unknown>;
+  globalsEventEmitter: any;
+  runningInEditor: boolean;
+  currentFrameTime: number;
+  frameNumber: number;
+  timerScheduler: any;
+  componentModels: Record<string, any>;
+  debugInspectorsEnabled: boolean;
+  connectionsToPulse: Record<string, { timestamp: number; connections: string[] }>;
+  connectionsToPulseChanged: boolean;
+  debugInspectors: Record<string, DebugInspector>;
+  connectionPulsingCallbackScheduled: boolean;
+  rootComponent: any;
+  _outputHistory: Record<string, { value: unknown; timestamp: number }>;
+  _signalHistory: Record<string, { count: number }>;
+  warningTypes: Record<string, boolean>;
+  bundleFetchesInFlight: Map<string, Promise<void>>;
+  isUpdating?: boolean;
+  onShowPopup?: (group: any) => void;
+  onClosePopup?: (group: any) => void;
+
+  setRootComponent(rootComponent: any): void;
+  getCurrentTime(): number;
+  onDebugInspectorsUpdated(inspectors: DebugInspector[]): void;
+  updateDirtyNodes(): void;
+  update(): void;
+  reset(): void;
+  scheduleUpdate(): void;
+  scheduleAfterUpdate(func: () => void): void;
+  setGlobalValue(name: string, value: unknown): void;
+  getGlobalValue(name: string): unknown;
+  registerComponentModel(componentModel: any): void;
+  deregisterComponentModel(componentModel: any): void;
+  fetchComponentBundle(name: string): Promise<void>;
+  getComponentModel(name: string): Promise<any>;
+  _formatConnectionValue(value: any): unknown;
+  clearDebugInspectors(): void;
+  clearOldConnectionPulsing(): void;
+  _getDebugInspectorValueForNode(id: string): { type: 'node'; id: string; value: unknown } | undefined;
+  sendDebugInspectorValues(): void;
+  setDebugInspectorsEnabled(enabled: boolean): void;
+  sendGlobalEventFromEventSender(channelName: string, inputValues: unknown): void;
+  setPopupCallbacks(callbacks: { onShow: (group: any) => void; onClose: (group: any) => void }): void;
+  showPopup(popupComponent: string, params: Record<string, unknown>, args?: any): Promise<void>;
+  setWarningTypes(warningTypes: Record<string, boolean>): void;
+}
+
+interface NodeContextArgs {
+  graphModel?: any;
+  platform?: any;
+  editorConnection?: any;
+  runningInEditor?: boolean;
+}
+
+interface NodeContextConstructor {
+  new (args?: NodeContextArgs): NodeContext;
+  prototype: NodeContext;
+}
+
+const NodeContext = function NodeContext(this: NodeContext, args?: NodeContextArgs) {
   args = args || {};
   args.runningInEditor = args.hasOwnProperty('runningInEditor') ? args.runningInEditor : false;
 
@@ -70,7 +156,7 @@ function NodeContext(args) {
       this.editorConnection.sendConnectionValue(connectionId, connection ? connection.value : undefined);
     });
   }
-}
+} as unknown as NodeContextConstructor;
 
 NodeContext.prototype.setRootComponent = function (rootComponent) {
   this.rootComponent = rootComponent;
@@ -538,4 +624,4 @@ NodeContext.prototype.getDefaultValueForInput = function (nodeType, inputName) {
   return inputMetadata.default;
 };
 
-module.exports = NodeContext;
+export = NodeContext;

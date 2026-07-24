@@ -1,9 +1,36 @@
 'use strict';
 
-function EventSender() {
+/** A listener. `this` is the `ref` it was registered with, or `null` when there is none. */
+type Listener = (this: unknown, data?: any) => unknown;
+
+/**
+ * The runtime's own event emitter, used by the graph and node models.
+ *
+ * It differs from a plain emitter in two ways that matter. Listeners may be registered
+ * against a `ref` — normally the object that owns them — so they can all be dropped in one
+ * call when that object goes away, which is how nodes detach from their models without
+ * tracking individual callbacks. And `emit` is asynchronous and *sequential*: it awaits
+ * each listener before calling the next, so handlers that return promises are ordered.
+ */
+interface EventSender {
+  listeners: Record<string, Listener[]>;
+  listenersWithRefs: Record<string, Map<unknown, Listener[]>>;
+
+  on(eventName: string, callback: Listener, ref?: unknown): void;
+  removeListenersWithRef(ref: unknown): void;
+  removeAllListeners(eventName?: string): void;
+  emit(eventName: string, data?: unknown): Promise<void>;
+}
+
+interface EventSenderConstructor {
+  new (): EventSender;
+  prototype: EventSender;
+}
+
+const EventSender = function EventSender(this: EventSender) {
   this.listeners = {};
   this.listenersWithRefs = {};
-}
+} as unknown as EventSenderConstructor;
 
 EventSender.prototype.on = function (eventName, callback, ref) {
   if (ref) {
@@ -65,4 +92,4 @@ EventSender.prototype.emit = async function (eventName, data) {
   }
 };
 
-module.exports = EventSender;
+export = EventSender;

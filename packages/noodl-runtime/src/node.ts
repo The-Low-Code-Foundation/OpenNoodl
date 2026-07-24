@@ -1,32 +1,50 @@
-const OutputProperty = require('./outputproperty');
-const {
-  evaluateExpression,
-  compileExpression,
-  detectDependencies,
-  subscribeToChanges
-} = require('./expression-evaluator');
-const { coerceToType } = require('./expression-type-coercion');
+import type { NodeVariant } from '@noodl/types';
+
+import type { NodeModelParameterUpdatedEvent, RuntimeNode, RuntimeNodeContext } from './internal';
+
+import OutputProperty = require('./outputproperty');
+import { evaluateExpression, compileExpression, detectDependencies, subscribeToChanges } from './expression-evaluator';
+import { coerceToType } from './expression-type-coercion';
+
+/**
+ * A parameter whose value is computed from an expression rather than stored literally.
+ *
+ * `fallback` is what the port receives whenever compilation or evaluation fails, so an
+ * expression error degrades to a usable value instead of leaving the port unset.
+ */
+interface ExpressionParameter {
+  mode: 'expression';
+  expression: string;
+  fallback?: unknown;
+}
 
 /**
  * Helper to check if a value is an expression parameter
- * @param {*} value - The value to check
- * @returns {boolean} True if value is an expression parameter
  */
-function isExpressionParameter(value) {
+function isExpressionParameter(value: unknown): value is ExpressionParameter {
   return (
     value !== null &&
     value !== undefined &&
     typeof value === 'object' &&
-    value.mode === 'expression' &&
-    typeof value.expression === 'string'
+    (value as ExpressionParameter).mode === 'expression' &&
+    typeof (value as ExpressionParameter).expression === 'string'
   );
 }
 
+interface NodeConstructor {
+  new (context: RuntimeNodeContext, id: string): RuntimeNode;
+  (this: RuntimeNode, context: RuntimeNodeContext, id: string): void;
+  prototype: RuntimeNode;
+}
+
 /**
- * Base class for all Nodes
- * @constructor
+ * Base class for all Nodes.
+ *
+ * Deliberately a constructor function rather than a `class`: `nodedefinition.ts` builds
+ * each node type with `Node.call(this, context, id)` and `Object.create(Node.prototype)`,
+ * neither of which works against an ES class.
  */
-function Node(context, id) {
+const Node = function Node(this: RuntimeNode, context: RuntimeNodeContext, id: string) {
   this.id = id;
   this.context = context;
   this._dirty = false;
@@ -53,7 +71,7 @@ function Node(context, id) {
 
   // Expression subscriptions: { [portName]: { unsub: unsubscribeFn, expression: string } }
   this._expressionSubscriptions = {};
-}
+} as unknown as NodeConstructor;
 
 Node.prototype.getInputValue = function (name) {
   return this._inputValues[name];
@@ -66,8 +84,10 @@ Node.prototype.registerInput = function (name, input) {
 
   this._inputs[name] = input;
 
-  if (input.type && input.type.units) {
-    const defaultUnit = input.type.defaultUnit || input.type.units[0];
+  const type = input.type as { units?: string[]; defaultUnit?: string } | undefined;
+
+  if (type && type.units) {
+    const defaultUnit = type.defaultUnit || type.units[0];
     this._inputValues[name] = {
       value: input.default,
       type: defaultUnit
@@ -112,9 +132,7 @@ Node.prototype.registerInputIfNeeded = function () {
  * Evaluate an expression parameter and return the coerced result.
  * Also sets up reactive subscriptions so the node updates when dependencies change.
  *
- * @param {*} paramValue - The parameter value (might be an ExpressionParameter)
- * @param {string} portName - The input port name
- * @returns {*} The evaluated and coerced value (or original if not an expression)
+ * Returns the value unchanged when it is not an expression parameter.
  */
 Node.prototype._evaluateExpressionParameter = function (paramValue, portName) {
   // Check if this is an expression parameter
@@ -171,7 +189,7 @@ Node.prototype._evaluateExpressionParameter = function (paramValue, portName) {
         // Note: We store the expression string to detect changes later
         const unsub = subscribeToChanges(
           dependencies,
-          function () {
+          function (this: RuntimeNode) {
             // Don't re-evaluate if node is deleted
             if (this._deleted) return;
 
@@ -213,7 +231,7 @@ Node.prototype._evaluateExpressionParameter = function (paramValue, portName) {
         'expression-error-' + portName,
         {
           showGlobally: true,
-          message: `Expression error: ${error.message}`
+          message: `Expression error: ${(error as Error).message}`
         }
       );
     }
@@ -243,12 +261,12 @@ Node.prototype.setInputValue = function (name, value) {
   //inputs with units always expect objects in the shape of {value, unit, ...}
   //these inputs might sometimes get raw numbers without units, and in those cases
   //Noodl should just update the value and not the other parameters
-  const currentInputValue = this._inputValues[name];
+  const currentInputValue = this._inputValues[name] as { unit?: string } | undefined;
 
-  if (isNaN(value) === false && currentInputValue && currentInputValue.unit) {
+  if (isNaN(value as number) === false && currentInputValue && currentInputValue.unit) {
     //update the value, and keep the other parameters
     const newValue = Object.assign({}, currentInputValue); //copy it, so we don't modify the original object (e.g. it might come from a variant)
-    newValue.value = value;
+    (newValue as { value?: unknown }).value = value;
     value = newValue;
   }
 
@@ -259,7 +277,7 @@ Node.prototype.setInputValue = function (name, value) {
   value = this._evaluateExpressionParameter(value, name);
 
   if (input.type === 'color' && this.context && this.context.styles) {
-    value = this.context.styles.resolveColor(value);
+    value = (this.context.styles as { resolveColor(value: unknown): unknown }).resolveColor(value);
   } else if (input.type === 'array' && typeof value === 'string') {
     try {
       value = eval(value);
@@ -338,7 +356,7 @@ Node.prototype.getOutput = function (name) {
   return this._outputs[name];
 };
 
-Node.prototype.connectInput = function (inputName, sourceNode, sourcePortName) {
+Node.prototype.connectInput = function (inputName: string, sourceNode: RuntimeNode, sourcePortName: string) {
   if (this.hasInput(inputName) === false) {
     throw new Error(
       "Invalid connection, input doesn't exist. Trying to connect from " +
@@ -381,7 +399,7 @@ Node.prototype.connectInput = function (inputName, sourceNode, sourcePortName) {
   this.flagDirty();
 };
 
-Node.prototype.removeInputConnection = function (inputName, sourceNodeId, sourcePortName) {
+Node.prototype.removeInputConnection = function (inputName: string, sourceNodeId: string, sourcePortName: string) {
   if (!this._inputConnections[inputName]) {
     throw new Error("Node removeInputConnection: Input doesn't exist");
   }
@@ -576,7 +594,7 @@ Node.prototype.sendSignalOnOutput = function (outputName) {
   output.sendValue(false);
 
   this._signalsSentThisUpdate[outputName] = true;
-  this.scheduleAfterInputsHaveUpdated(function () {
+  this.scheduleAfterInputsHaveUpdated(function (this: RuntimeNode) {
     this._signalsSentThisUpdate[outputName] = false;
   });
 
@@ -605,7 +623,7 @@ Node.prototype.queueInput = function (inputName, value) {
   if (this._isFirstUpdate) {
     //signals need two values, so make sure we don't suppress the 'false' that comes directly
     //after a 'true'
-    const queueValue = this._inputValuesQueue[inputName][0];
+    const queueValue = this._inputValuesQueue[inputName][0] as { unit?: string } | boolean | undefined;
     const isSignal = queueValue === true; // && value === true;
     if (!isSignal) {
       //default units are set as an object {value, unit}
@@ -613,10 +631,14 @@ Node.prototype.queueInput = function (inputName, value) {
       //and the node will get a value without ever getting a unit.
       //To make sure that doesn't happen, look at the value being overwritten
       //and use the unit from that before overwriting
-      if (queueValue instanceof Object && queueValue.unit && value instanceof Object === false) {
+      if (
+        queueValue instanceof Object &&
+        (queueValue as { unit?: string }).unit &&
+        (value as unknown) instanceof Object === false
+      ) {
         value = {
           value,
-          unit: queueValue.unit
+          unit: (queueValue as { unit?: string }).unit
         };
       }
 
@@ -640,7 +662,7 @@ Node.prototype.setNodeModel = function (nodeModel) {
 
   nodeModel.on(
     'inputPortRemoved',
-    (port) => {
+    (port: { name: string }) => {
       if (this.hasInput(port.name)) {
         this.deregisterInput(port.name);
       }
@@ -650,7 +672,7 @@ Node.prototype.setNodeModel = function (nodeModel) {
 
   nodeModel.on(
     'outputPortRemoved',
-    (port) => {
+    (port: { name: string }) => {
       if (this.hasOutput(port.name)) {
         this.deregisterOutput(port.name);
       }
@@ -685,7 +707,7 @@ Node.prototype._onNodeDeleted = function () {
   }
 };
 
-Node.prototype._onNodeModelParameterUpdated = function (event) {
+Node.prototype._onNodeModelParameterUpdated = function (event: NodeModelParameterUpdatedEvent) {
   this.registerInputIfNeeded(event.name);
 
   if (event.value !== undefined) {
@@ -747,8 +769,8 @@ Node.prototype._onNodeModelParameterUpdated = function (event) {
   }
 };
 
-Node.prototype._onNodeModelVariantUpdated = function (variant) {
+Node.prototype._onNodeModelVariantUpdated = function (variant: NodeVariant) {
   this.setVariant(variant);
 };
 
-module.exports = Node;
+export = Node;

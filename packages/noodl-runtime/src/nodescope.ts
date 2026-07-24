@@ -1,15 +1,99 @@
 'use strict';
 
-const guid = require('./guid');
+import type { RuntimeNode, RuntimeNodeContext } from './internal';
 
-function NodeScope(context, componentOwner) {
+import guid = require('./guid');
+
+/**
+ * A node instance as the scope handles it.
+ *
+ * Beyond the core {@link RuntimeNode}, the scope reaches for members that only some node
+ * kinds have — the visual tree (`addChild`/`getChildren`/`parent`), and the component
+ * plumbing (`nodeScope`/`parentNodeScope`) that component instances carry. They are
+ * optional here rather than assumed, because that is the truth: a logic node has none of
+ * them, and the scope tests for each before using it.
+ */
+type ScopedNode = RuntimeNode & {
+  parent?: any;
+  children?: any[];
+  nodeScope?: NodeScope;
+  parentNodeScope?: NodeScope;
+  addChild?(child: ScopedNode, index: number): void;
+  removeChild?(child: ScopedNode): void;
+  getChildren?(): ScopedNode[];
+  nodeScopeDidInitialize?(): void;
+};
+
+/** How far an event travels from the scope that sent it. */
+type EventPropagation = 'parent' | 'children' | 'siblings' | null | undefined;
+
+interface NodeScope {
+  context: RuntimeNodeContext;
+  nodes: Record<string, ScopedNode>;
+  /** Component Instance that owns this NodeScope. Absent for scopes created standalone. */
+  componentOwner: any;
+  componentInstanceChildren: Record<string, ScopedNode>;
+  componentModel?: any;
+  /**
+   * Attached by the cloud runtime, which gives every request its own `Model.Scope` so
+   * concurrently-running cloud functions cannot see each other's objects. Unused in the
+   * browser viewer.
+   */
+  modelScope?: any;
+
+  addConnection(connectionData: ConnectionData): void;
+  setNodeParameters(node: ScopedNode, nodeModel: any): void;
+  createNodeFromModel(nodeModel: any, updateOnDirtyFlagging?: boolean): Promise<ScopedNode | undefined>;
+  insertNodeInTree(nodeInstance: ScopedNode, nodeModel: any): void;
+  getNodeWithId(id: string): ScopedNode;
+  hasNodeWithId(id: string): boolean;
+  createPrimitiveNode(name: string, id?: string, extraProps?: Record<string, unknown>): ScopedNode;
+  createNode(name: string, id?: string, extraProps?: Record<string, unknown>): Promise<ScopedNode>;
+  getNodesWithIdRecursive(id: string): ScopedNode[];
+  getNodesWithType(name: string): ScopedNode[];
+  getNodesWithTypeRecursive(name: string): ScopedNode[];
+  getAllNodesRecursive(): ScopedNode[];
+  getAllNodesWithVariantRecursive(variant: unknown): ScopedNode[];
+  onNodeModelRemoved(nodeModel: any): void;
+  removeConnection(connectionModel: ConnectionData): void;
+  setComponentModel(componentModel: any): Promise<void>;
+  reset(): void;
+  deleteNode(nodeInstance: ScopedNode): void;
+  sendEventFromThisScope(
+    eventName: string,
+    data: unknown,
+    propagation: EventPropagation,
+    sendEventInThisScope?: boolean,
+    _exclude?: unknown
+  ): boolean | undefined;
+}
+
+interface ConnectionData {
+  sourceId: string;
+  sourcePort: string;
+  targetId: string;
+  targetPort: string;
+}
+
+interface NodeScopeConstructor {
+  new (context: RuntimeNodeContext, componentOwner?: any): NodeScope;
+  prototype: NodeScope;
+}
+
+/**
+ * The set of node instances belonging to one component instance.
+ *
+ * Scopes nest: a component instance inside this scope owns a scope of its own, which is
+ * why the `*Recursive` lookups exist and why event propagation has to walk both ways.
+ */
+const NodeScope = function NodeScope(this: NodeScope, context: RuntimeNodeContext, componentOwner?: any) {
   this.context = context;
   this.nodes = {};
   this.componentOwner = componentOwner; //Component Instance that owns this NodeScope
   this.componentInstanceChildren = {};
-}
+} as unknown as NodeScopeConstructor;
 
-function verifyData(data, requiredKeys) {
+function verifyData(data: Record<string, unknown>, requiredKeys: string[]) {
   requiredKeys.forEach(function (key) {
     if (!data[key]) {
       throw new Error('Missing ' + key);
@@ -19,7 +103,12 @@ function verifyData(data, requiredKeys) {
 
 NodeScope.prototype.addConnection = function (connectionData) {
   try {
-    verifyData(connectionData, ['sourceId', 'sourcePort', 'targetId', 'targetPort']);
+    verifyData(connectionData as unknown as Record<string, unknown>, [
+      'sourceId',
+      'sourcePort',
+      'targetId',
+      'targetPort'
+    ]);
   } catch (e) {
     throw new Error('Error in connection: ' + e.message);
   }
@@ -78,7 +167,7 @@ NodeScope.prototype.createNodeFromModel = async function (nodeModel, updateOnDir
     return;
   }
 
-  var node;
+  var node: ScopedNode;
   try {
     node = await this.createNode(nodeModel.type, nodeModel.id);
     node.updateOnDirtyFlagging = updateOnDirtyFlagging === false ? false : true;
@@ -172,9 +261,10 @@ NodeScope.prototype.createNode = async function (name, id, extraProps) {
 };
 
 NodeScope.prototype.getNodesWithIdRecursive = function (id) {
+  //required lazily: componentinstance requires the scope back
   var ComponentInstanceNode = require('./nodes/componentinstance');
 
-  function findNodesWithIdRec(scope, id, result) {
+  function findNodesWithIdRec(scope: NodeScope, id: string, result: ScopedNode[]) {
     if (scope.nodes.hasOwnProperty(id)) {
       result.push(scope.nodes[id]);
     }
@@ -188,7 +278,7 @@ NodeScope.prototype.getNodesWithIdRecursive = function (id) {
     });
   }
 
-  var result = [];
+  var result: ScopedNode[] = [];
   findNodesWithIdRec(this, id, result);
   return result;
 };
@@ -220,15 +310,15 @@ NodeScope.prototype.getNodesWithTypeRecursive = function (name) {
     });
   }
 
-  var result = [];
-  findNodesWithTypeRec(result);
+  var result: ScopedNode[] = [];
+  findNodesWithTypeRec();
   return result;
 };
 
 NodeScope.prototype.getAllNodesRecursive = function () {
   var ComponentInstanceNode = require('./nodes/componentinstance');
 
-  let result = [];
+  let result: ScopedNode[] = [];
 
   const getAllNodesRec = () => {
     result = result.concat(Object.values(this.nodes));
@@ -243,7 +333,7 @@ NodeScope.prototype.getAllNodesRecursive = function () {
     });
   };
 
-  getAllNodesRec(result);
+  getAllNodesRec();
   return result;
 };
 
@@ -273,7 +363,7 @@ NodeScope.prototype.removeConnection = function (connectionModel) {
 NodeScope.prototype.setComponentModel = async function (componentModel) {
   this.componentModel = componentModel;
 
-  const nodes = [];
+  const nodes: ScopedNode[] = [];
 
   //create all nodes
   for (const nodeModel of componentModel.getAllNodes()) {
@@ -281,7 +371,7 @@ NodeScope.prototype.setComponentModel = async function (componentModel) {
     if (node) nodes.push(node);
   }
 
-  componentModel.getAllConnections().forEach((conn) => this.addConnection(conn));
+  componentModel.getAllConnections().forEach((conn: ConnectionData) => this.addConnection(conn));
 
   //now that all nodes and connections are setup, trigger the dirty flagging so nodes can run with all the connections in place
   nodes.forEach((node) => (node.updateOnDirtyFlagging = true));
@@ -292,14 +382,14 @@ NodeScope.prototype.setComponentModel = async function (componentModel) {
     }
   });
 
-  componentModel.on('connectionAdded', (conn) => this.addConnection(conn), this);
+  componentModel.on('connectionAdded', (conn: ConnectionData) => this.addConnection(conn), this);
   componentModel.on('connectionRemoved', this.removeConnection, this);
   componentModel.on('nodeAdded', this.createNodeFromModel, this);
 
   var self = this;
   componentModel.on(
     'nodeParentWillBeRemoved',
-    function (nodeModel) {
+    function (this: NodeScope, nodeModel: any) {
       if (nodeModel.type === 'Component Children') {
         if (nodeModel.parent) {
           this.componentOwner.setChildRoot(null);
@@ -317,7 +407,7 @@ NodeScope.prototype.setComponentModel = async function (componentModel) {
 
   componentModel.on(
     'nodeParentUpdated',
-    function (nodeModel) {
+    function (this: NodeScope, nodeModel: any) {
       if (nodeModel.type === 'Component Children') {
         var parentInstance = this.getNodeWithId(nodeModel.parent.id);
         this.componentOwner.setChildRoot(parentInstance);
@@ -331,7 +421,7 @@ NodeScope.prototype.setComponentModel = async function (componentModel) {
 
   componentModel.on(
     'nodeRemoved',
-    function (nodeModel) {
+    function (nodeModel: any) {
       if (nodeModel.type !== 'Component Children') {
         self.onNodeModelRemoved(nodeModel);
       }
@@ -383,7 +473,7 @@ NodeScope.prototype.deleteNode = function (nodeInstance) {
     const connectionFrom = this.componentModel.getConnectionsFrom(nodeInstance.id);
     const connectionTo = this.componentModel.getConnectionsTo(nodeInstance.id);
 
-    connectionFrom.concat(connectionTo).forEach((connection) => {
+    connectionFrom.concat(connectionTo).forEach((connection: ConnectionData) => {
       if (this.nodes.hasOwnProperty(connection.targetId) && this.nodes.hasOwnProperty(connection.sourceId)) {
         this.removeConnection(connection);
       }
@@ -395,11 +485,17 @@ NodeScope.prototype.deleteNode = function (nodeInstance) {
   delete this.componentInstanceChildren[nodeInstance.id]; //in case this is a component
 };
 
-NodeScope.prototype.sendEventFromThisScope = function (eventName, data, propagation, sendEventInThisScope, _exclude) {
+NodeScope.prototype.sendEventFromThisScope = function (
+  eventName,
+  data,
+  propagation,
+  sendEventInThisScope,
+  _exclude
+) {
   if (sendEventInThisScope) {
-    var eventReceivers = this.getNodesWithType('Event Receiver').filter(function (eventReceiver) {
+    var eventReceivers = this.getNodesWithType('Event Receiver').filter(function (eventReceiver: any) {
       return eventReceiver.getChannelName() === eventName;
-    });
+    }) as any[];
 
     for (var i = 0; i < eventReceivers.length; i++) {
       var consumed = eventReceivers[i].handleEvent(data);
@@ -410,7 +506,7 @@ NodeScope.prototype.sendEventFromThisScope = function (eventName, data, propagat
   if (propagation === 'parent' && this.componentOwner.parentNodeScope) {
     // Send event to parent scope
     //either the scope of the visual parent if there is one, otherwise the parent component
-    const parentNodeScope = this.componentOwner.parent
+    const parentNodeScope: NodeScope = this.componentOwner.parent
       ? this.componentOwner.parent.nodeScope
       : this.componentOwner.parentNodeScope;
     if (!parentNodeScope) return;
@@ -431,7 +527,7 @@ NodeScope.prototype.sendEventFromThisScope = function (eventName, data, propagat
     }
   } else if (propagation === 'siblings') {
     // Send event to all siblings, that is all children of the parent scope except this scope
-    let parentNodeScope;
+    let parentNodeScope: NodeScope;
     if (this.componentOwner.parent) {
       parentNodeScope = this.componentOwner.parent.nodeScope;
     } else {
@@ -440,11 +536,11 @@ NodeScope.prototype.sendEventFromThisScope = function (eventName, data, propagat
 
     if (!parentNodeScope) return;
 
-    var nodes = parentNodeScope.nodes;
-    for (var nodeId in nodes) {
-      var children = nodes[nodeId].children;
-      if (children) {
-        var _c = children.filter(
+    var siblingNodes = parentNodeScope.nodes;
+    for (var nodeId in siblingNodes) {
+      var siblingChildren = siblingNodes[nodeId].children;
+      if (siblingChildren) {
+        var _c = siblingChildren.filter(
           (child) => child.name && this.context.hasComponentModelWithName(child.name) && child.nodeScope !== this
         );
         _c.forEach((child) => {
@@ -458,4 +554,4 @@ NodeScope.prototype.sendEventFromThisScope = function (eventName, data, propagat
   return false;
 };
 
-module.exports = NodeScope;
+export = NodeScope;

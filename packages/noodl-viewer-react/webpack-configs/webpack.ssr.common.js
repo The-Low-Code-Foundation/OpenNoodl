@@ -3,6 +3,8 @@ const { outPath } = require('./constants.js');
 
 const CopyWebpackPlugin = require('copy-webpack-plugin');
 
+const { runtimePath, runtimeTsRule } = require('@noodl/runtime/webpack-ts-rule');
+
 const noodlEditorExternalDeployPath = path.join(outPath, 'ssr');
 
 module.exports = {
@@ -50,9 +52,10 @@ module.exports = {
           }
         }
       },
+      runtimeTsRule,
       {
         test: /\.ts(x?)$/,
-        exclude: /node_modules/,
+        exclude: [/node_modules/, runtimePath],
         use: [
           {
             loader: 'ts-loader'

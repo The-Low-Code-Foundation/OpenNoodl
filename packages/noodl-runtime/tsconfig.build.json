@@ -1,0 +1,12 @@
+{
+  // Bundler-facing variant of tsconfig.json. Identical settings, except that ts-loader
+  // needs emit turned on — the base config sets `noEmit` because its job is typechecking
+  // (`npm run typecheck:runtime`) — and the program is limited to shipped sources so that
+  // test files are neither compiled nor able to fail a viewer build.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "**/*.test.ts", "**/*.spec.ts"]
+}
