@@ -44,10 +44,6 @@ import { whatsnewRender } from '../../whats-new';
 import { IRouteProps } from '../AppRoute';
 import { useSetupSettings } from './useSetupSettings';
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const ImportOverwritePopupTemplate = require('../../templates/importoverwritepopup.html');
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const ImportPopupTemplate = require('../../templates/importpopup.html');
 
 if (import.meta.webpackHot) {
   import.meta.webpackHot.accept('../../router.setup', () => {
@@ -344,7 +340,7 @@ function _importProject(dirEntry) {
 
     // Show popup and allow the user to choose which components to import
     var chooseImportsPopup = new ImportPopup({
-      template: ImportPopupTemplate,
+      variant: 'import',
       imports: imports,
       onOk: function () {
         // User have made choice of what to import, check if there are any collisions
@@ -358,7 +354,7 @@ function _importProject(dirEntry) {
           } else {
             // There is a collision for import, promt user if we should overwrite
             const overwritePopup = new ImportPopup({
-              template: ImportOverwritePopupTemplate,
+              variant: 'overwrite',
               imports: collisions,
               onOk: function () {
                 PopupLayer.instance.hideAllModalsAndPopups();
@@ -369,7 +365,7 @@ function _importProject(dirEntry) {
               }
             });
             overwritePopup.render();
-            overwritePopup.el.css('width', '500px'); // Make it a little bit wider as a modal
+            overwritePopup.el.style.width = '500px'; // Make it a little bit wider as a modal
 
             PopupLayer.instance.showModal({
               content: overwritePopup
@@ -382,7 +378,7 @@ function _importProject(dirEntry) {
       }
     });
     chooseImportsPopup.render();
-    chooseImportsPopup.el.css('width', '500px'); // Make it a little bit wider as a modal
+    chooseImportsPopup.el.style.width = '500px'; // Make it a little bit wider as a modal
 
     ToastLayer.hideActivity(activityId);
     PopupLayer.instance.showModal({

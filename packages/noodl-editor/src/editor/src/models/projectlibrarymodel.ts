@@ -8,8 +8,6 @@ import ImportPopup from '../views/importpopup';
 import PopupLayer from '../views/popuplayer';
 import { ToastLayer } from '../views/ToastLayer/ToastLayer';
 
-const ImportOverwritePopupTemplate = require('../templates/importoverwritepopup.html');
-const ImportPopupTemplate = require('../templates/importpopup.html');
 
 export class ProjectLibraryModel extends Model {
   static instance: ProjectLibraryModel;
@@ -54,7 +52,7 @@ export class ProjectLibraryModel extends Model {
         onBeforePopup && onBeforePopup();
 
         const chooseImportsPopup = new ImportPopup({
-          template: ImportPopupTemplate,
+          variant: 'import',
           imports,
           onOk: function () {
             // User have made choice of what to import, check if there are any collisions
@@ -68,7 +66,7 @@ export class ProjectLibraryModel extends Model {
 
                 // There is a collision for import, promt user if we should overwrite
                 var overwritePopup = new ImportPopup({
-                  template: ImportOverwritePopupTemplate,
+                  variant: 'overwrite',
                   initAllAsImport: true,
                   ignoreDependencies: true,
                   imports: collisions,

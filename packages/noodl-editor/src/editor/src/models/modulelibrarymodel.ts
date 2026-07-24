@@ -12,7 +12,6 @@ import ImportPopup from '../views/importpopup';
 import PopupLayer from '../views/popuplayer';
 import { unzipIntoDirectory } from './projectmodel.editor';
 
-const ImportOverwritePopupTemplate = require('../templates/importoverwritepopup.html');
 export interface IModule {
   label: string;
   desc: string;
@@ -162,7 +161,7 @@ export class ModuleLibraryModel extends Model {
   async _showImportPopup({ imports, collisions, onBeforePopup, onAfterPopup }) {
     return new Promise((resolve, reject) => {
       const overwritePopup = new ImportPopup({
-        template: ImportOverwritePopupTemplate,
+        variant: 'overwrite',
         imports: collisions,
         initAllAsImport: true,
         ignoreDependencies: true,

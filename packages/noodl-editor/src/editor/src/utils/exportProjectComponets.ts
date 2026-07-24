@@ -7,8 +7,7 @@ import FileSystem from './filesystem';
 import ProjectImporter from './projectimporter';
 import { guid } from './utils';
 
-const ImportPopup = require('../views/importpopup');
-const ExportPopupTemplate = require('../templates/exportpopup.html');
+const ImportPopup = require('../views/importpopup').default;
 const archiver = require('archiver');
 const fs = require('fs');
 
@@ -77,7 +76,7 @@ export function exportProjectComponents() {
     // Show popup and allow the user to choose which components to export
     // we reuse the import popup with a new template
     var chooseExportsPopup = new ImportPopup({
-      template: ExportPopupTemplate,
+      variant: 'export',
       imports: imports,
       onOk: function () {
         ToastLayer.showActivity('Exporting...', activityId);
@@ -144,7 +143,7 @@ export function exportProjectComponents() {
       }
     });
     chooseExportsPopup.render();
-    chooseExportsPopup.el.css('width', '500px'); // Make it a little bit wider as a modal
+    chooseExportsPopup.el.style.width = '500px'; // Make it a little bit wider as a modal
 
     ToastLayer.hideActivity(activityId);
     PopupLayer.instance.showModal({
