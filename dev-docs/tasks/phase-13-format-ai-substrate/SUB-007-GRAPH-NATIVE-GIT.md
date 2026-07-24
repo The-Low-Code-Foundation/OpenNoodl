@@ -122,8 +122,9 @@ For merge, prefer **conservative correctness over cleverness**: when in doubt, r
 - [x] Design, document, and test the node identity model first — [SUB-007-DESIGN.md](SUB-007-DESIGN.md); id-primary, structural matching diff-only
 - [x] Diff engine + validation against real commit pairs — `src/editor/src/versioning/GraphDiff.ts`; validated against the captured merge fixtures in `tests/testfs/merge-tests/` (real project histories)
 - [x] Diff UI — `views/panels/GraphDiffPanel/`, wired into local changes, commit
-      diffs, merge previews and stash diffs. **Not yet reviewed by a human on a
-      large realistic change** — that step is still open (see Status below)
+      diffs, merge previews and stash diffs. Reviewed against a running editor
+      on a real project (§ Live verification); **not yet reviewed on a *large*
+      diff** — see Status
 - [x] Three-way merge with conservative conflict policy — `GraphMerge.ts`; no-silent-loss property tested over 150 seeded three-way merges in CI (plus a 1,500-seed offline sweep) and the real fixtures
 - [x] Conflict resolution UI — `GraphConflictList` + `MergeConflicts`, replacing
       the banner that pushed users at the warnings list. Value conflicts apply to
@@ -150,10 +151,37 @@ All seven implementation steps are done and the legacy merger is deleted.
 | 6. Git merge driver | `main/src/merge-driver.js`, `noodl-git/src/{core/init,merge-strategy}.ts` |
 | 7. Parity + removal | `tests/versioning/parity.test.ts`, `projectmerger.js` deleted |
 
-**Open, deliberately:** the diff UI has not been reviewed by a human on a large
-realistic change (step 3's own acceptance note, and a success criterion). It is
-wired and specs pass, but "readability is the whole point and is hard to judge
-from tests" — that judgement has not been made yet.
+### Live verification (2026-07-24)
+
+Driven in a running editor against a real project, not a fixture: version
+control panel → Local Changes → select the changed component. The panel
+rendered, catalog display names resolved, and grouping worked:
+
+```
+What changed in /#__page__/Home
+VALUES
+  Renamed Text to 'Hello World!'
+  Changed Text 'Hello World!' (color: (unset) → '#FF8800')
+```
+
+The run paid for itself twice. It found **editor bookkeeping leaking into the
+change list** (`Changed legacyGraph:visualRoots: [] → [...]` — derived state, in
+an internal namespace, that moves whenever anything is edited), now excluded in
+`GraphDiff.ts`; and it prompted the check that found the **conflict panel could
+not open for structural-only conflicts**, since its gate read the warnings model
+alone. Both fixed and covered by specs.
+
+**Still open:** the diff has only been read on a *small* project (three nodes,
+two changes). The success criterion asks for a large realistic change, where the
+open questions are volume — whether a hundred-change component needs collapsing
+or a summary line — and whether grouping still helps at that size. Nothing about
+correctness; entirely about legibility at scale.
+
+**Known rough edge:** connection sentences read
+`Connected Text 'Continue'.onClick → Text.visible`. The label-qualified node name
+followed by a port is clumsy, and an unlabelled target is ambiguous when several
+nodes share a type. Left as-is deliberately — changing the formatter means
+changing pinned expectations, and it wants the large-diff review first.
 
 **Bounded, by design:** conflict resolution applies *value* conflicts
 (parameters, state values and transitions, labels, variants) to the live
@@ -164,6 +192,11 @@ Rationale in [SUB-007-DESIGN.md](SUB-007-DESIGN.md) §6.
 ## CHANGELOG
 
 **Added**
+- Structural conflicts now open the conflict panel: `useHasConflictsInProject`
+  consults `metadata.mergeConflicts`, not just the warnings model (which only
+  ever knew the seven legacy kinds).
+- `MergeConflicts` falls back to the pre-SUB-007 banner for projects merged by
+  an older build, which have stamps but no structured list.
 - `versioning/ProjectMerge.ts` — whole-project three-way merge (components,
   variants, project-level scalars) on the graph engine; the drop-in that
   replaced `projectmerger.js`.

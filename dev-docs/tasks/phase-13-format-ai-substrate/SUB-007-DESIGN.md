@@ -251,7 +251,22 @@ things travel in it:
 v2 component merges use the same mechanism, writing to the component's own
 `component.json` metadata.
 
-### 6.2 What the conflict UI can and cannot apply
+### 6.2 What puts the panel into conflict mode
+
+Two signals, because neither is sufficient alone:
+
+- **Warnings** (`node.conflicts` stamps) — what the editor used before
+  SUB-007. Covers only the seven value-conflict kinds, because the other
+  eleven have no node to hang a warning on.
+- **`metadata.mergeConflicts`** — every kind, including structural ones.
+
+The panel gates on either. Consulting only the warnings model, as the code did
+before, meant a merge producing nothing but structural conflicts left the user
+with no indication at all. Consulting only the metadata channel would strand
+projects merged by an older build, which have stamps and no channel — those get
+the pre-SUB-007 banner instead of an empty panel.
+
+### 6.3 What the conflict UI can and cannot apply
 
 `GraphConflictList` renders every conflict; `MergeConflicts` applies the chosen
 side. Applying is bounded on purpose:
@@ -306,3 +321,29 @@ This is why the main-process webpack config gained a TypeScript loader: the old
 merger's header note ("this file has to be javascript and require until the main
 process uses webpack+typescript") described a real constraint, and removing it
 was a prerequisite for deleting the file.
+
+## 9. What `extras` may and may not surface in a diff
+
+`GraphSnapshot.extras` carries two unlike things under one field: real
+component-level content (ports, component type) and bookkeeping that the editor
+derives or the file format requires (`visualRoots`, file versions, ids, the
+`modified` timestamp, the `hasCommentsArray` marker).
+
+Only the first belongs in a change list a human reads. `GraphDiff` excludes the
+derived and identity keys (`DERIVED_EXTRAS`) and strips the adapter namespace
+from the rest, so `v2:ports` reads as `ports`.
+
+This distinction was invisible in tests — every fixture exercised the merge, and
+the merge is right to carry all of it. It only showed up when the diff panel was
+read against a real project, where an ordinary edit produced:
+
+```
+Changed legacyGraph:visualRoots: [] → ["ae0dede5-b9e4-4981-af23-355dcb22ec7e"]
+```
+
+next to the two changes the user had actually made. Suppression is display-only:
+the round trip still preserves every one of these keys verbatim, and the merge
+still merges them.
+
+The general rule for anything added to `extras` later: if the editor computes it
+rather than the user authoring it, add it to `DERIVED_EXTRAS`.
