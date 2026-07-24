@@ -7,7 +7,11 @@ import { DialogRenderDirection } from '@noodl-core-ui/components/layout/BaseDial
 import { MenuDialogWidth } from '@noodl-core-ui/components/popups/MenuDialog';
 import { PopupToolbar, PopupToolbarProps } from '@noodl-core-ui/components/popups/PopupToolbar';
 
+import { SidebarModel } from '@noodl-models/sidebar';
+
 import { CreateNewNodePanel } from '../createnewnodepanel';
+import { ExplainPanel_ID } from '../panels/ExplainPanel';
+import { rememberTarget } from '../panels/ExplainPanel/explainTarget';
 import PopupLayer from '../popuplayer';
 import { showContextMenuInPopup } from '../ShowContextMenuInPopup';
 import { OverlayHandle } from './canvas/OverlayHost';
@@ -145,6 +149,31 @@ export class NodeContextMenu {
     });
 
     items.push('divider');
+
+    // Explain. The ids have to be captured *here*, in the click handler: opening
+    // the panel switches the sidebar, and switching away from the property
+    // editor deselects every node (EditorEventBindings, on `activeChanged`), so
+    // by the time the panel mounts there is nothing left to read.
+    if (SidebarModel.instance.getItems().some((item) => item.id === ExplainPanel_ID)) {
+      items.push({
+        label: selectedNodes.length === 1 ? 'Explain this node' : `Explain these ${selectedNodes.length} nodes`,
+        icon: IconName.MagicWand,
+        onClick: () => {
+          const componentName = editor.activeComponent?.fullName;
+          if (!componentName) return;
+          rememberTarget(
+            componentName,
+            selectedNodes.map((node) => node.model.id)
+          );
+          SidebarModel.instance.switch(ExplainPanel_ID);
+        },
+        isDisabled: selectedNodes.length === 0,
+        tooltip: 'Ask what this does. Read-only — it never changes your project.',
+        tooltipShowAfterMs: 300
+      });
+
+      items.push('divider');
+    }
 
     // Data Lineage - DISABLED: Not production ready, requires more work
     // TODO: Re-enable when lineage filtering and event handling are fixed

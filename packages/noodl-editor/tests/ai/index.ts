@@ -7,3 +7,8 @@ export * from './anthropic-provider.test';
 export * from './openai-provider.test';
 export * from './ollama-provider.test';
 export * from './client.test';
+
+// AIX-004: explain mode. Context assembly runs over the real project corpus;
+// the one spec that drives a response stubs the client.
+export * from './explain-context.test';
+export * from './explain-session.test';

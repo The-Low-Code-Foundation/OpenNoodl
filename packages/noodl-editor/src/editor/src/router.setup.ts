@@ -18,6 +18,7 @@ import { ComponentXRayPanel } from './views/panels/ComponentXRayPanel';
 import { DataLineagePanel } from './views/panels/DataLineagePanel';
 import { DesignTokenPanel } from './views/panels/DesignTokenPanel/DesignTokenPanel';
 import { EditorSettingsPanel } from './views/panels/EditorSettingsPanel/EditorSettingsPanel';
+import { ExplainPanel, ExplainPanel_ID, startExplainTargetTracking } from './views/panels/ExplainPanel';
 import { FileExplorerPanel } from './views/panels/FileExplorerPanel';
 import { ExecutionHistoryPanel } from './views/panels/ExecutionHistoryPanel';
 import { GitHubPanel } from './views/panels/GitHubPanel';
@@ -117,6 +118,22 @@ export function installSidePanel({ isLesson }: SetupEditorOptions) {
     order: 4.5,
     icon: IconName.Link,
     panel: DataLineagePanel
+  });
+
+  // Must start at boot, not at panel mount: the selection Explain needs to see
+  // is cleared by the sidebar switch that mounts the panel. See explainTarget.ts.
+  startExplainTargetTracking();
+
+  SidebarModel.instance.register({
+    experimental: true,
+    id: ExplainPanel_ID,
+    name: 'Explain',
+    description:
+      'Ask what the selected node, selection, or whole component does. Read-only — the explanation cites ' +
+      'nodes by name, and clicking one jumps to it on canvas.',
+    order: 4.6,
+    icon: IconName.MagicWand,
+    panel: ExplainPanel
   });
 
   SidebarModel.instance.register({

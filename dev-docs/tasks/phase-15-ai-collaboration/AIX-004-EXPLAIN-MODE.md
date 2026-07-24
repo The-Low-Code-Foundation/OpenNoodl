@@ -123,10 +123,56 @@ Read-only is a deliberate design property, not a limitation. A user should be ab
 
 ## Checklist
 
-- [ ] Branch `task/aix-004-explain-mode`
-- [ ] Context assembly for node / subgraph / component scopes
-- [ ] Prompt templates; iterate on real components
-- [ ] Non-modal UI keeping the canvas visible
-- [ ] Citation linking to canvas nodes
-- [ ] Follow-up questions; register tuning with two reader types
-- [ ] Accuracy pass over a component corpus; CHANGELOG; open PR
+- [x] Context assembly for node / subgraph / component scopes
+- [x] Prompt templates
+- [x] Non-modal UI keeping the canvas visible
+- [x] Citation linking to canvas nodes
+- [x] Follow-up questions
+- [ ] Register tuning with two reader types — **needs a live provider run** (see NOTES §7)
+- [ ] Accuracy pass over a component corpus — **needs a live provider run**
+- Committed to `cline-dev` per the working-branch convention (no task branch).
+
+## CHANGELOG
+
+### 2026-07-24 — Built and wired (executor: Opus 4.8)
+
+Explain Mode ships as an experimental sidebar panel. A user right-clicks a node (or a
+multi-selection) and picks **Explain this node**, or opens the panel and explains the whole
+component; a bounded slice of the graph plus SUB-005's catalog semantics goes to the
+configured model through AIX-001's client; the answer streams back with node citations that
+highlight on hover and navigate on click. Read-only by construction. Full design and the
+findings are in [AIX-004-NOTES.md](./AIX-004-NOTES.md).
+
+**New (engine — `models/AiAssistant/explain/`):** `types.ts`, `graph.ts` (live-model and
+serialised-project adapters into one `ExplainGraph`), `assemble.ts` (bounded context
+assembly), `render.ts`, `prompts.ts`, `citations.ts`, `ExplainSession.ts`, `index.ts`.
+**New (editor):** `validation/enrichedCatalog.ts` (the first editor-side loader for
+SUB-005's enriched catalog). **New (UI — `views/panels/ExplainPanel/`):** the panel, its
+`ExplanationView`, `canvasLink.ts`, `explainTarget.ts`, the `useCanvasSelection` hook,
+styles. **Changed:** `router.setup.ts` (register + start target-tracking),
+`NodeContextMenu.ts` (the Explain context-menu entry), `tests/ai/index.ts`.
+
+**Tests:** +47 specs across `tests/ai/explain-context.test.ts` and
+`tests/ai/explain-session.test.ts`, run over the same real-project corpus SUB-006 uses —
+context bounds, the three scopes, catalog semantics, citation parsing/resolution, the
+read-only guarantee (structural), and streaming/follow-up through a stubbed client. Suite
+**1060 → 1107, 0 failures.** `typecheck:editor` clean; lint 351 under baseline; TSFixme
+ratchet unchanged by this task.
+
+**Live editor pass (CDP) — and the defect it caught.** Verified in the running editor: the
+panel registers under Editor Settings → Experimental, opens non-modally beside the canvas,
+scopes correctly (node vs component), states the read-only guarantee, and correctly
+disables the button when no provider is configured. The pass exposed a real defect no unit
+test would have: **switching to a sidebar panel deselects the canvas** — `EditorEventBindings`
+clears the selection on every `activeChanged` away from the property editor — so a panel
+that read `getSelectedNodes()` on mount always saw nothing. (The dormant Data Lineage panel
+has this bug today; it listens for a `selectionChanged` event nothing emits.) Fixed with
+`explainTarget.ts`, which remembers what the user pointed at *before* the switch, fed by
+`SidebarModelEvent.nodeSelected` and by the context-menu action capturing the live
+selection at click time. Re-verified: selecting a node then opening the panel now reads
+**"1 node in /#__page__/Home"** and offers **"Explain this node"**.
+
+**Not done (both need a human with provider keys, same gap AIX-001 recorded):** register
+tuning with an expert and a beginner reader, and the accuracy pass over a corpus of
+known-behaviour components. Every automated check is offline. See NOTES §7 for this and the
+enriched-catalog consolidation follow-ups.
