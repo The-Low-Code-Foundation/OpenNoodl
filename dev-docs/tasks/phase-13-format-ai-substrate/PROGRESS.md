@@ -46,7 +46,7 @@ call sites** — they are exercised only from tests. Making them real is SUB-001
 | SUB-004 | Node Catalog Generator | 1-2 wks | 🟢 Complete |
 | SUB-005 | Catalog Enrichment | 3-4 wks | 🟢 Complete (comparative LLM acceptance test passed — docs/node-catalog/ACCEPTANCE.md) |
 | SUB-006 | Semantic Validator | 2-3 wks | 🟢 Complete |
-| SUB-007 | Graph-Native Git | 4-6 wks | 🟢 Complete (2026-07-24 — engine + diff UI + conflict UI + v2 merge driver; `projectmerger.js` deleted with parity proven against recorded goldens. Open: diff UI not yet human-reviewed on a large realistic change; structural conflicts are review-only by design — SUB-007-DESIGN.md §6–§8) |
+| SUB-007 | Graph-Native Git | 4-6 wks | 🟢 Complete (2026-07-24 — engine + diff UI + conflict UI + v2 merge driver; `projectmerger.js` deleted with parity proven against recorded goldens. Diff UI verified in a running editor on a real project. Open: not yet read on a *large* diff; the conflict UI's rendering has never been seen live (needs a real merge conflict); structural conflicts are review-only by design — SUB-007-DESIGN.md §6–§9) |
 | SUB-008 | Noodl MCP Server | 3-4 wks | 🟢 Complete (Gate G1 passed — see g1/GATE-G1-DEMONSTRATION.md) |
 
 ### Optional spikes (not counted in the 8-task total / percentage above)
