@@ -1,9 +1,32 @@
-const ShowPopupNode = {
+import type {
+  EditorConnectionLike,
+  GraphModelLike,
+  GraphNodeModel,
+  NodeContextLike,
+  NodeDefinitionOptions,
+  NodeInstance,
+  NodeModule
+} from '@noodl/types';
+
+interface ShowPopupInstance extends NodeInstance {
+  _internal: {
+    popupParams: Record<string, unknown>;
+    closeResults: Record<string, unknown>;
+    target?: string;
+    hasScheduledShow?: boolean;
+  };
+  scheduleShow(): void;
+  show(): void;
+  setPopupParam(param: string, value: unknown): void;
+  getCloseResult(param: string): unknown;
+}
+
+const ShowPopupNode: NodeDefinitionOptions = {
   name: 'NavigationShowPopup',
   displayNodeName: 'Show Popup',
   category: 'Navigation',
   docs: 'https://docs.noodl.net/nodes/popups/show-popup',
-  initialize: function () {
+  initialize: function (this: ShowPopupInstance) {
     this._internal.popupParams = {};
     this._internal.closeResults = {};
   },
@@ -12,7 +35,7 @@ const ShowPopupNode = {
       type: 'component',
       displayName: 'Target',
       group: 'General',
-      set: function (value) {
+      set: function (this: ShowPopupInstance, value: string) {
         this._internal.target = value;
       }
     },
@@ -20,7 +43,7 @@ const ShowPopupNode = {
       type: 'signal',
       displayName: 'Show',
       group: 'Actions',
-      valueChangedToTrue: function () {
+      valueChangedToTrue: function (this: ShowPopupInstance) {
         this.scheduleShow();
       }
     }
@@ -31,15 +54,15 @@ const ShowPopupNode = {
     }
   },
   methods: {
-    setPopupParam: function (param, value) {
+    setPopupParam: function (this: ShowPopupInstance, param: string, value: unknown) {
       this._internal.popupParams[param] = value;
     },
-    getCloseResult: function (param) {
+    getCloseResult: function (this: ShowPopupInstance, param: string) {
       return this._internal.closeResults[param];
     },
-    scheduleShow: function () {
-      var _this = this;
-      var internal = this._internal;
+    scheduleShow: function (this: ShowPopupInstance) {
+      const _this = this;
+      const internal = this._internal;
       if (!internal.hasScheduledShow) {
         internal.hasScheduledShow = true;
         this.scheduleAfterInputsHaveUpdated(function () {
@@ -48,15 +71,15 @@ const ShowPopupNode = {
         });
       }
     },
-    show: function () {
+    show: function (this: ShowPopupInstance) {
       if (this._internal.target == undefined) return;
 
       this.context.showPopup(this._internal.target, this._internal.popupParams, {
         senderNode: this.nodeScope.componentOwner,
-        onClosePopup: (action, results) => {
+        onClosePopup: (action: string | undefined, results: Record<string, unknown>) => {
           this._internal.closeResults = results;
 
-          for (var key in results) {
+          for (const key in results) {
             if (this.hasOutput('closeResult-' + key)) this.flagOutputDirty('closeResult-' + key);
           }
 
@@ -65,7 +88,7 @@ const ShowPopupNode = {
         }
       });
     },
-    registerInputIfNeeded: function (name) {
+    registerInputIfNeeded: function (this: ShowPopupInstance, name: string) {
       if (this.hasInput(name)) {
         return;
       }
@@ -75,7 +98,7 @@ const ShowPopupNode = {
           set: this.setPopupParam.bind(this, name.substring('popupParam-'.length))
         });
     },
-    registerOutputIfNeeded: function (name) {
+    registerOutputIfNeeded: function (this: ShowPopupInstance, name: string) {
       if (this.hasOutput(name)) {
         return;
       }
@@ -95,23 +118,24 @@ const ShowPopupNode = {
   }
 };
 
-module.exports = {
+const ShowPopupModule: NodeModule = {
   node: ShowPopupNode,
-  setup: function (context, graphModel) {
+  setup: function (context: NodeContextLike, graphModel: GraphModelLike) {
     if (!context.editorConnection || !context.editorConnection.isRunningLocally()) {
       return;
     }
+    const editorConnection: EditorConnectionLike = context.editorConnection;
 
-    function _managePortsForNode(node) {
+    function _managePortsForNode(node: GraphNodeModel) {
       function _updatePorts() {
-        var ports = [];
+        const ports = [];
 
-        var targetComponentName = node.parameters['target'];
+        const targetComponentName = node.parameters['target'] as string | undefined;
         if (targetComponentName !== undefined) {
-          var c = graphModel.components[targetComponentName];
+          const c = graphModel.components[targetComponentName];
           if (c) {
-            for (var inputName in c.inputPorts) {
-              var o = c.inputPorts[inputName];
+            for (const inputName in c.inputPorts) {
+              const o = c.inputPorts[inputName];
               ports.push({
                 name: 'popupParam-' + inputName,
                 displayName: inputName,
@@ -123,7 +147,7 @@ module.exports = {
 
             for (const _n of c.getNodesWithType('NavigationClosePopup')) {
               if (_n.parameters['closeActions'] !== undefined) {
-                _n.parameters['closeActions'].split(',').forEach((a) => {
+                (_n.parameters['closeActions'] as string).split(',').forEach((a) => {
                   if (ports.find((p) => p.name === a)) return;
 
                   ports.push({
@@ -137,7 +161,7 @@ module.exports = {
               }
 
               if (_n.parameters['results'] !== undefined) {
-                _n.parameters['results'].split(',').forEach((p) => {
+                (_n.parameters['results'] as string).split(',').forEach((p) => {
                   ports.push({
                     name: 'closeResult-' + p,
                     displayName: p,
@@ -150,12 +174,12 @@ module.exports = {
             }
           }
         }
-        context.editorConnection.sendDynamicPorts(node.id, ports);
+        editorConnection.sendDynamicPorts(node.id, ports);
       }
 
-      function _trackTargetComponent(name) {
+      function _trackTargetComponent(name: string | undefined) {
         if (name === undefined) return;
-        var c = graphModel.components[name];
+        const c = graphModel.components[name];
         if (c === undefined) return;
 
         c.on('inputPortAdded', _updatePorts);
@@ -167,32 +191,32 @@ module.exports = {
         }
 
         // Track close popup added and removed
-        c.on('nodeAdded', (_n) => {
+        c.on('nodeAdded', (_n: GraphNodeModel) => {
           if (_n.type === 'NavigationClosePopup') {
             _n.on('parameterUpdated', _updatePorts);
             _updatePorts();
           }
         });
 
-        c.on('nodeWasRemoved', (_n) => {
+        c.on('nodeWasRemoved', (_n: GraphNodeModel) => {
           if (_n.type === 'NavigationClosePopup') _updatePorts();
         });
       }
 
       _updatePorts();
-      _trackTargetComponent(node.parameters['target']);
+      _trackTargetComponent(node.parameters['target'] as string | undefined);
 
       // Track parameter updated
       node.on('parameterUpdated', function (event) {
         if (event.name === 'target') {
           _updatePorts();
-          _trackTargetComponent(node.parameters['target']);
+          _trackTargetComponent(node.parameters['target'] as string | undefined);
         }
       });
     }
 
     graphModel.on('editorImportComplete', () => {
-      graphModel.on('nodeAdded.NavigationShowPopup', function (node) {
+      graphModel.on('nodeAdded.NavigationShowPopup', function (node: GraphNodeModel) {
         _managePortsForNode(node);
       });
 
@@ -202,3 +226,5 @@ module.exports = {
     });
   }
 };
+
+export default ShowPopupModule;

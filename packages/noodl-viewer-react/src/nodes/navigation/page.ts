@@ -1,6 +1,15 @@
+import type { ComponentModelLike, GraphModelLike, GraphNodeModel, NodeContextLike } from '@noodl/types';
+
 import { META_TAGS, Page } from '../../components/navigation/Page';
 import NodeSharedPortDefinitions from '../../node-shared-port-definitions';
-import { createNodeFromReactComponent } from '../../react-component-node';
+import { createNodeFromReactComponent, ReactNodeInstance } from '../../react-component-node';
+
+interface PageNodeInstance extends ReactNodeInstance {
+  _internal: {
+    title?: string;
+    urlPath?: string;
+  };
+}
 
 const PageNode = {
   name: 'Page',
@@ -14,7 +23,7 @@ const PageNode = {
   connectionPanel: {
     groupPriority: ['General', 'Mounted']
   },
-  initialize: function () {
+  initialize: function (this: PageNodeInstance) {
     this.props.layout = 'column'; //this allows the children to know what type of layout type they're in
     if (this.isInputConnected('onPageReady')) {
       this.nodeScope.context.eventEmitter.emit('SSR_PageLoading', this.id);
@@ -91,7 +100,7 @@ const PageNode = {
     //   }
     // }
   },
-  inputProps: META_TAGS.reduce((result, x, index) => {
+  inputProps: META_TAGS.reduce<Record<string, unknown>>((result, x, index) => {
     result[x.key] = {
       index: 80000 + index,
       displayName: x.displayName,
@@ -104,22 +113,22 @@ const PageNode = {
     return result;
   }, {}),
   methods: {
-    getUrlPath: function () {
+    getUrlPath: function (this: PageNodeInstance) {
       return this._internal.urlPath;
     },
-    getTitle: function () {
+    getTitle: function (this: PageNodeInstance) {
       return this._internal.title;
     },
     /* setRouter:function(value) {
             this._internal.router = value
         },*/
-    setTitle: function (value) {
+    setTitle: function (this: PageNodeInstance, value: string) {
       this._internal.title = value;
     },
-    setUrlPath: function (value) {
+    setUrlPath: function (this: PageNodeInstance, value: string) {
       this._internal.urlPath = value;
     },
-    registerInputIfNeeded: function (name) {
+    registerInputIfNeeded: function (this: PageNodeInstance, name: string) {
       if (this.hasInput(name)) {
         return;
       }
@@ -139,14 +148,15 @@ const PageNode = {
         });
     }
   },
-  setup(context, graphModel) {
+  setup(context: NodeContextLike, graphModel: GraphModelLike) {
     if (!context.editorConnection || !context.editorConnection.isRunningLocally()) {
       return;
     }
+    const editorConnection = context.editorConnection;
 
-    function _managePortsForNode(node) {
+    function _managePortsForNode(node: GraphNodeModel) {
       function _updatePorts() {
-        var ports = [];
+        const ports = [];
 
         // Show router selector if more that one
         /*	var routers = graphModel.getNodesWithType('Router')
@@ -172,7 +182,7 @@ const PageNode = {
           default: titleParts[titleParts.length - 1]
         });
 
-        const title = node.parameters['title'] || titleParts[titleParts.length - 1];
+        const title = (node.parameters['title'] as string) || titleParts[titleParts.length - 1];
         const defaultUrlPath = title.replace(/\s+/g, '-').toLowerCase();
         ports.push({
           name: 'urlPath',
@@ -183,7 +193,7 @@ const PageNode = {
           default: defaultUrlPath
         });
 
-        context.editorConnection.sendDynamicPorts(node.id, ports);
+        editorConnection.sendDynamicPorts(node.id, ports);
       }
 
       _updatePorts();
@@ -196,11 +206,11 @@ const PageNode = {
     }
 
     graphModel.on('editorImportComplete', () => {
-      graphModel.on('nodeAdded.Page', function (node) {
+      graphModel.on('nodeAdded.Page', function (node: GraphNodeModel) {
         _managePortsForNode(node);
       });
 
-      graphModel.on('componentRenamed', function (component) {
+      graphModel.on('componentRenamed', function (component: ComponentModelLike) {
         const page = graphModel.getNodesWithType('Page').filter((x) => component.roots.includes(x.id));
         if (page.length > 0) {
           _managePortsForNode(page[0]);

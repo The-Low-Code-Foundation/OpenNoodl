@@ -1,10 +1,43 @@
+import type { TransitionParams } from './transitions/transition';
+
+/**
+ * What a Push/Pop navigation asks a Component Stack to do. `transition` is only present
+ * for pushes — `replace` never carries one. `backCallback` is the *push node's* callback,
+ * invoked by the stack when a Pop Component Stack node later navigates back.
+ */
+export interface StackNavigateArgs {
+  target?: string;
+  params: Record<string, unknown>;
+  transition?: TransitionParams & { type?: string };
+  backCallback?(action: string | undefined, results: Record<string, unknown>): void;
+  hasNavigated?(): void;
+}
+
+/** The subset of the Component Stack node the handler drives. */
+export interface PageStackLike {
+  navigate(args: StackNavigateArgs): void;
+  replace(args: StackNavigateArgs): void;
+  reset(): void;
+}
+
+interface QueuedNavigation {
+  name: string;
+  args: StackNavigateArgs;
+  type: 'navigate' | 'replace';
+}
+
 class NavigationHandler {
+  static instance: NavigationHandler;
+
+  _pageStacks: Record<string, PageStackLike[]>;
+  _navigationQueue: QueuedNavigation[];
+
   constructor() {
     this._pageStacks = {};
     this._navigationQueue = [];
   }
 
-  _performNavigation(name, args, type) {
+  _performNavigation(name: string, args: StackNavigateArgs, type: 'navigate' | 'replace') {
     name = name || 'Main';
     if (this._pageStacks[name]) {
       for (const pageStack of this._pageStacks[name]) {
@@ -15,17 +48,17 @@ class NavigationHandler {
     }
   }
 
-  navigate(name, args) {
+  navigate(name: string, args: StackNavigateArgs) {
     name = name || 'Main';
     this._performNavigation(name, args, 'navigate');
   }
 
-  replace(name, args) {
+  replace(name: string, args: StackNavigateArgs) {
     name = name || 'Main';
     this._performNavigation(name, args, 'replace');
   }
 
-  registerPageStack(name, pageStack) {
+  registerPageStack(name: string, pageStack: PageStackLike) {
     name = name || 'Main';
     if (!this._pageStacks[name]) {
       this._pageStacks[name] = [];
@@ -63,7 +96,7 @@ class NavigationHandler {
     }
   }
 
-  deregisterPageStack(name, pageStack) {
+  deregisterPageStack(name: string, pageStack: PageStackLike) {
     name = name || 'Main';
 
     if (!this._pageStacks[name]) {
@@ -84,4 +117,4 @@ class NavigationHandler {
 
 NavigationHandler.instance = new NavigationHandler();
 
-module.exports = NavigationHandler;
+export default NavigationHandler;

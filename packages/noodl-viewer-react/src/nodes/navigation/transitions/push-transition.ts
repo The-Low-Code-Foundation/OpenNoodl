@@ -1,30 +1,48 @@
-const Transition = require('./transition');
-const BezierEasing = require('bezier-easing');
+import BezierEasing from 'bezier-easing';
+
+import type { ReactNodeInstance } from '../../../react-component-node';
+import Transition, { TransitionParams, TransitionStartArgs } from './transition';
+
 class PushTransition extends Transition {
-  constructor(from, to, params) {
+  from: ReactNodeInstance;
+  to: ReactNodeInstance;
+  distance: { value: number; unit: string };
+  direction: string;
+  ease: (t: number) => number;
+  crossfade: boolean;
+  /**
+   * Starts life as the `tr-darkoverlay` boolean, then — when truthy — is replaced in the
+   * constructor by the overlay Group node itself. Every later use is inside an
+   * `if (this.darkOverlay)`, so the boolean `false` never reaches a node call.
+   */
+  darkOverlay: boolean | ReactNodeInstance;
+  darkOverlayAmount: number;
+  zoom: { value: number; unit: string };
+
+  constructor(from: ReactNodeInstance, to: ReactNodeInstance, params: TransitionParams) {
     super();
 
     this.from = from;
     this.to = to;
 
     this.timing = params.timing || { curve: [0.0, 0.0, 0.58, 1.0], dur: 300, delay: 0 };
-    this.distance = params.shift || { value: 25, unit: '%' };
-    if (typeof this.distance === 'number') this.distance = { value: this.distance, unit: '%' };
+    const distance = params.shift || { value: 25, unit: '%' };
+    this.distance = typeof distance === 'number' ? { value: distance, unit: '%' } : distance;
     this.direction = params.direction || 'Left';
 
     this.timing.curve[0] = Math.min(1, Math.max(0, this.timing.curve[0]));
     this.timing.curve[2] = Math.min(1, Math.max(0, this.timing.curve[2]));
-    this.ease = BezierEasing.apply(null, this.timing.curve).get;
+    this.ease = BezierEasing(...this.timing.curve).get;
 
     this.crossfade = params.crossfade === undefined ? false : params.crossfade;
     this.darkOverlay = params.darkoverlay === undefined ? true : params.darkoverlay;
     this.darkOverlayAmount = params.darkoverlayamount === undefined ? 0.5 : params.darkoverlayamount;
 
-    this.zoom = params.zoom || { value: 25, unit: '%' };
-    if (typeof this.zoom === 'number') this.zoom = { value: this.zoom, unit: '%' };
+    const zoom = params.zoom || { value: 25, unit: '%' };
+    this.zoom = typeof zoom === 'number' ? { value: zoom, unit: '%' } : zoom;
 
     if (this.darkOverlay) {
-      this.darkOverlay = from.nodeScope.createPrimitiveNode('Group');
+      this.darkOverlay = from.nodeScope.createPrimitiveNode('Group') as ReactNodeInstance;
       this.darkOverlay.setInputValue('position', 'absolute');
       this.darkOverlay.setInputValue('sizeMode', 'explicit');
       this.darkOverlay.setInputValue('width', { value: 100, unit: '%' });
@@ -34,9 +52,9 @@ class PushTransition extends Transition {
     }
   }
 
-  update(t) {
+  update(t: number) {
     if (this.direction === 'In' || this.direction === 'Out') {
-      var zoom = this.zoom.value / 100;
+      let zoom = this.zoom.value / 100;
 
       zoom = this.direction === 'Out' ? -zoom : zoom;
 
@@ -50,8 +68,8 @@ class PushTransition extends Transition {
         opacity: this.crossfade ? t : 1
       });
     } else {
-      var dist = this.distance.value;
-      var unit = this.distance.unit;
+      const dist = this.distance.value;
+      const unit = this.distance.unit;
 
       const targets = {
         Up: { x: 0, y: -1 },
@@ -82,37 +100,37 @@ class PushTransition extends Transition {
     }
 
     if (this.darkOverlay) {
-      this.darkOverlay.setStyle({
+      (this.darkOverlay as ReactNodeInstance).setStyle({
         opacity: t * this.darkOverlayAmount
       });
     }
   }
 
-  forward(t) {
-    var _t = this.ease(t);
+  forward(t: number) {
+    const _t = this.ease(t);
     this.update(_t);
   }
 
-  back(t) {
-    var _t = this.ease(t);
+  back(t: number) {
+    const _t = this.ease(t);
     this.update(1 - _t);
   }
 
-  start(args) {
+  start(args: TransitionStartArgs) {
     super.start(args);
     if (this.darkOverlay) {
-      this.from.addChild(this.darkOverlay);
+      this.from.addChild(this.darkOverlay as ReactNodeInstance);
     }
   }
 
-  end(args) {
+  end() {
     if (this.darkOverlay) {
-      this.from.removeChild(this.darkOverlay);
+      this.from.removeChild(this.darkOverlay as ReactNodeInstance);
     }
-    super.end(args);
+    super.end();
   }
 
-  static ports(parameters) {
+  static ports(parameters: Record<string, unknown>) {
     const ports = [];
 
     ports.push({
@@ -183,4 +201,4 @@ class PushTransition extends Transition {
   }
 }
 
-module.exports = PushTransition;
+export default PushTransition;

@@ -1,31 +1,49 @@
-const Transition = require('./transition');
-const BezierEasing = require('bezier-easing');
+import BezierEasing from 'bezier-easing';
+
+import type { ReactNodeInstance } from '../../../react-component-node';
+import Transition, { TransitionParams } from './transition';
 
 class PopupTransition extends Transition {
-  constructor(from, to, params) {
+  from: ReactNodeInstance;
+  to: ReactNodeInstance;
+  distance: { value: number; unit: string };
+  direction: string;
+  ease: (t: number) => number;
+  fadein: boolean;
+  zoom: { value: number; unit: string };
+  /**
+   * Read in `update` for the In/Out branch but assigned nowhere in this class — it is
+   * `PushTransition`'s parameter, seemingly copied along with the zoom branch. Always
+   * `undefined`, so the In/Out popup transition never crossfades; `tr-fadein` is the
+   * parameter this class actually exposes, and only the translate branch reads it.
+   * Kept as-is: making In/Out honour `fadein` would change visible behaviour.
+   */
+  crossfade?: boolean;
+
+  constructor(from: ReactNodeInstance, to: ReactNodeInstance, params: TransitionParams) {
     super();
 
     this.from = from;
     this.to = to;
 
     this.timing = params.timing || { curve: [0.0, 0.0, 0.58, 1.0], dur: 300, delay: 0 };
-    this.distance = params.shift || { value: 25, unit: '%' };
-    if (typeof this.distance === 'number') this.distance = { value: this.distance, unit: '%' };
+    const distance = params.shift || { value: 25, unit: '%' };
+    this.distance = typeof distance === 'number' ? { value: distance, unit: '%' } : distance;
     this.direction = params.direction || 'Right';
 
     this.timing.curve[0] = Math.min(1, Math.max(0, this.timing.curve[0]));
     this.timing.curve[2] = Math.min(1, Math.max(0, this.timing.curve[2]));
-    this.ease = BezierEasing.apply(null, this.timing.curve).get;
+    this.ease = BezierEasing(...this.timing.curve).get;
 
     this.fadein = params.fadein === undefined ? false : params.fadein;
 
-    this.zoom = params.zoom || { value: 25, unit: '%' };
-    if (typeof this.zoom === 'number') this.zoom = { value: this.zoom, unit: '%' };
+    const zoom = params.zoom || { value: 25, unit: '%' };
+    this.zoom = typeof zoom === 'number' ? { value: zoom, unit: '%' } : zoom;
   }
 
-  update(t) {
+  update(t: number) {
     if (this.direction === 'In' || this.direction === 'Out') {
-      var zoom = this.zoom.value / 100;
+      let zoom = this.zoom.value / 100;
 
       zoom = this.direction === 'Out' ? -zoom : zoom;
 
@@ -34,8 +52,8 @@ class PopupTransition extends Transition {
         opacity: this.crossfade ? t : 1
       });
     } else {
-      var dist = this.distance.value;
-      var unit = this.distance.unit;
+      const dist = this.distance.value;
+      const unit = this.distance.unit;
 
       const targets = {
         Up: { x: 0, y: -1 },
@@ -55,18 +73,18 @@ class PopupTransition extends Transition {
     }
   }
 
-  forward(t) {
-    var _t = this.ease(t);
+  forward(t: number) {
+    const _t = this.ease(t);
     this.update(_t);
   }
 
-  back(t) {
-    var _t = this.ease(t);
+  back(t: number) {
+    const _t = this.ease(t);
     this.update(1 - _t);
   }
 
-  static ports(parameters) {
-    var ports = [];
+  static ports(parameters: Record<string, unknown>) {
+    const ports = [];
 
     ports.push({
       name: 'tr-direction',
@@ -118,4 +136,4 @@ class PopupTransition extends Transition {
   }
 }
 
-module.exports = PopupTransition;
+export default PopupTransition;

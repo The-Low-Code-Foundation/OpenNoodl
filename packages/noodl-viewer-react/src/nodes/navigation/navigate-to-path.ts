@@ -1,13 +1,46 @@
 'use strict';
 
-const NoodlRuntime = require('@noodl/runtime');
+import NoodlRuntime from '@noodl/runtime';
+import type {
+  EditorConnectionLike,
+  GraphModelLike,
+  GraphNodeModel,
+  NodeContextLike,
+  NodeDefinitionOptions,
+  NodeInstance,
+  NodeModule
+} from '@noodl/types';
 
-const NavigateToPathNode = {
+/** A port in the editor's wire format, as pushed by `sendDynamicPorts`. */
+interface DynamicPort {
+  name: string;
+  plug: 'input' | 'output';
+  type?: unknown;
+  displayName?: string;
+  group?: string;
+}
+
+interface NavigateToPathInstance extends NodeInstance {
+  _internal: {
+    params: Record<string, unknown>;
+    query: Record<string, unknown>;
+    openInNewTab: boolean;
+    path?: string;
+    queryNames?: string;
+    hasScheduledNavigate?: boolean;
+  };
+  scheduleNavigate(): void;
+  navigate(): void;
+  setParam(name: string, value: unknown): void;
+  setQuery(name: string, value: unknown): void;
+}
+
+const NavigateToPathNode: NodeDefinitionOptions = {
   name: 'PageStackNavigateToPath',
   displayNodeName: 'Navigate To Path',
   category: 'Navigation',
   docs: 'https://docs.noodl.net/nodes/navigation/navigate-to-path',
-  initialize() {
+  initialize(this: NavigateToPathInstance) {
     const internal = this._internal;
     internal.params = {};
     internal.query = {};
@@ -18,7 +51,7 @@ const NavigateToPathNode = {
       type: { name: 'string' },
       displayName: 'Path',
       group: 'General',
-      set(value) {
+      set(this: NavigateToPathInstance, value: string) {
         this._internal.path = value;
       }
     },
@@ -26,7 +59,7 @@ const NavigateToPathNode = {
       type: { name: 'stringlist', allowEditOnly: true },
       displayName: 'Query',
       group: 'Query',
-      set(value) {
+      set(this: NavigateToPathInstance, value: string) {
         this._internal.queryNames = value;
       }
     },
@@ -36,22 +69,22 @@ const NavigateToPathNode = {
       group: 'General',
       default: false,
       type: 'boolean',
-      set(value) {
+      set(this: NavigateToPathInstance, value) {
         this._internal.openInNewTab = !!value;
       }
     },
     navigate: {
       displayName: 'Navigate',
       group: 'Actions',
-      valueChangedToTrue() {
+      valueChangedToTrue(this: NavigateToPathInstance) {
         this.scheduleNavigate();
       }
     }
   },
   outputs: {},
   methods: {
-    scheduleNavigate() {
-      var internal = this._internal;
+    scheduleNavigate(this: NavigateToPathInstance) {
+      const internal = this._internal;
 
       if (!internal.hasScheduledNavigate) {
         internal.hasScheduledNavigate = true;
@@ -61,14 +94,14 @@ const NavigateToPathNode = {
         });
       }
     },
-    navigate() {
-      var internal = this._internal;
+    navigate(this: NavigateToPathInstance) {
+      const internal = this._internal;
 
-      var formattedPath = internal.path;
+      let formattedPath = internal.path;
       if (formattedPath === undefined) return;
 
-      var matches = internal.path.match(/\{[A-Za-z0-9_]*\}/g);
-      var inputs = [];
+      const matches = internal.path.match(/\{[A-Za-z0-9_]*\}/g);
+      let inputs: string[] = [];
       if (matches) {
         inputs = matches.map(function (name) {
           return name.replace('{', '').replace('}', '');
@@ -76,16 +109,16 @@ const NavigateToPathNode = {
       }
 
       inputs.forEach(function (name) {
-        var v = internal.params[name];
-        formattedPath = formattedPath.replace('{' + name + '}', v !== undefined ? v : '');
+        const v = internal.params[name];
+        formattedPath = formattedPath.replace('{' + name + '}', v !== undefined ? String(v) : '');
       });
 
-      var urlPath, hashPath;
-      var navigationPathType = NoodlRuntime.instance.getProjectSettings()['navigationPathType'];
+      let urlPath, hashPath;
+      const navigationPathType = NoodlRuntime.instance.getProjectSettings()['navigationPathType'];
       if (navigationPathType === undefined || navigationPathType === 'hash') hashPath = formattedPath;
       else urlPath = formattedPath;
 
-      var query = [];
+      const query: string[] = [];
       if (internal.queryNames !== undefined) {
         internal.queryNames.split(',').forEach((q) => {
           if (internal.query[q] !== undefined) {
@@ -94,7 +127,7 @@ const NavigateToPathNode = {
         });
       }
 
-      var compiledUrl =
+      const compiledUrl =
         (urlPath !== undefined ? urlPath : '') +
         (query.length >= 1 ? '?' + query.join('&') : '') +
         (hashPath !== undefined ? '#' + hashPath : '');
@@ -106,13 +139,13 @@ const NavigateToPathNode = {
         dispatchEvent(new PopStateEvent('popstate', {}));
       }
     },
-    setParam(name, value) {
+    setParam(this: NavigateToPathInstance, name: string, value: unknown) {
       this._internal.params[name] = value;
     },
-    setQuery(name, value) {
+    setQuery(this: NavigateToPathInstance, name: string, value: unknown) {
       this._internal.query[name] = value;
     },
-    registerInputIfNeeded: function (name) {
+    registerInputIfNeeded: function (this: NavigateToPathInstance, name: string) {
       if (this.hasInput(name)) {
         return;
       }
@@ -130,24 +163,27 @@ const NavigateToPathNode = {
   }
 };
 
-module.exports = {
+const NavigateToPathModule: NodeModule = {
   node: NavigateToPathNode,
-  setup: function setup(context, graphModel) {
+  setup: function setup(context: NodeContextLike, graphModel: GraphModelLike) {
     if (!context.editorConnection || !context.editorConnection.isRunningLocally()) {
       return;
     }
+    const editorConnection: EditorConnectionLike = context.editorConnection;
 
-    function _managePortsForNode(node) {
+    function _managePortsForNode(node: GraphNodeModel) {
       function _updatePorts() {
-        var ports = [];
+        // The original declared `ports` twice with `var` — once here, once for the
+        // path-parameter mapping below. One binding, same behaviour, single `let` now.
+        let ports: DynamicPort[] = [];
 
         if (node.parameters['path'] !== undefined) {
-          var inputs = node.parameters['path'].match(/\{[A-Za-z0-9_]*\}/g) || [];
-          var portsNames = inputs.map(function (def) {
+          const inputs = (node.parameters['path'] as string).match(/\{[A-Za-z0-9_]*\}/g) || [];
+          const portsNames = inputs.map(function (def) {
             return def.replace('{', '').replace('}', '');
           });
 
-          var ports = portsNames
+          ports = portsNames
             //get unique names
             .filter(function (value, index, self) {
               return self.indexOf(value) === index;
@@ -159,13 +195,13 @@ module.exports = {
                 displayName: name,
                 group: 'Parameter',
                 type: '*',
-                plug: 'input'
+                plug: 'input' as const
               };
             });
         }
 
         if (node.parameters['queryNames'] !== undefined) {
-          node.parameters['queryNames'].split(',').forEach((q) => {
+          (node.parameters['queryNames'] as string).split(',').forEach((q) => {
             ports.push({
               name: 'q-' + q,
               displayName: q,
@@ -176,17 +212,17 @@ module.exports = {
           });
         }
 
-        context.editorConnection.sendDynamicPorts(node.id, ports);
+        editorConnection.sendDynamicPorts(node.id, ports);
       }
 
       _updatePorts();
-      node.on('parameterUpdated', function (event) {
+      node.on('parameterUpdated', function () {
         _updatePorts();
       });
     }
 
     graphModel.on('editorImportComplete', () => {
-      graphModel.on('nodeAdded.PageStackNavigateToPath', function (node) {
+      graphModel.on('nodeAdded.PageStackNavigateToPath', function (node: GraphNodeModel) {
         _managePortsForNode(node);
       });
 
@@ -196,3 +232,5 @@ module.exports = {
     });
   }
 };
+
+export default NavigateToPathModule;

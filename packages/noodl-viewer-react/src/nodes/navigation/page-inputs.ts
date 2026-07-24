@@ -1,13 +1,21 @@
-'use strict';
+import type { NodeDefinitionOptions, NodeInstance, NodeModule } from '@noodl/types';
 
-const PageInputsNode = {
+interface PageInputsInstance extends NodeInstance {
+  _internal: {
+    /** Current value of each page parameter, keyed without the `pm-` prefix. */
+    params: Record<string, unknown>;
+  };
+  getPageParam(name: string): unknown;
+}
+
+const PageInputsNode: NodeDefinitionOptions = {
   name: 'PageInputs',
   displayNodeName: 'Page Inputs',
   category: 'Navigation',
   docs: 'https://docs.noodl.net/nodes/navigation/page-inputs',
   color: 'component',
-  initialize: function () {
-    var internal = this._internal;
+  initialize: function (this: PageInputsInstance) {
+    const internal = this._internal;
 
     internal.params = {};
   },
@@ -23,16 +31,17 @@ const PageInputsNode = {
   },
   outputs: {},
   methods: {
-    _setPageParams: function (params) {
-      for (var key in params) {
+    /** Called by the Router / Component Stack when this node's page is (re)entered. */
+    _setPageParams: function (this: PageInputsInstance, params: Record<string, unknown>) {
+      for (const key in params) {
         this._internal.params[key] = params[key];
         if (this.hasOutput('pm-' + key)) this.flagOutputDirty('pm-' + key);
       }
     },
-    getPageParam: function (name) {
+    getPageParam: function (this: PageInputsInstance, name: string) {
       return this._internal.params[name];
     },
-    registerOutputIfNeeded: function (name) {
+    registerOutputIfNeeded: function (this: PageInputsInstance, name: string) {
       if (this.hasOutput(name)) {
         return;
       }
@@ -45,13 +54,13 @@ const PageInputsNode = {
   }
 };
 
-module.exports = {
+const PageInputsModule: NodeModule = {
   node: PageInputsNode
   /*  setup: function setup(context, graphModel) {
         if (!context.editorConnection || !context.editorConnection.isRunningLocally()) {
             return;
         }
-    
+
         function _managePortsForNode(node) {
             function _updatePorts() {
                 var ports = []
@@ -61,13 +70,13 @@ module.exports = {
                 if(node.parameters['pathParams'] !== undefined) {
                     node.parameters['pathParams'].split(',').forEach((p) => {
                         uniqueNames[p] = true
-                    }) 
+                    })
                 }
 
                 if(node.parameters['queryParams'] !== undefined) {
                     node.parameters['queryParams'].split(',').forEach((p) => {
                         uniqueNames[p] = true
-                    }) 
+                    })
                 }
 
                 Object.keys(uniqueNames).forEach((outputName) => {
@@ -89,15 +98,17 @@ module.exports = {
                 _updatePorts();
             })
         }
-        
+
         graphModel.on("editorImportComplete", ()=> {
             graphModel.on("nodeAdded.PageInputs", function (node) {
                 _managePortsForNode(node)
             })
-    
+
             for(const node of graphModel.getNodesWithType('PageInputs')) {
                 _managePortsForNode(node)
             }
         })
     }*/
 };
+
+export default PageInputsModule;

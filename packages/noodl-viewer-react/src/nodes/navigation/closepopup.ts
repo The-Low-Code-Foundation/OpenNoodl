@@ -1,25 +1,50 @@
-const { EdgeTriggeredInput } = require('@noodl/runtime');
+import { EdgeTriggeredInput } from '@noodl/runtime';
+import type {
+  EditorConnectionLike,
+  GraphModelLike,
+  GraphNodeModel,
+  NodeContextLike,
+  NodeDefinitionOptions,
+  NodeInstance,
+  NodeModule
+} from '@noodl/types';
 
-const ClosePopupNode = {
+interface ClosePopupInstance extends NodeInstance {
+  _internal: {
+    resultValues: Record<string, unknown>;
+    results?: string;
+    closeActions?: string;
+    closeAction?: string;
+    hasScheduledClose?: boolean;
+    /** Installed by the popup layer when the popup opens; see showpopup's `onClosePopup`. */
+    closeCallback?(action: string | undefined, results: Record<string, unknown>): void;
+  };
+  scheduleClose(): void;
+  close(): void;
+  closeActionTriggered(name: string): void;
+  setResultValue(key: string, value: unknown): void;
+}
+
+const ClosePopupNode: NodeDefinitionOptions = {
   name: 'NavigationClosePopup',
   displayNodeName: 'Close Popup',
   category: 'Navigation',
   docs: 'https://docs.noodl.net/nodes/popups/close-popup',
-  initialize: function () {
+  initialize: function (this: ClosePopupInstance) {
     this._internal.resultValues = {};
   },
   inputs: {
     results: {
       type: { name: 'stringlist', allowEditOnly: true },
       group: 'Results',
-      set: function (value) {
+      set: function (this: ClosePopupInstance, value: string) {
         this._internal.results = value;
       }
     },
     closeActions: {
       type: { name: 'stringlist', allowEditOnly: true },
       group: 'Close Actions',
-      set: function (value) {
+      set: function (this: ClosePopupInstance, value: string) {
         this._internal.closeActions = value;
       }
     },
@@ -27,21 +52,21 @@ const ClosePopupNode = {
       type: 'Signal',
       displayName: 'Close',
       group: 'Actions',
-      valueChangedToTrue: function () {
+      valueChangedToTrue: function (this: ClosePopupInstance) {
         this.scheduleClose();
       }
     }
   },
   methods: {
-    setResultValue: function (key, value) {
+    setResultValue: function (this: ClosePopupInstance, key: string, value: unknown) {
       this._internal.resultValues[key] = value;
     },
-    _setCloseCallback: function (cb) {
+    _setCloseCallback: function (this: ClosePopupInstance, cb: ClosePopupInstance['_internal']['closeCallback']) {
       this._internal.closeCallback = cb;
     },
-    scheduleClose: function () {
-      var _this = this;
-      var internal = this._internal;
+    scheduleClose: function (this: ClosePopupInstance) {
+      const _this = this;
+      const internal = this._internal;
       if (!internal.hasScheduledClose) {
         internal.hasScheduledClose = true;
         this.scheduleAfterInputsHaveUpdated(function () {
@@ -50,15 +75,15 @@ const ClosePopupNode = {
         });
       }
     },
-    close: function () {
+    close: function (this: ClosePopupInstance) {
       if (this._internal.closeCallback)
         this._internal.closeCallback(this._internal.closeAction, this._internal.resultValues);
     },
-    closeActionTriggered: function (name) {
+    closeActionTriggered: function (this: ClosePopupInstance, name: string) {
       this._internal.closeAction = name;
       this.scheduleClose();
     },
-    registerInputIfNeeded: function (name) {
+    registerInputIfNeeded: function (this: ClosePopupInstance, name: string) {
       if (this.hasInput(name)) {
         return;
       }
@@ -78,23 +103,24 @@ const ClosePopupNode = {
   }
 };
 
-module.exports = {
+const ClosePopupModule: NodeModule = {
   node: ClosePopupNode,
-  setup: function (context, graphModel) {
+  setup: function (context: NodeContextLike, graphModel: GraphModelLike) {
     if (!context.editorConnection || !context.editorConnection.isRunningLocally()) {
       return;
     }
+    const editorConnection: EditorConnectionLike = context.editorConnection;
 
-    function _managePortsForNode(node) {
+    function _managePortsForNode(node: GraphNodeModel) {
       function _updatePorts() {
-        var ports = [];
+        const ports = [];
 
         // Add results inputs
-        var results = node.parameters['results'];
+        const results = node.parameters['results'];
         if (results) {
-          results = results ? results.split(',') : undefined;
-          for (var i in results) {
-            var p = results[i];
+          const names = (results as string).split(',');
+          for (const i in names) {
+            const p = names[i];
 
             ports.push({
               type: {
@@ -109,11 +135,11 @@ module.exports = {
         }
 
         // Add close actions
-        var closeActions = node.parameters['closeActions'];
+        const closeActions = node.parameters['closeActions'];
         if (closeActions) {
-          closeActions = closeActions ? closeActions.split(',') : undefined;
-          for (var i in closeActions) {
-            var p = closeActions[i];
+          const names = (closeActions as string).split(',');
+          for (const i in names) {
+            const p = names[i];
 
             ports.push({
               type: 'signal',
@@ -125,7 +151,7 @@ module.exports = {
           }
         }
 
-        context.editorConnection.sendDynamicPorts(node.id, ports);
+        editorConnection.sendDynamicPorts(node.id, ports);
       }
 
       _updatePorts();
@@ -137,7 +163,7 @@ module.exports = {
     }
 
     graphModel.on('editorImportComplete', () => {
-      graphModel.on('nodeAdded.NavigationClosePopup', function (node) {
+      graphModel.on('nodeAdded.NavigationClosePopup', function (node: GraphNodeModel) {
         _managePortsForNode(node);
       });
 
@@ -147,3 +173,5 @@ module.exports = {
     });
   }
 };
+
+export default ClosePopupModule;

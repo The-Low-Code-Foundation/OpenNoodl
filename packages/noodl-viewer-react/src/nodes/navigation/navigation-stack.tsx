@@ -1,18 +1,30 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import NoodlRuntime from '@noodl/runtime';
+import type {
+  EditorConnectionLike,
+  GraphModelLike,
+  GraphNodeModel,
+  InspectInfoEntry,
+  NodeContextLike,
+  NodeInstance
+} from '@noodl/types';
 
 import ASyncQueue from '../../async-queue';
-import { createNodeFromReactComponent } from '../../react-component-node';
+import guid from '../../guid';
+import { createNodeFromReactComponent, ReactNodeInstance } from '../../react-component-node';
+import { Noodl, Slot } from '../../types';
+import NavigationHandler, { StackNavigateArgs } from './navigation-handler';
+import Transitions from './transitions';
+import type Transition from './transitions/transition';
 
-const { useEffect } = require('react');
+interface PageStackReactComponentProps extends Noodl.ReactProps {
+  didMount: () => void;
+  willUnmount: () => void;
 
-const guid = require('../../guid');
+  children: Slot;
+}
 
-const NavigationHandler = require('./navigation-handler');
-const NoodlRuntime = require('@noodl/runtime');
-
-const Transitions = require('./transitions');
-
-function PageStackReactComponent(props) {
+function PageStackReactComponent(props: PageStackReactComponentProps) {
   const { didMount, willUnmount, style, children } = props;
 
   useEffect(() => {
@@ -25,13 +37,90 @@ function PageStackReactComponent(props) {
   return <div style={style}>{children}</div>;
 }
 
+/** One row of this node's `pages` proplist parameter. */
+interface PageListItem {
+  id: string;
+  label: string;
+}
+
+/**
+ * What `_findPage` returns. Note there is no `path` here: the per-page `pagePath-…`
+ * input lands in `_internal.pageInfo[id].path`, which `matchPageFromUrl` reads — but
+ * `getRelativeURL` reads `top.pageInfo.path`, i.e. *this* object, where it is always
+ * `undefined`. URL matching therefore honours a custom path while URL writing falls
+ * back to the label-derived slug. Pre-existing asymmetry, kept as-is; see PLAT-003
+ * NOTES §19.
+ */
+interface FoundPage {
+  component: string;
+  label: string;
+  id: string;
+  path?: string;
+}
+
+interface StackEntry {
+  from: ReactNodeInstance | null;
+  page: ReactNodeInstance;
+  pageId: string;
+  pageInfo: FoundPage;
+  params: Record<string, unknown>;
+  transition?: Transition;
+  backCallback?: StackNavigateArgs['backCallback'];
+  componentName?: string;
+}
+
+interface PageStackInstance extends ReactNodeInstance {
+  _internal: {
+    stack: StackEntry[];
+    topPageName: string;
+    stackDepth: number;
+    /** Per-page registry filled by the `pageComp-…` / `pagePath-…` dynamic inputs. */
+    pageInfo: Record<string, { component?: string; path?: string }>;
+    asyncQueue: ASyncQueue;
+    isMounted?: boolean;
+    isTransitioning?: boolean;
+    name?: string;
+    useRoutes?: boolean;
+    pages?: PageListItem[];
+    startPageId?: string;
+    startPage?: string;
+    hasScheduledReset?: boolean;
+    remainingNavigationPath?: string[];
+    [extra: string]: unknown;
+  };
+  onScheduleReset?: () => void;
+  _registerPageStack(): void;
+  _deregisterPageStack(): void;
+  _findPage(pageIdOrLabel: string): FoundPage | undefined;
+  setPageOutputs(outputs: Record<string, unknown>): void;
+  scheduleReset(): void;
+  createPageContainer(): ReactNodeInstance;
+  reset(): void;
+  resetAsync(): Promise<void>;
+  getRelativeURL(): { path: string; query: { name: string; value: unknown }[] } | undefined;
+  getNavigationAbsoluteURL(): { path: string; query: { name: string; value: unknown }[] };
+  _getLocationPath(): string;
+  _getSearchParams(): Record<string, string>;
+  getNavigationRemainingPath(): string[] | undefined;
+  matchPageFromUrl(): { pageId: string; params: Record<string, string>; query: Record<string, string> } | undefined;
+  _updateUrlWithTopPage(): void;
+  replace(args: StackNavigateArgs): void;
+  replaceAsync(args: StackNavigateArgs): Promise<void>;
+  navigate(args: StackNavigateArgs): void;
+  navigateAsync(args: StackNavigateArgs): Promise<void>;
+  back(args: { backAction?: string; results?: Record<string, unknown> }): void;
+  setPageComponent(pageId: string, component: string): void;
+  setPagePath(pageId: string, path: string): void;
+  setStartPage(pageId: string): void;
+}
+
 const PageStack = {
   name: 'Page Stack',
   displayNodeName: 'Component Stack',
   category: 'Visuals',
   docs: 'https://docs.noodl.net/nodes/component-stack/component-stack-node',
   useVariants: false,
-  initialize() {
+  initialize(this: PageStackInstance) {
     this._internal.stack = [];
 
     this._internal.topPageName = '';
@@ -69,18 +158,18 @@ const PageStack = {
       this._deregisterPageStack();
     };
   },
-  getInspectInfo() {
+  getInspectInfo(this: PageStackInstance) {
     if (this._internal.stack.length === 0) {
       return 'No active page';
     }
 
-    const info = [{ type: 'text', value: 'Active Components:' }];
+    const info: InspectInfoEntry[] = [{ type: 'text', value: 'Active Components:' }];
 
     return info.concat(
       this._internal.stack.map((p) => {
         const pageInfo = this._findPage(p.pageId);
         return {
-          type: 'text',
+          type: 'text' as const,
           value: '- ' + pageInfo.label
         };
       })
@@ -102,7 +191,7 @@ const PageStack = {
       displayName: 'Name',
       group: 'General',
       default: 'Main',
-      set: function (value) {
+      set: function (this: PageStackInstance, value: string) {
         this._deregisterPageStack();
         this._internal.name = value;
 
@@ -125,7 +214,7 @@ const PageStack = {
       displayName: 'Use Routes',
       group: 'General',
       default: false,
-      set: function (value) {
+      set: function (this: PageStackInstance, value) {
         this._internal.useRoutes = !!value;
       }
     },
@@ -134,7 +223,7 @@ const PageStack = {
       type: 'boolean',
       group: 'Layout',
       default: true,
-      set(value) {
+      set(this: PageStackInstance, value) {
         if (value) {
           this.setStyle({ overflow: 'hidden' });
         } else {
@@ -146,7 +235,7 @@ const PageStack = {
       type: 'proplist',
       displayName: 'Components',
       group: 'Components',
-      set: function (value) {
+      set: function (this: PageStackInstance, value: PageListItem[]) {
         this._internal.pages = value;
         if (this._internal.isMounted) {
           this.scheduleReset();
@@ -157,7 +246,7 @@ const PageStack = {
       type: 'signal',
       displayName: 'Reset',
       group: 'Actions',
-      valueChangedToTrue: function () {
+      valueChangedToTrue: function (this: PageStackInstance) {
         this.scheduleReset();
       }
     }
@@ -176,7 +265,7 @@ const PageStack = {
       type: 'string',
       displayName: 'Top Component Name',
       group: 'General',
-      get() {
+      get(this: PageStackInstance) {
         return this._internal.topPageName;
       }
     },
@@ -184,22 +273,19 @@ const PageStack = {
       type: 'number',
       displayName: 'Stack Depth',
       group: 'General',
-      get() {
+      get(this: PageStackInstance) {
         return this._internal.stackDepth;
       }
     }
   },
   methods: {
-    _registerPageStack() {
+    _registerPageStack(this: PageStackInstance) {
       NavigationHandler.instance.registerPageStack(this._internal.name, this);
     },
-    _deregisterPageStack() {
+    _deregisterPageStack(this: PageStackInstance) {
       NavigationHandler.instance.deregisterPageStack(this._internal.name, this);
     },
-    /**
-     * @param {String} pageIdOrLabel
-     */
-    _findPage(pageIdOrLabel) {
+    _findPage(this: PageStackInstance, pageIdOrLabel: string): FoundPage | undefined {
       if (this._internal.pageInfo[pageIdOrLabel]) {
         const pageInfo = this._internal.pageInfo[pageIdOrLabel];
         const pageRef = this._internal.pages.find((x) => x.id === pageIdOrLabel);
@@ -222,14 +308,14 @@ const PageStack = {
 
       return undefined;
     },
-    setPageOutputs(outputs) {
+    setPageOutputs(this: PageStackInstance, outputs: Record<string, unknown>) {
       for (const prop in outputs) {
         this._internal[prop] = outputs[prop];
         this.flagOutputDirty(prop);
       }
     },
-    scheduleReset() {
-      var internal = this._internal;
+    scheduleReset(this: PageStackInstance) {
+      const internal = this._internal;
       if (!internal.hasScheduledReset) {
         internal.hasScheduledReset = true;
         this.scheduleAfterInputsHaveUpdated(() => {
@@ -238,28 +324,28 @@ const PageStack = {
         });
       }
     },
-    createPageContainer() {
-      const group = this.nodeScope.createPrimitiveNode('Group');
+    createPageContainer(this: PageStackInstance) {
+      const group = this.nodeScope.createPrimitiveNode('Group') as ReactNodeInstance;
       group.setStyle({ flex: '1 0 100%' });
       return group;
     },
-    reset() {
+    reset(this: PageStackInstance) {
       this._internal.asyncQueue.enqueue(this.resetAsync.bind(this));
     },
-    async resetAsync() {
-      var children = this.getChildren();
-      for (var i in children) {
-        var c = children[i];
+    async resetAsync(this: PageStackInstance) {
+      const children = this.getChildren();
+      for (const i in children) {
+        const c = children[i];
         this.removeChild(c);
         this.nodeScope.deleteNode(c);
       }
 
       if (this._internal.pages === undefined || this._internal.pages.length === 0) return;
 
-      let startPageId;
-      let params = {};
+      let startPageId: string;
+      let params: Record<string, unknown> = {};
 
-      var pageFromUrl = this.matchPageFromUrl();
+      const pageFromUrl = this.matchPageFromUrl();
       if (pageFromUrl !== undefined) {
         // We have an url matching a page, use that page as start page
         startPageId = pageFromUrl.pageId;
@@ -277,9 +363,11 @@ const PageStack = {
         return;
       }
 
-      var content = await this.nodeScope.createNode(pageInfo.component, guid());
+      // In the React viewer a component instance is always a ReactNodeInstance; the
+      // published createNode signature only promises the runtime-level NodeInstance.
+      const content = (await this.nodeScope.createNode(pageInfo.component, guid())) as ReactNodeInstance;
 
-      for (var key in params) {
+      for (const key in params) {
         content.setInputValue(key, params[key]);
       }
 
@@ -303,35 +391,35 @@ const PageStack = {
         stackDepth: this._internal.stack.length
       });
     },
-    getRelativeURL() {
-      var top = this._internal.stack[this._internal.stack.length - 1];
+    getRelativeURL(this: PageStackInstance) {
+      const top = this._internal.stack[this._internal.stack.length - 1];
       if (top === undefined) return;
 
-      var urlPath = top.pageInfo.path;
+      let urlPath = top.pageInfo.path;
       if (urlPath === undefined) {
-        var pageItem = this._internal.pages.find((p) => p.id == top.pageId);
+        const pageItem = this._internal.pages.find((p) => p.id == top.pageId);
         if (pageItem === undefined) return;
 
         urlPath = pageItem.label.replace(/\s+/g, '-').toLowerCase();
       }
 
       // First add matching parameters to path
-      var paramsInPath = urlPath.match(/{([^}]+)}/g);
+      const paramsInPath = urlPath.match(/{([^}]+)}/g);
 
-      var params = Object.assign({}, top.params);
+      const params = Object.assign({}, top.params);
       if (paramsInPath) {
-        for (var param of paramsInPath) {
-          var key = param.replace(/[{}]/g, '');
+        for (const param of paramsInPath) {
+          const key = param.replace(/[{}]/g, '');
           if (top.params[key] !== undefined) {
-            urlPath = urlPath.replace(param, encodeURIComponent(params[key]));
+            urlPath = urlPath.replace(param, encodeURIComponent(String(params[key])));
             delete params[key];
           }
         }
       }
 
       // Add other paramters as query
-      var query = [];
-      for (var key in params) {
+      const query: { name: string; value: unknown }[] = [];
+      for (const key in params) {
         query.push({
           name: key,
           value: params[key]
@@ -345,20 +433,21 @@ const PageStack = {
         query: query
       };
     },
-    getNavigationAbsoluteURL() {
-      var parent = this.parent;
+    getNavigationAbsoluteURL(this: PageStackInstance) {
+      let parent = this.parent;
 
       while (parent !== undefined && typeof parent.getNavigationAbsoluteURL !== 'function') {
         parent = parent.getVisualParentNode();
       }
 
+      let parentUrl: { path: string; query: { name: string; value: unknown }[] };
       if (parent === undefined) {
-        var parentUrl = { path: '', query: [] };
+        parentUrl = { path: '', query: [] };
       } else {
-        var parentUrl = parent.getNavigationAbsoluteURL();
+        parentUrl = (parent as PageStackInstance).getNavigationAbsoluteURL();
       }
 
-      var thisUrl = this.getRelativeURL();
+      const thisUrl = this.getRelativeURL();
       if (thisUrl === undefined) return parentUrl;
       else {
         return {
@@ -367,11 +456,11 @@ const PageStack = {
         };
       }
     },
-    _getLocationPath: function () {
-      var navigationPathType = NoodlRuntime.instance.getProjectSettings()['navigationPathType'];
+    _getLocationPath: function (this: PageStackInstance) {
+      const navigationPathType = NoodlRuntime.instance.getProjectSettings()['navigationPathType'];
       if (navigationPathType === undefined || navigationPathType === 'hash') {
         // Use hash as path
-        var hash = location.hash;
+        let hash = location.hash;
         if (hash) {
           if (hash[0] === '#') hash = hash.substring(1);
           if (hash[0] === '/') hash = hash.substring(1);
@@ -379,57 +468,59 @@ const PageStack = {
         return hash;
       } else {
         // Use url as path
-        var path = location.pathname;
+        let path = location.pathname;
         if (path) {
           if (path[0] === '/') path = path.substring(1);
         }
         return path;
       }
     },
-    _getSearchParams: function () {
-      var match,
-        pl = /\+/g, // Regex for replacing addition symbol with a space
+    _getSearchParams: function (this: PageStackInstance) {
+      const pl = /\+/g, // Regex for replacing addition symbol with a space
         search = /([^&=]+)=?([^&]*)/g,
-        decode = function (s) {
+        decode = function (s: string) {
           return decodeURIComponent(s.replace(pl, ' '));
         },
         query = window.location.search.substring(1);
 
-      var urlParams = {};
+      let match: RegExpExecArray;
+
+      const urlParams: Record<string, string> = {};
       while ((match = search.exec(query))) urlParams[decode(match[1])] = decode(match[2]);
 
       return urlParams;
     },
-    getNavigationRemainingPath() {
+    getNavigationRemainingPath(this: PageStackInstance) {
       return this._internal.remainingNavigationPath;
     },
-    matchPageFromUrl(url) {
+    matchPageFromUrl(this: PageStackInstance) {
       if (!this._internal.useRoutes) return;
       if (this._internal.pages === undefined || this._internal.pages.length === 0) return;
 
       // Attempt to find relative path from closest navigation parent
-      var parent = this.parent;
+      let parent = this.parent;
       while (parent !== undefined && typeof parent.getNavigationRemainingPath !== 'function') {
         parent = parent.getVisualParentNode();
       }
 
+      let pathParts: string[];
       if (parent === undefined) {
-        var urlPath = this._getLocationPath();
+        let urlPath = this._getLocationPath();
         if (urlPath[0] === '/') urlPath = urlPath.substring(1);
-        var pathParts = urlPath.split('/');
+        pathParts = urlPath.split('/');
       } else {
-        var pathParts = parent.getNavigationRemainingPath();
+        pathParts = (parent as PageStackInstance).getNavigationRemainingPath();
       }
       if (pathParts === undefined) return;
 
-      var urlQuery = this._getSearchParams();
+      const urlQuery = this._getSearchParams();
 
-      function _matchPathParts(path, pattern) {
-        var params = {};
-        for (var i = 0; i < pattern.length; i++) {
+      function _matchPathParts(path: string[], pattern: string[]) {
+        const params: Record<string, string> = {};
+        for (let i = 0; i < pattern.length; i++) {
           if (path[i] === undefined) return;
 
-          var _p = pattern[i];
+          const _p = pattern[i];
           if (_p[0] === '{' && _p[_p.length - 1] === '}') {
             // This is a param, collect it
             params[_p.substring(1, _p.length - 1)] = decodeURIComponent(path[i]);
@@ -441,17 +532,17 @@ const PageStack = {
         };
       }
 
-      for (var page of this._internal.pages) {
-        var pageInfo = this._internal.pageInfo[page.id];
+      for (const page of this._internal.pages) {
+        const pageInfo = this._internal.pageInfo[page.id];
         if (pageInfo === undefined) continue;
 
-        var pagePattern = pageInfo.path;
+        let pagePattern = pageInfo.path;
         if (pagePattern === undefined) {
           pagePattern = page.label.replace(/\s+/g, '-').toLowerCase();
         }
         if (pagePattern[0] === '/') pagePattern = pagePattern.substring(1);
 
-        let match = _matchPathParts(pathParts, pagePattern.split('/'));
+        const match = _matchPathParts(pathParts, pagePattern.split('/'));
         if (match) {
           // This page is a match
           this._internal.remainingNavigationPath = match.remainingPathParts;
@@ -463,18 +554,18 @@ const PageStack = {
         }
       }
     },
-    _updateUrlWithTopPage() {
+    _updateUrlWithTopPage(this: PageStackInstance) {
       // Push the state to the browser url
       if (this._internal.useRoutes && window.history !== undefined) {
-        var url = this.getNavigationAbsoluteURL();
+        const url = this.getNavigationAbsoluteURL();
 
-        var urlPath, hashPath;
-        var navigationPathType = NoodlRuntime.instance.getProjectSettings()['navigationPathType'];
+        let urlPath, hashPath;
+        const navigationPathType = NoodlRuntime.instance.getProjectSettings()['navigationPathType'];
         if (navigationPathType === undefined || navigationPathType === 'hash') hashPath = url.path;
         else urlPath = url.path;
 
-        var query = url.query.map((q) => q.name + '=' + q.value);
-        var compiledUrl =
+        const query = url.query.map((q) => q.name + '=' + q.value);
+        const compiledUrl =
           (urlPath !== undefined ? urlPath : '') +
           (query.length >= 1 ? '?' + query.join('&') : '') +
           (hashPath !== undefined ? '#' + hashPath : '');
@@ -484,10 +575,10 @@ const PageStack = {
         window.history.pushState({}, '', compiledUrl);
       }
     },
-    replace(args) {
+    replace(this: PageStackInstance, args: StackNavigateArgs) {
       this._internal.asyncQueue.enqueue(this.replaceAsync.bind(this, args));
     },
-    async replaceAsync(args) {
+    async replaceAsync(this: PageStackInstance, args: StackNavigateArgs) {
       if (this._internal.pages === undefined || this._internal.pages.length === 0) {
         return;
       }
@@ -506,9 +597,9 @@ const PageStack = {
       }
 
       // Remove all current pages in the stack
-      var children = this.getChildren();
-      for (var i in children) {
-        var c = children[i];
+      const children = this.getChildren();
+      for (const i in children) {
+        const c = children[i];
         this.removeChild(c);
         this.nodeScope.deleteNode(c);
       }
@@ -516,8 +607,8 @@ const PageStack = {
       const group = this.createPageContainer();
 
       // Create the page content
-      const content = await this.nodeScope.createNode(pageInfo.component, guid());
-      for (var key in args.params) {
+      const content = (await this.nodeScope.createNode(pageInfo.component, guid())) as ReactNodeInstance;
+      for (const key in args.params) {
         content.setInputValue(key, args.params[key]);
       }
       group.addChild(content);
@@ -545,10 +636,10 @@ const PageStack = {
 
       args.hasNavigated && args.hasNavigated();
     },
-    navigate(args) {
+    navigate(this: PageStackInstance, args: StackNavigateArgs) {
       this._internal.asyncQueue.enqueue(this.navigateAsync.bind(this, args));
     },
-    async navigateAsync(args) {
+    async navigateAsync(this: PageStackInstance, args: StackNavigateArgs) {
       if (this._internal.pages === undefined || this._internal.pages.length === 0) {
         return;
       }
@@ -571,23 +662,28 @@ const PageStack = {
       group.setInputValue('position', 'absolute');
 
       // Create the page content
-      const content = await this.nodeScope.createNode(pageInfo.component, guid());
-      for (var key in args.params) {
+      const content = (await this.nodeScope.createNode(pageInfo.component, guid())) as ReactNodeInstance;
+      for (const key in args.params) {
         content.setInputValue(key, args.params[key]);
       }
       group.addChild(content);
 
       // Connect navigate back nodes
-      const navigateBackNodes = content.nodeScope.getNodesWithType('PageStackNavigateBack');
+      // `_setBackCallback` is a method of the Pop Component Stack node (navigate-back.ts),
+      // reached here across the node-type boundary the same way the Router reaches
+      // `_setPageParams` on PageInputs.
+      const navigateBackNodes = content.nodeScope.getNodesWithType('PageStackNavigateBack') as Array<
+        NodeInstance & { _setBackCallback(cb: PageStackInstance['back']): void }
+      >;
       if (navigateBackNodes && navigateBackNodes.length > 0) {
-        for (var j = 0; j < navigateBackNodes.length; j++) {
+        for (let j = 0; j < navigateBackNodes.length; j++) {
           navigateBackNodes[j]._setBackCallback(this.back.bind(this));
         }
       }
 
       // Push the new top
       const top = this._internal.stack[this._internal.stack.length - 1];
-      const newTop = {
+      const newTop: StackEntry = {
         from: top.page,
         page: group,
         pageInfo: pageInfo,
@@ -621,11 +717,11 @@ const PageStack = {
 
       args.hasNavigated && args.hasNavigated();
     },
-    back(args) {
+    back(this: PageStackInstance, args: { backAction?: string; results?: Record<string, unknown> }) {
       if (this._internal.stack.length <= 1) return;
       if (this._internal.isTransitioning) return;
 
-      var top = this._internal.stack[this._internal.stack.length - 1];
+      const top = this._internal.stack[this._internal.stack.length - 1];
 
       top.page.setInputValue('position', 'absolute');
       // Insert the destination in the stack again
@@ -655,24 +751,24 @@ const PageStack = {
         back: true
       });
     },
-    setPageComponent(pageId, component) {
-      var internal = this._internal;
+    setPageComponent(this: PageStackInstance, pageId: string, component: string) {
+      const internal = this._internal;
       if (!internal.pageInfo[pageId]) internal.pageInfo[pageId] = {};
       internal.pageInfo[pageId].component = component;
 
       // this.scheduleRefresh();
     },
-    setPagePath(pageId, path) {
-      var internal = this._internal;
+    setPagePath(this: PageStackInstance, pageId: string, path: string) {
+      const internal = this._internal;
       if (!internal.pageInfo[pageId]) internal.pageInfo[pageId] = {};
       internal.pageInfo[pageId].path = path;
 
       //  this.scheduleRefresh();
     },
-    setStartPage(pageId) {
+    setStartPage(this: PageStackInstance, pageId: string) {
       this._internal.startPageId = pageId;
     },
-    registerInputIfNeeded: function (name) {
+    registerInputIfNeeded: function (this: PageStackInstance, name: string) {
       if (this.hasInput(name)) {
         return;
       }
@@ -693,17 +789,19 @@ const PageStack = {
         });
     }
   },
-  setup(context, graphModel) {
+  setup(context: NodeContextLike, graphModel: GraphModelLike) {
     if (!context.editorConnection || !context.editorConnection.isRunningLocally()) {
       return;
     }
+    const editorConnection: EditorConnectionLike = context.editorConnection;
 
-    function _managePortsForNode(node) {
+    function _managePortsForNode(node: GraphNodeModel) {
       function _updatePorts() {
-        var ports = [];
+        const ports = [];
 
-        if (node.parameters['pages'] !== undefined && node.parameters['pages'].length > 0) {
-          node.parameters['pages'].forEach((p) => {
+        const pages = node.parameters['pages'] as PageListItem[] | undefined;
+        if (pages !== undefined && pages.length > 0) {
+          pages.forEach((p) => {
             // Component for page
             ports.push({
               name: 'pageComp-' + p.id,
@@ -734,7 +832,7 @@ const PageStack = {
             plug: 'input',
             type: {
               name: 'enum',
-              enums: node.parameters['pages'].map((p) => ({
+              enums: pages.map((p) => ({
                 label: p.label,
                 value: p.id
               })),
@@ -743,11 +841,11 @@ const PageStack = {
             group: 'General',
             displayName: 'Start Page',
             name: 'startPage',
-            default: node.parameters['pages'][0].id
+            default: pages[0].id
           });
         }
 
-        context.editorConnection.sendDynamicPorts(node.id, ports);
+        editorConnection.sendDynamicPorts(node.id, ports);
       }
 
       _updatePorts();
@@ -757,7 +855,7 @@ const PageStack = {
     }
 
     graphModel.on('editorImportComplete', () => {
-      graphModel.on('nodeAdded.Page Stack', function (node) {
+      graphModel.on('nodeAdded.Page Stack', function (node: GraphNodeModel) {
         _managePortsForNode(node);
       });
 

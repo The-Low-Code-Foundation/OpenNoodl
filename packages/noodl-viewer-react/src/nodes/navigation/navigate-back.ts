@@ -1,4 +1,30 @@
-const NavigateBack = {
+import type {
+  EditorConnectionLike,
+  GraphModelLike,
+  GraphNodeModel,
+  NodeContextLike,
+  NodeDefinitionOptions,
+  NodeInstance,
+  NodeModule
+} from '@noodl/types';
+
+interface NavigateBackInstance extends NodeInstance {
+  _internal: {
+    resultValues: Record<string, unknown>;
+    results?: string;
+    backActions?: string;
+    backAction?: string;
+    hasScheduledNavigate?: boolean;
+    /** Set by the Component Stack when this node's page is pushed; see navigation-stack. */
+    backCallback?(args: { backAction: string | undefined; results: Record<string, unknown> }): void;
+  };
+  scheduleNavigate(): void;
+  navigate(): void;
+  backActionTriggered(name: string): void;
+  setResultValue(key: string, value: unknown): void;
+}
+
+const NavigateBack: NodeDefinitionOptions = {
   name: 'PageStackNavigateBack',
   displayNodeName: 'Pop Component Stack',
   category: 'Navigation',
@@ -7,32 +33,32 @@ const NavigateBack = {
     navigate: {
       displayName: 'Navigate',
       group: 'Actions',
-      valueChangedToTrue: function () {
+      valueChangedToTrue: function (this: NavigateBackInstance) {
         this.scheduleNavigate();
       }
     },
     results: {
       type: { name: 'stringlist', allowEditOnly: true },
       group: 'Results',
-      set: function (value) {
+      set: function (this: NavigateBackInstance, value: string) {
         this._internal.results = value;
       }
     },
     backActions: {
       type: { name: 'stringlist', allowEditOnly: true },
       group: 'Back Actions',
-      set: function (value) {
+      set: function (this: NavigateBackInstance, value: string) {
         this._internal.backActions = value;
       }
     }
   },
-  initialize: function () {
+  initialize: function (this: NavigateBackInstance) {
     this._internal.resultValues = {};
   },
   methods: {
-    scheduleNavigate: function () {
-      var _this = this;
-      var internal = this._internal;
+    scheduleNavigate: function (this: NavigateBackInstance) {
+      const _this = this;
+      const internal = this._internal;
       if (!internal.hasScheduledNavigate) {
         internal.hasScheduledNavigate = true;
         this.scheduleAfterInputsHaveUpdated(function () {
@@ -41,10 +67,10 @@ const NavigateBack = {
         });
       }
     },
-    _setBackCallback(cb) {
+    _setBackCallback(this: NavigateBackInstance, cb: NavigateBackInstance['_internal']['backCallback']) {
       this._internal.backCallback = cb;
     },
-    navigate() {
+    navigate(this: NavigateBackInstance) {
       if (this._internal.backCallback === undefined) return;
 
       this._internal.backCallback({
@@ -52,14 +78,14 @@ const NavigateBack = {
         results: this._internal.resultValues
       });
     },
-    setResultValue: function (key, value) {
+    setResultValue: function (this: NavigateBackInstance, key: string, value: unknown) {
       this._internal.resultValues[key] = value;
     },
-    backActionTriggered: function (name) {
+    backActionTriggered: function (this: NavigateBackInstance, name: string) {
       this._internal.backAction = name;
       this.scheduleNavigate();
     },
-    registerInputIfNeeded: function (name) {
+    registerInputIfNeeded: function (this: NavigateBackInstance, name: string) {
       if (this.hasInput(name)) {
         return;
       }
@@ -71,6 +97,12 @@ const NavigateBack = {
 
       if (name.startsWith('backAction-'))
         return this.registerInput(name, {
+          // Latent defect, PLAT-003 NOTES §19: `_createSignal` is not defined in this
+          // file or anywhere else in the repository, so registering a `backAction-…`
+          // input throws a ReferenceError at runtime. The working equivalent is
+          // `EdgeTriggeredInput.createSetter` (see closepopup.ts). Left broken here
+          // because fixing it changes runtime behaviour, which a typing slice must not.
+          // @ts-expect-error -- see above
           set: _createSignal({
             valueChangedToTrue: this.backActionTriggered.bind(this, name)
           })
@@ -79,21 +111,22 @@ const NavigateBack = {
   }
 };
 
-function setup(context, graphModel) {
+function setup(context: NodeContextLike, graphModel: GraphModelLike) {
   if (!context.editorConnection || !context.editorConnection.isRunningLocally()) {
     return;
   }
+  const editorConnection: EditorConnectionLike = context.editorConnection;
 
-  function _managePortsForNode(node) {
+  function _managePortsForNode(node: GraphNodeModel) {
     function _updatePorts() {
-      var ports = [];
+      const ports = [];
 
       // Add results inputs
-      var results = node.parameters.results;
+      const results = node.parameters.results;
       if (results) {
-        results = results ? results.split(',') : undefined;
-        for (var i in results) {
-          var p = results[i];
+        const names = (results as string).split(',');
+        for (const i in names) {
+          const p = names[i];
 
           ports.push({
             type: {
@@ -108,11 +141,11 @@ function setup(context, graphModel) {
       }
 
       // Add back actions
-      var backActions = node.parameters.backActions;
+      const backActions = node.parameters.backActions;
       if (backActions) {
-        backActions = backActions ? backActions.split(',') : undefined;
-        for (var i in backActions) {
-          var p = backActions[i];
+        const names = (backActions as string).split(',');
+        for (const i in names) {
+          const p = names[i];
 
           ports.push({
             type: 'signal',
@@ -124,7 +157,7 @@ function setup(context, graphModel) {
         }
       }
 
-      context.editorConnection.sendDynamicPorts(node.id, ports);
+      editorConnection.sendDynamicPorts(node.id, ports);
     }
 
     _updatePorts();
@@ -136,7 +169,7 @@ function setup(context, graphModel) {
   }
 
   graphModel.on('editorImportComplete', () => {
-    graphModel.on('nodeAdded.PageStackNavigateBack', function (node) {
+    graphModel.on('nodeAdded.PageStackNavigateBack', function (node: GraphNodeModel) {
       _managePortsForNode(node);
     });
 
@@ -146,7 +179,9 @@ function setup(context, graphModel) {
   });
 }
 
-module.exports = {
+const NavigateBackModule: NodeModule = {
   node: NavigateBack,
   setup: setup
 };
+
+export default NavigateBackModule;

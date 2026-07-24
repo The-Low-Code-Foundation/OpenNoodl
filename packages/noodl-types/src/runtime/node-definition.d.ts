@@ -352,6 +352,14 @@ export interface NodeContextLike {
   /** Runs `callback` at the start of the next frame. */
   scheduleNextFrame(callback: () => void): void;
   /**
+   * Opens `popupComponent` in the viewer's popup layer. `args.senderNode` scopes the
+   * popup to the opener's component; `args.onClosePopup` receives the close action and
+   * result values a Close Popup node sends back. Resolves once the popup is created.
+   * No-ops (resolving immediately) where no popup layer is attached, e.g. the cloud
+   * runtime.
+   */
+  showPopup(popupComponent: string, params: Record<string, unknown>, args?: unknown): Promise<void>;
+  /**
    * Runs `callback` at the end of the current update, once every dirty node has been
    * processed. The escape hatch for work that needs the whole node tree to exist — the
    * Parent Component Object node uses it because its parent's scope may not be built yet
@@ -453,6 +461,12 @@ export interface NodeScopeLike {
    * this scope. Asynchronous because a component may still need loading.
    */
   createNode(name: string, id?: string, extraProps?: Record<string, unknown>): Promise<NodeInstance>;
+  /**
+   * Instantiates a *primitive* node — one registered directly, never a component —
+   * synchronously. The Component Stack and Router use it for their page container Groups,
+   * and the Push transition for its dark overlay.
+   */
+  createPrimitiveNode(name: string, id?: string, extraProps?: Record<string, unknown>): NodeInstance;
   deleteNode(nodeInstance: NodeInstance): void;
   /**
    * The live instance with this id in this scope, or `undefined`. Ids here are *instance*

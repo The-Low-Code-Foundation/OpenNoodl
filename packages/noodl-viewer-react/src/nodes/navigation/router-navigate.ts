@@ -1,11 +1,28 @@
-const { RouterHandler } = require('./router-handler');
+import type { NodeDefinitionOptions, NodeInstance, NodeModule } from '@noodl/types';
 
-const RouterNavigate = {
+import { NavigateArgs, RouterHandler } from './router-handler';
+
+interface RouterNavigateInstance extends NodeInstance {
+  _internal: {
+    pageParams: NavigateArgs['params'];
+    openInNewTab: boolean;
+    router?: string;
+    target?: string;
+    hasScheduledNavigate?: boolean;
+  };
+  scheduleNavigate(): void;
+  navigate(): void;
+  setPageParam(param: string, value: NavigateArgs['params'][string]): void;
+  setTargetPage(page: string): void;
+  setRouter(value: string): void;
+}
+
+const RouterNavigate: NodeDefinitionOptions = {
   name: 'RouterNavigate',
   displayNodeName: 'Navigate',
   category: 'Navigation',
   docs: 'https://docs.noodl.net/nodes/navigation/navigate',
-  initialize: function () {
+  initialize: function (this: RouterNavigateInstance) {
     this._internal.pageParams = {};
     this._internal.openInNewTab = false;
   },
@@ -13,7 +30,7 @@ const RouterNavigate = {
     navigate: {
       displayName: 'Navigate',
       group: 'Actions',
-      valueChangedToTrue: function () {
+      valueChangedToTrue: function (this: RouterNavigateInstance) {
         this.scheduleNavigate();
       }
     },
@@ -23,7 +40,7 @@ const RouterNavigate = {
       group: 'General',
       default: false,
       type: 'boolean',
-      set(value) {
+      set(this: RouterNavigateInstance, value) {
         this._internal.openInNewTab = !!value;
       }
     }
@@ -36,8 +53,8 @@ const RouterNavigate = {
     }
   },
   methods: {
-    scheduleNavigate: function () {
-      var internal = this._internal;
+    scheduleNavigate: function (this: RouterNavigateInstance) {
+      const internal = this._internal;
       if (!internal.hasScheduledNavigate) {
         internal.hasScheduledNavigate = true;
         this.scheduleAfterInputsHaveUpdated(() => {
@@ -46,7 +63,7 @@ const RouterNavigate = {
         });
       }
     },
-    navigate() {
+    navigate(this: RouterNavigateInstance) {
       RouterHandler.instance.navigate(this._internal.router, {
         target: this._internal.target,
         params: this._internal.pageParams,
@@ -58,16 +75,16 @@ const RouterNavigate = {
         }
       });
     },
-    setPageParam: function (param, value) {
+    setPageParam: function (this: RouterNavigateInstance, param: string, value: NavigateArgs['params'][string]) {
       this._internal.pageParams[param] = value;
     },
-    setTargetPage: function (page) {
+    setTargetPage: function (this: RouterNavigateInstance, page: string) {
       this._internal.target = page;
     },
-    setRouter: function (value) {
+    setRouter: function (this: RouterNavigateInstance, value: string) {
       this._internal.router = value;
     },
-    registerInputIfNeeded: function (name) {
+    registerInputIfNeeded: function (this: RouterNavigateInstance, name: string) {
       if (this.hasInput(name)) {
         return;
       }
@@ -89,6 +106,8 @@ const RouterNavigate = {
   }
 };
 
-module.exports = {
+const RouterNavigateModule: NodeModule = {
   node: RouterNavigate
 };
+
+export default RouterNavigateModule;
