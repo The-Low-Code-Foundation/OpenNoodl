@@ -20,6 +20,7 @@ These nine phases document the unlimited-budget revival plan. They sit alongside
 | [18 — Code Export v2](./phase-18-code-export-v2/) | F | EXP-001…005 | `@nodegx/core`, generators, AI translation with trace verification | After Phase 13 |
 | [19 — Cloud & Workflows](./phase-19-cloud-workflows/) | G | WF-001…007 | The backend leg of the full stack: standalone service (speaks the Parse-wire subset), workflow engine, triggers, observability, one deploy target, Parse-framework retirement (re-scoped 2026-07-24 — see [BACKEND-GAP-ASSESSMENT](./phase-19-cloud-workflows/BACKEND-GAP-ASSESSMENT.md)) | After G2-critical work; WF-006 + RUN-004 loud-failure anytime |
 | [20 — Ecosystem](./phase-20-ecosystem/) | Horizon 3 | ECO-001…005 | Collaboration, marketplace, multi-project, hosting, rebrand | 🔒 **Gated on G3** |
+| [21 — Library & Import](./phase-21-library-and-import/) | Cross-track | LIB-001…005 | Library source of truth + pipeline, prefab repair/restyle, module hygiene/expansion, import engine v2, import UX (created 2026-07-25) | Anytime — not gated; precondition for ECO-002's sharing test |
 
 ## The critical path
 
