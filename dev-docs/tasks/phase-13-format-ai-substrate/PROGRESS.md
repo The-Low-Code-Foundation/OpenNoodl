@@ -363,3 +363,8 @@ call sites** — they are exercised only from tests. Making them real is SUB-001
   has no schema home. Full editor harness: **741 specs, 0 failures.** SUB-001 gate is clear.
 - **2026-07-22** — Phase created from the revival roadmap (Track A, tasks A-01..A-08
   mapped to SUB-001..008). All tasks Not Started.
+- **2026-07-24 (addendum)** — **SUB-011 added** (follow-on guard, not counted in the phase
+  percentage): the pre-revival salvage audit found the shipped inline-expression feature
+  (`fx` toggle, phase-3 TASK-006) stores object-valued parameters that SUB-002's corpus
+  never covered and SUB-006/SUB-008 cannot see. Fixture first, then an embrace-vs-freeze
+  posture decision. See [SUB-011-EXPRESSION-PARAMETERS.md](./SUB-011-EXPRESSION-PARAMETERS.md).

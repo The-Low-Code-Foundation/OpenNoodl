@@ -9,7 +9,7 @@
 | **Priority** | 🟡 Medium |
 | **Difficulty** | 🟡 Medium |
 | **Estimated Time** | 2–3 weeks |
-| **Prerequisites** | REV-007 (packaging/release infrastructure); WF-001 if workflows are included |
+| **Prerequisites** | WF-004 (the standalone service is the deployable artifact); REV-007 (packaging/release infrastructure); WF-001 if workflows are included |
 | **Branch** | `task/wf-003-managed-deploy` |
 | **Recommended executor** | 🟠 **Opus 4.8** — deployment tooling fails in environment-specific, opaque ways (credentials, networking, build contexts). Moderate complexity, high frustration surface. |
 
@@ -27,6 +27,7 @@ So the discipline here is to pick one target, make it genuinely good, and docume
 
 ## Current State
 
+- **WF-004 (re-scope, 2026-07-24) changes this task's shape:** the backend now exists as a standalone Node service (`packages/nodegx-backend`) that runs headless. The deployable unit is therefore "that service + the built frontend + a SQLite data directory" — this task packages and documents it; it no longer has to invent a server-side existence for the backend.
 - Phase 5 delivered a BYOB backend panel, data nodes, and an integrated local SQLite backend (with the known reliability problem RUN-004 addresses). The five alternate deployment targets were never started.
 - Phase 11 proposed container-based cloud deploy across multiple providers; not started.
 - REV-007 provides signed application builds and release infrastructure — a different concern (distributing the editor) but the same tooling neighbourhood.

@@ -1,7 +1,7 @@
 # Phase 14.5 — Revival Debt
 
 **Created:** 2026-07-24
-**Source:** Cross-phase audit of phases 12–14 (reanimation, format & AI substrate, editor platform health) run on 2026-07-24. Every item here was *found and honestly recorded* by those phases' NOTES/PROGRESS files but was left without an owning task. This phase gives each an owner so the items stop living only in NOTES sections.
+**Source:** Cross-phase audit of phases 12–14 (reanimation, format & AI substrate, editor platform health) run on 2026-07-24. Every item here was *found and honestly recorded* by those phases' NOTES/PROGRESS files but was left without an owning task. This phase gives each an owner so the items stop living only in NOTES sections. DEBT-011/012 were added later the same day from the [pre-revival salvage audit](../../reviews/PRE-REVIVAL-SALVAGE-AUDIT.md) of the phase 3/4/5/9/11 feature attempts.
 
 The audit's overall verdict was positive: the phases' load-bearing "done" claims all held up under repo spot-checks. What accumulated instead is three kinds of debt:
 
@@ -23,6 +23,8 @@ The audit's overall verdict was positive: the phases' load-bearing "done" claims
 | [DEBT-008](./DEBT-008-LEGACY-MODULE-RUNTIME-COMPAT.md) | Legacy ES5 modules vs the class-based runtime | 🟡 Medium | The corpus-project-doesn't-paint incompatibility from SUB-009 |
 | [DEBT-009](./DEBT-009-EXTERNAL-AUTHORING-FRICTION.md) | External-authoring friction | 🟡 Medium | SUB-010's routed-but-unactioned findings; the v2 flag default |
 | [DEBT-010](./DEBT-010-SMALL-CLEANUPS-AND-RECORDS.md) | Small cleanups & record-keeping | 🟢 Low | PLAT-002 §8 leftovers, doc staleness, phantom phase-2 completion |
+| [DEBT-011](./DEBT-011-MONACO-RETIREMENT.md) | Retire Monaco + the dead intellisense subsystem | 🟢 Low-Medium | Salvage audit §5: ~1,000+ unreachable lines and a bundled dependency serving one plaintext port |
+| [DEBT-012](./DEBT-012-DATAFLOW-TRACKER-SALVAGE.md) | Data-flow tracker salvage | 🟡 Medium | Salvage audit §4: Trigger Chain's dedup data loss; unregister the broken Data Lineage panel |
 
 ## Suggested order
 

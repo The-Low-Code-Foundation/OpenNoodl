@@ -1,4 +1,6 @@
-# WF-001: Finish the Workflow Runtime
+# WF-001: The Workflow Engine
+
+> **Revised 2026-07-24.** The original brief (2026-07-22) centered on reconciling a half-finished runtime with the `feature/task-007c-workflow-runtime` branch. The salvage audit resolved that question: **the branch is not present in this clone** — the deeper runtime work is lost or was never pushed — and the merged `WorkflowRunner` turned out to be a thin loader that delegates to `CloudRunner`, not a partial engine. The assessment step is therefore already answered: **build the engine fresh**, with the existing pieces as reference, inside WF-004's service. The semantics-first core of the original brief stands unchanged.
 
 ## Metadata
 
@@ -6,135 +8,106 @@
 |-------|-------|
 | **ID** | WF-001 |
 | **Phase** | Phase 19 — Cloud & Workflows (Revival Track G) |
-| **Priority** | 🟠 High (unblocks the rest of the phase) |
-| **Difficulty** | 🟡 Medium |
+| **Priority** | 🟠 High (the phase's hard task; unblocks WF-002 and workflow-targeted triggers) |
+| **Difficulty** | 🔴 Hard (semantics, not volume) |
 | **Estimated Time** | 3–4 weeks |
-| **Prerequisites** | REV-001 (the CF11 code does not currently compile) |
+| **Prerequisites** | WF-004 (the service it lives in), WF-006 (the logging it emits into) |
 | **Branch** | `task/wf-001-workflow-runtime` |
-| **Recommended executor** | 🟠 **Opus 4.8** — picking up a half-finished runtime on an abandoned branch requires assessing what exists and what was intended before writing anything. Execution semantics (ordering, error propagation, cancellation) need care. |
+| **Recommended executor** | 🟠 **Opus 4.8** — execution semantics (ordering, error propagation, cancellation, durability) need careful iterative design against a clear target. Escalate to Fable if the durability model turns contentious. |
 
 ## Objective
 
-Complete the server-side workflow execution runtime so that phase 11's workflow nodes have something to run on, and the already-built execution history and canvas overlay have real executions to display.
+Build the server-side workflow execution engine: multi-step graph executions with defined ordering, routed errors, cancellation, timeouts, and honest durability — so phase-11's Series 1 nodes (WF-002) have something to run on and the observability pipeline (WF-006) has real workflow executions to show.
 
 ## Background
 
-Phase 11 set out to give Noodl server-side execution: workflows that run on a backend rather than in the browser, with logic, error handling, and delay nodes, plus visibility into what happened. The visibility half was substantially delivered during the February 2026 sprint — an execution storage schema, an execution logger, a history panel in the editor, and a canvas overlay showing execution state on the graph.
+Phase 11 delivered the *visibility* half of workflows (store, logger, panel, overlay — now wired by WF-006) and none of the *execution* half. What exists is a request/response function invoker: `CloudRunner` (99 lines) finds one `noodl.cloud.request` node, wires the `response` nodes, and resolves the first response. There is no scheduler, no ordering model beyond the client runtime's dirty-flag propagation, no error routing, no cancellation, no notion of an execution that outlives its request.
 
-The execution half was not. The workflow nodes of Series 1 depend on a runtime capable of running them, and that runtime was started on a feature branch and left incomplete. The result is an unusual and rather wasteful state: the project has good tooling for observing workflow executions and no way to produce one.
+That model is right for functions and stays untouched. Workflows are the different thing: potentially long-running, multi-step, error-routed, trigger-initiated executions that must be observable step-by-step and stoppable. The engine is the one genuinely hard piece of the backend gap ([BACKEND-GAP-ASSESSMENT.md](./BACKEND-GAP-ASSESSMENT.md) §6) — everything else in the phase is assembly.
 
-This task closes that gap, and it is scoped narrowly on purpose. The goal is not to build a general server-side execution platform — it is to finish the specific runtime that unblocks work already paid for.
-
-One practical note before starting: the CF11 code currently does not compile, because the editor is missing a path alias for the `@noodl-viewer-cloud/execution-history` module (which exists). REV-001 fixes this. Until then, evaluating what phase 11 actually delivered is difficult.
+One structural rule inherited from the original brief, still binding: **a workflow node is a node.** The runtime's node definitions are framework-neutral, typed (PLAT-003), catalogued (SUB-004/005), validated (SUB-006), and MCP-visible (SUB-008). The engine schedules ordinary nodes in a different execution context; it must not spawn a parallel node abstraction.
 
 ## Current State
 
-Evidence in the repository:
-
-- Commit `98fa779`, "feat(local-backend): add WorkflowRunner for visual workflow execution" — a runner exists in some form under the editor's local-backend code.
-- Branch `feature/task-007c-workflow-runtime` — the unfinished workflow-runtime work.
-- Commit `8938fa6` — `ExecutionStore` for workflow execution history (`packages/noodl-viewer-cloud/src/execution-history/store.ts`).
-- Commit `95bf2f3` — `ExecutionLogger` (`.../execution-history/ExecutionLogger.ts`).
-- Commits `7d373e0` and `83278b4` — Execution History Panel and Canvas Execution Overlay in the editor.
-- `dev-docs/tasks/phase-11-cloud-functions/` — CF11-001 (logic nodes), CF11-002 (error handling), CF11-003 (wait/delay) specified but blocked; CF11-004…007 delivered.
-
-Unknown until assessed: how complete `WorkflowRunner` is, how it relates to the `feature/task-007c-workflow-runtime` branch, and whether the two are the same effort or divergent attempts.
+- `CloudRunner` — `packages/noodl-viewer-cloud/src/index.ts` (99 lines): request/response invoker. Reference for how cloud components instantiate; not an engine.
+- `WorkflowRunner` — `packages/.../local-backend/WorkflowRunner.js` (400 lines): loads `*.workflow.json`, delegates `run()` to `CloudRunner.run()` (line 303), injects `LocalSQLAdapter` into the runtime context. The DB-injection pattern is worth keeping; the rest is a dispatcher. (Moves into `nodegx-backend` with WF-004.)
+- Execution store/logger wired for function executions by WF-006; the event vocabulary in `execution-history/types.ts` is the starting point for workflow-level events.
+- `feature/task-007c-workflow-runtime`: **absent from this clone.** Do not spend time hunting for it.
+- CF11-001/002/003 node specs (`dev-docs/tasks/phase-11-cloud-functions/`) define what the engine must be able to schedule.
 
 ## Desired State
 
-- A workflow can be defined, executed server-side, and observed.
-- Execution semantics are defined and documented: node ordering, error propagation, cancellation, and timeouts.
-- Executions are logged through the existing `ExecutionLogger` and appear in the History Panel and canvas overlay.
-- The runtime is testable in isolation, without requiring a deployed environment.
+- A workflow — a graph component designated as such — executes server-side inside the WF-004 service: initiated by a manual call or a WF-005 trigger, running its nodes under documented semantics, emitting per-step events through `ExecutionLogger`, visible live-ish in the History Panel and canvas overlay.
+- **Semantics documented before implementation**, as a spec in this folder, covering:
+  - **Ordering** — the browser runtime uses dirty-flag propagation with per-frame batching; there are no frames server-side. Decide the model (dependency-ordered with explicit completion, most likely) and document exactly where it deliberately differs from the client runtime — that difference will otherwise surprise every user who knows the frontend behavior.
+  - **Errors** — routed, not merely thrown: CF11-002's catch/retry nodes require error paths as first-class edges. Unrouted failures halt the workflow cleanly and are recorded as failed, never swallowed.
+  - **Cancellation and timeouts** — every execution stoppable (worst case: the WF-004 process boundary); per-workflow and per-step timeouts; partial execution recorded, never lost.
+  - **Durability, honestly** — v1 policy: an execution interrupted by service shutdown is recorded as `interrupted` on restart — *resumable-or-failed-loudly, never silently half-run*. Checkpoint/resume is explicitly a possible v2; do not build it speculatively, do document the store fields it would need.
+  - **Concurrency** — same workflow triggered twice: parallel, queued, or coalesced? Pick a default (parallel with a per-workflow concurrency cap is the honest simple answer), document it, record the cap in workflow config.
+- The engine is testable headless (no editor, no deploy) — it lives in `nodegx-backend`, so plain Node test runs.
 
 ## Scope
 
 ### In Scope
-- [ ] Assess `WorkflowRunner` and the `feature/task-007c-workflow-runtime` branch; reconcile them
-- [ ] Complete the execution engine: run a workflow graph to completion
-- [ ] Define and document execution semantics (ordering, errors, cancellation, timeouts)
-- [ ] Integrate with `ExecutionLogger` so runs appear in the existing UI
-- [ ] Error handling and propagation
-- [ ] Cancellation and timeout support
-- [ ] Local execution for development, without deploying anything
-- [ ] Tests covering the semantics, not just the happy path
+- [ ] Semantics spec (ordering, errors, cancellation/timeouts, durability, concurrency) — written and reviewed before engine code
+- [ ] The scheduler/engine implementing that spec over the framework-neutral node model
+- [ ] Workflow definition format (what marks a component as a workflow; entry points — including trigger entry nodes for WF-005; stored in v2 project format, diffable by SUB-007)
+- [ ] Per-step event emission through `ExecutionLogger` (extend the event vocabulary if needed; coordinate with the store's schema)
+- [ ] Error routing supporting CF11-002's designs
+- [ ] Cancellation API (used by the editor UI and exposed on the service HTTP surface)
+- [ ] Interrupted-execution detection on service start
+- [ ] Semantics test suite — the tests mirror the spec's sections, not just happy paths
 
 ### Out of Scope
-- The workflow nodes themselves (WF-002)
-- Deployment (WF-003)
-- Python or other language runtimes (parked — see the phase PROGRESS notes)
-- Scaling, queuing, or distributed execution
-- Reworking the already-delivered execution history UI
-
-## Technical Approach
-
-### Assessment first
-
-Two artifacts appear to address the same problem: the merged `WorkflowRunner` and the unmerged `feature/task-007c-workflow-runtime` branch. Establish which is further along, whether they conflict, and what the intended design was, before writing any new code. The output of the first week should be a short written finding — including a recommendation on whether to continue from the branch, from `main`, or to restart the engine with the existing pieces as reference.
-
-### Semantics are the substance
-
-The mechanical part of an execution engine is straightforward; the semantics are where correctness lives, and they must be decided explicitly rather than emerging from implementation:
-
-- **Ordering** — the browser runtime uses a dirty-flag scheduler with per-frame batching. Server-side workflows have no frames. Decide the model (sequential by dependency, or an explicit scheduler) and document it, including where it deliberately differs from the client runtime, since that difference will surprise users otherwise.
-- **Errors** — does a failing node halt the workflow, or route to an error path? CF11-002 specifies error-handling nodes, so the engine must support routed errors, not merely thrown ones.
-- **Cancellation and timeouts** — a workflow that hangs must be stoppable, and its partial execution must be recorded rather than lost.
-
-Reuse the existing node execution model where possible: the runtime's node definitions are framework-neutral, so a workflow node should be a node, not a parallel abstraction. Diverging here would create a second node system to maintain.
+- The Series 1 nodes themselves (WF-002)
+- Triggers (WF-005) — the engine exposes "start execution with payload"; WF-005 calls it
+- Checkpoint/resume durability (documented as v2)
+- Distributed/queued execution, horizontal scaling
+- Reworking the delivered observability UI
 
 ## Implementation Steps
 
-1. **Assess and reconcile** `WorkflowRunner` and the feature branch; publish a written finding with a recommendation.
-2. **Define execution semantics** and document them before implementing.
-3. **Complete the execution engine** against those semantics.
-4. **Integrate `ExecutionLogger`** so runs surface in the History Panel and canvas overlay (both already exist — verify against them rather than building anything new).
-5. **Error routing** to support CF11-002's node designs.
-6. **Cancellation and timeouts**, including partial-execution recording.
-7. **Local execution path** for development and testing.
-8. **Semantics test suite.**
-
-## Testing Plan
-
-- Execute simple workflows to completion; verify output correctness.
-- Ordering tests: dependent nodes run in the documented order.
-- Error tests: failures route as specified; unrouted failures halt cleanly and are logged.
-- Cancellation mid-execution: stops promptly, partial execution recorded.
-- Timeout behaviour.
-- End-to-end: an execution appears correctly in the History Panel and on the canvas overlay.
+1. **Write the semantics spec** (`WF-001-SEMANTICS.md` in this folder). This is the deliverable the rest of the phase leans on; it is finished when WF-002's node specs can be checked against it without ambiguity.
+2. **Workflow definition format** in v2 terms; agree the entry-point contract with WF-005.
+3. **Engine core**: dependency-ordered scheduling with explicit step completion; unit-tested headless.
+4. **Error routing**; **cancellation/timeouts**; **interrupted-detection**.
+5. **Logger integration** per step; verify live in the panel and overlay (already proven by WF-006, so mismatches are engine-side by construction).
+6. **Semantics test suite**, section by section.
 
 ## Success Criteria
 
-- [ ] Written assessment of existing work published, with a recommended path
-- [ ] Workflows execute to completion server-side
-- [ ] Execution semantics documented, including deliberate differences from the client runtime
-- [ ] Errors route per CF11-002's design; unrouted failures fail cleanly
-- [ ] Cancellation and timeouts work; partial executions are recorded
-- [ ] Executions appear in the existing History Panel and canvas overlay
-- [ ] Local execution works without deployment
-- [ ] Semantics covered by tests
+- [ ] Semantics spec published; deliberate divergences from the client runtime called out explicitly
+- [ ] A multi-step workflow executes to completion headless with correct ordering
+- [ ] Errors route per spec; unrouted errors fail the execution cleanly and visibly
+- [ ] Cancellation stops a running execution promptly; partial execution recorded
+- [ ] Timeouts enforced per-workflow and per-step
+- [ ] Service restart marks in-flight executions `interrupted`; nothing silently half-runs
+- [ ] Per-step events visible in the History Panel and canvas overlay
+- [ ] Concurrency policy implemented and configurable per workflow
+- [ ] Test suite mirrors the spec
 
 ## Risks & Mitigations
 
 | Risk | Mitigation |
 |------|------------|
-| The existing work is divergent or unusable, and effort is wasted reconciling it | Step 1 is an explicit assessment with a restart-or-continue recommendation; restarting with the existing code as reference is a legitimate outcome |
-| Server semantics diverge from client semantics in surprising ways | Document the differences explicitly as user-facing information, not just internal notes |
-| A second parallel node abstraction is created | Reuse the framework-neutral node model; a workflow node should be a node |
-| The already-built history UI does not fit real executions | Verify against it early (step 4) rather than at the end; it is easier to adapt the engine's logging than to rework shipped UI |
+| Server semantics diverge surprisingly from client semantics | The spec documents every divergence as user-facing information; WF-002 matches client node behavior wherever the spec allows |
+| A second node abstraction creeps in | Binding rule: a workflow node is a node; review the engine's node interface against the runtime's before merging |
+| Durability ambitions balloon into a checkpointing system | v1 policy is fixed (interrupted-loudly); v2 fields documented, not built |
+| The event vocabulary doesn't fit per-step workflow events | WF-006 wired the pipeline against the existing types; extend the types + schema deliberately, with the store's tests updated — never log around the store |
+| Long-running steps block the service | Per-step timeouts mandatory; the WF-004 process boundary is the backstop |
 
 ## References
 
-- [`dev-docs/tasks/phase-11-cloud-functions/`](../phase-11-cloud-functions/) — CF11-001…003 (blocked), CF11-004…007 (delivered)
-- [Revival roadmap — Track G](../../reviews/NOODL-REVIVAL-ROADMAP.md)
-- Prior work: commit `98fa779` (`WorkflowRunner`), branch `feature/task-007c-workflow-runtime`
-- Related: REV-001 (makes the CF11 code compile)
+- [BACKEND-GAP-ASSESSMENT.md](./BACKEND-GAP-ASSESSMENT.md) — §1, §3, §6
+- [PRE-REVIVAL-SALVAGE-AUDIT.md](../../reviews/PRE-REVIVAL-SALVAGE-AUDIT.md) §7 — what exists, what's lost
+- CF11-001/002/003 specs; `execution-history/types.ts` — the event vocabulary
+- WF-004 (home), WF-006 (pipeline), WF-002 (consumer), WF-005 (initiator)
 
 ## Checklist
 
-- [ ] Branch `task/wf-001-workflow-runtime`; confirm REV-001 landed
-- [ ] Assess existing runner + feature branch; publish finding and recommendation
-- [ ] Define and document execution semantics before coding
-- [ ] Complete the engine; integrate `ExecutionLogger`
-- [ ] Error routing, cancellation, timeouts
-- [ ] Local execution path; semantics test suite
-- [ ] Verify end-to-end in History Panel and canvas overlay; CHANGELOG; open PR
+- [ ] Confirm WF-004 + WF-006 landed
+- [ ] Semantics spec written and checked against CF11 node specs
+- [ ] Definition format + entry-point contract (with WF-005)
+- [ ] Engine core headless-tested; error routing; cancellation/timeouts; interrupted-detection
+- [ ] Logger integration verified live; semantics suite green
+- [ ] CHANGELOG; update WF-002 with any spec-driven changes to the node briefs

@@ -1,5 +1,7 @@
 # PLAT-005: Editor UX Loose Ends
 
+> **Re-scoped 2026-07-24** by the salvage audit ([PRE-REVIVAL-SALVAGE-AUDIT.md](../../reviews/PRE-REVIVAL-SALVAGE-AUDIT.md) §2). This task's headline premise is stale: **the STYLE-005 banner is already wired** — commit `6e0ad68` mounts `ElementStyleSectionHost` (banner + `useStyleSuggestions`, with localStorage dismissal) from `propertyeditor.ts` via React, and it survived PLAT-002's property-editor rewrite intact. The two "unverified" API calls are verified: `StyleTokensModel.setToken` (`StyleTokensModel.ts:126`) and `NodeGraphNode.setParameter`/`getParameter` (`NodeGraphNode.ts:649/731`). What actually remains of STYLE-005: **(a)** verify suggestion *quality* on a real project (step 1 below — still the right first step), and **(b)** finish the variant-persistence stub — `SuggestionActionHandler.applyVariantAction()` (line 91) only sets `node.setParameter('_variant', name)`; `ElementConfigRegistry` has no `addVariant`, so "save as variant" does not actually create a reusable variant. The rest of the task (CLEANUP-000H, phase-3/0 triage, dashboard-routing bug) stands as written. Related new work: AIX-006 exposes this same styles system to the AI substrate — coordinate if both run.
+
 ## Metadata
 
 | Field | Value |
@@ -47,8 +49,8 @@ This task deliberately does **not** absorb the large phase-3 items (advanced Git
 ## Scope
 
 ### In Scope
-- [ ] Wire the STYLE-005 banner into the property panel, verifying the two unverified API calls
-- [ ] Verify the StyleAnalyzer's suggestions are correct and useful on a real project before exposing them
+- [ ] ~~Wire the STYLE-005 banner into the property panel~~ **Already done (see 2026-07-24 note)** — instead: implement variant persistence (`ElementConfigRegistry.addVariant` + make `applyVariantAction` create the variant it claims to)
+- [ ] Verify the StyleAnalyzer's suggestions are correct and useful on a real project (the banner is live, so poor suggestions are already user-visible — this rises in urgency)
 - [ ] CLEANUP-000H migration-wizard polish
 - [ ] Triage remaining small phase-3/phase-0 UX items: fix, or close with a recorded reason
 - [ ] Fix the noted dashboard-routing bug

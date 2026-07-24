@@ -26,6 +26,7 @@ The raw material exists. `packages/noodl-editor/src/editor/src/models/AiAssistan
 | AIX-003 | [Graph-Native Review](./AIX-003-GRAPH-NATIVE-REVIEW.md) | Visual diff of AI-proposed changes on canvas — added/removed/rewired nodes highlighted before acceptance | 3-4 wks | 🟠 Opus 4.8 |
 | AIX-004 | [Explain Mode](./AIX-004-EXPLAIN-MODE.md) | Select node/subgraph → AI narrates what it does, where data flows, what triggers what | 2 wks | 🟠 Opus 4.8 |
 | AIX-005 | [Agentic UI Nodes](./AIX-005-AGENTIC-UI-NODES.md) | Implement phase-3.5's AGENT-001..007 (SSE/WebSocket/state-store nodes) so Noodl apps can *be* agent frontends | 6-8 wks | 🟠 Opus 4.8 |
+| AIX-006 | [Style Vocabulary](./AIX-006-STYLE-VOCABULARY.md) | Expose the shipped phase-9 token/variant system to the authoring loop + MCP; StyleAnalyzer as post-generation style linter. Added 2026-07-24 from the salvage audit — the cheapest visible quality jump for the G2 demo | ~1 wk | 🟠 Opus 4.8 |
 
 ---
 

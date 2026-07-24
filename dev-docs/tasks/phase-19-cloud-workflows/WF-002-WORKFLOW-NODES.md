@@ -28,7 +28,7 @@ Two things to bring forward from the newer parts of the plan. Every node needs c
 ## Current State
 
 - `dev-docs/tasks/phase-11-cloud-functions/CF11-001-logic-nodes/`, `CF11-002-error-handling-nodes/`, `CF11-003-wait-delay-nodes/` — specified, not implemented.
-- WF-001 delivers the runtime and its documented execution semantics.
+- WF-001 (as revised 2026-07-24) delivers the engine inside WF-004's `nodegx-backend` service, plus a written semantics spec (`WF-001-SEMANTICS.md`) — reconcile the CF11 node specs against that spec, not against the client runtime's behavior.
 - The node-authoring pattern is established across the runtime and viewer packages, and documented in `dev-docs/reference/NODE-PATTERNS.md`.
 - The execution history panel and canvas overlay (CF11-006/007) will display these nodes' executions.
 

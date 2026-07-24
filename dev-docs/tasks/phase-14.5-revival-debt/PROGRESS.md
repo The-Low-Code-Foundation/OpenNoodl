@@ -14,6 +14,8 @@
 | DEBT-008 | Legacy ES5 modules vs class runtime | 🟡 Medium | Not started | Corpus project doesn't paint |
 | DEBT-009 | External-authoring friction | 🟡 Medium | Not started | Coordinate with in-flight AIX-002 |
 | DEBT-010 | Small cleanups & record-keeping | 🟢 Low | Not started | Includes doc-staleness corrections |
+| DEBT-011 | Retire Monaco + dead intellisense subsystem | 🟢 Low-Medium | Not started | Added 2026-07-24 (salvage audit §5); JSON port → CodeMirror, delete ~1,000+ unreachable lines + dep |
+| DEBT-012 | Data-flow tracker salvage | 🟡 Medium | Not started | Added 2026-07-24 (salvage audit §4); fix Trigger Chain dedup data loss, unregister broken Data Lineage panel |
 
 ## DEBT-002 — the live pass: what ran, what it found (2026-07-24)
 
@@ -47,6 +49,7 @@ scratchpad; the durable record is this section plus annotations in each originat
 
 ## Log
 
+- **2026-07-24** — DEBT-011 and DEBT-012 added from the [pre-revival salvage audit](../../reviews/PRE-REVIVAL-SALVAGE-AUDIT.md) (phases 3/4/5/9/11 feature attempts). Same day, the audit spawned sibling tasks elsewhere: AIX-006 (style vocabulary, phase 15), SUB-011 (expression-parameter fixtures + posture, phase 13), the phase-19 re-scope (WF-004/005/006 + BACKEND-GAP-ASSESSMENT), and corrections to RUN-004 (wrong paths; `better-sqlite3` never installed) and PLAT-005 (STYLE-005 banner already wired).
 - **2026-07-24** — DEBT-002 executed (see section above). Six of eight checks done with evidence; SUB-001 large-project claims and installer launches remain open with precise reasons. New findings routed: HMR-reload harness bug (new small task candidate), runtime-detection false positive → DEBT-006, release-workflow fixes → DEBT-007, diff-legibility asks → AIX-003. Originating docs annotated: PLAT-003-NOTES §18, PLAT-002-NOTES §8, SUB-006, SUB-007, REV-003, REV-004.
 - **2026-07-24** — DEBT-001 code complete. `cloudfunction2.doCall` no longer throws in deploy-shaped contexts: the missing-`cloudServices` path routes to the `failure` output via `setError` and returns; the `isRunningLocally()` read is guarded on `editorConnection` being present. Characterisation tests added (`noodl-viewer-react/tests/cloudfunction2.test.ts`, 2 tests, both passing); full viewer-react suite green; `catalog:check` clean; no new tsc errors. PLAT-003-NOTES §17.7 #1 marked resolved. The spec's step-5 deployed-build verification is deferred into DEBT-002's live pass, which is the next task and covers exactly this kind of check.
 - **2026-07-24** — Phase created. Source: cross-phase audit of phases 12–14 (three parallel doc-vs-repo reviews). All items were already recorded in those phases' NOTES/PROGRESS files but had no owning task; this phase assigns owners. Items with existing owners elsewhere (STYLE-005 → PLAT-005, CF11 pipeline → WF-001, large-diff review UI → AIX-003, migration wizard UI → SUB-003 deferral, PLAT-003 remaining slices → PLAT-003) were deliberately excluded.

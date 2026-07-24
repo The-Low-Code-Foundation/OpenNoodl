@@ -1,43 +1,55 @@
 # Phase 19: Cloud & Workflows (Revival Track G)
 
 **Phase:** 19
-**Track:** G — Bounded resurrection of Phase 11
-**Source:** [NOODL-REVIVAL-ROADMAP.md](../../reviews/NOODL-REVIVAL-ROADMAP.md) Horizon 2, Track G
-**Status:** Not started (created 2026-07-22)
+**Track:** G — The backend leg of the full stack
+**Source:** [NOODL-REVIVAL-ROADMAP.md](../../reviews/NOODL-REVIVAL-ROADMAP.md) Horizon 2, Track G; re-scoped 2026-07-24 by [BACKEND-GAP-ASSESSMENT.md](./BACKEND-GAP-ASSESSMENT.md)
+**Status:** Not started (created 2026-07-22; re-scoped 2026-07-24)
 
-## Why this phase exists — and why it is small
+## Why this phase exists — re-framed
 
-Phase 11 (cloud functions) was one of the more ambitious parts of the original roadmap: nineteen tasks spanning workflow nodes, execution history, container-based cloud deployment, monitoring, and a Python/AI runtime. About six tasks landed, several during the final sprint before the stall, and the rest stopped.
+The original framing of this phase ("bounded resurrection; finish what's blocked, park the rest") was written before two things: the completion of the phase-13 AI substrate, and the 2026-07-24 salvage audit ([PRE-REVIVAL-SALVAGE-AUDIT.md](../../reviews/PRE-REVIVAL-SALVAGE-AUDIT.md)), which established precisely what the February 2026 sprint left standing. Both change the picture, and [BACKEND-GAP-ASSESSMENT.md](./BACKEND-GAP-ASSESSMENT.md) is the full argument. The short version:
 
-The revival plan does not restart it wholesale. The viability assessment's central strategic finding was that the project's problem was never a shortage of ambition — it was twelve phases of parallel ambition being pursued by what was effectively one person. Server-side execution is genuinely useful and some of it is genuinely finished, but it is not what the repositioned product is *about*. The strategy rests on the graph as a legible substrate for human–AI collaboration and for learning, and cloud functions serve that only indirectly.
+NodeGX has a strong frontend runtime and a nearly-real local database. Backend logic — functions, workflows, triggers — is the remaining leg of the full-stack story, and without it every real app built here needs a third-party backend, which undercuts both wedges (an agent that can't build the endpoint behind the page builds half an app; a classroom can't require cloud signups). The function model users have today (request/response graphs under `/#__cloud__/`) is good and stays. What's missing is the middle: a workflow engine, triggers, a backend that can run outside Electron, and the wiring between an execution and the already-shipped observability UI.
 
-So this phase does three things and stops:
+Crucially, the AI substrate inverts the economics of the "n8n alternative" question: NodeGX does not compete on integration count (unwinnable solo), it competes on **one graph language front and back, AI-authorable through catalog + validator + MCP, self-hosted with no per-execution pricing**. Integrations become generated, legible artifacts — not a library to maintain.
 
-1. **Finishes what is blocked.** Phase 11's Series 1 workflow nodes cannot ship because the workflow runtime beneath them is incomplete. That is a small, contained piece of work that unlocks a substantial one.
-2. **Ships one deployment target properly** rather than three partially.
-3. **Leaves the rest parked** — explicitly, with reasons recorded, so that a future contributor understands the omissions are decisions rather than oversights.
+The discipline that survives from the original framing: this phase does its six tasks and stops. Python runtimes, monitoring suites, provider matrices, and marketplaces stay parked. And the track still runs behind the G2-critical path (authoring loop, pilots) — it runs second, but it no longer "stays parked."
 
 ## Task Table
 
-| ID | Title | Priority | Estimate | Prerequisites | Executor |
-|---|---|---|---|---|---|
-| [WF-001](./WF-001-WORKFLOW-RUNTIME.md) | Finish the workflow runtime | 🟠 High | 3–4 wks | REV-001 | 🟠 Opus 4.8 |
-| [WF-002](./WF-002-WORKFLOW-NODES.md) | Workflow nodes (phase-11 Series 1) | 🟡 Medium | 3–4 wks | WF-001 | 🟢 Sonnet 5 |
-| [WF-003](./WF-003-MANAGED-DEPLOY.md) | One managed deploy target, done well | 🟡 Medium | 2–3 wks | REV-007 | 🟠 Opus 4.8 |
+| Order | ID | Title | Priority | Estimate | Prerequisites | Executor |
+|---|---|---|---|---|---|---|
+| 1 | [WF-006](./WF-006-OBSERVABILITY-WIRING.md) | Light up execution observability | 🟠 High | 3–5 days | REV-001 (alias) | 🟢 Sonnet 5 |
+| 2 | [WF-004](./WF-004-BACKEND-SERVICE.md) | The standalone backend service | 🟠 High | 2–3 wks | Coordinate RUN-004 | 🔵 Fable 5 |
+| 3 | [WF-001](./WF-001-WORKFLOW-RUNTIME.md) | The workflow engine | 🟠 High | 3–4 wks | WF-004, WF-006 | 🟠 Opus 4.8 |
+| 4 | [WF-002](./WF-002-WORKFLOW-NODES.md) | Workflow nodes (phase-11 Series 1) | 🟡 Medium | 3–4 wks | WF-001 | 🟢 Sonnet 5 |
+| 5 | [WF-005](./WF-005-TRIGGERS.md) | Triggers: schedule, webhook, DB-change | 🟠 High | 2–3 wks | WF-004; WF-001 for workflow targets | 🟠 Opus 4.8 |
+| 6 | [WF-003](./WF-003-MANAGED-DEPLOY.md) | One deploy target, done well | 🟡 Medium | 2–3 wks | WF-004; REV-007 | 🟠 Opus 4.8 |
 
 ## Sequencing notes
 
-- **REV-001 first, for everything.** The execution-history code delivered in the February sprint does not currently compile, because the editor is missing a path alias for a module that exists. Until that is fixed, phase-11 work cannot even be evaluated.
-- **WF-001 before WF-002** — the nodes are blocked on the runtime, which is the entire reason Series 1 stalled.
-- **WF-003 is independent** and gated only on having installable builds and a deployment story worth documenting.
-- This whole track runs at lower priority than Tracks A, C, and E. If capacity is contended, it yields.
+- **WF-006 first and immediately viable** — it needs only the REV-001 path alias and makes the already-shipped History Panel and canvas overlay show real function executions before any engine exists. Days-scale, high visibility, zero conflict with G2 work.
+- **WF-004 before the engine.** Process placement and the database-engine decision (`node:sqlite` vs `better-sqlite3`) shape everything downstream, and the extraction is what makes deploy (WF-003) a packaging task instead of a platform task. Coordinate with RUN-004: its loud-failure deliverable lands independently and immediately; its native-build half merges into WF-004's engine decision.
+- **WF-001 is the hard task** — semantics are the substance. Everything else in the phase is assembly.
+- **WF-005 can overlap WF-002** once the engine's trigger interface is defined; webhook/cron invocation of plain *functions* doesn't even need WF-001.
+- This track yields to Tracks C and E when capacity is contended — except WF-006 and RUN-004's loud-failure fix, which are too small and too valuable to defer.
 
 ## Exit criterion
 
-Workflow nodes function on a completed runtime, execution history and the canvas overlay work end to end against real executions, and a user can deploy to one managed target with documented, repeatable steps.
+A user — or an agent through MCP — can build a workflow that is triggered by a webhook **and** on a schedule, reads and writes the local database, handles a failing step through an error route, and shows its executions in the History Panel and on the canvas. The same workflow deploys to a VPS by the one documented path and keeps running with the editor closed.
+
+## What this phase still deliberately parks
+
+- **Series 5 (Python/AI runtime)** — a second language runtime is a large ongoing commitment; revisit only on demonstrated demand.
+- **Multi-provider deploys** — WF-003 picks one; export (Phase 18) is the general answer.
+- **Series 4 monitoring beyond the existing execution history** — the store + panel + overlay cover the practical need.
+- **An integration library** — permanently. See the assessment §5: integrations are generated artifacts, not maintained surface.
+- **Parse "Cloud Services"** — legacy, untouched, deprecated; removed later when it is free.
 
 ## References
 
-- [Revival roadmap — Horizon 2, Track G, and "What stays dead"](../../reviews/NOODL-REVIVAL-ROADMAP.md)
-- [Viability report — §5 roadmap triage (phase 11)](../../reviews/NOODL-VIABILITY-REPORT.md)
-- [`dev-docs/tasks/phase-11-cloud-functions/`](../phase-11-cloud-functions/) — the original nineteen-task scope; CF11-004…007 are complete
+- [BACKEND-GAP-ASSESSMENT.md](./BACKEND-GAP-ASSESSMENT.md) — the 2026-07-24 viability assessment this scope derives from
+- [PRE-REVIVAL-SALVAGE-AUDIT.md](../../reviews/PRE-REVIVAL-SALVAGE-AUDIT.md) — §7 (cloud functions), §6 (local SQL)
+- [Revival roadmap — Horizon 2, Track G](../../reviews/NOODL-REVIVAL-ROADMAP.md)
+- [`dev-docs/tasks/phase-11-cloud-functions/`](../phase-11-cloud-functions/) — the original nineteen-task scope; CF11-004…007 delivered (UI/store halves)
+- Related: RUN-004 (local backend persistence), RUN-003 (external backends), Phase 18 (export)

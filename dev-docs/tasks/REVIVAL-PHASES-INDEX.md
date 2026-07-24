@@ -11,14 +11,14 @@ These nine phases document the unlimited-budget revival plan. They sit alongside
 | Phase | Track | Tasks | Focus | Start when |
 |---|---|---|---|---|
 | [12 — Reanimation](./phase-12-reanimation/) | Horizon 0 | REV-001…008 | Green build, working tests, CI, current Electron, shipped v0, trustworthy dev loop | **Now** |
-| [13 — Format & AI Substrate](./phase-13-format-ai-substrate/) | A | SUB-001…008 | v2 format in real use, node catalog, semantic validator, graph diff, MCP server | After REV-001/002 |
+| [13 — Format & AI Substrate](./phase-13-format-ai-substrate/) | A | SUB-001…011 | v2 format in real use, node catalog, semantic validator, graph diff, MCP server | After REV-001/002 |
 | [14 — Editor Platform Health](./phase-14-editor-platform-health/) | B | PLAT-001…005 | Canvas decomposition, retire jQuery, type the runtime | After REV-003 |
-| [14.5 — Revival Debt](./phase-14.5-revival-debt/) | Cross-track | DEBT-001…010 | Defects, owed live verification, and orphaned follow-ups surfaced by the 2026-07-24 audit of phases 12–14 | Now (added 2026-07-24; DEBT-001/002 first, DEBT-007 before first signed release) |
-| [15 — AI Collaboration](./phase-15-ai-collaboration/) | C | AIX-001…005 | Modern AI client, the authoring loop, graph-native review, explain mode | After Phase 13 core |
+| [14.5 — Revival Debt](./phase-14.5-revival-debt/) | Cross-track | DEBT-001…012 | Defects, owed live verification, and orphaned follow-ups surfaced by the 2026-07-24 audits of phases 12–14 and of the pre-revival features | Now (added 2026-07-24; DEBT-001/002 first, DEBT-007 before first signed release) |
+| [15 — AI Collaboration](./phase-15-ai-collaboration/) | C | AIX-001…006 | Modern AI client, the authoring loop, graph-native review, explain mode, style vocabulary | After Phase 13 core |
 | [16 — Runtime & Deploy Health](./phase-16-runtime-deploy-health/) | D | RUN-001…004 | Runtime React 19, SSR/SSG, finish UBA, fix local backend | Parallel; RUN-004 after REV-004 |
 | [17 — Noodl Learn](./phase-17-noodl-learn/) | E | LEARN-001…006 | Lessons engine, curriculum, web viewer, classroom mode, pilots | Horizon 2 |
 | [18 — Code Export v2](./phase-18-code-export-v2/) | F | EXP-001…005 | `@nodegx/core`, generators, AI translation with trace verification | After Phase 13 |
-| [19 — Cloud & Workflows](./phase-19-cloud-workflows/) | G | WF-001…003 | Finish workflow runtime, Series 1 nodes, one deploy target | Lower priority |
+| [19 — Cloud & Workflows](./phase-19-cloud-workflows/) | G | WF-001…006 | The backend leg of the full stack: standalone service, workflow engine, triggers, observability, one deploy target (re-scoped 2026-07-24 — see [BACKEND-GAP-ASSESSMENT](./phase-19-cloud-workflows/BACKEND-GAP-ASSESSMENT.md)) | After G2-critical work; WF-006 + RUN-004 loud-failure anytime |
 | [20 — Ecosystem](./phase-20-ecosystem/) | Horizon 3 | ECO-001…005 | Collaboration, marketplace, multi-project, hosting, rebrand | 🔒 **Gated on G3** |
 
 ## The critical path
@@ -65,9 +65,9 @@ These are efficiency recommendations, not gates. Several tasks (LEARN-002 curric
 | 6 (UBA) | UBA-001…009 complete; RUN-003 finishes it |
 | 7 (code export) | **Superseded by Phase 18**, which implements its design plus trace-verified AI translation |
 | 8 (distribution) | **Pulled forward into REV-007** |
-| 9 (styles) | Mostly complete; PLAT-005 wires the dangling STYLE-005 banner |
+| 9 (styles) | Mostly complete; the STYLE-005 banner turned out to be already wired (salvage audit 2026-07-24) — PLAT-005 re-scoped to suggestion quality + variant persistence; AIX-006 exposes the token system to AI authoring |
 | 10 (AI-powered development) | STRUCT-001…004 complete and are Phase 13's foundation; Phase 13 + 15 supersede the rest |
-| 11 (cloud functions) | CF11-004…007 complete; Phase 19 finishes what is blocked and parks the rest |
+| 11 (cloud functions) | CF11-004…007 delivered their UI/store halves (wiring severed — WF-006); Phase 19, re-scoped 2026-07-24, builds the backend gap properly and still parks Series 4/5 |
 
 Note that several phase 0–11 `PROGRESS.md` files understate what was actually delivered — the February 2026 sprint landed work that was never recorded in the shared trackers. **REV-006** corrects that record, and until it does, prefer the per-developer progress files and git history.
 

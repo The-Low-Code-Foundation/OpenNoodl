@@ -1,5 +1,7 @@
 # RUN-004: Stabilise the Local SQLite Backend
 
+> **Corrected 2026-07-24** by the salvage audit ([PRE-REVIVAL-SALVAGE-AUDIT.md](../../reviews/PRE-REVIVAL-SALVAGE-AUDIT.md) §6). Three findings change this task's premises: (1) the code paths below were wrong — see Current State; (2) `better-sqlite3` was **never installed in any package** — not "failing to load," *absent* — so the "SQLite" backend has never once run against a real database; every session ran on the in-memory mock. (3) Phase 19's re-scope creates **WF-004**, which extracts the backend into a standalone Node service and owns the engine decision (`node:sqlite`, which would eliminate the native module entirely, vs `better-sqlite3` with prebuilds). **Split accordingly: the loud-failure deliverable (steps 1–2) lands immediately and independently; the native-build half (steps 3–5) merges into WF-004's engine decision rather than being done twice.** The Electron-ABI framing below applies only if the engine stays in-process and native — both now open questions WF-004 decides.
+
 ## Metadata
 
 | Field | Value |
@@ -29,11 +31,11 @@ The sequencing note matters: REV-004 upgrades Electron by twelve majors, which c
 
 ## Current State
 
-- The local backend lives under `packages/noodl-editor/src/editor/src/local-backend/` (including a substantial `BackendManager.js`).
-- `better-sqlite3` is a native dependency requiring compilation against Electron's ABI.
-- On failure to load, the code falls back to an in-memory implementation without surfacing a user-visible error.
-- The phase-5 progress notes record this as a known bug.
-- `npm run rebuild` exists for native module rebuilds but is evidently not reliably run or not reliably succeeding.
+- The local backend lives under `packages/noodl-editor/src/main/src/local-backend/` (**main** process, not `editor/src/` as originally written): `BackendManager.js` (801 lines), `LocalBackendServer.js` (595), `WorkflowRunner.js` (400). The SQL layer lives in `packages/noodl-runtime/src/api/adapters/local-sql/`: `LocalSQLAdapter.js` (779), `QueryBuilder.js` (717), `SchemaManager.js` (594).
+- `better-sqlite3` is in **no** `package.json`, no lockfile, no `node_modules` — it was never added. The guarded `require` at `LocalSQLAdapter.js:70` has failed on every machine that ever ran this code.
+- On that failure, `LocalSQLAdapter.js:98-103` logs to console and falls back to the in-memory mock with no user-visible error. Backend config and table **schemas** persist as JSON files under `~/.noodl/backends/<id>/`, which is what makes the record loss look like a bug instead of a missing database.
+- Also dead: the `backend:deleteTable` IPC handler (`BackendManager.js:134-135,551`) has zero UI callers — users cannot delete tables.
+- The phase-5 progress notes record all of this; TASK-007K (the fix-it task) is an unowned DRAFT.
 - Related work: RUN-003 (UBA) covers *external* backends; this task covers the local one. A user unable to run the local backend can use UBA, but that is a workaround rather than a fix.
 
 ## Desired State
@@ -62,6 +64,10 @@ The sequencing note matters: REV-004 upgrades Electron by twelve majors, which c
 - Multi-user or networked local backend
 
 ## Technical Approach
+
+### Coordinate with WF-004 (added 2026-07-24)
+
+The engine decision is shared with WF-004 and made once: **Option A, `node:sqlite`** (built into Node ≥22.13 flag-free; zero native dependency, zero ABI matrix — verify API coverage against the adapter's usage: prepared statements, transactions, WAL) or **Option B, `better-sqlite3` with prebuilt binaries** (made routine by WF-004's separate-process placement, which takes Electron's ABI out of the equation). The adapter's engine access is one guarded `require` in one file; either swap is small. If WF-004 has not started when this task does, make the decision here, record it, and WF-004 inherits it.
 
 ### Order of work
 
