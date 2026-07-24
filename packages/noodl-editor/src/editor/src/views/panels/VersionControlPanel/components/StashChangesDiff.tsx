@@ -4,6 +4,7 @@ import { FileChange } from '@noodl/git/src/core/models/status';
 import { applyPatches } from '@noodl-models/ProjectPatches/applypatches';
 import { Commit, SnapshotEntry, Stash } from '@noodl/git/src/core/models/snapshot';
 import { useVersionControlContext } from '../context';
+import { GraphProjectDiff, safeGraphDiff } from '../context/graphDiff';
 import { getCommit } from '@noodl/git/src/core/logs';
 import { DiffList } from './DiffList';
 
@@ -13,6 +14,7 @@ export interface StashChangesDiffProps {
 
 export function StashChangesDiff({ stash }: StashChangesDiffProps) {
   const [diff, setDiff] = useState<ProjectDiff>(null);
+  const [graphDiff, setGraphDiff] = useState<GraphProjectDiff>(null);
   const [commitFiles, setCommitFiles] = useState<readonly FileChange[]>(null);
 
   const { repositoryPath, fetch } = useVersionControlContext();
@@ -20,6 +22,7 @@ export function StashChangesDiff({ stash }: StashChangesDiffProps) {
   useEffect(() => {
     //This component might re-render with a new diff, so reset diff to show loading indicator again
     setDiff(null);
+    setGraphDiff(null);
     setCommitFiles(null);
 
     if (!fetch.currentCommitSha) {
@@ -41,6 +44,7 @@ export function StashChangesDiff({ stash }: StashChangesDiffProps) {
       const [thisProject, otherProject] = await Promise.all([getProjectFile(commit), getProjectFile(stash)]);
       const diff = diffProject(otherProject, thisProject);
       setDiff(diff);
+      setGraphDiff(safeGraphDiff(otherProject, thisProject));
     }
 
     doDiff();
@@ -49,6 +53,7 @@ export function StashChangesDiff({ stash }: StashChangesDiffProps) {
   return (
     <DiffList
       diff={diff}
+      graphDiff={graphDiff}
       fileChanges={commitFiles}
       componentDiffTitle={`Changes made in stash #${stash.sha.slice(0, 7)} by ${stash.author.name}`}
     />

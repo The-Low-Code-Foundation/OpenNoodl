@@ -26,9 +26,17 @@ export {
   serializeMergedProject,
   resolveProjectConflict,
   resolveAllProjectConflicts,
-  diffProjects
+  diffProjects,
+  readMergeConflicts,
+  MERGE_CONFLICTS_KEY
 } from './ProjectMerge';
-export type { LegacyProject, ProjectMergeConflict, ProjectMergeState, SerializeOptions } from './ProjectMerge';
+export type {
+  LegacyProject,
+  PortableConflict,
+  ProjectMergeConflict,
+  ProjectMergeState,
+  SerializeOptions
+} from './ProjectMerge';
 export {
   formatChange,
   formatComponentDiff,

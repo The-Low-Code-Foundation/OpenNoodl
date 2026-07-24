@@ -17,7 +17,12 @@ import * as fs from 'fs';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const legacyMerger = require('@noodl-utils/projectmerger');
 
-import { mergeProject as mergeProjectRaw, mergeProjectGraph } from '../../src/editor/src/versioning';
+import {
+  MERGE_CONFLICTS_KEY,
+  mergeProject as mergeProjectRaw,
+  mergeProjectGraph,
+  readMergeConflicts
+} from '../../src/editor/src/versioning';
 
 const FIXTURES = process.cwd() + '/tests/testfs/merge-tests';
 
@@ -122,6 +127,12 @@ function connectionKeys(component: Json): Set<string> {
   );
 }
 
+function withoutConflictChannel(metadata: unknown): unknown {
+  if (!metadata || typeof metadata !== 'object') return metadata;
+  const { [MERGE_CONFLICTS_KEY]: _dropped, ...rest } = metadata as Json;
+  return rest;
+}
+
 /** Every material difference between two merge outputs, as readable strings. */
 function semanticDifferences(legacy: Json, next: Json): string[] {
   const differences: string[] = [];
@@ -173,7 +184,11 @@ function semanticDifferences(legacy: Json, next: Json): string[] {
   }
 
   for (const key of ['name', 'settings', 'rootNodeId', 'version', 'metadata']) {
-    if (stable(legacy[key]) !== stable(next[key])) differences.push(`project.${key} differs`);
+    // `metadata.mergeConflicts` is the new structured conflict channel — an
+    // addition the legacy merger has no equivalent for, not a merge difference.
+    const legacyValue = key === 'metadata' ? withoutConflictChannel(legacy[key]) : legacy[key];
+    const nextValue = key === 'metadata' ? withoutConflictChannel(next[key]) : next[key];
+    if (stable(legacyValue) !== stable(nextValue)) differences.push(`project.${key} differs`);
   }
 
   return differences;
@@ -346,5 +361,47 @@ describe('SUB-007 parity: legacy conflict stamping', () => {
 
     expect(merged.components[0].graph.roots[0].conflicts).toBeUndefined();
     expect(merged.components[0].graph.roots[0].parameters.p1).toBe('theirs');
+  });
+});
+
+describe('SUB-007: structured conflict channel', () => {
+  const base = { components: [{ name: 'comp1', graph: { roots: [{ type: '0', id: 'A', parameters: { p1: 'base' } }] } }] };
+  const ours = { components: [{ name: 'comp1', graph: { roots: [{ type: '0', id: 'A', parameters: { p1: 'ours' } }] } }] };
+  const theirs = {
+    components: [{ name: 'comp1', graph: { roots: [{ type: '0', id: 'A', parameters: { p1: 'theirs' } }] } }]
+  };
+
+  it('writes every conflict into the merged project so the driver can report them', () => {
+    // The git merge driver runs in its own process; the merged file is the
+    // only channel back to the editor.
+    const merged = mergeProject(base, ours, theirs);
+    const carried = readMergeConflicts(merged);
+
+    expect(carried.length).toBe(1);
+    expect(carried[0].kind).toBe('parameter');
+    expect(carried[0].component).toBe('comp1');
+    expect(carried[0].node.id).toBe('A');
+    expect(carried[0].theirs).toBe('theirs');
+  });
+
+  it('carries structural conflicts the legacy node stamps cannot express', () => {
+    const deleted = { components: [{ name: 'comp1', graph: { roots: [] } }] };
+    const edited = {
+      components: [{ name: 'comp1', graph: { roots: [{ type: '0', id: 'A', parameters: { p1: 'theirs' } }] } }]
+    };
+
+    const merged = mergeProject(base, deleted, edited);
+    const carried = readMergeConflicts(merged);
+
+    expect(carried.some((conflict) => conflict.kind === 'delete-vs-edit')).toBe(true);
+    // ...and no legacy stamp exists for it, which is why the channel is needed.
+    expect(merged.components[0].graph.roots.length).toBe(0);
+  });
+
+  it('leaves no conflict channel behind when the merge is clean', () => {
+    const merged = mergeProject(base, ours, ours);
+
+    expect(readMergeConflicts(merged)).toEqual([]);
+    expect(merged.metadata?.[MERGE_CONFLICTS_KEY]).toBeUndefined();
   });
 });

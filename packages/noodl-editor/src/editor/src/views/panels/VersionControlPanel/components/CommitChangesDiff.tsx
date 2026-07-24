@@ -13,6 +13,7 @@ import { ProjectDiff, diffProject } from '@noodl-utils/projectmerger.diff';
 
 import { useVersionControlContext } from '../context';
 import { getProjectFilePath } from '../context/DiffUtils';
+import { GraphProjectDiff, safeGraphDiff } from '../context/graphDiff';
 import { DiffList } from './DiffList';
 
 //Kind:
@@ -32,6 +33,7 @@ type CommitChangesDiffProps =
 
 export function CommitChangesDiff(props: CommitChangesDiffProps) {
   const [diff, setDiff] = useState<ProjectDiff>(null);
+  const [graphDiff, setGraphDiff] = useState<GraphProjectDiff>(null);
   const [commitFiles, setCommitFiles] = useState<readonly FileChange[]>(null);
 
   const { commit } = props;
@@ -40,6 +42,7 @@ export function CommitChangesDiff(props: CommitChangesDiffProps) {
   useEffect(() => {
     //This component might re-render with a new diff, so reset diff to show loading indicator again
     setDiff(null);
+    setGraphDiff(null);
     setCommitFiles(null);
 
     if (!commit || (props.kind === 'merge' && !props.refToDiffTo)) {
@@ -48,12 +51,14 @@ export function CommitChangesDiff(props: CommitChangesDiffProps) {
 
     async function doDiff() {
       if (props.kind === 'parent') {
-        const { diff, files } = await getParentDiff(repositoryPath, props.commit);
+        const { diff, graphDiff, files } = await getParentDiff(repositoryPath, props.commit);
         setDiff(diff);
+        setGraphDiff(graphDiff);
         setCommitFiles(files);
       } else if (props.kind === 'merge') {
-        const { diff, files } = await getMergeDiff(repositoryPath, props.commit, props.refToDiffTo);
+        const { diff, graphDiff, files } = await getMergeDiff(repositoryPath, props.commit, props.refToDiffTo);
         setDiff(diff);
+        setGraphDiff(graphDiff);
         setCommitFiles(files);
       }
     }
@@ -68,6 +73,7 @@ export function CommitChangesDiff(props: CommitChangesDiffProps) {
   return (
     <DiffList
       diff={diff}
+      graphDiff={graphDiff}
       fileChanges={commitFiles}
       commit={commit}
       componentDiffTitle={`Changes made in #${commit.shortSha} by ${commit.author.name}`}
@@ -82,6 +88,7 @@ async function getParentDiff(repositoryPath: string, commit: Commit) {
     const thisProject = await getProjectFile(commit);
     return {
       diff: diffProject({ components: [] }, thisProject),
+      graphDiff: safeGraphDiff({ components: [] }, thisProject),
       files: await commit.getFiles()
     };
   }
@@ -98,6 +105,7 @@ async function getParentDiff(repositoryPath: string, commit: Commit) {
 
   return {
     diff: diffProject(otherProject, currentProject),
+    graphDiff: safeGraphDiff(otherProject, currentProject),
     files: await getCommitFiles(repositoryPath, commit.sha)
   };
 }
@@ -121,6 +129,7 @@ async function getMergeDiff(repositoryPath: string, commit: Commit, refToDiffTo:
 
   return {
     diff: diffProject(currentProject, result),
+    graphDiff: safeGraphDiff(currentProject, result),
     files: await getCommitFiles(repositoryPath, revRange(commit.sha, refToDiffTo))
   };
 }

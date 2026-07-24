@@ -562,6 +562,72 @@ export function resolveAllProjectConflicts(state: ProjectMergeState, side: Confl
 // Serialization
 // ---------------------------------------------------------------------------
 
+/**
+ * Where the merged project.json carries the full structured conflict list.
+ * Under `metadata` so it travels with the project and is dropped the moment
+ * the conflicts are resolved.
+ */
+export const MERGE_CONFLICTS_KEY = 'mergeConflicts';
+
+/**
+ * Conflicts as written to disk. Trimmed to what the UI needs to render and
+ * resolve — no snapshots, no functions, JSON-safe.
+ */
+export interface PortableConflict {
+  id: string;
+  kind: string;
+  component?: string;
+  variant?: string;
+  nodeId?: string;
+  nodeType?: string;
+  nodeLabel?: string;
+  name?: string;
+  state?: string;
+  deletedBy?: ConflictSide;
+  ours?: unknown;
+  theirs?: unknown;
+}
+
+function portableConflict(conflict: ProjectMergeConflict): PortableConflict {
+  return {
+    id: conflict.id,
+    kind: conflict.kind,
+    component: conflict.component,
+    variant: conflict.variant,
+    nodeId: conflict.node?.id,
+    nodeType: conflict.node?.type,
+    nodeLabel: conflict.node?.label,
+    name: conflict.name,
+    state: conflict.state,
+    deletedBy: conflict.deletedBy,
+    ours: conflict.ours,
+    theirs: conflict.theirs
+  };
+}
+
+/** Read back what `serializeMergedProject` wrote, as renderable conflicts. */
+export function readMergeConflicts(project: LegacyProject | undefined): ProjectMergeConflict[] {
+  const metadata = project?.metadata;
+  if (!isPlainObject(metadata)) return [];
+  const raw = metadata[MERGE_CONFLICTS_KEY];
+  if (!Array.isArray(raw)) return [];
+
+  return (raw as PortableConflict[])
+    .filter((entry) => entry && typeof entry.id === 'string')
+    .map((entry) => ({
+      id: entry.id,
+      kind: entry.kind as ProjectMergeConflict['kind'],
+      component: entry.component,
+      variant: entry.variant,
+      node: entry.nodeId ? { id: entry.nodeId, type: entry.nodeType ?? '', label: entry.nodeLabel } : undefined,
+      name: entry.name,
+      state: entry.state,
+      deletedBy: entry.deletedBy,
+      ours: entry.ours,
+      theirs: entry.theirs
+    }));
+}
+
 /** Legacy `node.conflicts` entry, as the warnings UI expects it. */
 interface LegacyNodeConflict {
   type: string;
@@ -658,6 +724,20 @@ export function serializeMergedProject(state: ProjectMergeState, options: Serial
   }
 
   const project: LegacyProject = { ...deepClone(state.skeleton), components };
+
+  // The git merge driver runs in the main process, in its own Electron
+  // invocation — the merged file is the only channel back to the editor. The
+  // node stamps above only carry the seven kinds the old warnings UI knows;
+  // this carries every conflict, structural ones included, for the graph
+  // conflict UI to render after the project reloads.
+  if (stamp) {
+    const unresolved = state.conflicts.filter((conflict) => !conflict.resolution);
+    const metadata = isPlainObject(project.metadata) ? { ...project.metadata } : {};
+    if (unresolved.length > 0) metadata[MERGE_CONFLICTS_KEY] = unresolved.map(portableConflict);
+    else delete metadata[MERGE_CONFLICTS_KEY];
+    if (Object.keys(metadata).length > 0) project.metadata = metadata;
+    else delete project.metadata;
+  }
 
   if (state.variants.length > 0) {
     project.variants = state.variants.map((variant) => {

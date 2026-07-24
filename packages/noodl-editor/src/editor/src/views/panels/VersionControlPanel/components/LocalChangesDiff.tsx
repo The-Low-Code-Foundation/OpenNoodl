@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useMemo } from 'react';
 import { FileChange } from '@noodl/git/src/core/models/status';
 
 import { ProjectModel } from '@noodl-models/projectmodel';
@@ -9,11 +9,18 @@ import { useSimpleConfirmationDialog } from '@noodl-core-ui/components/popups/Co
 
 import { useVersionControlContext } from '../context';
 import { ObjectPropertyChange } from '../context/DiffUtils';
+import { safeGraphDiff } from '../context/graphDiff';
 import { resetComponent, resetFile } from '../helper';
 import { DiffList, getSettingDisplayName } from './DiffList';
 
 export function LocalChangesDiff() {
   const { fetch, localDiff, localFiles, repositoryPath } = useVersionControlContext();
+
+  // Uncommitted work is the live project against the commit it was based on.
+  const graphDiff = useMemo(
+    () => (localDiff?.baseProject ? safeGraphDiff(localDiff.baseProject, ProjectModel.instance.toJSON()) : undefined),
+    [localDiff]
+  );
 
   const [ResetSingleDialog, confirmSingleReset] = useSimpleConfirmationDialog({
     title: 'Confirm Reset Component',
@@ -28,6 +35,7 @@ export function LocalChangesDiff() {
       <DiffList
         componentDiffTitle={`Showing uncommited changes`}
         diff={localDiff}
+        graphDiff={graphDiff}
         fileChanges={localFiles}
         actions={{
           component: {
