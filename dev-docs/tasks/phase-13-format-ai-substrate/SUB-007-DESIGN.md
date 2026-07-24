@@ -1,7 +1,7 @@
 # SUB-007 Design: Node Identity, Graph Diff & Three-Way Merge
 
-**Status:** Approved design — implementation in `packages/noodl-editor/src/editor/src/versioning/`
-**Date:** 2026-07-23
+**Status:** Implemented — `packages/noodl-editor/src/editor/src/versioning/`
+**Date:** 2026-07-23, extended 2026-07-24 (§6–§8: project merge, conflict UI, v2 driver, parity)
 
 This document is the design artifact required by SUB-007 step 1: the node identity
 model, the diff model, and the merge semantics, including their stated limits. Read
@@ -211,3 +211,98 @@ level. There is no cross-component automatic rewiring.
   merge via this engine; `component.json` via keyed 3-way). Legacy monolithic
   `project.json` keeps `projectmerger.js` until the parity suite proves
   replacement (SUB-007 step 7).
+
+---
+
+## 6. Project-level merge, conflict transport, and resolution scope
+
+*Added 2026-07-24 with `ProjectMerge.ts`, which replaced `utils/projectmerger.js`.*
+
+The engine merges one component. A project adds three things it deliberately
+knows nothing about, and `ProjectMerge.ts` supplies exactly those:
+
+- **Components** — keyed by `id || name`, as the legacy merger did, so a rename
+  stays tracked by id rather than reading as delete + add.
+- **Variants** — keyed `typename/name`, merged per parameter and per state
+  bundle with the same conflict rules as nodes.
+- **Project-level scalars** — settings, styles, metadata, `rootNodeId`. Merged
+  recursively per key. Arrays compare whole rather than merging index-by-index
+  (the legacy behaviour, which produces nonsense the moment an element is
+  inserted), and a genuine both-changed key raises a `project-setting` conflict
+  instead of silently keeping ours.
+
+**Components only one side touched pass through verbatim.** Serializing an
+untouched component through the snapshot normalizes it — drops absent keys, adds
+empty arrays — and churns the diff of a file nobody edited. The legacy merger
+did exactly that to every component it walked.
+
+### 6.1 How conflicts reach the UI
+
+The git merge driver runs in the **main process, in its own Electron
+invocation**. The merged file is the only channel back to the editor. Two
+things travel in it:
+
+- `node.conflicts` — the legacy stamps, kept so the pre-existing warnings UI
+  does not regress. They express seven of the eighteen conflict kinds.
+- `metadata.mergeConflicts` — the full structured list (`MERGE_CONFLICTS_KEY`),
+  including the structural kinds the stamps cannot express. Written only when
+  conflicts are unresolved, and removed as they are resolved.
+
+v2 component merges use the same mechanism, writing to the component's own
+`component.json` metadata.
+
+### 6.2 What the conflict UI can and cannot apply
+
+`GraphConflictList` renders every conflict; `MergeConflicts` applies the chosen
+side. Applying is bounded on purpose:
+
+- **Value conflicts** — parameters, source code, state parameters, state
+  transitions, default state transitions, labels, variants — are applied to the
+  live project through the models, so undo, save and the canvas see them as
+  ordinary edits.
+- **Structural conflicts** — delete-vs-edit, add-add, reparent, child-order,
+  connection rewires, connection-to-deleted, component-level — are shown for
+  review and dismissed, not applied. The merged project is already ours-flavored;
+  re-deriving the other side's structure after the fact, outside the three-way
+  context that produced it, is precisely the silent-corruption failure mode this
+  task exists to eliminate. Taking the other side means re-running the merge.
+
+## 7. Divergences from the legacy merger
+
+Parity was established by A/B over all six captured real merge fixtures, and
+those outputs are frozen as goldens in `tests/testfs/merge-tests/legacy-golden/`
+so the evidence outlived the deleted code. Every divergence below is pinned by a
+test in `tests/versioning/parity.test.ts`; none of them is accidental.
+
+| Divergence | Why |
+|---|---|
+| Delete-vs-edit conflicts instead of resurrecting the edit (nodes, comments, components) | Legacy silently picked a side. The merge stays ours-flavored and reports the loss. |
+| A component deletion wins over a cosmetic-only edit | Legacy kept a component whose only "change" was gaining an empty array. |
+| Project-level both-changed keys conflict | Legacy's `mergeJSON` silently preferred ours. |
+| Source-code conflicts carry both texts; no `------- Ours -------` markers in the value | The value on disk stays loadable code; the UI shows the two sides. |
+| No ancestor for a source-code port is a conflict, not a silent ours-wins | Legacy logged a warning and dropped their edit. |
+| Untouched components are not re-serialized | Avoids diff churn in files nobody edited. |
+| No empty `ports`/`comments` arrays, no explicit-`undefined` keys | `JSON.stringify` drops both identically; the round-trip invariant (SUB-002) requires preserving input shape. |
+| Inputs are not mutated | Legacy mutated its arguments; callers defended with `JSON.parse(JSON.stringify(...))`. |
+
+## 8. The git merge driver
+
+`.gitattributes` claims `project.json` and the three files of every decomposed
+v2 component. The driver command takes `%P` (the path being merged) so it can
+tell them apart; repositories configured before this are upgraded automatically,
+because `_setupRepository` rewrites the config on every `Git` instance.
+
+Two paths, with different amounts of context:
+
+- **In-editor** (`MergeStrategy`) — groups conflicted entries by component
+  directory and merges the whole trio at once, reading unconflicted siblings
+  from the working tree. Full semantics, including cross-file cases.
+- **CLI** (`git merge` outside the editor) — git hands the driver one file at a
+  time, so a `nodes.json` merge cannot see `connections.json`. The engine accepts
+  a partial trio and merges what it has. Better than a line-based merge; it just
+  cannot detect the cross-file cases.
+
+This is why the main-process webpack config gained a TypeScript loader: the old
+merger's header note ("this file has to be javascript and require until the main
+process uses webpack+typescript") described a real constraint, and removing it
+was a prerequisite for deleting the file.

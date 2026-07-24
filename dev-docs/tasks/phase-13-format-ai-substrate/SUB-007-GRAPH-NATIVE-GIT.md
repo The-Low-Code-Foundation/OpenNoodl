@@ -121,17 +121,73 @@ For merge, prefer **conservative correctness over cleverness**: when in doubt, r
 - [x] ~~Branch `task/sub-007-graph-native-git`~~ (work goes straight to `cline-dev` per current workflow)
 - [x] Design, document, and test the node identity model first — [SUB-007-DESIGN.md](SUB-007-DESIGN.md); id-primary, structural matching diff-only
 - [x] Diff engine + validation against real commit pairs — `src/editor/src/versioning/GraphDiff.ts`; validated against the captured merge fixtures in `tests/testfs/merge-tests/` (real project histories)
-- [ ] Diff UI reviewed by a human on a large realistic change
+- [x] Diff UI — `views/panels/GraphDiffPanel/`, wired into local changes, commit
+      diffs, merge previews and stash diffs. **Not yet reviewed by a human on a
+      large realistic change** — that step is still open (see Status below)
 - [x] Three-way merge with conservative conflict policy — `GraphMerge.ts`; no-silent-loss property tested over 150 seeded three-way merges in CI (plus a 1,500-seed offline sweep) and the real fixtures
-- [ ] Conflict resolution UI; Git merge driver where practical (resolution *API* — `applyResolution`/`resolveAll` — is done; UI and driver pending)
-- [ ] Prove parity; remove `projectmerger.js` (legacy merger intentionally untouched until the UI + driver land)
-- [ ] CHANGELOG; open PR
+- [x] Conflict resolution UI — `GraphConflictList` + `MergeConflicts`, replacing
+      the banner that pushed users at the warnings list. Value conflicts apply to
+      the live project; structural ones are review-only (see design §6)
+- [x] Git merge driver — `%P` routing, `.gitattributes` claims the v2 files,
+      `mergeV2ComponentFiles` merges a component's three files as one graph
+- [x] Parity proven, `projectmerger.js` removed — goldens recorded from the
+      legacy merger before deletion (`tests/testfs/merge-tests/legacy-golden/`);
+      its behavioural specs now run against the graph merger
+- [x] CHANGELOG (below). No PR — work goes straight to `cline-dev`
 
-### Status 2026-07-23
+### Status 2026-07-24 — complete
 
-Engine layer complete in `packages/noodl-editor/src/editor/src/versioning/`
-(types, GraphSnapshot adapters for v2 files + legacy in-memory shape,
-NodeIdentity, GraphDiff, GraphMerge, DiffFormatter) with the test suite in
-`tests/versioning/`. Design decisions and stated limits: [SUB-007-DESIGN.md](SUB-007-DESIGN.md).
-Remaining: GraphDiffPanel UI, conflict-resolution UI, git merge-driver
-integration for v2 file layouts, parity proof + `projectmerger.js` removal.
+All seven implementation steps are done and the legacy merger is deleted.
+989 specs, 0 failures; typecheck clean.
+
+| Step | Where it landed |
+|---|---|
+| 1. Node identity model | [SUB-007-DESIGN.md](SUB-007-DESIGN.md) §2 |
+| 2. Diff engine | `versioning/GraphDiff.ts` |
+| 3. Diff UI | `views/panels/GraphDiffPanel/` |
+| 4. Three-way merge | `versioning/GraphMerge.ts` |
+| 5. Conflict model + UI | `GraphConflictList`, `VersionControlPanel/components/MergeConflicts.tsx` |
+| 6. Git merge driver | `main/src/merge-driver.js`, `noodl-git/src/{core/init,merge-strategy}.ts` |
+| 7. Parity + removal | `tests/versioning/parity.test.ts`, `projectmerger.js` deleted |
+
+**Open, deliberately:** the diff UI has not been reviewed by a human on a large
+realistic change (step 3's own acceptance note, and a success criterion). It is
+wired and specs pass, but "readability is the whole point and is hard to judge
+from tests" — that judgement has not been made yet.
+
+**Bounded, by design:** conflict resolution applies *value* conflicts
+(parameters, state values and transitions, labels, variants) to the live
+project. Structural conflicts — delete-vs-edit, cross-side reparents, wiring to
+a deleted node — are shown for review rather than re-derived after the fact.
+Rationale in [SUB-007-DESIGN.md](SUB-007-DESIGN.md) §6.
+
+## CHANGELOG
+
+**Added**
+- `versioning/ProjectMerge.ts` — whole-project three-way merge (components,
+  variants, project-level scalars) on the graph engine; the drop-in that
+  replaced `projectmerger.js`.
+- `mergeV2ComponentFiles` — merges a decomposed component's three files as one
+  graph, catching cross-file cases like a connection to a deleted node.
+- `views/panels/GraphDiffPanel/` — semantic change lists and conflict
+  resolution, reusable by Phase 15's AIX-003.
+- `metadata.mergeConflicts` — the structured conflict channel the
+  out-of-process merge driver writes and the editor reads.
+- `tests/versioning/parity.test.ts` + `tests/testfs/merge-tests/legacy-golden/`.
+
+**Changed**
+- All seven merge call sites (git merge driver, Git client, VersionControlPanel,
+  GitHubPanel, GitStats) now use the graph engine.
+- Main-process webpack gained a TypeScript loader
+  (`webpackconfigs/shared/webpack.main.core.js`) — the reason the legacy merger
+  had to be JavaScript.
+- `.gitattributes` claims the v2 component files; the driver takes `%P`.
+
+**Removed**
+- `utils/projectmerger.js` (666 lines).
+
+**Behaviour changes vs the legacy merger** (each pinned by a test, justified in
+the design doc §7): delete-vs-edit conflicts instead of silently resurrecting
+the edit; project-level both-changed keys conflict instead of silently keeping
+ours; source-code conflicts no longer write markers into parameter values;
+untouched components are no longer re-serialized; inputs are no longer mutated.

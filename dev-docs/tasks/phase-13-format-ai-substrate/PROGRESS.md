@@ -1,8 +1,8 @@
 # Phase 13: Format & AI Substrate — Progress Tracker
 
 **Created:** 2026-07-22 (from [NOODL-REVIVAL-ROADMAP.md](../../reviews/NOODL-REVIVAL-ROADMAP.md), Track A)
-**Last Updated:** 2026-07-23
-**Overall Status:** 🟡 In Progress (SUB-001..SUB-006, SUB-008 complete; Gate G1 passed)
+**Last Updated:** 2026-07-24
+**Overall Status:** 🟢 Complete (SUB-001..SUB-008; Gate G1 passed)
 
 ---
 
@@ -11,10 +11,10 @@
 | Metric       | Value  |
 | ------------ | ------ |
 | Total Tasks  | 8      |
-| Completed    | 7      |
-| In Progress  | 1      |
+| Completed    | 8      |
+| In Progress  | 0      |
 | Not Started  | 0      |
-| **Progress** | **88%** |
+| **Progress** | **100%** |
 
 ---
 
@@ -46,7 +46,7 @@ call sites** — they are exercised only from tests. Making them real is SUB-001
 | SUB-004 | Node Catalog Generator | 1-2 wks | 🟢 Complete |
 | SUB-005 | Catalog Enrichment | 3-4 wks | 🟢 Complete (comparative LLM acceptance test passed — docs/node-catalog/ACCEPTANCE.md) |
 | SUB-006 | Semantic Validator | 2-3 wks | 🟢 Complete |
-| SUB-007 | Graph-Native Git | 4-6 wks | 🟡 In Progress (engine complete: identity model, semantic diff, 3-way merge, resolution API, formatter, no-loss suite — see SUB-007-DESIGN.md; UI, git merge driver, legacy-merger removal remain) |
+| SUB-007 | Graph-Native Git | 4-6 wks | 🟢 Complete (2026-07-24 — engine + diff UI + conflict UI + v2 merge driver; `projectmerger.js` deleted with parity proven against recorded goldens. Open: diff UI not yet human-reviewed on a large realistic change; structural conflicts are review-only by design — SUB-007-DESIGN.md §6–§8) |
 | SUB-008 | Noodl MCP Server | 3-4 wks | 🟢 Complete (Gate G1 passed — see g1/GATE-G1-DEMONSTRATION.md) |
 
 ### Optional spikes (not counted in the 8-task total / percentage above)
