@@ -46,9 +46,9 @@ There is a further reason to do this now rather than later, and it is the sequen
 ### In Scope
 - [x] Type the core runtime: `Node`, node definition, register, scope, context/scheduler
 - [x] Publish the node-definition API types (usable from `noodl-types` or an equivalent shared package)
-- [ ] Convert standard-library nodes incrementally *(viewer std-library top level, `componentutils/` and `user/` done; `data/` and `navigation/` remain)*
+- [x] Convert standard-library nodes incrementally *(top level slice 5, `componentutils/`+`user/` slice 6, `data/` slice 7, `navigation/` slice 8; only dead `persisthelper.js` remains, deletion owned by DEBT-006)*
 - [x] Type `react-component-node.js` (the React binding hub)
-- [ ] Convert `noodl-viewer-react` visual and logic nodes *(visual done, slice 4; logic in progress, slice 5)*
+- [x] Convert `noodl-viewer-react` visual and logic nodes *(visual slice 4, logic slices 5–8; every file under `src/nodes/` is now TypeScript)*
 - [ ] Write characterisation tests before converting each significant unit
 - [x] Coordinate the port/type model with SUB-004 so catalog and types agree
 - [ ] Remove editor-side `TSFixme`s that existed only because the runtime was untyped
@@ -127,6 +127,39 @@ Do not chase `strict: true` initially. Get accurate types with `strict: false`, 
 ## CHANGELOG
 
 In progress. Full as-built record in [PLAT-003-NOTES.md](./PLAT-003-NOTES.md).
+
+### Slice 8 — 2026-07-24 — `navigation/` and the live-editor pass (step 7, fifth group)
+
+- All 14 remaining `nodes/navigation/*` files → `.ts`/`.tsx` (~3,000 lines): the Component
+  Stack (`navigation-stack.jsx` → `.tsx`, 771 lines), Page, Page Inputs, the four navigate
+  nodes, both popup nodes, the navigation handler and the transition classes.
+  `register-nodes.js`'s two explicit-extension imports — the hazard §18 called out — switched
+  to extensionless in the same change. **Every file under `src/nodes/` is now TypeScript**
+  except dead `persisthelper.js` (deletion owned by DEBT-006).
+- **The live-editor pass ran at last — twice, green twice** (NOTES §19.1): before the
+  conversion as the slices-1–7 baseline and after it, against the real Shine Phase 2 project
+  over CDP. Project open, graph paint, preview render, navigate to `/profile` and back, zero
+  renderer exceptions both runs. Found a CDP trap on the way: after a project opens the
+  editor page's URL stops matching `cdp.js`'s `editor` target and health silently reports the
+  *cloud runtime's* dead page — use `--target=NodeGX`.
+- `@noodl/types`: published `NodeScopeLike.createPrimitiveNode` and
+  `NodeContextLike.showPopup` — both exist on the real runtime classes but were hidden behind
+  the index signature; `showPopup` mirrored onto `RuntimeNodeContext` per the §13.2 rule.
+- Three more latent defects found, recorded in NOTES §19.4 and DEBT-006, not fixed. The
+  serious one: **Pop Component Stack's `backAction-…` inputs call `_createSignal`, an
+  identifier that exists nowhere** — reachable through its own `setup`-published ports, so any
+  project using Back Actions throws a `ReferenceError` at load. Also: Component Stack URL
+  *writing* ignores the custom `pagePath-…` that URL *matching* honours; `PopupTransition`
+  reads a `crossfade` field only `PushTransition` assigns.
+
+File counts: `noodl-viewer-react` 57/11/82/36 → **43 `.js` / 10 `.jsx` / 96 `.ts` / 37 `.tsx`**.
+`noodl-runtime` unchanged at 73 `.js` / 19 `.ts`.
+
+Gates: `catalog:check` byte-identical (135 node types, 89 dynamic); `typecheck:viewer` 0 `src`
+errors (corrected §13.1 filter; it reported 7 real errors mid-slice); runtime, cloud and editor
+typechecks clean; viewer, deploy and ssr prod bundles green; runtime jest 225 pass / 20
+pre-existing fail; viewer jest 3/3; eslint 9 of 15 fixed, 4 `no-this-alias` kept per §13.7
+precedent plus `router-handler.ts`'s 2 pre-existing; live-editor pass green before and after.
 
 ### Slice 7 — 2026-07-24 — `data/` (step 7, fourth group)
 

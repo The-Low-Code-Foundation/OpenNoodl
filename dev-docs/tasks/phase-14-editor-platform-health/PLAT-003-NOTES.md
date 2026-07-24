@@ -1,10 +1,12 @@
 # PLAT-003 NOTES — Type the Runtime and Viewer
 
-Status: slices 1–5 landed 2026-07-24. Slice 1 restored the test toolchain (§1–§4). Slice 2
+Status: slices 1–8 landed 2026-07-24. Slice 1 restored the test toolchain (§1–§4). Slice 2
 published the node-definition API and typed the runtime core — spec steps 1, 3 and 4 (§5–§7).
 Slice 3 typed the React binding hub — spec step 6 (§9). Slice 4 typed the visual nodes — spec step 7
 (§11). Slice 5 typed the standard library's top level and published the graph-model /
-node-module types its `setup` functions needed (§13). Resume from **§14**.
+node-module types its `setup` functions needed (§13). Slice 6 typed `componentutils/` and `user/`
+(§15). Slice 7 typed `data/` (§17). Slice 8 typed `navigation/` and ran the live-editor pass —
+the gate every earlier slice owed (§19). Resume from **§20**.
 
 > **Before running any gate, read §13.1.** The `typecheck:viewer` filter used in slices 3 and 4
 > could never match, so that gate reported zero regardless of what tsc said. The corrected
@@ -1125,7 +1127,7 @@ calls; both are gone.
 - `cd` into a package for a build **persists into the next tool call** (§15.8, third
   occurrence). Every build here was followed by an explicit `cd` back and a `pwd`.
 
-## 18. Next slice
+## 18. Slice 7's plan for slice 8 (items 1–2 done; see §20 for what is actually next)
 
 File counts now: `noodl-runtime` **73 `.js` / 19 `.ts`** (unchanged — only the published
 `.d.ts` was edited). `noodl-viewer-react` **57 `.js` / 11 `.jsx` / 82 `.ts` / 36 `.tsx`**
@@ -1153,3 +1155,112 @@ File counts now: `noodl-runtime` **73 `.js` / 19 `.ts`** (unchanged — only the
    turned up in seven slices and should not wait for a tidy batch.
 5. **Delete `persisthelper.js`** (§17.6) — orphaned, 307 lines, one commit.
 6. **Do not raise `strict` yet** (spec step 8), and step 9 stays deferred.
+
+## 19. Slice 8 — `nodes/navigation/`, and the live-editor pass at last (spec step 7, fifth group)
+
+All 14 remaining files under `nodes/navigation/` converted (~3,000 lines):
+`navigation-stack.jsx` → `.tsx` (the Component Stack, 771 lines), `page`, `page-inputs`,
+`navigate`, `navigate-back`, `navigate-to-path`, `router-navigate`, `showpopup`, `closepopup`,
+`navigation-handler`, and the transition family (`transitions.js` index + `transition`,
+`none-transition`, `push-transition`, `popup-transition`). `router.tsx` and `router-handler.ts`
+were already typed and supplied the vocabulary (`NavigateArgs`, the registry-class pattern).
+
+### 19.1 The live-editor pass — run twice, green twice
+
+The gate every slice since §12 has owed, run **before** the conversion (baseline for slices
+1–7) and **after** it (for this slice). Same script both times, against the real `Shine
+Phase 2` project via `npm run dev:debug` + CDP:
+
+launcher renders → project opens → node graph paints → preview webview renders the app →
+click through to `/profile` (Router + Navigate + visual nodes) → `history.back()` to `/` →
+`grep` `.logs/dev.log` for `renderer:exception|Uncaught|TypeError|ReferenceError`: **nothing,
+both runs**. Slices 1–7 are now live-verified, not just gate-verified, and slice 8 matches
+the baseline.
+
+**CDP trap found doing it:** once a project opens, the editor page's URL becomes
+`file:///dashboard/projects` (pushState), so `cdp.js`'s default `editor` target no longer
+matches `/src/editor/index.html` and *silently falls back to the first page — the cloud
+runtime, which reports `reactMounted: false`*. That is a healthy editor looking exactly like
+a dead one. Use `--target=NodeGX` (title match) after a project is open. The preview is a
+`<webview>`, not a page target, so `cdp.js` cannot attach to it; drive it from the editor
+page via `document.querySelector('webview').executeJavaScript(...)`.
+
+### 19.2 The register-import hazard, handled
+
+`register-nodes.js`'s two explicit-extension imports (§18 item 1) —
+`./nodes/navigation/page.js` and `./nodes/navigation/navigation-stack.jsx` — were switched to
+extensionless in the same change as the renames. `catalog:check` byte-identical and a green
+viewer build prove both loaders resolve the `.ts`/`.tsx` files.
+
+### 19.3 Two runtime members the types pretended not to have
+
+`NodeScopeLike.createPrimitiveNode` and `NodeContextLike.showPopup` both exist on the real
+runtime classes (`nodescope.ts:50`, `nodecontext.ts:78`) but were unpublished, so every use
+site got `unknown` back from the index signature — "this expression is not callable".
+Published both; `showPopup` also mirrored onto `RuntimeNodeContext` in
+`noodl-runtime/src/internal.d.ts` per the §13.2 rule. `createPrimitiveNode` needed no mirror:
+`internal.d.ts` has no scope type, and `nodescope.ts` already declares it.
+
+The published `createNode`/`createPrimitiveNode` return the runtime-level `NodeInstance`; in
+the React viewer the result is always a `ReactNodeInstance`. The three call sites in the
+Component Stack carry a one-line cast with a comment saying exactly that — same shape as the
+`X as XModule` casts of §17.1.
+
+### 19.4 Latent defects found — three more, none fixed
+
+The accumulated register now lives in **phase-14.5 `DEBT-006`** (the concurrent session
+created the track and already fixed §17.7 item 1 as `DEBT-001`); these three are recorded
+there too.
+
+1. **`navigate-back.ts`'s `backAction-…` inputs throw a `ReferenceError`.** The setter is
+   built with `_createSignal({...})` — an identifier defined *nowhere in the repository*.
+   Unlike `foreachactions` (§17.7 item 2) this is **reachable**: the node's `setup` publishes
+   a `backAction-<name>` input port for every entry in the `backActions` stringlist, and
+   registering any of them executes the broken line. Any project using Back Actions on Pop
+   Component Stack dies at load. `closepopup.ts` does the same job correctly with
+   `EdgeTriggeredInput.createSetter` — that is the intended shape. Carries a
+   `@ts-expect-error` with a pointer here.
+2. **Component Stack URL writing ignores custom page paths.** The `pagePath-<id>` input lands
+   in `_internal.pageInfo[id].path`, which `matchPageFromUrl` reads — but `getRelativeURL`
+   reads `top.pageInfo.path`, the `_findPage` result, which never carries `path`. So inbound
+   URLs *match* a custom path, while written URLs always use the label-derived slug. The
+   asymmetry means navigating then reloading can land somewhere the address bar never showed.
+3. **`PopupTransition.update` reads `this.crossfade`, which nothing assigns** — it is
+   `PushTransition`'s parameter, seemingly copied with the zoom branch. The In/Out popup
+   transition therefore never fades; the node's actual `tr-fadein` parameter is only honoured
+   by the translate branch.
+
+### 19.5 eslint
+
+15 errors on the converted files; 9 fixed (unused `_`-prefixed params — this config has no
+`argsIgnorePattern` — and two `prefer-spread` on `BezierEasing.apply(null, curve)`, rewritten
+as spread, which is call-for-call identical). 6 remain deliberately: 4 ×
+`no-this-alias` (`_this` feeding `function()` callbacks — §13.7's precedent stands) and
+`router-handler.ts`'s 2 pre-existing `no-explicit-any`, which predate this slice.
+
+### 19.6 Traps
+
+- `prettier --write` reorders the import block (§13.8, again). Run it before the final
+  typecheck, not after.
+- `zsh` eats `===MARKER===` echo separators in gate one-liners as failed globs — quote them.
+- The `cd`-persists trap (§15.8, §17.8) hit again on the `rm` of the old files. `pwd` after
+  every package-local build or delete.
+
+## 20. Next slice
+
+File counts: `noodl-viewer-react` **43 `.js` / 10 `.jsx` / 96 `.ts` / 37 `.tsx`** (was
+57/11/82/36). `noodl-runtime` unchanged at 73 `.js` / 19 `.ts`. Every file under
+`src/nodes/` is now TypeScript except `data/persisthelper.js` (dead, §17.6, deletion owned
+by DEBT-006).
+
+1. **The remaining viewer `.js` is no longer node code.** The 43 files cluster in `src/`
+   root (18 — `guid`, `async-queue`, `node-shared-port-definitions`, …),
+   `nodes-deprecated/` (16, never registered — consider whether converting them is worth
+   anything at all before spending a slice on it), `api/` (4) and the Group scroll plugins
+   (3). The high-value next step is probably `src` root: those are the modules every typed
+   node imports untyped today.
+2. **Latent defects now live in phase-14.5** — DEBT-001 (fixed), DEBT-006 (the register,
+   including this slice's three §19.4 finds). Do not re-batch them here.
+3. **Make `@noodl/runtime` ship declarations** (carried from §16/§18).
+4. **Do not raise `strict` yet** (spec step 8), and step 9 (editor-side `TSFixme` sweep)
+   stays deferred.

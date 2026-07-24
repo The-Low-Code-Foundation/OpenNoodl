@@ -24,6 +24,18 @@ PLAT-003's discipline was correct: a typing slice that also changes behaviour is
 
 **Fix (user-visible effect):**
 
+- [ ] **Pop Component Stack's `backAction-…` inputs throw a `ReferenceError`** (§19.4 #1, found
+  by slice 8) — [navigate-back.ts](../../../packages/noodl-viewer-react/src/nodes/navigation/navigate-back.ts)
+  builds the setter with `_createSignal`, an identifier defined nowhere in the repository, and
+  the ports *are* reachable (its own `setup` publishes one per `backActions` entry) — any
+  project using Back Actions dies at load. The intended shape is
+  `EdgeTriggeredInput.createSetter`, used correctly by `closepopup.ts`. Remove the
+  `@ts-expect-error` that marks the site when fixing.
+- [ ] **Component Stack URL writing ignores custom page paths** (§19.4 #2) — `getRelativeURL`
+  reads `top.pageInfo.path` (a `_findPage` result that never carries `path`) while
+  `matchPageFromUrl` reads `_internal.pageInfo[id].path` (which does). Inbound URLs match a
+  custom `pagePath-…`; written URLs always use the label slug. Align the write path with the
+  match path.
 - [ ] **`def.deprecated` silently dropped** (§9.3) — the catalog reports `isDeprecated: false` for nodes that declare `deprecated: true` (Form, Label). Also poisons what AI agents read via SUB-004's catalog. **Changes `node-catalog.json` — own commit, gated on `catalog:check`.**
 - [ ] **`Noodl.runDeployed` never set** (§11.3) — deploy bootstrap sets `Noodl.deployed`, so the editor-only skip never fires and **tooltip HTML is built and shipped inside deployed apps**. Notes call it "the cheapest" fix. Changes deployed output — verify with a `deployToFolder` diff.
 - [ ] **`getInspectInfo` bare-value cluster** (§13.3, §17.7 #4) — inspectors returning bare boolean/number/object render nothing: Switch, Number Remapper, Animate To Value, and `variablenode2` for non-string variables. Fix the wrapping once, apply across the cluster. (The runtime-package `and`/`or`/`expression` siblings: fix if trivial, else note for the runtime std-library conversion.)
@@ -36,6 +48,7 @@ PLAT-003's discipline was correct: a typing slice that also changes behaviour is
 - [ ] **`collectionnode2` has no `store` input** (§17.7 #3) — three paths test `isInputConnected('store')`, `scheduleStore` exists to serve it, the port is never declared; "a quarter of the file is answering a question nobody asks." Decide: declare the port (feature) or delete the machinery (recommend delete — declaring a port is a product decision this task shouldn't make).
 - [ ] **`collectionnode-new.setCollectionID` + `id`-output fallback unreachable** (§17.7 #5) — no `collectionId` input exists. Delete.
 - [ ] **Dead write** `setparentcomponentobjectproperties` → `_internal.parentComponentName` (§15.3); **misnamed guard flags** in `verifyemail`/`resetpassword`/`requestpasswordreset` (§15.3). Tidy.
+- [ ] **`PopupTransition.update` reads `this.crossfade`, which nothing assigns** (§19.4 #3) — copied from `PushTransition` along with the zoom branch, so the In/Out popup transition never fades and the node's real `tr-fadein` parameter is only honoured by the translate branch. Decide: wire `fadein` into the In/Out branch or delete the dead read.
 - [ ] **Delete [persisthelper.js](../../../packages/noodl-viewer-react/src/nodes/std-library/data/persisthelper.js)** (§17.6) — orphaned, 307 lines, the last `.js` in `data/`. One commit.
 - [ ] **`QueryBuilder` `id` vs `objectId`** (§4) — 4 failing tests in [QueryBuilder.test.js](../../../packages/noodl-runtime/test/adapters/QueryBuilder.test.js); the LocalSQL adapter emits `"id"` where tests expect `"objectId"`. This is a *decision* ("stale test or real adapter bug"): check what CloudStore consumers and deployed data actually key on, decide, align, record.
 
@@ -57,10 +70,10 @@ PLAT-003's discipline was correct: a typing slice that also changes behaviour is
 
 | Risk | Mitigation |
 |------|------------|
-| PLAT-003 is still actively converting (`navigation/` next) | These files (data/, catalog surface) are past conversion; still, note each commit in PLAT-003-NOTES so the two efforts don't collide |
+| PLAT-003 conversion overlap | Conversion of `src/nodes/` completed with slice 8 (navigation/), so the node files are stable; still, note each commit in PLAT-003-NOTES so the two efforts don't collide |
 | "Delete the dead machinery" removes something a module secretly used | Grep the corpus projects and `noodl_modules` for the symbols before deleting; the SUB-009 corpus is the best available reality check |
 
 ## References
 
-- [PLAT-003-NOTES.md](../phase-14-editor-platform-health/PLAT-003-NOTES.md) §9.3, §11.3, §13.3, §15.3, §17.6, §17.7 — the ledger
+- [PLAT-003-NOTES.md](../phase-14-editor-platform-health/PLAT-003-NOTES.md) §9.3, §11.3, §13.3, §15.3, §17.6, §17.7, §19.4 — the ledger
 - Related: DEBT-001 (finding #1), DEBT-003 (§4's expression cluster)
