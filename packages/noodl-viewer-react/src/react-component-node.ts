@@ -2,6 +2,7 @@
 
 import React from 'react';
 import type {
+  ComponentInstanceLike,
   DynamicPortEntry,
   GraphNodeModel,
   InputPortDefinition,
@@ -93,12 +94,16 @@ export interface ReactNodeContext extends NodeContextLike {
   runningInCanvas?: boolean;
 }
 
-/** The component instance that owns a node scope, as this file walks it. */
-export interface ComponentOwnerLike {
-  name: string;
+/**
+ * The component instance that owns a node scope, as this file walks it.
+ *
+ * `@noodl/types` publishes the general shape as `ComponentInstanceLike`; this narrows the
+ * two members `getVisualParentNode` walks — a React node's visual parent is a React node,
+ * and the scope it came from is a React scope.
+ */
+export interface ComponentOwnerLike extends ComponentInstanceLike {
   parent?: ReactNodeInstance;
   parentNodeScope?: ReactNodeScope;
-  [extra: string]: unknown;
 }
 
 /** The subset of `NodeScope` a visual node reaches for. */

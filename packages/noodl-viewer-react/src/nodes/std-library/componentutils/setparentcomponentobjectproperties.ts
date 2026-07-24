@@ -1,17 +1,21 @@
 'use strict';
 
-const { Node } = require('@noodl/runtime');
-const Model = require('@noodl/runtime/src/model');
+import type { ComponentInstanceLike, NodeInstance } from '@noodl/types';
 
-const Base = require('./base');
+import { extendSetComponentObjectProperties } from './base';
 
-module.exports = Base.extendSetComponentObjectProperties({
+/**
+ * The same upward walk as `parentcomponentobject.ts`'s
+ * `findParentComponentStateModelId`, duplicated there and here. Left duplicated: this
+ * slice types, it does not refactor.
+ */
+export default extendSetComponentObjectProperties({
   name: 'net.noodl.SetParentComponentObjectProperties',
   displayName: 'Set Parent Component Object Properties',
   docs: 'https://docs.noodl.net/nodes/component-utilities/set-parent-component-object-properties',
-  getComponentObjectId: function () {
-    function getParentComponent(component) {
-      let parent;
+  getComponentObjectId: function (this: NodeInstance & { _internal: { parentComponentName?: string } }) {
+    function getParentComponent(component: ComponentInstanceLike): ComponentInstanceLike | undefined {
+      let parent: ComponentInstanceLike | undefined;
       if (component.getRoots().length > 0) {
         //visual
         const root = component.getRoots()[0];

@@ -1,8 +1,21 @@
 'use strict';
 
-const UserService = require('./userservice');
+import type { NodeDefinitionOptions, NodeInstance, NodeModule } from '@noodl/types';
 
-const LogOutNodeDefinition = {
+import UserService from './userservice';
+
+/** `this` inside the Log Out node. */
+interface LogOutInstance extends NodeInstance {
+  _internal: {
+    /** Message from the last failed attempt. */
+    error?: string;
+  };
+  logOutScheduled?: boolean;
+  setError(err: string): void;
+  scheduleLogOut(): void;
+}
+
+const LogOutNodeDefinition: NodeDefinitionOptions = {
   name: 'net.noodl.user.LogOut',
   docs: 'https://docs.noodl.net/nodes/data/user/log-out',
   displayNodeName: 'Log Out',
@@ -23,22 +36,24 @@ const LogOutNodeDefinition = {
       type: 'string',
       displayName: 'Error',
       group: 'Error',
-      getter() {
+      getter(this: LogOutInstance) {
         return this._internal.error;
       }
     }
   },
   inputs: {
+    // Named `login` rather than `logout`: the port name is persisted in every project that
+    // uses this node, so it cannot be corrected without breaking them.
     login: {
       displayName: 'Do',
       group: 'Actions',
-      valueChangedToTrue() {
+      valueChangedToTrue(this: LogOutInstance) {
         this.scheduleLogOut();
       }
     }
   },
   methods: {
-    setError(err) {
+    setError(this: LogOutInstance, err: string) {
       this._internal.error = err;
       this.flagOutputDirty('error');
       this.sendSignalOnOutput('failure');
@@ -50,12 +65,12 @@ const LogOutNodeDefinition = {
         });
       }
     },
-    clearWarnings() {
+    clearWarnings(this: LogOutInstance) {
       if (this.context.editorConnection) {
         this.context.editorConnection.clearWarning(this.nodeScope.componentOwner.name, this.id, 'user-login-warning');
       }
     },
-    scheduleLogOut() {
+    scheduleLogOut(this: LogOutInstance) {
       if (this.logOutScheduled === true) return;
       this.logOutScheduled = true;
 
@@ -75,7 +90,9 @@ const LogOutNodeDefinition = {
   }
 };
 
-module.exports = {
+const LogOutModule: NodeModule = {
   node: LogOutNodeDefinition,
-  setup(_context, _graphModel) {}
+  setup() {}
 };
+
+export default LogOutModule;

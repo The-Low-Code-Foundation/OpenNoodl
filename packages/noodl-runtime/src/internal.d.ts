@@ -51,6 +51,8 @@ export interface RuntimeNodeContext {
 
   nodeIsDirty(node: RuntimeNode): void;
   scheduleNextFrame(callback: () => void): void;
+  /** Runs `callback` once the current update has finished processing every dirty node. */
+  scheduleAfterUpdate(callback: () => void): void;
   connectionSentValue(sourcePort: RuntimeOutputProperty, value: unknown): void;
   connectionSentSignal(sourcePort: RuntimeOutputProperty): void;
   isWarningTypeEnabled(warningType: string): boolean;

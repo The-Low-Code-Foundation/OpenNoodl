@@ -1,4 +1,7 @@
-const UserService = require('../nodes/std-library/user/userservice')
+// `userservice` is TypeScript now, so `require` of it yields an ES-module namespace.
+// Unwrap for the duration of the migration; see PLAT-003 NOTES §13.5.
+const UserServiceModule = require('../nodes/std-library/user/userservice')
+const UserService = UserServiceModule.default || UserServiceModule
 
 const users = {
     async logIn(options) {

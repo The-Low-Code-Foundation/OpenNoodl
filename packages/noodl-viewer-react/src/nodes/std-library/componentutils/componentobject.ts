@@ -1,15 +1,44 @@
 'use strict';
 
-const { Node } = require('@noodl/runtime');
-const Model = require('@noodl/runtime/src/model');
+import { Node } from '@noodl/runtime';
+import Model from '@noodl/runtime/src/model';
+import type {
+  EditorConnectionLike,
+  GraphNodeModel,
+  InspectInfo,
+  ModelChangeEvent,
+  ModelLike,
+  NodeContextLike,
+  NodeDefinitionOptions,
+  NodeInstance,
+  NodeModule
+} from '@noodl/types';
 
-const ComponentObject = {
+/** `this` inside the Component Object node. */
+interface ComponentObjectInstance extends NodeInstance {
+  _internal: {
+    /** Latest value of each `value-…` input, keyed without the prefix. */
+    inputValues: Record<string, unknown>;
+    /** Which of those still need writing to the model. Cleared after each store. */
+    dirtyValues: Record<string, boolean>;
+    /** The component-scoped record, keyed on this component *instance*. */
+    model: ModelLike;
+    onModelChangedCallback(args: ModelChangeEvent): void;
+  };
+  hasScheduledStore?: boolean;
+  hasScheduledFetch?: boolean;
+  scheduleStore(): void;
+  scheduleFetch(): void;
+  fetch(): void;
+}
+
+const ComponentObject: NodeDefinitionOptions = {
   name: 'net.noodl.ComponentObject',
   displayNodeName: 'Component Object',
   category: 'Component Utilities',
   color: 'component',
   docs: 'https://docs.noodl.net/nodes/component-utilities/component-object',
-  initialize: function () {
+  initialize: function (this: ComponentObjectInstance) {
     this._internal.inputValues = {};
     this._internal.dirtyValues = {};
 
@@ -27,12 +56,12 @@ const ComponentObject = {
       this.sendSignalOnOutput('changed');
     };
 
-    const model = Model.get('componentState' + this.nodeScope.componentOwner.getInstanceId());
+    const model: ModelLike = Model.get('componentState' + this.nodeScope.componentOwner.getInstanceId());
     this._internal.model = model;
 
     model.on('change', this._internal.onModelChangedCallback);
   },
-  getInspectInfo() {
+  getInspectInfo(this: ComponentObjectInstance): InspectInfo {
     return {
       type: 'value',
       value: this._internal.model.data
@@ -46,12 +75,12 @@ const ComponentObject = {
       },
       displayName: 'Properties',
       group: 'Properties',
-      set(value) {}
+      set() {}
     },
     fetch: {
       displayName: 'Fetch',
       group: 'Actions',
-      valueChangedToTrue() {
+      valueChangedToTrue(this: ComponentObjectInstance) {
         this.scheduleFetch();
       }
     }
@@ -69,20 +98,20 @@ const ComponentObject = {
     }
   },
   methods: {
-    scheduleStore() {
+    scheduleStore(this: ComponentObjectInstance) {
       if (this.hasScheduledStore) return;
       this.hasScheduledStore = true;
 
-      var internal = this._internal;
+      const internal = this._internal;
       this.scheduleAfterInputsHaveUpdated(() => {
         this.hasScheduledStore = false;
-        for (var i in internal.dirtyValues) {
+        for (const i in internal.dirtyValues) {
           internal.model.set(i, internal.inputValues[i], { resolve: true });
         }
         internal.dirtyValues = {};
       });
     },
-    scheduleFetch() {
+    scheduleFetch(this: ComponentObjectInstance) {
       if (this.hasScheduledFetch) return;
       this.hasScheduledFetch = true;
 
@@ -91,8 +120,8 @@ const ComponentObject = {
         this.fetch();
       });
     },
-    fetch() {
-      for (var key in this._internal.model.data) {
+    fetch(this: ComponentObjectInstance) {
+      for (const key in this._internal.model.data) {
         if (this.hasOutput('value-' + key)) {
           this.flagOutputDirty('value-' + key);
           if (this.hasOutput('changed-' + key)) {
@@ -102,11 +131,11 @@ const ComponentObject = {
       }
       this.sendSignalOnOutput('fetched');
     },
-    _onNodeDeleted() {
+    _onNodeDeleted(this: ComponentObjectInstance) {
       Node.prototype._onNodeDeleted.call(this);
       this._internal.model.off('change', this._internal.onModelChangedCallback);
     },
-    registerOutputIfNeeded(name) {
+    registerOutputIfNeeded(this: ComponentObjectInstance, name: string) {
       if (this.hasOutput(name)) {
         return;
       }
@@ -115,12 +144,12 @@ const ComponentObject = {
       const propertyName = split[split.length - 1];
 
       this.registerOutput(name, {
-        get() {
+        get(this: ComponentObjectInstance) {
           return this._internal.model.get(propertyName, { resolve: true });
         }
       });
     },
-    registerInputIfNeeded: function (name) {
+    registerInputIfNeeded: function (this: ComponentObjectInstance, name: string) {
       if (this.hasInput(name)) {
         return;
       }
@@ -128,7 +157,7 @@ const ComponentObject = {
       if (name.startsWith('value-')) {
         const propertyName = name.substring('value-'.length);
         this.registerInput(name, {
-          set(value) {
+          set(this: ComponentObjectInstance, value: unknown) {
             this._internal.inputValues[propertyName] = value;
             this._internal.dirtyValues[propertyName] = true;
 
@@ -145,22 +174,24 @@ const ComponentObject = {
             }
             else if (name.startsWith('type-')) {
                 this.registerInput(name, {
-                    set(value) {}
+                    set() {}
                 });
             }*/
     }
   }
 };
 
-function updatePorts(nodeId, parameters, editorConnection) {
+function updatePorts(
+  nodeId: string,
+  parameters: Record<string, unknown>,
+  editorConnection: EditorConnectionLike
+): void {
   const ports = [];
 
   // Add value outputs
-  if (parameters.properties) {
-    var properties = parameters.properties.split(',');
-    for (var i in properties) {
-      var p = properties[i];
-
+  const properties = parameters.properties as string | undefined;
+  if (properties) {
+    for (const p of properties.split(',')) {
       ports.push({
         type: {
           name: '*',
@@ -218,21 +249,24 @@ function updatePorts(nodeId, parameters, editorConnection) {
   });
 }
 
-module.exports = {
+const ComponentObjectModule: NodeModule = {
   node: ComponentObject,
-  setup: function (context, graphModel) {
-    if (!context.editorConnection || !context.editorConnection.isRunningLocally()) {
+  setup: function (context: NodeContextLike, graphModel) {
+    const editorConnection = context.editorConnection;
+    if (!editorConnection || !editorConnection.isRunningLocally()) {
       return;
     }
 
-    graphModel.on('nodeAdded.net.noodl.ComponentObject', (node) => {
-      updatePorts(node.id, node.parameters, context.editorConnection);
+    graphModel.on('nodeAdded.net.noodl.ComponentObject', (node: GraphNodeModel) => {
+      updatePorts(node.id, node.parameters, editorConnection);
 
-      node.on('parameterUpdated', (event) => {
+      node.on('parameterUpdated', (event: { name: string }) => {
         if (event.name === 'properties') {
-          updatePorts(node.id, node.parameters, context.editorConnection);
+          updatePorts(node.id, node.parameters, editorConnection);
         }
       });
     });
   }
 };
+
+export default ComponentObjectModule;

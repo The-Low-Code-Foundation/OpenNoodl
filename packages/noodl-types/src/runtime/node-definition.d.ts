@@ -168,6 +168,53 @@ export interface StylesLike {
   getTextStyle(styleName: string): Record<string, unknown>;
 }
 
+/** The payload of a {@link ModelLike} `'change'` notification. */
+export interface ModelChangeEvent {
+  /** Property that changed. With `{ resolve: true }` writes this is the *leaf* name. */
+  name: string;
+  value: unknown;
+  old: unknown;
+}
+
+/**
+ * A Noodl Object at runtime — the id-keyed, observable record behind the Object node,
+ * component state and every collection entry. `@noodl/runtime/src/model`.
+ *
+ * Three things about it are surprising enough to state. `Model.get(id)` *creates* the record
+ * if it does not exist, so there is no "does this object exist" question to answer before
+ * reading — which is why the Component Object node can key state on an instance id without
+ * ever initialising it. What it hands back is a **Proxy**, not the bare object: unknown
+ * property reads are forwarded to {@link get} and writes to {@link set}, which is what makes
+ * `Noodl.Object` behave like a plain object in Function nodes. And `set` only notifies when
+ * the value actually changed, unless `forceChange` says otherwise.
+ *
+ * `{ resolve: true }` on {@link get}/{@link set} treats a dotted name as a path *through
+ * nested Models* — not through plain objects. A path that hits a non-Model on the way is
+ * abandoned silently: the read returns `undefined` and the write does nothing.
+ */
+export interface ModelLike {
+  readonly id: string;
+  /** The record's own properties. Read directly by nodes that want the whole object. */
+  data: Record<string, unknown>;
+
+  get(name: string, args?: { resolve?: boolean }): unknown;
+  set(name: string, value: unknown, args?: { resolve?: boolean; silent?: boolean; forceChange?: boolean }): void;
+  /** Bulk assignment. Notifies once per genuinely changed property; skips `id`. */
+  setAll(obj: Record<string, unknown>): void;
+  /** Overwrites every existing property with `value` (default `null`), notifying for each. */
+  fill(value?: unknown): void;
+  getId(): string;
+  toJSON(): Record<string, unknown>;
+
+  /** The only event the runtime emits is `'change'`. */
+  on(event: string, listener: (args: ModelChangeEvent) => void): void;
+  off(event: string, listener: (args: ModelChangeEvent) => void): void;
+  notify(event: string, args?: unknown): void;
+
+  /** The Proxy's fall-through: any other property read goes to {@link get}. */
+  [property: string]: unknown;
+}
+
 /** The subset of `NodeContext` node definitions actually reach for. */
 export interface NodeContextLike {
   editorConnection?: EditorConnectionLike;
@@ -197,6 +244,13 @@ export interface NodeContextLike {
   /** Runs `callback` at the start of the next frame. */
   scheduleNextFrame(callback: () => void): void;
   /**
+   * Runs `callback` at the end of the current update, once every dirty node has been
+   * processed. The escape hatch for work that needs the whole node tree to exist — the
+   * Parent Component Object node uses it because its parent's scope may not be built yet
+   * when its own `nodeScopeDidInitialize` runs.
+   */
+  scheduleAfterUpdate(callback: () => void): void;
+  /**
    * Whether the editor wants warnings of this kind. Guard `editorConnection.sendWarning`
    * with it — the categories are user-toggleable.
    */
@@ -207,9 +261,57 @@ export interface NodeContextLike {
 /** How far a scoped event travels from the scope that sent it. */
 export type EventPropagation = 'parent' | 'children' | 'siblings' | null | undefined;
 
+/**
+ * A node that can sit at the top of a component, as {@link ComponentInstanceLike.getRoots}
+ * hands it back.
+ *
+ * Both members are optional because a component's roots are not all the same kind of thing,
+ * and the code that walks upwards tests for each in turn: an ordinary visual node has
+ * `getVisualParentNode`, a nested component instance has `parentNodeScope`, and a logic node
+ * at the root of a non-visual component has neither.
+ */
+export interface ComponentRootNode extends NodeInstance {
+  /** Present on visual nodes. Returns `undefined` at the top of the visual tree. */
+  getVisualParentNode?(): NodeInstance | undefined;
+  /** Present on component-instance nodes: the scope this instance itself lives in. */
+  parentNodeScope?: NodeScopeLike;
+}
+
+/**
+ * The Component Instance node that owns a node scope — `nodeScope.componentOwner`.
+ *
+ * Two things node definitions use it for. Its `name` is the first argument of every
+ * `editorConnection.sendWarning`/`clearWarning` call, because that is how the editor knows
+ * which component to draw the warning in. And `getInstanceId()` is the key that
+ * component-scoped state is stored under: the Component Object node keys its
+ * {@link ModelLike} on `'componentState' + getInstanceId()`, which is what makes one
+ * component's state distinct per instance rather than per component.
+ *
+ * Walking *up* from here is deliberately awkward, and both ways matter. A component
+ * instance mounted inside another node's visual tree is reached through its roots'
+ * `getVisualParentNode()`; one that is not visual is reached through `parentNodeScope`.
+ * `parentcomponentobject.js` and `setparentcomponentobjectproperties.js` each implement
+ * that walk.
+ */
+export interface ComponentInstanceLike extends NodeInstance {
+  /** The component's name, as the editor shows it. */
+  readonly name: string;
+  /** Identity of this *instance*. Distinct instances of one component get distinct ids. */
+  getInstanceId(): string;
+  /** The nodes at the top of this component. Empty for a component with no root node. */
+  getRoots(): ComponentRootNode[];
+  /** Visual parent, when this instance is mounted inside another node's tree. */
+  parent?: NodeInstance;
+  /** The scope this instance itself lives in — one level up from {@link nodeScope}. */
+  parentNodeScope?: NodeScopeLike;
+  [extra: string]: unknown;
+}
+
 /** The subset of `NodeScope` node definitions actually reach for. */
 export interface NodeScopeLike {
-  componentOwner: { name: string; [extra: string]: unknown };
+  componentOwner: ComponentInstanceLike;
+  /** Every live instance of `name` in this scope. Does not descend into child scopes. */
+  getNodesWithType(name: string): NodeInstance[];
   /**
    * Sends an event to a *related* scope rather than the whole project. Returns whether a
    * receiver consumed it. `sendEventInThisScope` is set by the recursive calls the runtime

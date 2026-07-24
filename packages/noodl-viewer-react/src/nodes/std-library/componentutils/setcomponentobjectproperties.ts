@@ -1,12 +1,14 @@
 'use strict';
 
-const Base = require('./base');
+import type { NodeInstance } from '@noodl/types';
 
-module.exports = Base.extendSetComponentObjectProperties({
+import { extendSetComponentObjectProperties } from './base';
+
+export default extendSetComponentObjectProperties({
   name: 'net.noodl.SetComponentObjectProperties',
   displayName: 'Set Component Object Properties',
   docs: 'https://docs.noodl.net/nodes/component-utilities/set-component-object-properties',
-  getComponentObjectId: function () {
+  getComponentObjectId: function (this: NodeInstance) {
     return 'componentState' + this.nodeScope.componentOwner.getInstanceId();
   }
 });

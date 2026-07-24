@@ -1,8 +1,23 @@
 'use strict';
 
-const UserService = require('./userservice');
+import type { NodeDefinitionOptions, NodeInstance, NodeModule } from '@noodl/types';
 
-const LoginNodeDefinition = {
+import UserService from './userservice';
+
+/** `this` inside the Log In node. */
+interface LogInInstance extends NodeInstance {
+  _internal: {
+    username?: string;
+    password?: string;
+    /** Message from the last failed attempt; drives both the `error` output and the warning. */
+    error?: string;
+  };
+  logInScheduled?: boolean;
+  setError(err: string): void;
+  scheduleLogIn(): void;
+}
+
+const LoginNodeDefinition: NodeDefinitionOptions = {
   name: 'net.noodl.user.LogIn',
   docs: 'https://docs.noodl.net/nodes/data/user/log-in',
   displayNodeName: 'Log In',
@@ -23,7 +38,7 @@ const LoginNodeDefinition = {
       type: 'string',
       displayName: 'Error',
       group: 'Error',
-      getter() {
+      getter(this: LogInInstance) {
         return this._internal.error;
       }
     }
@@ -32,7 +47,7 @@ const LoginNodeDefinition = {
     login: {
       displayName: 'Do',
       group: 'Actions',
-      valueChangedToTrue() {
+      valueChangedToTrue(this: LogInInstance) {
         this.scheduleLogIn();
       }
     },
@@ -40,7 +55,7 @@ const LoginNodeDefinition = {
       displayName: 'Username',
       type: 'string',
       group: 'General',
-      set(value) {
+      set(this: LogInInstance, value: string) {
         this._internal.username = value;
       }
     },
@@ -48,13 +63,13 @@ const LoginNodeDefinition = {
       displayName: 'Password',
       type: 'string',
       group: 'General',
-      set(value) {
+      set(this: LogInInstance, value: string) {
         this._internal.password = value;
       }
     }
   },
   methods: {
-    setError(err) {
+    setError(this: LogInInstance, err: string) {
       this._internal.error = err;
       this.flagOutputDirty('error');
       this.sendSignalOnOutput('failure');
@@ -66,12 +81,12 @@ const LoginNodeDefinition = {
         });
       }
     },
-    clearWarnings() {
+    clearWarnings(this: LogInInstance) {
       if (this.context.editorConnection) {
         this.context.editorConnection.clearWarning(this.nodeScope.componentOwner.name, this.id, 'user-login-warning');
       }
     },
-    scheduleLogIn() {
+    scheduleLogIn(this: LogInInstance) {
       if (this.logInScheduled === true) return;
       this.logInScheduled = true;
 
@@ -93,7 +108,9 @@ const LoginNodeDefinition = {
   }
 };
 
-module.exports = {
+const LogInModule: NodeModule = {
   node: LoginNodeDefinition,
-  setup(_context, _graphModel) {}
+  setup() {}
 };
+
+export default LogInModule;

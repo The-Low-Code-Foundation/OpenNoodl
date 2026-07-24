@@ -1,19 +1,31 @@
 'use strict';
 
-const { Node, EdgeTriggeredInput } = require('@noodl/runtime');
-const UserService = require('./userservice');
+import type { InspectInfo, NodeDefinitionOptions, NodeInstance, NodeModule } from '@noodl/types';
 
-var SendEmailVerificationNodeDefinition = {
+import UserService from './userservice';
+
+/** `this` inside the Send Email Verification node. */
+interface SendEmailVerificationInstance extends NodeInstance {
+  _internal: {
+    email?: string;
+    /** Message from the last failed attempt. */
+    error?: string;
+  };
+  sendScheduled?: boolean;
+  setError(err: string): void;
+  scheduleSendEmailVerification(): void;
+}
+
+const SendEmailVerificationNodeDefinition: NodeDefinitionOptions = {
   name: 'net.noodl.user.SendEmailVerification',
   docs: 'https://docs.noodl.net/nodes/data/user/send-email-verification',
   displayNodeName: 'Send Email Verification',
   category: 'Cloud Services',
   color: 'data',
   deprecated: true, // Use cloud functions
-  initialize: function () {
-    var internal = this._internal;
-  },
-  getInspectInfo() {},
+  initialize: function () {},
+  /** Deliberately empty: this node has nothing worth showing in the inspector. */
+  getInspectInfo(): InspectInfo | void {},
   outputs: {
     success: {
       type: 'signal',
@@ -29,7 +41,7 @@ var SendEmailVerificationNodeDefinition = {
       type: 'string',
       displayName: 'Error',
       group: 'Error',
-      getter: function () {
+      getter: function (this: SendEmailVerificationInstance) {
         return this._internal.error;
       }
     }
@@ -38,7 +50,7 @@ var SendEmailVerificationNodeDefinition = {
     send: {
       displayName: 'Do',
       group: 'Actions',
-      valueChangedToTrue: function () {
+      valueChangedToTrue: function (this: SendEmailVerificationInstance) {
         this.scheduleSendEmailVerification();
       }
     },
@@ -46,13 +58,13 @@ var SendEmailVerificationNodeDefinition = {
       type: 'string',
       displayName: 'Email',
       group: 'General',
-      set: function (value) {
+      set: function (this: SendEmailVerificationInstance, value: string) {
         this._internal.email = value;
       }
     }
   },
   methods: {
-    setError: function (err) {
+    setError: function (this: SendEmailVerificationInstance, err: string) {
       this._internal.error = err;
       this.flagOutputDirty('error');
       this.sendSignalOnOutput('failure');
@@ -69,7 +81,7 @@ var SendEmailVerificationNodeDefinition = {
         );
       }
     },
-    clearWarnings() {
+    clearWarnings(this: SendEmailVerificationInstance) {
       if (this.context.editorConnection) {
         this.context.editorConnection.clearWarning(
           this.nodeScope.componentOwner.name,
@@ -78,9 +90,7 @@ var SendEmailVerificationNodeDefinition = {
         );
       }
     },
-    scheduleSendEmailVerification: function () {
-      const internal = this._internal;
-
+    scheduleSendEmailVerification: function (this: SendEmailVerificationInstance) {
       if (this.sendScheduled === true) return;
       this.sendScheduled = true;
 
@@ -101,7 +111,9 @@ var SendEmailVerificationNodeDefinition = {
   }
 };
 
-module.exports = {
+const SendEmailVerificationModule: NodeModule = {
   node: SendEmailVerificationNodeDefinition,
-  setup: function (context, graphModel) {}
+  setup: function () {}
 };
+
+export default SendEmailVerificationModule;

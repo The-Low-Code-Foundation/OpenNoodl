@@ -1,19 +1,36 @@
 'use strict';
 
-const { Node, EdgeTriggeredInput } = require('@noodl/runtime');
-const UserService = require('./userservice');
+import type { InspectInfo, NodeDefinitionOptions, NodeInstance, NodeModule } from '@noodl/types';
 
-var VerifyEmailNodeDefinition = {
+import UserService from './userservice';
+
+/** `this` inside the Verify Email node. */
+interface VerifyEmailInstance extends NodeInstance {
+  _internal: {
+    token?: string;
+    username?: string;
+    /** Message from the last failed attempt. */
+    error?: string;
+  };
+  /**
+   * Copy-pasted from the Log Out node, which is why it is named for logging out. Harmless —
+   * it is a private per-instance flag and this node has nothing else using the name.
+   */
+  logOutScheduled?: boolean;
+  setError(err: string): void;
+  scheduleVerifyEmail(): void;
+}
+
+const VerifyEmailNodeDefinition: NodeDefinitionOptions = {
   name: 'net.noodl.user.VerifyEmail',
   docs: 'https://docs.noodl.net/nodes/data/user/verify-email',
   displayNodeName: 'Verify Email',
   category: 'Cloud Services',
   color: 'data',
   deprecated: true, // Use cloud functions
-  initialize: function () {
-    var internal = this._internal;
-  },
-  getInspectInfo() {},
+  initialize: function () {},
+  /** Deliberately empty: this node has nothing worth showing in the inspector. */
+  getInspectInfo(): InspectInfo | void {},
   outputs: {
     success: {
       type: 'signal',
@@ -29,7 +46,7 @@ var VerifyEmailNodeDefinition = {
       type: 'string',
       displayName: 'Error',
       group: 'Error',
-      getter: function () {
+      getter: function (this: VerifyEmailInstance) {
         return this._internal.error;
       }
     }
@@ -38,7 +55,7 @@ var VerifyEmailNodeDefinition = {
     verify: {
       displayName: 'Do',
       group: 'Actions',
-      valueChangedToTrue: function () {
+      valueChangedToTrue: function (this: VerifyEmailInstance) {
         this.scheduleVerifyEmail();
       }
     },
@@ -46,7 +63,7 @@ var VerifyEmailNodeDefinition = {
       type: 'string',
       displayName: 'Token',
       group: 'General',
-      set: function (value) {
+      set: function (this: VerifyEmailInstance, value: string) {
         this._internal.token = value;
       }
     },
@@ -54,13 +71,13 @@ var VerifyEmailNodeDefinition = {
       type: 'string',
       displayName: 'Username',
       group: 'General',
-      set: function (value) {
+      set: function (this: VerifyEmailInstance, value: string) {
         this._internal.username = value;
       }
     }
   },
   methods: {
-    setError: function (err) {
+    setError: function (this: VerifyEmailInstance, err: string) {
       this._internal.error = err;
       this.flagOutputDirty('error');
       this.sendSignalOnOutput('failure');
@@ -77,7 +94,7 @@ var VerifyEmailNodeDefinition = {
         );
       }
     },
-    clearWarnings() {
+    clearWarnings(this: VerifyEmailInstance) {
       if (this.context.editorConnection) {
         this.context.editorConnection.clearWarning(
           this.nodeScope.componentOwner.name,
@@ -86,9 +103,7 @@ var VerifyEmailNodeDefinition = {
         );
       }
     },
-    scheduleVerifyEmail: function () {
-      const internal = this._internal;
-
+    scheduleVerifyEmail: function (this: VerifyEmailInstance) {
       if (this.logOutScheduled === true) return;
       this.logOutScheduled = true;
 
@@ -110,7 +125,9 @@ var VerifyEmailNodeDefinition = {
   }
 };
 
-module.exports = {
+const VerifyEmailModule: NodeModule = {
   node: VerifyEmailNodeDefinition,
-  setup: function (context, graphModel) {}
+  setup: function () {}
 };
+
+export default VerifyEmailModule;

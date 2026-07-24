@@ -1,19 +1,33 @@
 'use strict';
 
-const { Node, EdgeTriggeredInput } = require('@noodl/runtime');
-const UserService = require('./userservice');
+import type { InspectInfo, NodeDefinitionOptions, NodeInstance, NodeModule } from '@noodl/types';
 
-var ResetPasswordNodeDefinition = {
+import UserService from './userservice';
+
+/** `this` inside the Reset Password node. */
+interface ResetPasswordInstance extends NodeInstance {
+  _internal: {
+    token?: string;
+    username?: string;
+    newPassword?: string;
+    /** Message from the last failed attempt. */
+    error?: string;
+  };
+  resetPasswordScheduled?: boolean;
+  setError(err: string): void;
+  scheduleResetPassword(): void;
+}
+
+const ResetPasswordNodeDefinition: NodeDefinitionOptions = {
   name: 'net.noodl.user.ResetPassword',
   docs: 'https://docs.noodl.net/nodes/data/user/reset-password',
   displayNodeName: 'Reset Password',
   category: 'Cloud Services',
   color: 'data',
   deprecated: true, // Use cloud functions
-  initialize: function () {
-    var internal = this._internal;
-  },
-  getInspectInfo() {},
+  initialize: function () {},
+  /** Deliberately empty: this node has nothing worth showing in the inspector. */
+  getInspectInfo(): InspectInfo | void {},
   outputs: {
     success: {
       type: 'signal',
@@ -29,7 +43,7 @@ var ResetPasswordNodeDefinition = {
       type: 'string',
       displayName: 'Error',
       group: 'Error',
-      getter: function () {
+      getter: function (this: ResetPasswordInstance) {
         return this._internal.error;
       }
     }
@@ -38,7 +52,7 @@ var ResetPasswordNodeDefinition = {
     reset: {
       displayName: 'Do',
       group: 'Actions',
-      valueChangedToTrue: function () {
+      valueChangedToTrue: function (this: ResetPasswordInstance) {
         this.scheduleResetPassword();
       }
     },
@@ -46,7 +60,7 @@ var ResetPasswordNodeDefinition = {
       type: 'string',
       displayName: 'Token',
       group: 'General',
-      set: function (value) {
+      set: function (this: ResetPasswordInstance, value: string) {
         this._internal.token = value;
       }
     },
@@ -54,7 +68,7 @@ var ResetPasswordNodeDefinition = {
       type: 'string',
       displayName: 'Username',
       group: 'General',
-      set: function (value) {
+      set: function (this: ResetPasswordInstance, value: string) {
         this._internal.username = value;
       }
     },
@@ -62,13 +76,13 @@ var ResetPasswordNodeDefinition = {
       type: 'string',
       displayName: 'New Password',
       group: 'General',
-      set: function (value) {
+      set: function (this: ResetPasswordInstance, value: string) {
         this._internal.newPassword = value;
       }
     }
   },
   methods: {
-    setError: function (err) {
+    setError: function (this: ResetPasswordInstance, err: string) {
       this._internal.error = err;
       this.flagOutputDirty('error');
       this.sendSignalOnOutput('failure');
@@ -85,7 +99,7 @@ var ResetPasswordNodeDefinition = {
         );
       }
     },
-    clearWarnings() {
+    clearWarnings(this: ResetPasswordInstance) {
       if (this.context.editorConnection) {
         this.context.editorConnection.clearWarning(
           this.nodeScope.componentOwner.name,
@@ -94,9 +108,7 @@ var ResetPasswordNodeDefinition = {
         );
       }
     },
-    scheduleResetPassword: function () {
-      const internal = this._internal;
-
+    scheduleResetPassword: function (this: ResetPasswordInstance) {
       if (this.resetPasswordScheduled === true) return;
       this.resetPasswordScheduled = true;
 
@@ -119,7 +131,9 @@ var ResetPasswordNodeDefinition = {
   }
 };
 
-module.exports = {
+const ResetPasswordModule: NodeModule = {
   node: ResetPasswordNodeDefinition,
-  setup: function (context, graphModel) {}
+  setup: function () {}
 };
+
+export default ResetPasswordModule;
