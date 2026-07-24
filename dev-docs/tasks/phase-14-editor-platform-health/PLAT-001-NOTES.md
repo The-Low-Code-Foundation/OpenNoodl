@@ -379,4 +379,69 @@ Observations (not regressions, worth knowing):
 
 Remaining known exception to the ≤800 rule: `NodeGraphEditorNode.ts` (1,290,
 pre-existing file, untouched by the waves). The paint vs hit/measure seam is
-the candidate split; optional follow-up, not blocking closure.
+the candidate split; optional follow-up, not blocking closure — plan in §10.
+
+## 10. Wave 4 plan (optional follow-up — NodeGraphEditorNode split)
+
+Goal: `NodeGraphEditorNode.ts` 1,290 → ~560, closing the last ≤800 exception.
+Decided worth doing because node *painting* is where AIX-003 diff-annotation
+colouring, animated icons and health badges land — splitting paint out makes
+those local changes. Two extractions, one commit each, same discipline as
+waves 1–3 (bodies moved verbatim, suite green after each).
+
+**File structure today** (line refs at commit 4e05c15):
+
+- 15–330: module-level helpers — text measure/wrap (15–67) and the
+  attach-point machinery (`nodeShouldAttach`, `_nodeShouldAttachRecurse`,
+  `canAcceptChildNodes`, `getAttachPoint*` — 68–330, ~260 lines, pure
+  functions over nodes/positions).
+- 331–614: scene-item lifecycle (constructor, `createFromModel`, `bindModel`,
+  `destruct`), tree walk, `pointInside`/`propagateMouse`/`mouse` (the border /
+  drag-area / comment-icon hit zones — behaviour verified live in §9),
+  titlebar height helpers.
+- 615–1020: **`paint()` — one ~405-line method.**
+- 1021–1290: `setPosition`/`layout`/`sortConnections`/`measure`,
+  `shouldConnect`/`shouldAttach`, child tree ops, comment icon
+  bounds/popup.
+
+**Extraction 1 — `nodegrapheditor/nodeAttachment.ts` (~270 lines, near-zero
+risk).** Move the attach-point machinery verbatim; it is already pure
+module-level functions. `shouldAttach` on the node keeps delegating.
+
+**Extraction 2 — `nodegrapheditor/NodeGraphEditorNodePainter.ts` (~460
+lines).** Move `paint()` + the text helpers (15–67) + (if it pulls its weight)
+the titlebar-height helpers. Painter is stateless — functions over
+`(node, ctx, paintRect, options)` — same philosophy as CanvasRenderer's
+FrameState: hold no references, read node state per call.
+
+**Traps for extraction 2 (the ones that bite):**
+
+- `paint()` **writes geometry caches that hit-testing reads later**:
+  `this.commentIconBounds` (set at 763, cleared at 826; consumed by
+  `isPointInCommentIcon` → the comment-icon click path in `mouse()`). The
+  painter must keep writing these back to the node — do not "purify" them
+  away. Grep for other `this.* =` writes inside paint() before moving
+  (e.g. plug/port positions consumed by `sortConnections`/connections).
+- `measure()` populates `this.plugs` (1060) which `paint()` reads (1006) —
+  measure/layout stay on the node; only drawing moves.
+- Health tooltips / annotation tooltips are in `mouse()`, not paint — they
+  stay.
+- `_getColorForAnnotation` is shared by paint; move it with the painter.
+- Keep `NodeGraphEditorNode.borderSize` and the 20×20 drag-area constants on
+  the node class — the mouse() hit zones and §9's live verification depend on
+  them; the painter imports them.
+
+**Gates (all existed after wave 3):** `npm run typecheck:editor`; canvas unit
+suites + `tests/nodegraph/canvas-characterisation.spec.js` unchanged;
+full `npm run test:ci` (965/0 baseline); live smoke via run-editor — §9's
+matrix has the recipe (use `--target=NodeGX`; read `viewport.panAndScale`
+immediately before computing coordinates; the connection-drag hover zone is
+the top-right 20×20). Optional perf re-check: wrap `editor.paint()` and
+repeat the 500-node synthesised-component run (§9 numbers are the baseline:
+1.1 ms avg culled / 5.0 ms avg all-visible).
+
+**Test-infra reminders** (from waves 1–3): every listener registered from a
+collaborator must pass the *editor* as listener context; dugite symlink
+(`ln -sfn ../../node_modules/dugite packages/node_modules/dugite`); specs
+constructing NodeGraphEditor must stub `SidebarModel.instance.switchToNode`;
+React-19 root renders need poll-based waits.

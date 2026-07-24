@@ -152,6 +152,10 @@ Characterisation tests come first. Before extracting anything, write tests that 
 - [x] Coordinator ≤800: wave 3 — accessor-compat layer retired; ViewportActions / CanvasPainter / CanvasDOMBindings extracted; 1,274 → 790 (see NOTES §8)
 - [x] Full manual regression + large-graph performance check (see NOTES §9)
 - [x] CHANGELOG with before/after line counts (below)
+- [ ] Wave 4 (optional follow-up, agreed 2026-07-24): split
+      `NodeGraphEditorNode.ts` (1,290) — attach-point helpers →
+      `nodeAttachment.ts`, `paint()` → `NodeGraphEditorNodePainter.ts` —
+      plan, traps and gates in NOTES §10
 
 ### Status 2026-07-24 (complete)
 
