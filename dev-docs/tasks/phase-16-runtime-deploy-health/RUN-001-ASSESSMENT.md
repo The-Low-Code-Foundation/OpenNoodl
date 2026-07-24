@@ -53,6 +53,20 @@ Spike (2026-07-24, esbuild 0.25.12, react 19.0.0 from the repo's own node_module
 
 ## 3. Verified breakage surface for the 19 runtime
 
+> **Update, same day:** items 1–4 are FIXED in commit `0d075b2`, and item 3 turned out to be
+> far worse than written below. Live probing in the editor preview showed `getDOMElement()`
+> returned **null for every built-in visual node** on the shipped 18.3.1 runtime — none of
+> the 18 built-in components is a host element, so `1477a29`'s ref capture never fired for
+> any of them. Consequence: the `setStyle` direct-DOM fast path (visibility, zIndex,
+> transforms/animations, fonts, shadows) silently no-oped until an unrelated render flushed
+> `this.style`, and the bounding-box observer never had a target — a live P1 in the shipped
+> runtime since Dec 2025, proven by probe (setStyle({color}) left the DOM unchanged until a
+> forced render). The fix is the `setDOMElement` contract: every built-in component reports
+> its root host element via a stable ref (`components/noodl-root-ref.ts`); third-party module
+> components fall back to a guarded `findDOMNode` (present on 18, undefined-and-skipped
+> on 19 — the one documented degradation). Re-probed after the fix: all nodes resolve,
+> setStyle hits the DOM synchronously.
+
 1. **`src/highlighter.js:58`** — the one live `findDOMNode` call. Editor-preview highlight
    overlay; falls back to node refs. Small fix (use `getDOMElement()`/`_domElement`).
 2. **`react-draggable` 4.5.0 without `nodeRef`** — `Drag.tsx` renders `<Draggable>` bare;
@@ -108,11 +122,16 @@ Two scope items from the spec resolve immediately:
 
 Slices, each independently landable on `cline-dev`:
 
-1. **Vendored React 19 globals + dual static sets.** Build script (esbuild, checked in) that
-   produces `react19.production.min.js` / `react-dom19.production.min.js` from package.json
-   versions; keep 18.3.1 files as the legacy set. No behaviour change shipped.
-2. **Source fixes for 19:** highlighter.js findDOMNode, Drag.tsx nodeRef, getDOMElement
-   class-ref audit. All are also safe (or already broken) under 18 — land independently.
+1. **Vendored React 19 globals + dual static sets.** ✅ DONE (`1c6790c`) —
+   `scripts/build-react-globals.js` builds `static/shared-react19/` from the installed npm
+   packages; react-dom aliases `react` to the window global (two bundled copies split the
+   hooks dispatcher — verified single-instance with a hooks render in jsdom). Same filenames
+   as the 18 set, so selection is purely which directory gets copied. Nothing consumes it yet.
+2. **Source fixes for 19.** ✅ DONE (`0d075b2`) — setDOMElement contract across all 18
+   built-in components, highlighter.js off findDOMNode, Drag.tsx delegating nodeRef for
+   react-draggable, Page gains noodlNodeAsProp. Also fixes the live setStyle P1 (§3 update).
+   Residual: Router/navigation-stack (childless roots, like Drag) rely on the findDOMNode
+   fallback under 18 and have no reachable root under 19 — revisit in the corpus pass.
 3. **Per-project runtime version setting** (project.json), plumbed through preview + deploy
    file selection. New projects default 19; absent setting = 18 (existing projects unchanged).
 4. **Editor surface:** version selector in deploy flow + migration scan (design doc's
