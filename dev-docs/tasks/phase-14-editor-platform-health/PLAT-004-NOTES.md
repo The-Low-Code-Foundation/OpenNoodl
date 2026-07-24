@@ -246,3 +246,34 @@ Measured, as always, from a clean `git archive HEAD` export rather than the work
 mechanical notes for next time: the export needs a `node_modules` symlink for the script's
 `typescript` require, and it has no `.git`, so the script records `commit: "unknown"` — patch the
 real short SHA into `.tsfixme-baseline.json` and the report header before copying them back.
+
+## 9. The editor's specs were never typechecked
+
+Found while verifying slice 2. `packages/noodl-editor/tsconfig.json` includes `src/editor`,
+`src/shared`, `src/main` and `@include-types` — the specs are deliberately outside it so they cannot
+reach the app bundle, and the side effect is that `tsc` never saw them. `npm run typecheck` (the
+root config) does not include them either.
+
+That matters directly to this task. The whole policy is "removal must come with a real type, not a
+cast" — but in a spec, a real type was unverifiable. Slice 2 rewrote a lot of spec types; a wrong
+one would have compiled silently.
+
+They are clean already: 0 errors, both in the working tree and in a clean `git archive HEAD`
+export. So `packages/noodl-editor/tsconfig.tests.json` + `npm run typecheck:editor-tests` is a gate
+starting at zero, not a cleanup. It lists only `tests` — the sources under test arrive through the
+imports, and `npm run typecheck` covers the rest of them. Wired into the existing Typecheck job.
+
+Worth knowing generally: a green `typecheck:editor` says nothing about that package's specs, and
+several other packages likely have the same hole.
+
+## 10. Still open
+
+- **Baseline updates in PLAT-002/003's definition of done** (§6.2, and a spec checklist item). Not
+  done here on purpose: it means editing those tasks' spec documents while both sessions are live in
+  the same working tree, and their NOTES files are exactly what those sessions are writing to. It is
+  a two-line change to each checklist once they are quiet.
+- **The `tests/` clusters** are the next burn-down slice with no owner: `tests/io` (66 `any`,
+  almost all one idiom — `?.content as any`, where the export engine publishes `ProjectV2File`,
+  `ComponentV2File`, `RegistryV2File` and friends), `tests/services/github` (15),
+  `tests/models/EmbeddedTemplate.test.ts` (12). Now typecheck-gated by §9, so typing them means
+  something.
