@@ -13,6 +13,11 @@ export interface PropertyPanelBaseInputProps<ValueType = string | number> {
   hasHiddenCaret?: boolean;
   hasSmallText?: boolean;
 
+  /** Rendered as data-identifier, used for input targeting (e.g. node double-click focus actions) */
+  dataIdentifier?: string;
+  /** Rendered as data-type (the legacy color input carried data-type="color") */
+  dataType?: string;
+
   onChange?: (value: ValueType) => void;
   onClick?: MouseEventHandler<HTMLInputElement>;
   onMouseEnter?: MouseEventHandler<HTMLInputElement>;
@@ -34,6 +39,9 @@ export function PropertyPanelBaseInput({
   isFauxFocused,
   hasHiddenCaret,
   hasSmallText,
+
+  dataIdentifier,
+  dataType,
 
   onChange,
   onClick,
@@ -57,6 +65,8 @@ export function PropertyPanelBaseInput({
       )}
       type={type}
       value={value}
+      data-identifier={dataIdentifier}
+      data-type={dataType}
       onChange={(e) => onChange(e.target.value)}
       onClick={onClick}
       onMouseEnter={onMouseEnter}

@@ -9,10 +9,19 @@ export interface PropertyPanelTextAreaProps {
   isChanged?: boolean;
   isConnected?: boolean;
 
+  /** Rendered as data-identifier, used for input targeting (e.g. node double-click focus actions) */
+  dataIdentifier?: string;
+
   onChange?: (value: string) => void;
 }
 
-export function PropertyPanelTextArea({ value, isChanged, isConnected, onChange }: PropertyPanelTextAreaProps) {
+export function PropertyPanelTextArea({
+  value,
+  isChanged,
+  isConnected,
+  dataIdentifier,
+  onChange
+}: PropertyPanelTextAreaProps) {
   const [displayedValue, setDisplayedValue] = useState(value ?? '');
 
   useEffect(() => {
@@ -24,6 +33,7 @@ export function PropertyPanelTextArea({ value, isChanged, isConnected, onChange 
     <textarea
       className={classNames(css['Root'], isChanged && css['is-changed'], isConnected && css['is-connected'])}
       value={displayedValue}
+      data-identifier={dataIdentifier}
       onChange={(e) => setDisplayedValue(e.target.value)}
       onBlur={() => onChange && onChange(displayedValue)}
     />

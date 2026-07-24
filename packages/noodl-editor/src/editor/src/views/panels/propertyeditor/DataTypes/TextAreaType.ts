@@ -53,6 +53,7 @@ export class TextAreaType extends TypeView {
       value: current.value ?? '',
       isChanged: !this.isDefault,
       isConnected: this.isConnected,
+      dataIdentifier: this.name,
       onChange: (value: string) => {
         // The legacy view committed on the browser change event, which only
         // fires when the content actually changed — keep that to avoid

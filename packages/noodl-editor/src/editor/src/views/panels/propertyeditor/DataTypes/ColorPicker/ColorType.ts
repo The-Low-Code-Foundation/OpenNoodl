@@ -4,19 +4,20 @@ import { createRoot, Root } from 'react-dom/client';
 import { ProjectModel } from '@noodl-models/projectmodel';
 
 import { EventDispatcher } from '../../../../../../../shared/utils/EventDispatcher';
+import { ColorInput } from '../../components/ColorInput';
 import { TypeView } from '../../TypeView';
 import { getEditType } from '../../utils';
 import ColorPicker from './colorpicker';
 import ColorStylePicker from './colorstylepicker';
 
-//Note: this entire property can be re-created by events such as todo
+//Note: this entire property can be re-created by events such as undo
 //so the color picker can be left open, but now need a new callback to set
 //values on the new property.
 let colorPicker;
 
 //The property panel might rerender, and recreate all the PropertyEditors, while the Color Picker is open.
-//When this happens, the color picker need new callbacks to update the new DOM elements that are attached to the new view
-//this function handles that and is called whenever a PropertyEditor.ColorType is re-rendered when the color picker is active
+//When this happens, the color picker need new callbacks to update the new view instance — this is called
+//whenever a ColorType is re-rendered while the color picker is active.
 function bindColorPickerToView(view) {
   const initialColor = view.getCurrentValue();
 
@@ -33,6 +34,9 @@ function bindColorPickerToView(view) {
 export class ColorType extends TypeView {
   propertyName: TSFixme;
   el: TSFixme;
+  private root: Root | null = null;
+  private stylePickerRoot: Root | null = null;
+  private stylePickerProps: TSFixme = {};
 
   static fromPort(args) {
     const view = new ColorType();
@@ -52,7 +56,12 @@ export class ColorType extends TypeView {
 
     return view;
   }
+
   dispose() {
+    if (this.root) {
+      this.root.unmount();
+      this.root = null;
+    }
     TypeView.prototype.dispose.call(this);
 
     EventDispatcher.instance.off(this);
@@ -62,41 +71,14 @@ export class ColorType extends TypeView {
       colorPicker = null;
     }
   }
-  onLaunchClicked(scope, el, evt) {
-    this.propertyName = scope.name;
 
-    if (!colorPicker) {
-      colorPicker = new ColorPicker();
-      colorPicker.render();
-    }
-
-    bindColorPickerToView(this);
-
-    this.parent.showPopout({
-      content: colorPicker,
-      attachTo: el,
-      position: 'right',
-      onClose: () => {
-        colorPicker && colorPicker.dispose();
-        colorPicker = null;
-      }
-    });
-
-    evt.stopPropagation();
-  }
   render() {
-    this.el = this.bindView(this.parent.cloneTemplate('color'), this);
-    TypeView.prototype.render.call(this);
+    const div = document.createElement('div');
+    div.style.width = '100%';
 
-    this.updateCurrentValue();
-
-    if (colorPicker && colorPicker._propertyName === this.name) {
-      bindColorPickerToView(this);
+    if (!this.root) {
+      this.root = createRoot(div);
     }
-
-    let colorStylePickerDiv: HTMLDivElement | undefined;
-    let colorStylePickerRoot: Root | null = null;
-    const props = {};
 
     EventDispatcher.instance.on(
       'Model.stylesChanged',
@@ -108,91 +90,131 @@ export class ColorType extends TypeView {
       this
     );
 
-    this.$('input').on('focus', (e) => {
-      e.stopPropagation();
-    });
+    if (colorPicker && colorPicker._propertyName === this.name) {
+      bindColorPickerToView(this);
+    }
 
-    this.$('input').on('click', (e) => {
-      // @ts-expect-error - Dynamic props assignment for legacy component
-      delete props.filter; //delete filter in case the user opens/closes multiple times
+    this.renderReact();
 
-      // @ts-expect-error - Dynamic props assignment for legacy component
-      props.onItemSelected = (name) => {
-        this.parent.setParameter(this.name, name);
-        this.updateCurrentValue();
-        this.parent.hidePopout();
-      };
-
-      const current = this.getCurrentValue();
-      // @ts-expect-error - Dynamic props assignment for legacy component
-      props.inputValue = current.value;
-
-      colorStylePickerDiv = document.createElement('div');
-      colorStylePickerRoot = createRoot(colorStylePickerDiv);
-      colorStylePickerRoot.render(React.createElement(ColorStylePicker, props));
-
-      this.parent.showPopout({
-        content: { el: $(colorStylePickerDiv) },
-        attachTo: this.el,
-        position: 'right',
-        onClose: () => {
-          if (colorStylePickerRoot) {
-            colorStylePickerRoot.unmount();
-            colorStylePickerRoot = null;
-            colorStylePickerDiv = undefined;
-          }
-        }
-      });
-
-      e.stopPropagation(); // Stop propagation, otherwise the popup will close
-    });
-
-    this.$('input').on('keyup', (e) => {
-      if (!colorStylePickerRoot) {
-        return;
-      }
-      if (e.key === 'Enter') {
-        this.parent.hidePopout();
-      } else {
-        // @ts-expect-error - Dynamic props assignment for legacy component
-        props.filter = e.target.value;
-        colorStylePickerRoot.render(React.createElement(ColorStylePicker, props));
-      }
-    });
-
+    this.el = div;
     return this.el;
   }
-  updateCurrentValue() {
-    const current = this.getCurrentValue();
 
-    let stringColor = current.value;
+  private displayString(value: TSFixme): string {
+    let stringColor = value;
 
     if (stringColor && stringColor[0] === '#') {
       //only display the RGB part of a color in the input field
-      //so if the colors has a #RRGGBBAA format, strip away the alpha
+      //so if the color has a #RRGGBBAA format, strip away the alpha
       const hasAlpha = stringColor.length === 9;
       stringColor = hasAlpha ? stringColor.slice(0, 7) : stringColor;
       stringColor = stringColor.toUpperCase();
     }
 
-    this.$('#stringInput').val(stringColor);
-    this.$('.color-thumbnail-content').css({
-      'background-color': ProjectModel.instance.resolveColor(current.value)
-    });
-    this.isDefault = current.isDefault;
+    return stringColor ?? '';
   }
-  onStringInputChanged(scope, el) {
-    let value = this.$('#stringInput').val().trim();
-    if (value === '') value = undefined;
 
-    const isHex = value !== undefined && /[0-9A-F]{6}$/i.test(value);
-    if (isHex === true && value[0] !== '#') {
-      value = '#' + value;
+  renderReact() {
+    if (!this.root) return;
+
+    const current = this.getCurrentValue();
+
+    this.root.render(
+      React.createElement(ColorInput, {
+        label: this.displayName,
+        value: this.displayString(current.value),
+        resolvedColor: ProjectModel.instance.resolveColor(current.value),
+        isChanged: !this.isDefault,
+        isConnected: this.isConnected,
+        dataIdentifier: this.name,
+        onCommit: (text: string) => {
+          let value: TSFixme = text.trim();
+          if (value === '') value = undefined;
+
+          const isHex = value !== undefined && /[0-9A-F]{6}$/i.test(value);
+          if (isHex === true && value[0] !== '#') {
+            value = '#' + value;
+          }
+
+          this.parent.setParameter(this.name, value);
+          this.updateCurrentValue();
+        },
+        onOpenColorPicker: (anchor: HTMLElement) => this.openColorPicker(anchor),
+        onOpenStylePicker: (anchor: HTMLElement) => this.openStylePicker(anchor),
+        onFilter: (text: string) => {
+          if (!this.stylePickerRoot) return;
+          this.stylePickerProps.filter = text;
+          this.stylePickerRoot.render(React.createElement(ColorStylePicker, this.stylePickerProps));
+        },
+        onEnter: () => {
+          if (this.stylePickerRoot) this.parent.hidePopout();
+        },
+        onReset: () => {
+          this.parent.model.setParameter(this.name, undefined, {
+            undo: true,
+            label: 'reset parameter'
+          });
+          this.isDefault = true;
+          this.updateCurrentValue();
+        }
+      })
+    );
+  }
+
+  private openColorPicker(anchor: HTMLElement) {
+    this.propertyName = this.name;
+
+    if (!colorPicker) {
+      colorPicker = new ColorPicker();
+      colorPicker.render();
     }
 
-    this.parent.setParameter(this.name, value);
-    this.updateCurrentValue();
+    bindColorPickerToView(this);
+
+    this.parent.showPopout({
+      content: colorPicker,
+      attachTo: $(anchor),
+      position: 'right',
+      onClose: () => {
+        colorPicker && colorPicker.dispose();
+        colorPicker = null;
+      }
+    });
   }
+
+  private openStylePicker(anchor: HTMLElement) {
+    const props = this.stylePickerProps;
+    delete props.filter; //delete filter in case the user opens/closes multiple times
+
+    props.onItemSelected = (name: string) => {
+      this.parent.setParameter(this.name, name);
+      this.updateCurrentValue();
+      this.parent.hidePopout();
+    };
+    props.inputValue = this.getCurrentValue().value;
+
+    const div = document.createElement('div');
+    this.stylePickerRoot = createRoot(div);
+    this.stylePickerRoot.render(React.createElement(ColorStylePicker, props));
+
+    this.parent.showPopout({
+      content: { el: $(div) },
+      attachTo: $(this.el),
+      position: 'right',
+      onClose: () => {
+        if (this.stylePickerRoot) {
+          this.stylePickerRoot.unmount();
+          this.stylePickerRoot = null;
+        }
+      }
+    });
+  }
+
+  updateCurrentValue() {
+    this.isDefault = this.getCurrentValue().isDefault;
+    this.renderReact();
+  }
+
   resetToDefault() {
     this.updateCurrentValue();
   }

@@ -6,6 +6,7 @@ import { TypeView } from '../TypeView';
 import { getEditType } from '../utils';
 
 export class QueryFilterType extends TypeView {
+  el: TSFixme;
   private root: Root | null = null;
 
   static fromPort(args) {
@@ -52,7 +53,7 @@ export class QueryFilterType extends TypeView {
 
     renderFilters();
 
-    this.el = $(div);
+    this.el = div;
 
     return this.el;
   }

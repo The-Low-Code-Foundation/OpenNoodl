@@ -6,6 +6,7 @@ import { TypeView } from '../TypeView';
 import { getEditType } from '../utils';
 
 export class QuerySortingType extends TypeView {
+  el: TSFixme;
   private root: Root | null = null;
 
   public static fromPort(args: TSFixme) {
@@ -53,7 +54,7 @@ export class QuerySortingType extends TypeView {
 
     renderSorting();
 
-    this.el = $(div);
+    this.el = div;
 
     return this.el;
   }

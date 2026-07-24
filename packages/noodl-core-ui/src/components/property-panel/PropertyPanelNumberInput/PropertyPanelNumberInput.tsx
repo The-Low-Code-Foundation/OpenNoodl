@@ -11,6 +11,7 @@ export function PropertyPanelNumberInput({
   value,
   isChanged,
   isConnected,
+  dataIdentifier,
   onChange,
   onFocus,
   onBlur,
@@ -48,6 +49,7 @@ export function PropertyPanelNumberInput({
       type="text"
       isChanged={isChanged}
       isConnected={isConnected}
+      dataIdentifier={dataIdentifier}
       onChange={(value) => setDisplayedInputValue(String(value))}
       onFocus={onFocus}
       onBlur={(e) => {

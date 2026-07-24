@@ -38,6 +38,7 @@ export abstract class PickerTypeView extends TypeView {
         value: current.value ?? '',
         isChanged: !this.isDefault,
         isConnected: this.isConnected,
+        dataIdentifier: this.name,
         onCommit: (value: string) => this.commit(value),
         onOpenPicker: (anchor: HTMLElement) => this.openPicker(anchor),
         onFilter: (text: string) => this.filterPicker(text),

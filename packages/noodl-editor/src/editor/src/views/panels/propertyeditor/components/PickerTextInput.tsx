@@ -18,6 +18,7 @@ export interface PickerTextInputProps {
   onFilter?: (text: string) => void;
   onEnter?: () => void;
   onReset?: () => void;
+  dataIdentifier?: string;
 }
 
 /**
@@ -34,7 +35,8 @@ export function PickerTextInput({
   onOpenPicker,
   onFilter,
   onEnter,
-  onReset
+  onReset,
+  dataIdentifier
 }: PickerTextInputProps) {
   const [displayedValue, setDisplayedValue] = useState(value ?? '');
 
@@ -55,6 +57,7 @@ export function PickerTextInput({
         value={displayedValue}
         isChanged={isChanged}
         isConnected={isConnected}
+        dataIdentifier={dataIdentifier}
         onChange={(text) => {
           setDisplayedValue(String(text));
           onFilter && onFilter(String(text));

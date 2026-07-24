@@ -33,7 +33,9 @@ export class LogicBuilderHiddenType extends TypeView {
     // Render an empty, invisible element
     // This is necessary because the property panel expects something to be returned
     // but we want it to take up no space
-    this.el = $('<div style="display: none;"></div>');
+    const div = document.createElement('div');
+    div.style.display = 'none';
+    this.el = div;
     return this.el;
   }
 

@@ -97,7 +97,8 @@ export function PropertyPanelInput({
   onExpressionChange,
   expressionError,
   onExpressionExpand,
-  onReset
+  onReset,
+  dataIdentifier
 }: PropertyPanelInputProps) {
   const Input = useMemo(() => {
     switch (inputType) {
@@ -165,6 +166,8 @@ export function PropertyPanelInput({
         isConnected={isConnected}
         // @ts-expect-error
         properties={properties}
+        // @ts-expect-error
+        dataIdentifier={dataIdentifier}
       />
     );
   };

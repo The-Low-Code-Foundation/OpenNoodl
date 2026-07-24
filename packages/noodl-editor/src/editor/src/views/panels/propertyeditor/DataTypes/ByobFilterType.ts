@@ -15,6 +15,7 @@ import { TypeView } from '../TypeView';
 import { getEditType } from '../utils';
 
 export class ByobFilterType extends TypeView {
+  el: TSFixme;
   private root: Root | null = null;
 
   static fromPort(args: TSFixme): ByobFilterType {
@@ -92,7 +93,7 @@ export class ByobFilterType extends TypeView {
 
     renderButton(parseValue());
 
-    this.el = $(div);
+    this.el = div;
 
     return this.el;
   }

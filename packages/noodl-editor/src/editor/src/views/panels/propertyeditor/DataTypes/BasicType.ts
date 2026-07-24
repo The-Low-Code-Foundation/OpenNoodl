@@ -79,6 +79,7 @@ export class BasicType extends TypeView {
     const props = {
       label: this.displayName,
       value: displayValue,
+      dataIdentifier: this.name,
       inputType: mapTypeToInputType(firstType(this.type)),
       properties: undefined, // No special properties needed for basic types
       isChanged: !this.isDefault,
