@@ -6,6 +6,7 @@ import { KeyCode, KeyMod } from '@noodl-utils/keyboard/KeyCode';
 import { IconName } from '@noodl-core-ui/components/common/Icon';
 
 import config from '../../shared/config/config';
+import { ChangeReviewDocumentProvider } from './views/documents/ChangeReviewDocument';
 import { ComponentDiffDocumentProvider } from './views/documents/ComponentDiffDocument';
 import { EditorDocumentProvider } from './views/documents/EditorDocument';
 import { AppSetupPanel } from './views/panels/AppSetupPanel/AppSetupPanel';
@@ -311,6 +312,7 @@ export function installDocuments() {
   appRegistry.openDocument(EditorDocumentProvider.ID);
 
   appRegistry.registerDocumentProvider(ComponentDiffDocumentProvider.ID, new ComponentDiffDocumentProvider());
+  appRegistry.registerDocumentProvider(ChangeReviewDocumentProvider.ID, new ChangeReviewDocumentProvider());
 
   if (import.meta.webpackHot) {
     import.meta.webpackHot.accept('./views/documents/EditorDocument', () => {
@@ -321,6 +323,9 @@ export function installDocuments() {
         ComponentDiffDocumentProvider.ID,
         new ComponentDiffDocumentProvider()
       );
+    });
+    import.meta.webpackHot.accept('./views/documents/ChangeReviewDocument', () => {
+      AppRegistry.instance.registerDocumentProvider(ChangeReviewDocumentProvider.ID, new ChangeReviewDocumentProvider());
     });
   }
 }

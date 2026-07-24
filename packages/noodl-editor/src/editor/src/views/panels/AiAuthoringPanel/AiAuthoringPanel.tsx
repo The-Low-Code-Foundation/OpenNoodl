@@ -17,12 +17,14 @@ import {
   acceptAuthoredComponent,
   AuthoringSession,
   AuthoringSetupError,
+  buildChangeSet,
   StagingError,
   type AuthoringActivity,
   type AuthoringSessionState
 } from '@noodl-models/AiAssistant/authoring';
 import { AiClient } from '@noodl-models/AiAssistant/client';
 import { fromProjectModel } from '@noodl-models/AiAssistant/explain/graph';
+import { AppRegistry } from '@noodl-models/app_registry';
 import { ProjectModel } from '@noodl-models/projectmodel';
 
 import { FeedbackType } from '@noodl-constants/FeedbackType';
@@ -38,6 +40,7 @@ import { ExperimentalFlag } from '@noodl-core-ui/components/sidebar/Experimental
 import { Section, SectionVariant } from '@noodl-core-ui/components/sidebar/Section';
 import { Text, TextType } from '@noodl-core-ui/components/typography/Text';
 
+import { ChangeReviewDocumentProvider } from '../../documents/ChangeReviewDocument';
 import css from './AiAuthoringPanel.module.scss';
 
 export const AiAuthoringPanel_ID = 'ai-authoring';
@@ -214,6 +217,20 @@ export function AiAuthoringPanel() {
     setState(null);
   }, []);
 
+  const openReview = useCallback(() => {
+    const session = sessionRef.current;
+    const project = ProjectModel.instance;
+    const files = session?.stagedFiles;
+    if (!session || !project || !files) return;
+
+    AppRegistry.instance.openDocument(ChangeReviewDocumentProvider.ID, {
+      changeSet: buildChangeSet(project, files),
+      title: `Review ${session.legacyName}`,
+      onAccept: accept,
+      onReject: reject
+    });
+  }, [accept, reject]);
+
   const note = state ? outcomeNote(state) : null;
   const canDecide = Boolean(state && !state.busy && state.staged);
 
@@ -344,6 +361,13 @@ export function AiAuthoringPanel() {
               isDisabled={state?.busy}
               onChange={(event) => setRefineText(event.target.value)}
               onEnter={refine}
+            />
+            <PrimaryButton
+              label="Review changes"
+              icon={IconName.Search}
+              variant={PrimaryButtonVariant.Ghost}
+              isGrowing
+              onClick={openReview}
             />
             <HStack UNSAFE_style={{ gap: 8 }}>
               <PrimaryButton label="Accept" icon={IconName.Check} isGrowing onClick={accept} />
