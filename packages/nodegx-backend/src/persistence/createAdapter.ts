@@ -53,14 +53,17 @@ export interface CreateAdapterOptions {
 }
 
 /**
- * Open the backend's database under <dataDir>/data.sqlite and connect.
+ * Open the backend's database under <dataDir>/data/local.db and connect.
+ * (`data/local.db` is the layout the editor has always created under
+ * `~/.noodl/backends/<id>/` — the service keeps it so a backend directory
+ * means the same thing whichever process opens it.)
  *
  * @throws LocalBackendPersistenceError when no SQLite engine is available and
  *   allowEphemeral is false — the service must not pretend to persist.
  */
 export async function createAdapter(options: CreateAdapterOptions): Promise<PersistenceHandle> {
-  fs.mkdirSync(options.dataDir, { recursive: true });
-  const dbPath = path.join(options.dataDir, 'data.sqlite');
+  fs.mkdirSync(path.join(options.dataDir, 'data'), { recursive: true });
+  const dbPath = path.join(options.dataDir, 'data', 'local.db');
 
   const adapter = new LocalSQLAdapter(dbPath, {
     allowEphemeral: !!options.allowEphemeral,

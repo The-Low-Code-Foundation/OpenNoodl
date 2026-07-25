@@ -148,3 +148,123 @@ service loads the worktree's `engine.js` (the repo-root `node_modules` symlink
 points at the main checkout, which does not yet have `engine.js`). `dist/` and
 `node_modules/` are gitignored. On a normal install after merge, the declared
 `@noodl/runtime` dependency resolves correctly with no symlink needed.
+
+---
+
+# Second half (2026-07-25) — the service is real
+
+Everything the front half deferred now exists. Decisions of record:
+
+## Process contract
+
+- **Spawn:** the editor's `ServiceSupervisor` runs `process.execPath` (the
+  Electron binary) with `ELECTRON_RUN_AS_NODE=1` on `bin/nodegx-backend.js
+  serve …` — the same binary that runs the editor runs the service as plain
+  Node, so dev, packaged app, and headless deploy share one artifact and there
+  is no system-Node dependency.
+- **Handshake:** the service prints `NODEGX_BACKEND_READY {json}` (port, url,
+  persistence, engine) on stdout when the HTTP surface is up. The supervisor
+  resolves on that line, with a 15s timeout and the child's captured log tail
+  in every failure message. stdout/stderr go into a 200-line ring buffer
+  surfaced through `backend:status`.
+- **Shutdown:** SIGTERM, SIGKILL after 3s. `stopAll()` on editor quit. A child
+  that dies on its own shows up as `mode: 'failed'` with exit code + log tail —
+  verified live (stop → no zombie process, port closed; start → data intact).
+- **Entry resolution:** `NODEGX_BACKEND_ENTRY` env override → monorepo sibling
+  `packages/nodegx-backend/dist/cli.js` (two `__dirname` depths: webpack bundle
+  at `src/main` vs source at `src/main/src/local-backend`) →
+  `<resourcesPath>/nodegx-backend/cli.js` (packaged). Missing entry = loud
+  error listing every probed path.
+
+## Build: esbuild bundle, not tsc output
+
+`dist/cli.js` is one self-contained CJS bundle (~690KB, built in ~20ms by
+`scripts/build.js`): this package's TS + the `@noodl/runtime` adapter stack +
+**`noodl-viewer-cloud/src` (CloudRunner + execution-history) via the
+`@cloud-runtime` alias**. Deploy = copy the file, run it. Two tricks:
+
+- The banner defines `_noodl_cloud_runtime_version`, flipping the runtime
+  clients (cloudstore/configservice) into their fetch-based cloud path — same
+  as viewer-cloud's own webpack BannerPlugin. `service.ts` also sets it on
+  `globalThis` so the un-bundled form (jest, embedding) behaves identically.
+- `node:sqlite` stays external. Jest mirrors the alias via `moduleNameMapper`;
+  `tsc --noEmit` stays as the typecheck.
+
+## The wire subset, as built
+
+`/classes` (POST create + `_method:'GET'` query tunnel, GET count-style
+queries, fetch/save/delete, `Increment`/`AddRelation`/`RemoveRelation` ops,
+`$relatedTo`, `keys`/`order`/`limit`/`skip`/`count`), `/aggregate`
+(`$group`/`$match` + `distinct`), `/files` (upload/serve/delete under
+`<dataDir>/files`), `/functions/:name` (WorkflowRunner → CloudRunner),
+`/config` (from `<dataDir>/config-params.json`), sessions (`/login`,
+`/logout`, `/users` signup, `/users/me`, `PUT /users/:id`) with scrypt
+password hashing, Parse-style `r:` revocable tokens in a `_Session` table,
+and the load-bearing **error code 209** for invalid sessions. Email flows
+(password reset / verification) are 501 — with HTML bodies on the two
+endpoints the client scrapes as HTML — until BAK-002.
+
+Response-shape subtleties that are contract, not style:
+- Create answers `{objectId, createdAt}` ONLY — the client merges its own data
+  over the response *without* deserializing, so wire-typed fields would leak
+  `__type` envelopes into model data.
+- `/users/me` must echo `sessionToken` — the client re-stores the whole
+  response as its current user and reads the token from it afterwards.
+- Schema-typed `Pointer` columns serialize as `{__type:'Pointer'}` envelopes,
+  expanded to embedded `__type:'Object'` records under `include=` (one level).
+- Functions inside the service reach the database **over the wire**: the
+  service sets `_noodl_cloudservices = {endpoint: itself, appId: backendId}`,
+  so record/user/config nodes in cloud functions loop back over HTTP. The old
+  in-editor `injectAdapterIntoContext()` was consumed by nothing and is gone.
+
+## Execution history across the process boundary
+
+Each service owns `<dataDir>/executions.sqlite` (same WF-006 store/logger
+classes, bundled; fresh-logger-per-run; same scrub rules — `scrub.ts` moved to
+`noodl-viewer-cloud/src/execution-history` and is re-exported from the editor's
+old path). The editor reads it over HTTP (`/executions`, `/executions/:id`):
+`ExecutionHistoryManager.listMerged/getMerged` merge every running backend's
+store with the editor-local one behind the *unchanged* IPC channels. An
+unreachable backend degrades to local-only, never an error.
+
+## Bugs found under the real engine
+
+- **SchemaManager `NOT LIKE '_%'`** — `_` is a LIKE wildcard, so
+  `listTables()`/`exportSchemas()` excluded EVERY table on a real engine
+  (invisible on the mock, which regex-parsed the SQL). Fixed with
+  `ESCAPE '\'`; regression-guarded in the service tests.
+- **BYOB handlers `await`ed callback-style adapter methods** (which return
+  `undefined`) — the old in-editor `/api` routes could never actually answer
+  with data. The service routes go through the promise-shaped `AdapterFacade`.
+
+## Verified
+
+- 37 package tests (full HTTP surface incl. a real CloudRunner function run
+  with scrubbed execution logging; restart persistence; non-loopback token
+  auth; process contract against the built bundle) + 334 runtime + 32
+  editor-main tests green; editor tsc clean.
+- Live in the editor: panel Start → child spawned + READY; /health honest;
+  Schema panel (system tables hidden — the LIKE fix); Data Browser showing
+  records written over Parse-wire; Stop → clean exit, no zombies; Start →
+  data intact.
+
+## Residuals / notes for the next tasks
+
+- `packages/noodl-editor/package.json` gained electron-builder
+  `extraResources` for `nodegx-backend/cli.js`(+map) and `scripts/build-editor.ts`
+  builds the service — but a **packaged-app run was not executed** this pass
+  (the repo's packaging-trap history says treat that as unverified).
+  *The package.json edit is intentionally uncommitted:* a concurrent DEBT-013
+  session holds entangled uncommitted edits to the same file (Monaco
+  retirement); the extraResources addition rides with that session's commit.
+- Live record/user nodes in a **preview** against the local backend not yet
+  exercised (the cloudservices auto-set seam is wired; RUN-003's BYOB path is
+  what the smoke project uses). WF-005/WF-001 will live on this surface daily.
+- In-editor local preview hard-codes `:8577` for `/functions`
+  (`cloudfunctions.js` `isRunningLocally()` branch) — functions from a local
+  preview still hit the legacy hidden-window server, not the new service.
+  That seam moves in **WF-007** when the 8577 server dies.
+- `_User`/`_Session` are pre-created at service start (a `where` on a column of
+  a not-yet-created table is a SQL error, not an empty result).
+- File serving derives content type from the extension (no sidecar metadata) —
+  recorded simplification.

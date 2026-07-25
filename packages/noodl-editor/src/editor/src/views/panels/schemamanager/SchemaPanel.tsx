@@ -113,6 +113,25 @@ export function SchemaPanel({ backendId, backendName, isRunning, onClose }: Sche
     setExpandedTable((prev) => (prev === tableName ? tableName : tableName));
   }, []);
 
+  // Delete a table and all its data (WF-004: wires the previously-dead
+  // backend:deleteTable handler to a UI caller).
+  const handleDeleteTable = useCallback(
+    async (tableName: string) => {
+      const count = recordCounts[tableName];
+      const suffix = count ? ` and its ${count.toLocaleString()} ${count === 1 ? 'record' : 'records'}` : '';
+      if (!window.confirm(`Delete table "${tableName}"${suffix}? This cannot be undone.`)) return;
+
+      try {
+        await invokeIPC('backend:deleteTable', backendId, tableName);
+        await loadSchema();
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : 'Failed to delete table';
+        setError(message);
+      }
+    },
+    [backendId, recordCounts, loadSchema]
+  );
+
   // Render loading state
   if (loading) {
     return (
@@ -218,6 +237,7 @@ export function SchemaPanel({ backendId, backendName, isRunning, onClose }: Sche
               expanded={expandedTable === table.name}
               onToggleExpand={() => handleToggleExpand(table.name)}
               onEdit={() => handleEditTable(table.name)}
+              onDelete={() => handleDeleteTable(table.name)}
             />
           ))
         )}

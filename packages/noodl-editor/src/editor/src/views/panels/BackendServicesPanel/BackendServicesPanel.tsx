@@ -12,6 +12,8 @@ import { useEventListener } from '@noodl-hooks/useEventListener';
 import React, { useCallback, useEffect, useState } from 'react';
 
 import { BackendServices, BackendServicesEvent } from '@noodl-models/BackendServices';
+import { ProjectModel } from '@noodl-models/projectmodel';
+import { getCloudServices, setCloudServices } from '@noodl-models/projectmodel.editor';
 
 import { ActivityIndicator } from '@noodl-core-ui/components/common/ActivityIndicator';
 import { IconName, IconSize } from '@noodl-core-ui/components/common/Icon';
@@ -231,7 +233,28 @@ export function BackendServicesPanel() {
                   <LocalBackendCard
                     key={backend.id}
                     backend={backend}
-                    onStart={async (options) => startLocalBackend(backend.id, options)}
+                    onStart={async (options) => {
+                      const ok = await startLocalBackend(backend.id, options);
+                      // WF-004 convenience: a running local backend becomes the
+                      // project's cloud services endpoint automatically — but
+                      // only when none is configured, never clobbering a real
+                      // external/deployed endpoint.
+                      if (ok) {
+                        const project = ProjectModel.instance;
+                        const current = project ? getCloudServices(project) : null;
+                        if (project && current && !current.endpoint) {
+                          setCloudServices(project, {
+                            id: backend.id,
+                            endpoint: `http://localhost:${backend.port}`,
+                            appId: backend.id
+                          });
+                          console.log(
+                            `[BackendServices] Project cloud services set to local backend "${backend.name}" (http://localhost:${backend.port})`
+                          );
+                        }
+                      }
+                      return ok;
+                    }}
                     onStop={async () => stopLocalBackend(backend.id)}
                     onDelete={() => handleDeleteLocalBackend(backend.id)}
                   />

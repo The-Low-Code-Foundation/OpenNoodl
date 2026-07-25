@@ -37,6 +37,14 @@ export interface BackendServiceOptions {
    * service reports this loudly. Off by default (RUN-004 loud-failure policy).
    */
   allowEphemeral: boolean;
+  /**
+   * Identity of the backend this service runs. The editor passes the id/name it
+   * persists under `~/.noodl/backends/<id>/`; a headless deploy may pass
+   * anything (defaults below). `backendId` doubles as the accepted
+   * `X-Parse-Application-Id` — reported, not enforced, on localhost.
+   */
+  backendId: string;
+  backendName: string;
 }
 
 /** Non-loopback bind => a token is mandatory. */
@@ -55,7 +63,9 @@ const DEFAULTS: BackendServiceOptions = {
   port: 8577,
   host: '127.0.0.1',
   authToken: null,
-  allowEphemeral: false
+  allowEphemeral: false,
+  backendId: 'nodegx-backend',
+  backendName: 'NodeGX Backend'
 };
 
 /**

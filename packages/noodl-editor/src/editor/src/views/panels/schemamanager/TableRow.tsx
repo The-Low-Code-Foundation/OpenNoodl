@@ -45,6 +45,8 @@ export interface TableRowProps {
   onToggleExpand: () => void;
   /** Called when edit is requested */
   onEdit: () => void;
+  /** Called when the table should be deleted (WF-004: wires backend:deleteTable) */
+  onDelete: () => void;
 }
 
 /** Color mapping for data types */
@@ -77,7 +79,7 @@ function TypeBadge({ type }: { type: string }) {
 /**
  * TableRow - Expandable table display row
  */
-export function TableRow({ table, recordCount, expanded, onToggleExpand, onEdit }: TableRowProps) {
+export function TableRow({ table, recordCount, expanded, onToggleExpand, onEdit, onDelete }: TableRowProps) {
   const columnCount = table.columns?.length || 0;
 
   return (
@@ -118,6 +120,15 @@ export function TableRow({ table, recordCount, expanded, onToggleExpand, onEdit 
             onClick={(e) => {
               e.stopPropagation();
               onEdit();
+            }}
+          />
+          <PrimaryButton
+            label="Delete"
+            size={PrimaryButtonSize.Small}
+            variant={PrimaryButtonVariant.Danger}
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete();
             }}
           />
         </HStack>

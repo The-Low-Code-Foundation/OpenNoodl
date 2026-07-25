@@ -103,13 +103,13 @@ Sizing note: this replaces the "±2 wks" naive read of "implement Parse" — it 
 
 ## Success Criteria
 
-- [ ] `packages/nodegx-backend` runs headless with no Electron present; smoke path green
-- [ ] Editor spawns, supervises, and surfaces the service's real status; existing panels work unchanged
-- [ ] Real persistence: write, restart service, read back — as a test
-- [ ] No silent fallbacks remain in the backend path
-- [ ] Engine decision recorded with a compatibility test
-- [ ] Localhost default + token for wider binding
-- [ ] Packaged editor verified, not just dev
+- [x] `packages/nodegx-backend` runs headless with no Electron present; smoke path green (37 tests incl. process-contract spawn of the built bundle)
+- [x] Editor spawns, supervises, and surfaces the service's real status; existing panels work unchanged (verified live 2026-07-25)
+- [x] Real persistence: write, restart service, read back — as a test (`tests/service-http.test.ts`), and live via panel Stop/Start
+- [x] No silent fallbacks remain in the backend path (viewer-cloud probe deleted — CloudRunner bundled statically; supervisor failures carry probed paths/log tails; ephemeral is explicit opt-in)
+- [x] Engine decision recorded with a compatibility test (front half; NOTES.md)
+- [x] Localhost default + token for wider binding (auth-policy test green)
+- [ ] Packaged editor verified, not just dev — **not run this pass.** `extraResources` + build-step wired (the package.json half is uncommitted pending DEBT-013's entangled edits); verify at the next packaged build
 
 ## Risks & Mitigations
 
@@ -130,9 +130,14 @@ Sizing note: this replaces the "±2 wks" naive read of "implement Parse" — it 
 
 ## Checklist
 
-- [ ] Process contract designed and recorded
-- [ ] Engine decision with RUN-004 + compatibility test
-- [ ] Package extracted; headless smoke green
-- [ ] Editor supervision + honest status; loud-failure pass
-- [ ] Auth/binding; integrity test; packaged-app verification
-- [ ] CHANGELOG; update RUN-004 and WF-003 with the as-built contract
+- [x] Process contract designed and recorded (NOTES.md §Process contract)
+- [x] Engine decision with RUN-004 + compatibility test (`node:sqlite`; front half)
+- [x] Package extracted; headless smoke green
+- [x] Editor supervision + honest status; loud-failure pass
+- [x] Auth/binding; integrity test — packaged-app verification **deferred** (wired, not run; see Success Criteria)
+- [x] CHANGELOG updated; as-built contract recorded in NOTES.md (WF-003's deploy input: `dist/cli.js` is the artifact)
+
+Also in scope, delivered: Parse-wire subset live-tested against the request
+shapes all four runtime clients emit; `cloudservices` auto-set on local-backend
+start; `backend:deleteTable` wired to a Schema-panel caller; execution-history
+IPC merges running services' stores; SchemaManager LIKE-wildcard bug fixed.

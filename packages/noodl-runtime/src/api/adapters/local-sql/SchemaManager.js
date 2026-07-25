@@ -281,8 +281,14 @@ class SchemaManager {
    * @returns {string[]} Table names
    */
   listTables() {
+    // NB: `_` is a LIKE wildcard matching any single character — unescaped,
+    // `NOT LIKE '_%'` excludes EVERY table, not just underscore-prefixed ones.
+    // Latent for as long as only the in-memory mock ran; surfaced by the real
+    // engine (WF-004).
     const rows = this.db
-      .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_%'")
+      .prepare(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite%' AND name NOT LIKE '\\_%' ESCAPE '\\'"
+      )
       .all();
 
     return rows.map((r) => r.name);
@@ -296,7 +302,8 @@ class SchemaManager {
   exportSchemas() {
     this.ensureSchemaTable();
 
-    const rows = this.db.prepare('SELECT "name", "schema" FROM "_Schema" WHERE "name" NOT LIKE \'_%\'').all();
+    // Same wildcard-escape fix as listTables() — `_%` unescaped matches everything.
+    const rows = this.db.prepare('SELECT "name", "schema" FROM "_Schema" WHERE "name" NOT LIKE \'\\_%\' ESCAPE \'\\\'').all();
 
     return rows.map((r) => JSON.parse(r.schema));
   }

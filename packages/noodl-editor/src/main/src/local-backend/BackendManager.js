@@ -1,8 +1,18 @@
 /**
  * BackendManager
  *
- * Manages the lifecycle of local backends - creation, starting, stopping, deletion.
- * Provides IPC handlers for the renderer process to interact with backends.
+ * Manages the lifecycle of local backends — creation, starting, stopping,
+ * deletion — and provides the IPC surface the renderer's Backend Services
+ * panel / Data Browser call.
+ *
+ * WF-004: backends no longer run inside the editor's main process. Each
+ * running backend is a supervised `nodegx-backend` child process
+ * (ServiceSupervisor), and every data/schema/workflow IPC handler proxies over
+ * HTTP to it. The IPC channel names and payload shapes are unchanged — the
+ * renderer UI does not know the process boundary moved.
+ *
+ * Config/metadata persistence stays here (it is editor state, not service
+ * state): `~/.noodl/backends/<id>/{config.json,data/,workflows/}`.
  *
  * @module local-backend/BackendManager
  */
@@ -12,7 +22,7 @@ const fs = require('fs').promises;
 const path = require('path');
 const os = require('os');
 
-const { LocalBackendServer } = require('./LocalBackendServer');
+const { ServiceSupervisor } = require('./ServiceSupervisor');
 
 /**
  * Safe console.log wrapper
@@ -48,7 +58,7 @@ function generateBackendId() {
 class BackendManager {
   constructor() {
     this.backendsPath = path.join(os.homedir(), '.noodl', 'backends');
-    this.runningBackends = new Map(); // id -> LocalBackendServer
+    this.runningBackends = new Map(); // id -> ServiceSupervisor
     // id -> { code, message } — remembers why the last start attempt failed so
     // the UI can show "persistence unavailable" for a backend that isn't running.
     this.startErrors = new Map();
@@ -63,119 +73,59 @@ class BackendManager {
 
     safeLog('Setting up IPC handlers');
 
-    // List all backends
-    ipcMain.handle('backend:list', async () => {
-      return this.listBackends();
-    });
-
-    // Create a new backend
-    ipcMain.handle('backend:create', async (_, name) => {
-      return this.createBackend(name);
-    });
-
-    // Delete a backend
-    ipcMain.handle('backend:delete', async (_, id) => {
-      return this.deleteBackend(id);
-    });
-
+    ipcMain.handle('backend:list', async () => this.listBackends());
+    ipcMain.handle('backend:create', async (_, name) => this.createBackend(name));
+    ipcMain.handle('backend:delete', async (_, id) => this.deleteBackend(id));
     // Start a backend. options.ephemeral opts in to non-persisting in-memory mode.
-    ipcMain.handle('backend:start', async (_, id, options) => {
-      return this.startBackend(id, options);
-    });
-
-    // Stop a backend
-    ipcMain.handle('backend:stop', async (_, id) => {
-      return this.stopBackend(id);
-    });
-
-    // Get backend status
-    ipcMain.handle('backend:status', async (_, id) => {
-      return this.getStatus(id);
-    });
-
-    // Get backend config
-    ipcMain.handle('backend:get', async (_, id) => {
-      return this.getBackend(id);
-    });
-
-    // Export schema
-    ipcMain.handle('backend:export-schema', async (_, id, format) => {
-      return this.exportSchema(id, format);
-    });
-
-    // Get full schema
-    ipcMain.handle('backend:getSchema', async (_, id) => {
-      return this.getSchema(id);
-    });
-
-    // Get single table schema
-    ipcMain.handle('backend:getTableSchema', async (_, id, tableName) => {
-      return this.getTableSchema(id, tableName);
-    });
-
-    // Get record count for a table
-    ipcMain.handle('backend:getRecordCount', async (_, id, tableName) => {
-      return this.getRecordCount(id, tableName);
-    });
-
-    // Create a new table
-    ipcMain.handle('backend:createTable', async (_, id, tableSchema) => {
-      return this.createTable(id, tableSchema);
-    });
-
-    // Add column to existing table
-    ipcMain.handle('backend:addColumn', async (_, id, tableName, column) => {
-      return this.addColumn(id, tableName, column);
-    });
-
-    // Rename column in existing table
-    ipcMain.handle('backend:renameColumn', async (_, id, tableName, oldName, newName) => {
-      return this.renameColumn(id, tableName, oldName, newName);
-    });
-
-    // Delete a table
-    ipcMain.handle('backend:deleteTable', async (_, id, tableName) => {
-      return this.deleteTable(id, tableName);
-    });
+    ipcMain.handle('backend:start', async (_, id, options) => this.startBackend(id, options));
+    ipcMain.handle('backend:stop', async (_, id) => this.stopBackend(id));
+    ipcMain.handle('backend:status', async (_, id) => this.getStatus(id));
+    ipcMain.handle('backend:get', async (_, id) => this.getBackend(id));
+    ipcMain.handle('backend:export-schema', async (_, id, format) => this.exportSchema(id, format));
+    ipcMain.handle('backend:getSchema', async (_, id) => this.getSchema(id));
+    ipcMain.handle('backend:getTableSchema', async (_, id, tableName) => this.getTableSchema(id, tableName));
+    ipcMain.handle('backend:getRecordCount', async (_, id, tableName) => this.getRecordCount(id, tableName));
+    ipcMain.handle('backend:createTable', async (_, id, tableSchema) => this.createTable(id, tableSchema));
+    ipcMain.handle('backend:addColumn', async (_, id, tableName, column) => this.addColumn(id, tableName, column));
+    ipcMain.handle('backend:renameColumn', async (_, id, tableName, oldName, newName) =>
+      this.renameColumn(id, tableName, oldName, newName)
+    );
+    ipcMain.handle('backend:deleteTable', async (_, id, tableName) => this.deleteTable(id, tableName));
 
     // ==========================================================================
     // DATA OPERATIONS (for Data Browser)
     // ==========================================================================
 
-    // Query records with pagination, search, filters
-    ipcMain.handle('backend:queryRecords', async (_, id, options) => {
-      return this.queryRecords(id, options);
-    });
-
-    // Create a new record
-    ipcMain.handle('backend:createRecord', async (_, id, collection, data) => {
-      return this.createRecord(id, collection, data);
-    });
-
-    // Update an existing record
-    ipcMain.handle('backend:saveRecord', async (_, id, collection, objectId, data) => {
-      return this.saveRecord(id, collection, objectId, data);
-    });
-
-    // Delete a record
-    ipcMain.handle('backend:deleteRecord', async (_, id, collection, objectId) => {
-      return this.deleteRecord(id, collection, objectId);
-    });
+    ipcMain.handle('backend:queryRecords', async (_, id, options) => this.queryRecords(id, options));
+    ipcMain.handle('backend:createRecord', async (_, id, collection, data) => this.createRecord(id, collection, data));
+    ipcMain.handle('backend:saveRecord', async (_, id, collection, objectId, data) =>
+      this.saveRecord(id, collection, objectId, data)
+    );
+    ipcMain.handle('backend:deleteRecord', async (_, id, collection, objectId) =>
+      this.deleteRecord(id, collection, objectId)
+    );
 
     // Workflow management
-    ipcMain.handle('backend:update-workflow', async (_, args) => {
-      return this.updateWorkflow(args.backendId, args.name, args.workflow);
-    });
-
-    ipcMain.handle('backend:reload-workflows', async (_, id) => {
-      return this.reloadWorkflows(id);
-    });
-
-    ipcMain.handle('backend:workflow-status', async (_, id) => {
-      return this.getWorkflowStatus(id);
-    });
+    ipcMain.handle('backend:update-workflow', async (_, args) =>
+      this.updateWorkflow(args.backendId, args.name, args.workflow)
+    );
+    ipcMain.handle('backend:reload-workflows', async (_, id) => this.reloadWorkflows(id));
+    ipcMain.handle('backend:workflow-status', async (_, id) => this.getWorkflowStatus(id));
 
     this.ipcHandlersSetup = true;
+  }
+
+  /**
+   * The supervisor for a running backend, or throw the message every proxied
+   * handler used to throw when the server wasn't running.
+   * @private
+   */
+  requireRunning(id, action) {
+    const supervisor = this.runningBackends.get(id);
+    if (!supervisor || !supervisor.isRunning()) {
+      throw new Error(`Backend must be running to ${action}`);
+    }
+    return supervisor;
   }
 
   /**
@@ -288,7 +238,7 @@ class BackendManager {
   }
 
   /**
-   * Start a backend
+   * Start a backend as a supervised child process.
    * @param {string} id
    * @param {Object} [options]
    * @param {boolean} [options.ephemeral] - Opt in to non-persisting in-memory mode
@@ -296,7 +246,8 @@ class BackendManager {
    */
   async startBackend(id, options = {}) {
     // Already running?
-    if (this.runningBackends.has(id)) {
+    const existing = this.runningBackends.get(id);
+    if (existing && existing.isRunning()) {
       safeLog(`Backend ${id} already running`);
       return this.getStatus(id);
     }
@@ -308,19 +259,17 @@ class BackendManager {
     }
 
     const backendPath = path.join(this.backendsPath, id);
-
-    // Create and start server
-    const server = new LocalBackendServer({
+    const supervisor = new ServiceSupervisor({
       id: config.id,
       name: config.name,
-      dbPath: path.join(backendPath, 'data', 'local.db'),
-      workflowsPath: path.join(backendPath, 'workflows'),
+      // The service owns the whole data dir: SQLite files, uploads, workflows.
+      dataDir: backendPath,
       port: config.port,
-      allowEphemeral: options.ephemeral === true
+      ephemeral: options.ephemeral === true
     });
 
     try {
-      await server.start();
+      await supervisor.start();
     } catch (e) {
       // Remember the failure so getStatus() can report "persistence unavailable"
       // for this stopped backend, and rethrow so backend:start rejects loudly.
@@ -333,9 +282,9 @@ class BackendManager {
     }
 
     this.startErrors.delete(id);
-    this.runningBackends.set(id, server);
+    this.runningBackends.set(id, supervisor);
 
-    safeLog(`Started backend: ${id} on port ${config.port}`);
+    safeLog(`Started backend: ${id} on ${supervisor.endpoint}`);
     return this.getStatus(id);
   }
 
@@ -344,13 +293,13 @@ class BackendManager {
    * @param {string} id
    */
   async stopBackend(id) {
-    const server = this.runningBackends.get(id);
-    if (!server) {
+    const supervisor = this.runningBackends.get(id);
+    if (!supervisor) {
       safeLog(`Backend ${id} not running`);
       return { running: false };
     }
 
-    await server.stop();
+    await supervisor.stop();
     this.runningBackends.delete(id);
 
     safeLog(`Stopped backend: ${id}`);
@@ -358,30 +307,65 @@ class BackendManager {
   }
 
   /**
-   * Get backend status, including how it is persisting data.
+   * Get backend status, including how it is persisting data — live from the
+   * service's /health endpoint when running.
    * @param {string} id
-   * @returns {{ running: boolean, port?: number, endpoint?: string, persistence: object }}
+   * @returns {Promise<{ running: boolean, port?: number, endpoint?: string, persistence: object }>}
    */
-  getStatus(id) {
-    const server = this.runningBackends.get(id);
-    if (!server) {
+  async getStatus(id) {
+    const supervisor = this.runningBackends.get(id);
+    if (!supervisor || !supervisor.isRunning()) {
       // Not running. If the last start attempt failed, surface why so the UI
-      // can distinguish "stopped" from "could not persist".
+      // can distinguish "stopped" from "could not persist". A child that died
+      // after starting shows its exit + log tail.
       const lastError = this.startErrors.get(id);
+      const died = supervisor && supervisor.lastExit;
+      const error = lastError
+        ? lastError
+        : died
+        ? {
+            code: 'BACKEND_EXITED',
+            message:
+              `Backend process exited (code=${died.code}, signal=${died.signal}).\n` +
+              `Last output:\n${supervisor.logTail()}`
+          }
+        : null;
+      if (died) this.runningBackends.delete(id);
       return {
         running: false,
-        persistence: lastError
-          ? { mode: 'failed', persistent: false, ephemeral: false, error: lastError }
+        persistence: error
+          ? { mode: 'failed', persistent: false, ephemeral: false, error }
           : { mode: 'unknown', persistent: false, ephemeral: false, error: null }
       };
     }
 
+    const health = await supervisor.fetchHealth();
+    const port = (supervisor.ready && supervisor.ready.port) || supervisor.config.port;
     return {
       running: true,
-      port: server.config.port,
-      endpoint: `http://localhost:${server.config.port}`,
-      persistence: server.getPersistenceStatus()
+      port,
+      endpoint: supervisor.endpoint,
+      pid: supervisor.child ? supervisor.child.pid : undefined,
+      persistence: health
+        ? health.persistence
+        : { mode: 'unknown', persistent: false, ephemeral: false, error: { message: 'health check unreachable' } },
+      workflows: health ? health.workflows : undefined
     };
+  }
+
+  /**
+   * Endpoints of all currently-running backends (used by the execution-history
+   * IPC merge — the services own their execution stores now).
+   * @returns {{ id: string, name: string, endpoint: string }[]}
+   */
+  getRunningEndpoints() {
+    const result = [];
+    for (const [id, supervisor] of this.runningBackends) {
+      if (supervisor.isRunning()) {
+        result.push({ id, name: supervisor.config.name, endpoint: supervisor.endpoint });
+      }
+    }
+    return result;
   }
 
   /**
@@ -390,25 +374,9 @@ class BackendManager {
    * @param {'postgres'|'supabase'|'json'} format
    */
   async exportSchema(id, format = 'json') {
-    const server = this.runningBackends.get(id);
-    if (!server) {
-      throw new Error('Backend must be running to export schema');
-    }
-
-    const adapter = server.getAdapter();
-    if (!adapter || !adapter.schemaManager) {
-      throw new Error('Adapter or schema manager not available');
-    }
-
-    if (format === 'postgres') {
-      return adapter.schemaManager.generatePostgresSQL();
-    }
-    if (format === 'supabase') {
-      return adapter.schemaManager.generateSupabaseSQL();
-    }
-    // Default: json
-    const exportedSchema = await adapter.schemaManager.exportSchema();
-    return JSON.stringify(exportedSchema, null, 2);
+    const supervisor = this.requireRunning(id, 'export schema');
+    const result = await supervisor.request('GET', `/admin/schema-export?format=${encodeURIComponent(format)}`);
+    return result.content;
   }
 
   // ==========================================================================
@@ -421,30 +389,8 @@ class BackendManager {
    * @returns {Promise<Object>} Schema with tables array
    */
   async getSchema(id) {
-    const server = this.runningBackends.get(id);
-    if (!server) {
-      throw new Error('Backend must be running to get schema');
-    }
-
-    const adapter = server.getAdapter();
-    if (!adapter || !adapter.schemaManager) {
-      throw new Error('Adapter or schema manager not available');
-    }
-
-    const tables = adapter.schemaManager.listTables();
-    const schemas = adapter.schemaManager.exportSchemas();
-
-    // Build response with table info
-    return {
-      tables: tables.map((tableName) => {
-        const schema = schemas.find((s) => s.name === tableName);
-        return {
-          name: tableName,
-          columns: schema?.columns || [],
-          createdAt: schema?.createdAt || null
-        };
-      })
-    };
+    const supervisor = this.requireRunning(id, 'get schema');
+    return supervisor.request('GET', '/admin/schema');
   }
 
   /**
@@ -454,25 +400,12 @@ class BackendManager {
    * @returns {Promise<Object|null>} Table schema
    */
   async getTableSchema(id, tableName) {
-    const server = this.runningBackends.get(id);
-    if (!server) {
-      throw new Error('Backend must be running to get table schema');
-    }
-
-    const adapter = server.getAdapter();
-    if (!adapter || !adapter.schemaManager) {
-      throw new Error('Adapter or schema manager not available');
-    }
-
-    const schema = adapter.schemaManager.getTableSchema(tableName);
-    if (!schema) {
+    const supervisor = this.requireRunning(id, 'get table schema');
+    try {
+      return await supervisor.request('GET', `/admin/schema/${encodeURIComponent(tableName)}`);
+    } catch (e) {
       return null;
     }
-
-    return {
-      name: tableName,
-      columns: schema.columns || []
-    };
   }
 
   /**
@@ -482,23 +415,9 @@ class BackendManager {
    * @returns {Promise<number>} Record count
    */
   async getRecordCount(id, tableName) {
-    const server = this.runningBackends.get(id);
-    if (!server) {
-      throw new Error('Backend must be running to get record count');
-    }
-
-    const adapter = server.getAdapter();
-    if (!adapter) {
-      throw new Error('Adapter not available');
-    }
-
-    return new Promise((resolve, reject) => {
-      adapter.count({
-        collection: tableName,
-        success: (count) => resolve(count),
-        error: (err) => reject(new Error(err))
-      });
-    });
+    const supervisor = this.requireRunning(id, 'get record count');
+    const result = await supervisor.request('GET', `/api/${encodeURIComponent(tableName)}?limit=0&count=1`);
+    return result.count || 0;
   }
 
   /**
@@ -508,20 +427,14 @@ class BackendManager {
    * @returns {Promise<Object>} Result with success status
    */
   async createTable(id, tableSchema) {
-    const server = this.runningBackends.get(id);
-    if (!server) {
-      throw new Error('Backend must be running to create table');
-    }
-
-    const adapter = server.getAdapter();
-    if (!adapter || !adapter.schemaManager) {
-      throw new Error('Adapter or schema manager not available');
-    }
-
-    const created = adapter.schemaManager.createTable(tableSchema);
-    safeLog(`Created table: ${tableSchema.name} (created: ${created})`);
-
-    return { success: true, created, tableName: tableSchema.name };
+    const supervisor = this.requireRunning(id, 'create table');
+    const result = await supervisor.request('POST', '/admin/schema', {
+      action: 'createTable',
+      table: tableSchema.name,
+      columns: tableSchema.columns
+    });
+    safeLog(`Created table: ${tableSchema.name} (created: ${result.created})`);
+    return { success: true, created: result.created, tableName: tableSchema.name };
   }
 
   /**
@@ -532,19 +445,9 @@ class BackendManager {
    * @returns {Promise<Object>} Result with success status
    */
   async addColumn(id, tableName, column) {
-    const server = this.runningBackends.get(id);
-    if (!server) {
-      throw new Error('Backend must be running to add column');
-    }
-
-    const adapter = server.getAdapter();
-    if (!adapter || !adapter.schemaManager) {
-      throw new Error('Adapter or schema manager not available');
-    }
-
-    adapter.schemaManager.addColumn(tableName, column);
+    const supervisor = this.requireRunning(id, 'add column');
+    await supervisor.request('POST', '/admin/schema', { action: 'addColumn', table: tableName, column });
     safeLog(`Added column: ${column.name} to table ${tableName}`);
-
     return { success: true, tableName, columnName: column.name };
   }
 
@@ -557,19 +460,9 @@ class BackendManager {
    * @returns {Promise<Object>} Result with success status
    */
   async renameColumn(id, tableName, oldName, newName) {
-    const server = this.runningBackends.get(id);
-    if (!server) {
-      throw new Error('Backend must be running to rename column');
-    }
-
-    const adapter = server.getAdapter();
-    if (!adapter || !adapter.schemaManager) {
-      throw new Error('Adapter or schema manager not available');
-    }
-
-    adapter.schemaManager.renameColumn(tableName, oldName, newName);
+    const supervisor = this.requireRunning(id, 'rename column');
+    await supervisor.request('POST', '/admin/schema', { action: 'renameColumn', table: tableName, oldName, newName });
     safeLog(`Renamed column: ${oldName} -> ${newName} in table ${tableName}`);
-
     return { success: true, tableName, oldName, newName };
   }
 
@@ -580,20 +473,10 @@ class BackendManager {
    * @returns {Promise<Object>} Result with success status
    */
   async deleteTable(id, tableName) {
-    const server = this.runningBackends.get(id);
-    if (!server) {
-      throw new Error('Backend must be running to delete table');
-    }
-
-    const adapter = server.getAdapter();
-    if (!adapter || !adapter.schemaManager) {
-      throw new Error('Adapter or schema manager not available');
-    }
-
-    const deleted = adapter.schemaManager.deleteTable(tableName);
-    safeLog(`Deleted table: ${tableName} (deleted: ${deleted})`);
-
-    return { success: true, deleted, tableName };
+    const supervisor = this.requireRunning(id, 'delete table');
+    const result = await supervisor.request('POST', '/admin/schema', { action: 'deleteTable', table: tableName });
+    safeLog(`Deleted table: ${tableName} (deleted: ${result.deleted})`);
+    return { success: true, deleted: result.deleted, tableName };
   }
 
   /**
@@ -605,8 +488,8 @@ class BackendManager {
     const usedPorts = new Set(backends.map((b) => b.port));
 
     // Also check running backends in case config ports changed
-    for (const server of this.runningBackends.values()) {
-      usedPorts.add(server.config.port);
+    for (const supervisor of this.runningBackends.values()) {
+      usedPorts.add(supervisor.config.port);
     }
 
     let port = 8578;
@@ -634,33 +517,20 @@ class BackendManager {
    * @returns {Promise<{results: Object[], count?: number}>}
    */
   async queryRecords(id, options) {
-    const server = this.runningBackends.get(id);
-    if (!server) {
-      throw new Error('Backend must be running to query records');
-    }
+    const supervisor = this.requireRunning(id, 'query records');
 
-    const adapter = server.getAdapter();
-    if (!adapter) {
-      throw new Error('Adapter not available');
-    }
+    const params = new URLSearchParams();
+    params.set('limit', String(options.limit || 50));
+    params.set('skip', String(options.skip || 0));
+    if (options.where) params.set('where', JSON.stringify(options.where));
+    if (options.sort) params.set('sort', JSON.stringify(options.sort));
+    if (options.count) params.set('count', '1');
 
-    return new Promise((resolve, reject) => {
-      adapter.query({
-        collection: options.collection,
-        limit: options.limit || 50,
-        skip: options.skip || 0,
-        where: options.where,
-        sort: options.sort,
-        count: options.count,
-        success: (results, count) => {
-          resolve({
-            results,
-            count: options.count ? count : undefined
-          });
-        },
-        error: (err) => reject(new Error(err))
-      });
-    });
+    const result = await supervisor.request('GET', `/api/${encodeURIComponent(options.collection)}?${params}`);
+    return {
+      results: result.results,
+      count: options.count ? result.count : undefined
+    };
   }
 
   /**
@@ -671,27 +541,10 @@ class BackendManager {
    * @returns {Promise<Object>} Created record with objectId
    */
   async createRecord(id, collection, data) {
-    const server = this.runningBackends.get(id);
-    if (!server) {
-      throw new Error('Backend must be running to create records');
-    }
-
-    const adapter = server.getAdapter();
-    if (!adapter) {
-      throw new Error('Adapter not available');
-    }
-
-    return new Promise((resolve, reject) => {
-      adapter.create({
-        collection,
-        data,
-        success: (record) => {
-          safeLog(`Created record in ${collection}:`, record.objectId);
-          resolve(record);
-        },
-        error: (err) => reject(new Error(err))
-      });
-    });
+    const supervisor = this.requireRunning(id, 'create records');
+    const record = await supervisor.request('POST', `/api/${encodeURIComponent(collection)}`, data);
+    safeLog(`Created record in ${collection}:`, record.objectId);
+    return record;
   }
 
   /**
@@ -703,28 +556,14 @@ class BackendManager {
    * @returns {Promise<Object>} Updated record
    */
   async saveRecord(id, collection, objectId, data) {
-    const server = this.runningBackends.get(id);
-    if (!server) {
-      throw new Error('Backend must be running to save records');
-    }
-
-    const adapter = server.getAdapter();
-    if (!adapter) {
-      throw new Error('Adapter not available');
-    }
-
-    return new Promise((resolve, reject) => {
-      adapter.save({
-        collection,
-        objectId,
-        data,
-        success: (record) => {
-          safeLog(`Updated record in ${collection}:`, objectId);
-          resolve(record);
-        },
-        error: (err) => reject(new Error(err))
-      });
-    });
+    const supervisor = this.requireRunning(id, 'save records');
+    const record = await supervisor.request(
+      'PUT',
+      `/api/${encodeURIComponent(collection)}/${encodeURIComponent(objectId)}`,
+      data
+    );
+    safeLog(`Updated record in ${collection}:`, objectId);
+    return record;
   }
 
   /**
@@ -735,27 +574,10 @@ class BackendManager {
    * @returns {Promise<{success: boolean}>}
    */
   async deleteRecord(id, collection, objectId) {
-    const server = this.runningBackends.get(id);
-    if (!server) {
-      throw new Error('Backend must be running to delete records');
-    }
-
-    const adapter = server.getAdapter();
-    if (!adapter) {
-      throw new Error('Adapter not available');
-    }
-
-    return new Promise((resolve, reject) => {
-      adapter.delete({
-        collection,
-        objectId,
-        success: () => {
-          safeLog(`Deleted record from ${collection}:`, objectId);
-          resolve({ success: true });
-        },
-        error: (err) => reject(new Error(err))
-      });
-    });
+    const supervisor = this.requireRunning(id, 'delete records');
+    await supervisor.request('DELETE', `/api/${encodeURIComponent(collection)}/${encodeURIComponent(objectId)}`);
+    safeLog(`Deleted record from ${collection}:`, objectId);
+    return { success: true };
   }
 
   /**
@@ -764,9 +586,9 @@ class BackendManager {
   async stopAll() {
     safeLog(`Stopping ${this.runningBackends.size} backends`);
 
-    for (const [id, server] of this.runningBackends) {
+    for (const [id, supervisor] of this.runningBackends) {
       try {
-        await server.stop();
+        await supervisor.stop();
         safeLog(`Stopped backend: ${id}`);
       } catch (e) {
         safeLog(`Error stopping backend ${id}:`, e);
@@ -787,12 +609,8 @@ class BackendManager {
    * @param {Object} workflow - Workflow export data
    */
   async updateWorkflow(backendId, name, workflow) {
-    const server = this.runningBackends.get(backendId);
-    if (!server) {
-      throw new Error('Backend must be running to update workflows');
-    }
-
-    return server.updateWorkflow(name, workflow);
+    const supervisor = this.requireRunning(backendId, 'update workflows');
+    return supervisor.request('PUT', `/admin/workflows/${encodeURIComponent(name)}`, workflow);
   }
 
   /**
@@ -800,25 +618,20 @@ class BackendManager {
    * @param {string} backendId - Backend ID
    */
   async reloadWorkflows(backendId) {
-    const server = this.runningBackends.get(backendId);
-    if (!server) {
-      throw new Error('Backend must be running to reload workflows');
-    }
-
-    return server.reloadWorkflows();
+    const supervisor = this.requireRunning(backendId, 'reload workflows');
+    return supervisor.request('POST', '/admin/workflows/reload');
   }
 
   /**
    * Get workflow status for a backend
    * @param {string} backendId - Backend ID
    */
-  getWorkflowStatus(backendId) {
-    const server = this.runningBackends.get(backendId);
-    if (!server) {
+  async getWorkflowStatus(backendId) {
+    const supervisor = this.runningBackends.get(backendId);
+    if (!supervisor || !supervisor.isRunning()) {
       return { initialized: false, workflowCount: 0, functions: [] };
     }
-
-    return server.getWorkflowStatus();
+    return supervisor.request('GET', '/admin/workflows');
   }
 }
 

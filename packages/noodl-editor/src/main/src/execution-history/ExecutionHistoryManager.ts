@@ -55,6 +55,15 @@ export interface IpcMainLike {
 export type ListResult = WorkflowExecution[] | { error: string };
 export type GetResult = ExecutionWithSteps | null | { error: string };
 
+/** A running backend service whose execution store we can read over HTTP. */
+export interface RemoteExecutionSource {
+  id: string;
+  name: string;
+  endpoint: string;
+}
+
+const REMOTE_FETCH_TIMEOUT_MS = 2000;
+
 export class ExecutionHistoryManager {
   private store: ExecutionStore | null = null;
   private status: ExecutionHistoryStatus = {
@@ -64,6 +73,17 @@ export class ExecutionHistoryManager {
     error: null
   };
   private ipcHandlersSetup = false;
+  private remoteSources: (() => RemoteExecutionSource[]) | null = null;
+
+  /**
+   * WF-004: executions happen inside `nodegx-backend` child processes, each
+   * owning its own store. The panel's IPC keeps working by merging those
+   * stores (over HTTP) with the editor-local one. The provider is injected by
+   * main.js (from BackendManager) to avoid a module cycle.
+   */
+  setRemoteSources(provider: () => RemoteExecutionSource[]): void {
+    this.remoteSources = provider;
+  }
 
   /**
    * Open the database and initialize the schema. Idempotent — safe to call
@@ -146,6 +166,76 @@ export class ExecutionHistoryManager {
       : 'Execution history is unavailable: the store has not been initialized.';
   }
 
+  // ==========================================================================
+  // Remote (child-process) stores — WF-004
+  // ==========================================================================
+
+  private async fetchRemoteList(source: RemoteExecutionSource, query: ExecutionQuery): Promise<WorkflowExecution[]> {
+    try {
+      const params = new URLSearchParams();
+      if (query.workflowId) params.set('workflowId', query.workflowId);
+      if (query.status) params.set('status', query.status);
+      if (query.triggerType) params.set('triggerType', query.triggerType);
+      if (query.limit !== undefined) params.set('limit', String(query.limit));
+      const res = await fetch(`${source.endpoint}/executions?${params}`, {
+        signal: AbortSignal.timeout(REMOTE_FETCH_TIMEOUT_MS)
+      });
+      if (!res.ok) return [];
+      return (await res.json()) as WorkflowExecution[];
+    } catch {
+      // A briefly-unreachable backend must not break the whole panel; its
+      // entries just don't appear until the next refresh.
+      return [];
+    }
+  }
+
+  private async fetchRemoteGet(source: RemoteExecutionSource, executionId: string): Promise<ExecutionWithSteps | null> {
+    try {
+      const res = await fetch(`${source.endpoint}/executions/${encodeURIComponent(executionId)}`, {
+        signal: AbortSignal.timeout(REMOTE_FETCH_TIMEOUT_MS)
+      });
+      if (!res.ok) return null;
+      return (await res.json()) as ExecutionWithSteps;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Local list merged with every running backend's store, newest-first,
+   * re-limited. Serves the same IPC channel/shape as before WF-004.
+   */
+  async listMerged(query: ExecutionQuery): Promise<ListResult> {
+    const local = this.store ? this.list(query) : [];
+    const localRows = Array.isArray(local) ? local : [];
+
+    const sources = this.remoteSources ? this.remoteSources() : [];
+    const remoteRows = (await Promise.all(sources.map((s) => this.fetchRemoteList(s, query)))).flat();
+
+    if (!this.store && sources.length === 0) {
+      // Nothing local AND nothing to merge — keep the original honest error.
+      return this.list(query);
+    }
+
+    const merged = [...localRows, ...remoteRows].sort((a, b) => (b.startedAt || 0) - (a.startedAt || 0));
+    const limit = query.limit ?? 100;
+    return merged.slice(0, limit);
+  }
+
+  /** Local store first, then each running backend. */
+  async getMerged(executionId: string): Promise<GetResult> {
+    if (this.store) {
+      const local = this.get(executionId);
+      if (local && !('error' in (local as object))) return local;
+    }
+    const sources = this.remoteSources ? this.remoteSources() : [];
+    for (const source of sources) {
+      const remote = await this.fetchRemoteGet(source, executionId);
+      if (remote) return remote;
+    }
+    return this.store ? null : this.get(executionId);
+  }
+
   /**
    * Register the IPC handlers `useExecutionHistory` / `useExecutionDetail`
    * call. `ipcMain` is injected so this can be exercised in tests without
@@ -155,11 +245,11 @@ export class ExecutionHistoryManager {
     if (this.ipcHandlersSetup) return;
 
     ipcMain.handle('execution-history:list', async (_event, query: ExecutionQuery) => {
-      return this.list(query || {});
+      return this.listMerged(query || {});
     });
 
     ipcMain.handle('execution-history:get', async (_event, executionId: string) => {
-      return this.get(executionId);
+      return this.getMerged(executionId);
     });
 
     this.ipcHandlersSetup = true;

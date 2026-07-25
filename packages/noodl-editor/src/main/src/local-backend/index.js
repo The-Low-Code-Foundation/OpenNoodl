@@ -1,11 +1,15 @@
 /**
  * Local Backend Module
  *
- * Provides a zero-configuration local backend for database operations.
- * Entry point for Phase 5 TASK-007B: Local Backend Server.
+ * The editor-side half of the local backend: lifecycle management (create/
+ * start/stop/delete) and the IPC surface the Backend Services panel and Data
+ * Browser call. The backend itself — HTTP server, adapter stack, workflow
+ * runner, execution store — runs in a supervised `nodegx-backend` child
+ * process since WF-004 (see `packages/nodegx-backend`); the old in-process
+ * `LocalBackendServer`/`WorkflowRunner` are gone.
  *
  * Usage in main process:
- *   const { setupBackendIPC } = require('./local-backend');
+ *   const { setupBackendIPC, backendManager } = require('./local-backend');
  *   setupBackendIPC(); // Sets up IPC handlers
  *
  * Usage from renderer:
@@ -16,20 +20,18 @@
  * @module local-backend
  */
 
-const { LocalBackendServer, generateObjectId } = require('./LocalBackendServer');
 const { BackendManager, backendManager, setupBackendIPC } = require('./BackendManager');
-const { WorkflowRunner } = require('./WorkflowRunner');
+const { ServiceSupervisor, resolveServiceEntry } = require('./ServiceSupervisor');
 
 module.exports = {
   // Classes
-  LocalBackendServer,
   BackendManager,
-  WorkflowRunner,
+  ServiceSupervisor,
 
   // Singleton instance
   backendManager,
 
   // Convenience functions
   setupBackendIPC,
-  generateObjectId
+  resolveServiceEntry
 };

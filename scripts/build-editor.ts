@@ -65,6 +65,15 @@ execSync('npm run build:editor:_viewer', {
   }
 });
 
+// Build the standalone backend service (WF-004) — shipped into the packaged
+// app via electron-builder extraResources (nodegx-backend/cli.js).
+console.log('---> build nodegx-backend');
+execSync('npm run build', {
+  stdio: 'inherit',
+  cwd: './packages/nodegx-backend',
+  env: process.env
+});
+
 try {
   // Build Editor
   console.log('---> build editor');

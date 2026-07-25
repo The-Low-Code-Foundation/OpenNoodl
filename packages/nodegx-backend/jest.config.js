@@ -5,7 +5,13 @@
 module.exports = {
   testEnvironment: 'node',
   transform: {
-    '^.+\\.tsx?$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.json' }]
+    '^.+\\.tsx?$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.json', isolatedModules: true }]
+  },
+  moduleNameMapper: {
+    // Mirrors the esbuild alias in scripts/build.js: the cloud runtime +
+    // execution history are consumed from noodl-viewer-cloud/src.
+    '^@cloud-runtime$': '<rootDir>/../noodl-viewer-cloud/src/index.ts',
+    '^@cloud-runtime/(.*)$': '<rootDir>/../noodl-viewer-cloud/src/$1'
   },
   testMatch: ['**/tests/**/*.test.ts'],
   testPathIgnorePatterns: ['/node_modules/', '/dist/']

@@ -1,10 +1,15 @@
 /**
  * CLI entry point for the standalone backend service.
  *
- *   nodegx-backend serve  --data-dir <dir> --port <p> [--host <h>] [--token <t>] [--ephemeral]
+ *   nodegx-backend serve  --data-dir <dir> --port <p> [--host <h>] [--token <t>]
+ *                         [--backend-id <id>] [--backend-name <name>] [--ephemeral]
  *   nodegx-backend doctor --data-dir <dir> [--ephemeral]
  *
- * `serve`  starts the (health-only, in the front half) HTTP service and stays up.
+ * `serve`  starts the full HTTP service (BYOB + Parse-wire + admin) and stays up.
+ *          When ready it prints a single machine-readable line to stdout:
+ *            NODEGX_BACKEND_READY {"port":...,"url":...}
+ *          — the editor's supervisor handshakes on that line (and falls back to
+ *          polling /health).
  * `doctor` opens persistence, prints status, and exits — a deterministic,
  *          port-free headless smoke that proves engine resolution + persistence
  *          with no Electron present.
@@ -41,6 +46,12 @@ function parseArgs(argv: string[]): ParsedArgs {
       case '--token':
         options.authToken = next();
         break;
+      case '--backend-id':
+        options.backendId = next();
+        break;
+      case '--backend-name':
+        options.backendName = next();
+        break;
       case '--ephemeral':
         options.allowEphemeral = true;
         break;
@@ -57,22 +68,29 @@ function parseArgs(argv: string[]): ParsedArgs {
 const USAGE = `nodegx-backend — standalone NodeGX backend service (WF-004)
 
 Usage:
-  nodegx-backend serve  --data-dir <dir> --port <p> [--host <h>] [--token <t>] [--ephemeral]
+  nodegx-backend serve  --data-dir <dir> --port <p> [--host <h>] [--token <t>]
+                        [--backend-id <id>] [--backend-name <name>] [--ephemeral]
   nodegx-backend doctor --data-dir <dir> [--ephemeral]
 
 Commands:
-  serve    Start the service and stay running. (Front-half scaffold: /health only;
-           data/auth/function routes return 501 until the second half relocates them.)
+  serve    Start the service and stay running: BYOB /api routes, the Parse-wire
+           subset (/classes, /aggregate, /files, /functions, /config, sessions),
+           and the admin surface (/admin, /executions).
   doctor   Open persistence, print status, and exit. Port-free headless smoke.
 
 Options:
-  --data-dir <dir>   Directory for the SQLite file, files, and config.
-  --port <p>         TCP port (0 = OS-assigned). Default 8577.
-  --host <h>         Bind interface. Default 127.0.0.1 (localhost). A non-loopback
-                     host requires --token (one is generated if omitted).
-  --token <t>        Bearer token for non-localhost binds.
-  --ephemeral        Run without persistence if no SQLite engine loads (data lost
-                     on restart). Off by default — the service refuses to fake it.
+  --data-dir <dir>       Directory for the SQLite files, uploads, and workflows.
+  --port <p>             TCP port (0 = OS-assigned). Default 8577.
+  --host <h>             Bind interface. Default 127.0.0.1 (localhost). A
+                         non-loopback host requires --token (one is generated
+                         if omitted).
+  --token <t>            Bearer token for non-localhost binds.
+  --backend-id <id>      Backend identity (doubles as the app id). Default
+                         "nodegx-backend".
+  --backend-name <name>  Display name reported by /health.
+  --ephemeral            Run without persistence if no SQLite engine loads (data
+                         lost on restart). Off by default — the service refuses
+                         to fake it.
 `;
 
 async function runServe(options: Partial<BackendServiceOptions>): Promise<void> {
@@ -87,9 +105,25 @@ async function runServe(options: Partial<BackendServiceOptions>): Promise<void> 
       (s.ephemeral ? '  ** DATA IS NOT PERSISTED **' : '') +
       '\n'
   );
+  process.stdout.write(
+    `[nodegx-backend] execution history: ${
+      started.executionHistory.enabled ? started.executionHistory.dbPath : `DISABLED (${started.executionHistory.error})`
+    }\n`
+  );
+  process.stdout.write(`[nodegx-backend] workflows: ${started.workflows.workflowCount} loaded\n`);
   if (service.requiresAuth()) {
     process.stdout.write('[nodegx-backend] non-loopback bind: bearer token REQUIRED for requests\n');
   }
+
+  // Machine-readable readiness line — the editor supervisor handshakes on this.
+  process.stdout.write(
+    `NODEGX_BACKEND_READY ${JSON.stringify({
+      port: started.listen.port,
+      url: started.listen.url,
+      persistence: s.mode,
+      engine: s.engine
+    })}\n`
+  );
 
   const shutdown = async (signal: string) => {
     process.stdout.write(`\n[nodegx-backend] ${signal} — shutting down\n`);

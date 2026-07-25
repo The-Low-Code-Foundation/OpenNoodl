@@ -661,6 +661,11 @@ function launchApp() {
     // the Execution History Panel's hooks call.
     setupExecutionHistoryIPC();
 
+    // WF-004: executions now happen inside nodegx-backend child processes,
+    // each with its own store — the panel's IPC merges them with the local one.
+    const { executionHistoryManager } = require('./src/execution-history/ExecutionHistoryManager');
+    executionHistoryManager.setRemoteSources(() => backendManager.getRunningEndpoints());
+
     DesignToolImportServer.start(projectGetInfo);
 
     try {
