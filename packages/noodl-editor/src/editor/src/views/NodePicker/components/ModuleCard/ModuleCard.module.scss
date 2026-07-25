@@ -8,6 +8,16 @@
   overflow: hidden;
 }
 
+// LIB-001: entries below the running editor's minEditorVersion render as
+// incompatible instead of crashing on install.
+.Root.is-incompatible {
+  .ImageContainer,
+  .Image {
+    filter: grayscale(1);
+    opacity: 0.6;
+  }
+}
+
 .ImageContainer {
   flex-grow: 0;
   flex-shrink: 0;

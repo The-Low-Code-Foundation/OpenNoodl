@@ -1,0 +1,18 @@
+{
+  "label": "Lottie",
+  "description": "A module for using Lottie animations in Noodl.",
+  "type": "module",
+  "tags": [
+    "UI",
+    "Animation"
+  ],
+  "icon": "icon.png",
+  "docsPath": "/library/modules/lottie/",
+  "version": "1.0.1",
+  "minEditorVersion": "0.1.0",
+  "runtimeVersion": "2.7.0",
+  "provenance": {
+    "sourceUrl": "https://the-low-code-foundation.github.io/opennoodl-docs/library/modules/lottie/lottie-1-0-1.zip",
+    "importedAt": "2026-07-25"
+  }
+}

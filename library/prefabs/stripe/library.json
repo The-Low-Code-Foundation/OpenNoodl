@@ -1,0 +1,17 @@
+{
+  "label": "Stripe",
+  "description": "Some helpers to make cloud functions for accepting payments and subscriptions.",
+  "type": "prefab",
+  "tags": [
+    "Cloud"
+  ],
+  "icon": "icon.png",
+  "docsPath": "/library/prefabs/stripe/",
+  "version": "0.4.0",
+  "minEditorVersion": "0.1.0",
+  "runtimeVersion": "2.7.0",
+  "provenance": {
+    "sourceUrl": "https://the-low-code-foundation.github.io/opennoodl-docs/library/prefabs/stripe/stripe-0-4.zip",
+    "importedAt": "2026-07-25"
+  }
+}

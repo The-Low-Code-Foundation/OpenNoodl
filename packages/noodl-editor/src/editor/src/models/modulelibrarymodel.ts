@@ -19,11 +19,56 @@ export interface IModule {
   icon: string;
   docs: string;
   tags: string[];
+  // LIB-001: additive/optional fields. Old index.json files (and old editors
+  // reading a new index.json) simply won't have/won't use them.
+  type?: 'prefab' | 'module';
+  version?: string;
+  minEditorVersion?: string;
+  runtimeVersion?: string;
+}
+
+/**
+ * Fetch lifecycle for a library tab. `error` is distinct from an empty
+ * `loaded` list — an empty grid because the index genuinely has zero entries
+ * should never be confused with "the fetch failed" (LIB-001 step 0).
+ */
+export type LibraryFetchStatus = 'loading' | 'loaded' | 'error';
+
+/** Parses a "x.y.z" string into a comparable triple; missing/odd input sorts as 0.0.0. */
+function parseVersion(v: string | undefined): [number, number, number] {
+  const parts = (v || '').split('.').map((n) => parseInt(n, 10));
+  return [parts[0] || 0, parts[1] || 0, parts[2] || 0];
+}
+
+/** true if `current` is >= `minRequired` (both "x.y.z"). No `minRequired` means always compatible. */
+export function isVersionAtLeast(current: string, minRequired: string | undefined): boolean {
+  if (!minRequired) return true;
+  const a = parseVersion(current);
+  const b = parseVersion(minRequired);
+  for (let i = 0; i < 3; i++) {
+    if (a[i] > b[i]) return true;
+    if (a[i] < b[i]) return false;
+  }
+  return true;
+}
+
+/**
+ * A library entry is compatible with this running editor when it declares no
+ * `minEditorVersion` (older index entries, or entries that don't care) or
+ * when the running editor's version meets it. Used to render incompatible
+ * entries as such instead of letting install proceed into content the
+ * running editor may not understand (LIB-001).
+ */
+export function isModuleCompatible(module: IModule): boolean {
+  return isVersionAtLeast(platform.getVersion(), module.minEditorVersion);
 }
 
 export class ModuleLibraryModel extends Model {
   public modules: IModule[];
   public prefabs: IModule[];
+
+  public modulesStatus: LibraryFetchStatus = 'loading';
+  public prefabsStatus: LibraryFetchStatus = 'loading';
 
   private static _instance: ModuleLibraryModel = undefined;
   public static get instance() {
@@ -36,36 +81,74 @@ export class ModuleLibraryModel extends Model {
   constructor() {
     super();
 
-    this.fetchModules('modules').then((modules) => {
-      this.modules = modules;
-      this.notifyListeners('libraryUpdated');
-    });
-
-    this.fetchModules('prefabs').then((prefabs) => {
-      this.prefabs = prefabs;
-      this.notifyListeners('libraryUpdated');
-    });
+    this.loadModules('modules');
+    this.loadModules('prefabs');
 
     this.notifyListeners('libraryUpdated');
   }
 
+  /** (Re-)fetches a library index and updates status/data, notifying listeners either way. */
+  private loadModules(type: 'modules' | 'prefabs') {
+    if (type === 'modules') this.modulesStatus = 'loading';
+    else this.prefabsStatus = 'loading';
+    this.notifyListeners('libraryUpdated');
+
+    this.fetchModules(type).then(
+      (modules) => {
+        if (type === 'modules') {
+          this.modules = modules;
+          this.modulesStatus = 'loaded';
+        } else {
+          this.prefabs = modules;
+          this.prefabsStatus = 'loaded';
+        }
+        this.notifyListeners('libraryUpdated');
+      },
+      () => {
+        // Loud failure (LIB-001 step 0): leave existing data alone (if any
+        // was previously loaded) but flag the error so the UI can show an
+        // explicit offline/error state instead of a silently-empty grid.
+        if (type === 'modules') this.modulesStatus = 'error';
+        else this.prefabsStatus = 'error';
+        this.notifyListeners('libraryUpdated');
+      }
+    );
+  }
+
+  /** Re-attempts a failed (or any) fetch for a library tab. */
+  retry(type: 'modules' | 'prefabs') {
+    this.loadModules(type);
+  }
+
   /**
    * Resolves with items for immidiate use, but
-   * also sets them to this.modules for future use
+   * also sets them to this.modules for future use.
+   *
+   * Throws (rejects) on network failure or a non-ok response — the caller
+   * (loadModules) is responsible for turning that into loud UI state instead
+   * of silently treating it as "zero entries".
    */
   async fetchModules(type: 'modules' | 'prefabs'): Promise<IModule[]> {
     const endpoint = getDocsEndpoint();
     const urlPath = addHashToUrl(`${endpoint}/library/${type}/index.json`);
 
     const response = await fetch(urlPath);
-    if (response.ok) {
-      return await response.json();
-    } else {
-      return [];
+    if (!response.ok) {
+      throw new Error(`Failed to fetch ${type} library index: ${response.status} ${response.statusText}`);
     }
+    return await response.json();
   }
 
-  async installModule(modulePath: string, onBeforePopup?: () => void, onAfterPopup?: () => void) {
+  async installModule(
+    modulePath: string,
+    onBeforePopup?: () => void,
+    onAfterPopup?: () => void,
+    module?: IModule
+  ) {
+    if (module && !isModuleCompatible(module)) {
+      throw { message: `This module requires editor version ${module.minEditorVersion} or newer.` };
+    }
+
     const moduleRootPath = await this.getModuleTemplateRoot(modulePath);
 
     const imports = await new Promise((resolve, reject) =>
@@ -88,7 +171,16 @@ export class ModuleLibraryModel extends Model {
     await this._doImport(moduleRootPath, componentsToImport);
   }
 
-  async installPrefab(modulePath: string, onBeforePopup?: () => void, onAfterPopup?: () => void) {
+  async installPrefab(
+    modulePath: string,
+    onBeforePopup?: () => void,
+    onAfterPopup?: () => void,
+    module?: IModule
+  ) {
+    if (module && !isModuleCompatible(module)) {
+      throw { message: `This prefab requires editor version ${module.minEditorVersion} or newer.` };
+    }
+
     const moduleRootPath = await this.getModuleTemplateRoot(modulePath);
 
     const imports = await new Promise<TSFixme>((resolve, reject) =>

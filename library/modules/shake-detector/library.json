@@ -1,0 +1,17 @@
+{
+  "label": "Shake Detector",
+  "description": "A small module to detect a device shake with the accelerometer.",
+  "type": "module",
+  "tags": [
+    "Device"
+  ],
+  "icon": "icon.png",
+  "docsPath": "/library/modules/shake-detector/",
+  "version": "2.0.0",
+  "minEditorVersion": "0.1.0",
+  "runtimeVersion": "2.7.0",
+  "provenance": {
+    "sourceUrl": "https://the-low-code-foundation.github.io/opennoodl-docs/library/modules/shake-detector/shake-detector-1.0.2.zip",
+    "importedAt": "2026-07-25"
+  }
+}

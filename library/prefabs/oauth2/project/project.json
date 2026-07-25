@@ -1,0 +1,976 @@
+{
+    "name": "Export",
+    "components": [
+        {
+            "name": "/#__cloud__/OAuth2/Authorize",
+            "id": "37199e76-bf58-b5cb-77c7-f23ce50de97f",
+            "graph": {
+                "connections": [
+                    {
+                        "fromId": "9a515d32-437c-9f87-a6d0-e39f73b7f11e",
+                        "fromProperty": "receive",
+                        "toId": "fd81c44c-6120-a820-a4ff-70b52dc89a0d",
+                        "toProperty": "send"
+                    },
+                    {
+                        "fromId": "2dfef89f-c38f-c163-8c8c-8ddfada468d7",
+                        "fromProperty": "out-Url",
+                        "toId": "fd81c44c-6120-a820-a4ff-70b52dc89a0d",
+                        "toProperty": "pm-RedirectUri"
+                    },
+                    {
+                        "fromId": "b9f20c58-8950-109b-48c4-ad19ef233ff2",
+                        "fromProperty": "Client ID",
+                        "toId": "2dfef89f-c38f-c163-8c8c-8ddfada468d7",
+                        "toProperty": "in-ClientId"
+                    },
+                    {
+                        "fromId": "b9f20c58-8950-109b-48c4-ad19ef233ff2",
+                        "fromProperty": "Redirect Uri",
+                        "toId": "2dfef89f-c38f-c163-8c8c-8ddfada468d7",
+                        "toProperty": "in-RedirectUri"
+                    },
+                    {
+                        "fromId": "b9f20c58-8950-109b-48c4-ad19ef233ff2",
+                        "fromProperty": "Scope",
+                        "toId": "2dfef89f-c38f-c163-8c8c-8ddfada468d7",
+                        "toProperty": "in-Scope"
+                    },
+                    {
+                        "fromId": "b9f20c58-8950-109b-48c4-ad19ef233ff2",
+                        "fromProperty": "Authorization Endpoint",
+                        "toId": "2dfef89f-c38f-c163-8c8c-8ddfada468d7",
+                        "toProperty": "in-AuthEndpoint"
+                    }
+                ],
+                "roots": [
+                    {
+                        "id": "9a515d32-437c-9f87-a6d0-e39f73b7f11e",
+                        "type": "noodl.cloud.request",
+                        "x": -256,
+                        "y": -4,
+                        "parameters": {
+                            "allowNoAuth": true
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "fd81c44c-6120-a820-a4ff-70b52dc89a0d",
+                        "type": "noodl.cloud.response",
+                        "x": 331,
+                        "y": -7,
+                        "parameters": {
+                            "params": "RedirectUri"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "type": "*",
+                                "plug": "input",
+                                "group": "Parameters",
+                                "name": "pm-RedirectUri",
+                                "displayName": "RedirectUri",
+                                "index": 4
+                            }
+                        ],
+                        "children": []
+                    },
+                    {
+                        "id": "2dfef89f-c38f-c163-8c8c-8ddfada468d7",
+                        "type": "JavaScriptFunction",
+                        "x": 102.83333333333337,
+                        "y": -173.5,
+                        "parameters": {
+                            "functionScript": "const params = {\n    client_id:Inputs.ClientId,\n    response_type:'code',\n    redirect_uri:Inputs.RedirectUri,\n    scope:Inputs.Scope,\n}\n\nconst query = Object.keys(params).map(key => key + \"=\" + encodeURIComponent(params[key])).join('&')\n\nOutputs.Url = Inputs.AuthEndpoint + \"?\" + query"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "name": "in-ClientId",
+                                "displayName": "ClientId",
+                                "plug": "input",
+                                "type": "*",
+                                "group": "Inputs",
+                                "index": 4
+                            },
+                            {
+                                "name": "in-RedirectUri",
+                                "displayName": "RedirectUri",
+                                "plug": "input",
+                                "type": "*",
+                                "group": "Inputs",
+                                "index": 5
+                            },
+                            {
+                                "name": "in-Scope",
+                                "displayName": "Scope",
+                                "plug": "input",
+                                "type": "*",
+                                "group": "Inputs",
+                                "index": 6
+                            },
+                            {
+                                "name": "in-AuthEndpoint",
+                                "displayName": "AuthEndpoint",
+                                "plug": "input",
+                                "type": "*",
+                                "group": "Inputs",
+                                "index": 7
+                            },
+                            {
+                                "name": "out-Url",
+                                "displayName": "Url",
+                                "plug": "output",
+                                "type": "*",
+                                "group": "Outputs",
+                                "index": 8
+                            }
+                        ],
+                        "children": [],
+                        "metadata": {
+                            "merge": {
+                                "soureCodePorts": [
+                                    "functionScript"
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        "id": "b9f20c58-8950-109b-48c4-ad19ef233ff2",
+                        "type": "/#__cloud__/OAuth2/Settings",
+                        "x": -353.95238095238096,
+                        "y": -220.70000000000005,
+                        "parameters": {},
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    }
+                ]
+            },
+            "metadata": {
+                "isFolderComponent": false
+            }
+        },
+        {
+            "name": "/#__cloud__/OAuth2/Log In",
+            "id": "ef2bc0d9-de4e-04e0-4e83-079f188cdba0",
+            "graph": {
+                "connections": [
+                    {
+                        "fromId": "8136332b-e17c-7a42-4ebe-eafc36514126",
+                        "fromProperty": "receive",
+                        "toId": "9cd4700e-7001-eb69-5ff5-194e60bcb8d7",
+                        "toProperty": "Do"
+                    },
+                    {
+                        "fromId": "8136332b-e17c-7a42-4ebe-eafc36514126",
+                        "fromProperty": "pm-Code",
+                        "toId": "9cd4700e-7001-eb69-5ff5-194e60bcb8d7",
+                        "toProperty": "Code"
+                    },
+                    {
+                        "fromId": "9cd4700e-7001-eb69-5ff5-194e60bcb8d7",
+                        "fromProperty": "Session Token",
+                        "toId": "c364de48-e059-a01f-2adb-de842dec97d2",
+                        "toProperty": "pm-Session Token"
+                    },
+                    {
+                        "fromId": "9cd4700e-7001-eb69-5ff5-194e60bcb8d7",
+                        "fromProperty": "Success",
+                        "toId": "c364de48-e059-a01f-2adb-de842dec97d2",
+                        "toProperty": "send"
+                    },
+                    {
+                        "fromId": "9cd4700e-7001-eb69-5ff5-194e60bcb8d7",
+                        "fromProperty": "Failure",
+                        "toId": "07681ba5-c22a-397b-8d6a-002bb0a454a2",
+                        "toProperty": "send"
+                    }
+                ],
+                "roots": [
+                    {
+                        "id": "8136332b-e17c-7a42-4ebe-eafc36514126",
+                        "type": "noodl.cloud.request",
+                        "x": -348,
+                        "y": 16,
+                        "parameters": {
+                            "params": "Code",
+                            "allowNoAuth": true
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "type": "*",
+                                "plug": "output",
+                                "group": "Parameters",
+                                "name": "pm-Code",
+                                "displayName": "Code",
+                                "index": 5
+                            }
+                        ],
+                        "children": []
+                    },
+                    {
+                        "id": "c364de48-e059-a01f-2adb-de842dec97d2",
+                        "type": "noodl.cloud.response",
+                        "x": 265,
+                        "y": 72,
+                        "parameters": {
+                            "params": "Session Token"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "type": "*",
+                                "plug": "input",
+                                "group": "Parameters",
+                                "name": "pm-Session Token",
+                                "displayName": "Session Token",
+                                "index": 4
+                            }
+                        ],
+                        "children": []
+                    },
+                    {
+                        "id": "9cd4700e-7001-eb69-5ff5-194e60bcb8d7",
+                        "type": "/#__cloud__/OAuth2/Request Access Token",
+                        "x": -66,
+                        "y": -1,
+                        "parameters": {},
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "07681ba5-c22a-397b-8d6a-002bb0a454a2",
+                        "type": "noodl.cloud.response",
+                        "x": 296,
+                        "y": -78,
+                        "parameters": {
+                            "status": "failure",
+                            "errorMessage": "Failed to get session token."
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    }
+                ]
+            },
+            "metadata": {
+                "isFolderComponent": false
+            }
+        },
+        {
+            "name": "/#__cloud__/OAuth2/Request Access Token",
+            "id": "5f6094d2-c50f-e288-f348-19f76b44c279",
+            "graph": {
+                "connections": [
+                    {
+                        "fromId": "4b0fa872-c342-8510-af04-ee5f466aa901",
+                        "fromProperty": "Do",
+                        "toId": "9bc7761a-6f3a-adad-f621-ae420312dd6d",
+                        "toProperty": "run"
+                    },
+                    {
+                        "fromId": "4b0fa872-c342-8510-af04-ee5f466aa901",
+                        "fromProperty": "Code",
+                        "toId": "9bc7761a-6f3a-adad-f621-ae420312dd6d",
+                        "toProperty": "in-Code"
+                    },
+                    {
+                        "fromId": "9bc7761a-6f3a-adad-f621-ae420312dd6d",
+                        "fromProperty": "out-Failure",
+                        "toId": "1dc3f3ac-f22b-05a6-8635-65b1e0449e56",
+                        "toProperty": "Failure"
+                    },
+                    {
+                        "fromId": "9bc7761a-6f3a-adad-f621-ae420312dd6d",
+                        "fromProperty": "out-Success",
+                        "toId": "1dc3f3ac-f22b-05a6-8635-65b1e0449e56",
+                        "toProperty": "Success"
+                    },
+                    {
+                        "fromId": "9bc7761a-6f3a-adad-f621-ae420312dd6d",
+                        "fromProperty": "out-SessionToken",
+                        "toId": "1dc3f3ac-f22b-05a6-8635-65b1e0449e56",
+                        "toProperty": "Session Token"
+                    },
+                    {
+                        "fromId": "c27d2d3f-ab4c-4b89-30ed-7c8a657fe200",
+                        "fromProperty": "Token Endpoint",
+                        "toId": "9bc7761a-6f3a-adad-f621-ae420312dd6d",
+                        "toProperty": "in-TokenEndpoint"
+                    },
+                    {
+                        "fromId": "c27d2d3f-ab4c-4b89-30ed-7c8a657fe200",
+                        "fromProperty": "Client ID",
+                        "toId": "9bc7761a-6f3a-adad-f621-ae420312dd6d",
+                        "toProperty": "in-ClientId"
+                    },
+                    {
+                        "fromId": "c27d2d3f-ab4c-4b89-30ed-7c8a657fe200",
+                        "fromProperty": "Client Secret",
+                        "toId": "9bc7761a-6f3a-adad-f621-ae420312dd6d",
+                        "toProperty": "in-ClientSecret"
+                    },
+                    {
+                        "fromId": "c27d2d3f-ab4c-4b89-30ed-7c8a657fe200",
+                        "fromProperty": "Redirect Uri",
+                        "toId": "9bc7761a-6f3a-adad-f621-ae420312dd6d",
+                        "toProperty": "in-RedirectUri"
+                    },
+                    {
+                        "fromId": "c27d2d3f-ab4c-4b89-30ed-7c8a657fe200",
+                        "fromProperty": "User Endpoint",
+                        "toId": "9bc7761a-6f3a-adad-f621-ae420312dd6d",
+                        "toProperty": "in-UserEndpoint"
+                    },
+                    {
+                        "fromId": "c27d2d3f-ab4c-4b89-30ed-7c8a657fe200",
+                        "fromProperty": "Email Field",
+                        "toId": "9bc7761a-6f3a-adad-f621-ae420312dd6d",
+                        "toProperty": "in-EmailField"
+                    },
+                    {
+                        "fromId": "c27d2d3f-ab4c-4b89-30ed-7c8a657fe200",
+                        "fromProperty": "Scope",
+                        "toId": "9bc7761a-6f3a-adad-f621-ae420312dd6d",
+                        "toProperty": "in-Scope"
+                    }
+                ],
+                "roots": [
+                    {
+                        "id": "4b0fa872-c342-8510-af04-ee5f466aa901",
+                        "type": "Component Inputs",
+                        "x": -370,
+                        "y": 34,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Do",
+                                "plug": "output",
+                                "type": "*",
+                                "index": 0
+                            },
+                            {
+                                "name": "Code",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 1
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "1dc3f3ac-f22b-05a6-8635-65b1e0449e56",
+                        "type": "Component Outputs",
+                        "x": 366,
+                        "y": 51,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Success",
+                                "plug": "input",
+                                "type": "*",
+                                "index": 0
+                            },
+                            {
+                                "name": "Failure",
+                                "plug": "input",
+                                "type": "*",
+                                "index": 1
+                            },
+                            {
+                                "name": "Session Token",
+                                "plug": "input",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 2
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "9bc7761a-6f3a-adad-f621-ae420312dd6d",
+                        "type": "JavaScriptFunction",
+                        "x": 5,
+                        "y": -107,
+                        "parameters": {
+                            "functionScript": "const params = {\n    client_id:Inputs.ClientId,\n    client_secret:Inputs.ClientSecret,\n    grant_type:'authorization_code',\n    code:Inputs.Code,\n    redirect_uri:Inputs.RedirectUri,\n    scope:Inputs.Scope\n}\n\nconst query = Object.keys(params).map(key => key + \"=\" + params[key]).join('&')\n\nconst res = await fetch(Inputs.TokenEndpoint,{\n    method:'POST',\n    headers:{\n        'content-type':'application/x-www-form-urlencoded',\n        'content-length':query.length,\n    },\n    body:query,\n})\n\nif(res.ok) {\n    const json = await res.json()\n\n    // We have an access token\n    const accessToken = json.access_token;\n    if(!accessToken) {\n        Outputs.Failure()\n        throw Error(\"No access token in response\")\n    }\n\n    const oauthUser = await fetch(Inputs.UserEndpoint,{\n        method:'GET',\n        headers:{\n            Authorization:'Bearer ' + accessToken\n        }  \n    })\n\n    if(oauthUser.ok) {\n        const userJson = await oauthUser.json()\n\n        const email = userJson[Inputs.EmailField];\n        if(!accessToken) {\n            Outputs.Failure()\n            throw Error(\"No email found in user response.\")\n        }\n\n        const users = await Noodl.Records.query(\"_User\",{\n            email:{equalTo:email}\n        })\n\n        if(users && users.length === 1) {\n            // We already have a user, add to auth data\n            // great, impersonate and return\n            const _user = await Noodl.Users.impersonate(users[0].username)\n            Outputs.SessionToken = _user.sessionToken;\n            Outputs.Success()\n        }\n        else if(!users || users.length === 0) {\n            // There is no user, create one\n            const _user = await Noodl.Records.create(\"_User\",{\n                username:email,\n                email:email,\n                password:(Math.random() + 1).toString(36).substring(7), // Random fire and forget password\n            },{\n                acl:{\n                    '*':{read:false,write:false}\n                }\n            })\n            Outputs.SessionToken = _user.sessionToken;\n            Outputs.Success()\n        }\n    }\n    else {\n        Outputs.Failure();\n        throw Error(\"Failed to fetch user from user endpoint.\")\n    }\n}\nelse {\n    Outputs.Failure();\n    throw Error(\"Failed to fetch token with authorization code.\")\n}"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "name": "in-ClientId",
+                                "displayName": "ClientId",
+                                "plug": "input",
+                                "type": "*",
+                                "group": "Inputs",
+                                "index": 4
+                            },
+                            {
+                                "name": "in-ClientSecret",
+                                "displayName": "ClientSecret",
+                                "plug": "input",
+                                "type": "*",
+                                "group": "Inputs",
+                                "index": 5
+                            },
+                            {
+                                "name": "in-Code",
+                                "displayName": "Code",
+                                "plug": "input",
+                                "type": "*",
+                                "group": "Inputs",
+                                "index": 6
+                            },
+                            {
+                                "name": "in-RedirectUri",
+                                "displayName": "RedirectUri",
+                                "plug": "input",
+                                "type": "*",
+                                "group": "Inputs",
+                                "index": 7
+                            },
+                            {
+                                "name": "in-Scope",
+                                "displayName": "Scope",
+                                "plug": "input",
+                                "type": "*",
+                                "group": "Inputs",
+                                "index": 8
+                            },
+                            {
+                                "name": "in-TokenEndpoint",
+                                "displayName": "TokenEndpoint",
+                                "plug": "input",
+                                "type": "*",
+                                "group": "Inputs",
+                                "index": 9
+                            },
+                            {
+                                "name": "in-UserEndpoint",
+                                "displayName": "UserEndpoint",
+                                "plug": "input",
+                                "type": "*",
+                                "group": "Inputs",
+                                "index": 10
+                            },
+                            {
+                                "name": "in-EmailField",
+                                "displayName": "EmailField",
+                                "plug": "input",
+                                "type": "*",
+                                "group": "Inputs",
+                                "index": 11
+                            },
+                            {
+                                "name": "out-Success",
+                                "displayName": "Success",
+                                "plug": "output",
+                                "type": "signal",
+                                "group": "Outputs",
+                                "index": 12
+                            },
+                            {
+                                "name": "out-Failure",
+                                "displayName": "Failure",
+                                "plug": "output",
+                                "type": "signal",
+                                "group": "Outputs",
+                                "index": 13
+                            },
+                            {
+                                "name": "out-SessionToken",
+                                "displayName": "SessionToken",
+                                "plug": "output",
+                                "type": "*",
+                                "group": "Outputs",
+                                "index": 14
+                            }
+                        ],
+                        "children": [],
+                        "metadata": {
+                            "merge": {
+                                "soureCodePorts": [
+                                    "functionScript"
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        "id": "c27d2d3f-ab4c-4b89-30ed-7c8a657fe200",
+                        "type": "/#__cloud__/OAuth2/Settings",
+                        "x": -357.44642857142856,
+                        "y": -221.7678571428571,
+                        "parameters": {},
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    }
+                ]
+            },
+            "metadata": {
+                "isFolderComponent": false
+            }
+        },
+        {
+            "name": "/#__cloud__/OAuth2/Settings",
+            "id": "294f24b9-78d3-d9e0-dc73-215f9648b170",
+            "graph": {
+                "connections": [
+                    {
+                        "fromId": "f100aac6-8692-c5cf-f3e4-a0b30d14ce25",
+                        "fromProperty": "savedValue",
+                        "toId": "40e49098-5238-3634-76d4-943c1e665081",
+                        "toProperty": "Scope"
+                    },
+                    {
+                        "fromId": "8d257341-1958-041e-d326-da9c7c33d199",
+                        "fromProperty": "savedValue",
+                        "toId": "40e49098-5238-3634-76d4-943c1e665081",
+                        "toProperty": "Client ID"
+                    },
+                    {
+                        "fromId": "aacfa91c-0573-4b99-3b2a-4c1e46fee678",
+                        "fromProperty": "savedValue",
+                        "toId": "40e49098-5238-3634-76d4-943c1e665081",
+                        "toProperty": "Redirect Uri"
+                    },
+                    {
+                        "fromId": "d9e07192-abd5-faf2-61b2-a1b85103bf04",
+                        "fromProperty": "savedValue",
+                        "toId": "40e49098-5238-3634-76d4-943c1e665081",
+                        "toProperty": "Authorization Endpoint"
+                    },
+                    {
+                        "fromId": "3e804daf-9038-5b2d-9867-f2abaa45330b",
+                        "fromProperty": "savedValue",
+                        "toId": "40e49098-5238-3634-76d4-943c1e665081",
+                        "toProperty": "Token Endpoint"
+                    },
+                    {
+                        "fromId": "9055dcfd-6aee-fa15-6435-03abc3976035",
+                        "fromProperty": "savedValue",
+                        "toId": "40e49098-5238-3634-76d4-943c1e665081",
+                        "toProperty": "User Endpoint"
+                    },
+                    {
+                        "fromId": "1f23a98c-046d-b835-65d9-d608a0c3f247",
+                        "fromProperty": "savedValue",
+                        "toId": "40e49098-5238-3634-76d4-943c1e665081",
+                        "toProperty": "Email Field"
+                    },
+                    {
+                        "fromId": "21d41f7e-d386-db35-929c-b4fdaed4ff6d",
+                        "fromProperty": "savedValue",
+                        "toId": "40e49098-5238-3634-76d4-943c1e665081",
+                        "toProperty": "Client Secret"
+                    }
+                ],
+                "roots": [
+                    {
+                        "id": "40e49098-5238-3634-76d4-943c1e665081",
+                        "type": "Component Outputs",
+                        "x": 152,
+                        "y": -109,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Scope",
+                                "plug": "input",
+                                "type": "*",
+                                "index": 0
+                            },
+                            {
+                                "name": "Client ID",
+                                "plug": "input",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 1
+                            },
+                            {
+                                "name": "Client Secret",
+                                "plug": "input",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 2
+                            },
+                            {
+                                "name": "Redirect Uri",
+                                "plug": "input",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 3
+                            },
+                            {
+                                "name": "Authorization Endpoint",
+                                "plug": "input",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 4
+                            },
+                            {
+                                "name": "Token Endpoint",
+                                "plug": "input",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 5
+                            },
+                            {
+                                "name": "User Endpoint",
+                                "plug": "input",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 6
+                            },
+                            {
+                                "name": "Email Field",
+                                "plug": "input",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 7
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "d9e07192-abd5-faf2-61b2-a1b85103bf04",
+                        "type": "String",
+                        "label": "Authorization Endpoint",
+                        "x": -163.5,
+                        "y": 6.2000000000000455,
+                        "parameters": {},
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "aacfa91c-0573-4b99-3b2a-4c1e46fee678",
+                        "type": "String",
+                        "label": "Redirect Uri",
+                        "x": -165.525338016952,
+                        "y": -100.46520979118054,
+                        "parameters": {
+                            "value": "http://localhost:8574/oauth"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "f100aac6-8692-c5cf-f3e4-a0b30d14ce25",
+                        "type": "String",
+                        "label": "Scope",
+                        "x": -161.16666666666663,
+                        "y": -306,
+                        "parameters": {},
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "8d257341-1958-041e-d326-da9c7c33d199",
+                        "type": "String",
+                        "label": "Client ID",
+                        "x": -161.70833333333326,
+                        "y": -208.70000000000005,
+                        "parameters": {},
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "9055dcfd-6aee-fa15-6435-03abc3976035",
+                        "type": "String",
+                        "label": "User Endpoint",
+                        "x": -157.8238403263726,
+                        "y": 230.35884615313444,
+                        "parameters": {},
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "3e804daf-9038-5b2d-9867-f2abaa45330b",
+                        "type": "String",
+                        "label": "Token Endpoint",
+                        "x": -158.2249999999999,
+                        "y": 126.70000000000005,
+                        "parameters": {},
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "1f23a98c-046d-b835-65d9-d608a0c3f247",
+                        "type": "String",
+                        "label": "Email Field",
+                        "x": -159.28702797215726,
+                        "y": 331.4518881113704,
+                        "parameters": {},
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "21d41f7e-d386-db35-929c-b4fdaed4ff6d",
+                        "type": "String",
+                        "label": "Client Secret",
+                        "x": -163.3499999999999,
+                        "y": -405.17499999999995,
+                        "parameters": {},
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    }
+                ]
+            },
+            "metadata": {
+                "isFolderComponent": false
+            }
+        },
+        {
+            "name": "/OAuth2/Log In",
+            "id": "2f01b0b4-83b1-2559-74bc-b8d5370bcf03",
+            "graph": {
+                "connections": [
+                    {
+                        "fromId": "22acfaa0-3ed8-f685-8562-7a3a2fed80e3",
+                        "fromProperty": "success",
+                        "toId": "58945f80-7c0f-ec57-9004-8ccf5cee7b18",
+                        "toProperty": "run"
+                    },
+                    {
+                        "fromId": "22acfaa0-3ed8-f685-8562-7a3a2fed80e3",
+                        "fromProperty": "out-Session Token",
+                        "toId": "58945f80-7c0f-ec57-9004-8ccf5cee7b18",
+                        "toProperty": "in-SessionToken"
+                    },
+                    {
+                        "fromId": "a9a03500-82c8-a767-8648-b3b16a91c075",
+                        "fromProperty": "Code",
+                        "toId": "22acfaa0-3ed8-f685-8562-7a3a2fed80e3",
+                        "toProperty": "in-Code"
+                    },
+                    {
+                        "fromId": "a9a03500-82c8-a767-8648-b3b16a91c075",
+                        "fromProperty": "Do",
+                        "toId": "22acfaa0-3ed8-f685-8562-7a3a2fed80e3",
+                        "toProperty": "call"
+                    },
+                    {
+                        "fromId": "58945f80-7c0f-ec57-9004-8ccf5cee7b18",
+                        "fromProperty": "out-Failure",
+                        "toId": "d988c732-2d0b-b04e-077c-ab5cf80efd04",
+                        "toProperty": "Failure"
+                    },
+                    {
+                        "fromId": "58945f80-7c0f-ec57-9004-8ccf5cee7b18",
+                        "fromProperty": "out-Success",
+                        "toId": "d988c732-2d0b-b04e-077c-ab5cf80efd04",
+                        "toProperty": "Success"
+                    },
+                    {
+                        "fromId": "22acfaa0-3ed8-f685-8562-7a3a2fed80e3",
+                        "fromProperty": "failure",
+                        "toId": "d988c732-2d0b-b04e-077c-ab5cf80efd04",
+                        "toProperty": "Failure"
+                    }
+                ],
+                "roots": [
+                    {
+                        "id": "a9a03500-82c8-a767-8648-b3b16a91c075",
+                        "type": "Component Inputs",
+                        "x": -439,
+                        "y": -13,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Do",
+                                "plug": "output",
+                                "type": "*",
+                                "index": 0
+                            },
+                            {
+                                "name": "Code",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 1
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "d988c732-2d0b-b04e-077c-ab5cf80efd04",
+                        "type": "Component Outputs",
+                        "x": 377,
+                        "y": 46,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Success",
+                                "plug": "input",
+                                "type": "*",
+                                "index": 0
+                            },
+                            {
+                                "name": "Failure",
+                                "plug": "input",
+                                "type": "*",
+                                "index": 1
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "22acfaa0-3ed8-f685-8562-7a3a2fed80e3",
+                        "type": "CloudFunction2",
+                        "x": -174.16666666666663,
+                        "y": -38,
+                        "parameters": {
+                            "function": "OAuth2/Log In"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "plug": "input",
+                                "type": {
+                                    "name": "enum",
+                                    "enums": [
+                                        {
+                                            "label": "OAuth2/Authorize",
+                                            "value": "OAuth2/Authorize"
+                                        },
+                                        {
+                                            "label": "OAuth2/Log In",
+                                            "value": "OAuth2/Log In"
+                                        },
+                                        {
+                                            "label": "TOTP/Complete Connect",
+                                            "value": "TOTP/Complete Connect"
+                                        },
+                                        {
+                                            "label": "TOTP/Complete Log In",
+                                            "value": "TOTP/Complete Log In"
+                                        },
+                                        {
+                                            "label": "TOTP/Disconnect",
+                                            "value": "TOTP/Disconnect"
+                                        },
+                                        {
+                                            "label": "TOTP/Start Connect",
+                                            "value": "TOTP/Start Connect"
+                                        },
+                                        {
+                                            "label": "TOTP/Start Log In",
+                                            "value": "TOTP/Start Log In"
+                                        }
+                                    ],
+                                    "allowEditOnly": true
+                                },
+                                "group": "General",
+                                "displayName": "Function",
+                                "name": "function",
+                                "index": 4
+                            },
+                            {
+                                "name": "in-Code",
+                                "displayName": "Code",
+                                "type": "*",
+                                "plug": "input",
+                                "group": "Parameters",
+                                "index": 5
+                            },
+                            {
+                                "name": "out-Session Token",
+                                "displayName": "Session Token",
+                                "type": "*",
+                                "plug": "output",
+                                "group": "Results",
+                                "index": 6
+                            }
+                        ],
+                        "children": []
+                    },
+                    {
+                        "id": "58945f80-7c0f-ec57-9004-8ccf5cee7b18",
+                        "type": "JavaScriptFunction",
+                        "label": "Become User",
+                        "x": 102.5,
+                        "y": -36.333333333333314,
+                        "parameters": {
+                            "functionScript": "try {\n    await Noodl.Users.become(Inputs.SessionToken)\n}\ncatch(e) {\n    Outputs.Failure()\n    throw e;\n}\n\nOutputs.Success()"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "name": "in-SessionToken",
+                                "displayName": "SessionToken",
+                                "plug": "input",
+                                "type": "*",
+                                "group": "Inputs",
+                                "index": 4
+                            },
+                            {
+                                "name": "out-Failure",
+                                "displayName": "Failure",
+                                "plug": "output",
+                                "type": "signal",
+                                "group": "Outputs",
+                                "index": 5
+                            },
+                            {
+                                "name": "out-Success",
+                                "displayName": "Success",
+                                "plug": "output",
+                                "type": "signal",
+                                "group": "Outputs",
+                                "index": 6
+                            }
+                        ],
+                        "children": [],
+                        "metadata": {
+                            "merge": {
+                                "soureCodePorts": [
+                                    "functionScript"
+                                ]
+                            }
+                        }
+                    }
+                ]
+            },
+            "metadata": {
+                "isFolderComponent": false
+            }
+        }
+    ],
+    "settings": {},
+    "version": "4",
+    "metadata": {
+        "styles": {
+            "text": {},
+            "colors": {}
+        }
+    },
+    "variants": []
+}

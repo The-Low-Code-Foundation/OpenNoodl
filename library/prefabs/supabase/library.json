@@ -1,0 +1,17 @@
+{
+  "label": "Supabase",
+  "description": "Connects to Supabase and handles queries, users and authTokens. Built by @gmaison and @RicoTrevisan.",
+  "type": "prefab",
+  "tags": [
+    "Data"
+  ],
+  "icon": "icon.png",
+  "docsPath": "/library/prefabs/supabase/",
+  "version": "1.0.0",
+  "minEditorVersion": "0.1.0",
+  "runtimeVersion": "2.7.0",
+  "provenance": {
+    "sourceUrl": "https://the-low-code-foundation.github.io/opennoodl-docs/library/prefabs/supabase/supabase-prefab-1.zip",
+    "importedAt": "2026-07-25"
+  }
+}

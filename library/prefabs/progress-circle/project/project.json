@@ -1,0 +1,461 @@
+{
+    "name": "Export",
+    "components": [
+        {
+            "name": "/Progress Circle",
+            "id": "da2c1b44-5db0-fcf9-50cb-5bbec960b739",
+            "graph": {
+                "connections": [
+                    {
+                        "fromId": "d19c8cde-7291-b95c-f396-960390d9105e",
+                        "fromProperty": "Value",
+                        "toId": "4f4d1b68-643b-7e7f-ba58-949da5641ff9",
+                        "toProperty": "inputValue"
+                    },
+                    {
+                        "fromId": "d19c8cde-7291-b95c-f396-960390d9105e",
+                        "fromProperty": "Min Value",
+                        "toId": "4f4d1b68-643b-7e7f-ba58-949da5641ff9",
+                        "toProperty": "minInputValue"
+                    },
+                    {
+                        "fromId": "d19c8cde-7291-b95c-f396-960390d9105e",
+                        "fromProperty": "Max Value",
+                        "toId": "4f4d1b68-643b-7e7f-ba58-949da5641ff9",
+                        "toProperty": "maxInputValue"
+                    },
+                    {
+                        "fromId": "314ae352-662b-3f77-0a7d-da1cba3e4016",
+                        "fromProperty": "formatted",
+                        "toId": "51ffa02f-d317-fc4e-1813-297d43dc63df",
+                        "toProperty": "text"
+                    },
+                    {
+                        "fromId": "4f4d1b68-643b-7e7f-ba58-949da5641ff9",
+                        "fromProperty": "remappedValue",
+                        "toId": "0462efa4-fca1-f1ad-bb4c-f7545f77bbc4",
+                        "toProperty": "mounted"
+                    },
+                    {
+                        "fromId": "4f4d1b68-643b-7e7f-ba58-949da5641ff9",
+                        "fromProperty": "remappedValue",
+                        "toId": "40a12220-33ca-c6ed-48ad-009737977aae",
+                        "toProperty": "Value in procentage"
+                    },
+                    {
+                        "fromId": "4f4d1b68-643b-7e7f-ba58-949da5641ff9",
+                        "fromProperty": "remappedValue",
+                        "toId": "89efcd33-f00b-8c27-0099-4e70ad00f265",
+                        "toProperty": "inputValue"
+                    },
+                    {
+                        "fromId": "4f4d1b68-643b-7e7f-ba58-949da5641ff9",
+                        "fromProperty": "remappedValue",
+                        "toId": "6b9c0dfc-1ffd-9154-f2d1-71b43a800235",
+                        "toProperty": "val"
+                    },
+                    {
+                        "fromId": "6b9c0dfc-1ffd-9154-f2d1-71b43a800235",
+                        "fromProperty": "result",
+                        "toId": "314ae352-662b-3f77-0a7d-da1cba3e4016",
+                        "toProperty": "val"
+                    },
+                    {
+                        "fromId": "ba1f952d-9779-dfde-7830-d9f4ad0f49f3",
+                        "fromProperty": "currentValue",
+                        "toId": "0462efa4-fca1-f1ad-bb4c-f7545f77bbc4",
+                        "toProperty": "endAngle"
+                    },
+                    {
+                        "fromId": "89efcd33-f00b-8c27-0099-4e70ad00f265",
+                        "fromProperty": "remappedValue",
+                        "toId": "ba1f952d-9779-dfde-7830-d9f4ad0f49f3",
+                        "toProperty": "targetValue"
+                    },
+                    {
+                        "fromId": "d19c8cde-7291-b95c-f396-960390d9105e",
+                        "fromProperty": "Margin Left",
+                        "toId": "c3dbb39a-f90f-c006-7261-2cafe4beec64",
+                        "toProperty": "marginLeft"
+                    },
+                    {
+                        "fromId": "d19c8cde-7291-b95c-f396-960390d9105e",
+                        "fromProperty": "Margin Top",
+                        "toId": "c3dbb39a-f90f-c006-7261-2cafe4beec64",
+                        "toProperty": "marginTop"
+                    },
+                    {
+                        "fromId": "d19c8cde-7291-b95c-f396-960390d9105e",
+                        "fromProperty": "Margin Bottom",
+                        "toId": "c3dbb39a-f90f-c006-7261-2cafe4beec64",
+                        "toProperty": "marginBottom"
+                    },
+                    {
+                        "fromId": "d19c8cde-7291-b95c-f396-960390d9105e",
+                        "fromProperty": "Margin Right",
+                        "toId": "c3dbb39a-f90f-c006-7261-2cafe4beec64",
+                        "toProperty": "marginRight"
+                    },
+                    {
+                        "fromId": "d19c8cde-7291-b95c-f396-960390d9105e",
+                        "fromProperty": "Align X",
+                        "toId": "c3dbb39a-f90f-c006-7261-2cafe4beec64",
+                        "toProperty": "alignX"
+                    },
+                    {
+                        "fromId": "d19c8cde-7291-b95c-f396-960390d9105e",
+                        "fromProperty": "Align Y",
+                        "toId": "c3dbb39a-f90f-c006-7261-2cafe4beec64",
+                        "toProperty": "alignY"
+                    },
+                    {
+                        "fromId": "d19c8cde-7291-b95c-f396-960390d9105e",
+                        "fromProperty": "Position",
+                        "toId": "c3dbb39a-f90f-c006-7261-2cafe4beec64",
+                        "toProperty": "position"
+                    },
+                    {
+                        "fromId": "ba1f952d-9779-dfde-7830-d9f4ad0f49f3",
+                        "fromProperty": "atTargetValue",
+                        "toId": "40a12220-33ca-c6ed-48ad-009737977aae",
+                        "toProperty": "At animation done"
+                    },
+                    {
+                        "fromId": "d19c8cde-7291-b95c-f396-960390d9105e",
+                        "fromProperty": "Animation Duration",
+                        "toId": "ba1f952d-9779-dfde-7830-d9f4ad0f49f3",
+                        "toProperty": "duration"
+                    }
+                ],
+                "roots": [
+                    {
+                        "id": "c3dbb39a-f90f-c006-7261-2cafe4beec64",
+                        "type": "Group",
+                        "label": "Progress Circle",
+                        "x": 0,
+                        "y": 0,
+                        "parameters": {
+                            "sizeMode": "contentSize"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": [
+                            {
+                                "id": "58d406b5-7775-f0cb-b844-6ff85032712b",
+                                "type": "Circle",
+                                "label": "Inactive Circle",
+                                "parameters": {
+                                    "size": 80,
+                                    "strokeWidth": 4,
+                                    "fillEnabled": false,
+                                    "strokeEnabled": true,
+                                    "strokeColor": "Grey - 400"
+                                },
+                                "ports": [],
+                                "dynamicports": [],
+                                "children": []
+                            },
+                            {
+                                "id": "0462efa4-fca1-f1ad-bb4c-f7545f77bbc4",
+                                "type": "Circle",
+                                "label": "Active Circle",
+                                "parameters": {
+                                    "size": 80,
+                                    "strokeWidth": 4,
+                                    "position": "absolute",
+                                    "fillEnabled": false,
+                                    "strokeColor": "Primary",
+                                    "strokeLineCap": "round",
+                                    "strokeEnabled": true,
+                                    "endAngle": 0
+                                },
+                                "ports": [],
+                                "dynamicports": [],
+                                "children": []
+                            },
+                            {
+                                "id": "6dc74875-dc4f-9eab-cab5-5a8d7b9e21d4",
+                                "type": "Group",
+                                "label": "Text",
+                                "parameters": {
+                                    "sizeMode": "contentSize",
+                                    "position": "absolute",
+                                    "alignX": "center",
+                                    "alignY": "center"
+                                },
+                                "ports": [],
+                                "dynamicports": [],
+                                "children": [
+                                    {
+                                        "id": "51ffa02f-d317-fc4e-1813-297d43dc63df",
+                                        "type": "Text",
+                                        "parameters": {
+                                            "textStyle": "Label Large",
+                                            "text": "99%",
+                                            "color": "Grey - 900",
+                                            "lineHeight": {
+                                                "value": 1,
+                                                "unit": ""
+                                            }
+                                        },
+                                        "ports": [],
+                                        "dynamicports": [],
+                                        "children": []
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "id": "4f4d1b68-643b-7e7f-ba58-949da5641ff9",
+                        "type": "Number Remapper",
+                        "label": "Value in procentage",
+                        "x": -227.3994727841646,
+                        "y": 750.9582554671847,
+                        "parameters": {
+                            "maxOutputValue": 100
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "d19c8cde-7291-b95c-f396-960390d9105e",
+                        "type": "Component Inputs",
+                        "x": -661.0736952429797,
+                        "y": 83.9693738962768,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Value",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 0
+                            },
+                            {
+                                "name": "Min Value",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 1
+                            },
+                            {
+                                "name": "Max Value",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 2
+                            },
+                            {
+                                "name": "Margin Left",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "group": "Margin",
+                                "index": 4
+                            },
+                            {
+                                "name": "Margin Top",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "group": "Margin",
+                                "index": 5
+                            },
+                            {
+                                "name": "Margin Bottom",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "group": "Margin",
+                                "index": 6
+                            },
+                            {
+                                "name": "Margin Right",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "group": "Margin",
+                                "index": 7
+                            },
+                            {
+                                "name": "Align X",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "group": "Alignment",
+                                "index": 8
+                            },
+                            {
+                                "name": "Align Y",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "group": "Alignment",
+                                "index": 9
+                            },
+                            {
+                                "name": "Position",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "group": "Position",
+                                "index": 10
+                            },
+                            {
+                                "name": "Animation Duration",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 3
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "314ae352-662b-3f77-0a7d-da1cba3e4016",
+                        "type": "String Format",
+                        "x": -228.25577158769153,
+                        "y": 512.5397884639392,
+                        "parameters": {
+                            "format": "{val}%"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "name": "val",
+                                "type": "string",
+                                "plug": "input",
+                                "index": 2
+                            }
+                        ],
+                        "children": []
+                    },
+                    {
+                        "id": "40a12220-33ca-c6ed-48ad-009737977aae",
+                        "type": "Component Outputs",
+                        "x": 48.24089911087907,
+                        "y": 818.8381288895145,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Value in procentage",
+                                "plug": "input",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 1
+                            },
+                            {
+                                "name": "At animation done",
+                                "plug": "input",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 2
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "89efcd33-f00b-8c27-0099-4e70ad00f265",
+                        "type": "Number Remapper",
+                        "label": "Value in Degrees",
+                        "x": 49.555265376773605,
+                        "y": 686.5108910120125,
+                        "parameters": {
+                            "maxInputValue": 100,
+                            "maxOutputValue": 360
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "6b9c0dfc-1ffd-9154-f2d1-71b43a800235",
+                        "type": "Expression",
+                        "x": -231.47681995545497,
+                        "y": 461.8825288235391,
+                        "parameters": {
+                            "expression": "Math.round(val)"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "name": "val",
+                                "type": {
+                                    "name": "*",
+                                    "editAsType": "string"
+                                },
+                                "plug": "input",
+                                "index": 2
+                            }
+                        ],
+                        "children": [],
+                        "metadata": {
+                            "merge": {
+                                "soureCodePorts": [
+                                    "expression"
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        "id": "ba1f952d-9779-dfde-7830-d9f4ad0f49f3",
+                        "type": "net.noodl.animatetovalue",
+                        "x": 308.67523046801034,
+                        "y": 567.7875143542458,
+                        "parameters": {
+                            "duration": 300
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    }
+                ]
+            }
+        }
+    ],
+    "settings": {},
+    "version": "4",
+    "metadata": {
+        "styles": {
+            "text": {
+                "Label Large": {
+                    "fontFamily": "fonts/Roboto/Roboto-Medium.ttf",
+                    "fontSize": {
+                        "value": "16",
+                        "unit": "px"
+                    },
+                    "color": "#000000",
+                    "letterSpacing": "Auto",
+                    "lineHeight": {
+                        "value": "120",
+                        "unit": "%"
+                    },
+                    "textTransform": "none"
+                }
+            },
+            "colors": {
+                "Grey - 400": "#CECECE",
+                "Grey - 900": "#1F1F1F",
+                "Primary": "#5836F5"
+            }
+        }
+    },
+    "variants": []
+}

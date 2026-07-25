@@ -1,0 +1,17 @@
+{
+  "label": "Pagination",
+  "description": "A component for pagination, showing available pages and letting user switch.",
+  "type": "prefab",
+  "tags": [
+    "UI"
+  ],
+  "icon": "icon.png",
+  "docsPath": "/library/prefabs/pagination/",
+  "version": "0.2.0",
+  "minEditorVersion": "0.1.0",
+  "runtimeVersion": "2.7.0",
+  "provenance": {
+    "sourceUrl": "https://the-low-code-foundation.github.io/opennoodl-docs/library/prefabs/pagination/pagination-0-2.zip",
+    "importedAt": "2026-07-25"
+  }
+}

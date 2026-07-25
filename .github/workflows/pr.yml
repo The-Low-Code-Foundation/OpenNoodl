@@ -95,6 +95,18 @@ jobs:
       - run: npm run catalog:examples
       - run: npm run catalog:merge:check
 
+  library:
+    name: Library check (LIB-001)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      # Every entry under library/{prefabs,modules}/<slug>/: library.json
+      # validates against scripts/library/schema.json, the project loads, and
+      # the SUB-006 semantic validator reports zero errors. Warnings are
+      # reported but not gated — seeded content is LIB-002/003's to repair.
+      - run: npm run library:check
+
   artefacts:
     name: Check build artefacts
     runs-on: ubuntu-latest

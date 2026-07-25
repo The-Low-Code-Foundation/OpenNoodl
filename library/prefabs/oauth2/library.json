@@ -1,0 +1,17 @@
+{
+  "label": "OAuth2",
+  "description": "Cloud functions for oauth2 user authentication.",
+  "type": "prefab",
+  "tags": [
+    "Cloud"
+  ],
+  "icon": "icon.png",
+  "docsPath": "/library/prefabs/oauth2/",
+  "version": "2.0.2",
+  "minEditorVersion": "0.1.0",
+  "runtimeVersion": "2.7.0",
+  "provenance": {
+    "sourceUrl": "https://the-low-code-foundation.github.io/opennoodl-docs/library/prefabs/oauth2/oauth2-0-2.zip",
+    "importedAt": "2026-07-25"
+  }
+}

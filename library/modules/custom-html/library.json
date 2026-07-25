@@ -1,0 +1,18 @@
+{
+  "label": "Custom HTML",
+  "description": "Write your own HTML and pass values to it with template strings. Useful for embeds.",
+  "type": "module",
+  "tags": [
+    "UI",
+    "Code"
+  ],
+  "icon": "icon.png",
+  "docsPath": "/library/modules/custom-html/",
+  "version": "1.0.2",
+  "minEditorVersion": "0.1.0",
+  "runtimeVersion": "2.7.0",
+  "provenance": {
+    "sourceUrl": "https://the-low-code-foundation.github.io/opennoodl-docs/library/modules/custom-html/custom-html-module-1-0-2.zip",
+    "importedAt": "2026-07-25"
+  }
+}

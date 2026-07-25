@@ -1,0 +1,17 @@
+{
+  "label": "QR Scanner",
+  "description": "Scan QR codes from camera or images.",
+  "type": "module",
+  "tags": [
+    "Device"
+  ],
+  "icon": "icon.png",
+  "docsPath": "/library/modules/qr-scanner/",
+  "version": "1.4.0",
+  "minEditorVersion": "0.1.0",
+  "runtimeVersion": "2.7.0",
+  "provenance": {
+    "sourceUrl": "https://the-low-code-foundation.github.io/opennoodl-docs/library/modules/qr-scanner/qr-scanner-1-4.zip",
+    "importedAt": "2026-07-25"
+  }
+}
