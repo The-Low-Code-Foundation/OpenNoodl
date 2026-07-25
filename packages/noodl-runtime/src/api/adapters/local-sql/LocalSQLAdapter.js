@@ -513,6 +513,23 @@ class LocalSQLAdapter {
   }
 
   /**
+   * The ephemeral in-memory mock regex-parses SQL and cannot evaluate the ACL
+   * predicate. Enforcing callers must never get silent non-enforcement, so an
+   * acl option against the mock is a hard error (loud-failure doctrine).
+   *
+   * @private
+   * @param {Object} options
+   */
+  _guardAclSupport(options) {
+    if (options.acl && this._usingMock) {
+      throw new Error(
+        'ACL enforcement is not available in ephemeral (in-memory mock) mode — ' +
+          'refusing to run an access-controlled operation without enforcement.'
+      );
+    }
+  }
+
+  /**
    * Query records
    *
    * @param {Object} options - Query options
@@ -520,6 +537,7 @@ class LocalSQLAdapter {
   query(options) {
     try {
       this._ensureTable(options.collection);
+      this._guardAclSupport(options);
 
       const schema = this._getSchema(options.collection);
       const { sql, params } = QueryBuilder.buildSelect(options, schema);
@@ -550,10 +568,18 @@ class LocalSQLAdapter {
   fetch(options) {
     try {
       this._ensureTable(options.collection);
+      this._guardAclSupport(options);
 
-      const sql = `SELECT * FROM ${QueryBuilder.escapeTable(options.collection)} WHERE "objectId" = ?`;
-      const recordId = options.id || options.objectId;
-      const row = this.db.prepare(sql).get(recordId);
+      const params = [options.id || options.objectId];
+      let sql = `SELECT * FROM ${QueryBuilder.escapeTable(options.collection)} WHERE "objectId" = ?`;
+      // Row-level read check: an unreadable row answers exactly like a missing
+      // one (existence hiding).
+      const aclClause = QueryBuilder.buildAclPredicate(options.collection, options.acl, params);
+      if (aclClause) {
+        sql += ` AND ${aclClause}`;
+      }
+      const recordId = params[0];
+      const row = this.db.prepare(sql).get(...params);
 
       if (!row) {
         options.error('Object not found');
@@ -640,9 +666,18 @@ class LocalSQLAdapter {
         }
       }
 
+      this._guardAclSupport(options);
       const recordId = options.id || options.objectId;
       const { sql, params } = QueryBuilder.buildUpdate(options);
-      this.db.prepare(sql).run(...params);
+      const result = this.db.prepare(sql).run(...params);
+
+      // With an ACL context, 0 rows changed means not-found or forbidden —
+      // deliberately indistinguishable (the write predicate is compiled into
+      // the UPDATE itself, so there is no read-then-write race).
+      if (options.acl && (!result || result.changes === 0)) {
+        options.error('Object not found');
+        return;
+      }
 
       // Fetch the updated record
       const updatedRow = this.db
@@ -673,9 +708,15 @@ class LocalSQLAdapter {
   delete(options) {
     try {
       this._ensureTable(options.collection);
+      this._guardAclSupport(options);
 
       const { sql, params } = QueryBuilder.buildDelete(options);
-      this.db.prepare(sql).run(...params);
+      const result = this.db.prepare(sql).run(...params);
+
+      if (options.acl && (!result || result.changes === 0)) {
+        options.error('Object not found');
+        return;
+      }
 
       options.success();
 
@@ -699,6 +740,7 @@ class LocalSQLAdapter {
   count(options) {
     try {
       this._ensureTable(options.collection);
+      this._guardAclSupport(options);
 
       const schema = this._getSchema(options.collection);
       const { sql, params } = QueryBuilder.buildCount(options, schema);
@@ -719,6 +761,7 @@ class LocalSQLAdapter {
   aggregate(options) {
     try {
       this._ensureTable(options.collection);
+      this._guardAclSupport(options);
 
       const { sql, params } = QueryBuilder.buildAggregate(options);
       const row = this.db.prepare(sql).get(...params);
@@ -746,6 +789,7 @@ class LocalSQLAdapter {
   distinct(options) {
     try {
       this._ensureTable(options.collection);
+      this._guardAclSupport(options);
 
       const { sql, params } = QueryBuilder.buildDistinct(options);
       const rows = this.db.prepare(sql).all(...params);
@@ -766,9 +810,15 @@ class LocalSQLAdapter {
   increment(options) {
     try {
       this._ensureTable(options.collection);
+      this._guardAclSupport(options);
 
       const { sql, params } = QueryBuilder.buildIncrement(options);
-      this.db.prepare(sql).run(...params);
+      const result = this.db.prepare(sql).run(...params);
+
+      if (options.acl && (!result || result.changes === 0)) {
+        options.error('Object not found');
+        return;
+      }
 
       // Fetch the updated record
       const recordId = options.id || options.objectId;

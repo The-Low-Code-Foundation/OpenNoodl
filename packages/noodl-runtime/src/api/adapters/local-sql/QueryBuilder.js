@@ -97,6 +97,41 @@ function escapeColumn(name) {
 }
 
 /**
+ * Build the row-level ACL predicate (BAK-003).
+ *
+ * A row is visible/writable when its ACL column is NULL (no ACL = public,
+ * Parse semantics) or when any of the caller's principal keys ('*', a userId,
+ * 'role:<name>') grants the requested access. The check runs IN SQL — never
+ * post-filtered in JS — because count/limit/skip must operate on the visible
+ * set, not the raw set. Principal keys are bound parameters, never
+ * interpolated.
+ *
+ * @param {string} tableName - Unescaped table name (for column qualification)
+ * @param {{ access: 'read'|'write', keys: string[] }} acl - Caller's access context
+ * @param {Array} params - Parameter array to push principal keys to
+ * @returns {string} SQL predicate, or '' when acl is absent
+ */
+function buildAclPredicate(tableName, acl, params) {
+  if (!acl || !Array.isArray(acl.keys)) {
+    return '';
+  }
+  const access = acl.access === 'write' ? 'write' : 'read';
+  const aclCol = `${escapeTable(tableName)}."ACL"`;
+  if (acl.keys.length === 0) {
+    // No principal keys at all: only un-ACL'd (public) rows qualify.
+    return `(${aclCol} IS NULL)`;
+  }
+  const placeholders = acl.keys.map(() => '?').join(', ');
+  params.push(...acl.keys);
+  return (
+    `(${aclCol} IS NULL OR EXISTS (` +
+    `SELECT 1 FROM json_each(${aclCol}) AS _acl_entry ` +
+    `WHERE _acl_entry.key IN (${placeholders}) ` +
+    `AND json_extract(_acl_entry.value, '$.${access}') = 1))`
+  );
+}
+
+/**
  * Convert a Parse Date object to ISO string for SQLite
  * @param {Object|Date|string} value
  * @returns {string}
@@ -350,12 +385,20 @@ function buildSelect(options, schema) {
 
   let sql = `SELECT ${selectClause} FROM ${table}`;
 
-  // Build WHERE clause
+  // Build WHERE clause (query filter AND row-level ACL predicate)
+  const conditions = [];
   if (options.where) {
     const whereClause = buildWhereClause(options.where, params, schema);
     if (whereClause) {
-      sql += ` WHERE ${whereClause}`;
+      conditions.push(whereClause);
     }
+  }
+  const aclClause = buildAclPredicate(options.collection, options.acl, params);
+  if (aclClause) {
+    conditions.push(aclClause);
+  }
+  if (conditions.length > 0) {
+    sql += ` WHERE ${conditions.join(' AND ')}`;
   }
 
   // Build ORDER BY clause
@@ -395,11 +438,19 @@ function buildCount(options, schema) {
 
   let sql = `SELECT COUNT(*) as count FROM ${table}`;
 
+  const conditions = [];
   if (options.where) {
     const whereClause = buildWhereClause(options.where, params, schema);
     if (whereClause) {
-      sql += ` WHERE ${whereClause}`;
+      conditions.push(whereClause);
     }
+  }
+  const aclClause = buildAclPredicate(options.collection, options.acl, params);
+  if (aclClause) {
+    conditions.push(aclClause);
+  }
+  if (conditions.length > 0) {
+    sql += ` WHERE ${conditions.join(' AND ')}`;
   }
 
   return { sql, params };
@@ -479,7 +530,15 @@ function buildUpdate(options) {
   const recordId = options.id || options.objectId;
   params.push(recordId);
 
-  const sql = `UPDATE ${table} SET ${setClause.join(', ')} WHERE "objectId" = ?`;
+  let sql = `UPDATE ${table} SET ${setClause.join(', ')} WHERE "objectId" = ?`;
+
+  // Row-level write check compiled into the statement itself: 0 rows changed
+  // means not-found OR forbidden, indistinguishably (no read-then-write race,
+  // no existence leak).
+  const aclClause = buildAclPredicate(options.collection, options.acl, params);
+  if (aclClause) {
+    sql += ` AND ${aclClause}`;
+  }
 
   return { sql, params };
 }
@@ -496,8 +555,13 @@ function buildDelete(options) {
   const table = escapeTable(options.collection);
   // Use id or objectId for backwards compatibility
   const recordId = options.id || options.objectId;
-  const sql = `DELETE FROM ${table} WHERE "objectId" = ?`;
-  return { sql, params: [recordId] };
+  const params = [recordId];
+  let sql = `DELETE FROM ${table} WHERE "objectId" = ?`;
+  const aclClause = buildAclPredicate(options.collection, options.acl, params);
+  if (aclClause) {
+    sql += ` AND ${aclClause}`;
+  }
+  return { sql, params };
 }
 
 /**
@@ -529,7 +593,12 @@ function buildIncrement(options) {
   const recordId = options.id || options.objectId;
   params.push(recordId);
 
-  const sql = `UPDATE ${table} SET ${setClause.join(', ')} WHERE "objectId" = ?`;
+  let sql = `UPDATE ${table} SET ${setClause.join(', ')} WHERE "objectId" = ?`;
+
+  const aclClause = buildAclPredicate(options.collection, options.acl, params);
+  if (aclClause) {
+    sql += ` AND ${aclClause}`;
+  }
 
   return { sql, params };
 }
@@ -550,11 +619,19 @@ function buildDistinct(options) {
 
   let sql = `SELECT DISTINCT ${col} FROM ${table}`;
 
+  const conditions = [];
   if (options.where) {
     const whereClause = buildWhereClause(options.where, params);
     if (whereClause) {
-      sql += ` WHERE ${whereClause}`;
+      conditions.push(whereClause);
     }
+  }
+  const aclClause = buildAclPredicate(options.collection, options.acl, params);
+  if (aclClause) {
+    conditions.push(aclClause);
+  }
+  if (conditions.length > 0) {
+    sql += ` WHERE ${conditions.join(' AND ')}`;
   }
 
   return { sql, params };
@@ -598,11 +675,19 @@ function buildAggregate(options) {
 
   let sql = `SELECT ${selectParts.join(', ')} FROM ${table}`;
 
+  const conditions = [];
   if (options.where) {
     const whereClause = buildWhereClause(options.where, params);
     if (whereClause) {
-      sql += ` WHERE ${whereClause}`;
+      conditions.push(whereClause);
     }
+  }
+  const aclClause = buildAclPredicate(options.collection, options.acl, params);
+  if (aclClause) {
+    conditions.push(aclClause);
+  }
+  if (conditions.length > 0) {
+    sql += ` WHERE ${conditions.join(' AND ')}`;
   }
 
   return { sql, params };
@@ -704,6 +789,7 @@ function deserializeValue(value, type) {
 module.exports = {
   escapeTable,
   escapeColumn,
+  buildAclPredicate,
   buildWhereClause,
   buildOrderClause,
   buildSelect,

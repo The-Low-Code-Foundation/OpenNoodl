@@ -161,7 +161,16 @@ function tryNodeSqlite() {
   try {
     ({ DatabaseSync } = require('node:sqlite'));
   } catch (e) {
-    return null;
+    // Sandboxed module systems can fail the plain require even though the
+    // builtin exists — jest's resolver predates node:sqlite and tries to open
+    // it as a file (and it intercepts createRequire too). getBuiltinModule
+    // (Node ≥22.3) reaches the builtin below the module system entirely;
+    // identical behaviour outside sandboxes.
+    try {
+      ({ DatabaseSync } = process.getBuiltinModule('node:sqlite'));
+    } catch (e2) {
+      return null;
+    }
   }
   if (typeof DatabaseSync !== 'function') {
     return null;
