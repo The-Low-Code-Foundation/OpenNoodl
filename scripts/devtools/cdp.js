@@ -23,6 +23,9 @@
  *   node scripts/devtools/cdp.js click "<selector>"
  *   node scripts/devtools/cdp.js type "<selector>" "text"
  *   node scripts/devtools/cdp.js reload
+ *   node scripts/devtools/cdp.js network <offline|online>
+ *   node scripts/devtools/cdp.js blockurl "<url-pattern>"
+ *   node scripts/devtools/cdp.js unblockurl
  *
  * Options (any position):
  *   --target=editor|viewer|<substring>   which renderer to attach to (default: editor)
@@ -433,6 +436,54 @@ const commands = {
     await client.send('Page.reload', { ignoreCache: true });
     console.log('reloaded');
     setTimeout(() => process.exit(0), 500);
+  },
+
+  /**
+   * Toggle simulated offline conditions on a renderer via the Network domain —
+   * for exercising loud-failure / offline-state UI without touching the host's
+   * real network. `cdp.js network offline` / `cdp.js network online`.
+   *
+   * Caution: full offline emulation affects the *entire* network stack of the
+   * renderer, not just fetch()/XHR to remote hosts — it has been observed to
+   * hang unrelated app startup/navigation work (e.g. entering a project) that
+   * does not expect a network call to fail. Prefer `blockurl`/`unblockurl` to
+   * fail a specific host instead of the whole renderer's network.
+   */
+  async network(mode) {
+    if (mode !== 'offline' && mode !== 'online') throw new Error('usage: cdp.js network <offline|online>');
+    const client = await connect(await appTarget());
+    await client.send('Network.enable');
+    await client.send('Network.emulateNetworkConditions', {
+      offline: mode === 'offline',
+      latency: 0,
+      downloadThroughput: mode === 'offline' ? 0 : -1,
+      uploadThroughput: mode === 'offline' ? 0 : -1
+    });
+    console.log(`network: ${mode}`);
+    client.close();
+  },
+
+  /**
+   * Fail requests matching a URL pattern (Chrome DevTools wildcard syntax,
+   * e.g. "*the-low-code-foundation.github.io*") instead of taking the whole
+   * renderer offline. Safer than `network offline` for exercising one
+   * subsystem's fetch-failure path without disturbing unrelated app logic.
+   */
+  async blockurl(pattern) {
+    if (!pattern) throw new Error('usage: cdp.js blockurl "<url-pattern>"');
+    const client = await connect(await appTarget());
+    await client.send('Network.enable');
+    await client.send('Network.setBlockedURLs', { urls: [pattern] });
+    console.log(`blocked: ${pattern}`);
+    client.close();
+  },
+
+  async unblockurl() {
+    const client = await connect(await appTarget());
+    await client.send('Network.enable');
+    await client.send('Network.setBlockedURLs', { urls: [] });
+    console.log('unblocked all');
+    client.close();
   }
 };
 
