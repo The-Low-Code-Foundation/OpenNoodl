@@ -194,3 +194,7 @@ packages/noodl-viewer-cloud/publish
 # Dev main-process source map (webpack.main.dev.js) — see "Editor build
 # artifacts" above for the rest of the generated output.
 packages/noodl-editor/src/main/main.bundle.js.map
+
+# LIB-001: library:build output — a build artifact generated from library/,
+# not source. Publishing copies it into the docs repo; see library/README.md.
+/library-dist/

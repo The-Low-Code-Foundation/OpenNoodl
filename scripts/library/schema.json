@@ -1,0 +1,62 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://nodegx.dev/schemas/library-entry.json",
+  "title": "NodeGX library entry metadata (library.json)",
+  "description": "Per-entry metadata for a prefab or module under library/{prefabs,modules}/<slug>/library.json. See library/README.md.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["label", "description", "type", "version", "tags"],
+  "properties": {
+    "label": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Display name shown on the library card."
+    },
+    "description": {
+      "type": "string",
+      "description": "Short description shown on the library card."
+    },
+    "type": {
+      "type": "string",
+      "enum": ["prefab", "module"],
+      "description": "Explicit entry kind. Replaces the legacy '/prefab' substring check on the project zip URL."
+    },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "icon": {
+      "type": "string",
+      "description": "Filename of the icon image within this entry's directory (e.g. 'icon.png'). Omit if there is no icon."
+    },
+    "docsPath": {
+      "type": "string",
+      "description": "Docs-site path shown as the 'Read docs' link, e.g. '/library/prefabs/date-picker/'."
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "Semver content version. Bumping this changes the built zip's filename, which is what makes the editor's forever-cache correct instead of a trap."
+    },
+    "minEditorVersion": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "Lowest NodeGX editor version this entry is known to work with. Entries above the running editor's version render as incompatible instead of being offered for install."
+    },
+    "runtimeVersion": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "noodl-runtime version this entry was authored/verified against."
+    },
+    "provenance": {
+      "type": "object",
+      "description": "Where seeded (LIB-001) content came from. Entries authored directly in this repo (LIB-002/003 and later) may omit this.",
+      "additionalProperties": false,
+      "properties": {
+        "sourceUrl": { "type": "string" },
+        "importedAt": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" }
+      },
+      "required": ["sourceUrl", "importedAt"]
+    }
+  }
+}
