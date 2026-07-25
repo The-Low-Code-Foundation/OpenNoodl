@@ -62,6 +62,20 @@ export interface RunnerRequest {
   headers?: Record<string, unknown>;
 }
 
+/**
+ * Where a run came from, for execution-record tagging (WF-005). A direct
+ * `POST /functions/:name` leaves this undefined and records as 'webhook'
+ * (historical default); trigger dispatch passes the real source.
+ */
+export interface RunTriggerContext {
+  /** Execution-history trigger type. */
+  type: 'webhook' | 'schedule' | 'manual' | 'db_change' | 'internal_event' | 'test';
+  /** Human-readable origin, e.g. `schedule trg_abc (0 * * * *)`. */
+  source?: string;
+  /** The trigger definition id, when fired by a registered trigger. */
+  triggerId?: string;
+}
+
 export class WorkflowRunner {
   private readonly workflowsPath: string;
   private readonly executions: ExecutionHistory;
@@ -162,7 +176,7 @@ export class WorkflowRunner {
    * function's Response node; every run is logged to execution history
    * (scrubbed) unless history is disabled.
    */
-  async run(functionName: string, request: RunnerRequest): Promise<RunnerResponse> {
+  async run(functionName: string, request: RunnerRequest, trigger?: RunTriggerContext): Promise<RunnerResponse> {
     if (!this.cloudRunner) {
       return { statusCode: 503, body: JSON.stringify({ error: 'Workflows not initialized' }) };
     }
@@ -176,9 +190,14 @@ export class WorkflowRunner {
       logger.startExecution({
         workflowId: functionName,
         workflowName: functionName,
-        triggerType: 'webhook',
+        triggerType: trigger ? trigger.type : 'webhook',
         triggerData: scrubRequestForLogging(request || {}),
-        metadata: { backendId: this.backendId, backendName: this.backendName }
+        metadata: {
+          backendId: this.backendId,
+          backendName: this.backendName,
+          ...(trigger && trigger.source ? { triggerSource: trigger.source } : {}),
+          ...(trigger && trigger.triggerId ? { triggerId: trigger.triggerId } : {})
+        }
       });
     }
 

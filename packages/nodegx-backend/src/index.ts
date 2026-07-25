@@ -36,4 +36,28 @@ export {
   validateSecurityConfig
 } from './security/model';
 export { SecurityState, SecurityStartupError } from './security/state';
+// WF-005 — triggers (schedule / webhook / db-change).
+export { SecretsStore, WEBHOOK_SECRETS_NAMESPACE } from './config/SecretsStore';
+export {
+  TriggerRegistry,
+  TriggerConfigError,
+  validateTriggerDef
+} from './triggers/registry';
+export type {
+  TriggerDef,
+  TriggerInput,
+  TriggerType,
+  TriggerStatus,
+  TriggerResult,
+  MissedFirePolicy,
+  WebhookScheme,
+  ChangeAction
+} from './triggers/registry';
+export { TriggerDispatcher } from './triggers/dispatcher';
+export type { FireOutcome } from './triggers/dispatcher';
+export { CronScheduler, computeStartPlan } from './triggers/scheduler';
+export { parseCron, validateCron, CronExpression, CronParseError } from './triggers/cron';
+export { DbChangeTriggers } from './triggers/dbchange';
+export { TriggerSubsystem } from './triggers/TriggerSubsystem';
+export { verifyWebhook, signWebhookHmac } from './triggers/webhook';
 export { main as cli } from './cli';

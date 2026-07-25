@@ -225,4 +225,54 @@ describeOrSkip('MCP backend permission tools (live backend)', () => {
     });
     expect(bad.isError).toBe(true);
   });
+
+  // WF-005 — the agent-authors-automation surface over MCP.
+  it('enumerates, creates, toggles, and deletes triggers via MCP (SUB-008)', async () => {
+    // Empty to begin with.
+    const initial = await call<{ triggers: unknown[] }>(session, 'list_backend_triggers');
+    expect(initial.isError).toBe(false);
+    expect(Array.isArray(initial.data.triggers)).toBe(true);
+
+    // Create a webhook trigger — the secret comes back exactly once.
+    const created = await call<{ trigger: { id: string; enabled: boolean }; secret?: string }>(
+      session,
+      'create_backend_trigger',
+      { type: 'webhook', target: { kind: 'function', name: 'onPush' }, webhook: { slug: 'gh' } }
+    );
+    expect(created.isError).toBe(false);
+    expect(created.data.secret).toMatch(/^whsec_/);
+    const id = created.data.trigger.id;
+
+    // A cron trigger too.
+    const cron = await call<{ trigger: { id: string } }>(session, 'create_backend_trigger', {
+      type: 'schedule',
+      target: { kind: 'function', name: 'digest' },
+      schedule: { cron: '0 3 * * *', missedFirePolicy: 'skip' }
+    });
+    expect(cron.isError).toBe(false);
+
+    // Enumerate: both are present, and the secret is NOT exposed in the listing.
+    const listed = await call<{ triggers: { id: string; type: string }[] }>(session, 'list_backend_triggers');
+    const ids = listed.data.triggers.map((t) => t.id);
+    expect(ids).toContain(id);
+    expect(ids).toContain(cron.data.trigger.id);
+    expect(JSON.stringify(listed.data.triggers)).not.toContain('whsec_');
+
+    // Disable + get.
+    await call(session, 'set_backend_trigger_enabled', { id, enabled: false });
+    const got = await call<{ trigger: { enabled: boolean } }>(session, 'get_backend_trigger', { id });
+    expect(got.data.trigger.enabled).toBe(false);
+
+    // A malformed trigger is rejected by the backend (no silent accept).
+    const bad = await call<{ error?: { code: string } }>(session, 'create_backend_trigger', {
+      type: 'schedule',
+      target: { kind: 'function', name: 'x' },
+      schedule: { cron: 'not-a-cron', missedFirePolicy: 'skip' }
+    });
+    expect(bad.isError).toBe(true);
+
+    // Delete.
+    const del = await call<{ deleted: boolean }>(session, 'delete_backend_trigger', { id });
+    expect(del.data.deleted).toBe(true);
+  });
 });

@@ -117,6 +117,40 @@ export function registerBackendReadTools(server: McpServer): void {
   );
 
   server.registerTool(
+    'list_backend_triggers',
+    {
+      title: 'List backend triggers',
+      description:
+        'List the automation triggers (WF-005) configured on a running backend: schedule (cron), webhook, and ' +
+        'db-change, each with its target function, enabled state, and last-fired / next-fire / last-result status. ' +
+        'This is how an agent sees what automation already exists before adding more.',
+      inputSchema: { backendId: z.string().optional().describe('Which backend (omit if exactly one is running)') }
+    },
+    guarded(async ({ backendId }) => {
+      const client = await requireBackend(backendId);
+      const { json } = await client.request('GET', '/admin/triggers');
+      return jsonResult(json);
+    })
+  );
+
+  server.registerTool(
+    'get_backend_trigger',
+    {
+      title: 'Get a backend trigger',
+      description: 'The full definition + status of one trigger by id on a running backend.',
+      inputSchema: {
+        backendId: z.string().optional(),
+        id: z.string().describe('The trigger id (from list_backend_triggers)')
+      }
+    },
+    guarded(async ({ backendId, id }) => {
+      const client = await requireBackend(backendId);
+      const { json } = await client.request('GET', `/admin/triggers/${encodeURIComponent(id)}`);
+      return jsonResult(json);
+    })
+  );
+
+  server.registerTool(
     'check_backend_access',
     {
       title: 'Check backend access (dry run)',
@@ -284,6 +318,106 @@ export function registerBackendWriteTools(server: McpServer): void {
     guarded(async ({ backendId, objectId }) => {
       const client = await requireBackend(backendId);
       const { json } = await client.request('DELETE', `/admin/keys/${encodeURIComponent(objectId)}`);
+      return jsonResult(json);
+    })
+  );
+
+  // ==========================================================================
+  // Triggers (WF-005) — the agent-authors-automation surface
+  // ==========================================================================
+
+  const triggerFields = {
+    type: z.enum(['schedule', 'webhook', 'db-change']).describe('Trigger type'),
+    name: z.string().optional().describe('Human label'),
+    enabled: z.boolean().optional().describe('Enabled (default true)'),
+    target: z
+      .object({ kind: z.literal('function'), name: z.string() })
+      .describe('The cloud function this trigger invokes (kind is always "function" in v1)'),
+    schedule: z
+      .object({
+        cron: z.string().describe('5-field cron or @preset (@hourly/@daily/…). Local timezone.'),
+        missedFirePolicy: z.enum(['skip', 'run-once-on-start']).describe('What to do about fires missed while down')
+      })
+      .optional()
+      .describe('Required for type "schedule"'),
+    webhook: z
+      .object({
+        slug: z.string().describe('URL slug: POST /hooks/<backendId>/<slug>'),
+        scheme: z.enum(['hmac-sha256', 'token']).optional().describe('Secret scheme (default hmac-sha256)'),
+        maxBodyBytes: z.number().optional().describe('Body size limit (default 1MB)')
+      })
+      .optional()
+      .describe('Required for type "webhook"'),
+    dbChange: z
+      .object({
+        collection: z.string(),
+        actions: z.array(z.enum(['create', 'update', 'delete'])).describe('Which post-commit actions fire it')
+      })
+      .optional()
+      .describe('Required for type "db-change"'),
+    secret: z.string().optional().describe('Webhook only: set an explicit secret (else one is minted and returned once)')
+  };
+
+  server.registerTool(
+    'create_backend_trigger',
+    {
+      title: 'Create a backend trigger',
+      description:
+        'Add an automation trigger to a running backend (WF-005): a cron schedule, an incoming webhook, or a ' +
+        'db-change event, each invoking a designated cloud function. For a webhook, the per-hook secret is ' +
+        'returned EXACTLY ONCE (store it now) — point the sender at POST /hooks/<backendId>/<slug> with an ' +
+        'X-Hub-Signature-256 HMAC (or the token scheme). The definition is persisted and deploys with the backend.',
+      inputSchema: { backendId: z.string().optional(), ...triggerFields }
+    },
+    guarded(async ({ backendId, ...body }) => {
+      const client = await requireBackend(backendId);
+      const { json } = await client.request('POST', '/admin/triggers', body);
+      return jsonResult(json);
+    })
+  );
+
+  server.registerTool(
+    'update_backend_trigger',
+    {
+      title: 'Update a backend trigger',
+      description: 'Replace a trigger definition by id on a running backend. Same fields as create.',
+      inputSchema: { backendId: z.string().optional(), id: z.string().describe('The trigger id'), ...triggerFields }
+    },
+    guarded(async ({ backendId, id, ...body }) => {
+      const client = await requireBackend(backendId);
+      const { json } = await client.request('PUT', `/admin/triggers/${encodeURIComponent(id)}`, body);
+      return jsonResult(json);
+    })
+  );
+
+  server.registerTool(
+    'set_backend_trigger_enabled',
+    {
+      title: 'Enable / disable a backend trigger',
+      description: 'Turn a trigger on or off without deleting it.',
+      inputSchema: {
+        backendId: z.string().optional(),
+        id: z.string().describe('The trigger id'),
+        enabled: z.boolean()
+      }
+    },
+    guarded(async ({ backendId, id, enabled }) => {
+      const client = await requireBackend(backendId);
+      const { json } = await client.request('POST', `/admin/triggers/${encodeURIComponent(id)}/enabled`, { enabled });
+      return jsonResult(json);
+    })
+  );
+
+  server.registerTool(
+    'delete_backend_trigger',
+    {
+      title: 'Delete a backend trigger',
+      description: 'Remove a trigger (and its webhook secret) from a running backend by id.',
+      inputSchema: { backendId: z.string().optional(), id: z.string().describe('The trigger id to delete') }
+    },
+    guarded(async ({ backendId, id }) => {
+      const client = await requireBackend(backendId);
+      const { json } = await client.request('DELETE', `/admin/triggers/${encodeURIComponent(id)}`);
       return jsonResult(json);
     })
   );
