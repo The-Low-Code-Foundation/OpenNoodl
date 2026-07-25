@@ -42741,19 +42741,22 @@
       "enrichment": {
         "typeName": "noodl.byob.QueryData",
         "summary": "Query Data (BYOB): fetches records from a self-hosted backend class on demand into a records array.",
-        "description": "The bring-your-own-backend query: when `fetch` fires it runs the configured query against the BYOB backend and emits `records` (array), `count`, `totalCount`, and `firstRecord`. `loading` covers the request window; `success`/`failure` sequence follow-ups. Results are a snapshot — there is no live re-query on remote changes, so writers re-trigger `fetch` when they finish.",
-        "whenToUse": "Reading lists from a self-hosted backend. On the managed cloud backend prefer Query Records (DbCollection2), which additionally keeps results live.",
+        "description": "The bring-your-own-backend query: when `fetch` fires it runs the configured query against the BYOB backend and emits `records` (array), `count`, `totalCount`, and `firstRecord`. `loading` covers the request window; `success`/`failure` sequence follow-ups. Results are a snapshot by default — writers re-trigger `fetch` when they finish. Against the NodeGX backend, turning on the `Live` input keeps the results current automatically: the node opens a realtime (SSE) subscription to the collection and re-runs the query (debounced) whenever a matching record changes, so the server re-applies the real filter/sort/paging each time.",
+        "whenToUse": "Reading lists from a self-hosted backend. Turn on `Live` for a hands-off live list on a NodeGX backend; for Directus, pair with a Subscribe To Changes node instead. On the managed cloud backend prefer Query Records (DbCollection2), which keeps results live in-process.",
         "ports": {
           "fetch": "Signal; runs the query. Wire a mount signal or a refresh event here.",
+          "live": "Boolean, default false. On a NodeGX backend, keeps results live by re-running the query when records change (realtime SSE). No effect on backends without SSE realtime — use Subscribe To Changes there.",
           "records": "The result array; feeds a Repeater like any items source.",
           "totalCount": "Total matching records server-side, independent of paging — drive pagination from this."
         },
-        "runtimeBehavior": "Class selection, filter-value inputs and paging inputs are generated from the backend schema and the query configuration (runtime-discovered); only the trigger/result surface is static.",
+        "runtimeBehavior": "Class selection, filter-value inputs, paging inputs and the `Live` toggle are generated from the backend schema and the query configuration (runtime-discovered); only the trigger/result surface is static. `Live` re-runs the existing query on each change, so filter/sort/limit stay authoritative on the server; bursts of changes coalesce into a single debounced re-fetch.",
         "examples": [
-          "cloud-byob-crud"
+          "cloud-byob-crud",
+          "cloud-byob-live-refresh"
         ],
         "antiPatterns": [
-          "Expecting live updates after writes — BYOB queries refresh only when `fetch` fires."
+          "Polling on a timer — turn on `Live` (NodeGX) or pair with Subscribe To Changes (Directus) instead.",
+          "Expecting `Live` to work against a backend without SSE realtime — only the NodeGX backend serves it."
         ],
         "relatedNodes": [
           "noodl.byob.CreateRecord",
@@ -42903,27 +42906,28 @@
       "enrichment": {
         "typeName": "noodl.byob.SubscribeToChanges",
         "summary": "Subscribe To Changes (BYOB): emits a signal with the changed record whenever a backend collection changes.",
-        "description": "Live change feed for a self-hosted backend collection over the backend's WebSocket interface (Directus: requires WEBSOCKETS_ENABLED on the server). While `subscribed` is true, creates, updates and deletes made by any client fire the matching `created`/`updated`/`deleted` signal plus the generic `changed`, with the affected record(s) on the Event outputs. The connection authenticates with the backend's public token, answers server heartbeats, and reconnects with exponential backoff after a drop — `subscribed` reflects the live state throughout. Delete events carry only primary keys, so `changedRecord` is null for deletes; `changedRecordId` is always populated.",
-        "whenToUse": "Reacting to remote changes without polling — most commonly re-triggering a Query Data `fetch` so a list stays current. Not for reading data itself (use Query Data) and not on the managed cloud backend (its Query Records keeps results live already). Client-only: it stays inert during server-side rendering.",
+        "description": "Live change feed for a self-hosted backend collection. The transport is chosen by backend type: Directus (and other BYOB REST backends) use the WebSocket interface (requires WEBSOCKETS_ENABLED); the NodeGX standalone backend uses Server-Sent Events (SSE), where the server matches the subscription filter and enforces per-record read permissions before delivery, and a `resync` event signals a gap (reconnect or slow-client overflow) with no replay. While `subscribed` is true, creates, updates and deletes made by any client fire the matching `created`/`updated`/`deleted` signal plus the generic `changed`, with the affected record(s) on the Event outputs. The connection authenticates with the backend's token (SSE passes it as a query param since EventSource cannot set headers), answers heartbeats, and reconnects after a drop — `subscribed` reflects the live state throughout. Delete events carry only primary keys, so `changedRecord` is null for deletes; `changedRecordId` is always populated.",
+        "whenToUse": "Reacting to remote changes without polling — most commonly re-triggering a Query Data `fetch` so a list stays current. Works against both Directus (WebSocket) and the NodeGX backend (SSE) with no wiring difference. Not for reading data itself (use Query Data) and not on the managed cloud backend (its Query Records keeps results live already). Client-only: it stays inert during server-side rendering.",
         "ports": {
           "enabled": "Boolean, default true; set false to close the subscription (and stop reconnect attempts) without removing the node.",
-          "subscribed": "True only while the WebSocket subscription is confirmed live — false during connect, backoff and after fatal auth failure.",
+          "subscribed": "True only while the subscription is confirmed live — false during connect, backoff and after fatal auth failure.",
           "created": "Fires once per remote create batch, after the Event outputs have updated.",
           "updated": "Fires once per remote update batch, after the Event outputs have updated.",
           "deleted": "Fires once per remote delete batch; only keys are delivered, so `changedRecord` is null and `changedRecords` holds key strings.",
-          "changed": "Fires alongside every `created`/`updated`/`deleted` — wire this when any change should trigger the same reaction.",
-          "eventType": "The last event kind as a string: 'create', 'update' or 'delete'.",
+          "changed": "Fires alongside every `created`/`updated`/`deleted` — and on a NodeGX `resync` — so wire this when any change should trigger the same reaction (e.g. a re-fetch).",
+          "eventType": "The last event kind as a string: 'create', 'update', 'delete', or (NodeGX SSE) 'resync'.",
           "changedRecord": "First record of the last create/update batch (full record object); null for deletes.",
           "changedRecords": "All records of the last batch; for deletes, an array of primary-key strings (string even for numeric keys).",
           "changedRecordId": "Primary key of the first affected record as a string, across all three event types; the key field name comes from the synced schema.",
           "error": "Last connection or protocol error object; cleared when a subscription (re)confirms. An invalid token is fatal — the node will not retry until a parameter changes."
         },
-        "runtimeBehavior": "`backendId`, `collection` and `enabled` are dynamic inputs generated from the Backend Services metadata: the Backend dropdown lists configured backends (plus 'Active Backend'), and the Collection dropdown lists the selected backend's synced user collections. They appear once a backend with a synced schema exists; an authoring tool may not assume any collection values without that schema.",
+        "runtimeBehavior": "`backendId`, `collection` and `enabled` are dynamic inputs generated from the Backend Services metadata: the Backend dropdown lists configured backends (plus 'Active Backend'), and the Collection dropdown lists the selected backend's synced user collections. They appear once a backend with a synced schema exists; an authoring tool may not assume any collection values without that schema. The transport (WebSocket vs NodeGX SSE) is selected automatically from the backend's type — authors do not configure it.",
         "examples": [
           "cloud-byob-live-refresh"
         ],
         "patterns": [
-          "Subscribe To Changes `changed` → Query Data `fetch` keeps a BYOB-backed list live without polling.",
+          "Subscribe To Changes `changed` → Query Data `fetch` keeps a BYOB-backed list live without polling (Directus or NodeGX).",
+          "On a NodeGX backend, a 'resync' event also fires `changed`, so a re-fetch recovers the list after a reconnect or slow-client overflow.",
           "`subscribed` → a status indicator's visibility shows users when live updates are active."
         ],
         "antiPatterns": [

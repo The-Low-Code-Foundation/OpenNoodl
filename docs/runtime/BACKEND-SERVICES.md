@@ -62,8 +62,15 @@ any list showing the collection.
 
 ### Subscribe To Changes
 
-A live change feed over the backend's WebSocket interface (Directus — the
-server must run with `WEBSOCKETS_ENABLED`). While `subscribed` is true, remote
+A live change feed. For the **NodeGX standalone backend** it uses Server-Sent
+Events (SSE) with server-side filtering and per-record permission checks — see
+[REALTIME.md](./REALTIME.md) for that protocol. For **Directus** it uses the
+backend's WebSocket interface (the server must run with `WEBSOCKETS_ENABLED`).
+The node picks the transport from the backend type; there is no wiring
+difference. Query Data's **Live** toggle is the same capability wrapped into the
+query node for NodeGX backends.
+
+While `subscribed` is true, remote
 creates/updates/deletes fire `created`/`updated`/`deleted` plus the generic
 `changed`, with the affected record(s) on the Event outputs. The connection
 authenticates with the public token, answers server heartbeats, and reconnects
