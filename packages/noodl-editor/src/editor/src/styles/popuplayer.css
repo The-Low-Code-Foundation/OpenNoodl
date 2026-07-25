@@ -106,7 +106,7 @@
 
 .popup-layer-popout {
   background-color: var(--theme-color-bg-4);
-  /* This filter breaks Chromium? causes an internal div in monaco to not be clipped by it's parent correctly, breaking mouse event when resizing */
+  /* This filter breaks Chromium? causes an internal div in the popout editor to not be clipped by it's parent correctly, breaking mouse event when resizing */
   /* filter: drop-shadow(0 4px 15px var(--theme-color-bg-1-transparent-2)); */
   box-shadow: 0 5px 20px 5px var(--theme-color-bg-1-transparent);
   pointer-events: all;

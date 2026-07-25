@@ -9,6 +9,8 @@
  */
 
 export { JavaScriptEditor } from './JavaScriptEditor';
+export { CodeDiffView } from './CodeDiffView';
+export type { CodeDiffViewProps } from './CodeDiffView';
 export type { JavaScriptEditorProps, ValidationType, ValidationResult } from './utils/types';
 export { validateJavaScript } from './utils/jsValidator';
 export { formatJavaScript } from './utils/jsFormatter';

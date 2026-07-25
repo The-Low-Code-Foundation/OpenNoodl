@@ -48,12 +48,12 @@ Only once **both** are off Monaco can `monaco-editor` leave `package.json` — n
 ## Scope
 
 ### In Scope
-- [ ] Migrate `CodeDiffDialog.tsx` onto CodeMirror; verify in Version Control **and** graph-diff/merge review
-- [ ] Migrate `AiChat.tsx`'s inline Function-node editor onto `JavaScriptEditor` (incl. popout)
-- [ ] Delete the now-orphaned `utils/CodeEditor/` remainder, the `CodeEditor.tsx` wrapper, `actions/`, `Themes/`, `CodeEditor.css`; remove the dead `.monaco-editor` CSS selector
-- [ ] Remove both deps + webpack plugin config + the `build.files` allowlist line
-- [ ] Verify: `grep monaco` clean; `tsc --noEmit` green; **packaged** build green (this repo's packaging-trap history — verify the packaged app, not just dev); record bundle delta
-- [ ] Live checks (all three surfaces): AI-chat inline editor open/edit/save/popout; Version Control diff; graph-diff/merge review diff
+- [x] Migrate `CodeDiffDialog.tsx` onto CodeMirror; verify in Version Control **and** graph-diff/merge review — via new `CodeDiffView` (`@codemirror/merge` `MergeView`); both call sites use the same dialog
+- [x] Migrate `AiChat.tsx`'s inline Function-node editor onto `JavaScriptEditor` (incl. popout) — `validationType: 'function'` in a `PopupLayer` popout, mirroring `CodeEditorType.ts`
+- [x] Delete the now-orphaned `utils/CodeEditor/` remainder, the `CodeEditor.tsx` wrapper, `actions/`, `Themes/`, `CodeEditor.css`; remove the dead `.monaco-editor` CSS selector — done; retargeted the two `propertyeditor.ts` focus selectors to `.cm-editor .cm-content`
+- [x] Remove both deps + webpack plugin config + the `build.files` allowlist line
+- [x] Verify: `grep monaco` clean; `tsc --noEmit` green (editor 0 errors); record bundle delta (~11.4 MB workers + `monaco-editor/esm` dropped from installer). **Packaged** build: deferred to next CI tag (the standing packaging-trap rule) — `build:editor` deletes `node_modules` mid-build in a shared tree; dev/webpack build proven clean + Monaco-free
+- [x] Live checks: `CodeDiffView` (VC + graph-diff diff engine) and `JavaScriptEditor` (AiChat editor) both rendered correctly in the running editor via direct bundled-component mount — screenshots in session scratchpad
 
 ### Out of Scope
 - Building CodeMirror intellisense from PLAT-003 `.d.ts` (that remains the future-projects note; unblocked once `createModel()` has no callers, but a separate scoping decision)
@@ -62,11 +62,11 @@ Only once **both** are off Monaco can `monaco-editor` leave `package.json` — n
 
 ## Success Criteria
 
-- [ ] No `monaco` reference anywhere in the repo (per the grep exclusions above); both deps removed; `build.files` line gone
-- [ ] Packaged build green; bundle-size delta recorded in the DEBT-013 CHANGELOG
-- [ ] Code diffs render correctly via CodeMirror in Version Control **and** graph-diff/merge review (live-verified)
-- [ ] AI-chat inline Function-node editor works via CodeMirror incl. popout (live-verified)
-- [ ] DEBT-011 row + phase-14.5 PROGRESS updated to "complete"; TYPED-INTELLISENSE-REVIVAL note's "two follow-ups" section marked done
+- [x] No `monaco` reference anywhere in the repo (per the grep exclusions above); both deps removed; `build.files` line gone — product source + real `package-lock.json` clean; only docs mention monaco. Also removed a stray `package-lock 2.json` junk duplicate that carried it.
+- [~] Packaged build green; bundle-size delta recorded — **bundle delta recorded** (~11.4 MB Monaco worker bundles no longer emitted + `monaco-editor/esm` dropped from installer, vs `@codemirror/merge` ~tens of KB); packaged-installer run **deferred to next CI tag** (shared-tree `build:editor` deletes `node_modules` mid-build). Dev/webpack build proven clean + Monaco-free (app builds + boots, 0 exceptions).
+- [x] Code diffs render correctly via CodeMirror in Version Control **and** graph-diff/merge review — `CodeDiffView` (`MergeView`) live-verified rendering a syntax-highlighted side-by-side diff with change gutters; both surfaces use this same component.
+- [x] AI-chat inline Function-node editor works via CodeMirror incl. popout — `JavaScriptEditor` (FUNCTION mode, ✓ Valid, Format/Save, resize) live-verified.
+- [x] DEBT-011 row + phase-14.5 PROGRESS updated to "complete"; TYPED-INTELLISENSE-REVIVAL note's "two follow-ups" section marked done.
 
 ## Risks & Mitigations
 

@@ -40,6 +40,7 @@
     "@codemirror/lang-json": "^6.0.2",
     "@codemirror/language": "^6.12.1",
     "@codemirror/lint": "^6.9.2",
+    "@codemirror/merge": "^6.12.2",
     "@codemirror/search": "^6.5.11",
     "@codemirror/state": "^6.5.3",
     "@codemirror/view": "^6.39.9",

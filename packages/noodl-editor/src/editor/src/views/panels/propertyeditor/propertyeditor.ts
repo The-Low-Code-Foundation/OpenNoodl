@@ -277,8 +277,7 @@ export class PropertyEditor extends View {
             input.click();
 
             // if the button click opens a code editor we want to focus that
-            const codeEditor =
-              (document.querySelector('.monaco-editor .inputarea') as HTMLTextAreaElement) || undefined;
+            const codeEditor = (document.querySelector('.cm-editor .cm-content') as HTMLElement) || undefined;
 
             if (codeEditor) {
               codeEditor.focus();
@@ -311,7 +310,7 @@ export class PropertyEditor extends View {
       if (aiButton) {
         setTimeout(() => {
           aiButton.click();
-          document.querySelector<HTMLTextAreaElement>('.monaco-editor .inputarea')?.focus();
+          document.querySelector<HTMLElement>('.cm-editor .cm-content')?.focus();
         }, 1);
       }
     } else if (node.type.name === 'CloudFunction2') {

@@ -1,7 +1,6 @@
 const merge = require('webpack-merge').default;
 const shared = require('./webpack.shared.js');
 const sharedCore = require('./webpack.renderer.core.js');
-const MonacoWebpackPlugin = require('monaco-editor-webpack-plugin');
 
 module.exports = merge(
   sharedCore,
@@ -14,13 +13,6 @@ module.exports = merge(
       filename: '[name].bundle.js',
       // https://github.com/webpack/webpack/issues/1114
       libraryTarget: 'commonjs2'
-    },
-    plugins: [
-      new MonacoWebpackPlugin({
-        // JSON language worker is broken in Electron/CommonJS - use TypeScript for JSON editing
-        languages: ['typescript', 'javascript', 'css'],
-        globalAPI: true
-      })
-    ]
+    }
   })
 );

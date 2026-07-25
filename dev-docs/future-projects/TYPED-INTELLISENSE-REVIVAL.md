@@ -49,19 +49,28 @@ Both were missed by the original pre-revival salvage audit (`dev-docs/reviews/PR
 `monaco-editor` + `monaco-editor-webpack-plugin` are **still real runtime
 dependencies** (see `packages/noodl-editor/package.json`'s `build.files`
 allowlist, which explicitly ships `node_modules/monaco-editor/esm`) — DEBT-011
-could not remove them. Retiring Monaco for good needs two follow-ups first:
+could not remove them. Retiring Monaco for good needed two follow-ups first —
+**both landed in DEBT-013 (2026-07-25); Monaco is now gone from the product:**
 
-1. Migrate `CodeDiffDialog.tsx`'s diff view onto CodeMirror. Note
-   `packages/noodl-core-ui/src/components/code-editor/CodeHistory/CodeHistoryDiffModal.tsx`
-   already exists and does a CodeMirror-based diff render for the code
-   history feature — it's a plausible base rather than starting from scratch.
-2. Migrate `AiChat.tsx`'s inline Function-node editor onto the CodeMirror
-   `JavaScriptEditor` (the same swap the property panel already got). This is
-   also the natural point to retire the remaining `typescript/nodes/JavaScriptFunction`,
-   `typescript/viewer*`, and `utils/CodeEditor/{model.ts,context.ts,mappings.ts}`
-   files — once nothing calls `createModel()` anymore, that whole directory
-   (and the `.../CodeEditor/CodeEditor.tsx` wrapper, `actions/`, `Themes/`)
-   can go, and `monaco-editor` can finally leave `package.json`.
+1. ✅ **DONE (DEBT-013).** Migrated `CodeDiffDialog.tsx`'s diff view onto CodeMirror.
+   Rather than the `CodeHistoryDiffModal` hand-rolled line renderer, DEBT-013 added
+   `@codemirror/merge` and a reusable `CodeDiffView`
+   (`packages/noodl-core-ui/src/components/code-editor/CodeDiffView.tsx`) built on
+   `MergeView` — a real side-by-side CodeMirror diff that shares the OpenNoodl theme +
+   JS highlighting, so it renders *better* than the old Monaco diff (which used
+   `text/plain`, no highlighting). Serves both the Version Control panel and the
+   graph-diff/merge review UI.
+2. ✅ **DONE (DEBT-013).** Migrated `AiChat.tsx`'s inline Function-node editor onto the
+   CodeMirror `JavaScriptEditor` (`validationType: 'function'`, rendered into a
+   `PopupLayer` popout — the same experience the property panel gives). With
+   `createModel()` no longer called, the whole `utils/CodeEditor/` directory
+   (`typescript/nodes/JavaScriptFunction`, `typescript/viewer*`,
+   `{model.ts,context.ts,mappings.ts}`, `model/editorModel.ts`, `typescript/helper.ts`)
+   plus the `.../CodeEditor/CodeEditor.tsx` Monaco wrapper, `actions/`, `Themes/`, and
+   `CodeEditor.css` were deleted, and `monaco-editor` + `monaco-editor-webpack-plugin`
+   left `package.json` (with the webpack plugin config and the `build.files`
+   `monaco-editor/esm` allowlist line). `CodeEditorType.ts` / `Property.tsx` (the live
+   CodeMirror property-panel path) are the only survivors of that directory.
 
 ## Proposed shape of the revival
 
@@ -103,4 +112,4 @@ could not remove them. Retiring Monaco for good needs two follow-ups first:
 - `dev-docs/reviews/PRE-REVIVAL-SALVAGE-AUDIT.md` §5
 - PLAT-003 ("type the runtime") task docs, phase 14
 - `packages/noodl-core-ui/src/components/code-editor/` (the live CodeMirror editor)
-- `packages/noodl-editor/src/editor/src/utils/CodeEditor/typescript/viewer/index.ts` (`GetSource`/`CreateSource` — the existing hand-rolled `.d.ts` template worth reusing the shape of)
+- `packages/noodl-editor/src/editor/src/utils/CodeEditor/typescript/viewer/index.ts` (`GetSource`/`CreateSource` — the hand-rolled `.d.ts` template worth reusing the shape of). **Deleted in DEBT-013** along with the rest of `utils/CodeEditor/`; recover from git history (last present at the DEBT-013 parent commit) if the revival wants its structure.
