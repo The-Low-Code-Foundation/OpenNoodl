@@ -25,8 +25,8 @@ import css from './LocalBackendCard.module.scss';
 export interface LocalBackendCardProps {
   /** Backend information */
   backend: LocalBackendInfo;
-  /** Called when start is requested */
-  onStart: () => Promise<void> | Promise<boolean>;
+  /** Called when start is requested. Pass `{ ephemeral: true }` for non-persisting mode. */
+  onStart: (options?: { ephemeral?: boolean }) => Promise<void> | Promise<boolean>;
   /** Called when stop is requested */
   onStop: () => Promise<void> | Promise<boolean>;
   /** Called when delete is requested */
@@ -36,11 +36,23 @@ export interface LocalBackendCardProps {
 }
 
 /**
- * Get status icon and color based on running status
+ * Get status icon and color based on running status and persistence mode.
+ *
+ * Persistence mode is what makes silent data loss visible: a running backend in
+ * ephemeral mode looks identical to a persistent one unless we say otherwise.
  */
-function getStatusDisplay(running: boolean): { icon: IconName; color: string; text: string } {
-  if (running) {
+function getStatusDisplay(backend: LocalBackendInfo): { icon: IconName; color: string; text: string } {
+  const mode = backend.persistence?.mode;
+
+  if (backend.running) {
+    if (mode === 'ephemeral') {
+      return { icon: IconName.WarningTriangle, color: 'var(--theme-color-notice)', text: 'Ephemeral' };
+    }
     return { icon: IconName.Check, color: 'var(--theme-color-success)', text: 'Running' };
+  }
+
+  if (mode === 'failed') {
+    return { icon: IconName.WarningTriangle, color: 'var(--theme-color-danger)', text: 'Persistence unavailable' };
   }
   return { icon: IconName.CircleOpen, color: 'var(--theme-color-fg-default-shy)', text: 'Stopped' };
 }
@@ -49,7 +61,11 @@ export function LocalBackendCard({ backend, onStart, onStop, onDelete, onExport 
   const [isOperating, setIsOperating] = useState(false);
   const [showSchemaPanel, setShowSchemaPanel] = useState(false);
   const [showDataBrowser, setShowDataBrowser] = useState(false);
-  const statusDisplay = getStatusDisplay(backend.running);
+  const statusDisplay = getStatusDisplay(backend);
+
+  const isEphemeral = backend.running && backend.persistence?.mode === 'ephemeral';
+  const hasFailed = !backend.running && backend.persistence?.mode === 'failed';
+  const failureMessage = backend.persistence?.error?.message;
 
   // Format date
   const createdDate = new Date(backend.createdAt).toLocaleDateString(undefined, {
@@ -71,6 +87,18 @@ export function LocalBackendCard({ backend, onStart, onStop, onDelete, onExport 
       setIsOperating(false);
     }
   }, [backend.running, onStart, onStop]);
+
+  // Explicitly opt in to ephemeral (non-persisting) mode when the native engine
+  // is unavailable. This is the only path to the in-memory mock — it is never
+  // silently substituted.
+  const handleStartEphemeral = useCallback(async () => {
+    setIsOperating(true);
+    try {
+      await onStart({ ephemeral: true });
+    } finally {
+      setIsOperating(false);
+    }
+  }, [onStart]);
 
   // Copy endpoint to clipboard
   const handleCopyEndpoint = useCallback(() => {
@@ -115,6 +143,28 @@ export function LocalBackendCard({ backend, onStart, onStop, onDelete, onExport 
         </div>
       )}
 
+      {/* Ephemeral warning — data written now will NOT survive a restart */}
+      {isEphemeral && (
+        <div className={css.PersistenceNotice} style={{ color: 'var(--theme-color-notice)' }}>
+          <Icon icon={IconName.WarningTriangle} size={IconSize.Tiny} UNSAFE_style={{ color: 'var(--theme-color-notice)' }} />
+          <Text textType={TextType.Shy} style={{ fontSize: '11px', marginLeft: '6px' }}>
+            Ephemeral mode — data is kept in memory only and will be lost when the backend stops or the app restarts.
+          </Text>
+        </div>
+      )}
+
+      {/* Persistence failure — the native SQLite engine could not load */}
+      {hasFailed && (
+        <div className={css.PersistenceNotice} style={{ color: 'var(--theme-color-danger)' }}>
+          <Icon icon={IconName.WarningTriangle} size={IconSize.Tiny} UNSAFE_style={{ color: 'var(--theme-color-danger)' }} />
+          <Text textType={TextType.Shy} style={{ fontSize: '11px', marginLeft: '6px' }}>
+            {failureMessage
+              ? `Cannot persist data: ${failureMessage}`
+              : 'The local SQLite engine could not load, so this backend cannot persist data.'}
+          </Text>
+        </div>
+      )}
+
       {/* Info */}
       <div className={css.Info}>
         <Text textType={TextType.Shy} style={{ fontSize: '11px' }}>
@@ -132,6 +182,15 @@ export function LocalBackendCard({ backend, onStart, onStop, onDelete, onExport 
             onClick={handleToggle}
             isDisabled={isOperating}
           />
+          {hasFailed && (
+            <PrimaryButton
+              label="Start ephemeral (no persistence)"
+              size={PrimaryButtonSize.Small}
+              variant={PrimaryButtonVariant.Muted}
+              onClick={handleStartEphemeral}
+              isDisabled={isOperating}
+            />
+          )}
           {backend.running && (
             <>
               <PrimaryButton

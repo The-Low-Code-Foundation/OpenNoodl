@@ -53,6 +53,16 @@
   }
 }
 
+.PersistenceNotice {
+  display: flex;
+  align-items: flex-start;
+  background-color: var(--theme-color-bg-2);
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  padding: 6px 8px;
+  margin-bottom: 8px;
+}
+
 .Info {
   margin-bottom: 8px;
   padding-top: 8px;

@@ -13,6 +13,7 @@ const SchemaManager = require('./SchemaManager');
 
 module.exports = {
   LocalSQLAdapter,
+  LocalBackendPersistenceError: LocalSQLAdapter.LocalBackendPersistenceError,
   QueryBuilder,
   SchemaManager
 };

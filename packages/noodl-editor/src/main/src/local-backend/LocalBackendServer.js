@@ -49,6 +49,8 @@ class LocalBackendServer {
    * @param {string} config.dbPath - Path to SQLite database
    * @param {number} config.port - Port to listen on
    * @param {string} config.workflowsPath - Path to workflows directory
+   * @param {boolean} [config.allowEphemeral] - Opt in to in-memory mode when the
+   *   native SQLite engine is unavailable (data will NOT persist). Default false.
    */
   constructor(config) {
     this.config = config;
@@ -78,13 +80,31 @@ class LocalBackendServer {
       'local-sql'
     );
     const { LocalSQLAdapter } = require(adapterPath);
-    this.adapter = new LocalSQLAdapter(this.config.dbPath);
+    this.adapter = new LocalSQLAdapter(this.config.dbPath, {
+      allowEphemeral: this.config.allowEphemeral === true
+    });
+
+    // connect() throws LocalBackendPersistenceError when the native engine is
+    // unavailable and ephemeral mode was not opted into. Let it propagate so
+    // start() — and therefore backend:start — fails loudly instead of silently
+    // running on a mock that loses data on restart.
     await this.adapter.connect();
 
     // Forward adapter events to WebSocket clients
     this.adapter.on('create', (data) => this.broadcast('create', data));
     this.adapter.on('save', (data) => this.broadcast('save', data));
     this.adapter.on('delete', (data) => this.broadcast('delete', data));
+  }
+
+  /**
+   * Report how this backend's adapter is persisting data.
+   * @returns {{ mode: string, persistent: boolean, ephemeral: boolean, engine: string, error: object|null }}
+   */
+  getPersistenceStatus() {
+    if (this.adapter && typeof this.adapter.getPersistenceStatus === 'function') {
+      return this.adapter.getPersistenceStatus();
+    }
+    return { mode: 'unknown', persistent: false, ephemeral: false, engine: 'better-sqlite3', error: null };
   }
 
   /**

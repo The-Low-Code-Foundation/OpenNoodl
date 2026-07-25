@@ -21,6 +21,8 @@ const { LocalSQLAdapter, QueryBuilder, SchemaManager } = require('./local-sql');
  * @property {string} [appId] - For parse: application ID
  * @property {string} [masterKey] - For parse: master key
  * @property {Object} [collections] - Collection schemas
+ * @property {boolean} [allowEphemeral] - For local: opt in to in-memory mode when
+ *   the native SQLite engine is unavailable (data will NOT persist). Default false.
  */
 
 /**
@@ -52,7 +54,10 @@ class AdapterRegistry {
           throw new Error('dbPath is required for local adapter');
         }
         adapter = new LocalSQLAdapter(config.dbPath, {
-          collections: config.collections
+          collections: config.collections,
+          // Default false: if the native engine can't load, connect() throws a
+          // LocalBackendPersistenceError rather than silently losing data.
+          allowEphemeral: config.allowEphemeral === true
         });
         await adapter.connect();
         break;

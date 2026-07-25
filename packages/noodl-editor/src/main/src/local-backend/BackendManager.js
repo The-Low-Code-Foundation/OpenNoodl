@@ -49,6 +49,9 @@ class BackendManager {
   constructor() {
     this.backendsPath = path.join(os.homedir(), '.noodl', 'backends');
     this.runningBackends = new Map(); // id -> LocalBackendServer
+    // id -> { code, message } — remembers why the last start attempt failed so
+    // the UI can show "persistence unavailable" for a backend that isn't running.
+    this.startErrors = new Map();
     this.ipcHandlersSetup = false;
   }
 
@@ -75,9 +78,9 @@ class BackendManager {
       return this.deleteBackend(id);
     });
 
-    // Start a backend
-    ipcMain.handle('backend:start', async (_, id) => {
-      return this.startBackend(id);
+    // Start a backend. options.ephemeral opts in to non-persisting in-memory mode.
+    ipcMain.handle('backend:start', async (_, id, options) => {
+      return this.startBackend(id, options);
     });
 
     // Stop a backend
@@ -278,6 +281,8 @@ class BackendManager {
     // Remove directory recursively
     await fs.rm(backendPath, { recursive: true, force: true });
 
+    this.startErrors.delete(id);
+
     safeLog(`Deleted backend: ${id}`);
     return { deleted: true, id };
   }
@@ -285,8 +290,11 @@ class BackendManager {
   /**
    * Start a backend
    * @param {string} id
+   * @param {Object} [options]
+   * @param {boolean} [options.ephemeral] - Opt in to non-persisting in-memory mode
+   *   when the native SQLite engine is unavailable. Data will NOT persist.
    */
-  async startBackend(id) {
+  async startBackend(id, options = {}) {
     // Already running?
     if (this.runningBackends.has(id)) {
       safeLog(`Backend ${id} already running`);
@@ -307,10 +315,24 @@ class BackendManager {
       name: config.name,
       dbPath: path.join(backendPath, 'data', 'local.db'),
       workflowsPath: path.join(backendPath, 'workflows'),
-      port: config.port
+      port: config.port,
+      allowEphemeral: options.ephemeral === true
     });
 
-    await server.start();
+    try {
+      await server.start();
+    } catch (e) {
+      // Remember the failure so getStatus() can report "persistence unavailable"
+      // for this stopped backend, and rethrow so backend:start rejects loudly.
+      this.startErrors.set(id, {
+        code: e.code || 'BACKEND_START_FAILED',
+        message: e.message
+      });
+      safeLog(`Failed to start backend ${id}: ${e.message}`);
+      throw e;
+    }
+
+    this.startErrors.delete(id);
     this.runningBackends.set(id, server);
 
     safeLog(`Started backend: ${id} on port ${config.port}`);
@@ -336,20 +358,29 @@ class BackendManager {
   }
 
   /**
-   * Get backend status
+   * Get backend status, including how it is persisting data.
    * @param {string} id
-   * @returns {{ running: boolean, port?: number, endpoint?: string }}
+   * @returns {{ running: boolean, port?: number, endpoint?: string, persistence: object }}
    */
   getStatus(id) {
     const server = this.runningBackends.get(id);
     if (!server) {
-      return { running: false };
+      // Not running. If the last start attempt failed, surface why so the UI
+      // can distinguish "stopped" from "could not persist".
+      const lastError = this.startErrors.get(id);
+      return {
+        running: false,
+        persistence: lastError
+          ? { mode: 'failed', persistent: false, ephemeral: false, error: lastError }
+          : { mode: 'unknown', persistent: false, ephemeral: false, error: null }
+      };
     }
 
     return {
       running: true,
       port: server.config.port,
-      endpoint: `http://localhost:${server.config.port}`
+      endpoint: `http://localhost:${server.config.port}`,
+      persistence: server.getPersistenceStatus()
     };
   }
 

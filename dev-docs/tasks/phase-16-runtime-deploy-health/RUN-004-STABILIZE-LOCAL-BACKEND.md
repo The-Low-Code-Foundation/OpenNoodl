@@ -121,12 +121,22 @@ Consider whether prebuilt binaries for the supported platform/ABI matrix would b
 - `dev-docs/tasks/phase-5-multi-target-deployment/` — where the local backend work originated
 - Related: REV-004 (Electron ABI), REV-007 (packaging verification), RUN-003 (external backends)
 
+## Progress
+
+**Loud-failure slice — DONE 2026-07-25** (committed to `cline-dev`; ran in parallel with RUN-003, zero file overlap). The native-build slice (steps 3–5) remains deferred into **WF-004**, which owns the engine decision.
+
+Shipped:
+- Adapter throws `LocalBackendPersistenceError` (`code: PERSISTENCE_ENGINE_UNAVAILABLE`) instead of silently mocking; the in-memory mock is reachable only via an explicit `{ allowEphemeral: true }` opt-in and is marked ephemeral. New `getPersistenceStatus()`.
+- Status plumbed adapter → `LocalBackendServer` → `BackendManager` (remembers start failures) → `backend:status` IPC → `useLocalBackends` → `LocalBackendCard` badge (Running / Ephemeral / Persistence unavailable / Stopped), with an in-card **Start ephemeral (no persistence)** opt-in.
+- Persistence tests at `packages/noodl-runtime/test/adapters/LocalSQLAdapter.persistence.test.js`: loud-failure + ephemeral-opt-in run when native is absent; write→reconnect→read integrity runs when native is present (skipped, never silently passed, otherwise). Verified green via direct harness (jest reporter has an unrelated `terminal-link` breakage in this env).
+- Docs: `docs/runtime/LOCAL-BACKEND-PERSISTENCE.md`; CHANGELOG updated.
+
 ## Checklist
 
-- [ ] Branch `task/run-004-stabilize-local-backend`; confirm REV-004 landed
-- [ ] Make failure loud and actionable (ship this first)
-- [ ] Decide and implement the fallback policy
-- [ ] Fix native build on all three platforms; automate rebuild
-- [ ] Verify in the packaged application
-- [ ] Persistence integrity test in CI; status indicator
-- [ ] Troubleshooting docs; CHANGELOG; open PR
+- [x] ~~Branch `task/run-004-...`~~ — committed straight to `cline-dev` per project convention
+- [x] Make failure loud and actionable (shipped first)
+- [x] Decide and implement the fallback policy — explicit opt-in ephemeral mode
+- [ ] Fix native build on all three platforms; automate rebuild → **WF-004**
+- [ ] Verify in the packaged application → **WF-004**
+- [x] Persistence integrity test in CI; status indicator
+- [x] Troubleshooting docs; CHANGELOG

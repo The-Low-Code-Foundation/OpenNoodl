@@ -19,10 +19,22 @@ export interface LocalBackendMetadata {
   projectIds: string[];
 }
 
+/** How a running (or last-attempted) backend is persisting data */
+export interface PersistenceStatus {
+  /** 'unknown' before a start attempt, then the resolved mode */
+  mode: 'unknown' | 'persistent' | 'ephemeral' | 'failed';
+  persistent: boolean;
+  ephemeral: boolean;
+  /** Present when mode === 'failed' or the native engine could not load */
+  error?: { code?: string; message: string } | null;
+}
+
 /** Extended backend info with runtime status */
 export interface LocalBackendInfo extends LocalBackendMetadata {
   running: boolean;
   endpoint?: string;
+  /** Data-persistence status (persistent vs. ephemeral vs. failed) */
+  persistence?: PersistenceStatus;
 }
 
 /** Hook return type */
@@ -41,8 +53,8 @@ export interface UseLocalBackendsReturn {
   createBackend: (name: string) => Promise<LocalBackendMetadata | null>;
   /** Delete a backend */
   deleteBackend: (id: string) => Promise<boolean>;
-  /** Start a backend */
-  startBackend: (id: string) => Promise<boolean>;
+  /** Start a backend. Pass `{ ephemeral: true }` to opt into non-persisting mode. */
+  startBackend: (id: string, options?: { ephemeral?: boolean }) => Promise<boolean>;
   /** Stop a backend */
   stopBackend: (id: string) => Promise<boolean>;
   /** Export schema */
@@ -90,11 +102,16 @@ export function useLocalBackends(): UseLocalBackendsReturn {
       // Get status for each backend
       const backendsWithStatus: LocalBackendInfo[] = await Promise.all(
         list.map(async (backend) => {
-          const status = await invokeIPC<{ running: boolean; port?: number }>('backend:status', backend.id);
+          const status = await invokeIPC<{
+            running: boolean;
+            port?: number;
+            persistence?: PersistenceStatus;
+          }>('backend:status', backend.id);
           return {
             ...backend,
             running: status?.running ?? false,
-            endpoint: status?.running && status?.port ? `http://localhost:${status.port}` : undefined
+            endpoint: status?.running && status?.port ? `http://localhost:${status.port}` : undefined,
+            persistence: status?.persistence
           };
         })
       );
@@ -155,16 +172,19 @@ export function useLocalBackends(): UseLocalBackendsReturn {
 
   // Start a backend
   const startBackend = useCallback(
-    async (id: string): Promise<boolean> => {
+    async (id: string, options?: { ephemeral?: boolean }): Promise<boolean> => {
       setIsOperating(true);
       setError(null);
       try {
-        await invokeIPC<{ running: boolean }>('backend:start', id);
+        await invokeIPC<{ running: boolean }>('backend:start', id, options ?? {});
         await refresh();
         return true;
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Failed to start backend';
         setError(message);
+        // Refresh so the card can reflect the recorded persistence failure
+        // (mode: 'failed') rather than staying on a stale "stopped" badge.
+        await refresh().catch(() => undefined);
         return false;
       } finally {
         setIsOperating(false);

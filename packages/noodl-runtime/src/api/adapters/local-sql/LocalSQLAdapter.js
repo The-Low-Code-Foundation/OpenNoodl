@@ -13,6 +13,33 @@ const QueryBuilder = require('./QueryBuilder');
 const SchemaManager = require('./SchemaManager');
 
 /**
+ * Thrown when the native SQLite engine cannot be loaded and the caller has not
+ * opted in to the ephemeral (non-persisting) in-memory mode.
+ *
+ * Historically the adapter swallowed this failure and silently substituted an
+ * in-memory mock, so records appeared to save and then vanished on restart —
+ * the worst possible behaviour for a persistence layer. Failing loudly bounds
+ * the damage: a clear error costs minutes, a silent one costs a weekend of work.
+ *
+ * @augments Error
+ */
+class LocalBackendPersistenceError extends Error {
+  /**
+   * @param {string} message - Human-readable, actionable message
+   * @param {Error} [cause] - The underlying module-load error
+   */
+  constructor(message, cause) {
+    super(message);
+    this.name = 'LocalBackendPersistenceError';
+    this.code = 'PERSISTENCE_ENGINE_UNAVAILABLE';
+    if (cause) {
+      this.cause = cause;
+      this.causeMessage = cause.message;
+    }
+  }
+}
+
+/**
  * Generate a UUID v4
  *
  * @returns {string} UUID string (e.g., "123e4567-e89b-12d3-a456-426614174000")
@@ -37,11 +64,16 @@ class LocalSQLAdapter {
    * @param {Object} [options] - Configuration options
    * @param {boolean} [options.autoCreateTables=true] - Auto-create tables on first access
    * @param {Object} [options.collections] - Collection schemas (same as dbCollections metadata)
+   * @param {boolean} [options.allowEphemeral=false] - When the native SQLite engine
+   *   cannot load, opt in to an in-memory mock instead of throwing. Data written in
+   *   this mode is NOT persisted and is lost on restart; the caller is responsible
+   *   for making that ephemerality visible to the user.
    */
   constructor(dbPath, options = {}) {
     this.dbPath = dbPath;
     this.options = {
       autoCreateTables: true,
+      allowEphemeral: false,
       ...options
     };
 
@@ -49,6 +81,12 @@ class LocalSQLAdapter {
     this.schemaManager = null;
     this.events = new EventEmitter();
     this.events.setMaxListeners(10000);
+
+    // Persistence state, queryable via getPersistenceStatus().
+    // 'unknown' until connect() runs, then 'persistent' | 'ephemeral' | 'failed'.
+    this._persistenceMode = 'unknown';
+    this._loadError = null;
+    this._usingMock = false;
 
     // Collection schemas (like CloudStore._collections)
     this._collections = options.collections || {};
@@ -64,12 +102,22 @@ class LocalSQLAdapter {
       return; // Already connected
     }
 
-    // Dynamic import of better-sqlite3 (Node.js only)
-    // Falls back to in-memory mock when not available
+    // Dynamic import of better-sqlite3 (Node.js only).
+    // On failure we EITHER throw (default) OR, if the caller explicitly opted in
+    // via options.allowEphemeral, fall back to a clearly-labelled in-memory mock.
+    // We never silently substitute the mock — see LocalBackendPersistenceError.
+    let Database;
     try {
-      const Database = require('better-sqlite3');
+      Database = require('better-sqlite3');
+    } catch (e) {
+      this._loadError = e;
+      return this._handleEngineLoadFailure(e);
+    }
+
+    try {
       this.db = new Database(this.dbPath);
       this._usingMock = false;
+      this._persistenceMode = 'persistent';
 
       // Enable WAL mode for better concurrent access
       this.db.pragma('journal_mode = WAL');
@@ -95,14 +143,69 @@ class LocalSQLAdapter {
         }
       }
     } catch (e) {
-      // Fallback to in-memory mock when better-sqlite3 not available
-      console.warn('[LocalSQLAdapter] better-sqlite3 not available, using in-memory mock');
-      this._usingMock = true;
-      this._mockData = {}; // { tableName: { objectId: record } }
-      this._mockSchema = {};
-      this.db = this._createMockDb();
-      this.schemaManager = this._createMockSchemaManager();
+      // The native module loaded but the database could not be opened (e.g. a
+      // corrupt file or an ABI mismatch surfacing at instantiation). Treat this
+      // the same way as a load failure: throw, or opt-in ephemeral — never silent.
+      this._loadError = e;
+      return this._handleEngineLoadFailure(e);
     }
+  }
+
+  /**
+   * Handle the native SQLite engine being unavailable.
+   *
+   * Default: throw a clear, actionable error so the failure is visible.
+   * Opt-in (options.allowEphemeral === true): fall back to an in-memory mock,
+   * marked as ephemeral so callers can label it in the UI.
+   *
+   * @private
+   * @param {Error} cause - The underlying load/open error
+   */
+  _handleEngineLoadFailure(cause) {
+    if (!this.options.allowEphemeral) {
+      this._persistenceMode = 'failed';
+      throw new LocalBackendPersistenceError(
+        'The local SQLite engine (better-sqlite3) could not be loaded, so the ' +
+          'local backend cannot persist data. Data would be lost on restart, so ' +
+          'the backend refused to start silently.\n' +
+          `  Underlying error: ${cause && cause.message}\n` +
+          '  What to do: rebuild the native module for this environment, or start ' +
+          'the backend in explicit ephemeral mode (data will NOT persist) if you ' +
+          'only need a throwaway session. Native-engine setup is tracked by WF-004.',
+        cause
+      );
+    }
+
+    // Explicit opt-in to ephemeral mode. Loud about what it is, not silent.
+    console.warn(
+      '[LocalSQLAdapter] Native SQLite engine unavailable — running in EPHEMERAL ' +
+        'in-memory mode. Data will NOT be persisted and is lost on restart. ' +
+        `(cause: ${cause && cause.message})`
+    );
+    this._usingMock = true;
+    this._persistenceMode = 'ephemeral';
+    this._mockData = {}; // { tableName: { objectId: record } }
+    this._mockSchema = {};
+    this.db = this._createMockDb();
+    this.schemaManager = this._createMockSchemaManager();
+  }
+
+  /**
+   * Report how this adapter is persisting data.
+   *
+   * @returns {{ mode: 'unknown'|'persistent'|'ephemeral'|'failed', persistent: boolean,
+   *   ephemeral: boolean, engine: string, error: ({ message: string, code: string }|null) }}
+   */
+  getPersistenceStatus() {
+    return {
+      mode: this._persistenceMode,
+      persistent: this._persistenceMode === 'persistent',
+      ephemeral: this._persistenceMode === 'ephemeral',
+      engine: 'better-sqlite3',
+      error: this._loadError
+        ? { message: this._loadError.message, code: this._loadError.code || 'ENGINE_LOAD_FAILED' }
+        : null
+    };
   }
 
   /**
@@ -776,4 +879,7 @@ class LocalSQLAdapter {
   }
 }
 
+LocalSQLAdapter.LocalBackendPersistenceError = LocalBackendPersistenceError;
+
 module.exports = LocalSQLAdapter;
+module.exports.LocalBackendPersistenceError = LocalBackendPersistenceError;

@@ -100,7 +100,7 @@ Your data, your server, first-class in the editor.
 - ~~**Runtime React 17 → 19**~~ — ✅ shipped (see above): per-project opt-in, React 18.3 stays the default.
 - **SSR / SSG support** — server-side rendering and static generation, per project.
 - ~~**Finish the backend adapters**~~ — ✅ shipped (see *External backends* above): Directus verified end-to-end incl. realtime, committed e2e rig, Supabase schema parsing verified against live PostgREST. Still open: a full live-Supabase CRUD verification pass and one-to-many/many-to-many relation traversal.
-- **Reliable local SQLite** — stop the silent in-memory fallback that loses local data.
+- **Reliable local SQLite** — *silent data loss fixed.* The local backend used to quietly swap in an in-memory mock when its database engine was missing, so records saved, demoed, and then vanished on restart. It now **fails loudly** instead: the backend refuses to start with a clear, actionable error, and the throwaway in-memory mode is a labelled, opt-in "ephemeral" choice you make on purpose — the Backend Services panel shows persistent / ephemeral / failed at a glance. Making the native engine build reliably on every platform is folded into the standalone-backend work (WF-004); until then, "loud" is the honest state.
 
 ### Noodl Learn — education as a real product line
 - **Curriculum v1** — 10–15 lessons teaching *real engineering concepts* (state, data flow, events, componentization) through the graph, with the AI as tutor rather than ghostwriter.

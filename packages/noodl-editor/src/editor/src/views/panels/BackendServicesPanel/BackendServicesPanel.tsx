@@ -231,7 +231,7 @@ export function BackendServicesPanel() {
                   <LocalBackendCard
                     key={backend.id}
                     backend={backend}
-                    onStart={async () => startLocalBackend(backend.id)}
+                    onStart={async (options) => startLocalBackend(backend.id, options)}
                     onStop={async () => stopLocalBackend(backend.id)}
                     onDelete={() => handleDeleteLocalBackend(backend.id)}
                   />
