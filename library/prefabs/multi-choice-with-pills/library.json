@@ -3,7 +3,9 @@
   "description": "A multi select drop down, showing the selected items as pills.",
   "type": "prefab",
   "tags": [
-    "UI"
+    "UI",
+    "Form",
+    "Input"
   ],
   "icon": "icon.png",
   "docsPath": "/library/prefabs/multi-choice-with-pills/",

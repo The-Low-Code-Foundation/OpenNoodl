@@ -1,9 +1,11 @@
 {
   "label": "Date Picker",
-  "description": "A date picker component.",
+  "description": "A date picker input with a pop-up calendar for selecting a date.",
   "type": "prefab",
   "tags": [
-    "UI"
+    "UI",
+    "Form",
+    "Input"
   ],
   "icon": "icon.png",
   "docsPath": "/library/prefabs/date-picker/",

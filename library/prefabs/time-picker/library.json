@@ -1,9 +1,11 @@
 {
   "label": "Time Picker",
-  "description": "A time picker component.",
+  "description": "A time picker input for selecting hours and minutes.",
   "type": "prefab",
   "tags": [
-    "UI"
+    "UI",
+    "Form",
+    "Input"
   ],
   "icon": "icon.png",
   "docsPath": "/library/prefabs/time-picker/",

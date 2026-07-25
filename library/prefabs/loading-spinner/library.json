@@ -3,7 +3,8 @@
   "description": "A loading spinner that can be shown when requesting data etc.",
   "type": "prefab",
   "tags": [
-    "UI"
+    "UI",
+    "Feedback"
   ],
   "icon": "icon.png",
   "docsPath": "/library/prefabs/loading-spinner/",

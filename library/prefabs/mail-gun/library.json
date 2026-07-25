@@ -3,7 +3,8 @@
   "description": "A simple prefab for sending emails with Mail Gun.",
   "type": "prefab",
   "tags": [
-    "Cloud"
+    "Cloud",
+    "Email"
   ],
   "icon": "icon.png",
   "docsPath": "/library/prefabs/mailgun/",

@@ -3,7 +3,8 @@
   "description": "Cloud functions for oauth2 user authentication.",
   "type": "prefab",
   "tags": [
-    "Cloud"
+    "Cloud",
+    "Auth"
   ],
   "icon": "icon.png",
   "docsPath": "/library/prefabs/oauth2/",

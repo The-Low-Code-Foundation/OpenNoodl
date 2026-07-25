@@ -3,7 +3,8 @@
   "description": "Contains an animating progress visualization in percentage.",
   "type": "prefab",
   "tags": [
-    "UI"
+    "UI",
+    "Feedback"
   ],
   "icon": "icon.png",
   "docsPath": "/library/prefabs/progress-circle/",

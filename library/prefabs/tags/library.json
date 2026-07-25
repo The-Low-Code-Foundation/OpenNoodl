@@ -3,7 +3,8 @@
   "description": "Display a list of tags, with nice auto generated colors.",
   "type": "prefab",
   "tags": [
-    "UI"
+    "UI",
+    "Data"
   ],
   "icon": "icon.png",
   "docsPath": "/library/prefabs/tags/",

@@ -3,7 +3,8 @@
   "description": "A prefab for creating filter controls that work well with query records.",
   "type": "prefab",
   "tags": [
-    "UI"
+    "UI",
+    "Data"
   ],
   "icon": "icon.png",
   "docsPath": "/library/prefabs/filters/",

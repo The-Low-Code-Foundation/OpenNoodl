@@ -3,7 +3,8 @@
   "description": "A component for pagination, showing available pages and letting user switch.",
   "type": "prefab",
   "tags": [
-    "UI"
+    "UI",
+    "Data"
   ],
   "icon": "icon.png",
   "docsPath": "/library/prefabs/pagination/",

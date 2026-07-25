@@ -3,7 +3,9 @@
   "description": "Connects to Xano and handles queries, users and authTokens. Built by @gmaison.",
   "type": "prefab",
   "tags": [
-    "Data"
+    "Data",
+    "Auth",
+    "Backend"
   ],
   "icon": "icon.png",
   "docsPath": "/library/prefabs/xano/",
