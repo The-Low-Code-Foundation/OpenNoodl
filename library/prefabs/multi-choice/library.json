@@ -3,7 +3,9 @@
   "description": "A component that allows for multi selection in a group of checkboxes.",
   "type": "prefab",
   "tags": [
-    "UI"
+    "UI",
+    "Form",
+    "Input"
   ],
   "icon": "icon.png",
   "docsPath": "/library/prefabs/multi-choice/",

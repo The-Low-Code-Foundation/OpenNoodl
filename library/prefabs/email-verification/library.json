@@ -3,7 +3,9 @@
   "description": "Cloud functions for email verification and reset password.",
   "type": "prefab",
   "tags": [
-    "Cloud"
+    "Cloud",
+    "Auth",
+    "Email"
   ],
   "icon": "icon.png",
   "docsPath": "/library/prefabs/email-verification/",

@@ -3,7 +3,8 @@
   "description": "Contains Toast messages for success, warnings, errors, and neutral.",
   "type": "prefab",
   "tags": [
-    "UI"
+    "UI",
+    "Feedback"
   ],
   "icon": "icon.png",
   "docsPath": "/library/prefabs/toast/",

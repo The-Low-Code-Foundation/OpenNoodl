@@ -3,7 +3,8 @@
   "description": "Cloud functions for auth with timebased one time passwords like Google Auth.",
   "type": "prefab",
   "tags": [
-    "Cloud"
+    "Cloud",
+    "Auth"
   ],
   "icon": "icon.png",
   "docsPath": "/library/prefabs/totp/",

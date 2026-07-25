@@ -3,7 +3,8 @@
   "description": "Contains a classic popup modal for simple confirm popups.",
   "type": "prefab",
   "tags": [
-    "UI"
+    "UI",
+    "Feedback"
   ],
   "icon": "icon.png",
   "docsPath": "/library/prefabs/modal/",

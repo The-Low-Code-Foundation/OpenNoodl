@@ -1,9 +1,11 @@
 {
   "label": "Stripe",
-  "description": "Some helpers to make cloud functions for accepting payments and subscriptions.",
+  "description": "Cloud functions and UI for Stripe payments and subscriptions — checkout, plan picker, and invoice handling.",
   "type": "prefab",
   "tags": [
-    "Cloud"
+    "Cloud",
+    "UI",
+    "Payments"
   ],
   "icon": "icon.png",
   "docsPath": "/library/prefabs/stripe/",

@@ -3,7 +3,8 @@
   "description": "A tab bar component, useful for creating tab navigation.",
   "type": "prefab",
   "tags": [
-    "UI"
+    "UI",
+    "Navigation"
   ],
   "icon": "icon.png",
   "docsPath": "/library/prefabs/tab-bar/",

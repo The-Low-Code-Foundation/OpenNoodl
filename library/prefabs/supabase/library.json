@@ -3,7 +3,9 @@
   "description": "Connects to Supabase and handles queries, users and authTokens. Built by @gmaison and @RicoTrevisan.",
   "type": "prefab",
   "tags": [
-    "Data"
+    "Data",
+    "Auth",
+    "Backend"
   ],
   "icon": "icon.png",
   "docsPath": "/library/prefabs/supabase/",

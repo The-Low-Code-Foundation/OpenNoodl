@@ -3,7 +3,8 @@
   "description": "A simple list component with icons and labels.",
   "type": "prefab",
   "tags": [
-    "UI"
+    "UI",
+    "Data"
   ],
   "icon": "icon.png",
   "docsPath": "/library/prefabs/list-with-icons/",

@@ -3,7 +3,8 @@
   "description": "A component for pagination, letting user pick page and number of rows per page.",
   "type": "prefab",
   "tags": [
-    "UI"
+    "UI",
+    "Data"
   ],
   "icon": "icon.png",
   "docsPath": "/library/prefabs/pagesandrows/",

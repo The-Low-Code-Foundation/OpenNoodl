@@ -3,7 +3,9 @@
   "description": "An interactive star rating component.",
   "type": "prefab",
   "tags": [
-    "UI"
+    "UI",
+    "Form",
+    "Input"
   ],
   "icon": "icon.png",
   "docsPath": "/library/prefabs/rating/",

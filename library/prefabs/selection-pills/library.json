@@ -3,7 +3,9 @@
   "description": "A list of selection pills, select one or many.",
   "type": "prefab",
   "tags": [
-    "UI"
+    "UI",
+    "Form",
+    "Input"
   ],
   "icon": "icon.png",
   "docsPath": "/library/prefabs/selection-pills/",

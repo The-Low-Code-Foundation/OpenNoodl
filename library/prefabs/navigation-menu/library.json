@@ -3,7 +3,8 @@
   "description": "Component for creating navigation menus.",
   "type": "prefab",
   "tags": [
-    "UI"
+    "UI",
+    "Navigation"
   ],
   "icon": "icon.png",
   "docsPath": "/library/prefabs/navigation-menu/",
