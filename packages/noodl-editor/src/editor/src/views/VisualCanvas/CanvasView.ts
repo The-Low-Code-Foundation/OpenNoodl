@@ -4,7 +4,7 @@ import { createRoot, Root } from 'react-dom/client';
 import { platform } from '@noodl/platform';
 
 import { EventDispatcher } from '../../../../shared/utils/EventDispatcher';
-import View from '../../../../shared/view';
+import View from '../../../../shared/ListenableView';
 import { PreviewTokenInjector } from '../../services/PreviewTokenInjector';
 import { VisualCanvas } from './VisualCanvas';
 

@@ -3,7 +3,7 @@ import React, { useRef, useEffect, RefObject } from 'react';
 import { useTrackBounds } from '@noodl-core-ui/hooks/useTrackBounds';
 import { UnsafeStyleProps } from '@noodl-core-ui/types/global';
 
-import View from '../../../../../shared/view';
+import View from '../../../../../shared/ListenableView';
 
 /**
  * Frame Component is a temporary solution

@@ -5,7 +5,7 @@ import { createRoot, Root } from 'react-dom/client';
 
 import { UndoQueue, UndoActionGroup } from '@noodl-models/undo-queue-model';
 
-import View from '../../../../shared/view';
+import View from '../../../../shared/ListenableView';
 import { Frame } from '../common/Frame';
 import PopupLayer, { StringInputPopup } from '../popuplayer';
 import { ToastLayer } from '../ToastLayer/ToastLayer';

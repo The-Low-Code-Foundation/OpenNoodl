@@ -1,6 +1,7 @@
 const React = require('react');
 const { useState, useEffect, useRef } = require('react');
 
+const { flushSync } = require('react-dom');
 const { createRoot } = require('react-dom/client');
 
 const ColorPicker = require('../views/panels/propertyeditor/DataTypes/ColorPicker/colorpicker').default;
@@ -170,13 +171,16 @@ function FontProperty(props) {
     const root = createRoot(div);
     const state = { items: [], filter: '' };
     const rerender = () => {
-      root.render(
-        React.createElement(ContentPicker, {
-          title: 'Choose font',
-          items: [...state.items],
-          filter: state.filter,
-          onSelect: (item) => onChange(item.fullPath)
-        })
+      // Synchronous so the popup layer can measure real content (DEBT-010).
+      flushSync(() =>
+        root.render(
+          React.createElement(ContentPicker, {
+            title: 'Choose font',
+            items: [...state.items],
+            filter: state.filter,
+            onSelect: (item) => onChange(item.fullPath)
+          })
+        )
       );
     };
     rerender();

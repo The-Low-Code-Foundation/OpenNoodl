@@ -1,18 +1,15 @@
 /**
- * What is left of the editor's original jQuery MVC base class.
+ * A root element plus a per-instance listener bus — all that survives of the
+ * editor's original jQuery MVC base class (renamed from `shared/view.ts` by
+ * DEBT-010; the old name promised a view framework that PLAT-002 deleted).
  *
- * The template-binding half — `bindView`, `cloneTemplate`, `this.$()`, the
- * `data-click`/`data-text`/`data-class`/... attribute walker and its
- * getter/setter `watch()` — is gone (PLAT-002 wave 5b), together with the last
- * two runtime `.html` templates and vendored jQuery.
- *
- * All that survives is the per-instance listener bus that ~10 classes still use
- * to talk to their owners, plus the `el` handle React's {@link Frame} appends.
- * This is not a framework to build on: new UI is React under
+ * ~10 classes still extend this to talk to their owners via
+ * `on`/`off`/`notifyListeners`, plus the `el` handle React's {@link Frame}
+ * appends. This is not a framework to build on: new UI is React under
  * `noodl-core-ui`, and each remaining subclass should shed this base as it is
  * converted.
  */
-export default class View {
+export default class ListenableView {
   /** The view's root element, created by the subclass's `render()`. */
   el: HTMLElement;
 

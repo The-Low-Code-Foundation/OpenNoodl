@@ -1,5 +1,5 @@
 import { EventDispatcher } from '../../../../../shared/utils/EventDispatcher';
-import View from '../../../../../shared/view';
+import View from '../../../../../shared/ListenableView';
 
 /**
  * Base class for the property-editor rows.

@@ -4,7 +4,7 @@ import { createRoot, Root } from 'react-dom/client';
 import { NodeLibrary } from '@noodl-models/nodelibrary';
 
 import { EventDispatcher } from '../../../../../../shared/utils/EventDispatcher';
-import View from '../../../../../../shared/view';
+import View from '../../../../../../shared/ListenableView';
 import PopupLayer from '../../../popuplayer';
 import { CodeEditorType } from '../CodeEditor';
 import { PropertyGroups, PropertyGroupModel } from '../components/PropertyGroups';
@@ -59,7 +59,7 @@ export class Ports extends View {
   _selectedTabForGroup: TSFixme;
   activePopout: TSFixme;
   _portsHash: TSFixme;
-  views: TSFixme;
+  views: TSFixme = [];
   _toolsType: TSFixme;
   groups: TSFixme[];
   el: HTMLElement;
@@ -436,7 +436,12 @@ export class Ports extends View {
   getViewGroupsFromPorts() {
     const ports = this._getPorts();
 
-    // Loop over all ports and create views
+    // Loop over all ports and create views.
+    // DEBT-010: dispose the previous render's views before rebuilding — this
+    // used to just drop them (as the legacy `el.html('')` did), leaking every
+    // row's React root on each panel re-render.
+    this.views.forEach((v) => v.dispose && v.dispose());
+
     this._toolsType = {};
     const _viewForPort = {};
     const _tabViews = {};

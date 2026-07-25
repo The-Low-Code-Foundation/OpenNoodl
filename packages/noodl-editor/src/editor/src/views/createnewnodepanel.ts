@@ -5,7 +5,7 @@ import { createRoot, Root } from 'react-dom/client';
 import { ComponentModel } from '@noodl-models/componentmodel';
 import { NodeGraphModel, NodeGraphNode } from '@noodl-models/nodegraphmodel';
 
-import View from '../../../shared/view';
+import View from '../../../shared/ListenableView';
 import { NodeLibrary } from '../models/nodelibrary';
 import { IVector2 } from './nodegrapheditor';
 import { NodePicker } from './NodePicker/NodePicker';

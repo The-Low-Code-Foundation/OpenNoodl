@@ -9,7 +9,7 @@ import { PrimaryButton, PrimaryButtonSize, PrimaryButtonVariant } from '@noodl-c
 import { BasePanel } from '@noodl-core-ui/components/sidebar/BasePanel';
 import { Section } from '@noodl-core-ui/components/sidebar/Section';
 
-import View from '../../../../../shared/view';
+import View from '../../../../../shared/ListenableView';
 import { Frame } from '../../common/Frame';
 import { Ports } from '../propertyeditor/DataTypes/Ports';
 import { ProjectSettingsModel } from './ProjectSettingsModel';

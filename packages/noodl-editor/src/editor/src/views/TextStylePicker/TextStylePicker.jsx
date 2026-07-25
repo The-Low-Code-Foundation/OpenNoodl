@@ -1,4 +1,5 @@
 import React, { useState, useRef, useLayoutEffect, useEffect } from 'react';
+import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
 
 import { StylesModel } from '@noodl-models/StylesModel';
@@ -42,7 +43,8 @@ function TextStylePicker(props) {
 
     const div = document.createElement('div');
     const root = createRoot(div);
-    root.render(<TextStylePopup style={styleToEdit} stylesModel={stylesModel} />);
+    // Synchronous so showPopout can measure real content (DEBT-010).
+    flushSync(() => root.render(<TextStylePopup style={styleToEdit} stylesModel={stylesModel} />));
 
     const popout = PopupLayer.instance.showPopout({
       content: { el: div },

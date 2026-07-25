@@ -45,6 +45,7 @@ The previous `PROGRESS.md` (dated 2026-01-07) claimed 9/9 tasks "Complete" and o
 
 ## Surprising findings
 
+- **TASK-005 disposition (DEBT-010, 2026-07-25):** stays "Not started"; nothing absorbed it. Phase-13's catalog work documents existing nodes and does not add any of the five specced ones (video player, rich text, user location, responsive breakpoints, React-19 node modernization — repo-wide greps still zero). If the features are still wanted they belong to a future runtime-health/feature phase (RUN-00x or later) as fresh tasks with re-validated specs; NODES-002/NODES-004 remain 0-byte placeholders and would need scoping from scratch.
 - TASK-005 being "Not started" while claimed "Complete" is the standout finding — worth checking whether any other phase's PROGRESS.md has a similar total fabrication, not just partial overstatement.
 - TASK-004's `MigrationNotesPanel` is a small but clean example of "built–not wired": tested, present, zero real call sites, no other task in this phase claims it.
 - `packages/noodl-runtime/noodl-runtime.js` has the HTTP node's require commented out ("moved to viewer for debugging") — the base runtime package and the viewer-react runtime have diverged on which nodes are registered, which is worth flagging to whoever owns the runtime/viewer split.

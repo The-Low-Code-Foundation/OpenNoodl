@@ -1,5 +1,6 @@
 import { NodeGraphContextTmp } from '@noodl-contexts/NodeGraphContext/NodeGraphContext';
 import React, { useState, useRef } from 'react';
+import { flushSync } from 'react-dom';
 import { createRoot, Root } from 'react-dom/client';
 
 import { IconName, IconSize } from '@noodl-core-ui/components/common/Icon';
@@ -235,7 +236,10 @@ export class Pages extends React.Component {
     };
     const div = document.createElement('div');
     const root = createRoot(div);
-    root.render(React.createElement(AddNewPagePopup, props));
+    // Synchronous: showPopup measures the content to size the popup box, and
+    // root.render alone is async — the box measured 0×0 (DEBT-010, the
+    // StringInputPopup precedent).
+    flushSync(() => root.render(React.createElement(AddNewPagePopup, props)));
 
     PopupLayer.instance.showPopup({
       content: { el: div },

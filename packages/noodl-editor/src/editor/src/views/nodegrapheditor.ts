@@ -6,7 +6,7 @@ import KeyboardHandler, { KeyboardCommand } from '@noodl-utils/keyboardhandler';
 import { getComponentModelRuntimeType } from '@noodl-utils/NodeGraph';
 
 import { EventDispatcher } from '../../../shared/utils/EventDispatcher';
-import View from '../../../shared/view';
+import View from '../../../shared/ListenableView';
 import { ComponentModel } from '../models/componentmodel';
 import {
   Connection,

@@ -100,10 +100,13 @@ seven error dialogs. After: 712 specs, 0 failures, exit 0, no stray windows.
 
 ## Success criteria
 
-- [ ] `npm run test:ci` passes on a tree with no `src/main/main.bundle.js`
-- [ ] No Electron windows appear during a `--ci` run
-- [ ] The build failure surfaces as a non-zero exit with a clear message, not a
+- [x] `npm run test:ci` passes on a tree with no `src/main/main.bundle.js`
+- [x] No Electron windows appear during a `--ci` run
+- [x] The build failure surfaces as a non-zero exit with a clear message, not a
       60s timeout in an unrelated spec
+
+*(Boxes ticked by DEBT-010, 2026-07-25 — the doc's own Verification section
+records the passing run: 712 specs, 0 failures, exit 0, no stray windows.)*
 
 ## References
 

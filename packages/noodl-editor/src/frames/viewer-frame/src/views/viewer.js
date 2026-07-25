@@ -1,4 +1,4 @@
-const View = require('../../../../shared/view').default;
+const View = require('../../../../shared/ListenableView').default;
 const Config = require('../../../../shared/config/config');
 const { ipcRenderer } = require('electron');
 
@@ -154,14 +154,12 @@ class Viewer extends View {
       this.webviewContainer.querySelector('webview')?.focus();
     }, 100);
 
-    // NOTE (PLAT-002 wave 5b): this binding has never taken effect. The webview
-    // is rendered by React inside CanvasView, so — for exactly the reason the
-    // focus call above is deferred — it is not in the DOM on this tick, and the
-    // jQuery version silently no-oped on an empty set. Converted as found:
-    // switching the focus trap on is a behaviour change, not a conversion.
-    this.webviewContainer.querySelector('webview')?.addEventListener('blur', (e) => {
-      e.target.focus();
-    });
+    // DEBT-010 decision: the blur→refocus binding that used to sit here is
+    // deleted. It never took effect (the webview is not in the DOM on this
+    // tick, so both the jQuery original and the converted version bound to
+    // nothing), and turning a hard focus trap ON would be a UX change nobody
+    // asked for — a webview that refuses to lose focus fights every other
+    // panel. See PLAT-002 NOTES wave 5b for the discovery record.
 
     getLocalIPs((result) => {
       const ipAddress = result && result.length > 0 ? result[result.length - 1] : 'localhost';

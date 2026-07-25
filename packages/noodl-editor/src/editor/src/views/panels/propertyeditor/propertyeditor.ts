@@ -6,7 +6,7 @@ import { createRoot, Root } from 'react-dom/client';
 import { NodeGraphNode } from '@noodl-models/nodegraphmodel';
 import { UndoQueue, UndoActionGroup } from '@noodl-models/undo-queue-model';
 
-import View from '../../../../../shared/view';
+import View from '../../../../../shared/ListenableView';
 import { ElementConfigRegistry } from '../../../models/ElementConfigs/ElementConfigRegistry';
 import { ProjectModel } from '../../../models/projectmodel';
 import { ToastLayer } from '../../ToastLayer/ToastLayer';

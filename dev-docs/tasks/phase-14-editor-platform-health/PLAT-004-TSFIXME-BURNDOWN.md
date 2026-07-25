@@ -111,7 +111,7 @@ The counter uses the TypeScript parser rather than grep. Grep cannot tell `any` 
 - [x] Policy documented in coding standards, including the escape valve
 - [x] Clustering report available to other tasks
 - [x] Easy-win markers removed — everywhere no concurrent task is editing (`noodl-preview` 16 → 3; the AI client 44 → 0; the io specs 66 `any` → 0; the unowned editor spec clusters 20 + 15 → 0; the MCP response payloads 12 → 0). **Every cluster this task owns is now at zero**; the rest sit in PLAT-002/003 files and are theirs to remove
-- [ ] Count trending down; target under 100 by the end of PLAT-002 and PLAT-003, with the remainder documented — `TSFixme` 581 → 538 and `any` 392 → 287 recorded, against a HEAD that had drifted to 615
+- [ ] Count trending down; target under 100 by the end of PLAT-002 and PLAT-003, with the remainder documented — `TSFixme` 581 → 538 and `any` 392 → 287 recorded, against a HEAD that had drifted to 615 *(the committed baseline is 540/287 at `78ba241` — the 538 measurement predates two files re-entering scope; DEBT-010, 2026-07-25)*
 
 ## Risks & Mitigations
 

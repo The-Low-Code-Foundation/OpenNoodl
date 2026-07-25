@@ -1,7 +1,7 @@
 import React from 'react';
 import { createRoot, Root } from 'react-dom/client';
 
-import View from '../../../../../../shared/view';
+import View from '../../../../../../shared/ListenableView';
 import { PropertyTabs } from '../components/PropertyTabs';
 
 function setElementVisible(el: HTMLElement, visible: boolean) {

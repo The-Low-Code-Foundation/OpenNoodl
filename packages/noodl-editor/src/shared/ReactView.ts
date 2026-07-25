@@ -1,6 +1,6 @@
 import React from 'react';
 import { createRoot, Root } from 'react-dom/client';
-import View from './view';
+import View from './ListenableView';
 
 export interface ReactViewDefaultProps {
   owner?: TSFixme;

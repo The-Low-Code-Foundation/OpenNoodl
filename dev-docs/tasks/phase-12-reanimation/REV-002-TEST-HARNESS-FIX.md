@@ -129,4 +129,4 @@ Key observations:
 - [x] Verify headless `test:ci` and exit codes
 - [x] Update `DEBUG-INFRASTRUCTURE.md`; complete CHANGELOG
 - [x] Confirm success criteria
-- [ ] Open PR
+- [ ] Open PR *(moot — repo convention since the revival is commits straight to `cline-dev`, no PRs; annotated by DEBT-010, 2026-07-25)*

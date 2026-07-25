@@ -1,9 +1,10 @@
 import React from 'react';
+import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
 
 import { IconName } from '@noodl-core-ui/components/common/Icon';
 
-import View from '../../../../../shared/view';
+import View from '../../../../../shared/ListenableView';
 import { ComponentModel } from '../../../models/componentmodel';
 import { NodeGraphModel } from '../../../models/nodegraphmodel';
 import { RouterAdapter } from '../../../models/NodeTypeAdapters/RouterAdapter';
@@ -231,7 +232,8 @@ class PageComponentTemplate extends ComponentTemplate {
     };
     const div = document.createElement('div');
     const root = createRoot(div);
-    root.render(React.createElement(PageComponentTemplatePopup, props));
+    // Synchronous so the popup layer can measure real content (DEBT-010).
+    flushSync(() => root.render(React.createElement(PageComponentTemplatePopup, props)));
 
     return { el: div };
   }
