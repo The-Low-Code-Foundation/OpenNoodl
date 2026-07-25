@@ -10,9 +10,9 @@
 | Metric       | Value  |
 | ------------ | ------ |
 | Total Tasks  | 6      |
-| Completed    | 3      |
+| Completed    | 4      |
 | In Progress  | 1      |
-| Not Started  | 2      |
+| Not Started  | 1      |
 | **Progress** | **50%** |
 
 ---
@@ -26,7 +26,7 @@
 | AIX-003 | Graph-Native Review | 🟡 In Progress | Slices 1–5 shipped: change-set adapter, annotated diff canvas, review document (list/nav/detail, before/after, granular accept with dependency closure, walkthrough). Residuals: one clean-session UI smoke, 40-node fresh-reviewer test, live-provider round trip. See AIX-003-NOTES.md |
 | AIX-004 | Explain Mode        | 🟢 Complete    | Panel shipped + wired (context menu + sidebar); read-only; citations link to canvas; +47 specs. Register/accuracy tuning needs a live provider run. NOTES + CHANGELOG in the task doc |
 | AIX-005 | Agentic UI Nodes    | 🔴 Not Started | Deliberately last; only after AIX-002 proves out   |
-| AIX-006 | Style Vocabulary    | 🔴 Not Started | Added 2026-07-24 from the salvage audit; ~1 wk; tokens/variants into the authoring context, StyleAnalyzer as post-gen linter |
+| AIX-006 | Style Vocabulary    | 🟢 Complete (`fa639c8`) | Live per-project vocabulary (tokens/variants/presets, `var(--token)` format verified) injected into ContextBuilder + `ON-SYSTEM STYLING` prompt; StyleAnalyzer detection extracted to a pure `StyleAnalyzerCore` and wired as an advisory post-gen lint into the refine loop; MCP `get_style_vocabulary`/`set_project_tokens`/`set_style_preset`. A/B (sonnet, headless): **2.4× more on-system styling**, 90% vs 85%. mcp jest 39/39; Electron editor suite pending |
 
 ---
 
