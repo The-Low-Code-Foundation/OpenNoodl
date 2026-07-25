@@ -354,6 +354,11 @@ function _importProject(dirEntry) {
               variant: 'overwrite',
               imports: collisions,
               onOk: function () {
+                // Honor items the user unticked in the overwrite dialog: remove
+                // them from the selection so they are neither overwritten nor added.
+                ProjectImporter.instance.filterImports(selectedImports, {
+                  remove: overwritePopup.getUnselectedImports()
+                });
                 PopupLayer.instance.hideAllModalsAndPopups();
                 doImport(selectedImports);
               },
