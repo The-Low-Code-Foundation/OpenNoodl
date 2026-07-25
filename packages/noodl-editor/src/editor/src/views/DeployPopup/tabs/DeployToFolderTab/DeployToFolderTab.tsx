@@ -17,11 +17,38 @@ import { ToastLayer } from '../../../ToastLayer/ToastLayer';
 import { NO_ENVIRONMENT_VALUE } from '../../DeployPopup.constants';
 import { useEnvironmentsAsOptions } from '../../DeployPopup.hooks';
 
+type RenderingMode = 'csr' | 'ssr' | 'ssg';
+
+const RENDERING_MODE_OPTIONS = [
+  { label: 'Client-side rendering (default)', value: 'csr' },
+  { label: 'Server-side rendering (SSR)', value: 'ssr' },
+  { label: 'Static pre-rendering (SSG)', value: 'ssg' }
+];
+
+const RENDERING_MODE_HINTS: Record<RenderingMode, string> = {
+  csr: 'A static folder rendered in the browser. Host it anywhere that serves files.',
+  ssr: 'A Node server that renders each page — with SEO tags and data — before sending it. In the folder, run: npm install && npm run build && npm start',
+  ssg: 'Pre-renders every page to static HTML at build time. In the folder, run: npm install && npm run build:ssg && npm run ssg — then host the dist/ output anywhere.'
+};
+
+function getSavedRenderingMode(): RenderingMode {
+  // getSettings() — not .settings — a project saved without a settings block loads with settings undefined
+  const saved = ProjectModel.instance.getSettings()['deployRenderingMode'];
+  return saved === 'ssr' || saved === 'ssg' ? saved : 'csr';
+}
+
 export function DeployToFolderTab() {
   const cloudService = useModernModel(CloudService.instance);
   const environmentOptions = useEnvironmentsAsOptions(cloudService);
 
   const [environmentId, setEnvironmentId] = useState<string>(NO_ENVIRONMENT_VALUE);
+  const [renderingMode, setRenderingMode] = useState<RenderingMode>(getSavedRenderingMode);
+
+  function onRenderingModeChanged(value: string) {
+    const mode: RenderingMode = value === 'ssr' || value === 'ssg' ? value : 'csr';
+    setRenderingMode(mode);
+    ProjectModel.instance.setSetting('deployRenderingMode', mode);
+  }
 
   function onPickFolderClicked() {
     const activityId = 'deploying-project';
@@ -49,22 +76,16 @@ export function DeployToFolderTab() {
 
         const environment = cloudService.backend.items.find((x) => x.id === environmentId);
 
+        // SSR and SSG share one deployment layout (the server at the root, the
+        // browser app in public/) — which mode runs is decided by the npm script
+        // the user starts. See static/ssr/README.md, deployed with the folder.
+        const runtimeType = renderingMode === 'csr' ? undefined : 'ssr';
+
         // NOTE: Fire-n-forget
         compilation.deployToFolder(direntry, {
-          environment
+          environment,
+          runtimeType
         });
-
-        // NOTE: To deploy SSR, this will be updated with the new deploy popup design
-        // compilation
-        //   .deployToFolder(direntry, {
-        //     environment,
-        //     runtimeType: 'ssr'
-        //   })
-        //   .then(() => {
-        //     compilation.deployToFolder(direntry + '/public', {
-        //       environment,
-        //     });
-        //   });
       });
 
     PopupLayer.instance.hidePopup();
@@ -80,6 +101,19 @@ export function DeployToFolderTab() {
         <Text hasBottomSpacing textType={TextType.Shy}>
           Runtime: {ProjectModel.instance.runtimeVersion === 'react19' ? 'React 19' : 'React 18.3 (default)'} — change
           it under Project Settings → Runtime.
+        </Text>
+
+        <Select
+          options={RENDERING_MODE_OPTIONS}
+          onChange={(value: string) => onRenderingModeChanged(value)}
+          value={renderingMode}
+          label="Rendering mode"
+          hasBottomSpacing
+          testId="deploy-rendering-mode-select"
+        />
+
+        <Text hasBottomSpacing textType={TextType.Shy}>
+          {RENDERING_MODE_HINTS[renderingMode]}
         </Text>
 
         {Boolean(cloudService.backend.items?.length) && (

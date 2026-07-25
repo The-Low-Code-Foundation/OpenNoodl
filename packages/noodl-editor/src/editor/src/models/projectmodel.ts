@@ -564,6 +564,12 @@ export class ProjectModel extends Model {
   }
 
   setSetting(name, value) {
+    // The constructor takes `args.settings` verbatim, so a project saved without
+    // a settings block loads with `settings === undefined` — writing must heal that.
+    if (!this.settings) {
+      this.settings = {};
+    }
+
     if (this.settings[name] === value) {
       return;
     }

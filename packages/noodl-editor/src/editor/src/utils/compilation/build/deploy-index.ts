@@ -116,7 +116,9 @@ type WriteIndexFilesArgs = {
   project;
   direntry;
   exportJson;
-  indexJsFile: DeployIndexItem;
+  /** Every file that receives the project export splice. The first one is the
+   *  entry index.html points at (the SSR manifest also lists ssg.js here). */
+  injectExportFiles: DeployIndexItem[];
   indexHtmlFile: DeployIndexItem;
   baseUrl: string;
   enableHash?: boolean;
@@ -128,22 +130,26 @@ async function writeIndexFiles({
   project,
   direntry,
   exportJson,
-  indexJsFile,
+  injectExportFiles,
   indexHtmlFile,
   baseUrl,
   enableHash,
   envVariables,
   runtimeType
 }: WriteIndexFilesArgs) {
-  //write index.js file, with a hashed name
-  const indexJsPath = await _writeFileToFolder({
-    project,
-    direntry,
-    url: indexJsFile.url,
-    exportJson,
-    enableHash,
-    runtimeType
-  });
+  //write the export-carrying files (hashed names when enabled)
+  const [indexJsPath] = await Promise.all(
+    injectExportFiles.map((file) =>
+      _writeFileToFolder({
+        project,
+        direntry,
+        url: file.url,
+        exportJson,
+        enableHash,
+        runtimeType
+      })
+    )
+  );
 
   if (indexHtmlFile) {
     //and write the index.html file with the correct path
@@ -181,9 +187,9 @@ export async function copyDeployFilesToFolder({
   envVariables,
   runtimeType
 }: CopyDeployFilesToFolderArgs) {
-  const indexJsFile = files.find((file) => file.injectExport);
+  const injectExportFiles = files.filter((file) => file.injectExport);
   const indexHtmlFile = files.find((file) => file.injectHTML);
-  const otherFiles = files.filter((f) => f !== indexJsFile && f !== indexHtmlFile);
+  const otherFiles = files.filter((f) => !f.injectExport && f !== indexHtmlFile);
 
   const otherFilesPromises = otherFiles.map((file) =>
     _writeFileToFolder({
@@ -202,7 +208,7 @@ export async function copyDeployFilesToFolder({
       project,
       direntry,
       exportJson,
-      indexJsFile,
+      injectExportFiles,
       indexHtmlFile,
       baseUrl,
       // TODO: Make enableHash a global option? I dont want it for SSR

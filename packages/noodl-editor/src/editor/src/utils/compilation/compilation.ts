@@ -193,9 +193,16 @@ export class Compilation {
 
     const projectSettings = this.project.getSettings();
 
+    // RUN-002: an SSR deploy is layered — the Node server at the root, the full
+    // browser app in public/. Build scripts (sitemap, user scripts) target the
+    // web root, which for SSR is public/ (that's what express.static serves and
+    // what the SSG build copies into its output).
+    const isSSR = options.runtimeType === 'ssr';
+    const webRootPath = isSSR ? filesystem.join(filePath, 'public') : filePath;
+
     const common = {
       ...coreContext,
-      outputPath: filePath
+      outputPath: webRootPath
     };
 
     await this.callBuildScripts('onPreBuild', common);
@@ -221,6 +228,20 @@ export class Compilation {
         runtimeType: options.runtimeType,
         envVariables
       });
+
+      if (isSSR) {
+        // The browser layer: a complete CSR deploy the server hydrates (and the
+        // SSG build copies). The server loads bundles from the deploy root, the
+        // browser from public/ — both copies are required (see static/ssr docs).
+        await deployToFolder({
+          project: coreContext.project,
+          direntry: webRootPath,
+          environment: options.environment,
+          baseUrl: coreContext.getHostname(),
+          runtimeType: 'deploy',
+          envVariables
+        });
+      }
 
       await this.callBuildScripts('onPostBuild', { ...common, status: 'success' });
     } catch (error) {
