@@ -490,6 +490,11 @@ describe('BAK-003 enforcement (locked backend)', () => {
           // Self-governing / config-governed endpoints (signup is 'public'
           // here by design); pinned by the dedicated session + signup tests.
           break;
+        case 'webhook':
+          // WF-005 self-enforcing: the per-hook secret is the credential, and an
+          // unmatched slug 404s. Pinned by the dedicated triggers-http tests
+          // (accept with the right HMAC, reject/record on a wrong one).
+          break;
         case 'data-perOp': {
           // The batch route answers 200 with per-operation denials.
           const probe = await req(route.method, url, {
