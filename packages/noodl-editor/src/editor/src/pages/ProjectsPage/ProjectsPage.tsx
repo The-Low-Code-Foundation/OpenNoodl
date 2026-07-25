@@ -21,15 +21,20 @@ import {
   GitHubClientInterface
 } from '@noodl-core-ui/preview/launcher/Launcher/hooks/useGitHubRepos';
 import { Launcher } from '@noodl-core-ui/preview/launcher/Launcher/Launcher';
+import { LauncherLessonData } from '@noodl-core-ui/preview/launcher/Launcher/LauncherContext';
 
 import { useEventListener } from '../../hooks/useEventListener';
 import { DialogLayerModel } from '../../models/DialogLayerModel';
+import { LessonsProjectsModel } from '../../models/LessonsProjectModel';
+import LessonTemplatesModel from '../../models/lessontemplatesmodel';
 import { getAllPresets, setPendingPresetId } from '../../models/StylePresets';
 import { IRouteProps } from '../../pages/AppRoute';
 import { GitHubOAuthService, GitHubClient } from '../../services/github';
 import { ProjectOrganizationService } from '../../services/ProjectOrganizationService';
+import getDocsEndpoint from '../../utils/getDocsEndpoint';
 import { LocalProjectsModel, ProjectItemWithRuntime } from '../../utils/LocalProjectsModel';
 import { tracker } from '../../utils/tracker';
+import { getLessonsState } from '../../views/projectsview.lessonstate';
 import { MigrationWizard } from '../../views/migration/MigrationWizard';
 import { ToastLayer } from '../../views/ToastLayer/ToastLayer';
 
@@ -59,9 +64,39 @@ function mapProjectToLauncherData(project: ProjectItemWithRuntime): LauncherProj
   };
 }
 
+/**
+ * Map hosted lesson templates + saved progress to the launcher's lesson cards.
+ * Reuses getLessonsState (LEARN-001: previously orphaned) to derive state and
+ * percent from the per-lesson progress the LessonsProjectsModel persists.
+ */
+function mapLessonsToLauncherData(
+  templates: TSFixme[],
+  lessonsModel: LessonsProjectsModel
+): LauncherLessonData[] {
+  const endpoint = getDocsEndpoint();
+  const progressList = templates.map(
+    (t) => lessonsModel.getLessonProjectProgress(t.name) || { index: 0, end: 0 }
+  );
+  const states = getLessonsState(progressList);
+
+  return templates.map((t, i) => ({
+    id: t.name,
+    title: t.title || t.name,
+    description: t.header,
+    imageSrc: t.thumb ? `${endpoint}/${t.thumb}` : undefined,
+    category: t.category,
+    progressPercent: states[i].progressPercent,
+    state: (states[i].name as LauncherLessonData['state']) || 'not-started'
+  }));
+}
+
 export function ProjectsPage(props: ProjectsPageProps) {
   // Real projects from LocalProjectsModel
   const [realProjects, setRealProjects] = useState<LauncherProjectData[]>([]);
+
+  // Lessons for the Learn tab (LEARN-001 entry/discovery UI)
+  const [lessons, setLessons] = useState<LauncherLessonData[]>([]);
+  const [lessonsProjectsModel] = useState(() => new LessonsProjectsModel());
 
   // Create project modal state
   const [isCreateModalVisible, setIsCreateModalVisible] = useState(false);
@@ -83,6 +118,34 @@ export function ProjectsPage(props: ProjectsPageProps) {
       setGithubUser(user);
     });
   }, [oauthService]);
+
+  // Load the lesson catalogue for the Learn tab, and keep it in sync with
+  // saved progress. LessonTemplatesModel.instance.fetch() is already kicked off
+  // at app start (router.tsx); we consume its result here rather than into the
+  // void, which is what left the whole discovery UI orphaned.
+  useEffect(() => {
+    const templatesModel = LessonTemplatesModel.instance;
+    const lessonsModel = lessonsProjectsModel;
+    const group = {}; // listener group token for clean teardown
+
+    const rebuild = () => {
+      const templates = templatesModel.getTemplates();
+      if (templates && templates.length) {
+        setLessons(mapLessonsToLauncherData(templates, lessonsModel));
+      }
+    };
+
+    templatesModel.on('templatesChanged', rebuild, group);
+    lessonsModel.on('lessonProgressChanged', rebuild, group);
+
+    if (templatesModel.getTemplates()?.length) rebuild();
+    else templatesModel.fetch();
+
+    return () => {
+      templatesModel.off(group);
+      lessonsModel.off(group);
+    };
+  }, []);
 
   // Listen for GitHub auth state changes
   useEventListener(oauthService, 'auth-state-changed', (event: { authenticated: boolean }) => {
@@ -384,6 +447,43 @@ export function ProjectsPage(props: ProjectsPageProps) {
     }
   }, [props.route]);
 
+  /**
+   * Clone (or resume) a lesson project and open it. Routing sets
+   * ProjectModel.instance = project (router.tsx), and the cloned project
+   * carries the synthesised `lesson` field, so EditorPage's isLesson() check
+   * lights up the lesson layer.
+   */
+  const openLesson = useCallback(
+    (lessonId: string, restart: boolean) => {
+      const template = LessonTemplatesModel.instance.getTemplates().find((t: TSFixme) => t.name === lessonId);
+      if (!template) {
+        ToastLayer.showError('Could not find that lesson');
+        return;
+      }
+
+      const activityId = 'loading-lesson';
+      ToastLayer.showActivity(restart ? 'Restarting lesson' : 'Loading lesson', activityId);
+
+      const onLoaded = (project?: TSFixme) => {
+        ToastLayer.hideActivity(activityId);
+        if (!project) {
+          ToastLayer.showError('Could not load lesson');
+          return;
+        }
+        tracker.track('Lesson Opened', { lesson: template.name, restart });
+        props.route.router.route({ to: 'editor', project });
+      };
+
+      const lessonsModel = lessonsProjectsModel;
+      if (restart) lessonsModel.restartLessonProject(template, onLoaded, undefined);
+      else lessonsModel.loadLessonProject(template, onLoaded, undefined);
+    },
+    [props.route]
+  );
+
+  const handleStartLesson = useCallback((lessonId: string) => openLesson(lessonId, false), [openLesson]);
+  const handleRestartLesson = useCallback((lessonId: string) => openLesson(lessonId, true), [openLesson]);
+
   const handleLaunchProject = useCallback(
     async (projectId: string) => {
       const projects = LocalProjectsModel.instance.getProjects();
@@ -606,6 +706,9 @@ export function ProjectsPage(props: ProjectsPageProps) {
         onDeleteProject={handleDeleteProject}
         onMigrateProject={handleMigrateProject}
         onOpenReadOnly={handleOpenReadOnly}
+        lessons={lessons}
+        onStartLesson={handleStartLesson}
+        onRestartLesson={handleRestartLesson}
         projectOrganizationService={ProjectOrganizationService.instance}
         githubUser={githubUser}
         githubIsAuthenticated={githubIsAuthenticated}
