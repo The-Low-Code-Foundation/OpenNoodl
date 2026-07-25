@@ -1,0 +1,15 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "c8451024-fe91-0cbe-b3ad-85d77dd01432",
+      "type": "Image",
+      "x": 237,
+      "y": 170,
+      "parameters": {
+        "image": "assets/bear.jpg"
+      }
+    }
+  ]
+}

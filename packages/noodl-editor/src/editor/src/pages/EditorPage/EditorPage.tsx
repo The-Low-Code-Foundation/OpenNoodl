@@ -20,7 +20,7 @@ import FileSystem from '@noodl-utils/filesystem';
 import { KeyCode, KeyMod } from '@noodl-utils/keyboard/KeyCode';
 import { LocalProjectsModel } from '@noodl-utils/LocalProjectsModel';
 import ParseDashboardServer from '@noodl-utils/parsedashboardserver';
-import ProjectImporter from '@noodl-utils/projectimporter';
+import ProjectImporter from '@noodl-utils/import-engine/legacyAdapter';
 import ProjectValidator from '@noodl-utils/projectvalidator';
 import SchemaHandler from '@noodl-utils/schemahandler';
 import { guid } from '@noodl-utils/utils';
