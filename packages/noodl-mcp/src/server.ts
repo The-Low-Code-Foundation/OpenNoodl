@@ -8,6 +8,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 
 import { ProjectStore } from './project/ProjectStore';
 import { registerAuthorTools } from './tools/author';
+import { registerBackendReadTools, registerBackendWriteTools } from './tools/backendTools';
 import { registerCatalogTools } from './tools/catalogTools';
 import { registerReadTools } from './tools/read';
 import { registerStyleReadTools, registerStyleWriteTools } from './tools/styleTools';
@@ -47,9 +48,11 @@ export function createServer(options: ServerOptions): CreatedServer {
   registerCatalogTools(server);
   registerValidateTools(server, store);
   registerStyleReadTools(server, store);
+  registerBackendReadTools(server);
   if (options.allowWrites) {
     registerAuthorTools(server, store);
     registerStyleWriteTools(server, store);
+    registerBackendWriteTools(server);
   }
   return { server, store };
 }

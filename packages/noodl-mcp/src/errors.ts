@@ -13,6 +13,8 @@ export class ToolError extends Error {
       | 'validation-failed'
       | 'not-a-v2-project'
       | 'read-only'
+      | 'no-backend'
+      | 'backend-error'
       | 'io-error',
     message: string,
     public readonly data?: Record<string, unknown>
