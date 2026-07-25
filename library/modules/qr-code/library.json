@@ -1,0 +1,17 @@
+{
+  "label": "QR Code",
+  "description": "Renders a QR code from any text or URL, fully client-side (qrcode-generator, MIT). Styleable size, quiet zone, foreground/background colours and error-correction level.",
+  "type": "module",
+  "tags": [
+    "UI"
+  ],
+  "icon": "icon.png",
+  "docsPath": "/library/modules/qr-code/",
+  "version": "1.0.0",
+  "minEditorVersion": "0.1.0",
+  "runtimeVersion": "2.7.0",
+  "provenance": {
+    "sourceUrl": "https://unpkg.com/qrcode-generator@1.4.4/qrcode.js",
+    "importedAt": "2026-07-25"
+  }
+}
