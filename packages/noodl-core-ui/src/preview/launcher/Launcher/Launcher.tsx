@@ -19,7 +19,12 @@ import {
 } from '@noodl-core-ui/preview/launcher/Launcher/components/LauncherProjectCard';
 import { NoodlGitHubRepo, UseGitHubReposReturn } from '@noodl-core-ui/preview/launcher/Launcher/hooks/useGitHubRepos';
 import { usePersistentTab } from '@noodl-core-ui/preview/launcher/Launcher/hooks/usePersistentTab';
-import { GitHubUser, LauncherPageId, LauncherProvider } from '@noodl-core-ui/preview/launcher/Launcher/LauncherContext';
+import {
+  GitHubUser,
+  LauncherLessonData,
+  LauncherPageId,
+  LauncherProvider
+} from '@noodl-core-ui/preview/launcher/Launcher/LauncherContext';
 import { GitHubRepos } from '@noodl-core-ui/preview/launcher/Launcher/views/GitHubRepos';
 import { LearningCenter } from '@noodl-core-ui/preview/launcher/Launcher/views/LearningCenter';
 import { Projects } from '@noodl-core-ui/preview/launcher/Launcher/views/Projects';
@@ -45,6 +50,11 @@ export interface LauncherProps {
   onDeleteProject?: (projectId: string) => void;
   onMigrateProject?: (projectId: string) => void;
   onOpenReadOnly?: (projectId: string) => void;
+
+  // Lessons (Learn tab)
+  lessons?: LauncherLessonData[];
+  onStartLesson?: (lessonId: string) => void;
+  onRestartLesson?: (lessonId: string) => void;
 
   // Project organization service (optional - for Storybook compatibility)
   projectOrganizationService?: any;
@@ -193,6 +203,9 @@ export function Launcher({
   onDeleteProject,
   onMigrateProject,
   onOpenReadOnly,
+  lessons,
+  onStartLesson,
+  onRestartLesson,
   projectOrganizationService,
   githubUser,
   githubIsAuthenticated,
@@ -306,6 +319,9 @@ export function Launcher({
         onDeleteProject,
         onMigrateProject,
         onOpenReadOnly,
+        lessons,
+        onStartLesson,
+        onRestartLesson,
         githubUser,
         githubIsAuthenticated,
         githubIsConnecting,

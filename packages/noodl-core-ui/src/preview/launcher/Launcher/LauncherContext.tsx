@@ -13,6 +13,20 @@ import { NoodlGitHubRepo, UseGitHubReposReturn } from './hooks/useGitHubRepos';
 
 export type LauncherPageId = 'projects' | 'learn' | 'templates' | 'github';
 
+export type LauncherLessonState = 'not-started' | 'in-progress' | 'completed';
+
+/** A lesson shown in the Learn tab. Supplied by the editor from the hosted lesson index. */
+export interface LauncherLessonData {
+  id: string;
+  title: string;
+  description?: string;
+  imageSrc?: string;
+  category?: string;
+  /** Completion 0–100. */
+  progressPercent: number;
+  state: LauncherLessonState;
+}
+
 // GitHub user info (matches GitHubOAuthService interface)
 export interface GitHubUser {
   id: number;
@@ -46,6 +60,11 @@ export interface LauncherContextValue {
   onDeleteProject?: (projectId: string) => void;
   onMigrateProject?: (projectId: string) => void;
   onOpenReadOnly?: (projectId: string) => void;
+
+  // Lessons (Learn tab)
+  lessons?: LauncherLessonData[];
+  onStartLesson?: (lessonId: string) => void;
+  onRestartLesson?: (lessonId: string) => void;
 
   // GitHub OAuth integration (optional - for Storybook compatibility)
   githubUser?: GitHubUser | null;
