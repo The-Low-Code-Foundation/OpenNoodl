@@ -1,10 +1,10 @@
-# Revival Phases 12–20 — Index
+# Revival Phases 12–22 — Index
 
 **Created:** 2026-07-22
 **Source:** [NOODL-REVIVAL-ROADMAP.md](../reviews/NOODL-REVIVAL-ROADMAP.md), which derives from [NOODL-VIABILITY-REPORT.md](../reviews/NOODL-VIABILITY-REPORT.md)
 **Status:** All phases Not started
 
-These nine phases document the unlimited-budget revival plan. They sit alongside the original phases 0–11 rather than replacing them: phases 0–2 are complete, several later phases contributed work that these build on, and a few are explicitly superseded (noted below).
+These phases document the unlimited-budget revival plan. They sit alongside the original phases 0–11 rather than replacing them: phases 0–2 are complete, several later phases contributed work that these build on, and a few are explicitly superseded (noted below).
 
 ## Phases
 
@@ -21,6 +21,7 @@ These nine phases document the unlimited-budget revival plan. They sit alongside
 | [19 — Cloud & Workflows](./phase-19-cloud-workflows/) | G | WF-001…007 | The backend leg of the full stack: standalone service (speaks the Parse-wire subset), workflow engine, triggers, observability, one deploy target, Parse-framework retirement (re-scoped 2026-07-24 — see [BACKEND-GAP-ASSESSMENT](./phase-19-cloud-workflows/BACKEND-GAP-ASSESSMENT.md)) | After G2-critical work; WF-006 + RUN-004 loud-failure anytime |
 | [20 — Ecosystem](./phase-20-ecosystem/) | Horizon 3 | ECO-001…005 | Collaboration, marketplace, multi-project, hosting, rebrand | 🔒 **Gated on G3** |
 | [21 — Library & Import](./phase-21-library-and-import/) | Cross-track | LIB-001…005 | Library source of truth + pipeline, prefab repair/restyle, module hygiene/expansion, import engine v2, import UX (created 2026-07-25) | Anytime — not gated; precondition for ECO-002's sharing test |
+| [22 — Production Backend](./phase-22-production-backend/) | H | BAK-001…009 | BaaS parity for `nodegx-backend`, tiered: realtime (SSE), email/SMTP + reset/verify, access control (CLPs/ACLs/roles/keys), backups & promotion; then OAuth/magic links, served admin dashboard, files v2; then FTS5 search, ops hardening (created 2026-07-25) | After Phase 19's WF-004; tiers are stopping points |
 
 ## The critical path
 
