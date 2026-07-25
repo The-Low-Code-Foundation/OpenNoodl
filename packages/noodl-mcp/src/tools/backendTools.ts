@@ -117,6 +117,58 @@ export function registerBackendReadTools(server: McpServer): void {
   );
 
   server.registerTool(
+    'get_backend_email_config',
+    {
+      title: 'Get backend email config',
+      description:
+        'The email subsystem config (BAK-002) of a running backend: SMTP host/port/security/username, ' +
+        'from-address/name, the base-URL setting (also used by BAK-004), the verification policy ' +
+        '(sendOnSignup/requireForLogin), and whether email is currently configured/enabled. Never returns the ' +
+        'SMTP password — only whether one is set (`hasSmtpPassword`).',
+      inputSchema: { backendId: z.string().optional().describe('Which backend (omit if exactly one is running)') }
+    },
+    guarded(async ({ backendId }) => {
+      const client = await requireBackend(backendId);
+      const { json } = await client.request('GET', '/admin/email/config');
+      return jsonResult(json);
+    })
+  );
+
+  server.registerTool(
+    'list_backend_email_templates',
+    {
+      title: 'List backend email templates',
+      description:
+        'Enumerate this backend\'s email templates (currently: passwordReset, verifyEmail). For each: the ' +
+        'shipped default, any per-backend override, the effective (merged) template actually sent, and whether ' +
+        'it is overridden.',
+      inputSchema: { backendId: z.string().optional().describe('Which backend (omit if exactly one is running)') }
+    },
+    guarded(async ({ backendId }) => {
+      const client = await requireBackend(backendId);
+      const { json } = await client.request('GET', '/admin/email/templates');
+      return jsonResult(json);
+    })
+  );
+
+  server.registerTool(
+    'preview_backend_email_template',
+    {
+      title: 'Preview a backend email template',
+      description: 'Render a template (default merged with any override) against sample variables, without sending anything.',
+      inputSchema: {
+        backendId: z.string().optional(),
+        templateId: z.enum(['passwordReset', 'verifyEmail']).describe('Which template to preview')
+      }
+    },
+    guarded(async ({ backendId, templateId }) => {
+      const client = await requireBackend(backendId);
+      const { json } = await client.request('GET', `/admin/email/templates/${encodeURIComponent(templateId)}/preview`);
+      return jsonResult(json);
+    })
+  );
+
+  server.registerTool(
     'check_backend_access',
     {
       title: 'Check backend access (dry run)',
@@ -250,6 +302,105 @@ export function registerBackendWriteTools(server: McpServer): void {
         ? (await client.request('DELETE', `/admin/roles/${encodeURIComponent(role)}/users/${encodeURIComponent(userId)}`))
             .json
         : (await client.request('POST', `/admin/roles/${encodeURIComponent(role)}/users`, { userId })).json;
+      return jsonResult(json);
+    })
+  );
+
+  server.registerTool(
+    'set_backend_email_config',
+    {
+      title: 'Set backend email config',
+      description:
+        'Configure the email subsystem (BAK-002) on a running backend: SMTP host/port/security/username, ' +
+        'from-address/name, the base-URL (shared with BAK-004 — set it once here), and the verification policy. ' +
+        'Pass `smtpPassword` to (re)set the SMTP credential — it is stored in the backend\'s secrets.json, never ' +
+        'echoed back by any read tool. Omitted fields keep their current value.',
+      inputSchema: {
+        backendId: z.string().optional(),
+        enabled: z.boolean().optional().describe('Master on/off switch for sending mail'),
+        smtp: z
+          .object({
+            host: z.string().optional(),
+            port: z.number().optional(),
+            secure: z.boolean().optional().describe('true = implicit TLS (~465); false = STARTTLS/plaintext (~587/25)'),
+            username: z.string().optional()
+          })
+          .optional(),
+        smtpPassword: z.string().optional().describe('The SMTP credential — write-only, stored in secrets.json'),
+        fromAddress: z.string().optional(),
+        fromName: z.string().optional(),
+        baseUrl: z.string().optional().describe('The backend\'s deployed origin, e.g. "https://api.example.com" — used to build links in emails'),
+        verification: z
+          .object({
+            sendOnSignup: z.boolean().optional().describe('Send a verification email automatically on signup'),
+            requireForLogin: z.boolean().optional().describe('Block login until emailVerified is true')
+          })
+          .optional()
+      }
+    },
+    guarded(async ({ backendId, smtpPassword, ...config }) => {
+      const client = await requireBackend(backendId);
+      const body: Record<string, unknown> = { config };
+      if (smtpPassword !== undefined) body.smtpPassword = smtpPassword;
+      const { json } = await client.request('PUT', '/admin/email/config', body);
+      return jsonResult(json);
+    })
+  );
+
+  server.registerTool(
+    'send_backend_test_email',
+    {
+      title: 'Send a backend test email',
+      description:
+        'Send a real test email through a running backend\'s configured SMTP right now. Throws loudly with the ' +
+        'actionable reason if email is not configured — this is the admin-authenticated surface where loud ' +
+        'failure applies (unlike the public reset/verify endpoints, which stay uniform for anti-enumeration).',
+      inputSchema: { backendId: z.string().optional(), to: z.string().describe('Address to send the test email to') }
+    },
+    guarded(async ({ backendId, to }) => {
+      const client = await requireBackend(backendId);
+      const { json } = await client.request('POST', '/admin/email/test', { to });
+      return jsonResult(json);
+    })
+  );
+
+  server.registerTool(
+    'set_backend_email_template',
+    {
+      title: 'Set a backend email template override',
+      description:
+        'Override one email template\'s subject/text/html for this backend. Omitted fields fall back to the ' +
+        'shipped default (a partial override, not a full replacement). Use {{variable}} for interpolation — ' +
+        'passwordReset gets appName/username/resetUrl/expiresIn; verifyEmail gets appName/username/verifyUrl.',
+      inputSchema: {
+        backendId: z.string().optional(),
+        templateId: z.enum(['passwordReset', 'verifyEmail']),
+        subject: z.string().optional(),
+        text: z.string().optional(),
+        html: z.string().optional()
+      }
+    },
+    guarded(async ({ backendId, templateId, subject, text, html }) => {
+      const client = await requireBackend(backendId);
+      const { json } = await client.request('PUT', `/admin/email/templates/${encodeURIComponent(templateId)}`, {
+        subject,
+        text,
+        html
+      });
+      return jsonResult(json);
+    })
+  );
+
+  server.registerTool(
+    'reset_backend_email_template',
+    {
+      title: 'Reset a backend email template to its default',
+      description: 'Remove a template override so it reverts to the shipped default.',
+      inputSchema: { backendId: z.string().optional(), templateId: z.enum(['passwordReset', 'verifyEmail']) }
+    },
+    guarded(async ({ backendId, templateId }) => {
+      const client = await requireBackend(backendId);
+      const { json } = await client.request('DELETE', `/admin/email/templates/${encodeURIComponent(templateId)}`);
       return jsonResult(json);
     })
   );

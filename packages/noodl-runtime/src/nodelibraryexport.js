@@ -598,6 +598,11 @@ function generateNodeLibrary(nodeRegister) {
         {
           name: 'Cloud Data',
           items: ['noodl.cloud.aggregate']
+        },
+        {
+          // BAK-002: server-side only, same as the rest of this category.
+          name: 'Email',
+          items: ['noodl.cloud.sendemail']
         }
       ]
     }

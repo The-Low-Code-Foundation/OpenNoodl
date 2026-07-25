@@ -141,7 +141,8 @@ export type NodeTypeName =
   | 'noodl.byob.UpdateRecord'
   | 'noodl.cloud.aggregate'
   | 'noodl.cloud.request'
-  | 'noodl.cloud.response';
+  | 'noodl.cloud.response'
+  | 'noodl.cloud.sendemail';
 
 /** Node palette categories present in the registries. */
 export type NodeCategory =

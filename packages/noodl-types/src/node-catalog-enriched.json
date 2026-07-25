@@ -43380,14 +43380,178 @@
           "Condition"
         ]
       }
+    },
+    {
+      "typeName": "noodl.cloud.sendemail",
+      "displayName": "Send Email",
+      "category": "Cloud",
+      "isVisual": false,
+      "isDeprecated": false,
+      "inNodePicker": true,
+      "availableIn": [
+        "cloud"
+      ],
+      "providedBy": "noodl-viewer-cloud",
+      "docs": "https://docs.noodl.net/nodes/cloud-functions/send-email",
+      "inputs": [
+        {
+          "name": "html",
+          "displayName": "HTML Body",
+          "group": "Content",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "send",
+          "displayName": "Do",
+          "group": "Actions",
+          "plug": "input",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "isSignal": true
+        },
+        {
+          "name": "subject",
+          "displayName": "Subject",
+          "group": "Content",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "template",
+          "displayName": "Template",
+          "group": "Content",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "None (use Subject/Text/HTML below)",
+                "value": "none"
+              },
+              {
+                "label": "Password Reset",
+                "value": "passwordReset"
+              },
+              {
+                "label": "Verify Email",
+                "value": "verifyEmail"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "none"
+        },
+        {
+          "name": "text",
+          "displayName": "Text Body",
+          "group": "Content",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "to",
+          "displayName": "To",
+          "group": "General",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "variables",
+          "displayName": "Template Variables",
+          "group": "Content",
+          "plug": "input",
+          "type": {
+            "name": "object",
+            "allowConnectionsOnly": true
+          },
+          "isSignal": false
+        }
+      ],
+      "outputs": [
+        {
+          "name": "error",
+          "displayName": "Error",
+          "group": "Error",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "failed",
+          "displayName": "Failed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true
+        },
+        {
+          "name": "sent",
+          "displayName": "Sent",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true
+        }
+      ],
+      "dynamicPorts": null,
+      "enrichment": {
+        "typeName": "noodl.cloud.sendemail",
+        "summary": "Sends an email through the backend's configured SMTP server from inside a cloud function or workflow.",
+        "description": "Send Email is a server-side-only action node (it only runs inside a cloud function, never in a browser component). Wire `send` to fire it: it either renders one of the backend's built-in templates (Password Reset, Verify Email) against the `variables` object, or sends the raw `subject`/`text`/`html` inputs directly. The send is synchronous from the graph's point of view — `sent` or `failed` fires once the attempt (plus one automatic retry on transient failure) has finished. If the backend has no SMTP configured, or this component is somehow evaluated outside a nodegx-backend process, it fails loudly on `failed`/`error` — it never drops a send silently or queues it for later.",
+        "whenToUse": "Use it wherever a workflow needs to notify someone by email — a signup confirmation, an order receipt, an internal alert. Do not use it for the account password-reset/verify-email flows the backend already runs (BAK-002) — those are automatic; wire this node only for YOUR OWN application notifications.",
+        "ports": {
+          "to": "The recipient address.",
+          "template": "'none' sends the Subject/Text/HTML inputs as-is; 'passwordReset'/'verifyEmail' render the backend's built-in templates instead and ignore Subject/Text/HTML.",
+          "variables": "An object of `{{name}}` values for template interpolation; only read when Template is not 'none'.",
+          "send": "Signal; fires the send attempt (with its one documented retry on failure).",
+          "sent": "Signal; fires once the send succeeded.",
+          "failed": "Signal; fires once the send failed (or immediately if email isn't available at all) — read `error` for why.",
+          "error": "The failure message, e.g. \"Email is not configured for this backend...\" — always a specific, actionable string, never a generic failure."
+        },
+        "examples": [
+          "fn-send-notification-email"
+        ],
+        "patterns": [
+          "Request `receive` → Send Email `send` → Response `send`: a fire-and-notify cloud function, the same shape as the Request/Response round trip but with a side effect instead of (or in addition to) a computed value."
+        ],
+        "antiPatterns": [
+          "Wiring this into a browser component — it has no effect there (no `_noodl_send_email` exists outside nodegx-backend) and the failure is confusing without knowing this node is cloud-only.",
+          "Assuming a fired `sent` means the recipient's inbox will show it soon — deliverability (SPF/DKIM/provider reputation) is the operator's SMTP provider's job, not this node's."
+        ],
+        "relatedNodes": [
+          "noodl.cloud.request",
+          "noodl.cloud.response"
+        ]
+      }
     }
   ],
   "enrichment": {
     "version": "1.0.0",
     "docs": "docs/node-catalog/ENRICHMENT.md",
     "coverage": {
-      "documented": 136,
-      "total": 136
+      "documented": 137,
+      "total": 137
     }
   },
   "compatibility": {
@@ -46102,6 +46266,99 @@
               "fromProperty": "receive",
               "toId": "fn_response",
               "toProperty": "send"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fn-send-notification-email",
+      "title": "Cloud function that sends an email notification",
+      "description": "A cloud function that receives a recipient/subject/message from its caller and emails it through the backend's configured SMTP server. Request's `params` become this function's inputs; Send Email fires on `receive` and reports success/failure back to Response, which the caller reads as usual. This is the general-purpose shape for any application email (signup confirmations, receipts, alerts) — distinct from the backend's own automatic password-reset/verify-email flows (BAK-002), which never need a Send Email node.",
+      "demonstrates": [
+        "noodl.cloud.request",
+        "noodl.cloud.sendemail",
+        "noodl.cloud.response"
+      ],
+      "components": [
+        {
+          "name": "/Cloud Functions/Notify",
+          "nodes": [
+            {
+              "id": "fn_request",
+              "type": "noodl.cloud.request",
+              "label": "Request",
+              "parameters": {
+                "params": "to,subject,message"
+              }
+            },
+            {
+              "id": "fn_send_email",
+              "type": "noodl.cloud.sendemail",
+              "label": "Send Email",
+              "parameters": {
+                "template": "none"
+              }
+            },
+            {
+              "id": "fn_response",
+              "type": "noodl.cloud.response",
+              "label": "Response",
+              "parameters": {
+                "status": "success"
+              }
+            },
+            {
+              "id": "fn_response_failed",
+              "type": "noodl.cloud.response",
+              "label": "Response (failed)",
+              "parameters": {
+                "status": "failure"
+              }
+            }
+          ],
+          "connections": [
+            {
+              "fromId": "fn_request",
+              "fromProperty": "to",
+              "toId": "fn_send_email",
+              "toProperty": "to"
+            },
+            {
+              "fromId": "fn_request",
+              "fromProperty": "subject",
+              "toId": "fn_send_email",
+              "toProperty": "subject"
+            },
+            {
+              "fromId": "fn_request",
+              "fromProperty": "message",
+              "toId": "fn_send_email",
+              "toProperty": "text"
+            },
+            {
+              "fromId": "fn_request",
+              "fromProperty": "receive",
+              "toId": "fn_send_email",
+              "toProperty": "send"
+            },
+            {
+              "fromId": "fn_send_email",
+              "fromProperty": "sent",
+              "toId": "fn_response",
+              "toProperty": "send"
+            },
+            {
+              "fromId": "fn_send_email",
+              "fromProperty": "failed",
+              "toId": "fn_response_failed",
+              "toProperty": "send"
+            },
+            {
+              "fromId": "fn_send_email",
+              "fromProperty": "error",
+              "toId": "fn_response_failed",
+              "toProperty": "errorMessage"
             }
           ]
         }

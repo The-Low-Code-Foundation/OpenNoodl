@@ -177,6 +177,42 @@ class BackendManager {
       this.requireRunning(id, 'revoke API key').request('DELETE', `/admin/keys/${encodeURIComponent(objectId)}`)
     );
 
+    // ==========================================================================
+    // EMAIL (BAK-002) — the Email panel section proxies to /admin/email/*
+    // ==========================================================================
+
+    ipcMain.handle('backend:getEmailConfig', async (_, id) =>
+      this.requireRunning(id, 'read email config').request('GET', '/admin/email/config')
+    );
+    ipcMain.handle('backend:setEmailConfig', async (_, id, config) =>
+      this.requireRunning(id, 'set email config').request('PUT', '/admin/email/config', config)
+    );
+    ipcMain.handle('backend:sendTestEmail', async (_, id, to) =>
+      this.requireRunning(id, 'send test email').request('POST', '/admin/email/test', { to })
+    );
+    ipcMain.handle('backend:getEmailTemplates', async (_, id) =>
+      this.requireRunning(id, 'read email templates').request('GET', '/admin/email/templates')
+    );
+    ipcMain.handle('backend:setEmailTemplate', async (_, id, templateId, override) =>
+      this.requireRunning(id, 'set email template').request(
+        'PUT',
+        `/admin/email/templates/${encodeURIComponent(templateId)}`,
+        override
+      )
+    );
+    ipcMain.handle('backend:resetEmailTemplate', async (_, id, templateId) =>
+      this.requireRunning(id, 'reset email template').request(
+        'DELETE',
+        `/admin/email/templates/${encodeURIComponent(templateId)}`
+      )
+    );
+    ipcMain.handle('backend:previewEmailTemplate', async (_, id, templateId) =>
+      this.requireRunning(id, 'preview email template').request(
+        'GET',
+        `/admin/email/templates/${encodeURIComponent(templateId)}/preview`
+      )
+    );
+
     this.ipcHandlersSetup = true;
   }
 

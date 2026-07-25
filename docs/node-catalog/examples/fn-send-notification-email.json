@@ -1,0 +1,46 @@
+{
+  "id": "fn-send-notification-email",
+  "title": "Cloud function that sends an email notification",
+  "description": "A cloud function that receives a recipient/subject/message from its caller and emails it through the backend's configured SMTP server. Request's `params` become this function's inputs; Send Email fires on `receive` and reports success/failure back to Response, which the caller reads as usual. This is the general-purpose shape for any application email (signup confirmations, receipts, alerts) — distinct from the backend's own automatic password-reset/verify-email flows (BAK-002), which never need a Send Email node.",
+  "demonstrates": ["noodl.cloud.request", "noodl.cloud.sendemail", "noodl.cloud.response"],
+  "components": [
+    {
+      "name": "/Cloud Functions/Notify",
+      "nodes": [
+        {
+          "id": "fn_request",
+          "type": "noodl.cloud.request",
+          "label": "Request",
+          "parameters": { "params": "to,subject,message" }
+        },
+        {
+          "id": "fn_send_email",
+          "type": "noodl.cloud.sendemail",
+          "label": "Send Email",
+          "parameters": { "template": "none" }
+        },
+        {
+          "id": "fn_response",
+          "type": "noodl.cloud.response",
+          "label": "Response",
+          "parameters": { "status": "success" }
+        },
+        {
+          "id": "fn_response_failed",
+          "type": "noodl.cloud.response",
+          "label": "Response (failed)",
+          "parameters": { "status": "failure" }
+        }
+      ],
+      "connections": [
+        { "fromId": "fn_request", "fromProperty": "to", "toId": "fn_send_email", "toProperty": "to" },
+        { "fromId": "fn_request", "fromProperty": "subject", "toId": "fn_send_email", "toProperty": "subject" },
+        { "fromId": "fn_request", "fromProperty": "message", "toId": "fn_send_email", "toProperty": "text" },
+        { "fromId": "fn_request", "fromProperty": "receive", "toId": "fn_send_email", "toProperty": "send" },
+        { "fromId": "fn_send_email", "fromProperty": "sent", "toId": "fn_response", "toProperty": "send" },
+        { "fromId": "fn_send_email", "fromProperty": "failed", "toId": "fn_response_failed", "toProperty": "send" },
+        { "fromId": "fn_send_email", "fromProperty": "error", "toId": "fn_response_failed", "toProperty": "errorMessage" }
+      ]
+    }
+  ]
+}

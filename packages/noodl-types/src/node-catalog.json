@@ -40238,6 +40238,141 @@
           }
         ]
       }
+    },
+    {
+      "typeName": "noodl.cloud.sendemail",
+      "displayName": "Send Email",
+      "category": "Cloud",
+      "isVisual": false,
+      "isDeprecated": false,
+      "inNodePicker": true,
+      "availableIn": [
+        "cloud"
+      ],
+      "providedBy": "noodl-viewer-cloud",
+      "docs": "https://docs.noodl.net/nodes/cloud-functions/send-email",
+      "inputs": [
+        {
+          "name": "html",
+          "displayName": "HTML Body",
+          "group": "Content",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "send",
+          "displayName": "Do",
+          "group": "Actions",
+          "plug": "input",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "isSignal": true
+        },
+        {
+          "name": "subject",
+          "displayName": "Subject",
+          "group": "Content",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "template",
+          "displayName": "Template",
+          "group": "Content",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "None (use Subject/Text/HTML below)",
+                "value": "none"
+              },
+              {
+                "label": "Password Reset",
+                "value": "passwordReset"
+              },
+              {
+                "label": "Verify Email",
+                "value": "verifyEmail"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "none"
+        },
+        {
+          "name": "text",
+          "displayName": "Text Body",
+          "group": "Content",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "to",
+          "displayName": "To",
+          "group": "General",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "variables",
+          "displayName": "Template Variables",
+          "group": "Content",
+          "plug": "input",
+          "type": {
+            "name": "object",
+            "allowConnectionsOnly": true
+          },
+          "isSignal": false
+        }
+      ],
+      "outputs": [
+        {
+          "name": "error",
+          "displayName": "Error",
+          "group": "Error",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "failed",
+          "displayName": "Failed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true
+        },
+        {
+          "name": "sent",
+          "displayName": "Sent",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true
+        }
+      ],
+      "dynamicPorts": null
     }
   ]
 }
