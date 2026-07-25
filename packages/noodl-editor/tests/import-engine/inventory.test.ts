@@ -17,9 +17,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 import { buildInventory, catalogPortType, PortTypeLookup } from '../../src/editor/src/utils/import-engine/inventory';
-import { CatalogIndex } from '../../src/editor/src/validation/CatalogIndex';
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-import catalogJson from '../../../noodl-types/src/node-catalog.json';
+import { loadDefaultCatalog } from '../../src/editor/src/validation/catalog';
 
 const IGNORE = new Set(['project.json', '.ds_store', '.gitignore', '.gitattributes', 'readme.md']);
 
@@ -47,13 +45,12 @@ function listModules(dir: string): string[] {
 function analyzeFixture(name: string) {
   const dir = path.join(process.cwd(), 'tests/testfs', name);
   const project = JSON.parse(fs.readFileSync(path.join(dir, 'project.json'), 'utf8'));
-  const catalog = new CatalogIndex(catalogJson as never);
   return buildInventory({
     sourceDir: dir,
     project,
     resources: listResources(dir),
     modules: listModules(dir),
-    portType: catalogPortType(catalog)
+    portType: catalogPortType(loadDefaultCatalog())
   });
 }
 

@@ -15,9 +15,7 @@ import * as path from 'path';
 
 import { buildInventory, catalogPortType } from '../../src/editor/src/utils/import-engine/inventory';
 import { plan, TargetProject } from '../../src/editor/src/utils/import-engine/plan';
-import { CatalogIndex } from '../../src/editor/src/validation/CatalogIndex';
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-import catalogJson from '../../../noodl-types/src/node-catalog.json';
+import { loadDefaultCatalog } from '../../src/editor/src/validation/catalog';
 
 function load(name: string) {
   const dir = path.join(process.cwd(), 'tests/testfs', name);
@@ -25,8 +23,7 @@ function load(name: string) {
 }
 
 function inventoryOf(project: unknown) {
-  const catalog = new CatalogIndex(catalogJson as never);
-  return buildInventory({ sourceDir: '/src', project: project as never, resources: [], modules: [], portType: catalogPortType(catalog) });
+  return buildInventory({ sourceDir: '/src', project: project as never, resources: [], modules: [], portType: catalogPortType(loadDefaultCatalog()) });
 }
 
 function targetFrom(project: {
