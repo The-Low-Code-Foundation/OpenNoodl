@@ -1,9 +1,8 @@
-import { useModernModel } from '@noodl-hooks/useModel';
 import React, { useState } from 'react';
 import { filesystem } from '@noodl/platform';
 
-import { CloudService } from '@noodl-models/CloudServices';
 import { ProjectModel } from '@noodl-models/projectmodel';
+import { getCloudServices } from '@noodl-models/projectmodel.editor';
 import { createEditorCompilation } from '@noodl-utils/compilation/compilation.editor';
 
 import { PrimaryButton } from '@noodl-core-ui/components/inputs/PrimaryButton';
@@ -14,8 +13,6 @@ import { TextType } from '@noodl-core-ui/components/typography/Text/Text';
 
 import PopupLayer from '../../../popuplayer';
 import { ToastLayer } from '../../../ToastLayer/ToastLayer';
-import { NO_ENVIRONMENT_VALUE } from '../../DeployPopup.constants';
-import { useEnvironmentsAsOptions } from '../../DeployPopup.hooks';
 
 type RenderingMode = 'csr' | 'ssr' | 'ssg';
 
@@ -38,10 +35,13 @@ function getSavedRenderingMode(): RenderingMode {
 }
 
 export function DeployToFolderTab() {
-  const cloudService = useModernModel(CloudService.instance);
-  const environmentOptions = useEnvironmentsAsOptions(cloudService);
+  // WF-007: the project's own cloudservices pointer (set via the Backend
+  // Services panel — local backend auto-set or a manually entered external
+  // endpoint) is baked into the export directly. There is no more "pick from
+  // a list of pre-registered Cloud Services environments" step — that list,
+  // and the master-key deploy pass it fed, were retired with CloudServicePanel.
+  const cloudServices = ProjectModel.instance ? getCloudServices(ProjectModel.instance) : undefined;
 
-  const [environmentId, setEnvironmentId] = useState<string>(NO_ENVIRONMENT_VALUE);
   const [renderingMode, setRenderingMode] = useState<RenderingMode>(getSavedRenderingMode);
 
   function onRenderingModeChanged(value: string) {
@@ -74,7 +74,15 @@ export function DeployToFolderTab() {
             }
           });
 
-        const environment = cloudService.backend.items.find((x) => x.id === environmentId);
+        const environment =
+          cloudServices && cloudServices.endpoint
+            ? {
+                id: cloudServices.id,
+                appId: cloudServices.appId,
+                url: cloudServices.endpoint,
+                type: cloudServices.type
+              }
+            : undefined;
 
         // SSR and SSG share one deployment layout (the server at the root, the
         // browser app in public/) — which mode runs is decided by the npm script
@@ -116,16 +124,11 @@ export function DeployToFolderTab() {
           {RENDERING_MODE_HINTS[renderingMode]}
         </Text>
 
-        {Boolean(cloudService.backend.items?.length) && (
-          <Select
-            options={environmentOptions}
-            onChange={(value: string) => setEnvironmentId(value)}
-            placeholder="No cloud services"
-            value={environmentId}
-            label="Connected cloud services"
-            hasBottomSpacing
-          />
-        )}
+        <Text hasBottomSpacing textType={TextType.Shy}>
+          {cloudServices?.endpoint
+            ? `Connected cloud services: ${cloudServices.endpoint}`
+            : 'No cloud services connected — set one in the Backend Services panel.'}
+        </Text>
 
         <PrimaryButton label="Pick folder" onClick={onPickFolderClicked} />
       </PopupSection>

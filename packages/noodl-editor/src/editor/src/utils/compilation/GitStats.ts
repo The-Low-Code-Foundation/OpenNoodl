@@ -2,10 +2,15 @@ import { Git } from '@noodl/git';
 
 import { mergeProject, mergeV2ComponentFiles } from '@noodl-versioning';
 
-import { ProjectModel } from '../projectmodel';
+import { ProjectModel } from '@noodl-models/projectmodel';
 
 /**
  * Git stats used for deployment of frontend.
+ *
+ * WF-007: relocated from `models/CloudServices/GitStats.ts` — unrelated to
+ * Parse, it just happened to live in that folder. Moved here (next to its
+ * only consumer, `compilation.ts`) before the CloudServices folder was
+ * deleted.
  */
 export async function getGitStats() {
   try {

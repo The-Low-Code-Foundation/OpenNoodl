@@ -1,9 +1,9 @@
 import { filesystem } from '@noodl/platform';
 
-import { Environment } from '@noodl-models/CloudServices';
 import { ProjectModel } from '@noodl-models/projectmodel';
 
 import * as Exporter from '../../exporter';
+import { DeployEnvironment } from '../build-context';
 import { copyProjectFilesToFolder } from './copy';
 import { loadDeployIndex, copyDeployFilesToFolder, getExternalFolderPath } from './deploy-index';
 import { HtmlProcessor, HtmlProcessorParameters } from './processors/html-processor';
@@ -19,7 +19,7 @@ export type DeployToFolderOptions = {
   /**
    * The environment we want to publish with.
    */
-  environment: Environment | undefined;
+  environment: DeployEnvironment | undefined;
 
   baseUrl: string;
 
