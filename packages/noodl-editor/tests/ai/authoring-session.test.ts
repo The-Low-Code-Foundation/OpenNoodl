@@ -13,6 +13,7 @@ import {
   type AuthoringChatFn,
   type AuthoringSessionState
 } from '../../src/editor/src/models/AiAssistant/authoring/AuthoringSession';
+import { buildCandidate } from '../../src/editor/src/models/AiAssistant/authoring/candidate';
 import type { AuthoringRequest } from '../../src/editor/src/models/AiAssistant/authoring/types';
 import { fromSerialisedProject } from '../../src/editor/src/models/AiAssistant/explain/graph';
 import type { AiChatRequest, AiChatResponse, AiToolCall } from '../../src/editor/src/models/AiAssistant/client/types';
@@ -432,5 +433,108 @@ describe('AIX-002 authoring session', () => {
     const outcome = await AuthoringSession.create(GRAPH, REQUEST, { chat }).run();
     expect(outcome.status).toBe('authored');
     expect(outcome.metrics.costUsd).toBeNull();
+  });
+});
+
+describe('AIX-002 authoring session — update mode', () => {
+  const UPDATE_REQUEST: AuthoringRequest = {
+    description: 'Add a subtitle under the title.',
+    componentPath: 'Pages/Article'
+  };
+
+  /**
+   * A base for the existing "/Pages/Article": the trio the panel would build
+   * from the live component. Synthetic here — the loop only needs a trio whose
+   * component exists in the graph — with hand-tuning the submit contract
+   * cannot express, to prove it survives an update round.
+   */
+  function articleBase() {
+    const result = buildCandidate(
+      UPDATE_REQUEST,
+      {
+        nodes: [
+          { id: 'art-root', type: 'Group', label: 'Article root' },
+          { id: 'art-title', type: 'Text', parent: 'art-root', parameters: { text: 'Article' } }
+        ],
+        visualRoots: ['art-root'],
+        description: 'The article page.'
+      },
+      '2026-01-01T00:00:00.000Z'
+    );
+    expect(result.errors).toEqual([]);
+    const files = result.files!;
+    files.nodes.nodes.find((n) => n.id === 'art-title')!.variant = 'Headline';
+    return files;
+  }
+
+  it('refuses at creation what could never succeed', () => {
+    // Updating a component that does not exist.
+    expect(() =>
+      AuthoringSession.createUpdate(GRAPH, { ...UPDATE_REQUEST, componentPath: 'Pages/Nope' }, articleBase())
+    ).toThrowError(AuthoringSetupError);
+    // Creating a component that already exists still refuses, with update as the pointer.
+    expect(() => AuthoringSession.create(GRAPH, UPDATE_REQUEST)).toThrowError(/update session/);
+  });
+
+  it('opens with the current component in submit shape, frames the revision contract, and charges the handout', async () => {
+    const { chat, requests } = scriptedChat([
+      () =>
+        respond({
+          toolCalls: [
+            call('submit_component', {
+              nodes: [
+                { id: 'art-root', type: 'Group', label: 'Article root' },
+                { id: 'art-title', type: 'Text', parent: 'art-root', parameters: { text: 'Article' } },
+                { id: 'art-sub', type: 'Text', parent: 'art-root', parameters: { text: 'A subtitle' } }
+              ],
+              visual_roots: ['art-root']
+            })
+          ]
+        })
+    ]);
+
+    const base = articleBase();
+    const session = AuthoringSession.createUpdate(GRAPH, UPDATE_REQUEST, base, { chat });
+    expect(session.mode).toBe('update');
+    expect(session.state.mode).toBe('update');
+
+    const outcome = await session.run();
+    expect(outcome.status).toBe('authored');
+
+    const system = requests[0].messages[0];
+    expect(system.role).toBe('system');
+    // The framing wraps mid-phrase in the template literal, so assert on a
+    // fragment that cannot straddle a line break.
+    expect(system.content).toContain('EXISTING NODE IDS');
+    const opening = requests[0].messages[1];
+    expect(opening.content).toContain('--- CURRENT COMPONENT ---');
+    expect(opening.content).toContain('art-title');
+    expect(opening.content).toContain('Add a subtitle under the title.');
+
+    // The subject was charged and logged like every other handout.
+    const entry = outcome.metrics.contextLog.find((e) => e.source === 'current-component');
+    expect(entry).toBeDefined();
+    expect(entry!.chars).toBeGreaterThan(0);
+    expect(entry!.refused).toBeUndefined();
+
+    // The staged files keep the base identity and the kept node's hand-tuning.
+    expect(outcome.files!.component.id).toBe(base.component.id);
+    const title = outcome.files!.nodes.nodes.find((n) => n.id === 'art-title')!;
+    expect(title.variant).toBe('Headline');
+    expect(outcome.files!.nodes.nodes.some((n) => n.id === 'art-sub')).toBe(true);
+  });
+
+  it('fails loudly when the component cannot fit the context budget, without calling the model', async () => {
+    const chat: AuthoringChatFn = async () => {
+      throw new Error('the model must not be called');
+    };
+    const session = AuthoringSession.createUpdate(GRAPH, UPDATE_REQUEST, articleBase(), {
+      chat,
+      budget: { maxChars: 10 }
+    });
+    const outcome = await session.run();
+    expect(outcome.status).toBe('error');
+    expect(outcome.error).toContain('too large');
+    expect(session.state.phase).toBe('error');
   });
 });

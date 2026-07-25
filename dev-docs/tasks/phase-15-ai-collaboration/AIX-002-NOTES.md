@@ -169,10 +169,10 @@ Spec step 4. The session becomes observable and streaming; a new sidebar panel
 1. ~~Live provider runs (spec step 2)~~ — shipped in slice 5 (Anthropic measured;
    OpenAI blocked on account quota, not code).
 2. ~~Live canvas rendering during authoring (step 5)~~ — shipped in slice 4.
-3. Post-accept refinement of an existing component (step 6) — needs an
-   update-shaped submit (MCP's `applyOperations` is the substrate to share);
-   pre-accept refinement shipped in slice 2.
-4. Opt-in Gate-G2 telemetry (step 7).
+3. ~~Post-accept refinement of an existing component (step 6)~~ — shipped in
+   slice 6 as update mode (whole-candidate + diff review, NOT `applyOperations`;
+   see the slice-6 design note); pre-accept refinement shipped in slice 2.
+4. ~~Opt-in Gate-G2 telemetry (step 7)~~ — shipped in slice 6, local-first.
 
 ## Slice 4 (2026-07-25): live canvas rendering
 
@@ -313,6 +313,135 @@ read, never a refusal, never the whole project.
 - `AuthoringSession` → client barrel → `AiClient` → `AiAssistantStore` is the
   only Electron-tainted edge in the authoring graph; everything else (loop,
   gate, explain graph, providers) bundles headlessly as-is.
+
+## Slice 6 (2026-07-25): update mode + opt-in telemetry (spec steps 6 & 7)
+
+The last two open steps. Step 6 — refinement of an *existing* component — and
+step 7 — telemetry that can answer Gate G2's "do users return?".
+
+### Update mode: the design decision
+
+The slice-3 note guessed step 6 would share MCP's `applyOperations`. Scouting
+killed that: `applyOperations` lives only in noodl-mcp, its op vocabulary
+cannot express state-parameters/transitions, and by now AIX-003 had built the
+better substrate. So update mode **keeps the whole-candidate contract** — the
+one slice 5 measured at 8/8 first-attempt validity — and reuses the diff-review
+machinery that already handled an existing-component base:
+
+- `AuthoringSession.createUpdate(graph, request, baseFiles)` — same loop, same
+  gate (the gate already validated updates: it swaps the same-named component
+  out of the project before validating the candidate in its place). The opening
+  turn carries the current component **in submit shape** (a new charged
+  `ContextBuilder.currentComponentSource` handout), and a component whose
+  source alone blows the budget fails loudly at run start instead of opening
+  with a refusal string.
+- **The id rule is the legibility mechanism.** The update framing instructs:
+  keep existing node ids for kept nodes — a kept id diffs as a modification, a
+  new id as delete-and-recreate. This is what makes "review the AI's revision
+  as a diff" readable.
+- **Inexpressible fields are carried, not lost.** A full resubmission would
+  silently eat what the submit schema can't say: `variant`, `stateParameters`,
+  `stateTransitions`, `defaultStateTransitions`, `dynamicports`, node
+  `metadata`. `buildCandidate(..., base)` carries these over for nodes whose id
+  AND type match the base (plus canvas comments and the component's identity —
+  id, created, metadata — verbatim). Deliberately NOT carried: `parameters` and
+  `ports`, which the agent can express and therefore owns. The user message
+  says hidden tuning survives on kept ids and dies on recreated ones.
+- `updateAuthoredComponent` — the net-new primitive nothing else provided:
+  replace-by-remove+add inside ONE `UndoActionGroup` (both ProjectModel
+  mutations accept a shared group), with two fidelity details: the replacement
+  is spliced back to the original array position (an update must not shuffle
+  project.json), and the project root is restored **by node, not via
+  `setRootComponent`** — that helper filters on `type.allowAsExportRoot` and
+  silently no-ops when the NodeLibrary is not loaded (the new-project-no-Home
+  failure mode; it bit again in the spec environment). Undo restores the exact
+  captured root node; do/redo prefers the candidate's `visualRoots[0]`. The
+  undo half sits FIRST in the group so in both directions the root settles
+  only after its component is back in the project. One undo is byte-identical,
+  spec-asserted against the real corpus.
+- **Panel**: typing an existing component's path flips the form to "Update it"
+  with an explicit notice (a typo'd "new" name cannot silently revise — the
+  button label announces the mode). Accept branches on the SESSION's mode,
+  decided at creation — never re-inferred at accept time, so a component
+  created mid-authoring still fails create-accept loudly. Post-accept, the
+  component path is retained and the form is already in update mode: "make
+  more changes" IS step 6's post-accept refinement, with zero new machinery.
+  Review-diff + partial accept work for updates through AIX-003's existing
+  `buildChangeSet`/`materializeSelection` unchanged.
+
+### Telemetry: local-first, opt-in, no server
+
+The editor's legacy tracker is a permanent no-op (`DummyTracker`; `setTracker`
+never called; the Mixpanel comment is dead) and no analytics endpoint exists.
+Step 7 does not add one. `models/AiAssistant/telemetry.ts`:
+
+- Off by default; while off, **nothing is written and no install id exists**.
+  Opt-in checkbox in Editor Settings → AI ("Usage log"), with the log path
+  shown when enabled.
+- One JSONL line per event to `<userData>/telemetry/authoring-telemetry.jsonl`:
+  `authoring-round` (mode, initial|refine, status, cumulative turns/submits/
+  cost, duration), `authoring-accept` (mode, partial, counts),
+  `authoring-reject` (mode). Envelope: v, ts, anonymous install id (minted on
+  first write), app version. **A spec mechanically asserts no field carries
+  free text** — every string must be a known enum. Never a prompt, name, or
+  any project content.
+- G2's retention question = distinct days with an `authoring-round`, keyed by
+  install id, computable from the file alone; pilots share the file
+  consciously or not at all.
+- The module is fs/Electron-tainted BY DESIGN and lives outside `authoring/`;
+  the panel wires it around the session, so the authoring graph stays
+  headless-bundleable (the measurement harness is unaffected). Reject is
+  recorded only when a staged candidate existed — "Start over" after a failed
+  run is not a decision against work.
+
+### Registration bug found in passing
+
+`tests/index.ts` builds the spec bundle from hand-written barrels;
+`authoring-partial.test.ts` and `authoring-preview.test.ts` (slice 4) were
+never added to `tests/ai/index.ts` — those 16 specs had not been running in
+`test:ci` at all. Registered now, together with `authoring-telemetry.test.ts`.
+
+### Traps hit
+
+- The system-prompt template literal hard-wraps mid-phrase; a spec asserting
+  `toContain('KEEP THE EXISTING NODE IDS')` failed on the embedded newline.
+  Assert on fragments that cannot straddle a wrap.
+- `setRootComponent` is a no-op with an empty NodeLibrary (again). Any
+  root-restoration logic that must work headlessly has to restore by node id.
+- `removeComponent` + `addComponent` with a shared `UndoActionGroup`: group
+  undo runs in reverse, so order-sensitive settling (root, array position)
+  needs its undo half pushed BEFORE the mutations and its do half after.
+
+### Verified
+
+- `npx tsc --noEmit` clean; `npm run test:ci` **1283 specs, 0 failures**
+  (randomized; +14 new — 4 candidate-update, 3 session-update, 4
+  staging-update, 3 telemetry — plus the 16 resurrected slice-4 specs);
+  `npm run catalog:check` green; noodl-mcp build + jest 32/32.
+- Live smoke (CDP, Shine Phase 2 — the real 45-component project):
+  - Scripted update session against the live `/Pages/Article` (25 nodes, 27
+    connections): `createUpdate` → authored first-attempt through the strict
+    gate, identity kept, `current-component:10812` chars charged and logged.
+  - `updateAuthoredComponent` on the live project: replaced in place (same
+    name, same array position), added node present; **one undo →
+    byte-identical `project.toJSON()`**, redo reapplies. Project restored to
+    pristine afterwards.
+  - Telemetry: opt-in → JSONL record written to the real
+    `~/Library/Application Support/NodeGX/telemetry/authoring-telemetry.jsonl`
+    with correct envelope; opt-out blocks writes. Smoke residue (file +
+    minted install id) deleted after.
+  - Panel: typing `Pages/Article` flips the form live to "Update it" + the
+    exists-notice + "What should change?"; a fresh path flips back to
+    "Build it". Editor Settings → AI renders the "Usage log" row and the
+    nothing-is-sent blurb. Zero renderer exceptions.
+
+### Remaining (task-level)
+
+- Live provider run of update mode (one command in the measurement harness
+  once an update-prompt is added to the corpus; create-mode was measured in
+  slice 5). OpenAI still quota-blocked account-side.
+- No telemetry collection endpoint — deliberate; G2 analysis collects opted-in
+  pilots' local files.
 
 ## Note from DEBT-003 (2026-07-24) — expression semantics the loop can rely on
 

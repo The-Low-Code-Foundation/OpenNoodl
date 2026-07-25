@@ -18,17 +18,22 @@ import {
   AuthoringSession,
   AuthoringSetupError,
   buildChangeSet,
+  pathToLegacyName,
   StagingError,
+  updateAuthoredComponent,
   validateCandidateComponent,
   type AuthoringActivity,
+  type AuthoringMode,
   type AuthoringSessionState,
   type ComponentFiles
 } from '@noodl-models/AiAssistant/authoring';
 import { AiClient } from '@noodl-models/AiAssistant/client';
 import { fromProjectModel } from '@noodl-models/AiAssistant/explain/graph';
+import { authoringTelemetry } from '@noodl-models/AiAssistant/telemetry';
 import { AppRegistry } from '@noodl-models/app_registry';
 import { ProjectModel } from '@noodl-models/projectmodel';
 
+import { buildComponentV2Files } from '../../../io/ProjectExporter';
 import { formatDiagnosticLine } from '../../../validation';
 
 import { FeedbackType } from '@noodl-constants/FeedbackType';
@@ -137,7 +142,7 @@ export function AiAuthoringPanel() {
   const [description, setDescription] = useState('');
   const [state, setState] = useState<AuthoringSessionState | null>(null);
   const [setupError, setSetupError] = useState<string | null>(null);
-  const [acceptedName, setAcceptedName] = useState<string | null>(null);
+  const [accepted, setAccepted] = useState<{ name: string; mode: AuthoringMode } | null>(null);
   const [refineText, setRefineText] = useState('');
 
   const sessionRef = useRef<AuthoringSession | null>(null);
@@ -148,6 +153,13 @@ export function AiAuthoringPanel() {
 
   const isConfigured = AiClient.isConfigured();
   const hasProject = Boolean(ProjectModel.instance);
+
+  // A path naming an existing component flips the form into update mode — the
+  // button label announces it, so a typo'd "new" name cannot silently revise.
+  const existingTarget =
+    hasProject && componentPath.trim()
+      ? ProjectModel.instance.getComponentWithName(pathToLegacyName(componentPath.trim()))
+      : undefined;
 
   useEffect(() => () => sessionRef.current?.dispose(), []);
 
@@ -173,13 +185,24 @@ export function AiAuthoringPanel() {
 
     sessionRef.current?.dispose();
     setSetupError(null);
-    setAcceptedName(null);
+    setAccepted(null);
 
     try {
-      const session = AuthoringSession.create(fromProjectModel(project), {
+      const request = {
         description: description.trim(),
         componentPath: componentPath.trim()
-      });
+      };
+      const existing = project.getComponentWithName(pathToLegacyName(request.componentPath));
+      // An existing component is revised, not recreated: the session gets the
+      // exporter's own serialization of it as the base — the source the agent
+      // starts from, and the identity the candidate keeps.
+      const session = existing
+        ? AuthoringSession.createUpdate(
+            fromProjectModel(project),
+            request,
+            buildComponentV2Files(existing.toJSON(), new Date().toISOString())
+          )
+        : AuthoringSession.create(fromProjectModel(project), request);
       sessionRef.current = session;
       session.onChange(setState);
       setState(session.state);
@@ -193,7 +216,18 @@ export function AiAuthoringPanel() {
         onOpenReview: () => handlersRef.current.openReview()
       });
 
-      await session.run();
+      const startedAt = Date.now();
+      const outcome = await session.run();
+      authoringTelemetry().record({
+        event: 'authoring-round',
+        mode: session.mode,
+        kind: 'initial',
+        status: outcome.status,
+        turnsTotal: outcome.metrics.turns,
+        submitsTotal: outcome.metrics.submits,
+        costUsdTotal: outcome.metrics.costUsd,
+        durationMs: Date.now() - startedAt
+      });
     } catch (e) {
       sessionRef.current = null;
       setState(null);
@@ -206,7 +240,18 @@ export function AiAuthoringPanel() {
     const text = refineText.trim();
     if (!session || !text || state?.busy) return;
     setRefineText('');
-    await session.refine(text);
+    const startedAt = Date.now();
+    const outcome = await session.refine(text);
+    authoringTelemetry().record({
+      event: 'authoring-round',
+      mode: session.mode,
+      kind: 'refine',
+      status: outcome.status,
+      turnsTotal: outcome.metrics.turns,
+      submitsTotal: outcome.metrics.submits,
+      costUsdTotal: outcome.metrics.costUsd,
+      durationMs: Date.now() - startedAt
+    });
   }, [refineText, state?.busy]);
 
   /**
@@ -215,7 +260,7 @@ export function AiAuthoringPanel() {
    * selection from the review document is re-validated through the same gate
    * here. Returns an error message, or null on success.
    */
-  const acceptFiles = useCallback((files: ComponentFiles): string | null => {
+  const acceptFiles = useCallback((files: ComponentFiles, selection?: { rejectedCount: number }): string | null => {
     const session = sessionRef.current;
     const project = ProjectModel.instance;
     if (!session || !project) return 'The authoring session is no longer available.';
@@ -227,18 +272,30 @@ export function AiAuthoringPanel() {
     }
 
     try {
-      const component = acceptAuthoredComponent(project, files);
+      // The mode is the session's, decided at creation — never re-inferred
+      // here, so a component created meanwhile still fails create-accept
+      // loudly instead of silently becoming an update.
+      const component =
+        session.mode === 'update' ? updateAuthoredComponent(project, files) : acceptAuthoredComponent(project, files);
       // Accept navigates to the real component on the live canvas — leave the
       // preview document first so the reveal is visible.
       if (AppRegistry.instance.CurrentDocumentId === AuthoringPreviewDocumentProvider.ID) {
         AppRegistry.instance.openDocument(EditorDocumentProvider.ID);
       }
       NodeGraphContextTmp.switchToComponent?.(component, { pushHistory: true });
-      setAcceptedName(session.legacyName);
+      authoringTelemetry().record({
+        event: 'authoring-accept',
+        mode: session.mode,
+        partial: (selection?.rejectedCount ?? 0) > 0,
+        nodeCount: files.nodes.nodes.length,
+        connectionCount: files.connections.connections.length
+      });
+      setAccepted({ name: session.legacyName, mode: session.mode });
       session.dispose();
       sessionRef.current = null;
       setState(null);
-      setComponentPath('');
+      // The path stays: describing another change to the same component is the
+      // natural next step, and the form is already in update mode for it.
       setDescription('');
       return null;
     } catch (e) {
@@ -255,7 +312,13 @@ export function AiAuthoringPanel() {
 
   const reject = useCallback(() => {
     // Reject is the absence of an accept call: drop the session, nothing was written.
-    sessionRef.current?.dispose();
+    const session = sessionRef.current;
+    // Only a decision against a staged candidate is worth a record — "Start
+    // over" after a failed run is not a rejection.
+    if (session?.stagedFiles) {
+      authoringTelemetry().record({ event: 'authoring-reject', mode: session.mode });
+    }
+    session?.dispose();
     sessionRef.current = null;
     setState(null);
     if (AppRegistry.instance.CurrentDocumentId === AuthoringPreviewDocumentProvider.ID) {
@@ -300,7 +363,7 @@ export function AiAuthoringPanel() {
           )}
           {!hasProject && <Text textType={TextType.Secondary}>Open a project to build components in it.</Text>}
 
-          {!state && !acceptedName && (
+          {!state && !accepted && (
             <>
               <TextInput
                 value={componentPath}
@@ -310,16 +373,29 @@ export function AiAuthoringPanel() {
               />
               <TextArea
                 value={description}
-                label="What should it do?"
-                placeholder="A page listing customers from the Customers collection, with a search field…"
+                label={existingTarget ? 'What should change?' : 'What should it do?'}
+                placeholder={
+                  existingTarget
+                    ? 'Add a search field above the list…'
+                    : 'A page listing customers from the Customers collection, with a search field…'
+                }
                 onChange={(event) => setDescription(event.target.value)}
               />
+              {existingTarget && (
+                <HStack UNSAFE_style={{ alignItems: 'flex-start', gap: 6 }}>
+                  <Icon icon={IconName.Pencil} size={IconSize.Small} />
+                  <Text textType={TextType.Shy}>
+                    This component exists — the agent will propose a revision, which you review as a diff before
+                    anything changes.
+                  </Text>
+                </HStack>
+              )}
             </>
           )}
 
-          {!state && !acceptedName && (
+          {!state && !accepted && (
             <PrimaryButton
-              label="Build it"
+              label={existingTarget ? 'Update it' : 'Build it'}
               icon={IconName.MagicWand}
               isDisabled={!hasProject || !isConfigured || !componentPath.trim() || !description.trim()}
               isGrowing
@@ -347,23 +423,37 @@ export function AiAuthoringPanel() {
             </HStack>
           )}
 
-          {acceptedName && (
+          {accepted && (
             <VStack UNSAFE_style={{ gap: 8 }}>
               <HStack UNSAFE_style={{ alignItems: 'flex-start', gap: 6 }}>
                 <Icon icon={IconName.Check} variant={FeedbackType.Success} size={IconSize.Small} />
                 <Text textType={TextType.Secondary}>
-                  Added {acceptedName} to your project — it is open on canvas. Accepting is a normal edit: undo
-                  removes it.
+                  {accepted.mode === 'update'
+                    ? `Updated ${accepted.name} — it is open on canvas. Accepting is a normal edit: one undo restores the previous version.`
+                    : `Added ${accepted.name} to your project — it is open on canvas. Accepting is a normal edit: undo removes it.`}
                 </Text>
               </HStack>
-              <PrimaryButton label="Build another" variant={PrimaryButtonVariant.Ghost} onClick={() => setAcceptedName(null)} />
+              <PrimaryButton
+                label="Make more changes"
+                variant={PrimaryButtonVariant.Ghost}
+                onClick={() => setAccepted(null)}
+              />
+              <PrimaryButton
+                label="Build another"
+                variant={PrimaryButtonVariant.Ghost}
+                onClick={() => {
+                  setAccepted(null);
+                  setComponentPath('');
+                }}
+              />
             </VStack>
           )}
 
-          {!state && !acceptedName && !setupError && (
+          {!state && !accepted && !setupError && (
             <Text textType={TextType.Shy}>
-              Name a new component, describe what it should do, and the agent builds it as nodes — validated
-              against your project before you ever see it. Nothing is added until you accept.
+              Name a component and describe what it should do — the agent builds it as nodes, validated against
+              your project before you ever see it. Name an existing component to revise it instead. Nothing
+              changes until you accept.
             </Text>
           )}
 
@@ -392,7 +482,10 @@ export function AiAuthoringPanel() {
                 <Text textType={TextType.Secondary}>
                   Staged: {state.legacyName} — {state.staged.nodeCount} node
                   {state.staged.nodeCount === 1 ? '' : 's'}, {state.staged.connectionCount} connection
-                  {state.staged.connectionCount === 1 ? '' : 's'}. Nothing is in your project yet.
+                  {state.staged.connectionCount === 1 ? '' : 's'}.{' '}
+                  {state.mode === 'update'
+                    ? 'Your component is untouched until you accept.'
+                    : 'Nothing is in your project yet.'}
                 </Text>
               )}
 

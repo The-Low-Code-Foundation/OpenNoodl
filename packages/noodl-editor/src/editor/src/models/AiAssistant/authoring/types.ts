@@ -28,6 +28,13 @@ export interface ComponentFiles {
   connections: ConnectionsV2File;
 }
 
+/**
+ * Whether the session creates a new component or proposes changes to an
+ * existing one. Both share the whole-candidate contract — an update is a full
+ * resubmission, reviewed as a diff against the live component.
+ */
+export type AuthoringMode = 'create' | 'update';
+
 /** What the user asked to be built, and where it goes. */
 export interface AuthoringRequest {
   /** The user's description, verbatim. */

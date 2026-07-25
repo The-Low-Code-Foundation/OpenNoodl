@@ -1,6 +1,6 @@
 # Phase 15: AI Collaboration Experience - Progress Tracker
 
-**Last Updated:** 2026-07-24
+**Last Updated:** 2026-07-25
 **Overall Status:** 🟡 In Progress
 
 ---
@@ -10,10 +10,10 @@
 | Metric       | Value  |
 | ------------ | ------ |
 | Total Tasks  | 6      |
-| Completed    | 2      |
-| In Progress  | 2      |
+| Completed    | 3      |
+| In Progress  | 1      |
 | Not Started  | 2      |
-| **Progress** | **33%** |
+| **Progress** | **50%** |
 
 ---
 
@@ -22,7 +22,7 @@
 | Task    | Name                | Status         | Notes                                              |
 | ------- | ------------------- | -------------- | -------------------------------------------------- |
 | AIX-001 | Modern AI Client    | 🟢 Complete    | Client + registry + 4 providers; live runs unverified |
-| AIX-002 | The Authoring Loop  | 🟡 In Progress | Slice 1 (headless loop) shipped; live-provider runs, staging/accept, UI, live canvas pending. See AIX-002-NOTES.md |
+| AIX-002 | The Authoring Loop  | 🟢 Complete    | All 8 spec steps: headless loop, staging/accept/undo, conversation UI, live canvas rendering, live-provider measurement (sonnet 8/8 first-attempt), update mode (post-accept refinement as diff-reviewed revision), opt-in local-first G2 telemetry. Residuals: live-provider run of update mode; exit-criterion demo in a signed build. See AIX-002-NOTES.md |
 | AIX-003 | Graph-Native Review | 🟡 In Progress | Slices 1–5 shipped: change-set adapter, annotated diff canvas, review document (list/nav/detail, before/after, granular accept with dependency closure, walkthrough). Residuals: one clean-session UI smoke, 40-node fresh-reviewer test, live-provider round trip. See AIX-003-NOTES.md |
 | AIX-004 | Explain Mode        | 🟢 Complete    | Panel shipped + wired (context menu + sidebar); read-only; citations link to canvas; +47 specs. Register/accuracy tuning needs a live provider run. NOTES + CHANGELOG in the task doc |
 | AIX-005 | Agentic UI Nodes    | 🔴 Not Started | Deliberately last; only after AIX-002 proves out   |
@@ -47,6 +47,7 @@
 | 2026-07-24 | AIX-006 added from the [pre-revival salvage audit](../../reviews/PRE-REVIVAL-SALVAGE-AUDIT.md) §2 — the shipped phase-9 styles system has zero substrate connection; exposing it is the cheapest quality jump for the G2 demo. |
 | 2026-07-24 | AIX-004 complete — read-only Explain Mode: bounded context assembly over the real-project corpus, per-scope prompts with node citations, sidebar panel + context-menu entry, citations link to canvas (hover-highlight, click-navigate), +47 specs (1060 → 1107). Live editor pass caught and fixed the sidebar-switch-deselects defect. Register/accuracy tuning deferred to a live provider run. See AIX-004-NOTES.md + the task-doc CHANGELOG. |
 | 2026-07-24 | AIX-003 slices 1–5 — graph-native review: staged proposals expressed through SUB-007's diff engine (change-set adapter with stable ids + dependency closures), annotated merged component on the read-only diff canvas (badges/dash/thickness — change types readable without colour), ChangeReviewDocument (grouped sentence list, click-to-canvas navigation, per-key parameter detail, Before/Changes/After, per-row exclude/restore with closure enforcement, walkthrough stepper, Accept N of M validated through the SUB-006 gate), +14 specs (1139 → 1153). Two SUB-007 upstream fixes (derived componentName extra; port-index normalization, found live). Residuals in AIX-003-NOTES.md. |
+| 2026-07-25 | AIX-002 complete — slices 2–6 since the last tracker update: staging + accept/refine/reject with byte-identical undo (slice 2), the Build panel with streaming feed (slice 3), live canvas rendering during authoring (slice 4), live provider measurement — claude-sonnet-5 8/8 first-attempt valid, ~22% of context budget, $1.18/corpus (slice 5), and slice 6: **update mode** (revise an existing component: whole-candidate contract, id-keeping for legible diffs, inexpressible-field carryover, `updateAuthoredComponent` replace-with-undo — one undo byte-identical incl. root component) + **opt-in local-first telemetry** for Gate G2 (anonymous JSONL under userData, no server, enums/numbers only — spec-asserted). test:ci 1283/0 (also resurrected 16 unregistered slice-4 specs). Full trail in AIX-002-NOTES.md. |
 | 2026-07-24 | AIX-002 slice 1 — the headless authoring loop: `authoring/` module (context → author → validate → repair), pull-based context through a hard charged budget (the no-whole-project rule is structural + spec-asserted), MCP-policy validation gate from shared validators, injectable chat seam, +22 specs (1107 → 1129). `normalizeV2Component` moved to the pure normalize module (barrel-exported; MCP untouched). See AIX-002-NOTES.md. |
 
 ---

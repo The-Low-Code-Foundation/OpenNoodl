@@ -57,14 +57,18 @@ function statusLine(state: AuthoringSessionState): { text: string; type: Feedbac
     case 'working':
       return {
         text: state.building
-          ? `Building — ${state.building.nodes.length} node${state.building.nodes.length === 1 ? '' : 's'} so far…`
+          ? `${state.mode === 'update' ? 'Revising' : 'Building'} — ${state.building.nodes.length} node${
+              state.building.nodes.length === 1 ? '' : 's'
+            } so far…`
           : 'The agent is reading context…',
         type: null
       };
     case 'staged':
       return {
         text: state.staged
-          ? `Staged — ${state.staged.nodeCount} nodes, ${state.staged.connectionCount} connections. Nothing is in your project yet.`
+          ? `Staged — ${state.staged.nodeCount} nodes, ${state.staged.connectionCount} connections. ${
+              state.mode === 'update' ? 'Your component is untouched until you accept.' : 'Nothing is in your project yet.'
+            }`
           : 'Staged.',
         type: null
       };
@@ -161,7 +165,9 @@ function AuthoringPreviewDocument({ session, onAccept, onReject, onOpenReview }:
   return (
     <div className={css.Root}>
       <div className={css.Topbar}>
-        <Label hasLeftSpacing>Building {state.legacyName}</Label>
+        <Label hasLeftSpacing>
+          {state.mode === 'update' ? 'Revising' : 'Building'} {state.legacyName}
+        </Label>
         <div className={css.Status}>
           {state.busy && <ActivityIndicator />}
           {status.type && <Icon icon={IconName.WarningTriangle} variant={status.type} size={IconSize.Small} />}

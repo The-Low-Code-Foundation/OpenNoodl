@@ -16,11 +16,12 @@
 import { CatalogIndex, loadDefaultCatalog } from '../../../validation';
 import type { CatalogNode, CatalogPort } from '../../../validation';
 import { enrichedNode, portDescription } from '../../../validation/enrichedCatalog';
+import type { NodeV2 } from '../../../schemas';
 import { assembleContext, ExplainContextError } from '../explain/assemble';
 import { componentPorts, findComponent } from '../explain/graph';
 import { renderContext } from '../explain/render';
 import type { ExplainGraph } from '../explain/types';
-import type { ContextBudget, ContextLogEntry } from './types';
+import type { ComponentFiles, ContextBudget, ContextLogEntry } from './types';
 
 export const DEFAULT_BUDGET: ContextBudget = {
   maxChars: 120_000,
@@ -145,6 +146,42 @@ export class AuthoringContextBuilder {
     const dynamicNote = this.catalog.dynamicPortNote(typeName);
     if (dynamicNote) lines.push(`Dynamic ports: ${dynamicNote}`);
     return lines.join('\n');
+  }
+
+  /**
+   * The component under revision, rendered in the exact shape a submission
+   * uses (`parent` fields, no children arrays; only submit-expressible node
+   * fields) so the agent can start from it and keep ids verbatim. Charged
+   * like every handout — an update begins by ingesting its own subject, and
+   * that cost belongs in the log.
+   */
+  currentComponentSource(files: ComponentFiles): string {
+    const nodes = files.nodes.nodes.map((n: NodeV2) => ({
+      id: n.id,
+      type: n.type,
+      ...(n.label !== undefined ? { label: n.label } : {}),
+      ...(n.x !== undefined ? { x: n.x } : {}),
+      ...(n.y !== undefined ? { y: n.y } : {}),
+      ...(n.parent !== undefined ? { parent: n.parent } : {}),
+      ...(n.parameters && Object.keys(n.parameters).length > 0 ? { parameters: n.parameters } : {}),
+      ...(n.ports && n.ports.length > 0 ? { ports: n.ports } : {})
+    }));
+    const source = JSON.stringify(
+      {
+        nodes,
+        connections: files.connections.connections.map((c) => ({
+          fromId: c.fromId,
+          fromProperty: c.fromProperty,
+          toId: c.toId,
+          toProperty: c.toProperty
+        })),
+        ...(files.nodes.visualRoots?.length ? { visual_roots: files.nodes.visualRoots } : {}),
+        ...(files.component.description ? { description: files.component.description } : {})
+      },
+      null,
+      1
+    );
+    return this.charge('current-component', source);
   }
 
   /**

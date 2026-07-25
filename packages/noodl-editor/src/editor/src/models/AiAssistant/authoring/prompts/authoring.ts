@@ -19,14 +19,22 @@
  * @module AiAssistant/authoring/prompts/authoring
  */
 
-import type { AuthoringRequest } from '../types';
+import type { AuthoringMode, AuthoringRequest } from '../types';
 
-const SYSTEM_PROMPT = `You author components for Noodl, a visual programming tool. A project is made of
-components; each component is a graph of nodes connected by wires. A wire carries either a value (data
-flows whenever the source changes) or a signal (a one-off "now do this" pulse). Visual nodes render to the
-page and are arranged in a parent/child hierarchy; logic nodes render nothing. You are building ONE new
-component that a person will read, keep, and edit — architecture they can follow matters as much as
-behaviour.
+const FRAMING: Record<AuthoringMode, string> = {
+  create: `You are building ONE new component that a person will read, keep, and edit — architecture they
+can follow matters as much as behaviour.`,
+  update: `You are revising ONE existing component that a person built, reads, and owns. They will review
+your revision as a diff against what they have — so change only what the task requires, and KEEP THE
+EXISTING NODE IDS for every node you keep. A kept id reads as a modification; a new id reads as
+delete-and-recreate, which buries the actual change. Invent ids only for genuinely new nodes.`
+};
+
+const systemPromptFor = (mode: AuthoringMode) => `You author components for Noodl, a visual programming
+tool. A project is made of components; each component is a graph of nodes connected by wires. A wire
+carries either a value (data flows whenever the source changes) or a signal (a one-off "now do this"
+pulse). Visual nodes render to the page and are arranged in a parent/child hierarchy; logic nodes render
+nothing. ${FRAMING[mode]}
 
 THE AUTHORING CONTRACT
 - Submit a flat list of nodes plus a list of connections via submit_component.
@@ -40,7 +48,9 @@ THE AUTHORING CONTRACT
   node, toProperty an input port on the target. Port names must be exact.
 - The component's own interface: add a "Component Inputs" node whose "ports" array declares what comes in
   (each port: { "name": …, "plug": "output", "type": "*" } — outputs, because values flow out of that node
-  into this graph), and a "Component Outputs" node declaring what goes out (plug "input").
+  into this graph), and a "Component Outputs" node declaring what goes out (plug "input"). Only when the
+  component genuinely has an interface: never submit a Component Inputs/Outputs node with no ports or no
+  wires — a component that takes nothing and emits nothing needs neither node.
 - A visual component or page needs one visual root container (usually a Group); pass its id in
   visual_roots.
 - Lay nodes out readably: flow left-to-right or top-to-bottom, roughly 150–300 units apart.
@@ -68,8 +78,8 @@ WHAT NOT TO DO
 - Do not recreate something the project already has a component for — instantiate it.
 - Do not add nodes the task does not need. Smaller graphs are better graphs.`;
 
-export function systemPrompt(): string {
-  return SYSTEM_PROMPT;
+export function systemPrompt(mode: AuthoringMode = 'create'): string {
+  return systemPromptFor(mode);
 }
 
 /** The opening user turn: the task, the target, and the two overview blocks. */
@@ -85,6 +95,42 @@ export function initialUserMessage(
     '',
     'What it should do:',
     request.description,
+    '',
+    '--- PROJECT OVERVIEW ---',
+    projectOverview,
+    '--- END PROJECT OVERVIEW ---',
+    '',
+    '--- NODE CATALOG ---',
+    catalogOverview,
+    '--- END NODE CATALOG ---'
+  ].join('\n');
+}
+
+/**
+ * The opening user turn for an update: the task, the component as it exists
+ * today (in the exact shape a submission uses, so kept nodes can be carried
+ * over verbatim — ids included), and the two overview blocks.
+ */
+export function updateUserMessage(
+  request: AuthoringRequest,
+  currentComponentSource: string,
+  projectOverview: string,
+  catalogOverview: string
+): string {
+  return [
+    `Revise the existing component "${request.componentPath}".`,
+    '',
+    'What should change:',
+    request.description,
+    '',
+    'This is the component as it exists today, in the same shape you submit. Start from it: keep every',
+    'node id you keep, change only what the task requires, and resubmit the FULL revised component.',
+    'Nodes may carry hand-tuned visual states and variants that are not shown here — they are preserved',
+    'automatically for any node whose id and type you keep, and lost for nodes you recreate under a new id.',
+    '',
+    '--- CURRENT COMPONENT ---',
+    currentComponentSource,
+    '--- END CURRENT COMPONENT ---',
     '',
     '--- PROJECT OVERVIEW ---',
     projectOverview,

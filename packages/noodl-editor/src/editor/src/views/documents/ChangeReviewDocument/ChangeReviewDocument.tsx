@@ -62,7 +62,7 @@ export interface ChangeReviewDocumentProps {
   files: ComponentFiles;
   title: string;
   /** Stage the given (possibly partial) files; returns an error message or null. */
-  onAcceptFiles: (files: ComponentFiles) => string | null;
+  onAcceptFiles: (files: ComponentFiles, selection?: { rejectedCount: number }) => string | null;
   onReject: () => void;
 }
 
@@ -244,8 +244,8 @@ function ChangeReviewDocument({ changeSet, files, title, onAcceptFiles, onReject
   };
 
   const acceptSelected = () => {
-    const { files: selectedFiles } = materializeSelection(changeSet, files, rejected);
-    const error = onAcceptFiles(selectedFiles);
+    const { files: selectedFiles, rejected: rejectedClosure } = materializeSelection(changeSet, files, rejected);
+    const error = onAcceptFiles(selectedFiles, { rejectedCount: rejectedClosure.size });
     if (error) setApplyError(error);
     else exit();
   };

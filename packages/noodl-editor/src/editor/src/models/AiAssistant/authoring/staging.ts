@@ -17,6 +17,7 @@ import { legacyNameToPath } from '../../../io/ProjectExporter';
 import { reconstructLegacyComponent, toLegacyName } from '../../../io/ProjectImporter';
 import { ComponentModel } from '../../componentmodel';
 import type { ProjectModel } from '../../projectmodel';
+import { UndoActionGroup, UndoQueue } from '../../undo-queue-model';
 import type { ComponentFiles } from './types';
 
 /** Thrown when accept cannot proceed; the project is untouched. */
@@ -61,6 +62,89 @@ export function acceptAuthoredComponent(
     undo: true,
     label: options.label ?? `add AI component ${legacyName}`
   });
+
+  return component;
+}
+
+/**
+ * Accept an update candidate by replacing the existing component, undoably.
+ *
+ * There is no in-place "set graph from JSON" mutation on a live component, so
+ * the replacement is remove + add inside ONE undo group — a single undo step
+ * restores the previous component exactly, mirroring `reloadComponentFromDisk`
+ * with undo on. When the replaced component held the project's root node
+ * (updating the home page), the root is re-derived on the replacement — and on
+ * the old component again on undo — because `removeComponent` clears it.
+ *
+ * Returns the new `ComponentModel`. Throws `StagingError` — without touching
+ * the project — when the component no longer exists (it was removed between
+ * authoring and accept).
+ */
+export function updateAuthoredComponent(
+  project: ProjectModel,
+  files: ComponentFiles,
+  options: AcceptOptions = {}
+): ComponentModel {
+  const registryPath = legacyNameToPath(files.component.path ?? files.component.name);
+  const legacyName = toLegacyName(files.component, registryPath);
+
+  const existing = project.getComponentWithName(legacyName);
+  if (!existing) {
+    throw new StagingError(
+      `Component "${legacyName}" no longer exists in the project — it was removed after authoring started.`
+    );
+  }
+
+  const legacy = reconstructLegacyComponent(registryPath, files.component, files.nodes, files.connections);
+  const component = ComponentModel.fromJSON(legacy);
+  const wasRoot = project.getRootComponent() === existing;
+
+  // Two bookkeeping details make replace-by-remove+add a *faithful* swap:
+  // `addComponent` appends, so the replacement (and the original, on undo) is
+  // moved back to the original position — an update must not shuffle the
+  // project file; and `removeComponent` clears the project root when the
+  // replaced component held it, so the root must come back with whichever
+  // component the direction of travel just put back. The root is restored by
+  // NODE, not via `setRootComponent`: that helper filters on
+  // `type.allowAsExportRoot`, which silently no-ops when the node library is
+  // not loaded (the new-project-no-Home failure mode). The candidate declares
+  // its visual root, and undo has the exact original node — neither needs a
+  // type lookup.
+  const index = project.getComponents().indexOf(existing);
+  const originalRootNode = wasRoot ? project.getRootNode() : undefined;
+  const newRootId = files.nodes.visualRoots?.[0] ?? originalRootNode?.id;
+  const restoreOrder = (current: ComponentModel) => {
+    const components = project.getComponents();
+    const at = components.indexOf(current);
+    if (at !== -1 && at !== index) {
+      components.splice(at, 1);
+      components.splice(index, 0, current);
+    }
+  };
+
+  const undo = new UndoActionGroup({ label: options.label ?? `update AI component ${legacyName}` });
+  // The undo half sits first in the group (group undo runs in reverse), so in
+  // BOTH directions settling runs only after its component is back in the
+  // project.
+  undo.push({
+    undo: () => {
+      restoreOrder(existing);
+      if (originalRootNode) project.setRootNode(originalRootNode);
+    }
+  });
+  project.removeComponent(existing, { undo });
+  project.addComponent(component, { undo });
+  undo.pushAndDo({
+    do: () => {
+      restoreOrder(component);
+      if (wasRoot) {
+        const node = newRootId ? component.graph.findNodeWithId(newRootId) : undefined;
+        if (node) project.setRootNode(node);
+        else project.setRootComponent(component);
+      }
+    }
+  });
+  UndoQueue.instance.push(undo);
 
   return component;
 }

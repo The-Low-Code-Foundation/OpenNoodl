@@ -100,3 +100,87 @@ describe('AIX-002 candidate builder', () => {
     expect(files.component.description).toBe('Lists customers');
   });
 });
+
+describe('AIX-002 candidate builder — update mode', () => {
+  /** The component as it exists today: the base an update candidate starts from. */
+  function baseFiles(): NonNullable<ReturnType<typeof buildCandidate>['files']> {
+    const files = buildCandidate(REQUEST, payload({ description: 'The original.' }), '2026-01-01T00:00:00.000Z').files!;
+    // Hand-tuned work the submit contract cannot express — exactly what an
+    // update must not eat.
+    const title = files.nodes.nodes.find((n) => n.id === 'title')!;
+    title.variant = 'Headline';
+    title.stateParameters = { hover: { color: 'red' } };
+    files.nodes.comments = [{ text: 'keep me', x: 0, y: 0 }] as never;
+    return files;
+  }
+
+  it('keeps the base component identity — id, created, metadata — and stamps the revision', () => {
+    const base = baseFiles();
+    const result = buildCandidate(REQUEST, payload(), '2026-02-02T00:00:00.000Z', base);
+    expect(result.errors).toEqual([]);
+    const files = result.files!;
+    expect(files.component.id).toBe(base.component.id);
+    expect(files.component.created).toBe(base.component.created);
+    expect(files.component.path).toBe(base.component.path);
+    expect(files.component.modified).toBe('2026-02-02T00:00:00.000Z');
+    expect(files.component.modifiedBy).toBe('ai-authoring');
+    // Unchanged unless the payload says otherwise.
+    expect(files.component.description).toBe('The original.');
+    expect(files.nodes.componentId).toBe(base.component.id);
+    expect(files.connections.componentId).toBe(base.component.id);
+  });
+
+  it('carries inexpressible node fields over for kept nodes, and canvas comments verbatim', () => {
+    const base = baseFiles();
+    const result = buildCandidate(REQUEST, payload(), undefined, base);
+    const title = result.files!.nodes.nodes.find((n) => n.id === 'title')!;
+    expect(title.variant).toBe('Headline');
+    expect(title.stateParameters).toEqual({ hover: { color: 'red' } });
+    // A copy, not a shared reference into the base.
+    expect(title.stateParameters).not.toBe(base.nodes.nodes.find((n) => n.id === 'title')!.stateParameters);
+    expect(result.files!.nodes.comments).toEqual(base.nodes.comments);
+  });
+
+  it('does not carry fields onto a node whose type changed or whose id is new', () => {
+    const base = baseFiles();
+    const changed = buildCandidate(
+      REQUEST,
+      payload({
+        nodes: [
+          { id: 'root', type: 'Group' },
+          // Same id, different type: the base node's tuning does not apply.
+          { id: 'title', type: 'Group', parent: 'root' },
+          // New id: nothing to carry.
+          { id: 'title2', type: 'Text', parent: 'root' }
+        ]
+      }),
+      undefined,
+      base
+    );
+    const title = changed.files!.nodes.nodes.find((n) => n.id === 'title')!;
+    const title2 = changed.files!.nodes.nodes.find((n) => n.id === 'title2')!;
+    expect(title.variant).toBeUndefined();
+    expect(title.stateParameters).toBeUndefined();
+    expect(title2.variant).toBeUndefined();
+  });
+
+  it('lets the agent own what it can express — submitted parameters and ports are not overridden', () => {
+    const base = baseFiles();
+    const result = buildCandidate(
+      REQUEST,
+      payload({
+        nodes: [
+          { id: 'root', type: 'Group' },
+          { id: 'title', type: 'Text', parent: 'root', parameters: { text: 'Revised' } },
+          { id: 'list', type: 'Group', parent: 'root' }
+        ]
+      }),
+      undefined,
+      base
+    );
+    const title = result.files!.nodes.nodes.find((n) => n.id === 'title')!;
+    expect(title.parameters).toEqual({ text: 'Revised' });
+    // Carryover still applies alongside.
+    expect(title.variant).toBe('Headline');
+  });
+});

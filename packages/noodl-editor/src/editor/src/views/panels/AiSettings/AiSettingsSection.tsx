@@ -5,6 +5,7 @@ import { platform } from '@noodl/platform';
 
 import { AiAssistantApi } from '@noodl-models/AiAssistant/api';
 import { getModelsForProvider, PRICING_AS_OF } from '@noodl-models/AiAssistant/client/models';
+import { authoringTelemetry } from '@noodl-models/AiAssistant/telemetry';
 import { OLLAMA_DEFAULT_BASE_URL } from '@noodl-models/AiAssistant/client/providers/ollama';
 import { OPENAI_DEFAULT_BASE_URL } from '@noodl-models/AiAssistant/client/providers/openai';
 import { AI_PROVIDER_IDS, AiProviderId } from '@noodl-models/AiAssistant/client/types';
@@ -13,6 +14,7 @@ import { PrimaryButton, PrimaryButtonSize, PrimaryButtonVariant } from '@noodl-c
 import { Box } from '@noodl-core-ui/components/layout/Box';
 import { VStack } from '@noodl-core-ui/components/layout/Stack';
 import { PropertyPanelButton } from '@noodl-core-ui/components/property-panel/PropertyPanelButton';
+import { PropertyPanelCheckbox } from '@noodl-core-ui/components/property-panel/PropertyPanelCheckbox';
 import { PropertyPanelRow } from '@noodl-core-ui/components/property-panel/PropertyPanelInput';
 import { PropertyPanelPasswordInput } from '@noodl-core-ui/components/property-panel/PropertyPanelPasswordInput';
 import { PropertyPanelSelectInput } from '@noodl-core-ui/components/property-panel/PropertyPanelSelectInput';
@@ -47,6 +49,7 @@ export function AiSettingsSection() {
   const [model, setModel] = useState('');
   const [discoveredModels, setDiscoveredModels] = useState<string[]>([]);
   const [isVerifying, setIsVerifying] = useState(false);
+  const [telemetryEnabled, setTelemetryEnabled] = useState(() => authoringTelemetry().isEnabled());
 
   // Legacy settings are lifted into the new layout (and the key into OS
   // encryption) the first time anyone opens this panel.
@@ -273,6 +276,24 @@ export function AiSettingsSection() {
               </Box>
             </>
           )}
+
+          <PropertyPanelRow label="Usage log" isChanged={false}>
+            <PropertyPanelCheckbox
+              value={telemetryEnabled}
+              onChange={(value: boolean) => {
+                setTelemetryEnabled(value);
+                authoringTelemetry().setEnabled(value);
+              }}
+            />
+          </PropertyPanelRow>
+          <Box hasBottomSpacing={2}>
+            <Text>
+              Keeps an anonymous local log of AI authoring usage — outcomes, counts and cost only, never your
+              prompts, component names, or project content. Nothing is sent anywhere; the file stays on this
+              machine{telemetryEnabled ? ` at ${authoringTelemetry().logPath()}` : ''} and helps evaluate the
+              authoring beta if you choose to share it.
+            </Text>
+          </Box>
 
           <Box
             hasXSpacing={3}

@@ -35,7 +35,7 @@ import type { ExplainGraph } from '../explain/types';
 import { buildCandidate, pathToLegacyName } from './candidate';
 import { AuthoringContextBuilder } from './ContextBuilder';
 import { PartialPayloadScanner } from './partial';
-import { initialUserMessage, nudgeMessage, refineMessage, systemPrompt } from './prompts/authoring';
+import { initialUserMessage, nudgeMessage, refineMessage, systemPrompt, updateUserMessage } from './prompts/authoring';
 import {
   AUTHORING_TOOLS,
   dispatchReadTool,
@@ -46,6 +46,7 @@ import {
 } from './tools';
 import type {
   AuthoringMetrics,
+  AuthoringMode,
   AuthoringOutcome,
   AuthoringRequest,
   AuthoringStatus,
@@ -129,6 +130,8 @@ export interface AuthoringSessionState {
   phase: AuthoringPhase;
   activities: AuthoringActivity[];
   legacyName: string;
+  /** Whether this session creates a component or revises an existing one. */
+  mode: AuthoringMode;
   /** The live picture of the submission being written, for the preview canvas. */
   building?: BuildingPreview;
   /** Present whenever some candidate has passed validation — it survives a failed refinement. */
@@ -186,7 +189,9 @@ export class AuthoringSession {
   private constructor(
     private readonly graph: ExplainGraph,
     private readonly request: AuthoringRequest,
-    options: AuthoringSessionOptions
+    options: AuthoringSessionOptions,
+    readonly mode: AuthoringMode = 'create',
+    private readonly baseFiles?: ComponentFiles
   ) {
     this.chat = options.chat ?? ((req, callbacks) => AiClient.chatStream(req, callbacks ?? {}));
     this.maxTurns = options.maxTurns ?? DEFAULT_MAX_TURNS;
@@ -195,23 +200,49 @@ export class AuthoringSession {
     this.legacyName = pathToLegacyName(request.componentPath);
   }
 
-  static create(
-    graph: ExplainGraph,
-    request: AuthoringRequest,
-    options: AuthoringSessionOptions = {}
-  ): AuthoringSession {
+  private static checkRequest(request: AuthoringRequest): void {
     if (!request.description.trim()) {
       throw new AuthoringSetupError('The request has no description — nothing to build.');
     }
     if (!request.componentPath.trim()) {
       throw new AuthoringSetupError('The request has no component path — nowhere to build it.');
     }
+  }
+
+  static create(
+    graph: ExplainGraph,
+    request: AuthoringRequest,
+    options: AuthoringSessionOptions = {}
+  ): AuthoringSession {
+    AuthoringSession.checkRequest(request);
     if (findComponent(graph, request.componentPath)) {
       throw new AuthoringSetupError(
-        `Component "${request.componentPath}" already exists. Authoring only creates new components.`
+        `Component "${request.componentPath}" already exists. Start an update session to revise it.`
       );
     }
     return new AuthoringSession(graph, request, options);
+  }
+
+  /**
+   * A session that revises an existing component. `baseFiles` is the component
+   * as it exists today (the exporter's v2 serialization) — the source the agent
+   * starts from, the identity the candidate keeps, and the base whose
+   * inexpressible node fields are carried over. Same loop, same gate, same
+   * whole-candidate contract; only the opening turn and the accept path differ.
+   */
+  static createUpdate(
+    graph: ExplainGraph,
+    request: AuthoringRequest,
+    baseFiles: ComponentFiles,
+    options: AuthoringSessionOptions = {}
+  ): AuthoringSession {
+    AuthoringSession.checkRequest(request);
+    if (!findComponent(graph, request.componentPath)) {
+      throw new AuthoringSetupError(
+        `Component "${request.componentPath}" does not exist — there is nothing to update.`
+      );
+    }
+    return new AuthoringSession(graph, request, options, 'update', baseFiles);
   }
 
   /** The latest candidate that passed validation, across all rounds. */
@@ -230,6 +261,7 @@ export class AuthoringSession {
       phase,
       activities: [...this.activities],
       legacyName: this.legacyName,
+      mode: this.mode,
       building: this.building
         ? {
             ...this.building,
@@ -273,13 +305,25 @@ export class AuthoringSession {
       throw new AuthoringStateError('run() was already called — continue with refine() instead.');
     }
     this.started = true;
-    this.messages.push(
-      { role: 'system', content: systemPrompt() },
-      {
-        role: 'user',
-        content: initialUserMessage(this.request, this.context.projectOverview(), this.context.catalogOverview())
+    let opening: string;
+    if (this.mode === 'update' && this.baseFiles) {
+      const source = this.context.currentComponentSource(this.baseFiles);
+      if (this.context.log.some((entry) => entry.source === 'current-component' && entry.refused)) {
+        // An update that cannot show the agent its own subject cannot work —
+        // fail loudly instead of opening with a refusal where the source goes.
+        const outcome = this.finish(
+          'error',
+          undefined,
+          'This component is too large to revise within the context budget.'
+        );
+        this.publish();
+        return outcome;
       }
-    );
+      opening = updateUserMessage(this.request, source, this.context.projectOverview(), this.context.catalogOverview());
+    } else {
+      opening = initialUserMessage(this.request, this.context.projectOverview(), this.context.catalogOverview());
+    }
+    this.messages.push({ role: 'system', content: systemPrompt(this.mode) }, { role: 'user', content: opening });
     this.activities.push({ kind: 'user', text: this.request.description });
     return this.round(options);
   }
@@ -492,7 +536,7 @@ export class AuthoringSession {
 
   private handleSubmit(call: AiToolCall): SubmitResult {
     const payload = toSubmitPayload(call.arguments);
-    const candidate = buildCandidate(this.request, payload);
+    const candidate = buildCandidate(this.request, payload, undefined, this.baseFiles);
     if (!candidate.files) {
       return {
         ok: false,
