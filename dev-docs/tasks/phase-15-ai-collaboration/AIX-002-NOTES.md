@@ -166,9 +166,8 @@ Spec step 4. The session becomes observable and streaming; a new sidebar panel
 
 ### Not yet done (later slices)
 
-1. **Live provider runs** (spec step 2) — prompt/context iteration measuring validity
-   rate, rounds, context size against real models. Needs keys; also the first live
-   exercise of AIX-001's adapters.
+1. ~~Live provider runs (spec step 2)~~ — shipped in slice 5 (Anthropic measured;
+   OpenAI blocked on account quota, not code).
 2. ~~Live canvas rendering during authoring (step 5)~~ — shipped in slice 4.
 3. Post-accept refinement of an existing component (step 6) — needs an
    update-shaped submit (MCP's `applyOperations` is the substrate to share);
@@ -238,6 +237,82 @@ assembles on a canvas *while* the agent writes it, not on accept.
   0→1→2→3→4→5 nodes → +connection → complete, submission 1, outcome authored.
   No renderer exceptions. (Webpack-cache module access — `webpackChunknoodl_editor.push`
   — is the way to drive editor internals from CDP when nothing is on `window`.)
+
+## Slice 5 (2026-07-25): live provider measurement (spec step 2)
+
+Richard supplied real API keys (repo-root `.env`, see `.env.example`), unblocking
+the one AIX-002 item that needed them: the first live exercise of the loop — and
+of AIX-001's adapters — against real models.
+
+### What exists
+
+`packages/noodl-editor/scripts/aix002-measure/` — the terminal measurement
+harness the spec's step 2 asks for. `build.mjs` esbuild-bundles `harness.ts`
+into a self-contained CJS binary (same recipe as noodl-preview, but this import
+graph is pure enough that exactly **one** shim is needed: `AiAssistantStore`,
+pulled in via the client barrel, stubbed with a noop proxy since the harness
+injects its own chat function). `prompts.ts` is an 8-prompt corpus against the
+real 44-component git-repo-utf8 project — signals, component inputs, a
+repeater, reuse of an existing project component, pure logic, conditional
+visibility. Every session appends a full JSONL record (outcome + metrics +
+transcript) to `dev-docs/tasks/phase-15-ai-collaboration/measurements/`.
+
+```
+node packages/noodl-editor/scripts/aix002-measure/build.mjs
+node packages/noodl-editor/scripts/aix002-measure/dist/aix002-harness.cjs \
+  --provider=anthropic --model=claude-sonnet-5   # --only=slug,… --model=… --project=…
+```
+
+### Results (2026-07-25)
+
+**claude-sonnet-5, full corpus:** 8/8 valid on the **first attempt** — zero
+repair rounds. Mean 2.6 turns, 1.0 submits, 26.4k context chars (~22% of the
+120k budget; peak 57.8k), $1.18 total, 7–50s per component (one 266s outlier).
+**claude-opus-4-8** (registry default; hello-cta, toggle-section, login-form
+spot check): 3/3 first-attempt, 2.0 turns, $0.35. **OpenAI:** blocked — the
+key authenticates but the account has `insufficient_quota`; the adapter's
+error path handled it correctly (clean `error` outcomes, no crash). Rerun is
+one command once billing is added.
+
+Quality (human review of all 8 sonnet graphs, per the spec's
+valid-but-poor risk): 7/8 architecturally sound. Highlights: `pill-row` read
+the existing Pill component first and discovered its real input port names
+before wiring `For Each` (`template: /Visual Components/Pills/Pill`, Static
+Data → items); `login-form` gated the button with an Expression node;
+`toggle-section` used the idiomatic Boolean+Inverter feedback toggle;
+`counter-logic` is textbook. The context system behaved as designed
+throughout: overview → targeted `get_node_types` → at most one full component
+read, never a refusal, never the whole project.
+
+### Findings for prompt/context iteration
+
+- **The one real miss is altitude, not validity.** `article-list` (asked for a
+  page repeating over articles) authored an *item*-shaped component instead:
+  Component Inputs id/title/summary + an Event Sender broadcast. Root cause is
+  structural: `For Each` needs a template *component*, and the loop authors
+  exactly one component — with no suitable item template in the project the
+  agent slid down to the item. Options when iterating: prompt guidance for
+  this case (inline content, or say so), or a future multi-component authoring
+  decision (currently out of scope by spec).
+- **Empty-node tic:** 2/8 graphs carried an unused empty `Component Inputs`
+  node. Validator-clean, cosmetically wrong; a system-prompt line should fix it.
+- First-attempt validity at 100% means **repair-round improvement is currently
+  unmeasurable** on this corpus with frontier models — the gate's value shows
+  up in specs (scripted failures) and presumably with weaker models; harder
+  prompts or `--model=claude-haiku-4-5` would exercise it live.
+
+### Traps hit
+
+- The bundle runs from `dist/` one level below the source, so `__dirname`-
+  relative repo-root resolution off the *source* layout breaks silently after
+  bundling — the harness finds the root by marker (`packages/noodl-editor`).
+- A feed-narration cursor over `state.activities` **must track object
+  identity, not indices**: the session splices empty assistant bubbles out of
+  the feed mid-round, shifting indices under the cursor (this silently ate all
+  tool/submit narration until reproduced offline with a scripted chat).
+- `AuthoringSession` → client barrel → `AiClient` → `AiAssistantStore` is the
+  only Electron-tainted edge in the authoring graph; everything else (loop,
+  gate, explain graph, providers) bundles headlessly as-is.
 
 ## Note from DEBT-003 (2026-07-24) — expression semantics the loop can rely on
 
