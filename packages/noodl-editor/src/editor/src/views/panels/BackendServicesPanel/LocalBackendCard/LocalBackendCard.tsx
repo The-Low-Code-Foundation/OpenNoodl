@@ -20,6 +20,7 @@ import { Text, TextType } from '@noodl-core-ui/components/typography/Text';
 import { DataBrowser } from '../../databrowser';
 import { PermissionsPanel } from '../../permissions';
 import { SchemaPanel } from '../../schemamanager';
+import { TriggersPanel } from '../../triggers';
 import { LocalBackendInfo } from '../hooks/useLocalBackends';
 import css from './LocalBackendCard.module.scss';
 
@@ -63,6 +64,7 @@ export function LocalBackendCard({ backend, onStart, onStop, onDelete, onExport 
   const [showSchemaPanel, setShowSchemaPanel] = useState(false);
   const [showDataBrowser, setShowDataBrowser] = useState(false);
   const [showPermissions, setShowPermissions] = useState(false);
+  const [showTriggers, setShowTriggers] = useState(false);
   const statusDisplay = getStatusDisplay(backend);
 
   const isEphemeral = backend.running && backend.persistence?.mode === 'ephemeral';
@@ -213,6 +215,12 @@ export function LocalBackendCard({ backend, onStart, onStop, onDelete, onExport 
                 variant={PrimaryButtonVariant.Muted}
                 onClick={() => setShowPermissions(true)}
               />
+              <PrimaryButton
+                label="Triggers"
+                size={PrimaryButtonSize.Small}
+                variant={PrimaryButtonVariant.Muted}
+                onClick={() => setShowTriggers(true)}
+              />
             </>
           )}
           {onExport && backend.running && (
@@ -265,6 +273,15 @@ export function LocalBackendCard({ backend, onStart, onStop, onDelete, onExport 
               backendName={backend.name}
               onClose={() => setShowPermissions(false)}
             />
+          </div>,
+          document.body
+        )}
+
+      {/* Triggers (WF-005) — rendered via portal for full-screen overlay */}
+      {showTriggers &&
+        createPortal(
+          <div className={css.SchemaPanelOverlay}>
+            <TriggersPanel backendId={backend.id} backendName={backend.name} onClose={() => setShowTriggers(false)} />
           </div>,
           document.body
         )}

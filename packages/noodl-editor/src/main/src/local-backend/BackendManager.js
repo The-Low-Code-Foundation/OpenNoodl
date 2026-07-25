@@ -177,6 +177,40 @@ class BackendManager {
       this.requireRunning(id, 'revoke API key').request('DELETE', `/admin/keys/${encodeURIComponent(objectId)}`)
     );
 
+    // ==========================================================================
+    // TRIGGERS (WF-005) — the trigger config UI proxies to /admin/triggers
+    // ==========================================================================
+
+    ipcMain.handle('backend:listTriggers', async (_, id) =>
+      this.requireRunning(id, 'list triggers').request('GET', '/admin/triggers')
+    );
+    ipcMain.handle('backend:getTrigger', async (_, id, triggerId) =>
+      this.requireRunning(id, 'get trigger').request('GET', `/admin/triggers/${encodeURIComponent(triggerId)}`)
+    );
+    ipcMain.handle('backend:createTrigger', async (_, id, def) =>
+      this.requireRunning(id, 'create trigger').request('POST', '/admin/triggers', def)
+    );
+    ipcMain.handle('backend:updateTrigger', async (_, id, triggerId, def) =>
+      this.requireRunning(id, 'update trigger').request('PUT', `/admin/triggers/${encodeURIComponent(triggerId)}`, def)
+    );
+    ipcMain.handle('backend:setTriggerEnabled', async (_, id, triggerId, enabled) =>
+      this.requireRunning(id, 'toggle trigger').request(
+        'POST',
+        `/admin/triggers/${encodeURIComponent(triggerId)}/enabled`,
+        { enabled }
+      )
+    );
+    ipcMain.handle('backend:deleteTrigger', async (_, id, triggerId) =>
+      this.requireRunning(id, 'delete trigger').request('DELETE', `/admin/triggers/${encodeURIComponent(triggerId)}`)
+    );
+    ipcMain.handle('backend:fireTrigger', async (_, id, triggerId, payload) =>
+      this.requireRunning(id, 'fire trigger').request(
+        'POST',
+        `/admin/triggers/${encodeURIComponent(triggerId)}/fire`,
+        payload || {}
+      )
+    );
+
     this.ipcHandlersSetup = true;
   }
 
