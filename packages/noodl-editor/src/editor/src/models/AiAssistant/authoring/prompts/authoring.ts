@@ -72,9 +72,21 @@ back as diagnostics naming the node, the port, and — where possible — the fi
 corrected component. Never resubmit unchanged; never argue with a diagnostic. Submissions are limited, so
 make each one your best candidate.
 
+ON-SYSTEM STYLING
+This project has a design system. Style like a product, not a prototype:
+- You are given a STYLE VOCABULARY: design tokens grouped by category, and the legal variants/sizes per element.
+- For any colour, spacing, font size, radius, border or shadow, set the parameter to a token reference in the
+  exact form "var(--token-name)" (e.g. backgroundColor: "var(--primary)", paddingTop: "var(--space-4)",
+  fontSize: "var(--text-sm)"). Never emit a raw hex ("#3B82F6"), rgb()/hsl(), or a bare px value when a token fits.
+- Prefer a listed element variant's combination of tokens over inventing your own: to make a primary button,
+  copy the token params the "primary" variant lists. Only reach outside the tokens for genuinely one-off values.
+- The runtime resolves var(--…) against the project's :root token block; a token NAME you did not see in the
+  vocabulary will not resolve, so use only listed token names.
+
 WHAT NOT TO DO
 - Do not invent port names, node types, or component names. Everything you use must come from the catalog
   documentation, the project overview, or a component you read.
+- Do not invent token names or emit raw colour/spacing values where a listed token fits.
 - Do not recreate something the project already has a component for — instantiate it.
 - Do not add nodes the task does not need. Smaller graphs are better graphs.`;
 
@@ -82,11 +94,12 @@ export function systemPrompt(mode: AuthoringMode = 'create'): string {
   return systemPromptFor(mode);
 }
 
-/** The opening user turn: the task, the target, and the two overview blocks. */
+/** The opening user turn: the task, the target, and the overview blocks. */
 export function initialUserMessage(
   request: AuthoringRequest,
   projectOverview: string,
-  catalogOverview: string
+  catalogOverview: string,
+  styleVocabulary?: string
 ): string {
   return [
     `Build a new component at "${request.componentPath}"${
@@ -102,8 +115,15 @@ export function initialUserMessage(
     '',
     '--- NODE CATALOG ---',
     catalogOverview,
-    '--- END NODE CATALOG ---'
+    '--- END NODE CATALOG ---',
+    ...styleBlock(styleVocabulary)
   ].join('\n');
+}
+
+/** The STYLE VOCABULARY block, or nothing when no vocabulary was assembled. */
+function styleBlock(styleVocabulary?: string): string[] {
+  if (!styleVocabulary) return [];
+  return ['', '--- STYLE VOCABULARY ---', styleVocabulary, '--- END STYLE VOCABULARY ---'];
 }
 
 /**
@@ -115,7 +135,8 @@ export function updateUserMessage(
   request: AuthoringRequest,
   currentComponentSource: string,
   projectOverview: string,
-  catalogOverview: string
+  catalogOverview: string,
+  styleVocabulary?: string
 ): string {
   return [
     `Revise the existing component "${request.componentPath}".`,
@@ -138,7 +159,8 @@ export function updateUserMessage(
     '',
     '--- NODE CATALOG ---',
     catalogOverview,
-    '--- END NODE CATALOG ---'
+    '--- END NODE CATALOG ---',
+    ...styleBlock(styleVocabulary)
   ].join('\n');
 }
 
@@ -156,6 +178,26 @@ export function refineMessage(instruction: string): string {
     'Revise and resubmit the FULL component via submit_component — every node and connection, ' +
       'not just the changed ones. Keep what the user did not ask you to change. ' +
       'Fetch documentation with get_node_types before using any node type you have not already fetched.'
+  ].join('\n');
+}
+
+/**
+ * Sent when a candidate is structurally + semantically VALID but the style lint
+ * found raw on-page values a token would express better. Advisory, not a
+ * rejection — the component already passed the gate; this asks for one on-system
+ * pass. Sent at most once per session (the loop caps it), so the agent never
+ * loops on style.
+ */
+export function styleAdvisoryMessage(findings: string[]): string {
+  return [
+    'Your component is valid and accepted as-is. One optional improvement — the STYLE LINT found raw',
+    'values that the design system already has tokens for:',
+    '',
+    ...findings.map((f) => `- ${f}`),
+    '',
+    'If it is a quick win, resubmit the FULL component with these swapped to var(--token) references',
+    '(keep every node id). If a value genuinely has no token, leave it and resubmit unchanged — either way',
+    'the next submission is final.'
   ].join('\n');
 }
 

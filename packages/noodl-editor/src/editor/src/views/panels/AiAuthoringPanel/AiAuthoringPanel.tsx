@@ -32,6 +32,7 @@ import { fromProjectModel } from '@noodl-models/AiAssistant/explain/graph';
 import { authoringTelemetry } from '@noodl-models/AiAssistant/telemetry';
 import { AppRegistry } from '@noodl-models/app_registry';
 import { ProjectModel } from '@noodl-models/projectmodel';
+import { buildEffectiveTokens, buildStyleVocabulary, readStoredTokens } from '@noodl-models/StyleTokensModel';
 
 import { buildComponentV2Files } from '../../../io/ProjectExporter';
 import { formatDiagnosticLine } from '../../../validation';
@@ -193,6 +194,12 @@ export function AiAuthoringPanel() {
         componentPath: componentPath.trim()
       };
       const existing = project.getComponentWithName(pathToLegacyName(request.componentPath));
+      // AIX-006: hand the agent the project's actual style vocabulary (defaults
+      // + this project's token overrides) and lint candidates against the same.
+      const styleOptions = {
+        styleVocabulary: buildStyleVocabulary(project),
+        styleTokenRecords: Array.from(buildEffectiveTokens(readStoredTokens(project)).values())
+      };
       // An existing component is revised, not recreated: the session gets the
       // exporter's own serialization of it as the base — the source the agent
       // starts from, and the identity the candidate keeps.
@@ -200,9 +207,10 @@ export function AiAuthoringPanel() {
         ? AuthoringSession.createUpdate(
             fromProjectModel(project),
             request,
-            buildComponentV2Files(existing.toJSON(), new Date().toISOString())
+            buildComponentV2Files(existing.toJSON(), new Date().toISOString()),
+            styleOptions
           )
-        : AuthoringSession.create(fromProjectModel(project), request);
+        : AuthoringSession.create(fromProjectModel(project), request, styleOptions);
       sessionRef.current = session;
       session.onChange(setState);
       setState(session.state);

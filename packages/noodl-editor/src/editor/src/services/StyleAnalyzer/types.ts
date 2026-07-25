@@ -5,6 +5,19 @@
  * decoupled from the UI so it's independently testable.
  */
 
+// ─── Analyzable Node ─────────────────────────────────────────────────────────
+
+/**
+ * The minimal node shape the analyzer scans. The live project supplies it from
+ * NodeGraphNode (`{ id, typename, parameters }`); the authoring loop supplies it
+ * from a v2 candidate (`type` → `typename`). AIX-006.
+ */
+export interface AnalyzableNode {
+  id: string;
+  typename: string;
+  parameters?: Record<string, unknown> | null;
+}
+
 // ─── Element Reference ───────────────────────────────────────────────────────
 
 /** Identifies a specific property on a specific node. */

@@ -131,6 +131,43 @@ export class ProjectStore {
     return fs.existsSync(p) ? readJson<ProjectV2File>(p) : undefined;
   }
 
+  private get projectFilePath(): string {
+    return path.join(this.projectDir, 'nodegx.project.json');
+  }
+
+  /**
+   * AIX-006: the project's design-token metadata (`{ getMetaData }` shim for the
+   * editor's ProjectTokenCss helpers). Tokens live under
+   * `nodegx.project.json → metadata.designTokens`; the importer restores that
+   * block into `ProjectModel` metadata, so what the editor reads back is exactly
+   * what is written here.
+   */
+  designTokenMetaSource(): { getMetaData(key: string): unknown } {
+    const project = this.readProjectFile() as (ProjectV2File & { metadata?: Record<string, unknown> }) | undefined;
+    const metadata = project?.metadata ?? {};
+    return { getMetaData: (key: string) => metadata[key] };
+  }
+
+  /**
+   * Persist the design-token override block under
+   * `nodegx.project.json → metadata.designTokens`. Atomic; creates the project
+   * file's metadata bag if absent. Passing `null` clears the overrides.
+   */
+  writeDesignTokens(key: string, data: unknown): void {
+    const p = this.projectFilePath;
+    if (!fs.existsSync(p)) {
+      throw new ToolError('not-found', `Missing nodegx.project.json in ${this.projectDir}; cannot store tokens.`);
+    }
+    const project = readJson<ProjectV2File & { metadata?: Record<string, unknown> }>(p);
+    const metadata = { ...(project.metadata ?? {}) };
+    if (data === null || data === undefined) {
+      delete metadata[key];
+    } else {
+      metadata[key] = data;
+    }
+    writeJsonAtomic(p, { ...project, metadata });
+  }
+
   readRoutes(): RoutesV2File | undefined {
     const p = path.join(this.projectDir, 'nodegx.routes.json');
     return fs.existsSync(p) ? readJson<RoutesV2File>(p) : undefined;

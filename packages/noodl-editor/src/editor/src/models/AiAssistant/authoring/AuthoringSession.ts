@@ -32,10 +32,20 @@ import { AiClient } from '../client';
 import type { AiChatRequest, AiChatResponse, AiMessage, AiStreamCallbacks, AiToolCall } from '../client/types';
 import { findComponent } from '../explain/graph';
 import type { ExplainGraph } from '../explain/types';
+import type { StyleVocabulary } from '../../StyleTokensModel/StyleVocabulary';
+import type { StyleTokenRecord } from '../../StyleTokensModel/TokenCategories';
 import { buildCandidate, pathToLegacyName } from './candidate';
 import { AuthoringContextBuilder } from './ContextBuilder';
 import { PartialPayloadScanner } from './partial';
-import { initialUserMessage, nudgeMessage, refineMessage, systemPrompt, updateUserMessage } from './prompts/authoring';
+import {
+  initialUserMessage,
+  nudgeMessage,
+  refineMessage,
+  styleAdvisoryMessage,
+  systemPrompt,
+  updateUserMessage
+} from './prompts/authoring';
+import { styleLintCandidate } from './styleLint';
 import {
   AUTHORING_TOOLS,
   dispatchReadTool,
@@ -68,6 +78,19 @@ export interface AuthoringSessionOptions {
   maxTurns?: number;
   /** Submission attempts per round before giving up. */
   maxSubmits?: number;
+  /**
+   * AIX-006: the project's style vocabulary (tokens + variants) to hand the
+   * agent and to lint candidates against. Omit for the shipped defaults — the
+   * token NAMES the agent emits are stable across projects.
+   */
+  styleVocabulary?: StyleVocabulary;
+  /** Pre-resolved token records (defaults + project overrides) for lint matching. */
+  styleTokenRecords?: StyleTokenRecord[];
+  /**
+   * When false, the style vocabulary is neither injected nor linted — the
+   * pre-AIX-006 behaviour. Used by the A/B measurement's control arm. Default true.
+   */
+  styleGuidance?: boolean;
 }
 
 const DEFAULT_MAX_TURNS = 12;
@@ -157,6 +180,8 @@ interface SubmitResult {
   text: string;
   files?: ComponentFiles;
   errorLines: string[];
+  /** AIX-006: style-lint findings on an otherwise-valid candidate (empty when clean). */
+  styleFindings: string[];
 }
 
 export class AuthoringSession {
@@ -179,6 +204,12 @@ export class AuthoringSession {
   private building?: BuildingPreview;
   private submissionCounter = 0;
 
+  // AIX-006 style lint.
+  private readonly styleGuidance: boolean;
+  private readonly styleTokenRecords?: StyleTokenRecord[];
+  /** The one-shot style-improvement pass has been offered (per session). */
+  private styleNudged = false;
+
   // Published state.
   private readonly activities: AuthoringActivity[] = [];
   private readonly listeners = new Set<Listener>();
@@ -196,7 +227,9 @@ export class AuthoringSession {
     this.chat = options.chat ?? ((req, callbacks) => AiClient.chatStream(req, callbacks ?? {}));
     this.maxTurns = options.maxTurns ?? DEFAULT_MAX_TURNS;
     this.maxSubmits = options.maxSubmits ?? DEFAULT_MAX_SUBMITS;
-    this.context = new AuthoringContextBuilder(graph, options.budget);
+    this.styleGuidance = options.styleGuidance ?? true;
+    this.styleTokenRecords = options.styleTokenRecords;
+    this.context = new AuthoringContextBuilder(graph, options.budget, undefined, options.styleVocabulary);
     this.legacyName = pathToLegacyName(request.componentPath);
   }
 
@@ -319,9 +352,20 @@ export class AuthoringSession {
         this.publish();
         return outcome;
       }
-      opening = updateUserMessage(this.request, source, this.context.projectOverview(), this.context.catalogOverview());
+      opening = updateUserMessage(
+        this.request,
+        source,
+        this.context.projectOverview(),
+        this.context.catalogOverview(),
+        this.styleGuidance ? this.context.styleVocabulary() : undefined
+      );
     } else {
-      opening = initialUserMessage(this.request, this.context.projectOverview(), this.context.catalogOverview());
+      opening = initialUserMessage(
+        this.request,
+        this.context.projectOverview(),
+        this.context.catalogOverview(),
+        this.styleGuidance ? this.context.styleVocabulary() : undefined
+      );
     }
     this.messages.push({ role: 'system', content: systemPrompt(this.mode) }, { role: 'user', content: opening });
     this.activities.push({ kind: 'user', text: this.request.description });
@@ -366,6 +410,11 @@ export class AuthoringSession {
     let roundTurns = 0;
     let roundSubmits = 0;
     let nudges = 0;
+    // AIX-006: a candidate we accepted but held back to offer one style pass. If
+    // the style revision then fails or exhausts the budget, we still finish
+    // 'authored' on THIS baseline — a style suggestion must never turn a valid
+    // authoring into a failure.
+    let stylePassBaseline: ComponentFiles | undefined;
 
     while (roundTurns < this.maxTurns) {
       roundTurns++;
@@ -446,6 +495,8 @@ export class AuthoringSession {
 
       if (response.toolCalls.length === 0) {
         // Prose instead of action. Nudge once; a model that keeps talking is done.
+        // If we were only waiting on an optional style pass, the good candidate stands.
+        if (stylePassBaseline) return this.finish('authored', stylePassBaseline);
         nudges++;
         if (nudges > 1) return this.finish('exhausted');
         this.messages.push({ role: 'user', content: nudgeMessage() });
@@ -460,13 +511,38 @@ export class AuthoringSession {
           roundSubmits++;
           this.rounds.push({ attempt: this.rounds.length + 1, ok: result.ok, errorLines: result.errorLines });
           this.activities.push({ kind: 'submit', ok: result.ok, errorLines: result.errorLines });
-          this.messages.push({ role: 'tool', toolCallId: call.id, name: call.name, content: result.text });
           if (result.ok) {
+            // The candidate passed the gate — keep it staged no matter what
+            // happens next, so a failed style-improvement pass never loses it.
             this.staged = result.files;
+            // AIX-006: one advisory style pass, if the lint found raw values and
+            // there is submission budget left. The component is already
+            // acceptable; this asks the agent to make it on-system, at most once.
+            const wantStylePass =
+              result.styleFindings.length > 0 && !this.styleNudged && roundSubmits < this.maxSubmits;
+            if (wantStylePass) {
+              this.styleNudged = true;
+              stylePassBaseline = result.files;
+              this.messages.push({
+                role: 'tool',
+                toolCallId: call.id,
+                name: call.name,
+                content: styleAdvisoryMessage(result.styleFindings)
+              });
+              this.publish();
+              continue; // back to the model for one on-system revision
+            }
+            this.messages.push({ role: 'tool', toolCallId: call.id, name: call.name, content: result.text });
             return this.finish('authored', result.files);
           }
+          this.messages.push({ role: 'tool', toolCallId: call.id, name: call.name, content: result.text });
           this.publish();
-          if (roundSubmits >= this.maxSubmits) return this.finish('exhausted');
+          if (roundSubmits >= this.maxSubmits) {
+            // Fall back to the pre-style-pass candidate rather than failing a
+            // valid authoring over a cosmetic suggestion.
+            if (stylePassBaseline) return this.finish('authored', stylePassBaseline);
+            return this.finish('exhausted');
+          }
         } else {
           this.activities.push({ kind: 'tool', label: readToolLabel(call) });
           this.messages.push({
@@ -480,6 +556,7 @@ export class AuthoringSession {
       }
     }
 
+    if (stylePassBaseline) return this.finish('authored', stylePassBaseline);
     return this.finish('exhausted');
   }
 
@@ -541,6 +618,7 @@ export class AuthoringSession {
       return {
         ok: false,
         errorLines: candidate.errors,
+        styleFindings: [],
         text: ['The submission is malformed:', ...candidate.errors.map((e) => `- ${e}`)].join('\n')
       };
     }
@@ -548,10 +626,17 @@ export class AuthoringSession {
     const validation = validateCandidateComponent(this.graph, this.legacyName, candidate.files);
     if (validation.ok) {
       const warnings = validation.diagnostics.filter((d) => d.severity === 'warning');
+      // AIX-006: the candidate passed the gate — now lint its styling. Scoped to
+      // the candidate's own nodes; findings are advisory (validator errors first,
+      // style second), and only when style guidance is enabled for this session.
+      const styleFindings = this.styleGuidance
+        ? styleLintCandidate(candidate.files, { tokenRecords: this.styleTokenRecords }).findings
+        : [];
       return {
         ok: true,
         files: candidate.files,
         errorLines: [],
+        styleFindings,
         text: [
           `Component accepted — it validates cleanly (${validation.summary.warnings} warning(s)).`,
           ...warnings.map(formatDiagnosticLine)
@@ -566,6 +651,7 @@ export class AuthoringSession {
     return {
       ok: false,
       errorLines,
+      styleFindings: [],
       text: [
         `Rejected — ${errorLines.length} problem(s). Fix exactly these and resubmit the full component:`,
         ...errorLines

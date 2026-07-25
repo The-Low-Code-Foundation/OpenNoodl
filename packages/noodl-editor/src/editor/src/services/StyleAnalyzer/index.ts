@@ -1,5 +1,6 @@
 export { StyleAnalyzer } from './StyleAnalyzer';
 export type {
+  AnalyzableNode,
   ElementReference,
   RepeatedValue,
   StyleAnalysisOptions,

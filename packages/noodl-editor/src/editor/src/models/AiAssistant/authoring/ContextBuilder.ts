@@ -17,6 +17,10 @@ import { CatalogIndex, loadDefaultCatalog } from '../../../validation';
 import type { CatalogNode, CatalogPort } from '../../../validation';
 import { enrichedNode, portDescription } from '../../../validation/enrichedCatalog';
 import type { NodeV2 } from '../../../schemas';
+// Pure StyleVocabulary submodule (never the StyleTokensModel barrel — it would
+// pull ProjectModel/Electron into the headless harness bundle).
+import { buildStyleVocabulary, renderStyleVocabulary } from '../../StyleTokensModel/StyleVocabulary';
+import type { StyleVocabulary } from '../../StyleTokensModel/StyleVocabulary';
 import { assembleContext, ExplainContextError } from '../explain/assemble';
 import { componentPorts, findComponent } from '../explain/graph';
 import { renderContext } from '../explain/render';
@@ -61,12 +65,20 @@ export class AuthoringContextBuilder {
   private readonly entries: ContextLogEntry[] = [];
   private componentReads = 0;
 
+  /** The project's style vocabulary — tokens by category + element variants/sizes. */
+  readonly styleVocab: StyleVocabulary;
+
   constructor(
     private readonly graph: ExplainGraph,
     budget: Partial<ContextBudget> = {},
-    private readonly catalog: CatalogIndex = loadDefaultCatalog()
+    private readonly catalog: CatalogIndex = loadDefaultCatalog(),
+    styleVocab?: StyleVocabulary
   ) {
     this.budget = { ...DEFAULT_BUDGET, ...budget };
+    // Defaults-only when no project-aware vocabulary is injected: the token
+    // NAMES the agent references are stable across projects; only overridden
+    // values differ, and the agent emits names, not values.
+    this.styleVocab = styleVocab ?? buildStyleVocabulary();
   }
 
   get log(): readonly ContextLogEntry[] {
@@ -119,6 +131,17 @@ export class AuthoringContextBuilder {
       lines.push(`- ${category}: ${byCategory.get(category)!.join(', ')}`);
     }
     return this.charge('catalog-overview', lines.join('\n'));
+  }
+
+  /**
+   * The project's style vocabulary — token names by category and the legal
+   * variants/sizes per element — rendered compactly and charged like any
+   * handout. Category summaries (names only, no resolved values) keep it inside
+   * the structural budget; `elementTypes` spells out variant styles only for the
+   * elements in play. AIX-006.
+   */
+  styleVocabulary(elementTypes?: string[]): string {
+    return this.charge('style-vocabulary', renderStyleVocabulary(this.styleVocab, { elementTypes }));
   }
 
   /** Full documentation for a batch of node types, in one charged handout. */

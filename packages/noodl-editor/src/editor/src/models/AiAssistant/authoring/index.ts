@@ -37,4 +37,6 @@ export type { AuthoringChangeSet, ReviewChange } from './ChangeSet';
 export { buildReviewComponent } from './reviewComponent';
 export { materializeSelection } from './applyChangeSet';
 export type { MaterializedSelection } from './applyChangeSet';
-export { initialUserMessage, refineMessage, systemPrompt, updateUserMessage } from './prompts/authoring';
+export { initialUserMessage, refineMessage, styleAdvisoryMessage, systemPrompt, updateUserMessage } from './prompts/authoring';
+export { countStyleValues, formatStyleFindings, styleLintCandidate } from './styleLint';
+export type { StyleLint, StyleLintOptions } from './styleLint';

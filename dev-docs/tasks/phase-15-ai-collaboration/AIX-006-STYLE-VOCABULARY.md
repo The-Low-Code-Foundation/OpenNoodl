@@ -99,7 +99,75 @@ The pieces map one-to-one onto the substrate pattern that already works:
 
 ## Checklist
 
-- [ ] Verify token reference format against the resolver
-- [ ] Vocabulary export; context integration; prompt guidance
-- [ ] Analyzer lint in the loop; MCP tools; preset hook
-- [ ] A/B verification recorded; CHANGELOG
+- [x] Verify token reference format against the resolver
+- [x] Vocabulary export; context integration; prompt guidance
+- [x] Analyzer lint in the loop; MCP tools; preset hook
+- [x] A/B verification recorded; CHANGELOG
+
+---
+
+## As-Built (2026-07-25, Opus 4.8 on `cline-dev`)
+
+### Step 1 — verified token-reference storage format (gates correctness)
+
+**A token-valued parameter is stored as the literal CSS string `var(--token-name)`.** Verified against the resolver and one live usage:
+
+- `SuggestionActionHandler.applyTokenAction` (the "Switch to Token" / "Create Token" path) writes the parameter with `node.setParameter(prop, 'var(${tokenName})')` where `tokenName` is e.g. `--primary` (`.../services/StyleAnalyzer/SuggestionActionHandler.ts:57,64,73`).
+- Every `ElementConfig` variant/size/default stores the same shape (`backgroundColor: 'var(--primary)'`, `paddingTop: 'var(--space-2)'` — `.../models/ElementConfigs/configs/ButtonConfig.ts`).
+- `TokenResolver` matches exactly `^var\((--[\w-]+)\)$`; `StyleAnalyzer` treats `value.startsWith('var(')` as an on-system reference.
+- Token records are keyed by the CSS custom-property NAME (`--primary`, `--space-4`, `--text-sm`); the runtime resolves `var(--…)` against the `:root` block `ProjectTokenCss.generateProjectTokenCss` stamps into preview and deployed builds (REV-009 parity).
+
+So the agent must emit **`var(--token-name)`** — not the bare name, not the resolved hex. The `_variant`/`_size` markers store a bare name, but the viewer does NOT expand them at runtime (variants are stamped into concrete params at author time), so the vocabulary hands the agent each variant's concrete token-referenced params to copy, and the lint checks the concrete params.
+
+### Vocabulary export — where it lives + shape
+
+Pure module `.../models/StyleTokensModel/StyleVocabulary.ts` (exported from the barrel). **Decision: live assembly from the models, not a baked file** — tokens are per-project (overrides in `metadata.designTokens`), and variants/presets are static registries; there is nothing to precompute. It reads project overrides through the same `MetaDataSource` seam as `ProjectTokenCss`, so it works in the renderer (ProjectModel), the headless harness (serialized `project.metadata`), and the esbuild-bundled MCP server — and it is **pure** (no ProjectModel/Electron), which is what let the authoring loop and MCP consume it. `buildStyleVocabulary(source?)` → `{ categories[], elements[], presets[] }`; `renderStyleVocabulary()` → a compact prompt block (token names by category, per-element variants + the token styles each implies). Defaults-only when no source is given is correct for the token *names* the agent emits.
+
+### Context + refine-loop integration
+
+- **Context (AIX-002 budget-fit):** `AuthoringContextBuilder` gained a charged `styleVocabulary()` handout and an injected `styleVocab` (defaults if none). It rides in the opening `initialUserMessage`/`updateUserMessage` under `--- STYLE VOCABULARY ---`, and the system prompt gained an `ON-SYSTEM STYLING` section (emit `var(--token)`, prefer a listed variant's combo, never a listed token you didn't see). Measured cost: **~5.1k chars** (opening message ~10.5k with vs ~5.4k without) — ~4% of the 120k budget. Category summaries are names-only; raw palette scales are elided.
+- **Lint → refine loop:** new pure `styleLint.ts` runs `StyleAnalyzer`'s detector over the *candidate's own nodes* (scoped to the generated component) after it passes the structural+semantic gate. To keep the loop headless-bundleable, the analyzer's detection was extracted into a pure `StyleAnalyzerCore` (no ProjectModel) that both `StyleAnalyzer.analyzeProject` and the lint share — one detector, no second style validator. Findings feed the **same** refine conversation as validator errors, as a clearly-labelled second tier: **validator errors reject and drive repair; style findings are advisory** and earn at most **one** `styleAdvisoryMessage` pass ("your component is valid and accepted — one optional on-system improvement…"). A style suggestion can never downgrade a valid authoring: the good candidate is staged the moment it passes, and every exhaustion path falls back to it, so an ignored/failed style pass still finishes `authored`.
+
+### MCP tools (`packages/noodl-mcp`)
+
+- `get_style_vocabulary` (read, always registered) — the full structured vocabulary, or `detail:"prompt"` for the compact block; reflects the project's token overrides.
+- `set_project_tokens` (write, `--allow-writes`) — merge token overrides into `nodegx.project.json → metadata.designTokens` (validated: names must be `--…`); the importer restores that block into ProjectModel, so the editor reads back exactly what was written.
+- `set_style_preset` (write, `--allow-writes`) — apply a built-in preset's overrides (Modern clears overrides = defaults).
+
+Wired in `editor-deps.ts` (pure submodule imports only) + `ProjectStore.designTokenMetaSource()`/`writeDesignTokens()`.
+
+### Preset hook (project-creation authoring path)
+
+- **External authoring path (SUB-010):** `set_style_preset` MCP tool gives an agent creating/styling a project a coherent scheme in one call.
+- **In-editor launcher:** preset selection already exists at project creation (`ProjectsPage` → `setPendingPresetId` → `StyleTokensModel` consumes it on first load); left as-is.
+- The in-editor authoring panel now injects the project's live vocabulary + token records into every session (`AiAuthoringPanel`), so generated components style against the active preset for free.
+
+### A/B verification
+
+Harness gained `--styles=on|off` (control = no vocabulary, no lint) and a raw-vs-token style-value counter (`countStyleValues`); each run reports the **token-reference rate** and writes it per-session.
+
+**Result (2026-07-25, `claude-sonnet-5`, 3 visual prompts — hello-cta, profile-card, login-form — over the git-repo-utf8 corpus):**
+
+| Arm | Tokenised style props | Raw props | On-system rate | Mean context |
+|-----|----------------------:|----------:|---------------:|-------------:|
+| `--styles=off` (control) | 22 | 4 | 85% | 27.4k chars |
+| `--styles=on` (treatment) | **53** | 6 | **90%** | 36.9k chars |
+
+Both arms: 3/3 valid on first attempt, no regression in the gate.
+
+**What the vocabulary changed: styling *coverage*.** With the vocabulary the agent applied **2.4× more on-system styling** (53 vs 22 tokenised properties — tokenised colours, spacing, radius, and type throughout) at an equal-or-better on-system rate (90% vs 85%). That is exactly the "prototype → product" goal: the treatment output reads as a designed component; the control output is sparsely styled.
+
+**On the raw stragglers:** neither arm emitted a single raw HEX/rgb *colour* in its final component — the corpus is token-rich, so even the control imitated the existing tokenised components it read (`login-form` copied the project's Sign-in page). The handful of "raw" values the counter flags are legitimate layout dimensions — `width: 100%`, `height: 100%` — which `countStyleValues` counts as raw spacing (a blunt-instrument caveat; `100%` is not a token candidate). So on this unusually on-system corpus the raw-*colour* rate was already ~0 before the vocabulary; the vocabulary's measurable win here is coverage. On a fresh project with no tokenised examples to imitate, the vocabulary's effect on raw-hex avoidance would be starker — the corpus baseline is atypically high. Cost: ~2× (richer output, more tokens), ~$0.24/component vs ~$0.12; context +9.5k chars (the vocabulary block), well inside budget. Records: `scratchpad/ab-styles-{off,on}.jsonl` (per-session transcripts) — rerun any time with the two commands below.
+
+### Automated checks
+
+- `npx tsc --noEmit` — **clean** (noodl-editor and noodl-mcp).
+- noodl-mcp jest — **39/39 pass** (+7 new `styleTools.test.ts`: vocabulary enumeration, prompt detail, token persistence + round-trip reflection, `--` rejection, preset apply/reject, read-only tool absence).
+- Editor suite runs under Electron (not startable here — concurrent-Electron rule). New `tests/ai/authoring-style.test.ts` (8 specs) is registered in the AI barrel and typechecks; its logic was additionally **run headlessly** (esbuild bundle + real `SemanticValidator`, the AIX-002 recipe, no Electron): **17/17 assertions pass** — vocabulary shape, render block, candidate lint (raw→findings, on-system→clean), raw/token counting, vocabulary injected only when guidance on, the one-shot advisory pass then on-system accept, ignored-advisory-still-authored, and guidance-off immediate accept.
+- MCP standalone bundle + measurement-harness bundle both rebuild green (the new imports stay Electron-free; still the one `AiAssistantStore` shim).
+
+### Coordinator handoffs / residuals
+
+- **Editor Electron suite:** run `npm run test:ci` in noodl-editor when no other Electron instance is active, to exercise `authoring-style.test.ts` and the untouched `StyleAnalyzer` specs (the analyzer refactor preserves behaviour; the pure core was exercised headlessly, but the two live `StyleAnalyzer.test.ts` files run only under Electron).
+- **Live A/B rerun (optional, one command each):** `node packages/noodl-editor/scripts/aix002-measure/build.mjs` then the same harness with `--styles=off` and `--styles=on` over a visual subset — see the recorded result above for the numbers this pass produced.
+- No shared-file conflicts: I stayed inside my surface. The one additive edit outside pure additions was refactoring `StyleAnalyzer.ts` to delegate to `StyleAnalyzerCore` (behaviour-preserving, its own file).

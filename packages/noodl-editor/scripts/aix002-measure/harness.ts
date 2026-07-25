@@ -33,7 +33,12 @@ import * as path from 'path';
 
 import type { AuthoringChatFn } from '../../src/editor/src/models/AiAssistant/authoring/AuthoringSession';
 import { AuthoringSession } from '../../src/editor/src/models/AiAssistant/authoring/AuthoringSession';
+import { countStyleValues } from '../../src/editor/src/models/AiAssistant/authoring/styleLint';
 import type { AuthoringOutcome } from '../../src/editor/src/models/AiAssistant/authoring/types';
+import { buildEffectiveTokens, readStoredTokens } from '../../src/editor/src/models/StyleTokensModel/ProjectTokenCss';
+import { buildStyleVocabulary } from '../../src/editor/src/models/StyleTokensModel/StyleVocabulary';
+import type { StyleVocabulary } from '../../src/editor/src/models/StyleTokensModel/StyleVocabulary';
+import type { StyleTokenRecord } from '../../src/editor/src/models/StyleTokensModel/TokenCategories';
 import { createProvider } from '../../src/editor/src/models/AiAssistant/client/AiClient';
 import type { AiProvider, AiProviderId } from '../../src/editor/src/models/AiAssistant/client/types';
 import { AI_PROVIDER_IDS } from '../../src/editor/src/models/AiAssistant/client/types';
@@ -115,6 +120,10 @@ interface SessionRecord {
   firstAttemptValid: boolean | null;
   rounds: AuthoringOutcome['rounds'];
   metrics: AuthoringOutcome['metrics'];
+  /** AIX-006: whether the style vocabulary was injected + linted this run. */
+  styleGuidance: boolean;
+  /** AIX-006: raw vs token-referenced style values in the authored component. */
+  styleStats: { rawValues: number; tokenReferences: number; total: number };
   transcript: AuthoringOutcome['transcript'];
   error?: string;
 }
@@ -125,7 +134,8 @@ async function measureOne(
   provider: AiProvider,
   providerId: AiProviderId,
   model: string | undefined,
-  timeoutMs: number
+  timeoutMs: number,
+  style: { guidance: boolean; vocabulary: StyleVocabulary; tokenRecords: StyleTokenRecord[] }
 ): Promise<SessionRecord> {
   let servedModel = model ?? '(provider default)';
   const chat: AuthoringChatFn = async (request, callbacks) => {
@@ -137,7 +147,13 @@ async function measureOne(
   const session = AuthoringSession.create(
     graph,
     { description: prompt.description, componentPath: prompt.componentPath },
-    { chat }
+    {
+      chat,
+      // AIX-006 A/B: the control arm (--styles=off) gets no vocabulary and no lint.
+      styleGuidance: style.guidance,
+      styleVocabulary: style.vocabulary,
+      styleTokenRecords: style.tokenRecords
+    }
   );
 
   // Narrate the loop so a live run is watchable from the terminal. Seen-ness
@@ -167,6 +183,10 @@ async function measureOne(
   clearTimeout(timer);
   session.dispose();
 
+  const styleStats = outcome.files
+    ? countStyleValues(outcome.files)
+    : { rawValues: 0, tokenReferences: 0, total: 0 };
+
   return {
     slug: prompt.slug,
     provider: providerId,
@@ -177,6 +197,8 @@ async function measureOne(
     firstAttemptValid: outcome.rounds.length > 0 ? outcome.rounds[0].ok : null,
     rounds: outcome.rounds,
     metrics: outcome.metrics,
+    styleGuidance: style.guidance,
+    styleStats,
     transcript: outcome.transcript,
     error: outcome.error
   };
@@ -197,7 +219,13 @@ function summarise(records: SessionRecord[]): void {
     0
   );
 
+  const rawTotal = records.reduce((n, r) => n + r.styleStats.rawValues, 0);
+  const tokenTotal = records.reduce((n, r) => n + r.styleStats.tokenReferences, 0);
+  const styleTotal = rawTotal + tokenTotal;
+  const tokenRate = styleTotal === 0 ? '—' : `${((tokenTotal / styleTotal) * 100).toFixed(0)}%`;
+
   console.log('\n── Summary ─────────────────────────────────────────────');
+  console.log(`style guidance:         ${records[0]?.styleGuidance ? 'ON' : 'OFF'}`);
   console.log(`sessions:               ${done}`);
   console.log(`valid on first attempt: ${firstTry.length}/${done}`);
   console.log(`valid after repair:     ${authored.length}/${done}`);
@@ -205,6 +233,7 @@ function summarise(records: SessionRecord[]): void {
   console.log(`mean submits:           ${meanOf((r) => r.metrics.submits)}`);
   console.log(`mean context chars:     ${meanOf((r) => r.metrics.totalContextChars)}`);
   console.log(`mean transcript chars:  ${meanOf((r) => r.metrics.transcriptChars)}`);
+  console.log(`style values (raw/tok): ${rawTotal}/${tokenTotal}  → token-reference rate ${tokenRate}`);
   console.log(`total cost:             ${formatUsd(totalCost)}`);
   console.log('\nper prompt:');
   for (const r of records) {
@@ -229,6 +258,8 @@ async function main(): Promise<void> {
   const timeoutMs = (args.timeout ? Number(args.timeout) : 480) * 1000;
   const projectPath = args.project ?? DEFAULT_PROJECT;
   const only = args.only ? args.only.split(',').map((s) => s.trim()) : null;
+  // AIX-006 A/B: --styles=off is the control arm (no vocabulary, no lint).
+  const styleGuidance = (args.styles ?? 'on').toLowerCase() !== 'off';
 
   const prompts = only ? PROMPTS.filter((p) => only.includes(p.slug)) : PROMPTS;
   if (prompts.length === 0) {
@@ -240,12 +271,20 @@ async function main(): Promise<void> {
   const project = JSON.parse(fs.readFileSync(projectPath, 'utf8'));
   const graph = fromSerialisedProject(project);
 
+  // The project's own style vocabulary (defaults + any token overrides in its
+  // metadata). Both A/B arms build it; only the treatment arm injects it.
+  const metaSource = { getMetaData: (key: string) => (project.metadata ?? {})[key] };
+  const styleVocabulary = buildStyleVocabulary(metaSource);
+  const styleTokenRecords = Array.from(buildEffectiveTokens(readStoredTokens(metaSource)).values());
+  const style = { guidance: styleGuidance, vocabulary: styleVocabulary, tokenRecords: styleTokenRecords };
+
   const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+  const styleTag = styleGuidance ? 'styles-on' : 'styles-off';
   const outFile =
-    args.out ?? path.join(DEFAULT_OUT_DIR, `${stamp}-${providerId}-${model ?? 'default'}.jsonl`);
+    args.out ?? path.join(DEFAULT_OUT_DIR, `${stamp}-${providerId}-${model ?? 'default'}-${styleTag}.jsonl`);
   fs.mkdirSync(path.dirname(outFile), { recursive: true });
 
-  console.log(`AIX-002 measurement — ${providerId} / ${model ?? 'registry default'}`);
+  console.log(`AIX-002/006 measurement — ${providerId} / ${model ?? 'registry default'} — ${styleTag}`);
   console.log(`project: ${path.relative(REPO_ROOT, projectPath)} (${graph.components.length} components)`);
   console.log(`prompts: ${prompts.map((p) => p.slug).join(', ')}`);
   console.log(`record:  ${path.relative(REPO_ROOT, outFile)}\n`);
@@ -254,7 +293,7 @@ async function main(): Promise<void> {
   for (const prompt of prompts) {
     console.log(`▶ ${prompt.slug} → ${prompt.componentPath}`);
     try {
-      const record = await measureOne(prompt, graph, provider, providerId, model, timeoutMs);
+      const record = await measureOne(prompt, graph, provider, providerId, model, timeoutMs, style);
       records.push(record);
       fs.appendFileSync(outFile, JSON.stringify(record) + '\n');
       console.log(

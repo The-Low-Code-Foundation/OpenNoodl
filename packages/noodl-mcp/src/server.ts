@@ -10,6 +10,7 @@ import { ProjectStore } from './project/ProjectStore';
 import { registerAuthorTools } from './tools/author';
 import { registerCatalogTools } from './tools/catalogTools';
 import { registerReadTools } from './tools/read';
+import { registerStyleReadTools, registerStyleWriteTools } from './tools/styleTools';
 import { registerValidateTools } from './tools/validateTools';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -36,16 +37,19 @@ export function createServer(options: ServerOptions): CreatedServer {
         '. Start with get_project_info. Component identifiers accept path form ("Pages/Home") or legacy name ' +
         '("/Pages/Home"); a node instantiating a project component uses the legacyName as its node type. ' +
         'When authoring: read the parent/pattern component, fetch the node types you need with get_node_type, ' +
-        'then create_component / update_component — every write is validated and rejections return diagnostics ' +
-        'with suggested fixes.'
+        'call get_style_vocabulary for the on-system tokens/variants (set colour/spacing params as ' +
+        '"var(--token)", never raw hex/px), then create_component / update_component — every write is ' +
+        'validated and rejections return diagnostics with suggested fixes.'
     }
   );
 
   registerReadTools(server, store, { allowWrites: options.allowWrites });
   registerCatalogTools(server);
   registerValidateTools(server, store);
+  registerStyleReadTools(server, store);
   if (options.allowWrites) {
     registerAuthorTools(server, store);
+    registerStyleWriteTools(server, store);
   }
   return { server, store };
 }

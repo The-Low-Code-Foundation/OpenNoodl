@@ -7,6 +7,22 @@ export {
   readStoredTokens,
   STYLE_TOKENS_METADATA_KEY
 } from './ProjectTokenCss';
+export type { MetaDataSource } from './ProjectTokenCss';
+export {
+  buildStyleVocabulary,
+  listVocabularyPresets,
+  renderStyleVocabulary,
+  vocabularyTokenNames,
+  vocabularyTokenRecords
+} from './StyleVocabulary';
+export type {
+  RenderVocabularyOptions,
+  StyleVocabulary,
+  VocabElement,
+  VocabPreset,
+  VocabToken,
+  VocabTokenCategory
+} from './StyleVocabulary';
 export type {
   StyleToken,
   StyleTokenMap,

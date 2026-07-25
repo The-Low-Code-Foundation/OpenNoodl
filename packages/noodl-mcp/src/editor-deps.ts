@@ -57,3 +57,34 @@ export type {
 
 // ─── io helpers (STRUCT-002) ──────────────────────────────────────────────────
 export { legacyNameToPath, inferComponentType } from '../../noodl-editor/src/editor/src/io/ProjectExporter';
+
+// ─── Style vocabulary (AIX-006) ───────────────────────────────────────────────
+// Pure submodules only (StyleVocabulary/ProjectTokenCss/DefaultTokens/
+// ElementConfigs) — never the StyleTokensModel barrel, which pulls ProjectModel
+// and Electron. Verified Electron-free: these import only each other + the
+// element config data.
+export {
+  buildStyleVocabulary,
+  renderStyleVocabulary,
+  listVocabularyPresets
+} from '../../noodl-editor/src/editor/src/models/StyleTokensModel/StyleVocabulary';
+export type {
+  StyleVocabulary,
+  VocabElement,
+  VocabPreset,
+  VocabToken,
+  VocabTokenCategory
+} from '../../noodl-editor/src/editor/src/models/StyleTokensModel/StyleVocabulary';
+export {
+  buildEffectiveTokens,
+  readStoredTokens,
+  STYLE_TOKENS_METADATA_KEY
+} from '../../noodl-editor/src/editor/src/models/StyleTokensModel/ProjectTokenCss';
+export type { MetaDataSource } from '../../noodl-editor/src/editor/src/models/StyleTokensModel/ProjectTokenCss';
+export type {
+  StyleTokenRecord,
+  StyleTokensData,
+  TokenCategory
+} from '../../noodl-editor/src/editor/src/models/StyleTokensModel/TokenCategories';
+export { getPreset, getAllPresets } from '../../noodl-editor/src/editor/src/models/StylePresets/StylePresetsModel';
+export type { StylePreset } from '../../noodl-editor/src/editor/src/models/StylePresets/StylePresetTypes';

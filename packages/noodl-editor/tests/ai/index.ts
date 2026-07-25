@@ -23,6 +23,10 @@ export * from './authoring-partial.test';
 export * from './authoring-preview.test';
 export * from './authoring-telemetry.test';
 
+// AIX-006: the style vocabulary — export/shape, candidate lint, and the loop's
+// one-shot advisory style pass. Fully offline; the chat function is a script.
+export * from './authoring-style.test';
+
 // AIX-003: graph-native review. The change-set adapter expresses staged AI
 // proposals through SUB-007's diff engine; specs diff against components
 // accepted through the real staging path.
