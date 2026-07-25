@@ -1,0 +1,46 @@
+{
+  "format": "noodl-lesson@1",
+  "title": "Your first nodes",
+  "description": "Place a Group, label it, put a Text inside, and give it words.",
+  "completionBadge": "first-nodes",
+  "steps": [
+    {
+      "kind": "popup",
+      "body": "## Welcome\nIn this lesson you'll build your first tiny piece of an app out of **nodes**. Click **Next** to begin.",
+      "media": { "type": "video", "src": "intro.mp4" }
+    },
+    {
+      "title": "Open the App component",
+      "body": "In the **Components** panel, open the component called **App**.",
+      "actions": [{ "selectComponent": "App" }],
+      "completeWhen": [{ "activeComponentEquals": "App" }]
+    },
+    {
+      "title": "Add a Group",
+      "body": "Double-click the canvas and add a **Group** node. A Group is a visual container.",
+      "suggestedNodes": ["Group"],
+      "completeWhen": [{ "node": "App:%Group", "exists": true }]
+    },
+    {
+      "title": "Label the Group \"Card\"",
+      "body": "Select the Group and set its **label** to `Card` in the properties panel.",
+      "completeWhen": [{ "node": "App:%Group", "hasLabel": "Card" }]
+    },
+    {
+      "title": "Put a Text inside Card",
+      "body": "Add a **Text** node as a child of your `Card` group.",
+      "suggestedNodes": ["Text"],
+      "completeWhen": [{ "node": "App:#Card:%Text", "exists": true }]
+    },
+    {
+      "title": "Give the Text some words",
+      "body": "Set the Text node's **Text** parameter to `Hello`.",
+      "completeWhen": [{ "node": "App:#Card:%Text", "paramsEqual": { "text": "Hello" } }]
+    },
+    {
+      "kind": "popup",
+      "body": "🎉 You built a labelled container with text inside it — all as nodes you can see and connect. Click **Exit lesson** to finish.",
+      "media": { "type": "image", "src": "done.png" }
+    }
+  ]
+}

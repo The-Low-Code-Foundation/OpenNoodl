@@ -5,11 +5,13 @@
   "rootNodeId": "root-comp-id",
   "thumbnailURI": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUg==",
   "lesson": {
-    "title": "Getting Started",
-    "steps": [
-      { "id": "s1", "text": "Add a Group", "highlight": ["node-a"] },
-      { "id": "s2", "text": "Wire it up" }
-    ]
+    "index": 3,
+    "numberOfLessons": 7,
+    "url": "lesson.json",
+    "name": "your-first-nodes",
+    "title": "Your first nodes",
+    "baseURL": "https://the-low-code-foundation.github.io/opennoodl-docs/lessons/your-first-nodes/",
+    "completionBadge": "first-nodes"
   },
   "settings": {
     "rootComponent": "/#App",
