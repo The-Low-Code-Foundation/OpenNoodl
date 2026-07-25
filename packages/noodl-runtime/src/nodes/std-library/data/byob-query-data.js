@@ -803,70 +803,8 @@ function updatePorts(nodeId, parameters, editorConnection, graphModel) {
   // NOTE: 'fetch' signal is defined in static inputs (with valueChangedToTrue handler)
   // DO NOT add it here again or it will appear twice in the connection popup
 
-  // Outputs
-  ports.push({
-    name: 'records',
-    displayName: 'Records',
-    type: 'array',
-    plug: 'output',
-    group: 'Results'
-  });
-
-  ports.push({
-    name: 'firstRecord',
-    displayName: 'First Record',
-    type: 'object',
-    plug: 'output',
-    group: 'Results'
-  });
-
-  ports.push({
-    name: 'count',
-    displayName: 'Count',
-    type: 'number',
-    plug: 'output',
-    group: 'Results'
-  });
-
-  ports.push({
-    name: 'totalCount',
-    displayName: 'Total Count',
-    type: 'number',
-    plug: 'output',
-    group: 'Results'
-  });
-
-  ports.push({
-    name: 'loading',
-    displayName: 'Loading',
-    type: 'boolean',
-    plug: 'output',
-    group: 'Status'
-  });
-
-  ports.push({
-    name: 'error',
-    displayName: 'Error',
-    type: 'object',
-    plug: 'output',
-    group: 'Status'
-  });
-
-  ports.push({
-    name: 'success',
-    displayName: 'Success',
-    type: 'signal',
-    plug: 'output',
-    group: 'Events'
-  });
-
-  ports.push({
-    name: 'failure',
-    displayName: 'Failure',
-    type: 'signal',
-    plug: 'output',
-    group: 'Events'
-  });
+  // Outputs are all static (declared on the node definition) — pushing them
+  // here too would list every output twice in getPorts().
 
   editorConnection.sendDynamicPorts(nodeId, ports);
 }

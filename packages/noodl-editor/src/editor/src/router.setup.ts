@@ -34,7 +34,6 @@ import { PropertyEditor } from './views/panels/propertyeditor';
 import { SearchPanel } from './views/panels/search-panel/search-panel';
 // import { TopologyMapPanel } from './views/panels/TopologyMapPanel'; // Disabled - shelved feature
 import { TriggerChainDebuggerPanel } from './views/panels/TriggerChainDebuggerPanel';
-import { UBAPanel } from './views/panels/UBAPanel';
 import { UndoQueuePanel } from './views/panels/UndoQueuePanel/UndoQueuePanel';
 import { VersionControlPanel_ID } from './views/panels/VersionControlPanel';
 import { VersionControlPanel } from './views/panels/VersionControlPanel/VersionControlPanel';
@@ -225,17 +224,6 @@ export function installSidePanel({ isLesson }: SetupEditorOptions) {
     order: 8.5,
     icon: IconName.Sliders,
     panel: AppSetupPanel
-  });
-
-  SidebarModel.instance.register({
-    experimental: true,
-    id: 'uba',
-    name: 'Backend Adapter',
-    description: 'Configure and debug Universal Backend Adapter (UBA) compatible backends via schema-driven forms.',
-    isDisabled: isLesson === true,
-    order: 8.8,
-    icon: IconName.RestApi,
-    panel: UBAPanel
   });
 
   SidebarModel.instance.register({

@@ -39771,6 +39771,143 @@
       }
     },
     {
+      "typeName": "noodl.byob.SubscribeToChanges",
+      "displayName": "Subscribe To Changes",
+      "category": "Data",
+      "isVisual": false,
+      "isDeprecated": false,
+      "inNodePicker": true,
+      "availableIn": [
+        "browser"
+      ],
+      "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "client-only",
+        "note": "A live subscription is meaningless in a server render and would leak a socket per request; the node activates in the browser after hydration."
+      },
+      "docs": "https://docs.noodl.net/nodes/data/byob/subscribe-to-changes",
+      "searchTags": [
+        "byob",
+        "realtime",
+        "subscribe",
+        "websocket",
+        "live",
+        "changes",
+        "events",
+        "directus",
+        "backend"
+      ],
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "changed",
+          "displayName": "Changed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true
+        },
+        {
+          "name": "changedRecord",
+          "displayName": "Changed Record",
+          "group": "Event",
+          "plug": "output",
+          "type": {
+            "name": "object"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "changedRecordId",
+          "displayName": "Changed Record Id",
+          "group": "Event",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "changedRecords",
+          "displayName": "Changed Records",
+          "group": "Event",
+          "plug": "output",
+          "type": {
+            "name": "array"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "created",
+          "displayName": "Created",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true
+        },
+        {
+          "name": "deleted",
+          "displayName": "Deleted",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true
+        },
+        {
+          "name": "error",
+          "displayName": "Error",
+          "group": "Status",
+          "plug": "output",
+          "type": {
+            "name": "object"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "eventType",
+          "displayName": "Event Type",
+          "group": "Event",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "subscribed",
+          "displayName": "Subscribed",
+          "group": "Status",
+          "plug": "output",
+          "type": {
+            "name": "boolean"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "updated",
+          "displayName": "Updated",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true
+        }
+      ],
+      "dynamicPorts": {
+        "mechanisms": [
+          "runtime-discovered"
+        ],
+        "description": "Some ports are discovered at runtime from user code, parameters or connected components, and are pushed to the editor per instance; the static port list below is incomplete for such instances."
+      }
+    },
+    {
       "typeName": "noodl.byob.UpdateRecord",
       "displayName": "Update Record",
       "category": "Data",

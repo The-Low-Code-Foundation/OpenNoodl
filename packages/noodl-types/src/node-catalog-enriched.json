@@ -42765,6 +42765,181 @@
       }
     },
     {
+      "typeName": "noodl.byob.SubscribeToChanges",
+      "displayName": "Subscribe To Changes",
+      "category": "Data",
+      "isVisual": false,
+      "isDeprecated": false,
+      "inNodePicker": true,
+      "availableIn": [
+        "browser"
+      ],
+      "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "client-only",
+        "note": "A live subscription is meaningless in a server render and would leak a socket per request; the node activates in the browser after hydration."
+      },
+      "docs": "https://docs.noodl.net/nodes/data/byob/subscribe-to-changes",
+      "searchTags": [
+        "byob",
+        "realtime",
+        "subscribe",
+        "websocket",
+        "live",
+        "changes",
+        "events",
+        "directus",
+        "backend"
+      ],
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "changed",
+          "displayName": "Changed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true
+        },
+        {
+          "name": "changedRecord",
+          "displayName": "Changed Record",
+          "group": "Event",
+          "plug": "output",
+          "type": {
+            "name": "object"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "changedRecordId",
+          "displayName": "Changed Record Id",
+          "group": "Event",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "changedRecords",
+          "displayName": "Changed Records",
+          "group": "Event",
+          "plug": "output",
+          "type": {
+            "name": "array"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "created",
+          "displayName": "Created",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true
+        },
+        {
+          "name": "deleted",
+          "displayName": "Deleted",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true
+        },
+        {
+          "name": "error",
+          "displayName": "Error",
+          "group": "Status",
+          "plug": "output",
+          "type": {
+            "name": "object"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "eventType",
+          "displayName": "Event Type",
+          "group": "Event",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "subscribed",
+          "displayName": "Subscribed",
+          "group": "Status",
+          "plug": "output",
+          "type": {
+            "name": "boolean"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "updated",
+          "displayName": "Updated",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true
+        }
+      ],
+      "dynamicPorts": {
+        "mechanisms": [
+          "runtime-discovered"
+        ],
+        "description": "Some ports are discovered at runtime from user code, parameters or connected components, and are pushed to the editor per instance; the static port list below is incomplete for such instances."
+      },
+      "enrichment": {
+        "typeName": "noodl.byob.SubscribeToChanges",
+        "summary": "Subscribe To Changes (BYOB): emits a signal with the changed record whenever a backend collection changes.",
+        "description": "Live change feed for a self-hosted backend collection over the backend's WebSocket interface (Directus: requires WEBSOCKETS_ENABLED on the server). While `subscribed` is true, creates, updates and deletes made by any client fire the matching `created`/`updated`/`deleted` signal plus the generic `changed`, with the affected record(s) on the Event outputs. The connection authenticates with the backend's public token, answers server heartbeats, and reconnects with exponential backoff after a drop — `subscribed` reflects the live state throughout. Delete events carry only primary keys, so `changedRecord` is null for deletes; `changedRecordId` is always populated.",
+        "whenToUse": "Reacting to remote changes without polling — most commonly re-triggering a Query Data `fetch` so a list stays current. Not for reading data itself (use Query Data) and not on the managed cloud backend (its Query Records keeps results live already). Client-only: it stays inert during server-side rendering.",
+        "ports": {
+          "enabled": "Boolean, default true; set false to close the subscription (and stop reconnect attempts) without removing the node.",
+          "subscribed": "True only while the WebSocket subscription is confirmed live — false during connect, backoff and after fatal auth failure.",
+          "created": "Fires once per remote create batch, after the Event outputs have updated.",
+          "updated": "Fires once per remote update batch, after the Event outputs have updated.",
+          "deleted": "Fires once per remote delete batch; only keys are delivered, so `changedRecord` is null and `changedRecords` holds key strings.",
+          "changed": "Fires alongside every `created`/`updated`/`deleted` — wire this when any change should trigger the same reaction.",
+          "eventType": "The last event kind as a string: 'create', 'update' or 'delete'.",
+          "changedRecord": "First record of the last create/update batch (full record object); null for deletes.",
+          "changedRecords": "All records of the last batch; for deletes, an array of primary-key strings (string even for numeric keys).",
+          "changedRecordId": "Primary key of the first affected record as a string, across all three event types; the key field name comes from the synced schema.",
+          "error": "Last connection or protocol error object; cleared when a subscription (re)confirms. An invalid token is fatal — the node will not retry until a parameter changes."
+        },
+        "runtimeBehavior": "`backendId`, `collection` and `enabled` are dynamic inputs generated from the Backend Services metadata: the Backend dropdown lists configured backends (plus 'Active Backend'), and the Collection dropdown lists the selected backend's synced user collections. They appear once a backend with a synced schema exists; an authoring tool may not assume any collection values without that schema.",
+        "examples": [
+          "cloud-byob-live-refresh"
+        ],
+        "patterns": [
+          "Subscribe To Changes `changed` → Query Data `fetch` keeps a BYOB-backed list live without polling.",
+          "`subscribed` → a status indicator's visibility shows users when live updates are active."
+        ],
+        "antiPatterns": [
+          "Treating `changedRecord` as the full record on deletes — delete events carry only primary keys.",
+          "Polling a Query Data on a timer while this node is available — subscribe and refetch on `changed` instead."
+        ],
+        "relatedNodes": [
+          "noodl.byob.QueryData",
+          "noodl.byob.CreateRecord",
+          "noodl.byob.UpdateRecord",
+          "noodl.byob.DeleteRecord",
+          "DbCollection2"
+        ]
+      }
+    },
+    {
       "typeName": "noodl.byob.UpdateRecord",
       "displayName": "Update Record",
       "category": "Data",
@@ -43207,8 +43382,8 @@
     "version": "1.0.0",
     "docs": "docs/node-catalog/ENRICHMENT.md",
     "coverage": {
-      "documented": 135,
-      "total": 135
+      "documented": 136,
+      "total": 136
     }
   },
   "compatibility": {
@@ -43620,7 +43795,7 @@
               "type": "noodl.byob.QueryData",
               "label": "Fetch notes",
               "parameters": {
-                "class": "Note"
+                "collection": "Note"
               }
             },
             {
@@ -43628,7 +43803,7 @@
               "type": "noodl.byob.CreateRecord",
               "label": "Create note",
               "parameters": {
-                "class": "Note"
+                "collection": "Note"
               }
             },
             {
@@ -43636,7 +43811,7 @@
               "type": "noodl.byob.UpdateRecord",
               "label": "Update note",
               "parameters": {
-                "class": "Note"
+                "collection": "Note"
               }
             },
             {
@@ -43644,7 +43819,7 @@
               "type": "noodl.byob.DeleteRecord",
               "label": "Delete note",
               "parameters": {
-                "class": "Note"
+                "collection": "Note"
               }
             }
           ],
@@ -43690,6 +43865,123 @@
               "fromProperty": "success",
               "toId": "notes_query",
               "toProperty": "fetch"
+            }
+          ]
+        },
+        {
+          "name": "/Note Row",
+          "nodes": [
+            {
+              "id": "row",
+              "type": "Group",
+              "label": "Row",
+              "parameters": {
+                "flexDirection": "row"
+              },
+              "children": [
+                "title_text"
+              ]
+            },
+            {
+              "id": "title_text",
+              "type": "Text",
+              "label": "Title",
+              "parent": "row"
+            },
+            {
+              "id": "row_inputs",
+              "type": "Component Inputs",
+              "label": "Record in"
+            }
+          ],
+          "connections": [
+            {
+              "fromId": "row_inputs",
+              "fromProperty": "title",
+              "toId": "title_text",
+              "toProperty": "text"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cloud-byob-live-refresh",
+      "title": "Bring-your-own-backend: live list via Subscribe To Changes",
+      "description": "BYOB queries are snapshots — they only refresh when `fetch` fires. Subscribe To Changes closes that gap: it holds a WebSocket subscription on the collection and fires `changed` whenever any client creates, updates or deletes a record, so wiring `changed` → `fetch` keeps the list current without polling. `subscribed` drives a small 'live' indicator so users can see when realtime updates are active.",
+      "demonstrates": [
+        "noodl.byob.SubscribeToChanges",
+        "noodl.byob.QueryData"
+      ],
+      "components": [
+        {
+          "name": "/Live Notes",
+          "nodes": [
+            {
+              "id": "root",
+              "type": "Group",
+              "label": "Live notes",
+              "parameters": {
+                "flexDirection": "column"
+              },
+              "children": [
+                "live_badge",
+                "notes_repeater"
+              ]
+            },
+            {
+              "id": "live_badge",
+              "type": "Text",
+              "label": "Live indicator",
+              "parent": "root",
+              "parameters": {
+                "text": "● live"
+              }
+            },
+            {
+              "id": "notes_repeater",
+              "type": "For Each",
+              "label": "Notes",
+              "parent": "root",
+              "parameters": {
+                "template": "/Note Row"
+              }
+            },
+            {
+              "id": "notes_query",
+              "type": "noodl.byob.QueryData",
+              "label": "Fetch notes",
+              "parameters": {
+                "collection": "Note"
+              }
+            },
+            {
+              "id": "notes_subscription",
+              "type": "noodl.byob.SubscribeToChanges",
+              "label": "Watch notes",
+              "parameters": {
+                "collection": "Note"
+              }
+            }
+          ],
+          "connections": [
+            {
+              "fromId": "notes_query",
+              "fromProperty": "records",
+              "toId": "notes_repeater",
+              "toProperty": "items"
+            },
+            {
+              "fromId": "notes_subscription",
+              "fromProperty": "changed",
+              "toId": "notes_query",
+              "toProperty": "fetch"
+            },
+            {
+              "fromId": "notes_subscription",
+              "fromProperty": "subscribed",
+              "toId": "live_badge",
+              "toProperty": "visible"
             }
           ]
         },

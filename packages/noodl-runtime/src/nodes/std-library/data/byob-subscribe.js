@@ -355,86 +355,8 @@ function updatePorts(nodeId, parameters, editorConnection, graphModel) {
     group: 'Subscription'
   });
 
-  // Outputs
-  ports.push({
-    name: 'subscribed',
-    displayName: 'Subscribed',
-    type: 'boolean',
-    plug: 'output',
-    group: 'Status'
-  });
-
-  ports.push({
-    name: 'error',
-    displayName: 'Error',
-    type: 'object',
-    plug: 'output',
-    group: 'Status'
-  });
-
-  ports.push({
-    name: 'created',
-    displayName: 'Created',
-    type: 'signal',
-    plug: 'output',
-    group: 'Events'
-  });
-
-  ports.push({
-    name: 'updated',
-    displayName: 'Updated',
-    type: 'signal',
-    plug: 'output',
-    group: 'Events'
-  });
-
-  ports.push({
-    name: 'deleted',
-    displayName: 'Deleted',
-    type: 'signal',
-    plug: 'output',
-    group: 'Events'
-  });
-
-  ports.push({
-    name: 'changed',
-    displayName: 'Changed',
-    type: 'signal',
-    plug: 'output',
-    group: 'Events'
-  });
-
-  ports.push({
-    name: 'eventType',
-    displayName: 'Event Type',
-    type: 'string',
-    plug: 'output',
-    group: 'Event'
-  });
-
-  ports.push({
-    name: 'changedRecord',
-    displayName: 'Changed Record',
-    type: 'object',
-    plug: 'output',
-    group: 'Event'
-  });
-
-  ports.push({
-    name: 'changedRecords',
-    displayName: 'Changed Records',
-    type: 'array',
-    plug: 'output',
-    group: 'Event'
-  });
-
-  ports.push({
-    name: 'changedRecordId',
-    displayName: 'Changed Record Id',
-    type: 'string',
-    plug: 'output',
-    group: 'Event'
-  });
+  // Outputs are all static (declared on the node definition) — pushing them
+  // here too would list every output twice in getPorts().
 
   editorConnection.sendDynamicPorts(nodeId, ports);
 }

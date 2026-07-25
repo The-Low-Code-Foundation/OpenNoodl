@@ -5,8 +5,6 @@
 // back in one at a time, running `npm run test:ci` between each.
 export * from './expression-parameter.test';
 export * from './ElementConfigRegistry.test';
-export * from './UBAConditions.test';
-export * from './UBASchemaParser.test';
 export * from './BYOBSchemaParsers.test';
 export * from './ByobFilterBuilder.test';
 export * from './ProjectCreationWizard.test';

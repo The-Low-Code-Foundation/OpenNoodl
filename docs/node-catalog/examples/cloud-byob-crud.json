@@ -22,25 +22,25 @@
           "id": "notes_query",
           "type": "noodl.byob.QueryData",
           "label": "Fetch notes",
-          "parameters": { "class": "Note" }
+          "parameters": { "collection": "Note" }
         },
         {
           "id": "create_note",
           "type": "noodl.byob.CreateRecord",
           "label": "Create note",
-          "parameters": { "class": "Note" }
+          "parameters": { "collection": "Note" }
         },
         {
           "id": "update_note",
           "type": "noodl.byob.UpdateRecord",
           "label": "Update note",
-          "parameters": { "class": "Note" }
+          "parameters": { "collection": "Note" }
         },
         {
           "id": "delete_note",
           "type": "noodl.byob.DeleteRecord",
           "label": "Delete note",
-          "parameters": { "class": "Note" }
+          "parameters": { "collection": "Note" }
         }
       ],
       "connections": [

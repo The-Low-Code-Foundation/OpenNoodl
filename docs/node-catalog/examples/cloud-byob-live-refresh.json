@@ -1,0 +1,50 @@
+{
+  "id": "cloud-byob-live-refresh",
+  "title": "Bring-your-own-backend: live list via Subscribe To Changes",
+  "description": "BYOB queries are snapshots — they only refresh when `fetch` fires. Subscribe To Changes closes that gap: it holds a WebSocket subscription on the collection and fires `changed` whenever any client creates, updates or deletes a record, so wiring `changed` → `fetch` keeps the list current without polling. `subscribed` drives a small 'live' indicator so users can see when realtime updates are active.",
+  "demonstrates": ["noodl.byob.SubscribeToChanges", "noodl.byob.QueryData"],
+  "components": [
+    {
+      "name": "/Live Notes",
+      "nodes": [
+        {
+          "id": "root",
+          "type": "Group",
+          "label": "Live notes",
+          "parameters": { "flexDirection": "column" },
+          "children": ["live_badge", "notes_repeater"]
+        },
+        { "id": "live_badge", "type": "Text", "label": "Live indicator", "parent": "root", "parameters": { "text": "● live" } },
+        { "id": "notes_repeater", "type": "For Each", "label": "Notes", "parent": "root", "parameters": { "template": "/Note Row" } },
+        {
+          "id": "notes_query",
+          "type": "noodl.byob.QueryData",
+          "label": "Fetch notes",
+          "parameters": { "collection": "Note" }
+        },
+        {
+          "id": "notes_subscription",
+          "type": "noodl.byob.SubscribeToChanges",
+          "label": "Watch notes",
+          "parameters": { "collection": "Note" }
+        }
+      ],
+      "connections": [
+        { "fromId": "notes_query", "fromProperty": "records", "toId": "notes_repeater", "toProperty": "items" },
+        { "fromId": "notes_subscription", "fromProperty": "changed", "toId": "notes_query", "toProperty": "fetch" },
+        { "fromId": "notes_subscription", "fromProperty": "subscribed", "toId": "live_badge", "toProperty": "visible" }
+      ]
+    },
+    {
+      "name": "/Note Row",
+      "nodes": [
+        { "id": "row", "type": "Group", "label": "Row", "parameters": { "flexDirection": "row" }, "children": ["title_text"] },
+        { "id": "title_text", "type": "Text", "label": "Title", "parent": "row" },
+        { "id": "row_inputs", "type": "Component Inputs", "label": "Record in" }
+      ],
+      "connections": [
+        { "fromId": "row_inputs", "fromProperty": "title", "toId": "title_text", "toProperty": "text" }
+      ]
+    }
+  ]
+}

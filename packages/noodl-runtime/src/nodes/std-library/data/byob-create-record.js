@@ -407,55 +407,8 @@ function updatePorts(nodeId, parameters, editorConnection, graphModel) {
     });
   });
 
-  // NOTE: 'create' signal is defined in static inputs
-  // Outputs
-  ports.push({
-    name: 'record',
-    displayName: 'Record',
-    type: 'object',
-    plug: 'output',
-    group: 'Results'
-  });
-
-  ports.push({
-    name: 'recordId',
-    displayName: 'Record ID',
-    type: 'string',
-    plug: 'output',
-    group: 'Results'
-  });
-
-  ports.push({
-    name: 'loading',
-    displayName: 'Loading',
-    type: 'boolean',
-    plug: 'output',
-    group: 'Status'
-  });
-
-  ports.push({
-    name: 'error',
-    displayName: 'Error',
-    type: 'object',
-    plug: 'output',
-    group: 'Status'
-  });
-
-  ports.push({
-    name: 'success',
-    displayName: 'Success',
-    type: 'signal',
-    plug: 'output',
-    group: 'Events'
-  });
-
-  ports.push({
-    name: 'failure',
-    displayName: 'Failure',
-    type: 'signal',
-    plug: 'output',
-    group: 'Events'
-  });
+  // NOTE: 'create' signal is defined in static inputs.
+  // Outputs are all static too — pushing them here would list each twice in getPorts().
 
   editorConnection.sendDynamicPorts(nodeId, ports);
 }
