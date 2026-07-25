@@ -2,16 +2,16 @@
  * EmailConfigState (BAK-002) — the email subsystem's config, wired to disk
  * exactly like SecurityState (BAK-003) is: policy in a diffable, deployable,
  * MCP-editable JSON file; the one secret (the SMTP password) in the shared
- * `secrets.json` (see `../security/secrets`).
+ * `secrets.json` via the one `SecretsStore` convention (see `../config/SecretsStore`).
  *
  *   `<dataDir>/email.json`   — SMTP host/port/security, from-address/name,
  *                              the base-URL setting, the verification policy,
  *                              and template overrides. Diffable, deploys with
  *                              the backend, MCP-editable.
- *   `<dataDir>/secrets.json` — `email.smtpPassword`, via the shared
- *                              read-modify-write helper so this never clobbers
- *                              `adminToken` (or, later, WF-005's webhook
- *                              secrets) sitting in the same file.
+ *   `<dataDir>/secrets.json` — `email.smtpPassword`, in the `email` namespace of
+ *                              the shared `SecretsStore` (whole-file read-modify-
+ *                              write) so this never clobbers `adminToken` or
+ *                              WF-005's `webhooks` secrets in the same file.
  *
  * `baseUrl` is the ONE canonical "deployed origin" setting for this backend —
  * defined here because email links need it first, but it is NOT an email-only
@@ -24,8 +24,12 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-import { readSecretsFile, writeSecretsFile } from '../security/secrets';
+import { SecretsStore } from '../config/SecretsStore';
 import { DEFAULT_TEMPLATES, EmailTemplate, TemplateId, isTemplateId } from './templates';
+
+/** The secrets.json namespace this subsystem owns (see config/SecretsStore). */
+const EMAIL_SECRETS_NAMESPACE = 'email';
+const SMTP_PASSWORD_KEY = 'smtpPassword';
 
 const EMAIL_FILE = 'email.json';
 
@@ -176,7 +180,7 @@ export class EmailConfigState {
       this.config = defaultEmailConfig();
     }
 
-    this.smtpPassword = readSecretsFile(dataDir).email?.smtpPassword || '';
+    this.smtpPassword = new SecretsStore(dataDir).get(EMAIL_SECRETS_NAMESPACE, SMTP_PASSWORD_KEY) || '';
   }
 
   save(): void {
@@ -189,12 +193,10 @@ export class EmailConfigState {
     return this.smtpPassword;
   }
 
-  /** Read-modify-write into `secrets.json` under the `email` namespace — never touches `adminToken`. */
+  /** Read-modify-write into `secrets.json` under the `email` namespace — never touches `adminToken` or `webhooks`. */
   setSmtpPassword(password: string): void {
     this.smtpPassword = password;
-    writeSecretsFile(this.dataDir, (secrets) => {
-      secrets.email = { ...(secrets.email || {}), smtpPassword: password };
-    });
+    new SecretsStore(this.dataDir).set(EMAIL_SECRETS_NAMESPACE, SMTP_PASSWORD_KEY, password);
   }
 
   /**

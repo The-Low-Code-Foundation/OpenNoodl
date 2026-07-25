@@ -7,7 +7,7 @@ import * as os from 'os';
 import * as path from 'path';
 
 import { EmailConfigState, EmailConfigStartupError, validateEmailConfig, defaultEmailConfig } from '../src/email/EmailConfigState';
-import { readSecretsFile } from '../src/security/secrets';
+import { SecretsStore } from '../src/config/SecretsStore';
 
 describe('EmailConfigState', () => {
   let dataDir: string;
@@ -68,7 +68,7 @@ describe('EmailConfigState', () => {
     state.setSmtpPassword('hunter2');
     state.save();
     expect(state.getSmtpPassword()).toBe('hunter2');
-    expect(readSecretsFile(dataDir).email).toEqual({ smtpPassword: 'hunter2' });
+    expect(new SecretsStore(dataDir).get('email', 'smtpPassword')).toBe('hunter2');
     // email.json itself never holds the plaintext secret.
     const emailJsonText = fs.readFileSync(path.join(dataDir, 'email.json'), 'utf-8');
     expect(emailJsonText).not.toContain('hunter2');

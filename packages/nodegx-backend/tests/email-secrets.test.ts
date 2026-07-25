@@ -1,16 +1,17 @@
 /**
- * The shared secrets.json convention (BAK-002/BAK-003) — the read-modify-write
- * helper other subsystems (SecurityState's adminToken, EmailConfigState's
- * smtpPassword, and — per the module doc — a future WF-005 webhook-secrets
- * module) share so they never clobber each other's keys.
+ * The shared secrets.json convention seen from the email side — that
+ * EmailConfigState's `email` namespace composes, through the one `SecretsStore`
+ * (config/SecretsStore), with SecurityState's top-level `adminToken` and
+ * WF-005's `webhooks` namespace without any of them clobbering the others.
+ * (SecretsStore's own unit coverage lives in secrets-store.test.ts.)
  */
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 
-import { readSecretsFile, writeSecretsFile, SecretsFileInvalidError } from '../src/security/secrets';
+import { SecretsStore } from '../src/config/SecretsStore';
 
-describe('secrets.json convention', () => {
+describe('secrets.json convention (email namespace composition)', () => {
   let dataDir: string;
 
   beforeEach(() => {
@@ -21,54 +22,43 @@ describe('secrets.json convention', () => {
     fs.rmSync(dataDir, { recursive: true, force: true });
   });
 
-  it('reads {} when the file does not exist yet', () => {
-    expect(readSecretsFile(dataDir)).toEqual({});
+  it('reads undefined when the file does not exist yet', () => {
+    expect(new SecretsStore(dataDir).get('email', 'smtpPassword')).toBeUndefined();
   });
 
   it('writes and reads back a namespaced value', () => {
-    writeSecretsFile(dataDir, (s) => {
-      s.email = { smtpPassword: 'hunter2' };
-    });
-    expect(readSecretsFile(dataDir)).toEqual({ email: { smtpPassword: 'hunter2' } });
+    new SecretsStore(dataDir).set('email', 'smtpPassword', 'hunter2');
+    expect(new SecretsStore(dataDir).get('email', 'smtpPassword')).toBe('hunter2');
   });
 
-  it('is a read-modify-write: writing one namespace never clobbers another', () => {
-    writeSecretsFile(dataDir, (s) => {
-      s.adminToken = 'admin-secret';
-    });
-    writeSecretsFile(dataDir, (s) => {
-      s.email = { smtpPassword: 'mail-secret' };
-    });
-    const secrets = readSecretsFile(dataDir);
-    expect(secrets.adminToken).toBe('admin-secret');
-    expect(secrets.email).toEqual({ smtpPassword: 'mail-secret' });
+  it('preserves a foreign top-level key (SecurityState adminToken) written outside the store', () => {
+    // SecurityState writes adminToken at the top level; simulate that, then
+    // prove the store's namespaced write leaves it intact.
+    fs.writeFileSync(path.join(dataDir, 'secrets.json'), JSON.stringify({ adminToken: 'admin-secret' }), { mode: 0o600 });
+    new SecretsStore(dataDir).set('email', 'smtpPassword', 'mail-secret');
+    const raw = JSON.parse(fs.readFileSync(path.join(dataDir, 'secrets.json'), 'utf-8'));
+    expect(raw.adminToken).toBe('admin-secret');
+    expect(raw.email).toEqual({ smtpPassword: 'mail-secret' });
   });
 
-  it('a hypothetical webhooks namespace round-trips the same way (WF-005 shape)', () => {
-    writeSecretsFile(dataDir, (s) => {
-      s.adminToken = 'admin-secret';
-      s.email = { smtpPassword: 'mail-secret' };
-    });
-    writeSecretsFile(dataDir, (s) => {
-      s.webhooks = { ...(s.webhooks || {}), hook1: 'whsec_abc' };
-    });
-    const secrets = readSecretsFile(dataDir);
-    expect(secrets.adminToken).toBe('admin-secret');
-    expect(secrets.email).toEqual({ smtpPassword: 'mail-secret' });
-    expect(secrets.webhooks).toEqual({ hook1: 'whsec_abc' });
+  it('email and webhooks (WF-005) namespaces round-trip side by side', () => {
+    const store = new SecretsStore(dataDir);
+    store.set('email', 'smtpPassword', 'mail-secret');
+    store.set('webhooks', 'hook1', 'whsec_abc');
+    const raw = JSON.parse(fs.readFileSync(path.join(dataDir, 'secrets.json'), 'utf-8'));
+    expect(raw.email).toEqual({ smtpPassword: 'mail-secret' });
+    expect(raw.webhooks).toEqual({ hook1: 'whsec_abc' });
   });
 
   it('is written at file mode 0600', () => {
-    writeSecretsFile(dataDir, (s) => {
-      s.adminToken = 'x';
-    });
+    new SecretsStore(dataDir).set('email', 'smtpPassword', 'x');
     const mode = fs.statSync(path.join(dataDir, 'secrets.json')).mode & 0o777;
     expect(mode).toBe(0o600);
   });
 
-  it('throws a labeled error on invalid JSON rather than silently resetting', () => {
+  it('throws loudly on invalid JSON rather than silently resetting', () => {
     fs.mkdirSync(dataDir, { recursive: true });
     fs.writeFileSync(path.join(dataDir, 'secrets.json'), '{ not json');
-    expect(() => readSecretsFile(dataDir)).toThrow(SecretsFileInvalidError);
+    expect(() => new SecretsStore(dataDir).get('email', 'smtpPassword')).toThrow(/not valid JSON/);
   });
 });
