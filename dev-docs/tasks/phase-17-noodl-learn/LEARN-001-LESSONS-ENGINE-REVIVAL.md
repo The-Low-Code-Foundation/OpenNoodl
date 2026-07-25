@@ -9,9 +9,18 @@
 | **Priority** | 🟠 High |
 | **Difficulty** | 🟡 Medium |
 | **Estimated Time** | 4–6 weeks |
-| **Prerequisites** | SUB-002 (must preserve the `lesson` project field); coordinate with PLAT-002 |
+| **Prerequisites** | SUB-002 (preserves the `lesson` project field) — ✅ landed; PLAT-002 (jQuery views) — ✅ complete |
 | **Branch** | `task/learn-001-lessons-engine-revival` |
 | **Recommended executor** | 🟠 **Opus 4.8** — archaeology on dormant subsystems is judgement-heavy: deciding what still works, what to keep, and what to rebuild. Once the assessment is done, individual view conversions drop to Sonnet. |
+
+> **Assessment complete (2026-07-24).** Step 1's written finding is published at
+> [LEARN-001-ASSESSMENT.md](./LEARN-001-ASSESSMENT.md). **Verdict: revive, don't rebuild.**
+> Key corrections to the state described below: PLAT-002 already converted the jQuery pieces and
+> **removed the two lesson HTML templates** (they no longer exist); completion detection already
+> observes project-model/graph state (Step 3 is largely pre-satisfied); the entry/discovery UI is
+> the one fully-orphaned piece and is the real new build; the authored-content format should be
+> **replaced**, not repaired; and the legacy 8-lesson curriculum is still hosted and downloadable.
+> SUB-002 has landed, so Step 8 is now a verification. The revised plan is in the assessment §9.
 
 ## Objective
 
@@ -29,24 +38,24 @@ One dependency to respect: v2 export currently drops the project-level `lesson` 
 
 ## Current State
 
-Existing assets (verified present in the tree):
+Existing assets (state verified by the 2026-07-24 assessment):
 
-| Asset | Path |
-|---|---|
-| Lessons project model | `packages/noodl-editor/src/editor/src/models/LessonsProjectModel.ts` |
-| Lesson model | `.../models/lessonmodel.js` |
-| Lesson templates model | `.../models/lessontemplatesmodel.js` |
-| Lesson layer (TypeScript) | `.../views/lessonlayer2.ts` |
-| Lesson layer views (React) | `.../views/lessons/LessonLayerView.jsx`, `LessonItem.jsx` |
-| Evaluation conditions | `.../views/lessons/lessonevalconditions.js` (jQuery-era) |
-| Project-view lesson state | `.../views/projectsview.lessonstate.ts` |
-| HTML templates | `.../templates/lessonlayer.html`, `lessonpopup.html` |
-| Icons | `src/assets/icons/lesson-check-{complete,incomplete,...}.svg` |
-| CSS | `.../styles/projectsview.lessoncards.css` |
+| Asset | Path | State |
+|---|---|---|
+| Lessons project model | `packages/noodl-editor/src/editor/src/models/LessonsProjectModel.ts` | Orphaned — no callers |
+| Lesson model | `.../models/lessonmodel.js` | Works; jQuery→`fetch` conversion done |
+| Lesson templates model | `.../models/lessontemplatesmodel.js` | Orphaned — `fetch()` fires into the void |
+| Lesson layer (TypeScript) | `.../views/lessonlayer2.ts` | Live-wired in EditorPage; untyped |
+| Lesson layer views (React) | `.../views/lessons/LessonLayerView.jsx`, `LessonItem.jsx` | React; work |
+| Evaluation conditions | `.../views/lessons/lessonevalconditions.js` | **jQuery-free (PLAT-002 done).** Observes project-model/graph state. Untyped; uses `eval()` |
+| Project-view lesson state | `.../views/projectsview.lessonstate.ts` | Orphaned — no importers |
+| ~~HTML templates~~ | ~~`.../templates/lessonlayer.html`, `lessonpopup.html`~~ | **Removed by PLAT-002 — no longer exist** |
+| Icons | `src/assets/icons/lesson-check-{complete,incomplete,...}.svg` | Present |
+| CSS | `.../styles/projectsview.lessoncards.css` | Present |
 
-Notable: the system is already partly React (`LessonLayerView.jsx`, `LessonItem.jsx`) and partly legacy jQuery (`lessonevalconditions.js`, the HTML templates) — the same hybrid pattern found throughout the editor. The project model carries a `lesson` field.
+Notable: the whole runtime is already React + TypeScript and **jQuery-free** — PLAT-002 converted the last pieces and removed the HTML templates. The remaining gaps are (1) no entry point surfaces lessons to a user, and (2) the authored-content format is hand-written HTML with JSON embedded in `data-conditions` attributes — unfit for non-programmer curriculum authors. The project model carries a `lesson` field, and it now survives v2 round-trip (SUB-002).
 
-Unknown until assessed: whether lessons currently load and run at all, whether the completion-detection conditions still match current editor internals, and whether any lesson content exists in the repository or was hosted externally.
+Answered by the assessment: lessons do **not** currently load for a user (the render path is live but no UI reaches it); completion conditions **do** still match current editor internals (all coupled APIs present); and lesson content was **hosted externally** — the 8-lesson curriculum is still live at `the-low-code-foundation.github.io/opennoodl-docs/lessons/` (index, project zips, and instruction HTML all fetch 200).
 
 ## Desired State
 

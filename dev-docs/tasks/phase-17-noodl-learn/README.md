@@ -46,4 +46,5 @@ Every task here has to resist a specific gravitational pull: making the AI do th
 
 - [Viability report — §2.2 (pedagogy thesis, ranked and stress-tested)](../../reviews/NOODL-VIABILITY-REPORT.md)
 - [Revival roadmap — Horizon 2, Track E, and Gate G2](../../reviews/NOODL-REVIVAL-ROADMAP.md)
-- Existing lessons code: `packages/noodl-editor/src/editor/src/models/{LessonsProjectModel.ts,lessonmodel.js,lessontemplatesmodel.js}`, `views/lessons/`, `views/lessonlayer2.ts`
+- Existing lessons code: `packages/noodl-editor/src/editor/src/models/{LessonsProjectModel.ts,lessonmodel.js,lessontemplatesmodel.js}`, `views/lessons/`, `views/lessonlayer2.ts` (the two lesson HTML templates the roadmap references were removed by PLAT-002; the DOM is now built in `lessonlayer2.ts`)
+- **LEARN-001 assessment (2026-07-24):** [LEARN-001-ASSESSMENT.md](./LEARN-001-ASSESSMENT.md) — verdict *revive, don't rebuild*; runtime intact and jQuery-free; entry/discovery UI is the missing piece; content format needs replacing; the legacy 8-lesson curriculum is still hosted and downloadable
