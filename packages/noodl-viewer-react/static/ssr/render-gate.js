@@ -172,4 +172,66 @@ function createFetchTracker(fetchImpl) {
   };
 }
 
-module.exports = { settle, createPageReadyGate, createFetchTracker, defaultTick };
+/**
+ * Wraps an XMLHttpRequest constructor with the same in-flight counting as
+ * `createFetchTracker`. The Parse-backed cloud data nodes (cloudstore.js), the
+ * config service and cloud functions all use bare `XMLHttpRequest` — never
+ * fetch — in the browser/SSR branch, and the query nodes auto-fetch on graph
+ * load. Without this, those requests are invisible to `settle` and the server
+ * renders before the data arrives.
+ *
+ * Completion hook: `readystatechange` with `readyState === DONE (4)`. Both the
+ * browser and the `xmlhttprequest` node polyfill fire it on success, error
+ * AND abort (the polyfill's handleError/abort call setState(DONE); the spec's
+ * "request error steps" do the same), so one listener covers every outcome.
+ *
+ * @param {Function} XHRImpl  The XMLHttpRequest constructor to delegate to.
+ * @returns {{
+ *   XMLHttpRequest: Function,
+ *   isIdle: () => boolean,
+ *   inFlight: () => number
+ * }}
+ */
+function createXhrTracker(XHRImpl) {
+  let inFlight = 0;
+
+  function TrackedXMLHttpRequest() {
+    const xhr = new XHRImpl();
+    let pending = false;
+
+    function done() {
+      if (pending) {
+        pending = false;
+        inFlight--;
+      }
+    }
+
+    xhr.addEventListener('readystatechange', function () {
+      if (xhr.readyState === 4) done();
+    });
+
+    const originalSend = xhr.send;
+    xhr.send = function () {
+      if (!pending) {
+        pending = true;
+        inFlight++;
+      }
+      try {
+        return originalSend.apply(xhr, arguments);
+      } catch (e) {
+        done();
+        throw e;
+      }
+    };
+
+    return xhr;
+  }
+
+  return {
+    XMLHttpRequest: TrackedXMLHttpRequest,
+    isIdle: () => inFlight === 0,
+    inFlight: () => inFlight
+  };
+}
+
+module.exports = { settle, createPageReadyGate, createFetchTracker, createXhrTracker, defaultTick };

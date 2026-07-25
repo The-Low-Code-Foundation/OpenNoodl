@@ -1,0 +1,67 @@
+{
+  "name": "RUN-002 probe: REST data resolution",
+  "id": "run002-probe-rest-data",
+  "version": "4",
+  "rootNodeId": "root",
+  "settings": { "htmlTitle": "probe-rest-data" },
+  "components": [
+    {
+      "name": "/App",
+      "id": "c_app",
+      "graph": {
+        "roots": [
+          {
+            "id": "root",
+            "type": "Group",
+            "label": "Root",
+            "x": 0,
+            "y": 0,
+            "parameters": { "flexDirection": "column" },
+            "ports": [],
+            "children": [
+              {
+                "id": "msg_text",
+                "type": "Text",
+                "label": "Message",
+                "x": 0,
+                "y": 100,
+                "parameters": { "text": "WAITING_FOR_DATA" },
+                "ports": [],
+                "children": []
+              }
+            ]
+          },
+          {
+            "id": "rest",
+            "type": "REST2",
+            "label": "Get message",
+            "x": 300,
+            "y": 0,
+            "parameters": {
+              "resource": "http://localhost:4821/api/message",
+              "method": "GET",
+              "responseScript": "Outputs.message = Response.content.message;"
+            },
+            "ports": [{ "name": "out-message", "plug": "output", "type": "string" }],
+            "children": []
+          },
+          {
+            "id": "fn_go",
+            "type": "JavaScriptFunction",
+            "label": "fire fetch on load",
+            "x": 300,
+            "y": 200,
+            "parameters": { "functionScript": "Outputs.go();" },
+            "ports": [{ "name": "out-go", "plug": "output", "type": "signal" }],
+            "children": []
+          }
+        ],
+        "connections": [
+          { "fromId": "fn_go", "fromProperty": "out-go", "toId": "rest", "toProperty": "fetch" },
+          { "fromId": "rest", "fromProperty": "out-message", "toId": "msg_text", "toProperty": "text" }
+        ]
+      }
+    }
+  ],
+  "metadata": {}
+}

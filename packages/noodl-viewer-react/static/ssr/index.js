@@ -21,7 +21,6 @@ async function cacheFetch(args, callback) {
 // In the DOM, these are global.
 globalThis.React = React;
 globalThis.ReactDOM = ReactDOMServer;
-globalThis.XMLHttpRequest = XMLHttpRequest;
 globalThis.File = class File {};
 
 globalThis.__noodl_modules = [];
@@ -42,7 +41,7 @@ globalThis.requestAnimationFrame = (callback) => setImmediate(callback);
 // webpack copies the whole static/ssr directory into the deploy runtime, so
 // they travel alongside this server.
 const { injectSeo } = require('./inject-seo');
-const { settle, createPageReadyGate, createFetchTracker } = require('./render-gate');
+const { settle, createPageReadyGate, createFetchTracker, createXhrTracker } = require('./render-gate');
 
 // Async work the runtime awaits (bundle loads, data fetches) is invisible to
 // its update scheduler, so the render gate consults the tracker's in-flight
@@ -64,6 +63,15 @@ const fetchTracker = createFetchTracker(async (args) => {
   return await fetch(args);
 });
 globalThis.fetch = fetchTracker.fetch;
+
+// The Parse-backed cloud data nodes (Query Records etc. via cloudstore.js),
+// the config service and cloud functions use XMLHttpRequest — not fetch — in
+// their browser/SSR branch, and the query nodes fetch AUTOMATICALLY on graph
+// load. Track XHR the same way so the render waits for that data too.
+const xhrTracker = createXhrTracker(XMLHttpRequest);
+globalThis.XMLHttpRequest = xhrTracker.XMLHttpRequest;
+
+const trackersIdle = () => fetchTracker.isIdle() && xhrTracker.isIdle();
 
 class LocalStorageMock {
   constructor() {
@@ -168,7 +176,7 @@ async function buildPage(path) {
     // runtime emitter and would never have heard the pages.
     const gate = createPageReadyGate(noodlRuntime.context.eventEmitter);
 
-    const settleOpts = { isIdle: fetchTracker.isIdle };
+    const settleOpts = { isIdle: trackersIdle };
 
     noodlRuntime.eventEmitter.once('rootComponentUpdated', async () => {
       try {

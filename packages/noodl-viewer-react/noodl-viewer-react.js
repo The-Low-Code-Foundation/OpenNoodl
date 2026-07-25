@@ -4,7 +4,7 @@ import NoodlRuntime from '@noodl/runtime';
 
 import registerPolyfills from './src/polyfills';
 import Viewer, { ssrSetupRuntime } from './src/viewer.jsx';
-import { settle, createPageReadyGate, createFetchTracker } from './static/ssr/render-gate';
+import { settle, createPageReadyGate, createFetchTracker, createXhrTracker } from './static/ssr/render-gate';
 
 registerPolyfills();
 
@@ -110,13 +110,18 @@ export default {
     });
 
     // Bundle loads and data fetches are invisible to the runtime's update
-    // scheduler; count them via window.fetch so settle can wait for them.
-    // Restored before hydration so the app's later fetches are untouched.
+    // scheduler; count them via window.fetch AND window.XMLHttpRequest so
+    // settle can wait for them (the Parse cloud data nodes use XHR, not fetch,
+    // and Query Records auto-fetches on graph load). Both are restored before
+    // hydration so the app's later requests are untouched.
     const originalFetch = window.fetch;
+    const originalXHR = window.XMLHttpRequest;
     const tracker = createFetchTracker(originalFetch.bind(window));
+    const xhrTracker = createXhrTracker(originalXHR);
 
     try {
       window.fetch = tracker.fetch;
+      window.XMLHttpRequest = xhrTracker.XMLHttpRequest;
 
       // Subscribe before the graph loads: pages announce SSR_PageLoading from
       // their nodeScopeDidInitialize (context emitter, not the runtime one).
@@ -128,7 +133,7 @@ export default {
         noodlRuntime.rootComponent.triggerDidMount();
       }
 
-      const settleOpts = { isIdle: tracker.isIdle };
+      const settleOpts = { isIdle: () => tracker.isIdle() && xhrTracker.isIdle() };
       await settle(noodlRuntime, settleOpts);
 
       if (gate.hasPendingPages()) {
@@ -143,6 +148,7 @@ export default {
       }
     } finally {
       window.fetch = originalFetch;
+      window.XMLHttpRequest = originalXHR;
     }
 
     if (currentRoot) {

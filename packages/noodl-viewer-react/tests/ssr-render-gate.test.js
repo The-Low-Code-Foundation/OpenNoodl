@@ -6,7 +6,7 @@
  * SSR_PageReady handshake for pages that gate the render explicitly.
  */
 const EventEmitter = require('events');
-const { settle, createPageReadyGate, createFetchTracker } = require('../static/ssr/render-gate');
+const { settle, createPageReadyGate, createFetchTracker, createXhrTracker } = require('../static/ssr/render-gate');
 
 // Instant tick so tests don't wait on real timers.
 const tick = () => Promise.resolve();
@@ -187,5 +187,114 @@ describe('createFetchTracker', () => {
     const tracker = createFetchTracker(impl);
     await tracker.fetch('/url', { method: 'POST' });
     expect(impl).toHaveBeenCalledWith('/url', { method: 'POST' });
+  });
+});
+
+describe('createXhrTracker', () => {
+  /**
+   * Minimal XHR double mirroring the contract both the browser and the
+   * `xmlhttprequest` node polyfill honour: readystatechange fires with
+   * readyState 4 on success, error AND abort.
+   */
+  class FakeXHR {
+    constructor() {
+      this.readyState = 0;
+      this._listeners = {};
+      FakeXHR.instances.push(this);
+    }
+    addEventListener(event, cb) {
+      (this._listeners[event] = this._listeners[event] || []).push(cb);
+    }
+    open() {
+      this.readyState = 1;
+    }
+    send() {
+      this.sent = true;
+    }
+    _complete() {
+      this.readyState = 4;
+      (this._listeners['readystatechange'] || []).forEach((cb) => cb());
+    }
+  }
+  FakeXHR.instances = [];
+  beforeEach(() => {
+    FakeXHR.instances = [];
+  });
+
+  it('is idle before send and busy from send until readyState 4', () => {
+    const tracker = createXhrTracker(FakeXHR);
+    const xhr = new tracker.XMLHttpRequest();
+    xhr.open('GET', '/classes/things');
+    expect(tracker.isIdle()).toBe(true);
+
+    xhr.send();
+    expect(tracker.isIdle()).toBe(false);
+    expect(tracker.inFlight()).toBe(1);
+
+    FakeXHR.instances[0]._complete();
+    expect(tracker.isIdle()).toBe(true);
+  });
+
+  it('counts overlapping requests independently', () => {
+    const tracker = createXhrTracker(FakeXHR);
+    const a = new tracker.XMLHttpRequest();
+    const b = new tracker.XMLHttpRequest();
+    a.send();
+    b.send();
+    expect(tracker.inFlight()).toBe(2);
+
+    FakeXHR.instances[0]._complete();
+    expect(tracker.inFlight()).toBe(1);
+    FakeXHR.instances[1]._complete();
+    expect(tracker.isIdle()).toBe(true);
+  });
+
+  it('does not double-decrement when readystatechange 4 fires twice', () => {
+    const tracker = createXhrTracker(FakeXHR);
+    const a = new tracker.XMLHttpRequest();
+    const b = new tracker.XMLHttpRequest();
+    a.send();
+    b.send();
+
+    FakeXHR.instances[0]._complete();
+    FakeXHR.instances[0]._complete(); // e.g. abort after DONE re-fires listeners
+    expect(tracker.inFlight()).toBe(1); // b still pending — not driven to 0
+  });
+
+  it('returns to idle when send throws synchronously, and rethrows', () => {
+    class ThrowingXHR extends FakeXHR {
+      send() {
+        throw new Error('bad request');
+      }
+    }
+    const tracker = createXhrTracker(ThrowingXHR);
+    const xhr = new tracker.XMLHttpRequest();
+    expect(() => xhr.send()).toThrow('bad request');
+    expect(tracker.isIdle()).toBe(true);
+  });
+
+  it('handles completion during send (synchronous XHR)', () => {
+    class SyncXHR extends FakeXHR {
+      send() {
+        this._complete();
+      }
+    }
+    const tracker = createXhrTracker(SyncXHR);
+    const xhr = new tracker.XMLHttpRequest();
+    xhr.send();
+    expect(tracker.isIdle()).toBe(true);
+  });
+
+  it('passes send arguments through to the wrapped implementation', () => {
+    const sendSpy = jest.fn();
+    class SpyXHR extends FakeXHR {
+      send(...args) {
+        sendSpy(...args);
+      }
+    }
+    const tracker = createXhrTracker(SpyXHR);
+    const xhr = new tracker.XMLHttpRequest();
+    xhr.send('{"where":{}}');
+    expect(sendSpy).toHaveBeenCalledWith('{"where":{}}');
   });
 });
