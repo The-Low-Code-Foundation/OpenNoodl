@@ -75,13 +75,29 @@ Every tool accepts either form; responses carry both.
 | `list_examples` / `get_example` | Browse and fetch validated example graph fragments. |
 | `validate_component` / `validate_project` | SUB-006 semantic diagnostics on demand (`strict` promotes unknown types to errors). |
 
-### Author (only with `--allow-writes`)
+### Backend permissions — read (always available)
+
+Unlike every other tool, these talk to a **running** `nodegx-backend` over HTTP
+(discovered under `~/.noodl/backends/`, admin credential read from the backend's
+own `secrets.json`). See [BAK-003](../../docs/runtime/BACKEND-ACCESS-CONTROL.md).
+
+| Tool | Purpose |
+|------|---------|
+| `list_backends` | Configured local backends: id, name, port, reachable, whether the admin credential is present. |
+| `get_backend_permissions` | Full access-control config: CLPs, creator-owns, function/file rules, whether enforcement is active. |
+| `list_backend_roles` / `list_backend_api_keys` | Roles + members; keys (names, scopes, status — never secrets). |
+| `check_backend_access` | Server-side dry run: does a hypothetical principal get `find`/`get`/… on a collection, or call a function? Names the deciding rule. Verify a change took effect without a live session. |
+
+### Author + backend permissions — write (only with `--allow-writes`)
 
 | Tool | Purpose |
 |------|---------|
 | `create_component` | New component from nodes/connections. Validated before writing. |
 | `update_component` | One component change: full `set` replacement **or** a batch of `operations` (`add_node`, `update_node`, `remove_node`, `add_connection`, `remove_connection`, `set_visual_roots`, `set_ports`, `set_component_info`). Supports `if_revision`. |
 | `delete_component` | Refuses while referenced (lists usages) unless `force`. |
+| `set_collection_permissions` / `reset_collection_permissions` | Lock/open a collection (per-op rules + creator-owns), or revert to defaults. Rejected with the reason on a malformed rule or a system collection. |
+| `create_backend_role` / `delete_backend_role` / `assign_role_user` | Manage roles and membership (`assign_role_user` with `remove: true` revokes). |
+| `create_backend_api_key` / `revoke_backend_api_key` | Issue a scoped key (secret returned once) or revoke one. |
 
 **Write policy.** Every write is validated first — JSON-schema structure, then
 the semantic validator with unknown node types promoted to errors (pass

@@ -71,12 +71,37 @@ Two constraints shape the design. First, **the wire protocol is the Parse subset
 
 ## Success Criteria
 
-- [ ] Model document recorded and referenced by the downstream specs
-- [ ] Two users on a deployed backend cannot read each other's creator-owned records — via query, get, count, aggregate, distinct, *or* realtime
-- [ ] Deploying with dev-open on refuses to start, loudly
-- [ ] An API key scoped to one function cannot call others or touch `/classes`
-- [ ] An agent can, via MCP alone: lock a collection to a role, create the role, assign a user, verify the effect
-- [ ] Adversarial suite green; enforcement provably on every route (route-table test that fails when a new route skips the middleware)
+- [x] Model document recorded and referenced by the downstream specs — [BAK-003-SECURITY-MODEL.md](./BAK-003-SECURITY-MODEL.md)
+- [x] Two users on a deployed backend cannot read each other's creator-owned records — via query, get, count, aggregate, distinct (realtime is BAK-001, which consumes `canReadRecord` from this task). Proven in `security-enforcement.test.ts`.
+- [x] Deploying with dev-open on refuses to start, loudly — the startup interlock; tested in `service-http.test.ts`.
+- [x] An API key scoped to one function cannot call others or touch `/classes` — `security-enforcement.test.ts`.
+- [x] An agent can, via MCP alone: lock a collection to a role, create the role, assign a user, verify the effect — driven end-to-end against a real spawned backend in `noodl-mcp/tests/backendTools.test.ts`.
+- [x] Adversarial suite green; enforcement provably on every route — the route-table walk in `security-enforcement.test.ts` fails on any route added without an access declaration.
+
+## Status — COMPLETE (2026-07-25)
+
+Shipped on `cline-dev`. The model document is the decision of record; the SQL
+ACL filter and the JS `canReadRecord` twin are property-tested against each
+other (BAK-001's contract). Enforcement is structural (declarative route table,
+route-walk test). Panel live-verified in the running editor (config/schema/role
+read + role create/delete round-trip over IPC). Runtime 356, nodegx-backend 75,
+noodl-mcp 45 tests green; editor tsc clean.
+
+**Residuals / notes for downstream:**
+- **Run-as-caller** (`functions.<name>.runAs: "caller"`) is *specified* but not
+  built — it needs a per-run cloud-services credential seam (the
+  `_noodl_cloudservices` global is process-wide). It is **rejected at config
+  load**, not accepted-and-ignored, so no security setting silently no-ops.
+- Realtime ACL delivery is BAK-001's to wire; it imports `canReadRecord` /
+  `resolvePrincipal` from `nodegx-backend/src/security/model`. The spec's "flip
+  BAK-001's delivery hook" item is inverted by execution order — BAK-003 landed
+  first, so BAK-001 consumes the contract from day one rather than flipping a
+  placeholder.
+- ServiceSupervisor now sends the admin credential on proxied IPC; the editor
+  never surfaces host/token config (still localhost-only child processes) — a
+  deployed backend's admin token lives in its `secrets.json`.
+- Packaged-app run of the panel not exercised (packaging-trap history: treat as
+  unverified until a signed build).
 
 ## Risks & Mitigations
 
@@ -97,8 +122,8 @@ Two constraints shape the design. First, **the wire protocol is the Parse subset
 
 ## Checklist
 
-- [ ] Model document written, reviewed against downstream tasks, recorded
-- [ ] Middleware + posture + interlock; ACL SQL + correctness suite
-- [ ] Roles, keys, admin credential, creator-owns
-- [ ] Panel + MCP; BAK-001 flip; migration
-- [ ] Adversarial suite; security docs; CHANGELOG
+- [x] Model document written, reviewed against downstream tasks, recorded
+- [x] Middleware + posture + interlock; ACL SQL + correctness suite
+- [x] Roles, keys, admin credential, creator-owns
+- [x] Panel + MCP; BAK-001 contract exported (flip inverted — see Status); migration (default security.json + one-time notice on first start)
+- [x] Adversarial suite; security docs; CHANGELOG
