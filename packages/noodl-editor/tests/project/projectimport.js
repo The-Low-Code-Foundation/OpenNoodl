@@ -337,6 +337,80 @@ describe('Project import and export unit tests', function () {
     });
   });
 
+  // ── Characterization: id semantics the import engine v2 must preserve ──────
+  // The legacy engine (projectimporter.js:388–398) re-keys every imported
+  // component and its nodes to fresh ids, EXCEPT that an overwrite reuses the
+  // existing target component's id so references to it keep resolving. Nothing
+  // documented or tested this; these pin it as the contract for apply().
+
+  it('overwrite reuses the target component id (characterization)', function (done) {
+    // Target: proj1 (has /Main). Source: proj2 (only /Main, no resources) — a
+    // model-only overwrite, so no files are written to the fixture on disk.
+    projectFromDirectory(Process.cwd() + '/tests/testfs/import_proj1', function (project) {
+      ProjectModel.instance = project;
+
+      const targetMain = ProjectModel.instance.getComponentWithName('/Main');
+      targetMain.id = 'TARGET-MAIN-ID';
+
+      ProjectImporter.instance.listComponentsAndDependencies(
+        Process.cwd() + '/tests/testfs/import_proj2',
+        function (imports) {
+          expect(imports.resources).toEqual([]); // guard: model-only, safe on disk
+          ProjectImporter.instance.import(Process.cwd() + '/tests/testfs/import_proj2', imports, function (r) {
+            expect(r.result).toBe('success');
+            const after = ProjectModel.instance.getComponentWithName('/Main');
+            // The overwritten component keeps the TARGET's id, not a fresh one.
+            expect(after.id).toBe('TARGET-MAIN-ID');
+            done();
+          });
+        }
+      );
+    });
+  });
+
+  it('re-keys imported node ids while reusing the target component id (characterization)', function (done) {
+    // Target: a temp copy of proj2 (/Main empty). Source: proj1 (/Main with 4
+    // nodes + resources) — imported into the temp copy so file copies are legal.
+    const srcMain = require('../testfs/import_proj1/project.json').components.find((c) => c.name === '/Main');
+    const srcNodeIds = [];
+    (function walk(nodes) {
+      (nodes || []).forEach((n) => {
+        srcNodeIds.push(n.id);
+        walk(n.children);
+      });
+    })(srcMain.graph.roots);
+
+    const tempDir = App.getPath('temp') + '/noodlunittests-' + Utils.guid() + '/';
+    FileSystem.instance.makeDirectory(tempDir, function () {
+      ncp(Process.cwd() + '/tests/testfs/import_proj2', tempDir + '/p', function (err) {
+        if (err) throw err;
+        projectFromDirectory(tempDir + '/p', function (project) {
+          ProjectModel.instance = project;
+          const tMain = ProjectModel.instance.getComponentWithName('/Main');
+          tMain.id = 'T-ID';
+
+          ProjectImporter.instance.listComponentsAndDependencies(
+            Process.cwd() + '/tests/testfs/import_proj1',
+            function (imports) {
+              ProjectImporter.instance.import(Process.cwd() + '/tests/testfs/import_proj1', imports, function (r) {
+                expect(r.result).toBe('success');
+                const after = ProjectModel.instance.getComponentWithName('/Main');
+                expect(after.id).toBe('T-ID'); // overwrite reused the target id
+
+                const afterIds = [];
+                after.forEachNodeRecursive((n) => afterIds.push(n.id));
+                expect(afterIds.length).toBe(4); // proj1's /Main nodes (1 root + 3 children)
+                // ...but every one was re-keyed to a fresh id.
+                srcNodeIds.forEach((id) => expect(afterIds.indexOf(id)).toBe(-1));
+                done();
+              });
+            }
+          );
+        });
+      });
+    });
+  });
+
   it('ignores .git', function (done) {
     const path = Process.cwd() + '/tests/testfs/import_proj4/';
 
