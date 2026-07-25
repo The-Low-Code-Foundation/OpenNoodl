@@ -181,6 +181,16 @@ export class BackendService {
   }
 
   /**
+   * The running server's route table (method/pattern/access). The route-walk
+   * test iterates this to prove enforcement covers every route — a route added
+   * without an access declaration cannot appear here (TS) and a route that
+   * answers unauthenticated on a locked backend fails the walk.
+   */
+  getRouteTable(): import('./server/HttpServer').RouteInfo[] {
+    return this.http ? this.http.getRouteTable() : [];
+  }
+
+  /**
    * Parse's built-in classes, pre-created so the session endpoints can query
    * them before any row exists (a `where` on a column of a not-yet-created
    * table is a SQL error, not an empty result).
