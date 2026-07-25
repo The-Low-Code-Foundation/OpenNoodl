@@ -118,31 +118,69 @@ export function parseDirectusSchema(data: unknown, schema: CachedSchema = emptyS
 }
 
 /**
+ * A property entry in the OpenAPI spec PostgREST serves (Supabase's /rest/v1/
+ * root is exactly this document). PostgREST annotates keys in the description:
+ *   PK: "Note:\nThis is a Primary Key.<pk/>"
+ *   FK: "Note:\nThis is a Foreign Key to `authors.id`.<fk table='authors' column='id'/>"
+ * and carries postgres ENUM types as an `enum` values array.
+ */
+interface SupabaseOpenApiProperty {
+  type?: string;
+  format?: string;
+  description?: string;
+  default?: unknown;
+  enum?: string[];
+}
+
+const SUPABASE_FK_RE = /<fk table='([^']+)' column='[^']*'\/>/;
+
+/**
  * Parse Supabase schema from the OpenAPI spec served at /rest/v1/.
+ * Recovers enums, primary keys, required columns, defaults, and M2O relations
+ * from PostgREST's annotations (verified against a live PostgREST instance —
+ * see uba-e2e/SUPABASE-CONTACT-OUTPUT.txt).
  */
 export function parseSupabaseSchema(data: unknown, schema: CachedSchema = emptySchema()): CachedSchema {
   // Supabase returns OpenAPI spec with definitions/paths
   const openApi = (data ?? {}) as {
-    definitions?: Record<string, { properties?: Record<string, { type?: string; format?: string }> }>;
+    definitions?: Record<
+      string,
+      { properties?: Record<string, SupabaseOpenApiProperty>; required?: string[] }
+    >;
   };
 
   if (openApi.definitions) {
     for (const [tableName, tableDef] of Object.entries(openApi.definitions)) {
+      const requiredColumns = tableDef.required || [];
+      let primaryKey = 'id';
+
       const fields =
         tableDef.properties &&
-        Object.entries(tableDef.properties).map(([fieldName, fieldDef]) => ({
-          name: fieldName,
-          displayName: fieldName,
-          type: fieldDef.type || 'unknown',
-          nativeType: fieldDef.format || fieldDef.type || 'unknown',
-          required: false
-        }));
+        Object.entries(tableDef.properties).map(([fieldName, fieldDef]) => {
+          const isPrimaryKey = fieldDef.description?.includes('<pk/>') || undefined;
+          if (isPrimaryKey) primaryKey = fieldName;
+          const fkTable = fieldDef.description?.match(SUPABASE_FK_RE)?.[1];
+
+          const field: SchemaField = {
+            name: fieldName,
+            displayName: fieldName,
+            type: fieldDef.type || 'unknown',
+            nativeType: fieldDef.format || fieldDef.type || 'unknown',
+            required: requiredColumns.includes(fieldName),
+            primaryKey: isPrimaryKey,
+            defaultValue: fieldDef.default,
+            enumValues: Array.isArray(fieldDef.enum) && fieldDef.enum.length > 0 ? fieldDef.enum : undefined,
+            relationTarget: fkTable,
+            relationType: fkTable ? 'many-to-one' : undefined
+          };
+          return field;
+        });
 
       schema.collections.push({
         name: tableName,
         displayName: tableName,
         fields: fields || [],
-        primaryKey: 'id'
+        primaryKey
       });
     }
   }

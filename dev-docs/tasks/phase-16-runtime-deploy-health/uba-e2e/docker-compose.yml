@@ -12,3 +12,36 @@ services:
       DB_FILENAME: "/directus/database/data.db"
       WEBSOCKETS_ENABLED: "true"
       PUBLIC_URL: "http://localhost:8055"
+
+  # ── Supabase-shaped stack (profile: supabase) ────────────────────────────
+  # Supabase's REST layer IS PostgREST, and its /rest/v1/ root serves the same
+  # OpenAPI document PostgREST serves at /. This pair verifies the Supabase
+  # schema parser against a real spec (auth headers differ; parser input is
+  # identical). Start with: docker compose --profile supabase up -d
+  supabase-db:
+    profiles: ["supabase"]
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_PASSWORD: "supabase-e2e-pw"
+      POSTGRES_DB: "app"
+    volumes:
+      - ./supabase-seed.sql:/docker-entrypoint-initdb.d/seed.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d app"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
+  supabase-rest:
+    profiles: ["supabase"]
+    image: postgrest/postgrest:v12.2.3
+    ports:
+      - "8056:3000"
+    environment:
+      PGRST_DB_URI: "postgres://postgres:supabase-e2e-pw@supabase-db:5432/app"
+      PGRST_DB_SCHEMA: "public"
+      PGRST_DB_ANON_ROLE: "web_anon"
+      PGRST_OPENAPI_MODE: "ignore-privileges"
+    depends_on:
+      supabase-db:
+        condition: service_healthy

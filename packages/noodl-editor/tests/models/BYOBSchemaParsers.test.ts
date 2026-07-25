@@ -175,13 +175,28 @@ describe('parseDirectusSchema', () => {
 // ─── Supabase (OpenAPI at /rest/v1/) ─────────────────────────────────────────
 
 describe('parseSupabaseSchema', () => {
+  // Mirrors the OpenAPI document a live PostgREST serves (Supabase /rest/v1/
+  // root) — annotations verified against a real instance, see
+  // dev-docs/tasks/phase-16-runtime-deploy-health/uba-e2e/SUPABASE-CONTACT-OUTPUT.txt
   const openApi = {
     definitions: {
       products: {
+        required: ['sku', 'name'],
         properties: {
-          id: { type: 'integer', format: 'bigint' },
+          sku: { type: 'integer', format: 'bigint', description: 'Note:\nThis is a Primary Key.<pk/>' },
           name: { type: 'string', format: 'text' },
-          in_stock: { type: 'boolean', format: 'boolean' }
+          in_stock: { type: 'boolean', format: 'boolean' },
+          status: {
+            type: 'string',
+            format: 'public.product_status',
+            enum: ['draft', 'live'],
+            default: 'draft'
+          },
+          vendor_id: {
+            type: 'integer',
+            format: 'integer',
+            description: "Note:\nThis is a Foreign Key to `vendors.id`.<fk table='vendors' column='id'/>"
+          }
         }
       },
       orders: { properties: { id: { type: 'integer' } } }
@@ -193,7 +208,37 @@ describe('parseSupabaseSchema', () => {
     expect(schema.collections.map((c) => c.name)).toEqual(['products', 'orders']);
     const products = schema.collections.find((c) => c.name === 'products');
     expect(products?.fields.find((f) => f.name === 'in_stock')?.type).toBe('boolean');
-    expect(products?.fields.find((f) => f.name === 'id')?.nativeType).toBe('bigint');
+    expect(products?.fields.find((f) => f.name === 'sku')?.nativeType).toBe('bigint');
+  });
+
+  it('detects the primary key from the <pk/> annotation', () => {
+    const schema = parseSupabaseSchema(openApi);
+    const products = schema.collections.find((c) => c.name === 'products');
+    expect(products?.primaryKey).toBe('sku');
+    expect(products?.fields.find((f) => f.name === 'sku')?.primaryKey).toBe(true);
+    // No annotation → default fallback
+    expect(schema.collections.find((c) => c.name === 'orders')?.primaryKey).toBe('id');
+  });
+
+  it('parses postgres ENUM columns into enumValues with their default', () => {
+    const schema = parseSupabaseSchema(openApi);
+    const status = schema.collections.find((c) => c.name === 'products')?.fields.find((f) => f.name === 'status');
+    expect(status?.enumValues).toEqual(['draft', 'live']);
+    expect(status?.defaultValue).toBe('draft');
+  });
+
+  it('parses M2O relations from the <fk .../> annotation', () => {
+    const schema = parseSupabaseSchema(openApi);
+    const vendor = schema.collections.find((c) => c.name === 'products')?.fields.find((f) => f.name === 'vendor_id');
+    expect(vendor?.relationTarget).toBe('vendors');
+    expect(vendor?.relationType).toBe('many-to-one');
+  });
+
+  it('marks required columns from the definition-level required array', () => {
+    const schema = parseSupabaseSchema(openApi);
+    const products = schema.collections.find((c) => c.name === 'products');
+    expect(products?.fields.find((f) => f.name === 'name')?.required).toBe(true);
+    expect(products?.fields.find((f) => f.name === 'in_stock')?.required).toBe(false);
   });
 
   it('returns an empty schema when definitions are missing', () => {

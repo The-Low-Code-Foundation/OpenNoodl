@@ -23,8 +23,9 @@ The recorded findings are in [`../RUN-003-ASSESSMENT.md`](../RUN-003-ASSESSMENT.
 | `seed.mjs` | Seeds a rich schema: `authors` + `articles` with a M2O relation, a file relation, an enum (dropdown), a timestamp, an integer, a boolean |
 | `driver.ts` | Drives the real `UBAClient`/`SchemaParser` against Directus (4 probes) |
 | `byob-driver.ts` + `build-byob.mjs` | Drives the real `BackendServices` parsers + `byob-utils` against Directus (3 probes) |
+| `supabase-driver.ts` + `supabase-seed.sql` | Drives the real `parseSupabaseSchema` against a live PostgREST OpenAPI spec (Supabase's REST layer *is* PostgREST) — enums, `<pk/>`, `<fk/>`, required[]; plus the preset's filter syntax live |
 | `stub-*.js` | Three tiny stubs that let the editor/runtime sources bundle standalone (see byob-driver header) |
-| `FIRST-CONTACT-OUTPUT.txt` / `BYOB-CONTACT-OUTPUT.txt` | Recorded outputs of full runs |
+| `FIRST-CONTACT-OUTPUT.txt` / `BYOB-CONTACT-OUTPUT.txt` / `SUPABASE-CONTACT-OUTPUT.txt` | Recorded outputs of full runs |
 
 ## Run it
 
@@ -42,7 +43,11 @@ node driver.cjs
 # BYOB reality-check probes
 node build-byob.mjs && node byob-driver.cjs
 
-docker compose down            # add -v to also drop the volume
+# Supabase-parser verification (PostgREST stack, port 8056)
+docker compose --profile supabase up -d
+node build-byob.mjs supabase && node supabase-driver.cjs
+
+docker compose --profile supabase down   # add -v to also drop the volumes
 ```
 
 `driver.ts` imports the two UBA source files by relative path. Both use only
