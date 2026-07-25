@@ -1,0 +1,5 @@
+{
+  "main": "index.js",
+  "dependencies": "not-an-array-should-be-a-list",
+  "runtimes": "browser"
+}

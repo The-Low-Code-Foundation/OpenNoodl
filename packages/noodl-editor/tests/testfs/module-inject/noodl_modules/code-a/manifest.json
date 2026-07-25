@@ -1,0 +1,16 @@
+{
+  "main": "index.js",
+  "runtimes": ["browser"],
+  "dependencies": [
+    "https://cdn.example.com/vendor.min.js",
+    "vendor/local-lib.js"
+  ],
+  "browser": {
+    "head": ["<meta name=\"code-a\" content=\"1\">"],
+    "styles": [".code-a { color: red; }"],
+    "stylesheets": [
+      "https://cdn.example.com/theme.css",
+      "styles/local.css"
+    ]
+  }
+}
