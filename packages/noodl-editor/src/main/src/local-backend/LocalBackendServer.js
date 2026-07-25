@@ -506,7 +506,11 @@ class LocalBackendServer {
       this.workflowRunner = new WorkflowRunner({
         workflowsPath: this.config.workflowsPath,
         adapter: this.adapter,
-        enableDebugInspectors: false
+        enableDebugInspectors: false,
+        // WF-006: carried through into every execution-history record this
+        // backend's function calls produce.
+        backendId: this.config.id,
+        backendName: this.config.name
       });
 
       try {

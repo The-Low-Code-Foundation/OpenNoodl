@@ -360,8 +360,9 @@ describe('ExecutionLogger', () => {
       });
 
       const step = store.steps.get('step_1');
-      expect(step?.inputData?.__truncated).toBe(true);
-      expect(step?.inputData?.__originalSize).toBeGreaterThan(100);
+      const inputData = step?.inputData as Record<string, unknown> | undefined;
+      expect(inputData?.__truncated).toBe(true);
+      expect(inputData?.__originalSize).toBeGreaterThan(100);
     });
 
     it('should not truncate small data', () => {

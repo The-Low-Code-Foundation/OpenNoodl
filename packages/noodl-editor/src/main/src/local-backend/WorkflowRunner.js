@@ -12,6 +12,14 @@ const fs = require('fs').promises;
 const path = require('path');
 const EventEmitter = require('events');
 
+// WF-006: log every function execution to the shared execution-history store.
+// Both are plain-CommonJS-reachable from a .ts file compiled into the same
+// main-process webpack bundle (ts-loader, transpileOnly) — see
+// ../execution-history/ExecutionHistoryManager.ts for why a fresh logger is
+// created per run rather than one shared instance being reused.
+const { executionHistoryManager } = require('../execution-history/ExecutionHistoryManager');
+const { scrubRequestForLogging } = require('../execution-history/scrub');
+
 /**
  * Safe console.log wrapper to prevent EPIPE errors
  */
@@ -35,11 +43,15 @@ class WorkflowRunner {
    * @param {string} options.workflowsPath - Path to workflows directory
    * @param {Object} options.adapter - LocalSQLAdapter instance for database access
    * @param {boolean} [options.enableDebugInspectors=false] - Enable debug inspectors
+   * @param {string} [options.backendId] - Owning backend's ID (WF-006 execution metadata)
+   * @param {string} [options.backendName] - Owning backend's display name (WF-006 execution metadata)
    */
   constructor(options) {
     this.workflowsPath = options.workflowsPath;
     this.adapter = options.adapter;
     this.enableDebugInspectors = options.enableDebugInspectors || false;
+    this.backendId = options.backendId || null;
+    this.backendName = options.backendName || null;
 
     this.cloudRunner = null;
     this.loadedWorkflows = new Map(); // name -> export data
@@ -296,6 +308,24 @@ class WorkflowRunner {
 
     const startTime = Date.now();
 
+    // WF-006: a fresh logger per run (see ExecutionHistoryManager.ts for why),
+    // backed by the one shared store. `createLogger()` returns null if the
+    // store never initialized — a missing history entry must never block a
+    // real function execution, so every logger call below is guarded.
+    const logger = executionHistoryManager.createLogger();
+    if (logger) {
+      logger.startExecution({
+        workflowId: functionName,
+        workflowName: functionName,
+        triggerType: 'webhook',
+        triggerData: scrubRequestForLogging(request || {}),
+        metadata: {
+          backendId: this.backendId,
+          backendName: this.backendName
+        }
+      });
+    }
+
     try {
       safeLog(`Executing function: ${functionName}`);
 
@@ -305,18 +335,27 @@ class WorkflowRunner {
       const duration = Date.now() - startTime;
       safeLog(`Function ${functionName} completed in ${duration}ms`);
 
+      const success = response.statusCode >= 200 && response.statusCode < 300;
+      if (logger) {
+        logger.completeExecution(success, success ? undefined : new Error(`HTTP ${response.statusCode}`));
+      }
+
       // Emit execution event for logging/debugging
       this.events.emit('functionExecuted', {
         functionName,
         duration,
         statusCode: response.statusCode,
-        success: response.statusCode >= 200 && response.statusCode < 300
+        success
       });
 
       return response;
     } catch (error) {
       const duration = Date.now() - startTime;
       safeLog(`Function ${functionName} failed after ${duration}ms:`, error.message);
+
+      if (logger) {
+        logger.completeExecution(false, error);
+      }
 
       this.events.emit('functionExecuted', {
         functionName,

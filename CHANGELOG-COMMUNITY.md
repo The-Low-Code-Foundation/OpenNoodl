@@ -115,7 +115,8 @@ Your data, your server, first-class in the editor.
 - **Multi-framework** — port the exported React codebase to Svelte/Vue, verified by the same harness.
 
 ### Cloud & workflows
-- Finish the workflow runtime, connect the execution-history pipeline, ship Series 1 workflow nodes and one managed deploy target done well.
+- ~~**Connect the execution-history pipeline**~~ — ✅ shipped. The execution-history library was tested but dead on both ends — nothing called it, and the shipped History Panel + canvas overlay had no data flowing to them. Every local-backend function call now logs a real execution record end to end: it shows up in the Execution History Panel and can be pinned onto the canvas overlay. Storage uses Node's built-in `node:sqlite` where available (no native module, no build step); a clearly-labelled in-memory fallback keeps it working — visibly non-persistent — where it isn't.
+- Still to come: the workflow runtime itself, Series 1 workflow nodes, and one managed deploy target done well.
 
 ### Ecosystem *(gated — later)*
 - Real-time collaborative (multiplayer) editing, a component & lesson marketplace, multi-project workspaces, and a hosted platform — only after the wedges above prove out.

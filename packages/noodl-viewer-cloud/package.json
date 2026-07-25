@@ -8,7 +8,8 @@
   "scripts": {
     "start": "webpack --config webpack-configs/webpack.dev.js",
     "build": "webpack --config webpack-configs/webpack.prod.js",
-    "build:pack": "node ./scripts/pack.js"
+    "build:pack": "node ./scripts/pack.js",
+    "test": "jest"
   },
   "dependencies": {
     "@noodl/runtime": "file:../noodl-runtime"

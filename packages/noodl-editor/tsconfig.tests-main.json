@@ -1,0 +1,14 @@
+{
+  // ts-jest config for tests-main/ (see jest.config.js). Kept separate from
+  // tsconfig.json / tsconfig.tests.json — both of those reach code that pulls
+  // in @types/jasmine, whose `Matchers<T>` shadows jest's and breaks
+  // matchers like `toHaveLength` (same issue worked around in
+  // noodl-viewer-cloud/tsconfig.tests.json).
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["node", "jest"],
+    "noEmit": true,
+    "module": "CommonJS"
+  },
+  "include": ["src/main", "tests-main"]
+}

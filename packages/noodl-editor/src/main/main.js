@@ -28,6 +28,7 @@ const FloatingWindow = require('./src/floating-window');
 const startServer = require('./src/web-server');
 const { startCloudFunctionServer, closeRuntimeWhenWindowCloses } = require('./src/cloud-function-server');
 const { setupBackendIPC, backendManager } = require('./src/local-backend');
+const { setupExecutionHistoryIPC } = require('./src/execution-history');
 const DesignToolImportServer = require('./src/design-tool-import-server');
 const jsonstorage = require('../shared/utils/jsonstorage');
 const StorageApi = require('./src/StorageApi');
@@ -655,6 +656,10 @@ function launchApp() {
 
     // Initialize local backend IPC handlers
     setupBackendIPC();
+
+    // WF-006: open the execution-history store and register the IPC handlers
+    // the Execution History Panel's hooks call.
+    setupExecutionHistoryIPC();
 
     DesignToolImportServer.start(projectGetInfo);
 

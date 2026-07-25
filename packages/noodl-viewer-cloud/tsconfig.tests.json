@@ -1,0 +1,15 @@
+{
+  // Kept separate from tsconfig.json (which `npm run typecheck:cloud` and the
+  // webpack build use) so ts-jest's ambient `jest` globals never leak into the
+  // production compile. Without an explicit "types" list here, TypeScript
+  // pulls in every @types/* package reachable from node_modules — including
+  // @types/jasmine from the editor's test toolchain elsewhere in the repo —
+  // and jasmine's `Matchers<T>` shadows jest's, breaking matchers like
+  // `toHaveLength`/`toContainEqual` that jasmine doesn't define.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["node", "jest"],
+    "noEmit": true
+  },
+  "include": ["src", "tests"]
+}

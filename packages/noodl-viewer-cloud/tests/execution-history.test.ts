@@ -120,11 +120,10 @@ class MockDatabase implements SQLiteDatabase {
           return executions.find((e) => e.id === params[0]) || undefined;
         }
 
-        if (lowerSql.includes('count(*)')) {
-          const executions = self.tables.get('workflow_executions') || [];
-          return { count: executions.length };
-        }
-
+        // getStats' aggregate query also contains "count(*)" (as `total`), so
+        // the more specific check must run first — otherwise it's shadowed by
+        // the plain-count branch below and getStats() silently gets back a
+        // `{ count }` shape instead of the full stats row.
         if (lowerSql.includes('select') && lowerSql.includes('avg')) {
           const executions = self.tables.get('workflow_executions') || [];
           const success = executions.filter((e) => e.status === 'success').length;
@@ -139,6 +138,11 @@ class MockDatabase implements SQLiteDatabase {
             min_duration: 50,
             max_duration: 200
           };
+        }
+
+        if (lowerSql.includes('count(*)')) {
+          const executions = self.tables.get('workflow_executions') || [];
+          return { count: executions.length };
         }
 
         return undefined;
