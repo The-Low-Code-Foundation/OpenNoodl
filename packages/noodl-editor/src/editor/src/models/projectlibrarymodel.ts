@@ -1,5 +1,5 @@
 import { ProjectItem, LocalProjectsModel } from '@noodl-utils/LocalProjectsModel';
-import ProjectImporter from '@noodl-utils/projectimporter';
+import ProjectImporter from '@noodl-utils/import-engine/legacyAdapter';
 
 import Model from '../../../shared/model';
 import { EventDispatcher } from '../../../shared/utils/EventDispatcher';
@@ -19,11 +19,20 @@ export class ProjectLibraryModel extends Model {
   async importProject(projectEntry: ProjectItem, onBeforePopup?: () => void, onAfterPopup?: () => void) {
     const dirEntry = await this.getProjectRootDir(projectEntry)
       .then((project) => project)
-      .catch(console.log);
-
-    // project._retainedProjectDirectory
+      .catch((err) => {
+        console.log(err);
+        return undefined;
+      });
 
     const activityId = 'import-activity';
+
+    // The engine needs a real source directory; a failed load must not fall
+    // through into `listComponentsAndDependencies(undefined, …)`.
+    if (!dirEntry) {
+      ToastLayer.showError('Couldn’t load project to import');
+      return Promise.reject(new Error('Could not load project to import'));
+    }
+
     ToastLayer.showActivity('Importing...', activityId);
 
     return new Promise((resolve, reject) => {

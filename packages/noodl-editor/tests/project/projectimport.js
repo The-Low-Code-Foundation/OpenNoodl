@@ -1,4 +1,7 @@
-const ProjectImporter = require('@noodl-utils/projectimporter');
+// LIB-004: the legacy `projectimporter.js` was retired; this suite is now the
+// characterization contract for the v2 engine, exercised through its strangler
+// adapter (same public API, guts = analyze/plan/apply).
+const ProjectImporter = require('@noodl-utils/import-engine/legacyAdapter').default;
 const FileSystem = require('@noodl-utils/filesystem');
 const { ProjectModel } = require('@noodl-models/projectmodel');
 const Utils = require('@noodl-utils/utils');

@@ -4,7 +4,7 @@ import { ViewerConnection } from '../ViewerConnection';
 import PopupLayer from '../views/popuplayer';
 import { ToastLayer } from '../views/ToastLayer/ToastLayer';
 import FileSystem from './filesystem';
-import ProjectImporter from './projectimporter';
+import ProjectImporter from './import-engine/legacyAdapter';
 import { guid } from './utils';
 
 const ImportPopup = require('../views/importpopup').default;

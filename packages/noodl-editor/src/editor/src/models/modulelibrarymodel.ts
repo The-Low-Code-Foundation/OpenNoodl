@@ -3,7 +3,7 @@ import { platform } from '@noodl/platform';
 import { addHashToUrl } from '@noodl-utils/addHashToUrl';
 import FileSystem from '@noodl-utils/filesystem';
 import getDocsEndpoint from '@noodl-utils/getDocsEndpoint';
-import ProjectImporter from '@noodl-utils/projectimporter';
+import ProjectImporter from '@noodl-utils/import-engine/legacyAdapter';
 
 import Model from '../../../shared/model';
 import { EventDispatcher } from '../../../shared/utils/EventDispatcher';
