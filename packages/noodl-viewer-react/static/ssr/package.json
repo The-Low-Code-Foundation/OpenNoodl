@@ -5,7 +5,9 @@
   "main": "index.js",
   "scripts": {
     "build": "esbuild index.js --bundle --outfile=server.js --platform=node",
+    "build:ssg": "esbuild ssg.js --bundle --outfile=ssg-build.js --platform=node",
     "start": "node ./server.js",
+    "ssg": "node ./ssg-build.js",
     "dev": "node --inspect-brk ./server.js"
   },
   "author": "",
