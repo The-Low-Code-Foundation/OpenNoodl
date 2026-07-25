@@ -259,15 +259,16 @@ const commands = {
   },
 
   /**
-   * "Is the backend even running?" in one command. The viewer and cloud runtime
-   * are webpack watch builds rather than servers, so they are reported by the
-   * freshness of what they emit into src/external.
+   * "Is the backend even running?" in one command. The viewer is a webpack
+   * watch build rather than a server, so it's reported by the freshness of
+   * what it emits into src/external. The nodegx-backend service (local
+   * database + cloud functions) is a separate child process on a dynamic
+   * port — not statically probeable here (WF-007).
    */
   async services() {
     const ports = [
       { name: 'renderer dev server', port: 8080, note: 'webpack-dev-server, dev only' },
       { name: 'editor web server', port: Number(process.env.NOODLPORT) || 8574, note: 'serves project previews' },
-      { name: 'cloud functions', port: Number(process.env.NOODL_CLOUD_FUNCTIONS_PORT) || 8577, note: '' },
       { name: 'renderer CDP', port: Number(PORT), note: 'this tool' }
     ];
     if (process.env.NOODL_MAIN_INSPECT_PORT) {
@@ -284,7 +285,9 @@ const commands = {
     }
 
     const external = path.join(__dirname, '..', '..', 'packages', 'noodl-editor', 'src', 'external');
-    for (const build of ['viewer', 'cloudruntime', 'deploy', 'ssr']) {
+    // WF-007: 'cloudruntime' (the sandboxed cloud-function-server bundle) is
+    // retired — cloud functions now run inside nodegx-backend.
+    for (const build of ['viewer', 'deploy', 'ssr']) {
       const dir = path.join(external, build);
       if (!fs.existsSync(dir)) {
         console.log(`MISS  build  ${build.padEnd(24)} src/external/${build} not built`);

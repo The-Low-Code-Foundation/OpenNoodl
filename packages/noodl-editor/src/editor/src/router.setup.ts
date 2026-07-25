@@ -12,8 +12,6 @@ import { ComponentDiffDocumentProvider } from './views/documents/ComponentDiffDo
 import { EditorDocumentProvider } from './views/documents/EditorDocument';
 import { AppSetupPanel } from './views/panels/AppSetupPanel/AppSetupPanel';
 import { BackendServicesPanel } from './views/panels/BackendServicesPanel/BackendServicesPanel';
-import { CloudFunctionsPanel } from './views/panels/CloudFunctionsPanel/CloudFunctionsPanel';
-import { CloudServicePanel } from './views/panels/CloudServicePanel/CloudServicePanel';
 import { AiAuthoringPanel, AiAuthoringPanel_ID } from './views/panels/AiAuthoringPanel';
 import { ComponentPortsComponent } from './views/panels/componentports';
 import { ComponentsPanel } from './views/panels/componentspanel';
@@ -189,24 +187,6 @@ export function installSidePanel({ isLesson }: SetupEditorOptions) {
     order: 5.5,
     icon: IconName.Link,
     panel: GitHubPanel
-  });
-
-  SidebarModel.instance.register({
-    id: 'cloudservice',
-    name: 'Cloud Services',
-    isDisabled: isLesson === true,
-    order: 6,
-    icon: IconName.CloudData,
-    panel: CloudServicePanel
-  });
-
-  SidebarModel.instance.register({
-    id: 'cloud-functions',
-    name: 'Cloud Functions',
-    isDisabled: isLesson === true,
-    order: 7,
-    icon: IconName.CloudFunction,
-    panel: CloudFunctionsPanel
   });
 
   SidebarModel.instance.register({

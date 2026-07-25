@@ -8,7 +8,6 @@ import { platform } from '@noodl/platform';
 
 import { App } from '@noodl-models/app';
 import { AppRegistry } from '@noodl-models/app_registry';
-import { CloudService } from '@noodl-models/CloudServices';
 import { NodeLibraryImporter } from '@noodl-models/nodelibrary/NodeLibraryImporter';
 import { ProjectModel } from '@noodl-models/projectmodel';
 import { projectFromDirectory, unzipIntoDirectory } from '@noodl-models/projectmodel.editor';
@@ -19,7 +18,7 @@ import { exportProjectComponents } from '@noodl-utils/exportProjectComponents';
 import FileSystem from '@noodl-utils/filesystem';
 import { KeyCode, KeyMod } from '@noodl-utils/keyboard/KeyCode';
 import { LocalProjectsModel } from '@noodl-utils/LocalProjectsModel';
-import ParseDashboardServer from '@noodl-utils/parsedashboardserver';
+import { migrateExternalBrokersStorage } from '@noodl-utils/migrateExternalBrokersStorage';
 import ProjectImporter from '@noodl-utils/import-engine/legacyAdapter';
 import ProjectValidator from '@noodl-utils/projectvalidator';
 import SchemaHandler from '@noodl-utils/schemahandler';
@@ -120,9 +119,10 @@ export function EditorPage({ route }: EditorPageProps) {
 
     SchemaHandler.instance = new SchemaHandler();
 
-    if (!ProjectModel.instance.isLesson()) {
-      CloudService.instance.prefetch();
-    }
+    // WF-007: one-time cleanup of the retired Cloud Services panel's local
+    // storage (scrubs stored master keys). Safe to call every editor mount —
+    // it's a no-op after the first run.
+    migrateExternalBrokersStorage();
 
     setupSidePanels();
     installDocuments();
@@ -166,11 +166,6 @@ export function EditorPage({ route }: EditorPageProps) {
         SchemaHandler.instance = null;
       }
 
-      //stop parse dashboard if it's running
-      ParseDashboardServer.instance.stop();
-
-      // Reset the cloud services token, since the tokens are per project.
-      CloudService.instance.reset();
       SidebarModel.instance.reset();
 
       UndoQueue.instance.clear();
@@ -187,10 +182,6 @@ export function EditorPage({ route }: EditorPageProps) {
       keybinding: KeyMod.CtrlCmd | KeyCode.KEY_D
     },
     {
-      handler: () => ipcRenderer.send('cloud-runtime-open-devtools'),
-      keybinding: KeyMod.CtrlCmd | KeyMod.Shift | KeyCode.KEY_R
-    },
-    {
       handler: () => EventDispatcher.instance.emit('viewer-refresh'),
       keybinding: KeyMod.CtrlCmd | KeyCode.KEY_R
     },
@@ -199,7 +190,6 @@ export function EditorPage({ route }: EditorPageProps) {
       handler: () => {
         NodeLibraryImporter.instance.clear();
         EventDispatcher.instance.emit('viewer-refresh');
-        ipcRenderer.send('cloud-runtime-refresh');
 
         ToastLayer.showInteraction('Refresh Node Library and viewers');
       },
@@ -208,24 +198,6 @@ export function EditorPage({ route }: EditorPageProps) {
     {
       handler: () => exportProjectComponents(),
       keybinding: KeyMod.CtrlCmd | KeyMod.Shift | KeyCode.KEY_E
-    },
-    {
-      handler: async () => {
-        const environment = await CloudService.instance.getActiveEnvironment(ProjectModel.instance);
-        if (environment) {
-          ParseDashboardServer.instance.openInWindow(environment);
-        }
-      },
-      keybinding: KeyMod.CtrlCmd | KeyMod.Shift | KeyCode.KEY_P
-    },
-    {
-      handler: async () => {
-        const environment = await CloudService.instance.getActiveEnvironment(ProjectModel.instance);
-        if (environment) {
-          ParseDashboardServer.instance.openInBrowser(environment);
-        }
-      },
-      keybinding: KeyMod.CtrlCmd | KeyCode.KEY_P
     }
   ]);
 

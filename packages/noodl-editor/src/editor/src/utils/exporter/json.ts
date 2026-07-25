@@ -5,13 +5,13 @@ import { getRouterIndex } from './router';
 import { exportComponent, exportSettings, exportVariant } from './util';
 
 import { createHash } from './hash/xxhash64';
-import { Environment } from '@noodl-models/CloudServices';
+import { DeployEnvironment } from '@noodl-utils/compilation/build-context';
 
 export type ExportToJSONOptions = {
   useBundles?: boolean;
   useBundleHashes?: boolean;
 
-  environment?: Environment | undefined;
+  environment?: DeployEnvironment | undefined;
 
   ignoreComponentFilter?: (component: ComponentModel) => boolean;
 };
@@ -53,6 +53,7 @@ export function exportComponentsToJSON(
       instanceId: args.environment.id,
       endpoint: args.environment.url,
       appId: args.environment.appId,
+      type: args.environment.type,
       deployVersion: json.metadata['cloudfunctions']?.version
     };
   }
@@ -132,6 +133,7 @@ export function exportToJSON(projectModel: ProjectModel, args?: ExportToJSONOpti
       instanceId: args.environment.id,
       endpoint: args.environment.url,
       appId: args.environment.appId,
+      type: args.environment.type,
       deployVersion: json.metadata['cloudfunctions']?.version
     };
   }

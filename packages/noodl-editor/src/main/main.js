@@ -26,7 +26,6 @@ if (!app || typeof app.on !== 'function') {
 const AutoUpdater = require('./src/autoupdater');
 const FloatingWindow = require('./src/floating-window');
 const startServer = require('./src/web-server');
-const { startCloudFunctionServer, closeRuntimeWhenWindowCloses } = require('./src/cloud-function-server');
 const { setupBackendIPC, backendManager } = require('./src/local-backend');
 const { setupExecutionHistoryIPC } = require('./src/execution-history');
 const DesignToolImportServer = require('./src/design-tool-import-server');
@@ -215,10 +214,6 @@ function launchApp() {
     makeEditorAPIRequest('projectGetComponentBundleExport', { name }, callback);
   }
 
-  function cloudServicesGetActive(callback) {
-    makeEditorAPIRequest('cloudServicesGetActive', undefined, callback);
-  }
-
   process.env.exePath = app.getPath('exe');
   let reopenWindow = false;
 
@@ -290,7 +285,6 @@ function launchApp() {
       if (reopenWindow) {
         reopenWindow = false;
         createWindow();
-        closeRuntimeWhenWindowCloses(win);
       }
     });
 
@@ -650,9 +644,6 @@ function launchApp() {
     setupMenu();
 
     startServer(app, projectGetSettings, projectGetInfo, projectGetComponentBundleExport);
-
-    startCloudFunctionServer(app, cloudServicesGetActive);
-    closeRuntimeWhenWindowCloses(win);
 
     // Initialize local backend IPC handlers
     setupBackendIPC();

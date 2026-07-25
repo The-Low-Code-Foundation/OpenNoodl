@@ -1,23 +1,21 @@
 import { sortBy } from 'underscore';
 import { filesystem } from '@noodl/platform';
 
-import { Environment } from '@noodl-models/CloudServices';
-import { getGitStats } from '@noodl-models/CloudServices/GitStats';
 import { ProjectModel } from '@noodl-models/projectmodel';
 import { HtmlProcessorParameters } from '@noodl-utils/compilation/build/processors/html-processor';
+import { getGitStats } from '@noodl-utils/compilation/GitStats';
 import { SitemapBuildScript } from '@noodl-utils/compilation/passes/sitemap';
 import { NodeGraphTraverser } from '@noodl-utils/node-graph-traverser';
 
 import Model from '../../../../shared/model';
-import { BuildScript, CoreContext, NotifyType } from './build-context';
+import { BuildScript, CoreContext, DeployEnvironment, NotifyType } from './build-context';
 import { createIndexPage, deployToFolder } from './build/deployer';
 import { getIndexedPages } from './context/pages';
-import { deployCloudFunctionBuildScript } from './passes/deploy-cloud-functions';
 
 export interface DeployOptions {
   /** Default: true */
   useBundles?: boolean;
-  environment: Environment | undefined;
+  environment: DeployEnvironment | undefined;
   runtimeType?: string;
 }
 
@@ -73,11 +71,10 @@ export class Compilation {
     if (!project) throw 'ProjectModel is not defined';
 
     // Add our build scripts
-    this.addBuildScript(deployCloudFunctionBuildScript);
     this.addBuildScript(SitemapBuildScript);
   }
 
-  private createCoreContext(environment: Environment): CoreContext {
+  private createCoreContext(environment: DeployEnvironment): CoreContext {
     let projectClone = this.project;
 
     if (this.options.cloneProject) {

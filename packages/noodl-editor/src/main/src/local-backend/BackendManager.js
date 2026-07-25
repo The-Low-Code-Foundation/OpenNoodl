@@ -534,8 +534,9 @@ class BackendManager {
   }
 
   /**
-   * Find an available port starting from 8578
-   * (8577 is used by cloud-function-server)
+   * Find an available port starting from 8578.
+   * (8577 was reserved for the now-deleted cloud-function-server, WF-007;
+   * kept as the starting point so existing configs don't shift.)
    */
   async findAvailablePort() {
     const backends = await this.listBackends();

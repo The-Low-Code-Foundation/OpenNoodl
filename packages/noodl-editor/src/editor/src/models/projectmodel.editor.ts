@@ -201,7 +201,8 @@ export function setCloudServices(project: ProjectModel, b: CloudServiceMetadata)
   project.setMetaData('cloudservices', <CloudServiceMetadataDataFormat>{
     instanceId: b.id,
     endpoint: b.endpoint || b.url,
-    appId: b.appId
+    appId: b.appId,
+    type: b.type
   });
 
   project.notifyListeners('cloudServicesChanged');
@@ -220,6 +221,7 @@ export function getCloudServices(project: ProjectModel): CloudServiceMetadata {
   return {
     id: cloudServices.instanceId,
     endpoint: cloudServices.endpoint,
-    appId: cloudServices.appId
+    appId: cloudServices.appId,
+    type: cloudServices.type
   };
 }
