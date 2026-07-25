@@ -220,4 +220,88 @@ describe('byob-utils', () => {
       expect(ByobUtils.getEnhancedFieldType({ name: 'x', type: 'geometry' }).type).toBe('string');
     });
   });
+
+  // ── pickTotalCount ──────────────────────────────────────────────────────────
+
+  describe('pickTotalCount', () => {
+    it('prefers filter_count over total_count — a filtered list paginates against the filtered total', () => {
+      expect(ByobUtils.pickTotalCount({ total_count: 100, filter_count: 7 }, [{}, {}])).toBe(7);
+    });
+
+    it('a filter_count of 0 is a real answer, not a missing one', () => {
+      expect(ByobUtils.pickTotalCount({ total_count: 100, filter_count: 0 }, [])).toBe(0);
+    });
+
+    it('falls back to total_count when no filter_count was returned', () => {
+      expect(ByobUtils.pickTotalCount({ total_count: 42 }, [{}])).toBe(42);
+    });
+
+    it('falls back to the page length without meta', () => {
+      expect(ByobUtils.pickTotalCount(undefined, [{}, {}, {}])).toBe(3);
+      expect(ByobUtils.pickTotalCount(null, null)).toBe(0);
+    });
+  });
+});
+
+// ── connected filter-value ports (byob-query-data) ────────────────────────────
+
+describe('byob-query-data parseFilterForConnectedPorts', () => {
+  const { parseFilterForConnectedPorts } = require('../src/nodes/std-library/data/byob-query-data');
+
+  it('returns no ports for an empty or non-JSON filter', () => {
+    expect(parseFilterForConnectedPorts('')).toEqual([]);
+    expect(parseFilterForConnectedPorts('   ')).toEqual([]);
+    expect(parseFilterForConnectedPorts('not json')).toEqual([]);
+  });
+
+  it('ignores raw Directus-format filters (no builder conditions array)', () => {
+    expect(parseFilterForConnectedPorts(JSON.stringify({ status: { _eq: 'published' } }))).toEqual([]);
+  });
+
+  it('finds connected conditions, including in nested groups, and skips static ones', () => {
+    const filter = {
+      id: 'root',
+      type: 'and',
+      conditions: [
+        { id: 'c1', field: 'status', operator: '_eq', value: 'published' }, // static
+        {
+          id: 'c2',
+          field: 'rating',
+          operator: '_gt',
+          value: '',
+          valueSource: 'connected',
+          valuePortName: 'filter_rating_c2'
+        },
+        {
+          id: 'g1',
+          type: 'or',
+          conditions: [
+            {
+              id: 'c3',
+              field: 'author.name',
+              operator: '_eq',
+              value: '',
+              valueSource: 'connected',
+              valuePortName: 'filter_author_name_c3'
+            }
+          ]
+        }
+      ]
+    };
+
+    const ports = parseFilterForConnectedPorts(JSON.stringify(filter));
+    expect(ports).toEqual([
+      { portName: 'filter_rating_c2', field: 'rating', operator: '_gt', conditionId: 'c2' },
+      { portName: 'filter_author_name_c3', field: 'author.name', operator: '_eq', conditionId: 'c3' }
+    ]);
+  });
+
+  it('a connected condition without a port name yields no port', () => {
+    const filter = {
+      id: 'root',
+      type: 'and',
+      conditions: [{ id: 'c1', field: 'x', operator: '_eq', value: '', valueSource: 'connected' }]
+    };
+    expect(parseFilterForConnectedPorts(JSON.stringify(filter))).toEqual([]);
+  });
 });

@@ -182,6 +182,17 @@ export function generateId(): string {
 }
 
 /**
+ * Generate the input-port name for a connected condition value.
+ * The runtime registers any input starting with `filter_` as a dynamic
+ * filter-value port (see byob-query-data.js), so the name must keep that
+ * prefix. Field names can contain dots (relation paths) — slugify them.
+ */
+export function generateFilterPortName(condition: Pick<FilterCondition, 'id' | 'field'>): string {
+  const fieldSlug = (condition.field || 'value').replace(/[^a-zA-Z0-9]/g, '_');
+  return `filter_${fieldSlug}_${condition.id}`;
+}
+
+/**
  * Count total conditions and groups in a filter
  */
 export function countFilterItems(group: FilterGroup | null): { conditions: number; groups: number } {

@@ -16,7 +16,13 @@ import { Box } from '@noodl-core-ui/components/layout/Box';
 import css from './ByobFilterBuilder.module.scss';
 import { useDragContext } from './DragContext';
 import { getOperatorsForType, operatorNeedsValue, operatorNeedsTwoValues } from './operators';
-import { FieldType, FilterCondition as FilterConditionType, FilterOperator, SchemaField } from './types';
+import {
+  FieldType,
+  FilterCondition as FilterConditionType,
+  FilterOperator,
+  SchemaField,
+  generateFilterPortName
+} from './types';
 
 export interface FilterConditionProps {
   condition: FilterConditionType;
@@ -77,15 +83,31 @@ export function FilterCondition({ condition, fields, onChange, onDelete, parentG
       const newOperators = getOperatorsForType(newType);
       const isOperatorValid = newOperators.some((op) => op.value === condition.operator);
 
-      onChange({
+      const next = {
         ...condition,
         field: value,
-        operator: isOperatorValid ? condition.operator : '_eq',
+        operator: isOperatorValid ? condition.operator : ('_eq' as FilterOperator),
         value: '' // Reset value when field changes
-      });
+      };
+
+      // Connected port names embed the field name — regenerate on field change
+      if (next.valueSource === 'connected') {
+        next.valuePortName = generateFilterPortName(next);
+      }
+
+      onChange(next);
     },
     [condition, fields, onChange]
   );
+
+  // Toggle between typing a value and exposing it as a node input port
+  const handleToggleValueSource = useCallback(() => {
+    if (condition.valueSource === 'connected') {
+      onChange({ ...condition, valueSource: 'static', valuePortName: undefined });
+    } else {
+      onChange({ ...condition, valueSource: 'connected', valuePortName: generateFilterPortName(condition) });
+    }
+  }, [condition, onChange]);
 
   // Handle operator change
   const handleOperatorChange = useCallback(
@@ -141,6 +163,32 @@ export function FilterCondition({ condition, fields, onChange, onDelete, parentG
 
   const needsValue = operatorNeedsValue(condition.operator);
   const needsTwoValues = operatorNeedsTwoValues(condition.operator);
+  const isConnected = condition.valueSource === 'connected';
+
+  // Enum fields get a value dropdown for single-value operators; booleans too
+  const valueOptions = useMemo(() => {
+    if (needsTwoValues) return null;
+    if (fieldType === 'boolean') {
+      return [
+        { label: '(Select value)', value: '' },
+        { label: 'true', value: 'true' },
+        { label: 'false', value: 'false' }
+      ];
+    }
+    if (selectedField?.enumValues?.length) {
+      const opts = [
+        { label: '(Select value)', value: '' },
+        ...selectedField.enumValues.map((v) => ({ label: v, value: v }))
+      ];
+      // Keep a stale value visible instead of silently blanking the Select
+      const current = String(condition.value ?? '');
+      if (current && !selectedField.enumValues.includes(current)) {
+        opts.push({ label: current, value: current });
+      }
+      return opts;
+    }
+    return null;
+  }, [needsTwoValues, fieldType, selectedField, condition.value]);
 
   // Field options for dropdown
   const fieldOptions = useMemo(() => {
@@ -198,18 +246,38 @@ export function FilterCondition({ condition, fields, onChange, onDelete, parentG
           UNSAFE_className={css.FilterConditionOperator}
         />
 
+        {/* Connected mode: the value arrives on a node input port */}
+        {needsValue && isConnected && (
+          <div className={css.FilterConditionPortIndicator} title="Value comes from this input port on the node">
+            <span className={css.FilterConditionPortDot}>
+              <Icon icon={IconName.CircleDot} size={IconSize.Small} />
+            </span>
+            <span className={css.FilterConditionPortName}>{condition.valuePortName}</span>
+          </div>
+        )}
+
         {/* Value Input - Single value */}
-        {needsValue && !needsTwoValues && (
-          <TextInput
-            value={String(condition.value ?? '')}
-            onChange={(e) => handleValueChange(e.target.value)}
-            placeholder="Value"
-            UNSAFE_className={css.FilterConditionValue}
-          />
+        {needsValue && !needsTwoValues && !isConnected && (
+          valueOptions ? (
+            <Select
+              value={String(condition.value ?? '')}
+              options={valueOptions}
+              onChange={handleValueChange}
+              colorTheme={SelectColorTheme.Dark}
+              UNSAFE_className={css.FilterConditionValue}
+            />
+          ) : (
+            <TextInput
+              value={String(condition.value ?? '')}
+              onChange={(e) => handleValueChange(e.target.value)}
+              placeholder="Value"
+              UNSAFE_className={css.FilterConditionValue}
+            />
+          )
         )}
 
         {/* Between: Two value inputs */}
-        {needsTwoValues && (
+        {needsTwoValues && !isConnected && (
           <>
             <TextInput
               value={String(Array.isArray(condition.value) ? condition.value[0] : '')}
@@ -225,6 +293,19 @@ export function FilterCondition({ condition, fields, onChange, onDelete, parentG
               UNSAFE_className={css.FilterConditionValueSmall}
             />
           </>
+        )}
+
+        {/* Static/connected toggle */}
+        {needsValue && (
+          <span title={isConnected ? 'Use a typed value instead' : 'Connect the value to a node input port'}>
+            <IconButton
+              icon={IconName.Link}
+              size={IconSize.Small}
+              variant={isConnected ? IconButtonVariant.Default : IconButtonVariant.Transparent}
+              onClick={handleToggleValueSource}
+              UNSAFE_className={css.FilterConditionConnectToggle}
+            />
+          </span>
         )}
 
         {/* Delete Button */}

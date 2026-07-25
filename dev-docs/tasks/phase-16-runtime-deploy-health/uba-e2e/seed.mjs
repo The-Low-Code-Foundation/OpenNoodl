@@ -82,6 +82,21 @@ async function main() {
     console.log('seed: created file relation articles.hero_image -> directus_files');
   } else console.log('seed: articles already exists');
 
+  // Records, so filtered queries return something (slice-5 filter smoke needs them).
+  // Idempotent-ish: only seed when the collection is empty.
+  const existing = await api('GET', '/items/articles?limit=1');
+  if (!existing.data || existing.data.length === 0) {
+    const ada = await api('POST', '/items/authors', { name: 'Ada' });
+    const rows = [
+      { title: 'Alpha', status: 'published', rating: 5, author: ada.data.id },
+      { title: 'Beta', status: 'published', rating: 2, author: ada.data.id },
+      { title: 'Gamma', status: 'draft', rating: 4 },
+      { title: 'Delta', status: 'published', rating: 3 }
+    ];
+    for (const row of rows) await api('POST', '/items/articles', row);
+    console.log('seed: created 1 author + 4 articles');
+  } else console.log('seed: articles already has records');
+
   // Make both collections publicly readable so unauth reads work if needed (optional; skipped).
   console.log('seed: DONE');
 }

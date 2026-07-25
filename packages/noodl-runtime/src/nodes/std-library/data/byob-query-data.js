@@ -202,8 +202,10 @@ var QueryDataNode = {
         params.append('offset', String(offset));
       }
 
-      // Request total count for pagination
-      params.append('meta', 'total_count');
+      // Request counts for pagination. total_count is the whole collection;
+      // filter_count is the count after the filter is applied — the one
+      // pagination over a filtered list actually needs.
+      params.append('meta', 'total_count,filter_count');
 
       const queryString = params.toString();
       if (queryString) {
@@ -292,9 +294,9 @@ var QueryDataNode = {
             meta: data.meta
           });
 
-          // Directus response format: { data: [...], meta: { total_count: ... } }
+          // Directus response format: { data: [...], meta: { total_count, filter_count } }
           this._internal.records = data.data || [];
-          this._internal.totalCount = data.meta?.total_count || this._internal.records.length;
+          this._internal.totalCount = ByobUtils.pickTotalCount(data.meta, this._internal.records);
           this._internal.error = null;
           this._internal.loading = false;
 
@@ -792,6 +794,9 @@ function updatePorts(nodeId, parameters, editorConnection, graphModel) {
 
 module.exports = {
   node: QueryDataNode,
+  // Exported for unit tests: pure parser that finds connected filter conditions
+  // in a stored filter parameter and derives their dynamic input ports.
+  parseFilterForConnectedPorts,
   setup: function (context, graphModel) {
     if (!context.editorConnection || !context.editorConnection.isRunningLocally()) {
       return;

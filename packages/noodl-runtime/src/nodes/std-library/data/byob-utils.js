@@ -302,6 +302,18 @@ function getEnhancedFieldType(field) {
   return result;
 }
 
+/**
+ * Pick the record count to expose as Total Count from a Directus meta block.
+ * filter_count (the count after the filter is applied) wins over total_count
+ * (the whole collection) — pagination over a filtered list needs the former.
+ * Falls back to the page length when no meta was returned.
+ */
+function pickTotalCount(meta, records) {
+  if (meta && meta.filter_count !== undefined && meta.filter_count !== null) return meta.filter_count;
+  if (meta && meta.total_count !== undefined && meta.total_count !== null) return meta.total_count;
+  return records ? records.length : 0;
+}
+
 module.exports = {
   SYSTEM_ENDPOINTS,
   resolveBackend,
@@ -313,5 +325,6 @@ module.exports = {
   normalizeValue,
   filterCollectionsByMode,
   shouldShowField,
-  getEnhancedFieldType
+  getEnhancedFieldType,
+  pickTotalCount
 };
