@@ -36,20 +36,30 @@ globalThis.projectData = {{#export#}};
 
 // Add some ugly polyfill
 globalThis.requestAnimationFrame = (callback) => setImmediate(callback);
+
+// Async work the runtime awaits (bundle loads, data fetches) is invisible to
+// its update scheduler, so the render gate consults this counter: while a
+// fetch is in flight the runtime is not idle and renderToString must wait.
+let fetchesInFlight = 0;
 globalThis.fetch = async (args) => {
-  if (typeof args === 'string') {
-    const relativePath = '.' + args;
-    if (args.startsWith('/noodl_bundles') && fs.existsSync(relativePath)) {
-      const fileContent = await fs.promises.readFile(relativePath, 'utf-8');
-      return Promise.resolve({
-        status: 200,
-        json() {
-          return Promise.resolve(JSON.parse(fileContent));
-        }
-      });
+  fetchesInFlight++;
+  try {
+    if (typeof args === 'string') {
+      const relativePath = '.' + args;
+      if (args.startsWith('/noodl_bundles') && fs.existsSync(relativePath)) {
+        const fileContent = await fs.promises.readFile(relativePath, 'utf-8');
+        return {
+          status: 200,
+          json() {
+            return Promise.resolve(JSON.parse(fileContent));
+          }
+        };
+      }
     }
+    return await fetch(args);
+  } finally {
+    fetchesInFlight--;
   }
-  return await fetch(args);
 };
 
 class LocalStorageMock {
@@ -115,17 +125,23 @@ function log(...args) {
 
 let htmlData = '';
 
-// SEO head injection lives in a sibling module so it can be unit tested
-// (tests/ssr-inject-seo.test.js). webpack copies the whole static/ssr directory
-// into the deploy runtime, so inject-seo.js travels alongside this server.
+// SEO head injection and render gating live in sibling modules so they can be
+// unit tested (tests/ssr-inject-seo.test.js, tests/ssr-render-gate.test.js).
+// webpack copies the whole static/ssr directory into the deploy runtime, so
+// they travel alongside this server.
 const { injectSeo } = require('./inject-seo');
+const { settle, createPageReadyGate } = require('./render-gate');
+
+// How long a page that announced SSR_PageLoading may take to signal
+// SSR_PageReady before we render whatever we have (degraded, not broken).
+const PAGE_READY_TIMEOUT = Number(process.env.NOODL_SSR_PAGE_READY_TIMEOUT || 10000);
 
 async function setup() {
   htmlData = await fs.promises.readFile(path.resolve('./public/index.html'), 'utf8');
 }
 
 async function buildPage(path) {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     const noodlModules = globalThis.__noodl_modules;
     const projectData = globalThis.projectData;
 
@@ -148,40 +164,66 @@ async function buildPage(path) {
 
     const noodlRuntime = ViewerComponent.props.noodlRuntime;
 
-    noodlRuntime.eventEmitter.on('SSR_PageLoading', (id) => {
-      console.log('SSR_PageLoading', id);
-    });
+    // Subscribe before the runtime mounts: pages announce SSR_PageLoading from
+    // initialize, which fires while the graph settles below. Note the CONTEXT
+    // emitter — pages emit on nodeScope.context.eventEmitter, which is a
+    // different object from noodlRuntime.eventEmitter (where
+    // rootComponentUpdated lives). The original template listened on the
+    // runtime emitter and would never have heard the pages.
+    const gate = createPageReadyGate(noodlRuntime.context.eventEmitter);
 
-    noodlRuntime.eventEmitter.on('SSR_PageReady', (id) => {
-      console.log('SSR_PageReady', id);
-    });
+    const settleOpts = { isIdle: () => fetchesInFlight === 0 };
 
-    noodlRuntime.eventEmitter.on('rootComponentUpdated', async () => {
-      log('Spin up...');
-      noodlRuntime.rootComponent.triggerDidMount();
-      for (let index = 0; index < 1000; index++) {
-        await new Promise((resolve) => setImmediate(() => resolve(), 0));
+    noodlRuntime.eventEmitter.once('rootComponentUpdated', async () => {
+      try {
+        log('Spin up...');
         noodlRuntime.rootComponent.triggerDidMount();
-        noodlRuntime._doUpdate();
+
+        // Let the runtime run to quiescence: scheduled updates fire on their
+        // own (platform.requestUpdate is setImmediate server-side), settle
+        // yields until nothing is scheduled and no fetch (bundle load, data
+        // request) is in flight. Replaces the old fixed 1000-iteration
+        // triggerDidMount/_doUpdate busy loop, which was a timeout-shaped
+        // guess — too long for static pages, too short for slow data.
+        const first = await settle(noodlRuntime, settleOpts);
+        if (!first.settled) {
+          console.warn(`SSR: runtime did not settle for ${path} (never went quiet — looping animation?); rendering current state`);
+        }
+
+        // Pages with a connected `Page Ready` signal gate the render until the
+        // graph says the page is complete (e.g. data has arrived).
+        if (gate.hasPendingPages()) {
+          log('Waiting for SSR_PageReady...', gate.pendingPageIds());
+          const ready = await gate.whenReady(PAGE_READY_TIMEOUT);
+          if (!ready) {
+            console.warn(`SSR: page(s) never signalled Page Ready for ${path} within ${PAGE_READY_TIMEOUT}ms: ${gate.pendingPageIds().join(', ')}; rendering current state`);
+          }
+          // The ready signal usually lands together with the state changes it
+          // announces; give those a chance to propagate through the graph.
+          await settle(noodlRuntime, settleOpts);
+        }
+
+        log('Rendering...');
+        const output1 = ReactDOMServer.renderToString(ViewerComponent);
+        log('result:', output1);
+
+        // Stamp the root so the client hydrates instead of re-rendering from
+        // scratch. renderDeployed() reads this back (data-reactroot is gone in
+        // React 18+, so it can no longer be used to detect server-rendered markup).
+        let result = htmlData.replace('<div id="root"></div>', `<div id="root" data-ssr="1">${output1}</div>`);
+
+        // Inject the SEO state the runtime buffered during render (Noodl.SEO is
+        // SSR-aware: server-side it stores title/meta in memory instead of touching
+        // the DOM). Without this the served page keeps the template's default title
+        // and carries none of the project's meta tags — i.e. no SEO benefit at all.
+        result = injectSeo(result, globalThis.Noodl && globalThis.Noodl.SEO);
+
+        resolve(result);
+      } catch (error) {
+        // Reject so the express handler serves the CSR fallback instead of
+        // hanging this request forever on an unresolved promise.
+        reject(error);
       }
-      log('done.');
-
-      log('Rendering...');
-      const output1 = ReactDOMServer.renderToString(ViewerComponent);
-      log('result:', output1);
-
-      // Stamp the root so the client hydrates instead of re-rendering from
-      // scratch. renderDeployed() reads this back (data-reactroot is gone in
-      // React 18+, so it can no longer be used to detect server-rendered markup).
-      let result = htmlData.replace('<div id="root"></div>', `<div id="root" data-ssr="1">${output1}</div>`);
-
-      // Inject the SEO state the runtime buffered during render (Noodl.SEO is
-      // SSR-aware: server-side it stores title/meta in memory instead of touching
-      // the DOM). Without this the served page keeps the template's default title
-      // and carries none of the project's meta tags — i.e. no SEO benefit at all.
-      result = injectSeo(result, globalThis.Noodl && globalThis.Noodl.SEO);
-
-      resolve(result);
     });
 
     log('Setup Runtime...');

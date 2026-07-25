@@ -15515,6 +15515,17 @@
           "index": 80004
         },
         {
+          "name": "onPageReady",
+          "displayName": "Page Ready",
+          "group": "Server Side Rendering",
+          "plug": "input",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "isSignal": true
+        },
+        {
           "name": "paddingBottom",
           "displayName": "Pad Bottom",
           "group": "Margin and padding",

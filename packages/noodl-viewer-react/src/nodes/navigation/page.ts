@@ -25,6 +25,12 @@ const PageNode = {
   },
   initialize: function (this: PageNodeInstance) {
     this.props.layout = 'column'; //this allows the children to know what type of layout type they're in
+  },
+  // The SSR_PageLoading announce must happen AFTER connections are wired:
+  // NodeScope.setComponentModel creates all nodes (running initialize) before
+  // it adds any connection, so isInputConnected() is always false during
+  // initialize — the original announce there could never fire.
+  nodeScopeDidInitialize: function (this: PageNodeInstance) {
     if (this.isInputConnected('onPageReady')) {
       this.nodeScope.context.eventEmitter.emit('SSR_PageLoading', this.id);
     }
@@ -44,14 +50,19 @@ const PageNode = {
   // (findDOMNode is gone in React 19).
   noodlNodeAsProp: true,
   inputs: {
-    // TODO: Enable with SSR
-    // onPageReady: {
-    //   displayName: 'Page Ready',
-    //   type: 'signal',
-    //   valueChangedToTrue() {
-    //     this.nodeScope.context.eventEmitter.emit('SSR_PageReady', this.id);
-    //   }
-    // },
+    // SSR readiness handshake. When this signal is connected, `initialize`
+    // emits SSR_PageLoading and the SSR server holds the render until the
+    // graph triggers the signal (→ SSR_PageReady) — e.g. after a data fetch
+    // completes. Unconnected pages render as soon as the runtime settles.
+    // Client-side the events are emitted too but nothing listens; harmless.
+    onPageReady: {
+      displayName: 'Page Ready',
+      group: 'Server Side Rendering',
+      type: 'signal',
+      valueChangedToTrue(this: PageNodeInstance) {
+        this.nodeScope.context.eventEmitter.emit('SSR_PageReady', this.id);
+      }
+    },
     sitemapIncluded: {
       index: 80001,
       displayName: 'Included',
