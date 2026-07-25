@@ -55,17 +55,28 @@ export default {
     currentRoot.render(React.createElement(Viewer, { noodlRuntime, noodlModules }, null));
   },
   renderDeployed(element, noodlModules, projectData) {
-    // React 19: Use hydrateRoot for SSR, createRoot for client-side
-    // React SSR adds a 'data-reactroot' attribute on the root element to be able to hydrate the app.
-    if (element.children.length > 0 && !!element.children[0].hasAttribute('data-reactroot')) {
-      currentRoot = ReactDOM.hydrateRoot(element, this.createElement(noodlModules, projectData));
-    } else {
-      if (currentRoot) {
-        currentRoot.unmount();
-      }
-      currentRoot = ReactDOM.createRoot(element);
-      currentRoot.render(this.createElement(noodlModules, projectData));
+    // Deployed pages use createRoot, which replaces any server-rendered markup in
+    // #root with a fresh client render. Crawlers still get the SSR HTML (SEO), the
+    // user gets a client-managed tree.
+    //
+    // Hydration is intentionally NOT done here yet, even for SSR output. The old
+    // code tried to hydrate when #root's first child had `data-reactroot` — a
+    // marker React 18+ `renderToString` no longer emits (RUN-001 moved the runtime
+    // to React 18.3.1 / 19), so the branch was already dead and this path has in
+    // fact always been createRoot. Naively switching to hydrateRoot is worse than
+    // the status quo: the deployed runtime loads the root component *asynchronously*
+    // (bundle fetch), so hydrateRoot's first synchronous render is empty, React
+    // adopts the empty tree, and when the real content arrives it mounts as a
+    // *duplicate* alongside the orphaned server DOM (verified: #root ends with two
+    // subtrees). Real hydration needs a synchronous first render — the root
+    // component and its bundle available before hydrateRoot — which is a RUN-002
+    // deliverable, not a one-line detection fix. The SSR server still stamps
+    // `data-ssr="1"` on #root as the signal that slice will key off.
+    if (currentRoot) {
+      currentRoot.unmount();
     }
+    currentRoot = ReactDOM.createRoot(element);
+    currentRoot.render(this.createElement(noodlModules, projectData));
   },
   /** Unmount the current React root */
   unmount() {

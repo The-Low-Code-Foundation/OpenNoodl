@@ -115,6 +115,47 @@ function log(...args) {
 
 let htmlData = '';
 
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+/**
+ * Writes the runtime's buffered SEO state into the served HTML head.
+ *
+ * `seo` is the `Noodl.SEO` instance (SeoApi): `seo.title` is a string and
+ * `seo.meta` a `{ key: value }` map, both populated during render by
+ * Noodl.SEO.setTitle / setMeta. The existing <title> (the project default from
+ * the deploy template) is replaced rather than duplicated; meta tags are
+ * appended before </head>. No-ops safely if SEO was never touched.
+ */
+function injectSeo(html, seo) {
+  if (!seo) return html;
+
+  let metaTags = '';
+  const meta = seo.meta || {};
+  for (const key of Object.keys(meta)) {
+    const value = meta[key];
+    if (value === undefined || value === null || value === '') continue;
+    metaTags += `<meta name="${escapeHtml(key)}" property="${escapeHtml(key)}" content="${escapeHtml(value)}">`;
+  }
+
+  const title = seo.title;
+  if (title) {
+    const titleTag = `<title>${escapeHtml(title)}</title>`;
+    if (/<title>[\s\S]*?<\/title>/.test(html)) {
+      html = html.replace(/<title>[\s\S]*?<\/title>/, titleTag);
+    } else {
+      metaTags = titleTag + metaTags;
+    }
+  }
+
+  return metaTags ? html.replace('</head>', `${metaTags}</head>`) : html;
+}
+
 async function setup() {
   htmlData = await fs.promises.readFile(path.resolve('./public/index.html'), 'utf8');
 }
@@ -158,9 +199,16 @@ async function buildPage(path) {
       const output1 = ReactDOMServer.renderToString(ViewerComponent);
       log('result:', output1);
 
-      const result = htmlData.replace('<div id="root"></div>', `<div id="root">${output1}</div>`);
+      // Stamp the root so the client hydrates instead of re-rendering from
+      // scratch. renderDeployed() reads this back (data-reactroot is gone in
+      // React 18+, so it can no longer be used to detect server-rendered markup).
+      let result = htmlData.replace('<div id="root"></div>', `<div id="root" data-ssr="1">${output1}</div>`);
 
-      // TODO: Inject Noodl.SEO.meta
+      // Inject the SEO state the runtime buffered during render (Noodl.SEO is
+      // SSR-aware: server-side it stores title/meta in memory instead of touching
+      // the DOM). Without this the served page keeps the template's default title
+      // and carries none of the project's meta tags — i.e. no SEO benefit at all.
+      result = injectSeo(result, globalThis.Noodl && globalThis.Noodl.SEO);
 
       resolve(result);
     });
