@@ -202,18 +202,29 @@ function filterCollectionsByMode(collections, apiPathMode) {
 /**
  * Check if a field should be shown in the property editor
  * Filters out presentation elements, hidden fields, and readonly meta fields
- * @param {Object} field - Field schema
+ *
+ * Accepts BOTH field shapes: the cached SchemaField the editor stores in
+ * backendServices metadata (which carries a parsed `hidden` flag and no `meta`),
+ * and a raw Directus /fields entry (`meta.hidden` / presentation-* interface).
+ * The cached shape is what the byob-* nodes actually receive — matching only
+ * `meta` left hidden-field filtering dead in the real flow (RUN-003).
+ * @param {Object} field - Field schema (cached SchemaField or raw Directus field)
  * @returns {boolean} True if field should be shown
  */
 function shouldShowField(field) {
   if (!field || !field.name) return false;
 
-  // Skip presentation interfaces (dividers, notices, etc.)
+  // Cached SchemaField shape: hidden resolved at parse time
+  if (field.hidden === true) {
+    return false;
+  }
+
+  // Raw Directus shape: skip presentation interfaces (dividers, notices, etc.)
   if (field.meta?.interface && field.meta.interface.startsWith('presentation-')) {
     return false;
   }
 
-  // Skip explicitly hidden fields
+  // Raw Directus shape: skip explicitly hidden fields
   if (field.meta?.hidden === true) {
     return false;
   }
@@ -224,7 +235,12 @@ function shouldShowField(field) {
 /**
  * Get enhanced field type for property editor
  * Maps Directus field types to Noodl port types with additional metadata
- * @param {Object} field - Field schema
+ *
+ * Accepts BOTH field shapes (see shouldShowField): cached SchemaField
+ * (`enumValues: string[]`) and raw Directus (`meta.options.choices`). The
+ * cached shape is what the nodes receive from backendServices metadata —
+ * matching only `meta` left enum dropdowns dead in the real flow (RUN-003).
+ * @param {Object} field - Field schema (cached SchemaField or raw Directus field)
  * @returns {Object} Port type definition { type, options, placeholder }
  */
 function getEnhancedFieldType(field) {
@@ -234,7 +250,17 @@ function getEnhancedFieldType(field) {
     placeholder: null
   };
 
-  // Check for enum/select fields
+  // Cached SchemaField shape: enum values resolved at parse time
+  if (Array.isArray(field.enumValues) && field.enumValues.length > 0) {
+    result.type = {
+      name: 'enum',
+      enums: field.enumValues.map((value) => ({ label: value, value })),
+      allowEditOnly: false
+    };
+    return result;
+  }
+
+  // Raw Directus shape: enum/select fields via meta
   if (field.meta?.interface === 'select-dropdown' || field.meta?.interface === 'select-dropdown-m2o') {
     const choices = field.meta?.options?.choices;
     if (choices && Array.isArray(choices)) {

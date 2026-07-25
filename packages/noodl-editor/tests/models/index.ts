@@ -7,6 +7,7 @@ export * from './expression-parameter.test';
 export * from './ElementConfigRegistry.test';
 export * from './UBAConditions.test';
 export * from './UBASchemaParser.test';
+export * from './BYOBSchemaParsers.test';
 export * from './ProjectCreationWizard.test';
 export * from './StyleAnalyzer.test';
 export * from './EmbeddedTemplate.test';

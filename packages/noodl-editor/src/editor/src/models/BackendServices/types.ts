@@ -110,6 +110,13 @@ export interface SchemaField {
   enumValues?: string[];
   relationTarget?: string;
   relationType?: 'one-to-one' | 'one-to-many' | 'many-to-one' | 'many-to-many';
+  /**
+   * Presentation-only or explicitly hidden in the backend's admin UI
+   * (e.g. Directus meta.hidden / presentation-* interfaces). The byob-*
+   * nodes skip hidden fields when building ports — the cached SchemaField
+   * is all they see, so this must be preserved at parse time.
+   */
+  hidden?: boolean;
 }
 
 /**

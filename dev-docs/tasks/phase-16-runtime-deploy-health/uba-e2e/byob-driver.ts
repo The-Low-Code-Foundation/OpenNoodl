@@ -111,14 +111,27 @@ async function main() {
   console.log(`\n→ Runtime CRUD path: ${queryRes.ok && queried?.data?.length ? 'WORKS end-to-end' : 'FAILED'}.`);
 
   // ── C: field→port mapping (the "see the fields" UX core) ─────────────────────
-  hr('C — REAL getEnhancedFieldType (field → Noodl port type)');
-  const rawFields = fieldsDoc.data.filter((f: any) => f.collection === 'articles');
-  for (const f of rawFields) {
+  // Feeds the CACHED SchemaField shape — what the byob-* nodes actually receive
+  // from backendServices metadata. This is the flow that was silently broken
+  // (enum ports + hidden filtering keyed off raw `meta`, which the cached shape
+  // doesn't carry) until byob-utils learned both shapes.
+  hr('C — REAL getEnhancedFieldType + shouldShowField on CACHED SchemaFields (the real node flow)');
+  const cachedFields = articles?.fields ?? [];
+  let enumPortSeen = false;
+  for (const f of cachedFields) {
+    if (!byobUtils.shouldShowField(f)) {
+      console.log(`    ${f.name} (${f.type}) → HIDDEN (skipped by shouldShowField)`);
+      continue;
+    }
     const pt = byobUtils.getEnhancedFieldType(f);
-    const t =
-      typeof pt.type === 'object' ? `${pt.type.name}(${pt.type.enums?.map((e: any) => e.value).join(',')})` : pt.type;
-    console.log(`    ${f.field} (${f.type}/${f.meta?.interface || '-'}) → port ${t}`);
+    const isEnum = typeof pt.type === 'object' && pt.type.name === 'enum';
+    if (isEnum) enumPortSeen = true;
+    const t = isEnum ? `enum(${pt.type.enums.map((e: any) => e.value).join(',')})` : pt.type;
+    console.log(`    ${f.name} (${f.type}) → port ${t}${f.relationTarget ? `  [relation →${f.relationTarget}]` : ''}`);
   }
+  console.log(
+    `\n→ Cached-shape port mapping: ${enumPortSeen ? 'enum port WORKS from cached schema' : 'FAILED — no enum port'}.`
+  );
 }
 main().catch((e) => {
   console.error('DRIVER ERROR:', e);

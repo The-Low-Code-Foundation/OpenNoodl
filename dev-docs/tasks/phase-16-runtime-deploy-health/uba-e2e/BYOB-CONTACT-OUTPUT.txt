@@ -17,31 +17,33 @@ Parsed 31 collections (2 user).
     - rating: type=integer
     - featured: type=boolean
     - published_at: type=timestamp
-    - author: type=integer
-    - hero_image: type=uuid
+    - author: type=integer  →authors
+    - hero_image: type=uuid  →directus_files
 
-→ Introspection: WORKS. Enum parsed: true. Relations parsed: NO (gap — foreign_key_table not read).
+→ Introspection: WORKS. Enum parsed: true. Relations parsed: yes.
 
 ──────────────────────────────────────────────────────────────────────────────
 B — REAL byob-utils runtime query path against live Directus
 ──────────────────────────────────────────────────────────────────────────────
 resolveBackend(_active_): url=http://localhost:8055 type=directus hasToken=true
 buildUrl → http://localhost:8055/items/articles
-CREATE items/articles → HTTP 200, id=2
-QUERY items/articles?filter={status=published} → HTTP 200, 2 record(s)
+CREATE items/articles → HTTP 200, id=4
+QUERY items/articles?filter={status=published} → HTTP 200, 4 record(s)
   first record title: RUN-003 smoke
 
 → Runtime CRUD path: WORKS end-to-end.
 
 ──────────────────────────────────────────────────────────────────────────────
-C — REAL getEnhancedFieldType (field → Noodl port type)
+C — REAL getEnhancedFieldType + shouldShowField on CACHED SchemaFields (the real node flow)
 ──────────────────────────────────────────────────────────────────────────────
-    id (integer/-) → port number
-    title (string/input) → port string
-    body (text/input-multiline) → port string
-    status (string/select-dropdown) → port enum(draft,published,archived)
-    rating (integer/input) → port number
-    featured (boolean/boolean) → port boolean
-    published_at (timestamp/datetime) → port string
-    author (integer/select-dropdown-m2o) → port number
-    hero_image (uuid/file-image) → port string
+    id (integer) → HIDDEN (skipped by shouldShowField)
+    title (string) → port string
+    body (text) → port string
+    status (string) → port enum(draft,published,archived)
+    rating (integer) → port number
+    featured (boolean) → port boolean
+    published_at (timestamp) → port string
+    author (integer) → port number  [relation →authors]
+    hero_image (uuid) → port string  [relation →directus_files]
+
+→ Cached-shape port mapping: enum port WORKS from cached schema.
