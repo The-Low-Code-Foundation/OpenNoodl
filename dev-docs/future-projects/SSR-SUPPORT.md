@@ -1,9 +1,16 @@
 # Future: Server-Side Rendering (SSR) Support
 
-> **Status**: Planning  
+> **Status**: ✅ **Implemented** (RUN-002, 2026-07-25) — CSR/SSR/SSG shipped as a per-project
+> rendering mode in Deploy → Self Hosting. See
+> [`docs/runtime/RENDERING-MODES.md`](../../docs/runtime/RENDERING-MODES.md) (user docs) and
+> [`dev-docs/tasks/phase-16-runtime-deploy-health/RUN-002-ASSESSMENT.md`](../tasks/phase-16-runtime-deploy-health/RUN-002-ASSESSMENT.md)
+> (what was actually built, which parts of this plan held up, and what was corrected — notably:
+> hydration needed a pre-settle synchronous first render, SEO population was a one-object-lifetime
+> bug rather than a router rewrite, and data auto-gating landed at the transport level).
+> The document below is preserved as the original design/plan.  
 > **Priority**: Medium  
 > **Complexity**: High  
-> **Prerequisites**: React 19 migration, HTTP node implementation
+> **Prerequisites**: React 19 migration (done, RUN-001), HTTP node implementation
 
 ## Executive Summary
 
