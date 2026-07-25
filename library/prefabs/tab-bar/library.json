@@ -1,0 +1,17 @@
+{
+  "label": "Tab Bar",
+  "description": "A tab bar component, useful for creating tab navigation.",
+  "type": "prefab",
+  "tags": [
+    "UI"
+  ],
+  "icon": "icon.png",
+  "docsPath": "/library/prefabs/tab-bar/",
+  "version": "0.1.0",
+  "minEditorVersion": "0.1.0",
+  "runtimeVersion": "2.7.0",
+  "provenance": {
+    "sourceUrl": "https://the-low-code-foundation.github.io/opennoodl-docs/library/prefabs/tab-bar/tab-bar-0-1.zip",
+    "importedAt": "2026-07-25"
+  }
+}

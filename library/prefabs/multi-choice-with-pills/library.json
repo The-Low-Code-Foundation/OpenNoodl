@@ -1,0 +1,17 @@
+{
+  "label": "Multi Choice with Pills",
+  "description": "A multi select drop down, showing the selected items as pills.",
+  "type": "prefab",
+  "tags": [
+    "UI"
+  ],
+  "icon": "icon.png",
+  "docsPath": "/library/prefabs/multi-choice-with-pills/",
+  "version": "0.9.0",
+  "minEditorVersion": "0.1.0",
+  "runtimeVersion": "2.7.0",
+  "provenance": {
+    "sourceUrl": "https://the-low-code-foundation.github.io/opennoodl-docs/library/prefabs/multi-choice-with-pills/multi-choice-with-pills-0-9.zip",
+    "importedAt": "2026-07-25"
+  }
+}

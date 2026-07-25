@@ -1,0 +1,17 @@
+{
+  "label": "Material Icons",
+  "description": "The latest material icon set library.",
+  "type": "module",
+  "tags": [
+    "UI"
+  ],
+  "icon": "icon.png",
+  "docsPath": "/library/modules/material-icons/",
+  "version": "1.1.0",
+  "minEditorVersion": "0.1.0",
+  "runtimeVersion": "2.7.0",
+  "provenance": {
+    "sourceUrl": "https://the-low-code-foundation.github.io/opennoodl-docs/library/modules/material-icons/material-icons-1-1.zip",
+    "importedAt": "2026-07-25"
+  }
+}

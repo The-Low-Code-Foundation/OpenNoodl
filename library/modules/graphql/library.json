@@ -1,0 +1,18 @@
+{
+  "label": "GraphQL",
+  "description": "A module to help quering data using GraphQL.",
+  "type": "module",
+  "tags": [
+    "Data",
+    "Networking"
+  ],
+  "icon": "icon.png",
+  "docsPath": "/library/modules/graphql/",
+  "version": "1.0.1",
+  "minEditorVersion": "0.1.0",
+  "runtimeVersion": "2.7.0",
+  "provenance": {
+    "sourceUrl": "https://the-low-code-foundation.github.io/opennoodl-docs/library/modules/graphql/graphql-module-1-0-1.zip",
+    "importedAt": "2026-07-25"
+  }
+}

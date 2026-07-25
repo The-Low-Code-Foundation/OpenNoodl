@@ -1,0 +1,728 @@
+{
+    "name": "Export",
+    "components": [
+        {
+            "name": "/#__cloud__/SendGrid/Send Email",
+            "id": "55e43c55-c5ec-c1bb-10ea-fdd520e6dc28",
+            "graph": {
+                "connections": [
+                    {
+                        "fromId": "394af12c-3eb6-714c-1a55-e768322af22a",
+                        "fromProperty": "Do",
+                        "toId": "573d7ec3-a6a4-115b-1321-815bcaa073d2",
+                        "toProperty": "run"
+                    },
+                    {
+                        "fromId": "394af12c-3eb6-714c-1a55-e768322af22a",
+                        "fromProperty": "Text",
+                        "toId": "573d7ec3-a6a4-115b-1321-815bcaa073d2",
+                        "toProperty": "in-Text"
+                    },
+                    {
+                        "fromId": "394af12c-3eb6-714c-1a55-e768322af22a",
+                        "fromProperty": "Html",
+                        "toId": "573d7ec3-a6a4-115b-1321-815bcaa073d2",
+                        "toProperty": "in-Html"
+                    },
+                    {
+                        "fromId": "394af12c-3eb6-714c-1a55-e768322af22a",
+                        "fromProperty": "To",
+                        "toId": "573d7ec3-a6a4-115b-1321-815bcaa073d2",
+                        "toProperty": "in-To"
+                    },
+                    {
+                        "fromId": "573d7ec3-a6a4-115b-1321-815bcaa073d2",
+                        "fromProperty": "out-Success",
+                        "toId": "0d89ca08-eec4-e50c-c0c7-05532368838e",
+                        "toProperty": "Success"
+                    },
+                    {
+                        "fromId": "573d7ec3-a6a4-115b-1321-815bcaa073d2",
+                        "fromProperty": "out-Failure",
+                        "toId": "0d89ca08-eec4-e50c-c0c7-05532368838e",
+                        "toProperty": "Failure"
+                    },
+                    {
+                        "fromId": "394af12c-3eb6-714c-1a55-e768322af22a",
+                        "fromProperty": "From",
+                        "toId": "573d7ec3-a6a4-115b-1321-815bcaa073d2",
+                        "toProperty": "in-From"
+                    },
+                    {
+                        "fromId": "394af12c-3eb6-714c-1a55-e768322af22a",
+                        "fromProperty": "Subject",
+                        "toId": "573d7ec3-a6a4-115b-1321-815bcaa073d2",
+                        "toProperty": "in-Subject"
+                    },
+                    {
+                        "fromId": "a8c11b37-0c79-cf5b-326e-a602e7587d5e",
+                        "fromProperty": "API Key",
+                        "toId": "573d7ec3-a6a4-115b-1321-815bcaa073d2",
+                        "toProperty": "in-APIKey"
+                    },
+                    {
+                        "fromId": "394af12c-3eb6-714c-1a55-e768322af22a",
+                        "fromProperty": "CC",
+                        "toId": "573d7ec3-a6a4-115b-1321-815bcaa073d2",
+                        "toProperty": "in-CC"
+                    },
+                    {
+                        "fromId": "394af12c-3eb6-714c-1a55-e768322af22a",
+                        "fromProperty": "BCC",
+                        "toId": "573d7ec3-a6a4-115b-1321-815bcaa073d2",
+                        "toProperty": "in-BCC"
+                    }
+                ],
+                "roots": [
+                    {
+                        "id": "394af12c-3eb6-714c-1a55-e768322af22a",
+                        "type": "Component Inputs",
+                        "x": -312,
+                        "y": -62,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Do",
+                                "plug": "output",
+                                "type": "*",
+                                "index": 0
+                            },
+                            {
+                                "name": "Text",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 1
+                            },
+                            {
+                                "name": "Html",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 2
+                            },
+                            {
+                                "name": "To",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 3
+                            },
+                            {
+                                "name": "From",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 4
+                            },
+                            {
+                                "name": "Subject",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 5
+                            },
+                            {
+                                "name": "CC",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 6
+                            },
+                            {
+                                "name": "BCC",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 7
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "0d89ca08-eec4-e50c-c0c7-05532368838e",
+                        "type": "Component Outputs",
+                        "x": 308,
+                        "y": 32,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Success",
+                                "plug": "input",
+                                "type": "*",
+                                "index": 0
+                            },
+                            {
+                                "name": "Failure",
+                                "plug": "input",
+                                "type": "*",
+                                "index": 1
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "573d7ec3-a6a4-115b-1321-815bcaa073d2",
+                        "type": "JavaScriptFunction",
+                        "x": -0.5,
+                        "y": 16,
+                        "parameters": {
+                            "functionScript": "const html = Inputs.Html;\nconst text = Inputs.Text;\nconst to = Inputs.To;\nconst cc = Inputs.CC;\nconst bcc = Inputs.BCC;\nconst from = Inputs.From;\nconst subject = Inputs.Subject;\nconst apiKey = Inputs.APIKey;\n\nif(apiKey === undefined || apiKey === \"\") {\n    Outputs.Failure()\n    throw Error(\"No API Key provided!\")\n}\n\nconst personalizations = [\n    { \"to\": (Array.isArray(to)?to.map(e => ({email:e}) ):[{\"email\": to}]) }\n]\n\nif(cc !== undefined) {\n    personalizations[0][\"cc\"] = (Array.isArray(cc)?cc.map(e => ({email:e}) ):[{\"email\": cc}])\n}\n\nif(bcc !== undefined) {\n    personalizations[0][\"bcc\"] = (Array.isArray(bcc)?bcc.map(e => ({email:e}) ):[{\"email\": bcc}]) \n\n}\n\nconst res = await fetch(\"https://api.sendgrid.com/v3/mail/send\",{\n    method:'POST',\n    headers:{\n        \"Authorization\":\"Bearer \" + apiKey,\n        \"Content-Type\":\"application/json\"\n    },\n    body:JSON.stringify({\n    personalizations,\n    \"from\": {\"email\":from},\n    \"subject\": subject,\n    \"content\": (html!==undefined)?\n     [{\"type\": \"text/html\", \"value\": html}]:\n    [{\"type\": \"text/plain\", \"value\": text}]\n    \n    })\n})\n\nif(res.ok) {\n    Outputs.Success()\n}\nelse {\n    Outputs.Failure()\n    const json = await res.json()\n    throw Error(json.errors.map(e => e.message).join('\\n'))\n}",
+                            "scriptInputs": [
+                                {
+                                    "id": "yg17",
+                                    "label": "From"
+                                },
+                                {
+                                    "id": "0ozg",
+                                    "label": "To"
+                                },
+                                {
+                                    "id": "cc02",
+                                    "label": "Subject"
+                                },
+                                {
+                                    "id": "co1h",
+                                    "label": "Html"
+                                },
+                                {
+                                    "id": "syk9",
+                                    "label": "Text"
+                                },
+                                {
+                                    "id": "5jsc",
+                                    "label": "CC"
+                                },
+                                {
+                                    "id": "9ncu",
+                                    "label": "BCC"
+                                }
+                            ]
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "name": "intype-From",
+                                "displayName": "Type",
+                                "editorName": "From | Type",
+                                "plug": "input",
+                                "type": {
+                                    "name": "enum",
+                                    "enums": [
+                                        {
+                                            "value": "string",
+                                            "label": "String"
+                                        },
+                                        {
+                                            "value": "boolean",
+                                            "label": "Boolean"
+                                        },
+                                        {
+                                            "value": "number",
+                                            "label": "Number"
+                                        },
+                                        {
+                                            "value": "object",
+                                            "label": "Object"
+                                        },
+                                        {
+                                            "value": "date",
+                                            "label": "Date"
+                                        },
+                                        {
+                                            "value": "array",
+                                            "label": "Array"
+                                        },
+                                        {
+                                            "value": "color",
+                                            "label": "Color"
+                                        }
+                                    ],
+                                    "allowEditOnly": true
+                                },
+                                "default": "string",
+                                "parent": "scriptInputs",
+                                "parentItemId": "yg17",
+                                "index": 4
+                            },
+                            {
+                                "name": "in-From",
+                                "displayName": "From",
+                                "plug": "input",
+                                "type": "string",
+                                "group": "Inputs",
+                                "index": 5
+                            },
+                            {
+                                "name": "intype-To",
+                                "displayName": "Type",
+                                "editorName": "To | Type",
+                                "plug": "input",
+                                "type": {
+                                    "name": "enum",
+                                    "enums": [
+                                        {
+                                            "value": "string",
+                                            "label": "String"
+                                        },
+                                        {
+                                            "value": "boolean",
+                                            "label": "Boolean"
+                                        },
+                                        {
+                                            "value": "number",
+                                            "label": "Number"
+                                        },
+                                        {
+                                            "value": "object",
+                                            "label": "Object"
+                                        },
+                                        {
+                                            "value": "date",
+                                            "label": "Date"
+                                        },
+                                        {
+                                            "value": "array",
+                                            "label": "Array"
+                                        },
+                                        {
+                                            "value": "color",
+                                            "label": "Color"
+                                        }
+                                    ],
+                                    "allowEditOnly": true
+                                },
+                                "default": "string",
+                                "parent": "scriptInputs",
+                                "parentItemId": "0ozg",
+                                "index": 6
+                            },
+                            {
+                                "name": "in-To",
+                                "displayName": "To",
+                                "plug": "input",
+                                "type": "string",
+                                "group": "Inputs",
+                                "index": 7
+                            },
+                            {
+                                "name": "intype-Subject",
+                                "displayName": "Type",
+                                "editorName": "Subject | Type",
+                                "plug": "input",
+                                "type": {
+                                    "name": "enum",
+                                    "enums": [
+                                        {
+                                            "value": "string",
+                                            "label": "String"
+                                        },
+                                        {
+                                            "value": "boolean",
+                                            "label": "Boolean"
+                                        },
+                                        {
+                                            "value": "number",
+                                            "label": "Number"
+                                        },
+                                        {
+                                            "value": "object",
+                                            "label": "Object"
+                                        },
+                                        {
+                                            "value": "date",
+                                            "label": "Date"
+                                        },
+                                        {
+                                            "value": "array",
+                                            "label": "Array"
+                                        },
+                                        {
+                                            "value": "color",
+                                            "label": "Color"
+                                        }
+                                    ],
+                                    "allowEditOnly": true
+                                },
+                                "default": "string",
+                                "parent": "scriptInputs",
+                                "parentItemId": "cc02",
+                                "index": 8
+                            },
+                            {
+                                "name": "in-Subject",
+                                "displayName": "Subject",
+                                "plug": "input",
+                                "type": "string",
+                                "group": "Inputs",
+                                "index": 9
+                            },
+                            {
+                                "name": "intype-Html",
+                                "displayName": "Type",
+                                "editorName": "Html | Type",
+                                "plug": "input",
+                                "type": {
+                                    "name": "enum",
+                                    "enums": [
+                                        {
+                                            "value": "string",
+                                            "label": "String"
+                                        },
+                                        {
+                                            "value": "boolean",
+                                            "label": "Boolean"
+                                        },
+                                        {
+                                            "value": "number",
+                                            "label": "Number"
+                                        },
+                                        {
+                                            "value": "object",
+                                            "label": "Object"
+                                        },
+                                        {
+                                            "value": "date",
+                                            "label": "Date"
+                                        },
+                                        {
+                                            "value": "array",
+                                            "label": "Array"
+                                        },
+                                        {
+                                            "value": "color",
+                                            "label": "Color"
+                                        }
+                                    ],
+                                    "allowEditOnly": true
+                                },
+                                "default": "string",
+                                "parent": "scriptInputs",
+                                "parentItemId": "co1h",
+                                "index": 10
+                            },
+                            {
+                                "name": "in-Html",
+                                "displayName": "Html",
+                                "plug": "input",
+                                "type": "string",
+                                "group": "Inputs",
+                                "index": 11
+                            },
+                            {
+                                "name": "intype-Text",
+                                "displayName": "Type",
+                                "editorName": "Text | Type",
+                                "plug": "input",
+                                "type": {
+                                    "name": "enum",
+                                    "enums": [
+                                        {
+                                            "value": "string",
+                                            "label": "String"
+                                        },
+                                        {
+                                            "value": "boolean",
+                                            "label": "Boolean"
+                                        },
+                                        {
+                                            "value": "number",
+                                            "label": "Number"
+                                        },
+                                        {
+                                            "value": "object",
+                                            "label": "Object"
+                                        },
+                                        {
+                                            "value": "date",
+                                            "label": "Date"
+                                        },
+                                        {
+                                            "value": "array",
+                                            "label": "Array"
+                                        },
+                                        {
+                                            "value": "color",
+                                            "label": "Color"
+                                        }
+                                    ],
+                                    "allowEditOnly": true
+                                },
+                                "default": "string",
+                                "parent": "scriptInputs",
+                                "parentItemId": "syk9",
+                                "index": 12
+                            },
+                            {
+                                "name": "in-Text",
+                                "displayName": "Text",
+                                "plug": "input",
+                                "type": "string",
+                                "group": "Inputs",
+                                "index": 13
+                            },
+                            {
+                                "name": "intype-CC",
+                                "displayName": "Type",
+                                "editorName": "CC | Type",
+                                "plug": "input",
+                                "type": {
+                                    "name": "enum",
+                                    "enums": [
+                                        {
+                                            "value": "string",
+                                            "label": "String"
+                                        },
+                                        {
+                                            "value": "boolean",
+                                            "label": "Boolean"
+                                        },
+                                        {
+                                            "value": "number",
+                                            "label": "Number"
+                                        },
+                                        {
+                                            "value": "object",
+                                            "label": "Object"
+                                        },
+                                        {
+                                            "value": "date",
+                                            "label": "Date"
+                                        },
+                                        {
+                                            "value": "array",
+                                            "label": "Array"
+                                        },
+                                        {
+                                            "value": "color",
+                                            "label": "Color"
+                                        }
+                                    ],
+                                    "allowEditOnly": true
+                                },
+                                "default": "string",
+                                "parent": "scriptInputs",
+                                "parentItemId": "5jsc",
+                                "index": 14
+                            },
+                            {
+                                "name": "in-CC",
+                                "displayName": "CC",
+                                "plug": "input",
+                                "type": "string",
+                                "group": "Inputs",
+                                "index": 15
+                            },
+                            {
+                                "name": "intype-BCC",
+                                "displayName": "Type",
+                                "editorName": "BCC | Type",
+                                "plug": "input",
+                                "type": {
+                                    "name": "enum",
+                                    "enums": [
+                                        {
+                                            "value": "string",
+                                            "label": "String"
+                                        },
+                                        {
+                                            "value": "boolean",
+                                            "label": "Boolean"
+                                        },
+                                        {
+                                            "value": "number",
+                                            "label": "Number"
+                                        },
+                                        {
+                                            "value": "object",
+                                            "label": "Object"
+                                        },
+                                        {
+                                            "value": "date",
+                                            "label": "Date"
+                                        },
+                                        {
+                                            "value": "array",
+                                            "label": "Array"
+                                        },
+                                        {
+                                            "value": "color",
+                                            "label": "Color"
+                                        }
+                                    ],
+                                    "allowEditOnly": true
+                                },
+                                "default": "string",
+                                "parent": "scriptInputs",
+                                "parentItemId": "9ncu",
+                                "index": 16
+                            },
+                            {
+                                "name": "in-BCC",
+                                "displayName": "BCC",
+                                "plug": "input",
+                                "type": "string",
+                                "group": "Inputs",
+                                "index": 17
+                            },
+                            {
+                                "name": "in-APIKey",
+                                "displayName": "APIKey",
+                                "plug": "input",
+                                "type": "*",
+                                "group": "Inputs",
+                                "index": 18
+                            },
+                            {
+                                "name": "out-Failure",
+                                "displayName": "Failure",
+                                "plug": "output",
+                                "type": "signal",
+                                "group": "Outputs",
+                                "index": 19
+                            },
+                            {
+                                "name": "out-Success",
+                                "displayName": "Success",
+                                "plug": "output",
+                                "type": "signal",
+                                "group": "Outputs",
+                                "index": 20
+                            }
+                        ],
+                        "children": [],
+                        "metadata": {
+                            "merge": {
+                                "soureCodePorts": [
+                                    "functionScript"
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        "id": "a8c11b37-0c79-cf5b-326e-a602e7587d5e",
+                        "type": "/#__cloud__/SendGrid/Settings",
+                        "x": -265,
+                        "y": 216,
+                        "parameters": {},
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    }
+                ]
+            },
+            "metadata": {
+                "isFolderComponent": false
+            }
+        },
+        {
+            "name": "/#__cloud__/SendGrid/Settings",
+            "id": "a038e599-5cae-a881-6970-ad34aab772d5",
+            "graph": {
+                "connections": [
+                    {
+                        "fromId": "d16dc1d6-650f-774a-7d75-025f160ffc35",
+                        "fromProperty": "value",
+                        "toId": "9e63e351-f68b-9d31-6adb-45065899b604",
+                        "toProperty": "API Key"
+                    }
+                ],
+                "roots": [
+                    {
+                        "id": "9e63e351-f68b-9d31-6adb-45065899b604",
+                        "type": "Component Outputs",
+                        "x": 703,
+                        "y": 103,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "API Key",
+                                "plug": "input",
+                                "type": "*",
+                                "index": 0
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "d16dc1d6-650f-774a-7d75-025f160ffc35",
+                        "type": "DbConfig",
+                        "x": 426.25,
+                        "y": 51.166666666666686,
+                        "parameters": {
+                            "configKey": "SendGridAPIKey"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "name": "configKey",
+                                "displayName": "Parameter",
+                                "group": "General",
+                                "type": {
+                                    "name": "enum",
+                                    "enums": [
+                                        {
+                                            "value": "MailGunAPIKey",
+                                            "label": "MailGunAPIKey"
+                                        },
+                                        {
+                                            "value": "MailGunDomainName",
+                                            "label": "MailGunDomainName"
+                                        },
+                                        {
+                                            "value": "SendGridAPIKey",
+                                            "label": "SendGridAPIKey"
+                                        }
+                                    ],
+                                    "allowEditOnly": true
+                                },
+                                "plug": "input",
+                                "index": 0
+                            },
+                            {
+                                "name": "value",
+                                "displayName": "Value",
+                                "group": "General",
+                                "type": "string",
+                                "plug": "output",
+                                "index": 1
+                            },
+                            {
+                                "name": "useDevValue",
+                                "displayName": "Enable",
+                                "group": "Local Override",
+                                "type": "boolean",
+                                "default": false,
+                                "plug": "input",
+                                "index": 2
+                            }
+                        ],
+                        "children": []
+                    }
+                ]
+            },
+            "metadata": {
+                "isFolderComponent": false
+            }
+        }
+    ],
+    "settings": {},
+    "version": "4",
+    "metadata": {
+        "styles": {
+            "text": {},
+            "colors": {}
+        }
+    },
+    "variants": []
+}

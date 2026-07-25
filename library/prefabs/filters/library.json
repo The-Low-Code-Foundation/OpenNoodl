@@ -1,0 +1,17 @@
+{
+  "label": "Filters",
+  "description": "A prefab for creating filter controls that work well with query records.",
+  "type": "prefab",
+  "tags": [
+    "UI"
+  ],
+  "icon": "icon.png",
+  "docsPath": "/library/prefabs/filters/",
+  "version": "0.1.0",
+  "minEditorVersion": "0.1.0",
+  "runtimeVersion": "2.7.0",
+  "provenance": {
+    "sourceUrl": "https://the-low-code-foundation.github.io/opennoodl-docs/library/prefabs/filters/filters-0-1.zip",
+    "importedAt": "2026-07-25"
+  }
+}

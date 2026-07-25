@@ -1,0 +1,17 @@
+{
+  "label": "Marquee",
+  "description": "Add a marquee container to your Noodl App.",
+  "type": "module",
+  "tags": [
+    "UI"
+  ],
+  "icon": "icon.png",
+  "docsPath": "/library/modules/marquee/",
+  "version": "1.0.0",
+  "minEditorVersion": "0.1.0",
+  "runtimeVersion": "2.7.0",
+  "provenance": {
+    "sourceUrl": "https://the-low-code-foundation.github.io/opennoodl-docs/library/modules/marquee/marquee-v1-0-0.zip",
+    "importedAt": "2026-07-25"
+  }
+}

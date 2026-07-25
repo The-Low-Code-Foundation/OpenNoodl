@@ -1,0 +1,593 @@
+{
+    "name": "Export",
+    "components": [
+        {
+            "name": "/List With Icons",
+            "id": "cf171375-beac-4397-8f67-3bffd1d68fc1",
+            "graph": {
+                "connections": [
+                    {
+                        "fromId": "873537b6-0c25-7c32-8e7f-e1d8dc63d509",
+                        "fromProperty": "Align X",
+                        "toId": "2882f4ac-3087-274e-2605-c068d24d775f",
+                        "toProperty": "alignX"
+                    },
+                    {
+                        "fromId": "873537b6-0c25-7c32-8e7f-e1d8dc63d509",
+                        "fromProperty": "Align Y",
+                        "toId": "2882f4ac-3087-274e-2605-c068d24d775f",
+                        "toProperty": "alignY"
+                    },
+                    {
+                        "fromId": "873537b6-0c25-7c32-8e7f-e1d8dc63d509",
+                        "fromProperty": "Margin Top",
+                        "toId": "2882f4ac-3087-274e-2605-c068d24d775f",
+                        "toProperty": "marginTop"
+                    },
+                    {
+                        "fromId": "873537b6-0c25-7c32-8e7f-e1d8dc63d509",
+                        "fromProperty": "Margin Bottom",
+                        "toId": "2882f4ac-3087-274e-2605-c068d24d775f",
+                        "toProperty": "marginBottom"
+                    },
+                    {
+                        "fromId": "873537b6-0c25-7c32-8e7f-e1d8dc63d509",
+                        "fromProperty": "Margin Left",
+                        "toId": "2882f4ac-3087-274e-2605-c068d24d775f",
+                        "toProperty": "marginLeft"
+                    },
+                    {
+                        "fromId": "873537b6-0c25-7c32-8e7f-e1d8dc63d509",
+                        "fromProperty": "Margin Right",
+                        "toId": "2882f4ac-3087-274e-2605-c068d24d775f",
+                        "toProperty": "marginRight"
+                    },
+                    {
+                        "fromId": "873537b6-0c25-7c32-8e7f-e1d8dc63d509",
+                        "fromProperty": "Layout",
+                        "toId": "2882f4ac-3087-274e-2605-c068d24d775f",
+                        "toProperty": "flexDirection"
+                    },
+                    {
+                        "fromId": "873537b6-0c25-7c32-8e7f-e1d8dc63d509",
+                        "fromProperty": "Position",
+                        "toId": "2882f4ac-3087-274e-2605-c068d24d775f",
+                        "toProperty": "position"
+                    },
+                    {
+                        "fromId": "873537b6-0c25-7c32-8e7f-e1d8dc63d509",
+                        "fromProperty": "Items",
+                        "toId": "ea8c2a7e-6942-34e0-3fad-e55f93486bd4",
+                        "toProperty": "in-Items"
+                    },
+                    {
+                        "fromId": "ea8c2a7e-6942-34e0-3fad-e55f93486bd4",
+                        "fromProperty": "out-Items",
+                        "toId": "ebd35e08-27b0-6c7b-2678-bb9656496894",
+                        "toProperty": "items"
+                    },
+                    {
+                        "fromId": "ebd35e08-27b0-6c7b-2678-bb9656496894",
+                        "fromProperty": "itemActionItemId",
+                        "toId": "a7daa7df-7641-7991-0f5c-f658bced3823",
+                        "toProperty": "Item Id"
+                    },
+                    {
+                        "fromId": "ebd35e08-27b0-6c7b-2678-bb9656496894",
+                        "fromProperty": "itemOutputSignal-Click",
+                        "toId": "a7daa7df-7641-7991-0f5c-f658bced3823",
+                        "toProperty": "Item Clicked"
+                    }
+                ],
+                "roots": [
+                    {
+                        "id": "2882f4ac-3087-274e-2605-c068d24d775f",
+                        "type": "Group",
+                        "label": "Simple list",
+                        "x": 0,
+                        "y": 0,
+                        "parameters": {
+                            "sizeMode": "contentSize"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": [
+                            {
+                                "id": "ebd35e08-27b0-6c7b-2678-bb9656496894",
+                                "type": "For Each",
+                                "parameters": {
+                                    "template": "/List With Icons/Item"
+                                },
+                                "ports": [],
+                                "dynamicports": [
+                                    {
+                                        "name": "itemOutputSignal-Click",
+                                        "displayName": "Click",
+                                        "type": "signal",
+                                        "plug": "output",
+                                        "group": "Item Signals",
+                                        "index": 6
+                                    },
+                                    {
+                                        "name": "inputMappingScript",
+                                        "type": {
+                                            "name": "string",
+                                            "codeeditor": "javascript"
+                                        },
+                                        "displayName": "Script",
+                                        "group": "Input Mapping",
+                                        "default": "// Here you add mappings between the properties of the item objects and the inputs of the components.\n// 'myComponentInput': 'myObjectProperty',\n// 'anotherComponentInput': function () { return object.get('someProperty') + ' ' + object.get('otherProp') }\n// These are the default mappings based on the selected template component.\nmap({\n})\n",
+                                        "plug": "input",
+                                        "index": 7
+                                    }
+                                ],
+                                "children": []
+                            }
+                        ]
+                    },
+                    {
+                        "id": "873537b6-0c25-7c32-8e7f-e1d8dc63d509",
+                        "type": "Component Inputs",
+                        "x": -418.5,
+                        "y": 9.5,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Align X",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "group": "Alignment",
+                                "index": 1
+                            },
+                            {
+                                "name": "Align Y",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "group": "Alignment",
+                                "index": 0
+                            },
+                            {
+                                "name": "Position",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "group": "Layout",
+                                "index": 7
+                            },
+                            {
+                                "name": "Margin Top",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "group": "Margins",
+                                "index": 2
+                            },
+                            {
+                                "name": "Margin Bottom",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "group": "Margins",
+                                "index": 3
+                            },
+                            {
+                                "name": "Margin Left",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "group": "Margins",
+                                "index": 4
+                            },
+                            {
+                                "name": "Margin Right",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "group": "Margins",
+                                "index": 5
+                            },
+                            {
+                                "name": "Items",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "group": "Data",
+                                "index": 8
+                            },
+                            {
+                                "name": "Layout",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "group": "Layout",
+                                "index": 6
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "ea8c2a7e-6942-34e0-3fad-e55f93486bd4",
+                        "type": "JavaScriptFunction",
+                        "label": "Default value for items",
+                        "x": -204.5,
+                        "y": 254.5,
+                        "parameters": {
+                            "scriptInputs": [
+                                {
+                                    "id": "wh4j",
+                                    "label": "Items"
+                                }
+                            ],
+                            "intype-Items": "array",
+                            "functionScript": "Outputs.Items = Inputs.Items",
+                            "in-Items": "[\n    {\n        // Icons are references to material icons, \n        // see https://fonts.google.com/icons?selected=Material+Icons\n        Icon:\"account_circle\",\n        Label:\"List Item 1\"\n    },\n    {\n        Icon:\"account_circle\",\n        Label:\"List Item 2\"\n    },\n    {\n        Icon:\"account_circle\",\n        Label:\"List Item 3\"\n    }   \n]"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "name": "intype-Items",
+                                "displayName": "Type",
+                                "editorName": "Items | Type",
+                                "plug": "input",
+                                "type": {
+                                    "name": "enum",
+                                    "enums": [
+                                        {
+                                            "value": "string",
+                                            "label": "String"
+                                        },
+                                        {
+                                            "value": "boolean",
+                                            "label": "Boolean"
+                                        },
+                                        {
+                                            "value": "number",
+                                            "label": "Number"
+                                        },
+                                        {
+                                            "value": "object",
+                                            "label": "Object"
+                                        },
+                                        {
+                                            "value": "date",
+                                            "label": "Date"
+                                        },
+                                        {
+                                            "value": "array",
+                                            "label": "Array"
+                                        },
+                                        {
+                                            "value": "color",
+                                            "label": "Color"
+                                        }
+                                    ],
+                                    "allowEditOnly": true
+                                },
+                                "default": "string",
+                                "parent": "scriptInputs",
+                                "parentItemId": "wh4j",
+                                "index": 4
+                            },
+                            {
+                                "name": "in-Items",
+                                "displayName": "Items",
+                                "plug": "input",
+                                "type": "array",
+                                "group": "Inputs",
+                                "index": 5
+                            },
+                            {
+                                "name": "out-Items",
+                                "displayName": "Items",
+                                "plug": "output",
+                                "type": "*",
+                                "group": "Outputs",
+                                "index": 6
+                            }
+                        ],
+                        "children": [],
+                        "metadata": {
+                            "merge": {
+                                "soureCodePorts": [
+                                    "functionScript"
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        "id": "a7daa7df-7641-7991-0f5c-f658bced3823",
+                        "type": "Component Outputs",
+                        "x": 323.5,
+                        "y": 170.5,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Item Clicked",
+                                "plug": "input",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 1
+                            },
+                            {
+                                "name": "Item Id",
+                                "plug": "input",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 2
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    }
+                ]
+            },
+            "metadata": {
+                "canvasPos": {
+                    "x": 564,
+                    "y": 20
+                }
+            }
+        },
+        {
+            "name": "/List With Icons/Item",
+            "id": "127edf74-3ee5-6c8e-0b6d-954bca1c0538",
+            "graph": {
+                "connections": [
+                    {
+                        "fromId": "c35049fe-b656-83d5-db19-ebd4596f223f",
+                        "fromProperty": "prop-Label",
+                        "toId": "c7223669-e849-3ca2-c19b-af0ec5e0f478",
+                        "toProperty": "text"
+                    },
+                    {
+                        "fromId": "8b068435-5d02-8aff-06dc-24bb99112eec",
+                        "fromProperty": "onClick",
+                        "toId": "807d5dd5-7d9b-d8b0-87e6-af4458238144",
+                        "toProperty": "Click"
+                    },
+                    {
+                        "fromId": "c35049fe-b656-83d5-db19-ebd4596f223f",
+                        "fromProperty": "prop-Icon",
+                        "toId": "33d82b7f-236f-b33c-e602-a95a4df04ce7",
+                        "toProperty": "in-IconCode"
+                    },
+                    {
+                        "fromId": "33d82b7f-236f-b33c-e602-a95a4df04ce7",
+                        "fromProperty": "out-IconSource",
+                        "toId": "ddc39c91-fa77-2325-5fca-ddd5644b52ef",
+                        "toProperty": "iconIconSource"
+                    }
+                ],
+                "roots": [
+                    {
+                        "id": "8b068435-5d02-8aff-06dc-24bb99112eec",
+                        "type": "Group",
+                        "x": 0,
+                        "y": 1,
+                        "parameters": {
+                            "sizeMode": "contentWidth",
+                            "paddingLeft": {
+                                "value": 10,
+                                "unit": "px"
+                            },
+                            "paddingTop": {
+                                "value": 5,
+                                "unit": "px"
+                            },
+                            "paddingBottom": {
+                                "value": 5,
+                                "unit": "px"
+                            },
+                            "paddingRight": {
+                                "value": 10,
+                                "unit": "px"
+                            },
+                            "flexDirection": "row",
+                            "alignItems": "center",
+                            "marginBottom": {
+                                "value": 4,
+                                "unit": "px"
+                            },
+                            "borderRadius": {
+                                "value": 4,
+                                "unit": "px"
+                            },
+                            "styleCss": "cursor:pointer;"
+                        },
+                        "stateParameters": {
+                            "hover": {
+                                "backgroundColor": "Grey - 300"
+                            }
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "conflicts": [],
+                        "children": [
+                            {
+                                "id": "ddc39c91-fa77-2325-5fca-ddd5644b52ef",
+                                "type": "net.noodl.visual.icon",
+                                "parameters": {
+                                    "iconIconSource": {
+                                        "class": "material-icons",
+                                        "code": "account_circle"
+                                    },
+                                    "iconColor": "Grey - 900",
+                                    "iconSize": {
+                                        "value": 24,
+                                        "unit": "px"
+                                    }
+                                },
+                                "ports": [],
+                                "dynamicports": [],
+                                "children": []
+                            },
+                            {
+                                "id": "c7223669-e849-3ca2-c19b-af0ec5e0f478",
+                                "type": "Text",
+                                "label": "Label",
+                                "parameters": {
+                                    "sizeMode": "contentSize",
+                                    "color": "Grey - 900",
+                                    "marginLeft": {
+                                        "value": 8,
+                                        "unit": "px"
+                                    }
+                                },
+                                "ports": [],
+                                "dynamicports": [],
+                                "children": []
+                            }
+                        ]
+                    },
+                    {
+                        "id": "c35049fe-b656-83d5-db19-ebd4596f223f",
+                        "type": "Model2",
+                        "x": -462.5,
+                        "y": 111.5,
+                        "parameters": {
+                            "idSource": "foreach",
+                            "properties": "Label,Icon"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "type": {
+                                    "name": "*",
+                                    "allowConnectionsOnly": true
+                                },
+                                "plug": "input/output",
+                                "group": "Properties",
+                                "name": "prop-Label",
+                                "displayName": "Label",
+                                "index": 7
+                            },
+                            {
+                                "type": "signal",
+                                "plug": "output",
+                                "group": "Changed Events",
+                                "displayName": "Label Changed",
+                                "name": "changed-Label",
+                                "index": 8
+                            },
+                            {
+                                "type": {
+                                    "name": "*",
+                                    "allowConnectionsOnly": true
+                                },
+                                "plug": "input/output",
+                                "group": "Properties",
+                                "name": "prop-Icon",
+                                "displayName": "Icon",
+                                "index": 9
+                            },
+                            {
+                                "type": "signal",
+                                "plug": "output",
+                                "group": "Changed Events",
+                                "displayName": "Icon Changed",
+                                "name": "changed-Icon",
+                                "index": 10
+                            }
+                        ],
+                        "children": []
+                    },
+                    {
+                        "id": "807d5dd5-7d9b-d8b0-87e6-af4458238144",
+                        "type": "Component Outputs",
+                        "x": 275.5,
+                        "y": -10.5,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Click",
+                                "plug": "input",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 1
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "33d82b7f-236f-b33c-e602-a95a4df04ce7",
+                        "type": "JavaScriptFunction",
+                        "x": -225.33333333333337,
+                        "y": 41.33333333333337,
+                        "parameters": {
+                            "functionScript": "Outputs.IconSource = {\n    \"class\": \"material-icons\",\n    \"code\": Inputs.IconCode\n}\nOutputs.HaveIcon = Inputs.IconCode !== undefined && Inputs.IconCode !== \"\""
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "name": "in-IconCode",
+                                "displayName": "IconCode",
+                                "plug": "input",
+                                "type": "*",
+                                "group": "Inputs",
+                                "index": 4
+                            },
+                            {
+                                "name": "out-IconSource",
+                                "displayName": "IconSource",
+                                "plug": "output",
+                                "type": "*",
+                                "group": "Outputs",
+                                "index": 5
+                            },
+                            {
+                                "name": "out-HaveIcon",
+                                "displayName": "HaveIcon",
+                                "plug": "output",
+                                "type": "*",
+                                "group": "Outputs",
+                                "index": 6
+                            }
+                        ],
+                        "children": [],
+                        "metadata": {
+                            "merge": {
+                                "soureCodePorts": [
+                                    "functionScript"
+                                ]
+                            }
+                        }
+                    }
+                ]
+            },
+            "metadata": {
+                "canvasPos": {
+                    "x": 564,
+                    "y": 20
+                }
+            }
+        }
+    ],
+    "settings": {},
+    "version": "3",
+    "metadata": {
+        "styles": {
+            "text": {},
+            "colors": {
+                "Grey - 300": "#E9E9E9",
+                "Grey - 900": "#1F1F1F"
+            }
+        }
+    },
+    "variants": []
+}

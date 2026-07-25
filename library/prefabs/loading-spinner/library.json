@@ -1,0 +1,17 @@
+{
+  "label": "Loading Spinner",
+  "description": "A loading spinner that can be shown when requesting data etc.",
+  "type": "prefab",
+  "tags": [
+    "UI"
+  ],
+  "icon": "icon.png",
+  "docsPath": "/library/prefabs/loading-spinner/",
+  "version": "0.1.0",
+  "minEditorVersion": "0.1.0",
+  "runtimeVersion": "2.7.0",
+  "provenance": {
+    "sourceUrl": "https://the-low-code-foundation.github.io/opennoodl-docs/library/prefabs/loading-spinner/loading-spinner-0-1.zip",
+    "importedAt": "2026-07-25"
+  }
+}

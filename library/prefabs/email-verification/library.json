@@ -1,0 +1,17 @@
+{
+  "label": "Email Verification",
+  "description": "Cloud functions for email verification and reset password.",
+  "type": "prefab",
+  "tags": [
+    "Cloud"
+  ],
+  "icon": "icon.png",
+  "docsPath": "/library/prefabs/email-verification/",
+  "version": "0.4.0",
+  "minEditorVersion": "0.1.0",
+  "runtimeVersion": "2.7.0",
+  "provenance": {
+    "sourceUrl": "https://the-low-code-foundation.github.io/opennoodl-docs/library/prefabs/email-verification/email-verification-0-4.zip",
+    "importedAt": "2026-07-25"
+  }
+}

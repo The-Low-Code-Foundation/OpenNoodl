@@ -1,0 +1,499 @@
+{
+    "name": "Export",
+    "components": [
+        {
+            "name": "/Loading Spinner",
+            "id": "77dbfebe-0d7a-ec9b-bb1f-11b6a6390c6a",
+            "graph": {
+                "connections": [
+                    {
+                        "fromId": "22fd20b9-b2b9-112d-3ce9-b95af81d0641",
+                        "fromProperty": "Closed",
+                        "toId": "2a4d406d-0d5c-9191-b38c-5df173ce84ea",
+                        "toProperty": "Done"
+                    },
+                    {
+                        "fromId": "54936e83-f46c-6534-c283-0f4276cadfd1",
+                        "fromProperty": "Hide",
+                        "toId": "0a62432e-368f-573c-2d7c-b64f28d8cbae",
+                        "toProperty": "run"
+                    },
+                    {
+                        "fromId": "54936e83-f46c-6534-c283-0f4276cadfd1",
+                        "fromProperty": "Show",
+                        "toId": "ac3cd095-9736-4f71-17dd-bf068ade4be5",
+                        "toProperty": "run"
+                    },
+                    {
+                        "fromId": "ac3cd095-9736-4f71-17dd-bf068ade4be5",
+                        "fromProperty": "out-ShowPopup",
+                        "toId": "22fd20b9-b2b9-112d-3ce9-b95af81d0641",
+                        "toProperty": "show"
+                    }
+                ],
+                "roots": [
+                    {
+                        "id": "54936e83-f46c-6534-c283-0f4276cadfd1",
+                        "type": "Component Inputs",
+                        "x": -182,
+                        "y": 261,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Show",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 1
+                            },
+                            {
+                                "name": "Hide",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 2
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "22fd20b9-b2b9-112d-3ce9-b95af81d0641",
+                        "type": "NavigationShowPopup",
+                        "x": 301.9709826726816,
+                        "y": 260.2677808484063,
+                        "parameters": {
+                            "target": "/Loading Spinner/Loader Component"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "2a4d406d-0d5c-9191-b38c-5df173ce84ea",
+                        "type": "Component Outputs",
+                        "x": 527.6450866365918,
+                        "y": 296.5526177477978,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Done",
+                                "plug": "input",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 1
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "0a62432e-368f-573c-2d7c-b64f28d8cbae",
+                        "type": "JavaScriptFunction",
+                        "label": "Send Hide Signal",
+                        "x": 159.96516310060855,
+                        "y": 429.6337696246332,
+                        "parameters": {
+                            "functionScript": "// Decrease loading spinner running counter\nNoodl.Variables.NumLoadingSpinnerRunning--\n\n// When we reach zero, hide the loading spinner\nif(Noodl.Variables.NumLoadingSpinnerRunning < 1)\n    Noodl.Events.emit(\"Hide loader\");"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": [],
+                        "metadata": {
+                            "merge": {
+                                "soureCodePorts": [
+                                    "functionScript"
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        "id": "ac3cd095-9736-4f71-17dd-bf068ade4be5",
+                        "type": "JavaScriptFunction",
+                        "label": "Function",
+                        "x": 39.895308102470494,
+                        "y": 191.86354205520934,
+                        "parameters": {
+                            "functionScript": "// If we have multiple show signals sent, only update the\n// running count\nif(Noodl.Variables.NumLoadingSpinnerRunning > 0)\n    Noodl.Variables.NumLoadingSpinnerRunning++\nelse {\n    // If this is the first show signal, show the popup\n    Noodl.Variables.NumLoadingSpinnerRunning = 1\n    Outputs.ShowPopup()\n}"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "name": "out-ShowPopup",
+                                "displayName": "ShowPopup",
+                                "plug": "output",
+                                "type": "signal",
+                                "group": "Outputs",
+                                "index": 4
+                            }
+                        ],
+                        "children": [],
+                        "metadata": {
+                            "merge": {
+                                "soureCodePorts": [
+                                    "functionScript"
+                                ]
+                            }
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "name": "/Loading Spinner/Loader Component",
+            "id": "ca45883b-b7f8-b518-871a-0a6045eb4562",
+            "graph": {
+                "connections": [
+                    {
+                        "fromId": "0a17ca6c-8d02-3bb5-304a-c149a7b16d94",
+                        "fromProperty": "didMount",
+                        "toId": "73970956-e0eb-1d99-d8ff-df9270e334de",
+                        "toProperty": "to-Show"
+                    },
+                    {
+                        "fromId": "f205c25f-e012-3bbb-06bf-c77ab7855a47",
+                        "fromProperty": "out-hide",
+                        "toId": "73970956-e0eb-1d99-d8ff-df9270e334de",
+                        "toProperty": "to-Hide"
+                    },
+                    {
+                        "fromId": "73970956-e0eb-1d99-d8ff-df9270e334de",
+                        "fromProperty": "reached-Hide",
+                        "toId": "08ea9c46-5338-98b5-8094-64486e8c17af",
+                        "toProperty": "close"
+                    },
+                    {
+                        "fromId": "73970956-e0eb-1d99-d8ff-df9270e334de",
+                        "fromProperty": "opacity",
+                        "toId": "0a17ca6c-8d02-3bb5-304a-c149a7b16d94",
+                        "toProperty": "opacity"
+                    }
+                ],
+                "roots": [
+                    {
+                        "id": "0a17ca6c-8d02-3bb5-304a-c149a7b16d94",
+                        "type": "Group",
+                        "x": -91,
+                        "y": 180,
+                        "parameters": {
+                            "position": "absolute",
+                            "width": {
+                                "value": 100,
+                                "unit": "vw"
+                            },
+                            "height": {
+                                "value": 100,
+                                "unit": "vh"
+                            },
+                            "backgroundColor": "#FFFFFF7F"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": [
+                            {
+                                "id": "8f2cb7c1-ef5a-e001-029c-c8a6de15ee8c",
+                                "type": "Image",
+                                "parameters": {
+                                    "src": "Rolling-1s-200px.svg",
+                                    "sizeMode": "explicit",
+                                    "position": "absolute",
+                                    "alignX": "center",
+                                    "alignY": "center",
+                                    "width": {
+                                        "value": 100,
+                                        "unit": "px"
+                                    },
+                                    "height": {
+                                        "value": 100,
+                                        "unit": "px"
+                                    }
+                                },
+                                "ports": [],
+                                "dynamicports": [],
+                                "children": []
+                            }
+                        ]
+                    },
+                    {
+                        "id": "08ea9c46-5338-98b5-8094-64486e8c17af",
+                        "type": "NavigationClosePopup",
+                        "x": 434,
+                        "y": 177,
+                        "parameters": {},
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "f205c25f-e012-3bbb-06bf-c77ab7855a47",
+                        "type": "JavaScriptFunction",
+                        "label": "Recieve Hide Signal",
+                        "x": 168,
+                        "y": 7.666666666666629,
+                        "parameters": {
+                            "functionScript": "Noodl.Events.on(\"Hide loader\", function () {\n    Outputs.hide();\n});"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "name": "out-hide",
+                                "displayName": "hide",
+                                "plug": "output",
+                                "type": "signal",
+                                "group": "Outputs",
+                                "index": 4
+                            }
+                        ],
+                        "children": [],
+                        "metadata": {
+                            "merge": {
+                                "soureCodePorts": [
+                                    "functionScript"
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        "id": "73970956-e0eb-1d99-d8ff-df9270e334de",
+                        "type": "States",
+                        "label": "Animate in/out",
+                        "x": 166,
+                        "y": 167.66666666666663,
+                        "parameters": {
+                            "states": "Show,Hide",
+                            "currentState": "Hide",
+                            "values": "opacity",
+                            "value-Show-opacity": 1,
+                            "value-Hide-opacity": 0
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "type": {
+                                    "name": "number",
+                                    "allowConnectionsOnly": true
+                                },
+                                "plug": "output",
+                                "group": "Values",
+                                "name": "opacity",
+                                "index": 6
+                            },
+                            {
+                                "type": {
+                                    "name": "enum",
+                                    "enums": [
+                                        {
+                                            "label": "Number",
+                                            "value": "number"
+                                        },
+                                        {
+                                            "label": "String",
+                                            "value": "string"
+                                        },
+                                        {
+                                            "label": "Boolean",
+                                            "value": "boolean"
+                                        },
+                                        {
+                                            "label": "Color",
+                                            "value": "color"
+                                        },
+                                        {
+                                            "label": "Text Style",
+                                            "value": "textStyle"
+                                        }
+                                    ],
+                                    "allowEditOnly": true
+                                },
+                                "default": "number",
+                                "plug": "input",
+                                "group": "Types",
+                                "displayName": "opacity",
+                                "name": "type-opacity",
+                                "index": 7
+                            },
+                            {
+                                "plug": "input",
+                                "type": "number",
+                                "group": "Show Values",
+                                "name": "value-Show-opacity",
+                                "displayName": "opacity",
+                                "editorName": "Show|opacity",
+                                "index": 8
+                            },
+                            {
+                                "plug": "input",
+                                "type": "curve",
+                                "displayName": "Default",
+                                "default": {
+                                    "curve": [
+                                        0,
+                                        0,
+                                        0.58,
+                                        1
+                                    ],
+                                    "dur": 300,
+                                    "delay": 0
+                                },
+                                "group": "Show Transitions",
+                                "name": "transitiondef-Show",
+                                "index": 9
+                            },
+                            {
+                                "plug": "input",
+                                "type": {
+                                    "name": "curve"
+                                },
+                                "default": {
+                                    "curve": [
+                                        0,
+                                        0,
+                                        0.58,
+                                        1
+                                    ],
+                                    "dur": 300,
+                                    "delay": 0
+                                },
+                                "group": "Show Transitions",
+                                "name": "transition-Show-opacity",
+                                "displayName": "opacity",
+                                "editorName": "Transition Show|opacity",
+                                "index": 10
+                            },
+                            {
+                                "plug": "input",
+                                "type": {
+                                    "name": "signal",
+                                    "allowConnectionsOnly": true
+                                },
+                                "displayName": "To Show",
+                                "name": "to-Show",
+                                "group": "Go to state",
+                                "index": 11
+                            },
+                            {
+                                "plug": "output",
+                                "type": "boolean",
+                                "displayName": "At Show",
+                                "name": "at-Show",
+                                "group": "Current state",
+                                "index": 12
+                            },
+                            {
+                                "plug": "output",
+                                "type": "signal",
+                                "displayName": "Has Reached Show",
+                                "name": "reached-Show",
+                                "group": "Current state",
+                                "index": 13
+                            },
+                            {
+                                "plug": "input",
+                                "type": "number",
+                                "group": "Hide Values",
+                                "name": "value-Hide-opacity",
+                                "displayName": "opacity",
+                                "editorName": "Hide|opacity",
+                                "index": 14
+                            },
+                            {
+                                "plug": "input",
+                                "type": "curve",
+                                "displayName": "Default",
+                                "default": {
+                                    "curve": [
+                                        0,
+                                        0,
+                                        0.58,
+                                        1
+                                    ],
+                                    "dur": 300,
+                                    "delay": 0
+                                },
+                                "group": "Hide Transitions",
+                                "name": "transitiondef-Hide",
+                                "index": 15
+                            },
+                            {
+                                "plug": "input",
+                                "type": {
+                                    "name": "curve"
+                                },
+                                "default": {
+                                    "curve": [
+                                        0,
+                                        0,
+                                        0.58,
+                                        1
+                                    ],
+                                    "dur": 300,
+                                    "delay": 0
+                                },
+                                "group": "Hide Transitions",
+                                "name": "transition-Hide-opacity",
+                                "displayName": "opacity",
+                                "editorName": "Transition Hide|opacity",
+                                "index": 16
+                            },
+                            {
+                                "plug": "input",
+                                "type": {
+                                    "name": "signal",
+                                    "allowConnectionsOnly": true
+                                },
+                                "displayName": "To Hide",
+                                "name": "to-Hide",
+                                "group": "Go to state",
+                                "index": 17
+                            },
+                            {
+                                "plug": "output",
+                                "type": "boolean",
+                                "displayName": "At Hide",
+                                "name": "at-Hide",
+                                "group": "Current state",
+                                "index": 18
+                            },
+                            {
+                                "plug": "output",
+                                "type": "signal",
+                                "displayName": "Has Reached Hide",
+                                "name": "reached-Hide",
+                                "group": "Current state",
+                                "index": 19
+                            },
+                            {
+                                "plug": "input",
+                                "type": {
+                                    "name": "enum",
+                                    "enums": [
+                                        "Show",
+                                        "Hide"
+                                    ]
+                                },
+                                "group": "States",
+                                "displayName": "State",
+                                "name": "currentState",
+                                "default": "Show",
+                                "index": 20
+                            }
+                        ],
+                        "children": []
+                    }
+                ]
+            }
+        }
+    ],
+    "settings": {},
+    "version": "4",
+    "metadata": {
+        "styles": {
+            "text": {},
+            "colors": {}
+        }
+    },
+    "variants": []
+}

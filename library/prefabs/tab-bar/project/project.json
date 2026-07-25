@@ -1,0 +1,1003 @@
+{
+    "name": "Export",
+    "components": [
+        {
+            "name": "/Tab Bar",
+            "id": "b081feb9-2548-519d-d681-15e8b10b028c",
+            "graph": {
+                "connections": [
+                    {
+                        "fromId": "a0b9eacc-e592-8cca-40b1-ccb2b4290047",
+                        "fromProperty": "itemActionItemId",
+                        "toId": "e9cc6a07-394a-7f76-bf40-67b85b6cdce7",
+                        "toProperty": "modelId"
+                    },
+                    {
+                        "fromId": "e9cc6a07-394a-7f76-bf40-67b85b6cdce7",
+                        "fromProperty": "prop-Value",
+                        "toId": "352f7cf9-0b1f-c5fa-34d8-8dd97f75c7b8",
+                        "toProperty": "prop-Selected Tab"
+                    },
+                    {
+                        "fromId": "a0b9eacc-e592-8cca-40b1-ccb2b4290047",
+                        "fromProperty": "itemOutputSignal-Item Clicked",
+                        "toId": "352f7cf9-0b1f-c5fa-34d8-8dd97f75c7b8",
+                        "toProperty": "store"
+                    },
+                    {
+                        "fromId": "098a6d1d-5fa3-3f95-3604-6deb81e0b695",
+                        "fromProperty": "Margin Top",
+                        "toId": "4d4e40b2-6a84-0c3a-614a-98f6568b5f2a",
+                        "toProperty": "marginTop"
+                    },
+                    {
+                        "fromId": "098a6d1d-5fa3-3f95-3604-6deb81e0b695",
+                        "fromProperty": "Margin Left",
+                        "toId": "4d4e40b2-6a84-0c3a-614a-98f6568b5f2a",
+                        "toProperty": "marginLeft"
+                    },
+                    {
+                        "fromId": "098a6d1d-5fa3-3f95-3604-6deb81e0b695",
+                        "fromProperty": "Margin Bottom",
+                        "toId": "4d4e40b2-6a84-0c3a-614a-98f6568b5f2a",
+                        "toProperty": "marginBottom"
+                    },
+                    {
+                        "fromId": "098a6d1d-5fa3-3f95-3604-6deb81e0b695",
+                        "fromProperty": "Margin Right",
+                        "toId": "4d4e40b2-6a84-0c3a-614a-98f6568b5f2a",
+                        "toProperty": "marginRight"
+                    },
+                    {
+                        "fromId": "098a6d1d-5fa3-3f95-3604-6deb81e0b695",
+                        "fromProperty": "Position",
+                        "toId": "4d4e40b2-6a84-0c3a-614a-98f6568b5f2a",
+                        "toProperty": "position"
+                    },
+                    {
+                        "fromId": "098a6d1d-5fa3-3f95-3604-6deb81e0b695",
+                        "fromProperty": "Align X",
+                        "toId": "4d4e40b2-6a84-0c3a-614a-98f6568b5f2a",
+                        "toProperty": "alignX"
+                    },
+                    {
+                        "fromId": "098a6d1d-5fa3-3f95-3604-6deb81e0b695",
+                        "fromProperty": "Align Y",
+                        "toId": "4d4e40b2-6a84-0c3a-614a-98f6568b5f2a",
+                        "toProperty": "alignY"
+                    },
+                    {
+                        "fromId": "098a6d1d-5fa3-3f95-3604-6deb81e0b695",
+                        "fromProperty": "Width",
+                        "toId": "4d4e40b2-6a84-0c3a-614a-98f6568b5f2a",
+                        "toProperty": "width"
+                    },
+                    {
+                        "fromId": "098a6d1d-5fa3-3f95-3604-6deb81e0b695",
+                        "fromProperty": "Selected Tab",
+                        "toId": "5264858d-521d-2670-2034-93eadd55935d",
+                        "toProperty": "value"
+                    },
+                    {
+                        "fromId": "5264858d-521d-2670-2034-93eadd55935d",
+                        "fromProperty": "savedValue",
+                        "toId": "57cc556f-42a1-a90d-c603-34877a1685e8",
+                        "toProperty": "value-Selected Tab"
+                    },
+                    {
+                        "fromId": "098a6d1d-5fa3-3f95-3604-6deb81e0b695",
+                        "fromProperty": "Items",
+                        "toId": "ed7b10e3-35b3-de36-e70a-bc3be8e9c854",
+                        "toProperty": "in-Items"
+                    },
+                    {
+                        "fromId": "ed7b10e3-35b3-de36-e70a-bc3be8e9c854",
+                        "fromProperty": "out-Items",
+                        "toId": "a0b9eacc-e592-8cca-40b1-ccb2b4290047",
+                        "toProperty": "items"
+                    },
+                    {
+                        "fromId": "352f7cf9-0b1f-c5fa-34d8-8dd97f75c7b8",
+                        "fromProperty": "stored",
+                        "toId": "ae6acf55-d6bc-82ab-4170-cba1a83b3b88",
+                        "toProperty": "Selected Tab Changed"
+                    },
+                    {
+                        "fromId": "57cc556f-42a1-a90d-c603-34877a1685e8",
+                        "fromProperty": "value-Selected Tab",
+                        "toId": "ae6acf55-d6bc-82ab-4170-cba1a83b3b88",
+                        "toProperty": "Selected Tab"
+                    }
+                ],
+                "roots": [
+                    {
+                        "id": "4d4e40b2-6a84-0c3a-614a-98f6568b5f2a",
+                        "type": "Group",
+                        "label": "Tab bar",
+                        "x": 0,
+                        "y": 0,
+                        "parameters": {
+                            "height": {
+                                "value": 40,
+                                "unit": "px"
+                            },
+                            "borderRadius": {
+                                "value": 4,
+                                "unit": "px"
+                            },
+                            "borderStyle": "solid",
+                            "borderWidth": {
+                                "value": 1,
+                                "unit": "px"
+                            },
+                            "borderColor": "Grey - 500",
+                            "flexDirection": "row",
+                            "clip": true
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": [
+                            {
+                                "id": "a0b9eacc-e592-8cca-40b1-ccb2b4290047",
+                                "type": "For Each",
+                                "parameters": {
+                                    "template": "/Tab Bar/Tab Bar Item"
+                                },
+                                "ports": [],
+                                "dynamicports": [
+                                    {
+                                        "name": "itemOutputSignal-Item Clicked",
+                                        "displayName": "Item Clicked",
+                                        "type": "signal",
+                                        "plug": "output",
+                                        "group": "Item Signals",
+                                        "index": 6
+                                    },
+                                    {
+                                        "name": "inputMappingScript",
+                                        "type": {
+                                            "name": "string",
+                                            "codeeditor": "javascript"
+                                        },
+                                        "displayName": "Script",
+                                        "group": "Input Mapping",
+                                        "default": "// Here you add mappings between the properties of the item objects and the inputs of the components.\n// 'myComponentInput': 'myObjectProperty',\n// 'anotherComponentInput': function () { return object.get('someProperty') + ' ' + object.get('otherProp') }\n// These are the default mappings based on the selected template component.\nmap({\n})\n",
+                                        "plug": "input",
+                                        "index": 7
+                                    }
+                                ],
+                                "children": []
+                            }
+                        ]
+                    },
+                    {
+                        "id": "098a6d1d-5fa3-3f95-3604-6deb81e0b695",
+                        "type": "Component Inputs",
+                        "x": -427,
+                        "y": -35,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Items",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 0
+                            },
+                            {
+                                "name": "Selected Tab",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 1
+                            },
+                            {
+                                "name": "Margin Top",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "group": "Margins",
+                                "index": 2
+                            },
+                            {
+                                "name": "Margin Left",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "group": "Margins",
+                                "index": 3
+                            },
+                            {
+                                "name": "Margin Bottom",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "group": "Margins",
+                                "index": 4
+                            },
+                            {
+                                "name": "Margin Right",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "group": "Margins",
+                                "index": 5
+                            },
+                            {
+                                "name": "Position",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "group": "Layout",
+                                "index": 6
+                            },
+                            {
+                                "name": "Align X",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "group": "Alignment",
+                                "index": 7
+                            },
+                            {
+                                "name": "Align Y",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "group": "Alignment",
+                                "index": 8
+                            },
+                            {
+                                "name": "Width",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "group": "Dimension",
+                                "index": 9
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "57cc556f-42a1-a90d-c603-34877a1685e8",
+                        "type": "net.noodl.ComponentObject",
+                        "x": 330,
+                        "y": 363,
+                        "parameters": {
+                            "properties": "Selected Tab,Selected Tab Changed"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "type": {
+                                    "name": "*",
+                                    "allowConnectionsOnly": true
+                                },
+                                "plug": "input/output",
+                                "group": "Properties",
+                                "name": "value-Selected Tab",
+                                "displayName": "Selected Tab",
+                                "index": 4
+                            },
+                            {
+                                "type": "signal",
+                                "plug": "output",
+                                "group": "Changed Events",
+                                "displayName": "Selected Tab Changed",
+                                "name": "changed-Selected Tab",
+                                "index": 5
+                            },
+                            {
+                                "type": {
+                                    "name": "*",
+                                    "allowConnectionsOnly": true
+                                },
+                                "plug": "input/output",
+                                "group": "Properties",
+                                "name": "value-Selected Tab Changed",
+                                "displayName": "Selected Tab Changed",
+                                "index": 6
+                            },
+                            {
+                                "type": "signal",
+                                "plug": "output",
+                                "group": "Changed Events",
+                                "displayName": "Selected Tab Changed Changed",
+                                "name": "changed-Selected Tab Changed",
+                                "index": 7
+                            }
+                        ],
+                        "children": []
+                    },
+                    {
+                        "id": "352f7cf9-0b1f-c5fa-34d8-8dd97f75c7b8",
+                        "type": "net.noodl.SetComponentObjectProperties",
+                        "x": 328.25,
+                        "y": -56,
+                        "parameters": {
+                            "properties": "Selected Tab"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "type": {
+                                    "name": "*"
+                                },
+                                "plug": "input",
+                                "group": "Property Values",
+                                "displayName": "Selected Tab",
+                                "name": "prop-Selected Tab",
+                                "index": 3
+                            },
+                            {
+                                "type": {
+                                    "name": "enum",
+                                    "enums": [
+                                        {
+                                            "label": "String",
+                                            "value": "string"
+                                        },
+                                        {
+                                            "label": "Boolean",
+                                            "value": "boolean"
+                                        },
+                                        {
+                                            "label": "Number",
+                                            "value": "number"
+                                        },
+                                        {
+                                            "label": "Date",
+                                            "value": "date"
+                                        },
+                                        {
+                                            "label": "Array",
+                                            "value": "array"
+                                        },
+                                        {
+                                            "label": "Object",
+                                            "value": "object"
+                                        },
+                                        {
+                                            "label": "Any",
+                                            "value": "*"
+                                        }
+                                    ],
+                                    "allowEditOnly": true
+                                },
+                                "default": "*",
+                                "plug": "input",
+                                "group": "Property Types",
+                                "displayName": "Selected Tab",
+                                "name": "type-Selected Tab",
+                                "index": 4
+                            }
+                        ],
+                        "children": []
+                    },
+                    {
+                        "id": "e9cc6a07-394a-7f76-bf40-67b85b6cdce7",
+                        "type": "Model2",
+                        "x": 326.25,
+                        "y": 79,
+                        "parameters": {
+                            "properties": "Value"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "type": {
+                                    "name": "*",
+                                    "allowConnectionsOnly": true
+                                },
+                                "plug": "input/output",
+                                "group": "Properties",
+                                "name": "prop-Value",
+                                "displayName": "Value",
+                                "index": 7
+                            },
+                            {
+                                "type": "signal",
+                                "plug": "output",
+                                "group": "Changed Events",
+                                "displayName": "Value Changed",
+                                "name": "changed-Value",
+                                "index": 8
+                            }
+                        ],
+                        "children": []
+                    },
+                    {
+                        "id": "5264858d-521d-2670-2034-93eadd55935d",
+                        "type": "String",
+                        "x": -86.91666666666663,
+                        "y": 450.66666666666663,
+                        "parameters": {},
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "ed7b10e3-35b3-de36-e70a-bc3be8e9c854",
+                        "type": "JavaScriptFunction",
+                        "label": "Default values",
+                        "x": -208.91666666666663,
+                        "y": -69.33333333333337,
+                        "parameters": {
+                            "scriptInputs": [
+                                {
+                                    "id": "qhkk",
+                                    "label": "Items"
+                                }
+                            ],
+                            "intype-Items": "array",
+                            "in-Items": "[\n    {\n        Label:\"Tab 1\",\n        Value:\"1\"\n    },\n    {\n        Label:\"Tab 2\",\n        Value:\"2\"\n    },\n    {\n        Label:\"Tab 3\",\n        Value:\"3\"\n    },\n]",
+                            "functionScript": "Outputs.Items = Inputs.Items"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "name": "intype-Items",
+                                "displayName": "Type",
+                                "editorName": "Items | Type",
+                                "plug": "input",
+                                "type": {
+                                    "name": "enum",
+                                    "enums": [
+                                        {
+                                            "value": "string",
+                                            "label": "String"
+                                        },
+                                        {
+                                            "value": "boolean",
+                                            "label": "Boolean"
+                                        },
+                                        {
+                                            "value": "number",
+                                            "label": "Number"
+                                        },
+                                        {
+                                            "value": "object",
+                                            "label": "Object"
+                                        },
+                                        {
+                                            "value": "date",
+                                            "label": "Date"
+                                        },
+                                        {
+                                            "value": "array",
+                                            "label": "Array"
+                                        },
+                                        {
+                                            "value": "color",
+                                            "label": "Color"
+                                        }
+                                    ],
+                                    "allowEditOnly": true
+                                },
+                                "default": "string",
+                                "parent": "scriptInputs",
+                                "parentItemId": "qhkk",
+                                "index": 4
+                            },
+                            {
+                                "name": "in-Items",
+                                "displayName": "Items",
+                                "plug": "input",
+                                "type": "array",
+                                "group": "Inputs",
+                                "index": 5
+                            },
+                            {
+                                "name": "out-Items",
+                                "displayName": "Items",
+                                "plug": "output",
+                                "type": "*",
+                                "group": "Outputs",
+                                "index": 6
+                            }
+                        ],
+                        "children": [],
+                        "metadata": {
+                            "merge": {
+                                "soureCodePorts": [
+                                    "functionScript"
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        "id": "ae6acf55-d6bc-82ab-4170-cba1a83b3b88",
+                        "type": "Component Outputs",
+                        "x": 608.0833333333334,
+                        "y": 74.66666666666663,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Selected Tab",
+                                "plug": "input",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 1
+                            },
+                            {
+                                "name": "Selected Tab Changed",
+                                "plug": "input",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 2
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    }
+                ]
+            }
+        },
+        {
+            "name": "/Tab Bar/Tab Bar Item",
+            "id": "f418e021-68e3-4f40-a5cb-45800ba76006",
+            "graph": {
+                "connections": [
+                    {
+                        "fromId": "54e10d7d-9901-53b3-9d39-96eeb5098c01",
+                        "fromProperty": "prop-Label",
+                        "toId": "276a452e-306d-1b6b-b975-e8f7915d5511",
+                        "toProperty": "text"
+                    },
+                    {
+                        "fromId": "25bfbe8f-fbc1-abf5-b7ff-a9d5d706a8d5",
+                        "fromProperty": "onClick",
+                        "toId": "95d83b13-5148-94b0-df39-51264c3f5522",
+                        "toProperty": "Item Clicked"
+                    },
+                    {
+                        "fromId": "54e10d7d-9901-53b3-9d39-96eeb5098c01",
+                        "fromProperty": "prop-Value",
+                        "toId": "31752d96-fcaa-ee3a-bf53-3b9849c8e20d",
+                        "toProperty": "thisTab"
+                    },
+                    {
+                        "fromId": "1e3978d3-3141-85dd-a640-61f2277baf1e",
+                        "fromProperty": "value-Selected Tab",
+                        "toId": "31752d96-fcaa-ee3a-bf53-3b9849c8e20d",
+                        "toProperty": "selectedTab"
+                    },
+                    {
+                        "fromId": "cf11dc11-bd78-3b4b-5740-7032132f896d",
+                        "fromProperty": "color",
+                        "toId": "276a452e-306d-1b6b-b975-e8f7915d5511",
+                        "toProperty": "color"
+                    },
+                    {
+                        "fromId": "cf11dc11-bd78-3b4b-5740-7032132f896d",
+                        "fromProperty": "at-Selected",
+                        "toId": "93080de9-3a26-54e0-b661-a2ebd3438ea1",
+                        "toProperty": "mounted"
+                    },
+                    {
+                        "fromId": "31752d96-fcaa-ee3a-bf53-3b9849c8e20d",
+                        "fromProperty": "result",
+                        "toId": "cf11dc11-bd78-3b4b-5740-7032132f896d",
+                        "toProperty": "currentState"
+                    }
+                ],
+                "roots": [
+                    {
+                        "id": "25bfbe8f-fbc1-abf5-b7ff-a9d5d706a8d5",
+                        "type": "Group",
+                        "x": 84,
+                        "y": -6,
+                        "parameters": {
+                            "sizeMode": "explicit",
+                            "justifyContent": "center",
+                            "alignItems": "center",
+                            "styleCss": "cursor:pointer;",
+                            "borderBottomWidth": {
+                                "value": 2,
+                                "unit": "px"
+                            },
+                            "borderBottomColor": "Primary"
+                        },
+                        "stateParameters": {
+                            "hover": {
+                                "backgroundColor": "Grey - 200"
+                            }
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": [
+                            {
+                                "id": "276a452e-306d-1b6b-b975-e8f7915d5511",
+                                "type": "Text",
+                                "parameters": {
+                                    "position": "absolute",
+                                    "alignY": "center",
+                                    "textAlignX": "center",
+                                    "textStyle": "Body Medium",
+                                    "color": "Grey - 900"
+                                },
+                                "ports": [],
+                                "dynamicports": [],
+                                "children": []
+                            },
+                            {
+                                "id": "93080de9-3a26-54e0-b661-a2ebd3438ea1",
+                                "type": "Group",
+                                "label": "Bottom border",
+                                "parameters": {
+                                    "backgroundColor": "Primary",
+                                    "height": {
+                                        "value": 2,
+                                        "unit": "px"
+                                    },
+                                    "position": "absolute",
+                                    "alignY": "bottom",
+                                    "marginBottom": {
+                                        "value": 0,
+                                        "unit": "px"
+                                    },
+                                    "transformY": {
+                                        "value": 0,
+                                        "unit": "px"
+                                    },
+                                    "boxShadowBlurRadius": {
+                                        "value": 0,
+                                        "unit": "px"
+                                    },
+                                    "boxShadowSpreadRadius": {
+                                        "value": 0,
+                                        "unit": "px"
+                                    },
+                                    "boxShadowOffsetY": {
+                                        "value": 0,
+                                        "unit": "px"
+                                    },
+                                    "boxShadowColor": "Primary"
+                                },
+                                "ports": [],
+                                "dynamicports": [],
+                                "children": []
+                            }
+                        ]
+                    },
+                    {
+                        "id": "54e10d7d-9901-53b3-9d39-96eeb5098c01",
+                        "type": "Model2",
+                        "x": -361,
+                        "y": 82,
+                        "parameters": {
+                            "idSource": "foreach",
+                            "properties": "Label,Value"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "type": {
+                                    "name": "*",
+                                    "allowConnectionsOnly": true
+                                },
+                                "plug": "input/output",
+                                "group": "Properties",
+                                "name": "prop-Label",
+                                "displayName": "Label",
+                                "index": 7
+                            },
+                            {
+                                "type": "signal",
+                                "plug": "output",
+                                "group": "Changed Events",
+                                "displayName": "Label Changed",
+                                "name": "changed-Label",
+                                "index": 8
+                            },
+                            {
+                                "type": {
+                                    "name": "*",
+                                    "allowConnectionsOnly": true
+                                },
+                                "plug": "input/output",
+                                "group": "Properties",
+                                "name": "prop-Value",
+                                "displayName": "Value",
+                                "index": 9
+                            },
+                            {
+                                "type": "signal",
+                                "plug": "output",
+                                "group": "Changed Events",
+                                "displayName": "Value Changed",
+                                "name": "changed-Value",
+                                "index": 10
+                            }
+                        ],
+                        "children": []
+                    },
+                    {
+                        "id": "95d83b13-5148-94b0-df39-51264c3f5522",
+                        "type": "Component Outputs",
+                        "x": 354,
+                        "y": 88,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Item Clicked",
+                                "plug": "input",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 1
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "cf11dc11-bd78-3b4b-5740-7032132f896d",
+                        "type": "States",
+                        "x": 86,
+                        "y": -189,
+                        "parameters": {
+                            "states": "Selected,Neutral",
+                            "currentState": "0",
+                            "values": "color",
+                            "type-color": "color",
+                            "value-1-border": 2,
+                            "value-0-border": 0,
+                            "useTransitions": false,
+                            "value-Selected-color": "Primary",
+                            "value-Neutral-color": "Grey - 700"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "type": {
+                                    "name": "color",
+                                    "allowConnectionsOnly": true
+                                },
+                                "plug": "output",
+                                "group": "Values",
+                                "name": "color",
+                                "index": 6
+                            },
+                            {
+                                "type": {
+                                    "name": "enum",
+                                    "enums": [
+                                        {
+                                            "label": "Number",
+                                            "value": "number"
+                                        },
+                                        {
+                                            "label": "String",
+                                            "value": "string"
+                                        },
+                                        {
+                                            "label": "Boolean",
+                                            "value": "boolean"
+                                        },
+                                        {
+                                            "label": "Color",
+                                            "value": "color"
+                                        },
+                                        {
+                                            "label": "Text Style",
+                                            "value": "textStyle"
+                                        }
+                                    ],
+                                    "allowEditOnly": true
+                                },
+                                "default": "number",
+                                "plug": "input",
+                                "group": "Types",
+                                "displayName": "color",
+                                "name": "type-color",
+                                "index": 7
+                            },
+                            {
+                                "plug": "input",
+                                "type": "color",
+                                "group": "Selected Values",
+                                "name": "value-Selected-color",
+                                "displayName": "color",
+                                "editorName": "Selected|color",
+                                "index": 8
+                            },
+                            {
+                                "plug": "input",
+                                "type": {
+                                    "name": "signal",
+                                    "allowConnectionsOnly": true
+                                },
+                                "displayName": "To Selected",
+                                "name": "to-Selected",
+                                "group": "Go to state",
+                                "index": 9
+                            },
+                            {
+                                "plug": "output",
+                                "type": "boolean",
+                                "displayName": "At Selected",
+                                "name": "at-Selected",
+                                "group": "Current state",
+                                "index": 10
+                            },
+                            {
+                                "plug": "output",
+                                "type": "signal",
+                                "displayName": "Has Reached Selected",
+                                "name": "reached-Selected",
+                                "group": "Current state",
+                                "index": 11
+                            },
+                            {
+                                "plug": "input",
+                                "type": "color",
+                                "group": "Neutral Values",
+                                "name": "value-Neutral-color",
+                                "displayName": "color",
+                                "editorName": "Neutral|color",
+                                "index": 12
+                            },
+                            {
+                                "plug": "input",
+                                "type": {
+                                    "name": "signal",
+                                    "allowConnectionsOnly": true
+                                },
+                                "displayName": "To Neutral",
+                                "name": "to-Neutral",
+                                "group": "Go to state",
+                                "index": 13
+                            },
+                            {
+                                "plug": "output",
+                                "type": "boolean",
+                                "displayName": "At Neutral",
+                                "name": "at-Neutral",
+                                "group": "Current state",
+                                "index": 14
+                            },
+                            {
+                                "plug": "output",
+                                "type": "signal",
+                                "displayName": "Has Reached Neutral",
+                                "name": "reached-Neutral",
+                                "group": "Current state",
+                                "index": 15
+                            },
+                            {
+                                "plug": "input",
+                                "type": {
+                                    "name": "enum",
+                                    "enums": [
+                                        "Selected",
+                                        "Neutral"
+                                    ]
+                                },
+                                "group": "States",
+                                "displayName": "State",
+                                "name": "currentState",
+                                "default": "Selected",
+                                "index": 16
+                            }
+                        ],
+                        "children": []
+                    },
+                    {
+                        "id": "1e3978d3-3141-85dd-a640-61f2277baf1e",
+                        "type": "net.noodl.ParentComponentObject",
+                        "x": -352,
+                        "y": -236,
+                        "parameters": {
+                            "properties": "Selected Tab"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "type": {
+                                    "name": "*",
+                                    "allowConnectionsOnly": true
+                                },
+                                "plug": "input/output",
+                                "group": "Properties",
+                                "name": "value-Selected Tab",
+                                "displayName": "Selected Tab",
+                                "index": 4
+                            },
+                            {
+                                "type": "signal",
+                                "plug": "output",
+                                "group": "Changed Events",
+                                "displayName": "Selected Tab Changed",
+                                "name": "changed-Selected Tab",
+                                "index": 5
+                            }
+                        ],
+                        "children": []
+                    },
+                    {
+                        "id": "31752d96-fcaa-ee3a-bf53-3b9849c8e20d",
+                        "type": "Expression",
+                        "x": -350,
+                        "y": -123,
+                        "parameters": {
+                            "expression": "thisTab === selectedTab?\"Selected\":\"Neutral\""
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "name": "thisTab",
+                                "type": {
+                                    "name": "*",
+                                    "editAsType": "string"
+                                },
+                                "plug": "input",
+                                "index": 2
+                            },
+                            {
+                                "name": "selectedTab",
+                                "type": {
+                                    "name": "*",
+                                    "editAsType": "string"
+                                },
+                                "plug": "input",
+                                "index": 3
+                            }
+                        ],
+                        "children": [],
+                        "metadata": {
+                            "merge": {
+                                "soureCodePorts": [
+                                    "expression"
+                                ]
+                            }
+                        }
+                    }
+                ]
+            }
+        }
+    ],
+    "settings": {},
+    "version": "4",
+    "metadata": {
+        "styles": {
+            "text": {
+                "Body Medium": {
+                    "fontFamily": "fonts/Roboto/Roboto-Regular.ttf",
+                    "fontSize": {
+                        "value": "16",
+                        "unit": "px"
+                    },
+                    "color": "#000000",
+                    "letterSpacing": "Auto",
+                    "lineHeight": {
+                        "value": "150",
+                        "unit": "%"
+                    },
+                    "textTransform": "none"
+                }
+            },
+            "colors": {
+                "Grey - 200": "#F4F4F4",
+                "Grey - 500": "#A5A5A5",
+                "Grey - 700": "#4C4C4C",
+                "Grey - 900": "#1F1F1F",
+                "Primary": "#5836F5"
+            }
+        }
+    },
+    "variants": []
+}

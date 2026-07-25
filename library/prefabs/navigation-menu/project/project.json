@@ -1,0 +1,1008 @@
+{
+    "name": "Export",
+    "components": [
+        {
+            "name": "/Navigation Menu",
+            "id": "0aa376fd-3a6a-2dc4-734a-3cf77d43602f",
+            "graph": {
+                "connections": [
+                    {
+                        "fromId": "ed007a80-79c7-2b5d-ff54-e645184f0d2f",
+                        "fromProperty": "out-Items",
+                        "toId": "651bfa6d-71db-1484-050e-c8b46787c686",
+                        "toProperty": "items"
+                    },
+                    {
+                        "fromId": "c4ff6dfa-700c-1c9f-080d-7cda575dab3b",
+                        "fromProperty": "Items",
+                        "toId": "ed007a80-79c7-2b5d-ff54-e645184f0d2f",
+                        "toProperty": "in-Items"
+                    },
+                    {
+                        "fromId": "651bfa6d-71db-1484-050e-c8b46787c686",
+                        "fromProperty": "itemOutputSignal-Click",
+                        "toId": "b5dfdedf-f494-08c8-201e-ef54dc3bc0b5",
+                        "toProperty": "Click"
+                    },
+                    {
+                        "fromId": "651bfa6d-71db-1484-050e-c8b46787c686",
+                        "fromProperty": "itemOutput-Url",
+                        "toId": "b5dfdedf-f494-08c8-201e-ef54dc3bc0b5",
+                        "toProperty": "Url"
+                    },
+                    {
+                        "fromId": "49d42608-9769-1435-0eb1-03dfeab29c99",
+                        "fromProperty": "didMount",
+                        "toId": "36ea4d20-8adc-59d7-92ec-c5b0b28ca8f7",
+                        "toProperty": "run"
+                    },
+                    {
+                        "fromId": "36ea4d20-8adc-59d7-92ec-c5b0b28ca8f7",
+                        "fromProperty": "out-PathName",
+                        "toId": "ed007a80-79c7-2b5d-ff54-e645184f0d2f",
+                        "toProperty": "in-CurrentPathName"
+                    },
+                    {
+                        "fromId": "651bfa6d-71db-1484-050e-c8b46787c686",
+                        "fromProperty": "itemOutputSignal-Click",
+                        "toId": "f1767dc9-3163-5914-c93f-bc00b43b2fea",
+                        "toProperty": "navigate"
+                    },
+                    {
+                        "fromId": "651bfa6d-71db-1484-050e-c8b46787c686",
+                        "fromProperty": "itemOutput-Url",
+                        "toId": "f1767dc9-3163-5914-c93f-bc00b43b2fea",
+                        "toProperty": "path"
+                    },
+                    {
+                        "fromId": "3bba2d8b-84c0-0ba8-25bf-a5a4264fed0d",
+                        "fromProperty": "Magin Top",
+                        "toId": "49d42608-9769-1435-0eb1-03dfeab29c99",
+                        "toProperty": "marginTop"
+                    },
+                    {
+                        "fromId": "3bba2d8b-84c0-0ba8-25bf-a5a4264fed0d",
+                        "fromProperty": "Margin Bottom",
+                        "toId": "49d42608-9769-1435-0eb1-03dfeab29c99",
+                        "toProperty": "marginBottom"
+                    },
+                    {
+                        "fromId": "3bba2d8b-84c0-0ba8-25bf-a5a4264fed0d",
+                        "fromProperty": "Margin Left",
+                        "toId": "49d42608-9769-1435-0eb1-03dfeab29c99",
+                        "toProperty": "marginLeft"
+                    },
+                    {
+                        "fromId": "3bba2d8b-84c0-0ba8-25bf-a5a4264fed0d",
+                        "fromProperty": "Margin Right",
+                        "toId": "49d42608-9769-1435-0eb1-03dfeab29c99",
+                        "toProperty": "marginRight"
+                    },
+                    {
+                        "fromId": "3bba2d8b-84c0-0ba8-25bf-a5a4264fed0d",
+                        "fromProperty": "Align X",
+                        "toId": "49d42608-9769-1435-0eb1-03dfeab29c99",
+                        "toProperty": "alignX"
+                    },
+                    {
+                        "fromId": "3bba2d8b-84c0-0ba8-25bf-a5a4264fed0d",
+                        "fromProperty": "Align Y",
+                        "toId": "49d42608-9769-1435-0eb1-03dfeab29c99",
+                        "toProperty": "alignY"
+                    },
+                    {
+                        "fromId": "3bba2d8b-84c0-0ba8-25bf-a5a4264fed0d",
+                        "fromProperty": "Position",
+                        "toId": "49d42608-9769-1435-0eb1-03dfeab29c99",
+                        "toProperty": "position"
+                    },
+                    {
+                        "fromId": "3bba2d8b-84c0-0ba8-25bf-a5a4264fed0d",
+                        "fromProperty": "Layout",
+                        "toId": "49d42608-9769-1435-0eb1-03dfeab29c99",
+                        "toProperty": "flexDirection"
+                    }
+                ],
+                "roots": [
+                    {
+                        "id": "49d42608-9769-1435-0eb1-03dfeab29c99",
+                        "type": "Group",
+                        "x": -24,
+                        "y": -226,
+                        "parameters": {
+                            "sizeMode": "contentSize",
+                            "alignItems": "flex-start"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": [
+                            {
+                                "id": "651bfa6d-71db-1484-050e-c8b46787c686",
+                                "type": "For Each",
+                                "parameters": {
+                                    "template": "/Navigation Menu/Item"
+                                },
+                                "ports": [],
+                                "dynamicports": [
+                                    {
+                                        "name": "itemOutputSignal-Click",
+                                        "displayName": "Click",
+                                        "type": "signal",
+                                        "plug": "output",
+                                        "group": "Item Signals",
+                                        "index": 6
+                                    },
+                                    {
+                                        "name": "itemOutput-Url",
+                                        "displayName": "Url",
+                                        "type": {
+                                            "name": "*",
+                                            "allowConnectionsOnly": true
+                                        },
+                                        "plug": "output",
+                                        "group": "Item Outputs",
+                                        "index": 7
+                                    },
+                                    {
+                                        "name": "inputMappingScript",
+                                        "type": {
+                                            "name": "string",
+                                            "codeeditor": "javascript"
+                                        },
+                                        "displayName": "Script",
+                                        "group": "Input Mapping",
+                                        "default": "// Here you add mappings between the properties of the item objects and the inputs of the components.\n// 'myComponentInput': 'myObjectProperty',\n// 'anotherComponentInput': function () { return object.get('someProperty') + ' ' + object.get('otherProp') }\n// These are the default mappings based on the selected template component.\nmap({\n})\n",
+                                        "plug": "input",
+                                        "index": 8
+                                    }
+                                ],
+                                "children": []
+                            }
+                        ]
+                    },
+                    {
+                        "id": "c4ff6dfa-700c-1c9f-080d-7cda575dab3b",
+                        "type": "Component Inputs",
+                        "x": -532.1417713506253,
+                        "y": 54.56328512968753,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Items",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 0,
+                                "group": "General"
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "ed007a80-79c7-2b5d-ff54-e645184f0d2f",
+                        "type": "JavaScriptFunction",
+                        "label": "Default value for items",
+                        "x": -296.4240249358998,
+                        "y": 54.03118566185765,
+                        "parameters": {
+                            "scriptInputs": [
+                                {
+                                    "id": "6slp",
+                                    "label": "Items"
+                                }
+                            ],
+                            "intype-Items": "array",
+                            "in-Items": "[\n    {\n        // Icons are references to material icons, \n        // see https://fonts.google.com/icons?selected=Material+Icons\n        Icon:\"home\",\n\n        // The label to be shown on the nav item\n        Label:\"Home\",\n\n        // The url to navigate to when clicked\n        Url:\"/home\",\n\n        // Setting this to true will indicate that this\n        // item should be selected if there is no path\n        // or if no other path matches\n        IsHome:true,\n    },\n    {\n        Icon:\"schedule\",\n        Label:\"Calendar\",\n        Url:\"/calendar\"\n    }\n]",
+                            "functionScript": "Outputs.Items = Inputs.Items.map(i => ({\n    Label:i.Label,\n    Url:i.Url,\n    Icon:i.Icon,\n    // Set the \"selected\" item as the one with matching path name, or it it's an empty pathname\n    // the IsHome item\n    Selected:Inputs.CurrentPathName !== undefined && (Inputs.CurrentPathName === '/' && i.IsHome) || (Inputs.CurrentPathName !== '/' && i.Url.startsWith(Inputs.CurrentPathName))\n}))"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "name": "intype-Items",
+                                "displayName": "Type",
+                                "editorName": "Items | Type",
+                                "plug": "input",
+                                "type": {
+                                    "name": "enum",
+                                    "enums": [
+                                        {
+                                            "value": "string",
+                                            "label": "String"
+                                        },
+                                        {
+                                            "value": "boolean",
+                                            "label": "Boolean"
+                                        },
+                                        {
+                                            "value": "number",
+                                            "label": "Number"
+                                        },
+                                        {
+                                            "value": "object",
+                                            "label": "Object"
+                                        },
+                                        {
+                                            "value": "date",
+                                            "label": "Date"
+                                        },
+                                        {
+                                            "value": "array",
+                                            "label": "Array"
+                                        },
+                                        {
+                                            "value": "color",
+                                            "label": "Color"
+                                        }
+                                    ],
+                                    "allowEditOnly": true
+                                },
+                                "default": "string",
+                                "parent": "scriptInputs",
+                                "parentItemId": "6slp",
+                                "index": 4
+                            },
+                            {
+                                "name": "in-Items",
+                                "displayName": "Items",
+                                "plug": "input",
+                                "type": "array",
+                                "group": "Inputs",
+                                "index": 5
+                            },
+                            {
+                                "name": "in-CurrentPathName",
+                                "displayName": "CurrentPathName",
+                                "plug": "input",
+                                "type": "*",
+                                "group": "Inputs",
+                                "index": 6
+                            },
+                            {
+                                "name": "out-Items",
+                                "displayName": "Items",
+                                "plug": "output",
+                                "type": "*",
+                                "group": "Outputs",
+                                "index": 7
+                            }
+                        ],
+                        "children": [],
+                        "metadata": {
+                            "merge": {
+                                "soureCodePorts": [
+                                    "functionScript"
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        "id": "b5dfdedf-f494-08c8-201e-ef54dc3bc0b5",
+                        "type": "Component Outputs",
+                        "x": 252,
+                        "y": -180,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Click",
+                                "plug": "input",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 0,
+                                "group": "Events"
+                            },
+                            {
+                                "name": "Url",
+                                "plug": "input",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 1,
+                                "group": "Events"
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "36ea4d20-8adc-59d7-92ec-c5b0b28ca8f7",
+                        "type": "JavaScriptFunction",
+                        "label": "Keep track of current url",
+                        "x": -295,
+                        "y": -66,
+                        "parameters": {
+                            "functionScript": "const onUrlChange = () => {\n    // Send the current pathname as an output\n    Outputs.PathName = document.location.pathname\n}\n\n// Detect a change of the pathname\nif (window.history && window.history.pushState) {\n    window.addEventListener('popstate', onUrlChange)\n} else {\n    window.addEventListener('hashchange', onUrlChange)\n}\n\nonUrlChange()"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "name": "out-PathName",
+                                "displayName": "PathName",
+                                "plug": "output",
+                                "type": "*",
+                                "group": "Outputs",
+                                "index": 4
+                            }
+                        ],
+                        "children": [],
+                        "metadata": {
+                            "merge": {
+                                "soureCodePorts": [
+                                    "functionScript"
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        "id": "f1767dc9-3163-5914-c93f-bc00b43b2fea",
+                        "type": "PageStackNavigateToPath",
+                        "x": 251.10226014845603,
+                        "y": 14.36383762470291,
+                        "parameters": {},
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "3bba2d8b-84c0-0ba8-25bf-a5a4264fed0d",
+                        "type": "Component Inputs",
+                        "x": -292.5645518872917,
+                        "y": -331.8430275581251,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Align X",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "group": "Alignment",
+                                "index": 4
+                            },
+                            {
+                                "name": "Align Y",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "group": "Alignment",
+                                "index": 5
+                            },
+                            {
+                                "name": "Layout",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "group": "Layout",
+                                "index": 7
+                            },
+                            {
+                                "name": "Magin Top",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "group": "Margins",
+                                "index": 0
+                            },
+                            {
+                                "name": "Margin Bottom",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "group": "Margins",
+                                "index": 1
+                            },
+                            {
+                                "name": "Margin Left",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "group": "Margins",
+                                "index": 2
+                            },
+                            {
+                                "name": "Margin Right",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "group": "Margins",
+                                "index": 3
+                            },
+                            {
+                                "name": "Position",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "group": "Layout",
+                                "index": 6
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    }
+                ]
+            },
+            "metadata": {
+                "canvasPos": {
+                    "x": 1119,
+                    "y": 0
+                }
+            }
+        },
+        {
+            "name": "/Navigation Menu/Item",
+            "id": "9c22afba-105a-eeab-bcb1-9d0baf9d77d8",
+            "graph": {
+                "connections": [
+                    {
+                        "fromId": "2e97f8c3-ddb8-cb08-6744-aac0a4c75c5a",
+                        "fromProperty": "prop-Icon",
+                        "toId": "bda721c0-24be-f88f-fef8-dd33c40489ae",
+                        "toProperty": "in-IconCode"
+                    },
+                    {
+                        "fromId": "2e97f8c3-ddb8-cb08-6744-aac0a4c75c5a",
+                        "fromProperty": "prop-Url",
+                        "toId": "4477b97f-3efe-e570-b9f3-18601745451b",
+                        "toProperty": "Url"
+                    },
+                    {
+                        "fromId": "2e97f8c3-ddb8-cb08-6744-aac0a4c75c5a",
+                        "fromProperty": "prop-Selected",
+                        "toId": "6ce75722-372b-26c3-c932-ba01e1c8d1dc",
+                        "toProperty": "condition"
+                    },
+                    {
+                        "fromId": "6ce75722-372b-26c3-c932-ba01e1c8d1dc",
+                        "fromProperty": "ontrue",
+                        "toId": "2f482af7-41c9-617b-d000-c7fc77549b1c",
+                        "toProperty": "to-selected"
+                    },
+                    {
+                        "fromId": "6ce75722-372b-26c3-c932-ba01e1c8d1dc",
+                        "fromProperty": "onfalse",
+                        "toId": "2f482af7-41c9-617b-d000-c7fc77549b1c",
+                        "toProperty": "to-not selected"
+                    },
+                    {
+                        "fromId": "f9145c63-407f-ca6d-1a14-781696e1ab32",
+                        "fromProperty": "onClick",
+                        "toId": "4477b97f-3efe-e570-b9f3-18601745451b",
+                        "toProperty": "Click"
+                    },
+                    {
+                        "fromId": "bda721c0-24be-f88f-fef8-dd33c40489ae",
+                        "fromProperty": "out-IconSource",
+                        "toId": "2adef468-4888-cb3c-d7d3-792e31d3462b",
+                        "toProperty": "iconIconSource"
+                    },
+                    {
+                        "fromId": "bda721c0-24be-f88f-fef8-dd33c40489ae",
+                        "fromProperty": "out-HaveIcon",
+                        "toId": "2adef468-4888-cb3c-d7d3-792e31d3462b",
+                        "toProperty": "mounted"
+                    },
+                    {
+                        "fromId": "2f482af7-41c9-617b-d000-c7fc77549b1c",
+                        "fromProperty": "color",
+                        "toId": "2adef468-4888-cb3c-d7d3-792e31d3462b",
+                        "toProperty": "iconColor"
+                    },
+                    {
+                        "fromId": "2f482af7-41c9-617b-d000-c7fc77549b1c",
+                        "fromProperty": "color",
+                        "toId": "c9ca1dbd-ee1f-32c0-95c4-db442fafabeb",
+                        "toProperty": "color"
+                    },
+                    {
+                        "fromId": "2e97f8c3-ddb8-cb08-6744-aac0a4c75c5a",
+                        "fromProperty": "prop-Label",
+                        "toId": "c9ca1dbd-ee1f-32c0-95c4-db442fafabeb",
+                        "toProperty": "text"
+                    }
+                ],
+                "roots": [
+                    {
+                        "id": "2e97f8c3-ddb8-cb08-6744-aac0a4c75c5a",
+                        "type": "Model2",
+                        "x": -539.0443422987182,
+                        "y": 37.37135777681101,
+                        "parameters": {
+                            "idSource": "foreach",
+                            "properties": "Icon,Label,Url,Selected"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "type": {
+                                    "name": "*",
+                                    "allowConnectionsOnly": true
+                                },
+                                "plug": "input/output",
+                                "group": "Properties",
+                                "name": "prop-Icon",
+                                "displayName": "Icon",
+                                "index": 7
+                            },
+                            {
+                                "type": "signal",
+                                "plug": "output",
+                                "group": "Changed Events",
+                                "displayName": "Icon Changed",
+                                "name": "changed-Icon",
+                                "index": 8
+                            },
+                            {
+                                "type": {
+                                    "name": "*",
+                                    "allowConnectionsOnly": true
+                                },
+                                "plug": "input/output",
+                                "group": "Properties",
+                                "name": "prop-Label",
+                                "displayName": "Label",
+                                "index": 9
+                            },
+                            {
+                                "type": "signal",
+                                "plug": "output",
+                                "group": "Changed Events",
+                                "displayName": "Label Changed",
+                                "name": "changed-Label",
+                                "index": 10
+                            },
+                            {
+                                "type": {
+                                    "name": "*",
+                                    "allowConnectionsOnly": true
+                                },
+                                "plug": "input/output",
+                                "group": "Properties",
+                                "name": "prop-Url",
+                                "displayName": "Url",
+                                "index": 11
+                            },
+                            {
+                                "type": "signal",
+                                "plug": "output",
+                                "group": "Changed Events",
+                                "displayName": "Url Changed",
+                                "name": "changed-Url",
+                                "index": 12
+                            },
+                            {
+                                "type": {
+                                    "name": "*",
+                                    "allowConnectionsOnly": true
+                                },
+                                "plug": "input/output",
+                                "group": "Properties",
+                                "name": "prop-Selected",
+                                "displayName": "Selected",
+                                "index": 13
+                            },
+                            {
+                                "type": "signal",
+                                "plug": "output",
+                                "group": "Changed Events",
+                                "displayName": "Selected Changed",
+                                "name": "changed-Selected",
+                                "index": 14
+                            }
+                        ],
+                        "children": []
+                    },
+                    {
+                        "id": "bda721c0-24be-f88f-fef8-dd33c40489ae",
+                        "type": "JavaScriptFunction",
+                        "x": -305.17329481891244,
+                        "y": -6.997327050872002,
+                        "parameters": {
+                            "functionScript": "Outputs.IconSource = {\n    \"class\": \"material-icons\",\n    \"code\": Inputs.IconCode\n}\nOutputs.HaveIcon = Inputs.IconCode !== undefined && Inputs.IconCode !== \"\""
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "name": "in-IconCode",
+                                "displayName": "IconCode",
+                                "plug": "input",
+                                "type": "*",
+                                "group": "Inputs",
+                                "index": 4
+                            },
+                            {
+                                "name": "out-IconSource",
+                                "displayName": "IconSource",
+                                "plug": "output",
+                                "type": "*",
+                                "group": "Outputs",
+                                "index": 5
+                            },
+                            {
+                                "name": "out-HaveIcon",
+                                "displayName": "HaveIcon",
+                                "plug": "output",
+                                "type": "*",
+                                "group": "Outputs",
+                                "index": 6
+                            }
+                        ],
+                        "children": [],
+                        "metadata": {
+                            "merge": {
+                                "soureCodePorts": [
+                                    "functionScript"
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        "id": "4477b97f-3efe-e570-b9f3-18601745451b",
+                        "type": "Component Outputs",
+                        "x": 306.0442912317816,
+                        "y": 93.58623210048233,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Click",
+                                "plug": "input",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 1
+                            },
+                            {
+                                "name": "Url",
+                                "plug": "input",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 2
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "2f482af7-41c9-617b-d000-c7fc77549b1c",
+                        "type": "States",
+                        "x": -316.4917996021515,
+                        "y": -204.50303303126327,
+                        "parameters": {
+                            "states": "selected,not selected",
+                            "values": "color",
+                            "type-color": "color",
+                            "value-selected-color": "Primary",
+                            "value-not selected-color": "Grey - 900",
+                            "currentState": "not selected"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "type": {
+                                    "name": "color",
+                                    "allowConnectionsOnly": true
+                                },
+                                "plug": "output",
+                                "group": "Values",
+                                "name": "color",
+                                "index": 6
+                            },
+                            {
+                                "type": {
+                                    "name": "enum",
+                                    "enums": [
+                                        {
+                                            "label": "Number",
+                                            "value": "number"
+                                        },
+                                        {
+                                            "label": "String",
+                                            "value": "string"
+                                        },
+                                        {
+                                            "label": "Boolean",
+                                            "value": "boolean"
+                                        },
+                                        {
+                                            "label": "Color",
+                                            "value": "color"
+                                        },
+                                        {
+                                            "label": "Text Style",
+                                            "value": "textStyle"
+                                        }
+                                    ],
+                                    "allowEditOnly": true
+                                },
+                                "default": "number",
+                                "plug": "input",
+                                "group": "Types",
+                                "displayName": "color",
+                                "name": "type-color",
+                                "index": 7
+                            },
+                            {
+                                "plug": "input",
+                                "type": "color",
+                                "group": "selected Values",
+                                "name": "value-selected-color",
+                                "displayName": "color",
+                                "editorName": "selected|color",
+                                "index": 8
+                            },
+                            {
+                                "plug": "input",
+                                "type": "curve",
+                                "displayName": "Default",
+                                "default": {
+                                    "curve": [
+                                        0,
+                                        0,
+                                        0.58,
+                                        1
+                                    ],
+                                    "dur": 300,
+                                    "delay": 0
+                                },
+                                "group": "selected Transitions",
+                                "name": "transitiondef-selected",
+                                "index": 9
+                            },
+                            {
+                                "plug": "input",
+                                "type": {
+                                    "name": "curve"
+                                },
+                                "default": {
+                                    "curve": [
+                                        0,
+                                        0,
+                                        0.58,
+                                        1
+                                    ],
+                                    "dur": 300,
+                                    "delay": 0
+                                },
+                                "group": "selected Transitions",
+                                "name": "transition-selected-color",
+                                "displayName": "color",
+                                "editorName": "Transition selected|color",
+                                "index": 10
+                            },
+                            {
+                                "plug": "input",
+                                "type": {
+                                    "name": "signal",
+                                    "allowConnectionsOnly": true
+                                },
+                                "displayName": "To selected",
+                                "name": "to-selected",
+                                "group": "Go to state",
+                                "index": 11
+                            },
+                            {
+                                "plug": "output",
+                                "type": "boolean",
+                                "displayName": "At selected",
+                                "name": "at-selected",
+                                "group": "Current state",
+                                "index": 12
+                            },
+                            {
+                                "plug": "output",
+                                "type": "signal",
+                                "displayName": "Has Reached selected",
+                                "name": "reached-selected",
+                                "group": "Current state",
+                                "index": 13
+                            },
+                            {
+                                "plug": "input",
+                                "type": "color",
+                                "group": "not selected Values",
+                                "name": "value-not selected-color",
+                                "displayName": "color",
+                                "editorName": "not selected|color",
+                                "index": 14
+                            },
+                            {
+                                "plug": "input",
+                                "type": "curve",
+                                "displayName": "Default",
+                                "default": {
+                                    "curve": [
+                                        0,
+                                        0,
+                                        0.58,
+                                        1
+                                    ],
+                                    "dur": 300,
+                                    "delay": 0
+                                },
+                                "group": "not selected Transitions",
+                                "name": "transitiondef-not selected",
+                                "index": 15
+                            },
+                            {
+                                "plug": "input",
+                                "type": {
+                                    "name": "curve"
+                                },
+                                "default": {
+                                    "curve": [
+                                        0,
+                                        0,
+                                        0.58,
+                                        1
+                                    ],
+                                    "dur": 300,
+                                    "delay": 0
+                                },
+                                "group": "not selected Transitions",
+                                "name": "transition-not selected-color",
+                                "displayName": "color",
+                                "editorName": "Transition not selected|color",
+                                "index": 16
+                            },
+                            {
+                                "plug": "input",
+                                "type": {
+                                    "name": "signal",
+                                    "allowConnectionsOnly": true
+                                },
+                                "displayName": "To not selected",
+                                "name": "to-not selected",
+                                "group": "Go to state",
+                                "index": 17
+                            },
+                            {
+                                "plug": "output",
+                                "type": "boolean",
+                                "displayName": "At not selected",
+                                "name": "at-not selected",
+                                "group": "Current state",
+                                "index": 18
+                            },
+                            {
+                                "plug": "output",
+                                "type": "signal",
+                                "displayName": "Has Reached not selected",
+                                "name": "reached-not selected",
+                                "group": "Current state",
+                                "index": 19
+                            },
+                            {
+                                "plug": "input",
+                                "type": {
+                                    "name": "enum",
+                                    "enums": [
+                                        "selected",
+                                        "not selected"
+                                    ]
+                                },
+                                "group": "States",
+                                "displayName": "State",
+                                "name": "currentState",
+                                "default": "selected",
+                                "index": 20
+                            }
+                        ],
+                        "children": []
+                    },
+                    {
+                        "id": "6ce75722-372b-26c3-c932-ba01e1c8d1dc",
+                        "type": "Condition",
+                        "x": -527.4392271503068,
+                        "y": -206.75915525102965,
+                        "parameters": {},
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "f9145c63-407f-ca6d-1a14-781696e1ab32",
+                        "type": "Group",
+                        "x": -14.171422153458707,
+                        "y": -192.09436082254828,
+                        "parameters": {
+                            "sizeMode": "contentWidth",
+                            "flexDirection": "row",
+                            "alignItems": "center",
+                            "borderRadius": {
+                                "value": 4,
+                                "unit": "px"
+                            },
+                            "styleCss": "cursor:pointer;",
+                            "height": {
+                                "value": 40,
+                                "unit": "px"
+                            },
+                            "paddingLeft": {
+                                "value": 10,
+                                "unit": "px"
+                            },
+                            "paddingRight": {
+                                "value": 12,
+                                "unit": "px"
+                            },
+                            "marginRight": {
+                                "value": 8,
+                                "unit": "px"
+                            }
+                        },
+                        "stateParameters": {
+                            "hover": {
+                                "backgroundColor": "Grey - 300"
+                            }
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": [
+                            {
+                                "id": "2adef468-4888-cb3c-d7d3-792e31d3462b",
+                                "type": "net.noodl.visual.icon",
+                                "parameters": {
+                                    "iconIconSource": {
+                                        "class": "material-icons",
+                                        "code": "account_circle"
+                                    },
+                                    "iconColor": "Grey - 900",
+                                    "iconSize": {
+                                        "value": 24,
+                                        "unit": "px"
+                                    }
+                                },
+                                "ports": [],
+                                "dynamicports": [],
+                                "children": []
+                            },
+                            {
+                                "id": "c9ca1dbd-ee1f-32c0-95c4-db442fafabeb",
+                                "type": "Text",
+                                "parameters": {
+                                    "sizeMode": "contentSize",
+                                    "color": "Grey - 900",
+                                    "marginLeft": {
+                                        "value": 8,
+                                        "unit": "px"
+                                    }
+                                },
+                                "ports": [],
+                                "dynamicports": [],
+                                "children": []
+                            }
+                        ]
+                    }
+                ]
+            },
+            "metadata": {
+                "canvasPos": {
+                    "x": 1574,
+                    "y": 0
+                }
+            }
+        }
+    ],
+    "settings": {},
+    "version": "3",
+    "metadata": {
+        "styles": {
+            "text": {},
+            "colors": {
+                "Grey - 300": "#E9E9E9",
+                "Grey - 900": "#1F1F1F",
+                "Primary": "#5836F5"
+            }
+        }
+    },
+    "variants": []
+}

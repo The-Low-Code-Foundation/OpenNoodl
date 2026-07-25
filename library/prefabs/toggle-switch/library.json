@@ -1,0 +1,17 @@
+{
+  "label": "Toggle Switch",
+  "description": "A toggle switch UI component.",
+  "type": "prefab",
+  "tags": [
+    "UI"
+  ],
+  "icon": "icon.png",
+  "docsPath": "/library/prefabs/toggle/",
+  "version": "0.1.0",
+  "minEditorVersion": "0.1.0",
+  "runtimeVersion": "2.7.0",
+  "provenance": {
+    "sourceUrl": "https://the-low-code-foundation.github.io/opennoodl-docs/library/prefabs/toggle/toggle-0-1.zip",
+    "importedAt": "2026-07-25"
+  }
+}

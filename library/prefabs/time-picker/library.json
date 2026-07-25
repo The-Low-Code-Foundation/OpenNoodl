@@ -1,0 +1,17 @@
+{
+  "label": "Time Picker",
+  "description": "A time picker component.",
+  "type": "prefab",
+  "tags": [
+    "UI"
+  ],
+  "icon": "icon.png",
+  "docsPath": "/library/prefabs/time-picker/",
+  "version": "1.2.0",
+  "minEditorVersion": "0.1.0",
+  "runtimeVersion": "2.7.0",
+  "provenance": {
+    "sourceUrl": "https://the-low-code-foundation.github.io/opennoodl-docs/library/prefabs/time-picker/time-picker-1-2.zip",
+    "importedAt": "2026-07-25"
+  }
+}

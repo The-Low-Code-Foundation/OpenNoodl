@@ -1,0 +1,17 @@
+{
+  "label": "Geospatial Analysis",
+  "description": "A module for using Turf.js to making it easy to working with GeoJSON.",
+  "type": "module",
+  "tags": [
+    "Data"
+  ],
+  "icon": "icon.png",
+  "docsPath": "/library/modules/geospatial-analysis/",
+  "version": "1.0.0",
+  "minEditorVersion": "0.1.0",
+  "runtimeVersion": "2.7.0",
+  "provenance": {
+    "sourceUrl": "https://the-low-code-foundation.github.io/opennoodl-docs/library/modules/geospatial-analysis/geospatial-analysis-module-1-0-0.zip",
+    "importedAt": "2026-07-25"
+  }
+}

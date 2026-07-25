@@ -1,0 +1,17 @@
+{
+  "label": "TOTP",
+  "description": "Cloud functions for auth with timebased one time passwords like Google Auth.",
+  "type": "prefab",
+  "tags": [
+    "Cloud"
+  ],
+  "icon": "icon.png",
+  "docsPath": "/library/prefabs/totp/",
+  "version": "0.2.0",
+  "minEditorVersion": "0.1.0",
+  "runtimeVersion": "2.7.0",
+  "provenance": {
+    "sourceUrl": "https://the-low-code-foundation.github.io/opennoodl-docs/library/prefabs/totp/totp-0-2.zip",
+    "importedAt": "2026-07-25"
+  }
+}

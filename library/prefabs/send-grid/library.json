@@ -1,0 +1,17 @@
+{
+  "label": "Send Grid",
+  "description": "A simple prefab for sending emails with Send Grid.",
+  "type": "prefab",
+  "tags": [
+    "Cloud"
+  ],
+  "icon": "icon.png",
+  "docsPath": "/library/prefabs/sendgrid/",
+  "version": "0.2.0",
+  "minEditorVersion": "0.1.0",
+  "runtimeVersion": "2.7.0",
+  "provenance": {
+    "sourceUrl": "https://the-low-code-foundation.github.io/opennoodl-docs/library/prefabs/sendgrid/sendgrid-0-2.zip",
+    "importedAt": "2026-07-25"
+  }
+}
