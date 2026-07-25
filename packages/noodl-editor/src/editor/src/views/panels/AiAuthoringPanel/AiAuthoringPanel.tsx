@@ -44,7 +44,9 @@ import { ExperimentalFlag } from '@noodl-core-ui/components/sidebar/Experimental
 import { Section, SectionVariant } from '@noodl-core-ui/components/sidebar/Section';
 import { Text, TextType } from '@noodl-core-ui/components/typography/Text';
 
+import { AuthoringPreviewDocumentProvider } from '../../documents/AuthoringPreviewDocument';
 import { ChangeReviewDocumentProvider } from '../../documents/ChangeReviewDocument';
+import { EditorDocumentProvider } from '../../documents/EditorDocument';
 import css from './AiAuthoringPanel.module.scss';
 
 export const AiAuthoringPanel_ID = 'ai-authoring';
@@ -140,6 +142,9 @@ export function AiAuthoringPanel() {
 
   const sessionRef = useRef<AuthoringSession | null>(null);
   const scrollAnchorRef = useRef<HTMLDivElement | null>(null);
+  // Stable identities for the preview document's buttons — the document is
+  // mounted once per build, the handlers re-bind every render.
+  const handlersRef = useRef({ accept: () => {}, reject: () => {}, openReview: () => {} });
 
   const isConfigured = AiClient.isConfigured();
   const hasProject = Boolean(ProjectModel.instance);
@@ -178,6 +183,16 @@ export function AiAuthoringPanel() {
       sessionRef.current = session;
       session.onChange(setState);
       setState(session.state);
+
+      // The payoff moment is watching the graph form — put the preview canvas
+      // up before the first token arrives.
+      AppRegistry.instance.openDocument(AuthoringPreviewDocumentProvider.ID, {
+        session,
+        onAccept: () => handlersRef.current.accept(),
+        onReject: () => handlersRef.current.reject(),
+        onOpenReview: () => handlersRef.current.openReview()
+      });
+
       await session.run();
     } catch (e) {
       sessionRef.current = null;
@@ -213,6 +228,11 @@ export function AiAuthoringPanel() {
 
     try {
       const component = acceptAuthoredComponent(project, files);
+      // Accept navigates to the real component on the live canvas — leave the
+      // preview document first so the reveal is visible.
+      if (AppRegistry.instance.CurrentDocumentId === AuthoringPreviewDocumentProvider.ID) {
+        AppRegistry.instance.openDocument(EditorDocumentProvider.ID);
+      }
       NodeGraphContextTmp.switchToComponent?.(component, { pushHistory: true });
       setAcceptedName(session.legacyName);
       session.dispose();
@@ -238,6 +258,9 @@ export function AiAuthoringPanel() {
     sessionRef.current?.dispose();
     sessionRef.current = null;
     setState(null);
+    if (AppRegistry.instance.CurrentDocumentId === AuthoringPreviewDocumentProvider.ID) {
+      AppRegistry.instance.openDocument(EditorDocumentProvider.ID);
+    }
   }, []);
 
   const openReview = useCallback(() => {
@@ -254,6 +277,9 @@ export function AiAuthoringPanel() {
       onReject: reject
     });
   }, [acceptFiles, reject]);
+
+  // Keep the preview document's stable handlers pointed at the live closures.
+  handlersRef.current = { accept, reject, openReview };
 
   const note = state ? outcomeNote(state) : null;
   const canDecide = Boolean(state && !state.busy && state.staged);

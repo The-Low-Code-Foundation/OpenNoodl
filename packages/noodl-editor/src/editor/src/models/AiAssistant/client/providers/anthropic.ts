@@ -358,8 +358,12 @@ export class AnthropicProvider implements AiProvider {
               fullText += delta.text;
               callbacks.onText?.(fullText, delta.text);
             } else if (delta?.type === 'input_json_delta') {
-              const pending = pendingTools.get(event.index ?? 0);
-              if (pending) pending.json += delta.partial_json || '';
+              const index = event.index ?? 0;
+              const pending = pendingTools.get(index);
+              if (pending && delta.partial_json) {
+                pending.json += delta.partial_json;
+                callbacks.onToolCallPartial?.({ index, name: pending.name, argsText: pending.json });
+              }
             }
             // `thinking_delta` is deliberately ignored: reasoning is requested
             // with display 'omitted' and must never reach the response text.

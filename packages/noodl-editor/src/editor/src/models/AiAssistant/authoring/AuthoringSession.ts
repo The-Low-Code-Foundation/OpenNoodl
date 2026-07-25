@@ -26,6 +26,7 @@
  * @module AiAssistant/authoring/AuthoringSession
  */
 
+import type { ConnectionV2 } from '../../../schemas';
 import { formatDiagnosticLine } from '../../../validation';
 import { AiClient } from '../client';
 import type { AiChatRequest, AiChatResponse, AiMessage, AiStreamCallbacks, AiToolCall } from '../client/types';
@@ -33,6 +34,7 @@ import { findComponent } from '../explain/graph';
 import type { ExplainGraph } from '../explain/types';
 import { buildCandidate, pathToLegacyName } from './candidate';
 import { AuthoringContextBuilder } from './ContextBuilder';
+import { PartialPayloadScanner } from './partial';
 import { initialUserMessage, nudgeMessage, refineMessage, systemPrompt } from './prompts/authoring';
 import {
   AUTHORING_TOOLS,
@@ -49,7 +51,9 @@ import type {
   AuthoringStatus,
   ComponentFiles,
   ContextBudget,
-  SubmitRound
+  SubmitPayload,
+  SubmitRound,
+  SubmittedNode
 } from './types';
 import { validateCandidateComponent } from './validate';
 
@@ -104,12 +108,29 @@ export interface StagedSummary {
   connectionCount: number;
 }
 
+/**
+ * The forming graph, published while `submit_component` is streaming (or all
+ * at once when the provider hands arguments over whole). Elements are the
+ * agent's own — unvalidated, ids as submitted — and the preview canvas is the
+ * only consumer. `submission` increments per attempt, so a repair round reads
+ * as a rebuild rather than as edits to the failed one.
+ */
+export interface BuildingPreview {
+  submission: number;
+  nodes: SubmittedNode[];
+  connections: ConnectionV2[];
+  /** True once the submission's arguments have finished streaming. */
+  complete: boolean;
+}
+
 /** Everything the panel renders, recomputed and published on every change. */
 export interface AuthoringSessionState {
   busy: boolean;
   phase: AuthoringPhase;
   activities: AuthoringActivity[];
   legacyName: string;
+  /** The live picture of the submission being written, for the preview canvas. */
+  building?: BuildingPreview;
   /** Present whenever some candidate has passed validation — it survives a failed refinement. */
   staged?: StagedSummary;
   error?: string;
@@ -152,6 +173,8 @@ export class AuthoringSession {
   private started = false;
   private inFlight = false;
   private staged?: ComponentFiles;
+  private building?: BuildingPreview;
+  private submissionCounter = 0;
 
   // Published state.
   private readonly activities: AuthoringActivity[] = [];
@@ -207,6 +230,13 @@ export class AuthoringSession {
       phase,
       activities: [...this.activities],
       legacyName: this.legacyName,
+      building: this.building
+        ? {
+            ...this.building,
+            nodes: [...this.building.nodes],
+            connections: [...this.building.connections]
+          }
+        : undefined,
       staged: this.staged
         ? {
             nodeCount: this.staged.nodes.nodes.length,
@@ -302,6 +332,10 @@ export class AuthoringSession {
       this.activities.push(prose);
       this.publish();
 
+      // Submissions streaming this turn, scanned for complete nodes as the
+      // arguments arrive so the preview canvas can render the forming graph.
+      const scanners = new Map<number, PartialPayloadScanner>();
+
       let response: AiChatResponse;
       try {
         response = await this.chat(
@@ -315,6 +349,31 @@ export class AuthoringSession {
             onText: (fullText) => {
               prose.text = fullText;
               this.publish();
+            },
+            onToolCallPartial: (partial) => {
+              if (partial.name !== SUBMIT_COMPONENT) return;
+              let scanner = scanners.get(partial.index);
+              if (!scanner) {
+                scanner = new PartialPayloadScanner();
+                scanners.set(partial.index, scanner);
+                this.building = {
+                  submission: ++this.submissionCounter,
+                  nodes: [],
+                  connections: [],
+                  complete: false
+                };
+                this.publish();
+              }
+              const found = scanner.update(partial.argsText);
+              if (found.changed) {
+                this.building = {
+                  submission: this.building?.submission ?? this.submissionCounter,
+                  nodes: found.nodes,
+                  connections: found.connections,
+                  complete: false
+                };
+                this.publish();
+              }
             }
           }
         );
@@ -352,6 +411,8 @@ export class AuthoringSession {
       for (const call of response.toolCalls) {
         if (call.name === SUBMIT_COMPONENT) {
           const result = this.handleSubmit(call);
+          this.completeBuilding(toSubmitPayload(call.arguments), scanners.size > 0);
+          scanners.clear();
           roundSubmits++;
           this.rounds.push({ attempt: this.rounds.length + 1, ok: result.ok, errorLines: result.errorLines });
           this.activities.push({ kind: 'submit', ok: result.ok, errorLines: result.errorLines });
@@ -381,6 +442,23 @@ export class AuthoringSession {
   private dropActivity(activity: AuthoringActivity): void {
     const index = this.activities.indexOf(activity);
     if (index !== -1) this.activities.splice(index, 1);
+  }
+
+  /**
+   * A submission's arguments finished streaming (or arrived whole, for
+   * providers without partials): publish the authoritative payload. When
+   * partials were streaming this turn the in-flight submission is completed
+   * in place; otherwise this is a new attempt the preview never saw forming.
+   */
+  private completeBuilding(payload: SubmitPayload, sawPartials: boolean): void {
+    const current = this.building;
+    const submission = sawPartials && current && !current.complete ? current.submission : ++this.submissionCounter;
+    this.building = {
+      submission,
+      nodes: payload.nodes ?? [],
+      connections: payload.connections ?? [],
+      complete: true
+    };
   }
 
   private finish(status: AuthoringStatus, files?: ComponentFiles, error?: string): AuthoringOutcome {

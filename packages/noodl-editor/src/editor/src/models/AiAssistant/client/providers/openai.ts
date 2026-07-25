@@ -324,7 +324,14 @@ export class OpenAiProvider implements AiProvider {
           const pending = pendingTools.get(index) || { id: '', name: '', json: '' };
           if (call.id) pending.id = call.id;
           if (call.function?.name) pending.name = call.function.name;
-          if (call.function?.arguments) pending.json += call.function.arguments;
+          if (call.function?.arguments) {
+            pending.json += call.function.arguments;
+            // The name arrives in the first fragment; until it has, there is
+            // nothing a consumer could route the partial to.
+            if (pending.name) {
+              callbacks.onToolCallPartial?.({ index, name: pending.name, argsText: pending.json });
+            }
+          }
           pendingTools.set(index, pending);
         }
       }

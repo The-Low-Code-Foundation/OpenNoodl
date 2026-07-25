@@ -88,6 +88,14 @@ export interface AiChatResponse {
 export interface AiStreamCallbacks {
   /** Called per delta with both the delta and the accumulated text. */
   onText?: (fullText: string, delta: string) => void;
+  /**
+   * Called per argument fragment of an in-flight tool call, with the
+   * accumulated (still incomplete) JSON text — the tool-call analogue of
+   * `onText`. `index` distinguishes parallel calls in one response. Providers
+   * that receive arguments whole (Ollama) never call this; consumers must
+   * treat it as best-effort progress, with `onToolCall` as the source of truth.
+   */
+  onToolCallPartial?: (partial: { index: number; name: string; argsText: string }) => void;
   /** Called once per tool call, when its arguments have finished streaming. */
   onToolCall?: (toolCall: AiToolCall) => void;
   onEnd?: () => void;

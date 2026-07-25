@@ -169,12 +169,75 @@ Spec step 4. The session becomes observable and streaming; a new sidebar panel
 1. **Live provider runs** (spec step 2) — prompt/context iteration measuring validity
    rate, rounds, context size against real models. Needs keys; also the first live
    exercise of AIX-001's adapters.
-2. Live canvas rendering during authoring (step 5) — today the graph appears on
-   accept, not during the build.
+2. ~~Live canvas rendering during authoring (step 5)~~ — shipped in slice 4.
 3. Post-accept refinement of an existing component (step 6) — needs an
    update-shaped submit (MCP's `applyOperations` is the substrate to share);
    pre-accept refinement shipped in slice 2.
 4. Opt-in Gate-G2 telemetry (step 7).
+
+## Slice 4 (2026-07-25): live canvas rendering
+
+Spec step 5 — "the single most legible thing this product can do." The graph now
+assembles on a canvas *while* the agent writes it, not on accept.
+
+### What changed
+
+| File | Change |
+|------|--------|
+| `client/types.ts` | `AiStreamCallbacks.onToolCallPartial({index, name, argsText})` — the tool-call analogue of `onText`: accumulated (incomplete) argument JSON per fragment. `onToolCall` stays the source of truth |
+| `client/providers/anthropic.ts` | Emitted from the `input_json_delta` accumulation point |
+| `client/providers/openai.ts` | Emitted from the function-arg fragment accumulation point (only once the name has arrived). Ollama hands arguments over whole — no partials, by design |
+| `authoring/partial.ts` | New: `PartialPayloadScanner` — resumable char-level scanner over the streaming `submit_component` JSON; yields each element of the root `nodes`/`connections` arrays the moment its brace closes. String/escape-aware (a `"nodes": [` inside a label cannot fool it), skips malformed elements, never throws, O(n) total across any fragmentation |
+| `authoring/preview.ts` | New: `PreviewGraphBuilder` — one **detached** `ComponentModel` (never in any project), mutated incrementally via `addRoot`/`addChild`/`addConnection` with `disableSelect`; holds children whose parent hasn't arrived, wires connections when both endpoints exist, `flushOrphans()` roots the rest when the stream ends; fallback grid for coordinate-less nodes. Plus `RevealQueue` — caller-timed pacing, one item per tick, `flush()` drains |
+| `AuthoringSession.ts` | Publishes `building: BuildingPreview` (`submission`, nodes/connections so far, `complete`). Partials feed it live via a per-turn scanner map; `completeBuilding()` publishes the authoritative payload on every submit — so providers without partials produce the same state, just all at once. `submission` increments per attempt: a repair round reads as a rebuild |
+| `views/documents/AuthoringPreviewDocument/` | New document (registered in `router.setup.ts`): read-only `NodeGraphEditor` bound **once** to the builder's component — model events re-render each node, viewport never resets (`switchToComponent` clears `panAndScale`, so it is called only on submission reset). 90 ms reveal timer; topbar shows phase + Stop (busy) / Review-Accept-Reject (staged) / Close |
+| `AiAuthoringPanel.tsx` | Opens the preview document before `run()` (the canvas is the stage before the first token); accept/reject exit back to `EditorDocument` when the preview is current; a `handlersRef` keeps the document's callbacks pointed at live closures |
+
+### Decisions worth keeping
+
+- **True streaming and the spec's "staged reveal" fallback are one code path.**
+  The session publishes whatever granularity the provider gives (per-fragment or
+  whole); the `RevealQueue` paces application either way. A provider without
+  partial callbacks just means the queue fills at once and drains at 90 ms/item.
+- **The preview mutates, it does not rebuild.** `bindModel` happens once per
+  submission; every node arrives through `nodeAdded`/`connectionAdded` like a
+  human edit, so the canvas animates incrementally with a stable viewport.
+  Rebuild-and-switch per node would reset `panAndScale` on every update.
+- **A repair round resets the canvas.** `submission` increments; the document
+  rebuilds the preview from empty. Attempt two *is* a different graph — showing
+  it as one reads truer than morphing the failed attempt in place.
+- **The preview component is detached and stays detached** — same invariant as
+  staging: reject is still the absence of a call. Detached rendering is the
+  proven ChangeReviewDocument pattern; node types resolve via the `NodeLibrary`
+  singleton, warnings/health simply don't compute (which is what a preview wants).
+- **The scanner is resumable, not re-parsing.** It consumes only the appended
+  tail per fragment, so char-by-char fragmentation costs one pass total — and a
+  spec asserts char-by-char ≡ one-shot.
+
+### Traps hit
+
+- `switchToComponent` resets `viewport.panAndScale` on *every* call, even for the
+  same component — hence bind-once-then-mutate, never switch-per-update.
+- OpenAI streams the function *name* only in the first fragment; emitting a
+  partial before the name arrived would give consumers nothing to route on.
+- `ModelBindings` selects newly added nodes on next tick unless the mutation
+  passes `disableSelect` — a paced reveal without it would fight the user's
+  selection 11 times a second.
+
+### Verified
+
+- `npx tsc --noEmit` clean; `npm run test:ci` **1248 specs, 0 failures** (+17:
+  7 scanner in `authoring-partial.test.ts`, 8 builder + 1 queue in
+  `authoring-preview.test.ts`, 3 building-state in `authoring-session.test.ts`,
+  minus none); `npm run catalog:check` green; `noodl-mcp` build + jest 31/31
+  unaffected by the barrel additions.
+- Live smoke (CDP, Shine Phase 2, scripted streaming chat driven through the
+  real registered document): watched the canvas render "Building — 2 nodes so
+  far…" mid-stream with Stop, then the full 5-node graph with the staged bar
+  (Review changes / Accept / Reject). Building states published exactly
+  0→1→2→3→4→5 nodes → +connection → complete, submission 1, outcome authored.
+  No renderer exceptions. (Webpack-cache module access — `webpackChunknoodl_editor.push`
+  — is the way to drive editor internals from CDP when nothing is on `window`.)
 
 ## Note from DEBT-003 (2026-07-24) — expression semantics the loop can rely on
 

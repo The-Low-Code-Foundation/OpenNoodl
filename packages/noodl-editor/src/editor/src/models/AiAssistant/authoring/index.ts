@@ -23,8 +23,13 @@ export type {
   AuthoringPhase,
   AuthoringSessionOptions,
   AuthoringSessionState,
+  BuildingPreview,
   StagedSummary
 } from './AuthoringSession';
+export { PartialPayloadScanner } from './partial';
+export type { PartialPayload } from './partial';
+export { PreviewGraphBuilder, RevealQueue } from './preview';
+export type { RevealItem } from './preview';
 export { acceptAuthoredComponent, StagingError } from './staging';
 export type { AcceptOptions } from './staging';
 export { buildChangeSet, requiredWith, excludedWith } from './ChangeSet';

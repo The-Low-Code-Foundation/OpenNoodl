@@ -349,6 +349,76 @@ describe('AIX-002 authoring session', () => {
       expect(session.stagedFiles).toBe(first.files);
       expect(session.state.staged).toBeDefined();
     });
+
+    it('publishes the forming graph as submit_component arguments stream', async () => {
+      const args = goodSubmitArgs();
+      const json = JSON.stringify(args);
+      // Three fragments: mid first node, after first node, complete.
+      const cuts = [json.indexOf('"out"') - 5, json.indexOf('"connections"'), json.length];
+
+      const chat: AuthoringChatFn = async (_request, callbacks) => {
+        for (const cut of cuts) {
+          callbacks?.onToolCallPartial?.({ index: 0, name: 'submit_component', argsText: json.slice(0, cut) });
+        }
+        return respond({ toolCalls: [call('submit_component', args)] });
+      };
+
+      const session = AuthoringSession.create(GRAPH, REQUEST, { chat });
+      const seen = record(session);
+      const outcome = await session.run();
+      expect(outcome.status).toBe('authored');
+
+      // The graph formed incrementally: one node, then two, before completion.
+      const nodeCounts = seen
+        .filter((s) => s.building && !s.building.complete)
+        .map((s) => s.building!.nodes.length);
+      expect(nodeCounts).toContain(1);
+      expect(nodeCounts).toContain(2);
+
+      // And the final published picture is the authoritative complete payload.
+      const finalBuilding = session.state.building!;
+      expect(finalBuilding.complete).toBe(true);
+      expect(finalBuilding.submission).toBe(1);
+      expect(finalBuilding.nodes.map((n) => n.id)).toEqual(['in', 'out']);
+      expect(finalBuilding.connections.length).toBe(1);
+    });
+
+    it('publishes a complete building picture even when the provider never streams partials', async () => {
+      const { chat } = scriptedChat([() => respond({ toolCalls: [call('submit_component', goodSubmitArgs())] })]);
+      const session = AuthoringSession.create(GRAPH, REQUEST, { chat });
+      await session.run();
+
+      const building = session.state.building!;
+      expect(building).toBeDefined();
+      expect(building.complete).toBe(true);
+      expect(building.submission).toBe(1);
+      expect(building.nodes.length).toBe(2);
+    });
+
+    it('a repair round is a new submission — the preview rebuilds instead of morphing', async () => {
+      const badArgs = goodSubmitArgs([{ id: 'g', type: 'Grouo' }]);
+      const goodArgs = goodSubmitArgs([{ id: 'g', type: 'Group' }]);
+      let turn = 0;
+      const chat: AuthoringChatFn = async (_request, callbacks) => {
+        turn++;
+        const args = turn === 1 ? badArgs : goodArgs;
+        const json = JSON.stringify(args);
+        callbacks?.onToolCallPartial?.({ index: 0, name: 'submit_component', argsText: json.slice(0, 40) });
+        callbacks?.onToolCallPartial?.({ index: 0, name: 'submit_component', argsText: json });
+        return respond({ toolCalls: [call('submit_component', args)] });
+      };
+
+      const session = AuthoringSession.create(GRAPH, REQUEST, { chat });
+      const seen = record(session);
+      const outcome = await session.run();
+
+      expect(outcome.status).toBe('authored');
+      const submissions = new Set(seen.filter((s) => s.building).map((s) => s.building!.submission));
+      expect(submissions.has(1)).toBe(true);
+      expect(submissions.has(2)).toBe(true);
+      expect(session.state.building!.submission).toBe(2);
+      expect(session.state.building!.complete).toBe(true);
+    });
   });
 
   it('reports unknown cost as null, never as zero', async () => {
