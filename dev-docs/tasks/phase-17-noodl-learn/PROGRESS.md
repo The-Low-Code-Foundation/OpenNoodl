@@ -1,8 +1,8 @@
 # Phase 17 Progress — Noodl Learn
 
 **Created:** 2026-07-22, from [NOODL-REVIVAL-ROADMAP.md](../../reviews/NOODL-REVIVAL-ROADMAP.md) Track E
-**Last updated:** 2026-07-24
-**Overall status:** 🟡 In progress — 0 / 6 complete; LEARN-001 assessment done
+**Last updated:** 2026-07-25
+**Overall status:** 🟡 In progress — LEARN-001 substantially complete (engine revived & wired end-to-end); 5 tasks remain
 
 ## Status vocabulary
 
@@ -12,12 +12,35 @@ Not started · In progress · **Built–not wired** · Complete · Superseded
 
 | ID | Title | Status | Estimate | Notes |
 |---|---|---|---|---|
-| LEARN-001 | Lessons engine revival | In progress | 4–6 wks | Assessment complete ([LEARN-001-ASSESSMENT.md](./LEARN-001-ASSESSMENT.md)) — **verdict: revive, don't rebuild.** Runtime intact and jQuery-free; only the entry/discovery UI is orphaned; the content format needs replacing. Live legacy curriculum (8 lessons) still hosted |
+| LEARN-001 | Lessons engine revival | In progress (revival done; format-validation gate open) | 4–6 wks | **Engine revived and wired end-to-end** (verified in the running editor 2026-07-25). Evaluator typed + de-eval'd + tested; new declarative `lesson.json` format + compiler + docs; legacy `lesson.html` compat path; Learn-tab entry UI (list → clone → open); progress persists. Remaining: **validate the format with a non-programmer author** (the one unmet success criterion), full `lessonlayer2.ts` typing/tidy, and curriculum hosting (LEARN-002). See status below |
 | LEARN-002 | Curriculum v1 | Not started | 8–10 wks | Needs a learning designer. The core deliverable of the phase |
 | LEARN-003 | Web read-only viewer | Not started | 6–8 wks | The distribution unlock for classrooms |
 | LEARN-004 | Web editor spike | Not started | 4 wks (time-boxed) | Deliverable is a go/no-go decision document |
 | LEARN-005 | Classroom mode | Not started | 6–8 wks | Depends on AIX-001's local-model (Ollama) support |
 | LEARN-006 | Pilots | Not started | Ongoing | **Produces Gate G2 evidence** — the phase's most important output |
+
+## LEARN-001 status (2026-07-25)
+
+Delivered in five committed, tested slices; the whole flow was verified in the
+running editor (Learn tab → Start → clone 01_basics → lesson runs → progress
+persists).
+
+| Step (assessment §9) | State | Where |
+|---|---|---|
+| 1. Assessment | ✅ | [LEARN-001-ASSESSMENT.md](./LEARN-001-ASSESSMENT.md) |
+| 2. Restore load-and-run | ✅ verified in editor | 01_basics runs (intro popup + task timeline) |
+| 3. Type + de-eval completion detection | ✅ | `views/lessons/lessonevalconditions.ts` (+33 unit tests). Pure fn of (conditions, injected context); `eval()` gone |
+| 4. New content format + docs | ✅ format/compiler/docs; ⚠️ **non-programmer validation pending** | `models/lessonformat.ts`, [LESSON-FORMAT.md](./LESSON-FORMAT.md) (+18 tests). Legacy `lesson.html` kept as compat path |
+| 5. Modernise/type legacy views | ◑ models typed; `lessonlayer2.ts` still TSFixme-heavy | `models/lessonmodel.ts` (js→ts) done; `lessonlayer2.ts` tidy is a remainder |
+| 6. Progress persistence | ✅ verified | `lessonProgress.json` updated live; lesson field also saved into the cloned `project.json` (resume works) |
+| 7. Worked lesson (template + regression) | ✅ | `tests/lessons/fixtures/worked-lesson.json` (new format) + `worked-lesson.test.ts` |
+| 8. v2 round-trip | ✅ | strengthened `roundtrip-fidelity` `carries project.lesson` to the real `LessonModel.toJSON()` shape |
+| Entry/discovery UI (the missing piece) | ✅ built + verified | core-ui `LearningCenter` + `ProjectsPage` wiring (LessonTemplatesModel/LessonsProjectsModel/getLessonsState un-orphaned) |
+
+**Open remainders (not blocking a working system):**
+1. **Validate the `lesson.json` format with a real non-programmer author** before LEARN-002 authors 10–15 lessons — the one success criterion not yet met.
+2. Finish typing/tidying `lessonlayer2.ts` (still `TSFixme` + dead commented code).
+3. Decide where OpenNoodl's *own* curriculum is hosted (LEARN-002 / distribution) — the engine still reads the legacy 8 lessons from the third-party `the-low-code-foundation` GitHub Pages site; the new format isn't hosted anywhere yet (the worked lesson is the in-repo template).
 
 ## Inherited assets
 

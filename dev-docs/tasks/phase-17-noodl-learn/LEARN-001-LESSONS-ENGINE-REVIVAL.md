@@ -116,14 +116,15 @@ Completion detection is the technically awkward part: it must observe editor sta
 
 ## Success Criteria
 
-- [ ] Written assessment of the legacy system published
-- [ ] Lessons load and run in the current editor
-- [ ] Completion detection works against current editor state, decoupled from view internals
-- [ ] Lesson-content format documented and validated with a non-programmer author
-- [ ] Progress persists
-- [ ] Remaining legacy views modernised and typed
-- [ ] One complete worked lesson shipped as template and regression test
-- [ ] Lesson projects survive v2 round-trip
+- [x] Written assessment of the legacy system published — [LEARN-001-ASSESSMENT.md](./LEARN-001-ASSESSMENT.md)
+- [x] Lessons load and run in the current editor — verified end-to-end (01_basics) 2026-07-25
+- [x] Completion detection works against current editor state, decoupled from view internals — `lessonevalconditions.ts`, pure fn of injected context, 33 tests
+- [~] Lesson-content format documented — [LESSON-FORMAT.md](./LESSON-FORMAT.md) + compiler + 18 tests; **still to validate with a real non-programmer author**
+- [x] Progress persists — `lessonProgress.json` verified live; lesson field also saved into the cloned project
+- [~] Remaining legacy views modernised and typed — models typed (`lessonmodel.ts`); `lessonlayer2.ts` typing/tidy still outstanding
+- [x] One complete worked lesson shipped as template and regression test — `tests/lessons/fixtures/worked-lesson.json` + `worked-lesson.test.ts`
+- [x] Lesson projects survive v2 round-trip — `roundtrip-fidelity` `carries project.lesson` (now the real `LessonModel.toJSON()` shape)
+- [x] Entry/discovery UI (the assessment's genuinely-missing piece) — Learn-tab lesson list → clone → open, verified in the editor
 
 ## Risks & Mitigations
 
