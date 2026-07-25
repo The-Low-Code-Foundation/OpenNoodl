@@ -221,11 +221,14 @@ const CloudFunctionNode: NodeDefinitionOptions = {
         return;
       }
 
+      // WF-007: this used to redirect to a fixed dev-only port (8577) running a
+      // hidden-BrowserWindow cloud-function sandbox whenever the preview ran
+      // inside the editor. That sandbox is gone — cloud functions now always
+      // execute through whatever backend `cloudservices.endpoint` points at
+      // (a local nodegx-backend, auto-set by the Backend Services panel when
+      // one is running, or a manually configured deployed/external endpoint).
       const appId = cloudServices.appId;
-      const endpoint =
-        this.context.editorConnection && this.context.editorConnection.isRunningLocally()
-          ? `http://${window.location.hostname}:8577`
-          : cloudServices.endpoint;
+      const endpoint = cloudServices.endpoint;
 
       _makeRequest('/functions/' + encodeURIComponent(this._internal.functionName), {
         appId,

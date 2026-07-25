@@ -2,7 +2,6 @@ const { ipcRenderer } = require('electron');
 const { ProjectModel } = require('../models/projectmodel');
 const Exporter = require('./exporter');
 const { EventDispatcher } = require('../../../shared/utils/EventDispatcher');
-const { CloudService } = require('@noodl-models/CloudServices');
 const KeyboardHandler = require('@noodl-utils/keyboardhandler');
 
 class EditorAPI {
@@ -41,16 +40,6 @@ class EditorAPI {
   projectGetSettings(args, cb) {
     var data = ProjectModel.instance ? ProjectModel.instance.getSettings() : undefined;
     cb(data);
-  }
-
-  async cloudServicesGetActive(args, cb) {
-    const environment = await CloudService.instance.backend.fromProject(ProjectModel.instance);
-    cb({
-      endpoint: environment.url,
-      instanceId: environment.id,
-      masterKey: environment.masterKey,
-      appId: environment.appId
-    });
   }
 
   projectGetComponentBundleExport(args, cb) {
