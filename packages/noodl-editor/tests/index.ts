@@ -19,6 +19,7 @@ export * from './canvas';
 export * from './cloud';
 export * from './components';
 export * from './git';
+export * from './lessons';
 export * from './models';
 export * from './nodegraph';
 export * from './platform';
