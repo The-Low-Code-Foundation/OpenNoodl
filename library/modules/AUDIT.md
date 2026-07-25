@@ -83,3 +83,87 @@ already present — are the expansion shortlist. That decision + rationale is
 recorded in
 [PROGRESS.md](../../dev-docs/tasks/phase-21-library-and-import/PROGRESS.md)
 (Decisions, 2026-07-25 — Module expansion shortlist).
+
+---
+
+## LIB-003 module-tail work-log — 2026-07-25
+
+Residual tail of LIB-003 (expansion authoring + docs). Plumbing half (startsWith
+fix, scanner unification, manifest validation, inventory) was already merged; not
+touched here. Worked in an isolated worktree — no live editor/deploy runs (the
+`lerna exec`/`nx` trap makes them lie from a worktree).
+
+### Modules authored (3, all no-keys/no-backend, self-contained)
+
+| Slug | Kind | Node(s) | Bundled library | Licence | Icon |
+|------|------|---------|-----------------|---------|------|
+| `lucide-icons` | iconset (manifest-only) | — (icon picker glyphs) | lucide-static webfont, 1998 glyphs | **ISC** (Lucide Icons & Contributors) | placeholder |
+| `qr-code` | code (React node) | `nodegx.qrcode` "QR Code" (Visual) | `qrcode-generator@1.4.4` | **MIT** (Kazuhiko Arase) | placeholder |
+| `confetti` | code (trigger node) | `nodegx.confetti` "Confetti" (Utilities) | `canvas-confetti@1.9.3` | **MIT** (Kiril Vatev) | placeholder |
+
+Notes:
+- **lucide-icons** mirrors the font-awesome-solid iconset shape exactly: bundled
+  `lucide.woff2` + `lucide.ttf`, a rewritten `styles.css` (`@font-face` → local font,
+  a `.lucide` base class + 1998 `.icon-<name>::before{content}` glyph rules), and a
+  manifest with `type:"iconset"`, `iconClass:"lucide"`, `codeAsClass:true`, and the
+  full `icons` array. Renders as `<span class="lucide icon-heart">` per `Icon.tsx`.
+  Lucide's own font CSS scopes the family to `[class^="icon-"]`; I added an explicit
+  `.lucide` base class so it composes cleanly with the Noodl `iconClass` model.
+- **qr-code** and **confetti** are **hand-authored, no build step**. Each `index.js`
+  inlines the `@noodl/noodl-sdk` node-definition shim **verbatim** from the shipped
+  custom-html/chart-js bundle (installs `Noodl.defineNode`/`defineReactNode` on top of
+  the prelude's `defineModule`), then vendors the third-party lib inline and calls
+  `Noodl.defineModule`. QR builds an inline SVG from the module matrix (styleable
+  size/quiet-zone/fg/bg + L/M/Q/H error correction). Confetti is a `Celebrate` signal
+  trigger with Burst/Fireworks/Cannon/Rain presets and count/spread/origin/colours
+  inputs; the browser-only lib is wrapped in `if (typeof window !== 'undefined')` for
+  SSR/SSG safety.
+- **Icons are clearly-labelled procedural placeholders** (680×384 PNGs generated in
+  this run: Lucide = purple square motif, QR = finder-pattern motif, Confetti =
+  coloured dots). They are NOT the real rendered module output — replacing them with a
+  proper render is a minor residual.
+
+### Headless checks (both ran from the worktree; root+pkg node_modules symlinked)
+
+- `npm run library:check` → **58/58 entries clean**, the three new modules `OK` with
+  0 warnings. (First pass FAILed: `library.json` schema is strict — no `license` key,
+  `provenance` must be exactly `{sourceUrl, importedAt}`. Fixed to conform; full
+  licence/attribution kept in the code headers, README, and this log.)
+- `npm run catalog:check` → **green, "Committed catalog is up to date"** (136 node
+  types). Unchanged — see catalog decision below.
+- All 9 new JSON files parse; both `index.js` files pass `node --check` and a
+  stubbed-globals harness (registered node shape, QR SVG output, all 4 confetti
+  presets + `Fired` signal verified headlessly).
+
+### Catalog: RESIDUAL, not established (per SUB-004 policy)
+
+Investigated whether module-registered nodes reach the build-time catalog: grepped
+`packages/noodl-types/src/node-catalog.json` for chart-js's node — **0 hits**. The
+catalog generator (`scripts/node-catalog/generate.js`) does not execute
+`defineModule`, so **no mechanism exists** to get runtime module nodes into the
+catalog. Per the task constraint I did **not** invent one. The three new modules'
+nodes fall into SUB-004's documented dynamic-node **"skip port checks"** path (the
+validator/AI stack tolerate them, can't type-check ports). `catalog:check` stays
+green because nothing in the catalog changed.
+
+### Docs
+
+`library/modules/README.md` written: directory shape, `library.json` schema, code-
+vs-iconset `manifest.json`, `defineModule`/`defineNode`/`defineReactNode`, the
+`runtimes` field, the iconset `iconClass`/`codeAsClass` model, the no-build-step
+hand-authoring pattern, the catalog skip-path note, and the dev loop (incl. the
+worktree live-verify caveat).
+
+### Residuals (cannot be completed from this worktree — must run on primary checkout)
+
+1. **Live preview + deploy verification of each new module**, on **both** React 18
+   and React 19 pairings (RUN-001 matrix): install → nodes appear in the picker →
+   QR renders/updates, confetti fires each preset, Lucide glyphs show in the icon
+   picker and on `Icon`/control nodes → same in a deploy build. Not attempted here.
+2. **Real module icons** — replace the three procedural placeholder PNGs with actual
+   rendered thumbnails.
+3. **Existing 26-module live audit** — the triage table above is still read-level
+   guesses; the install→inject→register→function pass on both pairings is unstarted.
+4. **`library:build` + publish** of the three new zips (LIB-001 pipeline).
+5. Optional: expose a QR data-URL **output** port (skipped — `outputProps` on React
+   nodes unverified live; kept the node visual-only to stay safe).
