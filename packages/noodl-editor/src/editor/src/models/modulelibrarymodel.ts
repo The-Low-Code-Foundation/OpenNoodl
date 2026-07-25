@@ -34,6 +34,35 @@ export interface IModule {
  */
 export type LibraryFetchStatus = 'loading' | 'loaded' | 'error';
 
+/** Parses a "x.y.z" string into a comparable triple; missing/odd input sorts as 0.0.0. */
+function parseVersion(v: string | undefined): [number, number, number] {
+  const parts = (v || '').split('.').map((n) => parseInt(n, 10));
+  return [parts[0] || 0, parts[1] || 0, parts[2] || 0];
+}
+
+/** true if `current` is >= `minRequired` (both "x.y.z"). No `minRequired` means always compatible. */
+export function isVersionAtLeast(current: string, minRequired: string | undefined): boolean {
+  if (!minRequired) return true;
+  const a = parseVersion(current);
+  const b = parseVersion(minRequired);
+  for (let i = 0; i < 3; i++) {
+    if (a[i] > b[i]) return true;
+    if (a[i] < b[i]) return false;
+  }
+  return true;
+}
+
+/**
+ * A library entry is compatible with this running editor when it declares no
+ * `minEditorVersion` (older index entries, or entries that don't care) or
+ * when the running editor's version meets it. Used to render incompatible
+ * entries as such instead of letting install proceed into content the
+ * running editor may not understand (LIB-001).
+ */
+export function isModuleCompatible(module: IModule): boolean {
+  return isVersionAtLeast(platform.getVersion(), module.minEditorVersion);
+}
+
 export class ModuleLibraryModel extends Model {
   public modules: IModule[];
   public prefabs: IModule[];
@@ -110,7 +139,16 @@ export class ModuleLibraryModel extends Model {
     return await response.json();
   }
 
-  async installModule(modulePath: string, onBeforePopup?: () => void, onAfterPopup?: () => void) {
+  async installModule(
+    modulePath: string,
+    onBeforePopup?: () => void,
+    onAfterPopup?: () => void,
+    module?: IModule
+  ) {
+    if (module && !isModuleCompatible(module)) {
+      throw { message: `This module requires editor version ${module.minEditorVersion} or newer.` };
+    }
+
     const moduleRootPath = await this.getModuleTemplateRoot(modulePath);
 
     const imports = await new Promise((resolve, reject) =>
@@ -133,7 +171,16 @@ export class ModuleLibraryModel extends Model {
     await this._doImport(moduleRootPath, componentsToImport);
   }
 
-  async installPrefab(modulePath: string, onBeforePopup?: () => void, onAfterPopup?: () => void) {
+  async installPrefab(
+    modulePath: string,
+    onBeforePopup?: () => void,
+    onAfterPopup?: () => void,
+    module?: IModule
+  ) {
+    if (module && !isModuleCompatible(module)) {
+      throw { message: `This prefab requires editor version ${module.minEditorVersion} or newer.` };
+    }
+
     const moduleRootPath = await this.getModuleTemplateRoot(modulePath);
 
     const imports = await new Promise<TSFixme>((resolve, reject) =>
