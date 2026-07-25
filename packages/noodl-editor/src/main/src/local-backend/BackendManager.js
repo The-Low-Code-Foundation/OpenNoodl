@@ -112,6 +112,60 @@ class BackendManager {
     ipcMain.handle('backend:reload-workflows', async (_, id) => this.reloadWorkflows(id));
     ipcMain.handle('backend:workflow-status', async (_, id) => this.getWorkflowStatus(id));
 
+    // ==========================================================================
+    // ACCESS CONTROL (BAK-003) — the permissions panel proxies to /admin/*
+    // ==========================================================================
+
+    ipcMain.handle('backend:getPermissions', async (_, id) =>
+      this.requireRunning(id, 'read permissions').request('GET', '/admin/permissions')
+    );
+    ipcMain.handle('backend:setPermissions', async (_, id, config) =>
+      this.requireRunning(id, 'set permissions').request('PUT', '/admin/permissions', config)
+    );
+    ipcMain.handle('backend:setCollectionPermissions', async (_, id, collection, rules) =>
+      this.requireRunning(id, 'set collection permissions').request(
+        'PUT',
+        `/admin/permissions/collections/${encodeURIComponent(collection)}`,
+        rules
+      )
+    );
+    ipcMain.handle('backend:resetCollectionPermissions', async (_, id, collection) =>
+      this.requireRunning(id, 'reset collection permissions').request(
+        'DELETE',
+        `/admin/permissions/collections/${encodeURIComponent(collection)}`
+      )
+    );
+    ipcMain.handle('backend:checkAccess', async (_, id, query) =>
+      this.requireRunning(id, 'check access').request('POST', '/admin/permissions/check', query)
+    );
+    ipcMain.handle('backend:listRoles', async (_, id) =>
+      this.requireRunning(id, 'list roles').request('GET', '/admin/roles')
+    );
+    ipcMain.handle('backend:createRole', async (_, id, name) =>
+      this.requireRunning(id, 'create role').request('POST', '/admin/roles', { name })
+    );
+    ipcMain.handle('backend:deleteRole', async (_, id, name) =>
+      this.requireRunning(id, 'delete role').request('DELETE', `/admin/roles/${encodeURIComponent(name)}`)
+    );
+    ipcMain.handle('backend:addRoleUser', async (_, id, role, userId) =>
+      this.requireRunning(id, 'assign role').request('POST', `/admin/roles/${encodeURIComponent(role)}/users`, { userId })
+    );
+    ipcMain.handle('backend:removeRoleUser', async (_, id, role, userId) =>
+      this.requireRunning(id, 'remove role member').request(
+        'DELETE',
+        `/admin/roles/${encodeURIComponent(role)}/users/${encodeURIComponent(userId)}`
+      )
+    );
+    ipcMain.handle('backend:listApiKeys', async (_, id) =>
+      this.requireRunning(id, 'list API keys').request('GET', '/admin/keys')
+    );
+    ipcMain.handle('backend:createApiKey', async (_, id, name, scopes) =>
+      this.requireRunning(id, 'create API key').request('POST', '/admin/keys', { name, scopes })
+    );
+    ipcMain.handle('backend:revokeApiKey', async (_, id, objectId) =>
+      this.requireRunning(id, 'revoke API key').request('DELETE', `/admin/keys/${encodeURIComponent(objectId)}`)
+    );
+
     this.ipcHandlersSetup = true;
   }
 

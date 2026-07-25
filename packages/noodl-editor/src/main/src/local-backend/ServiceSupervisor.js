@@ -276,10 +276,37 @@ class ServiceSupervisor {
   }
 
   /** JSON request against the service; throws with the server's error message. */
+  /**
+   * The backend's admin credential (BAK-003), read from secrets.json in its
+   * data dir — the editor owns that directory, so there is no bootstrap
+   * problem. Attached as a bearer token on every proxied request so admin
+   * routes keep working when the operator turns dev-open off. In dev-open the
+   * backend ignores it (loopback + relaxed), so it is harmless there too.
+   * @private
+   */
+  adminToken() {
+    if (this._adminToken !== undefined) return this._adminToken;
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const fs = require('fs');
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const path = require('path');
+      const secretsPath = path.join(this.config.dataDir, 'secrets.json');
+      this._adminToken = JSON.parse(fs.readFileSync(secretsPath, 'utf-8')).adminToken || null;
+    } catch (e) {
+      this._adminToken = null;
+    }
+    return this._adminToken;
+  }
+
   async request(method, pathName, body) {
+    const headers = {};
+    if (body !== undefined) headers['content-type'] = 'application/json';
+    const token = this.adminToken();
+    if (token) headers.authorization = `Bearer ${token}`;
     const res = await fetch(`${this.endpoint}${pathName}`, {
       method,
-      headers: body !== undefined ? { 'content-type': 'application/json' } : undefined,
+      headers: Object.keys(headers).length ? headers : undefined,
       body: body !== undefined ? JSON.stringify(body) : undefined,
       signal: AbortSignal.timeout(30000)
     });

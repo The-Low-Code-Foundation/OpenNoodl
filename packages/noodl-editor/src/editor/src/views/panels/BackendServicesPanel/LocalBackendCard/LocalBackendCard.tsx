@@ -18,6 +18,7 @@ import { HStack, VStack } from '@noodl-core-ui/components/layout/Stack';
 import { Text, TextType } from '@noodl-core-ui/components/typography/Text';
 
 import { DataBrowser } from '../../databrowser';
+import { PermissionsPanel } from '../../permissions';
 import { SchemaPanel } from '../../schemamanager';
 import { LocalBackendInfo } from '../hooks/useLocalBackends';
 import css from './LocalBackendCard.module.scss';
@@ -61,6 +62,7 @@ export function LocalBackendCard({ backend, onStart, onStop, onDelete, onExport 
   const [isOperating, setIsOperating] = useState(false);
   const [showSchemaPanel, setShowSchemaPanel] = useState(false);
   const [showDataBrowser, setShowDataBrowser] = useState(false);
+  const [showPermissions, setShowPermissions] = useState(false);
   const statusDisplay = getStatusDisplay(backend);
 
   const isEphemeral = backend.running && backend.persistence?.mode === 'ephemeral';
@@ -205,6 +207,12 @@ export function LocalBackendCard({ backend, onStart, onStop, onDelete, onExport 
                 variant={PrimaryButtonVariant.Muted}
                 onClick={() => setShowSchemaPanel(true)}
               />
+              <PrimaryButton
+                label="Permissions"
+                size={PrimaryButtonSize.Small}
+                variant={PrimaryButtonVariant.Muted}
+                onClick={() => setShowPermissions(true)}
+              />
             </>
           )}
           {onExport && backend.running && (
@@ -244,6 +252,19 @@ export function LocalBackendCard({ backend, onStart, onStop, onDelete, onExport 
         createPortal(
           <div className={css.SchemaPanelOverlay}>
             <DataBrowser backendId={backend.id} backendName={backend.name} onClose={() => setShowDataBrowser(false)} />
+          </div>,
+          document.body
+        )}
+
+      {/* Permissions (BAK-003) — rendered via portal for full-screen overlay */}
+      {showPermissions &&
+        createPortal(
+          <div className={css.SchemaPanelOverlay}>
+            <PermissionsPanel
+              backendId={backend.id}
+              backendName={backend.name}
+              onClose={() => setShowPermissions(false)}
+            />
           </div>,
           document.body
         )}
