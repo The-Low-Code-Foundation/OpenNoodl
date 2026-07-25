@@ -7,8 +7,23 @@
  * @module triggerChain
  */
 
-import { TriggerChain, TriggerChainNode, EventTiming, ChainStatistics } from './chainTypes';
+import { TriggerChain, TriggerChainNode, EventTiming, ChainStatistics, InteractionGroup } from './chainTypes';
 import { TriggerEvent } from './types';
+
+/**
+ * Quiet gap (ms) that separates one interaction from the next. Two pulses closer
+ * than this belong to the same propagation run; a longer gap starts a new
+ * interaction. The runtime coalesces re-fires within a ~100ms pulse window, and
+ * distinct user actions are typically >250ms apart, so 250ms segments cleanly.
+ */
+export const INTERACTION_GAP_MS = 250;
+
+/**
+ * Window (ms) within which two identical adjacent pulses (same node + type +
+ * port) are treated as one same-frame propagation and collapsed into a single
+ * row with a repeatCount. One animation frame is ~16ms.
+ */
+export const SAME_FRAME_MS = 16;
 
 /**
  * Build a complete chain from an array of events
@@ -39,6 +54,9 @@ export function buildChainFromEvents(events: TriggerEvent[], name?: string): Tri
   // Build component grouping
   const byComponent = groupByComponent(sortedEvents);
 
+  // Segment into readable interaction groups (the noise filter)
+  const interactions = groupByInteraction(sortedEvents);
+
   // Build tree structure
   const tree = buildTree(sortedEvents);
 
@@ -54,8 +72,109 @@ export function buildChainFromEvents(events: TriggerEvent[], name?: string): Tri
     eventCount: sortedEvents.length,
     events: sortedEvents,
     byComponent,
+    interactions,
     tree
   };
+}
+
+/**
+ * Collapse identical adjacent same-frame pulses into a single event.
+ *
+ * Rising-edge detection in the recorder already removes lingering re-emissions,
+ * but a node can legitimately re-pulse the same wire several times inside one
+ * frame. Those add rows without adding meaning, so fold a run of identical
+ * adjacent pulses (same node + type + port, within {@link SAME_FRAME_MS}) into
+ * one row carrying a repeatCount.
+ *
+ * @param events - Chronologically sorted events
+ * @returns Events with same-frame identical runs collapsed
+ */
+export function collapseSameFrame(events: TriggerEvent[]): TriggerEvent[] {
+  if (events.length === 0) return [];
+
+  const out: TriggerEvent[] = [];
+
+  for (const event of events) {
+    const prev = out[out.length - 1];
+    const isSameStep =
+      prev &&
+      prev.nodeId === event.nodeId &&
+      prev.nodeType === event.nodeType &&
+      prev.port === event.port &&
+      event.timestamp - prev.timestamp <= SAME_FRAME_MS;
+
+    if (isSameStep) {
+      prev.repeatCount = (prev.repeatCount ?? 1) + 1;
+    } else {
+      out.push({ ...event, repeatCount: event.repeatCount ?? 1 });
+    }
+  }
+
+  return out;
+}
+
+/**
+ * Segment a flat event list into interaction groups by quiet-gap detection.
+ *
+ * A run of pulses with no gap longer than {@link INTERACTION_GAP_MS} is one
+ * interaction (a user action + its propagation cascade). This is what makes a
+ * button-click recording readable: one grouped interaction instead of dozens of
+ * loose rows. Within each group, same-frame identical pulses are collapsed.
+ *
+ * @param events - Events to segment (sorted internally by timestamp)
+ * @param gapMs - Quiet gap that starts a new interaction (default INTERACTION_GAP_MS)
+ * @returns Ordered interaction groups
+ */
+export function groupByInteraction(events: TriggerEvent[], gapMs: number = INTERACTION_GAP_MS): InteractionGroup[] {
+  if (events.length === 0) return [];
+
+  const sorted = [...events].sort((a, b) => a.timestamp - b.timestamp);
+
+  // Split into runs separated by a quiet gap
+  const runs: TriggerEvent[][] = [];
+  let current: TriggerEvent[] = [sorted[0]];
+
+  for (let i = 1; i < sorted.length; i++) {
+    const gap = sorted[i].timestamp - sorted[i - 1].timestamp;
+    if (gap > gapMs) {
+      runs.push(current);
+      current = [];
+    }
+    current.push(sorted[i]);
+  }
+  runs.push(current);
+
+  return runs.map((run, i) => {
+    const collapsed = collapseSameFrame(run);
+    const startTime = run[0].timestamp;
+    const endTime = run[run.length - 1].timestamp;
+    return {
+      id: `interaction_${startTime}_${i}`,
+      index: i + 1,
+      label: generateInteractionLabel(collapsed),
+      startTime,
+      endTime,
+      duration: endTime - startTime,
+      events: collapsed
+    };
+  });
+}
+
+/**
+ * Build a short label for an interaction from its first meaningful event.
+ */
+function generateInteractionLabel(events: TriggerEvent[]): string {
+  const stepCount = events.length;
+  const first = events[0];
+  const stepLabel = stepCount === 1 ? '1 step' : `${stepCount} steps`;
+
+  if (first && first.nodeLabel && first.nodeLabel !== 'Unknown') {
+    return `${first.nodeLabel} (${stepLabel})`;
+  }
+  if (first && first.nodeType && first.nodeType !== 'Unknown') {
+    return `${first.nodeType} (${stepLabel})`;
+  }
+  return `Interaction (${stepLabel})`;
 }
 
 /**

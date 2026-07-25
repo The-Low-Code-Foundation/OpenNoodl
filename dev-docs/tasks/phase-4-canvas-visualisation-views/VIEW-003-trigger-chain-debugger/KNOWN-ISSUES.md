@@ -1,10 +1,47 @@
 # VIEW-003: Trigger Chain Debugger - Known Issues
 
-## Status: ⚠️ UNSTABLE - REQUIRES INVESTIGATION
+## Status: ✅ CORE BUGS FIXED (DEBT-012, 2026-07-25) — still experimental
 
-**Last Updated:** January 4, 2026
+**Last Updated:** July 25, 2026
 
 This document tracks critical bugs and issues discovered during testing that require investigation and fixing before VIEW-003 can be considered production-ready.
+
+---
+
+## Resolution — DEBT-012 (2026-07-25)
+
+Both critical issues below (aggressive dedup dropping steps; ~40 events per click)
+are **fixed**. The root cause turned out to be a wrong mental model of the data,
+not a tuning problem:
+
+- `connectiondebugpulse` sends a **full snapshot of every connection currently
+  pulsing on each frame**, not a stream of discrete "fired" events. A single real
+  pulse lingers in that set for ~100ms (`clearOldConnectionPulsing` evicts only
+  after 100ms), so one firing reappears across many consecutive snapshots.
+- The old recorder logged one row per connection id per snapshot and leaned on a
+  5ms wall-clock threshold. That is backwards on both counts: snapshots arrive
+  tens-to-hundreds of ms apart, so 5ms never caught the lingering re-emissions
+  (→ the ~40-row flood), while a genuine rapid repeat on the same wire (<5ms)
+  was dropped as a "duplicate" (→ the data loss).
+
+**Fix (no time heuristic):** the recorder now does **rising-edge detection** on
+the snapshot membership — a connection is a new pulse only on the frame it
+transitions *absent → present* in the set; while it stays present it is the same
+lingering pulse and is ignored; if it leaves the set and returns, that return is a
+genuine repeat and is recorded again. Pure logic lives in
+`utils/triggerChain/snapshotDiff.ts`; `ViewerConnection.ts` now hands the whole
+snapshot to `TriggerChainRecorder.captureConnectionSnapshot()`.
+
+**Noise filter:** `chainBuilder.groupByInteraction()` segments events into
+interaction groups by quiet-gap (250ms) and collapses same-frame identical pulses
+into one row with a count, so a button click reads as one grouped interaction
+instead of dozens of loose rows. The panel timeline renders these groups.
+
+**Test:** `packages/noodl-editor/tests/utils/TriggerChainRecorder.spec.ts` pins
+both directions (no dropped legit repeat, no dupe flood) plus the grouping.
+
+The panel remains **experimental** (trustworthy, not polished). The original
+investigation plan below is retained for history.
 
 ---
 

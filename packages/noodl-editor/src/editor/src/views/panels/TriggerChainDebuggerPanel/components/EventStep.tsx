@@ -99,6 +99,9 @@ export function EventStep({ event, timeSinceStart, timeSincePrevious, isRecordin
             <div className={css['NodeInfo']}>
               <span className={css['NodeType']}>{event.nodeType}</span>
               {event.nodeLabel && <span className={css['NodeLabel']}>{event.nodeLabel}</span>}
+              {event.repeatCount && event.repeatCount > 1 && (
+                <span className={css['RepeatBadge']}>×{event.repeatCount}</span>
+              )}
             </div>
             <div className={css['ComponentInfo']}>
               <Icon icon={IconName.Component} />

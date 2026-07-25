@@ -18,7 +18,9 @@ import { AiAuthoringPanel, AiAuthoringPanel_ID } from './views/panels/AiAuthorin
 import { ComponentPortsComponent } from './views/panels/componentports';
 import { ComponentsPanel } from './views/panels/componentspanel';
 import { ComponentXRayPanel } from './views/panels/ComponentXRayPanel';
-import { DataLineagePanel } from './views/panels/DataLineagePanel';
+// DataLineagePanel retired from reach (DEBT-012) — registration below is dead;
+// import kept commented so the panel code (one release cycle) still compiles.
+// import { DataLineagePanel } from './views/panels/DataLineagePanel';
 import { DesignTokenPanel } from './views/panels/DesignTokenPanel/DesignTokenPanel';
 import { EditorSettingsPanel } from './views/panels/EditorSettingsPanel/EditorSettingsPanel';
 import { ExplainPanel, ExplainPanel_ID, startExplainTargetTracking } from './views/panels/ExplainPanel';
@@ -111,16 +113,26 @@ export function installSidePanel({ isLesson }: SetupEditorOptions) {
     panel: ComponentXRayPanel
   });
 
-  SidebarModel.instance.register({
-    experimental: true,
-    id: 'data-lineage',
-    name: 'Data Lineage',
-    description:
-      'Traces where data values come from (upstream sources) and where they go to (downstream destinations), crossing component boundaries.',
-    order: 4.5,
-    icon: IconName.Link,
-    panel: DataLineagePanel
-  });
+  // Data Lineage — RETIRED FROM REACH (DEBT-012, 2026-07-25).
+  // The tracing algorithm enumerates every port instead of following wires
+  // (40+ noise steps for a 3-node chain); five documented fix attempts failed
+  // and the decision (DEBT-012) is NOT to patch it — a reachable panel that
+  // confidently shows wrong data-flow answers is worse than none, especially
+  // next to Explain Mode, which answers the same question correctly.
+  // The panel/engine code stays one release cycle behind this dead registration,
+  // then is deleted in the next cleanup batch (recorded for DEBT-010). A
+  // deterministic lineage rebuild, if wanted, goes to
+  // dev-docs/future-projects/DETERMINISTIC-LINEAGE-SUBSTRATE.md.
+  // SidebarModel.instance.register({
+  //   experimental: true,
+  //   id: 'data-lineage',
+  //   name: 'Data Lineage',
+  //   description:
+  //     'Traces where data values come from (upstream sources) and where they go to (downstream destinations), crossing component boundaries.',
+  //   order: 4.5,
+  //   icon: IconName.Link,
+  //   panel: DataLineagePanel
+  // });
 
   // Must start at boot, not at panel mount: the selection Explain needs to see
   // is cleared by the sidebar switch that mounts the panel. See explainTarget.ts.

@@ -14,8 +14,16 @@ export type { TriggerEvent, TriggerEventType, RecorderOptions, RecorderState } f
 export {
   buildChainFromEvents,
   groupByComponent,
+  groupByInteraction,
+  collapseSameFrame,
   buildTree,
   calculateTiming,
-  calculateStatistics
+  calculateStatistics,
+  INTERACTION_GAP_MS,
+  SAME_FRAME_MS
 } from './chainBuilder';
-export type { TriggerChain, TriggerChainNode, EventTiming, ChainStatistics } from './chainTypes';
+export type { TriggerChain, TriggerChainNode, EventTiming, ChainStatistics, InteractionGroup } from './chainTypes';
+
+// Pure snapshot edge-detection (exported for testing / reuse)
+export { diffPulseSnapshot } from './snapshotDiff';
+export type { SnapshotDiff } from './snapshotDiff';

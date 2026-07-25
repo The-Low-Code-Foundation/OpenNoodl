@@ -107,11 +107,13 @@ export class ViewerConnection extends Model {
       const content = JSON.parse(request.content);
       DebugInspector.instance.setConnectionsToPulse(content.connectionsToPulse);
 
-      // Also capture for trigger chain recorder if recording
+      // Also capture for trigger chain recorder if recording.
+      // Pass the WHOLE snapshot: connectiondebugpulse sends the full set of
+      // currently-pulsing connections every frame, so the recorder needs the
+      // sequence to detect which connections just started (rising edges) vs
+      // which are the same pulse still lingering in the runtime's ~100ms window.
       if (triggerChainRecorder.isRecording()) {
-        content.connectionsToPulse.forEach((connectionId: string) => {
-          triggerChainRecorder.captureConnectionPulse(connectionId);
-        });
+        triggerChainRecorder.captureConnectionSnapshot(content.connectionsToPulse);
       }
     } else if (request.cmd === 'debuginspectorvalues' && request.type === 'viewer') {
       DebugInspector.instance.setInspectorValues(request.content.inspectors);

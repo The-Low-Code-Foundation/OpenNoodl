@@ -37,8 +37,42 @@ export interface TriggerChain {
   /** Events grouped by component name */
   byComponent: Map<string, TriggerEvent[]>;
 
+  /**
+   * Events segmented into interactions — each burst of propagation separated
+   * from the next by a quiet gap. This is the readable view: one user action
+   * (e.g. a button click) becomes one group instead of ~40 loose rows.
+   */
+  interactions: InteractionGroup[];
+
   /** Hierarchical tree structure for rendering */
   tree: TriggerChainNode;
+}
+
+/**
+ * One interaction: a run of propagation pulses with no long quiet gap between
+ * them, corresponding to a single user action and everything it triggered.
+ */
+export interface InteractionGroup {
+  /** Unique group id */
+  id: string;
+
+  /** 1-based ordinal of this interaction within the recording */
+  index: number;
+
+  /** Human label, derived from the first event (e.g. "Button (3 steps)") */
+  label: string;
+
+  /** Timestamp of the first event in the group */
+  startTime: number;
+
+  /** Timestamp of the last event in the group */
+  endTime: number;
+
+  /** Duration of the group in ms */
+  duration: number;
+
+  /** Events in this interaction, chronological, after same-frame collapse */
+  events: TriggerEvent[];
 }
 
 /**

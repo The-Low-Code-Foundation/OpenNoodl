@@ -9,6 +9,7 @@
  */
 
 import { ProjectModel } from '../../models/projectmodel';
+import { diffPulseSnapshot } from './snapshotDiff';
 import { RecorderOptions, RecorderState, TriggerEvent } from './types';
 
 /**
@@ -18,8 +19,14 @@ export class TriggerChainRecorder {
   private static _instance: TriggerChainRecorder;
 
   private state: RecorderState;
-  private recentEventKeys: Map<string, number>; // Key: nodeId+port, Value: timestamp
-  private readonly DUPLICATE_THRESHOLD_MS = 5; // Consider events within 5ms as duplicates
+
+  /**
+   * Connection ids that were pulsing in the last snapshot the runtime sent.
+   * A connection is only recorded as a new pulse when it transitions
+   * absent -> present in this set (a rising edge). See {@link snapshotDiff}
+   * for why this replaces the old 5ms wall-clock dedup.
+   */
+  private activeConnectionIds: Set<string>;
 
   /**
    * Private constructor - use getInstance() instead
@@ -30,7 +37,7 @@ export class TriggerChainRecorder {
       events: [],
       maxEvents: 1000
     };
-    this.recentEventKeys = new Map();
+    this.activeConnectionIds = new Set();
   }
 
   /**
@@ -61,7 +68,7 @@ export class TriggerChainRecorder {
 
     // Reset state and start
     this.state.events = [];
-    this.recentEventKeys.clear(); // Clear deduplication map
+    this.activeConnectionIds.clear(); // Clear pulse edge-detection state
     this.state.startTime = performance.now();
     this.state.isRecording = true;
 
@@ -101,6 +108,7 @@ export class TriggerChainRecorder {
     this.state.events = [];
     this.state.startTime = undefined;
     this.state.isRecording = false;
+    this.activeConnectionIds.clear();
 
     console.log('TriggerChainRecorder: Reset');
   }
@@ -162,8 +170,41 @@ export class TriggerChainRecorder {
   }
 
   /**
-   * Helper: Create and capture an event from connection pulse data
-   * This bridges the existing DebugInspector connection pulse to our recorder
+   * Capture a full connection-pulse snapshot from the runtime.
+   *
+   * Each `connectiondebugpulse` message carries the *entire* set of connections
+   * currently pulsing, not just newly-fired ones (a single pulse lingers in the
+   * set for ~100ms). Recording every membership floods the timeline and the old
+   * 5ms threshold could neither collapse the lingers nor tell them apart from a
+   * genuine rapid repeat. So we record a connection only on its rising edge:
+   * the frame it transitions absent -> present in the snapshot set. A connection
+   * that leaves the set and later returns is a new pulse and is recorded again.
+   *
+   * This is the entry point ViewerConnection should call — it hands the whole
+   * `connectionsToPulse` array so the sequence context is preserved.
+   *
+   * @param connectionIds - The complete set of pulsing connection ids this frame
+   */
+  public captureConnectionSnapshot(connectionIds: string[]): void {
+    if (!this.state.isRecording) {
+      return;
+    }
+
+    const { edges, active } = diffPulseSnapshot(this.activeConnectionIds, connectionIds);
+    this.activeConnectionIds = active;
+
+    for (const connectionId of edges) {
+      this.captureConnectionPulse(connectionId);
+    }
+  }
+
+  /**
+   * Helper: Create and capture a single event from one connection pulse.
+   * This bridges the existing DebugInspector connection pulse to our recorder.
+   *
+   * NOTE: this records unconditionally — deduplication of lingering re-emissions
+   * is the job of {@link captureConnectionSnapshot}'s rising-edge detection, not
+   * a time heuristic here. Callers with a full snapshot should prefer that method.
    *
    * @param connectionId - Connection ID from DebugInspector
    * @param data - Optional data flowing through connection
@@ -224,33 +265,6 @@ export class TriggerChainRecorder {
     // Use first UUID as fallback if no node found
     if (!targetNodeId && uuids.length > 0) {
       targetNodeId = uuids[0];
-    }
-
-    // Deduplication: Create a unique key for this event
-    // Using connectionId directly as it contains both node IDs and port info
-    const eventKey = connectionId;
-
-    // Check if we recently captured the same event
-    const lastEventTime = this.recentEventKeys.get(eventKey);
-    if (lastEventTime !== undefined) {
-      const timeSinceLastEvent = currentTime - lastEventTime;
-      if (timeSinceLastEvent < this.DUPLICATE_THRESHOLD_MS) {
-        // This is a duplicate event - skip it
-        return;
-      }
-    }
-
-    // Update the timestamp for this event key
-    this.recentEventKeys.set(eventKey, currentTime);
-
-    // Clean up old entries periodically (keep map from growing too large)
-    if (this.recentEventKeys.size > 100) {
-      const cutoffTime = currentTime - this.DUPLICATE_THRESHOLD_MS * 2;
-      for (const [key, timestamp] of this.recentEventKeys.entries()) {
-        if (timestamp < cutoffTime) {
-          this.recentEventKeys.delete(key);
-        }
-      }
     }
 
     const event: TriggerEvent = {

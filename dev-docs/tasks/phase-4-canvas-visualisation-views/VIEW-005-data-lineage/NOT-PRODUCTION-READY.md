@@ -1,8 +1,39 @@
 # VIEW-005: Data Lineage Panel - NOT PRODUCTION READY
 
-**Status**: ⚠️ **NOT PRODUCTION READY** - Requires significant debugging and rework
+**Status**: ⛔ **RETIRED FROM REACH** (DEBT-012, 2026-07-25) — was ⚠️ NOT PRODUCTION READY
 
 **Date Marked**: January 4, 2026
+
+---
+
+## Resolution — DEBT-012 (2026-07-25)
+
+The decision made in [DEBT-012](../../phase-14.5-revival-debt/DEBT-012-DATAFLOW-TRACKER-SALVAGE.md)
+is **not to fix this panel** — patching the tracing algorithm would be attempt #6
+of a documented dead end, and it sits next to Explain Mode, which answers the same
+"where does this data come from / go to" question correctly. A reachable panel that
+confidently shows wrong data-flow answers is worse than none. So the panel has been
+**taken out of users' reach**, not repaired:
+
+- **Sidebar registration commented out** in `packages/noodl-editor/src/editor/src/router.setup.ts`
+  (the `data-lineage` panel no longer appears in the sidebar). The import is
+  commented alongside it.
+- **Console spew removed** from `hooks/useDataLineage.ts` (the `🔗 [DataLineage]`
+  logs are gone; only a genuine error path logs now).
+- **Context-menu entry** (`NodeContextMenu.ts`) was already disabled; its comment
+  now records the retirement decision rather than "re-enable when fixed".
+- **The panel + engine code is left in place, one release cycle**, behind the dead
+  registration. **Next-cycle deletion is queued for DEBT-010's cleanup list**:
+  `views/panels/DataLineagePanel/` (the whole directory). `utils/graphAnalysis/lineage.ts`
+  is intentionally **left untouched** — it is a self-contained module that a future
+  substrate service may reference, and other graphAnalysis consumers must not be
+  disturbed by this retirement.
+- If a deterministic lineage capability is wanted later, it is **rebuilt as a
+  substrate service** (over the node catalog + v2 project format), not by reviving
+  this panel — see
+  [dev-docs/future-projects/DETERMINISTIC-LINEAGE-SUBSTRATE.md](../../../future-projects/DETERMINISTIC-LINEAGE-SUBSTRATE.md).
+
+The original assessment below is retained for history.
 
 ---
 

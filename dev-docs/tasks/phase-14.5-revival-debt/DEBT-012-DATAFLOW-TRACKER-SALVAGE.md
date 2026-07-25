@@ -78,3 +78,72 @@ The salvage audit ([PRE-REVIVAL-SALVAGE-AUDIT.md](../../reviews/PRE-REVIVAL-SALV
 - [PRE-REVIVAL-SALVAGE-AUDIT.md](../../reviews/PRE-REVIVAL-SALVAGE-AUDIT.md) §4
 - `dev-docs/tasks/phase-4-canvas-visualisation-views/` — VIEW-003 KNOWN-ISSUES.md, VIEW-005 NOT-PRODUCTION-READY.md, PROGRESS.md (2026-07-23 truth pass)
 - Related: AIX-004 (the human-facing successor to lineage's intent), AIX-005 (future consumer of live pulse data)
+
+---
+
+## Completion — 2026-07-25
+
+**Status:** ✅ Done (code + docs). Live-editor smoke pass deferred to the coordinator (concurrent-Electron constraint).
+
+### Root cause of the "duplicate events"
+
+`connectiondebugpulse` is a **full state snapshot, not an event delta**. The viewer's
+`EditorConnection.sendPulsingConnections` flattens the *entire* `connectionsToPulse`
+map every frame, and a single real pulse lingers in that map for ~100ms
+(`clearOldConnectionPulsing` evicts only after `now - timestamp > 100`). So one firing
+reappears in many consecutive snapshots. The old recorder logged one row per
+connection id per snapshot and deduped with a 5ms wall-clock threshold — backwards on
+both counts: snapshots arrive tens-to-hundreds of ms apart, so 5ms never collapsed the
+lingering re-emissions (the ~40-row flood), while a genuine rapid repeat on the same
+wire (<5ms) got dropped as a "duplicate" (the data loss).
+
+### The fix (no time heuristic)
+
+Rising-edge detection on snapshot membership: a connection is a new pulse only on the
+frame it transitions *absent → present*; while present it is the same lingering pulse
+(ignored); if it leaves the set and returns, that return is a genuine repeat and is
+recorded again. Uses the connection ids + snapshot sequence the recorder already has.
+
+### Files changed
+
+**Trigger Chain (fix):**
+- `utils/triggerChain/snapshotDiff.ts` — NEW, pure `diffPulseSnapshot()` (no deps, unit-testable)
+- `utils/triggerChain/TriggerChainRecorder.ts` — added `captureConnectionSnapshot()` (edge detection); removed the 5ms `DUPLICATE_THRESHOLD_MS` / `recentEventKeys`; edge state cleared on start/reset
+- `ViewerConnection.ts` — passes the whole snapshot to `captureConnectionSnapshot()` instead of a per-id forEach
+- `utils/triggerChain/chainBuilder.ts` — added `groupByInteraction()` (250ms quiet-gap) + `collapseSameFrame()` (16ms window, repeatCount); `buildChainFromEvents` now emits `interactions`
+- `utils/triggerChain/chainTypes.ts`, `types.ts`, `index.ts` — `InteractionGroup` type, `repeatCount` field, exports
+- `views/panels/TriggerChainDebuggerPanel/components/ChainTimeline.tsx` + `.module.scss`, `EventStep.tsx` + `.module.scss` — render interaction groups + repeat badge
+- `tests/utils/TriggerChainRecorder.spec.ts` — NEW smoke test (+ registered in `tests/utils/index.ts`)
+
+**Data Lineage (retire from reach):**
+- `router.setup.ts` — `data-lineage` registration + import commented out (dead registration)
+- `views/panels/DataLineagePanel/hooks/useDataLineage.ts` — `🔗 [DataLineage]` console spew stripped
+- `views/nodegrapheditor/NodeContextMenu.ts` — disabled entry's comment updated to record the retirement decision
+- `utils/graphAnalysis/lineage.ts` — **untouched** (left behind the dead registration, per spec)
+
+**Docs:**
+- `dev-docs/future-projects/DETERMINISTIC-LINEAGE-SUBSTRATE.md` — NEW
+- VIEW-003 KNOWN-ISSUES.md — marked fixed; VIEW-005 NOT-PRODUCTION-READY.md — marked retired, points at the future-projects note
+
+### Next-cycle deletion (for DEBT-010)
+
+Queue `views/panels/DataLineagePanel/` (whole directory) for deletion in the next
+cleanup batch. `utils/graphAnalysis/lineage.ts` is intentionally kept (self-contained;
+possible substrate-service reference). *Recorded here for the coordinator to add to
+DEBT-010's cleanup list — not edited directly, as DEBT-010 is outside this task's file surface.*
+
+### Verification
+
+- Pure logic (edge detection, grouping, collapse, chain build): **9/9 green** via standalone ts-node run
+- Editor typecheck (`tsc -p tsconfig.json`): **clean** (0 errors)
+- Tests typecheck (`tsc -p tsconfig.tests.json`): new spec clean (2 pre-existing errors in `StyleAnalyzer.ts`, concurrent work, unrelated)
+- Jasmine suite / live editor: **not run here** (concurrent-Electron constraint) — see live-smoke steps below
+
+### Live-editor smoke steps (for the coordinator)
+
+1. Run the editor spec suite (Electron): `npm run test:editor` — confirm `TriggerChainRecorder — snapshot edge detection` green.
+2. Open a project, open the **Trigger Chain Debugger** panel, Start Recording.
+3. Click a button wired to a small cascade (e.g. onClick → Show Toast / set a Variable → Text). Stop Recording.
+4. Confirm **every wire the click actually fired is present** (no dropped step) and the recording reads as **one grouped interaction of a few rows**, not ~40 loose rows.
+5. Fire the same button twice with a pause between — confirm **two interaction groups** appear (legit repeat not swallowed).
+6. Confirm the **Data Lineage** panel no longer appears in the sidebar, and no `🔗 [DataLineage]` logs appear in the console.

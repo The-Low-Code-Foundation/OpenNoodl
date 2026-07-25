@@ -7,7 +7,7 @@
 
 import React, { useMemo } from 'react';
 
-import { buildChainFromEvents, calculateTiming, TriggerEvent } from '../../../../utils/triggerChain';
+import { buildChainFromEvents, TriggerEvent } from '../../../../utils/triggerChain';
 import css from './ChainTimeline.module.scss';
 import { EventStep } from './EventStep';
 
@@ -23,12 +23,6 @@ export function ChainTimeline({ events, isRecording }: ChainTimelineProps) {
     return buildChainFromEvents(events);
   }, [events]);
 
-  // Calculate timing for each event
-  const timing = useMemo(() => {
-    if (!chain) return [];
-    return calculateTiming(chain);
-  }, [chain]);
-
   if (!chain || events.length === 0) {
     return (
       <div className={css['ChainTimeline']}>
@@ -39,6 +33,8 @@ export function ChainTimeline({ events, isRecording }: ChainTimelineProps) {
     );
   }
 
+  const interactionCount = chain.interactions.length;
+
   return (
     <div className={css['ChainTimeline']}>
       {/* Chain Header */}
@@ -46,27 +42,37 @@ export function ChainTimeline({ events, isRecording }: ChainTimelineProps) {
         <div className={css['ChainInfo']}>
           <h3>{chain.name}</h3>
           <div className={css['ChainMeta']}>
-            <span>{chain.eventCount} events</span>
+            <span>
+              {interactionCount} {interactionCount === 1 ? 'interaction' : 'interactions'}
+            </span>
+            <span>•</span>
+            <span>{chain.eventCount} steps</span>
             <span>•</span>
             <span>{chain.duration.toFixed(2)}ms</span>
           </div>
         </div>
       </div>
 
-      {/* Timeline */}
+      {/* Timeline, grouped by interaction so one user action reads as one block */}
       <div className={css['TimelineList']}>
-        {chain.events.map((event) => {
-          const eventTiming = timing.find((t) => t.eventId === event.id);
-          return (
-            <EventStep
-              key={event.id}
-              event={event}
-              timeSinceStart={eventTiming?.sinceStart || 0}
-              timeSincePrevious={eventTiming?.sincePrevious || 0}
-              isRecording={isRecording}
-            />
-          );
-        })}
+        {chain.interactions.map((group) => (
+          <div key={group.id} className={css['InteractionGroup']}>
+            <div className={css['InteractionHeader']}>
+              <span className={css['InteractionIndex']}>#{group.index}</span>
+              <span className={css['InteractionLabel']}>{group.label}</span>
+              <span className={css['InteractionDuration']}>{group.duration.toFixed(1)}ms</span>
+            </div>
+            {group.events.map((event, i) => (
+              <EventStep
+                key={event.id}
+                event={event}
+                timeSinceStart={event.timestamp - group.startTime}
+                timeSincePrevious={i === 0 ? 0 : event.timestamp - group.events[i - 1].timestamp}
+                isRecording={isRecording}
+              />
+            ))}
+          </div>
+        ))}
       </div>
     </div>
   );

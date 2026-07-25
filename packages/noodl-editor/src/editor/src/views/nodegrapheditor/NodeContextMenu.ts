@@ -175,8 +175,12 @@ export class NodeContextMenu {
       items.push('divider');
     }
 
-    // Data Lineage - DISABLED: Not production ready, requires more work
-    // TODO: Re-enable when lineage filtering and event handling are fixed
+    // Data Lineage - RETIRED FROM REACH (DEBT-012, 2026-07-25).
+    // Decision is NOT to revive this panel: its tracing algorithm enumerates
+    // ports instead of following wires and five fix attempts failed. The sidebar
+    // registration is also commented out (router.setup.ts). Do not re-enable;
+    // a deterministic rebuild belongs on the catalog/v2 substrate — see
+    // dev-docs/future-projects/DETERMINISTIC-LINEAGE-SUBSTRATE.md.
     // items.push({
     //   label: 'Show Data Lineage',
     //   icon: IconName.Link,

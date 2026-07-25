@@ -62,6 +62,13 @@ export interface TriggerEvent {
 
   /** ID of event that caused this one (for causal chain) */
   triggeredBy?: string;
+
+  /**
+   * How many same-frame propagation pulses this row collapses (>=1). Set by the
+   * chain builder's noise filter when identical adjacent pulses fire within one
+   * frame; absent/1 means a single pulse. Purely presentational.
+   */
+  repeatCount?: number;
 }
 
 /**
