@@ -66,7 +66,8 @@ function resolveBackend(backendId) {
     url: backend.url,
     token: backend.auth?.publicToken || '',
     type: backend.type,
-    endpoints: backend.endpoints
+    endpoints: backend.endpoints,
+    collections: backend.schema?.collections || []
   };
 }
 
@@ -303,6 +304,101 @@ function getEnhancedFieldType(field) {
 }
 
 /**
+ * Relation types that can be traversed with a dotted field path (author.name).
+ * One-to-many / many-to-many point at record SETS — a dotted path into them
+ * means "any related record matches" in Directus, but the schema parsers only
+ * recover M2O/O2O today (see schemaParsers.ts), so that is what we expand.
+ */
+const TRAVERSABLE_RELATION_TYPES = ['many-to-one', 'one-to-one'];
+
+/**
+ * Get the traversable relation fields of a collection: visible fields whose
+ * relationTarget resolves to a collection we have schema for.
+ * @param {Object} collection - SchemaCollection (cached shape)
+ * @param {Array} allCollections - All SchemaCollections in the backend schema
+ * @returns {Array} [{ field, targetCollection }]
+ */
+function getRelationFields(collection, allCollections) {
+  if (!collection || !Array.isArray(collection.fields)) return [];
+
+  const result = [];
+  for (const field of collection.fields) {
+    if (!shouldShowField(field)) continue;
+    if (!field.relationTarget) continue;
+    if (field.relationType && !TRAVERSABLE_RELATION_TYPES.includes(field.relationType)) continue;
+
+    const targetCollection = (allCollections || []).find((c) => c.name === field.relationTarget);
+    if (!targetCollection) continue;
+
+    result.push({ field, targetCollection });
+  }
+  return result;
+}
+
+/**
+ * Expand a collection's M2O/O2O relations into dotted pseudo-fields, one hop
+ * deep: articles.author (FK → authors) yields author.name, author.email, …
+ * with type/enumValues carried over from the target field so the filter
+ * builder picks the right operators and value editors.
+ *
+ * The returned fields are additive — callers append them to the collection's
+ * own fields. The FK field itself stays in the list (filtering on the raw id
+ * is still valid). Hidden fields are skipped on both sides; target fields
+ * that are themselves relations are not expanded (no depth-2 paths).
+ * @param {Object} collection - SchemaCollection (cached shape)
+ * @param {Array} allCollections - All SchemaCollections in the backend schema
+ * @returns {Array} Pseudo SchemaFields with dotted names and relationPath: true
+ */
+function expandRelationFields(collection, allCollections) {
+  const expanded = [];
+
+  for (const { field, targetCollection } of getRelationFields(collection, allCollections)) {
+    const relationLabel = field.displayName || field.name;
+
+    for (const targetField of targetCollection.fields || []) {
+      if (!shouldShowField(targetField)) continue;
+      // No depth-2 traversal: a relation inside the target stays a scalar FK
+      if (targetField.relationTarget) continue;
+
+      expanded.push({
+        name: `${field.name}.${targetField.name}`,
+        displayName: `${relationLabel} → ${targetField.displayName || targetField.name}`,
+        type: targetField.type,
+        nativeType: targetField.nativeType,
+        required: false,
+        enumValues: targetField.enumValues,
+        relationPath: true
+      });
+    }
+  }
+
+  return expanded;
+}
+
+/**
+ * Build the value for the `fields` query parameter from the user's fields
+ * input and the relations toggled on via Include-<relation> ports.
+ * '*' + ['author'] → '*,author.*'; 'id,title' + ['author'] → 'id,title,author.*'.
+ * Relations already expanded in a custom fields value are not duplicated.
+ * @param {string} fieldsValue - The node's fields input ('*' by default)
+ * @param {Array<string>} includedRelations - Relation field names to expand
+ * @returns {string} The effective fields parameter value
+ */
+function buildFieldsParam(fieldsValue, includedRelations) {
+  const base = (fieldsValue || '*').trim() || '*';
+  if (!includedRelations || includedRelations.length === 0) return base;
+
+  const parts = base.split(',').map((p) => p.trim()).filter(Boolean);
+  for (const relation of includedRelations) {
+    const expansion = `${relation}.*`;
+    if (!parts.includes(expansion)) {
+      parts.push(expansion);
+    }
+  }
+  return parts.join(',');
+}
+
+/**
  * Pick the record count to expose as Total Count from a Directus meta block.
  * filter_count (the count after the filter is applied) wins over total_count
  * (the whole collection) — pagination over a filtered list needs the former.
@@ -326,5 +422,8 @@ module.exports = {
   filterCollectionsByMode,
   shouldShowField,
   getEnhancedFieldType,
+  getRelationFields,
+  expandRelationFields,
+  buildFieldsParam,
   pickTotalCount
 };

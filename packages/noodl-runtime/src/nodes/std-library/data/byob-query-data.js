@@ -129,6 +129,35 @@ var QueryDataNode = {
     },
 
     /**
+     * Store an Include-<relation> toggle (include_<field> ports)
+     */
+    _storeIncludeRelationValue: function (relationName, value) {
+      if (!this._internal.includeRelations) {
+        this._internal.includeRelations = {};
+      }
+      this._internal.includeRelations[relationName] = value;
+    },
+
+    /**
+     * Relation field names whose Include toggle is on.
+     * Include parameters survive a collection switch even though their port
+     * is gone from the editor — validate against the current collection's
+     * schema so a stale toggle can't poison the fields param.
+     */
+    getIncludedRelations: function () {
+      const includes = this._internal.includeRelations || {};
+      const active = Object.keys(includes).filter((name) => !!includes[name]);
+      if (active.length === 0) return active;
+
+      const backend = this.resolveBackend();
+      const collection = backend?.collections?.find((c) => c.name === this._internal.collection);
+      if (!collection) return active;
+
+      const valid = ByobUtils.getRelationFields(collection, backend.collections).map((r) => r.field.name);
+      return active.filter((name) => valid.includes(name));
+    },
+
+    /**
      * Resolve the backend configuration from metadata
      * Returns { url, token, type } or null if not found
      */
@@ -165,8 +194,9 @@ var QueryDataNode = {
       // Build query parameters
       const params = new URLSearchParams();
 
-      // Fields
-      const fields = this._internal.fields || '*';
+      // Fields — expand toggled-on relations (fields=*,author.*) so related
+      // records come back as nested objects instead of raw foreign keys
+      const fields = ByobUtils.buildFieldsParam(this._internal.fields, this.getIncludedRelations());
       if (fields && fields !== '*') {
         params.append('fields', fields);
       }
@@ -405,6 +435,13 @@ var QueryDataNode = {
           set: this._storeFilterPortValue.bind(this, name)
         });
       }
+
+      // Register Include-<relation> toggles (include_<field>)
+      if (name.startsWith('include_')) {
+        return this.registerInput(name, {
+          set: this._storeIncludeRelationValue.bind(this, name.substring('include_'.length))
+        });
+      }
     },
 
     /**
@@ -466,40 +503,58 @@ var QueryDataNode = {
      * Convert visual filter builder format to Directus filter format
      */
     _toDirectusFilter: function (group) {
-      if (!group || !group.conditions || group.conditions.length === 0) {
-        return null;
-      }
-
-      const combinator = group.type === 'or' ? '_or' : '_and';
-      const filterItems = [];
-
-      for (const item of group.conditions) {
-        if (item.type === 'and' || item.type === 'or') {
-          // Nested group
-          const nestedFilter = this._toDirectusFilter(item);
-          if (nestedFilter) {
-            filterItems.push(nestedFilter);
-          }
-        } else {
-          // Condition - convert to Directus format
-          if (item.field && item.operator) {
-            const condition = {};
-            condition[item.field] = {};
-            condition[item.field][item.operator] = item.value;
-            filterItems.push(condition);
-          }
-        }
-      }
-
-      if (filterItems.length === 0) return null;
-      if (filterItems.length === 1) return filterItems[0];
-
-      const result = {};
-      result[combinator] = filterItems;
-      return result;
+      return toDirectusFilter(group);
     }
   }
 };
+
+/**
+ * Convert the visual filter builder format to the Directus filter format.
+ * Mirrors the editor-side converter (ByobFilterBuilder/converter.ts) — the
+ * runtime re-converts at fetch time because connected port values are only
+ * known here.
+ */
+function toDirectusFilter(group) {
+  if (!group || !group.conditions || group.conditions.length === 0) {
+    return null;
+  }
+
+  const combinator = group.type === 'or' ? '_or' : '_and';
+  const filterItems = [];
+
+  for (const item of group.conditions) {
+    if (item.type === 'and' || item.type === 'or') {
+      // Nested group
+      const nestedFilter = toDirectusFilter(item);
+      if (nestedFilter) {
+        filterItems.push(nestedFilter);
+      }
+    } else {
+      // Condition - convert to Directus format
+      if (item.field && item.operator) {
+        // Null/empty checks take a literal true, not the (absent) value
+        const noValueOperators = ['_null', '_nnull', '_empty', '_nempty'];
+        const operatorValue = noValueOperators.includes(item.operator) ? true : item.value;
+
+        // Relation paths (author.name) must nest: { author: { name: { _eq: ... } } }.
+        // A flat "author.name" key is rejected by Directus (live 403, slice 6).
+        let condition = { [item.operator]: operatorValue };
+        const parts = item.field.split('.');
+        for (let i = parts.length - 1; i >= 0; i--) {
+          condition = { [parts[i]]: condition };
+        }
+        filterItems.push(condition);
+      }
+    }
+  }
+
+  if (filterItems.length === 0) return null;
+  if (filterItems.length === 1) return filterItems[0];
+
+  const result = {};
+  result[combinator] = filterItems;
+  return result;
+}
 
 /**
  * Helper to find all connected filter conditions in a filter group
@@ -626,27 +681,36 @@ function updatePorts(nodeId, parameters, editorConnection, graphModel) {
   // Get selected collection for field-based dropdowns
   const selectedCollection = allCollections.find((c) => c.name === parameters.collection);
 
+  // Expand M2O/O2O relations one hop (author.name) so the filter builder and
+  // sort dropdown can traverse into related collections (Directus supports
+  // dotted paths in both filter and sort)
+  const fields = selectedCollection?.fields || [];
+  const relationFields = selectedCollection ? ByobUtils.getRelationFields(selectedCollection, allCollections) : [];
+  const expandedRelationFields = selectedCollection
+    ? ByobUtils.expandRelationFields(selectedCollection, allCollections)
+    : [];
+  const filterFields = fields.concat(expandedRelationFields);
+
   // Filter port - uses Visual Filter Builder when schema is available
   ports.push({
     name: 'filter',
     displayName: 'Filter',
     type: {
       name: 'byob-filter',
-      // Pass schema fields to the filter builder for field dropdowns
+      // Pass schema fields (own + relation paths) to the filter builder
       schema: selectedCollection
         ? {
             collection: selectedCollection.name,
-            fields: selectedCollection.fields || []
+            fields: filterFields
           }
         : null
     },
     plug: 'input',
     group: 'Query'
   });
-  const fields = selectedCollection?.fields || [];
 
   const sortFieldEnums = [{ label: '(None)', value: '' }];
-  fields.forEach((f) => {
+  filterFields.forEach((f) => {
     sortFieldEnums.push({ label: f.displayName || f.name, value: f.name });
   });
 
@@ -703,12 +767,27 @@ function updatePorts(nodeId, parameters, editorConnection, graphModel) {
     group: 'Query'
   });
 
+  // One Include toggle per traversable relation — when on, the request expands
+  // the relation in the fields param (fields=*,author.*) so records carry the
+  // related record as a nested object instead of a raw foreign key
+  relationFields.forEach(({ field, targetCollection }) => {
+    ports.push({
+      name: `include_${field.name}`,
+      displayName: `Include ${field.displayName || field.name}`,
+      type: 'boolean',
+      default: false,
+      plug: 'input',
+      group: 'Related Data',
+      tooltip: `Fetch the related ${targetCollection.displayName || targetCollection.name} record as a nested object`
+    });
+  });
+
   // Parse filter to find connected conditions and add dynamic ports
   const connectedConditions = parseFilterForConnectedPorts(parameters.filter);
   if (connectedConditions.length > 0) {
     connectedConditions.forEach((condition) => {
-      // Find the field info for better display name
-      const fieldInfo = fields.find((f) => f.name === condition.field);
+      // Find the field info for better display name (relation paths included)
+      const fieldInfo = filterFields.find((f) => f.name === condition.field);
       const displayName = fieldInfo?.displayName || condition.field || condition.portName;
 
       ports.push({
@@ -797,6 +876,9 @@ module.exports = {
   // Exported for unit tests: pure parser that finds connected filter conditions
   // in a stored filter parameter and derives their dynamic input ports.
   parseFilterForConnectedPorts,
+  // Exported for unit tests: builder-format → Directus filter conversion
+  // (relation-path nesting, null/empty operator mapping).
+  toDirectusFilter,
   setup: function (context, graphModel) {
     if (!context.editorConnection || !context.editorConnection.isRunningLocally()) {
       return;

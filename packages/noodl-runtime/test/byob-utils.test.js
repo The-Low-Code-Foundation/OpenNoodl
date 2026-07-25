@@ -66,6 +66,25 @@ describe('byob-utils', () => {
       expect(resolved.token).toBe('pub-token');
       expect(JSON.stringify(resolved)).not.toContain('admin-token');
     });
+
+    it('exposes the cached schema collections so nodes can validate against them', () => {
+      NoodlRuntime.instance.getMetaData.mockReturnValue({
+        activeBackendId: 'b1',
+        backends: [
+          {
+            id: 'b1',
+            type: 'directus',
+            url: 'http://x',
+            auth: {},
+            endpoints: {},
+            schema: { collections: [{ name: 'articles', fields: [] }] }
+          }
+        ]
+      });
+      expect(ByobUtils.resolveBackend('b1').collections).toEqual([{ name: 'articles', fields: [] }]);
+      NoodlRuntime.instance.getMetaData.mockReturnValue(metadata);
+      expect(ByobUtils.resolveBackend('b1').collections).toEqual([]);
+    });
   });
 
   // ── URL + header building ──────────────────────────────────────────────────
@@ -221,6 +240,91 @@ describe('byob-utils', () => {
     });
   });
 
+  // ── relation traversal (M2O) ───────────────────────────────────────────────
+
+  describe('getRelationFields / expandRelationFields', () => {
+    const authors = {
+      name: 'authors',
+      displayName: 'Authors',
+      primaryKey: 'id',
+      fields: [
+        { name: 'id', type: 'integer', primaryKey: true },
+        { name: 'name', displayName: 'Name', type: 'string' },
+        { name: 'tier', type: 'string', enumValues: ['free', 'pro'] },
+        { name: 'internal_score', type: 'integer', hidden: true },
+        { name: 'avatar', type: 'uuid', relationTarget: 'directus_files', relationType: 'many-to-one' }
+      ]
+    };
+    const articles = {
+      name: 'articles',
+      primaryKey: 'id',
+      fields: [
+        { name: 'id', type: 'integer', primaryKey: true },
+        { name: 'title', type: 'string' },
+        { name: 'author', displayName: 'Author', type: 'integer', relationTarget: 'authors', relationType: 'many-to-one' },
+        { name: 'ghost', type: 'integer', relationTarget: 'no_such_collection', relationType: 'many-to-one' },
+        { name: 'secret_link', type: 'integer', relationTarget: 'authors', relationType: 'many-to-one', hidden: true },
+        { name: 'tags', type: 'alias', relationTarget: 'tags', relationType: 'many-to-many' }
+      ]
+    };
+    const allCollections = [articles, authors, { name: 'tags', primaryKey: 'id', fields: [] }];
+
+    it('finds only visible M2O/O2O relations whose target schema exists', () => {
+      const relations = ByobUtils.getRelationFields(articles, allCollections);
+      expect(relations.map((r) => r.field.name)).toEqual(['author']);
+      expect(relations[0].targetCollection.name).toBe('authors');
+    });
+
+    it('handles a missing or fieldless collection', () => {
+      expect(ByobUtils.getRelationFields(null, allCollections)).toEqual([]);
+      expect(ByobUtils.getRelationFields({ name: 'x' }, allCollections)).toEqual([]);
+    });
+
+    it('expands one hop into dotted pseudo-fields with type and enums carried over', () => {
+      const expanded = ByobUtils.expandRelationFields(articles, allCollections);
+      const names = expanded.map((f) => f.name);
+
+      expect(names).toContain('author.id');
+      expect(names).toContain('author.name');
+      expect(names).toContain('author.tier');
+
+      const tier = expanded.find((f) => f.name === 'author.tier');
+      expect(tier.enumValues).toEqual(['free', 'pro']);
+      expect(tier.relationPath).toBe(true);
+
+      const name = expanded.find((f) => f.name === 'author.name');
+      expect(name.displayName).toBe('Author → Name');
+      expect(name.type).toBe('string');
+    });
+
+    it('skips hidden target fields and does not build depth-2 paths', () => {
+      const names = ByobUtils.expandRelationFields(articles, allCollections).map((f) => f.name);
+      expect(names).not.toContain('author.internal_score'); // hidden on the target side
+      expect(names).not.toContain('author.avatar'); // relation inside the target stays unexpanded
+      expect(names.some((n) => n.split('.').length > 2)).toBe(false);
+    });
+  });
+
+  // ── buildFieldsParam ───────────────────────────────────────────────────────
+
+  describe('buildFieldsParam', () => {
+    it('returns the base value untouched without includes', () => {
+      expect(ByobUtils.buildFieldsParam('*', [])).toBe('*');
+      expect(ByobUtils.buildFieldsParam('id,title', undefined)).toBe('id,title');
+      expect(ByobUtils.buildFieldsParam(undefined, [])).toBe('*');
+    });
+
+    it('appends relation expansions to the default star', () => {
+      expect(ByobUtils.buildFieldsParam('*', ['author'])).toBe('*,author.*');
+      expect(ByobUtils.buildFieldsParam('', ['author'])).toBe('*,author.*');
+    });
+
+    it('appends to a custom field list without duplicating', () => {
+      expect(ByobUtils.buildFieldsParam('id,title', ['author'])).toBe('id,title,author.*');
+      expect(ByobUtils.buildFieldsParam('id, author.* ,title', ['author'])).toBe('id,author.*,title');
+    });
+  });
+
   // ── pickTotalCount ──────────────────────────────────────────────────────────
 
   describe('pickTotalCount', () => {
@@ -303,5 +407,55 @@ describe('byob-query-data parseFilterForConnectedPorts', () => {
       conditions: [{ id: 'c1', field: 'x', operator: '_eq', value: '', valueSource: 'connected' }]
     };
     expect(parseFilterForConnectedPorts(JSON.stringify(filter))).toEqual([]);
+  });
+});
+
+// ── builder-format → Directus conversion (byob-query-data) ────────────────────
+
+describe('byob-query-data toDirectusFilter', () => {
+  const { toDirectusFilter } = require('../src/nodes/std-library/data/byob-query-data');
+
+  it('returns null for empty groups', () => {
+    expect(toDirectusFilter(null)).toBeNull();
+    expect(toDirectusFilter({ id: 'r', type: 'and', conditions: [] })).toBeNull();
+  });
+
+  it('nests relation paths — a flat "author.name" key is a live Directus 403', () => {
+    const filter = {
+      id: 'r',
+      type: 'and',
+      conditions: [
+        { id: 'c1', field: 'status', operator: '_eq', value: 'published' },
+        { id: 'c2', field: 'author.name', operator: '_eq', value: 'Ada' }
+      ]
+    };
+    expect(toDirectusFilter(filter)).toEqual({
+      _and: [{ status: { _eq: 'published' } }, { author: { name: { _eq: 'Ada' } } }]
+    });
+  });
+
+  it('unwraps a single condition and keeps OR groups', () => {
+    expect(
+      toDirectusFilter({ id: 'r', type: 'and', conditions: [{ id: 'c', field: 'x', operator: '_gt', value: 3 }] })
+    ).toEqual({ x: { _gt: 3 } });
+
+    const nested = toDirectusFilter({
+      id: 'r',
+      type: 'or',
+      conditions: [
+        { id: 'c1', field: 'a', operator: '_eq', value: 1 },
+        { id: 'g', type: 'and', conditions: [{ id: 'c2', field: 'b.c', operator: '_neq', value: 2 }] }
+      ]
+    });
+    expect(nested).toEqual({ _or: [{ a: { _eq: 1 } }, { b: { c: { _neq: 2 } } }] });
+  });
+
+  it('maps null/empty operators to a literal true like the editor converter', () => {
+    expect(
+      toDirectusFilter({ id: 'r', type: 'and', conditions: [{ id: 'c', field: 'x', operator: '_null', value: null }] })
+    ).toEqual({ x: { _null: true } });
+    expect(
+      toDirectusFilter({ id: 'r', type: 'and', conditions: [{ id: 'c', field: 'x', operator: '_nempty', value: '' }] })
+    ).toEqual({ x: { _nempty: true } });
   });
 });
