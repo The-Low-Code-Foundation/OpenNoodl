@@ -30,6 +30,7 @@ import { Text, TextType } from '@noodl-core-ui/components/typography/Text';
 
 import { AddBackendDialog } from './AddBackendDialog/AddBackendDialog';
 import { BackendCard } from './BackendCard/BackendCard';
+import { CloudServicesEndpointSection } from './CloudServicesEndpointSection/CloudServicesEndpointSection';
 import { useLocalBackends } from './hooks/useLocalBackends';
 import { LocalBackendCard } from './LocalBackendCard/LocalBackendCard';
 
@@ -169,6 +170,9 @@ export function BackendServicesPanel() {
         </Container>
       ) : (
         <>
+          {/* WF-007: relocated endpoint config — replaces the deleted CloudServicePanel */}
+          <CloudServicesEndpointSection />
+
           {/* Local Backends Section */}
           <Section
             title="Local Backends"
@@ -246,7 +250,11 @@ export function BackendServicesPanel() {
                           setCloudServices(project, {
                             id: backend.id,
                             endpoint: `http://localhost:${backend.port}`,
-                            appId: backend.id
+                            appId: backend.id,
+                            // WF-007: this is always our own nodegx-backend
+                            // instance — the canonical discriminant realtime/
+                            // transport selection (BAK-001) keys off.
+                            type: 'nodegx'
                           });
                           console.log(
                             `[BackendServices] Project cloud services set to local backend "${backend.name}" (http://localhost:${backend.port})`

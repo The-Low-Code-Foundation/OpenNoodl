@@ -21,10 +21,21 @@ import { isV2FormatEnabled } from '../services/ProjectStructure/featureFlags';
 /** Which on-disk format a loaded project uses. Set at load; drives the save path. */
 export type ProjectFormatKind = 'legacy' | 'v2';
 
+/**
+ * WF-007: discriminates whether the endpoint this pointer targets is known
+ * to be a NodeGX backend (`nodegx-backend`, local or deployed — implements
+ * the Parse-wire subset *and* NodeGX-specific extensions like the realtime/
+ * SSE transport) versus an `'external'` Parse-wire-compatible server we
+ * cannot assume anything beyond the base protocol for. `undefined` means
+ * unknown (pre-existing projects saved before this field existed).
+ */
+export type CloudServiceType = 'nodegx' | 'external';
+
 export interface CloudServiceMetadata {
   id: string;
   endpoint: string;
   appId: string;
+  type?: CloudServiceType;
 
   /** @deprecated use `endpoint` instead. */
   url?: string;
@@ -34,6 +45,7 @@ export interface CloudServiceMetadataDataFormat {
   instanceId: string;
   endpoint: string;
   appId: string;
+  type?: CloudServiceType;
 }
 
 export type ProjectSettings =
