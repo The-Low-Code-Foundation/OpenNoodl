@@ -44,7 +44,11 @@ class ProjectModules {
             if (manifest.dependencies) {
               for (var j = 0; j < manifest.dependencies.length; j++) {
                 var d = manifest.dependencies[j];
-                if (!d.startsWith['http']) d = path + '/' + d;
+                // A dependency that is already an absolute http(s) URL stays a URL;
+                // only project-relative paths get the module directory prefixed.
+                // (Was `d.startsWith['http']` — a property access that is always
+                // truthy, so every http URL wrongly got path-prefixed.)
+                if (!d.startsWith('http')) d = path + '/' + d;
 
                 m.dependencies.push(d);
               }
