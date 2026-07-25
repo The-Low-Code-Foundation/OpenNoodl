@@ -115,46 +115,10 @@ function log(...args) {
 
 let htmlData = '';
 
-function escapeHtml(value) {
-  return String(value)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
-
-/**
- * Writes the runtime's buffered SEO state into the served HTML head.
- *
- * `seo` is the `Noodl.SEO` instance (SeoApi): `seo.title` is a string and
- * `seo.meta` a `{ key: value }` map, both populated during render by
- * Noodl.SEO.setTitle / setMeta. The existing <title> (the project default from
- * the deploy template) is replaced rather than duplicated; meta tags are
- * appended before </head>. No-ops safely if SEO was never touched.
- */
-function injectSeo(html, seo) {
-  if (!seo) return html;
-
-  let metaTags = '';
-  const meta = seo.meta || {};
-  for (const key of Object.keys(meta)) {
-    const value = meta[key];
-    if (value === undefined || value === null || value === '') continue;
-    metaTags += `<meta name="${escapeHtml(key)}" property="${escapeHtml(key)}" content="${escapeHtml(value)}">`;
-  }
-
-  const title = seo.title;
-  if (title) {
-    const titleTag = `<title>${escapeHtml(title)}</title>`;
-    if (/<title>[\s\S]*?<\/title>/.test(html)) {
-      html = html.replace(/<title>[\s\S]*?<\/title>/, titleTag);
-    } else {
-      metaTags = titleTag + metaTags;
-    }
-  }
-
-  return metaTags ? html.replace('</head>', `${metaTags}</head>`) : html;
-}
+// SEO head injection lives in a sibling module so it can be unit tested
+// (tests/ssr-inject-seo.test.js). webpack copies the whole static/ssr directory
+// into the deploy runtime, so inject-seo.js travels alongside this server.
+const { injectSeo } = require('./inject-seo');
 
 async function setup() {
   htmlData = await fs.promises.readFile(path.resolve('./public/index.html'), 'utf8');
@@ -164,6 +128,13 @@ async function buildPage(path) {
   return new Promise((resolve) => {
     const noodlModules = globalThis.__noodl_modules;
     const projectData = globalThis.projectData;
+
+    // Noodl.SEO is a per-process singleton reused across requests (and kept
+    // idempotent so the Viewer constructor doesn't clobber it mid-render — see
+    // noodl-js-api.js). Clear it before each page so the previous page's title
+    // and meta cannot bleed into this one. May be undefined on the very first
+    // request (ssrSetupRuntime creates it below).
+    globalThis.Noodl && globalThis.Noodl.SEO && globalThis.Noodl.SEO.reset();
 
     // TODO: Maybe fix page router
     globalThis.location = {

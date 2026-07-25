@@ -23,6 +23,19 @@ export class SeoApi {
     return this._meta;
   }
 
+  /**
+   * Clear all buffered SEO state (title and meta).
+   *
+   * Server-side the same process serves many pages, and `Noodl.SEO` is a
+   * per-process singleton reused across requests (see noodl-js-api.js). The SSR
+   * server calls this before rendering each page so one page's title/meta cannot
+   * leak into the next. No-op-safe on the client (nothing reads the buffer).
+   */
+  reset(): void {
+    this.clearMeta();
+    this._title = '';
+  }
+
   /** Clear all the meta-tags. */
   clearMeta(): void {
     if (IS_BROWSER) {

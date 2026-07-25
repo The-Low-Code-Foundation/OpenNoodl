@@ -20,7 +20,16 @@ export default function createNoodlAPI(noodlRuntime) {
   global.Noodl.Navigation = require('./api/navigation');
   global.Noodl.Navigation._noodlRuntime = noodlRuntime;
   global.Noodl.Files = require('./api/files');
-  global.Noodl.SEO = new SeoApi();
+  // Idempotent on purpose: server-side rendering calls createNoodlAPI twice per
+  // request — once from ssrSetupRuntime (before the runtime mounts and the
+  // router populates SEO) and again from the Viewer constructor during
+  // renderToString. A plain `new SeoApi()` in the second call would discard the
+  // title/meta the runtime just buffered, so the served <head> would keep the
+  // template defaults. Reuse an existing instance; the SSR server resets it per
+  // request (static/ssr/index.js) so state never bleeds between pages. On the
+  // client this is created once and its buffer is unused (the getters read the
+  // live document), so preserving it is harmless there.
+  global.Noodl.SEO = global.Noodl.SEO || new SeoApi();
   global.Noodl.Config = createConfigAPI(global.Noodl.getMetaData);
   if (!global.Noodl.Env) {
     global.Noodl.Env = {};
