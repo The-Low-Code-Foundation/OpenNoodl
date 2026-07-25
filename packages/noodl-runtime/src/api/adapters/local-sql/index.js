@@ -10,10 +10,13 @@
 const LocalSQLAdapter = require('./LocalSQLAdapter');
 const QueryBuilder = require('./QueryBuilder');
 const SchemaManager = require('./SchemaManager');
+const engine = require('./engine');
 
 module.exports = {
   LocalSQLAdapter,
   LocalBackendPersistenceError: LocalSQLAdapter.LocalBackendPersistenceError,
   QueryBuilder,
-  SchemaManager
+  SchemaManager,
+  resolveEngine: engine.resolveEngine,
+  engine
 };

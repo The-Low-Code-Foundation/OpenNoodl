@@ -11,6 +11,7 @@
 const EventEmitter = require('../../../events');
 const QueryBuilder = require('./QueryBuilder');
 const SchemaManager = require('./SchemaManager');
+const { resolveEngine } = require('./engine');
 
 /**
  * Thrown when the native SQLite engine cannot be loaded and the caller has not
@@ -88,6 +89,15 @@ class LocalSQLAdapter {
     this._loadError = null;
     this._usingMock = false;
 
+    // Name of the resolved SQLite engine ('node:sqlite' | 'better-sqlite3' |
+    // null before connect / on failure). Reported by getPersistenceStatus().
+    this._engineName = null;
+
+    // Test/embedding seam: callers (and the standalone backend package) may
+    // inject a pre-resolved engine ({ name, open(dbPath) }) instead of letting
+    // connect() resolve one. Defaults to the shared resolver (node:sqlite first).
+    this._resolveEngine = options.engine ? () => options.engine : resolveEngine;
+
     // Collection schemas (like CloudStore._collections)
     this._collections = options.collections || {};
   }
@@ -102,20 +112,30 @@ class LocalSQLAdapter {
       return; // Already connected
     }
 
-    // Dynamic import of better-sqlite3 (Node.js only).
-    // On failure we EITHER throw (default) OR, if the caller explicitly opted in
-    // via options.allowEphemeral, fall back to a clearly-labelled in-memory mock.
-    // We never silently substitute the mock — see LocalBackendPersistenceError.
-    let Database;
+    // Resolve the SQLite engine (WF-004: node:sqlite preferred, better-sqlite3
+    // as a legacy fallback — see ./engine.js). On failure we EITHER throw
+    // (default) OR, if the caller explicitly opted in via options.allowEphemeral,
+    // fall back to a clearly-labelled in-memory mock. We never silently
+    // substitute the mock — see LocalBackendPersistenceError.
+    let engine;
     try {
-      Database = require('better-sqlite3');
+      engine = this._resolveEngine();
     } catch (e) {
+      this._loadError = e;
+      return this._handleEngineLoadFailure(e);
+    }
+    if (!engine) {
+      const e = new Error(
+        `No SQLite engine available. Node ${process.versions.node} lacks a usable ` +
+          'node:sqlite (needs >= 22.13) and better-sqlite3 is not installed.'
+      );
       this._loadError = e;
       return this._handleEngineLoadFailure(e);
     }
 
     try {
-      this.db = new Database(this.dbPath);
+      this.db = engine.open(this.dbPath);
+      this._engineName = engine.name;
       this._usingMock = false;
       this._persistenceMode = 'persistent';
 
@@ -201,7 +221,7 @@ class LocalSQLAdapter {
       mode: this._persistenceMode,
       persistent: this._persistenceMode === 'persistent',
       ephemeral: this._persistenceMode === 'ephemeral',
-      engine: 'better-sqlite3',
+      engine: this._engineName || (this._persistenceMode === 'ephemeral' ? 'ephemeral-mock' : null),
       error: this._loadError
         ? { message: this._loadError.message, code: this._loadError.code || 'ENGINE_LOAD_FAILED' }
         : null

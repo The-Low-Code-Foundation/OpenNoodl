@@ -1,0 +1,33 @@
+{
+  "name": "@noodl/nodegx-backend",
+  "version": "0.1.0",
+  "description": "Standalone NodeGX backend service — runs headless (no Electron) as a child process in dev and as a plain Node service in deployment. WF-004.",
+  "author": "The Low Code Foundation <contact@thelowcodefoundation.com>",
+  "license": "MIT",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "nodegx-backend": "bin/nodegx-backend.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "clean": "rimraf dist",
+    "serve": "node bin/nodegx-backend.js serve",
+    "doctor": "node bin/nodegx-backend.js doctor",
+    "test": "jest"
+  },
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "dependencies": {
+    "@noodl/runtime": "file:../noodl-runtime"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.0.1",
+    "@types/node": "^20.0.0",
+    "jest": "^29.7.0",
+    "rimraf": "^3.0.2",
+    "ts-jest": "^29.4.1",
+    "typescript": "^5.9.3"
+  }
+}

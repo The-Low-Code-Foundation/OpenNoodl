@@ -1,20 +1,25 @@
 /**
- * LocalSQLAdapter — persistence behaviour (RUN-004)
+ * LocalSQLAdapter — persistence behaviour (RUN-004 + WF-004)
  *
- * These tests exist because the adapter used to silently substitute an in-memory
- * mock when the native SQLite engine could not load: records appeared to save and
- * then vanished on restart, with no error pointing at the cause. The suite pins
- * the corrected behaviour:
+ * Two things are pinned here:
  *
- *   1. Native engine unavailable + no opt-in  → connect() throws loudly.
- *   2. Native engine unavailable + opt-in      → ephemeral mock, clearly labelled.
- *   3. Native engine available                 → data survives a full reconnect.
+ *   1. Loud failure (RUN-004). The adapter used to silently substitute an
+ *      in-memory mock when the SQLite engine could not load: records appeared
+ *      to save and then vanished on restart, with no error pointing at the
+ *      cause. When no engine is available (or one fails to open), connect()
+ *      throws a LocalBackendPersistenceError — unless the caller explicitly
+ *      opts in to a clearly-labelled ephemeral mode.
  *
- * Test (3) is the one that would have caught the original bug. It can only run
- * where `better-sqlite3` is installed, so it is skipped (not silently passed)
- * when the engine is absent. Tests (1) and (2) can only be exercised where the
- * engine is absent, so they are the mirror image. Exactly one branch runs in any
- * given environment; both are asserted honestly.
+ *   2. Real persistence (WF-004). The engine is now resolved by ./engine.js,
+ *      which prefers `node:sqlite` (built into Node ≥22.13, zero native dep)
+ *      and falls back to `better-sqlite3` only if installed. Data written
+ *      through the adapter survives a full disconnect / reconnect.
+ *
+ * The loud-failure branch is exercised deterministically by INJECTING an engine
+ * that fails to open (options.engine), so it runs in every environment rather
+ * than only where a native module happens to be missing. The persistence branch
+ * uses whatever real engine ./engine.js resolves — on any supported Node that is
+ * node:sqlite, so it runs everywhere too.
  */
 
 const fs = require('fs');
@@ -22,17 +27,18 @@ const os = require('os');
 const path = require('path');
 
 const LocalSQLAdapter = require('../../src/api/adapters/local-sql/LocalSQLAdapter');
-const { LocalBackendPersistenceError } = require('../../src/api/adapters/local-sql');
+const { LocalBackendPersistenceError, resolveEngine } = require('../../src/api/adapters/local-sql');
 
-/** True when the native SQLite engine can actually be loaded in this environment. */
-const nativeAvailable = (() => {
-  try {
-    require('better-sqlite3');
-    return true;
-  } catch (e) {
-    return false;
+/** The engine ./engine.js resolves in this environment (node:sqlite on supported Node). */
+const realEngine = resolveEngine();
+
+/** An engine whose open() throws — simulates a native module that loads but cannot open a db. */
+const failingEngine = {
+  name: 'failing-test-engine',
+  open() {
+    throw new Error('simulated engine open failure');
   }
-})();
+};
 
 /** Promisified adapter.create — the adapter API is callback-style. */
 function createRecord(adapter, collection, data) {
@@ -63,12 +69,9 @@ function fetchRecordOrNull(adapter, collection, objectId) {
   });
 }
 
-const describeWhenNativeAbsent = nativeAvailable ? describe.skip : describe;
-const describeWhenNativePresent = nativeAvailable ? describe : describe.skip;
-
-describeWhenNativeAbsent('LocalSQLAdapter — native engine unavailable', () => {
+describe('LocalSQLAdapter — engine unavailable (loud failure)', () => {
   it('throws a LocalBackendPersistenceError instead of silently mocking', async () => {
-    const adapter = new LocalSQLAdapter(':memory:');
+    const adapter = new LocalSQLAdapter(':memory:', { engine: failingEngine });
 
     await expect(adapter.connect()).rejects.toThrow(LocalBackendPersistenceError);
 
@@ -79,7 +82,7 @@ describeWhenNativeAbsent('LocalSQLAdapter — native engine unavailable', () => 
   });
 
   it('tags the thrown error with a stable, actionable code', async () => {
-    const adapter = new LocalSQLAdapter(':memory:');
+    const adapter = new LocalSQLAdapter(':memory:', { engine: failingEngine });
 
     await expect(adapter.connect()).rejects.toMatchObject({
       code: 'PERSISTENCE_ENGINE_UNAVAILABLE'
@@ -87,7 +90,7 @@ describeWhenNativeAbsent('LocalSQLAdapter — native engine unavailable', () => 
   });
 
   it('falls back to an explicitly ephemeral mock only when opted in', async () => {
-    const adapter = new LocalSQLAdapter(':memory:', { allowEphemeral: true });
+    const adapter = new LocalSQLAdapter(':memory:', { engine: failingEngine, allowEphemeral: true });
 
     await expect(adapter.connect()).resolves.toBeUndefined();
 
@@ -99,25 +102,29 @@ describeWhenNativeAbsent('LocalSQLAdapter — native engine unavailable', () => 
   });
 
   it('ephemeral data does not survive a new adapter instance', async () => {
-    const adapter = new LocalSQLAdapter(':memory:', { allowEphemeral: true });
+    const adapter = new LocalSQLAdapter(':memory:', { engine: failingEngine, allowEphemeral: true });
     await adapter.connect();
     const created = await createRecord(adapter, 'notes', { title: 'gone tomorrow' });
     expect(created.objectId).toBeTruthy();
 
     // A second adapter starts with an empty in-memory store — proving the data
     // was never persisted anywhere.
-    const reopened = new LocalSQLAdapter(':memory:', { allowEphemeral: true });
+    const reopened = new LocalSQLAdapter(':memory:', { engine: failingEngine, allowEphemeral: true });
     await reopened.connect();
     const readBack = await fetchRecordOrNull(reopened, 'notes', created.objectId);
     expect(readBack).toBeNull();
   });
 });
 
-describeWhenNativePresent('LocalSQLAdapter — persistence integrity', () => {
+// The real engine is present on every supported Node (node:sqlite ≥ 22.13);
+// skip honestly (never silently pass) on the off chance it is not.
+const describeWhenEnginePresent = realEngine ? describe : describe.skip;
+
+describeWhenEnginePresent('LocalSQLAdapter — persistence integrity (WF-004 engine)', () => {
   let dbPath;
 
   beforeEach(() => {
-    dbPath = path.join(os.tmpdir(), `noodl-run004-${Date.now()}-${Math.round(Math.random() * 1e9)}.db`);
+    dbPath = path.join(os.tmpdir(), `noodl-wf004-${Date.now()}-${Math.round(Math.random() * 1e9)}.db`);
   });
 
   afterEach(() => {
@@ -130,13 +137,14 @@ describeWhenNativePresent('LocalSQLAdapter — persistence integrity', () => {
     }
   });
 
-  it('reports persistent mode when the native engine loads', async () => {
+  it('reports persistent mode and names the resolved engine', async () => {
     const adapter = new LocalSQLAdapter(dbPath);
     await adapter.connect();
 
     const status = adapter.getPersistenceStatus();
     expect(status.mode).toBe('persistent');
     expect(status.persistent).toBe(true);
+    expect(status.engine).toBe(realEngine.name);
     expect(adapter._usingMock).toBe(false);
 
     await adapter.disconnect();
