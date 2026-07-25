@@ -322,6 +322,114 @@ class ServiceSupervisor {
     }
     return json;
   }
+
+  /**
+   * Open a realtime (SSE) subscription to one collection on the running backend
+   * (BAK-001). Parses the event stream in the main process (Electron's main has
+   * no EventSource) and calls `onEvent(kind, data)` for each `change`/`resync`
+   * frame. The admin bearer token rides the request, so the data browser — an
+   * admin surface — sees every change regardless of ACL. Auto-reconnects after
+   * a drop; the returned handle's `close()` stops the stream for good.
+   *
+   * @param {Object} opts
+   * @param {string} opts.collection - Collection to watch
+   * @param {(kind: 'change'|'resync', data: any) => void} opts.onEvent
+   * @returns {{ close: () => void }}
+   */
+  openRealtimeStream({ collection, onEvent }) {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const http = require('http');
+    const state = { closed: false, req: null, clientId: null, reconnectTimer: null };
+
+    const scheduleReconnect = () => {
+      if (state.closed || state.reconnectTimer) return;
+      state.reconnectTimer = setTimeout(() => {
+        state.reconnectTimer = null;
+        connect();
+      }, 2000);
+    };
+
+    const subscribe = () => {
+      if (state.closed || !state.clientId) return;
+      this.request('POST', '/realtime/subscriptions', {
+        clientId: state.clientId,
+        subscriptions: [{ collection }]
+      }).catch(() => {
+        /* a failed (re)subscribe is retried on the next reconnect */
+      });
+    };
+
+    const connect = () => {
+      if (state.closed) return;
+      const url = new URL(this.endpoint + '/realtime');
+      const headers = { Accept: 'text/event-stream' };
+      const token = this.adminToken();
+      if (token) headers.Authorization = `Bearer ${token}`;
+
+      const req = http.request(
+        { hostname: url.hostname, port: url.port, path: url.pathname, method: 'GET', headers },
+        (res) => {
+          if (res.statusCode !== 200) {
+            res.destroy();
+            scheduleReconnect();
+            return;
+          }
+          res.setEncoding('utf8');
+          let buffer = '';
+          res.on('data', (chunk) => {
+            buffer += chunk;
+            let sep;
+            while ((sep = buffer.indexOf('\n\n')) !== -1) {
+              const block = buffer.slice(0, sep);
+              buffer = buffer.slice(sep + 2);
+              if (block.startsWith(':')) continue; // heartbeat
+              let event;
+              let data;
+              for (const line of block.split('\n')) {
+                if (line.startsWith('event: ')) event = line.slice(7);
+                else if (line.startsWith('data: ')) {
+                  try {
+                    data = JSON.parse(line.slice(6));
+                  } catch (e) {
+                    /* ignore unparsable frame */
+                  }
+                }
+              }
+              if (event === 'connected' && data) {
+                state.clientId = data.clientId;
+                subscribe();
+              } else if (event === 'change' || event === 'resync') {
+                if (onEvent) onEvent(event, data);
+              }
+            }
+          });
+          res.on('end', scheduleReconnect);
+          res.on('error', scheduleReconnect);
+        }
+      );
+      req.on('error', () => {
+        if (!state.closed) scheduleReconnect();
+      });
+      req.end();
+      state.req = req;
+    };
+
+    connect();
+
+    return {
+      close() {
+        state.closed = true;
+        if (state.reconnectTimer) clearTimeout(state.reconnectTimer);
+        if (state.req) {
+          try {
+            state.req.destroy();
+          } catch (e) {
+            /* already gone */
+          }
+        }
+      }
+    };
+  }
 }
 
 module.exports = { ServiceSupervisor, resolveServiceEntry };

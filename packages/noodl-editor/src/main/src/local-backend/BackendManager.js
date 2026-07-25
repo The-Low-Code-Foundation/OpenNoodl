@@ -105,6 +105,17 @@ class BackendManager {
       this.deleteRecord(id, collection, objectId)
     );
 
+    // Realtime (BAK-001): the Data Browser rides the backend's SSE stream so it
+    // reflects changes made by other clients live, dogfooding the protocol.
+    // These are fire-and-forget (`on`, not `handle`) because they set up a
+    // long-lived push, not a request/response.
+    ipcMain.on('backend:subscribeCollection', (event, id, collection) =>
+      this.subscribeCollection(event.sender, id, collection)
+    );
+    ipcMain.on('backend:unsubscribeCollection', (event, id, collection) =>
+      this.unsubscribeCollection(event.sender, id, collection)
+    );
+
     // Workflow management
     ipcMain.handle('backend:update-workflow', async (_, args) =>
       this.updateWorkflow(args.backendId, args.name, args.workflow)
@@ -167,6 +178,52 @@ class BackendManager {
     );
 
     this.ipcHandlersSetup = true;
+  }
+
+  /**
+   * Open (once per sender+backend+collection) a realtime SSE subscription and
+   * forward each change/resync to the renderer as `backend:collectionChanged`.
+   * No-op if the backend is not running. Streams are torn down on explicit
+   * unsubscribe and when the sender is destroyed (panel closed, window gone).
+   * @private
+   */
+  subscribeCollection(sender, id, collection) {
+    if (!collection) return;
+    const supervisor = this.runningBackends.get(id);
+    if (!supervisor || !supervisor.isRunning()) return;
+
+    if (!this.realtimeStreams) this.realtimeStreams = new Map();
+    const key = `${sender.id}:${id}:${collection}`;
+    if (this.realtimeStreams.has(key)) return;
+
+    const stream = supervisor.openRealtimeStream({
+      collection,
+      onEvent: (event, data) => {
+        if (sender.isDestroyed()) return;
+        sender.send('backend:collectionChanged', { backendId: id, collection, event, data });
+      }
+    });
+    this.realtimeStreams.set(key, stream);
+
+    // Reap the stream when the renderer goes away.
+    sender.once('destroyed', () => {
+      const s = this.realtimeStreams.get(key);
+      if (s) {
+        s.close();
+        this.realtimeStreams.delete(key);
+      }
+    });
+  }
+
+  /** Close a realtime subscription opened by subscribeCollection. @private */
+  unsubscribeCollection(sender, id, collection) {
+    if (!this.realtimeStreams) return;
+    const key = `${sender.id}:${id}:${collection}`;
+    const stream = this.realtimeStreams.get(key);
+    if (stream) {
+      stream.close();
+      this.realtimeStreams.delete(key);
+    }
   }
 
   /**

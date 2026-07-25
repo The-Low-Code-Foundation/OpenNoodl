@@ -83,6 +83,15 @@ class LocalSQLAdapter {
     this.events = new EventEmitter();
     this.events.setMaxListeners(10000);
 
+    // BAK-001: the post-commit change tap. `create`/`save`/`delete` are change
+    // events consumed by the standalone backend's realtime (SSE) hub and by
+    // WF-005 DB-change triggers — one tap, two consumers. Inside a transaction
+    // they are BUFFERED and released only when the transaction commits; a
+    // rollback drops them, so no change event can escape an uncommitted write.
+    // Outside a transaction they emit immediately, exactly as before.
+    this._txnDepth = 0;
+    this._txnChangeBuffer = [];
+
     // Persistence state, queryable via getPersistenceStatus().
     // 'unknown' until connect() runs, then 'persistent' | 'ephemeral' | 'failed'.
     this._persistenceMode = 'unknown';
@@ -513,6 +522,23 @@ class LocalSQLAdapter {
   }
 
   /**
+   * Emit a post-write change event (`create` | `save` | `delete`). Inside an
+   * open transaction the event is buffered and released only on commit; a
+   * rollback discards it. This is the single post-commit change tap BAK-001
+   * (realtime/SSE) and WF-005 (DB-change triggers) both subscribe to.
+   *
+   * @private
+   * @param {{ type: string, id: string, collection: string, object?: Object }} event
+   */
+  _emitChange(event) {
+    if (this._txnDepth > 0) {
+      this._txnChangeBuffer.push(event);
+      return;
+    }
+    this.events.emit(event.type, event);
+  }
+
+  /**
    * The ephemeral in-memory mock regex-parses SQL and cannot evaluate the ACL
    * predicate. Enforcing callers must never get silent non-enforcement, so an
    * acl option against the mock is a hard error (loud-failure doctrine).
@@ -635,7 +661,7 @@ class LocalSQLAdapter {
 
       options.success(record);
 
-      this.events.emit('create', {
+      this._emitChange({
         type: 'create',
         id: recordId,
         object: record,
@@ -688,7 +714,7 @@ class LocalSQLAdapter {
 
       options.success(record);
 
-      this.events.emit('save', {
+      this._emitChange({
         type: 'save',
         id: recordId,
         object: record,
@@ -710,6 +736,23 @@ class LocalSQLAdapter {
       this._ensureTable(options.collection);
       this._guardAclSupport(options);
 
+      const recordId = options.id || options.objectId;
+
+      // Capture the row before deletion so change consumers (BAK-001 realtime,
+      // WF-005 triggers) receive the deleted record — including its ACL, which
+      // delivery-time permission checks need. This read is unfiltered; the
+      // DELETE itself carries the ACL predicate and decides whether the row is
+      // actually removed.
+      let removedRecord = null;
+      try {
+        const existingRow = this.db
+          .prepare(`SELECT * FROM ${QueryBuilder.escapeTable(options.collection)} WHERE "objectId" = ?`)
+          .get(recordId);
+        removedRecord = this._rowToRecord(existingRow, options.collection);
+      } catch (e) {
+        removedRecord = null;
+      }
+
       const { sql, params } = QueryBuilder.buildDelete(options);
       const result = this.db.prepare(sql).run(...params);
 
@@ -720,10 +763,10 @@ class LocalSQLAdapter {
 
       options.success();
 
-      const recordId = options.id || options.objectId;
-      this.events.emit('delete', {
+      this._emitChange({
         type: 'delete',
         id: recordId,
+        object: removedRecord || { objectId: recordId },
         collection: options.collection
       });
     } catch (e) {
@@ -909,7 +952,26 @@ class LocalSQLAdapter {
    * @returns {any}
    */
   transaction(fn) {
-    return this.db.transaction(fn)();
+    // Track transaction depth so change events emitted by create/save/delete
+    // inside `fn` are buffered (see _emitChange) and released only if the
+    // transaction commits. A rollback (fn throws) discards the buffer — the
+    // post-commit contract the realtime/trigger consumers rely on.
+    this._txnDepth++;
+    let result;
+    try {
+      result = this.db.transaction(fn)();
+    } catch (e) {
+      this._txnDepth--;
+      if (this._txnDepth === 0) this._txnChangeBuffer = [];
+      throw e;
+    }
+    this._txnDepth--;
+    if (this._txnDepth === 0 && this._txnChangeBuffer.length > 0) {
+      const buffered = this._txnChangeBuffer;
+      this._txnChangeBuffer = [];
+      for (const ev of buffered) this.events.emit(ev.type, ev);
+    }
+    return result;
   }
 
   /**

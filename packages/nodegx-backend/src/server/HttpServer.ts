@@ -31,6 +31,7 @@ import type { AdapterFacade, AclOption } from '../persistence/AdapterFacade';
 import type { ExecutionHistory } from '../execution/ExecutionStore';
 import type { WorkflowRunner } from '../workflow/WorkflowRunner';
 import type { SecurityState } from '../security/state';
+import type { RealtimeHub, Subscription } from '../realtime/RealtimeHub';
 import { ClpOp, Principal, keyAllowsFunction, ruleAllows, validateAclShape } from '../security/model';
 import { AdminSecurityRoutes } from './admin-security';
 import { ByobAdminRoutes } from './byob-admin';
@@ -99,6 +100,8 @@ export interface HttpServerDeps {
   getRunner: () => WorkflowRunner | null;
   /** Project config served at /config. Defaults to {}. */
   getConfigParams?: () => Record<string, unknown>;
+  /** Realtime (SSE) hub — BAK-001. */
+  realtime: RealtimeHub;
 }
 
 /** Result of a successful listen(). */
@@ -114,6 +117,7 @@ export class HttpServer {
   private readonly facade: AdapterFacade;
   private readonly security: SecurityState;
   private readonly getRunner: () => WorkflowRunner | null;
+  private readonly realtime: RealtimeHub;
   private server: http.Server | null = null;
   private startedAt = 0;
 
@@ -130,6 +134,7 @@ export class HttpServer {
     this.facade = deps.facade;
     this.security = deps.security;
     this.getRunner = deps.getRunner;
+    this.realtime = deps.realtime;
 
     this.byob = new ByobAdminRoutes(deps.facade, deps.executions, deps.getRunner);
     this.parse = new ParseWireRoutes(deps.facade, deps.getConfigParams || (() => ({})));
@@ -159,6 +164,20 @@ export class HttpServer {
       // ---- Public ----------------------------------------------------------
       { method: 'GET', pattern: 'health', access: { kind: 'public' }, handler: (ctx) => this.health(ctx.res) },
       { method: 'GET', pattern: 'config', access: { kind: 'public' }, handler: (ctx) => parse.config(ctx.res) },
+
+      // ---- Realtime (SSE) — BAK-001 ---------------------------------------
+      // Both are `public` and SELF-ENFORCING, exactly like the session routes:
+      // opening a stream leaks nothing (delivery is gated per-event on the row
+      // ACL), and subscription creation is gated internally on each collection's
+      // `find` CLP against the connection's principal. EventSource cannot set
+      // headers, so the auth token rides in a query param (documented caveat).
+      { method: 'GET', pattern: 'realtime', access: { kind: 'public' }, handler: (ctx) => this.realtimeStream(ctx) },
+      {
+        method: 'POST',
+        pattern: 'realtime/subscriptions',
+        access: { kind: 'public' },
+        handler: (ctx) => this.realtimeSubscribe(ctx)
+      },
 
       // ---- Parse-wire data -------------------------------------------------
       {
@@ -660,5 +679,89 @@ export class HttpServer {
 
     ctx.res.writeHead(response.statusCode, { 'Content-Type': 'application/json', ...CORS_HEADERS });
     ctx.res.end(response.body);
+  }
+
+  // ==========================================================================
+  // Realtime (SSE) — BAK-001
+  // ==========================================================================
+
+  /**
+   * `GET /realtime`. A genuine EventSource sends `Accept: text/event-stream`;
+   * for that we resolve the principal (token via query param, since EventSource
+   * cannot set headers) and open the stream. Any other GET (a probe, a browser
+   * hitting the URL, the route-walk test) gets a finite JSON description instead
+   * of a stream that would never close.
+   */
+  private async realtimeStream(ctx: RequestContext): Promise<void> {
+    const accept = String(ctx.req.headers['accept'] || '');
+    if (!accept.includes('text/event-stream')) {
+      sendJSON(ctx.res, 200, {
+        realtime: true,
+        transport: 'sse',
+        hint:
+          'Open GET /realtime with `Accept: text/event-stream` (pass the auth token as ?token=… since ' +
+          'EventSource cannot set headers), then POST /realtime/subscriptions {clientId, subscriptions:[{collection, filter?}]}.'
+      });
+      return;
+    }
+
+    // Resolve BEFORE writing any stream bytes so an invalid token is a clean
+    // 401/209, not a half-open stream.
+    const principal = await this.resolveSSEPrincipal(ctx.req, ctx.query);
+    const lastEventId =
+      (typeof ctx.req.headers['last-event-id'] === 'string' ? ctx.req.headers['last-event-id'] : undefined) ||
+      ctx.query.lastEventId;
+
+    // http.ServerResponse structurally satisfies the hub's SSEResponse.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    this.realtime.addConnection(ctx.res as any, principal, lastEventId);
+    // Deliberately do NOT end the response — the stream stays open.
+  }
+
+  /**
+   * `POST /realtime/subscriptions`. Replaces the referenced connection's
+   * subscription set (Pocketbase-style). CLP gating uses the CONNECTION's stored
+   * principal (established at stream open), so the clientId — a server-minted
+   * secret — is the capability; the POST needs no separate auth.
+   */
+  private async realtimeSubscribe(ctx: RequestContext): Promise<void> {
+    const body = await readJSONBody(ctx.req);
+    const clientId = body && typeof body.clientId === 'string' ? body.clientId : '';
+    if (!clientId) throw new HttpError(400, 'clientId is required');
+
+    const rawSubs = Array.isArray(body.subscriptions) ? body.subscriptions : [];
+    const subscriptions: Subscription[] = rawSubs.map((s) => {
+      const sub = (s || {}) as Record<string, unknown>;
+      return {
+        collection: typeof sub.collection === 'string' ? sub.collection : '',
+        filter: sub.filter && typeof sub.filter === 'object' ? (sub.filter as Record<string, unknown>) : undefined
+      };
+    });
+
+    const result = this.realtime.setSubscriptions(clientId, subscriptions);
+    if (!result) throw new HttpError(404, 'Unknown clientId — reconnect and re-subscribe');
+    sendJSON(ctx.res, 200, result);
+  }
+
+  /**
+   * Principal resolution for SSE: EventSource cannot set headers, so a token may
+   * arrive as `?token=`/`?sessionToken=` (session), `?authToken=` (admin bearer),
+   * or `?apiKey=`. A real header, if present, always wins. Delegates to the same
+   * `resolvePrincipal` the dispatcher uses, so the identity rules are identical.
+   */
+  private resolveSSEPrincipal(req: http.IncomingMessage, query: Record<string, string>): Promise<Principal> {
+    const headers = { ...req.headers } as http.IncomingHttpHeaders;
+    const hasAuthHeader =
+      headers['authorization'] ||
+      headers['x-parse-master-key'] ||
+      headers['x-parse-session-token'] ||
+      headers['x-nodegx-api-key'];
+    if (!hasAuthHeader) {
+      if (query.authToken) headers['authorization'] = `Bearer ${query.authToken}`;
+      else if (query.apiKey) headers['x-nodegx-api-key'] = query.apiKey;
+      else if (query.token) headers['x-parse-session-token'] = query.token;
+      else if (query.sessionToken) headers['x-parse-session-token'] = query.sessionToken;
+    }
+    return this.security.resolvePrincipal({ headers } as http.IncomingMessage);
   }
 }

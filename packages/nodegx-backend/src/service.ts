@@ -29,6 +29,8 @@ import { ExecutionHistory, ExecutionHistoryStatus } from './execution/ExecutionS
 import { HttpServer, ListenInfo } from './server/HttpServer';
 import { WorkflowRunner } from './workflow/WorkflowRunner';
 import { SecurityState, SecurityStartupError } from './security/state';
+import { ChangeBus } from './realtime/ChangeBus';
+import { RealtimeHub } from './realtime/RealtimeHub';
 
 export interface StartedService {
   options: BackendServiceOptions;
@@ -47,6 +49,8 @@ export class BackendService {
   private http: HttpServer | null = null;
   private runner: WorkflowRunner | null = null;
   private security: SecurityState | null = null;
+  private changeBus: ChangeBus | null = null;
+  private realtime: RealtimeHub | null = null;
   private readonly executions = new ExecutionHistory();
 
   constructor(partial: Partial<BackendServiceOptions> = {}) {
@@ -111,6 +115,12 @@ export class BackendService {
       );
     }
 
+    // 2.5 Realtime (BAK-001): the change bus taps the adapter's post-commit
+    //     events ONCE; the hub fans matching, permission-checked events out over
+    //     SSE. WF-005's trigger dispatch will be the bus's second consumer.
+    this.changeBus = new ChangeBus(this.persistence.adapter);
+    this.realtime = new RealtimeHub(this.changeBus, this.security);
+
     // 3. HTTP surface.
     this.http = new HttpServer({
       options: this.options,
@@ -119,7 +129,8 @@ export class BackendService {
       executions: this.executions,
       security: this.security,
       getRunner: () => this.runner,
-      getConfigParams: () => this.readConfigParams()
+      getConfigParams: () => this.readConfigParams(),
+      realtime: this.realtime
     });
     const listen = await this.http.listen();
 
@@ -162,6 +173,14 @@ export class BackendService {
   }
 
   async stop(): Promise<void> {
+    if (this.realtime) {
+      this.realtime.close();
+      this.realtime = null;
+    }
+    if (this.changeBus) {
+      this.changeBus.close();
+      this.changeBus = null;
+    }
     if (this.http) {
       await this.http.close();
       this.http = null;
