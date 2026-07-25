@@ -4,7 +4,7 @@
  * @module code-editor/utils
  */
 
-export type ValidationType = 'expression' | 'function' | 'script';
+export type ValidationType = 'expression' | 'function' | 'script' | 'json';
 
 export interface ValidationResult {
   valid: boolean;

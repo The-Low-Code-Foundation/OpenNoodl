@@ -108,6 +108,28 @@ function validateScript(code: string): ValidationResult {
 }
 
 /**
+ * Validate JSON text
+ * Empty text is treated as valid (matches the other validators' empty-input behavior)
+ */
+function validateJson(code: string): ValidationResult {
+  if (!code || code.trim() === '') {
+    return { valid: true };
+  }
+
+  try {
+    JSON.parse(code);
+    return { valid: true };
+  } catch (error) {
+    const location = parseErrorLocation(error as Error);
+    return {
+      valid: false,
+      error: (error as Error).message,
+      ...location
+    };
+  }
+}
+
+/**
  * Main validation function
  * Validates JavaScript code based on validation type
  */
@@ -119,6 +141,8 @@ export function validateJavaScript(code: string, validationType: ValidationType 
       return validateFunction(code);
     case 'script':
       return validateScript(code);
+    case 'json':
+      return validateJson(code);
     default:
       return { valid: false, error: 'Unknown validation type' };
   }

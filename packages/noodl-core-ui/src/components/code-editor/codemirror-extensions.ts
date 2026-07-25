@@ -18,6 +18,7 @@
 import { autocompletion, closeBrackets, closeBracketsKeymap, completionKeymap } from '@codemirror/autocomplete';
 import { defaultKeymap, history, historyKeymap, indentWithTab, redo, undo, toggleComment } from '@codemirror/commands';
 import { javascript } from '@codemirror/lang-javascript';
+import { json } from '@codemirror/lang-json';
 import {
   bracketMatching,
   foldGutter,
@@ -53,8 +54,8 @@ import { validateJavaScript } from './utils/jsValidator';
  * Options for creating CodeMirror extensions
  */
 export interface ExtensionOptions {
-  /** Validation type (expression, function, script) */
-  validationType?: 'expression' | 'function' | 'script';
+  /** Validation type (expression, function, script, json) */
+  validationType?: 'expression' | 'function' | 'script' | 'json';
   /** Placeholder text */
   placeholder?: string;
   /** Is editor read-only? */
@@ -304,7 +305,7 @@ function customKeybindings(options: ExtensionOptions) {
 /**
  * Create a linter from our validation function
  */
-function createLinter(validationType: 'expression' | 'function' | 'script') {
+function createLinter(validationType: 'expression' | 'function' | 'script' | 'json') {
   return linter((view) => {
     const code = view.state.doc.toString();
     const validation = validateJavaScript(code, validationType);
@@ -362,7 +363,7 @@ export function createExtensions(options: ExtensionOptions = {}): Extension[] {
   // Adding extensions back one by one to find the culprit
   const extensions: Extension[] = [
     // 1. Language support
-    javascript(),
+    validationType === 'json' ? json() : javascript(),
 
     // 2. Theme
     createOpenNoodlTheme(),

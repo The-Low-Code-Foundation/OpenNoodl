@@ -5,9 +5,6 @@ import { NodeGraphNode } from '@noodl-models/nodegraphmodel';
 import { RuntimeType } from '@noodl-models/nodelibrary/NodeLibraryData';
 import { EditorModel } from '@noodl-utils/CodeEditor/model/editorModel';
 import { TypescriptModule } from '@noodl-utils/CodeEditor/typescript/helper';
-import { registerOrUpdate_DbCollection2 } from '@noodl-utils/CodeEditor/typescript/nodes/DbCollection2';
-import { registerOrUpdate_Expression } from '@noodl-utils/CodeEditor/typescript/nodes/Expression';
-import { registerOrUpdate_Javascript2 } from '@noodl-utils/CodeEditor/typescript/nodes/Javascript2';
 import { registerOrUpdate_JavaScriptFunction } from '@noodl-utils/CodeEditor/typescript/nodes/JavaScriptFunction';
 import { GetOrCreateViewerModel } from '@noodl-utils/CodeEditor/typescript/viewer';
 import { GetOrCreateViewerCloudModel } from '@noodl-utils/CodeEditor/typescript/viewer-cloud';
@@ -24,21 +21,21 @@ export interface createModelOptions {
 
 /**
  * Create the Monaco Model, with better typings etc
+ *
+ * NOTE (DEBT-011, 2026-07-25): this used to also serve `codeeditor: 'json'` ports
+ * (as Monaco plaintext) and generic `type: 'array'` ports (as a bare Monaco
+ * 'typescript' model with no extra typings). Both now go straight to the
+ * CodeMirror JavaScriptEditor from CodeEditorType.ts and never reach this
+ * function. The DbCollection2/Expression/Javascript2 per-node intellisense
+ * modules were deleted for the same reason: this function's only remaining
+ * caller (AiChat.tsx's inline Function-node editor) always passes
+ * `codeeditor: 'javascript'` for a `JavaScriptFunction` node. If that
+ * changes, or a `.d.ts`-driven CodeMirror intellisense is built (see
+ * dev-docs/future-projects/typed-intellisense-revival.md), this function -
+ * and the rest of the Monaco-based editor infra it depends on - should be
+ * revisited.
  */
 export function createModel(options: createModelOptions, node: NodeGraphNode): EditorModel {
-  // Simple JSON editing - use plaintext (no workers needed)
-  // Monaco workers require initialization from node context; plaintext avoids this.
-  // JSON validation happens on save via JSON.parse()
-  if (options.codeeditor === 'json') {
-    return new EditorModel(monaco.editor.createModel(options.value, 'plaintext'));
-  }
-
-  // arrays are edited as javascript (and eval:ed during runtime)
-  // we are not going to add any extra typings here.
-  if (options.type === 'array') {
-    return new EditorModel(monaco.editor.createModel(options.value, 'typescript'));
-  }
-
   const modules: TypescriptModule[] = [];
 
   if (['javascript', 'typescript'].includes(options.codeeditor)) {
@@ -61,20 +58,8 @@ export function createModel(options: createModelOptions, node: NodeGraphNode): E
     }
 
     switch (node.typename) {
-      case 'DbCollection2':
-        modules.push(registerOrUpdate_DbCollection2(node));
-        break;
-
-      case 'Expression':
-        modules.push(registerOrUpdate_Expression());
-        break;
-
       case 'JavaScriptFunction':
         modules.push(registerOrUpdate_JavaScriptFunction(node, runtimeType));
-        break;
-
-      case 'Javascript2':
-        modules.push(registerOrUpdate_Javascript2(node, runtimeType));
         break;
 
       default:

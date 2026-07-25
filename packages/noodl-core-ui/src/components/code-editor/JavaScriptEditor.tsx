@@ -213,6 +213,8 @@ export function JavaScriptEditor({
         return 'Function';
       case 'script':
         return 'Script';
+      case 'json':
+        return 'JSON';
       default:
         return 'JavaScript';
     }
