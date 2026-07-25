@@ -31,6 +31,8 @@ import { WorkflowRunner } from './workflow/WorkflowRunner';
 import { SecurityState, SecurityStartupError } from './security/state';
 import { ChangeBus } from './realtime/ChangeBus';
 import { RealtimeHub } from './realtime/RealtimeHub';
+import { SecretsStore } from './config/SecretsStore';
+import { TriggerSubsystem } from './triggers/TriggerSubsystem';
 
 export interface StartedService {
   options: BackendServiceOptions;
@@ -51,6 +53,7 @@ export class BackendService {
   private security: SecurityState | null = null;
   private changeBus: ChangeBus | null = null;
   private realtime: RealtimeHub | null = null;
+  private triggers: TriggerSubsystem | null = null;
   private readonly executions = new ExecutionHistory();
 
   constructor(partial: Partial<BackendServiceOptions> = {}) {
@@ -121,6 +124,20 @@ export class BackendService {
     this.changeBus = new ChangeBus(this.persistence.adapter);
     this.realtime = new RealtimeHub(this.changeBus, this.security);
 
+    // 2.6 Triggers (WF-005): the registry loads triggers.json (loud on invalid).
+    //     The db-change source is the SAME ChangeBus the realtime hub uses — the
+    //     dispatcher becomes the bus's SECOND consumer via bus.subscribe(); no
+    //     second tap. Webhook secrets share the one secrets.json convention.
+    this.triggers = new TriggerSubsystem({
+      dataDir: this.options.dataDir,
+      executions: this.executions,
+      getRunner: () => this.runner,
+      backendId: this.options.backendId,
+      backendName: this.options.backendName,
+      bus: this.changeBus,
+      secrets: new SecretsStore(this.options.dataDir)
+    });
+
     // 3. HTTP surface.
     this.http = new HttpServer({
       options: this.options,
@@ -130,7 +147,8 @@ export class BackendService {
       security: this.security,
       getRunner: () => this.runner,
       getConfigParams: () => this.readConfigParams(),
-      realtime: this.realtime
+      realtime: this.realtime,
+      triggers: this.triggers
     });
     const listen = await this.http.listen();
 
@@ -157,6 +175,10 @@ export class BackendService {
     await this.runner.initialize();
     await this.runner.loadWorkflows();
 
+    // 6. Triggers go live only now the runner can answer: arm the cron scheduler
+    //    and attach the db-change consumer to the ChangeBus.
+    this.triggers.start();
+
     return {
       options: this.options,
       listen,
@@ -173,6 +195,10 @@ export class BackendService {
   }
 
   async stop(): Promise<void> {
+    if (this.triggers) {
+      this.triggers.stop();
+      this.triggers = null;
+    }
     if (this.realtime) {
       this.realtime.close();
       this.realtime = null;

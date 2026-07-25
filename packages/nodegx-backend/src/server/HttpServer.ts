@@ -33,12 +33,15 @@ import type { WorkflowRunner } from '../workflow/WorkflowRunner';
 import type { SecurityState } from '../security/state';
 import type { RealtimeHub, Subscription } from '../realtime/RealtimeHub';
 import { ClpOp, Principal, keyAllowsFunction, ruleAllows, validateAclShape } from '../security/model';
+import type { TriggerSubsystem } from '../triggers/TriggerSubsystem';
+import { verifyWebhook } from '../triggers/webhook';
 import { AdminSecurityRoutes } from './admin-security';
+import { AdminTriggerRoutes } from './admin-triggers';
 import { ByobAdminRoutes } from './byob-admin';
 import { FileRoutes } from './files';
 import { ParseWireRoutes } from './parse-wire';
 import { UserRoutes } from './users';
-import { CORS_HEADERS, HttpError, parseURL, readJSONBody, sendError, sendJSON } from './http-util';
+import { CORS_HEADERS, HttpError, parseURL, readJSONBody, readRawBody, sendError, sendJSON } from './http-util';
 
 // ============================================================================
 // Route table types
@@ -60,7 +63,10 @@ export type RouteAccess =
   /** Signup — the config `signup` rule. */
   | { kind: 'signup' }
   /** Session endpoints that are the auth system itself (login/logout/me/self-update). */
-  | { kind: 'session' };
+  | { kind: 'session' }
+  /** Incoming webhook (WF-005) — SELF-ENFORCING on the per-hook secret; the
+   *  handler verifies and rejects loudly into the execution record. */
+  | { kind: 'webhook' };
 
 export interface RequestContext {
   req: http.IncomingMessage;
@@ -102,6 +108,8 @@ export interface HttpServerDeps {
   getConfigParams?: () => Record<string, unknown>;
   /** Realtime (SSE) hub — BAK-001. */
   realtime: RealtimeHub;
+  /** Trigger subsystem — WF-005 (webhook route + admin trigger CRUD). */
+  triggers: TriggerSubsystem;
 }
 
 /** Result of a successful listen(). */
@@ -118,6 +126,7 @@ export class HttpServer {
   private readonly security: SecurityState;
   private readonly getRunner: () => WorkflowRunner | null;
   private readonly realtime: RealtimeHub;
+  private readonly triggers: TriggerSubsystem;
   private server: http.Server | null = null;
   private startedAt = 0;
 
@@ -126,6 +135,7 @@ export class HttpServer {
   private readonly users: UserRoutes;
   private readonly files: FileRoutes;
   private readonly adminSecurity: AdminSecurityRoutes;
+  private readonly adminTriggers: AdminTriggerRoutes;
   private readonly routes: RouteDef[];
 
   constructor(deps: HttpServerDeps) {
@@ -135,12 +145,14 @@ export class HttpServer {
     this.security = deps.security;
     this.getRunner = deps.getRunner;
     this.realtime = deps.realtime;
+    this.triggers = deps.triggers;
 
     this.byob = new ByobAdminRoutes(deps.facade, deps.executions, deps.getRunner);
     this.parse = new ParseWireRoutes(deps.facade, deps.getConfigParams || (() => ({})));
     this.users = new UserRoutes(deps.facade, deps.security);
     this.files = new FileRoutes(deps.options.dataDir, `http://127.0.0.1:${deps.options.port}`);
     this.adminSecurity = new AdminSecurityRoutes(deps.security, deps.facade, deps.options, deps.getRunner);
+    this.adminTriggers = new AdminTriggerRoutes(deps.triggers);
     this.routes = this.buildRoutes();
   }
 
@@ -159,6 +171,7 @@ export class HttpServer {
     const users = this.users;
     const files = this.files;
     const adminSec = this.adminSecurity;
+    const adminTriggers = this.adminTriggers;
 
     return [
       // ---- Public ----------------------------------------------------------
@@ -177,6 +190,18 @@ export class HttpServer {
         pattern: 'realtime/subscriptions',
         access: { kind: 'public' },
         handler: (ctx) => this.realtimeSubscribe(ctx)
+      },
+
+      // ---- Webhooks (WF-005) ----------------------------------------------
+      // Public route, SELF-ENFORCING on the per-hook secret. Localhost binding +
+      // WF-004 auth still govern whether it is reachable at all; the secret
+      // governs whether a reachable request is accepted. An unauthenticated hit
+      // on a KNOWN hook is rejected loudly into the execution record.
+      {
+        method: 'POST',
+        pattern: 'hooks/:backendId/:slug',
+        access: { kind: 'webhook' },
+        handler: (ctx) => this.handleWebhook(ctx)
       },
 
       // ---- Parse-wire data -------------------------------------------------
@@ -413,6 +438,45 @@ export class HttpServer {
         pattern: 'admin/keys/:id',
         access: { kind: 'admin' },
         handler: (ctx) => adminSec.revokeKey(ctx)
+      },
+
+      // ---- Admin: triggers (WF-005) ---------------------------------------
+      { method: 'GET', pattern: 'admin/triggers', access: { kind: 'admin' }, handler: (ctx) => adminTriggers.list(ctx) },
+      {
+        method: 'POST',
+        pattern: 'admin/triggers',
+        access: { kind: 'admin' },
+        handler: (ctx) => adminTriggers.create(ctx)
+      },
+      {
+        method: 'GET',
+        pattern: 'admin/triggers/:id',
+        access: { kind: 'admin' },
+        handler: (ctx) => adminTriggers.get(ctx)
+      },
+      {
+        method: 'PUT',
+        pattern: 'admin/triggers/:id',
+        access: { kind: 'admin' },
+        handler: (ctx) => adminTriggers.update(ctx)
+      },
+      {
+        method: 'DELETE',
+        pattern: 'admin/triggers/:id',
+        access: { kind: 'admin' },
+        handler: (ctx) => adminTriggers.delete(ctx)
+      },
+      {
+        method: 'POST',
+        pattern: 'admin/triggers/:id/enabled',
+        access: { kind: 'admin' },
+        handler: (ctx) => adminTriggers.setEnabled(ctx)
+      },
+      {
+        method: 'POST',
+        pattern: 'admin/triggers/:id/fire',
+        access: { kind: 'admin' },
+        handler: (ctx) => adminTriggers.fire(ctx)
       }
     ];
   }
@@ -589,6 +653,12 @@ export class HttpServer {
       case 'session':
         // The endpoint IS the auth system; it enforces its own semantics.
         return;
+
+      case 'webhook':
+        // Self-enforcing: handleWebhook verifies the per-hook secret and rejects
+        // loudly into the execution record. No CLP/session gate applies — the
+        // secret is the credential.
+        return;
     }
   }
 
@@ -763,5 +833,112 @@ export class HttpServer {
       else if (query.sessionToken) headers['x-parse-session-token'] = query.sessionToken;
     }
     return this.security.resolvePrincipal({ headers } as http.IncomingMessage);
+  }
+
+  // ==========================================================================
+  // Webhooks (WF-005)
+  // ==========================================================================
+
+  /**
+   * `POST /hooks/:backendId/:slug`. Route by slug to an enabled webhook trigger,
+   * enforce the per-hook body-size limit, verify the per-hook secret, then fire
+   * the target function via the one dispatcher path. Every refusal (oversize,
+   * bad/missing secret) is recorded LOUDLY into the execution history before the
+   * error is returned. An unknown/disabled slug 404s without a record (probe
+   * spam is not automation history).
+   */
+  private async handleWebhook(ctx: RequestContext): Promise<void> {
+    const { backendId, slug } = ctx.params;
+    if (backendId !== this.options.backendId) {
+      throw new HttpError(404, `No backend "${backendId}" here`);
+    }
+
+    const registry = this.triggers.registry;
+    const dispatcher = this.triggers.dispatcher;
+    const trigger = registry.enabledWebhookBySlug(slug);
+    if (!trigger || !trigger.webhook) {
+      throw new HttpError(404, `No enabled webhook "${slug}"`);
+    }
+    const targetName = trigger.target.name;
+    const source = `webhook ${slug}`;
+    const maxBytes = trigger.webhook.maxBodyBytes;
+
+    // Per-hook size limit. Reject on the declared Content-Length FIRST so the
+    // response sends cleanly (reading-then-destroying the socket would race the
+    // 413 with a connection reset). Real senders always set Content-Length.
+    const declaredLength = Number(ctx.req.headers['content-length'] || '0');
+    if (declaredLength && declaredLength > maxBytes) {
+      dispatcher.recordRejection({
+        triggerType: 'webhook',
+        triggerId: trigger.id,
+        workflowId: targetName,
+        source,
+        reason: `webhook body (${declaredLength} bytes) exceeds the ${maxBytes}-byte limit`,
+        triggerData: { slug }
+      });
+      throw new HttpError(413, `Webhook body exceeds ${maxBytes} bytes`);
+    }
+
+    // Backstop for chunked / unset-length bodies.
+    let rawBody: Buffer;
+    try {
+      rawBody = await readRawBody(ctx.req, maxBytes);
+    } catch (e) {
+      if (e instanceof HttpError && e.status === 413) {
+        dispatcher.recordRejection({
+          triggerType: 'webhook',
+          triggerId: trigger.id,
+          workflowId: targetName,
+          source,
+          reason: `webhook body exceeds the ${trigger.webhook.maxBodyBytes}-byte limit`,
+          triggerData: { slug }
+        });
+        throw new HttpError(413, `Webhook body exceeds ${trigger.webhook.maxBodyBytes} bytes`);
+      }
+      throw e;
+    }
+
+    // Verify the per-hook secret. A miss is an UNAUTHENTICATED hook: reject
+    // loudly into the execution record (spec risk row).
+    const secret = registry.getWebhookSecret(trigger.id) || '';
+    const verify = verifyWebhook(trigger.webhook.scheme, secret, rawBody, ctx.req.headers, ctx.query);
+    if (!verify.ok) {
+      dispatcher.recordRejection({
+        triggerType: 'webhook',
+        triggerId: trigger.id,
+        workflowId: targetName,
+        source,
+        reason: `unauthenticated webhook (${trigger.webhook.scheme}): ${verify.reason}`,
+        triggerData: { slug, contentLength: rawBody.length }
+      });
+      throw new HttpError(401, `Webhook rejected: ${verify.reason}`);
+    }
+
+    // Parse the body (JSON when possible; else the raw text) and hand the target
+    // a uniform trigger envelope.
+    const text = rawBody.toString('utf-8');
+    let parsed: unknown = {};
+    if (text) {
+      try {
+        parsed = JSON.parse(text);
+      } catch {
+        parsed = text;
+      }
+    }
+    const headerObj: Record<string, string> = {};
+    for (const [k, v] of Object.entries(ctx.req.headers)) {
+      headerObj[k] = Array.isArray(v) ? v.join(', ') : String(v ?? '');
+    }
+
+    const outcome = await dispatcher.fire({
+      trigger,
+      triggerType: 'webhook',
+      source,
+      payload: { trigger: 'webhook', triggerId: trigger.id, slug, headers: headerObj, query: ctx.query, body: parsed },
+      headers: ctx.req.headers as Record<string, unknown>
+    });
+
+    ctx.res.writeHead(outcome.statusCode, { 'Content-Type': 'application/json', ...CORS_HEADERS });
+    ctx.res.end(outcome.body || JSON.stringify({ ok: outcome.result.ok }));
   }
 }
