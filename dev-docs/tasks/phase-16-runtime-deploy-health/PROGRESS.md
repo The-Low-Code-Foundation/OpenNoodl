@@ -1,7 +1,7 @@
 # Phase 16 Progress — Runtime & Deploy Health
 
 **Created:** 2026-07-22, from [NOODL-REVIVAL-ROADMAP.md](../../reviews/NOODL-REVIVAL-ROADMAP.md) Track D
-**Overall status:** 🟡 In progress — 1 / 4 tasks complete (RUN-001, 2026-07-25); RUN-002 slices 1–3 + render-trigger done 2026-07-25 (SEO, hydration, node server-compat crux all landed); RUN-003 Step 1–2 done 2026-07-25 → **blocked on a scope decision** (its premise proved stale — see the RUN-003 row)
+**Overall status:** 🟡 In progress — 1 / 4 tasks complete (RUN-001, 2026-07-25); RUN-002 slices 1–3 + render-trigger done 2026-07-25 (SEO, hydration, node server-compat crux all landed); RUN-003 re-scoped to **BYOB consolidation** (decision 2026-07-25) with slices 1–4 done — see the RUN-003 row
 
 ## Status vocabulary
 

@@ -1,5 +1,20 @@
 # RUN-003: Finish the Universal Backend Adapter
 
+> **⚠️ PREMISE SUPERSEDED (2026-07-25) — do not work from this spec directly.**
+> The subsystem this spec names (UBA) turned out to be a config-form renderer for a
+> middleware protocol no real backend speaks; it is **retired**. The feature this spec
+> *wants* ("point at Directus, see your collections, build against them") already exists
+> as **BYOB** (`BackendServicesPanel` + `models/BackendServices/` + the `byob-*` runtime
+> nodes), and RUN-003 was re-scoped to **finish BYOB to Parse-node quality**
+> (decision: consolidate + deepen). Slices 1–4 are done (parsers extracted + unit-tested,
+> Directus relations fixed, cached-shape seam bug fixed, Supabase parser at Directus
+> parity — commits `bf843c7`, `e6f1f76`).
+> **Read [RUN-003-ASSESSMENT.md](./RUN-003-ASSESSMENT.md) (correction box first) and the
+> RUN-003 row in [PROGRESS.md](./PROGRESS.md) for current state and remaining slices.**
+> Still-valid parts of this spec: the containerised-backend testing method (harness lives
+> in [uba-e2e/](./uba-e2e/)), the "record abstraction resistance" discipline, and the
+> out-of-scope list.
+
 ## Metadata
 
 | Field | Value |
