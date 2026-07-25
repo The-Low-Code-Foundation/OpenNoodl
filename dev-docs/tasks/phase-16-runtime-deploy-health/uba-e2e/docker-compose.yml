@@ -1,0 +1,14 @@
+services:
+  directus:
+    image: directus/directus:11
+    ports:
+      - "8055:8055"
+    environment:
+      KEY: "uba-e2e-key-please-change"
+      SECRET: "uba-e2e-secret-please-change"
+      ADMIN_EMAIL: "admin@example.com"
+      ADMIN_PASSWORD: "directus-admin-pw"
+      DB_CLIENT: "sqlite3"
+      DB_FILENAME: "/directus/database/data.db"
+      WEBSOCKETS_ENABLED: "true"
+      PUBLIC_URL: "http://localhost:8055"
