@@ -35,3 +35,12 @@
   align-items: stretch;
   padding: 5px 10px 16px 15px;
 }
+
+.StatusState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+}
