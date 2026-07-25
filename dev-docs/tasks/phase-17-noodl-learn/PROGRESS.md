@@ -2,7 +2,7 @@
 
 **Created:** 2026-07-22, from [NOODL-REVIVAL-ROADMAP.md](../../reviews/NOODL-REVIVAL-ROADMAP.md) Track E
 **Last updated:** 2026-07-25
-**Overall status:** 🟡 In progress — LEARN-001 substantially complete (engine revived & wired end-to-end); 5 tasks remain
+**Overall status:** 🟡 In progress — LEARN-001 substantially complete (engine revived & wired end-to-end); LEARN-002 design phase started (Richard is the learning designer); 4 tasks not started
 
 ## Status vocabulary
 
@@ -13,7 +13,7 @@ Not started · In progress · **Built–not wired** · Complete · Superseded
 | ID | Title | Status | Estimate | Notes |
 |---|---|---|---|---|
 | LEARN-001 | Lessons engine revival | In progress (revival done; format-validation gate open) | 4–6 wks | **Engine revived and wired end-to-end** (verified in the running editor 2026-07-25). Evaluator typed + de-eval'd + tested; new declarative `lesson.json` format + compiler + docs; legacy `lesson.html` compat path; Learn-tab entry UI (list → clone → open); progress persists. Remaining: **validate the format with a non-programmer author** (the one unmet success criterion), full `lessonlayer2.ts` typing/tidy, and curriculum hosting (LEARN-002). See status below |
-| LEARN-002 | Curriculum v1 | Not started | 8–10 wks | Needs a learning designer. The core deliverable of the phase |
+| LEARN-002 | Curriculum v1 | In progress — design docs drafted, awaiting designer review | 8–10 wks | **Learning designer engaged: Richard (2026-07-25).** [CURRICULUM-DESIGN.md](./CURRICULUM-DESIGN.md) (outcomes, 12-lesson progression, assessment layers, 6 designer decisions D1–D6) + [TUTOR-BOUNDARY.md](./TUTOR-BOUNDARY.md) (will/won't table, Socratic ladder, prompt overlay spec, adversarial test plan) drafted per the design-before-content gate. No lesson authored until review. Follow-ons identified: tutor lesson-context overlay (small AIX-004 ext), template-chaining check, hosting decision |
 | LEARN-003 | Web read-only viewer | Not started | 6–8 wks | The distribution unlock for classrooms |
 | LEARN-004 | Web editor spike | Not started | 4 wks (time-boxed) | Deliverable is a go/no-go decision document |
 | LEARN-005 | Classroom mode | Not started | 6–8 wks | Depends on AIX-001's local-model (Ollama) support |
