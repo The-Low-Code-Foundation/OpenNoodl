@@ -37,30 +37,33 @@ globalThis.projectData = {{#export#}};
 // Add some ugly polyfill
 globalThis.requestAnimationFrame = (callback) => setImmediate(callback);
 
+// SEO head injection and render gating live in sibling modules so they can be
+// unit tested (tests/ssr-inject-seo.test.js, tests/ssr-render-gate.test.js).
+// webpack copies the whole static/ssr directory into the deploy runtime, so
+// they travel alongside this server.
+const { injectSeo } = require('./inject-seo');
+const { settle, createPageReadyGate, createFetchTracker } = require('./render-gate');
+
 // Async work the runtime awaits (bundle loads, data fetches) is invisible to
-// its update scheduler, so the render gate consults this counter: while a
-// fetch is in flight the runtime is not idle and renderToString must wait.
-let fetchesInFlight = 0;
-globalThis.fetch = async (args) => {
-  fetchesInFlight++;
-  try {
-    if (typeof args === 'string') {
-      const relativePath = '.' + args;
-      if (args.startsWith('/noodl_bundles') && fs.existsSync(relativePath)) {
-        const fileContent = await fs.promises.readFile(relativePath, 'utf-8');
-        return {
-          status: 200,
-          json() {
-            return Promise.resolve(JSON.parse(fileContent));
-          }
-        };
-      }
+// its update scheduler, so the render gate consults the tracker's in-flight
+// counter: while a fetch is pending the runtime is not idle and renderToString
+// must wait. Same tracker the client hydration path uses (render-gate.js).
+const fetchTracker = createFetchTracker(async (args) => {
+  if (typeof args === 'string') {
+    const relativePath = '.' + args;
+    if (args.startsWith('/noodl_bundles') && fs.existsSync(relativePath)) {
+      const fileContent = await fs.promises.readFile(relativePath, 'utf-8');
+      return {
+        status: 200,
+        json() {
+          return Promise.resolve(JSON.parse(fileContent));
+        }
+      };
     }
-    return await fetch(args);
-  } finally {
-    fetchesInFlight--;
   }
-};
+  return await fetch(args);
+});
+globalThis.fetch = fetchTracker.fetch;
 
 class LocalStorageMock {
   constructor() {
@@ -125,13 +128,6 @@ function log(...args) {
 
 let htmlData = '';
 
-// SEO head injection and render gating live in sibling modules so they can be
-// unit tested (tests/ssr-inject-seo.test.js, tests/ssr-render-gate.test.js).
-// webpack copies the whole static/ssr directory into the deploy runtime, so
-// they travel alongside this server.
-const { injectSeo } = require('./inject-seo');
-const { settle, createPageReadyGate } = require('./render-gate');
-
 // How long a page that announced SSR_PageLoading may take to signal
 // SSR_PageReady before we render whatever we have (degraded, not broken).
 const PAGE_READY_TIMEOUT = Number(process.env.NOODL_SSR_PAGE_READY_TIMEOUT || 10000);
@@ -172,7 +168,7 @@ async function buildPage(path) {
     // runtime emitter and would never have heard the pages.
     const gate = createPageReadyGate(noodlRuntime.context.eventEmitter);
 
-    const settleOpts = { isIdle: () => fetchesInFlight === 0 };
+    const settleOpts = { isIdle: fetchTracker.isIdle };
 
     noodlRuntime.eventEmitter.once('rootComponentUpdated', async () => {
       try {

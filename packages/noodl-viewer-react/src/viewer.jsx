@@ -81,8 +81,14 @@ export function ssrSetupRuntime(noodlRuntime, noodlModules, projectData) {
   //make the styles available to all nodes via `this.context.styles`
   noodlRuntime.context.styles = styles;
 
-  noodlRuntime.setData(projectData);
+  // The load is async (bundle fetches, root component creation). The SSR server
+  // doesn't await it — it waits for 'rootComponentUpdated' and settles — but the
+  // client hydration path must, so it can render the settled tree synchronously
+  // into hydrateRoot. _disableLoad makes the Viewer constructor's own setData a
+  // no-op (it only guards the entry, not this already-running call).
+  const dataLoaded = noodlRuntime.setData(projectData);
   noodlRuntime._disableLoad = true;
+  return dataLoaded;
 }
 
 export default class Viewer extends React.Component {

@@ -76,6 +76,10 @@ const RouterNode = {
     };
 
     this.props.didMount = () => {
+      // Fires from two places: triggerDidMount (SSR / hydration pre-settle) and the
+      // React component's mount effect. During hydration both run — registering the
+      // router twice would duplicate it in RouterHandler and re-navigate.
+      if (this._internal.isMounted) return;
       this._internal.isMounted = true;
 
       // SSR Support

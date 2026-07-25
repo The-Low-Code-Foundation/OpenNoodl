@@ -6,7 +6,7 @@
  * SSR_PageReady handshake for pages that gate the render explicitly.
  */
 const EventEmitter = require('events');
-const { settle, createPageReadyGate } = require('../static/ssr/render-gate');
+const { settle, createPageReadyGate, createFetchTracker } = require('../static/ssr/render-gate');
 
 // Instant tick so tests don't wait on real timers.
 const tick = () => Promise.resolve();
@@ -132,5 +132,60 @@ describe('createPageReadyGate', () => {
     emitter.emit('SSR_PageReady', 'never-announced');
     expect(gate.hasPendingPages()).toBe(false);
     await expect(gate.whenReady(20)).resolves.toBe(true);
+  });
+});
+
+describe('createFetchTracker', () => {
+  it('is idle before any fetch and busy while one is in flight', async () => {
+    let release;
+    const tracker = createFetchTracker(() => new Promise((resolve) => (release = resolve)));
+
+    expect(tracker.isIdle()).toBe(true);
+
+    const pending = tracker.fetch('/noodl_bundles/a.json');
+    expect(tracker.isIdle()).toBe(false);
+    expect(tracker.inFlight()).toBe(1);
+
+    release('response');
+    await expect(pending).resolves.toBe('response');
+    expect(tracker.isIdle()).toBe(true);
+  });
+
+  it('counts overlapping fetches independently', async () => {
+    const releases = [];
+    const tracker = createFetchTracker(() => new Promise((resolve) => releases.push(resolve)));
+
+    const a = tracker.fetch('a');
+    const b = tracker.fetch('b');
+    expect(tracker.inFlight()).toBe(2);
+
+    releases[0]();
+    await a;
+    expect(tracker.inFlight()).toBe(1);
+
+    releases[1]();
+    await b;
+    expect(tracker.isIdle()).toBe(true);
+  });
+
+  it('returns to idle when a fetch rejects, and propagates the error', async () => {
+    const tracker = createFetchTracker(() => Promise.reject(new Error('network down')));
+    await expect(tracker.fetch('x')).rejects.toThrow('network down');
+    expect(tracker.isIdle()).toBe(true);
+  });
+
+  it('returns to idle when the fetch implementation throws synchronously', () => {
+    const tracker = createFetchTracker(() => {
+      throw new Error('bad url');
+    });
+    expect(() => tracker.fetch('x')).toThrow('bad url');
+    expect(tracker.isIdle()).toBe(true);
+  });
+
+  it('passes arguments through to the wrapped fetch', async () => {
+    const impl = jest.fn(() => Promise.resolve('ok'));
+    const tracker = createFetchTracker(impl);
+    await tracker.fetch('/url', { method: 'POST' });
+    expect(impl).toHaveBeenCalledWith('/url', { method: 'POST' });
   });
 });

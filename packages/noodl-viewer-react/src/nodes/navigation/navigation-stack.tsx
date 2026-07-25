@@ -141,6 +141,10 @@ const PageStack = {
     };
 
     this.props.didMount = () => {
+      // Fires from both triggerDidMount (SSR / hydration pre-settle) and the React
+      // mount effect; during hydration both run. Registering twice would duplicate
+      // the stack in RouterHandler.
+      if (this._internal.isMounted) return;
       this._internal.isMounted = true;
 
       // Listen to push state events and update stack

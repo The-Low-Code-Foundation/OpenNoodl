@@ -134,4 +134,42 @@ function createPageReadyGate(eventEmitter) {
   };
 }
 
-module.exports = { settle, createPageReadyGate, defaultTick };
+/**
+ * Wraps a fetch implementation with an in-flight counter, so `settle`'s
+ * `isIdle` can hold the render while bundle loads and data fetches the
+ * runtime's scheduler cannot see are still pending. Used by the SSR server
+ * (around its node fetch shim) and by the client hydration path (around
+ * `window.fetch` for the pre-hydration settle).
+ *
+ * @param {Function} fetchImpl  The fetch to delegate to.
+ * @returns {{fetch: Function, isIdle: () => boolean, inFlight: () => number}}
+ */
+function createFetchTracker(fetchImpl) {
+  let inFlight = 0;
+  return {
+    fetch: function () {
+      inFlight++;
+      let result;
+      try {
+        result = fetchImpl.apply(this, arguments);
+      } catch (e) {
+        inFlight--;
+        throw e;
+      }
+      return Promise.resolve(result).then(
+        (value) => {
+          inFlight--;
+          return value;
+        },
+        (error) => {
+          inFlight--;
+          throw error;
+        }
+      );
+    },
+    isIdle: () => inFlight === 0,
+    inFlight: () => inFlight
+  };
+}
+
+module.exports = { settle, createPageReadyGate, createFetchTracker, defaultTick };

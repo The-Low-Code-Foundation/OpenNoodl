@@ -557,10 +557,16 @@ export interface NoodlReactComponentProps {
 
 class NoodlReactComponent extends React.Component<NoodlReactComponentProps> {
   componentDidMount() {
+    // During SSR (server) and SSR hydration (client pre-settle), triggerDidMount()
+    // already sent this node's didMount before React committed; sending it again on
+    // commit would double-fire user graphs. The flag is cleared on unmount below so
+    // a genuine remount fires didMount normally.
+    if (this.props.noodlNode.didCallTriggerDidMount) return;
     this.props.noodlNode.sendSignalOnOutput('didMount');
   }
 
   componentWillUnmount() {
+    this.props.noodlNode.didCallTriggerDidMount = false;
     this.props.noodlNode.sendSignalOnOutput('willUnmount');
     //Remove
     const noodlNode = this.props.noodlNode;
