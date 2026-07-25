@@ -1,6 +1,6 @@
 # Phase 14.5 — Revival Debt — Progress
 
-**Phase status:** Tasks DEBT-001 – DEBT-010 complete as of 2026-07-25; DEBT-012 complete 2026-07-25; DEBT-011 partially complete 2026-07-25 (safe part shipped; monaco dep removal blocked by two live consumers the audit missed — see its row). Open remainders tracked per-task below: DEBT-002's two blocked checks, DEBT-006's runtime-detection repro, DEBT-009's zero-diff save, DEBT-010's hover tooltips; DEBT-011's dep-removal follow-up; live-editor smoke pending for DEBT-011/012.
+**Phase status:** Tasks DEBT-001 – DEBT-010 complete as of 2026-07-25; DEBT-012 complete 2026-07-25; DEBT-011 partially complete 2026-07-25 (safe part shipped; monaco dep removal blocked by two live consumers the audit missed — see its row). Open remainders tracked per-task below: DEBT-002's two blocked checks, DEBT-006's runtime-detection repro, DEBT-009's zero-diff save, DEBT-010's hover tooltips; DEBT-011's dep-removal follow-up (now DEBT-013, not started); live-editor smoke pending for DEBT-011/012.
 
 | Task | Title | Priority | Status | Notes |
 |---|---|---|---|---|
@@ -14,8 +14,9 @@
 | DEBT-008 | Legacy ES5 modules vs class runtime | 🟡 Medium | ✅ Done | Proxy apply-trap shim on Collection; corpus loads crash-free; survey: era idiom confirmed (5 uses across projects) |
 | DEBT-009 | External-authoring friction | ◐ 3 of 4 done | In progress | get_node_type capped+summary; v2 hand-off fails loudly; token parity verified (REV-009); zero-diff first save remains |
 | DEBT-010 | Small cleanups & record-keeping | 🟢 Low | ✅ Done (1 deferral) | view.ts→ListenableView, Ports root leak, flushSync×4, dead binding deleted, all doc corrections; hover tooltips deferred with reason |
-| DEBT-011 | Retire Monaco + dead intellisense subsystem | 🟢 Low-Medium | ◑ Partial (`f14fd14`) | JSON+array ports moved to CodeMirror (real JSON mode); dead TS-intellisense nodes + prefixSuffixExtension deleted. **Dep NOT removed:** repo-wide grep found the audit's "one live case" premise wrong — `AiChat.tsx` + `CodeDiffDialog.tsx` call Monaco directly. Follow-up (migrate both, then drop dep): `future-projects/TYPED-INTELLISENSE-REVIVAL.md` |
+| DEBT-011 | Retire Monaco + dead intellisense subsystem | 🟢 Low-Medium | ◑ Partial (`f14fd14`) | JSON+array ports moved to CodeMirror (real JSON mode); dead TS-intellisense nodes + prefixSuffixExtension deleted. **Dep NOT removed:** repo-wide grep found the audit's "one live case" premise wrong — `AiChat.tsx` + `CodeDiffDialog.tsx` call Monaco directly. Follow-up now owned by **DEBT-013** (migrate both, then drop dep); technical map in `future-projects/TYPED-INTELLISENSE-REVIVAL.md` |
 | DEBT-012 | Data-flow tracker salvage | 🟡 Medium | ✅ Done (`62fc611`) | Trigger Chain dedup rewritten as rising-edge snapshot detection (the 5ms hack dropped legit steps AND flooded — pulse is a per-frame snapshot, not an event); + grouping/collapse + recorder smoke test. Data Lineage panel unregistered, spew stripped. Live-editor smoke pending |
+| DEBT-013 | Finish Monaco retirement (2 live consumers) | 🟢 Low-Medium | Not started | Added 2026-07-25 — the follow-up DEBT-011 surfaced. Migrate `CodeDiffDialog.tsx` + `AiChat.tsx` off Monaco, then delete the dep + `utils/CodeEditor/` remainder. 2–4 days. Only then is "no monaco anywhere" true |
 
 ## DEBT-002 — the live pass: what ran, what it found (2026-07-24)
 

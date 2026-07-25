@@ -13,7 +13,7 @@ These phases document the unlimited-budget revival plan. They sit alongside the 
 | [12 — Reanimation](./phase-12-reanimation/) | Horizon 0 | REV-001…008 | Green build, working tests, CI, current Electron, shipped v0, trustworthy dev loop | **Now** |
 | [13 — Format & AI Substrate](./phase-13-format-ai-substrate/) | A | SUB-001…011 | v2 format in real use, node catalog, semantic validator, graph diff, MCP server | After REV-001/002 |
 | [14 — Editor Platform Health](./phase-14-editor-platform-health/) | B | PLAT-001…005 | Canvas decomposition, retire jQuery, type the runtime | After REV-003 |
-| [14.5 — Revival Debt](./phase-14.5-revival-debt/) | Cross-track | DEBT-001…012 | Defects, owed live verification, and orphaned follow-ups surfaced by the 2026-07-24 audits of phases 12–14 and of the pre-revival features | Now (added 2026-07-24; DEBT-001/002 first, DEBT-007 before first signed release) |
+| [14.5 — Revival Debt](./phase-14.5-revival-debt/) | Cross-track | DEBT-001…013 | Defects, owed live verification, and orphaned follow-ups surfaced by the 2026-07-24 audits of phases 12–14 and of the pre-revival features | Now (added 2026-07-24; DEBT-001/002 first, DEBT-007 before first signed release) |
 | [15 — AI Collaboration](./phase-15-ai-collaboration/) | C | AIX-001…006 | Modern AI client, the authoring loop, graph-native review, explain mode, style vocabulary | After Phase 13 core |
 | [16 — Runtime & Deploy Health](./phase-16-runtime-deploy-health/) | D | RUN-001…004 | Runtime React 19, SSR/SSG, finish UBA, fix local backend | Parallel; RUN-004 after REV-004 |
 | [17 — Noodl Learn](./phase-17-noodl-learn/) | E | LEARN-001…006 | Lessons engine, curriculum, web viewer, classroom mode, pilots | Horizon 2 |
