@@ -15,7 +15,7 @@ import { projectFromDirectory, unzipIntoDirectory } from '@noodl-models/projectm
 import { SidebarModel } from '@noodl-models/sidebar';
 import { SidebarModelEvent } from '@noodl-models/sidebar/sidebarmodel';
 import { UndoQueue } from '@noodl-models/undo-queue-model';
-import { exportProjectComponents } from '@noodl-utils/exportProjectComponets';
+import { exportProjectComponents } from '@noodl-utils/exportProjectComponents';
 import FileSystem from '@noodl-utils/filesystem';
 import { KeyCode, KeyMod } from '@noodl-utils/keyboard/KeyCode';
 import { LocalProjectsModel } from '@noodl-utils/LocalProjectsModel';

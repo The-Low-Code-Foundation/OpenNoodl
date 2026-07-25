@@ -35,37 +35,44 @@ function _zipFolderContent(options) {
 
   return new Promise(function (resolve, reject) {
     const folderPath = options.folder;
-    // @ts-expect-error
-    const files = _readDirRec(folderPath);
-    const f = files.pop();
-    archive.file(f, { name: f.substring(folderPath.length + 1) });
 
     // good practice to catch warnings (ie stat failures and other non-blocking errors)
     archive.on('warning', function (err) {
       console.log(err);
     });
-
     // good practice to catch this error explicitly
     archive.on('error', function (err) {
       reject(err);
     });
+    output.on('close', function () {
+      resolve(undefined);
+    });
+    // pipe archive data to the file
+    archive.pipe(output);
 
-    archive.on('entry', function (arg) {
-      //console.log(arg.name,arg.sourcePath);
+    // @ts-expect-error untyped local helper
+    const files: string[] = _readDirRec(folderPath);
+
+    // Guard the empty-directory case: `files.pop()` would be undefined and the
+    // original `f.substring(...)` crashed. An empty staging dir (e.g. exporting
+    // a selection that produced no files) should yield an empty archive, not a
+    // TypeError.
+    if (files.length === 0) {
+      archive.finalize();
+      return;
+    }
+
+    archive.on('entry', function () {
       if (files.length > 0) {
-        const f = files.pop();
-        archive.file(f, { name: f.substring(folderPath.length + 1) });
+        const next = files.pop();
+        archive.file(next, { name: next.substring(folderPath.length + 1) });
       } else {
         archive.finalize();
       }
     });
 
-    output.on('close', function () {
-      resolve(undefined);
-    });
-
-    // pipe archive data to the file
-    archive.pipe(output);
+    const first = files.pop();
+    archive.file(first, { name: first.substring(folderPath.length + 1) });
   });
 }
 
