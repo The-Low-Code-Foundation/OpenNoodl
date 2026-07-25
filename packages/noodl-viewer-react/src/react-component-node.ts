@@ -14,6 +14,7 @@ import type {
   NodeDefinitionOptions,
   NodeInstance,
   NodeScopeLike,
+  NodeSSRCompat,
   NodeVariant,
   OutputPortDefinition,
   PortLabelTruncationMode,
@@ -452,6 +453,8 @@ export interface ReactNodeDefinition {
   category?: string;
   /** Marks the node deprecated in the runtime definition and the catalog. */
   deprecated?: boolean;
+  /** Server-side-rendering compatibility (RUN-002); forwarded to the runtime definition and the catalog. */
+  ssr?: NodeSSRCompat;
 
   [extra: string]: unknown;
 }
@@ -773,6 +776,7 @@ function createNodeFromReactComponent(def: ReactNodeDefinition): ReactNodeModule
     shortDesc: '',
     category: 'Visual',
     deprecated: def.deprecated,
+    ssr: def.ssr,
     allowChildren: def.allowChildren === undefined ? true : def.allowChildren, //default to true
     visualStates: def.visualStates,
     allowAsExportRoot: def.allowAsExportRoot,

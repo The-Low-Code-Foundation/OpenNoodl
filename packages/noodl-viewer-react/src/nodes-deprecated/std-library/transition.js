@@ -10,6 +10,10 @@ var TransitionNode = {
   shortDesc: 'This node can interpolate smooothely for the current value to a target value.',
   category: 'Animation',
   deprecated: true,
+  ssr: {
+    compat: 'partial',
+    note: 'The scheduler clock is frozen during server render; the transition does not animate or complete there.'
+  },
   initialize: function () {
     var self = this,
       _internal = this._internal;

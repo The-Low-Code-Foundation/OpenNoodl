@@ -252,6 +252,14 @@ export interface CatalogNode {
   inNodePicker: boolean;
   availableIn: RuntimeEnvironment[];
   providedBy: 'noodl-runtime' | 'noodl-viewer-react' | 'noodl-viewer-cloud' | 'noodl-editor';
+  /**
+   * Server-side-rendering compatibility (RUN-002). Present on every
+   * browser-available type; absent for cloud-only types, where it does not
+   * apply. "safe" runs fully server-side; "partial" runs but with the caveat
+   * in note; "client-only" is created inert on the SSR server (ports exist,
+   * logic deferred to the browser after hydration).
+   */
+  ssr?: { compat: 'safe' | 'partial' | 'client-only'; note?: string };
   docs?: string;
   searchTags?: string[];
   module?: string;

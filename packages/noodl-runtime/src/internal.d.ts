@@ -169,6 +169,14 @@ export interface RuntimeNode extends NodeInstance {
   /** Present only on React-backed nodes. */
   _resetReactVirtualDOM?: () => void;
 
+  /**
+   * Set when the SSR server created this instance inert because its type is
+   * classified `client-only` (see `makeNodeInert` in nodedefinition.ts).
+   */
+  _ssrDeferred?: boolean;
+  /** Lifecycle hook installed on the prototype when the definition declares it. */
+  nodeScopeDidInitialize?(): void;
+
   getOutput(name: string): RuntimeOutputProperty;
   setVariant?(variant: NodeVariant): void;
 

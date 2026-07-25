@@ -34,6 +34,10 @@ const AnimateToValue: NodeDefinitionOptions = {
   displayName: 'Animate To Value',
   shortDesc: 'This node can interpolate smooothely from the current value to a target value.',
   category: 'Animation',
+  ssr: {
+    compat: 'partial',
+    note: 'The scheduler clock is frozen during server render; the value stays at its start and Finished never fires there.'
+  },
   initialize: function (this: AnimateToValueInstance) {
     const self = this,
       _internal = this._internal;

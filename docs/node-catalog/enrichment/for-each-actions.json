@@ -8,7 +8,6 @@
     "tryRemove": "Signal output firing when removal of this row is requested — run your exit animation, then confirm.",
     "removeCompleted": "Signal input; confirms removal after `tryRemove`, letting the repeater delete the instance."
   },
-  "runtimeBehavior": "Runtime-discovered ports mirror the enclosing repeater's item context (per-item outputs registered on demand); the static trio above is always present. The node is inert outside a repeater item.",
   "examples": ["comp-repeater-set-item-object"],
   "patterns": [
     "`itemId` → Set Object Properties `modelId`: row edits write to exactly this row (27 occurrences in the real-project corpus)."

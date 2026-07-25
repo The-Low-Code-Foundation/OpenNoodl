@@ -124,6 +124,10 @@ const PageStack = {
   displayNodeName: 'Component Stack',
   category: 'Visuals',
   docs: 'https://docs.noodl.net/nodes/component-stack/component-stack-node',
+  ssr: {
+    compat: 'partial' as const,
+    note: 'The initial stack renders server-side; browser URL/history sync only runs in the browser.'
+  },
   useVariants: false,
   noodlNodeAsProp: true,
   initialize(this: PageStackInstance) {
@@ -147,13 +151,17 @@ const PageStack = {
       if (this._internal.isMounted) return;
       this._internal.isMounted = true;
 
-      // Listen to push state events and update stack
-      if (window.history && window.history.pushState) {
-        //this is event is manually sent on push, so covers both pop and push state
-        window.addEventListener('popstate', this.onScheduleReset);
-      } else {
-        // Only hash support
-        window.addEventListener('hashchange', this.onScheduleReset);
+      // didMount also fires server-side (triggerDidMount during SSR); the URL
+      // listeners are browser-only, the stack registration is not.
+      if (typeof window !== 'undefined') {
+        // Listen to push state events and update stack
+        if (window.history && window.history.pushState) {
+          //this is event is manually sent on push, so covers both pop and push state
+          window.addEventListener('popstate', this.onScheduleReset);
+        } else {
+          // Only hash support
+          window.addEventListener('hashchange', this.onScheduleReset);
+        }
       }
 
       this._registerPageStack();
@@ -162,8 +170,10 @@ const PageStack = {
     this.props.willUnmount = () => {
       this._internal.isMounted = false;
 
-      window.removeEventListener('popstate', this.onScheduleReset);
-      window.removeEventListener('hashchange', this.onScheduleReset);
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('popstate', this.onScheduleReset);
+        window.removeEventListener('hashchange', this.onScheduleReset);
+      }
 
       this._deregisterPageStack();
     };
@@ -493,7 +503,9 @@ const PageStack = {
         decode = function (s: string) {
           return decodeURIComponent(s.replace(pl, ' '));
         },
-        query = window.location.search.substring(1);
+        // Bare `location` (not window.location): the SSR server shims
+        // globalThis.location, so URL matching also works server-side.
+        query = location.search.substring(1);
 
       let match: RegExpExecArray;
 
@@ -567,8 +579,9 @@ const PageStack = {
       }
     },
     _updateUrlWithTopPage(this: PageStackInstance) {
-      // Push the state to the browser url
-      if (this._internal.useRoutes && window.history !== undefined) {
+      // Push the state to the browser url. `window.history !== undefined` alone
+      // would throw server-side — dereferencing window needs its own guard.
+      if (this._internal.useRoutes && typeof window !== 'undefined' && window.history !== undefined) {
         const url = this.getNavigationAbsoluteURL();
 
         let urlPath, hashPath;

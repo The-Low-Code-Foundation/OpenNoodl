@@ -19,6 +19,9 @@ const OpenFilePicker: NodeDefinitionOptions = {
   name: 'Open File Picker',
   docs: 'https://docs.noodl.net/nodes/utilities/open-file-picker',
   category: 'Utilities',
+  // initialize creates a DOM input element, so the node cannot even be
+  // constructed server-side.
+  ssr: { compat: 'client-only', note: 'File dialogs only exist in the browser.' },
   getInspectInfo(this: OpenFilePickerInstance) {
     if (this._internal.file) {
       return this._internal.file.path;

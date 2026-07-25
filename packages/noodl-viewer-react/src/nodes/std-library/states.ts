@@ -93,6 +93,10 @@ const StatesNode: NodeDefinitionOptions = {
   docs: 'https://docs.noodl.net/nodes/utilities/logic/states',
   shortDesc: 'Define states with values and this node can interpolate between these values when the state is changed.',
   category: 'Animation',
+  ssr: {
+    compat: 'partial',
+    note: 'The scheduler clock is frozen during server render; state transitions do not animate or complete there.'
+  },
   initialize: function (this: StatesInstance) {
     const _this = this,
       _internal = this._internal;

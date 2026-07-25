@@ -12,6 +12,10 @@ const ScreenResolution: NodeDefinitionOptions = {
   name: 'Screen Resolution',
   docs: 'https://docs.noodl.net/nodes/utilities/screen-resolution',
   category: 'Utilities',
+  ssr: {
+    compat: 'client-only',
+    note: 'The viewport size is unknowable server-side; width/height stay unset until the browser runs.'
+  },
   initialize(this: ScreenResolutionInstance) {
     // Add SSR Support
     if (typeof window === 'undefined') return;

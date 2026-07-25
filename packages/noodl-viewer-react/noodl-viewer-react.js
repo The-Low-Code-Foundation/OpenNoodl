@@ -17,14 +17,18 @@ let currentRoot = null;
 const HYDRATION_PAGE_READY_TIMEOUT = 10000;
 
 function createArgs() {
-  // Support SSR
+  // Support SSR. This branch only runs on the SSR server — the cloud runtime
+  // uses its own entry (noodl-viewer-cloud) and never sees this file, and the
+  // browser always has window. isSSRServer is what makes `client-only` nodes
+  // instantiate inert instead of running browser-API code (nodedefinition.ts).
   if (typeof window === 'undefined') {
     return {
       type: 'browser',
       platform: {
         requestUpdate: (callback) => setImmediate(callback),
         getCurrentTime: () => 0,
-        objectToString: (o) => JSON.stringify(o, null, 2)
+        objectToString: (o) => JSON.stringify(o, null, 2),
+        isSSRServer: () => true
       },
       componentFilter: (c) => !c.name.startsWith('/#__cloud__/')
     };

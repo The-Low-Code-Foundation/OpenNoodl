@@ -132,6 +132,10 @@ const NavigateToPathNode: NodeDefinitionOptions = {
         (query.length >= 1 ? '?' + query.join('&') : '') +
         (hashPath !== undefined ? '#' + hashPath : '');
 
+      // Browser-history navigation cannot run server-side; if the graph fires
+      // this during an SSR render it degrades to a no-op instead of throwing.
+      if (typeof window === 'undefined') return;
+
       if (this._internal.openInNewTab) {
         window.open(compiledUrl, '_blank');
       } else {

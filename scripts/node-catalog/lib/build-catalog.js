@@ -175,6 +175,13 @@ function buildCatalog(records, extras) {
       providedBy
     };
 
+    // Server-side-rendering compatibility (RUN-002): declared on the node
+    // definition (`ssr` in defineNode opts), absent means audited-safe.
+    // Cloud-only types never render in a page, so the axis does not apply.
+    if (environments.has('browser')) {
+      node.ssr = metadata.ssr ? sanitize(metadata.ssr) : { compat: 'safe' };
+    }
+
     // Mirror the effective child/parent rules the editor derives in
     // nodelibraryexport.js: Visual nodes may be placed as children and used
     // as export roots unless overridden; allowChildren implies Visual children.
@@ -213,6 +220,7 @@ function buildCatalog(records, extras) {
     inNodePicker: true,
     availableIn: ['browser'],
     providedBy: 'noodl-editor',
+    ssr: { compat: 'safe' },
     shortDesc: 'Placeholder marking where children given to an instance of this component are inserted.',
     allowAsChild: true,
     inputs: [],

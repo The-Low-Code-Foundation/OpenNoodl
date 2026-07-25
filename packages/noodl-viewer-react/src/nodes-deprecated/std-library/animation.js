@@ -147,6 +147,10 @@ var AnimationNode = {
   shortDesc: 'Node that can animate any number of values, with different types of easing curves.',
   category: 'Animation',
   deprecated: true,
+  ssr: {
+    compat: 'partial',
+    note: 'The scheduler clock is frozen during server render; animations do not run or complete there.'
+  },
   initialize: function () {
     var internal = this._internal;
 

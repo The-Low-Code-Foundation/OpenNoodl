@@ -725,6 +725,25 @@ export interface InspectInfoEntry {
 export type InspectInfo = string | InspectInfoEntry | InspectInfoEntry[];
 
 /**
+ * How a node type behaves when the graph runs under server-side rendering
+ * (RUN-002). Absent means `safe` — the audit annotates only the exceptions.
+ *
+ * - `safe`: runs server-side with full behavior.
+ * - `partial`: runs server-side, but some behavior only completes in the
+ *   browser (e.g. TimerScheduler never advances on the server, so a Delay
+ *   never fires Finished). `note` states the caveat.
+ * - `client-only`: the node's logic cannot run server-side at all. The SSR
+ *   server creates the instance inert — ports exist so connections stay
+ *   valid, but initialize is skipped, input setters are no-ops and outputs
+ *   read `undefined` — and the browser runs it normally after hydration.
+ */
+export interface NodeSSRCompat {
+  compat: 'safe' | 'partial' | 'client-only';
+  /** Human-readable caveat, surfaced in the node catalog. */
+  note?: string;
+}
+
+/**
  * The object passed to `defineNode`.
  *
  * `name` and `category` are the only required fields — `defineNode` throws without them.
@@ -751,6 +770,8 @@ export interface NodeDefinitionOptions {
   version?: string;
   /** Hides the node from the picker while keeping existing projects working. */
   deprecated?: boolean;
+  /** Server-side-rendering compatibility. Absent means `safe`. */
+  ssr?: NodeSSRCompat;
 
   inputs?: Record<string, InputPortDefinition>;
   outputs?: Record<string, OutputPortDefinition>;
@@ -839,6 +860,8 @@ export interface NodeMetadata {
   module?: string;
   version?: string;
   deprecated?: boolean;
+  /** Server-side-rendering compatibility. Absent means `safe`. */
+  ssr?: NodeSSRCompat;
 
   dynamicports?: DynamicPortEntry[];
   exportDynamicPorts?: boolean;

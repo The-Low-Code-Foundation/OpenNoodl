@@ -9,6 +9,10 @@ var UserNodeDefinition = {
   displayNodeName: 'User',
   category: 'Cloud Services',
   color: 'data',
+  ssr: {
+    compat: 'partial',
+    note: 'Sessions live in browser storage; a server render always sees a logged-out user.'
+  },
   initialize: function () {
     var _this = this;
     this._internal.onModelChangedCallback = function (args) {

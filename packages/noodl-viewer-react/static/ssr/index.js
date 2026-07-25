@@ -203,6 +203,16 @@ async function buildPage(path) {
         const output1 = ReactDOMServer.renderToString(ViewerComponent);
         log('result:', output1);
 
+        // Nodes classified `client-only` were created inert (nodedefinition.ts
+        // makeNodeInert) — name them per page so a degraded render is loud in
+        // the server log rather than a silent partial page.
+        const deferredTypes = noodlRuntime.context._ssrDeferredNodeTypes;
+        if (deferredTypes && deferredTypes.size) {
+          console.warn(
+            `SSR: ${path} rendered with client-only node types deferred to the browser: ${[...deferredTypes].sort().join(', ')}`
+          );
+        }
+
         // Stamp the root so the client hydrates instead of re-rendering from
         // scratch. renderDeployed() reads this back (data-reactroot is gone in
         // React 18+, so it can no longer be used to detect server-rendered markup).

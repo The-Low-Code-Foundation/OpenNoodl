@@ -125,8 +125,12 @@ export class RouterHandler {
    * @param page
    */
   onNavigated(routerName: string, page: ComponentPageInfo) {
-    // @ts-expect-error window.Noodl is not defined
-    window.Noodl.Events.emit('NoodlApp_Navigated', {
+    // The Noodl API object lives on globalThis in every environment (the SSR
+    // server included, where the router navigates during render and `window`
+    // does not exist).
+    // @ts-expect-error Noodl is not typed on globalThis
+    const noodlApi = globalThis.Noodl;
+    noodlApi && noodlApi.Events.emit('NoodlApp_Navigated', {
       routerName,
       ...page
     });

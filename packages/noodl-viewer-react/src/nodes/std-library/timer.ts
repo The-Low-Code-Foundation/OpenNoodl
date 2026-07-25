@@ -16,6 +16,10 @@ const Timer: NodeDefinitionOptions = {
   docs: 'https://docs.noodl.net/nodes/utilities/delay',
   displayName: 'Delay',
   category: 'Utilities',
+  ssr: {
+    compat: 'partial',
+    note: 'The scheduler clock is frozen during server render, so Started/Finished never fire there; do not gate Page Ready on a Delay.'
+  },
   nodeDoubleClickAction: {
     focusPort: 'duration'
   },

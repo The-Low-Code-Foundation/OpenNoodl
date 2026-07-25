@@ -161,6 +161,10 @@ const Javascript: NodeDefinitionOptions = {
   displayNodeName: 'Script',
   category: 'CustomCode',
   color: 'javascript',
+  ssr: {
+    compat: 'partial',
+    note: 'Runs user code server-side; code touching window/document fails there (error logged, outputs unchanged).'
+  },
   nodeDoubleClickAction: {
     focusPort: 'Code'
   },

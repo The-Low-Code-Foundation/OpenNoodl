@@ -154,6 +154,71 @@ function initializeDefaultValues(
   });
 }
 
+/**
+ * True only for the SSR server's render context. The browser never sets the
+ * flag, and neither does the cloud runtime — "no window" alone is NOT the
+ * signal, because cloud functions also run this code in Node.js and must run
+ * nodes for real. The flag is set by the SSR entry's platform args
+ * (noodl-viewer-react.js createArgs, window-undefined branch).
+ */
+function isSSRServerContext(context: RuntimeNodeContext): boolean {
+  const platform = context && (context as { platform?: { isSSRServer?: () => boolean } }).platform;
+  return !!(platform && typeof platform.isSSRServer === 'function' && platform.isSSRServer());
+}
+
+/**
+ * A `client-only` node on the SSR server is created inert instead of run:
+ * ports exist so connections resolve, but authored code never executes —
+ * initialize is skipped, setters are no-ops, outputs read undefined. Without
+ * this, a node touching `window`/`document` in its load path throws and takes
+ * the whole server render down to the CSR fallback. The browser creates the
+ * node normally, so its logic runs after hydration.
+ */
+function makeNodeInert(
+  node: RuntimeNode,
+  context: RuntimeNodeContext,
+  opts: NodeDefinitionOptions,
+  sharedInputs: SharedInputs
+) {
+  const noop = () => {};
+
+  node._inputs = {};
+  Object.keys(opts.inputs).forEach(function (name) {
+    // Keep the type the shared entry saved (color/array coercion in
+    // setInputValue reads it); the authored setter is what must not run.
+    node._inputs[name] = { set: noop, type: sharedInputs[name] && sharedInputs[name].type };
+  });
+
+  Object.keys(opts.outputs).forEach(function (name) {
+    const output = opts.outputs[name];
+    node.registerOutput(name, { type: output.type, getter: () => undefined });
+  });
+
+  // Dynamic ports (numbered inputs, runtime-discovered): accept any input a
+  // connection targets rather than running the author's registration code.
+  node.registerInputIfNeeded = function (inputName: string) {
+    if (!node.hasInput(inputName)) {
+      node.registerInput(inputName, { set: noop });
+    }
+  };
+
+  // Authored lifecycle must not run either (it is load-path code).
+  if (node.nodeScopeDidInitialize) {
+    node.nodeScopeDidInitialize = noop;
+  }
+
+  node._ssrDeferred = true;
+
+  const ctx = context as { _ssrDeferredNodeTypes?: Set<string> };
+  const seen = (ctx._ssrDeferredNodeTypes = ctx._ssrDeferredNodeTypes || new Set());
+  if (!seen.has(opts.name)) {
+    seen.add(opts.name);
+    console.warn(
+      `SSR: node type "${opts.name}" is client-only; instances render default values server-side and run in the browser after hydration.`
+    );
+  }
+}
+
 function defineNode(opts: NodeDefinitionOptions): NodeDefinition {
   if (!opts.category) {
     throw new Error('Node must have a category');
@@ -189,7 +254,8 @@ function defineNode(opts: NodeDefinitionOptions): NodeDefinition {
     docs: opts.docs,
     allowAsExportRoot: opts.allowAsExportRoot,
     nodeDoubleClickAction: opts.nodeDoubleClickAction,
-    searchTags: opts.searchTags
+    searchTags: opts.searchTags,
+    ssr: opts.ssr
   };
 
   opts._internal = opts._internal || {};
@@ -232,6 +298,13 @@ function defineNode(opts: NodeDefinitionOptions): NodeDefinition {
       context: RuntimeNodeContext,
       id: string
     ) => RuntimeNode)(context, id);
+
+    if (metadata.ssr && metadata.ssr.compat === 'client-only' && isSSRServerContext(context)) {
+      makeNodeInert(node, context, opts, inputs);
+      node.nodeScope = nodeScope;
+      initializeDefaultValues(node._inputValues, metadata.inputs);
+      return node;
+    }
 
     //create all inputs. Use the inputs object for setters that don't have state and can be shared
     node._inputs = Object.create(inputs);

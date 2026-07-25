@@ -238,7 +238,11 @@ var RestNode = {
         url += '?' + parameters.join('&');
       }
 
-      if (typeof _noodl_cloud_runtime_version === 'undefined') {
+      // `typeof _noodl_cloud_runtime_version` only distinguishes cloud-runtime
+      // from everything else — the SSR server is also windowless, so the real
+      // browser test must be `typeof window`. Anything without a window (cloud
+      // runtime, SSR server) takes the fetch branch below.
+      if (typeof window !== 'undefined') {
         // Running in browser
         var _this = this;
         var xhr = new window.XMLHttpRequest();

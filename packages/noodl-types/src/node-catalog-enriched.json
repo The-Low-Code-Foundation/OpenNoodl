@@ -144,6 +144,9 @@
         "cloud"
       ],
       "providedBy": "noodl-runtime",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/data/cloud-data/add-record-relation",
       "inputs": [
         {
@@ -300,6 +303,9 @@
         "cloud"
       ],
       "providedBy": "noodl-runtime",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/logic/and",
       "inputs": [],
       "outputs": [
@@ -363,6 +369,10 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "partial",
+        "note": "The scheduler clock is frozen during server render; animations do not run or complete there."
+      },
       "docs": "https://docs.noodl.net/nodes/animation/animation",
       "inputs": [
         {
@@ -664,6 +674,9 @@
         "cloud"
       ],
       "providedBy": "noodl-runtime",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/data/boolean",
       "inputs": [
         {
@@ -762,6 +775,9 @@
         "cloud"
       ],
       "providedBy": "noodl-runtime",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/utilities/boolean-to-string",
       "inputs": [
         {
@@ -851,6 +867,9 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/visual/button",
       "allowAsChild": true,
       "allowChildrenWithCategory": [
@@ -1974,6 +1993,9 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/utilities/css-definition",
       "inputs": [
         {
@@ -2025,6 +2047,9 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/visual/checkbox",
       "allowAsChild": true,
       "allowAsExportRoot": true,
@@ -2950,6 +2975,9 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/basic-elements/circle",
       "allowAsChild": true,
       "allowAsExportRoot": true,
@@ -3746,6 +3774,9 @@
         "cloud"
       ],
       "providedBy": "noodl-runtime",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/data/cloud-data/cloud-file",
       "inputs": [
         {
@@ -3813,6 +3844,9 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/data/cloud-data/cloud-function",
       "inputs": [
         {
@@ -3904,6 +3938,9 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/data/cloud-data/cloud-function",
       "inputs": [
         {
@@ -4000,6 +4037,9 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/data/array",
       "inputs": [
         {
@@ -4210,6 +4250,9 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/data/array/array-node",
       "inputs": [
         {
@@ -4358,6 +4401,9 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/data/array/clear-array",
       "inputs": [
         {
@@ -4429,6 +4475,9 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/data/array/insert-into-array",
       "inputs": [
         {
@@ -4520,6 +4569,9 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/data/array/create-new-array",
       "inputs": [
         {
@@ -4605,6 +4657,9 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/data/array/remove-from-array",
       "inputs": [
         {
@@ -4692,6 +4747,9 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/data/color",
       "inputs": [
         {
@@ -4785,6 +4843,9 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/utilities/color-blend",
       "inputs": [
         {
@@ -4858,6 +4919,9 @@
         "browser"
       ],
       "providedBy": "noodl-editor",
+      "ssr": {
+        "compat": "safe"
+      },
       "shortDesc": "Placeholder marking where children given to an instance of this component are inserted.",
       "allowAsChild": true,
       "inputs": [],
@@ -4898,6 +4962,9 @@
         "cloud"
       ],
       "providedBy": "noodl-runtime",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/component-utilities/component-inputs",
       "inputs": [],
       "outputs": [],
@@ -4946,6 +5013,9 @@
         "cloud"
       ],
       "providedBy": "noodl-runtime",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/component-utilities/component-outputs",
       "inputs": [],
       "outputs": [],
@@ -4987,6 +5057,9 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/component-utilities/component-object",
       "inputs": [
         {
@@ -5085,6 +5158,9 @@
         "cloud"
       ],
       "providedBy": "noodl-runtime",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/utilities/logic/condition",
       "inputs": [
         {
@@ -5197,6 +5273,9 @@
         "cloud"
       ],
       "providedBy": "noodl-runtime",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/math/counter",
       "inputs": [
         {
@@ -5340,6 +5419,9 @@
         "cloud"
       ],
       "providedBy": "noodl-runtime",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/utilities/date-to-string",
       "inputs": [
         {
@@ -5434,6 +5516,9 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/cloud-services/collection",
       "inputs": [],
       "outputs": [
@@ -5549,6 +5634,9 @@
         "cloud"
       ],
       "providedBy": "noodl-runtime",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/data/cloud-data/query-records",
       "inputs": [],
       "outputs": [
@@ -5674,6 +5762,9 @@
         "cloud"
       ],
       "providedBy": "noodl-runtime",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/data/cloud-data/config",
       "inputs": [],
       "outputs": [],
@@ -5717,6 +5808,9 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/cloud-services/model",
       "inputs": [
         {
@@ -5932,6 +6026,9 @@
         "cloud"
       ],
       "providedBy": "noodl-runtime",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/data/cloud-data/record",
       "inputs": [
         {
@@ -6092,6 +6189,9 @@
         "cloud"
       ],
       "providedBy": "noodl-runtime",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/data/cloud-data/delete-record",
       "inputs": [
         {
@@ -6235,6 +6335,9 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/utilities/drag",
       "allowAsChild": true,
       "allowChildrenWithCategory": [
@@ -6644,6 +6747,9 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/events/receive-event",
       "inputs": [
         {
@@ -6742,6 +6848,9 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/events/send-event",
       "inputs": [
         {
@@ -6858,6 +6967,9 @@
         "cloud"
       ],
       "providedBy": "noodl-runtime",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/math/expression",
       "searchTags": [
         "javascript"
@@ -7013,12 +7125,15 @@
       "displayName": "Field Set",
       "category": "Visual",
       "isVisual": true,
-      "isDeprecated": false,
+      "isDeprecated": true,
       "inNodePicker": false,
       "availableIn": [
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/visual/fieldset",
       "allowAsChild": true,
       "allowChildrenWithCategory": [
@@ -7829,6 +7944,9 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/data/array/array-filter",
       "inputs": [
         {
@@ -7955,6 +8073,9 @@
         "cloud"
       ],
       "providedBy": "noodl-runtime",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/data/cloud-data/filter-records",
       "inputs": [
         {
@@ -8077,6 +8198,9 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/ui-controls/repeater",
       "allowAsChild": true,
       "allowAsExportRoot": true,
@@ -8226,6 +8350,9 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/ui-controls/repeater-item",
       "inputs": [
         {
@@ -8272,12 +8399,7 @@
           "isSignal": true
         }
       ],
-      "dynamicPorts": {
-        "mechanisms": [
-          "runtime-discovered"
-        ],
-        "description": "Some ports are discovered at runtime from user code, parameters or connected components, and are pushed to the editor per instance; the static port list below is incomplete for such instances."
-      },
+      "dynamicPorts": null,
       "enrichment": {
         "typeName": "For Each Actions",
         "summary": "Repeater Item: inside a repeater's item component, exposes this row's item id and its add/remove lifecycle.",
@@ -8288,7 +8410,6 @@
           "tryRemove": "Signal output firing when removal of this row is requested — run your exit animation, then confirm.",
           "removeCompleted": "Signal input; confirms removal after `tryRemove`, letting the repeater delete the instance."
         },
-        "runtimeBehavior": "Runtime-discovered ports mirror the enclosing repeater's item context (per-item outputs registered on demand); the static trio above is always present. The node is inert outside a repeater item.",
         "examples": [
           "comp-repeater-set-item-object"
         ],
@@ -8308,12 +8429,15 @@
       "displayName": "Form",
       "category": "Visual",
       "isVisual": true,
-      "isDeprecated": false,
+      "isDeprecated": true,
       "inNodePicker": false,
       "availableIn": [
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/visual/form",
       "allowAsChild": true,
       "allowChildrenWithCategory": [
@@ -9139,6 +9263,9 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "safe"
+      },
       "inputs": [],
       "outputs": [],
       "dynamicPorts": {
@@ -9171,6 +9298,9 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/basic-elements/group",
       "allowAsChild": true,
       "allowChildrenWithCategory": [
@@ -9896,6 +10026,7 @@
           },
           "isSignal": false,
           "default": false,
+          "description": "Clip content Controls if elements that are too big to fit will be clipped Enabled Disabled",
           "index": 19
         },
         {
@@ -9978,6 +10109,7 @@
           },
           "isSignal": false,
           "default": "nowrap",
+          "description": "Multiline wrap Elements will wrap to the next line when there's not enough space Using a horizontal layout Using a vertical layout",
           "index": 15
         },
         {
@@ -11183,6 +11315,10 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "client-only",
+        "note": "Device sensors only exist in the browser."
+      },
       "docs": "https://docs.noodl.net/nodes/sensors/device-orientation",
       "inputs": [],
       "outputs": [
@@ -11236,6 +11372,9 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/basic-elements/image",
       "allowAsChild": true,
       "allowAsExportRoot": true,
@@ -12732,6 +12871,9 @@
         "cloud"
       ],
       "providedBy": "noodl-runtime",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/logic/inverter",
       "inputs": [
         {
@@ -12794,6 +12936,10 @@
         "cloud"
       ],
       "providedBy": "noodl-runtime",
+      "ssr": {
+        "compat": "partial",
+        "note": "Runs user code server-side; code touching window/document fails there (error logged, outputs unchanged)."
+      },
       "docs": "https://docs.noodl.net/nodes/javascript/function",
       "searchTags": [
         "javascript"
@@ -12892,6 +13038,10 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "partial",
+        "note": "Runs user code server-side; code touching window/document fails there (error logged, outputs unchanged)."
+      },
       "docs": "https://docs.noodl.net/nodes/javascript/script",
       "searchTags": [
         "javascript"
@@ -13022,12 +13172,15 @@
       "displayName": "Label",
       "category": "Visual",
       "isVisual": true,
-      "isDeprecated": false,
+      "isDeprecated": true,
       "inNodePicker": false,
       "availableIn": [
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/visual/label",
       "allowAsChild": true,
       "allowChildrenWithCategory": [
@@ -14340,6 +14493,9 @@
         "cloud"
       ],
       "providedBy": "noodl-runtime",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/logic/logic-builder",
       "searchTags": [
         "blockly",
@@ -14446,6 +14602,9 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/data/array/array-map",
       "inputs": [
         {
@@ -14542,6 +14701,9 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/data/object",
       "inputs": [
         {
@@ -14695,6 +14857,9 @@
         "cloud"
       ],
       "providedBy": "noodl-runtime",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/data/object/object-node",
       "inputs": [
         {
@@ -14845,6 +15010,9 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/popups/close-popup",
       "inputs": [
         {
@@ -14917,6 +15085,9 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/popups/show-popup",
       "inputs": [
         {
@@ -14996,6 +15167,9 @@
         "cloud"
       ],
       "providedBy": "noodl-runtime",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/data/cloud-data/create-new-record",
       "inputs": [
         {
@@ -15126,6 +15300,9 @@
         "cloud"
       ],
       "providedBy": "noodl-runtime",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/data/object/create-new-object",
       "inputs": [
         {
@@ -15222,6 +15399,9 @@
         "cloud"
       ],
       "providedBy": "noodl-runtime",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/data/number",
       "inputs": [
         {
@@ -15318,6 +15498,9 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/interpolation/number-blend",
       "inputs": [
         {
@@ -15391,6 +15574,9 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/math/number-remapper",
       "inputs": [
         {
@@ -15514,6 +15700,10 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "client-only",
+        "note": "File dialogs only exist in the browser."
+      },
       "docs": "https://docs.noodl.net/nodes/utilities/open-file-picker",
       "inputs": [
         {
@@ -15656,6 +15846,9 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/visual/options",
       "allowAsChild": true,
       "allowAsExportRoot": true,
@@ -16849,6 +17042,9 @@
         "cloud"
       ],
       "providedBy": "noodl-runtime",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/logic/or",
       "inputs": [],
       "outputs": [
@@ -16912,6 +17108,9 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/navigation/page",
       "singleton": true,
       "allowAsChild": true,
@@ -17027,6 +17226,17 @@
           },
           "isSignal": false,
           "index": 80004
+        },
+        {
+          "name": "onPageReady",
+          "displayName": "Page Ready",
+          "group": "Server Side Rendering",
+          "plug": "input",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "isSignal": true
         },
         {
           "name": "paddingBottom",
@@ -17367,6 +17577,10 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "partial",
+        "note": "The initial stack renders server-side; browser URL/history sync only runs in the browser."
+      },
       "docs": "https://docs.noodl.net/nodes/component-stack/component-stack-node",
       "allowAsChild": true,
       "allowChildrenWithCategory": [
@@ -17634,6 +17848,9 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/navigation/page-inputs",
       "inputs": [
         {
@@ -17705,6 +17922,9 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/component-stack/push-component",
       "inputs": [
         {
@@ -17805,6 +18025,9 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/component-stack/pop-component",
       "inputs": [
         {
@@ -17878,6 +18101,9 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/navigation/navigate-to-path",
       "inputs": [
         {
@@ -17965,6 +18191,9 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/component-utilities/parent-component-object",
       "inputs": [
         {
@@ -18063,6 +18292,9 @@
         "cloud"
       ],
       "providedBy": "noodl-runtime",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/data/rest",
       "searchTags": [
         "http",
@@ -18237,6 +18469,9 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/visual/radiobutton",
       "allowAsChild": true,
       "allowAsExportRoot": true,
@@ -19151,6 +19386,9 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/ui-controls/radio-button-group",
       "allowAsChild": true,
       "allowChildrenWithCategory": [
@@ -19988,6 +20226,9 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/visual/range",
       "allowAsChild": true,
       "allowAsExportRoot": true,
@@ -20939,6 +21180,9 @@
         "cloud"
       ],
       "providedBy": "noodl-runtime",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/data/cloud-data/remove-record-relation",
       "inputs": [
         {
@@ -21089,6 +21333,9 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/navigation/page-router",
       "allowAsChild": true,
       "allowChildrenWithCategory": [
@@ -21375,6 +21622,9 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/navigation/navigate",
       "inputs": [
         {
@@ -21463,6 +21713,9 @@
         "cloud"
       ],
       "providedBy": "noodl-runtime",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/data/run-tasks",
       "inputs": [
         {
@@ -21613,6 +21866,10 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "client-only",
+        "note": "The viewport size is unknowable server-side; width/height stay unset until the browser runs."
+      },
       "docs": "https://docs.noodl.net/nodes/utilities/screen-resolution",
       "inputs": [],
       "outputs": [
@@ -21680,6 +21937,10 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "client-only",
+        "note": "Scripts are injected into the browser DOM; they load after hydration."
+      },
       "docs": "https://docs.noodl.net/nodes/javascript/script-downloader",
       "inputs": [
         {
@@ -21756,6 +22017,9 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/data/variable/set-variable",
       "inputs": [
         {
@@ -21889,6 +22153,9 @@
         "cloud"
       ],
       "providedBy": "noodl-runtime",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/data/cloud-data/set-record-properties",
       "inputs": [
         {
@@ -22103,6 +22370,9 @@
         "cloud"
       ],
       "providedBy": "noodl-runtime",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/data/object/set-object-properties",
       "inputs": [
         {
@@ -22244,6 +22514,9 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/logic/signal-to-index",
       "inputs": [],
       "outputs": [
@@ -22304,6 +22577,10 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "partial",
+        "note": "The scheduler clock is frozen during server render; state transitions do not animate or complete there."
+      },
       "docs": "https://docs.noodl.net/nodes/utilities/logic/states",
       "inputs": [
         {
@@ -22426,6 +22703,9 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/data/array/static-array",
       "inputs": [
         {
@@ -22560,6 +22840,9 @@
         "cloud"
       ],
       "providedBy": "noodl-runtime",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/data/string",
       "inputs": [
         {
@@ -22668,6 +22951,9 @@
         "cloud"
       ],
       "providedBy": "noodl-runtime",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/string-manipulation/string-format",
       "inputs": [
         {
@@ -22739,6 +23025,9 @@
         "cloud"
       ],
       "providedBy": "noodl-runtime",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/string-manipulation/string-mapper",
       "inputs": [
         {
@@ -22840,6 +23129,9 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "safe"
+      },
       "inputs": [
         {
           "name": "index",
@@ -22910,6 +23202,9 @@
         "cloud"
       ],
       "providedBy": "noodl-runtime",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/string-manipulation/substring",
       "inputs": [
         {
@@ -22993,6 +23288,9 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/logic/switch",
       "inputs": [
         {
@@ -23127,6 +23425,9 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/basic-elements/text",
       "allowAsChild": true,
       "allowAsExportRoot": true,
@@ -24031,6 +24332,7 @@
           },
           "isSignal": false,
           "default": "normal",
+          "description": "Word break Control where line breaks are allowed - Normal: Break on spaces and other whitespace characters - Break All: Allow line breaks between any two characters, including inside words",
           "index": 27
         },
         {
@@ -24251,6 +24553,9 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/visual/text-input",
       "allowAsChild": true,
       "allowAsExportRoot": true,
@@ -25482,6 +25787,10 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "partial",
+        "note": "The scheduler clock is frozen during server render, so Started/Finished never fire there; do not gate Page Ready on a Delay."
+      },
       "docs": "https://docs.noodl.net/nodes/utilities/delay",
       "inputs": [
         {
@@ -25600,6 +25909,10 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "partial",
+        "note": "The scheduler clock is frozen during server render; the transition does not animate or complete there."
+      },
       "docs": "https://docs.noodl.net/nodes/animation/transition",
       "inputs": [
         {
@@ -25733,6 +26046,9 @@
         "cloud"
       ],
       "providedBy": "noodl-runtime",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/utilities/unique-id",
       "inputs": [
         {
@@ -25791,6 +26107,9 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/data/cloud-data/upload-file",
       "inputs": [
         {
@@ -25947,6 +26266,9 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/logic/value-changed",
       "inputs": [
         {
@@ -26009,6 +26331,9 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/data/variable",
       "inputs": [
         {
@@ -26127,6 +26452,9 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/data/variable/variable-node",
       "inputs": [
         {
@@ -26250,6 +26578,9 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/basic-elements/video",
       "allowAsChild": true,
       "allowAsExportRoot": true,
@@ -27779,6 +28110,9 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/component-utilities/component-object",
       "inputs": [
         {
@@ -27876,6 +28210,9 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/data/http-request",
       "searchTags": [
         "http",
@@ -28035,6 +28372,9 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/component-utilities/parent-component-object",
       "inputs": [
         {
@@ -28120,6 +28460,9 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/component-utilities/set-component-object-properties",
       "inputs": [
         {
@@ -28195,6 +28538,9 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/component-utilities/set-parent-component-object-properties",
       "inputs": [
         {
@@ -28270,6 +28616,10 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "partial",
+        "note": "The scheduler clock is frozen during server render; the value stays at its start and Finished never fires there."
+      },
       "docs": "https://docs.noodl.net/nodes/logic/animate-to-value",
       "inputs": [
         {
@@ -28393,6 +28743,9 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/ui-controls/button",
       "allowAsChild": true,
       "allowChildrenWithCategory": [
@@ -30250,6 +30603,9 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/ui-controls/checkbox",
       "allowAsChild": true,
       "allowAsExportRoot": true,
@@ -31984,6 +32340,9 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/ui-controls/dropdown",
       "allowAsChild": true,
       "allowAsExportRoot": true,
@@ -34030,6 +34389,9 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/ui-controls/radio-button",
       "allowAsChild": true,
       "allowAsExportRoot": true,
@@ -35758,6 +36120,9 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/ui-controls/slider",
       "allowAsChild": true,
       "allowAsExportRoot": true,
@@ -37823,6 +38188,9 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/ui-controls/text-input",
       "allowAsChild": true,
       "allowAsExportRoot": true,
@@ -40009,6 +40377,9 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/navigation/external-link",
       "inputs": [
         {
@@ -40076,6 +40447,9 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/data/user/log-in",
       "inputs": [
         {
@@ -40182,6 +40556,9 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/data/user/log-out",
       "inputs": [
         {
@@ -40262,6 +40639,9 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/data/user/request-password-reset",
       "inputs": [
         {
@@ -40337,6 +40717,9 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/data/user/reset-password",
       "inputs": [
         {
@@ -40432,6 +40815,9 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/data/user/send-email-verification",
       "inputs": [
         {
@@ -40508,6 +40894,9 @@
         "cloud"
       ],
       "providedBy": "noodl-runtime",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/data/user/set-user-properties",
       "inputs": [
         {
@@ -40615,6 +41004,9 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/data/user/sign-up",
       "inputs": [
         {
@@ -40738,6 +41130,10 @@
         "cloud"
       ],
       "providedBy": "noodl-runtime",
+      "ssr": {
+        "compat": "partial",
+        "note": "Sessions live in browser storage; a server render always sees a logged-out user."
+      },
       "docs": "https://docs.noodl.net/nodes/data/user/user-node",
       "inputs": [
         {
@@ -40882,6 +41278,9 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/data/user/verify-email",
       "inputs": [
         {
@@ -40967,6 +41366,9 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/basic-elements/columns",
       "allowAsChild": true,
       "allowChildrenWithCategory": [
@@ -41253,6 +41655,9 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/basic-elements/icon",
       "allowAsChild": true,
       "allowAsExportRoot": true,
@@ -41977,6 +42382,9 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/data/byob/create-record",
       "searchTags": [
         "byob",
@@ -42107,6 +42515,9 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/data/byob/delete-record",
       "searchTags": [
         "byob",
@@ -42210,6 +42621,9 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/data/byob/query-data",
       "searchTags": [
         "byob",
@@ -42361,6 +42775,9 @@
         "browser"
       ],
       "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "safe"
+      },
       "docs": "https://docs.noodl.net/nodes/data/byob/update-record",
       "searchTags": [
         "byob",

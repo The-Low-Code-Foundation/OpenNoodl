@@ -168,6 +168,8 @@ export interface NodeTypeDetail {
   isVisual: boolean;
   deprecated?: boolean;
   availableIn: string[];
+  /** Server-side-rendering compatibility (RUN-002); absent for cloud-only types. */
+  ssr?: { compat: 'safe' | 'partial' | 'client-only'; note?: string };
   summary?: string;
   description?: string;
   whenToUse?: string;
@@ -268,6 +270,7 @@ export function getNodeTypeDetail(typeName: string): NodeTypeDetail | NodeTypeLo
     exampleIds
   };
   if (n.isDeprecated) detail.deprecated = true;
+  if (n.ssr) detail.ssr = n.ssr;
   if (e?.summary) detail.summary = e.summary;
   if (e?.description) detail.description = e.description;
   if (e?.whenToUse) detail.whenToUse = e.whenToUse;

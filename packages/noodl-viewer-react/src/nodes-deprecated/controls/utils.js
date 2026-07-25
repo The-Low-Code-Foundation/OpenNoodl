@@ -21,6 +21,10 @@ function _shallowCompare(o1, o2) {
 const _styleSheets = {};
 
 function updateStylesForClass(_class, props, _styleTemplate) {
+  // Setters call this during graph load, which also happens server-side; the
+  // injected stylesheet is browser-only and re-created at hydration.
+  if (typeof document === 'undefined') return;
+
   if (_styleSheets[_class]) {
     // Check if props have changed
     if (!_shallowCompare(props, _styleSheets[_class].props)) {

@@ -97,7 +97,10 @@ function NoodlRuntime(args) {
     requestUpdate: args.platform.requestUpdate,
     getCurrentTime: args.platform.getCurrentTime,
     webSocketOptions: args.platform.webSocketOptions,
-    objectToString: args.platform.objectToString
+    objectToString: args.platform.objectToString,
+    // Set only by the SSR server's entry; makes client-only nodes instantiate
+    // inert (nodedefinition.ts makeNodeInert) instead of running browser code.
+    isSSRServer: args.platform.isSSRServer
   };
 
   if (!args.platform.requestUpdate) {

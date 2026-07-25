@@ -100,8 +100,10 @@ const RouterNode = {
     this.props.willUnmount = () => {
       this._internal.isMounted = false;
 
-      window.removeEventListener('popstate', this.onScheduleReset);
-      window.removeEventListener('hashchange', this.onScheduleReset);
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('popstate', this.onScheduleReset);
+        window.removeEventListener('hashchange', this.onScheduleReset);
+      }
 
       this._deregisterRouter();
     };
@@ -551,8 +553,9 @@ const RouterNode = {
       return compiledUrl;
     },
     _updateUrlWithTopPage() {
-      // Push the state to the browser url
-      if (window.history !== undefined) {
+      // Push the state to the browser url. `window.history !== undefined` alone
+      // would throw server-side — dereferencing window needs its own guard.
+      if (typeof window !== 'undefined' && window.history !== undefined) {
         this._internal.remainingNavigationPath = undefined; // Reset remaining nav path
 
         const url = this._getCompleteUrlToPage(this._internal.currentPage, this._internal.currentParams);
@@ -570,7 +573,9 @@ const RouterNode = {
 
       if (args.openInNewTab) {
         const url = this._getCompleteUrlToPage(newPage, args.params);
-        window.open(url, '_blank');
+        if (typeof window !== 'undefined') {
+          window.open(url, '_blank');
+        }
         args.hasNavigated && args.hasNavigated();
       } else {
         await this._navigateInCurrentWindow(newPage, args);

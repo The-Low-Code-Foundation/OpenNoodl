@@ -22,6 +22,10 @@ const ExternalLinkNode: NodeDefinitionOptions = {
       type: 'signal',
       displayName: 'Do',
       valueChangedToTrue() {
+        // Opening a browser tab is meaningless server-side; degrade to a no-op
+        // if the graph fires this during an SSR render.
+        if (typeof window === 'undefined') return;
+
         const openInNewTab = this.getInputValue('openInNewTab');
         const params = openInNewTab ? 'noopener,noreferrer' : '';
         const target = openInNewTab === true || openInNewTab === undefined ? '_blank' : '_self';

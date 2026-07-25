@@ -39,6 +39,13 @@ export interface TransitionConstructor {
   ports(parameters: Record<string, unknown>): unknown[];
 }
 
+/**
+ * `window.performance` dereferences window, which does not exist server-side —
+ * and a navigation during an SSR render does start transitions. There the
+ * animation is pointless anyway, so start() completes immediately instead.
+ */
+const hasAnimationClock = () => typeof window !== 'undefined' && !!window.performance;
+
 abstract class Transition {
   _frame: () => void;
   cb?: () => void;
@@ -53,7 +60,7 @@ abstract class Transition {
   start(args: TransitionStartArgs) {
     this.cb = args.end;
 
-    if (this.timing.delay + this.timing.dur === 0) {
+    if (this.timing.delay + this.timing.dur === 0 || !hasAnimationClock()) {
       this.end();
     } else {
       this.transitionForward = !args.back;

@@ -7,6 +7,9 @@ const ScriptDownloadDefinition = {
   category: 'Javascript',
   color: 'javascript',
   deprecated: true,
+  // Injects <script> tags into document.head from its input setters, which run
+  // at graph load — server-side that would throw.
+  ssr: { compat: 'client-only', note: 'Scripts are injected into the browser DOM; they load after hydration.' },
   initialize: function () {
     var internal = this._internal;
     internal.loaded = false;

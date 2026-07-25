@@ -7,6 +7,8 @@ const GyroscopeNode = {
   displayNodeName: 'Device Orientation',
   category: 'Sensors',
   deprecated: true,
+  // initialize registers a window listener unconditionally.
+  ssr: { compat: 'client-only', note: 'Device sensors only exist in the browser.' },
   initialize: function () {
     this._internal.alpha = 0;
     this._internal.beta = 0;
