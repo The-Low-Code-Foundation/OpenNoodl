@@ -35,9 +35,14 @@ import type { RealtimeHub, Subscription } from '../realtime/RealtimeHub';
 import { ClpOp, Principal, keyAllowsFunction, ruleAllows, validateAclShape } from '../security/model';
 import type { TriggerSubsystem } from '../triggers/TriggerSubsystem';
 import { verifyWebhook } from '../triggers/webhook';
+import type { EmailConfigState } from '../email/EmailConfigState';
+import type { Mailer } from '../email/Mailer';
+import { EmailTokenStore } from '../email/tokens';
 import { AdminSecurityRoutes } from './admin-security';
 import { AdminTriggerRoutes } from './admin-triggers';
+import { AdminEmailRoutes } from './admin-email';
 import { ByobAdminRoutes } from './byob-admin';
+import { EmailRoutes } from './email-routes';
 import { FileRoutes } from './files';
 import { ParseWireRoutes } from './parse-wire';
 import { UserRoutes } from './users';
@@ -110,6 +115,10 @@ export interface HttpServerDeps {
   realtime: RealtimeHub;
   /** Trigger subsystem — WF-005 (webhook route + admin trigger CRUD). */
   triggers: TriggerSubsystem;
+  /** Email subsystem (BAK-002): config/secrets, the mailer, and the token store. */
+  emailConfig: EmailConfigState;
+  mailer: Mailer;
+  emailTokens: EmailTokenStore;
 }
 
 /** Result of a successful listen(). */
@@ -136,6 +145,8 @@ export class HttpServer {
   private readonly files: FileRoutes;
   private readonly adminSecurity: AdminSecurityRoutes;
   private readonly adminTriggers: AdminTriggerRoutes;
+  private readonly email: EmailRoutes;
+  private readonly adminEmail: AdminEmailRoutes;
   private readonly routes: RouteDef[];
 
   constructor(deps: HttpServerDeps) {
@@ -149,10 +160,20 @@ export class HttpServer {
 
     this.byob = new ByobAdminRoutes(deps.facade, deps.executions, deps.getRunner);
     this.parse = new ParseWireRoutes(deps.facade, deps.getConfigParams || (() => ({})));
-    this.users = new UserRoutes(deps.facade, deps.security);
+    this.email = new EmailRoutes({
+      facade: deps.facade,
+      emailConfig: deps.emailConfig,
+      mailer: deps.mailer,
+      tokens: deps.emailTokens,
+      backendId: deps.options.backendId,
+      backendName: deps.options.backendName,
+      getLocalUrl: () => `http://127.0.0.1:${deps.options.port}`
+    });
+    this.users = new UserRoutes(deps.facade, deps.security, deps.emailConfig, this.email);
     this.files = new FileRoutes(deps.options.dataDir, `http://127.0.0.1:${deps.options.port}`);
     this.adminSecurity = new AdminSecurityRoutes(deps.security, deps.facade, deps.options, deps.getRunner);
     this.adminTriggers = new AdminTriggerRoutes(deps.triggers);
+    this.adminEmail = new AdminEmailRoutes(deps.emailConfig, deps.mailer);
     this.routes = this.buildRoutes();
   }
 
@@ -172,6 +193,8 @@ export class HttpServer {
     const files = this.files;
     const adminSec = this.adminSecurity;
     const adminTriggers = this.adminTriggers;
+    const email = this.email;
+    const adminEmail = this.adminEmail;
 
     return [
       // ---- Public ----------------------------------------------------------
@@ -280,6 +303,41 @@ export class HttpServer {
         pattern: 'users/:id',
         access: { kind: 'session' },
         handler: (ctx) => users.updateUser(ctx.req, ctx.res, ctx.params.id)
+      },
+
+      // ---- Account email flows (BAK-002) — public, self-governing (rate
+      // limiting + anti-enumeration are internal to the handlers; see
+      // email-routes.ts's module doc for why these are 'public' by design,
+      // the same posture as the session routes above). ---------------------
+      {
+        method: 'POST',
+        pattern: 'requestPasswordReset',
+        access: { kind: 'public' },
+        handler: (ctx) => email.requestPasswordReset(ctx.req, ctx.res)
+      },
+      {
+        method: 'POST',
+        pattern: 'verificationEmailRequest',
+        access: { kind: 'public' },
+        handler: (ctx) => email.requestEmailVerification(ctx.req, ctx.res)
+      },
+      {
+        method: 'GET',
+        pattern: 'apps/:appId/request_password_reset',
+        access: { kind: 'public' },
+        handler: (ctx) => email.servePasswordResetForm(ctx.res, ctx.query, ctx.params.appId)
+      },
+      {
+        method: 'POST',
+        pattern: 'apps/:appId/request_password_reset',
+        access: { kind: 'public' },
+        handler: (ctx) => email.processPasswordReset(ctx.req, ctx.res)
+      },
+      {
+        method: 'GET',
+        pattern: 'apps/:appId/verify_email',
+        access: { kind: 'public' },
+        handler: (ctx) => email.verifyEmail(ctx.res, ctx.query)
       },
 
       // ---- BYOB ------------------------------------------------------------
@@ -477,6 +535,45 @@ export class HttpServer {
         pattern: 'admin/triggers/:id/fire',
         access: { kind: 'admin' },
         handler: (ctx) => adminTriggers.fire(ctx)
+      },
+
+      // ---- Admin: the BAK-002 email surface --------------------------------
+      { method: 'GET', pattern: 'admin/email/config', access: { kind: 'admin' }, handler: (ctx) => adminEmail.getConfig(ctx) },
+      {
+        method: 'PUT',
+        pattern: 'admin/email/config',
+        access: { kind: 'admin' },
+        handler: (ctx) => adminEmail.putConfig(ctx)
+      },
+      {
+        method: 'POST',
+        pattern: 'admin/email/test',
+        access: { kind: 'admin' },
+        handler: (ctx) => adminEmail.testSend(ctx)
+      },
+      {
+        method: 'GET',
+        pattern: 'admin/email/templates',
+        access: { kind: 'admin' },
+        handler: (ctx) => adminEmail.getTemplates(ctx)
+      },
+      {
+        method: 'PUT',
+        pattern: 'admin/email/templates/:id',
+        access: { kind: 'admin' },
+        handler: (ctx) => adminEmail.putTemplate(ctx)
+      },
+      {
+        method: 'DELETE',
+        pattern: 'admin/email/templates/:id',
+        access: { kind: 'admin' },
+        handler: (ctx) => adminEmail.deleteTemplate(ctx)
+      },
+      {
+        method: 'GET',
+        pattern: 'admin/email/templates/:id/preview',
+        access: { kind: 'admin' },
+        handler: (ctx) => adminEmail.previewTemplate(ctx)
       }
     ];
   }
@@ -528,8 +625,6 @@ export class HttpServer {
     const seg = pathname.split('/').filter(Boolean).map(decodeURIComponent);
     const match = this.matchRoute(method, seg);
     if (!match) {
-      // The unsupported account-mail flows (501 with client-scrapable shapes).
-      if (this.users.handleUnsupported(res, pathname)) return;
       throw new HttpError(404, `Not found: ${method} ${pathname}`);
     }
     const { route, params } = match;

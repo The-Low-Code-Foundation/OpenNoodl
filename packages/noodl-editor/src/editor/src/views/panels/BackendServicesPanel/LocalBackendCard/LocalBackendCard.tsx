@@ -18,6 +18,7 @@ import { HStack, VStack } from '@noodl-core-ui/components/layout/Stack';
 import { Text, TextType } from '@noodl-core-ui/components/typography/Text';
 
 import { DataBrowser } from '../../databrowser';
+import { EmailPanel } from '../../email';
 import { PermissionsPanel } from '../../permissions';
 import { SchemaPanel } from '../../schemamanager';
 import { TriggersPanel } from '../../triggers';
@@ -65,6 +66,7 @@ export function LocalBackendCard({ backend, onStart, onStop, onDelete, onExport 
   const [showDataBrowser, setShowDataBrowser] = useState(false);
   const [showPermissions, setShowPermissions] = useState(false);
   const [showTriggers, setShowTriggers] = useState(false);
+  const [showEmail, setShowEmail] = useState(false);
   const statusDisplay = getStatusDisplay(backend);
 
   const isEphemeral = backend.running && backend.persistence?.mode === 'ephemeral';
@@ -221,6 +223,12 @@ export function LocalBackendCard({ backend, onStart, onStop, onDelete, onExport 
                 variant={PrimaryButtonVariant.Muted}
                 onClick={() => setShowTriggers(true)}
               />
+              <PrimaryButton
+                label="Email"
+                size={PrimaryButtonSize.Small}
+                variant={PrimaryButtonVariant.Muted}
+                onClick={() => setShowEmail(true)}
+              />
             </>
           )}
           {onExport && backend.running && (
@@ -282,6 +290,15 @@ export function LocalBackendCard({ backend, onStart, onStop, onDelete, onExport 
         createPortal(
           <div className={css.SchemaPanelOverlay}>
             <TriggersPanel backendId={backend.id} backendName={backend.name} onClose={() => setShowTriggers(false)} />
+          </div>,
+          document.body
+        )}
+
+      {/* Email (BAK-002) — rendered via portal for full-screen overlay */}
+      {showEmail &&
+        createPortal(
+          <div className={css.SchemaPanelOverlay}>
+            <EmailPanel backendId={backend.id} backendName={backend.name} onClose={() => setShowEmail(false)} />
           </div>,
           document.body
         )}

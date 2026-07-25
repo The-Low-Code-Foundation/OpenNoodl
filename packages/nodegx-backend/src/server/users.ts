@@ -8,9 +8,11 @@
  *   GET  /users/me    (session token header)                 -> user + sessionToken
  *   PUT  /users/:id   (session token header, own user only)  -> { updatedAt }
  *
- * Password-reset / email-verification endpoints return 501 — there is no mail
- * infrastructure until BAK-002 (phase 22); the two endpoints the client scrapes
- * as HTML answer with HTML so the client's string-matching keeps its shape.
+ * Password-reset / email-verification endpoints live in ./email-routes.ts
+ * (BAK-002) — this file only carries the per-backend LOGIN POLICY those flows
+ * gate on (`emailConfig.config.verification.requireForLogin`) and the
+ * best-effort verification-email send on signup (opt-in per backend,
+ * `emailConfig.config.verification.sendOnSignup`).
  *
  * Storage: `_User` rows via the same adapter as everything else, passwords as
  * `scrypt$<salt>$<hash>` in `_hashed_password` (never sent over the wire —
@@ -26,7 +28,18 @@ import type * as http from 'http';
 
 import type { AdapterFacade } from '../persistence/AdapterFacade';
 import type { SecurityState } from '../security/state';
+import type { EmailConfigState } from '../email/EmailConfigState';
+import type { EmailRoutes } from './email-routes';
 import { HttpError, readJSONBody, sendJSON } from './http-util';
+
+function safeLog(...args: unknown[]): void {
+  try {
+    // eslint-disable-next-line no-console
+    console.warn('[nodegx-backend/users]', ...args);
+  } catch {
+    // Ignore EPIPE
+  }
+}
 
 const SCRYPT_KEYLEN = 64;
 
@@ -57,10 +70,17 @@ export class UserRoutes {
   // Reserved for session-policy decisions (the signup rule itself is enforced
   // by the dispatcher's route gate).
   private readonly security: SecurityState | null;
+  // BAK-002: login policy (requireForLogin) + best-effort signup verification
+  // send. Both optional — a service built without email wiring (e.g. an older
+  // test harness) just runs with no email policy at all.
+  private readonly emailConfig: EmailConfigState | null;
+  private readonly emailRoutes: EmailRoutes | null;
 
-  constructor(facade: AdapterFacade, security?: SecurityState) {
+  constructor(facade: AdapterFacade, security?: SecurityState, emailConfig?: EmailConfigState, emailRoutes?: EmailRoutes) {
     this.facade = facade;
     this.security = security || null;
+    this.emailConfig = emailConfig || null;
+    this.emailRoutes = emailRoutes || null;
   }
 
   // ==========================================================================
@@ -107,6 +127,13 @@ export class UserRoutes {
       throw new HttpError(404, 'Invalid username/password.', 101);
     }
 
+    // BAK-002 login policy: a backend can require a verified email before
+    // login. 205 mirrors Parse's own EMAIL_NOT_FOUND-family numbering
+    // (distinct from the 209 session-invalid code the client branches on).
+    if (this.emailConfig && this.emailConfig.config.verification.requireForLogin && !user.emailVerified) {
+      throw new HttpError(403, 'Please verify your email address before logging in.', 205);
+    }
+
     const sessionToken = newSessionToken();
     await this.facade.rawCreate('_Session', { sessionToken, userId: user.objectId });
 
@@ -147,6 +174,16 @@ export class UserRoutes {
 
     const sessionToken = newSessionToken();
     await this.facade.rawCreate('_Session', { sessionToken, userId: user.objectId });
+
+    // BAK-002: opt-in verification email on signup. Best-effort and NEVER
+    // fails the signup itself — an operator who enabled sendOnSignup without
+    // finishing SMTP setup gets a loud server-log warning (Mailer.send's
+    // notConfiguredReason), not a broken signup flow. If requireForLogin is
+    // also on, the user simply can't log in until the operator fixes SMTP and
+    // the user (re-)requests verification — a strong, visible nudge.
+    if (this.emailConfig && this.emailConfig.config.verification.sendOnSignup && this.emailRoutes && user.email) {
+      this.emailRoutes.sendVerificationEmail(user).catch((e) => safeLog('signup verification send failed:', e));
+    }
 
     // Parse's signup response: objectId + createdAt + sessionToken. The client
     // merges its own username/properties over this, so keep it minimal.
@@ -194,29 +231,5 @@ export class UserRoutes {
     }
 
     sendJSON(res, 200, { updatedAt: updated.updatedAt });
-  }
-
-  /**
-   * The unsupported account-mail flows. JSON endpoints answer 501; the two
-   * endpoints the client reads as HTML answer with HTML text so its
-   * string-scraping error paths keep working.
-   */
-  handleUnsupported(res: http.ServerResponse, pathname: string): boolean {
-    if (pathname === '/requestPasswordReset' || pathname === '/verificationEmailRequest') {
-      sendJSON(res, 501, {
-        error: 'Not supported by nodegx-backend yet: account email flows arrive with the production backend (BAK-002).'
-      });
-      return true;
-    }
-    if (pathname.startsWith('/apps/')) {
-      // /apps/<appId>/verify_email and /apps/<appId>/request_password_reset —
-      // scraped as HTML by userservice.ts.
-      const html =
-        '<html><body>Not supported: nodegx-backend does not run account email flows yet (BAK-002).</body></html>';
-      res.writeHead(501, { 'Content-Type': 'text/html', 'Content-Length': Buffer.byteLength(html) });
-      res.end(html);
-      return true;
-    }
-    return false;
   }
 }

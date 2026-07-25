@@ -275,4 +275,70 @@ describeOrSkip('MCP backend permission tools (live backend)', () => {
     const del = await call<{ deleted: boolean }>(session, 'delete_backend_trigger', { id });
     expect(del.data.deleted).toBe(true);
   });
+
+  // ==========================================================================
+  // BAK-002 — email tools. `send_backend_test_email` is only exercised in the
+  // unconfigured (loud-failure) path here: a real send needs live SMTP, which
+  // this hermetic suite doesn't have — the fake-transport seam that proves a
+  // real send actually reaches nodemailer lives in nodegx-backend's own
+  // email-flows.test.ts (that seam has no HTTP-visible surface for MCP to hit).
+  // ==========================================================================
+
+  describe('email tools (BAK-002)', () => {
+    it('get_backend_email_config starts unconfigured, never leaks a password', async () => {
+      const { data } = await call<{ configured: boolean; hasSmtpPassword: boolean }>(session, 'get_backend_email_config');
+      expect(data.configured).toBe(false);
+      expect(data.hasSmtpPassword).toBe(false);
+    });
+
+    it('send_backend_test_email fails loudly while unconfigured', async () => {
+      const result = await call<{ error?: { message: string } }>(session, 'send_backend_test_email', {
+        to: 'someone@example.com'
+      });
+      expect(result.isError).toBe(true);
+      expect(result.data.error!.message).toMatch(/not configured/i);
+    });
+
+    it('set_backend_email_config configures SMTP + policy without ever echoing the password', async () => {
+      const set = await call<{ configured: boolean; hasSmtpPassword: boolean }>(session, 'set_backend_email_config', {
+        enabled: true,
+        smtp: { host: 'smtp.example.com', port: 587, secure: false, username: 'apikey' },
+        smtpPassword: 'super-secret-app-password',
+        fromAddress: 'noreply@example.com',
+        fromName: 'MCP Test App',
+        baseUrl: 'https://api.example.com'
+      });
+      expect(set.isError).toBe(false);
+      expect(set.data.configured).toBe(true);
+      expect(set.data.hasSmtpPassword).toBe(true);
+      expect(JSON.stringify(set)).not.toContain('super-secret-app-password');
+
+      const get = await call<{ configured: boolean }>(session, 'get_backend_email_config');
+      expect(get.data.configured).toBe(true);
+    });
+
+    it('list/set/reset a template, and preview renders the effective (merged) result', async () => {
+      const list = await call<{ templates: { id: string; isOverridden: boolean }[] }>(session, 'list_backend_email_templates');
+      expect(list.data.templates.map((t) => t.id).sort()).toEqual(['passwordReset', 'verifyEmail']);
+      expect(list.data.templates.every((t) => !t.isOverridden)).toBe(true);
+
+      const set = await call<{ effective: { subject: string } }>(session, 'set_backend_email_template', {
+        templateId: 'verifyEmail',
+        subject: 'Confirm your {{appName}} account'
+      });
+      expect(set.isError).toBe(false);
+      expect(set.data.effective.subject).toBe('Confirm your {{appName}} account');
+
+      const preview = await call<{ preview: { subject: string } }>(session, 'preview_backend_email_template', {
+        templateId: 'verifyEmail'
+      });
+      expect(preview.data.preview.subject).toBe('Confirm your Your App account');
+
+      const reset = await call<{ removed: boolean }>(session, 'reset_backend_email_template', { templateId: 'verifyEmail' });
+      expect(reset.data.removed).toBe(true);
+
+      const listAfter = await call<{ templates: { id: string; isOverridden: boolean }[] }>(session, 'list_backend_email_templates');
+      expect(listAfter.data.templates.find((t) => t.id === 'verifyEmail')!.isOverridden).toBe(false);
+    });
+  });
 });

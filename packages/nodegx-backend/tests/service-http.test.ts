@@ -308,12 +308,16 @@ describe('nodegx-backend HTTP surface', () => {
     expect(me.json.code).toBe(209);
   });
 
-  it('account email flows answer 501 (JSON) / HTML for the scraped endpoints', async () => {
+  it('account email flows are real (BAK-002): JSON endpoints answer 200, the scraped endpoints answer HTML', async () => {
+    // Anti-enumeration: always 200/{}, whether or not the address exists and
+    // whether or not SMTP is configured (this backend has none — see the
+    // dedicated email-flows.test.ts for the full loud/quiet-failure matrix).
     const reset = await req('POST', '/requestPasswordReset', { email: 'r@x.io' });
-    expect(reset.status).toBe(501);
+    expect(reset.status).toBe(200);
+    expect(reset.json).toEqual({});
 
     const res = await fetch(`${base}/apps/backend_test/verify_email?username=rich&token=x`);
-    expect(res.status).toBe(501);
+    expect(res.status).toBe(400); // invalid/unknown token -> the served failure page, not a 501
     expect(res.headers.get('content-type')).toContain('text/html');
   });
 

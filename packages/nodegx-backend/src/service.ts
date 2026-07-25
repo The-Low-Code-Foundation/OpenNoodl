@@ -33,6 +33,22 @@ import { ChangeBus } from './realtime/ChangeBus';
 import { RealtimeHub } from './realtime/RealtimeHub';
 import { SecretsStore } from './config/SecretsStore';
 import { TriggerSubsystem } from './triggers/TriggerSubsystem';
+import { EmailConfigState } from './email/EmailConfigState';
+import { Mailer, SendEmailResult } from './email/Mailer';
+import { EmailTokenStore } from './email/tokens';
+import { isTemplateId, renderTemplate } from './email/templates';
+
+/** The shape the Send Email node (noodl-viewer-cloud) calls `_noodl_send_email` with. */
+export interface SendEmailNodeRequest {
+  to: string;
+  subject?: string;
+  text?: string;
+  html?: string;
+  /** A known template id ('passwordReset' | 'verifyEmail') — when set, subject/text/html above are ignored. */
+  template?: string;
+  /** Variables for `{{...}}` interpolation when `template` is set. `appName` defaults to the backend's name. */
+  variables?: Record<string, string>;
+}
 
 export interface StartedService {
   options: BackendServiceOptions;
@@ -54,6 +70,8 @@ export class BackendService {
   private changeBus: ChangeBus | null = null;
   private realtime: RealtimeHub | null = null;
   private triggers: TriggerSubsystem | null = null;
+  private emailConfig: EmailConfigState | null = null;
+  private mailer: Mailer | null = null;
   private readonly executions = new ExecutionHistory();
 
   constructor(partial: Partial<BackendServiceOptions> = {}) {
@@ -138,6 +156,14 @@ export class BackendService {
       secrets: new SecretsStore(this.options.dataDir)
     });
 
+    // 2.7 Email (BAK-002): config + secrets load beside security.json/secrets.json
+    //     (same dataDir, same shared-secrets convention — see config/SecretsStore).
+    //     Loading never throws for "unconfigured" — only for a malformed file —
+    //     because unconfigured is a normal, loudly-reported STATE (RUN-004),
+    //     not a startup error.
+    this.emailConfig = new EmailConfigState(this.options.dataDir);
+    this.mailer = new Mailer(this.emailConfig);
+
     // 3. HTTP surface.
     this.http = new HttpServer({
       options: this.options,
@@ -148,7 +174,10 @@ export class BackendService {
       getRunner: () => this.runner,
       getConfigParams: () => this.readConfigParams(),
       realtime: this.realtime,
-      triggers: this.triggers
+      triggers: this.triggers,
+      emailConfig: this.emailConfig,
+      mailer: this.mailer,
+      emailTokens: new EmailTokenStore(this.facade)
     });
     const listen = await this.http.listen();
 
@@ -164,6 +193,20 @@ export class BackendService {
       appId: this.options.backendId,
       masterKey: this.security.adminToken
     };
+
+    // 4.5 The Send Email node (BAK-002, noodl-viewer-cloud) runs INSIDE this
+    //     same process (via WorkflowRunner's CloudRunner), so it reaches the
+    //     Mailer through a process-global function — the exact idiom
+    //     `_noodl_cloudservices` above already establishes for database
+    //     access from inside functions. `typeof _noodl_send_email !==
+    //     'undefined'` is how the node detects "not running inside
+    //     nodegx-backend at all" versus "running here but unconfigured" (the
+    //     latter comes back as `{success:false, error}` from the Mailer
+    //     itself — still loud, just via the return value instead of absence).
+    //     Template resolution happens HERE (not in the node) because only the
+    //     service owns EmailConfigState's per-backend template overrides.
+    (globalThis as any)._noodl_send_email = (request: SendEmailNodeRequest): Promise<SendEmailResult> =>
+      this.resolveAndSendEmail(request);
 
     // 5. Workflows.
     this.runner = new WorkflowRunner({
@@ -226,6 +269,50 @@ export class BackendService {
   }
 
   /**
+   * Test-only escape hatch (same pattern as `getRouteTable()`): lets a test
+   * inject a fake SMTP transport via `Mailer.setTransportForTesting` so email
+   * flows can be exercised end-to-end over real HTTP without any network I/O.
+   * No production code path reads this.
+   */
+  getMailerForTesting(): Mailer | null {
+    return this.mailer;
+  }
+
+  /**
+   * The Send Email node's actual send path: resolve a template (if given)
+   * against this backend's per-backend override + shipped default, then hand
+   * off to the Mailer — which is where the loud-failure doctrine (no SMTP
+   * configured => `{success:false, error}`, never a throw, never a queue)
+   * actually lives, so this method inherits it for free.
+   */
+  private async resolveAndSendEmail(request: SendEmailNodeRequest): Promise<SendEmailResult> {
+    if (!this.mailer || !this.emailConfig) {
+      return { success: false, error: 'Email is not available: the backend service has not finished starting.' };
+    }
+    if (!request.to) {
+      return { success: false, error: 'Send Email: "to" is required.' };
+    }
+
+    if (request.template) {
+      if (!isTemplateId(request.template)) {
+        return { success: false, error: `Send Email: unknown template "${request.template}".` };
+      }
+      const rendered = renderTemplate(this.emailConfig.effectiveTemplate(request.template), {
+        appName: this.options.backendName,
+        ...(request.variables || {})
+      });
+      return this.mailer.send({ to: request.to, subject: rendered.subject, text: rendered.text, html: rendered.html });
+    }
+
+    return this.mailer.send({
+      to: request.to,
+      subject: request.subject || '',
+      text: request.text || '',
+      html: request.html
+    });
+  }
+
+  /**
    * The running server's route table (method/pattern/access). The route-walk
    * test iterates this to prove enforcement covers every route — a route added
    * without an access declaration cannot appear here (TS) and a route that
@@ -275,6 +362,17 @@ export class BackendService {
         { name: 'scopes', type: 'Array' },
         { name: 'revoked', type: 'Boolean' },
         { name: 'lastUsedAt', type: 'Date' }
+      ]
+    });
+    // BAK-002: password-reset / verify-email tokens — hashed at rest, single-use.
+    sm.createTable({
+      name: '_EmailToken',
+      columns: [
+        { name: 'tokenHash', type: 'String' },
+        { name: 'userId', type: 'String' },
+        { name: 'kind', type: 'String' },
+        { name: 'expiresAt', type: 'Date' },
+        { name: 'consumedAt', type: 'Date' }
       ]
     });
   }
