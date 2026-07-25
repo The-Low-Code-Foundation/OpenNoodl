@@ -460,14 +460,58 @@ describe('persistence across a service restart', () => {
   });
 });
 
-describe('auth policy on non-loopback binds', () => {
-  it('requires the bearer token for everything except /health', async () => {
+describe('auth policy on non-loopback binds (BAK-003 model)', () => {
+  it('refuses to start with dev-open on a non-loopback bind (the interlock)', async () => {
     const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'nodegx-backend-auth-'));
+    // First start on loopback writes the default security.json (devOpen: true).
+    const local = new BackendService({ dataDir, port: 0, backendId: 'auth_test', backendName: 'Auth' });
+    try {
+      const started = await local.start();
+      await started.stop();
+
+      const publicBind = new BackendService({
+        dataDir,
+        port: 0,
+        host: '0.0.0.0',
+        backendId: 'auth_test',
+        backendName: 'Auth'
+      });
+      await expect(publicBind.start()).rejects.toThrow(/devOpen/);
+    } finally {
+      await local.stop();
+      fs.rmSync(dataDir, { recursive: true, force: true });
+    }
+  });
+
+  it('with dev-open off: CLPs govern data routes, the admin credential governs admin routes, /health stays public', async () => {
+    const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'nodegx-backend-auth-'));
+    fs.mkdirSync(dataDir, { recursive: true });
+    // Pre-write a locked config so the non-loopback start passes the interlock.
+    const config = {
+      version: 1,
+      devOpen: false,
+      defaults: {
+        permissions: {
+          find: 'authenticated',
+          get: 'authenticated',
+          create: 'authenticated',
+          update: 'authenticated',
+          delete: 'authenticated'
+        },
+        creatorOwns: true
+      },
+      collections: {},
+      functions: {},
+      files: { upload: 'authenticated', read: 'public', delete: 'nobody' },
+      signup: 'public'
+    };
+    fs.writeFileSync(path.join(dataDir, 'security.json'), JSON.stringify(config));
+
     const service = new BackendService({
       dataDir,
       port: 0,
       host: '0.0.0.0',
-      authToken: 'test-token',
+      authToken: 'test-token', // WF-004 --token, now the admin credential
       backendId: 'auth_test',
       backendName: 'Auth'
     });
@@ -475,14 +519,24 @@ describe('auth policy on non-loopback binds', () => {
       const started = await service.start();
       const base = `http://127.0.0.1:${started.listen.port}`;
 
+      // /health stays public (supervisor handshake + ops probes).
       const health = await fetch(`${base}/health`);
       expect(health.status).toBe(200);
 
+      // Data routes: no blanket wall — CLP denies the anonymous caller (403/119).
       const denied = await fetch(`${base}/api/Notes`);
-      expect(denied.status).toBe(401);
+      expect(denied.status).toBe(403);
+      expect((await denied.json()).code).toBe(119);
 
+      // The admin credential (old WF-004 token) has full access.
       const allowed = await fetch(`${base}/api/Notes`, { headers: { authorization: 'Bearer test-token' } });
       expect(allowed.status).toBe(200);
+
+      // Admin routes answer 401 without it — same answer for wrong and missing.
+      const adminDenied = await fetch(`${base}/admin/schema`);
+      expect(adminDenied.status).toBe(401);
+      const adminWrong = await fetch(`${base}/admin/schema`, { headers: { authorization: 'Bearer wrong' } });
+      expect(adminWrong.status).toBe(401);
     } finally {
       await service.stop();
       fs.rmSync(dataDir, { recursive: true, force: true });

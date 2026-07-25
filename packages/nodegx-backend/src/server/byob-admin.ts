@@ -21,6 +21,8 @@ import type * as http from 'http';
 import type { AdapterFacade } from '../persistence/AdapterFacade';
 import type { ExecutionHistory } from '../execution/ExecutionStore';
 import type { WorkflowRunner } from '../workflow/WorkflowRunner';
+import type { RequestContext } from './HttpServer';
+import type { ClpOp } from '../security/model';
 import { HttpError, readJSONBody, sendJSON } from './http-util';
 
 function parseJSON(value: string | undefined, name: string): Record<string, unknown> | undefined {
@@ -47,46 +49,57 @@ export class ByobAdminRoutes {
   // BYOB: /api/:table
   // ==========================================================================
 
-  async query(res: http.ServerResponse, table: string, query: Record<string, string>): Promise<void> {
+  async query(ctx: RequestContext): Promise<void> {
+    const query = ctx.query;
     const options = {
       where: parseJSON(query.where, 'where'),
       sort: parseJSON(query.sort, 'sort') as unknown as string[] | undefined,
       limit: query.limit ? parseInt(query.limit, 10) : 100,
       skip: query.skip ? parseInt(query.skip, 10) : 0,
-      count: query.count === '1' || query.count === 'true'
+      count: query.count === '1' || query.count === 'true',
+      acl: ctx.acl('read')
     };
-    const { results, count } = await this.facade.rawQuery(table, options);
-    sendJSON(res, 200, { results, count: count !== undefined ? count : results.length });
+    const { results, count } = await this.facade.rawQuery(ctx.params.table, options);
+    sendJSON(ctx.res, 200, { results, count: count !== undefined ? count : results.length });
   }
 
-  async fetch(res: http.ServerResponse, table: string, id: string): Promise<void> {
+  async fetch(ctx: RequestContext): Promise<void> {
     try {
-      const record = await this.facade.rawFetch(table, id);
-      sendJSON(res, 200, record);
+      const record = await this.facade.rawFetch(ctx.params.table, ctx.params.id, ctx.acl('read'));
+      sendJSON(ctx.res, 200, record);
     } catch {
       throw new HttpError(404, 'Record not found');
     }
   }
 
-  async create(req: http.IncomingMessage, res: http.ServerResponse, table: string): Promise<void> {
-    const data = await readJSONBody(req);
-    const record = await this.facade.rawCreate(table, data);
-    sendJSON(res, 201, record);
+  async create(ctx: RequestContext): Promise<void> {
+    const data = await readJSONBody(ctx.req);
+    ctx.stampCreate(ctx.params.table, data);
+    const record = await this.facade.rawCreate(ctx.params.table, data);
+    sendJSON(ctx.res, 201, record);
   }
 
-  async save(req: http.IncomingMessage, res: http.ServerResponse, table: string, id: string): Promise<void> {
-    const data = await readJSONBody(req);
-    const record = await this.facade.rawSave(table, id, data);
-    sendJSON(res, 200, record);
+  async save(ctx: RequestContext): Promise<void> {
+    const data = await readJSONBody(ctx.req);
+    try {
+      const record = await this.facade.rawSave(ctx.params.table, ctx.params.id, data, ctx.acl('write'));
+      sendJSON(ctx.res, 200, record);
+    } catch {
+      throw new HttpError(404, 'Record not found');
+    }
   }
 
-  async delete(res: http.ServerResponse, table: string, id: string): Promise<void> {
-    await this.facade.rawDelete(table, id);
-    sendJSON(res, 200, { deleted: true, objectId: id });
+  async delete(ctx: RequestContext): Promise<void> {
+    try {
+      await this.facade.rawDelete(ctx.params.table, ctx.params.id, ctx.acl('write'));
+    } catch {
+      throw new HttpError(404, 'Record not found');
+    }
+    sendJSON(ctx.res, 200, { deleted: true, objectId: ctx.params.id });
   }
 
-  async batch(req: http.IncomingMessage, res: http.ServerResponse): Promise<void> {
-    const body = await readJSONBody(req);
+  async batch(ctx: RequestContext): Promise<void> {
+    const body = await readJSONBody(ctx.req);
     const operations = body.operations;
     if (!Array.isArray(operations)) {
       throw new HttpError(400, 'operations must be an array');
@@ -95,16 +108,31 @@ export class ByobAdminRoutes {
     const results: unknown[] = [];
     for (const op of operations as Record<string, unknown>[]) {
       try {
+        // Per-operation enforcement: the batch route can't be gated as a whole
+        // (each op names its own collection and method).
+        const collection = op.collection as string;
+        const clpOp: ClpOp = op.method === 'create' ? 'create' : op.method === 'save' ? 'update' : 'delete';
         switch (op.method) {
-          case 'create':
-            results.push(await this.facade.rawCreate(op.collection as string, op.data as Record<string, unknown>));
+          case 'create': {
+            ctx.checkData(collection, clpOp);
+            const data = (op.data as Record<string, unknown>) || {};
+            ctx.stampCreate(collection, data);
+            results.push(await this.facade.rawCreate(collection, data));
             break;
+          }
           case 'save':
-            await this.facade.rawSave(op.collection as string, op.objectId as string, op.data as Record<string, unknown>);
+            ctx.checkData(collection, clpOp);
+            await this.facade.rawSave(
+              collection,
+              op.objectId as string,
+              op.data as Record<string, unknown>,
+              ctx.acl('write')
+            );
             results.push({ success: true });
             break;
           case 'delete':
-            await this.facade.rawDelete(op.collection as string, op.objectId as string);
+            ctx.checkData(collection, clpOp);
+            await this.facade.rawDelete(collection, op.objectId as string, ctx.acl('write'));
             results.push({ deleted: true });
             break;
           default:
@@ -115,7 +143,7 @@ export class ByobAdminRoutes {
       }
     }
 
-    sendJSON(res, 200, { results });
+    sendJSON(ctx.res, 200, { results });
   }
 
   // ==========================================================================

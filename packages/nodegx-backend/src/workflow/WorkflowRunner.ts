@@ -210,6 +210,37 @@ export class WorkflowRunner {
     return false;
   }
 
+  /**
+   * The graph author's auth declaration for a function: the Request node's
+   * `allowNoAuth` parameter. BAK-003 uses it as the default `call` rule
+   * (public when true, authenticated otherwise); a config entry overrides it.
+   */
+  functionAllowsNoAuth(functionName: string): boolean {
+    const fullName = `/#__cloud__/${functionName}`;
+    for (const exportData of this.loadedWorkflows.values()) {
+      const components =
+        (exportData.components as { name: string; nodes?: Record<string, unknown>[] }[] | undefined) || [];
+      for (const component of components) {
+        if (component.name !== fullName) continue;
+        const found = this.findRequestNode(component.nodes || []);
+        return Boolean(found && (found.parameters as Record<string, unknown> | undefined)?.allowNoAuth === true);
+      }
+    }
+    return false;
+  }
+
+  private findRequestNode(nodes: Record<string, unknown>[]): Record<string, unknown> | null {
+    for (const node of nodes) {
+      if (node.type === 'noodl.cloud.request') return node;
+      const children = node.children as Record<string, unknown>[] | undefined;
+      if (Array.isArray(children)) {
+        const found = this.findRequestNode(children);
+        if (found) return found;
+      }
+    }
+    return null;
+  }
+
   getAvailableFunctions(): { name: string; workflow: string }[] {
     const functions: { name: string; workflow: string }[] = [];
     for (const [workflowName, exportData] of this.loadedWorkflows) {

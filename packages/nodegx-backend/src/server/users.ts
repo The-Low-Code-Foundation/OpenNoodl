@@ -25,6 +25,7 @@ import * as crypto from 'crypto';
 import type * as http from 'http';
 
 import type { AdapterFacade } from '../persistence/AdapterFacade';
+import type { SecurityState } from '../security/state';
 import { HttpError, readJSONBody, sendJSON } from './http-util';
 
 const SCRYPT_KEYLEN = 64;
@@ -53,9 +54,13 @@ function newSessionToken(): string {
 
 export class UserRoutes {
   private readonly facade: AdapterFacade;
+  // Reserved for session-policy decisions (the signup rule itself is enforced
+  // by the dispatcher's route gate).
+  private readonly security: SecurityState | null;
 
-  constructor(facade: AdapterFacade) {
+  constructor(facade: AdapterFacade, security?: SecurityState) {
     this.facade = facade;
+    this.security = security || null;
   }
 
   // ==========================================================================
@@ -167,12 +172,27 @@ export class UserRoutes {
     delete body.objectId;
     delete body.sessionToken;
     delete body._hashed_password;
-    if (typeof body.password === 'string' && body.password) {
+    const passwordChanged = typeof body.password === 'string' && body.password;
+    if (passwordChanged) {
       body._hashed_password = hashPassword(body.password as string);
     }
     delete body.password;
 
     const updated = await this.facade.rawSave('_User', objectId, body);
+
+    // A password change revokes every OTHER session for this user (the one
+    // that authorized the change stays valid) — a stolen session must not
+    // survive the victim rotating their password. Adversarial-suite item.
+    if (passwordChanged) {
+      const currentToken = req.headers['x-parse-session-token'] as string;
+      const { results: sessions } = await this.facade.rawQuery('_Session', { where: { userId: objectId } });
+      for (const session of sessions) {
+        if (session.sessionToken !== currentToken) {
+          await this.facade.rawDelete('_Session', session.objectId as string);
+        }
+      }
+    }
+
     sendJSON(res, 200, { updatedAt: updated.updatedAt });
   }
 

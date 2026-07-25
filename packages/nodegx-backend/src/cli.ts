@@ -111,8 +111,17 @@ async function runServe(options: Partial<BackendServiceOptions>): Promise<void> 
     }\n`
   );
   process.stdout.write(`[nodegx-backend] workflows: ${started.workflows.workflowCount} loaded\n`);
+  process.stdout.write(
+    `[nodegx-backend] security: ${
+      started.security.enforced
+        ? 'ENFORCED (collection permissions + row ACLs active)'
+        : 'dev-open (all access relaxed; loopback only)'
+    }\n`
+  );
   if (service.requiresAuth()) {
-    process.stdout.write('[nodegx-backend] non-loopback bind: bearer token REQUIRED for requests\n');
+    process.stdout.write(
+      '[nodegx-backend] non-loopback bind: data routes governed by permissions/sessions; admin routes require the admin credential\n'
+    );
   }
 
   // Machine-readable readiness line — the editor supervisor handshakes on this.

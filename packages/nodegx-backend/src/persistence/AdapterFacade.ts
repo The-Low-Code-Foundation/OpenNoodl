@@ -33,6 +33,16 @@ interface SchemaColumn {
   targetClass?: string;
 }
 
+/**
+ * Row-level ACL context (BAK-003) passed through to the adapter, which
+ * compiles it into the SQL statement (QueryBuilder.buildAclPredicate).
+ * Absent = no row filtering (dev-open, admin, scoped API keys).
+ */
+export interface AclOption {
+  access: 'read' | 'write';
+  keys: string[];
+}
+
 export interface QueryOptions {
   where?: Record<string, unknown>;
   sort?: string[] | string;
@@ -41,6 +51,7 @@ export interface QueryOptions {
   select?: string[] | string;
   include?: string[];
   count?: boolean;
+  acl?: AclOption;
 }
 
 export interface WireQueryResult {
@@ -82,40 +93,51 @@ export class AdapterFacade {
     }));
   }
 
-  rawFetch(collection: string, objectId: string): Promise<Record<string, unknown>> {
-    return this.call('fetch', { collection, objectId });
+  rawFetch(collection: string, objectId: string, acl?: AclOption): Promise<Record<string, unknown>> {
+    return this.call('fetch', { collection, objectId, acl });
   }
 
   rawCreate(collection: string, data: Record<string, unknown>): Promise<Record<string, unknown>> {
     return this.call('create', { collection, data });
   }
 
-  rawSave(collection: string, objectId: string, data: Record<string, unknown>): Promise<Record<string, unknown>> {
-    return this.call('save', { collection, objectId, data });
+  rawSave(
+    collection: string,
+    objectId: string,
+    data: Record<string, unknown>,
+    acl?: AclOption
+  ): Promise<Record<string, unknown>> {
+    return this.call('save', { collection, objectId, data, acl });
   }
 
-  rawDelete(collection: string, objectId: string): Promise<void> {
-    return this.call('delete', { collection, objectId });
+  rawDelete(collection: string, objectId: string, acl?: AclOption): Promise<void> {
+    return this.call('delete', { collection, objectId, acl });
   }
 
-  rawCount(collection: string, where?: Record<string, unknown>): Promise<number> {
-    return this.call('count', { collection, where });
+  rawCount(collection: string, where?: Record<string, unknown>, acl?: AclOption): Promise<number> {
+    return this.call('count', { collection, where, acl });
   }
 
-  rawIncrement(collection: string, objectId: string, properties: Record<string, number>): Promise<Record<string, unknown>> {
-    return this.call('increment', { collection, objectId, properties });
+  rawIncrement(
+    collection: string,
+    objectId: string,
+    properties: Record<string, number>,
+    acl?: AclOption
+  ): Promise<Record<string, unknown>> {
+    return this.call('increment', { collection, objectId, properties, acl });
   }
 
   rawAggregate(
     collection: string,
     group: Record<string, Record<string, string>>,
-    where?: Record<string, unknown>
+    where?: Record<string, unknown>,
+    acl?: AclOption
   ): Promise<Record<string, unknown>> {
-    return this.call('aggregate', { collection, group, where });
+    return this.call('aggregate', { collection, group, where, acl });
   }
 
-  rawDistinct(collection: string, property: string, where?: Record<string, unknown>): Promise<unknown[]> {
-    return this.call('distinct', { collection, property, where });
+  rawDistinct(collection: string, property: string, where?: Record<string, unknown>, acl?: AclOption): Promise<unknown[]> {
+    return this.call('distinct', { collection, property, where, acl });
   }
 
   addRelation(collection: string, objectId: string, key: string, targetObjectId: string): Promise<void> {
@@ -160,7 +182,8 @@ export class AdapterFacade {
   private async toWire(
     collection: string,
     record: Record<string, unknown>,
-    include: string[]
+    include: string[],
+    acl?: AclOption
   ): Promise<Record<string, unknown>> {
     const types = this.columnTypes(collection);
     const out: Record<string, unknown> = {};
@@ -181,11 +204,14 @@ export class AdapterFacade {
         const className = col.targetClass || 'Unknown';
         if (include.includes(key)) {
           try {
-            const target = await this.rawFetch(className, value);
-            const expanded = await this.toWire(className, target, []);
+            // The caller's read ACL applies to the TARGET row too — without
+            // this, include= is a one-hop ACL bypass. An unreadable target
+            // degrades to the unexpanded envelope, same as a dangling pointer.
+            const target = await this.rawFetch(className, value, acl && { ...acl, access: 'read' });
+            const expanded = await this.toWire(className, target, [], acl);
             out[key] = { __type: 'Object', className, ...expanded };
           } catch {
-            // Dangling pointer — fall back to the unexpanded envelope.
+            // Dangling or unreadable pointer — fall back to the unexpanded envelope.
             out[key] = { __type: 'Pointer', className, objectId: value };
           }
         } else {
@@ -222,16 +248,21 @@ export class AdapterFacade {
     const { results, count } = await this.rawQuery(collection, options);
     const wire: Record<string, unknown>[] = [];
     for (const record of results) {
-      wire.push(await this.toWire(collection, record, include));
+      wire.push(await this.toWire(collection, record, include, options.acl));
     }
     const out: WireQueryResult = { results: wire };
     if (count !== undefined) out.count = count;
     return out;
   }
 
-  async wireFetch(collection: string, objectId: string, include?: string[] | string): Promise<Record<string, unknown>> {
-    const record = await this.rawFetch(collection, objectId);
-    return this.toWire(collection, record, this.normalizeInclude(include));
+  async wireFetch(
+    collection: string,
+    objectId: string,
+    include?: string[] | string,
+    acl?: AclOption
+  ): Promise<Record<string, unknown>> {
+    const record = await this.rawFetch(collection, objectId, acl);
+    return this.toWire(collection, record, this.normalizeInclude(include), acl);
   }
 
   /**

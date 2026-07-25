@@ -12,14 +12,21 @@
  *   GET    /config                { params }
  *
  * Explicitly NOT implemented (the clients never call them): live queries, push,
- * GraphQL, client schema/ACL management.
+ * GraphQL, client schema management.
+ *
+ * BAK-003: collection-level permission gates run in the HttpServer dispatcher
+ * before these handlers; the handlers apply the ROW level by passing the
+ * caller's acl context (ctx.acl) into every facade call, and accept the
+ * client-supplied ACL field the Create/Set Record nodes emit (WF-004 used to
+ * strip it). Row-level denials answer 404/101, indistinguishable from a
+ * missing row.
  *
  * @module nodegx-backend/server/parse-wire
  */
 
-import type * as http from 'http';
-
 import type { AdapterFacade, QueryOptions } from '../persistence/AdapterFacade';
+import type { RequestContext } from './HttpServer';
+import { validateAclShape } from '../security/model';
 import { HttpError, readJSONBody, sendJSON } from './http-util';
 
 function parseJSONParam(value: string | undefined, name: string): Record<string, unknown> | undefined {
@@ -104,62 +111,93 @@ export class ParseWireRoutes {
   }
 
   /** POST /classes/:collection — Parse's query-tunnelling or a create. */
-  async classesPost(req: http.IncomingMessage, res: http.ServerResponse, collection: string): Promise<void> {
-    const body = await readJSONBody(req);
+  async classesPost(ctx: RequestContext): Promise<void> {
+    const collection = ctx.params.collection;
+    // The dispatcher pre-read the body to resolve the operation (find vs create).
+    const body = ctx.body || {};
 
     if (body._method === 'GET') {
-      const result = await this.facade.wireQuery(collection, toQueryOptions(body));
-      sendJSON(res, 200, result);
+      const options = toQueryOptions(body);
+      options.acl = ctx.acl('read');
+      const result = await this.facade.wireQuery(collection, options);
+      sendJSON(ctx.res, 200, result);
       return;
     }
 
-    delete body.ACL;
     delete body._method;
+    // Client-supplied ACLs are accepted (the Create Record node's Access
+    // Control Rules emit them). stampCreate validates the shape and applies
+    // owner + template ACL per the collection's creator-owns setting.
+    ctx.stampCreate(collection, body);
     const record = await this.facade.rawCreate(collection, body);
     // Parse's create response: objectId + createdAt only. The client merges its
     // own data over this — returning wire-typed fields here would leak `__type`
     // envelopes into model data un-deserialized (create responses skip
     // _deserializeJSON on the client).
-    sendJSON(res, 201, { objectId: record.objectId, createdAt: record.createdAt });
+    sendJSON(ctx.res, 201, { objectId: record.objectId, createdAt: record.createdAt });
   }
 
   /** GET /classes/:collection — used by count() with where/limit/count params. */
-  async classesGet(res: http.ServerResponse, collection: string, query: Record<string, string>): Promise<void> {
-    const result = await this.facade.wireQuery(collection, toQueryOptions(query));
-    sendJSON(res, 200, result);
+  async classesGet(ctx: RequestContext): Promise<void> {
+    const options = toQueryOptions(ctx.query);
+    options.acl = ctx.acl('read');
+    const result = await this.facade.wireQuery(ctx.params.collection, options);
+    sendJSON(ctx.res, 200, result);
   }
 
   /** GET /classes/:collection/:id */
-  async classGet(
-    res: http.ServerResponse,
-    collection: string,
-    objectId: string,
-    query: Record<string, string>
-  ): Promise<void> {
+  async classGet(ctx: RequestContext): Promise<void> {
     try {
-      const record = await this.facade.wireFetch(collection, objectId, query.include);
-      sendJSON(res, 200, record);
+      const record = await this.facade.wireFetch(
+        ctx.params.collection,
+        ctx.params.id,
+        ctx.query.include,
+        ctx.acl('read')
+      );
+      sendJSON(ctx.res, 200, record);
     } catch {
+      // Missing and unreadable answer identically (existence hiding).
       throw new HttpError(404, 'Object not found.', 101);
     }
   }
 
   /** PUT /classes/:collection/:id — save and/or __op updates. */
-  async classPut(req: http.IncomingMessage, res: http.ServerResponse, collection: string, objectId: string): Promise<void> {
-    const body = await readJSONBody(req);
-    delete body.ACL;
+  async classPut(ctx: RequestContext): Promise<void> {
+    const collection = ctx.params.collection;
+    const objectId = ctx.params.id;
+    const body = await readJSONBody(ctx.req);
     delete body.createdAt;
     delete body.updatedAt;
     delete body.objectId;
+    // A client may set the ACL on rows it can write (Parse semantics; the Set
+    // Record node's Access Control Rules emit this). Shape-validate it.
+    const aclError = validateAclShape(body.ACL);
+    if (aclError) throw new HttpError(400, `Invalid ACL: ${aclError}`, 123);
+    if (body.ACL === undefined || body.ACL === null) delete body.ACL;
 
+    const acl = ctx.acl('write');
     const { increments, addRelations, removeRelations, plain } = extractOps(body);
 
-    let updated: Record<string, unknown> | null = null;
-    if (Object.keys(plain).length > 0) {
-      updated = await this.facade.rawSave(collection, objectId, plain);
+    // Relation-only updates never touch the row itself, so the write predicate
+    // wouldn't run — assert writability explicitly before mutating junctions.
+    if ((addRelations.length > 0 || removeRelations.length > 0) && acl) {
+      try {
+        await this.facade.rawFetch(collection, objectId, { ...acl, access: 'write' });
+      } catch {
+        throw new HttpError(404, 'Object not found.', 101);
+      }
     }
-    if (Object.keys(increments).length > 0) {
-      updated = await this.facade.rawIncrement(collection, objectId, increments);
+
+    let updated: Record<string, unknown> | null = null;
+    try {
+      if (Object.keys(plain).length > 0) {
+        updated = await this.facade.rawSave(collection, objectId, plain, acl);
+      }
+      if (Object.keys(increments).length > 0) {
+        updated = await this.facade.rawIncrement(collection, objectId, increments, acl);
+      }
+    } catch {
+      throw new HttpError(404, 'Object not found.', 101);
     }
     for (const rel of addRelations) {
       await this.facade.addRelation(collection, objectId, rel.key, rel.targetObjectId);
@@ -175,26 +213,35 @@ export class ParseWireRoutes {
     if (updated) {
       for (const key of Object.keys(increments)) response[key] = updated[key];
     }
-    sendJSON(res, 200, response);
+    sendJSON(ctx.res, 200, response);
   }
 
   /** DELETE /classes/:collection/:id */
-  async classDelete(res: http.ServerResponse, collection: string, objectId: string): Promise<void> {
-    await this.facade.rawDelete(collection, objectId);
-    sendJSON(res, 200, {});
+  async classDelete(ctx: RequestContext): Promise<void> {
+    try {
+      await this.facade.rawDelete(ctx.params.collection, ctx.params.id, ctx.acl('write'));
+    } catch {
+      throw new HttpError(404, 'Object not found.', 101);
+    }
+    sendJSON(ctx.res, 200, {});
   }
 
   /**
    * GET /aggregate/:collection — the two shapes `cloudstore.js` emits:
    * `distinct=<prop>` and `group=`/`$group=` (+ `match=`/`$match=`) with
-   * `$avg`/`$sum`/`$max`/`$min`/`$addToSet` accessors.
+   * `$avg`/`$sum`/`$max`/`$min`/`$addToSet` accessors. Both are governed by
+   * the `find` permission and the read ACL — they reveal exactly what find
+   * reveals.
    */
-  async aggregate(res: http.ServerResponse, collection: string, query: Record<string, string>): Promise<void> {
+  async aggregate(ctx: RequestContext): Promise<void> {
+    const collection = ctx.params.collection;
+    const query = ctx.query;
     const where = parseJSONParam(query.match || query.$match || query.where, 'match');
+    const acl = ctx.acl('read');
 
     if (query.distinct) {
-      const results = await this.facade.rawDistinct(collection, query.distinct, where);
-      sendJSON(res, 200, { results });
+      const results = await this.facade.rawDistinct(collection, query.distinct, where, acl);
+      sendJSON(ctx.res, 200, { results });
       return;
     }
 
@@ -215,12 +262,12 @@ export class ParseWireRoutes {
       }
     }
 
-    const result = await this.facade.rawAggregate(collection, group, where);
-    sendJSON(res, 200, { results: [result] });
+    const result = await this.facade.rawAggregate(collection, group, where, acl);
+    sendJSON(ctx.res, 200, { results: [result] });
   }
 
   /** GET /config */
-  config(res: http.ServerResponse): void {
+  config(res: import('http').ServerResponse): void {
     sendJSON(res, 200, { params: this.getConfigParams() });
   }
 }

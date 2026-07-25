@@ -13,9 +13,27 @@
 
 export { BackendService, StartedService } from './service';
 export { createAdapter, PersistenceHandle, LocalBackendPersistenceError } from './persistence/createAdapter';
-export { AdapterFacade } from './persistence/AdapterFacade';
+export { AdapterFacade, AclOption } from './persistence/AdapterFacade';
 export { BackendServiceOptions, resolveOptions, requiresAuth, generateAuthToken } from './config';
-export { HttpServer, ListenInfo } from './server/HttpServer';
+export { HttpServer, ListenInfo, RequestContext, RouteAccess, RouteInfo } from './server/HttpServer';
 export { WorkflowRunner } from './workflow/WorkflowRunner';
 export { ExecutionHistory } from './execution/ExecutionStore';
+// BAK-003 — the access-control contract. BAK-001's realtime delivery imports
+// canReadRecord/resolvePrincipal from here (model doc §11).
+export {
+  Principal,
+  ClpOp,
+  RuleValue,
+  SecurityConfig,
+  principalKeys,
+  ruleAllows,
+  checkClp,
+  canReadRecord,
+  canAccessRecord,
+  effectiveRule,
+  effectiveCreatorOwns,
+  defaultSecurityConfig,
+  validateSecurityConfig
+} from './security/model';
+export { SecurityState, SecurityStartupError } from './security/state';
 export { main as cli } from './cli';

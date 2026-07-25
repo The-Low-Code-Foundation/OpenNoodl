@@ -28,6 +28,7 @@ import { AdapterFacade } from './persistence/AdapterFacade';
 import { ExecutionHistory, ExecutionHistoryStatus } from './execution/ExecutionStore';
 import { HttpServer, ListenInfo } from './server/HttpServer';
 import { WorkflowRunner } from './workflow/WorkflowRunner';
+import { SecurityState, SecurityStartupError } from './security/state';
 
 export interface StartedService {
   options: BackendServiceOptions;
@@ -35,6 +36,7 @@ export interface StartedService {
   persistence: PersistenceHandle;
   executionHistory: ExecutionHistoryStatus;
   workflows: { initialized: boolean; workflowCount: number };
+  security: { devOpen: boolean; enforced: boolean; migratedThisStart: boolean };
   stop(): Promise<void>;
 }
 
@@ -44,6 +46,7 @@ export class BackendService {
   private facade: AdapterFacade | null = null;
   private http: HttpServer | null = null;
   private runner: WorkflowRunner | null = null;
+  private security: SecurityState | null = null;
   private readonly executions = new ExecutionHistory();
 
   constructor(partial: Partial<BackendServiceOptions> = {}) {
@@ -71,6 +74,34 @@ export class BackendService {
     this.facade = new AdapterFacade(this.persistence.adapter);
     this.ensureSystemTables();
 
+    // 1.5 Security (BAK-003): load/create security.json + the admin credential,
+    //     and run the deploy interlock (non-loopback + devOpen = refuse).
+    this.security = new SecurityState({
+      dataDir: this.options.dataDir,
+      loopback: !requiresAuth(this.options),
+      cliToken: this.options.authToken,
+      facade: this.facade
+    });
+    if (!this.security.config.devOpen && this.persistence.status.ephemeral) {
+      // The in-memory mock cannot evaluate ACL predicates; enforcing on top of
+      // it would be silent non-enforcement. Refuse rather than pretend.
+      throw new SecurityStartupError(
+        'ENFORCEMENT_NEEDS_PERSISTENCE',
+        'Refusing to start: access control is enabled (devOpen: false) but persistence is running in ' +
+          'ephemeral mock mode, which cannot enforce row-level ACLs. Use a real SQLite engine or set devOpen: true.'
+      );
+    }
+    if (this.security.migratedThisStart) {
+      // eslint-disable-next-line no-console
+      console.warn(
+        '[nodegx-backend] SECURITY DEFAULTS APPLIED: this backend had no security.json — one was created with ' +
+          'the default posture (collections require authentication, creator-owns on, dev-open ON for local ' +
+          'development). Existing records have no ACLs and stay reachable per collection permissions. ' +
+          'Set "devOpen": false in security.json to test enforcement locally; deploys refuse to start with ' +
+          'dev-open enabled.'
+      );
+    }
+
     // 2. Execution history beside the data.
     const executionHistory = this.executions.open(this.options.dataDir);
     if (!executionHistory.enabled) {
@@ -86,6 +117,7 @@ export class BackendService {
       persistence: this.persistence,
       facade: this.facade,
       executions: this.executions,
+      security: this.security,
       getRunner: () => this.runner,
       getConfigParams: () => this.readConfigParams()
     });
@@ -94,10 +126,14 @@ export class BackendService {
     // 4. Loopback cloud services for nodes running inside functions. One
     //    service process serves exactly one backend, so a process-wide global
     //    is safe here. Always loop back over 127.0.0.1 even on wider binds.
+    //    The masterKey makes functions run AS SYSTEM (model doc §1): the
+    //    cloud-runtime clients send it as X-Parse-Master-Key, which resolves
+    //    to the admin principal and bypasses CLPs/ACLs.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (globalThis as any)._noodl_cloudservices = {
       endpoint: `http://127.0.0.1:${listen.port}`,
-      appId: this.options.backendId
+      appId: this.options.backendId,
+      masterKey: this.security.adminToken
     };
 
     // 5. Workflows.
@@ -116,6 +152,11 @@ export class BackendService {
       persistence: this.persistence,
       executionHistory,
       workflows: this.runner.getStatus(),
+      security: {
+        devOpen: this.security.config.devOpen,
+        enforced: !this.security.devOpenActive,
+        migratedThisStart: this.security.migratedThisStart
+      },
       stop: () => this.stop()
     };
   }
@@ -131,6 +172,7 @@ export class BackendService {
     this.persistence = null;
     this.facade = null;
     this.runner = null;
+    this.security = null;
   }
 
   /** True when the current options require a bearer token (non-loopback bind). */
@@ -159,6 +201,25 @@ export class BackendService {
       columns: [
         { name: 'sessionToken', type: 'String' },
         { name: 'userId', type: 'String' }
+      ]
+    });
+    // BAK-003: roles (flat; membership via the users Relation's junction
+    // table) and API keys (hashed secrets, never recoverable).
+    sm.createTable({
+      name: '_Role',
+      columns: [
+        { name: 'name', type: 'String' },
+        { name: 'users', type: 'Relation', targetClass: '_User' }
+      ]
+    });
+    sm.createTable({
+      name: '_ApiKey',
+      columns: [
+        { name: 'name', type: 'String' },
+        { name: 'keyHash', type: 'String' },
+        { name: 'scopes', type: 'Array' },
+        { name: 'revoked', type: 'Boolean' },
+        { name: 'lastUsedAt', type: 'Date' }
       ]
     });
   }
