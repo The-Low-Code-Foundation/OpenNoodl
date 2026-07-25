@@ -34,6 +34,7 @@ The discipline that survives from the original framing: this phase does its six 
 - **WF-001 is the hard task** — semantics are the substance. Everything else in the phase is assembly.
 - **WF-005 can overlap WF-002** once the engine's trigger interface is defined; webhook/cron invocation of plain *functions* doesn't even need WF-001.
 - This track yields to Tracks C and E when capacity is contended — except WF-006 and RUN-004's loud-failure fix, which are too small and too valuable to defer.
+- **One-panel constraint (added 2026-07-25, from RUN-003's consolidation decision):** WF-004's Desired State already surfaces `nodegx-backend` in the **Backend Services panel** and keeps the `/api/:table` routes for the **BYOB nodes** alongside the Parse-wire subset — hold that line. The editor gets exactly one backend-configuration surface (`BackendServicesPanel`) covering external backends (BYOB: Directus/Supabase/…) and the local `nodegx-backend`; **no new panel and no third node family**. (The Parse-shaped record nodes + BYOB nodes coexisting is WF-004's deliberate compatibility choice; unifying them is a possible later cleanup, not a phase-19 requirement.) RUN-003's consolidation also **retires UBA** — the `uba` sidebar panel and its config-form subsystem answered "connect a backend" in name only; see [RUN-003-ASSESSMENT.md](../phase-16-runtime-deploy-health/RUN-003-ASSESSMENT.md) (correction box).
 
 ## Exit criterion
 

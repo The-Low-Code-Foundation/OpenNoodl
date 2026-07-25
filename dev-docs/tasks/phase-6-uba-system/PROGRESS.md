@@ -1,7 +1,9 @@
 # Phase 6: UBA System (Universal Backend Adapter) - Progress Tracker
 
-**Last Updated:** 2026-07-23 (REV-006 documentation truth pass)
-**Overall Status:** 🟡 In progress — foundational slice built and wired; four of six sub-phases not started
+**Last Updated:** 2026-07-25 (RUN-003 consolidation decision)
+**Overall Status:** ⚫ **SUPERSEDED** — retired 2026-07-25 in favour of BYOB (`BackendServicesPanel` + `byob-*` nodes); see below
+
+> **SUPERSEDED (2026-07-25, RUN-003 decision).** RUN-003's audit drove the built UBA against a real containerised Directus and established that this subsystem is a **config-form renderer for a hypothetical UBA-protocol middleware server** (POST config / GET health / SSE debug), not a system that reads a real backend's collections and fields — no real BaaS speaks its protocol, and the reference middleware (6E "Erleah") was never built. Meanwhile **BYOB** (`models/BackendServices/` + `views/panels/BackendServicesPanel/` + the four `byob-*` runtime nodes, commits `ae7d3b8`/`73b5a42` of 2025-12-30/31) already delivers the actual goal — introspect Directus/Supabase/Pocketbase, collections→dynamic ports, runtime CRUD — verified working against live Directus. Richard's decision: **consolidate on BYOB; UBA is retired.** Sub-phases 6B–6F will not be built. The tested pure modules (`SchemaParser`, `Conditions`) and their specs stay in the tree as-is; the experimental `uba` sidebar panel is slated for removal in RUN-003's final slice. Record of what was actually built below stands unchanged. See [RUN-003-ASSESSMENT.md](../phase-16-runtime-deploy-health/RUN-003-ASSESSMENT.md) for the full evidence trail.
 
 ---
 

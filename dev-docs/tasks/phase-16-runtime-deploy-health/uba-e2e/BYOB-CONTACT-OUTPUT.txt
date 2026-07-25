@@ -1,0 +1,47 @@
+
+──────────────────────────────────────────────────────────────────────────────
+A — REAL BackendServices introspection of live Directus /fields
+──────────────────────────────────────────────────────────────────────────────
+Parsed 31 collections (2 user).
+
+  collection "authors" (pk=id):
+    - id: type=integer  PK required
+    - name: type=string
+    - email: type=string
+
+  collection "articles" (pk=id):
+    - id: type=integer  PK required
+    - title: type=string
+    - body: type=text
+    - status: type=string  enum[draft,published,archived]
+    - rating: type=integer
+    - featured: type=boolean
+    - published_at: type=timestamp
+    - author: type=integer
+    - hero_image: type=uuid
+
+→ Introspection: WORKS. Enum parsed: true. Relations parsed: NO (gap — foreign_key_table not read).
+
+──────────────────────────────────────────────────────────────────────────────
+B — REAL byob-utils runtime query path against live Directus
+──────────────────────────────────────────────────────────────────────────────
+resolveBackend(_active_): url=http://localhost:8055 type=directus hasToken=true
+buildUrl → http://localhost:8055/items/articles
+CREATE items/articles → HTTP 200, id=2
+QUERY items/articles?filter={status=published} → HTTP 200, 2 record(s)
+  first record title: RUN-003 smoke
+
+→ Runtime CRUD path: WORKS end-to-end.
+
+──────────────────────────────────────────────────────────────────────────────
+C — REAL getEnhancedFieldType (field → Noodl port type)
+──────────────────────────────────────────────────────────────────────────────
+    id (integer/-) → port number
+    title (string/input) → port string
+    body (text/input-multiline) → port string
+    status (string/select-dropdown) → port enum(draft,published,archived)
+    rating (integer/input) → port number
+    featured (boolean/boolean) → port boolean
+    published_at (timestamp/datetime) → port string
+    author (integer/select-dropdown-m2o) → port number
+    hero_image (uuid/file-image) → port string
