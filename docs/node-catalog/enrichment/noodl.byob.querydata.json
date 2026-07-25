@@ -1,17 +1,19 @@
 {
   "typeName": "noodl.byob.QueryData",
   "summary": "Query Data (BYOB): fetches records from a self-hosted backend class on demand into a records array.",
-  "description": "The bring-your-own-backend query: when `fetch` fires it runs the configured query against the BYOB backend and emits `records` (array), `count`, `totalCount`, and `firstRecord`. `loading` covers the request window; `success`/`failure` sequence follow-ups. Results are a snapshot — there is no live re-query on remote changes, so writers re-trigger `fetch` when they finish.",
-  "whenToUse": "Reading lists from a self-hosted backend. On the managed cloud backend prefer Query Records (DbCollection2), which additionally keeps results live.",
+  "description": "The bring-your-own-backend query: when `fetch` fires it runs the configured query against the BYOB backend and emits `records` (array), `count`, `totalCount`, and `firstRecord`. `loading` covers the request window; `success`/`failure` sequence follow-ups. Results are a snapshot by default — writers re-trigger `fetch` when they finish. Against the NodeGX backend, turning on the `Live` input keeps the results current automatically: the node opens a realtime (SSE) subscription to the collection and re-runs the query (debounced) whenever a matching record changes, so the server re-applies the real filter/sort/paging each time.",
+  "whenToUse": "Reading lists from a self-hosted backend. Turn on `Live` for a hands-off live list on a NodeGX backend; for Directus, pair with a Subscribe To Changes node instead. On the managed cloud backend prefer Query Records (DbCollection2), which keeps results live in-process.",
   "ports": {
     "fetch": "Signal; runs the query. Wire a mount signal or a refresh event here.",
+    "live": "Boolean, default false. On a NodeGX backend, keeps results live by re-running the query when records change (realtime SSE). No effect on backends without SSE realtime — use Subscribe To Changes there.",
     "records": "The result array; feeds a Repeater like any items source.",
     "totalCount": "Total matching records server-side, independent of paging — drive pagination from this."
   },
-  "runtimeBehavior": "Class selection, filter-value inputs and paging inputs are generated from the backend schema and the query configuration (runtime-discovered); only the trigger/result surface is static.",
-  "examples": ["cloud-byob-crud"],
+  "runtimeBehavior": "Class selection, filter-value inputs, paging inputs and the `Live` toggle are generated from the backend schema and the query configuration (runtime-discovered); only the trigger/result surface is static. `Live` re-runs the existing query on each change, so filter/sort/limit stay authoritative on the server; bursts of changes coalesce into a single debounced re-fetch.",
+  "examples": ["cloud-byob-crud", "cloud-byob-live-refresh"],
   "antiPatterns": [
-    "Expecting live updates after writes — BYOB queries refresh only when `fetch` fires."
+    "Polling on a timer — turn on `Live` (NodeGX) or pair with Subscribe To Changes (Directus) instead.",
+    "Expecting `Live` to work against a backend without SSE realtime — only the NodeGX backend serves it."
   ],
   "relatedNodes": ["noodl.byob.CreateRecord", "noodl.byob.UpdateRecord", "noodl.byob.DeleteRecord", "DbCollection2", "For Each"]
 }

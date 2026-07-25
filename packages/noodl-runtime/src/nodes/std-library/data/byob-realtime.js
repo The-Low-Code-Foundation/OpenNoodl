@@ -234,9 +234,198 @@ RealtimeConnection.prototype.dispose = function () {
   }
 };
 
+// ============================================================================
+// NodeGX Backend transport — SSE (BAK-001)
+// ============================================================================
+//
+// The NodeGX standalone backend (nodegx-backend) speaks Server-Sent Events, not
+// WebSocket: GET /realtime opens a stream whose first `connected` frame carries
+// a server-minted clientId; POST /realtime/subscriptions {clientId, subscriptions}
+// then registers what to watch. Change frames arrive as
+// `event: change` / `data: {action, collection, record}`. A `resync` frame means
+// "you may have missed events — re-query" (the server keeps no replay log).
+//
+// This class matches RealtimeConnection's shape ({ onEvent, onStatus, onError },
+// connect(), dispose()) so Subscribe To Changes can pick a transport by backend
+// type without any other change. EventSource reconnects on its own; each
+// reconnect yields a fresh `connected` frame, so we simply re-POST the
+// subscription set every time — no manual backoff needed.
+
+/**
+ * Derive the NodeGX realtime stream URL from a backend base URL, carrying the
+ * auth token as a query param (EventSource cannot set headers).
+ * @param {string} baseUrl - Backend HTTP(S) base URL
+ * @param {string} [token] - Session/admin/api token ('' for none)
+ * @returns {string|null} Stream URL or null if the base URL is unusable
+ */
+function buildSSEUrl(baseUrl, token) {
+  if (!baseUrl || typeof baseUrl !== 'string') return null;
+  const cleaned = baseUrl.trim().replace(/\/+$/, '');
+  if (!/^https?:\/\//i.test(cleaned)) return null;
+  const url = cleaned + '/realtime';
+  return token ? url + '?token=' + encodeURIComponent(token) : url;
+}
+
+/**
+ * A NodeGX-backend realtime subscription over SSE. Same callback contract as
+ * RealtimeConnection: onEvent(event, records) with event in
+ * 'create'|'update'|'delete'|'resync'; create/update carry [record];
+ * delete carries [recordIdString] (matching the WebSocket transport so the
+ * node's event handler is transport-agnostic).
+ *
+ * @param {Object} options
+ * @param {string} options.baseUrl - Backend HTTP base URL
+ * @param {string} options.token - Auth token ('' for none)
+ * @param {string} options.collection - Collection to watch
+ * @param {Object} [options.filter] - Parse-style server-side filter
+ * @param {Function} options.onEvent - (event, records)
+ * @param {Function} options.onStatus - (subscribed: boolean)
+ * @param {Function} options.onError - ({ message, code? })
+ * @param {Function} [options.EventSourceImpl] - Injectable EventSource ctor
+ * @param {Function} [options.fetchImpl] - Injectable fetch (subscribe POST)
+ */
+function RealtimeSSEConnection(options) {
+  this._baseUrl = options.baseUrl;
+  this._token = options.token || '';
+  this._collection = options.collection;
+  this._filter = options.filter || undefined;
+  this._onEvent = options.onEvent || function () {};
+  this._onStatus = options.onStatus || function () {};
+  this._onError = options.onError || function () {};
+  this._EventSource =
+    'EventSourceImpl' in options ? options.EventSourceImpl : typeof EventSource !== 'undefined' ? EventSource : null;
+  this._fetch = options.fetchImpl || (typeof fetch !== 'undefined' ? fetch.bind(globalThis) : null);
+
+  this._es = null;
+  this._clientId = null;
+  this._disposed = false;
+}
+
+RealtimeSSEConnection.prototype.connect = function () {
+  if (this._disposed) return;
+
+  if (!this._EventSource) {
+    this._onError({ message: 'EventSource is not available in this environment' });
+    return;
+  }
+  const url = buildSSEUrl(this._baseUrl, this._token);
+  if (!url) {
+    this._onError({ message: 'Backend URL is not a valid http(s) URL: ' + this._baseUrl });
+    return;
+  }
+
+  let es;
+  try {
+    es = new this._EventSource(url);
+  } catch (e) {
+    this._onError({ message: 'Could not open realtime stream: ' + (e && e.message) });
+    return;
+  }
+  this._es = es;
+
+  es.addEventListener('connected', (ev) => {
+    if (this._disposed) return;
+    try {
+      this._clientId = JSON.parse(ev.data).clientId;
+    } catch (e) {
+      return;
+    }
+    // Fresh connection (or a reconnect with a new clientId): (re)register.
+    this._postSubscriptions();
+  });
+
+  es.addEventListener('change', (ev) => {
+    if (this._disposed) return;
+    let payload;
+    try {
+      payload = JSON.parse(ev.data);
+    } catch (e) {
+      return;
+    }
+    const action = payload.action;
+    if (action === 'delete') {
+      const id = payload.record && payload.record.objectId;
+      this._onEvent('delete', id !== undefined && id !== null ? [String(id)] : []);
+    } else if (action === 'create' || action === 'update') {
+      this._onEvent(action, payload.record ? [payload.record] : []);
+    }
+  });
+
+  es.addEventListener('resync', () => {
+    if (this._disposed) return;
+    // No replay: tell consumers to re-run their query.
+    this._onEvent('resync', []);
+  });
+
+  es.onerror = () => {
+    if (this._disposed) return;
+    // EventSource reconnects automatically; report the transient drop. A fresh
+    // 'connected' frame will re-subscribe and flip status back to true.
+    this._onStatus(false);
+  };
+};
+
+RealtimeSSEConnection.prototype._postSubscriptions = function () {
+  if (this._disposed || !this._clientId) return;
+  if (!this._fetch) {
+    this._onError({ message: 'fetch is not available to register the realtime subscription' });
+    return;
+  }
+  const sub = { collection: this._collection };
+  if (this._filter) sub.filter = this._filter;
+
+  this._fetch(this._baseUrl.replace(/\/+$/, '') + '/realtime/subscriptions', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ clientId: this._clientId, subscriptions: [sub] })
+  })
+    .then((res) => (res && typeof res.json === 'function' ? res.json() : null))
+    .then((result) => {
+      if (this._disposed) return;
+      if (result && Array.isArray(result.accepted) && result.accepted.length > 0) {
+        this._onStatus(true);
+      } else {
+        const reason = result && result.rejected && result.rejected[0] && result.rejected[0].reason;
+        this._onError({ message: 'Subscription was rejected: ' + (reason || 'unknown reason') });
+      }
+    })
+    .catch((e) => {
+      if (this._disposed) return;
+      this._onError({ message: 'Could not register realtime subscription: ' + (e && e.message) });
+    });
+};
+
+RealtimeSSEConnection.prototype.dispose = function () {
+  this._disposed = true;
+  if (this._es) {
+    const es = this._es;
+    this._es = null;
+    es.onerror = null;
+    try {
+      es.close();
+    } catch (e) {
+      // Already closed
+    }
+  }
+};
+
+/**
+ * Backend types that speak the NodeGX SSE realtime protocol rather than the
+ * Directus WebSocket one. The exact type string is assigned by the editor's
+ * Backend Services panel (WF-007); this list is the transport-selection seam.
+ * @param {string} type - backendConfig.type
+ * @returns {boolean}
+ */
+function isNodeGXRealtime(type) {
+  return type === 'nodegx' || type === 'nodegx-backend' || type === 'local';
+}
+
 module.exports = {
   RealtimeConnection,
+  RealtimeSSEConnection,
   buildWebSocketUrl,
+  buildSSEUrl,
+  isNodeGXRealtime,
   nextReconnectDelay,
   RECONNECT_BASE_DELAY,
   RECONNECT_MAX_DELAY

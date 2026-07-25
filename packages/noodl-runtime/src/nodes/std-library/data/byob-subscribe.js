@@ -16,7 +16,12 @@
 
 const { Node } = require('../../../../noodl-runtime');
 const ByobUtils = require('./byob-utils');
-const { RealtimeConnection, buildWebSocketUrl } = require('./byob-realtime');
+const {
+  RealtimeConnection,
+  RealtimeSSEConnection,
+  buildWebSocketUrl,
+  isNodeGXRealtime
+} = require('./byob-realtime');
 
 var SubscribeToChangesNode = {
   name: 'noodl.byob.SubscribeToChanges',
@@ -169,13 +174,30 @@ var SubscribeToChangesNode = {
         return;
       }
 
+      // Provider selection: the NodeGX standalone backend speaks SSE; Directus
+      // (and other BYOB backends) speak the WebSocket protocol. Both transports
+      // share the onEvent/onStatus/onError contract, so only construction differs.
+      if (isNodeGXRealtime(backendConfig.type)) {
+        console.log('[BYOB Subscribe] Connecting (NodeGX SSE):', { url: backendConfig.url, collection });
+        this._internal.connection = new RealtimeSSEConnection({
+          baseUrl: backendConfig.url,
+          token: backendConfig.token,
+          collection,
+          onEvent: this.handleRealtimeEvent.bind(this),
+          onStatus: this.handleRealtimeStatus.bind(this),
+          onError: this.handleRealtimeError.bind(this)
+        });
+        this._internal.connection.connect();
+        return;
+      }
+
       const url = buildWebSocketUrl(backendConfig.url);
       if (!url) {
         this.setError({ message: 'Backend URL is not a valid http(s) URL: ' + backendConfig.url });
         return;
       }
 
-      console.log('[BYOB Subscribe] Connecting:', { url, collection });
+      console.log('[BYOB Subscribe] Connecting (WebSocket):', { url, collection });
 
       this._internal.connection = new RealtimeConnection({
         url,
@@ -230,6 +252,17 @@ var SubscribeToChangesNode = {
     },
 
     handleRealtimeEvent: function (event, data) {
+      // 'resync' (NodeGX SSE): the stream may have missed events (reconnect or a
+      // slow-client overflow) and the server keeps no replay log — signal a
+      // generic 'changed' so downstream re-queries, without firing a spurious
+      // create/update/delete.
+      if (event === 'resync') {
+        this._internal.eventType = 'resync';
+        this.flagOutputDirty('eventType');
+        this.sendSignalOnOutput('changed');
+        return;
+      }
+
       // 'init' is the subscription confirmation snapshot, not a change
       if (event !== 'create' && event !== 'update' && event !== 'delete') return;
 

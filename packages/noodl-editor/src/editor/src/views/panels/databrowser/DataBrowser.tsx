@@ -174,6 +174,35 @@ export function DataBrowser({ backendId, backendName, initialTable, onClose }: D
     setSelectedRecords(new Set());
   }, [selectedTable, searchQuery]);
 
+  // Live updates (BAK-001): ride the backend's realtime SSE stream so the grid
+  // reflects changes made by other clients (or cloud functions) without a manual
+  // refresh. Re-runs the current query, debounced, on each change/resync.
+  useEffect(() => {
+    if (!backendId || !selectedTable) return;
+
+    let refreshTimer: ReturnType<typeof setTimeout> | null = null;
+    const handleChange = (
+      _event: unknown,
+      payload: { backendId: string; collection: string }
+    ) => {
+      if (payload.backendId !== backendId || payload.collection !== selectedTable) return;
+      if (refreshTimer) return; // coalesce bursts into one reload
+      refreshTimer = setTimeout(() => {
+        refreshTimer = null;
+        loadData();
+      }, 300);
+    };
+
+    ipcRenderer.on('backend:collectionChanged', handleChange);
+    ipcRenderer.send('backend:subscribeCollection', backendId, selectedTable);
+
+    return () => {
+      if (refreshTimer) clearTimeout(refreshTimer);
+      ipcRenderer.removeListener('backend:collectionChanged', handleChange);
+      ipcRenderer.send('backend:unsubscribeCollection', backendId, selectedTable);
+    };
+  }, [backendId, selectedTable, loadData]);
+
   // Save cell (inline edit)
   const handleSaveCell = useCallback(
     async (recordId: string, field: string, value: unknown) => {

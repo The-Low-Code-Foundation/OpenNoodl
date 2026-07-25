@@ -11,7 +11,9 @@
  */
 
 const NoodlRuntime = require('../../../../noodl-runtime');
+const { Node } = require('../../../../noodl-runtime');
 const ByobUtils = require('./byob-utils');
+const { RealtimeSSEConnection, isNodeGXRealtime } = require('./byob-realtime');
 
 console.log('[BYOB Query Data] 📦 Module loaded');
 
@@ -174,6 +176,64 @@ var QueryDataNode = {
       }
       this._internal.hasScheduledFetch = true;
       this.scheduleAfterInputsHaveUpdated(this.doFetch.bind(this));
+    },
+
+    // ------------------------------------------------------------------------
+    // Live (BAK-001): keep results current via the NodeGX realtime SSE stream.
+    // A collection-level subscription drives a DEBOUNCED re-run of the same
+    // query (scheduleFetch coalesces bursts), so the server re-applies the real
+    // filter/sort/limit — no client-side filter translation needed. Only the
+    // NodeGX backend speaks SSE; for Directus and other BYOB backends the
+    // dedicated Subscribe To Changes node (WebSocket) is the live path.
+    // ------------------------------------------------------------------------
+    scheduleLiveReconfigure: function () {
+      if (this._internal.hasScheduledLiveReconfigure) return;
+      this._internal.hasScheduledLiveReconfigure = true;
+      this.scheduleAfterInputsHaveUpdated(() => {
+        this._internal.hasScheduledLiveReconfigure = false;
+        this.reconfigureLive();
+      });
+    },
+
+    reconfigureLive: function () {
+      this.teardownLive();
+
+      if (!this._internal.live) return;
+      const collection = this._internal.collection;
+      if (!collection) return;
+
+      const backendConfig = this.resolveBackend();
+      if (!backendConfig || !isNodeGXRealtime(backendConfig.type)) return;
+
+      this._internal.liveConnection = new RealtimeSSEConnection({
+        baseUrl: backendConfig.url,
+        token: backendConfig.token,
+        collection,
+        onEvent: (event) => {
+          // Any create/update/delete/resync means the result set may have moved;
+          // re-run the query (debounced).
+          if (event === 'create' || event === 'update' || event === 'delete' || event === 'resync') {
+            this.scheduleFetch();
+          }
+        },
+        onStatus: () => {},
+        onError: (err) => {
+          console.warn('[BYOB Query Data] Live subscription error:', err);
+        }
+      });
+      this._internal.liveConnection.connect();
+    },
+
+    teardownLive: function () {
+      if (this._internal.liveConnection) {
+        this._internal.liveConnection.dispose();
+        this._internal.liveConnection = null;
+      }
+    },
+
+    _onNodeDeleted: function () {
+      Node.prototype._onNodeDeleted.call(this);
+      this.teardownLive();
     },
 
     buildUrl: function (backendConfig) {
@@ -395,9 +455,15 @@ var QueryDataNode = {
       const dynamicInputSetters = {
         backendId: (value) => {
           this._internal.backendId = value;
+          this.scheduleLiveReconfigure();
         },
         collection: (value) => {
           this._internal.collection = value;
+          this.scheduleLiveReconfigure();
+        },
+        live: (value) => {
+          this._internal.live = !!value;
+          this.scheduleLiveReconfigure();
         },
         apiPathMode: (value) => {
           this._internal.apiPathMode = value;
@@ -765,6 +831,19 @@ function updatePorts(nodeId, parameters, editorConnection, graphModel) {
     default: '*',
     plug: 'input',
     group: 'Query'
+  });
+
+  // Live (BAK-001): opt-in realtime refresh. When on (NodeGX backend), the node
+  // opens an SSE subscription to the collection and re-runs the query whenever a
+  // matching record changes — no manual Fetch needed.
+  ports.push({
+    name: 'live',
+    displayName: 'Live',
+    type: 'boolean',
+    default: false,
+    plug: 'input',
+    group: 'Query',
+    tooltip: 'Keep results live via the NodeGX realtime stream (SSE). Re-runs the query when records change.'
   });
 
   // One Include toggle per traversable relation — when on, the request expands
