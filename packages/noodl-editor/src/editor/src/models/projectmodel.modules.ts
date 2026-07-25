@@ -1,112 +1,65 @@
-import { filesystem } from '@noodl/platform';
-
 import { bugtracker } from '@noodl-utils/bugtracker';
 
-// TODO: Can we merge this with ProjectModules ?
+import { ModuleManifest, scanModuleManifests } from '../../../shared/utils/projectmodules';
 
-export type ProjectModule = {
-  main?: string;
+// The scanner itself lives in shared/utils/projectmodules — one implementation
+// shared with the preview/deploy HTML injector (this file used to be a second,
+// parallel noodl_modules scanner; the `// TODO: Can we merge this ?` is resolved).
+// These functions are the editor-ProjectModel-facing shaping layer on top of it.
+
+export interface ProjectModule extends ModuleManifest {
+  // The directory name is always filled in by readProjectModules, so name is
+  // required here even though it is optional on the raw manifest.
   name: string;
-  type: 'iconset' | undefined;
-  icons?: string[];
-  iconClass?: string;
-  dependencies?: string[];
-  browser?: {
-    stylesheets?: string[];
-  };
-};
+}
 
 export interface ProjectModuleManifest {
   name: string;
-  manifest: TSFixme;
+  manifest: ModuleManifest;
 }
 
 export async function listProjectModules(project: TSFixme /* ProjectModel */): Promise<ProjectModuleManifest[]> {
-  var modules: {
-    name: string;
-    manifest: any;
-  }[] = [];
+  const scanned = await scanModuleManifests(project._retainedProjectDirectory);
 
-  const modulesPath = project._retainedProjectDirectory + '/noodl_modules';
-
-  try {
-    const files = await filesystem.listDirectory(modulesPath);
-
-    await Promise.all(
-      files.map(async (file) => {
-        if (file.isDirectory) {
-          const manifestPath = filesystem.join(modulesPath, file.name, 'manifest.json');
-          const manifest = await filesystem.readJson(manifestPath);
-
-          modules.push({
-            name: file.name,
-            manifest
-          });
-        }
-      })
-    );
-  } catch (error) {
-    // noodl_modules folder doesn't exist (fresh/empty project)
-    if (error.code === 'ENOENT') {
-      console.log('noodl_modules folder not found (fresh project), skipping module loading');
-      return [];
-    }
-    // Re-throw other errors
-    throw error;
-  }
-
-  return modules;
+  // A hard-failed manifest (null) has already been warned about by the core scan;
+  // surface the rest. Never a silent skip.
+  return scanned
+    .filter((s) => s.manifest !== null)
+    .map((s) => ({ name: s.name, manifest: s.manifest as ModuleManifest }));
 }
 
 export async function readProjectModules(project: TSFixme /* ProjectModel */): Promise<ProjectModule[]> {
   bugtracker.debug('ProjectModel.readModules');
 
-  const modulesPath = project._retainedProjectDirectory + '/noodl_modules';
-
   project.modules = [];
   project.previews = [];
   project.componentAnnotations = {};
 
-  try {
-    const files = await filesystem.listDirectory(modulesPath);
+  const scanned = await scanModuleManifests(project._retainedProjectDirectory);
 
-    await Promise.all(
-      files.map(async (file) => {
-        if (file.isDirectory) {
-          const manifestPath = filesystem.join(modulesPath, file.name, 'manifest.json');
-          const manifest = await filesystem.readJson(manifestPath);
+  for (const s of scanned) {
+    const manifest = s.manifest;
+    if (!manifest) continue; // hard failure — already warned by the core scan
 
-          if (manifest) {
-            manifest.name = file.name;
-            project.modules.push(manifest);
+    // The directory name is the module's identity, overriding any manifest.name.
+    manifest.name = s.name;
+    project.modules.push(manifest);
 
-            if (manifest.componentAnnotations) {
-              for (var comp in manifest.componentAnnotations) {
-                var ca = manifest.componentAnnotations[comp];
+    if (manifest.componentAnnotations) {
+      for (const comp in manifest.componentAnnotations) {
+        const ca = manifest.componentAnnotations[comp];
 
-                if (!project.componentAnnotations[comp]) project.componentAnnotations[comp] = {};
-                for (var key in ca) project.componentAnnotations[comp][key] = ca[key];
-              }
-            }
-
-            if (manifest.previews) {
-              project.previews = manifest.previews.concat(project.previews);
-            }
-          }
-        }
-      })
-    );
-
-    console.log(`Loaded ${project.modules.length} modules`);
-  } catch (error) {
-    // noodl_modules folder doesn't exist (fresh/empty project)
-    if (error.code === 'ENOENT') {
-      console.log('noodl_modules folder not found (fresh project), skipping module loading');
-      return [];
+        if (!project.componentAnnotations[comp]) project.componentAnnotations[comp] = {};
+        for (const key in ca) project.componentAnnotations[comp][key] = ca[key];
+      }
     }
-    // Re-throw other errors
-    throw error;
+
+    if (manifest.previews) {
+      project.previews = (manifest.previews as unknown[]).concat(project.previews);
+    }
   }
+
+  console.log(`Loaded ${project.modules.length} modules`);
 
   return project.modules;
 }

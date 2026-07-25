@@ -1,0 +1,9 @@
+{
+  "name": "Icons B",
+  "type": "iconset",
+  "iconClass": "icons-b",
+  "browser": {
+    "stylesheets": ["https://fonts.example.com/css?family=Icons+B"]
+  },
+  "icons": ["home", "search"]
+}

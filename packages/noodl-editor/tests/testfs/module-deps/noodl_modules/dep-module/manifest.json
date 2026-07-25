@@ -1,0 +1,9 @@
+{
+  "main": "index.js",
+  "runtimes": ["browser"],
+  "dependencies": [
+    "https://cdn.example.com/vendor.min.js",
+    "http://cdn.example.com/legacy.js",
+    "vendor/local-lib.js"
+  ]
+}

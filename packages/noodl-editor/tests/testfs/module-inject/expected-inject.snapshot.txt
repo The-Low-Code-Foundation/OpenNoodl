@@ -1,0 +1,23 @@
+=== pathPrefix "/" ===
+<!DOCTYPE html><html><head>
+<script type="text/javascript" src="https://cdn.example.com/vendor.min.js"></script>
+<script type="text/javascript" src="/noodl_modules/code-a/vendor/local-lib.js"></script>
+<meta name="code-a" content="1">
+<style>.code-a { color: red; }</style>
+<link href="https://cdn.example.com/theme.css" rel="stylesheet"><link href="/styles/local.css" rel="stylesheet"><link href="https://fonts.example.com/css?family=Icons+B" rel="stylesheet">
+</head><body>
+<script type="text/javascript" src="/noodl_modules/code-a/index.js"></script>
+
+</body></html>
+
+=== pathPrefix "" ===
+<!DOCTYPE html><html><head>
+<script type="text/javascript" src="https://cdn.example.com/vendor.min.js"></script>
+<script type="text/javascript" src="noodl_modules/code-a/vendor/local-lib.js"></script>
+<meta name="code-a" content="1">
+<style>.code-a { color: red; }</style>
+<link href="https://cdn.example.com/theme.css" rel="stylesheet"><link href="styles/local.css" rel="stylesheet"><link href="https://fonts.example.com/css?family=Icons+B" rel="stylesheet">
+</head><body>
+<script type="text/javascript" src="noodl_modules/code-a/index.js"></script>
+
+</body></html>

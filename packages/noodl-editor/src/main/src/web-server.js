@@ -7,7 +7,9 @@ const URL = require('url');
 const WebSocket = require('ws');
 const WebSocketServer = WebSocket.Server;
 
-const ProjectModules = require('../../shared/utils/projectmodules');
+// projectmodules is now an ES module (TS default export); under webpack's
+// CJS↔ESM interop the singleton class lives on `.default`.
+const ProjectModules = require('../../shared/utils/projectmodules').default;
 const JSONStorage = require('../../shared/utils/jsonstorage');
 
 function parseRangeHeader(range, length) {
