@@ -42,13 +42,13 @@ The phase-3 COMP-001/002 planning docs proposed a multi-source `PrefabSource` ab
 ## Scope
 
 ### In Scope
-- [ ] **Step 0 (anytime fix):** loud fetch-failure state in the Prefabs/Modules tabs
-- [ ] Decide and record the hosting layout (see decision note), then scaffold `library/`
-- [ ] Build + check scripts; CI wiring for `library:check`
-- [ ] Versioned zip naming; index schema extension (`type`, `version`, compatibility fields)
-- [ ] Editor-side: schema tolerance, compatibility rendering, explicit `type` field use
-- [ ] Seed the tree by importing the **current live content** (download today's zips, unpack into `library/`, commit as-is) so LIB-002/003 start from tracked sources
-- [ ] Delete the orphaned context; document the publish step in `library/README.md`
+- [x] **Step 0 (anytime fix):** loud fetch-failure state in the Prefabs/Modules tabs
+- [x] Decide and record the hosting layout (see decision note), then scaffold `library/`
+- [x] Build + check scripts; CI wiring for `library:check`
+- [x] Versioned zip naming; index schema extension (`type`, `version`, compatibility fields)
+- [x] Editor-side: schema tolerance, compatibility rendering, explicit `type` field use
+- [x] Seed the tree by importing the **current live content** (download today's zips, unpack into `library/`, commit as-is) so LIB-002/003 start from tracked sources
+- [x] Delete the orphaned context; document the publish step in `library/README.md`
 
 ### Out of Scope
 - Fixing or restyling any actual content — LIB-002/003
@@ -71,11 +71,11 @@ Recommendation: **this monorepo** (`library/` at root), publishing artifacts to 
 
 ## Success Criteria
 
-- [ ] Every live library entry exists as tracked source in `library/` and rebuilds byte-comparable-enough to install identically
-- [ ] `library:check` runs in CI and fails on a validator-dirty prefab
-- [ ] A republished entry with a bumped version is picked up by an editor that had the old one cached
-- [ ] Killing the network shows an explicit offline state in the library tabs, not empty grids
-- [ ] Install of one prefab + one module from the locally built dist verified live in the editor
+- [x] Every live library entry exists as tracked source in `library/` and rebuilds byte-comparable-enough to install identically — 55/55 seeded, `library:build` produces a well-formed `library-dist/`
+- [x] `library:check` runs in CI and fails on a validator-dirty prefab — wired into `pr.yml`; deliberately broke one entry and confirmed a non-zero exit, then restored
+- [ ] A republished entry with a bumped version is picked up by an editor that had the old one cached — true by construction (versioned zip filenames change `getModuleTemplateRoot`'s cache key), **not live-verified** this session
+- [ ] Killing the network shows an explicit offline state in the library tabs, not empty grids — code/logic verified by review + typecheck only; **live UI confirmation blocked** by the lerna/worktree trap (see PROGRESS.md log) — the live screenshots taken this session turned out to be exercising the main checkout's *unmodified* code, not this worktree's
+- [ ] Install of one prefab + one module from the locally built dist verified live in the editor — **not completed**, same blocker
 
 ## Risks & Mitigations
 
