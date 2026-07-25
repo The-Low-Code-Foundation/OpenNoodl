@@ -114,7 +114,12 @@ class ProjectModules {
           if (m.dependencies) {
             for (var j = 0; j < m.dependencies.length; j++) {
               var d = m.dependencies[j];
-              var dTag = '<script type="text/javascript" src="' + pathPrefix + d + '"></script>\n';
+              // http(s)-URL dependencies are absolute — emit them verbatim,
+              // only project-relative paths get pathPrefix (mirrors the
+              // stylesheets branch below). Without this, the Step-0 scanner fix
+              // would still be undone here as src="/https://…".
+              var dSrc = d.startsWith('http') ? d : pathPrefix + d;
+              var dTag = '<script type="text/javascript" src="' + dSrc + '"></script>\n';
               if (dependencies.indexOf(dTag) === -1) dependencies += dTag;
             }
           }
