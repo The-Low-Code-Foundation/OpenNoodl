@@ -160,7 +160,7 @@
   /* Target Blockly's ACTUAL menu item class - DROPDOWN MENUS */
   .blocklyDropDownDiv .blocklyMenuItem,
   :global(.blocklyDropDownDiv) :global(.blocklyMenuItem) {
-    color: #ffffff !important; /* WHITE text */
+    color: var(--theme-color-fg-highlight) !important; /* WHITE text */
     background-color: transparent !important;
     padding: 6px 12px !important;
     cursor: pointer !important;
@@ -171,7 +171,7 @@
     & *,
     & div,
     & span {
-      color: #ffffff !important;
+      color: var(--theme-color-fg-highlight) !important;
     }
 
     /* HOVER - Keep white text with lighter background */
@@ -180,18 +180,18 @@
     &:hover div,
     &:hover span {
       background-color: var(--theme-color-bg-4) !important;
-      color: #ffffff !important; /* WHITE on hover */
+      color: var(--theme-color-fg-highlight) !important; /* WHITE on hover */
     }
 
     &[aria-selected='true'],
     &[aria-selected='true'] * {
       background-color: var(--theme-color-primary) !important;
-      color: #ffffff !important;
+      color: var(--theme-color-fg-highlight) !important;
     }
 
     &[aria-disabled='true'],
     &[aria-disabled='true'] * {
-      color: #999999 !important;
+      color: var(--theme-color-fg-muted) !important;
       opacity: 0.5;
       cursor: not-allowed !important;
     }
@@ -200,12 +200,12 @@
   /* Target Blockly's ACTUAL content class */
   .blocklyMenuItemContent,
   :global(.blocklyMenuItemContent) {
-    color: #ffffff !important;
+    color: var(--theme-color-fg-highlight) !important;
 
     & *,
     & div,
     & span {
-      color: #ffffff !important;
+      color: var(--theme-color-fg-highlight) !important;
     }
   }
 
@@ -214,7 +214,7 @@
   .goog-option,
   :global(.goog-menuitem),
   :global(.goog-option) {
-    color: #ffffff !important;
+    color: var(--theme-color-fg-highlight) !important;
     background-color: transparent !important;
     padding: 6px 12px !important;
     font-family: var(--theme-font-family) !important;
@@ -223,7 +223,7 @@
     & *,
     & div,
     & span {
-      color: #ffffff !important;
+      color: var(--theme-color-fg-highlight) !important;
     }
 
     &:hover,
@@ -234,10 +234,10 @@
 
   .goog-menuitem-content,
   :global(.goog-menuitem-content) {
-    color: #ffffff !important;
+    color: var(--theme-color-fg-highlight) !important;
 
     & * {
-      color: #ffffff !important;
+      color: var(--theme-color-fg-highlight) !important;
     }
   }
 

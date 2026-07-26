@@ -27,8 +27,8 @@ html {
   height: 35px;
   line-height: 30px;
   cursor: default;
-  background-color: #2e2e2e;
-  border-bottom: 2px solid #000000;
+  background-color: var(--theme-color-bg-3);
+  border-bottom: 2px solid var(--base-color-neutral-0);
   display: flex;
   -webkit-app-region: drag;
   user-select: none;
@@ -70,7 +70,7 @@ html {
   width: 35px;
   height: 35px;
   background-color: transparent;
-  color: #a7a7a7;
+  color: var(--theme-color-fg-default);
   font-size: 12px;
   position: relative;
   -webkit-app-region: no-drag;
@@ -80,13 +80,13 @@ html {
 
 .icon-container:hover {
   opacity: 1;
-  color: #f8f8f8;
-  background-color: #555555;
+  color: var(--theme-color-fg-highlight);
+  background-color: var(--theme-color-bg-5);
 }
 
 .viewer-no-root-alert {
-  background-color: #755000;
-  color: #eeeeee;
+  background-color: var(--theme-color-warning-bg);
+  color: var(--theme-color-fg-highlight);
   margin: 5px;
   padding: 10px;
   -webkit-transition: opacity 500ms;
@@ -104,14 +104,14 @@ html {
 
 .title {
   display: block;
-  color: #ccc;
+  color: var(--theme-color-fg-default-contrast);
   margin-left: 16px;
   font-size: 12px;
   line-height: 35px;
 }
 
 .title:hover {
-  color: white;
+  color: var(--theme-color-fg-highlight);
 }
 
 .hidden {

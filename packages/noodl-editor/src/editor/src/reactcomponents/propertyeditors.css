@@ -1,5 +1,5 @@
 .propertyeditor-item {
-    color: #f8f8f8;
+    color: var(--theme-color-fg-highlight);
     min-height: 33px;
     display: flex;
     align-items: center;
@@ -8,8 +8,8 @@
 }
 
 .propertyeditor-item-input {
-    background-color: #222222;
-    color: #dddddd;
+    background-color: var(--theme-color-bg-2);
+    color: var(--theme-color-fg-default-contrast);
     border: none;
     display: block;
     padding:0 0 0 10px;

@@ -408,7 +408,7 @@ button {
   color: var(--theme-color-fg-muted);
   font-size: 14px;
   padding: 5px;
-  background-color: #755000;
+  background-color: var(--theme-color-warning-bg);
 }
 
 .page-contact-us-banner {
@@ -459,7 +459,7 @@ button {
 .setup-main {
   width: 100%;
   height: 100%;
-  background-color: #171717;
+  background-color: var(--theme-color-bg-1);
   position: absolute;
   top: 0px;
   left: 0px;
@@ -485,7 +485,7 @@ button {
 }
 
 .setup-spinner > div {
-  background-color: #222222;
+  background-color: var(--theme-color-bg-2);
 }
 
 /* -------------------------------------------------------------------
@@ -660,25 +660,25 @@ button {
   width: 100%;
   height: 35px;
   cursor: default;
-  color: #f8f8f8;
+  color: var(--theme-color-fg-highlight);
   position: relative;
-  border-bottom: 1px solid #222222;
+  border-bottom: 1px solid var(--theme-color-border-default);
 }
 
 .sidebar-panel-folder {
-  background-color: #222222;
-  border-bottom: 1px solid #222222;
+  background-color: var(--theme-color-bg-2);
+  border-bottom: 1px solid var(--theme-color-border-default);
 }
 
 .sidebar-panel-item-selected {
-  background-color: #14606e;
+  background-color: var(--theme-color-primary-dim);
   position: absolute;
   width: 100%;
   height: 35px;
 }
 
 .sidebar-panel-item-dropdown {
-  background-color: #222222;
+  background-color: var(--theme-color-bg-2);
   border-radius: 5px;
   color: white;
   border: none;
@@ -698,8 +698,8 @@ button {
 }
 
 .sidebar-input {
-  background-color: #1f1f1f;
-  color: #f8f8f8;
+  background-color: var(--theme-color-bg-2);
+  color: var(--theme-color-fg-highlight);
   border: none;
   display: block;
   padding: 0px;
@@ -711,7 +711,7 @@ button {
 }
 
 .sidebar-panel-footer {
-  background-color: #000000;
+  background-color: var(--theme-color-bg-page);
   height: 35px;
   width: 100%;
   bottom: 0px;
@@ -721,11 +721,11 @@ button {
 }
 
 .sidebar-panel-footer-button {
-  background-color: #222222;
-  color: #7a7a7a;
+  background-color: var(--theme-color-bg-2);
+  color: var(--theme-color-fg-muted);
   height: 100%;
   flex-grow: 1;
-  border: 1px solid #000000;
+  border: 1px solid var(--base-color-neutral-0);
   /* border-top-width: 2px;*/
 }
 
@@ -734,8 +734,8 @@ button {
 }
 
 .sidebar-panel-footer-button:hover {
-  background-color: #555555;
-  color: #f8f8f8;
+  background-color: var(--theme-color-bg-4);
+  color: var(--theme-color-fg-highlight);
 }
 
 /* -------------------------------------------------------------------
@@ -750,7 +750,7 @@ button {
 
 .string-input-popup-label {
   display: block;
-  color: #dddddd;
+  color: var(--theme-color-fg-default-contrast);
   margin: 5px;
   margin-bottom: 0px;
 }
@@ -768,7 +768,7 @@ button {
 }
 
 .string-input-popup-button-ok {
-  background-color: #d3942b;
+  background-color: var(--theme-color-primary);
   border: none;
   color: black;
   height: 100%;
@@ -779,13 +779,13 @@ button {
 }
 
 .string-input-popup-button-ok:hover {
-  background-color: #dfa138;
+  background-color: var(--theme-color-primary-highlight);
 }
 
 .string-input-popup-button-cancel {
-  background-color: #1f1f1f;
+  background-color: var(--theme-color-bg-2);
   border: none;
-  color: #ccc;
+  color: var(--theme-color-fg-default-contrast);
   height: 100%;
   margin: 0px;
   padding-left: 7px;
@@ -793,15 +793,15 @@ button {
 }
 
 .string-input-popup-button-cancel:hover {
-  background-color: #292929;
+  background-color: var(--theme-color-bg-3);
 }
 
 .search-bg {
-  background-color: #2e2e2e;
+  background-color: var(--theme-color-bg-3);
 }
 
 .search-icon {
-  color: #aaaaaa;
+  color: var(--theme-color-fg-default);
 }
 
 .create-node-path-item {
@@ -824,7 +824,7 @@ button {
 }
 
 .viewer-mobile-text {
-  color: #cccccc;
+  color: var(--theme-color-fg-default-contrast);
 }
 
 .viewer-mobile-text > strong {
@@ -839,36 +839,45 @@ button {
    Component ports
    ------------------------------------------------------------------- */
 .component-ports-label {
-  color: #f8f8f8;
+  color: var(--theme-color-fg-highlight);
   position: absolute;
   padding-left: 10px;
 }
 
 .component-ports-item {
-  /*background-color: #2e2e2e;*/
   line-height: 35px;
-  color: #f8f8f8;
+  color: var(--theme-color-fg-highlight);
   border-bottom: none;
 }
 
 .component-ports-group-label {
-  color: #666666;
+  color: var(--theme-color-fg-muted);
   position: absolute;
   padding-left: 10px;
 }
 
 .component-ports-group-item {
-  background-color: #292929;
+  background-color: var(--theme-color-bg-3);
   line-height: 35px;
   height: 50px;
 }
 
 .component-ports-group-button {
-  background-color: #292929;
+  background-color: var(--theme-color-bg-3);
 }
 
 /* -------------------------------------------------------------------
    Lesson layer
+
+   UIX-002 EXEMPTION: the Lessons tutorial popup is its own light cream
+   card with a sage-teal brand accent, floating over the dark app chrome.
+   It predates the token system and doesn't map
+   onto --theme-color-bg-*/--theme-color-primary without inverting its look
+   (dark tokens on what must stay a light card) — that would be a visual
+   redesign, out of scope here. Left as literal hex, tracked in the hex
+   ratchet's baseline. Candidate for a dedicated "light card" + brand-accent
+   token pair when the light theme (UIX-008) or the Lessons feature itself
+   gets revisited.
    ------------------------------------------------------------------- */
 .lesson-bg {
   background-color: #eceae3;
@@ -885,7 +894,7 @@ button {
 }
 
 .lesson-count {
-  color: #aaaaaa;
+  color: var(--theme-color-fg-default);
   text-align: right;
 }
 
@@ -912,7 +921,7 @@ div.lesson-content::-webkit-scrollbar-thumb {
 }
 
 .lesson-not-checked {
-  color: #aaaaaa;
+  color: var(--theme-color-fg-default);
   opacity: 0.7;
   font-size: 18px;
   margin-left: 5px;
@@ -928,7 +937,7 @@ div.lesson-content::-webkit-scrollbar-thumb {
 .lesson-button {
   border: none;
   background-color: #779988;
-  color: #dddddd;
+  color: var(--theme-color-fg-default-contrast);
   font-size: 15px;
   padding: 10px;
   border-radius: 3px;
@@ -1034,7 +1043,7 @@ div.lesson-content::-webkit-scrollbar-thumb {
 }
 
 .lesson-spinner > div {
-  background-color: #222222;
+  background-color: var(--theme-color-bg-2);
 }
 
 .lesson-bg * strong {
@@ -1056,7 +1065,7 @@ div.lesson-content::-webkit-scrollbar-thumb {
 .content-picker {
   width: 250px;
   height: 420px;
-  background-color: #2e2e2e;
+  background-color: var(--theme-color-bg-3);
   overflow-y: auto;
 }
 
@@ -1065,22 +1074,22 @@ div.lesson-content::-webkit-scrollbar-thumb {
   display: flex;
   align-items: center;
   padding-left: 10px;
-  background-color: #383838;
-  color: #f8f8f8;
+  background-color: var(--theme-color-bg-4);
+  color: var(--theme-color-fg-highlight);
 }
 
 .content-picker-item.disabled {
   background: none;
   border: none;
-  color: #7a7a7a;
+  color: var(--theme-color-fg-muted);
 }
 
 .content-picker-list-item:hover {
-  background-color: #555555;
+  background-color: var(--theme-color-bg-4);
 }
 
 .content-picker-list-item + .content-picker-list-item {
-  border-top: 1px solid #222222;
+  border-top: 1px solid var(--theme-color-border-default);
 }
 
 .content-picker-items {
@@ -1089,16 +1098,16 @@ div.lesson-content::-webkit-scrollbar-thumb {
 
 .content-picker-header-label {
   display: block;
-  color: #7a7a7a;
-  background-color: #2e2e2e;
+  color: var(--theme-color-fg-muted);
+  background-color: var(--theme-color-bg-3);
   height: 30px;
   line-height: 30px;
   padding-left: 10px;
 }
 
 .content-picker-group-label {
-  background-color: #222222;
-  color: #7a7a7a;
+  background-color: var(--theme-color-bg-2);
+  color: var(--theme-color-fg-muted);
   padding-left: 10px;
   min-height: 30px;
   display: flex;
@@ -1112,9 +1121,9 @@ div.lesson-content::-webkit-scrollbar-thumb {
   position: relative;
 
   /* checkered background */
-  background-image: linear-gradient(45deg, #cacaca 25%, transparent 25%),
-    linear-gradient(-45deg, #cacaca 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #cacaca 75%),
-    linear-gradient(-45deg, transparent 75%, #cacaca 75%);
+  background-image: linear-gradient(45deg, var(--base-color-neutral-900) 25%, transparent 25%),
+    linear-gradient(-45deg, var(--base-color-neutral-900) 25%, transparent 25%), linear-gradient(45deg, transparent 75%, var(--base-color-neutral-900) 75%),
+    linear-gradient(-45deg, transparent 75%, var(--base-color-neutral-900) 75%);
   background-size: 8px 8px;
   background-position: 0 0, 0 4px, 4px -4px, -4px 0px;
   background-color: white;
@@ -1134,7 +1143,7 @@ div.lesson-content::-webkit-scrollbar-thumb {
 }
 
 .image-picker-thumb-bg {
-  background-color: #222222;
+  background-color: var(--theme-color-bg-2);
 }
 
 /* -------------------------------------------------------------------
@@ -1153,7 +1162,7 @@ div.lesson-content::-webkit-scrollbar-thumb {
 }
 
 .font-picker-list-item:hover {
-  background-color: #555555;
+  background-color: var(--theme-color-bg-4);
 }
 
 .font-picker-filtered-out {
@@ -1173,7 +1182,7 @@ div.lesson-content::-webkit-scrollbar-thumb {
 }
 
 .text-style-picker-list-item:hover {
-  background-color: #555555;
+  background-color: var(--theme-color-bg-4);
 }
 
 /* -------------------------------------------------------------------
@@ -1187,20 +1196,20 @@ div.lesson-content::-webkit-scrollbar-thumb {
    Import popup
    ------------------------------------------------------------------- */
 .import-popup-button {
-  background-color: #222222;
+  background-color: var(--theme-color-bg-2);
   border: none;
-  color: #aaaaaa;
+  color: var(--theme-color-fg-default);
   height: 100%;
   margin: 0px;
 }
 
 .import-popup-button:hover {
-  background-color: #333333;
+  background-color: var(--theme-color-bg-4);
 }
 
 .import-popup-text {
   display: block;
-  color: #aaa;
+  color: var(--theme-color-fg-default);
   margin-left: 10px;
   margin-right: 10px;
   margin-bottom: 10px;
@@ -1208,15 +1217,15 @@ div.lesson-content::-webkit-scrollbar-thumb {
 }
 
 .import-popup-item {
-  color: #bbbbbb;
-  background-color: #3a3a3a;
+  color: var(--theme-color-fg-default);
+  background-color: var(--theme-color-bg-4);
   font: 300 12px var(--font-family);
 }
 
 .import-popup-folder {
-  color: #cecece;
+  color: var(--theme-color-fg-default-contrast);
   font: bold 12px var(--font-family);
-  background-color: #3a3a3a;
+  background-color: var(--theme-color-bg-4);
 }
 
 .import-popup-folder .sidebar-panel-dark-input,
@@ -1226,12 +1235,12 @@ div.lesson-content::-webkit-scrollbar-thumb {
 
 .import-popup-implicit-check {
   display: block;
-  color: #666666;
+  color: var(--theme-color-fg-muted);
 }
 
 .import-popup-import-check {
   display: block;
-  color: #dddddd;
+  color: var(--theme-color-fg-default-contrast);
 }
 
 .show-on-edit {
@@ -1247,12 +1256,12 @@ div.lesson-content::-webkit-scrollbar-thumb {
 }
 
 .stringlist-default-label {
-  color: #666666;
+  color: var(--theme-color-fg-muted);
 }
 
 .name-edit {
-  background-color: #000000;
-  color: #f8f8f8;
+  background-color: var(--theme-color-bg-page);
+  color: var(--theme-color-fg-highlight);
   height: 100%;
   width: 100%;
   padding-left: 10px;
@@ -1279,7 +1288,7 @@ div.lesson-content::-webkit-scrollbar-thumb {
 
 .noodl-icon-container:hover {
   opacity: 1;
-  background-color: #555555;
+  background-color: var(--theme-color-bg-4);
 }
 
 .noodl-icon-container.selected {
@@ -1287,7 +1296,7 @@ div.lesson-content::-webkit-scrollbar-thumb {
 }
 
 .noodl-icon-container.selected:hover {
-  background-color: #14606e;
+  background-color: var(--theme-color-primary-dim);
 }
 
 /**
@@ -1305,9 +1314,9 @@ div.lesson-content::-webkit-scrollbar-thumb {
    Node Panel
    ------------------------------------------------------------------- */
 .node-panel-item {
-  background-color: #383838;
+  background-color: var(--theme-color-bg-4);
   padding-left: 10px;
-  color: #f8f8f8;
+  color: var(--theme-color-fg-highlight);
   cursor: default;
 }
 
@@ -1323,15 +1332,15 @@ div.lesson-content::-webkit-scrollbar-thumb {
     Margin padding view
    ------------------------------------------------------------------- */
 .marginpadding-outer {
-  border: 1px dotted #555;
+  border: 1px dotted var(--base-color-neutral-500);
 }
 
 .marginpadding-border {
-  border: 2px solid #777;
+  border: 2px solid var(--base-color-neutral-600);
 }
 
 .marginpadding-inner {
-  border: 1px dotted #555;
+  border: 1px dotted var(--base-color-neutral-500);
 }
 
 .marginpadding-label {
@@ -1346,17 +1355,17 @@ div.lesson-content::-webkit-scrollbar-thumb {
 }
 
 .marginpadding-label:hover {
-  color: #eee;
-  background-color: #333;
+  color: var(--theme-color-fg-highlight);
+  background-color: var(--theme-color-bg-4);
 }
 
 .marginpadding-dim {
-  background-color: #131313;
+  background-color: var(--theme-color-bg-1);
   opacity: 0.5;
 }
 
 .marginpadding-editbox {
-  background-color: #131313;
+  background-color: var(--theme-color-bg-1);
 }
 
 /* -------------------------------------------------------------------

@@ -101,60 +101,60 @@
 // Page folders (blue)
 .FolderNode--page {
   .FolderNode__background {
-    fill: #1e3a8a;
+    fill: var(--base-color-azure-900);
   }
   .FolderNode__border {
-    stroke: #3b82f6;
+    stroke: var(--base-color-azure-600);
   }
 }
 
 // Feature folders (purple)
 .FolderNode--feature {
   .FolderNode__background {
-    fill: #581c87;
+    fill: var(--base-color-node-purple-900);
   }
   .FolderNode__border {
-    stroke: #a855f7;
+    stroke: var(--theme-color-node-category-component);
   }
 }
 
 // Integration folders (green)
 .FolderNode--integration {
   .FolderNode__background {
-    fill: #064e3b;
+    fill: var(--base-color-success-900);
   }
   .FolderNode__border {
-    stroke: #10b981;
+    stroke: var(--base-color-success-600);
   }
 }
 
 // UI folders (cyan)
 .FolderNode--ui {
   .FolderNode__background {
-    fill: #164e63;
+    fill: var(--base-color-node-blue-900);
   }
   .FolderNode__border {
-    stroke: #06b6d4;
+    stroke: var(--theme-color-wire-signal);
   }
 }
 
 // Utility folders (gray)
 .FolderNode--utility {
   .FolderNode__background {
-    fill: #374151;
+    fill: var(--base-color-node-grey-800);
   }
   .FolderNode__border {
-    stroke: #6b7280;
+    stroke: var(--base-color-neutral-600);
   }
 }
 
 // Orphan folders (yellow with dashed border)
 .FolderNode--orphan {
   .FolderNode__background {
-    fill: #422006;
+    fill: var(--base-color-amber-950);
   }
   .FolderNode__border {
-    stroke: #ca8a04;
+    stroke: var(--base-color-amber-600);
     stroke-dasharray: 4;
   }
 }
@@ -171,21 +171,21 @@
   }
 
   &.FolderNode--page .FolderNode__border {
-    filter: drop-shadow(0 0 10px #3b82f6);
+    filter: drop-shadow(0 0 10px var(--base-color-azure-600));
   }
   &.FolderNode--feature .FolderNode__border {
-    filter: drop-shadow(0 0 10px #a855f7);
+    filter: drop-shadow(0 0 10px var(--theme-color-node-category-component));
   }
   &.FolderNode--integration .FolderNode__border {
-    filter: drop-shadow(0 0 10px #10b981);
+    filter: drop-shadow(0 0 10px var(--base-color-success-600));
   }
   &.FolderNode--ui .FolderNode__border {
-    filter: drop-shadow(0 0 10px #06b6d4);
+    filter: drop-shadow(0 0 10px var(--theme-color-wire-signal));
   }
   &.FolderNode--utility .FolderNode__border {
-    filter: drop-shadow(0 0 10px #6b7280);
+    filter: drop-shadow(0 0 10px var(--base-color-neutral-600));
   }
   &.FolderNode--orphan .FolderNode__border {
-    filter: drop-shadow(0 0 10px #ca8a04);
+    filter: drop-shadow(0 0 10px var(--base-color-amber-600));
   }
 }

@@ -6,10 +6,10 @@
 // =============================================================================
 
 // Design System Variables
-$success: #10b981;
-$warning: #f59e0b;
-$danger: #ef4444;
-$ai-primary: #8b5cf6;
+$success: var(--theme-color-success);
+$warning: var(--theme-color-warning);
+$danger: var(--theme-color-danger);
+$ai-primary: var(--theme-color-node-category-component);
 
 $spacing-xs: 8px;
 $spacing-sm: 12px;

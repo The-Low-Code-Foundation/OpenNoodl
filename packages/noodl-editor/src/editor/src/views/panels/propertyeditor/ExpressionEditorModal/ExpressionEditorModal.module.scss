@@ -12,7 +12,7 @@
 }
 
 .Modal {
-  background-color: var(--theme-color-bg-2, #1a1a1a);
+  background-color: var(--theme-color-bg-2);
   border-radius: 8px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
   width: 700px;
@@ -34,7 +34,7 @@
 .Title {
   font-size: 16px;
   font-weight: 600;
-  color: var(--theme-color-fg-highlight, #ffffff);
+  color: var(--theme-color-fg-highlight);
   margin: 0;
 }
 
@@ -60,7 +60,7 @@
     border-radius: 2px;
     font-family: 'Monaco', 'Menlo', monospace;
     font-size: 11px;
-    color: var(--theme-color-primary, #6366f1);
+    color: var(--theme-color-primary);
   }
 }
 

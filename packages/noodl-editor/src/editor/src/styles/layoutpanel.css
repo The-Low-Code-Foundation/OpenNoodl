@@ -2,12 +2,10 @@
    Layout panel
    ------------------------------------------------------------------- */
 .layout-panel-item {
-  /* background-color: #282828;*/
   width: 100%;
   cursor: default;
   color: var(--theme-color-fg-default);
   position: relative;
-  /* border-bottom: 1px solid #222222;*/
 }
 
 .layout-panel-item-hover-indicator {
@@ -106,8 +104,6 @@
 }
 
 .layout-panel-dark-input {
-  /* background-color: #222222;
-    color: #dddddd;*/
   border: none;
   display: block;
   padding: 0 0 0 10px;

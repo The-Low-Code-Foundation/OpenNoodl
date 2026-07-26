@@ -39,12 +39,12 @@
   }
 
   &.is-complete {
-    background-color: var(--theme-color-success, #22c55e);
+    background-color: var(--theme-color-success);
     color: var(--theme-color-bg-1);
   }
 
   &.is-error {
-    background-color: var(--theme-color-danger, #ef4444);
+    background-color: var(--theme-color-danger);
     color: var(--theme-color-bg-1);
   }
 }
@@ -59,7 +59,7 @@
   }
 
   &.is-complete {
-    color: var(--theme-color-success, #22c55e);
+    color: var(--theme-color-success);
   }
 }
 
@@ -70,6 +70,6 @@
   min-width: 20px;
 
   &.is-complete {
-    background-color: var(--theme-color-success, #22c55e);
+    background-color: var(--theme-color-success);
   }
 }

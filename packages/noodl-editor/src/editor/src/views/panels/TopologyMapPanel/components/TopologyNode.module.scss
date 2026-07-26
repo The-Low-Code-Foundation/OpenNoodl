@@ -14,7 +14,7 @@
 
 .TopologyNode__rect {
   fill: var(--theme-color-bg-3);
-  stroke: #4a90d9; // Brighter blue instead of dim border
+  stroke: var(--theme-color-primary); // Brighter blue instead of dim border
   stroke-width: 2;
   transition: all 0.2s ease;
 }
@@ -59,7 +59,7 @@
 // Shared components (used multiple times)
 .TopologyNode--shared {
   .TopologyNode__rect {
-    stroke: #f5a623; // Brighter orange/gold for shared
+    stroke: var(--base-color-amber-400); // Brighter orange/gold for shared
     stroke-width: 2;
   }
 }

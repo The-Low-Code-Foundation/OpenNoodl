@@ -76,13 +76,13 @@
 // Page folder components (blue)
 .ComponentNode--page {
   .ComponentNode__background {
-    fill: #1e3a8a;
+    fill: var(--base-color-azure-900);
   }
   .ComponentNode__border {
-    stroke: #3b82f6;
+    stroke: var(--base-color-azure-600);
   }
   .ComponentNode__iconBackground {
-    fill: #3b82f6;
+    fill: var(--base-color-azure-600);
     opacity: 0.3;
   }
 }
@@ -90,13 +90,13 @@
 // Feature folder components (purple)
 .ComponentNode--feature {
   .ComponentNode__background {
-    fill: #581c87;
+    fill: var(--base-color-node-purple-900);
   }
   .ComponentNode__border {
-    stroke: #a855f7;
+    stroke: var(--theme-color-node-category-component);
   }
   .ComponentNode__iconBackground {
-    fill: #a855f7;
+    fill: var(--theme-color-node-category-component);
     opacity: 0.3;
   }
 }
@@ -104,13 +104,13 @@
 // Integration folder components (green)
 .ComponentNode--integration {
   .ComponentNode__background {
-    fill: #064e3b;
+    fill: var(--base-color-success-900);
   }
   .ComponentNode__border {
-    stroke: #10b981;
+    stroke: var(--base-color-success-600);
   }
   .ComponentNode__iconBackground {
-    fill: #10b981;
+    fill: var(--base-color-success-600);
     opacity: 0.3;
   }
 }
@@ -118,13 +118,13 @@
 // UI folder components (cyan)
 .ComponentNode--ui {
   .ComponentNode__background {
-    fill: #164e63;
+    fill: var(--base-color-node-blue-900);
   }
   .ComponentNode__border {
-    stroke: #06b6d4;
+    stroke: var(--theme-color-wire-signal);
   }
   .ComponentNode__iconBackground {
-    fill: #06b6d4;
+    fill: var(--theme-color-wire-signal);
     opacity: 0.3;
   }
 }
@@ -132,13 +132,13 @@
 // Utility folder components (gray)
 .ComponentNode--utility {
   .ComponentNode__background {
-    fill: #374151;
+    fill: var(--base-color-node-grey-800);
   }
   .ComponentNode__border {
-    stroke: #6b7280;
+    stroke: var(--base-color-neutral-600);
   }
   .ComponentNode__iconBackground {
-    fill: #6b7280;
+    fill: var(--base-color-neutral-600);
     opacity: 0.3;
   }
 }
@@ -146,13 +146,13 @@
 // Orphan folder components (yellow)
 .ComponentNode--orphan {
   .ComponentNode__background {
-    fill: #422006;
+    fill: var(--base-color-amber-950);
   }
   .ComponentNode__border {
-    stroke: #ca8a04;
+    stroke: var(--base-color-amber-600);
   }
   .ComponentNode__iconBackground {
-    fill: #ca8a04;
+    fill: var(--base-color-amber-600);
     opacity: 0.3;
   }
 }
@@ -163,14 +163,14 @@
 
 .ComponentNode--app {
   .ComponentNode__border {
-    stroke: #fbbf24; // Amber/gold color
+    stroke: var(--base-color-amber-300); // Amber/gold color
     stroke-width: 3;
     opacity: 1;
   }
 
   &:hover .ComponentNode__border {
-    stroke: #f59e0b; // Brighter amber on hover
-    filter: drop-shadow(0 0 8px #fbbf24);
+    stroke: var(--base-color-amber-500); // Brighter amber on hover
+    filter: drop-shadow(0 0 8px var(--base-color-amber-300));
   }
 }
 
@@ -185,21 +185,21 @@
   }
 
   &.ComponentNode--page .ComponentNode__border {
-    filter: drop-shadow(0 0 8px #3b82f6);
+    filter: drop-shadow(0 0 8px var(--base-color-azure-600));
   }
   &.ComponentNode--feature .ComponentNode__border {
-    filter: drop-shadow(0 0 8px #a855f7);
+    filter: drop-shadow(0 0 8px var(--theme-color-node-category-component));
   }
   &.ComponentNode--integration .ComponentNode__border {
-    filter: drop-shadow(0 0 8px #10b981);
+    filter: drop-shadow(0 0 8px var(--base-color-success-600));
   }
   &.ComponentNode--ui .ComponentNode__border {
-    filter: drop-shadow(0 0 8px #06b6d4);
+    filter: drop-shadow(0 0 8px var(--theme-color-wire-signal));
   }
   &.ComponentNode--utility .ComponentNode__border {
-    filter: drop-shadow(0 0 8px #6b7280);
+    filter: drop-shadow(0 0 8px var(--base-color-neutral-600));
   }
   &.ComponentNode--orphan .ComponentNode__border {
-    filter: drop-shadow(0 0 8px #ca8a04);
+    filter: drop-shadow(0 0 8px var(--base-color-amber-600));
   }
 }

@@ -49,10 +49,6 @@
   cursor: default;
 }
 
-/*.create-node-list-item+.create-node-list-item {
-    border-top: 1px solid #222222;
-  }*/
-
 .create-node-list-item.highlighted {
   background-color: var(--theme-color-primary);
 }
