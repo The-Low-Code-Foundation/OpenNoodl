@@ -25,17 +25,39 @@
  * @module nodegx-backend/workflow/types
  */
 
-/** The only step kind in v1. WF-002 adds more via the same StepExecutor seam. */
-export type StepKind = 'call-function';
+/**
+ * Every step kind. `call-function` is WF-001's original and remains the
+ * workhorse; the rest are WF-002's Series-1 kinds (CF11-001 logic, CF11-002
+ * error handling, CF11-003 wait/delay), added through the SAME StepExecutor
+ * seam WF-001 documented — the engine's ordering / error-routing / cancel /
+ * timeout / concurrency semantics are unchanged by them.
+ *
+ * Each kind's params, routes, output shape and prose live in
+ * `steps/kinds.ts` (`STEP_KIND_SPECS`), which is also the source of write-time
+ * validation and the `/admin/workflow-step-kinds` catalog.
+ */
+export type StepKind =
+  | 'call-function'
+  // CF11-001 logic
+  | 'branch'
+  | 'switch'
+  | 'for-each'
+  | 'merge'
+  // CF11-002 error handling
+  | 'retry'
+  | 'stop'
+  // CF11-003 wait / delay
+  | 'wait'
+  | 'wait-until';
 
 export interface WorkflowStep {
   /** Unique within the workflow. Doubles as the execution-history `nodeId`. */
   id: string;
   /** Human label (optional). */
   name?: string;
-  /** What the step runs. v1: 'call-function'. */
+  /** What the step runs. See StepKind. */
   kind: StepKind;
-  /** For 'call-function': the cloud-function name to invoke. */
+  /** For function-invoking kinds ('call-function', 'for-each', 'retry'): the cloud-function name. */
   ref?: string;
   /** Static parameters merged into the step's input (see semantics doc §Data). */
   params?: Record<string, unknown>;
@@ -45,8 +67,26 @@ export interface WorkflowStep {
    * (or halts the workflow if unrouted) — loud, never a silent hang.
    */
   timeoutMs?: number;
-  /** Success edges: steps that become reachable when THIS step succeeds. */
+  /**
+   * UNCONDITIONAL success edges: steps that become reachable when THIS step
+   * succeeds, whatever it decided. For a routing kind (`branch`, `switch`)
+   * these are taken IN ADDITION to the selected route — `next` means "always
+   * continue here", `routes` means "continue here conditionally".
+   */
   next?: string[];
+  /**
+   * CONDITIONAL, NAMED success edges (WF-002). A routing step kind selects one
+   * or more route names when it runs, and only those routes' targets become
+   * reachable; unselected targets are recorded `skipped` like any unreached
+   * step. Route names are fixed per kind (`ontrue`/`onfalse` for `branch`,
+   * `done`/`skipped` for `wait-until`, …) except `switch`, whose names are its
+   * case labels plus `default`. See `steps/kinds.ts`.
+   *
+   * Route targets participate in edge-existence and acyclicity validation
+   * exactly like `next`/`onError`, so a dangling or cyclic route is rejected at
+   * write time.
+   */
+  routes?: Record<string, string[]>;
   /**
    * Error edges: steps that become reachable when THIS step FAILS. A non-empty
    * `onError` makes a failure ROUTED (handled) — the workflow can still succeed.

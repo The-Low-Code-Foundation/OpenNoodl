@@ -555,7 +555,13 @@ export class HttpServer {
         handler: (ctx) => adminTriggers.fire(ctx)
       },
 
-      // ---- Admin: workflow definitions (WF-001) ---------------------------
+      // ---- Admin: workflow definitions (WF-001) + step kinds (WF-002) -----
+      {
+        method: 'GET',
+        pattern: 'admin/workflow-step-kinds',
+        access: { kind: 'admin' },
+        handler: (ctx) => adminWorkflows.stepKinds(ctx)
+      },
       {
         method: 'GET',
         pattern: 'admin/workflow-defs',

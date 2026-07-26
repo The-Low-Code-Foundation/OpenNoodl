@@ -9,9 +9,12 @@
  *     dispatcher's `target.kind === 'workflow'` path);
  *   - `start()` — recover interrupted runs at startup (durability policy).
  *
- * The step executor is `FunctionStepExecutor` (real cloud functions via the
- * shared WorkflowRunner/CloudRunner), so the engine schedules real nodes and
- * never invents a second node abstraction.
+ * The step executor is `CompositeStepExecutor`, which dispatches on step kind:
+ * `call-function` (and the function-invoking parts of `for-each`/`retry`) runs
+ * real cloud functions through the shared WorkflowRunner/CloudRunner, so the
+ * engine still schedules real, catalogued nodes and never invents a second node
+ * abstraction; WF-002's control-flow kinds (branch/switch/merge/stop/wait) are
+ * scheduling decisions the engine already had a seam for.
  *
  * @module nodegx-backend/workflow/WorkflowSubsystem
  */
@@ -19,7 +22,8 @@
 import type { ExecutionHistory } from '../execution/ExecutionStore';
 import type { WorkflowRunner, RunTriggerContext } from './WorkflowRunner';
 import { WorkflowEngine } from './WorkflowEngine';
-import { FunctionStepExecutor, StepExecutor } from './StepExecutor';
+import type { StepExecutor } from './StepExecutor';
+import { CompositeStepExecutor } from './steps/CompositeStepExecutor';
 import { WorkflowRegistry } from './WorkflowRegistry';
 import type { WorkflowRunResult } from './types';
 
@@ -46,7 +50,7 @@ export class WorkflowSubsystem {
     this.registry = new WorkflowRegistry(deps.dataDir);
     this.engine = new WorkflowEngine({
       executions: deps.executions,
-      executor: deps.executor || new FunctionStepExecutor(deps.getRunner),
+      executor: deps.executor || new CompositeStepExecutor({ getRunner: deps.getRunner }),
       backendId: deps.backendId,
       backendName: deps.backendName
     });
