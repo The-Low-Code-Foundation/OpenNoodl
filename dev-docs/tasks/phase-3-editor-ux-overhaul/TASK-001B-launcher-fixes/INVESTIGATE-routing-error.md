@@ -1,5 +1,13 @@
 # Investigation Guide: Dashboard Routing Error
 
+> **SUPERSEDED 2026-07-26 — the issue is fixed; see `ISSUE-routing-error.md`.**
+> Kept only as a record. Its hypotheses were all wrong and following them would
+> waste a session: the route was never renamed, there is no protocol handler
+> involved, webpack `historyApiFallback` is irrelevant (the renderer is loaded
+> from disk, not from a dev server), and the editor has no URL router to
+> misconfigure. The cause was `Launcher.tsx` assigning `url.pathname` on a
+> host-less `file:` URL and writing the result into session history.
+
 **Issue Reference:** ISSUE-routing-error.md  
 **Error:** `ERR_FILE_NOT_FOUND` for `file:///dashboard/projects`  
 **Discovered:** 2026-01-07

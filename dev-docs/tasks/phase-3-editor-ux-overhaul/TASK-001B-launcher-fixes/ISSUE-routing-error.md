@@ -1,9 +1,10 @@
 # Issue: Dashboard Routing Error
 
 **Discovered:** 2026-01-07  
-**Status:** 🔴 Open  
+**Status:** 🟢 Fixed 2026-07-26 (PLAT-005)  
 **Priority:** Medium  
-**Related Task:** TASK-001B Launcher Fixes
+**Related Task:** TASK-001B Launcher Fixes — but see the Resolution: the
+attribution below is wrong, and this was never a TASK-001B regression.
 
 ---
 
@@ -75,4 +76,66 @@ The dashboard should load successfully, showing the projects list.
 
 ## Resolution
 
-_To be filled when issue is resolved_
+**Fixed 2026-07-26 by PLAT-005** in
+`packages/noodl-core-ui/src/preview/launcher/Launcher/Launcher.tsx`.
+
+### Actual cause
+
+Not the Electron store migration, and nothing in the "Suspected Cause" or
+"Related Files" sections above was involved. The editor has no URL router at
+all — `src/editor/src/router.tsx` is a hand-rolled two-state machine
+(`'editor'` / `'projects'`) that never touches `window.location`, so there was
+no `/dashboard/projects` route to have been renamed, and no dev server serving
+the renderer.
+
+The renderer is loaded straight off disk:
+
+```js
+// packages/noodl-editor/src/main/main.js
+win.loadURL('file:///' + appPath + '/src/editor/index.html');
+```
+
+so `window.location` is a `file:` URL with an empty host. `Launcher.tsx` then
+ran this on every tab change:
+
+```tsx
+const url = new URL(window.location.href);
+url.pathname = `/dashboard/${activePageId}`;
+window.history.replaceState({}, '', url.toString());
+```
+
+Assigning `pathname` on a host-less `file:` URL yields literally
+`file:///dashboard/projects`, and `replaceState` writes it into session
+history. The *next* reload — Cmd+R, a devtools reload, an HMR full reload, which
+is exactly what `npm run clean:all && npm run dev` produces — then asks the
+filesystem root for `/dashboard/projects` and fails. `main.js`'s `did-fail-load`
+handler prints the message quoted above.
+
+The block was introduced by `73b5a42` ("initial ux ui improvements and revised
+dashboard", 2025-12-31) and had never been modified since, through six later
+commits to the file.
+
+### Fix
+
+The write is now guarded by `shouldWriteDeepLinkUrl()`, which permits it only
+under an `http:`/`https:` origin (Storybook, the hosted preview). Under `file:`
+it is skipped. Nothing depended on the write: the active tab is persisted by
+`usePersistentTab` via localStorage.
+
+Covered by `packages/noodl-editor/tests/launcher/deeplink-url.test.ts` (5
+specs) — noodl-core-ui has no test runner of its own, so the guard is exported
+and exercised from the editor's Jasmine suite.
+
+### Still true, deliberately not fixed
+
+`parseDeepLink()` reads the last path segment, which under `file:` is
+`index.html`, so it always returns `null` — deep linking has never actually
+worked in the desktop app. No `noodl://` protocol handler is registered in
+`src/main` either. Making deep links work is a feature, not part of this fix.
+
+### Verification owed
+
+Fixed and unit-tested, but **not yet confirmed against a running editor** —
+PLAT-005 ran from a git worktree and could not drive the app. See
+`dev-docs/tasks/phase-14-editor-platform-health/PLAT-005-NOTES.md` §6 for the
+click-through a human should do.
