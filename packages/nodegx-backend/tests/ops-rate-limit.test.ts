@@ -204,7 +204,7 @@ describe('BAK-009 rate limiting over real sockets', () => {
       files: 4,
       functions: 1,
       hooks: 1,
-      public: 2,
+      public: 3,
       realtime: 2
     });
 

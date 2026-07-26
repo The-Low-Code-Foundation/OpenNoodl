@@ -12,11 +12,12 @@ import { requestIdOf } from '../ops/request-id';
 const MAX_JSON_BODY = 10 * 1024 * 1024; // 10MB, matching the old server
 const MAX_FILE_BODY = 50 * 1024 * 1024; // uploads get more headroom
 
-export const CORS_HEADERS: Record<string, string> = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers': '*'
-};
+/**
+ * CORS is no longer a constant spread into every `writeHead`. Since BAK-009 the
+ * dispatcher sets the per-request headers on the response before any handler
+ * runs (ops/headers), so a handler cannot forget them and an operator can
+ * configure them. Spreading a constant here would override those with `*`.
+ */
 
 /** Parsed request URL: pathname + decoded query params. */
 export function parseURL(url: string): { pathname: string; query: Record<string, string> } {
@@ -113,7 +114,6 @@ export function sendJSON(
   res.writeHead(status, {
     'Content-Type': 'application/json',
     'Content-Length': Buffer.byteLength(body),
-    ...CORS_HEADERS,
     ...headers
   });
   res.end(body);

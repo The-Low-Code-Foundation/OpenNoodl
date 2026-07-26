@@ -24,6 +24,7 @@ import type { ExecutionHistory } from '../execution/ExecutionStore';
 import type { WorkflowRunner, RunTriggerContext } from '../workflow/WorkflowRunner';
 import type { WorkflowSubsystem } from '../workflow/WorkflowSubsystem';
 import type { TriggerDef, TriggerResult, TriggerRegistry } from './registry';
+import { recordTriggerFire } from '../ops/metrics';
 
 /**
  * The trigger-result shape `recordRejection` returns. Re-exported under a
@@ -155,6 +156,7 @@ export class TriggerDispatcher {
     }
 
     this.deps.registry.recordFire(trigger.id, { firedAt, result });
+    recordTriggerFire(triggerType, result.ok);
     return { result, statusCode, body };
   }
 
@@ -224,6 +226,7 @@ export class TriggerDispatcher {
    */
   recordRejection(input: RejectionInput): TriggerResult {
     const result: TriggerResult = { ok: false, at: nowIso(), error: input.reason };
+    recordTriggerFire(input.triggerType, false);
     this.writeFailedRecord(input);
     if (input.triggerId) {
       this.deps.registry.recordFire(input.triggerId, { firedAt: result.at, result });

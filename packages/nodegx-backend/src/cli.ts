@@ -276,10 +276,28 @@ async function runServe(options: Partial<BackendServiceOptions>): Promise<void> 
     })}\n`
   );
 
+  // BAK-009 graceful shutdown. `docker stop` and systemd both send SIGTERM and
+  // then SIGKILL after a grace period (10s and 90s respectively), so the drain
+  // has to be bounded and the exit has to be prompt. A second signal means the
+  // operator is out of patience: stop draining and go.
+  let shuttingDown = false;
   const shutdown = async (signal: string) => {
-    process.stdout.write(`\n[nodegx-backend] ${signal} — shutting down\n`);
-    await started.stop();
-    process.exit(0);
+    if (shuttingDown) {
+      process.stdout.write(`[nodegx-backend] second ${signal} — exiting immediately\n`);
+      process.exit(1);
+    }
+    shuttingDown = true;
+    process.stdout.write(`\n[nodegx-backend] ${signal} — draining in-flight requests, then shutting down\n`);
+    try {
+      await started.stop();
+      process.stdout.write('[nodegx-backend] stopped cleanly\n');
+      process.exit(0);
+    } catch (e) {
+      // Exit non-zero: a shutdown that could not finish is not a clean one, and
+      // a supervisor deserves to know the difference.
+      process.stderr.write(`[nodegx-backend] shutdown error: ${e instanceof Error ? e.message : e}\n`);
+      process.exit(1);
+    }
   };
   process.on('SIGINT', () => void shutdown('SIGINT'));
   process.on('SIGTERM', () => void shutdown('SIGTERM'));

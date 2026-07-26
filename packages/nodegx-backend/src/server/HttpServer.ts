@@ -23,6 +23,7 @@
  * @module nodegx-backend/server/HttpServer
  */
 
+import * as fs from 'fs';
 import * as http from 'http';
 
 import type { BackendServiceOptions } from '../config';
@@ -64,7 +65,9 @@ import { RateLimiter, classifyRoute } from '../ops/rate-limit';
 import type { AuditLog } from '../ops/audit';
 import { AUDIT_LOGIN_FAILURE, AUDIT_LOGIN_SUCCESS, auditActionFor, declaredAuditActions } from '../ops/audit-actions';
 import { REQUEST_ID_HEADER, resolveRequestId } from '../ops/request-id';
-import { CORS_HEADERS, HttpError, parseURL, readJSONBody, readRawBody, sendError, sendJSON } from './http-util';
+import { applyAdminSecurityHeaders, applyCors, serverHeader } from '../ops/headers';
+import { metrics, recordRateLimited, recordRequest, registerProcessGauges } from '../ops/metrics';
+import { HttpError, parseURL, readJSONBody, readRawBody, sendError, sendJSON } from './http-util';
 
 // ============================================================================
 // Route table types
@@ -152,6 +155,8 @@ interface RequestTrace {
   principal: string;
   error?: string;
   logged: boolean;
+  /** The rate-limit / metrics class of the matched route. */
+  rateClass?: string;
   /** BAK-009 audit: the action this request performs, when it is an audited one. */
   auditAction?: string;
   /** Stable actor identity within the principal kind (user id / key name). */
@@ -220,10 +225,14 @@ export class HttpServer {
   private readonly getRunner: () => WorkflowRunner | null;
   private readonly realtime: RealtimeHub;
   private readonly triggers: TriggerSubsystem;
+  private readonly backups: BackupSubsystem;
   private readonly ops: OpsState;
   private readonly auditLog: AuditLog;
   private server: http.Server | null = null;
   private startedAt = 0;
+  /** BAK-009 graceful shutdown: responses still owed to a client. */
+  private readonly inFlight = new Set<http.ServerResponse>();
+  private draining = false;
 
   private readonly byob: ByobAdminRoutes;
   private readonly parse: ParseWireRoutes;
@@ -257,6 +266,7 @@ export class HttpServer {
     this.getRunner = deps.getRunner;
     this.realtime = deps.realtime;
     this.triggers = deps.triggers;
+    this.backups = deps.backups;
     this.ops = deps.ops;
     this.auditLog = deps.audit;
 
@@ -351,6 +361,11 @@ export class HttpServer {
     return [
       // ---- Public ----------------------------------------------------------
       { method: 'GET', pattern: 'health', access: { kind: 'public' }, handler: (ctx) => this.health(ctx.res) },
+      // `public` in the table and SELF-ENFORCING in the handler, the same
+      // posture as /realtime and the webhook route: the gate ("admin, or
+      // loopback when the operator allowed it") is not one of the declared
+      // access classes, so it is applied where it can be expressed.
+      { method: 'GET', pattern: 'metrics', access: { kind: 'public' }, handler: (ctx) => this.serveMetrics(ctx) },
       { method: 'GET', pattern: 'config', access: { kind: 'public' }, handler: (ctx) => parse.config(ctx.res) },
 
       // ---- Realtime (SSE) — BAK-001 ---------------------------------------
@@ -923,9 +938,15 @@ export class HttpServer {
           logged: false
         };
         res.setHeader(REQUEST_ID_HEADER, trace.requestId);
+        res.setHeader('Server', serverHeader());
+        applyCors(req, res, this.ops.config.cors);
+        this.inFlight.add(res);
         const finish = () => {
+          if (trace.logged) return;
+          this.inFlight.delete(res);
           this.logRequest(req, res, trace);
           this.recordAudit(res, trace);
+          recordRequest(trace.rateClass || 'unmatched', trace.method, res.statusCode, Date.now() - trace.startedAt);
         };
         res.on('finish', finish);
         res.on('close', finish);
@@ -941,6 +962,7 @@ export class HttpServer {
         const port = typeof addr === 'object' && addr ? addr.port : this.options.port;
         this.server = server;
         this.startedAt = Date.now();
+        this.registerMetrics();
         const url = `http://${this.options.host}:${port}`;
         this.files.setBaseUrl(url);
         resolve({ host: this.options.host, port, url });
@@ -948,12 +970,108 @@ export class HttpServer {
     });
   }
 
-  close(): Promise<void> {
-    return new Promise((resolve) => {
-      if (!this.server) return resolve();
-      this.server.close(() => resolve());
-      this.server = null;
+  /**
+   * Graceful shutdown (SIGTERM, `docker stop`, the editor's supervisor).
+   *
+   * The order here is load-bearing, and the obvious order is WRONG:
+   *
+   *   1. `server.close()` is CALLED but not awaited. Its callback fires only
+   *      when every connection has gone, and an SSE stream never goes on its
+   *      own — awaiting here is how a service hangs until SIGKILL. (It did.)
+   *   2. The streams are then closed with a `resync` goodbye, so clients are
+   *      told to re-query rather than silently losing their feed.
+   *   3. In-flight requests drain, BOUNDED. An unbounded drain turns one stuck
+   *      request into a container that never stops and loses everything else
+   *      in flight at the 10-second SIGKILL.
+   *   4. Idle keep-alive sockets are closed explicitly — they hold nothing but
+   *      they do hold `server.close()` open, which is the second classic way
+   *      this hangs. Anything still alive after the drain is destroyed.
+   */
+  async close(drainMs = 10_000): Promise<void> {
+    const server = this.server;
+    this.server = null;
+    if (!server) return;
+
+    this.draining = true;
+    // 1. Stop accepting. Deliberately NOT awaited — see the note above.
+    const fullyClosed = new Promise<void>((resolve) => server.close(() => resolve()));
+
+    // 2. Say goodbye to the streams.
+    const streams = this.realtime.connectionCount;
+    if (streams > 0) logger.info('shutdown.sse-goodbye', { connections: streams });
+    this.realtime.closeWithGoodbye('server-shutdown');
+
+    // 3. Drain what is owed to a client, bounded. Polled rather than
+    //    event-driven: the completion hook that empties this set can fire
+    //    between the size check and the listener registration, and a shutdown
+    //    that hangs on that race is worse than 25ms of latency.
+    const deadline = Date.now() + drainMs;
+    const pending = this.inFlight.size;
+    if (pending > 0) logger.info('shutdown.draining', { inFlight: pending, drainMs });
+    while (this.inFlight.size > 0 && Date.now() < deadline) {
+      await new Promise((resolve) => setTimeout(resolve, 25).unref());
+    }
+    if (this.inFlight.size > 0) {
+      logger.warn('shutdown.drain-timeout', {
+        inFlight: this.inFlight.size,
+        drainMs,
+        detail: 'closing anyway — a request that outlives the drain window is closed, not waited for forever'
+      });
+      for (const res of Array.from(this.inFlight)) {
+        try {
+          res.destroy();
+        } catch {
+          /* already gone */
+        }
+      }
+      this.inFlight.clear();
+    }
+
+    // 4. Release the sockets that are merely idle, then wait briefly for the
+    //    close to complete and force the rest.
+    if (typeof server.closeIdleConnections === 'function') server.closeIdleConnections();
+    const closed = await Promise.race([
+      fullyClosed.then(() => true),
+      new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 2000).unref())
+    ]);
+    if (!closed && typeof server.closeAllConnections === 'function') {
+      logger.warn('shutdown.forcing-connections', { detail: 'sockets outlived the drain; closing them' });
+      server.closeAllConnections();
+    }
+    this.draining = false;
+    logger.info('shutdown.http-closed', { drainedMs: drainMs - Math.max(0, deadline - Date.now()) });
+  }
+
+  /**
+   * Gauges are registered once and READ AT SCRAPE TIME. That is the whole
+   * design: a cached backup age is the one number that would keep looking
+   * healthy after backups stop.
+   */
+  private registerMetrics(): void {
+    registerProcessGauges(this.startedAt);
+    metrics.gauge('nodegx_realtime_connections', 'Open SSE streams.', () => this.realtime.connectionCount);
+    metrics.gauge('nodegx_ratelimit_buckets', 'Live rate-limit buckets (memory pressure indicator).', () =>
+      this.rateLimiter.size
+    );
+    metrics.gauge('nodegx_db_file_bytes', 'Size of the backend database file on disk.', () => {
+      const dbPath = this.persistence.dbPath;
+      if (!dbPath) return null;
+      try {
+        return fs.statSync(dbPath).size;
+      } catch {
+        return null;
+      }
     });
+    metrics.gauge(
+      'nodegx_backup_age_seconds',
+      'Seconds since the last successful backup. ABSENT when none has ever succeeded — an absent series is a ' +
+        'louder alert than a zero.',
+      () => {
+        const status = this.backups.config.get().status;
+        const last = status && status.lastSuccessAt ? Date.parse(String(status.lastSuccessAt)) : NaN;
+        return Number.isFinite(last) ? (Date.now() - last) / 1000 : null;
+      }
+    );
   }
 
   // ==========================================================================
@@ -1024,7 +1142,7 @@ export class HttpServer {
     const method = req.method || 'GET';
 
     if (method === 'OPTIONS') {
-      res.writeHead(204, { ...CORS_HEADERS, 'Access-Control-Max-Age': '86400' });
+      res.writeHead(204, { 'Access-Control-Max-Age': '86400' });
       res.end();
       return;
     }
@@ -1085,8 +1203,10 @@ export class HttpServer {
     // raw header instead would let an attacker mint a fresh bucket per request
     // by sending garbage tokens.
     const routeClass = classifyRoute(route.pattern, route.access.kind);
+    trace.rateClass = routeClass;
     const decision = this.rateLimiter.check(routeClass, rateLimitKey(principal, trace.clientIp));
     if (!decision.allowed) {
+      recordRateLimited(routeClass);
       res.setHeader('Retry-After', String(decision.retryAfterSeconds));
       logger.warn('ratelimit.refused', {
         requestId: trace.requestId,
@@ -1313,6 +1433,32 @@ export class HttpServer {
   }
 
   /**
+   * `GET /metrics` — Prometheus exposition.
+   *
+   * Gated here rather than by an access class: the rule is "admin credential,
+   * OR loopback when `metrics.allowLoopback` is on", which is the shape of a
+   * real scrape setup (Prometheus on the same host or in the same compose
+   * network reaching in over localhost) and not one of the declared classes.
+   */
+  private serveMetrics(ctx: RequestContext): void {
+    const config = this.ops.config.metrics;
+    if (!config.enabled) throw new HttpError(404, 'Not found: GET /metrics');
+
+    const fromLoopback = ctx.clientIp === '127.0.0.1' || ctx.clientIp === '::1';
+    const permitted = ctx.principal.kind === 'admin' || (config.allowLoopback && fromLoopback);
+    if (!permitted) throw new HttpError(401, 'Unauthorized.');
+
+    const body = metrics.render();
+    ctx.res.writeHead(200, {
+      // The version suffix is what Prometheus's own exporters send; without it
+      // some scrapers fall back to a slower negotiation path.
+      'Content-Type': 'text/plain; version=0.0.4; charset=utf-8',
+      'Content-Length': Buffer.byteLength(body)
+    });
+    ctx.res.end(body);
+  }
+
+  /**
    * `GET /admin/audit` — the trail, newest first. Filters mirror the fields an
    * operator actually asks by: which action, whose, succeeded or not, and when.
    */
@@ -1386,7 +1532,7 @@ export class HttpServer {
       { type: 'webhook', source: `POST /functions/${ctx.params.name}`, requestId: ctx.requestId }
     );
 
-    ctx.res.writeHead(response.statusCode, { 'Content-Type': 'application/json', ...CORS_HEADERS });
+    ctx.res.writeHead(response.statusCode, { 'Content-Type': 'application/json' });
     ctx.res.end(response.body);
   }
 
@@ -1595,7 +1741,7 @@ export class HttpServer {
       requestId: ctx.requestId
     });
 
-    ctx.res.writeHead(outcome.statusCode, { 'Content-Type': 'application/json', ...CORS_HEADERS });
+    ctx.res.writeHead(outcome.statusCode, { 'Content-Type': 'application/json' });
     ctx.res.end(outcome.body || JSON.stringify({ ok: outcome.result.ok }));
   }
 }

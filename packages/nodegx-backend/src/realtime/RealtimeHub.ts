@@ -92,8 +92,10 @@ const SSE_HEADERS: Record<string, string> = {
   Connection: 'keep-alive',
   // Defeat nginx/proxy response buffering that would hold the stream (WF-003
   // deploy notes cover reverse proxies).
-  'X-Accel-Buffering': 'no',
-  'Access-Control-Allow-Origin': '*'
+  'X-Accel-Buffering': 'no'
+  // No Access-Control-Allow-Origin here since BAK-009: the dispatcher has
+  // already set the configured one on this response, and repeating `*` in
+  // writeHead would override it.
 };
 
 export class RealtimeHub {
@@ -180,6 +182,26 @@ export class RealtimeHub {
     conn.closed = true;
     if (conn.heartbeat) clearInterval(conn.heartbeat);
     this.connections.delete(clientId);
+  }
+
+  /**
+   * BAK-009 graceful shutdown: tell every client the stream is ending before it
+   * ends, then close. `resync` is deliberately reused rather than a new frame
+   * type — every client already handles it (it means "re-query, you may have
+   * missed something"), which is exactly the right instruction for a client
+   * whose stream is about to disappear. A new `goodbye` event would be ignored
+   * by every client shipped before it.
+   */
+  closeWithGoodbye(reason: string): void {
+    for (const conn of this.connections.values()) {
+      if (conn.closed) continue;
+      try {
+        this.enqueue(conn, { event: 'resync', data: { reason } });
+      } catch {
+        /* a stream that cannot take the goodbye is closed below anyway */
+      }
+    }
+    this.close();
   }
 
   /** Shut the hub down: detach from the bus and close every stream. */

@@ -54,7 +54,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 import type { RequestContext } from './HttpServer';
-import { CORS_HEADERS, HttpError, readRawBody, sendJSON } from './http-util';
+import { HttpError, readRawBody, sendJSON } from './http-util';
 import { canAccessRecord } from '../security/model';
 import type { FileSubsystem } from '../storage/FileSubsystem';
 import type { FileRecord } from '../storage/MetadataStore';
@@ -175,7 +175,7 @@ export class FileRoutes {
 
     const etag = `"${record.hash}"`;
     if (ctx.req.headers['if-none-match'] === etag) {
-      ctx.res.writeHead(304, { ETag: etag, ...CORS_HEADERS });
+      ctx.res.writeHead(304, { ETag: etag });
       ctx.res.end();
       return;
     }
@@ -186,7 +186,6 @@ export class FileRoutes {
       'Content-Length': record.size,
       ETag: etag,
       'Cache-Control': record.private ? 'private, no-store' : 'public, max-age=31536000, immutable',
-      ...CORS_HEADERS
     });
     const stream = driver.createReadStream(record.key);
     stream.on('error', (e: Error) => {
@@ -259,7 +258,7 @@ export class FileRoutes {
     const spec = this.resolveThumbSpec(ctx, rawSpec);
     const etag = `"${record.hash}-${spec.key}"`;
     if (ctx.req.headers['if-none-match'] === etag) {
-      ctx.res.writeHead(304, { ETag: etag, ...CORS_HEADERS });
+      ctx.res.writeHead(304, { ETag: etag });
       ctx.res.end();
       return;
     }
@@ -304,7 +303,6 @@ export class FileRoutes {
       'Content-Length': buffer.length,
       ETag: etag,
       'Cache-Control': record.private ? 'private, no-store' : 'public, max-age=31536000, immutable',
-      ...CORS_HEADERS
     });
     ctx.res.end(buffer);
   }

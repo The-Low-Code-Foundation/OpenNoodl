@@ -50,6 +50,7 @@ import type { BackendServiceOptions } from '../config';
 import type { SecurityState } from '../security/state';
 import type { RequestContext } from '../server/HttpServer';
 import { sendJSON } from '../server/http-util';
+import { applyAdminSecurityHeaders } from '../ops/headers';
 
 // The UI, inlined by esbuild's text loader (and by tests/text-transformer.js
 // under jest). `require` rather than `import` so the one call site works
@@ -136,6 +137,9 @@ export class AdminDashboardRoutes {
    * script — including one injected into a record value we render.
    */
   serve(ctx: RequestContext): void {
+    // BAK-009: the surrounding security headers for an HTML document that
+    // carries a credential. The CSP below is this page's own, and stricter.
+    applyAdminSecurityHeaders(ctx.res);
     const nonce = crypto.randomBytes(16).toString('base64');
     // The nonce genuinely appears more than once (one style tag, one script
     // tag), so it is a global replace; the stylesheet must not be.

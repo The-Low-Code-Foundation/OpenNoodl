@@ -384,6 +384,18 @@ export class BackendService {
     };
   }
 
+  /**
+   * Stop, in the order that makes a SIGTERM survivable (BAK-009):
+   *
+   *   1. Schedulers first — no NEW work while we are trying to finish the old.
+   *   2. The HTTP surface, which is where the graceful part lives: stop
+   *      accepting, say goodbye to SSE clients, drain what is in flight
+   *      (bounded), then close.
+   *   3. Only then the realtime hub, the change bus, and the database — every
+   *      one of which a still-draining request might be using. This order was
+   *      wrong before: the hub was closed first, so SSE clients had their
+   *      streams cut without the goodbye the hub knows how to send.
+   */
   async stop(): Promise<void> {
     if (this.triggers) {
       this.triggers.stop();
@@ -397,6 +409,10 @@ export class BackendService {
       this.files.stop();
       this.files = null;
     }
+    if (this.http) {
+      await this.http.close();
+      this.http = null;
+    }
     if (this.realtime) {
       this.realtime.close();
       this.realtime = null;
@@ -404,10 +420,6 @@ export class BackendService {
     if (this.changeBus) {
       this.changeBus.close();
       this.changeBus = null;
-    }
-    if (this.http) {
-      await this.http.close();
-      this.http = null;
     }
     if (this.persistence && this.persistence.adapter) {
       await this.persistence.adapter.disconnect();

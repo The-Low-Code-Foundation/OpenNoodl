@@ -15,6 +15,7 @@
  */
 
 import type { EmailConfigState } from './EmailConfigState';
+import { recordEmailSend } from '../ops/metrics';
 
 // nodemailer is untyped-by-require here on purpose: it ships its own .d.ts,
 // but importing it as ESM default vs. the CJS module this package's other
@@ -72,6 +73,9 @@ export class Mailer {
    */
   async send(req: SendEmailRequest): Promise<SendEmailResult> {
     if (!this.config.isConfigured()) {
+      // Counted as a failure: from an operator's chart, "SMTP was never
+      // configured" and "SMTP is refusing" both mean mail is not going out.
+      recordEmailSend(false);
       return { success: false, error: this.config.notConfiguredReason() };
     }
 
@@ -80,12 +84,16 @@ export class Mailer {
     const mailOptions = { from, to: req.to, subject: req.subject, text: req.text, html: req.html };
 
     const first = await this.attempt(mailOptions);
-    if (first.success) return first;
+    if (first.success) {
+      recordEmailSend(true);
+      return first;
+    }
 
     // Exactly one documented retry — the flows must tolerate slow/flaky SMTP
     // without wedging the request, but this is not a queue: two tries, then
     // an honest failure.
     const second = await this.attempt(mailOptions);
+    recordEmailSend(second.success);
     return { ...second, retried: true };
   }
 

@@ -59,7 +59,14 @@ describe('WF-003 deploy assets — nginx covers the backend route table', () => 
 
       const families = [...new Set(table.map((r) => r.pattern.split('/')[0]))].sort();
       const proxied = proxiedPrefixes();
-      const missing = families.filter((f) => !proxied.has(f));
+      // A family may be DELIBERATELY not exposed through the public origin —
+      // /metrics is (BAK-009). The exemption lives in the conf itself, marked
+      // `NOT-EXPOSED: /path`, so the artifact explains itself and this test is
+      // not the place someone has to remember to look.
+      const notExposed = new Set(
+        [...NGINX_CONF.matchAll(/NOT-EXPOSED:\s*\/([A-Za-z0-9_-]+)/g)].map((m) => m[1])
+      );
+      const missing = families.filter((f) => !proxied.has(f) && !notExposed.has(f));
 
       expect({ missing, hint: '' }).toEqual({
         missing: [],
