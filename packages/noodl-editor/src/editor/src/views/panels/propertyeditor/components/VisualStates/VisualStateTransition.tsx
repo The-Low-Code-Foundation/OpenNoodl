@@ -1,5 +1,7 @@
 import React from 'react';
 
+import { Icon, IconName } from '@noodl-core-ui/components/common/Icon';
+
 export interface VisualStateTransitionProps {
   model: TSFixme;
   transition: TSFixme;
@@ -68,7 +70,9 @@ export class VisualStateTransition extends React.Component<VisualStateTransition
           className="visual-state-transition-changed-dot"
           style={{ visibility: !isDefault ? 'visible' : 'hidden' }}
           onClick={this.onResetClicked.bind(this)}
-        ></span>
+        >
+          <Icon icon={IconName.Reset} UNSAFE_style={{ width: 16, height: 16 }} />
+        </span>
       </div>
     );
   }

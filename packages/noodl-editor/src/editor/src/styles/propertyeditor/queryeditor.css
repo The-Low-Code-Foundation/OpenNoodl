@@ -310,8 +310,10 @@
   background-color: var(--theme-color-bg-5);
 }
 
+/* UIX-011: was a `content` background of queryeditor-trash.svg (baked white fill, could
+   not theme). Same 20x20 box, glyph is now a core-ui <Icon> child. */
 .queryeditor-trash-icon {
-  content: url('../assets/icons/queryeditor-trash.svg');
+  color: var(--theme-color-fg-default);
   width: 20px;
   height: 20px;
   opacity: 0.6;

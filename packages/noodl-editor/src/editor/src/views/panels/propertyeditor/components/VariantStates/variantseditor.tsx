@@ -3,6 +3,8 @@ import { createRoot, Root } from 'react-dom/client';
 
 import { ProjectModel } from '@noodl-models/projectmodel';
 
+import { Icon, IconName } from '@noodl-core-ui/components/common/Icon';
+
 import PopupLayer from '../../../../popuplayer';
 import { ToastLayer } from '../../../../ToastLayer/ToastLayer';
 import { PickVariantPopup } from './PickVariantPopup';
@@ -98,7 +100,9 @@ export class VariantsEditor extends React.Component<VariantsEditorProps, State> 
         <div className="variants-section">
           <div className="variants-name-section" onClick={this.onPickVariant.bind(this)}>
             <label>{this.state.variant.name}</label>
-            <div className="variants-pick-icon" />
+            <div className="variants-pick-icon">
+              <Icon icon={IconName.CaretDownUp} UNSAFE_style={{ width: 10, height: 12 }} />
+            </div>
           </div>
           <button
             className="variants-button"

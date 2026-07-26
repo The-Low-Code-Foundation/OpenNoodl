@@ -67,12 +67,12 @@
   background-color: var(--theme-color-bg-4);
 }
 
+/* UIX-011: mask+background → core-ui <Icon> child painted via `color`.
+   Same 16x16 box and 8px gutter. */
 .visual-state-transition-changed-dot {
   height: 16px;
   width: 16px;
-  -webkit-mask-size: contain;
-  -webkit-mask-image: url(../assets/icons/editor/reset-to-default.svg);
-  background: var(--theme-color-fg-muted);
+  color: var(--theme-color-fg-muted);
   margin-left: 8px;
 }
 

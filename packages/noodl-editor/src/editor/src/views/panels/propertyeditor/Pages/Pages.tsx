@@ -3,7 +3,7 @@ import React, { useState, useRef } from 'react';
 import { flushSync } from 'react-dom';
 import { createRoot, Root } from 'react-dom/client';
 
-import { IconName, IconSize } from '@noodl-core-ui/components/common/Icon';
+import { Icon, IconName, IconSize } from '@noodl-core-ui/components/common/Icon';
 import { IconButton, IconButtonVariant } from '@noodl-core-ui/components/inputs/IconButton';
 
 import { RouterAdapter } from '../../../../models/NodeTypeAdapters/RouterAdapter';
@@ -66,7 +66,9 @@ function PageItem(props) {
   return (
     <div className="variants-pick-variant-item is-page" onClick={props.onSelectClicked}>
       <div className="variants-pick-variant-inner">
-        <div className="router-pages-icon" style={{ margin: '0px', marginLeft: '7px' }}></div>
+        <div className="router-pages-icon" style={{ margin: '0px', marginLeft: '7px' }}>
+          <Icon icon={IconName.File} UNSAFE_style={{ width: 18, height: 18 }} />
+        </div>
         <div className="variant-item-name" style={{ marginRight: '7px' }}>
           {props.name}
         </div>
@@ -102,7 +104,12 @@ function BigPageItem(props) {
     <div style={{ display: 'flex' }}>
       <div className="router-pages-page" onClick={props.onPageClicked}>
         <div style={{ display: 'flex' }}>
-          <div className={'router-pages-icon' + (props.isStartPage ? ' start-page' : '')}></div>
+          <div className={'router-pages-icon' + (props.isStartPage ? ' start-page' : '')}>
+            <Icon
+              icon={props.isStartPage ? IconName.FileFill : IconName.File}
+              UNSAFE_style={{ width: 18, height: 18 }}
+            />
+          </div>
         </div>
         <div style={{ flexGrow: 1 }}>
           <div className="router-pages-component">{p.title || p.component}</div>

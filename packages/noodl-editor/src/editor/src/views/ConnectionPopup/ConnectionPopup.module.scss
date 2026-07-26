@@ -7,11 +7,14 @@
   bottom: 0;
 }
 
+/* UIX-011: was a `content` background of flash.svg — a `fill="white"` bolt frozen against
+   the theme. Migrated to core-ui `lightning` and rendered as an <Icon> child;
+   same 15x15 box and 3px gutter. */
 .signalIcon {
-  content: url('../assets/icons/flash.svg');
   width: 15px;
   height: 15px;
   margin-right: 3px;
+  color: var(--theme-color-fg-default);
 }
 
 .popup {

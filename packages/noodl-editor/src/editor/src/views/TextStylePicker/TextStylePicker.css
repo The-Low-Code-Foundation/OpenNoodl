@@ -9,12 +9,14 @@
   border-left: 1px solid var(--theme-color-bg-4);
 }
 
-.textstyles-edit-style::before {
-  content: url('../assets/icons/editor/edit-controls.svg');
+/* UIX-011: the glyph was a `content` background of editor/edit-controls.svg on a ::before — a pseudo-element cannot host a React <Icon>, so the Icon is now a
+   real child of this already-flex-centred 33x33 box and the pseudo-element is
+   gone. Opacity moves from ::before to the child. */
+.textstyles-edit-style > * {
   opacity: 0.6;
-  line-height: 0;
+  color: var(--theme-color-fg-default);
 }
 
-.textstyles-edit-style:hover::before {
+.textstyles-edit-style:hover > * {
   opacity: 1;
 }
