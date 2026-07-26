@@ -1,6 +1,6 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { NodeLibrary } from '@noodl-models/nodelibrary';
-import { INodeType, INodeColorScheme } from '@noodl-types/nodeTypes';
+import { useNodeColorScheme } from '@noodl-hooks/useNodeColorScheme';
+import React, { useEffect, useRef, useState } from 'react';
+import { INodeType } from '@noodl-types/nodeTypes';
 import { EditorNode } from '@noodl-core-ui/components/common/EditorNode';
 
 // TODO: Move this interface somewhere better
@@ -66,7 +66,8 @@ export default function NodePickerNode({
     onClick(item);
   }
 
-  const colors: INodeColorScheme = useMemo(() => NodeLibrary.instance.colorSchemeForNodeType(item), [item]);
+  // UIX-012: theme-derived, and re-resolved when the theme flips.
+  const colors = useNodeColorScheme(item?.color);
 
   return (
     <div onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave} onClick={handleClick} ref={rootRef}>

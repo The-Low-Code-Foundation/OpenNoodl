@@ -1,4 +1,5 @@
 export * from './CanvasRenderer.test';
+export * from './CanvasThemeNodeSchemes.test';
 export * from './InteractionController.test';
 export * from './NodeSelector.test';
 export * from './OverlayHost.test';

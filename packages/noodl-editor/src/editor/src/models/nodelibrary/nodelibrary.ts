@@ -6,6 +6,7 @@ import { BasicNodeType } from '@noodl-models/nodelibrary/BasicNodeType';
 import { UnknownNodeType } from '@noodl-models/nodelibrary/UnknownNodeType';
 
 import Model from '../../../../shared/model';
+import { CanvasTheme } from '../../views/nodegrapheditor/canvas/CanvasTheme';
 import { ModelProxy } from '../../views/panels/propertyeditor/models/modelProxy';
 
 const _condFuncCache = {};
@@ -240,13 +241,19 @@ export class NodeLibrary extends Model {
     return false;
   }
 
+  // UIX-012: node colour schemes come from CanvasTheme (CSS tokens), not from
+  // the runtime's dark-only `colors.nodes` blob — otherwise every DOM surface
+  // that paints node chrome (picker, connection popup, references panel) stays
+  // dark-navy under the light theme. The blob is still shipped by
+  // nodelibraryexport.js for consumers outside the editor; it is simply no
+  // longer what the editor renders from. React callers should prefer the
+  // `useNodeColorScheme` hook, which also re-renders on theme change.
   colorSchemeForNodeColorName(name) {
-    return this.library.colors.nodes[name] || this.library.colors.nodes.default;
+    return CanvasTheme.instance.nodeColorScheme(name);
   }
 
   colorSchemeForNodeType(type) {
-    if (!type.color) return this.library.colors.nodes.default;
-    return this.library.colors.nodes[type.color];
+    return CanvasTheme.instance.nodeColorScheme(type?.color);
   }
 
   colorSchemeForConnectionType(type) {

@@ -32,7 +32,32 @@ export const THEME_CHANGED_EVENT = 'nodegx:themechanged';
 type Listener = { fn: () => void; context: unknown };
 
 /** One colour: optional CSS token name + mandatory headless fallback. */
-type ColorSpec = { css?: string; fallback: string };
+export type ColorSpec = { css?: string; fallback: string };
+
+/**
+ * Resolve a table of CSS custom properties to literal colour strings — the one
+ * primitive for "I need concrete colours, not `var()`".
+ *
+ * Some consumers cannot use `var()` at all: the canvas paints into a 2D
+ * context, and `react-json-view` (UIX-012, the debug inspector popup) takes a
+ * base16 object of literals. Both go through here so there is a single place
+ * that knows how a token becomes a value, and a single headless fallback rule.
+ *
+ * Pair it with `CanvasTheme.instance.on(...)` (or the `useThemeTokens` hook) to
+ * re-resolve when the theme flips.
+ */
+export function resolveThemeTokens<K extends string>(specs: Record<K, ColorSpec>): Record<K, string> {
+  const style = hasDom() ? getComputedStyle(document.documentElement) : undefined;
+  const out = {} as Record<K, string>;
+
+  for (const key of Object.keys(specs) as K[]) {
+    const spec = specs[key];
+    const value = style && spec.css ? style.getPropertyValue(spec.css).trim() : '';
+    out[key] = value || spec.fallback;
+  }
+
+  return out;
+}
 
 /**
  * The colour table. `css` is the UIX-001 token the value resolves from in a
@@ -119,6 +144,35 @@ export type CanvasCategoryColors = {
   chipFill: string;
 };
 
+/**
+ * The DOM-side node colour scheme (UIX-012).
+ *
+ * Shape-compatible with `INodeColorScheme` (noodl-editor `types/nodeTypes`) and
+ * with the `colors.nodes.*` blob the runtime's `nodelibraryexport.js` still
+ * ships — but derived from the same CSS tokens the canvas paints from, so it is
+ * correct in BOTH themes instead of being frozen at the dark literals.
+ *
+ * Consumers are the surfaces that render node chrome in the DOM rather than on
+ * the canvas: the node picker item (`EditorNode`), the connection popup and the
+ * node-references panel.
+ */
+export type NodeColorScheme = {
+  /** Card body. */
+  base: string;
+  /** Card body, hovered/keyboard-cursored. */
+  baseHighlighted: string;
+  /** Title bar / group header (one elevation step deeper than `base`). */
+  header: string;
+  /** Title bar, highlighted — reads as the card body, as in the dark palette. */
+  headerHighlighted: string;
+  /** Card outline at rest. */
+  outline: string;
+  /** Card outline when selected — the full-strength category hue. */
+  outlineHighlighted: string;
+  /** Ink on the card. */
+  text: string;
+};
+
 export type CanvasWireColors = {
   normal: string;
   highlighted: string;
@@ -135,6 +189,8 @@ export type CanvasThemeColors = BaseColors & {
   wireSignalHighlighted: string;
   wireDataHighlighted: string;
   categories: Record<CanvasCategoryName, CanvasCategoryColors>;
+  /** DOM node chrome (picker / connection popup / references panel). */
+  nodeSchemes: Record<CanvasCategoryName, NodeColorScheme>;
 };
 
 /* ----------------------------------------------------------------------------
@@ -282,6 +338,16 @@ export class CanvasTheme {
   }
 
   /**
+   * The DOM node colour scheme for a node category (unknown names → default).
+   * Same taxonomy and same fallback rule as `categoryColors`, so the picker,
+   * the connection popup and the canvas can never disagree about a category.
+   */
+  nodeColorScheme(name: string | undefined): NodeColorScheme {
+    const schemes = this.colors.nodeSchemes;
+    return (name && schemes[name as CanvasCategoryName]) || schemes.default;
+  }
+
+  /**
    * Wire colours for a connection/port type name: `signal` gets the cyan pair,
    * everything else carries data (matching the old signal/default split).
    */
@@ -329,19 +395,7 @@ export class CanvasTheme {
   }
 
   private resolve(): CanvasThemeColors {
-    const style = hasDom() ? getComputedStyle(document.documentElement) : undefined;
-
-    const base = {} as Record<string, string>;
-    for (const key of Object.keys(COLOR_SPECS) as (keyof typeof COLOR_SPECS)[]) {
-      const spec: ColorSpec = COLOR_SPECS[key];
-      let value = '';
-      if (style && spec.css) {
-        value = style.getPropertyValue(spec.css).trim();
-      }
-      base[key] = value || spec.fallback;
-    }
-
-    return this.derive(base as BaseColors);
+    return this.derive(resolveThemeTokens(COLOR_SPECS) as BaseColors);
   }
 
   private derive(base: BaseColors): CanvasThemeColors {
@@ -353,6 +407,32 @@ export class CanvasTheme {
     // Highlighted wires move towards the theme's text pole so they brighten
     // on dark and deepen on light.
     const highlight = (color: string) => mix(color, isDark ? '#ffffff' : '#07090c', 0.35);
+
+    /**
+     * DOM node chrome (UIX-012). The card surface is the panel elevation step
+     * tinted towards the category hue; the header is the same tint one step
+     * deeper. The mix ratios are chosen so the DARK output reproduces the
+     * shipped `nodelibraryexport.js` palette to within a couple of levels per
+     * channel (e.g. component base #363050 → rgb(53,51,79)) while the LIGHT
+     * output is a soft tint of the same hue on a near-white surface, with
+     * `fg-highlight` ink — readable on both, by construction rather than by a
+     * second hand-authored palette.
+     */
+    const nodeScheme = (accent: string): NodeColorScheme => {
+      const cardBase = mix(base.cardBg, accent, 0.2);
+      const cardHeader = mix(base.ground, accent, 0.2);
+      return {
+        base: cardBase,
+        baseHighlighted: mix(base.cardBg, accent, 0.32),
+        header: cardHeader,
+        // The dark palette has headerHighlighted === base and outline === header;
+        // keep those identities so nothing that relied on them shifts.
+        headerHighlighted: cardBase,
+        outline: cardHeader,
+        outlineHighlighted: accent,
+        text: base.cardText
+      };
+    };
 
     return {
       ...base,
@@ -368,6 +448,13 @@ export class CanvasTheme {
         javascript: chip(base.categoryJavascript),
         component: chip(base.categoryComponent),
         default: chip(base.categoryDefault)
+      },
+      nodeSchemes: {
+        visual: nodeScheme(base.categoryVisual),
+        data: nodeScheme(base.categoryData),
+        javascript: nodeScheme(base.categoryJavascript),
+        component: nodeScheme(base.categoryComponent),
+        default: nodeScheme(base.categoryDefault)
       }
     };
   }

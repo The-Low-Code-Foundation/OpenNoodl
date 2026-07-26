@@ -18,6 +18,8 @@ export enum CursorActionType {
   MoveCategoryCursor = 'MOVE_CATEGORY_CURSOR',
   MoveNodeCursor = 'MOVE_NODE_CURSOR',
   HandleEnter = 'HANDLE_ENTER',
+  /** A category header was clicked (UIX-012 — see `toggleCategoryByName`). */
+  ToggleCategoryByName = 'TOGGLE_CATEGORY_BY_NAME',
   OpenAllCategories = 'OPEN_ALL_CATEGORIES',
   CloseAllCategories = 'CLOSE_ALL_CATEGORIES',
   UpdateAllCurrentCategories = 'UPDATE_ALL_CURRENT_CATEGORIES',
@@ -98,15 +100,49 @@ function moveNodeCursor(state: ICursorState, skip: number, isHorizontal?: boolea
   };
 }
 
-function toggleCategory(state: ICursorState) {
-  const categoryStateCopy = [...state.allCategories];
-
-  categoryStateCopy[state.categoryCursor].isCollapsed = !categoryStateCopy[state.categoryCursor].isCollapsed;
+/**
+ * Flip one category's collapsed flag, by index.
+ *
+ * UIX-012: this used to mutate the category object in place behind a shallow
+ * array copy. `allCategories` entries are handed out as props and compared by
+ * value elsewhere, so every write is now a fresh object.
+ */
+function setCategoryCollapsed(state: ICursorState, index: number, isCollapsed: boolean): ICursorState {
+  if (index < 0 || index > state.allCategories.length - 1) return state;
 
   return {
     ...state,
-    allCategories: categoryStateCopy
+    allCategories: state.allCategories.map((category, i) =>
+      i === index ? { ...category, isCollapsed } : category
+    )
   };
+}
+
+function toggleCategory(state: ICursorState): ICursorState {
+  const category = state.allCategories[state.categoryCursor];
+  if (!category) return state;
+
+  return setCategoryCollapsed(state, state.categoryCursor, !category.isCollapsed);
+}
+
+/**
+ * Flip one category's collapsed flag, by name — the header click.
+ *
+ * UIX-012: the header used to toggle a *local* `useState` copy inside
+ * `NodePickerCategory`, which then disagreed with `allCategories` here. A
+ * later programmatic open (expand-on-search) that happened to write the value
+ * the reducer already held changed no prop, so the mirrored local state was
+ * never re-synced and the category stayed visibly closed. The reducer is now
+ * the single source of truth for collapsed state.
+ *
+ * The keyboard cursor is deliberately left alone: clicking a header must not
+ * steal focus from the search field (`cursorContext` drives that focus).
+ */
+function toggleCategoryByName(state: ICursorState, name: string): ICursorState {
+  const index = state.allCategories.findIndex((category) => category.name === name);
+  if (index === -1) return state;
+
+  return setCategoryCollapsed(state, index, !state.allCategories[index].isCollapsed);
 }
 
 function allowNodeCreation(state: ICursorState) {
@@ -147,13 +183,10 @@ function highlightFirstNode(state: ICursorState): ICursorState {
 }
 
 function setAllCategoriesCollapsedState(state: ICursorState, isCollapsed: boolean): ICursorState {
-  const categoryStateCopy = [...state.allCategories];
-
-  categoryStateCopy.forEach((category) => (category.isCollapsed = isCollapsed));
-
   return {
     ...state,
-    allCategories: categoryStateCopy
+    // UIX-012: copy, never mutate (see setCategoryCollapsed).
+    allCategories: state.allCategories.map((category) => ({ ...category, isCollapsed }))
   };
 }
 
@@ -221,6 +254,9 @@ export function cursorReducer(state: ICursorState, action: TSFixme) {
           return state;
       }
 
+    case CursorActionType.ToggleCategoryByName:
+      return toggleCategoryByName(state, action.name);
+
     case CursorActionType.OpenAllCategories:
       return setAllCategoriesCollapsedState(state, false);
 
@@ -230,11 +266,26 @@ export function cursorReducer(state: ICursorState, action: TSFixme) {
     case CursorActionType.UpdateAllCurrentCategories: {
       const stateCopy = { ...state, allCategories: action.allCategories };
 
-      if (typeof action.withCollapsedCategories === 'undefined') {
-        return stateCopy;
+      if (typeof action.withCollapsedCategories !== 'undefined') {
+        // UIX-012: was `setAllCategoriesCollapsedState(state, …)` — it applied
+        // the flag to the OUTGOING list and threw the new one away.
+        return setAllCategoriesCollapsedState(stateCopy, action.withCollapsedCategories);
       }
 
-      return setAllCategoriesCollapsedState(state, action.withCollapsedCategories);
+      // UIX-012: re-parsing the categories (which happens on every change to
+      // the rendered node index, i.e. on every keystroke in the search box)
+      // used to reset every category to `isCollapsed: true`, undoing the
+      // expand-on-search that had just been dispatched. Carry the current
+      // collapsed state across by name; categories that are genuinely new keep
+      // the parsed default.
+      const previous = new Map<string, boolean>(state.allCategories.map((c) => [c.name, c.isCollapsed]));
+
+      return {
+        ...stateCopy,
+        allCategories: action.allCategories.map((category: ICursorState['allCategories'][number]) =>
+          previous.has(category.name) ? { ...category, isCollapsed: previous.get(category.name) } : category
+        )
+      };
     }
 
     case CursorActionType.HighlightFirstNode:

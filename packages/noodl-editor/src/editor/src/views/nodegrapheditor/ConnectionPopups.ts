@@ -91,7 +91,9 @@ export class ConnectionPopups {
       const fromPopout = PopupLayer.instance.showPopout({
         content: { el: fromDiv },
         position: fromPosition,
-        arrowColor: '#464648',
+        // UIX-012: was a hardcoded grey. The stylesheet's own default for this
+        // arrow is `--theme-color-bg-5`; name it so it flips with the theme.
+        arrowColor: 'var(--theme-color-bg-5)',
         attachToPoint: {
           x:
             (fromNode.global.x + panAndScale.x) * panAndScale.scale +
@@ -152,7 +154,9 @@ export class ConnectionPopups {
       const toPopout = PopupLayer.instance.showPopout({
         content: { el: toDiv },
         position: toPosition,
-        arrowColor: '#464648',
+        // UIX-012: was a hardcoded grey. The stylesheet's own default for this
+        // arrow is `--theme-color-bg-5`; name it so it flips with the theme.
+        arrowColor: 'var(--theme-color-bg-5)',
         attachToPoint: {
           x:
             (toNode.global.x + panAndScale.x) * panAndScale.scale +

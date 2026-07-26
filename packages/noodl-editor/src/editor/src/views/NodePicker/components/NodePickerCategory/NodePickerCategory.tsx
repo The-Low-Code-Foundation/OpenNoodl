@@ -20,6 +20,9 @@ interface NodePickerCategoryProps {
   isKeyboardCursored?: boolean;
   isCollapsed?: boolean;
 
+  /** Header click. Must dispatch to the picker's reducer — see below. */
+  onToggleCollapsed?: () => void;
+
   disableTransition?: boolean;
 }
 
@@ -32,20 +35,24 @@ export default function NodePickerCategory({
   isKeyboardCursored,
   isCollapsed,
 
+  onToggleCollapsed,
+
   disableTransition
 }: NodePickerCategoryProps) {
   const transitionSpeed = useCustomPropertyValue(CustomPropertyAnimation.SpeedQuick);
   const descriptionEasingFunction = useCustomPropertyValue(CustomPropertyAnimation.EasingEqual);
-  const [isCollapsedState, setIsCollapsedState] = useState(isCollapsed);
   const [isHighlightedState, setIsHighlightedState] = useState(isKeyboardCursored);
+
+  // UIX-012: `isCollapsed` is now read straight from the prop — it used to be
+  // mirrored into local state that only the header click wrote to, so a click
+  // silently desynced this component from `cursorState.allCategories` and the
+  // programmatic expand-on-search could no longer move it. The reducer owns
+  // collapsed state; this component only reports the click.
+  const isCollapsedState = isCollapsed;
 
   useEffect(() => {
     setIsHighlightedState(isKeyboardCursored);
   }, [isKeyboardCursored]);
-
-  useEffect(() => {
-    setIsCollapsedState(isCollapsed);
-  }, [isCollapsed]);
 
   function addHighlight() {
     setIsHighlightedState(true);
@@ -67,7 +74,7 @@ export default function NodePickerCategory({
     >
       <header
         className={classNames([css['Header'], css[`Header--is-theme-${type}`]])}
-        onClick={() => setIsCollapsedState(!isCollapsedState)}
+        onClick={() => onToggleCollapsed && onToggleCollapsed()}
       >
         <Title variant={TitleVariant.Highlighted} size={TitleSize.Medium}>
           {title}

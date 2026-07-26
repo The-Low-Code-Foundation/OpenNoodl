@@ -205,6 +205,8 @@ interface UseKeyboardCursorReturnProps {
   cursorState: ICursorState;
   openAllCategories: () => void;
   closeAllCategories: () => void;
+  /** Header click — the only way a category's collapsed state changes by mouse. */
+  toggleCategoryByName: (name: string) => void;
   handleSearchUpdate: () => void;
   updateAllCurrentCategories: () => void;
   focusSearch: () => void;
@@ -262,6 +264,10 @@ export function useKeyboardCursor(renderedNodes: INodeIndex): UseKeyboardCursorR
 
   function moveCursor(skip: number, isHorizontal?: boolean) {
     dispatch({ type: CursorActionType.MoveCursor, skip, isHorizontal });
+  }
+
+  function toggleCategoryByName(name: string) {
+    dispatch({ type: CursorActionType.ToggleCategoryByName, name });
   }
 
   function openAllCategories() {
@@ -347,6 +353,7 @@ export function useKeyboardCursor(renderedNodes: INodeIndex): UseKeyboardCursorR
     cursorState,
     openAllCategories,
     closeAllCategories,
+    toggleCategoryByName,
     updateAllCurrentCategories,
     handleSearchUpdate,
     focusSearch,

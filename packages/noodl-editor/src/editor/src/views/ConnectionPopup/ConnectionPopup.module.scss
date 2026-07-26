@@ -37,7 +37,8 @@
   position: relative;
 
   &.disabled {
-    color: rgba(255, 255, 255, 0.5);
+    /* UIX-012: was rgba(255,255,255,.5) — invisible on a light backdrop. */
+    color: var(--theme-color-fg-disabled);
   }
 }
 
@@ -68,7 +69,8 @@
 
   &.disabled::after {
     @extend %overlay;
-    background-color: rgba(0, 0, 0, 0.4);
+    /* UIX-012: theme-flipping scrim (black on dark, white on light). */
+    background-color: var(--theme-color-bg-1-transparent-2);
   }
 }
 
@@ -97,7 +99,7 @@
   }
 
   &.disabled {
-    color: rgba(255, 255, 255, 0.25);
+    color: var(--theme-color-fg-disabled);
 
     .signalIcon {
       opacity: 0.3;
@@ -109,7 +111,7 @@
 
     &::before {
       @extend %overlay;
-      background-color: rgba(255, 255, 255, 0.2);
+      background-color: var(--theme-color-fg-transparent);
     }
   }
 }
@@ -134,7 +136,7 @@
   display: flex;
   align-items: center;
   position: relative;
-  color: rgba(255, 255, 255, 0.67);
+  color: var(--theme-color-fg-default);
 }
 
 .groupLabel {
@@ -184,7 +186,7 @@
 
   &,
   &::placeholder {
-    color: rgba(255, 255, 255, 0.6);
+    color: var(--theme-color-fg-default);
   }
 }
 

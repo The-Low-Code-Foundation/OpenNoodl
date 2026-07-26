@@ -56,6 +56,7 @@ export function NodeLibrary({ model, parentModel, pos, attachToRoot, runtimeType
     cursorState,
     openAllCategories,
     closeAllCategories,
+    toggleCategoryByName,
     handleSearchUpdate,
     focusSearch,
     enableCollapseTransition,
@@ -108,6 +109,7 @@ export function NodeLibrary({ model, parentModel, pos, attachToRoot, runtimeType
                     description={category.description}
                     disableTransition={cursorState.disableCollapseTransition}
                     isCollapsed={getIsCategoryCollapsed(cursorState, category.name)}
+                    onToggleCollapsed={() => toggleCategoryByName(category.name)}
                     type={category.type}
                     isKeyboardCursored={getIsCategoryCursorMatchingCategory(cursorState, category.name)}
                   >
@@ -147,6 +149,7 @@ export function NodeLibrary({ model, parentModel, pos, attachToRoot, runtimeType
                         category.subCategories?.reduce((prev, x) => prev + x.items.length, 0) > 50
                       }
                       isCollapsed={getIsCategoryCollapsed(cursorState, category.name)}
+                      onToggleCollapsed={() => toggleCategoryByName(category.name)}
                       isKeyboardCursored={getIsCategoryCursorMatchingCategory(cursorState, category.name)}
                     >
                       {category?.subCategories?.map(

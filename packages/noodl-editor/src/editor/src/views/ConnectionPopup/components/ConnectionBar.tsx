@@ -1,3 +1,4 @@
+import { nodeColorNameForModel, useNodeColorScheme } from '@noodl-hooks/useNodeColorScheme';
 import classNames from 'classnames';
 import React, { useEffect, useRef, useState } from 'react';
 
@@ -54,9 +55,8 @@ export function ConnectionBar(props: TSFixme) {
   const portAmount = useRef(0);
 
   const disabled = props.type === 'to' && (props.fromNode === undefined || props.sourcePort === undefined);
-  const colors = props.model.metadata?.colorOverride
-    ? NodeLibrary.instance.colorSchemeForNodeColorName(props.model.metadata.colorOverride)
-    : NodeLibrary.instance.colorSchemeForNodeType(props.model.type);
+  // UIX-012: theme-derived (light + dark), re-resolved when the theme flips.
+  const colors = useNodeColorScheme(nodeColorNameForModel(props.model));
 
   function focusSearch() {
     if (searchRef?.current && props.isActive) {

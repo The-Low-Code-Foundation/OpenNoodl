@@ -24,6 +24,7 @@ export * from './import-flow';
 export * from './lessons';
 export * from './models';
 export * from './nodegraph';
+export * from './nodepicker';
 export * from './platform';
 export * from './project';
 export * from './projectmerger';

@@ -1,5 +1,6 @@
 import { NodeGraphContextTmp } from '@noodl-contexts/NodeGraphContext/NodeGraphContext';
 import { useFocusRefOnPanelActive } from '@noodl-hooks/useFocusRefOnPanelActive';
+import { useNodeColorScheme } from '@noodl-hooks/useNodeColorScheme';
 import { useNodeLibraryLoaded } from '@noodl-hooks/useNodeLibraryLoaded';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 
@@ -191,21 +192,10 @@ interface ItemProps {
 function Item({ entry }: ItemProps) {
   const [isOpen, setIsOpen] = useState(false);
 
-  const colors: INodeColorScheme = useMemo(
-    () =>
-      entry.type
-        ? NodeLibrary.instance.colorSchemeForNodeType(entry.type)
-        : {
-            base: '#4C4F59',
-            baseHighlighted: '#62656e',
-            header: '#373B45',
-            headerHighlighted: '#4c4f59',
-            outline: '#373B45',
-            outlineHighlighted: '#b58900',
-            text: '#d3d4d6'
-          },
-    [entry]
-  );
+  // UIX-012: same defect as the node picker — the hand-rolled fallback was a
+  // set of dark literals the light theme could not reach. Entries without a
+  // resolved type now take the theme's `default` category scheme.
+  const colors: INodeColorScheme = useNodeColorScheme((entry.type as TSFixme)?.color);
 
   return (
     <Box hasXSpacing hasBottomSpacing={3} UNSAFE_style={{ cursor: 'pointer' }}>

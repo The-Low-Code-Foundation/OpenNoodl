@@ -15,13 +15,11 @@
   "tsExclude": [
     "packages/noodl-editor/src/editor/src/views/nodegrapheditor/canvas/CanvasTheme.ts"
   ],
-  "commit": "671f2a0",
+  "commit": "81aa996",
   "max": {
-    "noodl-editor": 16,
-    "canvas-paint-ts": 2
+    "noodl-editor": 16
   },
   "byFile": {
-    "packages/noodl-editor/src/assets/css/style.css": 16,
-    "packages/noodl-editor/src/editor/src/views/nodegrapheditor/ConnectionPopups.ts": 2
+    "packages/noodl-editor/src/assets/css/style.css": 16
   }
 }
