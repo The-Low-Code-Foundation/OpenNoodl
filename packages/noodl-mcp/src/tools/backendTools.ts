@@ -238,6 +238,47 @@ export function registerBackendReadTools(server: McpServer): void {
   );
 
   server.registerTool(
+    'get_backend_admin_dashboard',
+    {
+      title: 'Get the backend admin dashboard status',
+      description:
+        'Whether a running backend serves its own web admin dashboard (BAK-005), where it is, and what it exposes. ' +
+        'Answers: the URL to send a human to, whether the credential in use is the FULL admin tier or the ' +
+        'read-only one, whether a read-only tier is provisioned at all, whether enforcement is active or the ' +
+        'backend is in dev-open (in which case the dashboard is reachable with no credential), and which sections ' +
+        'this build can actually serve. A backend started with --no-admin reports `enabled: false` rather than ' +
+        'erroring — that is an answer, not a failure.',
+      inputSchema: { backendId: z.string().optional().describe('Which backend (omit if exactly one is running)') }
+    },
+    guarded(async ({ backendId }) => {
+      const client = await requireBackend(backendId);
+      const { status, json } = await client.request('GET', '/_admin/whoami', undefined, [404]);
+      if (status === 404) {
+        return jsonResult({
+          enabled: false,
+          reason:
+            'This backend was started with --no-admin, so the /_admin routes are not registered at all. ' +
+            'Restart it without that flag to serve the dashboard.'
+        });
+      }
+      const data = (json || {}) as Record<string, any>;
+      const backend = (data.backend || {}) as Record<string, unknown>;
+      return jsonResult({
+        enabled: true,
+        url: `http://127.0.0.1:${client.descriptor.port}/_admin`,
+        credentialTier: data.readonly ? 'read-only' : 'full-admin',
+        backend,
+        security: data.security,
+        firstRun: data.firstRun,
+        sections: data.features,
+        note: data.readonly
+          ? 'The credential this server holds is the READ-ONLY tier: it can read everything and change nothing.'
+          : undefined
+      });
+    })
+  );
+
+  server.registerTool(
     'check_backend_access',
     {
       title: 'Check backend access (dry run)',

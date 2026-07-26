@@ -147,6 +147,26 @@ describeOrSkip('MCP backend permission tools (live backend)', () => {
     expect(data.config.devOpen).toBe(false);
   });
 
+  it('get_backend_admin_dashboard reports the served dashboard (BAK-005)', async () => {
+    const { isError, data } = await call<{
+      enabled: boolean;
+      url: string;
+      credentialTier: string;
+      security: { enforced: boolean; hasReadonlyTier: boolean };
+      sections: Record<string, boolean>;
+    }>(session, 'get_backend_admin_dashboard');
+    expect(isError).toBe(false);
+    expect(data.enabled).toBe(true);
+    expect(data.url).toContain('/_admin');
+    // This harness holds the full admin credential, and provisions no
+    // read-only tier — an agent must be able to see both facts.
+    expect(data.credentialTier).toBe('full-admin');
+    expect(data.security.enforced).toBe(true);
+    expect(data.security.hasReadonlyTier).toBe(false);
+    expect(data.sections.collections).toBe(true);
+    expect(data.sections.permissions).toBe(true);
+  });
+
   it('the full agent flow: lock a collection to a role, create it, assign a user, verify the effect', async () => {
     const aliceId = await signup(backend.port, 'alice');
 
