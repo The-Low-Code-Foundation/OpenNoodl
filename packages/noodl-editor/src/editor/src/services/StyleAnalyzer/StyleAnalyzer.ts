@@ -18,7 +18,7 @@ import {
   analyzeNodes as coreAnalyzeNodes,
   COLOR_PROPERTIES,
   isRawColorValue,
-  isRawSpacingValue,
+  isTokenisableSpacingValue,
   isTokenReference,
   SPACING_PROPERTIES,
   suggestVariantName
@@ -97,7 +97,7 @@ export class StyleAnalyzer {
 
       if (
         (COLOR_PROPERTIES.has(prop) && isRawColorValue(value)) ||
-        (SPACING_PROPERTIES.has(prop) && isRawSpacingValue(value))
+        (SPACING_PROPERTIES.has(prop) && isTokenisableSpacingValue(value))
       ) {
         customOverrides[prop] = value;
       }

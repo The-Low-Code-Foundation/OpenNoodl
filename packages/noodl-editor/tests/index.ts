@@ -21,6 +21,7 @@ export * from './components';
 export * from './git';
 export * from './import-engine';
 export * from './import-flow';
+export * from './launcher';
 export * from './lessons';
 export * from './models';
 export * from './nodegraph';

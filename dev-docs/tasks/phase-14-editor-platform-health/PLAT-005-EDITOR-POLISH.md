@@ -1,5 +1,19 @@
 # PLAT-005: Editor UX Loose Ends
 
+> **Partially delivered 2026-07-26 — see [PLAT-005-NOTES.md](./PLAT-005-NOTES.md).** Three items are
+> done in code and covered by 41 new specs: variant persistence (the real bug), StyleAnalyzer
+> suggestion quality, and the dashboard-routing bug. **None has had a live editor pass** — the work
+> ran from a git worktree, where `lerna exec` drives the main checkout rather than the worktree; the
+> exact click-through owed is NOTES §6. CLEANUP-000H and the phase-3/phase-0 UX triage were cut from
+> this pass (NOTES §7).
+>
+> **Correction to the re-scope note below:** it says `ElementConfigRegistry` has no `addVariant` and
+> proposes adding one. That would not have persisted anything — `ElementConfigRegistry` is a
+> module-level `Map` populated at import time from four hardcoded config files, and none of it is
+> written to the project. The real variant system is `ProjectModel.variants` / `VariantModel`
+> (`ProjectModel.addVariant` exists at `projectmodel.ts:1165`), reached through
+> `NodeGraphNode.createNewVariant`; that is what the fix uses. See NOTES §2.
+
 > **Re-scoped 2026-07-24** by the salvage audit ([PRE-REVIVAL-SALVAGE-AUDIT.md](../../reviews/PRE-REVIVAL-SALVAGE-AUDIT.md) §2). This task's headline premise is stale: **the STYLE-005 banner is already wired** — commit `6e0ad68` mounts `ElementStyleSectionHost` (banner + `useStyleSuggestions`, with localStorage dismissal) from `propertyeditor.ts` via React, and it survived PLAT-002's property-editor rewrite intact. The two "unverified" API calls are verified: `StyleTokensModel.setToken` (`StyleTokensModel.ts:126`) and `NodeGraphNode.setParameter`/`getParameter` (`NodeGraphNode.ts:649/731`). What actually remains of STYLE-005: **(a)** verify suggestion *quality* on a real project (step 1 below — still the right first step), and **(b)** finish the variant-persistence stub — `SuggestionActionHandler.applyVariantAction()` (line 91) only sets `node.setParameter('_variant', name)`; `ElementConfigRegistry` has no `addVariant`, so "save as variant" does not actually create a reusable variant. The rest of the task (CLEANUP-000H, phase-3/0 triage, dashboard-routing bug) stands as written. Related new work: AIX-006 exposes this same styles system to the AI substrate — coordinate if both run.
 
 ## Metadata
@@ -33,10 +47,12 @@ Items identified by the viability assessment and the phase-9/phase-3 progress no
 
 | Item | State | Notes |
 |---|---|---|
-| STYLE-005 style-suggestion banner | Built, not wired | StyleAnalyzer implemented with tests; banner never connected to the property panel; `setToken` / `setParameter` API calls unverified |
-| Phase-9 CLEANUP-000H (migration wizard polish) | Not started | The design-token cleanup (~500 hardcoded colours tokenised) landed; polish did not |
-| Phase-3 residual UX items | Mixed | Dashboard and app-config work partly done; check `phase-3-editor-ux-overhaul/PROGRESS.md` (and note REV-006 is correcting that file's accuracy) |
-| Phase-0 residual | One noted dashboard-routing bug | Recorded in phase-0 notes as complete-with-caveat |
+| STYLE-005 style-suggestion banner | ✅ Wired (was already, before this task) | `propertyeditor.ts:144` mounts `ElementStyleSectionHost`. `setToken` / `setParameter` both verified. |
+| STYLE-005 variant persistence | ✅ Fixed 2026-07-26 | `applyVariantAction` only wrote the `_variant` marker; no variant was ever created. Now uses `NodeGraphNode.createNewVariant`. NOTES §2. |
+| StyleAnalyzer suggestion quality | ✅ Four defects fixed 2026-07-26 | Token-name collisions, occurrence-vs-element counting, zero/unitless spacing, all-candidates-named-`custom`. NOTES §3. **Fixture-verified, not project-verified.** |
+| Phase-9 CLEANUP-000H (migration wizard polish) | ⛔ Cut from this pass | Phases 23/24 have been reworking editor chrome since this list was written. NOTES §7. |
+| Phase-3 residual UX items | ⛔ Cut from this pass | Same reason. |
+| Phase-0 residual | ✅ Dashboard-routing bug fixed 2026-07-26 | Reproduced; cause was `Launcher.tsx` writing `/dashboard/<tab>` onto a `file:` URL, **not** the TASK-001B store migration that three documents blamed. NOTES §4. |
 
 This task deliberately does **not** absorb the large phase-3 items (advanced GitHub integration, shared components, AI project creation). The revival roadmap explicitly cuts those: the GitHub work alone was scoped at 501–662 hours and serves a professional-developer persona that the repositioned product is not chasing.
 
@@ -49,11 +65,11 @@ This task deliberately does **not** absorb the large phase-3 items (advanced Git
 ## Scope
 
 ### In Scope
-- [ ] ~~Wire the STYLE-005 banner into the property panel~~ **Already done (see 2026-07-24 note)** — instead: implement variant persistence (`ElementConfigRegistry.addVariant` + make `applyVariantAction` create the variant it claims to)
-- [ ] Verify the StyleAnalyzer's suggestions are correct and useful on a real project (the banner is live, so poor suggestions are already user-visible — this rises in urgency)
-- [ ] CLEANUP-000H migration-wizard polish
-- [ ] Triage remaining small phase-3/phase-0 UX items: fix, or close with a recorded reason
-- [ ] Fix the noted dashboard-routing bug
+- [x] ~~Wire the STYLE-005 banner into the property panel~~ **Already done (see 2026-07-24 note)** — instead: implement variant persistence. **Done 2026-07-26** via `NodeGraphNode.createNewVariant`, *not* `ElementConfigRegistry.addVariant` (which could not have persisted — NOTES §2). Also fixed a pre-existing undo/redo bug in `createNewVariant` itself, and made token application undoable.
+- [x] Verify the StyleAnalyzer's suggestions are correct and useful — **assessed and four defects fixed** (NOTES §3). ⚠️ Fixture-driven only: verified on constructed fixtures, **not on a real project**. Live pass owed (NOTES §6B).
+- [ ] ~~CLEANUP-000H migration-wizard polish~~ — cut from this pass (NOTES §7)
+- [ ] ~~Triage remaining small phase-3/phase-0 UX items~~ — cut from this pass (NOTES §7)
+- [x] Fix the noted dashboard-routing bug — **done 2026-07-26**; both phase-3 issue docs closed with the corrected cause (NOTES §4)
 
 ### Out of Scope
 - Advanced GitHub integration (GIT-005–011) — cut by the revival roadmap
@@ -93,13 +109,20 @@ The property editor is being converted from jQuery to React by PLAT-002. If that
 
 ## Success Criteria
 
-- [ ] StyleAnalyzer verified as producing useful suggestions on a real project
-- [ ] Banner visible in the property panel; suggestions applicable and dismissible
-- [ ] The two previously-unverified API calls confirmed correct
-- [ ] Applying a suggestion is undoable
-- [ ] CLEANUP-000H complete
-- [ ] Remaining small items fixed or explicitly closed with recorded reasons
-- [ ] Dashboard-routing bug fixed
+- [ ] StyleAnalyzer verified as producing useful suggestions **on a real project** — ⚠️ **not met.** Assessed against fixtures and four defects fixed (NOTES §3); no live project run was possible from a worktree. This is the headline residual.
+- [x] Banner visible in the property panel; suggestions applicable and dismissible — wired before this task; dismissal (session + permanent, localStorage) in `useStyleSuggestions`. Applicability fixed for the variant case (NOTES §2). Not clicked live.
+- [x] The two previously-unverified API calls confirmed correct — `StyleTokensModel.setToken` (`:126`) and `NodeGraphNode.setParameter`/`getParameter` (`:649`/`:731`).
+- [x] Applying a suggestion is undoable — **it was not, for any suggestion type.** Now one `UndoActionGroup` per accept, covering the token write and every parameter rewrite; variants go through `createNewVariant(…, { undo: true })` with its undo/redo bug fixed (NOTES §2.3, §2.4).
+- [ ] CLEANUP-000H complete — cut from this pass (NOTES §7)
+- [ ] Remaining small items fixed or explicitly closed — phase-3/phase-0 UX triage cut (NOTES §7); the dashboard-routing item is closed with a recorded cause.
+- [x] Dashboard-routing bug fixed — reproduced, cause identified (three docs had it wrong), fixed and spec-covered (NOTES §4). Live confirmation owed (NOTES §6C).
+
+### Residual — what a human still has to do
+
+Every item above that is checked is **code-and-specs complete but not seen running**. The precise
+click-through is [PLAT-005-NOTES.md §6](./PLAT-005-NOTES.md). The one that matters most is §6A step
+6: save, close and reopen the project after saving a variant — that is the only step that proves
+persistence, which is the entire point of the fix.
 
 ## Risks & Mitigations
 
@@ -119,10 +142,11 @@ The property editor is being converted from jQuery to React by PLAT-002. If that
 
 ## Checklist
 
-- [ ] Branch `task/plat-005-editor-polish`; coordinate with PLAT-002 on the property editor
-- [ ] Verify StyleAnalyzer output quality on a real project first
-- [ ] Verify and correct the two API calls
-- [ ] Wire the banner with dismissal behaviour
-- [ ] CLEANUP-000H polish; dashboard-routing fix
-- [ ] Triage and record decisions on remaining small items
-- [ ] CHANGELOG; open PR
+- [x] ~~Branch `task/plat-005-editor-polish`~~ — landed on `cline-dev` per house practice; the Branch field above is stale for every task in this repo
+- [ ] Verify StyleAnalyzer output quality **on a real project** — not done; fixtures only (NOTES §3, §6B)
+- [x] Verify and correct the two API calls
+- [x] Wire the banner with dismissal behaviour — already wired; dismissal already present
+- [ ] CLEANUP-000H polish — cut (NOTES §7)
+- [x] Dashboard-routing fix (NOTES §4)
+- [ ] Triage and record decisions on remaining small items — cut (NOTES §7)
+- [x] Notes written (`PLAT-005-NOTES.md`); phase-14 has no CHANGELOG, and this repo does not use PRs

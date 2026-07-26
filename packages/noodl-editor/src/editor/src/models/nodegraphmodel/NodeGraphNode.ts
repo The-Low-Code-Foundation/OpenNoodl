@@ -1265,18 +1265,31 @@ export class NodeGraphNode extends Model {
     this.notifyListeners('variantCreated', { variant: this.variant });
 
     // Undo
+    //
+    // PLAT-005 fixed this block. It used to call
+    // `project.deleteVariant(variantName, type)` — but `deleteVariant` takes the
+    // variant *object* and locates it with `findIndex(v => v === variant)`, so a
+    // name string never matched and the variant was never removed. Undo left an
+    // orphan variant in the project, and redo then hit
+    // `createNewVariant`'s "already exists" early return and did nothing at all.
+    // Redo is also no longer routed back through `createNewVariant`: that built
+    // a fresh VariantModel each time, stranding the object this closure holds.
     if (args && args.undo) {
       const undo = typeof args.undo === 'object' ? args.undo : UndoQueue.instance;
-
-      const type = this.type;
 
       undo.push({
         label: 'Create new variant',
         do: () => {
-          this.createNewVariant(variantName, this);
+          project.addVariant(variant);
+          this.variant = variant;
+
+          this._setParameters({ parameters: {}, stateParameters: {} });
+          this._setStateTransitions({ stateTransitions: {}, defaultStateTransitions: {} });
+
+          this.notifyListeners('variantCreated', { variant: this.variant });
         },
         undo: () => {
-          project.deleteVariant(variantName, type);
+          project.deleteVariant(variant);
 
           this._setParameters({ parameters: _oldParameters, stateParameters: _oldStateParameters });
           this._setStateTransitions({

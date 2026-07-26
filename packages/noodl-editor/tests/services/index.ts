@@ -11,4 +11,8 @@
 // ProjectStructure tests are plain Jasmine specs (pure, in-memory FS).
 export * from './ProjectStructure';
 export * from './StyleAnalyzer.test';
+// PLAT-005: suggestion QUALITY (what the analyzer proposes is worth showing)
+// and the accept path (SuggestionActionHandler had no specs at all).
+export * from './StyleAnalyzerQuality.test';
+export * from './SuggestionActionHandler.test';
 export * from './github/GitHubClient.test';
