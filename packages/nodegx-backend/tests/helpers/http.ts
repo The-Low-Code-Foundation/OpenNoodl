@@ -159,3 +159,59 @@ export interface ErrorBody {
   code?: number | string;
   requestId?: string;
 }
+
+/**
+ * Every body BAK-004's three sign-in suites read — the OIDC/GitHub callbacks,
+ * the identity-linking routes and the admin auth surface.
+ *
+ * These three files landed after PLAT-004 slice 6 measured the package, each
+ * carrying the same `let json: any = null` the rest of the suite had just shed,
+ * so they are folded into the same convention rather than left as an exception.
+ * Everything is optional because one helper serves success, error and redirect
+ * responses alike; `authOutcome` and `authNotice` ride on the handoff redirect,
+ * not on a JSON body, and are read from the parsed fragment.
+ */
+export interface AuthSpecBody {
+  objectId?: string;
+  username?: string;
+  sessionToken?: string;
+  email?: string;
+  emailVerified?: boolean;
+  hasPassword?: boolean;
+  /** Never returned by any route — asserted absent, which is the point. */
+  _hashed_password?: unknown;
+  identities?: Array<Record<string, unknown>>;
+  provider?: Record<string, unknown>;
+  providers?: Array<Record<string, unknown>>;
+  config?: Record<string, unknown>;
+  entries?: Array<Record<string, unknown>>;
+  actions?: Array<Record<string, unknown>>;
+  authOutcome?: string;
+  authNotice?: string;
+  error?: string;
+  code?: number | string;
+}
+
+/**
+ * `sessionToken` and `identities` are optional above because one helper carries
+ * success, error and redirect bodies alike. These narrow, and throw naming what
+ * actually came back — a spec that fails here should say "the route returned no
+ * session token", not read `undefined` off a request header two lines later.
+ */
+export function sessionHeader(json: AuthSpecBody): Record<string, string> {
+  const token = json.sessionToken;
+  if (!token) throw new Error(`Expected a sessionToken, got: ${JSON.stringify(json)}`);
+  return { 'x-parse-session-token': token };
+}
+
+export function entriesOf(json: AuthSpecBody): Array<Record<string, unknown>> {
+  const { entries } = json;
+  if (!entries) throw new Error(`Expected an audit entries list, got: ${JSON.stringify(json)}`);
+  return entries;
+}
+
+export function identitiesOf(json: AuthSpecBody): Array<Record<string, unknown>> {
+  const { identities } = json;
+  if (!identities) throw new Error(`Expected an identities list, got: ${JSON.stringify(json)}`);
+  return identities;
+}

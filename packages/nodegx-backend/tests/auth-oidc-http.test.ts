@@ -17,6 +17,7 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 
+import { AuthSpecBody, identitiesOf, sessionHeader } from './helpers/http';
 import { BackendService } from '../src/service';
 import { clearDiscoveryCache } from '../src/auth/oidc';
 import { FakeOidcProvider } from './helpers/fake-oidc-provider';
@@ -33,8 +34,7 @@ async function req(base: string, method: string, p: string, body?: unknown, head
     body: body !== undefined ? JSON.stringify(body) : undefined,
     redirect: 'manual'
   });
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let json: any = null;
+  let json: AuthSpecBody = null as unknown as AuthSpecBody;
   const text = await res.text();
   try {
     json = JSON.parse(text);
@@ -99,7 +99,7 @@ describe('BAK-004 OAuth sign-in over HTTP', () => {
       admin
     );
     expect(put.status).toBe(200);
-    expect(put.json.provider.ready).toBe(true);
+    expect(put.json.provider?.ready).toBe(true);
 
     await req(base, 'PUT', '/admin/auth', { redirectAllowList: [APP_ORIGIN] }, admin);
     clearDiscoveryCache();
@@ -215,9 +215,7 @@ describe('BAK-004 OAuth sign-in over HTTP', () => {
     expect(exchange.json._hashed_password).toBeUndefined();
 
     // The session is an ordinary BAK-003 session.
-    const me = await req(base, 'GET', '/users/me', undefined, {
-      'x-parse-session-token': exchange.json.sessionToken
-    });
+    const me = await req(base, 'GET', '/users/me', undefined, sessionHeader(exchange.json));
     expect(me.status).toBe(200);
     expect(me.json.objectId).toBe(exchange.json.objectId);
   });
@@ -404,16 +402,17 @@ describe('BAK-004 OAuth sign-in over HTTP', () => {
       email: 'lister@example.com',
       emailVerified: true
     });
-    const session = { 'x-parse-session-token': exchange.json.sessionToken };
+    const session = sessionHeader(exchange.json);
 
     const list = await req(base, 'GET', '/users/me/identities', undefined, session);
     expect(list.status).toBe(200);
     expect(list.json.hasPassword).toBe(false);
-    expect(list.json.identities).toHaveLength(1);
-    expect(list.json.identities[0].provider).toBe('acme');
-    expect(list.json.identities[0].displayName).toBe('Acme SSO');
+    const identities = identitiesOf(list.json);
+    expect(identities).toHaveLength(1);
+    expect(identities[0].provider).toBe('acme');
+    expect(identities[0].displayName).toBe('Acme SSO');
 
-    const unlink = await req(base, 'DELETE', `/users/me/identities/${list.json.identities[0].objectId}`, undefined, session);
+    const unlink = await req(base, 'DELETE', `/users/me/identities/${identities[0].objectId}`, undefined, session);
     expect(unlink.status).toBe(400);
     expect(unlink.json.error).toMatch(/only way to sign in/i);
   });

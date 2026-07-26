@@ -16,6 +16,7 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 
+import { AuthSpecBody, entriesOf, identitiesOf, sessionHeader } from './helpers/http';
 import { BackendService } from '../src/service';
 import { clearDiscoveryCache } from '../src/auth/oidc';
 import { FakeOidcProvider } from './helpers/fake-oidc-provider';
@@ -44,8 +45,7 @@ describe('BAK-004 account linking and magic links', () => {
       body: body !== undefined ? JSON.stringify(body) : undefined,
       redirect: 'manual'
     });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let json: any = null;
+    let json: AuthSpecBody = null as unknown as AuthSpecBody;
     const text = await res.text();
     try {
       json = JSON.parse(text);
@@ -183,10 +183,10 @@ describe('BAK-004 account linking and magic links', () => {
     const attackerAccount = await passwordSignup('victim-lookalike', 'victim@example.com', 'attacker-password');
     const attackerSession = await req('POST', '/login', { username: 'victim-lookalike', password: 'attacker-password' });
     expect(attackerSession.status).toBe(200);
-    const stolenSessionToken = attackerSession.json.sessionToken;
+    const stolenSession = sessionHeader(attackerSession.json);
 
     // The attacker's session works right now.
-    const before = await req('GET', '/users/me', undefined, { 'x-parse-session-token': stolenSessionToken });
+    const before = await req('GET', '/users/me', undefined, stolenSession);
     expect(before.status).toBe(200);
 
     // 2. The real victim arrives with a provider that VERIFIES the address.
@@ -204,7 +204,7 @@ describe('BAK-004 account linking and magic links', () => {
     expect(retry.status).toBe(404);
 
     // 5. ...and neither does the session they already held.
-    const after = await req('GET', '/users/me', undefined, { 'x-parse-session-token': stolenSessionToken });
+    const after = await req('GET', '/users/me', undefined, stolenSession);
     expect(after.status).toBe(400);
     expect(after.json.code).toBe(209);
   });
@@ -212,8 +212,9 @@ describe('BAK-004 account linking and magic links', () => {
   it('records the credential revocation in the audit trail', async () => {
     const { status, json } = await req('GET', '/admin/audit?action=auth.link.credentials-revoked', undefined, admin);
     expect(status).toBe(200);
-    expect(json.entries.length).toBeGreaterThanOrEqual(1);
-    expect(json.entries[0].outcome).toBe('success');
+    const entries = entriesOf(json);
+    expect(entries.length).toBeGreaterThanOrEqual(1);
+    expect(entries[0].outcome).toBe('success');
     // And the action is a DECLARED one, so it shows up in the dashboard filter.
     expect(json.actions).toContain('auth.link.credentials-revoked');
   });
@@ -343,7 +344,7 @@ describe('BAK-004 account linking and magic links', () => {
       expect(result.exchange.json.emailVerified).toBe(true);
 
       const me = await req('GET', '/users/me', undefined, {
-        'x-parse-session-token': result.exchange.json.sessionToken
+        ...sessionHeader(result.exchange.json)
       });
       expect(me.status).toBe(200);
     });
@@ -421,12 +422,13 @@ describe('BAK-004 account linking and magic links', () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
 
-    const session = { 'x-parse-session-token': result.exchange.json.sessionToken };
+    const session = sessionHeader(result.exchange.json);
     const list = await req('GET', '/users/me/identities', undefined, session);
     expect(list.json.hasPassword).toBe(true);
-    expect(list.json.identities).toHaveLength(1);
+    const listed = identitiesOf(list.json);
+    expect(listed).toHaveLength(1);
 
-    const unlink = await req('DELETE', `/users/me/identities/${list.json.identities[0].objectId}`, undefined, session);
+    const unlink = await req('DELETE', `/users/me/identities/${listed[0].objectId}`, undefined, session);
     expect(unlink.status).toBe(200);
 
     const after = await req('GET', '/users/me/identities', undefined, session);
@@ -439,10 +441,10 @@ describe('BAK-004 account linking and magic links', () => {
     expect(mine.ok && theirs.ok).toBe(true);
     if (!mine.ok || !theirs.ok) return;
 
-    const theirSession = { 'x-parse-session-token': theirs.exchange.json.sessionToken };
-    const mySession = { 'x-parse-session-token': mine.exchange.json.sessionToken };
+    const theirSession = sessionHeader(theirs.exchange.json);
+    const mySession = sessionHeader(mine.exchange.json);
     const myList = await req('GET', '/users/me/identities', undefined, mySession);
-    const myIdentityId = myList.json.identities[0].objectId;
+    const myIdentityId = identitiesOf(myList.json)[0].objectId;
 
     const res = await req('DELETE', `/users/me/identities/${myIdentityId}`, undefined, theirSession);
     expect(res.status).toBe(404);

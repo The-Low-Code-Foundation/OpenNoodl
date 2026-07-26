@@ -17,6 +17,7 @@ import * as http from 'http';
 import * as os from 'os';
 import * as path from 'path';
 
+import { AuthSpecBody, identitiesOf, sessionHeader } from './helpers/http';
 import { BackendService } from '../src/service';
 import { GITHUB_ENDPOINTS, selectGithubEmail } from '../src/auth/github';
 
@@ -94,8 +95,7 @@ describe('BAK-004 GitHub sign-in over HTTP', () => {
       body: body !== undefined ? JSON.stringify(body) : undefined,
       redirect: 'manual'
     });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let json: any = null;
+    let json: AuthSpecBody = null as unknown as AuthSpecBody;
     const text = await res.text();
     try {
       json = JSON.parse(text);
@@ -170,8 +170,8 @@ describe('BAK-004 GitHub sign-in over HTTP', () => {
       clientSecret: 'fake-client-secret'
     }, admin);
     expect(put.status).toBe(200);
-    expect(put.json.provider.kind).toBe('github');
-    expect(put.json.provider.scopes).toEqual(['read:user', 'user:email']);
+    expect(put.json.provider?.kind).toBe('github');
+    expect(put.json.provider?.scopes).toEqual(['read:user', 'user:email']);
     await req('PUT', '/admin/auth', { redirectAllowList: [APP_ORIGIN] }, admin);
   });
 
@@ -225,10 +225,8 @@ describe('BAK-004 GitHub sign-in over HTTP', () => {
 
     // The subject is namespaced by kind so a numeric GitHub id can never
     // collide with an OIDC `sub` of the same digits.
-    const identities = await req('GET', '/users/me/identities', undefined, {
-      'x-parse-session-token': exchange.json.sessionToken
-    });
-    expect(identities.json.identities[0].provider).toBe('github');
+    const identities = await req('GET', '/users/me/identities', undefined, sessionHeader(exchange.json));
+    expect(identitiesOf(identities.json)[0].provider).toBe('github');
   });
 
   it('treats an HTTP 200 carrying an `error` field as the failure it is', async () => {

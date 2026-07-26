@@ -64,6 +64,7 @@ import * as crypto from 'crypto';
 
 import type { AdapterFacade } from '../persistence/AdapterFacade';
 import type { ProviderIdentity } from './oidc';
+import type { SchemaManagerLike } from '../persistence/SchemaManagerLike';
 
 export const IDENTITY_COLLECTION = '_UserIdentity';
 
@@ -84,8 +85,7 @@ export function isFlagSet(value: unknown): boolean {
 }
 
 /** Created up front like `_Session`/`_EmailToken`: a `where` on a missing table is a SQL error. */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function ensureIdentityTable(schemaManager: any): void {
+export function ensureIdentityTable(schemaManager: SchemaManagerLike | undefined): void {
   if (!schemaManager) return;
   schemaManager.createTable({
     name: IDENTITY_COLLECTION,
