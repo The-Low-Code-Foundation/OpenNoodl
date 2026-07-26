@@ -24,6 +24,13 @@ import type { ExecutionHistory } from '../execution/ExecutionStore';
 import type { WorkflowRunner, RunTriggerContext } from '../workflow/WorkflowRunner';
 import type { TriggerDef, TriggerResult, TriggerRegistry } from './registry';
 
+/**
+ * The trigger-result shape `recordRejection` returns. Re-exported under a
+ * scheduler-facing name so `scheduler.ts` can depend on the dispatch surface
+ * (SchedulerDispatcher) without importing the registry's concrete type.
+ */
+export type TriggerResultShape = TriggerResult;
+
 export interface DispatcherDeps {
   registry: TriggerRegistry;
   executions: ExecutionHistory;

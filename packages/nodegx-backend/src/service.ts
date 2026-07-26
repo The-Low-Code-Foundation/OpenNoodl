@@ -33,6 +33,7 @@ import { ChangeBus } from './realtime/ChangeBus';
 import { RealtimeHub } from './realtime/RealtimeHub';
 import { SecretsStore } from './config/SecretsStore';
 import { TriggerSubsystem } from './triggers/TriggerSubsystem';
+import { BackupSubsystem } from './backup/BackupSubsystem';
 import { EmailConfigState } from './email/EmailConfigState';
 import { Mailer, SendEmailResult } from './email/Mailer';
 import { EmailTokenStore } from './email/tokens';
@@ -70,6 +71,7 @@ export class BackendService {
   private changeBus: ChangeBus | null = null;
   private realtime: RealtimeHub | null = null;
   private triggers: TriggerSubsystem | null = null;
+  private backups: BackupSubsystem | null = null;
   private emailConfig: EmailConfigState | null = null;
   private mailer: Mailer | null = null;
   private readonly executions = new ExecutionHistory();
@@ -156,6 +158,20 @@ export class BackendService {
       secrets: new SecretsStore(this.options.dataDir)
     });
 
+    // 2.65 Backups (BAK-007): the backup subsystem constructs its OWN CronScheduler
+    //      the SAME way TriggerSubsystem does — ONE scheduler class, two consumers.
+    //      Its dispatcher runs a backup instead of a function but writes the SAME
+    //      loud execution records through this.executions. dbPath is the live
+    //      persistence file; schema is exported live for the archive's record.
+    this.backups = new BackupSubsystem({
+      dataDir: this.options.dataDir,
+      dbPath: this.persistence.dbPath,
+      executions: this.executions,
+      backendId: this.options.backendId,
+      backendName: this.options.backendName,
+      getSchema: () => (this.facade && this.facade.schemaManager ? this.facade.schemaManager.exportSchemas() : [])
+    });
+
     // 2.7 Email (BAK-002): config + secrets load beside security.json/secrets.json
     //     (same dataDir, same shared-secrets convention — see config/SecretsStore).
     //     Loading never throws for "unconfigured" — only for a malformed file —
@@ -175,6 +191,7 @@ export class BackendService {
       getConfigParams: () => this.readConfigParams(),
       realtime: this.realtime,
       triggers: this.triggers,
+      backups: this.backups,
       emailConfig: this.emailConfig,
       mailer: this.mailer,
       emailTokens: new EmailTokenStore(this.facade)
@@ -222,6 +239,9 @@ export class BackendService {
     //    and attach the db-change consumer to the ChangeBus.
     this.triggers.start();
 
+    // 6.5 Scheduled backups arm here too (their CronScheduler, mirroring above).
+    this.backups.start();
+
     return {
       options: this.options,
       listen,
@@ -241,6 +261,10 @@ export class BackendService {
     if (this.triggers) {
       this.triggers.stop();
       this.triggers = null;
+    }
+    if (this.backups) {
+      this.backups.stop();
+      this.backups = null;
     }
     if (this.realtime) {
       this.realtime.close();
