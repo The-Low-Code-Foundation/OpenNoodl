@@ -1,12 +1,31 @@
-function isPercentage(size) {
-  return size && size[size.length - 1] === '%';
+import type { StyleObject } from './react-component-node';
+
+/** How a node's parent lays its children out. `'none'` means absolute positioning. */
+export type ParentLayout = 'none' | 'row' | 'column' | (string & {});
+
+/** The props `size`/`align` read. These arrive from the node's React props. */
+export interface LayoutProps {
+  parentLayout?: ParentLayout;
+  sizeMode?: 'explicit' | 'contentHeight' | 'contentWidth' | (string & {});
+  width?: string | number;
+  height?: string | number;
+  /** Set when the width is pinned, which suppresses percentage → flex-grow. */
+  fixedWidth?: boolean;
+  fixedHeight?: boolean;
+  alignX?: 'left' | 'center' | 'right';
+  alignY?: 'top' | 'center' | 'bottom';
+  [prop: string]: any;
 }
 
-function getPercentage(size) {
+function isPercentage(size: unknown): boolean {
+  return Boolean(size) && typeof size === 'string' && size[size.length - 1] === '%';
+}
+
+function getPercentage(size: string): number {
   return Number(size.slice(0, -1));
 }
 
-function getSizeWithMargins(size, startMargin, endMargin) {
+function getSizeWithMargins(size: string, startMargin?: string, endMargin?: string): string {
   if (!startMargin && !endMargin) {
     return size;
   }
@@ -23,8 +42,17 @@ function getSizeWithMargins(size, startMargin, endMargin) {
   return css;
 }
 
-export default {
-  size(style, props) {
+/**
+ * Translates Noodl's size/alignment model onto CSS, mutating `style` in place.
+ *
+ * The central trick is that a percentage size means two different things depending
+ * on axis: along the parent's flex direction it becomes `flexGrow` (so siblings
+ * share the space proportionally), and across it, it stays a percentage but has the
+ * node's own margins subtracted via `calc()` — otherwise margins would push a
+ * 100%-wide node out of its parent.
+ */
+const Layout = {
+  size(style: StyleObject, props: LayoutProps): void {
     if (props.parentLayout === 'none') {
       style.position = 'absolute';
     }
@@ -67,7 +95,8 @@ export default {
       }
     }
   },
-  align(style, props) {
+
+  align(style: StyleObject, props: LayoutProps): void {
     const { position } = style;
     let { alignX, alignY } = props;
 
@@ -163,3 +192,5 @@ export default {
     }
   }
 };
+
+export default Layout;

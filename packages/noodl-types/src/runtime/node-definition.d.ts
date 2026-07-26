@@ -371,6 +371,15 @@ export interface NodeContextLike {
    * with it — the categories are user-toggleable.
    */
   isWarningTypeEnabled(warningType: string): boolean;
+  /**
+   * Flushes the dirty-node queue synchronously, right now.
+   *
+   * DOM event handlers are the caller that matters: a click arrives outside the
+   * runtime's own update loop, so whatever inputs the handler queued would otherwise
+   * sit unprocessed until the next scheduled frame. `pointerlisteners` wraps every
+   * pointer callback in a call to this so a click takes effect in the same turn.
+   */
+  updateDirtyNodes(): void;
   [extra: string]: unknown;
 }
 

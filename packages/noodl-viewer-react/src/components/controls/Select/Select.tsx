@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import type { TSFixme } from '../../../../typings/global';
 import Layout from '../../../layout';
 import Utils from '../../../nodes/controls/utils';
+import type { StyleObject } from '../../../react-component-node';
 import { Noodl } from '../../../types';
 import { noodlRootRef } from '../../noodl-root-ref';
 
@@ -84,6 +85,9 @@ export function Select(props: SelectProps) {
   const inputProps = {
     id: props.id,
     className: props.className,
+    // Typed as a Noodl StyleObject rather than React.CSSProperties: it carries the
+    // vendor key `-webkit-appearance`, which CSSProperties has no place for, and the
+    // string values here would otherwise widen away from React's literal unions.
     style: {
       inset: 0,
       opacity: 0,
@@ -91,7 +95,7 @@ export function Select(props: SelectProps) {
       textTransform: 'inherit',
       cursor: props.enabled ? '' : 'default',
       '-webkit-appearance': 'none' //this makes styling possible on Safari, otherwise the size will be incorrect as it will use the native styling
-    },
+    } as StyleObject,
     onClick: props.onClick
   };
 
