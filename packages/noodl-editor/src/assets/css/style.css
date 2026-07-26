@@ -560,13 +560,6 @@ button {
   background-color: var(--theme-color-bg-1);
 }
 
-.sidebar-add-icon {
-  content: url('../icons/editor/Plus.svg');
-  width: 20px;
-  height: 20px;
-  margin-left: -4px;
-}
-
 .sidebar-panel-title {
   padding: 0 16px;
   min-height: 36px;

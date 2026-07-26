@@ -20,16 +20,18 @@
   color: var(--theme-color-fg-muted);
 }
 
+/* UIX-011: was a `content` background of page.svg / page-filled.svg, both baked
+   #F5F5F5/#F8F8F8 and unable to follow the theme. The outline/filled swap now
+   happens in Pages.tsx (File / FileFill), so `.start-page` needs no rule.
+   `height` added: the old glyph got its height from the image's aspect ratio,
+   which an Icon child does not provide. */
 .router-pages-icon {
-  content: url('../assets/icons/page.svg');
   width: 18px;
+  height: 18px;
   opacity: 0.7;
   align-self: center;
   margin-right: 7px;
-}
-
-.router-pages-icon.start-page {
-  content: url('../assets/icons/page-filled.svg');
+  color: var(--theme-color-fg-default);
 }
 
 .router-pages-label {

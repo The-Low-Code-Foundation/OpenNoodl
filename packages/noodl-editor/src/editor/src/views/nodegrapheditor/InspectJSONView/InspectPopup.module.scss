@@ -63,19 +63,17 @@ $pin-icon-size: 14px;
   }
 }
 
+/* UIX-011: was two `-webkit-mask` SVGs tinted by `background`. The outline /
+   filled swap now happens in InspectPopup.tsx (Pin / PinFill), so `.is-pinned`
+   needs no rule of its own. Same box; `color` replaces `background` as the
+   paint source, and the button loses its own background so the glyph shows. */
 .PinButton {
-  -webkit-mask: url(../assets/icons/editor/push_pin_black_24dp-outline.svg);
-  -webkit-mask-size: $pin-icon-size $pin-icon-size;
   width: $pin-icon-size;
   height: $pin-icon-size;
   margin: 0;
   padding: 0;
   border: none;
-  background: var(--theme-color-fg-default);
+  background: transparent;
+  color: var(--theme-color-fg-default);
   flex-shrink: 0;
-
-  &.is-pinned {
-    -webkit-mask: url(../assets/icons/editor/push_pin_black_24dp-filled.svg);
-    -webkit-mask-size: $pin-icon-size $pin-icon-size;
-  }
 }

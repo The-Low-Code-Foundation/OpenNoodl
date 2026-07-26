@@ -57,34 +57,64 @@
   color: var(--theme-color-secondary-bright);
 }
 
+/* UIX-011: four `content: url(...)` SVGs — outline, filled, and two more that
+   differed from the first only in baked colour — collapse to two inline
+   `currentColor` glyphs emitted by `models/lessonformat.ts`. Shape is picked by
+   `.completed`; every colour state is now a token, so the checkmark follows the
+   theme instead of being frozen at its authored colour. The old filled glyph
+   was the pre-azure Noodl yellow #FCCC73; completed now reads as the primary
+   accent. The 21px height variant is gone with the 24-viewBox asset it was
+   compensating for — both glyphs are 16x16. */
 .lesson-item .lesson-checkmark {
-  content: url('../assets/icons/lesson-check-incomplete.svg');
   margin-left: auto;
   height: 16px;
+  width: 16px;
+  flex-shrink: 0;
+  /* Not `inherit`: `.lesson-item` sets a near-white color for its label, which
+     would leave the glyph invisible on the light theme. */
+  color: var(--theme-color-fg-muted);
 }
 
-.lesson-item:not(.completed):not(.selected) .lesson-checkmark {
-  height: 16px;
+.lesson-item .lesson-checkmark svg {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
-.lesson-item:not(.completed) .lesson-checkmark {
-  height: 21px;
+.lesson-item .lesson-checkmark-complete,
+.lesson-item.completed .lesson-checkmark-incomplete {
+  display: none;
 }
 
-.lesson-item:not(.completed).selected header {
-  margin-top: -3px;
+.lesson-item.completed .lesson-checkmark-complete {
+  display: block;
+}
+
+/* Legacy hand-authored lesson HTML (see docs/interactive-lessons.md) emits an
+   *empty* `<span class="lesson-checkmark">` and relied on `content: url()` to
+   fill it. Curriculum is hosted outside this repo, so that markup can still
+   arrive. Degrade to a CSS-drawn ring/dot — themeable like everything else —
+   rather than rendering nothing at all. */
+.lesson-item .lesson-checkmark:empty {
+  border: 1.5px solid currentColor;
+  border-radius: 50%;
+  box-sizing: border-box;
+}
+
+.lesson-item.completed .lesson-checkmark:empty {
+  background-color: currentColor;
 }
 
 .lesson-item.completed .lesson-checkmark {
-  content: url('../assets/icons/lesson-check-complete.svg');
+  color: var(--theme-color-primary);
 }
 
 .lesson-item.selected .lesson-checkmark {
-  content: url('../assets/icons/lesson-check-incomplete-selected.svg');
+  color: var(--theme-color-fg-highlight);
 }
 
 .lesson-item.selected:hover .lesson-checkmark {
-  content: url('../assets/icons/lesson-check-incomplete-selected-hover.svg');
+  color: var(--theme-color-secondary-bright);
 }
 
 .lesson-item header {

@@ -4,6 +4,8 @@ import ReactJson from '@microlink/react-json-view';
 
 import { ProjectModel } from '@noodl-models/projectmodel';
 
+import { Icon, IconName } from '@noodl-core-ui/components/common/Icon';
+
 import { ToastLayer } from '../../ToastLayer/ToastLayer';
 import css from './InspectPopup.module.scss';
 
@@ -38,7 +40,9 @@ export function InspectPopup({ debugValue, onPinClicked, pinned }: InspectPopupP
 
   return (
     <div className={css.Root}>
-      <button onClick={onPinClicked} className={classNames(css.PinButton, pinned && css['is-pinned'])} />
+      <button onClick={onPinClicked} className={classNames(css.PinButton, pinned && css['is-pinned'])}>
+        <Icon icon={pinned ? IconName.PinFill : IconName.Pin} />
+      </button>
 
       <div className={css.ValueContainer}>
         {debugValue.map((value: DebugObjectType, i: number) => {

@@ -7,19 +7,22 @@
   height: 100%;
 }
 
+/* UIX-011: was a `-webkit-mask-image` of editor/reset-to-default.svg tinted by
+   `background`. That mask *did* theme correctly, but it is now a core-ui
+   <Icon> child so a single mechanism covers every chrome glyph and the
+   url()-to-SVG gate can be asserted at zero. Same 16x16 box, same origin;
+   `color` replaces `background` as the paint source. */
 .property-changed-dot {
   position: absolute;
   top: 9px;
   left: 4px;
   height: 16px;
   width: 16px;
-  -webkit-mask-size: contain;
-  -webkit-mask-image: url(../assets/icons/editor/reset-to-default.svg);
-  background: var(--theme-color-fg-default);
+  color: var(--theme-color-fg-default);
 }
 
 .property-changed-dot:hover {
-  background-color: var(--theme-color-fg-highlight);
+  color: var(--theme-color-fg-highlight);
   cursor: pointer;
 }
 
@@ -280,47 +283,11 @@
   opacity: 1;
 }
 
+/* UIX-011: the glyph now comes from a core-ui <Icon> child (PropertyTabs.tsx),
+   not a `content: url()` background — the old SVGs had baked white fills and
+   could not follow the theme. The 32x32 box is unchanged. */
 .property-tab-icon {
   width: 32px;
   height: 32px;
-}
-
-.property-tab-icon.borders-all {
-  content: url('../assets/icons/property-tab-borders-all.svg');
-}
-
-.property-tab-icon.borders-left {
-  content: url('../assets/icons/property-tab-borders-left.svg');
-}
-
-.property-tab-icon.borders-right {
-  content: url('../assets/icons/property-tab-borders-right.svg');
-}
-
-.property-tab-icon.borders-bottom {
-  content: url('../assets/icons/property-tab-borders-bottom.svg');
-}
-
-.property-tab-icon.borders-top {
-  content: url('../assets/icons/property-tab-borders-top.svg');
-}
-
-.property-tab-icon.corners-all {
-  content: url('../assets/icons/property-tab-corners-all.svg');
-}
-
-.property-tab-icon.corners-top-left {
-  content: url('../assets/icons/property-tab-corners-top-left.svg');
-}
-
-.property-tab-icon.corners-top-right {
-  content: url('../assets/icons/property-tab-corners-top-right.svg');
-}
-
-.property-tab-icon.corners-bottom-left {
-  content: url('../assets/icons/property-tab-corners-bottom-left.svg');
-}
-
-.property-tab-icon.corners-bottom-right {
-  content: url('../assets/icons/property-tab-corners-bottom-right.svg');
+  color: var(--theme-color-fg-default);
 }

@@ -1,6 +1,8 @@
 import React from 'react';
 import { createRoot, Root } from 'react-dom/client';
 
+import { Icon, IconName } from '@noodl-core-ui/components/common/Icon';
+
 import { TransitionEditor } from './TransitionEditor';
 
 // Styles
@@ -112,7 +114,9 @@ export class VisualStates extends React.Component<VisualStatesProps, State> {
       >
         <div className="variants-name-section" onClick={this.onCurrentStateClicked.bind(this)}>
           <label>{this.state.selectedVisualState.label} state</label>
-          <div className="variants-pick-icon" />
+          <div className="variants-pick-icon">
+            <Icon icon={IconName.CaretDownUp} UNSAFE_style={{ width: 10, height: 12 }} />
+          </div>
 
           {this.state.showStatesSelector ? (
             <div

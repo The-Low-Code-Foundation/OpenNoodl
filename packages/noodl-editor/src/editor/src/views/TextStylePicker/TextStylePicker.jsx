@@ -4,7 +4,7 @@ import { createRoot } from 'react-dom/client';
 
 import { StylesModel } from '@noodl-models/StylesModel';
 
-import { IconName, IconSize } from '../../../../../../noodl-core-ui/src/components/common/Icon';
+import { Icon, IconName, IconSize } from '../../../../../../noodl-core-ui/src/components/common/Icon';
 import { IconButton, IconButtonVariant } from '../../../../../../noodl-core-ui/src/components/inputs/IconButton';
 import FontLoader from '../../utils/fontloader';
 import PopupLayer from '../popuplayer';
@@ -245,7 +245,9 @@ function TextStyleItem(props) {
       <div className="variants-item-icon" onClick={onDeleteClicked}>
         <i className="fa fa-trash" />
       </div>
-      <div className="textstyles-edit-style" onClick={onEditStyleClicked} ref={popupAnchorRef} />
+      <div className="textstyles-edit-style" onClick={onEditStyleClicked} ref={popupAnchorRef}>
+        <Icon icon={IconName.Sliders} UNSAFE_style={{ width: 20, height: 20 }} />
+      </div>
     </div>
   );
 }

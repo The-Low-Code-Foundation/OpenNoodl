@@ -262,6 +262,32 @@ function renderMedia(media: LessonMediaDef | undefined): string {
   return `<img src="${escapeAttr(media.src)}">`;
 }
 
+/**
+ * UIX-011: the task checkmark used to be four `content: url(...)` SVGs swapped
+ * by CSS state — one per colour, including a filled one baked in the pre-azure
+ * Noodl yellow `#FCCC73`. An SVG loaded through `url()` renders as its own
+ * document and cannot inherit the theme, so none of them could follow UIX-008.
+ *
+ * This is the editor's one *imperative* icon site: the card is built as an HTML
+ * string, so a React `<Icon>` is not available. Inlining the glyph markup gets
+ * the same result — `currentColor` resolves against the host element, so
+ * `LessonLayerView.css` drives both shape (which of the two is displayed) and
+ * colour (tokens) from the item's state. Four assets collapse to two glyphs,
+ * because two of the four differed from each other only in baked colour.
+ *
+ * Kept in sync by shape with core-ui's `check_circle` / `check_circle_fill`.
+ */
+const LESSON_CHECKMARK_HTML =
+  '<span class="lesson-checkmark">' +
+  '<svg class="lesson-checkmark-incomplete" width="16" height="16" viewBox="0 0 16 16" fill="none" ' +
+  'stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">' +
+  '<circle cx="8" cy="8" r="6.5"/><path d="M5.2 8.2 7.1 10.1 10.8 6.2"/></svg>' +
+  '<svg class="lesson-checkmark-complete" width="16" height="16" viewBox="0 0 16 16" fill="none">' +
+  '<path fill-rule="evenodd" clip-rule="evenodd" d="M8 0.75A7.25 7.25 0 1 0 8 15.25 7.25 7.25 0 0 0 8 0.75Zm3.33 ' +
+  '5.94a.75.75 0 0 0-1.13-.99L7.06 9.29 5.79 7.99a.75.75 0 1 0-1.08 1.04l1.84 1.9a.75.75 0 0 0 1.1-.02l3.68-4.22Z" ' +
+  'fill="currentColor"/></svg>' +
+  '</span>';
+
 /** Compile one authored step into a legacy-shaped HTML string. */
 export function compileStep(step: LessonStepDef, index: number): string {
   const where = `Step ${index + 1}${step && step.title ? ` ("${step.title}")` : ''}`;
@@ -289,7 +315,7 @@ export function compileStep(step: LessonStepDef, index: number): string {
   if (step.disableIcons?.length) wrapperAttrs.push(`data-disable-icons="${escapeAttr(step.disableIcons.join(','))}"`);
 
   // The card header carries the checkmark span for conditioned (task) steps.
-  const header = conditions.length ? 'Task<span class="lesson-checkmark"></span>' : '&nbsp;';
+  const header = conditions.length ? `Task${LESSON_CHECKMARK_HTML}` : '&nbsp;';
   const itemStyle = step.width ? ` style="width: ${escapeAttr(step.width)}"` : '';
   const titleHtml = step.title ? inlineMarkdown(step.title) : '';
 

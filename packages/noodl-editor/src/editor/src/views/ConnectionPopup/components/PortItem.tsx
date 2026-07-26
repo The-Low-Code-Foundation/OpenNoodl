@@ -3,6 +3,8 @@ import React, { useEffect, useRef, useState } from 'react';
 
 import { NodeLibrary } from '@noodl-models/nodelibrary';
 
+import { Icon, IconName } from '@noodl-core-ui/components/common/Icon';
+
 import PopupLayer from '../../popuplayer';
 import css from '../ConnectionPopup.module.scss';
 import { docsParser } from '../DocsParser';
@@ -91,7 +93,11 @@ export function PortItem(props: TSFixme) {
         className={classNames(css.listElementPort, css[state])}
         onClick={props.onClick}
       >
-        {NodeLibrary.nameForPortType(p.type) === 'signal' ? <div className={css.signalIcon} /> : null}
+        {NodeLibrary.nameForPortType(p.type) === 'signal' ? (
+          <div className={css.signalIcon}>
+            <Icon icon={IconName.Lightning} UNSAFE_style={{ width: 15, height: 15 }} />
+          </div>
+        ) : null}
         {p.annotatedName !== undefined ? (
           <span dangerouslySetInnerHTML={{ __html: p.annotatedName }} />
         ) : (

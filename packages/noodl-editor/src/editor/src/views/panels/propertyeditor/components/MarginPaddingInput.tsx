@@ -1,5 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 
+import { Icon, IconName } from '@noodl-core-ui/components/common/Icon';
+
 export interface MarginPaddingValue {
   value: number;
   unit: string;
@@ -259,7 +261,9 @@ export function MarginPaddingInput({ values, defaults, onUpdate, onReset }: Marg
       )}
 
       {!isDefault && (
-        <span className="property-changed-dot" title="Reset to default" onClick={() => onReset()} />
+        <span className="property-changed-dot" title="Reset to default" onClick={() => onReset()}>
+          <Icon icon={IconName.Reset} UNSAFE_style={{ width: 16, height: 16 }} />
+        </span>
       )}
     </div>
   );
