@@ -88,6 +88,7 @@
   --base-color-black-transparent-50: rgba(0, 0, 0, 0.5);
   --base-color-white-transparent-10: rgba(255, 255, 255, 0.1);
   --base-color-white-transparent-15: rgba(255, 255, 255, 0.15);
+  --base-color-white-transparent-16: rgba(255, 255, 255, 0.16); /* PAR-001: card ghost initial */
   --base-color-white-transparent-50: rgba(255, 255, 255, 0.5);
 
   /* ---------------------------------------------------------------------------
@@ -285,6 +286,14 @@
      BRAND - coral. Wordmark dot ONLY; never chrome, never a button.
      --------------------------------------------------------------------------- */
   --theme-color-brand: var(--base-color-brand-coral);
+
+  /* ---------------------------------------------------------------------------
+     AVATAR - launcher/user avatar circle gradient (PAR-001, mock-normative).
+     Same in both themes (the mock does not retint it on light); the initials/
+     glyph on it are always white.
+     --------------------------------------------------------------------------- */
+  --theme-color-avatar-gradient: linear-gradient(135deg, #7c5cff, #4da3ff);
+  --theme-color-avatar-fg: #ffffff;
 
   /* ---------------------------------------------------------------------------
      NODE COLORS (legacy scales; UIX-005 moves canvas to category tokens)
