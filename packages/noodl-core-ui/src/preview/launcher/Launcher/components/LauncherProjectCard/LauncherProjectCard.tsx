@@ -190,7 +190,7 @@ export function LauncherProjectCard({
       onKeyDown={handleKeyDown}
       data-test="launcher-project-card"
     >
-      <div className={classNames(css['Thumb'], !showCapture && css[`Placeholder`], !showCapture && css[`hue-${bucket}`])}>
+      <div className={classNames(css['Thumb'], !showCapture && css[`hue-${bucket}`])}>
         {showCapture ? (
           <img
             className={css['ThumbImage']}

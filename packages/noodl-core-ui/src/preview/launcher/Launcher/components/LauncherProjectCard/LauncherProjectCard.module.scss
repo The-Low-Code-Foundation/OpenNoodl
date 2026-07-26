@@ -9,8 +9,8 @@
   text-align: left;
   background: var(--theme-color-bg-1);
   border: 1px solid var(--theme-color-border-default);
-  border-radius: var(--radius-lg, 10px);
-  box-shadow: 0 1px 2px var(--theme-color-bg-1-transparent-2);
+  border-radius: var(--radius-10);
+  box-shadow: var(--shadow-card);
   cursor: pointer;
 
   @media (prefers-reduced-motion: no-preference) {
@@ -20,7 +20,7 @@
   &:hover {
     transform: translateY(-2px);
     border-color: var(--theme-color-border-strong);
-    box-shadow: 0 8px 24px var(--theme-color-bg-1-transparent-2);
+    box-shadow: var(--shadow-card-hover);
   }
 
   &:focus-visible {
@@ -45,19 +45,16 @@
 }
 
 /* Deterministic placeholder art: name-hash gradient + ghosted initial. */
-.Placeholder {
-  display: flex;
-  align-items: flex-start;
-  justify-content: flex-end;
-}
-
 .Ghost {
+  /* Mock: absolute right -8px / bottom -26px, Bricolage 600 96px, white @16%. */
+  position: absolute;
+  right: -8px;
+  bottom: -26px;
   font-family: var(--font-family-display);
   font-weight: 600;
   font-size: 96px;
   line-height: 1;
-  color: var(--base-color-white-transparent-15);
-  transform: translate(8px, 26px);
+  color: var(--base-color-white-transparent-16);
   user-select: none;
 }
 
@@ -130,12 +127,32 @@
   flex-wrap: wrap;
   color: var(--theme-color-fg-muted);
   font-size: 12px;
+
+  /* Mock chip radius is 5px; the shared Chip ships radius-sm (2px). Scoped
+     override rather than editing the editor-wide Chip component (PAR-001). */
+  > *:not(.Edited) {
+    border-radius: var(--radius-5);
+  }
 }
 
 .Edited {
   color: var(--theme-color-fg-muted);
 }
 
+/* Mock kebab: 26px hit target, radius 6, fg-3 -> fg-1 on bg-3 hover. The
+   trigger inside is the shared ContextMenu IconButton; shape it from here. */
 .Kebab {
   flex: none;
+
+  :global(button) {
+    width: 26px;
+    height: 26px;
+    border-radius: var(--radius-md);
+    color: var(--theme-color-fg-muted);
+
+    &:hover {
+      background: var(--theme-color-bg-3);
+      color: var(--theme-color-fg-highlight);
+    }
+  }
 }
