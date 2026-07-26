@@ -33,8 +33,13 @@ export type WebhookScheme = 'hmac-sha256' | 'token';
 export type ChangeAction = 'create' | 'update' | 'delete';
 
 export interface TriggerTarget {
-  /** Only 'function' in v1; 'workflow' is the second target type when WF-001 lands. */
-  kind: 'function';
+  /**
+   * 'function' invokes a cloud function directly; 'workflow' runs a WF-001
+   * workflow definition through the engine (its `name` is the workflow id). Both
+   * flow through the ONE dispatcher path — WF-001 added a target kind, not a
+   * second dispatch path.
+   */
+  kind: 'function' | 'workflow';
   name: string;
 }
 
@@ -171,7 +176,9 @@ export function validateTriggerDef(raw: unknown): string[] {
   if (!target || typeof target !== 'object') {
     errors.push('target is required');
   } else {
-    if (target.kind !== 'function') errors.push('target.kind must be "function" (only function targets in v1)');
+    if (target.kind !== 'function' && target.kind !== 'workflow') {
+      errors.push('target.kind must be "function" or "workflow"');
+    }
     if (typeof target.name !== 'string' || !target.name) errors.push('target.name must be a non-empty string');
   }
 

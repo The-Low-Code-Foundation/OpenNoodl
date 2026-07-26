@@ -34,12 +34,14 @@ import type { SecurityState } from '../security/state';
 import type { RealtimeHub, Subscription } from '../realtime/RealtimeHub';
 import { ClpOp, Principal, keyAllowsFunction, ruleAllows, validateAclShape } from '../security/model';
 import type { TriggerSubsystem } from '../triggers/TriggerSubsystem';
+import type { WorkflowSubsystem } from '../workflow/WorkflowSubsystem';
 import { verifyWebhook } from '../triggers/webhook';
 import type { EmailConfigState } from '../email/EmailConfigState';
 import type { Mailer } from '../email/Mailer';
 import { EmailTokenStore } from '../email/tokens';
 import { AdminSecurityRoutes } from './admin-security';
 import { AdminTriggerRoutes } from './admin-triggers';
+import { AdminWorkflowRoutes } from './admin-workflows';
 import { AdminEmailRoutes } from './admin-email';
 import { ByobAdminRoutes } from './byob-admin';
 import { EmailRoutes } from './email-routes';
@@ -115,6 +117,8 @@ export interface HttpServerDeps {
   realtime: RealtimeHub;
   /** Trigger subsystem — WF-005 (webhook route + admin trigger CRUD). */
   triggers: TriggerSubsystem;
+  /** Workflow subsystem — WF-001 (admin workflow-def CRUD + run/cancel). */
+  workflows: WorkflowSubsystem | null;
   /** Email subsystem (BAK-002): config/secrets, the mailer, and the token store. */
   emailConfig: EmailConfigState;
   mailer: Mailer;
@@ -145,6 +149,7 @@ export class HttpServer {
   private readonly files: FileRoutes;
   private readonly adminSecurity: AdminSecurityRoutes;
   private readonly adminTriggers: AdminTriggerRoutes;
+  private readonly adminWorkflows: AdminWorkflowRoutes;
   private readonly email: EmailRoutes;
   private readonly adminEmail: AdminEmailRoutes;
   private readonly routes: RouteDef[];
@@ -173,6 +178,7 @@ export class HttpServer {
     this.files = new FileRoutes(deps.options.dataDir, `http://127.0.0.1:${deps.options.port}`);
     this.adminSecurity = new AdminSecurityRoutes(deps.security, deps.facade, deps.options, deps.getRunner);
     this.adminTriggers = new AdminTriggerRoutes(deps.triggers);
+    this.adminWorkflows = new AdminWorkflowRoutes(() => deps.workflows);
     this.adminEmail = new AdminEmailRoutes(deps.emailConfig, deps.mailer);
     this.routes = this.buildRoutes();
   }
@@ -193,6 +199,7 @@ export class HttpServer {
     const files = this.files;
     const adminSec = this.adminSecurity;
     const adminTriggers = this.adminTriggers;
+    const adminWorkflows = this.adminWorkflows;
     const email = this.email;
     const adminEmail = this.adminEmail;
 
@@ -535,6 +542,50 @@ export class HttpServer {
         pattern: 'admin/triggers/:id/fire',
         access: { kind: 'admin' },
         handler: (ctx) => adminTriggers.fire(ctx)
+      },
+
+      // ---- Admin: workflow definitions (WF-001) ---------------------------
+      {
+        method: 'GET',
+        pattern: 'admin/workflow-defs',
+        access: { kind: 'admin' },
+        handler: (ctx) => adminWorkflows.list(ctx)
+      },
+      {
+        method: 'POST',
+        pattern: 'admin/workflow-defs',
+        access: { kind: 'admin' },
+        handler: (ctx) => adminWorkflows.create(ctx)
+      },
+      {
+        method: 'GET',
+        pattern: 'admin/workflow-defs/:id',
+        access: { kind: 'admin' },
+        handler: (ctx) => adminWorkflows.get(ctx)
+      },
+      {
+        method: 'PUT',
+        pattern: 'admin/workflow-defs/:id',
+        access: { kind: 'admin' },
+        handler: (ctx) => adminWorkflows.update(ctx)
+      },
+      {
+        method: 'DELETE',
+        pattern: 'admin/workflow-defs/:id',
+        access: { kind: 'admin' },
+        handler: (ctx) => adminWorkflows.delete(ctx)
+      },
+      {
+        method: 'POST',
+        pattern: 'admin/workflow-defs/:id/run',
+        access: { kind: 'admin' },
+        handler: (ctx) => adminWorkflows.run(ctx)
+      },
+      {
+        method: 'POST',
+        pattern: 'admin/workflow-runs/:executionId/cancel',
+        access: { kind: 'admin' },
+        handler: (ctx) => adminWorkflows.cancel(ctx)
       },
 
       // ---- Admin: the BAK-002 email surface --------------------------------

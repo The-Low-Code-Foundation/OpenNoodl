@@ -22,12 +22,15 @@
 
 import type { ExecutionHistory } from '../execution/ExecutionStore';
 import type { WorkflowRunner, RunTriggerContext } from '../workflow/WorkflowRunner';
+import type { WorkflowSubsystem } from '../workflow/WorkflowSubsystem';
 import type { TriggerDef, TriggerResult, TriggerRegistry } from './registry';
 
 export interface DispatcherDeps {
   registry: TriggerRegistry;
   executions: ExecutionHistory;
   getRunner: () => WorkflowRunner | null;
+  /** WF-001: resolves the workflow subsystem for `target.kind === 'workflow'`. */
+  getWorkflows?: () => WorkflowSubsystem | null;
   backendId: string;
   backendName: string;
 }
@@ -78,6 +81,13 @@ export class TriggerDispatcher {
     const { trigger, triggerType, source, payload, headers } = input;
     const firedAt = nowIso();
     const targetName = trigger.target.name;
+
+    // WF-001: a workflow target runs through the engine (which writes its own
+    // workflow-level + per-step execution records). Same dispatcher path, second
+    // target kind — no second dispatch path.
+    if (trigger.target.kind === 'workflow') {
+      return this.fireWorkflow(trigger, triggerType, source, targetName, payload, firedAt);
+    }
 
     const runner = this.deps.getRunner();
     if (!runner) {
@@ -133,6 +143,57 @@ export class TriggerDispatcher {
 
     this.deps.registry.recordFire(trigger.id, { firedAt, result });
     return { result, statusCode, body };
+  }
+
+  /** The `target.kind === 'workflow'` branch of fire(). */
+  private async fireWorkflow(
+    trigger: TriggerDef,
+    triggerType: RunTriggerContext['type'],
+    source: string,
+    workflowId: string,
+    payload: Record<string, unknown>,
+    firedAt: string
+  ): Promise<FireOutcome> {
+    const workflows = this.deps.getWorkflows ? this.deps.getWorkflows() : null;
+    if (!workflows) {
+      const result = this.finishRejected(trigger.id, {
+        triggerType,
+        triggerId: trigger.id,
+        workflowId,
+        source,
+        reason: 'Workflow engine is not ready — trigger fire dropped',
+        triggerData: payload
+      });
+      return { result, statusCode: 503, body: JSON.stringify({ error: result.error }) };
+    }
+
+    const { found, result: runResult } = await workflows.run(workflowId, { type: triggerType, source, triggerId: trigger.id }, payload);
+    if (!found || !runResult) {
+      const result = this.finishRejected(trigger.id, {
+        triggerType,
+        triggerId: trigger.id,
+        workflowId,
+        source,
+        reason: `Trigger target workflow "${workflowId}" not found on this backend`,
+        triggerData: payload
+      });
+      return { result, statusCode: 404, body: JSON.stringify({ error: result.error }) };
+    }
+
+    // The engine already wrote the execution records; we only stamp trigger status.
+    const ok = runResult.status === 'success';
+    const result: TriggerResult = {
+      ok,
+      at: nowIso(),
+      statusCode: ok ? 200 : 500,
+      error: ok ? undefined : runResult.error || `workflow ${runResult.status}`
+    };
+    this.deps.registry.recordFire(trigger.id, { firedAt, result });
+    return {
+      result,
+      statusCode: ok ? 200 : 500,
+      body: JSON.stringify({ executionId: runResult.executionId, status: runResult.status })
+    };
   }
 
   /**
