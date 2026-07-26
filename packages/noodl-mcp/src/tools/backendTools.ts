@@ -186,6 +186,25 @@ export function registerBackendReadTools(server: McpServer): void {
   );
 
   server.registerTool(
+    'list_backend_step_kinds',
+    {
+      title: 'List backend workflow step kinds',
+      description:
+        'The step vocabulary a backend can run (WF-002): every step `kind` with its params, routes, output shape ' +
+        'and when to use it — call-function, branch, switch, for-each, merge, retry, stop, wait, wait-until. ' +
+        'CALL THIS BEFORE AUTHORING A WORKFLOW. A workflow step is not a canvas node, so these are NOT in the ' +
+        'node catalog (list_node_types); this is where their contract lives, and it is served by the running ' +
+        'backend so it can never drift from what that backend actually executes.',
+      inputSchema: { backendId: z.string().optional().describe('Which backend (omit if exactly one is running)') }
+    },
+    guarded(async ({ backendId }) => {
+      const client = await requireBackend(backendId);
+      const { json } = await client.request('GET', '/admin/workflow-step-kinds');
+      return jsonResult(json);
+    })
+  );
+
+  server.registerTool(
     'get_backend_email_config',
     {
       title: 'Get backend email config',
@@ -683,15 +702,41 @@ export function registerBackendWriteTools(server: McpServer): void {
   const workflowStep = z.object({
     id: z.string().describe('Unique within the workflow; also the execution-history nodeId'),
     name: z.string().optional(),
-    kind: z.literal('call-function').describe("v1 step kind; invokes a cloud function (WF-002 adds more)"),
-    ref: z.string().describe('The cloud function to invoke for a call-function step'),
-    params: z.record(z.unknown()).optional().describe('Static params merged into the step input'),
+    kind: z
+      .enum(['call-function', 'branch', 'switch', 'for-each', 'merge', 'retry', 'stop', 'wait', 'wait-until'])
+      .describe(
+        'What the step runs. call-function invokes a cloud function (WF-001); the rest are WF-002 Series-1 ' +
+          'kinds. Call list_backend_step_kinds for each kind\'s params, routes and output shape.'
+      ),
+    ref: z
+      .string()
+      .optional()
+      .describe('The cloud function to invoke. Required for call-function, for-each and retry; invalid on the others.'),
+    params: z
+      .record(z.unknown())
+      .optional()
+      .describe("Static params merged into the step input, and the kind's own configuration (condition, cases, …)"),
     timeoutMs: z.number().optional().describe('Per-step timeout (0/omitted = the workflow default)'),
-    next: z.array(z.string()).optional().describe('Success edges: steps reachable when this step succeeds'),
+    next: z
+      .array(z.string())
+      .optional()
+      .describe('UNCONDITIONAL success edges: reachable when this step succeeds, whatever it decided'),
+    routes: z
+      .record(z.array(z.string()))
+      .optional()
+      .describe(
+        'CONDITIONAL named success edges, e.g. {"ontrue":["s2"],"onfalse":["s3"]} for a branch. Only the routes ' +
+          'the step selects are taken. Route names are fixed per kind (see list_backend_step_kinds); switch uses ' +
+          'its case labels plus "default".'
+      ),
     onError: z
       .array(z.string())
       .optional()
-      .describe('Error edges: steps reachable when this step fails. Empty/absent = a failure HALTS the run.')
+      .describe(
+        'Error edges: steps reachable when this step fails. Empty/absent = a failure HALTS the run. A handler ' +
+          'reached this way receives the failure as `previous.error`. These edges ARE try/catch — there is no ' +
+          'try/catch step kind.'
+      )
   });
 
   const workflowFields = {

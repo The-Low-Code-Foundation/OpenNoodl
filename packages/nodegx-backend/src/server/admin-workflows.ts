@@ -10,6 +10,7 @@
  *   DELETE /admin/workflow-defs/:id         delete
  *   POST   /admin/workflow-defs/:id/run     run now (payload optional)
  *   POST   /admin/workflow-runs/:executionId/cancel   cancel an in-flight run
+ *   GET    /admin/workflow-step-kinds       the WF-002 step-kind catalog
  *
  * @module nodegx-backend/server/admin-workflows
  */
@@ -17,6 +18,7 @@
 import type { RequestContext } from './HttpServer';
 import type { WorkflowSubsystem } from '../workflow/WorkflowSubsystem';
 import { WorkflowConfigError } from '../workflow/WorkflowRegistry';
+import { stepKindCatalog } from '../workflow/steps/kinds';
 import type { WorkflowInput } from '../workflow/types';
 import { HttpError, readJSONBody, sendJSON } from './http-util';
 
@@ -27,6 +29,19 @@ export class AdminWorkflowRoutes {
     const wf = this.getWorkflows();
     if (!wf) throw new HttpError(503, 'Workflow engine is not ready');
     return wf;
+  }
+
+  /**
+   * The step-kind catalog (WF-002): every kind this backend can run, with its
+   * params, routes, output shape and prose. This is how an authoring agent — or
+   * a human reading the API — discovers the step vocabulary, since a workflow
+   * step is not a graph node and so cannot appear in SUB-004's node catalog.
+   *
+   * Deliberately does NOT go through `subsystem()`: the vocabulary is static,
+   * and "what can I author?" must be answerable before the engine is ready.
+   */
+  stepKinds(ctx: RequestContext): void {
+    sendJSON(ctx.res, 200, stepKindCatalog());
   }
 
   list(ctx: RequestContext): void {
