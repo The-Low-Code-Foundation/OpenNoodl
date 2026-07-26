@@ -75,8 +75,10 @@
     cursor: pointer;
   }
 
+  /* Active component (UIX-004): accent-soft fill, matching the mock's
+     "active tab = accent-soft" convention for component navigation. */
   &.is-current {
-    background-color: var(--theme-color-bg-4);
+    background-color: var(--theme-color-primary-bg);
     position: relative;
     z-index: 1;
   }
@@ -86,7 +88,10 @@
   flex-shrink: 0;
   flex-grow: 1;
 
-  .Item.is-current &,
+  .Item.is-current & {
+    color: var(--theme-color-primary);
+  }
+
   .Item.is-component:hover & {
     color: var(--theme-color-fg-highlight);
   }
@@ -106,7 +111,7 @@
 
   .Item.is-current & {
     path {
-      fill: var(--theme-color-fg-highlight);
+      fill: var(--theme-color-primary);
     }
   }
 

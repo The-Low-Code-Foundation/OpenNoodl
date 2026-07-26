@@ -32,14 +32,15 @@ export function ConfirmDialog({
       <Box hasXSpacing hasYSpacing UNSAFE_style={{ maxWidth: '400px' }}>
         <Text>{text}</Text>
         <Box hasTopSpacing>
+          {/* Button convention (UIX-004): primary on the right, cancel to its left. */}
           <HStack hasSpacing>
-            <PrimaryButton label={confirmText ?? 'Confirm'} size={PrimaryButtonSize.Small} onClick={onConfirm} />
             <PrimaryButton
               label={abortText ?? 'Cancel'}
               variant={PrimaryButtonVariant.Muted}
               size={PrimaryButtonSize.Small}
               onClick={onAbort}
             />
+            <PrimaryButton label={confirmText ?? 'Confirm'} size={PrimaryButtonSize.Small} onClick={onConfirm} />
           </HStack>
         </Box>
       </Box>
