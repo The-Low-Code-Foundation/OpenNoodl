@@ -1,5 +1,121 @@
 # Phase 22 — Production Backend: CHANGELOG
 
+## 2026-07-26 — BAK-005 The Served Admin Dashboard
+
+### Seam decision
+Route **(b)** — a lean SPA reusing the HTTP *contract*, not the editor's React
+components. Measured, not assumed: the panel's data-browser/schema/permissions/
+email/triggers views are ~3,231 TSX with **zero** editor-model imports (their
+only coupling is one `window.require('electron')` line each), but
+`@noodl-core-ui` has no build, no entry points and reverse tsconfig aliases back
+into the editor; there is no browser `@noodl/platform`; and `noodl-preview`'s
+esbuild+shims recipe — the spec's named prior art — is a **Node CJS** bundle
+that loads every view asset with the `empty` loader, so it does not transfer to
+a rendering SPA at all. Extraction would have added a browser bundler, a
+sass/CSS-modules pipeline for 1,242 lines of `.module.scss`, and a platform shim
+to the one package whose deploy story is "copy `dist/cli.js` and run it". The
+editor keeps its panel; both UIs are HTTP clients of the same server, so there
+is no second implementation to drift from. Full reasoning: `BAK-005-NOTES.md`.
+
+### Added
+- **The dashboard**: `nodegx-backend` serves its own operator UI at `/_admin`.
+  Collections (browse/filter/page/CRUD), schema (tables, columns, **delete
+  table**), users, roles, permissions, API keys, triggers (enable/disable/fire),
+  workflows (run), executions (list + detail), email (config/templates/test
+  send), backups (status/archives/run now). Live record updates ride BAK-001's
+  SSE — the dashboard is just another subscriber.
+- **Two routes, not a route family**: `GET /_admin` (the document — `public`,
+  because it IS the login page and carries no backend state) and
+  `GET /_admin/whoami` (admin-gated: credential tier, enforcement posture, and
+  which sections this build can serve). Everything else rides the admin routes
+  WF-004/BAK-001/002/003/007 and WF-001/005 already shipped, which is what kept
+  the shared route table's diff to a single spread.
+- **One self-contained document.** Markup, stylesheet and script are inlined
+  into the bundle by esbuild's `text` loader (`tests/text-transformer.js` is its
+  jest twin, so the UI is testable without a build). No CDN, no asset routes, no
+  second bundler — so the CSP is genuinely `default-src 'none'` with a
+  per-response nonce and **no `unsafe-inline`**, plus `nosniff`,
+  `frame-ancestors 'none'`, `no-referrer`, `no-store`. Hash routing keeps the
+  route matcher exact-length. Record values reach the DOM as text only.
+- **Sections hide rather than error.** `whoami.features` is derived from the
+  subsystems actually wired into the composition root — a service whose
+  execution-history database refused to open hides that tab.
+- **Read-only credential tier** (`--readonly-token`, stored as
+  `adminReadonlyToken` beside `adminToken` in the one `secrets.json`
+  convention). Resolves to `{kind:'admin', readonly:true}` and is refused **in
+  the dispatcher** for every state-changing method, before any handler runs —
+  not a UI toggle, so `curl` cannot write either. Coarse on purpose: a route
+  added by a future task is refused by default if it mutates. Three reviewed
+  safe POSTs (realtime subscribe, permission dry-run, schema *diff*); `apply`
+  and `restore` pointedly not. Provisioning it identical to the full credential
+  **refuses to start**.
+- **Credential failure budget** (`src/admin/auth.ts`): 10 failures per client
+  per 5 minutes, then `429` with `Retry-After`. Only failures count — a valid
+  session must not launder a guessing run.
+- **`--no-admin`** unregisters the routes entirely: `404`, not `403`, so an
+  operator who disabled the dashboard leaks no evidence it existed.
+- **`backend:deleteTable` finally has a caller** — behind a typed confirmation,
+  verified end to end.
+- **MCP**: `get_backend_admin_dashboard` (enabled/disabled + reason, URL, the
+  agent's own credential tier, whether a read-only tier exists, posture, section
+  map). `BackendClient.request` gains a `tolerate` list so a `--no-admin`
+  backend's 404 is an *answer* rather than an error; 401 is never tolerable.
+- **Docs**: `docs/runtime/BACKEND-ADMIN-DASHBOARD.md` — features, sign-in, first
+  run, dev-open, read-only, `--no-admin`, and exposure guidance (SSH tunnel by
+  default; VPN / reverse-proxy auth / IP allow-list otherwise; TLS always).
+
+### Changed
+- **First run deviates from the spec, deliberately.** BAK-003 mints an admin
+  credential before anything can be served, so "a freshly deployed instance with
+  no admin credential set" never occurs — and an unauthenticated setup page on a
+  provisioned backend is a takeover vector. Instead the CLI prints where the
+  auto-minted credential lives and the dashboard banners that nobody has chosen
+  one yet, with the `--token` fix.
+- **Dev-open is no longer papered over.** When the backend bypasses every gate,
+  the dashboard skips the login box and banners that enforcement is off on every
+  view, rather than staging a password prompt in front of a backend that would
+  ignore it.
+
+### Removed
+- `packages/noodl-editor/src/editor/parse-dashboard-public/` — 40 tracked files,
+  6.1 MB of built Parse-Dashboard output orphaned by WF-007, with zero inbound
+  references. Stale comments in `.gitignore`, `.eslintrc.js`,
+  `check-build-artefacts.js` and a dead `tsconfig` exclude went with it.
+
+### Tests
+- `nodegx-backend` **283/283** (34 suites; 24 new in `tests/admin-dashboard.test.ts`
+  at three levels: pure policy, document invariants — marker counts, no external
+  origin, no `innerHTML`, red-is-danger-only — and end-to-end over real HTTP on a
+  **locked** backend covering CSP, per-response nonce, the public-page/gated-whoami
+  split, the read-only tier reading everything and writing nothing with the right
+  message and code 119, the safe-POST exception, delete-table, `--no-admin`
+  returning 404, and the credential-collision interlock). Typecheck clean; bundle
+  builds.
+- `noodl-mcp` **52/52** (1 new, driven against a real spawned backend); package
+  typecheck error count unchanged at 17, all pre-existing jasmine conflicts.
+- Live curl pass against the built `dist/cli.js` as a standalone process: page
+  assembly, headers, both tiers, refusals, delete-table, 10-then-429 rate
+  limiting, `--no-admin`.
+
+### Residual
+- **Nobody has opened the page in a browser.** Server-side behaviour is verified
+  throughout; the rendered UI is not. A section-by-section walkthrough (once
+  dev-open, once locked with the read-only token) is the missing pass, and it is
+  the top residual.
+- The SSE `Live` toggle has never run in a browser (the protocol is well-tested
+  server-side; this client is not).
+- Packaged-app and clean-VM runs not done — both named in the spec.
+- Deliberately not built: a "disable user" control (no auth path honours a
+  `disabled` flag, so the button would be a control that does nothing), a
+  restore button (the CLI with the service stopped is the blessed path),
+  whole-config permission editing (per-collection only; the rest is MCP/route),
+  and any audit trail (BAK-009 owns it).
+- Documented trade-offs: the rate limiter can lock out an operator sharing an
+  attacker's apparent client identity behind NAT; the credential in
+  `sessionStorage` is the master key; the dashboard palette is a *copy* of the
+  UIX-001 tokens (this package must not depend on `noodl-core-ui`), pinned only
+  by a red-is-danger-only test.
+
 ## 2026-07-26 — BAK-002 Email Subsystem
 
 ### Added

@@ -9,7 +9,7 @@ higher-level summaries.
 | BAK-002 | Email subsystem | ✅ Complete 2026-07-26 (merge `d22a511`) |
 | BAK-003 | Access control | ✅ Complete (Phase 22, prior) |
 | BAK-004 | OAuth & passwordless | ⬜ Not started |
-| BAK-005 | Served admin dashboard | 🔵 In progress 2026-07-26 (worktree agent) |
+| BAK-005 | Served admin dashboard | ✅ Shipped 2026-07-26 (browser walkthrough + packaged run residual) |
 | BAK-006 | File storage v2 | ⬜ Not started |
 | BAK-007 | Backups / export / promotion | ✅ Complete 2026-07-26 (merge `c8431a0`) |
 | BAK-008 | Full-text search | ⬜ Not started |
@@ -112,3 +112,71 @@ packaged-app runs and the in-editor Data Browser live-refresh are residual
 - The NodeGX backend `type` string used for transport selection
   (`isNodeGXRealtime`) is owned by the Backend Services panel (WF-007); reconcile
   the exact value on merge.
+
+---
+
+## BAK-005 — The Served Admin Dashboard
+
+**Status:** Shipped 2026-07-26. Full detail, including the seam decision and its
+evidence: [BAK-005-NOTES.md](./BAK-005-NOTES.md).
+
+**Seam decision: route (b)** — a lean SPA on the HTTP contract, not extracted
+editor components. Decided on measurement, not preference: the panel's views are
+portable (~3,231 TSX with zero editor-model imports), but `@noodl-core-ui` has no
+build or entry points and reverse-aliases back into the editor, no browser
+`@noodl/platform` exists, and noodl-preview's esbuild+shims recipe is a Node CJS
+bundle that loads every view asset with the `empty` loader — it is not prior art
+for a rendering SPA. Extraction meant a second browser bundler + sass pipeline +
+platform shim inside the one package whose deploy story is "copy a single file".
+Drift risk is structurally low anyway: the editor panel and the dashboard are
+both HTTP clients of the same server, so there is no second implementation to
+drift from, and the existing route tests are the shared contract suite.
+
+### What shipped
+- `GET /_admin` (the document) and `GET /_admin/whoami` (credential tier +
+  section map). **Two routes.** Everything else rides existing admin routes.
+- One self-contained page — markup/CSS/JS inlined by esbuild's `text` loader.
+  `default-src 'none'` CSP with a per-response nonce, no `unsafe-inline`, no
+  external origin, record values never through `innerHTML`.
+- v1 feature set: collections (with **live SSE**), schema (incl. **delete
+  table**, finally given a caller), users, roles, permissions, API keys,
+  triggers, workflows, executions, email, backups. Sections gate on a feature
+  map derived from the wired subsystems, so an absent subsystem hides its tab.
+- **Read-only tier** as a real second credential (`--readonly-token`), refused in
+  the dispatcher for every state-changing method with a small reviewed safe-POST
+  exception set. Coarse by design: a future route that mutates is refused by
+  default. Provisioning it equal to the full credential refuses to start.
+- Credential failure budget (10 / 5 min / client → 429 + `Retry-After`).
+- `--no-admin` unregisters the routes (404, not 403).
+- MCP: `get_backend_admin_dashboard`.
+- `docs/runtime/BACKEND-ADMIN-DASHBOARD.md`, including exposure guidance.
+- Retired `packages/noodl-editor/src/editor/parse-dashboard-public/` (40 files,
+  6.1 MB) — WF-007's leftover, zero inbound references.
+
+### Deliberate spec deviations
+- **No first-run setup page.** BAK-003 always has a credential by serve time, so
+  "no admin credential set" never occurs, and an unauthenticated setup route on a
+  provisioned backend is a takeover vector. Replaced with an honest first-run
+  banner plus a CLI announcement of where the auto-minted credential lives.
+- **No "disable user".** No auth path honours a `disabled` flag; shipping the
+  button would be a security control that does nothing.
+- **No restore button** — the CLI with the service stopped stays the blessed path.
+
+### Tests
+`nodegx-backend` **283/283** (24 new), typecheck clean, bundle builds.
+`noodl-mcp` **52/52** (1 new, against a real spawned backend).
+Live curl pass against the built `dist/cli.js`: page assembly, CSP headers, both
+credential tiers, refusal messages, delete-table, rate limiting, `--no-admin`.
+
+### Residuals
+- **Nobody has opened the page in a browser.** Every server-side property is
+  verified; the rendered UI is not. Top residual — a section-by-section
+  walkthrough (once dev-open, once locked with the read-only token) is the
+  missing pass.
+- The SSE `Live` toggle is unverified in a browser (the protocol itself is
+  well-tested server-side).
+- Packaged-app run and clean-VM run not done — both named in the spec.
+- No audit trail until BAK-009.
+- Documented trade-offs: the rate limiter can lock out an operator who shares an
+  attacker's apparent client identity; the credential in `sessionStorage` is the
+  master key; the palette is a copy of the UIX-001 tokens, not an import.
