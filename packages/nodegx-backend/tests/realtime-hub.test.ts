@@ -7,21 +7,26 @@
  * SSEResponse that records frames and can simulate backpressure. This keeps the
  * tests deterministic while exercising the exact production code paths.
  */
-import { ChangeBus } from '../src/realtime/ChangeBus';
+import { ChangeBus, ChangeSource, RawChange } from '../src/realtime/ChangeBus';
 import { RealtimeHub, SSEResponse, HubSecurity } from '../src/realtime/RealtimeHub';
 import { Principal } from '../src/security/model';
 
 // --- Fake adapter: an on/off/emit surface ChangeBus can tap. ----------------
-function makeFakeAdapter() {
-  const listeners: Record<string, ((p: unknown) => void)[]> = {};
+// Declared as a `ChangeSource` so this stub is checked *as an adapter*: if the
+// bus ever needs another method, or renames one, this stops compiling instead
+// of quietly attaching to nothing.
+type FakeAdapter = ChangeSource & { emitRaw(ev: RawChange['type'], payload: RawChange): void };
+
+function makeFakeAdapter(): FakeAdapter {
+  const listeners: Record<string, ((p: RawChange) => void)[]> = {};
   return {
-    on(ev: string, h: (p: unknown) => void) {
+    on(ev, h) {
       (listeners[ev] ||= []).push(h);
     },
-    off(ev: string, h: (p: unknown) => void) {
+    off(ev, h) {
       listeners[ev] = (listeners[ev] || []).filter((x) => x !== h);
     },
-    emitRaw(ev: string, payload: unknown) {
+    emitRaw(ev, payload) {
       (listeners[ev] || []).forEach((h) => h(payload));
     }
   };
@@ -91,8 +96,24 @@ function makeRes() {
 const openSecurity: HubSecurity = { devOpenActive: true, checkClp: () => ({ allowed: true, reason: 'dev-open' }) };
 const anon: Principal = { kind: 'anonymous' };
 
-function change(collection: string, action: string, record: Record<string, unknown>) {
-  return { type: action === 'update' ? 'save' : action, collection, id: record.objectId, object: record };
+function change(collection: string, action: 'create' | 'update' | 'delete', record: Record<string, unknown>): RawChange {
+  return {
+    type: action === 'update' ? 'save' : action,
+    collection,
+    id: String(record.objectId),
+    object: record
+  };
+}
+
+/**
+ * `addConnection` returns null when the connection cap is hit — a real branch
+ * these specs never mean to take. Asserting it here says so, instead of passing
+ * `null` on as a clientId and failing three lines later on something unrelated.
+ */
+function connect(hub: RealtimeHub, res: SSEResponse, principal: Principal, lastEventId?: string): string {
+  const clientId = hub.addConnection(res, principal, lastEventId);
+  if (clientId === null) throw new Error('addConnection refused: the hub is at its connection cap');
+  return clientId;
 }
 
 describe('RealtimeHub', () => {
@@ -100,7 +121,7 @@ describe('RealtimeHub', () => {
     const adapter = makeFakeAdapter();
     const hub = new RealtimeHub(new ChangeBus(adapter), openSecurity, { heartbeatMs: 0 });
     const res = makeRes();
-    const clientId = hub.addConnection(res, anon);
+    const clientId = connect(hub, res, anon);
     const first = res.frames()[0];
     expect(res.status).toBe(200);
     expect(first.event).toBe('connected');
@@ -112,7 +133,7 @@ describe('RealtimeHub', () => {
     const adapter = makeFakeAdapter();
     const hub = new RealtimeHub(new ChangeBus(adapter), openSecurity, { heartbeatMs: 0 });
     const res = makeRes();
-    const clientId = hub.addConnection(res, anon);
+    const clientId = connect(hub, res, anon);
     hub.setSubscriptions(clientId, [{ collection: 'Doc', filter: { n: { $gte: 5 } } }]);
 
     adapter.emitRaw('create', change('Doc', 'create', { objectId: '1', n: 9, ACL: null }));
@@ -145,7 +166,7 @@ describe('RealtimeHub', () => {
     const adapter = makeFakeAdapter();
     const hub = new RealtimeHub(new ChangeBus(adapter), openSecurity, { heartbeatMs: 0, maxQueue: 3 });
     const res = makeRes();
-    const clientId = hub.addConnection(res, anon); // 'connected' written while accepting
+    const clientId = connect(hub, res, anon); // 'connected' written while accepting
     hub.setSubscriptions(clientId, [{ collection: 'Doc' }]);
 
     res.setAccept(false); // socket buffer full — client stopped reading
@@ -178,7 +199,7 @@ describe('RealtimeHub', () => {
     };
     const hub = new RealtimeHub(new ChangeBus(adapter), lockedSecurity, { heartbeatMs: 0 });
     const res = makeRes();
-    const clientId = hub.addConnection(res, { kind: 'user', userId: 'u1', roles: [] });
+    const clientId = connect(hub, res, { kind: 'user', userId: 'u1', roles: [] });
 
     const result = hub.setSubscriptions(clientId, [{ collection: 'Allowed' }, { collection: 'Secret' }]);
     expect(result!.accepted.map((s) => s.collection)).toEqual(['Allowed']);
@@ -195,7 +216,7 @@ describe('RealtimeHub', () => {
     const lockedSecurity: HubSecurity = { devOpenActive: false, checkClp: () => ({ allowed: true, reason: 'ok' }) };
     const hub = new RealtimeHub(new ChangeBus(adapter), lockedSecurity, { heartbeatMs: 0 });
     const res = makeRes();
-    const clientId = hub.addConnection(res, { kind: 'user', userId: 'u1', roles: [] });
+    const clientId = connect(hub, res, { kind: 'user', userId: 'u1', roles: [] });
     hub.setSubscriptions(clientId, [{ collection: 'Doc' }]);
 
     // Readable by u1, and one readable only by u2.
@@ -221,7 +242,7 @@ describe('RealtimeHub', () => {
     const adapter = makeFakeAdapter();
     const hub = new RealtimeHub(new ChangeBus(adapter), openSecurity, { heartbeatMs: 0 });
     const res = makeRes();
-    const clientId = hub.addConnection(res, anon);
+    const clientId = connect(hub, res, anon);
     hub.setSubscriptions(clientId, [{ collection: 'Doc' }]);
     expect(hub.connectionCount).toBe(1);
 

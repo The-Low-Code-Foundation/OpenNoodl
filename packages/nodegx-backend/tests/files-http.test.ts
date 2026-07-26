@@ -13,7 +13,12 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 
+import type { FileConfigResponse, SweepResponse } from '../src/server/admin-files';
+import type { FileUploadResult, SignedUrlResult } from '../src/server/files';
+
 import { BackendService } from '../src/service';
+
+import { ErrorBody, ParseRecord, request } from './helpers/http';
 
 jest.setTimeout(30000);
 
@@ -56,27 +61,32 @@ describe('BAK-006 file storage v2 over HTTP', () => {
   let alice: User;
   let bob: User;
 
-  async function req(method: string, p: string, body?: unknown, headers: Record<string, string> = {}) {
-    const res = await fetch(`${base}${p}`, {
-      method,
-      headers: body !== undefined ? { 'content-type': 'application/json', ...headers } : headers,
-      body: body !== undefined ? JSON.stringify(body) : undefined
-    });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let json: any = null;
-    try {
-      json = await res.json();
-    } catch {
-      /* non-JSON (e.g. raw file bytes) */
-    }
-    return { status: res.status, json, headers: res.headers };
+  const req = <T = unknown>(method: string, p: string, body?: unknown, headers: Record<string, string> = {}) =>
+    request<T>(base, method, p, { body, headers });
+
+  /** POST raw bytes to /files/:name. Returns the whole result so a spec can assert the status. */
+  const postFile = (name: string, bytes: Buffer, headers: Record<string, string> = {}) =>
+    request<FileUploadResult>(base, 'POST', `/files/${name}`, { body: bytes, headers, raw: true });
+
+  /** The same, for the majority of cases that only care about a successful upload. */
+  async function uploadFile(
+    name: string,
+    bytes: Buffer,
+    headers: Record<string, string> = {}
+  ): Promise<FileUploadResult> {
+    const res = await postFile(name, bytes, headers);
+    if (res.status !== 201) throw new Error(`upload of ${name} failed: ${res.status} ${res.text}`);
+    return res.json;
   }
 
   const asUser = (u: User) => ({ 'x-parse-session-token': u.token });
   const asAdmin = () => ({ authorization: `Bearer ${adminToken}` });
 
   async function signup(username: string): Promise<User> {
-    const { status, json } = await req('POST', '/users', { username, password: `pw-${username}` });
+    const { status, json } = await req<ParseRecord & { sessionToken: string }>('POST', '/users', {
+      username,
+      password: `pw-${username}`
+    });
     expect(status).toBe(201);
     return { id: json.objectId, token: json.sessionToken };
   }
@@ -100,13 +110,8 @@ describe('BAK-006 file storage v2 over HTTP', () => {
   // ==========================================================================
 
   it('uploads a file and serves it back with the SNIFFED content type, not the declared extension', async () => {
-    const upload = await fetch(`${base}/files/definitely-a.pdf`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/pdf' }, // client lies about the type
-      body: PNG_BYTES
-    });
-    expect(upload.status).toBe(201);
-    const uploadJson = await upload.json();
+    // The client lies about the type.
+    const uploadJson = await uploadFile('definitely-a.pdf', PNG_BYTES, { 'content-type': 'application/pdf' });
     expect(uploadJson.name).toMatch(/_definitely-a\.pdf$/);
     expect(uploadJson.contentType).toBe('image/png'); // sniffed, not "application/pdf"
 
@@ -120,8 +125,7 @@ describe('BAK-006 file storage v2 over HTTP', () => {
   });
 
   it('a conditional GET (If-None-Match) with the current ETag returns 304', async () => {
-    const upload = await fetch(`${base}/files/cond.png`, { method: 'POST', body: PNG_BYTES });
-    const { url } = await upload.json();
+    const { url } = await uploadFile('cond.png', PNG_BYTES);
     const first = await fetch(url);
     const etag = first.headers.get('etag') as string;
     const second = await fetch(url, { headers: { 'if-none-match': etag } });
@@ -129,8 +133,7 @@ describe('BAK-006 file storage v2 over HTTP', () => {
   });
 
   it('deleting removes the file; a subsequent GET is 404; delete is idempotent', async () => {
-    const upload = await fetch(`${base}/files/to-delete.png`, { method: 'POST', body: PNG_BYTES });
-    const { name, url } = await upload.json();
+    const { name, url } = await uploadFile('to-delete.png', PNG_BYTES);
     const del1 = await req('DELETE', `/files/${name}`);
     expect(del1.status).toBe(200);
     const gone = await fetch(url);
@@ -144,27 +147,24 @@ describe('BAK-006 file storage v2 over HTTP', () => {
   // ==========================================================================
 
   it('rejects an oversized upload with an actionable error, then accepts once the limit is restored', async () => {
-    const cfgBefore = await req('GET', '/admin/files/config', undefined, asAdmin());
+    const cfgBefore = await req<FileConfigResponse>('GET', '/admin/files/config', undefined, asAdmin());
     const originalMax = cfgBefore.json.config.maxUploadBytes;
 
     await req('PUT', '/admin/files/config', { maxUploadBytes: 8 }, asAdmin());
-    const tooBig = await fetch(`${base}/files/big.png`, { method: 'POST', body: PNG_BYTES });
-    expect(tooBig.status).toBe(413);
+    expect((await postFile('big.png', PNG_BYTES)).status).toBe(413);
 
     await req('PUT', '/admin/files/config', { maxUploadBytes: originalMax }, asAdmin());
-    const ok = await fetch(`${base}/files/big.png`, { method: 'POST', body: PNG_BYTES });
-    expect(ok.status).toBe(201);
+    expect((await postFile('big.png', PNG_BYTES)).status).toBe(201);
   });
 
   it('rejects a disallowed (sniffed) content type with an actionable error', async () => {
     await req('PUT', '/admin/files/config', { contentTypes: { denyList: ['application/pdf'], allowList: null } }, asAdmin());
-    const denied = await fetch(`${base}/files/doc.pdf`, { method: 'POST', body: PDF_BYTES });
+    const denied = await request<ErrorBody>(base, 'POST', '/files/doc.pdf', { body: PDF_BYTES, raw: true });
     expect(denied.status).toBe(400);
-    expect(String((await denied.json()).error)).toMatch(/not allowed/i);
+    expect(String(denied.json.error)).toMatch(/not allowed/i);
 
     // PNGs are unaffected.
-    const ok = await fetch(`${base}/files/still-ok.png`, { method: 'POST', body: PNG_BYTES });
-    expect(ok.status).toBe(201);
+    expect((await postFile('still-ok.png', PNG_BYTES)).status).toBe(201);
 
     await req('PUT', '/admin/files/config', { contentTypes: { denyList: [], allowList: null } }, asAdmin());
   });
@@ -179,13 +179,10 @@ describe('BAK-006 file storage v2 over HTTP', () => {
   // ==========================================================================
 
   it('a private file: owner reads it directly (session), another user is denied, anonymous is denied', async () => {
-    const upload = await fetch(`${base}/files/secret.png`, {
-      method: 'POST',
-      headers: { 'x-nodegx-file-private': 'true', ...asUser(alice) },
-      body: PNG_BYTES
+    const { url, name } = await uploadFile('secret.png', PNG_BYTES, {
+      'x-nodegx-file-private': 'true',
+      ...asUser(alice)
     });
-    expect(upload.status).toBe(201);
-    const { url, name } = await upload.json();
 
     const asOwner = await fetch(url, { headers: asUser(alice) });
     expect(asOwner.status).toBe(200);
@@ -208,18 +205,16 @@ describe('BAK-006 file storage v2 over HTTP', () => {
   });
 
   it('a signed URL lets an UNAUTHENTICATED request (the <img src> case) read a private file, scoped and time-limited', async () => {
-    const upload = await fetch(`${base}/files/secret2.png`, {
-      method: 'POST',
-      headers: { 'x-nodegx-file-private': 'true', ...asUser(alice) },
-      body: PNG_BYTES
+    const { name } = await uploadFile('secret2.png', PNG_BYTES, {
+      'x-nodegx-file-private': 'true',
+      ...asUser(alice)
     });
-    const { name } = await upload.json();
 
     // Another user cannot even mint a signature for alice's file.
     const bobSign = await req('GET', `/files/${name}/sign`, undefined, asUser(bob));
     expect(bobSign.status).toBe(403);
 
-    const sign = await req('GET', `/files/${name}/sign`, undefined, asUser(alice));
+    const sign = await req<SignedUrlResult>('GET', `/files/${name}/sign`, undefined, asUser(alice));
     expect(sign.status).toBe(200);
     expect(sign.json.url).toContain('sig=');
     expect(sign.json.url).toContain('exp=');
@@ -245,13 +240,11 @@ describe('BAK-006 file storage v2 over HTTP', () => {
 
   it('a signed URL expires (real time, short TTL)', async () => {
     await req('PUT', '/admin/files/config', { signedUrlTtlSeconds: 1 }, asAdmin());
-    const upload = await fetch(`${base}/files/secret3.png`, {
-      method: 'POST',
-      headers: { 'x-nodegx-file-private': 'true', ...asUser(alice) },
-      body: PNG_BYTES
+    const { name } = await uploadFile('secret3.png', PNG_BYTES, {
+      'x-nodegx-file-private': 'true',
+      ...asUser(alice)
     });
-    const { name } = await upload.json();
-    const sign = await req('GET', `/files/${name}/sign`, undefined, asUser(alice));
+    const sign = await req<SignedUrlResult>('GET', `/files/${name}/sign`, undefined, asUser(alice));
     expect(sign.status).toBe(200);
 
     const fresh = await fetch(sign.json.url);
@@ -269,12 +262,10 @@ describe('BAK-006 file storage v2 over HTTP', () => {
   });
 
   it('a non-owner cannot delete a private file', async () => {
-    const upload = await fetch(`${base}/files/secret4.png`, {
-      method: 'POST',
-      headers: { 'x-nodegx-file-private': 'true', ...asUser(alice) },
-      body: PNG_BYTES
+    const { name } = await uploadFile('secret4.png', PNG_BYTES, {
+      'x-nodegx-file-private': 'true',
+      ...asUser(alice)
     });
-    const { name } = await upload.json();
     const bobDelete = await req('DELETE', `/files/${name}`, undefined, asUser(bob));
     expect(bobDelete.status).toBe(403);
     const aliceDelete = await req('DELETE', `/files/${name}`, undefined, asUser(alice));
@@ -287,8 +278,7 @@ describe('BAK-006 file storage v2 over HTTP', () => {
   // ==========================================================================
 
   it('?thumb= on a named preset renders when sharp is present, and 501s with a reason when it is not', async () => {
-    const upload = await fetch(`${base}/files/thumbme.png`, { method: 'POST', body: PNG_BYTES });
-    const { url } = await upload.json();
+    const { url } = await uploadFile('thumbme.png', PNG_BYTES);
     const res = await fetch(`${url}?thumb=sm`);
 
     if (SHARP_AVAILABLE) {
@@ -297,7 +287,7 @@ describe('BAK-006 file storage v2 over HTTP', () => {
       expect(Buffer.from(await res.arrayBuffer()).length).toBeGreaterThan(0);
     } else {
       expect(res.status).toBe(501);
-      const body = await res.json();
+      const body = (await res.json()) as ErrorBody & { reason?: string };
       expect(String(body.reason)).toMatch(/sharp/i);
     }
 
@@ -307,15 +297,13 @@ describe('BAK-006 file storage v2 over HTTP', () => {
   });
 
   it('an unknown thumbnail preset is a 400, not a 501 or a silent fallback', async () => {
-    const upload = await fetch(`${base}/files/thumbme2.png`, { method: 'POST', body: PNG_BYTES });
-    const { url } = await upload.json();
+    const { url } = await uploadFile('thumbme2.png', PNG_BYTES);
     const res = await fetch(`${url}?thumb=not-a-real-preset`);
     expect(res.status).toBe(400);
   });
 
   it('arbitrary WxH thumbnail dimensions are admin-only, gated BEFORE the sharp-availability check', async () => {
-    const upload = await fetch(`${base}/files/thumbme3.png`, { method: 'POST', body: PNG_BYTES });
-    const { url } = await upload.json();
+    const { url } = await uploadFile('thumbme3.png', PNG_BYTES);
 
     const nonAdmin = await fetch(`${url}?thumb=999x999`);
     expect(nonAdmin.status).toBe(403);
@@ -331,7 +319,7 @@ describe('BAK-006 file storage v2 over HTTP', () => {
   // ==========================================================================
 
   it('GET /admin/files/config reports limits, driver, and honest transform availability', async () => {
-    const res = await req('GET', '/admin/files/config', undefined, asAdmin());
+    const res = await req<FileConfigResponse>('GET', '/admin/files/config', undefined, asAdmin());
     expect(res.status).toBe(200);
     expect(res.json.driverKind).toBe('local');
     expect(res.json.transformsAvailable).toBe(SHARP_AVAILABLE);
@@ -354,8 +342,7 @@ describe('BAK-006 file storage v2 over HTTP', () => {
     // A live file, for the "orphan row" half: delete its blob directly on disk
     // without going through DELETE (bypassing metadata cleanup) to simulate
     // a blob lost outside the normal path.
-    const upload = await fetch(`${base}/files/will-lose-its-blob.png`, { method: 'POST', body: PNG_BYTES });
-    const { url: liveUrl } = await upload.json();
+    const { url: liveUrl } = await uploadFile('will-lose-its-blob.png', PNG_BYTES);
     const liveGet = await fetch(liveUrl);
     expect(liveGet.status).toBe(200);
 
@@ -379,7 +366,7 @@ describe('BAK-006 file storage v2 over HTTP', () => {
     const orphanKey = 'de/ad/deadbeef-cafebabe';
     fs.writeFileSync(path.join(orphanDir, 'deadbeef-cafebabe'), 'planted orphan blob');
 
-    const reportOnly = await req('POST', '/admin/files/sweep', {}, asAdmin());
+    const reportOnly = await req<SweepResponse>('POST', '/admin/files/sweep', {}, asAdmin());
     expect(reportOnly.status).toBe(200);
     expect(reportOnly.json.report.orphanBlobs).toContain(orphanKey);
     expect(reportOnly.json.report.orphanRows.length).toBeGreaterThanOrEqual(1);
@@ -387,14 +374,14 @@ describe('BAK-006 file storage v2 over HTTP', () => {
     // Report-only: the planted blob must STILL be on disk.
     expect(fs.existsSync(path.join(orphanDir, 'deadbeef-cafebabe'))).toBe(true);
 
-    const withDelete = await req('POST', '/admin/files/sweep', { deleteOrphans: true }, asAdmin());
+    const withDelete = await req<SweepResponse>('POST', '/admin/files/sweep', { deleteOrphans: true }, asAdmin());
     expect(withDelete.status).toBe(200);
     expect(withDelete.json.report.deleted).toBe(true);
     expect(fs.existsSync(path.join(orphanDir, 'deadbeef-cafebabe'))).toBe(false);
 
     // Orphan ROWS are never auto-deleted, even with deleteOrphans:true — an
     // operator has to look at those (module doc: "never rows").
-    const again = await req('POST', '/admin/files/sweep', {}, asAdmin());
+    const again = await req<SweepResponse>('POST', '/admin/files/sweep', {}, asAdmin());
     expect(again.json.report.orphanRows.length).toBeGreaterThanOrEqual(1);
   });
 });

@@ -13,8 +13,17 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 
+import type { WorkflowExecution } from '../src/execution/ExecutionStore';
+import type {
+  TriggerFiredResponse,
+  TriggerDeletedResponse,
+  TriggerListResponse,
+  TriggerResponse
+} from '../src/server/admin-triggers';
 import { BackendService } from '../src/service';
 import { signWebhookHmac } from '../src/triggers/webhook';
+
+import { ErrorBody, get, httpClient } from './helpers/http';
 
 jest.setTimeout(30000);
 
@@ -39,19 +48,38 @@ describe('WF-005 triggers over HTTP', () => {
   let service: BackendService;
   let base: string;
 
-  async function req(method: string, p: string, body?: unknown, headers: Record<string, string> = {}) {
-    const res = await fetch(`${base}${p}`, {
-      method,
-      headers: body !== undefined ? { 'content-type': 'application/json', ...headers } : headers,
-      body: body !== undefined ? JSON.stringify(body) : undefined
-    });
-    let json: any = null;
-    try {
-      json = await res.json();
-    } catch {
-      /* non-JSON */
-    }
-    return { status: res.status, json };
+  const http = httpClient(() => base);
+  const req = <T = unknown>(method: string, p: string, body?: unknown, headers: Record<string, string> = {}) =>
+    http.request<T>(method, p, { body, headers });
+
+  /**
+   * Executions matching a query. The trigger specs all look for "the execution
+   * this trigger produced", so the lookup is written once and throws naming the
+   * trigger — an `undefined` from `.find` used to surface two lines later as a
+   * property read on nothing.
+   */
+  async function executionFor(
+    query: string,
+    match: (e: WorkflowExecution) => boolean
+  ): Promise<WorkflowExecution | undefined> {
+    const list = await http.get<WorkflowExecution[]>(`/executions?${query}`);
+    return list.json.find(match);
+  }
+
+  const byTrigger = (triggerId: string, rejected = false) => (e: WorkflowExecution) => {
+    const meta = e.metadata as { triggerId?: string; rejected?: boolean } | undefined;
+    return !!meta && meta.triggerId === triggerId && (!rejected || !!meta.rejected);
+  };
+
+  /**
+   * The webhook secret is returned by exactly one response — the create that
+   * minted it — so `TriggerResponse.secret` is optional. Asserting it here says
+   * "this create was supposed to mint one" rather than carrying `undefined`
+   * into `signWebhookHmac` and failing on a bad signature.
+   */
+  function secretOf(res: TriggerResponse): string {
+    if (!res.secret) throw new Error(`trigger ${res.trigger.id} was created without a webhook secret`);
+    return res.secret;
   }
 
   beforeAll(async () => {
@@ -68,7 +96,7 @@ describe('WF-005 triggers over HTTP', () => {
   });
 
   it('CRUD: create/list/get/disable/delete a schedule trigger', async () => {
-    const created = await req('POST', '/admin/triggers', {
+    const created = await req<TriggerResponse>('POST', '/admin/triggers', {
       type: 'schedule',
       name: 'nightly digest',
       target: { kind: 'function', name: 'hello' },
@@ -77,22 +105,22 @@ describe('WF-005 triggers over HTTP', () => {
     expect(created.status).toBe(201);
     const id = created.json.trigger.id;
 
-    const list = await req('GET', '/admin/triggers');
-    expect(list.json.triggers.some((t: any) => t.id === id)).toBe(true);
+    const list = await req<TriggerListResponse>('GET', '/admin/triggers');
+    expect(list.json.triggers.some((t) => t.id === id)).toBe(true);
 
-    const got = await req('GET', `/admin/triggers/${id}`);
-    expect(got.json.trigger.schedule.cron).toBe('0 3 * * *');
+    const got = await req<TriggerResponse>('GET', `/admin/triggers/${id}`);
+    expect(got.json.trigger.schedule?.cron).toBe('0 3 * * *');
 
-    const disabled = await req('POST', `/admin/triggers/${id}/enabled`, { enabled: false });
+    const disabled = await req<TriggerResponse>('POST', `/admin/triggers/${id}/enabled`, { enabled: false });
     expect(disabled.json.trigger.enabled).toBe(false);
 
-    const del = await req('DELETE', `/admin/triggers/${id}`);
+    const del = await req<TriggerDeletedResponse>('DELETE', `/admin/triggers/${id}`);
     expect(del.json.deleted).toBe(true);
-    expect((await req('GET', `/admin/triggers/${id}`)).status).toBe(404);
+    expect((await req<TriggerResponse>('GET', `/admin/triggers/${id}`)).status).toBe(404);
   });
 
   it('rejects an invalid trigger with a 400 and a reason (no silent accept)', async () => {
-    const bad = await req('POST', '/admin/triggers', {
+    const bad = await req<ErrorBody>('POST', '/admin/triggers', {
       type: 'schedule',
       target: { kind: 'function', name: 'hello' },
       schedule: { cron: 'not a cron', missedFirePolicy: 'skip' }
@@ -102,13 +130,13 @@ describe('WF-005 triggers over HTTP', () => {
   });
 
   it('webhook: correct HMAC fires the target and records a webhook execution', async () => {
-    const created = await req('POST', '/admin/triggers', {
+    const created = await req<TriggerResponse>('POST', '/admin/triggers', {
       type: 'webhook',
       target: { kind: 'function', name: 'hello' },
       webhook: { slug: 'gh' }
     });
     expect(created.status).toBe(201);
-    const secret: string = created.json.secret;
+    const secret = secretOf(created.json);
     const triggerId: string = created.json.trigger.id;
     expect(secret).toMatch(/^whsec_/);
 
@@ -122,16 +150,15 @@ describe('WF-005 triggers over HTTP', () => {
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ result: {} }); // the hello function's response
 
-    const list = await req('GET', '/executions?triggerType=webhook&limit=50');
-    const entry = list.json.find((e: any) => e.metadata && e.metadata.triggerId === triggerId);
+    const entry = await executionFor('triggerType=webhook&limit=50', byTrigger(triggerId));
     expect(entry).toBeDefined();
-    expect(entry.workflowId).toBe('hello');
-    expect(entry.status).toBe('success');
-    expect(entry.metadata.triggerSource).toBe('webhook gh');
+    expect(entry?.workflowId).toBe('hello');
+    expect(entry?.status).toBe('success');
+    expect(entry?.metadata?.triggerSource).toBe('webhook gh');
   });
 
   it('webhook: wrong secret is rejected 401 AND recorded as a failed execution', async () => {
-    const created = await req('POST', '/admin/triggers', {
+    const created = await req<TriggerResponse>('POST', '/admin/triggers', {
       type: 'webhook',
       target: { kind: 'function', name: 'hello' },
       webhook: { slug: 'secure' }
@@ -146,14 +173,13 @@ describe('WF-005 triggers over HTTP', () => {
     });
     expect(res.status).toBe(401);
 
-    const list = await req('GET', '/executions?limit=100');
-    const rejected = list.json.find((e: any) => e.metadata && e.metadata.triggerId === triggerId && e.metadata.rejected);
+    const rejected = await executionFor('limit=100', byTrigger(triggerId, true));
     expect(rejected).toBeDefined();
-    expect(rejected.status).not.toBe('success');
+    expect(rejected?.status).not.toBe('success');
 
     // The trigger's own status also reflects the failed attempt.
-    const t = await req('GET', `/admin/triggers/${triggerId}`);
-    expect(t.json.trigger.status.lastResult.ok).toBe(false);
+    const t = await req<TriggerResponse>('GET', `/admin/triggers/${triggerId}`);
+    expect(t.json.trigger.status?.lastResult?.ok).toBe(false);
   });
 
   it('webhook: unknown/disabled slug is 404', async () => {
@@ -162,12 +188,12 @@ describe('WF-005 triggers over HTTP', () => {
   });
 
   it('webhook: a body over the per-hook limit is rejected 413 and recorded', async () => {
-    const created = await req('POST', '/admin/triggers', {
+    const created = await req<TriggerResponse>('POST', '/admin/triggers', {
       type: 'webhook',
       target: { kind: 'function', name: 'hello' },
       webhook: { slug: 'tiny', maxBodyBytes: 16 }
     });
-    const secret: string = created.json.secret;
+    const secret = secretOf(created.json);
     const triggerId: string = created.json.trigger.id;
 
     const big = JSON.stringify({ data: 'x'.repeat(1000) });
@@ -178,21 +204,19 @@ describe('WF-005 triggers over HTTP', () => {
     });
     expect(res.status).toBe(413);
 
-    const list = await req('GET', '/executions?limit=100');
-    const rec = list.json.find((e: any) => e.metadata && e.metadata.triggerId === triggerId && e.metadata.rejected);
-    expect(rec).toBeDefined();
+    expect(await executionFor('limit=100', byTrigger(triggerId, true))).toBeDefined();
   });
 
   it('manual test-fire runs the target and records an execution', async () => {
-    const created = await req('POST', '/admin/triggers', {
+    const created = await req<TriggerResponse>('POST', '/admin/triggers', {
       type: 'webhook',
       target: { kind: 'function', name: 'hello' },
       webhook: { slug: 'manual-fire' }
     });
     const id = created.json.trigger.id;
-    const fired = await req('POST', `/admin/triggers/${id}/fire`, { hello: 'world' });
+    const fired = await req<TriggerFiredResponse>('POST', `/admin/triggers/${id}/fire`, { hello: 'world' });
     expect(fired.status).toBe(200);
-    expect(fired.json.result.ok).toBe(true);
+    expect((fired.json.result as { ok: boolean }).ok).toBe(true);
     expect(fired.json.response.statusCode).toBe(200);
   });
 });
@@ -213,13 +237,15 @@ describe('WF-005 triggers survive a service restart', () => {
           dbChange: { collection: 'Orders', actions: ['create', 'update'] }
         })
       });
-      const { trigger } = (await created.json()) as any;
+      const { trigger } = (await created.json()) as TriggerResponse;
       await first.stop();
 
       const second = new BackendService({ dataDir, port: 0, backendId: 'restart', backendName: 'R' });
       const s2 = await second.start();
-      const list = await (await fetch(`${s2.listen.url}/admin/triggers`)).json();
-      expect(list.triggers.some((t: any) => t.id === trigger.id && t.dbChange.collection === 'Orders')).toBe(true);
+      const list = await get<TriggerListResponse>(s2.listen.url, '/admin/triggers');
+      expect(
+        list.json.triggers.some((t) => t.id === trigger.id && t.dbChange?.collection === 'Orders')
+      ).toBe(true);
       await second.stop();
     } finally {
       fs.rmSync(dataDir, { recursive: true, force: true });

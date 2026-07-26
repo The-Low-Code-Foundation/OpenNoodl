@@ -35,6 +35,21 @@ import type { ChangeBus, ChangeEvent } from '../realtime/ChangeBus';
 import type { TriggerDef, TriggerRegistry } from './registry';
 import type { TriggerDispatcher } from './dispatcher';
 
+/**
+ * What a db-change trigger hands its target. `FireInput.payload` is
+ * deliberately an open `Record<string, unknown>` — every trigger kind fills it
+ * differently — but *this* kind's contents are fixed, and naming them is what
+ * lets a consumer (or a spec) read `.action` without an assertion.
+ */
+export interface DbChangePayload extends Record<string, unknown> {
+  trigger: 'db-change';
+  triggerId: string;
+  action: ChangeEvent['action'];
+  collection: string;
+  id: string;
+  record: Record<string, unknown>;
+}
+
 export interface DbChangeDeps {
   /** The SAME ChangeBus the RealtimeHub subscribes to (from service.ts). */
   bus: ChangeBus;
@@ -113,7 +128,7 @@ export class DbChangeTriggers {
           collection: event.collection,
           id: event.id,
           record: event.record
-        }
+        } satisfies DbChangePayload
       })
     ).then(done, done);
   }

@@ -19,8 +19,29 @@ import type { RequestContext } from './HttpServer';
 import type { WorkflowSubsystem } from '../workflow/WorkflowSubsystem';
 import { WorkflowConfigError } from '../workflow/WorkflowRegistry';
 import { stepKindCatalog } from '../workflow/steps/kinds';
-import type { WorkflowInput } from '../workflow/types';
+import type { WorkflowDefinition, WorkflowInput, WorkflowRunResult } from '../workflow/types';
 import { HttpError, readJSONBody, sendJSON } from './http-util';
+
+/** `GET /admin/workflow-defs`. */
+export interface WorkflowListResponse {
+  workflows: WorkflowDefinition[];
+}
+
+/** The body of every single-definition response (GET / POST / PUT). */
+export interface WorkflowResponse {
+  workflow: WorkflowDefinition;
+}
+
+/** `DELETE /admin/workflow-defs/:id`. */
+export interface WorkflowDeletedResponse {
+  deleted: boolean;
+  id: string;
+}
+
+/** `POST /admin/workflow-defs/:id/run`. */
+export interface WorkflowRunResponse {
+  run: WorkflowRunResult;
+}
 
 export class AdminWorkflowRoutes {
   constructor(private readonly getWorkflows: () => WorkflowSubsystem | null) {}
@@ -45,13 +66,13 @@ export class AdminWorkflowRoutes {
   }
 
   list(ctx: RequestContext): void {
-    sendJSON(ctx.res, 200, { workflows: this.subsystem().registry.list() });
+    sendJSON(ctx.res, 200, { workflows: this.subsystem().registry.list() } satisfies WorkflowListResponse);
   }
 
   get(ctx: RequestContext): void {
     const def = this.subsystem().registry.get(ctx.params.id);
     if (!def) throw new HttpError(404, `No workflow "${ctx.params.id}"`);
-    sendJSON(ctx.res, 200, { workflow: def });
+    sendJSON(ctx.res, 200, { workflow: def } satisfies WorkflowResponse);
   }
 
   async create(ctx: RequestContext): Promise<void> {
@@ -67,7 +88,7 @@ export class AdminWorkflowRoutes {
   private upsert(ctx: RequestContext, input: WorkflowInput, id: string | undefined, status: number): void {
     try {
       const def = this.subsystem().registry.upsert({ ...input, id: id || input.id });
-      sendJSON(ctx.res, status, { workflow: def });
+      sendJSON(ctx.res, status, { workflow: def } satisfies WorkflowResponse);
     } catch (e) {
       if (e instanceof WorkflowConfigError) throw new HttpError(400, e.message);
       throw e;
@@ -77,7 +98,7 @@ export class AdminWorkflowRoutes {
   delete(ctx: RequestContext): void {
     const ok = this.subsystem().registry.delete(ctx.params.id);
     if (!ok) throw new HttpError(404, `No workflow "${ctx.params.id}"`);
-    sendJSON(ctx.res, 200, { deleted: true, id: ctx.params.id });
+    sendJSON(ctx.res, 200, { deleted: true, id: ctx.params.id } satisfies WorkflowDeletedResponse);
   }
 
   /** Run a workflow now (records as a 'manual' execution unless a body says otherwise). */
@@ -90,7 +111,7 @@ export class AdminWorkflowRoutes {
       payload
     );
     if (!found || !result) throw new HttpError(404, `No workflow "${ctx.params.id}"`);
-    sendJSON(ctx.res, 200, { run: result });
+    sendJSON(ctx.res, 200, { run: result } satisfies WorkflowRunResponse);
   }
 
   /** Cancel an in-flight run by its execution id. */

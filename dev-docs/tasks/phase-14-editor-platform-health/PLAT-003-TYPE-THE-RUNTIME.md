@@ -125,6 +125,14 @@ Do not chase `strict: true` initially. Get accurate types with `strict: false`, 
   deletable (NOTES §21.1) — the 3 Group scroll plugins, and `register-nodes.js` last)*
 - [x] Type `react-component-node.js`
 - [ ] Tighten strictness; sweep boundary `TSFixme`s
+- [ ] **After each slice merges, re-run `npm run tsfixme:baseline` and
+      `npm run tsfixme:report` and commit the result.** Typing the runtime is the single
+      largest mover of these counts in the repo, in both directions, and PLAT-004's
+      ratchet only blocks *increases* — so a slice that removes fifty markers banks
+      nothing unless someone lowers the baseline, and a slice that adds one leaves the
+      gate red for every other task until someone raises it. Chasing that from a third
+      session is a treadmill; the task that moved the number is the one that should
+      record it (PLAT-004-NOTES §2, §6.2, §10).
 - [ ] CHANGELOG with before/after file counts; open PR
 
 ## CHANGELOG

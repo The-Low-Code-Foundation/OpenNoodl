@@ -12,6 +12,7 @@ import * as path from 'path';
 import { AuthConfigState } from '../src/auth/AuthConfigState';
 import { completeProvider, applyPreset, validateAuthConfig, PROVIDER_PRESETS } from '../src/auth/model';
 import { resolveRedirect, withError, withHandoffCode } from '../src/auth/redirect';
+import type { UpsertProviderResponse } from '../src/server/admin-auth';
 import { BackendService } from '../src/service';
 
 jest.setTimeout(30000);
@@ -246,7 +247,7 @@ describe('BAK-004 the local-URL fallback uses the port that was actually bound',
       headers: { authorization: 'Bearer t', 'content-type': 'application/json' },
       body: JSON.stringify({ preset: 'google', clientId: 'x', clientSecret: 'y', enabled: true })
     });
-    const json = await res.json();
+    const json = (await res.json()) as UpsertProviderResponse;
     expect(json.provider.callbackUrl).not.toContain(':0/');
     expect(json.provider.callbackUrl).toBe(`${base.replace('localhost', '127.0.0.1')}/oauth/google/callback`
       .replace(/^http:\/\/[^:]+:/, 'http://127.0.0.1:'));

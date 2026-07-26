@@ -12,7 +12,17 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 
+import type { ExecutionWithSteps, WorkflowExecution } from '../src/execution/ExecutionStore';
+import type { TriggerFiredResponse, TriggerResponse } from '../src/server/admin-triggers';
+import type {
+  WorkflowDeletedResponse,
+  WorkflowListResponse,
+  WorkflowResponse,
+  WorkflowRunResponse
+} from '../src/server/admin-workflows';
 import { BackendService } from '../src/service';
+
+import { ErrorBody, httpClient } from './helpers/http';
 
 jest.setTimeout(30000);
 
@@ -48,20 +58,8 @@ describe('WF-001 workflows over HTTP', () => {
   let service: BackendService;
   let base: string;
 
-  async function req(method: string, p: string, body?: unknown) {
-    const res = await fetch(`${base}${p}`, {
-      method,
-      headers: body !== undefined ? { 'content-type': 'application/json' } : {},
-      body: body !== undefined ? JSON.stringify(body) : undefined
-    });
-    let json: any = null;
-    try {
-      json = await res.json();
-    } catch {
-      /* non-JSON */
-    }
-    return { status: res.status, json };
-  }
+  const http = httpClient(() => base);
+  const req = <T = unknown>(method: string, p: string, body?: unknown) => http.request<T>(method, p, { body });
 
   beforeAll(async () => {
     dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'nodegx-wf001-'));
@@ -77,7 +75,7 @@ describe('WF-001 workflows over HTTP', () => {
   });
 
   it('CRUD: create/list/get/delete a workflow definition', async () => {
-    const created = await req('POST', '/admin/workflow-defs', {
+    const created = await req<WorkflowResponse>('POST', '/admin/workflow-defs', {
       name: 'Pipeline',
       entry: 's1',
       steps: [
@@ -88,19 +86,19 @@ describe('WF-001 workflows over HTTP', () => {
     expect(created.status).toBe(201);
     const id = created.json.workflow.id;
 
-    const list = await req('GET', '/admin/workflow-defs');
-    expect(list.json.workflows.some((w: any) => w.id === id)).toBe(true);
+    const list = await req<WorkflowListResponse>('GET', '/admin/workflow-defs');
+    expect(list.json.workflows.some((w) => w.id === id)).toBe(true);
 
-    const got = await req('GET', `/admin/workflow-defs/${id}`);
+    const got = await req<WorkflowResponse>('GET', `/admin/workflow-defs/${id}`);
     expect(got.json.workflow.steps.length).toBe(2);
 
-    const del = await req('DELETE', `/admin/workflow-defs/${id}`);
+    const del = await req<WorkflowDeletedResponse>('DELETE', `/admin/workflow-defs/${id}`);
     expect(del.json.deleted).toBe(true);
-    expect((await req('GET', `/admin/workflow-defs/${id}`)).status).toBe(404);
+    expect((await req<WorkflowResponse>('GET', `/admin/workflow-defs/${id}`)).status).toBe(404);
   });
 
   it('rejects an invalid workflow (cycle) with a 400 (no silent accept)', async () => {
-    const bad = await req('POST', '/admin/workflow-defs', {
+    const bad = await req<ErrorBody>('POST', '/admin/workflow-defs', {
       entry: 'a',
       steps: [
         { id: 'a', kind: 'call-function', ref: 'first', next: ['b'] },
@@ -112,7 +110,7 @@ describe('WF-001 workflows over HTTP', () => {
   });
 
   it('runs a multi-step workflow over real functions and records per-step events', async () => {
-    const created = await req('POST', '/admin/workflow-defs', {
+    const created = await req<WorkflowResponse>('POST', '/admin/workflow-defs', {
       id: 'chain',
       name: 'Chain',
       entry: 's1',
@@ -123,7 +121,7 @@ describe('WF-001 workflows over HTTP', () => {
     });
     expect(created.status).toBe(201);
 
-    const run = await req('POST', '/admin/workflow-defs/chain/run', { hello: 'world' });
+    const run = await req<WorkflowRunResponse>('POST', '/admin/workflow-defs/chain/run', { hello: 'world' });
     expect(run.status).toBe(200);
     expect(run.json.run.status).toBe('success');
     expect(run.json.run.stepsRun).toBe(2);
@@ -131,16 +129,16 @@ describe('WF-001 workflows over HTTP', () => {
     // ONE workflow-level execution record with TWO step records — the single
     // execution-record path, with per-step granularity.
     const execId = run.json.run.executionId;
-    const detail = await req('GET', `/executions/${execId}`);
+    const detail = await req<ExecutionWithSteps>('GET', `/executions/${execId}`);
     expect(detail.json.workflowId).toBe('chain');
     expect(detail.json.status).toBe('success');
-    expect(detail.json.metadata.kind).toBe('workflow');
+    expect(detail.json.metadata?.kind).toBe('workflow');
     expect(detail.json.steps.length).toBe(2);
-    expect(detail.json.steps.map((s: any) => s.status)).toEqual(['success', 'success']);
+    expect(detail.json.steps.map((s) => s.status)).toEqual(['success', 'success']);
   });
 
   it('halts and records a failed run when a step fails with no error route', async () => {
-    await req('POST', '/admin/workflow-defs', {
+    await req<WorkflowResponse>('POST', '/admin/workflow-defs', {
       id: 'halts',
       entry: 's1',
       steps: [
@@ -150,21 +148,21 @@ describe('WF-001 workflows over HTTP', () => {
         { id: 's3', kind: 'call-function', ref: 'second' }
       ]
     });
-    const run = await req('POST', '/admin/workflow-defs/halts/run', {});
+    const run = await req<WorkflowRunResponse>('POST', '/admin/workflow-defs/halts/run', {});
     expect(run.status).toBe(200);
     expect(run.json.run.status).toBe('error');
     expect(run.json.run.unroutedError).toBe(true);
 
-    const detail = await req('GET', `/executions/${run.json.run.executionId}`);
+    const detail = await req<ExecutionWithSteps>('GET', `/executions/${run.json.run.executionId}`);
     expect(detail.json.status).toBe('error');
-    const byId = Object.fromEntries(detail.json.steps.map((s: any) => [s.nodeId, s.status]));
+    const byId = Object.fromEntries(detail.json.steps.map((s) => [s.nodeId, s.status]));
     expect(byId.missing_target).toBe('error');
     expect(byId.s3).toBe('skipped');
   });
 
   it('a trigger with target.kind "workflow" runs the workflow via the one dispatcher path', async () => {
     // A webhook trigger whose target is a WORKFLOW (not a function).
-    const created = await req('POST', '/admin/triggers', {
+    const created = await req<TriggerResponse>('POST', '/admin/triggers', {
       type: 'webhook',
       target: { kind: 'workflow', name: 'chain' },
       webhook: { slug: 'run-chain' }
@@ -173,15 +171,17 @@ describe('WF-001 workflows over HTTP', () => {
     const triggerId = created.json.trigger.id;
 
     // Manual test-fire exercises dispatcher.fire() -> the workflow branch.
-    const fired = await req('POST', `/admin/triggers/${triggerId}/fire`, { via: 'trigger' });
+    const fired = await req<TriggerFiredResponse>('POST', `/admin/triggers/${triggerId}/fire`, { via: 'trigger' });
     expect(fired.status).toBe(200);
-    expect(fired.json.result.ok).toBe(true);
+    expect((fired.json.result as { ok: boolean }).ok).toBe(true);
 
     // The run appears in the execution history tagged with the trigger id.
-    const list = await req('GET', '/executions?workflowId=chain&limit=50');
-    const viaTrigger = list.json.find((e: any) => e.metadata && e.metadata.triggerId === triggerId);
-    expect(viaTrigger).toBeDefined();
+    const list = await req<WorkflowExecution[]>('GET', '/executions?workflowId=chain&limit=50');
+    const viaTrigger = list.json.find(
+      (e) => (e.metadata as { triggerId?: string } | undefined)?.triggerId === triggerId
+    );
+    if (!viaTrigger) throw new Error(`no execution of "chain" carries triggerId ${triggerId}`);
     expect(viaTrigger.status).toBe('success');
-    expect(viaTrigger.metadata.kind).toBe('workflow');
+    expect(viaTrigger.metadata?.kind).toBe('workflow');
   });
 });

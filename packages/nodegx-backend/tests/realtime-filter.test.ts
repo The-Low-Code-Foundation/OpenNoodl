@@ -13,12 +13,13 @@
  * The records under test are produced by the LocalSQLAdapter itself, so the
  * matcher is checked against the exact record shape the change events carry.
  */
+import type { LocalSqlAdapter, LocalSqlAdapterCtor } from './helpers/local-sql';
 import { matchesFilter, assertFilterSupported, UnsupportedFilterError, Where } from '../src/realtime/filter';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { resolveEngine } = require('../../noodl-runtime/src/api/adapters/local-sql/engine');
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const LocalSQLAdapter = require('../../noodl-runtime/src/api/adapters/local-sql/LocalSQLAdapter');
+const LocalSQLAdapter: LocalSqlAdapterCtor = require('../../noodl-runtime/src/api/adapters/local-sql/LocalSQLAdapter');
 
 /** Deterministic PRNG (mulberry32) so a failure reproduces exactly. */
 function makeRng(seed: number): () => number {
@@ -92,8 +93,8 @@ function randomFilter(rng: () => number): Where {
 
 describe('matchesFilter is the exact twin of the SQL WHERE clause', () => {
   const engine = resolveEngine();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let adapter: any;
+
+  let adapter: LocalSqlAdapter;
   let records: Rec[] = [];
 
   beforeAll(async () => {

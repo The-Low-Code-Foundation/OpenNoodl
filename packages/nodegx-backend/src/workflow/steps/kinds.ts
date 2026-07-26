@@ -447,12 +447,14 @@ export function isStepKind(v: unknown): v is StepKind {
 }
 
 /** The wire form served by `GET /admin/workflow-step-kinds` and MCP. */
-export function stepKindCatalog(): {
+export interface StepKindCatalog {
   version: string;
   source: string;
   docs: string;
   kinds: StepKindSpec[];
-} {
+}
+
+export function stepKindCatalog(): StepKindCatalog {
   return {
     version: STEP_KIND_CATALOG_VERSION,
     source: 'nodegx-backend/workflow/steps/kinds.ts (WF-002)',

@@ -17,6 +17,16 @@ import * as path from 'path';
 import { BackendService } from '../src/service';
 import { auditActionFor, auditExemptionFor, requiresAuditAction, declaredAuditActions } from '../src/ops/audit-actions';
 import { checkClp } from '../src/security/model';
+import type { AuditEntry, AuditQueryResult } from '../src/ops/audit';
+
+import { ErrorBody, request } from './helpers/http';
+
+/** `GET /admin/audit` — the query result plus the log's own settings. */
+interface AuditResponse extends AuditQueryResult {
+  enabled: boolean;
+  retentionDays: number;
+  actions: string[];
+}
 
 jest.setTimeout(30000);
 
@@ -26,28 +36,18 @@ describe('BAK-009 audit trail', () => {
   let base: string;
   let adminToken: string;
 
-  async function req(method: string, p: string, body?: unknown, headers: Record<string, string> = {}) {
-    const res = await fetch(`${base}${p}`, {
-      method,
-      headers: body !== undefined ? { 'content-type': 'application/json', ...headers } : headers,
-      body: body !== undefined ? JSON.stringify(body) : undefined
-    });
-    let json: any = null;
-    try {
-      json = await res.json();
-    } catch {
-      /* non-JSON */
-    }
-    return { status: res.status, json, headers: res.headers };
-  }
+  const req = <T = unknown>(method: string, p: string, body?: unknown, headers: Record<string, string> = {}) =>
+    request<T>(base, method, p, { body, headers });
 
   function asAdmin() {
     return { authorization: `Bearer ${adminToken}` };
   }
 
-  async function entries(query = ''): Promise<any[]> {
-    const { json } = await req('GET', `/admin/audit${query ? '?' + query : ''}`, undefined, asAdmin());
-    return json.entries;
+  const audit = (query = '') =>
+    req<AuditResponse>('GET', `/admin/audit${query ? '?' + query : ''}`, undefined, asAdmin());
+
+  async function entries(query = ''): Promise<AuditEntry[]> {
+    return (await audit(query)).json.entries;
   }
 
   beforeAll(async () => {
@@ -107,7 +107,7 @@ describe('BAK-009 audit trail', () => {
     expect(found.requestId).toBe(res.headers.get('x-request-id'));
     // The target names WHAT was changed, and the handler's enrichment says how.
     expect(found.target).toMatchObject({ name: 'Widget' });
-    expect(found.detail.rules.permissions).toMatchObject({ find: 'public' });
+    expect((found.detail?.rules as { permissions: unknown }).permissions).toMatchObject({ find: 'public' });
   });
 
   it('records a failed admin login, which is the entry an operator actually looks for', async () => {
@@ -135,7 +135,7 @@ describe('BAK-009 audit trail', () => {
 
   it('records a REFUSED privileged action as a failure, not as nothing', async () => {
     // The honesty fix: a body that sets nothing recognised is now a 400…
-    const res = await req('PUT', '/admin/permissions/collections/Widget', { find: 'public' }, asAdmin());
+    const res = await req<ErrorBody>('PUT', '/admin/permissions/collections/Widget', { find: 'public' }, asAdmin());
     expect(res.status).toBe(400);
     expect(res.json.error).toMatch(/Unknown field/);
 
@@ -146,7 +146,7 @@ describe('BAK-009 audit trail', () => {
   });
 
   it('never records a secret, even when the action creates one', async () => {
-    const res = await req('POST', '/admin/keys', { name: 'ci-key', scopes: ['functions:*'] }, asAdmin());
+    const res = await req<{ secret: string }>('POST', '/admin/keys', { name: 'ci-key', scopes: ['functions:*'] }, asAdmin());
     expect(res.status).toBe(201);
     const secret = res.json.secret;
     expect(typeof secret).toBe('string');
@@ -171,33 +171,33 @@ describe('BAK-009 audit trail', () => {
   });
 
   it('exposes its own vocabulary, so a UI filter cannot drift from the code', async () => {
-    const { json } = await req('GET', '/admin/audit', undefined, asAdmin());
+    const { json } = await audit();
     expect(json.actions).toEqual(declaredAuditActions());
     expect(json.actions).toContain('backup.restore');
   });
 
   it('honours retention when it prunes', async () => {
-    const { json: before } = await req('GET', '/admin/audit', undefined, asAdmin());
+    const { json: before } = await audit();
     expect(before.count).toBeGreaterThan(0);
 
     // Retention of 0 days means "everything older than now", so a prune with a
     // one-day-ahead clock removes the lot. (0 in the config means keep forever;
     // this uses a real positive window and moves the clock instead.)
     await req('PUT', '/admin/ops', { audit: { retentionDays: 1 } }, asAdmin());
-    const audit = (service as unknown as { audit: { prune(now: number): Promise<number> } }).audit;
-    const removed = await audit.prune(Date.now() + 3 * 86_400_000);
+    const auditLog = (service as unknown as { audit: { prune(now: number): Promise<number> } }).audit;
+    const removed = await auditLog.prune(Date.now() + 3 * 86_400_000);
     expect(removed).toBeGreaterThan(0);
 
-    const { json: after } = await req('GET', '/admin/audit', undefined, asAdmin());
+    const { json: after } = await audit();
     // Only the entries from this very test survive (the ops.config update).
     expect(after.count).toBeLessThan(before.count);
   });
 
   it('can be switched off, and then records nothing', async () => {
     await req('PUT', '/admin/ops', { audit: { enabled: false } }, asAdmin());
-    const { json: before } = await req('GET', '/admin/audit', undefined, asAdmin());
+    const { json: before } = await audit();
     await req('POST', '/admin/roles', { name: 'unrecorded' }, asAdmin());
-    const { json: after } = await req('GET', '/admin/audit', undefined, asAdmin());
+    const { json: after } = await audit();
     expect(after.count).toBe(before.count);
 
     await req('PUT', '/admin/ops', { audit: { enabled: true } }, asAdmin());

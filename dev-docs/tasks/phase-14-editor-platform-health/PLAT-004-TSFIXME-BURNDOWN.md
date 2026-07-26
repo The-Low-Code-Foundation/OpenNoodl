@@ -245,6 +245,8 @@ In progress. Full as-built record in [PLAT-004-NOTES.md](./PLAT-004-NOTES.md).
 - [x] Commit the baseline; add the CI check
 - [x] Document the policy and escape valve
 - [x] Publish the clustering report; harvest easy wins — every cluster this task owns is at zero
-- [ ] Wire baseline updates into other tasks' definition of done — a two-line change to each of
-      PLAT-002's and PLAT-003's checklists, deferred while both sessions are live in the shared tree
+- [x] Wire baseline updates into other tasks' definition of done — added to PLAT-002's checklist
+      (retro, that task is complete) and PLAT-003's (live, unticked). NOTES §14.7
+- [x] Extend the "specs are never typechecked" gate (§9) to a second package —
+      `typecheck:backend-tests`, which started at 32 real errors and is at zero. NOTES §14.4
 - [ ] CHANGELOG; open PR

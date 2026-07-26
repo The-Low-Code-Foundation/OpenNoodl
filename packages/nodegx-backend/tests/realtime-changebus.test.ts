@@ -10,15 +10,17 @@
  */
 import { ChangeBus, ChangeEvent } from '../src/realtime/ChangeBus';
 
+import type { LocalSqlAdapter, LocalSqlAdapterCtor } from './helpers/local-sql';
+
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { resolveEngine } = require('../../noodl-runtime/src/api/adapters/local-sql/engine');
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const LocalSQLAdapter = require('../../noodl-runtime/src/api/adapters/local-sql/LocalSQLAdapter');
+const LocalSQLAdapter: LocalSqlAdapterCtor = require('../../noodl-runtime/src/api/adapters/local-sql/LocalSQLAdapter');
 
 describe('ChangeBus over a real adapter', () => {
   const engine = resolveEngine();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let adapter: any;
+
+  let adapter: LocalSqlAdapter;
   let bus: ChangeBus;
   let events: ChangeEvent[];
 

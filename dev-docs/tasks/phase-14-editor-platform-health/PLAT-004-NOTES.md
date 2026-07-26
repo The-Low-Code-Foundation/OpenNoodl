@@ -1,13 +1,15 @@
 # PLAT-004 NOTES — Type Escape-Hatch Ratchet
 
-Status: the mechanism landed 2026-07-24 (spec steps 1–4, 6), plus five burn-down slices —
+Status: the mechanism landed 2026-07-24 (spec steps 1–4, 6), plus six burn-down slices —
 `noodl-preview` 16 `TSFixme` → 3 (§7), the AI client 44 → 0 (§8), the io specs 66 `any` → 0 (§11),
-the unowned editor spec clusters 20/15 → 0 (§12) and the MCP response payloads 12 `any` → 0 (§13) —
-and a typecheck gate for the editor's specs, which nothing checked before (§9).
+the unowned editor spec clusters 20/15 → 0 (§12), the MCP response payloads 12 `any` → 0 (§13) and
+`nodegx-backend` 108 `any` → 16 (§14) — and a typecheck gate for the editor's specs and the
+backend's, neither of which anything checked before (§9, §14).
 
 **Every cluster PLAT-004 owns is now done.** What remains of the burn-down belongs to PLAT-002 and
-PLAT-003, and what remains of *this* task is §6.2: lowering the baseline as they land. Resume
-from **§10**.
+PLAT-003, and what remains of *this* task is §6.2: lowering the baseline as they land — which §14
+finally moved off this task's plate by putting the re-baseline in *their* definitions of done.
+Resume from **§14.7**.
 
 Run in parallel with PLAT-002 and PLAT-003. Boundary: PLAT-004 owns the counter, the baseline, the
 CI job and the policy, plus burn-down in code no concurrent task is editing. It deliberately does
@@ -300,15 +302,20 @@ several other packages likely have the same hole.
 
 ## 10. Still open
 
-- **Baseline updates in PLAT-002/003's definition of done** (§6.2, and a spec checklist item). Still
-  not done, for the same reason: it means editing those tasks' spec documents while both sessions are
-  live in the same working tree, and their NOTES files are exactly what those sessions are writing
-  to. It is a two-line change to each checklist once they are quiet. **This is the last open item
-  that belongs to PLAT-004 itself.**
-- **Keep lowering the baseline.** 538 / 287 at `c354d4e`. The target is under 100 `TSFixme`, and the
-  clustering report still puts 400-odd of them in `noodl-editor/src/editor/src/views` — PLAT-002's
-  deletion path. Re-run `npm run tsfixme:baseline` and `npm run tsfixme:report` from a clean export
-  after each of their merges.
+> **Superseded by §14.7.** All three items below were resolved or absorbed in slice 6; this section
+> is kept because the reasoning it records is still the live reasoning. Read §14.7 for the current
+> list.
+
+- ~~**Baseline updates in PLAT-002/003's definition of done**~~ (§6.2, and a spec checklist item).
+  Was blocked because it meant editing those tasks' spec documents while both sessions were live in
+  the same working tree. **Done in slice 6** (§14.7): PLAT-002 is complete so its line is marked
+  retro-added; PLAT-003's is a live unticked item. **This was the last open item that belonged to
+  PLAT-004 itself.**
+- **Keep lowering the baseline.** 538 / 287 at `c354d4e`; 545 / 461 at `d0cd779` after §14's
+  deliberate raise. The target is under 100 `TSFixme`, and the clustering report still puts 400-odd
+  of them in `noodl-editor/src/editor/src/views` — PLAT-002's deletion path. Re-run
+  `npm run tsfixme:baseline` and `npm run tsfixme:report` from a clean export after each merge —
+  which is now *their* checklist item, not this task's.
 - **PLAT-002's in-flight work sits above the baseline again**, as it did at every previous
   re-measure: +7 `TSFixme` in the new `noodl-editor/src/shared/view.ts` (wave 5b's View-framework
   replacement), uncommitted in the shared tree at the time of measuring. Theirs to resolve when it
@@ -485,3 +492,192 @@ reader would reasonably assume differ:
 Verified: `tsc --noEmit` clean, `npm run build` clean, jest 31/31 — identical to the same suite run
 from a pristine pre-change export. `noodl-mcp`'s tsconfig already includes `tests/**/*` and has
 `strictNullChecks`, which is why this package's specs typecheck harder than the editor's do (§9).
+
+## 14. Burn-down slice 6 — `nodegx-backend`, 108 `any` → 16, and the authoritative re-baseline
+
+The gate was **red at `678d1c0`**, badly: `any` stood at **557 against a baseline of 287**. The
+task brief quoted +117; by the time work started it was +270, because an agent-SSE workstream had
+landed in `noodl-runtime` in between. That gap is itself the finding — see §14.6.
+
+### 14.1 What the +270 actually was
+
+| Package | `any` over baseline | Owner | Outcome |
+|---|---|---|---|
+| `noodl-runtime` | +128 | PLAT-003 slice 10 + the agent-SSE workstream | **Absorbed** — off-limits |
+| `nodegx-backend` | +108 | Nobody (phases 19/22 complete) | **Typed** — this slice |
+| `noodl-viewer-react` | +29 (+13 `TSFixme`) | PLAT-003 slice 10 | **Absorbed** — off-limits |
+| `noodl-editor` | +1 net (`TSFixme` −8) | NodePicker is live; `validation/` is not | normalize.ts typed; rest absorbed |
+| others | +4 | assorted | Absorbed |
+
+`nodegx-backend` **did not exist** when the baseline was measured at `78ba241`. Phases 19 and 22
+built the whole thing — realtime, workflows, triggers, email, backups, files, search, ops — and it
+arrived carrying 108 `any`, 78 of them in its specs. That is the ratchet doing exactly its job on
+new code, and it is the third time (§5, §8) a whole subsystem has landed above the line at once.
+
+### 14.2 The prediction held, for the third slice running
+
+§8, §11 and §13 all converged on the same rule: **when a helper's type forces a cast at every call
+site, the helper is what is wrong, and the type belongs at the producer.** The brief predicted the
+backend's HTTP test helpers would be that shape again. They were, and more literally than expected:
+
+**Fifteen spec files each hand-rolled the same eight lines** — `fetch`, `try { await res.json() }`,
+`return { status, json }` — and every one declared `let json: any = null`. Those fifteen `any`s paid
+for roughly sixty downstream ones: `(s: any) => s.nodeId`, `(t: any) => t.name`, `(e: any) =>
+e.status`, `(f.data as any).action`. None of them was an assertion about anything; all of them would
+have survived a field rename on either side of the wire.
+
+`tests/helpers/http.ts` is now the one typed client (`request<T>`, `httpClient(() => base)`), and
+`T` defaults to **`unknown`, not `any`** — an un-annotated call gets a value it must narrow rather
+than one that pretends to be everything. `tests/helpers/sse.ts` and `tests/helpers/local-sql.ts`
+join it.
+
+### 14.3 Three producers were declaring less than they knew
+
+| Producer | Was | Now |
+|---|---|---|
+| `RealtimeHub` | `OutFrame { event: 'connected'\|'change'\|'resync'; data: unknown }` over three distinct inline payloads | An exported discriminated union; consumers narrow on `event` and *get* the payload |
+| `ExecutionHistory` | `store: unknown` + `as any` at all five call sites; `list()`/`get()` return `unknown` | The cloud runtime's own `ExecutionStore`/`WorkflowExecution`/`ExecutionWithSteps`, via `import type` |
+| `ChangeBus` | `adapter: any` | `ChangeSource` — the `on`/`off` pair it actually calls |
+
+The `ExecutionHistory` one is worth stating plainly because the comment in the file argued the
+opposite: *"Untyped on purpose — the classes carry their own types where they live."* They do carry
+their own types, which is an argument for **importing** them, not for throwing them away. The
+construction stays a runtime `require` (this package must not pull the cloud runtime into its module
+graph); `import type` is erased at compile time, so the black box is intact and the field names are
+now checked on both sides. That needed a `paths` entry mirroring the esbuild alias and the jest
+`moduleNameMapper` that already existed — see §14.5 for the `rootDir` trap it hit.
+
+Beyond those three, every HTTP response envelope in the package now has a name and a `satisfies` at
+the handler: triggers, workflow defs/runs, the step-kind catalog, email templates, file
+upload/sign/config/sweep, admin schema and its four mutations, backups, schema-diff, search config,
+the audit query, the workflow-runner status. Drift now fails to compile at the producer.
+
+### 14.4 The backend's specs were never typechecked either — and did not start clean
+
+Exactly §9's finding, in a second package: `tsconfig.json` has `"exclude": ["**/*.test.ts"]`, so
+`tsc` never saw `tests/`. **Unlike the editor's, this gate did not start at zero — it started at 32
+errors.** Every one was real:
+
+- `files-http` read `await upload.json()` (typed `unknown` by undici) as a record, 17 times.
+- `realtime-hub` passed `addConnection`'s `string | null` on as a clientId five times. The null
+  branch is the connection-cap refusal — a real branch, never meant to be taken here, and now
+  asserted with a message instead of surfacing three lines later as something unrelated.
+- `email-flows`, `ops-request-id`, `service-http`, `triggers-http` each read `unknown` bodies.
+
+`packages/nodegx-backend/tsconfig.tests.json` + `npm run typecheck:backend-tests` now gate it, wired
+into CI's Typecheck job beside `typecheck:editor-tests`. Worth repeating §9's general warning: **a
+green `typecheck` for a package says nothing about that package's specs.** Two packages down.
+
+### 14.5 What writing the types exposed
+
+Every prior slice found defects; this one found seven, plus two traps.
+
+| Finding | Consequence |
+|---|---|
+| `findRole()` returned `Record<string, unknown>`, so `role.objectId` was `unknown` — and went straight into `addRelation`/`removeRelation`/`rawDelete` | Only compiled because `schemaManager` was `any`. A malformed `_Role` row would have addressed *nothing*, silently. Now `asRole()` throws naming the row. |
+| `SchemaManager.deleteTable` is feature-detected in `schema-migrate` but called unguarded by `POST /admin/schema` | An adapter without it crashed the route. Now a 501 with a reason. |
+| `sessionToken` is returned only by signup and login; the webhook secret and API-key secret only by the create that mints them | Five specs read them as always-present and would have sent `undefined` as a header — which the server reads as *anonymous*, so the test fails on an unrelated 209. |
+| `createLogger()` returns null when the history DB refused to open (WF-006 policy: never block a run on history) | `workflow-engine.test.ts` assumed non-null. |
+| `ExecutionStep.inputData`/`outputData` are open bags | The catch-payload shape (`previous.error.{message,statusCode}`) is now named at the read instead of asserted field by field. |
+| `AdapterFacade.schemaManager` **can** genuinely be absent (its own two readers guard with `&&`), but fifteen call sites treat it as present | Declared non-optional with the reason in place. Left as a finding, not fixed: making it `\| undefined` under a *typing* change would have altered fifteen routes' behaviour. **Open.** |
+| `SearchIndexer` had already invented its own `SchemaManagerLike` interface | One adapter, described twice, differently. Now one shared declaration in `persistence/SchemaManagerLike.ts` covering all five former `schemaManager: any` sites. This is the same convergence the shared-SecretsStore work hit: two modules independently reaching for the same convention is a signal to *collapse* it, not to celebrate it. |
+
+**Two traps.**
+
+1. **The index-signature trap, again.** The first `SchemaColumnLike` carried
+   `[option: string]: unknown`, which looks permissive and is the exact opposite: an *interface*
+   never satisfies a type with an index signature, so every caller passing its own `ColumnDef` or
+   `ImportColumn` would have had to cast — the precise failure the file existed to remove. §11
+   learned this on `keyUnion`; it fired again here, on the first compile. The rule to carry:
+   **an index signature on a parameter type makes it harder to satisfy, not easier.**
+
+2. **A shadowed `const` only visible once the outer name existed.** `ops-audit.test.ts` had
+   `const audit = (service as ...).audit` inside a block that also called a *new* outer `audit()`
+   helper two lines above it. The TDZ error was latent the whole time; it only became reachable
+   when there was an outer binding to collide with.
+
+**The `rootDir` trap.** `import type` from `@cloud-runtime` produced `TS6059` — "not under rootDir"
+— even though a type-only import emits nothing. The fix is not a cast: `outDir`/`rootDir`/
+`declaration` in this package's tsconfig were configuring an output **nothing generates**, because
+`dist/` comes from esbuild (`scripts/build.js`) and every `tsc` invocation in the repo is
+`--noEmit`. They are now replaced by `"noEmit": true`, which is what was actually happening.
+
+### 14.6 What was deliberately raised, and why
+
+The baseline is now **545 `TSFixme` / 461 `any` / 17 `@ts-ignore` / 0 `@ts-nocheck` /
+79 `@ts-expect-error`** at `d0cd779`, measured from a clean `git archive` export (§5). That is a
+**deliberate raise of `any` from 287 to 461**, and it is the escape valve used as designed:
+
+- **`noodl-runtime` (+128, now 185 total).** PLAT-003 slice 10's territory, plus a live agent-SSE
+  workstream (`nodes/std-library/agent/*`, 65 markers). Off-limits by §6.1; a third editor there
+  buys nothing and costs conflicts.
+- **`noodl-viewer-react` (+29 `any`, +13 `TSFixme`).** Same task, same reason.
+- **`noodl-editor` NodePicker (+5 `TSFixme`, −1 `any`) and `views/panels/propertyeditor` (+5).**
+  Live in other sessions right now (UIX-013 and its neighbours).
+- **`nodegx-backend`'s residual 16.** These are the ones genuinely not knowable *here*: the
+  untyped `LocalSQLAdapter` (`AdapterFacade.adapter`, `createAdapter`), `node:sqlite`'s
+  `DatabaseSync` reached through `getBuiltinModule` (four sites in `backup/`), the `cloudRunner`
+  from the cloud runtime, `security/state.ts`'s `db`, three `globalThis` shims in `service.ts`,
+  and `ctx.res as any` where `http.ServerResponse` is handed to the hub's `SSEResponse`. Each
+  belongs to PLAT-003's runtime typing or to a Node built-in whose types this package does not
+  control. They are documented in place, which is the standard §7 set.
+
+The `TSFixme` +5 is entirely other tasks' in-flight work; PLAT-004 removed none and added none.
+
+`@ts-expect-error` fell **88 → 79** and `@ts-ignore` **22 → 17**. The brief asked whether PLAT-003
+slice 9's `global.d.ts` fix (it had a top-level `import`, so `interface Window { Noodl }` had never
+been in effect) had moved the figure: it had — six suppressions retired there, and the rest is
+PLAT-002/003 drift banked in this re-measure. **Neither number moved because of this slice**; both
+are wins from other tasks that would have evaporated unrecorded, which is §6.2's whole point.
+
+### 14.7 Still open
+
+- **The re-baseline is now in PLAT-002's and PLAT-003's checklists.** §10's last PLAT-004-owned
+  item, closed. PLAT-002's is marked retro-added (that task is complete); PLAT-003's is a live
+  unticked item on a task that is between slices. The treadmill §2 describes — chasing the gate
+  from a third session, hourly — should now stop.
+- **`AdapterFacade.schemaManager` should be `| undefined`.** Real, deliberately not fixed here
+  (§14.5). Fifteen call sites need the guard they never had; that is a behaviour change and wants
+  its own change, not a typing slice.
+- **`noodl-runtime` is now the largest single `any` cluster in the repo** (185, of which 65 are the
+  agent-SSE nodes). It is entirely PLAT-003's, and its slice-10 scope should be checked against
+  that number — the agent nodes are new work, not legacy, and nothing has claimed them.
+- **The blocker in the brief does not reproduce.** `tests/nodepicker/NodePickerReducer.test.ts`
+  was reported as importing a non-existent `NodePicker.selectors`; UIX-013 (`8b1886d`) landed the
+  module before `678d1c0`. Both `typecheck:editor` and `typecheck:editor-tests` are clean at that
+  tip and at this branch's head. No workaround was needed.
+- The clustering report still puts **403 markers in `noodl-editor/src/editor/src/views`** and 128
+  in `models/`. That is the target for whatever picks this up next, and it is PLAT-002's deletion
+  path plus live UI sessions — so check ownership before touching it (§6.1).
+
+### 14.8 Verification
+
+| Check | Result |
+|---|---|
+| `nodegx-backend` jest, before any change (control) | 57 suites, 533 passed, 10 skipped |
+| `nodegx-backend` jest, after every batch | **Identical** — 57 / 533 / 10, unchanged four times |
+| `tsc -p packages/nodegx-backend` | Clean |
+| `tsc -p packages/nodegx-backend/tsconfig.tests.json` | 32 errors → **0** |
+| `tsc -p packages/noodl-editor` | Clean |
+| `tsc -p packages/noodl-editor/tsconfig.tests.json` | Clean |
+| `noodl-mcp` jest (consumes `normalizeV2Component`) | 61/61 |
+| editor `tests/validation/*` headless (§8 recipe) | 13/13 — and **13/13 from a pristine `678d1c0` export** |
+| `nodegx-backend` jest from that same pristine export | 57 / 533 / 10 — identical |
+| `node scripts/tsfixme-ratchet.js --check` | **✓ Holding the line** |
+
+The control run is the part that matters (§11, §12): the suite was captured at `678d1c0` *before*
+the first edit, and every subsequent run was compared against those exact numbers rather than
+against "it looks green". §12's trap was respected — the control is a **separate** `git archive`
+export of `678d1c0`, verified to still carry the old `nodesFile: any` signature before it was
+trusted, not a directory with the changed files copied in.
+
+The editor's two `validation/` specs are the only ones covering `normalizeV2Component`, and they
+needed none of §12's four extra pieces (no platform, no jsdom, no `require.context`) because they
+are pure model specs — only §12.4's tsconfig-`paths`-as-a-plugin was required.
+
+**Not verified.** Nothing here was run in the live editor or against a live backend process — this
+slice types code and its specs, and the backend suite covers real HTTP over a real `node:sqlite`
+database, which is as close to live as this package gets. `noodl-mcp`'s `tsc` reports jasmine-vs-jest
+matcher collisions when run from a worktree against the parent checkout's `node_modules`; that is an
+artifact of the shared-`node_modules` setup (the worktree has none of its own and Node resolves
+upward), not of any change here, and its jest run is green.

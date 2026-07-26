@@ -24,6 +24,7 @@ import * as path from 'path';
 
 import { readArchive } from './archive';
 import type { BackupManager } from './BackupManager';
+import type { SchemaManagerLike } from '../persistence/SchemaManagerLike';
 
 export interface ColumnDef {
   name: string;
@@ -167,7 +168,7 @@ export function snapshotFromArchive(archivePath: string): SchemaSnapshot {
  * the admin diff/apply routes where the target is this very backend.
  */
 export function snapshotFromLiveDir(
-  schemaManager: { exportSchemas(): TableDef[] },
+  schemaManager: Pick<SchemaManagerLike, 'exportSchemas'>,
   dataDir: string
 ): SchemaSnapshot {
   const security = readJsonIf(path.join(dataDir, 'security.json'));
@@ -309,8 +310,7 @@ export function renderDiff(diff: SchemaDiff): string {
 
 export interface ApplyTarget {
   /** SchemaManager of the target (createTable/addColumn/deleteTable). */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  schemaManager: any;
+  schemaManager: SchemaManagerLike;
   /** Target data dir — config files are written here. */
   dataDir: string;
 }

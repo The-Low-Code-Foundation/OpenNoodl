@@ -15,7 +15,22 @@
 
 import type { RequestContext } from './HttpServer';
 import type { FileSubsystem } from '../storage/FileSubsystem';
+import type { FileConfigPatch, FileStorageConfig, OrphanSweepReport } from '../storage/config';
 import { HttpError, readJSONBody, sendJSON } from './http-util';
+
+/** The 200 body of `GET`/`PUT /admin/files/config`. */
+export interface FileConfigResponse {
+  config: FileStorageConfig;
+  driverKind: string;
+  /** Honest, not aspirational: `sharp` is an optionalDependency. */
+  transformsAvailable: boolean;
+  transformUnavailableReason?: string;
+}
+
+/** The 200 body of `POST /admin/files/sweep`. */
+export interface SweepResponse {
+  report: OrphanSweepReport;
+}
 
 export class AdminFileRoutes {
   constructor(private readonly files: FileSubsystem) {}
@@ -29,22 +44,25 @@ export class AdminFileRoutes {
       driverKind: this.files.getDriver().kind,
       transformsAvailable: transform.available,
       transformUnavailableReason: transform.available ? undefined : transform.reason
-    });
+    } satisfies FileConfigResponse);
   }
 
   async updateConfig(ctx: RequestContext): Promise<void> {
     const body = await readJSONBody(ctx.req);
-    const patch: Record<string, unknown> = {};
-    if (body.maxUploadBytes !== undefined) patch.maxUploadBytes = body.maxUploadBytes;
-    if (body.contentTypes !== undefined) patch.contentTypes = body.contentTypes;
-    if (body.driver !== undefined) patch.driver = body.driver;
-    if (body.signedUrlTtlSeconds !== undefined) patch.signedUrlTtlSeconds = body.signedUrlTtlSeconds;
-    if (body.thumbnails !== undefined) patch.thumbnails = body.thumbnails;
+    // Unvalidated wire data: `FileStorageConfigStore.update` is the validator
+    // (and throws a `FileConfigError` this method turns into a 400). Naming the
+    // patch type means each field's conversion is written down individually
+    // rather than the whole object arriving `as any`.
+    const patch: FileConfigPatch = {};
+    if (body.maxUploadBytes !== undefined) patch.maxUploadBytes = body.maxUploadBytes as number;
+    if (body.contentTypes !== undefined) patch.contentTypes = body.contentTypes as FileConfigPatch['contentTypes'];
+    if (body.driver !== undefined) patch.driver = body.driver as FileConfigPatch['driver'];
+    if (body.signedUrlTtlSeconds !== undefined) patch.signedUrlTtlSeconds = body.signedUrlTtlSeconds as number;
+    if (body.thumbnails !== undefined) patch.thumbnails = body.thumbnails as FileConfigPatch['thumbnails'];
 
     try {
       if (Object.keys(patch).length) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        this.files.updateConfig(patch as any);
+        this.files.updateConfig(patch);
       }
       if (body.orphanSweep !== undefined) {
         const s = body.orphanSweep as { enabled?: boolean; cron?: string } | null;
@@ -64,6 +82,6 @@ export class AdminFileRoutes {
   async runSweep(ctx: RequestContext): Promise<void> {
     const body = await readJSONBody(ctx.req).catch(() => ({}) as Record<string, unknown>);
     const report = await this.files.runSweepNow(body.deleteOrphans === true);
-    sendJSON(ctx.res, 200, { report });
+    sendJSON(ctx.res, 200, { report } satisfies SweepResponse);
   }
 }

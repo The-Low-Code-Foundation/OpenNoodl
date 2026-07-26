@@ -26,7 +26,14 @@
 
 import type { AuthConfigState } from '../auth/AuthConfigState';
 import type { EmailConfigState } from '../email/EmailConfigState';
-import { applyPreset, AuthConfig, completeProvider, PROVIDER_PRESETS, validateAuthConfig } from '../auth/model';
+import {
+  applyPreset,
+  AuthConfig,
+  AuthProvider,
+  completeProvider,
+  PROVIDER_PRESETS,
+  validateAuthConfig
+} from '../auth/model';
 import { clearDiscoveryCache } from '../auth/oidc';
 import type { RequestContext } from './HttpServer';
 import { HttpError, readJSONBody, sendJSON } from './http-util';
@@ -37,6 +44,23 @@ export interface AdminAuthDeps {
   /** How the OAuth routes compute a provider's callback URL — reused verbatim so the two cannot disagree. */
   callbackUrl: (providerId: string) => string;
   getLocalUrl: () => string;
+}
+
+/**
+ * A provider as this surface reports it: the stored provider plus the three
+ * things only the server can answer, and never the client secret.
+ */
+export interface AdminProviderView extends AuthProvider {
+  hasClientSecret: boolean;
+  ready: boolean;
+  notReadyReason: string | null;
+  callbackUrl: string;
+}
+
+/** `PUT /admin/auth/providers/:id`. Declared here, at the producer, so a rename fails to compile on both sides — PLAT-004 §14. */
+export interface UpsertProviderResponse {
+  success: true;
+  provider: AdminProviderView;
 }
 
 export class AdminAuthRoutes {
@@ -169,7 +193,7 @@ export class AdminAuthRoutes {
     ctx.audit({ provider: id, enabled: provider.enabled, kind: provider.kind, secretSet: Boolean(body.clientSecret) });
 
     const reason = this.deps.auth.notConfiguredReason(provider);
-    sendJSON(ctx.res, 200, {
+    const payload: UpsertProviderResponse = {
       success: true,
       provider: {
         ...provider,
@@ -178,7 +202,8 @@ export class AdminAuthRoutes {
         notReadyReason: reason,
         callbackUrl: this.deps.callbackUrl(id)
       }
-    });
+    };
+    sendJSON(ctx.res, 200, payload);
   }
 
   /** `DELETE /admin/auth/providers/:id`. Existing identities are kept — see the note below. */

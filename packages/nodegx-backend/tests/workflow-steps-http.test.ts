@@ -17,7 +17,12 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 
+import type { ExecutionWithSteps, WorkflowExecution } from '../src/execution/ExecutionStore';
 import { BackendService } from '../src/service';
+import type { StepKindCatalog } from '../src/workflow/steps/kinds';
+import type { WorkflowDefinition, WorkflowRunResult } from '../src/workflow/types';
+
+import { ErrorBody, httpClient } from './helpers/http';
 
 jest.setTimeout(40000);
 
@@ -74,25 +79,23 @@ describe('WF-002 step kinds end-to-end over a real backend', () => {
   let service: BackendService;
   let base: string;
 
-  async function req(method: string, p: string, body?: unknown) {
-    const res = await fetch(`${base}${p}`, {
-      method,
-      headers: body !== undefined ? { 'content-type': 'application/json' } : {},
-      body: body !== undefined ? JSON.stringify(body) : undefined
-    });
-    let json: any = null;
-    try {
-      json = await res.json();
-    } catch {
-      /* non-JSON */
-    }
-    return { status: res.status, json };
-  }
+  const http = httpClient(() => base);
+  const req = <T = unknown>(method: string, p: string, body?: unknown) => http.request<T>(method, p, { body });
+
+  /** The full record of one run, steps included. */
+  const executionOf = (executionId: string) => http.get<ExecutionWithSteps>(`/executions/${executionId}`);
 
   /** Step statuses of a run, keyed by step id. */
   async function stepsOf(executionId: string): Promise<Record<string, string>> {
-    const detail = await req('GET', `/executions/${executionId}`);
-    return Object.fromEntries(detail.json.steps.map((s: any) => [s.nodeId, s.status]));
+    const detail = await executionOf(executionId);
+    return Object.fromEntries(detail.json.steps.map((s) => [s.nodeId, s.status]));
+  }
+
+  /** One step of a run by node id; throws naming the run rather than yielding undefined. */
+  function stepOf(detail: ExecutionWithSteps, nodeId: string) {
+    const step = detail.steps.find((s) => s.nodeId === nodeId);
+    if (!step) throw new Error(`no step "${nodeId}" in execution ${detail.id} (have: ${detail.steps.map((s) => s.nodeId).join(', ')})`);
+    return step;
   }
 
   beforeAll(async () => {
@@ -111,9 +114,9 @@ describe('WF-002 step kinds end-to-end over a real backend', () => {
   // -------------------------------------------------------------------------
 
   it('serves the step-kind catalog so an agent can discover the vocabulary', async () => {
-    const res = await req('GET', '/admin/workflow-step-kinds');
+    const res = await http.get<StepKindCatalog>('/admin/workflow-step-kinds');
     expect(res.status).toBe(200);
-    expect(res.json.kinds.map((k: any) => k.kind)).toEqual([
+    expect(res.json.kinds.map((k) => k.kind)).toEqual([
       'call-function',
       'branch',
       'switch',
@@ -124,13 +127,13 @@ describe('WF-002 step kinds end-to-end over a real backend', () => {
       'wait',
       'wait-until'
     ]);
-    const branch = res.json.kinds.find((k: any) => k.kind === 'branch');
-    expect(branch.routes.map((r: any) => r.name)).toEqual(['ontrue', 'onfalse']);
-    expect(branch.source).toBe('CF11-001');
+    const branch = res.json.kinds.find((k) => k.kind === 'branch');
+    expect(branch?.routes?.map((r) => r.name)).toEqual(['ontrue', 'onfalse']);
+    expect(branch?.source).toBe('CF11-001');
   });
 
   it('rejects a definition whose condition is malformed, with the reason', async () => {
-    const bad = await req('POST', '/admin/workflow-defs', {
+    const bad = await req<ErrorBody>('POST', '/admin/workflow-defs', {
       id: 'bad-condition',
       entry: 'g',
       steps: [
@@ -167,7 +170,7 @@ describe('WF-002 step kinds end-to-end over a real backend', () => {
     });
     expect(created.status).toBe(201);
 
-    const run = await req('POST', '/admin/workflow-defs/order-pipeline/run', { payload: { total: 250 } });
+    const run = await req<{ run: WorkflowRunResult }>('POST', '/admin/workflow-defs/order-pipeline/run', { payload: { total: 250 } });
     expect(run.status).toBe(200);
     expect(run.json.run.status).toBe('success');
 
@@ -183,19 +186,21 @@ describe('WF-002 step kinds end-to-end over a real backend', () => {
 
     // The merge saw the branch that actually ran, and the real function's
     // response body flowed through it.
-    const detail = await req('GET', `/executions/${run.json.run.executionId}`);
-    const join = detail.json.steps.find((s: any) => s.nodeId === 'join');
-    expect(join.outputData.sources).toEqual(['review']);
-    expect(join.outputData.merged.review).toEqual({ result: { stage: 'manual-review' } });
-    expect(join.outputData.missing).toEqual(['autoApprove']);
+    const detail = (await executionOf(run.json.run.executionId)).json;
+    const join = stepOf(detail, 'join');
+    expect(join.outputData?.sources).toEqual(['review']);
+    expect((join.outputData?.merged as Record<string, unknown>).review).toEqual({
+      result: { stage: 'manual-review' }
+    });
+    expect(join.outputData?.missing).toEqual(['autoApprove']);
 
     // Metadata records the disposition; the run is a `workflow` kind record.
-    expect(detail.json.metadata.kind).toBe('workflow');
-    expect(detail.json.metadata.engineStatus).toBe('success');
+    expect(detail.metadata?.kind).toBe('workflow');
+    expect(detail.metadata?.engineStatus).toBe('success');
   });
 
   it('takes the other branch on a different payload — same definition', async () => {
-    const run = await req('POST', '/admin/workflow-defs/order-pipeline/run', { payload: { total: 12 } });
+    const run = await req<{ run: WorkflowRunResult }>('POST', '/admin/workflow-defs/order-pipeline/run', { payload: { total: 12 } });
     expect(run.json.run.status).toBe('success');
     const steps = await stepsOf(run.json.run.executionId);
     expect(steps.autoApprove).toBe('success');
@@ -225,21 +230,21 @@ describe('WF-002 step kinds end-to-end over a real backend', () => {
       ]
     });
 
-    const run = await req('POST', '/admin/workflow-defs/fan-out/run', { payload: { lines: ['a', 'b', 'c'] } });
+    const run = await req<{ run: WorkflowRunResult }>('POST', '/admin/workflow-defs/fan-out/run', { payload: { lines: ['a', 'b', 'c'] } });
     expect(run.json.run.status).toBe('success');
 
-    const detail = await req('GET', `/executions/${run.json.run.executionId}`);
-    const each = detail.json.steps.find((s: any) => s.nodeId === 'each');
-    expect(each.outputData.count).toBe(3);
-    expect(each.outputData.failed).toBe(0);
+    const detail = (await executionOf(run.json.run.executionId)).json;
+    const each = stepOf(detail, 'each');
+    expect(each.outputData?.count).toBe(3);
+    expect(each.outputData?.failed).toBe(0);
     // Each result is a real Response-node body, proving three real invocations.
-    expect(each.outputData.results).toEqual([
+    expect(each.outputData?.results).toEqual([
       { result: { item: 'a' } },
       { result: { item: 'b' } },
       { result: { item: 'c' } }
     ]);
     // `empty` was not selected, so its target is skipped; `next` still ran.
-    const byId = Object.fromEntries(detail.json.steps.map((s: any) => [s.nodeId, s.status]));
+    const byId = Object.fromEntries(detail.steps.map((s) => [s.nodeId, s.status]));
     expect(byId).toMatchObject({ each: 'success', after: 'success', nothing: 'skipped' });
 
     // The step's nodeType names both the kind and the function it fanned out to.
@@ -264,21 +269,24 @@ describe('WF-002 step kinds end-to-end over a real backend', () => {
       ]
     });
 
-    const run = await req('POST', '/admin/workflow-defs/retrying/run', {});
+    const run = await req<{ run: WorkflowRunResult }>('POST', '/admin/workflow-defs/retrying/run', {});
     // Routed, so the RUN succeeds even though the step failed loudly.
     expect(run.json.run.status).toBe('success');
 
-    const detail = await req('GET', `/executions/${run.json.run.executionId}`);
-    const byId = Object.fromEntries(detail.json.steps.map((s: any) => [s.nodeId, s.status]));
+    const detail = (await executionOf(run.json.run.executionId)).json;
+    const byId = Object.fromEntries(detail.steps.map((s) => [s.nodeId, s.status]));
     expect(byId).toEqual({ attempt: 'error', never: 'skipped', alert: 'success' });
 
-    const attempt = detail.json.steps.find((s: any) => s.nodeId === 'attempt');
-    expect(attempt.errorMessage).toMatch(/failed after 3 attempt/);
+    expect(stepOf(detail, 'attempt').errorMessage).toMatch(/failed after 3 attempt/);
 
     // The handler received the failure as `previous.error` — CF11-002's catch.
-    const alert = detail.json.steps.find((s: any) => s.nodeId === 'alert');
-    expect(alert.inputData.previous.error.message).toMatch(/failed after 3 attempt/);
-    expect(alert.inputData.previous.error.statusCode).toBe(400);
+    // `inputData` is the step's own untyped bag, so the *shape of the catch* is
+    // named here rather than asserted field by field.
+    const previous = stepOf(detail, 'alert').inputData?.previous as {
+      error: { message: string; statusCode: number };
+    };
+    expect(previous.error.message).toMatch(/failed after 3 attempt/);
+    expect(previous.error.statusCode).toBe(400);
   });
 
   // -------------------------------------------------------------------------
@@ -302,7 +310,7 @@ describe('WF-002 step kinds end-to-end over a real backend', () => {
     });
 
     const started = Date.now();
-    const run = await req('POST', '/admin/workflow-defs/embargo/run', {});
+    const run = await req<{ run: WorkflowRunResult }>('POST', '/admin/workflow-defs/embargo/run', {});
     expect(Date.now() - started).toBeLessThan(5000);
     expect(run.json.run.status).toBe('success');
     expect(await stepsOf(run.json.run.executionId)).toMatchObject({
@@ -323,14 +331,14 @@ describe('WF-002 step kinds end-to-end over a real backend', () => {
     });
 
     const started = Date.now();
-    const running = req('POST', '/admin/workflow-defs/parked/run', {});
+    const running = req<{ run: WorkflowRunResult }>('POST', '/admin/workflow-defs/parked/run', {});
     await new Promise((r) => setTimeout(r, 300));
 
-    const list = await req('GET', '/executions?workflowId=parked&limit=10');
-    const inFlight = list.json.find((e: any) => e.status === 'running');
-    expect(inFlight).toBeDefined();
+    const list = await http.get<WorkflowExecution[]>('/executions?workflowId=parked&limit=10');
+    const inFlight = list.json.find((e) => e.status === 'running');
+    if (!inFlight) throw new Error('no running execution for "parked" — the run never parked');
 
-    const cancelled = await req('POST', `/admin/workflow-runs/${inFlight.id}/cancel`);
+    const cancelled = await http.post(`/admin/workflow-runs/${inFlight.id}/cancel`);
     expect(cancelled.status).toBe(200);
 
     const run = await running;
@@ -345,8 +353,8 @@ describe('WF-002 step kinds end-to-end over a real backend', () => {
 
   it('persists step kinds, routes and params to disk in a re-loadable form', async () => {
     const file = path.join(dataDir, 'workflow-defs', 'order-pipeline.workflow-def.json');
-    const onDisk = JSON.parse(fs.readFileSync(file, 'utf-8'));
-    expect(onDisk.steps.find((s: any) => s.id === 'isLarge').routes).toEqual({
+    const onDisk = JSON.parse(fs.readFileSync(file, 'utf-8')) as WorkflowDefinition;
+    expect(onDisk.steps.find((s) => s.id === 'isLarge')?.routes).toEqual({
       ontrue: ['cooldown'],
       onfalse: ['autoApprove']
     });

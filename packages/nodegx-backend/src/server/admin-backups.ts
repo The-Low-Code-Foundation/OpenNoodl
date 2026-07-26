@@ -24,11 +24,14 @@
 import type { RequestContext } from './HttpServer';
 import type { AdapterFacade } from '../persistence/AdapterFacade';
 import type { BackupSubsystem } from '../backup/BackupSubsystem';
+import type { BackupListItem } from '../backup/BackupManager';
+import type { BackupConfig } from '../backup/config';
 import { exportCollection, importCollection, DataFormat } from '../backup/dataio';
 import {
   applySchema,
   diffSchema,
   renderDiff,
+  SchemaDiff,
   SchemaSnapshot,
   snapshotFromLiveDir
 } from '../backup/schema-migrate';
@@ -40,6 +43,32 @@ export interface AdminBackupDeps {
   dataDir: string;
 }
 
+/** `GET /admin/backups`. */
+export interface BackupListResponse {
+  config: BackupConfig;
+  backups: BackupListItem[];
+}
+
+/** `GET`/`PUT /admin/backups/config`. */
+export interface BackupConfigResponse {
+  config: BackupConfig;
+}
+
+/** `POST /admin/backups`. */
+export interface BackupRunResponse {
+  ok: boolean;
+  archive: string;
+  bytes: number;
+  mechanism: string;
+  deleted: string[];
+}
+
+/** `POST /admin/schema/diff`. */
+export interface SchemaDiffResponse {
+  diff: SchemaDiff;
+  rendered: string;
+}
+
 export class AdminBackupRoutes {
   constructor(private readonly deps: AdminBackupDeps) {}
 
@@ -48,7 +77,7 @@ export class AdminBackupRoutes {
     sendJSON(ctx.res, 200, {
       config: backups.config.get(),
       backups: backups.manager.listBackups()
-    });
+    } satisfies BackupListResponse);
   }
 
   async updateConfig(ctx: RequestContext): Promise<void> {
@@ -73,7 +102,7 @@ export class AdminBackupRoutes {
     if (body.destination !== undefined) patch.destination = body.destination;
     if (body.includeSecrets !== undefined) patch.includeSecrets = body.includeSecrets;
     if (Object.keys(patch).length) this.deps.backups.config.update(patch);
-    sendJSON(ctx.res, 200, { config: this.deps.backups.config.get() });
+    sendJSON(ctx.res, 200, { config: this.deps.backups.config.get() } satisfies BackupConfigResponse);
   }
 
   async runBackup(ctx: RequestContext): Promise<void> {
@@ -87,7 +116,7 @@ export class AdminBackupRoutes {
       bytes: result.bytes,
       mechanism: result.manifest.snapshotMechanism,
       deleted: result.deleted
-    });
+    } satisfies BackupRunResponse);
   }
 
   async restore(ctx: RequestContext): Promise<void> {
@@ -134,7 +163,7 @@ export class AdminBackupRoutes {
     const source = this.sourceFromBody(body);
     const target = snapshotFromLiveDir(this.deps.facade.schemaManager, this.deps.dataDir);
     const diff = diffSchema(source, target);
-    sendJSON(ctx.res, 200, { diff, rendered: renderDiff(diff) });
+    sendJSON(ctx.res, 200, { diff, rendered: renderDiff(diff) } satisfies SchemaDiffResponse);
   }
 
   async schemaApply(ctx: RequestContext): Promise<void> {

@@ -29,7 +29,7 @@
 import * as crypto from 'crypto';
 
 import { Principal, ClpOp, canReadRecord } from '../security/model';
-import { ChangeBus, ChangeEvent } from './ChangeBus';
+import { ChangeAction, ChangeBus, ChangeEvent } from './ChangeBus';
 import { Where, matchesFilter, assertFilterSupported, UnsupportedFilterError } from './filter';
 
 /** The subset of http.ServerResponse the hub writes to (test-injectable). */
@@ -78,10 +78,49 @@ interface Connection {
   heartbeat: ReturnType<typeof setInterval> | null;
 }
 
-interface OutFrame {
-  event: 'connected' | 'change' | 'resync';
-  data: unknown;
+/**
+ * The wire payloads this hub emits, one interface per `event`.
+ *
+ * These were a single `data: unknown` until PLAT-004. That is the shape the
+ * ratchet keeps finding: three distinct payloads built as inline literals with
+ * nothing naming them, so every reader — the specs above all, which are the
+ * closest thing this package has to a contract test for the SSE wire — paid
+ * for it with a cast, and a field rename on either side would have gone
+ * unnoticed. The union is exported so a consumer can narrow on `event` and get
+ * the payload, instead of asserting one.
+ */
+export interface ConnectedFrameData {
+  clientId: string;
 }
+
+export interface ChangeFrameData {
+  action: ChangeAction;
+  collection: string;
+  /** The record post-write, or as it was just before deletion. */
+  record: Record<string, unknown>;
+}
+
+export interface ResyncFrameData {
+  /** Why the client must re-query: no replay buffer exists. */
+  reason: 'reconnect' | 'overflow' | 'shutdown' | (string & {});
+}
+
+/** Why one requested subscription was refused. */
+export interface RejectedSubscription {
+  collection: string;
+  reason: string;
+}
+
+/** The body of `POST /realtime/subscriptions`'s 200. */
+export interface SubscriptionResult {
+  accepted: Subscription[];
+  rejected: RejectedSubscription[];
+}
+
+export type OutFrame =
+  | { event: 'connected'; data: ConnectedFrameData }
+  | { event: 'change'; data: ChangeFrameData }
+  | { event: 'resync'; data: ResyncFrameData };
 
 const DEFAULT_MAX_QUEUE = 1000;
 const DEFAULT_HEARTBEAT_MS = 25000;
@@ -229,15 +268,12 @@ export class RealtimeHub {
    * for filter support; accepted ones become the new set, rejected ones are
    * reported. Returns null when the clientId is unknown (caller → 404).
    */
-  setSubscriptions(
-    clientId: string,
-    requested: Subscription[]
-  ): { accepted: Subscription[]; rejected: { collection: string; reason: string }[] } | null {
+  setSubscriptions(clientId: string, requested: Subscription[]): SubscriptionResult | null {
     const conn = this.connections.get(clientId);
     if (!conn) return null;
 
     const accepted: Subscription[] = [];
-    const rejected: { collection: string; reason: string }[] = [];
+    const rejected: RejectedSubscription[] = [];
 
     for (const sub of requested) {
       const collection = sub && typeof sub.collection === 'string' ? sub.collection : '';

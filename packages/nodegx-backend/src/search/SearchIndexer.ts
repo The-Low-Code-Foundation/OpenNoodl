@@ -14,6 +14,7 @@
  * @module nodegx-backend/search/SearchIndexer
  */
 
+import type { SchemaManagerLike } from '../persistence/SchemaManagerLike';
 import type { SearchState } from './SearchState';
 import type { CollectionSearchConfig } from './model';
 
@@ -33,19 +34,16 @@ export class SearchCapabilityError extends Error {
   }
 }
 
-/** Minimal shape SchemaManager (packages/noodl-runtime, untyped CommonJS) is used through. */
-interface SchemaManagerLike {
-  hasFts5Support(): boolean;
-  hasSearchIndex(tableName: string): boolean;
-  rebuildSearchIndex(tableName: string, fields: string[], tokenizer?: string): RebuildReport;
-  dropSearchIndex(tableName: string): void;
-}
+// The four methods this class needs are declared on the shared
+// `SchemaManagerLike` (PLAT-004). This file used to carry its own copy of that
+// interface — the second such copy in the package — which is how the same
+// adapter got described twice, differently.
 
 export class SearchIndexer {
   private readonly schemaManager: SchemaManagerLike | null;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  constructor(schemaManager: any) {
+  constructor(schemaManager: SchemaManagerLike | null) {
     this.schemaManager = schemaManager || null;
   }
 
@@ -75,7 +73,7 @@ export class SearchIndexer {
   /** (Re)build one collection's shadow table + triggers for its CURRENT config. Idempotent. */
   rebuild(collection: string, cfg: CollectionSearchConfig): RebuildReport {
     const sm = this.assertReady();
-    return sm.rebuildSearchIndex(collection, cfg.fields, cfg.tokenizer || 'unicode61');
+    return sm.rebuildSearchIndex(collection, cfg.fields, cfg.tokenizer || 'unicode61') as RebuildReport;
   }
 
   /** Drop a collection's shadow table + triggers. Safe when none exists. */

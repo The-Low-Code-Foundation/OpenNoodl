@@ -31,7 +31,7 @@ export interface ChangeEvent {
 export type ChangeListener = (event: ChangeEvent) => void;
 
 /** The adapter's raw event payload (LocalSQLAdapter.\_emitChange). */
-interface RawChange {
+export interface RawChange {
   type: 'create' | 'save' | 'delete';
   id: string;
   collection: string;
@@ -44,17 +44,31 @@ const ACTION_BY_TYPE: Record<RawChange['type'], ChangeAction> = {
   delete: 'delete'
 };
 
+/**
+ * The whole of what this class needs from an adapter — an `on`/`off` pair over
+ * the three raw event names.
+ *
+ * It was `any` because the adapter is untyped CommonJS from `@noodl/runtime`,
+ * but `any` overstated the coupling: the bus never reads a field, calls a query
+ * method or knows what a `LocalSQLAdapter` is. Naming the two methods it
+ * actually calls is both narrower and checkable, and it lets the specs' stub
+ * adapters be verified as adapters instead of passing because everything does.
+ * Both members stay optional and both call sites still guard with
+ * `typeof === 'function'`: an adapter with no event surface is a supported
+ * configuration (the bus simply never attaches), not a type error.
+ */
+export interface ChangeSource {
+  on?(type: RawChange['type'], handler: (payload: RawChange) => void): void;
+  off?(type: string, handler: (payload: RawChange) => void): void;
+}
+
 export class ChangeBus {
-  // The adapter is untyped CommonJS from @noodl/runtime.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private readonly adapter: any;
+  private readonly adapter: ChangeSource | undefined;
   private readonly listeners = new Set<ChangeListener>();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private readonly bound: Record<string, (payload: any) => void> = {};
+  private readonly bound: Record<string, (payload: RawChange) => void> = {};
   private attached = false;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  constructor(adapter: any) {
+  constructor(adapter: ChangeSource | undefined) {
     this.adapter = adapter;
     this.attach();
   }

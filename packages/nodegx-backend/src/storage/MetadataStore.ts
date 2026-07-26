@@ -23,6 +23,7 @@
  */
 
 import type { AdapterFacade } from '../persistence/AdapterFacade';
+import type { SchemaManagerLike } from '../persistence/SchemaManagerLike';
 
 export const FILES_COLLECTION = '_Files';
 
@@ -61,7 +62,7 @@ export interface CreateFileRecordInput {
 
 /** Ensure `_Files` exists with the right shape. Idempotent — call at every startup. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function ensureFilesTable(schemaManager: any): void {
+export function ensureFilesTable(schemaManager: SchemaManagerLike | null | undefined): void {
   if (!schemaManager) return;
   schemaManager.createTable({
     name: FILES_COLLECTION,

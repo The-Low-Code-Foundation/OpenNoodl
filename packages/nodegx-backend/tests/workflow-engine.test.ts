@@ -307,6 +307,10 @@ describe('WF-001 durability / interrupted recovery', () => {
       // Simulate a run that was in flight when the process died: a `running`
       // record with no completion.
       const logger = history.createLogger();
+      // `createLogger` returns null when the history database refused to open —
+      // a real branch (WF-006 policy: never block a run on history), and one
+      // this test never means to take.
+      if (!logger) throw new Error('execution history is disabled — the store did not open');
       const id = logger.startExecution({
         workflowId: 'wf_test',
         workflowName: 'Test',
@@ -331,6 +335,10 @@ describe('WF-001 durability / interrupted recovery', () => {
     const { engine, history, dir } = makeEngine();
     try {
       const logger = history.createLogger();
+      // `createLogger` returns null when the history database refused to open —
+      // a real branch (WF-006 policy: never block a run on history), and one
+      // this test never means to take.
+      if (!logger) throw new Error('execution history is disabled — the store did not open');
       const id = logger.startExecution({
         workflowId: 'wf_other',
         workflowName: 'Other',

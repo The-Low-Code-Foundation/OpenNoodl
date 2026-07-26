@@ -31,6 +31,12 @@ jobs:
       # today; this keeps them that way, so a type written in a spec means
       # something.
       - run: npm run typecheck:editor-tests
+      # The backend's specs had the same hole, and unlike the editor's they were
+      # NOT clean — 32 real reachability/nullability mistakes, fixed in PLAT-004
+      # before this line was added. These specs are the closest thing the
+      # backend has to a contract test for its HTTP wire, so a type written in
+      # one has to mean something.
+      - run: npm run typecheck:backend-tests
 
   lint:
     name: Lint

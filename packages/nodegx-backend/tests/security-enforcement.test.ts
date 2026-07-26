@@ -24,7 +24,23 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 
+import type { SecurityConfig } from '../src/security/model';
 import { BackendService } from '../src/service';
+
+import type { ErrorBody, ParseQueryResult, ParseRecord } from './helpers/http';
+
+/**
+ * The union of every body this suite reads back — records, query envelopes,
+ * error envelopes, and the two 'returned exactly once' secrets.
+ *
+ * This is deliberately a broad NAMED type rather than a per-call-site generic:
+ * the suite makes ~60 calls across three route families, and what its `any`
+ * was actually costing was the four `(r: any) => r.title` reads plus any typo
+ * in `.results` / `.error` / `.code`. Those are now checked. Reads of a stored
+ * field still land on `ParseRecord`'s index signature and come back `unknown`,
+ * which is the honest answer for an app-defined column.
+ */
+type SpecBody = ParseRecord & Partial<ParseQueryResult> & Partial<ErrorBody> & { secret?: string; sessionToken?: string };
 
 jest.setTimeout(30000);
 
@@ -92,15 +108,15 @@ describe('BAK-003 enforcement (locked backend)', () => {
     pathName: string,
     body?: unknown,
     headers: Record<string, string> = {}
-  ): Promise<{ status: number; json: any }> {
+  ): Promise<{ status: number; json: SpecBody }> {
     const res = await fetch(`${base}${pathName}`, {
       method,
       headers: body !== undefined ? { 'content-type': 'application/json', ...headers } : headers,
       body: body !== undefined ? JSON.stringify(body) : undefined
     });
-    let json: any = null;
+    let json = {} as SpecBody;
     try {
-      json = await res.json();
+      json = (await res.json()) as SpecBody;
     } catch {
       /* non-JSON */
     }
@@ -110,9 +126,16 @@ describe('BAK-003 enforcement (locked backend)', () => {
   const asUser = (u: User) => ({ 'x-parse-session-token': u.token });
   const asAdmin = () => ({ authorization: `Bearer ${adminToken}` });
 
+  /** A login/signup body is supposed to carry a session token; say so once. */
+  function tokenOf(body: SpecBody): string {
+    if (!body.sessionToken) throw new Error(`no sessionToken on ${JSON.stringify(body).slice(0, 120)}`);
+    return body.sessionToken;
+  }
+
   async function signup(username: string): Promise<User> {
     const { status, json } = await req('POST', '/users', { username, password: `pw-${username}` });
     expect(status).toBe(201);
+    if (!json.sessionToken) throw new Error(`signup of ${username} returned no sessionToken`);
     return { id: json.objectId, token: json.sessionToken };
   }
 
@@ -148,7 +171,7 @@ describe('BAK-003 enforcement (locked backend)', () => {
 
   it('the creator reads their record back (query + get)', async () => {
     const q = await req('POST', '/classes/Doc', { _method: 'GET', where: {} }, asUser(alice));
-    expect(q.json.results.map((r: any) => r.title)).toContain('alice doc');
+    expect(q.json.results!.map((r) => r.title)).toContain('alice doc');
     const g = await req('GET', `/classes/Doc/${aliceDocId}`, undefined, asUser(alice));
     expect(g.status).toBe(200);
     expect(g.json.title).toBe('alice doc');
@@ -190,7 +213,7 @@ describe('BAK-003 enforcement (locked backend)', () => {
       asUser(bob)
     );
     expect(agg.status).toBe(200);
-    expect(agg.json.results[0].total).toBeNull();
+    expect(agg.json.results![0].total).toBeNull();
 
     const dist = await req('GET', '/aggregate/Doc?distinct=title', undefined, asUser(bob));
     expect(dist.json.results).toEqual([]);
@@ -220,8 +243,9 @@ describe('BAK-003 enforcement (locked backend)', () => {
 
     // The owner DOES get the expansion.
     const forAlice = await req('GET', `/classes/Doc/${created.json.objectId}?include=ref`, undefined, asUser(alice));
-    expect(forAlice.json.ref.__type).toBe('Object');
-    expect(forAlice.json.ref.title).toBe('alice doc');
+    const ref = forAlice.json.ref as { __type: string; title: string };
+    expect(ref.__type).toBe('Object');
+    expect(ref.title).toBe('alice doc');
   });
 
   // ==========================================================================
@@ -322,6 +346,7 @@ describe('BAK-003 enforcement (locked backend)', () => {
     const createKey = await req('POST', '/admin/keys', { name: 'ci-echo', scopes: ['functions:echo'] }, asAdmin());
     expect(createKey.status).toBe(201);
     const secret = createKey.json.secret;
+    if (!secret) throw new Error('POST /admin/keys minted no secret');
     expect(secret).toMatch(/^ngxk_/);
     const asKey = { 'x-nodegx-api-key': secret };
 
@@ -347,12 +372,13 @@ describe('BAK-003 enforcement (locked backend)', () => {
 
   it('a revoked key stops working; a classes:read key reads but cannot write', async () => {
     const created = await req('POST', '/admin/keys', { name: 'reader', scopes: ['classes:read'] }, asAdmin());
+    if (!created.json.secret) throw new Error('POST /admin/keys minted no secret');
     const asKey = { 'x-nodegx-api-key': created.json.secret };
 
     const read = await req('POST', '/classes/Doc', { _method: 'GET', where: {} }, asKey);
     expect(read.status).toBe(200);
     // Reads bypass row ACLs (data-plane tool): it sees alice's doc.
-    expect(read.json.results.map((r: any) => r.title)).toContain('alice doc');
+    expect(read.json.results!.map((r) => r.title)).toContain('alice doc');
 
     const write = await req('POST', '/classes/Doc', { title: 'from key' }, asKey);
     expect(write.status).toBe(403);
@@ -366,7 +392,7 @@ describe('BAK-003 enforcement (locked backend)', () => {
   it('key secrets are never listed', async () => {
     const list = await req('GET', '/admin/keys', undefined, asAdmin());
     expect(list.status).toBe(200);
-    for (const key of list.json.keys) {
+    for (const key of list.json.keys as { secret?: string; keyHash?: string }[]) {
       expect(key.secret).toBeUndefined();
       expect(key.keyHash).toBeUndefined();
     }
@@ -378,9 +404,9 @@ describe('BAK-003 enforcement (locked backend)', () => {
 
   it('a password change revokes the other sessions but keeps the changing one', async () => {
     const login1 = await req('POST', '/login', { username: 'bob', password: 'pw-bob', _method: 'GET' });
-    const stolen = login1.json.sessionToken;
+    const stolen = tokenOf(login1.json);
     const login2 = await req('POST', '/login', { username: 'bob', password: 'pw-bob', _method: 'GET' });
-    const current = login2.json.sessionToken;
+    const current = tokenOf(login2.json);
 
     // Both valid now.
     expect((await req('GET', '/users/me', undefined, { 'x-parse-session-token': stolen })).status).toBe(200);
@@ -447,12 +473,12 @@ describe('BAK-003 enforcement (locked backend)', () => {
   });
 
   it('config validation refuses unknown keys and runAs:"caller" (never accept-and-ignore)', async () => {
-    const junk = JSON.parse(JSON.stringify(LOCKED_CONFIG));
-    (junk as any).collections.Doc = { permisions: { find: 'public' } }; // typo'd key
+    const junk = JSON.parse(JSON.stringify(LOCKED_CONFIG)) as SecurityConfig;
+    (junk.collections as Record<string, unknown>).Doc = { permisions: { find: 'public' } }; // typo'd key
     expect((await req('PUT', '/admin/permissions', junk, asAdmin())).status).toBe(400);
 
-    const caller = JSON.parse(JSON.stringify(LOCKED_CONFIG));
-    (caller as any).functions.echo = { runAs: 'caller' };
+    const caller = JSON.parse(JSON.stringify(LOCKED_CONFIG)) as SecurityConfig;
+    (caller.functions as Record<string, unknown>).echo = { runAs: 'caller' };
     const r = await req('PUT', '/admin/permissions', caller, asAdmin());
     expect(r.status).toBe(400);
     expect(r.json.error).toMatch(/not yet supported/);

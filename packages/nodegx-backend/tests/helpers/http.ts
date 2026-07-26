@@ -1,0 +1,161 @@
+/**
+ * The one typed HTTP client for this package's specs (PLAT-004).
+ *
+ * Fifteen spec files each hand-rolled the same eight lines — fetch, try/catch
+ * `res.json()`, return `{status, json}` — and every one of them declared
+ * `let json: any = null`. That single `any` is what the ratchet was actually
+ * measuring: it leaked outward into `(s: any) => s.nodeId`,
+ * `(t: any) => t.name`, `(e: any) => e.status` at ~60 call sites, none of which
+ * were assertions about anything. A field rename on either side of the wire
+ * would have kept every one of those specs green.
+ *
+ * So the fix is the one PLAT-004 keeps arriving at: when a helper's type forces
+ * a cast at every call site, the helper is what is wrong. `request<T>` is
+ * generic, the caller names the payload it expects, and the payload types
+ * themselves live at the PRODUCER (`src/**`) wherever the producer has one —
+ * `WorkflowExecution`, `ExecutionWithSteps`, `OutFrame`, `SchemaResponse` — so
+ * drift fails to compile where it is introduced rather than silently where it
+ * is read.
+ *
+ * `T` defaults to `unknown` rather than `any` on purpose: an un-annotated call
+ * gets a value it must narrow, not a value that pretends to be everything.
+ */
+
+/** What every helper here returns. `json` is `null` for a non-JSON body. */
+export interface HttpResult<T> {
+  status: number;
+  /** Parsed body, or `null` when the response had no JSON body. */
+  json: T;
+  /** The raw body text, for the specs that assert on non-JSON responses. */
+  text: string;
+  headers: Headers;
+}
+
+export interface RequestOptions {
+  body?: unknown;
+  headers?: Record<string, string>;
+  /**
+   * Send `body` verbatim instead of JSON-encoding it. `body` must then be a
+   * string or Buffer — the body-limit and file-upload specs post raw payloads.
+   */
+  raw?: boolean;
+}
+
+/**
+ * One request. Sets `content-type: application/json` only when there is a body
+ * to encode, because several routes distinguish "no body" from "empty body".
+ */
+export async function request<T = unknown>(
+  base: string,
+  method: string,
+  pathName: string,
+  options: RequestOptions = {}
+): Promise<HttpResult<T>> {
+  const { body, headers = {}, raw = false } = options;
+  const hasBody = body !== undefined;
+
+  const res = await fetch(`${base}${pathName}`, {
+    method,
+    headers: hasBody && !raw ? { 'content-type': 'application/json', ...headers } : headers,
+    body: hasBody ? (raw ? (body as string | Buffer) : JSON.stringify(body)) : undefined
+  });
+
+  const text = await res.text();
+  let json: T = null as T;
+  try {
+    json = JSON.parse(text) as T;
+  } catch {
+    /* non-JSON body — `text` carries it */
+  }
+
+  return { status: res.status, json, text, headers: res.headers };
+}
+
+export const get = <T = unknown>(base: string, pathName: string, headers?: Record<string, string>) =>
+  request<T>(base, 'GET', pathName, { headers });
+
+export const post = <T = unknown>(
+  base: string,
+  pathName: string,
+  body?: unknown,
+  headers?: Record<string, string>
+) => request<T>(base, 'POST', pathName, { body, headers });
+
+export const put = <T = unknown>(
+  base: string,
+  pathName: string,
+  body?: unknown,
+  headers?: Record<string, string>
+) => request<T>(base, 'PUT', pathName, { body, headers });
+
+export const del = <T = unknown>(base: string, pathName: string, headers?: Record<string, string>) =>
+  request<T>(base, 'DELETE', pathName, { headers });
+
+/**
+ * A client bound to one base URL — the shape most spec files want, since `base`
+ * is assigned in `beforeAll` and never changes afterwards. Taking a getter
+ * rather than a string is what makes that work: `base` is still empty when the
+ * client is constructed at describe-scope.
+ */
+export function httpClient(getBase: () => string) {
+  return {
+    request: <T = unknown>(method: string, pathName: string, options?: RequestOptions) =>
+      request<T>(getBase(), method, pathName, options),
+    get: <T = unknown>(pathName: string, headers?: Record<string, string>) =>
+      get<T>(getBase(), pathName, headers),
+    post: <T = unknown>(pathName: string, body?: unknown, headers?: Record<string, string>) =>
+      post<T>(getBase(), pathName, body, headers),
+    put: <T = unknown>(pathName: string, body?: unknown, headers?: Record<string, string>) =>
+      put<T>(getBase(), pathName, body, headers),
+    del: <T = unknown>(pathName: string, headers?: Record<string, string>) => del<T>(getBase(), pathName, headers)
+  };
+}
+
+// ============================================================================
+// Parse-wire payloads the specs read back
+// ============================================================================
+
+/**
+ * A record as the Parse-wire routes return it. The stored fields are genuinely
+ * open — a collection is whatever the app writes — so the index signature is
+ * the honest type; what it buys over `any` is that `objectId`, `createdAt` and
+ * `updatedAt` are known to be there and known to be strings.
+ */
+export interface ParseRecord {
+  objectId: string;
+  createdAt?: string;
+  updatedAt?: string;
+  [field: string]: unknown;
+}
+
+/** `GET /classes/:collection` and the BYOB query routes. */
+export interface ParseQueryResult<T = ParseRecord> {
+  results: T[];
+  count?: number;
+}
+
+/** `DELETE /classes/:c/:id`. */
+export interface DeletedResponse {
+  deleted: boolean;
+  objectId: string;
+}
+
+/**
+ * A user as `/users`, `/login` and `/me` return it. The session token rides
+ * only on signup and login — the same "returned exactly once" shape the webhook
+ * secret has — so it is optional rather than assumed present.
+ */
+export interface UserResponse extends ParseRecord {
+  username?: string;
+  sessionToken?: string;
+  /** Present on the error responses these routes share with everything else. */
+  error?: string;
+  code?: number;
+}
+
+/** The error envelope `HttpError` sends. */
+export interface ErrorBody {
+  error: string;
+  code?: number | string;
+  requestId?: string;
+}
