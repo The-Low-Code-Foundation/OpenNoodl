@@ -394,6 +394,25 @@ export function registerBackendReadTools(server: McpServer): void {
       return jsonResult(json);
     })
   );
+
+  server.registerTool(
+    'get_backend_search_config',
+    {
+      title: 'Get backend full-text search config',
+      description:
+        'The full-text search config of a running backend (BAK-008): which collections have search enabled, on ' +
+        'which fields, with which tokenizer, plus whether the engine actually has the SQLite FTS5 extension ' +
+        '(`fts5Available`) — search cannot be enabled without it, and there is no degraded fallback.',
+      inputSchema: {
+        backendId: z.string().optional().describe('Which backend (omit if exactly one is running)')
+      }
+    },
+    guarded(async ({ backendId }) => {
+      const client = await requireBackend(backendId);
+      const { json } = await client.request('GET', '/admin/search');
+      return jsonResult(json);
+    })
+  );
 }
 
 export function registerBackendWriteTools(server: McpServer): void {
@@ -1003,6 +1022,79 @@ export function registerBackendWriteTools(server: McpServer): void {
     guarded(async ({ backendId, archive, safetySnapshot }) => {
       const client = await requireBackend(backendId);
       const { json } = await client.request('POST', '/admin/backups/restore', { archive, safetySnapshot });
+      return jsonResult(json);
+    })
+  );
+
+  server.registerTool(
+    'set_collection_search',
+    {
+      title: 'Enable/configure full-text search on a collection',
+      description:
+        'Enable full-text search (FTS5) on a collection of a running backend (BAK-008): pick the text field(s) to ' +
+        'index and (optionally) a tokenizer (default unicode61 — no language-specific stemming/CJK segmentation). ' +
+        'Rebuilds the search index immediately (safe to call again after changing fields — idempotent). Fields must ' +
+        'already exist as columns on the collection. Fails with a clear error (no silent fallback) if the backend\'s ' +
+        'SQLite engine lacks FTS5 — check `fts5Available` via get_backend_search_config first if unsure.',
+      inputSchema: {
+        backendId: z.string().optional(),
+        collection: z.string().describe('The collection (class) to index — not a system (_-prefixed) collection'),
+        fields: z.array(z.string()).min(1).describe('Text field names on the collection to index'),
+        tokenizer: z.string().optional().describe('FTS5 tokenizer (default "unicode61")')
+      }
+    },
+    guarded(async ({ backendId, collection, fields, tokenizer }) => {
+      const client = await requireBackend(backendId);
+      const body: Record<string, unknown> = { enabled: true, fields };
+      if (tokenizer !== undefined) body.tokenizer = tokenizer;
+      const { json } = await client.request(
+        'PUT',
+        `/admin/search/collections/${encodeURIComponent(collection)}`,
+        body
+      );
+      return jsonResult(json);
+    })
+  );
+
+  server.registerTool(
+    'disable_collection_search',
+    {
+      title: 'Disable full-text search on a collection',
+      description:
+        "Turn off a collection's search config and drop its FTS5 shadow table/triggers. The collection's data is " +
+        'untouched — only the search index goes away.',
+      inputSchema: {
+        backendId: z.string().optional(),
+        collection: z.string().describe('The collection to stop indexing')
+      }
+    },
+    guarded(async ({ backendId, collection }) => {
+      const client = await requireBackend(backendId);
+      const { json } = await client.request('DELETE', `/admin/search/collections/${encodeURIComponent(collection)}`);
+      return jsonResult(json);
+    })
+  );
+
+  server.registerTool(
+    'rebuild_search_index',
+    {
+      title: 'Rebuild a collection\'s search index',
+      description:
+        'Explicitly reindex a collection whose search is already enabled (BAK-008). Idempotent and safe to call ' +
+        'any time (e.g. after a bulk import) — reports rows indexed and elapsed time. Search stays consistent on ' +
+        'its own via SQL triggers on every write path, so this is a recovery/verification tool, not a requirement ' +
+        'after ordinary creates/updates/deletes.',
+      inputSchema: {
+        backendId: z.string().optional(),
+        collection: z.string().describe('The collection to reindex (must already have search enabled)')
+      }
+    },
+    guarded(async ({ backendId, collection }) => {
+      const client = await requireBackend(backendId);
+      const { json } = await client.request(
+        'POST',
+        `/admin/search/collections/${encodeURIComponent(collection)}/rebuild`
+      );
       return jsonResult(json);
     })
   );
