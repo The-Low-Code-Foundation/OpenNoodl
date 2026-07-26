@@ -28,6 +28,11 @@ const HEADER_TABS: HeaderTab[] = [
   { id: 'github', label: 'GitHub' }
 ];
 
+// PAR-001: on macOS the native traffic lights are inset into the 52px bar
+// (trafficLightPosition in main.js); the header reserves a 120px region so the
+// wordmark never renders under them. Windows/Linux have no lights to clear.
+const IS_MAC = typeof navigator !== 'undefined' && /Mac/.test(navigator.platform);
+
 function getAvatarInitials(name?: string | null, login?: string | null): string {
   const source = (name || login || '').trim();
   if (!source) return '';
@@ -46,6 +51,8 @@ export function LauncherHeader({}: LauncherHeaderProps) {
 
   return (
     <header className={css['Root']}>
+      {IS_MAC && <div className={css['Lights']} aria-hidden="true" />}
+
       <div className={css['Wordmark']}>
         <span className={css['BrandDot']} aria-hidden="true" />
         NodeGX
