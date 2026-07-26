@@ -395,6 +395,15 @@ styles**. Styles merge through `mergeMetadata`, which `apply.ts` keeps outside t
 group on purpose (legacy parity) — so the sentence was wrong about the one category a
 user is most likely to want back. The note is now built from what actually landed.
 
+**3. An export claimed it had changed your project** (`11c937c`). Export stages the
+selection into a throwaway project and zips it, so the `ImportResult` it returns is
+shaped like an import's — and the result stage read it literally: *"IN YOUR PROJECT /
+1 component into your project"* and *"Undo removes the imported components and variants
+in one step."* Nothing reached the open project and there was nothing to undo. The
+headline verb was already mode-aware; the body was not. `summarizeResult` now takes the
+mode — heading becomes **PACKED**, and the note reads *"Nothing in your project changed
+— this was written to the archive."*
+
 ### Verified live
 
 | Check | Result |
@@ -406,6 +415,8 @@ user is most likely to want back. The note is now built from what actually lande
 | Text-style collision | ✅ `Heading`, same control, and the style→file edge pulled `fonts/QASource.ttf` with provenance *"needed by Heading"* |
 | Style collisions have no diff | ✅ honest copy: *"Your version will be replaced. A node-level diff is not available for this item."* (residual 6, rendered rather than silent) |
 | QA-5.1 — export | ✅ `Cmd+Shift+E`'s handler opens the same selection surface titled "Export components", no collision decisions |
+| QA-5.3 — export writes a zip | ✅ `export-<guid>.zip` in the chosen directory — **and turned up a third defect, fixed in `11c937c`** (below) |
+| QA-5.4 — cancel the chooser | ✅ *"Export failed / No destination chosen — nothing was written."*, no crash (residual 10 confirmed: accurate, a little stern) |
 
 Undo was driven through `UndoQueue.instance.undo()` — exactly what `Cmd+Z` reaches via
 `nodeGraph.undo()`, minus the toast — because CDP has no key-dispatch verb here.
@@ -449,10 +460,20 @@ an `Image` on `assets/qa-image.png`), `/Shared/Button` (visibly different, 4 nod
 (collides) + `Caption`, one `Group` variant. Both `"version": "4"`, `runtimeVersion` `react19`.
 The committed copies under `tests/testfs/` are the same pair.
 
+### Driving the native directory chooser
+
+QA-5.3/5.4 look unreachable headlessly — the picker is a native dialog and blocks the
+renderer. They are not: stub it.
+
+```js
+const fsmod = __m('./src/editor/src/utils/filesystem.js');   // exports `instance`, no default
+fsmod.instance.chooseDirectory = (cb) => cb('/some/dir');    // or cb(undefined) to cancel
+```
+
+The same trick reaches any `openDialog`/`chooseDirectory` gate in the editor.
+
 ### Still not covered
 
 - QA-3 (prefab install — incl. the deliberate "picker no longer closes itself" change that
   wants Richard's eye), QA-4 (import from URL), QA-6 (edges).
-- QA-5.3/5.4 — the export zip and the cancel-the-directory-chooser message. Both need the
-  **native** directory dialog, which blocks the renderer and cannot be driven over CDP.
 - The `.import-popup-*` dead CSS sweep (residual 2) — `style.css` is still contended.
