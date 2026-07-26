@@ -178,6 +178,33 @@ class BackendManager {
     );
 
     // ==========================================================================
+    // FULL-TEXT SEARCH (BAK-008) — the search panel proxies to /admin/search
+    // ==========================================================================
+
+    ipcMain.handle('backend:getSearchConfig', async (_, id) =>
+      this.requireRunning(id, 'read search config').request('GET', '/admin/search')
+    );
+    ipcMain.handle('backend:setCollectionSearch', async (_, id, collection, config) =>
+      this.requireRunning(id, 'set collection search').request(
+        'PUT',
+        `/admin/search/collections/${encodeURIComponent(collection)}`,
+        config
+      )
+    );
+    ipcMain.handle('backend:disableCollectionSearch', async (_, id, collection) =>
+      this.requireRunning(id, 'disable collection search').request(
+        'DELETE',
+        `/admin/search/collections/${encodeURIComponent(collection)}`
+      )
+    );
+    ipcMain.handle('backend:rebuildCollectionSearch', async (_, id, collection) =>
+      this.requireRunning(id, 'rebuild search index').request(
+        'POST',
+        `/admin/search/collections/${encodeURIComponent(collection)}/rebuild`
+      )
+    );
+
+    // ==========================================================================
     // TRIGGERS (WF-005) — the trigger config UI proxies to /admin/triggers
     // ==========================================================================
 
