@@ -272,6 +272,53 @@ describe('LIB-005 import flow — heuristic links are droppable, facts are not',
   });
 });
 
+describe('LIB-005 import flow — a text style brings its font', () => {
+  // The legacy popup marked a text style's `fileDependencies` when the style was
+  // selected; LIB-004's closure did not, so a text style could arrive with no
+  // font behind it. `plan()` now pulls it, and the edge is recorded so the UI
+  // can say why the font is coming along.
+  const project = {
+    components: [],
+    metadata: { styles: { text: { Heading: { fontFamily: 'fonts/Inter.ttf', fontSize: 24 } } } }
+  };
+
+  it('records a style → file edge with its provenance', () => {
+    const inventory = inventoryOf(project, ['fonts/Inter.ttf']);
+    const link = collectLinks(inventory.edges).find((l) => l.to.name === 'fonts/Inter.ttf')!;
+    expect(link).toBeDefined();
+    expect(sourceKey(link.from)).toBe('style:Heading');
+    expect(link.isInferred).toBe(true);
+  });
+
+  it('pulls the font into the closure when the style is selected', () => {
+    const inventory = inventoryOf(project, ['fonts/Inter.ttf']);
+    const items = buildItems(inventory, project as never);
+    const state = toggleRequested(EMPTY_SELECTION, ['textStyle:Heading'], true);
+
+    const p = plan(inventory, project as never, toImportSelection(items, state.requested), EMPTY_TARGET);
+    const font = p.resources.find((r) => r.name === 'fonts/Inter.ttf')!;
+    expect(font).toBeDefined();
+    expect(font.reason).toBe('dependency');
+    expect(font.requiredBy).toEqual(['Heading']);
+  });
+
+  it('dropping the guess leaves the font behind', () => {
+    const inventory = inventoryOf(project, ['fonts/Inter.ttf']);
+    const items = buildItems(inventory, project as never);
+    const link = collectLinks(inventory.edges).find((l) => l.to.name === 'fonts/Inter.ttf')!;
+
+    const state = toggleDroppedLink(toggleRequested(EMPTY_SELECTION, ['textStyle:Heading'], true), link.key);
+    const p = plan(
+      deriveInventory(inventory, state.droppedLinks),
+      project as never,
+      toImportSelection(items, state.requested),
+      EMPTY_TARGET
+    );
+    expect(p.resources.map((r) => r.name)).not.toContain('fonts/Inter.ttf');
+    expect(p.styles.text.map((t) => t.name)).toContain('Heading');
+  });
+});
+
 describe('LIB-005 import flow — collision resolutions', () => {
   it('translates resolutions into engine plan options', () => {
     const source = load('import_proj1');

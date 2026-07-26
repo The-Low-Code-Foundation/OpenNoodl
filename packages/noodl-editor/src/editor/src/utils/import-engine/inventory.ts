@@ -308,6 +308,19 @@ export function buildInventory(input: BuildInventoryInput): SourceInventory {
           if (typeof val === 'string' && resourceSet.has(val)) files.push(val);
         }
       }
+      // A text style's font is an edge like any other: recorded so the closure
+      // can pull it in and so a UI can say WHY the font is coming along.
+      // Confidence is `inferred` because the evidence is the same string match
+      // the legacy heuristic used — a style property whose value happens to name
+      // a file in the project.
+      for (const file of files) {
+        edges.push({
+          from: { kind: 'style', name },
+          to: { kind: 'file', name: file },
+          confidence: 'inferred',
+          via: `text style "${name}" == resource`
+        });
+      }
       return files.length > 0 ? { name, fileDependencies: files } : { name };
     })
   };

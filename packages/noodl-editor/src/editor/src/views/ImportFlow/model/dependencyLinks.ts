@@ -121,8 +121,9 @@ export function deriveInventory(inventory: SourceInventory, dropped: ReadonlySet
 
   const byComponent = new Map<string, DependencyEdge[]>();
   const byVariant = new Map<string, DependencyEdge[]>();
+  const byStyle = new Map<string, DependencyEdge[]>();
   for (const edge of edges) {
-    const map = edge.from.kind === 'variant' ? byVariant : byComponent;
+    const map = edge.from.kind === 'variant' ? byVariant : edge.from.kind === 'style' ? byStyle : byComponent;
     const key = edge.from.kind === 'variant' ? `${edge.from.typename ?? ''}/${edge.from.name}` : edge.from.name;
     const list = map.get(key) ?? [];
     list.push(edge);
@@ -164,5 +165,13 @@ export function deriveInventory(inventory: SourceInventory, dropped: ReadonlySet
     };
   });
 
-  return { ...inventory, components, variants, edges };
+  // Text styles carry a font file; dropping that link has to be visible to the
+  // planner's text-style closure pass too.
+  const text = inventory.styles.text.map((style) => {
+    if (!style.fileDependencies || style.fileDependencies.length === 0) return style;
+    const files = namesOf(byStyle.get(style.name) ?? [], 'file');
+    return files.length > 0 ? { ...style, fileDependencies: files } : { name: style.name };
+  });
+
+  return { ...inventory, components, variants, styles: { ...inventory.styles, text }, edges };
 }

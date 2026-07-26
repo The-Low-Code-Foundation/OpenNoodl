@@ -157,6 +157,18 @@ export function plan(
     }
   }
 
+  // Text styles pull the font file their definition names. The legacy popup did
+  // this (`_markTextStyle` marked the style's `fileDependencies`); without it a
+  // text style can arrive with no font behind it. Run last, and over the final
+  // set, so a style pulled in by a component is covered too.
+  const textByName = new Map(inventory.styles.text.map((t) => [t.name, t]));
+  for (const name of [...text]) {
+    for (const file of textByName.get(name)?.fileDependencies ?? []) {
+      resources.add(file);
+      requiredBy.add(file, name);
+    }
+  }
+
   // ── Build planned items ────────────────────────────────────────────────────
   const effectiveName = (name: string) => renames[name] ?? name;
   const reasonFor = (name: string, requested: Set<string>): SelectionReason =>
