@@ -12,7 +12,7 @@ higher-level summaries.
 | BAK-005 | Served admin dashboard | ✅ Shipped 2026-07-26 (browser walkthrough + packaged run residual) |
 | BAK-006 | File storage v2 | ⬜ Not started |
 | BAK-007 | Backups / export / promotion | ✅ Complete 2026-07-26 (merge `c8431a0`) |
-| BAK-008 | Full-text search | ⬜ Not started |
+| BAK-008 | Full-text search | ✅ Shipped 2026-07-26 (editor panel + served-dashboard live-smoke residuals) |
 | BAK-009 | Production ops | ⬜ Not started |
 
 **Tier 1 (credibility) is complete** — BAK-001, BAK-002, BAK-003, BAK-007 all shipped.
@@ -180,3 +180,13 @@ credential tiers, refusal messages, delete-table, rate limiting, `--no-admin`.
 - Documented trade-offs: the rate limiter can lock out an operator who shares an
   attacker's apparent client identity; the credential in `sessionStorage` is the
   master key; the palette is a copy of the UIX-001 tokens, not an import.
+
+---
+
+## BAK-008 — Full-Text Search (FTS5)
+
+**Status:** Shipped 2026-07-26. Full writeup in `BAK-008-NOTES.md` (FTS5
+verification, the `search` vs `$text` wire-shape decision and evidence, the
+FTS5 query-syntax sharp edge found and fixed, ACL composition, and the honest
+residual list — editor panel and served-dashboard live-smoke are unverified
+from this worktree; every backend-level property is tested and passing).
