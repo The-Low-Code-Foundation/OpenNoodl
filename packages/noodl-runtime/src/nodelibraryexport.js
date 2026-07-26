@@ -596,6 +596,10 @@ function generateNodeLibrary(nodeRegister) {
         {
           name: 'App State',
           items: ['net.noodl.GlobalStore', 'net.noodl.GlobalStore.Set', 'net.noodl.GlobalStore.Subscribe']
+        },
+        {
+          name: 'Agent Actions',
+          items: ['net.noodl.ActionDispatcher', 'net.noodl.ActionHandler']
         }
       ]
     },

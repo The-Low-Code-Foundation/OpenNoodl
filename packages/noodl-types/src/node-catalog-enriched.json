@@ -28100,6 +28100,678 @@
       }
     },
     {
+      "typeName": "net.noodl.ActionDispatcher",
+      "displayName": "Action Dispatcher",
+      "category": "Data",
+      "isVisual": false,
+      "isDeprecated": false,
+      "inNodePicker": true,
+      "availableIn": [
+        "browser",
+        "cloud"
+      ],
+      "providedBy": "noodl-runtime",
+      "ssr": {
+        "compat": "safe"
+      },
+      "searchTags": [
+        "action",
+        "dispatch",
+        "command",
+        "agent",
+        "ai",
+        "backend",
+        "remote",
+        "control",
+        "workflow",
+        "guided",
+        "tour"
+      ],
+      "inputs": [
+        {
+          "name": "action",
+          "displayName": "Action",
+          "group": "Action",
+          "plug": "input",
+          "type": {
+            "name": "*"
+          },
+          "isSignal": false,
+          "description": "An action object, an array of them to run in order, or JSON text holding either."
+        },
+        {
+          "name": "allowedKeys",
+          "displayName": "Allowed Keys",
+          "group": "Built-in Actions",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "Comma-separated keys the built-in store actions may write. Blank means any key of the configured store. Setting any key also refuses CLEAR_STORE."
+        },
+        {
+          "name": "builtIns",
+          "displayName": "Enabled Built-ins",
+          "group": "Built-in Actions",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "Comma-separated built-in action names this dispatcher may execute: SET_STORE, MERGE_STORE, DELETE_STORE_KEY, CLEAR_STORE. Empty — the default — means a server cannot write to the store at all; everything must go through an Action Handler you wired."
+        },
+        {
+          "name": "cancel",
+          "displayName": "Cancel All",
+          "group": "Actions",
+          "plug": "input",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "isSignal": true
+        },
+        {
+          "name": "channel",
+          "displayName": "Channel",
+          "group": "Dispatcher",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "default": "default",
+          "description": "Names the handler registry this dispatcher draws on. Leave as \"default\" unless two independent flows must not see each other."
+        },
+        {
+          "name": "dispatch",
+          "displayName": "Dispatch",
+          "group": "Actions",
+          "plug": "input",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "isSignal": true
+        },
+        {
+          "name": "handlerTimeout",
+          "displayName": "Handler Timeout (ms)",
+          "group": "Delivery",
+          "plug": "input",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false,
+          "default": 30000,
+          "description": "How long a handler has to signal Complete or Fail before the action is failed. 0 waits forever."
+        },
+        {
+          "name": "maxQueueSize",
+          "displayName": "Max Queue Size",
+          "group": "Delivery",
+          "plug": "input",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false,
+          "default": 100,
+          "description": "Bound on queued actions. Overflow refuses the newest so accepted actions keep their order. 0 is unbounded."
+        },
+        {
+          "name": "rateLimit",
+          "displayName": "Rate Limit",
+          "group": "Delivery",
+          "plug": "input",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false,
+          "default": 0,
+          "description": "Max actions executed per window. 0 is unlimited. Excess actions are refused, not delayed."
+        },
+        {
+          "name": "rateLimitWindow",
+          "displayName": "Rate Limit Window (ms)",
+          "group": "Delivery",
+          "plug": "input",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false,
+          "default": 60000
+        },
+        {
+          "name": "storeName",
+          "displayName": "Store Name",
+          "group": "Built-in Actions",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "default": "app",
+          "description": "The only store the built-in actions can write. A store named inside an incoming action is ignored — the graph chooses the store, not the server."
+        },
+        {
+          "name": "waitForHandler",
+          "displayName": "Wait For Handler (ms)",
+          "group": "Delivery",
+          "plug": "input",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false,
+          "default": 2000,
+          "description": "How long an action waits for its handler to appear before being refused as unknown — the window in which a component can still mount. 0 refuses immediately. Everything behind it waits too, because order is preserved."
+        }
+      ],
+      "outputs": [
+        {
+          "name": "actionId",
+          "displayName": "Action Id",
+          "group": "Data",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "actionType",
+          "displayName": "Action Type",
+          "group": "Data",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "cancelled",
+          "displayName": "Cancelled",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true
+        },
+        {
+          "name": "cancelledCount",
+          "displayName": "Cancelled Count",
+          "group": "Status",
+          "plug": "output",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true
+        },
+        {
+          "name": "completedCount",
+          "displayName": "Completed Count",
+          "group": "Status",
+          "plug": "output",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "dispatched",
+          "displayName": "Dispatched",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true
+        },
+        {
+          "name": "failed",
+          "displayName": "Failed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true
+        },
+        {
+          "name": "failedCount",
+          "displayName": "Failed Count",
+          "group": "Status",
+          "plug": "output",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "idle",
+          "displayName": "Idle",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true
+        },
+        {
+          "name": "isExecuting",
+          "displayName": "Is Executing",
+          "group": "Status",
+          "plug": "output",
+          "type": {
+            "name": "boolean"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "lastError",
+          "displayName": "Last Error",
+          "group": "Status",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "payload",
+          "displayName": "Payload",
+          "group": "Data",
+          "plug": "output",
+          "type": {
+            "name": "*"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "queueSize",
+          "displayName": "Queue Size",
+          "group": "Status",
+          "plug": "output",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "refusalMessage",
+          "displayName": "Refusal Message",
+          "group": "Refusals",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "refusalReason",
+          "displayName": "Refusal Reason",
+          "group": "Refusals",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "refused",
+          "displayName": "Refused",
+          "group": "Refusals",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true
+        },
+        {
+          "name": "refusedCount",
+          "displayName": "Refused Count",
+          "group": "Status",
+          "plug": "output",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "refusedType",
+          "displayName": "Refused Type",
+          "group": "Refusals",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "result",
+          "displayName": "Result",
+          "group": "Data",
+          "plug": "output",
+          "type": {
+            "name": "*"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "waitingFor",
+          "displayName": "Waiting For",
+          "group": "Status",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false
+        }
+      ],
+      "dynamicPorts": null,
+      "enrichment": {
+        "typeName": "net.noodl.ActionDispatcher",
+        "summary": "Action Dispatcher: executes actions a backend sent, restricted to a vocabulary this graph explicitly registered.",
+        "description": "Turns messages like `{ \"type\": \"OPEN_SESSION\", \"sessionId\": \"123\" }` into things that actually happen in the app, so a server-side agent can drive the UI instead of only sending data to display. The vocabulary is **closed**: an action runs only if an Action Handler node registered its type, or it is one of the four built-in store actions (`SET_STORE`, `MERGE_STORE`, `DELETE_STORE_KEY`, `CLEAR_STORE`) and the author listed that name in `builtIns`, which is empty by default. Everything else is refused with a reason on `refusalReason` and a `refused` signal — never silently ignored, and never executed. Actions run strictly one at a time in arrival order, so an array of actions is a multi-step flow; the queue is bounded and overflow refuses the newest rather than reordering what was accepted. An action whose handler has not mounted yet waits up to `waitForHandler` milliseconds rather than losing a mount race, and `waitingFor` names it while it waits.",
+        "whenToUse": "Whenever a backend needs to cause something rather than just report something: an AI agent that says \"let me open that for you\", a guided tour driven from the server, a workflow whose steps arrive over a stream. Wire a Server-Sent Events or WebSocket node's `data` to `action` and its `onMessage` to `dispatch`. Do not use it as a general message router for data you are simply going to display — wire that straight to its consumer.",
+        "ports": {
+          "channel": "Names the handler registry this dispatcher draws on. Only handlers on the same channel are reachable. Leave as `default` unless two independent flows must not see each other.",
+          "action": "One action object, an array of them to run in order, or JSON text holding either. A frame's raw text works as well as its parsed value.",
+          "dispatch": "Admits the current action. Acts immediately rather than at end of frame, so several actions arriving in one frame all run instead of coalescing to the last.",
+          "cancel": "Discards everything queued and abandons anything in flight, reporting the count on `cancelledCount`.",
+          "builtIns": "Comma-separated built-in action names this dispatcher may execute. Empty — the default — means a server cannot write the store at all. A name that is not a built-in is reported on `lastError` and grants nothing.",
+          "storeName": "The only store the built-in actions can write. A `storeName` inside an incoming action is ignored: the graph chooses the store, not the server.",
+          "allowedKeys": "Comma-separated keys the built-in store actions may write. Blank means any key of the configured store. Setting any key also refuses `CLEAR_STORE`, which would remove keys outside the list.",
+          "handlerTimeout": "How long a handler has to signal Complete or Fail before the action fails and the queue moves on. 0 waits forever.",
+          "waitForHandler": "How long an action waits for its handler to appear before being refused as unknown. Everything behind it waits too, because order is preserved. 0 refuses immediately.",
+          "maxQueueSize": "Bound on queued actions; overflow refuses the newest. 0 is unbounded, which a hostile or looping server can grow without limit.",
+          "rateLimit": "Max actions executed per window; excess is refused, not delayed. 0 is unlimited.",
+          "rateLimitWindow": "The window `rateLimit` counts over.",
+          "actionType": "Type of the action currently executing, or the last one that did.",
+          "actionId": "The action's `id` if it carried one, else a generated one. Useful for acknowledging back to the server.",
+          "payload": "The action's `payload`, else its `data`, else the whole action object.",
+          "result": "What the completing handler or built-in returned.",
+          "dispatched": "Fires when an action starts executing — after it passed every check.",
+          "completed": "Fires when an action's handlers all completed.",
+          "failed": "Fires when a handler failed, threw, or timed out. The action was allowed; it just did not work.",
+          "idle": "Fires when the queue drains. This is how a multi-step flow knows it finished.",
+          "refused": "Fires when an action was **not** executed. Wire this — it is the only way an author sees that a server asked for something disallowed.",
+          "refusedType": "The type that was refused, or empty when the message was too malformed to have one.",
+          "refusalReason": "One of `invalid`, `unknown`, `not-allowed`, `rate-limited`, `queue-full`.",
+          "refusalMessage": "The human-readable reason, safe to show in a debug panel.",
+          "lastError": "The most recent failure or refusal message.",
+          "queueSize": "Actions waiting behind the one in flight.",
+          "isExecuting": "Whether an action is running right now.",
+          "waitingFor": "The action type held at the head of the queue because no handler has registered for it yet.",
+          "completedCount": "Actions completed since the node was created.",
+          "failedCount": "Actions that were allowed but did not work.",
+          "refusedCount": "Actions refused. A number that climbs unexpectedly means the server and the graph disagree about the vocabulary.",
+          "cancelledCount": "Actions discarded by `cancel`.",
+          "cancelled": "Fires after a cancel."
+        },
+        "examples": [
+          "agent-server-driven-actions"
+        ],
+        "patterns": [
+          "Server-Sent Events `data` → `action`, `onMessage` → `dispatch`: an agent stream that drives the UI.",
+          "One Action Handler per thing the server may do, each wired to the nodes that do it — that set of handlers *is* the permission list, visible on the canvas.",
+          "`refusalReason` and `refusalMessage` → a Text node in a debug group: the fastest way to find out that the server is sending `OPEN_VIEW` while the graph registered `OPEN_SESSION`.",
+          "Send an array of actions for a guided tour; set `autoComplete` off on the handlers that must finish before the next step starts, and wire `idle` to whatever runs at the end.",
+          "Enable `SET_STORE` with `allowedKeys` naming just the view keys the agent may steer, so a store write cannot reach an auth token that happens to live in the same store."
+        ],
+        "antiPatterns": [
+          "Enabling built-ins with `allowedKeys` blank on a store that also holds credentials or ids — a server can then overwrite any key in it.",
+          "Registering a catch-all handler that reads `payload.command` and switches on it: that re-opens the open vocabulary this node exists to close. One handler per action type.",
+          "Leaving `refused` unwired. A dispatcher that refuses everything looks identical to a dead stream if nothing shows the refusals.",
+          "Wiring `dispatch` from a signal that fires before `action` is set — the previous action runs again.",
+          "Setting `maxQueueSize` to 0 on a stream you do not control."
+        ],
+        "relatedNodes": [
+          "net.noodl.ActionHandler",
+          "net.noodl.SSE",
+          "net.noodl.WebSocket",
+          "net.noodl.GlobalStore",
+          "net.noodl.GlobalStore.Set"
+        ]
+      }
+    },
+    {
+      "typeName": "net.noodl.ActionHandler",
+      "displayName": "Action Handler",
+      "category": "Data",
+      "isVisual": false,
+      "isDeprecated": false,
+      "inNodePicker": true,
+      "availableIn": [
+        "browser",
+        "cloud"
+      ],
+      "providedBy": "noodl-runtime",
+      "ssr": {
+        "compat": "safe"
+      },
+      "searchTags": [
+        "action",
+        "handler",
+        "register",
+        "dispatch",
+        "agent",
+        "ai",
+        "backend",
+        "remote",
+        "command"
+      ],
+      "inputs": [
+        {
+          "name": "actionType",
+          "displayName": "Action Type",
+          "group": "Handler",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "The exact action type this handler accepts, e.g. OPEN_SESSION. Registering it is what makes it executable at all."
+        },
+        {
+          "name": "autoComplete",
+          "displayName": "Auto Complete",
+          "group": "Completion",
+          "plug": "input",
+          "type": {
+            "name": "boolean"
+          },
+          "isSignal": false,
+          "default": true,
+          "description": "Report the action complete as soon as Trigger has been sent. Turn off when a later step must wait for this one to finish, and wire Complete or Fail yourself."
+        },
+        {
+          "name": "channel",
+          "displayName": "Channel",
+          "group": "Handler",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "default": "default",
+          "description": "Must match the Channel on the Action Dispatcher that should be able to reach this handler."
+        },
+        {
+          "name": "complete",
+          "displayName": "Complete",
+          "group": "Actions",
+          "plug": "input",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "isSignal": true
+        },
+        {
+          "name": "enabled",
+          "displayName": "Enabled",
+          "group": "Handler",
+          "plug": "input",
+          "type": {
+            "name": "boolean"
+          },
+          "isSignal": false,
+          "default": true,
+          "description": "Turning this off unregisters the handler, so the action is refused as unknown rather than quietly ignored."
+        },
+        {
+          "name": "errorMessage",
+          "displayName": "Error Message",
+          "group": "Completion",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "fail",
+          "displayName": "Fail",
+          "group": "Actions",
+          "plug": "input",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "isSignal": true
+        },
+        {
+          "name": "result",
+          "displayName": "Result",
+          "group": "Completion",
+          "plug": "input",
+          "type": {
+            "name": "*"
+          },
+          "isSignal": false,
+          "description": "Handed back to the dispatcher as the Result of this action when it completes."
+        }
+      ],
+      "outputs": [
+        {
+          "name": "actionId",
+          "displayName": "Action Id",
+          "group": "Data",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "error",
+          "displayName": "Error",
+          "group": "Status",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "payload",
+          "displayName": "Payload",
+          "group": "Data",
+          "plug": "output",
+          "type": {
+            "name": "*"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "registered",
+          "displayName": "Registered",
+          "group": "Status",
+          "plug": "output",
+          "type": {
+            "name": "boolean"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "trigger",
+          "displayName": "Trigger",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true
+        },
+        {
+          "name": "triggeredCount",
+          "displayName": "Triggered Count",
+          "group": "Status",
+          "plug": "output",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false
+        }
+      ],
+      "dynamicPorts": null,
+      "enrichment": {
+        "typeName": "net.noodl.ActionHandler",
+        "summary": "Action Handler: declares one action type a backend is allowed to trigger, and what happens when it does.",
+        "description": "Registers a single action type with the Action Dispatcher's registry, and fires `trigger` with the action's `payload` whenever a matching action is dispatched. That registration is what makes the action executable at all — there is no separate permission list to keep in step, so an action a graph does not handle simply cannot happen. Registration follows the inputs automatically: no Register signal to remember, and an action that arrives just before the component mounts waits for it rather than being refused. By default the action is reported complete as soon as `trigger` has been sent and everything wired to it has run; turn `autoComplete` off and wire `complete` or `fail` yourself when a later step must wait for this one, or when the step can genuinely fail. Built-in action names (`SET_STORE`, `MERGE_STORE`, `DELETE_STORE_KEY`, `CLEAR_STORE`) are reserved and cannot be claimed here — attempting it reports on `error` and registers nothing.",
+        "whenToUse": "For every action a backend should be able to trigger, one node each. This is also the only way to grant capabilities the dispatcher has no built-in for — navigation, opening a panel, scrolling, showing a toast, refreshing a query — by wiring `trigger` to the nodes that already do those jobs. Be deliberate: whatever is downstream of `trigger` is something a remote server can cause.",
+        "ports": {
+          "channel": "Must match the Channel on the Action Dispatcher that should be able to reach this handler.",
+          "actionType": "The exact type this handler accepts, e.g. `OPEN_SESSION`. Case- and spelling-sensitive; a mismatch shows up as a refusal on the dispatcher, not here.",
+          "enabled": "Turning this off unregisters the handler, so the action is refused as unknown rather than quietly ignored. Useful for gating an action behind a signed-in state.",
+          "autoComplete": "Report the action complete as soon as Trigger has been sent. Turn off when a later step must wait for this one, and wire Complete or Fail.",
+          "result": "Handed back to the dispatcher as its `result` when this action completes.",
+          "errorMessage": "Handed back to the dispatcher as its `lastError` when Fail is signalled.",
+          "complete": "Marks the in-flight action done so the next queued action can start. Signalling it with nothing in flight reports on `error`.",
+          "fail": "Marks the in-flight action failed. The dispatcher fires `failed` and moves on.",
+          "trigger": "Fires when a matching action is dispatched. The payload is already set when it fires.",
+          "payload": "The action's `payload`, else its `data`, else the whole action object — so `{type, sessionId}` gives you an object with `sessionId` on it.",
+          "actionId": "The dispatched action's id, for correlating an acknowledgement back to the server.",
+          "registered": "Whether this handler is currently in the registry. False means the action cannot run at all.",
+          "triggeredCount": "How many times this handler has run.",
+          "error": "Why registration failed, or that Complete/Fail was signalled with nothing in flight."
+        },
+        "examples": [
+          "agent-server-driven-actions"
+        ],
+        "patterns": [
+          "`trigger` → Navigate, `payload` → Set Variable: the server can open a screen. A real capability, granted visibly by this one wire.",
+          "`autoComplete` off, `trigger` → a cloud function call, its Success → `complete` and Failure → `fail`: the dispatcher then holds the rest of the flow until the call returns, and reports the failure if it does not.",
+          "`enabled` driven from a signed-in flag, so an action becomes reachable only once the user is authenticated.",
+          "Two handlers with the same `actionType` both run, in registration order — useful for a shared side effect such as logging every occurrence of one action."
+        ],
+        "antiPatterns": [
+          "One handler with a generic type such as `RUN`, switching on a field of the payload. That rebuilds the open vocabulary the dispatcher closed; the refusal path then never fires for anything.",
+          "Leaving `autoComplete` on for a step a later step depends on — the flow moves to the next action while this one is still working.",
+          "Turning `autoComplete` off and forgetting to wire `complete`: the action sits until the dispatcher's `handlerTimeout` and fails.",
+          "Wiring `trigger` to something destructive without any confirmation in between."
+        ],
+        "relatedNodes": [
+          "net.noodl.ActionDispatcher",
+          "net.noodl.GlobalStore.Set",
+          "net.noodl.SSE",
+          "net.noodl.WebSocket"
+        ]
+      }
+    },
+    {
       "typeName": "net.noodl.ComponentObject",
       "displayName": "Component Object",
       "category": "Component Utilities",
@@ -42854,116 +43526,6 @@
       }
     },
     {
-      "typeName": "net.noodl.user.RequestMagicLink",
-      "displayName": "Request Magic Link",
-      "category": "Cloud Services",
-      "isVisual": false,
-      "isDeprecated": false,
-      "inNodePicker": false,
-      "availableIn": [
-        "browser"
-      ],
-      "providedBy": "noodl-viewer-react",
-      "ssr": {
-        "compat": "partial",
-        "note": "Sends a request from the browser; a server render never triggers it."
-      },
-      "inputs": [
-        {
-          "name": "email",
-          "displayName": "Email",
-          "group": "General",
-          "plug": "input",
-          "type": {
-            "name": "string"
-          },
-          "isSignal": false
-        },
-        {
-          "name": "redirect",
-          "displayName": "Redirect",
-          "group": "General",
-          "plug": "input",
-          "type": {
-            "name": "string"
-          },
-          "isSignal": false
-        },
-        {
-          "name": "send",
-          "displayName": "Do",
-          "group": "Actions",
-          "plug": "input",
-          "type": {
-            "name": "signal",
-            "allowConnectionsOnly": true
-          },
-          "isSignal": true
-        }
-      ],
-      "outputs": [
-        {
-          "name": "error",
-          "displayName": "Error",
-          "group": "Error",
-          "plug": "output",
-          "type": {
-            "name": "string"
-          },
-          "isSignal": false
-        },
-        {
-          "name": "failure",
-          "displayName": "Failure",
-          "group": "Events",
-          "plug": "output",
-          "type": {
-            "name": "signal"
-          },
-          "isSignal": true
-        },
-        {
-          "name": "success",
-          "displayName": "Success",
-          "group": "Events",
-          "plug": "output",
-          "type": {
-            "name": "signal"
-          },
-          "isSignal": true
-        }
-      ],
-      "dynamicPorts": null,
-      "enrichment": {
-        "typeName": "net.noodl.user.RequestMagicLink",
-        "summary": "Asks the backend to email a one-click sign-in link. Succeeds identically whether or not the address has an account.",
-        "description": "Request Magic Link posts `email` (string value) to the backend's `/auth/magic-link` when `send` (Do, signal) is triggered. The backend mails a single-use, short-lived link; clicking it signs the user in on the page named by `redirect` (defaulting to the page the request was made from), where the runtime picks up the one-time code and establishes an ordinary session. `success` (signal) means THE REQUEST WAS ACCEPTED — never that an account exists. The endpoint answers identically for known and unknown addresses on purpose, because a public endpoint that answers differently is an account-existence oracle. `failure` (signal) with `error` (string value) means the request itself failed: no backend configured, a network error, or the rate limit.",
-        "whenToUse": "For passwordless sign-in, and as a password-free recovery path on backends that use provider sign-in. Requires the backend to have SMTP configured (BAK-002) and magic links enabled in the Auth section — with either missing, the request is still accepted and no mail is sent, which is deliberate anti-enumeration and shows up in the backend's log rather than in the app.",
-        "ports": {
-          "send": "Signal input (displayed 'Do'); posts the request after pending input updates.",
-          "email": "String value; the address to mail.",
-          "redirect": "String value; where the link should land the user. Defaults to the current page. Must be same-origin with the backend or on its redirectAllowList — an off-list target means no mail is sent.",
-          "success": "Signal; the request was accepted. Show 'if that address has an account, a link is on its way'.",
-          "failure": "Signal; the request could not be made. Show `error`.",
-          "error": "String value with the reason the request failed."
-        },
-        "patterns": [
-          "Text Input `text` → `email`, Button `onClick` → `send`, `success` → a neutral confirmation message.",
-          "Put a Sign In With node on the landing page named by `redirect` so the app can react to the click's outcome."
-        ],
-        "antiPatterns": [
-          "Showing 'check your inbox' only when the account exists — this node cannot tell you that, and a UI that appears to know re-creates the oracle the backend removed.",
-          "Treating `success` as 'signed in'. The sign-in happens when the user clicks the link, on a later page load."
-        ],
-        "relatedNodes": [
-          "net.noodl.user.SignInWith",
-          "net.noodl.user.User",
-          "net.noodl.user.LogIn",
-          "net.noodl.user.RequestPasswordReset"
-        ]
-      }
-    },
-    {
       "typeName": "net.noodl.user.RequestPasswordReset",
       "displayName": "Request Password Reset",
       "category": "Cloud Services",
@@ -43325,140 +43887,6 @@
         "relatedNodes": [
           "net.noodl.user.User",
           "net.noodl.user.SignUp"
-        ]
-      }
-    },
-    {
-      "typeName": "net.noodl.user.SignInWith",
-      "displayName": "Sign In With",
-      "category": "Cloud Services",
-      "isVisual": false,
-      "isDeprecated": false,
-      "inNodePicker": false,
-      "availableIn": [
-        "browser"
-      ],
-      "providedBy": "noodl-viewer-react",
-      "ssr": {
-        "compat": "partial",
-        "note": "Sign-in is a browser redirect; a server render can lay the button out but never completes a flow."
-      },
-      "inputs": [
-        {
-          "name": "provider",
-          "displayName": "Provider",
-          "group": "General",
-          "plug": "input",
-          "type": {
-            "name": "string"
-          },
-          "isSignal": false
-        },
-        {
-          "name": "redirect",
-          "displayName": "Redirect",
-          "group": "General",
-          "plug": "input",
-          "type": {
-            "name": "string"
-          },
-          "isSignal": false
-        },
-        {
-          "name": "signIn",
-          "displayName": "Do",
-          "group": "Actions",
-          "plug": "input",
-          "type": {
-            "name": "signal",
-            "allowConnectionsOnly": true
-          },
-          "isSignal": true
-        }
-      ],
-      "outputs": [
-        {
-          "name": "error",
-          "displayName": "Error",
-          "group": "Error",
-          "plug": "output",
-          "type": {
-            "name": "string"
-          },
-          "isSignal": false
-        },
-        {
-          "name": "failure",
-          "displayName": "Failure",
-          "group": "Events",
-          "plug": "output",
-          "type": {
-            "name": "signal"
-          },
-          "isSignal": true
-        },
-        {
-          "name": "notice",
-          "displayName": "Notice",
-          "group": "General",
-          "plug": "output",
-          "type": {
-            "name": "string"
-          },
-          "isSignal": false
-        },
-        {
-          "name": "signingIn",
-          "displayName": "Signing In",
-          "group": "States",
-          "plug": "output",
-          "type": {
-            "name": "boolean"
-          },
-          "isSignal": false
-        },
-        {
-          "name": "success",
-          "displayName": "Success",
-          "group": "Events",
-          "plug": "output",
-          "type": {
-            "name": "signal"
-          },
-          "isSignal": true
-        }
-      ],
-      "dynamicPorts": null,
-      "enrichment": {
-        "typeName": "net.noodl.user.SignInWith",
-        "summary": "Signs a user in via an identity provider (Google, GitHub, any OpenID Connect issuer) configured on the backend. Redirects away.",
-        "description": "Sign In With drives BAK-004's redirect flow. Triggering `signIn` (Do, signal) sends the whole browser to the backend's `/oauth/<provider>/start`, which redirects on to the identity provider — so nothing downstream of `Do` runs, and the graph on that page is torn down. The provider sends the user back to the URL given in `redirect` (defaulting to the page they left) carrying a one-time code, which the runtime's user service exchanges for an ordinary session before any node sees it. On that LATER page load this node fires `success` (signal) or `failure` (signal) with `error` (string value); `signingIn` (boolean value) is true while the exchange is in flight. `notice` (string value) is set in the one case where a sign-in succeeds but the user should be told something: the backend linked this identity to an existing account whose email address had never been verified, and removed that account's old password.",
-        "whenToUse": "For 'Sign in with Google/GitHub/SSO' buttons on an app served by a NodeGX backend. Configure the provider first in the Backend Services panel's Auth section (or via MCP) — a provider that is not configured refuses the redirect with an explanation rather than sending the user to a broken provider page. Use Log In for username/password, Request Magic Link for passwordless email, and the User node to read who is signed in.",
-        "ports": {
-          "signIn": "Signal input (displayed 'Do'); NAVIGATES THE BROWSER AWAY after pending input updates. Treat it as the end of the flow, not a step in it.",
-          "provider": "String value; the provider id configured on the backend ('google', 'github', or whatever the operator named their OIDC provider). Read the list from GET /auth/providers.",
-          "redirect": "String value; where the provider should send the browser back to. Defaults to the current page. Must be same-origin with the backend or listed in the backend's redirectAllowList, otherwise the sign-in is refused before it starts.",
-          "success": "Signal; fires on the RETURNING page load once the session exists.",
-          "failure": "Signal; fires on the returning page load when the sign-in was refused, cancelled, or could not be completed.",
-          "signingIn": "Boolean value; true between the return landing and the session being established. Drive a spinner from this.",
-          "error": "String value holding the reason the last sign-in failed.",
-          "notice": "String value; non-empty only when the backend linked to an existing unverified account and revoked its password. Show it."
-        },
-        "patterns": [
-          "Put the node on both the page the user leaves from and the page they come back to — `Do` on the first, `success`/`failure` on the second. Pointing `redirect` at the same page makes one node do both.",
-          "`success` → navigation, `error` → a Text node's `text`: the whole flow in three connections.",
-          "`signingIn` → a Group's `visible`: the return leg is a network round trip, so there is a real moment to cover."
-        ],
-        "antiPatterns": [
-          "Wiring anything downstream of `Do` and expecting it to run — the page is gone.",
-          "Reading logged-in state from `success` alone; the User node's `authenticated` boolean is the state, and it also covers sessions restored on reload.",
-          "Hard-coding an app URL in `redirect` that is not on the backend's redirectAllowList — the refusal happens at the start of the flow, not the end."
-        ],
-        "relatedNodes": [
-          "net.noodl.user.User",
-          "net.noodl.user.LogIn",
-          "net.noodl.user.RequestMagicLink",
-          "net.noodl.user.LogOut"
         ]
       }
     },
@@ -46187,6 +46615,134 @@
     }
   },
   "examples": [
+    {
+      "id": "agent-server-driven-actions",
+      "title": "Agent actions: let a backend drive the UI, but only where you allowed it",
+      "description": "The idiomatic shape for a backend that sends commands rather than data. Server-Sent Events delivers action objects; Action Dispatcher decides whether each one may run. The vocabulary is closed: `OPEN_SESSION` runs because the Action Handler registered it, `SET_STORE` runs because it is named in `builtIns` and its key is in `allowedKeys`, and anything else is refused with a reason on `refusalReason` — which is wired to a Text node, because a refusal nobody can see is the failure mode this whole design exists to avoid. The handler has `autoComplete` off and completes only once its Set Global Store finished, so an array of actions runs as an ordered flow rather than all at once.",
+      "demonstrates": [
+        "net.noodl.ActionDispatcher",
+        "net.noodl.ActionHandler"
+      ],
+      "components": [
+        {
+          "name": "/Agent Actions",
+          "nodes": [
+            {
+              "id": "root",
+              "type": "Group",
+              "label": "Agent surface",
+              "parameters": {
+                "flexDirection": "column"
+              },
+              "children": [
+                "status_text",
+                "refusal_text"
+              ]
+            },
+            {
+              "id": "status_text",
+              "type": "Text",
+              "label": "Stream status",
+              "parent": "root"
+            },
+            {
+              "id": "refusal_text",
+              "type": "Text",
+              "label": "Refused action",
+              "parent": "root"
+            },
+            {
+              "id": "action_stream",
+              "type": "net.noodl.SSE",
+              "label": "Agent action stream",
+              "parameters": {
+                "url": "https://api.example.com/agent/actions",
+                "autoConnect": true,
+                "autoReconnect": true,
+                "reconnectOnStreamEnd": true
+              }
+            },
+            {
+              "id": "dispatcher",
+              "type": "net.noodl.ActionDispatcher",
+              "label": "Agent actions",
+              "parameters": {
+                "channel": "agent",
+                "builtIns": "SET_STORE",
+                "storeName": "app",
+                "allowedKeys": "view,highlightId",
+                "waitForHandler": 2000,
+                "handlerTimeout": 10000,
+                "maxQueueSize": 50
+              }
+            },
+            {
+              "id": "open_session",
+              "type": "net.noodl.ActionHandler",
+              "label": "Allow OPEN_SESSION",
+              "parameters": {
+                "channel": "agent",
+                "actionType": "OPEN_SESSION",
+                "autoComplete": false
+              }
+            },
+            {
+              "id": "store_session",
+              "type": "net.noodl.GlobalStore.Set",
+              "label": "Selected session",
+              "parameters": {
+                "storeName": "app",
+                "key": "selectedSession"
+              }
+            }
+          ],
+          "connections": [
+            {
+              "fromId": "action_stream",
+              "fromProperty": "data",
+              "toId": "dispatcher",
+              "toProperty": "action"
+            },
+            {
+              "fromId": "action_stream",
+              "fromProperty": "onMessage",
+              "toId": "dispatcher",
+              "toProperty": "dispatch"
+            },
+            {
+              "fromId": "action_stream",
+              "fromProperty": "connectionState",
+              "toId": "status_text",
+              "toProperty": "text"
+            },
+            {
+              "fromId": "dispatcher",
+              "fromProperty": "refusalMessage",
+              "toId": "refusal_text",
+              "toProperty": "text"
+            },
+            {
+              "fromId": "open_session",
+              "fromProperty": "payload",
+              "toId": "store_session",
+              "toProperty": "value"
+            },
+            {
+              "fromId": "open_session",
+              "fromProperty": "trigger",
+              "toId": "store_session",
+              "toProperty": "set"
+            },
+            {
+              "fromId": "store_session",
+              "fromProperty": "completed",
+              "toId": "open_session",
+              "toProperty": "complete"
+            }
+          ]
+        }
+      ]
+    },
     {
       "id": "agent-sse-chat-stream",
       "title": "Agent chat: stream an AI answer token by token",

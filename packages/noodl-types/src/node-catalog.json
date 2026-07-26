@@ -25693,6 +25693,570 @@
       }
     },
     {
+      "typeName": "net.noodl.ActionDispatcher",
+      "displayName": "Action Dispatcher",
+      "category": "Data",
+      "isVisual": false,
+      "isDeprecated": false,
+      "inNodePicker": true,
+      "availableIn": [
+        "browser",
+        "cloud"
+      ],
+      "providedBy": "noodl-runtime",
+      "ssr": {
+        "compat": "safe"
+      },
+      "searchTags": [
+        "action",
+        "dispatch",
+        "command",
+        "agent",
+        "ai",
+        "backend",
+        "remote",
+        "control",
+        "workflow",
+        "guided",
+        "tour"
+      ],
+      "inputs": [
+        {
+          "name": "action",
+          "displayName": "Action",
+          "group": "Action",
+          "plug": "input",
+          "type": {
+            "name": "*"
+          },
+          "isSignal": false,
+          "description": "An action object, an array of them to run in order, or JSON text holding either."
+        },
+        {
+          "name": "allowedKeys",
+          "displayName": "Allowed Keys",
+          "group": "Built-in Actions",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "Comma-separated keys the built-in store actions may write. Blank means any key of the configured store. Setting any key also refuses CLEAR_STORE."
+        },
+        {
+          "name": "builtIns",
+          "displayName": "Enabled Built-ins",
+          "group": "Built-in Actions",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "Comma-separated built-in action names this dispatcher may execute: SET_STORE, MERGE_STORE, DELETE_STORE_KEY, CLEAR_STORE. Empty — the default — means a server cannot write to the store at all; everything must go through an Action Handler you wired."
+        },
+        {
+          "name": "cancel",
+          "displayName": "Cancel All",
+          "group": "Actions",
+          "plug": "input",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "isSignal": true
+        },
+        {
+          "name": "channel",
+          "displayName": "Channel",
+          "group": "Dispatcher",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "default": "default",
+          "description": "Names the handler registry this dispatcher draws on. Leave as \"default\" unless two independent flows must not see each other."
+        },
+        {
+          "name": "dispatch",
+          "displayName": "Dispatch",
+          "group": "Actions",
+          "plug": "input",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "isSignal": true
+        },
+        {
+          "name": "handlerTimeout",
+          "displayName": "Handler Timeout (ms)",
+          "group": "Delivery",
+          "plug": "input",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false,
+          "default": 30000,
+          "description": "How long a handler has to signal Complete or Fail before the action is failed. 0 waits forever."
+        },
+        {
+          "name": "maxQueueSize",
+          "displayName": "Max Queue Size",
+          "group": "Delivery",
+          "plug": "input",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false,
+          "default": 100,
+          "description": "Bound on queued actions. Overflow refuses the newest so accepted actions keep their order. 0 is unbounded."
+        },
+        {
+          "name": "rateLimit",
+          "displayName": "Rate Limit",
+          "group": "Delivery",
+          "plug": "input",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false,
+          "default": 0,
+          "description": "Max actions executed per window. 0 is unlimited. Excess actions are refused, not delayed."
+        },
+        {
+          "name": "rateLimitWindow",
+          "displayName": "Rate Limit Window (ms)",
+          "group": "Delivery",
+          "plug": "input",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false,
+          "default": 60000
+        },
+        {
+          "name": "storeName",
+          "displayName": "Store Name",
+          "group": "Built-in Actions",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "default": "app",
+          "description": "The only store the built-in actions can write. A store named inside an incoming action is ignored — the graph chooses the store, not the server."
+        },
+        {
+          "name": "waitForHandler",
+          "displayName": "Wait For Handler (ms)",
+          "group": "Delivery",
+          "plug": "input",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false,
+          "default": 2000,
+          "description": "How long an action waits for its handler to appear before being refused as unknown — the window in which a component can still mount. 0 refuses immediately. Everything behind it waits too, because order is preserved."
+        }
+      ],
+      "outputs": [
+        {
+          "name": "actionId",
+          "displayName": "Action Id",
+          "group": "Data",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "actionType",
+          "displayName": "Action Type",
+          "group": "Data",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "cancelled",
+          "displayName": "Cancelled",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true
+        },
+        {
+          "name": "cancelledCount",
+          "displayName": "Cancelled Count",
+          "group": "Status",
+          "plug": "output",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true
+        },
+        {
+          "name": "completedCount",
+          "displayName": "Completed Count",
+          "group": "Status",
+          "plug": "output",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "dispatched",
+          "displayName": "Dispatched",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true
+        },
+        {
+          "name": "failed",
+          "displayName": "Failed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true
+        },
+        {
+          "name": "failedCount",
+          "displayName": "Failed Count",
+          "group": "Status",
+          "plug": "output",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "idle",
+          "displayName": "Idle",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true
+        },
+        {
+          "name": "isExecuting",
+          "displayName": "Is Executing",
+          "group": "Status",
+          "plug": "output",
+          "type": {
+            "name": "boolean"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "lastError",
+          "displayName": "Last Error",
+          "group": "Status",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "payload",
+          "displayName": "Payload",
+          "group": "Data",
+          "plug": "output",
+          "type": {
+            "name": "*"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "queueSize",
+          "displayName": "Queue Size",
+          "group": "Status",
+          "plug": "output",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "refusalMessage",
+          "displayName": "Refusal Message",
+          "group": "Refusals",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "refusalReason",
+          "displayName": "Refusal Reason",
+          "group": "Refusals",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "refused",
+          "displayName": "Refused",
+          "group": "Refusals",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true
+        },
+        {
+          "name": "refusedCount",
+          "displayName": "Refused Count",
+          "group": "Status",
+          "plug": "output",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "refusedType",
+          "displayName": "Refused Type",
+          "group": "Refusals",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "result",
+          "displayName": "Result",
+          "group": "Data",
+          "plug": "output",
+          "type": {
+            "name": "*"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "waitingFor",
+          "displayName": "Waiting For",
+          "group": "Status",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false
+        }
+      ],
+      "dynamicPorts": null
+    },
+    {
+      "typeName": "net.noodl.ActionHandler",
+      "displayName": "Action Handler",
+      "category": "Data",
+      "isVisual": false,
+      "isDeprecated": false,
+      "inNodePicker": true,
+      "availableIn": [
+        "browser",
+        "cloud"
+      ],
+      "providedBy": "noodl-runtime",
+      "ssr": {
+        "compat": "safe"
+      },
+      "searchTags": [
+        "action",
+        "handler",
+        "register",
+        "dispatch",
+        "agent",
+        "ai",
+        "backend",
+        "remote",
+        "command"
+      ],
+      "inputs": [
+        {
+          "name": "actionType",
+          "displayName": "Action Type",
+          "group": "Handler",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "The exact action type this handler accepts, e.g. OPEN_SESSION. Registering it is what makes it executable at all."
+        },
+        {
+          "name": "autoComplete",
+          "displayName": "Auto Complete",
+          "group": "Completion",
+          "plug": "input",
+          "type": {
+            "name": "boolean"
+          },
+          "isSignal": false,
+          "default": true,
+          "description": "Report the action complete as soon as Trigger has been sent. Turn off when a later step must wait for this one to finish, and wire Complete or Fail yourself."
+        },
+        {
+          "name": "channel",
+          "displayName": "Channel",
+          "group": "Handler",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "default": "default",
+          "description": "Must match the Channel on the Action Dispatcher that should be able to reach this handler."
+        },
+        {
+          "name": "complete",
+          "displayName": "Complete",
+          "group": "Actions",
+          "plug": "input",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "isSignal": true
+        },
+        {
+          "name": "enabled",
+          "displayName": "Enabled",
+          "group": "Handler",
+          "plug": "input",
+          "type": {
+            "name": "boolean"
+          },
+          "isSignal": false,
+          "default": true,
+          "description": "Turning this off unregisters the handler, so the action is refused as unknown rather than quietly ignored."
+        },
+        {
+          "name": "errorMessage",
+          "displayName": "Error Message",
+          "group": "Completion",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "fail",
+          "displayName": "Fail",
+          "group": "Actions",
+          "plug": "input",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "isSignal": true
+        },
+        {
+          "name": "result",
+          "displayName": "Result",
+          "group": "Completion",
+          "plug": "input",
+          "type": {
+            "name": "*"
+          },
+          "isSignal": false,
+          "description": "Handed back to the dispatcher as the Result of this action when it completes."
+        }
+      ],
+      "outputs": [
+        {
+          "name": "actionId",
+          "displayName": "Action Id",
+          "group": "Data",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "error",
+          "displayName": "Error",
+          "group": "Status",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "payload",
+          "displayName": "Payload",
+          "group": "Data",
+          "plug": "output",
+          "type": {
+            "name": "*"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "registered",
+          "displayName": "Registered",
+          "group": "Status",
+          "plug": "output",
+          "type": {
+            "name": "boolean"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "trigger",
+          "displayName": "Trigger",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true
+        },
+        {
+          "name": "triggeredCount",
+          "displayName": "Triggered Count",
+          "group": "Status",
+          "plug": "output",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false
+        }
+      ],
+      "dynamicPorts": null
+    },
+    {
       "typeName": "net.noodl.ComponentObject",
       "displayName": "Component Object",
       "category": "Component Utilities",
@@ -39825,88 +40389,6 @@
       "dynamicPorts": null
     },
     {
-      "typeName": "net.noodl.user.RequestMagicLink",
-      "displayName": "Request Magic Link",
-      "category": "Cloud Services",
-      "isVisual": false,
-      "isDeprecated": false,
-      "inNodePicker": false,
-      "availableIn": [
-        "browser"
-      ],
-      "providedBy": "noodl-viewer-react",
-      "ssr": {
-        "compat": "partial",
-        "note": "Sends a request from the browser; a server render never triggers it."
-      },
-      "inputs": [
-        {
-          "name": "email",
-          "displayName": "Email",
-          "group": "General",
-          "plug": "input",
-          "type": {
-            "name": "string"
-          },
-          "isSignal": false
-        },
-        {
-          "name": "redirect",
-          "displayName": "Redirect",
-          "group": "General",
-          "plug": "input",
-          "type": {
-            "name": "string"
-          },
-          "isSignal": false
-        },
-        {
-          "name": "send",
-          "displayName": "Do",
-          "group": "Actions",
-          "plug": "input",
-          "type": {
-            "name": "signal",
-            "allowConnectionsOnly": true
-          },
-          "isSignal": true
-        }
-      ],
-      "outputs": [
-        {
-          "name": "error",
-          "displayName": "Error",
-          "group": "Error",
-          "plug": "output",
-          "type": {
-            "name": "string"
-          },
-          "isSignal": false
-        },
-        {
-          "name": "failure",
-          "displayName": "Failure",
-          "group": "Events",
-          "plug": "output",
-          "type": {
-            "name": "signal"
-          },
-          "isSignal": true
-        },
-        {
-          "name": "success",
-          "displayName": "Success",
-          "group": "Events",
-          "plug": "output",
-          "type": {
-            "name": "signal"
-          },
-          "isSignal": true
-        }
-      ],
-      "dynamicPorts": null
-    },
-    {
       "typeName": "net.noodl.user.RequestPasswordReset",
       "displayName": "Request Password Reset",
       "category": "Cloud Services",
@@ -40229,108 +40711,6 @@
         ],
         "description": "Property inputs include one port per custom user property."
       }
-    },
-    {
-      "typeName": "net.noodl.user.SignInWith",
-      "displayName": "Sign In With",
-      "category": "Cloud Services",
-      "isVisual": false,
-      "isDeprecated": false,
-      "inNodePicker": false,
-      "availableIn": [
-        "browser"
-      ],
-      "providedBy": "noodl-viewer-react",
-      "ssr": {
-        "compat": "partial",
-        "note": "Sign-in is a browser redirect; a server render can lay the button out but never completes a flow."
-      },
-      "inputs": [
-        {
-          "name": "provider",
-          "displayName": "Provider",
-          "group": "General",
-          "plug": "input",
-          "type": {
-            "name": "string"
-          },
-          "isSignal": false
-        },
-        {
-          "name": "redirect",
-          "displayName": "Redirect",
-          "group": "General",
-          "plug": "input",
-          "type": {
-            "name": "string"
-          },
-          "isSignal": false
-        },
-        {
-          "name": "signIn",
-          "displayName": "Do",
-          "group": "Actions",
-          "plug": "input",
-          "type": {
-            "name": "signal",
-            "allowConnectionsOnly": true
-          },
-          "isSignal": true
-        }
-      ],
-      "outputs": [
-        {
-          "name": "error",
-          "displayName": "Error",
-          "group": "Error",
-          "plug": "output",
-          "type": {
-            "name": "string"
-          },
-          "isSignal": false
-        },
-        {
-          "name": "failure",
-          "displayName": "Failure",
-          "group": "Events",
-          "plug": "output",
-          "type": {
-            "name": "signal"
-          },
-          "isSignal": true
-        },
-        {
-          "name": "notice",
-          "displayName": "Notice",
-          "group": "General",
-          "plug": "output",
-          "type": {
-            "name": "string"
-          },
-          "isSignal": false
-        },
-        {
-          "name": "signingIn",
-          "displayName": "Signing In",
-          "group": "States",
-          "plug": "output",
-          "type": {
-            "name": "boolean"
-          },
-          "isSignal": false
-        },
-        {
-          "name": "success",
-          "displayName": "Success",
-          "group": "Events",
-          "plug": "output",
-          "type": {
-            "name": "signal"
-          },
-          "isSignal": true
-        }
-      ],
-      "dynamicPorts": null
     },
     {
       "typeName": "net.noodl.user.SignUp",

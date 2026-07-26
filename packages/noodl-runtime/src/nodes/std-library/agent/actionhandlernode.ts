@@ -1,0 +1,360 @@
+'use strict';
+
+/**
+ * Action Handler (AGENT-005) — declares one action type this app is willing to execute.
+ *
+ * This node **is** the allow-list. An `Action Dispatcher` executes an action type only if
+ * a handler for it is registered here (or it is one of the built-ins the author enabled
+ * by name on the dispatcher). There is no separate permission table, so a permission
+ * cannot drift out of step with the graph: if the wire is not on the canvas, the server
+ * cannot cause it.
+ *
+ * That also means this node is where a capability is *granted*. Wiring `trigger` to a
+ * `Navigate` node gives a backend the ability to navigate the app; wiring it to a delete
+ * gives a backend the ability to delete. That is intended and useful, and it is a
+ * decision the author makes visibly, one action type at a time.
+ *
+ *     [Action Handler]  actionType: "OPEN_SESSION"
+ *              trigger ──▶ [Navigate to Component]
+ *              payload ──▶ [Set Variable]
+ *
+ * @module noodl-runtime
+ * @since 2.0.0
+ */
+import type { NodeDefinitionOptions, NodeInstance } from '@noodl/types';
+
+import { ActionContext, ActionRegistry, actionRegistry, isBuiltInAction, Unsubscribe } from './action-dispatcher';
+
+import Node = require('../../../node');
+
+interface HandlerInternal {
+  channel: string;
+  actionType: string;
+  enabled: boolean;
+  autoComplete: boolean;
+  result: unknown;
+  errorMessage: string;
+
+  payload: unknown;
+  actionId: string;
+  error: string;
+  triggeredCount: number;
+
+  pending: ActionContext | null;
+  unregister: Unsubscribe | null;
+  setupScheduled: boolean;
+
+  /** Test seam; production uses the process-wide registry. */
+  registry: ActionRegistry;
+}
+
+function internalOf(node: NodeInstance): HandlerInternal {
+  return node._internal as unknown as HandlerInternal;
+}
+
+const ActionHandlerNode: NodeDefinitionOptions = {
+  name: 'net.noodl.ActionHandler',
+  displayNodeName: 'Action Handler',
+  shortDesc: 'Registers one action type a backend is allowed to trigger, and what happens when it does.',
+  category: 'Data',
+  color: 'data',
+  usePortAsLabel: 'actionType',
+  searchTags: ['action', 'handler', 'register', 'dispatch', 'agent', 'ai', 'backend', 'remote', 'command'],
+
+  initialize(this: NodeInstance) {
+    const internal = internalOf(this);
+    internal.channel = 'default';
+    internal.actionType = '';
+    internal.enabled = true;
+    internal.autoComplete = true;
+    internal.result = undefined;
+    internal.errorMessage = '';
+
+    internal.payload = undefined;
+    internal.actionId = '';
+    internal.error = '';
+    internal.triggeredCount = 0;
+
+    internal.pending = null;
+    internal.unregister = null;
+    internal.setupScheduled = false;
+    internal.registry = actionRegistry;
+  },
+
+  getInspectInfo(this: NodeInstance) {
+    const internal = internalOf(this);
+    if (!internal.actionType) return { type: 'text', value: '[No action type set]' };
+    return {
+      type: 'value',
+      value: {
+        channel: internal.channel,
+        actionType: internal.actionType,
+        registered: internal.unregister !== null,
+        inFlight: internal.pending !== null,
+        triggered: internal.triggeredCount,
+        lastPayload: internal.payload,
+        error: internal.error
+      }
+    };
+  },
+
+  inputs: {
+    channel: {
+      type: 'string',
+      default: 'default',
+      displayName: 'Channel',
+      group: 'Handler',
+      tooltip: 'Must match the Channel on the Action Dispatcher that should be able to reach this handler.',
+      set(this: NodeInstance, value: string) {
+        internalOf(this).channel = value === undefined || value === null || value === '' ? 'default' : String(value);
+        (this as never as { scheduleSetup(): void }).scheduleSetup();
+      }
+    },
+
+    actionType: {
+      type: 'string',
+      displayName: 'Action Type',
+      group: 'Handler',
+      tooltip:
+        'The exact action type this handler accepts, e.g. OPEN_SESSION. Registering it is what makes it executable at all.',
+      set(this: NodeInstance, value: string) {
+        internalOf(this).actionType = value === undefined || value === null ? '' : String(value);
+        (this as never as { scheduleSetup(): void }).scheduleSetup();
+      }
+    },
+
+    enabled: {
+      type: 'boolean',
+      default: true,
+      displayName: 'Enabled',
+      group: 'Handler',
+      tooltip:
+        'Turning this off unregisters the handler, so the action is refused as unknown rather than quietly ignored.',
+      set(this: NodeInstance, value: boolean) {
+        internalOf(this).enabled = value === undefined ? true : !!value;
+        (this as never as { scheduleSetup(): void }).scheduleSetup();
+      }
+    },
+
+    autoComplete: {
+      type: 'boolean',
+      default: true,
+      displayName: 'Auto Complete',
+      group: 'Completion',
+      tooltip:
+        'Report the action complete as soon as Trigger has been sent. Turn off when a later step must wait for this one to finish, and wire Complete or Fail yourself.',
+      set(this: NodeInstance, value: boolean) {
+        internalOf(this).autoComplete = value === undefined ? true : !!value;
+      }
+    },
+
+    result: {
+      type: '*',
+      displayName: 'Result',
+      group: 'Completion',
+      tooltip: 'Handed back to the dispatcher as the Result of this action when it completes.',
+      set(this: NodeInstance, value: unknown) {
+        internalOf(this).result = value;
+      }
+    },
+
+    errorMessage: {
+      type: 'string',
+      displayName: 'Error Message',
+      group: 'Completion',
+      set(this: NodeInstance, value: string) {
+        internalOf(this).errorMessage = value === undefined || value === null ? '' : String(value);
+      }
+    },
+
+    complete: {
+      displayName: 'Complete',
+      group: 'Actions',
+      valueChangedToTrue(this: NodeInstance) {
+        (this as never as { doComplete(): void }).doComplete();
+      }
+    },
+
+    fail: {
+      displayName: 'Fail',
+      group: 'Actions',
+      valueChangedToTrue(this: NodeInstance) {
+        (this as never as { doFail(): void }).doFail();
+      }
+    }
+  },
+
+  outputs: {
+    trigger: { type: 'signal', displayName: 'Trigger', group: 'Events' },
+
+    payload: {
+      type: '*',
+      displayName: 'Payload',
+      group: 'Data',
+      get(this: NodeInstance) {
+        return internalOf(this).payload;
+      }
+    },
+    actionId: {
+      type: 'string',
+      displayName: 'Action Id',
+      group: 'Data',
+      get(this: NodeInstance) {
+        return internalOf(this).actionId;
+      }
+    },
+    registered: {
+      type: 'boolean',
+      displayName: 'Registered',
+      group: 'Status',
+      get(this: NodeInstance) {
+        return internalOf(this).unregister !== null;
+      }
+    },
+    triggeredCount: {
+      type: 'number',
+      displayName: 'Triggered Count',
+      group: 'Status',
+      get(this: NodeInstance) {
+        return internalOf(this).triggeredCount;
+      }
+    },
+    error: {
+      type: 'string',
+      displayName: 'Error',
+      group: 'Status',
+      get(this: NodeInstance) {
+        return internalOf(this).error;
+      }
+    }
+  },
+
+  methods: {
+    /**
+     * Registration is deferred to the end of the frame, the pattern Subscribe to Store
+     * uses: `channel`, `actionType` and `enabled` arrive as separate writes, and
+     * registering from the first of them would claim the wrong name and then have to
+     * move. There is deliberately no `Register` signal — an action arriving before the
+     * author remembered to pulse one would be refused, and the refusal would look like a
+     * server bug rather than a missing wire.
+     */
+    scheduleSetup(this: NodeInstance) {
+      const internal = internalOf(this);
+      if (internal.setupScheduled) return;
+      internal.setupScheduled = true;
+
+      this.scheduleAfterInputsHaveUpdated(function (this: NodeInstance) {
+        internalOf(this).setupScheduled = false;
+        (this as never as { setupRegistration(): void }).setupRegistration();
+      });
+    },
+
+    setupRegistration(this: NodeInstance) {
+      const internal = internalOf(this);
+      (this as never as { teardownRegistration(): void }).teardownRegistration();
+
+      if (!internal.enabled) {
+        this.flagOutputDirty('registered');
+        return;
+      }
+
+      if (!internal.actionType) {
+        internal.error = 'An action type is required';
+        this.flagOutputDirty('error');
+        this.flagOutputDirty('registered');
+        return;
+      }
+
+      const node = this;
+
+      try {
+        internal.unregister = internal.registry.register(internal.channel, internal.actionType, {
+          invoke(context: ActionContext) {
+            const inner = internalOf(node);
+            inner.pending = context;
+            inner.payload = context.payload;
+            inner.actionId = context.actionId;
+            inner.triggeredCount++;
+
+            // Values before the signal, so a graph wired `payload -> value`,
+            // `trigger -> set` sees this action's payload and not the previous one's.
+            node.flagOutputDirty('payload');
+            node.flagOutputDirty('actionId');
+            node.flagOutputDirty('triggeredCount');
+            node.sendSignalOnOutput('trigger');
+
+            // After the signal: everything wired to Trigger has already run
+            // synchronously by now, so "complete" means "the graph finished this step".
+            if (inner.autoComplete && inner.pending === context) {
+              inner.pending = null;
+              context.complete(inner.result);
+            }
+          }
+        });
+      } catch (error) {
+        // A reserved built-in name is the case this catches, and it must be loud: the
+        // author believes they have handled an action type and they have not.
+        internal.error = String((error as Error)?.message || error);
+        this.flagOutputDirty('error');
+        this.flagOutputDirty('registered');
+        return;
+      }
+
+      if (internal.error) {
+        internal.error = '';
+        this.flagOutputDirty('error');
+      }
+      this.flagOutputDirty('registered');
+    },
+
+    teardownRegistration(this: NodeInstance) {
+      const internal = internalOf(this);
+      if (internal.unregister) {
+        internal.unregister();
+        internal.unregister = null;
+      }
+    },
+
+    doComplete(this: NodeInstance) {
+      const internal = internalOf(this);
+      const pending = internal.pending;
+      if (!pending) {
+        internal.error = 'Complete was signalled with no action in flight';
+        this.flagOutputDirty('error');
+        return;
+      }
+      internal.pending = null;
+      pending.complete(internal.result);
+    },
+
+    doFail(this: NodeInstance) {
+      const internal = internalOf(this);
+      const pending = internal.pending;
+      if (!pending) {
+        internal.error = 'Fail was signalled with no action in flight';
+        this.flagOutputDirty('error');
+        return;
+      }
+      internal.pending = null;
+      pending.fail(internal.errorMessage || `the handler for "${internal.actionType}" reported a failure`);
+    },
+
+    /**
+     * A handler deleted mid-action fails that action rather than letting it sit until the
+     * dispatcher's timeout: the queue behind it should not be stalled for thirty seconds
+     * by a component that has been navigated away from.
+     */
+    _onNodeDeleted(this: NodeInstance) {
+      Node.prototype._onNodeDeleted.call(this);
+      const internal = internalOf(this);
+      const pending = internal.pending;
+      internal.pending = null;
+      if (pending) pending.fail(`the handler for "${internal.actionType}" was removed before it completed`);
+      (this as never as { teardownRegistration(): void }).teardownRegistration();
+    }
+  }
+};
+
+export = {
+  node: ActionHandlerNode
+};
