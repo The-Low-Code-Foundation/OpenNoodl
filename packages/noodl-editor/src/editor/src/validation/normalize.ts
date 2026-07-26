@@ -11,6 +11,7 @@
  * @module noodl-editor/validation/normalize
  */
 
+import type { ConnectionsV2File, NodesV2File } from '../schemas';
 import { NormComponent, NormConnection, NormNode, NormProject, buildComponentRefs } from './model';
 
 // A structural subset of the legacy project shape we depend on. Kept local so
@@ -44,7 +45,12 @@ export interface LegacyProjectLike {
   components?: LegacyComponentLike[];
 }
 
-function instancePortNames(node: LegacyNodeLike): string[] {
+/**
+ * Only the two port bags are read, so that is all the parameter asks for — the
+ * legacy and v2 node shapes agree there and nowhere else (v2 `children` is a
+ * list of ids, legacy's is a list of nodes).
+ */
+function instancePortNames(node: { ports?: LegacyPortLike[]; dynamicports?: LegacyPortLike[] }): string[] {
   const names: string[] = [];
   for (const p of node.ports ?? []) if (p && typeof p.name === 'string') names.push(p.name);
   for (const p of node.dynamicports ?? []) if (p && typeof p.name === 'string') names.push(p.name);
@@ -77,8 +83,12 @@ function flatten(roots: LegacyNodeLike[]): NormNode[] {
  * loop validating a candidate before anything exists on disk — must be able to
  * use it from the renderer, where the fs-importing loader is off-limits.
  */
-export function normalizeV2Component(name: string, nodesFile: any, connectionsFile: any): NormComponent {
-  const nodes: NormNode[] = (nodesFile?.nodes ?? []).map((n: any) => ({
+export function normalizeV2Component(
+  name: string,
+  nodesFile: Partial<NodesV2File> | null | undefined,
+  connectionsFile: Partial<ConnectionsV2File> | null | undefined
+): NormComponent {
+  const nodes: NormNode[] = (nodesFile?.nodes ?? []).map((n) => ({
     id: n.id,
     type: n.type,
     label: n.label,
@@ -86,7 +96,7 @@ export function normalizeV2Component(name: string, nodesFile: any, connectionsFi
     children: Array.isArray(n.children) ? n.children : [],
     instancePorts: instancePortNames(n)
   }));
-  const connections: NormConnection[] = (connectionsFile?.connections ?? []).map((c: any) => ({
+  const connections: NormConnection[] = (connectionsFile?.connections ?? []).map((c) => ({
     fromId: c.fromId,
     fromProperty: c.fromProperty,
     toId: c.toId,
