@@ -61,6 +61,28 @@ interface RequestOptions {
   error(error?: RequestError): void;
 }
 
+/** The query parameters BAK-004's sign-in flows come back with. Must match the backend's constants. */
+const HANDOFF_PARAM = 'nodegx_auth';
+const AUTH_ERROR_PARAM = 'nodegx_auth_error';
+
+/**
+ * The outcome of a provider / magic-link return, as the Sign In With node reads it.
+ *
+ * `inProgress` is the window between "this page load carries a sign-in code" and
+ * "the exchange finished" — a node that mounts during it must show a spinner
+ * rather than a failure.
+ */
+export interface OAuthReturnState {
+  inProgress: boolean;
+  /** Set once the exchange resolves. */
+  succeeded?: boolean;
+  error?: string;
+  /** `created` | `signed-in` | `linked` | `linked-credentials-revoked`. */
+  outcome?: string;
+  /** A message worth showing the user — set when the linking rule revoked an old password. */
+  notice?: string;
+}
+
 /**
  * The viewer's user session: log in, sign up, and the current user's record.
  *
@@ -72,6 +94,19 @@ interface RequestOptions {
  * method rewrites that key on success and why the constructor validates it on startup —
  * a token that the backend has since invalidated would otherwise look like a live session
  * forever. The `sessionLost` event is how nodes hear that it was not.
+ *
+ * ## The BAK-004 return leg
+ *
+ * A provider sign-in leaves the app entirely and comes back to a fresh page load
+ * carrying `?nodegx_auth=<one-time code>`. Picking that up is done HERE, in the
+ * constructor, rather than by a node, for two reasons: it must happen before the
+ * stale-session check below (otherwise a page load with a brand-new sign-in also
+ * fires `sessionLost`), and it must happen on every page of the app, whether or
+ * not the graph on that page happens to contain a sign-in node.
+ *
+ * The code is stripped from the URL with `history.replaceState` BEFORE the
+ * exchange is attempted, so it never survives into history, a bookmark, or a
+ * screenshot — and so a refresh does not retry a code that is already spent.
  */
 class UserService {
   /** Set from project metadata at construction; absent when no cloud service is configured. */
@@ -91,11 +126,19 @@ class UserService {
    */
   static forScope: (modelScope: unknown) => UserService;
 
+  /** BAK-004: the state of a sign-in returning from a provider or a magic link. */
+  oauthReturn: OAuthReturnState = { inProgress: false };
+
   constructor() {
     this._initCloudServices();
 
     this.events = new EventEmitter();
     this.events.setMaxListeners(100000);
+
+    // BAK-004 return leg FIRST: a page load carrying a sign-in code is not a
+    // page load with a stale session, and running the check below first would
+    // fire `sessionLost` at the exact moment the user successfully signed in.
+    if (this._consumeAuthReturn()) return;
 
     // Check for current user session, and validate if it exists
     const currentUser = this.getUserFromLocalStorage();
@@ -396,6 +439,147 @@ class UserService {
       error: (e) => {
         options.error(e.error);
       }
+    });
+  }
+
+  // ==========================================================================
+  // BAK-004 — OAuth / passwordless sign-in
+  // ==========================================================================
+
+  /**
+   * Look for a sign-in result in the current URL and act on it.
+   *
+   * Returns true when this page load IS a sign-in return, so the constructor
+   * can skip its ordinary stale-session validation.
+   */
+  _consumeAuthReturn(): boolean {
+    if (typeof window === 'undefined' || !window.location) return false;
+
+    let params: URLSearchParams;
+    try {
+      params = new URLSearchParams(window.location.search);
+    } catch (e) {
+      return false;
+    }
+    const code = params.get(HANDOFF_PARAM);
+    const error = params.get(AUTH_ERROR_PARAM);
+    if (!code && !error) return false;
+
+    // Strip BEFORE doing anything else. A one-time code left in the address bar
+    // survives into history and into anything the user copies; a refresh would
+    // also re-attempt a code that is already spent, producing a spurious
+    // failure on a sign-in that actually worked.
+    params.delete(HANDOFF_PARAM);
+    params.delete(AUTH_ERROR_PARAM);
+    this._stripAuthParamsFromUrl(params);
+
+    if (error) {
+      this.oauthReturn = { inProgress: false, succeeded: false, error };
+      // Deferred so a listener attached during this same tick still hears it.
+      setTimeout(() => this.events.emit('oauthReturn', this.oauthReturn), 0);
+      return true;
+    }
+
+    this.oauthReturn = { inProgress: true };
+    this._makeRequest('/oauth/exchange', {
+      method: 'POST',
+      content: { code },
+      success: (response) => {
+        localStorage['Parse/' + this.appId + '/currentUser'] = JSON.stringify(response);
+        this.current = this.getUserModel();
+        this.oauthReturn = {
+          inProgress: false,
+          succeeded: true,
+          outcome: response.authOutcome,
+          notice: response.authNotice || undefined
+        };
+        this.events.emit('oauthReturn', this.oauthReturn);
+        this.events.emit('loggedIn');
+      },
+      error: (e) => {
+        this.oauthReturn = {
+          inProgress: false,
+          succeeded: false,
+          error: (e && e.error) || 'Sign-in could not be completed.'
+        };
+        this.events.emit('oauthReturn', this.oauthReturn);
+      }
+    });
+    return true;
+  }
+
+  /** Rewrite the address bar without the sign-in parameters, keeping everything else. */
+  _stripAuthParamsFromUrl(remaining: URLSearchParams): void {
+    if (!window.history || typeof window.history.replaceState !== 'function') return;
+    const query = remaining.toString();
+    const cleaned = window.location.pathname + (query ? `?${query}` : '') + window.location.hash;
+    try {
+      window.history.replaceState(window.history.state, '', cleaned);
+    } catch (e) {
+      // A sandboxed iframe can refuse replaceState. Not fatal: the exchange
+      // still runs, the code is still single-use, and the only cost is an ugly
+      // URL — so this must not abort the sign-in.
+    }
+  }
+
+  /**
+   * Send the browser to a provider. This NAVIGATES AWAY: nothing after it runs,
+   * and the result arrives on a later page load through `_consumeAuthReturn`.
+   *
+   * `redirect` defaults to the current page (minus any leftover sign-in
+   * parameters), so the user comes back where they were. The backend refuses
+   * any target that is neither same-origin nor on its `redirectAllowList` — if
+   * sign-in dead-ends with "origin not allowed", that list is the fix.
+   */
+  signInWithProvider(options: { provider: string; redirect?: string; error?(message: string): void }): void {
+    if (!this.endpoint) {
+      if (options.error) options.error('No active cloud service');
+      return;
+    }
+    if (!options.provider) {
+      if (options.error) options.error('Sign In With: no provider was set.');
+      return;
+    }
+    const redirect = options.redirect || this._currentUrlWithoutAuthParams();
+    const url =
+      `${this.endpoint}/oauth/${encodeURIComponent(options.provider)}/start` +
+      `?redirect=${encodeURIComponent(redirect)}`;
+    window.location.href = url;
+  }
+
+  _currentUrlWithoutAuthParams(): string {
+    const url = new URL(window.location.href);
+    url.searchParams.delete(HANDOFF_PARAM);
+    url.searchParams.delete(AUTH_ERROR_PARAM);
+    return url.toString();
+  }
+
+  /**
+   * Ask the backend to email a one-click sign-in link.
+   *
+   * Succeeds identically for a known and an unknown address — the endpoint is
+   * anonymous and anti-enumerating by design, so "success" here means "the
+   * request was accepted", never "an account exists". The node's help text says
+   * so, because a UI that claims "check your inbox" only for real accounts
+   * re-creates the oracle the endpoint removed.
+   */
+  requestMagicLink(options: UserServiceCallbacks & { email: string; redirect?: string }): void {
+    this._makeRequest('/auth/magic-link', {
+      method: 'POST',
+      content: { email: options.email, redirect: options.redirect || this._currentUrlWithoutAuthParams() },
+      success: () => options.success(),
+      error: (e) => options.error(e.error)
+    });
+  }
+
+  /** The sign-in methods this backend offers — for rendering a set of buttons. */
+  listAuthProviders(
+    options: UserServiceCallbacks<{ providers: { id: string; displayName: string }[]; magicLink: { enabled: boolean } }>
+  ): void {
+    this._makeRequest('/auth/providers', {
+      method: 'GET',
+      success: (response) => options.success(response),
+      error: (e) => options.error(e.error)
     });
   }
 

@@ -339,7 +339,9 @@ describeOrSkip('MCP backend permission tools (live backend)', () => {
 
     it('list/set/reset a template, and preview renders the effective (merged) result', async () => {
       const list = await call<{ templates: { id: string; isOverridden: boolean }[] }>(session, 'list_backend_email_templates');
-      expect(list.data.templates.map((t) => t.id).sort()).toEqual(['passwordReset', 'verifyEmail']);
+      // `magicLink` joined the shipped set in BAK-004 (passwordless sign-in
+      // reuses this template system rather than growing a second one).
+      expect(list.data.templates.map((t) => t.id).sort()).toEqual(['magicLink', 'passwordReset', 'verifyEmail']);
       expect(list.data.templates.every((t) => !t.isOverridden)).toBe(true);
 
       const set = await call<{ effective: { subject: string } }>(session, 'set_backend_email_template', {
@@ -536,6 +538,101 @@ describeOrSkip('MCP backend permission tools (live backend)', () => {
         sinceMinutes: 60
       });
       for (const entry of data.entries) expect(entry.outcome).toBe('failure');
+    });
+  });
+
+  /**
+   * BAK-004's AI-visibility criterion, exercised as the whole job an agent is
+   * actually asked to do: "add sign in with Google to this app". The agent must
+   * be able to configure the provider, allow the app's origin, and hand back
+   * the callback URL a human pastes into the provider console — without ever
+   * being able to read a secret back.
+   */
+  describe('BAK-004 sign-in provider tools', () => {
+    it('reports no providers and an unusable magic link on a fresh backend', async () => {
+      const { isError, data } = await call<{
+        config: { providers: unknown[] };
+        magicLinkReady: boolean;
+        magicLinkNotReadyReason: string;
+        presets: Record<string, unknown>;
+      }>(session, 'get_backend_auth_config');
+      expect(isError).toBe(false);
+      expect(data.config.providers).toEqual([]);
+      expect(data.magicLinkReady).toBe(false);
+      expect(data.magicLinkNotReadyReason).toMatch(/turned off/i);
+      // The presets are served as data so an agent does not have to know
+      // Google's issuer URL or GitHub's required scopes.
+      expect(Object.keys(data.presets).sort()).toEqual(['github', 'google', 'oidc']);
+    });
+
+    it('configures Google from the preset and returns the callback URL to register', async () => {
+      const { isError, data } = await call<{
+        provider: {
+          kind: string;
+          issuer: string;
+          scopes: string[];
+          hasClientSecret: boolean;
+          ready: boolean;
+          callbackUrl: string;
+        };
+      }>(session, 'configure_backend_auth_provider', {
+        id: 'google',
+        preset: 'google',
+        enabled: true,
+        clientId: 'test-client-id.apps.googleusercontent.com',
+        clientSecret: 'GOCSPX-not-a-real-secret'
+      });
+      expect(isError).toBe(false);
+      expect(data.provider.kind).toBe('oidc');
+      expect(data.provider.issuer).toBe('https://accounts.google.com');
+      expect(data.provider.scopes).toEqual(['openid', 'email', 'profile']);
+      expect(data.provider.ready).toBe(true);
+      expect(data.provider.hasClientSecret).toBe(true);
+      expect(data.provider.callbackUrl).toMatch(/\/oauth\/google\/callback$/);
+    });
+
+    it('never returns the client secret on any read', async () => {
+      const { data } = await call(session, 'get_backend_auth_config');
+      expect(JSON.stringify(data)).not.toContain('GOCSPX-not-a-real-secret');
+    });
+
+    it('refuses a provider whose config would not work, naming the problem', async () => {
+      const { isError, data } = await call(session, 'configure_backend_auth_provider', {
+        id: 'broken',
+        preset: 'oidc',
+        enabled: true,
+        clientId: 'x'
+        // no issuer — an enabled OIDC provider cannot discover anything
+      });
+      expect(isError).toBe(true);
+      expect(JSON.stringify(data)).toMatch(/issuer is required/i);
+    });
+
+    it('sets the redirect allow-list so an app on another origin can be signed into', async () => {
+      const { isError, data } = await call<{ config: { redirectAllowList: string[] } }>(
+        session,
+        'configure_backend_auth_policy',
+        { redirectAllowList: ['https://app.example.com'], magicLink: { enabled: true, ttlMinutes: 10 } }
+      );
+      expect(isError).toBe(false);
+      expect(data.config.redirectAllowList).toEqual(['https://app.example.com']);
+      expect(data.config.magicLink.enabled).toBe(true);
+    });
+
+    it('records provider changes in the audit trail', async () => {
+      const { data } = await call<{ entries: { action: string }[] }>(session, 'query_backend_audit', {
+        action: 'auth.provider.update'
+      });
+      expect(data.entries.length).toBeGreaterThan(0);
+    });
+
+    it('removes a provider and forgets its secret', async () => {
+      const { isError, data } = await call(session, 'remove_backend_auth_provider', { id: 'google' });
+      expect(isError).toBe(false);
+      expect(JSON.stringify(data)).toMatch(/linked identities are kept/i);
+
+      const after = await call<{ config: { providers: unknown[] } }>(session, 'get_backend_auth_config');
+      expect(after.data.config.providers).toEqual([]);
     });
   });
 });

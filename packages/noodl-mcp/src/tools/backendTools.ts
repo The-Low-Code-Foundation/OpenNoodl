@@ -499,6 +499,57 @@ export function registerBackendReadTools(server: McpServer): void {
       return jsonResult(json);
     })
   );
+
+  // --------------------------------------------------------------------------
+  // BAK-004 — sign-in providers.
+  //
+  // This is the read half of "an agent can configure a provider via MCP and
+  // wire the node". The response carries the COMPUTED CALLBACK URL for each
+  // provider, which is the one string a human must paste into the provider's
+  // console — an agent that cannot produce it cannot finish the job, and a
+  // wrong one is the single most common way OAuth setup fails.
+  // --------------------------------------------------------------------------
+
+  server.registerTool(
+    'get_backend_auth_config',
+    {
+      title: 'Get backend sign-in providers',
+      description:
+        'How end users can sign in to a running backend (BAK-004): the configured OAuth/OIDC providers with their ' +
+        'kind, issuer, scopes and READY state, the exact callback URL to register in each provider console, ' +
+        'whether magic-link sign-in is usable (it needs both its own switch and working SMTP), the redirect ' +
+        'allow-list, and the account-linking policy. Client secrets are never returned — each provider reports ' +
+        '`hasClientSecret` instead. A provider with `ready: false` carries `notReadyReason` naming the missing ' +
+        'field, which is usually the whole answer when sign-in is failing.',
+      inputSchema: { backendId: z.string().optional().describe('Which backend (omit if exactly one is running)') }
+    },
+    guarded(async ({ backendId }) => {
+      const client = await requireBackend(backendId);
+      const { json } = await client.request('GET', '/admin/auth');
+      return jsonResult(json);
+    })
+  );
+
+  server.registerTool(
+    'list_user_identities',
+    {
+      title: "List a user's linked sign-in methods",
+      description:
+        'Which providers a given user can sign in with on a running backend, and whether they also have a ' +
+        'password. Reads the `_UserIdentity` rows directly through the admin data surface. Useful when a user ' +
+        'reports "I cannot sign in" — an account with no password and no identity has no way in at all.',
+      inputSchema: {
+        backendId: z.string().optional(),
+        userId: z.string().describe('The _User objectId')
+      }
+    },
+    guarded(async ({ backendId, userId }) => {
+      const client = await requireBackend(backendId);
+      const where = encodeURIComponent(JSON.stringify({ userId }));
+      const { json } = await client.request('GET', `/api/_UserIdentity?where=${where}`);
+      return jsonResult(json);
+    })
+  );
 }
 
 export function registerBackendWriteTools(server: McpServer): void {
@@ -1263,6 +1314,113 @@ export function registerBackendWriteTools(server: McpServer): void {
     guarded(async ({ backendId, deleteOrphans }) => {
       const client = await requireBackend(backendId);
       const { json } = await client.request('POST', '/admin/files/sweep', { deleteOrphans: !!deleteOrphans });
+      return jsonResult(json);
+    })
+  );
+
+  // --------------------------------------------------------------------------
+  // BAK-004 — configuring sign-in.
+  //
+  // The phase's AI-visibility rule applied to auth: an agent must be able to
+  // stand up "sign in with Google" end to end, which means adding the provider,
+  // setting its secret, allowing the app's origin to be redirected to, and
+  // reporting the callback URL back to the human who has to paste it into a
+  // provider console. All four are here.
+  // --------------------------------------------------------------------------
+
+  server.registerTool(
+    'configure_backend_auth_provider',
+    {
+      title: 'Add or update a sign-in provider',
+      description:
+        'Add or update one OAuth/OIDC sign-in provider on a running backend (BAK-004). Start from a `preset` — ' +
+        '"google" and "github" fill in the issuer, scopes and display name so only a client id and secret are ' +
+        'needed; "oidc" is the generic path for Keycloak, Authentik, Entra ID, Auth0, Okta and the rest, where ' +
+        'you supply the issuer URL and everything else comes from its discovery document. The response includes ' +
+        'the exact `callbackUrl` to register in the provider console, and `ready`/`notReadyReason` saying whether ' +
+        'sign-in would actually work right now. The client secret is written to the backend\'s secrets.json and ' +
+        'is never readable again through any API.',
+      inputSchema: {
+        backendId: z.string().optional(),
+        id: z
+          .string()
+          .describe(
+            'Provider id — a lowercase slug that appears in the callback URL, so changing it later invalidates ' +
+              'what is registered with the provider. Use "google"/"github" for the presets.'
+          ),
+        preset: z.enum(['google', 'github', 'oidc']).optional().describe('Fill in kind/issuer/scopes/display name'),
+        displayName: z.string().optional().describe('What a sign-in button should say'),
+        enabled: z.boolean().optional().describe('Offer this provider to users (default false on create)'),
+        clientId: z.string().optional(),
+        clientSecret: z.string().optional().describe('Stored in secrets.json; never returned by any read'),
+        issuer: z
+          .string()
+          .optional()
+          .describe('OIDC issuer URL, e.g. https://keycloak.example.com/realms/myrealm. Must be empty for github.'),
+        scopes: z.array(z.string()).optional().describe('Defaults come from the preset'),
+        allowSignup: z
+          .boolean()
+          .optional()
+          .describe('May a first-time user CREATE an account with this provider? false = existing users only.')
+      }
+    },
+    guarded(async ({ backendId, id, ...provider }) => {
+      const client = await requireBackend(backendId);
+      const body = Object.fromEntries(Object.entries(provider).filter(([, v]) => v !== undefined));
+      const { json } = await client.request('PUT', `/admin/auth/providers/${encodeURIComponent(id)}`, body);
+      return jsonResult(json);
+    })
+  );
+
+  server.registerTool(
+    'remove_backend_auth_provider',
+    {
+      title: 'Remove a sign-in provider',
+      description:
+        'Delete a sign-in provider from a running backend and forget its client secret. Linked user identities ' +
+        'are KEPT, so re-adding the same provider id restores sign-in for those accounts — but while it is absent, ' +
+        'users with no password and no other provider cannot sign in.',
+      inputSchema: { backendId: z.string().optional(), id: z.string().describe('The provider id to remove') }
+    },
+    guarded(async ({ backendId, id }) => {
+      const client = await requireBackend(backendId);
+      const { json } = await client.request('DELETE', `/admin/auth/providers/${encodeURIComponent(id)}`);
+      return jsonResult(json);
+    })
+  );
+
+  server.registerTool(
+    'configure_backend_auth_policy',
+    {
+      title: 'Configure magic links, redirect allow-list and account linking',
+      description:
+        "The non-provider half of a backend's sign-in config (BAK-004). `redirectAllowList` is the one an app " +
+        'usually needs: the backend refuses to redirect a completed sign-in anywhere that is not same-origin or ' +
+        'on this list, which is what stops an auth callback being used as an open redirect — so an app on a ' +
+        'different origin from the backend must have its origin added here or every sign-in is refused before it ' +
+        'starts. `magicLink` enables passwordless email sign-in (also needs SMTP configured — see ' +
+        'get_backend_email_config). `linking.autoLinkVerifiedEmail` controls whether a provider-verified address ' +
+        'may join an existing local account; turning it OFF means such a sign-in is refused rather than linked.',
+      inputSchema: {
+        backendId: z.string().optional(),
+        redirectAllowList: z
+          .array(z.string())
+          .optional()
+          .describe('Absolute app origins, e.g. ["https://app.example.com"]. Empty means same-origin paths only.'),
+        magicLink: z
+          .object({
+            enabled: z.boolean().optional(),
+            ttlMinutes: z.number().optional().describe('Link lifetime, max 1440'),
+            allowSignup: z.boolean().optional().describe('May an unknown address create an account by clicking?')
+          })
+          .optional(),
+        linking: z.object({ autoLinkVerifiedEmail: z.boolean().optional() }).optional()
+      }
+    },
+    guarded(async ({ backendId, ...policy }) => {
+      const client = await requireBackend(backendId);
+      const body = Object.fromEntries(Object.entries(policy).filter(([, v]) => v !== undefined));
+      const { json } = await client.request('PUT', '/admin/auth', body);
       return jsonResult(json);
     })
   );

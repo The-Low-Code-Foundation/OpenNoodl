@@ -210,5 +210,17 @@ const AUTH_PATTERNS = new Set([
   'requestPasswordReset',
   'verificationEmailRequest',
   'apps/:appId/request_password_reset',
-  'apps/:appId/verify_email'
+  'apps/:appId/verify_email',
+  // BAK-004. Every one of these is a step in obtaining a session, so they get
+  // the auth budget rather than the public one — and each also carries its own
+  // stricter per-flow bucket inside the handler (see server/oauth-routes),
+  // because starting a sign-in costs an outbound provider request and asking
+  // for a magic link sends mail to an address the caller merely named.
+  'auth/providers',
+  'auth/signed-in',
+  'auth/magic-link',
+  'auth/magic-link/callback',
+  'oauth/:provider/start',
+  'oauth/:provider/callback',
+  'oauth/exchange'
 ]);

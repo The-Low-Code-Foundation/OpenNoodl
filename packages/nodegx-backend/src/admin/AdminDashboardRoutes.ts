@@ -91,6 +91,8 @@ export interface DashboardFeatures {
   search: boolean;
   /** File storage config (BAK-006) — always true once the subsystem is wired. */
   files: boolean;
+  /** BAK-004: OAuth / passwordless providers and the `_UserIdentity` links they create. */
+  auth: boolean;
   /** BAK-009: the `_Audit` trail and the operational config it lives beside. */
   ops: boolean;
 }

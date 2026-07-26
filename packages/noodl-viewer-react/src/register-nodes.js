@@ -140,6 +140,9 @@ export default function registerNodes(noodlRuntime) {
     require('./nodes/std-library/user/sendemailverification'),
     require('./nodes/std-library/user/resetpassword'),
     require('./nodes/std-library/user/requestpasswordreset'),
+    // BAK-004
+    require('./nodes/std-library/user/signinwith'),
+    require('./nodes/std-library/user/requestmagiclink'),
 
     // Deprecated
     require('./nodes/std-library/data/cloudfunction'),

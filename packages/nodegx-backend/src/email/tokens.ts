@@ -18,12 +18,19 @@ import * as crypto from 'crypto';
 
 import type { AdapterFacade } from '../persistence/AdapterFacade';
 
-export type TokenKind = 'reset' | 'verify';
+export type TokenKind = 'reset' | 'verify' | 'magic';
 
 /** Password-reset links are short-lived: a leaked reset email is a live credential. */
 export const RESET_TTL_MS = 60 * 60 * 1000; // 1 hour
 /** Verification links are informational, not a credential-change — longer-lived. */
 export const VERIFY_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+/**
+ * BAK-004 magic links. The TTL is configurable (auth.json `magicLink.ttlMinutes`)
+ * because deliverability delays vary wildly between SMTP setups; this is the
+ * default. A magic link is a *login credential in an inbox*, so it is the
+ * shortest-lived of the three by design.
+ */
+export const MAGIC_LINK_DEFAULT_TTL_MS = 15 * 60 * 1000; // 15 minutes
 
 const TOKEN_BYTES = 32;
 
@@ -42,11 +49,23 @@ export class EmailTokenStore {
     this.facade = facade;
   }
 
-  /** Mint + persist (hashed) a token for `userId`; returns the PLAINTEXT token to put in the email — never stored. */
-  async issue(userId: string, kind: TokenKind, ttlMs: number): Promise<string> {
+  /**
+   * Mint + persist (hashed) a token for `userId`; returns the PLAINTEXT token to
+   * put in the email — never stored.
+   *
+   * `extra` carries the few fields a flow needs to remember across the round
+   * trip to an inbox. BAK-004's magic links use it for two: the `email` (a
+   * signup link is issued before any user exists, so `userId` is empty and the
+   * address IS the identity) and the `redirectUrl` (already authorised against
+   * the redirect allow-list at REQUEST time, so the click cannot smuggle in a
+   * new destination). Nothing secret goes in here — the row is queryable by
+   * anything with database access, whereas the token itself never is.
+   */
+  async issue(userId: string, kind: TokenKind, ttlMs: number, extra?: Record<string, unknown>): Promise<string> {
     const token = newPlaintextToken();
     const expiresAt = new Date(Date.now() + ttlMs).toISOString();
     await this.facade.rawCreate('_EmailToken', {
+      ...(extra || {}),
       tokenHash: hashToken(token),
       userId,
       kind,
@@ -65,6 +84,16 @@ export class EmailTokenStore {
    * used twice even under a race (the second caller reads `consumedAt` set).
    */
   async consume(token: string, kind: TokenKind, expectedUserId?: string): Promise<string | null> {
+    const row = await this.consumeRow(token, kind, expectedUserId);
+    return row ? (row.userId as string) : null;
+  }
+
+  /**
+   * The same single-use consumption, returning the WHOLE row rather than just
+   * its userId — what a flow needs when it stored `extra` fields at issue time
+   * (BAK-004 magic links). `consume` above is this, projected.
+   */
+  async consumeRow(token: string, kind: TokenKind, expectedUserId?: string): Promise<Record<string, unknown> | null> {
     const tokenHash = hashToken(token);
     const { results } = await this.facade.rawQuery('_EmailToken', { where: { tokenHash }, limit: 1 });
     const row = results[0];
@@ -79,6 +108,6 @@ export class EmailTokenStore {
     // transaction (single-process SQLite serializes writes; documented
     // best-effort, not a distributed-lock claim).
     await this.facade.rawSave('_EmailToken', row.objectId as string, { consumedAt: new Date().toISOString() });
-    return row.userId as string;
+    return row;
   }
 }

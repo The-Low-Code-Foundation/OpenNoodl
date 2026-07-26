@@ -41,6 +41,7 @@ import { EmailTokenStore, RESET_TTL_MS, VERIFY_TTL_MS } from '../email/tokens';
 import { renderTemplate } from '../email/templates';
 import type { RateLimiter } from '../ops/rate-limit';
 import type { RateLimitPolicy } from '../ops/model';
+import { isFlagSet } from '../auth/identities';
 import { hashPassword } from './users';
 import { HttpError, readJSONBody, sendJSON } from './http-util';
 
@@ -288,7 +289,12 @@ export class EmailRoutes {
       safeLog('Verification requested for unknown email (no mail sent).');
       return;
     }
-    if (user.emailVerified === true) return;
+    // `isFlagSet`, not `=== true`: SQLite stores booleans as 0/1 and the
+    // adapter hands them back as numbers, so the strict comparison here was
+    // always false and an already-verified user got another verification email
+    // every time they asked. Found while building BAK-004's linking rule, where
+    // the same mistake would have been destructive rather than merely noisy.
+    if (isFlagSet(user.emailVerified)) return;
     if (!this.emailConfig.isConfigured()) {
       safeLog(`Verification requested for a known account, but ${this.emailConfig.notConfiguredReason()}`);
       return;

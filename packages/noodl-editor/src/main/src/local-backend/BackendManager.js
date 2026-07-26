@@ -205,6 +205,33 @@ class BackendManager {
     );
 
     // ==========================================================================
+    // SIGN-IN PROVIDERS (BAK-004) — the auth panel proxies to /admin/auth.
+    //
+    // Note there is no "get client secret": the service never returns one, so
+    // there is nothing here to forward. The panel shows `hasClientSecret`.
+    // ==========================================================================
+
+    ipcMain.handle('backend:getAuthConfig', async (_, id) =>
+      this.requireRunning(id, 'read sign-in config').request('GET', '/admin/auth')
+    );
+    ipcMain.handle('backend:setAuthPolicy', async (_, id, policy) =>
+      this.requireRunning(id, 'update sign-in policy').request('PUT', '/admin/auth', policy)
+    );
+    ipcMain.handle('backend:setAuthProvider', async (_, id, providerId, provider) =>
+      this.requireRunning(id, 'update sign-in provider').request(
+        'PUT',
+        `/admin/auth/providers/${encodeURIComponent(providerId)}`,
+        provider
+      )
+    );
+    ipcMain.handle('backend:deleteAuthProvider', async (_, id, providerId) =>
+      this.requireRunning(id, 'remove sign-in provider').request(
+        'DELETE',
+        `/admin/auth/providers/${encodeURIComponent(providerId)}`
+      )
+    );
+
+    // ==========================================================================
     // TRIGGERS (WF-005) — the trigger config UI proxies to /admin/triggers
     // ==========================================================================
 

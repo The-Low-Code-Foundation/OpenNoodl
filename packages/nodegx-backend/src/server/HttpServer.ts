@@ -42,6 +42,9 @@ import { verifyWebhook } from '../triggers/webhook';
 import type { EmailConfigState } from '../email/EmailConfigState';
 import type { Mailer } from '../email/Mailer';
 import { EmailTokenStore } from '../email/tokens';
+import type { AuthConfigState } from '../auth/AuthConfigState';
+import { OAuthRoutes } from './oauth-routes';
+import { AdminAuthRoutes } from './admin-auth';
 import { AdminSecurityRoutes } from './admin-security';
 import { AdminTriggerRoutes } from './admin-triggers';
 import { AdminWorkflowRoutes } from './admin-workflows';
@@ -204,6 +207,8 @@ export interface HttpServerDeps {
   emailConfig: EmailConfigState;
   mailer: Mailer;
   emailTokens: EmailTokenStore;
+  /** Sign-in providers and magic-link policy (BAK-004). */
+  auth: AuthConfigState;
   /** Operational config — logging, rate limits, CORS, audit, metrics (BAK-009). */
   ops: OpsState;
   /** The `_Audit` writer (BAK-009). */
@@ -229,6 +234,17 @@ export class HttpServer {
   private readonly ops: OpsState;
   private readonly auditLog: AuditLog;
   private server: http.Server | null = null;
+  /**
+   * The port actually BOUND, which is not `options.port` when that was 0.
+   *
+   * `--port 0` (an ephemeral port — what the editor spawns backends with, and
+   * what every test uses) made the local-URL fallback report
+   * `http://127.0.0.1:0`, which then appeared in password-reset links, magic
+   * links and OAuth callback URLs. Nothing crashed; the links were simply
+   * unusable. Found during BAK-004's live pass against the built bundle, and
+   * pre-dating it — BAK-002's email links had the same wrong host all along.
+   */
+  private boundPort = 0;
   private startedAt = 0;
   /** BAK-009 graceful shutdown: responses still owed to a client. */
   private readonly inFlight = new Set<http.ServerResponse>();
@@ -246,6 +262,8 @@ export class HttpServer {
   private readonly adminFiles: AdminFileRoutes;
   private readonly email: EmailRoutes;
   private readonly adminEmail: AdminEmailRoutes;
+  private readonly oauth: OAuthRoutes;
+  private readonly adminAuth: AdminAuthRoutes;
   /** BAK-005's dashboard, or null when `--no-admin` removed it entirely. */
   private readonly dashboard: AdminDashboardRoutes | null;
   /** BAK-005: failure budget in front of the one credential check. */
@@ -281,9 +299,32 @@ export class HttpServer {
       tokens: deps.emailTokens,
       backendId: deps.options.backendId,
       backendName: deps.options.backendName,
-      getLocalUrl: () => `http://127.0.0.1:${deps.options.port}`
+      getLocalUrl: () => this.localUrl()
     });
     this.users = new UserRoutes(deps.facade, deps.security, deps.emailConfig, this.email);
+    this.oauth = new OAuthRoutes({
+      facade: deps.facade,
+      auth: deps.auth,
+      emailConfig: deps.emailConfig,
+      mailer: deps.mailer,
+      tokens: deps.emailTokens,
+      backendName: deps.options.backendName,
+      getLocalUrl: () => this.localUrl(),
+      // BAK-003's signup rule, asked as an anonymous caller — which is what a
+      // provider sign-in is. `signup: "nobody"` therefore blocks account
+      // creation through OAuth and magic links too, rather than leaving a side
+      // door open beside a closed front one.
+      signupAllowedForAnonymous: () => ruleAllows(deps.security.config.signup, { kind: 'anonymous' }),
+      limiter: this.rateLimiter,
+      clientAddress: (req) => clientIp(req, this.ops.config.rateLimit.trustedProxies),
+      audit: deps.audit
+    });
+    this.adminAuth = new AdminAuthRoutes({
+      auth: deps.auth,
+      emailConfig: deps.emailConfig,
+      callbackUrl: (providerId) => this.oauth.callbackUrl(providerId),
+      getLocalUrl: () => this.localUrl()
+    });
     this.files = new FileRoutes(deps.options.dataDir, `http://127.0.0.1:${deps.options.port}`, deps.files);
     this.adminFiles = new AdminFileRoutes(deps.files);
     this.adminSecurity = new AdminSecurityRoutes(deps.security, deps.facade, deps.options, deps.getRunner);
@@ -329,10 +370,18 @@ export class HttpServer {
       realtime: Boolean(deps.realtime),
       search: Boolean(deps.facade.schemaManager),
       files: Boolean(deps.files),
+      // BAK-004: sign-in providers need `_UserIdentity`, which needs a schema
+      // manager, for the same reason the audit view does.
+      auth: Boolean(deps.auth && deps.facade.schemaManager),
       // The audit view needs somewhere for the rows to live; a build without a
       // schema manager cannot have the table, so it hides rather than 500s.
       ops: Boolean(deps.facade.schemaManager)
     };
+  }
+
+  /** `http://127.0.0.1:<bound port>` — the documented local fallback when no baseUrl is configured. */
+  private localUrl(): string {
+    return `http://127.0.0.1:${this.boundPort || this.options.port}`;
   }
 
   /** The full route table (method/pattern/access) — the route-walk test's input. */
@@ -513,6 +562,70 @@ export class HttpServer {
         pattern: 'apps/:appId/verify_email',
         access: { kind: 'public' },
         handler: (ctx) => email.verifyEmail(ctx.res, ctx.query)
+      },
+
+      // ---- OAuth / passwordless sign-in (BAK-004) --------------------------
+      // `public` and SELF-ENFORCING, the same posture as the session and
+      // account-email routes above: these ARE the authentication system, so
+      // there is no prior credential for a gate to check. What governs them is
+      // internal — the provider must be configured and enabled, `state` must
+      // match a live flow, the flow-binding cookie must come back from the same
+      // browser, the ID token's signature and claims must verify, the redirect
+      // target must be on the allow-list, and the linking rule decides which
+      // account (if any) a verified identity is entitled to. Account CREATION
+      // additionally passes through BAK-003's `signup` rule.
+      { method: 'GET', pattern: 'auth/providers', access: { kind: 'public' }, handler: (ctx) => this.oauth.listProviders(ctx) },
+      {
+        method: 'GET',
+        pattern: 'auth/signed-in',
+        access: { kind: 'public' },
+        handler: (ctx) => this.oauth.serveHandoffLanding(ctx)
+      },
+      {
+        method: 'GET',
+        pattern: 'oauth/:provider/start',
+        access: { kind: 'public' },
+        handler: (ctx) => this.oauth.start(ctx)
+      },
+      {
+        method: 'GET',
+        pattern: 'oauth/:provider/callback',
+        access: { kind: 'public' },
+        handler: (ctx) => this.oauth.callback(ctx)
+      },
+      { method: 'POST', pattern: 'oauth/exchange', access: { kind: 'public' }, handler: (ctx) => this.oauth.exchange(ctx) },
+      {
+        method: 'POST',
+        pattern: 'auth/magic-link',
+        access: { kind: 'public' },
+        handler: (ctx) => this.oauth.requestMagicLink(ctx)
+      },
+      {
+        method: 'GET',
+        pattern: 'auth/magic-link/callback',
+        access: { kind: 'public' },
+        handler: (ctx) => this.oauth.magicLinkCallback(ctx)
+      },
+      // The two identity routes ARE session-scoped: `requireUser` resolves the
+      // caller and everything below acts on that user only, never on an id from
+      // the URL — the same shape as `PUT /users/:id`'s own-user check.
+      {
+        method: 'GET',
+        pattern: 'users/me/identities',
+        access: { kind: 'session' },
+        handler: async (ctx) => {
+          const user = await users.requireUser(ctx.req);
+          await this.oauth.listIdentities(ctx, user.objectId as string);
+        }
+      },
+      {
+        method: 'DELETE',
+        pattern: 'users/me/identities/:id',
+        access: { kind: 'session' },
+        handler: async (ctx) => {
+          const user = await users.requireUser(ctx.req);
+          await this.oauth.unlinkIdentity(ctx, user.objectId as string, ctx.params.id);
+        }
       },
 
       // ---- BYOB ------------------------------------------------------------
@@ -866,6 +979,22 @@ export class HttpServer {
         handler: (ctx) => adminEmail.previewTemplate(ctx)
       },
 
+      // ---- Admin: the BAK-004 sign-in provider surface ---------------------
+      { method: 'GET', pattern: 'admin/auth', access: { kind: 'admin' }, handler: (ctx) => this.adminAuth.getConfig(ctx) },
+      { method: 'PUT', pattern: 'admin/auth', access: { kind: 'admin' }, handler: (ctx) => this.adminAuth.putConfig(ctx) },
+      {
+        method: 'PUT',
+        pattern: 'admin/auth/providers/:id',
+        access: { kind: 'admin' },
+        handler: (ctx) => this.adminAuth.putProvider(ctx)
+      },
+      {
+        method: 'DELETE',
+        pattern: 'admin/auth/providers/:id',
+        access: { kind: 'admin' },
+        handler: (ctx) => this.adminAuth.deleteProvider(ctx)
+      },
+
       // ---- Admin: the BAK-008 full-text search surface ---------------------
       { method: 'GET', pattern: 'admin/search', access: { kind: 'admin' }, handler: (ctx) => adminSearch.getConfig(ctx) },
       {
@@ -962,6 +1091,7 @@ export class HttpServer {
         const port = typeof addr === 'object' && addr ? addr.port : this.options.port;
         this.server = server;
         this.startedAt = Date.now();
+        this.boundPort = port;
         this.registerMetrics();
         const url = `http://${this.options.host}:${port}`;
         this.files.setBaseUrl(url);
@@ -1052,6 +1182,12 @@ export class HttpServer {
     metrics.gauge('nodegx_realtime_connections', 'Open SSE streams.', () => this.realtime.connectionCount);
     metrics.gauge('nodegx_ratelimit_buckets', 'Live rate-limit buckets (memory pressure indicator).', () =>
       this.rateLimiter.size
+    );
+    metrics.gauge(
+      'nodegx_auth_pending_flows',
+      'Sign-ins started but not yet completed (BAK-004). A number that only grows means users are being sent ' +
+        'to a provider and never coming back — usually a redirect-URI mismatch.',
+      () => this.oauth.pendingFlowCount
     );
     metrics.gauge('nodegx_db_file_bytes', 'Size of the backend database file on disk.', () => {
       const dbPath = this.persistence.dbPath;

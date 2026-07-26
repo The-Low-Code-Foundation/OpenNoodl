@@ -46,6 +46,9 @@ import { EmailConfigState } from './email/EmailConfigState';
 import { Mailer, SendEmailResult } from './email/Mailer';
 import { EmailTokenStore } from './email/tokens';
 import { isTemplateId, renderTemplate } from './email/templates';
+import { AuthConfigState } from './auth/AuthConfigState';
+import { ensureIdentityTable } from './auth/identities';
+import { clearDiscoveryCache } from './auth/oidc';
 
 /** The shape the Send Email node (noodl-viewer-cloud) calls `_noodl_send_email` with. */
 export interface SendEmailNodeRequest {
@@ -98,6 +101,7 @@ export class BackendService {
   private backups: BackupSubsystem | null = null;
   private files: FileSubsystem | null = null;
   private emailConfig: EmailConfigState | null = null;
+  private auth: AuthConfigState | null = null;
   private ops: OpsState | null = null;
   private audit: AuditLog | null = null;
   private mailer: Mailer | null = null;
@@ -308,6 +312,34 @@ export class BackendService {
     this.emailConfig = new EmailConfigState(this.options.dataDir);
     this.mailer = new Mailer(this.emailConfig);
 
+    // 2.8 Sign-in providers (BAK-004): auth.json beside email.json, client
+    //     secrets in the `auth` namespace of the same secrets.json. Like email,
+    //     "no providers configured" is a normal state and never a startup
+    //     error — only a malformed file is. The discovery/JWKS caches are
+    //     cleared on start so a restart is a reliable way to pick up a
+    //     provider's key rotation without waiting out the TTL.
+    this.auth = new AuthConfigState(this.options.dataDir);
+    clearDiscoveryCache();
+    for (const provider of this.auth.config.providers) {
+      if (!provider.enabled) continue;
+      const reason = this.auth.notConfiguredReason(provider);
+      if (reason) {
+        // A provider advertised as enabled that cannot actually sign anyone in
+        // is exactly the kind of thing that is discovered by a user, in a
+        // browser, at the worst moment. Say it at startup instead.
+        logger.warn('auth.provider-incomplete', { provider: provider.id, detail: reason });
+      }
+      if (provider.kind === 'oidc' && provider.issuer.startsWith('http://') && requiresAuth(this.options)) {
+        logger.warn('auth.issuer-not-https', {
+          provider: provider.id,
+          issuer: provider.issuer,
+          detail:
+            'This backend is bound beyond localhost and talks to an OIDC issuer over plain HTTP. The client ' +
+            'secret and the ID token cross that connection in the clear.'
+        });
+      }
+    }
+
     // 3. HTTP surface.
     this.http = new HttpServer({
       options: this.options,
@@ -326,6 +358,7 @@ export class BackendService {
       emailConfig: this.emailConfig,
       mailer: this.mailer,
       emailTokens: new EmailTokenStore(this.facade),
+      auth: this.auth,
       ops: this.ops,
       audit: this.audit
     });
@@ -457,6 +490,7 @@ export class BackendService {
     this.workflows = null;
     this.security = null;
     this.search = null;
+    this.auth = null;
     this.ops = null;
     this.audit = null;
   }
@@ -563,6 +597,10 @@ export class BackendService {
       ]
     });
     // BAK-002: password-reset / verify-email tokens — hashed at rest, single-use.
+    // BAK-004 adds two columns for magic links: `email`, because a signup link
+    // is issued before any user exists (so `userId` is empty and the address is
+    // the identity), and `redirectUrl`, authorised at request time so a click
+    // cannot smuggle in a destination nobody vetted.
     sm.createTable({
       name: '_EmailToken',
       columns: [
@@ -570,9 +608,14 @@ export class BackendService {
         { name: 'userId', type: 'String' },
         { name: 'kind', type: 'String' },
         { name: 'expiresAt', type: 'Date' },
-        { name: 'consumedAt', type: 'Date' }
+        { name: 'consumedAt', type: 'Date' },
+        { name: 'email', type: 'String' },
+        { name: 'redirectUrl', type: 'String' }
       ]
     });
+    // BAK-004: (provider, subject) -> userId. A system collection like the
+    // rest, so `isSystemCollection` keeps it off /api and /classes.
+    ensureIdentityTable(sm);
     // BAK-006: file metadata, ACL'd exactly like any other collection (the
     // `ACL` column SchemaManager stamps onto every table here).
     ensureFilesTable(sm);

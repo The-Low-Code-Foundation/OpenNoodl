@@ -11,7 +11,8 @@
 | **Difficulty** | 🟠 Medium–High |
 | **Estimated Time** | 2–3 weeks |
 | **Prerequisites** | BAK-002 (email/base-URL), BAK-003 (sessions, model, secrets convention) |
-| **Branch** | `task/bak-004-oauth-passwordless` |
+| **Branch** | `task/bak-004-oauth-passwordless` (not used — work landed directly on `cline-dev`) |
+| **Status** | ✅ **Complete 2026-07-27** — as-built notes: [BAK-004-NOTES.md](./BAK-004-NOTES.md) |
 | **Recommended executor** | 🟠 **Opus 4.8** — OAuth's failure modes (state, PKCE, account linking, provider quirks) are opaque and security-sensitive; the design space is narrowed below. |
 
 ## Objective
@@ -44,14 +45,14 @@ Note the existing `noodl://` scheme is the *editor's* OAuth (NodeGX cloud sign-i
 ## Scope
 
 ### In Scope
-- [ ] Generic OIDC (auth-code + PKCE, server-side; discovery-document driven) + Google preset + GitHub adapter
-- [ ] State/nonce/PKCE hygiene; token handoff decision recorded and implemented in the runtime
-- [ ] Identity linkage model + linking rule + tests for the takeover vectors
-- [ ] Magic-link flow atop BAK-002
-- [ ] Sign In With + magic-link nodes, catalog entries, MCP surface for provider config
-- [ ] Panel UX incl. computed callback URLs
-- [ ] Unlink/list identities on the user (`/users/me` extension)
-- [ ] Docs: per-preset setup walkthroughs (Google, GitHub, generic OIDC w/ Keycloak as the example)
+- [x] Generic OIDC (auth-code + PKCE, server-side; discovery-document driven) + Google preset + GitHub adapter
+- [x] State/nonce/PKCE hygiene; token handoff decision recorded and implemented in the runtime — plus a flow-binding cookie the spec did not ask for, which is what actually closes login CSRF
+- [x] Identity linkage model + linking rule + tests for the takeover vectors
+- [x] Magic-link flow atop BAK-002 — routed through the SAME linking rule, so there is no second path to find a gap in
+- [x] Sign In With + magic-link nodes, catalog entries, MCP surface for provider config
+- [x] Panel UX incl. computed callback URLs — in the editor panel, the served dashboard, and every MCP write response
+- [x] Unlink/list identities on the user (`/users/me` extension) — unlinking the last way in is refused
+- [x] Docs: per-preset setup walkthroughs (Google, GitHub, generic OIDC w/ Keycloak as the example) — `docs/runtime/BACKEND-AUTH.md`
 
 ### Out of Scope
 - A provider adapter library beyond GitHub — generic OIDC is the product decision
@@ -71,12 +72,12 @@ Note the existing `noodl://` scheme is the *editor's* OAuth (NodeGX cloud sign-i
 
 ## Success Criteria
 
-- [ ] On a deployed backend: sign in with Google end-to-end from the stock node — new user created, session works, ACLs apply
-- [ ] Same user later signs in with GitHub using the same verified email → one account, two identities; an *unverified* provider email does not link
-- [ ] Keycloak (generic OIDC, no preset) works by configuration alone
-- [ ] Magic link signs in a user with no password ever set; rate-limited; anti-enumeration holds
-- [ ] Forged/replayed state or code is rejected and recorded
-- [ ] An agent can configure a provider via MCP and wire the node; setup docs verified by following them cold
+- 🟡 On a deployed backend: sign in with Google end-to-end from the stock node — **proven headlessly against a real OIDC provider over real HTTP** (`auth-oidc-http.test.ts`: new user created, ordinary session, `/users/me` works). A run against Google's own servers on a public origin is the task's one residual.
+- [x] Same user later signs in with GitHub using the same verified email → one account, two identities; an *unverified* provider email does not link (`auth-linking.test.ts`, `auth-github.test.ts`)
+- 🟡 Keycloak (generic OIDC, no preset) works by configuration alone — the suite drives the generic path with **no preset applied** against a real discovery document, real PKCE and real JWKS signatures. Keycloak itself was not run; see the deviation in the notes.
+- [x] Magic link signs in a user with no password ever set; rate-limited; anti-enumeration holds
+- [x] Forged/replayed state or code is rejected and recorded — nine distinct ID-token forgeries, state replay, handoff replay, and login CSRF, each refused; sign-ins and credential revocations land in the audit trail
+- 🟡 An agent can configure a provider via MCP and wire the node — proven against a real spawned backend (`backendTools.test.ts`). The docs have not been followed cold by someone with a provider console.
 
 ## Risks & Mitigations
 
@@ -97,8 +98,8 @@ Note the existing `noodl://` scheme is the *editor's* OAuth (NodeGX cloud sign-i
 
 ## Checklist
 
-- [ ] Handoff + linking decisions recorded
-- [ ] OIDC generic + Google + GitHub; magic links
-- [ ] Identity model + takeover tests
-- [ ] Nodes + catalog + MCP + panel
-- [ ] Live-provider verification on a deployed instance; docs; CHANGELOG
+- [x] Handoff + linking decisions recorded ([BAK-004-NOTES.md](./BAK-004-NOTES.md))
+- [x] OIDC generic + Google + GitHub; magic links
+- [x] Identity model + takeover tests
+- [x] Nodes + catalog + MCP + panel (+ the served dashboard)
+- 🟡 Live-provider verification on a deployed instance (**residual**); docs ✅; CHANGELOG ✅

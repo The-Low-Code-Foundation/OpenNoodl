@@ -1,22 +1,155 @@
 # Phase 22 — Production Backend: PROGRESS
 
-Task-by-task status for Track H. Trust this file and the per-task CHANGELOG over
-higher-level summaries.
+**PHASE COMPLETE — 9/9, 2026-07-27.** Task-by-task status for Track H. Trust
+this file and the per-task CHANGELOG over higher-level summaries.
 
 | ID | Title | Status |
 |----|-------|--------|
 | BAK-001 | Realtime subscriptions (SSE) | ✅ Core shipped 2026-07-25 (client live-verify residual) |
 | BAK-002 | Email subsystem | ✅ Complete 2026-07-26 (merge `d22a511`) |
 | BAK-003 | Access control | ✅ Complete (Phase 22, prior) |
-| BAK-004 | OAuth & passwordless | ⬜ Not started |
+| BAK-004 | OAuth & passwordless | ✅ Complete 2026-07-27 (real-provider run residual) |
 | BAK-005 | Served admin dashboard | ✅ Shipped 2026-07-26 (browser walkthrough + packaged run residual) |
 | BAK-006 | File storage v2 | ✅ Complete 2026-07-26 |
 | BAK-007 | Backups / export / promotion | ✅ Complete 2026-07-26 (merge `c8431a0`) |
 | BAK-008 | Full-text search | ✅ Shipped 2026-07-26 (editor panel + served-dashboard live-smoke residuals) |
 | BAK-009 | Production ops | ✅ Complete 2026-07-26 (live-verified behind Caddy; not distributed) |
 
-**Tier 1 (credibility) is complete** — BAK-001, BAK-002, BAK-003, BAK-007 all shipped.
-That is the phase's designated stopping point; everything below is Tier 2 parity onward.
+All three tiers shipped. Tier 1 (credibility — BAK-001/002/003/007) was the
+phase's designated stopping point and was passed; Tier 2 (parity —
+BAK-004/005/006) and Tier 3 (polish — BAK-008/009) followed.
+
+---
+
+## Exit criterion, line by line
+
+The [README's exit criterion](./README.md#exit-criterion) is one long sentence.
+Split into its clauses, with what is actually true of each:
+
+| Clause | State |
+|---|---|
+| Browsers receive live record updates over SSE | ✅ built, proven headlessly over real HTTP. 🟡 never run in two real browsers. |
+| A visitor signs up with email + password | ✅ WF-004 + BAK-002. |
+| …or Google OAuth | ✅ built and proven against a real OIDC provider headlessly. 🟡 never run against Google itself. |
+| …verifies their address | ✅ BAK-002, tested end to end. |
+| …and resets a forgotten password — all by email | ✅ BAK-002, tested end to end through the served form. |
+| Row-level permissions stop them reading another user's records | ✅ BAK-003, ACL filtered in SQL with a property-tested JS twin. |
+| The operator administers data, users and schema through the service's own web dashboard with the editor closed | ✅ built; every server-side property tested. 🟡 **nobody has opened the page in a browser.** |
+| A scheduled backup exists and a restore has been demonstrated | ✅ BAK-007, restore round-trip tested. |
+| An agent, through MCP, can enumerate and configure every one of those capabilities | ✅ 30+ backend tools, exercised against a real spawned `dist/cli.js`. |
+
+**Honest summary:** every capability in the exit criterion is built and tested
+to the limit of what a headless suite can reach. What is uniformly *not* done is
+the last mile that needs a browser, a public origin, or a third-party account —
+and that gap is the whole of the register below, not a scattering of unrelated
+gaps.
+
+---
+
+## Open items at phase close
+
+One ranked register, consolidated from the per-task residual lists. The per-task
+notes remain the detail; this is what to pick up first.
+
+### 1. Nobody has driven this in a browser
+
+The single largest gap, and it is one gap wearing several hats. Everything below
+is implemented, tested server-side, and unopened:
+
+- **The served admin dashboard** (BAK-005) — a section-by-section walkthrough,
+  once dev-open and once locked with the read-only token. Its SSE **Live**
+  toggle, its **Files** tab (BAK-006), its **Search** view (BAK-008) and its
+  **Sign-in** view (BAK-004) are all inside this one pass.
+- **The editor's panels** — Search (BAK-008) and Sign-in (BAK-004) have never
+  been opened; the Data Browser's SSE live-refresh (BAK-001) is implemented and
+  unverified.
+- **The runtime nodes** — `Sign In With` and `Request Magic Link` compile,
+  register and are in the built viewer bundle, but no graph has used them.
+
+One session with a running editor and a browser closes most of this.
+
+### 2. Nothing has talked to a real third party
+
+- **A real Google / GitHub sign-in on a deployed instance** (BAK-004) — the
+  phase's one unmet success criterion. Needs provider-console access and a
+  public origin.
+- **A real (non-MinIO) S3 provider** with S3 as the *active* driver (BAK-006) —
+  the conformance suite is green against AWS's own fixtures and against MinIO.
+- **Two real browsers on a deployed app receiving the same SSE event**
+  (BAK-001) — proven headlessly over real HTTP; never with two browsers.
+
+### 3. Known limits, documented rather than fixed
+
+Not bugs; decisions with consequences, each stated in its docs.
+
+- **Single process throughout.** Rate-limit buckets, metrics, in-flight OAuth
+  flows and handoff codes, and workflow run state are all in memory. Two
+  replicas without sticky sessions break OAuth outright and split every budget.
+- **WF-001 workflow runs do not survive a restart** — interrupted runs are
+  marked failed, never resumed.
+- **The audit trail is a table in the backend's own database.** Whoever can
+  reach the file can edit it; the structured logs are the off-box copy.
+- **Multi-tab OAuth**: a second sign-in overwrites the first's flow cookie.
+- **Rule-5 credential revocation** (BAK-004) costs an honest, never-verified
+  user their password exactly once. Deliberate; see BAK-004-NOTES.
+
+### 4. Smaller, scoped follow-ups
+
+- CLI-driven backup/restore writes an execution record but no audit row
+  (BAK-009).
+- A "Private" input on the Upload File node and a "Sign File URL" node
+  (BAK-006) — header-based private upload works today; this is ergonomics.
+- Explicit "link a provider from account settings" (BAK-004) — list and unlink
+  shipped; adding a link while signed in would need a session token in a
+  top-level navigation, which this task deliberately avoided.
+- Packaged-app and clean-VM runs (BAK-005), and the nginx TLS path re-verified
+  (BAK-009 verified the Caddy one).
+
+---
+
+## BAK-004 — OAuth & Passwordless Sign-In
+
+**Status:** Complete 2026-07-27. Full writeup, including both pre-decisions and
+every defect found on the way: [BAK-004-NOTES.md](./BAK-004-NOTES.md).
+
+### What shipped
+One generic OIDC implementation (auth-code + PKCE, discovery-driven, so Keycloak
+/ Entra / Authentik / Auth0 / Okta / GitLab are configuration) with Google as a
+preset, plus GitHub as the single bespoke adapter. ID tokens are signature-
+verified against the issuer's JWKS with no fallback. A one-time handoff code
+keeps the session token out of every URL; a flow-binding cookie closes login
+CSRF; a redirect allow-list closes the open redirect. Magic links run through
+the *same* account-linking rule as providers. `Sign In With` and `Request Magic
+Link` nodes with catalog enrichment, the return leg handled by the runtime.
+Three fronts on one `/admin/auth` model — editor panel, served dashboard, five
+MCP tools — all of which exist mainly to display the callback URL.
+
+### The rule worth knowing
+Linking a provider to a local account whose email address was **never verified**
+revokes that account's password and sessions. That closes account
+pre-hijacking; it costs an honest never-verified user one password reset. Both
+sides are documented and audited.
+
+### Tests
+Four new suites (84 cases) against a real local OIDC provider with a real RSA
+keypair — real discovery, real PKCE verification, real signatures — plus nine
+ID-token forgeries each disabling one check, the pre-hijack vector end to end,
+and a GitHub stand-in that enforces GitHub's three quirks. Backend
+**61 suites / 619 passed**, runtime **696**, MCP **68**, editor **1429 specs /
+0 failures**; typecheck clean; both bundles build. 15-point live curl pass
+against the built `dist/cli.js`.
+
+### Defects fixed on the way
+`--port 0` made every generated link say `http://127.0.0.1:0` (affecting
+BAK-002's reset links since BAK-002 shipped); `emailVerified === true` was
+always false against SQLite's `1` (which would have destroyed verified accounts'
+passwords); auth 429s carried no `Retry-After`; the dashboard's inline script
+had no syntax check.
+
+### Residuals
+No run against real Google/GitHub on a deployed instance (the one unmet success
+criterion); neither UI surface opened in a browser; the nodes unused in a live
+graph.
 
 ---
 

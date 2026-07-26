@@ -1,5 +1,101 @@
 # Phase 22 — Production Backend: CHANGELOG
 
+## 2026-07-27 — BAK-004 OAuth & Passwordless Sign-In (phase complete)
+
+### Added
+- **Generic OpenID Connect**, authorization-code + PKCE, server-side, driven
+  entirely by the issuer's discovery document — so Keycloak, Authentik, Entra
+  ID, Auth0, Okta and GitLab are *configuration*, not code. Google is a preset
+  over the same shape. **GitHub is the one bespoke adapter**, because it is
+  OAuth2 but not OIDC. That is the whole provider matrix, on purpose.
+- **The ID token's signature is verified against the issuer's JWKS, always.**
+  OIDC permits skipping it on a direct TLS channel; we don't take the exemption,
+  and there is no fallback path — a fallback is how verification quietly stops
+  happening. `iss`, `aud`/`azp`, `exp`, `iat` and `nonce` are all checked. Only
+  asymmetric algorithms are accepted; an `HS256` ID token is refused.
+- **A one-time handoff code** (single use, 2-minute TTL, server-side) carries a
+  completed sign-in to the app, exchanged at `POST /oauth/exchange` for the same
+  response shape `/login` returns. The session token never appears in a URL, and
+  the runtime strips the code with `history.replaceState` before anything else
+  runs. Query rather than fragment, because Noodl apps can use hash routing.
+- **A flow-binding cookie** (`HttpOnly`, `SameSite=Lax`, `Path=/oauth`) ties a
+  callback to the browser that started it. `state` alone does not, which is what
+  makes login CSRF possible — an attacker completing their own flow in your
+  browser and logging you into *their* account.
+- **The account-linking rule**, and the takeover it closes. A provider identity
+  is keyed on the immutable subject, never the email. An unverified provider
+  email never matches an existing account. A verified one links — and if the
+  local account had **never** verified its own address, its password and every
+  session are revoked at that moment. That is what stops account pre-hijacking
+  (an attacker registering your address before you do and keeping access
+  afterwards). The user is told, and every occurrence is audited.
+- **Magic links**, on BAK-002's token and template infrastructure, routed
+  through the *same* linking rule — a magic link is proof of inbox control, so
+  it carries the same weight and there is no second path to find a gap in.
+  Anti-enumerating: always 200, known address or not.
+- **A redirect allow-list.** A completed sign-in may only be redirected to the
+  backend's own origin or a listed one. An unvalidated redirect on an auth
+  callback is the delivery mechanism for a phishing chain ending in a genuine
+  login on a genuine domain. `//evil.example` is refused, not treated as a path.
+- **`Sign In With` and `Request Magic Link` nodes**, with catalog enrichment.
+  The return leg is handled by `UserService` on load, before its stale-session
+  check — with no page code in the graph.
+- **`GET /users/me/identities` + `DELETE /users/me/identities/:id`.** Unlinking
+  the last way into an account is refused.
+- **Three fronts on one model**: the editor's Backend Services → Sign-in panel,
+  the served dashboard's Sign-in view, and five MCP tools. All exist mainly to
+  **display the callback URL** — the redirect-URI mismatch is the most expensive
+  mistake in OAuth setup and is entirely avoidable.
+- **Ops**: three declared audit actions plus `auth.signin` and
+  `auth.link.credentials-revoked` raised by the handler; per-flow rate limits
+  stricter than the `auth` class; `nodegx_auth_pending_flows` on `/metrics` (a
+  number that only grows is a redirect-URI mismatch); startup warnings for an
+  enabled-but-incomplete provider and an `http://` issuer on a public bind.
+- **Docs**: `docs/runtime/BACKEND-AUTH.md`, with cold walkthroughs for Google,
+  GitHub and Keycloak, and the linking rule stated in full. `/auth` and `/oauth`
+  added to the nginx and Caddy route families and to SELF-HOSTING's reserved
+  names.
+
+### Fixed
+- **`--port 0` made every generated link say `http://127.0.0.1:0`.** The
+  local-URL fallback used the *requested* port rather than the bound one. Every
+  test and every editor-spawned backend uses port 0, so this affected OAuth
+  callback URLs, magic links **and BAK-002's password-reset links** — wrong
+  since BAK-002 shipped. Nothing crashed; the links were simply unusable, and no
+  test had ever read a generated URL back on a port-0 backend. Found by the live
+  pass against the built bundle; fixed once, at the HTTP server, for all three.
+- **`emailVerified === true` was always false.** SQLite has no boolean type and
+  the adapter hands back `1`. Harmless-looking almost everywhere — and here it
+  would have sent every *already-verified* account down the credential-revoking
+  branch of the linking rule. Caught by the linking tests before it shipped.
+  The same comparison in BAK-002's verification re-request (an already-verified
+  user got another email every time they asked) is fixed with it.
+- **The auth handlers' 429s carried no `Retry-After`** — the message had the
+  number, the header did not.
+- **The dashboard's inline script had no syntax check.** esbuild inlines it as
+  text and no compiler reads it, so a stray bracket would ship a 200 that
+  renders a blank page and passes every other assertion. There is now a parse
+  guard.
+
+### Tests
+Four new suites (84 cases) against a **real local OIDC provider** — an actual
+server with an actual RSA keypair, real discovery, real PKCE verification and
+real signatures — plus a GitHub stand-in that *enforces* GitHub's three quirks.
+Nine ID-token forgeries each disable exactly one check and are each refused.
+The pre-hijacking vector is tested end to end, including that the attacker's
+live session dies too. Backend **61 suites / 619 passed**, runtime **696**, MCP
+**68** (against a real spawned `dist/cli.js`), editor **1429 specs / 0
+failures**; typecheck clean in all four; `catalog:check` green; both bundles
+build and carry the new nodes. A 15-point live curl pass ran against the built
+`dist/cli.js`.
+
+### Residual
+No sign-in has been performed against a real Google or GitHub app on a deployed
+instance — that needs provider-console access and a public origin, and it is the
+task's one open success criterion. Neither the editor panel nor the dashboard
+view has been opened in a browser, and the nodes have not been used in a live
+graph. Full list in [BAK-004-NOTES.md](./BAK-004-NOTES.md).
+
 ## 2026-07-26 — BAK-009 Production Ops
 
 ### Added

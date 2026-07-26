@@ -968,6 +968,235 @@
       }
     });
 
+    // ------------------------------------------------------------- sign-in --
+
+    /**
+     * BAK-004. The single most valuable thing this view does is DISPLAY THE
+     * CALLBACK URL: the redirect-URI mismatch is the most expensive mistake in
+     * setting up an OAuth client, and it is entirely avoidable by never asking
+     * the operator to assemble that string themselves.
+     */
+    view('signin', 'Sign-in', 'Access', 'auth', function (root) {
+      var node = page('Sign-in', 'How end users of your app sign in: identity providers and passwordless email links.');
+      root.appendChild(node);
+      var body = el('div');
+      node.appendChild(body);
+      load();
+
+      function load() {
+        api('GET', '/admin/auth')
+          .then(function (data) {
+            clear(body);
+            var config = data.config || {};
+            var presets = data.presets || {};
+
+            if (data.baseUrl && data.baseUrl.usedFallback) {
+              body.appendChild(el('div.notice.warn', { text: data.baseUrl.warning }));
+            }
+
+            body.appendChild(el('div.row', {},
+              writeButton('Add provider', 'primary', function () { editProvider(null, presets); }),
+              el('button.btn', { type: 'button', text: 'Refresh', onclick: load })));
+            body.appendChild(el('div', { style: 'height:12px' }));
+
+            body.appendChild(
+              table(['Provider', 'Kind', 'Status', 'Callback URL to register', ''], config.providers || [], function (p) {
+                return el('tr', {},
+                  el('td', {}, el('b', { text: p.displayName || p.id }), el('div.sub', { text: p.id })),
+                  el('td', { text: p.kind === 'github' ? 'GitHub' : 'OpenID Connect' }),
+                  el('td', {},
+                    p.enabled ? chip('enabled', 'ok') : chip('disabled'),
+                    p.ready ? chip('ready', 'ok') : chip('incomplete', 'warn')),
+                  el('td', {},
+                    el('code', { text: p.callbackUrl, style: 'word-break:break-all' }),
+                    p.notReadyReason ? el('div.sub', { text: p.notReadyReason }) : null),
+                  actionCell(
+                    el('button.btn.tiny', { type: 'button', text: 'Copy URL', onclick: function () { copy(p.callbackUrl); } }),
+                    writeButton('Edit', null, function () { editProvider(p, presets); }),
+                    writeButton('Remove', 'danger', function () {
+                      confirmDestructive(
+                        'Remove provider',
+                        'Users with no password and no other provider will not be able to sign in. Their linked ' +
+                          'identities are kept, so re-adding "' + p.id + '" restores access.',
+                        p.id,
+                        function () {
+                          api('DELETE', '/admin/auth/providers/' + encodeURIComponent(p.id))
+                            .then(function () { toast('Provider removed.', 'ok'); load(); })
+                            .catch(fail);
+                        }
+                      );
+                    }))
+                );
+              })
+            );
+
+            // ---- policy ----
+            body.appendChild(el('h2', { text: 'Magic links' }));
+            var magic = config.magicLink || {};
+            var magicEnabled = el('input', { type: 'checkbox', checked: !!magic.enabled });
+            var magicTtl = el('input', { type: 'number', value: magic.ttlMinutes === undefined ? 15 : magic.ttlMinutes });
+            var magicSignup = el('input', { type: 'checkbox', checked: magic.allowSignup !== false });
+            var autoLink = el('input', { type: 'checkbox', checked: (config.linking || {}).autoLinkVerifiedEmail !== false });
+            var allowList = el('textarea', { value: (config.redirectAllowList || []).join('\n') });
+            allowList.placeholder = 'https://app.example.com';
+            [magicEnabled, magicTtl, magicSignup, autoLink, allowList].forEach(function (i) { if (S.readonly) i.disabled = true; });
+
+            var magicCard = el('div.card');
+            if (!data.magicLinkReady && data.magicLinkNotReadyReason) {
+              magicCard.appendChild(el('div.notice.warn', { text: data.magicLinkNotReadyReason }));
+            }
+            magicCard.appendChild(el('label.check', {}, magicEnabled, document.createTextNode('Magic-link sign-in enabled')));
+            magicCard.appendChild(el('div.grid2', { style: 'margin-top:10px' },
+              el('label.field', {}, document.createTextNode('Link lifetime (minutes)'), magicTtl)));
+            magicCard.appendChild(el('div.row', { style: 'margin-top:10px' },
+              el('label.check', {}, magicSignup, document.createTextNode('An unknown address may create an account'))));
+            body.appendChild(magicCard);
+
+            body.appendChild(el('h2', { text: 'Redirect allow-list' }));
+            var redirectCard = el('div.card');
+            redirectCard.appendChild(el('p.sub', {
+              style: 'margin:0 0 8px',
+              text:
+                'One app origin per line. A completed sign-in may only be redirected to this backend’s own origin ' +
+                'or to one of these — which is what stops the callback being used as an open redirect. If your app ' +
+                'is served from a different origin than this backend, add it here or every sign-in is refused ' +
+                'before it starts.'
+            }));
+            redirectCard.appendChild(allowList);
+            body.appendChild(redirectCard);
+
+            body.appendChild(el('h2', { text: 'Account linking' }));
+            var linkCard = el('div.card');
+            linkCard.appendChild(el('label.check', {}, autoLink,
+              document.createTextNode('Link a provider sign-in to an existing account with the same VERIFIED address')));
+            linkCard.appendChild(el('p.sub', {
+              style: 'margin:8px 0 0',
+              text:
+                'Only a provider-verified address ever matches, and if the local account had never verified its own ' +
+                'address, its password and sessions are revoked at the moment of linking — that is what stops ' +
+                'someone registering your address before you do and keeping access afterwards. Every such event is ' +
+                'in the audit trail as auth.link.credentials-revoked. Turning this off means such a sign-in is ' +
+                'refused rather than linked.'
+            }));
+            body.appendChild(linkCard);
+
+            body.appendChild(el('div.row', { style: 'margin-top:12px' }, writeButton('Save policy', 'primary', savePolicy)));
+
+            function savePolicy() {
+              api('PUT', '/admin/auth', {
+                magicLink: {
+                  enabled: magicEnabled.checked,
+                  ttlMinutes: Number(magicTtl.value) || 15,
+                  allowSignup: magicSignup.checked
+                },
+                redirectAllowList: allowList.value.split('\n').map(function (s) { return s.trim(); }).filter(Boolean),
+                linking: { autoLinkVerifiedEmail: autoLink.checked }
+              })
+                .then(function () { toast('Sign-in policy saved.', 'ok'); load(); })
+                .catch(fail);
+            }
+          })
+          .catch(fail);
+      }
+
+      function copy(text) {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(function () { toast('Callback URL copied.', 'ok'); }, function () {
+            toast('Could not copy — select the URL in the table instead.', 'bad');
+          });
+          return;
+        }
+        toast('Copying is unavailable here — select the URL in the table instead.', 'bad');
+      }
+
+      function editProvider(existing, presets) {
+        var ref = {};
+        var isNew = !existing;
+        var id = el('input', { type: 'text', value: existing ? existing.id : '', placeholder: 'google' });
+        if (!isNew) id.disabled = true;
+
+        var presetSelect = el('select');
+        ['', 'google', 'github', 'oidc'].forEach(function (name) {
+          presetSelect.appendChild(el('option', { value: name, text: name || '(keep current settings)' }));
+        });
+        if (isNew) presetSelect.value = 'google';
+
+        var displayName = el('input', { type: 'text', value: existing ? existing.displayName : '' });
+        var issuer = el('input', { type: 'text', value: existing ? existing.issuer : '', placeholder: 'https://accounts.google.com' });
+        var clientId = el('input', { type: 'text', value: existing ? existing.clientId : '' });
+        var clientSecret = el('input', {
+          type: 'password',
+          placeholder: existing && existing.hasClientSecret ? '(unchanged)' : '(not set)'
+        });
+        var scopes = el('input', { type: 'text', value: existing ? (existing.scopes || []).join(' ') : '' });
+        var enabled = el('input', { type: 'checkbox', checked: existing ? !!existing.enabled : true });
+        var allowSignup = el('input', { type: 'checkbox', checked: existing ? existing.allowSignup !== false : true });
+
+        var hint = el('p.sub', { text: '' });
+        function applyPresetHint() {
+          var preset = presets[presetSelect.value];
+          hint.textContent = preset ? preset.note : '';
+          if (!preset || !isNew) return;
+          // Fill the form from the preset so the operator sees what will be
+          // saved rather than discovering it afterwards.
+          if (!id.value) id.value = presetSelect.value === 'oidc' ? '' : presetSelect.value;
+          displayName.value = preset.displayName;
+          issuer.value = preset.issuer;
+          scopes.value = preset.scopes.join(' ');
+        }
+        presetSelect.onchange = applyPresetHint;
+        applyPresetHint();
+
+        ref.ref = modal(isNew ? 'Add sign-in provider' : 'Edit ' + (existing.displayName || existing.id), [
+          el('div.grid2', {},
+            el('label.field', {}, document.createTextNode('Preset'), presetSelect),
+            el('label.field', {}, document.createTextNode('Provider id (appears in the callback URL)'), id),
+            el('label.field', {}, document.createTextNode('Button label'), displayName),
+            el('label.field', {}, document.createTextNode('Issuer URL (OIDC only)'), issuer),
+            el('label.field', {}, document.createTextNode('Client id'), clientId),
+            el('label.field', {}, document.createTextNode('Client secret'), clientSecret),
+            el('label.field', {}, document.createTextNode('Scopes (space separated)'), scopes)),
+          el('div.row', { style: 'margin-top:10px' },
+            el('label.check', {}, enabled, document.createTextNode('Enabled')),
+            el('label.check', {}, allowSignup, document.createTextNode('May create new accounts'))),
+          hint,
+          existing ? el('p.sub', { text: 'Callback URL: ' + existing.callbackUrl }) : null
+        ], [
+          cancelButton(ref),
+          el('button.btn.primary', {
+            type: 'button',
+            text: 'Save',
+            onclick: function () {
+              var providerId = (isNew ? id.value : existing.id).trim();
+              if (!providerId) { toast('A provider id is required.', 'bad'); return; }
+              var payload = {
+                displayName: displayName.value.trim(),
+                issuer: issuer.value.trim(),
+                clientId: clientId.value.trim(),
+                scopes: scopes.value.split(/\s+/).filter(Boolean),
+                enabled: enabled.checked,
+                allowSignup: allowSignup.checked
+              };
+              if (presetSelect.value) payload.preset = presetSelect.value;
+              if (clientSecret.value) payload.clientSecret = clientSecret.value;
+              api('PUT', '/admin/auth/providers/' + encodeURIComponent(providerId), payload)
+                .then(function (result) {
+                  ref.ref.close();
+                  toast(
+                    result.provider && result.provider.ready
+                      ? 'Provider saved. Register this callback URL with the provider: ' + result.provider.callbackUrl
+                      : 'Provider saved, but not usable yet: ' + (result.provider && result.provider.notReadyReason),
+                    result.provider && result.provider.ready ? 'ok' : 'bad'
+                  );
+                  load();
+                })
+                .catch(fail);
+            }
+          })
+        ]);
+      }
+    });
+
     // ------------------------------------------------------------ triggers --
 
     view('triggers', 'Triggers', 'Automation', 'triggers', function (root) {

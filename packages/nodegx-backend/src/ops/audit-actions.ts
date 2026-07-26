@@ -68,7 +68,14 @@ const ACTIONS: Record<string, string> = {
   'PUT admin/search/collections/:name': 'search.collection.update',
   'DELETE admin/search/collections/:name': 'search.collection.delete',
   'POST admin/search/collections/:name/rebuild': 'search.rebuild',
-  'PUT admin/ops': 'ops.config.update'
+  'PUT admin/ops': 'ops.config.update',
+
+  // Sign-in providers (BAK-004). Changing a provider's client id, or adding an
+  // issuer, changes WHO can obtain a session on this backend — which is the
+  // definition of something an operator must be able to reconstruct afterwards.
+  'PUT admin/auth': 'auth.config.update',
+  'PUT admin/auth/providers/:id': 'auth.provider.update',
+  'DELETE admin/auth/providers/:id': 'auth.provider.delete'
 };
 
 /**
@@ -91,6 +98,19 @@ export function auditExemptionFor(method: string, pattern: string): string | nul
 export const AUDIT_LOGIN_SUCCESS = 'admin.login';
 export const AUDIT_LOGIN_FAILURE = 'admin.login.failed';
 
+/**
+ * Actions raised by a HANDLER rather than by the route table (BAK-004).
+ *
+ * These are the exception to "the dispatcher writes the entry", and the reason
+ * is that the route (`GET /oauth/:provider/callback`) is public and unaudited
+ * by class, while the EVENT inside it — an end user obtaining a session, or an
+ * account's password being revoked by the linking rule — is exactly what an
+ * operator investigating an account dispute needs to see. The dispatcher cannot
+ * know either happened; only the handler can.
+ */
+export const AUDIT_AUTH_SIGN_IN = 'auth.signin';
+export const AUDIT_AUTH_CREDENTIALS_REVOKED = 'auth.link.credentials-revoked';
+
 /** The declared action for a route, or null when the route is not audited. */
 export function auditActionFor(method: string, pattern: string): string | null {
   return ACTIONS[`${method} ${pattern}`] || null;
@@ -109,5 +129,13 @@ export function requiresAuditAction(method: string, accessKind: string): boolean
 
 /** Every declared action name — the dashboard's filter list and the docs. */
 export function declaredAuditActions(): string[] {
-  return [...new Set([...Object.values(ACTIONS), AUDIT_LOGIN_SUCCESS, AUDIT_LOGIN_FAILURE])].sort();
+  return [
+    ...new Set([
+      ...Object.values(ACTIONS),
+      AUDIT_LOGIN_SUCCESS,
+      AUDIT_LOGIN_FAILURE,
+      AUDIT_AUTH_SIGN_IN,
+      AUDIT_AUTH_CREDENTIALS_REVOKED
+    ])
+  ].sort();
 }

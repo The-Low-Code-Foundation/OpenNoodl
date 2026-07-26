@@ -13,9 +13,9 @@ export interface EmailTemplate {
 }
 
 /** Every template this backend ships. Also the enumerable set the MCP/panel edit. */
-export type TemplateId = 'passwordReset' | 'verifyEmail';
+export type TemplateId = 'passwordReset' | 'verifyEmail' | 'magicLink';
 
-export const TEMPLATE_IDS: TemplateId[] = ['passwordReset', 'verifyEmail'];
+export const TEMPLATE_IDS: TemplateId[] = ['passwordReset', 'verifyEmail', 'magicLink'];
 
 /**
  * Shipped defaults. `{{appName}}`, `{{resetUrl}}` / `{{verifyUrl}}`, and
@@ -51,6 +51,26 @@ export const DEFAULT_TEMPLATES: Record<TemplateId, EmailTemplate> = {
       '<p>Please confirm your email address for <strong>{{appName}}</strong> by clicking the link below:</p>' +
       '<p><a href="{{verifyUrl}}">{{verifyUrl}}</a></p>' +
       "<p>If you didn't create this account, you can ignore this email.</p>"
+  },
+  /**
+   * BAK-004 passwordless sign-in. Note what this one does NOT say: no username
+   * (the link may be the recipient's first contact with the backend, before any
+   * account exists) and an explicit warning, because unlike a reset link this
+   * one signs the clicker straight in — a forwarded magic link is a handed-over
+   * account.
+   */
+  magicLink: {
+    subject: 'Your sign-in link for {{appName}}',
+    text:
+      'Open the link below to sign in to {{appName}}:\n\n' +
+      '{{magicLinkUrl}}\n\n' +
+      'This link expires in {{expiresIn}} and can only be used once. Anyone who opens it is signed in, so ' +
+      "don't forward it. If you didn't ask to sign in, you can ignore this email.\n",
+    html:
+      '<p>Open the link below to sign in to <strong>{{appName}}</strong>:</p>' +
+      '<p><a href="{{magicLinkUrl}}">Sign in to {{appName}}</a></p>' +
+      '<p>This link expires in {{expiresIn}} and can only be used once. Anyone who opens it is signed in, so ' +
+      "don't forward it. If you didn't ask to sign in, you can ignore this email.</p>"
   }
 };
 

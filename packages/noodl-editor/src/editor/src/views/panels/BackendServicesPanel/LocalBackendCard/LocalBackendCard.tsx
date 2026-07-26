@@ -17,6 +17,7 @@ import { PrimaryButton, PrimaryButtonSize, PrimaryButtonVariant } from '@noodl-c
 import { HStack, VStack } from '@noodl-core-ui/components/layout/Stack';
 import { Text, TextType } from '@noodl-core-ui/components/typography/Text';
 
+import { AuthPanel } from '../../auth';
 import { DataBrowser } from '../../databrowser';
 import { EmailPanel } from '../../email';
 import { PermissionsPanel } from '../../permissions';
@@ -69,6 +70,7 @@ export function LocalBackendCard({ backend, onStart, onStop, onDelete, onExport 
   const [showTriggers, setShowTriggers] = useState(false);
   const [showEmail, setShowEmail] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
+  const [showAuth, setShowAuth] = useState(false);
   const statusDisplay = getStatusDisplay(backend);
 
   const isEphemeral = backend.running && backend.persistence?.mode === 'ephemeral';
@@ -237,6 +239,12 @@ export function LocalBackendCard({ backend, onStart, onStop, onDelete, onExport 
                 variant={PrimaryButtonVariant.Muted}
                 onClick={() => setShowSearch(true)}
               />
+              <PrimaryButton
+                label="Sign-in"
+                size={PrimaryButtonSize.Small}
+                variant={PrimaryButtonVariant.Muted}
+                onClick={() => setShowAuth(true)}
+              />
             </>
           )}
           {onExport && backend.running && (
@@ -307,6 +315,15 @@ export function LocalBackendCard({ backend, onStart, onStop, onDelete, onExport 
         createPortal(
           <div className={css.SchemaPanelOverlay}>
             <EmailPanel backendId={backend.id} backendName={backend.name} onClose={() => setShowEmail(false)} />
+          </div>,
+          document.body
+        )}
+
+      {/* Sign-in providers (BAK-004) — rendered via portal for full-screen overlay */}
+      {showAuth &&
+        createPortal(
+          <div className={css.SchemaPanelOverlay}>
+            <AuthPanel backendId={backend.id} backendName={backend.name} onClose={() => setShowAuth(false)} />
           </div>,
           document.body
         )}

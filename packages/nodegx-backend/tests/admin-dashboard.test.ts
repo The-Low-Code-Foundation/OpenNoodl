@@ -131,6 +131,26 @@ describe('BAK-005 dashboard document', () => {
     expect(css).not.toMatch(/@import|url\(\s*["']?https?:/i);
   });
 
+  /**
+   * The page is one large inline script that no compiler ever sees: esbuild
+   * inlines it as TEXT, tsc never reads it, and every other test here asserts
+   * on the SOURCE rather than running it. So a stray bracket ships a document
+   * that serves with a 200, passes every other assertion, and renders a blank
+   * page in a browser.
+   *
+   * `new Function` parses without executing, which is exactly the guard that
+   * was missing. Added while BAK-004 was adding a whole view to this file.
+   */
+  it('is syntactically valid JavaScript, which nothing else here would notice', () => {
+    const scripts = [...html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/gi)].map((m) => m[1]);
+    expect(scripts.length).toBeGreaterThan(0);
+    for (const source of scripts) {
+      if (!source.trim()) continue;
+      // eslint-disable-next-line no-new-func
+      expect(() => new Function(source)).not.toThrow();
+    }
+  });
+
   it('renders backend values through textContent, never innerHTML', () => {
     // The dashboard prints record contents. If any of it went through
     // innerHTML, a hostile value in a row would execute.
@@ -254,6 +274,9 @@ describe('BAK-005 dashboard over HTTP (locked backend)', () => {
     expect(json.features.collections).toBe(true);
     expect(json.features.triggers).toBe(true);
     expect(json.features.backups).toBe(true);
+    // BAK-004's Sign-in view. Gated on a schema manager like the other views
+    // that need a system table (`_UserIdentity` here).
+    expect(json.features.auth).toBe(true);
     expect(Object.values(json.features).every((v) => typeof v === 'boolean')).toBe(true);
   });
 

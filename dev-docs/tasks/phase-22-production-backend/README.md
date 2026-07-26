@@ -3,8 +3,9 @@
 **Phase:** 22
 **Track:** H — BaaS parity for the standalone backend
 **Source:** Strategy discussion 2026-07-25, building directly on [Phase 19](../phase-19-cloud-workflows/) and its [BACKEND-GAP-ASSESSMENT.md](../phase-19-cloud-workflows/BACKEND-GAP-ASSESSMENT.md)
-**Status:** Not started (created 2026-07-25)
+**Status:** ✅ **COMPLETE — 9/9, 2026-07-27** (created 2026-07-25)
 **Starts:** After Phase 19's WF-004 lands. Nothing here starts before the standalone service exists.
+**Closure:** per-task state, the exit criterion clause by clause, and one consolidated open-items register are in [PROGRESS.md](./PROGRESS.md); every change is in [CHANGELOG.md](./CHANGELOG.md).
 
 ## Why this phase exists
 

@@ -69,6 +69,16 @@ apps.example.com {
 	handle /apps* {
 		reverse_proxy 127.0.0.1:8577
 	}
+	# BAK-004 sign-in. `/oauth/*` is where identity providers send the browser
+	# back, so it must be reachable at the SAME public origin the callback URL
+	# registered in the provider's console names — a mismatch here is refused by
+	# the provider, not by us, with a message that blames the redirect URI.
+	handle /auth* {
+		reverse_proxy 127.0.0.1:8577
+	}
+	handle /oauth* {
+		reverse_proxy 127.0.0.1:8577
+	}
 	handle /config {
 		reverse_proxy 127.0.0.1:8577
 	}

@@ -206,7 +206,9 @@ describe('BAK-002 email subsystem', () => {
       const { status, json } = await req('GET', '/admin/email/templates');
       expect(status).toBe(200);
       const ids = json.templates.map((t: any) => t.id).sort();
-      expect(ids).toEqual(['passwordReset', 'verifyEmail']);
+      // `magicLink` joined the shipped set in BAK-004: passwordless sign-in
+      // reuses this template system rather than growing a second one.
+      expect(ids).toEqual(['magicLink', 'passwordReset', 'verifyEmail']);
       expect(json.templates.every((t: any) => t.isOverridden === false)).toBe(true);
     });
 

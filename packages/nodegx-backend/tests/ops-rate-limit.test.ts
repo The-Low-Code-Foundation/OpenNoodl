@@ -197,10 +197,15 @@ describe('BAK-009 rate limiting over real sockets', () => {
 
     // If this fails, the message names the class whose membership changed;
     // `byClass` is what to read to see which route moved.
+    // BAK-004 moved this tally by 13: +4 admin (the /admin/auth surface),
+    // +7 auth (every step of obtaining a session through a provider or a magic
+    // link), and +2 data (GET/DELETE /users/me/identities — session-kind but
+    // ordinary authenticated app traffic, exactly like /users/me itself, not a
+    // route where a credential is presented).
     expect(counts).toEqual({
-      admin: 67,
-      auth: 8,
-      data: 15,
+      admin: 71,
+      auth: 15,
+      data: 17,
       files: 4,
       functions: 1,
       hooks: 1,
