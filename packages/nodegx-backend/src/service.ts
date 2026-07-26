@@ -28,6 +28,7 @@ import { AdapterFacade } from './persistence/AdapterFacade';
 import { ExecutionHistory, ExecutionHistoryStatus } from './execution/ExecutionStore';
 import { HttpServer, ListenInfo } from './server/HttpServer';
 import { WorkflowRunner } from './workflow/WorkflowRunner';
+import { WorkflowSubsystem } from './workflow/WorkflowSubsystem';
 import { SecurityState, SecurityStartupError } from './security/state';
 import { ChangeBus } from './realtime/ChangeBus';
 import { RealtimeHub } from './realtime/RealtimeHub';
@@ -66,6 +67,7 @@ export class BackendService {
   private facade: AdapterFacade | null = null;
   private http: HttpServer | null = null;
   private runner: WorkflowRunner | null = null;
+  private workflows: WorkflowSubsystem | null = null;
   private security: SecurityState | null = null;
   private changeBus: ChangeBus | null = null;
   private realtime: RealtimeHub | null = null;
@@ -136,6 +138,20 @@ export class BackendService {
       );
     }
 
+    // 2.2 Workflows (WF-001): the definition registry loads workflow-defs/ (loud
+    //     on an invalid definition, same doctrine as triggers.json). The engine
+    //     emits into the SAME execution history as functions (one record path)
+    //     and schedules real cloud functions as steps via the shared runner (one
+    //     node abstraction). getRunner is late-bound — the runner comes up at
+    //     step 5, and the engine only calls it at run time.
+    this.workflows = new WorkflowSubsystem({
+      dataDir: this.options.dataDir,
+      executions: this.executions,
+      getRunner: () => this.runner,
+      backendId: this.options.backendId,
+      backendName: this.options.backendName
+    });
+
     // 2.5 Realtime (BAK-001): the change bus taps the adapter's post-commit
     //     events ONCE; the hub fans matching, permission-checked events out over
     //     SSE. WF-005's trigger dispatch will be the bus's second consumer.
@@ -150,6 +166,7 @@ export class BackendService {
       dataDir: this.options.dataDir,
       executions: this.executions,
       getRunner: () => this.runner,
+      getWorkflows: () => this.workflows,
       backendId: this.options.backendId,
       backendName: this.options.backendName,
       bus: this.changeBus,
@@ -175,6 +192,7 @@ export class BackendService {
       getConfigParams: () => this.readConfigParams(),
       realtime: this.realtime,
       triggers: this.triggers,
+      workflows: this.workflows,
       emailConfig: this.emailConfig,
       mailer: this.mailer,
       emailTokens: new EmailTokenStore(this.facade)
@@ -218,6 +236,18 @@ export class BackendService {
     await this.runner.initialize();
     await this.runner.loadWorkflows();
 
+    // 5.5 WF-001 durability recovery: any execution left `running` from a prior
+    //     process (a restart mid-run) is marked failed+interrupted now — nothing
+    //     silently half-runs. In-memory runs do not resume (v1 policy).
+    const interruptedRecovered = this.workflows.start();
+    if (interruptedRecovered > 0) {
+      // eslint-disable-next-line no-console
+      console.warn(
+        `[nodegx-backend] WF-001: marked ${interruptedRecovered} in-flight execution(s) as interrupted ` +
+          '(a prior run did not survive a restart; in-memory runs do not resume in v1).'
+      );
+    }
+
     // 6. Triggers go live only now the runner can answer: arm the cron scheduler
     //    and attach the db-change consumer to the ChangeBus.
     this.triggers.start();
@@ -260,6 +290,7 @@ export class BackendService {
     this.persistence = null;
     this.facade = null;
     this.runner = null;
+    this.workflows = null;
     this.security = null;
   }
 

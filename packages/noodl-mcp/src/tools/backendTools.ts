@@ -151,6 +151,41 @@ export function registerBackendReadTools(server: McpServer): void {
   );
 
   server.registerTool(
+    'list_backend_workflows',
+    {
+      title: 'List backend workflows',
+      description:
+        'List the WF-001 workflow definitions on a running backend: multi-step, error-routed, cancellable ' +
+        'server executions. Each shows its steps, entry, concurrency cap, and timeouts. This is how an agent ' +
+        'sees what multi-step automation already exists before authoring more. (A "workflow" here is the WF-001 ' +
+        'engine artifact — distinct from a single cloud function.)',
+      inputSchema: { backendId: z.string().optional().describe('Which backend (omit if exactly one is running)') }
+    },
+    guarded(async ({ backendId }) => {
+      const client = await requireBackend(backendId);
+      const { json } = await client.request('GET', '/admin/workflow-defs');
+      return jsonResult(json);
+    })
+  );
+
+  server.registerTool(
+    'get_backend_workflow',
+    {
+      title: 'Get a backend workflow',
+      description: 'The full definition of one WF-001 workflow by id on a running backend (steps, edges, timeouts).',
+      inputSchema: {
+        backendId: z.string().optional(),
+        id: z.string().describe('The workflow id (from list_backend_workflows)')
+      }
+    },
+    guarded(async ({ backendId, id }) => {
+      const client = await requireBackend(backendId);
+      const { json } = await client.request('GET', `/admin/workflow-defs/${encodeURIComponent(id)}`);
+      return jsonResult(json);
+    })
+  );
+
+  server.registerTool(
     'get_backend_email_config',
     {
       title: 'Get backend email config',
@@ -482,8 +517,11 @@ export function registerBackendWriteTools(server: McpServer): void {
     name: z.string().optional().describe('Human label'),
     enabled: z.boolean().optional().describe('Enabled (default true)'),
     target: z
-      .object({ kind: z.literal('function'), name: z.string() })
-      .describe('The cloud function this trigger invokes (kind is always "function" in v1)'),
+      .object({
+        kind: z.enum(['function', 'workflow']),
+        name: z.string().describe('The function name, or the workflow id when kind is "workflow"')
+      })
+      .describe('What this trigger invokes: a cloud function, or a WF-001 workflow (kind "workflow", name = workflow id)'),
     schedule: z
       .object({
         cron: z.string().describe('5-field cron or @preset (@hourly/@daily/…). Local timezone.'),
@@ -569,6 +607,119 @@ export function registerBackendWriteTools(server: McpServer): void {
     guarded(async ({ backendId, id }) => {
       const client = await requireBackend(backendId);
       const { json } = await client.request('DELETE', `/admin/triggers/${encodeURIComponent(id)}`);
+      return jsonResult(json);
+    })
+  );
+
+  // ==========================================================================
+  // Workflows (WF-001) — the agent-authors-multi-step-automation surface
+  // ==========================================================================
+
+  const workflowStep = z.object({
+    id: z.string().describe('Unique within the workflow; also the execution-history nodeId'),
+    name: z.string().optional(),
+    kind: z.literal('call-function').describe("v1 step kind; invokes a cloud function (WF-002 adds more)"),
+    ref: z.string().describe('The cloud function to invoke for a call-function step'),
+    params: z.record(z.unknown()).optional().describe('Static params merged into the step input'),
+    timeoutMs: z.number().optional().describe('Per-step timeout (0/omitted = the workflow default)'),
+    next: z.array(z.string()).optional().describe('Success edges: steps reachable when this step succeeds'),
+    onError: z
+      .array(z.string())
+      .optional()
+      .describe('Error edges: steps reachable when this step fails. Empty/absent = a failure HALTS the run.')
+  });
+
+  const workflowFields = {
+    name: z.string().optional(),
+    entry: z.string().describe('The step id the run starts from'),
+    concurrency: z.number().optional().describe('Max concurrent runs of this workflow (default 1; extra runs queue)'),
+    timeoutMs: z.number().optional().describe('Whole-workflow timeout in ms (0/omitted = none)'),
+    stepTimeoutMs: z.number().optional().describe('Default per-step timeout in ms'),
+    steps: z.array(workflowStep).describe('The step DAG (must be acyclic; every edge target must exist)')
+  };
+
+  server.registerTool(
+    'create_backend_workflow',
+    {
+      title: 'Create a backend workflow',
+      description:
+        'Author a WF-001 workflow on a running backend: a multi-step, ordered, error-routed, cancellable server ' +
+        'execution over a DAG of steps (each step invokes a cloud function in v1). The definition is validated ' +
+        '(acyclic, edges resolve) and REJECTED with the reason if invalid — never silently accepted. It is ' +
+        'persisted and deploys with the backend. Point a trigger at it with target {kind:"workflow", name:<id>}.',
+      inputSchema: { backendId: z.string().optional(), id: z.string().optional().describe('Omit to mint one'), ...workflowFields }
+    },
+    guarded(async ({ backendId, ...body }) => {
+      const client = await requireBackend(backendId);
+      const { json } = await client.request('POST', '/admin/workflow-defs', body);
+      return jsonResult(json);
+    })
+  );
+
+  server.registerTool(
+    'update_backend_workflow',
+    {
+      title: 'Update a backend workflow',
+      description: 'Replace a WF-001 workflow definition by id. Same fields as create; re-validated strictly.',
+      inputSchema: { backendId: z.string().optional(), id: z.string().describe('The workflow id'), ...workflowFields }
+    },
+    guarded(async ({ backendId, id, ...body }) => {
+      const client = await requireBackend(backendId);
+      const { json } = await client.request('PUT', `/admin/workflow-defs/${encodeURIComponent(id)}`, body);
+      return jsonResult(json);
+    })
+  );
+
+  server.registerTool(
+    'delete_backend_workflow',
+    {
+      title: 'Delete a backend workflow',
+      description: 'Remove a WF-001 workflow definition by id from a running backend.',
+      inputSchema: { backendId: z.string().optional(), id: z.string().describe('The workflow id to delete') }
+    },
+    guarded(async ({ backendId, id }) => {
+      const client = await requireBackend(backendId);
+      const { json } = await client.request('DELETE', `/admin/workflow-defs/${encodeURIComponent(id)}`);
+      return jsonResult(json);
+    })
+  );
+
+  server.registerTool(
+    'run_backend_workflow',
+    {
+      title: 'Run a backend workflow',
+      description:
+        'Run a WF-001 workflow now with an optional payload, and get the run result (status, steps run/skipped, ' +
+        'the execution id). The run is recorded in the execution history with per-step events, viewable in the ' +
+        'History Panel. Use this to test a workflow you just authored.',
+      inputSchema: {
+        backendId: z.string().optional(),
+        id: z.string().describe('The workflow id to run'),
+        payload: z.record(z.unknown()).optional().describe('The run payload (becomes each step\'s base input)')
+      }
+    },
+    guarded(async ({ backendId, id, payload }) => {
+      const client = await requireBackend(backendId);
+      const { json } = await client.request('POST', `/admin/workflow-defs/${encodeURIComponent(id)}/run`, { payload: payload || {} });
+      return jsonResult(json);
+    })
+  );
+
+  server.registerTool(
+    'cancel_backend_workflow_run',
+    {
+      title: 'Cancel a backend workflow run',
+      description:
+        'Cancel an in-flight WF-001 run by its execution id (from run_backend_workflow or the execution history). ' +
+        'The engine stops scheduling further steps promptly and records the run as cancelled.',
+      inputSchema: {
+        backendId: z.string().optional(),
+        executionId: z.string().describe('The execution id of the in-flight run')
+      }
+    },
+    guarded(async ({ backendId, executionId }) => {
+      const client = await requireBackend(backendId);
+      const { json } = await client.request('POST', `/admin/workflow-runs/${encodeURIComponent(executionId)}/cancel`);
       return jsonResult(json);
     })
   );

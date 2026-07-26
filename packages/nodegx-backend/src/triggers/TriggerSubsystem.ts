@@ -18,6 +18,7 @@
 import type { ChangeBus } from '../realtime/ChangeBus';
 import type { ExecutionHistory } from '../execution/ExecutionStore';
 import type { WorkflowRunner } from '../workflow/WorkflowRunner';
+import type { WorkflowSubsystem } from '../workflow/WorkflowSubsystem';
 import { SecretsStore } from '../config/SecretsStore';
 import { TriggerRegistry } from './registry';
 import { TriggerDispatcher } from './dispatcher';
@@ -28,6 +29,8 @@ export interface TriggerSubsystemDeps {
   dataDir: string;
   executions: ExecutionHistory;
   getRunner: () => WorkflowRunner | null;
+  /** WF-001: resolves the workflow subsystem for `target.kind === 'workflow'`. */
+  getWorkflows?: () => WorkflowSubsystem | null;
   backendId: string;
   backendName: string;
   /** The service's single ChangeBus (BAK-001). */
@@ -49,6 +52,7 @@ export class TriggerSubsystem {
       registry: this.registry,
       executions: deps.executions,
       getRunner: deps.getRunner,
+      getWorkflows: deps.getWorkflows,
       backendId: deps.backendId,
       backendName: deps.backendName
     });
