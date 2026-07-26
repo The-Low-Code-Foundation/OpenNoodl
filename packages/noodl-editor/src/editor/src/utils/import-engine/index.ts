@@ -19,7 +19,8 @@
  */
 
 export * from './types';
-export { analyze } from './analyze';
+export { analyze, analyzeSource } from './analyze';
+export type { AnalyzedSource } from './analyze';
 export { buildInventory, catalogPortType } from './inventory';
 export type { PortTypeLookup, BuildInventoryInput } from './inventory';
 export { plan } from './plan';

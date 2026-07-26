@@ -57,12 +57,26 @@ function listModules(sourceDir: string): string[] {
 }
 
 /**
- * Analyze a source project directory into a {@link SourceInventory}. Does not
- * mutate anything and does not touch the current project.
+ * What one analyze pass produces: the inventory, plus the source project data it
+ * was built from.
+ *
+ * `plan()` needs BOTH (the inventory for the closure, the project data for the
+ * SUB-007 overwrite diffs), and loading a project off disk is the expensive part
+ * of analyze — so LIB-005's UI takes this shape and loads once. `analyze()` is
+ * the narrow view for callers that only want the inventory.
+ */
+export interface AnalyzedSource {
+  inventory: SourceInventory;
+  project: ProjectData;
+}
+
+/**
+ * Analyze a source project directory. Does not mutate anything and does not
+ * touch the current project.
  *
  * Rejects if the directory cannot be opened as a project.
  */
-export function analyze(sourceDir: string): Promise<SourceInventory> {
+export function analyzeSource(sourceDir: string): Promise<AnalyzedSource> {
   return new Promise((resolve, reject) => {
     projectFromDirectory(sourceDir, async (project?: ProjectModel) => {
       if (!project) {
@@ -74,10 +88,18 @@ export function analyze(sourceDir: string): Promise<SourceInventory> {
         const modules = listModules(sourceDir);
         const projectData = project.toJSON() as unknown as ProjectData;
         const portType = catalogPortType(loadDefaultCatalog());
-        resolve(buildInventory({ sourceDir, project: projectData, resources, modules, portType }));
+        resolve({
+          inventory: buildInventory({ sourceDir, project: projectData, resources, modules, portType }),
+          project: projectData
+        });
       } catch (err) {
         reject(err instanceof Error ? err : new Error(String(err)));
       }
     });
   });
+}
+
+/** {@link analyzeSource} reduced to just the inventory. */
+export function analyze(sourceDir: string): Promise<SourceInventory> {
+  return analyzeSource(sourceDir).then((analyzed) => analyzed.inventory);
 }
