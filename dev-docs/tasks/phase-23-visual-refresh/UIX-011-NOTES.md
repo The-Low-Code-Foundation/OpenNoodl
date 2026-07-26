@@ -171,21 +171,45 @@ own box. Every swap was sized against the rule it replaced rather than dropped i
 default. The `Icon` `Root` is `display:flex` with `align-items:center`, so vertical centring is
 free — horizontal spacing and *box size* are what shift.
 
-| Site | Old box | Fix applied |
-|---|---|---|
-| `PropertyTabs` | `.property-tab-icon` 32×32 | Icon container pinned to 32×32 via `UNSAFE_style`; the core-ui border/corner glyphs are 31 viewBox so they fill it at the same optical weight. `.property-tab` opacity 0.25/1 selected-state kept on the parent — it still works, since opacity is inherited by the child. |
-| `property-changed-dot` (×2 files) | 16×16 absolutely positioned at `top:9px/left:4px` and `left:5px/top:12px` | Kept the absolute positioning on the wrapper `<span>`; Icon sized `Tiny` (16) inside it. Same box, same origin. |
-| `visual-state-transition-changed-dot` | 16×16, `margin-left:8px` | Wrapper keeps `margin-left`; Icon `Tiny`. |
-| `variants-pick-icon` | 8×10 glyph, `margin-top:2px`, `margin-left:4px`, opacity 0.7 | `CaretDownUp` at `Tiny` (16) is visually larger than the old 8×10; container constrained to **10×12** so the row height does not grow. |
-| `queryeditor-trash-icon` | 20×20, `margin-left:10px`, `margin-right:5px`, `align-self:center` | Margins + `align-self` moved onto the Icon's `UNSAFE_style`; Icon `Small` (20) matches. |
-| `router-pages-icon` | 18px wide, `margin-right:7px`, `align-self:center`, opacity 0.7 | Icon `Tiny` (16) — 2px narrower than the old 18. Kept `margin-right:7px`; the row is `display:flex` so the 2px comes off the icon, not the label baseline. **Flagged for visual check.** |
-| `textstyles-edit-style::before` | 20×20 pseudo-element inside a 33×33 flex-centred box | Pseudo-element deleted; Icon becomes a real child of the already-centred `.textstyles-edit-style` div. Hover opacity moved from `::before` to a child selector. |
-| `signalIcon` | 15×15, `margin-right:3px` | `Lightning` at `Tiny` (16). 1px wider; `margin-right:3px` kept. |
-| `PinButton` | `$pin-icon-size` square mask on a `<button>` | Button keeps its box; Icon becomes its child. Mask + `background:` removed, `color: var(--theme-color-fg-default)` added so the glyph inherits what the mask used to be filled with. |
-| lesson checkmark | `height:16px` / `21px` by state | Both glyphs are 16×16; the `21px` variant was compensating for the 24-viewBox selected asset, which no longer exists. Rule simplified to a flat 16px. **Flagged for visual check.** |
+### 4a. The trap that made this easy — `IconSize` does nothing
 
-The two flagged rows are the only places where the box genuinely changed size rather than moving
-between parent and child.
+Found while sizing the first swap, and it changes how every other one had to be written:
+
+```
+$ grep -rn "is-size-tiny" packages/noodl-core-ui/src packages/noodl-editor/src
+  → components/common/Icon/Icon.tsx:165    (the enum)
+  → components/user/UserBadge/UserBadge.module.scss:25   (a different component)
+```
+
+`IconSize`'s class names (`is-size-tiny`, `is-size-default`, …) are **defined in no
+stylesheet**. `Icon.module.scss` styles only `.Root` and `svg { width:100%; height:100% }`, so
+`classNames(css[size])` resolves to `undefined` and is dropped. **`size={IconSize.Tiny}` is inert
+today** — an `<Icon>` has no intrinsic size at all and takes whatever box its host gives it. The
+≈127 existing consumers work because their hosts happen to size them.
+
+This is UIX-010's territory (it owns the `IconSize` retune) so it is **not fixed here**, but it
+dictated the method: every migrated glyph gets an **explicit box** matching the rule it replaced,
+via `UNSAFE_style` or the host class. That makes the swaps layout-neutral *by construction*
+rather than by luck — which is the failure mode the spec called out as making this task Medium.
+Passing `size={IconSize.Tiny}` and trusting it would have silently collapsed icons app-wide.
+
+### 4b. Per-site sizing
+
+| Site | Old box | What was done |
+|---|---|---|
+| `PropertyTabs` | `.property-tab-icon` 32×32 | Icon pinned to 32×32. core-ui's border/corner glyphs are 31-viewBox, so they fill it at the same optical weight. `.property-tab`'s 0.25/1 selected opacity stays on the parent and still applies — opacity composites down to the child. |
+| `property-changed-dot` (2 files) | 16×16, absolutely positioned | Positioning stays on the wrapper `<span>`; Icon pinned 16×16 inside it. Same box, same origin. `background:` → `color:` as paint source. |
+| `visual-state-transition-changed-dot` | 16×16, `margin-left:8px` | Same treatment; gutter untouched. |
+| `variants-pick-icon` | 8×10 glyph, `margin-top:2px`, `margin-left:4px`, opacity 0.7 | Box **8×10 → 10×12**. The old element had no width/height of its own — it took the image's intrinsic 8×10 — so the class needed an explicit box for the first time. 10×12 keeps `CaretDownUp` legible without growing the 50px-min row. **The one deliberate size change.** |
+| `queryeditor-trash-icon` | 20×20 + margins | Unchanged; Icon pinned 20×20. |
+| `router-pages-icon` | `width:18px`, height implicit from aspect ratio | Pinned **18×18** — same width as before. `height` had to be stated explicitly because an Icon child does not supply the intrinsic aspect ratio a background image did. No size change. |
+| `textstyles-edit-style::before` | 20×20 pseudo-element in a 33×33 flex-centred box | Pseudo-element deleted — a `::before` cannot host a React child. Icon is now a real child of the already-centred box; opacity moved from `::before` to a `> *` child selector. |
+| `signalIcon` | 15×15, `margin-right:3px` | Unchanged; Icon pinned 15×15. |
+| `PinButton` | `$pin-icon-size` square mask on a `<button>` | Button keeps its box. Mask removed; `background` → `transparent` (it was the *paint* for the mask, so leaving it would have drawn a solid block) and `color` becomes the paint source. |
+| lesson checkmark | `height:16px`, overridden to `21px` when not completed | Flat **16×16** + `flex-shrink:0`. The `21px` rule existed only to compensate for the 24-viewBox "selected" asset, which is gone. **The second deliberate size change.** |
+
+Two boxes changed on purpose (`variants-pick-icon`, lesson checkmark); everything else is the
+same box with the glyph moved from the element's background into a child.
 
 ## 5. Dead assets removed
 
@@ -193,27 +217,44 @@ Beyond the glyphs the migration replaced, the usage scan (every `.svg` basename 
 all non-`.svg` sources under `packages/noodl-editor/src`) found a large orphan set — assets no
 stylesheet, view, or `require` had referenced in a long time.
 
+**255 SVGs in, 12 out. 243 deleted.**
+
+The orphan set was found by grepping every `.svg` basename across all non-`.svg` sources in the
+package, not by reading the stylesheets — which is why it is this large. Dead CSS was still
+"using" a dozen of them, so a stylesheet-first inventory would have kept them.
+
 | Bucket | Count |
 |---|---|
-| `core-ui-temp/` duplicates of core-ui | 136 |
-| `core-ui-temp/` uniques with no live consumer | 2 |
-| Root orphans (never referenced) | 55 |
-| Root, referenced only by a now-deleted dead stylesheet | 11 |
-| Root, migrated to core-ui or replaced by a core-ui twin | 15 |
-| `editor/` orphans (never referenced) | 18 |
-| `editor/` referenced only by dead CSS / migrated | 7 |
-| **Total deleted** | **244** |
+| `core-ui-temp/` byte-level duplicates of core-ui's set | 136 |
+| `core-ui-temp/` uniques with no live consumer (`component-visual`, `component_with_children-visual`) | 2 |
+| Root + `editor/` orphans — no reference anywhere in the package | 73 |
+| Root + `editor/` replaced by a core-ui twin or migrated into core-ui | 32 |
+| **Deleted** | **243** |
+| **Kept** | **12** |
 
-Kept (7):
+Kept, with the reason each survived:
 
-| File | Why |
+| File(s) | Why |
 |---|---|
-| `canvas/` × 5 | canvas painter (§3d) |
-| `debug.svg`, `editor/close_20.svg`, `editor/refrsh_24.svg` | **`frames/viewer-frame/assets/style.css`** — the runtime viewer frame, explicitly out of scope |
-| `curve-ease-in.svg`, `curve-ease-out.svg`, `curve-ease-in-out.svg`, `curve-linear.svg` | `CurveEditor/curveeditor.jsx` — easing-curve *diagrams*, not chrome icons |
+| `canvas/` × 5 | `CanvasIcons.ts` paints them onto `<canvas>` (§3d) |
+| `debug.svg`, `editor/close_20.svg`, `editor/refrsh_24.svg` | `frames/viewer-frame/assets/style.css` — the runtime viewer frame, explicitly out of scope |
+| `curve-ease-in`, `curve-ease-out`, `curve-ease-in-out`, `curve-linear` | `CurveEditor/curveeditor.jsx` — easing-curve *diagrams*, not chrome icons |
 
-(That is 5 + 3 + 4 = 12 files; the "7" above counts directories/groups. Exact final tree is in
-the commit.)
+`core-ui-temp/` is renamed **`canvas/`**: once the duplicates went, the old name described
+neither its contents nor its purpose.
+
+## 5b. One behavioural risk found late, and closed
+
+`packages/noodl-editor/docs/interactive-lessons.md` documents a hand-authored lesson HTML format
+whose checkmark is an **empty** `<span class="lesson-checkmark">`, filled entirely by the
+`content: url()` this task removed. No lesson content ships in this repo — LEARN-001 leaves
+curriculum hosting open — so that markup can still arrive at runtime and would have rendered
+*nothing at all*.
+
+Closed by degrading an empty `.lesson-checkmark` to a CSS-drawn ring (filled when complete), which
+is themeable via `currentColor` like the inline glyph and reintroduces no `url()`. Docs updated to
+point at the compiled `lesson.json` path as preferred. Worth naming because it is the kind of
+breakage that a build, a typecheck and a grep all pass cleanly.
 
 ## 6. The regression gate
 
@@ -226,9 +267,18 @@ It scans `.css`/`.scss` under the editor and core-ui `src/` trees for `url(...)`
 
 ```
 $ npm run icons:css
-Scanned 214 .css/.scss files under packages/noodl-editor/src, packages/noodl-core-ui/src
+Scanned 261 .css/.scss files under packages/noodl-editor/src, packages/noodl-core-ui/src
 ✓ 0 url()-to-SVG references. Icons render through the Icon component.
 ```
+
+Comments and `url(data:...)` payloads are stripped before matching — a comment is not live CSS
+(this task's own explanatory comments would otherwise trip it), and an inline data URI is not a
+separate document fetch so it *can* carry `currentColor`. Comments are blanked in place rather
+than removed, so reported line numbers still match the file on disk.
+
+**The gate was verified to fail.** A gate that has never failed proves nothing, so a
+`url(nope.svg)` was added to `style.css`, `npm run icons:css` confirmed to exit 1 with the correct
+`file:line`, and the change reverted. Wired into `.github/workflows/pr.yml` beside the hex ratchet.
 
 ## 7. What I could not verify — read this before believing anything visual
 
@@ -238,14 +288,31 @@ the dev stack and therefore the UIX-009 screenshot corpus (`corpus/run.sh`, whic
 
 | Claim | How verified | Confidence |
 |---|---|---|
-| Dead stylesheets are dead | Filename grep + every defined class name grepped across all of `packages/noodl-editor/src` | High — a class no file names cannot be styled |
-| `core-ui-temp` duplicates are identical | `comm` on the two file lists + spot `diff` | High |
-| Glyph metaphors map correctly | Read the path data of both old and new for every pair | High for the 15 straightforward ones; the `edit-controls` → `Sliders` pairing is the one judgement call |
-| Editor renderer builds | webpack build, exit 0 | High |
-| `url()`-to-SVG count is zero | the new gate | High |
-| Hex ratchet holds | `npm run colors` | High |
+| Dead stylesheets are dead | Filename grep + every class name they define grepped across all of `packages/noodl-editor/src` | High — a class no file names cannot be styled |
+| `core-ui-temp` duplicates are identical | `comm` on the two listings | High |
+| No orphaned asset reference survives | Every deleted basename re-grepped after deletion; webpack resolves all `require`s | High |
+| Glyph metaphors map correctly | Read the path data of old and new for every pair | High for 15 of them; `edit-controls` → `Sliders` is the one judgement call |
+| Editor builds (renderer + main) | `npm run build:bundles`, 0 errors, no unresolved `.svg` | High |
+| Editor typechecks | `tsc --noEmit`, clean | High |
+| `url()`-to-SVG count is zero | the new gate, itself verified to fail on a planted violation | High |
+| Hex ratchet holds for my packages | `npm run colors` — `noodl-editor` 16/16 `=`, `canvas-paint-ts` 2/2 `=` | High |
 | **Icons visibly re-tint on theme flip** | **not verified — needs a running editor** | **none** |
-| **No pixel shift at the 10 migrated sites** | **not verified — reasoned per site in §4, not seen** | **none** |
+| **No pixel shift at the migrated sites** | **not verified — reasoned per site in §4b, not seen** | **none** |
+
+### ⚠ Pre-existing ratchet failure, not mine
+
+`npm run colors` **fails** on this branch — and it fails identically on the base commit `e1914e1`:
+
+```
+| noodl-core-ui   | 2     | 0        | +2    |
+  +2  packages/noodl-core-ui/src/components/common/Logo/Logo.module.scss
+```
+
+Two `#ffffff` literals introduced by `87b6c6b` ("feat(brand): retire traced globe"), which is an
+ancestor of my base. Confirmed by checking out `e1914e1` clean and re-running. I did not fix it:
+it is brand/Logo territory, trivially tokenizable (`--theme-color-fg-highlight` /
+`--theme-color-on-primary`), and a concurrent agent may be in that file. **Flagging rather than
+touching, because it blocks CI for everyone until someone owns it.**
 
 The acceptance test for this task is inherently visual and I did not run it. The checklist below
 is written so someone else can.
@@ -267,14 +334,14 @@ failure — that is precisely the bug this task exists to remove.
 | 1 | Property editor — box-model tabs | Select any visual node → Style → Border / Corners group | 10 border/corner tab glyphs | All 10 render; selected tab is full-opacity, others 25%; **32×32 box unchanged** (compare against `corpus/captures/2026-07-26/` property-editor shots) |
 | 2 | Property editor — reset dot | Change any property so the reset dot appears (align tools + margin/padding) | `Reset` | Appears at the same offset as before; hover brightens to `fg-highlight`; click still resets |
 | 3 | Visual states — reset dot | Select node → Visual States → change a property in a non-default state | `Reset` | Same; `margin-left:8px` gap intact |
-| 4 | Variants picker | Select node → Variants dropdown | `CaretDownUp` | Sits at the row's right edge; **row height unchanged** (this one was resized 8×10 → 10×12) |
+| 4 | Variants picker | Select node → Variants dropdown | `CaretDownUp` | Sits at the row's right edge; **row height unchanged** (deliberately resized 8×10 → 10×12); hover raises opacity 0.7 → 1 |
 | 5 | Visual states picker | Select node → Visual States header dropdown | `CaretDownUp` | Same |
 | 6 | Query editor rules | Select a Query/Filter node → open a rule popup | `Trash` | 20×20, hover opacity change works, delete still fires |
-| 7 | Router pages list | Select a Router node → Pages section | `File`, `FileFill` | Start page shows the **filled** variant, others outline; **⚠ box went 18px → 16px — check label alignment doesn't shift** |
+| 7 | Router pages list | Select a Router node → Pages section | `File`, `FileFill` | Start page shows the **filled** variant, others outline. Box is still 18px wide; `height:18px` is newly explicit (a background image supplied its own aspect ratio, an Icon child does not) — check the row does not grow |
 | 8 | Text style picker | Properties → any text-style field → edit (pencil/controls button at the right of the field) | `Sliders` | Centred in its 33×33 box; hover opacity 0.6 → 1 |
 | 9 | Connection popup — signal ports | Drag a connection from a signal output, or click an existing connection | `Lightning` | Renders beside signal port names only, not data ports; 3px gap to the label |
-| 10 | Inspect-JSON popup | Enable inspect on a connection → pin button | `Pin` / `PinFill` | Toggles outline ↔ filled on click; button box unchanged |
-| 11 | Lessons layer | Learn tab → open a lesson with tasks | `CheckCircle` / `CheckCircleFill` | ⚠ **highest-risk row.** Incomplete = outline, complete = filled; selected + hover states change **colour only**; **the old `#FCCC73` yellow must be gone** — completed check should now read on the azure/token palette |
+| 10 | Inspect-JSON popup | Enable inspect on a connection → pin button | `Pin` / `PinFill` | Toggles outline ↔ filled on click; button box unchanged. **Specifically check it is not a solid block** — the button's `background` used to be the mask's paint and is now `transparent` |
+| 11 | Lessons layer | Learn tab → open a lesson with tasks | inline `check_circle` / `check_circle_fill` | ⚠ **highest-risk row** — the one imperative site and the one with a compat path. Incomplete = outline ring, complete = filled; selected + hover change **colour only**; **the old `#FCCC73` yellow must be gone** (completed now reads primary/azure). Complete a task and watch it flip. If a lesson uses the *legacy* hand-authored HTML (empty checkmark span), expect a plain CSS ring instead of the glyph — that is the intended fallback, not a bug |
 | 12 | Node graph canvas | Open any component with a Home / Component / AI node | canvas home/component/AI/warning | **Expected to still be theme-frozen** — §3d, handed to UIX-005. Note whether they are illegible in light; that sizes the follow-up |
 | 13 | Regression: components panel | Open the components tree | (none of mine) | Unchanged — I deleted `componentspanel.css` claiming it was dead. **If the tree loses its folder/component/caret icons or its spacing, that claim was wrong.** |
 | 14 | Regression: create-node | Right-click canvas → node picker | (none of mine) | Unchanged — same claim about `createnewnodepanel.css` |
@@ -286,18 +353,33 @@ would show up, and dead-code deletion is the largest single part of this change.
 
 ## Residuals
 
-1. **The entire visual acceptance test.** Nothing above the line was seen running. Rows 1–11 of
-   the checklist are the task's actual acceptance criteria.
-2. **Canvas glyphs remain theme-frozen** (§3d) — handed to UIX-005, not fixed here. This is the
-   one place the task's stated goal ("every icon in editor chrome themes") is knowingly not met,
-   and the reason is a real constraint, not an omission.
-3. **3 fill-drawn glyphs handed to UIX-010** (§3e): `lightning`, `pin`, `pin_fill`.
-4. **`edit-controls` → `Sliders` is a judgement call.** The old glyph is two vertical slider
-   tracks; `Sliders` is core-ui's nearest equivalent. If it reads wrong at 33×33, the alternative
-   is `SlidersHorizontal` or a migrated glyph.
-5. **`curveeditor.jsx` uses raw `src="../assets/icons/curve-*.svg"` string paths** — not
-   webpack-processed, so those `<img>`s are resolved relative to the renderer document and are
-   likely already broken. Out of scope (not a CSS `url()`), but it is a real bug and someone
-   should own it. The 4 assets were kept so fixing it stays a one-line change.
-6. **Font Awesome is still loaded** (`assets/lib/fontawesome/`) — a separate retirement question
-   the spec explicitly parks. Noted, not started.
+Ordered by how much they should worry the next person.
+
+1. **The entire visual acceptance test.** Nothing visual was seen running. Rows 1–11 of the
+   checklist *are* this task's acceptance criteria, and rows 13–16 are where a wrong dead-code
+   call would surface. This is the single largest open item.
+2. **Pre-existing hex-ratchet failure blocks CI** — `Logo.module.scss`, +2, from `87b6c6b`,
+   present on the base commit. Not mine, deliberately not touched (see §7). Someone must own it.
+3. **Canvas glyphs remain theme-frozen** (§3d) — handed to **UIX-005**. This is the one place
+   this task's stated goal is knowingly not met, and the reason is a real constraint (canvas
+   raster has no `currentColor`), not an omission. It is now the last theme-frozen icon surface
+   in the editor.
+4. **3 fill-drawn glyphs handed to UIX-010** (§3e): `lightning`, `pin`, `pin_fill` — all at
+   non-16 viewBoxes, wanting the stroke-grid redraw.
+5. **`IconSize` is inert** (§4a) — the enum's classes exist in no stylesheet, so every `<Icon>`
+   in the app is sized by its host and `size={...}` does nothing. UIX-010 owns the retune; it
+   should know the enum is not merely mistuned but non-functional. Nothing regressed here, but
+   any future consumer trusting `size` will get a surprise.
+6. **`edit-controls` → `Sliders` is the one judgement call.** The old glyph is two vertical
+   slider tracks; `Sliders` is core-ui's nearest metaphor. If it reads wrong at 33×33, the
+   alternatives are `SlidersHorizontal` or migrating the original.
+7. **`curveeditor.jsx` uses raw `src="../assets/icons/curve-*.svg"` strings** — not
+   webpack-processed, so those `<img>`s resolve relative to the renderer document and are
+   probably already broken. Out of scope (not a CSS `url()`) and untouched, but it is a real bug.
+   The 4 assets were kept so fixing it stays a one-line change.
+8. **Font Awesome is still loaded** (`assets/lib/fontawesome/`, plus `fa fa-*` class usage) —
+   the spec explicitly parks its retirement. Noted, not started.
+9. **The editor Electron suite was not run to completion here** (it needs the Electron harness
+   and exceeded the time available). `tests/lessons/lessonformat.test.ts` is the one spec that
+   touches changed behaviour; it asserts `toContain('lesson-checkmark')`, which the new markup
+   still satisfies, but that is reasoning, not a green run.

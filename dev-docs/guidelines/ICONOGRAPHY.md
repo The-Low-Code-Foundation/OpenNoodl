@@ -43,6 +43,15 @@ import { Icon, IconName, IconSize } from '@noodl-core-ui/components/common/Icon'
 - **Name-keyed:** `IconName` enum → `assets/icons/icon-component/<name>.svg`, resolved
   via webpack `require.context`. Add a glyph = drop a conforming `.svg` in that folder
   and add its `IconName` entry. No central sprite to edit.
+- **Never reference a glyph from CSS.** `background-image: url(x.svg)`, `content: url(x.svg)` and
+  `-webkit-mask: url(x.svg)` all fetch the SVG as an *independent document*: it inherits nothing
+  from the referencing element, `currentColor` resolves against its own root, and the glyph is
+  frozen at its authored colour — invisible while the app ships one theme, a bug the moment it
+  ships two. UIX-011 retired all 50 such references; `npm run icons:css` is a **hard gate at
+  zero** that keeps it that way. (Inline `url(data:...)` is fine — no separate document.)
+- **Size comes from the host.** `IconSize`'s class names are currently defined in no stylesheet,
+  so `size={...}` is inert and an `<Icon>` has no intrinsic size — give the containing element an
+  explicit box. Retuning this is UIX-010's.
 - **Color:** the component sets **no** color of its own — `.Root { color: inherit }`.
   The glyph paints with `currentColor`, so it takes the ambient token color. Pass
   `variant` to opt into a semantic token (`danger`, `notice`, `success`, `proud`/
@@ -80,8 +89,12 @@ directly from an upstream set, record it here:
 ## Out of scope for the one component (owned elsewhere)
 
 - **Canvas category glyphs** — painted on `<canvas>` by the node-graph painter
-  (UIX-005, `CanvasIcons.ts` + `core-ui-temp/`), not DOM. Match the visual language;
-  do not route through this component.
+  (UIX-005, `CanvasIcons.ts` + `noodl-editor/src/assets/icons/canvas/`), not DOM.
+  Match the visual language; do not route through this component. These are the
+  only glyphs in the editor that legitimately keep a **baked** fill: an `<Image>`
+  rasterised onto a 2D canvas is outside the DOM, so `currentColor` has nothing
+  to resolve against. The cost is that they do **not** follow the theme — owned
+  by UIX-005, see UIX-011-NOTES.md §3d.
 - **Node-library node icons** — hundreds of per-node glyphs; handed to UIX-009.
 - **App / OS icon** — parked.
 - **AiIcon / AiIconAnimated** — animated brand mark; kept as-is.
