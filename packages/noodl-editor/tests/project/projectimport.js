@@ -334,26 +334,41 @@ describe('Project import and export unit tests', function () {
   // documented or tested this; these pin it as the contract for apply().
 
   it('overwrite reuses the target component id (characterization)', function (done) {
-    // Target: proj1 (has /Main). Source: proj2 (only /Main, no resources) — a
-    // model-only overwrite, so no files are written to the fixture on disk.
-    projectFromDirectory(Process.cwd() + '/tests/testfs/import_proj1', function (project) {
-      ProjectModel.instance = project;
+    // Target: a temp COPY of proj1 (has /Main). Source: proj2 (/Main empty).
+    //
+    // This used to load `tests/testfs/import_proj1` in place, on the reasoning
+    // that a model-only overwrite writes nothing. That reasoning holds for this
+    // spec but not for the run: the gutted project stayed in the global
+    // `ProjectModel.instance`, and under randomized order a later spec that
+    // saves the current project wrote it back over the fixture — after which
+    // every spec reading `import_proj1/project.json` from disk failed, in a way
+    // that looked like a bug in the import engine. Copy first, like the sibling
+    // spec below already does. (LIB-005: found the first time this Electron
+    // suite was actually executed.)
+    const tempDir = App.getPath('temp') + '/noodlunittests-' + Utils.guid() + '/';
+    FileSystem.instance.makeDirectory(tempDir, function () {
+      ncp(Process.cwd() + '/tests/testfs/import_proj1', tempDir + '/p', function (err) {
+        if (err) throw err;
+        projectFromDirectory(tempDir + '/p', function (project) {
+          ProjectModel.instance = project;
 
-      const targetMain = ProjectModel.instance.getComponentWithName('/Main');
-      targetMain.id = 'TARGET-MAIN-ID';
+          const targetMain = ProjectModel.instance.getComponentWithName('/Main');
+          targetMain.id = 'TARGET-MAIN-ID';
 
-      planEverythingInto(Process.cwd() + '/tests/testfs/import_proj2', project)
-        .then(({ inventory, plan: p }) => {
-          expect(inventory.resources).toEqual([]); // guard: model-only, safe on disk
-          return apply(p, ProjectModel.instance);
-        })
-        .then((r) => {
-          expect(r.result).toBe('success');
-          const after = ProjectModel.instance.getComponentWithName('/Main');
-          // The overwritten component keeps the TARGET's id, not a fresh one.
-          expect(after.id).toBe('TARGET-MAIN-ID');
-          done();
+          planEverythingInto(Process.cwd() + '/tests/testfs/import_proj2', project)
+            .then(({ inventory, plan: p }) => {
+              expect(inventory.resources).toEqual([]); // guard: proj2 is model-only
+              return apply(p, ProjectModel.instance);
+            })
+            .then((r) => {
+              expect(r.result).toBe('success');
+              const after = ProjectModel.instance.getComponentWithName('/Main');
+              // The overwritten component keeps the TARGET's id, not a fresh one.
+              expect(after.id).toBe('TARGET-MAIN-ID');
+              done();
+            });
         });
+      });
     });
   });
 

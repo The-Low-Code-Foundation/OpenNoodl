@@ -207,10 +207,15 @@ export function plan(
     });
   }
 
-  const plannedResources = simpleItems([...resources], requiredBy, resources, selection.resources, (n) =>
-    target.hasResource(n), skip.resources
-  );
-  const plannedModules = simpleItems([...modules], requiredBy, modules, selection.modules, (n) => target.hasModule(n), skip.modules);
+  // NB: the "requested" set must be what the CALLER asked for, not the
+  // accumulated closure — `resources`/`modules` are seeded from the selection
+  // and then grown, so passing them here made every resource and module report
+  // `reason: 'requested'` and left `requiredBy` unexplained in the UI.
+  const requestedResources = new Set((selection.resources ?? []).map((r) => r.name));
+  const requestedModules = new Set((selection.modules ?? []).map((m) => m.name));
+
+  const plannedResources = simpleItems([...resources], requiredBy, requestedResources, (n) => target.hasResource(n), skip.resources);
+  const plannedModules = simpleItems([...modules], requiredBy, requestedModules, (n) => target.hasModule(n), skip.modules);
   const plannedVariants = [...variantKeys].map((key): PlannedItem => {
     const v = variantByKey.get(key);
     const typename = v?.typename ?? key.split('/')[0];
@@ -226,8 +231,8 @@ export function plan(
       policy: isSkipped ? { action: 'skip' } : collides ? { action: 'overwrite' } : { action: 'add' }
     };
   });
-  const plannedColors = simpleItems([...colors], requiredBy, new Set((selection.styles?.colors ?? []).map((c) => c.name)), selection.styles?.colors, (n) => target.hasColorStyle(n), skip.colors);
-  const plannedText = simpleItems([...text], requiredBy, new Set((selection.styles?.text ?? []).map((t) => t.name)), selection.styles?.text, (n) => target.hasTextStyle(n), skip.text);
+  const plannedColors = simpleItems([...colors], requiredBy, new Set((selection.styles?.colors ?? []).map((c) => c.name)), (n) => target.hasColorStyle(n), skip.colors);
+  const plannedText = simpleItems([...text], requiredBy, new Set((selection.styles?.text ?? []).map((t) => t.name)), (n) => target.hasTextStyle(n), skip.text);
 
   const collisionInAny =
     anyCollision ||
@@ -247,15 +252,15 @@ export function plan(
   };
 }
 
+/** @param requested what the caller asked for directly — NOT the resolved closure. */
 function simpleItems(
   names: string[],
   requiredBy: RequiredBy,
-  requested: Set<string>,
-  requestedList: { name: string }[] | undefined,
+  requested: ReadonlySet<string>,
   collidesFn: (name: string) => boolean,
   skipList: string[] | undefined
 ): PlannedItem[] {
-  const requestedSet = requested ?? new Set((requestedList ?? []).map((r) => r.name));
+  const requestedSet = requested;
   return names.map((name) => {
     const isSkipped = skipList?.includes(name);
     const collides = !isSkipped && collidesFn(name);
