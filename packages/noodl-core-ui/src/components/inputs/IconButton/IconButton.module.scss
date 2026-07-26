@@ -1,7 +1,7 @@
 .Root {
   padding: 4px;
   border: 0;
-  border-radius: 2px;
+  border-radius: var(--radius-md);
   display: inline-flex;
   align-items: center;
   cursor: pointer;
@@ -66,12 +66,22 @@
       }
     }
 
-    &.is-state-active,
+    // Hover (UIX-004): neutral bg-3 pill + highlighted glyph.
     &:not(:disabled):hover {
-      background-color: var(--theme-color-bg-1-transparent);
+      background-color: var(--theme-color-bg-3) !important;
 
       path {
         fill: var(--theme-color-fg-highlight);
+      }
+    }
+
+    // Active (UIX-004): accent-soft pill + accent glyph, so the selected rail
+    // panel (and active toolbar toggle) is identifiable at a glance.
+    &.is-state-active {
+      background-color: var(--theme-color-primary-bg) !important;
+
+      path {
+        fill: var(--theme-color-primary);
       }
     }
   }

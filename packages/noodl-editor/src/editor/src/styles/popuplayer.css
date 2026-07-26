@@ -34,6 +34,7 @@
   background-color: var(--theme-color-bg-4);
   filter: drop-shadow(0 4px 15px var(--theme-color-bg-1-transparent-2));
   box-shadow: 0 0 10px -5px var(--theme-color-bg-1-transparent-2);
+  border-radius: var(--radius-lg);
   pointer-events: all;
   z-index: 2;
 }
@@ -183,6 +184,7 @@
   background-color: var(--theme-color-bg-3);
   filter: drop-shadow(0 4px 15px var(--theme-color-bg-1-transparent-2));
   box-shadow: 0 0 10px -5px var(--theme-color-bg-1-transparent-2);
+  border-radius: var(--radius-lg);
   pointer-events: all;
   z-index: 21;
   top: 50%;
@@ -512,22 +514,31 @@
   padding: 0;
 }
 
+/* Dialog button convention (UIX-004): primary on the right. Uses flex `order`
+   so the DOM/tab order (confirm first) is unchanged — presentation only. */
 .confirm-modal .confirm-buttons {
   display: flex;
   gap: 16px;
   margin: 16px 16px;
+  justify-content: flex-end;
 }
 
 .confirm-modal button {
   line-height: 24px;
   border: none;
-  padding: 0px 16px;
+  border-radius: var(--radius-md);
+  padding: 4px 16px;
   font-weight: 600;
 }
 
 .confirm-modal .confirm-button {
+  order: 2;
   background-color: var(--theme-color-primary);
-  color: var(--theme-color-bg-2);
+  color: var(--theme-color-on-primary);
+}
+
+.confirm-modal .cancel-button {
+  order: 1;
 }
 
 .confirm-modal .confirm-button:hover {
@@ -646,7 +657,7 @@
 
 .string-input-popup-button-ok {
   background-color: var(--theme-color-primary);
-  color: var(--theme-color-bg-2);
+  color: var(--theme-color-on-primary);
 }
 
 .string-input-popup-button-ok:hover {

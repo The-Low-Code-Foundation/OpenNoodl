@@ -2,7 +2,7 @@
   container-name: editortopbar;
   height: 36px;
   background-color: var(--theme-color-bg-2);
-  border-bottom: 2px solid var(--theme-color-bg-1);
+  border-bottom: 1px solid var(--theme-color-border-default);
   display: flex;
   align-items: stretch;
   justify-content: space-between;
@@ -53,6 +53,31 @@
   min-width: 150px;
   max-width: 500px;
   margin-right: -1px;
+
+  // Route pill (UIX-004): an inset bordered well framing the preview-route input,
+  // matching the mock's route/breadcrumb pill. One elevation step below the
+  // bg-2 toolbar so it reads as a distinct field. Presentation only — the inner
+  // TextInput keeps its behaviour.
+  align-self: center;
+  background-color: var(--theme-color-bg-1);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+
+  // The pill provides its own edge; suppress the generic LeftSide separator.
+  &:not(:last-child) {
+    border-right: 1px solid var(--theme-color-border-default);
+  }
+}
+
+// Warnings chip (UIX-004): amber soft-fill pill. Warnings are AMBER, never red
+// (phase law) — the icon variant is set to Notice/amber in the component.
+.WarningsChip {
+  align-self: center;
+  background-color: var(--theme-color-warning-bg);
+  border-radius: var(--radius-md);
+  border-left: 0 !important;
+  margin: 0 4px;
 }
 
 .UrlBarTextInput {

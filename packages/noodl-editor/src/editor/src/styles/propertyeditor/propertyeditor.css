@@ -33,19 +33,25 @@
   border-radius: 50%;
 }
 
+/* Field-row grid (UIX-004): a compact 62px label column, left-aligned, giving
+   the value a wide, consistent track — matching the mock. Was a 150px
+   right-aligned column that crowded values in the narrow panel. */
 .property-label {
   line-height: 35px;
-  padding-right: 10px;
+  padding-left: 10px;
+  padding-right: 8px;
   color: var(--theme-color-fg-default);
-  text-align: right;
+  text-align: left;
   white-space: nowrap;
-  width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 62px;
   position: absolute;
 }
 
 .property-value {
   position: absolute;
-  left: 160px;
+  left: 72px;
   right: 10px;
   top: 1px;
   bottom: 1px;
@@ -125,20 +131,25 @@
   margin-right: 10px;
 }
 
+/* Section title (UIX-004): uppercase micro-label, muted, with wide tracking —
+   the mock's section rhythm. Reads as a divider label, not body text. */
 .property-group-label {
-  padding: 12px 6px;
+  padding: 13px 10px 10px;
   display: block;
-  color: var(--theme-color-fg-highlight);
+  color: var(--theme-color-fg-muted);
+  font-size: 10.5px;
   font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
 }
 
 .property-group:not(:last-child) {
-  border-bottom: 1px solid var(--theme-color-bg-1);
+  border-bottom: 1px solid var(--theme-color-border-default);
 }
 
 .property-header-bar {
   background-color: var(--theme-color-bg-2);
-  border-bottom: 1px solid var(--theme-color-bg-1);
+  border-bottom: 1px solid var(--theme-color-border-default);
   position: relative;
   display: flex;
   align-items: center;
@@ -149,9 +160,12 @@
   font: bold 12px var(--font-family);
 }
 
+/* Header node name (UIX-004): promoted to the mock's 14.5px semibold. */
 .property-header-bar-label {
   color: var(--theme-color-fg-highlight);
-  font: 12px var(--font-family);
+  font-size: 14.5px;
+  font-weight: var(--font-weight-semibold);
+  font-family: var(--font-family);
   padding: 10px 0 10px 10px;
   text-overflow: ellipsis;
   white-space: nowrap;
