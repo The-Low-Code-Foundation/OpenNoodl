@@ -21,9 +21,25 @@
  * @module nodegx-backend/persistence/AdapterFacade
  */
 
+import * as crypto from 'crypto';
+
+// QueryBuilder is the adapter's own SQL/serialization helper — reused here so
+// BAK-007 import writes serialize values EXACTLY as create()/save() do (JSON
+// columns, pointers-as-id, dates-as-ISO, booleans-as-0/1) without duplicating
+// that logic. Same declared dependency edge createAdapter.ts uses.
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const QueryBuilder = require('@noodl/runtime/src/api/adapters/local-sql/QueryBuilder');
+
 interface AdapterCallbacks {
   success(...args: unknown[]): void;
   error(err: unknown): void;
+}
+
+/** Column type descriptor exposed for import coercion (BAK-007). */
+export interface ImportColumn {
+  name: string;
+  type?: string;
+  targetClass?: string;
 }
 
 /** Minimal column shape from SchemaManager.getTableSchema(). */
@@ -271,5 +287,96 @@ export class AdapterFacade {
    */
   wireRecord(collection: string, record: Record<string, unknown>): Promise<Record<string, unknown>> {
     return this.toWire(collection, record, []);
+  }
+
+  // ==========================================================================
+  // Import support (BAK-007) — synchronous, transaction-safe writes
+  //
+  // The adapter is synchronous under the hood (node:sqlite), but its public
+  // methods are callback-wrapped and returned as Promises, which cannot run
+  // inside a synchronous `db.transaction(fn)`. Import needs a per-collection
+  // transaction (all-or-nothing, never a half-import), so these helpers do the
+  // writes synchronously via the same QueryBuilder the adapter uses.
+  // ==========================================================================
+
+  /** Schema column descriptors for a collection ({} when the table is unknown). */
+  getColumns(collection: string): ImportColumn[] {
+    const schema = this.schemaManager && this.schemaManager.getTableSchema(collection);
+    return schema && Array.isArray(schema.columns) ? (schema.columns as ImportColumn[]) : [];
+  }
+
+  /** Run `fn` inside a single SQLite transaction (commit on return, rollback on throw). */
+  transaction<T>(fn: () => T): T {
+    return this.adapter.transaction(fn) as T;
+  }
+
+  private inferColumnType(value: unknown): string {
+    if (value && typeof value === 'object') {
+      const v = value as Record<string, unknown>;
+      if (v.__type === 'Date') return 'Date';
+      if (v.__type === 'Pointer') return 'Pointer';
+      if (v.__type === 'File') return 'File';
+      if (v.__type === 'GeoPoint') return 'GeoPoint';
+      if (Array.isArray(value)) return 'Array';
+      return 'Object';
+    }
+    if (typeof value === 'boolean') return 'Boolean';
+    if (typeof value === 'number') return 'Number';
+    return 'String';
+  }
+
+  /** Ensure the table + a column for every data key exists (idempotent). */
+  ensureImportShape(collection: string, columns: ImportColumn[], sampleData: Record<string, unknown>): void {
+    const sm = this.schemaManager;
+    if (!sm) return;
+    sm.createTable({ name: collection, columns: [] });
+    const existing = new Set(this.getColumns(collection).map((c) => c.name));
+    // Explicit schema first (correct types), then anything the data implies.
+    for (const col of columns) {
+      if (col.name && !existing.has(col.name) && col.type !== 'Relation') {
+        sm.addColumn(collection, col);
+        existing.add(col.name);
+      }
+    }
+    for (const [key, value] of Object.entries(sampleData)) {
+      if (['objectId', 'createdAt', 'updatedAt', 'id', 'ACL'].includes(key)) continue;
+      if (value === null || value === undefined) continue;
+      if (existing.has(key)) continue;
+      sm.addColumn(collection, { name: key, type: this.inferColumnType(value) });
+      existing.add(key);
+    }
+  }
+
+  /** True if a row with this objectId exists (synchronous). */
+  existsSync(collection: string, objectId: string): boolean {
+    try {
+      const db = this.adapter.getDatabase();
+      const row = db
+        .prepare(`SELECT 1 FROM ${QueryBuilder.escapeTable(collection)} WHERE "objectId" = ?`)
+        .get(objectId);
+      return !!row;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Insert or update a record by objectId, synchronously (for transactional
+   * import). Returns which action occurred. Assumes ensureImportShape was
+   * already called for this collection.
+   */
+  upsertSync(collection: string, objectId: string | undefined, data: Record<string, unknown>): 'created' | 'updated' {
+    const db = this.adapter.getDatabase();
+    const clean: Record<string, unknown> = { ...data };
+    delete clean.objectId;
+    if (objectId && this.existsSync(collection, objectId)) {
+      const { sql, params } = QueryBuilder.buildUpdate({ collection, objectId, data: clean });
+      db.prepare(sql).run(...params);
+      return 'updated';
+    }
+    const id = objectId || crypto.randomUUID();
+    const { sql, params } = QueryBuilder.buildInsert({ collection, data: clean }, id);
+    db.prepare(sql).run(...params);
+    return 'created';
   }
 }

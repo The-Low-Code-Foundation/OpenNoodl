@@ -27,16 +27,39 @@
  */
 
 import { parseCron, CronExpression } from './cron';
-import type { TriggerDef, TriggerRegistry } from './registry';
-import type { TriggerDispatcher } from './dispatcher';
+import type { TriggerDef, TriggerType } from './registry';
+import type { FireInput, FireOutcome, RejectionInput, TriggerResultShape } from './dispatcher';
 
 // setTimeout clamps delays > ~24.8 days; chunk long waits so a monthly/yearly
 // schedule doesn't fire immediately from an overflowed delay.
 const MAX_TIMER_MS = 2 ** 31 - 1;
 
+/**
+ * The minimal registry surface the scheduler drives. The concrete
+ * `TriggerRegistry` (WF-005) satisfies this structurally; so does BAK-007's
+ * backup schedule registry — this is what makes it ONE scheduler class with two
+ * consumers, not two schedulers. The scheduler only ever reads schedule
+ * triggers and stamps their next-fire time.
+ */
+export interface SchedulerRegistry {
+  byType(type: TriggerType): TriggerDef[];
+  get(id: string): TriggerDef | null;
+  setNextFire(id: string, nextFireAt: string | null): void;
+}
+
+/**
+ * The minimal dispatch surface the scheduler drives. `TriggerDispatcher`
+ * (WF-005) satisfies this; BAK-007's backup dispatcher does too (its `fire`
+ * runs a backup instead of a function). Both write LOUD execution records.
+ */
+export interface SchedulerDispatcher {
+  fire(input: FireInput): Promise<FireOutcome>;
+  recordRejection(input: RejectionInput): TriggerResultShape;
+}
+
 export interface SchedulerDeps {
-  registry: TriggerRegistry;
-  dispatcher: TriggerDispatcher;
+  registry: SchedulerRegistry;
+  dispatcher: SchedulerDispatcher;
   /** Injectable clock for tests. */
   now?: () => Date;
 }
@@ -71,8 +94,8 @@ export function computeStartPlan(trigger: TriggerDef, now: Date): StartPlan {
 }
 
 export class CronScheduler {
-  private readonly registry: TriggerRegistry;
-  private readonly dispatcher: TriggerDispatcher;
+  private readonly registry: SchedulerRegistry;
+  private readonly dispatcher: SchedulerDispatcher;
   private readonly now: () => Date;
   private timers = new Map<string, ReturnType<typeof setTimeout>>();
   private running = false;

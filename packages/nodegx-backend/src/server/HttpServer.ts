@@ -35,6 +35,7 @@ import type { RealtimeHub, Subscription } from '../realtime/RealtimeHub';
 import { ClpOp, Principal, keyAllowsFunction, ruleAllows, validateAclShape } from '../security/model';
 import type { TriggerSubsystem } from '../triggers/TriggerSubsystem';
 import type { WorkflowSubsystem } from '../workflow/WorkflowSubsystem';
+import type { BackupSubsystem } from '../backup/BackupSubsystem';
 import { verifyWebhook } from '../triggers/webhook';
 import type { EmailConfigState } from '../email/EmailConfigState';
 import type { Mailer } from '../email/Mailer';
@@ -43,6 +44,7 @@ import { AdminSecurityRoutes } from './admin-security';
 import { AdminTriggerRoutes } from './admin-triggers';
 import { AdminWorkflowRoutes } from './admin-workflows';
 import { AdminEmailRoutes } from './admin-email';
+import { AdminBackupRoutes } from './admin-backups';
 import { ByobAdminRoutes } from './byob-admin';
 import { EmailRoutes } from './email-routes';
 import { FileRoutes } from './files';
@@ -119,6 +121,8 @@ export interface HttpServerDeps {
   triggers: TriggerSubsystem;
   /** Workflow subsystem — WF-001 (admin workflow-def CRUD + run/cancel). */
   workflows: WorkflowSubsystem | null;
+  /** Backup subsystem — BAK-007 (backup/restore, export/import, schema promotion). */
+  backups: BackupSubsystem;
   /** Email subsystem (BAK-002): config/secrets, the mailer, and the token store. */
   emailConfig: EmailConfigState;
   mailer: Mailer;
@@ -150,6 +154,7 @@ export class HttpServer {
   private readonly adminSecurity: AdminSecurityRoutes;
   private readonly adminTriggers: AdminTriggerRoutes;
   private readonly adminWorkflows: AdminWorkflowRoutes;
+  private readonly adminBackups: AdminBackupRoutes;
   private readonly email: EmailRoutes;
   private readonly adminEmail: AdminEmailRoutes;
   private readonly routes: RouteDef[];
@@ -179,6 +184,11 @@ export class HttpServer {
     this.adminSecurity = new AdminSecurityRoutes(deps.security, deps.facade, deps.options, deps.getRunner);
     this.adminTriggers = new AdminTriggerRoutes(deps.triggers);
     this.adminWorkflows = new AdminWorkflowRoutes(() => deps.workflows);
+    this.adminBackups = new AdminBackupRoutes({
+      backups: deps.backups,
+      facade: deps.facade,
+      dataDir: deps.options.dataDir
+    });
     this.adminEmail = new AdminEmailRoutes(deps.emailConfig, deps.mailer);
     this.routes = this.buildRoutes();
   }
@@ -200,6 +210,7 @@ export class HttpServer {
     const adminSec = this.adminSecurity;
     const adminTriggers = this.adminTriggers;
     const adminWorkflows = this.adminWorkflows;
+    const adminBackups = this.adminBackups;
     const email = this.email;
     const adminEmail = this.adminEmail;
 
@@ -586,6 +597,51 @@ export class HttpServer {
         pattern: 'admin/workflow-runs/:executionId/cancel',
         access: { kind: 'admin' },
         handler: (ctx) => adminWorkflows.cancel(ctx)
+      },
+
+      // ---- Admin: backups / export-import / promotion (BAK-007) -----------
+      { method: 'GET', pattern: 'admin/backups', access: { kind: 'admin' }, handler: (ctx) => adminBackups.list(ctx) },
+      {
+        method: 'POST',
+        pattern: 'admin/backups',
+        access: { kind: 'admin' },
+        handler: (ctx) => adminBackups.runBackup(ctx)
+      },
+      {
+        method: 'PUT',
+        pattern: 'admin/backups/config',
+        access: { kind: 'admin' },
+        handler: (ctx) => adminBackups.updateConfig(ctx)
+      },
+      {
+        method: 'POST',
+        pattern: 'admin/backups/restore',
+        access: { kind: 'admin' },
+        handler: (ctx) => adminBackups.restore(ctx)
+      },
+      {
+        method: 'GET',
+        pattern: 'admin/export/:collection',
+        access: { kind: 'admin' },
+        handler: (ctx) => adminBackups.exportCollection(ctx)
+      },
+      {
+        method: 'POST',
+        pattern: 'admin/import/:collection',
+        access: { kind: 'admin' },
+        handler: (ctx) => adminBackups.importCollection(ctx)
+      },
+      {
+        method: 'POST',
+        pattern: 'admin/schema/diff',
+        access: { kind: 'admin' },
+        handler: (ctx) => adminBackups.schemaDiff(ctx)
+      },
+      {
+        method: 'POST',
+        pattern: 'admin/schema/apply',
+        access: { kind: 'admin' },
+        handler: (ctx) => adminBackups.schemaApply(ctx)
       },
 
       // ---- Admin: the BAK-002 email surface --------------------------------

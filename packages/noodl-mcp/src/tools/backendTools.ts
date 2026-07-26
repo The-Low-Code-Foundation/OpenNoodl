@@ -269,6 +269,71 @@ export function registerBackendReadTools(server: McpServer): void {
       return jsonResult(json);
     })
   );
+
+  // ==========================================================================
+  // Backups / export / promotion (BAK-007) — read surface
+  // ==========================================================================
+
+  server.registerTool(
+    'list_backend_backups',
+    {
+      title: 'List backend backups',
+      description:
+        'List a running backend\'s backup archives (newest first) plus the backup policy and status (BAK-007): ' +
+        'schedule, retention, destination, last success/failure, and next scheduled run. This is how an agent ' +
+        'sees whether backups are configured and healthy before relying on them.',
+      inputSchema: { backendId: z.string().optional().describe('Which backend (omit if exactly one is running)') }
+    },
+    guarded(async ({ backendId }) => {
+      const client = await requireBackend(backendId);
+      const { json } = await client.request('GET', '/admin/backups');
+      return jsonResult(json);
+    })
+  );
+
+  server.registerTool(
+    'export_backend_collection',
+    {
+      title: 'Export a backend collection',
+      description:
+        'Export one collection from a running backend as lossless JSON (types, ACLs, pointers, and the schema) or ' +
+        'flat CSV (spreadsheet-shaped; pointers as ids, objects as JSON strings). Returns the serialized content.',
+      inputSchema: {
+        backendId: z.string().optional(),
+        collection: z.string().describe('The collection (class) to export'),
+        format: z.enum(['json', 'csv']).optional().describe('Export format (default json)')
+      }
+    },
+    guarded(async ({ backendId, collection, format }) => {
+      const client = await requireBackend(backendId);
+      const { json } = await client.request(
+        'GET',
+        `/admin/export/${encodeURIComponent(collection)}?format=${format || 'json'}`
+      );
+      return jsonResult(json);
+    })
+  );
+
+  server.registerTool(
+    'diff_backend_schema',
+    {
+      title: 'Diff a schema against a backend (promotion dry-run)',
+      description:
+        'Compute the dev->prod promotion diff between a SOURCE schema snapshot and a running (target) backend ' +
+        '(BAK-007): which tables/columns and which permission/trigger/template config would be added or changed, ' +
+        'and whether any change is destructive. Read-only — nothing is applied. The `source` is a snapshot ' +
+        '{ tables:[{name,columns}], permissions?, triggers?, templates? } (e.g. from a dev backend or archive).',
+      inputSchema: {
+        backendId: z.string().optional().describe('The TARGET backend to diff against'),
+        source: z.record(z.unknown()).describe('The source schema snapshot { tables: [...], permissions?, triggers?, templates? }')
+      }
+    },
+    guarded(async ({ backendId, source }) => {
+      const client = await requireBackend(backendId);
+      const { json } = await client.request('POST', '/admin/schema/diff', { source });
+      return jsonResult(json);
+    })
+  );
 }
 
 export function registerBackendWriteTools(server: McpServer): void {
@@ -656,6 +721,66 @@ export function registerBackendWriteTools(server: McpServer): void {
     })
   );
 
+  // ==========================================================================
+  // Backups / import / promotion (BAK-007) — write surface
+  // ==========================================================================
+
+  server.registerTool(
+    'run_backend_backup',
+    {
+      title: 'Run a backend backup now',
+      description:
+        'Trigger a consistent whole-backend backup on a running backend immediately (BAK-007): DB snapshot + files ' +
+        '+ workflows + config + a hashed manifest, written atomically to the configured destination, then old ' +
+        'archives are rotated per retention. Returns the archive path, size, and snapshot mechanism. Fails loudly ' +
+        'if the snapshot or write fails (the failure is also recorded in execution history and backup status).',
+      inputSchema: { backendId: z.string().optional().describe('Which backend (omit if exactly one is running)') }
+    },
+    guarded(async ({ backendId }) => {
+      const client = await requireBackend(backendId);
+      const { json } = await client.request('POST', '/admin/backups');
+      return jsonResult(json);
+    })
+  );
+
+  server.registerTool(
+    'set_backend_backup_policy',
+    {
+      title: 'Set backend backup policy',
+      description:
+        'Configure a running backend\'s backup policy (BAK-007): the schedule (cron; rides WF-005\'s scheduler), ' +
+        'retention (keepLast / keepDaily / keepWeekly), the local destination directory, and whether machine-local ' +
+        'secrets.json is included (OFF by default). Omitted fields keep their current value. An invalid cron is ' +
+        'rejected with the reason.',
+      inputSchema: {
+        backendId: z.string().optional(),
+        schedule: z
+          .object({
+            enabled: z.boolean(),
+            cron: z.string().describe('5-field cron or @preset (@daily/@hourly/…)'),
+            missedFirePolicy: z.enum(['skip', 'run-once-on-start']).describe('What to do about runs missed while down')
+          })
+          .nullable()
+          .optional()
+          .describe('Set to null to disable scheduled backups'),
+        retention: z
+          .object({
+            keepLast: z.number().optional(),
+            keepDaily: z.number().optional(),
+            keepWeekly: z.number().optional()
+          })
+          .optional(),
+        destination: z.object({ path: z.string() }).optional().describe('Local directory for archives'),
+        includeSecrets: z.boolean().optional()
+      }
+    },
+    guarded(async ({ backendId, ...body }) => {
+      const client = await requireBackend(backendId);
+      const { json } = await client.request('PUT', '/admin/backups/config', body);
+      return jsonResult(json);
+    })
+  );
+
   server.registerTool(
     'update_backend_workflow',
     {
@@ -706,6 +831,34 @@ export function registerBackendWriteTools(server: McpServer): void {
   );
 
   server.registerTool(
+    'import_backend_collection',
+    {
+      title: 'Import records into a backend collection',
+      description:
+        'Import records into a collection on a running backend (BAK-007), upserting by objectId (existing rows are ' +
+        'updated, new ones inserted — re-importing the same content is idempotent). Transactional per collection ' +
+        '(all valid rows apply or none) with a rejects report. Set `dryRun: true` to preview created/updated/rejected ' +
+        'counts WITHOUT writing anything.',
+      inputSchema: {
+        backendId: z.string().optional(),
+        collection: z.string(),
+        format: z.enum(['json', 'csv']).describe('Format of `content`'),
+        content: z.string().describe('The JSON (export shape or array) or CSV text to import'),
+        dryRun: z.boolean().optional().describe('Preview only; do not write')
+      }
+    },
+    guarded(async ({ backendId, collection, format, content, dryRun }) => {
+      const client = await requireBackend(backendId);
+      const { json } = await client.request('POST', `/admin/import/${encodeURIComponent(collection)}`, {
+        format,
+        content,
+        dryRun
+      });
+      return jsonResult(json);
+    })
+  );
+
+  server.registerTool(
     'cancel_backend_workflow_run',
     {
       title: 'Cancel a backend workflow run',
@@ -720,6 +873,50 @@ export function registerBackendWriteTools(server: McpServer): void {
     guarded(async ({ backendId, executionId }) => {
       const client = await requireBackend(backendId);
       const { json } = await client.request('POST', `/admin/workflow-runs/${encodeURIComponent(executionId)}/cancel`);
+      return jsonResult(json);
+    })
+  );
+
+  server.registerTool(
+    'apply_backend_schema',
+    {
+      title: 'Apply a schema promotion to a backend',
+      description:
+        'Promote a SOURCE schema snapshot onto a running (target) backend (BAK-007): additive tables/columns and ' +
+        'permission/trigger/template config apply automatically; DATA is never touched. Destructive changes (dropped ' +
+        'tables/columns, type changes) are REFUSED unless allowDestructive is true — and then a fresh pre-apply ' +
+        'backup is taken first (enforced). Run diff_backend_schema first to preview.',
+      inputSchema: {
+        backendId: z.string().optional().describe('The TARGET backend'),
+        source: z.record(z.unknown()).describe('The source schema snapshot { tables, permissions?, triggers?, templates? }'),
+        allowDestructive: z.boolean().optional().describe('Permit destructive changes (forces a pre-apply backup)')
+      }
+    },
+    guarded(async ({ backendId, source, allowDestructive }) => {
+      const client = await requireBackend(backendId);
+      const { json } = await client.request('POST', '/admin/schema/apply', { source, allowDestructive });
+      return jsonResult(json);
+    })
+  );
+
+  server.registerTool(
+    'restore_backend',
+    {
+      title: 'Restore a backend from an archive',
+      description:
+        'Restore a running backend from a backup archive path on the server (BAK-007). Verifies the manifest hashes ' +
+        'and engine compatibility, takes a pre-restore safety snapshot, then swaps db + files + workflows + config. ' +
+        'DANGEROUS: intended for a quiesced backend — the blessed path for a full recovery is the `nodegx-backend ' +
+        'restore` CLI with the service stopped.',
+      inputSchema: {
+        backendId: z.string().optional(),
+        archive: z.string().describe('Absolute path to the .ngxbackup.tar.gz archive on the backend host'),
+        safetySnapshot: z.boolean().optional().describe('Take a pre-restore safety snapshot first (default true)')
+      }
+    },
+    guarded(async ({ backendId, archive, safetySnapshot }) => {
+      const client = await requireBackend(backendId);
+      const { json } = await client.request('POST', '/admin/backups/restore', { archive, safetySnapshot });
       return jsonResult(json);
     })
   );
