@@ -28,8 +28,9 @@
  */
 
 import type { ExecutionHistory } from '../execution/ExecutionStore';
-import type { StepExecutor, StepExecContext } from './StepExecutor';
-import { StepExecutionError } from './StepExecutor';
+import type { StepExecutor, StepExecContext, StepExecResult } from './StepExecutor';
+import { StepExecutionError, normalizeStepReturn } from './StepExecutor';
+import { validateStepShape } from './steps/kinds';
 import type {
   WorkflowDefinition,
   WorkflowStep,
@@ -81,11 +82,22 @@ interface StepOutcome {
 // Static validation (used by the registry so a bad definition never loads)
 // ============================================================================
 
+/** Every outgoing edge of a step: `next` ∪ `onError` ∪ all `routes` values. */
+function allEdgeTargets(s: WorkflowStep): string[] {
+  const routeTargets: string[] = [];
+  for (const list of Object.values(s.routes || {})) {
+    if (Array.isArray(list)) routeTargets.push(...list);
+  }
+  return [...(s.next || []), ...(s.onError || []), ...routeTargets];
+}
+
 /**
  * Validate a workflow definition's SHAPE and GRAPH. Returns error strings; an
  * empty array means valid. Enforces: unique step ids, a real entry, every edge
- * target existing, and ACYCLICITY (the engine's single forward pass assumes a
- * DAG — a cycle would be a definition bug, caught here, not a hang at runtime).
+ * target existing (including WF-002 `routes` targets), ACYCLICITY (the engine's
+ * single forward pass assumes a DAG — a cycle would be a definition bug, caught
+ * here, not a hang at runtime), and each kind's own required fields via
+ * `validateStepShape` (WF-002's step-kind catalog).
  */
 export function validateWorkflowDefinition(def: WorkflowDefinition): string[] {
   const errors: string[] = [];
@@ -106,13 +118,22 @@ export function validateWorkflowDefinition(def: WorkflowDefinition): string[] {
     if (typeof s.id !== 'string' || !s.id) errors.push('every step needs a non-empty id');
     else if (ids.has(s.id)) errors.push(`duplicate step id "${s.id}"`);
     else ids.add(s.id);
-    if (s.kind !== 'call-function') errors.push(`step "${s.id}": unknown kind "${s.kind}" (v1: 'call-function')`);
-    if (s.kind === 'call-function' && (typeof s.ref !== 'string' || !s.ref)) {
-      errors.push(`step "${s.id}": call-function needs a ref (the function name)`);
-    }
     if (s.timeoutMs !== undefined && (typeof s.timeoutMs !== 'number' || s.timeoutMs < 0)) {
       errors.push(`step "${s.id}": timeoutMs must be a non-negative number`);
     }
+    if (s.routes !== undefined) {
+      if (typeof s.routes !== 'object' || s.routes === null || Array.isArray(s.routes)) {
+        errors.push(`step "${s.id}": routes must be an object of { routeName: [stepId, ...] }`);
+      } else {
+        for (const [name, list] of Object.entries(s.routes)) {
+          if (!Array.isArray(list) || list.some((t) => typeof t !== 'string')) {
+            errors.push(`step "${s.id}": route "${name}" must be an array of step ids`);
+          }
+        }
+      }
+    }
+    // Per-kind required fields, params and route names (WF-002 step catalog).
+    errors.push(...validateStepShape(s));
   }
 
   if (typeof def.entry !== 'string' || !ids.has(def.entry)) {
@@ -123,6 +144,14 @@ export function validateWorkflowDefinition(def: WorkflowDefinition): string[] {
   for (const s of def.steps) {
     for (const t of s.next || []) if (!ids.has(t)) errors.push(`step "${s.id}": next target "${t}" does not exist`);
     for (const t of s.onError || []) if (!ids.has(t)) errors.push(`step "${s.id}": onError target "${t}" does not exist`);
+    for (const [name, list] of Object.entries(s.routes || {})) {
+      if (!Array.isArray(list)) continue;
+      for (const t of list) {
+        if (typeof t === 'string' && !ids.has(t)) {
+          errors.push(`step "${s.id}": route "${name}" target "${t}" does not exist`);
+        }
+      }
+    }
   }
 
   // Acyclicity (Kahn). Edges are next ∪ onError.
@@ -134,7 +163,7 @@ export function validateWorkflowDefinition(def: WorkflowDefinition): string[] {
       adj.set(s.id, []);
     }
     for (const s of def.steps) {
-      for (const t of [...(s.next || []), ...(s.onError || [])]) {
+      for (const t of allEdgeTargets(s)) {
         adj.get(s.id)!.push(t);
         indeg.set(t, (indeg.get(t) || 0) + 1);
       }
@@ -165,7 +194,7 @@ function topoOrder(def: WorkflowDefinition): WorkflowStep[] {
     adj.set(s.id, []);
   }
   for (const s of def.steps) {
-    for (const t of [...(s.next || []), ...(s.onError || [])]) {
+    for (const t of allEdgeTargets(s)) {
       adj.get(s.id)!.push(t);
       indeg.set(t, (indeg.get(t) || 0) + 1);
     }
@@ -327,6 +356,19 @@ export class WorkflowEngine {
 
     // Which upstream step "reached" a given step (for input `previous`).
     const reachedBy = new Map<string, string>();
+    // EVERY upstream step that reached it (for `ctx.upstream` — the `merge`
+    // kind needs all converging branches, not just the first one to arrive).
+    const reachedByAll = new Map<string, string[]>();
+
+    const take = (target: string, from: string): void => {
+      if (!reachedBy.has(target)) reachedBy.set(target, from);
+      const all = reachedByAll.get(target);
+      if (all) {
+        if (!all.includes(from)) all.push(from);
+      } else {
+        reachedByAll.set(target, [from]);
+      }
+    };
 
     const isReached = (step: WorkflowStep): boolean => {
       if (step.id === def.entry) return true;
@@ -353,6 +395,11 @@ export class WorkflowEngine {
           ...(step.params || {}),
           ...(previous ? { previous } : {})
         };
+        // Outputs of every predecessor that took an edge here. Topological
+        // order guarantees they have all completed; a failed one appears with
+        // its `{ error }` output.
+        const upstream: Record<string, Record<string, unknown> | undefined> = {};
+        for (const id of reachedByAll.get(step.id) || []) upstream[id] = outcomes.get(id)?.output;
 
         const stepId = logger?.startNode({
           nodeId: step.id,
@@ -363,14 +410,25 @@ export class WorkflowEngine {
 
         const timeoutMs = step.timeoutMs && step.timeoutMs > 0 ? step.timeoutMs : def.stepTimeoutMs || 0;
         try {
-          const ctx: StepExecContext = { workflow: def, step, input, signal };
-          const output = await this.runStepGuarded(ctx, timeoutMs, signal);
+          const ctx: StepExecContext = { workflow: def, step, input, upstream, signal };
+          const result = await this.runStepGuarded(ctx, timeoutMs, signal);
+          const output = result.output;
           if (stepId) logger?.completeNode(stepId, true, output);
           outcomes.set(step.id, { status: 'success', output });
           lastOutput = output;
           stepsRun++;
-          // Take success edges.
-          for (const t of step.next || []) if (!reachedBy.has(t)) reachedBy.set(t, step.id);
+          // Take the outgoing edges this step selected:
+          //   `next`        — unconditional, taken whatever the step decided
+          //   `routes[r]`   — for each route name the executor selected
+          //   `halt`        — take nothing at all (a deliberate end of path)
+          // Anything not taken stays unreached and is recorded `skipped`, which
+          // is WF-001-SEMANTICS §1's model, unchanged.
+          if (!result.halt) {
+            for (const t of step.next || []) take(t, step.id);
+            for (const routeName of result.select || []) {
+              for (const t of step.routes?.[routeName] || []) take(t, step.id);
+            }
+          }
         } catch (e) {
           if (e instanceof RunAbortedError) {
             // The step was interrupted by cancel/timeout — record it and stop.
@@ -384,12 +442,29 @@ export class WorkflowEngine {
           // A genuine step failure (executor threw, or per-step timeout).
           const err = e instanceof Error ? e : new Error(String(e));
           if (stepId) logger?.completeNode(stepId, false, undefined, err);
-          outcomes.set(step.id, { status: 'error' });
+          // WF-002: a failed step's outcome carries the error, so a handler
+          // reached by `onError` receives it as `previous.error`. Without this a
+          // catch branch could see THAT something failed but not WHAT — which
+          // made CF11-002's error-handling designs unimplementable. The step is
+          // still recorded `error`; nothing is softened.
+          outcomes.set(step.id, {
+            status: 'error',
+            output: {
+              error: {
+                message: err.message,
+                name: err.name,
+                ...(err instanceof StepExecutionError && err.statusCode !== undefined
+                  ? { statusCode: err.statusCode }
+                  : {}),
+                step: step.id
+              }
+            }
+          });
           stepsRun++;
           const routes = step.onError || [];
           if (routes.length > 0) {
             // Routed: take error edges, keep going. The workflow can still succeed.
-            for (const t of routes) if (!reachedBy.has(t)) reachedBy.set(t, step.id);
+            for (const t of routes) take(t, step.id);
           } else {
             // Unrouted: halt loudly.
             unroutedError = true;
@@ -464,12 +539,14 @@ export class WorkflowEngine {
    * orphaned executor promise (if the race is lost) settles later and is
    * ignored — documented in the semantics doc's cancellation honesty note.
    */
-  private runStepGuarded(
+  private async runStepGuarded(
     ctx: StepExecContext,
     timeoutMs: number,
     signal: AbortSignal
-  ): Promise<Record<string, unknown>> {
-    const racers: Promise<Record<string, unknown>>[] = [this.deps.executor.execute(ctx)];
+  ): Promise<StepExecResult> {
+    const racers: Promise<StepExecResult>[] = [
+      Promise.resolve(this.deps.executor.execute(ctx)).then(normalizeStepReturn)
+    ];
 
     if (timeoutMs > 0) {
       racers.push(
@@ -497,8 +574,16 @@ export class WorkflowEngine {
     return Promise.race(racers);
   }
 
+  /**
+   * The execution-history `nodeType` for a step. Function-invoking kinds keep
+   * the `function:<name>` form WF-001 established (so the History Panel and the
+   * canvas Execution Overlay show WHAT ran, not just that a step ran); a
+   * for-each/retry additionally names the kind, because "this step called `bill`
+   * eleven times" and "this step called `bill` once" should not look identical.
+   */
   private nodeType(step: WorkflowStep): string {
-    return step.kind === 'call-function' && step.ref ? `function:${step.ref}` : step.kind;
+    if (!step.ref) return step.kind;
+    return step.kind === 'call-function' ? `function:${step.ref}` : `${step.kind}:${step.ref}`;
   }
 }
 
