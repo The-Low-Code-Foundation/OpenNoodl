@@ -11,6 +11,12 @@ import { Text } from '@noodl-core-ui/components/typography/Text';
 import { TextType } from '@noodl-core-ui/components/typography/Text/Text';
 import { Title } from '@noodl-core-ui/components/typography/Title';
 import { TitleVariant } from '@noodl-core-ui/components/typography/Title/Title';
+import {
+  hasUsableCapture,
+  isBlankCapture,
+  placeholderBucket,
+  projectInitial
+} from '@noodl-core-ui/utils/projectThumbnail';
 
 import { useNodePickerContext } from '../../NodePicker.context';
 import css from './ProjectCard.module.scss';
@@ -30,6 +36,11 @@ export function ProjectCard({ project }: ProjectCardProps) {
 
   const [cardState, setCardState] = useState(CardState.Idle);
   const [cancelMessage, setCancelMessage] = useState('');
+  // Same contract as the launcher grid: start from whether the stored capture is
+  // usable at all, and let a load error or a blank decode flip it off. Without
+  // this, projects whose thumbURI is a valid-but-solid-white PNG render as blank
+  // rectangles — which is what this grid did before.
+  const [showCapture, setShowCapture] = useState(() => hasUsableCapture(project.thumbURI));
 
   function handleDownload() {
     setCardState(CardState.Downloading);
@@ -45,8 +56,24 @@ export function ProjectCard({ project }: ProjectCardProps) {
 
   return (
     <article className={classNames(css['Root'], css[cardState])}>
-      <div className={css['ImageContainer']}>
-        <div className={css['Image']} style={{ backgroundImage: `url(${project.thumbURI})` }} />
+      <div
+        className={classNames(css['ImageContainer'], !showCapture && css[`hue-${placeholderBucket(project.name)}`])}
+      >
+        {showCapture ? (
+          <img
+            className={css['Image']}
+            src={project.thumbURI}
+            alt=""
+            onError={() => setShowCapture(false)}
+            onLoad={(e) => {
+              if (isBlankCapture(e.currentTarget)) setShowCapture(false);
+            }}
+          />
+        ) : (
+          <span className={css['Ghost']} aria-hidden="true">
+            {projectInitial(project.name)}
+          </span>
+        )}
       </div>
 
       <div className={css['Content']}>

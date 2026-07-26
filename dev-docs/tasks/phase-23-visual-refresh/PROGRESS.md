@@ -60,9 +60,37 @@ which never received the fix. Two card components, one guard.
 `LauncherProjectCard` into a shared helper and use it in both. Fixing it in
 place in the second component would leave the same trap for a third.
 
-### 2. Stale "Noodl" branding in the node picker
+### 2. Stale "Noodl AI" promo in the node picker — NOT fixable in this repo
 
-The Nodes tab's promo panel still reads **"New Feature — Noodl AI (Beta)"** with
-a **"Noodl AI Documentation"** button. UIX-006 swept "Noodl 2.9.3" out of the
-launcher, but this string lives in the node picker and was missed. Product is
-NodeGX; a first-run user meets this panel early.
+The Nodes tab's promo panel reads **"New Feature — Noodl AI (Beta)"** with a
+**"Noodl AI Documentation"** button. This was first filed here as a string UIX-006's
+sweep missed. **That was wrong** — corrected on investigation: the content is
+fetched at runtime by `useGetSliderNews()` in `NodePicker.hooks.ts` from
+`getDocsEndpoint() + '/nodepickerdefaults/news.json'`. There is no such string in
+this repo to change.
+
+It belongs to the **external docs/marketing repo** — the same one UIX-009 flagged
+for stale "Noodl 2.9.3" screenshots. Fix it there, alongside those.
+
+### 1. — FIXED 2026-07-26
+
+Shared helper `packages/noodl-core-ui/src/utils/projectThumbnail.ts` now owns
+`hasUsableCapture` / `isBlankCapture` / `placeholderBucket` / `projectInitial`.
+Both `LauncherProjectCard` and the node picker's `ProjectCard` consume it.
+
+The node-picker card needed more than the guard: it painted the capture as a CSS
+`background-image`, so there was **no `<img>` to hang `onLoad`/`onError` on and no
+placeholder at all**. Rewritten to an `<img>` with the same fallback contract plus
+the gradient-bucket + ghosted-initial placeholder.
+
+Live-verified after a clean restart: the three cards that rendered as white
+rectangles (DebtLivePass, RUN-003 slice-5, Ferell-main) now show gradients with
+ghosted initials, real captures are preserved, and the buckets **match the
+launcher exactly** for the same projects — which is the shared hash proving it is
+one implementation, not two.
+
+Trap worth keeping: editing a `.module.scss` under HMR desyncs the CSS-module class
+hashes from the JS that holds them, so *every* class in that file silently stops
+applying — the card rendered all four of its absolutely-positioned overlay states
+stacked at once. It looks exactly like a catastrophic self-inflicted regression and
+is entirely an artifact. Restart before believing a styling result seen after HMR.
