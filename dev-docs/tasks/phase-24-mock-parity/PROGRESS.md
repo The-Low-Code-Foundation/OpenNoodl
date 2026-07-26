@@ -5,7 +5,7 @@
 | ID | Title | Status | Notes |
 |---|---|---|---|
 | PAR-001 | Launcher parity | ✅ Done 2026-07-26 | 52px titlebar w/ inset lights + 120px region, 224px mock sidebar, Bricolage head row, ⌘K search, 3-up cards, plain footer, toast anchor/radius/shadow; typecheck + ratchet green; see [PAR-001-NOTES.md](./PAR-001-NOTES.md) — live smoke (lights/⌘K/drag/light-theme) pending from primary checkout |
-| PAR-002 | Properties panel rebuild | 🚧 Agent running (worktree) | |
+| PAR-002 | Properties panel rebuild | ✅ Done 2026-07-26 (needs live QA) | Header type-chip (UIX-004b closed), 62px grid, input kit, 32×19 toggles, seg-icons, box-model, binding chip w/ real source + click-to-select. [Notes](./PAR-002-NOTES.md) |
 | PAR-003 | Editor chrome parity | 🚧 Agent running (worktree) | |
 
 ## Coordination

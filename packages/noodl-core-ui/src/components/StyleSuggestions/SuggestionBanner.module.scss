@@ -1,13 +1,15 @@
+/* PAR-002: token-hint card restyled to the panel's section rhythm — bg-2
+   card, hairline + accent edge, radius 6, aligned to the 16px gutter. */
 .Banner {
   display: flex;
   align-items: flex-start;
   gap: var(--spacing-sm, 8px);
   padding: var(--spacing-sm, 8px) var(--spacing-md, 12px);
-  background-color: var(--theme-color-bg-3);
+  background-color: var(--theme-color-bg-2);
   border: 1px solid var(--theme-color-border-default);
   border-left: 3px solid var(--theme-color-primary);
-  border-radius: var(--radius-sm, 4px);
-  margin-bottom: var(--spacing-sm, 8px);
+  border-radius: var(--radius-md, 6px);
+  margin: 0 16px var(--spacing-sm, 8px);
 }
 
 .Indicator {
@@ -40,7 +42,7 @@
   padding: 3px 8px;
   font-size: 11px;
   font-weight: 500;
-  color: var(--theme-color-fg-highlight);
+  color: var(--theme-color-on-primary);
   background-color: var(--theme-color-primary);
   border: none;
   border-radius: var(--radius-sm, 3px);

@@ -9,7 +9,7 @@ import { PropertyPanelInputType } from '@noodl-core-ui/components/property-panel
 
 import { PropertyPanelInputWithExpressionModal } from '../components/PropertyPanelInputWithExpressionModal';
 import { TypeView } from '../TypeView';
-import { getEditType } from '../utils';
+import { getConnectionSourceLabel, getConnectionSourceNavigate, getEditType } from '../utils';
 
 function firstType(type) {
   return NodeLibrary.nameForPortType(type);
@@ -84,6 +84,10 @@ export class BasicType extends TypeView {
       properties: undefined, // No special properties needed for basic types
       isChanged: !this.isDefault,
       isConnected: this.isConnected,
+      // PAR-002 binding chip: name the driving connection ("Node · Port");
+      // clicking selects the source node on the canvas.
+      connectionLabel: this.isConnected ? getConnectionSourceLabel(this.parent.model, this.name) : undefined,
+      onConnectionClick: this.isConnected ? getConnectionSourceNavigate(this.parent.model, this.name) : undefined,
       onReset: () => {
         this.parent.model.setParameter(this.name, undefined, {
           undo: true,

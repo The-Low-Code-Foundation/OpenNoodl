@@ -2,18 +2,19 @@
   display: flex;
   margin-bottom: 8px;
   align-items: center;
+  gap: 8px;
   user-select: none;
 }
 
 .Label {
   font-family: var(--font-family);
   color: var(--theme-color-fg-default);
-  padding-right: 8px;
-  font-size: 12px;
+  font-size: 12.5px;
   width: 37%;
   flex-grow: 0;
   flex-shrink: 0;
   text-overflow: ellipsis;
+  overflow: hidden;
   max-height: 28px;
   line-clamp: 2;
 
@@ -41,4 +42,29 @@
   flex: 1 1 auto;
   min-width: 0; // Allow flex item to shrink below content size
   overflow: hidden; // Prevent content overflow
+}
+
+/* Mock `.toggle-row`: label takes the row, control right-aligned. */
+.Root.is-toggle-row {
+  .Label {
+    flex: 1 1 auto;
+    width: auto;
+  }
+
+  .InputContainer {
+    flex: 0 0 auto;
+  }
+}
+
+/* PAR-002 field grid (mock `.field-row`): inside the property editor panel
+   the label column is a flat 62px, giving values a wide consistent track.
+   Other consumers (settings panels) keep the 37% column above. */
+:global(.sidebar-property-editor) {
+  .Label {
+    width: 62px;
+  }
+
+  .Root.is-toggle-row .Label {
+    width: auto;
+  }
 }

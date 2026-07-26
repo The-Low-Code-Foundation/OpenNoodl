@@ -40,25 +40,32 @@
   }
 }
 
+/* PAR-002: options render as a raised card — bg-1, hairline, radius, popup
+   shadow — instead of the old flat bg-3 slab. */
 .Options {
-  background-color: var(--theme-color-bg-3);
+  background-color: var(--theme-color-bg-1);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-popup);
+  overflow: hidden;
   list-style: none;
   margin: 0;
-  padding: 0;
+  padding: 2px;
   font-family: var(--font-family);
   color: var(--theme-color-fg-default);
   user-select: none;
 }
 
 .Option {
-  padding: length.$property-panel-input-padding;
-  border-bottom: 1px solid var(--theme-color-bg-2);
-  font-size: 12px;
+  padding: 5.5px 9px;
+  border-radius: var(--radius-default);
+  font-size: 12.5px;
   color: var(--theme-color-fg-default);
   cursor: pointer;
 
   &:hover {
     color: var(--theme-color-fg-highlight);
+    background-color: var(--theme-color-bg-3);
   }
 
   &.is-disabled {

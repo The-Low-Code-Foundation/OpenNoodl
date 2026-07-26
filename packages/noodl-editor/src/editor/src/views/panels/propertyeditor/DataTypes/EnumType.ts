@@ -5,7 +5,7 @@ import { find } from 'underscore';
 import { PropertyPanelInput, PropertyPanelInputType } from '@noodl-core-ui/components/property-panel/PropertyPanelInput';
 
 import { TypeView } from '../TypeView';
-import { getEditType } from '../utils';
+import { getConnectionSourceLabel, getConnectionSourceNavigate, getEditType } from '../utils';
 
 export class EnumType extends TypeView {
   el: TSFixme;
@@ -71,6 +71,9 @@ export class EnumType extends TypeView {
       properties: { options },
       isChanged: !this.isDefault,
       isConnected: this.isConnected,
+      // PAR-002 binding chip: name the driving connection ("Node · Port").
+      connectionLabel: this.isConnected ? getConnectionSourceLabel(this.parent.model, this.name) : undefined,
+      onConnectionClick: this.isConnected ? getConnectionSourceNavigate(this.parent.model, this.name) : undefined,
       supportsExpression: false,
       onChange: (value: string | number) => {
         this.parent.setParameter(this.name, value);

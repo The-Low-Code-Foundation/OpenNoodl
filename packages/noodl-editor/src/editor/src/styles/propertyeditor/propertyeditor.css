@@ -57,10 +57,15 @@
   bottom: 1px;
 }
 
+/* PAR-002: legacy dropdown lists read as raised cards. */
 .property-input-dropdown {
   position: absolute;
   z-index: 10;
-  /* overflow:scroll;*/
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-popup);
+  overflow: hidden;
+  background-color: var(--theme-color-bg-1);
 }
 
 .property-input-dropdown-arrow {
@@ -72,12 +77,12 @@
 }
 
 .property-input-enum:hover {
-  background-color: var(--theme-color-border-strong);
+  background-color: var(--theme-color-bg-3);
   cursor: pointer;
 }
 
 .property-input-enum {
-  background-color: var(--theme-color-bg-0);
+  background-color: var(--theme-color-bg-1);
   color: var(--theme-color-fg-highlight);
   min-height: 30px;
   line-height: 30px;
@@ -131,55 +136,88 @@
   margin-right: 10px;
 }
 
-/* Section title (UIX-004): uppercase micro-label, muted, with wide tracking —
-   the mock's section rhythm. Reads as a divider label, not body text. */
-.property-group-label {
-  padding: 13px 10px 10px;
-  display: block;
-  color: var(--theme-color-fg-muted);
-  font-size: 10.5px;
-  font-weight: var(--font-weight-semibold);
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
+/* Section rhythm (PAR-002, mock `.section` + `.props-scroll`): the ports
+   groups get the mock's 16px gutter and 13/15px vertical rhythm; hairline
+   between sections, none after the last. */
+.sidebar-property-editor .groups {
+  margin-top: 0;
+  padding: 6px 16px 16px;
+}
+
+.property-group {
+  padding: 13px 0 15px;
 }
 
 .property-group:not(:last-child) {
   border-bottom: 1px solid var(--theme-color-border-default);
 }
 
+/* Section title (UIX-004): uppercase micro-label, muted, with wide tracking —
+   the mock's section rhythm. Reads as a divider label, not body text. */
+.property-group-label {
+  display: flex;
+  align-items: center;
+  color: var(--theme-color-fg-muted);
+  font-size: 10.5px;
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+
+/* Panel header (PAR-002, mock `.props-head`): column layout — name row +
+   type-chip — on the panel ground with a hairline below. */
 .property-header-bar {
-  background-color: var(--theme-color-bg-2);
   border-bottom: 1px solid var(--theme-color-border-default);
   position: relative;
   display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 9px 16px 12px;
+}
+
+.property-header-row {
+  display: flex;
   align-items: center;
+  gap: 8px;
+  min-width: 0;
 }
 
-.header-name-edit-container {
-  min-height: 35px;
-  font: bold 12px var(--font-family);
+/* The mock's two 26px header icon buttons (docs / delete; edit kept). */
+.property-header-icon-button {
+  width: 26px;
+  height: 26px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex: none;
 }
 
-/* Header node name (UIX-004): promoted to the mock's 14.5px semibold. */
-.property-header-bar-label {
-  color: var(--theme-color-fg-highlight);
-  font-size: 14.5px;
-  font-weight: var(--font-weight-semibold);
+/* Type-chip (UIX-004b deferral, closed by PAR-002): `TYPE · CATEGORY`,
+   colored by node category. color + background are set inline from the
+   category token (see NodeLabel.tsx). */
+.property-type-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   font-family: var(--font-family);
-  padding: 10px 0 10px 10px;
-  text-overflow: ellipsis;
+  font-size: 10.5px;
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  border-radius: var(--radius-default);
+  padding: 2.5px 7px;
+  width: fit-content;
   white-space: nowrap;
-  overflow: hidden;
+}
+
+.property-type-chip svg {
+  flex: none;
 }
 
 .property-panel-header-edit-bar {
   padding-right: 0;
   right: 0;
-}
-
-.property-panel-header-edit-button {
-  width: 35px;
-  height: 35px;
 }
 
 .property-editor-highlight {
@@ -191,15 +229,18 @@
   color: var(--theme-color-on-primary);
 }
 
+/* PAR-002: code-editor launch button adopts the input-box treatment. */
 .property-codeeditor-button {
-  background-color: var(--theme-color-bg-3);
-  border: none;
+  background-color: var(--theme-color-bg-2);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: var(--radius-md);
   color: var(--theme-color-fg-default);
   margin: 0px;
+  transition: border-color var(--speed-turbo), color var(--speed-turbo);
 }
 
 .property-codeeditor-button:hover {
-  background-color: var(--theme-color-bg-1);
+  border-color: var(--theme-color-border-strong);
   color: var(--theme-color-fg-highlight);
 }
 
@@ -209,7 +250,7 @@
 }
 
 .property-number-unit-enum {
-  background-color: var(--theme-color-bg-0);
+  background-color: var(--theme-color-bg-1);
   color: var(--theme-color-fg-highlight);
   height: 30px;
   line-height: 30px;
@@ -221,7 +262,7 @@
 }
 
 .property-number-unit-enum:hover {
-  background-color: var(--theme-color-border-strong);
+  background-color: var(--theme-color-bg-3);
 }
 
 .property-dimension-fixed-disabled {

@@ -82,6 +82,9 @@
   --base-color-brand-coral: #ff6a5f;
   --base-color-brand-coral-light-theme: #ff5a50;
 
+  /* Absolute white — theme-invariant surfaces (e.g. toggle knob, mock `.toggle::after`) */
+  --base-color-white: #ffffff;
+
   /* Transparent variants */
   --base-color-black-transparent-90: rgba(0, 0, 0, 0.9);
   --base-color-black-transparent-80: rgba(0, 0, 0, 0.8);

@@ -117,6 +117,7 @@ export function PropertyPanelLengthUnitInput({
       <PropertyPanelBaseInput
         value={displayedInputValue}
         type="text"
+        isNumeric
         isChanged={isChanged}
         isConnected={isConnected}
         onChange={(value) => setDisplayedInputValue(value)}

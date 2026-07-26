@@ -54,20 +54,9 @@ export function PropertyPanelSliderInput({
     [value, properties]
   );
 
+  // PAR-002 (mock `.slider-row`): slider first, numeric readout at the right.
   return (
     <div className={css['Root']}>
-      <div className={css['NumberContainer']}>
-        <PropertyPanelBaseInput
-          type="text"
-          value={numberInputValue}
-          onChange={setNumberInputValue}
-          onBlur={handleNumberUpdate}
-          isConnected={isConnected}
-          isChanged={isChanged}
-          onKeyDown={(e) => e.key === 'Enter' && handleNumberUpdate()}
-        />
-      </div>
-
       <input
         style={
           {
@@ -82,6 +71,19 @@ export function PropertyPanelSliderInput({
         max={properties.max}
         step={properties.step}
       />
+
+      <div className={css['NumberContainer']}>
+        <PropertyPanelBaseInput
+          type="text"
+          isNumeric
+          value={numberInputValue}
+          onChange={setNumberInputValue}
+          onBlur={handleNumberUpdate}
+          isConnected={isConnected}
+          isChanged={isChanged}
+          onKeyDown={(e) => e.key === 'Enter' && handleNumberUpdate()}
+        />
+      </div>
     </div>
   );
 }

@@ -1,16 +1,18 @@
+/* PAR-002 (mock `.slider-row`): slider fills, mono readout at the right. */
 .Root {
   display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .NumberContainer {
-  width: 56px;
-  margin-right: 16px;
+  width: 48px;
   flex: 0 0 auto;
 }
 
 .Input {
   flex: 1 1 auto;
-  width: calc(100% - 72px); // .NumberContainer width+margin
+  min-width: 0;
   background-color: transparent;
   -webkit-appearance: none;
 
@@ -51,7 +53,7 @@
       90deg,
       var(--theme-color-primary),
       calc(var(--thumb-percentage) * 1%),
-      var(--theme-color-bg-4) calc(var(--thumb-percentage) * 1%)
+      var(--theme-color-border-default) calc(var(--thumb-percentage) * 1%)
     );
   }
 
@@ -61,7 +63,7 @@
       90deg,
       var(--theme-color-primary),
       calc(var(--thumb-percentage) * 1%),
-      var(--theme-color-bg-4) calc(var(--thumb-percentage) * 1%)
+      var(--theme-color-border-default) calc(var(--thumb-percentage) * 1%)
     );
   }
 
