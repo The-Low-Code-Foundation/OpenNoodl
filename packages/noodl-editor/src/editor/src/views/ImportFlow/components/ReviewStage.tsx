@@ -172,7 +172,12 @@ export function ReviewStage({
   onSuggestName
 }: ReviewStageProps) {
   const collisions = summary.collisions.filter((planned) => planned.collides || effective[planned.key] !== undefined);
-  const landing = [...index.values()].filter((planned) => planned.policy.action !== 'skip' && !planned.collides);
+  // A renamed item has `collides: false` (its new name is free) but is still a
+  // collision row — it must not also appear under "arriving new".
+  const collisionKeys = new Set(collisions.map((planned) => planned.key));
+  const landing = [...index.values()].filter(
+    (planned) => planned.policy.action !== 'skip' && !planned.collides && !collisionKeys.has(planned.key)
+  );
   const byKey = new Map(items.map((item) => [item.key, item] as const));
 
   return (
