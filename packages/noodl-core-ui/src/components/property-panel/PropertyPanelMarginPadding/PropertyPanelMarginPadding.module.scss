@@ -39,5 +39,7 @@
 
 .PaddingContainer {
   padding: 4px;
-  border: 2px solid var(--theme-color-bg-3);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: var(--radius-md);
+  background-color: var(--theme-color-bg-2);
 }

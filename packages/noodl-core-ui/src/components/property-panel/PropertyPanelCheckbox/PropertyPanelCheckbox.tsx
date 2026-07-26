@@ -20,7 +20,12 @@ export function PropertyPanelCheckbox({ value, onChange, isConnected, isChanged 
       />
 
       <div
-        className={classNames(css['FauxCheckbox'], isChanged && css['is-changed'], isConnected && css['is-connected'])}
+        className={classNames(
+          css['FauxCheckbox'],
+          value && css['is-checked'],
+          isChanged && css['is-changed'],
+          isConnected && css['is-connected']
+        )}
       >
         {value && <CheckmarkIcon />}
       </div>

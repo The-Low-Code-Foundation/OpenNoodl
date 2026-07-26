@@ -1,6 +1,7 @@
 import classNames from 'classnames';
 import React, { useMemo } from 'react';
 
+import { BindingChip } from '@noodl-core-ui/components/property-panel/BindingChip';
 import { ExpressionInput } from '@noodl-core-ui/components/property-panel/ExpressionInput';
 import { ExpressionToggle } from '@noodl-core-ui/components/property-panel/ExpressionToggle';
 import { PropertyPanelBaseInputProps } from '@noodl-core-ui/components/property-panel/PropertyPanelBaseInput';
@@ -79,6 +80,14 @@ export interface PropertyPanelInputProps extends Omit<PropertyPanelBaseInputProp
 
   /** When set and the value is changed from its default, a dot is shown that resets the value on click */
   onReset?: () => void;
+
+  /**
+   * Label for the connection source (e.g. "CallCF · Result"). When `isConnected`
+   * is true, the dead input is replaced by an accent-soft binding chip naming this.
+   */
+  connectionLabel?: string;
+  /** Optional click-to-navigate handler on the binding chip. */
+  onConnectionClick?: () => void;
 }
 
 export function PropertyPanelInput({
@@ -98,6 +107,8 @@ export function PropertyPanelInput({
   expressionError,
   onExpressionExpand,
   onReset,
+  connectionLabel,
+  onConnectionClick,
   dataIdentifier
 }: PropertyPanelInputProps) {
   const Input = useMemo(() => {
@@ -135,8 +146,20 @@ export function PropertyPanelInput({
     }
   };
 
+  // A connection-driven property shows a binding chip naming the source instead
+  // of a dead disabled input (buttons/checkboxes keep their own affordance).
+  const showBindingChip =
+    isConnected &&
+    !isExpressionMode &&
+    inputType !== PropertyPanelInputType.Button &&
+    inputType !== PropertyPanelInputType.Checkbox;
+
   // Render the appropriate input based on mode
   const renderInput = () => {
+    if (showBindingChip) {
+      return <BindingChip source={connectionLabel} onClick={onConnectionClick} />;
+    }
+
     if (isExpressionMode && onExpressionChange) {
       return (
         <ExpressionInput

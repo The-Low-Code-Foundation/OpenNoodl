@@ -1,0 +1,43 @@
+.Root {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+  background-color: var(--theme-color-primary-bg);
+  color: var(--theme-color-primary);
+  border-radius: var(--radius-md);
+  padding: 6px 9px;
+  font-family: var(--font-family);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.2;
+
+  svg {
+    flex: none;
+  }
+
+  &[role='button'] {
+    cursor: pointer;
+
+    &:hover {
+      background-color: var(--theme-color-primary-25);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--theme-color-focus-ring);
+      outline-offset: 2px;
+    }
+  }
+}
+
+.Text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  code {
+    font-family: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, monospace;
+    font-size: 11px;
+  }
+}

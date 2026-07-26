@@ -126,16 +126,29 @@ export function MarginPaddingInput({ values, defaults, onUpdate, onReset }: Marg
 
   return (
     <div ref={rootRef} style={{ position: 'relative', height: 150 }}>
+      {/* Outer dashed margin ring */}
+      <div className="marginpadding-outer" style={{ position: 'absolute', inset: 2 }} />
+      <span className="marginpadding-tag" style={{ position: 'absolute', top: 8, left: 10 }}>
+        Margin
+      </span>
+
+      {/* Inner padding box */}
       <div
         className="marginpadding-border"
         style={{ position: 'absolute', top: 39, left: 60, right: 60, bottom: 39 }}
       />
+      <span className="marginpadding-tag" style={{ position: 'absolute', top: 45, left: 66 }}>
+        Padding
+      </span>
 
       {Object.keys(LABEL_POSITIONS)
         .filter((comp) => defaults[comp] !== undefined)
         .map((comp) => {
           const v = values[comp] || defaults[comp];
-          const text = (v.value === undefined ? '-' : v.value) + ' ' + v.unit;
+          // No more "- px" wireframe placeholder: show the numeric value (zeros
+          // read muted), and only surface a non-px unit inline.
+          const num = v.value === undefined ? '0' : v.value;
+          const text = v.unit && v.unit !== 'px' ? `${num}${v.unit}` : `${num}`;
           return (
             <div
               key={comp}

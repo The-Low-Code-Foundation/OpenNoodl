@@ -55,7 +55,7 @@
     &.is-focused {
       background-color: var(--theme-color-bg-1);
       border-color: var(--theme-color-focus-ring);
-      box-shadow: 0 0 0 2px rgba(210, 31, 60, 0.15);
+      box-shadow: 0 0 0 2px var(--theme-color-primary-bg);
       outline: none;
     }
   }
