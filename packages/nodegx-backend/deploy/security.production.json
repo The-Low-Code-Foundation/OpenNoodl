@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "devOpen": false,
+  "defaults": {
+    "permissions": {
+      "find": "authenticated",
+      "get": "authenticated",
+      "create": "authenticated",
+      "update": "authenticated",
+      "delete": "authenticated"
+    },
+    "creatorOwns": true
+  },
+  "collections": {},
+  "functions": {},
+  "files": {
+    "upload": "authenticated",
+    "read": "public",
+    "delete": "nobody"
+  },
+  "signup": "public"
+}

@@ -102,6 +102,24 @@ backing subsystem is absent are not rendered rather than served broken.
   config-params.json     # optional: served at /config
 ```
 
+## Deploying it (WF-003)
+
+`deploy/` is the supported self-hosting target: Docker Compose, two services,
+**one published port** serving the application, the API and `/_admin` on a
+single origin.
+
+```bash
+cd deploy
+./nodegx-deploy.sh deploy --app /path/to/exported/app --site-url https://apps.example
+./nodegx-deploy.sh rollback          # images are tagged by artifact digest
+```
+
+`npm run package:deploy` produces the same deterministic artifact on its own —
+one bundle plus the app plus a hashed manifest — which is also what a plain
+`scp` to a VPS wants. Operator documentation:
+[`docs/runtime/SELF-HOSTING.md`](../../docs/runtime/SELF-HOSTING.md); the assets
+themselves are mapped in [`deploy/README.md`](./deploy/README.md).
+
 ## Database engine
 
 `node:sqlite` (built into Node ≥ 22.13) — zero native dependency, zero ABI

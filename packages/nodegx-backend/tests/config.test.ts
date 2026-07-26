@@ -24,11 +24,21 @@ describe('nodegx-backend config — bind/auth policy', () => {
     expect(requiresAuth({ host })).toBe(true);
   });
 
-  it('mints a token automatically for a wider bind when none is supplied', () => {
+  /**
+   * WF-003: this used to assert the opposite — that a wider bind auto-minted a
+   * token here. BAK-003 made SecurityState the owner of the admin credential
+   * (persisted in secrets.json, reused across restarts), and against that owner
+   * a fresh random value on every start was read as "the operator chose this",
+   * overwrote the stored credential, and rotated the admin password of every
+   * deployed backend on every restart. Found in a container; see src/config.ts.
+   *
+   * The property that actually matters — the credential survives a restart — is
+   * pinned end-to-end in deploy-credential-stability.test.ts.
+   */
+  it('does NOT mint a token for a wider bind — SecurityState owns the credential', () => {
     const opts = resolveOptions({ host: '0.0.0.0' });
     expect(requiresAuth(opts)).toBe(true);
-    expect(typeof opts.authToken).toBe('string');
-    expect((opts.authToken as string).length).toBeGreaterThan(20);
+    expect(opts.authToken).toBeNull();
   });
 
   it('keeps an explicitly supplied token', () => {
