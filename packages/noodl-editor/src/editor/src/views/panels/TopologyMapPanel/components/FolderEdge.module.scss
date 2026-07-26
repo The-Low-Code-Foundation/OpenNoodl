@@ -5,7 +5,7 @@
  */
 
 .FolderEdge {
-  stroke: #4b5563;
+  stroke: var(--base-color-neutral-500);
   fill: none;
   pointer-events: none;
   transition: opacity 0.2s ease;

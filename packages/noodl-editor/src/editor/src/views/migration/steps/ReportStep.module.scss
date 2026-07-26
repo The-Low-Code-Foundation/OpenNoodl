@@ -91,11 +91,11 @@
   margin-top: 1px;
 
   &--warning {
-    color: var(--theme-color-notice, #f59e0b);
+    color: var(--theme-color-notice);
   }
 
   &--error {
-    color: var(--theme-color-danger, #ef4444);
+    color: var(--theme-color-danger);
   }
 
   &--info {

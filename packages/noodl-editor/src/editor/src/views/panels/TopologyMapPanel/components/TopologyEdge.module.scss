@@ -7,7 +7,7 @@
 }
 
 .TopologyEdge__path {
-  stroke: #6b8cae; // Brighter blue-grey for better visibility
+  stroke: var(--base-color-node-blue-500); // Brighter blue-grey for better visibility
   stroke-width: 2;
   opacity: 0.8;
   transition: all 0.2s ease;

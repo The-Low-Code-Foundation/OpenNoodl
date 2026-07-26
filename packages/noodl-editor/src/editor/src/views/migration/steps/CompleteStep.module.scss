@@ -22,21 +22,21 @@
   align-items: center;
   gap: var(--spacing-3, 12px);
   padding: var(--spacing-4, 16px);
-  background-color: color-mix(in srgb, var(--theme-color-success, #22c55e) 10%, transparent);
-  border: 1px solid color-mix(in srgb, var(--theme-color-success, #22c55e) 30%, transparent);
+  background-color: color-mix(in srgb, var(--theme-color-success) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--theme-color-success) 30%, transparent);
   border-radius: var(--border-radius-small, 4px);
 }
 
 .SuccessIcon {
   width: 24px;
   height: 24px;
-  color: var(--theme-color-success, #22c55e);
+  color: var(--theme-color-success);
   flex-shrink: 0;
 }
 
 .SuccessText {
   font-size: var(--font-size-default, 13px);
-  color: var(--theme-color-success, #22c55e);
+  color: var(--theme-color-success);
   font-weight: 500;
 }
 

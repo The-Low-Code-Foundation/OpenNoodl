@@ -62,12 +62,12 @@
 
   &[data-state='open'] {
     background-color: rgba(46, 160, 67, 0.15);
-    color: #2ea043;
+    color: var(--theme-color-success);
   }
 
   &[data-state='closed'] {
     background-color: rgba(177, 24, 24, 0.15);
-    color: #da3633;
+    color: var(--theme-color-danger);
   }
 }
 

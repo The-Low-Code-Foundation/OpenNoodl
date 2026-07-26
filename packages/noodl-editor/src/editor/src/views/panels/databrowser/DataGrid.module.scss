@@ -71,17 +71,17 @@
 }
 
 .TypeDate {
-  background-color: #8b5cf6;
+  background-color: var(--theme-color-node-category-component);
   color: white;
 }
 
 .TypeObject {
-  background-color: #ec4899;
+  background-color: var(--theme-color-node-category-function);
   color: white;
 }
 
 .TypeArray {
-  background-color: #6366f1;
+  background-color: var(--theme-color-node-category-visual);
   color: white;
 }
 

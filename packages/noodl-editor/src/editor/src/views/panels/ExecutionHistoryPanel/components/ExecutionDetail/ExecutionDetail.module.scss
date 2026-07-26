@@ -85,18 +85,18 @@
   border-radius: 3px;
 
   &[data-status='success'] {
-    color: var(--theme-color-success, #22c55e);
-    background-color: color-mix(in srgb, var(--theme-color-success, #22c55e) 15%, transparent);
+    color: var(--theme-color-success);
+    background-color: color-mix(in srgb, var(--theme-color-success) 15%, transparent);
   }
 
   &[data-status='error'] {
-    color: var(--theme-color-danger, #ef4444);
-    background-color: color-mix(in srgb, var(--theme-color-danger, #ef4444) 15%, transparent);
+    color: var(--theme-color-danger);
+    background-color: color-mix(in srgb, var(--theme-color-danger) 15%, transparent);
   }
 
   &[data-status='running'] {
-    color: var(--theme-color-notice, #f59e0b);
-    background-color: color-mix(in srgb, var(--theme-color-notice, #f59e0b) 15%, transparent);
+    color: var(--theme-color-notice);
+    background-color: color-mix(in srgb, var(--theme-color-notice) 15%, transparent);
   }
 }
 
@@ -144,8 +144,8 @@
 }
 
 .ErrorPre {
-  color: var(--theme-color-danger, #ef4444);
-  border-color: var(--theme-color-danger, #ef4444);
+  color: var(--theme-color-danger);
+  border-color: var(--theme-color-danger);
 }
 
 .StackDetails {
@@ -168,5 +168,5 @@
 }
 
 .Error {
-  color: var(--theme-color-danger, #ef4444);
+  color: var(--theme-color-danger);
 }

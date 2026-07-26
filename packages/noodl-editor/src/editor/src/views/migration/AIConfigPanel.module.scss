@@ -6,12 +6,12 @@
 // =============================================================================
 
 // Design System Variables
-$ai-primary: #8b5cf6;
-$ai-primary-light: #a78bfa;
-$ai-primary-dark: #7c3aed;
-$success: #10b981;
-$danger: #ef4444;
-$warning: #f59e0b;
+$ai-primary: var(--base-color-node-purple-500);
+$ai-primary-light: var(--theme-color-node-category-component);
+$ai-primary-dark: var(--base-color-node-purple-700);
+$success: var(--theme-color-success);
+$danger: var(--theme-color-danger);
+$warning: var(--theme-color-warning);
 
 $spacing-xs: 8px;
 $spacing-sm: 12px;

@@ -82,15 +82,15 @@
   flex-shrink: 0;
 
   &[data-status='success'] {
-    background-color: var(--theme-color-success, #22c55e);
+    background-color: var(--theme-color-success);
   }
 
   &[data-status='error'] {
-    background-color: var(--theme-color-danger, #ef4444);
+    background-color: var(--theme-color-danger);
   }
 
   &[data-status='running'] {
-    background-color: var(--theme-color-notice, #f59e0b);
+    background-color: var(--theme-color-notice);
   }
 
   &[data-status='skipped'] {

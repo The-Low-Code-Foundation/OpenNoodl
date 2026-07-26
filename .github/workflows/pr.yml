@@ -46,6 +46,10 @@ jobs:
       # and the @ts- directives may fall but never rise. All are counted
       # separately, so silencing one by reaching for another does not pass.
       - run: npm run tsfixme
+      # Same shape again for hardcoded hex colors in stylesheets (UIX-002):
+      # tracked per package (noodl-editor, noodl-core-ui) so a drop in one
+      # can never mask a silent rise in the other.
+      - run: npm run colors
 
   test-editor:
     name: Test (editor)

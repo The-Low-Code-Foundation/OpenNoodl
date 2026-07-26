@@ -143,12 +143,12 @@
     }
 
     &.type-value-change {
-      background-color: #3b82f6;
+      background-color: var(--theme-color-data);
       color: white;
     }
 
     &.type-error {
-      background-color: #ef4444;
+      background-color: var(--theme-color-danger);
       color: white;
     }
   }
@@ -250,8 +250,8 @@
   gap: 6px;
   padding: 8px;
   background-color: rgba(239, 68, 68, 0.1);
-  border: 1px solid #ef4444;
+  border: 1px solid var(--theme-color-danger);
   border-radius: 3px;
-  color: #ef4444;
+  color: var(--theme-color-danger);
   font-size: 12px;
 }

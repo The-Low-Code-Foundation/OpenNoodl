@@ -41,7 +41,6 @@
 }
 
 .lesson-item:not(.selected):not(.completed) {
-  /* background-color: #2D5F6C; */
   color: var(--theme-color-fg-muted);
   background-color: var(--theme-color-bg-3);
   pointer-events: none;

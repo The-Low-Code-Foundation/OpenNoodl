@@ -23,14 +23,14 @@
 
   &[data-status='success'] {
     background-color: var(--theme-color-success-bg, rgba(34, 197, 94, 0.15));
-    color: var(--theme-color-success, #22c55e);
-    border-color: var(--theme-color-success, #22c55e);
+    color: var(--theme-color-success);
+    border-color: var(--theme-color-success);
   }
 
   &[data-status='error'] {
     background-color: var(--theme-color-error-bg, rgba(239, 68, 68, 0.15));
-    color: var(--theme-color-error, #ef4444);
-    border-color: var(--theme-color-error, #ef4444);
+    color: var(--theme-color-error);
+    border-color: var(--theme-color-error);
   }
 
   &[data-status='running'] {

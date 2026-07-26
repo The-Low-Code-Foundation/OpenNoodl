@@ -72,11 +72,11 @@
   flex-shrink: 0;
 
   &[data-status='success'] {
-    background-color: var(--theme-color-success, #22c55e);
+    background-color: var(--theme-color-success);
   }
 
   &[data-status='error'] {
-    background-color: var(--theme-color-error, #ef4444);
+    background-color: var(--theme-color-error);
   }
 
   &[data-status='running'],

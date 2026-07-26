@@ -18,8 +18,8 @@
 
   padding: 12px 20px;
   /* Solid dark background for maximum visibility */
-  background: #1a1a1a;
-  border-bottom: 2px solid var(--theme-color-warning, #ffc107);
+  background: var(--theme-color-bg-2);
+  border-bottom: 2px solid var(--theme-color-warning);
 
   /* Subtle shadow for depth */
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);

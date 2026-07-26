@@ -58,7 +58,7 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background-color: #ef4444; /* Red for recording indicator */
+  background-color: var(--theme-color-danger); /* Red for recording indicator */
   animation: pulse 1.5s ease-in-out infinite;
 }
 

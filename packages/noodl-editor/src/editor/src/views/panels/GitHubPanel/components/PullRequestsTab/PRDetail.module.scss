@@ -77,22 +77,22 @@
 
   &[data-status='open'] {
     background-color: rgba(46, 160, 67, 0.15);
-    color: #2ea043;
+    color: var(--theme-color-success);
   }
 
   &[data-status='draft'] {
     background-color: rgba(110, 118, 129, 0.15);
-    color: #6e7681;
+    color: var(--theme-color-fg-muted);
   }
 
   &[data-status='merged'] {
     background-color: rgba(137, 87, 229, 0.15);
-    color: #8957e5;
+    color: var(--theme-color-node-category-component);
   }
 
   &[data-status='closed'] {
     background-color: rgba(177, 24, 24, 0.15);
-    color: #da3633;
+    color: var(--theme-color-danger);
   }
 }
 
