@@ -74,6 +74,13 @@ export interface RunTriggerContext {
   source?: string;
   /** The trigger definition id, when fired by a registered trigger. */
   triggerId?: string;
+  /**
+   * BAK-009: the HTTP request that caused this run, when there was one. This is
+   * the join between the access log and the execution record — a webhook's id
+   * appears in the log line, in this record, and in the response header, so all
+   * three can be lined up after the fact.
+   */
+  requestId?: string;
 }
 
 export class WorkflowRunner {
@@ -196,7 +203,8 @@ export class WorkflowRunner {
           backendId: this.backendId,
           backendName: this.backendName,
           ...(trigger && trigger.source ? { triggerSource: trigger.source } : {}),
-          ...(trigger && trigger.triggerId ? { triggerId: trigger.triggerId } : {})
+          ...(trigger && trigger.triggerId ? { triggerId: trigger.triggerId } : {}),
+          ...(trigger && trigger.requestId ? { requestId: trigger.requestId } : {})
         }
       });
     }

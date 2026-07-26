@@ -16,6 +16,7 @@ module.exports = {
     '^@cloud-runtime$': '<rootDir>/../noodl-viewer-cloud/src/index.ts',
     '^@cloud-runtime/(.*)$': '<rootDir>/../noodl-viewer-cloud/src/$1'
   },
+  setupFiles: ['<rootDir>/tests/setup-logging.js'],
   testMatch: ['**/tests/**/*.test.ts'],
   testPathIgnorePatterns: ['/node_modules/', '/dist/']
 };

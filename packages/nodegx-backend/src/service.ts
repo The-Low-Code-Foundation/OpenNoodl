@@ -35,6 +35,8 @@ import { SearchIndexer, SearchCapabilityError } from './search/SearchIndexer';
 import { ChangeBus } from './realtime/ChangeBus';
 import { RealtimeHub } from './realtime/RealtimeHub';
 import { SecretsStore } from './config/SecretsStore';
+import { OpsState } from './ops/OpsState';
+import { logger } from './ops/logger';
 import { TriggerSubsystem } from './triggers/TriggerSubsystem';
 import { BackupSubsystem } from './backup/BackupSubsystem';
 import { FileSubsystem } from './storage/FileSubsystem';
@@ -95,6 +97,7 @@ export class BackendService {
   private backups: BackupSubsystem | null = null;
   private files: FileSubsystem | null = null;
   private emailConfig: EmailConfigState | null = null;
+  private ops: OpsState | null = null;
   private mailer: Mailer | null = null;
   private readonly executions = new ExecutionHistory();
 
@@ -113,6 +116,18 @@ export class BackendService {
     if (typeof g._noodl_cloud_runtime_version === 'undefined') {
       g._noodl_cloud_runtime_version = 'nodegx-backend';
     }
+
+    // 0.5 Operational config (BAK-009) BEFORE anything that logs: ops.json owns
+    //     the log level and format, so loading it first is what makes startup
+    //     itself obey the operator's settings instead of the defaults.
+    this.ops = new OpsState(this.options.dataDir);
+    logger.configure({ level: this.ops.config.logging.level, format: this.ops.config.logging.format });
+    logger.info('service.starting', {
+      backendId: this.options.backendId,
+      dataDir: this.options.dataDir,
+      host: this.options.host,
+      port: this.options.port
+    });
 
     // 1. Persistence first — if this throws (no engine + !allowEphemeral) the
     //    service refuses to start. That is the point.
@@ -271,7 +286,8 @@ export class BackendService {
       files: this.files,
       emailConfig: this.emailConfig,
       mailer: this.mailer,
-      emailTokens: new EmailTokenStore(this.facade)
+      emailTokens: new EmailTokenStore(this.facade),
+      ops: this.ops
     });
     const listen = await this.http.listen();
 
@@ -389,6 +405,7 @@ export class BackendService {
     this.workflows = null;
     this.security = null;
     this.search = null;
+    this.ops = null;
   }
 
   /** True when the current options require a bearer token (non-loopback bind). */

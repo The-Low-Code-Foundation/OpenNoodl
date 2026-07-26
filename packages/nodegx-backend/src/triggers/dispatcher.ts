@@ -51,6 +51,8 @@ export interface FireInput {
   payload: Record<string, unknown>;
   /** Extra request headers passed to the function (webhook forwards a subset). */
   headers?: Record<string, unknown>;
+  /** BAK-009: the HTTP request that delivered this fire (webhooks only). */
+  requestId?: string;
 }
 
 export interface RejectionInput {
@@ -62,6 +64,8 @@ export interface RejectionInput {
   source: string;
   reason: string;
   triggerData: Record<string, unknown>;
+  /** BAK-009: the HTTP request that was refused, when a request was involved. */
+  requestId?: string;
 }
 
 /** Everything a fire produced: the persisted status plus the HTTP response the
@@ -85,7 +89,7 @@ export class TriggerDispatcher {
    * record, not a thrown error — one fire never crashes the scheduler/bus.
    */
   async fire(input: FireInput): Promise<FireOutcome> {
-    const { trigger, triggerType, source, payload, headers } = input;
+    const { trigger, triggerType, source, payload, headers, requestId } = input;
     const firedAt = nowIso();
     const targetName = trigger.target.name;
 
@@ -93,7 +97,7 @@ export class TriggerDispatcher {
     // workflow-level + per-step execution records). Same dispatcher path, second
     // target kind — no second dispatch path.
     if (trigger.target.kind === 'workflow') {
-      return this.fireWorkflow(trigger, triggerType, source, targetName, payload, firedAt);
+      return this.fireWorkflow(trigger, triggerType, source, targetName, payload, firedAt, requestId);
     }
 
     const runner = this.deps.getRunner();
@@ -104,7 +108,8 @@ export class TriggerDispatcher {
         workflowId: targetName,
         source,
         reason: 'Backend workflow runner is not ready — trigger fire dropped',
-        triggerData: payload
+        triggerData: payload,
+        requestId
       });
       return { result, statusCode: 503, body: JSON.stringify({ error: result.error }) };
     }
@@ -118,7 +123,8 @@ export class TriggerDispatcher {
         workflowId: targetName,
         source,
         reason: `Trigger target function "${targetName}" not found on this backend`,
-        triggerData: payload
+        triggerData: payload,
+        requestId
       });
       return { result, statusCode: 404, body: JSON.stringify({ error: result.error }) };
     }
@@ -130,7 +136,7 @@ export class TriggerDispatcher {
       const response = await runner.run(
         targetName,
         { body: JSON.stringify(payload), headers: headers || {} },
-        { type: triggerType, source, triggerId: trigger.id }
+        { type: triggerType, source, triggerId: trigger.id, requestId }
       );
       statusCode = response.statusCode;
       body = response.body;
@@ -159,7 +165,8 @@ export class TriggerDispatcher {
     source: string,
     workflowId: string,
     payload: Record<string, unknown>,
-    firedAt: string
+    firedAt: string,
+    requestId?: string
   ): Promise<FireOutcome> {
     const workflows = this.deps.getWorkflows ? this.deps.getWorkflows() : null;
     if (!workflows) {
@@ -169,12 +176,17 @@ export class TriggerDispatcher {
         workflowId,
         source,
         reason: 'Workflow engine is not ready — trigger fire dropped',
-        triggerData: payload
+        triggerData: payload,
+        requestId
       });
       return { result, statusCode: 503, body: JSON.stringify({ error: result.error }) };
     }
 
-    const { found, result: runResult } = await workflows.run(workflowId, { type: triggerType, source, triggerId: trigger.id }, payload);
+    const { found, result: runResult } = await workflows.run(
+      workflowId,
+      { type: triggerType, source, triggerId: trigger.id, requestId },
+      payload
+    );
     if (!found || !runResult) {
       const result = this.finishRejected(trigger.id, {
         triggerType,
@@ -182,7 +194,8 @@ export class TriggerDispatcher {
         workflowId,
         source,
         reason: `Trigger target workflow "${workflowId}" not found on this backend`,
-        triggerData: payload
+        triggerData: payload,
+        requestId
       });
       return { result, statusCode: 404, body: JSON.stringify({ error: result.error }) };
     }
@@ -237,6 +250,7 @@ export class TriggerDispatcher {
           backendName: this.deps.backendName,
           triggerSource: input.source,
           ...(input.triggerId ? { triggerId: input.triggerId } : {}),
+          ...(input.requestId ? { requestId: input.requestId } : {}),
           rejected: true
         }
       });

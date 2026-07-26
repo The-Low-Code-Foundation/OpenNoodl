@@ -336,7 +336,9 @@ export class WorkflowEngine {
           backendId: this.deps.backendId,
           backendName: this.deps.backendName,
           ...(opts.trigger.source ? { triggerSource: opts.trigger.source } : {}),
-          ...(opts.trigger.triggerId ? { triggerId: opts.trigger.triggerId } : {})
+          ...(opts.trigger.triggerId ? { triggerId: opts.trigger.triggerId } : {}),
+          // BAK-009: the request that started this run, when an HTTP request did.
+          ...(opts.trigger.requestId ? { requestId: opts.trigger.requestId } : {})
         }
       }) || '';
 

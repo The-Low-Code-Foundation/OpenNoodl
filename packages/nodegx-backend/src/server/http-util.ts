@@ -7,6 +7,8 @@
 
 import type * as http from 'http';
 
+import { requestIdOf } from '../ops/request-id';
+
 const MAX_JSON_BODY = 10 * 1024 * 1024; // 10MB, matching the old server
 const MAX_FILE_BODY = 50 * 1024 * 1024; // uploads get more headroom
 
@@ -134,11 +136,19 @@ export class HttpError extends Error {
   }
 }
 
-/** Send an error in the `{ code?, error }` shape all four runtime clients read. */
+/**
+ * Send an error in the `{ code?, error }` shape all four runtime clients read.
+ *
+ * BAK-009 adds `requestId` when the dispatcher assigned one: an error a user
+ * screenshots is then enough to find the exact log line and execution record
+ * behind it, without asking them what time it happened.
+ */
 export function sendError(res: http.ServerResponse, err: unknown): void {
+  const requestId = requestIdOf(res);
   if (err instanceof HttpError) {
     const body: Record<string, unknown> = { error: err.message };
     if (err.parseCode !== undefined) body.code = err.parseCode;
+    if (requestId) body.requestId = requestId;
     // A 413 is raised while the body is still arriving, so the rest of it is
     // still in flight on this socket. Keeping the connection alive would leave
     // Node trying to read those bytes as the next pipelined request; closing
@@ -147,5 +157,5 @@ export function sendError(res: http.ServerResponse, err: unknown): void {
     return;
   }
   const message = err instanceof Error ? err.message : String(err);
-  sendJSON(res, 500, { error: message });
+  sendJSON(res, 500, requestId ? { error: message, requestId } : { error: message });
 }

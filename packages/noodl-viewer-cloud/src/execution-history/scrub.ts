@@ -5,6 +5,16 @@
  * only sees the raw HTTP request the client sent to `/functions/:name` —
  * headers and body, verbatim. Neither should ever be written to disk (or to
  * the in-memory fallback) unscrubbed.
+ *
+ * BAK-009 made this the ONE redaction rule for the whole backend rather than
+ * writing a second one: `nodegx-backend/ops/redact` is a thin entry point over
+ * `scrubValue`, so the structured request log, the audit trail and the
+ * execution history all agree on what a secret looks like by construction. The
+ * key pattern below therefore has to cover CONFIG shapes as well as request
+ * bodies — S3 credentials, the signed-URL HMAC, the admin credential, SMTP
+ * auth, per-hook webhook secrets. `nodegx-backend/tests/ops-redaction.test.ts`
+ * plants a secret in each of those real shapes; narrowing this pattern fails
+ * that test.
  */
 
 const SENSITIVE_HEADER_NAMES = new Set([
@@ -14,10 +24,25 @@ const SENSITIVE_HEADER_NAMES = new Set([
   'x-api-key',
   'api-key',
   'x-auth-token',
+  'x-nodegx-api-key',
+  'x-parse-master-key',
+  'x-parse-session-token',
   'proxy-authorization'
 ]);
 
-const SENSITIVE_KEY_PATTERN = /pass(word)?|secret|token|api[-_]?key|authorization|credential/i;
+/**
+ * A key whose VALUE is a secret. Matched case-insensitively against key names
+ * anywhere in the object graph.
+ *
+ * `key` on its own is deliberately absent — it appears in far too many
+ * innocent shapes (`keys: [...]`, `sortKey`) and redacting all of them would
+ * make logs useless, which is its own failure mode. The credential-bearing
+ * spellings are enumerated instead: accessKeyId/secretAccessKey (S3),
+ * signingKey/hmac (signed URLs), keyHash (a hashed API key — still not
+ * something to print).
+ */
+export const SENSITIVE_KEY_PATTERN =
+  /pass(word|wd)?|secret|token|api[-_]?key|access[-_]?key|signing[-_]?key|private[-_]?key|key[-_]?hash|hmac|authorization|credential|salt/i;
 
 export function scrubHeaders(headers: Record<string, unknown> | undefined | null): Record<string, unknown> {
   const out: Record<string, unknown> = {};

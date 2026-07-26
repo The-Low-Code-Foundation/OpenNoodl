@@ -57,7 +57,10 @@ import { UserRoutes } from './users';
 import { AdminDashboardRoutes, DashboardFeatures } from '../admin/AdminDashboardRoutes';
 import { AuthAttemptLimiter } from '../admin/auth';
 import { readonlyAdminMayCall, readonlyRefusalMessage } from '../admin/readonly';
-import { clientKey } from './rate-limit';
+import type { OpsState } from '../ops/OpsState';
+import { logger } from '../ops/logger';
+import { clientIp } from '../ops/client-ip';
+import { REQUEST_ID_HEADER, resolveRequestId } from '../ops/request-id';
 import { CORS_HEADERS, HttpError, parseURL, readJSONBody, readRawBody, sendError, sendJSON } from './http-util';
 
 // ============================================================================
@@ -88,6 +91,10 @@ export type RouteAccess =
 export interface RequestContext {
   req: http.IncomingMessage;
   res: http.ServerResponse;
+  /** BAK-009: this request's correlation id — logs, `X-Request-Id`, execution records. */
+  requestId: string;
+  /** BAK-009: the caller's address, proxy-aware (see ops/client-ip). */
+  clientIp: string;
   params: Record<string, string>;
   query: Record<string, string>;
   /** Parsed JSON body — pre-read only for `data op:'byBody'` routes. */
@@ -100,6 +107,23 @@ export interface RequestContext {
   checkData(collection: string, op: ClpOp): void;
   /** Owner + template-ACL stamping and client-ACL validation for creates. */
   stampCreate(collection: string, data: Record<string, unknown>): void;
+}
+
+/**
+ * Per-request state the dispatcher fills in and the access log reads (BAK-009).
+ * Deliberately a plain object threaded through `handle()` rather than fields
+ * bolted onto `http.IncomingMessage` — the request object belongs to Node.
+ */
+interface RequestTrace {
+  requestId: string;
+  clientIp: string;
+  startedAt: number;
+  /** The matched route PATTERN, or null when nothing matched (404). */
+  route: string | null;
+  /** Principal kind only — 'anonymous' | 'user' | 'admin' | 'admin:readonly' | 'apiKey'. */
+  principal: string;
+  error?: string;
+  logged: boolean;
 }
 
 export interface RouteInfo {
@@ -139,6 +163,8 @@ export interface HttpServerDeps {
   emailConfig: EmailConfigState;
   mailer: Mailer;
   emailTokens: EmailTokenStore;
+  /** Operational config — logging, rate limits, CORS, audit, metrics (BAK-009). */
+  ops: OpsState;
 }
 
 /** Result of a successful listen(). */
@@ -156,6 +182,7 @@ export class HttpServer {
   private readonly getRunner: () => WorkflowRunner | null;
   private readonly realtime: RealtimeHub;
   private readonly triggers: TriggerSubsystem;
+  private readonly ops: OpsState;
   private server: http.Server | null = null;
   private startedAt = 0;
 
@@ -185,6 +212,7 @@ export class HttpServer {
     this.getRunner = deps.getRunner;
     this.realtime = deps.realtime;
     this.triggers = deps.triggers;
+    this.ops = deps.ops;
 
     this.byob = new ByobAdminRoutes(deps.facade, deps.executions, deps.getRunner);
     this.parse = new ParseWireRoutes(deps.facade, deps.getConfigParams || (() => ({})));
@@ -821,7 +849,27 @@ export class HttpServer {
   listen(): Promise<ListenInfo> {
     return new Promise((resolve, reject) => {
       const server = http.createServer((req, res) => {
-        this.handle(req, res).catch((err) => sendError(res, err));
+        // BAK-009: correlation and the access log wrap EVERY request, including
+        // the ones that never reach a route (404s, refused credentials). The id
+        // goes on the response before any handler runs so `sendError` can put
+        // it in the error body without being told about it.
+        const trace: RequestTrace = {
+          requestId: resolveRequestId(req),
+          clientIp: clientIp(req, this.ops.config.rateLimit.trustedProxies),
+          startedAt: Date.now(),
+          route: null,
+          principal: 'anonymous',
+          logged: false
+        };
+        res.setHeader(REQUEST_ID_HEADER, trace.requestId);
+        const finish = () => this.logRequest(req, res, trace);
+        res.on('finish', finish);
+        res.on('close', finish);
+
+        this.handle(req, res, trace).catch((err) => {
+          trace.error = err instanceof Error ? err.message : String(err);
+          sendError(res, err);
+        });
       });
       server.on('error', reject);
       server.listen(this.options.port, this.options.host, () => {
@@ -848,7 +896,42 @@ export class HttpServer {
   // Dispatcher — match, resolve principal, gate, run (model doc §8)
   // ==========================================================================
 
-  private async handle(req: http.IncomingMessage, res: http.ServerResponse): Promise<void> {
+  /**
+   * One structured line per request, at completion. Emitted from `finish` OR
+   * `close`, whichever comes first and only once: a client that hangs up
+   * mid-response (or an SSE stream that ends) must still produce exactly one
+   * line, because "every request produces one log line" is only useful if the
+   * interesting failures are included in "every".
+   */
+  private logRequest(req: http.IncomingMessage, res: http.ServerResponse, trace: RequestTrace): void {
+    if (trace.logged) return;
+    trace.logged = true;
+    if (!this.ops.config.logging.requests) return;
+
+    // Level follows the STATUS, not whether a handler threw: a 404 is a normal
+    // thing for a server to say, and logging every one of them at `error` is
+    // how a log stops being a signal.
+    const status = res.statusCode;
+    const level = status >= 500 ? 'error' : status >= 400 ? 'warn' : 'info';
+    const { pathname } = parseURL(req.url || '/');
+    logger.log(level, 'request', {
+      requestId: trace.requestId,
+      method: req.method || 'GET',
+      // `route` is the low-cardinality pattern (`api/:table`); `path` is what
+      // was actually asked for. Metrics group by the first, humans read the second.
+      route: trace.route,
+      path: pathname.length > 300 ? `${pathname.slice(0, 300)}…` : pathname,
+      status,
+      durationMs: Date.now() - trace.startedAt,
+      // The KIND of principal only — never the credential, the session token,
+      // or the user id, which are exactly the things a log ships off-box.
+      principal: trace.principal,
+      ip: trace.clientIp,
+      ...(trace.error ? { error: trace.error } : {})
+    });
+  }
+
+  private async handle(req: http.IncomingMessage, res: http.ServerResponse, trace: RequestTrace): Promise<void> {
     const { pathname, query } = parseURL(req.url || '/');
     const method = req.method || 'GET';
 
@@ -864,6 +947,7 @@ export class HttpServer {
       throw new HttpError(404, `Not found: ${method} ${pathname}`);
     }
     const { route, params } = match;
+    trace.route = route.pattern;
 
     // Step 1: principal. Invalid credentials are hard errors (401 / 400+209),
     // never a silent downgrade to anonymous — that includes dev-open mode.
@@ -873,7 +957,7 @@ export class HttpServer {
     // reachable URL, so online guessing is now a real attack. Only failures
     // count, and the refusal is a plain 429 — it reveals nothing about which
     // credential was wrong.
-    const authBucket = clientKey(req as unknown as { headers: Record<string, unknown>; socket?: { remoteAddress?: string } });
+    const authBucket = trace.clientIp;
     if (this.authLimiter.isLockedOut(authBucket)) {
       const retryAfter = this.authLimiter.retryAfterSeconds(authBucket);
       res.setHeader('Retry-After', String(retryAfter));
@@ -886,6 +970,7 @@ export class HttpServer {
       this.authLimiter.recordFailure(authBucket);
       throw e;
     }
+    trace.principal = principal.kind === 'admin' && principal.readonly ? 'admin:readonly' : principal.kind;
 
     // BAK-005 read-only tier: refuse every state-changing request from a
     // read-only admin BEFORE the handler runs. Coarse by design — a route added
@@ -908,6 +993,8 @@ export class HttpServer {
     const ctx: RequestContext = {
       req,
       res,
+      requestId: trace.requestId,
+      clientIp: trace.clientIp,
       params,
       query,
       body,
@@ -1099,10 +1186,14 @@ export class HttpServer {
     // The runner receives the request in CloudRunner's shape: raw JSON string
     // body + headers verbatim (session tokens ride along in headers).
     const body = await readJSONBody(ctx.req);
-    const response = await runner.run(ctx.params.name, {
-      body: JSON.stringify(body),
-      headers: ctx.req.headers as Record<string, unknown>
-    });
+    const response = await runner.run(
+      ctx.params.name,
+      { body: JSON.stringify(body), headers: ctx.req.headers as Record<string, unknown> },
+      // BAK-009: 'webhook' is the historical trigger type for a direct call
+      // (see RunTriggerContext); what is new is the request id, so the
+      // execution this call creates can be found from the access log.
+      { type: 'webhook', source: `POST /functions/${ctx.params.name}`, requestId: ctx.requestId }
+    );
 
     ctx.res.writeHead(response.statusCode, { 'Content-Type': 'application/json', ...CORS_HEADERS });
     ctx.res.end(response.body);
@@ -1232,7 +1323,8 @@ export class HttpServer {
         workflowId: targetName,
         source,
         reason: `webhook body (${declaredLength} bytes) exceeds the ${maxBytes}-byte limit`,
-        triggerData: { slug }
+        triggerData: { slug },
+        requestId: ctx.requestId
       });
       throw new HttpError(413, `Webhook body exceeds ${maxBytes} bytes`);
     }
@@ -1249,7 +1341,8 @@ export class HttpServer {
           workflowId: targetName,
           source,
           reason: `webhook body exceeds the ${trigger.webhook.maxBodyBytes}-byte limit`,
-          triggerData: { slug }
+          triggerData: { slug },
+          requestId: ctx.requestId
         });
         throw new HttpError(413, `Webhook body exceeds ${trigger.webhook.maxBodyBytes} bytes`);
       }
@@ -1267,7 +1360,8 @@ export class HttpServer {
         workflowId: targetName,
         source,
         reason: `unauthenticated webhook (${trigger.webhook.scheme}): ${verify.reason}`,
-        triggerData: { slug, contentLength: rawBody.length }
+        triggerData: { slug, contentLength: rawBody.length },
+        requestId: ctx.requestId
       });
       throw new HttpError(401, `Webhook rejected: ${verify.reason}`);
     }
@@ -1293,7 +1387,8 @@ export class HttpServer {
       triggerType: 'webhook',
       source,
       payload: { trigger: 'webhook', triggerId: trigger.id, slug, headers: headerObj, query: ctx.query, body: parsed },
-      headers: ctx.req.headers as Record<string, unknown>
+      headers: ctx.req.headers as Record<string, unknown>,
+      requestId: ctx.requestId
     });
 
     ctx.res.writeHead(outcome.statusCode, { 'Content-Type': 'application/json', ...CORS_HEADERS });

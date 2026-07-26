@@ -80,6 +80,7 @@ export type {
 } from './types';
 
 // Export request scrubbing (WF-004: shared by the editor and the standalone
-// backend service so both log with the same redaction rules)
-export { scrubHeaders, scrubValue, scrubRequestForLogging } from './scrub';
+// backend service so both log with the same redaction rules; BAK-009 made it
+// the single rule for the service's structured logs and audit trail too)
+export { scrubHeaders, scrubValue, scrubRequestForLogging, SENSITIVE_KEY_PATTERN } from './scrub';
 export type { ScrubbedRequestSummary } from './scrub';
