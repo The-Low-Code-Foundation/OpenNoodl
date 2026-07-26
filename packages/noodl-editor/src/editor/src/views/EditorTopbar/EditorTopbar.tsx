@@ -6,6 +6,7 @@ import React, { useEffect, useRef, useState } from 'react';
 
 import { FeedbackType } from '@noodl-constants/FeedbackType';
 import { Keybindings } from '@noodl-constants/Keybindings';
+import { ProjectModel } from '@noodl-models/projectmodel';
 import { WarningsModel } from '@noodl-models/warningsmodel';
 import { KeyCode, KeyMod } from '@noodl-utils/keyboard/KeyCode';
 
@@ -13,7 +14,6 @@ import { Icon, IconName, IconSize } from '@noodl-core-ui/components/common/Icon'
 import { IconButton, IconButtonState, IconButtonVariant } from '@noodl-core-ui/components/inputs/IconButton';
 import { PrimaryButton } from '@noodl-core-ui/components/inputs/PrimaryButton';
 import { TextInput, TextInputVariant } from '@noodl-core-ui/components/inputs/TextInput';
-import { ToggleSwitch } from '@noodl-core-ui/components/inputs/ToggleSwitch';
 import { MenuDialog, MenuDialogWidth } from '@noodl-core-ui/components/popups/MenuDialog';
 import { Tooltip } from '@noodl-core-ui/components/popups/Tooltip';
 import { Label } from '@noodl-core-ui/components/typography/Label';
@@ -190,10 +190,13 @@ export function EditorTopbar({
     <div ref={rootRef} className={classNames(css['Root'], isSmall && css['is-small'])}>
       <div className={css['LeftSide']}>
         <div className={css['is-padded-s']}>
+          {/* PAR-003: accent-soft + accent glyph per the mock's `.icon-btn.accent`
+              add-node button. IconButtonState.Active carries exactly that
+              treatment (UIX-004 accent pill) on the shared primitive. */}
           <Tooltip content="Add node to graph">
             <IconButton
               icon={IconName.Plus}
-              iconVariant={FeedbackType.Notice}
+              state={IconButtonState.Active}
               variant={IconButtonVariant.Transparent}
               onClick={onAddClicked}
             />
@@ -239,7 +242,16 @@ export function EditorTopbar({
           }))}
         />
 
+        {/* PAR-003: route pill per mock — home glyph, project name (600/fg-1),
+            mono route path, chevron pushed right. Same TextInput/route handlers. */}
         <div ref={urlInputRef} className={css.UrlBarWrapper}>
+          <Icon
+            size={IconSize.Small}
+            variant={TextType.Default}
+            icon={navigationState.route === '/' ? IconName.Home : IconName.File}
+            UNSAFE_className={css.RoutePillIcon}
+          />
+          {!isSmall && <span className={css.RouteProjectName}>{ProjectModel.instance?.name}</span>}
           <TextInput
             onRefChange={(ref) => {
               urlBarRef.current = ref.current;
@@ -253,14 +265,6 @@ export function EditorTopbar({
             onEnter={() => onRouteChanged(routeTextInputValue)}
             UNSAFE_className={css.UrlBarTextInput}
             variant={TextInputVariant.OpaqueOnHover}
-            slotBeforeInput={
-              <Icon
-                size={IconSize.Small}
-                variant={TextType.Default}
-                icon={navigationState.route === '/' ? IconName.Home : IconName.File}
-                UNSAFE_style={{ marginRight: 8 }}
-              />
-            }
             slotAfterInput={
               <Icon icon={IconName.CaretDown} variant={TextType.Default} UNSAFE_style={{ marginTop: -2 }} />
             }
@@ -428,44 +432,30 @@ export function EditorTopbar({
           </div>
         )}
 
+        {/* PAR-003: segmented Design/Preview control per mock, replacing the
+            toggle-switch. Same two states, same onPreviewModeChanged handler —
+            presentation swap only. */}
         <div className={css['is-padded-l']}>
-          <Tooltip
-            content="Design mode"
-            fineType={Keybindings.TOGGLE_PREVIEW_MODE.label}
-            UNSAFE_triggerClassName={css.TooltipPositioner}
-          >
-            <div className={css.DesignPreviewModeButton} onClick={() => onPreviewModeChanged(false)}>
-              {isSmall ? (
-                <Icon icon={IconName.Pencil} variant={!previewMode ? TextType.Secondary : undefined} />
-              ) : (
-                <Label variant={!previewMode ? TextType.Secondary : undefined}>Design</Label>
-              )}
-            </div>
-          </Tooltip>
-          <Tooltip
-            content="Set editor mode"
-            fineType={Keybindings.TOGGLE_PREVIEW_MODE.label}
-            UNSAFE_triggerClassName={css.TooltipPositioner}
-          >
-            <ToggleSwitch
-              isChecked={previewMode}
-              onChange={(e) => onPreviewModeChanged(e.target.checked)}
-              isAlwaysActiveColor
-            />
-          </Tooltip>
-          <Tooltip
-            content="Preview mode"
-            fineType={Keybindings.TOGGLE_PREVIEW_MODE.label}
-            UNSAFE_triggerClassName={css.TooltipPositioner}
-          >
-            <div className={css.DesignPreviewModeButton} onClick={() => onPreviewModeChanged(true)}>
-              {isSmall ? (
-                <Icon icon={IconName.PlayCircle} variant={previewMode ? TextType.Secondary : undefined} />
-              ) : (
-                <Label variant={previewMode ? TextType.Secondary : undefined}>Preview</Label>
-              )}
-            </div>
-          </Tooltip>
+          <div className={css.ModeSegmented} role="group" aria-label="Editor mode">
+            <Tooltip content="Design mode" fineType={Keybindings.TOGGLE_PREVIEW_MODE.label}>
+              <button
+                className={classNames(css.ModeSegmentedButton, !previewMode && css['is-active'])}
+                aria-pressed={!previewMode}
+                onClick={() => onPreviewModeChanged(false)}
+              >
+                {isSmall ? <Icon icon={IconName.Pencil} size={IconSize.Small} /> : 'Design'}
+              </button>
+            </Tooltip>
+            <Tooltip content="Preview mode" fineType={Keybindings.TOGGLE_PREVIEW_MODE.label}>
+              <button
+                className={classNames(css.ModeSegmentedButton, previewMode && css['is-active'])}
+                aria-pressed={previewMode}
+                onClick={() => onPreviewModeChanged(true)}
+              >
+                {isSmall ? <Icon icon={IconName.PlayCircle} size={IconSize.Small} /> : 'Preview'}
+              </button>
+            </Tooltip>
+          </div>
         </div>
 
         <span ref={deployButtonRef}>
