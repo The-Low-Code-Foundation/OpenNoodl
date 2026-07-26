@@ -27,6 +27,8 @@ export interface CanvasShell {
   /** Host for the DOM-rendered node views (`NodeGraphEditorNode`). */
   domLayer: HTMLDivElement;
   componentTrailRoot: HTMLDivElement;
+  /** PAR-003: HUD overlays (AI pill, zoom cluster) over the canvas. */
+  canvasHudRoot: HTMLDivElement;
 }
 
 function div(style?: Partial<CSSStyleDeclaration>, id?: string, className?: string): HTMLDivElement {
@@ -83,6 +85,7 @@ export function createCanvasShell(): CanvasShell {
   domLayerWrapper.appendChild(domLayer);
 
   const componentTrailRoot = div(undefined, undefined, 'nodegraph-component-trail-root');
+  const canvasHudRoot = div(undefined, undefined, 'canvas-hud-root');
   const helpCenterLayer = div(undefined, undefined, 'help-center-layer');
   const clippyLayer = div(undefined, undefined, 'clippy-layer');
 
@@ -95,6 +98,7 @@ export function createCanvasShell(): CanvasShell {
     clippingWrapper(executionOverlayLayer, 'none'),
     clippingWrapper(commentLayerFg, 'none'),
     domLayerWrapper,
+    canvasHudRoot,
     componentTrailRoot,
     helpCenterLayer,
     clippingWrapper(clippyLayer, 'none')
@@ -110,6 +114,7 @@ export function createCanvasShell(): CanvasShell {
     highlightOverlayLayer,
     executionOverlayLayer,
     domLayer,
-    componentTrailRoot
+    componentTrailRoot,
+    canvasHudRoot
   };
 }

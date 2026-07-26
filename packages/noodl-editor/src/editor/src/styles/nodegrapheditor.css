@@ -9,11 +9,20 @@
   overflow: hidden;
 }
 
+/* PAR-003: the component trail is the mock's full-width 38px bottom bar. */
 .nodegraph-component-trail-root {
   position: absolute;
   bottom: 0;
   left: 0;
-  max-width: calc(100% - 68px);
+  right: 0;
+}
+
+/* PAR-003: HUD layer for the AI pill + zoom cluster. Children re-enable
+   pointer events; the layer itself never eats canvas input. */
+.canvas-hud-root {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
 }
 
 #nodegraph-dom-layer {

@@ -2,11 +2,13 @@ import React from 'react';
 
 import { CanvasTabsProvider } from '../../contexts/CanvasTabsContext';
 import { ProjectModel } from '../../models/projectmodel';
+import { CanvasHud } from '../CanvasOverlays/CanvasHud';
 import { ExecutionOverlay } from '../CanvasOverlays/ExecutionOverlay';
 import { HighlightOverlay } from '../CanvasOverlays/HighlightOverlay';
 import { CanvasTabs } from '../CanvasTabs';
 import { EditorBanner } from '../EditorBanner';
 import { NodeGraphComponentTrail } from '../NodeGraphComponentTrail';
+import { CenterToFitMode } from './canvas/types';
 
 import type { NodeGraphEditor } from '../nodegrapheditor';
 
@@ -176,14 +178,59 @@ export class OverlayViews {
   }
 
   /**
+   * Render the canvas HUD overlays (PAR-003): the AI pill (bottom-left) and
+   * the zoom cluster (bottom-right) from the editor mock. Zoom actions drive
+   * the same ViewportActions path as mouse-wheel zoom; fit is the existing
+   * center-to-fit. Re-rendered on every pan/zoom (via updateCanvasHud) so the
+   * percentage stays live.
+   */
+  renderCanvasHud() {
+    const editor = this.editor;
+    const scale = editor.getPanAndScale().scale;
+
+    const zoomAtCenter = (deltaZ: number) => {
+      // Guard: viewport metrics are NaN until the canvas is bound.
+      if (!editor.canvas.width || !editor.canvas.height) return;
+      editor.viewportActions.updateZoomLevel(editor.viewport.cssWidth / 2, editor.viewport.cssHeight / 2, deltaZ);
+    };
+
+    editor.overlays.renderSlot(
+      'canvas-hud',
+      editor.shell.canvasHudRoot,
+      React.createElement(CanvasHud, {
+        zoomPercent: Math.round(scale * 100),
+        showAiPill: !editor.readOnly,
+        onZoomIn: () => zoomAtCenter(4),
+        onZoomOut: () => zoomAtCenter(-4),
+        onZoomToFit: () => {
+          editor.centerToFit(CenterToFitMode.AllNodes);
+          editor.relayout();
+          editor.repaint();
+        }
+      })
+    );
+  }
+
+  /**
+   * Update the canvas HUD with the current zoom level.
+   * Called whenever pan/zoom changes (same cadence as the other overlays).
+   */
+  updateCanvasHud() {
+    if (this.editor.overlays.hasSlot('canvas-hud')) {
+      this.renderCanvasHud();
+    }
+  }
+
+  /**
    * Set canvas visibility (hide when Logic Builder is open, show when closed)
    */
   setCanvasVisibility(visible: boolean) {
     const editor = this.editor;
-    const { canvas, commentLayerBg, commentLayerFg, highlightOverlayLayer, componentTrailRoot } = editor.shell;
+    const { canvas, commentLayerBg, commentLayerFg, highlightOverlayLayer, componentTrailRoot, canvasHudRoot } =
+      editor.shell;
 
     // Show/hide the canvas and related elements.
-    for (const el of [canvas, commentLayerBg, commentLayerFg, highlightOverlayLayer]) {
+    for (const el of [canvas, commentLayerBg, commentLayerFg, highlightOverlayLayer, canvasHudRoot]) {
       el.style.display = visible ? 'block' : 'none';
     }
     componentTrailRoot.style.display = visible ? 'flex' : 'none';
@@ -235,7 +282,12 @@ export class OverlayViews {
         onHistoryForward: editor.navigationHistory.goForward.bind(editor.navigationHistory),
         onHistoryBack: editor.navigationHistory.goBack.bind(editor.navigationHistory),
         canNavigateBack: editor.navigationHistory.canNavigateBack,
-        canNavigateForward: editor.navigationHistory.canNavigateForward
+        canNavigateForward: editor.navigationHistory.canNavigateForward,
+        // PAR-003: the trail is now the mock's bottom bar — it needs the
+        // runtime type for the "+" new-component menu and hides authoring
+        // affordances on read-only canvases.
+        runtimeType: editor.runtimeType,
+        readOnly: Boolean(editor.readOnly)
       };
 
       editor.overlays.renderSlot('title', rootElem, React.createElement(NodeGraphComponentTrail, props));

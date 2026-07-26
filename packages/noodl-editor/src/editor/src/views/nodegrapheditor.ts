@@ -247,6 +247,9 @@ export class NodeGraphEditor extends View {
     if (this.overlays.hasSlot('editor-banner')) {
       this.overlayViews.renderEditorBanner();
     }
+
+    // PAR-003: the HUD's AI pill is hidden on read-only canvases
+    this.overlayViews.updateCanvasHud();
   }
 
   reset() {
@@ -317,6 +320,11 @@ export class NodeGraphEditor extends View {
     // Render the execution overlay (CF11-007)
     setTimeout(() => {
       this.overlayViews.renderExecutionOverlay();
+    }, 1);
+
+    // Render the canvas HUD (PAR-003: AI pill + zoom cluster)
+    setTimeout(() => {
+      this.overlayViews.renderCanvasHud();
     }, 1);
 
     this.relayout();
