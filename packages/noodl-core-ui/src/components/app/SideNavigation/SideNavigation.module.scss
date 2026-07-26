@@ -45,6 +45,62 @@ $_sidebar-hover-enter-offset: 250ms;
   padding-top: 4px;
 }
 
+.BrandExit {
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 7px;
+  background: none;
+  padding: 0;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--theme-color-primary);
+
+  &:hover {
+    background: var(--theme-color-bg-3);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--theme-color-primary);
+    outline-offset: 2px;
+  }
+}
+
+.BrandDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--theme-color-primary);
+  transition: opacity 0.12s ease, transform 0.12s ease;
+}
+
+.BrandArrow {
+  position: absolute;
+  opacity: 0;
+  transform: scale(0.7);
+  transition: opacity 0.12s ease, transform 0.12s ease;
+}
+
+.BrandExit:hover .BrandDot {
+  opacity: 0;
+  transform: scale(0.5);
+}
+
+.BrandExit:hover .BrandArrow {
+  opacity: 1;
+  transform: scale(1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .BrandDot,
+  .BrandArrow {
+    transition: none;
+  }
+}
+
 .ToolbarIcon {
   width: 25px;
   height: 25px;

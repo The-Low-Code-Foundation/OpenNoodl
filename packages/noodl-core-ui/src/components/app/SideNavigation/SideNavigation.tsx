@@ -118,11 +118,29 @@ export function SideNavigation({ toolbar, panel, onExitClick, isExpanded = false
 
         <div className={css['Toolbar']}>
           <div className={css['Logo']}>
-            <SideNavigationButton
-              icon={IconName.Logo}
-              label="Exit project"
-              menuItems={[{ label: 'Exit project', isDangerous: true, onClick: onExitClick }]}
-            />
+            <Tooltip content="Back to projects" renderDirection={DialogRenderDirection.Horizontal} showAfterMs={300}>
+              <button
+                className={css['BrandExit']}
+                aria-label="Back to projects"
+                onClick={(e) => onExitClick?.(e as unknown as React.MouseEvent<HTMLDivElement>)}
+              >
+                <span className={css['BrandDot']} />
+                <svg
+                  className={css['BrandArrow']}
+                  width="16"
+                  height="16"
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.7"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M13 8H3.5M7.5 4 3.5 8l4 4" />
+                </svg>
+              </button>
+            </Tooltip>
           </div>
 
           {toolbar}
