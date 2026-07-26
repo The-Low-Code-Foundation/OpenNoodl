@@ -14,8 +14,43 @@ Not started · In progress · Built–not wired · Complete · Superseded
 | 1 | LIB-001 | Library source of truth & delivery pipeline | Built–not wired | 4–6 days | Pipeline + 55-entry seed + editor changes shipped and committed; residual: live install-from-`library-dist` verification (see Log) |
 | 2 | LIB-002 | Prefab audit, repair & restyle | In progress | 1.5–2 wks | Static audit half DONE (2026-07-25, merged `bd276a1`): full 29-prefab `library/prefabs/AUDIT.md` (triage keep 14 / fix 15 / retire 0), style charter, per-prefab hard-coded-colour + collision-risk + folder-hygiene findings, 27 `library.json` metadata fixes, `library:check` 29/29 clean. Residual tail (needs primary-checkout editor): open/exercise/restyle/re-save each prefab, fix folder-hygiene defects, regen icons, live install console-clean on React 18+19, consolidation decisions. |
 | 3 | LIB-003 | Module audit, hygiene & expansion | In progress | 1–1.5 wks | Plumbing+inventory half DONE (2026-07-25); **expansion + docs half DONE** (2026-07-25, merged `beaeca4`): 3 shortlist modules authored — `lucide-icons` (ISC iconset, 1998 glyphs), `qr-code` (MIT, visual node), `confetti` (MIT, trigger node), each self-contained/no-build; `library/modules/README.md` authoring docs; `library:check` 58/58 clean, `catalog:check` green. **Catalog integration for module nodes confirmed non-existent** (chart-js absent too) — nodes take SUB-004's dynamic skip path (residual, not invented). Residual tail: live per-module audit of all 26 existing (both React pairings, preview+deploy), live preview/deploy verify of the 3 new modules, replace placeholder icons, deploy-build check of the scanner refactor. |
-| 4 | LIB-004 | Import engine v2 | Built–not wired (code complete; live-verify pending) | 1–1.5 wks | Full three-stage engine (`analyze`+`plan`+`apply`) built & typed; `projectimporter.js` DELETED; all 5 call sites migrated behind a strangler adapter; v2-format fixture + parity test added. Verified: typecheck (editor + editor-tests) clean, 18 headless assertions green (apply id-semantics/skip/rename/styles + v2 inventory parity). Residual: live-editor pass of the 5 flows + the Electron characterization suite (blocked by the lerna/worktree trap) — see Log |
+| 4 | LIB-004 | Import engine v2 | ⚠️ **Built, and its characterization suite FAILS** | 1–1.5 wks | Full three-stage engine (`analyze`+`plan`+`apply`) built & typed; `projectimporter.js` DELETED; all 5 call sites migrated behind a strangler adapter; v2-format fixture + parity test added. Verified: typecheck (editor + editor-tests) clean, 18 headless assertions green. **The owed Electron suite was finally run on 2026-07-26 (orchestrator, primary checkout) and the engine regresses — see DEFECT below.** |
 | 5 | LIB-005 | Import experience overhaul | 🔵 In progress 2026-07-26 (worktree agent) | 1.5–2 wks | Consumes LIB-004's plan API; AIX-003 dependency-closure selection; preview thumbnails via noodl-preview |
+
+## 🔴 DEFECT (open) — LIB-004 overwrite-import drops a component's child nodes
+
+**Found:** 2026-07-26, orchestrator, primary checkout, running the Electron suite
+LIB-004 itself listed as an unrun residual. **1297 specs, 1 failure**, reproduced
+across two different random seeds (87662, 69435) — deterministic, not order-flake.
+
+```
+FAILED: Project import and export unit tests
+        re-keys imported node ids while reusing the target component id (characterization)
+  Expected 1 to be 4.
+```
+
+**What it means.** Importing `/Main` (1 root + 3 children) over an existing
+component leaves **1 node**. The children are lost. This is data-shaped, and
+LIB-004 is the single engine behind *all five* install/import/export flows.
+
+**Why it is a real regression, not a stale test.** The spec was written by
+`bf7dc84` (`test(LIB-004): characterize id re-keying…`) to capture the **legacy**
+importer's behaviour. Across the engine swap in `34bb133`, the only edit to the
+file was the `require` line — legacy importer → strangler adapter. The assertions
+are byte-identical. So the v2 engine changed behaviour, and the characterization
+test caught exactly what it exists to catch. It was never run, because the suite
+needs Electron and LIB-004 was built in a worktree.
+
+**Localized to:** `utils/import-engine/apply.ts` → `makeSource().takeComponent()`,
+which does `delete c.id; c.rekeyAllIds();`. After import only the root survives
+`forEachNodeRecursive`, so the suspicion is `rekeyAllIds()` re-keying node ids
+without preserving parent→child links (children orphaned rather than deleted).
+Not yet fixed — LIB-005 was live in these files when this was found, and a
+concurrent edit would have collided.
+
+**Owner:** next task in phase 21. Fix, then re-run `npm run test:ci` in
+`packages/noodl-editor` (~3 min) — that command is the gate, and running it is
+now non-optional for anything touching the import engine.
 
 ## Anytime fixes (independent of task order)
 
