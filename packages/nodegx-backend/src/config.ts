@@ -27,8 +27,10 @@ export interface BackendServiceOptions {
    */
   host: string;
   /**
-   * Bearer token required for requests when bound to a non-localhost interface.
-   * Generated per backend and persisted in the data-dir config. null = none yet.
+   * The ADMIN CREDENTIAL, when the caller is supplying one (the `--token` flag).
+   * null = the caller is not choosing one, and BAK-003's SecurityState will
+   * reuse the credential already in `<dataDir>/secrets.json` or mint one on
+   * first run. It is NOT auto-filled here — see resolveOptions.
    */
   authToken: string | null;
   /**
@@ -89,14 +91,22 @@ const DEFAULTS: BackendServiceOptions = {
  * (it moves with BackendManager). See PLACEHOLDER note in service.ts.
  */
 export function resolveOptions(partial: Partial<BackendServiceOptions> = {}): BackendServiceOptions {
-  const merged: BackendServiceOptions = { ...DEFAULTS, ...partial };
-
-  // A wider bind without a token is a misconfiguration; mint one so we never
-  // silently expose an unauthenticated service. (The editor/deploy should pass
-  // a persisted token; this is the safety net.)
-  if (requiresAuth(merged) && !merged.authToken) {
-    merged.authToken = generateAuthToken();
-  }
-
-  return merged;
+  // WF-004 minted an authToken here whenever the bind was non-loopback, as a
+  // net against exposing an unauthenticated service. BAK-003 replaced that
+  // blanket bearer wall with the security model, and made SecurityState the one
+  // owner of the admin credential: it persists it in `<dataDir>/secrets.json`,
+  // reuses it across restarts, and reports a first-run mint so an operator can
+  // find it. Against that owner the old net does active harm, and WF-003 found
+  // it in a container:
+  //
+  //   * SecurityState treats a non-null token as "the operator chose this" and
+  //     WRITES IT OVER the stored one. A fresh random value each start meant the
+  //     admin credential of every DEPLOYED backend rotated on every restart —
+  //     the dashboard password stopped working after a reboot, silently.
+  //   * The same branch suppressed the "FIRST RUN: here is where to find your
+  //     credential" message, precisely in the deploy case that needs it.
+  //
+  // So: no mint here. A null token means "I am not choosing one", which is a
+  // question SecurityState already answers correctly and durably.
+  return { ...DEFAULTS, ...partial };
 }
