@@ -21,6 +21,7 @@ import { DataBrowser } from '../../databrowser';
 import { EmailPanel } from '../../email';
 import { PermissionsPanel } from '../../permissions';
 import { SchemaPanel } from '../../schemamanager';
+import { SearchPanel } from '../../search';
 import { TriggersPanel } from '../../triggers';
 import { LocalBackendInfo } from '../hooks/useLocalBackends';
 import css from './LocalBackendCard.module.scss';
@@ -67,6 +68,7 @@ export function LocalBackendCard({ backend, onStart, onStop, onDelete, onExport 
   const [showPermissions, setShowPermissions] = useState(false);
   const [showTriggers, setShowTriggers] = useState(false);
   const [showEmail, setShowEmail] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
   const statusDisplay = getStatusDisplay(backend);
 
   const isEphemeral = backend.running && backend.persistence?.mode === 'ephemeral';
@@ -229,6 +231,12 @@ export function LocalBackendCard({ backend, onStart, onStop, onDelete, onExport 
                 variant={PrimaryButtonVariant.Muted}
                 onClick={() => setShowEmail(true)}
               />
+              <PrimaryButton
+                label="Search"
+                size={PrimaryButtonSize.Small}
+                variant={PrimaryButtonVariant.Muted}
+                onClick={() => setShowSearch(true)}
+              />
             </>
           )}
           {onExport && backend.running && (
@@ -299,6 +307,15 @@ export function LocalBackendCard({ backend, onStart, onStop, onDelete, onExport 
         createPortal(
           <div className={css.SchemaPanelOverlay}>
             <EmailPanel backendId={backend.id} backendName={backend.name} onClose={() => setShowEmail(false)} />
+          </div>,
+          document.body
+        )}
+
+      {/* Search (BAK-008) — rendered via portal for full-screen overlay */}
+      {showSearch &&
+        createPortal(
+          <div className={css.SchemaPanelOverlay}>
+            <SearchPanel backendId={backend.id} backendName={backend.name} onClose={() => setShowSearch(false)} />
           </div>,
           document.body
         )}

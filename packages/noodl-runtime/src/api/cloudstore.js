@@ -152,7 +152,14 @@ class CloudStore {
         include: Array.isArray(options.include) ? options.include.join(',') : options.include,
         keys: Array.isArray(options.select) ? options.select.join(',') : options.select,
         order: Array.isArray(options.sort) ? options.sort.join(',') : options.sort,
-        count: options.count
+        count: options.count,
+        // BAK-008: a non-empty search term switches the server from a plain
+        // query to an FTS5-ranked search (still composed with `where` and the
+        // caller's ACL). A dedicated `search` param, not Parse's `$text`
+        // operator — the ranking/snippet response shape doesn't fit inside a
+        // boolean WHERE predicate, and no runtime client ever emitted `$text`
+        // to preserve compatibility with. See BAK-008-NOTES.md.
+        search: options.search || undefined
       },
       success: function (response) {
         options.success(response.results, response.count);

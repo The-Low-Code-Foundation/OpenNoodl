@@ -31,6 +31,7 @@ import type { AdapterFacade, AclOption } from '../persistence/AdapterFacade';
 import type { ExecutionHistory } from '../execution/ExecutionStore';
 import type { WorkflowRunner } from '../workflow/WorkflowRunner';
 import type { SecurityState } from '../security/state';
+import type { SearchState } from '../search/SearchState';
 import type { RealtimeHub, Subscription } from '../realtime/RealtimeHub';
 import { ClpOp, Principal, keyAllowsFunction, ruleAllows, validateAclShape } from '../security/model';
 import type { TriggerSubsystem } from '../triggers/TriggerSubsystem';
@@ -45,6 +46,7 @@ import { AdminTriggerRoutes } from './admin-triggers';
 import { AdminWorkflowRoutes } from './admin-workflows';
 import { AdminEmailRoutes } from './admin-email';
 import { AdminBackupRoutes } from './admin-backups';
+import { AdminSearchRoutes } from './admin-search';
 import { ByobAdminRoutes } from './byob-admin';
 import { EmailRoutes } from './email-routes';
 import { FileRoutes } from './files';
@@ -115,6 +117,8 @@ export interface HttpServerDeps {
   facade: AdapterFacade;
   executions: ExecutionHistory;
   security: SecurityState;
+  /** Search config state — BAK-008 (per-collection FTS5 opt-in). */
+  search: SearchState;
   /** Late-bound: the runner loads after the server starts listening. */
   getRunner: () => WorkflowRunner | null;
   /** Project config served at /config. Defaults to {}. */
@@ -159,6 +163,7 @@ export class HttpServer {
   private readonly adminTriggers: AdminTriggerRoutes;
   private readonly adminWorkflows: AdminWorkflowRoutes;
   private readonly adminBackups: AdminBackupRoutes;
+  private readonly adminSearch: AdminSearchRoutes;
   private readonly email: EmailRoutes;
   private readonly adminEmail: AdminEmailRoutes;
   /** BAK-005's dashboard, or null when `--no-admin` removed it entirely. */
@@ -198,6 +203,7 @@ export class HttpServer {
       dataDir: deps.options.dataDir
     });
     this.adminEmail = new AdminEmailRoutes(deps.emailConfig, deps.mailer);
+    this.adminSearch = new AdminSearchRoutes(deps.search, deps.facade);
     this.dashboard = deps.options.adminDashboard
       ? new AdminDashboardRoutes({
           options: deps.options,
@@ -228,7 +234,8 @@ export class HttpServer {
       executions: deps.executions.getStatus().enabled,
       email: Boolean(deps.emailConfig),
       backups: Boolean(deps.backups),
-      realtime: Boolean(deps.realtime)
+      realtime: Boolean(deps.realtime),
+      search: Boolean(deps.facade.schemaManager)
     };
   }
 
@@ -252,6 +259,7 @@ export class HttpServer {
     const adminBackups = this.adminBackups;
     const email = this.email;
     const adminEmail = this.adminEmail;
+    const adminSearch = this.adminSearch;
 
     return [
       // ---- Public ----------------------------------------------------------
@@ -726,6 +734,27 @@ export class HttpServer {
         pattern: 'admin/email/templates/:id/preview',
         access: { kind: 'admin' },
         handler: (ctx) => adminEmail.previewTemplate(ctx)
+      },
+
+      // ---- Admin: the BAK-008 full-text search surface ---------------------
+      { method: 'GET', pattern: 'admin/search', access: { kind: 'admin' }, handler: (ctx) => adminSearch.getConfig(ctx) },
+      {
+        method: 'PUT',
+        pattern: 'admin/search/collections/:name',
+        access: { kind: 'admin' },
+        handler: (ctx) => adminSearch.putCollection(ctx)
+      },
+      {
+        method: 'DELETE',
+        pattern: 'admin/search/collections/:name',
+        access: { kind: 'admin' },
+        handler: (ctx) => adminSearch.deleteCollection(ctx)
+      },
+      {
+        method: 'POST',
+        pattern: 'admin/search/collections/:name/rebuild',
+        access: { kind: 'admin' },
+        handler: (ctx) => adminSearch.rebuild(ctx)
       },
 
       // ---- The served admin dashboard (BAK-005) ---------------------------

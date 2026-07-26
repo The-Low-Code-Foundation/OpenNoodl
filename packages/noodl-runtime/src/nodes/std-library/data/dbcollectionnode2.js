@@ -39,6 +39,19 @@ var DbCollectionNode = {
       if (_this._internal.collection === undefined) return;
       if (args.collection !== _this._internal.name) return;
 
+      // BAK-008: when a search term is active, results are BM25-ranked — a
+      // changed record can join, leave, AND change every other result's
+      // position, which single-record incremental add/remove (below) cannot
+      // express correctly. Delegate to a real re-search instead, which is
+      // also how "a changed record re-matches" the search term itself (the
+      // incremental path below only ever re-checks the structured `where`,
+      // never full-text relevance). Coarser-grained, but correct by
+      // construction rather than an approximation of FTS5 in JS.
+      if (_this._internal.search) {
+        _this.scheduleFetch();
+        return;
+      }
+
       function _addModelAtCorrectIndex(m) {
         if (_this._internal.currentQuery.sort !== undefined) {
           // We need to add it at the right index
@@ -260,11 +273,17 @@ var DbCollectionNode = {
       const limit = this.getStorageLimit();
       const skip = this.getStorageSkip();
       const count = this.getStorageFetchTotalCount();
+      // BAK-008: empty/undefined search is a no-op (plain query, unchanged
+      // behavior); a non-empty term switches the server onto the FTS5-ranked
+      // search path (still composed with `where`/sort/limit/ACL — see
+      // cloudstore.js's query()).
+      const search = this._internal.search || undefined;
       this._internal.currentQuery = {
         where: f.where,
         sort: f.sort,
         limit: limit,
-        skip: skip
+        skip: skip,
+        search: search
       };
       CloudStore.forScope(this.nodeScope.modelScope).query({
         collection: this._internal.name,
@@ -273,6 +292,7 @@ var DbCollectionNode = {
         limit: limit,
         skip: skip,
         count: count,
+        search: search,
         success: (results, count) => {
           if (results !== undefined) {
             _c.set(
@@ -422,6 +442,14 @@ var DbCollectionNode = {
 
       if (this.isInputConnected('storageFetch') === false) this.scheduleFetch();
     },
+    // BAK-008: full-text search term (string; empty/undefined = no-op, plain
+    // query unchanged). Orthogonal to the Filter — combined server-side with
+    // whatever `where` the Visual/Javascript filter produces.
+    setSearch: function (value) {
+      this._internal.search = value;
+
+      if (this.isInputConnected('storageFetch') === false) this.scheduleFetch();
+    },
     setQueryParameter: function (name, value) {
       this._internal.queryParameters[name] = value;
 
@@ -453,7 +481,8 @@ var DbCollectionNode = {
       const dynamicSetters = {
         collectionName: this.setCollectionName.bind(this),
         visualFilter: this.setVisualFilter.bind(this),
-        visualSort: this.setVisualSorting.bind(this)
+        visualSort: this.setVisualSorting.bind(this),
+        search: this.setSearch.bind(this)
       };
 
       if (dynamicSetters[name])
@@ -525,6 +554,21 @@ function updatePorts(nodeId, parameters, editorConnection, graphModel) {
     default: 'simple',
     plug: 'input',
     group: 'General'
+  });
+
+  // BAK-008: full-text search term. Independent of the Filter type (Visual or
+  // Javascript) — combined server-side with whatever `where` the filter
+  // produces, an FTS5 MATCH against the collection's search-enabled fields
+  // (configured in the Backend Services panel or via MCP). Empty = no-op, a
+  // plain query exactly like before this port existed. Matched records carry
+  // `_score` (higher = better match) and `_snippet` (highlighted excerpt) as
+  // regular item properties, same as any other field.
+  ports.push({
+    type: 'string',
+    plug: 'input',
+    group: 'Search',
+    name: 'search',
+    displayName: 'Search'
   });
 
   // Limit

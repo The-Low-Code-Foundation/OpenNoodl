@@ -361,4 +361,77 @@ describeOrSkip('MCP backend permission tools (live backend)', () => {
       expect(listAfter.data.templates.find((t) => t.id === 'verifyEmail')!.isOverridden).toBe(false);
     });
   });
+
+  describe('search tools (BAK-008)', () => {
+    let adminToken: string;
+
+    beforeAll(() => {
+      adminToken = JSON.parse(fs.readFileSync(path.join(backend.dataDir, 'secrets.json'), 'utf-8')).adminToken;
+    });
+
+    async function createArticle(title: string, body: string): Promise<void> {
+      const res = await fetch(`http://127.0.0.1:${backend.port}/classes/Article`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', authorization: `Bearer ${adminToken}` },
+        body: JSON.stringify({ title, body })
+      });
+      expect(res.status).toBe(201);
+    }
+
+    it('get_backend_search_config starts empty and reports FTS5 availability', async () => {
+      const { isError, data } = await call<{ fts5Available: boolean; config: { collections: Record<string, unknown> } }>(
+        session,
+        'get_backend_search_config'
+      );
+      expect(isError).toBe(false);
+      expect(data.fts5Available).toBe(true);
+      expect(data.config.collections).toEqual({});
+    });
+
+    it('the full agent flow: enable search, find matches, disable, verify the effect', async () => {
+      await createArticle('Quick brown fox', 'The fox jumps over the lazy dog.');
+      await createArticle('Totally unrelated', 'Nothing to see here.');
+
+      const enable = await call<{ config: { fields: string[] }; rebuild: { rowsIndexed: number } }>(
+        session,
+        'set_collection_search',
+        { collection: 'Article', fields: ['title', 'body'] }
+      );
+      expect(enable.isError).toBe(false);
+      expect(enable.data.config.fields).toEqual(['title', 'body']);
+      expect(enable.data.rebuild.rowsIndexed).toBe(2);
+
+      // An agent verifies the effect the same way a client would — over the
+      // Parse-wire query surface, not a special MCP search tool (v1 has none;
+      // search is a query-surface capability, not a separate node family).
+      const found = await fetch(`http://127.0.0.1:${backend.port}/classes/Article`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', authorization: `Bearer ${adminToken}` },
+        body: JSON.stringify({ _method: 'GET', search: 'quick brown' })
+      }).then((r) => r.json());
+      expect(found.results.map((r: { title: string }) => r.title)).toEqual(['Quick brown fox']);
+      expect(found.results[0]._snippet).toContain('<mark>');
+
+      const rebuilt = await call<{ rebuild: { rowsIndexed: number } }>(session, 'rebuild_search_index', {
+        collection: 'Article'
+      });
+      expect(rebuilt.isError).toBe(false);
+      expect(rebuilt.data.rebuild.rowsIndexed).toBe(2);
+
+      const disabled = await call<{ removed: boolean }>(session, 'disable_collection_search', { collection: 'Article' });
+      expect(disabled.isError).toBe(false);
+      expect(disabled.data.removed).toBe(true);
+
+      const config = await call<{ config: { collections: Record<string, unknown> } }>(session, 'get_backend_search_config');
+      expect(config.data.config.collections.Article).toBeUndefined();
+    });
+
+    it('rejects an unknown field with the backend reason (accept-and-ignore is impossible)', async () => {
+      const bad = await call<{ error?: { code: string } }>(session, 'set_collection_search', {
+        collection: 'Article',
+        fields: ['doesNotExist']
+      });
+      expect(bad.isError).toBe(true);
+    });
+  });
 });

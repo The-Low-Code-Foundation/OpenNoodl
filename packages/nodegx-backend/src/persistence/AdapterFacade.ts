@@ -75,6 +75,11 @@ export interface WireQueryResult {
   count?: number;
 }
 
+/** BAK-008: query options plus the required FTS5 search term. */
+export interface SearchOptions extends QueryOptions {
+  search: string;
+}
+
 /** Fields never sent over the wire for `_User` records. */
 const USER_PROTECTED_FIELDS = ['_hashed_password', '_email_verify_token', '_perishable_token'];
 
@@ -104,6 +109,20 @@ export class AdapterFacade {
 
   rawQuery(collection: string, options: QueryOptions = {}): Promise<WireQueryResult> {
     return this.call<WireQueryResult>('query', { collection, ...options }, (results, count) => ({
+      results: results as Record<string, unknown>[],
+      count: count as number | undefined
+    }));
+  }
+
+  /**
+   * BAK-008: full-text search — storage-shaped records, plus `_score` (higher
+   * = better match) and `_snippet` (highlighted excerpt) on each result. Row
+   * results already carry the caller's ACL filtering (the adapter composes
+   * the same buildAclPredicate() query() uses); a "no search index" failure
+   * surfaces as a rejected promise with LocalSQLAdapter's clear message.
+   */
+  rawSearch(collection: string, options: SearchOptions): Promise<WireQueryResult> {
+    return this.call<WireQueryResult>('search', { collection, ...options }, (results, count) => ({
       results: results as Record<string, unknown>[],
       count: count as number | undefined
     }));
@@ -279,6 +298,29 @@ export class AdapterFacade {
   ): Promise<Record<string, unknown>> {
     const record = await this.rawFetch(collection, objectId, acl);
     return this.toWire(collection, record, this.normalizeInclude(include), acl);
+  }
+
+  /**
+   * BAK-008: wire-shaped search results. `_score`/`_snippet` are search-only,
+   * not schema columns, so they bypass toWire()'s column-typed serialization
+   * and are reattached after — the runtime client's `_fromJSON` sets every key
+   * it sees as a model property, so these arrive as ordinary item fields
+   * (`Item._score`, `Item._snippet`) with no special node-output wiring needed.
+   */
+  async wireSearch(collection: string, options: SearchOptions): Promise<WireQueryResult> {
+    const include = this.normalizeInclude(options.include);
+    const { results, count } = await this.rawSearch(collection, options);
+    const wire: Record<string, unknown>[] = [];
+    for (const record of results) {
+      const { _score, _snippet, ...rest } = record;
+      const w = await this.toWire(collection, rest, include, options.acl);
+      if (_score !== undefined) w._score = _score;
+      if (_snippet !== undefined) w._snippet = _snippet;
+      wire.push(w);
+    }
+    const out: WireQueryResult = { results: wire };
+    if (count !== undefined) out.count = count;
+    return out;
   }
 
   /**
