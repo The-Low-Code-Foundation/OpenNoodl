@@ -1,0 +1,38 @@
+.Root {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 16px;
+  height: 38px;
+  padding: 0 16px;
+  border-top: 1px solid var(--theme-color-border-default);
+  background-color: var(--theme-color-bg-2);
+  color: var(--theme-color-fg-muted);
+  font-size: var(--font-size-sm);
+}
+
+.Hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.Spacer {
+  flex: 1;
+}
+
+.Kbd {
+  display: inline-block;
+  min-width: 17px;
+  padding: 3px 5px;
+  border: 1px solid var(--theme-color-border-default);
+  border-bottom-width: 2px;
+  border-radius: var(--radius-5);
+  background-color: var(--theme-color-bg-3);
+  color: var(--theme-color-fg-default);
+  font-family: var(--font-family-code);
+  font-size: var(--font-size-xs);
+  line-height: 1;
+  text-align: center;
+}

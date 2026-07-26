@@ -1,0 +1,98 @@
+@use '../../styles/tints' as tints;
+
+.Root {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: 3px;
+  width: 194px;
+  padding: 12px 10px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  border-right: 1px solid var(--theme-color-border-default);
+  background-color: var(--theme-color-bg-2);
+}
+
+.Title {
+  padding: 6px 8px 5px;
+  color: var(--theme-color-fg-muted);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+
+  &--is-spaced {
+    margin-top: 10px;
+    padding-top: 13px;
+    border-top: 1px solid var(--theme-color-border-default);
+  }
+}
+
+.Item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 6.5px 8px;
+  border: 0;
+  border-radius: var(--radius-7);
+  background: none;
+  color: var(--theme-color-fg-default);
+  font-family: inherit;
+  font-size: var(--font-size-base);
+  line-height: 1.3;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--speed-turbo) var(--easing-base), color var(--speed-turbo) var(--easing-base);
+
+  &:hover {
+    background-color: var(--theme-color-bg-3);
+    color: var(--theme-color-fg-highlight);
+  }
+
+  &.is-active {
+    background-color: var(--theme-color-primary-bg);
+    color: var(--theme-color-primary);
+    font-weight: var(--font-weight-semibold);
+
+    .Count {
+      color: var(--theme-color-primary);
+    }
+  }
+
+  &.is-empty {
+    opacity: 0.38;
+    cursor: default;
+
+    &:hover {
+      background: none;
+      color: var(--theme-color-fg-default);
+    }
+  }
+}
+
+.Dot {
+  @include tints.tints;
+
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: var(--cat);
+}
+
+.Label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.Count {
+  flex: none;
+  color: var(--theme-color-fg-muted);
+  font-family: var(--font-family-code);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+}

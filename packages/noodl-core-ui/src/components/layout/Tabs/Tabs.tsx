@@ -7,7 +7,14 @@ import css from './Tabs.module.scss';
 export enum TabsVariant {
   Default = 'is-variant-default',
   Text = 'is-variant-text',
-  Sidebar = 'is-variant-sidebar'
+  Sidebar = 'is-variant-sidebar',
+  /**
+   * The pill-in-a-track control used by the refreshed chrome (UIX-013): tabs
+   * sit in a bordered track and the active one is a raised card. Buttons size
+   * to their label rather than splitting the width, so a `slotEnd` can sit
+   * beside them.
+   */
+  Segmented = 'is-variant-segmented'
 }
 
 export interface TabsTab {
@@ -31,6 +38,9 @@ export interface TabsProps extends UnsafeStyleProps {
 
   keepTabsAlive?: boolean;
 
+  /** Trailing content on the tab row — actions, hints. */
+  slotEnd?: Slot;
+
   onChange?: (activeTab: string) => void;
 }
 
@@ -44,6 +54,7 @@ export function Tabs({
   activeTab,
   variant = TabsVariant.Default,
   keepTabsAlive = false,
+  slotEnd,
 
   onChange,
 
@@ -66,24 +77,29 @@ export function Tabs({
     onChange && onChange(tabId);
   }
 
+  const isAutoWidth = variant === TabsVariant.Text || variant === TabsVariant.Segmented;
+
   return (
     <div className={classNames(css['Root'], css[variant], UNSAFE_className)} style={UNSAFE_style}>
-      <nav className={css['Buttons']}>
-        {tabs.map((tab) => (
-          <button
-            key={getTabId(tab)}
-            className={classNames([
-              css['Button'],
-              activeTabId === getTabId(tab) && css['is-active']
-            ])}
-            onClick={() => changeTab(tab)}
-            style={{ width: variant === TabsVariant.Text ? null : tabWidth }}
-            data-test={tab.testId}
-          >
-            <Text>{tab.label}</Text>
-          </button>
-        ))}
-      </nav>
+      <div className={css['ButtonRow']}>
+        <nav className={css['Buttons']} role="tablist">
+          {tabs.map((tab) => (
+            <button
+              key={getTabId(tab)}
+              role="tab"
+              aria-selected={activeTabId === getTabId(tab)}
+              className={classNames([css['Button'], activeTabId === getTabId(tab) && css['is-active']])}
+              onClick={() => changeTab(tab)}
+              style={{ width: isAutoWidth ? null : tabWidth }}
+              data-test={tab.testId}
+            >
+              <Text>{tab.label}</Text>
+            </button>
+          ))}
+        </nav>
+
+        {Boolean(slotEnd) && <div className={css['SlotEnd']}>{slotEnd}</div>}
+      </div>
 
       <div className={css['TabContent']}>
         {Boolean(keepTabsAlive)

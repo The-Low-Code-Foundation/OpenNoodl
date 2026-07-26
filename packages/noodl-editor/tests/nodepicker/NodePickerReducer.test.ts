@@ -1,144 +1,130 @@
 import {
-  CursorActionType,
-  CursorContext,
-  cursorReducer,
-  ICursorState
+  initialPickerState,
+  PickerActionType,
+  pickerReducer,
+  PickerState
 } from '../../src/editor/src/views/NodePicker/NodePicker.reducer';
-import { getIsCategoryCollapsed } from '../../src/editor/src/views/NodePicker/NodePicker.selectors';
 
 /**
- * UIX-012 — node picker collapsed-state drift.
+ * UIX-013 — the picker's interaction state.
  *
- * `NodePickerCategory` used to mirror its `isCollapsed` prop into local state
- * that only the header click wrote to. A click therefore desynced the component
- * from `cursorState.allCategories`, and any later programmatic open that
- * happened to write the value the reducer already held changed no prop — so the
- * mirrored local state was never re-synced and the category stayed visibly
- * closed on the next search. Separately, re-parsing the categories (which the
- * picker does on every change to the rendered node index, i.e. on every
- * keystroke) reset every category back to collapsed, undoing the
- * expand-on-search that had just been dispatched.
+ * These replace the UIX-012 collapsed-state specs. That bug (a category
+ * component mirroring its `isCollapsed` prop into local state only the header
+ * click wrote to, so a click desynced it from the reducer and expand-on-search
+ * could no longer move it) is gone because the accordion is gone: the rail is
+ * persistent and there is no collapsed flag left to keep in sync.
  *
- * These specs pin the reducer as the single source of truth for both.
+ * What replaces it — and where the regression risk now lives — is the cursor
+ * and the rail filter across a re-ranking search.
  */
 
-function categories(names: string[], isCollapsed = true) {
-  return names.map((name) => ({ name, isCollapsed, nodes: [{ name: `${name}-node` }] }));
+function stateWith(overrides: Partial<PickerState> = {}): PickerState {
+  return { ...initialPickerState, ...overrides };
 }
 
-function makeState(names: string[], isCollapsed = true): ICursorState {
-  return {
-    categoryCursor: null,
-    nodeCursor: null,
-    cursorContext: CursorContext.Search,
-    allowNodeCreation: false,
-    disableCollapseTransition: true,
-    allCategories: categories(names, isCollapsed)
-  };
+function withResults(state: PickerState, itemKeys: string[], categoriesWithMatches: string[] = []) {
+  return pickerReducer(state, { type: PickerActionType.SetResults, itemKeys, categoriesWithMatches });
 }
 
-describe('NodePicker cursorReducer — category collapsed state (UIX-012)', () => {
-  it('toggles a single category by name', () => {
-    const state = makeState(['Visuals', 'Data']);
-
-    const opened = cursorReducer(state, { type: CursorActionType.ToggleCategoryByName, name: 'Visuals' });
-    expect(getIsCategoryCollapsed(opened, 'Visuals')).toBe(false);
-    expect(getIsCategoryCollapsed(opened, 'Data')).toBe(true);
-
-    const closed = cursorReducer(opened, { type: CursorActionType.ToggleCategoryByName, name: 'Visuals' });
-    expect(getIsCategoryCollapsed(closed, 'Visuals')).toBe(true);
+describe('NodePicker pickerReducer — cursor (UIX-013)', () => {
+  it('puts the cursor on the first result as soon as there are results', () => {
+    const next = withResults(stateWith(), ['a', 'b', 'c']);
+    expect(next.cursorKey).toBe('a');
   });
 
-  it('ignores a toggle for a category that is not rendered', () => {
-    const state = makeState(['Visuals']);
-    const next = cursorReducer(state, { type: CursorActionType.ToggleCategoryByName, name: 'Nope' });
-    expect(next).toBe(state);
+  it('keeps the cursor on the same node when the results are re-ranked', () => {
+    let state = withResults(stateWith(), ['a', 'b', 'c']);
+    state = pickerReducer(state, { type: PickerActionType.MoveCursor, skip: 1 });
+    expect(state.cursorKey).toBe('b');
+
+    // Another keystroke re-orders the same three results.
+    state = withResults(state, ['c', 'b', 'a']);
+    expect(state.cursorKey).toBe('b');
   });
 
-  it('does not move the keyboard cursor or leave the search context on a header click', () => {
-    const state = makeState(['Visuals', 'Data']);
-    const next = cursorReducer(state, { type: CursorActionType.ToggleCategoryByName, name: 'Data' });
+  it('re-anchors to the top result when the cursored node stops matching', () => {
+    let state = withResults(stateWith(), ['a', 'b', 'c']);
+    state = pickerReducer(state, { type: PickerActionType.MoveCursor, skip: 2 });
+    expect(state.cursorKey).toBe('c');
 
-    expect(next.cursorContext).toBe(CursorContext.Search);
-    expect(next.categoryCursor).toBe(null);
-    expect(next.nodeCursor).toBe(null);
+    state = withResults(state, ['x', 'y']);
+    expect(state.cursorKey).toBe('x');
   });
 
-  it('never mutates the incoming category objects', () => {
-    const state = makeState(['Visuals', 'Data']);
-    const before = state.allCategories[0];
+  it('clamps at both ends rather than wrapping', () => {
+    let state = withResults(stateWith(), ['a', 'b', 'c']);
 
-    cursorReducer(state, { type: CursorActionType.ToggleCategoryByName, name: 'Visuals' });
-    cursorReducer(state, { type: CursorActionType.OpenAllCategories });
-    cursorReducer({ ...state, categoryCursor: 0 }, { type: CursorActionType.HandleEnter });
+    state = pickerReducer(state, { type: PickerActionType.MoveCursor, skip: -1 });
+    expect(state.cursorKey).toBe('a');
 
-    expect(before.isCollapsed).toBe(true);
-    expect(state.allCategories.every((c) => c.isCollapsed)).toBe(true);
+    state = pickerReducer(state, { type: PickerActionType.MoveCursor, skip: 99 });
+    expect(state.cursorKey).toBe('c');
   });
 
-  it('carries collapsed state across a category re-parse (the expand-on-search regression)', () => {
-    // Search opened everything...
-    const opened = cursorReducer(makeState(['Visuals', 'Data']), { type: CursorActionType.OpenAllCategories });
+  it('moves a whole row at a time when the grid asks for it', () => {
+    let state = withResults(stateWith(), ['a', 'b', 'c', 'd', 'e', 'f']);
 
-    // ...and then the rendered node index changed, re-parsing the categories
-    // with their `isCollapsed: true` default. The open must survive.
-    const reparsed = cursorReducer(opened, {
-      type: CursorActionType.UpdateAllCurrentCategories,
-      allCategories: categories(['Visuals', 'Data'])
+    state = pickerReducer(state, { type: PickerActionType.MoveCursor, skip: 3 });
+    expect(state.cursorKey).toBe('d');
+
+    state = pickerReducer(state, { type: PickerActionType.MoveCursor, skip: -3 });
+    expect(state.cursorKey).toBe('a');
+  });
+
+  it('drops the cursor when nothing matches, and takes it back on the next match', () => {
+    let state = withResults(stateWith(), ['a', 'b']);
+
+    state = withResults(state, []);
+    expect(state.cursorKey).toBe(null);
+
+    state = withResults(state, ['q']);
+    expect(state.cursorKey).toBe('q');
+  });
+
+  it('lands on the first result when the mouse-set cursor is stale', () => {
+    let state = pickerReducer(stateWith({ itemKeys: ['a', 'b'] }), {
+      type: PickerActionType.SetCursor,
+      key: 'gone'
     });
 
-    expect(getIsCategoryCollapsed(reparsed, 'Visuals')).toBe(false);
-    expect(getIsCategoryCollapsed(reparsed, 'Data')).toBe(false);
+    state = pickerReducer(state, { type: PickerActionType.MoveCursor, skip: 1 });
+    expect(state.cursorKey).toBe('a');
+  });
+});
+
+describe('NodePicker pickerReducer — rail filter (UIX-013)', () => {
+  it('keeps a category filter that still has matches under a new query', () => {
+    let state = pickerReducer(stateWith(), { type: PickerActionType.SetActiveCategory, category: 'Data' });
+    state = pickerReducer(state, { type: PickerActionType.SetQuery, query: 'rec' });
+    state = withResults(state, ['Data::Query Records'], ['Data']);
+
+    expect(state.activeCategory).toBe('Data');
   });
 
-  it('gives genuinely new categories the parsed default on a re-parse', () => {
-    const opened = cursorReducer(makeState(['Visuals']), { type: CursorActionType.OpenAllCategories });
+  it('falls back to All when the filtered category has nothing under the query', () => {
+    // The regression the old accordion produced as "search shows me nothing":
+    // a stale filter must never leave the results pane empty on its own.
+    let state = pickerReducer(stateWith(), { type: PickerActionType.SetActiveCategory, category: 'Navigation' });
+    state = pickerReducer(state, { type: PickerActionType.SetQuery, query: 'text' });
+    state = withResults(state, ['UI Elements::Text'], ['UI Elements']);
 
-    const reparsed = cursorReducer(opened, {
-      type: CursorActionType.UpdateAllCurrentCategories,
-      allCategories: categories(['Visuals', 'Data'])
-    });
-
-    expect(getIsCategoryCollapsed(reparsed, 'Visuals')).toBe(false);
-    expect(getIsCategoryCollapsed(reparsed, 'Data')).toBe(true);
+    expect(state.activeCategory).toBe(null);
   });
 
-  it('applies an explicit withCollapsedCategories to the NEW category list', () => {
-    const state = makeState(['Visuals']);
+  it('toggling a category does not disturb the query', () => {
+    let state = pickerReducer(stateWith(), { type: PickerActionType.SetQuery, query: 'text' });
+    state = pickerReducer(state, { type: PickerActionType.SetActiveCategory, category: 'UI Elements' });
+    state = pickerReducer(state, { type: PickerActionType.SetActiveCategory, category: null });
 
-    const reparsed = cursorReducer(state, {
-      type: CursorActionType.UpdateAllCurrentCategories,
-      allCategories: categories(['Visuals', 'Data']),
-      withCollapsedCategories: false
-    });
-
-    expect(reparsed.allCategories.map((c) => c.name)).toEqual(['Visuals', 'Data']);
-    expect(reparsed.allCategories.every((c) => c.isCollapsed === false)).toBe(true);
+    expect(state.query).toBe('text');
+    expect(state.activeCategory).toBe(null);
   });
 
-  it('re-opens a category the user had clicked shut, on the next search update', () => {
-    // The exact drift repro: search opens all, user collapses one by clicking
-    // its header, user types another character.
-    let state = cursorReducer(makeState(['Visuals', 'Data']), { type: CursorActionType.OpenAllCategories });
-    state = cursorReducer(state, { type: CursorActionType.ToggleCategoryByName, name: 'Visuals' });
-    expect(getIsCategoryCollapsed(state, 'Visuals')).toBe(true);
+  it('returns the same object when nothing changed', () => {
+    const state = withResults(stateWith(), ['a'], ['Cat']);
 
-    state = cursorReducer(state, { type: CursorActionType.HandleSearchUpdate, state: makeState(['Visuals', 'Data']) });
-    state = cursorReducer(state, { type: CursorActionType.OpenAllCategories });
-    state = cursorReducer(state, {
-      type: CursorActionType.UpdateAllCurrentCategories,
-      allCategories: categories(['Visuals', 'Data'])
-    });
-
-    expect(getIsCategoryCollapsed(state, 'Visuals')).toBe(false);
-    expect(getIsCategoryCollapsed(state, 'Data')).toBe(false);
-  });
-
-  it('still toggles the cursored category on Enter (keyboard navigation)', () => {
-    const state = { ...makeState(['Visuals', 'Data']), categoryCursor: 1, cursorContext: CursorContext.Category };
-
-    const next = cursorReducer(state, { type: CursorActionType.HandleEnter });
-    expect(getIsCategoryCollapsed(next, 'Data')).toBe(false);
-    expect(getIsCategoryCollapsed(next, 'Visuals')).toBe(true);
+    expect(pickerReducer(state, { type: PickerActionType.SetQuery, query: '' })).toBe(state);
+    expect(pickerReducer(state, { type: PickerActionType.SetActiveCategory, category: null })).toBe(state);
+    expect(withResults(state, ['a'], ['Cat'])).toBe(state);
   });
 });

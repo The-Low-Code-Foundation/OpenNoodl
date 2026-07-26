@@ -33,7 +33,6 @@ import { ViewerConnection } from '../../ViewerConnection';
 import { Frame } from '../../views/common/Frame';
 import { ImportFlowCancelled, openImportFlow } from '../../views/ImportFlow';
 import { LessonLayer } from '../../views/lessonlayer2';
-import { NodePickerClearNews } from '../../views/NodePicker/NodePicker.hooks';
 import PopupLayer from '../../views/popuplayer';
 import { SidePanel } from '../../views/SidePanel';
 import { ToastLayer } from '../../views/ToastLayer/ToastLayer';
@@ -114,7 +113,9 @@ export function EditorPage({ route }: EditorPageProps) {
     // Display latest whats-new-post if the user hasn't seen one after it was last published
     whatsnewRender();
 
-    NodePickerClearNews();
+    // UIX-013: the node picker's news carousel is gone — its right pane
+    // previews the node you are about to place instead of a product promo — so
+    // there is no longer a slide index to reset here.
 
     SchemaHandler.instance = new SchemaHandler();
 

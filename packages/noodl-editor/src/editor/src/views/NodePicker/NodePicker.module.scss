@@ -1,61 +1,50 @@
 @use '@scss-variables/animation';
 
+/**
+ * The picker panel (UIX-013).
+ *
+ * No dimensions here: the element is sized from `NodePicker.constants.ts`, so
+ * the JS wrapper that PopupLayer measures and the React tree can no longer
+ * disagree. The `height: 555px; //yeah, this is a hack` that used to sit under
+ * `.TabOverride` went with it — the layout is flex all the way down now.
+ */
 .Root {
   position: relative;
-  background-color: var(--theme-color-bg-2);
-  width: 800px;
-  height: 600px;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
-
-  > * {
-    height: 100%;
-  }
+  border: 1px solid var(--theme-color-border-default);
+  // Matches `.popup-layer-popup`, the wrapper PopupLayer puts behind this —
+  // a larger radius here would show the wrapper's corners around the panel.
+  border-radius: var(--radius-lg);
+  background-color: var(--theme-color-bg-1);
+  box-shadow: var(--shadow-popup);
 }
 
-.ShadowWrapper {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  overflow: hidden;
+.Tabs {
+  flex: 1;
+  min-height: 0;
 }
 
-.Shadow {
-  height: 40px;
-  border-radius: 100%;
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: -40px;
-  box-shadow: 0 0 30px 5px var(--theme-color-bg-2), 0 0 40px 0 var(--theme-color-bg-2),
-    0 0 20px 0 var(--theme-color-bg-2);
-  z-index: 10;
-  opacity: 0.8;
+.EscHint {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--theme-color-fg-muted);
+  font-size: var(--font-size-sm);
 }
 
 .Blocker {
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: -10px;
-  background-color: var(--theme-color-bg-2);
+  inset: 0;
+  z-index: 1;
+  background-color: var(--theme-color-bg-1);
   pointer-events: none;
   opacity: 0;
-  z-index: 1;
   transition: opacity animation.$speed-turbo animation.$easing-equal;
 
   &.is-visible {
     opacity: 0.5;
     pointer-events: all;
-  }
-}
-
-.TabOverride {
-  > div {
-    height: 555px; //yeah, this is a hack
-
-    > * {
-      height: 100%;
-    }
   }
 }

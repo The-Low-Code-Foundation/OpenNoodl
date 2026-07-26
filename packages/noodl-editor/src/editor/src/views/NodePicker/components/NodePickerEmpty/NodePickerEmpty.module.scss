@@ -1,0 +1,52 @@
+.Root {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  height: 100%;
+  padding: 30px;
+  color: var(--theme-color-fg-muted);
+  text-align: center;
+}
+
+.Glyph {
+  color: var(--theme-color-border-strong);
+  font-size: 26px;
+}
+
+.Title {
+  margin: 0;
+  color: var(--theme-color-fg-highlight);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+}
+
+.Text {
+  max-width: 40ch;
+  margin: 0;
+  font-size: var(--font-size-base);
+  line-height: 1.6;
+}
+
+.Actions {
+  display: flex;
+  gap: 7px;
+  margin-top: 4px;
+}
+
+.Action {
+  padding: 5px 12px;
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: 999px;
+  background-color: var(--theme-color-bg-1);
+  color: var(--theme-color-fg-default);
+  font-family: inherit;
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+
+  &:hover {
+    border-color: var(--theme-color-primary);
+    color: var(--theme-color-primary);
+  }
+}

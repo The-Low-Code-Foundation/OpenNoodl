@@ -1,0 +1,83 @@
+.Root {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px 13px;
+}
+
+.Field {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 9px 12px;
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: var(--radius-10);
+  background-color: var(--theme-color-bg-2);
+  color: var(--theme-color-fg-muted);
+
+  &.is-active {
+    border-color: var(--theme-color-primary);
+    background-color: var(--theme-color-bg-1);
+    box-shadow: 0 0 0 3px var(--theme-color-primary-bg);
+
+    .SearchIcon {
+      color: var(--theme-color-primary);
+    }
+  }
+}
+
+.SearchIcon {
+  flex: none;
+  font-size: 16px;
+}
+
+.Input {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: none;
+  color: var(--theme-color-fg-highlight);
+  font-family: inherit;
+  font-size: var(--font-size-lg);
+
+  &::placeholder {
+    color: var(--theme-color-fg-muted);
+  }
+}
+
+.Clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background-color: var(--theme-color-bg-3);
+  color: var(--theme-color-fg-default);
+  font-size: 9px;
+  cursor: pointer;
+
+  &:hover {
+    color: var(--theme-color-fg-highlight);
+  }
+}
+
+.Summary {
+  flex: none;
+  color: var(--theme-color-fg-muted);
+  font-size: var(--font-size-base);
+  white-space: nowrap;
+
+  b {
+    color: var(--theme-color-fg-highlight);
+    font-weight: var(--font-weight-semibold);
+  }
+}

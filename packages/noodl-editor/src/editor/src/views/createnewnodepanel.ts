@@ -4,10 +4,12 @@ import { createRoot, Root } from 'react-dom/client';
 
 import { ComponentModel } from '@noodl-models/componentmodel';
 import { NodeGraphModel, NodeGraphNode } from '@noodl-models/nodegraphmodel';
+import { RuntimeType } from '@noodl-models/nodelibrary/NodeLibraryData';
 
 import View from '../../../shared/ListenableView';
 import { NodeLibrary } from '../models/nodelibrary';
 import { IVector2 } from './nodegrapheditor';
+import { getNodePickerSize, NodePickerSize } from './NodePicker/NodePicker.constants';
 import { NodePicker } from './NodePicker/NodePicker';
 
 export interface CreateNewNodePanelOptions {
@@ -15,7 +17,7 @@ export interface CreateNewNodePanelOptions {
   parentModel?: NodeGraphNode;
   attachToRoot?: boolean;
   pos: IVector2;
-  runtimeType: string;
+  runtimeType: RuntimeType;
 }
 
 export class CreateNewNodePanel extends View {
@@ -23,7 +25,8 @@ export class CreateNewNodePanel extends View {
   parentModel: NodeGraphNode;
   attachToRoot: boolean;
   pos: IVector2;
-  runtimeType: string;
+  runtimeType: RuntimeType;
+  size: NodePickerSize = getNodePickerSize();
   root: Root | null = null;
 
   static shouldShow(context: { component: ComponentModel; parentModel: NodeGraphNode }) {
@@ -69,7 +72,8 @@ export class CreateNewNodePanel extends View {
       parentModel: this.parentModel,
       pos: this.pos,
       attachToRoot: this.attachToRoot,
-      runtimeType: this.runtimeType
+      runtimeType: this.runtimeType,
+      size: this.size
     };
 
     // hide viwer first...
@@ -84,12 +88,16 @@ export class CreateNewNodePanel extends View {
 
   render() {
     const div = document.createElement('div');
-    
-    // Set explicit dimensions so PopupLayer can measure correctly
-    // before React 18's async rendering completes
-    // These dimensions match NodePicker.module.scss: width: 800px, height: 600px
-    div.style.width = '800px';
-    div.style.height = '600px';
+
+    // PopupLayer measures this element before React has rendered into it, so it
+    // needs explicit dimensions. UIX-013: the number comes from
+    // `NodePicker.constants` and is handed to the React tree as a prop, rather
+    // than being written here and again in the stylesheet and kept in sync by
+    // hand. It is clamped to the viewport — the editor window's minimum is
+    // smaller than the panel's preferred size.
+    this.size = getNodePickerSize();
+    div.style.width = `${this.size.width}px`;
+    div.style.height = `${this.size.height}px`;
 
     this.renderReact(div);
 
