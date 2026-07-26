@@ -61,6 +61,8 @@ import type { OpsState } from '../ops/OpsState';
 import { logger } from '../ops/logger';
 import { clientIp } from '../ops/client-ip';
 import { RateLimiter, classifyRoute } from '../ops/rate-limit';
+import type { AuditLog } from '../ops/audit';
+import { AUDIT_LOGIN_FAILURE, AUDIT_LOGIN_SUCCESS, auditActionFor, declaredAuditActions } from '../ops/audit-actions';
 import { REQUEST_ID_HEADER, resolveRequestId } from '../ops/request-id';
 import { CORS_HEADERS, HttpError, parseURL, readJSONBody, readRawBody, sendError, sendJSON } from './http-util';
 
@@ -108,6 +110,13 @@ export interface RequestContext {
   checkData(collection: string, op: ClpOp): void;
   /** Owner + template-ACL stamping and client-ACL validation for creates. */
   stampCreate(collection: string, data: Record<string, unknown>): void;
+  /**
+   * BAK-009: add detail to THIS request's audit entry. A handler can enrich
+   * (what changed, which collection) but never creates the entry — the
+   * dispatcher does that from the route's declared action, so a handler that
+   * says nothing is still recorded.
+   */
+  audit(detail: Record<string, unknown>): void;
 }
 
 /**
@@ -138,10 +147,19 @@ interface RequestTrace {
   startedAt: number;
   /** The matched route PATTERN, or null when nothing matched (404). */
   route: string | null;
+  method: string;
   /** Principal kind only — 'anonymous' | 'user' | 'admin' | 'admin:readonly' | 'apiKey'. */
   principal: string;
   error?: string;
   logged: boolean;
+  /** BAK-009 audit: the action this request performs, when it is an audited one. */
+  auditAction?: string;
+  /** Stable actor identity within the principal kind (user id / key name). */
+  actor: string;
+  /** Route params — what was acted on. */
+  auditTarget?: Record<string, unknown>;
+  /** Handler-supplied enrichment (ctx.audit). */
+  auditDetail?: Record<string, unknown>;
 }
 
 export interface RouteInfo {
@@ -183,6 +201,8 @@ export interface HttpServerDeps {
   emailTokens: EmailTokenStore;
   /** Operational config — logging, rate limits, CORS, audit, metrics (BAK-009). */
   ops: OpsState;
+  /** The `_Audit` writer (BAK-009). */
+  audit: AuditLog;
 }
 
 /** Result of a successful listen(). */
@@ -201,6 +221,7 @@ export class HttpServer {
   private readonly realtime: RealtimeHub;
   private readonly triggers: TriggerSubsystem;
   private readonly ops: OpsState;
+  private readonly auditLog: AuditLog;
   private server: http.Server | null = null;
   private startedAt = 0;
 
@@ -237,6 +258,7 @@ export class HttpServer {
     this.realtime = deps.realtime;
     this.triggers = deps.triggers;
     this.ops = deps.ops;
+    this.auditLog = deps.audit;
 
     this.byob = new ByobAdminRoutes(deps.facade, deps.executions, deps.getRunner);
     this.parse = new ParseWireRoutes(deps.facade, deps.getConfigParams || (() => ({})));
@@ -296,7 +318,10 @@ export class HttpServer {
       backups: Boolean(deps.backups),
       realtime: Boolean(deps.realtime),
       search: Boolean(deps.facade.schemaManager),
-      files: Boolean(deps.files)
+      files: Boolean(deps.files),
+      // The audit view needs somewhere for the rows to live; a build without a
+      // schema manager cannot have the table, so it hides rather than 500s.
+      ops: Boolean(deps.facade.schemaManager)
     };
   }
 
@@ -847,6 +872,14 @@ export class HttpServer {
         handler: (ctx) => adminSearch.rebuild(ctx)
       },
 
+      // ---- Admin: the BAK-009 audit trail + ops config ---------------------
+      // Reading the trail is deliberately NOT itself audited (see
+      // ops/audit-actions): it would bury real entries under dashboard polling,
+      // and the read is already in the access log with actor and request id.
+      { method: 'GET', pattern: 'admin/audit', access: { kind: 'admin' }, handler: (ctx) => this.getAudit(ctx) },
+      { method: 'GET', pattern: 'admin/ops', access: { kind: 'admin' }, handler: (ctx) => this.getOps(ctx) },
+      { method: 'PUT', pattern: 'admin/ops', access: { kind: 'admin' }, handler: (ctx) => this.putOps(ctx) },
+
       // ---- The served admin dashboard (BAK-005) ---------------------------
       // Empty when `--no-admin` was passed: the route is absent, not disabled.
       ...this.dashboardRoutes()
@@ -884,11 +917,16 @@ export class HttpServer {
           clientIp: clientIp(req, this.ops.config.rateLimit.trustedProxies),
           startedAt: Date.now(),
           route: null,
+          method: req.method || 'GET',
           principal: 'anonymous',
+          actor: '',
           logged: false
         };
         res.setHeader(REQUEST_ID_HEADER, trace.requestId);
-        const finish = () => this.logRequest(req, res, trace);
+        const finish = () => {
+          this.logRequest(req, res, trace);
+          this.recordAudit(res, trace);
+        };
         res.on('finish', finish);
         res.on('close', finish);
 
@@ -957,6 +995,30 @@ export class HttpServer {
     });
   }
 
+  /**
+   * Write this request's audit entry, if it has one. Runs from the same
+   * completion hook as the access log and for the same reason: only there is
+   * the FINAL status known, so `outcome` reflects what actually happened rather
+   * than what the handler was about to attempt.
+   */
+  private recordAudit(res: http.ServerResponse, trace: RequestTrace): void {
+    if (!trace.auditAction || !this.auditLog.enabled) return;
+    const status = res.statusCode;
+    void this.auditLog.record({
+      action: trace.auditAction,
+      actorKind: trace.principal,
+      actor: trace.actor,
+      target: trace.auditTarget,
+      detail: trace.auditDetail,
+      outcome: status >= 200 && status < 400 ? 'success' : 'failure',
+      status,
+      ip: trace.clientIp,
+      requestId: trace.requestId,
+      method: trace.method,
+      route: trace.route || undefined
+    });
+  }
+
   private async handle(req: http.IncomingMessage, res: http.ServerResponse, trace: RequestTrace): Promise<void> {
     const { pathname, query } = parseURL(req.url || '/');
     const method = req.method || 'GET';
@@ -994,9 +1056,28 @@ export class HttpServer {
       principal = await this.security.resolvePrincipal(req);
     } catch (e) {
       this.authLimiter.recordFailure(authBucket);
+      // A rejected credential IS an audited event — it is the one an operator
+      // reads when asking "is somebody trying?" — and it is recorded whatever
+      // route was being reached for.
+      trace.auditAction = AUDIT_LOGIN_FAILURE;
+      trace.auditDetail = { reason: e instanceof Error ? e.message : String(e) };
       throw e;
     }
     trace.principal = principal.kind === 'admin' && principal.readonly ? 'admin:readonly' : principal.kind;
+    trace.actor = principal.kind === 'user' ? principal.userId : principal.kind === 'apiKey' ? principal.name : '';
+
+    // The dashboard proves a credential by reaching `_admin/whoami`; that call
+    // is the login event there is to record.
+    if (route.pattern === '_admin/whoami' && principal.kind === 'admin') {
+      trace.auditAction = AUDIT_LOGIN_SUCCESS;
+      trace.auditDetail = { readonly: Boolean(principal.readonly) };
+    } else {
+      const action = auditActionFor(method, route.pattern);
+      if (action) {
+        trace.auditAction = action;
+        trace.auditTarget = Object.keys(params).length ? { ...params } : undefined;
+      }
+    }
 
     // BAK-009 rate limiting, keyed by WHO this is now that the credential has
     // been resolved: an authenticated caller gets its own bucket instead of
@@ -1053,7 +1134,10 @@ export class HttpServer {
       security: this.security,
       acl: (access) => this.security.aclFor(principal, access),
       checkData: (collection, op) => this.assertDataAccess(principal, collection, op),
-      stampCreate: (collection, data) => this.stampCreate(principal, collection, data)
+      stampCreate: (collection, data) => this.stampCreate(principal, collection, data),
+      audit: (detail) => {
+        trace.auditDetail = { ...(trace.auditDetail || {}), ...detail };
+      }
     };
     await route.handler(ctx);
   }
@@ -1226,6 +1310,62 @@ export class HttpServer {
       },
       workflows: runner ? runner.getStatus() : { initialized: false, workflowCount: 0, functions: [] }
     });
+  }
+
+  /**
+   * `GET /admin/audit` — the trail, newest first. Filters mirror the fields an
+   * operator actually asks by: which action, whose, succeeded or not, and when.
+   */
+  private async getAudit(ctx: RequestContext): Promise<void> {
+    const q = ctx.query;
+    const result = await this.auditLog.query({
+      action: q.action || undefined,
+      actorKind: q.actorKind || undefined,
+      outcome: q.outcome === 'success' || q.outcome === 'failure' ? q.outcome : undefined,
+      since: q.since ? Number(q.since) : undefined,
+      until: q.until ? Number(q.until) : undefined,
+      limit: q.limit ? parseInt(q.limit, 10) : undefined,
+      offset: q.offset ? parseInt(q.offset, 10) : undefined
+    });
+    sendJSON(ctx.res, 200, {
+      enabled: this.auditLog.enabled,
+      retentionDays: this.ops.config.audit.retentionDays,
+      actions: declaredAuditActions(),
+      ...result
+    });
+  }
+
+  /** `GET /admin/ops` — the live operational config (rate limits, logging, CORS…). */
+  private getOps(ctx: RequestContext): void {
+    sendJSON(ctx.res, 200, { config: this.ops.config });
+  }
+
+  /**
+   * `PUT /admin/ops` — patch it. The merged document is validated under the
+   * same rules as a file on disk, so a patch that would produce an invalid
+   * whole is refused before anything is persisted, and a body that sets nothing
+   * recognised is an error rather than a cheerful no-op.
+   */
+  private async putOps(ctx: RequestContext): Promise<void> {
+    const body = await readJSONBody(ctx.req);
+    const known = ['logging', 'rateLimit', 'cors', 'audit', 'metrics'];
+    const given = Object.keys(body).filter((k) => k !== 'version');
+    if (given.length === 0 || given.some((k) => !known.includes(k))) {
+      throw new HttpError(
+        400,
+        `Nothing to update. Send one or more of: ${known.join(', ')}. Received: ${given.length ? given.join(', ') : '(empty body)'}.`
+      );
+    }
+    let config;
+    try {
+      config = this.ops.update(body);
+    } catch (e) {
+      throw new HttpError(400, e instanceof Error ? e.message : String(e));
+    }
+    // Logging is the one section that owns live process state.
+    logger.configure({ level: config.logging.level, format: config.logging.format });
+    ctx.audit({ sections: given });
+    sendJSON(ctx.res, 200, { config });
   }
 
   private async runFunction(ctx: RequestContext): Promise<void> {

@@ -37,6 +37,7 @@ import { RealtimeHub } from './realtime/RealtimeHub';
 import { SecretsStore } from './config/SecretsStore';
 import { OpsState } from './ops/OpsState';
 import { logger } from './ops/logger';
+import { AuditLog, ensureAuditTable } from './ops/audit';
 import { TriggerSubsystem } from './triggers/TriggerSubsystem';
 import { BackupSubsystem } from './backup/BackupSubsystem';
 import { FileSubsystem } from './storage/FileSubsystem';
@@ -98,6 +99,7 @@ export class BackendService {
   private files: FileSubsystem | null = null;
   private emailConfig: EmailConfigState | null = null;
   private ops: OpsState | null = null;
+  private audit: AuditLog | null = null;
   private mailer: Mailer | null = null;
   private readonly executions = new ExecutionHistory();
 
@@ -189,6 +191,13 @@ export class BackendService {
         throw e;
       }
     }
+
+    // 1.7 The audit trail (BAK-009). Constructed here so every subsystem that
+    //     follows can be audited through the ONE writer, and pruned once at
+    //     start so a long-stopped backend does not come back with years of
+    //     entries the retention setting says should be gone.
+    this.audit = new AuditLog({ facade: this.facade, getConfig: () => this.ops!.config.audit });
+    void this.audit.prune();
 
     // 2. Execution history beside the data.
     const executionHistory = this.executions.open(this.options.dataDir);
@@ -290,7 +299,8 @@ export class BackendService {
       emailConfig: this.emailConfig,
       mailer: this.mailer,
       emailTokens: new EmailTokenStore(this.facade),
-      ops: this.ops
+      ops: this.ops,
+      audit: this.audit
     });
     const listen = await this.http.listen();
 
@@ -409,6 +419,7 @@ export class BackendService {
     this.security = null;
     this.search = null;
     this.ops = null;
+    this.audit = null;
   }
 
   /** True when the current options require a bearer token (non-loopback bind). */
@@ -526,6 +537,10 @@ export class BackendService {
     // BAK-006: file metadata, ACL'd exactly like any other collection (the
     // `ACL` column SchemaManager stamps onto every table here).
     ensureFilesTable(sm);
+    // BAK-009: the audit trail. A system collection like the rest, so
+    // `isSystemCollection` keeps it off /api and /classes — the only front
+    // door is the admin surface.
+    ensureAuditTable(sm);
   }
 
   /**

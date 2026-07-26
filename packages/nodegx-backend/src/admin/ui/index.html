@@ -1386,6 +1386,76 @@
       }
     });
 
+    // --------------------------------------------------------------- audit --
+
+    view('audit', 'Audit', 'Ops', 'ops', function (root) {
+      var node = page('Audit trail', 'Who changed what, when, and from where — permissions, roles, keys, schema, backups, config, and admin logins (BAK-009).');
+      root.appendChild(node);
+
+      var action = el('select');
+      var outcome = el('select');
+      ['', 'success', 'failure'].forEach(function (o) {
+        outcome.appendChild(el('option', { value: o, text: o || 'any outcome' }));
+      });
+      action.addEventListener('change', load);
+      outcome.addEventListener('change', load);
+
+      var meta = el('div.row');
+      var body = el('div');
+      node.appendChild(el('div.row', {},
+        el('label.field', {}, document.createTextNode('Action'), action),
+        el('label.field', {}, document.createTextNode('Outcome'), outcome),
+        el('button.btn', { type: 'button', text: 'Refresh', onclick: load })));
+      node.appendChild(meta);
+      node.appendChild(el('div', { style: 'height:12px' }));
+      node.appendChild(body);
+      load();
+
+      function load() {
+        var query = 'limit=200';
+        if (action.value) query += '&action=' + encodeURIComponent(action.value);
+        if (outcome.value) query += '&outcome=' + encodeURIComponent(outcome.value);
+        api('GET', '/admin/audit?' + query)
+          .then(function (data) {
+            // Populate the action filter once, from the server's declared list
+            // rather than from whatever happens to be in the visible rows.
+            if (action.options.length === 0) {
+              action.appendChild(el('option', { value: '', text: 'any action' }));
+              (data.actions || []).forEach(function (a) {
+                action.appendChild(el('option', { value: a, text: a }));
+              });
+            }
+            clear(meta);
+            meta.appendChild(data.enabled ? chip('recording', 'ok') : chip('disabled in ops.json', 'warn'));
+            meta.appendChild(chip(data.retentionDays ? 'kept ' + data.retentionDays + ' days' : 'kept forever'));
+            meta.appendChild(chip(data.count + ' entr' + (data.count === 1 ? 'y' : 'ies')));
+
+            clear(body);
+            body.appendChild(
+              table(['When', 'Action', 'Actor', 'Target', 'Outcome', ''], data.entries || [], function (x) {
+                return el('tr', {},
+                  el('td', { text: when(x.at) }),
+                  el('td', { text: cellText(x.action) }),
+                  el('td', { text: cellText(x.actor ? x.actorKind + ' ' + x.actor : x.actorKind) }),
+                  el('td', { text: x.target ? JSON.stringify(x.target) : '—' }),
+                  el('td', {}, chip(cellText(x.outcome), x.outcome === 'success' ? 'ok' : 'bad')),
+                  actionCell(el('button.btn.tiny', { type: 'button', text: 'Detail', onclick: function () { detail(x); } }))
+                );
+              })
+            );
+            body.appendChild(el('p.sub', { style: 'margin-top:10px', text: 'The trail is a plain table in this backend’s database: whoever can reach the file can edit it. Ship the structured logs off-box if you need a copy an attacker on this machine cannot rewrite — every entry here has a matching log line with the same request id.' }));
+          })
+          .catch(fail);
+      }
+
+      function detail(entry) {
+        var ref = {};
+        var pre = el('textarea', { value: JSON.stringify(entry, null, 2), readonly: true });
+        pre.style.minHeight = '320px';
+        ref.ref = modal('Audit entry', [pre], [el('button.btn', { type: 'button', text: 'Close', onclick: function () { ref.ref.close(); } })]);
+      }
+    });
+
     // =========================================================================
     // Chrome
     // =========================================================================

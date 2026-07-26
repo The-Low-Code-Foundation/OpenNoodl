@@ -198,7 +198,7 @@ describe('BAK-009 rate limiting over real sockets', () => {
     // If this fails, the message names the class whose membership changed;
     // `byClass` is what to read to see which route moved.
     expect(counts).toEqual({
-      admin: 64,
+      admin: 67,
       auth: 8,
       data: 15,
       files: 4,

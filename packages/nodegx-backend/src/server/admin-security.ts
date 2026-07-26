@@ -79,17 +79,49 @@ export class AdminSecurityRoutes {
     if (candidate.devOpen && requiresAuth(this.options)) {
       throw new HttpError(400, 'devOpen cannot be enabled while the service is bound beyond localhost.');
     }
+    ctx.audit({ sections: Object.keys(candidate), devOpen: candidate.devOpen });
     Object.assign(this.security.config, candidate);
     this.security.save();
     sendJSON(ctx.res, 200, { success: true, config: this.security.config });
   }
 
+  /**
+   * `PUT /admin/permissions/collections/:name`.
+   *
+   * BAK-009 made this refuse a body it would otherwise ignore. It used to read
+   * `permissions` and `creatorOwns`, silently drop everything else, and answer
+   * `{"success":true,"rules":{}}` — so `{"find":"public","get":"public"}`,
+   * which is the shape the response's own `rules` field suggests, changed
+   * nothing and said it worked. That cost real time during WF-003's live
+   * verification, and it is exactly the kind of thing the audit trail would
+   * otherwise record as a permission change that never happened.
+   */
   async putCollection(ctx: RequestContext): Promise<void> {
     const name = ctx.params.name;
     const body = await readJSONBody(ctx.req);
+
+    const KNOWN = ['permissions', 'creatorOwns'];
+    const unknown = Object.keys(body).filter((k) => !KNOWN.includes(k));
+    if (unknown.length > 0) {
+      throw new HttpError(
+        400,
+        `Unknown field(s) ${unknown.map((k) => `"${k}"`).join(', ')} for collection "${name}". ` +
+          `Expected { "permissions": { find, get, create, update, delete, count }, "creatorOwns": boolean }. ` +
+          `Per-operation rules go INSIDE "permissions".`
+      );
+    }
+    if (body.permissions === undefined && body.creatorOwns === undefined) {
+      throw new HttpError(
+        400,
+        `Nothing to set for collection "${name}". Send "permissions" and/or "creatorOwns"; ` +
+          `to remove this collection's rules use DELETE.`
+      );
+    }
+
     const entry: Record<string, unknown> = {};
     if (body.permissions !== undefined) entry.permissions = body.permissions;
     if (body.creatorOwns !== undefined) entry.creatorOwns = body.creatorOwns;
+    ctx.audit({ collection: name, rules: entry });
 
     // Validate by candidate-mutating a copy of the whole config — one
     // validator, no drift between whole-doc and per-collection writes.
@@ -228,6 +260,7 @@ export class AdminSecurityRoutes {
     if (results.length > 0) {
       throw new HttpError(400, `Role "${name}" already exists.`);
     }
+    ctx.audit({ role: name });
     const role = await this.facade.rawCreate('_Role', { name });
     sendJSON(ctx.res, 201, { objectId: role.objectId, name });
   }
@@ -288,6 +321,9 @@ export class AdminSecurityRoutes {
     if (!name) throw new HttpError(400, 'Key name is required');
     const scopeError = validateScopes(body.scopes);
     if (scopeError) throw new HttpError(400, scopeError);
+    // Name and scopes are the audit-worthy part; the secret is returned to the
+    // caller once and never recorded (the redaction rule would drop it anyway).
+    ctx.audit({ key: name, scopes: body.scopes });
     const { objectId, secret } = this.security.createApiKey(name, body.scopes as string[]);
     // The one and only time the secret is returned.
     sendJSON(ctx.res, 201, { objectId, name, scopes: body.scopes, secret });

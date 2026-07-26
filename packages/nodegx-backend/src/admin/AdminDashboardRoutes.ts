@@ -90,6 +90,8 @@ export interface DashboardFeatures {
   search: boolean;
   /** File storage config (BAK-006) — always true once the subsystem is wired. */
   files: boolean;
+  /** BAK-009: the `_Audit` trail and the operational config it lives beside. */
+  ops: boolean;
 }
 
 export interface AdminDashboardDeps {
