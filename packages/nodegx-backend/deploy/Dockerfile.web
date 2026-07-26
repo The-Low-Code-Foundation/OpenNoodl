@@ -1,0 +1,27 @@
+# NodeGX application front door (WF-003).
+#
+# nginx serving the built application, and reverse-proxying the backend's route
+# families so app and API share one origin. See nginx.conf for why that matters.
+#
+# The app is COPIED IN, not bind-mounted: the image is then the exact artifact
+# that was packaged, tagged with the build id, and rolling back is retagging
+# rather than restoring a directory someone may have edited in place.
+#
+# Build context: packages/nodegx-backend/deploy
+
+FROM nginx:1.29-alpine
+
+# Replace the stock default site rather than adding beside it — an unused
+# default server block is how requests end up somewhere nobody is looking.
+RUN rm -f /etc/nginx/conf.d/default.conf
+COPY nginx.conf /etc/nginx/conf.d/nodegx.conf
+
+# `artifact/app` is always present (packaging creates it even when empty), so a
+# backend-only deploy builds and runs; nginx then answers / with the explicit
+# "no application bundled" 404 from nginx.conf.
+COPY artifact/app/ /srv/app/
+
+EXPOSE 80
+
+HEALTHCHECK --interval=15s --timeout=5s --start-period=10s --retries=3 \
+  CMD wget -q -O /dev/null http://127.0.0.1/health || exit 1

@@ -1,0 +1,23 @@
+# Keep the build context to exactly what the images need. Two reasons, one of
+# them load-bearing: `.env` and `secrets/` would otherwise be sent to the
+# daemon and become one `COPY .` away from living in a published image layer.
+#
+# scripts/package-deploy.js scans the assembled artifact for credential
+# material and refuses to package a hit, so this file is the first of two
+# defences rather than the only one.
+
+.env
+.env.*
+secrets/
+*.pem
+*.key
+
+# Local state that is not an input to any image. `artifact/` IS an input (both
+# Dockerfiles copy from it) and is deliberately not listed here; sourcemaps
+# never reach it because packaging does not copy them.
+node_modules/
+.DS_Store
+
+# Docs and scripts are read by humans, not by the daemon.
+README.md
+nodegx-deploy.sh

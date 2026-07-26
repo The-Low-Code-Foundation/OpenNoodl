@@ -1,0 +1,69 @@
+# NodeGX self-hosting stack (WF-003).
+#
+#   docker compose up -d
+#
+# Two services, one published port. `web` is the only thing the network can
+# reach; `backend` has no `ports:` entry at all, so the API, the admin dashboard
+# and the SQLite file are reachable only through the front door. That is not
+# defence in depth for its own sake — it means there is exactly one URL to
+# firewall, one to put TLS in front of, and one for the app's baked backend
+# endpoint to match.
+#
+# Images are tagged with the artifact's build id (see scripts/package-deploy.js).
+# `./nodegx-deploy.sh rollback` works by pointing NODEGX_TAG at a previous id,
+# which is why the tag is a variable rather than `latest`.
+
+services:
+  backend:
+    image: nodegx-backend:${NODEGX_TAG:-dev}
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    restart: unless-stopped
+    environment:
+      NODEGX_DATA_DIR: /data
+      NODEGX_PORT: "8577"
+      NODEGX_HOST: 0.0.0.0
+      NODEGX_BACKEND_ID: ${NODEGX_BACKEND_ID:-nodegx-backend}
+      NODEGX_BACKEND_NAME: ${NODEGX_BACKEND_NAME:-NodeGX Backend}
+      NODEGX_ADMIN_DASHBOARD: ${NODEGX_ADMIN_DASHBOARD:-true}
+      # The admin credential. Prefer the _FILE form below (Compose secrets) —
+      # it keeps the value out of this file, out of .env, out of the image, and
+      # out of `docker inspect`. Set at most one.
+      NODEGX_ADMIN_TOKEN: ${NODEGX_ADMIN_TOKEN:-}
+      NODEGX_ADMIN_TOKEN_FILE: ${NODEGX_ADMIN_TOKEN_FILE:-}
+      NODEGX_READONLY_TOKEN_FILE: ${NODEGX_READONLY_TOKEN_FILE:-}
+    volumes:
+      # The only stateful thing in the stack: SQLite, uploaded files, workflows,
+      # security.json and secrets.json. Back it up with `nodegx-backend backup`
+      # (see packages/nodegx-backend/docs/BACKUP-RESTORE.md), not by copying the
+      # live .db file.
+      - nodegx-data:/data
+    # Uncomment together with NODEGX_ADMIN_TOKEN_FILE=/run/secrets/nodegx_admin_token
+    # secrets:
+    #   - nodegx_admin_token
+
+  web:
+    image: nodegx-web:${NODEGX_TAG:-dev}
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    restart: unless-stopped
+    ports:
+      # Bind to all interfaces on the host by default so the stack is reachable;
+      # set NODEGX_BIND=127.0.0.1 when you terminate TLS with a reverse proxy on
+      # the same box and nothing should hit nginx directly.
+      - "${NODEGX_BIND:-0.0.0.0}:${NODEGX_HTTP_PORT:-8080}:80"
+    depends_on:
+      backend:
+        # Not merely "started": nginx resolves the upstream at startup, and a
+        # backend that is still opening SQLite produces 502s that look like a
+        # broken deploy.
+        condition: service_healthy
+
+volumes:
+  nodegx-data:
+
+# secrets:
+#   nodegx_admin_token:
+#     file: ./secrets/admin_token
