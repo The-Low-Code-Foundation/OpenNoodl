@@ -5,7 +5,7 @@
 | ID | Title | Status | Notes |
 |---|---|---|---|
 | PAR-001 | Launcher parity | 🚧 Agent running (worktree) | |
-| PAR-002 | Properties panel rebuild | 🚧 Agent running (worktree) | |
+| PAR-002 | Properties panel rebuild | ✅ Implemented (worktree, needs live QA) | Header type-chip (UIX-004b closed), 62px grid, input kit, 32×19 toggles, seg-icons, box-model, binding chip w/ real source + click-to-select. [Notes](./PAR-002-NOTES.md) |
 | PAR-003 | Editor chrome parity | 🚧 Agent running (worktree) | |
 
 ## Coordination
