@@ -6,7 +6,7 @@
 |---|---|---|---|
 | PAR-001 | Launcher parity | 🚧 Agent running (worktree) | |
 | PAR-002 | Properties panel rebuild | 🚧 Agent running (worktree) | |
-| PAR-003 | Editor chrome parity | 🚧 Agent running (worktree) | |
+| PAR-003 | Editor chrome parity | ✅ Implemented (worktree, awaiting merge + live QA) | Toolbar/rail/HUD/bottom-bar per mock; AI pill→Build panel (⌘J), zoom cluster→ViewportActions, Preview-live→ViewerConnection presence; ratchet =, 0 new TS errors. See [PAR-003-NOTES.md](./PAR-003-NOTES.md) |
 
 ## Coordination
 
