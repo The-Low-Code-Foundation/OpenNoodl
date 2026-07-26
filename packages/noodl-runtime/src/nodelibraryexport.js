@@ -578,6 +578,10 @@ function generateNodeLibrary(nodeRegister) {
             'noodl.byob.DeleteRecord',
             'noodl.byob.SubscribeToChanges'
           ]
+        },
+        {
+          name: 'App State',
+          items: ['net.noodl.GlobalStore', 'net.noodl.GlobalStore.Set', 'net.noodl.GlobalStore.Subscribe']
         }
       ]
     },
