@@ -394,6 +394,25 @@ export function registerBackendReadTools(server: McpServer): void {
       return jsonResult(json);
     })
   );
+
+  server.registerTool(
+    'get_backend_file_config',
+    {
+      title: 'Get backend file storage config',
+      description:
+        'The file-storage config of a running backend (BAK-006): max upload size, content-type allow/deny lists, ' +
+        'which storage driver is active (local disk or S3-compatible) and its non-secret shape, thumbnail presets, ' +
+        'the signed-URL TTL, the orphan-sweep schedule and its last report, and whether image transforms are ' +
+        'actually available right now (sharp is an optional native dependency — `transformsAvailable: false` with ' +
+        'a `transformUnavailableReason` is an expected, non-broken state, not an error).',
+      inputSchema: { backendId: z.string().optional().describe('Which backend (omit if exactly one is running)') }
+    },
+    guarded(async ({ backendId }) => {
+      const client = await requireBackend(backendId);
+      const { json } = await client.request('GET', '/admin/files/config');
+      return jsonResult(json);
+    })
+  );
 }
 
 export function registerBackendWriteTools(server: McpServer): void {
@@ -1003,6 +1022,88 @@ export function registerBackendWriteTools(server: McpServer): void {
     guarded(async ({ backendId, archive, safetySnapshot }) => {
       const client = await requireBackend(backendId);
       const { json } = await client.request('POST', '/admin/backups/restore', { archive, safetySnapshot });
+      return jsonResult(json);
+    })
+  );
+
+  const thumbPreset = z.object({
+    width: z.number().int().positive(),
+    height: z.number().int().positive(),
+    fit: z.enum(['cover', 'contain'])
+  });
+
+  server.registerTool(
+    'configure_backend_files',
+    {
+      title: 'Configure backend file storage',
+      description:
+        'Update a running backend\'s file-storage policy (BAK-006): max upload bytes, content-type allow/deny ' +
+        'lists, the storage driver (local, or s3 with endpoint/region/bucket — non-secret shape only; use ' +
+        's3AccessKeyId/s3SecretAccessKey to set credentials, which are stored in secrets.json and never echoed ' +
+        'back), thumbnail presets, the signed-URL TTL, and the orphan-sweep schedule (report-only by default — ' +
+        'it never auto-deletes unless a sweep is explicitly run with deleteOrphans).',
+      inputSchema: {
+        backendId: z.string().optional(),
+        maxUploadBytes: z.number().int().positive().optional(),
+        contentTypes: z.object({ allowList: z.array(z.string()).nullable().optional(), denyList: z.array(z.string()).optional() }).optional(),
+        driver: z
+          .union([
+            z.object({ type: z.literal('local') }),
+            z.object({
+              type: z.literal('s3'),
+              endpoint: z.string(),
+              region: z.string().optional(),
+              bucket: z.string(),
+              forcePathStyle: z.boolean().optional()
+            })
+          ])
+          .optional()
+          .describe('Switch storage driver. Set s3AccessKeyId/s3SecretAccessKey separately for credentials.'),
+        s3AccessKeyId: z.string().optional(),
+        s3SecretAccessKey: z.string().optional(),
+        thumbnailPresets: z.record(thumbPreset).optional().describe('Replaces the FULL preset set (e.g. { sm: {width:64,height:64,fit:"cover"} })'),
+        signedUrlTtlSeconds: z.number().int().positive().optional(),
+        orphanSweep: z
+          .object({ enabled: z.boolean(), cron: z.string() })
+          .nullable()
+          .optional()
+          .describe('5-field cron (or @preset); null/omitted-enabled disables the schedule. Sweeps are report-only.')
+      }
+    },
+    guarded(async ({ backendId, maxUploadBytes, contentTypes, driver, s3AccessKeyId, s3SecretAccessKey, thumbnailPresets, signedUrlTtlSeconds, orphanSweep }) => {
+      const client = await requireBackend(backendId);
+      const body: Record<string, unknown> = {};
+      if (maxUploadBytes !== undefined) body.maxUploadBytes = maxUploadBytes;
+      if (contentTypes !== undefined) body.contentTypes = contentTypes;
+      if (driver !== undefined) body.driver = driver;
+      if (s3AccessKeyId !== undefined || s3SecretAccessKey !== undefined) {
+        body.s3Credentials = { accessKeyId: s3AccessKeyId, secretAccessKey: s3SecretAccessKey };
+      }
+      if (thumbnailPresets !== undefined) body.thumbnails = { presets: thumbnailPresets };
+      if (signedUrlTtlSeconds !== undefined) body.signedUrlTtlSeconds = signedUrlTtlSeconds;
+      if (orphanSweep !== undefined) body.orphanSweep = orphanSweep;
+      const { json } = await client.request('PUT', '/admin/files/config', body);
+      return jsonResult(json);
+    })
+  );
+
+  server.registerTool(
+    'run_backend_file_sweep',
+    {
+      title: 'Run the file orphan sweep now',
+      description:
+        'Run a backend\'s file-storage orphan sweep immediately (BAK-006), outside its schedule: finds storage ' +
+        'blobs with no metadata row (orphan blobs) and metadata rows whose blob is missing (orphan rows). ' +
+        'REPORT-ONLY by default — pass deleteOrphans:true to actually delete orphan BLOBS (orphan ROWS are never ' +
+        'auto-deleted; a metadata row with a missing blob is a data-integrity signal for a human to look at).',
+      inputSchema: {
+        backendId: z.string().optional(),
+        deleteOrphans: z.boolean().optional().describe('Actually delete orphan blobs found by this run (default false: report only)')
+      }
+    },
+    guarded(async ({ backendId, deleteOrphans }) => {
+      const client = await requireBackend(backendId);
+      const { json } = await client.request('POST', '/admin/files/sweep', { deleteOrphans: !!deleteOrphans });
       return jsonResult(json);
     })
   );
