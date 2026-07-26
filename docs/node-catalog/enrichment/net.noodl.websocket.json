@@ -1,0 +1,45 @@
+{
+  "typeName": "net.noodl.WebSocket",
+  "summary": "Two-way WebSocket connection: send and receive text, JSON or binary, with connection state as graph outputs.",
+  "description": "A bidirectional transport for agent chat, collaboration, telemetry and any other stream where the client also talks back. `url` plus `autoConnect` opens the socket; `Connect`/`Disconnect` do it by hand. `Send` transmits whatever is on `message` — a string goes as text, an object is JSON-serialized, an ArrayBuffer or typed array goes as a binary frame, and `messageType: binary` UTF-8 encodes text first. Received text is JSON-parsed onto `received` with the original on `receivedRaw`; binary arrives on `received` as an ArrayBuffer with `receivedIsBinary` true. Everything about the connection's health is an output rather than a console message: `connectionState` moves through idle → connecting → open → reconnecting → closed/error, `retryCount` counts attempts within the current outage, `lastError` says what went wrong, `closeCode`/`closeReason` carry the server's own explanation, and `queueSize`/`droppedCount` account for every message that has not reached the wire. Reconnection is exponential backoff from `reconnectDelay`, doubling to `maxReconnectDelay`, with jitter, stopping after `maxRetries` — or immediately for close codes where retrying is futile (1002, 1003, 1007–1010, 1015). Giving up sets `connectionState` to error and fires `onError`; it is never silent.",
+  "whenToUse": "When the client needs to send as well as receive — chat with an agent, collaborative editing, live cursors, device control, order placement. If the server only pushes and the client never sends, Server-Sent Events is simpler and more firewall-friendly. This node is transport only: point it at your own endpoint, and use ordinary Object/Array/Function nodes to shape what flows through it. It is client-only, so it stays inert during server-side rendering and connects in the browser after hydration.",
+  "ports": {
+    "url": "Must start with ws:// or wss://. Anything else is rejected as an error rather than attempted. Use wss:// in production. Browsers cannot set WebSocket headers, so tokens go in the query string or in a first message sent from On Open.",
+    "autoConnect": "Connects as soon as a URL exists — no Connect signal needed. With no URL the node simply stays idle; an explicit Connect with no URL is reported as an error.",
+    "protocols": "Comma-separated subprotocols offered during the handshake. Changing this, like changing the URL, rebuilds the connection.",
+    "autoReconnect": "Reconnect after any close the app did not ask for, including a clean 1000 (a server closing an idle connection is the commonest reason to want reconnection). Turn it off and an abnormal close lands in the error state instead.",
+    "maxRetries": "Attempts allowed per outage. 0 never retries; a negative value retries forever. When the budget runs out, `connectionState` becomes error, `lastError` names the count, and `onError` fires.",
+    "heartbeatInterval": "Off by default. WebSocket protocol ping frames are unreachable from a browser, so this sends Heartbeat Message as ordinary application data — only enable it if your server expects that exact message.",
+    "heartbeatReply": "The exact text the server answers with. It is measured as `latency`, hidden from On Message, and — if a heartbeat goes a whole interval unanswered — treated as a dead connection, closing and reconnecting. TCP can hold a half-open socket for minutes, so this is the only way to notice one.",
+    "whenDisconnected": "Queue (default) holds sends in order until the socket reopens; Drop discards and counts them; Report Error also sets Last Error and fires On Error. Whichever you pick, nothing vanishes without appearing in `queueSize` or `droppedCount`.",
+    "maxQueueSize": "When the queue is full the newest send is refused, not the oldest evicted — the queue stays an ordered prefix of what the app tried to say. 0 or less means unlimited, which can grow without bound during a long outage.",
+    "message": "Value to send, read at the moment Send fires. Objects are JSON-serialized; ArrayBuffers, typed arrays and Blobs are sent as binary whatever Message Type says.",
+    "connectionState": "idle | connecting | open | reconnecting | closed | error. 'reconnecting' spans the whole outage — the wait and every attempt — so it is a single state to render, not a flicker.",
+    "retryCount": "Attempts made during the current outage; back to 0 on a successful open or a manual Connect.",
+    "queueSize": "Messages waiting for the socket to reopen.",
+    "droppedCount": "Messages that will never be sent: dropped by policy, refused by a full queue, failed to encode, or still queued when the node was deleted.",
+    "latency": "Round trip of the last answered heartbeat, in ms. Stays 0 unless both Heartbeat Interval and Heartbeat Reply are set.",
+    "received": "The parsed message. Valid JSON text becomes the value it describes; anything else stays a string; binary frames arrive as an ArrayBuffer.",
+    "onMessage": "Fires per received frame, after `received`/`receivedRaw` have updated. Heartbeat replies are transport bookkeeping and do not fire it.",
+    "onMessageSent": "Fires per message handed to the socket, including each one flushed from the queue. Heartbeats do not fire it.",
+    "onReconnect": "Fires on every open after the first. A WebSocket has no session resume, so a reconnect is a new session and the node cannot know what was missed — wire this to whatever re-fetches state, the way you would handle a resync.",
+    "onClose": "Fires whenever the socket goes down, including when a reconnect is about to be attempted; read `connectionState` to tell the two apart. A Connect that replaces a live socket does not fire it, because the app asked for that.",
+    "onError": "Fires for a rejected URL, a failed connect, a refused or failed send, a dead heartbeat, and the moment reconnection is abandoned."
+  },
+  "patterns": [
+    "`connectionState` → a status Text, and `lastError` → an error Text: an outage becomes something the user can see rather than a UI that has quietly stopped answering.",
+    "Leave `whenDisconnected` on Queue so a message typed during a reconnect is held in order and sent on reopen instead of lost.",
+    "`onOpen` → send an auth or subscribe frame: the queue is flushed after On Open, so the handshake always precedes the backlog.",
+    "`onReconnect` → re-fetch history or re-subscribe, since the new session replays nothing.",
+    "`droppedCount` → a Condition → a 'messages were lost' notice, for apps where silent loss is not acceptable."
+  ],
+  "antiPatterns": [
+    "Assuming a message handed to Send arrived. `socket.send` only buffers, and a connection that dies before the frame leaves loses it with no way to say which — add application-level acknowledgements if that matters.",
+    "Turning on the heartbeat against a server that does not expect it: the message is ordinary application data and most servers will either ignore it or close the connection.",
+    "Using this where the client only listens — Server-Sent Events reconnects natively and passes through more firewalls.",
+    "Setting Max Queue Size to 0 on a long-lived page: an outage then grows the queue without bound.",
+    "Putting a long-lived secret in the URL. Browsers cannot set WebSocket headers, but a query-string token ends up in server logs; prefer a short-lived ticket, or authenticate with a first message from On Open."
+  ],
+  "examples": ["data-websocket-agent-chat"],
+  "relatedNodes": ["REST2", "net.noodl.HTTP", "noodl.byob.SubscribeToChanges"]
+}

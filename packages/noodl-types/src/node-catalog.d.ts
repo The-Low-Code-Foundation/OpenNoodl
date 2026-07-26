@@ -115,6 +115,7 @@ export type NodeTypeName =
   | 'net.noodl.ParentComponentObject'
   | 'net.noodl.SetComponentObjectProperties'
   | 'net.noodl.SetParentComponentObjectProperties'
+  | 'net.noodl.WebSocket'
   | 'net.noodl.animatetovalue'
   | 'net.noodl.controls.button'
   | 'net.noodl.controls.checkbox'

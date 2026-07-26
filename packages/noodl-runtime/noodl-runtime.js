@@ -69,7 +69,8 @@ function registerNodes(noodlRuntime) {
 
     // User
     require('./src/nodes/std-library/user/setuserproperties'),
-    require('./src/nodes/std-library/user/user')
+    require('./src/nodes/std-library/user/user'),
+    require('./src/nodes/std-library/agent/websocket')
   ].forEach((node) => noodlRuntime.registerNode(node));
 }
 
