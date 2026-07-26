@@ -417,10 +417,11 @@ export function ImportFlow({
 
       {!loadError && stage === 'result' && result && appliedPlan && (
         <ResultStage
-          summary={summarizeResult(result, appliedPlan)}
+          summary={summarizeResult(result, appliedPlan, mode)}
           failed={result.result !== 'success'}
           failureMessage={result.message}
           verb={verb}
+          isExport={mode === 'export'}
         />
       )}
 

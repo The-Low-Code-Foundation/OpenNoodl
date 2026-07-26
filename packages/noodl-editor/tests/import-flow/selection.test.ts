@@ -424,4 +424,13 @@ describe('LIB-005 import flow — the undo note tells the truth', () => {
     const s = summarizeResult(result({ componentsImported: ['/A'], variantsImported: ['Group/V'] }), emptyPlan);
     expect(s.undoNote).toBe('Undo removes everything this import added, in one step.');
   });
+
+  it('says nothing changed when the flow is an export', () => {
+    // Export stages into a throwaway project and zips it, so the ImportResult
+    // is shaped like an import's. Read literally that told the user components
+    // had gone "into your project" and offered an undo for them. (QA-5.3.)
+    const s = summarizeResult(result({ componentsImported: ['/A'], filesCopied: ['export-x.zip'] }), emptyPlan, 'export');
+    expect(s.undoNote).toBe('Nothing in your project changed — this was written to the archive.');
+    expect(s.modelLines).toEqual(['1 component']);
+  });
 });

@@ -22,9 +22,11 @@ export interface ResultStageProps {
   failed: boolean;
   failureMessage?: string;
   verb: string;
+  /** Export packs an archive; import mutates the open project. Changes the copy. */
+  isExport?: boolean;
 }
 
-export function ResultStage({ summary, failed, failureMessage, verb }: ResultStageProps) {
+export function ResultStage({ summary, failed, failureMessage, verb, isExport = false }: ResultStageProps) {
   if (failed) {
     return (
       <div className={css['reviewScroll']}>
@@ -54,7 +56,8 @@ export function ResultStage({ summary, failed, failureMessage, verb }: ResultSta
 
       {summary.modelLines.length > 0 && (
         <>
-          <h3 className={css['blockTitle']}>In your project</h3>
+          {/* Export packs into an archive; nothing reaches the open project. */}
+          <h3 className={css['blockTitle']}>{isExport ? 'Packed' : 'In your project'}</h3>
           <ul className={css['resultList']}>
             {summary.modelLines.map((line) => (
               <li key={line}>

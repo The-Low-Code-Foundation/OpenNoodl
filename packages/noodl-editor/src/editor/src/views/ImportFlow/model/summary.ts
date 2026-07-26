@@ -124,10 +124,24 @@ export interface ResultSummary {
   undoNote: string;
 }
 
-export function summarizeResult(result: ImportResult, plan: ImportPlan): ResultSummary {
+/**
+ * `mode` matters here, not just in the headline verb. Export stages the selection
+ * into a throwaway project and zips it, so the `ImportResult` it hands back is
+ * shaped like an import's — and read literally it told the user that components
+ * had gone "into your project" and that undo would take them back out. Neither is
+ * true of an export: nothing in the open project changed and there is nothing to
+ * undo. Found by QA-5.3.
+ */
+export function summarizeResult(
+  result: ImportResult,
+  plan: ImportPlan,
+  mode: 'import' | 'export' = 'import'
+): ResultSummary {
+  const isExport = mode === 'export';
+
   const modelLines: string[] = [];
   if (result.componentsImported.length > 0)
-    modelLines.push(plural(result.componentsImported.length, 'component') + ' into your project');
+    modelLines.push(plural(result.componentsImported.length, 'component') + (isExport ? '' : ' into your project'));
   if (result.variantsImported.length > 0) modelLines.push(plural(result.variantsImported.length, 'variant'));
   const styleCount = result.stylesImported.colors.length + result.stylesImported.text.length;
   if (styleCount > 0) modelLines.push(plural(styleCount, 'style'));
@@ -160,8 +174,9 @@ export function summarizeResult(result: ImportResult, plan: ImportPlan): ResultS
   if (styleCount > 0) staysBehind.push('Styles');
   if (diskLines.length > 0) staysBehind.push(staysBehind.length ? 'files on disk' : 'Files on disk');
 
-  const undoNote =
-    staysBehind.length > 0
+  const undoNote = isExport
+    ? 'Nothing in your project changed — this was written to the archive.'
+    : staysBehind.length > 0
       ? `Undo removes the imported components and variants in one step. ${staysBehind.join(' and ')} stay.`
       : 'Undo removes everything this import added, in one step.';
 
