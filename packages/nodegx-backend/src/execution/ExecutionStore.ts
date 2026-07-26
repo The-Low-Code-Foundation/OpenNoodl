@@ -34,6 +34,7 @@ import * as path from 'path';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const executionHistory = require('@cloud-runtime/execution-history');
 
+import type { ExecutionLogger as CloudExecutionLogger } from '@cloud-runtime/execution-history/ExecutionLogger';
 import type { ExecutionStore as CloudExecutionStore } from '@cloud-runtime/execution-history/store';
 import type {
   ExecutionWithSteps,
@@ -91,8 +92,7 @@ export class ExecutionHistory {
    * single-execution state, so sharing one across concurrent calls would
    * clobber in-flight state). Null when history is disabled.
    */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  createLogger(): any | null {
+  createLogger(): CloudExecutionLogger | null {
     if (!this.store) return null;
     return new executionHistory.ExecutionLogger(this.store);
   }

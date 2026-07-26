@@ -22,9 +22,28 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 
+import type { WorkflowExecution } from '../src/execution/ExecutionStore';
+import type {
+  TemplateListResponse,
+  TemplateMutationResponse,
+  TemplatePreviewResponse
+} from '../src/server/admin-email';
 import { BackendService } from '../src/service';
 
+import { ErrorBody, request, UserResponse } from './helpers/http';
+
 jest.setTimeout(30000);
+
+/** `GET`/`PUT /admin/email/config` and `POST /admin/email/test`. */
+interface EmailConfigResponse {
+  success?: boolean;
+  config?: Record<string, unknown>;
+  configured: boolean;
+  hasSmtpPassword: boolean;
+  notConfiguredReason?: string | null;
+  retried?: boolean;
+  baseUrlWarning?: boolean;
+}
 
 interface FakeSentMail {
   to: string;
@@ -39,25 +58,12 @@ describe('BAK-002 email subsystem', () => {
   let base: string;
   let sent: FakeSentMail[];
 
-  async function req(
+  const req = <T = unknown>(
     method: string,
     pathName: string,
     body?: unknown,
     headers: Record<string, string> = {}
-  ): Promise<{ status: number; json: any }> {
-    const res = await fetch(`${base}${pathName}`, {
-      method,
-      headers: body !== undefined ? { 'content-type': 'application/json', ...headers } : headers,
-      body: body !== undefined ? JSON.stringify(body) : undefined
-    });
-    let json: any = null;
-    try {
-      json = await res.json();
-    } catch {
-      /* non-JSON */
-    }
-    return { status: res.status, json };
-  }
+  ) => request<T>(base, method, pathName, { body, headers });
 
   async function reqText(
     method: string,
@@ -80,7 +86,7 @@ describe('BAK-002 email subsystem', () => {
 
   /** Configure SMTP as "on" and inject the fake, network-free transport. */
   function configureEmail(overrides: Record<string, unknown> = {}) {
-    return req('PUT', '/admin/email/config', {
+    return req<EmailConfigResponse>('PUT', '/admin/email/config', {
       smtpPassword: 'app-password',
       config: {
         enabled: true,
@@ -124,7 +130,7 @@ describe('BAK-002 email subsystem', () => {
 
   describe('admin config surface', () => {
     it('GET /admin/email/config starts unconfigured', async () => {
-      const { status, json } = await req('GET', '/admin/email/config');
+      const { status, json } = await req<EmailConfigResponse>('GET', '/admin/email/config');
       expect(status).toBe(200);
       expect(json.configured).toBe(false);
       expect(json.hasSmtpPassword).toBe(false);
@@ -150,7 +156,7 @@ describe('BAK-002 email subsystem', () => {
       // proven at the unit level in email-config.test.ts; here it's the HTTP
       // surface that must reflect the same persisted state after other tests
       // run against this same service instance).
-      const { json } = await req('GET', '/admin/email/config');
+      const { json } = await req<EmailConfigResponse>('GET', '/admin/email/config');
       expect(json.configured).toBe(true);
     });
   });
@@ -173,7 +179,7 @@ describe('BAK-002 email subsystem', () => {
           body: JSON.stringify({ to: 'someone@example.com' })
         });
         expect(res.status).toBe(503);
-        const json = await res.json();
+        const json = (await res.json()) as ErrorBody;
         expect(json.error).toMatch(/not configured/i);
       } finally {
         await svc.stop();
@@ -184,7 +190,7 @@ describe('BAK-002 email subsystem', () => {
     it('succeeds and actually reaches the (fake) transport once configured', async () => {
       await configureEmail();
       const before = sent.length;
-      const { status, json } = await req('POST', '/admin/email/test', { to: 'operator@example.com' });
+      const { status, json } = await req<EmailConfigResponse>('POST', '/admin/email/test', { to: 'operator@example.com' });
       expect(status).toBe(200);
       expect(json.success).toBe(true);
       expect(sent.length).toBe(before + 1);
@@ -192,7 +198,7 @@ describe('BAK-002 email subsystem', () => {
     });
 
     it('reports the baseUrl fallback warning when no baseUrl is configured', async () => {
-      const { json } = await req('POST', '/admin/email/test', { to: 'operator@example.com' });
+      const { json } = await req<EmailConfigResponse>('POST', '/admin/email/test', { to: 'operator@example.com' });
       expect(json.baseUrlWarning).toBe(true); // no baseUrl set anywhere in this suite
     });
   });
@@ -203,36 +209,36 @@ describe('BAK-002 email subsystem', () => {
 
   describe('templates', () => {
     it('GET /admin/email/templates enumerates the shipped set, none overridden yet', async () => {
-      const { status, json } = await req('GET', '/admin/email/templates');
+      const { status, json } = await req<TemplateListResponse>('GET', '/admin/email/templates');
       expect(status).toBe(200);
-      const ids = json.templates.map((t: any) => t.id).sort();
+      const ids = json.templates.map((t) => t.id).sort();
       expect(ids).toEqual(['passwordReset', 'verifyEmail']);
-      expect(json.templates.every((t: any) => t.isOverridden === false)).toBe(true);
+      expect(json.templates.every((t) => t.isOverridden === false)).toBe(true);
     });
 
     it('PUT sets an override, GET reflects it as overridden, preview renders it', async () => {
       const put = await req('PUT', '/admin/email/templates/passwordReset', { subject: 'Custom subject {{username}}' });
       expect(put.status).toBe(200);
 
-      const get = await req('GET', '/admin/email/templates');
-      const entry = get.json.templates.find((t: any) => t.id === 'passwordReset');
-      expect(entry.isOverridden).toBe(true);
-      expect(entry.effective.subject).toBe('Custom subject {{username}}');
+      const get = await req<TemplateListResponse>('GET', '/admin/email/templates');
+      const entry = get.json.templates.find((t) => t.id === 'passwordReset');
+      expect(entry?.isOverridden).toBe(true);
+      expect(entry?.effective.subject).toBe('Custom subject {{username}}');
       // The other fields fall back to the shipped default (merge, not replace).
-      expect(entry.effective.text).toContain('{{resetUrl}}');
+      expect(entry?.effective.text).toContain('{{resetUrl}}');
 
-      const preview = await req('GET', '/admin/email/templates/passwordReset/preview');
+      const preview = await req<TemplatePreviewResponse>('GET', '/admin/email/templates/passwordReset/preview');
       expect(preview.json.preview.subject).toBe('Custom subject jane.doe');
     });
 
     it('DELETE reverts to the shipped default', async () => {
-      const del = await req('DELETE', '/admin/email/templates/passwordReset');
+      const del = await req<TemplateMutationResponse>('DELETE', '/admin/email/templates/passwordReset');
       expect(del.status).toBe(200);
       expect(del.json.removed).toBe(true);
 
-      const get = await req('GET', '/admin/email/templates');
-      const entry = get.json.templates.find((t: any) => t.id === 'passwordReset');
-      expect(entry.isOverridden).toBe(false);
+      const get = await req<TemplateListResponse>('GET', '/admin/email/templates');
+      const entry = get.json.templates.find((t) => t.id === 'passwordReset');
+      expect(entry?.isOverridden).toBe(false);
     });
 
     it('404s on an unknown template id', async () => {
@@ -263,9 +269,10 @@ describe('BAK-002 email subsystem', () => {
 
     it('goes end-to-end: email -> served form -> new password -> old session dead -> new password works', async () => {
       // A session that must die when the reset completes.
-      const login = await req('POST', '/login', { username: 'alice', password: 'orig-password', _method: 'GET' });
+      const login = await req<UserResponse>('POST', '/login', { username: 'alice', password: 'orig-password', _method: 'GET' });
       expect(login.status).toBe(200);
       const oldToken = login.json.sessionToken;
+      if (!oldToken) throw new Error('login returned no sessionToken');
 
       sent.length = 0;
       const initiate = await req('POST', '/requestPasswordReset', { email: 'alice@example.com' }, ip);
@@ -299,7 +306,7 @@ describe('BAK-002 email subsystem', () => {
       expect(processed.text).toContain('Password successfully reset');
 
       // Old session is dead.
-      const me = await req('GET', '/users/me', undefined, { 'X-Parse-Session-Token': oldToken });
+      const me = await req<UserResponse>('GET', '/users/me', undefined, { 'X-Parse-Session-Token': oldToken });
       expect(me.json.code).toBe(209);
 
       // New password works; old one doesn't.
@@ -372,7 +379,7 @@ describe('BAK-002 email subsystem', () => {
       expect(sent).toHaveLength(1);
       expect(sent[0].subject).toMatch(/Verify your email/);
 
-      const blocked = await req('POST', '/login', { username: 'bob', password: 'pw123456', _method: 'GET' });
+      const blocked = await req<UserResponse>('POST', '/login', { username: 'bob', password: 'pw123456', _method: 'GET' });
       expect(blocked.status).toBe(403);
       expect(blocked.json.code).toBe(205);
 
@@ -502,11 +509,11 @@ describe('BAK-002 email subsystem', () => {
       });
       // Response node (failure) answers 400 with the error message.
       expect(res.status).toBe(400);
-      const json = await res.json();
+      const json = (await res.json()) as ErrorBody;
       expect(json.error).toMatch(/not configured/i);
 
       const list = await fetch(`${notifyBase}/executions?limit=1`);
-      const executions = await list.json();
+      const executions = (await list.json()) as WorkflowExecution[];
       expect(executions[0].status).toBe('error');
     });
 
@@ -541,7 +548,7 @@ describe('BAK-002 email subsystem', () => {
       expect(notifySent[0].subject).toBe('Notification');
 
       const list = await fetch(`${notifyBase}/executions?limit=1`);
-      const executions = await list.json();
+      const executions = (await list.json()) as WorkflowExecution[];
       expect(executions[0].status).toBe('success');
     });
   });

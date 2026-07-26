@@ -8,7 +8,16 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 
+import type {
+  BackupConfigResponse,
+  BackupListResponse,
+  BackupRunResponse,
+  SchemaDiffResponse
+} from '../src/server/admin-backups';
+import type { ExportResult, ImportReport } from '../src/backup/dataio';
 import { BackendService } from '../src/service';
+
+import { request } from './helpers/http';
 
 jest.setTimeout(30000);
 
@@ -17,21 +26,7 @@ describe('BAK-007 admin surface over HTTP', () => {
   let service: BackendService;
   let base: string;
 
-  async function req(method: string, p: string, body?: unknown) {
-    const res = await fetch(`${base}${p}`, {
-      method,
-      headers: body !== undefined ? { 'content-type': 'application/json' } : {},
-      body: body !== undefined ? JSON.stringify(body) : undefined
-    });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let json: any = null;
-    try {
-      json = await res.json();
-    } catch {
-      /* non-JSON */
-    }
-    return { status: res.status, json };
-  }
+  const req = <T = unknown>(method: string, p: string, body?: unknown) => request<T>(base, method, p, { body });
 
   beforeAll(async () => {
     dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'nodegx-bak007-'));
@@ -48,29 +43,29 @@ describe('BAK-007 admin surface over HTTP', () => {
   });
 
   it('runs a backup, lists it, and reports policy + status', async () => {
-    const run = await req('POST', '/admin/backups');
+    const run = await req<BackupRunResponse>('POST', '/admin/backups');
     expect(run.status).toBe(200);
     expect(run.json.ok).toBe(true);
     expect(fs.existsSync(run.json.archive)).toBe(true);
 
-    const list = await req('GET', '/admin/backups');
+    const list = await req<BackupListResponse>('GET', '/admin/backups');
     expect(list.status).toBe(200);
     expect(list.json.backups.length).toBeGreaterThanOrEqual(1);
-    expect(list.json.config.status.lastResult.ok).toBe(true);
+    expect(list.json.config.status.lastResult?.ok).toBe(true);
   });
 
   it('updates the backup policy (retention)', async () => {
-    const put = await req('PUT', '/admin/backups/config', { retention: { keepLast: 3 } });
+    const put = await req<BackupConfigResponse>('PUT', '/admin/backups/config', { retention: { keepLast: 3 } });
     expect(put.status).toBe(200);
     expect(put.json.config.retention.keepLast).toBe(3);
   });
 
   it('exports a collection as JSON and previews an import (dry-run)', async () => {
-    const exp = await req('GET', '/admin/export/Widget?format=json');
+    const exp = await req<ExportResult>('GET', '/admin/export/Widget?format=json');
     expect(exp.status).toBe(200);
     expect(exp.json.count).toBe(2);
 
-    const dry = await req('POST', '/admin/import/Widget', {
+    const dry = await req<ImportReport>('POST', '/admin/import/Widget', {
       format: 'json',
       content: exp.json.content,
       dryRun: true
@@ -88,9 +83,9 @@ describe('BAK-007 admin surface over HTTP', () => {
         { name: 'Gadget', columns: [{ name: 'label', type: 'String' }] }
       ]
     };
-    const diff = await req('POST', '/admin/schema/diff', { source });
+    const diff = await req<SchemaDiffResponse>('POST', '/admin/schema/diff', { source });
     expect(diff.status).toBe(200);
-    expect(diff.json.diff.tables.added.map((t: { name: string }) => t.name)).toContain('Gadget');
+    expect(diff.json.diff.tables.added.map((t) => t.name)).toContain('Gadget');
     expect(diff.json.rendered).toMatch(/Gadget/);
   });
 });

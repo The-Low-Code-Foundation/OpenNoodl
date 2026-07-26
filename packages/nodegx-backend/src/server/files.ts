@@ -62,6 +62,28 @@ import { sniff } from '../storage/sniff';
 import { signFileAccess, verifyFileAccess } from '../storage/signing';
 import { renderThumbnail, TransformUnavailableError, type FitMode } from '../storage/transform';
 
+/**
+ * The 201 body of `POST /files/:name` — the Parse-compatible upload result.
+ * Named because it is the file surface's whole public contract with a client;
+ * it was an inline literal, so nothing on either side checked the field names.
+ */
+export interface FileUploadResult {
+  /** Absolute URL the file is served from. */
+  url: string;
+  /** The STORED name (hash-prefixed and sanitised), not what was uploaded. */
+  name: string;
+  size: number;
+  /** The SNIFFED type — deliberately not the client's declared one. */
+  contentType: string;
+}
+
+/** The 200 body of `GET /files/:name/sign`. */
+export interface SignedUrlResult {
+  url: string;
+  expiresAt: string;
+  ttlSeconds: number;
+}
+
 function sanitizeName(name: string): string {
   const base = path.basename(name);
   return base.replace(/[^a-zA-Z0-9._-]/g, '_');
@@ -144,7 +166,7 @@ export class FileRoutes {
         name: storedName,
         size: record.size,
         contentType: record.contentType
-      });
+      } satisfies FileUploadResult);
     } catch (e) {
       // Best-effort rollback of the blob we just wrote — see module doc.
       try {
@@ -211,7 +233,7 @@ export class FileRoutes {
       url: `${this.baseUrl}/files/${encodeURIComponent(storedName)}?exp=${exp}&sig=${sig}`,
       expiresAt: new Date(exp * 1000).toISOString(),
       ttlSeconds: ttl
-    });
+    } satisfies SignedUrlResult);
   }
 
   /**

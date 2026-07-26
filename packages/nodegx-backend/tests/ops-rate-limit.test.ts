@@ -15,6 +15,8 @@ import * as os from 'os';
 import * as path from 'path';
 
 import { BackendService } from '../src/service';
+
+import { ErrorBody } from './helpers/http';
 import { RateLimiter, classifyRoute } from '../src/ops/rate-limit';
 import { defaultOpsConfig } from '../src/ops/model';
 
@@ -148,7 +150,7 @@ describe('BAK-009 rate limiting over real sockets', () => {
   it('429s a hammered /login with a Retry-After, and says why', async () => {
     const statuses: number[] = [];
     let retryAfter: string | null = null;
-    let body: any = null;
+    let body: ErrorBody | null = null;
     for (let i = 0; i < 6; i++) {
       const res = await fetch(`${base}/login`, {
         method: 'POST',
@@ -158,14 +160,14 @@ describe('BAK-009 rate limiting over real sockets', () => {
       statuses.push(res.status);
       if (res.status === 429) {
         retryAfter = res.headers.get('retry-after');
-        body = await res.json();
+        body = (await res.json()) as ErrorBody;
       }
     }
     expect(statuses.filter((s) => s === 429).length).toBeGreaterThan(0);
     expect(Number(retryAfter)).toBeGreaterThan(0);
-    expect(body.error).toMatch(/rate limit/i);
+    expect(body?.error).toMatch(/rate limit/i);
     // The refusal is correlatable like every other error.
-    expect(typeof body.requestId).toBe('string');
+    expect(typeof body?.requestId).toBe('string');
   });
 
   it('leaves data routes alone while auth is being refused', async () => {

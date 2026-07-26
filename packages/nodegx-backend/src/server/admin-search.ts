@@ -17,9 +17,28 @@
 
 import type { AdapterFacade } from '../persistence/AdapterFacade';
 import type { SearchState } from '../search/SearchState';
-import { SearchIndexer, SearchCapabilityError } from '../search/SearchIndexer';
+import type { CollectionSearchConfig, SearchConfig } from '../search/model';
+import { SearchIndexer, SearchCapabilityError, RebuildReport } from '../search/SearchIndexer';
 import type { RequestContext } from './HttpServer';
 import { HttpError, readJSONBody, sendJSON } from './http-util';
+
+/** `GET /admin/search`. */
+export interface SearchConfigResponse {
+  config: SearchConfig;
+  /** Honest, not aspirational: FTS5 is a build option of the SQLite in use. */
+  fts5Available: boolean;
+}
+
+/** The body of every `/admin/search/collections/:name` mutation. */
+export interface SearchCollectionResponse {
+  success: boolean;
+  collection: string;
+  config?: CollectionSearchConfig;
+  /** Present when the write triggered (or the caller asked for) a rebuild. */
+  rebuild?: RebuildReport;
+  /** DELETE only. */
+  removed?: boolean;
+}
 
 export class AdminSearchRoutes {
   private readonly search: SearchState;
@@ -36,7 +55,7 @@ export class AdminSearchRoutes {
     sendJSON(ctx.res, 200, {
       config: this.search.config,
       fts5Available: this.indexer.hasFts5()
-    });
+    } satisfies SearchConfigResponse);
   }
 
   /** PUT /admin/search/collections/:name — enable/reconfigure + rebuild. */
@@ -70,13 +89,13 @@ export class AdminSearchRoutes {
 
     if (!enabled) {
       this.indexer.drop(name);
-      sendJSON(ctx.res, 200, { success: true, collection: name, config: entry });
+      sendJSON(ctx.res, 200, { success: true, collection: name, config: entry } satisfies SearchCollectionResponse);
       return;
     }
 
     try {
       const rebuild = this.indexer.rebuild(name, entry);
-      sendJSON(ctx.res, 200, { success: true, collection: name, config: entry, rebuild });
+      sendJSON(ctx.res, 200, { success: true, collection: name, config: entry, rebuild } satisfies SearchCollectionResponse);
     } catch (e) {
       if (e instanceof SearchCapabilityError) {
         // The config write above already landed — the operator's intent is on
@@ -92,7 +111,7 @@ export class AdminSearchRoutes {
     const name = ctx.params.name;
     const existed = this.search.removeCollection(name);
     this.indexer.drop(name);
-    sendJSON(ctx.res, 200, { success: true, collection: name, removed: existed });
+    sendJSON(ctx.res, 200, { success: true, collection: name, removed: existed } satisfies SearchCollectionResponse);
   }
 
   /** POST /admin/search/collections/:name/rebuild — explicit, idempotent reindex. */
@@ -104,7 +123,7 @@ export class AdminSearchRoutes {
     }
     try {
       const report = this.indexer.rebuild(name, cfg);
-      sendJSON(ctx.res, 200, { success: true, collection: name, rebuild: report });
+      sendJSON(ctx.res, 200, { success: true, collection: name, rebuild: report } satisfies SearchCollectionResponse);
     } catch (e) {
       if (e instanceof SearchCapabilityError) {
         throw new HttpError(503, e.message);

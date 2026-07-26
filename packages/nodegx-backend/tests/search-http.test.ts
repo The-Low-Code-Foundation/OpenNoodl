@@ -16,24 +16,26 @@ import * as path from 'path';
 
 import { BackendService } from '../src/service';
 
+import type { SearchCollectionResponse, SearchConfigResponse } from '../src/server/admin-search';
+
+import { ErrorBody, ParseQueryResult, ParseRecord, request, UserResponse } from './helpers/http';
+
+/** A search hit: a record plus the two fields the search path adds. */
+interface SearchHit extends ParseRecord {
+  _score?: number;
+  _snippet?: string;
+}
+type SearchResult = ParseQueryResult<SearchHit>;
+
 jest.setTimeout(30000);
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function req(base: string, method: string, p: string, body?: unknown, headers: Record<string, string> = {}) {
-  const res = await fetch(`${base}${p}`, {
-    method,
-    headers: body !== undefined ? { 'content-type': 'application/json', ...headers } : headers,
-    body: body !== undefined ? JSON.stringify(body) : undefined
-  });
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let json: any = null;
-  try {
-    json = await res.json();
-  } catch {
-    /* non-JSON */
-  }
-  return { status: res.status, json };
-}
+const req = <T = unknown>(
+  base: string,
+  method: string,
+  p: string,
+  body?: unknown,
+  headers: Record<string, string> = {}
+) => request<T>(base, method, p, { body, headers });
 
 describe('BAK-008 full-text search — dev-open backend', () => {
   let dataDir: string;
@@ -63,14 +65,14 @@ describe('BAK-008 full-text search — dev-open backend', () => {
   });
 
   it('reports FTS5 availability and an empty config before anything is enabled', async () => {
-    const { status, json } = await req(base, 'GET', '/admin/search');
+    const { status, json } = await req<SearchConfigResponse>(base, 'GET', '/admin/search');
     expect(status).toBe(200);
     expect(json.fts5Available).toBe(true);
     expect(json.config.collections).toEqual({});
   });
 
   it('rejects enabling search with an unknown field', async () => {
-    const { status, json } = await req(base, 'PUT', '/admin/search/collections/Article', {
+    const { status, json } = await req<SearchCollectionResponse & ErrorBody>(base, 'PUT', '/admin/search/collections/Article', {
       fields: ['title', 'doesNotExist']
     });
     expect(status).toBe(400);
@@ -78,40 +80,40 @@ describe('BAK-008 full-text search — dev-open backend', () => {
   });
 
   it('rejects enabling search with no fields', async () => {
-    const { status } = await req(base, 'PUT', '/admin/search/collections/Article', { fields: [] });
+    const { status } = await req<SearchCollectionResponse & ErrorBody>(base, 'PUT', '/admin/search/collections/Article', { fields: [] });
     expect(status).toBe(400);
   });
 
   it('rejects a system collection', async () => {
-    const { status } = await req(base, 'PUT', '/admin/search/collections/_User', { fields: ['username'] });
+    const { status } = await req<SearchCollectionResponse & ErrorBody>(base, 'PUT', '/admin/search/collections/_User', { fields: ['username'] });
     expect(status).toBe(400);
   });
 
   it('searching before search is enabled fails with a clear message, not a raw SQL error', async () => {
-    const { status, json } = await req(base, 'POST', '/classes/Article', { _method: 'GET', search: 'quick' });
+    const { status, json } = await req<SearchResult & ErrorBody>(base, 'POST', '/classes/Article', { _method: 'GET', search: 'quick' });
     expect(status).toBe(400);
     expect(json.error).toMatch(/Search is not enabled/);
   });
 
   it('enables search on a collection via the admin route and rebuilds', async () => {
-    const { status, json } = await req(base, 'PUT', '/admin/search/collections/Article', {
+    const { status, json } = await req<SearchCollectionResponse & ErrorBody>(base, 'PUT', '/admin/search/collections/Article', {
       fields: ['title', 'body']
     });
     expect(status).toBe(200);
     expect(json.config).toEqual({ enabled: true, fields: ['title', 'body'] });
-    expect(json.rebuild.rowsIndexed).toBe(3);
+    expect(json.rebuild?.rowsIndexed).toBe(3);
 
-    const config = await req(base, 'GET', '/admin/search');
+    const config = await req<SearchConfigResponse>(base, 'GET', '/admin/search');
     expect(config.json.config.collections.Article).toEqual({ enabled: true, fields: ['title', 'body'] });
   });
 
   it('search "quick brown" matches, ranks sensibly, and returns highlighted snippets', async () => {
-    const { status, json } = await req(base, 'POST', '/classes/Article', {
+    const { status, json } = await req<SearchResult & ErrorBody>(base, 'POST', '/classes/Article', {
       _method: 'GET',
       search: 'quick brown'
     });
     expect(status).toBe(200);
-    const titles = json.results.map((r: { title: string }) => r.title);
+    const titles = json.results.map((r) => r.title);
     expect(titles).toContain('Quick brown fox');
     expect(titles).toContain('Another quick mention');
     expect(titles).not.toContain('Totally unrelated');
@@ -122,60 +124,60 @@ describe('BAK-008 full-text search — dev-open backend', () => {
       expect(r._snippet).toContain('<mark>');
     }
     // Best match first.
-    expect(json.results[0]._score).toBeGreaterThanOrEqual(json.results[1]._score);
+    expect(json.results[0]._score).toBeGreaterThanOrEqual(json.results[1]._score as number);
   });
 
   it('search respects a structured filter in the same query', async () => {
-    const { json } = await req(base, 'POST', '/classes/Article', {
+    const { json } = await req<SearchResult & ErrorBody>(base, 'POST', '/classes/Article', {
       _method: 'GET',
       search: 'quick',
       where: { title: { $eq: 'Another quick mention' } }
     });
-    expect(json.results.map((r: { title: string }) => r.title)).toEqual(['Another quick mention']);
+    expect(json.results.map((r) => r.title)).toEqual(['Another quick mention']);
   });
 
   it('an empty search term falls back to a plain query (no-op), not an error', async () => {
-    const { status, json } = await req(base, 'POST', '/classes/Article', { _method: 'GET', search: '' });
+    const { status, json } = await req<SearchResult & ErrorBody>(base, 'POST', '/classes/Article', { _method: 'GET', search: '' });
     expect(status).toBe(200);
     expect(json.results.length).toBe(3); // all rows, plain query
   });
 
   it('a record created after enabling search is immediately findable (index sync)', async () => {
     await req(base, 'POST', '/api/Article', { title: 'Marmots everywhere', body: 'Alpine rodents.' });
-    const { json } = await req(base, 'POST', '/classes/Article', { _method: 'GET', search: 'marmots' });
-    expect(json.results.map((r: { title: string }) => r.title)).toEqual(['Marmots everywhere']);
+    const { json } = await req<SearchResult & ErrorBody>(base, 'POST', '/classes/Article', { _method: 'GET', search: 'marmots' });
+    expect(json.results.map((r) => r.title)).toEqual(['Marmots everywhere']);
   });
 
   it('rebuild is explicit and idempotent', async () => {
-    const first = await req(base, 'POST', '/admin/search/collections/Article/rebuild');
+    const first = await req<SearchCollectionResponse>(base, 'POST', '/admin/search/collections/Article/rebuild');
     expect(first.status).toBe(200);
-    expect(first.json.rebuild.rowsIndexed).toBe(4);
+    expect(first.json.rebuild?.rowsIndexed).toBe(4);
 
-    const second = await req(base, 'POST', '/admin/search/collections/Article/rebuild');
+    const second = await req<SearchCollectionResponse>(base, 'POST', '/admin/search/collections/Article/rebuild');
     expect(second.status).toBe(200);
-    expect(second.json.rebuild.rowsIndexed).toBe(4);
+    expect(second.json.rebuild?.rowsIndexed).toBe(4);
 
-    const { json } = await req(base, 'POST', '/classes/Article', { _method: 'GET', search: 'marmots' });
+    const { json } = await req<SearchResult & ErrorBody>(base, 'POST', '/classes/Article', { _method: 'GET', search: 'marmots' });
     expect(json.results.length).toBe(1);
   });
 
   it('disabling search drops the index; searching afterward fails cleanly again', async () => {
-    const del = await req(base, 'DELETE', '/admin/search/collections/Article');
+    const del = await req<SearchCollectionResponse>(base, 'DELETE', '/admin/search/collections/Article');
     expect(del.status).toBe(200);
     expect(del.json.removed).toBe(true);
 
-    const { status, json } = await req(base, 'POST', '/classes/Article', { _method: 'GET', search: 'quick' });
+    const { status, json } = await req<SearchResult & ErrorBody>(base, 'POST', '/classes/Article', { _method: 'GET', search: 'quick' });
     expect(status).toBe(400);
     expect(json.error).toMatch(/Search is not enabled/);
   });
 
   it('enabling search on a freshly-created collection works standalone', async () => {
     await req(base, 'POST', '/api/Tag', { label: 'zzz-unique-tag-value' });
-    const enable = await req(base, 'PUT', '/admin/search/collections/Tag', { fields: ['label'] });
+    const enable = await req<SearchCollectionResponse & ErrorBody>(base, 'PUT', '/admin/search/collections/Tag', { fields: ['label'] });
     expect(enable.status).toBe(200);
-    expect(enable.json.rebuild.rowsIndexed).toBe(1);
+    expect(enable.json.rebuild?.rowsIndexed).toBe(1);
 
-    const found = await req(base, 'POST', '/classes/Tag', { _method: 'GET', search: 'zzz-unique-tag-value' });
+    const found = await req<SearchResult & ErrorBody>(base, 'POST', '/classes/Tag', { _method: 'GET', search: 'zzz-unique-tag-value' });
     expect(found.status).toBe(200);
     expect(found.json.results.length).toBe(1);
   });
@@ -217,8 +219,9 @@ describe('BAK-008 full-text search — ACL composition (locked backend)', () => 
   const asAdmin = () => ({ authorization: `Bearer ${adminToken}` });
 
   async function signup(username: string): Promise<User> {
-    const { status, json } = await req(base, 'POST', '/users', { username, password: `pw-${username}` });
+    const { status, json } = await req<UserResponse>(base, 'POST', '/users', { username, password: `pw-${username}` });
     expect(status).toBe(201);
+    if (!json.sessionToken) throw new Error(`signup of ${username} returned no sessionToken`);
     return { id: json.objectId, token: json.sessionToken };
   }
 
@@ -235,13 +238,13 @@ describe('BAK-008 full-text search — ACL composition (locked backend)', () => 
     bob = await signup('bob');
 
     // Alice creates a creator-owned, findable record (private by creatorOwns).
-    await req(base, 'POST', '/classes/Secret', { title: 'alice findable secret' }, asUser(alice));
+    await req<SearchResult & ErrorBody>(base, 'POST', '/classes/Secret', { title: 'alice findable secret' }, asUser(alice));
     // A public (admin-created, no ACL) record — findable by anyone.
-    await req(base, 'POST', '/classes/Secret', { title: 'public findable secret' }, asAdmin());
+    await req<SearchResult & ErrorBody>(base, 'POST', '/classes/Secret', { title: 'public findable secret' }, asAdmin());
 
-    const enable = await req(base, 'PUT', '/admin/search/collections/Secret', { fields: ['title'] }, asAdmin());
+    const enable = await req<SearchCollectionResponse & ErrorBody>(base, 'PUT', '/admin/search/collections/Secret', { fields: ['title'] }, asAdmin());
     expect(enable.status).toBe(200);
-    expect(enable.json.rebuild.rowsIndexed).toBe(2);
+    expect(enable.json.rebuild?.rowsIndexed).toBe(2);
   });
 
   afterAll(async () => {
@@ -253,31 +256,31 @@ describe('BAK-008 full-text search — ACL composition (locked backend)', () => 
     // Anonymous fails the collection-level `find` CLP (defaults to
     // 'authenticated') — a 403 permission denial, the same as an
     // unauthenticated plain query would get.
-    const { status } = await req(base, 'POST', '/classes/Secret', { _method: 'GET', search: 'findable' });
+    const { status } = await req<SearchResult & ErrorBody>(base, 'POST', '/classes/Secret', { _method: 'GET', search: 'findable' });
     expect(status).toBe(403);
   });
 
   it('the admin sees both records via search (bypasses ACL)', async () => {
-    const { json } = await req(base, 'POST', '/classes/Secret', { _method: 'GET', search: 'findable' }, asAdmin());
+    const { json } = await req<SearchResult & ErrorBody>(base, 'POST', '/classes/Secret', { _method: 'GET', search: 'findable' }, asAdmin());
     expect(json.results.length).toBe(2);
   });
 
   it('the owner finds their own record via search', async () => {
-    const { json } = await req(
+    const { json } = await req<SearchResult>(
       base,
       'POST',
       '/classes/Secret',
       { _method: 'GET', search: 'findable' },
       asUser(alice)
     );
-    const titles = json.results.map((r: { title: string }) => r.title);
+    const titles = json.results.map((r) => r.title);
     expect(titles).toContain('alice findable secret');
     expect(titles).toContain('public findable secret');
   });
 
   it('a user who cannot read a record cannot find it via search', async () => {
-    const { json } = await req(base, 'POST', '/classes/Secret', { _method: 'GET', search: 'findable' }, asUser(bob));
-    const titles = json.results.map((r: { title: string }) => r.title);
+    const { json } = await req<SearchResult & ErrorBody>(base, 'POST', '/classes/Secret', { _method: 'GET', search: 'findable' }, asUser(bob));
+    const titles = json.results.map((r) => r.title);
     expect(titles).not.toContain('alice findable secret');
     expect(titles).toContain('public findable secret');
   });

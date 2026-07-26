@@ -134,6 +134,25 @@ export interface ParseQueryResult<T = ParseRecord> {
   count?: number;
 }
 
+/** `DELETE /classes/:c/:id`. */
+export interface DeletedResponse {
+  deleted: boolean;
+  objectId: string;
+}
+
+/**
+ * A user as `/users`, `/login` and `/me` return it. The session token rides
+ * only on signup and login — the same "returned exactly once" shape the webhook
+ * secret has — so it is optional rather than assumed present.
+ */
+export interface UserResponse extends ParseRecord {
+  username?: string;
+  sessionToken?: string;
+  /** Present on the error responses these routes share with everything else. */
+  error?: string;
+  code?: number;
+}
+
 /** The error envelope `HttpError` sends. */
 export interface ErrorBody {
   error: string;

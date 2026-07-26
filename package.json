@@ -67,7 +67,8 @@
     "typecheck:editor-tests": "tsc -p packages/noodl-editor/tsconfig.tests.json --noEmit",
     "typecheck:viewer": "tsc -p packages/noodl-viewer-react --noEmit",
     "typecheck:runtime": "tsc -p packages/noodl-runtime --noEmit",
-    "typecheck:cloud": "tsc -p packages/noodl-viewer-cloud --noEmit"
+    "typecheck:cloud": "tsc -p packages/noodl-viewer-cloud --noEmit",
+    "typecheck:backend-tests": "tsc -p packages/nodegx-backend/tsconfig.tests.json --noEmit"
   },
   "devDependencies": {
     "@ianvs/prettier-plugin-sort-imports": "^3.7.2",

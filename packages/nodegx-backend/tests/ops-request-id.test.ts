@@ -12,7 +12,10 @@ import * as os from 'os';
 import * as path from 'path';
 
 import { BackendService } from '../src/service';
+import type { WorkflowExecution } from '../src/execution/ExecutionStore';
 import { Logger, logger } from '../src/ops/logger';
+
+import { ErrorBody } from './helpers/http';
 
 jest.setTimeout(30000);
 
@@ -105,7 +108,7 @@ describe('BAK-009 request ids', () => {
   it('puts the id in the error body, so a screenshot is enough to find the request', async () => {
     const res = await fetch(`${base}/api/does-not-exist/nope/nope`);
     expect(res.status).toBe(404);
-    const body = await res.json();
+    const body = (await res.json()) as ErrorBody;
     expect(body.requestId).toBe(res.headers.get('x-request-id'));
   });
 
@@ -143,7 +146,7 @@ describe('BAK-009 request ids', () => {
 
     // 2. so does the execution the call produced
     const list = await fetch(`${base}/executions`, { headers: { authorization: `Bearer ${adminToken}` } });
-    const listed = await list.json();
+    const listed = (await list.json()) as WorkflowExecution[] | { executions?: WorkflowExecution[]; results?: WorkflowExecution[] };
     const executions = (Array.isArray(listed) ? listed : listed.executions || listed.results) as {
       metadata?: Record<string, unknown>;
     }[];

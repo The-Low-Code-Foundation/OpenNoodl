@@ -32,6 +32,7 @@
 
 import type { AdapterFacade } from '../persistence/AdapterFacade';
 import { logger } from './logger';
+import type { SchemaManagerLike } from '../persistence/SchemaManagerLike';
 import { redact } from './redact';
 
 export const AUDIT_COLLECTION = '_Audit';
@@ -56,6 +57,25 @@ export interface AuditEntryInput {
   route?: string;
 }
 
+/**
+ * A stored entry as `query()` returns it: the input plus what the log itself
+ * stamps. The extra index signature is honest — `detail` and `target` are open
+ * bags and the row comes back off SQLite — but the named fields are what any
+ * reader (the panel, the specs) actually indexes into, and they are knowable.
+ */
+export interface AuditEntry extends AuditEntryInput {
+  objectId?: string;
+  /** Epoch ms. */
+  at?: number;
+  [field: string]: unknown;
+}
+
+/** The body of `GET /admin/audit`. */
+export interface AuditQueryResult {
+  entries: AuditEntry[];
+  count: number;
+}
+
 export interface AuditQuery {
   action?: string;
   actorKind?: string;
@@ -68,8 +88,7 @@ export interface AuditQuery {
 }
 
 /** Ensure `_Audit` exists. Idempotent — called from ensureSystemTables. */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function ensureAuditTable(schemaManager: any): void {
+export function ensureAuditTable(schemaManager: SchemaManagerLike | null | undefined): void {
   if (!schemaManager) return;
   schemaManager.createTable({
     name: AUDIT_COLLECTION,
@@ -145,7 +164,7 @@ export class AuditLog {
   }
 
   /** Query the trail — the dashboard section, the MCP tool, and tests. */
-  async query(query: AuditQuery = {}): Promise<{ entries: Record<string, unknown>[]; count: number }> {
+  async query(query: AuditQuery = {}): Promise<AuditQueryResult> {
     const where: Record<string, unknown> = {};
     if (query.action) where.action = query.action;
     if (query.actorKind) where.actorKind = query.actorKind;
@@ -164,7 +183,7 @@ export class AuditLog {
       sort: ['-at']
     });
     const count = await this.facade.rawCount(AUDIT_COLLECTION, where);
-    return { entries: results as Record<string, unknown>[], count };
+    return { entries: results as AuditEntry[], count };
   }
 
   /**

@@ -48,6 +48,21 @@ export interface OrphanSweepReport {
   error?: string;
 }
 
+/**
+ * The subset of the config an admin may patch. Was inline on `update()`, which
+ * meant `admin-files.ts` had nothing to name and cast the whole patch object
+ * `as any` on its way in (PLAT-004). `update()` is still the validator — this
+ * type says what the fields *are*, not that a caller sent them correctly.
+ */
+export interface FileConfigPatch {
+  maxUploadBytes?: number;
+  contentTypes?: Partial<ContentTypePolicy>;
+  driver?: DriverConfig;
+  thumbnails?: { presets?: Record<string, ThumbPreset> };
+  signedUrlTtlSeconds?: number;
+  orphanSweep?: OrphanSweepSchedule;
+}
+
 export interface FileStorageConfig {
   version: 1;
   maxUploadBytes: number;
@@ -150,14 +165,7 @@ export class FileConfigStore {
     return JSON.parse(JSON.stringify(this.config));
   }
 
-  update(patch: {
-    maxUploadBytes?: number;
-    contentTypes?: Partial<ContentTypePolicy>;
-    driver?: DriverConfig;
-    thumbnails?: { presets?: Record<string, ThumbPreset> };
-    signedUrlTtlSeconds?: number;
-    orphanSweep?: OrphanSweepSchedule;
-  }): FileStorageConfig {
+  update(patch: FileConfigPatch): FileStorageConfig {
     if (patch.maxUploadBytes !== undefined) {
       if (!(patch.maxUploadBytes > 0)) throw new FileConfigError('maxUploadBytes must be a positive number');
       this.config.maxUploadBytes = patch.maxUploadBytes;

@@ -37,6 +37,24 @@ import {
 } from '../security/model';
 import { HttpError, readJSONBody, sendJSON } from './http-util';
 
+/** A `_Role` row. Stored fields stay open; the two this file reads do not. */
+export interface RoleRecord {
+  objectId: string;
+  name: string;
+}
+
+/**
+ * Narrow one raw `_Role` row. Throws naming the row rather than passing an
+ * `undefined` objectId into a relation call, where it would silently address
+ * nothing.
+ */
+function asRole(row: Record<string, unknown>): RoleRecord {
+  if (typeof row.objectId !== 'string' || typeof row.name !== 'string') {
+    throw new HttpError(500, `Malformed _Role row: ${JSON.stringify(row)}`);
+  }
+  return { objectId: row.objectId, name: row.name };
+}
+
 export class AdminSecurityRoutes {
   private readonly security: SecurityState;
   private readonly facade: AdapterFacade;
@@ -240,12 +258,13 @@ export class AdminSecurityRoutes {
 
   async listRoles(ctx: RequestContext): Promise<void> {
     const { results } = await this.facade.rawQuery('_Role', {});
-    const roles: { objectId: unknown; name: unknown; users: string[] }[] = [];
-    for (const role of results) {
+    const roles: (RoleRecord & { users: string[] })[] = [];
+    for (const raw of results) {
+      const role = asRole(raw);
       const members = this.facade.schemaManager
         ? (this.facade.schemaManager.getRelatedIds('_Role', role.objectId, 'users') as string[])
         : [];
-      roles.push({ objectId: role.objectId, name: role.name, users: members });
+      roles.push({ ...role, users: members });
     }
     sendJSON(ctx.res, 200, { roles });
   }
@@ -265,10 +284,15 @@ export class AdminSecurityRoutes {
     sendJSON(ctx.res, 201, { objectId: role.objectId, name });
   }
 
-  private async findRole(name: string): Promise<Record<string, unknown>> {
+  /**
+   * A `_Role` row as this file uses it. It came back `Record<string, unknown>`,
+   * so `role.objectId` was `unknown` and every relation call took it anyway —
+   * which only compiled because `schemaManager` was `any` (PLAT-004).
+   */
+  private async findRole(name: string): Promise<RoleRecord> {
     const { results } = await this.facade.rawQuery('_Role', { where: { name }, limit: 1 });
     if (results.length === 0) throw new HttpError(404, `No such role: ${name}`);
-    return results[0];
+    return asRole(results[0]);
   }
 
   async deleteRole(ctx: RequestContext): Promise<void> {
@@ -282,7 +306,7 @@ export class AdminSecurityRoutes {
         sm.removeRelation('_Role', role.objectId, 'users', userId);
       }
     }
-    await this.facade.rawDelete('_Role', role.objectId as string);
+    await this.facade.rawDelete('_Role', role.objectId);
     sendJSON(ctx.res, 200, { success: true, name: ctx.params.name });
   }
 

@@ -20,9 +20,47 @@
 import type { EmailConfigState } from '../email/EmailConfigState';
 import { validateEmailConfig } from '../email/EmailConfigState';
 import type { Mailer } from '../email/Mailer';
-import { DEFAULT_TEMPLATES, TEMPLATE_IDS, EmailTemplate, isTemplateId, mergeTemplate, renderTemplate } from '../email/templates';
+import {
+  DEFAULT_TEMPLATES,
+  TEMPLATE_IDS,
+  EmailTemplate,
+  TemplateId,
+  isTemplateId,
+  mergeTemplate,
+  renderTemplate
+} from '../email/templates';
 import type { RequestContext } from './HttpServer';
 import { HttpError, readJSONBody, sendJSON } from './http-util';
+
+/** One row of `GET /admin/email/templates`. */
+export interface TemplateEntry {
+  id: TemplateId;
+  default: EmailTemplate;
+  /** The stored override, or null when the shipped default is in force. */
+  override: Partial<EmailTemplate> | null;
+  /** default merged with override — what actually gets sent. */
+  effective: EmailTemplate;
+  isOverridden: boolean;
+}
+
+export interface TemplateListResponse {
+  templates: TemplateEntry[];
+}
+
+/** `PUT`/`DELETE /admin/email/templates/:id`. */
+export interface TemplateMutationResponse {
+  success: boolean;
+  id: TemplateId;
+  effective: EmailTemplate;
+  /** DELETE only: whether an override was actually in place. */
+  removed?: boolean;
+}
+
+/** `GET /admin/email/templates/:id/preview`. */
+export interface TemplatePreviewResponse {
+  id: TemplateId;
+  preview: EmailTemplate;
+}
 
 export class AdminEmailRoutes {
   private readonly emailConfig: EmailConfigState;
@@ -116,7 +154,7 @@ export class AdminEmailRoutes {
       const effective = this.emailConfig.effectiveTemplate(id);
       return { id, default: DEFAULT_TEMPLATES[id], override: override || null, effective, isOverridden: Boolean(override) };
     });
-    sendJSON(ctx.res, 200, { templates });
+    sendJSON(ctx.res, 200, { templates } satisfies TemplateListResponse);
   }
 
   async putTemplate(ctx: RequestContext): Promise<void> {
@@ -136,7 +174,7 @@ export class AdminEmailRoutes {
       success: true,
       id,
       effective: mergeTemplate(DEFAULT_TEMPLATES[id], override)
-    });
+    } satisfies TemplateMutationResponse);
   }
 
   deleteTemplate(ctx: RequestContext): void {
@@ -147,7 +185,12 @@ export class AdminEmailRoutes {
     const existed = this.emailConfig.config.templates[id] !== undefined;
     delete this.emailConfig.config.templates[id];
     this.emailConfig.save();
-    sendJSON(ctx.res, 200, { success: true, id, removed: existed, effective: DEFAULT_TEMPLATES[id] });
+    sendJSON(ctx.res, 200, {
+      success: true,
+      id,
+      removed: existed,
+      effective: DEFAULT_TEMPLATES[id]
+    } satisfies TemplateMutationResponse);
   }
 
   /** Preview a template rendered against sample variables — used by the panel, harmless without sending anything. */
@@ -163,6 +206,6 @@ export class AdminEmailRoutes {
       verifyUrl: 'https://example.com/apps/demo/verify_email?username=jane.doe&token=SAMPLE',
       expiresIn: '1 hour'
     });
-    sendJSON(ctx.res, 200, { id, preview: rendered });
+    sendJSON(ctx.res, 200, { id, preview: rendered } satisfies TemplatePreviewResponse);
   }
 }

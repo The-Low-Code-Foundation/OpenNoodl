@@ -23,6 +23,7 @@ import type { ExecutionHistory } from '../execution/ExecutionStore';
 import type { WorkflowRunner } from '../workflow/WorkflowRunner';
 import type { RequestContext } from './HttpServer';
 import type { ClpOp } from '../security/model';
+import type { SchemaColumnLike } from '../persistence/SchemaManagerLike';
 import { HttpError, readJSONBody, sendJSON } from './http-util';
 
 function parseJSON(value: string | undefined, name: string): Record<string, unknown> | undefined {
@@ -32,6 +33,39 @@ function parseJSON(value: string | undefined, name: string): Record<string, unkn
   } catch {
     throw new HttpError(400, `Invalid ${name} parameter`);
   }
+}
+
+/**
+ * One table as `/admin/schema` describes it. `columns` is `unknown[]` because
+ * the SchemaManager it comes from is untyped JS in `@noodl/runtime` — that part
+ * is PLAT-003's, not this task's — but the envelope around it is knowable and
+ * is what every consumer actually indexes into.
+ */
+export interface SchemaTable {
+  name: string;
+  columns: unknown[];
+  createdAt: string | null;
+}
+
+/** `GET /admin/schema` and `GET /api/_schema`. */
+export interface SchemaResponse {
+  tables: SchemaTable[];
+}
+
+/** `GET /admin/schema/:table`. */
+export interface TableSchemaResponse {
+  name: string;
+  columns: unknown[];
+}
+
+/** `POST /admin/schema` — one of the four mutation actions. */
+export interface SchemaMutationResponse {
+  success: boolean;
+  action: 'createTable' | 'addColumn' | 'renameColumn' | 'deleteTable';
+  table: string;
+  /** Present on createTable / deleteTable: whether the DDL actually ran. */
+  created?: boolean;
+  deleted?: boolean;
 }
 
 export class ByobAdminRoutes {
@@ -160,7 +194,7 @@ export class ByobAdminRoutes {
         const schema = schemas.find((s) => s.name === name);
         return { name, columns: schema?.columns || [], createdAt: schema?.createdAt || null };
       })
-    });
+    } satisfies SchemaResponse);
   }
 
   getTableSchema(res: http.ServerResponse, tableName: string): void {
@@ -168,7 +202,7 @@ export class ByobAdminRoutes {
     if (!sm) throw new HttpError(500, 'Schema manager not available');
     const schema = sm.getTableSchema(tableName);
     if (!schema) throw new HttpError(404, `No such table: ${tableName}`);
-    sendJSON(res, 200, { name: tableName, columns: schema.columns || [] });
+    sendJSON(res, 200, { name: tableName, columns: schema.columns || [] } satisfies TableSchemaResponse);
   }
 
   async mutateSchema(req: http.IncomingMessage, res: http.ServerResponse): Promise<void> {
@@ -176,24 +210,35 @@ export class ByobAdminRoutes {
     const sm = this.facade.schemaManager;
     if (!sm) throw new HttpError(500, 'Schema manager not available');
 
+    // Unvalidated wire values: the SchemaManager is the validator and throws.
+    // Each conversion is written down here rather than the whole `sm` arriving
+    // as `any`, which is how these five reads used to typecheck (PLAT-004).
     const table = body.table as string;
     switch (body.action) {
       case 'createTable': {
-        const created = sm.createTable({ name: table, columns: body.columns || [] });
-        sendJSON(res, 200, { success: true, action: 'createTable', created, table });
+        const created = sm.createTable({
+          name: table,
+          columns: (body.columns as SchemaColumnLike[] | undefined) || []
+        });
+        sendJSON(res, 200, { success: true, action: 'createTable', created, table } satisfies SchemaMutationResponse);
         return;
       }
       case 'addColumn':
-        sm.addColumn(table, body.column);
-        sendJSON(res, 200, { success: true, action: 'addColumn', table });
+        sm.addColumn(table, body.column as SchemaColumnLike);
+        sendJSON(res, 200, { success: true, action: 'addColumn', table } satisfies SchemaMutationResponse);
         return;
       case 'renameColumn':
-        sm.renameColumn(table, body.oldName, body.newName);
-        sendJSON(res, 200, { success: true, action: 'renameColumn', table });
+        sm.renameColumn(table, body.oldName as string, body.newName as string);
+        sendJSON(res, 200, { success: true, action: 'renameColumn', table } satisfies SchemaMutationResponse);
         return;
       case 'deleteTable': {
+        // `deleteTable` is optional on the interface because `schema-migrate`
+        // feature-detects it; here its absence is a real 501, not a crash.
+        if (typeof sm.deleteTable !== 'function') {
+          throw new HttpError(501, 'This adapter cannot delete tables.');
+        }
         const deleted = sm.deleteTable(table);
-        sendJSON(res, 200, { success: true, action: 'deleteTable', deleted, table });
+        sendJSON(res, 200, { success: true, action: 'deleteTable', deleted, table } satisfies SchemaMutationResponse);
         return;
       }
       default:

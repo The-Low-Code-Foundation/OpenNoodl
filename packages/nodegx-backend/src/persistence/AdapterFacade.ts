@@ -23,6 +23,8 @@
 
 import * as crypto from 'crypto';
 
+import type { SchemaManagerLike } from './SchemaManagerLike';
+
 // QueryBuilder is the adapter's own SQL/serialization helper — reused here so
 // BAK-007 import writes serialize values EXACTLY as create()/save() do (JSON
 // columns, pointers-as-id, dates-as-ISO, booleans-as-0/1) without duplicating
@@ -187,8 +189,15 @@ export class AdapterFacade {
   // Schema access
   // ==========================================================================
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  get schemaManager(): any {
+  /**
+   * NOTE the non-optional return. The adapter can genuinely be running without
+   * a schema manager (both readers below guard with `&&`), so `| undefined`
+   * would be the more truthful type — but every route treats it as present, and
+   * this accessor was `any` until PLAT-004, so declaring it optional would mean
+   * changing fifteen call sites' behaviour under what is meant to be a typing
+   * change. Recorded in PLAT-004-NOTES §14 as a finding rather than fixed here.
+   */
+  get schemaManager(): SchemaManagerLike {
     return this.adapter.schemaManager;
   }
 

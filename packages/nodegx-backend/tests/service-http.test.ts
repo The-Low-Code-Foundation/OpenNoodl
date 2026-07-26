@@ -15,7 +15,19 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 
+import type { ExecutionWithSteps, WorkflowExecution } from '../src/execution/ExecutionStore';
+import type { SchemaMutationResponse, SchemaResponse, TableSchemaResponse } from '../src/server/byob-admin';
+import type { WorkflowRunnerStatus } from '../src/workflow/WorkflowRunner';
 import { BackendService } from '../src/service';
+
+import {
+  DeletedResponse,
+  ErrorBody,
+  ParseQueryResult,
+  ParseRecord,
+  request,
+  UserResponse
+} from './helpers/http';
 
 jest.setTimeout(30000);
 
@@ -48,25 +60,12 @@ describe('nodegx-backend HTTP surface', () => {
   let service: BackendService;
   let base: string;
 
-  async function req(
+  const req = <T = unknown>(
     method: string,
     pathName: string,
     body?: unknown,
     headers: Record<string, string> = {}
-  ): Promise<{ status: number; json: any }> {
-    const res = await fetch(`${base}${pathName}`, {
-      method,
-      headers: body !== undefined ? { 'content-type': 'application/json', ...headers } : headers,
-      body: body !== undefined ? JSON.stringify(body) : undefined
-    });
-    let json: any = null;
-    try {
-      json = await res.json();
-    } catch {
-      /* non-JSON */
-    }
-    return { status: res.status, json };
-  }
+  ) => request<T>(base, method, pathName, { body, headers });
 
   beforeAll(async () => {
     dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'nodegx-backend-test-'));
@@ -96,7 +95,7 @@ describe('nodegx-backend HTTP surface', () => {
   let taskId: string;
 
   it('POST /classes/:c creates and answers with the minimal Parse shape', async () => {
-    const { status, json } = await req('POST', '/classes/Task', { title: 'first', done: false, priority: 1 });
+    const { status, json } = await req<ParseRecord>('POST', '/classes/Task', { title: 'first', done: false, priority: 1 });
     expect(status).toBe(201);
     expect(json.objectId).toBeDefined();
     expect(json.createdAt).toBeDefined();
@@ -107,8 +106,8 @@ describe('nodegx-backend HTTP surface', () => {
   });
 
   it('POST /classes/:c with _method:GET tunnels a query (where/order/count)', async () => {
-    await req('POST', '/classes/Task', { title: 'second', done: true, priority: 9 });
-    const { status, json } = await req('POST', '/classes/Task', {
+    await req<ParseRecord>('POST', '/classes/Task', { title: 'second', done: true, priority: 9 });
+    const { status, json } = await req<ParseQueryResult>('POST', '/classes/Task', {
       _method: 'GET',
       where: { priority: { $gte: 5 } },
       order: '-priority',
@@ -122,7 +121,7 @@ describe('nodegx-backend HTTP surface', () => {
   });
 
   it('keys= restricts fields but always includes objectId', async () => {
-    const { json } = await req('POST', '/classes/Task', { _method: 'GET', keys: 'title', limit: 100 });
+    const { json } = await req<ParseQueryResult>('POST', '/classes/Task', { _method: 'GET', keys: 'title', limit: 100 });
     expect(json.results.length).toBeGreaterThan(0);
     for (const r of json.results) {
       expect(r.objectId).toBeDefined();
@@ -131,7 +130,7 @@ describe('nodegx-backend HTTP surface', () => {
   });
 
   it('PUT increments via the Increment op and echoes the counter', async () => {
-    const { status, json } = await req('PUT', `/classes/Task/${taskId}`, {
+    const { status, json } = await req<ParseRecord>('PUT', `/classes/Task/${taskId}`, {
       priority: { __op: 'Increment', amount: 4 }
     });
     expect(status).toBe(200);
@@ -140,11 +139,11 @@ describe('nodegx-backend HTTP surface', () => {
   });
 
   it('GET /classes/:c/:id fetches; unknown id answers 404 code 101', async () => {
-    const found = await req('GET', `/classes/Task/${taskId}`);
+    const found = await req<ParseRecord>('GET', `/classes/Task/${taskId}`);
     expect(found.status).toBe(200);
     expect(found.json.title).toBe('first');
 
-    const missing = await req('GET', '/classes/Task/does-not-exist');
+    const missing = await req<ParseRecord>('GET', '/classes/Task/does-not-exist');
     expect(missing.status).toBe(404);
     expect(missing.json.code).toBe(101);
   });
@@ -159,17 +158,19 @@ describe('nodegx-backend HTTP surface', () => {
         { name: 'task', type: 'Pointer', targetClass: 'Task' }
       ]
     });
-    const created = await req('POST', '/classes/Comment', {
+    const created = await req<ParseRecord>('POST', '/classes/Comment', {
       text: 'a comment',
       task: { __type: 'Pointer', className: 'Task', objectId: taskId }
     });
     expect(created.status).toBe(201);
 
-    const plain = await req('POST', '/classes/Comment', { _method: 'GET', limit: 10 });
+    const plain = await req<ParseQueryResult>('POST', '/classes/Comment', { _method: 'GET', limit: 10 });
     expect(plain.json.results[0].task).toEqual({ __type: 'Pointer', className: 'Task', objectId: taskId });
 
-    const included = await req('POST', '/classes/Comment', { _method: 'GET', limit: 10, include: 'task' });
-    const expanded = included.json.results[0].task;
+    const included = await req<ParseQueryResult>('POST', '/classes/Comment', { _method: 'GET', limit: 10, include: 'task' });
+    // An expanded pointer is a full object under `__type: 'Object'`, which the
+    // stored-field bag cannot say on its own.
+    const expanded = included.json.results[0].task as ParseRecord & { __type: string; className: string };
     expect(expanded.__type).toBe('Object');
     expect(expanded.className).toBe('Task');
     expect(expanded.objectId).toBe(taskId);
@@ -177,9 +178,9 @@ describe('nodegx-backend HTTP surface', () => {
   });
 
   it('AddRelation + $relatedTo round-trip, then RemoveRelation empties it', async () => {
-    const comment = (await req('POST', '/classes/Comment', { _method: 'GET', limit: 1 })).json.results[0];
+    const comment = (await req<ParseQueryResult>('POST', '/classes/Comment', { _method: 'GET', limit: 1 })).json.results[0];
 
-    const add = await req('PUT', `/classes/Task/${taskId}`, {
+    const add = await req<ParseRecord>('PUT', `/classes/Task/${taskId}`, {
       comments: {
         __op: 'AddRelation',
         objects: [{ __type: 'Pointer', className: 'Comment', objectId: comment.objectId }]
@@ -187,7 +188,7 @@ describe('nodegx-backend HTTP surface', () => {
     });
     expect(add.status).toBe(200);
 
-    const related = await req('POST', '/classes/Comment', {
+    const related = await req<ParseQueryResult>('POST', '/classes/Comment', {
       _method: 'GET',
       where: {
         $relatedTo: { object: { __type: 'Pointer', className: 'Task', objectId: taskId }, key: 'comments' }
@@ -197,13 +198,13 @@ describe('nodegx-backend HTTP surface', () => {
     expect(related.json.results.length).toBe(1);
     expect(related.json.results[0].objectId).toBe(comment.objectId);
 
-    await req('PUT', `/classes/Task/${taskId}`, {
+    await req<ParseRecord>('PUT', `/classes/Task/${taskId}`, {
       comments: {
         __op: 'RemoveRelation',
         objects: [{ __type: 'Pointer', className: 'Comment', objectId: comment.objectId }]
       }
     });
-    const after = await req('POST', '/classes/Comment', {
+    const after = await req<ParseQueryResult>('POST', '/classes/Comment', {
       _method: 'GET',
       where: {
         $relatedTo: { object: { __type: 'Pointer', className: 'Task', objectId: taskId }, key: 'comments' }
@@ -214,25 +215,25 @@ describe('nodegx-backend HTTP surface', () => {
   });
 
   it('GET /classes/:c serves count() calls (where + limit=0 + count=1)', async () => {
-    const { json } = await req('GET', '/classes/Task?limit=0&count=1');
+    const { json } = await req<ParseQueryResult>('GET', '/classes/Task?limit=0&count=1');
     expect(json.results).toEqual([]);
     expect(json.count).toBeGreaterThanOrEqual(2);
   });
 
   it('GET /aggregate/:c handles group accessors and distinct', async () => {
     const group = encodeURIComponent(JSON.stringify({ maxP: { $max: '$priority' }, _id: null }));
-    const agg = await req('GET', `/aggregate/Task?$group=${group}`);
+    const agg = await req<ParseQueryResult>('GET', `/aggregate/Task?$group=${group}`);
     expect(agg.json.results[0].maxP).toBe(9);
 
-    const distinct = await req('GET', '/aggregate/Task?distinct=done');
+    const distinct = await req<ParseQueryResult>('GET', '/aggregate/Task?distinct=done');
     expect(distinct.json.results.sort()).toEqual([0, 1]);
   });
 
   it('DELETE /classes/:c/:id deletes', async () => {
-    const created = await req('POST', '/classes/Task', { title: 'doomed' });
-    const del = await req('DELETE', `/classes/Task/${created.json.objectId}`);
+    const created = await req<ParseRecord>('POST', '/classes/Task', { title: 'doomed' });
+    const del = await req<DeletedResponse>('DELETE', `/classes/Task/${created.json.objectId}`);
     expect(del.status).toBe(200);
-    const gone = await req('GET', `/classes/Task/${created.json.objectId}`);
+    const gone = await req<ParseRecord>('GET', `/classes/Task/${created.json.objectId}`);
     expect(gone.status).toBe(404);
   });
 
@@ -243,8 +244,20 @@ describe('nodegx-backend HTTP surface', () => {
   let sessionToken: string;
   let userId: string;
 
+  /**
+   * `sessionToken` rides only on signup and login, so `UserResponse` declares it
+   * optional. Asserting it here means "this response was supposed to carry one"
+   * rather than sending `undefined` on as a header value, which the server would
+   * read as an anonymous request and answer 209 for reasons unrelated to the
+   * test.
+   */
+  function tokenOf(user: UserResponse): string {
+    if (!user.sessionToken) throw new Error(`no sessionToken on the response for ${user.username ?? user.objectId}`);
+    return user.sessionToken;
+  }
+
   it('signup -> 201 with objectId/createdAt/sessionToken; duplicate -> 202', async () => {
-    const ok = await req('POST', '/users', {
+    const ok = await req<UserResponse>('POST', '/users', {
       username: 'rich',
       password: 'secret123',
       email: 'r@x.io',
@@ -254,57 +267,57 @@ describe('nodegx-backend HTTP surface', () => {
     expect(ok.json.objectId).toBeDefined();
     expect(ok.json.sessionToken).toMatch(/^r:/);
 
-    const dup = await req('POST', '/users', { username: 'rich', password: 'other' });
+    const dup = await req<UserResponse>('POST', '/users', { username: 'rich', password: 'other' });
     expect(dup.status).toBe(400);
     expect(dup.json.code).toBe(202);
   });
 
   it('login -> user + sessionToken, never the password hash; bad login -> 101', async () => {
-    const ok = await req('POST', '/login', { username: 'rich', password: 'secret123', _method: 'GET' });
+    const ok = await req<UserResponse>('POST', '/login', { username: 'rich', password: 'secret123', _method: 'GET' });
     expect(ok.status).toBe(200);
     expect(ok.json.username).toBe('rich');
     expect(ok.json.sessionToken).toMatch(/^r:/);
     expect(ok.json._hashed_password).toBeUndefined();
-    sessionToken = ok.json.sessionToken;
+    sessionToken = tokenOf(ok.json);
     userId = ok.json.objectId;
 
-    const bad = await req('POST', '/login', { username: 'rich', password: 'wrong', _method: 'GET' });
+    const bad = await req<UserResponse>('POST', '/login', { username: 'rich', password: 'wrong', _method: 'GET' });
     expect(bad.status).toBe(404);
     expect(bad.json.code).toBe(101);
   });
 
   it('GET /users/me echoes the session token (the client re-stores the whole response)', async () => {
-    const me = await req('GET', '/users/me', undefined, { 'X-Parse-Session-Token': sessionToken });
+    const me = await req<UserResponse>('GET', '/users/me', undefined, { 'X-Parse-Session-Token': sessionToken });
     expect(me.status).toBe(200);
     expect(me.json.objectId).toBe(userId);
     expect(me.json.sessionToken).toBe(sessionToken);
     expect(me.json._hashed_password).toBeUndefined();
 
-    const bogus = await req('GET', '/users/me', undefined, { 'X-Parse-Session-Token': 'r:bogus' });
+    const bogus = await req<UserResponse>('GET', '/users/me', undefined, { 'X-Parse-Session-Token': 'r:bogus' });
     expect(bogus.status).toBe(400);
     expect(bogus.json.code).toBe(209);
   });
 
   it('PUT /users/:id updates own user only', async () => {
-    const ok = await req('PUT', `/users/${userId}`, { nickname: 'Richy' }, { 'X-Parse-Session-Token': sessionToken });
+    const ok = await req<UserResponse>('PUT', `/users/${userId}`, { nickname: 'Richy' }, { 'X-Parse-Session-Token': sessionToken });
     expect(ok.status).toBe(200);
     expect(ok.json.updatedAt).toBeDefined();
 
-    const other = await req('POST', '/users', { username: 'eve', password: 'pw' });
-    const stranger = await req(
+    const other = await req<UserResponse>('POST', '/users', { username: 'eve', password: 'pw' });
+    const stranger = await req<UserResponse>(
       'PUT',
       `/users/${userId}`,
       { nickname: 'hax' },
-      { 'X-Parse-Session-Token': other.json.sessionToken }
+      { 'X-Parse-Session-Token': tokenOf(other.json) }
     );
     expect(stranger.status).toBe(403);
   });
 
   it('logout invalidates the session -> subsequent /users/me is 209', async () => {
-    const login = await req('POST', '/login', { username: 'eve', password: 'pw', _method: 'GET' });
-    const token = login.json.sessionToken;
+    const login = await req<UserResponse>('POST', '/login', { username: 'eve', password: 'pw', _method: 'GET' });
+    const token = tokenOf(login.json);
     await req('POST', '/logout', {}, { 'X-Parse-Session-Token': token });
-    const me = await req('GET', '/users/me', undefined, { 'X-Parse-Session-Token': token });
+    const me = await req<UserResponse>('GET', '/users/me', undefined, { 'X-Parse-Session-Token': token });
     expect(me.json.code).toBe(209);
   });
 
@@ -361,16 +374,19 @@ describe('nodegx-backend HTTP surface', () => {
     const unknown = await req('POST', '/functions/nope', {});
     expect(unknown.status).toBe(404);
 
-    const list = await req('GET', '/executions?limit=10');
-    const entry = list.json.find((e: any) => e.workflowId === 'hello');
-    expect(entry).toBeDefined();
+    const list = await req<WorkflowExecution[]>('GET', '/executions?limit=10');
+    const entry = list.json.find((e) => e.workflowId === 'hello');
+    if (!entry) throw new Error('no execution recorded for the "hello" function');
     expect(entry.status).toBe('success');
-    expect(entry.metadata.backendId).toBe('backend_test');
+    expect(entry.metadata?.backendId).toBe('backend_test');
 
-    const detail = await req('GET', `/executions/${entry.id}`);
+    const detail = await req<ExecutionWithSteps>('GET', `/executions/${entry.id}`);
     expect(detail.status).toBe(200);
-    expect(detail.json.triggerData.body.password).toBe('[REDACTED]');
-    expect(detail.json.triggerData.body.note).toBe('ok');
+    // `triggerData` is the per-trigger-kind bag (see DbChangePayload for the
+    // db-change one); for a function call it carries the scrubbed HTTP body.
+    const body = (detail.json.triggerData as { body: Record<string, unknown> } | undefined)?.body;
+    expect(body?.password).toBe('[REDACTED]');
+    expect(body?.note).toBe('ok');
   });
 
   // ==========================================================================
@@ -378,30 +394,30 @@ describe('nodegx-backend HTTP surface', () => {
   // ==========================================================================
 
   it('BYOB /api/:table CRUD answers storage-shaped records', async () => {
-    const created = await req('POST', '/api/Notes', { text: 'hi' });
+    const created = await req<ParseRecord>('POST', '/api/Notes', { text: 'hi' });
     expect(created.status).toBe(201);
     expect(created.json.objectId).toBeDefined();
     expect(created.json.text).toBe('hi');
 
-    const queried = await req('GET', '/api/Notes?count=1');
+    const queried = await req<ParseQueryResult>('GET', '/api/Notes?count=1');
     expect(queried.json.results.length).toBe(1);
     expect(queried.json.count).toBe(1);
 
-    const saved = await req('PUT', `/api/Notes/${created.json.objectId}`, { text: 'edited' });
+    const saved = await req<ParseRecord>('PUT', `/api/Notes/${created.json.objectId}`, { text: 'edited' });
     expect(saved.json.text).toBe('edited');
 
-    const batch = await req('POST', '/api/_batch', {
+    const batch = await req<ParseQueryResult>('POST', '/api/_batch', {
       operations: [{ method: 'create', collection: 'Notes', data: { text: 'batched' } }]
     });
     expect(batch.json.results[0].objectId).toBeDefined();
 
-    const deleted = await req('DELETE', `/api/Notes/${created.json.objectId}`);
+    const deleted = await req<DeletedResponse>('DELETE', `/api/Notes/${created.json.objectId}`);
     expect(deleted.json.deleted).toBe(true);
   });
 
   it('GET /admin/schema lists user tables but not system (_-prefixed) ones', async () => {
-    const { json } = await req('GET', '/admin/schema');
-    const names = json.tables.map((t: any) => t.name);
+    const { json } = await req<SchemaResponse>('GET', '/admin/schema');
+    const names = json.tables.map((t) => t.name);
     // Regression guard for the SchemaManager LIKE-wildcard bug: an unescaped
     // `NOT LIKE '_%'` excluded EVERY table once a real engine ran.
     expect(names).toContain('Task');
@@ -415,23 +431,25 @@ describe('nodegx-backend HTTP surface', () => {
     await req('POST', '/admin/schema', { action: 'addColumn', table: 'Temp', column: { name: 'b', type: 'Number' } });
     await req('POST', '/admin/schema', { action: 'renameColumn', table: 'Temp', oldName: 'b', newName: 'c' });
 
-    const schema = await req('GET', '/admin/schema/Temp');
-    const colNames = schema.json.columns.map((c: any) => c.name);
+    const schema = await req<TableSchemaResponse>('GET', '/admin/schema/Temp');
+    // `columns` is the untyped SchemaManager's shape (PLAT-003's), so the field
+    // read is named here rather than asserted away as `any`.
+    const colNames = schema.json.columns.map((c) => (c as { name: string }).name);
     expect(colNames).toContain('a');
     expect(colNames).toContain('c');
     expect(colNames).not.toContain('b');
 
-    const exported = await req('GET', '/admin/schema-export?format=postgres');
+    const exported = await req<{ format: string; content: string }>('GET', '/admin/schema-export?format=postgres');
     expect(exported.json.content).toContain('CREATE TABLE');
 
-    const del = await req('POST', '/admin/schema', { action: 'deleteTable', table: 'Temp' });
+    const del = await req<SchemaMutationResponse>('POST', '/admin/schema', { action: 'deleteTable', table: 'Temp' });
     expect(del.json.success).toBe(true);
     const gone = await req('GET', '/admin/schema/Temp');
     expect(gone.status).toBe(404);
   });
 
   it('admin workflow status reports the loaded function', async () => {
-    const status = await req('GET', '/admin/workflows');
+    const status = await req<WorkflowRunnerStatus>('GET', '/admin/workflows');
     expect(status.json.initialized).toBe(true);
     expect(status.json.functions).toEqual([{ name: 'hello', workflow: 'hello' }]);
   });
@@ -528,9 +546,9 @@ describe('auth policy on non-loopback binds (BAK-003 model)', () => {
       expect(health.status).toBe(200);
 
       // Data routes: no blanket wall — CLP denies the anonymous caller (403/119).
-      const denied = await fetch(`${base}/api/Notes`);
+      const denied = await request<ErrorBody>(base, 'GET', '/api/Notes');
       expect(denied.status).toBe(403);
-      expect((await denied.json()).code).toBe(119);
+      expect(denied.json.code).toBe(119);
 
       // The admin credential (old WF-004 token) has full access.
       const allowed = await fetch(`${base}/api/Notes`, { headers: { authorization: 'Bearer test-token' } });

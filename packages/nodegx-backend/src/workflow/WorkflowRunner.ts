@@ -83,6 +83,13 @@ export interface RunTriggerContext {
   requestId?: string;
 }
 
+/** The body of `GET /admin/workflows` — what the editor's panel renders. */
+export interface WorkflowRunnerStatus {
+  initialized: boolean;
+  workflowCount: number;
+  functions: { name: string; workflow: string }[];
+}
+
 export class WorkflowRunner {
   private readonly workflowsPath: string;
   private readonly executions: ExecutionHistory;
@@ -303,7 +310,7 @@ export class WorkflowRunner {
     return functions;
   }
 
-  getStatus(): { initialized: boolean; workflowCount: number; functions: { name: string; workflow: string }[] } {
+  getStatus(): WorkflowRunnerStatus {
     return {
       initialized: this.isInitialized,
       workflowCount: this.loadedWorkflows.size,

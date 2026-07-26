@@ -17,7 +17,19 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 
+import type { DashboardFeatures } from '../src/admin/AdminDashboardRoutes';
+import type { SchemaResponse } from '../src/server/byob-admin';
 import { BackendService } from '../src/service';
+
+import type { ErrorBody, ParseQueryResult, ParseRecord } from './helpers/http';
+
+/**
+ * Every body the dashboard suite reads: records, query envelopes, error
+ * envelopes and the schema listing. Same reasoning as security-enforcement's
+ * `SpecBody` — one named union beats `any` at every call site, and the fields
+ * that are actually asserted on are the ones that get checked.
+ */
+type SpecBody = ParseRecord & Partial<ParseQueryResult> & Partial<ErrorBody> & Partial<SchemaResponse>;
 import { SecurityStartupError } from '../src/security/state';
 import { AuthAttemptLimiter } from '../src/admin/auth';
 import { READONLY_SAFE_ROUTES, readonlyAdminMayCall } from '../src/admin/readonly';
@@ -169,16 +181,16 @@ describe('BAK-005 dashboard over HTTP (locked backend)', () => {
     pathName: string,
     body?: unknown,
     headers: Record<string, string> = {}
-  ): Promise<{ status: number; json: any; text: string; headers: Headers }> {
+  ): Promise<{ status: number; json: SpecBody; text: string; headers: Headers }> {
     const res = await fetch(`${base}${pathName}`, {
       method,
       headers: body !== undefined ? { 'content-type': 'application/json', ...headers } : headers,
       body: body !== undefined ? JSON.stringify(body) : undefined
     });
     const text = await res.text();
-    let json: any = null;
+    let json = {} as SpecBody;
     try {
-      json = JSON.parse(text);
+      json = JSON.parse(text) as SpecBody;
     } catch {
       /* html */
     }
@@ -251,10 +263,11 @@ describe('BAK-005 dashboard over HTTP (locked backend)', () => {
     expect(json.readonly).toBe(false);
     expect(json.security).toEqual({ devOpen: false, enforced: true, hasReadonlyTier: true });
     // Derived from the wired subsystems, not hard-coded.
-    expect(json.features.collections).toBe(true);
-    expect(json.features.triggers).toBe(true);
-    expect(json.features.backups).toBe(true);
-    expect(Object.values(json.features).every((v) => typeof v === 'boolean')).toBe(true);
+    const features = json.features as DashboardFeatures;
+    expect(features.collections).toBe(true);
+    expect(features.triggers).toBe(true);
+    expect(features.backups).toBe(true);
+    expect(Object.values(features).every((v) => typeof v === 'boolean')).toBe(true);
   });
 
   it('the read-only credential signs in and is told so', async () => {
@@ -271,7 +284,7 @@ describe('BAK-005 dashboard over HTTP (locked backend)', () => {
 
     const schema = await req('GET', '/admin/schema', undefined, asReadonly());
     expect(schema.status).toBe(200);
-    expect(schema.json.tables.map((t: any) => t.name)).toContain('Widget');
+    expect(schema.json.tables!.map((t) => t.name)).toContain('Widget');
 
     const rows = await req('GET', '/api/Widget?limit=10', undefined, asReadonly());
     expect(rows.status).toBe(200);
@@ -318,14 +331,14 @@ describe('BAK-005 dashboard over HTTP (locked backend)', () => {
   it('delete-table works end to end through the route the dashboard calls', async () => {
     await req('POST', '/admin/schema', { action: 'createTable', table: 'Doomed', columns: [] }, asAdmin());
     await req('POST', '/api/Doomed', { a: 1 }, asAdmin());
-    expect((await req('GET', '/admin/schema', undefined, asAdmin())).json.tables.map((t: any) => t.name)).toContain('Doomed');
+    expect((await req('GET', '/admin/schema', undefined, asAdmin())).json.tables!.map((t) => t.name)).toContain('Doomed');
 
     const deleted = await req('POST', '/admin/schema', { action: 'deleteTable', table: 'Doomed' }, asAdmin());
     expect(deleted.status).toBe(200);
     expect(deleted.json.deleted).toBe(true);
 
     const after = await req('GET', '/admin/schema', undefined, asAdmin());
-    expect(after.json.tables.map((t: any) => t.name)).not.toContain('Doomed');
+    expect(after.json.tables!.map((t) => t.name)).not.toContain('Doomed');
   });
 
   it('registers both dashboard routes in the one route table the walk test checks', () => {

@@ -17,20 +17,55 @@
 
 import type { RequestContext } from './HttpServer';
 import type { TriggerSubsystem } from '../triggers/TriggerSubsystem';
-import { TriggerConfigError, TriggerInput } from '../triggers/registry';
+import { TriggerConfigError, TriggerDef, TriggerInput } from '../triggers/registry';
 import { HttpError, readJSONBody, sendJSON } from './http-util';
+
+/** `GET /admin/triggers`. */
+export interface TriggerListResponse {
+  triggers: TriggerDef[];
+  maxChangeDepth: number;
+}
+
+/**
+ * The body of every single-trigger response (`GET`, `POST`, `PUT`, the
+ * enable/disable toggle). `secret` rides along on exactly one of them — the
+ * create/update that minted it — which is why it is optional here rather than a
+ * separate type: the callers all read `.trigger` the same way.
+ */
+export interface TriggerResponse {
+  trigger: TriggerDef;
+  /** Plaintext webhook secret, returned exactly once and never recoverable. */
+  secret?: string;
+  secretNote?: string;
+}
+
+/** `DELETE /admin/triggers/:id`. */
+export interface TriggerDeletedResponse {
+  deleted: boolean;
+  id: string;
+}
+
+/** `POST /admin/triggers/:id/fire`. */
+export interface TriggerFiredResponse {
+  fired: boolean;
+  result: unknown;
+  response: { statusCode: number };
+}
 
 export class AdminTriggerRoutes {
   constructor(private readonly triggers: TriggerSubsystem) {}
 
   list(ctx: RequestContext): void {
-    sendJSON(ctx.res, 200, { triggers: this.triggers.registry.list(), maxChangeDepth: this.triggers.registry.getMaxChangeDepth() });
+    sendJSON(ctx.res, 200, {
+      triggers: this.triggers.registry.list(),
+      maxChangeDepth: this.triggers.registry.getMaxChangeDepth()
+    } satisfies TriggerListResponse);
   }
 
   get(ctx: RequestContext): void {
     const trigger = this.triggers.registry.get(ctx.params.id);
     if (!trigger) throw new HttpError(404, `No trigger "${ctx.params.id}"`);
-    sendJSON(ctx.res, 200, { trigger });
+    sendJSON(ctx.res, 200, { trigger } satisfies TriggerResponse);
   }
 
   async create(ctx: RequestContext): Promise<void> {
@@ -51,7 +86,7 @@ export class AdminTriggerRoutes {
         trigger: result.trigger,
         // The plaintext webhook secret is returned exactly once (like an API key).
         ...(result.secret ? { secret: result.secret, secretNote: 'Store this now — it is not recoverable.' } : {})
-      });
+      } satisfies TriggerResponse);
     } catch (e) {
       if (e instanceof TriggerConfigError) throw new HttpError(400, e.message);
       throw e;
@@ -64,14 +99,14 @@ export class AdminTriggerRoutes {
     const trigger = this.triggers.registry.setEnabled(ctx.params.id, body.enabled);
     if (!trigger) throw new HttpError(404, `No trigger "${ctx.params.id}"`);
     this.triggers.reschedule();
-    sendJSON(ctx.res, 200, { trigger });
+    sendJSON(ctx.res, 200, { trigger } satisfies TriggerResponse);
   }
 
   delete(ctx: RequestContext): void {
     const ok = this.triggers.registry.delete(ctx.params.id);
     if (!ok) throw new HttpError(404, `No trigger "${ctx.params.id}"`);
     this.triggers.reschedule();
-    sendJSON(ctx.res, 200, { deleted: true, id: ctx.params.id });
+    sendJSON(ctx.res, 200, { deleted: true, id: ctx.params.id } satisfies TriggerDeletedResponse);
   }
 
   /** Manually fire a trigger for testing (records as a 'manual' execution). */
@@ -85,6 +120,10 @@ export class AdminTriggerRoutes {
       source: `manual test fire of ${trigger.id}`,
       payload: { trigger: 'manual', triggerId: trigger.id, ...(body || {}) }
     });
-    sendJSON(ctx.res, 200, { fired: true, result: outcome.result, response: { statusCode: outcome.statusCode } });
+    sendJSON(ctx.res, 200, {
+      fired: true,
+      result: outcome.result,
+      response: { statusCode: outcome.statusCode }
+    } satisfies TriggerFiredResponse);
   }
 }

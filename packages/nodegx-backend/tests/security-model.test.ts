@@ -97,24 +97,27 @@ describe('config validation (strict — unknown keys are errors)', () => {
   });
 
   it('rejects unknown top-level and nested keys', () => {
-    const cfg: any = defaultSecurityConfig();
-    cfg.extra = true;
-    cfg.collections.Doc = { permisions: {} };
+    const cfg = defaultSecurityConfig();
+    // Deliberately invalid, which is the point of the test: an unknown
+    // top-level key and a typo'd nested one. `Record<string, unknown>` says
+    // 'writing a key the type does not have' where `any` said nothing.
+    (cfg as unknown as Record<string, unknown>).extra = true;
+    (cfg.collections as unknown as Record<string, unknown>).Doc = { permisions: {} };
     const errors = validateSecurityConfig(cfg);
     expect(errors.some((e) => e.includes('extra'))).toBe(true);
     expect(errors.some((e) => e.includes('permisions'))).toBe(true);
   });
 
   it('rejects CLP entries on system collections', () => {
-    const cfg: any = defaultSecurityConfig();
-    cfg.collections._User = { permissions: { find: 'public' } };
+    const cfg = defaultSecurityConfig();
+    (cfg.collections as unknown as Record<string, unknown>)._User = { permissions: { find: 'public' } };
     expect(validateSecurityConfig(cfg).some((e) => e.includes('_User'))).toBe(true);
   });
 
   it('rejects unknown rule values and runAs:"caller"', () => {
-    const cfg: any = defaultSecurityConfig();
-    cfg.defaults.permissions.find = 'everyone';
-    cfg.functions.f = { runAs: 'caller' };
+    const cfg = defaultSecurityConfig();
+    (cfg.defaults.permissions as unknown as Record<string, unknown>).find = 'everyone';
+    (cfg.functions as unknown as Record<string, unknown>).f = { runAs: 'caller' };
     const errors = validateSecurityConfig(cfg);
     expect(errors.some((e) => e.includes('everyone'))).toBe(true);
     expect(errors.some((e) => e.includes('not yet supported'))).toBe(true);
@@ -134,9 +137,21 @@ describe('config validation (strict — unknown keys are errors)', () => {
 // The twin property: canReadRecord (JS) === the SQL read predicate
 // ============================================================================
 
+interface SqliteStatement {
+  run(...params: unknown[]): unknown;
+  all(...params: unknown[]): unknown[];
+}
+interface SqliteDb {
+  exec(sql: string): void;
+  prepare(sql: string): SqliteStatement;
+  close(): void;
+}
+
 describe('canReadRecord is the exact twin of the SQL ACL predicate', () => {
   const engine = resolveEngine();
-  let db: any;
+  // node:sqlite's DatabaseSync, reached through the same guarded require the
+  // service uses. Only three methods are needed here, so they are named.
+  let db: SqliteDb;
 
   const acls: (Record<string, { read?: boolean; write?: boolean }> | null)[] = [
     null,
