@@ -77,10 +77,11 @@ export function VisualCanvas({ onWebView, deviceName, zoom }: VisualCanvasProps)
 
   return (
     <div className={css.Background}>
+      {/* PAR-003: size tag per mock — `1280 × 800 · 100%`, mono, top-right. */}
       {showViewportSize && (
-        <div className={css.ViewportInfo}>{`${deviceName ? deviceName + ' -' : ''} ${Math.floor(
+        <div className={css.ViewportInfo}>{`${deviceName ? deviceName + ' · ' : ''}${Math.floor(
           webviewBounds.width
-        )}x${Math.floor(webviewBounds.height)}px - ${Math.floor(zoom * 100)}%`}</div>
+        )} × ${Math.floor(webviewBounds.height)} · ${Math.floor(zoom * 100)}%`}</div>
       )}
       <div className={css.WebviewContainer} style={style} ref={containerRef}>
         <webview

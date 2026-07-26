@@ -16,17 +16,17 @@
 }
 
 .ViewportInfo {
-  /* Size/zoom tag (UIX-004): muted mono chip top-right, per the mock. */
+  /* Size/zoom tag (UIX-004/PAR-003): plain muted mono at top-right per the
+     mock (`.size-tag`: right 14 / top 10, 10.5px, fg-3, no chip). */
   color: var(--theme-color-fg-muted);
-  padding: 4px 8px;
   font-family: var(--font-family-code);
   font-size: 10.5px;
   line-height: 1.2;
   position: absolute;
-  background-color: var(--theme-color-bg-1);
-  border: 1px solid var(--theme-color-border-default);
-  border-radius: var(--radius-md);
+  top: 10px;
+  right: 14px;
   pointer-events: none;
+  z-index: 1;
 }
 
 .WebviewContainer {
