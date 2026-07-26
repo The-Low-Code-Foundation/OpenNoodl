@@ -238,3 +238,49 @@ Prerequisite: two local projects. **A** — the target, opened in the editor. **
 9. **`suggestName` gives up after 999 attempts** and falls back to a timestamp suffix. Not reachable in practice; noted so it is not a surprise.
 10. **Export cancel-at-directory-chooser renders as a failure card** ("No destination chosen — nothing was written."). Accurate but slightly stern; a dedicated "abandoned" state would read better.
 11. **The NodePicker no longer closes itself after an install** (QA-3 step 5). Deliberate, reasoned, and reversible in one line — but it *is* an observable change and wants Richard's eye.
+
+---
+
+## Live QA executed — 2026-07-26 (orchestrator, primary checkout)
+
+First visual verification of this task. Run against **Shine Phase 2** (target)
+importing from **DebtLivePass** (source, 156 components), via
+`npm run dev:debug` + CDP. **Zero renderer exceptions.**
+
+### What was confirmed live
+
+**The flow exists and is the flow described in §3.** Reached from the node
+picker's *Import from project* tab. One modal, three stages, no second dialog.
+
+- **SELECT** — header `Import from DebtLivePass` + source path; stepper
+  `SELECT — REVIEW — DONE` with SELECT as an azure pill; search field
+  ("Search components, files, styles…"); `Select all`; `COMPONENTS 156` tree with
+  checkboxes, folder and component glyphs; footer *"Nothing selected yet."* with
+  **Continue correctly disabled**.
+- **The right pane is derived and updates live.** Before selection it reads
+  *"Coming along / Pick something on the left and everything it needs appears
+  here."* — QA-1 step 1 verbatim. After ticking `Home` it recomputed to *"Your
+  selection stands on its own — nothing extra is being pulled in."* + *"Nothing
+  extra."*, and the footer became *"1 selected, 1 item in total once dependencies
+  are included."* Ticking the child also checked its parent folder.
+- **REVIEW** — stepper advanced; headline *"1 component into Shine Phase 2"*;
+  *"Components land in /#__page__. Everything here is applied as one undo step."*;
+  a `1 Components` count card; an `ARRIVING NEW` block reading *"Nothing in your
+  project has these names."* with the row `/#__page__/Home · 2 nodes · component`;
+  footer *"Applied as one undo step."* with Back + azure Import.
+- **The node count is the honest thumbnail stand-in** and reads well in place.
+- **Cancel closes cleanly** — no orphaned React root, no console error (QA-6.4, partial).
+
+### Not covered
+
+- **Collision handling (QA-2) — the whole of it.** The chosen source produced no
+  name collision (`/#__page__/Home` does not collide with the target's `/Home`),
+  so **Keep mine / Overwrite / Rename**, the `summarizeChanges` roll-up, the
+  inline `ComponentDiffView`, and rename validation were never exercised. This is
+  the largest remaining gap and needs a source project deliberately built to collide.
+- **Success Criterion 7 (a `required` row must refuse to untick)** — the source
+  had no cross-component references, so no `required` row ever appeared.
+- Import was **not** applied: the target is a real user project and QA should not
+  mutate it. So the DONE stage, the one-undo-step behaviour, and post-import
+  reference resolution are all still unverified.
+- QA-3 (prefab), QA-4 (URL), QA-5 (export) untouched.

@@ -383,3 +383,50 @@ Ordered by how much they should worry the next person.
    and exceeded the time available). `tests/lessons/lessonformat.test.ts` is the one spec that
    touches changed behaviour; it asserts `toContain('lesson-checkmark')`, which the new markup
    still satisfies, but that is reasoning, not a green run.
+
+---
+
+## Live QA executed — 2026-07-26 (orchestrator, primary checkout)
+
+Run against **Shine Phase 2** with `npm run dev:debug` + CDP. Screenshots in the
+session scratchpad. **Zero renderer exceptions** across the whole session
+(`grep -c 'renderer:exception' .logs/dev.log` → 0).
+
+### Result: the acceptance criterion is met
+
+Icons **change colour** between themes. Verified by direct dark/light comparison
+of the components panel (folder glyphs, caret, Home, component), the icon rail,
+the toolbar `+`, and the settings-panel chevrons. The toolbar `+` was inspected
+in the DOM and is
+`viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"` —
+the UIX-007 convention, live.
+
+### Dead-code rows — all PASS (these were the risk)
+
+| Row | Surface | Result |
+|---|---|---|
+| 13 | Components panel | ✅ folder carets, folder glyphs, Home + component icons, spacing all intact |
+| 14 | Node picker | ✅ tabs, search icon, category chevrons + coloured edges, Comment glyph |
+| 15 | Deploy popup | ✅ header, tab, rendering-mode select, azure primary — fully styled |
+
+Beyond the visual pass, the deletions are **provable**: `editor/index.html` links
+exactly two stylesheets (fontawesome + `style.css`), there are no JS imports of
+the four deleted files, no `@import`, and no glob CSS loader. An unimported
+stylesheet contributes nothing, so removing it cannot regress anything.
+
+### One thing that looked like a bug and was not
+
+A mid-session capture showed a dark canvas with **white node cards**, which reads
+exactly like "cards don't re-theme". It reproduced only with the deploy popup
+open — a modal was blocking canvas repaint. On a clean flip, the immediate and
++4s captures are byte-identical and fully dark. No repaint lag; `cardBg` resolves
+`--theme-color-bg-1` correctly. Recorded so the next person doesn't re-chase it.
+
+### Not covered
+
+Rows 1–11 (property-editor box model, reset dots, variants/visual-states carets,
+query trash, router File/FileFill, text-style sliders, connection-popup
+`Lightning`, inspect-popup `Pin`, **lessons checkmark — the flagged
+highest-risk row**) and row 16. These need specific node types and a lesson open.
+Row 11 in particular remains unverified: the `#FCCC73` yellow going away, and the
+legacy-HTML fallback ring, were not seen.

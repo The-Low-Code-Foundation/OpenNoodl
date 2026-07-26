@@ -290,3 +290,46 @@ with curl:
 12. **The palette is a copy of the UIX-001 tokens, not an import**, because this
     package must not depend on `noodl-core-ui`. A test pins the phase-23 law
     that matters (red is danger only); the rest can drift and that is accepted.
+
+---
+
+## Live QA executed — 2026-07-26 (orchestrator, primary checkout)
+
+Served the real built artifact (`node dist/cli.js serve --port 9911`) and
+exercised `/_admin` over HTTP.
+
+### Confirmed
+
+- **Page serves**: `200`, 75,484 bytes, `Cache-Control: no-store`.
+- **CSP is as designed**: `default-src 'none'`, per-response nonce for
+  `script-src`/`style-src`, `connect-src 'self'`, `img-src 'self' data:`,
+  `form-action 'none'`, `frame-ancestors 'none'`, `base-uri 'none'`. No
+  `unsafe-inline`. Plus `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`.
+- **The nonce actually matches within a single response** (header
+  `5T8KfCWb8xTnQdEXMhyCYw==` === body `<style nonce=…>`). This is the check that
+  matters: a mismatch would serve a 75 KB page that renders completely unstyled.
+- **The injectOnce fix holds.** The document contains a *second*, nonce-less
+  `<style>` at byte 134 — inside the module doc comment that says "styles.css
+  inlined into the empty `<style>` block below". That mention is exactly what broke
+  the original `String.replace`. The real, nonced tag is at byte 1493 with ~604 CSS
+  rules. Worth knowing before someone "fixes" the duplicate.
+- **Auth tiers**: bad token → `401` (it does **not** fall through to dev-open,
+  which is the right call — a presented-but-invalid credential is an error, not
+  anonymity); admin token → `200`. No token → `200` under `devOpen`, per the
+  documented posture.
+- **Feature map is complete and derived**: `whoami` reports all eleven sections
+  wired — collections, schema, users, roles, permissions, apiKeys, triggers,
+  workflows, executions, email, backups — plus realtime.
+- **Loud-failure doctrine visible on boot**: the security-defaults banner,
+  `dev-open` warning, and first-run credential notice all print.
+
+### Still owed — the headline residual is unchanged
+
+**Nobody has opened the page in a browser.** Everything above is HTTP-level.
+The rendered UI, the eleven-section walkthrough, the SSE `Live` toggle, and the
+read-only lockout **as seen** remain unverified. Note `frame-ancestors 'none'`
+(correctly) prevents embedding it in the editor to work around the lack of a
+browser driver, so this genuinely needs a browser.
+
+Minor: `--dir` is not a recognised flag (it fell back to `~/.nodegx/backend/default`).
+It failed loudly rather than silently, but the flag name is worth confirming in the docs.
