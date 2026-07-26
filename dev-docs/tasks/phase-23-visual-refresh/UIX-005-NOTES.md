@@ -150,3 +150,58 @@ NodeGraphEditorConnection.ts (the spec's "~5 consumers" counts pre-PLAT-001 file
 - **Plumbing proof**: commit 2 routes all paint through CanvasTheme while the theme
   serves the OLD literal values (no token reads) — byte-identical rendering; the token
   flip + new palette land in later commits.
+
+## Verification record (in-worktree)
+
+- `typecheck:editor`, `typecheck:runtime`, `typecheck:editor-tests` — green.
+- `catalog:check` — committed catalog unchanged (the blob edit is colours only).
+- **Headless proof (scripted, esbuild-bundled CanvasTheme under plain Node)**:
+  every colour resolves to its dark fallback with no DOM; `gridPattern()` degrades to
+  `undefined` (renderer guards); listener registers/fires/detaches by context;
+  found+fixed a real crash where a context provides `document` but not `window`
+  (guards are now independent per global).
+- **Light-token simulation** (fake `getComputedStyle` serving the UIX-001 light
+  values): `isDark` flips, grid dot goes ink @ .10, wire highlights deepen instead of
+  brighten, unset tokens fall back per-token. This is the exact path UIX-008 will hit.
+- **Scoped orphan-hex check** over `nodegrapheditor.ts` + `nodegrapheditor/**` +
+  `canvas/**`: zero hex outside CanvasTheme's fallback table except
+  `ConnectionPopups.ts` `arrowColor '#464648'` (DOM popup chrome — UIX-004 per
+  inventory) and doc-comment examples. `NodeReferencesPanel.tsx` carries a hardcoded
+  fallback `outlineHighlighted '#b58900'` (DOM, UIX-009 territory) — noted, untouched.
+- Electron editor suite (`test:ci`) run from the worktree — includes the PLAT-001
+  canvas characterisation specs, which assert viewport/hit-test/anchor math in
+  nodeSize-relative terms (result recorded in the task report).
+
+## Anchor-math argument (for the reviewer)
+
+All four consumers of card geometry — painter, connection paint, `measure()`, and
+hit-testing — derive port-row Y as
+`titlebarHeight() + index * propertyConnectionHeight + propertyConnectionHeight/2 + verticalSpacing`
+and card edges from `nodeSize`. This task changed none of those formulas. What changed:
+(1) label wrap *inputs* (font + max width) — but measure and draw share the new values
+through `NodeGraphEditorNode.headerTextInset` / `CanvasFonts`, so `titlebarHeight()`
+shifts consistently everywhere at once (nodes with long labels may wrap at different
+points than before — that is a *size* change, not a *consistency* change);
+(2) corner radius 6→9 — no anchor input;
+(3) port dot radius 6→3.5 — visual only; hit targets are the drag-area/border zones,
+not the dots.
+
+## Still needs LIVE verification (orchestrator, from the primary checkout)
+
+1. Screenshot-vs-mock: rebuild the mock's scene (Expression → Backend function → Text
+   hierarchy) and compare against `mocks/nodegx-editor-mock.html`'s canvas.
+2. Diff canvas: open a real SUB-007 diff + AIX-003 annotated component; confirm
+   Created/Changed/Deleted (now success/warning/danger) legible on the neutral cards
+   and that the accept/reject flow reads correctly.
+3. Zoom QA 25–200%: label legibility (12.5px system stack), 1px borders on
+   retina/non-retina, grid appearance across zoom, grid LOD cutoff at 40%.
+4. Perf: large corpus project pan/zoom — the glow is two strokes and the grid one
+   pattern fillRect, but measure; drop the glow before dropping frame rate.
+5. Theme toggle: flip a class on `<html>` (or dispatch `nodegx:themechanged`) in
+   devtools → canvas repaints with re-resolved colours.
+6. Long-label nodes: wrap points changed with the font/inset change — eyeball crowded
+   cards (name + right-side status icons + comment icon).
+7. Node picker / connection popup / references panel with the harmonized blob hues
+   (they kept their old visual structure by design — UIX-009 restyles them).
+8. CHANGELOG-COMMUNITY entry: deferred to the phase-23 wrap (concurrent UIX tasks
+   would collide in the narrative file; orchestrator owns the phase story).
