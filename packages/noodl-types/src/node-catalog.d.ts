@@ -110,6 +110,8 @@ export type NodeTypeName =
   | 'Variable'
   | 'Variable2'
   | 'Video'
+  | 'net.noodl.ActionDispatcher'
+  | 'net.noodl.ActionHandler'
   | 'net.noodl.ComponentObject'
   | 'net.noodl.GlobalStore'
   | 'net.noodl.GlobalStore.Set'

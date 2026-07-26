@@ -1,0 +1,73 @@
+{
+  "id": "agent-server-driven-actions",
+  "title": "Agent actions: let a backend drive the UI, but only where you allowed it",
+  "description": "The idiomatic shape for a backend that sends commands rather than data. Server-Sent Events delivers action objects; Action Dispatcher decides whether each one may run. The vocabulary is closed: `OPEN_SESSION` runs because the Action Handler registered it, `SET_STORE` runs because it is named in `builtIns` and its key is in `allowedKeys`, and anything else is refused with a reason on `refusalReason` — which is wired to a Text node, because a refusal nobody can see is the failure mode this whole design exists to avoid. The handler has `autoComplete` off and completes only once its Set Global Store finished, so an array of actions runs as an ordered flow rather than all at once.",
+  "demonstrates": ["net.noodl.ActionDispatcher", "net.noodl.ActionHandler"],
+  "components": [
+    {
+      "name": "/Agent Actions",
+      "nodes": [
+        {
+          "id": "root",
+          "type": "Group",
+          "label": "Agent surface",
+          "parameters": { "flexDirection": "column" },
+          "children": ["status_text", "refusal_text"]
+        },
+        { "id": "status_text", "type": "Text", "label": "Stream status", "parent": "root" },
+        { "id": "refusal_text", "type": "Text", "label": "Refused action", "parent": "root" },
+        {
+          "id": "action_stream",
+          "type": "net.noodl.SSE",
+          "label": "Agent action stream",
+          "parameters": {
+            "url": "https://api.example.com/agent/actions",
+            "autoConnect": true,
+            "autoReconnect": true,
+            "reconnectOnStreamEnd": true
+          }
+        },
+        {
+          "id": "dispatcher",
+          "type": "net.noodl.ActionDispatcher",
+          "label": "Agent actions",
+          "parameters": {
+            "channel": "agent",
+            "builtIns": "SET_STORE",
+            "storeName": "app",
+            "allowedKeys": "view,highlightId",
+            "waitForHandler": 2000,
+            "handlerTimeout": 10000,
+            "maxQueueSize": 50
+          }
+        },
+        {
+          "id": "open_session",
+          "type": "net.noodl.ActionHandler",
+          "label": "Allow OPEN_SESSION",
+          "parameters": { "channel": "agent", "actionType": "OPEN_SESSION", "autoComplete": false }
+        },
+        {
+          "id": "store_session",
+          "type": "net.noodl.GlobalStore.Set",
+          "label": "Selected session",
+          "parameters": { "storeName": "app", "key": "selectedSession" }
+        }
+      ],
+      "connections": [
+        { "fromId": "action_stream", "fromProperty": "data", "toId": "dispatcher", "toProperty": "action" },
+        { "fromId": "action_stream", "fromProperty": "onMessage", "toId": "dispatcher", "toProperty": "dispatch" },
+        {
+          "fromId": "action_stream",
+          "fromProperty": "connectionState",
+          "toId": "status_text",
+          "toProperty": "text"
+        },
+        { "fromId": "dispatcher", "fromProperty": "refusalMessage", "toId": "refusal_text", "toProperty": "text" },
+        { "fromId": "open_session", "fromProperty": "payload", "toId": "store_session", "toProperty": "value" },
+        { "fromId": "open_session", "fromProperty": "trigger", "toId": "store_session", "toProperty": "set" },
+        { "fromId": "store_session", "fromProperty": "completed", "toId": "open_session", "toProperty": "complete" }
+      ]
+    }
+  ]
+}

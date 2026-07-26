@@ -1,0 +1,43 @@
+{
+  "typeName": "net.noodl.ActionHandler",
+  "summary": "Action Handler: declares one action type a backend is allowed to trigger, and what happens when it does.",
+  "description": "Registers a single action type with the Action Dispatcher's registry, and fires `trigger` with the action's `payload` whenever a matching action is dispatched. That registration is what makes the action executable at all — there is no separate permission list to keep in step, so an action a graph does not handle simply cannot happen. Registration follows the inputs automatically: no Register signal to remember, and an action that arrives just before the component mounts waits for it rather than being refused. By default the action is reported complete as soon as `trigger` has been sent and everything wired to it has run; turn `autoComplete` off and wire `complete` or `fail` yourself when a later step must wait for this one, or when the step can genuinely fail. Built-in action names (`SET_STORE`, `MERGE_STORE`, `DELETE_STORE_KEY`, `CLEAR_STORE`) are reserved and cannot be claimed here — attempting it reports on `error` and registers nothing.",
+  "whenToUse": "For every action a backend should be able to trigger, one node each. This is also the only way to grant capabilities the dispatcher has no built-in for — navigation, opening a panel, scrolling, showing a toast, refreshing a query — by wiring `trigger` to the nodes that already do those jobs. Be deliberate: whatever is downstream of `trigger` is something a remote server can cause.",
+  "ports": {
+    "channel": "Must match the Channel on the Action Dispatcher that should be able to reach this handler.",
+    "actionType": "The exact type this handler accepts, e.g. `OPEN_SESSION`. Case- and spelling-sensitive; a mismatch shows up as a refusal on the dispatcher, not here.",
+    "enabled": "Turning this off unregisters the handler, so the action is refused as unknown rather than quietly ignored. Useful for gating an action behind a signed-in state.",
+    "autoComplete": "Report the action complete as soon as Trigger has been sent. Turn off when a later step must wait for this one, and wire Complete or Fail.",
+    "result": "Handed back to the dispatcher as its `result` when this action completes.",
+    "errorMessage": "Handed back to the dispatcher as its `lastError` when Fail is signalled.",
+    "complete": "Marks the in-flight action done so the next queued action can start. Signalling it with nothing in flight reports on `error`.",
+    "fail": "Marks the in-flight action failed. The dispatcher fires `failed` and moves on.",
+    "trigger": "Fires when a matching action is dispatched. The payload is already set when it fires.",
+    "payload": "The action's `payload`, else its `data`, else the whole action object — so `{type, sessionId}` gives you an object with `sessionId` on it.",
+    "actionId": "The dispatched action's id, for correlating an acknowledgement back to the server.",
+    "registered": "Whether this handler is currently in the registry. False means the action cannot run at all.",
+    "triggeredCount": "How many times this handler has run.",
+    "error": "Why registration failed, or that Complete/Fail was signalled with nothing in flight."
+  },
+  "patterns": [
+    "`trigger` → Navigate, `payload` → Set Variable: the server can open a screen. A real capability, granted visibly by this one wire.",
+    "`autoComplete` off, `trigger` → a cloud function call, its Success → `complete` and Failure → `fail`: the dispatcher then holds the rest of the flow until the call returns, and reports the failure if it does not.",
+    "`enabled` driven from a signed-in flag, so an action becomes reachable only once the user is authenticated.",
+    "Two handlers with the same `actionType` both run, in registration order — useful for a shared side effect such as logging every occurrence of one action."
+  ],
+  "antiPatterns": [
+    "One handler with a generic type such as `RUN`, switching on a field of the payload. That rebuilds the open vocabulary the dispatcher closed; the refusal path then never fires for anything.",
+    "Leaving `autoComplete` on for a step a later step depends on — the flow moves to the next action while this one is still working.",
+    "Turning `autoComplete` off and forgetting to wire `complete`: the action sits until the dispatcher's `handlerTimeout` and fails.",
+    "Wiring `trigger` to something destructive without any confirmation in between."
+  ],
+  "examples": [
+    "agent-server-driven-actions"
+  ],
+  "relatedNodes": [
+    "net.noodl.ActionDispatcher",
+    "net.noodl.GlobalStore.Set",
+    "net.noodl.SSE",
+    "net.noodl.WebSocket"
+  ]
+}

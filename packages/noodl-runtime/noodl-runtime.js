@@ -83,7 +83,9 @@ function registerNodes(noodlRuntime) {
     require('./src/nodes/std-library/agent/text-accumulator'),
     require('./src/nodes/std-library/agent/json-stream-parser'),
     require('./src/nodes/std-library/agent/pattern-extractor'),
-    require('./src/nodes/std-library/agent/stream-buffer')
+    require('./src/nodes/std-library/agent/stream-buffer'),
+    require('./src/nodes/std-library/agent/actiondispatchernode'),
+    require('./src/nodes/std-library/agent/actionhandlernode')
   ].forEach((node) => noodlRuntime.registerNode(node));
 }
 

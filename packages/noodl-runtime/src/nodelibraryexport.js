@@ -604,6 +604,10 @@ function generateNodeLibrary(nodeRegister) {
             'net.noodl.StateHistory.Undo',
             'net.noodl.StateSnapshot'
           ]
+        },
+        {
+          name: 'Agent Actions',
+          items: ['net.noodl.ActionDispatcher', 'net.noodl.ActionHandler']
         }
       ]
     },
