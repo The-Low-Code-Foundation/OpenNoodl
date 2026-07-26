@@ -12,12 +12,12 @@
   transition: all 0.15s ease;
 
   &:focus-within {
-    border-color: var(--theme-color-primary, #6366f1);
+    border-color: var(--theme-color-primary);
     background-color: var(--theme-color-bg-2, rgba(99, 102, 241, 0.08));
   }
 
   &.HasError {
-    border-color: var(--theme-color-error, #ef4444);
+    border-color: var(--theme-color-error);
     background-color: var(--theme-color-bg-2, rgba(239, 68, 68, 0.05));
   }
 }
@@ -26,7 +26,7 @@
   font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Courier New', monospace;
   font-size: 10px;
   font-weight: 600;
-  color: var(--theme-color-primary, #6366f1);
+  color: var(--theme-color-primary);
   padding: 2px 4px;
   background-color: var(--theme-color-bg-2, rgba(99, 102, 241, 0.15));
   border-radius: 2px;
@@ -41,7 +41,7 @@
   outline: none;
   font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Courier New', monospace;
   font-size: 12px;
-  color: var(--theme-color-fg-default, #ffffff);
+  color: var(--theme-color-fg-default);
   padding: 0;
   min-width: 0;
 
@@ -61,7 +61,7 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  color: var(--theme-color-error, #ef4444);
+  color: var(--theme-color-error);
   cursor: help;
 }
 
@@ -82,7 +82,7 @@
 
   &:hover {
     background-color: var(--theme-color-bg-1, rgba(255, 255, 255, 0.1));
-    color: var(--theme-color-primary, #6366f1);
+    color: var(--theme-color-primary);
   }
 
   &:focus {

@@ -36,14 +36,12 @@
     }
 
     a {
-      //color: #d49517;
       font-weight: var(--font-weight-semibold);
       text-decoration: underline;
       color: var(--theme-color-fg-highlight);
     }
 
     a:hover {
-      //color: #fdb314;
       text-decoration: none;
       color: var(--theme-color-fg-highlight);
     }

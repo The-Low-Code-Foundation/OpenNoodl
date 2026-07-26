@@ -15,30 +15,13 @@
   "tsExclude": [
     "packages/noodl-editor/src/editor/src/views/nodegrapheditor/canvas/CanvasTheme.ts"
   ],
-  "commit": "1276877",
+  "commit": "671f2a0",
   "max": {
-    "canvas-paint-ts": 2,
-    "noodl-core-ui": 100,
-    "noodl-editor": 16
+    "noodl-editor": 16,
+    "canvas-paint-ts": 2
   },
   "byFile": {
-    "packages/noodl-editor/src/editor/src/views/nodegrapheditor/ConnectionPopups.ts": 2,
-    "packages/noodl-core-ui/src/components/StylePresets/PresetCard.module.scss": 5,
-    "packages/noodl-core-ui/src/components/StylePresets/PresetSelector.module.scss": 2,
-    "packages/noodl-core-ui/src/components/StyleSuggestions/SuggestionBanner.module.scss": 13,
-    "packages/noodl-core-ui/src/components/ai/AiIconAnimated/AiIconAnimated.module.scss": 2,
-    "packages/noodl-core-ui/src/components/code-editor/CodeHistory/CodeHistoryDiffModal.module.scss": 9,
-    "packages/noodl-core-ui/src/components/code-editor/JavaScriptEditor.module.scss": 10,
-    "packages/noodl-core-ui/src/components/common/HtmlRenderer/HtmlRenderer.module.scss": 2,
-    "packages/noodl-core-ui/src/components/json-editor/JSONEditor.module.scss": 6,
-    "packages/noodl-core-ui/src/components/json-editor/modes/AdvancedMode/AdvancedMode.module.scss": 9,
-    "packages/noodl-core-ui/src/components/json-editor/modes/EasyMode/EasyMode.module.scss": 24,
-    "packages/noodl-core-ui/src/components/json-editor/modes/EasyMode/ValueEditor.module.scss": 1,
-    "packages/noodl-core-ui/src/components/property-panel/ExpressionInput/ExpressionInput.module.scss": 6,
-    "packages/noodl-core-ui/src/components/property-panel/ExpressionToggle/ExpressionToggle.module.scss": 4,
-    "packages/noodl-core-ui/src/preview/launcher/Launcher/components/ProjectCreationWizard/steps/EntryModeStep.module.scss": 2,
-    "packages/noodl-core-ui/src/preview/launcher/Launcher/components/ProjectCreationWizard/steps/ReviewStep.module.scss": 2,
-    "packages/noodl-core-ui/src/preview/launcher/Launcher/components/TagPill/TagPill.module.scss": 3,
-    "packages/noodl-editor/src/assets/css/style.css": 16
+    "packages/noodl-editor/src/assets/css/style.css": 16,
+    "packages/noodl-editor/src/editor/src/views/nodegrapheditor/ConnectionPopups.ts": 2
   }
 }

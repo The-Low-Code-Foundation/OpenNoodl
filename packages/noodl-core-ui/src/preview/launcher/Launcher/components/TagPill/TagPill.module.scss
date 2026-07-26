@@ -45,7 +45,7 @@
 
 /* Label */
 .Label {
-  color: #ffffff;
+  color: white;
   font-weight: 500;
   line-height: 1;
   white-space: nowrap;
@@ -60,7 +60,7 @@
   padding: 0;
   margin-left: 2px;
   cursor: pointer;
-  color: #ffffff;
+  color: white;
   opacity: 0.7;
   transition: opacity 0.15s ease;
   border-radius: 4px;
@@ -74,7 +74,7 @@
   }
 
   &:focus-visible {
-    outline: 1px solid #ffffff;
+    outline: 1px solid white;
     outline-offset: 1px;
   }
 }

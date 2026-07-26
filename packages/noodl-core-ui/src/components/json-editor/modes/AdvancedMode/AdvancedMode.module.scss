@@ -33,13 +33,13 @@
 .StatusValid {
   font-size: 13px;
   font-weight: 500;
-  color: #10b981;
+  color: var(--theme-color-success);
 }
 
 .StatusInvalid {
   font-size: 13px;
   font-weight: 500;
-  color: #ef4444;
+  color: var(--theme-color-danger);
 }
 
 .FormatButton {
@@ -47,7 +47,7 @@
   font-size: 12px;
   font-weight: 500;
   background-color: var(--theme-color-primary);
-  color: white;
+  color: var(--theme-color-on-primary);
   border: none;
   border-radius: 3px;
   cursor: pointer;
@@ -91,8 +91,8 @@
 /* Error Panel */
 .ErrorPanel {
   padding: 12px;
-  background-color: #ef44441a;
-  border-top: 2px solid #ef4444;
+  background-color: var(--theme-color-danger-bg);
+  border-top: 2px solid var(--theme-color-danger);
   animation: slideDown 0.2s ease-out;
 }
 
@@ -121,7 +121,7 @@
 .ErrorTitle {
   font-size: 14px;
   font-weight: 600;
-  color: #ef4444;
+  color: var(--theme-color-danger);
 }
 
 .ErrorMessage {
@@ -132,20 +132,20 @@
   padding: 8px;
   background-color: var(--theme-color-bg-2);
   border-radius: 3px;
-  border-left: 3px solid #ef4444;
+  border-left: 3px solid var(--theme-color-danger);
 }
 
 .ErrorSuggestion {
   font-size: 13px;
   color: var(--theme-color-fg-default);
   padding: 8px;
-  background-color: #3b82f61a;
+  background-color: var(--theme-color-primary-bg);
   border-radius: 3px;
-  border-left: 3px solid #3b82f6;
+  border-left: 3px solid var(--theme-color-primary);
   margin-bottom: 8px;
 
   strong {
-    color: #3b82f6;
+    color: var(--theme-color-primary);
   }
 }
 

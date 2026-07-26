@@ -3,7 +3,8 @@
 **Phase:** 23
 **Track:** I — the NodeGX look: design tokens, control kit, canvas palette, launcher, light theme
 **Source:** Design critique + mockups session 2026-07-26 (mocks in [./mocks/](./mocks/)); styling-architecture audit summarized in [UIX-001](./UIX-001-DESIGN-TOKENS-FOUNDATION.md)
-**Status:** Not started (created 2026-07-26)
+**Status:** ✅ Complete — all 9 UIX tasks (2026-07-26). See [PROGRESS.md](./PROGRESS.md).
+**Visual-QA corpus & before/after gallery:** [corpus/](./corpus/) — `corpus/gallery.html` (open in a browser), one-command re-run via `corpus/run.sh`, recipe in `corpus/README.md`.
 **Starts:** Anytime. No dependency on backend tracks; UIX-001 is the only hard prerequisite inside the phase.
 
 ## Why this phase exists

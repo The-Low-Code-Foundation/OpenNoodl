@@ -66,7 +66,7 @@
 
 .SummaryRow-edit {
   font-size: 12px;
-  color: var(--theme-color-primary, #ef4444);
+  color: var(--theme-color-primary);
   background: none;
   border: none;
   cursor: pointer;
@@ -79,7 +79,7 @@
   }
 
   &:focus-visible {
-    outline: 2px solid var(--theme-color-primary, #ef4444);
+    outline: 2px solid var(--theme-color-primary);
     outline-offset: 2px;
     border-radius: 2px;
   }

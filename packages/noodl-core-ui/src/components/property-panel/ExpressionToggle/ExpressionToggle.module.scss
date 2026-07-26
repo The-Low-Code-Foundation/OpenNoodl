@@ -5,15 +5,15 @@
 }
 
 .ExpressionActive {
-  background-color: var(--theme-color-primary, #6366f1);
+  background-color: var(--theme-color-primary);
   color: white;
 
   &:hover {
-    background-color: var(--theme-color-primary-hover, #4f46e5);
+    background-color: var(--theme-color-primary-hover);
   }
 
   &:active {
-    background-color: var(--theme-color-primary-active, #4338ca);
+    background-color: var(--theme-color-primary-active);
   }
 }
 
@@ -47,7 +47,7 @@
 
   &:hover {
     background-color: var(--theme-color-bg-1, rgba(255, 255, 255, 0.1));
-    color: var(--theme-color-primary, #6366f1);
+    color: var(--theme-color-primary);
   }
 
   &:focus {

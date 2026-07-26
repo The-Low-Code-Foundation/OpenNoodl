@@ -3,9 +3,9 @@
   align-items: flex-start;
   gap: var(--spacing-sm, 8px);
   padding: var(--spacing-sm, 8px) var(--spacing-md, 12px);
-  background-color: var(--theme-color-bg-3, #2a2a2d);
-  border: 1px solid var(--theme-color-border-default, #3d3d40);
-  border-left: 3px solid var(--theme-color-primary, #e03b3b);
+  background-color: var(--theme-color-bg-3);
+  border: 1px solid var(--theme-color-border-default);
+  border-left: 3px solid var(--theme-color-primary);
   border-radius: var(--radius-sm, 4px);
   margin-bottom: var(--spacing-sm, 8px);
 }
@@ -15,7 +15,7 @@
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background-color: var(--theme-color-primary, #e03b3b);
+  background-color: var(--theme-color-primary);
   margin-top: 5px;
 }
 
@@ -28,7 +28,7 @@
   margin: 0 0 6px;
   font-size: 11px;
   line-height: 1.4;
-  color: var(--theme-color-fg-default, #d4d4d8);
+  color: var(--theme-color-fg-default);
 }
 
 .Actions {
@@ -40,8 +40,8 @@
   padding: 3px 8px;
   font-size: 11px;
   font-weight: 500;
-  color: var(--theme-color-fg-highlight, #ffffff);
-  background-color: var(--theme-color-primary, #e03b3b);
+  color: var(--theme-color-fg-highlight);
+  background-color: var(--theme-color-primary);
   border: none;
   border-radius: var(--radius-sm, 3px);
   cursor: pointer;
@@ -55,15 +55,15 @@
 .DismissButton {
   padding: 3px 8px;
   font-size: 11px;
-  color: var(--theme-color-fg-default-shy, #a1a1aa);
+  color: var(--theme-color-fg-default-shy);
   background: transparent;
-  border: 1px solid var(--theme-color-border-default, #3d3d40);
+  border: 1px solid var(--theme-color-border-default);
   border-radius: var(--radius-sm, 3px);
   cursor: pointer;
   transition: color 0.15s;
 
   &:hover {
-    color: var(--theme-color-fg-default, #d4d4d8);
+    color: var(--theme-color-fg-default);
   }
 }
 
@@ -76,7 +76,7 @@
   justify-content: center;
   font-size: 14px;
   line-height: 1;
-  color: var(--theme-color-fg-default-shy, #a1a1aa);
+  color: var(--theme-color-fg-default-shy);
   background: transparent;
   border: none;
   cursor: pointer;
@@ -85,7 +85,7 @@
   border-radius: 2px;
 
   &:hover {
-    color: var(--theme-color-fg-default, #d4d4d8);
-    background-color: var(--theme-color-bg-2, #1c1c1e);
+    color: var(--theme-color-fg-default);
+    background-color: var(--theme-color-bg-2);
   }
 }

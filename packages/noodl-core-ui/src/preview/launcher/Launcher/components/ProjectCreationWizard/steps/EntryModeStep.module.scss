@@ -30,12 +30,12 @@
   position: relative;
 
   &:hover:not(&--disabled) {
-    border-color: var(--theme-color-primary, #ef4444);
+    border-color: var(--theme-color-primary);
     background-color: var(--theme-color-bg-2);
   }
 
   &:focus-visible {
-    outline: 2px solid var(--theme-color-primary, #ef4444);
+    outline: 2px solid var(--theme-color-primary);
     outline-offset: 2px;
   }
 

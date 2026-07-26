@@ -492,7 +492,7 @@ button {
    Frames view
    ------------------------------------------------------------------- */
 .frames-divider {
-  background-color: white;
+  background-color: var(--theme-color-border-strong);
   opacity: 0;
 }
 
@@ -770,7 +770,7 @@ button {
 .string-input-popup-button-ok {
   background-color: var(--theme-color-primary);
   border: none;
-  color: black;
+  color: var(--theme-color-on-primary);
   height: 100%;
   margin: 0px;
   padding-left: 7px;

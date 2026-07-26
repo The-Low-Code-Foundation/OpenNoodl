@@ -79,9 +79,17 @@ Your data, your server, first-class in the editor.
 
 ---
 
+### 🎨 The NodeGX look — a finished skin, dark *and* light
+The product was renamed to NodeGX but still *looked* like Noodl 2.9.3: a near-black UI with no depth, one red hue doing five different jobs, unfinished controls, a node canvas from a different era, and no light theme. That's done — the visual refresh shipped end to end.
+
+- **One palette, everywhere.** Every colour now comes from a single canonical token file — elevation-scaled neutrals you can actually tell apart, an azure action accent, and red demoted to errors and destructive actions *only* (no more permanently-alarmed chrome). A CI gate (the "hex ratchet") counts hardcoded colours and only ever lets the number fall: the editor's stylesheets went from ~400 stray hex values to a single documented exception, and the shared component library went from 100 to **zero**.
+- **Finished controls and chrome.** Forms, toasts, chips, the box-model editor, the launcher, the toolbar, panels, dialogs, and the icon set were all rebuilt to the new standard — one consistent icon convention, amber (not red) warnings, azure calls-to-action.
+- **The node canvas joined the system.** The graph is repainted from the same tokens as the rest of the app and repaints instantly when you switch themes — node cards, wires, the dot-grid, selection, and diff annotations all stay legible in both.
+- **A real light theme.** A system / light / dark switch (defaulting to *system*) restyles everything — including the node canvas and the code editor's syntax colours — with no flash of the wrong theme at startup. Every text/background pairing passes WCAG AA in both themes.
+- **Proof it's coherent, and stays that way.** A scripted screenshot corpus walks the launcher, editor, node canvas, property editor, and every side panel in both themes and drops them into a dated folder with a side-by-side gallery — so "did we regress the look?" is now a diffable question, not a matter of opinion. This sweep also fixed two theme bugs hiding in the code/JSON editors (error panels that were stuck light regardless of theme) and a couple of low-contrast buttons.
+
 ## 🔧 In progress right now
 
-- **Visual refresh — the token foundation is in.** The editor's palette has been rebuilt on a single canonical token file: elevation-scaled dark neutrals you can actually tell apart, an azure action accent, and red finally demoted to errors and destructive actions only (no more permanently-alarmed chrome). Typography moved to the native system font with a bundled display face for headings, and every documented text/background pairing now passes WCAG AA. Individual controls, panels, the node canvas, and a light theme follow next in this phase.
 - **The Authoring Loop** — *the headline feature.* "Describe a page → the agent writes the component → the editor shows the new graph live → you accept, refine, or reject." The headless core (gather context → author → validate → self-repair, on a hard context budget) is built, and the **Build panel** now ships in the editor: describe a component, watch the agent's progress stream in (its reasoning, what it read, each validation verdict), then accept, refine, or reject. Nothing touches your project until you accept; accepting is undoable like any edit. Live-provider runs and live-on-canvas rendering during authoring are next.
 - **Typing the runtime.** Converting the runtime and viewer from JavaScript to TypeScript, tests-first, and publishing the node-definition API types.
 - **Lessons engine revival.** Assessment complete — verdict: *revive, don't rebuild.* The lesson runtime is intact; only the discovery UI and authoring format need work.

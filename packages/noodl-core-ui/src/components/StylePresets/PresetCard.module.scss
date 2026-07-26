@@ -19,12 +19,12 @@
   }
 
   &:focus-visible {
-    outline: 2px solid var(--theme-color-primary, #3b82f6);
+    outline: 2px solid var(--theme-color-primary);
     outline-offset: 2px;
   }
 
   &--selected {
-    border-color: var(--theme-color-primary, #3b82f6);
+    border-color: var(--theme-color-primary);
     background: rgba(59, 130, 246, 0.08);
 
     &:hover {
@@ -75,7 +75,7 @@
 .PresetCard-name {
   font-size: 11px;
   font-weight: 500;
-  color: var(--theme-color-fg-default, #e4e4e7);
+  color: var(--theme-color-fg-default);
   text-align: center;
   line-height: 1;
   white-space: nowrap;
@@ -91,7 +91,7 @@
   width: 14px;
   height: 14px;
   border-radius: 50%;
-  background: var(--theme-color-primary, #3b82f6);
+  background: var(--theme-color-primary);
 
   &::after {
     content: '';
@@ -100,7 +100,7 @@
     top: 2px;
     width: 5px;
     height: 8px;
-    border: 2px solid #fff;
+    border: 2px solid var(--theme-color-on-primary);
     border-top: none;
     border-left: none;
     transform: rotate(45deg);

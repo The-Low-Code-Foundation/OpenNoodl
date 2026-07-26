@@ -83,39 +83,39 @@
   border: 1px solid var(--theme-color-border-default);
 
   &[data-type='string'] {
-    background-color: #3b82f61a;
-    color: #3b82f6;
-    border-color: #3b82f64d;
+    background-color: color-mix(in srgb, var(--theme-color-primary) 10%, transparent);
+    color: var(--theme-color-primary);
+    border-color: color-mix(in srgb, var(--theme-color-primary) 30%, transparent);
   }
 
   &[data-type='number'] {
-    background-color: #10b9811a;
-    color: #10b981;
-    border-color: #10b9814d;
+    background-color: color-mix(in srgb, var(--theme-color-success) 10%, transparent);
+    color: var(--theme-color-success);
+    border-color: color-mix(in srgb, var(--theme-color-success) 30%, transparent);
   }
 
   &[data-type='boolean'] {
-    background-color: #f59e0b1a;
-    color: #f59e0b;
-    border-color: #f59e0b4d;
+    background-color: color-mix(in srgb, var(--theme-color-warning) 10%, transparent);
+    color: var(--theme-color-warning);
+    border-color: color-mix(in srgb, var(--theme-color-warning) 30%, transparent);
   }
 
   &[data-type='null'] {
-    background-color: #6b72801a;
-    color: #6b7280;
-    border-color: #6b72804d;
+    background-color: color-mix(in srgb, var(--theme-color-fg-muted) 10%, transparent);
+    color: var(--theme-color-fg-muted);
+    border-color: color-mix(in srgb, var(--theme-color-fg-muted) 30%, transparent);
   }
 
   &[data-type='array'] {
-    background-color: #8b5cf61a;
-    color: #8b5cf6;
-    border-color: #8b5cf64d;
+    background-color: color-mix(in srgb, var(--theme-color-node-category-component) 10%, transparent);
+    color: var(--theme-color-node-category-component);
+    border-color: color-mix(in srgb, var(--theme-color-node-category-component) 30%, transparent);
   }
 
   &[data-type='object'] {
-    background-color: #ec48991a;
-    color: #ec4899;
-    border-color: #ec48994d;
+    background-color: color-mix(in srgb, var(--theme-color-node-category-function) 10%, transparent);
+    color: var(--theme-color-node-category-function);
+    border-color: color-mix(in srgb, var(--theme-color-node-category-function) 30%, transparent);
   }
 }
 
@@ -125,19 +125,19 @@
   font-family: inherit;
 
   &[data-type='string'] {
-    color: #3b82f6;
+    color: var(--theme-color-primary);
   }
 
   &[data-type='number'] {
-    color: #10b981;
+    color: var(--theme-color-success);
   }
 
   &[data-type='boolean'] {
-    color: #f59e0b;
+    color: var(--theme-color-warning);
   }
 
   &[data-type='null'] {
-    color: #6b7280;
+    color: var(--theme-color-fg-muted);
     font-style: italic;
   }
 }
@@ -177,13 +177,13 @@
 
   &:hover {
     background-color: var(--theme-color-primary);
-    color: white;
+    color: var(--theme-color-on-primary);
   }
 }
 
 .AddButton {
   background-color: var(--theme-color-primary);
-  color: white;
+  color: var(--theme-color-on-primary);
   font-size: 11px;
 
   &:hover {
@@ -192,14 +192,14 @@
 }
 
 .DeleteButton {
-  background-color: #dc2626;
-  color: white;
+  background-color: var(--theme-color-danger);
+  color: var(--theme-color-fg-highlight);
   font-size: 14px;
   font-weight: bold;
   line-height: 1;
 
   &:hover {
-    background-color: #b91c1c;
+    background-color: var(--theme-color-danger-dim);
   }
 }
 
@@ -249,7 +249,7 @@
 
     &:first-of-type {
       background-color: var(--theme-color-primary);
-      color: white;
+      color: var(--theme-color-on-primary);
 
       &:hover:not(:disabled) {
         opacity: 0.9;
