@@ -220,6 +220,28 @@ export class WorkflowRunner {
     }
   }
 
+  /**
+   * Invoke a function WITHOUT writing its own execution record. Used by the
+   * WF-001 engine when a function runs as a workflow STEP: the engine writes the
+   * one per-step record, so a nested function-level record here would be a
+   * double-record and break the "one execution-record path" rule. Behaviourally
+   * identical to `run()` minus the logging.
+   */
+  async invokeFunction(functionName: string, request: RunnerRequest): Promise<RunnerResponse> {
+    if (!this.cloudRunner) {
+      return { statusCode: 503, body: JSON.stringify({ error: 'Workflows not initialized' }) };
+    }
+    if (!this.hasFunction(functionName)) {
+      return { statusCode: 404, body: JSON.stringify({ error: `Function '${functionName}' not found` }) };
+    }
+    try {
+      return await this.cloudRunner.run(functionName, request);
+    } catch (e) {
+      const message = e instanceof Error ? e.message : String(e);
+      return { statusCode: 500, body: JSON.stringify({ error: message }) };
+    }
+  }
+
   hasFunction(functionName: string): boolean {
     const fullName = `/#__cloud__/${functionName}`;
     for (const exportData of this.loadedWorkflows.values()) {

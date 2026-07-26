@@ -100,4 +100,38 @@ export class ExecutionHistory {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return (this.store as any).getExecutionWithSteps(executionId);
   }
+
+  /**
+   * Mark an execution failed+interrupted (WF-001 durability recovery). A record
+   * left `running` at service start means the run did not survive the restart;
+   * this is how it becomes a LOUD failure instead of a phantom "running forever"
+   * — never a silent half-run.
+   */
+  markInterrupted(executionId: string, message: string): void {
+    if (!this.store || !executionId) return;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const store = this.store as any;
+    const existing = store.getExecution(executionId) as { metadata?: Record<string, unknown> } | null;
+    const now = Date.now();
+    store.updateExecution(executionId, {
+      status: 'error',
+      completedAt: now,
+      errorMessage: message,
+      metadata: { ...(existing?.metadata || {}), interrupted: true }
+    });
+  }
+
+  /**
+   * Merge extra fields into an execution's metadata WITHOUT changing its status
+   * (WF-001 uses it to stamp the precise engine disposition — cancelled vs
+   * timeout vs unrouted-halt — that the store's success|error status alone can't
+   * express). No-op when history is disabled.
+   */
+  stampMetadata(executionId: string, patch: Record<string, unknown>): void {
+    if (!this.store || !executionId) return;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const store = this.store as any;
+    const existing = store.getExecution(executionId) as { metadata?: Record<string, unknown> } | null;
+    store.updateExecution(executionId, { metadata: { ...(existing?.metadata || {}), ...patch } });
+  }
 }
