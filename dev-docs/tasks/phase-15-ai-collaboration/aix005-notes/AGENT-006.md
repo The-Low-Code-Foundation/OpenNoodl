@@ -416,3 +416,29 @@ errors, cross-store, JSON round trip, validation, listing) · and all three node
   report "drifted" for two structurally equal objects with different key order.
 - **A history is process-global**, like the store and like `Model`. Two `NoodlRuntime`
   instances in one process share it. Consistent with AGENT-003, worth knowing.
+
+---
+
+## 10. A parallel-worktree trap worth recording
+
+Mid-task, `npx tsc --noEmit` in `packages/noodl-runtime` started failing with four errors in
+`src/node.ts` / `src/nodedefinition.ts` — files nothing in this task touches. Cause: **an agent
+worktree has no `node_modules` of its own, so `@noodl/types` resolves up the directory tree
+into the *main checkout's* `packages/noodl-types`**, which a parallel agent had just edited
+(`src/runtime/node-definition.d.ts`, `NodeContextLike` vs `RuntimeNodeContext`). A worktree's
+type-check is therefore not hermetic: it silently grades your code against somebody else's
+uncommitted work.
+
+Fixed locally by symlinking `<worktree>/node_modules/@noodl/types → ../../packages/noodl-types`
+(and `@noodl/runtime` likewise); `tsc` is clean again, and both runs above were made with that
+in place. The symlink is under `node_modules` and so is gitignored — **any future worktree will
+need it created again.**
+
+Two consequences for whoever reads this next:
+
+1. All verification in §8 is against this worktree's own `noodl-types` (cline-dev tip at
+   `a77e32a`).
+2. Whatever change is sitting in the main checkout's `node-definition.d.ts` currently makes
+   `packages/noodl-runtime` fail to type-check *as a whole*, independent of this task. If that
+   change is heading for `cline-dev`, it needs fixing there — it is not something this branch
+   introduced or can fix.
