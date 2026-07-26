@@ -1323,40 +1323,60 @@ div.lesson-content::-webkit-scrollbar-thumb {
     Margin padding view
    ------------------------------------------------------------------- */
 .marginpadding-outer {
-  border: 1px dotted #555;
+  border: 1px dashed var(--theme-color-border-strong);
+  border-radius: var(--radius-lg);
 }
 
 .marginpadding-border {
-  border: 2px solid #777;
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: var(--radius-md);
+  background-color: var(--theme-color-bg-2);
 }
 
 .marginpadding-inner {
-  border: 1px dotted #555;
+  border: 1px dashed var(--theme-color-border-strong);
+  border-radius: var(--radius-md);
+}
+
+/* MARGIN / PADDING section tags */
+.marginpadding-tag {
+  color: var(--theme-color-fg-muted);
+  font: 600 9.5px var(--font-family);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  pointer-events: none;
 }
 
 .marginpadding-label {
-  color: var(--theme-color-fg-default);
-  font: 10px var(--font-family);
-  background-color: var(--theme-color-bg-3);
-  padding: 6px 8px;
+  color: var(--theme-color-fg-muted);
+  font: 11px ui-monospace, 'SF Mono', SFMono-Regular, Menlo, monospace;
+  background-color: var(--theme-color-bg-2);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: var(--radius-sm);
+  padding: 3px 6px;
+  cursor: pointer;
+  transition: color var(--speed-turbo), border-color var(--speed-turbo), background-color var(--speed-turbo);
 }
 
 .marginpadding-label.changed {
   color: var(--theme-color-fg-highlight);
+  border-color: var(--theme-color-border-strong);
 }
 
 .marginpadding-label:hover {
-  color: #eee;
-  background-color: #333;
+  color: var(--theme-color-fg-highlight);
+  border-color: var(--theme-color-primary);
 }
 
 .marginpadding-dim {
-  background-color: #131313;
-  opacity: 0.5;
+  background-color: var(--theme-color-bg-1-transparent-2);
 }
 
 .marginpadding-editbox {
-  background-color: #131313;
+  background-color: var(--theme-color-bg-1);
+  border: 1px solid var(--theme-color-border-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-popup);
 }
 
 /* -------------------------------------------------------------------

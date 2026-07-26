@@ -106,6 +106,7 @@ export function Checkbox({
           className={classNames([
             css['FauxCheckbox'],
             css[`is-size-${checkboxSize}`],
+            isChecked && css['is-checked'],
             Boolean(label) && css['has-right-margin']
           ])}
         >

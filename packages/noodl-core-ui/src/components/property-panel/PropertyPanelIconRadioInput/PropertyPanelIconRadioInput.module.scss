@@ -1,19 +1,23 @@
 .Root {
-  display: flex;
-  margin-left: -3px; // using -3 for visual compensation
+  display: inline-flex;
+  gap: 1px;
+  padding: 2px;
+  background-color: var(--theme-color-bg-2);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: var(--radius-md);
 }
 
 .Option {
   position: relative;
   cursor: pointer;
   user-select: none;
-  display: block;
-  margin-left: 2px;
-  background-color: var(--theme-color-bg-3);
+  background-color: transparent;
+  border-radius: var(--radius-default);
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 2px;
+  padding: 4px 6px;
+  transition: background-color var(--speed-turbo), color var(--speed-turbo);
 
   &:hover {
     svg path {
@@ -26,29 +30,41 @@
     pointer-events: none;
 
     path {
-      fill: var(--theme-color-fg-default);
+      fill: var(--theme-color-fg-muted);
     }
   }
 
+  // Inset active segment: accent-soft bg + accent icon (mock contract).
   &.is-selected {
-    background-color: var(--theme-color-bg-1);
+    background-color: var(--theme-color-primary-bg);
 
     svg {
       path {
-        fill: var(--theme-color-fg-highlight);
+        fill: var(--theme-color-primary);
       }
     }
+  }
+
+  &:focus-within {
+    outline: 2px solid var(--theme-color-focus-ring);
+    outline-offset: 1px;
   }
 
   &.is-disabled {
     cursor: not-allowed;
-    background-color: var(--theme-color-bg-2);
 
     svg {
       path {
         fill: var(--theme-color-fg-muted);
+        opacity: 0.5;
       }
     }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .Option {
+    transition: none;
   }
 }
 

@@ -3,36 +3,62 @@
 
 .Track {
   box-sizing: border-box;
-  height: 24px;
-  width: 42px;
-  border-radius: 12px;
-  background-color: var(--theme-color-bg-3);
+  height: 20px;
+  width: 34px;
+  border-radius: var(--radius-full);
+  background-color: var(--theme-color-bg-4);
   cursor: pointer;
   display: flex;
   align-items: center;
-  padding: 3px;
+  padding: 2.5px;
   margin-left: 8px;
   margin-right: 8px;
-  border: 1px solid var(--theme-color-border-default);
+  border: 1px solid var(--theme-color-border-strong);
+  position: relative;
+  transition: background-color var(--speed-quick) var(--easing-base), border-color var(--speed-quick) var(--easing-base);
+
+  // Keyboard focus lands on the visually-hidden input; surface it on the track.
+  &:focus-within {
+    outline: 2px solid var(--theme-color-focus-ring);
+    outline-offset: 2px;
+  }
+
+  // On state: accent-filled track (mock contract), white knob.
+  &.is-checked {
+    background-color: var(--theme-color-primary);
+    border-color: var(--theme-color-primary);
+  }
 }
 
 .Indicator {
-  width: 18px;
-  height: 18px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
-  background-color: var(--theme-color-bg-3);
+  background-color: var(--theme-color-fg-highlight);
+  box-shadow: var(--shadow-sm);
   transition: transform var(--speed-quick) var(--easing-base), background-color var(--speed-quick) var(--easing-base);
 
-  &.is-checked {
-    transform: translateX(100%);
+  .Track.is-checked & {
+    transform: translateX(14px);
   }
 
-  &.is-always-active-color,
-  &.is-checked {
-    background-color: var(--theme-color-secondary-bright);
+  &.is-checked,
+  &.is-always-active-color {
+    background-color: var(--base-color-neutral-1000);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .Track,
+  .Indicator {
+    transition: none;
   }
 }
 
 .Input {
-  display: none;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
 }

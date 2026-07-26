@@ -19,8 +19,11 @@
   align-items: center;
   width: length.$property-panel-input-size;
   height: length.$property-panel-input-size;
-  background-color: var(--theme-color-bg-3);
+  background-color: var(--theme-color-bg-2);
+  border: 1.5px solid var(--theme-color-border-strong);
+  border-radius: var(--radius-default);
   cursor: pointer;
+  transition: background-color var(--speed-turbo), border-color var(--speed-turbo);
 
   svg {
     pointer-events: none;
@@ -30,22 +33,36 @@
     }
   }
 
+  // Accent-filled on-state with a legible check.
+  &.is-checked {
+    background-color: var(--theme-color-primary);
+    border-color: var(--theme-color-primary);
+
+    svg path {
+      stroke: var(--theme-color-on-primary);
+    }
+  }
+
   &.is-connected {
     outline: 1px solid var(--theme-color-primary-dim);
   }
 
-  &.is-changed,
-  &:hover {
-    svg path {
-      stroke: var(--theme-color-fg-highlight);
-    }
+  &:hover:not(.is-checked) {
+    border-color: var(--theme-color-primary);
   }
 
-  .Checkbox:focus + & {
-    background-color: var(--theme-color-bg-1);
+  &.is-changed:not(.is-checked) svg path {
+    stroke: var(--theme-color-fg-highlight);
+  }
 
-    svg path {
-      stroke: var(--theme-color-fg-highlight);
-    }
+  .Checkbox:focus-visible + & {
+    outline: 2px solid var(--theme-color-focus-ring);
+    outline-offset: 1px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .FauxCheckbox {
+    transition: none;
   }
 }

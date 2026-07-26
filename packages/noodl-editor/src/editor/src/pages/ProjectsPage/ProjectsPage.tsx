@@ -436,7 +436,9 @@ export function ProjectsPage(props: ProjectsPageProps) {
       ToastLayer.hideActivity(activityId);
 
       if (!loaded) {
-        ToastLayer.showError('Could not load project');
+        ToastLayer.showError('Its project.json is missing or unreadable. The project stays in your list — fix the file and try again.', {
+          title: 'Could not load project'
+        });
       } else {
         props.route.router.route({ to: 'editor', project: loaded });
       }
@@ -498,7 +500,9 @@ export function ProjectsPage(props: ProjectsPageProps) {
         ToastLayer.hideActivity(activityId);
 
         if (!loaded) {
-          ToastLayer.showError('Could not load project');
+          ToastLayer.showError('Its project.json is missing or unreadable. The project stays in your list — fix the file and try again.', {
+            title: 'Could not load project'
+          });
         } else {
           // Navigate to editor with the loaded project
           props.route.router.route({ to: 'editor', project: loaded });
