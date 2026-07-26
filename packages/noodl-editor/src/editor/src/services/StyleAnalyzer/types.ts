@@ -38,8 +38,25 @@ export interface ElementReference {
 export interface RepeatedValue {
   /** The literal value (e.g. '#3b82f6', '16px') */
   value: string;
-  /** Number of elements using this value */
+  /**
+   * Number of DISTINCT elements (nodes) using this value — what the threshold
+   * is measured against and what the banner reports.
+   *
+   * PLAT-005: this used to be `elements.length`, i.e. the number of
+   * property/value *occurrences*. One node with `paddingTop/Right/Bottom/Left:
+   * 16px` therefore counted as 4 and produced the message "16px is used in 4
+   * elements", which was false and let a single node trip a threshold that was
+   * meant to require three. Occurrences are still available as `occurrences`.
+   */
   count: number;
+  /**
+   * Total property/value occurrences — always >= `count`.
+   *
+   * Optional so that the hand-built `RepeatedValue` literals in the existing
+   * specs (and in the AI authoring-lint specs, which a parallel session owns)
+   * keep compiling. `analyzeNodes` always populates it.
+   */
+  occurrences?: number;
   /** All element/property pairs that have this value */
   elements: ElementReference[];
   /**

@@ -148,9 +148,11 @@ describe('StyleAnalyzer', () => {
     });
 
     it('does NOT flag zero — 0 is universally used and not worth tokenising', () => {
-      // '0' is technically a valid spacing value but would create noise
-      // Our regex requires px/rem/em suffix OR it's just a number
-      // This test ensures we understand the current behaviour
+      // This spec previously asserted the OPPOSITE of its own name: it expected
+      // toHaveSize(1) and carried the comment "In future we may want to
+      // suppress this specific case". PLAT-005 is that future — a
+      // `--spacing-0px` token is meaningless and rewriting every zero in a
+      // project to `var(--spacing-0px)` is a net loss.
       resetNodes(
         makeNode('n1', 'Group', { paddingTop: '0px' }),
         makeNode('n2', 'Group', { paddingTop: '0px' }),
@@ -158,9 +160,7 @@ describe('StyleAnalyzer', () => {
       );
 
       const result = StyleAnalyzer.analyzeProject();
-      // '0px' IS a raw spacing value — currently flagged. This is expected.
-      // In future we may want to suppress this specific case.
-      expect(result.repeatedSpacing).toHaveSize(1);
+      expect(result.repeatedSpacing).toHaveSize(0);
     });
   });
 
