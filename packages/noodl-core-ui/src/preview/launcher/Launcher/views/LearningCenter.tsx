@@ -27,7 +27,7 @@ export function LearningCenter({}: LearningCenterViewProps) {
   const hasLessons = lessons && lessons.length > 0;
 
   return (
-    <LauncherPage title="Learning Center">
+    <LauncherPage title="Learning center">
       <Box hasXSpacing hasYSpacing>
         <Box hasBottomSpacing>
           <Text textType={TextType.Shy}>

@@ -8,21 +8,16 @@
 
 import React from 'react';
 
-import { Box } from '@noodl-core-ui/components/layout/Box';
-import { Text, TextType } from '@noodl-core-ui/components/typography/Text';
-import { Title, TitleSize } from '@noodl-core-ui/components/typography/Title';
+import { LauncherPage } from '@noodl-core-ui/preview/launcher/Launcher/components/LauncherPage';
 
 export interface TemplatesViewProps {}
 
 export function Templates({}: TemplatesViewProps) {
   return (
-    <Box hasXSpacing hasYSpacing>
-      <Box hasBottomSpacing>
-        <Title size={TitleSize.Large}>Templates</Title>
-      </Box>
-      <div style={{ color: 'var(--theme-color-fg-default-shy)' }}>
+    <LauncherPage title="Templates">
+      <div style={{ color: 'var(--theme-color-fg-muted)', fontSize: 13 }}>
         Project templates will be displayed here. This feature is coming soon!
       </div>
-    </Box>
+    </LauncherPage>
   );
 }

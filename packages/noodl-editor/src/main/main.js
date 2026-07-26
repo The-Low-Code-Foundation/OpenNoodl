@@ -275,6 +275,11 @@ function launchApp() {
       minWidth: 600,
       minHeight: 300,
       titleBarStyle: 'hidden',
+      // PAR-001: inset the macOS traffic lights so they sit vertically centered
+      // inside the unified 52px DOM titlebar (launcher AND editor mocks both use
+      // a 52px bar). The launcher header reserves a 120px lights region so the
+      // wordmark never renders under the lights. Ignored on Windows/Linux.
+      trafficLightPosition: { x: 20, y: 20 },
       webPreferences: {
         nodeIntegration: true,
         contextIsolation: false,

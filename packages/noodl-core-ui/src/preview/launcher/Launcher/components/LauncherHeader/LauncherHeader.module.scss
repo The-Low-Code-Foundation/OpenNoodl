@@ -11,6 +11,18 @@
   padding: 0 20px;
   background: var(--theme-color-bg-1);
   border-bottom: 1px solid var(--theme-color-border-default);
+  /* Frameless window: the titlebar is the drag surface (interactive children
+     opt out below). */
+  -webkit-app-region: drag;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Reserved region for the inset macOS traffic lights (PAR-001) — the wordmark
+   starts after it, never under the lights. Rendered on macOS only. */
+.Lights {
+  width: 120px;
+  flex: none;
 }
 
 /* NodeGX wordmark — display face + coral brand dot (its only sanctioned use). */
@@ -36,9 +48,10 @@
 .Tabs {
   display: flex;
   gap: 4px;
-  margin-left: 12px;
+  margin-left: 28px;
   align-self: stretch;
   align-items: stretch;
+  -webkit-app-region: no-drag;
 }
 
 .Tab {
@@ -89,6 +102,7 @@
   display: flex;
   align-items: center;
   gap: 12px;
+  -webkit-app-region: no-drag;
 }
 
 .Avatar {
@@ -100,13 +114,12 @@
   justify-content: center;
   font-size: 11px;
   font-weight: 600;
-  color: var(--theme-color-on-primary);
-  background: linear-gradient(135deg, var(--theme-color-primary-dim), var(--theme-color-primary));
+  color: var(--theme-color-avatar-fg);
+  background: var(--theme-color-avatar-gradient);
 
+  /* No user identity: neutral person glyph on the SAME gradient (per PAR-001 —
+     never invent initials). */
   &.is-anonymous {
-    color: var(--theme-color-fg-muted);
-    background: var(--theme-color-bg-3);
-
     svg {
       fill: none;
       stroke: currentColor;

@@ -66,8 +66,11 @@
   --radius-none: 0;
   --radius-sm: 2px;
   --radius-default: 4px;
+  --radius-5: 5px; /* PAR-001: mock chip/close radius */
   --radius-md: 6px;
+  --radius-7: 7px; /* PAR-001: mock button/side-item radius */
   --radius-lg: 8px;
+  --radius-10: 10px; /* PAR-001: mock card/toast radius */
   --radius-xl: 12px;
   --radius-2xl: 16px;
   --radius-3xl: 24px;
@@ -87,6 +90,12 @@
   /* Dialog/popup shadow */
   --shadow-popup: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 10px 15px -3px rgba(0, 0, 0, 0.2),
     0 20px 25px -5px rgba(0, 0, 0, 0.15);
+
+  /* Card + toast shadows (PAR-001) — mock-normative dark values; light values in
+     the [data-theme='light'] block below. */
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-card-hover: 0 10px 28px rgba(0, 0, 0, 0.38);
+  --shadow-toast: 0 12px 44px rgba(0, 0, 0, 0.6);
 
   /* ---------------------------------------------------------------------------
      TRANSITIONS
@@ -128,4 +137,7 @@
   --shadow-2xl: 0 24px 70px rgba(23, 32, 43, 0.18), 0 2px 8px rgba(23, 32, 43, 0.08);
   --shadow-inner: inset 0 2px 4px rgba(23, 32, 43, 0.06);
   --shadow-popup: 0 10px 32px rgba(23, 32, 43, 0.16), 0 2px 8px rgba(23, 32, 43, 0.08);
+  --shadow-card: 0 1px 2px rgba(23, 32, 43, 0.05);
+  --shadow-card-hover: 0 8px 24px rgba(23, 32, 43, 0.1);
+  --shadow-toast: 0 12px 40px rgba(23, 32, 43, 0.22);
 }

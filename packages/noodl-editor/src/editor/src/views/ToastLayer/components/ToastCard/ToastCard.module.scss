@@ -8,11 +8,11 @@
   width: 340px;
   max-width: 50vw;
   padding: 13px 14px;
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-10);
   background-color: var(--theme-color-bg-1);
   border: 1px solid var(--theme-color-border-default);
   color: var(--theme-color-fg-highlight);
-  box-shadow: var(--shadow-popup);
+  box-shadow: var(--shadow-toast);
   overflow: hidden;
   animation: show 300ms animation.$easing-base both;
 }
@@ -123,7 +123,7 @@
   cursor: pointer;
   width: 22px;
   height: 22px;
-  border-radius: var(--radius-default);
+  border-radius: var(--radius-5);
   display: flex;
   align-items: center;
   justify-content: center;

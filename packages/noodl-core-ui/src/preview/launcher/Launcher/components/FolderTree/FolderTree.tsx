@@ -9,7 +9,6 @@
 
 import React, { useState } from 'react';
 
-import { Icon, IconName, IconSize } from '@noodl-core-ui/components/common/Icon';
 import { FolderTreeItem } from '@noodl-core-ui/preview/launcher/Launcher/components/FolderTreeItem';
 import { Folder, useProjectOrganization } from '@noodl-core-ui/preview/launcher/Launcher/hooks/useProjectOrganization';
 
@@ -129,11 +128,14 @@ export function FolderTree({
 
   return (
     <div className={css['Root']}>
+      {/* Mock FOLDERS side-label (PAR-001) */}
+      <div className={css['SideLabel']}>Folders</div>
+
       {/* Virtual Folders */}
       <div className={css['VirtualFolders']}>
         {/* All Projects */}
         <FolderTreeItem
-          folder={{ id: 'all', name: 'All Projects', parentId: null, order: 0, createdAt: '' }}
+          folder={{ id: 'all', name: 'All projects', parentId: null, order: 0, createdAt: '' }}
           projectCount={totalProjectCount}
           isSelected={selectedFolderId === null}
           onClick={() => onFolderSelect(null)}
@@ -220,6 +222,9 @@ export function FolderTree({
         })}
       </div>
 
+      {/* Spacer — pins "New folder" to the bottom (mock .grow) */}
+      <div className={css['Grow']} />
+
       {/* New Folder Button */}
       {isCreatingFolder ? (
         <div className={css['CreateFolderInput']}>
@@ -235,15 +240,26 @@ export function FolderTree({
               }
             }}
             onBlur={handleCreateFolderSubmit}
-            placeholder="Folder name..."
+            placeholder="Folder name…"
             autoFocus
             className={css['CreateFolderInputField']}
           />
         </div>
       ) : (
         <button className={css['NewFolderButton']} onClick={handleCreateFolder}>
-          <Icon icon={IconName.Plus} size={IconSize.Small} UNSAFE_className={css['NewFolderIcon']} />
-          <span className={css['NewFolderLabel']}>New Folder</span>
+          <svg
+            width="15"
+            height="15"
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            aria-hidden="true"
+          >
+            <path d="M8 3.5v9M3.5 8h9" />
+          </svg>
+          <span className={css['NewFolderLabel']}>New folder</span>
         </button>
       )}
 
@@ -252,7 +268,7 @@ export function FolderTree({
         <div className={css['DeleteConfirmation']}>
           <div className={css['DeleteConfirmationBackdrop']} onClick={handleDeleteFolderCancel} />
           <div className={css['DeleteConfirmationDialog']}>
-            <div className={css['DeleteConfirmationTitle']}>Delete Folder</div>
+            <div className={css['DeleteConfirmationTitle']}>Delete folder</div>
             <div className={css['DeleteConfirmationMessage']}>
               {getProjectCountInFolder(deletingFolder.id) > 0
                 ? `Delete "${deletingFolder.name}"? ${getProjectCountInFolder(

@@ -1,0 +1,94 @@
+/**
+ * LauncherSearchBar - mock toolbar-row styling (PAR-001)
+ */
+
+.Root {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 22px;
+}
+
+.Search {
+  flex: 1;
+  max-width: 380px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  background: var(--theme-color-bg-1);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: var(--radius-lg);
+  padding: 8px 12px;
+  color: var(--theme-color-fg-muted);
+
+  &:focus-within {
+    border-color: var(--theme-color-primary);
+  }
+
+  svg {
+    flex: none;
+  }
+}
+
+.SearchInput {
+  border: 0;
+  background: none;
+  outline: none;
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-family);
+  font-size: 13px;
+  color: var(--theme-color-fg-highlight);
+
+  &::placeholder {
+    color: var(--theme-color-fg-muted);
+  }
+}
+
+.Kbd {
+  font-family: var(--font-family-code);
+  font-size: 10.5px;
+  background: var(--theme-color-bg-3);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: var(--radius-default);
+  padding: 1.5px 5px;
+  color: var(--theme-color-fg-muted);
+}
+
+/* The sort/filter select: same box treatment as the search, native <select>
+   underneath for keyboard/AT support, chevron drawn by us. */
+.Select {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--theme-color-bg-1);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: var(--radius-lg);
+  padding: 8px 12px;
+  color: var(--theme-color-fg-default);
+  font-weight: 500;
+  cursor: pointer;
+
+  &:focus-within {
+    border-color: var(--theme-color-primary);
+  }
+
+  svg {
+    flex: none;
+    pointer-events: none;
+  }
+}
+
+.SelectInput {
+  appearance: none;
+  -webkit-appearance: none;
+  border: 0;
+  background: none;
+  outline: none;
+  font-family: var(--font-family);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--theme-color-fg-default);
+  cursor: pointer;
+  padding: 0;
+}
