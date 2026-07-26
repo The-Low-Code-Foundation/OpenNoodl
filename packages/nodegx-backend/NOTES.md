@@ -268,3 +268,27 @@ unreachable backend degrades to local-only, never an error.
   a not-yet-created table is a SQL error, not an empty result).
 - File serving derives content type from the extension (no sidecar metadata) —
   recorded simplification.
+
+## BAK-007 — snapshot mechanism (verified at runtime)
+
+Two consistent-snapshot mechanisms were probed against the real engine
+(`node:sqlite`, Node **v22.22.0**) before anything was built on them:
+
+- **Online backup API** — `require('node:sqlite').backup(sourceDb, dest)` is
+  **present and working** (returns the number of pages copied). It is a
+  MODULE-level function; the instance method `db.backup` is `undefined`. This is
+  the equivalent of `better-sqlite3.backup()`.
+- **`VACUUM INTO '<path>'`** — also present and working.
+
+**Choice:** prefer the online API (feature-detected via
+`typeof sqlite.backup === 'function'`), fall back to `VACUUM INTO` otherwise.
+The floor `engines.node >= 22.13` predates the `backup()` function (added later),
+so an in-range deploy can lack it — hence the fallback is real, not theoretical.
+Both are WAL-correct: the snapshot is taken from a **fresh read connection** on
+the db file, which sees all committed data and never an uncommitted transaction,
+so a snapshot cannot capture a torn record. We snapshot from a fresh connection
+rather than the adapter's live handle because the adapter wraps `DatabaseSync` in
+a better-sqlite3-shaped shim (engine.js `wrapNodeSqlite`) that does not expose
+the raw handle the online API needs — and a fresh read connection is the
+canonical online-backup source anyway. The chosen mechanism is recorded per
+archive in `manifest.snapshotMechanism`.
