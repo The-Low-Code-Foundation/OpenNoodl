@@ -184,11 +184,15 @@ export class NodeLibraryImporter {
       // @ts-ignore
       window.NodeLibraryData = exportJSON;
 
-      if (this.clients.count >= 2) {
-        console.debug('[nodelib] Loaded new node library');
-        if (removedNodes.length > 0) console.debug('[nodelib] Removed nodes: ', removedNodes);
-        NodeLibrary.instance.reload();
-      }
+      // Reload as soon as any client has delivered a library. This used to
+      // wait for two clients (browser viewer + the hidden cloud-runtime
+      // sandbox), but WF-007 removed the cloud sandbox — with the gate in
+      // place the library never loaded and every node graph painted blank.
+      // If a cloud runtime ever reconnects, its import merges and triggers
+      // another reload here.
+      console.debug('[nodelib] Loaded new node library');
+      if (removedNodes.length > 0) console.debug('[nodelib] Removed nodes: ', removedNodes);
+      NodeLibrary.instance.reload();
     }
   }
 
