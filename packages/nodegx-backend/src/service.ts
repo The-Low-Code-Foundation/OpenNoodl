@@ -58,7 +58,15 @@ export interface StartedService {
   persistence: PersistenceHandle;
   executionHistory: ExecutionHistoryStatus;
   workflows: { initialized: boolean; workflowCount: number };
-  security: { devOpen: boolean; enforced: boolean; migratedThisStart: boolean };
+  security: {
+    devOpen: boolean;
+    enforced: boolean;
+    migratedThisStart: boolean;
+    /** BAK-005: the admin credential was auto-minted on this start (first-run surface). */
+    adminTokenMintedThisStart: boolean;
+    /** BAK-005: a read-only admin credential is provisioned. */
+    hasReadonlyTier: boolean;
+  };
   stop(): Promise<void>;
 }
 
@@ -109,6 +117,7 @@ export class BackendService {
       dataDir: this.options.dataDir,
       loopback: !requiresAuth(this.options),
       cliToken: this.options.authToken,
+      readonlyToken: this.options.readonlyToken,
       facade: this.facade
     });
     if (!this.security.config.devOpen && this.persistence.status.ephemeral) {
@@ -281,7 +290,9 @@ export class BackendService {
       security: {
         devOpen: this.security.config.devOpen,
         enforced: !this.security.devOpenActive,
-        migratedThisStart: this.security.migratedThisStart
+        migratedThisStart: this.security.migratedThisStart,
+        adminTokenMintedThisStart: this.security.adminTokenMintedThisStart,
+        hasReadonlyTier: this.security.adminReadonlyToken !== null
       },
       stop: () => this.stop()
     };

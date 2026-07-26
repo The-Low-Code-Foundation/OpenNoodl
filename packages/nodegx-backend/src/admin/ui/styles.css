@@ -1,0 +1,530 @@
+/*
+ * Admin dashboard stylesheet (BAK-005).
+ *
+ * Inlined into the served document by AdminDashboardRoutes (esbuild's `text`
+ * loader). Deliberately hand-written and dependency-free — see BAK-005-NOTES
+ * for why the editor's @noodl-core-ui components are NOT reused here.
+ *
+ * The palette below is a COPY of the phase-23 design tokens (UIX-001), not an
+ * import: this package has no dependency on noodl-core-ui and must not grow
+ * one. The copy is small and stable; the phase law it must keep is the one
+ * that matters — azure is the action accent, RED IS DANGER ONLY.
+ */
+
+:root {
+  --bg-page: #07090c;
+  --bg-0: #0b0e12;
+  --bg-1: #12161b;
+  --bg-2: #181d24;
+  --bg-3: #222933;
+  --bg-4: #2c3540;
+
+  --fg-hi: #eef2f6;
+  --fg: #a6b0bb;
+  --fg-shy: #8b95a1;
+  --fg-muted: #6b7682;
+
+  --primary: #4da3ff;
+  --primary-hi: #74b8ff;
+  --primary-dim: #1f6bc4;
+  --primary-bg: rgba(77, 163, 255, 0.13);
+  --on-primary: #071627;
+
+  --success: #3ccb7f;
+  --success-bg: rgba(60, 203, 127, 0.12);
+  --warning: #fdb022;
+  --warning-bg: rgba(253, 176, 34, 0.12);
+  --danger: #f97066;
+  --danger-bg: rgba(249, 112, 102, 0.12);
+
+  --radius: 6px;
+  --mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+  --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+}
+
+body {
+  background: var(--bg-page);
+  color: var(--fg);
+  font: 13px/1.5 var(--sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: var(--primary);
+}
+
+code,
+.mono {
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+/* ---------------------------------------------------------------- layout -- */
+
+#app {
+  display: grid;
+  grid-template-columns: 208px 1fr;
+  grid-template-rows: 44px 1fr;
+  grid-template-areas: 'brand top' 'nav main';
+  height: 100%;
+}
+
+.brand {
+  grid-area: brand;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 14px;
+  background: var(--bg-1);
+  border-bottom: 1px solid var(--bg-3);
+  border-right: 1px solid var(--bg-3);
+}
+
+.brand b {
+  color: var(--fg-hi);
+  font-size: 13px;
+  letter-spacing: 0.2px;
+}
+
+.brand .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--primary);
+}
+
+.topbar {
+  grid-area: top;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 14px;
+  background: var(--bg-1);
+  border-bottom: 1px solid var(--bg-3);
+}
+
+.topbar .spacer {
+  flex: 1;
+}
+
+nav {
+  grid-area: nav;
+  background: var(--bg-1);
+  border-right: 1px solid var(--bg-3);
+  overflow-y: auto;
+  padding: 8px 0 24px;
+}
+
+nav .group {
+  padding: 14px 14px 4px;
+  color: var(--fg-muted);
+  font-size: 10px;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+}
+
+nav button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 6px 14px;
+  border: 0;
+  border-left: 2px solid transparent;
+  background: none;
+  color: var(--fg);
+  font: inherit;
+  cursor: pointer;
+}
+
+nav button:hover {
+  background: var(--bg-2);
+  color: var(--fg-hi);
+}
+
+nav button[aria-current='true'] {
+  background: var(--primary-bg);
+  border-left-color: var(--primary);
+  color: var(--fg-hi);
+}
+
+main {
+  grid-area: main;
+  overflow: auto;
+  padding: 18px 20px 60px;
+  background: var(--bg-0);
+}
+
+h1 {
+  margin: 0 0 4px;
+  color: var(--fg-hi);
+  font-size: 17px;
+  font-weight: 600;
+}
+
+h2 {
+  margin: 22px 0 8px;
+  color: var(--fg-hi);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.sub {
+  margin: 0 0 16px;
+  color: var(--fg-muted);
+  max-width: 76ch;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.card {
+  background: var(--bg-1);
+  border: 1px solid var(--bg-3);
+  border-radius: var(--radius);
+  padding: 14px;
+  margin-bottom: 14px;
+}
+
+.grid2 {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 10px;
+}
+
+/* ------------------------------------------------------------- controls -- */
+
+button.btn {
+  padding: 5px 11px;
+  border: 1px solid var(--bg-4);
+  border-radius: var(--radius);
+  background: var(--bg-2);
+  color: var(--fg-hi);
+  font: inherit;
+  cursor: pointer;
+}
+
+button.btn:hover:not(:disabled) {
+  background: var(--bg-3);
+}
+
+button.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+button.btn.primary {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--on-primary);
+  font-weight: 600;
+}
+
+button.btn.primary:hover:not(:disabled) {
+  background: var(--primary-hi);
+  border-color: var(--primary-hi);
+}
+
+/* Destructive only. Nothing else in this stylesheet may use --danger. */
+button.btn.danger {
+  border-color: var(--danger);
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+button.btn.tiny {
+  padding: 2px 7px;
+  font-size: 11px;
+}
+
+input,
+select,
+textarea {
+  padding: 5px 8px;
+  border: 1px solid var(--bg-4);
+  border-radius: var(--radius);
+  background: var(--bg-2);
+  color: var(--fg-hi);
+  font: inherit;
+}
+
+textarea {
+  font-family: var(--mono);
+  font-size: 12px;
+  width: 100%;
+  min-height: 90px;
+  resize: vertical;
+}
+
+input:focus,
+select:focus,
+textarea:focus,
+button:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}
+
+label.field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 11px;
+  color: var(--fg-muted);
+}
+
+label.field > input,
+label.field > select {
+  color: var(--fg-hi);
+}
+
+label.check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--fg);
+}
+
+/* ---------------------------------------------------------------- table -- */
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.scroller {
+  overflow-x: auto;
+  border: 1px solid var(--bg-3);
+  border-radius: var(--radius);
+  background: var(--bg-1);
+}
+
+th {
+  position: sticky;
+  top: 0;
+  background: var(--bg-2);
+  color: var(--fg-shy);
+  text-align: left;
+  font-weight: 600;
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--bg-3);
+  white-space: nowrap;
+}
+
+td {
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--bg-2);
+  color: var(--fg);
+  max-width: 340px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--mono);
+  font-size: 11.5px;
+}
+
+tbody tr:hover td {
+  background: var(--bg-2);
+}
+
+td.actions {
+  white-space: nowrap;
+  font-family: var(--sans);
+}
+
+.empty {
+  padding: 22px;
+  text-align: center;
+  color: var(--fg-muted);
+}
+
+/* ---------------------------------------------------------------- chips -- */
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--bg-4);
+  background: var(--bg-2);
+  color: var(--fg-shy);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.chip.ok {
+  border-color: transparent;
+  background: var(--success-bg);
+  color: var(--success);
+}
+
+.chip.warn {
+  border-color: transparent;
+  background: var(--warning-bg);
+  color: var(--warning);
+}
+
+.chip.bad {
+  border-color: transparent;
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+.chip.accent {
+  border-color: transparent;
+  background: var(--primary-bg);
+  color: var(--primary);
+}
+
+/* -------------------------------------------------------------- notices -- */
+
+.notice {
+  border-left: 3px solid var(--fg-muted);
+  border-radius: 3px;
+  padding: 9px 12px;
+  margin-bottom: 14px;
+  background: var(--bg-1);
+  color: var(--fg);
+}
+
+.notice.warn {
+  border-left-color: var(--warning);
+  background: var(--warning-bg);
+}
+
+.notice.bad {
+  border-left-color: var(--danger);
+  background: var(--danger-bg);
+}
+
+.notice.accent {
+  border-left-color: var(--primary);
+  background: var(--primary-bg);
+}
+
+.notice b {
+  color: var(--fg-hi);
+}
+
+/* --------------------------------------------------------------- toasts -- */
+
+#toasts {
+  position: fixed;
+  right: 14px;
+  bottom: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 60;
+  max-width: 420px;
+}
+
+.toast {
+  padding: 9px 12px;
+  border-radius: var(--radius);
+  border: 1px solid var(--bg-4);
+  background: var(--bg-2);
+  color: var(--fg-hi);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+  white-space: pre-wrap;
+}
+
+.toast.ok {
+  border-color: var(--success);
+}
+
+.toast.bad {
+  border-color: var(--danger);
+}
+
+/* --------------------------------------------------------------- modals -- */
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(4, 6, 9, 0.72);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  padding: 20px;
+}
+
+.modal {
+  width: min(620px, 100%);
+  max-height: 86vh;
+  overflow: auto;
+  background: var(--bg-1);
+  border: 1px solid var(--bg-4);
+  border-radius: 8px;
+  padding: 18px;
+}
+
+.modal h3 {
+  margin: 0 0 10px;
+  color: var(--fg-hi);
+  font-size: 14px;
+}
+
+.modal .foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+/* ---------------------------------------------------------------- login -- */
+
+#login {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-page);
+  z-index: 70;
+  padding: 20px;
+}
+
+#login form {
+  width: min(420px, 100%);
+  background: var(--bg-1);
+  border: 1px solid var(--bg-3);
+  border-radius: 8px;
+  padding: 22px;
+}
+
+#login h1 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+#login .field-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+#login input {
+  flex: 1;
+}
+
+.hidden {
+  display: none !important;
+}

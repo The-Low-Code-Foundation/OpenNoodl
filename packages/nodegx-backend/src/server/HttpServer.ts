@@ -50,6 +50,10 @@ import { EmailRoutes } from './email-routes';
 import { FileRoutes } from './files';
 import { ParseWireRoutes } from './parse-wire';
 import { UserRoutes } from './users';
+import { AdminDashboardRoutes, DashboardFeatures } from '../admin/AdminDashboardRoutes';
+import { AuthAttemptLimiter } from '../admin/auth';
+import { readonlyAdminMayCall, readonlyRefusalMessage } from '../admin/readonly';
+import { clientKey } from './rate-limit';
 import { CORS_HEADERS, HttpError, parseURL, readJSONBody, readRawBody, sendError, sendJSON } from './http-util';
 
 // ============================================================================
@@ -157,6 +161,10 @@ export class HttpServer {
   private readonly adminBackups: AdminBackupRoutes;
   private readonly email: EmailRoutes;
   private readonly adminEmail: AdminEmailRoutes;
+  /** BAK-005's dashboard, or null when `--no-admin` removed it entirely. */
+  private readonly dashboard: AdminDashboardRoutes | null;
+  /** BAK-005: failure budget in front of the one credential check. */
+  private readonly authLimiter = new AuthAttemptLimiter();
   private readonly routes: RouteDef[];
 
   constructor(deps: HttpServerDeps) {
@@ -190,7 +198,38 @@ export class HttpServer {
       dataDir: deps.options.dataDir
     });
     this.adminEmail = new AdminEmailRoutes(deps.emailConfig, deps.mailer);
+    this.dashboard = deps.options.adminDashboard
+      ? new AdminDashboardRoutes({
+          options: deps.options,
+          security: deps.security,
+          features: () => this.dashboardFeatures(deps)
+        })
+      : null;
     this.routes = this.buildRoutes();
+  }
+
+  /**
+   * Which dashboard sections this build can actually serve. Derived from the
+   * subsystems the composition root wired in, not from a constant — a service
+   * started without workflows, or whose execution-history database refused to
+   * open, hides those tabs instead of serving ones that 503 (loud failure, in
+   * its quiet form: absent rather than broken).
+   */
+  private dashboardFeatures(deps: HttpServerDeps): DashboardFeatures {
+    return {
+      collections: true,
+      schema: Boolean(deps.facade.schemaManager),
+      users: true,
+      roles: Boolean(deps.facade.schemaManager),
+      permissions: true,
+      apiKeys: true,
+      triggers: Boolean(deps.triggers),
+      workflows: Boolean(deps.workflows),
+      executions: deps.executions.getStatus().enabled,
+      email: Boolean(deps.emailConfig),
+      backups: Boolean(deps.backups),
+      realtime: Boolean(deps.realtime)
+    };
   }
 
   /** The full route table (method/pattern/access) — the route-walk test's input. */
@@ -681,7 +720,26 @@ export class HttpServer {
         pattern: 'admin/email/templates/:id/preview',
         access: { kind: 'admin' },
         handler: (ctx) => adminEmail.previewTemplate(ctx)
-      }
+      },
+
+      // ---- The served admin dashboard (BAK-005) ---------------------------
+      // Empty when `--no-admin` was passed: the route is absent, not disabled.
+      ...this.dashboardRoutes()
+    ];
+  }
+
+  /**
+   * BAK-005's two routes. The document is `public` BY DESIGN — it is the login
+   * page, it contains no backend state, and every byte of data it later shows
+   * comes from the admin-gated routes above. `whoami` is admin-gated, so
+   * reaching it is what proves the credential.
+   */
+  private dashboardRoutes(): RouteDef[] {
+    if (!this.dashboard) return [];
+    const dashboard = this.dashboard;
+    return [
+      { method: 'GET', pattern: '_admin', access: { kind: 'public' }, handler: (ctx) => dashboard.serve(ctx) },
+      { method: 'GET', pattern: '_admin/whoami', access: { kind: 'admin' }, handler: (ctx) => dashboard.whoami(ctx) }
     ];
   }
 
@@ -738,7 +796,33 @@ export class HttpServer {
 
     // Step 1: principal. Invalid credentials are hard errors (401 / 400+209),
     // never a silent downgrade to anonymous — that includes dev-open mode.
-    const principal = await this.security.resolvePrincipal(req);
+    //
+    // BAK-005 wraps that one check in a per-client failure budget: the served
+    // dashboard makes the admin credential something typed into a form on a
+    // reachable URL, so online guessing is now a real attack. Only failures
+    // count, and the refusal is a plain 429 — it reveals nothing about which
+    // credential was wrong.
+    const authBucket = clientKey(req as unknown as { headers: Record<string, unknown>; socket?: { remoteAddress?: string } });
+    if (this.authLimiter.isLockedOut(authBucket)) {
+      const retryAfter = this.authLimiter.retryAfterSeconds(authBucket);
+      res.setHeader('Retry-After', String(retryAfter));
+      throw new HttpError(429, `Too many failed credential attempts. Try again in ${retryAfter}s.`);
+    }
+    let principal: Principal;
+    try {
+      principal = await this.security.resolvePrincipal(req);
+    } catch (e) {
+      this.authLimiter.recordFailure(authBucket);
+      throw e;
+    }
+
+    // BAK-005 read-only tier: refuse every state-changing request from a
+    // read-only admin BEFORE the handler runs. Coarse by design — a route added
+    // later is refused by default if it mutates, so the tier's promise does not
+    // depend on anyone remembering to annotate it. See ../admin/readonly.
+    if (principal.kind === 'admin' && principal.readonly && !readonlyAdminMayCall(method, route.pattern)) {
+      throw new HttpError(403, readonlyRefusalMessage(method, route.pattern), 119);
+    }
 
     // Pre-read the body only where the operation itself depends on it
     // (Parse's POST /classes query tunnelling).

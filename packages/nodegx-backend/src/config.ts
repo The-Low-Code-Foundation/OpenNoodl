@@ -45,6 +45,19 @@ export interface BackendServiceOptions {
    */
   backendId: string;
   backendName: string;
+  /**
+   * BAK-005: serve the admin dashboard at `/_admin`. `--no-admin` sets this
+   * false, and then the route is not registered AT ALL — the URL 404s exactly
+   * like any other unknown path, so an operator who disabled it cannot learn
+   * from the response that there was ever a dashboard to disable.
+   */
+  adminDashboard: boolean;
+  /**
+   * BAK-005: the read-only admin credential ("look, don't touch"). Provisioned
+   * with `--readonly-token`; never auto-minted, so a backend has this tier only
+   * when an operator asks for one. Persisted in secrets.json beside adminToken.
+   */
+  readonlyToken: string | null;
 }
 
 /** Non-loopback bind => a token is mandatory. */
@@ -65,7 +78,9 @@ const DEFAULTS: BackendServiceOptions = {
   authToken: null,
   allowEphemeral: false,
   backendId: 'nodegx-backend',
-  backendName: 'NodeGX Backend'
+  backendName: 'NodeGX Backend',
+  adminDashboard: true,
+  readonlyToken: null
 };
 
 /**
