@@ -84,6 +84,8 @@ export const PORT_ICONS: Record<PortType, PortIcon> = {
  * Visual constants for port icon rendering
  */
 export const PORT_ICON_SIZE = 10; // Font size in pixels
+// UIX-005: system stack (the Inter-* per-weight families were demoted in UIX-001)
+const PORT_ICON_FONT = "-apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif";
 export const PORT_ICON_PADDING = 4; // Space between icon and label
 
 /**
@@ -177,7 +179,7 @@ export function drawPortIcon(
   // Set rendering properties
   ctx.fillStyle = color;
   ctx.globalAlpha = alpha;
-  ctx.font = `${PORT_ICON_SIZE}px Inter-Regular`;
+  ctx.font = `${PORT_ICON_SIZE}px ${PORT_ICON_FONT}`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
 
@@ -202,7 +204,7 @@ export function getPortIconWidth(ctx: CanvasRenderingContext2D, type: PortType):
   if (!icon) return 0;
 
   ctx.save();
-  ctx.font = `${PORT_ICON_SIZE}px Inter-Regular`;
+  ctx.font = `${PORT_ICON_SIZE}px ${PORT_ICON_FONT}`;
   const width = ctx.measureText(icon.char).width;
   ctx.restore();
 

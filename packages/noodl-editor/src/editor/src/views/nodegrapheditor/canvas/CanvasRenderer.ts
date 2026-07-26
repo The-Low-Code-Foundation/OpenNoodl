@@ -1,9 +1,8 @@
 import _ from 'underscore';
 
-import { NodeGraphColors } from '@noodl-constants/NodeGraphColors';
-
 import type { NodeGraphEditorConnection } from '../NodeGraphEditorConnection';
 import { NodeGraphEditorNode } from '../NodeGraphEditorNode';
+import { CanvasTheme } from './CanvasTheme';
 import { AABB, IVector2, PanAndScale } from './types';
 
 /**
@@ -64,6 +63,17 @@ export class CanvasRenderer {
       maxY: frame.canvasHeight / (frame.ratio * scale) - panAndScale.y
     };
 
+    // Ground dot grid (UIX-005): a repeating pattern filled in graph space so
+    // it pans and zooms with the content — one fillRect, never per-dot draws.
+    // Skipped at low zoom where the dots collapse into sub-pixel noise.
+    if (scale >= 0.4) {
+      const gridPattern = CanvasTheme.instance.gridPattern(ctx);
+      if (gridPattern) {
+        ctx.fillStyle = gridPattern;
+        ctx.fillRect(paintRect.minX, paintRect.minY, paintRect.maxX - paintRect.minX, paintRect.maxY - paintRect.minY);
+      }
+    }
+
     ctx.font = '10px Helvetica';
 
     // Paint hierarchy
@@ -89,7 +99,7 @@ export class CanvasRenderer {
     if (frame.insertLocation) {
       // Indicate that we have an insert location when
       // dragging this node
-      ctx.fillStyle = '#ffffff';
+      ctx.fillStyle = CanvasTheme.instance.colors.insertIndicator;
       ctx.fillRect(
         frame.insertLocation.pos.x,
         frame.insertLocation.pos.y + (NodeGraphEditorNode.childSpacing - 5) / 2,
@@ -119,7 +129,7 @@ export class CanvasRenderer {
 
     // Paint multiselect
     if (frame.multiselectMouseMove) {
-      ctx.strokeStyle = NodeGraphColors.multiSelect;
+      ctx.strokeStyle = CanvasTheme.instance.colors.multiselect;
       ctx.setLineDash([5]);
       ctx.beginPath();
       ctx.rect(
@@ -141,7 +151,7 @@ export class CanvasRenderer {
 
     // Draw hierarchy indicators
     let hy = y + node.nodeSize.height + 5;
-    ctx.strokeStyle = '#504f4f'; //Grey 700
+    ctx.strokeStyle = CanvasTheme.instance.colors.hierarchyLine;
     ctx.lineWidth = 1;
     for (const i in node.children) {
       const child = node.children[i];
@@ -169,7 +179,7 @@ export class CanvasRenderer {
 
     // Make background darker
     if (draggingConnection.fromNode !== undefined && draggingConnection.toNode !== undefined) {
-      ctx.fillStyle = '#000';
+      ctx.fillStyle = CanvasTheme.instance.colors.scrim;
       ctx.globalAlpha = 0.6;
       ctx.fillRect(paintRect.minX, paintRect.minY, paintRect.maxX - paintRect.minX, paintRect.maxY - paintRect.minY);
       ctx.globalAlpha = 1;
@@ -190,7 +200,7 @@ export class CanvasRenderer {
 
     // Draw line between from node and mouse position, if a target node is hovered
     // draw to the center of the target node
-    ctx.strokeStyle = NodeGraphColors.yellow;
+    ctx.strokeStyle = CanvasTheme.instance.colors.dragLine;
     ctx.setLineDash([5]);
     ctx.lineWidth = 2;
     ctx.beginPath();
@@ -221,7 +231,7 @@ export class CanvasRenderer {
     // Draw the circle at the source node and the arrow head
     // at the target node
     ctx.beginPath();
-    ctx.fillStyle = NodeGraphColors.yellow;
+    ctx.fillStyle = CanvasTheme.instance.colors.dragLine;
     ctx.arc(from.x, from.y, 4, 0, 2 * Math.PI, false);
 
     ctx.moveTo(to.x + d.x * 2, to.y + d.y * 2);
@@ -261,7 +271,7 @@ export class CanvasRenderer {
 
     //draw selection box
     ctx.lineWidth = 1;
-    ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--theme-color-fg-default').trim();
+    ctx.strokeStyle = CanvasTheme.instance.colors.multiselectBox;
     ctx.strokeRect(aabb.minX - pad, aabb.minY - pad, w + 2 * pad, h + 2 * pad);
 
     ctx.restore();

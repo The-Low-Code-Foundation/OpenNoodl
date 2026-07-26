@@ -1,10 +1,10 @@
-import { NodeGraphColors } from '@noodl-constants/NodeGraphColors';
 import { Connection } from '@noodl-models/nodegraphmodel';
 import { NodeLibrary } from '@noodl-models/nodelibrary';
 import DebugInspector from '@noodl-utils/debuginspector';
 
 import { IVector2, NodeGraphEditor } from '../nodegrapheditor';
 import PopupLayer from '../popuplayer';
+import { CanvasTheme } from './canvas/CanvasTheme';
 import { NodeGraphEditorNode } from './NodeGraphEditorNode';
 
 function getPortName(p) {
@@ -360,20 +360,24 @@ export class NodeGraphEditorConnection {
 
     const hoverConnection = this.isHighlighted();
     const type = NodeLibrary.nameForPortType(this.fromPort ? this.fromPort.type : undefined);
-    const connectionColors = NodeLibrary.instance.colorSchemeForConnectionType(type);
+    // UIX-005: wire colours come from CanvasTheme (signal = cyan pair,
+    // everything else = data/emerald pair) instead of the library blob.
+    const connectionColors = CanvasTheme.instance.connectionColors(type);
 
     const color = hoverConnection ? connectionColors.highlighted : connectionColors.normal;
-    ctx.strokeStyle = this.color ? this.color : color;
+    let strokeColor: string = this.color ? this.color : color;
 
+    const theme = CanvasTheme.instance.colors;
     if (this.model.annotation) {
-      if (this.model.annotation === 'Deleted') ctx.strokeStyle = '#F57569';
-      else if (this.model.annotation === 'Changed') ctx.strokeStyle = '#83B8BA';
-      else if (this.model.annotation === 'Created') ctx.strokeStyle = '#5BF59E';
+      if (this.model.annotation === 'Deleted') strokeColor = theme.annotationDeleted;
+      else if (this.model.annotation === 'Changed') strokeColor = theme.annotationChanged;
+      else if (this.model.annotation === 'Created') strokeColor = theme.annotationCreated;
 
       // Shape as well as colour (AIX-003): removed routing is dashed; the
       // dash restore below already runs for all paths.
       if (this.model.annotation === 'Deleted') ctx.setLineDash([6, 4]);
     }
+    ctx.strokeStyle = strokeColor;
 
     const lineWidth = 1.5;
     ctx.lineWidth = this.lineWidth ? this.lineWidth : lineWidth;
@@ -383,9 +387,18 @@ export class NodeGraphEditorConnection {
     this.drawCurve();
     ctx.stroke();
 
+    // Endpoint dots (mock: 3px wire-coloured dots at both ends)
+    ctx.fillStyle = strokeColor;
+    ctx.beginPath();
+    ctx.arc(this.curve[0].x, this.curve[0].y, 3, 0, 2 * Math.PI, false);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(this.curve[3].x, this.curve[3].y, 3, 0, 2 * Math.PI, false);
+    ctx.fill();
+
     if (DebugInspector.instance.isEnabled() && DebugInspector.instance.isConnectionPulsing(this)) {
       const t = DebugInspector.instance.getPulseAnimationState(this);
-      ctx.strokeStyle = connectionColors.pulsing ? connectionColors.pulsing : '#ffe85d';
+      ctx.strokeStyle = connectionColors.pulsing ? connectionColors.pulsing : theme.wirePulse;
       ctx.setLineDash([5, 15]);
       ctx.lineDashOffset = -t.offset;
       ctx.globalAlpha = t.opacity * 0.7;
@@ -404,12 +417,14 @@ export class NodeGraphEditorConnection {
         c = this.midpoint(this.curve[2], this.curve[3]);
 
       const mp = this.midpoint(this.midpoint(a, b), this.midpoint(b, c));
-      ctx.fillStyle = NodeGraphColors.red;
+      ctx.fillStyle = theme.deleteMarker;
       ctx.beginPath();
       ctx.arc(mp.x, mp.y, 6, 0, 2 * Math.PI, false);
       ctx.fill();
       ctx.lineWidth = 1.5;
-      ctx.strokeStyle = NodeGraphColors.base2;
+      // (NodeGraphColors.base2 was undefined here — the X glyph silently kept
+      // the previous strokeStyle. Now an explicit themed glyph colour.)
+      ctx.strokeStyle = theme.deleteMarkerGlyph;
       ctx.beginPath();
       const l = 2.5;
       ctx.moveTo(mp.x - l, mp.y - l);

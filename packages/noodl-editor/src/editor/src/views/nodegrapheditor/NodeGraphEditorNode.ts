@@ -8,6 +8,7 @@ import { ProjectModel } from '../../models/projectmodel';
 import { ViewerConnection } from '../../ViewerConnection';
 import { NodeGraphEditor } from '../nodegrapheditor';
 import PopupLayer from '../popuplayer';
+import { CanvasFonts } from './canvas/CanvasTheme';
 import { nodeShouldAttach } from './nodeAttachment';
 import { NodeGraphEditorConnection } from './NodeGraphEditorConnection';
 import { measureTextHeight, paintNode } from './NodeGraphEditorNodePainter';
@@ -20,7 +21,17 @@ export class NodeGraphEditorNode {
   public static readonly attachedThreshold = 20;
   public static readonly propertyConnectionHeight = 20;
   public static readonly verticalSpacing = 8;
-  public static readonly cornerRadius = 6;
+  public static readonly cornerRadius = 9;
+
+  // UIX-005 header chip metrics. The chip (22px + 7px insets = 36px) fits the
+  // minimum titlebar height (label line 14 + 22) exactly, so titlebarHeight's
+  // formula — and with it every connection-anchor position — is unchanged.
+  // headerTextInset is shared by the measure functions below AND the painter,
+  // so wrap math and drawing can never disagree.
+  public static readonly headerChipSize = 22;
+  public static readonly headerChipInset = 7;
+  public static readonly headerTextInset =
+    NodeGraphEditorNode.headerChipInset + NodeGraphEditorNode.headerChipSize + 8; // 37
 
   model: NodeGraphNode;
   x: number;
@@ -301,9 +312,14 @@ export class NodeGraphEditorNode {
 
       const iconOffset = this.icon ? 12 : 0;
 
-      const maxWidth = this.nodeSize.width - 2 * horizontalSpacing - connectionDragAreaWidth - iconOffset;
+      const maxWidth =
+        this.nodeSize.width -
+        NodeGraphEditorNode.headerTextInset -
+        horizontalSpacing -
+        connectionDragAreaWidth -
+        iconOffset;
 
-      this._cachedLabelHeight = measureTextHeight(this.model.label, '12px Inter-Regular', 14, maxWidth);
+      this._cachedLabelHeight = measureTextHeight(this.model.label, CanvasFonts.nodeLabel, 14, maxWidth);
       this._cachedLabelHeightTextKey = cacheKey;
     }
 
@@ -314,9 +330,10 @@ export class NodeGraphEditorNode {
     if (this.typeDisplayName() !== this._cachedSublabelHeightText) {
       const connectionDragAreaWidth = 10;
       const horizontalSpacing = 10;
-      const maxWidth = this.nodeSize.width - 2 * horizontalSpacing - connectionDragAreaWidth;
+      const maxWidth =
+        this.nodeSize.width - NodeGraphEditorNode.headerTextInset - horizontalSpacing - connectionDragAreaWidth;
 
-      this._cachedSublabelHeight = measureTextHeight(this.typeDisplayName(), '12px Inter-Regular', 14, maxWidth);
+      this._cachedSublabelHeight = measureTextHeight(this.typeDisplayName(), CanvasFonts.nodeSubLabel, 14, maxWidth);
       this._cachedSublabelHeightText = this.typeDisplayName();
     }
 

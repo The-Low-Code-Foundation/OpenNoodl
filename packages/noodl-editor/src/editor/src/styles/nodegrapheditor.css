@@ -2,7 +2,9 @@
    Node Graph Editor
    ------------------------------------------------------------------- */
 .nodegrapgeditor-bg {
-  background-color: var(--theme-color-bg-1);
+  /* UIX-005: canvas ground sits on bg-0; the dot grid is painted on the
+     canvas itself (CanvasRenderer) so it pans/zooms with the graph. */
+  background-color: var(--theme-color-bg-0);
   cursor: default;
   overflow: hidden;
 }
