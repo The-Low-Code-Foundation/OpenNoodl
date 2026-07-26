@@ -137,6 +137,19 @@ Caddy, nginx, or your existing reverse proxy in front of `127.0.0.1:8080` and
 let it handle certificates. Because everything is one origin on one port, that
 is a single `reverse_proxy` line.
 
+A working Caddyfile — verified against a live backend, including the parts that
+are easy to get wrong (SSE must not be buffered, `/metrics` should not be
+published, and the proxy's `X-Forwarded-For` has to be one the backend
+believes) — is at
+[`packages/nodegx-backend/deploy/Caddyfile.example`](../../packages/nodegx-backend/deploy/Caddyfile.example).
+
+### Day-two operations
+
+Logs, rate limits, metrics, the audit trail, shutdown behaviour, systemd units,
+and what to check when the thing is slow all live in
+**[Running a NodeGX backend in production](./BACKEND-OPERATIONS.md)**. Read it
+once your first deploy is up.
+
 ## Rollback
 
 Rolling back **code** is one command, and it is tested rather than merely

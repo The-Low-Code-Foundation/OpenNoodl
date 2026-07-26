@@ -49,6 +49,7 @@ nodegx-backend doctor --data-dir <dir> [--ephemeral]
 | **Admin** | `/health`, `/admin/status`, `/admin/schema*`, `/admin/schema-export`, `/admin/workflows*`, `/executions[/:id]` | The editor's BackendManager (IPC → HTTP proxy) and ops tooling |
 | **Access control** | `/admin/permissions*`, `/admin/roles*`, `/admin/keys*` | The Permissions panel, the MCP backend tools, and the served dashboard |
 | **Admin dashboard** | `/_admin`, `/_admin/whoami` | A browser. The service serves its own operator UI (BAK-005) — see below |
+| **Operations** | `/metrics`, `/admin/audit`, `/admin/ops` | Prometheus; the audit trail and operational config (BAK-009) — see [`docs/runtime/BACKEND-OPERATIONS.md`](../../docs/runtime/BACKEND-OPERATIONS.md) |
 
 All three front the same `LocalSQLAdapter` database. Cloud functions run in
 this process via the bundled CloudRunner; record/user/config nodes *inside* a
@@ -100,6 +101,10 @@ backing subsystem is absent are not rendered rather than served broken.
   workflows/*.workflow.json
   files/                 # Parse-wire file uploads
   config-params.json     # optional: served at /config
+  security.json          # access control (BAK-003)
+  search.json            # full-text search opt-in (BAK-008)
+  ops.json               # logging, rate limits, CORS, audit, metrics (BAK-009)
+  secrets.json           # admin credential, SMTP/S3/webhook secrets (0600)
 ```
 
 ## Deploying it (WF-003)
@@ -119,6 +124,11 @@ one bundle plus the app plus a hashed manifest — which is also what a plain
 `scp` to a VPS wants. Operator documentation:
 [`docs/runtime/SELF-HOSTING.md`](../../docs/runtime/SELF-HOSTING.md); the assets
 themselves are mapped in [`deploy/README.md`](./deploy/README.md).
+
+Once it is up, [`docs/runtime/BACKEND-OPERATIONS.md`](../../docs/runtime/BACKEND-OPERATIONS.md)
+is the operator's page: structured logs and request ids, rate limits behind a
+proxy, `/metrics`, the audit trail, graceful shutdown, a systemd unit, and the
+verified Caddy example ([`deploy/Caddyfile.example`](./deploy/Caddyfile.example)).
 
 ## Database engine
 
