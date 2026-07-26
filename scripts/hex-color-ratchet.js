@@ -58,12 +58,15 @@ const SKIP_DIRS = new Set(['node_modules', 'dist', 'out', 'coverage', '.git', '.
 
 const HEX_RE = /#[0-9a-fA-F]{3,8}\b/g;
 const COMMENT_RE = /\/\*[\s\S]*?\*\//g;
+// TS/JS line comments; the [^:'"`] guard keeps protocol-relative and quoted
+// "//" (http://..., strings) from being treated as a comment opener.
+const LINE_COMMENT_RE = /(^|[^:'"`])\/\/.*$/gm;
 const DATA_URL_RE = /url\(\s*(['"]?)data:[^)]*\1\s*\)/g;
 
 // -- discovery ---------------------------------------------------------------
 
-/** Every .css/.scss file under `roots`, sorted, repo-relative, POSIX separators. */
-function findSourceFiles(roots, exclude) {
+/** Every file matching `extRe` under `roots` (a root may also be a single file). */
+function findSourceFiles(roots, exclude, extRe) {
   const excluded = new Set(exclude);
   const files = [];
 
@@ -80,22 +83,37 @@ function findSourceFiles(roots, exclude) {
       if (excluded.has(rel)) continue;
       if (entry.isDirectory()) {
         if (!SKIP_DIRS.has(entry.name)) walk(full);
-      } else if (entry.isFile() && /\.(css|scss)$/.test(entry.name)) {
+      } else if (entry.isFile() && extRe.test(entry.name)) {
         files.push(rel);
       }
     }
   }
 
-  for (const root of roots) walk(path.join(ROOT, root));
+  for (const root of roots) {
+    const full = path.join(ROOT, root);
+    let stat;
+    try {
+      stat = fs.statSync(full);
+    } catch {
+      continue;
+    }
+    if (stat.isFile()) {
+      const rel = root.split(path.sep).join('/');
+      if (!excluded.has(rel) && extRe.test(root)) files.push(rel);
+    } else {
+      walk(full);
+    }
+  }
   return files.sort();
 }
 
 // -- counting ----------------------------------------------------------------
 
 /** Count hex color literals in one file, after stripping comments and data URIs. */
-function countFile(relPath) {
+function countFile(relPath, stripLineComments) {
   const raw = fs.readFileSync(path.join(ROOT, relPath), 'utf8');
-  const stripped = raw.replace(COMMENT_RE, '').replace(DATA_URL_RE, 'url()');
+  let stripped = raw.replace(COMMENT_RE, '').replace(DATA_URL_RE, 'url()');
+  if (stripLineComments) stripped = stripped.replace(LINE_COMMENT_RE, '$1');
   const matches = stripped.match(HEX_RE);
   return matches ? matches.length : 0;
 }
@@ -106,20 +124,35 @@ function packageOf(relPath) {
   return segments[0] === 'packages' ? segments[1] : segments[0];
 }
 
-function countAll(targets, exclude) {
-  const files = findSourceFiles(targets, exclude);
+function countAll(baseline) {
+  const cssFiles = findSourceFiles(baseline.targets, baseline.exclude, /\.(css|scss)$/);
+  // Canvas-paint TS scope (UIX-005): the node-graph painter/renderer files
+  // paint colors outside CSS's reach, so the ratchet covers them too, under
+  // their own pseudo-package. CanvasTheme.ts is the token/fallback definition
+  // site and is excluded for the same reason colors.css is.
+  // .ts only: the paint code is plain TS; .tsx under these roots is React DOM
+  // overlay chrome (UIX-004/009 territory), same as the CSS scopes cover.
+  const tsFiles = findSourceFiles(baseline.tsTargets || [], baseline.tsExclude || [], /\.ts$/);
+
   const byFile = {};
   const byPackage = {};
 
-  for (const file of files) {
-    const count = countFile(file);
+  for (const file of cssFiles) {
+    const count = countFile(file, false);
     if (count === 0) continue;
     byFile[file] = count;
     const pkg = packageOf(file);
     byPackage[pkg] = (byPackage[pkg] || 0) + count;
   }
 
-  return { scanned: files.length, byFile, byPackage };
+  for (const file of tsFiles) {
+    const count = countFile(file, true);
+    if (count === 0) continue;
+    byFile[file] = count;
+    byPackage['canvas-paint-ts'] = (byPackage['canvas-paint-ts'] || 0) + count;
+  }
+
+  return { scanned: cssFiles.length + tsFiles.length, byFile, byPackage };
 }
 
 // -- reporting ---------------------------------------------------------------
@@ -191,10 +224,10 @@ function main() {
   const report = process.argv.includes('--report');
   const baseline = JSON.parse(fs.readFileSync(BASELINE_PATH, 'utf8'));
 
-  const result = countAll(baseline.targets, baseline.exclude);
+  const result = countAll(baseline);
   const packages = Array.from(new Set([...Object.keys(baseline.max), ...Object.keys(result.byPackage)])).sort();
 
-  console.log(`Scanned ${result.scanned} .css/.scss files under ${baseline.targets.join(', ')}\n`);
+  console.log(`Scanned ${result.scanned} files (.css/.scss under ${baseline.targets.join(', ')}; canvas-paint .ts)\n`);
   const rows = packages.map((pkg) => {
     const count = result.byPackage[pkg] || 0;
     const max = baseline.max[pkg] ?? 0;

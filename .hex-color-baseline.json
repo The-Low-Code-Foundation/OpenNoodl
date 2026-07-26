@@ -8,12 +8,21 @@
     "packages/noodl-editor/src/assets/lib/fontawesome/css/font-awesome.min.css",
     "packages/noodl-core-ui/src/styles/custom-properties/colors.css"
   ],
+  "tsTargets": [
+    "packages/noodl-editor/src/editor/src/views/nodegrapheditor.ts",
+    "packages/noodl-editor/src/editor/src/views/nodegrapheditor"
+  ],
+  "tsExclude": [
+    "packages/noodl-editor/src/editor/src/views/nodegrapheditor/canvas/CanvasTheme.ts"
+  ],
   "commit": "1276877",
   "max": {
+    "canvas-paint-ts": 2,
     "noodl-core-ui": 100,
     "noodl-editor": 16
   },
   "byFile": {
+    "packages/noodl-editor/src/editor/src/views/nodegrapheditor/ConnectionPopups.ts": 2,
     "packages/noodl-core-ui/src/components/StylePresets/PresetCard.module.scss": 5,
     "packages/noodl-core-ui/src/components/StylePresets/PresetSelector.module.scss": 2,
     "packages/noodl-core-ui/src/components/StyleSuggestions/SuggestionBanner.module.scss": 13,
