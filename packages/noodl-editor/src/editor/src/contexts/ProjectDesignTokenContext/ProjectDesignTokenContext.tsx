@@ -70,7 +70,10 @@ export function ProjectDesignTokenContextProvider({ children }: ProjectDesignTok
 
     return () => {
       stylesModel.dispose();
-      ProjectModel.instance.off(group);
+      // Leaving a project clears the singleton before React finishes
+      // unmounting, so this cleanup can run with no instance left to detach
+      // from. Throwing here takes the whole editor window down.
+      ProjectModel.instance?.off(group);
     };
   }, []);
 

@@ -45,7 +45,8 @@ export class PickVariantPopup extends React.Component<PickVariantPopupProps, Sta
   }
 
   componentWillUnmount() {
-    ProjectModel.instance.off(this);
+    // May unmount after the project singleton has been cleared.
+    ProjectModel.instance?.off(this);
   }
 
   onPickVariant(variant) {

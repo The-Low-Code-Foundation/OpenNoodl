@@ -270,11 +270,109 @@ because `build.js` returns before its async esbuild finishes.
 
 ---
 
+## 4b. Post-merge live verification (2026-07-26, primary checkout)
+
+Residuals 1 and 2 below are **closed**. They were the phase-22 exit criterion
+("an app deployed by WF-003's path"), and they had never been done because a
+worktree cannot drive the editor.
+
+What was run, in order, on the primary checkout:
+
+1. **A real project was opened in the running editor** (`probe-cloud-query` from
+   the phase-16 corpus — a Query Records node reading a `Message` collection and
+   joining record titles into a Text node).
+2. **The endpoint was set through the real Backend Services panel** — Edit →
+   `http://127.0.0.1:8090`, App ID `nodegx-backend`, "NodeGX backend" ticked →
+   Save. Confirmed written to the project's `metadata.cloudservices` on disk as
+   `{endpoint, appId, type: "nodegx"}`.
+3. **Exported via the real Deploy popup** — Deploy → Self Hosting → Pick folder
+   (only the OS folder-picker was stubbed; everything downstream is the
+   product's own `deployToFolder`). Output: `index.html`,
+   `index-2b7df22af4681e93.js`, `noodl.deploy.js`, `react*.production.min.js`,
+   `load_terminator.js`, `noodl-app.png`. The hashed bundle carries
+   `cloudservices":{"endpoint":"http://127.0.0.1:8090","appId":"nodegx-backend","type":"nodegx"}`
+   and **zero** occurrences of a development endpoint.
+4. **Deployed with the documented command**, unmodified:
+   `./nodegx-deploy.sh deploy --app <export> --site-url http://127.0.0.1:8090`.
+   Packaged, built both images at tag `4c1a1c797b0a`, brought the stack up,
+   backend healthy, `health: OK`.
+5. **Seeded through the deployed API**: `createTable Message`, three records
+   (`DEPLOYED-ALPHA/BETA/GAMMA`). Anonymous read correctly **403**s under
+   BAK-003's locked default; granting `{"permissions":{"find":"public","get":"public"}}`
+   on the collection made it 200 — the documented operator step, exercised end
+   to end on a deployed backend.
+6. **Loaded in a real browser** (headless Chrome 150 over CDP, not curl):
+
+   | Check | Result |
+   |---|---|
+   | `GET /` | 200, title `probe-cloud-query` |
+   | Rendered body | `RECORDS:DEPLOYED-ALPHA\|DEPLOYED-BETA\|DEPLOYED-GAMMA` |
+   | App→backend request | `200 http://127.0.0.1:8090/classes/Message` — same origin, through nginx |
+   | Console | No errors, no exceptions |
+   | `/_admin` in a browser | 200, renders the sign-in page; `/_admin/whoami` 401 unauthenticated |
+
+   The rendered text is data that exists **only** in the deployed backend's
+   volume, so this is the whole chain: editor export → packaged artifact →
+   container → nginx single origin → backend → SQLite → back into the DOM.
+
+**Deviation from the doc, and why:** the stack was published on **8090**, not
+the documented default 8080, because 8080 is the editor's own webpack dev server
+in a development checkout. This only affects a machine running the editor and
+the deployment side by side; the doc's default is right for a real host.
+
+**Two defects found by this pass** (fixed, see §4c):
+
+- Opening a second project in one editor session white-screened the editor.
+- `PUT /admin/permissions/collections/:name` answers `{"success":true}` to a
+  body it entirely ignored. `{"find":"public"}` (the shape a reader would guess
+  from the response's own `rules` field) silently persists an **empty** rule set
+  and reports success; only `{"permissions":{...}}` does anything. It should
+  reject a body that sets nothing. Filed for BAK-009, which owns the admin
+  surface's hardening.
+
+Still open from the list below: residuals 3–8 (SSE through the proxy, file
+upload through the proxy, workflows/triggers in a container, digest pinning,
+multi-arch, and a genuinely cold reader following the doc).
+
+## 4c. The editor defect this verification found
+
+**Opening a second project in one editor session white-screened the editor.**
+
+Not a harness artifact — reproduced with no instrumentation at all, and it is on
+the most ordinary path there is: open a project, go back to the launcher, open a
+different one. The window renders correctly for a few seconds, then goes blank.
+
+`router.route()` disposed the outgoing project and scheduled
+`ProjectModel.instance = undefined` on a `setTimeout(…, 0)` — a long-standing
+"HACK: allow all react components to unmount before we delete the ProjectModel".
+The block immediately below then assigns the *new* project synchronously. So on
+a project → project route the timeout fired afterwards and nulled the project
+that had just been loaded, leaving the editor mounted against
+`ProjectModel.instance === undefined`.
+
+Two things then threw, and an uncaught error in a React 19 render unmounts the
+root:
+
+- `UseSetupNodeGraph`'s `instanceHasChanged` listener —
+  `ProjectModel.instance.getComponentWithName(...)`
+- effect cleanups doing `ProjectModel.instance.off(group)` in
+  `ProjectDesignTokenContext` and `EditorDocument` — these fired on the plain
+  "back to projects" route too, so **leaving** a project white-screened it as
+  well, independently of the clobber.
+
+Fixes: the timeout now only clears the singleton if it is still the instance it
+disposed; and the four unguarded `ProjectModel.instance.off(...)` teardowns are
+optional-chained (`ComponentsPanelNew` already guarded its own).
+
+Verified live: open A → back to launcher (no blank) → open B → stable past 40 s,
+where it previously blanked within ~40 s every time.
+
 ## 5. Residuals — what I could not or did not verify
 
 Listed honestly; several need the orchestrator or a human.
 
-1. **No real editor export was ever deployed.** `lerna exec` runs the main
+1. ~~**No real editor export was ever deployed.**~~ **CLOSED 2026-07-26 — see §4b.**
+   Original text: `lerna exec` runs the main
    checkout rather than this worktree, so I could not drive the editor to produce
    a genuine "Deploy to folder" output. Every app-serving check above used a
    hand-built fixture shaped like the real thing (`index.html`, a hashed
@@ -282,8 +380,8 @@ Listed honestly; several need the orchestrator or a human.
    `noodl.deploy.js`, `noodl_bundles/`). The nginx rules were verified against
    that shape, not against real editor output. **This is the single most
    important post-merge check:** export a real project and deploy it.
-2. **No NodeGX app has actually talked to the deployed backend from a browser.**
-   The API was exercised with `curl`. The end-to-end claim "a real project
+2. ~~**No NodeGX app has actually talked to the deployed backend from a browser.**~~
+   **CLOSED 2026-07-26 — see §4b.** Original text: the API was exercised with `curl`. The end-to-end claim "a real project
    deploys successfully following the documentation alone" — the spec's headline
    success criterion — is therefore **not** proven. It needs a real export, a
    browser, and someone who did not write this.

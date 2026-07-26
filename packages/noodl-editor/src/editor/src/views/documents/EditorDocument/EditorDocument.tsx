@@ -322,7 +322,8 @@ function EditorDocument() {
 
     return () => {
       EventDispatcher.instance.off(eventGroup);
-      ProjectModel.instance.off(ProjectModel);
+      // Cleared-not-replaced singleton: see ProjectDesignTokenContext.
+      ProjectModel.instance?.off(ProjectModel);
     };
   }, [documentLayout, canvasView, previewMode, nodeGraph]);
 

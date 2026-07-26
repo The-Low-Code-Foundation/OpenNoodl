@@ -155,12 +155,23 @@ export default class Router
     //Set the global singleton here (and only here) to load the active project for this route
     if (ProjectModel.instance && ProjectModel.instance !== args.project) {
       //new or no project, dispose old one
-      ProjectModel.instance.dispose();
+      const disposed = ProjectModel.instance;
+      disposed.dispose();
       AiAssistantModel.instance.resetContexts();
 
       // HACK: Allow all react components to unmount un unregister the effectsbefore we delete the ProjectModel.
+      //
+      // Only clear the singleton if it is *still* the project we disposed. The
+      // block below assigns `args.project` synchronously, so on a project ->
+      // project route (open one project, go back, open another) this callback
+      // used to run afterwards and null out the project that had just been
+      // loaded — leaving the editor mounted against `ProjectModel.instance ===
+      // undefined`, which throws in the `instanceHasChanged` listeners and
+      // white-screens the window.
       setTimeout(() => {
-        ProjectModel.instance = undefined;
+        if (ProjectModel.instance === disposed) {
+          ProjectModel.instance = undefined;
+        }
       }, 0);
     }
 

@@ -72,7 +72,8 @@ export class VariantsEditor extends React.Component<VariantsEditorProps, State> 
 
   componentWillUnmount() {
     this.model.off(this);
-    ProjectModel.instance.off(this);
+    // May unmount after the project singleton has been cleared.
+    ProjectModel.instance?.off(this);
 
     if (this.popout) {
       PopupLayer.instance.hidePopout(this.popout);
