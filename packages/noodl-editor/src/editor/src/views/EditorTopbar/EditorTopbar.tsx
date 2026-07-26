@@ -280,12 +280,12 @@ export function EditorTopbar({
 
       <div className={css['RightSide']}>
         {instance.warningsAmount > 0 && (
-          <div className={css['is-padded']} ref={warningButtonRef}>
+          <div className={classNames(css['is-padded'], css['WarningsChip'])} ref={warningButtonRef}>
             <Tooltip content="Show warnings">
               <IconButton
                 id="editortopbar-warning-button"
                 variant={IconButtonVariant.Transparent}
-                iconVariant={FeedbackType.Danger}
+                iconVariant={FeedbackType.Notice}
                 icon={IconName.WarningTriangle}
                 onClick={showWarnings}
                 label={String(instance.warningsAmount)}
