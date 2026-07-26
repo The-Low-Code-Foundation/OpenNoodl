@@ -25761,6 +25761,317 @@
       }
     },
     {
+      "typeName": "net.noodl.GlobalStore",
+      "displayName": "Global Store",
+      "category": "Data",
+      "isVisual": false,
+      "isDeprecated": false,
+      "inNodePicker": false,
+      "availableIn": [
+        "browser",
+        "cloud"
+      ],
+      "providedBy": "noodl-runtime",
+      "ssr": {
+        "compat": "safe"
+      },
+      "inputs": [
+        {
+          "name": "initialState",
+          "displayName": "Initial State",
+          "group": "Store",
+          "plug": "input",
+          "type": {
+            "name": "object"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "persist",
+          "displayName": "Persist",
+          "group": "Store",
+          "plug": "input",
+          "type": {
+            "name": "boolean"
+          },
+          "isSignal": false,
+          "default": false
+        },
+        {
+          "name": "storageKey",
+          "displayName": "Storage Key",
+          "group": "Store",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "storeName",
+          "displayName": "Store Name",
+          "group": "Store",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "default": "app"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "changedKeys",
+          "displayName": "Changed Keys",
+          "group": "Data",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "error",
+          "displayName": "Error",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "ready",
+          "displayName": "Ready",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true
+        },
+        {
+          "name": "state",
+          "displayName": "State",
+          "group": "Data",
+          "plug": "output",
+          "type": {
+            "name": "object"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "stateChanged",
+          "displayName": "State Changed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true
+        },
+        {
+          "name": "storeId",
+          "displayName": "Store Id",
+          "group": "Info",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false
+        }
+      ],
+      "dynamicPorts": null
+    },
+    {
+      "typeName": "net.noodl.GlobalStore.Set",
+      "displayName": "Set Global Store",
+      "category": "Data",
+      "isVisual": false,
+      "isDeprecated": false,
+      "inNodePicker": false,
+      "availableIn": [
+        "browser",
+        "cloud"
+      ],
+      "providedBy": "noodl-runtime",
+      "ssr": {
+        "compat": "safe"
+      },
+      "inputs": [
+        {
+          "name": "key",
+          "displayName": "Key",
+          "group": "Update",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "merge",
+          "displayName": "Merge Object",
+          "group": "Update",
+          "plug": "input",
+          "type": {
+            "name": "boolean"
+          },
+          "isSignal": false,
+          "default": false
+        },
+        {
+          "name": "set",
+          "displayName": "Set",
+          "group": "Actions",
+          "plug": "input",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "isSignal": true
+        },
+        {
+          "name": "storeName",
+          "displayName": "Store Name",
+          "group": "Store",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "default": "app"
+        },
+        {
+          "name": "transaction",
+          "displayName": "Batch With Others",
+          "group": "Update",
+          "plug": "input",
+          "type": {
+            "name": "boolean"
+          },
+          "isSignal": false,
+          "default": false
+        },
+        {
+          "name": "value",
+          "displayName": "Value",
+          "group": "Update",
+          "plug": "input",
+          "type": {
+            "name": "*"
+          },
+          "isSignal": false
+        }
+      ],
+      "outputs": [
+        {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true
+        },
+        {
+          "name": "error",
+          "displayName": "Error",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false
+        }
+      ],
+      "dynamicPorts": null
+    },
+    {
+      "typeName": "net.noodl.GlobalStore.Subscribe",
+      "displayName": "Subscribe to Store",
+      "category": "Data",
+      "isVisual": false,
+      "isDeprecated": false,
+      "inNodePicker": false,
+      "availableIn": [
+        "browser",
+        "cloud"
+      ],
+      "providedBy": "noodl-runtime",
+      "ssr": {
+        "compat": "safe"
+      },
+      "inputs": [
+        {
+          "name": "keys",
+          "displayName": "Keys",
+          "group": "Subscribe",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "Comma-separated keys to watch. Leave blank to react to every change in the store."
+        },
+        {
+          "name": "storeName",
+          "displayName": "Store Name",
+          "group": "Store",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "default": "app"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "changed",
+          "displayName": "Changed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true
+        },
+        {
+          "name": "changedKeys",
+          "displayName": "Changed Keys",
+          "group": "Data",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "previousValue",
+          "displayName": "Previous Value",
+          "group": "Data",
+          "plug": "output",
+          "type": {
+            "name": "*"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "value",
+          "displayName": "Value",
+          "group": "Data",
+          "plug": "output",
+          "type": {
+            "name": "*"
+          },
+          "isSignal": false
+        }
+      ],
+      "dynamicPorts": null
+    },
+    {
       "typeName": "net.noodl.HTTP",
       "displayName": "HTTP Request",
       "category": "Data",
