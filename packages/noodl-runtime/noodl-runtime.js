@@ -72,7 +72,10 @@ function registerNodes(noodlRuntime) {
     require('./src/nodes/std-library/user/user'),
     require('./src/nodes/std-library/agent/globalstorenode'),
     require('./src/nodes/std-library/agent/globalstoresetnode'),
-    require('./src/nodes/std-library/agent/globalstoresubscribenode')
+    require('./src/nodes/std-library/agent/globalstoresubscribenode'),
+    require('./src/nodes/std-library/agent/statehistorynode'),
+    require('./src/nodes/std-library/agent/undonode'),
+    require('./src/nodes/std-library/agent/statesnapshotnode')
   ].forEach((node) => noodlRuntime.registerNode(node));
 }
 
