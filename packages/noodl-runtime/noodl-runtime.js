@@ -70,10 +70,16 @@ function registerNodes(noodlRuntime) {
     // User
     require('./src/nodes/std-library/user/setuserproperties'),
     require('./src/nodes/std-library/user/user'),
+    // Agentic UI (AIX-005)
     require('./src/nodes/std-library/agent/globalstorenode'),
     require('./src/nodes/std-library/agent/globalstoresetnode'),
     require('./src/nodes/std-library/agent/globalstoresubscribenode'),
-    require('./src/nodes/std-library/agent/websocket')
+    require('./src/nodes/std-library/agent/websocket'),
+    require('./src/nodes/std-library/agent/sse'),
+    require('./src/nodes/std-library/agent/text-accumulator'),
+    require('./src/nodes/std-library/agent/json-stream-parser'),
+    require('./src/nodes/std-library/agent/pattern-extractor'),
+    require('./src/nodes/std-library/agent/stream-buffer')
   ].forEach((node) => noodlRuntime.registerNode(node));
 }
 

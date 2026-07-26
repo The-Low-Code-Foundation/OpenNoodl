@@ -1,0 +1,30 @@
+{
+  "typeName": "net.noodl.StreamBuffer",
+  "summary": "Stream Buffer: batches items arriving faster than the UI wants to react, flushing on a count, an interval, or on demand.",
+  "description": "Each `add` appends the current `data` to a buffer. The buffer empties when `flushSize` items have collected, when `flushInterval` milliseconds have passed since the first item after the last flush, or when `flush` fires — whichever comes first. `flushedData` is a detached array, so a later Add cannot mutate what a downstream node is already rendering. The interval timer is armed only while items are waiting, is re-armed rather than left stale when the interval changes, and is cleared on a manual flush and when the node is deleted. `maxSize` caps the buffer, dropping the oldest and reporting it on `droppedItems` with an `overflowed` signal.",
+  "whenToUse": "Any producer that outruns the UI: a token stream driving a Repeater, high-rate telemetry, a log feed. Batching turns hundreds of small graph updates a second into a few. Not needed when updates are already infrequent, and not a substitute for Text Accumulator when the thing being batched is text that should be concatenated rather than listed.",
+  "ports": {
+    "data": "The item to buffer on the next Add. Any type.",
+    "add": "Appends the current item. Wire the stream's message signal here.",
+    "flushSize": "Flush once this many items are buffered. 0 disables size-based flushing.",
+    "flushInterval": "Flush this many milliseconds after the buffer stops being empty. 0 disables interval flushing. Only fires in the browser, never during a server render.",
+    "maxSize": "Hard cap on buffered items. Overflow drops the oldest; 0 means no cap.",
+    "buffer": "Items waiting to be flushed.",
+    "flushedData": "The batch released by the last flush — a fresh array each time.",
+    "droppedItems": "Running count of items lost to the cap. Non-zero means the consumer cannot keep up.",
+    "flushed": "Fires after each flush, once Flushed Data has updated.",
+    "overflowed": "Fires when the cap dropped items."
+  },
+  "patterns": [
+    "Server-Sent Events `onMessage` → `add` with `flushInterval` 250 and `flushedData` → For Each: a live list that repaints four times a second instead of hundreds.",
+    "`flushSize` and `flushInterval` together give 'whichever comes first', which keeps both a burst and a trickle responsive.",
+    "The stream's `onClose` → `flush` releases the tail of a batch that never reached the flush size."
+  ],
+  "antiPatterns": [
+    "Relying on Flush Interval during server-side rendering — timers never advance there, so only Add, Flush and size-based flushing work.",
+    "Using this to concatenate streamed text; Text Accumulator is the node for that.",
+    "Setting Flush Size to 1, which is the same as no buffer at all plus an extra hop."
+  ],
+  "examples": ["agent-sse-task-monitor"],
+  "relatedNodes": ["net.noodl.SSE", "net.noodl.TextAccumulator", "net.noodl.JSONStreamParser", "For Each", "Collection2"]
+}
