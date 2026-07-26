@@ -48,6 +48,8 @@
     "test:editor": "ts-node -P ./scripts/tsconfig.json ./scripts/test-editor.ts",
     "test:ci": "ts-node -P ./scripts/tsconfig.json ./scripts/test-editor.ts --ci",
     "test:platform": "lerna exec --scope @noodl/platform-node -- npm test",
+    "test:packages": "lerna run test --stream --concurrency 1 --scope @noodl/runtime --scope @noodl/nodegx-backend --scope @noodl/noodl-viewer-react --scope @noodl/preview --scope @noodl/mcp --scope @noodl/cloud-runtime",
+    "check:persistence": "lerna run build --stream --scope @noodl/nodegx-backend && node scripts/check-packaged-persistence.js",
     "catalog:generate": "node scripts/node-catalog/generate.js",
     "catalog:check": "node scripts/node-catalog/generate.js --check",
     "catalog:validate": "node scripts/node-catalog/validate-project.js",

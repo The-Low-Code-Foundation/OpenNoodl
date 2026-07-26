@@ -436,7 +436,19 @@ describeOrSkip('MCP backend permission tools (live backend)', () => {
   });
 
   describe('BAK-006 file storage tools', () => {
-    it('reads the default file config, including an honest transformsAvailable (sharp is not installed here)', async () => {
+    it('reads the default file config, including an honest transformsAvailable', async () => {
+      // `sharp` is an optionalDependency (BAK-006), so both answers are valid
+      // environments — what matters is that the tool reports the real one, and
+      // always carries a reason when transforms are off.
+      const sharpAvailable = (() => {
+        try {
+          require.resolve('sharp');
+          return true;
+        } catch {
+          return false;
+        }
+      })();
+
       const { isError, data } = await call<{
         driverKind: string;
         transformsAvailable: boolean;
@@ -445,8 +457,10 @@ describeOrSkip('MCP backend permission tools (live backend)', () => {
       }>(session, 'get_backend_file_config');
       expect(isError).toBe(false);
       expect(data.driverKind).toBe('local');
-      expect(data.transformsAvailable).toBe(false);
-      expect(data.transformUnavailableReason).toMatch(/sharp/i);
+      expect(data.transformsAvailable).toBe(sharpAvailable);
+      if (!sharpAvailable) {
+        expect(data.transformUnavailableReason).toMatch(/sharp/i);
+      }
       expect(data.config.maxUploadBytes).toBeGreaterThan(0);
     });
 

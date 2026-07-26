@@ -3,7 +3,7 @@
 **Phase:** 16
 **Track:** D — Runtime & Deploy Health
 **Source:** [NOODL-REVIVAL-ROADMAP.md](../../reviews/NOODL-REVIVAL-ROADMAP.md) Horizon 1, Track D
-**Status:** Not started (created 2026-07-22)
+**Status:** ✅ **Complete** — all four tasks closed 2026-07-26 (created 2026-07-22). See [PROGRESS.md](./PROGRESS.md) for what each one actually found; several of the specs' premises turned out to be stale and are corrected there.
 
 ## Why this phase exists
 

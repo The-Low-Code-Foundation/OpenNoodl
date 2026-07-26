@@ -74,6 +74,26 @@ jobs:
       - uses: ./.github/actions/setup
       - run: npm run test:platform
 
+  test-packages:
+    name: Test (runtime, backend, viewer, mcp, preview)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      # Six jest suites (~1,050 specs) that ran only on developer machines until
+      # RUN-004's close-out: the runtime (incl. the local-SQLite persistence
+      # integrity test), nodegx-backend, the viewer's SSR/hydration specs, the
+      # MCP server, the preview renderer and the cloud runtime. Serial, because
+      # several of them bind real sockets.
+      - run: npm run test:packages
+
+      # RUN-004's last open criterion: the packaged app runs the backend service
+      # under Electron's bundled Node (ELECTRON_RUN_AS_NODE), not the system
+      # Node the suites above use. This spawns the real service bundle that way
+      # and proves a record survives a full restart — so an Electron upgrade
+      # that dropped `node:sqlite` could never reach users as silent data loss.
+      - run: npm run check:persistence
+
   build:
     name: Build (viewer + editor bundles)
     runs-on: ubuntu-latest

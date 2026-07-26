@@ -18,14 +18,30 @@ import { BackendService } from '../src/service';
 jest.setTimeout(30000);
 
 // A real, tiny PNG (1x1 transparent) — used to prove sniffing beats the
-// client-declared name/extension.
+// client-declared name/extension, and (where sharp is installed) genuinely
+// decodable, so the thumbnail path renders real bytes rather than 400ing.
 const PNG_BYTES = Buffer.from(
-  '89504e470d0a1a0a0000000d494844520000000100000001080600000' +
-    '01f15c4890000000a49444154789c6360000002000155e21bd6000000004945' +
-    '4e44ae426082',
+  '89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c489' +
+    '0000000d4944415478da63fccfc0500f000485018084a98c210000000049454e44ae426082',
   'hex'
 );
 const PDF_BYTES = Buffer.from('%PDF-1.4\n%fake pdf content for testing\n%%EOF', 'ascii');
+
+/**
+ * Is `sharp` actually installed here? It is an `optionalDependency`, so both
+ * answers are legitimate environments and the thumbnail tests below assert the
+ * REAL behaviour of whichever one they are running in — a 501 carrying a reason
+ * when it is absent, a rendered image when it is present. Never a simulation,
+ * and never a suite that passes only on one side of the fence.
+ */
+const SHARP_AVAILABLE = (() => {
+  try {
+    require.resolve('sharp');
+    return true;
+  } catch {
+    return false;
+  }
+})();
 
 describe('BAK-006 file storage v2 over HTTP', () => {
   let dataDir: string;
@@ -266,18 +282,26 @@ describe('BAK-006 file storage v2 over HTTP', () => {
   });
 
   // ==========================================================================
-  // Thumbnails: sharp is REALLY absent in this worktree — real 501, not simulated
+  // Thumbnails: asserted against the REAL sharp availability of this
+  // environment (see SHARP_AVAILABLE) — never mocked, either way
   // ==========================================================================
 
-  it('?thumb= on a named preset returns 501 with a reason when sharp is unavailable (real, not mocked)', async () => {
+  it('?thumb= on a named preset renders when sharp is present, and 501s with a reason when it is not', async () => {
     const upload = await fetch(`${base}/files/thumbme.png`, { method: 'POST', body: PNG_BYTES });
     const { url } = await upload.json();
     const res = await fetch(`${url}?thumb=sm`);
-    expect(res.status).toBe(501);
-    const body = await res.json();
-    expect(String(body.reason)).toMatch(/sharp/i);
 
-    // Originals are completely unaffected by sharp's absence.
+    if (SHARP_AVAILABLE) {
+      expect(res.status).toBe(200);
+      expect(res.headers.get('content-type')).toBe('image/png');
+      expect(Buffer.from(await res.arrayBuffer()).length).toBeGreaterThan(0);
+    } else {
+      expect(res.status).toBe(501);
+      const body = await res.json();
+      expect(String(body.reason)).toMatch(/sharp/i);
+    }
+
+    // Originals are completely unaffected either way.
     const original = await fetch(url);
     expect(original.status).toBe(200);
   });
@@ -296,8 +320,10 @@ describe('BAK-006 file storage v2 over HTTP', () => {
     const nonAdmin = await fetch(`${url}?thumb=999x999`);
     expect(nonAdmin.status).toBe(403);
 
+    // Passed the admin gate — what follows is whatever the real transform
+    // availability dictates, which is the point: the 403 above is decided first.
     const admin = await fetch(`${url}?thumb=999x999`, { headers: asAdmin() });
-    expect(admin.status).toBe(501); // passed the admin gate, then hit the real sharp-absent gate
+    expect(admin.status).toBe(SHARP_AVAILABLE ? 200 : 501);
   });
 
   // ==========================================================================
@@ -308,8 +334,10 @@ describe('BAK-006 file storage v2 over HTTP', () => {
     const res = await req('GET', '/admin/files/config', undefined, asAdmin());
     expect(res.status).toBe(200);
     expect(res.json.driverKind).toBe('local');
-    expect(res.json.transformsAvailable).toBe(false);
-    expect(String(res.json.transformUnavailableReason)).toMatch(/sharp/i);
+    expect(res.json.transformsAvailable).toBe(SHARP_AVAILABLE);
+    if (!SHARP_AVAILABLE) {
+      expect(String(res.json.transformUnavailableReason)).toMatch(/sharp/i);
+    }
     expect(res.json.config.thumbnails.presets.sm).toEqual({ width: 64, height: 64, fit: 'cover' });
   });
 

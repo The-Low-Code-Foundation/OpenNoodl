@@ -98,13 +98,13 @@ Consider whether prebuilt binaries for the supported platform/ABI matrix would b
 
 ## Success Criteria
 
-- [ ] Native module load failure produces a clear, actionable user-visible error
-- [ ] No silent in-memory substitution; any ephemeral mode is explicit and labelled
-- [ ] SQLite backend persists data on macOS, Windows, and Linux
-- [ ] Rebuild automated; fresh clone works with no manual step
-- [ ] Packaged application verified, not just development builds
-- [ ] Persistence integrity test in CI
-- [ ] Backend status visible in the UI
+- [x] Native module load failure produces a clear, actionable user-visible error
+- [x] No silent in-memory substitution; any ephemeral mode is explicit and labelled
+- [x] SQLite backend persists data on macOS, Windows, and Linux — verified on macOS and (in CI) Linux; `node:sqlite` leaves no per-platform artifact to differ, see Residuals
+- [x] Rebuild automated; fresh clone works with no manual step — trivially: there is no native module to rebuild
+- [x] Packaged application verified, not just development builds — `npm run check:persistence`, under Electron's bundled Node
+- [x] Persistence integrity test in CI
+- [x] Backend status visible in the UI
 
 ## Risks & Mitigations
 
@@ -123,7 +123,9 @@ Consider whether prebuilt binaries for the supported platform/ABI matrix would b
 
 ## Progress
 
-**Loud-failure slice — DONE 2026-07-25** (committed to `cline-dev`; ran in parallel with RUN-003, zero file overlap). The native-build slice (steps 3–5) remains deferred into **WF-004**, which owns the engine decision.
+**COMPLETE 2026-07-26.** Two slices, delivered a day apart, plus a close-out pass that verified the half this task had deferred.
+
+**Loud-failure slice — DONE 2026-07-25** (committed to `cline-dev`; ran in parallel with RUN-003, zero file overlap).
 
 Shipped:
 - Adapter throws `LocalBackendPersistenceError` (`code: PERSISTENCE_ENGINE_UNAVAILABLE`) instead of silently mocking; the in-memory mock is reachable only via an explicit `{ allowEphemeral: true }` opt-in and is marked ephemeral. New `getPersistenceStatus()`.
@@ -131,12 +133,31 @@ Shipped:
 - Persistence tests at `packages/noodl-runtime/test/adapters/LocalSQLAdapter.persistence.test.js`: loud-failure + ephemeral-opt-in run when native is absent; write→reconnect→read integrity runs when native is present (skipped, never silently passed, otherwise). Verified green via direct harness (jest reporter has an unrelated `terminal-link` breakage in this env).
 - Docs: `docs/runtime/LOCAL-BACKEND-PERSISTENCE.md`; CHANGELOG updated.
 
+**Engine slice — DONE 2026-07-25 via WF-004** (`62cfc9c`). The shared decision was made and implemented as **Option A**: the engine seam is `packages/noodl-runtime/src/api/adapters/local-sql/engine.js`, which resolves `node:sqlite` (built into Node ≥22.13, wrapped by a thin shim supplying the two methods better-sqlite3 has and it lacks — `pragma`, `transaction`) and only falls back to `better-sqlite3` if some older environment ever has it installed. **`better-sqlite3` is a dependency of no package**, deliberately: steps 3–5 of this spec (fix the native build, automate the rebuild, verify it against the post-REV-004 Electron ABI) were not completed so much as **dissolved** — there is no native module to build, no ABI matrix to track, and nothing for an Electron upgrade to invalidate. WF-004 also moved the service out of the Electron main process entirely (`ServiceSupervisor` + `packages/nodegx-backend`).
+
+**Close-out — DONE 2026-07-26.** The two criteria still open after the engine slice were "packaged application verified, not just development builds" and "persistence integrity test in CI". Both now hold:
+
+- **The packaged runtime is verified, and the verification is a gate.** The packaged app does not run the service on the developer's system Node: `ServiceSupervisor` spawns `process.execPath` — the Electron binary — with `ELECTRON_RUN_AS_NODE=1`. That is the one way this could still regress silently: a future Electron whose bundled Node lacks `node:sqlite` would pass every unit test and lose users' data again. New gate `scripts/check-packaged-persistence.js` (`npm run check:persistence`) runs the real `nodegx-backend` bundle under the real Electron binary exactly that way, asserts the READY handshake reports `persistence: "persistent"`, writes a record over the Parse wire, SIGTERMs the service, restarts it against the same data dir and reads the record back. Verified locally on Electron 43.2.0 (bundled Node 24.18.0): engine `node:sqlite`, record survived, SQLite files on disk.
+- **The integrity tests actually run in CI.** They did not: `LocalSQLAdapter.persistence.test.js` lived in `@noodl/runtime`, whose jest suite — along with `nodegx-backend`, `noodl-viewer-react`, `@noodl/mcp`, `@noodl/preview` and `@noodl/cloud-runtime`, ~1,050 specs — was never run by any workflow. New `test-packages` job in `pr.yml` runs all six (`npm run test:packages`, serial: several bind real sockets) plus the packaged-persistence gate.
+
+Three things had to be fixed to make that job green, all pre-existing and all disclosed here:
+
+1. **`@noodl/runtime` was pinned to jest 28**, whose `@jest/reporters` needs `terminal-link` — a package the lockfile never contained, so the reporter crashed *after* the tests passed and returned non-zero. (This is the "jest reporting is broken in this env" trap recorded across several task notes; it was a missing dependency, not an environment quirk.) Bumped to jest ^29.7.0, matching every other package and the already-installed `ts-jest` ^29.4.1; the whole nested jest-28 tree drops out of the lockfile. Runtime suite: 384/384 green with the default reporter.
+2. **The lockfile omitted `sharp`** (BAK-006 added it as an `optionalDependency` but the lockfile was never regenerated), so `npm ci` installed a tree that did not match `package.json`. Regenerating it means CI now installs sharp — and BAK-006's tests asserted the *absence* branch as if it were a permanent fact of the environment. Six specs across `transform.test.ts`, `files-http.test.ts` and the MCP `backendTools.test.ts` now assert the real behaviour of whichever environment they run in (rendered image + `transformsAvailable: true` where sharp is present, 501-with-reason where it is not), verified green **both** ways by temporarily hiding the module. The loud-failure posture BAK-006 exists to prove is unchanged and still tested.
+3. `PNG_BYTES` in the file-storage tests was not a decodable PNG (only its magic bytes were ever inspected), which made the thumbnail path 400 once a real sharp could see it. Replaced with a real 1×1 PNG.
+
 ## Checklist
 
 - [x] ~~Branch `task/run-004-...`~~ — committed straight to `cline-dev` per project convention
 - [x] Make failure loud and actionable (shipped first)
 - [x] Decide and implement the fallback policy — explicit opt-in ephemeral mode
-- [ ] Fix native build on all three platforms; automate rebuild → **WF-004**
-- [ ] Verify in the packaged application → **WF-004**
+- [x] ~~Fix native build on all three platforms; automate rebuild~~ — **dissolved by WF-004's engine decision**: no native module, so nothing to build or rebuild
+- [x] Verify in the packaged application — `npm run check:persistence`, under the Electron binary the packaged app uses
 - [x] Persistence integrity test in CI; status indicator
 - [x] Troubleshooting docs; CHANGELOG
+
+## Residuals
+
+- **Linux and Windows are verified by construction, not by a run.** `node:sqlite` is part of Node itself, so there is no per-platform artifact to get wrong — and the CI job runs both the integrity test and the packaged-runtime gate on Linux. Nobody has run the gate on Windows; the nightly packaging workflow builds installers there but does not launch them.
+- **Nothing installs a built artifact and runs it.** `check:persistence` proves the service bundle behaves under the packaging *runtime*; it does not open a `.dmg`/`.exe`. That end-to-end installed-app pass belongs to REV-007's release verification, not here.
+- `backend:deleteTable` still has no UI caller (noted in Current State). It is not a persistence defect and was never in this task's scope; the equivalent surface now lives in `nodegx-backend`'s admin routes.
