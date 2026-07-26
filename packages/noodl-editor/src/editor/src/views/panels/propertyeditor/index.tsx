@@ -73,8 +73,19 @@ export function PropertyEditor(props: PropertyEditorProps) {
     return <AiPropertyEditor {...props} instance={instance} />;
   }
 
+  // PAR-002: the panel sits on bg-1 (mock `.props`); the legacy shell and the
+  // header are transparent so this is the single panel ground.
+  const panelStyle: React.CSSProperties = {
+    position: 'relative',
+    height: '100%',
+    width: '100%',
+    display: 'flex',
+    flexDirection: 'column',
+    backgroundColor: 'var(--theme-color-bg-1)'
+  };
+
   return (
-    <div style={{ position: 'relative', height: '100%', width: '100%', display: 'flex', flexDirection: 'column' }}>
+    <div style={panelStyle}>
       {Boolean(props.model) && <NodeLabel {...props} />}
 
       <ScrollArea>
@@ -86,7 +97,16 @@ export function PropertyEditor(props: PropertyEditorProps) {
 
 function AiPropertyEditor(props: PropertyEditorProps & { instance: PropertyEditorView }) {
   return (
-    <div style={{ position: 'relative', height: '100%', width: '100%', display: 'flex', flexDirection: 'column' }}>
+    <div
+      style={{
+        position: 'relative',
+        height: '100%',
+        width: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        backgroundColor: 'var(--theme-color-bg-1)'
+      }}
+    >
       <NodeLabel {...props} showHelp={false} />
       <Tabs
         variant={TabsVariant.Sidebar}

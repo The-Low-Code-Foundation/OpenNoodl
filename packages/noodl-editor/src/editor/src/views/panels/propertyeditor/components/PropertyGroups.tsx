@@ -47,17 +47,9 @@ export function PropertyGroups({ groups, showHeaders }: PropertyGroupsProps) {
     <>
       {groups.map((group) => (
         <div className="property-group" key={group.name}>
-          <div style={{ display: 'inline-flex' }}>
-            <div className="property-group-label" style={{ height: 30, position: 'relative', flexShrink: 1 }}>
-              <label style={{ marginLeft: 10, lineHeight: '30px' }}>{group.name}</label>
-            </div>
-          </div>
+          <div className="property-group-label">{group.name}</div>
 
-          <RowHost
-            els={group.els}
-            className={classNames('properties', !group.isExpanded && 'hidden')}
-            style={{ paddingBottom: 10 }}
-          />
+          <RowHost els={group.els} className={classNames('properties', !group.isExpanded && 'hidden')} />
         </div>
       ))}
     </>
