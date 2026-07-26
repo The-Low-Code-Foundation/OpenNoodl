@@ -410,8 +410,16 @@ describe('Project import and export unit tests', function () {
               after.forEachNodeRecursive((n) => {
                 afterIds.push(n.id);
               });
-              expect(afterIds.length).toBe(4); // proj1's /Main nodes (1 root + 3 children)
-              // ...but every one was re-keyed to a fresh id.
+              // proj1's /Main holds 4 nodes (Group + Rectangle + Text + a
+              // /comp1 instance), and `forEachRecursive` also descends THROUGH
+              // a component instance into its graph — so /comp1's own single
+              // root makes 5. That descent is the interesting part: it only
+              // happens because the /comp1 node's type resolved to the
+              // component that was imported alongside /Main, which is the
+              // "references in imported components resolve post-import"
+              // contract, observed rather than asserted at second hand.
+              expect(afterIds.length).toBe(5);
+              // ...and every one of /Main's own nodes was re-keyed afresh.
               srcNodeIds.forEach((id) => expect(afterIds.indexOf(id)).toBe(-1));
               done();
             });

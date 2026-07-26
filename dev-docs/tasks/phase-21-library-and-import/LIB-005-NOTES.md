@@ -158,8 +158,17 @@ views/ImportFlow/
 |---|---|
 | `tsc --noEmit -p tsconfig.json` (editor) | **PASS**, exit 0 |
 | `tsc --noEmit -p tsconfig.tests.json` (editor tests) | **PASS**, exit 0 |
-| `npm run test:ci` (Electron, randomized order) | see the run record in PROGRESS.md — **this was executed; the result recorded there is the real one** |
-| New specs | 20 in `tests/import-flow/selection.test.ts`, registered via `tests/import-flow/index.ts` → `tests/index.ts` |
+| `npm run test:ci` (Electron, randomized order) | **1320 specs, 0 failures**, exit 0 — randomized, seed 51325. Fixtures verified unmodified afterwards. |
+| `node scripts/hex-color-ratchet.js` | `noodl-editor` 16 = baseline 16, `canvas-paint-ts` 2 = 2 — **this task adds no literal colour**. The script exits 1 on a `noodl-core-ui` +2 in `Logo.module.scss`, which is **pre-existing on the base commit** (`87b6c6b`, the brand commit) and untouched here. |
+| `node scripts/tsfixme-ratchet.js` | `TSFixme` 535 → **530** (deleting the popup removed five). The script exits 1 on `any` +90, which is **identical on the base commit** — 377 before and after this task — from already-merged backend work. |
+| `node scripts/lint-ratchet.js` | exit 0 (reports "0 files"; ESLint's ignore config excludes the editor sources in this environment, so this gate is a no-op here and should not be read as a pass) |
+| New specs | 23 in `tests/import-flow/selection.test.ts`, registered via `tests/import-flow/index.ts` → `tests/index.ts` |
+
+Five full suite runs were needed, and the first three are worth recording because each failure was real:
+
+1. **Timed out at 900s** in the Git specs. A worktree needs `node_modules` symlinked at the repo root, at `packages/`, **and** at `packages/noodl-editor/` — `dugite` resolves its git binary through `packages/node_modules`, and without it the Git specs hang the entire run.
+2. **10 failures.** One was the resource/module `reason` defect (§4); the other nine were collateral from the fixture-contamination bug (§4b).
+3. **1 failure** — the dead `forEachRecursive` assertion (§4b), which then reported 5 rather than the asserted 4 because `forEachRecursive` descends *through* a component instance into its graph. That descent only happens because the imported `/Main`'s `/comp1` node resolved to the component imported alongside it, so the corrected assertion now witnesses "references in imported components resolve post-import" directly rather than at second hand.
 
 **Nothing in this task was verified visually.** The editor cannot be launched from a worktree (`lerna exec` resolves to the main checkout), and this is a UI task whose acceptance is inherently visual. The checklist below is written to be executed by someone else, from the primary checkout.
 
