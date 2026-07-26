@@ -448,4 +448,30 @@ describe('QueryBuilder', () => {
       expect(QueryBuilder.deserializeValue('not json {')).toBe('not json {');
     });
   });
+
+  describe('toFts5MatchQuery (BAK-008)', () => {
+    it('quotes a single word as a literal phrase', () => {
+      expect(QueryBuilder.toFts5MatchQuery('hello')).toBe('"hello"');
+    });
+
+    it('quotes each whitespace-separated word independently (implicit AND, order-insensitive)', () => {
+      expect(QueryBuilder.toFts5MatchQuery('quick brown')).toBe('"quick" "brown"');
+    });
+
+    it('neutralizes FTS5 syntax characters that would otherwise be operators', () => {
+      // Bare `-` means "exclude"; a hyphenated word must stay literal.
+      expect(QueryBuilder.toFts5MatchQuery('state-of-the-art')).toBe('"state-of-the-art"');
+      // Bare `:` means "column filter"; `*` means prefix wildcard.
+      expect(QueryBuilder.toFts5MatchQuery('col:term')).toBe('"col:term"');
+      expect(QueryBuilder.toFts5MatchQuery('wild*card')).toBe('"wild*card"');
+    });
+
+    it('escapes embedded double quotes per FTS5 string-literal syntax', () => {
+      expect(QueryBuilder.toFts5MatchQuery('say "hi"')).toBe('"say" """hi"""');
+    });
+
+    it('collapses repeated whitespace and trims', () => {
+      expect(QueryBuilder.toFts5MatchQuery('  quick   brown  ')).toBe('"quick" "brown"');
+    });
+  });
 });

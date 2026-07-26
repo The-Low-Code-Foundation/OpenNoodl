@@ -164,9 +164,15 @@ function convertPointerValue(value) {
  * @param {Object} where - Parse-style query object
  * @param {Array} params - Array to push parameter values to
  * @param {Object} [schema] - Optional schema for type-aware conversion
+ * @param {string} [tableAlias] - BAK-008: when the caller is joining the
+ *   collection's table against another (the FTS5 shadow table, whose columns
+ *   are named after the indexed fields), unqualified column references like
+ *   `"title" = ?` become ambiguous. Passing the escaped table name/alias here
+ *   qualifies every column reference (`"table"."title" = ?`). Omitted by every
+ *   pre-existing call site, so behavior there is unchanged.
  * @returns {string} SQL WHERE clause (without "WHERE" keyword)
  */
-function buildWhereClause(where, params, schema) {
+function buildWhereClause(where, params, schema, tableAlias) {
   if (!where || Object.keys(where).length === 0) {
     return '';
   }
@@ -176,7 +182,9 @@ function buildWhereClause(where, params, schema) {
   for (const [key, condition] of Object.entries(where)) {
     // Handle logical operators
     if (key === '$and' && Array.isArray(condition)) {
-      const subConditions = condition.map((sub) => buildWhereClause(sub, params, schema)).filter((c) => c);
+      const subConditions = condition
+        .map((sub) => buildWhereClause(sub, params, schema, tableAlias))
+        .filter((c) => c);
       if (subConditions.length > 0) {
         conditions.push(`(${subConditions.join(' AND ')})`);
       }
@@ -184,7 +192,9 @@ function buildWhereClause(where, params, schema) {
     }
 
     if (key === '$or' && Array.isArray(condition)) {
-      const subConditions = condition.map((sub) => buildWhereClause(sub, params, schema)).filter((c) => c);
+      const subConditions = condition
+        .map((sub) => buildWhereClause(sub, params, schema, tableAlias))
+        .filter((c) => c);
       if (subConditions.length > 0) {
         conditions.push(`(${subConditions.join(' OR ')})`);
       }
@@ -197,14 +207,15 @@ function buildWhereClause(where, params, schema) {
       const { object, key: relationKey } = condition;
       if (object && object.objectId && object.className && relationKey) {
         const junctionTable = `_Join_${relationKey}_${object.className}`;
-        conditions.push(`"objectId" IN (SELECT "relatedId" FROM ${escapeTable(junctionTable)} WHERE "owningId" = ?)`);
+        const idCol = tableAlias ? `${tableAlias}."objectId"` : '"objectId"';
+        conditions.push(`${idCol} IN (SELECT "relatedId" FROM ${escapeTable(junctionTable)} WHERE "owningId" = ?)`);
         params.push(object.objectId);
       }
       continue;
     }
 
     // Handle field conditions
-    const col = escapeColumn(key);
+    const col = tableAlias ? `${tableAlias}.${escapeColumn(key)}` : escapeColumn(key);
 
     if (typeof condition !== 'object' || condition === null) {
       // Direct equality
@@ -333,9 +344,10 @@ function translateOperator(col, op, value, params, schema) {
  * Build ORDER BY clause from Parse-style sort
  *
  * @param {string|string[]} sort - Sort specification (e.g., 'name' or '-createdAt' for desc)
+ * @param {string} [tableAlias] - BAK-008: qualify column references (see buildWhereClause).
  * @returns {string} SQL ORDER BY clause (without "ORDER BY" keyword)
  */
-function buildOrderClause(sort) {
+function buildOrderClause(sort, tableAlias) {
   if (!sort) {
     return '';
   }
@@ -344,10 +356,10 @@ function buildOrderClause(sort) {
 
   const orders = sortArray.map((s) => {
     const trimmed = s.trim();
-    if (trimmed.startsWith('-')) {
-      return `${escapeColumn(trimmed.substring(1))} DESC`;
-    }
-    return `${escapeColumn(trimmed)} ASC`;
+    const desc = trimmed.startsWith('-');
+    const name = desc ? trimmed.substring(1) : trimmed;
+    const col = tableAlias ? `${tableAlias}.${escapeColumn(name)}` : escapeColumn(name);
+    return `${col} ${desc ? 'DESC' : 'ASC'}`;
   });
 
   return orders.join(', ');
@@ -604,6 +616,130 @@ function buildIncrement(options) {
 }
 
 /**
+ * Turn a plain user-typed search phrase into a safe FTS5 MATCH query string
+ * (BAK-008).
+ *
+ * FTS5's default query syntax is NOT a plain-text search box: bare `-` means
+ * "exclude the next term", `:` prefixes a column filter, `*` is a prefix
+ * wildcard, and unbalanced `"` is a syntax error — so an ordinary phrase like
+ * "state-of-the-art" or someone's own literal `"quoted"` input would either
+ * throw ("no such column: ...") or silently mean something the user never
+ * intended. Wrapping each whitespace-separated chunk in its own double-quoted
+ * FTS5 string literal makes every character inside it literal (no operators),
+ * while still tokenizing normally within the quotes — the index and the query
+ * use the same tokenizer, so a hyphenated word like "state-of-the-art" still
+ * matches the same stored value it was split from. Multiple words remain an
+ * implicit AND across independent phrases (unchanged, order-insensitive)
+ * rather than becoming one big order-sensitive phrase.
+ *
+ * @param {string} term - raw user input
+ * @returns {string} an FTS5 query string safe to bind as the MATCH RHS
+ */
+function toFts5MatchQuery(term) {
+  return String(term)
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((tok) => `"${tok.replace(/"/g, '""')}"`)
+    .join(' ');
+}
+
+/**
+ * Build a search+filter+ACL SELECT joined against a collection's FTS5 shadow
+ * table (BAK-008). MATCHes `options.search` (an FTS5 query string) against the
+ * indexed fields, ANDs in the normal structured `where` and the row-level ACL
+ * predicate (unchanged — reused verbatim, shared tests with BAK-003), and
+ * ranks by BM25 (SQLite convention: lower/more-negative is a better match).
+ * Also selects an auto-column snippet.
+ *
+ * Requires `<collection>_fts` to exist (SchemaManager.rebuildSearchIndex) —
+ * callers should translate the resulting "no such table" SQL error into a
+ * clear "search not enabled" message (see LocalSQLAdapter.search).
+ *
+ * @param {Object} options
+ * @param {string} options.collection
+ * @param {string} options.search - FTS5 query string (the search term)
+ * @param {Object} [options.where] - additional structured filter, ANDed in
+ * @param {string|string[]} [options.sort] - overrides the default rank order
+ * @param {number} [options.limit]
+ * @param {number} [options.skip]
+ * @param {{access: 'read'|'write', keys: string[]}} [options.acl]
+ * @param {Object} [schema]
+ * @returns {{ sql: string, params: Array }}
+ */
+function buildSearchSelect(options, schema) {
+  const params = [];
+  const table = escapeTable(options.collection);
+  const ftsTable = escapeTable(`${options.collection}_fts`);
+
+  let sql =
+    `SELECT ${table}.*, bm25(${ftsTable}) AS "_rank", ` +
+    `snippet(${ftsTable}, -1, '<mark>', '</mark>', '…', 24) AS "_snippet" ` +
+    `FROM ${table} JOIN ${ftsTable} ON ${ftsTable}.rowid = ${table}.rowid`;
+
+  params.push(toFts5MatchQuery(options.search));
+  const conditions = [`${ftsTable} MATCH ?`];
+
+  if (options.where) {
+    const whereClause = buildWhereClause(options.where, params, schema, table);
+    if (whereClause) conditions.push(whereClause);
+  }
+  const aclClause = buildAclPredicate(options.collection, options.acl, params);
+  if (aclClause) conditions.push(aclClause);
+
+  sql += ` WHERE ${conditions.join(' AND ')}`;
+
+  if (options.sort) {
+    const orderClause = buildOrderClause(options.sort, table);
+    if (orderClause) sql += ` ORDER BY ${orderClause}`;
+  } else {
+    // Default: best match first. bm25() is lower-is-better in SQLite.
+    sql += ` ORDER BY "_rank" ASC`;
+  }
+
+  if (options.limit !== undefined) {
+    sql += ' LIMIT ?';
+    params.push(options.limit);
+  }
+  if (options.skip !== undefined && options.skip > 0) {
+    sql += ' OFFSET ?';
+    params.push(options.skip);
+  }
+
+  return { sql, params };
+}
+
+/**
+ * Build a COUNT query for a search (BAK-008) — same MATCH + filter + ACL
+ * predicate as buildSearchSelect, no ranking/snippet/order/limit.
+ *
+ * @param {Object} options - same shape as buildSearchSelect
+ * @param {Object} [schema]
+ * @returns {{ sql: string, params: Array }}
+ */
+function buildSearchCount(options, schema) {
+  const params = [];
+  const table = escapeTable(options.collection);
+  const ftsTable = escapeTable(`${options.collection}_fts`);
+
+  let sql = `SELECT COUNT(*) as count FROM ${table} JOIN ${ftsTable} ON ${ftsTable}.rowid = ${table}.rowid`;
+
+  params.push(toFts5MatchQuery(options.search));
+  const conditions = [`${ftsTable} MATCH ?`];
+
+  if (options.where) {
+    const whereClause = buildWhereClause(options.where, params, schema, table);
+    if (whereClause) conditions.push(whereClause);
+  }
+  const aclClause = buildAclPredicate(options.collection, options.acl, params);
+  if (aclClause) conditions.push(aclClause);
+
+  sql += ` WHERE ${conditions.join(' AND ')}`;
+
+  return { sql, params };
+}
+
+/**
  * Build a DISTINCT query
  *
  * @param {Object} options
@@ -794,6 +930,9 @@ module.exports = {
   buildOrderClause,
   buildSelect,
   buildCount,
+  buildSearchSelect,
+  buildSearchCount,
+  toFts5MatchQuery,
   buildInsert,
   buildUpdate,
   buildDelete,

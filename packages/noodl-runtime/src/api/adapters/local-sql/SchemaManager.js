@@ -596,6 +596,181 @@ class SchemaManager {
       throw e;
     }
   }
+
+  // ===========================================================================
+  // Full-text search (BAK-008)
+  //
+  // An FTS5 shadow table per opted-in collection, in "external content" mode
+  // against the real table so the indexed text is never duplicated on disk.
+  // Sync is done by SQL triggers generated here — the database's job, not
+  // application code's, so no write path (classes route, BYOB route, workflow
+  // step, import) can forget it. See dev-docs/tasks/phase-22-production-backend/
+  // BAK-008-NOTES.md for the design writeup.
+  // ===========================================================================
+
+  /**
+   * Probe whether this SQLite build has the FTS5 extension compiled in.
+   * Cheap (creates and drops a throwaway virtual table) and side-effect-free
+   * on the caller's schema. Callers use this to fail loudly and explicitly
+   * BEFORE attempting to enable search — never a silent LIKE fallback.
+   *
+   * @returns {boolean}
+   */
+  hasFts5Support() {
+    try {
+      this.db.exec('CREATE VIRTUAL TABLE IF NOT EXISTS "__fts5_probe" USING fts5(x)');
+      this.db.exec('DROP TABLE IF EXISTS "__fts5_probe"');
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /**
+   * Whether a collection currently has a search (FTS5 shadow table) index.
+   *
+   * @param {string} tableName
+   * @returns {boolean}
+   */
+  hasSearchIndex(tableName) {
+    const ftsTable = `${tableName}_fts`;
+    const exists = this.db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name = ?").get(ftsTable);
+    return !!exists;
+  }
+
+  /**
+   * Create the FTS5 shadow table (external content, `content_rowid='rowid'`)
+   * and its sync triggers for a collection. Does NOT backfill existing rows —
+   * FTS5 external-content tables start empty regardless of what the content
+   * table already holds; callers that need existing data indexed must follow
+   * with the 'rebuild' command (see rebuildSearchIndex, the normal entry point).
+   *
+   * @param {string} tableName
+   * @param {string[]} fields - real column names on tableName to index
+   * @param {string} [tokenizer='unicode61']
+   */
+  createSearchIndex(tableName, fields, tokenizer = 'unicode61') {
+    if (!Array.isArray(fields) || fields.length === 0) {
+      throw new Error('createSearchIndex requires at least one field to index');
+    }
+
+    const ftsTable = `${tableName}_fts`;
+    const cols = fields.map((f) => escapeColumn(f)).join(', ');
+    // Tokenizer name is validated by the caller (nodegx-backend's search
+    // config model); still sanitize defensively since it lands in raw SQL.
+    const safeTokenizer = String(tokenizer || 'unicode61').replace(/[^a-zA-Z0-9_]/g, '');
+
+    this.db.exec(
+      `CREATE VIRTUAL TABLE IF NOT EXISTS ${escapeTable(ftsTable)} USING fts5(` +
+        `${cols}, content=${escapeTable(tableName)}, content_rowid='rowid', tokenize='${safeTokenizer}')`
+    );
+
+    this._createSearchTriggers(tableName, fields);
+  }
+
+  /**
+   * (Re)create the three sync triggers (AFTER INSERT/UPDATE/DELETE) that keep
+   * the FTS5 shadow table in lockstep with the content table. Idempotent.
+   *
+   * @private
+   * @param {string} tableName
+   * @param {string[]} fields
+   */
+  _createSearchTriggers(tableName, fields) {
+    const ftsTable = `${tableName}_fts`;
+    const colList = fields.map((f) => escapeColumn(f)).join(', ');
+    const newVals = fields.map((f) => `new.${escapeColumn(f)}`).join(', ');
+    const oldVals = fields.map((f) => `old.${escapeColumn(f)}`).join(', ');
+    const aiTrigger = `${tableName}_fts_ai`;
+    const adTrigger = `${tableName}_fts_ad`;
+    const auTrigger = `${tableName}_fts_au`;
+
+    this.db.exec(`DROP TRIGGER IF EXISTS ${escapeTable(aiTrigger)}`);
+    this.db.exec(`DROP TRIGGER IF EXISTS ${escapeTable(adTrigger)}`);
+    this.db.exec(`DROP TRIGGER IF EXISTS ${escapeTable(auTrigger)}`);
+
+    // INSERT: mirror the new row into the shadow table.
+    this.db.exec(
+      `CREATE TRIGGER ${escapeTable(aiTrigger)} AFTER INSERT ON ${escapeTable(tableName)} BEGIN ` +
+        `INSERT INTO ${escapeTable(ftsTable)}(rowid, ${colList}) VALUES (new.rowid, ${newVals}); ` +
+        `END`
+    );
+
+    // DELETE: the FTS5 'delete' special command — the first two values are
+    // fixed ('delete', old rowid), the rest mirror the deleted column values
+    // (FTS5 needs them to remove the exact posting-list entries).
+    this.db.exec(
+      `CREATE TRIGGER ${escapeTable(adTrigger)} AFTER DELETE ON ${escapeTable(tableName)} BEGIN ` +
+        `INSERT INTO ${escapeTable(ftsTable)}(${escapeTable(ftsTable)}, rowid, ${colList}) ` +
+        `VALUES('delete', old.rowid, ${oldVals}); ` +
+        `END`
+    );
+
+    // UPDATE: delete-then-reinsert (the documented FTS5 external-content
+    // update pattern) so a change to any indexed field is reflected exactly
+    // once, regardless of which columns actually changed.
+    this.db.exec(
+      `CREATE TRIGGER ${escapeTable(auTrigger)} AFTER UPDATE ON ${escapeTable(tableName)} BEGIN ` +
+        `INSERT INTO ${escapeTable(ftsTable)}(${escapeTable(ftsTable)}, rowid, ${colList}) ` +
+        `VALUES('delete', old.rowid, ${oldVals}); ` +
+        `INSERT INTO ${escapeTable(ftsTable)}(rowid, ${colList}) VALUES (new.rowid, ${newVals}); ` +
+        `END`
+    );
+  }
+
+  /**
+   * Drop a collection's search index and its sync triggers. Safe to call when
+   * no index exists.
+   *
+   * @param {string} tableName
+   */
+  dropSearchIndex(tableName) {
+    const ftsTable = `${tableName}_fts`;
+    this.db.exec(`DROP TRIGGER IF EXISTS ${escapeTable(`${tableName}_fts_ai`)}`);
+    this.db.exec(`DROP TRIGGER IF EXISTS ${escapeTable(`${tableName}_fts_ad`)}`);
+    this.db.exec(`DROP TRIGGER IF EXISTS ${escapeTable(`${tableName}_fts_au`)}`);
+    this.db.exec(`DROP TABLE IF EXISTS ${escapeTable(ftsTable)}`);
+  }
+
+  /**
+   * The explicit, progress-reported, idempotent rebuild path (BAK-008 desired
+   * state): drop-and-recreate the shadow table + triggers for the CURRENT
+   * field list, then run FTS5's 'rebuild' command to repopulate it from the
+   * live content table. Safe to call repeatedly (each call is a full,
+   * consistent re-derivation, never a delta applied on top of drift) and is
+   * how both "enable search" and "fields changed" are implemented — one path,
+   * not two similar ones that could disagree.
+   *
+   * @param {string} tableName
+   * @param {string[]} fields
+   * @param {string} [tokenizer='unicode61']
+   * @returns {{ tableName: string, fields: string[], tokenizer: string, rowsIndexed: number, elapsedMs: number }}
+   */
+  rebuildSearchIndex(tableName, fields, tokenizer = 'unicode61') {
+    if (!this.hasFts5Support()) {
+      throw new Error(
+        'Full-text search requires the SQLite FTS5 extension, which this engine build does not have. ' +
+          'Refusing to enable search — no degraded/LIKE fallback is offered.'
+      );
+    }
+
+    const start = Date.now();
+    this.dropSearchIndex(tableName);
+    this.createSearchIndex(tableName, fields, tokenizer);
+
+    const ftsTable = `${tableName}_fts`;
+    this.db.exec(`INSERT INTO ${escapeTable(ftsTable)}(${escapeTable(ftsTable)}) VALUES('rebuild')`);
+
+    const countRow = this.db.prepare(`SELECT COUNT(*) as count FROM ${escapeTable(tableName)}`).get();
+
+    return {
+      tableName,
+      fields: [...fields],
+      tokenizer: String(tokenizer || 'unicode61').replace(/[^a-zA-Z0-9_]/g, ''),
+      rowsIndexed: countRow ? countRow.count : 0,
+      elapsedMs: Date.now() - start
+    };
+  }
 }
 
 module.exports = SchemaManager;

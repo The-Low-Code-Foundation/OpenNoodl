@@ -284,7 +284,19 @@ class LocalSQLAdapter {
       listTables: () => Object.keys(self._mockData).filter((name) => !name.startsWith('_')),
       exportSchemas: () => Object.values(self._mockSchema).filter((s) => s && !s.name?.startsWith('_')),
       addRelation: () => {},
-      removeRelation: () => {}
+      removeRelation: () => {},
+      // BAK-008: the mock cannot evaluate FTS5 (it regex-parses plain SQL),
+      // same reasoning as _guardAclSupport — loud, specific errors instead of
+      // a generic "not a function" TypeError or, worse, silent no-ops.
+      hasFts5Support: () => false,
+      hasSearchIndex: () => false,
+      createSearchIndex: () => {
+        throw new Error('Full-text search is not available in ephemeral (in-memory mock) mode.');
+      },
+      dropSearchIndex: () => {},
+      rebuildSearchIndex: () => {
+        throw new Error('Full-text search is not available in ephemeral (in-memory mock) mode.');
+      }
     };
   }
 
@@ -582,6 +594,79 @@ class LocalSQLAdapter {
       options.success(results, count);
     } catch (e) {
       console.error('LocalSQLAdapter.query error:', e);
+      options.error(e.message);
+    }
+  }
+
+  /**
+   * The ephemeral in-memory mock cannot evaluate FTS5 MATCH queries (it
+   * regex-parses plain SQL, not virtual-table syntax). Loud-failure doctrine:
+   * refuse explicitly rather than silently returning nothing or degrading to
+   * a substring scan the caller never asked for.
+   *
+   * @private
+   */
+  _guardSearchSupport() {
+    if (this._usingMock) {
+      throw new Error(
+        'Full-text search is not available in ephemeral (in-memory mock) mode — the mock cannot evaluate FTS5 queries.'
+      );
+    }
+  }
+
+  /**
+   * Full-text search a collection (BAK-008): the FTS5 MATCH predicate joined
+   * with the normal structured filter and the row-level ACL predicate (the
+   * same buildAclPredicate() query() uses — search results are filtered by
+   * ACL exactly like any other query, never post-filtered in JS), ranked by
+   * BM25, with a highlighted snippet. `options.search` is required and must be
+   * a non-empty string; there is no bare-query fallback here (callers decide
+   * whether to call query() or search()).
+   *
+   * @param {Object} options - Same shape as query(), plus options.search (string).
+   */
+  search(options) {
+    try {
+      this._ensureTable(options.collection);
+      this._guardAclSupport(options);
+      this._guardSearchSupport();
+
+      if (!options.search || typeof options.search !== 'string') {
+        options.error('search() requires a non-empty "search" term');
+        return;
+      }
+
+      const schema = this._getSchema(options.collection);
+      const { sql, params } = QueryBuilder.buildSearchSelect(options, schema);
+
+      const rows = this.db.prepare(sql).all(...params);
+      const results = rows.map((row) => {
+        const { _rank, _snippet, ...rest } = row;
+        const record = this._rowToRecord(rest, options.collection);
+        // bm25() is lower-is-better (often negative) in SQLite; flip the sign
+        // so callers see the more intuitive higher-is-better "_score".
+        record._score = typeof _rank === 'number' ? -_rank : undefined;
+        record._snippet = _snippet;
+        return record;
+      });
+
+      let count;
+      if (options.count) {
+        const { sql: countSQL, params: countParams } = QueryBuilder.buildSearchCount(options, schema);
+        const countRow = this.db.prepare(countSQL).get(...countParams);
+        count = countRow?.count || 0;
+      }
+
+      options.success(results, count);
+    } catch (e) {
+      if (/no such table/i.test(e.message || '')) {
+        options.error(
+          `Search is not enabled for collection "${options.collection}" (no search index). ` +
+            'Enable search for this collection first.'
+        );
+        return;
+      }
+      console.error('LocalSQLAdapter.search error:', e);
       options.error(e.message);
     }
   }
