@@ -1,7 +1,7 @@
 # Phase 21 Progress — Library & Import Overhaul
 
 **Created:** 2026-07-25, from the code-level library/import investigation (findings recorded in the [README](./README.md))
-**Overall status:** 🟡 In progress — LIB-001 pipeline built (4/5 criteria verified; live install still to confirm) merged to cline-dev; LIB-004 engine now code-complete (all three stages built, `projectimporter.js` deleted, 5 call sites migrated, v2 fixture added; typecheck + headless green; live-editor pass is the only residual); LIB-003 plumbing+inventory half done (scanner unified, `startsWith` + inject fixed, manifest validation, live index triaged, expansion shortlist decided; 3 shortlist modules authored + authoring docs merged, live per-module audit remains); LIB-002 static-audit half done (29-prefab AUDIT.md + metadata fixes merged; live restyle/install residual); LIB-005 not started
+**Overall status:** 🟡 In progress — LIB-001 pipeline built (4/5 criteria verified; live install still to confirm) merged to cline-dev; LIB-004 engine now code-complete (all three stages built, `projectimporter.js` deleted, 5 call sites migrated, v2 fixture added; typecheck + headless green; live-editor pass is the only residual); LIB-003 plumbing+inventory half done (scanner unified, `startsWith` + inject fixed, manifest validation, live index triaged, expansion shortlist decided; 3 shortlist modules authored + authoring docs merged, live per-module audit remains); LIB-002 static-audit half done (29-prefab AUDIT.md + metadata fixes merged; live restyle/install residual); **LIB-005 code-complete** (new `views/ImportFlow` replaces all three legacy popups across all five entry points, old popup + LIB-004 strangler adapter deleted, engine gaps found and fixed; typecheck + Electron suite green — but **nothing visually verified**, so the live-QA checklist in LIB-005-NOTES.md §7 is the outstanding gate)
 
 ## Status vocabulary
 
@@ -14,43 +14,46 @@ Not started · In progress · Built–not wired · Complete · Superseded
 | 1 | LIB-001 | Library source of truth & delivery pipeline | Built–not wired | 4–6 days | Pipeline + 55-entry seed + editor changes shipped and committed; residual: live install-from-`library-dist` verification (see Log) |
 | 2 | LIB-002 | Prefab audit, repair & restyle | In progress | 1.5–2 wks | Static audit half DONE (2026-07-25, merged `bd276a1`): full 29-prefab `library/prefabs/AUDIT.md` (triage keep 14 / fix 15 / retire 0), style charter, per-prefab hard-coded-colour + collision-risk + folder-hygiene findings, 27 `library.json` metadata fixes, `library:check` 29/29 clean. Residual tail (needs primary-checkout editor): open/exercise/restyle/re-save each prefab, fix folder-hygiene defects, regen icons, live install console-clean on React 18+19, consolidation decisions. |
 | 3 | LIB-003 | Module audit, hygiene & expansion | In progress | 1–1.5 wks | Plumbing+inventory half DONE (2026-07-25); **expansion + docs half DONE** (2026-07-25, merged `beaeca4`): 3 shortlist modules authored — `lucide-icons` (ISC iconset, 1998 glyphs), `qr-code` (MIT, visual node), `confetti` (MIT, trigger node), each self-contained/no-build; `library/modules/README.md` authoring docs; `library:check` 58/58 clean, `catalog:check` green. **Catalog integration for module nodes confirmed non-existent** (chart-js absent too) — nodes take SUB-004's dynamic skip path (residual, not invented). Residual tail: live per-module audit of all 26 existing (both React pairings, preview+deploy), live preview/deploy verify of the 3 new modules, replace placeholder icons, deploy-build check of the scanner refactor. |
-| 4 | LIB-004 | Import engine v2 | ⚠️ **Built, and its characterization suite FAILS** | 1–1.5 wks | Full three-stage engine (`analyze`+`plan`+`apply`) built & typed; `projectimporter.js` DELETED; all 5 call sites migrated behind a strangler adapter; v2-format fixture + parity test added. Verified: typecheck (editor + editor-tests) clean, 18 headless assertions green. **The owed Electron suite was finally run on 2026-07-26 (orchestrator, primary checkout) and the engine regresses — see DEFECT below.** |
-| 5 | LIB-005 | Import experience overhaul | 🔵 In progress 2026-07-26 (worktree agent) | 1.5–2 wks | Consumes LIB-004's plan API; AIX-003 dependency-closure selection; preview thumbnails via noodl-preview |
+| 4 | LIB-004 | Import engine v2 | Built–not wired (code complete; live-verify pending) | 1–1.5 wks | Full three-stage engine (`analyze`+`plan`+`apply`) built & typed; `projectimporter.js` DELETED; all 5 call sites migrated behind a strangler adapter (**adapter now deleted too — LIB-005**); v2-format fixture + parity test added. Verified: typecheck (editor + editor-tests) clean, 18 headless assertions green (apply id-semantics/skip/rename/styles + v2 inventory parity). **The Electron characterization suite has now been run (LIB-005, 2026-07-26) and is green** — it found three defects on the way, two in the engine (resource/module `reason`; text styles never pulled their font) and one in the suite itself (a fixture it corrupted, and an assertion that had never executed). Residual: live-editor pass of the 5 flows, now folded into LIB-005's live-QA checklist |
+| 5 | LIB-005 | Import experience overhaul | Built–not wired (code complete; **zero visual verification**) | 1.5–2 wks | New `views/ImportFlow` surface (Select → Review → Done) over LIB-004's `analyze`/`plan`/`apply`. Closure is **derived, never stored**, so an unsatisfied selection is unrepresentable (AIX-003's rule, not its code — see NOTES §3). Collisions resolved inline — skip/overwrite/rename — with SUB-007's `ComponentDiffView` one disclosure behind a `summarizeChanges` roll-up. All five entry points converged; `importpopup.ts`, `ImportPopupView.tsx` and LIB-004's `legacyAdapter.ts` **deleted**; the characterization suite ported onto the engine API. **Thumbnails not shipped — `noodl-preview` cannot render images (finding, not a shortcut; NOTES §3).** Residual: the whole of the live-QA checklist in [LIB-005-NOTES.md](./LIB-005-NOTES.md) §7 |
 
-## 🔴 DEFECT (open) — LIB-004 overwrite-import drops a component's child nodes
+## ✅ RESOLVED — the "overwrite-import drops child nodes" scare (`d97505c`, retracted)
 
-**Found:** 2026-07-26, orchestrator, primary checkout, running the Electron suite
-LIB-004 itself listed as an unrun residual. **1297 specs, 1 failure**, reproduced
-across two different random seeds (87662, 69435) — deterministic, not order-flake.
+Recorded because the wrong diagnosis is the instructive part.
 
+Running the owed Electron suite on 2026-07-26 produced `Expected 1 to be 4` in the
+id-re-keying characterization spec. The orchestrator filed it as a **data-loss
+regression in the import engine** — reasoning that the spec was written against
+the legacy importer, that the only edit across the engine swap was the `require`
+line, and that it therefore had to be the engine. That reasoning was wrong, and
+"reproduced across two seeds" gave it false confidence: a test that is
+unconditionally broken also reproduces perfectly.
+
+**The actual cause, found by LIB-005:**
+
+```js
+after.forEachNodeRecursive((n) => afterIds.push(n.id));
 ```
-FAILED: Project import and export unit tests
-        re-keys imported node ids while reusing the target component id (characterization)
-  Expected 1 to be 4.
-```
 
-**What it means.** Importing `/Main` (1 root + 3 children) over an existing
-component leaves **1 node**. The children are lost. This is data-shaped, and
-LIB-004 is the single engine behind *all five* install/import/export flows.
+`forEachRecursive` treats a **truthy callback return as "stop"**, and
+`Array.push` returns the new length. The implicit-return arrow therefore
+short-circuited after the *first* node, pinning `afterIds.length` at 1
+permanently. The spec could never have passed in any engine. It had simply never
+run — LIB-004's Electron pass was blocked by the worktree/lerna trap — so nobody
+found out.
 
-**Why it is a real regression, not a stale test.** The spec was written by
-`bf7dc84` (`test(LIB-004): characterize id re-keying…`) to capture the **legacy**
-importer's behaviour. Across the engine swap in `34bb133`, the only edit to the
-file was the `require` line — legacy importer → strangler adapter. The assertions
-are byte-identical. So the v2 engine changed behaviour, and the characterization
-test caught exactly what it exists to catch. It was never run, because the suite
-needs Electron and LIB-004 was built in a worktree.
+No child nodes were ever lost. The engine was never at fault. The correct count is
+**5**, not 4: `forEachRecursive` also descends *through* a component instance into
+its graph, so `/comp1`'s own root is included — which incidentally observes the
+"references in imported components resolve post-import" contract first-hand.
 
-**Localized to:** `utils/import-engine/apply.ts` → `makeSource().takeComponent()`,
-which does `delete c.id; c.rekeyAllIds();`. After import only the root survives
-`forEachNodeRecursive`, so the suspicion is `rekeyAllIds()` re-keying node ids
-without preserving parent→child links (children orphaned rather than deleted).
-Not yet fixed — LIB-005 was live in these files when this was found, and a
-concurrent edit would have collided.
+**Two things worth keeping:**
 
-**Owner:** next task in phase 21. Fix, then re-run `npm run test:ci` in
-`packages/noodl-editor` (~3 min) — that command is the gate, and running it is
-now non-optional for anything touching the import engine.
+- `forEachRecursive`'s truthy-return-stops contract is a live trap. Braces, not
+  implicit returns, in any callback that ends in `push`.
+- An assertion that has never executed is not evidence, however old it looks. The
+  gate is `npm run test:ci` in `packages/noodl-editor` (~3 min, needs Electron),
+  and it is non-optional for anything touching the import engine.
 
 ## Anytime fixes (independent of task order)
 
@@ -69,6 +72,21 @@ now non-optional for anything touching the import engine.
   This is a firm **3** rather than a padded 5: the spec's own guidance is "one good X beats five bad ones," and the remaining pool items are already covered live. Authoring these three (manifest + source + catalog entries for static-shape nodes + preview & deploy verification on both React pairings) is the deferred expansion tail. Revisit for a 4th/5th only if a clear gap surfaces during the live audit (a countdown/timer or toast micro-util are the likeliest additions).
 
 ## Log
+
+- **2026-07-26 — LIB-005 code-complete; LIB-004's live residual partly discharged** (worktree off cline-dev tip `e1914e1`; **NOT merged — orchestrator merges**). Design rationale, prior-art accounting and the live-QA checklist are in [LIB-005-NOTES.md](./LIB-005-NOTES.md).
+  - **Worktree base trap, third time.** Branched from `360cdc4` (repo root `main`, ~300 commits behind). Caught before any work, `git fetch . cline-dev && git reset --hard e1914e1`.
+  - **The design turn: stop storing derived state.** The flow's state is only the *requested roots*, the dropped heuristic links, and the explicit collision resolutions. Everything else — closure, collisions, diffs, counts — is `plan()` re-run on every render. The old popup kept a second boolean per row (`implicit`) that it re-derived by walking the graph itself in the view, so the screen and the import were two structures that had to agree. Consequence: **an unsatisfied selection is unrepresentable** (AIX-003's rule) with no validation code, because a `required` row is a derived value and "out" is not a state a derived value can be in.
+  - **Heuristic edges are droppable at the edge, not the plan.** `deriveInventory` rebuilds the inventory from `edges` minus the dropped links and re-plans, so the closure recomputes; an item something else still needs stays. A link is droppable only when *every* backing edge is `inferred`.
+  - **Collisions inline, three ways** (skip / overwrite / rename), no second popup. Overwrite leads with SUB-007's roll-up and puts `ComponentDiffView` one disclosure behind it. Rename validity comes from the engine (`policy=rename && collides`), not a second checker. **Prefab silent drops are gone** — colliding non-components open the flow pre-set to "kept yours".
+  - **Reuse accounting:** `ComponentDiffView` verbatim; `graphChangePresentation` gained `summarizeChanges`/`countChanges` lifted out of `ChangeReviewDocument` (one implementation, two consumers); AIX-003's closure was reused **as a principle, not as code**, and NOTES §3 argues why routing import through `requiredWith` would have been a second closure in disguise.
+  - **Thumbnails not shipped — `noodl-preview` cannot render images.** Its `main` points at a non-existent `src/index.ts`, nothing depends on it, it has no headless browser (only `chokidar`), it serves a live HTTP page, and its platform shims fight the Electron renderer. Node counts ship instead as the honest signal. Two real paths recorded for later.
+  - **Deleted:** `views/importpopup.ts`, `views/importpopup/ImportPopupView.tsx`, **and LIB-004's `legacyAdapter.ts`** (all five call sites moved). `tests/project/projectimport.js` ported onto `analyze`/`plan`/`apply` rather than kept on a shim.
+  - **Three real defects found and fixed, all invisible until a UI rendered the plan or the suite actually ran:**
+    1. `plan()` passed the *accumulated closure* as the "requested" set for resources and modules, so every one reported `reason: 'requested'` with an unexplained `requiredBy`. Colours/text styles were already correct.
+    2. A **text style never pulled its font**. `buildInventory` computed `fileDependencies` but emitted no edge and the closure never walked it — a regression against the legacy popup, which did mark it. Fixed in the engine (edge + closure pass), 3 specs.
+    3. `projectimport.js` **corrupted its own fixture**: the overwrite characterization loaded `import_proj1` in place, left the gutted project in the global `ProjectModel.instance`, and under randomized order a later spec saved it back over the fixture — after which nine specs failed in a shape that read exactly like an engine regression. Also, its sibling's `forEachNodeRecursive((n) => afterIds.push(n.id))` short-circuited on the first node (`push` returns a truthy length), so its assertion had never been evaluated.
+  - **Verification:** editor + editor-tests typecheck exit 0; **`npm run test:ci` 1320 specs / 0 failures, exit 0** (randomized, seed 51325). Hex ratchet: this task adds no literal colour (`noodl-editor` 16 = baseline); its exit-1 is a pre-existing `noodl-core-ui` +2 in `Logo.module.scss` from the brand commit `87b6c6b`. TSFixme ratchet: 535 → 530; its exit-1 (`any` +90) is byte-identical on the base commit. **This run discharges the "Electron characterization suite never executed" half of LIB-004's residual** — a worktree needs `node_modules` symlinked at the repo root, `packages/`, *and* `packages/noodl-editor/`, or `dugite` cannot find git and the Git specs hang the run to its 900s timeout.
+  - **Residual — and it is the big one: nothing was verified visually.** The editor cannot be launched from a worktree. LIB-005-NOTES.md §7 is a six-part scripted checklist (closure legibility + the un-untickable required row, blind-overwrite/diff/rename, prefab kept-yours, URL untick, export, edge cases) written for someone else to execute from the primary checkout. Also residual: dead `.import-popup-*` rules in `src/assets/css/style.css` (left alone — concurrent UIX-011 agent owns that file), and one deliberate behaviour change to confirm — **the NodePicker no longer closes itself after an install**, reasoned in NOTES §7 QA-3 step 5 and reversible in one line.
 
 - **2026-07-25 — LIB-003 expansion + docs half complete** (worktree off cline-dev tip `36b8386`, branch `lib-003-module-tail`, commits `b7f3520` modules + `ac3efcd` docs, merged `beaeca4` — orchestrator merge; ran concurrently with LIB-002, zero file overlap). The module-authoring/docs tail of LIB-003; the live per-module audit remains.
   - **Three expansion modules authored** (all no-keys/no-backend, self-contained, **no build step**):

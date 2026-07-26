@@ -3,13 +3,18 @@ import { platform } from '@noodl/platform';
 import { addHashToUrl } from '@noodl-utils/addHashToUrl';
 import FileSystem from '@noodl-utils/filesystem';
 import getDocsEndpoint from '@noodl-utils/getDocsEndpoint';
-import ProjectImporter from '@noodl-utils/import-engine/legacyAdapter';
 
 import Model from '../../../shared/model';
-import { EventDispatcher } from '../../../shared/utils/EventDispatcher';
-import { ViewerConnection } from '../ViewerConnection';
-import ImportPopup from '../views/importpopup';
-import PopupLayer from '../views/popuplayer';
+import {
+  applyToProject,
+  createTargetProject,
+  ImportFlowCancelled,
+  loadSource,
+  openImportFlow,
+  planSelection
+} from '../views/ImportFlow';
+import type { SelectionState } from '../views/ImportFlow/model/selection';
+import { ProjectModel } from './projectmodel';
 import { unzipIntoDirectory } from './projectmodel.editor';
 
 export interface IModule {
@@ -149,26 +154,12 @@ export class ModuleLibraryModel extends Model {
       throw { message: `This module requires editor version ${module.minEditorVersion} or newer.` };
     }
 
-    const moduleRootPath = await this.getModuleTemplateRoot(modulePath);
-
-    const imports = await new Promise((resolve, reject) =>
-      ProjectImporter.instance.listComponentsAndDependencies(moduleRootPath, resolve)
-    );
-
-    const collisions = await new Promise((resolve, reject) =>
-      ProjectImporter.instance.checkForCollisions(imports, (result) =>
-        result && result.message ? reject(result.message) : resolve(result)
-      )
-    );
-
-    let componentsToImport = imports;
-
-    // Show overwrite popup if collisions
-    if (typeof collisions !== 'undefined') {
-      componentsToImport = await this._showImportPopup({ imports, collisions, onBeforePopup, onAfterPopup });
-    }
-
-    await this._doImport(moduleRootPath, componentsToImport);
+    await this._install(await this.getModuleTemplateRoot(modulePath), {
+      label: module?.label ?? 'module',
+      kind: 'module',
+      onBeforePopup,
+      onAfterPopup
+    });
   }
 
   async installPrefab(
@@ -181,102 +172,64 @@ export class ModuleLibraryModel extends Model {
       throw { message: `This prefab requires editor version ${module.minEditorVersion} or newer.` };
     }
 
-    const moduleRootPath = await this.getModuleTemplateRoot(modulePath);
+    await this._install(await this.getModuleTemplateRoot(modulePath), {
+      label: module?.label ?? 'prefab',
+      kind: 'prefab',
+      onBeforePopup,
+      onAfterPopup
+    });
+  }
 
-    const imports = await new Promise<TSFixme>((resolve, reject) =>
-      ProjectImporter.instance.listComponentsAndDependencies(moduleRootPath, resolve)
-    );
+  /**
+   * Install a prefab or module.
+   *
+   * LIB-005 keeps the one-click case one click: with nothing colliding, this
+   * plans the whole source and applies it without ever showing a dialog. When
+   * something DOES collide the full flow opens, pre-selected, so the user
+   * resolves it in the same surface as any other import.
+   *
+   * Prefabs used to silently drop colliding styles, variants, files and modules
+   * — the user never learned their prefab had come in half-restyled. Those
+   * collisions now open the flow pre-resolved to "keep yours": the same
+   * outcome by default, but visible and changeable.
+   */
+  private async _install(
+    moduleRootPath: string,
+    options: { label: string; kind: 'prefab' | 'module'; onBeforePopup?: () => void; onAfterPopup?: () => void }
+  ) {
+    const project = ProjectModel.instance;
+    if (!project) throw { message: 'No project loaded, cannot import.' };
 
-    const collisions = await new Promise<TSFixme>((resolve, reject) =>
-      ProjectImporter.instance.checkForCollisions(imports, (result) =>
-        result && result.message ? reject(result.message) : resolve(result)
-      )
-    );
+    const source = await loadSource(moduleRootPath);
+    const target = await createTargetProject(project);
+    const everything: SelectionState = {
+      requested: new Set(source.items.map((item) => item.key)),
+      droppedLinks: new Set()
+    };
 
-    let itemsToImport = imports;
+    const dryRun = planSelection(source, target, everything);
 
-    if (typeof collisions !== 'undefined') {
-      const collisionsToImport = JSON.parse(JSON.stringify(collisions));
-
-      //remove all collisions that aren't components since we shouldn't overwrite those
-      collisionsToImport.styles = { colors: [], text: [] };
-      collisionsToImport.resources = [];
-      collisionsToImport.variants = [];
-      collisionsToImport.modules = [];
-
-      if (ProjectImporter.instance.hasCollisions(collisionsToImport)) {
-        itemsToImport = await this._showImportPopup({
-          imports,
-          collisions: collisionsToImport,
-          onBeforePopup,
-          onAfterPopup
-        });
-      } else {
-        //we have collisions in styles variants or resources. Let's remove those from the import
-        function removeItemWithName(array, itemsToRemove) {
-          for (const item of itemsToRemove) {
-            array = array.filter((s) => s.name !== item.name);
-          }
-          return array;
-        }
-
-        itemsToImport.styles.colors = removeItemWithName(itemsToImport.styles.colors, collisions.styles.colors);
-        itemsToImport.styles.text = removeItemWithName(itemsToImport.styles.text, collisions.styles.text);
-        itemsToImport.variants = removeItemWithName(itemsToImport.variants, collisions.variants);
-        itemsToImport.modules = removeItemWithName(itemsToImport.modules, collisions.modules);
-      }
+    if (!dryRun.hasCollisions) {
+      const result = await applyToProject(dryRun, project);
+      if (result.result !== 'success') throw { message: result.message };
+      return;
     }
 
-    await this._doImport(moduleRootPath, itemsToImport);
-  }
-
-  async _doImport(moduleRootPath, imports) {
-    ViewerConnection.instance.setWatchModelChangesEnabled(false);
-    return new Promise((resolve, reject) => {
-      ProjectImporter.instance.import(moduleRootPath, imports, (response) => {
-        ViewerConnection.instance.setWatchModelChangesEnabled(true);
-
-        if (response.result !== 'success') {
-          reject({ message: response.message });
-          PopupLayer.instance.hideAllModalsAndPopups();
-        }
-
-        EventDispatcher.instance.emit('viewer-refresh');
-        EventDispatcher.instance.emit('ProjectModel.importComplete');
-
-        resolve(true);
-        PopupLayer.instance.hideAllModalsAndPopups();
+    try {
+      const result = await openImportFlow({
+        title: `Install ${options.label}`,
+        subtitle: options.kind === 'prefab' ? 'Prefab' : 'Module',
+        sourceDir: moduleRootPath,
+        initialSelection: 'all',
+        keepExistingNonComponents: options.kind === 'prefab',
+        onBeforePopup: options.onBeforePopup,
+        onAfterPopup: options.onAfterPopup
       });
-    });
-  }
-
-  async _showImportPopup({ imports, collisions, onBeforePopup, onAfterPopup }) {
-    return new Promise((resolve, reject) => {
-      const overwritePopup = new ImportPopup({
-        variant: 'overwrite',
-        imports: collisions,
-        initAllAsImport: true,
-        ignoreDependencies: true,
-        onOk: () => {
-          onAfterPopup && onAfterPopup();
-          ProjectImporter.instance.filterImports(imports, { remove: overwritePopup.getUnselectedImports() });
-          resolve(imports);
-        },
-        onCancel: () => {
-          onAfterPopup && onAfterPopup();
-          PopupLayer.instance.hideModal(undefined);
-          reject({ message: 'Import cancelled' });
-        }
-      });
-
-      overwritePopup.render();
-
-      onBeforePopup && onBeforePopup();
-
-      PopupLayer.instance.showModal({
-        content: overwritePopup
-      });
-    });
+      if (result.result !== 'success') throw { message: result.message };
+    } catch (err) {
+      if (err instanceof ImportFlowCancelled) throw { message: 'Import cancelled' };
+      throw err;
+    }
   }
 
   private getModuleTemplateRoot(templateUrl: string) {

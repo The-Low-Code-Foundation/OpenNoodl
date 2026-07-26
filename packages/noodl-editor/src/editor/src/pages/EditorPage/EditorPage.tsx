@@ -19,7 +19,6 @@ import FileSystem from '@noodl-utils/filesystem';
 import { KeyCode, KeyMod } from '@noodl-utils/keyboard/KeyCode';
 import { LocalProjectsModel } from '@noodl-utils/LocalProjectsModel';
 import { migrateExternalBrokersStorage } from '@noodl-utils/migrateExternalBrokersStorage';
-import ProjectImporter from '@noodl-utils/import-engine/legacyAdapter';
 import ProjectValidator from '@noodl-utils/projectvalidator';
 import SchemaHandler from '@noodl-utils/schemahandler';
 import { guid } from '@noodl-utils/utils';
@@ -32,7 +31,7 @@ import { EventDispatcher } from '../../../../shared/utils/EventDispatcher';
 import { installSidePanel, installDocuments } from '../../router.setup';
 import { ViewerConnection } from '../../ViewerConnection';
 import { Frame } from '../../views/common/Frame';
-import ImportPopup from '../../views/importpopup';
+import { ImportFlowCancelled, openImportFlow } from '../../views/ImportFlow';
 import { LessonLayer } from '../../views/lessonlayer2';
 import { NodePickerClearNews } from '../../views/NodePicker/NodePicker.hooks';
 import PopupLayer from '../../views/popuplayer';
@@ -284,102 +283,29 @@ function importFromUrl(url) {
   });
 }
 
-function _importProject(dirEntry) {
-  const activityId = 'import-project';
-  ToastLayer.showActivity('Importing...', activityId);
-  let selectedImports = {};
-
-  ProjectImporter.instance.listComponentsAndDependencies(dirEntry, function (imports) {
-    if (!imports) {
-      ToastLayer.hideActivity(activityId);
-      ToastLayer.showError('Could not load import project');
-      return;
+/**
+ * Import a project unpacked from a URL. LIB-005: the flow owns selection,
+ * collision resolution and the result summary — including, at last, actually
+ * honouring what the user unticked (the legacy URL path built a collision
+ * dialog and then threw its answer away).
+ */
+function _importProject(dirEntry: string) {
+  openImportFlow({
+    title: 'Import project',
+    subtitle: 'From the downloaded archive',
+    sourceDir: dirEntry,
+    // Historic behaviour: components and files start ticked, everything else
+    // arrives through the dependency closure.
+    initialSelection: ['component', 'resource']
+  }).then(
+    (result) => {
+      if (result.result !== 'success') ToastLayer.showError(result.message ?? 'Import failed');
+    },
+    (err: unknown) => {
+      if (err instanceof ImportFlowCancelled) return;
+      ToastLayer.showError(err instanceof Error ? err.message : 'Import failed');
     }
-
-    // Pre check all imports
-    if (imports.components)
-      imports.components.forEach((i) => {
-        i.import = true;
-      });
-
-    if (imports.resources)
-      imports.resources.forEach((r) => {
-        r.import = true;
-      });
-
-    // Show popup and allow the user to choose which components to import
-    var chooseImportsPopup = new ImportPopup({
-      variant: 'import',
-      imports: imports,
-      onOk: function () {
-        // User have made choice of what to import, check if there are any collisions
-        selectedImports = chooseImportsPopup.getSelectedImports();
-        ProjectImporter.instance.checkForCollisions(selectedImports, function (collisions) {
-          ToastLayer.hideActivity(activityId);
-          if (collisions === undefined) {
-            // No collisions
-            PopupLayer.instance.hideAllModalsAndPopups();
-            doImport(selectedImports);
-          } else {
-            // There is a collision for import, promt user if we should overwrite
-            const overwritePopup = new ImportPopup({
-              variant: 'overwrite',
-              imports: collisions,
-              onOk: function () {
-                // Honor items the user unticked in the overwrite dialog: remove
-                // them from the selection so they are neither overwritten nor added.
-                ProjectImporter.instance.filterImports(selectedImports, {
-                  remove: overwritePopup.getUnselectedImports()
-                });
-                PopupLayer.instance.hideAllModalsAndPopups();
-                doImport(selectedImports);
-              },
-              onCancel: function () {
-                PopupLayer.instance.hideAllModalsAndPopups();
-              }
-            });
-            overwritePopup.render();
-            overwritePopup.el.style.width = '500px'; // Make it a little bit wider as a modal
-
-            PopupLayer.instance.showModal({
-              content: overwritePopup
-            });
-          }
-        });
-      },
-      onCancel: function () {
-        PopupLayer.instance.hideModal();
-      }
-    });
-    chooseImportsPopup.render();
-    chooseImportsPopup.el.style.width = '500px'; // Make it a little bit wider as a modal
-
-    ToastLayer.hideActivity(activityId);
-    PopupLayer.instance.showModal({
-      content: chooseImportsPopup
-    });
-  });
-
-  function doImport(imports) {
-    ToastLayer.showActivity('Importing...', activityId);
-
-    ViewerConnection.instance.setWatchModelChangesEnabled(false);
-    ProjectImporter.instance.import(dirEntry, imports, function (r) {
-      ViewerConnection.instance.setWatchModelChangesEnabled(true);
-      ToastLayer.hideActivity(activityId);
-
-      if (r.result !== 'success') {
-        ToastLayer.showError(r.message);
-        return;
-      }
-
-      ToastLayer.showSuccess('Import successful');
-
-      // Reload the viewer
-      EventDispatcher.instance.emit('ProjectModel.importComplete');
-      EventDispatcher.instance.emit('viewer-refresh');
-    });
-  }
+  );
 }
 
 function reloadProjectFromDisk() {

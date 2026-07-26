@@ -1,0 +1,621 @@
+/**
+ * LIB-005: import flow chrome.
+ *
+ * Colours come from the Phase 23 token set only — no literal hex anywhere in
+ * this file (the CI ratchet enforces it). Red is reserved for danger, so the
+ * "you are about to overwrite" register is amber/notice, not red.
+ */
+
+.root {
+  display: flex;
+  flex-direction: column;
+  width: 900px;
+  max-width: 92vw;
+  height: 640px;
+  max-height: 84vh;
+  background-color: var(--theme-color-bg-2);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.rootNarrow {
+  width: 720px;
+}
+
+/* ── Header ───────────────────────────────────────────────────────────────── */
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
+  background-color: var(--theme-color-bg-3);
+  border-bottom: 1px solid var(--theme-color-bg-4);
+  flex: 0 0 auto;
+}
+
+.title {
+  color: var(--theme-color-fg-highlight);
+  font-weight: var(--font-weight-semibold);
+  font-size: 14px;
+  margin: 0;
+}
+
+.subtitle {
+  color: var(--theme-color-fg-muted);
+  font-size: 12px;
+  margin: 2px 0 0;
+}
+
+.headerSpacer {
+  flex: 1 1 auto;
+}
+
+/* ── Stepper ──────────────────────────────────────────────────────────────── */
+
+.steps {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.step {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--theme-color-fg-muted);
+  background-color: transparent;
+}
+
+.stepActive {
+  color: var(--theme-color-on-primary);
+  background-color: var(--theme-color-primary);
+}
+
+.stepDone {
+  color: var(--theme-color-fg-default);
+  background-color: var(--theme-color-bg-4);
+}
+
+.stepDivider {
+  width: 12px;
+  height: 1px;
+  background-color: var(--theme-color-bg-5);
+}
+
+/* ── Body ─────────────────────────────────────────────────────────────────── */
+
+.body {
+  flex: 1 1 auto;
+  display: flex;
+  min-height: 0;
+}
+
+.leftPane {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border-right: 1px solid var(--theme-color-bg-4);
+}
+
+.rightPane {
+  flex: 0 0 320px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background-color: var(--theme-color-bg-1);
+}
+
+.scroll {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0;
+}
+
+.searchRow {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--theme-color-bg-4);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 0 0 auto;
+}
+
+.searchBox {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* ── Category sections ────────────────────────────────────────────────────── */
+
+.section {
+  padding: 4px 0 10px;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px 6px;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background-color: var(--theme-color-bg-2);
+}
+
+.sectionTitle {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--theme-color-fg-muted);
+  font-weight: var(--font-weight-semibold);
+}
+
+.sectionCount {
+  color: var(--theme-color-fg-muted);
+  font-size: 11px;
+}
+
+/* ── Rows ─────────────────────────────────────────────────────────────────── */
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 28px;
+  padding-right: 12px;
+  cursor: pointer;
+  user-select: none;
+  color: var(--theme-color-fg-default);
+  font-size: 12px;
+  border: none;
+  background: transparent;
+  width: 100%;
+  text-align: left;
+}
+
+.row:hover {
+  background-color: var(--theme-color-bg-hover);
+}
+
+.rowFocused {
+  background-color: var(--theme-color-primary-bg);
+}
+
+.rowLabel {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rowRequired .rowLabel {
+  color: var(--theme-color-fg-default-shy);
+}
+
+.rowMeta {
+  flex: 0 0 auto;
+  color: var(--theme-color-fg-muted);
+  font-size: 11px;
+}
+
+.rowIcon {
+  flex: 0 0 auto;
+  display: flex;
+  color: var(--theme-color-fg-muted);
+}
+
+.disclosure {
+  flex: 0 0 auto;
+  display: flex;
+  width: 14px;
+  color: var(--theme-color-fg-muted);
+}
+
+/* The selection box: three states, each visually distinct.
+   - empty      → not in the plan
+   - requested  → the user asked for it (solid primary)
+   - required   → a dependency brought it in; it has no "off" (outlined primary) */
+.box {
+  flex: 0 0 auto;
+  width: 15px;
+  height: 15px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--theme-color-fg-transparent);
+  background-color: var(--theme-color-bg-1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--theme-color-on-primary);
+}
+
+.boxRequested {
+  background-color: var(--theme-color-primary);
+  border-color: var(--theme-color-primary);
+}
+
+.boxRequired {
+  background-color: var(--theme-color-primary-bg);
+  border-color: var(--theme-color-primary-dim);
+  color: var(--theme-color-primary);
+  cursor: default;
+}
+
+.boxPartial {
+  background-color: var(--theme-color-bg-4);
+  border-color: var(--theme-color-primary-dim);
+}
+
+.boxPartial::after {
+  content: '';
+  width: 7px;
+  height: 2px;
+  border-radius: 1px;
+  background-color: var(--theme-color-primary);
+}
+
+/* ── Right pane: closure detail ───────────────────────────────────────────── */
+
+.paneHeader {
+  padding: 12px 14px 8px;
+  border-bottom: 1px solid var(--theme-color-bg-3);
+  flex: 0 0 auto;
+}
+
+.paneTitle {
+  color: var(--theme-color-fg-highlight);
+  font-size: 12px;
+  font-weight: var(--font-weight-semibold);
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.paneHint {
+  color: var(--theme-color-fg-muted);
+  font-size: 11px;
+  margin: 4px 0 0;
+  line-height: 1.45;
+}
+
+.linkGroup {
+  padding: 10px 14px 4px;
+}
+
+.linkGroupTitle {
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--theme-color-fg-muted);
+  margin-bottom: 6px;
+}
+
+.link {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 5px 0;
+}
+
+.linkBody {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.linkName {
+  color: var(--theme-color-fg-default);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.linkVia {
+  color: var(--theme-color-fg-muted);
+  font-size: 11px;
+  margin-top: 1px;
+  overflow-wrap: anywhere;
+}
+
+.linkDropped .linkName,
+.linkDropped .linkVia {
+  color: var(--theme-color-fg-muted);
+  text-decoration: line-through;
+}
+
+.emptyPane {
+  padding: 24px 16px;
+  color: var(--theme-color-fg-muted);
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: center;
+}
+
+/* ── Review stage ─────────────────────────────────────────────────────────── */
+
+.reviewScroll {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  min-height: 0;
+  padding: 18px 22px;
+}
+
+.headline {
+  color: var(--theme-color-fg-highlight);
+  font-size: 15px;
+  font-weight: var(--font-weight-semibold);
+  margin: 0 0 6px;
+}
+
+.headlineSub {
+  color: var(--theme-color-fg-default-shy);
+  font-size: 12px;
+  margin: 0 0 18px;
+  line-height: 1.5;
+}
+
+.chipRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 18px;
+}
+
+.countGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 8px;
+  margin-bottom: 22px;
+}
+
+.countCard {
+  background-color: var(--theme-color-bg-1);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+}
+
+.countValue {
+  color: var(--theme-color-fg-highlight);
+  font-size: 20px;
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.1;
+}
+
+.countLabel {
+  color: var(--theme-color-fg-muted);
+  font-size: 11px;
+  margin-top: 3px;
+}
+
+.countNote {
+  color: var(--theme-color-notice);
+  font-size: 11px;
+  margin-top: 4px;
+}
+
+.blockTitle {
+  color: var(--theme-color-fg-highlight);
+  font-size: 12px;
+  font-weight: var(--font-weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0 0 4px;
+}
+
+.blockHint {
+  color: var(--theme-color-fg-muted);
+  font-size: 12px;
+  margin: 0 0 12px;
+  line-height: 1.5;
+}
+
+.collision {
+  background-color: var(--theme-color-bg-1);
+  border-radius: var(--radius-md);
+  border-left: 2px solid var(--theme-color-notice);
+  padding: 12px 14px;
+  margin-bottom: 10px;
+}
+
+.collisionKept {
+  border-left-color: var(--theme-color-bg-5);
+}
+
+.collisionHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.collisionName {
+  color: var(--theme-color-fg-highlight);
+  font-size: 13px;
+  font-weight: var(--font-weight-semibold);
+  overflow-wrap: anywhere;
+}
+
+.collisionSpacer {
+  flex: 1 1 auto;
+}
+
+.segmented {
+  display: inline-flex;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  border: 1px solid var(--theme-color-bg-4);
+  flex: 0 0 auto;
+}
+
+.segment {
+  border: none;
+  background-color: var(--theme-color-bg-2);
+  color: var(--theme-color-fg-default-shy);
+  font-size: 11px;
+  padding: 4px 11px;
+  cursor: pointer;
+}
+
+.segment + .segment {
+  border-left: 1px solid var(--theme-color-bg-4);
+}
+
+.segment:hover {
+  background-color: var(--theme-color-bg-3);
+  color: var(--theme-color-fg-highlight);
+}
+
+.segmentActive,
+.segmentActive:hover {
+  background-color: var(--theme-color-primary);
+  color: var(--theme-color-on-primary);
+}
+
+.collisionDetail {
+  margin-top: 10px;
+}
+
+.collisionSummary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--theme-color-fg-default-shy);
+  font-size: 12px;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.collisionSummary:hover {
+  color: var(--theme-color-fg-highlight);
+}
+
+.diffHost {
+  margin-top: 8px;
+  padding: 8px 10px;
+  background-color: var(--theme-color-bg-2);
+  border-radius: var(--radius-sm);
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.renameRow {
+  margin-top: 10px;
+  max-width: 380px;
+}
+
+.renameError {
+  color: var(--theme-color-danger);
+  font-size: 11px;
+  margin-top: 4px;
+}
+
+.landingList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.landingRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--theme-color-fg-default);
+  padding: 3px 0;
+}
+
+.landingWhy {
+  color: var(--theme-color-fg-muted);
+  font-size: 11px;
+}
+
+/* ── Result stage ─────────────────────────────────────────────────────────── */
+
+.resultIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: var(--theme-color-success-bg);
+  color: var(--theme-color-success);
+  margin-bottom: 14px;
+}
+
+.resultIconFail {
+  background-color: var(--theme-color-danger-bg);
+  color: var(--theme-color-danger);
+}
+
+.resultList {
+  list-style: none;
+  margin: 0 0 16px;
+  padding: 0;
+}
+
+.resultList li {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  color: var(--theme-color-fg-default);
+  font-size: 12px;
+  padding: 3px 0;
+}
+
+.resultNote {
+  background-color: var(--theme-color-bg-1);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  color: var(--theme-color-fg-default-shy);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.warnNote {
+  border-left: 2px solid var(--theme-color-warning);
+}
+
+/* ── Footer ───────────────────────────────────────────────────────────────── */
+
+.footer {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 18px;
+  background-color: var(--theme-color-bg-3);
+  border-top: 1px solid var(--theme-color-bg-4);
+}
+
+.footerNote {
+  flex: 1 1 auto;
+  color: var(--theme-color-fg-muted);
+  font-size: 12px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.centered {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: var(--theme-color-fg-muted);
+  font-size: 13px;
+  padding: 40px;
+  text-align: center;
+}

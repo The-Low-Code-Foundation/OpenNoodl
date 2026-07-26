@@ -145,6 +145,55 @@ export function countCosmetic(changes: GraphChange[]): number {
   return changes.filter((change) => change.category === 'cosmetic').length;
 }
 
+/** Roll-up counts behind {@link summarizeChanges}; cosmetic changes never count. */
+export interface ChangeSummary {
+  added: number;
+  removed: number;
+  changed: number;
+  /** added + removed + changed — zero means "nothing but cosmetics". */
+  total: number;
+}
+
+export function countChanges(changes: GraphChange[]): ChangeSummary {
+  let added = 0;
+  let removed = 0;
+  let changed = 0;
+  for (const change of changes) {
+    if (change.category === 'cosmetic') continue;
+    switch (change.kind) {
+      case 'node-added':
+      case 'connection-added':
+      case 'comment-added':
+        added += 1;
+        break;
+      case 'node-removed':
+      case 'connection-removed':
+      case 'comment-removed':
+        removed += 1;
+        break;
+      default:
+        changed += 1;
+    }
+  }
+  return { added, removed, changed, total: added + removed + changed };
+}
+
+/**
+ * One line naming the size of a change set — "3 additions, 1 removal, 4 changes".
+ *
+ * The register the diff UIs lead with before the per-change detail: AIX-003's
+ * review header, and LIB-005's collision rows where the full
+ * {@link ComponentDiffView} sits one disclosure behind it.
+ */
+export function summarizeChanges(changes: GraphChange[], emptyLabel = 'No changes'): string {
+  const { added, removed, changed } = countChanges(changes);
+  const parts: string[] = [];
+  if (added > 0) parts.push(`${added} addition${added === 1 ? '' : 's'}`);
+  if (removed > 0) parts.push(`${removed} removal${removed === 1 ? '' : 's'}`);
+  if (changed > 0) parts.push(`${changed} change${changed === 1 ? '' : 's'}`);
+  return parts.length > 0 ? parts.join(', ') : emptyLabel;
+}
+
 export interface PresentedConflict {
   key: string;
   text: string;
