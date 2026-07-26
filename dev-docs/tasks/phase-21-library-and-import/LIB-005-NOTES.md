@@ -100,6 +100,24 @@ So there is no cheap path, and a thumbnail is decoration that must never gate an
 
 Three specs pin it (`tests/import-flow/selection.test.ts`).
 
+**Resources and modules always claimed to be directly requested (real defect, fixed).** `plan()` passed the *accumulated closure* set as the "what did the caller ask for" set for resources and modules — but those sets are seeded from the selection and then grown, so after the closure ran, every resource and module reported `reason: 'requested'` and its `requiredBy` went unexplained. Colours and text styles got this right; resources and modules did not. Invisible until a UI actually rendered "why is this here", which is why LIB-004's own suite did not catch it. Fixed by passing the requested-only sets, and `simpleItems` lost the redundant second parameter that made the mistake easy.
+
+---
+
+## 4b. A test-suite hazard found by running the suite
+
+The LIB-004 notes record that the Electron characterization suite was never actually executed (the worktree/`lerna` trap). Running it revealed a contamination bug that had nothing to do with either task's code but made both look broken:
+
+`projectimport.js`'s *"overwrite reuses the target component id"* loaded `tests/testfs/import_proj1` **in place** as its overwrite target, on the reasoning that a model-only overwrite writes nothing to disk. True of that spec — but the gutted project then sat in the global `ProjectModel.instance`, and under randomized order a later spec that saves the current project wrote it back **over the fixture**. Every subsequent spec reading `import_proj1/project.json` from disk then failed, in a shape that reads exactly like an import-engine regression (`/Main` suddenly has no dependencies and no nodes).
+
+Fixed by copying the fixture to temp first, as the sibling spec already did. The wider hazard — any spec leaving a *fixture-backed* project in `ProjectModel.instance` — still exists for the two read-only collision specs; they do not mutate, so they cannot cause this, but the pattern is worth not spreading.
+
+A second dead spec surfaced in the same suite: *"re-keys imported node ids…"* collected node ids with `forEachNodeRecursive((n) => afterIds.push(n.id))`. `forEachRecursive` treats a truthy callback return as **stop**, and `Array.push` returns the new length — so the walk short-circuited after the first node and `afterIds.length` was permanently 1. The spec asserted 4. It had never been executed, so the assertion had never been evaluated. Braces added.
+
+**Both of these were only findable by running the suite, which is exactly the residual LIB-004 recorded.** It is now discharged.
+
+*(A worktree also needs `node_modules` symlinked at the repo root, `packages/`, **and** `packages/noodl-editor/` before the suite will run at all: `dugite` resolves its git binary through `packages/node_modules`, and without it the Git specs hang the whole run to the 900s timeout.)*
+
 ---
 
 ## 5. Structure
@@ -175,6 +193,7 @@ Prerequisite: two local projects. **A** — the target, opened in the editor. **
 2. **Expect:** the flow opens (it did not before) with the colliding style listed and pre-set to **Keep mine** / `kept yours`. *(Success Criterion 4.)*
 3. Install a prefab that collides with **nothing**. **Expect: no dialog at all** — it installs in one click, as before.
 4. Install a **module** that collides. **Expect:** the flow opens with collisions defaulted to **Overwrite** (module semantics differ from prefab deliberately).
+5. **Deliberate behaviour change, please confirm which is wanted.** The legacy install path ended with `PopupLayer.hideAllModalsAndPopups()`, which also destroyed the NodePicker itself. That is *not* preserved: the picker now stays open after an install. The reason is that `ModuleCard` runs its own post-install state machine (`Finished` → success toast → back to `Idle` after 3s), which is meaningless if the picker has just been torn down — so the old call looks like collateral from closing the import popups rather than an intended dismissal. **Expect:** after install the card shows Finished, the toast appears, and the picker is still there. If Richard prefers the picker to close, it is one line in `ModuleLibraryModel._install` / `ProjectLibraryModel.importProject`.
 
 ### QA-4 · Import from URL — the untick bug is really gone
 1. Import from URL with an archive that collides with the open project.
@@ -209,3 +228,4 @@ Prerequisite: two local projects. **A** — the target, opened in the editor. **
 8. **No feature flag.** The spec allowed one for the transition; it was not used, because the task's own definition of done is that the old popup is deleted — and it is. A flag would only have created the limbo the spec warns about.
 9. **`suggestName` gives up after 999 attempts** and falls back to a timestamp suffix. Not reachable in practice; noted so it is not a surprise.
 10. **Export cancel-at-directory-chooser renders as a failure card** ("No destination chosen — nothing was written."). Accurate but slightly stern; a dedicated "abandoned" state would read better.
+11. **The NodePicker no longer closes itself after an install** (QA-3 step 5). Deliberate, reasoned, and reversible in one line — but it *is* an observable change and wants Richard's eye.

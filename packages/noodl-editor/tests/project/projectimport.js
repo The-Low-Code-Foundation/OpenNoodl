@@ -401,7 +401,15 @@ describe('Project import and export unit tests', function () {
               expect(after.id).toBe('T-ID'); // overwrite reused the target id
 
               const afterIds = [];
-              after.forEachNodeRecursive((n) => afterIds.push(n.id));
+              // NB the braces: `forEachRecursive` treats a truthy callback
+              // return as "stop", and `Array.push` returns the new length — so
+              // the arrow-with-implicit-return this spec was written with
+              // short-circuited after the FIRST node and made `afterIds.length`
+              // permanently 1. The spec never ran (LIB-004's Electron pass was
+              // blocked by the worktree trap), so nobody found out.
+              after.forEachNodeRecursive((n) => {
+                afterIds.push(n.id);
+              });
               expect(afterIds.length).toBe(4); // proj1's /Main nodes (1 root + 3 children)
               // ...but every one was re-keyed to a fresh id.
               srcNodeIds.forEach((id) => expect(afterIds.indexOf(id)).toBe(-1));
