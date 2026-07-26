@@ -16,4 +16,7 @@
 
 ## Log
 
+- 2026-07-26 — **Material-icons-as-text bug diagnosed (not a phase-23 regression):** the Icon node renders `iconIconSource.class` as a CSS class + ligature text; the class only works when the project has the matching iconset module (`noodl_modules/material-icons/manifest.json` → injects the Google Fonts stylesheet). The AI-generated "Shine Phase 2" project referenced the class without the module → raw "dehaze"/"account_circle" text. Fixed for that project by installing the module manifest. **Product follow-up worth filing:** semantic validator / AI authoring loop should flag icon classes with no installed iconset module (silent-failure class). Also: Shine Phase 2 lives in an ephemeral session scratchpad under /private/tmp — should be moved to a durable location.
+- 2026-07-26 — PAR-001 merged to cline-dev (`58cc4d2`).
+
 - 2026-07-26 — Phase created from Richard's parity directive; three task specs written from the mock CSS (normative values extracted); three parallel worktree agents launched.
