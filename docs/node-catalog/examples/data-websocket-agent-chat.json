@@ -1,0 +1,83 @@
+{
+  "id": "data-websocket-agent-chat",
+  "title": "Agent chat over a WebSocket, with the connection visible",
+  "description": "A minimal two-way agent surface: the WebSocket node connects on load, the prompt field feeds `message`, the Send button fires `send`, and each reply arrives on `receivedRaw`. The two status texts are the point of the example rather than decoration — `connectionState` reads idle/connecting/open/reconnecting/closed/error, and `lastError` says why whenever it lands on the last of those, so an outage is something the user can see instead of a screen that has quietly stopped answering. `whenDisconnected` is left on Queue, so a message typed during a reconnect is held in order and sent once the socket is back rather than lost.",
+  "demonstrates": ["net.noodl.WebSocket"],
+  "components": [
+    {
+      "name": "/Agent Chat",
+      "nodes": [
+        {
+          "id": "root",
+          "type": "Group",
+          "label": "Agent chat",
+          "parameters": { "flexDirection": "column" },
+          "children": ["status_text", "error_text", "reply_text", "composer"]
+        },
+        {
+          "id": "status_text",
+          "type": "Text",
+          "label": "Connection state",
+          "parent": "root"
+        },
+        {
+          "id": "error_text",
+          "type": "Text",
+          "label": "Last error",
+          "parent": "root"
+        },
+        {
+          "id": "reply_text",
+          "type": "Text",
+          "label": "Latest reply",
+          "parent": "root"
+        },
+        {
+          "id": "composer",
+          "type": "Group",
+          "label": "Composer",
+          "parent": "root",
+          "parameters": { "flexDirection": "row" },
+          "children": ["prompt_input", "send_button"]
+        },
+        {
+          "id": "prompt_input",
+          "type": "Text Input",
+          "label": "Prompt",
+          "parent": "composer",
+          "parameters": { "placeholder": "Ask the agent…" }
+        },
+        {
+          "id": "send_button",
+          "type": "Button",
+          "label": "Send",
+          "parent": "composer",
+          "parameters": { "label": "Send" }
+        },
+        {
+          "id": "agent_socket",
+          "type": "net.noodl.WebSocket",
+          "label": "Agent socket",
+          "parameters": {
+            "url": "wss://agent.example.com/chat",
+            "autoConnect": true,
+            "whenDisconnected": "queue",
+            "maxRetries": -1
+          }
+        }
+      ],
+      "connections": [
+        { "fromId": "prompt_input", "fromProperty": "onTextChanged", "toId": "agent_socket", "toProperty": "message" },
+        { "fromId": "send_button", "fromProperty": "onClick", "toId": "agent_socket", "toProperty": "send" },
+        { "fromId": "agent_socket", "fromProperty": "receivedRaw", "toId": "reply_text", "toProperty": "text" },
+        {
+          "fromId": "agent_socket",
+          "fromProperty": "connectionState",
+          "toId": "status_text",
+          "toProperty": "text"
+        },
+        { "fromId": "agent_socket", "fromProperty": "lastError", "toId": "error_text", "toProperty": "text" }
+      ]
+    }
+  ]
+}

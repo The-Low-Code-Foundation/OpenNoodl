@@ -26393,6 +26393,456 @@
       }
     },
     {
+      "typeName": "net.noodl.WebSocket",
+      "displayName": "WebSocket",
+      "category": "Data",
+      "isVisual": false,
+      "isDeprecated": false,
+      "inNodePicker": true,
+      "availableIn": [
+        "browser",
+        "cloud"
+      ],
+      "providedBy": "noodl-runtime",
+      "ssr": {
+        "compat": "client-only",
+        "note": "A WebSocket cannot be meaningfully opened during a server render and would leak a socket per request; the node connects in the browser after hydration."
+      },
+      "docs": "https://docs.noodl.net/nodes/data/websocket",
+      "searchTags": [
+        "websocket",
+        "ws",
+        "wss",
+        "realtime",
+        "bidirectional",
+        "socket",
+        "stream",
+        "streaming",
+        "agent",
+        "chat",
+        "live"
+      ],
+      "inputs": [
+        {
+          "name": "autoConnect",
+          "displayName": "Auto Connect",
+          "group": "Connection",
+          "plug": "input",
+          "type": {
+            "name": "boolean"
+          },
+          "isSignal": false,
+          "default": true,
+          "description": "Connect as soon as a URL is available, without waiting for a Connect signal."
+        },
+        {
+          "name": "autoReconnect",
+          "displayName": "Auto Reconnect",
+          "group": "Connection",
+          "plug": "input",
+          "type": {
+            "name": "boolean"
+          },
+          "isSignal": false,
+          "default": true
+        },
+        {
+          "name": "connect",
+          "displayName": "Connect",
+          "group": "Actions",
+          "plug": "input",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "isSignal": true
+        },
+        {
+          "name": "disconnect",
+          "displayName": "Disconnect",
+          "group": "Actions",
+          "plug": "input",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "isSignal": true
+        },
+        {
+          "name": "heartbeatInterval",
+          "displayName": "Heartbeat Interval (ms)",
+          "group": "Connection",
+          "plug": "input",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false,
+          "default": 0,
+          "description": "Send Heartbeat Message this often while open. 0 disables it. Only enable this if your server expects the message — it is application data, not a protocol ping frame."
+        },
+        {
+          "name": "heartbeatMessage",
+          "displayName": "Heartbeat Message",
+          "group": "Connection",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "default": "ping"
+        },
+        {
+          "name": "heartbeatReply",
+          "displayName": "Heartbeat Reply",
+          "group": "Connection",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "default": "pong",
+          "description": "Exact text the server answers a heartbeat with. It is measured as Latency, hidden from On Message, and — if it stops arriving — treated as a dead connection. Leave empty to only send heartbeats."
+        },
+        {
+          "name": "jitter",
+          "displayName": "Backoff Jitter",
+          "group": "Connection",
+          "plug": "input",
+          "type": {
+            "name": "boolean"
+          },
+          "isSignal": false,
+          "default": true,
+          "description": "Spread reconnect attempts randomly across the second half of each backoff window."
+        },
+        {
+          "name": "maxQueueSize",
+          "displayName": "Max Queue Size",
+          "group": "Message",
+          "plug": "input",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false,
+          "default": 100,
+          "description": "Messages the queue holds before further Sends are refused and counted in Dropped. 0 or less means unlimited, which can grow without bound during a long outage."
+        },
+        {
+          "name": "maxReconnectDelay",
+          "displayName": "Max Reconnect Delay (ms)",
+          "group": "Connection",
+          "plug": "input",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false,
+          "default": 30000
+        },
+        {
+          "name": "maxRetries",
+          "displayName": "Max Retries",
+          "group": "Connection",
+          "plug": "input",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false,
+          "default": 10,
+          "description": "Reconnect attempts allowed per outage. 0 disables retrying; a negative value means unlimited."
+        },
+        {
+          "name": "message",
+          "displayName": "Message",
+          "group": "Message",
+          "plug": "input",
+          "type": {
+            "name": "*"
+          },
+          "isSignal": false,
+          "description": "Value to send. Objects are JSON-serialized; ArrayBuffers and typed arrays are sent as binary frames."
+        },
+        {
+          "name": "messageType",
+          "displayName": "Message Type",
+          "group": "Message",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Auto",
+                "value": "auto"
+              },
+              {
+                "label": "Text",
+                "value": "text"
+              },
+              {
+                "label": "Binary",
+                "value": "binary"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "auto",
+          "description": "Auto sends binary values as binary and everything else as text. Binary forces text and objects to be UTF-8 encoded first."
+        },
+        {
+          "name": "protocols",
+          "displayName": "Protocols",
+          "group": "Connection",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "Comma-separated WebSocket subprotocols to offer during the handshake."
+        },
+        {
+          "name": "reconnectDelay",
+          "displayName": "Reconnect Delay (ms)",
+          "group": "Connection",
+          "plug": "input",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false,
+          "default": 1000,
+          "description": "First backoff delay. Each further attempt doubles it, up to Max Reconnect Delay."
+        },
+        {
+          "name": "send",
+          "displayName": "Send",
+          "group": "Actions",
+          "plug": "input",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "isSignal": true
+        },
+        {
+          "name": "url",
+          "displayName": "URL",
+          "group": "Connection",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "whenDisconnected",
+          "displayName": "When Disconnected",
+          "group": "Message",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Queue",
+                "value": "queue"
+              },
+              {
+                "label": "Drop",
+                "value": "drop"
+              },
+              {
+                "label": "Report Error",
+                "value": "error"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "queue",
+          "description": "What a Send does while the connection is not open. Queue holds it (in order) until the socket reopens; Drop discards it and counts it; Report Error also sets Last Error and fires On Error."
+        }
+      ],
+      "outputs": [
+        {
+          "name": "closeCode",
+          "displayName": "Close Code",
+          "group": "Status",
+          "plug": "output",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "closeReason",
+          "displayName": "Close Reason",
+          "group": "Status",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "connected",
+          "displayName": "Connected",
+          "group": "Status",
+          "plug": "output",
+          "type": {
+            "name": "boolean"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "connectionState",
+          "displayName": "Connection State",
+          "group": "Status",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "droppedCount",
+          "displayName": "Dropped",
+          "group": "Status",
+          "plug": "output",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "lastError",
+          "displayName": "Last Error",
+          "group": "Status",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "latency",
+          "displayName": "Latency (ms)",
+          "group": "Status",
+          "plug": "output",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "onClose",
+          "displayName": "On Close",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true
+        },
+        {
+          "name": "onError",
+          "displayName": "On Error",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true
+        },
+        {
+          "name": "onMessage",
+          "displayName": "On Message",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true
+        },
+        {
+          "name": "onMessageSent",
+          "displayName": "On Message Sent",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true
+        },
+        {
+          "name": "onOpen",
+          "displayName": "On Open",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true
+        },
+        {
+          "name": "onReconnect",
+          "displayName": "On Reconnect",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true
+        },
+        {
+          "name": "queueSize",
+          "displayName": "Queue Size",
+          "group": "Status",
+          "plug": "output",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "received",
+          "displayName": "Received",
+          "group": "Data",
+          "plug": "output",
+          "type": {
+            "name": "*"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "receivedIsBinary",
+          "displayName": "Received Is Binary",
+          "group": "Data",
+          "plug": "output",
+          "type": {
+            "name": "boolean"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "receivedRaw",
+          "displayName": "Received Raw",
+          "group": "Data",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "retryCount",
+          "displayName": "Retry Count",
+          "group": "Status",
+          "plug": "output",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false
+        }
+      ],
+      "dynamicPorts": null
+    },
+    {
       "typeName": "net.noodl.animatetovalue",
       "displayName": "Animate To Value",
       "category": "Animation",
