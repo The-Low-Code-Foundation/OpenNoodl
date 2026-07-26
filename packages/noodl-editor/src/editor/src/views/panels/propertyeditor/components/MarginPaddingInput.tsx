@@ -149,10 +149,17 @@ export function MarginPaddingInput({ values, defaults, onUpdate, onReset }: Marg
           // read muted), and only surface a non-px unit inline.
           const num = v.value === undefined ? '0' : v.value;
           const text = v.unit && v.unit !== 'px' ? `${num}${v.unit}` : `${num}`;
+          // PAR-002 (mock): zero values read muted; the padding boxes sit on
+          // bg-1 inside the solid inner block.
+          const classes =
+            'marginpadding-label drag-handle' +
+            (values[comp] !== undefined ? ' changed' : '') +
+            (Number(num) === 0 ? ' zero' : '') +
+            (comp.startsWith('padding') ? ' inner-box' : '');
           return (
             <div
               key={comp}
-              className={'marginpadding-label drag-handle' + (values[comp] !== undefined ? ' changed' : '')}
+              className={classes}
               style={{ position: 'absolute', ...LABEL_POSITIONS[comp] }}
               onMouseDown={(e) => {
                 const start = values[comp] || defaults[comp];

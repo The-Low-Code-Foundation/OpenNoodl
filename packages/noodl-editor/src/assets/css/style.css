@@ -551,12 +551,13 @@ button {
   border-left: 2px solid var(--theme-color-bg-1);
 }
 
+/* PAR-002: panels sit on bg-1 (mock `.props`); inputs/cards read bg-2 on top. */
 .sidebar-panel {
   height: 100%;
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  background-color: var(--theme-color-bg-2);
+  background-color: var(--theme-color-bg-1);
 }
 
 .sidebar-add-icon {
@@ -1114,11 +1115,16 @@ div.lesson-content::-webkit-scrollbar-thumb {
   align-items: center;
 }
 
+/* PAR-002: swatch matches the input kit — hairline border, radius 6. */
 .color-thumbnail {
   width: 33px;
   height: 33px;
   flex-shrink: 0;
   position: relative;
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-sizing: border-box;
 
   /* checkered background */
   background-image: linear-gradient(45deg, var(--base-color-neutral-900) 25%, transparent 25%),
@@ -1126,7 +1132,7 @@ div.lesson-content::-webkit-scrollbar-thumb {
     linear-gradient(-45deg, transparent 75%, var(--base-color-neutral-900) 75%);
   background-size: 8px 8px;
   background-position: 0 0, 0 4px, 4px -4px, -4px 0px;
-  background-color: white;
+  background-color: var(--base-color-white);
 }
 
 .color-thumbnail-content {
@@ -1356,19 +1362,32 @@ div.lesson-content::-webkit-scrollbar-thumb {
   pointer-events: none;
 }
 
+/* PAR-002 (mock `.bm-input`): 40px mono value boxes, centered; zero values
+   read muted; padding-side boxes sit on bg-1 inside the bg-2 inner block. */
 .marginpadding-label {
-  color: var(--theme-color-fg-muted);
+  box-sizing: border-box;
+  width: 40px;
+  color: var(--theme-color-fg-highlight);
   font: 11px ui-monospace, 'SF Mono', SFMono-Regular, Menlo, monospace;
+  text-align: center;
   background-color: var(--theme-color-bg-2);
   border: 1px solid var(--theme-color-border-default);
-  border-radius: var(--radius-sm);
-  padding: 3px 6px;
+  border-radius: var(--radius-default);
+  padding: 3.5px 0;
   cursor: pointer;
+  overflow: hidden;
   transition: color var(--speed-turbo), border-color var(--speed-turbo), background-color var(--speed-turbo);
 }
 
+.marginpadding-label.inner-box {
+  background-color: var(--theme-color-bg-1);
+}
+
+.marginpadding-label.zero {
+  color: var(--theme-color-fg-muted);
+}
+
 .marginpadding-label.changed {
-  color: var(--theme-color-fg-highlight);
   border-color: var(--theme-color-border-strong);
 }
 
@@ -1389,39 +1408,68 @@ div.lesson-content::-webkit-scrollbar-thumb {
 }
 
 /* -------------------------------------------------------------------
-    Align tools
+    Align tools (PAR-002: the mock's `.seg-icons` segmented control)
    ------------------------------------------------------------------- */
+.align-tools-seg {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  background-color: var(--theme-color-bg-2);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: var(--radius-md);
+  padding: 2px;
+  gap: 1px;
+}
+
 .align-icon {
-  width: 25px;
-  height: 25px;
-  display: inline-block;
-  padding: 3px;
-  margin-left: 5px;
-  margin-right: 5px;
+  flex: 1;
+  min-width: 0;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px 0;
+  box-sizing: border-box;
+  border-radius: var(--radius-default);
   cursor: pointer;
+  transition: background-color var(--speed-turbo);
 }
 
 .align-icon svg {
   fill: var(--theme-color-fg-muted);
+  transition: fill var(--speed-turbo);
 }
 
-.align-icon-rotate {
+.align-icon-rotate svg {
   transform: rotate(90deg);
 }
-.align-icon-rotate2 {
+.align-icon-rotate2 svg {
   transform: rotate(270deg);
 }
 
+/* Effective (default) value: legible but not pressed. */
 .align-icon.def svg {
   fill: var(--theme-color-fg-default);
 }
 
+/* Pressed segment: accent-soft fill + accent icon (mock contract). */
+.align-icon.sel {
+  background-color: var(--theme-color-primary-bg);
+}
+
 .align-icon.sel svg {
+  fill: var(--theme-color-primary);
+}
+
+.align-icon:hover:not(.sel) svg {
   fill: var(--theme-color-fg-highlight);
 }
 
-.align-icon:hover {
-  background-color: var(--theme-color-bg-3);
+@media (prefers-reduced-motion: reduce) {
+  .align-icon,
+  .align-icon svg {
+    transition: none;
+  }
 }
 
 /* -------------------------------------------------------------------
@@ -1435,6 +1483,12 @@ div.lesson-content::-webkit-scrollbar-thumb {
   margin-left: 5px;
   margin-right: 5px;
   cursor: pointer;
+  border-radius: var(--radius-default);
+}
+
+/* PAR-002: pressed segment convention — accent-soft fill + accent strokes. */
+.size-icon.sel {
+  background-color: var(--theme-color-primary-bg);
 }
 
 .size-icon.def .resizing-vline:after,
@@ -1454,7 +1508,7 @@ div.lesson-content::-webkit-scrollbar-thumb {
 .size-icon.sel .resizing-right,
 .size-icon.sel .resizing-bottom,
 .size-icon.sel .resizing-left {
-  border-color: var(--theme-color-fg-highlight) !important;
+  border-color: var(--theme-color-primary) !important;
 }
 
 .size-icon:hover {

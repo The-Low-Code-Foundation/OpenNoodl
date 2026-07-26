@@ -28,18 +28,8 @@ export function AlignToolsInput({ values, defaults, isVertical, onToggle, onRese
         <span className="property-changed-dot" title="Reset to default" onClick={() => onReset()} />
       )}
 
-      <div
-        style={{
-          display: 'flex',
-          position: 'relative',
-          flex: 1,
-          paddingTop: 4,
-          paddingBottom: 4,
-          marginLeft: 20,
-          alignItems: 'center',
-          justifyContent: 'center'
-        }}
-      >
+      {/* PAR-002: the mock's `.seg-icons` segmented control */}
+      <div className="align-tools-seg" style={{ marginLeft: 20 }}>
         {ALIGN_ICONS.filter((icon) => comps.includes(icon.comp)).map((icon) => {
           const classes = ['align-icon'];
           if (values[icon.comp] !== undefined) {

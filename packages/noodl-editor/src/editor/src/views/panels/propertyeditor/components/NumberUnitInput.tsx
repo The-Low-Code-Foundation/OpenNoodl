@@ -61,6 +61,7 @@ export function NumberUnitInput({
       <div style={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
         <PropertyPanelBaseInput
           type="text"
+          isNumeric
           value={displayedValue}
           isChanged={isChanged}
           isConnected={isConnected}
