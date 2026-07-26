@@ -1,66 +1,56 @@
+// UIX-007: Icons are token-driven via `currentColor`. The component hardcodes
+// no color value — it sets `color`, and every glyph paints with `currentColor`
+// (fill for solid glyphs, stroke for the 1.5px line glyphs), so one mechanism
+// drives both. State colors (default fg / hover fg-highlight / active accent)
+// are applied by the host — see IconButton — by setting `color` on context.
 .Root {
   display: block;
+  // Inherit the ambient token-driven color by default (currentColor). Hosts that
+  // color their glyph — IconButton, list/tree/menu rows — set `color` on context
+  // (or a matching `color` beside their legacy `path { fill }`), and both the
+  // 1.5px stroke glyphs and the solid glyphs follow it. No color is hardcoded here.
+  color: inherit;
+  transition: color var(--speed-turbo) var(--easing-base);
 
-  path {
-    transition: fill var(--speed-turbo) var(--easing-base);
-  }
-
-  &.is-size-default {
-    width: 24px;
-    height: 24px;
-  }
-
-  &.is-size-large {
-    width: 28px;
-    height: 28px;
-  }
-
-  &.is-size-small {
-    width: 20px;
-    height: 20px;
-  }
-
-  &.is-size-tiny {
-    width: 16px;
-    height: 16px;
-  }
-
+  // Variants opt into a semantic token; still delivered through `color`, so
+  // both stroke and fill glyphs respond.
   &.is-variant {
-    &-default path {
-      fill: var(--theme-color-fg-default);
+    &-default {
+      color: var(--theme-color-fg-default);
     }
 
-    &-default-contrast path {
-      fill: var(--theme-color-fg-default-contrast) !important;
+    &-default-contrast {
+      color: var(--theme-color-fg-default-contrast);
     }
 
-    &-proud path {
-      fill: var(--theme-color-fg-highlight) !important;
+    &-proud {
+      color: var(--theme-color-fg-highlight);
     }
 
-    &-shy path {
-      fill: var(--theme-color-fg-muted) !important;
+    &-shy {
+      color: var(--theme-color-fg-muted);
     }
 
-    &-success path {
-      fill: var(--theme-color-success) !important;
+    &-success {
+      color: var(--theme-color-success);
     }
 
-    &-notice path {
-      fill: var(--theme-color-notice) !important;
+    &-notice {
+      color: var(--theme-color-notice);
     }
 
-    &-danger path {
-      fill: var(--theme-color-danger) !important;
+    &-danger {
+      color: var(--theme-color-danger);
     }
 
-    &-secondary path {
-      fill: var(--theme-color-secondary-as-fg) !important;
+    &-secondary {
+      color: var(--theme-color-secondary-as-fg);
     }
   }
 
   svg {
     width: 100%;
     height: 100%;
+    display: block;
   }
 }
