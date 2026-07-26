@@ -1,17 +1,24 @@
+/* PAR-003: toolbar per the editor mock — 52px, bg-1, hairline bottom border,
+   0 16px padding, 8px gaps, no group separators. All controls keep their
+   existing handlers; only presentation changed. */
 .Root {
   container-name: editortopbar;
-  height: 36px;
-  background-color: var(--theme-color-bg-2);
+  height: 52px;
+  flex: none;
+  background-color: var(--theme-color-bg-1);
   border-bottom: 1px solid var(--theme-color-border-default);
   display: flex;
-  align-items: stretch;
+  align-items: center;
   justify-content: space-between;
+  gap: 8px;
+  padding: 0 16px;
 }
 
 .LeftSide,
 .RightSide {
   display: flex;
-  align-items: stretch;
+  align-items: center;
+  gap: 2px;
 
   // please use these general selectors with great caution
   > div {
@@ -22,66 +29,82 @@
 
 .LeftSide {
   flex-grow: 1;
+  min-width: 0;
 }
 
 .is-padded-s {
-  padding: 0 4px;
+  padding: 0 2px;
 }
 
 .is-padded {
-  padding: 0 8px;
+  padding: 0 4px;
 }
 
 .is-padded-l {
-  padding: 0 16px;
+  padding: 0 8px;
 }
 
-.LeftSide {
-  > div:not(:last-child) {
-    border-right: 1px solid var(--theme-color-bg-1);
-  }
-}
-
-.RightSide {
-  > div:not(:first-child) {
-    border-left: 1px solid var(--theme-color-bg-1);
-  }
-}
-
+/* Route pill (mock `.route`): bg-2 well, border-1, radius 8, min-width 300px,
+   home glyph + project name + mono path + chevron. */
 .UrlBarWrapper {
   flex-grow: 1;
-  min-width: 150px;
+  min-width: 300px;
   max-width: 500px;
-  margin-right: -1px;
-
-  // Route pill (UIX-004): an inset bordered well framing the preview-route input,
-  // matching the mock's route/breadcrumb pill. One elevation step below the
-  // bg-2 toolbar so it reads as a distinct field. Presentation only — the inner
-  // TextInput keeps its behaviour.
+  height: 32px;
   align-self: center;
-  background-color: var(--theme-color-bg-1);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background-color: var(--theme-color-bg-2);
   border: 1px solid var(--theme-color-border-default);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
+  padding: 0 4px 0 12px;
+  margin: 0 4px;
   overflow: hidden;
 
-  // The pill provides its own edge; suppress the generic LeftSide separator.
-  &:not(:last-child) {
-    border-right: 1px solid var(--theme-color-border-default);
+  .Root.is-small & {
+    min-width: 150px;
   }
 }
 
-// Warnings chip (UIX-004): amber soft-fill pill. Warnings are AMBER, never red
-// (phase law) — the icon variant is set to Notice/amber in the component.
+.RoutePillIcon {
+  flex: none;
+}
+
+.RouteProjectName {
+  flex: none;
+  font-family: var(--font-family);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--theme-color-fg-highlight);
+  white-space: nowrap;
+}
+
+/* Warnings chip (UIX-004/PAR-003): amber soft-fill pill, 12px/600. Warnings are
+   AMBER, never red (phase law) — the icon variant is set to Notice/amber in the
+   component. */
 .WarningsChip {
   align-self: center;
   background-color: var(--theme-color-warning-bg);
   border-radius: var(--radius-md);
-  border-left: 0 !important;
   margin: 0 4px;
+  padding: 0 2px;
+
+  label,
+  p,
+  span {
+    font-size: 12px;
+    font-weight: 600;
+  }
 }
 
 .UrlBarTextInput {
   width: 100%;
+
+  input {
+    font-family: var(--font-family-code);
+    font-size: 12px;
+  }
 
   svg {
     cursor: pointer;
@@ -95,27 +118,34 @@
 }
 
 .TooltipPositioner {
-  height: 32px;
-  padding-bottom: 1px;
   display: flex !important;
   flex-direction: column;
   justify-content: center;
 }
 
+/* Toolbar dropdowns (preview zoom / screen size): 13px/500 fg-2, bg-3 hover
+   pill per the mock's `.zoom` control. */
 .TopbarSelect {
   display: flex;
   align-items: center;
+  gap: 5px;
   cursor: pointer;
+  padding: 6px 8px;
+  border-radius: var(--radius-md);
 
   * {
-    color: var(--theme-color-fg-highlight);
-    fill: var(--theme-color-fg-highlight);
+    color: var(--theme-color-fg-default);
+    fill: var(--theme-color-fg-default);
+    font-weight: 500;
   }
 
-  &:hover * {
-    color: var(--theme-color-fg-highlight);
-    fill: var(--theme-color-fg-highlight);
-    opacity: 0.8;
+  &:hover {
+    background-color: var(--theme-color-bg-3);
+
+    * {
+      color: var(--theme-color-fg-highlight);
+      fill: var(--theme-color-fg-highlight);
+    }
   }
 }
 
@@ -124,12 +154,56 @@
   padding-left: 8px;
 }
 
-.DesignPreviewModeButton {
-  cursor: pointer;
-  pointer-events: all;
+/* Design/Preview segmented control (mock `.seg`): bg-2 container, active
+   button pops to bg-1 with shadow-sm. */
+.ModeSegmented {
+  display: inline-flex;
+  background-color: var(--theme-color-bg-2);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: var(--radius-lg);
+  padding: 2px;
+  gap: 2px;
 }
 
+.ModeSegmentedButton {
+  border: 0;
+  border-radius: var(--radius-md);
+  padding: 5px 13px;
+  font-family: var(--font-family);
+  font-size: 12.5px;
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--theme-color-fg-muted);
+  background: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+
+  &:hover {
+    color: var(--theme-color-fg-default);
+  }
+
+  &.is-active {
+    background-color: var(--theme-color-bg-1);
+    color: var(--theme-color-fg-highlight);
+    box-shadow: var(--shadow-sm);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--theme-color-primary);
+    outline-offset: 2px;
+  }
+}
+
+/* Deploy (mock `.btn-primary`): azure via PrimaryButton tokens; tighten to the
+   mock's 13px/600, 7px 14px padding. */
 .DeployButton {
+  font-size: 13px;
+  font-weight: 600;
+  padding: 7px 14px;
+  min-height: 30px;
+  border-radius: var(--radius-md);
+
   .Root.is-small & {
     padding: 0 4px 0 8px;
     min-width: 0;

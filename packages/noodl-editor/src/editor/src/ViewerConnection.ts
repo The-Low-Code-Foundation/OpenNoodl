@@ -92,6 +92,9 @@ export class ViewerConnection extends Model {
     else if (request.cmd === 'disconnect') {
       this.clientsToExportTo.delete(request.clientId);
       NodeLibraryImporter.instance.onClientDisconnect(request.clientId);
+      // PAR-003: client-presence signal for the bottom bar's "Preview live"
+      // status. Pure notification — tracking semantics are unchanged.
+      this.notifyListeners('viewerClientsChanged');
     }
     // A select node request
     else if (request.cmd === 'select' && request.type === 'viewer') {
@@ -328,11 +331,20 @@ export class ViewerConnection extends Model {
     this.clientsToExportTo.add(clientId);
     this.registeredRuntimeTypes.add(runtimeType);
 
+    // PAR-003: client-presence signal for the bottom bar's "Preview live"
+    // status. Pure notification — tracking semantics are unchanged.
+    this.notifyListeners('viewerClientsChanged');
+
     NodeLibraryImporter.instance.onClientImport(clientId, runtimeType, newLibrary);
 
     if (NodeLibrary.instance.isLoaded()) {
       this.export();
     }
+  }
+
+  /** PAR-003: true while at least one viewer client is connected and has delivered its node library. */
+  public get hasConnectedViewer(): boolean {
+    return this.clientsToExportTo.size > 0;
   }
 
   stopWatchAndExportModelChanges() {

@@ -125,6 +125,8 @@ export class ViewportActions {
     editor.commentLayer && editor.commentLayer.setPanAndScale(panAndScale);
     editor.overlayViews.updateHighlightOverlay();
     editor.overlayViews.updateExecutionOverlay();
+    // PAR-003: keep the HUD zoom percentage live.
+    editor.overlayViews.updateCanvasHud();
   }
 
   clampPanAndScale(panAndScale: PanAndScale) {

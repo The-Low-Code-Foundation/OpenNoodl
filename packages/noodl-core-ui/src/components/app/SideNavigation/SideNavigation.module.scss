@@ -15,14 +15,24 @@ $_sidebar-hover-enter-offset: 250ms;
   }
 }
 
+/* PAR-003: icon rail per the editor mock — 52px wide, bg-1, hairline right
+   border, 10px vertical padding, 4px gaps, centered 34px buttons. */
 .Toolbar {
+  /* Idle rail glyphs are fg-3 per the mock (hover fg-1 / active accent come
+     from IconButton state rules). */
+  --icon-button-idle-fg: var(--theme-color-fg-muted);
+
   position: absolute;
   display: flex;
   flex-direction: column;
-  min-width: 40px;
+  align-items: center;
+  width: 52px;
+  min-width: 52px;
   height: 100%;
-  border-right: 2px solid var(--theme-color-bg-1);
-  background-color: var(--theme-color-bg-2);
+  border-right: 1px solid var(--theme-color-border-default);
+  background-color: var(--theme-color-bg-1);
+  padding: 10px 0;
+  gap: 4px;
   transition: box-shadow var(--speed-quick) var(--easing-base);
 
   &:has(.Label.is-tooltip-visible) {
@@ -59,22 +69,22 @@ $_sidebar-hover-enter-offset: 250ms;
   flex: 1;
   min-height: 100%;
   position: relative;
-  margin-left: 40px;
+  margin-left: 52px;
   overflow: hidden;
 
   display: flex;
   flex-direction: column;
 
   background-color: var(--theme-color-bg-2);
-  border-left: 2px solid var(--theme-color-bg-1);
+  border-left: 1px solid var(--theme-color-border-default);
 }
 
 .SideNavigationButton {
   display: flex;
   align-items: center;
+  justify-content: center;
   padding-top: 2px;
   padding-bottom: 2px;
-  margin-left: 4px;
   cursor: pointer;
 
   &:hover {
@@ -122,6 +132,16 @@ $_sidebar-hover-enter-offset: 250ms;
 
 .IconButtonContainer {
   position: relative;
+
+  /* PAR-003: rail buttons are 34x34 pills (mock `.rail .icon-btn`), glyph
+     centered. Hover/active treatment (bg-3 pill / accent-soft + accent glyph)
+     lives on the shared IconButton transparent variant (UIX-004); the muted
+     idle glyph comes from the --icon-button-idle-fg hook on IconButton. */
+  button {
+    width: 34px;
+    height: 34px;
+    justify-content: center;
+  }
 }
 
 .NotificationBadge {
