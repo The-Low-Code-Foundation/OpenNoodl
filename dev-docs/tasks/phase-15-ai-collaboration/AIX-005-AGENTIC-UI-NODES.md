@@ -13,6 +13,30 @@
 | **Branch** | `task/aix-005-agentic-ui-nodes` |
 | **Recommended executor** | 🟠 **Opus 4.8** — a substantial set of new runtime nodes with real concurrency and lifecycle concerns (streaming, reconnection, cancellation), but with a well-understood target. The node-design conventions already exist; this follows them at scale. |
 
+## Gate G2 prerequisite — explicitly overridden 2026-07-26
+
+This task's checklist opens with "**Confirm Gate G2 signal is positive before starting** — this task is cancelled if it is not," and the prerequisite row requires "AIX-002 shipped and validated; Gate G2 signal positive."
+
+**Gate G2 has not been reached, and this task was started anyway, on Richard's explicit instruction.** Recording it here rather than quietly proceeding, because the gate was a deliberate decision and reversing it should be visible to whoever reads this next.
+
+What the gate actually asked for, and the state of each part:
+
+| G2 requirement | Status at override |
+|---|---|
+| AIX-002 demo shipped in a **signed build** | Not done — AIX-002's own residuals list "exit-criterion demo in a signed build" as outstanding |
+| Shipped for a **full quarter** | Not done — AIX-002 completed 2026-07-25, one day earlier |
+| **Two LEARN-006 pilots** run | Not done |
+| Retention signal: do users **return unprompted**? | Unmeasured — there are no users on a shipped build yet |
+
+So the override is not "the gate passed on a technicality"; it is a decision to build ahead of the demand signal the roadmap wanted first. The risk the gate existed to prevent is the one named in this task's own risk table — "built before the market signal, wasting 6–8 weeks" — and it is now accepted rather than mitigated. The viability report's argument against it (a team of one pursuing too many half-finished things in parallel) stands unrefuted; it was overruled, not answered.
+
+Two consequences worth keeping in view:
+
+- If G2 later comes back negative, this work does **not** become the fallback. The roadmap's answer to a negative G2 is winding down to maintenance + export, and these nodes do not change that.
+- The transport and state primitives (AGENT-001/002/003/007) have a use independent of the agent-UI bet — they are what the runtime lacks for *any* long-lived stream, and BAK-001's realtime work already needed one. The speculative half is the agent-specific layer (AGENT-004/005/006). If the bet has to be defended later, defend it in those terms.
+
+---
+
 ## Objective
 
 Implement the streaming, real-time, and state-store nodes specified in phase 3.5 (AGENT-001…007), so that applications *built with* Noodl can themselves be front-ends for AI agents.
@@ -124,8 +148,8 @@ Make errors visible. A silent failed reconnection is the worst outcome for an ap
 
 ## Checklist
 
-- [ ] **Confirm Gate G2 signal is positive before starting** — this task is cancelled if it is not
-- [ ] Branch `task/aix-005-agentic-ui-nodes`
+- [x] ~~**Confirm Gate G2 signal is positive before starting** — this task is cancelled if it is not~~ — **overridden 2026-07-26, see the Gate G2 section at the top of this file.** Not satisfied; started regardless, on instruction.
+- [x] ~~Branch `task/aix-005-agentic-ui-nodes`~~ — superseded by the working agreement: task work commits straight to `cline-dev`, no task branches, no PRs
 - [ ] Review phase 3.5 specs; record deviations
 - [ ] SSE node with full lifecycle handling; then accumulators, WebSocket, conversation primitives
 - [ ] Lifecycle matrix testing incl. leak assertions
