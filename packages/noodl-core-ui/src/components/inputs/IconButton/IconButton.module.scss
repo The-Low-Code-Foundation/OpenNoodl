@@ -62,7 +62,10 @@
     background-color: transparent !important;
 
     .Icon {
-      color: var(--theme-color-fg-default);
+      // PAR-003: hosts can tune the idle glyph tone (the side-navigation rail
+      // sets --icon-button-idle-fg to fg-muted per the mock). Hover/active
+      // colors below are unaffected.
+      color: var(--icon-button-idle-fg, var(--theme-color-fg-default));
     }
 
     &:disabled {
