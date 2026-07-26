@@ -47828,6 +47828,153 @@
   },
   "examples": [
     {
+      "id": "agent-optimistic-rename",
+      "title": "Show a change immediately, then let the server confirm or reject it",
+      "description": "Optimistic Update writes the new value into the store the moment the user acts, so the UI never waits for a round trip, and keeps what the key held before so a failure can put it back. `Apply` opens the update and hands you a `transactionId`; carry that id through the request and hand it back to `Commit` or `Rollback` so an out-of-order response resolves the right update — several can be in flight, which is what `pendingCount` reports. Wire the server's message into `errorMessage` so a rollback can explain itself instead of being generically 'failed'. Two behaviours worth knowing before you rely on this: `timeout` (30 s by default, `0` to disable) rolls the update back on its own if no answer arrives, firing `rolledBack` and then `timedOut`; and if something else wrote the key after the update was applied, a rollback **keeps the newer value** rather than reverting on top of it — the transaction still resolves as rolled back, and `error` says the value was left alone. `value` is the live store key, not a remembered copy, which is exactly why that check is possible.",
+      "demonstrates": [
+        "net.noodl.OptimisticUpdate",
+        "net.noodl.GlobalStore.Subscribe",
+        "net.noodl.HTTP"
+      ],
+      "components": [
+        {
+          "name": "/Rename Project",
+          "nodes": [
+            {
+              "id": "root",
+              "type": "Group",
+              "label": "Rename",
+              "parameters": {
+                "flexDirection": "column"
+              },
+              "children": [
+                "name_input",
+                "name_text",
+                "save_button",
+                "pending_text",
+                "error_text"
+              ]
+            },
+            {
+              "id": "name_input",
+              "type": "net.noodl.controls.textinput",
+              "label": "New name",
+              "parent": "root"
+            },
+            {
+              "id": "name_text",
+              "type": "Text",
+              "label": "Name shown to the user",
+              "parent": "root"
+            },
+            {
+              "id": "save_button",
+              "type": "net.noodl.controls.button",
+              "label": "Save",
+              "parent": "root"
+            },
+            {
+              "id": "pending_text",
+              "type": "Text",
+              "label": "Saving…",
+              "parent": "root"
+            },
+            {
+              "id": "error_text",
+              "type": "Text",
+              "label": "Why it was rolled back",
+              "parent": "root"
+            },
+            {
+              "id": "name_sub",
+              "type": "net.noodl.GlobalStore.Subscribe",
+              "label": "Watch the name",
+              "parameters": {
+                "storeName": "project",
+                "keys": "name"
+              }
+            },
+            {
+              "id": "optimistic",
+              "type": "net.noodl.OptimisticUpdate",
+              "label": "Rename optimistically",
+              "parameters": {
+                "storeName": "project",
+                "key": "name",
+                "timeout": 10000,
+                "onDispose": "rollback",
+                "errorMessage": "The server would not accept that name."
+              }
+            },
+            {
+              "id": "save_request",
+              "type": "net.noodl.HTTP",
+              "label": "PUT the new name",
+              "parameters": {
+                "url": "https://api.example.com/project/name"
+              }
+            }
+          ],
+          "connections": [
+            {
+              "fromId": "name_input",
+              "fromProperty": "onTextChanged",
+              "toId": "optimistic",
+              "toProperty": "optimisticValue"
+            },
+            {
+              "fromId": "save_button",
+              "fromProperty": "onClick",
+              "toId": "optimistic",
+              "toProperty": "apply"
+            },
+            {
+              "fromId": "optimistic",
+              "fromProperty": "applied",
+              "toId": "save_request",
+              "toProperty": "fetch"
+            },
+            {
+              "fromId": "save_request",
+              "fromProperty": "success",
+              "toId": "optimistic",
+              "toProperty": "commit"
+            },
+            {
+              "fromId": "save_request",
+              "fromProperty": "failure",
+              "toId": "optimistic",
+              "toProperty": "rollback"
+            },
+            {
+              "fromId": "save_request",
+              "fromProperty": "error",
+              "toId": "optimistic",
+              "toProperty": "errorMessage"
+            },
+            {
+              "fromId": "name_sub",
+              "fromProperty": "value",
+              "toId": "name_text",
+              "toProperty": "text"
+            },
+            {
+              "fromId": "optimistic",
+              "fromProperty": "isPending",
+              "toId": "pending_text",
+              "toProperty": "visible"
+            },
+            {
+              "fromId": "optimistic",
+              "fromProperty": "error",
+              "toId": "error_text",
+              "toProperty": "text"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "id": "agent-server-driven-actions",
       "title": "Agent actions: let a backend drive the UI, but only where you allowed it",
       "description": "The idiomatic shape for a backend that sends commands rather than data. Server-Sent Events delivers action objects; Action Dispatcher decides whether each one may run. The vocabulary is closed: `OPEN_SESSION` runs because the Action Handler registered it, `SET_STORE` runs because it is named in `builtIns` and its key is in `allowedKeys`, and anything else is refused with a reason on `refusalReason` — which is wired to a Text node, because a refusal nobody can see is the failure mode this whole design exists to avoid. The handler has `autoComplete` off and completes only once its Set Global Store finished, so an array of actions runs as an ordered flow rather than all at once.",
@@ -48300,6 +48447,204 @@
               "fromId": "row_inputs",
               "fromProperty": "message",
               "toId": "line_text",
+              "toProperty": "text"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "agent-state-undo-redo",
+      "title": "Undo, redo and a named checkpoint over a global store key",
+      "description": "State History watches one key of a store and records an entry per commit; `coalesceMs` folds a burst of keystrokes into a single undo step, so typing is one step rather than one per character. Undo / Redo drives that history by store name — it owns nothing itself, which is why a store nothing is tracking is reported on `error` instead of being a button that silently does nothing. `canUndo` / `canRedo` are how a graph asks in advance, because undo at the beginning and redo at the end are no-ops rather than errors. An undo is an ordinary store commit, so Subscribe to Store repaints from it exactly as it would from any other write. State Snapshot is the separate idea: saving a checkpoint does not touch the undo stack, but restoring one is an ordinary write and is therefore itself undoable. `fullyRestorable` and `byReferenceKeys` are on both nodes because a snapshot keeps live objects (a Model, an Array/Collection, a class instance) by reference, so those keys are only partly restorable and the app should be able to say so.",
+      "demonstrates": [
+        "net.noodl.StateHistory",
+        "net.noodl.StateHistory.Undo",
+        "net.noodl.StateSnapshot",
+        "net.noodl.GlobalStore.Set",
+        "net.noodl.GlobalStore.Subscribe"
+      ],
+      "components": [
+        {
+          "name": "/Document Title",
+          "nodes": [
+            {
+              "id": "root",
+              "type": "Group",
+              "label": "Editor chrome",
+              "parameters": {
+                "flexDirection": "column"
+              },
+              "children": [
+                "title_input",
+                "title_text",
+                "buttons",
+                "restore_note"
+              ]
+            },
+            {
+              "id": "title_input",
+              "type": "net.noodl.controls.textinput",
+              "label": "Title",
+              "parent": "root"
+            },
+            {
+              "id": "title_text",
+              "type": "Text",
+              "label": "Title in the store",
+              "parent": "root"
+            },
+            {
+              "id": "buttons",
+              "type": "Group",
+              "label": "Actions",
+              "parameters": {
+                "flexDirection": "row"
+              },
+              "parent": "root",
+              "children": [
+                "undo_button",
+                "redo_button",
+                "save_button",
+                "restore_button"
+              ]
+            },
+            {
+              "id": "undo_button",
+              "type": "net.noodl.controls.button",
+              "label": "Undo",
+              "parent": "buttons"
+            },
+            {
+              "id": "redo_button",
+              "type": "net.noodl.controls.button",
+              "label": "Redo",
+              "parent": "buttons"
+            },
+            {
+              "id": "save_button",
+              "type": "net.noodl.controls.button",
+              "label": "Save checkpoint",
+              "parent": "buttons"
+            },
+            {
+              "id": "restore_button",
+              "type": "net.noodl.controls.button",
+              "label": "Restore checkpoint",
+              "parent": "buttons"
+            },
+            {
+              "id": "restore_note",
+              "type": "Text",
+              "label": "Partly restorable keys",
+              "parent": "root"
+            },
+            {
+              "id": "set_title",
+              "type": "net.noodl.GlobalStore.Set",
+              "label": "Write the title",
+              "parameters": {
+                "storeName": "doc",
+                "key": "title"
+              }
+            },
+            {
+              "id": "title_sub",
+              "type": "net.noodl.GlobalStore.Subscribe",
+              "label": "Watch the title",
+              "parameters": {
+                "storeName": "doc",
+                "keys": "title"
+              }
+            },
+            {
+              "id": "history",
+              "type": "net.noodl.StateHistory",
+              "label": "Track the title",
+              "parameters": {
+                "storeName": "doc",
+                "trackKeys": "title",
+                "maxHistory": 20,
+                "coalesceMs": 400
+              }
+            },
+            {
+              "id": "undo",
+              "type": "net.noodl.StateHistory.Undo",
+              "label": "Undo / Redo",
+              "parameters": {
+                "storeName": "doc"
+              }
+            },
+            {
+              "id": "snapshot",
+              "type": "net.noodl.StateSnapshot",
+              "label": "Checkpoint",
+              "parameters": {
+                "storeName": "doc",
+                "snapshotName": "checkpoint"
+              }
+            }
+          ],
+          "connections": [
+            {
+              "fromId": "title_input",
+              "fromProperty": "onTextChanged",
+              "toId": "set_title",
+              "toProperty": "value"
+            },
+            {
+              "fromId": "title_input",
+              "fromProperty": "onEnter",
+              "toId": "set_title",
+              "toProperty": "set"
+            },
+            {
+              "fromId": "title_sub",
+              "fromProperty": "value",
+              "toId": "title_text",
+              "toProperty": "text"
+            },
+            {
+              "fromId": "undo_button",
+              "fromProperty": "onClick",
+              "toId": "undo",
+              "toProperty": "undo"
+            },
+            {
+              "fromId": "redo_button",
+              "fromProperty": "onClick",
+              "toId": "undo",
+              "toProperty": "redo"
+            },
+            {
+              "fromId": "history",
+              "fromProperty": "canUndo",
+              "toId": "undo_button",
+              "toProperty": "enabled"
+            },
+            {
+              "fromId": "history",
+              "fromProperty": "canRedo",
+              "toId": "redo_button",
+              "toProperty": "enabled"
+            },
+            {
+              "fromId": "save_button",
+              "fromProperty": "onClick",
+              "toId": "snapshot",
+              "toProperty": "save"
+            },
+            {
+              "fromId": "restore_button",
+              "fromProperty": "onClick",
+              "toId": "snapshot",
+              "toProperty": "restore"
+            },
+            {
+              "fromId": "snapshot",
+              "fromProperty": "byReferenceKeys",
+              "toId": "restore_note",
               "toProperty": "text"
             }
           ]

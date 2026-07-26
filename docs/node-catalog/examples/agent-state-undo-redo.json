@@ -1,0 +1,88 @@
+{
+  "id": "agent-state-undo-redo",
+  "title": "Undo, redo and a named checkpoint over a global store key",
+  "description": "State History watches one key of a store and records an entry per commit; `coalesceMs` folds a burst of keystrokes into a single undo step, so typing is one step rather than one per character. Undo / Redo drives that history by store name — it owns nothing itself, which is why a store nothing is tracking is reported on `error` instead of being a button that silently does nothing. `canUndo` / `canRedo` are how a graph asks in advance, because undo at the beginning and redo at the end are no-ops rather than errors. An undo is an ordinary store commit, so Subscribe to Store repaints from it exactly as it would from any other write. State Snapshot is the separate idea: saving a checkpoint does not touch the undo stack, but restoring one is an ordinary write and is therefore itself undoable. `fullyRestorable` and `byReferenceKeys` are on both nodes because a snapshot keeps live objects (a Model, an Array/Collection, a class instance) by reference, so those keys are only partly restorable and the app should be able to say so.",
+  "demonstrates": [
+    "net.noodl.StateHistory",
+    "net.noodl.StateHistory.Undo",
+    "net.noodl.StateSnapshot",
+    "net.noodl.GlobalStore.Set",
+    "net.noodl.GlobalStore.Subscribe"
+  ],
+  "components": [
+    {
+      "name": "/Document Title",
+      "nodes": [
+        {
+          "id": "root",
+          "type": "Group",
+          "label": "Editor chrome",
+          "parameters": { "flexDirection": "column" },
+          "children": ["title_input", "title_text", "buttons", "restore_note"]
+        },
+        { "id": "title_input", "type": "net.noodl.controls.textinput", "label": "Title", "parent": "root" },
+        { "id": "title_text", "type": "Text", "label": "Title in the store", "parent": "root" },
+        {
+          "id": "buttons",
+          "type": "Group",
+          "label": "Actions",
+          "parameters": { "flexDirection": "row" },
+          "parent": "root",
+          "children": ["undo_button", "redo_button", "save_button", "restore_button"]
+        },
+        { "id": "undo_button", "type": "net.noodl.controls.button", "label": "Undo", "parent": "buttons" },
+        { "id": "redo_button", "type": "net.noodl.controls.button", "label": "Redo", "parent": "buttons" },
+        { "id": "save_button", "type": "net.noodl.controls.button", "label": "Save checkpoint", "parent": "buttons" },
+        {
+          "id": "restore_button",
+          "type": "net.noodl.controls.button",
+          "label": "Restore checkpoint",
+          "parent": "buttons"
+        },
+        { "id": "restore_note", "type": "Text", "label": "Partly restorable keys", "parent": "root" },
+        {
+          "id": "set_title",
+          "type": "net.noodl.GlobalStore.Set",
+          "label": "Write the title",
+          "parameters": { "storeName": "doc", "key": "title" }
+        },
+        {
+          "id": "title_sub",
+          "type": "net.noodl.GlobalStore.Subscribe",
+          "label": "Watch the title",
+          "parameters": { "storeName": "doc", "keys": "title" }
+        },
+        {
+          "id": "history",
+          "type": "net.noodl.StateHistory",
+          "label": "Track the title",
+          "parameters": { "storeName": "doc", "trackKeys": "title", "maxHistory": 20, "coalesceMs": 400 }
+        },
+        {
+          "id": "undo",
+          "type": "net.noodl.StateHistory.Undo",
+          "label": "Undo / Redo",
+          "parameters": { "storeName": "doc" }
+        },
+        {
+          "id": "snapshot",
+          "type": "net.noodl.StateSnapshot",
+          "label": "Checkpoint",
+          "parameters": { "storeName": "doc", "snapshotName": "checkpoint" }
+        }
+      ],
+      "connections": [
+        { "fromId": "title_input", "fromProperty": "onTextChanged", "toId": "set_title", "toProperty": "value" },
+        { "fromId": "title_input", "fromProperty": "onEnter", "toId": "set_title", "toProperty": "set" },
+        { "fromId": "title_sub", "fromProperty": "value", "toId": "title_text", "toProperty": "text" },
+        { "fromId": "undo_button", "fromProperty": "onClick", "toId": "undo", "toProperty": "undo" },
+        { "fromId": "redo_button", "fromProperty": "onClick", "toId": "undo", "toProperty": "redo" },
+        { "fromId": "history", "fromProperty": "canUndo", "toId": "undo_button", "toProperty": "enabled" },
+        { "fromId": "history", "fromProperty": "canRedo", "toId": "redo_button", "toProperty": "enabled" },
+        { "fromId": "save_button", "fromProperty": "onClick", "toId": "snapshot", "toProperty": "save" },
+        { "fromId": "restore_button", "fromProperty": "onClick", "toId": "snapshot", "toProperty": "restore" },
+        { "fromId": "snapshot", "fromProperty": "byReferenceKeys", "toId": "restore_note", "toProperty": "text" }
+      ]
+    }
+  ]
+}
