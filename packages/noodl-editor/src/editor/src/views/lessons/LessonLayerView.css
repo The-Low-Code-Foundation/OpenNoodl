@@ -90,6 +90,21 @@
   display: block;
 }
 
+/* Legacy hand-authored lesson HTML (see docs/interactive-lessons.md) emits an
+   *empty* `<span class="lesson-checkmark">` and relied on `content: url()` to
+   fill it. Curriculum is hosted outside this repo, so that markup can still
+   arrive. Degrade to a CSS-drawn ring/dot — themeable like everything else —
+   rather than rendering nothing at all. */
+.lesson-item .lesson-checkmark:empty {
+  border: 1.5px solid currentColor;
+  border-radius: 50%;
+  box-sizing: border-box;
+}
+
+.lesson-item.completed .lesson-checkmark:empty {
+  background-color: currentColor;
+}
+
 .lesson-item.completed .lesson-checkmark {
   color: var(--theme-color-primary);
 }
