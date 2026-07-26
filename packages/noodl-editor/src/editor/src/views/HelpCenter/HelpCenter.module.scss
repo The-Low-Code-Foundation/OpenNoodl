@@ -5,19 +5,19 @@
   bottom: 0;
 }
 
+/* PAR-003: the "?" docks inside the 38px bottom bar (the bar reserves right
+   padding for it) so the mock's zoom cluster owns the bottom-right corner. */
 .Root {
   position: absolute;
-  bottom: 16px;
-  right: 16px;
-  width: 36px;
-  height: 36px;
-  background-color: var(--theme-color-bg-4);
+  bottom: 4px;
+  right: 8px;
+  width: 30px;
+  height: 30px;
+  background-color: var(--theme-color-bg-3);
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 0 10px var(--theme-color-bg-1-transparent);
-  border-radius: 50%;
   overflow: hidden;
 }
 
