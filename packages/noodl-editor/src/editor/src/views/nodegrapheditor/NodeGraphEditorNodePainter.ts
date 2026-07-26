@@ -1,7 +1,7 @@
 import _ from 'underscore';
 
 import { NodeLibrary } from '../../models/nodelibrary';
-import { CanvasTheme } from './canvas/CanvasTheme';
+import { CanvasFonts, CanvasTheme } from './canvas/CanvasTheme';
 import { fillRoundRect, roundRect, strokeRoundRect, truncateText } from './canvasHelpers';
 import { NodeGraphEditorNode } from './NodeGraphEditorNode';
 
@@ -59,6 +59,75 @@ export function textWordWrap(context, text, x, y, lineHeight, maxWidth, cb?) {
   return lineHeight * currentLine + lineHeight;
 }
 
+/**
+ * Simple category glyph inside the header chip (UIX-005; UIX-007 may refine
+ * the glyph set). Drawn with strokes in the category accent, centred on
+ * (cx, cy). Sized for the 22px chip.
+ */
+function paintCategoryGlyph(ctx: CanvasRenderingContext2D, category: string, cx: number, cy: number, color: string) {
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.fillStyle = color;
+  ctx.lineWidth = 1.4;
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+
+  switch (category) {
+    case 'visual': {
+      // Nested rectangles (frame-in-frame, like the mock's Group glyph)
+      roundRect(ctx, cx - 5.5, cy - 5.5, 11, 11, 2);
+      ctx.stroke();
+      roundRect(ctx, cx - 2.5, cy - 2.5, 5, 5, 1);
+      ctx.stroke();
+      break;
+    }
+    case 'data': {
+      // Database cylinder
+      const rx = 4.5;
+      const ry = 1.8;
+      ctx.beginPath();
+      ctx.ellipse(cx, cy - 3.2, rx, ry, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(cx - rx, cy - 3.2);
+      ctx.lineTo(cx - rx, cy + 3.2);
+      ctx.ellipse(cx, cy + 3.2, rx, ry, 0, Math.PI, 0, true);
+      ctx.lineTo(cx + rx, cy - 3.2);
+      ctx.stroke();
+      break;
+    }
+    case 'javascript': {
+      // Function glyph
+      ctx.font = 'italic 600 12px Georgia, serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('ƒ', cx, cy + 0.5);
+      break;
+    }
+    case 'component': {
+      // Diamond
+      const r = 5.5;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy - r);
+      ctx.lineTo(cx + r, cy);
+      ctx.lineTo(cx, cy + r);
+      ctx.lineTo(cx - r, cy);
+      ctx.closePath();
+      ctx.stroke();
+      break;
+    }
+    default: {
+      // Neutral circle
+      ctx.beginPath();
+      ctx.arc(cx, cy, 4.5, 0, Math.PI * 2);
+      ctx.stroke();
+      break;
+    }
+  }
+
+  ctx.restore();
+}
+
 // Stateless: draws one node (and recurses to children via node.paint). Holds no
 // references — reads node state per call. Writes back the geometry caches that
 // hit-testing depends on (commentIconBounds); do not remove those writes.
@@ -77,9 +146,13 @@ export function paintNode(node: NodeGraphEditorNode, ctx: CanvasRenderingContext
   if (isOutsidePaintArea === false) {
     const theme = CanvasTheme.instance.colors;
     node.updateIcon();
-    const nc = node.model.metadata?.colorOverride
-      ? NodeLibrary.instance.colorSchemeForNodeColorName(node.model.metadata.colorOverride)
-      : NodeLibrary.instance.colorSchemeForNodeType(node.model.type);
+
+    // Category (UIX-005): existing taxonomy keys only — component / visual /
+    // data / javascript / default. colorOverride (AiAssistant metadata) wins,
+    // matching the old colorSchemeForNodeColorName precedence.
+    const categoryName: string =
+      node.model.metadata?.colorOverride || (node.model.type as TSFixme).color || 'default';
+    const cat = CanvasTheme.instance.categoryColors(categoryName);
 
     const isHighligthed = node.owner.isHighlighted(node);
     const horizontalSpacing = 10,
@@ -93,26 +166,25 @@ export function paintNode(node: NodeGraphEditorNode, ctx: CanvasRenderingContext
     roundRect(ctx, x, y, node.nodeSize.width, node.nodeSize.height, NodeGraphEditorNode.cornerRadius);
     ctx.clip();
 
-    // Bg - Use rounded rectangle for modern appearance
-    ctx.fillStyle = nc.header;
+    // Card body: neutral, slightly raised on hover (mock: bg-1 / bg-2)
+    ctx.fillStyle = isHighligthed ? theme.cardBgHover : theme.cardBg;
     fillRoundRect(ctx, x, y, node.nodeSize.width, node.nodeSize.height, NodeGraphEditorNode.cornerRadius);
 
     const titlebarHeight = node.titlebarHeight();
 
-    // Darken plate (body area below title)
-    ctx.fillStyle = nc.base;
-    ctx.fillRect(x, y + titlebarHeight, node.nodeSize.width, node.nodeSize.height - titlebarHeight);
-
-    // Highlight plate
-    if (isHighligthed || node.selected) {
-      const prevCompOperation = ctx.globalCompositeOperation;
-      ctx.globalCompositeOperation = 'hard-light'; // additive blending looks better
-      ctx.globalAlpha = 0.19;
-      ctx.fillStyle = nc.text;
-      fillRoundRect(ctx, x, y, node.nodeSize.width, node.nodeSize.height, NodeGraphEditorNode.cornerRadius);
-      ctx.globalCompositeOperation = prevCompOperation;
-      ctx.globalAlpha = 1;
+    // Ports section separator (mock: border-top on the port rows)
+    if (node.plugs && node.plugs.length > 0 && node.nodeSize.height > titlebarHeight) {
+      ctx.fillStyle = theme.cardBorder;
+      ctx.fillRect(x, y + titlebarHeight, node.nodeSize.width, 1);
     }
+
+    // Header chip: category-soft fill + category glyph
+    const chipSize = NodeGraphEditorNode.headerChipSize;
+    const chipX = x + NodeGraphEditorNode.headerChipInset;
+    const chipY = y + NodeGraphEditorNode.headerChipInset;
+    ctx.fillStyle = cat.chipFill;
+    fillRoundRect(ctx, chipX, chipY, chipSize, chipSize, 6);
+    paintCategoryGlyph(ctx, categoryName, chipX + chipSize / 2, chipY + chipSize / 2, cat.accent);
 
     if (node.icon && node.icon.complete && node.icon.naturalWidth > 0) {
       ctx.imageSmoothingEnabled = true;
@@ -163,38 +235,42 @@ export function paintNode(node: NodeGraphEditorNode, ctx: CanvasRenderingContext
 
     const hasUserLabel = node.typeDisplayName() && node.model.label !== node.typeDisplayName();
 
-    // Title
-    ctx.fillStyle = nc.text;
+    // Title (node name — fg-1, semibold). The text inset and max width MUST
+    // match NodeGraphEditorNode.titlebarLabelHeight or wrap math and paint
+    // disagree.
+    ctx.fillStyle = theme.cardText;
 
-    ctx.font = '12px Inter-Medium';
+    ctx.font = CanvasFonts.nodeLabel;
     ctx.textBaseline = 'top';
     textWordWrap(
       ctx,
       node.model.label,
-      x + horizontalSpacing,
+      x + NodeGraphEditorNode.headerTextInset,
       y + NodeGraphEditorNode.verticalSpacing + 5,
       14,
-      node.nodeSize.width - 2 * horizontalSpacing - connectionDragAreaWidth - iconOffset,
+      node.nodeSize.width -
+        NodeGraphEditorNode.headerTextInset -
+        horizontalSpacing -
+        connectionDragAreaWidth -
+        iconOffset,
       (text, x, y) => ctx.fillText(text, x, y)
     );
 
     //If this node has a label set by the user, render the type name as a sub label
     if (hasUserLabel) {
       ctx.save();
-      ctx.fillStyle = nc.text;
-      ctx.globalAlpha = 0.65;
-      ctx.font = '12px Inter-Medium';
+      ctx.fillStyle = theme.cardSubText;
+      ctx.font = CanvasFonts.nodeSubLabel;
       ctx.textBaseline = 'top';
       textWordWrap(
         ctx,
         node.typeDisplayName(),
-        x + horizontalSpacing,
+        x + NodeGraphEditorNode.headerTextInset,
         y + node.titlebarLabelHeight() + 14,
         14,
-        node.nodeSize.width - 2 * horizontalSpacing - connectionDragAreaWidth,
+        node.nodeSize.width - NodeGraphEditorNode.headerTextInset - horizontalSpacing - connectionDragAreaWidth,
         (text, x, y) => ctx.fillText(text, x, y)
       );
-      ctx.globalAlpha = 1;
       ctx.restore();
     }
 
@@ -221,8 +297,8 @@ export function paintNode(node: NodeGraphEditorNode, ctx: CanvasRenderingContext
 
       // Set opacity based on whether comment exists
       ctx.globalAlpha = hasComment ? 1.0 : 0.4;
-      ctx.fillStyle = nc.text;
-      ctx.strokeStyle = nc.text;
+      ctx.fillStyle = theme.cardSubText;
+      ctx.strokeStyle = theme.cardSubText;
       ctx.lineWidth = 1.5;
 
       // Draw speech bubble (rounded rectangle)
@@ -279,23 +355,19 @@ export function paintNode(node: NodeGraphEditorNode, ctx: CanvasRenderingContext
     ctx.restore(); // Restore clip so we can draw border
 
     if (isHighligthed) {
-      ctx.fillStyle = node.borderHighlighted ? theme.selection : nc.text;
+      ctx.fillStyle = node.borderHighlighted ? theme.selection : theme.portText;
       ctx.globalAlpha = 1;
       ctx.beginPath();
       ctx.arc(x + node.nodeSize.width, y + titlebarHeight / 2, 4, 0, 2 * Math.PI, false);
       ctx.fill();
-
-      // ctx.font = '10px FontAwesome';
-
-      // ctx.fillText(
-      //   // @ts-expect-error
-      //   String.fromCharCode('0xf111'),
-      //   x + node.nodeSize.width - 5,
-      //   y + titlebarHeight / 2
-      // );
     }
 
-    // Border - Use rounded rectangles for modern appearance
+    // Card outline (mock: 1px border-1, border-2 on hover)
+    ctx.strokeStyle = isHighligthed ? theme.cardBorderHover : theme.cardBorder;
+    ctx.lineWidth = 1;
+    strokeRoundRect(ctx, x, y, node.nodeSize.width, node.nodeSize.height, NodeGraphEditorNode.cornerRadius);
+
+    // Unhealthy: dashed danger ring (red is an error here, allowed)
     const health = node.model.getHealth();
     if (!health.healthy) {
       ctx.setLineDash([5]);
@@ -314,9 +386,19 @@ export function paintNode(node: NodeGraphEditorNode, ctx: CanvasRenderingContext
       ctx.globalAlpha = 1;
     }
 
-    if (node.selected || node.borderHighlighted || node.connectionDragAreaHighlighted) {
+    // Selection: accent ring + soft outer glow (mock: accent border +
+    // 3px accent-soft box-shadow — a 6px glow stroke centres 3px outside).
+    // Border/drag-area hover keeps the accent ring without the glow.
+    if (node.selected) {
+      ctx.strokeStyle = theme.selectionGlow;
+      ctx.lineWidth = 6;
+      strokeRoundRect(ctx, x, y, node.nodeSize.width, node.nodeSize.height, NodeGraphEditorNode.cornerRadius);
       ctx.strokeStyle = theme.selection;
-      ctx.lineWidth = 2;
+      ctx.lineWidth = 1.5;
+      strokeRoundRect(ctx, x, y, node.nodeSize.width, node.nodeSize.height, NodeGraphEditorNode.cornerRadius);
+    } else if (node.borderHighlighted || node.connectionDragAreaHighlighted) {
+      ctx.strokeStyle = theme.selection;
+      ctx.lineWidth = 1.5;
       strokeRoundRect(ctx, x, y, node.nodeSize.width, node.nodeSize.height, NodeGraphEditorNode.cornerRadius);
     }
 
@@ -338,7 +420,7 @@ export function paintNode(node: NodeGraphEditorNode, ctx: CanvasRenderingContext
       ctx.arc(x, y, 8, 0, 2 * Math.PI, false);
       ctx.fill();
       ctx.fillStyle = theme.annotationBadgeGlyph;
-      ctx.font = '12px Inter-Medium';
+      ctx.font = CanvasFonts.annotationBadge;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(glyph, x, y + 1);
@@ -361,23 +443,16 @@ export function paintNode(node: NodeGraphEditorNode, ctx: CanvasRenderingContext
 
     function dot(side, color) {
       const cx = x + (side === 'left' ? 0 : _this.nodeSize.width);
-      const radius = 6; // Back to normal size
+      const radius = 3.5; // mock: flat 7px port dots
 
-      // Draw main port indicator
       ctx.fillStyle = color;
       ctx.beginPath();
       ctx.arc(cx, ty, radius, 0, 2 * Math.PI, false);
       ctx.fill();
-
-      // Add subtle inner highlight for depth
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
-      ctx.beginPath();
-      ctx.arc(cx - 0.5, ty - 0.5, radius * 0.4, 0, 2 * Math.PI, false);
-      ctx.fill();
     }
 
     function drawPlugs(plugs, offset) {
-      ctx.font = '11px Inter-Medium';
+      ctx.font = CanvasFonts.portLabel;
       ctx.textBaseline = 'middle';
       ctx.globalAlpha = 1;
 
@@ -398,7 +473,7 @@ export function paintNode(node: NodeGraphEditorNode, ctx: CanvasRenderingContext
           tx = x + _this.nodeSize.width / 2;
         }
 
-        ctx.fillStyle = nc.text;
+        ctx.fillStyle = theme.portText;
         ctx.textAlign = p.loc === 'right' ? 'right' : 'left';
 
         // Truncate port labels to prevent overflow
@@ -413,7 +488,7 @@ export function paintNode(node: NodeGraphEditorNode, ctx: CanvasRenderingContext
 
         // Plug - Left side
         if (p.leftCons.length || p.leftIcon) {
-          var connectionColors = NodeLibrary.instance.colorSchemeForConnectionType(
+          var connectionColors = CanvasTheme.instance.connectionColors(
             NodeLibrary.nameForPortType(p.leftCons[0]?.fromPort ? p.leftCons[0].fromPort.type : undefined)
           );
           var color = _.find(p.leftCons, function (p) {
@@ -440,7 +515,7 @@ export function paintNode(node: NodeGraphEditorNode, ctx: CanvasRenderingContext
 
         // Plug - Right side
         if (p.rightCons.length || p.rightIcon) {
-          connectionColors = NodeLibrary.instance.colorSchemeForConnectionType(
+          connectionColors = CanvasTheme.instance.connectionColors(
             NodeLibrary.nameForPortType(p.rightCons[0]?.fromPort ? p.rightCons[0].fromPort.type : undefined)
           );
           color = _.find(p.rightCons, function (p) {

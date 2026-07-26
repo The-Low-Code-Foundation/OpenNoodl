@@ -238,14 +238,17 @@ export class CanvasTheme {
   private constructor() {
     this.colors = this.resolve();
 
-    if (hasDom()) {
+    // Each hook is guarded independently — headless contexts mix and match
+    // which globals they provide (SUB-009 fakes `window` without a DOM; test
+    // pages have both; plain Node has neither).
+    if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
       // UIX-008 contract: explicit notification...
       window.addEventListener(THEME_CHANGED_EVENT, () => this.refresh());
+    }
+    if (hasDom() && typeof MutationObserver !== 'undefined') {
       // ...and automatic pickup of a theme class flip on the root element.
-      if (typeof MutationObserver !== 'undefined') {
-        this.observer = new MutationObserver(() => this.refresh());
-        this.observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
-      }
+      this.observer = new MutationObserver(() => this.refresh());
+      this.observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
     }
   }
 

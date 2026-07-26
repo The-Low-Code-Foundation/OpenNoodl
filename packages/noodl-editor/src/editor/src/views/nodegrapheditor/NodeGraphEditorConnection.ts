@@ -360,21 +360,24 @@ export class NodeGraphEditorConnection {
 
     const hoverConnection = this.isHighlighted();
     const type = NodeLibrary.nameForPortType(this.fromPort ? this.fromPort.type : undefined);
-    const connectionColors = NodeLibrary.instance.colorSchemeForConnectionType(type);
+    // UIX-005: wire colours come from CanvasTheme (signal = cyan pair,
+    // everything else = data/emerald pair) instead of the library blob.
+    const connectionColors = CanvasTheme.instance.connectionColors(type);
 
     const color = hoverConnection ? connectionColors.highlighted : connectionColors.normal;
-    ctx.strokeStyle = this.color ? this.color : color;
+    let strokeColor: string = this.color ? this.color : color;
 
     const theme = CanvasTheme.instance.colors;
     if (this.model.annotation) {
-      if (this.model.annotation === 'Deleted') ctx.strokeStyle = theme.annotationDeleted;
-      else if (this.model.annotation === 'Changed') ctx.strokeStyle = theme.annotationChanged;
-      else if (this.model.annotation === 'Created') ctx.strokeStyle = theme.annotationCreated;
+      if (this.model.annotation === 'Deleted') strokeColor = theme.annotationDeleted;
+      else if (this.model.annotation === 'Changed') strokeColor = theme.annotationChanged;
+      else if (this.model.annotation === 'Created') strokeColor = theme.annotationCreated;
 
       // Shape as well as colour (AIX-003): removed routing is dashed; the
       // dash restore below already runs for all paths.
       if (this.model.annotation === 'Deleted') ctx.setLineDash([6, 4]);
     }
+    ctx.strokeStyle = strokeColor;
 
     const lineWidth = 1.5;
     ctx.lineWidth = this.lineWidth ? this.lineWidth : lineWidth;
@@ -383,6 +386,15 @@ export class NodeGraphEditorConnection {
 
     this.drawCurve();
     ctx.stroke();
+
+    // Endpoint dots (mock: 3px wire-coloured dots at both ends)
+    ctx.fillStyle = strokeColor;
+    ctx.beginPath();
+    ctx.arc(this.curve[0].x, this.curve[0].y, 3, 0, 2 * Math.PI, false);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(this.curve[3].x, this.curve[3].y, 3, 0, 2 * Math.PI, false);
+    ctx.fill();
 
     if (DebugInspector.instance.isEnabled() && DebugInspector.instance.isConnectionPulsing(this)) {
       const t = DebugInspector.instance.getPulseAnimationState(this);

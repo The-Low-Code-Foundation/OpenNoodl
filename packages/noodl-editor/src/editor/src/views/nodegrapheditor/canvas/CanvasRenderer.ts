@@ -63,6 +63,17 @@ export class CanvasRenderer {
       maxY: frame.canvasHeight / (frame.ratio * scale) - panAndScale.y
     };
 
+    // Ground dot grid (UIX-005): a repeating pattern filled in graph space so
+    // it pans and zooms with the content — one fillRect, never per-dot draws.
+    // Skipped at low zoom where the dots collapse into sub-pixel noise.
+    if (scale >= 0.4) {
+      const gridPattern = CanvasTheme.instance.gridPattern(ctx);
+      if (gridPattern) {
+        ctx.fillStyle = gridPattern;
+        ctx.fillRect(paintRect.minX, paintRect.minY, paintRect.maxX - paintRect.minX, paintRect.maxY - paintRect.minY);
+      }
+    }
+
     ctx.font = '10px Helvetica';
 
     // Paint hierarchy
