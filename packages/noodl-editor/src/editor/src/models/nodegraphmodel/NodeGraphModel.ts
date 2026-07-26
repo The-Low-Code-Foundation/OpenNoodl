@@ -241,12 +241,38 @@ export class NodeGraphModel extends Model {
     });
   }
 
+  /**
+   * Re-point every reference to `oldPathPrefix` at `newPathPrefix`.
+   *
+   * A graph refers to a component in two different ways, and both have to move:
+   *
+   *  - **As a parameter value** — a `component`-typed port, e.g. a Router's
+   *    page. This is what the method originally handled.
+   *  - **As a node's type** — a component *instance*, where the reference lives
+   *    in `node.typename`. This was missed, so renaming a component on import
+   *    left instances of it pointing at the old name. That is worse than a
+   *    dangling reference when the old name still exists in the target (the
+   *    usual reason to rename rather than overwrite): the instance silently
+   *    binds to the target's unrelated component of that name. LIB-005 Success
+   *    Criterion 3, found by `tests/project/projectimportapply.js`.
+   */
   rerouteComponentRefs(oldPathPrefix, newPathPrefix) {
+    const reroute = (path: string) => newPathPrefix + path.substring(oldPathPrefix.length);
+
     this.forEachNode((n) => {
+      // Component instances carry the reference in their type name.
+      if (typeof n.typename === 'string' && n.typename.startsWith(oldPathPrefix)) {
+        // `type` is memoised off `typename`, so this goes through `retypeTo`,
+        // which drops the cache and lets it re-resolve against the new name.
+        n.retypeTo(reroute(n.typename));
+      }
+
       n.getPorts().forEach((p) => {
-        if (NodeLibrary.nameForPortType(p.type) === 'component' && n.parameters[p.name].startsWith(oldPathPrefix)) {
-          const oldPath = n.parameters[p.name];
-          n.parameters[p.name] = newPathPrefix + oldPath.substring(oldPathPrefix.length);
+        // A `component`-typed port with no value is legal — guard before
+        // reaching for `startsWith` on it.
+        const value = n.parameters[p.name];
+        if (NodeLibrary.nameForPortType(p.type) === 'component' && typeof value === 'string' && value.startsWith(oldPathPrefix)) {
+          n.parameters[p.name] = reroute(value);
         }
       });
     });

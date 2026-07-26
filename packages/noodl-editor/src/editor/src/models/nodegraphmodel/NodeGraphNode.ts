@@ -165,6 +165,23 @@ export class NodeGraphNode extends Model {
     if (this.owner && this.owner.owner) return this.owner.owner.owner; // graph->component->project
   }
 
+  /**
+   * Point this node at a different component/node type by name.
+   *
+   * Unlike {@link updateType}, this does not try to keep `typename` in step with
+   * an already-resolved `_type` — the caller is asserting the new name, and the
+   * type it names may not exist yet (on import, the renamed component is grafted
+   * in after its references are re-pointed). So both caches are dropped and the
+   * type re-resolves lazily through the `type` getter.
+   *
+   * Used by {@link NodeGraphModel.rerouteComponentRefs}.
+   */
+  retypeTo(newTypename: string) {
+    this.typename = newTypename;
+    this._type = undefined;
+    this._ports = undefined;
+  }
+
   // This method is called by the graph when a potential change in available node
   // types occurs
   updateType() {

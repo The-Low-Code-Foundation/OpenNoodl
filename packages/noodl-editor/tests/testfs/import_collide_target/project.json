@@ -1,0 +1,101 @@
+{
+  "name": "import_collide_target",
+  "components": [
+    {
+      "name": "/Home",
+      "graph": {
+        "connections": [],
+        "roots": [
+          {
+            "id": "3c6ef362-4772-6f75-7000-000000000000",
+            "type": "Group",
+            "x": 200,
+            "y": 150,
+            "parameters": {
+              "fill": "parent"
+            },
+            "ports": [],
+            "dynamicports": [],
+            "children": [
+              {
+                "id": "9e3779b1-5465-7874-0000-000000000000",
+                "type": "Text",
+                "x": 200,
+                "y": 150,
+                "parameters": {
+                  "text": "Target home"
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": []
+              }
+            ],
+            "label": "Root"
+          }
+        ],
+        "visualRoots": []
+      }
+    },
+    {
+      "name": "/Shared/Button",
+      "graph": {
+        "connections": [],
+        "roots": [
+          {
+            "id": "78dde6c4-4772-6f75-7000-000000000000",
+            "type": "Group",
+            "x": 200,
+            "y": 150,
+            "parameters": {
+              "backgroundColor": "Brand"
+            },
+            "ports": [],
+            "dynamicports": [],
+            "children": [
+              {
+                "id": "daa66d13-5465-7874-0000-000000000000",
+                "type": "Text",
+                "x": 200,
+                "y": 150,
+                "parameters": {
+                  "text": "Target button label"
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": []
+              }
+            ],
+            "label": "Button root"
+          }
+        ],
+        "visualRoots": []
+      }
+    }
+  ],
+  "settings": {
+    "canvasWidth": 1080,
+    "canvasHeight": 1920
+  },
+  "rootNodeId": "3c6ef362-4772-6f75-7000-000000000000",
+  "version": "4",
+  "runtimeVersion": "react19",
+  "metadata": {
+    "styles": {
+      "colors": {
+        "Brand": "#111111",
+        "Target Only": "#222222"
+      },
+      "text": {
+        "Heading": {
+          "fontFamily": "fonts/QATarget.ttf",
+          "fontSize": {
+            "value": "20",
+            "unit": "px"
+          },
+          "color": "#111111"
+        }
+      }
+    }
+  },
+  "variants": []
+}
