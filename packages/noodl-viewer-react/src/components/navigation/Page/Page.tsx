@@ -147,7 +147,6 @@ export function Page(props: PageProps) {
   // Allow changing the metatags from inputs
   META_TAGS.forEach((item) => {
     const value = props.metatags && props.metatags[item.key];
-    // @ts-expect-error Noodl is globally defined.
     Noodl.SEO.setMeta(item.key, value);
   });
 

@@ -6,7 +6,14 @@ export type NavigateArgs = {
   target: string;
   params: Record<string, string | number | boolean>;
   openInNewTab?: boolean;
-  hasNavigated: () => void;
+  /**
+   * Optional. Both call sites in `router.tsx` guard it
+   * (`args.hasNavigated && args.hasNavigated()`), and the analogous type in
+   * `navigation-handler.ts` already declared it optional — only the Navigate and
+   * Router Navigate *nodes* supply it. `Noodl.Navigation.navigate` from a project's
+   * own JavaScript never has, which is what made the required marking wrong.
+   */
+  hasNavigated?: () => void;
 };
 
 export type ComponentPageInfo = {
