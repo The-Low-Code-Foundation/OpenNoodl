@@ -164,9 +164,9 @@ packages/noodl-editor/src/frames/viewer-frame/index.bundle.js
 packages/noodl-editor/src/frames/viewer-frame/index.bundle.js.map
 packages/noodl-editor/src/main/main.bundle.js
 # Split chunks, Monaco workers and file-loader SVGs, all emitted into the
-# package root by webpackconfigs/*. Deliberately not a bare `*.bundle.js`:
-# src/editor/parse-dashboard-public/bundles/ is vendored parse-dashboard output
-# that nothing in this repo rebuilds.
+# package root by webpackconfigs/*. Scoped to the package root rather than a
+# bare `*.bundle.js` so a real source file named `*.bundle.js` deeper in the
+# tree would still be tracked.
 packages/noodl-editor/*.bundle.js
 packages/noodl-editor/*.bundle.js.map
 packages/noodl-editor/*.worker.js

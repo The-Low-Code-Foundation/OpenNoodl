@@ -12,7 +12,6 @@
 packages/noodl-editor/src/assets/
 packages/noodl-core-ui/src/assets/
 packages/noodl-editor/build/icons/
-packages/noodl-editor/src/editor/parse-dashboard-public/
 packages/noodl-editor/src/assets/
 packages/noodl-editor/tests/testfs/
 packages/noodl-editor/tests/recordings/
@@ -56,7 +55,6 @@ deps/
 
 # Specific bundled/minified files
 packages/noodl-viewer-react/static/
-packages/noodl-editor/src/editor/parse-dashboard-public/
 
 # -----------------------------------------------------------------------------
 # Static Assets (images, fonts, etc.)

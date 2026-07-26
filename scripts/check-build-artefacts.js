@@ -11,9 +11,8 @@
  * Usage:
  *   npm run check:artefacts
  *
- * Not a lint rule about file *names*: the vendored parse-dashboard bundles under
- * src/editor/parse-dashboard-public/bundles/ are legitimately tracked, because
- * nothing in this repo rebuilds them (they are copied from /deps/parse-dashboard).
+ * Not a lint rule about file *names*: it lists the exact paths webpack writes, so a
+ * legitimately-tracked file that merely looks generated is never flagged.
  */
 const { execFileSync } = require('child_process');
 const path = require('path');
