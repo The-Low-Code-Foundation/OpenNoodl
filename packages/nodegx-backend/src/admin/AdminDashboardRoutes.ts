@@ -86,6 +86,8 @@ export interface DashboardFeatures {
   email: boolean;
   backups: boolean;
   realtime: boolean;
+  /** File storage config (BAK-006) — always true once the subsystem is wired. */
+  files: boolean;
 }
 
 export interface AdminDashboardDeps {
