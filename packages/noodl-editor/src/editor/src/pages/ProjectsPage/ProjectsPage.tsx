@@ -8,7 +8,7 @@
 import { ipcRenderer, shell } from 'electron';
 import React, { useCallback, useEffect, useState, useMemo } from 'react';
 import { clone } from '@noodl/git/src/core/clone';
-import { filesystem } from '@noodl/platform';
+import { filesystem, platform } from '@noodl/platform';
 
 import {
   CloudSyncType,
@@ -54,7 +54,9 @@ function mapProjectToLauncherData(project: ProjectItemWithRuntime): LauncherProj
     title: project.name || 'Untitled',
     localPath: project.retainedProjectDirectory,
     lastOpened: new Date(project.latestAccessed).toISOString(),
-    imageSrc: project.thumbURI || 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg"%3E%3C/svg%3E',
+    // No empty-SVG fallback: an unusable value makes the card render its
+    // deterministic placeholder (UIX-006) instead of a blank white thumbnail.
+    imageSrc: project.thumbURI || '',
     cloudSyncMeta: {
       type: CloudSyncType.None // TODO: Detect git repos in future
     },
@@ -88,6 +90,33 @@ function mapLessonsToLauncherData(
     progressPercent: states[i].progressPercent,
     state: (states[i].name as LauncherLessonData['state']) || 'not-started'
   }));
+}
+
+/**
+ * Load-failure toast per the UIX-006 mock: named title, the actual reason, a
+ * Show-details action (reveals the folder so the user can fix project.json), and
+ * the always-present quiet Dismiss. Sticky until dismissed; red only here.
+ */
+function showLoadFailureToast(projectName: string | undefined, projectDir?: string) {
+  const actions = projectDir
+    ? [
+        {
+          label: 'Show details',
+          onClick: () => {
+            try {
+              shell.showItemInFolder(projectDir);
+            } catch (error) {
+              console.error('Failed to reveal project folder:', error);
+            }
+          }
+        }
+      ]
+    : undefined;
+
+  ToastLayer.showError('Its project.json is missing or unreadable. The project stays in your list — fix the file and try again.', {
+    title: `Couldn't load "${projectName || 'project'}"`,
+    actions
+  });
 }
 
 export function ProjectsPage(props: ProjectsPageProps) {
@@ -436,9 +465,7 @@ export function ProjectsPage(props: ProjectsPageProps) {
       ToastLayer.hideActivity(activityId);
 
       if (!loaded) {
-        ToastLayer.showError('Its project.json is missing or unreadable. The project stays in your list — fix the file and try again.', {
-          title: 'Could not load project'
-        });
+        showLoadFailureToast(project.name, projectEntry.retainedProjectDirectory);
       } else {
         props.route.router.route({ to: 'editor', project: loaded });
       }
@@ -500,9 +527,7 @@ export function ProjectsPage(props: ProjectsPageProps) {
         ToastLayer.hideActivity(activityId);
 
         if (!loaded) {
-          ToastLayer.showError('Its project.json is missing or unreadable. The project stays in your list — fix the file and try again.', {
-            title: 'Could not load project'
-          });
+          showLoadFailureToast(project.name, project.retainedProjectDirectory);
         } else {
           // Navigate to editor with the loaded project
           props.route.router.route({ to: 'editor', project: loaded });
@@ -703,6 +728,7 @@ export function ProjectsPage(props: ProjectsPageProps) {
     <>
       <Launcher
         projects={realProjects}
+        appVersion={platform.getVersion()}
         onCreateProject={handleCreateProject}
         onOpenProject={handleOpenProject}
         onLaunchProject={handleLaunchProject}
