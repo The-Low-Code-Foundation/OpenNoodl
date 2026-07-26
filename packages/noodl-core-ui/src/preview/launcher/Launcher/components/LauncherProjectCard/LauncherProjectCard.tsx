@@ -1,26 +1,11 @@
+import classNames from 'classnames';
 import React, { useState } from 'react';
 
-import { FeedbackType } from '@noodl-constants/FeedbackType';
-
-import { Card, CardBackground } from '@noodl-core-ui/components/common/Card';
-import { Icon, IconName, IconSize } from '@noodl-core-ui/components/common/Icon';
-import { IconButton } from '@noodl-core-ui/components/inputs/IconButton';
-import { PrimaryButton, PrimaryButtonSize, PrimaryButtonVariant } from '@noodl-core-ui/components/inputs/PrimaryButton';
-import { TextButton, TextButtonSize } from '@noodl-core-ui/components/inputs/TextButton';
+import { Chip, ChipVariant } from '@noodl-core-ui/components/common/Chip';
 import { DialogRenderDirection } from '@noodl-core-ui/components/layout/BaseDialog';
-import { Box } from '@noodl-core-ui/components/layout/Box';
-import { Columns } from '@noodl-core-ui/components/layout/Columns';
-import { HStack, Stack, VStack } from '@noodl-core-ui/components/layout/Stack';
 import { ContextMenu, ContextMenuProps } from '@noodl-core-ui/components/popups/ContextMenu';
-import { Tooltip } from '@noodl-core-ui/components/popups/Tooltip';
-import { Label, LabelSize, LabelSpacingSize } from '@noodl-core-ui/components/typography/Label';
-import { Text, TextSize, TextType } from '@noodl-core-ui/components/typography/Text';
-import { Title, TitleSize } from '@noodl-core-ui/components/typography/Title';
-import { UserBadgeProps, UserBadgeSize } from '@noodl-core-ui/components/user/UserBadge';
-import { UserBadgeList } from '@noodl-core-ui/components/user/UserBadgeList';
+import { UserBadgeProps } from '@noodl-core-ui/components/user/UserBadge';
 
-import { useProjectOrganization } from '../../hooks/useProjectOrganization';
-import { TagPill, TagPillSize } from '../TagPill';
 import css from './LauncherProjectCard.module.scss';
 
 // Runtime version detection types
@@ -89,211 +74,110 @@ export interface LauncherProjectCardProps extends LauncherProjectData {
   onOpenReadOnly?: () => void;
 }
 
+// Deterministic placeholder art. Five gradient buckets keyed to the node-category
+// hues (see LauncherProjectCard.module.scss). A name-hash picks the bucket so the
+// same project always gets the same colour.
+const PLACEHOLDER_BUCKETS = 5;
+
+function nameHash(name: string): number {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = (hash << 5) - hash + name.charCodeAt(i);
+    hash |= 0; // force 32-bit
+  }
+  return Math.abs(hash);
+}
+
+function projectInitial(title: string): string {
+  const match = (title || '').match(/[a-zA-Z0-9]/);
+  return match ? match[0].toUpperCase() : '?';
+}
+
+/**
+ * A capture is "usable" only if it is a real raster image or a remote URL. The
+ * old empty-`<svg></svg>` sentinel and missing/blank values fall through to the
+ * deterministic placeholder — a broken or blank thumbnail can never render.
+ */
+function hasUsableCapture(imageSrc?: string): boolean {
+  if (!imageSrc) return false;
+  const src = imageSrc.trim();
+  if (!src) return false;
+  if (src.startsWith('data:image/svg+xml')) return false; // legacy empty sentinel
+  if (src.startsWith('data:image/')) return src.length > 64; // real raster capture
+  return /^https?:\/\//.test(src);
+}
+
+const WarningTriangle = (
+  <svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+    <path d="M8 1.6 15 14H1L8 1.6Zm0 4.1c-.5 0-.8.3-.8.8l.2 3h1.2l.2-3c0-.5-.3-.8-.8-.8Zm0 6.6a.9.9 0 1 0 0-1.8.9.9 0 0 0 0 1.8Z" />
+  </svg>
+);
+
 export function LauncherProjectCard({
-  id,
   title,
   cloudSyncMeta,
-  localPath,
   lastOpened,
-  pullAmount,
-  pushAmount,
-  uncommittedChangesAmount,
   imageSrc,
   contextMenuItems,
-  contributors,
-  onClick,
   runtimeInfo,
-  onMigrateProject,
-  onOpenReadOnly
+  onClick
 }: LauncherProjectCardProps) {
-  const { tags, getProjectMeta } = useProjectOrganization();
-  const [showRuntimeDetails, setShowRuntimeDetails] = useState(false);
+  // Start from whether the incoming capture is usable; an <img> load error flips
+  // this off at runtime so a dead URL still resolves to the placeholder.
+  const [showCapture, setShowCapture] = useState(() => hasUsableCapture(imageSrc));
 
-  // Get project tags
-  const projectMeta = getProjectMeta(localPath);
-  const projectTags = projectMeta ? tags.filter((tag) => projectMeta.tagIds.includes(tag.id)) : [];
+  const bucket = nameHash(title || '') % PLACEHOLDER_BUCKETS;
+  const isLocal = cloudSyncMeta.type === CloudSyncType.None;
+  const isReact17 = runtimeInfo?.version === 'react17';
 
-  // Projects without a react19 marker run on the default (React 18.3) runtime.
-  // That is the unchanged, fully supported baseline — the card opens normally
-  // and only offers an optional upgrade path.
-  const isDefaultRuntime = runtimeInfo?.version === 'react17';
+  function handleKeyDown(e: React.KeyboardEvent) {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      onClick?.();
+    }
+  }
 
   return (
-    <Card background={CardBackground.Bg2} hoverBackground={CardBackground.Bg3} onClick={onClick}>
-      <Stack direction="row">
-        <div className={css.Image} style={{ backgroundImage: `url(${imageSrc})` }} />
+    <div
+      className={css['Card']}
+      role="button"
+      tabIndex={0}
+      onClick={onClick}
+      onKeyDown={handleKeyDown}
+      data-test="launcher-project-card"
+    >
+      <div className={classNames(css['Thumb'], !showCapture && css[`Placeholder`], !showCapture && css[`hue-${bucket}`])}>
+        {showCapture ? (
+          <img className={css['ThumbImage']} src={imageSrc} alt="" onError={() => setShowCapture(false)} />
+        ) : (
+          <span className={css['Ghost']} aria-hidden="true">
+            {projectInitial(title)}
+          </span>
+        )}
+      </div>
 
-        <div className={css.Details}>
-          <Columns layoutString="1 1 1" hasXGap={4}>
-            <div>
-              <HStack hasSpacing={2} UNSAFE_style={{ alignItems: 'center' }}>
-                <Title hasBottomSpacing size={TitleSize.Medium}>
-                  {title}
-                </Title>
-              </HStack>
-
-              {/* Tags */}
-              {projectTags.length > 0 && (
-                <HStack hasSpacing={2} UNSAFE_style={{ marginBottom: 'var(--spacing-2)', flexWrap: 'wrap' }}>
-                  {projectTags.map((tag) => (
-                    <TagPill key={tag.id} tag={tag} size={TagPillSize.Small} />
-                  ))}
-                </HStack>
-              )}
-
-              <Label variant={TextType.Shy}>Last opened {timeSince(new Date(lastOpened))} ago</Label>
-            </div>
-
-            <div>
-              {cloudSyncMeta.type === CloudSyncType.None && (
-                <div>
-                  <Label hasBottomSpacing>None</Label>
-                  <HStack UNSAFE_style={{ alignItems: 'center' }} hasSpacing={1}>
-                    <Icon icon={IconName.WarningCircle} variant={TextType.Shy} size={IconSize.Tiny} />
-                    <Label variant={TextType.Shy}>Project is only local</Label>
-                  </HStack>
-                </div>
-              )}
-
-              {cloudSyncMeta.type === CloudSyncType.Git && (
-                <div className={css.TypeDisplay}>
-                  <TextButton
-                    label="Open Git repo"
-                    size={TextButtonSize.Small}
-                    icon={IconName.ExternalLink}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      alert('FIXME: Link to repo?');
-                    }}
-                  />
-                </div>
-              )}
-
-              <HStack hasSpacing={4} UNSAFE_style={{ paddingLeft: 4 }}>
-                {Boolean(pullAmount) && (
-                  <Tooltip
-                    content={`${pullAmount} unpulled commits`}
-                    showAfterMs={200}
-                    UNSAFE_className={css.VersionControlTooltip}
-                  >
-                    <HStack UNSAFE_style={{ alignItems: 'center' }}>
-                      <Icon icon={IconName.CloudDownload} variant={FeedbackType.Notice} size={IconSize.Tiny} />
-                      <Label hasLeftSpacing={LabelSpacingSize.Small} variant={FeedbackType.Notice}>
-                        {String(pullAmount)}
-                      </Label>
-                    </HStack>
-                  </Tooltip>
-                )}
-
-                {Boolean(pushAmount) && (
-                  <Tooltip
-                    content={`${pushAmount} unpushed local commits`}
-                    showAfterMs={200}
-                    UNSAFE_className={css.VersionControlTooltip}
-                  >
-                    <HStack UNSAFE_style={{ alignItems: 'center' }}>
-                      <Icon icon={IconName.CloudUpload} variant={FeedbackType.Danger} size={IconSize.Tiny} />
-                      <Label hasLeftSpacing={LabelSpacingSize.Small} variant={FeedbackType.Danger}>
-                        {String(pushAmount)}
-                      </Label>
-                    </HStack>
-                  </Tooltip>
-                )}
-
-                {Boolean(uncommittedChangesAmount) && (
-                  <Tooltip
-                    content={`${uncommittedChangesAmount} uncommitted changes`}
-                    showAfterMs={200}
-                    UNSAFE_className={css.VersionControlTooltip}
-                  >
-                    <HStack UNSAFE_style={{ alignItems: 'center' }}>
-                      <Icon
-                        icon={IconName.WarningCircle}
-                        variant={FeedbackType.Danger}
-                        size={IconSize.Tiny}
-                        UNSAFE_className={css.VersionControlTooltip}
-                      />
-                      <Label hasLeftSpacing={LabelSpacingSize.Small} variant={FeedbackType.Danger}>
-                        {String(uncommittedChangesAmount)}
-                      </Label>
-                    </HStack>
-                  </Tooltip>
-                )}
-              </HStack>
-            </div>
-
-            <HStack UNSAFE_style={{ justifyContent: 'space-between', alignItems: 'center' }} hasSpacing={4}>
-              <HStack UNSAFE_style={{ alignItems: 'center' }} hasSpacing={2}>
-                {/* FIXME: get default user data from user object */}
-                <UserBadgeList
-                  badges={contributors || [{ name: 'Tore Knudsen', email: 'tore@noodl.net', id: 'Tore' }]}
-                  size={UserBadgeSize.Medium}
-                  maxVisible={4}
-                />
-
-                {!Boolean(contributors) && <Label variant={TextType.Shy}>(Only you)</Label>}
-              </HStack>
-
-              {Boolean(contextMenuItems) && (
-                <div>
-                  <ContextMenu renderDirection={DialogRenderDirection.Below} menuItems={contextMenuItems} />
-                </div>
-              )}
-            </HStack>
-          </Columns>
-
-          {/* Runtime info strip — informational, never a warning */}
-          {isDefaultRuntime && (
-            <div className={css.RuntimeBanner}>
-              <HStack hasSpacing={2} UNSAFE_style={{ alignItems: 'center', flex: 1 }}>
-                <Text size={TextSize.Small}>Default runtime (React 18.3)</Text>
-              </HStack>
-
-              <TextButton
-                label={showRuntimeDetails ? 'Less' : 'Options'}
-                size={TextButtonSize.Small}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowRuntimeDetails(!showRuntimeDetails);
-                }}
-              />
-            </div>
-          )}
-
-          {/* Expanded runtime details */}
-          {isDefaultRuntime && showRuntimeDetails && (
-            <div className={css.LegacyDetails}>
-              <Label variant={TextType.Shy} size={LabelSize.Default}>
-                This project runs on the default React 18.3 runtime and works as-is. To upgrade to React 19, open the
-                project and switch runtime in Project Settings — or use the assisted migration, which upgrades a copy
-                and leaves this project untouched.
-              </Label>
-
-              <HStack hasSpacing={2} UNSAFE_style={{ marginTop: 'var(--spacing-3)' }}>
-                <PrimaryButton
-                  label="Assisted Migration"
-                  size={PrimaryButtonSize.Small}
-                  variant={PrimaryButtonVariant.Muted}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onMigrateProject?.();
-                  }}
-                />
-
-                <PrimaryButton
-                  label="Open Read-Only"
-                  size={PrimaryButtonSize.Small}
-                  variant={PrimaryButtonVariant.Muted}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onOpenReadOnly?.();
-                  }}
-                />
-              </HStack>
-            </div>
-          )}
+      <div className={css['Meta']}>
+        <div className={css['Info']}>
+          <span className={css['Name']} title={title}>
+            {title}
+          </span>
+          <span className={css['Sub']}>
+            <span className={css['Edited']}>Edited {timeSince(new Date(lastOpened))} ago</span>
+            {isLocal && <Chip label="Local only" variant={ChipVariant.Neutral} />}
+            {isReact17 && <Chip label="React 17 runtime" variant={ChipVariant.Warning} icon={WarningTriangle} />}
+          </span>
         </div>
-      </Stack>
-    </Card>
+
+        {Boolean(contextMenuItems) && (
+          <div
+            className={css['Kebab']}
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => e.stopPropagation()}
+          >
+            <ContextMenu renderDirection={DialogRenderDirection.Below} menuItems={contextMenuItems} />
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
