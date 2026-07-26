@@ -45403,7 +45403,7 @@
             },
             {
               "fromId": "progress_number",
-              "fromProperty": "value",
+              "fromProperty": "stored",
               "toId": "progress_bar",
               "toProperty": "width"
             },
