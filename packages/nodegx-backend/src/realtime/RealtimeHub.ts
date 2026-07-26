@@ -54,6 +54,14 @@ export interface Subscription {
 export interface HubOptions {
   /** Max events buffered per connection before overflow → drop + resync. */
   maxQueue?: number;
+  /**
+   * BAK-009: max SIMULTANEOUS streams. This is the realtime tier's rate limit —
+   * a request-rate bucket makes no sense for a connection that stays open for
+   * hours, so the resource that is actually finite (sockets and their queues)
+   * is what gets capped. Read live from ops.json, so an operator can raise it
+   * without a restart. 0 = unlimited.
+   */
+  maxConnections?: () => number;
   /** Heartbeat comment-frame interval (ms); 0 disables (tests). */
   heartbeatMs?: number;
 }
@@ -93,11 +101,13 @@ export class RealtimeHub {
   private readonly connections = new Map<string, Connection>();
   private readonly maxQueue: number;
   private readonly heartbeatMs: number;
+  private readonly maxConnections: () => number;
   private readonly unsubscribeBus: () => void;
 
   constructor(bus: ChangeBus, security: HubSecurity, options: HubOptions = {}) {
     this.security = security;
     this.maxQueue = options.maxQueue ?? DEFAULT_MAX_QUEUE;
+    this.maxConnections = options.maxConnections ?? (() => 0);
     this.heartbeatMs = options.heartbeatMs ?? DEFAULT_HEARTBEAT_MS;
     this.unsubscribeBus = bus.subscribe((event) => this.onChange(event));
   }
@@ -116,8 +126,16 @@ export class RealtimeHub {
    * and sends the `connected` frame carrying the new clientId. When `lastEventId`
    * is present (a reconnect) an immediate `resync` follows — the hub cannot
    * replay, so it tells the client to re-query.
+   *
+   * Returns null when the connection cap is reached, having written NOTHING —
+   * the caller turns that into a plain 503 with `Retry-After`. Refusing before
+   * the stream headers go out matters: a client that has already been told
+   * `200 text/event-stream` has no way to learn it was rejected.
    */
-  addConnection(res: SSEResponse, principal: Principal, lastEventId?: string): string {
+  addConnection(res: SSEResponse, principal: Principal, lastEventId?: string): string | null {
+    const cap = this.maxConnections();
+    if (cap > 0 && this.connections.size >= cap) return null;
+
     const clientId = crypto.randomBytes(18).toString('base64url');
     res.writeHead(200, SSE_HEADERS);
 

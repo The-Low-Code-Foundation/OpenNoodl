@@ -217,7 +217,10 @@ export class BackendService {
     //     events ONCE; the hub fans matching, permission-checked events out over
     //     SSE. WF-005's trigger dispatch will be the bus's second consumer.
     this.changeBus = new ChangeBus(this.persistence.adapter);
-    this.realtime = new RealtimeHub(this.changeBus, this.security);
+    this.realtime = new RealtimeHub(this.changeBus, this.security, {
+      // BAK-009: read live, so raising the cap in ops.json does not need a restart.
+      maxConnections: () => (this.ops ? this.ops.config.rateLimit.realtimeMaxConnections : 0)
+    });
 
     // 2.6 Triggers (WF-005): the registry loads triggers.json (loud on invalid).
     //     The db-change source is the SAME ChangeBus the realtime hub uses — the

@@ -60,6 +60,7 @@ import { readonlyAdminMayCall, readonlyRefusalMessage } from '../admin/readonly'
 import type { OpsState } from '../ops/OpsState';
 import { logger } from '../ops/logger';
 import { clientIp } from '../ops/client-ip';
+import { RateLimiter, classifyRoute } from '../ops/rate-limit';
 import { REQUEST_ID_HEADER, resolveRequestId } from '../ops/request-id';
 import { CORS_HEADERS, HttpError, parseURL, readJSONBody, readRawBody, sendError, sendJSON } from './http-util';
 
@@ -107,6 +108,23 @@ export interface RequestContext {
   checkData(collection: string, op: ClpOp): void;
   /** Owner + template-ACL stamping and client-ACL validation for creates. */
   stampCreate(collection: string, data: Record<string, unknown>): void;
+}
+
+/**
+ * The rate-limit bucket a request spends from (BAK-009). One admin credential
+ * is one bucket; each user, key and anonymous address gets its own.
+ */
+function rateLimitKey(principal: Principal, ip: string): string {
+  switch (principal.kind) {
+    case 'admin':
+      return principal.readonly ? 'admin:readonly' : 'admin';
+    case 'apiKey':
+      return `key:${principal.name}`;
+    case 'user':
+      return `user:${principal.userId}`;
+    default:
+      return `ip:${ip}`;
+  }
 }
 
 /**
@@ -202,6 +220,12 @@ export class HttpServer {
   private readonly dashboard: AdminDashboardRoutes | null;
   /** BAK-005: failure budget in front of the one credential check. */
   private readonly authLimiter = new AuthAttemptLimiter();
+  /**
+   * BAK-009: the one request-rate limiter. Separate from `authLimiter` on
+   * purpose — that one counts FAILED CREDENTIALS, this one counts requests, and
+   * merging them would let a valid client's traffic launder a guessing attack.
+   */
+  private readonly rateLimiter = new RateLimiter(() => this.ops.config.rateLimit);
   private readonly routes: RouteDef[];
 
   constructor(deps: HttpServerDeps) {
@@ -218,6 +242,8 @@ export class HttpServer {
     this.parse = new ParseWireRoutes(deps.facade, deps.getConfigParams || (() => ({})));
     this.email = new EmailRoutes({
       facade: deps.facade,
+      limiter: this.rateLimiter,
+      clientAddress: (req) => clientIp(req, this.ops.config.rateLimit.trustedProxies),
       emailConfig: deps.emailConfig,
       mailer: deps.mailer,
       tokens: deps.emailTokens,
@@ -972,6 +998,31 @@ export class HttpServer {
     }
     trace.principal = principal.kind === 'admin' && principal.readonly ? 'admin:readonly' : principal.kind;
 
+    // BAK-009 rate limiting, keyed by WHO this is now that the credential has
+    // been resolved: an authenticated caller gets its own bucket instead of
+    // sharing one with everyone behind the same NAT. Deriving the key from the
+    // raw header instead would let an attacker mint a fresh bucket per request
+    // by sending garbage tokens.
+    const routeClass = classifyRoute(route.pattern, route.access.kind);
+    const decision = this.rateLimiter.check(routeClass, rateLimitKey(principal, trace.clientIp));
+    if (!decision.allowed) {
+      res.setHeader('Retry-After', String(decision.retryAfterSeconds));
+      logger.warn('ratelimit.refused', {
+        requestId: trace.requestId,
+        route: route.pattern,
+        rateClass: routeClass,
+        principal: trace.principal,
+        ip: trace.clientIp,
+        retryAfterSeconds: decision.retryAfterSeconds,
+        limit: decision.policy
+      });
+      throw new HttpError(
+        429,
+        `Rate limit exceeded for ${routeClass} requests (${decision.policy.ratePerMinute}/min, ` +
+          `burst ${decision.policy.burst}). Retry in ${decision.retryAfterSeconds}s.`
+      );
+    }
+
     // BAK-005 read-only tier: refuse every state-changing request from a
     // read-only admin BEFORE the handler runs. Coarse by design — a route added
     // later is refused by default if it mutates, so the tier's promise does not
@@ -1232,7 +1283,20 @@ export class HttpServer {
 
     // http.ServerResponse structurally satisfies the hub's SSEResponse.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    this.realtime.addConnection(ctx.res as any, principal, lastEventId);
+    const clientId = this.realtime.addConnection(ctx.res as any, principal, lastEventId);
+    if (clientId === null) {
+      // BAK-009: the realtime tier is capped by CONNECTION COUNT rather than
+      // request rate (see ops/model). At the cap this is a plain 503 — the
+      // stream was never opened, so nothing has been written yet.
+      ctx.res.setHeader('Retry-After', '5');
+      logger.warn('realtime.capped', {
+        requestId: ctx.requestId,
+        ip: ctx.clientIp,
+        connections: this.realtime.connectionCount,
+        cap: this.ops.config.rateLimit.realtimeMaxConnections
+      });
+      throw new HttpError(503, 'This backend is at its realtime connection limit. Retry shortly.');
+    }
     // Deliberately do NOT end the response — the stream stays open.
   }
 

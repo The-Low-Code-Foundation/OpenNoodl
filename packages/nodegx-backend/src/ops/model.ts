@@ -61,6 +61,16 @@ export interface RateLimitConfig {
    */
   trustedProxies: string[];
   policies: Record<RouteClass, RateLimitPolicy>;
+  /**
+   * How many SSE streams may be open at once (BAK-001's realtime hub).
+   *
+   * This is the `realtime` class's limit, and it is a COUNT rather than a rate
+   * because one stream is one very long request: a request-rate bucket would
+   * measure nothing while breaking legitimate reconnect storms. Each open
+   * stream costs a socket and a queue, so the number that matters is how many
+   * exist, not how often they are opened. 0 = unlimited.
+   */
+  realtimeMaxConnections: number;
 }
 
 export interface LoggingConfig {
@@ -108,11 +118,18 @@ export interface OpsConfig {
 }
 
 /**
- * Defaults. The rate numbers are deliberately generous enough that no ordinary
- * app notices them and tight enough that a credential-guessing or scraping loop
- * does: `auth` is the one class where a human's real rate is a few per minute,
- * so it is the one that bites first (spec success criterion: hammering /login
- * 429s while data routes stay unaffected).
+ * Defaults. Generous enough that no ordinary app notices them, tight enough
+ * that a scraping or guessing loop does: `auth` is the class that bites first
+ * (spec success criterion: hammering /login 429s while data routes stay
+ * unaffected).
+ *
+ * `auth` is not set as low as a single human's real rate, deliberately. Fifty
+ * people behind one office NAT logging in at 9am is one address making fifty
+ * auth requests in a minute, and refusing them would be a self-inflicted
+ * outage. Online credential GUESSING is not this control's job: BAK-005's
+ * failure budget locks a client out after ten wrong credentials, and the
+ * account-mail endpoints carry their own much stricter buckets (email-routes).
+ * What this class stops is the firehose.
  */
 export function defaultOpsConfig(): OpsConfig {
   return {
@@ -122,7 +139,7 @@ export function defaultOpsConfig(): OpsConfig {
       enabled: true,
       trustedProxies: ['loopback'],
       policies: {
-        auth: { ratePerMinute: 20, burst: 10 },
+        auth: { ratePerMinute: 60, burst: 30 },
         admin: { ratePerMinute: 300, burst: 100 },
         data: { ratePerMinute: 1200, burst: 400 },
         files: { ratePerMinute: 300, burst: 100 },
@@ -130,7 +147,8 @@ export function defaultOpsConfig(): OpsConfig {
         functions: { ratePerMinute: 600, burst: 200 },
         realtime: { ratePerMinute: 0, burst: 0 },
         public: { ratePerMinute: 600, burst: 200 }
-      }
+      },
+      realtimeMaxConnections: 500
     },
     cors: { origins: ['*'], credentials: false },
     audit: { enabled: true, retentionDays: 90 },
@@ -180,10 +198,21 @@ export function validateOpsConfig(raw: unknown): string[] {
     }
   }
 
-  if (cfg.rateLimit !== undefined && checkKeys(errors, 'rateLimit', cfg.rateLimit, ['enabled', 'trustedProxies', 'policies'])) {
+  if (
+    cfg.rateLimit !== undefined &&
+    checkKeys(errors, 'rateLimit', cfg.rateLimit, ['enabled', 'trustedProxies', 'policies', 'realtimeMaxConnections'])
+  ) {
     const rl = cfg.rateLimit as Record<string, unknown>;
     if (rl.enabled !== undefined && typeof rl.enabled !== 'boolean') errors.push('rateLimit.enabled must be a boolean');
     if (rl.trustedProxies !== undefined) checkStringArray(errors, 'rateLimit.trustedProxies', rl.trustedProxies);
+    if (
+      rl.realtimeMaxConnections !== undefined &&
+      (typeof rl.realtimeMaxConnections !== 'number' ||
+        !Number.isFinite(rl.realtimeMaxConnections) ||
+        rl.realtimeMaxConnections < 0)
+    ) {
+      errors.push('rateLimit.realtimeMaxConnections must be a number >= 0 (0 = unlimited)');
+    }
     if (rl.policies !== undefined && checkKeys(errors, 'rateLimit.policies', rl.policies, ROUTE_CLASSES)) {
       for (const [name, policy] of Object.entries(rl.policies as Record<string, unknown>)) {
         if (!checkKeys(errors, `rateLimit.policies.${name}`, policy, ['ratePerMinute', 'burst'])) continue;

@@ -39,7 +39,8 @@ import type { EmailConfigState } from '../email/EmailConfigState';
 import type { Mailer } from '../email/Mailer';
 import { EmailTokenStore, RESET_TTL_MS, VERIFY_TTL_MS } from '../email/tokens';
 import { renderTemplate } from '../email/templates';
-import { RateLimiter, clientKey } from './rate-limit';
+import type { RateLimiter } from '../ops/rate-limit';
+import type { RateLimitPolicy } from '../ops/model';
 import { hashPassword } from './users';
 import { HttpError, readJSONBody, sendJSON } from './http-util';
 
@@ -96,6 +97,10 @@ export interface EmailRoutesDeps {
   backendName: string;
   /** `http://<host>:<port>` of THIS running instance — the loud-warned fallback when `baseUrl` is unset. */
   getLocalUrl: () => string;
+  /** BAK-009: the service's one rate limiter (these endpoints used to carry their own). */
+  limiter: RateLimiter;
+  /** BAK-009: proxy-aware client address, resolved against the trusted-proxy config. */
+  clientAddress: (req: http.IncomingMessage) => string;
 }
 
 export class EmailRoutes {
@@ -106,10 +111,22 @@ export class EmailRoutes {
   private readonly backendId: string;
   private readonly backendName: string;
   private readonly getLocalUrl: () => string;
+  private readonly limiter: RateLimiter;
+  private readonly clientAddress: (req: http.IncomingMessage) => string;
 
-  // Fixed-window: 5 requests / 15 minutes per client address, per bucket.
-  private readonly requestLimiter = new RateLimiter(5, 15 * 60 * 1000);
-  private readonly consumeLimiter = new RateLimiter(20, 15 * 60 * 1000);
+  /**
+   * BAK-009: these budgets moved onto the service's ONE limiter (ops/rate-limit)
+   * — same token buckets, same 429 + `Retry-After` shape, same proxy-aware key
+   * as every other route. They stay STRICTER than the `auth` route class on
+   * purpose: sending mail to an address the caller named, and guessing at a
+   * single-use token, are not the same act as logging in.
+   *
+   * The old numbers were fixed windows (5 per 15 minutes / 20 per 15 minutes);
+   * expressed as buckets they refill continuously instead of letting a caller
+   * spend two full allowances across a window boundary.
+   */
+  private static readonly SEND_POLICY: RateLimitPolicy = { ratePerMinute: 5 / 15, burst: 5 };
+  private static readonly CONSUME_POLICY: RateLimitPolicy = { ratePerMinute: 20 / 15, burst: 20 };
 
   constructor(deps: EmailRoutesDeps) {
     this.facade = deps.facade;
@@ -119,6 +136,15 @@ export class EmailRoutes {
     this.backendId = deps.backendId;
     this.backendName = deps.backendName;
     this.getLocalUrl = deps.getLocalUrl;
+    this.limiter = deps.limiter;
+    this.clientAddress = deps.clientAddress;
+  }
+
+  /** Refuse with the same 429 + Retry-After every other rate-limited route sends. */
+  private enforce(req: http.IncomingMessage, bucket: string, policy: RateLimitPolicy): void {
+    const decision = this.limiter.checkPolicy(bucket, this.clientAddress(req), policy);
+    if (decision.allowed) return;
+    throw new HttpError(429, `Too many requests. Try again in ${decision.retryAfterSeconds}s.`);
   }
 
   private baseUrl(): string {
@@ -144,9 +170,7 @@ export class EmailRoutes {
 
   /** POST /requestPasswordReset — always 200/{} (anti-enumeration; see module doc). */
   async requestPasswordReset(req: http.IncomingMessage, res: http.ServerResponse): Promise<void> {
-    if (!this.requestLimiter.allow('reset:' + clientKey(req))) {
-      throw new HttpError(429, 'Too many password reset requests. Try again later.');
-    }
+    this.enforce(req, 'email:reset-request', EmailRoutes.SEND_POLICY);
     const body = await readJSONBody(req);
     const email = String(body.email || '');
 
@@ -193,7 +217,10 @@ export class EmailRoutes {
 
   /** POST /apps/:appId/request_password_reset — the shape `userservice.ts#resetPassword` posts, and the form above. */
   async processPasswordReset(req: http.IncomingMessage, res: http.ServerResponse): Promise<void> {
-    if (!this.consumeLimiter.allow('reset-consume:' + clientKey(req))) {
+    // A browser is on the other end of this one, so the refusal is a page
+    // rather than the JSON 429 the API routes send — same limiter, same bucket
+    // mechanics, presentation chosen by who is looking.
+    if (!this.limiter.checkPolicy('email:reset-consume', this.clientAddress(req), EmailRoutes.CONSUME_POLICY).allowed) {
       sendHTML(res, 429, page('Too many attempts', '<h2 class="err">Invalid Link</h2><p>Too many attempts. Try again later.</p>'));
       return;
     }
@@ -246,9 +273,7 @@ export class EmailRoutes {
 
   /** POST /verificationEmailRequest — always 200/{} (same anti-enumeration posture as password reset). */
   async requestEmailVerification(req: http.IncomingMessage, res: http.ServerResponse): Promise<void> {
-    if (!this.requestLimiter.allow('verify:' + clientKey(req))) {
-      throw new HttpError(429, 'Too many verification requests. Try again later.');
-    }
+    this.enforce(req, 'email:verify-request', EmailRoutes.SEND_POLICY);
     const body = await readJSONBody(req);
     const email = String(body.email || '');
 
@@ -290,7 +315,10 @@ export class EmailRoutes {
 
   /** GET /apps/:appId/verify_email?username=&token= */
   async verifyEmail(res: http.ServerResponse, query: Record<string, string>): Promise<void> {
-    if (!this.consumeLimiter.allow('verify-consume:' + (query.username || 'anon'))) {
+    // Keyed by the username being verified, not the address: the link arrives
+    // in a browser that may be anywhere, and the thing worth rate-limiting is
+    // guessing at one account's token.
+    if (!this.limiter.checkPolicy('email:verify-consume', query.username || 'anon', EmailRoutes.CONSUME_POLICY).allowed) {
       sendHTML(res, 429, page('Too many attempts', '<h2 class="err">Invalid Verification Link</h2><p>Too many attempts. Try again later.</p>'));
       return;
     }
