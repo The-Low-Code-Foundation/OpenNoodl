@@ -430,3 +430,51 @@ query trash, router File/FileFill, text-style sliders, connection-popup
 highest-risk row**) and row 16. These need specific node types and a lesson open.
 Row 11 in particular remains unverified: the `#FCCC73` yellow going away, and the
 legacy-HTML fallback ring, were not seen.
+
+---
+
+## Row 11 (lessons checkmark) — colour half settled statically, 2026-07-26
+
+Row 11 was flagged the highest-risk row and its `#FCCC73` claim was unverified. The
+colour question does not actually need a running lesson — it is decidable from source,
+and it is now decided.
+
+**`#FCCC73` is gone from the live path.** Every remaining occurrence under
+`packages/noodl-editor/src` + `packages/noodl-core-ui/src` is either a comment
+explaining the removal (`models/lessonformat.ts:268`, `LessonLayerView.css:65`) or an
+unrelated sample palette in a Storybook file
+(`core-ui/.../ColorListView.stories.tsx` — a colour-list fixture, not the checkmark).
+No stylesheet, no glyph and no emitted markup carries it.
+
+**Every checkmark colour is a token**, in `LessonLayerView.css`:
+
+| State | Colour |
+|---|---|
+| incomplete | `--theme-color-fg-muted` (deliberately not `inherit` — `.lesson-item` sets a near-white label colour that would make the glyph invisible in light theme) |
+| completed | `--theme-color-primary` — the azure accent, i.e. exactly the "completed now reads primary/azure" the row asks for |
+| selected | `--theme-color-fg-highlight` |
+| selected + hover | `--theme-color-secondary-bright` |
+
+**The emitted markup is the UIX-007 convention**, inline in `lessonformat.ts`:
+incomplete is `viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"`
+with round caps/joins; complete is a filled path on `fill="currentColor"`. Neither
+carries a baked colour, so both follow the theme.
+
+**The legacy fallback is real and correct.** `.lesson-checkmark:empty` gets
+`border: 1.5px solid currentColor; border-radius: 50%`, filled by
+`background-color: currentColor` when `.completed`. So hand-authored lesson HTML that
+emits an empty span renders a themed ring rather than nothing.
+
+**Still needs a live lesson:** the behavioural half — open a lesson, complete a task,
+watch outline flip to filled. Shape selection is pure CSS (`.completed` toggles which
+of the two SVGs is `display: block`), so the risk is in whether `.completed` is applied,
+not in the glyphs.
+
+### Cross-check for UIX-010
+
+Residual 4 said `lightning`, `pin`, `pin_fill` were handed over as fill-drawn. Confirmed:
+`lightning` is already at a 16 viewBox (1 consumer), `pin` and `pin_fill` are both
+`0 0 24 24`. Also worth knowing: **`check_circle` / `check_circle_fill` have no code
+consumer at all** — the lessons glyph is inlined and only *"kept in sync by shape"* with
+them by comment. They look like delete candidates in a naive sweep and are not: deleting
+them orphans that contract.

@@ -352,3 +352,107 @@ against renaming onto the target's existing component of that name, because
   post-import reference resolution after a rename remain unverified.
 - QA-3 (prefab install), QA-4 (import from URL), QA-5 (export), QA-6 (edges).
 - Colour-style and text-style collisions (only the component collision was driven).
+
+---
+
+## Apply path executed — 2026-07-26 (orchestrator, primary checkout)
+
+The last unverified stretch of this task. An import was **applied for real**, into
+purpose-built fixtures (never a user project), and the three things §7 QA-2.5/2.6/2.7
+left open are now settled — two of them by finding the behaviour wrong and fixing it.
+
+Fixtures rebuilt by `scripts`-free generator (see below) and **committed** as
+`tests/testfs/import_collide_target` / `import_collide_source`, so this stops being a
+thing that has to be hand-rebuilt every time.
+
+### Two defects found, both fixed
+
+**1. A renamed component's instances did not follow the rename** (`2d4893d`).
+`NodeGraphModel.rerouteComponentRefs` rewrote only `component`-typed **parameters**
+(a Router's page). A component **instance** carries its reference in `node.typename`,
+which nothing rewrote — so importing `/Cards/ProfileCard` while renaming
+`/Shared/Button` → `/Shared/Button 2` left ProfileCard holding a node of type
+`/Shared/Button`.
+
+That is worse than a dangling reference in precisely the case rename exists for. The
+old name still exists in the target — that is *why* the user renamed instead of
+overwriting — so the imported component silently binds to the target's unrelated
+component of that name. Success Criterion 3, and the RENAMES block on screen promises
+in as many words that "references between the imported components follow the new names
+automatically".
+
+Rerouting a typename has to invalidate the memoised `_type`. `updateType()` is the
+wrong tool: it writes `typename` back *from* an already-resolved type, so it would undo
+the rename whenever the new name has not been grafted in yet. Hence
+`NodeGraphNode.retypeTo`, which asserts the name and lets the type re-resolve lazily.
+A `component`-typed port with no value also no longer throws on `.startsWith`.
+
+**2. The DONE stage promised an undo it cannot deliver** (`56d6bbf`). It said *"Undo
+removes the imported components, variants **and styles** in one step."* Driven live:
+after one undo the three imported components were gone and the source's `Brand`
+(`#FF00AA`), `Accent` and `Heading` were **still sitting on top of the user's own
+styles**. Styles merge through `mergeMetadata`, which `apply.ts` keeps outside the undo
+group on purpose (legacy parity) — so the sentence was wrong about the one category a
+user is most likely to want back. The note is now built from what actually landed.
+
+### Verified live
+
+| Check | Result |
+|---|---|
+| QA-2.5 — DONE stage | ✅ "Import complete", `IN YOUR PROJECT` 3 components / 3 styles, `RENAMED ON THE WAY IN /Shared/Button → /Shared/Button 2`, `WRITTEN TO DISK 2 files written` + "Undo does not remove them" |
+| QA-2.6 — references resolve after rename | ✅ **after the fix.** `ProfileCard`'s node types read `['Group','/Shared/Button 2','Group','Text','Text','Circle','/Shared/Badge',…]` — it descends *into* the renamed component, so the reference genuinely resolves |
+| QA-2.7 — one undo step | ✅ one undo removed all three imported components at once; `/Home` and the target's own `/Shared/Button` survive; undo pointer 1 → 0; files still on disk |
+| Colour-style collision | ✅ `Brand` — Keep mine / Overwrite (no Rename, correctly: rename is components-only) |
+| Text-style collision | ✅ `Heading`, same control, and the style→file edge pulled `fonts/QASource.ttf` with provenance *"needed by Heading"* |
+| Style collisions have no diff | ✅ honest copy: *"Your version will be replaced. A node-level diff is not available for this item."* (residual 6, rendered rather than silent) |
+| QA-5.1 — export | ✅ `Cmd+Shift+E`'s handler opens the same selection surface titled "Export components", no collision decisions |
+
+Undo was driven through `UndoQueue.instance.undo()` — exactly what `Cmd+Z` reaches via
+`nodeGraph.undo()`, minus the toast — because CDP has no key-dispatch verb here.
+
+### Pinned as specs, not just observed
+
+`tests/project/projectimportapply.js` (6 specs) covers the `ImportResult` the DONE stage
+renders from, one undo group per import, one undo removing every imported component,
+post-rename reference resolution, "keep mine", **and explicitly the part of the undo
+contract that is not true** (styles and disk writes outlive it). Three more specs in
+`tests/import-flow/selection.test.ts` pin the corrected undo note.
+
+**Electron suite: 1346 specs, 0 failures.**
+
+### Trap: HMR from a concurrent session closes the modal
+
+Four times this session an open import modal vanished mid-flow with zero renderer
+exceptions. The cause is in `.logs/dev.log`, not in the flow:
+`[webpack-dev-server] App updated. Recompiling... / [HMR] Checking for updates` — another
+session editing the shared checkout re-mounts the React tree. **Not a product defect.**
+Live QA in this checkout is unreliable while other sessions are writing to it.
+
+Two more driving traps worth keeping:
+- **`App.instance.exitProject()` from a raw CDP eval blanks the editor** (`ProjectModel.instance`
+  is cleared while `EditorPage` is still mounted → `…undefined (reading 'off')` in
+  `ProjectDesignTokenContext` / `EditorDocument` unmount effects). The **real** exit button is
+  clean — 0 exceptions — because it runs inside React's event batching. Don't report the eval
+  version as a bug; I nearly did.
+- **`--target=editor` is ambiguous once a preview window exists** and silently attaches to the
+  viewer. Use `--target=dashboard`.
+- **React re-renders drop a DOM `id` between two CDP calls.** Tag and click in the *same* eval.
+
+### Fixture generator
+
+Deterministic ids, no `Date.now`, reruns byte-identical:
+`qa-target` = `/Home`, `/Shared/Button` (bg `Brand`), colours `Brand #111111` + `Target Only`,
+text style `Heading` → `fonts/QATarget.ttf`.
+`qa-source` = `/Cards/ProfileCard` (instantiates `/Shared/Button` **and** `/Shared/Badge`, plus
+an `Image` on `assets/qa-image.png`), `/Shared/Button` (visibly different, 4 nodes), `/Shared/Badge`,
+`/Home`, colours `Brand #FF00AA` (collides) + `Accent`, text styles `Heading` → `fonts/QASource.ttf`
+(collides) + `Caption`, one `Group` variant. Both `"version": "4"`, `runtimeVersion` `react19`.
+The committed copies under `tests/testfs/` are the same pair.
+
+### Still not covered
+
+- QA-3 (prefab install — incl. the deliberate "picker no longer closes itself" change that
+  wants Richard's eye), QA-4 (import from URL), QA-6 (edges).
+- QA-5.3/5.4 — the export zip and the cancel-the-directory-chooser message. Both need the
+  **native** directory dialog, which blocks the renderer and cannot be driven over CDP.
+- The `.import-popup-*` dead CSS sweep (residual 2) — `style.css` is still contended.
