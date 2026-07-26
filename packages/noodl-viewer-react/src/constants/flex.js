@@ -1,1 +1,0 @@
-export const flexDirectionValues = ['row', 'row-reverse', 'column', 'column-reverse', 'inherit', 'initial', 'revert', 'unset'];
