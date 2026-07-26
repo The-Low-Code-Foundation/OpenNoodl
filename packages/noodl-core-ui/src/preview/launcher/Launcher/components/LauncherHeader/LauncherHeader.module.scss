@@ -1,20 +1,87 @@
 /**
- * LauncherHeader - Styling
+ * LauncherHeader - title-bar styling (UIX-006)
  */
 
 .Root {
-  padding: 20px 24px;
-  border-bottom: 1px solid var(--theme-color-border-default);
+  display: flex;
+  align-items: stretch;
+  gap: 16px;
+  height: 52px;
+  flex: none;
+  padding: 0 20px;
   background: var(--theme-color-bg-1);
+  border-bottom: 1px solid var(--theme-color-border-default);
 }
 
-.Content {
+/* NodeGX wordmark — display face + coral brand dot (its only sanctioned use). */
+.Wordmark {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 7px;
+  font-family: var(--font-family-display);
+  font-weight: 600;
+  font-size: 17px;
+  letter-spacing: -0.01em;
+  color: var(--theme-color-fg-highlight);
 }
 
-.VersionInfo {
+.BrandDot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--theme-color-brand);
+}
+
+/* Primary tab navigation with an accent underline on the active item. */
+.Tabs {
+  display: flex;
+  gap: 4px;
+  margin-left: 12px;
+  align-self: stretch;
+  align-items: stretch;
+}
+
+.Tab {
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  border: 0;
+  background: none;
+  font-family: inherit;
+  font-weight: 500;
+  font-size: 13px;
+  color: var(--theme-color-fg-muted);
+  cursor: pointer;
+  transition: color 0.12s ease;
+
+  &:hover {
+    color: var(--theme-color-fg-default);
+  }
+
+  &[aria-current] {
+    color: var(--theme-color-fg-highlight);
+  }
+
+  &[aria-current]::after {
+    content: '';
+    position: absolute;
+    left: 12px;
+    right: 12px;
+    bottom: -1px;
+    height: 2px;
+    border-radius: 2px 2px 0 0;
+    background: var(--theme-color-primary);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--theme-color-focus-ring);
+    outline-offset: -2px;
+    border-radius: 4px;
+  }
+}
+
+.Spacer {
   flex: 1;
 }
 
@@ -24,7 +91,28 @@
   gap: 12px;
 }
 
-.DataSourceToggle {
+.Avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
   display: flex;
   align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--theme-color-on-primary);
+  background: linear-gradient(135deg, var(--theme-color-primary-dim), var(--theme-color-primary));
+
+  &.is-anonymous {
+    color: var(--theme-color-fg-muted);
+    background: var(--theme-color-bg-3);
+
+    svg {
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.4;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+  }
 }

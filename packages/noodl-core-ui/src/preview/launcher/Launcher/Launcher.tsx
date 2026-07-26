@@ -9,8 +9,6 @@
 
 import React, { useEffect, useState } from 'react';
 
-import { IconName } from '@noodl-core-ui/components/common/Icon';
-import { TabBar, TabBarItem } from '@noodl-core-ui/components/layout/TabBar';
 import { LauncherFooter } from '@noodl-core-ui/preview/launcher/Launcher/components/LauncherFooter';
 import { LauncherHeader } from '@noodl-core-ui/preview/launcher/Launcher/components/LauncherHeader';
 import {
@@ -42,6 +40,9 @@ export interface LauncherProps {
    */
   projects?: LauncherProjectData[];
 
+  /** App version string for the footer wordmark (e.g. "0.1.0"). */
+  appVersion?: string;
+
   // Project management callbacks
   onCreateProject?: () => void;
   onOpenProject?: () => void;
@@ -70,30 +71,6 @@ export interface LauncherProps {
   githubRepos?: UseGitHubReposReturn | null;
   onCloneRepo?: (repo: NoodlGitHubRepo) => Promise<void>;
 }
-
-// Tab configuration (GitHub tab added dynamically based on auth state)
-const LAUNCHER_TABS: TabBarItem[] = [
-  {
-    id: 'projects',
-    label: 'Projects',
-    icon: IconName.FolderOpen
-  },
-  {
-    id: 'github',
-    label: 'GitHub',
-    icon: IconName.CloudFunction
-  },
-  {
-    id: 'learn',
-    label: 'Learn',
-    icon: IconName.Rocket
-  },
-  {
-    id: 'templates',
-    label: 'Templates',
-    icon: IconName.Components
-  }
-];
 
 // FIXME: make the mock data real
 export const MOCK_PROJECTS: LauncherProjectData[] = [
@@ -196,6 +173,7 @@ function parseDeepLink(): LauncherPageId | null {
 export function Launcher({
   initialTab,
   projects,
+  appVersion,
   onCreateProject,
   onOpenProject,
   onLaunchProject,
@@ -279,11 +257,6 @@ export function Launcher({
     }
   }, [activePageId]);
 
-  const handleTabChange = (tabId: string) => {
-    setActivePageId(tabId as LauncherPageId);
-    console.info(`Navigated to tab: ${tabId}`);
-  };
-
   // Render active view
   const renderActiveView = () => {
     switch (activePageId) {
@@ -309,6 +282,7 @@ export function Launcher({
         setUseMockData,
         projects: activeProjects,
         hasRealProjects,
+        appVersion,
         selectedFolderId,
         setSelectedFolderId,
         projectOrganizationService,
@@ -333,8 +307,6 @@ export function Launcher({
     >
       <div className={css['Root']}>
         <LauncherHeader />
-
-        <TabBar items={LAUNCHER_TABS} activeItemId={activePageId} onChange={handleTabChange} size="large" />
 
         <div className={css['ContentArea']}>{renderActiveView()}</div>
 

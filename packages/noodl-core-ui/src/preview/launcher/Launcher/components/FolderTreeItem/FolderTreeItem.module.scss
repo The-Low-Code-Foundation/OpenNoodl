@@ -18,10 +18,17 @@
   }
 
   &--selected {
-    background-color: var(--theme-color-bg-4);
+    // Accent-soft active item, per the UIX-006 mock sidebar.
+    background-color: var(--theme-color-primary-bg);
+    color: var(--theme-color-primary);
 
     &:hover {
-      background-color: var(--theme-color-bg-4);
+      background-color: var(--theme-color-primary-bg);
+    }
+
+    .FolderIcon,
+    .Chevron {
+      color: var(--theme-color-primary);
     }
   }
 }

@@ -45,6 +45,9 @@ export interface LauncherContextValue {
   projects: LauncherProjectData[];
   hasRealProjects: boolean; // Indicates if real projects were provided to Launcher
 
+  /** App version string for the footer wordmark (e.g. "0.1.0"). */
+  appVersion?: string;
+
   // Folder organization
   selectedFolderId: string | null;
   setSelectedFolderId: (folderId: string | null) => void;
