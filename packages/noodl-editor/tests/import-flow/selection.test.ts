@@ -36,7 +36,7 @@ import {
   toImportSelection,
   toPlanOptions
 } from '../../src/editor/src/views/ImportFlow/model/selection';
-import { summarizePlan, describeCounts, plural } from '../../src/editor/src/views/ImportFlow/model/summary';
+import { summarizePlan, summarizeResult, describeCounts, plural } from '../../src/editor/src/views/ImportFlow/model/summary';
 
 function load(name: string) {
   const dir = path.join(process.cwd(), 'tests/testfs', name);
@@ -386,5 +386,42 @@ describe('LIB-005 import flow — plan summary', () => {
       ])
     ).toBe('4 components, 2 files and 1 color style');
     expect(describeCounts([])).toBe('Nothing');
+  });
+});
+
+describe('LIB-005 import flow — the undo note tells the truth', () => {
+  // Styles merge through `mergeMetadata`, outside the import's undo group
+  // (apply.ts `mergeStyles`, legacy parity), and disk writes were never undoable.
+  // The note used to say styles came back, which they do not — verified live and
+  // pinned end-to-end in tests/project/projectimportapply.js.
+  const emptyPlan = { renames: {}, components: [], resources: [], modules: [], variants: [], styles: { colors: [], text: [] } } as TSFixme;
+  const result = (over: TSFixme) =>
+    ({
+      result: 'success',
+      componentsImported: [],
+      variantsImported: [],
+      stylesImported: { colors: [], text: [] },
+      filesCopied: [],
+      modulesCopied: [],
+      warnings: [],
+      ...over
+    }) as TSFixme;
+
+  it('names styles as staying behind when styles were imported', () => {
+    const s = summarizeResult(result({ componentsImported: ['/A'], stylesImported: { colors: ['Brand'], text: [] } }), emptyPlan);
+    expect(s.undoNote).toBe('Undo removes the imported components and variants in one step. Styles stay.');
+  });
+
+  it('names both when styles and files landed', () => {
+    const s = summarizeResult(
+      result({ componentsImported: ['/A'], stylesImported: { colors: ['Brand'], text: [] }, filesCopied: ['a.png'] }),
+      emptyPlan
+    );
+    expect(s.undoNote).toBe('Undo removes the imported components and variants in one step. Styles and files on disk stay.');
+  });
+
+  it('promises a clean undo only when nothing outlives it', () => {
+    const s = summarizeResult(result({ componentsImported: ['/A'], variantsImported: ['Group/V'] }), emptyPlan);
+    expect(s.undoNote).toBe('Undo removes everything this import added, in one step.');
   });
 });

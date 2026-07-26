@@ -110,7 +110,10 @@ export function describeCounts(counts: CategoryCount[]): string {
 // ─── After the fact ──────────────────────────────────────────────────────────
 
 export interface ResultSummary {
-  /** Model changes — these are the ones the single undo step reverts. */
+  /**
+   * Model changes. NB not all of these are undoable: components and variants
+   * enroll in the import's undo group, styles do not (see {@link undoNote}).
+   */
   modelLines: string[];
   /** Disk writes — reported separately because undo does not touch them. */
   diskLines: string[];
@@ -146,9 +149,20 @@ export function summarizeResult(result: ImportResult, plan: ImportPlan): ResultS
   collectKept(plan.styles.colors, 'color style');
   collectKept(plan.styles.text, 'text style');
 
+  // What one undo actually reverts. Components and variants enroll in the
+  // import's undo group; styles do NOT — they merge through `mergeMetadata`,
+  // which is deliberately outside the group (apply.ts `mergeStyles`, legacy
+  // parity) — and disk writes never were. This used to claim styles came back
+  // too, which is a promise the engine does not keep: after an undo the source's
+  // colours and text styles are still sitting on top of the user's own.
+  // Verified live and pinned by tests/project/projectimportapply.js.
+  const staysBehind: string[] = [];
+  if (styleCount > 0) staysBehind.push('Styles');
+  if (diskLines.length > 0) staysBehind.push(staysBehind.length ? 'files on disk' : 'Files on disk');
+
   const undoNote =
-    diskLines.length > 0
-      ? 'Undo removes the imported components, variants and styles in one step. Files on disk remain.'
+    staysBehind.length > 0
+      ? `Undo removes the imported components and variants in one step. ${staysBehind.join(' and ')} stay.`
       : 'Undo removes everything this import added, in one step.';
 
   return { modelLines, diskLines, renames, kept, warnings: result.warnings, undoNote };
