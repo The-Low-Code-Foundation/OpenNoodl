@@ -29949,7 +29949,50 @@
           "isSignal": false
         }
       ],
-      "dynamicPorts": null
+      "dynamicPorts": null,
+      "enrichment": {
+        "typeName": "net.noodl.OptimisticUpdate",
+        "summary": "Writes a store key immediately, then commits or rolls it back when the server answers — so the UI responds now, not after the round trip.",
+        "description": "Applies `optimisticValue` to `key` the moment Apply fires, and holds the change open until Commit or Rollback resolves it. A rollback restores what was there before, and restores *absence as absence* — a key the update introduced is deleted rather than left holding `undefined`. Several updates can be open at once, each with its own transaction id and its own deadline. Two behaviours are worth knowing before relying on it. First, if a plain write changes the same key while an update is open, rollback **keeps the newer value**: `rolledBack` still fires so the failure branch runs, and `error` explains that the value was left alone, because silently reverting a write the user made after the fact is worse than a stale optimistic value. A newer *optimistic* update is not treated as supersession — the store's own newest-writer rule already resolves that correctly. Second, disposal resolves rather than leaks: a node deleted with updates still open rolls them back by default (or commits them, under On Dispose), clears its timers, and fires nothing into the dead node.",
+        "whenToUse": "Any action where waiting on the network makes the UI feel slow and the write is very likely to succeed: toggling a like, accepting an invite, checking off a task, reordering a list. Do not use it where a wrong-then-corrected value would mislead — a bank balance, a booking confirmation, a payment state. There, a pending indicator is the honest option.",
+        "ports": {
+          "storeName": "The store to write to. Defaults to `app`.",
+          "key": "The key held open by this update.",
+          "optimisticValue": "The value shown immediately, before the server has agreed to it.",
+          "errorMessage": "The message reported on Error if the update rolls back. Set it to the server's reason when you have one.",
+          "transactionId": "Identifies this update, so several in flight can be committed or rolled back individually. Left empty, one is generated and reported on the output of the same name.",
+          "timeout": "Milliseconds before the update rolls itself back. Default 30000; 0 disables it. A deadline matters here — without one, a request that never answers leaves the optimistic value on screen forever.",
+          "onDispose": "What an open update does when the node is deleted: roll back (the default, and the safe reading) or commit.",
+          "apply": "Applies the optimistic value and opens the update.",
+          "commit": "Confirms the update. The value stays and the update closes.",
+          "rollback": "Rejects the update, restoring the previous value unless a newer plain write superseded it.",
+          "value": "The current value of the key.",
+          "previousValue": "What the key held before this update, i.e. what a rollback would restore.",
+          "isPending": "True while at least one update from this node is open.",
+          "pendingCount": "How many updates from this node are open — the number to show as 'saving'.",
+          "timedOut": "Fires when an update rolled back because its deadline passed rather than because the server rejected it. Fires after `rolledBack`.",
+          "error": "Carries the rollback reason, including the explanation when a newer write was kept in preference to reverting it."
+        },
+        "examples": [
+          "agent-store-shared-state"
+        ],
+        "patterns": [
+          "Apply on the click, Commit on the request's success, Rollback on its failure — with `errorMessage` wired from the server's reason so the message the user sees is the real one.",
+          "`pendingCount` → a subtle 'saving' indicator, rather than a blocking spinner: the point of the pattern is that the UI already moved.",
+          "Leave `transactionId` empty and read the output when several updates can be in flight, instead of inventing ids by hand."
+        ],
+        "antiPatterns": [
+          "Using it for state where being briefly wrong misleads — money, confirmations, availability. Optimism is a UX choice about likely-successful writes, not a way to avoid showing pending state.",
+          "Setting `timeout` to 0 on a network call: a request that never answers then leaves the optimistic value on screen permanently.",
+          "Expecting Rollback to always restore the old value. If the user changed the key in the meantime, their write is kept and `error` says so."
+        ],
+        "relatedNodes": [
+          "net.noodl.GlobalStore",
+          "net.noodl.GlobalStore.Set",
+          "net.noodl.StateHistory",
+          "REST2"
+        ]
+      }
     },
     {
       "typeName": "net.noodl.ParentComponentObject",
@@ -31046,7 +31089,49 @@
           "isSignal": false
         }
       ],
-      "dynamicPorts": null
+      "dynamicPorts": null,
+      "enrichment": {
+        "typeName": "net.noodl.StateHistory",
+        "summary": "Records a bounded history of a store's state so it can be undone, redone or stepped through, and reports what it cannot fully restore.",
+        "description": "Watches a store and records an entry per commit, keeping `entries[currentIndex]` always equal to live state. History is bounded by `maxHistory` (default 50): the oldest entry is dropped first, never the current one, and lowering the bound while you are mid-travel drops the redo tail instead. A new write truncates the redo stack, as undo/redo everywhere does. An undo is an ordinary store commit — every other subscriber sees it as a normal change, not a special replay — so nothing in the graph needs to know time travel exists. Where it is honest rather than magical: values that can only be captured by reference (Models, Collections, functions, cyclic objects) are *not* deep-copied, so undoing does not restore their internal state. `fullyRestorable` and `byReferenceKeys` say exactly which keys those are, rather than letting the feature quietly under-deliver. Coalescing (`coalesceMs`, off by default) folds rapid same-key writes into one entry so undo steps match user intent instead of keystrokes — and never folds into the entry a navigation just landed on, which would destroy the state you had just undone to.",
+        "whenToUse": "Undo/redo over shared state — a form, an editor, a builder, a drawing surface — and stepping back through state while debugging. Place one per store you want tracked; wire the Undo / Redo node to the buttons. For a single named checkpoint rather than a moving history, use State Snapshot. Check `fullyRestorable` before advertising undo over state that holds Collections or Models.",
+        "ports": {
+          "storeName": "The store to track. Tracking is reference-counted, so a second State History node on the same store does not wipe the first one's history.",
+          "trackKeys": "Comma-separated keys to track; empty tracks the whole store. Only tracked keys are restored, so a filtered history leaves everything else alone.",
+          "maxHistory": "Entries kept, default 50, floor 2. This is a memory bound: an unbounded history in a long-running app grows without limit.",
+          "coalesceMs": "Window in which consecutive writes to the same keys fold into one entry. 0 (default) records every commit separately. Set it to roughly a typing pause when undo should step by word rather than by character.",
+          "enabled": "False pauses recording without discarding history. Resuming records an entry if state drifted while paused, so the history never claims a change did not happen.",
+          "clearHistory": "Discards every entry and starts again from live state.",
+          "historySize": "How many entries exist.",
+          "currentIndex": "Where in the history live state sits. Not at the end means you are mid-travel and a new write will truncate the redo tail.",
+          "canUndo": "Whether an earlier entry exists — wire it to the Undo button's enabled state rather than guessing.",
+          "canRedo": "Whether a later entry exists.",
+          "fullyRestorable": "False when any tracked key in the history could only be captured by reference, so undo cannot fully restore it.",
+          "byReferenceKeys": "Which keys those are. Show this rather than letting an author believe undo is total.",
+          "history": "Entry descriptors (not the states themselves) for building a timeline UI, each flagged with whether it is partial.",
+          "historyChanged": "Fires when an entry is added, dropped, or the current position moves."
+        },
+        "examples": [
+          "agent-store-shared-state"
+        ],
+        "patterns": [
+          "`canUndo`/`canRedo` → the buttons' enabled state, so the affordance matches reality.",
+          "`coalesceMs` around 300–500 for text input, so an undo removes a word rather than a letter.",
+          "`history` → a Repeater for a visible timeline, with `currentIndex` marking where you are.",
+          "Surface `byReferenceKeys` in a developer-facing view when the store holds Collections, instead of discovering the limit through a confusing undo."
+        ],
+        "antiPatterns": [
+          "Leaving `maxHistory` unbounded-by-intent in a long-running app: every entry is retained state.",
+          "Assuming undo restores everything. A key listed in `byReferenceKeys` shares its object with the entry, so its internal state was never copied.",
+          "Tracking the whole store when only a form's keys need undoing — unrelated writes then become undo steps the user did not make."
+        ],
+        "relatedNodes": [
+          "net.noodl.StateHistory.Undo",
+          "net.noodl.StateSnapshot",
+          "net.noodl.GlobalStore",
+          "net.noodl.OptimisticUpdate"
+        ]
+      }
     },
     {
       "typeName": "net.noodl.StateHistory.Undo",
@@ -31182,7 +31267,44 @@
           "isSignal": true
         }
       ],
-      "dynamicPorts": null
+      "dynamicPorts": null,
+      "enrichment": {
+        "typeName": "net.noodl.StateHistory.Undo",
+        "summary": "Moves a store backwards, forwards, or to a specific point in the history recorded by a State History node.",
+        "description": "Drives the history that a State History node on the same store is recording; it records nothing itself, so a store with no State History node has nothing to undo and says so on Error rather than failing quietly. Undo and Redo step one entry; Jump To moves straight to `targetIndex`, which is what a timeline UI needs. Each move is an ordinary store commit, so subscribers and bindings update exactly as they do for any other change. After every move, `fullyRestorable` and `byReferenceKeys` describe *the restore that just happened* — not the whole history — so an author can tell the user when a particular step could not be fully reversed instead of leaving them to notice.",
+        "whenToUse": "Wire it to Undo and Redo buttons, a keyboard shortcut, or a timeline UI. One node can serve all three: Undo, Redo and Jump To are separate signals on the same node. Take the buttons' enabled state from the State History node's `canUndo`/`canRedo` rather than from here.",
+        "ports": {
+          "storeName": "The store to move. A State History node must already be tracking it.",
+          "targetIndex": "Where Jump To goes. Out-of-range values are reported on Error rather than clamped silently, so a broken timeline UI is visible.",
+          "undo": "Steps back one entry.",
+          "redo": "Steps forward one entry. Nothing happens if a write has since truncated the redo tail.",
+          "jumpTo": "Moves directly to `targetIndex`.",
+          "undone": "Fires after a successful undo.",
+          "redone": "Fires after a successful redo.",
+          "jumped": "Fires after a successful Jump To.",
+          "fullyRestorable": "Whether the restore that just happened was complete. False means some key could only be restored by reference.",
+          "byReferenceKeys": "Which keys in the restore that just happened could not be deep-restored.",
+          "error": "Carries the reason a move did nothing: no history for that store, nothing to undo or redo, or an out-of-range target."
+        },
+        "examples": [
+          "agent-store-shared-state"
+        ],
+        "patterns": [
+          "State History `canUndo` → the Undo button's enabled state, and this node's `undo` → its click. The recording node owns the availability; this one owns the action.",
+          "`jumpTo` with `targetIndex` from a Repeater index, for a clickable timeline.",
+          "Show `byReferenceKeys` after a move where `fullyRestorable` is false, rather than leaving the user to discover the gap."
+        ],
+        "antiPatterns": [
+          "Expecting it to work without a State History node on the same store — it drives a history, it does not keep one.",
+          "Wiring Undo to a button whose enabled state ignores `canUndo`: the button then does nothing at the end of the history.",
+          "Treating a failed move as impossible. Read `error` — out-of-range jumps and truncated redo tails are both normal."
+        ],
+        "relatedNodes": [
+          "net.noodl.StateHistory",
+          "net.noodl.StateSnapshot",
+          "net.noodl.GlobalStore"
+        ]
+      }
     },
     {
       "typeName": "net.noodl.StateSnapshot",
@@ -31317,7 +31439,44 @@
           "isSignal": false
         }
       ],
-      "dynamicPorts": null
+      "dynamicPorts": null,
+      "enrichment": {
+        "typeName": "net.noodl.StateSnapshot",
+        "summary": "Saves a named snapshot of a store and restores it later — a checkpoint, rather than the moving history State History keeps.",
+        "description": "Save captures the store as it is now; Restore writes it back as a single commit that subscribers see as an ordinary change. A snapshot is copied in on restore, so **the same snapshot can be restored any number of times** — which is what makes it usable as a reset point rather than a one-shot. `snapshot` outputs the captured value, and `snapshotData` accepts one back, so a snapshot can be round-tripped through JSON: persisted, sent to a server, or restored in another session. As with State History, values that could only be captured by reference are not deep-copied, and `fullyRestorable` / `byReferenceKeys` name them rather than letting the checkpoint quietly under-deliver. Errors are reported on the Error output instead of thrown out of a signal handler.",
+        "whenToUse": "A discrete checkpoint: 'reset this form', 'revert to the last saved version', 'restore the state I shipped this bug report with'. Use State History instead when you want undo/redo over every change; use this when you want one or two named points you return to deliberately. The `snapshot`/`snapshotData` pair is also the straightforward way to persist state across sessions or attach it to a bug report.",
+        "ports": {
+          "storeName": "The store to capture or restore.",
+          "snapshotName": "A label for the snapshot, so several checkpoints are distinguishable in a UI.",
+          "snapshotData": "A snapshot captured earlier, fed back in to be restored — the input side of the round trip through JSON.",
+          "save": "Captures the store's current state.",
+          "restore": "Writes a snapshot back as one commit. Safe to fire repeatedly; the snapshot is copied in, not consumed.",
+          "snapshot": "The captured snapshot, for persisting, transmitting, or feeding into another Restore.",
+          "fullyRestorable": "Whether this snapshot can be fully restored, or holds values captured only by reference.",
+          "byReferenceKeys": "Which keys those are.",
+          "saved": "Fires after a successful capture.",
+          "restored": "Fires after a successful restore.",
+          "error": "Carries a refused save or restore — an unknown store, or snapshot data that could not be read."
+        },
+        "examples": [
+          "agent-store-shared-state"
+        ],
+        "patterns": [
+          "Save when a form opens, Restore on the Cancel button — a reset that needs no knowledge of the form's fields.",
+          "`snapshot` → JSON → persisted, then back through `snapshotData` on the next load, for state that survives a reload without a live store.",
+          "Attach a snapshot to a bug report so the state is reproducible rather than described."
+        ],
+        "antiPatterns": [
+          "Using it for undo. It is a checkpoint, not a stack — State History keeps the ordered history.",
+          "Assuming a restore is total when `fullyRestorable` is false: keys in `byReferenceKeys` share their object with the snapshot.",
+          "Saving on every change. That is a history with extra steps, and unbounded — State History bounds itself."
+        ],
+        "relatedNodes": [
+          "net.noodl.StateHistory",
+          "net.noodl.StateHistory.Undo",
+          "net.noodl.GlobalStore"
+        ]
+      }
     },
     {
       "typeName": "net.noodl.StreamBuffer",
@@ -47500,7 +47659,7 @@
     "version": "1.0.0",
     "docs": "docs/node-catalog/ENRICHMENT.md",
     "coverage": {
-      "documented": 150,
+      "documented": 154,
       "total": 154
     }
   },

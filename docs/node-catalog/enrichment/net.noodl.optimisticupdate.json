@@ -1,0 +1,36 @@
+{
+  "typeName": "net.noodl.OptimisticUpdate",
+  "summary": "Writes a store key immediately, then commits or rolls it back when the server answers — so the UI responds now, not after the round trip.",
+  "description": "Applies `optimisticValue` to `key` the moment Apply fires, and holds the change open until Commit or Rollback resolves it. A rollback restores what was there before, and restores *absence as absence* — a key the update introduced is deleted rather than left holding `undefined`. Several updates can be open at once, each with its own transaction id and its own deadline. Two behaviours are worth knowing before relying on it. First, if a plain write changes the same key while an update is open, rollback **keeps the newer value**: `rolledBack` still fires so the failure branch runs, and `error` explains that the value was left alone, because silently reverting a write the user made after the fact is worse than a stale optimistic value. A newer *optimistic* update is not treated as supersession — the store's own newest-writer rule already resolves that correctly. Second, disposal resolves rather than leaks: a node deleted with updates still open rolls them back by default (or commits them, under On Dispose), clears its timers, and fires nothing into the dead node.",
+  "whenToUse": "Any action where waiting on the network makes the UI feel slow and the write is very likely to succeed: toggling a like, accepting an invite, checking off a task, reordering a list. Do not use it where a wrong-then-corrected value would mislead — a bank balance, a booking confirmation, a payment state. There, a pending indicator is the honest option.",
+  "ports": {
+    "storeName": "The store to write to. Defaults to `app`.",
+    "key": "The key held open by this update.",
+    "optimisticValue": "The value shown immediately, before the server has agreed to it.",
+    "errorMessage": "The message reported on Error if the update rolls back. Set it to the server's reason when you have one.",
+    "transactionId": "Identifies this update, so several in flight can be committed or rolled back individually. Left empty, one is generated and reported on the output of the same name.",
+    "timeout": "Milliseconds before the update rolls itself back. Default 30000; 0 disables it. A deadline matters here — without one, a request that never answers leaves the optimistic value on screen forever.",
+    "onDispose": "What an open update does when the node is deleted: roll back (the default, and the safe reading) or commit.",
+    "apply": "Applies the optimistic value and opens the update.",
+    "commit": "Confirms the update. The value stays and the update closes.",
+    "rollback": "Rejects the update, restoring the previous value unless a newer plain write superseded it.",
+    "value": "The current value of the key.",
+    "previousValue": "What the key held before this update, i.e. what a rollback would restore.",
+    "isPending": "True while at least one update from this node is open.",
+    "pendingCount": "How many updates from this node are open — the number to show as 'saving'.",
+    "timedOut": "Fires when an update rolled back because its deadline passed rather than because the server rejected it. Fires after `rolledBack`.",
+    "error": "Carries the rollback reason, including the explanation when a newer write was kept in preference to reverting it."
+  },
+  "patterns": [
+    "Apply on the click, Commit on the request's success, Rollback on its failure — with `errorMessage` wired from the server's reason so the message the user sees is the real one.",
+    "`pendingCount` → a subtle 'saving' indicator, rather than a blocking spinner: the point of the pattern is that the UI already moved.",
+    "Leave `transactionId` empty and read the output when several updates can be in flight, instead of inventing ids by hand."
+  ],
+  "antiPatterns": [
+    "Using it for state where being briefly wrong misleads — money, confirmations, availability. Optimism is a UX choice about likely-successful writes, not a way to avoid showing pending state.",
+    "Setting `timeout` to 0 on a network call: a request that never answers then leaves the optimistic value on screen permanently.",
+    "Expecting Rollback to always restore the old value. If the user changed the key in the meantime, their write is kept and `error` says so."
+  ],
+  "examples": ["agent-store-shared-state"],
+  "relatedNodes": ["net.noodl.GlobalStore", "net.noodl.GlobalStore.Set", "net.noodl.StateHistory", "REST2"]
+}
