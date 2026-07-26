@@ -119,7 +119,10 @@ Do not chase `strict: true` initially. Get accurate types with `strict: false`, 
 - [x] Characterisation tests for core runtime behaviours
 - [x] Type core: Node, definition, register, scope, context
 - [x] Publish and validate node-definition API types
-- [ ] Convert standard library and viewer nodes incrementally
+- [ ] Convert standard library and viewer nodes incrementally *(runtime std-library and
+  all of `viewer/src/nodes/` done, slices 5–8; `viewer/src` root, `api/` and `constants/`
+  done slice 9. Remaining: `nodes-deprecated/` — 25 files, live and registered, NOT
+  deletable (NOTES §21.1) — the 3 Group scroll plugins, and `register-nodes.js` last)*
 - [x] Type `react-component-node.js`
 - [ ] Tighten strictness; sweep boundary `TSFixme`s
 - [ ] CHANGELOG with before/after file counts; open PR
@@ -127,6 +130,70 @@ Do not chase `strict: true` initially. Get accurate types with `strict: false`, 
 ## CHANGELOG
 
 In progress. Full as-built record in [PLAT-003-NOTES.md](./PLAT-003-NOTES.md).
+
+### Slice 9 — 2026-07-27 — the viewer's `src/` root and `api/` (step 7, sixth group)
+
+- **17 of the 18 `noodl-viewer-react/src` root files** → `.ts`, plus all four `api/*`,
+  `noodl-js-api` and `constants/flex` (~4,000 lines). These are the modules every
+  already-typed node imported untyped: `node-shared-port-definitions` (1,583 lines, the
+  port-mixin library twelve node files author against), `layout`, `pointerlisteners`,
+  `fontloader`, `easecurves`, `guid`, `highlighter`, `inspector`, `graph-warnings`,
+  `node-transitions` and the rest. `api/` is `Noodl.*` — the surface a project's own
+  Function and JavaScript nodes are written against, which had no types at all.
+  `register-nodes.js` is deliberately **not** converted (NOTES §21.7): its imports name
+  explicit `.ts`/`.tsx` extensions (`TS5097` in a `.ts` file) and its whole job is the
+  CJS/ESM bridge for the ~25 files still on `module.exports`. It should be last.
+- **`nodes-deprecated/` is live, and §20's premise was wrong** (NOTES §21.1). It is not
+  "never registered": `register-nodes.js` registers all 25 files, every one appears in the
+  committed catalog as a real node type `providedBy: noodl-viewer-react`, and the prod
+  bundle ships them (117 KiB, 15 modules). They carry `inNodePicker: false` — the
+  back-compat mechanism, not dead code. **Recommendation: keep and convert later; do not
+  delete.** Deleting breaks every existing project using them, silently, at load.
+- **Seven published types corrected**, all found by conversion (NOTES §21.2):
+  `NodeContextLike.updateDirtyNodes` and `ComponentModelLike.getRoots()` existed on the
+  real classes but were unpublished (the §19.3 shape, third and fourth occurrences);
+  `RunningTransition` was a narrower second description of the scheduler's `Timer`, hiding
+  `start()`; `ReactNodeDefinition.setup`'s `graphModel` was `unknown` rather than the
+  `GraphModelLike` slice 5 published for it. And two the implementation had always
+  contradicted: **`PortTooltip` has a third, keyed form** (per enum value for `sizeMode`,
+  per sub-control for `width`/`height`), and **`InputPortDefinition.tab` is not a string** —
+  `_addCornerRadius` passes `{ group, tab, label }`, and `InputPortMetadata.tab` repeated
+  the same narrow lie one step later. Both widened to a shared `PortTab`.
+- **`interface Window { Noodl }` had never been in effect** (NOTES §21.3).
+  `typings/global.d.ts` opens with `import 'react'`, making it a module — so the top-level
+  `interface Window` declared a module-local `Window` instead of merging into `lib.dom`'s.
+  Nothing had reached for `window.Noodl` from TypeScript before. Moved inside
+  `declare global`, and `GlobalNoodl` gained the seven members it is actually assigned
+  (`Env`, `Array`, `Object`, `Arrays`, `Objects`, `eventEmitter`, `SEO`) — which retired
+  **six `@ts-expect-error` suppressions** across Image, Video, Page and router. That is
+  spec step 9's category of marker, retired at the declaration rather than site by site.
+- **Six defects found; three fixed because the compiler would not accept them** (NOTES
+  §21.4). The two that matter: `Noodl.Arrays`/`Noodl.Objects` assignment **throws a
+  `TypeError` in strict-mode callers** — their Proxy `set` traps returned nothing, and a
+  falsy `set` trap fails the assignment after the underlying write has succeeded; and
+  TextInput's `ref={(ref) => (this.ref.current = ref)}` **returns the element**, which
+  React 19 treats as a cleanup function, so it has been wrong since RUN-001. Three left
+  in place and documented: `graph-warnings`' `roots.lenth` typo guard that never fires,
+  `Highlighter`'s selected-node leak, and `ASyncQueue`'s dead `pendingPromise` field.
+- **The ESM/CJS boundary caught a real break mid-slice** (NOTES §21.5): converting
+  `easecurves` made it an ES module, and three *registered* deprecated nodes `require()`
+  it, so `EaseCurves.linear` would have been `undefined` in all three. They end in
+  `module.exports` and so cannot simply `import`; they take the §13.5 unwrap. New rule:
+  grep for `require()` of a module before converting it — `tsc` cannot see either side.
+
+File counts: `noodl-viewer-react` 42/10/97/37 → **21 `.js` / 10 `.jsx` / 118 `.ts` /
+37 `.tsx`**. `noodl-runtime` unchanged at 73 `.js` / 19 `.ts`. Every remaining `.js` is in
+exactly three places: `nodes-deprecated/` (25), the Group scroll plugins (3), and
+`register-nodes.js`.
+
+Gates: `catalog:check` byte-identical (137 node types, 89 dynamic); `typecheck:viewer` 0
+errors in `src`; runtime and cloud typechecks clean; **runtime jest 384 pass / 0 fail**
+(the 247/0 figure carried in §20 is stale — the suite has grown; 384/0 is the baseline at
+`7779cd6` and is unchanged); viewer jest 52/52; viewer, deploy and ssr prod bundles green.
+Live editor pass **owed** — `lerna exec` runs from the main checkout, so it cannot be
+driven from an isolated worktree. Separately: `typecheck:editor` is red at `7779cd6` with
+6 pre-existing `TS2307`s from an in-flight NodePicker workstream; this slice touched no
+editor file.
 
 ### Slice 8 — 2026-07-24 — `navigation/` and the live-editor pass (step 7, fifth group)
 
