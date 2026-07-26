@@ -25898,6 +25898,208 @@
       }
     },
     {
+      "typeName": "net.noodl.JSONStreamParser",
+      "displayName": "JSON Stream Parser",
+      "category": "Data",
+      "isVisual": false,
+      "isDeprecated": false,
+      "inNodePicker": true,
+      "availableIn": [
+        "browser",
+        "cloud"
+      ],
+      "providedBy": "noodl-runtime",
+      "ssr": {
+        "compat": "safe"
+      },
+      "docs": "https://docs.noodl.net/nodes/data/json-stream-parser",
+      "searchTags": [
+        "json",
+        "ndjson",
+        "stream",
+        "parse",
+        "chunk",
+        "agent",
+        "ai",
+        "streaming",
+        "jsonl"
+      ],
+      "inputs": [
+        {
+          "name": "chunk",
+          "displayName": "Chunk",
+          "group": "Data",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "clear",
+          "displayName": "Clear",
+          "group": "Actions",
+          "plug": "input",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "isSignal": true
+        },
+        {
+          "name": "format",
+          "displayName": "Format",
+          "group": "Config",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "NDJSON (one per line)",
+                "value": "ndjson"
+              },
+              {
+                "label": "Stream (any complete values)",
+                "value": "stream"
+              },
+              {
+                "label": "Single document",
+                "value": "single"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "ndjson"
+        },
+        {
+          "name": "maxLength",
+          "displayName": "Max Pending (characters)",
+          "group": "Config",
+          "plug": "input",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false,
+          "default": 1048576,
+          "description": "Cap on unparsed text held while waiting for a value to complete. Exceeding it clears the buffer and reports an error, rather than growing without limit on a malformed stream."
+        },
+        {
+          "name": "parse",
+          "displayName": "Parse",
+          "group": "Actions",
+          "plug": "input",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "isSignal": true
+        }
+      ],
+      "outputs": [
+        {
+          "name": "cleared",
+          "displayName": "Cleared",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true
+        },
+        {
+          "name": "error",
+          "displayName": "Error",
+          "group": "Status",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "errorCount",
+          "displayName": "Error Count",
+          "group": "Status",
+          "plug": "output",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "failure",
+          "displayName": "Failure",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true
+        },
+        {
+          "name": "isComplete",
+          "displayName": "Is Complete",
+          "group": "Status",
+          "plug": "output",
+          "type": {
+            "name": "boolean"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "parsed",
+          "displayName": "Parsed",
+          "group": "Data",
+          "plug": "output",
+          "type": {
+            "name": "*"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "pendingCharacters",
+          "displayName": "Pending Characters",
+          "group": "Status",
+          "plug": "output",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "success",
+          "displayName": "Success",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true
+        },
+        {
+          "name": "valueCount",
+          "displayName": "Value Count",
+          "group": "Status",
+          "plug": "output",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "values",
+          "displayName": "Values",
+          "group": "Data",
+          "plug": "output",
+          "type": {
+            "name": "array"
+          },
+          "isSignal": false
+        }
+      ],
+      "dynamicPorts": null
+    },
+    {
       "typeName": "net.noodl.ParentComponentObject",
       "displayName": "Parent Component Object",
       "category": "Component Utilities",
@@ -25964,6 +26166,598 @@
         ],
         "description": "Property ports mirror the parent component object's property schema."
       }
+    },
+    {
+      "typeName": "net.noodl.PatternExtractor",
+      "displayName": "Pattern Extractor",
+      "category": "Data",
+      "isVisual": false,
+      "isDeprecated": false,
+      "inNodePicker": true,
+      "availableIn": [
+        "browser",
+        "cloud"
+      ],
+      "providedBy": "noodl-runtime",
+      "ssr": {
+        "compat": "safe"
+      },
+      "docs": "https://docs.noodl.net/nodes/data/pattern-extractor",
+      "searchTags": [
+        "regex",
+        "regexp",
+        "pattern",
+        "extract",
+        "match",
+        "parse",
+        "capture",
+        "group",
+        "stream"
+      ],
+      "inputs": [
+        {
+          "name": "extract",
+          "displayName": "Extract",
+          "group": "Actions",
+          "plug": "input",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "isSignal": true
+        },
+        {
+          "name": "extractAll",
+          "displayName": "Extract All",
+          "group": "Pattern",
+          "plug": "input",
+          "type": {
+            "name": "boolean"
+          },
+          "isSignal": false,
+          "default": false
+        },
+        {
+          "name": "flags",
+          "displayName": "Flags",
+          "group": "Pattern",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "Regex flags: i (ignore case), m (multiline), s (dot matches newline), u (unicode). g is controlled by Extract All."
+        },
+        {
+          "name": "pattern",
+          "displayName": "Pattern",
+          "group": "Pattern",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "A JavaScript regular expression, without the surrounding slashes. Capture groups appear on Groups."
+        },
+        {
+          "name": "text",
+          "displayName": "Text",
+          "group": "Data",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false
+        }
+      ],
+      "outputs": [
+        {
+          "name": "error",
+          "displayName": "Error",
+          "group": "Status",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "failure",
+          "displayName": "Failure",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true
+        },
+        {
+          "name": "firstGroup",
+          "displayName": "First Group",
+          "group": "Data",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "found",
+          "displayName": "Found",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true
+        },
+        {
+          "name": "groups",
+          "displayName": "Groups",
+          "group": "Data",
+          "plug": "output",
+          "type": {
+            "name": "array"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "match",
+          "displayName": "Match",
+          "group": "Data",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "matchCount",
+          "displayName": "Match Count",
+          "group": "Status",
+          "plug": "output",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "matches",
+          "displayName": "Matches",
+          "group": "Data",
+          "plug": "output",
+          "type": {
+            "name": "array"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "namedGroups",
+          "displayName": "Named Groups",
+          "group": "Data",
+          "plug": "output",
+          "type": {
+            "name": "object"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "notFound",
+          "displayName": "Not Found",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true
+        }
+      ],
+      "dynamicPorts": null
+    },
+    {
+      "typeName": "net.noodl.SSE",
+      "displayName": "Server-Sent Events",
+      "category": "Data",
+      "isVisual": false,
+      "isDeprecated": false,
+      "inNodePicker": true,
+      "availableIn": [
+        "browser",
+        "cloud"
+      ],
+      "providedBy": "noodl-runtime",
+      "ssr": {
+        "compat": "client-only",
+        "note": "An event stream cannot be consumed during a server render; the node connects in the browser after hydration."
+      },
+      "docs": "https://docs.noodl.net/nodes/data/sse",
+      "searchTags": [
+        "sse",
+        "stream",
+        "streaming",
+        "server-sent",
+        "events",
+        "eventsource",
+        "realtime",
+        "agent",
+        "ai",
+        "chat",
+        "tokens"
+      ],
+      "inputs": [
+        {
+          "name": "autoConnect",
+          "displayName": "Auto Connect",
+          "group": "Connection",
+          "plug": "input",
+          "type": {
+            "name": "boolean"
+          },
+          "isSignal": false,
+          "default": false
+        },
+        {
+          "name": "autoReconnect",
+          "displayName": "Auto Reconnect",
+          "group": "Reconnection",
+          "plug": "input",
+          "type": {
+            "name": "boolean"
+          },
+          "isSignal": false,
+          "default": true
+        },
+        {
+          "name": "body",
+          "displayName": "Body",
+          "group": "Request",
+          "plug": "input",
+          "type": {
+            "name": "*"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "connect",
+          "displayName": "Connect",
+          "group": "Actions",
+          "plug": "input",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "isSignal": true
+        },
+        {
+          "name": "dedupeById",
+          "displayName": "Dedupe By Id",
+          "group": "Reconnection",
+          "plug": "input",
+          "type": {
+            "name": "boolean"
+          },
+          "isSignal": false,
+          "default": true,
+          "description": "Drop events whose id has already been seen, so a reconnect that resumes from the last event id cannot re-deliver messages. Turn off if your server reuses ids for distinct events."
+        },
+        {
+          "name": "disconnect",
+          "displayName": "Disconnect",
+          "group": "Actions",
+          "plug": "input",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "isSignal": true
+        },
+        {
+          "name": "eventTypes",
+          "displayName": "Event Types",
+          "group": "Connection",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "Comma-separated named event types to subscribe to. Only needed for the EventSource transport, which delivers a named event only to a listener registered in advance; the Fetch transport delivers every event type."
+        },
+        {
+          "name": "headers",
+          "displayName": "Headers",
+          "group": "Request",
+          "plug": "input",
+          "type": {
+            "name": "object"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "maxReconnectDelay",
+          "displayName": "Max Reconnect Delay (ms)",
+          "group": "Reconnection",
+          "plug": "input",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false,
+          "default": 30000
+        },
+        {
+          "name": "maxRetries",
+          "displayName": "Max Retries",
+          "group": "Reconnection",
+          "plug": "input",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false,
+          "default": 0,
+          "description": "0 means keep retrying. Otherwise the connection reports an error after this many consecutive failures."
+        },
+        {
+          "name": "method",
+          "displayName": "Method",
+          "group": "Request",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "GET",
+                "value": "GET"
+              },
+              {
+                "label": "POST",
+                "value": "POST"
+              },
+              {
+                "label": "PUT",
+                "value": "PUT"
+              },
+              {
+                "label": "PATCH",
+                "value": "PATCH"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "GET"
+        },
+        {
+          "name": "reconnectDelay",
+          "displayName": "Reconnect Delay (ms)",
+          "group": "Reconnection",
+          "plug": "input",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false,
+          "default": 1000,
+          "description": "First retry delay. Doubles per consecutive failure, up to the maximum."
+        },
+        {
+          "name": "reconnectOnStreamEnd",
+          "displayName": "Reconnect On Stream End",
+          "group": "Reconnection",
+          "plug": "input",
+          "type": {
+            "name": "boolean"
+          },
+          "isSignal": false,
+          "default": false,
+          "description": "Reconnect when the server closes the stream cleanly. Off by default: an agent response stream is finite, and reconnecting would re-issue the request and start the response again."
+        },
+        {
+          "name": "transport",
+          "displayName": "Transport",
+          "group": "Connection",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Auto",
+                "value": "auto"
+              },
+              {
+                "label": "Fetch (headers, POST)",
+                "value": "fetch"
+              },
+              {
+                "label": "EventSource",
+                "value": "eventsource"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "auto"
+        },
+        {
+          "name": "url",
+          "displayName": "URL",
+          "group": "Connection",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "withCredentials",
+          "displayName": "With Credentials",
+          "group": "Request",
+          "plug": "input",
+          "type": {
+            "name": "boolean"
+          },
+          "isSignal": false,
+          "default": false
+        }
+      ],
+      "outputs": [
+        {
+          "name": "connected",
+          "displayName": "Connected",
+          "group": "Status",
+          "plug": "output",
+          "type": {
+            "name": "boolean"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "connectionState",
+          "displayName": "Connection State",
+          "group": "Status",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "data",
+          "displayName": "Data",
+          "group": "Data",
+          "plug": "output",
+          "type": {
+            "name": "*"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "deliverySemantics",
+          "displayName": "Delivery Semantics",
+          "group": "Status",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "duplicatesSuppressed",
+          "displayName": "Duplicates Suppressed",
+          "group": "Status",
+          "plug": "output",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "eventType",
+          "displayName": "Event Type",
+          "group": "Data",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "lastError",
+          "displayName": "Last Error",
+          "group": "Status",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "lastEventId",
+          "displayName": "Last Event Id",
+          "group": "Data",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "lastMessageTime",
+          "displayName": "Last Message Time",
+          "group": "Status",
+          "plug": "output",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "messageCount",
+          "displayName": "Message Count",
+          "group": "Status",
+          "plug": "output",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "onClose",
+          "displayName": "On Close",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true
+        },
+        {
+          "name": "onError",
+          "displayName": "On Error",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true
+        },
+        {
+          "name": "onMessage",
+          "displayName": "On Message",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true
+        },
+        {
+          "name": "onOpen",
+          "displayName": "On Open",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true
+        },
+        {
+          "name": "raw",
+          "displayName": "Raw",
+          "group": "Data",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "retryCount",
+          "displayName": "Retry Count",
+          "group": "Status",
+          "plug": "output",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false
+        }
+      ],
+      "dynamicPorts": null
     },
     {
       "typeName": "net.noodl.SetComponentObjectProperties",
@@ -26080,6 +26874,420 @@
         ],
         "description": "Property input ports follow the \"properties\" parameter."
       }
+    },
+    {
+      "typeName": "net.noodl.StreamBuffer",
+      "displayName": "Stream Buffer",
+      "category": "Data",
+      "isVisual": false,
+      "isDeprecated": false,
+      "inNodePicker": true,
+      "availableIn": [
+        "browser",
+        "cloud"
+      ],
+      "providedBy": "noodl-runtime",
+      "ssr": {
+        "compat": "partial",
+        "note": "Interval-based flushing needs a running timer, so it only happens in the browser. Add, Flush and size-based flushing behave normally."
+      },
+      "docs": "https://docs.noodl.net/nodes/data/stream-buffer",
+      "searchTags": [
+        "buffer",
+        "batch",
+        "throttle",
+        "stream",
+        "queue",
+        "flush",
+        "debounce",
+        "agent",
+        "streaming"
+      ],
+      "inputs": [
+        {
+          "name": "add",
+          "displayName": "Add",
+          "group": "Actions",
+          "plug": "input",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "isSignal": true
+        },
+        {
+          "name": "clear",
+          "displayName": "Clear",
+          "group": "Actions",
+          "plug": "input",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "isSignal": true
+        },
+        {
+          "name": "data",
+          "displayName": "Data",
+          "group": "Data",
+          "plug": "input",
+          "type": {
+            "name": "*"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "flush",
+          "displayName": "Flush",
+          "group": "Actions",
+          "plug": "input",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "isSignal": true
+        },
+        {
+          "name": "flushInterval",
+          "displayName": "Flush Interval (ms)",
+          "group": "Config",
+          "plug": "input",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false,
+          "default": 0,
+          "description": "Flush automatically this often while items are buffered. 0 disables interval flushing."
+        },
+        {
+          "name": "flushSize",
+          "displayName": "Flush Size",
+          "group": "Config",
+          "plug": "input",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false,
+          "default": 0,
+          "description": "Flush automatically once this many items are buffered. 0 disables size-based flushing."
+        },
+        {
+          "name": "maxSize",
+          "displayName": "Max Size",
+          "group": "Config",
+          "plug": "input",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false,
+          "default": 10000,
+          "description": "Hard cap on buffered items. Overflow drops the oldest and is reported on Dropped Items. 0 means no cap."
+        }
+      ],
+      "outputs": [
+        {
+          "name": "buffer",
+          "displayName": "Buffer",
+          "group": "Data",
+          "plug": "output",
+          "type": {
+            "name": "array"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "bufferSize",
+          "displayName": "Buffer Size",
+          "group": "Status",
+          "plug": "output",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "cleared",
+          "displayName": "Cleared",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true
+        },
+        {
+          "name": "droppedItems",
+          "displayName": "Dropped Items",
+          "group": "Status",
+          "plug": "output",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "flushCount",
+          "displayName": "Flush Count",
+          "group": "Status",
+          "plug": "output",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "flushed",
+          "displayName": "Flushed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true
+        },
+        {
+          "name": "flushedData",
+          "displayName": "Flushed Data",
+          "group": "Data",
+          "plug": "output",
+          "type": {
+            "name": "array"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "overflowed",
+          "displayName": "Overflowed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true
+        }
+      ],
+      "dynamicPorts": null
+    },
+    {
+      "typeName": "net.noodl.TextAccumulator",
+      "displayName": "Text Accumulator",
+      "category": "Data",
+      "isVisual": false,
+      "isDeprecated": false,
+      "inNodePicker": true,
+      "availableIn": [
+        "browser",
+        "cloud"
+      ],
+      "providedBy": "noodl-runtime",
+      "ssr": {
+        "compat": "safe"
+      },
+      "docs": "https://docs.noodl.net/nodes/data/text-accumulator",
+      "searchTags": [
+        "stream",
+        "accumulate",
+        "buffer",
+        "chunk",
+        "tokens",
+        "concat",
+        "agent",
+        "ai",
+        "streaming"
+      ],
+      "inputs": [
+        {
+          "name": "add",
+          "displayName": "Add",
+          "group": "Actions",
+          "plug": "input",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "isSignal": true
+        },
+        {
+          "name": "chunk",
+          "displayName": "Chunk",
+          "group": "Data",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "clear",
+          "displayName": "Clear",
+          "group": "Actions",
+          "plug": "input",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "isSignal": true
+        },
+        {
+          "name": "delimiter",
+          "displayName": "Delimiter",
+          "group": "Config",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "default": "\n",
+          "description": "Message boundary. Leave empty to accumulate everything without splitting — the mode a token stream wants."
+        },
+        {
+          "name": "maxLength",
+          "displayName": "Max Length (characters)",
+          "group": "Config",
+          "plug": "input",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false,
+          "default": 1048576,
+          "description": "Cap on the pending buffer. Overflow drops the oldest characters and is reported on Dropped Characters."
+        },
+        {
+          "name": "maxMessages",
+          "displayName": "Max Messages",
+          "group": "Config",
+          "plug": "input",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false,
+          "default": 1000,
+          "description": "Cap on retained complete messages; the oldest are dropped first. 0 keeps them all, which grows forever."
+        }
+      ],
+      "outputs": [
+        {
+          "name": "accumulated",
+          "displayName": "Accumulated",
+          "group": "Data",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "byteCount",
+          "displayName": "Byte Count (UTF-8)",
+          "group": "Status",
+          "plug": "output",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "changed",
+          "displayName": "Changed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true
+        },
+        {
+          "name": "characterCount",
+          "displayName": "Character Count",
+          "group": "Status",
+          "plug": "output",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "cleared",
+          "displayName": "Cleared",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true
+        },
+        {
+          "name": "droppedCharacters",
+          "displayName": "Dropped Characters",
+          "group": "Status",
+          "plug": "output",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "droppedMessages",
+          "displayName": "Dropped Messages",
+          "group": "Status",
+          "plug": "output",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "lastMessage",
+          "displayName": "Last Message",
+          "group": "Data",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "messageCount",
+          "displayName": "Message Count",
+          "group": "Status",
+          "plug": "output",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "messageReceived",
+          "displayName": "Message Received",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true
+        },
+        {
+          "name": "messages",
+          "displayName": "Messages",
+          "group": "Data",
+          "plug": "output",
+          "type": {
+            "name": "array"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "overflowed",
+          "displayName": "Overflowed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true
+        }
+      ],
+      "dynamicPorts": null
     },
     {
       "typeName": "net.noodl.animatetovalue",

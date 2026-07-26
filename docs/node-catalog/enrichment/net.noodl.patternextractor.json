@@ -1,0 +1,32 @@
+{
+  "typeName": "net.noodl.PatternExtractor",
+  "summary": "Pattern Extractor: pulls matches and capture groups out of text with a regular expression, without needing a Function node.",
+  "description": "Runs `pattern` over `text` on each `extract` and publishes the first match, its capture groups (numbered and named), and — with Extract All on — every match. An optional group that did not participate becomes an empty string rather than a hole in the array, so downstream indexes stay stable. `firstGroup` is a convenience for the overwhelmingly common single-group case. A pattern that will not compile is a result, not an exception: `ok` becomes false, `error` explains, and the `failure` signal fires — distinct from `notFound`, which is a normal outcome. Note that a catastrophically backtracking pattern is still the author's problem; this runs the platform regex engine and cannot bound it.",
+  "whenToUse": "Extracting a value from text that is not structured data: a percentage out of a progress line, a tool name out of an agent status message, a field out of a log record. Prefer JSON Stream Parser when the payload really is JSON, and String Format or Substring for fixed-position work that needs no pattern.",
+  "ports": {
+    "text": "The text to search. Non-strings are stringified, since stream payloads are typed `*`.",
+    "pattern": "A JavaScript regular expression without the surrounding slashes.",
+    "flags": "i, m, s, u. The global flag is controlled by Extract All and is stripped from here, so `match` cannot become stateful across calls.",
+    "extractAll": "Collect every match rather than only the first. Groups still describe the first match.",
+    "match": "The first match, or an empty string when nothing matched.",
+    "groups": "Numbered capture groups of the first match; unmatched optional groups are empty strings.",
+    "firstGroup": "Group 1 of the first match — the value you want in the common `(\\d+)%` case.",
+    "namedGroups": "Named capture groups of the first match, as an object.",
+    "error": "Empty unless the pattern would not compile.",
+    "found": "Fires when there was a match.",
+    "notFound": "Fires when the pattern compiled but matched nothing — a normal outcome, not an error.",
+    "failure": "Fires only when the pattern itself is unusable, so a broken pattern cannot hide as 'no match'."
+  },
+  "patterns": [
+    "Stream text → `text`, pattern `(\\d+)%`, `firstGroup` → Number → a progress bar.",
+    "Named groups turn one pattern into several outputs without chaining extractors: `(?<tool>\\w+)\\s+(?<state>\\w+)`.",
+    "`failure` → a visible warning during authoring catches a mistyped pattern that would otherwise read as 'never matches'."
+  ],
+  "antiPatterns": [
+    "Parsing JSON with a regex instead of using JSON Stream Parser.",
+    "Treating `notFound` as an error state — most streams contain lines the pattern is not meant to match.",
+    "Building a pattern from user input without bounding it; nested quantifiers can hang the frame."
+  ],
+  "examples": ["agent-sse-task-monitor"],
+  "relatedNodes": ["net.noodl.SSE", "net.noodl.JSONStreamParser", "Substring", "String Format", "String Mapper"]
+}

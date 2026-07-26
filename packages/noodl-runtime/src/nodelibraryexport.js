@@ -578,6 +578,19 @@ function generateNodeLibrary(nodeRegister) {
             'noodl.byob.DeleteRecord',
             'noodl.byob.SubscribeToChanges'
           ]
+        },
+        {
+          // AIX-005 / AGENT-001 + AGENT-007. A type absent from this index is
+          // absent from the add-node picker, so a node that is registered but
+          // not listed here is unreachable for an app author.
+          name: 'Streaming',
+          items: [
+            'net.noodl.SSE',
+            'net.noodl.TextAccumulator',
+            'net.noodl.JSONStreamParser',
+            'net.noodl.PatternExtractor',
+            'net.noodl.StreamBuffer'
+          ]
         }
       ]
     },
