@@ -661,11 +661,19 @@ are wins from other tasks that would have evaporated unrecorded, which is §6.2'
 | `tsc -p packages/noodl-editor` | Clean |
 | `tsc -p packages/noodl-editor/tsconfig.tests.json` | Clean |
 | `noodl-mcp` jest (consumes `normalizeV2Component`) | 61/61 |
+| editor `tests/validation/*` headless (§8 recipe) | 13/13 — and **13/13 from a pristine `678d1c0` export** |
+| `nodegx-backend` jest from that same pristine export | 57 / 533 / 10 — identical |
 | `node scripts/tsfixme-ratchet.js --check` | **✓ Holding the line** |
 
 The control run is the part that matters (§11, §12): the suite was captured at `678d1c0` *before*
 the first edit, and every subsequent run was compared against those exact numbers rather than
-against "it looks green".
+against "it looks green". §12's trap was respected — the control is a **separate** `git archive`
+export of `678d1c0`, verified to still carry the old `nodesFile: any` signature before it was
+trusted, not a directory with the changed files copied in.
+
+The editor's two `validation/` specs are the only ones covering `normalizeV2Component`, and they
+needed none of §12's four extra pieces (no platform, no jsdom, no `require.context`) because they
+are pure model specs — only §12.4's tsconfig-`paths`-as-a-plugin was required.
 
 **Not verified.** Nothing here was run in the live editor or against a live backend process — this
 slice types code and its specs, and the backend suite covers real HTTP over a real `node:sqlite`
