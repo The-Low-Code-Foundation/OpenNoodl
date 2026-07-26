@@ -13,13 +13,14 @@ import * as path from 'path';
 import { ChangeBus } from '../src/realtime/ChangeBus';
 import { SecretsStore } from '../src/config/SecretsStore';
 import { TriggerRegistry } from '../src/triggers/registry';
-import { DbChangeTriggers } from '../src/triggers/dbchange';
+import { DbChangePayload, DbChangeTriggers } from '../src/triggers/dbchange';
+import type { LocalSqlAdapter, LocalSqlAdapterCtor } from './helpers/local-sql';
 import type { TriggerDispatcher, FireInput, FireOutcome } from '../src/triggers/dispatcher';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { resolveEngine } = require('../../noodl-runtime/src/api/adapters/local-sql/engine');
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const LocalSQLAdapter = require('../../noodl-runtime/src/api/adapters/local-sql/LocalSQLAdapter');
+const LocalSQLAdapter: LocalSqlAdapterCtor = require('../../noodl-runtime/src/api/adapters/local-sql/LocalSQLAdapter');
 
 function okOutcome(): FireOutcome {
   return { result: { ok: true, at: new Date().toISOString(), statusCode: 200 }, statusCode: 200, body: '{}' };
@@ -27,8 +28,8 @@ function okOutcome(): FireOutcome {
 
 describe('DbChangeTriggers', () => {
   const engine = resolveEngine();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let adapter: any;
+
+  let adapter: LocalSqlAdapter;
   let bus: ChangeBus;
   let dir: string;
   let reg: TriggerRegistry;
@@ -80,9 +81,10 @@ describe('DbChangeTriggers', () => {
 
     expect(fires).toHaveLength(1);
     expect(fires[0].triggerType).toBe('db_change');
-    expect((fires[0].payload as any).action).toBe('create');
-    expect((fires[0].payload as any).collection).toBe('Orders');
-    expect((fires[0].payload as any).record.objectId).toBe(row.objectId);
+    const payload = fires[0].payload as DbChangePayload;
+    expect(payload.action).toBe('create');
+    expect(payload.collection).toBe('Orders');
+    expect(payload.record.objectId).toBe(row.objectId);
     dbc.stop();
   });
 

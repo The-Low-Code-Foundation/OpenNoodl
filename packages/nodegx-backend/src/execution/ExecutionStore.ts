@@ -20,11 +20,27 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-// Bundled from noodl-viewer-cloud/src/execution-history by esbuild
-// (test-time: jest moduleNameMapper). Untyped on purpose — the classes carry
-// their own types where they live; this package treats them as a black box.
+// Bundled from noodl-viewer-cloud/src/execution-history by esbuild (test-time:
+// jest moduleNameMapper), so the CONSTRUCTION stays a runtime `require` — this
+// package must not pull the cloud runtime into its own module graph.
+//
+// The TYPES, however, are right there and were being thrown away: until
+// PLAT-004 this facade held `store: unknown` and cast `as any` at all five call
+// sites, and `list()`/`get()` handed `unknown` on to the HTTP routes and the
+// specs, which cast again. The classes do carry their own types where they
+// live — which is an argument for importing them, not for re-deriving them.
+// `import type` is erased at compile time, so the runtime black box is intact
+// and the field names are now checked on both sides.
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const executionHistory = require('@cloud-runtime/execution-history');
+
+import type { ExecutionStore as CloudExecutionStore } from '@cloud-runtime/execution-history/store';
+import type {
+  ExecutionWithSteps,
+  WorkflowExecution
+} from '@cloud-runtime/execution-history/types';
+
+export type { ExecutionWithSteps, WorkflowExecution };
 
 export interface ExecutionHistoryStatus {
   enabled: boolean;
@@ -43,7 +59,7 @@ export interface ExecutionListQuery {
 }
 
 export class ExecutionHistory {
-  private store: unknown | null = null;
+  private store: CloudExecutionStore | null = null;
   private status: ExecutionHistoryStatus = { enabled: false, dbPath: null, error: null };
 
   /** Open (or create) `<dataDir>/executions.sqlite` and init the schema. */
@@ -81,13 +97,12 @@ export class ExecutionHistory {
     return new executionHistory.ExecutionLogger(this.store);
   }
 
-  list(query: ExecutionListQuery): unknown[] {
+  list(query: ExecutionListQuery): WorkflowExecution[] {
     if (!this.store) return [];
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return (this.store as any).queryExecutions({
+    return this.store.queryExecutions({
       workflowId: query.workflowId,
-      status: query.status,
-      triggerType: query.triggerType,
+      status: query.status as WorkflowExecution['status'] | undefined,
+      triggerType: query.triggerType as WorkflowExecution['triggerType'] | undefined,
       limit: query.limit,
       offset: query.offset,
       startedAfter: query.startedAfter,
@@ -95,10 +110,9 @@ export class ExecutionHistory {
     });
   }
 
-  get(executionId: string): unknown | null {
+  get(executionId: string): ExecutionWithSteps | null {
     if (!this.store) return null;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return (this.store as any).getExecutionWithSteps(executionId);
+    return this.store.getExecutionWithSteps(executionId);
   }
 
   /**
@@ -109,9 +123,8 @@ export class ExecutionHistory {
    */
   markInterrupted(executionId: string, message: string): void {
     if (!this.store || !executionId) return;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const store = this.store as any;
-    const existing = store.getExecution(executionId) as { metadata?: Record<string, unknown> } | null;
+    const store = this.store;
+    const existing = store.getExecution(executionId);
     const now = Date.now();
     store.updateExecution(executionId, {
       status: 'error',
@@ -129,9 +142,8 @@ export class ExecutionHistory {
    */
   stampMetadata(executionId: string, patch: Record<string, unknown>): void {
     if (!this.store || !executionId) return;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const store = this.store as any;
-    const existing = store.getExecution(executionId) as { metadata?: Record<string, unknown> } | null;
+    const store = this.store;
+    const existing = store.getExecution(executionId);
     store.updateExecution(executionId, { metadata: { ...(existing?.metadata || {}), ...patch } });
   }
 }
