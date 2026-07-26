@@ -1,13 +1,15 @@
 import _ from 'underscore';
 
 import { NodeLibrary } from '../../models/nodelibrary';
+import { CanvasTheme } from './canvas/CanvasTheme';
 import { fillRoundRect, roundRect, strokeRoundRect, truncateText } from './canvasHelpers';
 import { NodeGraphEditorNode } from './NodeGraphEditorNode';
 
 function _getColorForAnnotation(annotation) {
-  if (annotation === 'Deleted') return '#F57569';
-  else if (annotation === 'Changed') return '#83B8BA';
-  else if (annotation === 'Created') return '#5BF59E';
+  const theme = CanvasTheme.instance.colors;
+  if (annotation === 'Deleted') return theme.annotationDeleted;
+  else if (annotation === 'Changed') return theme.annotationChanged;
+  else if (annotation === 'Created') return theme.annotationCreated;
 }
 
 export function measureTextHeight(text, font, lineHeight, maxWidth) {
@@ -73,6 +75,7 @@ export function paintNode(node: NodeGraphEditorNode, ctx: CanvasRenderingContext
     y + node.nodeSize.height < paintRect.minY;
 
   if (isOutsidePaintArea === false) {
+    const theme = CanvasTheme.instance.colors;
     node.updateIcon();
     const nc = node.model.metadata?.colorOverride
       ? NodeLibrary.instance.colorSchemeForNodeColorName(node.model.metadata.colorOverride)
@@ -276,7 +279,7 @@ export function paintNode(node: NodeGraphEditorNode, ctx: CanvasRenderingContext
     ctx.restore(); // Restore clip so we can draw border
 
     if (isHighligthed) {
-      ctx.fillStyle = node.borderHighlighted ? '#ffffff' : nc.text;
+      ctx.fillStyle = node.borderHighlighted ? theme.selection : nc.text;
       ctx.globalAlpha = 1;
       ctx.beginPath();
       ctx.arc(x + node.nodeSize.width, y + titlebarHeight / 2, 4, 0, 2 * Math.PI, false);
@@ -297,7 +300,7 @@ export function paintNode(node: NodeGraphEditorNode, ctx: CanvasRenderingContext
     if (!health.healthy) {
       ctx.setLineDash([5]);
       ctx.lineWidth = 1;
-      ctx.strokeStyle = '#F57569';
+      ctx.strokeStyle = theme.danger;
       ctx.globalAlpha = 0.7;
       strokeRoundRect(
         ctx,
@@ -312,7 +315,7 @@ export function paintNode(node: NodeGraphEditorNode, ctx: CanvasRenderingContext
     }
 
     if (node.selected || node.borderHighlighted || node.connectionDragAreaHighlighted) {
-      ctx.strokeStyle = '#ffffff';
+      ctx.strokeStyle = theme.selection;
       ctx.lineWidth = 2;
       strokeRoundRect(ctx, x, y, node.nodeSize.width, node.nodeSize.height, NodeGraphEditorNode.cornerRadius);
     }
@@ -334,7 +337,7 @@ export function paintNode(node: NodeGraphEditorNode, ctx: CanvasRenderingContext
       ctx.beginPath();
       ctx.arc(x, y, 8, 0, 2 * Math.PI, false);
       ctx.fill();
-      ctx.fillStyle = '#1c1c1c';
+      ctx.fillStyle = theme.annotationBadgeGlyph;
       ctx.font = '12px Inter-Medium';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';

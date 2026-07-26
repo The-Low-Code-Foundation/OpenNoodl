@@ -29,6 +29,7 @@ import { CreateNewNodePanel } from './createnewnodepanel';
 import { TitleBar } from './documents/EditorDocument/titlebar';
 import { CanvasIcons } from './nodegrapheditor/canvas/CanvasIcons';
 import { CanvasRenderer } from './nodegrapheditor/canvas/CanvasRenderer';
+import { CanvasTheme } from './nodegrapheditor/canvas/CanvasTheme';
 import { CanvasViewport } from './nodegrapheditor/canvas/CanvasViewport';
 import * as HitTester from './nodegrapheditor/canvas/HitTester';
 import { InteractionController } from './nodegrapheditor/canvas/InteractionController';
@@ -205,12 +206,17 @@ export class NodeGraphEditor extends View {
 
     // Load icons using webpack require to ensure proper bundling
     this.icons = new CanvasIcons(() => this.repaint());
+
+    // Theme change (UIX-005/UIX-008): CanvasTheme re-resolves its colours,
+    // we repaint. Context = this editor, detached in dispose.
+    CanvasTheme.instance.on(() => this.repaint(), this);
   }
 
   dispose() {
     AiAssistantModel.instance.off(this);
     KeyboardHandler.instance.deregisterCommands(this.keyboardCommands);
 
+    CanvasTheme.instance.off(this);
     EventDispatcher.instance.off(this);
     NodeLibrary.instance.off(this);
     ProjectModel.instance && ProjectModel.instance.off(this);
