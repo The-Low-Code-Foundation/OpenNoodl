@@ -28320,7 +28320,46 @@
           "isSignal": false
         }
       ],
-      "dynamicPorts": null
+      "dynamicPorts": null,
+      "enrichment": {
+        "typeName": "net.noodl.GlobalStore",
+        "summary": "Declares a named observable store and outputs its state, so any component can read shared state without prop drilling.",
+        "description": "Creates (or attaches to) a named store and keeps `state` in step with it. A store is backed by the runtime's own Model, keyed `--ndl--global-store--<name>`, which is the same mechanism Variables already use — so a store is visible to Function nodes and `Noodl.Object`, and a write made directly to the backing Model notifies store subscribers exactly as Set Global Store does. Any number of Global Store nodes may name the same store; they all observe one shared object rather than each holding a copy. Notifications fire once per commit, not once per key: writes inside a batch collapse into a single `stateChanged`, and `changedKeys` lists only keys whose value actually differs — setting a key to the value it already held reports nothing. Re-entrant writes made from a subscriber are queued and applied rather than recursed, so a subscriber that writes cannot deepen the stack. Deleting the node releases its subscription.",
+        "whenToUse": "State more than one component needs: the signed-in user, a theme, a cart, an agent conversation, the open panel. Reach for it instead of threading Component Inputs down a tree or wiring a Send Event to every interested component. For state that belongs to one component, Variables and Component Object are simpler and stay local. For a value that must survive a reload, turn on Persist rather than writing your own storage step.",
+        "ports": {
+          "storeName": "Names the store. Two nodes with the same name share one object; change the name and the node moves to a different store rather than renaming the old one.",
+          "initialState": "Fills in keys the store does not yet have. It never overwrites live state, so a component that remounts cannot reset a store other components are using.",
+          "persist": "Saves the store and restores it on the next load. Persistence goes through an injected storage seam, and an unavailable or full store is reported on Error rather than silently skipped.",
+          "storageKey": "Where a persisted store is written. Defaults to a key derived from Store Name; set it explicitly when two projects share an origin.",
+          "state": "The whole store object. Updates once per commit.",
+          "changedKeys": "The keys that actually changed in the commit that just fired — the cheap way to react to one key without comparing whole objects.",
+          "stateChanged": "Fires once per commit, after State has updated.",
+          "ready": "True once the store exists and any persisted state has been read back, so a graph can wait rather than reading an empty store on the first frame.",
+          "error": "Carries persistence and subscriber failures. A subscriber that throws is isolated and reported here rather than taking down the other subscribers.",
+          "storeId": "The id of the backing Model, for wiring the store into nodes that take a Model reference."
+        },
+        "examples": [
+          "agent-store-shared-state"
+        ],
+        "patterns": [
+          "One Global Store node per component that needs to read shared state; there is no 'owner' node to place first, because naming the store creates it.",
+          "`changedKeys` → a condition, rather than watching `state` and diffing by hand, when only one key matters.",
+          "Set Global Store with Batch With Others turned on for several related writes, so the UI updates once rather than flickering through intermediate states.",
+          "Wait on `ready` before reading a persisted store, instead of reading on the first frame and getting a store that has not loaded yet."
+        ],
+        "antiPatterns": [
+          "Using a store for state only one component reads — Variables and Component Object are simpler and do not outlive the component.",
+          "Setting Initial State from several components expecting the last one to win: it fills gaps only and never overwrites, by design.",
+          "Treating `state` as a snapshot to hold on to. It is the live object; use the State History node if you need to keep earlier values."
+        ],
+        "relatedNodes": [
+          "net.noodl.GlobalStore.Set",
+          "net.noodl.GlobalStore.Subscribe",
+          "Variable2",
+          "Set Variable",
+          "net.noodl.ComponentObject"
+        ]
+      }
     },
     {
       "typeName": "net.noodl.GlobalStore.Set",
@@ -28425,7 +28464,42 @@
           "isSignal": false
         }
       ],
-      "dynamicPorts": null
+      "dynamicPorts": null,
+      "enrichment": {
+        "typeName": "net.noodl.GlobalStore.Set",
+        "summary": "Writes a key into a named global store, optionally merging an object and optionally batching with other writes in the same frame.",
+        "description": "Sets one key in the store named by Store Name. The write is deferred until every input on the node has landed, because Key, Value and the Set signal can arrive in one frame in no guaranteed order — so wiring Value and pulsing Set together behaves the way it reads. Setting a key to the value it already holds is not a change and notifies nobody. Writing `undefined` to a key that does not exist still registers as setting it, so absence and 'set to nothing' stay distinguishable to anything watching. Batch With Others coalesces this write with the other batched writes of the same frame into a single commit — subscribers see one notification with all the changed keys, instead of one per write.",
+        "whenToUse": "Any write to shared state: recording a sign-in, appending a streamed message, flipping a panel open. Use one Set per key; for several keys that belong together, turn on Batch With Others so the UI moves once. Use Merge Object to update part of an object without reading it first.",
+        "ports": {
+          "storeName": "Which store to write to. Writing to a name no Global Store node declares still creates the store — the store exists because it is named, not because a node owns it.",
+          "key": "The key to write. Required; an empty key reports on Error rather than writing something unnamed.",
+          "value": "The value to write. Any type, including objects, arrays, Models and Collections.",
+          "merge": "Merges Value into the existing object at Key instead of replacing it. With no existing object it behaves as a plain set.",
+          "transaction": "Batches this write with the other batched writes of the same frame into one commit, so subscribers get a single notification. It does not skip or suppress the notification — the change is always delivered.",
+          "set": "Performs the write.",
+          "completed": "Fires after the write has been committed, so a chained action runs against the new state rather than the old.",
+          "error": "Carries a refused write — a missing key, or a store that could not be persisted — instead of failing quietly."
+        },
+        "examples": [
+          "agent-store-shared-state"
+        ],
+        "patterns": [
+          "Several Set Global Store nodes with Batch With Others turned on, pulsed in the same frame, so a multi-field update renders as one change.",
+          "Merge Object to update one field of a settings object without reading, spreading and writing it back.",
+          "`completed` → the next action, rather than assuming the write has landed by the time the next node runs."
+        ],
+        "antiPatterns": [
+          "Expecting Batch With Others to hide a change. It groups notifications; it never drops the write.",
+          "Setting the same key from several nodes each frame and relying on order — batched writes commit together, and last-write-wins within the batch.",
+          "Writing a whole rebuilt object every keystroke where Merge Object would change one field."
+        ],
+        "relatedNodes": [
+          "net.noodl.GlobalStore",
+          "net.noodl.GlobalStore.Subscribe",
+          "Set Variable",
+          "SetModelProperties"
+        ]
+      }
     },
     {
       "typeName": "net.noodl.GlobalStore.Subscribe",
@@ -28508,7 +28582,39 @@
           "isSignal": false
         }
       ],
-      "dynamicPorts": null
+      "dynamicPorts": null,
+      "enrichment": {
+        "typeName": "net.noodl.GlobalStore.Subscribe",
+        "summary": "Watches specific keys in a named global store and signals when they change, with the previous value alongside the new one.",
+        "description": "Subscribes to a store and fires only for the keys named in Keys, so a component that cares about one field is not woken by every unrelated write. Leaving Keys empty watches the whole store. Both Value and Previous Value update before `changed` fires, so a handler can compare them. Notifications arrive once per commit in subscriber registration order; a write that sets a key to the value it already held is not a change and fires nothing. Changing Store Name or Keys moves the subscription rather than adding a second one, and deleting the node removes it — a disposed node leaves no subscriber behind, which matters because a store outlives the components that read it.",
+        "whenToUse": "Reacting to shared state changing, rather than rendering it. To display a value, wire Global Store's `state` straight into the UI; use Subscribe when something must *happen* on a change — refetch, animate, navigate, log. Prefer naming Keys over watching everything, so unrelated writes do not trigger work.",
+        "ports": {
+          "storeName": "Which store to watch. The store need not exist yet; the subscription attaches when it appears.",
+          "keys": "Comma-separated keys to watch. Empty watches every key in the store.",
+          "value": "The current value of the changed key, or the whole store object when Keys is empty.",
+          "previousValue": "What that key held immediately before this change — the two are updated together so they can be compared in a handler.",
+          "changedKeys": "Which of the watched keys changed in this commit. A batched write can change several at once, and they arrive in one notification.",
+          "changed": "Fires once per commit that touched a watched key, after Value and Previous Value have updated."
+        },
+        "examples": [
+          "agent-store-shared-state"
+        ],
+        "patterns": [
+          "Name the keys you care about instead of leaving Keys empty, so a busy store does not wake every component on every write.",
+          "Compare `previousValue` with `value` to react to a specific transition — signed-out to signed-in — rather than to any change at all.",
+          "Global Store `state` for rendering; Subscribe `changed` for side effects. Using Subscribe to drive display work is usually a sign the state should simply be wired in."
+        ],
+        "antiPatterns": [
+          "Watching the whole store to react to one key: every unrelated write then does that component's work again.",
+          "Expecting one notification per key when several were written in a batch — a batch is one commit, and `changedKeys` names all of them.",
+          "Holding `previousValue` as a history. It is only the value immediately before this change; the State History node keeps a real history."
+        ],
+        "relatedNodes": [
+          "net.noodl.GlobalStore",
+          "net.noodl.GlobalStore.Set",
+          "Variable2"
+        ]
+      }
     },
     {
       "typeName": "net.noodl.HTTP",
@@ -46019,7 +46125,7 @@
     "version": "1.0.0",
     "docs": "docs/node-catalog/ENRICHMENT.md",
     "coverage": {
-      "documented": 145,
+      "documented": 148,
       "total": 148
     }
   },
@@ -46532,6 +46638,131 @@
               "fromId": "row_inputs",
               "fromProperty": "message",
               "toId": "line_text",
+              "toProperty": "text"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "agent-store-shared-state",
+      "title": "Shared state: one store read by two unrelated components",
+      "description": "Two components that are not parent and child, sharing state through a named store instead of prop drilling or a Send/Receive Event pair. Sign In writes `user` with Set Global Store; Header declares the same store by name and renders `state` — no wiring runs between the two components, because naming the store is what connects them. Header also subscribes to just the `user` key, so a write to any other key does not wake it, and uses `previousValue` against `value` to fire only on the signed-out → signed-in transition rather than on every change. Initial State fills gaps without overwriting live state, so Header remounting cannot reset a store Sign In is already using.",
+      "demonstrates": [
+        "net.noodl.GlobalStore",
+        "net.noodl.GlobalStore.Set",
+        "net.noodl.GlobalStore.Subscribe"
+      ],
+      "components": [
+        {
+          "name": "/Sign In",
+          "nodes": [
+            {
+              "id": "signin_root",
+              "type": "Group",
+              "label": "Sign in",
+              "parameters": {
+                "flexDirection": "column"
+              },
+              "children": [
+                "email_input",
+                "signin_button"
+              ]
+            },
+            {
+              "id": "email_input",
+              "type": "net.noodl.controls.textinput",
+              "label": "Email",
+              "parent": "signin_root"
+            },
+            {
+              "id": "signin_button",
+              "type": "net.noodl.controls.button",
+              "label": "Sign in",
+              "parent": "signin_root"
+            },
+            {
+              "id": "write_user",
+              "type": "net.noodl.GlobalStore.Set",
+              "label": "Write user to store",
+              "parameters": {
+                "storeName": "app",
+                "key": "user",
+                "transaction": false
+              }
+            }
+          ],
+          "connections": [
+            {
+              "fromId": "email_input",
+              "fromProperty": "text",
+              "toId": "write_user",
+              "toProperty": "value"
+            },
+            {
+              "fromId": "signin_button",
+              "fromProperty": "onClick",
+              "toId": "write_user",
+              "toProperty": "set"
+            }
+          ]
+        },
+        {
+          "name": "/Header",
+          "nodes": [
+            {
+              "id": "header_root",
+              "type": "Group",
+              "label": "Header",
+              "parameters": {
+                "flexDirection": "row"
+              },
+              "children": [
+                "user_text"
+              ]
+            },
+            {
+              "id": "user_text",
+              "type": "Text",
+              "label": "Signed in as",
+              "parent": "header_root"
+            },
+            {
+              "id": "app_store",
+              "type": "net.noodl.GlobalStore",
+              "label": "App store",
+              "parameters": {
+                "storeName": "app",
+                "persist": true,
+                "storageKey": "nodegx.example.app"
+              }
+            },
+            {
+              "id": "watch_user",
+              "type": "net.noodl.GlobalStore.Subscribe",
+              "label": "Watch user only",
+              "parameters": {
+                "storeName": "app",
+                "keys": "user"
+              }
+            },
+            {
+              "id": "greeting",
+              "type": "String Format",
+              "label": "Format greeting"
+            }
+          ],
+          "connections": [
+            {
+              "fromId": "watch_user",
+              "fromProperty": "value",
+              "toId": "greeting",
+              "toProperty": "input"
+            },
+            {
+              "fromId": "greeting",
+              "fromProperty": "result",
+              "toId": "user_text",
               "toProperty": "text"
             }
           ]

@@ -1,0 +1,39 @@
+{
+  "typeName": "net.noodl.GlobalStore",
+  "summary": "Declares a named observable store and outputs its state, so any component can read shared state without prop drilling.",
+  "description": "Creates (or attaches to) a named store and keeps `state` in step with it. A store is backed by the runtime's own Model, keyed `--ndl--global-store--<name>`, which is the same mechanism Variables already use — so a store is visible to Function nodes and `Noodl.Object`, and a write made directly to the backing Model notifies store subscribers exactly as Set Global Store does. Any number of Global Store nodes may name the same store; they all observe one shared object rather than each holding a copy. Notifications fire once per commit, not once per key: writes inside a batch collapse into a single `stateChanged`, and `changedKeys` lists only keys whose value actually differs — setting a key to the value it already held reports nothing. Re-entrant writes made from a subscriber are queued and applied rather than recursed, so a subscriber that writes cannot deepen the stack. Deleting the node releases its subscription.",
+  "whenToUse": "State more than one component needs: the signed-in user, a theme, a cart, an agent conversation, the open panel. Reach for it instead of threading Component Inputs down a tree or wiring a Send Event to every interested component. For state that belongs to one component, Variables and Component Object are simpler and stay local. For a value that must survive a reload, turn on Persist rather than writing your own storage step.",
+  "ports": {
+    "storeName": "Names the store. Two nodes with the same name share one object; change the name and the node moves to a different store rather than renaming the old one.",
+    "initialState": "Fills in keys the store does not yet have. It never overwrites live state, so a component that remounts cannot reset a store other components are using.",
+    "persist": "Saves the store and restores it on the next load. Persistence goes through an injected storage seam, and an unavailable or full store is reported on Error rather than silently skipped.",
+    "storageKey": "Where a persisted store is written. Defaults to a key derived from Store Name; set it explicitly when two projects share an origin.",
+    "state": "The whole store object. Updates once per commit.",
+    "changedKeys": "The keys that actually changed in the commit that just fired — the cheap way to react to one key without comparing whole objects.",
+    "stateChanged": "Fires once per commit, after State has updated.",
+    "ready": "True once the store exists and any persisted state has been read back, so a graph can wait rather than reading an empty store on the first frame.",
+    "error": "Carries persistence and subscriber failures. A subscriber that throws is isolated and reported here rather than taking down the other subscribers.",
+    "storeId": "The id of the backing Model, for wiring the store into nodes that take a Model reference."
+  },
+  "patterns": [
+    "One Global Store node per component that needs to read shared state; there is no 'owner' node to place first, because naming the store creates it.",
+    "`changedKeys` → a condition, rather than watching `state` and diffing by hand, when only one key matters.",
+    "Set Global Store with Batch With Others turned on for several related writes, so the UI updates once rather than flickering through intermediate states.",
+    "Wait on `ready` before reading a persisted store, instead of reading on the first frame and getting a store that has not loaded yet."
+  ],
+  "antiPatterns": [
+    "Using a store for state only one component reads — Variables and Component Object are simpler and do not outlive the component.",
+    "Setting Initial State from several components expecting the last one to win: it fills gaps only and never overwrites, by design.",
+    "Treating `state` as a snapshot to hold on to. It is the live object; use the State History node if you need to keep earlier values."
+  ],
+  "relatedNodes": [
+    "net.noodl.GlobalStore.Set",
+    "net.noodl.GlobalStore.Subscribe",
+    "Variable2",
+    "Set Variable",
+    "net.noodl.ComponentObject"
+  ],
+  "examples": [
+    "agent-store-shared-state"
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "typeName": "net.noodl.GlobalStore.Subscribe",
+  "summary": "Watches specific keys in a named global store and signals when they change, with the previous value alongside the new one.",
+  "description": "Subscribes to a store and fires only for the keys named in Keys, so a component that cares about one field is not woken by every unrelated write. Leaving Keys empty watches the whole store. Both Value and Previous Value update before `changed` fires, so a handler can compare them. Notifications arrive once per commit in subscriber registration order; a write that sets a key to the value it already held is not a change and fires nothing. Changing Store Name or Keys moves the subscription rather than adding a second one, and deleting the node removes it — a disposed node leaves no subscriber behind, which matters because a store outlives the components that read it.",
+  "whenToUse": "Reacting to shared state changing, rather than rendering it. To display a value, wire Global Store's `state` straight into the UI; use Subscribe when something must *happen* on a change — refetch, animate, navigate, log. Prefer naming Keys over watching everything, so unrelated writes do not trigger work.",
+  "ports": {
+    "storeName": "Which store to watch. The store need not exist yet; the subscription attaches when it appears.",
+    "keys": "Comma-separated keys to watch. Empty watches every key in the store.",
+    "value": "The current value of the changed key, or the whole store object when Keys is empty.",
+    "previousValue": "What that key held immediately before this change — the two are updated together so they can be compared in a handler.",
+    "changedKeys": "Which of the watched keys changed in this commit. A batched write can change several at once, and they arrive in one notification.",
+    "changed": "Fires once per commit that touched a watched key, after Value and Previous Value have updated."
+  },
+  "patterns": [
+    "Name the keys you care about instead of leaving Keys empty, so a busy store does not wake every component on every write.",
+    "Compare `previousValue` with `value` to react to a specific transition — signed-out to signed-in — rather than to any change at all.",
+    "Global Store `state` for rendering; Subscribe `changed` for side effects. Using Subscribe to drive display work is usually a sign the state should simply be wired in."
+  ],
+  "antiPatterns": [
+    "Watching the whole store to react to one key: every unrelated write then does that component's work again.",
+    "Expecting one notification per key when several were written in a batch — a batch is one commit, and `changedKeys` names all of them.",
+    "Holding `previousValue` as a history. It is only the value immediately before this change; the State History node keeps a real history."
+  ],
+  "relatedNodes": [
+    "net.noodl.GlobalStore",
+    "net.noodl.GlobalStore.Set",
+    "Variable2"
+  ],
+  "examples": [
+    "agent-store-shared-state"
+  ]
+}
