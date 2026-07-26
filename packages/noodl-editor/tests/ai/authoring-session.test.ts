@@ -32,7 +32,7 @@ function respond(partial: Partial<AiChatResponse> = {}): AiChatResponse {
   return {
     text: '',
     toolCalls: [],
-    usage: { promptTokens: 10, completionTokens: 5, costUsd: 0.01 },
+    usage: { promptTokens: 10, completionTokens: 5, cacheReadTokens: 0, cacheWriteTokens: 0, costUsd: 0.01 },
     model: 'test',
     stopReason: partial.toolCalls?.length ? 'tool_calls' : 'stop',
     ...partial
@@ -427,7 +427,7 @@ describe('AIX-002 authoring session', () => {
       () =>
         respond({
           toolCalls: [call('submit_component', goodSubmitArgs())],
-          usage: { promptTokens: 10, completionTokens: 5, costUsd: null }
+          usage: { promptTokens: 10, completionTokens: 5, cacheReadTokens: 0, cacheWriteTokens: 0, costUsd: null }
         })
     ]);
     const outcome = await AuthoringSession.create(GRAPH, REQUEST, { chat }).run();

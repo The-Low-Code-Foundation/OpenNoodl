@@ -19,7 +19,20 @@ import { AiProviderId } from '@noodl-models/AiAssistant/client/types';
  * Prices below were correct on this date. They are used only for the cost
  * readout; a stale price never breaks a request.
  */
-export const PRICING_AS_OF = '2026-07-24';
+export const PRICING_AS_OF = '2026-07-26';
+
+/**
+ * Prompt-cache rate multipliers, applied to a model's *input* price.
+ *
+ * A cache read costs a tenth of a fresh input token; a cache write costs a
+ * quarter more than one. With the 5-minute TTL that is break-even at two
+ * requests — which is why the authoring loop, at 2–3 turns, is worth caching
+ * at all. The 1-hour TTL doubles the write instead (2x) and needs three reads
+ * to pay for itself; this traffic shape does not reliably deliver them, so it
+ * is deliberately not used.
+ */
+export const CACHE_READ_MULTIPLIER = 0.1;
+export const CACHE_WRITE_MULTIPLIER = 1.25;
 
 /**
  * Rough capability bands. Features use these instead of matching model ids, so
@@ -70,6 +83,25 @@ export interface AiModelDefinition {
      * XML templates parse.
      */
     adaptiveThinking?: boolean;
+    /**
+     * Whether the model accepts a reasoning-depth setting (`output_config.effort`
+     * on Anthropic). Absent means the adapter must not send one — an unsupported
+     * model rejects it rather than ignoring it.
+     */
+    effort?: boolean;
+    /**
+     * Whether the provider caches a repeated prompt prefix for this model, so
+     * the adapter should place cache breakpoints. Cheap when it works and free
+     * when it does not — but the flag keeps `cache_control` off models whose
+     * API would reject the field.
+     */
+    promptCaching?: boolean;
+    /**
+     * Smallest prefix the provider will cache, in tokens. A shorter prefix is
+     * silently not cached — no error, just no hit — so this is documentation
+     * for whoever wonders why a breakpoint did nothing.
+     */
+    minCacheableTokens?: number;
   };
   /** The default pick for its provider. Exactly one per provider. */
   isDefault?: boolean;
@@ -82,7 +114,10 @@ const claudeFrontier = {
   tools: true,
   agentFlow: true,
   sampling: false,
-  adaptiveThinking: true
+  adaptiveThinking: true,
+  effort: true,
+  promptCaching: true,
+  minCacheableTokens: 1024
 } as const;
 
 export const AI_MODELS: readonly AiModelDefinition[] = [
@@ -95,8 +130,7 @@ export const AI_MODELS: readonly AiModelDefinition[] = [
     contextWindow: 1_000_000,
     maxOutputTokens: 128_000,
     pricing: { inputPerMTok: 5.0, outputPerMTok: 25.0 },
-    capabilities: claudeFrontier,
-    isDefault: true
+    capabilities: claudeFrontier
   },
   {
     id: 'claude-sonnet-5',
@@ -105,8 +139,17 @@ export const AI_MODELS: readonly AiModelDefinition[] = [
     tier: 'balanced',
     contextWindow: 1_000_000,
     maxOutputTokens: 128_000,
-    pricing: { inputPerMTok: 3.0, outputPerMTok: 15.0 },
-    capabilities: claudeFrontier
+    // MAINTENANCE: introductory pricing, $2/$10, ends 2026-08-31 — after that
+    // this entry reverts to the standard $3/$15. A stale price here does not
+    // break requests, it only misreports cost.
+    pricing: { inputPerMTok: 2.0, outputPerMTok: 10.0 },
+    capabilities: claudeFrontier,
+    // AIX-007: the default moved here from `claude-opus-4-8` on measurement,
+    // not on tier. Over the 8-prompt authoring corpus both reached 8/8
+    // first-attempt validity; Sonnet did it at $0.0352/component against
+    // Opus's $0.0923, and faster. Opus stays one click away for anyone who
+    // wants it. Re-check with the measurement harness before moving this.
+    isDefault: true
   },
   {
     id: 'claude-haiku-4-5',
@@ -243,14 +286,34 @@ export function resolveModel(id: string, provider: AiProviderId): AiModelDefinit
   return findModel(id, provider) || unknownModel(id, provider);
 }
 
+/** Cached input tokens, priced off the same input rate at their own multipliers. */
+export interface CacheTokens {
+  /** Served from cache — the cheap ones. */
+  cacheReadTokens?: number;
+  /** Written to cache — paid once, at a premium. */
+  cacheWriteTokens?: number;
+}
+
+/**
+ * Price one request.
+ *
+ * `promptTokens` is the *uncached* input only: cache reads and writes are
+ * billed at their own multipliers and passed separately, never folded in.
+ * Omitting them prices a request that used no cache, which is exactly what a
+ * provider without caching reports — so the three-argument form stays correct
+ * rather than becoming a lie.
+ */
 export function calculateCostUsd(
   model: AiModelDefinition,
   promptTokens: number,
-  completionTokens: number
+  completionTokens: number,
+  cache: CacheTokens = {}
 ): number | null {
   if (!model.pricing) return null;
   const cost =
     (promptTokens / 1_000_000) * model.pricing.inputPerMTok +
+    ((cache.cacheReadTokens ?? 0) / 1_000_000) * model.pricing.inputPerMTok * CACHE_READ_MULTIPLIER +
+    ((cache.cacheWriteTokens ?? 0) / 1_000_000) * model.pricing.inputPerMTok * CACHE_WRITE_MULTIPLIER +
     (completionTokens / 1_000_000) * model.pricing.outputPerMTok;
   // Sub-cent precision matters here: a single node generation is fractions of
   // a cent, and rounding to 4 dp would report every call as $0.

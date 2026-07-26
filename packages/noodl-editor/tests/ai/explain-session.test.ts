@@ -116,7 +116,7 @@ function answerWith(text: string): AiChatResponse {
   return {
     text,
     toolCalls: [],
-    usage: { promptTokens: 1, completionTokens: 1, costUsd: 0 },
+    usage: { promptTokens: 1, completionTokens: 1, cacheReadTokens: 0, cacheWriteTokens: 0, costUsd: 0 },
     model: 'test',
     stopReason: 'stop'
   };

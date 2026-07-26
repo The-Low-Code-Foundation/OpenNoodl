@@ -1,6 +1,6 @@
 # Phase 15: AI Collaboration Experience - Progress Tracker
 
-**Last Updated:** 2026-07-25
+**Last Updated:** 2026-07-26
 **Overall Status:** 🟡 In Progress
 
 ---
@@ -9,11 +9,11 @@
 
 | Metric       | Value  |
 | ------------ | ------ |
-| Total Tasks  | 6      |
-| Completed    | 4      |
+| Total Tasks  | 7      |
+| Completed    | 5      |
 | In Progress  | 1      |
 | Not Started  | 1      |
-| **Progress** | **50%** |
+| **Progress** | **57%** |
 
 ---
 
@@ -27,6 +27,7 @@
 | AIX-004 | Explain Mode        | 🟢 Complete    | Panel shipped + wired (context menu + sidebar); read-only; citations link to canvas; +47 specs. Register/accuracy tuning needs a live provider run. NOTES + CHANGELOG in the task doc |
 | AIX-005 | Agentic UI Nodes    | 🔴 Not Started | Deliberately last; only after AIX-002 proves out   |
 | AIX-006 | Style Vocabulary    | 🟢 Complete (`fa639c8`) | Live per-project vocabulary (tokens/variants/presets, `var(--token)` format verified) injected into ContextBuilder + `ON-SYSTEM STYLING` prompt; StyleAnalyzer detection extracted to a pure `StyleAnalyzerCore` and wired as an advisory post-gen lint into the refine loop; MCP `get_style_vocabulary`/`set_project_tokens`/`set_style_preset`. A/B (sonnet, headless): **2.4× more on-system styling**, 90% vs 85%. mcp jest 39/39; Electron editor suite pending |
+| AIX-007 | Token Cost Reduction | 🟢 Complete | **Mean cost/component −82%** ($0.1954 → $0.0352) with first-attempt validity **up** 7/8 → 8/8 and latency 106s → 16s. Prompt caching (3 budgeted breakpoints: system+tools, opening reference blocks, growing turn) verified live — cache reads on turn 2+ of **8/8** multi-turn sessions, 73% hit rate. Opening turns reordered stable-first (create + update); `AiUsage` carries cache read/write tokens and `calculateCostUsd` prices them; sonnet-5 price corrected to the $2/$10 intro rate. `output_config.effort` plumbed per call site: sweep found **`low`** wins on every axis — the only level reaching 8/8, and it recovers `article-list`, which at `high`/`medium` burned ~32k reasoning tokens across 7 turns and never submitted. Default model moved opus-4-8 → **sonnet-5** on measurement (tie at 8/8, 2.6× cheaper). Two defects found and fixed: a 5th cache breakpoint the API would reject (caught by a spec), and cancelled turns misreported as `exhausted`. Suite 1388 green. Residual: our cost figure is not yet reconciled against Anthropic's billed figure. See AIX-007-NOTES.md |
 
 ---
 
@@ -42,6 +43,7 @@
 
 | Date       | Update                                                                 |
 | ---------- | ---------------------------------------------------------------------- |
+| 2026-07-26 | AIX-007 added — token cost reduction, specced from a cost review of the AIX-002 slice-5 measurements (the first task in this phase to start from a real measured baseline rather than a design goal). Found four unexploited levers: prompt caching is absent entirely; `initialUserMessage`/`updateUserMessage` place the varying request *ahead* of the stable context blocks, which defeats a cache breakpoint before one is even added; `thinking: adaptive` runs at the inherited default effort with no per-call-site control; and `AiUsage` has no cache-token fields, so landing caching first would silently corrupt our own cost reporting in the flattering direction. Sequencing puts accounting before optimisation for exactly that reason. Target ≥30% cost/component holding 8/8 first-attempt validity. |
 | 2026-07-22 | Phase created from NOODL-REVIVAL-ROADMAP.md Track C (C-01..C-05)       |
 | 2026-07-24 | AIX-001 complete — provider-agnostic client, model registry, Anthropic/OpenAI/compatible/Ollama adapters, secure credential storage, settings UI, 69 specs. See NOTES.md. |
 | 2026-07-24 | AIX-006 added from the [pre-revival salvage audit](../../reviews/PRE-REVIVAL-SALVAGE-AUDIT.md) §2 — the shipped phase-9 styles system has zero substrate connection; exposing it is the cheapest quality jump for the G2 demo. |

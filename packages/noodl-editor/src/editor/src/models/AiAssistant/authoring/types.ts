@@ -119,17 +119,42 @@ export interface SubmitRound {
   errorLines: string[];
 }
 
+/** What one model round-trip cost, for per-turn analysis of a session. */
+export interface TurnUsage {
+  /** 1-based, across the whole session including refinements. */
+  turn: number;
+  promptTokens: number;
+  completionTokens: number;
+  cacheReadTokens: number;
+  cacheWriteTokens: number;
+}
+
 export interface AuthoringMetrics {
   /** Model round-trips. */
   turns: number;
+  /**
+   * Usage per round-trip. Aggregates hide the thing worth checking: whether
+   * turn 2 actually read the prefix turn 1 wrote. This is what makes that
+   * assertable rather than inferred from a cost drop.
+   */
+  usageByTurn: TurnUsage[];
   /** Submission attempts. */
   submits: number;
   contextLog: ContextLogEntry[];
   totalContextChars: number;
   /** Total characters across the final transcript — the real "what was sent" bound. */
   transcriptChars: number;
+  /**
+   * Uncached input tokens. AIX-007: once prompt caching is on, this is the
+   * remainder that was NOT served from cache — add the two cache fields for
+   * what the requests actually carried.
+   */
   promptTokens: number;
   completionTokens: number;
+  /** Input tokens served from the provider's prompt cache, at ~0.1x input. */
+  cacheReadTokens: number;
+  /** Input tokens written to the prompt cache, at ~1.25x input. */
+  cacheWriteTokens: number;
   /** Null when any request had unknown pricing — never silently zero. */
   costUsd: number | null;
 }

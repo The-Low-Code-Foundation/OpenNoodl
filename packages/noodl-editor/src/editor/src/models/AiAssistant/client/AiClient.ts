@@ -61,10 +61,13 @@ const usageLog: AiUsageRecord[] = [];
 
 function record(provider: AiProviderId, response: AiChatResponse) {
   usageLog.push({ provider, model: response.model, usage: response.usage, at: Date.now() });
-  const cost = response.usage.costUsd;
+  const { promptTokens, completionTokens, cacheReadTokens, cacheWriteTokens, costUsd } = response.usage;
+  // AIX-007: `promptTokens` is the uncached remainder, so the cached share is
+  // logged beside it — otherwise a cached turn reads as a tiny prompt.
+  const cached = cacheReadTokens > 0 || cacheWriteTokens > 0 ? ` (+${cacheReadTokens} cached, ${cacheWriteTokens} written)` : '';
   console.debug(
-    `[ai] ${provider}/${response.model} — ${response.usage.promptTokens} in / ` +
-      `${response.usage.completionTokens} out, ${cost === null ? 'cost unknown' : `$${cost.toFixed(6)}`}`
+    `[ai] ${provider}/${response.model} — ${promptTokens} in${cached} / ` +
+      `${completionTokens} out, ${costUsd === null ? 'cost unknown' : `$${costUsd.toFixed(6)}`}`
   );
 }
 

@@ -29,7 +29,14 @@
 import type { ConnectionV2 } from '../../../schemas';
 import { formatDiagnosticLine } from '../../../validation';
 import { AiClient } from '../client';
-import type { AiChatRequest, AiChatResponse, AiMessage, AiStreamCallbacks, AiToolCall } from '../client/types';
+import type {
+  AiChatRequest,
+  AiChatResponse,
+  AiEffort,
+  AiMessage,
+  AiStreamCallbacks,
+  AiToolCall
+} from '../client/types';
 import { findComponent } from '../explain/graph';
 import type { ExplainGraph } from '../explain/types';
 import type { StyleVocabulary } from '../../StyleTokensModel/StyleVocabulary';
@@ -37,6 +44,7 @@ import type { StyleTokenRecord } from '../../StyleTokensModel/TokenCategories';
 import { buildCandidate, pathToLegacyName } from './candidate';
 import { AuthoringContextBuilder } from './ContextBuilder';
 import { PartialPayloadScanner } from './partial';
+import type { OpeningTurn } from './prompts/authoring';
 import {
   initialUserMessage,
   nudgeMessage,
@@ -64,7 +72,8 @@ import type {
   ContextBudget,
   SubmitPayload,
   SubmitRound,
-  SubmittedNode
+  SubmittedNode,
+  TurnUsage
 } from './types';
 import { validateCandidateComponent } from './validate';
 
@@ -91,10 +100,32 @@ export interface AuthoringSessionOptions {
    * pre-AIX-006 behaviour. Used by the A/B measurement's control arm. Default true.
    */
   styleGuidance?: boolean;
+  /**
+   * AIX-007: reasoning depth for this session's requests. Defaults to
+   * `AUTHORING_EFFORT`; the measurement harness overrides it to sweep.
+   */
+  effort?: AiEffort;
 }
 
 const DEFAULT_MAX_TURNS = 12;
 const DEFAULT_MAX_SUBMITS = 4;
+
+/**
+ * AIX-007 — the authoring loop's reasoning depth, chosen by measurement rather
+ * than inherited.
+ *
+ * Anthropic's default is `high`; the sweep over the 8-prompt corpus is in
+ * AIX-007-NOTES.md. `low` was not merely the cheapest level that held validity
+ * — it was the only level that reached 8/8, at a fifth of `high`'s cost and a
+ * sixth of its latency. Above it the model spends its budget deliberating
+ * rather than acting: at `high` the hardest prompt burned 32k reasoning tokens
+ * across seven turns and never submitted anything at all.
+ *
+ * This is not "cheap mode". The validation gate is what makes a first attempt
+ * good, and it is unchanged; effort only decides how long the model thinks
+ * before reaching for it. Re-run `--effort=` sweeps before changing this.
+ */
+export const AUTHORING_EFFORT: AiEffort = 'low';
 
 /** Thrown at creation for requests that could never succeed. */
 export class AuthoringSetupError extends Error {
@@ -188,6 +219,7 @@ export class AuthoringSession {
   private readonly chat: AuthoringChatFn;
   private readonly maxTurns: number;
   private readonly maxSubmits: number;
+  private readonly effort: AiEffort;
   readonly context: AuthoringContextBuilder;
   readonly legacyName: string;
 
@@ -197,6 +229,9 @@ export class AuthoringSession {
   private turns = 0;
   private promptTokens = 0;
   private completionTokens = 0;
+  private cacheReadTokens = 0;
+  private cacheWriteTokens = 0;
+  private readonly usageByTurn: TurnUsage[] = [];
   private costUsd: number | null = 0;
   private started = false;
   private inFlight = false;
@@ -227,6 +262,7 @@ export class AuthoringSession {
     this.chat = options.chat ?? ((req, callbacks) => AiClient.chatStream(req, callbacks ?? {}));
     this.maxTurns = options.maxTurns ?? DEFAULT_MAX_TURNS;
     this.maxSubmits = options.maxSubmits ?? DEFAULT_MAX_SUBMITS;
+    this.effort = options.effort ?? AUTHORING_EFFORT;
     this.styleGuidance = options.styleGuidance ?? true;
     this.styleTokenRecords = options.styleTokenRecords;
     this.context = new AuthoringContextBuilder(graph, options.budget, undefined, options.styleVocabulary);
@@ -338,7 +374,7 @@ export class AuthoringSession {
       throw new AuthoringStateError('run() was already called — continue with refine() instead.');
     }
     this.started = true;
-    let opening: string;
+    let opening: OpeningTurn;
     if (this.mode === 'update' && this.baseFiles) {
       const source = this.context.currentComponentSource(this.baseFiles);
       if (this.context.log.some((entry) => entry.source === 'current-component' && entry.refused)) {
@@ -367,7 +403,12 @@ export class AuthoringSession {
         this.styleGuidance ? this.context.styleVocabulary() : undefined
       );
     }
-    this.messages.push({ role: 'system', content: systemPrompt(this.mode) }, { role: 'user', content: opening });
+    this.messages.push(
+      { role: 'system', content: systemPrompt(this.mode) },
+      // The boundary rides along so a caching provider can put a breakpoint at
+      // the end of the reference blocks. Nothing else reads it.
+      { role: 'user', content: opening.content, cacheBoundary: opening.cacheBoundary }
+    );
     this.activities.push({ kind: 'user', text: this.request.description });
     return this.round(options);
   }
@@ -436,6 +477,7 @@ export class AuthoringSession {
             messages: [...this.messages],
             tools: AUTHORING_TOOLS,
             toolChoice: 'auto',
+            effort: this.effort,
             abortController
           },
           {
@@ -480,6 +522,15 @@ export class AuthoringSession {
 
       this.promptTokens += response.usage.promptTokens;
       this.completionTokens += response.usage.completionTokens;
+      this.cacheReadTokens += response.usage.cacheReadTokens;
+      this.cacheWriteTokens += response.usage.cacheWriteTokens;
+      this.usageByTurn.push({
+        turn: this.turns,
+        promptTokens: response.usage.promptTokens,
+        completionTokens: response.usage.completionTokens,
+        cacheReadTokens: response.usage.cacheReadTokens,
+        cacheWriteTokens: response.usage.cacheWriteTokens
+      });
       this.costUsd =
         this.costUsd === null || response.usage.costUsd === null ? null : this.costUsd + response.usage.costUsd;
 
@@ -492,6 +543,19 @@ export class AuthoringSession {
       prose.text = response.text ?? prose.text;
       prose.streaming = false;
       if (!prose.text.trim()) this.dropActivity(prose);
+
+      // A cancelled turn is not a model that declined to act. Providers that
+      // swallow the abort and resolve with a partial response (the Anthropic
+      // adapter does, so the caller keeps the text that did arrive) reach here
+      // with no tool calls — and without this check that falls into the nudge
+      // path below, spends another turn, and finally reports 'exhausted' for
+      // what was a cancellation. Found via AIX-007: the measurement harness's
+      // per-session timeout made every timed-out session look like the loop
+      // giving up, which is a different and much more alarming failure.
+      if (response.stopReason === 'aborted') {
+        if (stylePassBaseline) return this.finish('authored', stylePassBaseline);
+        return this.finish('cancelled');
+      }
 
       if (response.toolCalls.length === 0) {
         // Prose instead of action. Nudge once; a model that keeps talking is done.
@@ -588,12 +652,15 @@ export class AuthoringSession {
     const transcriptChars = this.messages.reduce((sum, m) => sum + m.content.length, 0);
     const metrics: AuthoringMetrics = {
       turns: this.turns,
+      usageByTurn: [...this.usageByTurn],
       submits: this.rounds.length,
       contextLog: [...this.context.log],
       totalContextChars: this.context.totalChars(),
       transcriptChars,
       promptTokens: this.promptTokens,
       completionTokens: this.completionTokens,
+      cacheReadTokens: this.cacheReadTokens,
+      cacheWriteTokens: this.cacheWriteTokens,
       costUsd: this.costUsd
     };
     console.debug(

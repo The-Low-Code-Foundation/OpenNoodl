@@ -27,6 +27,11 @@ export * from './authoring-telemetry.test';
 // one-shot advisory style pass. Fully offline; the chat function is a script.
 export * from './authoring-style.test';
 
+// AIX-007: token cost reduction. Request shape (where cache breakpoints land),
+// cache pricing arithmetic, and the stable-first ordering the caching depends
+// on. Whether the cache is hit is a live question — the harness asserts that.
+export * from './aix007-cost.test';
+
 // AIX-003: graph-native review. The change-set adapter expresses staged AI
 // proposals through SUB-007's diff engine; specs diff against components
 // accepted through the real staging path.

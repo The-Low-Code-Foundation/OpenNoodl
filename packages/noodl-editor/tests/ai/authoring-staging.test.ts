@@ -109,7 +109,7 @@ describe('AIX-002 authoring staging', () => {
           }
         }
       ],
-      usage: { promptTokens: 10, completionTokens: 5, costUsd: 0.01 },
+      usage: { promptTokens: 10, completionTokens: 5, cacheReadTokens: 0, cacheWriteTokens: 0, costUsd: 0.01 },
       model: 'test',
       stopReason: 'tool_calls'
     });

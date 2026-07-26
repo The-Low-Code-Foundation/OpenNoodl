@@ -94,20 +94,47 @@ export function systemPrompt(mode: AuthoringMode = 'create'): string {
   return systemPromptFor(mode);
 }
 
-/** The opening user turn: the task, the target, and the overview blocks. */
-export function initialUserMessage(
-  request: AuthoringRequest,
-  projectOverview: string,
-  catalogOverview: string,
-  styleVocabulary?: string
-): string {
+/**
+ * The opening user turn, split where the stable half ends.
+ *
+ * AIX-007: the turn is ordered reference-material-first, task-last, because
+ * prompt caching is a prefix match — anything that varies per request
+ * invalidates every cached byte after it. The reference blocks are identical
+ * for every component authored against a project, so putting them first makes
+ * the whole prefix (system prompt, tools, and these blocks) reusable from turn
+ * two onward and across consecutive sessions in one project.
+ *
+ * The task sits at the tail on purpose, not by accident of ordering: it is
+ * both the varying part and the part that most deserves recency.
+ */
+export interface OpeningTurn {
+  /** The turn as sent, stable half then variable half. */
+  content: string;
+  /**
+   * Character offset in `content` where the stable half ends. Providers with
+   * prefix caching set a breakpoint here; everyone else ignores it.
+   */
+  cacheBoundary: number;
+}
+
+/** Join a turn's two halves and record where the boundary landed. */
+function openingTurn(stable: string[], variable: string[]): OpeningTurn {
+  const stableText = stable.join('\n') + '\n\n';
+  return {
+    content: stableText + variable.join('\n'),
+    cacheBoundary: stableText.length
+  };
+}
+
+/**
+ * The reference blocks handed to every authoring turn, most-stable-first.
+ * Byte-identical across every component authored against one project — which
+ * is the whole reason they lead.
+ */
+function referenceBlocks(projectOverview: string, catalogOverview: string, styleVocabulary?: string): string[] {
   return [
-    `Build a new component at "${request.componentPath}"${
-      request.componentType ? ` (type: ${request.componentType})` : ''
-    }.`,
-    '',
-    'What it should do:',
-    request.description,
+    'Reference material for this project. Your task is at the END of this message — read these first,',
+    'then build what it asks for.',
     '',
     '--- PROJECT OVERVIEW ---',
     projectOverview,
@@ -117,7 +144,25 @@ export function initialUserMessage(
     catalogOverview,
     '--- END NODE CATALOG ---',
     ...styleBlock(styleVocabulary)
-  ].join('\n');
+  ];
+}
+
+/** The opening user turn: the overview blocks, then the task. */
+export function initialUserMessage(
+  request: AuthoringRequest,
+  projectOverview: string,
+  catalogOverview: string,
+  styleVocabulary?: string
+): OpeningTurn {
+  return openingTurn(referenceBlocks(projectOverview, catalogOverview, styleVocabulary), [
+    '--- YOUR TASK ---',
+    `Build a new component at "${request.componentPath}"${
+      request.componentType ? ` (type: ${request.componentType})` : ''
+    }.`,
+    '',
+    'What it should do:',
+    request.description
+  ]);
 }
 
 /** The STYLE VOCABULARY block, or nothing when no vocabulary was assembled. */
@@ -127,9 +172,13 @@ function styleBlock(styleVocabulary?: string): string[] {
 }
 
 /**
- * The opening user turn for an update: the task, the component as it exists
- * today (in the exact shape a submission uses, so kept nodes can be carried
- * over verbatim — ids included), and the two overview blocks.
+ * The opening user turn for an update: the overview blocks, then the component
+ * as it exists today (in the exact shape a submission uses, so kept nodes can
+ * be carried over verbatim — ids included), then the task.
+ *
+ * The current component is per-request data, so it belongs after the cache
+ * boundary with the task — not ahead of the reference blocks, which would make
+ * the shared prefix unreachable for every update.
  */
 export function updateUserMessage(
   request: AuthoringRequest,
@@ -137,12 +186,10 @@ export function updateUserMessage(
   projectOverview: string,
   catalogOverview: string,
   styleVocabulary?: string
-): string {
-  return [
+): OpeningTurn {
+  return openingTurn(referenceBlocks(projectOverview, catalogOverview, styleVocabulary), [
+    '--- YOUR TASK ---',
     `Revise the existing component "${request.componentPath}".`,
-    '',
-    'What should change:',
-    request.description,
     '',
     'This is the component as it exists today, in the same shape you submit. Start from it: keep every',
     'node id you keep, change only what the task requires, and resubmit the FULL revised component.',
@@ -153,15 +200,9 @@ export function updateUserMessage(
     currentComponentSource,
     '--- END CURRENT COMPONENT ---',
     '',
-    '--- PROJECT OVERVIEW ---',
-    projectOverview,
-    '--- END PROJECT OVERVIEW ---',
-    '',
-    '--- NODE CATALOG ---',
-    catalogOverview,
-    '--- END NODE CATALOG ---',
-    ...styleBlock(styleVocabulary)
-  ].join('\n');
+    'What should change:',
+    request.description
+  ]);
 }
 
 /**

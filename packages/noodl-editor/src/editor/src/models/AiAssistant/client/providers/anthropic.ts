@@ -39,8 +39,18 @@ import { finalizeUsage } from './usage';
  * guarantee that the server sent them.
  */
 export interface AnthropicUsage {
+  /**
+   * Uncached input only. Anthropic reports cache reads and writes in their own
+   * fields and does NOT fold them in here, so total prompt size is the sum of
+   * all three — a fact worth knowing before reading a cached run's numbers as
+   * a context-size win.
+   */
   input_tokens?: number;
   output_tokens?: number;
+  /** Prefix served from cache this request, billed at ~0.1x input. */
+  cache_read_input_tokens?: number;
+  /** Prefix written to cache this request, billed at ~1.25x input. */
+  cache_creation_input_tokens?: number;
 }
 
 export interface AnthropicTextBlock {
@@ -104,6 +114,13 @@ export interface AnthropicProviderConfig extends AiProviderConfig {
 
 const DEFAULT_MAX_TOKENS = 16_000;
 
+/**
+ * Anthropic accepts at most four `cache_control` markers per request and
+ * rejects the request outright past that — so the count is budgeted, not
+ * hoped for. We spend three; the fourth is headroom for a future call site.
+ */
+const MAX_CACHE_BREAKPOINTS = 4;
+
 function createSdkClient(config: AnthropicProviderConfig): AnthropicLike {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   const Anthropic = require('@anthropic-ai/sdk');
@@ -128,6 +145,43 @@ export interface AnthropicRequestMessage {
   content: string | AnthropicRequestBlock[];
 }
 
+/** The marker that makes a block a cache breakpoint. 5-minute TTL (the default). */
+const CACHE_CONTROL = { type: 'ephemeral' } as const;
+
+/**
+ * Mark a message's last content block as a cache breakpoint, promoting string
+ * content to a block array so there is something to mark.
+ *
+ * An empty message is left alone: there is no block to carry the marker, and
+ * an empty text block is rejected outright.
+ */
+function markCacheBreakpoint(message: AnthropicRequestMessage): boolean {
+  if (typeof message.content === 'string') {
+    if (!message.content) return false;
+    message.content = [{ type: 'text', text: message.content }];
+  }
+  const last = message.content[message.content.length - 1];
+  if (!last) return false;
+  last.cache_control = CACHE_CONTROL;
+  return true;
+}
+
+/**
+ * Split a user turn at its `cacheBoundary` into a stable block and a variable
+ * block, and mark the stable one. Returns false when the boundary is unusable
+ * (absent, or at either end) and the turn should be sent whole — a breakpoint
+ * on a block that is not actually a shared prefix costs a write and earns no
+ * reads.
+ */
+function splitAtCacheBoundary(message: AiMessage): AnthropicRequestBlock[] | null {
+  const boundary = message.cacheBoundary;
+  if (typeof boundary !== 'number' || boundary <= 0 || boundary >= message.content.length) return null;
+  return [
+    { type: 'text', text: message.content.slice(0, boundary), cache_control: CACHE_CONTROL },
+    { type: 'text', text: message.content.slice(boundary) }
+  ];
+}
+
 /**
  * Translate our flat message list into Anthropic's system + messages split.
  *
@@ -135,18 +189,43 @@ export interface AnthropicRequestMessage {
  * tool calls become `tool_use` blocks; and tool results become `user` messages
  * with `tool_result` blocks, merged when adjacent so parallel calls answer in
  * a single turn (splitting them trains the model out of parallel calls).
+ *
+ * With `cacheBoundaries`, a user message carrying one is additionally split in
+ * two so a breakpoint can sit exactly where the stable half ends. Off, the
+ * boundary is ignored and the turn is sent as one block — identical bytes
+ * either way, so this changes cost, never meaning.
+ *
+ * `maxBoundaries` caps how many of those splits are made, because breakpoints
+ * are a budgeted resource and the API rejects a request that overspends them.
+ * The earliest boundaries win: they cover the longest prefixes, and anything
+ * later is already covered by the caller's breakpoint on the newest turn.
  */
-export function toAnthropicMessages(messages: AiMessage[]): {
+export function toAnthropicMessages(
+  messages: AiMessage[],
+  options: { cacheBoundaries?: boolean; maxBoundaries?: number } = {}
+): {
   system: string | undefined;
   messages: AnthropicRequestMessage[];
+  /** How many breakpoints the messages already carry, against the cap of 4. */
+  breakpoints: number;
 } {
   const systemParts: string[] = [];
   const out: AnthropicRequestMessage[] = [];
+  let breakpoints = 0;
 
   for (const message of messages) {
     if (message.role === 'system') {
       if (message.content) systemParts.push(message.content);
       continue;
+    }
+
+    if (options.cacheBoundaries && message.role === 'user' && breakpoints < (options.maxBoundaries ?? Infinity)) {
+      const split = splitAtCacheBoundary(message);
+      if (split) {
+        out.push({ role: 'user', content: split });
+        breakpoints++;
+        continue;
+      }
     }
 
     if (message.role === 'tool') {
@@ -186,7 +265,8 @@ export function toAnthropicMessages(messages: AiMessage[]): {
 
   return {
     system: systemParts.length > 0 ? systemParts.join('\n\n') : undefined,
-    messages: out
+    messages: out,
+    breakpoints
   };
 }
 
@@ -231,7 +311,15 @@ export class AnthropicProvider implements AiProvider {
     }
 
     const model = resolveModel(modelId, this.id);
-    const { system, messages } = toAnthropicMessages(request.messages);
+    const caching = model.capabilities.promptCaching === true;
+    // Two of the four markers are spoken for here — one for system, one for the
+    // newest turn — so the mapper may spend at most the remaining two. It is
+    // budgeted rather than checked afterwards: an over-budget request is a 400,
+    // and there is no partial success to fall back to.
+    const { system, messages, breakpoints } = toAnthropicMessages(request.messages, {
+      cacheBoundaries: caching,
+      maxBoundaries: MAX_CACHE_BREAKPOINTS - 2
+    });
 
     const params: Record<string, unknown> = {
       model: modelId,
@@ -240,7 +328,28 @@ export class AnthropicProvider implements AiProvider {
       ...(stream ? { stream: true } : {})
     };
 
-    if (system) params.system = system;
+    // AIX-007 — prompt caching. Anthropic renders tools, then system, then
+    // messages, so a breakpoint on the last system block covers the tool
+    // definitions too: one marker, the whole fixed preamble.
+    //
+    // Three breakpoints at most, against a cap of four:
+    //   1. end of system (and therefore of tools)
+    //   2. end of the opening turn's reference blocks (set by the mapper)
+    //   3. end of the newest turn — the growing conversation prefix
+    //
+    // (3) is what makes turn N+1 read turns 1..N. Each request moves it
+    // forward by one turn, and a turn adds a handful of blocks at most, so it
+    // stays inside the 20-block lookback that a breakpoint searches for a
+    // prior entry.
+    let spent = breakpoints;
+    if (system) {
+      params.system = caching ? [{ type: 'text', text: system, cache_control: CACHE_CONTROL }] : system;
+      if (caching) spent++;
+    }
+
+    if (caching && messages.length > 0 && spent < MAX_CACHE_BREAKPOINTS) {
+      markCacheBreakpoint(messages[messages.length - 1]);
+    }
 
     // Current Claude frontier models reject `temperature` with a 400. Features
     // pass `temperature: 0` for determinism without knowing which provider
@@ -253,6 +362,13 @@ export class AnthropicProvider implements AiProvider {
     // visible text stays clean for the XML-parsing templates.
     if (model.capabilities.adaptiveThinking) {
       params.thinking = { type: 'adaptive', display: 'omitted' };
+    }
+
+    // AIX-007 — reasoning depth. Unset inherits Anthropic's default of `high`,
+    // which is why every cost-sensitive call site passes one explicitly rather
+    // than leaving it to the API.
+    if (model.capabilities.effort && request.effort) {
+      params.output_config = { effort: request.effort };
     }
 
     if (request.tools?.length) {
@@ -301,12 +417,10 @@ export class AnthropicProvider implements AiProvider {
       toolCalls,
       model: raw.model || String(params.model),
       stopReason: toStopReason(raw.stop_reason),
-      usage: finalizeUsage(
-        String(params.model),
-        this.id,
-        raw.usage?.input_tokens ?? 0,
-        raw.usage?.output_tokens ?? 0
-      )
+      usage: finalizeUsage(String(params.model), this.id, raw.usage?.input_tokens ?? 0, raw.usage?.output_tokens ?? 0, {
+        cacheReadTokens: raw.usage?.cache_read_input_tokens ?? 0,
+        cacheWriteTokens: raw.usage?.cache_creation_input_tokens ?? 0
+      })
     };
   }
 
@@ -318,6 +432,9 @@ export class AnthropicProvider implements AiProvider {
     const toolCalls: AiToolCall[] = [];
     let promptTokens = 0;
     let completionTokens = 0;
+    // Cache counts arrive once, on `message_start`, alongside the input count.
+    let cacheReadTokens = 0;
+    let cacheWriteTokens = 0;
     let stopReason: AiStopReason = 'unknown';
     let servedModel = String(params.model);
 
@@ -339,6 +456,8 @@ export class AnthropicProvider implements AiProvider {
           case 'message_start':
             promptTokens = event.message?.usage?.input_tokens ?? promptTokens;
             completionTokens = event.message?.usage?.output_tokens ?? completionTokens;
+            cacheReadTokens = event.message?.usage?.cache_read_input_tokens ?? cacheReadTokens;
+            cacheWriteTokens = event.message?.usage?.cache_creation_input_tokens ?? cacheWriteTokens;
             servedModel = event.message?.model || servedModel;
             break;
 
@@ -410,7 +529,10 @@ export class AnthropicProvider implements AiProvider {
       toolCalls,
       model: servedModel,
       stopReason,
-      usage: finalizeUsage(String(params.model), this.id, promptTokens, completionTokens)
+      usage: finalizeUsage(String(params.model), this.id, promptTokens, completionTokens, {
+        cacheReadTokens,
+        cacheWriteTokens
+      })
     };
   }
 
