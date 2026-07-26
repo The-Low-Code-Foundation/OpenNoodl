@@ -10,7 +10,7 @@ higher-level summaries.
 | BAK-003 | Access control | ✅ Complete (Phase 22, prior) |
 | BAK-004 | OAuth & passwordless | ⬜ Not started |
 | BAK-005 | Served admin dashboard | ✅ Shipped 2026-07-26 (browser walkthrough + packaged run residual) |
-| BAK-006 | File storage v2 | ⬜ Not started |
+| BAK-006 | File storage v2 | ✅ Complete 2026-07-26 |
 | BAK-007 | Backups / export / promotion | ✅ Complete 2026-07-26 (merge `c8431a0`) |
 | BAK-008 | Full-text search | ⬜ Not started |
 | BAK-009 | Production ops | ⬜ Not started |
@@ -180,3 +180,41 @@ credential tiers, refusal messages, delete-table, rate limiting, `--no-admin`.
 - Documented trade-offs: the rate limiter can lock out an operator who shares an
   attacker's apparent client identity; the credential in `sessionStorage` is the
   master key; the palette is a copy of the UIX-001 tokens, not an import.
+
+---
+
+## BAK-006 — File Storage v2 (Metadata, Transforms, S3 Driver)
+
+**Status:** Complete 2026-07-26. Full detail, every decision, and exactly how
+each was verified: [BAK-006-NOTES.md](./BAK-006-NOTES.md).
+
+### What shipped
+`_Files` metadata (real `ACL` column, BAK-003's row model reused verbatim);
+size/type validation with magic-byte sniffing (never the declared type/
+extension) and hash-bucketed storage keys; private files + short-TTL signed
+URLs for `<img src>`; `?thumb=` presets with disk caching and correct
+ETag/Cache-Control, sharp fully optional with a real (not simulated) loud 501
+when absent; a `StorageDriver` interface with `local` and `S3`-compatible
+implementations (S3 signed by a from-scratch SigV4 verified against AWS's own
+published test fixtures, and separately run against a real MinIO instance);
+a report-only-by-default orphan sweep on WF-005's `CronScheduler`; admin
+dashboard **Files** tab + 3 new MCP tools; `docs/runtime/BACKEND-FILES.md`.
+
+### Tests
+`nodegx-backend` **403/403** (7 of them S3-conformance, env-gated — also run
+green against real MinIO), typecheck clean, bundle builds (confirmed no
+`require("sharp")` literal lands in `dist/cli.js`). `noodl-runtime`
+**362/362** unaffected. `noodl-mcp` **55/55** (4 new, against a real spawned
+backend). `catalog:check` green (no runtime node touched). Live curl pass
+against the built `dist/cli.js`.
+
+### Residuals
+One real (non-MinIO) S3 provider spot-check; a live HTTP pass with S3 as the
+ACTIVE driver (vs. its already-green conformance suite); a "Private" input on
+the Upload File node + a "Sign File URL" node (header-based private upload is
+fully functional today; node ergonomics are a scoped follow-up); dashboard
+Files tab not opened in a browser. A real pre-existing bug was found and
+worked around (not root-fixed, to keep the footprint in a shared file
+minimal): `http-util.ts`'s `readRawBody` destroys the socket before an
+over-limit response can send — `files.ts` now checks `Content-Length` upfront
+first, matching WF-005's existing webhook workaround for the same issue.
