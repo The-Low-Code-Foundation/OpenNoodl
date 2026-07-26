@@ -29018,6 +29018,268 @@
       }
     },
     {
+      "typeName": "net.noodl.OptimisticUpdate",
+      "displayName": "Optimistic Update",
+      "category": "Data",
+      "isVisual": false,
+      "isDeprecated": false,
+      "inNodePicker": true,
+      "availableIn": [
+        "browser",
+        "cloud"
+      ],
+      "providedBy": "noodl-runtime",
+      "ssr": {
+        "compat": "safe"
+      },
+      "inputs": [
+        {
+          "name": "apply",
+          "displayName": "Apply",
+          "group": "Actions",
+          "plug": "input",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "isSignal": true
+        },
+        {
+          "name": "commit",
+          "displayName": "Commit",
+          "group": "Actions",
+          "plug": "input",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "isSignal": true
+        },
+        {
+          "name": "errorMessage",
+          "displayName": "Error Message",
+          "group": "Update",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "Reason reported on Error when this update is rolled back. Wire the server error here."
+        },
+        {
+          "name": "key",
+          "displayName": "Key",
+          "group": "Store",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "onDispose",
+          "displayName": "When Removed",
+          "group": "Config",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "allowEditOnly": true,
+            "enums": [
+              {
+                "label": "Roll back",
+                "value": "rollback"
+              },
+              {
+                "label": "Keep the value",
+                "value": "commit"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "rollback",
+          "description": "What happens to updates still in flight when this node is removed. Rolling back keeps the store honest; keeping the value suits fire-and-forget actions the user navigates away from."
+        },
+        {
+          "name": "optimisticValue",
+          "displayName": "Optimistic Value",
+          "group": "Update",
+          "plug": "input",
+          "type": {
+            "name": "*"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "rollback",
+          "displayName": "Rollback",
+          "group": "Actions",
+          "plug": "input",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "isSignal": true
+        },
+        {
+          "name": "storeName",
+          "displayName": "Store Name",
+          "group": "Store",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "default": "app"
+        },
+        {
+          "name": "timeout",
+          "displayName": "Timeout (ms)",
+          "group": "Config",
+          "plug": "input",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false,
+          "default": 30000,
+          "description": "Roll back automatically after this long with no answer. Zero disables the deadline."
+        },
+        {
+          "name": "transactionId",
+          "displayName": "Transaction Id",
+          "group": "Transaction",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "Leave blank to let the node generate one. Set it to commit or roll back a specific update when several are in flight."
+        }
+      ],
+      "outputs": [
+        {
+          "name": "applied",
+          "displayName": "Applied",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true
+        },
+        {
+          "name": "committed",
+          "displayName": "Committed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true
+        },
+        {
+          "name": "error",
+          "displayName": "Error",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "isCommitted",
+          "displayName": "Is Committed",
+          "group": "Status",
+          "plug": "output",
+          "type": {
+            "name": "boolean"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "isPending",
+          "displayName": "Is Pending",
+          "group": "Status",
+          "plug": "output",
+          "type": {
+            "name": "boolean"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "isRolledBack",
+          "displayName": "Is Rolled Back",
+          "group": "Status",
+          "plug": "output",
+          "type": {
+            "name": "boolean"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "pendingCount",
+          "displayName": "Pending Count",
+          "group": "Status",
+          "plug": "output",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "previousValue",
+          "displayName": "Previous Value",
+          "group": "Data",
+          "plug": "output",
+          "type": {
+            "name": "*"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "rolledBack",
+          "displayName": "Rolled Back",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true
+        },
+        {
+          "name": "timedOut",
+          "displayName": "Timed Out",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true
+        },
+        {
+          "name": "transactionId",
+          "displayName": "Transaction Id",
+          "group": "Info",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "value",
+          "displayName": "Value",
+          "group": "Data",
+          "plug": "output",
+          "type": {
+            "name": "*"
+          },
+          "isSignal": false
+        }
+      ],
+      "dynamicPorts": null
+    },
+    {
       "typeName": "net.noodl.ParentComponentObject",
       "displayName": "Parent Component Object",
       "category": "Component Utilities",
@@ -46126,7 +46388,7 @@
     "docs": "docs/node-catalog/ENRICHMENT.md",
     "coverage": {
       "documented": 148,
-      "total": 148
+      "total": 149
     }
   },
   "compatibility": {

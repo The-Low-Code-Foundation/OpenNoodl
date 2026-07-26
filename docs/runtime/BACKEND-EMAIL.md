@@ -28,7 +28,7 @@ In the editor: **Backend Services → (your local backend) → Email**.
 | Host / Port / Security | Your SMTP endpoint. STARTTLS/plaintext is typically 587 or 25; implicit TLS is typically 465. |
 | Username / Password | Your SMTP credential. The password is stored in `<dataDir>/secrets.json` (mode 0600, plaintext — see "Secrets" below) and is never echoed back by any read surface (panel, MCP, or the HTTP API). |
 | From address / name | What recipients see. |
-| Base URL | **The backend's deployed origin**, e.g. `https://api.yourapp.com` — used to build the links in reset/verify emails. This is the ONE canonical base-URL setting for the backend; a later magic-link/OAuth feature reuses this same field rather than adding a second one. Leave it blank during local development and the backend falls back to `http://127.0.0.1:<port>` (a warning surfaces on test-send so you don't ship a broken link by accident). |
+| Base URL | **The backend's deployed origin**, e.g. `https://api.yourapp.com` — used to build the links in reset/verify emails. This is the ONE canonical base-URL setting for the backend; OAuth callback URLs and magic links reuse this same field rather than adding a second one (see [Sign-in](./BACKEND-AUTH.md)), so getting it wrong breaks provider sign-in as well as email links. Leave it blank during local development and the backend falls back to `http://127.0.0.1:<port>` (a warning surfaces on test-send so you don't ship a broken link by accident). |
 | Enabled | Master on/off switch, separate from having the fields filled in — lets you finish setup before flows start firing for real. |
 
 Click **Send test email** after saving — it either succeeds or tells you

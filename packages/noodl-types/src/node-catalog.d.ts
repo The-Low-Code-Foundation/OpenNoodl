@@ -116,6 +116,7 @@ export type NodeTypeName =
   | 'net.noodl.GlobalStore.Subscribe'
   | 'net.noodl.HTTP'
   | 'net.noodl.JSONStreamParser'
+  | 'net.noodl.OptimisticUpdate'
   | 'net.noodl.ParentComponentObject'
   | 'net.noodl.PatternExtractor'
   | 'net.noodl.SSE'

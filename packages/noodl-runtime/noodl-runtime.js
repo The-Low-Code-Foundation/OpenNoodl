@@ -74,6 +74,7 @@ function registerNodes(noodlRuntime) {
     require('./src/nodes/std-library/agent/globalstorenode'),
     require('./src/nodes/std-library/agent/globalstoresetnode'),
     require('./src/nodes/std-library/agent/globalstoresubscribenode'),
+    require('./src/nodes/std-library/agent/optimisticupdatenode'),
     require('./src/nodes/std-library/agent/websocket'),
     require('./src/nodes/std-library/agent/sse'),
     require('./src/nodes/std-library/agent/text-accumulator'),

@@ -27,6 +27,7 @@ The raw material exists. `packages/noodl-editor/src/editor/src/models/AiAssistan
 | AIX-004 | [Explain Mode](./AIX-004-EXPLAIN-MODE.md) | Select node/subgraph → AI narrates what it does, where data flows, what triggers what | 2 wks | 🟠 Opus 4.8 |
 | AIX-005 | [Agentic UI Nodes](./AIX-005-AGENTIC-UI-NODES.md) | Implement phase-3.5's AGENT-001..007 (SSE/WebSocket/state-store nodes) so Noodl apps can *be* agent frontends | 6-8 wks | 🟠 Opus 4.8 |
 | AIX-006 | [Style Vocabulary](./AIX-006-STYLE-VOCABULARY.md) | Expose the shipped phase-9 token/variant system to the authoring loop + MCP; StyleAnalyzer as post-generation style linter. Added 2026-07-24 from the salvage audit — the cheapest visible quality jump for the G2 demo | ~1 wk | 🟠 Opus 4.8 |
+| AIX-007 | [Token Cost Reduction](./AIX-007-TOKEN-COST-REDUCTION.md) | Prompt caching + cache-first prefix ordering, per-call-site reasoning effort, cache-aware cost accounting, model default re-decided on evidence. Added 2026-07-26 from a cost review of the AIX-002 slice-5 measurements — four unexploited levers, ≥30% target | ~1 wk | 🟠 Opus 4.8 |
 
 ---
 
@@ -40,12 +41,15 @@ AIX-001 (modern client) ── first; everything else calls through it
     │        ├──► AIX-003 (review)  ⟵ depends on phase-13 SUB-007 (graph diff)
     │        └──► AIX-005 (agentic UI nodes) — only after AIX-002 proves out
     └──► AIX-004 (explain mode)     ⟵ same catalog as AIX-002; can run in parallel
+
+AIX-007 (token cost) ── after AIX-002 ships; needs its measured baseline to optimise against
 ```
 
 - **AIX-001 goes first.** It is pure plumbing with no cross-phase dependencies, and every other task consumes it.
 - **AIX-002 and AIX-004 depend on phase-13 (`format-ai-substrate`, documented in parallel):** SUB-004 delivers `node-catalog.json` (the enumerable node/port/parameter vocabulary), SUB-006 the semantic validator. Without those, an LLM can emit schema-valid JSON that wires nonexistent ports.
 - **AIX-003 depends on phase-13 SUB-007** (v2-aware graph diff).
 - **AIX-005 is last, by design.** Phase 3.5 (AGENT-001..007) is 0/7 spec stubs today; it is genuinely differentiating but pointless before the authoring loop exists.
+- **AIX-007 could not have been written earlier.** It optimises against AIX-002's slice-5 live measurements; before those existed there was no baseline to beat and no way to tell a real saving from a plausible one. It edits the adapter layer, so explain mode and review inherit the wins without their own work.
 
 ## Exit Criterion
 
