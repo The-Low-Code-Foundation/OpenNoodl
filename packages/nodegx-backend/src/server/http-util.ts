@@ -35,22 +35,57 @@ export function parseURL(url: string): { pathname: string; query: Record<string,
   return { pathname, query };
 }
 
-/** Read the request body as a Buffer (for file uploads). */
+/**
+ * Read the request body as a Buffer (for file uploads).
+ *
+ * On overflow this stops consuming and rejects with a 413, but deliberately
+ * does **not** destroy the request. It used to: `req.destroy()` tears down the
+ * socket, so the 413 the caller then tried to write never reached the client —
+ * the sender saw a bare `ECONNRESET` and had no idea it had hit a size limit.
+ * Both call sites papered over that with their own Content-Length pre-check,
+ * which only helps senders that declare a length.
+ *
+ * Instead the request is paused and left intact so the caller's error response
+ * can be written. `sendError` marks 413s `Connection: close`, which is what
+ * actually ends the socket — after the status has been flushed, and without
+ * Node trying to parse the rest of the upload as a second pipelined request.
+ */
 export function readRawBody(req: http.IncomingMessage, maxSize: number = MAX_FILE_BODY): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
     let size = 0;
-    req.on('data', (chunk: Buffer) => {
+    let settled = false;
+
+    function settle(err: Error | null, value?: Buffer) {
+      if (settled) return;
+      settled = true;
+      req.off('data', onData);
+      req.off('end', onEnd);
+      req.off('error', onError);
+      if (err) {
+        // Stop pulling bytes we have already decided to refuse. The socket
+        // stays open exactly long enough for the response.
+        req.pause();
+        reject(err);
+      } else {
+        resolve(value as Buffer);
+      }
+    }
+
+    const onData = (chunk: Buffer) => {
       size += chunk.length;
       if (size > maxSize) {
-        reject(new HttpError(413, 'Request body too large'));
-        req.destroy();
+        settle(new HttpError(413, 'Request body too large'));
         return;
       }
       chunks.push(chunk);
-    });
-    req.on('end', () => resolve(Buffer.concat(chunks)));
-    req.on('error', reject);
+    };
+    const onEnd = () => settle(null, Buffer.concat(chunks));
+    const onError = (err: Error) => settle(err);
+
+    req.on('data', onData);
+    req.on('end', onEnd);
+    req.on('error', onError);
   });
 }
 
@@ -104,7 +139,11 @@ export function sendError(res: http.ServerResponse, err: unknown): void {
   if (err instanceof HttpError) {
     const body: Record<string, unknown> = { error: err.message };
     if (err.parseCode !== undefined) body.code = err.parseCode;
-    sendJSON(res, err.status, body);
+    // A 413 is raised while the body is still arriving, so the rest of it is
+    // still in flight on this socket. Keeping the connection alive would leave
+    // Node trying to read those bytes as the next pipelined request; closing
+    // after the response is what lets the client actually read the status.
+    sendJSON(res, err.status, body, err.status === 413 ? { Connection: 'close' } : {});
     return;
   }
   const message = err instanceof Error ? err.message : String(err);

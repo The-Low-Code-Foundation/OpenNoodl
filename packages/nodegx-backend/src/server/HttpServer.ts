@@ -1220,9 +1220,10 @@ export class HttpServer {
     const source = `webhook ${slug}`;
     const maxBytes = trigger.webhook.maxBodyBytes;
 
-    // Per-hook size limit. Reject on the declared Content-Length FIRST so the
-    // response sends cleanly (reading-then-destroying the socket would race the
-    // 413 with a connection reset). Real senders always set Content-Length.
+    // Per-hook size limit. Reject on the declared Content-Length first so an
+    // oversized hook body is refused before it is read at all; the streaming
+    // check below is the backstop for senders that do not declare one, and
+    // since BAK-009 it returns a real 413 rather than resetting the socket.
     const declaredLength = Number(ctx.req.headers['content-length'] || '0');
     if (declaredLength && declaredLength > maxBytes) {
       dispatcher.recordRejection({

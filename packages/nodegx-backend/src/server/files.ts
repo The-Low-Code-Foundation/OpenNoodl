@@ -98,13 +98,10 @@ export class FileRoutes {
   async upload(ctx: RequestContext): Promise<void> {
     const config = this.subsystem.config.get();
 
-    // Reject on the declared Content-Length FIRST, same pattern WF-005's
-    // webhook body limit uses (HttpServer.ts's handleWebhook comment): reading
-    // past the limit then destroying the socket races the 413 response with a
-    // connection reset, so a real sender (which always sets Content-Length for
-    // a file upload) never actually SEES the 413 — it just sees the socket
-    // die. `readRawBody`'s own maxSize is kept as a backstop for chunked/
-    // unset-length bodies.
+    // Reject on the declared Content-Length first, so an oversized upload is
+    // refused before a single byte of it is read. `readRawBody`'s own maxSize
+    // is the backstop for chunked / unset-length bodies, and since BAK-009 it
+    // delivers a real 413 there too rather than resetting the connection.
     const declaredLength = Number(ctx.req.headers['content-length'] || '0');
     if (declaredLength && declaredLength > config.maxUploadBytes) {
       throw new HttpError(413, `Upload exceeds this backend's ${config.maxUploadBytes}-byte limit.`);
