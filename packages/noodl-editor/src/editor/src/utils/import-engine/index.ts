@@ -12,8 +12,10 @@
  *   plan(inventory, source, selection, target) → ImportPlan   (plan.ts, pure)
  *   apply(plan, target) → ImportResult     (apply.ts, I/O shell over applyModel.ts)
  *
- * The five legacy call sites reach the engine through `legacyAdapter.ts`, a thin
- * strangler that keeps the shared `ImportPopup` working until LIB-005 replaces it.
+ * LIB-004 shipped a `legacyAdapter` strangler so the old checkbox popups could
+ * run on this engine unchanged. LIB-005 replaced those popups with
+ * `views/ImportFlow`, which calls these three stages directly, and the adapter
+ * was deleted with them.
  *
  * @module noodl-editor/utils/import-engine
  */
@@ -28,5 +30,3 @@ export type { TargetProject, PlanOptions } from './plan';
 export { apply } from './apply';
 export { applyModelChanges } from './applyModel';
 export type { ImportSource, ImportTarget, PreparedComponent, ModelApplyResult } from './applyModel';
-export { LegacyImportAdapter } from './legacyAdapter';
-export type { LegacyImports, LegacyCollisions } from './legacyAdapter';

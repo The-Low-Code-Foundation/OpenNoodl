@@ -1,13 +1,13 @@
 import { ProjectModel } from '@noodl-models/projectmodel';
 
 import { ViewerConnection } from '../ViewerConnection';
-import PopupLayer from '../views/popuplayer';
+import { ImportFlowCancelled, openExportFlow } from '../views/ImportFlow';
 import { ToastLayer } from '../views/ToastLayer/ToastLayer';
 import FileSystem from './filesystem';
-import ProjectImporter from './import-engine/legacyAdapter';
+import { apply as applyPlan } from './import-engine';
+import type { ImportPlan, ImportResult } from './import-engine';
 import { guid } from './utils';
 
-const ImportPopup = require('../views/importpopup').default;
 const archiver = require('archiver');
 const fs = require('fs');
 
@@ -76,85 +76,94 @@ function _zipFolderContent(options) {
   });
 }
 
-export function exportProjectComponents() {
-  ProjectImporter.instance.listComponentsAndDependencies(ProjectModel.instance._retainedProjectDirectory, (imports) => {
-    const activityId = 'exporting-components';
+/** Stage the planned selection into a throwaway project and zip it up. */
+async function stageAndZip(plan: ImportPlan): Promise<ImportResult> {
+  const activityId = 'exporting-components';
+  ToastLayer.showActivity('Exporting...', activityId);
 
-    // Show popup and allow the user to choose which components to export
-    // we reuse the import popup with a new template
-    var chooseExportsPopup = new ImportPopup({
-      variant: 'export',
-      imports: imports,
-      onOk: function () {
-        ToastLayer.showActivity('Exporting...', activityId);
+  const exportName = 'export-' + guid();
+  const exportDir = FileSystem.instance.getTempPath() + exportName;
+  FileSystem.instance.makeDirectorySync(exportDir);
 
-        // Export to temporary directory
-        const exportName = 'export-' + guid();
-        const exportDir = FileSystem.instance.getTempPath() + exportName;
-        FileSystem.instance.makeDirectorySync(exportDir);
-        const project = ProjectModel.fromJSON({
-          name: 'Export',
-          components: [],
-          settings: {},
-          version: '3',
-          metadata: {},
-          variants: []
-        });
-        project._retainedProjectDirectory = exportDir;
-
-        const selectedExports = chooseExportsPopup.getSelectedImports();
-        ViewerConnection.instance.setWatchModelChangesEnabled(false);
-        ProjectImporter.instance.import(
-          ProjectModel.instance._retainedProjectDirectory,
-
-          selectedExports,
-          (r) => {
-            ViewerConnection.instance.setWatchModelChangesEnabled(true);
-            PopupLayer.instance.hideModal();
-
-            if (r.result !== 'success') {
-              ToastLayer.hideActivity(activityId);
-              ToastLayer.showError(r.message);
-              return;
-            }
-
-            project.toDirectory(project._retainedProjectDirectory, (r) => {
-              if (r.result !== 'success') {
-                ToastLayer.hideActivity(activityId);
-                ToastLayer.showSuccess(r.message);
-              } else {
-                FileSystem.instance.chooseDirectory(function (direntry) {
-                  if (!direntry) {
-                    ToastLayer.hideActivity(activityId);
-                    return;
-                  }
-
-                  _zipFolderContent({ folder: exportDir, output: direntry + '/' + exportName + '.zip' })
-                    .then(() => {
-                      ToastLayer.hideActivity(activityId);
-                      ToastLayer.showSuccess('Export successful');
-                    })
-                    .catch(() => {
-                      ToastLayer.hideActivity(activityId);
-                      ToastLayer.showError('Failed to create archive');
-                    });
-                });
-              }
-            });
-          },
-          { importIntoProject: project }
-        );
-      },
-      onCancel: function () {
-        PopupLayer.instance.hideModal();
-      }
-    });
-    chooseExportsPopup.render();
-    chooseExportsPopup.el.style.width = '500px'; // Make it a little bit wider as a modal
-
-    ToastLayer.hideActivity(activityId);
-    PopupLayer.instance.showModal({
-      content: chooseExportsPopup
-    });
+  const project = ProjectModel.fromJSON({
+    name: 'Export',
+    components: [],
+    settings: {},
+    version: '3',
+    metadata: {},
+    variants: []
   });
+  project._retainedProjectDirectory = exportDir;
+
+  const fail = (message: string): ImportResult => {
+    ToastLayer.hideActivity(activityId);
+    return {
+      result: 'failure',
+      message,
+      componentsImported: [],
+      variantsImported: [],
+      stylesImported: { colors: [], text: [] },
+      filesCopied: [],
+      modulesCopied: [],
+      warnings: []
+    };
+  };
+
+  // The staging project is not the live one, so the viewer must not react to it
+  // — same suspension the import paths use.
+  ViewerConnection.instance.setWatchModelChangesEnabled(false);
+  let result: ImportResult;
+  try {
+    result = await applyPlan(plan, project);
+  } finally {
+    ViewerConnection.instance.setWatchModelChangesEnabled(true);
+  }
+
+  if (result.result !== 'success') {
+    ToastLayer.hideActivity(activityId);
+    return result;
+  }
+
+  const written = await new Promise<{ result: string; message?: string }>((resolve) =>
+    project.toDirectory(project._retainedProjectDirectory, resolve)
+  );
+  if (written.result !== 'success') return fail(written.message ?? 'Could not write the export');
+
+  const destination = await new Promise<string | undefined>((resolve) =>
+    FileSystem.instance.chooseDirectory(resolve)
+  );
+  if (!destination) return fail('No destination chosen — nothing was written.');
+
+  try {
+    await _zipFolderContent({ folder: exportDir, output: destination + '/' + exportName + '.zip' });
+  } catch {
+    return fail('Failed to create archive');
+  }
+
+  ToastLayer.hideActivity(activityId);
+  return { ...result, filesCopied: [...result.filesCopied, `${exportName}.zip`] };
+}
+
+/**
+ * Cmd+Shift+E. LIB-005 reframes the selection surface on the shared import flow
+ * — dependency closure matters identically when packing something up, and it is
+ * the same question ("what am I actually taking?"). The zip output and the
+ * shortcut are unchanged.
+ */
+export function exportProjectComponents() {
+  openExportFlow({
+    title: 'Export components',
+    subtitle: ProjectModel.instance?.name,
+    sourceDir: ProjectModel.instance._retainedProjectDirectory,
+    onExport: stageAndZip
+  }).then(
+    (result) => {
+      if (result.result === 'success') ToastLayer.showSuccess('Export successful');
+      else ToastLayer.showError(result.message ?? 'Export failed');
+    },
+    (err: unknown) => {
+      if (err instanceof ImportFlowCancelled) return;
+      ToastLayer.showError(err instanceof Error ? err.message : 'Export failed');
+    }
+  );
 }
