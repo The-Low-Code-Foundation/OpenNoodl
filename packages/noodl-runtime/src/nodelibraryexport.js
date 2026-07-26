@@ -158,63 +158,69 @@ function generateNodeLibrary(nodeRegister) {
         name: 'basic'
       }
     ],
+    // UIX-005: hues harmonised with the NodeGX category tokens (violet/azure/
+    // emerald/pink/neutral). The editor canvas paints from CanvasTheme (CSS
+    // tokens) — this blob remains the category taxonomy + the palette for
+    // consumers that don't go through CanvasTheme (node picker, connection
+    // popup, references panel, headless preview). Shape is load-bearing; keep
+    // the keys exactly as they are.
     colors: {
       nodes: {
         component: {
-          base: '#8B4DAB',
-          baseHighlighted: '#A167C5',
-          header: '#6B2D8B',
-          headerHighlighted: '#8B4DAB',
-          outline: '#6B2D8B',
-          outlineHighlighted: '#b58900',
-          text: '#FFFFFF'
+          base: '#363050',
+          baseHighlighted: '#464066',
+          header: '#2a2440',
+          headerHighlighted: '#363050',
+          outline: '#2a2440',
+          outlineHighlighted: '#a78bfa',
+          text: '#EEF2F6'
         },
         visual: {
-          base: '#4A7CA8',
-          baseHighlighted: '#6496C2',
-          header: '#2A5C88',
-          headerHighlighted: '#4A7CA8',
-          outline: '#2A5C88',
-          outlineHighlighted: '#b58900',
-          text: '#FFFFFF'
+          base: '#1e3450',
+          baseHighlighted: '#2a4466',
+          header: '#16283e',
+          headerHighlighted: '#1e3450',
+          outline: '#16283e',
+          outlineHighlighted: '#5ca9ff',
+          text: '#EEF2F6'
         },
         data: {
-          base: '#6B8F3C',
-          baseHighlighted: '#85A956',
-          header: '#4B6F1C',
-          headerHighlighted: '#6B8F3C',
-          outline: '#4B6F1C',
-          outlineHighlighted: '#b58900',
-          text: '#FFFFFF'
+          base: '#1c3f2b',
+          baseHighlighted: '#275239',
+          header: '#14301f',
+          headerHighlighted: '#1c3f2b',
+          outline: '#14301f',
+          outlineHighlighted: '#45d08a',
+          text: '#EEF2F6'
         },
         javascript: {
-          base: '#B84D7C',
-          baseHighlighted: '#CE6796',
-          header: '#982D5C',
-          headerHighlighted: '#B84D7C',
-          outline: '#982D5C',
-          outlineHighlighted: '#d57bab',
-          text: '#FFFFFF'
+          base: '#4c2940',
+          baseHighlighted: '#603552',
+          header: '#3a1f30',
+          headerHighlighted: '#4c2940',
+          outline: '#3a1f30',
+          outlineHighlighted: '#f776c4',
+          text: '#EEF2F6'
         },
         default: {
-          base: '#6C6F79',
-          baseHighlighted: '#868993',
-          header: '#4C4F59',
-          headerHighlighted: '#6C6F79',
-          outline: '#4C4F59',
-          outlineHighlighted: '#b58900',
-          text: '#FFFFFF'
+          base: '#222933',
+          baseHighlighted: '#2c3540',
+          header: '#181d24',
+          headerHighlighted: '#222933',
+          outline: '#181d24',
+          outlineHighlighted: '#6b7682',
+          text: '#EEF2F6'
         }
       },
       connections: {
         signal: {
-          normal: '#006f82',
-          highlighted: '#7ec2cf',
+          normal: '#35c3e8',
+          highlighted: '#7ad8f0',
           pulsing: '#ffffff'
         },
         default: {
-          normal: '#875d00',
-          highlighted: '#e5ae32',
+          normal: '#45d08a',
+          highlighted: '#7de0ac',
           pulsing: '#ffffff'
         }
       }

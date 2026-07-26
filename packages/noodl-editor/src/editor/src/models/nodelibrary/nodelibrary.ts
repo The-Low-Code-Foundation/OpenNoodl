@@ -128,16 +128,17 @@ export class NodeLibrary extends Model {
     }*/
     // Make sure the default color scheme is present
     if (!this.library.colors) this.library.colors = { nodes: {}, connections: {} };
+    // UIX-005: fallbacks match the harmonised palette in nodelibraryexport.js
     if (!this.library.colors.nodes.default) {
       this.library.colors.nodes.default = {
-        base: '#485e65',
-        text: '#93a1a1'
+        base: '#222933',
+        text: '#a6b0bb'
       };
     }
     if (!this.library.colors.connections.default) {
       this.library.colors.connections.default = {
-        normal: '#916311',
-        highlighted: '#ffa300'
+        normal: '#45d08a',
+        highlighted: '#7de0ac'
       };
     }
   }
