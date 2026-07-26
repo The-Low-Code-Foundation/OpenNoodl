@@ -609,11 +609,12 @@ describeOrSkip('MCP backend permission tools (live backend)', () => {
     });
 
     it('sets the redirect allow-list so an app on another origin can be signed into', async () => {
-      const { isError, data } = await call<{ config: { redirectAllowList: string[] } }>(
-        session,
-        'configure_backend_auth_policy',
-        { redirectAllowList: ['https://app.example.com'], magicLink: { enabled: true, ttlMinutes: 10 } }
-      );
+      const { isError, data } = await call<{
+        config: { redirectAllowList: string[]; magicLink: { enabled: boolean } };
+      }>(session, 'configure_backend_auth_policy', {
+        redirectAllowList: ['https://app.example.com'],
+        magicLink: { enabled: true, ttlMinutes: 10 }
+      });
       expect(isError).toBe(false);
       expect(data.config.redirectAllowList).toEqual(['https://app.example.com']);
       expect(data.config.magicLink.enabled).toBe(true);
