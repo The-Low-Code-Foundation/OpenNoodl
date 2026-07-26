@@ -13,7 +13,7 @@ higher-level summaries.
 | BAK-006 | File storage v2 | ✅ Complete 2026-07-26 |
 | BAK-007 | Backups / export / promotion | ✅ Complete 2026-07-26 (merge `c8431a0`) |
 | BAK-008 | Full-text search | ✅ Shipped 2026-07-26 (editor panel + served-dashboard live-smoke residuals) |
-| BAK-009 | Production ops | ⬜ Not started |
+| BAK-009 | Production ops | ✅ Complete 2026-07-26 (live-verified behind Caddy; not distributed) |
 
 **Tier 1 (credibility) is complete** — BAK-001, BAK-002, BAK-003, BAK-007 all shipped.
 That is the phase's designated stopping point; everything below is Tier 2 parity onward.
@@ -176,10 +176,37 @@ credential tiers, refusal messages, delete-table, rate limiting, `--no-admin`.
 - The SSE `Live` toggle is unverified in a browser (the protocol itself is
   well-tested server-side).
 - Packaged-app run and clean-VM run not done — both named in the spec.
-- No audit trail until BAK-009.
+- The audit trail arrived in BAK-009.
 - Documented trade-offs: the rate limiter can lock out an operator who shares an
   attacker's apparent client identity; the credential in `sessionStorage` is the
   master key; the palette is a copy of the UIX-001 tokens, not an import.
+
+---
+
+## BAK-009 — Production Ops (Rate Limits, Logs, Metrics, Audit)
+
+**Status:** Complete 2026-07-26. Full writeup: [BAK-009-NOTES.md](./BAK-009-NOTES.md).
+
+### What shipped
+All eight in-scope deliverables: structured logging with a shared redaction
+rule, request ids that reach execution records, one token-bucket rate limiter
+with per-route-class policies and proxy-aware keying, the `_Audit` trail
+(written by the dispatcher, not by handlers), `/metrics`, graceful shutdown
+with an SSE goodbye, configurable CORS/security headers, the MCP additions, and
+`docs/runtime/BACKEND-OPERATIONS.md` with a Caddy example that was actually
+run. Two long-standing defects were root-fixed along the way: the 413 that
+reached nobody (two subsystems had worked around it) and the permissions route
+that reported success for a body it ignored.
+
+### Tests
+Backend **57 suites / 533 passed / 7 skipped**, MCP **61/61**, typecheck clean.
+Two structural CI guards: privileged routes must declare an audit action, and
+the per-class rate-limit tally of the live route table is asserted.
+
+### Residuals
+Not distributed (in-memory buckets, one process's metrics) — documented, not
+accidental. CLI-driven backup/restore writes an execution record but no audit
+row. The nginx TLS path was not re-verified in this pass; the Caddy one was.
 
 ---
 

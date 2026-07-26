@@ -12,6 +12,7 @@
 | **Estimated Time** | 1–2 weeks |
 | **Prerequisites** | WF-004; deliberately **last** in the phase — it hardens the final route table, not a moving one |
 | **Branch** | `task/bak-009-production-ops` |
+| **Status** | ✅ **COMPLETE 2026-07-26** — see [BAK-009-NOTES.md](./BAK-009-NOTES.md) |
 | **Recommended executor** | 🟢 **Sonnet 5** — every deliverable is a known pattern with a checkable output; the two small policy decisions are pinned below. |
 
 ## Objective
@@ -45,15 +46,15 @@ Scope honesty per the phase README: single-process semantics. In-memory rate-lim
 ## Scope
 
 ### In Scope
-- [ ] Rate-limit middleware + route-class policies + migration of BAK-002's one-offs + trusted-proxy handling
-- [ ] Structured logging + redaction helper + tests that secrets never log
-- [ ] Request ids end-to-end incl. WF-006 linkage
-- [ ] `_Audit` table + hook points in the privileged paths + dashboard section + retention setting
-- [ ] `/metrics` + gating
-- [ ] Graceful shutdown incl. SSE goodbye, with tests
-- [ ] CORS/header defaults + config
-- [ ] Verified Caddy + nginx examples; the ops runbook
-- [ ] MCP: read rate-limit config, query audit entries (agents debugging their own backends)
+- [x] Rate-limit middleware + route-class policies + migration of BAK-002's one-offs + trusted-proxy handling
+- [x] Structured logging + redaction helper + tests that secrets never log
+- [x] Request ids end-to-end incl. WF-006 linkage
+- [x] `_Audit` table + hook points in the privileged paths + dashboard section + retention setting
+- [x] `/metrics` + gating
+- [x] Graceful shutdown incl. SSE goodbye, with tests
+- [x] CORS/header defaults + config
+- [x] Verified Caddy + nginx examples; the ops runbook *(Caddy verified live; nginx gained the `/metrics` refusal but its TLS path was not re-run)*
+- [x] MCP: read rate-limit config, query audit entries (agents debugging their own backends)
 
 ### Out of Scope
 - Distributed rate limiting, log shipping, tracing (OpenTelemetry noted as future; request ids are the seam)
@@ -71,13 +72,13 @@ Scope honesty per the phase README: single-process semantics. In-memory rate-lim
 
 ## Success Criteria
 
-- [ ] Hammering `/login` yields 429 + `Retry-After` while data routes stay unaffected; limits configurable per backend; correct client IPs behind the documented proxy setup
-- [ ] Every request produces one structured log line; a planted secret in config never appears in logs (test)
-- [ ] A webhook's request id is traceable: access log → execution record → response header
-- [ ] Changing a CLP, restoring a backup, and a failed admin login all appear in the audit view with actor and origin
-- [ ] `/metrics` scrapes cleanly in Prometheus; backup-age metric goes stale-visible when backups stop
-- [ ] `docker stop` (SIGTERM) exits 0 with in-flight requests completed and SSE clients notified — under test
-- [ ] A cold reader deploys with the runbook + Caddy example and gets TLS, logs, metrics, limits without guesswork
+- [x] Hammering `/login` yields 429 + `Retry-After` while data routes stay unaffected; limits configurable per backend; correct client IPs behind the documented proxy setup *(both tested and verified live through Caddy, including a forged `X-Forwarded-For` being ignored)*
+- [x] Every request produces one structured log line; a planted secret in config never appears in logs (test) *(one line even for 404s and hung-up clients; re-narrowing the redaction rule fails the test)*
+- [x] A webhook's request id is traceable: access log → execution record → response header
+- [x] Changing a CLP, restoring a backup, and a failed admin login all appear in the audit view with actor and origin *(plus REFUSED attempts, which record as failures)*
+- [x] `/metrics` scrapes cleanly in Prometheus; backup-age metric goes stale-visible when backups stop *(absent rather than zero until a backup succeeds; scraped by a real exposition parser in test, not by a real Prometheus)*
+- [x] `docker stop` (SIGTERM) exits 0 with in-flight requests completed and SSE clients notified — under test *(real CLI, real signal; the test builds the bundle first)*
+- [x] A cold reader deploys with the runbook + Caddy example and gets TLS, logs, metrics, limits without guesswork *(`docs/runtime/BACKEND-OPERATIONS.md`; the Caddy example was run rather than written from memory — a cold READER has not been observed)*
 
 ## Risks & Mitigations
 
@@ -98,8 +99,8 @@ Scope honesty per the phase README: single-process semantics. In-memory rate-lim
 
 ## Checklist
 
-- [ ] Logs + redaction + request ids
-- [ ] Rate limiter + policies + proxy trust
-- [ ] Audit trail + dashboard view + CI hook-coverage test
-- [ ] Metrics; graceful shutdown tests; CORS/headers
-- [ ] Runbook + verified proxy examples; MCP; CHANGELOG
+- [x] Logs + redaction + request ids
+- [x] Rate limiter + policies + proxy trust
+- [x] Audit trail + dashboard view + CI hook-coverage test
+- [x] Metrics; graceful shutdown tests; CORS/headers
+- [x] Runbook + verified proxy examples; MCP; CHANGELOG

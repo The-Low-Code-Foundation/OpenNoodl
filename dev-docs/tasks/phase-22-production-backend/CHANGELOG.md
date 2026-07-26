@@ -1,5 +1,98 @@
 # Phase 22 — Production Backend: CHANGELOG
 
+## 2026-07-26 — BAK-009 Production Ops
+
+### Added
+- **Structured logging**: one JSON line per request on stdout (pretty on a TTY),
+  plus application events. `ts`/`level`/`event` first on every line; `route` is
+  the low-cardinality pattern and `path` what was asked for; `principal` is a
+  KIND and never a credential. `NODEGX_LOG_LEVEL` / `NODEGX_LOG_FORMAT` override
+  `ops.json` so detail can be raised on a running container.
+- **Request correlation**: `X-Request-Id` accepted (if short and boring) or
+  minted, echoed in the header, included in error bodies, and stamped onto the
+  execution records that direct function calls, webhooks and workflow runs
+  produce — one id from access log to execution record to reply.
+- **One rate limiter**: token buckets per route class, keyed by principal once
+  resolved and by proxy-aware address otherwise. 429 + `Retry-After`. BAK-002's
+  two bespoke fixed windows migrated onto it (still stricter than the `auth`
+  class, no longer their own implementation). Realtime is capped by CONNECTION
+  COUNT, not request rate.
+- **`_Audit` trail**: privileged mutations, admin logins and login failures,
+  each with actor, origin, outcome and request id. Written by the DISPATCHER
+  from a declared action per route; queryable at `GET /admin/audit`, in the
+  dashboard's new **Ops → Audit** view, and via MCP. Retention pruning at
+  startup and hourly.
+- **`/metrics`**: Prometheus exposition, admin-or-loopback gated. Requests by
+  class/method/status, a duration histogram, rate-limit refusals, SSE
+  connections, trigger fires, email sends, backup age, database size, process
+  stats.
+- **Graceful shutdown**: SIGTERM stops accepting, sends SSE clients a `resync`
+  goodbye, drains in-flight requests for up to 10s, closes idle sockets, exits 0.
+  A second signal exits immediately.
+- **`ops.json`**: one operational config file beside `security.json` — logging,
+  rate limits and trusted proxies, CORS, audit retention, metrics. Unknown keys
+  are errors. Readable/patchable at `GET`/`PUT /admin/ops`.
+- **Configurable CORS + security headers**, replacing an unconditional `*`
+  constant. Startup warnings on a public bind for wildcard CORS, trust-every-
+  proxy, and rate limiting switched off — each naming the setting to change.
+- **MCP**: `get_backend_ops_config` (what a 429 means) and `query_backend_audit`
+  (what this agent already changed). Read-only on purpose.
+- **Docs**: `docs/runtime/BACKEND-OPERATIONS.md` (the operator runbook) and
+  `deploy/Caddyfile.example`.
+
+### Fixed
+- **`readRawBody`'s 413 reached nobody.** It rejected and called `req.destroy()`
+  in the same tick, so the response the caller then wrote never arrived —
+  senders saw a bare `ECONNRESET`. Two subsystems (WF-005 webhooks, BAK-006
+  uploads) had each worked around it instead of into it. Now it pauses without
+  destroying, and `sendError` marks 413s `Connection: close`.
+- **`PUT /admin/permissions/collections/:name` reported success for a body it
+  ignored** — `{"find":"public"}`, the shape its own response suggests, changed
+  nothing and answered `{"success":true,"rules":{}}`. Found the hard way during
+  WF-003's live verification. It now refuses unknown fields and empty changes,
+  naming the expected shape.
+- **`X-Forwarded-For` was read leftmost-first**, which let any client choose its
+  own rate-limit bucket and audit origin. The header is now believed only from a
+  trusted peer, and the rightmost untrusted hop wins.
+- **`service.stop()` closed the realtime hub before the HTTP server**, cutting
+  SSE streams before a goodbye could be sent.
+
+### Tests
+- New suites: `ops-redaction`, `ops-request-id`, `ops-client-ip`,
+  `ops-rate-limit`, `ops-audit`, `ops-metrics-headers`, `ops-config`,
+  `ops-shutdown`. Backend **57 suites / 533 passed / 7 skipped**; MCP 61 passed;
+  typecheck clean.
+- Two structural guards in CI: every state-changing privileged route must
+  declare an audit action (or an explicit exemption with its reason), and the
+  per-class rate-limit tally of the live route table is asserted, so adding a
+  route forces both questions.
+- `ops-shutdown` spawns the real CLI and sends a real SIGTERM — and builds the
+  bundle first, because `bin/` loads `dist/` and would otherwise grade a stale
+  artifact.
+- Deliberate-regression checks: re-narrowing the redaction pattern fails
+  `ops-redaction`; removing the SSE goodbye fails `ops-shutdown`.
+
+### Verified live
+Caddy 2 in Docker (`tls internal`) in front of a real backend bound beyond
+loopback with enforcement on: TLS terminated on one origin; `/metrics` refused
+at the edge and served on loopback; a forged `X-Forwarded-For: 9.9.9.9` ignored;
+429 + `Retry-After: 10` through TLS; a failed admin login and a REFUSED
+permission change both in the trail with origin and request id; SSE unbuffered;
+SIGTERM producing the `resync` goodbye, a 26ms drain and exit 0. The served
+dashboard's Audit view was driven in jsdom against a live backend — nav entry,
+rows, the server-supplied action filter (42 options), and the detail modal, with
+no console errors.
+
+### Residual
+- **Not distributed.** In-memory buckets, one process's metrics, a local trail.
+  Two replicas each get their own budget — documented, not accidental.
+- **CLI backup/restore is not audited.** The HTTP routes are; a `nodegx-backend
+  restore` run from a shell writes an execution record but no `_Audit` row,
+  because that process has no request to attribute it to.
+- The nginx TLS path was not re-verified in this pass (the Caddy example was);
+  `deploy/nginx.conf` is unchanged apart from the `/metrics` refusal.
+- No OpenTelemetry. Request ids are the seam if that is ever wanted.
+
 ## 2026-07-26 — BAK-005 The Served Admin Dashboard
 
 ### Seam decision
