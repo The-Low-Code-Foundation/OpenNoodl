@@ -36,3 +36,33 @@ Visual-QA corpus + before/after gallery: [corpus/](./corpus/) (`corpus/gallery.h
 - 2026-07-26 — **UIX-004 + UIX-006 run in parallel** (2 Opus worktrees) and merged to cline-dev (disjoint by design — `comm -12` preflight showed zero file overlap; editor chrome/CSS vs core-ui launcher subtree). Both hit and self-corrected the stale worktree base (rooted at 360cdc4 → `git reset --hard 7cbf665`). Zero merge conflicts. Post-merge gates green: hex ratchet holds (editor 16, core-ui 100), editor tsc clean, core-ui tsc clean on all touched files (45 pre-existing baseline errors unrelated). Orchestrator relocated the stray root `NOTES.md` → `UIX-006-NOTES.md`. **Live-editor smoke pass (primary checkout) found + fixed a real UIX-006 bug:** the deterministic thumbnail placeholder did not engage for *blank-white* captures — `hasUsableCapture()` passes any valid data:image>64 chars, and stored `thumbURI` PNGs decode to solid white; the guard only covered missing/errored, not blank. Fixed in `e2bd955` with runtime canvas blank-detection (≥96% near-white, outlier-tolerant, or near-zero min/max spread; cross-origin taint kept). Cold-boot re-verified: 5/7 cards show gradient placeholders (incl. the 2 formerly-white), 2 real captures retained, no white rectangles. UIX-004 chrome verified live (azure Deploy, active-rail accent pill, route pill, layout toggles, component tabs); properties-panel node-type sweep + amber-warnings-chip left as manual-QA residuals (need node selection / a warning-carrying project). Editor SPA-reload trap (RUN-003) re-encountered — raw CDP `reload` re-requests the client route as file:// (ERR_FILE_NOT_FOUND); recovered via full restart. Also hit dev-stack port collision (EADDRINUSE) from overlapping launches — full teardown before a single clean start is the reliable path.
 - 2026-07-26 — **UIX-005 live QA completed + P0 editor regression found/fixed.** Live verification (Shine Phase 2, CDP-driven from primary checkout) was blocked by every node graph painting blank: **WF-007 deleted the cloud-runtime sandbox (the second node-library client) but `NodeLibraryImporter` still gated `NodeLibrary.reload()` on `clients.count >= 2`** — the library never loaded, `CanvasPainter.paint()` early-returned, and `ViewerConnection.export()` (design-view preview) was blocked by the same flag. The earlier parallel-batch smoke screenshots all show this state; empty test projects made it read as "boot clean". Fixed: reload on first client import. With that in place, all UIX-005 live checks pass (see UIX-005-NOTES.md live record + screenshots/uix-005-live-qa/): cards/wires/dot-grid per mock, accent selection ring, Created/Changed/Deleted annotation colours legible, zoom 25/50/200 with grid LOD at 40%, `.theme-light` flip re-themes the canvas via MutationObserver (UIX-008 contract proven), long-label wrap consistent, 0.39 ms/frame paint bound. Hex ratchet gained a `canvas-paint-ts` scope (painter/renderer .ts files, baseline 2 = dispositioned ConnectionPopups literals, CanvasTheme.ts excluded as definition site).
 - 2026-07-26 — UIX-001 complete: duplicate token files collapsed into core-ui (editor + viewer-frame import via `@noodl-core-ui`), new palette (elevation neutrals, azure primary, danger/warning/success split, node-category + wire tokens, inert light block), typography settled (system UI stack, bundled Bricolage Grotesque 600 display face extracted from the mock, 35 legacy per-weight font-var call sites converted), full primary/notice audit (zero danger-on-primary found; 1 mis-wire fixed, 5 notice-as-accent chrome sites → primary), 32 referenced-but-undefined theme tokens defined as compat aliases, AA contrast matrix in dev-docs/guidelines/DESIGN-TOKENS.md, live-verified (launcher + editor), screenshots in screenshots/after-tier1/. Status: ⚠️ UIX-009's "before" corpus was NOT captured before this landed — only these after-shots exist.
+
+## Findings from the 2026-07-26 live QA pass (new, unowned)
+
+Both surfaced while verifying UIX-011/LIB-005; neither is caused by them.
+
+### 1. Blank-white thumbnails are back — in a *second* card component
+
+The node picker's **Import from project** grid shows pure-white thumbnails for
+several projects (3 of 6 in the QA run). This is the same defect UIX-006 fixed
+for the launcher in `e2bd955` — stored `thumbURI` PNGs that decode to solid
+white pass a naive "is there a data URI?" check and render as white rectangles
+instead of falling back to the gradient placeholder.
+
+**Diagnosis (not a guess):** the blank-capture guard `hasUsableCapture` exists
+in exactly one file —
+`packages/noodl-core-ui/src/preview/launcher/Launcher/components/LauncherProjectCard/LauncherProjectCard.tsx`.
+The node picker uses an entirely separate component,
+`packages/noodl-editor/src/editor/src/views/NodePicker/components/ProjectCard/ProjectCard.tsx`,
+which never received the fix. Two card components, one guard.
+
+**Fix shape:** lift the near-white/low-spread detection out of
+`LauncherProjectCard` into a shared helper and use it in both. Fixing it in
+place in the second component would leave the same trap for a third.
+
+### 2. Stale "Noodl" branding in the node picker
+
+The Nodes tab's promo panel still reads **"New Feature — Noodl AI (Beta)"** with
+a **"Noodl AI Documentation"** button. UIX-006 swept "Noodl 2.9.3" out of the
+launcher, but this string lives in the node picker and was missed. Product is
+NodeGX; a first-run user meets this panel early.
