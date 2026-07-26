@@ -149,6 +149,13 @@ New: React components under `views/panels/propertyeditor/` and a React `PopupLay
 - [x] Convert PopupLayer last (wave 4)
 - [x] Delete framework, vendored jQuery, script tags, all templates (waves 5a–5b)
 - [x] Verify with repo-wide grep; CHANGELOG with before/after counts (below)
+- [x] **After each merge, re-run `npm run tsfixme:baseline` and `npm run tsfixme:report`
+      and commit the result.** This task removes and adds type escape hatches as a side
+      effect of converting views, and PLAT-004's ratchet only blocks *increases* — a
+      reduction nobody records evaporates, and an increase nobody records leaves the
+      gate red for everyone else. The task that moved the number is the one that should
+      record it (PLAT-004-NOTES §2, §6.2, §10). *Retro-added by PLAT-004 after this task
+      completed; the outstanding drift it left behind was absorbed in the §14 re-baseline.*
 
 ## CHANGELOG
 
