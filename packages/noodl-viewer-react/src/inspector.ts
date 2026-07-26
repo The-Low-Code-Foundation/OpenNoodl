@@ -1,9 +1,44 @@
+import type { ReactNodeInstance } from './react-component-node';
+
+export interface InspectorCallbacks {
+  /** Receives the ids the editor should select. */
+  onInspect: (nodeIds: string[]) => void;
+  onHighlight: (nodeId: string) => void;
+  onDisableHighlight: () => void;
+}
+
+/** The component the inspection is scoped to, when one is set. */
+export interface InspectorComponent {
+  name: string;
+  [extra: string]: unknown;
+}
+
+/**
+ * Implements the editor's "inspect element" mode inside the running app.
+ *
+ * Every listener is registered on `document` in the **capture** phase and blocks
+ * propagation, so the app itself never sees the pointer while inspecting — that is
+ * what stops buttons firing when you are only trying to point at them.
+ *
+ * Finding the Noodl node behind a DOM element means walking React's internals: up
+ * the DOM to an element carrying a fiber key, then up the fiber tree to the first
+ * component whose props carry a `noodlNode`. There is no public API for this, so it
+ * is version-sensitive by nature.
+ */
 export default class Inspector {
-  constructor({ onInspect, onHighlight, onDisableHighlight }) {
+  onMouseMove: (e: MouseEvent) => void;
+  onClick: (e: MouseEvent) => void;
+  onContextMenu: (e: MouseEvent) => void;
+  onMouseOut: (e: MouseEvent) => void;
+  blockEvent: (e: Event) => void;
+  onDisableHighlight: () => void;
+  component?: InspectorComponent;
+
+  constructor({ onInspect, onHighlight, onDisableHighlight }: InspectorCallbacks) {
     this.onMouseMove = (e) => {
       onDisableHighlight();
 
-      const noodlNode = this.findNoodlNode(e.target);
+      const noodlNode = this.findNoodlNode(e.target as Element);
       if (noodlNode) {
         document.body.style.cursor = 'pointer';
         onHighlight(noodlNode.id);
@@ -17,7 +52,7 @@ export default class Inspector {
     this.onClick = (e) => {
       onDisableHighlight();
 
-      const noodlNode = this.findNoodlNode(e.target);
+      const noodlNode = this.findNoodlNode(e.target as Element);
       if (noodlNode) {
         onInspect([noodlNode.id]);
       }
@@ -27,7 +62,7 @@ export default class Inspector {
 
       //not sure how to stop React input elements from getting focus, so blurring the potential element tha got focus on click
       if (document.activeElement) {
-        document.activeElement.blur();
+        (document.activeElement as HTMLElement).blur();
       }
     };
 
@@ -47,10 +82,11 @@ export default class Inspector {
 
       //not sure how to stop React input elements from getting focus, so blurring the potential element tha got focus on click
       if (document.activeElement) {
-        document.activeElement.blur();
+        (document.activeElement as HTMLElement).blur();
       }
     };
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     this.onMouseOut = (e) => {
       onDisableHighlight();
     };
@@ -62,14 +98,14 @@ export default class Inspector {
     this.onDisableHighlight = onDisableHighlight;
   }
 
-  setComponent(component) {
+  setComponent(component: InspectorComponent): void {
     this.component = component;
   }
 
-  enable() {
+  enable(): void {
     //blur active element, if any
     if (document.activeElement) {
-      document.activeElement.blur();
+      (document.activeElement as HTMLElement).blur();
     }
 
     //get events from capture phase, before they tunnel down the tree
@@ -83,7 +119,7 @@ export default class Inspector {
     document.addEventListener('contextmenu', this.onContextMenu, true);
   }
 
-  disable() {
+  disable(): void {
     document.body.style.cursor = 'initial';
 
     document.removeEventListener('mouseenter', this.blockEvent, true);
@@ -98,13 +134,13 @@ export default class Inspector {
     this.onDisableHighlight();
   }
 
-  findNoodlNode(dom) {
+  findNoodlNode(dom: Element): ReactNodeInstance | undefined {
     //walk the dom tree upwards until a dom element with react state is found
     let domFiber;
     while (!domFiber && dom) {
       // React 18 changed from __reactInternalInstance$ to __reactFiber$
-      const key = Object.keys(dom).find((key) => 
-        key.startsWith('__reactFiber$') || key.startsWith('__reactInternalInstance$')
+      const key = Object.keys(dom).find(
+        (key) => key.startsWith('__reactFiber$') || key.startsWith('__reactInternalInstance$')
       );
       domFiber = dom[key];
       if (!domFiber) dom = dom.parentElement;

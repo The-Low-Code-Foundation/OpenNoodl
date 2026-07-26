@@ -20,6 +20,7 @@ import type {
   PortLabelTruncationMode,
   PortType,
   StateTransition,
+  Timer,
   VisualStateDefinition
 } from '@noodl/types';
 
@@ -132,9 +133,15 @@ export interface ReactNodeScope extends NodeScopeLike {
 export type ReactNodeModel = GraphNodeModel;
 
 /** A running parameter transition, as `node-transitions` hands it back. */
-export interface RunningTransition {
-  stop(): void;
-}
+/**
+ * A transition in flight on one parameter.
+ *
+ * This is exactly a scheduler {@link Timer} — `node-transitions` populates
+ * `_transitions` with `timerScheduler.createTimer(...)` results and calls `start()`
+ * on them. It was previously declared here as its own `{ stop(): void }`, which was
+ * a second, narrower description of the same object and made `start()` invisible.
+ */
+export type RunningTransition = Timer;
 
 /**
  * `this` inside every callback on a React node definition, and the type of

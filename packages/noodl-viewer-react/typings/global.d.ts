@@ -40,6 +40,14 @@ type GlobalNoodl = {
    */
   Config: Readonly<Record<string, unknown>>;
 
+  /**
+   * Deploy-time environment values, created empty by `createNoodlAPI` and filled in
+   * by the deployed page's bootstrap. `BaseUrl` is the one the viewer itself reads —
+   * `fontloader` prefixes generated `@font-face` `src` URLs with it so a project
+   * served from a sub-path still finds its fonts.
+   */
+  Env: Record<string, string | undefined>;
+
   /** Set by the deployed page's bootstrap — `static/deploy/index.js`. */
   deployed?: boolean;
 

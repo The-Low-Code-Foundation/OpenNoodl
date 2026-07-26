@@ -422,7 +422,6 @@ const RouterNode = {
         let path = location.pathname;
         if (path) {
           if (path[0] === '/') {
-            // @ts-expect-error missing Noodl typings
             const baseUrl = Noodl.Env['BaseUrl'];
             if (baseUrl) {
               const pathnameLength = getBaseUrlLength(baseUrl);

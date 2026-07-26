@@ -985,6 +985,12 @@ export interface ComponentModelLike extends EventSenderLike {
   getNodeWithId(id: string): GraphNodeModel | undefined;
   getAllNodes(): GraphNodeModel[];
   getNodesWithType(type: string): GraphNodeModel[];
+  /**
+   * The same array as {@link roots} — `componentmodel.js` returns it directly rather
+   * than a copy, so callers must not mutate the result. Paired with the `rootAdded`
+   * and `rootRemoved` events, which carry the affected node id.
+   */
+  getRoots(): string[];
   [extra: string]: unknown;
 }
 
