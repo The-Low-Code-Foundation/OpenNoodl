@@ -1,9 +1,66 @@
 import { getAbsoluteUrl } from '@noodl/runtime/src/utils';
 
+import type {
+  ReactInputCssDefinition,
+  ReactInputDefinition,
+  ReactInputPropDefinition,
+  ReactNodeDefinition,
+  ReactOutputPropDefinition
+} from './react-component-node';
 import FontLoader from './fontloader';
 import { createTooltip } from './tooltips';
 
-function addInputCss(definition, inputs) {
+/**
+ * The mixins in this file are *mutators*: each takes a partially built
+ * {@link ReactNodeDefinition} and merges ports into it, rather than returning a new
+ * definition. That is why every node file calls them as statements after declaring
+ * its own definition object, and why order matters — later calls overwrite
+ * same-named ports from earlier ones.
+ */
+
+/** A styleTag names which of a multi-element node's DOM nodes a port styles. */
+interface StyleTagOption {
+  /** Omitted means the node's root element. */
+  styleTag?: string;
+}
+
+/** Per-port default overrides, keyed by port name. The values are whatever that
+ * port's type takes — numbers, colour strings, enum values — so they stay `any`. */
+interface DefaultsOption {
+  defaults?: Record<string, any>;
+}
+
+export interface PaddingInputsOptions extends StyleTagOption, DefaultsOption {}
+export interface CornerRadiusOptions extends StyleTagOption, DefaultsOption {}
+export interface BorderInputsOptions extends StyleTagOption, DefaultsOption {}
+export interface ShadowInputsOptions extends StyleTagOption {}
+export interface IconInputsOptions extends StyleTagOption {
+  [extra: string]: any;
+}
+export interface LabelInputsOptions extends StyleTagOption {
+  [extra: string]: any;
+}
+
+export interface TextStyleInputsOptions extends StyleTagOption {
+  /** Property-panel group. Defaults to `'Text Style'`. */
+  group?: string;
+  /**
+   * Prefix for every generated port name. Defaults to `styleTag`, so a node with
+   * two text elements gets two non-colliding sets. An explicit `''` opts out —
+   * which is why the code tests `hasOwnProperty` rather than falsiness.
+   */
+  portPrefix?: string;
+  [extra: string]: any;
+}
+
+export interface DimensionsOptions {
+  defaultSizeMode?: 'explicit' | 'contentHeight' | 'contentWidth' | (string & {});
+  /** Wording used in the size-mode enum labels, e.g. 'Content' vs 'Text'. */
+  contentLabel?: string;
+  useDimensionConstraints?: boolean;
+}
+
+function addInputCss(definition: ReactNodeDefinition, inputs: Record<string, ReactInputCssDefinition>): void {
   if (!definition.inputCss) {
     definition.inputCss = {};
   }
@@ -17,7 +74,7 @@ function addInputCss(definition, inputs) {
   }
 }
 
-function mergeAttribute(definition, attribute, values) {
+function mergeAttribute(definition: ReactNodeDefinition, attribute: string, values: Record<string, unknown>): void {
   if (!definition[attribute]) {
     definition[attribute] = {};
   }
@@ -27,15 +84,20 @@ function mergeAttribute(definition, attribute, values) {
   }
 }
 
-function addInputs(definition, values) {
+function addInputs(definition: ReactNodeDefinition, values: Record<string, ReactInputDefinition>): void {
   mergeAttribute(definition, 'inputs', values);
 }
 
-function addInputProps(definition, values) {
+function addInputProps(definition: ReactNodeDefinition, values: Record<string, ReactInputPropDefinition>): void {
   mergeAttribute(definition, 'inputProps', values);
 }
 
-function addDynamicInputPorts(definition, condition, inputs) {
+/**
+ * Declares that `inputs` should only appear in the editor while `condition` holds.
+ * The condition is the editor's own mini-language (`'sizeMode = explicit OR …'`),
+ * evaluated against the node's parameters, not a JavaScript expression.
+ */
+function addDynamicInputPorts(definition: ReactNodeDefinition, condition: string, inputs: string[]): void {
   if (!definition.dynamicports) {
     definition.dynamicports = [];
   }
@@ -43,7 +105,7 @@ function addDynamicInputPorts(definition, condition, inputs) {
   definition.dynamicports.push({ condition, inputs });
 }
 
-function addOutputProps(definition, values) {
+function addOutputProps(definition: ReactNodeDefinition, values: Record<string, ReactOutputPropDefinition>): void {
   mergeAttribute(definition, 'outputProps', values);
 }
 
@@ -52,7 +114,7 @@ export default {
   addInputs,
   addDynamicInputPorts,
   addInputCss,
-  addSharedVisualInputs(definition) {
+  addSharedVisualInputs(definition: ReactNodeDefinition) {
     addInputCss(definition, {
       opacity: {
         index: 200,
@@ -124,7 +186,7 @@ export default {
       }
     });
   },
-  addMarginInputs(definition) {
+  addMarginInputs(definition: ReactNodeDefinition) {
     addInputCss(definition, {
       marginLeft: {
         index: 1,
@@ -176,9 +238,9 @@ export default {
       }
     });
   },
-  addPaddingInputs(definition, args) {
+  addPaddingInputs(definition: ReactNodeDefinition, args?: PaddingInputsOptions) {
     args = args || {};
-    const defaults = args.defaults ? args.defaults : {};
+    const defaults: Record<string, any> = args.defaults ? args.defaults : {};
 
     const styleTag = args.styleTag;
 
@@ -245,7 +307,7 @@ export default {
       }
     });
   },
-  addTransformInputs(definition) {
+  addTransformInputs(definition: ReactNodeDefinition) {
     addInputs(definition, {
       transformX: {
         group: 'Placement',
@@ -371,7 +433,7 @@ export default {
       });
     };
   },
-  addAlignInputs(definition) {
+  addAlignInputs(definition: ReactNodeDefinition) {
     const positions = [
       { label: 'In Layout', value: 'relative' },
       { label: 'Absolute', value: 'absolute' },
@@ -425,7 +487,7 @@ export default {
 
     addPositionAndAlignTooltips(definition);
   },
-  addPointerEventOutputs(definition) {
+  addPointerEventOutputs(definition: ReactNodeDefinition) {
     addInputs(definition, {
       pointerEventsMode: {
         index: 403,
@@ -555,8 +617,8 @@ export default {
     addPointerEventsTooltips(definition);
   },
   addDimensions(
-    definition,
-    { defaultSizeMode = 'explicit', contentLabel = 'Content', useDimensionConstraints = true } = {}
+    definition: ReactNodeDefinition,
+    { defaultSizeMode = 'explicit', contentLabel = 'Content', useDimensionConstraints = true }: DimensionsOptions = {}
   ) {
     let widthCondition = 'sizeMode = explicit OR sizeMode = contentHeight';
     let heightCondition = 'sizeMode = explicit OR sizeMode = contentWidth';
@@ -680,9 +742,9 @@ export default {
       }
     }
   },
-  _addCornerRadius(definition, opts) {
+  _addCornerRadius(definition: ReactNodeDefinition, opts?: CornerRadiusOptions) {
     opts = opts || {};
-    const defaults = opts.defaults || {};
+    const defaults: Record<string, any> = opts.defaults || {};
     const styleTag = opts.styleTag;
 
     if (!defaults.borderRadius) defaults.borderRadius = 0;
@@ -723,7 +785,7 @@ export default {
     defineCornerTab(definition, 'BottomLeft', 'corners-bottom-left', 4);
 
     definition.methods._updateCornerRadii = function () {
-      const b = this._internal.borderRadius;
+      const b = this._internal.borderRadius as Record<string, string | number>;
 
       function setCorner(style, corner) {
         const r = `border${corner}Radius`;
@@ -746,9 +808,9 @@ export default {
       if (defaults.borderRadius) this._updateCornerRadii();
     };
   },
-  addBorderInputs(definition, opts) {
+  addBorderInputs(definition: ReactNodeDefinition, opts?: BorderInputsOptions) {
     opts = opts || {};
-    const defaults = opts.defaults || {};
+    const defaults: Record<string, any> = opts.defaults || {};
     const styleTag = opts.styleTag;
 
     if (defaults.borderStyle === undefined) defaults.borderStyle = 'none';
@@ -848,7 +910,7 @@ export default {
     defineBorderTab(definition, 'Bottom', 'borders-bottom', 4);
 
     definition.methods._updateBorders = function () {
-      const b = this._internal.borders;
+      const b = this._internal.borders as Record<string, string | number>;
 
       function setBorder(style, group) {
         const width = `border${group}Width`;
@@ -886,7 +948,7 @@ export default {
 
     this._addCornerRadius(definition, { defaults, styleTag });
   },
-  addShadowInputs(definition, args) {
+  addShadowInputs(definition: ReactNodeDefinition, args?: ShadowInputsOptions) {
     args = args || {};
     const styleTag = args.styleTag;
 
@@ -1029,7 +1091,7 @@ export default {
       this._internal.boxShadowColor = '#00000033';
     };
   },
-  addIconInputs(definition, args) {
+  addIconInputs(definition: ReactNodeDefinition, args?: IconInputsOptions) {
     args = args || {};
 
     const index = 20;
@@ -1178,7 +1240,7 @@ export default {
     });
   },
 
-  addLabelInputs(definition, args) {
+  addLabelInputs(definition: ReactNodeDefinition, args?: LabelInputsOptions) {
     args = args || {};
 
     const defaults = {
@@ -1246,7 +1308,7 @@ export default {
     });
   },
 
-  addTextStyleInputs(definition, args) {
+  addTextStyleInputs(definition: ReactNodeDefinition, args?: TextStyleInputsOptions) {
     args = args || {};
 
     const group = args.group || 'Text Style';
@@ -1446,7 +1508,7 @@ export default {
   }
 };
 
-function addDimensionTooltips(definition, contentLabel) {
+function addDimensionTooltips(definition: ReactNodeDefinition, contentLabel: string): void {
   definition.inputProps.sizeMode.tooltip = {
     explicit: {
       standard: 'Explicit width & height',
@@ -1514,7 +1576,7 @@ function addDimensionTooltips(definition, contentLabel) {
   };
 }
 
-function addDimensionConstraintsTooltips(definition) {
+function addDimensionConstraintsTooltips(definition: ReactNodeDefinition): void {
   definition.inputCss.minWidth.tooltip = createTooltip({
     title: 'Minimum width',
     body: "This is prioritized over other properties, so the element won't shrink below this size"
@@ -1536,7 +1598,7 @@ function addDimensionConstraintsTooltips(definition) {
   });
 }
 
-function addPointerEventsTooltips(definition) {
+function addPointerEventsTooltips(definition: ReactNodeDefinition): void {
   definition.inputs.pointerEventsMode.tooltip = createTooltip({
     title: 'Pointer events mode',
     body: [
@@ -1554,7 +1616,7 @@ function addPointerEventsTooltips(definition) {
   });
 }
 
-function addPositionAndAlignTooltips(definition) {
+function addPositionAndAlignTooltips(definition: ReactNodeDefinition): void {
   definition.inputCss.position.tooltip = createTooltip({
     title: 'Position',
     images: [

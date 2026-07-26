@@ -7,6 +7,7 @@ import type { TSFixme } from '../typings/global';
 import type {
   ComponentInstanceLike,
   DynamicPortEntry,
+  GraphModelLike,
   GraphNodeModel,
   InputPortDefinition,
   InspectInfo,
@@ -132,7 +133,6 @@ export interface ReactNodeScope extends NodeScopeLike {
  */
 export type ReactNodeModel = GraphNodeModel;
 
-/** A running parameter transition, as `node-transitions` hands it back. */
 /**
  * A transition in flight on one parameter.
  *
@@ -454,7 +454,7 @@ export interface ReactNodeDefinition {
   getInspectInfo?: ReactNodeCallback<[], InspectInfo>;
   nodeScopeDidInitialize?: ReactNodeCallback;
   /** Runs once at registration, not per instance. */
-  setup?: (context: ReactNodeContext, graphModel: unknown) => void;
+  setup?: (context: ReactNodeContext, graphModel: GraphModelLike) => void;
 
   /** @deprecated Ignored — React nodes are always registered as `'Visual'`. */
   category?: string;
@@ -473,7 +473,7 @@ export interface ReactNodeDefinition {
  */
 export interface ReactNodeModule {
   node: NodeDefinitionOptions;
-  setup?: (context: ReactNodeContext, graphModel: unknown) => void;
+  setup?: (context: ReactNodeContext, graphModel: GraphModelLike) => void;
 }
 
 function addOutputPropHandler(
