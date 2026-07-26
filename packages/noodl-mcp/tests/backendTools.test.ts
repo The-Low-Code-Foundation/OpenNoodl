@@ -434,4 +434,53 @@ describeOrSkip('MCP backend permission tools (live backend)', () => {
       expect(bad.isError).toBe(true);
     });
   });
+
+  describe('BAK-006 file storage tools', () => {
+    it('reads the default file config, including an honest transformsAvailable (sharp is not installed here)', async () => {
+      const { isError, data } = await call<{
+        driverKind: string;
+        transformsAvailable: boolean;
+        transformUnavailableReason?: string;
+        config: { maxUploadBytes: number };
+      }>(session, 'get_backend_file_config');
+      expect(isError).toBe(false);
+      expect(data.driverKind).toBe('local');
+      expect(data.transformsAvailable).toBe(false);
+      expect(data.transformUnavailableReason).toMatch(/sharp/i);
+      expect(data.config.maxUploadBytes).toBeGreaterThan(0);
+    });
+
+    it('configures limits, content-type policy, and thumbnail presets, and they round-trip', async () => {
+      const set = await call<{ config: { maxUploadBytes: number; contentTypes: { denyList: string[] } } }>(
+        session,
+        'configure_backend_files',
+        {
+          maxUploadBytes: 5_000_000,
+          contentTypes: { denyList: ['application/x-msdownload'] },
+          thumbnailPresets: { avatar: { width: 96, height: 96, fit: 'cover' } }
+        }
+      );
+      expect(set.isError).toBe(false);
+      expect(set.data.config.maxUploadBytes).toBe(5_000_000);
+      expect(set.data.config.contentTypes.denyList).toEqual(['application/x-msdownload']);
+
+      const get = await call<{ config: { thumbnails: { presets: Record<string, unknown> } } }>(session, 'get_backend_file_config');
+      expect(get.data.config.thumbnails.presets).toEqual({ avatar: { width: 96, height: 96, fit: 'cover' } });
+    });
+
+    it('rejects an invalid orphan-sweep cron rather than silently accepting it', async () => {
+      const res = await call(session, 'configure_backend_files', { orphanSweep: { enabled: true, cron: 'not a cron' } });
+      expect(res.isError).toBe(true);
+    });
+
+    it('runs the orphan sweep on demand, report-only by default', async () => {
+      const { isError, data } = await call<{ report: { orphanBlobs: string[]; orphanRows: string[]; deleted: boolean } }>(
+        session,
+        'run_backend_file_sweep'
+      );
+      expect(isError).toBe(false);
+      expect(data.report.deleted).toBe(false);
+      expect(Array.isArray(data.report.orphanBlobs)).toBe(true);
+    });
+  });
 });

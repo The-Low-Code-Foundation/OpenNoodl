@@ -1290,6 +1290,102 @@
       }
     });
 
+    // --------------------------------------------------------------- files --
+
+    view('files', 'Files', 'Config', 'files', function (root) {
+      var node = page('Files', 'Upload limits, content-type policy, the storage driver, thumbnail presets, and the orphan sweep (BAK-006).');
+      root.appendChild(node);
+      var body = el('div');
+      node.appendChild(body);
+      load();
+
+      function load() {
+        api('GET', '/admin/files/config')
+          .then(function (data) {
+            clear(body);
+            var config = data.config || {};
+
+            body.appendChild(el('div.row', {},
+              chip('driver: ' + data.driverKind, 'accent'),
+              data.transformsAvailable
+                ? chip('thumbnails available', 'ok')
+                : chip('thumbnails unavailable — ' + cellText(data.transformUnavailableReason), 'warn')));
+
+            var maxMb = el('input', { type: 'number', min: '1', value: String(Math.round((config.maxUploadBytes || 0) / (1024 * 1024))) });
+            var denyList = el('input', { type: 'text', value: (config.contentTypes && config.contentTypes.denyList || []).join(', '), placeholder: 'application/x-msdownload, ...' });
+            var ttl = el('input', { type: 'number', min: '1', value: String(config.signedUrlTtlSeconds || 300) });
+            [maxMb, denyList, ttl].forEach(function (i) { if (S.readonly) i.disabled = true; });
+
+            var card = el('div.card', { style: 'margin-top:12px' });
+            card.appendChild(el('div.grid2', {},
+              el('label.field', {}, document.createTextNode('Max upload size (MB)'), maxMb),
+              el('label.field', {}, document.createTextNode('Signed URL TTL (seconds)'), ttl),
+              el('label.field', { style: 'grid-column:1/-1' }, document.createTextNode('Denied content types (comma-separated)'), denyList)));
+            card.appendChild(el('div.row', { style: 'margin-top:12px' }, writeButton('Save limits', 'primary', saveLimits)));
+            body.appendChild(card);
+
+            body.appendChild(el('h2', { text: 'Thumbnail presets' }));
+            var presetsBody = el('div');
+            Object.keys(config.thumbnails && config.thumbnails.presets || {}).forEach(function (name) {
+              var p = config.thumbnails.presets[name];
+              presetsBody.appendChild(el('div.row', {}, el('b', { text: name }), document.createTextNode(p.width + '×' + p.height + ' (' + p.fit + ')')));
+            });
+            body.appendChild(el('div.card', {}, presetsBody,
+              el('p.sub', { style: 'margin-top:8px', text: 'Named presets are public; arbitrary "?thumb=WxH" sizes are admin-only. Edit presets via the configure_backend_files MCP tool or the Backend Services panel.' })));
+
+            body.appendChild(el('h2', { text: 'Orphan sweep' }));
+            var sweep = config.orphanSweep || { enabled: false, cron: '0 3 * * *' };
+            var sweepEnabled = el('input', { type: 'checkbox', checked: !!sweep.enabled });
+            var sweepCron = el('input', { type: 'text', value: cellText(sweep.cron) });
+            [sweepEnabled, sweepCron].forEach(function (i) { if (S.readonly) i.disabled = true; });
+            var sweepCard = el('div.card');
+            var status = config.sweepStatus || {};
+            var lastReport = status.lastReport;
+            sweepCard.appendChild(el('div.row', {},
+              lastReport
+                ? chip('last swept ' + when(lastReport.at) + ' — ' + lastReport.orphanBlobs.length + ' orphan blob(s), ' + lastReport.orphanRows.length + ' orphan row(s)', lastReport.error ? 'bad' : (lastReport.orphanBlobs.length || lastReport.orphanRows.length ? 'warn' : 'ok'))
+                : chip('never run'),
+              el('span', { style: 'flex:1' }),
+              writeButton('Run now (report only)', null, function () { runSweep(false); }),
+              writeButton('Run now + delete orphan blobs', 'danger', function () { runSweep(true); })));
+            sweepCard.appendChild(el('div.row', { style: 'margin-top:10px' },
+              el('label.check', {}, sweepEnabled, document.createTextNode('Scheduled')),
+              el('label.field', {}, document.createTextNode('Cron'), sweepCron),
+              writeButton('Save schedule', null, saveSweepSchedule)));
+            sweepCard.appendChild(el('p.sub', { style: 'margin-top:8px', text: 'Report-only by default: the schedule finds and reports orphans, it never auto-deletes. Orphan METADATA ROWS (a row whose blob went missing) are never auto-deleted either way — that is a data-integrity signal for a human.' }));
+            body.appendChild(sweepCard);
+
+            function saveLimits() {
+              api('PUT', '/admin/files/config', {
+                maxUploadBytes: Math.max(1, Number(maxMb.value) || 1) * 1024 * 1024,
+                contentTypes: { denyList: denyList.value.split(',').map(function (s) { return s.trim(); }).filter(Boolean) },
+                signedUrlTtlSeconds: Math.max(1, Number(ttl.value) || 300)
+              })
+                .then(function () { toast('File limits saved.', 'ok'); load(); })
+                .catch(fail);
+            }
+
+            function saveSweepSchedule() {
+              api('PUT', '/admin/files/config', { orphanSweep: { enabled: sweepEnabled.checked, cron: sweepCron.value.trim() } })
+                .then(function () { toast('Orphan-sweep schedule saved.', 'ok'); load(); })
+                .catch(fail);
+            }
+
+            function runSweep(deleteOrphans) {
+              toast('Running the orphan sweep…');
+              api('POST', '/admin/files/sweep', { deleteOrphans: deleteOrphans })
+                .then(function (result) {
+                  var r = result.report;
+                  toast('Sweep done: ' + r.orphanBlobs.length + ' orphan blob(s), ' + r.orphanRows.length + ' orphan row(s)' + (r.deleted ? ' (orphan blobs deleted).' : ' (report only).'), 'ok');
+                  load();
+                })
+                .catch(fail);
+            }
+          })
+          .catch(fail);
+      }
+    });
+
     // =========================================================================
     // Chrome
     // =========================================================================

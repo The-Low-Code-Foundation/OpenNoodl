@@ -88,6 +88,8 @@ export interface DashboardFeatures {
   realtime: boolean;
   /** BAK-008: per-collection full-text search config exists (schema manager available). */
   search: boolean;
+  /** File storage config (BAK-006) — always true once the subsystem is wired. */
+  files: boolean;
 }
 
 export interface AdminDashboardDeps {

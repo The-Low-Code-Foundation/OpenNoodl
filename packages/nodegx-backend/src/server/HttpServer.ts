@@ -46,10 +46,12 @@ import { AdminTriggerRoutes } from './admin-triggers';
 import { AdminWorkflowRoutes } from './admin-workflows';
 import { AdminEmailRoutes } from './admin-email';
 import { AdminBackupRoutes } from './admin-backups';
+import { AdminFileRoutes } from './admin-files';
 import { AdminSearchRoutes } from './admin-search';
 import { ByobAdminRoutes } from './byob-admin';
 import { EmailRoutes } from './email-routes';
 import { FileRoutes } from './files';
+import type { FileSubsystem } from '../storage/FileSubsystem';
 import { ParseWireRoutes } from './parse-wire';
 import { UserRoutes } from './users';
 import { AdminDashboardRoutes, DashboardFeatures } from '../admin/AdminDashboardRoutes';
@@ -131,6 +133,8 @@ export interface HttpServerDeps {
   workflows: WorkflowSubsystem | null;
   /** Backup subsystem — BAK-007 (backup/restore, export/import, schema promotion). */
   backups: BackupSubsystem;
+  /** File subsystem — BAK-006 (metadata, driver, transforms, orphan sweep). */
+  files: FileSubsystem;
   /** Email subsystem (BAK-002): config/secrets, the mailer, and the token store. */
   emailConfig: EmailConfigState;
   mailer: Mailer;
@@ -164,6 +168,7 @@ export class HttpServer {
   private readonly adminWorkflows: AdminWorkflowRoutes;
   private readonly adminBackups: AdminBackupRoutes;
   private readonly adminSearch: AdminSearchRoutes;
+  private readonly adminFiles: AdminFileRoutes;
   private readonly email: EmailRoutes;
   private readonly adminEmail: AdminEmailRoutes;
   /** BAK-005's dashboard, or null when `--no-admin` removed it entirely. */
@@ -193,7 +198,8 @@ export class HttpServer {
       getLocalUrl: () => `http://127.0.0.1:${deps.options.port}`
     });
     this.users = new UserRoutes(deps.facade, deps.security, deps.emailConfig, this.email);
-    this.files = new FileRoutes(deps.options.dataDir, `http://127.0.0.1:${deps.options.port}`);
+    this.files = new FileRoutes(deps.options.dataDir, `http://127.0.0.1:${deps.options.port}`, deps.files);
+    this.adminFiles = new AdminFileRoutes(deps.files);
     this.adminSecurity = new AdminSecurityRoutes(deps.security, deps.facade, deps.options, deps.getRunner);
     this.adminTriggers = new AdminTriggerRoutes(deps.triggers);
     this.adminWorkflows = new AdminWorkflowRoutes(() => deps.workflows);
@@ -235,7 +241,8 @@ export class HttpServer {
       email: Boolean(deps.emailConfig),
       backups: Boolean(deps.backups),
       realtime: Boolean(deps.realtime),
-      search: Boolean(deps.facade.schemaManager)
+      search: Boolean(deps.facade.schemaManager),
+      files: Boolean(deps.files)
     };
   }
 
@@ -257,6 +264,7 @@ export class HttpServer {
     const adminTriggers = this.adminTriggers;
     const adminWorkflows = this.adminWorkflows;
     const adminBackups = this.adminBackups;
+    const adminFiles = this.adminFiles;
     const email = this.email;
     const adminEmail = this.adminEmail;
     const adminSearch = this.adminSearch;
@@ -338,24 +346,32 @@ export class HttpServer {
         handler: (ctx) => this.runFunction(ctx)
       },
 
-      // ---- Files -----------------------------------------------------------
+      // ---- Files (BAK-006) --------------------------------------------------
       {
         method: 'POST',
         pattern: 'files/:name',
         access: { kind: 'files', op: 'upload' },
-        handler: (ctx) => files.upload(ctx.req, ctx.res, ctx.params.name)
+        handler: (ctx) => files.upload(ctx)
       },
       {
         method: 'GET',
         pattern: 'files/:name',
         access: { kind: 'files', op: 'read' },
-        handler: (ctx) => files.serve(ctx.res, ctx.params.name)
+        handler: (ctx) => files.serve(ctx)
       },
       {
         method: 'DELETE',
         pattern: 'files/:name',
         access: { kind: 'files', op: 'delete' },
-        handler: (ctx) => files.delete(ctx.res, ctx.params.name)
+        handler: (ctx) => files.delete(ctx)
+      },
+      {
+        // Minting a signed URL is itself a read grant — same coarse gate as
+        // GET, with the row-ACL check happening inside signUrl() (module doc).
+        method: 'GET',
+        pattern: 'files/:name/sign',
+        access: { kind: 'files', op: 'read' },
+        handler: (ctx) => files.signUrl(ctx)
       },
 
       // ---- Sessions --------------------------------------------------------
@@ -695,6 +711,26 @@ export class HttpServer {
         pattern: 'admin/schema/apply',
         access: { kind: 'admin' },
         handler: (ctx) => adminBackups.schemaApply(ctx)
+      },
+
+      // ---- Admin: file storage config (BAK-006) ----------------------------
+      {
+        method: 'GET',
+        pattern: 'admin/files/config',
+        access: { kind: 'admin' },
+        handler: (ctx) => adminFiles.getConfig(ctx)
+      },
+      {
+        method: 'PUT',
+        pattern: 'admin/files/config',
+        access: { kind: 'admin' },
+        handler: (ctx) => adminFiles.updateConfig(ctx)
+      },
+      {
+        method: 'POST',
+        pattern: 'admin/files/sweep',
+        access: { kind: 'admin' },
+        handler: (ctx) => adminFiles.runSweep(ctx)
       },
 
       // ---- Admin: the BAK-002 email surface --------------------------------

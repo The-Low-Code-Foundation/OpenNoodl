@@ -37,6 +37,8 @@ import { RealtimeHub } from './realtime/RealtimeHub';
 import { SecretsStore } from './config/SecretsStore';
 import { TriggerSubsystem } from './triggers/TriggerSubsystem';
 import { BackupSubsystem } from './backup/BackupSubsystem';
+import { FileSubsystem } from './storage/FileSubsystem';
+import { ensureFilesTable } from './storage/MetadataStore';
 import { EmailConfigState } from './email/EmailConfigState';
 import { Mailer, SendEmailResult } from './email/Mailer';
 import { EmailTokenStore } from './email/tokens';
@@ -91,6 +93,7 @@ export class BackendService {
   private realtime: RealtimeHub | null = null;
   private triggers: TriggerSubsystem | null = null;
   private backups: BackupSubsystem | null = null;
+  private files: FileSubsystem | null = null;
   private emailConfig: EmailConfigState | null = null;
   private mailer: Mailer | null = null;
   private readonly executions = new ExecutionHistory();
@@ -230,6 +233,19 @@ export class BackendService {
       getSchema: () => (this.facade && this.facade.schemaManager ? this.facade.schemaManager.exportSchemas() : [])
     });
 
+    // 2.66 Files (BAK-006): metadata + storage driver + orphan-sweep scheduler,
+    //      the SAME CronScheduler class again (three consumers now: triggers,
+    //      backups, files). Shares the `files` namespace of secrets.json for
+    //      S3 credentials and the signed-URL HMAC secret.
+    this.files = new FileSubsystem({
+      dataDir: this.options.dataDir,
+      facade: this.facade,
+      secrets: new SecretsStore(this.options.dataDir),
+      executions: this.executions,
+      backendId: this.options.backendId,
+      backendName: this.options.backendName
+    });
+
     // 2.7 Email (BAK-002): config + secrets load beside security.json/secrets.json
     //     (same dataDir, same shared-secrets convention — see config/SecretsStore).
     //     Loading never throws for "unconfigured" — only for a malformed file —
@@ -252,6 +268,7 @@ export class BackendService {
       triggers: this.triggers,
       workflows: this.workflows,
       backups: this.backups,
+      files: this.files,
       emailConfig: this.emailConfig,
       mailer: this.mailer,
       emailTokens: new EmailTokenStore(this.facade)
@@ -314,6 +331,9 @@ export class BackendService {
     // 6.5 Scheduled backups arm here too (their CronScheduler, mirroring above).
     this.backups.start();
 
+    // 6.6 The orphan-sweep schedule (BAK-006), same mechanism, disabled by default.
+    this.files.start();
+
     return {
       options: this.options,
       listen,
@@ -343,6 +363,10 @@ export class BackendService {
     if (this.backups) {
       this.backups.stop();
       this.backups = null;
+    }
+    if (this.files) {
+      this.files.stop();
+      this.files = null;
     }
     if (this.realtime) {
       this.realtime.close();
@@ -479,6 +503,9 @@ export class BackendService {
         { name: 'consumedAt', type: 'Date' }
       ]
     });
+    // BAK-006: file metadata, ACL'd exactly like any other collection (the
+    // `ACL` column SchemaManager stamps onto every table here).
+    ensureFilesTable(sm);
   }
 
   /**
