@@ -66,10 +66,23 @@ export function planSelection(
 /**
  * Names a rename must avoid: everything the target already has, plus every
  * component this import is about to introduce (under its effective name).
+ *
+ * `excludeName` drops one component — identified by its ORIGINAL name, which is
+ * its stable identity — from the set. Callers validating a rename must pass the
+ * component being renamed, because that component contributes its own new name
+ * here: without the exclusion every proposed rename collides with itself and the
+ * field can never be satisfied. Excluding by original name is still safe against
+ * renaming onto the target's existing component of that name, since
+ * `target.componentNames` supplies it independently.
  */
-export function takenComponentNames(plan: ImportPlan, target: TargetSnapshot): Set<string> {
+export function takenComponentNames(
+  plan: ImportPlan,
+  target: TargetSnapshot,
+  excludeName?: string
+): Set<string> {
   const taken = new Set(target.componentNames);
   for (const component of plan.components) {
+    if (excludeName !== undefined && component.name === excludeName) continue;
     taken.add(component.policy.action === 'rename' ? component.policy.newName : component.name);
   }
   return taken;

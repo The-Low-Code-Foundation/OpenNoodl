@@ -198,7 +198,15 @@ export function ImportFlow({
   );
   const index = useMemo(() => (plan ? planIndex(plan) : new Map<string, PlannedStatus>()), [plan]);
   const summary = useMemo(() => (plan ? summarizePlan(plan, index) : null), [plan, index]);
-  const taken = useMemo(() => (plan ? takenComponentNames(plan, target) : new Set<string>()), [plan, target]);
+  /**
+   * Is `name` already claimed by something other than the component called
+   * `ownName`? Per-component, because a component must not be judged to collide
+   * with its own pending rename.
+   */
+  const isNameTaken = useCallback(
+    (ownName: string, name: string) => (plan ? takenComponentNames(plan, target, ownName).has(name) : false),
+    [plan, target]
+  );
 
   const setRequested = useCallback((keys: string[], select: boolean) => {
     setSelection((current) => toggleRequested(current, keys, select));
@@ -223,9 +231,13 @@ export function ImportFlow({
 
   const proposeName = useCallback(
     (key: string, currentName: string) => {
-      resolve(key, { kind: 'rename', newName: suggestName(currentName, taken) });
+      // Suggest against the set minus this component, for the same reason the
+      // validation excludes it — otherwise the suggestion is measured against
+      // its own previous proposal.
+      const others = plan ? takenComponentNames(plan, target, currentName) : new Set<string>();
+      resolve(key, { kind: 'rename', newName: suggestName(currentName, others) });
     },
-    [resolve, taken]
+    [resolve, plan, target]
   );
 
   const apply = useCallback(async () => {
@@ -384,7 +396,7 @@ export function ImportFlow({
               items={items}
               effective={effective}
               targetName={targetName}
-              taken={taken}
+              isNameTaken={isNameTaken}
               onResolve={resolve}
               onSuggestName={proposeName}
             />

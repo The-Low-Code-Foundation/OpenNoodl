@@ -284,3 +284,71 @@ picker's *Import from project* tab. One modal, three stages, no second dialog.
   mutate it. So the DONE stage, the one-undo-step behaviour, and post-import
   reference resolution are all still unverified.
 - QA-3 (prefab), QA-4 (URL), QA-5 (export) untouched.
+
+---
+
+## Collision QA executed — 2026-07-26 (orchestrator, primary checkout)
+
+The gap left by the first live pass is now closed. Two purpose-built fixtures
+(`qa-target` / `qa-source`) were generated with a deliberate collision and a real
+dependency closure, rather than importing into a user project:
+
+- `qa-source`: `/Cards/ProfileCard` instantiates **both** `/Shared/Button` and
+  `/Shared/Badge`; `/Shared/Button` **collides** with the target's component of the
+  same name and has visibly different content so the diff has something to say;
+  `/Shared/Badge` is new; colour styles `Brand` (collides) + `Accent`; text style
+  `Heading` with a font.
+- `qa-target`: `/Home` and `/Shared/Button`, colour style `Brand`.
+
+### Passed
+
+- **Closure + Success Criterion 7.** Ticking `ProfileCard` pulled in Button and
+  Badge, footer read *"1 selected, 3 items in total once dependencies are
+  included."*, right pane explained *"They are here because something you picked
+  needs them, so they cannot be left behind."* **Clicking the required row's box
+  did not untick it** — count unchanged, and the pane switched to
+  *"/Shared/Button — Required by /Cards/ProfileCard — it comes along with them"*
+  with a "Show the whole closure" back link. The criterion holds.
+- **Collision surfaced in the Select stage too** — `/Shared/Button` carried an
+  amber `collides` chip before reaching Review. Better than the checklist expected.
+- **QA-2.1/2.2 — overwrite is not blind.** Amber-edged card, `component` chip,
+  Keep mine / Overwrite / Rename defaulted to Overwrite, roll-up *"Your version
+  changes: 3 additions, 2 removals"*, and the SUB-007 list expands inline:
+  `— Removed Group / — Removed Text / + Added Group / + Added Text / + Added Text`.
+- **QA-2.3 — Keep mine.** Everything recomputed: headline 3→2 components, count
+  card *"1 overwritten"* → *"1 kept as yours"*, card edge amber→grey, `kept yours`
+  chip added, diff removed, and the right pane dropped its `collides` chip. This is
+  the "derived, never stored" design visibly paying off.
+- **QA-2.4 — Rename**, after the fix below: suggestion `/Shared/Button 2` is clean,
+  count card reads *"1 renamed"*, the RENAMES block explains that references follow
+  the new names. Validation truth table re-verified: `/Home` (target) → rejected
+  inline **and** in the footer; `/Shared/Badge` (another incoming item) → rejected;
+  `/Shared/ButtonV2` → accepted.
+
+### Defect found and fixed: every rename collided with itself
+
+`takenComponentNames()` built the "names a rename must avoid" set from the target's
+names **plus every planned component's effective name — including the component
+being renamed**. So `taken.has(newName)` was true for whatever the user typed, and
+the inline *"That name is already taken."* appeared on the auto-suggestion itself
+and never cleared. The Rename path was unusable.
+
+It did **not** block Import: the footer's `renameProblem` uses the engine's own
+`collides`, which is evaluated correctly. So the UI contradicted itself — a red
+error under an enabled button. (An earlier reading of mine claimed Import *was*
+disabled; that was a mis-measurement of the project-card "Import" CTAs sitting
+behind the modal, not the footer button.)
+
+Fix: `takenComponentNames(plan, target, excludeName?)` skips one component by its
+original name (its stable identity), and the parent passes a per-component
+`isNameTaken(ownName, name)` to `ReviewStage` instead of one shared set. Suggestion
+generation excludes self for the same reason. Excluding by original name stays safe
+against renaming onto the target's existing component of that name, because
+`target.componentNames` supplies it independently — verified by the truth table.
+
+### Still not covered
+
+- **The import was never applied.** DONE stage, the single-undo-step behaviour, and
+  post-import reference resolution after a rename remain unverified.
+- QA-3 (prefab install), QA-4 (import from URL), QA-5 (export), QA-6 (edges).
+- Colour-style and text-style collisions (only the component collision was driven).

@@ -44,7 +44,7 @@ export interface ReviewStageProps {
   effective: ResolutionMap;
   targetName: string;
   /** Names a rename must avoid — target's components plus this import's. */
-  taken: ReadonlySet<string>;
+  isNameTaken: (ownName: string, name: string) => boolean;
   onResolve: (key: string, resolution: Resolution) => void;
   onSuggestName: (key: string, currentName: string) => void;
 }
@@ -83,13 +83,13 @@ function Segmented({
 function CollisionRow({
   planned,
   resolution,
-  taken,
+  isNameTaken,
   onResolve,
   onSuggestName
 }: {
   planned: PlannedStatus;
   resolution: Resolution;
-  taken: ReadonlySet<string>;
+  isNameTaken: (ownName: string, name: string) => boolean;
   onResolve: (key: string, resolution: Resolution) => void;
   onSuggestName: (key: string, currentName: string) => void;
 }) {
@@ -101,7 +101,10 @@ function CollisionRow({
     planned.category === 'component' ? ['skip', 'overwrite', 'rename'] : ['skip', 'overwrite'];
 
   const renameValue = resolution.kind === 'rename' ? resolution.newName : '';
-  const renameCollides = resolution.kind === 'rename' && renameValue.trim() !== '' && taken.has(renameValue.trim());
+  // Judged against every other name, never this component's own pending
+  // rename — otherwise the field reports itself as taken and can never clear.
+  const renameCollides =
+    resolution.kind === 'rename' && renameValue.trim() !== '' && isNameTaken(planned.name, renameValue.trim());
   const renameEmpty = resolution.kind === 'rename' && renameValue.trim() === '';
 
   return (
@@ -167,7 +170,7 @@ export function ReviewStage({
   items,
   effective,
   targetName,
-  taken,
+  isNameTaken,
   onResolve,
   onSuggestName
 }: ReviewStageProps) {
@@ -215,7 +218,7 @@ export function ReviewStage({
               key={planned.key}
               planned={planned}
               resolution={effective[planned.key] ?? { kind: 'overwrite' }}
-              taken={taken}
+              isNameTaken={isNameTaken}
               onResolve={onResolve}
               onSuggestName={onSuggestName}
             />
