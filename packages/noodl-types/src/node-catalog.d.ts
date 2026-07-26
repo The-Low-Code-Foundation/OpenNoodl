@@ -115,6 +115,7 @@ export type NodeTypeName =
   | 'net.noodl.GlobalStore.Set'
   | 'net.noodl.GlobalStore.Subscribe'
   | 'net.noodl.HTTP'
+  | 'net.noodl.OptimisticUpdate'
   | 'net.noodl.ParentComponentObject'
   | 'net.noodl.SetComponentObjectProperties'
   | 'net.noodl.SetParentComponentObjectProperties'
