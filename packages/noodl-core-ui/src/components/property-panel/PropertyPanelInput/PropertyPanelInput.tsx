@@ -195,8 +195,12 @@ export function PropertyPanelInput({
     );
   };
 
+  // Boolean rows read as the mock's `.toggle-row`: label takes the row,
+  // the toggle sits at the right edge.
+  const isToggleRow = inputType === PropertyPanelInputType.Checkbox;
+
   return (
-    <div className={css['Root']}>
+    <div className={classNames(css['Root'], isToggleRow && css['is-toggle-row'])}>
       <div className={classNames(css['Label'], isChanged && css['is-changed'])}>
         {label}
         {isChanged && onReset && <span className={css['ResetDot']} title="Reset to default" onClick={onReset} />}

@@ -3,11 +3,15 @@ import React from 'react';
 
 import { PropertyPanelBaseInputProps } from '@noodl-core-ui/components/property-panel/PropertyPanelBaseInput';
 
-import { ReactComponent as CheckmarkIcon } from '../../../assets/icons/checkmark.svg';
 import css from './PropertyPanelCheckbox.module.scss';
 
 export interface PropertyPanelCheckboxProps extends Omit<PropertyPanelBaseInputProps<boolean>, 'type'> {}
 
+/**
+ * Boolean property control. PAR-002: renders as the mock's 32×19 toggle
+ * switch (accent on / border-strong off, white knob) — same checkbox input
+ * semantics underneath.
+ */
 export function PropertyPanelCheckbox({ value, onChange, isConnected, isChanged }: PropertyPanelCheckboxProps) {
   return (
     <div className={css['Root']}>
@@ -16,6 +20,8 @@ export function PropertyPanelCheckbox({ value, onChange, isConnected, isChanged 
         checked={value}
         value={null} // TODO: a bit ugly
         className={css['Checkbox']}
+        role="switch"
+        aria-checked={Boolean(value)}
         onChange={() => onChange(!value)}
       />
 
@@ -26,9 +32,7 @@ export function PropertyPanelCheckbox({ value, onChange, isConnected, isChanged 
           isChanged && css['is-changed'],
           isConnected && css['is-connected']
         )}
-      >
-        {value && <CheckmarkIcon />}
-      </div>
+      />
     </div>
   );
 }

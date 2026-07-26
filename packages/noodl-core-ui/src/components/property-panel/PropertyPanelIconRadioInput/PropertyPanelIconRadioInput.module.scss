@@ -1,5 +1,9 @@
+/* PAR-002 (mock `.seg-icons`): the segmented control fills the value track;
+   segments share the width equally. */
 .Root {
-  display: inline-flex;
+  display: flex;
+  flex: 1;
+  min-width: 0;
   gap: 1px;
   padding: 2px;
   background-color: var(--theme-color-bg-2);
@@ -9,6 +13,8 @@
 
 .Option {
   position: relative;
+  flex: 1;
+  min-width: 0;
   cursor: pointer;
   user-select: none;
   background-color: transparent;
@@ -16,7 +22,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 4px 6px;
+  padding: 5px 0;
   transition: background-color var(--speed-turbo), color var(--speed-turbo);
 
   &:hover {

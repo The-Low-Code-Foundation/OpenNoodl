@@ -12,6 +12,8 @@ export interface PropertyPanelBaseInputProps<ValueType = string | number> {
   isFauxFocused?: boolean;
   hasHiddenCaret?: boolean;
   hasSmallText?: boolean;
+  /** Numeric presentation (mock `.input.num`): mono 11.5px, centered. */
+  isNumeric?: boolean;
 
   /** Rendered as data-identifier, used for input targeting (e.g. node double-click focus actions) */
   dataIdentifier?: string;
@@ -39,6 +41,7 @@ export function PropertyPanelBaseInput({
   isFauxFocused,
   hasHiddenCaret,
   hasSmallText,
+  isNumeric,
 
   dataIdentifier,
   dataType,
@@ -61,7 +64,8 @@ export function PropertyPanelBaseInput({
         isConnected && css['is-connected'],
         hasHiddenCaret && css['has-hidden-caret'],
         isFauxFocused && css['is-faux-focused'],
-        hasSmallText && css['has-small-text']
+        hasSmallText && css['has-small-text'],
+        isNumeric && css['is-numeric']
       )}
       type={type}
       // A port with no value resolves to null; React wants '' for a controlled input

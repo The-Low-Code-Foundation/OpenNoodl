@@ -54,6 +54,7 @@ export function PropertyPanelNumberInput({
     <PropertyPanelBaseInput
       value={displayedInputValue}
       type="text"
+      isNumeric
       isChanged={isChanged}
       isConnected={isConnected}
       dataIdentifier={dataIdentifier}

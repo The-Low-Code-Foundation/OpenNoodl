@@ -1,24 +1,28 @@
 @use '../../../styles/scss-variables/length.scss';
 
+/* PAR-002 (mock `.input`): bg-2 box, hairline border, radius 6; hover lifts
+   the border to border-strong. */
 .Root {
   font-family: var(--font-family);
-  color: var(--theme-color-fg-default);
-  background-color: var(--theme-color-bg-3);
+  color: var(--theme-color-fg-highlight);
+  background-color: var(--theme-color-bg-2);
   line-height: 1;
-  border: none;
-  padding: length.$property-panel-input-padding;
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: var(--radius-md);
+  padding: 5.5px 9px;
   width: 100%;
   box-sizing: border-box;
-  font-size: 12px;
-  transition: background-color var(--speed-turbo), color var(--speed-turbo);
+  font-size: 12.5px;
+  transition: background-color var(--speed-turbo), color var(--speed-turbo), border-color var(--speed-turbo);
 
   &:hover {
-    color: var(--theme-color-fg-highlight);
+    border-color: var(--theme-color-border-strong);
   }
 
   &:focus,
   &.is-faux-focused {
     background-color: var(--theme-color-bg-1);
+    border-color: var(--theme-color-primary);
     color: var(--theme-color-fg-highlight);
     outline: none;
   }
@@ -45,10 +49,21 @@
     }
   }
 
+  /* Unit pickers etc. — the mock's `.unit`: small mono, muted. */
   &.has-small-text {
-    font-size: 10px;
+    font-family: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, monospace;
+    font-size: 10.5px;
+    color: var(--theme-color-fg-muted);
     padding-left: length.$property-panel-small-xy-padding;
     padding-right: length.$property-panel-small-xy-padding;
+    text-align: center;
+  }
+
+  /* Mock `.input.num`: numeric values in mono, centered. */
+  &.is-numeric,
+  &[type='number'] {
+    font-family: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, monospace;
+    font-size: 11.5px;
     text-align: center;
   }
 }
