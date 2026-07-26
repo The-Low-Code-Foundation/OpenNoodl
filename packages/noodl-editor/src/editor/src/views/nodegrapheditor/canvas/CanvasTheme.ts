@@ -15,9 +15,11 @@
  * theme exists when this ships). Any of the following re-resolves all colours,
  * invalidates the cached grid pattern and notifies listeners:
  *   - `CanvasTheme.instance.refresh()` (direct call);
- *   - `window.dispatchEvent(new CustomEvent('nodegx:themechanged'))`;
- *   - toggling a class on `<html>` (e.g. `theme-light`) — observed with a
- *     MutationObserver on the root element's `class` attribute.
+ *   - `window.dispatchEvent(new CustomEvent('nodegx:themechanged'))` — the
+ *     primary hook; the editor's ThemeManager (UIX-008) fires this on every
+ *     theme change;
+ *   - flipping the root element's `data-theme` attribute (or a legacy theme
+ *     `class`) — observed with a MutationObserver as a safety net.
  *
  * Listeners follow the PLAT-001 listener-context rule: register with
  * `on(listener, context)`, detach with `off(context)`. `NodeGraphEditor`
@@ -246,9 +248,10 @@ export class CanvasTheme {
       window.addEventListener(THEME_CHANGED_EVENT, () => this.refresh());
     }
     if (hasDom() && typeof MutationObserver !== 'undefined') {
-      // ...and automatic pickup of a theme class flip on the root element.
+      // ...and automatic pickup of a theme flip on the root element (the
+      // ThemeManager sets `data-theme`; `class` kept for any legacy toggler).
       this.observer = new MutationObserver(() => this.refresh());
-      this.observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+      this.observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'class'] });
     }
   }
 

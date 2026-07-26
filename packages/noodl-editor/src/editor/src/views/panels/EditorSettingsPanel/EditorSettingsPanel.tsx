@@ -13,6 +13,7 @@ import { ExperimentalFlag, ExperimentalFlagVariant } from '@noodl-core-ui/compon
 import { Text, TextSize } from '@noodl-core-ui/components/typography/Text';
 
 import { AiSettingsSection } from '../AiSettings/AiSettingsSection';
+import { AppearanceSettingsSection } from './AppearanceSettingsSection';
 
 export function EditorSettingsPanel() {
   // @ts-expect-error Model is yeah, not great!
@@ -32,6 +33,7 @@ export function EditorSettingsPanel() {
 
   return (
     <BasePanel title="Editor Settings" hasContentScroll>
+      <AppearanceSettingsSection />
       {Boolean(experimentalPanels.length) && (
         <>
           <CollapsableSection title="Experimental panels" isClosed>

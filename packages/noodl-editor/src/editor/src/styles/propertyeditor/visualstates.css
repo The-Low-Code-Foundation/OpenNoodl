@@ -33,7 +33,7 @@
 .visual-state-default-transition .label {
   background-color: var(--theme-color-bg-4);
   padding: 2px 2px 2px 8px;
-  color: rgba(255, 255, 255, 0.75);
+  color: var(--theme-color-fg-default);
   flex-grow: 1;
   display: flex;
   align-items: center;
@@ -41,7 +41,7 @@
 }
 
 .visual-state-default-transition.default .label {
-  color: rgba(255, 255, 255, 0.33);
+  color: var(--theme-color-fg-muted);
 }
 
 .visual-state-default-transition.selected .label {
@@ -56,7 +56,7 @@
   background-color: var(--theme-color-bg-3);
   padding: 2px 0;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--theme-color-fg-default-shy);
   line-height: 17px;
   width: 52px;
   box-sizing: border-box;

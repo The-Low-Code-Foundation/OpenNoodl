@@ -59,6 +59,29 @@ Status on white: primary 4.6 · danger 4.8 · warning 5.4 · success 4.0 *(succe
 
 Every documented pairing meets AA for its documented role.
 
-## Light theme
+## Theming (light + dark) — UIX-008
 
-Light values live in the (inert) `.theme-light` block in `colors.css`. UIX-008 activates it by toggling the class on the root element. Raw `--base-color-*` scales do not flip — only `--theme-color-*` tokens do. This is one more reason to never use base scales directly in components.
+The editor ships a light and a dark theme. Both render from **one token set**.
+
+### How it is wired
+
+- **`:root`** in `colors.css` carries the **dark** values — the compat default. Any surface with no theme applied (pre-boot flash, headless render, tests) is dark.
+- **`:root[data-theme='light']`** overrides the `--theme-color-*` semantic tokens with the light palette. `data-theme='dark'` (or no attribute) inherits the `:root` defaults, so there is no separate dark override block.
+- Theme-dependent **shadows** live the same way in `spacing.css` (`:root[data-theme='light']` strengthens `--shadow-*`, because light elevation reads from shadow, not the bg ladder).
+- The **`ThemeManager`** (`packages/noodl-editor/src/editor/src/models/ThemeManager.ts`) owns the mode (`system | light | dark`, default `system`), stamps `data-theme` on the document root, persists the choice in `EditorSettings` (`editor.theme`), follows `prefers-color-scheme` live in system mode, and fires the `nodegx:themechanged` window event. It is applied in `src/editor/index.ts` before first paint. Launcher and editor share one window, so stamping the root themes both.
+
+### How to add a theme-dependent value
+
+1. Define the **dark** value in `:root` and the **light** value in the `[data-theme='light']` block. Same token name in both.
+2. Consume it as `var(--theme-color-…)` in your SCSS/CSS. It flips for free.
+3. **Never hardcode a colour a light surface would need to override.** If you catch yourself writing `rgba(255,255,255,.1)` for a hover, use a theme-aware token (`--theme-color-bg-hover`, `--theme-color-fg-transparent`) instead — a white overlay vanishes on white.
+4. Raw `--base-color-*` scales **do not flip** — only `--theme-color-*` tokens do. Never use base scales directly in components.
+5. Imperative canvas painting reads tokens through `CanvasTheme` (which re-resolves on `nodegx:themechanged`); the CodeMirror theme reads `--theme-color-syntax-*` via `var()` so it flips with no re-instantiation. Follow those patterns rather than reading colours another way.
+
+### Scope
+
+"Theme" means the editor **chrome** only. The preview webview renders the user's running app; its appearance is the user's business and is deliberately untouched.
+
+### Future
+
+The `[data-theme]` structure generalises: a high-contrast or custom theme is another attribute value plus another override block. Parked for now (out of UIX-008 scope) but the structure supports it.
