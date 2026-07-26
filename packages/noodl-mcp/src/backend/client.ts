@@ -81,7 +81,14 @@ export class BackendClient {
     return this.backend;
   }
 
-  async request(method: string, routePath: string, body?: unknown): Promise<BackendResponse> {
+  /**
+   * @param tolerate status codes to RETURN rather than throw on. Used where a
+   *   4xx is a legitimate answer rather than a failure — BAK-005's dashboard
+   *   probe, where a 404 means "the operator ran with --no-admin", which is
+   *   exactly what the agent asked about. 401 is never tolerable: a rejected
+   *   credential is always an error worth stopping for.
+   */
+  async request(method: string, routePath: string, body?: unknown, tolerate: number[] = []): Promise<BackendResponse> {
     const headers: Record<string, string> = {};
     if (this.backend.adminToken) headers.authorization = `Bearer ${this.backend.adminToken}`;
     if (body !== undefined) headers['content-type'] = 'application/json';
@@ -116,7 +123,7 @@ export class BackendClient {
             : `No secrets.json found in ${this.backend.dir} — start the backend once under BAK-003 to mint the admin credential.`)
       );
     }
-    if (res.status >= 400) {
+    if (res.status >= 400 && !tolerate.includes(res.status)) {
       const message = (json && typeof json === 'object' && (json as { error?: string }).error) || `HTTP ${res.status}`;
       throw new ToolError('backend-error', `Backend "${this.backend.name}": ${message}`);
     }

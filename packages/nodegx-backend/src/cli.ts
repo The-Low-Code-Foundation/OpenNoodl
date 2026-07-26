@@ -78,6 +78,13 @@ function parseArgs(argv: string[]): ParsedArgs {
       case '--ephemeral':
         options.allowEphemeral = true;
         break;
+      // BAK-005 admin dashboard
+      case '--no-admin':
+        options.adminDashboard = false;
+        break;
+      case '--readonly-token':
+        options.readonlyToken = next();
+        break;
       // BAK-007 command flags
       case '--dest':
         extras.dest = next();
@@ -163,6 +170,7 @@ const USAGE = `nodegx-backend — standalone NodeGX backend service (WF-004)
 Usage:
   nodegx-backend serve  --data-dir <dir> --port <p> [--host <h>] [--token <t>]
                         [--backend-id <id>] [--backend-name <name>] [--ephemeral]
+                        [--no-admin] [--readonly-token <t>]
   nodegx-backend doctor --data-dir <dir> [--ephemeral]
 
   nodegx-backend backup  --data-dir <dir> [--dest <dir>] [--include-secrets]
@@ -199,6 +207,12 @@ Options:
   --ephemeral            Run without persistence if no SQLite engine loads (data
                          lost on restart). Off by default — the service refuses
                          to fake it.
+  --no-admin             Do not serve the admin dashboard. The /_admin route is
+                         not registered at all (404), not merely blocked.
+  --readonly-token <t>   Provision the READ-ONLY admin credential: it can read
+                         everything the admin surface exposes and change
+                         nothing. Never minted automatically — a backend has
+                         this tier only if you ask for it.
 `;
 
 async function runServe(options: Partial<BackendServiceOptions>): Promise<void> {
@@ -230,6 +244,26 @@ async function runServe(options: Partial<BackendServiceOptions>): Promise<void> 
     process.stdout.write(
       '[nodegx-backend] non-loopback bind: data routes governed by permissions/sessions; admin routes require the admin credential\n'
     );
+  }
+
+  // BAK-005: say where the dashboard is, and — when nobody has ever chosen an
+  // admin credential — where to find the one that was just minted. An operator
+  // who cannot find the credential cannot use the dashboard at all, so this is
+  // part of the feature, not a nicety.
+  if (started.options.adminDashboard) {
+    process.stdout.write(`[nodegx-backend] admin dashboard: ${started.listen.url}/_admin\n`);
+    if (started.security.adminTokenMintedThisStart) {
+      process.stdout.write(
+        `[nodegx-backend]   FIRST RUN: an admin credential was generated for this backend. Read it from\n` +
+          `[nodegx-backend]   ${path.join(started.options.dataDir, 'secrets.json')} ("adminToken"), or restart with\n` +
+          `[nodegx-backend]   --token <your-own-secret> to choose your own.\n`
+      );
+    }
+    if (started.security.hasReadonlyTier) {
+      process.stdout.write('[nodegx-backend]   a read-only admin credential is provisioned\n');
+    }
+  } else {
+    process.stdout.write('[nodegx-backend] admin dashboard: DISABLED (--no-admin); /_admin is not routed\n');
   }
 
   // Machine-readable readiness line — the editor supervisor handshakes on this.

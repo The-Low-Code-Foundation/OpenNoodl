@@ -77,14 +77,25 @@ export interface SecurityDeps {
   loopback: boolean;
   /** WF-004 --token value, if given: provisions/overrides the admin credential. */
   cliToken: string | null;
+  /**
+   * BAK-005 --readonly-token, if given: provisions/overrides the SECOND admin
+   * credential tier (read everything, write nothing). Deliberately NOT
+   * auto-minted — a backend has a read-only tier only when an operator asks
+   * for one, so `adminReadonlyToken` stays null on every existing backend.
+   */
+  readonlyToken?: string | null;
   facade: AdapterFacade;
 }
 
 export class SecurityState {
   readonly config: SecurityConfig;
   readonly adminToken: string;
+  /** The read-only admin credential, or null when this backend has no such tier. */
+  readonly adminReadonlyToken: string | null;
   /** True when the default config was just written (migration notice surface). */
   readonly migratedThisStart: boolean;
+  /** True when the admin credential was auto-minted on THIS start (first-run surface). */
+  readonly adminTokenMintedThisStart: boolean;
   private readonly deps: SecurityDeps;
 
   constructor(deps: SecurityDeps) {
@@ -120,8 +131,11 @@ export class SecurityState {
     }
 
     // --- secrets.json -------------------------------------------------------
+    // Read-modify-write of the WHOLE file, preserving every namespace another
+    // subsystem owns (config/SecretsStore's convention). Security owns exactly
+    // the two top-level admin credential keys.
     const secretsPath = path.join(deps.dataDir, SECRETS_FILE);
-    let secrets: { adminToken?: string } = {};
+    let secrets: { adminToken?: string; adminReadonlyToken?: string } = {};
     if (fs.existsSync(secretsPath)) {
       try {
         secrets = JSON.parse(fs.readFileSync(secretsPath, 'utf-8'));
@@ -132,15 +146,37 @@ export class SecurityState {
         );
       }
     }
+    let mintedThisStart = false;
     if (deps.cliToken) {
       // WF-004 migration: the --token flag provisions the admin credential.
       secrets.adminToken = deps.cliToken;
       atomicWriteJSON(secretsPath, secrets, 0o600);
     } else if (!secrets.adminToken) {
       secrets.adminToken = crypto.randomBytes(32).toString('base64url');
+      mintedThisStart = true;
       atomicWriteJSON(secretsPath, secrets, 0o600);
     }
     this.adminToken = secrets.adminToken;
+    this.adminTokenMintedThisStart = mintedThisStart;
+
+    // BAK-005's read-only tier. Provisioned only on request; refused if it
+    // collides with the full credential (a read-only token that silently grants
+    // write is exactly the accept-and-ignore security config this model bans).
+    if (deps.readonlyToken) {
+      if (deps.readonlyToken === secrets.adminToken) {
+        throw new SecurityStartupError(
+          'READONLY_TOKEN_COLLIDES',
+          'Refusing to start: the read-only admin credential is identical to the full admin credential, ' +
+            'so "read-only" would silently grant full write access. Use a different --readonly-token.'
+        );
+      }
+      secrets.adminReadonlyToken = deps.readonlyToken;
+      atomicWriteJSON(secretsPath, secrets, 0o600);
+    }
+    this.adminReadonlyToken =
+      typeof secrets.adminReadonlyToken === 'string' && secrets.adminReadonlyToken.length > 0
+        ? secrets.adminReadonlyToken
+        : null;
 
     // --- The deploy interlock ----------------------------------------------
     if (!deps.loopback && this.config.devOpen) {
@@ -171,15 +207,20 @@ export class SecurityState {
   async resolvePrincipal(req: http.IncomingMessage): Promise<Principal> {
     const h = req.headers;
 
-    // 1. Master key / admin bearer token.
+    // 1. Master key / admin bearer token. The read-only tier (BAK-005) is the
+    //    same credential slot, a different secret: it resolves to an admin
+    //    principal carrying `readonly`, which the dispatcher then refuses every
+    //    state-changing request for.
     const masterKey = h['x-parse-master-key'];
     if (typeof masterKey === 'string' && masterKey.length > 0) {
-      if (safeEqual(masterKey, this.adminToken)) return { kind: 'admin' };
+      const admin = this.matchAdminCredential(masterKey);
+      if (admin) return admin;
       throw new HttpError(401, 'Unauthorized.');
     }
     const auth = h['authorization'];
     if (typeof auth === 'string' && auth.startsWith('Bearer ')) {
-      if (safeEqual(auth.slice('Bearer '.length), this.adminToken)) return { kind: 'admin' };
+      const admin = this.matchAdminCredential(auth.slice('Bearer '.length));
+      if (admin) return admin;
       throw new HttpError(401, 'Unauthorized.');
     }
 
@@ -213,6 +254,19 @@ export class SecurityState {
     }
 
     return { kind: 'anonymous' };
+  }
+
+  /**
+   * Match a presented secret against the two admin credentials. Both branches
+   * are compared unconditionally so the answer's timing does not reveal which
+   * tier (if either) was hit.
+   */
+  private matchAdminCredential(secret: string): Principal | null {
+    const full = safeEqual(secret, this.adminToken);
+    const readonly = this.adminReadonlyToken ? safeEqual(secret, this.adminReadonlyToken) : false;
+    if (full) return { kind: 'admin' };
+    if (readonly) return { kind: 'admin', readonly: true };
+    return null;
   }
 
   // ==========================================================================

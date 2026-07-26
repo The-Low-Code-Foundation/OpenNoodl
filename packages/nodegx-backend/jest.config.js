@@ -5,7 +5,10 @@
 module.exports = {
   testEnvironment: 'node',
   transform: {
-    '^.+\\.tsx?$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.json', isolatedModules: true }]
+    '^.+\\.tsx?$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.json', isolatedModules: true }],
+    // BAK-005: mirrors esbuild's `text` loader so the served dashboard's markup
+    // and stylesheet load identically under jest and in the built bundle.
+    '^.+\\.(html|css)$': '<rootDir>/tests/text-transformer.js'
   },
   moduleNameMapper: {
     // Mirrors the esbuild alias in scripts/build.js: the cloud runtime +

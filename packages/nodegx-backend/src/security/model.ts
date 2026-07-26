@@ -20,8 +20,16 @@
 // ============================================================================
 
 export type Principal =
-  /** Master key / admin bearer token. Bypasses CLPs and ACLs. */
-  | { kind: 'admin' }
+  /**
+   * Master key / admin bearer token. Bypasses CLPs and ACLs.
+   *
+   * `readonly: true` marks the SECOND admin credential tier (BAK-005): the same
+   * total read access, zero write access. It is a property of the credential,
+   * not of the route — the dispatcher refuses every state-changing request from
+   * a read-only admin before any handler runs, so "look, don't touch" cannot be
+   * defeated by finding an un-annotated route.
+   */
+  | { kind: 'admin'; readonly?: boolean }
   /** Named server-to-server credential; power comes only from its scopes. */
   | { kind: 'apiKey'; name: string; scopes: string[] }
   /** Session-token caller. `roles` are resolved names (no 'role:' prefix). */

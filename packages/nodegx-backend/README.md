@@ -47,7 +47,8 @@ nodegx-backend doctor --data-dir <dir> [--ephemeral]
 | **Parse-wire** | `/classes/:c[/:id]`, `/aggregate/:c`, `/files/:name`, `/functions/:name`, `/config`, `/login`, `/logout`, `/users`, `/users/me`, `/users/:id` | The runtime's record / user / cloud-function / config nodes — unchanged clients (`cloudstore.js`, `userservice.ts`, `cloudfunctions.js`, `configservice.js`) |
 | **BYOB** | `/api/:table[/:id]`, `/api/_schema`, `/api/_batch` | The `noodl.byob.*` nodes and the Data Browser |
 | **Admin** | `/health`, `/admin/status`, `/admin/schema*`, `/admin/schema-export`, `/admin/workflows*`, `/executions[/:id]` | The editor's BackendManager (IPC → HTTP proxy) and ops tooling |
-| **Access control** | `/admin/permissions*`, `/admin/roles*`, `/admin/keys*` | The Permissions panel, the MCP backend tools, and BAK-005's dashboard |
+| **Access control** | `/admin/permissions*`, `/admin/roles*`, `/admin/keys*` | The Permissions panel, the MCP backend tools, and the served dashboard |
+| **Admin dashboard** | `/_admin`, `/_admin/whoami` | A browser. The service serves its own operator UI (BAK-005) — see below |
 
 All three front the same `LocalSQLAdapter` database. Cloud functions run in
 this process via the bundled CloudRunner; record/user/config nodes *inside* a
@@ -72,6 +73,23 @@ localhost and *refuses to start* if asked to bind non-loopback with dev-open on
 - `src/security/model.ts` exports the pure model (`canReadRecord`,
   `resolvePrincipal`, CLP evaluation) — the contract BAK-001's realtime
   delivery consumes so query filtering and event filtering cannot drift.
+
+## The served admin dashboard (BAK-005)
+
+The service carries its own operator UI at **`/_admin`** — collections, schema,
+users, roles, permissions, API keys, triggers, workflows, executions, email and
+backups — so a deployed backend is administrable from a browser with no editor
+installed. It signs in with the same admin credential above, and sections whose
+backing subsystem is absent are not rendered rather than served broken.
+
+- One self-contained document (markup + CSS + JS inlined at build time), so
+  `dist/cli.js` is still the only artefact to deploy and the page's CSP can be
+  `default-src 'none'` with a per-response nonce.
+- `--readonly-token <t>` provisions a second credential that can read
+  everything and write nothing — refused in the dispatcher, not the UI.
+- `--no-admin` unregisters the routes entirely (404, not 403).
+- Operator guide, including **exposure advice**:
+  [`docs/runtime/BACKEND-ADMIN-DASHBOARD.md`](../../docs/runtime/BACKEND-ADMIN-DASHBOARD.md).
 
 ## Data directory layout
 

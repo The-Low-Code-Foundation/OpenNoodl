@@ -40,7 +40,13 @@ const shared = {
   },
   // node:sqlite must stay a runtime require — esbuild cannot resolve node: URIs
   // it doesn't know, and bundling it makes no sense.
-  external: ['node:sqlite']
+  external: ['node:sqlite'],
+  // BAK-005: the admin dashboard's document and stylesheet are inlined into the
+  // bundle as strings. This is what keeps "copy dist/cli.js to the VPS and run
+  // it" true with a UI attached — there is no asset directory to ship, no
+  // second bundler, and nothing for the page to fetch (so its CSP can forbid
+  // every external origin outright).
+  loader: { '.html': 'text', '.css': 'text' }
 };
 
 async function main() {

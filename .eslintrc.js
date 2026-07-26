@@ -7,9 +7,7 @@ module.exports = {
   extends: ['eslint:recommended', 'plugin:react/recommended', 'plugin:@typescript-eslint/recommended'],
   // Mirrors the generated-bundle entries in .gitignore. Without this, a local build
   // (webpack output lands inside src/) makes `lint:ci`'s error count drift with
-  // whatever's sitting on disk instead of what's in git — the vendored
-  // parse-dashboard-public/bundles/ stay lint-covered on purpose, so this isn't a
-  // blanket `*.bundle.js` ignore.
+  // whatever's sitting on disk instead of what's in git.
   ignorePatterns: [
     'packages/noodl-editor/src/editor/index.bundle.js',
     'packages/noodl-editor/src/frames/viewer-frame/index.bundle.js',
