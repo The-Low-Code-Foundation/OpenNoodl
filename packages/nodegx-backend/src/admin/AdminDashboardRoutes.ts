@@ -86,6 +86,8 @@ export interface DashboardFeatures {
   email: boolean;
   backups: boolean;
   realtime: boolean;
+  /** BAK-008: per-collection full-text search config exists (schema manager available). */
+  search: boolean;
 }
 
 export interface AdminDashboardDeps {

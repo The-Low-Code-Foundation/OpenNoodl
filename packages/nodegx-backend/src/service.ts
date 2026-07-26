@@ -30,6 +30,8 @@ import { HttpServer, ListenInfo } from './server/HttpServer';
 import { WorkflowRunner } from './workflow/WorkflowRunner';
 import { WorkflowSubsystem } from './workflow/WorkflowSubsystem';
 import { SecurityState, SecurityStartupError } from './security/state';
+import { SearchState, SearchStartupError } from './search/SearchState';
+import { SearchIndexer, SearchCapabilityError } from './search/SearchIndexer';
 import { ChangeBus } from './realtime/ChangeBus';
 import { RealtimeHub } from './realtime/RealtimeHub';
 import { SecretsStore } from './config/SecretsStore';
@@ -67,6 +69,12 @@ export interface StartedService {
     /** BAK-005: a read-only admin credential is provisioned. */
     hasReadonlyTier: boolean;
   };
+  /** BAK-008: full-text search status at this start. */
+  search: {
+    fts5Available: boolean;
+    /** Collections whose FTS5 shadow table was (re)built during this start. */
+    reconciledCollections: string[];
+  };
   stop(): Promise<void>;
 }
 
@@ -78,6 +86,7 @@ export class BackendService {
   private runner: WorkflowRunner | null = null;
   private workflows: WorkflowSubsystem | null = null;
   private security: SecurityState | null = null;
+  private search: SearchState | null = null;
   private changeBus: ChangeBus | null = null;
   private realtime: RealtimeHub | null = null;
   private triggers: TriggerSubsystem | null = null;
@@ -138,6 +147,29 @@ export class BackendService {
           'Set "devOpen": false in security.json to test enforcement locally; deploys refuse to start with ' +
           'dev-open enabled.'
       );
+    }
+
+    // 1.6 Search (BAK-008): load search.json, then reconcile every enabled
+    //     collection's FTS5 shadow table against it — a fresh start, a config
+    //     change that landed but whose rebuild was interrupted, or drift from
+    //     a prior crash all converge to the same correct state (rebuild is
+    //     idempotent). An engine that cannot support FTS5 fails this LOUDLY
+    //     (SearchCapabilityError) if — and only if — some collection actually
+    //     has search enabled; a backend that never opted in to search is not
+    //     penalized for an absent capability it never asked for (RUN-004
+    //     loud-failure doctrine: fail loud when it matters, not everywhere).
+    this.search = new SearchState(this.options.dataDir);
+    const searchIndexer = new SearchIndexer(this.facade.schemaManager);
+    let searchReconciledCollections: string[] = [];
+    if (this.search.enabledCollections().length > 0) {
+      try {
+        searchReconciledCollections = searchIndexer.reconcileAll(this.search).map((r) => r.tableName);
+      } catch (e) {
+        if (e instanceof SearchCapabilityError) {
+          throw new SearchStartupError('SEARCH_ENGINE_UNAVAILABLE', e.message);
+        }
+        throw e;
+      }
     }
 
     // 2. Execution history beside the data.
@@ -213,6 +245,7 @@ export class BackendService {
       facade: this.facade,
       executions: this.executions,
       security: this.security,
+      search: this.search,
       getRunner: () => this.runner,
       getConfigParams: () => this.readConfigParams(),
       realtime: this.realtime,
@@ -294,6 +327,10 @@ export class BackendService {
         adminTokenMintedThisStart: this.security.adminTokenMintedThisStart,
         hasReadonlyTier: this.security.adminReadonlyToken !== null
       },
+      search: {
+        fts5Available: searchIndexer.hasFts5(),
+        reconciledCollections: searchReconciledCollections
+      },
       stop: () => this.stop()
     };
   }
@@ -327,6 +364,7 @@ export class BackendService {
     this.runner = null;
     this.workflows = null;
     this.security = null;
+    this.search = null;
   }
 
   /** True when the current options require a bearer token (non-loopback bind). */

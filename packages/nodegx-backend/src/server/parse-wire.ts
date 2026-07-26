@@ -119,7 +119,23 @@ export class ParseWireRoutes {
     if (body._method === 'GET') {
       const options = toQueryOptions(body);
       options.acl = ctx.acl('read');
-      const result = await this.facade.wireQuery(collection, options);
+      // BAK-008: a non-empty `search` switches this from a plain query to an
+      // FTS5-ranked search (still ANDed with `where`/ACL). `find` CLP already
+      // gates this branch (see HttpServer's byBody->'find' resolution), so
+      // search inherits the same collection-level permission as a query.
+      const searchTerm = typeof body.search === 'string' ? body.search.trim() : '';
+      let result;
+      if (searchTerm) {
+        try {
+          result = await this.facade.wireSearch(collection, { ...options, search: searchTerm });
+        } catch (e) {
+          // "Search is not enabled for ..." (LocalSQLAdapter) is a caller
+          // mistake, not a server fault — a clear 400 beats a generic 500.
+          throw new HttpError(400, e instanceof Error ? e.message : String(e));
+        }
+      } else {
+        result = await this.facade.wireQuery(collection, options);
+      }
       sendJSON(ctx.res, 200, result);
       return;
     }
