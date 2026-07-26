@@ -186,22 +186,59 @@ points than before — that is a *size* change, not a *consistency* change);
 (3) port dot radius 6→3.5 — visual only; hit targets are the drag-area/border zones,
 not the dots.
 
-## Still needs LIVE verification (orchestrator, from the primary checkout)
+## Live verification record (2026-07-26, primary checkout, Shine Phase 2 project)
 
-1. Screenshot-vs-mock: rebuild the mock's scene (Expression → Backend function → Text
-   hierarchy) and compare against `mocks/nodegx-editor-mock.html`'s canvas.
-2. Diff canvas: open a real SUB-007 diff + AIX-003 annotated component; confirm
-   Created/Changed/Deleted (now success/warning/danger) legible on the neutral cards
-   and that the accept/reject flow reads correctly.
-3. Zoom QA 25–200%: label legibility (12.5px system stack), 1px borders on
-   retina/non-retina, grid appearance across zoom, grid LOD cutoff at 40%.
-4. Perf: large corpus project pan/zoom — the glow is two strokes and the grid one
-   pattern fillRect, but measure; drop the glow before dropping frame rate.
-5. Theme toggle: flip a class on `<html>` (or dispatch `nodegx:themechanged`) in
-   devtools → canvas repaints with re-resolved colours.
-6. Long-label nodes: wrap points changed with the font/inset change — eyeball crowded
-   cards (name + right-side status icons + comment icon).
-7. Node picker / connection popup / references panel with the harmonized blob hues
-   (they kept their old visual structure by design — UIX-009 restyles them).
-8. CHANGELOG-COMMUNITY entry: deferred to the phase-23 wrap (concurrent UIX tasks
-   would collide in the narrative file; orchestrator owns the phase story).
+Screenshots in `screenshots/uix-005-live-qa/`. Driven headlessly via CDP +
+`window.__nodeGraphEditor` (the PLAT-001 scripted-canvas handle).
+
+**Blocker found and fixed first.** Every node graph painted blank: WF-007 deleted
+the hidden cloud-runtime sandbox (the second node-library client) but
+`NodeLibraryImporter.updateIndex()` still gated `NodeLibrary.instance.reload()`
+behind `clients.count >= 2`, so the library never loaded and
+`CanvasPainter.paint()` early-returned after its clear. The parallel-batch
+"smoke test" screenshots all show this state — empty-looking projects made it
+read as "boot clean". Fixed by reloading as soon as any client delivers a
+library (see the commit touching `NodeLibraryImporter.ts`); the same gate was
+also blocking `ViewerConnection.export()`, so the design-view preview was blank
+too. Graph + preview now render on plain project open (`03-paints-on-open…`).
+
+1. ✅ **Node cards vs mock** (`01`): neutral bg-1 cards, tinted 22px icon chips,
+   category glyphs, name/type-line hierarchy, hierarchy spines, cyan signal wire
+   with endpoint arrow, dot-grid ground — matches the mock's design language.
+   (The mock's exact Expression→Backend-function→Text scene was not rebuilt; a
+   real project exercises the same card anatomy.)
+2. ✅ **Diff annotation colours** (`05`): Created/Changed/Deleted set on three
+   nodes + a wire via the annotation fields the SUB-007/AIX-003 canvases use —
+   success-green ring + `+` badge, warning-amber + `~`, danger-red dashed + `−`;
+   annotated wire goes success-green at 3px. All legible on neutral cards.
+   (Colour semantics verified; the full accept/reject UI flow still deserves a
+   pass when a git-diff project is at hand — see residuals.)
+3. ✅ **Zoom 25% / 50% / 200%** (`06`–`08`): labels legible at every step, grid
+   LOD correctly suppresses dots below 40%, 2× pattern tile keeps dots round at
+   200%, borders stay crisp (retina).
+4. ✅ **Perf**: 60 synchronous full paints of the open graph = **0.39 ms/frame**
+   (grid = one pattern fillRect; glow = two strokes). Small graph, so this is a
+   sanity bound, not the large-corpus soak — residual below.
+5. ✅ **Theme toggle** (`02`): adding `.theme-light` on `<html>` re-resolved
+   CanvasTheme via the MutationObserver and repainted the canvas light (light
+   ground/grid, white cards, deepened wire hues); removing it restored dark.
+   `nodegx:themechanged` dispatch also triggers repaint. UIX-008's contract is
+   demonstrated working.
+6. ✅ **Selection** (`04`): accent ring + soft glow on the selected card.
+7. ✅ **Long labels** (`09`): 5-line wrap grows the card, type line and siblings
+   re-flow, no clipping/overlap with the status diamond — measure and draw agree.
+
+## Remaining residuals (tracked, not UIX-005-blocking)
+
+- Large-corpus pan/zoom soak (perf number above is a small-graph bound).
+- Full SUB-007/AIX-003 accept-reject flow smoke on a git-diff project (colour
+  rendering verified above; the flow itself is AIX-003's clean-session residual).
+- Node picker / connection popup / references panel restyle beyond the
+  harmonized blob hues — UIX-009 by design.
+- CHANGELOG-COMMUNITY entry: deferred to the phase-23 wrap (orchestrator owns
+  the phase story).
+
+The hex ratchet now also covers the canvas-paint TS files (`canvas-paint-ts`
+scope in `.hex-color-baseline.json`, baseline 2 = the dispositioned
+`ConnectionPopups.ts` literals; `CanvasTheme.ts` is excluded as the definition
+site, same reasoning as `colors.css`).
