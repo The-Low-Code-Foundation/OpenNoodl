@@ -432,6 +432,73 @@ export function registerBackendReadTools(server: McpServer): void {
       return jsonResult(json);
     })
   );
+
+  // --------------------------------------------------------------------------
+  // BAK-009 — operational config and the audit trail.
+  //
+  // Both are READ tools on purpose. An agent debugging its own backend needs to
+  // see why it is being refused (rate limits) and what it has already changed
+  // (the trail); neither question needs write access, and an agent that could
+  // raise its own rate limit would make the limit meaningless.
+  // --------------------------------------------------------------------------
+
+  server.registerTool(
+    'get_backend_ops_config',
+    {
+      title: 'Get backend operational config',
+      description:
+        "A running backend's operational config (BAK-009): rate-limit policies per route class and which proxies " +
+        'are trusted for X-Forwarded-For, log level and format, CORS origins, audit retention, and whether the ' +
+        'metrics endpoint is served. Read this when requests are coming back 429 — the response says which ' +
+        'CLASS a route belongs to and what its budget is, which is usually the whole answer.',
+      inputSchema: { backendId: z.string().optional().describe('Which backend (omit if exactly one is running)') }
+    },
+    guarded(async ({ backendId }) => {
+      const client = await requireBackend(backendId);
+      const { json } = await client.request('GET', '/admin/ops');
+      return jsonResult(json);
+    })
+  );
+
+  server.registerTool(
+    'query_backend_audit',
+    {
+      title: 'Query the backend audit trail',
+      description:
+        'The privileged-action trail of a running backend (BAK-009): permission and role edits, key issue/revoke, ' +
+        'schema changes, backups and restores, config edits, and admin logins including failures — each with the ' +
+        'actor, the origin address, the outcome, and the request id that ties it to the access log. Newest first. ' +
+        'Use it to answer "what did I already change on this backend?" without re-reading every config surface. ' +
+        'Note the honest limit: the trail is a plain table in the backend\'s own database, so anyone who can reach ' +
+        'that file can edit it.',
+      inputSchema: {
+        backendId: z.string().optional().describe('Which backend (omit if exactly one is running)'),
+        action: z
+          .string()
+          .optional()
+          .describe('Filter to one action name, e.g. "permissions.collection.update". The response lists them all.'),
+        outcome: z.enum(['success', 'failure']).optional().describe('Filter to successes or failures'),
+        actorKind: z
+          .enum(['admin', 'admin:readonly', 'user', 'apiKey', 'anonymous'])
+          .optional()
+          .describe('Filter by who acted'),
+        sinceMinutes: z.number().optional().describe('Only entries from the last N minutes'),
+        limit: z.number().optional().describe('Max entries (default 100, max 1000)')
+      }
+    },
+    guarded(async ({ backendId, action, outcome, actorKind, sinceMinutes, limit }) => {
+      const client = await requireBackend(backendId);
+      const params = new URLSearchParams();
+      if (action) params.set('action', action);
+      if (outcome) params.set('outcome', outcome);
+      if (actorKind) params.set('actorKind', actorKind);
+      if (sinceMinutes) params.set('since', String(Date.now() - sinceMinutes * 60_000));
+      if (limit) params.set('limit', String(limit));
+      const query = params.toString();
+      const { json } = await client.request('GET', `/admin/audit${query ? `?${query}` : ''}`);
+      return jsonResult(json);
+    })
+  );
 }
 
 export function registerBackendWriteTools(server: McpServer): void {

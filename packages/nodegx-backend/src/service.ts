@@ -131,6 +131,33 @@ export class BackendService {
       port: this.options.port
     });
 
+    // 0.6 The operational warnings an internet-facing backend deserves at the
+    //     moment it starts, not the moment it is exploited. Both name the exact
+    //     setting to change: a warning an operator cannot act on is noise.
+    if (requiresAuth(this.options)) {
+      if (this.ops.config.cors.origins.includes('*')) {
+        logger.warn('cors.wildcard-on-public-bind', {
+          host: this.options.host,
+          detail:
+            'This backend is bound beyond localhost and answers every origin (cors.origins: ["*"]). Any website ' +
+            'a user visits can call this API from their browser. Set cors.origins in ops.json to your app origin(s).'
+        });
+      }
+      if (this.ops.config.rateLimit.trustedProxies.includes('*')) {
+        logger.warn('proxy.trust-everything', {
+          detail:
+            'rateLimit.trustedProxies is ["*"], so any client can set X-Forwarded-For and choose its own ' +
+            'rate-limit bucket and audit origin. Use ["loopback"] or ["private"] unless something upstream ' +
+            'strips and re-sets that header.'
+        });
+      }
+      if (!this.ops.config.rateLimit.enabled) {
+        logger.warn('ratelimit.disabled-on-public-bind', {
+          detail: 'rateLimit.enabled is false on a non-loopback bind: nothing bounds request rate on this backend.'
+        });
+      }
+    }
+
     // 1. Persistence first — if this throws (no engine + !allowEphemeral) the
     //    service refuses to start. That is the point.
     this.persistence = await createAdapter({

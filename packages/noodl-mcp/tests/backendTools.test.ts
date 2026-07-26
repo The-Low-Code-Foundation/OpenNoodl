@@ -483,4 +483,45 @@ describeOrSkip('MCP backend permission tools (live backend)', () => {
       expect(Array.isArray(data.report.orphanBlobs)).toBe(true);
     });
   });
+
+  describe('BAK-009 ops + audit tools', () => {
+    it('reads the operational config, which is what explains a 429', async () => {
+      const { isError, data } = await call<{
+        config: {
+          rateLimit: { enabled: boolean; trustedProxies: string[]; policies: Record<string, { ratePerMinute: number }> };
+          audit: { enabled: boolean; retentionDays: number };
+        };
+      }>(session, 'get_backend_ops_config');
+      expect(isError).toBe(false);
+      expect(data.config.rateLimit.enabled).toBe(true);
+      expect(data.config.rateLimit.trustedProxies).toEqual(['loopback']);
+      // The classes an agent needs to reason about are all present and named.
+      expect(Object.keys(data.config.rateLimit.policies).sort()).toEqual(
+        ['admin', 'auth', 'data', 'files', 'functions', 'hooks', 'public', 'realtime'].sort()
+      );
+      expect(data.config.audit.enabled).toBe(true);
+    });
+
+    it('reads back the trail of what these tools themselves changed', async () => {
+      // The permission edits earlier in this file are privileged actions; they
+      // must be visible here, attributed to the admin credential the tools use.
+      const { isError, data } = await call<{
+        entries: { action: string; actorKind: string; outcome: string; requestId: string }[];
+        actions: string[];
+      }>(session, 'query_backend_audit', { action: 'permissions.collection.update' });
+      expect(isError).toBe(false);
+      expect(data.entries.length).toBeGreaterThan(0);
+      expect(data.entries[0]).toMatchObject({ action: 'permissions.collection.update', actorKind: 'admin' });
+      expect(typeof data.entries[0].requestId).toBe('string');
+      expect(data.actions).toContain('apikey.create');
+    });
+
+    it('filters to failures, so "what did I try that did not work" is one call', async () => {
+      const { data } = await call<{ entries: { outcome: string }[] }>(session, 'query_backend_audit', {
+        outcome: 'failure',
+        sinceMinutes: 60
+      });
+      for (const entry of data.entries) expect(entry.outcome).toBe('failure');
+    });
+  });
 });

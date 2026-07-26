@@ -87,6 +87,8 @@ own `secrets.json`). See [BAK-003](../../docs/runtime/BACKEND-ACCESS-CONTROL.md)
 | `get_backend_permissions` | Full access-control config: CLPs, creator-owns, function/file rules, whether enforcement is active. |
 | `list_backend_roles` / `list_backend_api_keys` | Roles + members; keys (names, scopes, status — never secrets). |
 | `check_backend_access` | Server-side dry run: does a hypothetical principal get `find`/`get`/… on a collection, or call a function? Names the deciding rule. Verify a change took effect without a live session. |
+| `get_backend_ops_config` | Operational config (BAK-009): rate-limit policy per route class, trusted proxies, log level, CORS origins, audit retention, metrics. Read this when a call comes back 429 — it says which class the route is in and what its budget is. |
+| `query_backend_audit` | The privileged-action trail: permission/role/key edits, schema changes, backups and restores, config edits, admin logins and failures — with actor, origin, outcome, and the request id that ties each to the access log. |
 
 ### Author + backend permissions — write (only with `--allow-writes`)
 
