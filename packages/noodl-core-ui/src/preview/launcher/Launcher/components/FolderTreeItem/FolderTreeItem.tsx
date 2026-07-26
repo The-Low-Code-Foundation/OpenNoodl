@@ -1,8 +1,11 @@
 /**
  * FolderTreeItem - Individual folder row in the folder tree
  *
- * Displays a folder with icon, name, project count badge, and context menu.
- * Supports nested folders with expand/collapse chevron.
+ * Mock side-item anatomy (PAR-001): 13px/500 fg-2 row, padding 7px 10px,
+ * radius 7, 15px stroke-1.5 folder glyph, right-aligned 11.5px count;
+ * hover bg-3/fg-1; current = accent-soft bg + accent text. Keeps the
+ * expand/collapse chevron and the hover rename/delete menu (features the
+ * mock does not show but the launcher must not lose).
  *
  * @module noodl-core-ui/preview/launcher
  */
@@ -12,8 +15,6 @@ import React, { useState } from 'react';
 
 import { Icon, IconName, IconSize } from '@noodl-core-ui/components/common/Icon';
 import { ContextMenu, ContextMenuProps } from '@noodl-core-ui/components/popups/ContextMenu';
-import { Label, LabelSize } from '@noodl-core-ui/components/typography/Label';
-import { TextType } from '@noodl-core-ui/components/typography/Text';
 import { Folder } from '@noodl-core-ui/preview/launcher/Launcher/hooks/useProjectOrganization';
 
 import css from './FolderTreeItem.module.scss';
@@ -40,14 +41,23 @@ export interface FolderTreeItemProps {
   onDelete?: () => void;
 }
 
-/**
- * FolderTreeItem displays a single folder in the tree with:
- * - Folder icon (open/closed based on expansion)
- * - Folder name
- * - Project count badge
- * - Context menu for rename/delete
- * - Expand/collapse chevron for nested folders
- */
+/** The mock's 15px stroke-1.5 folder glyph. */
+const FolderGlyph = (
+  <svg
+    width="15"
+    height="15"
+    viewBox="0 0 16 16"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
+    <path d="M1.8 4.2c0-.8.6-1.4 1.4-1.4h2.6l1.5 1.7h5.5c.8 0 1.4.6 1.4 1.4v6c0 .8-.6 1.4-1.4 1.4H3.2c-.8 0-1.4-.6-1.4-1.4v-7.7Z" />
+  </svg>
+);
+
 export function FolderTreeItem({
   folder,
   projectCount,
@@ -67,6 +77,9 @@ export function FolderTreeItem({
     onToggleExpand?.();
   };
 
+  // Rename/delete only exist for real (user-created) folders.
+  const hasActions = Boolean(onRename || onDelete);
+
   const contextMenuItems: ContextMenuProps['menuItems'] = [
     {
       label: 'Rename folder',
@@ -82,16 +95,24 @@ export function FolderTreeItem({
     }
   ];
 
-  const paddingLeft = 8 + level * 16; // Base padding + indent per level
+  const paddingLeft = 10 + level * 16; // Mock base padding + indent per level
 
   return (
     <div
       className={classNames(css['Root'], {
-        [css['Root--selected']]: isSelected,
-        [css['Root--hasChildren']]: hasChildren
+        [css['Root--selected']]: isSelected
       })}
       style={{ paddingLeft: `${paddingLeft}px` }}
+      role="button"
+      tabIndex={0}
+      aria-current={isSelected || undefined}
       onClick={onClick}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onClick?.();
+        }
+      }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
@@ -110,35 +131,19 @@ export function FolderTreeItem({
         </button>
       )}
 
-      {/* Folder Icon */}
-      <div className={css['FolderIcon']}>
-        <Icon
-          icon={isExpanded ? IconName.FolderOpen : IconName.FolderClosed}
-          size={IconSize.Default}
-          UNSAFE_className={css['Icon']}
-        />
-      </div>
+      {/* Folder glyph */}
+      <span className={css['FolderIcon']}>{FolderGlyph}</span>
 
-      {/* Folder Name */}
-      <Label
-        size={LabelSize.Default}
-        variant={isSelected ? TextType.Default : TextType.Shy}
-        UNSAFE_className={css['FolderName']}
-      >
-        {folder.name}
-      </Label>
+      {/* Folder name */}
+      <span className={css['FolderName']}>{folder.name}</span>
 
-      {/* Project Count Badge */}
-      {projectCount > 0 && (
-        <span className={css['Badge']}>
-          <Label size={LabelSize.Small} variant={TextType.Shy}>
-            {String(projectCount)}
-          </Label>
-        </span>
-      )}
+      {/* Right-aligned project count (mock: 11.5px/400) */}
+      <span className={classNames(css['Count'], isHovered && hasActions && css['is-hidden'])}>
+        {String(projectCount)}
+      </span>
 
-      {/* Context Menu */}
-      {isHovered && (
+      {/* Rename/delete menu, shown on hover in place of the count */}
+      {isHovered && hasActions && (
         <div className={css['ContextMenuTrigger']} onClick={(e) => e.stopPropagation()}>
           <ContextMenu menuItems={contextMenuItems} />
         </div>
