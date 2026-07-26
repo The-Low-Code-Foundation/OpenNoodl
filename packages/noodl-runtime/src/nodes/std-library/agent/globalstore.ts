@@ -255,6 +255,19 @@ function cloneValue(value: unknown, seen: WeakSet<object>, byReference: () => vo
   return value;
 }
 
+/**
+ * Deep-copies a value the way {@link GlobalStoreManager.getSnapshot} does: plain objects,
+ * plain arrays and `Date`s are copied, and everything else — Models, Collections, class
+ * instances, functions, cycles — is kept by reference.
+ *
+ * Exported for AGENT-006's key-filtered restore, which writes individual keys rather than
+ * going through `restoreSnapshot`, and so has to do its own copying or hand the application
+ * the history's own objects to mutate. Nothing else here needs it.
+ */
+export function cloneStoreValue(value: unknown): unknown {
+  return cloneValue(value, new WeakSet<object>(), () => {});
+}
+
 // ---------------------------------------------------------------------------
 // The manager
 // ---------------------------------------------------------------------------

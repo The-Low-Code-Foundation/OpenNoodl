@@ -599,7 +599,10 @@ function generateNodeLibrary(nodeRegister) {
             'net.noodl.GlobalStore',
             'net.noodl.GlobalStore.Set',
             'net.noodl.GlobalStore.Subscribe',
-            'net.noodl.OptimisticUpdate'
+            'net.noodl.OptimisticUpdate',
+            'net.noodl.StateHistory',
+            'net.noodl.StateHistory.Undo',
+            'net.noodl.StateSnapshot'
           ]
         }
       ]

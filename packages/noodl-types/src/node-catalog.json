@@ -27449,6 +27449,447 @@
       }
     },
     {
+      "typeName": "net.noodl.StateHistory",
+      "displayName": "State History",
+      "category": "Data",
+      "isVisual": false,
+      "isDeprecated": false,
+      "inNodePicker": true,
+      "availableIn": [
+        "browser",
+        "cloud"
+      ],
+      "providedBy": "noodl-runtime",
+      "ssr": {
+        "compat": "safe"
+      },
+      "inputs": [
+        {
+          "name": "clearHistory",
+          "displayName": "Clear History",
+          "group": "Actions",
+          "plug": "input",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "isSignal": true
+        },
+        {
+          "name": "coalesceMs",
+          "displayName": "Coalesce (ms)",
+          "group": "Config",
+          "plug": "input",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false,
+          "default": 0,
+          "description": "Fold successive changes to the same keys within this many milliseconds into one undo step, so typing is one undo rather than one per keystroke. 0 records every change separately."
+        },
+        {
+          "name": "enabled",
+          "displayName": "Enabled",
+          "group": "Config",
+          "plug": "input",
+          "type": {
+            "name": "boolean"
+          },
+          "isSignal": false,
+          "default": true,
+          "description": "Turning this off pauses recording. The history already collected is kept."
+        },
+        {
+          "name": "maxHistory",
+          "displayName": "Max History",
+          "group": "Config",
+          "plug": "input",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false,
+          "default": 50,
+          "description": "How many entries to keep. The oldest are dropped first. An unbounded history is a memory leak."
+        },
+        {
+          "name": "storeName",
+          "displayName": "Store Name",
+          "group": "Store",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "default": "app"
+        },
+        {
+          "name": "trackKeys",
+          "displayName": "Track Keys",
+          "group": "Config",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "Comma-separated keys to record. Blank records the whole store. Undo then writes only these keys and leaves the rest alone. Changing this clears the history."
+        }
+      ],
+      "outputs": [
+        {
+          "name": "byReferenceKeys",
+          "displayName": "By-Reference Keys",
+          "group": "Status",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "canRedo",
+          "displayName": "Can Redo",
+          "group": "Status",
+          "plug": "output",
+          "type": {
+            "name": "boolean"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "canUndo",
+          "displayName": "Can Undo",
+          "group": "Status",
+          "plug": "output",
+          "type": {
+            "name": "boolean"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "currentIndex",
+          "displayName": "Current Index",
+          "group": "Status",
+          "plug": "output",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "fullyRestorable",
+          "displayName": "Fully Restorable",
+          "group": "Status",
+          "plug": "output",
+          "type": {
+            "name": "boolean"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "history",
+          "displayName": "History",
+          "group": "Data",
+          "plug": "output",
+          "type": {
+            "name": "array"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "historyChanged",
+          "displayName": "History Changed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true
+        },
+        {
+          "name": "historySize",
+          "displayName": "History Size",
+          "group": "Status",
+          "plug": "output",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false
+        }
+      ],
+      "dynamicPorts": null
+    },
+    {
+      "typeName": "net.noodl.StateHistory.Undo",
+      "displayName": "Undo / Redo",
+      "category": "Data",
+      "isVisual": false,
+      "isDeprecated": false,
+      "inNodePicker": true,
+      "availableIn": [
+        "browser",
+        "cloud"
+      ],
+      "providedBy": "noodl-runtime",
+      "ssr": {
+        "compat": "safe"
+      },
+      "inputs": [
+        {
+          "name": "jumpTo",
+          "displayName": "Jump To",
+          "group": "Actions",
+          "plug": "input",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "isSignal": true
+        },
+        {
+          "name": "redo",
+          "displayName": "Redo",
+          "group": "Actions",
+          "plug": "input",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "isSignal": true
+        },
+        {
+          "name": "storeName",
+          "displayName": "Store Name",
+          "group": "Store",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "default": "app"
+        },
+        {
+          "name": "targetIndex",
+          "displayName": "Target Index",
+          "group": "Jump",
+          "plug": "input",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false,
+          "default": 0
+        },
+        {
+          "name": "undo",
+          "displayName": "Undo",
+          "group": "Actions",
+          "plug": "input",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "isSignal": true
+        }
+      ],
+      "outputs": [
+        {
+          "name": "byReferenceKeys",
+          "displayName": "By-Reference Keys",
+          "group": "Status",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "error",
+          "displayName": "Error",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "fullyRestorable",
+          "displayName": "Fully Restorable",
+          "group": "Status",
+          "plug": "output",
+          "type": {
+            "name": "boolean"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "jumped",
+          "displayName": "Jumped",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true
+        },
+        {
+          "name": "redone",
+          "displayName": "Redone",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true
+        },
+        {
+          "name": "undone",
+          "displayName": "Undone",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true
+        }
+      ],
+      "dynamicPorts": null
+    },
+    {
+      "typeName": "net.noodl.StateSnapshot",
+      "displayName": "State Snapshot",
+      "category": "Data",
+      "isVisual": false,
+      "isDeprecated": false,
+      "inNodePicker": true,
+      "availableIn": [
+        "browser",
+        "cloud"
+      ],
+      "providedBy": "noodl-runtime",
+      "ssr": {
+        "compat": "safe"
+      },
+      "inputs": [
+        {
+          "name": "restore",
+          "displayName": "Restore",
+          "group": "Actions",
+          "plug": "input",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "isSignal": true
+        },
+        {
+          "name": "save",
+          "displayName": "Save",
+          "group": "Actions",
+          "plug": "input",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "isSignal": true
+        },
+        {
+          "name": "snapshotData",
+          "displayName": "Snapshot Data",
+          "group": "Snapshot",
+          "plug": "input",
+          "type": {
+            "name": "object"
+          },
+          "isSignal": false,
+          "description": "Snapshot to restore instead of the named one — a previously exported \"Snapshot\" output. Leave blank to restore by name."
+        },
+        {
+          "name": "snapshotName",
+          "displayName": "Snapshot Name",
+          "group": "Snapshot",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "storeName",
+          "displayName": "Store Name",
+          "group": "Store",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "default": "app"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "byReferenceKeys",
+          "displayName": "By-Reference Keys",
+          "group": "Status",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "error",
+          "displayName": "Error",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "fullyRestorable",
+          "displayName": "Fully Restorable",
+          "group": "Status",
+          "plug": "output",
+          "type": {
+            "name": "boolean"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "restored",
+          "displayName": "Restored",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true
+        },
+        {
+          "name": "saved",
+          "displayName": "Saved",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true
+        },
+        {
+          "name": "snapshot",
+          "displayName": "Snapshot",
+          "group": "Data",
+          "plug": "output",
+          "type": {
+            "name": "object"
+          },
+          "isSignal": false
+        }
+      ],
+      "dynamicPorts": null
+    },
+    {
       "typeName": "net.noodl.StreamBuffer",
       "displayName": "Stream Buffer",
       "category": "Data",
