@@ -22,6 +22,7 @@ These phases document the unlimited-budget revival plan. They sit alongside the 
 | [20 — Ecosystem](./phase-20-ecosystem/) | Horizon 3 | ECO-001…005 | Collaboration, marketplace, multi-project, hosting, rebrand | 🔒 **Gated on G3** |
 | [21 — Library & Import](./phase-21-library-and-import/) | Cross-track | LIB-001…005 | Library source of truth + pipeline, prefab repair/restyle, module hygiene/expansion, import engine v2, import UX (created 2026-07-25) | Anytime — not gated; precondition for ECO-002's sharing test |
 | [22 — Production Backend](./phase-22-production-backend/) | H | BAK-001…009 | BaaS parity for `nodegx-backend`, tiered: realtime (SSE), email/SMTP + reset/verify, access control (CLPs/ACLs/roles/keys), backups & promotion; then OAuth/magic links, served admin dashboard, files v2; then FTS5 search, ops hardening (created 2026-07-25) | After Phase 19's WF-004; tiers are stopping points |
+| [23 — Visual Refresh](./phase-23-visual-refresh/) | I | UIX-001…009 | The NodeGX look, tiered: token re-palette (azure accent, red→danger-only, elevation) + hardcoded-hex ratchet; then control kit, editor chrome, canvas re-palette + node cards, launcher/first-run, iconography; then light theme + switching, long-tail sweep + screenshot-QA harness (created 2026-07-26; mocks in the phase folder) | Anytime — not gated; UIX-001 first; tiers are stopping points |
 
 ## The critical path
 
