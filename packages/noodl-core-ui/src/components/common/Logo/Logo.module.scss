@@ -1,7 +1,7 @@
 .Root {
   width: 40px;
   height: 40px;
-  color: var(--theme-color-fg-highlight, #ffffff);
+  color: var(--theme-color-fg-highlight);
 
   svg {
     width: 100%;
@@ -9,7 +9,9 @@
   }
 
   &.is-variant-inverted {
-    color: #ffffff;
+    // Deliberately theme-invariant: the inverted mark is for placement on a
+    // dark or coloured ground in either theme, so it must not follow fg tokens.
+    color: var(--base-color-white);
   }
 
   &.is-variant-grayscale {
