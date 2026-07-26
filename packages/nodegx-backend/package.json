@@ -10,6 +10,7 @@
   },
   "scripts": {
     "build": "node scripts/build.js",
+    "package:deploy": "node scripts/package-deploy.js",
     "clean": "rimraf dist",
     "serve": "node bin/nodegx-backend.js serve",
     "doctor": "node bin/nodegx-backend.js doctor",
