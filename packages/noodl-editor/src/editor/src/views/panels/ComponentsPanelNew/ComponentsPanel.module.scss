@@ -21,11 +21,11 @@
   background-color: var(--theme-color-bg-3);
   border-bottom: 1px solid var(--theme-color-bg-2);
   color: var(--theme-color-fg-highlight);
-  font: 12px var(--font-family-regular);
+  font: 12px var(--font-family);
 }
 
 .Title {
-  font: 12px var(--font-family-regular);
+  font: 12px var(--font-family);
   color: var(--theme-color-fg-highlight);
 }
 
@@ -66,7 +66,7 @@
   padding: 32px 16px;
   color: var(--theme-color-fg-default-shy);
   text-align: center;
-  font: 12px var(--font-family-regular);
+  font: 12px var(--font-family);
 
   span {
     display: block;
@@ -79,7 +79,7 @@
   align-items: center;
   padding: 6px 10px;
   cursor: pointer;
-  font: 11px var(--font-family-regular);
+  font: 11px var(--font-family);
   color: var(--theme-color-fg-default);
   user-select: none;
   transition: background-color 0.15s ease;
@@ -164,7 +164,7 @@
 .RenameInput {
   flex: 1;
   padding: 4px 8px;
-  font: 11px var(--font-family-regular);
+  font: 11px var(--font-family);
   color: var(--theme-color-fg-default);
   background-color: var(--theme-color-bg-1);
   border: 1px solid var(--theme-color-primary);

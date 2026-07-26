@@ -17,7 +17,7 @@
 .layout-panel-header {
   color: var(--theme-color-fg-highlight);
   padding-left: 10px;
-  font: 12px var(--font-family-bold);
+  font: bold 12px var(--font-family);
   line-height: 35px;
 }
 
@@ -26,7 +26,7 @@
 }
 
 .layout-panel-item-label {
-  font: 12px var(--font-family-regular);
+  font: 12px var(--font-family);
   line-height: 30px;
 }
 
@@ -39,7 +39,7 @@
 
 .layout-panel-sheet-label {
   color: var(--theme-color-fg-highlight);
-  font: 12px var(--font-family-regular);
+  font: 12px var(--font-family);
   line-height: 35px;
   color: var(--theme-color-fg-default-shy);
 }
@@ -71,7 +71,7 @@
 }
 
 .layout-panel-sheet-item {
-  font: 12px var(--font-family-regular);
+  font: 12px var(--font-family);
   line-height: 30px;
   color: var(--theme-color-fg-default);
   padding-left: 10px;
@@ -82,7 +82,7 @@
 }
 
 .layout-panel-component-item {
-  font: 12px var(--font-family-regular);
+  font: 12px var(--font-family);
   line-height: 30px;
   color: var(--theme-color-fg-default);
   padding-left: 10px;
@@ -112,5 +112,5 @@
   display: block;
   padding: 0 0 0 10px;
   box-sizing: border-box;
-  font: 12px var(--font-family-regular);
+  font: 12px var(--font-family);
 }

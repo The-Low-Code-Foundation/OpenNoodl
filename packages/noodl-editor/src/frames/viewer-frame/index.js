@@ -1,7 +1,8 @@
-import '../../editor/src/styles/custom-properties/animations.css';
-import '../../editor/src/styles/custom-properties/fonts.css';
-import '../../editor/src/styles/custom-properties/colors.css';
-import '../../editor/src/styles/custom-properties/spacing.css';
+// Design tokens — canonical source lives in noodl-core-ui (UIX-001)
+import '@noodl-core-ui/styles/custom-properties/animations.css';
+import '@noodl-core-ui/styles/custom-properties/fonts.css';
+import '@noodl-core-ui/styles/custom-properties/colors.css';
+import '@noodl-core-ui/styles/custom-properties/spacing.css';
 import PopupLayer from '../../editor/src/views/popuplayer';
 import Viewer from './src/views/viewer';
 

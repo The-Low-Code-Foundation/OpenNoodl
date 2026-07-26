@@ -31,7 +31,7 @@
   display: block;
   padding: 0 0 0 10px;
   box-sizing: border-box;
-  font: 12px var(--font-family-regular);
+  font: 12px var(--font-family);
 }
 
 .create-node-item.disabled {
@@ -132,11 +132,11 @@
 }
 
 .create-node-docs a {
-  color: var(--theme-color-notice);
+  color: var(--theme-color-primary);
 }
 
 .create-node-docs a:hover {
-  color: var(--theme-color-notice-hover);
+  color: var(--theme-color-primary-highlight);
 }
 
 .create-node-docs .language-javascript {

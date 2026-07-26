@@ -26,6 +26,14 @@
   src: url('../assets/fonts/Inter/Inter-SemiBold.ttf');
 }
 
+/* Display face (wordmark + large headings only) — see custom-properties/fonts.css */
+@font-face {
+  font-family: 'Bricolage Grotesque';
+  font-style: normal;
+  font-weight: 600;
+  src: url('../assets/fonts/Bricolage/BricolageGrotesque-SemiBold.woff2') format('woff2');
+}
+
 ::-webkit-scrollbar {
   width: 12px;
   height: 12px;

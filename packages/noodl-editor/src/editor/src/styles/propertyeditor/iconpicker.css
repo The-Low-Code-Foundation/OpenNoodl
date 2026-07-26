@@ -31,7 +31,7 @@
   display: block;
   padding: 0 0 0 10px;
   box-sizing: border-box;
-  font: 12px var(--font-family-regular);
+  font: 12px var(--font-family);
 }
 
 .iconpicker-icon {

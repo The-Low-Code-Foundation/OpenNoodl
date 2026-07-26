@@ -23,18 +23,19 @@
 }
 
 .csp-button {
-  background-color: var(--theme-color-notice);
-  color: var(--theme-color-bg-0);
+  background-color: var(--theme-color-primary);
+  color: var(--theme-color-on-primary);
   height: 30px;
   line-height: 30px;
   text-align: center;
-  font-family: var(--font-family-bold);
+  font-family: var(--font-family);
+  font-weight: var(--font-weight-bold);
   padding-left: 20px;
   padding-right: 20px;
 }
 
 .csp-button:hover {
-  background-color: var(--theme-color-notice-hover);
+  background-color: var(--theme-color-primary-highlight);
 }
 
 .csp-button.disabled {
@@ -50,5 +51,5 @@
   background-color: var(--theme-color-bg-2);
   height: 30px;
   color: var(--theme-color-fg-default);
-  font-family: var(--font-family-regular);
+  font-family: var(--font-family);
 }

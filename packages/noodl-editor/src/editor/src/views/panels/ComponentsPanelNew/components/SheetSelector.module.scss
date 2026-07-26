@@ -20,7 +20,7 @@
   border: 1px solid transparent;
   border-radius: 4px;
   color: var(--theme-color-fg-default);
-  font: 11px var(--font-family-regular);
+  font: 11px var(--font-family);
   cursor: pointer;
   transition: all var(--speed-turbo);
 
@@ -78,7 +78,7 @@
   gap: 8px;
   padding: 8px 12px;
   cursor: pointer;
-  font: 11px var(--font-family-regular);
+  font: 11px var(--font-family);
   color: var(--theme-color-fg-default);
   transition: background-color var(--speed-turbo);
 
@@ -146,7 +146,7 @@
   background-color: transparent;
   border: none;
   cursor: pointer;
-  font: 11px var(--font-family-regular);
+  font: 11px var(--font-family);
   color: var(--theme-color-fg-default);
   transition: background-color var(--speed-turbo);
 
@@ -217,7 +217,7 @@
   border: none;
   text-align: left;
   cursor: pointer;
-  font: 11px var(--font-family-regular);
+  font: 11px var(--font-family);
   color: var(--theme-color-fg-default);
   transition: background-color var(--speed-turbo);
 

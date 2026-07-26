@@ -9,14 +9,11 @@ import { EventDispatcher } from '../shared/utils/EventDispatcher';
 import { NodeLibrary } from './src/models/nodelibrary';
 import { ProjectModel } from './src/models/projectmodel';
 
-//Design tokens for later
-// import '../../../noodl-core-ui/src/styles/custom-properties/animations.css';
-// import '../../../noodl-core-ui/src/styles/custom-properties/fonts.css';
-// import '../../../noodl-core-ui/src/styles/custom-properties/colors.css';
-import '../editor/src/styles/custom-properties/animations.css';
-import '../editor/src/styles/custom-properties/fonts.css';
-import '../editor/src/styles/custom-properties/colors.css';
-import '../editor/src/styles/custom-properties/spacing.css';
+// Design tokens — canonical source lives in noodl-core-ui (UIX-001)
+import '@noodl-core-ui/styles/custom-properties/animations.css';
+import '@noodl-core-ui/styles/custom-properties/fonts.css';
+import '@noodl-core-ui/styles/custom-properties/colors.css';
+import '@noodl-core-ui/styles/custom-properties/spacing.css';
 
 import Router from './src/router';
 

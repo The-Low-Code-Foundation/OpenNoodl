@@ -5,7 +5,7 @@ const { ipcRenderer } = require('electron');
 const remote = require('@electron/remote');
 
 require('@noodl/platform-electron');
-require('../../../../editor/src/styles/custom-properties/colors.css');
+require('@noodl-core-ui/styles/custom-properties/colors.css');
 
 const { platform, PlatformOS } = require('@noodl/platform');
 const { CanvasView } = require('../../../../editor/src/views/VisualCanvas/CanvasView');

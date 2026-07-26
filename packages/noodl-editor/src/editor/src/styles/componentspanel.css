@@ -13,7 +13,7 @@
   background-color: var(--theme-color-bg-3);
   border-bottom: 1px solid var(--theme-color-bg-2);
   padding-left: 10px;
-  font: 12px var(--font-family-regular);
+  font: 12px var(--font-family);
   line-height: 36px;
   height: 36px;
   display: block;
@@ -60,7 +60,7 @@
 
 .components-panel-input {
   position: relative;
-  font: 12px var(--font-family-regular);
+  font: 12px var(--font-family);
   line-height: 36px;
   border: none;
   padding: 0;
@@ -69,7 +69,7 @@
 .components-panel-item-label {
   position: absolute;
   left: 20px;
-  font: 12px var(--font-family-regular);
+  font: 12px var(--font-family);
   line-height: 36px;
   color: var(--theme-color-fg-default-shy);
   white-space: nowrap;
@@ -93,7 +93,7 @@
 }
 
 .components-panel-isroot {
-  color: var(--theme-color-notice);
+  color: var(--theme-color-primary);
 }
 
 .components-panel-icon {
@@ -213,7 +213,7 @@ TODO: review this icon
 }
 
 .components-panel-sheet-item-selected {
-  font: 12px var(--font-family-regular);
+  font: 12px var(--font-family);
   color: var(--theme-color-fg-highlight);
 }
 

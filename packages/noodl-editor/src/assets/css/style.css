@@ -140,6 +140,14 @@
   src: url('../Inter/Inter-SemiBold.ttf');
 }
 
+/* Display face (wordmark + large headings only) — see custom-properties/fonts.css */
+@font-face {
+  font-family: 'Bricolage Grotesque';
+  font-style: normal;
+  font-weight: 600;
+  src: url('../fonts/Bricolage/BricolageGrotesque-SemiBold.woff2') format('woff2');
+}
+
 html {
   width: 100%;
   height: 100%;
@@ -619,7 +627,7 @@ button {
 .sidebar-panel-header-label {
   color: var(--theme-color-fg-default);
   padding-left: 10px;
-  font: 12px var(--font-family-regular);
+  font: 12px var(--font-family);
   line-height: 33px;
   text-transform: capitalize;
 }
@@ -1031,7 +1039,8 @@ div.lesson-content::-webkit-scrollbar-thumb {
 
 .lesson-bg * strong {
   color: #000000;
-  font-family: var(--font-family-bold);
+  font-family: var(--font-family);
+  font-weight: var(--font-weight-bold);
 }
 
 .lesson-title-bar {
@@ -1201,12 +1210,12 @@ div.lesson-content::-webkit-scrollbar-thumb {
 .import-popup-item {
   color: #bbbbbb;
   background-color: #3a3a3a;
-  font: 12px var(--font-family-light);
+  font: 300 12px var(--font-family);
 }
 
 .import-popup-folder {
   color: #cecece;
-  font: bold 12px var(--font-family-regular);
+  font: bold 12px var(--font-family);
   background-color: #3a3a3a;
 }
 
@@ -1327,7 +1336,7 @@ div.lesson-content::-webkit-scrollbar-thumb {
 
 .marginpadding-label {
   color: var(--theme-color-fg-default);
-  font: 10px var(--font-family-regular);
+  font: 10px var(--font-family);
   background-color: var(--theme-color-bg-3);
   padding: 6px 8px;
 }

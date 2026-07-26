@@ -146,12 +146,12 @@
 
 .header-name-edit-container {
   min-height: 35px;
-  font: bold 12px var(--font-family-regular);
+  font: bold 12px var(--font-family);
 }
 
 .property-header-bar-label {
   color: var(--theme-color-fg-highlight);
-  font: 12px var(--font-family-regular);
+  font: 12px var(--font-family);
   padding: 10px 0 10px 10px;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -169,12 +169,12 @@
 }
 
 .property-editor-highlight {
-  color: var(--theme-color-notice);
+  color: var(--theme-color-primary);
 }
 
 .property-editor-highlight:hover {
-  background-color: var(--theme-color-notice);
-  color: var(--theme-color-fg-highlight);
+  background-color: var(--theme-color-primary);
+  color: var(--theme-color-on-primary);
 }
 
 .property-codeeditor-button {
