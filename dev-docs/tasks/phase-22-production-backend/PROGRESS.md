@@ -6,14 +6,17 @@ higher-level summaries.
 | ID | Title | Status |
 |----|-------|--------|
 | BAK-001 | Realtime subscriptions (SSE) | ✅ Core shipped 2026-07-25 (client live-verify residual) |
-| BAK-002 | Email subsystem | ⬜ Not started |
+| BAK-002 | Email subsystem | ✅ Complete 2026-07-26 (merge `d22a511`) |
 | BAK-003 | Access control | ✅ Complete (Phase 22, prior) |
 | BAK-004 | OAuth & passwordless | ⬜ Not started |
-| BAK-005 | Served admin dashboard | ⬜ Not started |
+| BAK-005 | Served admin dashboard | 🔵 In progress 2026-07-26 (worktree agent) |
 | BAK-006 | File storage v2 | ⬜ Not started |
-| BAK-007 | Backups / export / promotion | ⬜ Not started |
+| BAK-007 | Backups / export / promotion | ✅ Complete 2026-07-26 (merge `c8431a0`) |
 | BAK-008 | Full-text search | ⬜ Not started |
 | BAK-009 | Production ops | ⬜ Not started |
+
+**Tier 1 (credibility) is complete** — BAK-001, BAK-002, BAK-003, BAK-007 all shipped.
+That is the phase's designated stopping point; everything below is Tier 2 parity onward.
 
 ---
 

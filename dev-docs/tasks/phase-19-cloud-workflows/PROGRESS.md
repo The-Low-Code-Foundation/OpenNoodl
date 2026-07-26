@@ -2,7 +2,7 @@
 
 **Created:** 2026-07-22, from [NOODL-REVIVAL-ROADMAP.md](../../reviews/NOODL-REVIVAL-ROADMAP.md) Track G
 **Re-scoped:** 2026-07-24, per [BACKEND-GAP-ASSESSMENT.md](./BACKEND-GAP-ASSESSMENT.md) — 3 tasks → 6, phase reframed from "bounded resurrection" to "the backend leg of the full stack"
-**Overall status:** 🟡 In progress — 3 / 7 tasks complete
+**Overall status:** 🟡 In progress — 5 / 7 tasks complete (WF-002 in flight; WF-003 is the closer)
 
 ## Status vocabulary
 
@@ -14,10 +14,10 @@ Not started · In progress · **Built–not wired** · Complete · Superseded
 |---|---|---|---|---|---|
 | 1 | WF-006 | Light up execution observability | **Complete** | 3–5 days | `node:sqlite` engine (bundled Node 24 in Electron 43 confirmed at runtime), logger wired at `WorkflowRunner.run()`, both IPC handlers implemented; see log below |
 | 2 | WF-004 | The standalone backend service | **Complete** | 2–3 wks | Shipped 2026-07-25: supervised child-process service, `node:sqlite`, Parse-wire subset + BYOB + admin over one DB; see log. Residuals: packaged-app run, live record-nodes-in-preview pass |
-| 3 | WF-001 | The workflow engine | Not started | 3–4 wks | Semantics are the substance. Note: `feature/task-007c-workflow-runtime` is **not in this clone** — treat as lost; restart from `CloudRunner`/`WorkflowRunner` (now `packages/nodegx-backend/src/workflow/`) as reference |
-| 4 | WF-002 | Workflow nodes (phase-11 Series 1) | Not started | 3–4 wks | Unblocked by WF-001; catalog entries mandatory |
-| 5 | WF-005 | Triggers: schedule, webhook, DB-change | Not started | 2–3 wks | The n8n-shaped capability; function triggers don't need WF-001 — **unblocked now** (WF-004 shipped; triggers live in `nodegx-backend`) |
-| 6 | WF-003 | One deploy target | Not started | 2–3 wks | Reduced by WF-004 to packaging the service (`dist/cli.js` is already a single self-contained artifact); Docker Compose self-host is the default candidate |
+| 3 | WF-001 | The workflow engine | **Complete** (as foundation) | 3–4 wks | Shipped 2026-07-26 (merge `27344f4`): server-side step-DAG engine — ordering, error routing, cancel, timeouts, concurrency; reuses WF-005's dispatcher (`target kind:'workflow'`) and WF-006's one execution path, so there is no second node abstraction. **Headline residual: runs in-memory — no cross-restart resume.** Semantics doc at `WF-001-SEMANTICS.md` |
+| 4 | WF-002 | Workflow nodes (phase-11 Series 1) | 🔵 In progress 2026-07-26 (worktree agent) | 3–4 wks | Unblocked by WF-001; catalog entries mandatory |
+| 5 | WF-005 | Triggers: schedule, webhook, DB-change | **Complete** | 2–3 wks | Shipped 2026-07-26 (merge `f19ed7b`): cron / webhook / DB-change. DB-change is BAK-001's `ChangeBus` second consumer (no second adapter tap); hand-rolled cron (no runtime `node_modules`); missed-fire, loop-guard and HMAC policies decided. **No catalog node** — triggers target existing functions, so visibility is MCP-only by design |
+| 6 | WF-003 | One deploy target | Not started — **run after BAK-005** | 2–3 wks | Reduced by WF-004 to packaging the service (`dist/cli.js` is already a single self-contained artifact); Docker Compose self-host is the default candidate. **Sequencing:** the deploy artifact must contain BAK-005's served admin dashboard, so this closes phase 19 *and* unlocks phase 22's exit criterion ("an app deployed by WF-003's path") — running it against a moving target wastes the pass |
 | 7 | WF-007 | Retire the Parse framework | **Complete** | ~1 wk | Shipped 2026-07-25: `noodl-parse-dashboard` package deleted, CloudServices model/panels/deploy-pass/port-8577 server deleted, endpoint config relocated into Backend Services panel, `:8577` client redirects repointed; see log |
 
 ## Already built (do not rebuild) — verified 2026-07-24 by the salvage audit
