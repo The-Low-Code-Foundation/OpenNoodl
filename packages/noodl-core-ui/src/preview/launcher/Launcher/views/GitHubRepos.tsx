@@ -329,7 +329,7 @@ export function GitHubRepos({}: GitHubReposProps) {
 
   return (
     <LauncherPage
-      title="GitHub Projects"
+      title="GitHub projects"
       headerSlot={
         <HStack hasSpacing>
           <PrimaryButton

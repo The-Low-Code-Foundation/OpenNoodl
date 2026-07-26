@@ -1,11 +1,8 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
-import { Icon, IconName } from '@noodl-core-ui/components/common/Icon';
-import { Select, SelectColorTheme, SelectOption } from '@noodl-core-ui/components/inputs/Select';
-import { TextInput, TextInputVariant } from '@noodl-core-ui/components/inputs/TextInput';
-import { Box } from '@noodl-core-ui/components/layout/Box';
-import { HStack } from '@noodl-core-ui/components/layout/Stack';
-import { TextType } from '@noodl-core-ui/components/typography/Text';
+import { SelectOption } from '@noodl-core-ui/components/inputs/Select';
+
+import css from './LauncherSearchBar.module.scss';
 
 interface UseLauncherSearchBarProps {
   filterDropdownItems: SelectOption[];
@@ -62,6 +59,12 @@ export function useLauncherSearchBar({
   };
 }
 
+const IS_MAC = typeof navigator !== 'undefined' && /Mac/.test(navigator.platform);
+
+/**
+ * Mock toolbar row (PAR-001): search box (14px glass icon, 13px input, kbd hint)
+ * + the filter select in the same box treatment. Cmd/Ctrl+K focuses the search.
+ */
 export function LauncherSearchBar({
   searchTerm,
   setSearchTerm,
@@ -69,25 +72,76 @@ export function LauncherSearchBar({
   setFilterValue,
   filterValue
 }: LauncherSearchBarProps) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        inputRef.current?.focus();
+        inputRef.current?.select();
+      }
+    }
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
+
   return (
-    <Box hasBottomSpacing>
-      <HStack hasSpacing UNSAFE_style={{ paddingBottom: 4, borderBottom: '1px solid var(--theme-color-bg-3)' }}>
-        <TextInput
-          slotBeforeInput={<Icon icon={IconName.Search} variant={TextType.Shy} />}
+    <div className={css['Root']}>
+      <div className={css['Search']}>
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 16 16"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          aria-hidden="true"
+        >
+          <circle cx="7" cy="7" r="4.5" />
+          <path d="m10.5 10.5 3 3" />
+        </svg>
+        <input
+          ref={inputRef}
+          className={css['SearchInput']}
+          placeholder="Search projects"
+          aria-label="Search projects"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.currentTarget.value)}
-          variant={TextInputVariant.Transparent}
+          data-test="launcher-search-input"
         />
+        <kbd className={css['Kbd']}>{IS_MAC ? '⌘K' : 'Ctrl K'}</kbd>
+      </div>
 
-        <div style={{ width: 220 }}>
-          <Select
-            options={filterDropdownItems}
-            onChange={setFilterValue}
-            value={filterValue}
-            colorTheme={SelectColorTheme.Transparent}
-          />
-        </div>
-      </HStack>
-    </Box>
+      <label className={css['Select']}>
+        <select
+          className={css['SelectInput']}
+          value={String(filterValue)}
+          onChange={(e) => setFilterValue(e.currentTarget.value)}
+          aria-label="Filter projects"
+          data-test="launcher-filter-select"
+        >
+          {filterDropdownItems.map((option) => (
+            <option key={String(option.value)} value={String(option.value)}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+        <svg
+          width="12"
+          height="12"
+          viewBox="0 0 16 16"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.7"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <path d="m4 6.5 4 4 4-4" />
+        </svg>
+      </label>
+    </div>
   );
 }

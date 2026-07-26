@@ -1,15 +1,14 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 
 import { IconName } from '@noodl-core-ui/components/common/Icon';
-import { PrimaryButton, PrimaryButtonSize, PrimaryButtonVariant } from '@noodl-core-ui/components/inputs/PrimaryButton';
-import { Select, SelectColorTheme, SelectOption } from '@noodl-core-ui/components/inputs/Select';
-import { TextInput, TextInputVariant } from '@noodl-core-ui/components/inputs/TextInput';
-import { Box } from '@noodl-core-ui/components/layout/Box';
-import { HStack } from '@noodl-core-ui/components/layout/Stack';
+import { SelectOption } from '@noodl-core-ui/components/inputs/Select';
 import { FolderTree } from '@noodl-core-ui/preview/launcher/Launcher/components/FolderTree';
+import {
+  LauncherButton,
+  LauncherButtonVariant
+} from '@noodl-core-ui/preview/launcher/Launcher/components/LauncherButton';
 import { LauncherPage } from '@noodl-core-ui/preview/launcher/Launcher/components/LauncherPage';
 import {
-  CloudSyncType,
   LauncherProjectCard,
   LauncherProjectData
 } from '@noodl-core-ui/preview/launcher/Launcher/components/LauncherProjectCard';
@@ -19,8 +18,25 @@ import {
 } from '@noodl-core-ui/preview/launcher/Launcher/components/LauncherSearchBar';
 import { ProjectSettingsModal } from '@noodl-core-ui/preview/launcher/Launcher/components/ProjectSettingsModal';
 import { useProjectOrganization } from '@noodl-core-ui/preview/launcher/Launcher/hooks/useProjectOrganization';
-import { MOCK_PROJECTS } from '@noodl-core-ui/preview/launcher/Launcher/Launcher';
 import { useLauncherContext } from '@noodl-core-ui/preview/launcher/Launcher/LauncherContext';
+
+import css from './Projects.module.scss';
+
+/** Mock "New project" plus glyph: 14px, stroke 1.8. */
+const PlusGlyph = (
+  <svg
+    width="14"
+    height="14"
+    viewBox="0 0 16 16"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    aria-hidden="true"
+  >
+    <path d="M8 3v10M3 8h10" />
+  </svg>
+);
 
 export interface ProjectsViewProps {}
 
@@ -47,7 +63,7 @@ export function Projects({}: ProjectsViewProps) {
   // Filter projects based on selected folder
   const filteredByFolder = useMemo(() => {
     if (selectedFolderId === null) {
-      // "All Projects" - show everything
+      // "All projects" - show everything
       return allProjects;
     } else if (selectedFolderId === 'uncategorized') {
       // "Uncategorized" - show projects without a folder
@@ -147,71 +163,54 @@ export function Projects({}: ProjectsViewProps) {
   }
 
   return (
-    <div style={{ display: 'flex', height: '100%', overflow: 'hidden' }}>
-      {/* Folder Tree Sidebar */}
-      <div style={{ width: '240px', borderRight: '1px solid var(--theme-color-border-default)', flexShrink: 0 }}>
+    <div className={css['Root']}>
+      {/* Folder Tree Sidebar (mock: 224px, bg-1, padding 16px 10px) */}
+      <aside className={css['Sidebar']}>
         <FolderTree
           selectedFolderId={selectedFolderId}
           onFolderSelect={setSelectedFolderId}
           totalProjectCount={allProjects.length}
           uncategorizedProjectCount={uncategorizedCount}
         />
-      </div>
+      </aside>
 
       {/* Main Content */}
-      <div style={{ flex: 1, overflow: 'auto' }}>
+      <div className={css['Main']}>
         <LauncherPage
-          title="Recent Projects"
+          title="Recent projects"
           headerSlot={
-            <HStack hasSpacing>
-              <PrimaryButton
+            <>
+              <LauncherButton
                 label="Open project…"
-                size={PrimaryButtonSize.Small}
-                variant={PrimaryButtonVariant.Ghost}
+                variant={LauncherButtonVariant.Ghost}
                 onClick={onImportProjectClick}
+                testId="launcher-open-project"
               />
-              <PrimaryButton label="New project" size={PrimaryButtonSize.Small} onClick={onNewProjectClick} />
-            </HStack>
+              <LauncherButton
+                label="New project"
+                icon={PlusGlyph}
+                onClick={onNewProjectClick}
+                testId="launcher-new-project"
+              />
+            </>
           }
         >
           {allProjects.length === 0 ? (
             /* First-launch welcome — the actual first impression. */
-            <div
-              style={{
-                maxWidth: 520,
-                margin: '48px auto 0',
-                textAlign: 'center',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: 'var(--spacing-4)'
-              }}
-            >
-              <h2
-                style={{
-                  fontFamily: 'var(--font-family-display)',
-                  fontSize: 26,
-                  fontWeight: 600,
-                  letterSpacing: '-0.015em',
-                  color: 'var(--theme-color-fg-highlight)',
-                  margin: 0
-                }}
-              >
-                Welcome to NodeGX
-              </h2>
-              <p style={{ color: 'var(--theme-color-fg-muted)', fontSize: 14, lineHeight: 1.6, margin: 0 }}>
+            <div className={css['Welcome']}>
+              <h2 className={css['WelcomeTitle']}>Welcome to NodeGX</h2>
+              <p className={css['WelcomeBody']}>
                 Build full-stack apps visually. Create your first project to get started — or open a guided lesson to
                 learn the ropes.
               </p>
-              <HStack hasSpacing>
-                <PrimaryButton label="New project" size={PrimaryButtonSize.Small} onClick={onNewProjectClick} />
-                <PrimaryButton
+              <div className={css['WelcomeActions']}>
+                <LauncherButton label="New project" icon={PlusGlyph} onClick={onNewProjectClick} />
+                <LauncherButton
                   label="Browse lessons"
-                  size={PrimaryButtonSize.Small}
-                  variant={PrimaryButtonVariant.Ghost}
+                  variant={LauncherButtonVariant.Ghost}
                   onClick={() => setActivePageId('learn')}
                 />
-              </HStack>
+              </div>
             </div>
           ) : (
             <>
@@ -229,173 +228,54 @@ export function Projects({}: ProjectsViewProps) {
                 filterDropdownItems={visibleTypesDropdownItems}
               />
 
-              <Box hasTopSpacing={4}>
-                {projects.length === 0 ? (
-                  /* No-results empty state (search or empty folder). */
-                  <div
-                    style={{
-                      textAlign: 'center',
-                      color: 'var(--theme-color-fg-muted)',
-                      padding: '48px 0',
-                      fontSize: 13
-                    }}
-                  >
-                    {searchTerm
-                      ? `No projects match “${searchTerm}”.`
-                      : 'No projects here yet.'}
-                  </div>
-                ) : (
-                  <div
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
-                      gap: '18px'
-                    }}
-                  >
-                    {projects.map((project) => (
-                      <LauncherProjectCard
-                        key={project.id}
-                        {...project}
-                        onClick={() => onLaunchProject?.(project.id)}
-                        onMigrateProject={() => onMigrateProject?.(project.id)}
-                        onOpenReadOnly={() => onOpenReadOnly?.(project.id)}
-                        contextMenuItems={buildMenuItems(project)}
-                      />
-                    ))}
-                  </div>
-                )}
-              </Box>
+              {projects.length === 0 ? (
+                /* No-results empty state (search or empty folder). */
+                <div className={css['NoResults']}>
+                  {searchTerm ? `No projects match “${searchTerm}”.` : 'No projects here yet.'}
+                </div>
+              ) : (
+                <div className={css['Grid']}>
+                  {projects.map((project) => (
+                    <LauncherProjectCard
+                      key={project.id}
+                      {...project}
+                      onClick={() => onLaunchProject?.(project.id)}
+                      onMigrateProject={() => onMigrateProject?.(project.id)}
+                      onOpenReadOnly={() => onOpenReadOnly?.(project.id)}
+                      contextMenuItems={buildMenuItems(project)}
+                    />
+                  ))}
+                </div>
+              )}
             </>
           )}
 
           {/* Folder Picker Modal */}
           {movingProject && (
-            <div
-              style={{
-                position: 'fixed',
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                zIndex: 1000
-              }}
-            >
-              <div
-                style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  backgroundColor: 'rgba(0, 0, 0, 0.5)'
-                }}
-                onClick={onCloseFolderPicker}
-              />
-              <div
-                style={{
-                  position: 'relative',
-                  backgroundColor: 'var(--theme-color-bg-2)',
-                  border: '1px solid var(--theme-color-border-default)',
-                  borderRadius: 'var(--radius-lg)',
-                  padding: 'var(--spacing-6)',
-                  minWidth: '400px',
-                  maxWidth: '500px',
-                  boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)',
-                  zIndex: 1001
-                }}
-              >
-                <h3
-                  style={{
-                    fontSize: '20px',
-                    fontWeight: 600,
-                    color: 'var(--theme-color-fg-default)',
-                    margin: '0 0 var(--spacing-3) 0',
-                    lineHeight: 1.3
-                  }}
-                >
-                  Move "{movingProject.title}" to folder
-                </h3>
-                <div
-                  style={{
-                    marginBottom: 'var(--spacing-6)',
-                    maxHeight: '300px',
-                    overflowY: 'auto'
-                  }}
-                >
-                  <button
-                    onClick={() => handleMoveToFolder(null)}
-                    style={{
-                      width: '100%',
-                      textAlign: 'left',
-                      padding: 'var(--spacing-2) var(--spacing-3)',
-                      marginBottom: 'var(--spacing-1)',
-                      backgroundColor: 'var(--theme-color-bg-3)',
-                      border: '1px solid var(--theme-color-border-default)',
-                      borderRadius: 'var(--radius-default)',
-                      color: 'var(--theme-color-fg-default)',
-                      cursor: 'pointer',
-                      transition: 'all 0.15s ease'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = 'var(--theme-color-bg-4)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = 'var(--theme-color-bg-3)';
-                    }}
-                  >
+            <div className={css['FolderPicker']}>
+              <div className={css['FolderPickerBackdrop']} onClick={onCloseFolderPicker} />
+              <div className={css['FolderPickerDialog']}>
+                <h3 className={css['FolderPickerTitle']}>Move "{movingProject.title}" to folder</h3>
+                <div className={css['FolderPickerList']}>
+                  <button className={css['FolderPickerItem']} onClick={() => handleMoveToFolder(null)}>
                     Uncategorized
                   </button>
                   {folders.map((folder) => (
                     <button
                       key={folder.id}
+                      className={css['FolderPickerItem']}
                       onClick={() => handleMoveToFolder(folder.id)}
-                      style={{
-                        width: '100%',
-                        textAlign: 'left',
-                        padding: 'var(--spacing-2) var(--spacing-3)',
-                        marginBottom: 'var(--spacing-1)',
-                        backgroundColor: 'var(--theme-color-bg-3)',
-                        border: '1px solid var(--theme-color-border-default)',
-                        borderRadius: 'var(--radius-default)',
-                        color: 'var(--theme-color-fg-default)',
-                        cursor: 'pointer',
-                        transition: 'all 0.15s ease'
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = 'var(--theme-color-bg-4)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = 'var(--theme-color-bg-3)';
-                      }}
                     >
                       {folder.name}
                     </button>
                   ))}
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                  <button
+                <div className={css['FolderPickerFooter']}>
+                  <LauncherButton
+                    label="Cancel"
+                    variant={LauncherButtonVariant.Secondary}
                     onClick={onCloseFolderPicker}
-                    style={{
-                      padding: 'var(--spacing-2) var(--spacing-4)',
-                      backgroundColor: 'var(--theme-color-bg-3)',
-                      border: '1px solid var(--theme-color-border-default)',
-                      borderRadius: 'var(--radius-default)',
-                      color: 'var(--theme-color-fg-default)',
-                      cursor: 'pointer',
-                      transition: 'all 0.15s ease'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = 'var(--theme-color-bg-4)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = 'var(--theme-color-bg-3)';
-                    }}
-                  >
-                    Cancel
-                  </button>
+                  />
                 </div>
               </div>
             </div>
