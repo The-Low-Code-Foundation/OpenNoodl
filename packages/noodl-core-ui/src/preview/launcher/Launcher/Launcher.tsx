@@ -152,8 +152,32 @@ export const MOCK_PROJECTS: LauncherProjectData[] = [
 ];
 
 /**
+ * PLAT-005: may the launcher rewrite `location.pathname` for deep linking?
+ *
+ * Only under a real web origin. See the long note on the effect below — under
+ * the editor's `file:` origin this write produced `file:///dashboard/projects`
+ * and broke the next reload with `ERR_FILE_NOT_FOUND`.
+ *
+ * Exported so the editor's Jasmine suite can cover it: noodl-core-ui has no
+ * test runner of its own, and the alternative was shipping the fix untested.
+ */
+export function shouldWriteDeepLinkUrl(href: string): boolean {
+  try {
+    const { protocol } = new URL(href);
+    return protocol === 'http:' || protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Parse deep link URL to extract initial tab
  * Supports formats like: noodl://dashboard/learn, noodl://dashboard/templates
+ *
+ * PLAT-005 note: under the editor's `file:` origin the last path segment is
+ * `index.html`, so this always returns null there and deep linking has never
+ * actually worked in the desktop app. Left as-is — no `noodl://` protocol
+ * handler is registered either, so making it work is a feature, not a fix.
  */
 function parseDeepLink(): LauncherPageId | null {
   try {
@@ -246,9 +270,28 @@ export function Launcher({
   const hasRealProjects = Boolean(projects && projects.length > 0);
   const activeProjects = useMockData ? MOCK_PROJECTS : projects || MOCK_PROJECTS;
 
-  // Update URL when tab changes (for deep linking support)
+  // Update URL when tab changes (for deep linking support).
+  //
+  // PLAT-005: this is the long-standing "dashboard routing error" —
+  // `ERR_FILE_NOT_FOUND for file:///dashboard/projects`, first recorded in the
+  // phase-0 notes and mis-attributed there (and in the two phase-3 issue docs)
+  // to TASK-001B's Electron store migration. It has nothing to do with the
+  // store. The editor renderer is loaded straight off disk
+  // (`win.loadURL('file:///' + appPath + '/src/editor/index.html')` in
+  // src/main/main.js), so `window.location` is a `file:` URL with an empty
+  // host. Assigning `pathname = '/dashboard/projects'` to such a URL yields
+  // literally `file:///dashboard/projects`, and `replaceState` writes that into
+  // the session history — so the *next* reload (Cmd+R, a devtools reload, an
+  // HMR full reload) asks the filesystem root for `/dashboard/projects` and
+  // fails. The tab itself is persisted by `usePersistentTab` via localStorage,
+  // so nothing depended on this write.
+  //
+  // Guarded rather than deleted: under a real http(s) origin (the launcher also
+  // renders in Storybook and in the browser-hosted preview) rewriting the path
+  // is harmless and keeps `parseDeepLink` meaningful.
   useEffect(() => {
     try {
+      if (!shouldWriteDeepLinkUrl(window.location.href)) return;
       const url = new URL(window.location.href);
       url.pathname = `/dashboard/${activePageId}`;
       window.history.replaceState({}, '', url.toString());
