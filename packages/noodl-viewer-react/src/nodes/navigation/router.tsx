@@ -325,7 +325,6 @@ const RouterNode = {
 
       this.flagOutputDirty('currentPageTitle');
       this.flagOutputDirty('currentPageComponent');
-      // @ts-expect-error Noodl is not defined
       Noodl.SEO.setTitle(this._internal.currentPage.title);
 
       this._updatePageInputs(this._internal.currentPageComponent.nodeScope, params);
@@ -422,7 +421,6 @@ const RouterNode = {
         let path = location.pathname;
         if (path) {
           if (path[0] === '/') {
-            // @ts-expect-error missing Noodl typings
             const baseUrl = Noodl.Env['BaseUrl'];
             if (baseUrl) {
               const pathnameLength = getBaseUrlLength(baseUrl);
@@ -602,7 +600,6 @@ const RouterNode = {
 
       this.flagOutputDirty('currentPageTitle');
       this.flagOutputDirty('currentPageComponent');
-      // @ts-expect-error Noodl is not defined
       Noodl.SEO.setTitle(this._internal.currentPage.title);
 
       const pageInputNodes = content.nodeScope.getNodesWithType('PageInputs');

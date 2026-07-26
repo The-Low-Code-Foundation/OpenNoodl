@@ -1,14 +1,33 @@
 const NoodlRuntime = require('@noodl/runtime');
 
-function _makeRequest(path, options) {
-  var xhr = new XMLHttpRequest();
+interface RequestOptions {
+  appId: string;
+  endpoint: string;
+  content?: unknown;
+  method?: string;
+  success: (response: any) => void;
+  error: (response: any) => void;
+}
+
+/**
+ * Bare XHR rather than `fetch`, and Parse-shaped headers — the backend contract
+ * (`X-Parse-Application-Id`, `X-Parse-Session-Token`) is still Parse's wire format
+ * even though the server behind it is nodegx-backend.
+ *
+ * The session token is read straight out of `localStorage` under Parse's own key,
+ * so a signed-in user's calls are authenticated without the caller doing anything.
+ */
+function _makeRequest(path: string, options: RequestOptions): void {
+  const xhr = new XMLHttpRequest();
 
   xhr.onreadystatechange = function () {
     if (xhr.readyState === 4) {
-      var json;
+      let json;
       try {
         json = JSON.parse(xhr.response);
-      } catch (e) {}
+      } catch (e) {
+        // Non-JSON body — both branches below tolerate `undefined`.
+      }
 
       if (xhr.status === 200 || xhr.status === 201) {
         options.success(json);
@@ -27,7 +46,7 @@ function _makeRequest(path, options) {
   }
 
   // Check for current users
-  var _cu = localStorage['Parse/' + options.appId + '/currentUser'];
+  const _cu = localStorage['Parse/' + options.appId + '/currentUser'];
   if (_cu !== undefined) {
     try {
       const currentUser = JSON.parse(_cu);
@@ -40,8 +59,9 @@ function _makeRequest(path, options) {
   xhr.send(JSON.stringify(options.content));
 }
 
+/** `Noodl.CloudFunctions` — calls a backend function by name. */
 const cloudfunctions = {
-  async run(functionName, params) {
+  async run(functionName: string, params?: unknown): Promise<unknown> {
     return new Promise((resolve, reject) => {
       const cloudServices = NoodlRuntime.instance.getMetaData('cloudservices');
       if (cloudServices === undefined) {
@@ -74,4 +94,4 @@ const cloudfunctions = {
   }
 };
 
-module.exports = cloudfunctions;
+export default cloudfunctions;

@@ -24,7 +24,6 @@ export function Image(props: ImageProps) {
   }
 
   if (props.dom?.src?.startsWith('/')) {
-    // @ts-expect-error missing Noodl typings
     const baseUrl = Noodl.Env['BaseUrl'];
     if (baseUrl) {
       props.dom.src = baseUrl + props.dom.src.substring(1);

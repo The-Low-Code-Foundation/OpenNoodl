@@ -55,6 +55,9 @@ export interface RuntimeNodeContext {
   showPopup(popupComponent: string, params: Record<string, unknown>, args?: unknown): Promise<void>;
   /** Runs `callback` once the current update has finished processing every dirty node. */
   scheduleAfterUpdate(callback: () => void): void;
+  /** Flushes the dirty-node queue synchronously. DOM event handlers call this so a
+   * click takes effect without waiting for the next scheduled frame. See `nodecontext.ts`. */
+  updateDirtyNodes(): void;
   connectionSentValue(sourcePort: RuntimeOutputProperty, value: unknown): void;
   connectionSentSignal(sourcePort: RuntimeOutputProperty): void;
   isWarningTypeEnabled(warningType: string): boolean;

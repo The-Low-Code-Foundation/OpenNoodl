@@ -1325,3 +1325,254 @@ closed with a recorded decision. Item-by-item:
 
 Runtime jest baseline after the batch: **247 passing / 0 failing** (was 225/20 at the
 start of phase 14.5, 243/4 after DEBT-003). `catalog:check` green after regeneration.
+
+## 21. Slice 9 — the viewer's `src/` root, `api/`, and what `nodes-deprecated/` actually is
+
+§20 said the remaining viewer `.js` "is no longer node code" and named `src` root as the
+high-value target. That was right, and this slice took it: **17 of the 18 root files**,
+all four of `api/`, `noodl-js-api`, and `constants/flex`. It also answered §20's
+`nodes-deprecated/` question, and the answer is the opposite of what §20 assumed.
+
+File counts: `noodl-viewer-react` **42 `.js` / 10 `.jsx` / 97 `.ts` / 37 `.tsx` →
+21 `.js` / 10 `.jsx` / 118 `.ts` / 37 `.tsx`**. `noodl-runtime` unchanged at 73 `.js` /
+19 `.ts` (only `internal.d.ts` was edited). Every remaining `.js` is now in exactly three
+places: `nodes-deprecated/` (16 `.js` + 9 `.jsx`), the Group scroll plugins (3), and
+`register-nodes.js` (1).
+
+### 21.1 `nodes-deprecated/` is not dead code, and must not be deleted
+
+§20 recorded it as "16, never registered — consider whether converting them is worth
+anything at all". **It is registered, all of it, and it ships.** The evidence:
+
+- `register-nodes.js` `require()`s 15 of them by name (lines 146–160) and imports the
+  nine `.jsx` controls at the top (lines 24–32), registering them at 180–188.
+- The committed catalog contains every one of them as a real node type `providedBy:
+  noodl-viewer-react` — `Component State`, `Parent Component State`, `Model`,
+  `Collection`, `DbModel`, `DbCollection`, `Variable`, `Globals`, `Gyroscope`,
+  `Signal To Index`, `Number Blend`, `String Selector`, `Animation`, `Transition`,
+  `Script Downloader`, `Form`, `Field Set`, `Label`, plus the six older controls.
+- The prod bundle lists `./src/nodes-deprecated/std-library/ 117 KiB 15 modules`.
+
+Every one carries `inNodePicker: false`. That is the whole mechanism: a user cannot add
+a *new* one, but a project that already contains one still loads. Deleting these files
+breaks every such project on upgrade, silently, at load. **Recommendation: keep, and
+convert them in a later slice** — they are ordinary node files and the slices 5–8 recipe
+applies unchanged. There is no argument for deletion and a weak one for conversion
+(they are frozen), so they are the lowest-priority group, not a candidate for removal.
+
+One inconsistency found while establishing this, not fixed: the six older controls
+(`Button`, `Checkbox`, `Radio Button`, `Options`, `Text Input`, `Range`) live in
+`nodes-deprecated/`, are hidden from the picker, and are superseded by
+`net.noodl.controls.*` — but they do **not** declare `deprecated: true`, so the catalog
+reports `isDeprecated: false` for all six. Only `Form`/`Field Set`/`Label` declare it
+(that is why DEBT-006's `def.deprecated` fix caught only those three). Anything reading
+the catalog to decide what is current — the node picker, docs, an AI author — is told
+these six are current. It is a one-line change per file that moves catalog output, so it
+wants its own commit and a decision.
+
+### 21.2 The published types this slice corrected — seven, and three were lies
+
+The pattern from §13.3/§15.2/§19.3 recurred hard. Typing the modules that *everything*
+imports finds gaps faster than typing leaves does.
+
+| What | Was | Is |
+|---|---|---|
+| `NodeContextLike.updateDirtyNodes` | unpublished → `unknown` | published (§19.3 shape, third time) |
+| `ComponentModelLike.getRoots()` | unpublished → `unknown` | published; returns the live array, not a copy |
+| `ReactNodeDefinition.setup`'s `graphModel` | `unknown` | `GraphModelLike`, which slice 5 published for exactly this |
+| `RunningTransition` | local `{ stop(): void }` | alias of the scheduler's `Timer` — `start()` was invisible |
+| `PortTooltip` | `string \| {standard,extended}` | plus `PortTooltipMap`, the keyed form |
+| `InputPortDefinition.tab` | `string` | `PortTab`, which has an object form |
+| `NavigateArgs.hasNavigated` | required | optional |
+
+The two genuinely surprising ones:
+
+**`PortTooltip` had a third form nobody had written down.** A port that renders more than
+one control carries a *map* of tooltips rather than one: `sizeMode` keys its by enum
+value, so each size mode gets its own explanation, and `width`/`height` key theirs by
+sub-control (`dimension`, `fixed`). All authored in `addDimensionTooltips`, all invisible
+while that file was `.js`.
+
+**`InputPortDefinition.tab` was `string`, and the metadata type repeated the lie.**
+`_addCornerRadius` passes `{ group: 'corners', tab, label }` so the four corner radii
+render as one tabbed widget. Widening the authoring type immediately broke
+`nodedefinition.ts:68`, which copies `input.tab` straight onto `InputPortMetadata` —
+where `tab` was *also* declared `string`. Two narrow declarations, one value. Both
+widened to a shared `PortTab`.
+
+### 21.3 `interface Window { Noodl }` has never been in effect
+
+`typings/global.d.ts` opens with `import 'react'`. That makes the file a **module**, so
+its top-level `interface Window { Noodl: GlobalNoodl }` declares a `Window` local to that
+module rather than merging into `lib.dom`'s. The `declare global { const Noodl }` block
+below it is fine — which is why nothing noticed: every consumer so far reached for the
+bare `Noodl`, never `window.Noodl`. `noodl-js-api` is the first TypeScript file to use
+the `window.` form and it failed on the first line. Moved inside `declare global`.
+
+Worth generalising: **a `.d.ts` with any top-level `import` is a module, and every
+augmentation in it must be inside `declare global`.** The half of the file that worked
+made the broken half look fine.
+
+### 21.4 Defects found — six, three fixed because the compiler would not accept them
+
+Not batched this time; DEBT-006 is closed and §20 item 2 says not to re-open a ledger
+here. Three had to be fixed to compile, and each is a real behaviour change:
+
+1. **`Noodl.Arrays` / `Noodl.Objects` assignment throws in strict-mode callers.** Their
+   Proxy `set` traps returned nothing. A `set` trap must return truthy; returning
+   `undefined` makes the assignment throw a `TypeError` *after* the underlying `set` has
+   already succeeded. `ProxyHandler.set` is typed `boolean`, so this could not be carried
+   forward. Now returns `true`. Affects `Noodl.Arrays.foo = [...]` from any project's
+   JavaScript.
+2. **TextInput's ref callback returns the element.** `ref={(ref) => (this.ref.current =
+   ref)}` — the concise arrow returns the assignment's value. React 19 reads a ref
+   callback's return value as a *cleanup function*, so this has been wrong since RUN-001
+   landed. Block body now, in both the `<input>` and `<textarea>` branches.
+3. **`NavigateArgs.hasNavigated` required** (§21.2) — `Noodl.Navigation.navigate` from
+   user JavaScript has never passed it, and both call sites guard it.
+
+Three left in place, documented at the site, because fixing them changes behaviour and
+none is urgent:
+
+4. **`graph-warnings` guards on `roots.lenth`** (sic). `undefined === 0` is false, so the
+   early return has never fired; with no roots the code then calls `clearWarning(name,
+   undefined, …)`. Harmless today, but the guard is decorative.
+5. **`Highlighter.updateHighlights` leaks selected nodes.** It walks the concatenation of
+   `highlightedNodes` and `selectedNodes`, but the "element is gone" branch only deletes
+   from `highlightedNodes` — so a *selected* node whose element disappeared is revisited
+   every frame forever, calling `remove()` on the same div each time.
+6. **`ASyncQueue.pendingPromise` is dead.** The constructor initialises it; every read and
+   write in `dequeue` uses `workingOnPromise`, which is therefore `undefined` until first
+   use. It happens to be falsy, so the queue works by accident.
+
+### 21.5 The ESM/CJS boundary, and the one that would have shipped broken
+
+Converting `easecurves` to `.ts` made it an ES module, and **three registered deprecated
+nodes `require()` it** — `animation`, `numberblend`, `transition`. Under webpack a
+`require()` of a harmony module returns the namespace object, so `EaseCurves.linear`
+would have been `undefined` in all three. These are live, catalogued, bundled nodes, so
+this was a real break introduced mid-slice, not a hypothetical.
+
+They cannot simply switch to `import`: all three end in `module.exports`, and adding an
+`import` flips the file to ESM and takes `module.exports` away. So they take the §13.5
+`.default || module` unwrap instead. The rule, stated plainly for the next slice:
+
+> Before converting a leaf module, grep for `require()` of it — not just `import`. Any
+> CommonJS consumer needs the unwrap *in the same commit*, and `tsc` will not tell you,
+> because neither file is in the program.
+
+`noodl-js-api` keeps `require()` for the three `@noodl/runtime` modules it pulls in, for
+the §11.1 reason: the runtime compiles as CommonJS and importing its source into the
+viewer's ESM program is `TS1203`/`TS2497`. Local `./api/*` modules are in the same
+program and import normally.
+
+### 21.6 Typing a module unmasks its consumers
+
+`pointerProps` returned `any` while it was `.js`, and its result is *spread* into props
+objects — and spreading an `any` makes the whole enclosing object literal `any`. Giving
+it a real return type re-exposed two pre-existing errors in `Select.tsx` and
+`TextInput.tsx` that had been hidden behind that spread for as long as the file was
+untyped. The React 19 ref defect above is one of them.
+
+> A gate that reads clean because a value upstream is `any` is §13.1 in a third costume.
+> Expect a conversion's error count to land in files you did not touch.
+
+Six `@ts-expect-error` suppressions also went stale and had to be deleted — three
+`missing Noodl typings` on `Noodl.Env` (Image, Video, router) and three
+`Noodl is not defined` on `Noodl.SEO` (Page, router ×2), once `Env` and `SEO` were
+published on `GlobalNoodl`. That is spec step 9's category of marker, retired at the
+declaration rather than site by site.
+
+### 21.7 `register-nodes.js` is deliberately still `.js`
+
+It is the one root file left, and leaving it is a judgement, not an omission. Two
+reasons. Its imports name explicit extensions (`./nodes/controls/button.ts`,
+`router.tsx`) — legal in a `.js` file, but `TS5097` in a `.ts` one without
+`allowImportingTsExtensions`, so conversion means editing the exact lines §18/§19.2
+identified as able to break the build silently at runtime. And its entire job is the
+CJS/ESM bridge: it `require()`s ~25 files that are still CommonJS and unwraps
+`module.default || module` for them. Converting the bridge while the things it bridges
+are mid-migration buys no type safety — it exports one function — and adds risk. It
+should be the **last** file converted, once `nodes-deprecated/` is done and the unwrap
+can be deleted outright.
+
+### 21.8 Verification
+
+| Gate | Result |
+|---|---|
+| `typecheck:viewer` | **0 errors** in `packages/noodl-viewer-react/src/` (baseline 0) |
+| `typecheck:runtime` / `typecheck:cloud` | clean |
+| `catalog:check` | **byte-identical**, 137 node types, 89 dynamic, 24 port value types |
+| `noodl-runtime` jest | **384 passing / 0 failing**, 23 suites |
+| `noodl-viewer-react` jest | 52 passing / 0 failing, 6 suites |
+| viewer + deploy + ssr prod bundles | green (3 pre-existing asset-size warnings) |
+| live editor/viewer pass | **not run — owed** |
+
+Two things to flag rather than bury.
+
+**The runtime jest baseline is 384/0, not the 247/0 this slice was briefed with.** 247 was
+the figure §20's ledger recorded at the end of phase 14.5; the suite has grown since. 384
+is the number at `7779cd6` before this slice touched anything, and it is unchanged after.
+
+**`typecheck:editor` reports 6 errors at `7779cd6`, pre-existing.** All `TS2307` for
+NodePicker components (`NodePickerCategory`, `NodePickerSection`, `NodePicker.selectors`,
+…) that do not exist in the tree — an in-flight NodePicker workstream committed
+`NodeLibrary.tsx` referencing files it had not committed. This slice touched no file
+under `packages/noodl-editor`. Worth someone's attention: the editor typecheck is red on
+cline-dev tip.
+
+### 21.9 Traps
+
+- **`terminal-link` is missing from this environment's install**, and `@jest/reporters`
+  requires it *only when printing a failing suite's header* — so the runtime suite dies
+  with a module-not-found stack the moment anything fails, and you cannot see what failed.
+  The same breakage RUN-004 hit. Worked around with a local stub in `node_modules`
+  (gitignored, cosmetic — the real package only emits an OSC-8 hyperlink and falls back to
+  plain text). Not a source change, and it must not become one.
+- **`npm install` in a fresh worktree rewrites `package-lock.json`** with optional
+  platform binaries (`@img/sharp-*`, `@emnapi/runtime`) — 451 lines of it. Restore the
+  lockfile before staging or it lands in the commit.
+- The §19.6 zsh trap has a sibling: **unquoted `--include=*.ts` is eaten as a failed
+  glob** before `grep` ever sees it. Quote every glob argument.
+- **es5 target without `downlevelIteration`**: `for…of` over a `Map` or `Set` is a compile
+  error in `.ts` that was silently fine in `.js`. `Array.from(map.entries())`.
+- A `.d.ts` containing any top-level `import` is a module; augmentations must be inside
+  `declare global` (§21.3).
+
+## 22. Next slice
+
+File counts: `noodl-viewer-react` **21 `.js` / 10 `.jsx` / 118 `.ts` / 37 `.tsx`**.
+`noodl-runtime` unchanged at 73 `.js` / 19 `.ts`.
+
+1. **`nodes-deprecated/`** — 16 `.js` + 9 `.jsx`, and now the largest group by a distance.
+   §21.1 settles that they are live and must not be deleted. `dbmodelnode` (797),
+   `dbcollectionnode` (717) and `animation` (547) dominate; the nine `.jsx` controls need
+   `.tsx`. Three of them already carry the §13.5 unwrap this slice added, which comes back
+   out when they become ES modules. Slices 5–8's recipe applies unchanged.
+2. **The Group scroll plugins** — 3 files, 1,182 lines, `slide-scroll-plugin.js` being 940
+   of it. Untouched this slice: pure momentum/physics code with no type surface anyone
+   imports, so it is the lowest value per line in the package. Fine to leave until last.
+3. **`register-nodes.js` last**, for the reasons in §21.7, and delete the
+   `module.default || module` unwrap in the same commit once nothing needs it.
+4. **`@noodl/runtime` shipping `.d.ts` — carried again, and now with a concrete finding.**
+   Four slices have listed this (§12, §16, §18, §20). It did not fit alongside the `src`
+   root work and was not attempted. What is now known: the blocker is not the tsconfig —
+   `packages/noodl-runtime/tsconfig.json` already has `allowJs: true`, so
+   `declaration: true` + `emitDeclarationOnly` would emit for the `.ts` files and, with
+   `checkJs` still off, best-effort `any`-shaped ones for the 73 `.js`. The blockers are
+   that the package has **no `types` field** in `package.json` and **no build step at all**
+   (`main` points straight at `noodl-runtime.js` source), so shipping declarations means
+   introducing a build artefact and a generation order into a package four other packages
+   consume from source. That is a build-pipeline change and deserves its own slice, which
+   is exactly what §11.1 said. Its value also keeps falling: this slice needed only three
+   `require()`s in `noodl-js-api` and two `const X = require(...)` in `api/`, all of which
+   are honest CommonJS boundaries rather than workarounds.
+5. **Decide the six mis-flagged deprecated controls** (§21.1) — `isDeprecated: false` on
+   nodes that are hidden from the picker and superseded. Moves catalog output.
+6. **The live editor/viewer pass is owed** for slice 9. It was not attempted here: `lerna
+   exec` runs from the main checkout rather than a worktree, so it cannot be driven from
+   an isolated tree. §19.1's recipe and `--target=NodeGX` still apply.
+7. **Do not raise `strict`** (spec step 8) — still a global flip with concurrent
+   workstreams in the same tsconfig. Step 9's editor-side sweep stays with PLAT-004,
+   though §21.6 retired six markers at the declaration rather than the site, which is the
+   cheaper half of that job done from this side.

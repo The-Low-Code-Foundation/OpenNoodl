@@ -1,6 +1,10 @@
 'use strict';
 
-var EaseCurves = require('../../easecurves');
+// `easecurves` is TypeScript now, so `require()` of it hands back the ES-module
+// namespace rather than the curve table. Unwrap it (§13.5). This file is still
+// CommonJS — it ends in `module.exports` — so it cannot simply `import` instead.
+var _easeCurves = require('../../easecurves');
+var EaseCurves = _easeCurves.default || _easeCurves;
 
 var defaultDuration = 300;
 

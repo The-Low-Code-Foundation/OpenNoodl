@@ -7,6 +7,7 @@ import type { TSFixme } from '../typings/global';
 import type {
   ComponentInstanceLike,
   DynamicPortEntry,
+  GraphModelLike,
   GraphNodeModel,
   InputPortDefinition,
   InspectInfo,
@@ -20,6 +21,7 @@ import type {
   PortLabelTruncationMode,
   PortType,
   StateTransition,
+  Timer,
   VisualStateDefinition
 } from '@noodl/types';
 
@@ -131,10 +133,15 @@ export interface ReactNodeScope extends NodeScopeLike {
  */
 export type ReactNodeModel = GraphNodeModel;
 
-/** A running parameter transition, as `node-transitions` hands it back. */
-export interface RunningTransition {
-  stop(): void;
-}
+/**
+ * A transition in flight on one parameter.
+ *
+ * This is exactly a scheduler {@link Timer} — `node-transitions` populates
+ * `_transitions` with `timerScheduler.createTimer(...)` results and calls `start()`
+ * on them. It was previously declared here as its own `{ stop(): void }`, which was
+ * a second, narrower description of the same object and made `start()` invisible.
+ */
+export type RunningTransition = Timer;
 
 /**
  * `this` inside every callback on a React node definition, and the type of
@@ -447,7 +454,7 @@ export interface ReactNodeDefinition {
   getInspectInfo?: ReactNodeCallback<[], InspectInfo>;
   nodeScopeDidInitialize?: ReactNodeCallback;
   /** Runs once at registration, not per instance. */
-  setup?: (context: ReactNodeContext, graphModel: unknown) => void;
+  setup?: (context: ReactNodeContext, graphModel: GraphModelLike) => void;
 
   /** @deprecated Ignored — React nodes are always registered as `'Visual'`. */
   category?: string;
@@ -466,7 +473,7 @@ export interface ReactNodeDefinition {
  */
 export interface ReactNodeModule {
   node: NodeDefinitionOptions;
-  setup?: (context: ReactNodeContext, graphModel: unknown) => void;
+  setup?: (context: ReactNodeContext, graphModel: GraphModelLike) => void;
 }
 
 function addOutputPropHandler(

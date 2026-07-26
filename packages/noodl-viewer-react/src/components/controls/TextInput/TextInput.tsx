@@ -164,7 +164,12 @@ export class TextInput extends React.Component<TextInputProps, State> {
     if (props.type !== 'textArea') {
       inputContent = (
         <input
-          ref={(ref) => (this.ref.current = ref)}
+          // Block body on purpose: React 19 treats a ref callback's return value as a
+          // cleanup function, and the concise `(ref) => (this.ref.current = ref)` form
+          // returns the element itself.
+          ref={(ref) => {
+            this.ref.current = ref;
+          }}
           type={this.props.type}
           {...inputProps}
           onKeyDown={(e) => this.onKeyDown(e)}
@@ -176,7 +181,12 @@ export class TextInput extends React.Component<TextInputProps, State> {
       inputProps.style.resize = 'none'; //disable user resizing
       inputContent = (
         <textarea
-          ref={(ref) => (this.ref.current = ref)}
+          // Block body on purpose: React 19 treats a ref callback's return value as a
+          // cleanup function, and the concise `(ref) => (this.ref.current = ref)` form
+          // returns the element itself.
+          ref={(ref) => {
+            this.ref.current = ref;
+          }}
           {...inputProps}
           onKeyDown={(e) => this.onKeyDown(e)}
           noodl-style-tag="input"

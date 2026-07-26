@@ -52,7 +52,6 @@ class CachedVideo extends React.PureComponent<CachedVideoProps> {
         src += '#t=0.01'; //force Android to render the first frame
       }
       if (src.startsWith('/')) {
-        // @ts-expect-error missing Noodl typings
         const baseUrl = Noodl.Env['BaseUrl'];
         if (baseUrl) {
           src = baseUrl + src.substring(1);

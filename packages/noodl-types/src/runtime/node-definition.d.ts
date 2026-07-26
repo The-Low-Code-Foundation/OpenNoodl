@@ -75,7 +75,31 @@ export type PortLabelTruncationMode = 'length' | 'path' | (string & {});
  * `standard` when it is given an object (`shared/view.js`, `SizeModeInput.tsx`) and both
  * `node-shared-port-definitions.js` and the Video node author it.
  */
-export type PortTooltip = string | { standard?: string; extended?: string };
+export type PortTooltipText = string | { standard?: string; extended?: string };
+
+/**
+ * The third form, found by typing `node-shared-port-definitions`: a *keyed* map of
+ * tooltips for a port that renders more than one control.
+ *
+ * The key is not a fixed set. For the enum port `sizeMode` it is the enum value
+ * (`explicit`, `contentHeight`, …), so each choice gets its own explanation; for
+ * `width`/`height` it is the sub-control (`dimension`, `fixed`). Both are authored in
+ * `addDimensionTooltips`.
+ */
+export type PortTooltipMap = Record<string, PortTooltipText>;
+
+export type PortTooltip = PortTooltipText | PortTooltipMap;
+
+/**
+ * Which property-panel tab a port belongs to.
+ *
+ * A plain string names the tab. The object form groups several ports into one
+ * tabbed control: `_addCornerRadius` emits `{ group: 'corners', tab, label }` so
+ * the four corner radii render as tabs of a single editor widget rather than as
+ * four separate rows. `nodedefinition.ts` copies whichever form it is given
+ * straight onto the port metadata without inspecting it.
+ */
+export type PortTab = string | { group?: string; tab?: string; label?: string };
 
 /**
  * `this` inside every author-supplied callback on a node definition.
@@ -371,6 +395,15 @@ export interface NodeContextLike {
    * with it — the categories are user-toggleable.
    */
   isWarningTypeEnabled(warningType: string): boolean;
+  /**
+   * Flushes the dirty-node queue synchronously, right now.
+   *
+   * DOM event handlers are the caller that matters: a click arrives outside the
+   * runtime's own update loop, so whatever inputs the handler queued would otherwise
+   * sit unprocessed until the next scheduled frame. `pointerlisteners` wraps every
+   * pointer callback in a call to this so a click takes effect in the same turn.
+   */
+  updateDirtyNodes(): void;
   [extra: string]: unknown;
 }
 
@@ -527,8 +560,8 @@ export interface InputPortDefinition {
   /** Name shown in the property panel when it should differ from `displayName`. */
   editorName?: string;
   group?: string;
-  /** Property-panel tab this port belongs to. */
-  tab?: string;
+  /** Property-panel tab this port belongs to. See {@link PortTab}. */
+  tab?: PortTab;
   /** Property-panel popout group this port belongs to. */
   popout?: unknown;
   index?: number;
@@ -826,7 +859,8 @@ export interface InputPortMetadata {
   exportToEditor: boolean;
   inputPriority: number;
   tooltip?: PortTooltip;
-  tab?: string;
+  /** Copied verbatim from the authored port. See {@link PortTab}. */
+  tab?: PortTab;
   popout?: unknown;
   allowVisualStates?: boolean;
   nodeDoubleClickAction?: unknown;
@@ -976,6 +1010,12 @@ export interface ComponentModelLike extends EventSenderLike {
   getNodeWithId(id: string): GraphNodeModel | undefined;
   getAllNodes(): GraphNodeModel[];
   getNodesWithType(type: string): GraphNodeModel[];
+  /**
+   * The same array as {@link roots} — `componentmodel.js` returns it directly rather
+   * than a copy, so callers must not mutate the result. Paired with the `rootAdded`
+   * and `rootRemoved` events, which carry the affected node id.
+   */
+  getRoots(): string[];
   [extra: string]: unknown;
 }
 

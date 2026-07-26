@@ -1,4 +1,31 @@
-export default {
+import type { PortTooltip, PortTypeSpec } from '@noodl/types';
+
+/**
+ * A project-settings port.
+ *
+ * This is deliberately *not* `InputPortDefinition`. Those are authored ports, keyed
+ * by name inside a node definition; these are already in the editor's wire format —
+ * each entry names itself and declares its `plug` — because `setProjectSettings`
+ * hands the array straight to the editor rather than through node-definition
+ * compilation. The two shapes overlap but are not interchangeable.
+ */
+export interface ProjectSettingPort {
+  name: string;
+  displayName?: string;
+  group?: string;
+  plug: 'input' | 'output' | 'input/output';
+  type: PortTypeSpec;
+  default?: unknown;
+  tooltip?: PortTooltip;
+  /** Keeps the setting out of an exported/deployed build's settings surface. */
+  ignoreInExport?: boolean;
+}
+
+export interface ProjectSettings {
+  ports: ProjectSettingPort[];
+}
+
+const projectSettings: ProjectSettings = {
   ports: [
     {
       name: 'htmlTitle',
@@ -68,3 +95,5 @@ export default {
     }
   ]
 };
+
+export default projectSettings;

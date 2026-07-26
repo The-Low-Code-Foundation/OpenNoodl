@@ -19,8 +19,23 @@ type GlobalNoodl = {
   getMetaData: TSFixme;
   Collection: TSFixme;
   Model: TSFixme;
+  /** Alias of {@link Collection} — the same module object under its older name. */
+  Array: TSFixme;
+  /** Alias of {@link Model} — the same module object under its older name. */
+  Object: TSFixme;
+  /**
+   * Proxies over {@link Array}/{@link Object} where *any* property name is a valid
+   * id: reading `Noodl.Arrays.foo` is `Noodl.Array.get('foo')`, and assigning to it
+   * calls `set`/`setAll`. That is why they are Proxies rather than plain objects.
+   */
+  Arrays: TSFixme;
+  Objects: TSFixme;
   Variables: TSFixme;
   Events: TSFixme;
+  /** The same emitter as {@link Events}, under its older name. */
+  eventEmitter: TSFixme;
+  /** Server-side-rendering head control. Created once and reused — see `noodl-js-api`. */
+  SEO: TSFixme;
   Records: TSFixme;
   Users: TSFixme;
   CloudFunctions: TSFixme;
@@ -40,6 +55,14 @@ type GlobalNoodl = {
    */
   Config: Readonly<Record<string, unknown>>;
 
+  /**
+   * Deploy-time environment values, created empty by `createNoodlAPI` and filled in
+   * by the deployed page's bootstrap. `BaseUrl` is the one the viewer itself reads —
+   * `fontloader` prefixes generated `@font-face` `src` URLs with it so a project
+   * served from a sub-path still finds its fonts.
+   */
+  Env: Record<string, string | undefined>;
+
   /** Set by the deployed page's bootstrap — `static/deploy/index.js`. */
   deployed?: boolean;
 
@@ -54,11 +77,20 @@ type GlobalNoodl = {
   runDeployed?: boolean;
 };
 
-interface Window {
-  Noodl: GlobalNoodl;
-}
-
 declare global {
+  /**
+   * NOTE: this augmentation has to live *inside* `declare global`.
+   *
+   * This file opens with `import 'react'`, which makes it a module — so a
+   * top-level `interface Window` declares a `Window` local to this module rather
+   * than merging into `lib.dom`'s. It sat outside for as long as nothing in
+   * TypeScript reached for `window.Noodl`; `noodl-js-api` is the first file that
+   * does, and it found it immediately.
+   */
+  interface Window {
+    Noodl: GlobalNoodl;
+  }
+
   /** The same object as {@link Window.Noodl}, reached without the `window.` prefix. */
   const Noodl: GlobalNoodl;
 }
