@@ -15,7 +15,14 @@ import '@noodl-core-ui/styles/custom-properties/fonts.css';
 import '@noodl-core-ui/styles/custom-properties/colors.css';
 import '@noodl-core-ui/styles/custom-properties/spacing.css';
 
+import { ThemeManager } from './src/models/ThemeManager';
 import Router from './src/router';
+
+// Apply a theme (data-theme on <html>) before first paint to avoid a flash of
+// the wrong theme. This uses the OS preference; ThemeManager.init() below then
+// reconciles to the user's saved choice once the settings store has loaded.
+// (UIX-008 — launcher + editor share this one window, so this covers both.)
+ThemeManager.applyProvisional();
 
 // Build canary: Verify fresh code is loading
 console.log('🔥🔥 BUILD TIMESTAMP:', new Date().toISOString());
@@ -42,6 +49,10 @@ function setupViewerIpc() {
 }
 
 window.addEventListener('DOMContentLoaded', () => {
+  // Reconcile the theme to the persisted choice + start following the OS in
+  // system mode (UIX-008). applyProvisional() above already prevented a flash.
+  ThemeManager.init();
+
   // Register node adapters
   require('./src/models/NodeTypeAdapters/registeradapters');
 

@@ -90,9 +90,53 @@ if (process.env.NOODL_REMOTE_DEBUG_PORT) {
   app.commandLine.appendSwitch('remote-allow-origins', '*');
 }
 
+// Editor-chrome window background per theme (UIX-008). Matches the resolved
+// theme's ground colour (bg-0) so there is no flash of the wrong theme before
+// the renderer stylesheet paints. These two literals are the only place the
+// main process needs a token value; keep them in sync with colors.css bg-0.
+const THEME_WINDOW_BG = { dark: '#0b0e12', light: '#eef1f5' };
+
+/**
+ * Read the persisted editor theme mode and resolve it to a concrete
+ * light/dark for the window background + native theme, synchronously, at window
+ * creation. Mirrors ThemeManager's logic on the renderer side. Never throws.
+ */
+function resolveStartupTheme() {
+  const { nativeTheme } = electron;
+  let mode = 'system';
+  try {
+    // Same file EditorSettings persists to: <userData>/editorSettings.json.
+    const file = path.join(app.getPath('userData'), 'editorSettings.json');
+    const raw = fs.readFileSync(file, { encoding: 'utf8' });
+    const saved = JSON.parse(raw)?.settings?.['editor.theme'];
+    if (saved === 'light' || saved === 'dark' || saved === 'system') mode = saved;
+  } catch (_e) {
+    // No settings yet / unreadable — fall back to system.
+  }
+  const resolved = mode === 'system' ? (nativeTheme && nativeTheme.shouldUseDarkColors ? 'dark' : 'light') : mode;
+  return { mode, resolved, backgroundColor: THEME_WINDOW_BG[resolved] };
+}
+
 function launchApp() {
-  const { Menu, BrowserWindow, ipcMain, shell } = electron;
+  const { Menu, BrowserWindow, ipcMain, shell, nativeTheme } = electron;
   const Config = require('../shared/config/config');
+
+  // Align Electron's native theme (scrollbars, menus, native dialogs) with the
+  // saved editor theme, and keep it in sync when the renderer changes it.
+  try {
+    nativeTheme.themeSource = resolveStartupTheme().mode;
+  } catch (_e) {
+    /* nativeTheme unavailable — ignore */
+  }
+  ipcMain.on('set-native-theme', (_event, mode) => {
+    if (mode === 'light' || mode === 'dark' || mode === 'system') {
+      try {
+        nativeTheme.themeSource = mode;
+      } catch (_e) {
+        /* ignore */
+      }
+    }
+  });
 
   require('@electron/remote/main').initialize();
 
@@ -222,7 +266,10 @@ function launchApp() {
       width: 1368,
       height: 900,
       acceptFirstMouse: true,
-      backgroundColor: '#131313',
+      // Per-theme ground so there is no flash-of-dark when the saved/OS theme is
+      // light (UIX-008). The frameless custom titlebar is DOM chrome and follows
+      // the tokens automatically.
+      backgroundColor: resolveStartupTheme().backgroundColor,
       center: true,
       frame: false,
       minWidth: 600,

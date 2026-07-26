@@ -29,10 +29,15 @@ export class EditorSettings extends Model {
   private settings: TSFixme;
   private debouncedStore: () => void;
 
+  /** Resolves once the persisted settings have been loaded from disk. Consumers
+   * that must read a value before first paint (e.g. the ThemeManager, to apply
+   * the saved theme without a flash) await this. */
+  public ready: Promise<void>;
+
   constructor() {
     super();
     this.settings = {};
-    this.fetch();
+    this.ready = this.fetch();
 
     this.debouncedStore = debounce(() => this.store(), 1000);
   }

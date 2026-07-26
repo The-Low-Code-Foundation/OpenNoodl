@@ -1,8 +1,12 @@
 /**
- * CodeMirror Theme for OpenNoodl
+ * CodeMirror Theme for NodeGX
  *
- * Custom theme matching OpenNoodl design tokens and VSCode Dark+ colors.
- * Provides syntax highlighting, UI colors, and visual feedback.
+ * Every colour resolves from the UIX-001 design tokens via `var()` — UI colours
+ * from `--theme-color-*` and syntax colours from `--theme-color-syntax-*` (dark
+ * lineage VSCode Dark+, light lineage VSCode Light+, both defined in colors.css).
+ * Because the values are CSS variables, the editor flips between light and dark
+ * automatically when the ThemeManager changes the root `data-theme` attribute —
+ * the theme extension never needs to be re-instantiated (UIX-008).
  *
  * @module code-editor
  */
@@ -42,12 +46,12 @@ export function createOpenNoodlTheme(): Extension {
 
       // Selection
       '&.cm-focused .cm-selectionBackground, .cm-selectionBackground, .cm-content ::selection': {
-        backgroundColor: 'rgba(86, 156, 214, 0.3)'
+        backgroundColor: 'var(--theme-color-primary-25)'
       },
 
       // Active line
       '.cm-activeLine': {
-        backgroundColor: 'rgba(255, 255, 255, 0.05)'
+        backgroundColor: 'var(--theme-color-bg-hover)'
       },
 
       // Line numbers gutter
@@ -75,7 +79,7 @@ export function createOpenNoodlTheme(): Extension {
 
       // Active line number
       '.cm-activeLineGutter': {
-        backgroundColor: 'rgba(255, 255, 255, 0.05)',
+        backgroundColor: 'var(--theme-color-bg-hover)',
         color: 'var(--theme-color-fg-default)'
       },
 
@@ -91,8 +95,8 @@ export function createOpenNoodlTheme(): Extension {
       },
 
       '.cm-foldPlaceholder': {
-        backgroundColor: 'rgba(255, 255, 255, 0.1)',
-        border: '1px solid rgba(255, 255, 255, 0.2)',
+        backgroundColor: 'var(--theme-color-bg-hover)',
+        border: '1px solid var(--theme-color-border-default)',
         color: 'var(--theme-color-fg-muted)',
         borderRadius: '3px',
         padding: '0 6px',
@@ -112,31 +116,31 @@ export function createOpenNoodlTheme(): Extension {
       },
 
       '.cm-searchMatch': {
-        backgroundColor: 'rgba(255, 215, 0, 0.3)',
-        outline: '1px solid rgba(255, 215, 0, 0.5)'
+        backgroundColor: 'var(--theme-color-warning-bg)',
+        outline: '1px solid var(--theme-color-warning)'
       },
 
       '.cm-searchMatch-selected': {
-        backgroundColor: 'rgba(255, 165, 0, 0.4)',
-        outline: '1px solid rgba(255, 165, 0, 0.7)'
+        backgroundColor: 'var(--theme-color-primary-25)',
+        outline: '1px solid var(--theme-color-primary)'
       },
 
       // Highlight selection matches
       '.cm-selectionMatch': {
-        backgroundColor: 'rgba(255, 255, 255, 0.1)',
-        outline: '1px solid rgba(255, 255, 255, 0.2)'
+        backgroundColor: 'var(--theme-color-bg-hover)',
+        outline: '1px solid var(--theme-color-border-default)'
       },
 
       // Matching brackets
       '.cm-matchingBracket': {
-        backgroundColor: 'rgba(255, 255, 255, 0.15)',
-        outline: '1px solid rgba(255, 255, 255, 0.3)',
+        backgroundColor: 'var(--theme-color-primary-transparent)',
+        outline: '1px solid var(--theme-color-primary)',
         borderRadius: '2px'
       },
 
       '.cm-nonmatchingBracket': {
-        backgroundColor: 'rgba(255, 0, 0, 0.2)',
-        outline: '1px solid rgba(255, 0, 0, 0.4)'
+        backgroundColor: 'var(--theme-color-danger-bg)',
+        outline: '1px solid var(--theme-color-danger)'
       },
 
       // Autocomplete panel
@@ -144,7 +148,7 @@ export function createOpenNoodlTheme(): Extension {
         backgroundColor: 'var(--theme-color-bg-3)',
         border: '1px solid var(--theme-color-border-default)',
         borderRadius: '6px',
-        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+        boxShadow: 'var(--shadow-md)',
         overflow: 'hidden',
         fontFamily: "var(--theme-font-mono, 'Monaco', 'Menlo', 'Courier New', monospace)",
         fontSize: '13px'
@@ -163,7 +167,7 @@ export function createOpenNoodlTheme(): Extension {
 
       '.cm-tooltip-autocomplete ul li[aria-selected]': {
         backgroundColor: 'var(--theme-color-primary)',
-        color: 'white'
+        color: 'var(--theme-color-on-primary)'
       },
 
       '.cm-completionIcon': {
@@ -192,12 +196,12 @@ export function createOpenNoodlTheme(): Extension {
 
       '.cm-lint-marker-error': {
         content: '●',
-        color: '#ef4444'
+        color: 'var(--theme-color-danger)'
       },
 
       '.cm-lint-marker-warning': {
         content: '●',
-        color: '#f59e0b'
+        color: 'var(--theme-color-warning)'
       },
 
       // Hover tooltips
@@ -209,7 +213,7 @@ export function createOpenNoodlTheme(): Extension {
         color: 'var(--theme-color-fg-default)',
         fontSize: '12px',
         maxWidth: '400px',
-        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)'
+        boxShadow: 'var(--shadow-default)'
       },
 
       '.cm-tooltip-lint': {
@@ -228,7 +232,7 @@ export function createOpenNoodlTheme(): Extension {
         top: '0',
         bottom: '0',
         width: '1px',
-        backgroundColor: 'rgba(255, 255, 255, 0.1)'
+        backgroundColor: 'var(--theme-color-fg-transparent)'
       },
 
       // Scroller
@@ -245,93 +249,120 @@ export function createOpenNoodlTheme(): Extension {
     { dark: true }
   );
 
-  // Syntax highlighting theme (token colors)
+  // Syntax highlighting theme (token colors).
+  // Colours resolve from the UIX-001 design tokens (colors.css
+  // `--theme-color-syntax-*`, dark + light variants) via `var()`, so the whole
+  // theme flips with the app's `data-theme` attribute — no re-instantiation.
+  const C = {
+    keyword: 'var(--theme-color-syntax-keyword)',
+    control: 'var(--theme-color-syntax-control)',
+    comment: 'var(--theme-color-syntax-comment)',
+    string: 'var(--theme-color-syntax-string)',
+    stringSpecial: 'var(--theme-color-syntax-string-special)',
+    number: 'var(--theme-color-syntax-number)',
+    variable: 'var(--theme-color-syntax-variable)',
+    func: 'var(--theme-color-syntax-function)',
+    property: 'var(--theme-color-syntax-property)',
+    propertySpecial: 'var(--theme-color-syntax-property-special)',
+    operator: 'var(--theme-color-syntax-operator)',
+    punctuation: 'var(--theme-color-syntax-punctuation)',
+    type: 'var(--theme-color-syntax-type)',
+    meta: 'var(--theme-color-syntax-meta)',
+    escape: 'var(--theme-color-syntax-escape)',
+    label: 'var(--theme-color-syntax-label)',
+    invalid: 'var(--theme-color-syntax-invalid)',
+    paren: 'var(--theme-color-syntax-paren)',
+    bracket: 'var(--theme-color-syntax-bracket)',
+    brace: 'var(--theme-color-syntax-brace)',
+    angle: 'var(--theme-color-syntax-angle)'
+  };
+
   const syntaxTheme = HighlightStyle.define([
     // Keywords (if, for, function, return, etc.)
-    { tag: t.keyword, color: '#569cd6', fontWeight: 'bold' },
+    { tag: t.keyword, color: C.keyword, fontWeight: 'bold' },
 
     // Control keywords (if, else, switch, case)
-    { tag: t.controlKeyword, color: '#c586c0', fontWeight: 'bold' },
+    { tag: t.controlKeyword, color: C.control, fontWeight: 'bold' },
 
     // Definition keywords (function, class, const, let, var)
-    { tag: t.definitionKeyword, color: '#569cd6', fontWeight: 'bold' },
+    { tag: t.definitionKeyword, color: C.keyword, fontWeight: 'bold' },
 
     // Module keywords (import, export)
-    { tag: t.moduleKeyword, color: '#c586c0', fontWeight: 'bold' },
+    { tag: t.moduleKeyword, color: C.control, fontWeight: 'bold' },
 
     // Operator keywords (typeof, instanceof, new, delete)
-    { tag: t.operatorKeyword, color: '#569cd6', fontWeight: 'bold' },
+    { tag: t.operatorKeyword, color: C.keyword, fontWeight: 'bold' },
 
     // Comments
-    { tag: t.comment, color: '#6a9955', fontStyle: 'italic' },
-    { tag: t.lineComment, color: '#6a9955', fontStyle: 'italic' },
-    { tag: t.blockComment, color: '#6a9955', fontStyle: 'italic' },
+    { tag: t.comment, color: C.comment, fontStyle: 'italic' },
+    { tag: t.lineComment, color: C.comment, fontStyle: 'italic' },
+    { tag: t.blockComment, color: C.comment, fontStyle: 'italic' },
 
     // Strings
-    { tag: t.string, color: '#ce9178' },
-    { tag: t.special(t.string), color: '#d16969' },
+    { tag: t.string, color: C.string },
+    { tag: t.special(t.string), color: C.stringSpecial },
 
     // Numbers
-    { tag: t.number, color: '#b5cea8' },
-    { tag: t.integer, color: '#b5cea8' },
-    { tag: t.float, color: '#b5cea8' },
+    { tag: t.number, color: C.number },
+    { tag: t.integer, color: C.number },
+    { tag: t.float, color: C.number },
 
     // Booleans
-    { tag: t.bool, color: '#569cd6', fontWeight: 'bold' },
+    { tag: t.bool, color: C.keyword, fontWeight: 'bold' },
 
     // Null/Undefined
-    { tag: t.null, color: '#569cd6', fontWeight: 'bold' },
+    { tag: t.null, color: C.keyword, fontWeight: 'bold' },
 
     // Variables
-    { tag: t.variableName, color: '#9cdcfe' },
-    { tag: t.local(t.variableName), color: '#9cdcfe' },
-    { tag: t.definition(t.variableName), color: '#9cdcfe' },
+    { tag: t.variableName, color: C.variable },
+    { tag: t.local(t.variableName), color: C.variable },
+    { tag: t.definition(t.variableName), color: C.variable },
 
     // Functions
-    { tag: t.function(t.variableName), color: '#dcdcaa' },
-    { tag: t.function(t.propertyName), color: '#dcdcaa' },
+    { tag: t.function(t.variableName), color: C.func },
+    { tag: t.function(t.propertyName), color: C.func },
 
     // Properties
-    { tag: t.propertyName, color: '#9cdcfe' },
-    { tag: t.special(t.propertyName), color: '#4fc1ff' },
+    { tag: t.propertyName, color: C.property },
+    { tag: t.special(t.propertyName), color: C.propertySpecial },
 
     // Operators
-    { tag: t.operator, color: '#d4d4d4' },
-    { tag: t.arithmeticOperator, color: '#d4d4d4' },
-    { tag: t.logicOperator, color: '#d4d4d4' },
-    { tag: t.compareOperator, color: '#d4d4d4' },
+    { tag: t.operator, color: C.operator },
+    { tag: t.arithmeticOperator, color: C.operator },
+    { tag: t.logicOperator, color: C.operator },
+    { tag: t.compareOperator, color: C.operator },
 
     // Punctuation
-    { tag: t.punctuation, color: '#d4d4d4' },
-    { tag: t.separator, color: '#d4d4d4' },
-    { tag: t.paren, color: '#ffd700' }, // Gold for ()
-    { tag: t.bracket, color: '#87ceeb' }, // Sky blue for []
-    { tag: t.brace, color: '#98fb98' }, // Pale green for {}
-    { tag: t.squareBracket, color: '#87ceeb' },
-    { tag: t.angleBracket, color: '#dda0dd' },
+    { tag: t.punctuation, color: C.punctuation },
+    { tag: t.separator, color: C.punctuation },
+    { tag: t.paren, color: C.paren }, // Bracket-pair colourization
+    { tag: t.bracket, color: C.bracket },
+    { tag: t.brace, color: C.brace },
+    { tag: t.squareBracket, color: C.bracket },
+    { tag: t.angleBracket, color: C.angle },
 
     // Types (for TypeScript/JSDoc)
-    { tag: t.typeName, color: '#4ec9b0' },
-    { tag: t.className, color: '#4ec9b0' },
-    { tag: t.namespace, color: '#4ec9b0' },
+    { tag: t.typeName, color: C.type },
+    { tag: t.className, color: C.type },
+    { tag: t.namespace, color: C.type },
 
     // Special identifiers (self keyword)
-    { tag: t.self, color: '#569cd6', fontWeight: 'bold' },
+    { tag: t.self, color: C.keyword, fontWeight: 'bold' },
 
     // Regular expressions
-    { tag: t.regexp, color: '#d16969' },
+    { tag: t.regexp, color: C.stringSpecial },
 
     // Invalid/Error
-    { tag: t.invalid, color: '#f44747', textDecoration: 'underline' },
+    { tag: t.invalid, color: C.invalid, textDecoration: 'underline' },
 
     // Meta
-    { tag: t.meta, color: '#808080' },
+    { tag: t.meta, color: C.meta },
 
     // Escape sequences
-    { tag: t.escape, color: '#d7ba7d' },
+    { tag: t.escape, color: C.escape },
 
     // Labels
-    { tag: t.labelName, color: '#c8c8c8' }
+    { tag: t.labelName, color: C.label }
   ]);
 
   return [editorTheme, syntaxHighlighting(syntaxTheme)];

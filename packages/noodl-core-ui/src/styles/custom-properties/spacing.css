@@ -111,3 +111,21 @@
   --z-popover: 600;
   --z-tooltip: 700;
 }
+
+/* =============================================================================
+   LIGHT THEME SHADOWS (UIX-008)
+   The default `:root` shadows are tuned for dark, where elevation reads mostly
+   from the bg ladder and shadows are near-invisible. On light, elevation relies
+   on shadow — panels/cards/popups must not disappear into the page. These
+   ink-tinted (rgba 23,32,43) shadows match the mock and give visible separation.
+   ============================================================================= */
+:root[data-theme='light'] {
+  --shadow-sm: 0 1px 2px rgba(23, 32, 43, 0.06);
+  --shadow-default: 0 1px 2px rgba(23, 32, 43, 0.08), 0 1px 3px rgba(23, 32, 43, 0.06);
+  --shadow-md: 0 2px 6px rgba(23, 32, 43, 0.08), 0 4px 12px rgba(23, 32, 43, 0.06);
+  --shadow-lg: 0 6px 16px rgba(23, 32, 43, 0.1), 0 12px 32px rgba(23, 32, 43, 0.08);
+  --shadow-xl: 0 12px 32px rgba(23, 32, 43, 0.12), 0 20px 48px rgba(23, 32, 43, 0.1);
+  --shadow-2xl: 0 24px 70px rgba(23, 32, 43, 0.18), 0 2px 8px rgba(23, 32, 43, 0.08);
+  --shadow-inner: inset 0 2px 4px rgba(23, 32, 43, 0.06);
+  --shadow-popup: 0 10px 32px rgba(23, 32, 43, 0.16), 0 2px 8px rgba(23, 32, 43, 0.08);
+}

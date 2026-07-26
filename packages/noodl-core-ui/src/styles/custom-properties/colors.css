@@ -10,6 +10,16 @@
    - `--theme-color-danger` is the only red in chrome. Danger is never a CTA.
    - Elevation: page < bg-0 (canvas) < bg-1 (panels) < bg-2 (cards/inputs)
      < bg-3 (hover/active). Steps are deliberately distinct.
+
+   THEME STRUCTURE (UIX-008):
+   - `:root` carries the DARK theme values — the compat default. Any window that
+     never had a theme applied (pre-boot flash, headless render, tests) is dark.
+   - `:root[data-theme='light']` overrides the semantic tokens with the light
+     palette. The editor's ThemeManager stamps `data-theme` on the document root
+     of every window; `data-theme='dark'` simply inherits the `:root` defaults.
+   - To add a theme-dependent value: define its DARK value in `:root` and its
+     LIGHT value in the `[data-theme='light']` block below. Never hardcode a
+     color a light surface would need to override — expose a token instead.
    ============================================================================= */
 
 :root {
@@ -364,6 +374,35 @@
   --theme-color-focus-ring-offset: var(--base-color-neutral-100);
 
   /* ---------------------------------------------------------------------------
+     CODE SYNTAX (CodeMirror) — dark values (VSCode Dark+ lineage).
+     The code editor theme (noodl-core-ui/.../codemirror-theme.ts) reads these
+     via var() so it flips with the app. Light values in the [data-theme='light']
+     block. Add a syntax colour here + its light counterpart — never inline a hex
+     in the CodeMirror theme.
+     --------------------------------------------------------------------------- */
+  --theme-color-syntax-keyword: #569cd6;
+  --theme-color-syntax-control: #c586c0;
+  --theme-color-syntax-comment: #6a9955;
+  --theme-color-syntax-string: #ce9178;
+  --theme-color-syntax-string-special: #d16969;
+  --theme-color-syntax-number: #b5cea8;
+  --theme-color-syntax-variable: #9cdcfe;
+  --theme-color-syntax-function: #dcdcaa;
+  --theme-color-syntax-property: #9cdcfe;
+  --theme-color-syntax-property-special: #4fc1ff;
+  --theme-color-syntax-operator: #d4d4d4;
+  --theme-color-syntax-punctuation: #d4d4d4;
+  --theme-color-syntax-type: #4ec9b0;
+  --theme-color-syntax-meta: #808080;
+  --theme-color-syntax-escape: #d7ba7d;
+  --theme-color-syntax-label: #c8c8c8;
+  --theme-color-syntax-invalid: #f44747;
+  --theme-color-syntax-paren: #ffd700;
+  --theme-color-syntax-bracket: #87ceeb;
+  --theme-color-syntax-brace: #98fb98;
+  --theme-color-syntax-angle: #dda0dd;
+
+  /* ---------------------------------------------------------------------------
      COMPAT ALIASES
      Token names referenced by existing call sites but never previously defined
      (they silently fell back). Defined here so those styles resolve; prefer the
@@ -404,11 +443,14 @@
 }
 
 /* =============================================================================
-   LIGHT THEME (UIX-008 activates by putting .theme-light on the root element;
-   inert until then — values recorded here so the palette has one source)
+   LIGHT THEME (UIX-008)
+   Active when the ThemeManager stamps `data-theme="light"` on the document root
+   (see packages/noodl-editor/.../models/ThemeManager). `data-theme="dark"` (or
+   no attribute) inherits the `:root` dark defaults above, so there is no
+   separate dark override block.
    ============================================================================= */
 
-.theme-light {
+:root[data-theme='light'] {
   --theme-color-bg-page: #e7ebf1;
   --theme-color-bg-0: #eef1f5;
   --theme-color-bg-1: #ffffff;
@@ -468,6 +510,59 @@
 
   --theme-color-focus-ring: #1570ef;
   --theme-color-focus-ring-offset: #ffffff;
+
+  /* Legacy node-category semantic tokens (DOM consumers: CommentLayer,
+     NodePickerNode, ConnectionBar, NodeReferencesPanel). The dark values are
+     deep desaturated node hues that smear on a light panel; retint to the light
+     node-category family so DOM node chrome reads on light. Canvas paint reads
+     the category tokens above, not these. */
+  --theme-color-node-data-1: #147a49;
+  --theme-color-node-data-2: #1e9e63;
+  --theme-color-node-data-3: #2bb877;
+  --theme-color-node-data-dim: #d8f0e4;
+  --theme-color-node-visual-1: #1f68b8;
+  --theme-color-node-visual-2: #2e7cd6;
+  --theme-color-node-visual-2-highlight: #4a94e6;
+  --theme-color-node-visual-highlight: #cfe4fb;
+  --theme-color-node-visual-default: #2e7cd6;
+  --theme-color-node-visual-shy: #6aa3dd;
+  --theme-color-node-visual-dim: #dcebfb;
+  --theme-color-node-visual-3: #4a94e6;
+  --theme-color-node-custom-1: #b02f7e;
+  --theme-color-node-custom-2: #d6479a;
+  --theme-color-node-custom-3: #e06bb0;
+  --theme-color-node-custom-dim: #f7dced;
+  --theme-color-node-logic-1: #916012;
+  --theme-color-node-logic-2: #b87e14;
+  --theme-color-node-logic-3: #cf9a2e;
+  --theme-color-node-logic-dim: #f3e6c9;
+  --theme-color-node-component-1: #5f3fc4;
+  --theme-color-node-component-2: #7c5ce0;
+  --theme-color-node-component-3: #9a7eea;
+  --theme-color-node-component-dim: #e7defb;
+
+  /* Code syntax — light values (VSCode Light+ lineage; all AA on bg-1/bg-2). */
+  --theme-color-syntax-keyword: #0000ff;
+  --theme-color-syntax-control: #af00db;
+  --theme-color-syntax-comment: #008000;
+  --theme-color-syntax-string: #a31515;
+  --theme-color-syntax-string-special: #811f3f;
+  --theme-color-syntax-number: #098658;
+  --theme-color-syntax-variable: #001080;
+  --theme-color-syntax-function: #795e26;
+  --theme-color-syntax-property: #001080;
+  --theme-color-syntax-property-special: #0070c1;
+  --theme-color-syntax-operator: #24292e;
+  --theme-color-syntax-punctuation: #24292e;
+  --theme-color-syntax-type: #267f99;
+  --theme-color-syntax-meta: #6e7781;
+  --theme-color-syntax-escape: #795e26;
+  --theme-color-syntax-label: #24292e;
+  --theme-color-syntax-invalid: #cf222e;
+  --theme-color-syntax-paren: #795e26;
+  --theme-color-syntax-bracket: #0070c1;
+  --theme-color-syntax-brace: #098658;
+  --theme-color-syntax-angle: #af00db;
 
   /* Compat aliases with literal values (see dark-theme compat block) */
   --theme-color-danger-10: rgba(240, 68, 56, 0.08);

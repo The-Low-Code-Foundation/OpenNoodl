@@ -137,7 +137,7 @@
   transition: background 0.1s ease;
 
   &:hover {
-    background: rgba(255, 255, 255, 0.03);
+    background: var(--theme-color-bg-hover);
   }
 }
 
@@ -202,7 +202,7 @@
 }
 
 .DiffLineEmpty {
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--theme-color-bg-hover);
   opacity: 0.3;
 
   .LineNumber {
