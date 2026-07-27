@@ -14,7 +14,7 @@
     "packages/*"
   ],
   "scripts": {
-    "clean:cache": "rimraf node_modules/.cache packages/*/node_modules/.cache .eslintcache packages/*/.eslintcache && echo '✓ Webpack/Babel caches cleared'",
+    "clean:cache": "rimraf node_modules/.cache packages/*/node_modules/.cache .eslintcache packages/*/.eslintcache && echo '\u2713 Webpack/Babel caches cleared'",
     "clean:electron": "node scripts/clean-electron.js",
     "clean:all": "npm run clean:cache && npm run clean:electron",
     "health:check": "node scripts/health-check.js",
@@ -68,7 +68,10 @@
     "typecheck:viewer": "tsc -p packages/noodl-viewer-react --noEmit",
     "typecheck:runtime": "tsc -p packages/noodl-runtime --noEmit",
     "typecheck:cloud": "tsc -p packages/noodl-viewer-cloud --noEmit",
-    "typecheck:backend-tests": "tsc -p packages/nodegx-backend/tsconfig.tests.json --noEmit"
+    "typecheck:backend-tests": "tsc -p packages/nodegx-backend/tsconfig.tests.json --noEmit",
+    "build:types": "lerna exec --scope @noodl/runtime -- npm run build:types",
+    "pretypecheck": "npm run build:types",
+    "pretypecheck:viewer": "npm run build:types"
   },
   "devDependencies": {
     "@ianvs/prettier-plugin-sort-imports": "^3.7.2",

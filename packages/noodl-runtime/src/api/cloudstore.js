@@ -475,6 +475,12 @@ function _toJSON(obj) {
   return obj;
 }
 
+/**
+ * @param {Record<string, unknown>} data
+ * @param {string} collectionName
+ * @param {import('@noodl/types').ModelScopeLike} [modelScope] omit for the process-wide store
+ * @returns {Record<string, unknown>}
+ */
 function _serializeObject(data, collectionName, modelScope) {
   if (CloudStore._collections[collectionName]) var schema = CloudStore._collections[collectionName].schema;
 
@@ -525,6 +531,12 @@ function _serializeObject(data, collectionName, modelScope) {
   return data;
 }
 
+/**
+ * @param {unknown} data
+ * @param {string} [type] the schema type, when the caller knows it
+ * @param {import('@noodl/types').ModelScopeLike} [modelScope] omit for the process-wide store
+ * @returns {unknown}
+ */
 function _deserializeJSON(data, type, modelScope) {
   if (data === undefined) return;
   if (data === null) return null;
@@ -569,6 +581,19 @@ function _deserializeJSON(data, type, modelScope) {
   } else return data;
 }
 
+/**
+ * Turns one backend record into a Noodl Object, recursively.
+ *
+ * `modelScope` is optional by construction — every read of it is `(modelScope || Model)` —
+ * and omitting it puts the record in the process-wide store instead of a sandbox's. The
+ * five call sites in the viewer that omit it are therefore not broken, but a sandboxed
+ * preview driving those nodes shares records with the host page. See PLAT-006 notes.
+ *
+ * @param {{ objectId?: string } & Record<string, unknown>} item
+ * @param {string} [collectionName]
+ * @param {import('@noodl/types').ModelScopeLike} [modelScope] omit for the process-wide store
+ * @returns {import('@noodl/types').ModelLike}
+ */
 function _fromJSON(item, collectionName, modelScope) {
   const m = (modelScope || Model).get(item.objectId);
   m._class = collectionName;

@@ -1,8 +1,10 @@
 {
   "name": "@noodl/runtime",
   "version": "2.7.0",
-  "main": "noodl-runtime.js",
+  "main": "noodl-runtime.ts",
   "scripts": {
+    "build:types": "tsc -p tsconfig.types.json && node scripts/copy-handwritten-types.js",
+    "prepare": "npm run build:types",
     "test": "jest",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
@@ -15,5 +17,6 @@
     "jest": "^29.7.0",
     "ts-jest": "^29.4.1",
     "typescript": "^5.9.3"
-  }
+  },
+  "types": "dist-types/noodl-runtime.d.ts"
 }

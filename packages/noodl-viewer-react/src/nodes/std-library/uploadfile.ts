@@ -65,7 +65,10 @@ const UploadFile: NodeDefinitionOptions = {
               this.flagOutputDirty('progressLoadedPercent');
               this.sendSignalOnOutput('progressChanged');
             },
-            success: (response: unknown) => {
+            // `CloudStore.uploadFile` resolves with the backend's file record, which is
+            // exactly `{ name, url }`; it is declared `unknown` because `cloudstore.js` is
+            // still JavaScript (PLAT-006 residual).
+            success: (response: { name: string; url: string }) => {
               this._internal.cloudFile = new CloudFile(response);
               this.flagOutputDirty('cloudFile');
               this.sendSignalOnOutput('success');

@@ -1,3 +1,5 @@
+import type { ModelLike } from '@noodl/types';
+
 import { EventEmitter } from 'events';
 import NoodlRuntime from '@noodl/runtime';
 import CloudStore from '@noodl/runtime/src/api/cloudstore';
@@ -114,8 +116,14 @@ class UserService {
   endpoint: string;
   /** `loggedIn`, `loggedOut`, `sessionGained`, `sessionLost`. */
   events: EventEmitter;
-  /** The current user as a `CloudStore` object, or absent when signed out. */
-  current: unknown;
+  /**
+   * The current user as a `CloudStore` object, or absent when signed out.
+   *
+   * `ModelLike` rather than `unknown` since PLAT-006: `getUserModel` returns whatever
+   * `CloudStore._fromJSON` produced, and that function now declares its return type.
+   * The cloud runtime's Request node reads `.getId()` off this.
+   */
+  current?: ModelLike;
 
   /** Lazily constructed. Reading this is what creates the service. */
   static readonly instance: UserService;
@@ -588,7 +596,7 @@ class UserService {
     if (_cu !== undefined) return JSON.parse(_cu);
   }
 
-  getUserModel(): unknown {
+  getUserModel(): ModelLike | undefined {
     const _cu = this.getCurrentUser();
     if (_cu !== undefined) {
       delete _cu.sessionToken;

@@ -1,0 +1,27 @@
+{
+  // Declaration-emitting variant of tsconfig.json, for consumers that must resolve this
+  // package's *types* without compiling its sources.
+  //
+  // `noodl-viewer-react` is the one that needs it. That package compiles at `module: es6`
+  // with `allowJs: false`, so a runtime `.js` file it imports is never in its program —
+  // but converting that file to `.ts` puts it there, where this package's `export =` is
+  // `TS1203` and its ambient `src/globals.d.ts` is out of scope. Emit was never the
+  // problem (the runtime has had its own ts-loader instance since PLAT-003 slice 2); type
+  // resolution was. The viewer's tsconfig `paths` points at the tree this config emits, so
+  // the viewer sees declarations while webpack still bundles the real sources.
+  //
+  // `allowJs` stays on so the still-unconverted `.js` modules get declarations too —
+  // otherwise the viewer would resolve them to nothing at all rather than to `any`.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "outDir": "dist-types",
+    // Inference over the .js majority is best-effort by definition; a declaration it
+    // cannot name is worth more as `any` than as a build failure.
+    "declarationMap": false
+  },
+  "include": ["src/**/*", "noodl-runtime.js"],
+  "exclude": ["node_modules", "dist-types", "test", "**/*.test.ts", "**/*.spec.ts"]
+}

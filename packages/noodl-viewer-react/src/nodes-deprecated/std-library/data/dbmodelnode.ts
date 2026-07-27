@@ -3,7 +3,7 @@
 import isEqual from 'lodash.isequal';
 import { EdgeTriggeredInput, Node } from '@noodl/runtime';
 import CloudStore from '@noodl/runtime/src/api/cloudstore';
-import ModelImport from '@noodl/runtime/src/model';
+import Model from '@noodl/runtime/src/model';
 import type {
   EditorConnectionLike,
   GraphModelLike,
@@ -11,14 +11,12 @@ import type {
   InspectInfo,
   ModelChangeEvent,
   ModelLike,
-  ModelModule,
   NodeContextLike,
   NodeDefinitionOptions,
   NodeInstance,
   NodeModule
 } from '@noodl/types';
 
-const Model = ModelImport as ModelModule;
 
 /** A class in the backend schema, as the editor reports it in `dbCollections` metadata. */
 interface DbCollectionMeta {

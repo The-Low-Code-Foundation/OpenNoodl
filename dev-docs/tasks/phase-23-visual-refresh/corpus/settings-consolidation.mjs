@@ -475,6 +475,28 @@ function titlesOnDisk(dir) {
   };
 }
 
+/**
+ * Wait for the save to actually reach disk, rather than sleeping a guess.
+ *
+ * The project save is debounced, and a fixed `SAVE_SETTLE_MS` was not long
+ * enough: every L5 read came back holding the *previous* step's value, so the
+ * assertions failed lagging by exactly one — which reads like a persistence bug
+ * and is a timing one. Lag-by-one is the signature; a race gives you the old
+ * value, a real failure gives you a wrong one.
+ *
+ * Polling is also faster than the old sleep whenever the write is prompt.
+ */
+async function titlesOnDiskWhen(dir, predicate, timeoutMs = 15000) {
+  const started = Date.now();
+  let last = titlesOnDisk(dir);
+  while (Date.now() - started < timeoutMs) {
+    last = titlesOnDisk(dir);
+    if (predicate(last)) return last;
+    await sleep(250);
+  }
+  return last;
+}
+
 async function openSettings(cdp) {
   if (await clickSel(cdp, `[data-test="${SETTINGS_ID}-panel"]`)) return true;
   // The rail button may be in the bottom group with a different test id shape;
@@ -565,11 +587,27 @@ async function runLive() {
     await selectTab(cdp, 'project');
     const project = await evalJS(cdp, INSPECT);
     report.live.push({ projectTab: project });
-    const haystack = project.sections.join(' | ').toLowerCase();
-    const WANT = ['identity', 'seo', 'pwa', 'variable', 'runtime', 'sitemap', 'deploy'];
-    const missing = WANT.filter((w) => !haystack.includes(w));
-    if (missing.length) fail('L3', `Project tab is missing group(s) matching: ${missing.join(', ')} — saw [${project.sections.join(', ')}]`);
-    else pass('L3', `${project.sections.length} groups`);
+    // The two selectors INSPECT uses both match a group's header, so each group
+    // is collected twice. Harmless for a substring search, but it makes the
+    // failure message read as if the panel rendered everything twice — which is
+    // the first thing anyone would go and investigate. Dedupe before reporting.
+    const seenSections = [...new Set(project.sections)];
+    const haystack = seenSections.join(' | ').toLowerCase();
+    // Match on what the group is *called*, not on its id. "pwa" is the id; the
+    // header reads "Progressive Web App" and contains no "pwa" anywhere, so the
+    // gate reported a group as missing while printing it in the same sentence.
+    const WANT = [
+      { id: 'identity', re: /identity/ },
+      { id: 'seo', re: /seo|metadata/ },
+      { id: 'pwa', re: /pwa|progressive web app/ },
+      { id: 'variables', re: /variable/ },
+      { id: 'runtime', re: /runtime/ },
+      { id: 'sitemap', re: /sitemap/ },
+      { id: 'deploy', re: /deploy/ }
+    ];
+    const missing = WANT.filter((w) => !w.re.test(haystack)).map((w) => w.id);
+    if (missing.length) fail('L3', `Project tab is missing group(s) matching: ${missing.join(', ')} — saw [${seenSections.join(', ')}]`);
+    else pass('L3', `${seenSections.length} groups`);
 
     // --- L4: one control per title field ------------------------------------
     const labels = project.rowLabels;
@@ -609,8 +647,7 @@ async function runLive() {
       try {
         // (a) rename the app — the browser title follows, because they agreed
         await evalJS(cdp, typeRow('settings-app-name', nameA));
-        await sleep(SAVE_SETTLE_MS);
-        const a = titlesOnDisk(projectDir);
+        const a = await titlesOnDiskWhen(projectDir, (t) => t.appName === nameA);
         report.live.push({ step: 'a', ...a });
         if (a.appName !== nameA) fail('L5a', `appName on disk is ${JSON.stringify(a.appName)}, expected ${JSON.stringify(nameA)}`);
         else if (a.htmlTitle !== nameA)
@@ -619,8 +656,7 @@ async function runLive() {
 
         // (b) set a different browser title — only htmlTitle moves
         await evalJS(cdp, typeRow('settings-browser-title', titleB));
-        await sleep(SAVE_SETTLE_MS);
-        const b = titlesOnDisk(projectDir);
+        const b = await titlesOnDiskWhen(projectDir, (t) => t.htmlTitle === titleB);
         report.live.push({ step: 'b', ...b });
         if (b.htmlTitle !== titleB) fail('L5b', `htmlTitle on disk is ${JSON.stringify(b.htmlTitle)}, expected ${JSON.stringify(titleB)}`);
         else if (b.appName !== nameA) fail('L5b', `appName changed to ${JSON.stringify(b.appName)} — the browser title control must not write it`);
@@ -628,8 +664,7 @@ async function runLive() {
 
         // (c) rename again — the browser title is diverged now and stays put
         await evalJS(cdp, typeRow('settings-app-name', nameC));
-        await sleep(SAVE_SETTLE_MS);
-        const c = titlesOnDisk(projectDir);
+        const c = await titlesOnDiskWhen(projectDir, (t) => t.appName === nameC);
         report.live.push({ step: 'c', ...c });
         if (c.appName !== nameC) fail('L5c', `appName on disk is ${JSON.stringify(c.appName)}, expected ${JSON.stringify(nameC)}`);
         else if (c.htmlTitle !== titleB)
@@ -641,8 +676,10 @@ async function runLive() {
         await evalJS(cdp, typeRow('settings-app-name', before.appName ?? '')).catch(() => {});
         await sleep(400);
         await evalJS(cdp, typeRow('settings-browser-title', before.htmlTitle ?? '')).catch(() => {});
-        await sleep(SAVE_SETTLE_MS);
-        const restored = titlesOnDisk(projectDir);
+        const restored = await titlesOnDiskWhen(
+          projectDir,
+          (t) => t.appName === before.appName && t.htmlTitle === before.htmlTitle
+        );
         report.live.push({ restored });
         if (restored.appName !== before.appName || restored.htmlTitle !== before.htmlTitle) {
           console.log(

@@ -1,7 +1,6 @@
-import CollectionImport from '@noodl/runtime/src/collection';
-import type { CollectionLike, CollectionModule, NodeDefinitionOptions, NodeInstance, NodeModule } from '@noodl/types';
+import Collection from '@noodl/runtime/src/collection';
+import type { CollectionLike, NodeDefinitionOptions, NodeInstance, NodeModule } from '@noodl/types';
 
-const Collection = CollectionImport as CollectionModule;
 
 /** `this` inside the Clear Array node. */
 interface CollectionClearInstance extends NodeInstance {

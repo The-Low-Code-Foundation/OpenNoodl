@@ -2,25 +2,21 @@
 
 import { EdgeTriggeredInput, Node } from '@noodl/runtime';
 import CloudStore from '@noodl/runtime/src/api/cloudstore';
-import CollectionImport from '@noodl/runtime/src/collection';
+import Collection from '@noodl/runtime/src/collection';
 import JavascriptNodeParser from '@noodl/runtime/src/javascriptnodeparser';
-import ModelImport from '@noodl/runtime/src/model';
+import Model from '@noodl/runtime/src/model';
 import type {
   CollectionLike,
-  CollectionModule,
   EditorConnectionLike,
   GraphModelLike,
   GraphNodeModel,
   ModelLike,
-  ModelModule,
   NodeContextLike,
   NodeDefinitionOptions,
   NodeInstance,
   NodeModule
 } from '@noodl/types';
 
-const Collection = CollectionImport as CollectionModule;
-const Model = ModelImport as ModelModule;
 
 /** A class in the backend schema, as the editor reports it in `dbCollections` metadata. */
 interface DbCollectionMeta {

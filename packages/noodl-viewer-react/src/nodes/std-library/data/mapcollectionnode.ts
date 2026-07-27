@@ -1,21 +1,17 @@
 'use strict';
 
 import { Node } from '@noodl/runtime';
-import CollectionImport from '@noodl/runtime/src/collection';
-import ModelImport from '@noodl/runtime/src/model';
+import Collection from '@noodl/runtime/src/collection';
+import Model from '@noodl/runtime/src/model';
 import type {
   CollectionLike,
-  CollectionModule,
   ModelLike,
-  ModelModule,
   NodeContextLike,
   NodeDefinitionOptions,
   NodeInstance,
   NodeModule
 } from '@noodl/types';
 
-const Model = ModelImport as ModelModule;
-const Collection = CollectionImport as CollectionModule;
 
 const defaultMapCode =
   'map({\n' +

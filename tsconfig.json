@@ -13,6 +13,13 @@
     "forceConsistentCasingInFileNames": true,
     "baseUrl": ".",
     "paths": {
+      // Resolve @noodl/runtime to declarations, not sources — this program includes
+      // `noodl-viewer-react/src`, compiles at `module: ES2020`, and would otherwise pull
+      // runtime `.ts` files into an ESM program where `export =` is TS1203. The same
+      // mapping lives in `packages/noodl-viewer-react/tsconfig.json`; see PLAT-006.
+      // Generate the tree with `npm run build:types` in `packages/noodl-runtime`.
+      "@noodl/runtime": ["./packages/noodl-runtime/dist-types/noodl-runtime.d.ts"],
+      "@noodl/runtime/src/*": ["./packages/noodl-runtime/dist-types/src/*"],
       "@noodl-viewer-cloud/execution-history": ["./packages/noodl-viewer-cloud/src/execution-history/index.ts"],
       "@noodl-core-ui/*": ["./packages/noodl-core-ui/src/*"],
       "@noodl-hooks/*": ["./packages/noodl-editor/src/editor/src/hooks/*"],

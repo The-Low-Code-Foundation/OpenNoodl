@@ -1,9 +1,8 @@
 'use strict';
 
-import CollectionImport from '@noodl/runtime/src/collection';
-import type { CollectionLike, CollectionModule, NodeDefinitionOptions, NodeInstance, NodeModule } from '@noodl/types';
+import Collection from '@noodl/runtime/src/collection';
+import type { CollectionLike, NodeDefinitionOptions, NodeInstance, NodeModule } from '@noodl/types';
 
-const Collection = CollectionImport as CollectionModule;
 
 /** `this` inside the Create New Array node. */
 interface CollectionNewInstance extends NodeInstance {

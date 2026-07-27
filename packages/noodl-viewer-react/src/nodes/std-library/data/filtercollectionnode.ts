@@ -1,24 +1,20 @@
 'use strict';
 
 import { Node } from '@noodl/runtime';
-import CollectionImport from '@noodl/runtime/src/collection';
-import ModelImport from '@noodl/runtime/src/model';
+import Collection from '@noodl/runtime/src/collection';
+import Model from '@noodl/runtime/src/model';
 import type {
   CollectionLike,
-  CollectionModule,
   EditorConnectionLike,
   GraphNodeModel,
   InspectInfo,
   ModelLike,
-  ModelModule,
   NodeContextLike,
   NodeDefinitionOptions,
   NodeInstance,
   NodeModule
 } from '@noodl/types';
 
-const Model = ModelImport as ModelModule;
-const Collection = CollectionImport as CollectionModule;
 
 /** The comparison operators {@link applyFilter} understands, as authored port suffixes. */
 type FilterOperator = 'eq' | 'neq' | 'gt' | 'lt' | 'gte' | 'lte' | 'regex';

@@ -1,18 +1,14 @@
 'use strict';
 
-import CollectionImport from '@noodl/runtime/src/collection';
-import ModelImport from '@noodl/runtime/src/model';
+import Collection from '@noodl/runtime/src/collection';
+import Model from '@noodl/runtime/src/model';
 import type {
   CollectionLike,
-  CollectionModule,
-  ModelModule,
   NodeDefinitionOptions,
   NodeInstance,
   NodeModule
 } from '@noodl/types';
 
-const Model = ModelImport as ModelModule;
-const Collection = CollectionImport as CollectionModule;
 
 /** `this` inside the Remove Object From Array node. */
 interface CollectionRemoveInstance extends NodeInstance {

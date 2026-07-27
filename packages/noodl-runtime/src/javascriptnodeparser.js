@@ -140,13 +140,17 @@ JavascriptNodeParser.prototype.script = function (userObject) {
 // Node.setOutputs({...})
 // Component.Object, Component.ParentObject
 JavascriptNodeParser.prototype._initializeAPIs = function () {
-  this.apis = {};
-
-  this.apis.Node = {
-    Inputs: {},
-    Outputs: {},
-    Signals: {},
-    Setters: {}
+  // Assigned whole rather than built up field by field: `this.apis = {}` followed by
+  // `this.apis.Node = …` makes TypeScript infer `apis` as `{}` from the first assignment,
+  // and the declaration this package now ships would then contradict every consumer that
+  // reads `apis.Node`. Behaviour is identical.
+  this.apis = {
+    Node: {
+      Inputs: {},
+      Outputs: {},
+      Signals: {},
+      Setters: {}
+    }
   };
 };
 
@@ -205,10 +209,20 @@ JavascriptNodeParser.prototype._afterSourced = function () {
   }
 };
 
+/**
+ * @param {string} code
+ * @param {{ node?: unknown }} [options]
+ * @returns {JavascriptNodeParser}
+ */
 JavascriptNodeParser.createFromCode = function (code, options) {
   return new JavascriptNodeParser(code, options);
 };
 
+/**
+ * @param {string} url
+ * @param {(parser: JavascriptNodeParser) => void} callback
+ * @param {{ node?: unknown }} [options]
+ */
 JavascriptNodeParser.createFromURL = function (url, callback, options) {
   url = getAbsoluteUrl(url);
 

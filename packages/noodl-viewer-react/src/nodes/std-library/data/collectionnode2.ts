@@ -1,17 +1,15 @@
 'use strict';
 
 import { Node } from '@noodl/runtime';
-import CollectionImport from '@noodl/runtime/src/collection';
+import Collection from '@noodl/runtime/src/collection';
 import type {
   CollectionLike,
-  CollectionModule,
   InspectInfo,
   NodeDefinitionOptions,
   NodeInstance,
   NodeModule
 } from '@noodl/types';
 
-const Collection = CollectionImport as CollectionModule;
 
 /** `this` inside the Array node. */
 interface CollectionNodeInstance extends NodeInstance {

@@ -1,6 +1,6 @@
 'use strict';
 
-import type { GraphModelLike, NodeVariant, StateTransition } from '@noodl/types';
+import type { GraphModelLike, NodeVariant, RouterIndex, StateTransition } from '@noodl/types';
 
 import ComponentModel = require('./componentmodel');
 import NodeModel = require('./nodemodel');
@@ -19,7 +19,7 @@ interface ComponentBundle {
 /** The exported project the runtime boots from. */
 interface GraphExportData {
   componentIndex?: Record<string, ComponentBundle>;
-  routerIndex?: unknown;
+  routerIndex?: RouterIndex;
   variants?: NodeVariant[];
   settings?: Record<string, unknown>;
   metadata?: Record<string, unknown>;
@@ -38,7 +38,7 @@ interface GraphModel extends GraphModelLike {
   metadata: Record<string, unknown>;
   /** The export's bundle index — which components each bundle holds, and its dependencies. */
   componentIndex?: Record<string, ComponentBundle>;
-  routerIndex?: unknown;
+  routerIndex?: RouterIndex;
   componentToBundleMap?: Map<string, string>;
   variants?: NodeVariant[];
   rootComponent?: string;

@@ -1,21 +1,17 @@
 'use strict';
 
 import { Node } from '@noodl/runtime';
-import CollectionImport from '@noodl/runtime/src/collection';
-import ModelImport from '@noodl/runtime/src/model';
+import Collection from '@noodl/runtime/src/collection';
+import Model from '@noodl/runtime/src/model';
 import type {
   CollectionLike,
-  CollectionModule,
   InspectInfo,
   ModelLike,
-  ModelModule,
   NodeDefinitionOptions,
   NodeInstance,
   NodeModule
 } from '@noodl/types';
 
-const Collection = CollectionImport as CollectionModule;
-const Model = ModelImport as ModelModule;
 
 /**
  * `this` inside the deprecated Array node.

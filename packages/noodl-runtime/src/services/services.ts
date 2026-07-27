@@ -1,3 +1,5 @@
+import type { UserServiceModule } from '@noodl/types';
+
 import EventEmitter = require('../events');
 
 /**
@@ -17,6 +19,18 @@ interface ServicesModule {
    * PLAT-003 NOTES §31.
    */
   pubsub?: { routeMessage(message: unknown): void };
+
+  /**
+   * The viewer's user service, hung here by `noodl-viewer-react`'s `userservice.ts` so
+   * that `Noodl.Users`, the User nodes and the cloud runtime's Request node all reach one
+   * instance.
+   *
+   * Only the entry point is named. The runtime does not own this class — it is defined in
+   * `noodl-viewer-react`, which depends on this package and not the other way round — so
+   * describing more of it here would be a second description of something this file
+   * cannot see. `forScope` is what every consumer calls first.
+   */
+  UserService?: UserServiceModule;
 }
 
 const Services = function Services() {} as unknown as ServicesModule;

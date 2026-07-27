@@ -1,232 +1,60 @@
 "use strict";
 
-var Model = require("./model");
+/**
+ * Noodl Arrays: ordered, observable lists of {@link ModelLike} records.
+ *
+ * The implementation is unusual and load-bearing. A Noodl Array **is** a real JavaScript
+ * `Array` — `class Collection extends Array` — and the collection API (`items`, `size`,
+ * `get`, `add`, `remove`, `on`, `notify`, …) is installed on `Array.prototype` by the
+ * `Object.defineProperty` block below. That is why {@link CollectionLike} is published as
+ * `extends Array<ModelLike>`: user JavaScript can hand a plain array to anything that
+ * wants a collection, and `Repeater`s can iterate one directly.
+ *
+ * The patch is global at runtime but is **not** declared globally here. Declaring
+ * `Array.prototype.get` in ambient scope would make `[1,2,3].get(0)` compile in every file
+ * in every consuming package, which would hide far more mistakes than it documents. The
+ * implementations below are typed through a local `this` annotation instead.
+ *
+ * Everything above the `// ----` marker in the previous revision was a commented-out
+ * earlier implementation; it is preserved unchanged.
+ *
+ * @module noodl-runtime
+ */
 
-// Get and set proxy
-/*const proxies = {}
-const _collectionProxyHandler = {
-  get: function(target,prop,receiver) {
-    if(typeof target[prop] === 'function')
-      return target[prop].bind(target);
-    else if(prop === 'length')
-      return target.size()
-    else if(target.items[prop] !== undefined)
-      return target.get(prop)
-    else
-      return Reflect.get(target,prop,receiver)
-  },
-  set: function(obj,prop,value) {
-    if(prop === 'id') {
-      console.log(`Noodl.Object warning: id is readonly (Id is ${obj.id}, trying to set to ${value})`);
-      return true; //if a proxy doesn't return true an exception will be thrown
-    }
-    else
-      return Reflect.set(target,prop,receiver)
-  }
+import type { CollectionChangeEvent, CollectionLike, ModelLike } from '@noodl/types';
+
+import Model = require('./model');
+
+/**
+ * A collection as its own method bodies see it — {@link CollectionLike} plus the two
+ * non-enumerable slots the patch hides on each instance.
+ */
+interface PatchedArray extends CollectionLike {
+  _id?: string;
+  _listeners?: Record<string, Array<(args?: unknown) => unknown>>;
 }
 
-function Collection(id) {
-  this.id = id;
-  this.items = [];
+interface CollectionConstructor {
+  new (): CollectionLike;
+  prototype: CollectionLike;
+
+  /** The process-wide table of named collections. */
+  _collections: Record<string, CollectionLike>;
+
+  create(items?: ArrayLike<ModelLike | Record<string, unknown>>): CollectionLike;
+  get(name?: string): CollectionLike;
+  /** A plain `instanceof` test: null-safe, and narrower than "has the patched members". */
+  instanceOf(collection: unknown): boolean;
+  exists(name: string): boolean;
 }
-
-var collections = Collection._collections = {};
-
-Collection.create = function(items) {
-  const name = Model.guid();
-  collections[name] = new Collection(name);
-  if(items) {
-    collections[name].set(items);
-  }
-  return collections[name];
-}
-
-Collection.get = function(name) {
-  if(name === undefined) name = Model.guid();
-  if(!collections[name]) {
-    collections[name] = new Collection(name);
-    proxies[name] = new Proxy(collections[name],_collectionProxyHandler);
-  }
-  return proxies[name];
-}
-
-Collection.instanceOf = function(collection) {
-  return collection && (collection instanceof Collection || collection.target instanceof Collection);
-}
-
-Collection.exists = function(name) {
-  return collections[name] !== undefined;
-}
-
-Collection.prototype.getId = function() {
-  return this.id;
-}
-
-Collection.prototype.on = function(event,listener) {
-  if(!this.listeners) this.listeners = {};
-  if(!this.listeners[event]) this.listeners[event] = [];
-  this.listeners[event].push(listener);
-}
-
-Collection.prototype.off = function(event,listener) {
-  if(!this.listeners) return;
-  if(!this.listeners[event]) return;
-  var idx = this.listeners[event].indexOf(listener);
-  if(idx!==-1) this.listeners[event].splice(idx,1);
-}
-
-Collection.prototype.notify = async function(event,args) {
-  if(!this.listeners) return;
-  if(!this.listeners[event]) return;
-  
-  var l = this.listeners[event].slice(); //clone in case listeners array is modified in the callbacks
-  for(var i = 0; i < l.length; i++) {
-    await l[i](args);
-  }  
-}
-
-Collection.prototype.set = function(src) {
-  var length,i;
-  
-  if(src === this) return;
-  
-  function keyIndex(a) {
-    var keys = {};
-    var length = a.length;
-    for(var i = 0; i < length; i++) {   
-      var item = a[i];  
-      keys[item.getId()] = item;
-    }
-    return keys;
-  }
-  
-  // Src can be a collection, or an array
-  var src = Collection.instanceOf(src)?src.items:src;
-  var bItems = [];
-  length = src.length;
-  for(i = 0; i < length; i++) {
-    var item = src[i];
-    if(Model.instanceOf(item))
-      bItems.push(item);
-    else
-      bItems.push(Model.create(item));
-  }
-  
-  var aItems = this.items;  
-  var aKeys = keyIndex(aItems);
-  var bKeys = keyIndex(bItems);
-  
-  // First remove all items not in the new collection
-  length = aItems.length;
-  for(i = 0; i < length; i++) {
-    if(!bKeys.hasOwnProperty(aItems[i].getId())) {
-      // This item is not present in new collection, remove it
-      this.removeAtIndex(i);
-      i--;
-      length--;
-    }
-  }
-  
-  // Reorder items
-  for(i = 0; i < Math.min(aItems.length,bItems.length); i++) {
-    if(aItems[i] !== bItems[i]) {
-      if(aKeys.hasOwnProperty(bItems[i].getId())) { 
-        // The bItem exist in the collection but is in the wrong place
-        this.remove(bItems[i]);
-      }
-
-      // This is a new item, add it at correct index
-      this.addAtIndex(bItems[i],i);
-    }  
-  }
-  
-  // Add remaining items
-  for(i = aItems.length; i < bItems.length; i++) {
-    this.add(bItems[i]);
-  }
-      
-}
-
-Collection.prototype.contains = function(item) {
-  return this.items.indexOf(item)!==-1;
-}
-
-Collection.prototype.add = async function(item) {
-  if(this.contains(item)) return; // Already contains item
-  
-  this.items.push(item);
-  await this.notify('add',{item:item,index:this.items.length-1});
-  await this.notify('change');
-  await item.notify('add',{collection:this});
-}
-
-Collection.prototype.addAtIndex = async function(item,index) {
-  if(this.contains(item)) return; // Already contains item
-
-  this.items.splice(index,0,item);
-  await this.notify('add',{item:item,index:index});
-  await this.notify('change');
-  await item.notify('add',{collection:this,index:index});
-}
-
-Collection.prototype.removeAtIndex = async function(idx) {
-  var item = this.items[idx];
-  this.items.splice(idx,1);
-  await this.notify('remove',{item:item,index:idx});
-  await this.notify('change');
-  await item.notify('remove',{collection:this});  
-}
-
-Collection.prototype.remove = function(item) {
-  var idx = this.items.indexOf(item);
-  if(idx !== -1) this.removeAtIndex(idx);
-}
-
-Collection.prototype.size = function() {
-  return this.items.length;
-}
-
-Collection.prototype.get = function(index) {
-  return this.items[index];
-}
-
-Collection.prototype.each = function(callback) {
-  for(var i = 0; i < this.items.length; i++) {
-    callback(this.items[i],i);
-  }
-}
-
-Collection.prototype.forEach = Collection.prototype.each;
-
-Collection.prototype.map = function(fn) {
-  return this.items.map(fn);
-}
-
-Collection.prototype.filter = function(fn) {
-  return this.items.filter(fn);
-}
-
-Collection.prototype.find = function(predicate, thisArg) {
-  return this.items.find(predicate, thisArg);
-}
-
-Collection.prototype.findIndex = function(predicate, thisArg) {
-  return this.items.findIndex(predicate, thisArg);
-}   
-
-Collection.prototype.toJSON = function() {
-  return this.map(function(m) {
-      return m.toJSON()
-  })
-}*/
 
 // ----
 Object.defineProperty(Array.prototype, "items", {
   enumerable: false,
-  get() {
+  get(this: PatchedArray) {
     return this;
   },
-  set(data) {
+  set(this: PatchedArray, data: CollectionLike | undefined) {
     this.set(data);
   },
 });
@@ -238,42 +66,42 @@ Object.defineProperty(Array.prototype, "each", {
 Object.defineProperty(Array.prototype, "size", {
   enumerable: false,
   writable: false,
-  value: function () {
+  value: function (this: PatchedArray) {
     return this.length;
   },
 });
 Object.defineProperty(Array.prototype, "get", {
   enumerable: false,
   writable: false,
-  value: function (index) {
+  value: function (this: PatchedArray, index: number) {
     return this[index];
   },
 });
 Object.defineProperty(Array.prototype, "getId", {
   enumerable: false,
   writable: false,
-  value: function () {
+  value: function (this: PatchedArray) {
     return this._id;
   },
 });
 Object.defineProperty(Array.prototype, "id", {
   enumerable: false,
-  get() {
+  get(this: PatchedArray) {
     return this.getId();
   },
 });
 Object.defineProperty(Array.prototype, "set", {
   enumerable: false,
   writable: false,
-  value: function (src) {
-    var length, i;
+  value: function (this: PatchedArray, src?: ArrayLike<ModelLike | Record<string, unknown>>) {
+    var length: number, i: number;
 
     if (src === this) return;
 
     src = src || []; //handle if src is undefined
 
-    function keyIndex(a) {
-      var keys = {};
+    function keyIndex(a: ArrayLike<ModelLike>) {
+      var keys: Record<string, ModelLike> = {};
       var length = a.length;
       for (var i = 0; i < length; i++) {
         var item = a[i];
@@ -283,12 +111,12 @@ Object.defineProperty(Array.prototype, "set", {
     }
 
     // Src can be a collection, or an array
-    var bItems = [];
+    var bItems: ModelLike[] = [];
     length = src.length;
     for (i = 0; i < length; i++) {
       var item = src[i];
-      if (Model.instanceOf(item)) bItems.push(item);
-      else bItems.push(Model.create(item));
+      if (Model.instanceOf(item)) bItems.push(item as ModelLike);
+      else bItems.push(Model.create(item as Record<string, unknown>));
     }
 
     var aItems = this.items;
@@ -329,7 +157,7 @@ Object.defineProperty(Array.prototype, "set", {
 Object.defineProperty(Array.prototype, "notify", {
   enumerable: false,
   writable: false,
-  value: async function (event, args) {
+  value: async function (this: PatchedArray, event: string, args?: unknown) {
     if (!this._listeners) return;
     if (!this._listeners[event]) return;
 
@@ -343,7 +171,7 @@ Object.defineProperty(Array.prototype, "notify", {
 Object.defineProperty(Array.prototype, "contains", {
   enumerable: false,
   writable: false,
-  value: function (item) {
+  value: function (this: PatchedArray, item: ModelLike) {
     return this.indexOf(item) !== -1;
   },
 });
@@ -351,7 +179,7 @@ Object.defineProperty(Array.prototype, "contains", {
 Object.defineProperty(Array.prototype, "add", {
   enumerable: false,
   writable: false,
-  value: async function (item) {
+  value: async function (this: PatchedArray, item: ModelLike) {
     if (this.contains(item)) return; // Already contains item
 
     this.items.push(item);
@@ -364,7 +192,7 @@ Object.defineProperty(Array.prototype, "add", {
 Object.defineProperty(Array.prototype, "remove", {
   enumerable: false,
   writable: false,
-  value: function (item) {
+  value: function (this: PatchedArray, item: ModelLike) {
     var idx = this.items.indexOf(item);
     if (idx !== -1) this.removeAtIndex(idx);
   },
@@ -373,7 +201,7 @@ Object.defineProperty(Array.prototype, "remove", {
 Object.defineProperty(Array.prototype, "addAtIndex", {
   enumerable: false,
   writable: false,
-  value: async function (item, index) {
+  value: async function (this: PatchedArray, item: ModelLike, index: number) {
     if (this.contains(item)) return; // Already contains item
 
     this.items.splice(index, 0, item);
@@ -386,7 +214,7 @@ Object.defineProperty(Array.prototype, "addAtIndex", {
 Object.defineProperty(Array.prototype, "removeAtIndex", {
   enumerable: false,
   writable: false,
-  value: async function (idx) {
+  value: async function (this: PatchedArray, idx: number) {
     var item = this.items[idx];
     this.items.splice(idx, 1);
     await this.notify("remove", { item: item, index: idx });
@@ -398,7 +226,7 @@ Object.defineProperty(Array.prototype, "removeAtIndex", {
 Object.defineProperty(Array.prototype, "on", {
   enumerable: false,
   writable: false,
-  value: function (event, listener) {
+  value: function (this: PatchedArray, event: string, listener: (args?: CollectionChangeEvent) => void) {
     if (!this._listeners)
       Object.defineProperty(this, "_listeners", {
         enumerable: false,
@@ -413,7 +241,7 @@ Object.defineProperty(Array.prototype, "on", {
 Object.defineProperty(Array.prototype, "off", {
   enumerable: false,
   writable: false,
-  value: function (event, listener) {
+  value: function (this: PatchedArray, event: string, listener: (args?: CollectionChangeEvent) => void) {
     if (!this._listeners) return;
     if (!this._listeners[event]) return;
     var idx = this._listeners[event].indexOf(listener);
@@ -421,11 +249,13 @@ Object.defineProperty(Array.prototype, "off", {
   },
 });
 
-class Collection extends Array {}
+class CollectionImpl extends Array {}
 
-var collections = (Collection._collections = {});
+const Collection = CollectionImpl as unknown as CollectionConstructor;
 
-Collection.create = function (items) {
+var collections = (Collection._collections = {} as Record<string, CollectionLike>);
+
+Collection.create = function (items?: ArrayLike<ModelLike | Record<string, unknown>>): CollectionLike {
   const name = Model.guid();
   collections[name] = new Collection();
   Object.defineProperty(collections[name], "_id", {
@@ -439,7 +269,7 @@ Collection.create = function (items) {
   return collections[name];
 };
 
-Collection.get = function (name) {
+Collection.get = function (name?: string): CollectionLike {
   if (name === undefined) name = Model.guid();
   if (!collections[name]) {
     collections[name] = new Collection();
@@ -453,11 +283,11 @@ Collection.get = function (name) {
   return collections[name];
 };
 
-Collection.instanceOf = function (collection) {
-  return collection instanceof Collection;
+Collection.instanceOf = function (collection: unknown) {
+  return collection instanceof CollectionImpl;
 };
 
-Collection.exists = function (name) {
+Collection.exists = function (name: string) {
   return collections[name] !== undefined;
 };
 
@@ -475,6 +305,6 @@ const CallableCollection = new Proxy(Collection, {
   apply() {
     return undefined;
   }
-});
+}) as CollectionConstructor;
 
-module.exports = CallableCollection;
+export = CallableCollection;

@@ -1188,6 +1188,115 @@ export interface ComponentModelLike extends EventSenderLike {
 }
 
 /**
+ * One entry in the exported router index's `pages` list.
+ *
+ * Produced by `getRouterIndex` in the editor's exporter and read back by the viewer's
+ * router at navigation time, which is why it is described here rather than on either side.
+ */
+export interface RouterPageInfo {
+  /** URL path, with `{param}` placeholders for every declared path parameter. */
+  path: string;
+  title: string;
+  /** Full component name, e.g. `/Pages/Article`. */
+  component: string;
+}
+
+/**
+ * The index of routers and pages shipped alongside the graph.
+ *
+ * It exists so the viewer can resolve a URL to a component *without* loading the whole
+ * project: the bundle for a page is fetched only once that page is navigated to.
+ */
+/**
+ * One Router node's parameters, spread verbatim into the index.
+ *
+ * Only `name` and `pages` are named: those are what the viewer's router reads back when
+ * resolving a URL. Everything else a Router node carries passes through the index
+ * signature.
+ */
+export interface RouterIndexEntry {
+  name?: string;
+  /** The routes control's value: the component names this router can show. */
+  pages?: { routes?: string[] };
+  [parameter: string]: unknown;
+}
+
+export interface RouterIndex {
+  /** Each Router node's parameters, spread verbatim. Only named routers are included. */
+  routers: RouterIndexEntry[];
+  pages: RouterPageInfo[];
+}
+
+/**
+ * Project settings as the *runtime* reads them.
+ *
+ * Only the keys the runtime itself branches on are named; the editor's settings panel
+ * writes many more (`htmlTitle`, `headCode`, …) and they pass through the index signature.
+ */
+export interface ProjectSettingsValues {
+  /** Lets the page router scroll the document body rather than an inner element. */
+  bodyScroll?: boolean;
+  /** Repeaters stop reacting to collection changes while unmounted. */
+  repeaterDisabledWhenUnmounted?: boolean;
+  /** Repeaters build their child components across frames instead of in one pass. */
+  repeaterCreateComponentsAsync?: boolean;
+  navigationPathType?: string;
+  [setting: string]: unknown;
+}
+
+/**
+ * The viewer's user service, as the *runtime* and the cloud runtime see it.
+ *
+ * The class itself lives in `noodl-viewer-react` and is hung on
+ * `NoodlRuntime.Services.UserService` at import time. It cannot be described there,
+ * because `@noodl/runtime` and `noodl-viewer-cloud` both reach it and neither depends on
+ * the react viewer — so the shared surface is named here, once, and the implementation
+ * satisfies it.
+ *
+ * Only what a cross-package consumer calls is declared. Everything the react viewer's own
+ * nodes use they reach through the concrete class.
+ */
+export interface UserServiceLike {
+  /** The signed-in user, or undefined. Read directly by the cloud runtime's Request node. */
+  current?: ModelLike;
+  fetchCurrentUser(options: {
+    sessionToken?: string;
+    success(response?: unknown): void;
+    error(error?: unknown): void;
+  }): void;
+}
+
+/** The factory side: one service per model scope, so a sandbox gets its own. */
+export interface UserServiceModule {
+  forScope(modelScope: unknown): UserServiceLike;
+}
+
+/** The backend credentials a deployed project carries in its metadata. */
+export interface CloudServicesMetaData {
+  endpoint: string;
+  appId: string;
+  [extra: string]: unknown;
+}
+
+/**
+ * The project's metadata block, keyed by what the runtime actually stores in it.
+ *
+ * Named keys are the ones read by more than one call site; anything else falls through the
+ * index signature as `unknown`, which is what an unrecognised key genuinely is.
+ */
+export interface ProjectMetaData {
+  cloudservices?: CloudServicesMetaData;
+  backendServices?: unknown;
+  dbCollections?: unknown;
+  systemCollections?: unknown;
+  dbConfigSchema?: unknown;
+  dbVersionMajor?: unknown;
+  appConfig?: unknown;
+  styles?: unknown;
+  [key: string]: unknown;
+}
+
+/**
  * The project's whole node graph, as a {@link NodeModule.setup} function sees it.
  *
  * Beyond the query methods, `setup` functions subscribe to *type-scoped* events: the model

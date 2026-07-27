@@ -1,7 +1,7 @@
 'use strict';
 
 import { Node } from '@noodl/runtime';
-import ModelImport from '@noodl/runtime/src/model';
+import Model from '@noodl/runtime/src/model';
 import type {
   EditorConnectionLike,
   GraphModelLike,
@@ -9,14 +9,12 @@ import type {
   InspectInfo,
   ModelChangeEvent,
   ModelLike,
-  ModelModule,
   NodeContextLike,
   NodeDefinitionOptions,
   NodeInstance,
   NodeModule
 } from '@noodl/types';
 
-const Model = ModelImport as ModelModule;
 
 //var previousProperties = {};
 

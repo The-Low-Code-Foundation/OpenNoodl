@@ -6,7 +6,11 @@
     "start": "webpack --config webpack-configs/webpack.dev.js",
     "build": "webpack --config webpack-configs/webpack.prod.js",
     "build:react-globals": "node scripts/build-react-globals.js",
-    "test": "jest"
+    "test": "jest",
+    "build:types": "npm run build:types --prefix ../noodl-runtime",
+    "prebuild": "npm run build:types",
+    "prestart": "npm run build:types",
+    "pretest": "npm run build:types"
   },
   "dependencies": {
     "@better-scroll/core": "^2.5.1",

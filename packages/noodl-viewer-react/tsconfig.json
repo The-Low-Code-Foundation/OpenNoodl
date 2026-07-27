@@ -8,7 +8,30 @@
     "allowJs": false,
     "sourceMap": true,
     "module": "es6",
-    "moduleResolution": "node"
+    "moduleResolution": "node",
+
+    // Resolve `@noodl/runtime` to *declarations*, not sources.
+    //
+    // This package compiles at `module: es6` with `allowJs: false`, so a runtime `.js`
+    // file it imports is never in its program — but converting that file to `.ts` puts it
+    // there, where the runtime's `export =` is `TS1203` and its ambient `src/globals.d.ts`
+    // is out of scope. That is what reverted seven modules in PLAT-003 slice 13.
+    //
+    // Only *type* resolution is redirected. Webpack resolves the module itself the same
+    // way it always has, and `@noodl/runtime/webpack-ts-rule` compiles it in the runtime's
+    // own CommonJS program — emit was never the problem. Generate the tree first:
+    // `npm run build:types` in `packages/noodl-runtime`.
+    //
+    // Deliberately not applied to `noodl-viewer-cloud`: that package is `module: CommonJS`
+    // and has never had this problem, which is why `nodescope.ts` has used `export =` since
+    // PLAT-003 slice 2 without trouble. See PLAT-006 and PLAT-003 NOTES §29.1.
+    // No `baseUrl`: TypeScript resolves `paths` relative to this file since 4.1, and
+    // setting one changes how bare `@types` packages are found — which broke ts-jest's
+    // view of `expect` (jasmine's declarations shadowed jest's) in `tests/`.
+    "paths": {
+      "@noodl/runtime": ["../noodl-runtime/dist-types/noodl-runtime.d.ts"],
+      "@noodl/runtime/src/*": ["../noodl-runtime/dist-types/src/*"]
+    }
   },
   "include": ["src", "typings"],
   "exclude": ["static", "tests", "webpack-configs", "**/*.stories.tsx"]

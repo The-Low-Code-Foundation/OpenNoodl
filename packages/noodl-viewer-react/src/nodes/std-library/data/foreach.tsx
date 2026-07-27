@@ -1,11 +1,10 @@
 import React, { useEffect } from 'react';
 
 import NoodlRuntime, { Node } from '@noodl/runtime';
-import CollectionImport from '@noodl/runtime/src/collection';
+import Collection from '@noodl/runtime/src/collection';
 import type {
   CollectionChangeEvent,
   CollectionLike,
-  CollectionModule,
   ComponentModelLike,
   EditorConnectionLike,
   GraphModelLike,
@@ -21,7 +20,6 @@ import type {
 
 import guid from '../../../guid';
 
-const Collection = CollectionImport as CollectionModule;
 
 interface ForEachComponentProps {
   didMount(): void;

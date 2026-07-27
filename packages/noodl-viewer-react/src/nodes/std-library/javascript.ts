@@ -666,7 +666,7 @@ function _parseAndSourceJavascript(
     const url = nodeModel.parameters.externalFile as string;
     JavascriptNodeParser.createFromURL(url, onCodeParsed);
   } else if (nodeModel.parameters.code) {
-    const parser = JavascriptNodeParser.createFromCode(nodeModel.parameters.code);
+    const parser = JavascriptNodeParser.createFromCode(nodeModel.parameters.code as string);
     onCodeParsed(parser);
   } else {
     //no code, just send empty port list

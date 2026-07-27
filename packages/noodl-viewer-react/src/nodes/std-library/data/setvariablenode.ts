@@ -1,20 +1,16 @@
 'use strict';
 
-import CollectionImport from '@noodl/runtime/src/collection';
-import ModelImport from '@noodl/runtime/src/model';
+import Collection from '@noodl/runtime/src/collection';
+import Model from '@noodl/runtime/src/model';
 import type {
-  CollectionModule,
   GraphNodeModel,
   ModelLike,
-  ModelModule,
   NodeContextLike,
   NodeDefinitionOptions,
   NodeInstance,
   NodeModule
 } from '@noodl/types';
 
-const Model = ModelImport as ModelModule;
-const Collection = CollectionImport as CollectionModule;
 
 /** How the author asked the value to be coerced before it is stored. */
 type SetVariableAs = 'string' | 'boolean' | 'number' | 'emptyString' | 'date' | 'object' | 'array' | '*';

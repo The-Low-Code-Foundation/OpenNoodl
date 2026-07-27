@@ -1,20 +1,168 @@
 'use strict';
 
-const NodeContext = require('./src/nodecontext');
-const EditorConnection = require('./src/editorconnection');
-const generateNodeLibrary = require('./src/nodelibraryexport');
-const ProjectSettings = require('./src/projectsettings');
-const GraphModel = require('./src/models/graphmodel');
-const NodeDefinition = require('./src/nodedefinition');
-const Node = require('./src/node');
-const EditorModelEventsHandler = require('./src/editormodeleventshandler');
-const Services = require('./src/services/services');
-const EdgeTriggeredInput = require('./src/edgetriggeredinput');
+/**
+ * The runtime's entry point: one object owning the node register, the graph model, the
+ * editor connection and the update loop.
+ *
+ * `NoodlRuntime.instance` is the reason this file is TypeScript. It is assigned inside the
+ * constructor, which TypeScript's inference over a `.js` file does not track — so every
+ * converted module that needed it used a bare untyped `require` instead (PLAT-003 NOTES
+ * §29.4, ~10 files). Declaring the static here is what retires that workaround, and what
+ * lets `noodl-viewer-react` resolve this package's declarations instead of compiling its
+ * sources (PLAT-006).
+ *
+ * @module noodl-runtime
+ */
 
-const EventEmitter = require('./src/events');
-const asyncPool = require('./src/async-pool');
+import type {
+  NodeDefinition as NodeDefinitionType,
+  NodeDefinitionOptions,
+  ProjectMetaData,
+  ProjectSettingsValues,
+  RuntimeEventEmitter
+} from '@noodl/types';
 
-function registerNodes(noodlRuntime) {
+import type { RuntimeNode } from './src/internal';
+
+import NodeContext = require('./src/nodecontext');
+import EditorConnection = require('./src/editorconnection');
+import generateNodeLibrary = require('./src/nodelibraryexport');
+import ProjectSettings = require('./src/projectsettings');
+import GraphModel = require('./src/models/graphmodel');
+import NodeDefinition = require('./src/nodedefinition');
+import Node = require('./src/node');
+import EditorModelEventsHandler = require('./src/editormodeleventshandler');
+import Services = require('./src/services/services');
+import EdgeTriggeredInput = require('./src/edgetriggeredinput');
+
+import EventEmitter = require('./src/events');
+import asyncPool = require('./src/async-pool');
+
+// Derived rather than re-declared: both shapes are module-local to files that use
+// `export =`, which forbids exporting anything beside the default. Reading them off the
+// signatures that already accept them keeps one description (PLAT-003 NOTES §29.6 trap 3).
+type GraphExportData = Parameters<InstanceType<typeof GraphModel>['importEditorData']>[0];
+type EditorModelEvent = Parameters<typeof EditorModelEventsHandler.handleEvent>[2];
+
+/**
+ * A node module as `registerModule` accepts it: either `{ node }` wrappers or bare
+ * definitions, plus an optional `setup` the runtime calls once data has loaded.
+ */
+interface NoodlModule {
+  name?: string;
+  nodes?: Array<NodeDefinitionOptions | { node: NodeDefinitionOptions }>;
+  setup?(this: NoodlModule): void;
+}
+
+/** What `registerNode` accepts — the same two shapes, one at a time. */
+interface NodeRegistration {
+  node?: NodeDefinitionOptions;
+  setup?(context: InstanceType<typeof NodeContext>, graphModel: InstanceType<typeof GraphModel>): void;
+}
+
+/** The host services the runtime cannot provide for itself. */
+interface RuntimePlatform {
+  requestUpdate(callback: () => void): void;
+  getCurrentTime(): number;
+  webSocketOptions?: unknown;
+  objectToString?(object: unknown): string;
+  /**
+   * A host may carry more than the runtime reads — `EditorConnectionPlatform` declares an
+   * index signature for exactly that reason, and this must match it to be assignable.
+   */
+  [extra: string]: unknown;
+  /**
+   * Set only by the SSR server's entry; makes client-only nodes instantiate inert
+   * (`makeNodeInert` in nodedefinition.ts) instead of running browser code.
+   */
+  isSSRServer?: boolean;
+}
+
+interface NoodlRuntimeArgs {
+  type?: string;
+  platform?: Partial<RuntimePlatform>;
+  /** True in a deployed build: no editor communication, and `runningInEditor` is false. */
+  runDeployed?: boolean;
+  dontCreateRootComponent?: boolean;
+  /** Receives each exported component; the cloud runtime uses it to load only its own. */
+  componentFilter?(component: { name: string; [extra: string]: unknown }): boolean;
+  /**
+   * AIX-008: sandbox previews register under a known id so the editor can feed them their
+   * own export. Undefined everywhere else — an anonymous guid.
+   */
+  editorClientId?: string;
+}
+
+/** Extra project-settings ports contributed by the host, merged into the node library. */
+interface HostProjectSettings {
+  ports?: unknown[];
+  dynamicports?: unknown[];
+}
+
+interface NoodlRuntime {
+  type: string;
+  noodlModules: NoodlModule[];
+  eventEmitter: RuntimeEventEmitter;
+  updateScheduled: boolean;
+  rootComponent: RuntimeNode | undefined;
+  _currentLoadedData: unknown;
+  isWaitingForExport: boolean;
+  graphModel: InstanceType<typeof GraphModel>;
+  errorHandlers: Array<(message: unknown) => void>;
+  frameNumber: number;
+  dontCreateRootComponent: boolean;
+  componentFilter?: (component: { name: string; [extra: string]: unknown }) => boolean;
+  runningInEditor: boolean;
+  platform: RuntimePlatform;
+  editorConnection: InstanceType<typeof EditorConnection>;
+  context: InstanceType<typeof NodeContext>;
+  projectSettings?: HostProjectSettings;
+  lastSentNodeLibrary?: string;
+  /** SSR re-loads the graph data; this stops the second load duplicating every node. */
+  _disableLoad?: boolean;
+
+  prefetchBundles(bundleNames: string[], numParallelFetches: number): Promise<void>;
+  _setupEditorCommunication(args: NoodlRuntimeArgs): void;
+  setDebugInspectorsEnabled(enabled: boolean): void;
+  registerModule(module: NoodlModule): void;
+  registerGraphModelListeners(): void;
+  reload(): void;
+  registerNode(nodeDefinition: NodeRegistration | NodeDefinitionType): void;
+  _setRootComponent(rootComponentName: string | null): Promise<void>;
+  setData(graphData: unknown): Promise<void>;
+  scheduleUpdate(): void;
+  _doUpdate(): void;
+  setProjectSettings(settings: HostProjectSettings): void;
+  getNodeLibrary(): string;
+  sendNodeLibrary(): void;
+  connectToEditor(address: string): void;
+  onModelUpdateReceived(event: EditorModelEvent): Promise<void>;
+  addErrorHandler(callback: (message: unknown) => void): void;
+  reportError(message: unknown): void;
+  getProjectSettings(): ProjectSettingsValues;
+  /** Keyed lookup into the project's metadata block; unknown keys are `unknown`. */
+  getMetaData<K extends keyof ProjectMetaData>(key: K): ProjectMetaData[K];
+}
+
+interface NoodlRuntimeConstructor {
+  new (args?: NoodlRuntimeArgs): NoodlRuntime;
+  prototype: NoodlRuntime;
+
+  /**
+   * The most recently constructed runtime.
+   *
+   * Assigned in the constructor, so there is exactly one in practice — a viewer builds one
+   * runtime per page. Reached from ~10 modules that have no other route to the context.
+   */
+  instance: NoodlRuntime;
+
+  Services: typeof Services;
+  Node: typeof Node;
+  NodeDefinition: typeof NodeDefinition;
+  EdgeTriggeredInput: typeof EdgeTriggeredInput;
+}
+
+function registerNodes(noodlRuntime: NoodlRuntime) {
   [
     require('./src/nodes/componentinputs'),
     require('./src/nodes/componentoutputs'),
@@ -89,10 +237,12 @@ function registerNodes(noodlRuntime) {
   ].forEach((node) => noodlRuntime.registerNode(node));
 }
 
-function NoodlRuntime(args) {
+const NoodlRuntime = function NoodlRuntime(this: NoodlRuntime, args?: NoodlRuntimeArgs) {
   args = args || {};
   args.platform = args.platform || {};
-  NoodlRuntime.instance = this;
+  // Assigned through the constructor's declared type rather than the `const` being
+  // initialised: inside its own initializer TypeScript has not yet resolved the latter.
+  (NoodlRuntime as unknown as NoodlRuntimeConstructor).instance = this;
 
   this.type = args.type || 'browser';
   this.noodlModules = [];
@@ -117,7 +267,7 @@ function NoodlRuntime(args) {
     // Set only by the SSR server's entry; makes client-only nodes instantiate
     // inert (nodedefinition.ts makeNodeInert) instead of running browser code.
     isSSRServer: args.platform.isSSRServer
-  };
+  } as RuntimePlatform;
 
   if (!args.platform.requestUpdate) {
     throw new Error('platform.requestUpdate must be set');
@@ -131,7 +281,7 @@ function NoodlRuntime(args) {
   //If won't connect and act as a "noop" in deployed mode,
   // and reduce the need for lots of if(editorConnection)
   this.editorConnection = new EditorConnection({
-    platform: args.platform,
+    platform: this.platform,
     runtimeType: this.type,
     // AIX-008: sandbox previews register under a known id so the editor can feed
     // them their own export. Undefined everywhere else — an anonymous guid.
@@ -154,23 +304,23 @@ function NoodlRuntime(args) {
   this.registerGraphModelListeners();
 
   registerNodes(this);
-}
+} as unknown as NoodlRuntimeConstructor;
 
-NoodlRuntime.prototype.prefetchBundles = async function (bundleNames, numParallelFetches) {
+NoodlRuntime.prototype.prefetchBundles = async function (bundleNames: string[], numParallelFetches: number) {
   await asyncPool(numParallelFetches, bundleNames, async (name) => {
     await this.context.fetchComponentBundle(name);
   });
 };
 
-NoodlRuntime.prototype._setupEditorCommunication = function (args) {
-  function objectEquals(x, y) {
+NoodlRuntime.prototype._setupEditorCommunication = function (args: NoodlRuntimeArgs) {
+  function objectEquals(x: unknown, y: unknown): boolean {
     if (x === null || x === undefined || y === null || y === undefined) {
       return x === y;
     }
     if (x === y) {
       return true;
     }
-    if (Array.isArray(x) && x.length !== y.length) {
+    if (Array.isArray(x) && x.length !== (y as unknown[]).length) {
       return false;
     }
 
@@ -183,13 +333,15 @@ NoodlRuntime.prototype._setupEditorCommunication = function (args) {
     }
 
     // recursive object equality check
-    var p = Object.keys(x);
+    const left = x as Record<string, unknown>;
+    const right = y as Record<string, unknown>;
+    var p = Object.keys(left);
     return (
-      Object.keys(y).every(function (i) {
+      Object.keys(right).every(function (i) {
         return p.indexOf(i) !== -1;
       }) &&
       p.every(function (i) {
-        return objectEquals(x[i], y[i]);
+        return objectEquals(left[i], right[i]);
       })
     );
   }
@@ -221,23 +373,29 @@ NoodlRuntime.prototype._setupEditorCommunication = function (args) {
 
   this.editorConnection.on('reload', this.reload.bind(this));
   this.editorConnection.on('modelUpdate', this.onModelUpdateReceived.bind(this));
-  this.editorConnection.on('metadataUpdate', this.onMetaDataUpdateReceived.bind(this));
+  // There was a third listener here, for 'metadataUpdate'. Nothing has ever emitted that
+  // event — `editorconnection.ts` dispatches a fixed set and it is not among them — and
+  // its handler called `EditorMetaDataEventsHandler`, an identifier that has never existed
+  // in this repository (`git log -S` reaches the initial commit). Both are gone: the branch
+  // was unreachable, and had it ever been reached it would have thrown a ReferenceError.
 
   this.editorConnection.on('connected', () => {
     this.sendNodeLibrary();
   });
 };
 
-NoodlRuntime.prototype.setDebugInspectorsEnabled = function (enabled) {
+NoodlRuntime.prototype.setDebugInspectorsEnabled = function (enabled: boolean) {
   this.context.setDebugInspectorsEnabled(enabled);
 };
 
-NoodlRuntime.prototype.registerModule = function (module) {
+NoodlRuntime.prototype.registerModule = function (module: NoodlModule) {
   if (module.nodes) {
-    for (let nodeDefinition of module.nodes) {
-      if (!nodeDefinition.node) nodeDefinition = { node: nodeDefinition };
-      nodeDefinition.node.module = module.name || 'Unknown Module';
-      this.registerNode(nodeDefinition);
+    for (const entry of module.nodes) {
+      // A module may list bare definitions or `{ node }` wrappers; both are accepted.
+      const wrapped: NodeRegistration =
+        'node' in entry && entry.node ? (entry as { node: NodeDefinitionOptions }) : { node: entry as NodeDefinitionOptions };
+      wrapped.node.module = module.name || 'Unknown Module';
+      this.registerNode(wrapped);
     }
   }
 
@@ -268,7 +426,7 @@ NoodlRuntime.prototype.reload = function () {
   location.reload();
 };
 
-NoodlRuntime.prototype.registerNode = function (nodeDefinition) {
+NoodlRuntime.prototype.registerNode = function (nodeDefinition: NodeRegistration) {
   if (nodeDefinition.node) {
     const definedNode = NodeDefinition.defineNode(nodeDefinition.node);
     this.context.nodeRegister.register(definedNode);
@@ -282,7 +440,7 @@ NoodlRuntime.prototype.registerNode = function (nodeDefinition) {
   nodeDefinition.setup && nodeDefinition.setup(this.context, this.graphModel);
 };
 
-NoodlRuntime.prototype._setRootComponent = async function (rootComponentName) {
+NoodlRuntime.prototype._setRootComponent = async function (rootComponentName: string | null) {
   if (this.rootComponent && this.rootComponent.name === rootComponentName) return;
 
   if (this.rootComponent) {
@@ -302,7 +460,7 @@ NoodlRuntime.prototype._setRootComponent = async function (rootComponentName) {
   this.eventEmitter.emit('rootComponentUpdated');
 };
 
-NoodlRuntime.prototype.setData = async function (graphData) {
+NoodlRuntime.prototype.setData = async function (graphData: GraphExportData) {
   // Added for SSR Support
   // In SSR, we re-load the graphData and when we render the componet it will
   // invoke this method again, which will cause a duplicate node exception.
@@ -368,7 +526,7 @@ NoodlRuntime.prototype._doUpdate = function () {
   this.frameNumber++;
 };
 
-NoodlRuntime.prototype.setProjectSettings = function (settings) {
+NoodlRuntime.prototype.setProjectSettings = function (settings: HostProjectSettings) {
   this.projectSettings = settings;
 };
 
@@ -381,7 +539,11 @@ NoodlRuntime.prototype.getNodeLibrary = function () {
       (projectSettings.dynamicports = projectSettings.ports.concat(this.projectSettings.dynamicports));
   }
 
-  var nodeLibrary = generateNodeLibrary(this.context.nodeRegister);
+  // `projectsettings` is stamped on here rather than produced by the exporter: the
+  // settings are the *project's*, and the exporter only knows the node register.
+  const nodeLibrary = generateNodeLibrary(this.context.nodeRegister) as ReturnType<typeof generateNodeLibrary> & {
+    projectsettings?: unknown;
+  };
   nodeLibrary.projectsettings = projectSettings;
   return JSON.stringify(nodeLibrary, null, 3);
 };
@@ -394,17 +556,11 @@ NoodlRuntime.prototype.sendNodeLibrary = function () {
   }
 };
 
-NoodlRuntime.prototype.connectToEditor = function (address) {
+NoodlRuntime.prototype.connectToEditor = function (address: string) {
   this.editorConnection.connect(address);
 };
 
-NoodlRuntime.prototype.onMetaDataUpdateReceived = function (event) {
-  if (!this.graphModel.isEmpty()) {
-    EditorMetaDataEventsHandler.handleEvent(this.context, this.graphModel, event);
-  }
-};
-
-NoodlRuntime.prototype.onModelUpdateReceived = async function (event) {
+NoodlRuntime.prototype.onModelUpdateReceived = async function (event: EditorModelEvent) {
   if (this.isWaitingForExport) {
     return;
   }
@@ -418,27 +574,27 @@ NoodlRuntime.prototype.onModelUpdateReceived = async function (event) {
   }
 };
 
-NoodlRuntime.prototype.addErrorHandler = function (callback) {
+NoodlRuntime.prototype.addErrorHandler = function (callback: (message: unknown) => void) {
   this.errorHandlers.push(callback);
 };
 
-NoodlRuntime.prototype.reportError = function (message) {
-  this.errorHandlers.forEach(function (eh) {
+NoodlRuntime.prototype.reportError = function (message: unknown) {
+  this.errorHandlers.forEach(function (eh: (message: unknown) => void) {
     eh(message);
   });
 };
 
 NoodlRuntime.prototype.getProjectSettings = function () {
-  return this.graphModel.getSettings();
+  return this.graphModel.getSettings() as ProjectSettingsValues;
 };
 
-NoodlRuntime.prototype.getMetaData = function (key) {
+NoodlRuntime.prototype.getMetaData = function (key: string) {
   return this.graphModel.getMetaData(key);
-};
+} as NoodlRuntime['getMetaData'];
 
 NoodlRuntime.Services = Services;
 NoodlRuntime.Node = Node;
 NoodlRuntime.NodeDefinition = NodeDefinition;
 NoodlRuntime.EdgeTriggeredInput = EdgeTriggeredInput;
 
-module.exports = NoodlRuntime;
+export = NoodlRuntime;

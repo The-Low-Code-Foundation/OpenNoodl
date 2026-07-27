@@ -1,16 +1,14 @@
 'use strict';
 
-import CollectionImport from '@noodl/runtime/src/collection';
+import Collection from '@noodl/runtime/src/collection';
 import type {
   CollectionLike,
-  CollectionModule,
   InspectInfo,
   NodeDefinitionOptions,
   NodeInstance,
   NodeModule
 } from '@noodl/types';
 
-const Collection = CollectionImport as CollectionModule;
 
 /**
  * Splits CSV into rows of raw cell strings.
