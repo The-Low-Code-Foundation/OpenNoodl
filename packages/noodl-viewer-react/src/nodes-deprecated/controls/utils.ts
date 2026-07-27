@@ -1,14 +1,24 @@
-import PointerListeners from '../../pointerlisteners';
+import type React from 'react';
 
-function _shallowCompare(o1, o2) {
-  for (var p in o1) {
+import PointerListeners, {
+  type PointerListenerProps,
+  type PointerListeners as PointerListenerMap
+} from '../../pointerlisteners';
+import type {
+  ReactInputPropDefinition,
+  ReactNodeDefinition,
+  ReactOutputPropDefinition
+} from '../../react-component-node';
+
+function _shallowCompare(o1: object, o2: object): boolean {
+  for (const p in o1) {
     if (o1.hasOwnProperty(p)) {
       if (o1[p] !== o2[p]) {
         return false;
       }
     }
   }
-  for (var p in o2) {
+  for (const p in o2) {
     if (o2.hasOwnProperty(p)) {
       if (o1[p] !== o2[p]) {
         return false;
@@ -18,9 +28,24 @@ function _shallowCompare(o1, o2) {
   return true;
 }
 
-const _styleSheets = {};
+const _styleSheets: Record<string, { style: HTMLStyleElement; props: object }> = {};
 
-function updateStylesForClass(_class, props, _styleTemplate) {
+/**
+ * Injects — or updates — a `<style>` element for a generated class name.
+ *
+ * The sheet is keyed by class name in a module-level record, so every instance
+ * sharing a generated class shares one element; the props comparison is what
+ * stops each setter call from rewriting it.
+ *
+ * Generic in the props it carries, because callers pass anything from a
+ * two-field literal to the node's whole props bag, and the template that
+ * renders them must agree.
+ */
+function updateStylesForClass<TProps extends object>(
+  _class: string,
+  props: TProps,
+  _styleTemplate: (className: string, props: TProps) => string
+): void {
   // Setters call this during graph load, which also happens server-side; the
   // injected stylesheet is browser-only and re-created at hydration.
   if (typeof document === 'undefined') return;
@@ -33,7 +58,7 @@ function updateStylesForClass(_class, props, _styleTemplate) {
     }
   } else {
     // Create a new style sheet if none exists
-    var style = document.createElement('style');
+    const style = document.createElement('style');
     style.innerHTML = _styleTemplate(_class, props);
     document.head.appendChild(style);
 
@@ -41,24 +66,12 @@ function updateStylesForClass(_class, props, _styleTemplate) {
   }
 }
 
-function addInputCss(definition, inputs) {
-  if (!definition.inputCss) {
-    definition.inputCss = {};
-  }
-
-  if (!definition.defaultCss) {
-    definition.defaultCss = {};
-  }
-
-  for (const name in inputs) {
-    definition.inputCss[name] = inputs[name];
-    if (inputs[name].hasOwnProperty('default') && inputs[name].applyDefault !== false) {
-      definition.defaultCss[name] = inputs[name].default;
-    }
-  }
-}
-
-function mergeAttribute(definition, attribute, values) {
+/** Merges `values` into one of the definition's port records, creating it if absent. */
+function mergeAttribute<TAttribute extends 'inputProps' | 'outputProps'>(
+  definition: ReactNodeDefinition,
+  attribute: TAttribute,
+  values: NonNullable<ReactNodeDefinition[TAttribute]>
+): void {
   if (!definition[attribute]) {
     definition[attribute] = {};
   }
@@ -68,27 +81,24 @@ function mergeAttribute(definition, attribute, values) {
   }
 }
 
-function addInputs(definition, values) {
-  mergeAttribute(definition, 'inputs', values);
-}
-
-function addInputProps(definition, values) {
+function addInputProps(definition: ReactNodeDefinition, values: Record<string, ReactInputPropDefinition>): void {
   mergeAttribute(definition, 'inputProps', values);
 }
 
-function addDynamicInputPorts(definition, condition, inputs) {
-  if (!definition.dynamicports) {
-    definition.dynamicports = [];
-  }
-
-  definition.dynamicports.push({ condition, inputs });
-}
-
-function addOutputProps(definition, values) {
+function addOutputProps(definition: ReactNodeDefinition, values: Record<string, ReactOutputPropDefinition>): void {
   mergeAttribute(definition, 'outputProps', values);
 }
 
-function addControlEventsAndStates(definition) {
+/**
+ * Adds the focus / hover / pressed ports every deprecated control shares.
+ *
+ * Each state is three ports writing one `outputPropValues` entry: the boolean,
+ * and the two signals. The boolean's handlers guard their signal with
+ * `hasOutput`, since a graph that reads only the state should not pay for
+ * signals nobody is listening to; the signal ports send unconditionally,
+ * because their existence *is* the connection.
+ */
+function addControlEventsAndStates(definition: ReactNodeDefinition): void {
   addInputProps(definition, {
     blockTouch: {
       index: 450,
@@ -259,7 +269,11 @@ function addControlEventsAndStates(definition) {
   });
 }
 
-function controlEvents(props) {
+/** The focus/blur pair plus every pointer listener, ready to spread onto an element. */
+function controlEvents(props: PointerListenerProps): PointerListenerMap & {
+  onFocus?: React.FocusEventHandler;
+  onBlur?: React.FocusEventHandler;
+} {
   return Object.assign(
     {},
     {

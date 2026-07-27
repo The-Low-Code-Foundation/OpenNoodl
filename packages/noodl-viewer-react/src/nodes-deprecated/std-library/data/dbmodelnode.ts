@@ -1,15 +1,94 @@
 'use strict';
 
-const { Node, EdgeTriggeredInput } = require('@noodl/runtime');
-const isEqual = require('lodash.isequal');
+import isEqual from 'lodash.isequal';
+import { EdgeTriggeredInput, Node } from '@noodl/runtime';
+import CloudStore from '@noodl/runtime/src/api/cloudstore';
+import ModelImport from '@noodl/runtime/src/model';
+import type {
+  EditorConnectionLike,
+  GraphModelLike,
+  GraphNodeModel,
+  InspectInfo,
+  ModelChangeEvent,
+  ModelLike,
+  ModelModule,
+  NodeContextLike,
+  NodeDefinitionOptions,
+  NodeInstance,
+  NodeModule
+} from '@noodl/types';
 
-var Model = require('@noodl/runtime/src/model');
-const CloudStore = require('@noodl/runtime/src/api/cloudstore');
+const Model = ModelImport as ModelModule;
 
-var modelPortsHash = {},
-  previousProperties = {};
+/** A class in the backend schema, as the editor reports it in `dbCollections` metadata. */
+interface DbCollectionMeta {
+  name: string;
+  schema?: { properties?: Record<string, { type?: string }> };
+}
 
-var ModelNodeDefinition = {
+/** A port rename the editor should follow rather than treat as delete-plus-add. */
+interface PortRename {
+  plug: string;
+  patterns: string[];
+  before: string;
+  after: string;
+}
+
+/**
+ * Last port list sent per node, hashed, so an unchanged set is not resent.
+ *
+ * Both of these are module-level and keyed by node id, so they outlive the node —
+ * nothing removes an entry when a node is deleted.
+ */
+const modelPortsHash: Record<string, string> = {};
+const previousProperties: Record<string, string[]> = {};
+
+/**
+ * `this` inside the deprecated Model node — the predecessor of Record.
+ *
+ * Its ports are `runtime-discovered` twice over: from the `properties` the author
+ * typed, and from the *backend* schema, which `setup` reads out of the graph
+ * model's `dbCollections` metadata.
+ */
+interface DbModelNodeInstance extends NodeInstance {
+  _internal: {
+    /** Latest value of each property input, keyed by port name. */
+    inputValues: Record<string, unknown>;
+    /** Target record id per relation key, set by the `$relation-modelid-…` inputs. */
+    relationModelIds: Record<string, string | undefined>;
+    /** The record this node is bound to. Absent until fetched or created. */
+    model?: ModelLike;
+    modelId?: string;
+    /** The backend class name, from the `$ndlCollectionName` port. */
+    collectionId?: string;
+    /** User JavaScript run over a new record's initial data. */
+    modelInitCode?: string;
+    error?: string;
+    onModelChangedCallback(args: ModelChangeEvent): void;
+    /** `hasScheduled<Type>` flags, written by {@link scheduleOnce}. */
+    [flag: string]: unknown;
+  };
+  setCollectionID(id: string): void;
+  setModelID(id: string | undefined): void;
+  setModel(model: ModelLike): void;
+  scheduleOnce(type: string, cb: () => void): void;
+  _hasChangesPending(): boolean;
+  scheduleFetch(): void;
+  scheduleStore(): void;
+  storageSave(): void;
+  storageDelete(): void;
+  storageInsert(): void;
+  checkWarningsBeforeCloudOp(): boolean;
+  setError(err: string): void;
+  clearWarnings(): void;
+  onRelationAdd(key: string): void;
+  onRelationRemove(key: string): void;
+  setRelationModelId(key: string, modelId: string): void;
+  _getModelInitData(): Record<string, unknown>;
+  setModelInitCode(code: string): void;
+}
+
+const ModelNodeDefinition: NodeDefinitionOptions = {
   name: 'DbModel',
   docs: 'https://docs.noodl.net/nodes/cloud-services/model',
   displayNodeName: 'Model',
@@ -18,13 +97,13 @@ var ModelNodeDefinition = {
   usePortAsLabel: '$ndlCollectionName',
   color: 'data',
   deprecated: true, // Use record node
-  initialize: function () {
-    var internal = this._internal;
+  initialize: function (this: DbModelNodeInstance) {
+    const internal = this._internal;
     internal.inputValues = {};
     internal.relationModelIds = {};
 
-    var _this = this;
-    this._internal.onModelChangedCallback = function (args) {
+    const _this = this;
+    this._internal.onModelChangedCallback = function (args: ModelChangeEvent) {
       if (_this.isInputConnected('fetch')) return;
 
       if (_this.hasOutput(args.name)) _this.flagOutputDirty(args.name);
@@ -34,7 +113,7 @@ var ModelNodeDefinition = {
       _this.sendSignalOnOutput('changed');
     };
   },
-  getInspectInfo() {
+  getInspectInfo(this: DbModelNodeInstance): InspectInfo {
     const model = this._internal.model;
     if (!model) return '[No Model]';
 
@@ -48,7 +127,7 @@ var ModelNodeDefinition = {
       type: 'string',
       displayName: 'Id',
       group: 'General',
-      getter: function () {
+      getter: function (this: DbModelNodeInstance) {
         return this._internal.model ? this._internal.model.getId() : this._internal.modelId;
       }
     },
@@ -91,7 +170,7 @@ var ModelNodeDefinition = {
       type: 'string',
       displayName: 'Error',
       group: 'Events',
-      getter: function () {
+      getter: function (this: DbModelNodeInstance) {
         return this._internal.error;
       }
     }
@@ -101,10 +180,10 @@ var ModelNodeDefinition = {
       type: { name: 'string', allowConnectionsOnly: true },
       displayName: 'Id',
       group: 'General',
-      set: function (value) {
-        if (value instanceof Model) value = value.getId(); // Can be passed as model as well
-        this._internal.modelId = value; // Wait to fetch data
-        if (this.isInputConnected('fetch') === false) this.setModelID(value);
+      set: function (this: DbModelNodeInstance, value: string | ModelLike) {
+        const id = value instanceof Model ? value.getId() : (value as string); // Can be passed as model as well
+        this._internal.modelId = id; // Wait to fetch data
+        if (this.isInputConnected('fetch') === false) this.setModelID(id);
         else {
           this.flagOutputDirty('id');
         }
@@ -114,63 +193,68 @@ var ModelNodeDefinition = {
       type: { name: 'stringlist', allowEditOnly: true },
       displayName: 'Properties',
       group: 'Properties',
-      set: function (value) {}
+      // Edit-only: read from the node's parameters by `updatePorts`, never at runtime.
+      set: function () {}
     },
     fetch: {
       displayName: 'Fetch',
       group: 'Actions',
-      valueChangedToTrue: function () {
+      valueChangedToTrue: function (this: DbModelNodeInstance) {
         this.scheduleFetch();
       }
     },
     store: {
       displayName: 'Set',
       group: 'Actions',
-      valueChangedToTrue: function () {
+      valueChangedToTrue: function (this: DbModelNodeInstance) {
         this.scheduleStore();
       }
     },
     save: {
       displayName: 'Save',
       group: 'Actions',
-      valueChangedToTrue: function () {
+      valueChangedToTrue: function (this: DbModelNodeInstance) {
         this.storageSave();
       }
     },
     delete: {
       displayName: 'Delete',
       group: 'Actions',
-      valueChangedToTrue: function () {
+      valueChangedToTrue: function (this: DbModelNodeInstance) {
         this.storageDelete();
       }
     },
     new: {
       displayName: 'New',
       group: 'Actions',
-      valueChangedToTrue: function () {
-        this.storageNew();
+      valueChangedToTrue: function (this: DbModelNodeInstance) {
+        // `storageNew` is not a method of this node, nor of `Node` — this throws a
+        // `TypeError` whenever the New input fires. Kept verbatim: the port has been
+        // broken for as long as the file has existed and correcting it is a
+        // behaviour change (PLAT-003 NOTES §23.4).
+        (this as unknown as { storageNew(): void }).storageNew();
       }
     },
     insert: {
       displayName: 'Insert',
       group: 'Actions',
-      valueChangedToTrue: function () {
+      valueChangedToTrue: function (this: DbModelNodeInstance) {
         this.storageInsert();
         //  this.storageSave();
       }
     }
   },
   methods: {
-    setCollectionID: function (id) {
+    setCollectionID: function (this: DbModelNodeInstance, id: string) {
       this._internal.collectionId = id;
       this.clearWarnings();
     },
-    setModelID: function (id) {
-      var model = Model.get(id);
+    setModelID: function (this: DbModelNodeInstance, id: string | undefined) {
+      const model: ModelLike = Model.get(id);
       // this._internal.modelIsNew = false;
       this.setModel(model);
     },
-    setModel: function (model) {
+    setModel: function (this: DbModelNodeInstance, model: ModelLike) {
       if (this._internal.model)
         // Remove old listener if existing
         this._internal.model.off('change', this._internal.onModelChangedCallback);
@@ -180,16 +264,16 @@ var ModelNodeDefinition = {
       model.on('change', this._internal.onModelChangedCallback);
 
       // We have a new model, mark all outputs as dirty
-      for (var key in model.data) {
+      for (const key in model.data) {
         if (this.hasOutput(key)) this.flagOutputDirty(key);
       }
       this.sendSignalOnOutput('fetched');
     },
-    _onNodeDeleted: function () {
+    _onNodeDeleted: function (this: DbModelNodeInstance) {
       Node.prototype._onNodeDeleted.call(this);
       if (this._internal.model) this._internal.model.off('change', this._internal.onModelChangedCallback);
     },
-    scheduleOnce: function (type, cb) {
+    scheduleOnce: function (this: DbModelNodeInstance, type: string, cb: () => void) {
       const _this = this;
       const _type = 'hasScheduled' + type;
       if (this._internal[_type]) return;
@@ -199,18 +283,21 @@ var ModelNodeDefinition = {
         cb();
       });
     },
-    _hasChangesPending: function () {
+    // Unreachable: the only call site is commented out inside `storageSave`. Note
+    // also that the test is inverted — it reports "changes pending" for the first
+    // property that is *equal*. Kept verbatim (PLAT-003 NOTES §23.4).
+    _hasChangesPending: function (this: DbModelNodeInstance) {
       const internal = this._internal;
-      var model = internal.model;
+      const model = internal.model;
 
-      for (var key in internal.inputValues) {
+      for (const key in internal.inputValues) {
         if (isEqual(model.data[key], internal.inputValues[key])) return true;
       }
 
       return false;
     },
-    scheduleFetch: function () {
-      var _this = this;
+    scheduleFetch: function (this: DbModelNodeInstance) {
+      const _this = this;
       const internal = this._internal;
 
       if (!this.checkWarningsBeforeCloudOp()) return;
@@ -221,8 +308,8 @@ var ModelNodeDefinition = {
         CloudStore.instance.fetch({
           collection: internal.collectionId,
           objectId: internal.modelId, // Get the objectId part of the model id
-          success: function (response) {
-            var model = CloudStore._fromJSON(response, internal.collectionId);
+          success: function (response: Record<string, unknown>) {
+            const model: ModelLike = CloudStore._fromJSON(response, internal.collectionId);
             if (internal.model !== model) {
               // Check if we need to change model
               if (internal.model)
@@ -236,7 +323,7 @@ var ModelNodeDefinition = {
 
             delete response.objectId;
 
-            for (var key in response) {
+            for (const key in response) {
               // model.set(key,response[key]);
 
               if (_this.hasOutput(key)) _this.flagOutputDirty(key);
@@ -244,27 +331,27 @@ var ModelNodeDefinition = {
 
             _this.sendSignalOnOutput('fetched');
           },
-          error: function (err) {
+          error: function (err: string) {
             _this.setError(err || 'Failed to fetch.');
           }
         });
       });
     },
-    scheduleStore: function () {
-      var _this = this;
-      var internal = this._internal;
+    scheduleStore: function (this: DbModelNodeInstance) {
+      const _this = this;
+      const internal = this._internal;
       if (!internal.model) return;
 
       if (!this.checkWarningsBeforeCloudOp()) return;
 
       this.scheduleOnce('Store', function () {
-        for (var i in internal.inputValues) {
+        for (const i in internal.inputValues) {
           internal.model.set(i, internal.inputValues[i], { resolve: true });
         }
         _this.sendSignalOnOutput('stored');
       });
     },
-    storageSave: function () {
+    storageSave: function (this: DbModelNodeInstance) {
       const _this = this;
       const internal = this._internal;
 
@@ -273,11 +360,11 @@ var ModelNodeDefinition = {
       //console.log('dbmodel save scheduled')
       this.scheduleOnce('StorageSave', function () {
         if (!internal.model) return;
-        var model = internal.model;
+        const model = internal.model;
         //console.log('dbmodel save hasChanges='+_this._hasChangesPending())
         //if(!_this._internal.modelIsNew && !_this._hasChangesPending()) return; // No need to save, no changes pending
 
-        for (var i in internal.inputValues) {
+        for (const i in internal.inputValues) {
           model.set(i, internal.inputValues[i], { resolve: true });
         }
 
@@ -285,20 +372,20 @@ var ModelNodeDefinition = {
           collection: internal.collectionId,
           objectId: model.getId(), // Get the objectId part of the model id
           data: model.data,
-          success: function (response) {
-            for (var key in response) {
+          success: function (response: Record<string, unknown>) {
+            for (const key in response) {
               model.set(key, response[key]);
             }
             //                        _this._internal.modelIsNew = false; // If the model was a new model, it is now saved
             _this.sendSignalOnOutput('saved');
           },
-          error: function (err) {
+          error: function (err: string) {
             _this.setError(err || 'Failed to save.');
           }
         });
       });
     },
-    storageDelete: function () {
+    storageDelete: function (this: DbModelNodeInstance) {
       const _this = this;
       if (!this._internal.model) return;
       const internal = this._internal;
@@ -313,38 +400,38 @@ var ModelNodeDefinition = {
             internal.model.notify('delete'); // Notify that this model has been deleted
             _this.sendSignalOnOutput('deleted');
           },
-          error: function (err) {
+          error: function (err: string) {
             _this.setError(err || 'Failed to delete.');
           }
         });
       });
     },
-    storageInsert: function () {
+    storageInsert: function (this: DbModelNodeInstance) {
       const _this = this;
       const internal = this._internal;
 
       if (!this.checkWarningsBeforeCloudOp()) return;
 
       this.scheduleOnce('StorageInsert', function () {
-        var _data = _this._getModelInitData();
+        const _data = _this._getModelInitData();
 
         CloudStore.instance.create({
           collection: internal.collectionId,
           data: _data,
-          success: function (data) {
+          success: function (data: Record<string, unknown>) {
             // Successfully created
-            const m = CloudStore._fromJSON(data, internal.collectionId);
+            const m: ModelLike = CloudStore._fromJSON(data, internal.collectionId);
             _this.setModel(m);
             _this.sendSignalOnOutput('created');
             _this.sendSignalOnOutput('saved');
           },
-          error: function (err) {
+          error: function (err: string) {
             _this.setError(err || 'Failed to insert.');
           }
         });
       });
     },
-    checkWarningsBeforeCloudOp() {
+    checkWarningsBeforeCloudOp(this: DbModelNodeInstance) {
       //clear all errors first
       this.clearWarnings();
 
@@ -355,7 +442,7 @@ var ModelNodeDefinition = {
 
       return true;
     },
-    setError: function (err) {
+    setError: function (this: DbModelNodeInstance, err: string) {
       this._internal.error = err;
       this.flagOutputDirty('error');
       this.sendSignalOnOutput('failure');
@@ -367,20 +454,20 @@ var ModelNodeDefinition = {
         });
       }
     },
-    clearWarnings() {
+    clearWarnings(this: DbModelNodeInstance) {
       if (this.context.editorConnection) {
         this.context.editorConnection.clearWarning(this.nodeScope.componentOwner.name, this.id, 'storage-op-warning');
       }
     },
-    onRelationAdd: function (key) {
+    onRelationAdd: function (this: DbModelNodeInstance, key: string) {
       const _this = this;
       const internal = this._internal;
 
       this.scheduleOnce('StorageAddRelation', function () {
         if (!internal.model) return;
-        var model = internal.model;
+        const model = internal.model;
 
-        var targetModelId = internal.relationModelIds[key];
+        const targetModelId = internal.relationModelIds[key];
         if (targetModelId === undefined) return;
 
         CloudStore.instance.addRelation({
@@ -389,29 +476,29 @@ var ModelNodeDefinition = {
           key: key,
           targetObjectId: targetModelId,
           targetClass: Model.get(targetModelId)._class,
-          success: function (response) {
-            for (var _key in response) {
+          success: function (response: Record<string, unknown>) {
+            for (const _key in response) {
               model.set(_key, response[_key]);
             }
 
             // Successfully added relation
             _this.sendSignalOnOutput('$relation-added-' + key);
           },
-          error: function (err) {
+          error: function (err: string) {
             _this.setError(err || 'Failed to add relation.');
           }
         });
       });
     },
-    onRelationRemove: function (key) {
+    onRelationRemove: function (this: DbModelNodeInstance, key: string) {
       const _this = this;
       const internal = this._internal;
 
       this.scheduleOnce('StorageRemoveRelation', function () {
         if (!internal.model) return;
-        var model = internal.model;
+        const model = internal.model;
 
-        var targetModelId = internal.relationModelIds[key];
+        const targetModelId = internal.relationModelIds[key];
         if (targetModelId === undefined) return;
 
         CloudStore.instance.removeRelation({
@@ -420,24 +507,24 @@ var ModelNodeDefinition = {
           key: key,
           targetObjectId: targetModelId,
           targetClass: Model.get(targetModelId)._class,
-          success: function (response) {
-            for (var _key in response) {
+          success: function (response: Record<string, unknown>) {
+            for (const _key in response) {
               model.set(_key, response[_key]);
             }
 
             // Successfully removed relation
             _this.sendSignalOnOutput('$relation-removed-' + key);
           },
-          error: function (err) {
+          error: function (err: string) {
             _this.setError(err || 'Failed to remove relation.');
           }
         });
       });
     },
-    setRelationModelId: function (key, modelId) {
+    setRelationModelId: function (this: DbModelNodeInstance, key: string, modelId: string) {
       this._internal.relationModelIds[key] = modelId;
     },
-    registerOutputIfNeeded: function (name) {
+    registerOutputIfNeeded: function (this: DbModelNodeInstance, name: string) {
       if (this.hasOutput(name)) {
         return;
       }
@@ -460,23 +547,23 @@ var ModelNodeDefinition = {
         getter: userOutputGetter.bind(this, name)
       });
     },
-    _getModelInitData: function () {
-      var internal = this._internal;
+    _getModelInitData: function (this: DbModelNodeInstance) {
+      const internal = this._internal;
 
-      var _data = {};
+      const _data: Record<string, unknown> = {};
 
       // First copy values from inputs
-      for (var i in internal.inputValues) {
+      for (const i in internal.inputValues) {
         _data[i] = internal.inputValues[i];
       }
 
       // Then run initialize code
       if (this._internal.modelInitCode) {
         try {
-          var initCode = new Function('initialize', this._internal.modelInitCode);
-          initCode(function (data) {
-            for (var key in data) {
-              if (typeof data[key] === 'function') _data[key] = data[key]();
+          const initCode = new Function('initialize', this._internal.modelInitCode);
+          initCode(function (data: Record<string, unknown>) {
+            for (const key in data) {
+              if (typeof data[key] === 'function') _data[key] = (data[key] as () => unknown)();
               else _data[key] = data[key];
             }
           });
@@ -487,12 +574,10 @@ var ModelNodeDefinition = {
 
       return _data;
     },
-    setModelInitCode: function (code) {
+    setModelInitCode: function (this: DbModelNodeInstance, code: string) {
       this._internal.modelInitCode = code;
     },
-    registerInputIfNeeded: function (name) {
-      var _this = this;
-
+    registerInputIfNeeded: function (this: DbModelNodeInstance, name: string) {
       if (this.hasInput(name)) {
         return;
       }
@@ -517,7 +602,7 @@ var ModelNodeDefinition = {
           set: this.setRelationModelId.bind(this, name.substring('$relation-modelid-'.length))
         });
 
-      const dynamicSignals = {};
+      const dynamicSignals: Record<string, () => void> = {};
 
       if (dynamicSignals[name])
         return this.registerInput(name, {
@@ -526,7 +611,7 @@ var ModelNodeDefinition = {
           })
         });
 
-      const dynamicSetters = {
+      const dynamicSetters: Record<string, (value: never) => void> = {
         $ndlCollectionName: this.setCollectionID.bind(this),
         $ndlModelInitCode: this.setModelInitCode.bind(this)
         //       '$ndlModelValidationCode':this.setModelValidationCode.bind(this),
@@ -544,24 +629,24 @@ var ModelNodeDefinition = {
   }
 };
 
-function userOutputGetter(name) {
+function userOutputGetter(this: DbModelNodeInstance, name: string) {
   /* jshint validthis:true */
   return this._internal.model ? this._internal.model.get(name, { resolve: true }) : undefined;
 }
 
-function userInputSetter(name, value) {
+function userInputSetter(this: DbModelNodeInstance, name: string, value: unknown) {
   //console.log('dbmodel setter:',name,value)
   /* jshint validthis:true */
   this._internal.inputValues[name] = value;
 }
 
-function detectRename(before, after) {
+function detectRename(before: string[] | undefined, after: string[]): { before?: string; after?: string } | undefined {
   if (!before || !after) return;
 
   if (before.length !== after.length) return; // Must be of same length
 
-  var res = {};
-  for (var i = 0; i < before.length; i++) {
+  const res: { before?: string; after?: string } = {};
+  for (let i = 0; i < before.length; i++) {
     if (after.indexOf(before[i]) === -1) {
       if (res.before) return; // Can only be one from before that is missing
       res.before = before[i];
@@ -591,15 +676,23 @@ const defaultStorageInitCode =
     "\t//}\n" +
     "})\n";*/
 
-function updatePorts(nodeId, parameters, editorConnection, dbCollections) {
-  var ports = [];
+function updatePorts(
+  nodeId: string,
+  parameters: Record<string, unknown>,
+  editorConnection: EditorConnectionLike,
+  dbCollections: DbCollectionMeta[] | undefined
+): void {
+  const ports: Record<string, unknown>[] = [];
+  // Declared here rather than in the block below because the original relied on
+  // `var` hoisting to read it at the `sendDynamicPorts` call.
+  let renamed: PortRename | undefined;
 
   // Add value outputs
-  var properties = parameters.properties;
-  if (properties) {
-    properties = properties ? properties.split(',') : undefined;
-    for (var i in properties) {
-      var p = properties[i];
+  const propertyList = parameters.properties as string | undefined;
+  if (propertyList) {
+    const properties = propertyList.split(',');
+    for (const i in properties) {
+      const p = properties[i];
 
       ports.push({
         type: {
@@ -620,10 +713,10 @@ function updatePorts(nodeId, parameters, editorConnection, dbCollections) {
       });
     }
 
-    var propertyRenamed = detectRename(previousProperties[nodeId], properties);
+    const propertyRenamed = detectRename(previousProperties[nodeId], properties);
     previousProperties[nodeId] = properties;
     if (propertyRenamed) {
-      var renamed = {
+      renamed = {
         plug: 'input/output',
         patterns: ['{{*}}'],
         before: propertyRenamed.before,
@@ -651,11 +744,11 @@ function updatePorts(nodeId, parameters, editorConnection, dbCollections) {
 
   if (parameters.$ndlCollectionName && dbCollections) {
     // Fetch ports from collection keys
-    var c = dbCollections.find((c) => c.name === parameters.$ndlCollectionName);
+    const c = dbCollections.find((c) => c.name === parameters.$ndlCollectionName);
     if (c && c.schema && c.schema.properties) {
-      var props = c.schema.properties;
-      for (var key in props) {
-        var p = props[key];
+      const props = c.schema.properties;
+      for (const key in props) {
+        const p = props[key];
         if (ports.find((_p) => _p.name === key)) continue;
 
         if (p.type === 'Relation') {
@@ -756,7 +849,7 @@ function updatePorts(nodeId, parameters, editorConnection, dbCollections) {
         plug:'input'   
       })  */
 
-  var hash = JSON.stringify(ports);
+  const hash = JSON.stringify(ports);
   if (modelPortsHash[nodeId] !== hash) {
     // Make sure we don't resend the same port data
     modelPortsHash[nodeId] = hash;
@@ -764,28 +857,39 @@ function updatePorts(nodeId, parameters, editorConnection, dbCollections) {
   }
 }
 
-module.exports = {
+const ModelNodeModule: NodeModule = {
   node: ModelNodeDefinition,
-  setup: function (context, graphModel) {
-    if (!context.editorConnection || !context.editorConnection.isRunningLocally()) {
+  setup: function (context: NodeContextLike, graphModel: GraphModelLike) {
+    const editorConnection = context.editorConnection;
+    if (!editorConnection || !editorConnection.isRunningLocally()) {
       return;
     }
 
-    function _managePortsForNode(node) {
-      updatePorts(node.id, node.parameters, context.editorConnection, graphModel.getMetaData('dbCollections'));
+    function _managePortsForNode(node: GraphNodeModel) {
+      updatePorts(
+        node.id,
+        node.parameters,
+        editorConnection,
+        graphModel.getMetaData('dbCollections') as DbCollectionMeta[] | undefined
+      );
 
-      node.on('parameterUpdated', function (event) {
-        updatePorts(node.id, node.parameters, context.editorConnection, graphModel.getMetaData('dbCollections'));
+      node.on('parameterUpdated', function () {
+        updatePorts(
+          node.id,
+          node.parameters,
+          editorConnection,
+          graphModel.getMetaData('dbCollections') as DbCollectionMeta[] | undefined
+        );
       });
 
-      graphModel.on('metadataChanged.dbCollections', function (data) {
+      graphModel.on('metadataChanged.dbCollections', function (data: DbCollectionMeta[]) {
         CloudStore.invalidateCollections();
-        updatePorts(node.id, node.parameters, context.editorConnection, data);
+        updatePorts(node.id, node.parameters, editorConnection, data);
       });
     }
 
     graphModel.on('editorImportComplete', () => {
-      graphModel.on('nodeAdded.DbModel', function (node) {
+      graphModel.on('nodeAdded.DbModel', function (node: GraphNodeModel) {
         _managePortsForNode(node);
       });
 
@@ -795,3 +899,5 @@ module.exports = {
     });
   }
 };
+
+export default ModelNodeModule;

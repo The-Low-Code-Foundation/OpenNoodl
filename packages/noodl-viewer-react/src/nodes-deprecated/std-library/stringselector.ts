@@ -1,17 +1,29 @@
 'use strict';
 
-const StringSelectorNode = {
+import type { InspectInfo, NodeDefinitionOptions, NodeInstance, NodeModule } from '@noodl/types';
+
+/** `this` inside the Index To String node. */
+interface StringSelectorNodeInstance extends NodeInstance {
+  _internal: {
+    /** One entry per numbered `input N` port, indexed by that number. */
+    inputs: string[];
+    currentSelectedIndex: number;
+    indexChanged: boolean;
+  };
+}
+
+const StringSelectorNode: NodeDefinitionOptions = {
   name: 'String Selector',
   displayNodeName: 'Index To String',
   shortDesc: 'Choose between multiple strings.',
   category: 'Utilities',
   deprecated: true,
-  initialize: function () {
+  initialize: function (this: StringSelectorNodeInstance) {
     this._internal.inputs = [];
     this._internal.currentSelectedIndex = 0;
     this._internal.indexChanged = false;
   },
-  getInspectInfo() {
+  getInspectInfo(this: StringSelectorNodeInstance): InspectInfo {
     return this._internal.inputs[this._internal.currentSelectedIndex];
   },
   numberedInputs: {
@@ -19,10 +31,13 @@ const StringSelectorNode = {
       type: 'string',
       displayPrefix: 'String for ',
       group: 'Inputs',
-      createSetter: function (index) {
-        return function (value) {
-          value = value ? value.toString() : '';
-          this._internal.inputs[index] = value;
+      createSetter: function (index: number) {
+        // The port is declared `string`, but the setter coerces because anything
+        // can arrive over a connection — so the parameter is `unknown` and the
+        // coerced value gets its own name.
+        return function (this: StringSelectorNodeInstance, value: unknown) {
+          const text = value ? String(value) : '';
+          this._internal.inputs[index] = text;
           if (this._internal.currentSelectedIndex === index) {
             this.flagOutputDirty('currentValue');
           }
@@ -37,7 +52,7 @@ const StringSelectorNode = {
       },
       displayName: 'Index',
       default: 0,
-      set: function (value) {
+      set: function (this: StringSelectorNodeInstance, value: number) {
         value = value | 0;
 
         this._internal.currentSelectedIndex = value;
@@ -51,7 +66,7 @@ const StringSelectorNode = {
       type: 'string',
       displayName: 'Current Value',
       group: 'Value',
-      getter: function () {
+      getter: function (this: StringSelectorNodeInstance) {
         return this._internal.inputs[this._internal.currentSelectedIndex];
       }
     },
@@ -63,6 +78,8 @@ const StringSelectorNode = {
   }
 };
 
-module.exports = {
+const StringSelectorNodeModule: NodeModule = {
   node: StringSelectorNode
 };
+
+export default StringSelectorNodeModule;

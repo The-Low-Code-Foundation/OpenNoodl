@@ -3,10 +3,11 @@ import React, { useEffect, useState } from 'react';
 import guid from '../../guid';
 import Layout from '../../layout';
 import NodeSharedPortDefinitions from '../../node-shared-port-definitions';
-import { createNodeFromReactComponent } from '../../react-component-node';
+import { createNodeFromReactComponent, type ReactNodeDefinition, type StyleObject } from '../../react-component-node';
+import type { Noodl } from '../../types';
 import Utils from './utils';
 
-function _styleTemplate(_class, props) {
+function _styleTemplate(_class: string, props: Partial<CheckBoxProps>) {
   return `
     .${_class}:checked {
         background-color: ${props.checkedBackgroundColor};
@@ -14,10 +15,29 @@ function _styleTemplate(_class, props) {
     `;
 }
 
+interface CheckBoxProps extends Noodl.ReactProps {
+  id?: string;
+  /** The node's own id, used to give each instance its own generated class. */
+  _nodeId?: string;
+  enabled?: boolean;
+  checked?: boolean;
+  checkedBackgroundColor?: string;
+  /** Installed by `initialize`, not by a port — this is how the control reports back. */
+  checkedChanged?: (checked: boolean) => void;
+
+  boxShadowEnabled?: boolean;
+  boxShadowInset?: boolean;
+  boxShadowOffsetX?: string;
+  boxShadowOffsetY?: string;
+  boxShadowBlurRadius?: string;
+  boxShadowSpreadRadius?: string;
+  boxShadowColor?: string;
+}
+
 // --------------------------------------------------------------------------------------
 // CheckBox
 // --------------------------------------------------------------------------------------
-function CheckBox(props) {
+function CheckBox(props: CheckBoxProps) {
   const [checked, setChecked] = useState(props.checked);
 
   // Report initial values when mounted
@@ -29,7 +49,7 @@ function CheckBox(props) {
     setChecked(!!props.checked);
   }, [props.checked]);
 
-  var style = { ...props.style };
+  const style: StyleObject = { ...props.style };
   Layout.size(style, props);
   Layout.align(style, props);
 
@@ -66,7 +86,7 @@ function CheckBox(props) {
   );
 }
 
-var CheckBoxNode = {
+const CheckBoxNode: ReactNodeDefinition = {
   name: 'Checkbox',
   displayName: 'Checkbox',
   docs: 'https://docs.noodl.net/nodes/visual/checkbox',
@@ -81,7 +101,7 @@ var CheckBoxNode = {
 
     this.outputPropValues.hoverState = this.outputPropValues.focusState = this.outputPropValues.pressedState = false;
 
-    this.props.checkedChanged = (checked) => {
+    this.props.checkedChanged = (checked: boolean) => {
       const changed = this._internal.checked !== checked;
       this._internal.checked = checked;
       if (changed) {
@@ -325,5 +345,4 @@ NodeSharedPortDefinitions.addMarginInputs(CheckBoxNode);
 NodeSharedPortDefinitions.addSharedVisualInputs(CheckBoxNode);
 Utils.addControlEventsAndStates(CheckBoxNode);
 
-CheckBoxNode = createNodeFromReactComponent(CheckBoxNode);
-export default CheckBoxNode;
+export default createNodeFromReactComponent(CheckBoxNode);

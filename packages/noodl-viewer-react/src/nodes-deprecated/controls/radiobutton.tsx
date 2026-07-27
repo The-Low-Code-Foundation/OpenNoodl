@@ -4,10 +4,31 @@ import RadioButtonContext from '../../contexts/radiobuttoncontext';
 import guid from '../../guid';
 import Layout from '../../layout';
 import NodeSharedPortDefinitions from '../../node-shared-port-definitions';
-import { createNodeFromReactComponent } from '../../react-component-node';
+import { createNodeFromReactComponent, type ReactNodeDefinition, type StyleObject } from '../../react-component-node';
+import type { Noodl } from '../../types';
 import Utils from './utils';
 
-function _styleTemplate(_class, props) {
+interface RadioButtonProps extends Noodl.ReactProps {
+  id?: string;
+  /** The node's own id, used to give each instance its own generated class. */
+  _nodeId?: string;
+  enabled?: boolean;
+  /** Identifies this button within its group; compared against the group's `selected`. */
+  value?: string;
+  checkedBackgroundColor?: string;
+  /** Installed by `initialize`, not by a port — this is how the control reports back. */
+  checkedChanged?: (checked: boolean) => void;
+
+  boxShadowEnabled?: boolean;
+  boxShadowInset?: boolean;
+  boxShadowOffsetX?: string;
+  boxShadowOffsetY?: string;
+  boxShadowBlurRadius?: string;
+  boxShadowSpreadRadius?: string;
+  boxShadowColor?: string;
+}
+
+function _styleTemplate(_class: string, props: Partial<RadioButtonProps>) {
   return `
     .${_class}:checked {
         background-color: ${props.checkedBackgroundColor};
@@ -15,10 +36,10 @@ function _styleTemplate(_class, props) {
     `;
 }
 
-function RadioButton(props) {
+function RadioButton(props: RadioButtonProps) {
   const radioButtonGroup = useContext(RadioButtonContext);
 
-  var style = { ...props.style };
+  const style: StyleObject = { ...props.style };
   Layout.size(style, props);
   Layout.align(style, props);
 
@@ -50,14 +71,14 @@ function RadioButton(props) {
       {...tagProps}
       disabled={!props.enabled}
       checked={radioButtonGroup ? radioButtonGroup.selected === props.value : false}
-      onChange={(e) => {
+      onChange={() => {
         radioButtonGroup && radioButtonGroup.checkedChanged && radioButtonGroup.checkedChanged(props.value);
       }}
     ></input>
   );
 }
 
-var RadioButtonNode = {
+const RadioButtonNode: ReactNodeDefinition = {
   name: 'Radio Button',
   displayName: 'Radio Button',
   docs: 'https://docs.noodl.net/nodes/visual/radiobutton',
@@ -72,7 +93,7 @@ var RadioButtonNode = {
 
     this.outputPropValues.hoverState = this.outputPropValues.focusState = this.outputPropValues.pressedState = false;
 
-    this.props.checkedChanged = (checked) => {
+    this.props.checkedChanged = (checked: boolean) => {
       const changed = this._internal.checked !== checked;
       this._internal.checked = checked;
       if (changed) {
@@ -294,6 +315,4 @@ NodeSharedPortDefinitions.addMarginInputs(RadioButtonNode);
 NodeSharedPortDefinitions.addSharedVisualInputs(RadioButtonNode);
 Utils.addControlEventsAndStates(RadioButtonNode);
 
-RadioButtonNode = createNodeFromReactComponent(RadioButtonNode);
-
-export default RadioButtonNode;
+export default createNodeFromReactComponent(RadioButtonNode);

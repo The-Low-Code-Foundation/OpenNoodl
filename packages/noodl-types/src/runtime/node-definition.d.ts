@@ -404,6 +404,23 @@ export interface NodeContextLike {
    * pointer callback in a call to this so a click takes effect in the same turn.
    */
   updateDirtyNodes(): void;
+  /**
+   * Project-wide values shared by name, behind the deprecated Globals node.
+   *
+   * Reset on every `applicationDataReloaded`. The current mechanism is the Variable
+   * node, which keeps its values in a {@link ModelLike} instead.
+   */
+  globalValues: Record<string, unknown>;
+  /**
+   * Notifies listeners that a global changed, one event per global *name*.
+   *
+   * Its max-listener cap is raised to a million at construction, because a project
+   * can hold arbitrarily many readers of one global.
+   */
+  globalsEventEmitter: RuntimeEventEmitter;
+  /** Writes {@link globalValues} and emits `name` on {@link globalsEventEmitter}. */
+  setGlobalValue(name: string, value: unknown): void;
+  getGlobalValue(name: string): unknown;
   [extra: string]: unknown;
 }
 
@@ -522,10 +539,25 @@ export interface EditorConnectionLike {
   [extra: string]: unknown;
 }
 
+/** One wire out of an output port: the node it feeds, and which input of it. */
+export interface OutputConnectionLike {
+  node: NodeInstance;
+  inputPortName: string;
+}
+
 /** An output port at runtime, as handed back by {@link NodeInstance.getOutput}. */
 export interface OutputPropertyLike {
   readonly name: string;
   readonly value: unknown;
+  /**
+   * The live wire list, in registration order — not a copy.
+   *
+   * Reading it is how a node inspects what it is driving: the deprecated Animation
+   * node samples `connections[0].node.getInputValue(connections[0].inputPortName)`
+   * to discover the value it should animate *from*, which is the only way to start
+   * an implicit animation at wherever the target currently is.
+   */
+  connections: OutputConnectionLike[];
   hasConnections(): boolean;
   sendValue(value: unknown): void;
 }
@@ -714,10 +746,35 @@ export interface NodeVariant {
 }
 
 /**
- * Property-panel extras the editor renders for this node type, keyed by panel name.
- * The contents are editor-owned, so they stay untyped here.
+ * One entry in a node type's {@link NodePanels} list.
+ *
+ * `name` must match a panel the editor has registered — `'PortEditor'` and
+ * `'PropertyEditor'` are the two in the repository. Everything else on the entry is
+ * forwarded to that panel as its `args`, so the remaining fields are panel-owned and
+ * typed permissively on purpose; the ones below are what the in-repo entries carry.
  */
-export type NodePanels = Record<string, unknown>;
+export interface NodePanel {
+  name: string;
+  /** When the panel applies: `'select'`, `'connectTo'`, `'connectFrom'`. */
+  context?: string[];
+  title?: string;
+  plug?: 'input' | 'output' | 'input/output' | (string & {});
+  /** The port type the panel creates ports with. */
+  type?: PortTypeSpec;
+  hidden?: boolean;
+  group?: string;
+  [extra: string]: unknown;
+}
+
+/**
+ * Property-panel extras the editor renders for this node type.
+ *
+ * A **list**, not a record: `sidebarmodel.tsx` filters it for the first entry whose
+ * `name` matches a registered panel, and falls back to `'PropertyEditor'` when none
+ * does. The literal string `'none'` suppresses the sidebar entirely, and is checked
+ * before the list is walked.
+ */
+export type NodePanels = NodePanel[] | 'none';
 
 /**
  * Extra methods and accessors mixed into the node's prototype.

@@ -1,23 +1,64 @@
 'use strict';
 
-const { Node } = require('@noodl/runtime');
-const Model = require('@noodl/runtime/src/model');
-const EventEmitter = require('events').EventEmitter;
+import { EventEmitter } from 'events';
+import { Node } from '@noodl/runtime';
+import Model from '@noodl/runtime/src/model';
+import type {
+  ComponentInstanceLike,
+  EditorConnectionLike,
+  GraphModelLike,
+  GraphNodeModel,
+  InspectInfo,
+  ModelChangeEvent,
+  ModelLike,
+  NodeContextLike,
+  NodeDefinitionOptions,
+  NodeInstance,
+  NodeModule
+} from '@noodl/types';
 
 const graphEventEmitter = new EventEmitter();
 graphEventEmitter.setMaxListeners(1000000);
 
-const ParentComponentState = {
+/**
+ * `this` inside the Parent Component State node — the predecessor of Parent
+ * Component Object. It walks the same tree and reads the same `componentState…`
+ * records, but looks for a `'Component State'` node rather than a
+ * `'net.noodl.ComponentObject'` one, and exposes its properties as bare port
+ * names rather than `value-…`.
+ */
+interface ParentComponentStateInstance extends NodeInstance {
+  _internal: {
+    /** Latest value of each property input, keyed by port name. */
+    inputValues: Record<string, unknown>;
+    /** Id of the parent's record. `undefined` until a parent with one is found. */
+    modelId?: string;
+    /** The parent's record. Absent while no parent has been resolved. */
+    model?: ModelLike;
+    /** Shown in the inspector so the author can see *which* parent was found. */
+    parentComponentName?: string;
+    onModelChangedCallback(args: ModelChangeEvent): void;
+  };
+  hasScheduledStore?: boolean;
+  /** Instance-bound listener, kept so it can be removed again on delete. */
+  onComponentStateNodesChanged(): void;
+  updateComponentState(): void;
+  findParentComponentStateModelId(): string | undefined;
+  setModelId(id: string | undefined): void;
+  scheduleStore(): void;
+}
+
+const ParentComponentState: NodeDefinitionOptions = {
   name: 'Parent Component State',
   displayNodeName: 'Parent Component Object',
   category: 'Component Utilities',
   color: 'component',
   docs: 'https://docs.noodl.net/nodes/component-utilities/parent-component-object',
   deprecated: true,
-  initialize() {
+  initialize(this: ParentComponentStateInstance) {
     this._internal.inputValues = {};
 
-    this._internal.onModelChangedCallback = (args) => {
+    this._internal.onModelChangedCallback = (args: ModelChangeEvent) => {
       if (this.isInputConnected('fetch') === true) return;
 
       if (this.hasOutput(args.name)) {
@@ -51,7 +92,7 @@ const ParentComponentState = {
   //to search up the tree the root nodes in this component must have been initialized
   //we also need the connections to be setup so we can use isInputConnected
   //nodeScopeDidInitialize takes care of that
-  nodeScopeDidInitialize() {
+  nodeScopeDidInitialize(this: ParentComponentStateInstance) {
     //FIXME: temporary hack. Our parent's node scope might not have finished created yet
     //so just wait until after this update. It'll make the parent component state
     //have a delay in propagating outputs which can cause subtle bugs.
@@ -63,7 +104,7 @@ const ParentComponentState = {
       });
     }
   },
-  getInspectInfo() {
+  getInspectInfo(this: ParentComponentStateInstance): InspectInfo {
     const model = this._internal.model;
     if (!model) return 'No parent component state found';
 
@@ -84,19 +125,21 @@ const ParentComponentState = {
       },
       displayName: 'Properties',
       group: 'Properties',
-      set(value) {}
+      // Edit-only: the value is read from the node's parameters by `updatePorts`,
+      // never at runtime, so the setter is deliberately empty.
+      set() {}
     },
     store: {
       displayName: 'Set',
       group: 'Actions',
-      valueChangedToTrue() {
+      valueChangedToTrue(this: ParentComponentStateInstance) {
         this.scheduleStore();
       }
     },
     fetch: {
       displayName: 'Fetch',
       group: 'Actions',
-      valueChangedToTrue: function () {
+      valueChangedToTrue: function (this: ParentComponentStateInstance) {
         this.setModelId(this._internal.modelId);
       }
     }
@@ -119,15 +162,15 @@ const ParentComponentState = {
     }
   },
   methods: {
-    updateComponentState() {
+    updateComponentState(this: ParentComponentStateInstance) {
       this._internal.modelId = this.findParentComponentStateModelId();
       if (this.isInputConnected('fetch') === false) {
         this.setModelId(this._internal.modelId);
       }
     },
-    findParentComponentStateModelId() {
-      function getParentComponent(component) {
-        let parent;
+    findParentComponentStateModelId(this: ParentComponentStateInstance): string | undefined {
+      function getParentComponent(component: ComponentInstanceLike): ComponentInstanceLike | undefined {
+        let parent: ComponentInstanceLike | undefined;
         if (component.getRoots().length > 0) {
           //visual
           const root = component.getRoots()[0];
@@ -164,18 +207,18 @@ const ParentComponentState = {
 
       return 'componentState' + parent.getInstanceId();
     },
-    setModelId(id) {
+    setModelId(this: ParentComponentStateInstance, id: string | undefined) {
       this._internal.model && this._internal.model.off('change', this._internal.onModelChangedCallback);
       this._internal.model = undefined;
 
       if (!id) return;
 
-      const model = Model.get(id);
+      const model: ModelLike = Model.get(id);
       this._internal.model = model;
 
       model.on('change', this._internal.onModelChangedCallback);
 
-      for (var key in model.data) {
+      for (const key in model.data) {
         if (this.hasOutput(key)) {
           this.flagOutputDirty(key);
         }
@@ -187,45 +230,45 @@ const ParentComponentState = {
       this.sendSignalOnOutput('changed');
       this.sendSignalOnOutput('fetched');
     },
-    scheduleStore() {
+    scheduleStore(this: ParentComponentStateInstance) {
       if (this.hasScheduledStore) return;
       this.hasScheduledStore = true;
 
-      var internal = this._internal;
+      const internal = this._internal;
       this.scheduleAfterInputsHaveUpdated(() => {
         this.hasScheduledStore = false;
         if (!internal.model) return;
-        for (var i in internal.inputValues) {
+        for (const i in internal.inputValues) {
           internal.model.set(i, internal.inputValues[i], { resolve: true });
         }
         this.sendSignalOnOutput('stored');
       });
     },
-    _onNodeDeleted() {
+    _onNodeDeleted(this: ParentComponentStateInstance) {
       Node.prototype._onNodeDeleted.call(this);
 
       graphEventEmitter.off('componentStateNodesChanged', this.onComponentStateNodesChanged);
       this._internal.model && this._internal.model.off('change', this._internal.onModelChangedCallback);
     },
-    registerOutputIfNeeded(name) {
+    registerOutputIfNeeded(this: ParentComponentStateInstance, name: string) {
       if (this.hasOutput(name)) {
         return;
       }
 
       this.registerOutput(name, {
-        get() {
+        get(this: ParentComponentStateInstance) {
           if (!this._internal.model) return undefined;
           return this._internal.model.get(name, { resolve: true });
         }
       });
     },
-    registerInputIfNeeded: function (name) {
+    registerInputIfNeeded: function (this: ParentComponentStateInstance, name: string) {
       if (this.hasInput(name)) {
         return;
       }
 
       this.registerInput(name, {
-        set(value) {
+        set(this: ParentComponentStateInstance, value: unknown) {
           this._internal.inputValues[name] = value;
 
           if (this.isInputConnected('store') === false)
@@ -237,13 +280,17 @@ const ParentComponentState = {
   }
 };
 
-function updatePorts(nodeId, parameters, editorConnection) {
+function updatePorts(
+  nodeId: string,
+  parameters: Record<string, unknown>,
+  editorConnection: EditorConnectionLike
+): void {
   const ports = [];
 
   // Add value outputs
-  var properties = parameters.properties && parameters.properties.split(',');
-  for (var i in properties) {
-    var p = properties[i];
+  const properties = parameters.properties && (parameters.properties as string).split(',');
+  for (const i in properties) {
+    const p = properties[i];
 
     ports.push({
       type: {
@@ -272,18 +319,19 @@ function updatePorts(nodeId, parameters, editorConnection) {
   });
 }
 
-module.exports = {
+const ParentComponentStateModule: NodeModule = {
   node: ParentComponentState,
-  setup: function (context, graphModel) {
-    if (!context.editorConnection || !context.editorConnection.isRunningLocally()) {
+  setup: function (context: NodeContextLike, graphModel: GraphModelLike) {
+    const editorConnection = context.editorConnection;
+    if (!editorConnection || !editorConnection.isRunningLocally()) {
       return;
     }
 
-    graphModel.on('nodeAdded.Parent Component State', (node) => {
-      updatePorts(node.id, node.parameters, context.editorConnection);
+    graphModel.on('nodeAdded.Parent Component State', (node: GraphNodeModel) => {
+      updatePorts(node.id, node.parameters, editorConnection);
 
-      node.on('parameterUpdated', (event) => {
-        updatePorts(node.id, node.parameters, context.editorConnection);
+      node.on('parameterUpdated', () => {
+        updatePorts(node.id, node.parameters, editorConnection);
       });
     });
 
@@ -293,15 +341,17 @@ module.exports = {
     //this are the same events that'll create and delete the Comopent State instance node
     //it might not have had a chance to run yet if we're first in the event list, so
     //use a setTimeout
-    graphModel.on('nodeAdded.Component State', (node) => {
+    graphModel.on('nodeAdded.Component State', () => {
       setTimeout(() => {
         graphEventEmitter.emit('componentStateNodesChanged');
       }, 0);
     });
-    graphModel.on('nodeRemoved.Component State', (node) => {
+    graphModel.on('nodeRemoved.Component State', () => {
       setTimeout(() => {
         graphEventEmitter.emit('componentStateNodesChanged');
       });
     });
   }
 };
+
+export default ParentComponentStateModule;

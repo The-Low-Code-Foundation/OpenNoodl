@@ -3,10 +3,17 @@ import React from 'react';
 import { flexDirectionValues } from '../../constants/flex';
 import Layout from '../../layout';
 import NodeSharedPortDefinitions from '../../node-shared-port-definitions';
-import { createNodeFromReactComponent } from '../../react-component-node';
+import { createNodeFromReactComponent, type ReactNodeDefinition, type StyleObject } from '../../react-component-node';
+import type { Noodl, Slot } from '../../types';
 
-function Form(props) {
-  var style = { ...props.style };
+interface FormProps extends Noodl.ReactProps {
+  /** Wired to the `onSubmit` output port; absent until something connects to it. */
+  onSubmit?: () => void;
+  children?: Slot;
+}
+
+function Form(props: FormProps) {
+  const style: StyleObject = { ...props.style };
   Layout.size(style, props);
   Layout.align(style, props);
 
@@ -27,7 +34,7 @@ function Form(props) {
   );
 }
 
-var FormNode = {
+const FormNode: ReactNodeDefinition = {
   name: 'Form',
   docs: 'https://docs.noodl.net/nodes/visual/form',
   allowChildren: true,
@@ -57,7 +64,7 @@ var FormNode = {
         ]
       },
       default: 'column',
-      set(value) {
+      set(value: string) {
         this.props.layout = value;
 
         if (value !== 'none') {
@@ -68,7 +75,9 @@ var FormNode = {
 
         if (this.context.editorConnection) {
           // Send warning if the value is wrong
-          if (value !== 'none' && !flexDirectionValues.includes(value)) {
+          // Widened deliberately: the port is an enum, but the value can also
+          // arrive over a connection as any string — which is what this warns about.
+          if (value !== 'none' && !(flexDirectionValues as readonly string[]).includes(value)) {
             this.context.editorConnection.sendWarning(this.nodeScope.componentOwner.name, this.id, 'layout-warning', {
               message: 'Invalid Layout value has to be a valid flex-direction value.'
             });
@@ -94,5 +103,4 @@ NodeSharedPortDefinitions.addMarginInputs(FormNode);
 NodeSharedPortDefinitions.addPaddingInputs(FormNode);
 NodeSharedPortDefinitions.addSharedVisualInputs(FormNode);
 
-FormNode = createNodeFromReactComponent(FormNode);
-export default FormNode;
+export default createNodeFromReactComponent(FormNode);

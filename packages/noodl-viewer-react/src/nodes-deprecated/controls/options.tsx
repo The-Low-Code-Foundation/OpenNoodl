@@ -1,13 +1,56 @@
 import React, { useEffect, useState } from 'react';
+import type { CollectionLike, GraphModelLike, GraphNodeModel, ModelLike } from '@noodl/types';
 
 import FontLoader from '../../fontloader';
 import guid from '../../guid';
 import Layout from '../../layout';
 import NodeSharedPortDefinitions from '../../node-shared-port-definitions';
-import { createNodeFromReactComponent } from '../../react-component-node';
+import {
+  createNodeFromReactComponent,
+  type ReactNodeDefinition,
+  type ReactNodeInstance,
+  type StyleObject
+} from '../../react-component-node';
+import type { Noodl } from '../../types';
 import Utils from './utils';
 
-function Options(props) {
+interface OptionsProps extends Noodl.ReactProps {
+  id?: string;
+  enabled?: boolean;
+  value?: string;
+  /**
+   * The option list. Each entry is read for `Value`, `Label` and `Disabled` — a Noodl
+   * Array of records in practice, but a plain array of objects answers the same reads.
+   */
+  items?: CollectionLike;
+  textStyle?: Noodl.TextStyle;
+  onClick?: React.MouseEventHandler<HTMLSelectElement>;
+  /** Installed by `initialize`, not by a port — this is how the control reports back. */
+  valueChanged?: (value: string) => void;
+
+  boxShadowEnabled?: boolean;
+  boxShadowInset?: boolean;
+  boxShadowOffsetX?: string;
+  boxShadowOffsetY?: string;
+  boxShadowBlurRadius?: string;
+  boxShadowSpreadRadius?: string;
+  boxShadowColor?: string;
+}
+
+/** `this` inside the Options node. */
+interface OptionsNodeInstance extends ReactNodeInstance {
+  _internal: {
+    controlId?: string;
+    enabled?: boolean;
+    value?: string;
+    /** The collection currently bound to `items`, kept so the listener can be removed. */
+    items?: CollectionLike;
+  };
+  /** Installed by `initialize`; re-renders when the bound collection changes. */
+  _itemsChanged(): void;
+}
+
+function Options(props: OptionsProps) {
   const [value, setValue] = useState(props.value);
 
   // Must update value output on both "mount" and when it's changed
@@ -19,7 +62,7 @@ function Options(props) {
     setValue(props.value);
   }, [props.value]);
 
-  var style = { ...props.style };
+  let style: StyleObject = { ...props.style };
   Layout.size(style, props);
   Layout.align(style, props);
 
@@ -40,7 +83,7 @@ function Options(props) {
       ? -1
       : props.items === undefined
       ? -1
-      : props.items.findIndex((i) => i.Value === value);
+      : props.items.findIndex((i: ModelLike) => i.Value === value);
 
   const tagProps = { id: props.id, style: style, onClick: props.onClick };
 
@@ -63,13 +106,13 @@ function Options(props) {
       }}
     >
       {props.items !== undefined
-        ? props.items.map((i) => (
+        ? props.items.map((i: ModelLike) => (
             <option
-              value={i.Value}
+              value={i.Value as string}
               disabled={i.Disabled === 'true' || i.Disabled === true ? true : undefined}
               selected={i.Value === value}
             >
-              {i.Label}
+              {i.Label as React.ReactNode}
             </option>
           ))
         : null}
@@ -77,13 +120,13 @@ function Options(props) {
   );
 }
 
-var OptionsNode = {
+const OptionsNode: ReactNodeDefinition = {
   name: 'Options',
   displayName: 'Options',
   docs: 'https://docs.noodl.net/nodes/visual/options',
   allowChildren: false,
   noodlNodeAsProp: true,
-  initialize: function () {
+  initialize: function (this: OptionsNodeInstance) {
     this._itemsChanged = () => {
       this.forceUpdate();
     };
@@ -93,7 +136,7 @@ var OptionsNode = {
 
     this.outputPropValues.hoverState = this.outputPropValues.focusState = this.outputPropValues.pressedState = false;
 
-    this.props.valueChanged = (value) => {
+    this.props.valueChanged = (value: string) => {
       const changed = this._internal.value !== value;
       this._internal.value = value;
       if (changed) {
@@ -126,7 +169,7 @@ var OptionsNode = {
       type: 'array',
       displayName: 'Items',
       group: 'General',
-      set: function (newValue) {
+      set: function (this: OptionsNodeInstance, newValue: CollectionLike) {
         if (this._internal.items !== newValue && this._internal.items !== undefined) {
           this._internal.items.off('change', this._itemsChanged);
         }
@@ -394,20 +437,20 @@ NodeSharedPortDefinitions.addMarginInputs(OptionsNode);
 NodeSharedPortDefinitions.addSharedVisualInputs(OptionsNode);
 Utils.addControlEventsAndStates(OptionsNode);
 
-OptionsNode = createNodeFromReactComponent(OptionsNode);
-OptionsNode.setup = function (context, graphModel) {
-  graphModel.on('nodeAdded.Options', function (node) {
-    if (node.parameters.fontFamily && node.parameters.fontFamily.split('.').length > 1) {
-      FontLoader.instance.loadFont(node.parameters.fontFamily);
+const definition = createNodeFromReactComponent(OptionsNode);
+definition.setup = function (_context, graphModel: GraphModelLike) {
+  graphModel.on('nodeAdded.Options', function (node: GraphNodeModel) {
+    if (node.parameters.fontFamily && (node.parameters.fontFamily as string).split('.').length > 1) {
+      FontLoader.instance.loadFont(node.parameters.fontFamily as string);
     }
-    node.on('parameterUpdated', function (event) {
+    node.on('parameterUpdated', function (event: { name: string; value: unknown }) {
       if (event.name === 'fontFamily' && event.value) {
-        if (event.value.split('.').length > 1) {
-          FontLoader.instance.loadFont(event.value);
+        if ((event.value as string).split('.').length > 1) {
+          FontLoader.instance.loadFont(event.value as string);
         }
       }
     });
   });
 };
 
-export default OptionsNode;
+export default definition;

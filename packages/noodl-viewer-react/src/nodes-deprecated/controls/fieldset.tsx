@@ -3,10 +3,15 @@ import React from 'react';
 import { flexDirectionValues } from '../../constants/flex';
 import Layout from '../../layout';
 import NodeSharedPortDefinitions from '../../node-shared-port-definitions';
-import { createNodeFromReactComponent } from '../../react-component-node';
+import { createNodeFromReactComponent, type ReactNodeDefinition, type StyleObject } from '../../react-component-node';
+import type { Noodl, Slot } from '../../types';
 
-function FieldSet(props) {
-  var style = { ...props.style };
+interface FieldSetProps extends Noodl.ReactProps {
+  children?: Slot;
+}
+
+function FieldSet(props: FieldSetProps) {
+  const style: StyleObject = { ...props.style };
   Layout.size(style, props);
   Layout.align(style, props);
 
@@ -20,7 +25,7 @@ function FieldSet(props) {
   );
 }
 
-var FieldSetNode = {
+const FieldSetNode: ReactNodeDefinition = {
   name: 'Field Set',
   docs: 'https://docs.noodl.net/nodes/visual/fieldset',
   allowChildren: true,
@@ -49,7 +54,7 @@ var FieldSetNode = {
         ]
       },
       default: 'column',
-      set(value) {
+      set(value: string) {
         this.props.layout = value;
 
         if (value !== 'none') {
@@ -60,7 +65,9 @@ var FieldSetNode = {
 
         if (this.context.editorConnection) {
           // Send warning if the value is wrong
-          if (value !== 'none' && !flexDirectionValues.includes(value)) {
+          // Widened deliberately: the port is an enum, but the value can also
+          // arrive over a connection as any string — which is what this warns about.
+          if (value !== 'none' && !(flexDirectionValues as readonly string[]).includes(value)) {
             this.context.editorConnection.sendWarning(this.nodeScope.componentOwner.name, this.id, 'layout-warning', {
               message: 'Invalid Layout value has to be a valid flex-direction value.'
             });
@@ -84,5 +91,4 @@ NodeSharedPortDefinitions.addMarginInputs(FieldSetNode);
 NodeSharedPortDefinitions.addPaddingInputs(FieldSetNode);
 NodeSharedPortDefinitions.addSharedVisualInputs(FieldSetNode);
 
-FieldSetNode = createNodeFromReactComponent(FieldSetNode);
-export default FieldSetNode;
+export default createNodeFromReactComponent(FieldSetNode);

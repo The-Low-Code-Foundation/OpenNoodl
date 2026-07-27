@@ -1,14 +1,36 @@
 'use strict';
 
-// `easecurves` is TypeScript now, so `require()` of it hands back the ES-module
-// namespace rather than the curve table. Unwrap it (§13.5). This file is still
-// CommonJS — it ends in `module.exports` — so it cannot simply `import` instead.
-var _easeCurves = require('../../easecurves');
-var EaseCurves = _easeCurves.default || _easeCurves;
+import type { NodeDefinitionOptions, NodeInstance, NodeModule, Timer } from '@noodl/types';
 
-var defaultDuration = 300;
+import EaseCurves, { type EaseCurve } from '../../easecurves';
 
-var TransitionNode = {
+const defaultDuration = 300;
+
+/**
+ * The timer this node drives, with the three extras it hangs off it — the
+ * documented way to give a timer per-use state, read back through `this` inside
+ * `onRunning`.
+ */
+interface TransitionTimer extends Timer {
+  startValue: number;
+  endValue: number;
+  ease: EaseCurve;
+}
+
+/** `this` inside the Transition node. */
+interface TransitionNodeInstance extends NodeInstance {
+  _internal: {
+    currentNumber: number;
+    /** False until the first `targetValue` arrives, which is adopted rather than animated to. */
+    numberInitialized: boolean;
+    animationStarted: boolean;
+    setCurrentNumberEnabled: boolean;
+    overrideValue: number;
+    _animation: TransitionTimer;
+  };
+}
+
+const TransitionNode: NodeDefinitionOptions = {
   name: 'Transition',
   docs: 'https://docs.noodl.net/nodes/animation/transition',
   shortDesc: 'This node can interpolate smooothely for the current value to a target value.',
@@ -18,8 +40,8 @@ var TransitionNode = {
     compat: 'partial',
     note: 'The scheduler clock is frozen during server render; the transition does not animate or complete there.'
   },
-  initialize: function () {
-    var self = this,
+  initialize: function (this: TransitionNodeInstance) {
+    const self = this,
       _internal = this._internal;
 
     _internal.currentNumber = 0;
@@ -28,6 +50,8 @@ var TransitionNode = {
     _internal.setCurrentNumberEnabled = false;
     _internal.overrideValue = 0;
 
+    // `createTimer` returns a plain `Timer`; the three extras below are copied onto
+    // it verbatim by the constructor, which is what makes it a `TransitionTimer`.
     _internal._animation = this.context.timerScheduler.createTimer({
       duration: defaultDuration,
       startValue: 0,
@@ -36,14 +60,14 @@ var TransitionNode = {
       onStart: function () {
         _internal.animationStarted = true;
       },
-      onRunning: function (t) {
+      onRunning: function (this: TransitionTimer, t: number) {
         _internal.currentNumber = this.ease(this.startValue, this.endValue, t);
         self.flagOutputDirty('currentValue');
       },
       onFinish: function () {
         self.sendSignalOnOutput('atTargetValue');
       }
-    });
+    }) as TransitionTimer;
   },
   inputs: {
     targetValue: {
@@ -53,21 +77,22 @@ var TransitionNode = {
       displayName: 'Target Value',
       group: 'Target Value',
       default: undefined, //default is undefined so transition initializes to the first input value
-      set: function (value) {
-        if (value === true) {
+      set: function (this: TransitionNodeInstance, input: number | boolean) {
+        let value: number;
+        if (input === true) {
           value = 1;
-        } else if (value === false) {
+        } else if (input === false) {
           value = 0;
+        } else {
+          value = Number(input);
         }
-
-        value = Number(value);
 
         if (isNaN(value)) {
           //bail out on NaN values
           return;
         }
 
-        var internal = this._internal;
+        const internal = this._internal;
 
         if (internal.numberInitialized === false) {
           internal.currentNumber = value;
@@ -92,7 +117,7 @@ var TransitionNode = {
       group: 'Override Value',
       displayName: 'Override Value',
       editorName: 'Value|Override Value',
-      set: function (value) {
+      set: function (this: TransitionNodeInstance, value: number) {
         this._internal.overrideValue = value;
       }
     },
@@ -100,7 +125,7 @@ var TransitionNode = {
       group: 'Override Value',
       displayName: 'Do',
       editorName: 'Do|Override Value',
-      valueChangedToTrue: function () {
+      valueChangedToTrue: function (this: TransitionNodeInstance) {
         setCurrentNumber.call(this, this._internal.overrideValue);
       }
     },
@@ -109,7 +134,7 @@ var TransitionNode = {
       group: 'Parameters',
       displayName: 'Duration',
       default: defaultDuration,
-      set: function (value) {
+      set: function (this: TransitionNodeInstance, value: number) {
         this._internal._animation.duration = value;
       }
     },
@@ -118,7 +143,7 @@ var TransitionNode = {
       group: 'Parameters',
       displayName: 'Delay',
       default: 0,
-      set: function (value) {
+      set: function (this: TransitionNodeInstance, value: number) {
         this._internal._animation.delay = value;
       }
     },
@@ -135,7 +160,7 @@ var TransitionNode = {
       default: 'easeOut',
       displayName: 'Easing Curve',
       group: 'Parameters',
-      set: function (value) {
+      set: function (this: TransitionNodeInstance, value: string) {
         this._internal._animation.ease = EaseCurves[value];
       }
     }
@@ -145,7 +170,7 @@ var TransitionNode = {
       type: 'number',
       displayName: 'Current Value',
       group: 'Current State',
-      getter: function () {
+      getter: function (this: TransitionNodeInstance) {
         return this._internal.currentNumber;
       }
     },
@@ -157,9 +182,9 @@ var TransitionNode = {
   }
 };
 
-function setCurrentNumber(value) {
+function setCurrentNumber(this: TransitionNodeInstance, value: number) {
   /* jshint validthis:true */
-  var animation = this._internal._animation;
+  const animation = this._internal._animation;
 
   animation.stop();
   animation.startValue = value;
@@ -174,6 +199,8 @@ function setCurrentNumber(value) {
   this.flagOutputDirty('currentValue');
 }
 
-module.exports = {
+const TransitionNodeModule: NodeModule = {
   node: TransitionNode
 };
+
+export default TransitionNodeModule;

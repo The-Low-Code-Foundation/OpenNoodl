@@ -88,6 +88,13 @@ export interface RuntimeNodeContext {
   ): Promise<any>;
   hasComponentModelWithName(name: string): boolean;
 
+  /** Project-wide values behind the deprecated Globals node. See `nodecontext.ts`. */
+  globalValues: Record<string, unknown>;
+  /** One event per global *name*. See `nodecontext.ts`. */
+  globalsEventEmitter: RuntimeEventEmitter;
+  setGlobalValue(name: string, value: unknown): void;
+  getGlobalValue(name: string): unknown;
+
   [extra: string]: unknown;
 }
 

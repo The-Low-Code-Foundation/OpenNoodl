@@ -1,6 +1,17 @@
 'use strict';
 
-const GyroscopeNode = {
+import type { NodeDefinitionOptions, NodeInstance, NodeModule } from '@noodl/types';
+
+/** `this` inside the Device Orientation node. */
+interface GyroscopeNodeInstance extends NodeInstance {
+  _internal: {
+    alpha: number;
+    beta: number;
+    gamma: number;
+  };
+}
+
+const GyroscopeNode: NodeDefinitionOptions = {
   name: 'Gyroscope',
   docs: 'https://docs.noodl.net/nodes/sensors/device-orientation',
   shortDesc: 'The orientation of a device. Works on phones, tablets and other devices with the required sensors.',
@@ -9,12 +20,12 @@ const GyroscopeNode = {
   deprecated: true,
   // initialize registers a window listener unconditionally.
   ssr: { compat: 'client-only', note: 'Device sensors only exist in the browser.' },
-  initialize: function () {
+  initialize: function (this: GyroscopeNodeInstance) {
     this._internal.alpha = 0;
     this._internal.beta = 0;
     this._internal.gamma = 0;
 
-    var onEvent = onDeviceOrientation.bind(this);
+    const onEvent = onDeviceOrientation.bind(this);
     window.addEventListener('deviceorientation', onEvent);
     this.context.eventEmitter.once('applicationDataReloaded', function () {
       window.removeEventListener('deviceorientation', onEvent);
@@ -24,28 +35,28 @@ const GyroscopeNode = {
     rotationX: {
       type: 'number',
       displayName: 'Rotation X',
-      getter: function () {
+      getter: function (this: GyroscopeNodeInstance) {
         return -this._internal.beta;
       }
     },
     rotationY: {
       type: 'number',
       displayName: 'Rotation Y',
-      getter: function () {
+      getter: function (this: GyroscopeNodeInstance) {
         return this._internal.gamma;
       }
     },
     rotationZ: {
       type: 'number',
       displayName: 'Rotation Z',
-      getter: function () {
+      getter: function (this: GyroscopeNodeInstance) {
         return -this._internal.alpha;
       }
     }
   }
 };
 
-function onDeviceOrientation(event) {
+function onDeviceOrientation(this: GyroscopeNodeInstance, event: DeviceOrientationEvent) {
   /* jshint validthis:true */
   if (event.alpha !== this._internal.alpha) {
     this._internal.alpha = event.alpha;
@@ -61,6 +72,8 @@ function onDeviceOrientation(event) {
   }
 }
 
-module.exports = {
+const GyroscopeNodeModule: NodeModule = {
   node: GyroscopeNode
 };
+
+export default GyroscopeNodeModule;

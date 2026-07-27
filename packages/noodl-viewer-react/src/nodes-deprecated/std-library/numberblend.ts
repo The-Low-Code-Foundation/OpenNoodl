@@ -1,36 +1,50 @@
 'use strict';
 
-// `easecurves` is TypeScript now, so `require()` of it hands back the ES-module
-// namespace rather than the curve table. Unwrap it (§13.5). This file is still
-// CommonJS — it ends in `module.exports` — so it cannot simply `import` instead.
-const _easeCurves = require('../../easecurves');
-const EaseCurves = _easeCurves.default || _easeCurves;
+import type { InspectInfo, NodeDefinitionOptions, NodeInstance, NodeModule } from '@noodl/types';
 
-const NumberBlend = {
+import EaseCurves from '../../easecurves';
+
+/** `this` inside the Number Blend node. */
+interface NumberBlendNodeInstance extends NodeInstance {
+  _internal: {
+    /** One entry per numbered `input N` port, indexed by that number. */
+    inputs: number[];
+    blendValue: number;
+    result: number;
+    clamp: boolean;
+  };
+  updateResult(): void;
+}
+
+const NumberBlend: NodeDefinitionOptions = {
   name: 'Number Blend',
   docs: 'https://docs.noodl.net/nodes/interpolation/number-blend',
   shortDesc: 'Computes a result output based on blending (linearly interpolating) between the inputs.',
   category: 'Interpolation',
   deprecated: true,
-  initialize: function () {
-    var internal = this._internal;
+  initialize: function (this: NumberBlendNodeInstance) {
+    const internal = this._internal;
     internal.inputs = [];
     internal.blendValue = 0;
     internal.result = 0;
     internal.clamp = false;
   },
-  getInspectInfo() {
-    return this._internal.result;
+  getInspectInfo(this: NumberBlendNodeInstance): InspectInfo {
+    // Wrapped as a value entry. Returning the bare number rendered as *nothing* in
+    // the editor's inspector popup — the §13.3 defect, and the compiler will not
+    // accept it now that the definition is annotated. Same correction DEBT-006
+    // applied to `variablenode2`.
+    return [{ type: 'value', value: this._internal.result }];
   },
   prototypeExtensions: {
-    updateResult: function () {
-      var inputs = this._internal.inputs;
+    updateResult: function (this: NumberBlendNodeInstance) {
+      const inputs = this._internal.inputs;
 
       if (inputs.length === 0) {
         return 0;
       }
 
-      var index = Math.floor(this._internal.blendValue),
+      let index = Math.floor(this._internal.blendValue),
         t = this._internal.blendValue - index;
 
       if (index >= inputs.length - 1) {
@@ -66,8 +80,8 @@ const NumberBlend = {
     input: {
       type: 'number',
       displayPrefix: 'Number',
-      createSetter(index) {
-        return function (value) {
+      createSetter(index: number) {
+        return function (this: NumberBlendNodeInstance, value: number) {
           const inputs = this._internal.inputs;
 
           if (inputs[index] === value) {
@@ -85,7 +99,7 @@ const NumberBlend = {
       type: 'number',
       displayName: 'Blend Value',
       default: 0,
-      set: function (value) {
+      set: function (this: NumberBlendNodeInstance, value: number) {
         this._internal.blendValue = value;
         this.updateResult();
       }
@@ -94,7 +108,7 @@ const NumberBlend = {
       type: 'boolean',
       displayName: 'Clamp',
       default: false,
-      set: function (value) {
+      set: function (this: NumberBlendNodeInstance, value: unknown) {
         this._internal.clamp = value ? true : false;
         this.updateResult();
       }
@@ -104,13 +118,15 @@ const NumberBlend = {
     result: {
       type: 'number',
       displayName: 'Result',
-      getter: function () {
+      getter: function (this: NumberBlendNodeInstance) {
         return this._internal.result;
       }
     }
   }
 };
 
-module.exports = {
+const NumberBlendModule: NodeModule = {
   node: NumberBlend
 };
+
+export default NumberBlendModule;

@@ -1,22 +1,55 @@
 import React from 'react';
+import type { GraphModelLike, GraphNodeModel } from '@noodl/types';
 
 import FontLoader from '../../fontloader';
 import guid from '../../guid';
 import Layout from '../../layout';
 import NodeSharedPortDefinitions from '../../node-shared-port-definitions';
-import { createNodeFromReactComponent } from '../../react-component-node';
+import {
+  createNodeFromReactComponent,
+  type ReactNodeDefinition,
+  type ReactNodeInstance,
+  type StyleObject
+} from '../../react-component-node';
+import type { Noodl } from '../../types';
 import Utils from './utils';
 
 //this stops a text field from being unfocused by the clickHandler in the viewer that handles focus globally.
 //The specific case is when a mouseDown is registered in the input, but the mouseUp is outside.
 //It'll trigger a focus change that'll blur the input field, which is annyoing when you're selecting text
-function preventGlobalFocusChange(e) {
+function preventGlobalFocusChange(e: Event) {
   e.stopPropagation();
   window.removeEventListener('click', preventGlobalFocusChange, true);
 }
 
-class TextFieldComponent extends React.Component {
-  constructor(props) {
+/**
+ * The element this control renders, tagged with the node that owns it.
+ *
+ * `viewer.tsx`'s global click handler reads `noodlNode` back off the focused
+ * element to decide which node to blur, which is the only reason the field exists.
+ */
+type TaggedTextElement = (HTMLInputElement | HTMLTextAreaElement) & { noodlNode?: ReactNodeInstance };
+
+interface TextFieldProps extends Noodl.ReactProps {
+  id?: string;
+  type?: string;
+  enabled?: boolean;
+  placeholder?: string;
+  /** The text the node last pushed down; the component owns the value from then on. */
+  startValue?: string;
+  textStyle?: Noodl.TextStyle;
+  onTextChanged?: (value: string) => void;
+  onEnter?: () => void;
+}
+
+interface TextFieldState {
+  value?: string;
+}
+
+class TextFieldComponent extends React.Component<TextFieldProps, TextFieldState> {
+  ref: React.RefObject<TaggedTextElement>;
+
+  constructor(props: TextFieldProps) {
     super(props);
     this.state = {
       value: props.startValue
@@ -24,7 +57,7 @@ class TextFieldComponent extends React.Component {
     this.ref = React.createRef();
   }
 
-  setText(value) {
+  setText(value: string) {
     this.setState({ value });
     this.props.onTextChanged && this.props.onTextChanged(value);
   }
@@ -37,7 +70,7 @@ class TextFieldComponent extends React.Component {
   }
 
   render() {
-    const style = { ...this.props.textStyle, ...this.props.style };
+    const style: StyleObject = { ...this.props.textStyle, ...this.props.style };
     Layout.size(style, this.props);
     Layout.align(style, this.props);
 
@@ -55,13 +88,13 @@ class TextFieldComponent extends React.Component {
       style,
       className: props.className,
       placeholder: props.placeholder,
-      onChange: (e) => this.onChange(e)
+      onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => this.onChange(e)
     };
 
     if (this.props.type !== 'textArea') {
       return (
         <input
-          ref={this.ref}
+          ref={this.ref as React.RefObject<HTMLInputElement>}
           type={this.props.type}
           {...sharedProps}
           onKeyDown={(e) => this.onKeyDown(e)}
@@ -70,17 +103,23 @@ class TextFieldComponent extends React.Component {
       );
     } else {
       sharedProps.style.resize = 'none'; //disable user resizing
-      return <textarea ref={this.ref} {...sharedProps} onKeyDown={(e) => this.onKeyDown(e)} />;
+      return (
+        <textarea
+          ref={this.ref as React.RefObject<HTMLTextAreaElement>}
+          {...sharedProps}
+          onKeyDown={(e) => this.onKeyDown(e)}
+        />
+      );
     }
   }
 
-  onKeyDown(e) {
+  onKeyDown(e: React.KeyboardEvent) {
     if (e.key === 'Enter' || e.which === 13) {
       this.props.onEnter && this.props.onEnter();
     }
   }
 
-  onChange(event) {
+  onChange(event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
     const value = event.target.value;
     this.setText(value);
   }
@@ -94,7 +133,7 @@ class TextFieldComponent extends React.Component {
   }
 }
 
-const TextInput = {
+const TextInput: ReactNodeDefinition = {
   name: 'Text Input',
   docs: 'https://docs.noodl.net/nodes/visual/text-input',
   allowChildren: false,
@@ -420,7 +459,7 @@ const TextInput = {
       if (!this.innerReactComponentRef) return;
       this.innerReactComponentRef.blur();
     },
-    setText(text) {
+    setText(text: string) {
       this.props.startValue = text;
       if (this.innerReactComponentRef) {
         //the text component is mounted, and will signal the onTextChanged output
@@ -443,15 +482,15 @@ NodeSharedPortDefinitions.addSharedVisualInputs(TextInput);
 Utils.addControlEventsAndStates(TextInput);
 
 const definition = createNodeFromReactComponent(TextInput);
-definition.setup = function (context, graphModel) {
-  graphModel.on('nodeAdded.Text Input', function (node) {
-    if (node.parameters.fontFamily && node.parameters.fontFamily.split('.').length > 1) {
-      FontLoader.instance.loadFont(node.parameters.fontFamily);
+definition.setup = function (_context, graphModel: GraphModelLike) {
+  graphModel.on('nodeAdded.Text Input', function (node: GraphNodeModel) {
+    if (node.parameters.fontFamily && (node.parameters.fontFamily as string).split('.').length > 1) {
+      FontLoader.instance.loadFont(node.parameters.fontFamily as string);
     }
-    node.on('parameterUpdated', function (event) {
+    node.on('parameterUpdated', function (event: { name: string; value: unknown }) {
       if (event.name === 'fontFamily' && event.value) {
-        if (event.value.split('.').length > 1) {
-          FontLoader.instance.loadFont(event.value);
+        if ((event.value as string).split('.').length > 1) {
+          FontLoader.instance.loadFont(event.value as string);
         }
       }
     });

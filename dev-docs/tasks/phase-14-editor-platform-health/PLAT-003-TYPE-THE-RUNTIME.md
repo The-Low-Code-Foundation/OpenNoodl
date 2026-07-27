@@ -46,9 +46,9 @@ There is a further reason to do this now rather than later, and it is the sequen
 ### In Scope
 - [x] Type the core runtime: `Node`, node definition, register, scope, context/scheduler
 - [x] Publish the node-definition API types (usable from `noodl-types` or an equivalent shared package)
-- [x] Convert standard-library nodes incrementally *(top level slice 5, `componentutils/`+`user/` slice 6, `data/` slice 7, `navigation/` slice 8; only dead `persisthelper.js` remains, deletion owned by DEBT-006)*
+- [x] Convert standard-library nodes incrementally *(top level slice 5, `componentutils/`+`user/` slice 6, `data/` slice 7, `navigation/` slice 8, `nodes-deprecated/` slice 10; only dead `persisthelper.js` remains, deletion owned by DEBT-006)*
 - [x] Type `react-component-node.js` (the React binding hub)
-- [x] Convert `noodl-viewer-react` visual and logic nodes *(visual slice 4, logic slices 5–8; every file under `src/nodes/` is now TypeScript)*
+- [x] Convert `noodl-viewer-react` visual and logic nodes *(visual slice 4, logic slices 5–8, deprecated slice 10; every node file in the package is now TypeScript)*
 - [ ] Write characterisation tests before converting each significant unit
 - [x] Coordinate the port/type model with SUB-004 so catalog and types agree
 - [ ] Remove editor-side `TSFixme`s that existed only because the runtime was untyped
@@ -119,10 +119,11 @@ Do not chase `strict: true` initially. Get accurate types with `strict: false`, 
 - [x] Characterisation tests for core runtime behaviours
 - [x] Type core: Node, definition, register, scope, context
 - [x] Publish and validate node-definition API types
-- [ ] Convert standard library and viewer nodes incrementally *(runtime std-library and
+- [x] Convert standard library and viewer nodes incrementally *(runtime std-library and
   all of `viewer/src/nodes/` done, slices 5–8; `viewer/src` root, `api/` and `constants/`
-  done slice 9. Remaining: `nodes-deprecated/` — 25 files, live and registered, NOT
-  deletable (NOTES §21.1) — the 3 Group scroll plugins, and `register-nodes.js` last)*
+  done slice 9; `nodes-deprecated/` done slice 10. **Every node file in the viewer is now
+  TypeScript.** What is left is not node code: the 3 Group scroll plugins, `viewer.jsx`,
+  and `register-nodes.js` last, once `@noodl/runtime`'s own node files are converted)*
 - [x] Type `react-component-node.js`
 - [ ] Tighten strictness; sweep boundary `TSFixme`s
 - [ ] **After each slice merges, re-run `npm run tsfixme:baseline` and
@@ -138,6 +139,60 @@ Do not chase `strict: true` initially. Get accurate types with `strict: false`, 
 ## CHANGELOG
 
 In progress. Full as-built record in [PLAT-003-NOTES.md](./PLAT-003-NOTES.md).
+
+### Slice 10 — 2026-07-27 — `nodes-deprecated/`, and the last of the node code (step 7, seventh group)
+
+- **All 25 `nodes-deprecated/` files** → `.ts`/`.tsx` (7,052 lines): the 15 std-library nodes
+  (`dbmodelnode` 797, `dbcollectionnode` 717, `animation` 551 dominating), the five `data/`
+  nodes, and the nine `.jsx` controls plus their shared `utils`. Slice 9 established these
+  are **live, registered and shipped** (NOTES §21.1), not dead code. **Every node file in
+  `noodl-viewer-react` is now TypeScript** — the four `.js` and one `.jsx` left are the
+  three Group scroll plugins, `register-nodes.js` and `viewer.jsx`, none of which is a node.
+- **The §21.5 unwrap came back out.** `animation`, `numberblend` and `transition` carried
+  the `.default || module` workaround slice 9 added when it converted `easecurves` out from
+  under them; all three are ES modules now and take a plain `import`. `register-nodes.js`'s
+  own unwrap stays, but the reason has narrowed to the `@noodl/runtime` half of its list
+  (`httpnode`, the five `byob-*` nodes), which is still CommonJS and out of scope.
+- **Three published types corrected** (NOTES §23.2). The significant one: **`NodePanels`
+  was the wrong shape entirely** — declared `Record<string, unknown>`, it is actually a
+  *list* (`sidebarmodel.tsx` filters it and takes the first matching entry) or the literal
+  string `'none'`. All four in-repo definitions that set `panels` write an array, so the
+  type disagreed with every one of its users and with the editor. Also published:
+  `OutputPropertyLike.connections` (the deprecated Animation node reads it to sample the
+  value it animates *from* — the whole implicit-start mechanism), and `NodeContextLike`'s
+  four `globalValues`/`globalsEventEmitter`/`setGlobalValue`/`getGlobalValue` members, which
+  forced the §13.2 mirror onto `RuntimeNodeContext`.
+- **The Globals node throws** (NOTES §23.3). `_newOutputValueReceived` writes
+  `this._cachedInputValues[name]`, and `_cachedInputValues` **exists nowhere in
+  `@noodl/runtime`** — so a `TypeError` fires the first time a global changes and the node
+  has an output for that name. Same shape as §19.4's Pop Component Stack find. Left in
+  place and documented: both fixing it and deleting the line change behaviour, and the
+  output getter reads `context.globalValues` directly, so the cache was never load-bearing.
+- **Five more defects documented at the site, not fixed** (NOTES §23.4): `dbmodelnode`'s New
+  input calls a `storageNew` that does not exist; `dbcollectionnode.setError` writes
+  `_internal.err` while the getter reads `_internal.error`, so the `error` output has never
+  carried a message; `_hasChangesPending` is dead *and* inverted; Range's percent-changed
+  guard tests a field nothing assigns; Button's mount effect calls three props nothing
+  supplies. Two *were* fixed because the compiler would not take them — `numberblend` and
+  the deprecated `variablenode` returned a bare value from `getInspectInfo`, which renders
+  as nothing (the §13.3 defect DEBT-006 already ruled on for `variablenode2`).
+- **New rule, from the oldest code in the package**: three functions relied on `var`
+  *hoisting* — declaring inside an `if` and reading after it. A mechanical `var`→`const`
+  rewrite is a compile error; a careless fix silently changes what reaches the editor. Check
+  the declaration and the read are in the same block before rewriting (NOTES §23.1).
+
+File counts: `noodl-viewer-react` 21/10/118/37 → **4 `.js` / 1 `.jsx` / 137 `.ts` / 46
+`.tsx`**. `noodl-runtime` unchanged at 73 `.js` / 19 `.ts`.
+
+Gates: `catalog:check` byte-identical (154 node types, 89 dynamic); `typecheck:viewer` 0
+errors in `src`; runtime and cloud typechecks clean; **runtime jest 928 pass / 0 fail**
+(the suite keeps growing — 384 in §21.8); viewer jest 52/52; viewer, deploy and ssr prod
+bundles green; prettier clean; 39 eslint errors, all deliberate and none gated (NOTES
+§23.6). **The live editor pass ran and is green** — the Shine Phase 2 project opens, the
+graph paints, the preview renders, zero renderer exceptions; this clears the debt slice 9
+recorded as owed. The `tsfixme` gate is red, but 56 of the 60 are AIX-005's concurrent
+agent work already on `cline-dev`; this slice contributes 4 deliberate `any`s (open JSON
+filter payloads) and re-baselines with the split recorded.
 
 ### Slice 9 — 2026-07-27 — the viewer's `src/` root and `api/` (step 7, sixth group)
 

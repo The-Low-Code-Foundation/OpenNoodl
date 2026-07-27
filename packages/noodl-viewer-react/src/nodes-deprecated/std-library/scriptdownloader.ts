@@ -1,6 +1,35 @@
 'use strict';
 
-const ScriptDownloadDefinition = {
+import type { NodeContextLike, NodeDefinitionOptions, NodeInstance, NodeModule } from '@noodl/types';
+
+/**
+ * The load terminator, whose `onload` tells the node every earlier script is in.
+ *
+ * `onreadystatechange` is the IE-era half of the pair and is not on `lib.dom`'s
+ * `HTMLScriptElement`, so the element is widened where it is assigned.
+ */
+type LegacyScriptElement = HTMLScriptElement & {
+  onreadystatechange: ((this: LegacyScriptElement) => void) | null;
+  readyState?: string;
+};
+
+/** `this` inside the Script Downloader node. */
+interface ScriptDownloaderNodeInstance extends NodeInstance {
+  _internal: {
+    loaded: boolean;
+    /** One entry per numbered `input N` port, indexed by that number. */
+    scripts: string[];
+    loadedScripts: Record<string, unknown>;
+    startLoad: boolean;
+    loadStarted?: boolean;
+    updateScriptsScheduled?: boolean;
+  };
+  removeLoadTerminator(): void;
+  scheduleUpdateScripts(): void;
+  updateScripts(): void;
+}
+
+const ScriptDownloadDefinition: NodeDefinitionOptions = {
   name: 'Script Downloader',
   docs: 'https://docs.noodl.net/nodes/javascript/script-downloader',
   shortDesc: 'Script Downloader allows you load external Javascript libraries. ',
@@ -10,8 +39,8 @@ const ScriptDownloadDefinition = {
   // Injects <script> tags into document.head from its input setters, which run
   // at graph load — server-side that would throw.
   ssr: { compat: 'client-only', note: 'Scripts are injected into the browser DOM; they load after hydration.' },
-  initialize: function () {
-    var internal = this._internal;
+  initialize: function (this: ScriptDownloaderNodeInstance) {
+    const internal = this._internal;
     internal.loaded = false;
     internal.scripts = [];
     internal.loadedScripts = {};
@@ -23,14 +52,14 @@ const ScriptDownloadDefinition = {
       default: true,
       displayName: 'Load on start',
       group: 'General',
-      set: function (value) {
+      set: function (this: ScriptDownloaderNodeInstance, value: boolean) {
         this._internal.startLoad = value;
       }
     },
     load: {
       displayName: 'Load',
       group: 'Actions',
-      valueChangedToTrue: function () {
+      valueChangedToTrue: function (this: ScriptDownloaderNodeInstance) {
         this.scheduleUpdateScripts();
       }
     }
@@ -47,14 +76,13 @@ const ScriptDownloadDefinition = {
       group: 'External scripts',
       type: 'string',
       index: 3008,
-      createSetter: function (index) {
-        return function (value) {
-          value = value.toString();
-          this._internal.scripts[index] = value;
+      createSetter: function (index: number) {
+        return function (this: ScriptDownloaderNodeInstance, value: unknown) {
+          this._internal.scripts[index] = String(value);
 
           if (!this._internal.loadStarted) {
             this._internal.loadStarted = true;
-            this.scheduleAfterInputsHaveUpdated(function () {
+            this.scheduleAfterInputsHaveUpdated(function (this: ScriptDownloaderNodeInstance) {
               this._internal.loadStarted = false;
 
               if (!this._internal.startLoad) {
@@ -69,14 +97,14 @@ const ScriptDownloadDefinition = {
     }
   },
   methods: {
-    removeLoadTerminator: function () {
-      var terminatorId = 'sentinel_' + this.id;
-      var elem = document.getElementById(terminatorId);
+    removeLoadTerminator: function (this: ScriptDownloaderNodeInstance) {
+      const terminatorId = 'sentinel_' + this.id;
+      const elem = document.getElementById(terminatorId);
       if (elem && elem.parentNode) {
         elem.parentNode.removeChild(elem);
       }
     },
-    scheduleUpdateScripts: function () {
+    scheduleUpdateScripts: function (this: ScriptDownloaderNodeInstance) {
       const _this = this;
 
       if (!this._internal.updateScriptsScheduled) {
@@ -88,43 +116,42 @@ const ScriptDownloadDefinition = {
         });
       }
     },
-    updateScripts: function () {
-      var terminatorId = 'sentinel_' + this.id;
+    updateScripts: function (this: ScriptDownloaderNodeInstance) {
+      const terminatorId = 'sentinel_' + this.id;
 
       this.removeLoadTerminator();
-      var scripts = this._internal.scripts;
+      let scripts = this._internal.scripts;
       scripts = scripts.filter(function (script) {
         return script !== '';
       });
 
-      var scriptElements = document.head.getElementsByTagName('script');
-      var scriptsInHead = {};
-      for (var i = 0; i < scriptElements.length; i++) {
-        var script = scriptElements[i];
-        if (script.src !== undefined && script.src !== '') {
-          scriptsInHead[script.src] = script;
+      const scriptElements = document.head.getElementsByTagName('script');
+      const scriptsInHead: Record<string, HTMLScriptElement> = {};
+      for (let i = 0; i < scriptElements.length; i++) {
+        const element = scriptElements[i];
+        if (element.src !== undefined && element.src !== '') {
+          scriptsInHead[element.src] = element;
         }
       }
 
-      for (var i = 0; i < scripts.length; i++) {
-        var script = scripts[i].trim();
+      for (let i = 0; i < scripts.length; i++) {
+        const script = scripts[i].trim();
 
         if (!this._internal.loadedScripts.hasOwnProperty(script)) {
           if (scriptsInHead.hasOwnProperty(script)) {
             continue;
           }
 
-          var scriptObj = document.createElement('script');
-          var _this = this;
+          const scriptObj = document.createElement('script');
           scriptObj.src = script;
           scriptObj.async = false;
           document.head.appendChild(scriptObj);
         }
       }
 
-      var self = this;
-      var onLoadedScript = document.createElement('script');
-      onLoadedScript.onload = onLoadedScript.onreadystatechange = function (script) {
+      const self = this;
+      const onLoadedScript = document.createElement('script') as LegacyScriptElement;
+      onLoadedScript.onload = onLoadedScript.onreadystatechange = function (this: LegacyScriptElement) {
         if (!this.readyState || this.readyState === 'loaded' || this.readyState === 'complete') {
           self._internal.loaded = true;
           self.sendSignalOnOutput('loaded');
@@ -142,11 +169,15 @@ const ScriptDownloadDefinition = {
   }
 };
 
-module.exports = {
+const ScriptDownloadModule: NodeModule = {
   node: ScriptDownloadDefinition,
-  setup: function (context, graphModel) {
+  // Does nothing but return: the body is a guard with no work behind it. Left as
+  // it stands — deleting a registered `setup` is a behaviour change, not a typing one.
+  setup: function (context: NodeContextLike) {
     if (!context.editorConnection || !context.editorConnection.isRunningLocally()) {
       return;
     }
   }
 };
+
+export default ScriptDownloadModule;

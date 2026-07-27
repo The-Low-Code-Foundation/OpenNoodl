@@ -21,15 +21,15 @@ import TextNode from './nodes/visual/text';
 import Video from './nodes/visual/video';
 import './assets/style.css';
 //Deprecated
-import ButtonOld from './nodes-deprecated/controls/button.jsx';
-import CheckBoxOld from './nodes-deprecated/controls/checkbox.jsx';
-import FieldSet from './nodes-deprecated/controls/fieldset.jsx';
-import Form from './nodes-deprecated/controls/form.jsx';
-import Label from './nodes-deprecated/controls/label.jsx';
-import OptionsOld from './nodes-deprecated/controls/options.jsx';
-import RadioButtonOld from './nodes-deprecated/controls/radiobutton.jsx';
-import RangeOld from './nodes-deprecated/controls/range.jsx';
-import TextInputOld from './nodes-deprecated/controls/text-input.jsx';
+import ButtonOld from './nodes-deprecated/controls/button';
+import CheckBoxOld from './nodes-deprecated/controls/checkbox';
+import FieldSet from './nodes-deprecated/controls/fieldset';
+import Form from './nodes-deprecated/controls/form';
+import Label from './nodes-deprecated/controls/label';
+import OptionsOld from './nodes-deprecated/controls/options';
+import RadioButtonOld from './nodes-deprecated/controls/radiobutton';
+import RangeOld from './nodes-deprecated/controls/range';
+import TextInputOld from './nodes-deprecated/controls/text-input';
 
 export default function registerNodes(noodlRuntime) {
   [
@@ -164,7 +164,9 @@ export default function registerNodes(noodlRuntime) {
   ].forEach(function (module) {
     // Node files converted to TypeScript compile as ES modules and `export default`;
     // the ones still on `module.exports` do not. `require()` of an ES module hands back
-    // the namespace object, so unwrap it. Remove this once every file above is converted.
+    // the namespace object, so unwrap it. Every viewer node above is now TypeScript;
+    // what still needs this is the `@noodl/runtime` half of the list (`httpnode`, the
+    // five `byob-*` nodes), which is CommonJS. Remove it once those are converted too.
     noodlRuntime.registerNode(module.default || module);
   });
 

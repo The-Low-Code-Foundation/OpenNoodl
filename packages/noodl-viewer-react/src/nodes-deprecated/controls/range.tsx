@@ -3,10 +3,31 @@ import React, { useEffect, useState } from 'react';
 import guid from '../../guid';
 import Layout from '../../layout';
 import NodeSharedPortDefinitions from '../../node-shared-port-definitions';
-import { createNodeFromReactComponent } from '../../react-component-node';
+import { createNodeFromReactComponent, type ReactNodeDefinition, type StyleObject } from '../../react-component-node';
+import type { Noodl } from '../../types';
 import Utils from './utils';
 
-function _styleTemplate(_class, props) {
+interface RangeProps extends Noodl.ReactProps {
+  id?: string;
+  /** The node's own id, used to give each instance its own generated class. */
+  _nodeId?: string;
+  enabled?: boolean;
+  value?: string | number;
+  min?: string | number;
+  max?: string | number;
+  step?: string | number;
+  /** Installed by `initialize`, not by a port — this is how the control reports back. */
+  valueChanged?: (value: string | number) => void;
+
+  thumbWidth?: string;
+  thumbHeight?: string;
+  thumbColor?: string;
+  thumbRadius?: string;
+  trackHeight?: string;
+  trackColor?: string;
+}
+
+function _styleTemplate(_class: string, props: Partial<RangeProps>) {
   return `
     .${_class}::-webkit-slider-thumb {
         width: ${props.thumbWidth};
@@ -82,7 +103,7 @@ function _styleTemplate(_class, props) {
 // --------------------------------------------------------------------------------------
 // Range
 // --------------------------------------------------------------------------------------
-function Range(props) {
+function Range(props: RangeProps) {
   const [value, setValue] = useState(props.value);
 
   // Report initial values when mounted
@@ -94,7 +115,7 @@ function Range(props) {
     setValue(props.value);
   }, [props.value]);
 
-  var style = { ...props.style };
+  const style: StyleObject = { ...props.style };
   Layout.size(style, props);
   Layout.align(style, props);
 
@@ -121,7 +142,7 @@ function Range(props) {
   );
 }
 
-var RangeNode = {
+const RangeNode: ReactNodeDefinition = {
   name: 'Range',
   docs: 'https://docs.noodl.net/nodes/visual/range',
   allowChildren: false,
@@ -132,7 +153,7 @@ var RangeNode = {
     this.props.enabled = this._internal.enabled = true;
     this._internal.value = this.props.value = this.props.min;
     this.props._nodeId = this.id;
-    this.props.valueChanged = (value) => {
+    this.props.valueChanged = (value: string | number) => {
       value = typeof value === 'string' ? parseFloat(value) : value;
       const valueChanged = this._internal.value !== value;
       this._internal.value = value;
@@ -367,10 +388,14 @@ var RangeNode = {
   },
   outputProps: {},
   methods: {
-    _updateValuePercent(value) {
+    _updateValuePercent(value: number) {
       const min = this.props.min;
       const max = this.props.max;
       const valuePercent = Math.floor(((value - min) / (max - min)) * 100);
+      // `valuePercentChanged` is never assigned anywhere — this reads `undefined`
+      // every time, so the comparison is always true and `valuePercent` is flagged
+      // dirty on every call. Kept verbatim: correcting it to `valuePercent` would
+      // change how often the output fires.
       const valuePercentChanged = this._internal.valuePercentChanged !== valuePercent;
 
       this._internal.valuePercent = valuePercent;
@@ -385,6 +410,4 @@ NodeSharedPortDefinitions.addMarginInputs(RangeNode);
 NodeSharedPortDefinitions.addSharedVisualInputs(RangeNode);
 Utils.addControlEventsAndStates(RangeNode);
 
-RangeNode = createNodeFromReactComponent(RangeNode);
-
-export default RangeNode;
+export default createNodeFromReactComponent(RangeNode);

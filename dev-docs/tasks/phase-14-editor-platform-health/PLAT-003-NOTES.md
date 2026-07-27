@@ -1539,7 +1539,7 @@ cline-dev tip.
 - A `.d.ts` containing any top-level `import` is a module; augmentations must be inside
   `declare global` (§21.3).
 
-## 22. Next slice
+## 22. Slice 9's plan for slice 10 (item 1 done; see §23 for what is actually next)
 
 File counts: `noodl-viewer-react` **21 `.js` / 10 `.jsx` / 118 `.ts` / 37 `.tsx`**.
 `noodl-runtime` unchanged at 73 `.js` / 19 `.ts`.
@@ -1576,3 +1576,200 @@ File counts: `noodl-viewer-react` **21 `.js` / 10 `.jsx` / 118 `.ts` / 37 `.tsx`
    workstreams in the same tsconfig. Step 9's editor-side sweep stays with PLAT-004,
    though §21.6 retired six markers at the declaration rather than the site, which is the
    cheaper half of that job done from this side.
+
+## 23. Slice 10 — `nodes-deprecated/`, and the end of node code in JavaScript
+
+§22 named `nodes-deprecated/` as the next target and it was right: 25 files, 7,052 lines,
+the largest remaining group by a distance. All 25 are converted. **Every node file in
+`noodl-viewer-react` is now TypeScript** — the four `.js` and one `.jsx` that remain are
+the three Group scroll plugins, `register-nodes.js` and `viewer.jsx`, none of which is a
+node.
+
+File counts: `noodl-viewer-react` **21 `.js` / 10 `.jsx` / 118 `.ts` / 37 `.tsx` →
+4 `.js` / 1 `.jsx` / 137 `.ts` / 46 `.tsx`**. (The 118→137 gap is wider than this slice's
+19 conversions by three files another workstream added in between; the `.js`/`.jsx` fall
+is entirely this slice's.) `noodl-runtime` unchanged at 73 `.js` / 19 `.ts` — only
+`internal.d.ts` was edited.
+
+### 23.1 What made this group different from slices 5–8
+
+The recipe carried over unchanged, but the *material* did not. These files are the oldest
+in the package and were never touched by the intervening cleanups, so three things showed
+up that the `nodes/` groups had already had fixed:
+
+- **`var` hoisting used as control flow.** Three functions declare a `var` inside an `if`
+  and read it *after* the block: `dbmodelnode`'s `renamed`, `dbcollectionnode`'s `_where`
+  and `_sort`, and `_convertFilterOp`'s `schema`. A mechanical `var`→`const` rewrite turns
+  each into a compile error, and a careless fix (moving the read inside the block) would
+  silently change what gets sent to the editor. Each is now a `let` declared at the top of
+  the enclosing function, with a comment saying why it is there.
+- **`var` redeclaration in one scope.** `dbcollectionnode.updatePorts` declares
+  `var filters` twice and `_convertFilterOp` declares `var m` twice. Legal with `var`,
+  an error with `const`. Renamed (`sortFields`, and the second `m` was dead).
+- **The definition object assigned over itself.** Five controls end
+  `var XNode = {…}; XNode = createNodeFromReactComponent(XNode); export default XNode` —
+  two different types in one binding. Split into a `const` definition and the module the
+  factory returns.
+
+> Rule for the remaining old code: before rewriting `var`, check whether the declaration
+> and the read are in the same block. `tsc` catches the ones that break; it cannot catch
+> the ones you "fix" into a different program.
+
+### 23.2 The published types this slice corrected — three, and one was a lie
+
+| What | Was | Is |
+|---|---|---|
+| `NodePanels` | `Record<string, unknown>` | `NodePanel[] \| 'none'` |
+| `OutputPropertyLike.connections` | unpublished → error | published as `OutputConnectionLike[]` |
+| `NodeContextLike.globalValues` / `globalsEventEmitter` / `setGlobalValue` / `getGlobalValue` | unpublished → `unknown` | published (§19.3 shape, fourth time) |
+
+**`NodePanels` was the wrong shape entirely.** It was declared a record keyed by panel
+name. It is a *list*: `sidebarmodel.tsx` does `panels.filter((x) => …x.name)` and takes
+the first entry matching a registered panel, and it tests `panels === 'none'` before
+that — a string sentinel the type had no room for either. Every in-repo definition that
+sets `panels` (Component Inputs, Component Outputs, Globals, Animation) writes an array,
+so the type has disagreed with all four of its users and with the editor since it was
+written. Now `NodePanel[] | 'none'`, with the entry's four common fields named and the
+rest left open, because everything past `name` is forwarded to the panel as its `args`.
+
+**`connections` is not an internal.** The deprecated Animation node reads
+`getOutput(name).connections[0].node.getInputValue(…)` to sample the value it should
+animate *from* — that is the whole implicit-start-value mechanism. The published output
+port had `hasConnections()` but not the list, so the one node that needs it could not be
+typed. Publishing it forced the §13.2 rule again: `RuntimeNodeContext` had to gain the
+four globals members before `RuntimeNode` was assignable to `NodeInstance` again, and
+until it did, four unrelated-looking errors appeared in `node.ts` and `nodedefinition.ts`.
+
+### 23.3 The defect that matters: the Globals node throws
+
+`globals.ts`'s `_newOutputValueReceived` does `this._cachedInputValues[name] = …`.
+**`_cachedInputValues` exists nowhere in `@noodl/runtime`** — not on `Node`, not on any
+prototype, not assigned by any node. So the first time a global changes and a Globals node
+has registered an *output* for that name, the listener throws
+`TypeError: Cannot set properties of undefined`. This is the same shape as §19.4's
+Pop Component Stack finding (`_createSignal`, an identifier that exists nowhere), found
+the same way — by giving the instance a type and watching the member fail to resolve.
+
+Left in place, declared optional with the explanation at the site. Both fixes are
+behaviour changes: creating the cache makes the node work, and deleting the line also
+makes it work, because the output getter reads `context.globalValues[name]` directly and
+never consulted the cache. Somebody should pick one; this slice is not the place.
+
+### 23.4 Five more defects found, documented at the site, not fixed
+
+1. **`dbmodelnode`'s New input calls `this.storageNew()`** — a method this node does not
+   have and `Node` does not provide. Same class of bug as the above: the New action has
+   thrown for as long as the file has existed. (Insert, the neighbouring port, works.)
+2. **`dbcollectionnode.setError` writes `_internal.err`, the getter reads
+   `_internal.error`.** The `error` output has therefore never carried a message, though
+   the `failure` signal does fire.
+3. **`dbmodelnode._hasChangesPending` is both dead and inverted** — its only call site is
+   commented out, and it returns `true` for the first property that is *equal*.
+4. **`range`'s `_updateValuePercent` compares `_internal.valuePercentChanged`**, a field
+   nothing assigns, so `valuePercent` is flagged dirty on every call rather than on change.
+5. **`button`'s mount effect calls `focusChanged`/`hoverChanged`/`pressedChanged`** — three
+   props nothing supplies. Harmless: `initialize` already zeroes the same three
+   `outputPropValues`.
+
+Two smaller ones recorded without a code comment: `numberedInputs.<name>.selectors`
+(Signal To Index) is read by nothing — `registerSetupFunctionForNumberedInputs` builds its
+ports from `type`, `displayPrefix`, `group` and `index` only; and `collectionnode`'s Clear
+action calls `sendSignalOnOutput('count')` on a `number` output, which sends nothing.
+
+Two *were* fixed, because the compiler would not take them and both are the §13.3 defect
+DEBT-006 already ruled on: `numberblend` and the deprecated `variablenode` returned a bare
+number / raw value from `getInspectInfo`, which renders as **nothing** in the editor's
+inspector popup. Both now return a one-element `[{ type: 'value', value }]`, exactly as
+DEBT-006 corrected `variablenode2`.
+
+### 23.5 The §21.5 unwrap came back out, as predicted
+
+`animation`, `numberblend` and `transition` carried the `.default || module` unwrap slice 9
+added when it converted `easecurves` out from under them. All three are ES modules now, so
+all three take a plain `import EaseCurves from '../../easecurves'` and the unwrap is gone.
+That is the whole of §21.5's debt repaid.
+
+**`register-nodes.js`'s unwrap stays, and so does the file.** §21.7's reasoning is
+unchanged, but the reason has narrowed usefully: every *viewer* node in that `require()`
+list is now TypeScript. What still needs the unwrap is the `@noodl/runtime` half —
+`httpnode` and the five `byob-*` nodes — which is CommonJS and out of this task's scope.
+The comment in the file now says so. Its nine `.jsx` control imports lost their explicit
+extensions in the same change (§18/§19.2's hazard, handled the same way slice 8 did).
+
+### 23.6 Verification
+
+| Gate | Result |
+|---|---|
+| `typecheck:viewer` | **0 errors** in `packages/noodl-viewer-react/src/` (baseline 0) |
+| `typecheck:runtime` / `typecheck:cloud` | clean |
+| `catalog:check` | **byte-identical**, 154 node types, 89 dynamic, 24 port value types |
+| `noodl-runtime` jest | **928 passing / 0 failing**, 34 suites (7 skipped) |
+| `noodl-viewer-react` jest | 52 passing / 0 failing, 6 suites |
+| viewer + deploy + ssr prod bundles | green (3 pre-existing asset-size warnings) |
+| prettier | clean |
+| eslint (`nodes-deprecated/**`) | 39 errors, all deliberate — see below |
+
+The runtime jest baseline keeps moving: §21.8 recorded 384, and it is 928 now. Other
+workstreams are adding suites; the figure to check is that it is unchanged across the
+slice, not that it matches the last one written down.
+
+The 39 eslint errors are `no-this-alias` ×32 (the `var self = this` closures §13.7 already
+ruled deliberate), `no-explicit-any` ×4 (the open filter shapes in `dbcollectionnode`),
+`ban-types` ×1 (the `(string & {})` literal-union idiom the whole package uses — `layout.ts`
+carries the same error), `prefer-spread` ×1 (`Function.apply(null, args)`, which builds a
+function from a source string) and `react/jsx-key` ×1 (a genuine missing `key` in the
+deprecated Options node's `<option>` map; adding one changes React's reconciliation, so it
+is a behaviour change, not a lint fix). None of these is gated: `.eslint-baseline.json`
+targets `packages/noodl-editor/src` only. `controls/utils.ts` *is* clean — three helpers it
+defined and never exported or called (`addInputCss`, `addInputs`, `addDynamicInputPorts`)
+were deleted.
+
+### 23.7 Traps
+
+- **A stale Electron holds port 9222 and looks exactly like a live one.** The first
+  live-pass attempt attached to a CDP target that answered `/json/list`, accepted the
+  WebSocket, and then never replied to `Runtime.evaluate`. The cause was in the log:
+  `bind() failed: Address already in use (48)` — an orphan from an earlier session still
+  owned 9222, so the *new* stack could not start its devtools server and exited, leaving
+  the orphan to answer. `pkill` without `-9` had not killed it. **Check
+  `lsof -ti:9222` is empty after killing, and grep the log for `bind() failed` before
+  concluding the renderer is wedged.**
+- The §23.1 `var`-hoisting rule, restated: check the declaration and the read are in the
+  same block before rewriting `var`.
+- `Model` and `Collection` need the `as ModelModule` / `as CollectionModule` cast at
+  import (the §17 convention) for `value instanceof Model` to narrow. Without it the
+  `instanceof` compiles but narrows nothing, and the error lands on the `.getId()` after it.
+
+## 24. Next slice
+
+File counts: `noodl-viewer-react` **4 `.js` / 1 `.jsx` / 137 `.ts` / 46 `.tsx`**.
+`noodl-runtime` unchanged at 73 `.js` / 19 `.ts`.
+
+**Spec step 7 is finished.** There is no node code left in JavaScript in the viewer, and
+the four `.js` files that remain are not nodes. The task's centre of gravity moves to
+`@noodl/runtime`, which is where the untyped mass now is: 73 `.js` against 19 `.ts`.
+
+1. **`@noodl/runtime`'s own node files** — `httpnode`, the five `byob-*` nodes and the rest
+   of `src/nodes/`. These are the last consumers of `register-nodes.js`'s
+   `module.default || module` unwrap, so converting them is what finally lets that go —
+   and `register-nodes.js` with it (§21.7). Higher value than anything left in the viewer.
+2. **The Group scroll plugins** — 3 files, 1,182 lines, `slide-scroll-plugin.js` 940 of it.
+   Still the lowest value per line in the package: momentum physics with no type surface
+   anyone imports. Fine to leave until last.
+3. **`viewer.jsx`** — the 18th root file slice 9 left. Small, but it installs
+   `context.setNodeFocused` and the global click handler, so it is the last untyped thing
+   the visual nodes depend on.
+4. **`register-nodes.js` last**, after (1), deleting the unwrap in the same commit.
+5. **Decide the Globals-node crash** (§23.3) and `dbmodelnode`'s missing `storageNew`
+   (§23.4 #1). Both are hard failures in registered, shipping nodes, and both need a
+   decision rather than a conversion. They are the strongest candidates for a small
+   behaviour-fixing commit of their own.
+6. **Decide the six mis-flagged deprecated controls** (§21.1) — still open. `isDeprecated:
+   false` on nodes hidden from the picker and superseded by `net.noodl.controls.*`.
+   One line per file, moves catalog output.
+7. **`@noodl/runtime` shipping `.d.ts`** — carried a fifth time (§12, §16, §18, §20, §22).
+   §22's finding stands: the blocker is the missing `types` field and the absence of any
+   build step, not the tsconfig. Its value keeps falling and item (1) would lower it
+   further, since a converted runtime needs no declarations to be imported from source.
+8. **Do not raise `strict`** (spec step 8). Unchanged: a global flip with concurrent
+   workstreams in the same tsconfig. Step 9's editor-side sweep stays with PLAT-004.

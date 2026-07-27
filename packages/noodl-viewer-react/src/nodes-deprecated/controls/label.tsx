@@ -2,10 +2,19 @@ import React from 'react';
 
 import Layout from '../../layout';
 import NodeSharedPortDefinitions from '../../node-shared-port-definitions';
-import { createNodeFromReactComponent } from '../../react-component-node';
+import { createNodeFromReactComponent, type ReactNodeDefinition, type StyleObject } from '../../react-component-node';
+import type { Noodl } from '../../types';
 
-function Label(props) {
-  var style = { ...props.style };
+interface LabelProps extends Noodl.ReactProps {
+  /** The `for` attribute, naming the control this label describes. */
+  for?: string;
+  text?: string;
+  textStyle?: Noodl.TextStyle;
+  onClick?: React.MouseEventHandler<HTMLLabelElement>;
+}
+
+function Label(props: LabelProps) {
+  let style: StyleObject = { ...props.style };
   Layout.size(style, props);
   Layout.align(style, props);
 
@@ -29,7 +38,7 @@ function Label(props) {
   );
 }
 
-const LabelNode = {
+const LabelNode: ReactNodeDefinition = {
   name: 'Label',
   displayName: 'Label',
   docs: 'https://docs.noodl.net/nodes/visual/label',

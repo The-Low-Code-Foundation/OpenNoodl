@@ -1,16 +1,46 @@
 import React, { useEffect } from 'react';
+import type { GraphModelLike, GraphNodeModel } from '@noodl/types';
 
 import FontLoader from '../../fontloader';
 import guid from '../../guid';
 import Layout from '../../layout';
 import NodeSharedPortDefinitions from '../../node-shared-port-definitions';
-import { createNodeFromReactComponent } from '../../react-component-node';
+import { createNodeFromReactComponent, type ReactNodeDefinition, type StyleObject } from '../../react-component-node';
+import type { Noodl, Slot } from '../../types';
 import Utils from './utils';
+
+interface ButtonProps extends Noodl.ReactProps {
+  enabled?: boolean;
+  label?: string;
+  buttonType?: 'button' | 'submit';
+  textStyle?: Noodl.TextStyle;
+  onClick?: () => void;
+  children?: Slot;
+
+  boxShadowEnabled?: boolean;
+  boxShadowInset?: boolean;
+  boxShadowOffsetX?: string;
+  boxShadowOffsetY?: string;
+  boxShadowBlurRadius?: string;
+  boxShadowSpreadRadius?: string;
+  boxShadowColor?: string;
+
+  /**
+   * Nothing supplies these three. The state ports this node gets from
+   * `Utils.addControlEventsAndStates` are driven by `onFocus`/`onMouseOver`/…
+   * prop callbacks instead, so the mount reset below has never run. Harmless —
+   * `initialize` already zeroes the same three `outputPropValues` — and left in
+   * place because removing it is a behaviour change, not a typing one.
+   */
+  focusChanged?: (value: boolean) => void;
+  hoverChanged?: (value: boolean) => void;
+  pressedChanged?: (value: boolean) => void;
+}
 
 // --------------------------------------------------------------------------------------
 // Button
 // --------------------------------------------------------------------------------------
-function Button(props) {
+function Button(props: ButtonProps) {
   // On mount
   useEffect(() => {
     props.focusChanged && props.focusChanged(false);
@@ -18,7 +48,7 @@ function Button(props) {
     props.pressedChanged && props.pressedChanged(false);
   }, []);
 
-  var style = { ...props.style };
+  let style: StyleObject = { ...props.style };
   Layout.size(style, props);
   Layout.align(style, props);
 
@@ -51,7 +81,7 @@ function Button(props) {
   );
 }
 
-var ButtonNode = {
+const ButtonNode: ReactNodeDefinition = {
   name: 'Button',
   docs: 'https://docs.noodl.net/nodes/visual/button',
   allowChildren: true,
@@ -416,20 +446,20 @@ NodeSharedPortDefinitions.addMarginInputs(ButtonNode);
 NodeSharedPortDefinitions.addSharedVisualInputs(ButtonNode);
 Utils.addControlEventsAndStates(ButtonNode);
 
-ButtonNode = createNodeFromReactComponent(ButtonNode);
-ButtonNode.setup = function (context, graphModel) {
-  graphModel.on('nodeAdded.Button', function (node) {
-    if (node.parameters.fontFamily && node.parameters.fontFamily.split('.').length > 1) {
-      FontLoader.instance.loadFont(node.parameters.fontFamily);
+const definition = createNodeFromReactComponent(ButtonNode);
+definition.setup = function (_context, graphModel: GraphModelLike) {
+  graphModel.on('nodeAdded.Button', function (node: GraphNodeModel) {
+    if (node.parameters.fontFamily && (node.parameters.fontFamily as string).split('.').length > 1) {
+      FontLoader.instance.loadFont(node.parameters.fontFamily as string);
     }
-    node.on('parameterUpdated', function (event) {
+    node.on('parameterUpdated', function (event: { name: string; value: unknown }) {
       if (event.name === 'fontFamily' && event.value) {
-        if (event.value.split('.').length > 1) {
-          FontLoader.instance.loadFont(event.value);
+        if ((event.value as string).split('.').length > 1) {
+          FontLoader.instance.loadFont(event.value as string);
         }
       }
     });
   });
 };
 
-export default ButtonNode;
+export default definition;
