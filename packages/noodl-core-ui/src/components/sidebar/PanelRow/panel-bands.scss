@@ -1,0 +1,73 @@
+// PNL-004 — the panel's three width bands, declared once.
+//
+// The side panel is a fraction of the window, so a media query tells you
+// nothing about it. Two containers are declared in `BasePanel.module.scss`:
+//
+//   panel-frame  — the panel frame, header included. PNL-005 queries this so
+//                  the header can drop controls into an overflow menu rather
+//                  than truncating the title.
+//   panel-body   — the scrolling body, and every card that opts in. A card
+//                  re-declares `panel-body` on itself so the same rows respond
+//                  to the card's width, not the panel's: a backend card in a
+//                  268px docked panel and the same card in a 600px floating one
+//                  both lay out correctly.
+//
+// Reach for these only for a layout *change*. Overflow is not a layout change:
+// `flex-wrap: wrap` + `flex: 1 1 <basis>` + `min-width: 0` reflows at every
+// width with no query at all, and is the fix for every action row in the panel.
+//
+// -----------------------------------------------------------------------------
+// A NOTE ON THE NUMBERS, because they are not panel widths.
+//
+// A container size query resolves against the query container's *content box*.
+// `panel-body` is `BasePanel`'s `.ChildrenContainer`, which carries the panel's
+// 16px horizontal inset on each side, inside `.Root`'s 1px border. So:
+//
+//     content box ≈ panel width − 34px
+//
+// The band boundaries below are stated in the phase-25 mock's terms (340 / 560)
+// and are kept verbatim because PNL-005 writes against them too. In panel-width
+// terms they therefore land at roughly 374px and 594px. If the mock's numbers
+// are meant to be read as *panel* widths, subtract 34 here — in this file, once,
+// and every consumer follows.
+// -----------------------------------------------------------------------------
+
+$compact-max: 339px;
+$wide-min: 560px;
+
+/// < 340px. Label above control, controls full-width, actions wrap and fill,
+/// secondary actions collapse behind `⋯`.
+@mixin compact {
+  @container panel-body (max-width: #{$compact-max}) {
+    @content;
+  }
+}
+
+/// 340–559px. 104px label column, control beside it. This is the *unqueried*
+/// default — write it as plain declarations, and use this mixin only when you
+/// need to undo something a neighbouring band set.
+@mixin default-band {
+  @container panel-body (min-width: #{$compact-max + 1}) and (max-width: #{$wide-min - 1}) {
+    @content;
+  }
+}
+
+/// ≥ 560px. 132px label column, help text inline, card grids two-up.
+@mixin wide {
+  @container panel-body (min-width: #{$wide-min}) {
+    @content;
+  }
+}
+
+/// The panel frame, header included. PNL-005 owns the header's own breakpoint;
+/// this exists so nothing has to retype the container name.
+@mixin frame-narrow($max: 359px) {
+  @container panel-frame (max-width: #{$max}) {
+    @content;
+  }
+}
+
+/// The label column width per band. Consumed by `PanelRow`; exposed so a panel
+/// that hand-rolls a grid for a good reason lines up with the rows around it.
+$label-column: 104px;
+$label-column-wide: 132px;
