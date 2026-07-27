@@ -87,6 +87,16 @@ class CloudStore {
         }
       }
 
+      // BAK-006 follow-up: caller-supplied headers (e.g. the Upload File node's
+      // Private input setting `X-NodeGX-File-Private`). Never overrides the
+      // Parse/session headers above — a caller has no reason to, and none of
+      // this module's callers try to.
+      if (options.headers) {
+        for (var headerName in options.headers) {
+          if (options.headers[headerName] !== undefined) xhr.setRequestHeader(headerName, options.headers[headerName]);
+        }
+      }
+
       if (options.onUploadProgress) {
         xhr.upload.onprogress = (pe) => options.onUploadProgress(pe);
       }
@@ -105,11 +115,14 @@ class CloudStore {
 
       fetch(endpoint + path, {
         method: options.method || 'GET',
-        headers: {
-          'X-Parse-Application-Id': appId,
-          'X-Parse-Master-Key': masterKey,
-          'Content-Type': 'application/json'
-        },
+        headers: Object.assign(
+          {
+            'X-Parse-Application-Id': appId,
+            'X-Parse-Master-Key': masterKey,
+            'Content-Type': 'application/json'
+          },
+          options.headers || {}
+        ),
         body: JSON.stringify(options.content)
       })
         .then((r) => {
@@ -427,9 +440,29 @@ class CloudStore {
       method: 'POST',
       content: options.file,
       contentType: options.file.type,
+      // BAK-006 follow-up: the Upload File node's Private input. The backend
+      // reads this exact header (files.ts, case-insensitively) to ACL the
+      // upload to its owner instead of leaving it public.
+      headers: options.private ? { 'X-NodeGX-File-Private': 'true' } : undefined,
       success: (response) => options.success(Object.assign({}, options.data, response)),
       error: (err) => options.error(err),
       onUploadProgress: options.onUploadProgress
+    });
+  }
+
+  /**
+   * BAK-006 follow-up: mint a short-TTL signed URL for a (typically private)
+   * file — `GET /files/:name/sign`. Gated server-side by the same row-ACL
+   * check reading the file itself would use; this call fails the same way an
+   * unauthorized read would if the caller cannot already read the file.
+   *
+   * @param {{ name: string; success: (result: { url: string; expiresAt: string; ttlSeconds: number }) => void; error: (err: unknown) => void }} options
+   */
+  signFileUrl(options) {
+    this._makeRequest('/files/' + options.name + '/sign', {
+      method: 'GET',
+      success: (response) => options.success(response),
+      error: (err) => options.error(err)
     });
   }
 

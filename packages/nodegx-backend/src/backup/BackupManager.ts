@@ -13,6 +13,27 @@
  * failed execution + a recorded failure status, never a silently stale "last
  * backup" timestamp (RUN-004).
  *
+ * BAK-009 follow-up: `createBackup`/`restore` ALSO write an `_Audit` row when
+ * the caller supplies `deps.openAudit` (optional). The HTTP admin routes get
+ * their `_Audit` row for free from HttpServer's dispatcher — it stamps one
+ * for every privileged route from the route table, keyed by method+pattern,
+ * entirely outside this class. The CLI never builds an HTTP request, so it
+ * never reaches that dispatcher; nothing else was writing the row for it.
+ * Rather than duplicating the write with a second, ad hoc `_Audit` insert in
+ * cli.ts, the record is written HERE, once, in the method both entry points
+ * already call — and only the CLI's `BackupManager` instance is constructed
+ * with `openAudit` set, so the HTTP path (whose row already exists) is
+ * untouched and nothing double-records.
+ *
+ * `openAudit` is a FACTORY, not a pre-opened `AuditLog`, and it is called only
+ * AFTER the operation finishes — deliberately. `restore` replaces the live db
+ * FILE out from under any connection that was already open against it (WAL/SHM
+ * removed, a new file renamed into place); a connection opened before that
+ * swap and reused afterward would write into the discarded pre-restore file,
+ * not the one now on disk. Opening fresh, once the swap is done, is what
+ * makes "the restore row lands in the database that exists after the
+ * restore" true rather than an accident of timing.
+ *
  * @module nodegx-backend/backup/BackupManager
  */
 
@@ -21,6 +42,8 @@ import * as os from 'os';
 import * as path from 'path';
 
 import type { ExecutionHistory } from '../execution/ExecutionStore';
+import type { AuditLog } from '../ops/audit';
+import { logger } from '../ops/logger';
 import type { BackupConfigStore, RetentionPolicy } from './config';
 import { snapshotDatabase, verifyDatabaseIntegrity } from './snapshot';
 import {
@@ -46,6 +69,25 @@ export interface BackupManagerDeps {
   backendName: string;
   /** Live schema export for the human-readable `config/schema.json` record. */
   getSchema?: () => unknown[];
+  /**
+   * BAK-009: when set, `createBackup`/`restore` write an `_Audit` row through
+   * a connection this factory opens AFTER the operation completes (see the
+   * module doc for why it must be lazy). `dataDir` is the directory the row
+   * should be recorded against — the manager's own for a backup, the restore
+   * TARGET for a restore, which may differ. Deliberately optional and off by
+   * default: only the CLI's manager instance supplies this; the HTTP-serving
+   * instance does not, because its row is already stamped by the request
+   * dispatcher.
+   */
+  openAudit?: (dataDir: string) => Promise<{ audit: AuditLog; close: () => Promise<void> }>;
+}
+
+/** Who/where a privileged call came from, for the `_Audit` row (BAK-009). */
+export interface BackupAuditActor {
+  actorKind: string;
+  actor: string;
+  ip: string;
+  requestId?: string;
 }
 
 export interface CreateBackupOptions {
@@ -59,6 +101,8 @@ export interface CreateBackupOptions {
   skipRetention?: boolean;
   /** Filename prefix (default 'backup'). */
   prefix?: string;
+  /** Audit actor (BAK-009). Falls back to a generic 'cli' actor when omitted. */
+  actor?: BackupAuditActor;
 }
 
 export interface CreateBackupResult {
@@ -82,6 +126,8 @@ export interface RestoreOptions {
   safetySnapshot?: boolean;
   triggerType?: 'manual' | 'test';
   source?: string;
+  /** Audit actor (BAK-009). Falls back to a generic 'cli' actor when omitted. */
+  actor?: BackupAuditActor;
 }
 
 export interface RestoreResult {
@@ -221,12 +267,56 @@ export class BackupManager {
         bytes: result.bytes,
         mechanism: result.manifest.snapshotMechanism
       });
+      await this.recordAudit('backup.create', this.deps.dataDir, options.actor, 'success', {
+        archive: result.archivePath,
+        bytes: result.bytes,
+        mechanism: result.manifest.snapshotMechanism,
+        source
+      });
       return result;
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
       if (logger) logger.completeExecution(false, e instanceof Error ? e : new Error(message));
       this.deps.config.recordResult({ ok: false, at: at.toISOString(), error: message });
+      await this.recordAudit('backup.create', this.deps.dataDir, options.actor, 'failure', { error: message, source });
       throw e; // loud
+    }
+  }
+
+  /**
+   * Write this call's `_Audit` row, when `deps.audit` is set (BAK-009). A
+   * missing actor gets a generic 'cli' one — the only manager instances built
+   * without an explicit actor are the CLI's, and its internal callers (e.g.
+   * schema-apply's pre-destructive backup) do not have a real principal to
+   * name. Never throws: `AuditLog.record` already never rejects.
+   */
+  private async recordAudit(
+    action: 'backup.create' | 'backup.restore',
+    auditDataDir: string,
+    actor: BackupAuditActor | undefined,
+    outcome: 'success' | 'failure',
+    detail: Record<string, unknown>
+  ): Promise<void> {
+    if (!this.deps.openAudit) return;
+    try {
+      const opened = await this.deps.openAudit(auditDataDir);
+      try {
+        await opened.audit.record({
+          action,
+          actorKind: actor?.actorKind ?? 'cli',
+          actor: actor?.actor ?? '',
+          outcome,
+          ip: actor?.ip ?? 'cli',
+          requestId: actor?.requestId,
+          detail
+        });
+      } finally {
+        await opened.close();
+      }
+    } catch (e) {
+      // An audit failure never blocks or fails the operation it describes —
+      // the same stance AuditLog.record itself takes for its own write.
+      logger.warn('backup.audit-open-failed', { action, error: e instanceof Error ? e.message : String(e) });
     }
   }
 
@@ -365,10 +455,20 @@ export class BackupManager {
     try {
       const result = await this.doRestore(archivePath, target, options);
       if (logger) logger.completeExecution(true);
+      // Opened AFTER doRestore returns — target's db file has already been
+      // swapped by this point, so the row lands in the database that is
+      // actually on disk now, not the one this call started against.
+      await this.recordAudit('backup.restore', target, options.actor, 'success', {
+        archive: archivePath,
+        target,
+        entriesWritten: result.entriesWritten,
+        safetyArchive: result.safetyArchive
+      });
       return result;
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
       if (logger) logger.completeExecution(false, e instanceof Error ? e : new Error(message));
+      await this.recordAudit('backup.restore', target, options.actor, 'failure', { archive: archivePath, target, error: message });
       throw e; // loud
     }
   }

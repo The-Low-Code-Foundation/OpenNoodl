@@ -5,16 +5,19 @@
   "whenToUse": "Attachments, avatars, imports — any user-picked file that must persist server-side. The upload stores the file only; associating it with a record is a separate write (Create/Set Record).",
   "ports": {
     "file": "The browser file to upload; untyped so any file source connects.",
+    "private": "Boolean, default false. When true the backend ACLs the upload to its uploader instead of leaving it public — the resulting cloudfile's plain `url` then only works for the uploader (or an admin); use Sign File URL to get a usable link back out.",
     "upload": "Signal; starts the upload.",
     "cloudFile": "The stored file's handle, valid from `success` onward.",
     "progressLoadedPercent": "Number level 0–100 while uploading; drive progress UI from here."
   },
-  "examples": ["cloud-create-record-with-upload"],
+  "examples": ["cloud-create-record-with-upload", "cloud-sign-private-file-url"],
   "patterns": [
-    "Picker `success` → `upload`, upload `success` → record write: three nodes, each owning one step."
+    "Picker `success` → `upload`, upload `success` → record write: three nodes, each owning one step.",
+    "`private: true` uploads pair with Sign File URL: wire the same `success` signal to both the record write and the signer."
   ],
   "antiPatterns": [
-    "Treating `cloudFile` as set before `success` fired — sequence record writes on the success signal."
+    "Treating `cloudFile` as set before `success` fired — sequence record writes on the success signal.",
+    "Setting `private: true` and then binding `cloudFile.url` straight to an Image/link — a private file's plain url 403s for anyone but the uploader; sign it first."
   ],
-  "relatedNodes": ["Open File Picker", "Cloud File", "NewDbModelProperties", "SetDbModelProperties"]
+  "relatedNodes": ["Open File Picker", "Cloud File", "Sign File URL", "NewDbModelProperties", "SetDbModelProperties"]
 }

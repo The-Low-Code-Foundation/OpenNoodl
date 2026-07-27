@@ -195,6 +195,7 @@ function registerNodes(noodlRuntime: NoodlRuntime) {
 
     // Cloud
     require('./src/nodes/std-library/data/cloudfilenode'),
+    require('./src/nodes/std-library/data/signfileurl'), // BAK-006 follow-up
     require('./src/nodes/std-library/data/dbconfig'),
 
     // Variables

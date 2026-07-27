@@ -91,6 +91,7 @@ export type NodeTypeName =
   | 'Set Variable'
   | 'SetDbModelProperties'
   | 'SetModelProperties'
+  | 'Sign File URL'
   | 'Signal To Index'
   | 'States'
   | 'Static Data'

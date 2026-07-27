@@ -18,6 +18,7 @@
  */
 
 import * as fs from 'fs';
+import * as os from 'os';
 import * as path from 'path';
 
 import { BackendService } from './service';
@@ -26,8 +27,10 @@ import { AdapterFacade } from './persistence/AdapterFacade';
 import { BackendServiceOptions, resolveOptions } from './config';
 import { ExecutionHistory } from './execution/ExecutionStore';
 import { BackupConfigStore } from './backup/config';
-import { BackupManager } from './backup/BackupManager';
+import { BackupAuditActor, BackupManager } from './backup/BackupManager';
 import { ARCHIVE_EXT } from './backup/archive';
+import { AuditLog, ensureAuditTable } from './ops/audit';
+import { OpsState } from './ops/OpsState';
 import { exportCollection, importCollection, DataFormat } from './backup/dataio';
 import {
   applySchema,
@@ -128,6 +131,27 @@ function requireDataDir(options: Partial<BackendServiceOptions>): string {
   return resolved.dataDir;
 }
 
+/**
+ * BAK-009 follow-up: a CLI-driven backup/restore is exactly as privileged as
+ * its HTTP admin-route equivalent, but it never passes through HttpServer's
+ * dispatcher — the request-scoped place that stamps `_Audit` rows for every
+ * other privileged action — so it never got one. This factory opens the same
+ * `ops.json`-configured `AuditLog` the service itself would, against
+ * whichever dataDir BackupManager names (its own for a backup, the restore
+ * TARGET for a restore — see BackupManager's module doc for why that must be
+ * opened lazily, after the call completes, rather than held open across it).
+ * `_Audit` is ensured here because a data dir driven only by the CLI may
+ * never have called `ensureSystemTables`.
+ */
+async function openCliAuditLog(dataDir: string, allowEphemeral: boolean): Promise<{ audit: AuditLog; close: () => Promise<void> }> {
+  const handle = await createAdapter({ dataDir, allowEphemeral });
+  const facade = new AdapterFacade(handle.adapter);
+  ensureAuditTable(facade.schemaManager);
+  const ops = new OpsState(dataDir);
+  const audit = new AuditLog({ facade, getConfig: () => ops.config.audit });
+  return { audit, close: () => handle.adapter.disconnect() };
+}
+
 function cliBackupManager(options: Partial<BackendServiceOptions>): { manager: BackupManager; config: BackupConfigStore; dataDir: string } {
   const resolved = resolveOptions(options);
   const dataDir = resolved.dataDir;
@@ -135,6 +159,7 @@ function cliBackupManager(options: Partial<BackendServiceOptions>): { manager: B
   executions.open(dataDir);
   const config = new BackupConfigStore(dataDir);
   const dbPath = path.join(dataDir, 'data', 'local.db');
+  const allowEphemeral = !!options.allowEphemeral;
   const manager = new BackupManager({
     dataDir,
     dbPath,
@@ -143,9 +168,15 @@ function cliBackupManager(options: Partial<BackendServiceOptions>): { manager: B
     backendId: resolved.backendId,
     backendName: resolved.backendName,
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    getSchema: () => require('./backup/schema-migrate').tablesFromDbFile(dbPath)
+    getSchema: () => require('./backup/schema-migrate').tablesFromDbFile(dbPath),
+    openAudit: (auditDataDir: string) => openCliAuditLog(auditDataDir, allowEphemeral)
   });
   return { manager, config, dataDir };
+}
+
+/** The audit actor for every CLI-driven privileged call (BAK-009). */
+function cliActor(): BackupAuditActor {
+  return { actorKind: 'cli', actor: os.userInfo().username || '', ip: 'cli' };
 }
 
 /** Detect whether a path is a backup archive or a data dir, and snapshot it. */
@@ -326,7 +357,8 @@ async function runBackup(options: Partial<BackendServiceOptions>, extras: Record
   const result = await manager.createBackup({
     triggerType: 'manual',
     source: 'cli backup',
-    destinationDir: typeof extras.dest === 'string' ? extras.dest : undefined
+    destinationDir: typeof extras.dest === 'string' ? extras.dest : undefined,
+    actor: cliActor()
   });
   process.stdout.write(`[nodegx-backend] backup written: ${result.archivePath}\n`);
   process.stdout.write(
@@ -347,7 +379,8 @@ async function runRestore(
   const result = await manager.restore(archive, {
     triggerType: 'manual',
     source: 'cli restore',
-    safetySnapshot: !extras.noSafety
+    safetySnapshot: !extras.noSafety,
+    actor: cliActor()
   });
   process.stdout.write(`[nodegx-backend] restored ${result.entriesWritten} entries into ${result.targetDataDir}\n`);
   if (result.safetyArchive) process.stdout.write(`[nodegx-backend]   pre-restore safety snapshot: ${result.safetyArchive}\n`);

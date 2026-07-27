@@ -1,0 +1,100 @@
+{
+  "id": "cloud-sign-private-file-url",
+  "title": "Upload a private file and preview it with a signed URL",
+  "description": "Open File Picker hands the picked file to Upload File with its `private` input set, so the backend ACLs the upload to its uploader instead of leaving it public. A private file's plain URL is not directly usable in an `<img>` — it 403s for anyone else, including an unauthenticated preview — so on `success` the resulting `cloudFile` is wired into Sign File URL, whose `sign` signal is fired from the same `success`. Sign File URL mints a short-TTL signed URL (the row-ACL check that gates it is the same one the file's own GET route uses), and THAT url — not the cloudFile's own plain url — feeds the Image's `src`. Re-signing before every render (rather than persisting the signed URL) is the idiomatic use: a stored, expired signature just 403s later.",
+  "demonstrates": [
+    "Upload File",
+    "Sign File URL",
+    "Open File Picker"
+  ],
+  "components": [
+    {
+      "name": "/Private Upload Preview",
+      "nodes": [
+        {
+          "id": "root",
+          "type": "Group",
+          "label": "Uploader",
+          "parameters": {
+            "flexDirection": "column"
+          },
+          "children": [
+            "pick_btn",
+            "preview_image"
+          ]
+        },
+        {
+          "id": "pick_btn",
+          "type": "net.noodl.controls.button",
+          "label": "Pick file",
+          "parent": "root",
+          "parameters": {
+            "label": "Choose a private file"
+          }
+        },
+        {
+          "id": "preview_image",
+          "type": "Image",
+          "label": "Preview",
+          "parent": "root"
+        },
+        {
+          "id": "file_picker",
+          "type": "Open File Picker",
+          "label": "Pick"
+        },
+        {
+          "id": "upload",
+          "type": "Upload File",
+          "label": "Upload privately",
+          "parameters": {
+            "private": true
+          }
+        },
+        {
+          "id": "signer",
+          "type": "Sign File URL",
+          "label": "Sign for preview"
+        }
+      ],
+      "connections": [
+        {
+          "fromId": "pick_btn",
+          "fromProperty": "onClick",
+          "toId": "file_picker",
+          "toProperty": "open"
+        },
+        {
+          "fromId": "file_picker",
+          "fromProperty": "file",
+          "toId": "upload",
+          "toProperty": "file"
+        },
+        {
+          "fromId": "file_picker",
+          "fromProperty": "success",
+          "toId": "upload",
+          "toProperty": "upload"
+        },
+        {
+          "fromId": "upload",
+          "fromProperty": "cloudFile",
+          "toId": "signer",
+          "toProperty": "file"
+        },
+        {
+          "fromId": "upload",
+          "fromProperty": "success",
+          "toId": "signer",
+          "toProperty": "sign"
+        },
+        {
+          "fromId": "signer",
+          "fromProperty": "url",
+          "toId": "preview_image",
+          "toProperty": "src"
+        }
+      ]
+    }
+  ]
+}
