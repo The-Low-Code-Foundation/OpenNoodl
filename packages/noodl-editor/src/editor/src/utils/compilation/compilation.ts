@@ -9,7 +9,7 @@ import { NodeGraphTraverser } from '@noodl-utils/node-graph-traverser';
 
 import Model from '../../../../shared/model';
 import { BuildScript, CoreContext, DeployEnvironment, NotifyType } from './build-context';
-import { createIndexPage, deployToFolder } from './build/deployer';
+import { createIndexPage, deployToFolder, DeployToFolderResult } from './build/deployer';
 import { getIndexedPages } from './context/pages';
 
 export interface DeployOptions {
@@ -174,7 +174,7 @@ export class Compilation {
    * @param options
    * @returns
    */
-  deployToFolder(filePath: string, options: DeployOptions): Promise<void> {
+  deployToFolder(filePath: string, options: DeployOptions): Promise<DeployToFolderResult> {
     return this.deployToFolderWithContext(filePath, options, this.createCoreContext(options.environment));
   }
 
@@ -185,7 +185,11 @@ export class Compilation {
    * @param options
    * @param coreContext
    */
-  private async deployToFolderWithContext(filePath: string, options: DeployOptions, coreContext: CoreContext) {
+  private async deployToFolderWithContext(
+    filePath: string,
+    options: DeployOptions,
+    coreContext: CoreContext
+  ): Promise<DeployToFolderResult> {
     await this.loadProjectBuildScripts();
 
     const projectSettings = this.project.getSettings();
@@ -217,7 +221,10 @@ export class Compilation {
     }
 
     try {
-      await deployToFolder({
+      // DEP-008: the copy report of the *root* deploy is the one the user sees.
+      // For SSR the second pass copies the same project folder through the same
+      // rules into public/, so its report is identical by construction.
+      const result = await deployToFolder({
         project: coreContext.project,
         direntry: filePath,
         environment: options.environment,
@@ -241,6 +248,8 @@ export class Compilation {
       }
 
       await this.callBuildScripts('onPostBuild', { ...common, status: 'success' });
+
+      return result;
     } catch (error) {
       await this.callBuildScripts('onPostBuild', { ...common, status: 'failure' });
       throw error;

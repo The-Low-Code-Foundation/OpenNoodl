@@ -1,12 +1,18 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { filesystem } from '@noodl/platform';
 
 import { ProjectModel } from '@noodl-models/projectmodel';
 import { getCloudServices } from '@noodl-models/projectmodel.editor';
+import {
+  IGNORE_FILE_NAME,
+  previewProjectFileExclusions,
+  ProjectCopyReport
+} from '@noodl-utils/compilation/build/copy';
 import { createEditorCompilation } from '@noodl-utils/compilation/compilation.editor';
 
 import { PrimaryButton } from '@noodl-core-ui/components/inputs/PrimaryButton';
 import { Select } from '@noodl-core-ui/components/inputs/Select';
+import { TextButton, TextButtonSize } from '@noodl-core-ui/components/inputs/TextButton';
 import { PopupSection } from '@noodl-core-ui/components/popups/PopupSection';
 import { Text } from '@noodl-core-ui/components/typography/Text';
 import { TextType } from '@noodl-core-ui/components/typography/Text/Text';
@@ -32,6 +38,86 @@ function getSavedRenderingMode(): RenderingMode {
   // getSettings() — not .settings — a project saved without a settings block loads with settings undefined
   const saved = ProjectModel.instance.getSettings()['deployRenderingMode'];
   return saved === 'ssr' || saved === 'ssg' ? saved : 'csr';
+}
+
+/**
+ * DEP-008 criterion 5: what will not be deployed, stated before the user picks
+ * a folder rather than only in the console afterwards. A creator must be able to
+ * tell "my asset is missing" from "my asset was ignored" without reading source.
+ */
+function ExcludedFilesSection() {
+  const [report, setReport] = useState<ProjectCopyReport | null>(null);
+  const [failed, setFailed] = useState(false);
+  const [showDetails, setShowDetails] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    previewProjectFileExclusions(ProjectModel.instance?._retainedProjectDirectory)
+      .then((result) => {
+        if (!cancelled) setReport(result);
+      })
+      .catch((error) => {
+        console.error('Failed to preview deploy exclusions', error);
+        if (!cancelled) setFailed(true);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  if (failed) return null;
+  if (!report) {
+    return (
+      <Text hasBottomSpacing textType={TextType.Shy}>
+        Checking which project files will be deployed…
+      </Text>
+    );
+  }
+
+  const ignoreFileHint = report.hasIgnoreFile
+    ? `Rules come from the defaults plus your ${IGNORE_FILE_NAME}.`
+    : `No ${IGNORE_FILE_NAME} in this project — default rules only. Add one to exclude more, or a "!" line to re-include a default.`;
+
+  if (report.excluded.length === 0) {
+    return (
+      <Text hasBottomSpacing textType={TextType.Shy} testId="deploy-exclusions-summary">
+        {report.copiedCount} project file{report.copiedCount === 1 ? '' : 's'} will be deployed; none excluded.{' '}
+        {ignoreFileHint}
+      </Text>
+    );
+  }
+
+  return (
+    <>
+      <Text hasBottomSpacing textType={TextType.Shy} testId="deploy-exclusions-summary">
+        {report.copiedCount} project file{report.copiedCount === 1 ? '' : 's'} will be deployed. {report.excluded.length}{' '}
+        will not: {report.excludedByRule.map((r) => `${r.rule} (${r.count})`).join(', ')}. {ignoreFileHint}
+      </Text>
+
+      <TextButton
+        label={showDetails ? 'Hide excluded files' : 'Show excluded files'}
+        size={TextButtonSize.Small}
+        onClick={() => setShowDetails((value) => !value)}
+        testId="deploy-exclusions-toggle"
+      />
+
+      {showDetails && (
+        <div
+          style={{ maxHeight: 160, overflowY: 'auto', marginTop: 8, marginBottom: 8 }}
+          data-test="deploy-exclusions-list"
+        >
+          {report.excluded.map((file) => (
+            <Text key={`${file.source}:${file.rule}:${file.path}`} textType={TextType.Shy}>
+              {file.path} — {file.rule}
+              {file.reason ? ` (${file.reason})` : ''}
+            </Text>
+          ))}
+        </div>
+      )}
+    </>
+  );
 }
 
 export function DeployToFolderTab() {
@@ -66,9 +152,9 @@ export function DeployToFolderTab() {
             },
             async onPostBuild({ status }) {
               ToastLayer.hideActivity(activityId);
-              if (status === 'success') {
-                ToastLayer.showSuccess('Deploy successful!');
-              } else {
+              // The success toast is raised by the caller instead, so it can
+              // carry the DEP-008 exclusion count from the deploy result.
+              if (status !== 'success') {
                 ToastLayer.showError('Deploy failed.');
               }
             }
@@ -90,10 +176,36 @@ export function DeployToFolderTab() {
         const runtimeType = renderingMode === 'csr' ? undefined : 'ssr';
 
         // NOTE: Fire-n-forget
-        compilation.deployToFolder(direntry, {
-          environment,
-          runtimeType
-        });
+        compilation
+          .deployToFolder(direntry, {
+            environment,
+            runtimeType
+          })
+          .then((result) => {
+            // DEP-008 criterion 5: the count is in the toast, the per-path list
+            // with its rule is in the console (see deployer.ts logCopyReport).
+            const excluded = result?.copyReport?.excluded.length ?? 0;
+            const stale = result?.copyReport?.staleExclusions.length ?? 0;
+
+            if (stale > 0) {
+              // A path that is excluded now but exists in the output folder was
+              // put there by an earlier deploy, and is still being served.
+              ToastLayer.showError(
+                `Deploy successful, but ${stale} excluded path${stale === 1 ? '' : 's'} already existed in the output folder ` +
+                  'from an earlier deploy and were left in place. Delete them by hand — see the console.'
+              );
+              return;
+            }
+
+            ToastLayer.showSuccess(
+              excluded === 0
+                ? 'Deploy successful!'
+                : `Deploy successful! ${excluded} project file${excluded === 1 ? '' : 's'} excluded — see the console for the list.`
+            );
+          })
+          .catch(() => {
+            // onPostBuild already surfaced the failure.
+          });
       });
 
     PopupLayer.instance.hidePopup();
@@ -129,6 +241,8 @@ export function DeployToFolderTab() {
             ? `Connected cloud services: ${cloudServices.endpoint}`
             : 'No cloud services connected — set one in the Backend Services panel.'}
         </Text>
+
+        <ExcludedFilesSection />
 
         <PrimaryButton label="Pick folder" onClick={onPickFolderClicked} />
       </PopupSection>
