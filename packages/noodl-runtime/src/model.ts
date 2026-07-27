@@ -19,6 +19,8 @@
  */
 import type { ModelChangeEvent, ModelLike, ModelScopeLike } from '@noodl/types';
 
+import WeakRegistry = require('./weak-registry');
+
 /** The record itself, before the Proxy wraps it. */
 interface ModelInstance {
   id: string;
@@ -40,6 +42,8 @@ interface ModelInstance {
 interface ModelScope extends ModelScopeLike {
   models: Record<string, ModelInstance>;
   proxies: Record<string, ModelLike>;
+  /** This scope's anonymous tier — see DEBT-014. */
+  _weak: WeakRegistry<ModelInstance>;
   /** Cached by `CloudStore.forScope`; dropped on `reset`. */
   _cloudStore?: unknown;
 }
@@ -57,9 +61,20 @@ interface ModelConstructor {
   new (id: string, data: Record<string, unknown>): ModelInstance;
   prototype: ModelInstance;
 
-  /** The process-wide record table. `Model.Scope` gives each sandbox its own instead. */
+  /**
+   * The process-wide table of **named** records. `Model.Scope` gives each sandbox its own
+   * instead. Anonymously-minted records are not in here — see DEBT-014 and
+   * {@link ModelConstructor._registrySize}.
+   */
   _models: Record<string, ModelInstance>;
   Scope: ModelScopeConstructor;
+
+  /**
+   * Live entry counts per tier. Diagnostic/test-facing: the DEBT-014 success criterion is
+   * stated in terms of registry size, so it has to be observable. `anonymous` counts only
+   * entries whose record is still reachable.
+   */
+  _registrySize(): { named: number; anonymous: number };
 
   get(id?: string): ModelLike;
   create(data?: Record<string, unknown>): ModelLike;
@@ -105,12 +120,110 @@ const _modelProxyHandler: ProxyHandler<ModelInstance> = {
   }
 };
 
+// ---------------------------------------------------------------------------
+// Registry tiering — DEBT-014
+// ---------------------------------------------------------------------------
+/**
+ * **The registry owns names, not objects.**
+ *
+ * `Model.get(id)` is create-on-read, so the table serves exactly one purpose: it is the
+ * rendezvous point where two unrelated parts of a graph that *spell the same id* reach the
+ * same live record. That is a feature — `Model.get('--ndl--global-variables')`, a backend
+ * `objectId`, `'componentState' + instanceId`, an author-typed Object-node Id — and it
+ * requires the table to keep those records alive for the life of the process.
+ *
+ * It says nothing about records whose id was generated *inside* `Model.get()`/`Model.create()`.
+ * Nobody can spell a random 10-character guid a priori, so for those the table contributes
+ * no reachability that the holder of the reference does not already have. Retaining them is
+ * pure leak: every plain object handed to `collection.set()` (i.e. every Repeater item) mints
+ * one, and nothing ever removed it.
+ *
+ * So entries are tiered by **who chose the id**:
+ *
+ * - **Named** — an explicit `id` was passed in. Strong, exactly as before. Every hazard that
+ *   depends on `Model.get(sameId)` returning the same live object (CloudStore `_fromJSON`
+ *   identity, live-query reconciliation, `Noodl.Records`, component state, the agent global
+ *   store, expression subscriptions, Array Insert/Remove-by-id) resolves an explicit id and
+ *   is therefore untouched.
+ * - **Anonymous** — the id was generated here. Weak: held only as long as something else
+ *   holds the record.
+ *
+ * Spelling an anonymous id later **promotes** it to the named tier (see `Model.get`), so an
+ * id captured from `getId()` and re-resolved becomes durable at the moment it is first used
+ * as a name. That closes the one way an anonymous id can escape.
+ *
+ * `Model.exists(id)` answers from both tiers, so it stays true for as long as there is an
+ * object to find — which is the only interval in which its one production caller
+ * (`cloudstore`'s `typeof data[key] === 'string'` reference discriminator) has anything to
+ * serialize.
+ *
+ * If the host has no `WeakRef` the weak tier degrades to strong retention, i.e. exactly the
+ * previous behaviour.
+ */
+/** Instance → its Proxy, so that reaching either keeps both alive (see below). */
+const PROXY_BACKREF = Symbol('noodl.model.proxy');
+
+type ProxyCarrier = ModelInstance & { [PROXY_BACKREF]?: ModelLike };
+
+function _newRecord(id: string): ModelInstance {
+  const instance = new Model(id, {});
+  const proxy = new Proxy(instance, _modelProxyHandler) as unknown as ModelLike;
+  // Non-enumerable so it never shows up in `toJSON`, `setAll` or `fill` iteration, and
+  // symbol-keyed so it cannot collide with a data property name.
+  //
+  // `configurable: true` is REQUIRED, not tidiness. `_modelProxyHandler.ownKeys` reports the
+  // keys of `target.data`, not of the instance, and a Proxy must report every
+  // *non-configurable* own key of its target — so defining this slot with
+  // `Object.defineProperty`'s `configurable: false` default makes `Object.keys(record)`,
+  // `{ ...record }` and `Reflect.ownKeys(record)` all throw
+  // "'ownKeys' on proxy: trap result did not include Symbol(noodl.model.proxy)".
+  // That would break every Function node that spreads or enumerates a Noodl Object.
+  Object.defineProperty(instance, PROXY_BACKREF, {
+    value: proxy,
+    enumerable: false,
+    writable: false,
+    configurable: true
+  });
+  return instance;
+}
+
+function _proxyOf(instance: ModelInstance): ModelLike {
+  return (instance as ProxyCarrier)[PROXY_BACKREF] as ModelLike;
+}
+
+/**
+ * The anonymous tier.
+ *
+ * Only the *instance* is weakly referenced. The instance points at its Proxy through
+ * {@link PROXY_BACKREF} and the Proxy points at the instance as its target, so the pair is
+ * mutually reachable: either one being alive keeps both, and a `deref()` therefore never
+ * observes a half-collected record — which would otherwise let `Model.get(id)` mint a second
+ * Proxy over a still-referenced instance and silently split identity.
+ */
+const weakModels = new WeakRegistry<ModelInstance>();
+
 Model.get = function (id?: string): ModelLike {
-  if (id === undefined) id = Model.guid();
-  if (!models[id]) {
-    models[id] = new Model(id, {});
-    proxies[id] = new Proxy(models[id], _modelProxyHandler) as unknown as ModelLike;
+  if (id === undefined) {
+    // Anonymous: the id is minted here, so no other part of the graph can name it. The
+    // caller's reference is the only thing that should keep it alive.
+    const instance = _newRecord(Model.guid());
+    weakModels.add(instance.id, instance);
+    return _proxyOf(instance);
   }
+  if (models[id]) return proxies[id];
+
+  // An explicit id is a *name*. If this record was minted anonymously and someone has now
+  // spelled its id, promote it — from here on it is a rendezvous point like any other.
+  const promoted = weakModels.take(id);
+  if (promoted !== undefined) {
+    models[id] = promoted;
+    proxies[id] = _proxyOf(promoted);
+    return proxies[id];
+  }
+
+  const instance = _newRecord(id);
+  models[id] = instance;
+  proxies[id] = _proxyOf(instance);
   return proxies[id];
 };
 
@@ -126,7 +239,13 @@ Model.create = function (data?: Record<string, unknown>): ModelLike {
 };
 
 Model.exists = function (id: string) {
-  return models[id] !== undefined;
+  // Both tiers: an anonymous record that is still referenced does exist. The distinction the
+  // tiers draw is about *ownership*, not about visibility.
+  return models[id] !== undefined || weakModels.peek(id) !== undefined;
+};
+
+Model._registrySize = function () {
+  return { named: Object.keys(models).length, anonymous: weakModels.size() };
 };
 
 Model.instanceOf = function (collection: unknown) {
@@ -246,14 +365,31 @@ Model.prototype.toJSON = function () {
 Model.Scope = function ModelScope(this: ModelScope) {
   this.models = {};
   this.proxies = {};
+  this._weak = new WeakRegistry();
 } as unknown as ModelScopeConstructor;
 
+// Same tiering as the module-level registry — see the DEBT-014 note above. A scope is
+// already bounded by `reset()` (the cloud runtime resets one per request), but a single
+// long-running request that maps or filters a large collection accumulates anonymous
+// records within that one scope, so the distinction is worth keeping here too.
 Model.Scope.prototype.get = function (id?: string): ModelLike {
-  if (id === undefined) id = Model.guid();
-  if (!this.models[id]) {
-    this.models[id] = new Model(id, {});
-    this.proxies[id] = new Proxy(this.models[id], _modelProxyHandler) as unknown as ModelLike;
+  if (id === undefined) {
+    const instance = _newRecord(Model.guid());
+    this._weak.add(instance.id, instance);
+    return _proxyOf(instance);
   }
+  if (this.models[id]) return this.proxies[id];
+
+  const promoted = this._weak.take(id);
+  if (promoted !== undefined) {
+    this.models[id] = promoted;
+    this.proxies[id] = _proxyOf(promoted);
+    return this.proxies[id];
+  }
+
+  const instance = _newRecord(id);
+  this.models[id] = instance;
+  this.proxies[id] = _proxyOf(instance);
   return this.proxies[id];
 };
 
@@ -269,7 +405,7 @@ Model.Scope.prototype.create = function (data?: Record<string, unknown>): ModelL
 };
 
 Model.Scope.prototype.exists = function (id: string) {
-  return this.models[id] !== undefined;
+  return this.models[id] !== undefined || this._weak.peek(id) !== undefined;
 };
 
 Model.Scope.prototype.instanceOf = function (collection: unknown) {
@@ -283,6 +419,7 @@ Model.Scope.prototype.guid = function guid() {
 Model.Scope.prototype.reset = function () {
   this.models = {};
   this.proxies = {};
+  this._weak.clear();
   delete this._cloudStore;
 };
 

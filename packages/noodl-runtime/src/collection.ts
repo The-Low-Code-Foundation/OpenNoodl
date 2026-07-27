@@ -24,6 +24,7 @@
 import type { CollectionChangeEvent, CollectionLike, ModelLike } from '@noodl/types';
 
 import Model = require('./model');
+import WeakRegistry = require('./weak-registry');
 
 /**
  * A collection as its own method bodies see it — {@link CollectionLike} plus the two
@@ -38,7 +39,11 @@ interface CollectionConstructor {
   new (): CollectionLike;
   prototype: CollectionLike;
 
-  /** The process-wide table of named collections. */
+  /**
+   * The process-wide table of **named** collections. Anonymous ones (`Collection.create`, and
+   * `Collection.get()` with no name) are not in here — see DEBT-014 and
+   * {@link CollectionConstructor._registrySize}.
+   */
   _collections: Record<string, CollectionLike>;
 
   create(items?: ArrayLike<ModelLike | Record<string, unknown>>): CollectionLike;
@@ -46,6 +51,12 @@ interface CollectionConstructor {
   /** A plain `instanceof` test: null-safe, and narrower than "has the patched members". */
   instanceOf(collection: unknown): boolean;
   exists(name: string): boolean;
+
+  /**
+   * Live entry counts per tier. Diagnostic/test-facing: the DEBT-014 success criterion is
+   * stated in terms of registry size, so it has to be observable.
+   */
+  _registrySize(): { named: number; anonymous: number };
 }
 
 // ----
@@ -255,31 +266,63 @@ const Collection = CollectionImpl as unknown as CollectionConstructor;
 
 var collections = (Collection._collections = {} as Record<string, CollectionLike>);
 
-Collection.create = function (items?: ArrayLike<ModelLike | Record<string, unknown>>): CollectionLike {
-  const name = Model.guid();
-  collections[name] = new Collection();
-  Object.defineProperty(collections[name], "_id", {
+/**
+ * The anonymous tier — DEBT-014. See `weak-registry.ts` for the reasoning; the split here is
+ * the same one `model.ts` draws, and for this table it matters *more*.
+ *
+ * A collection holds its member Models strongly (it is a real `Array` of them), so a
+ * permanently-registered collection pins every record it ever contained. `Collection.create`
+ * and the no-argument `Collection.get` both mint a random guid name, and the call sites that
+ * use them are the highest-volume paths in the runtime: one per filter run
+ * (`filtercollectionnode`), one per map run (`mapcollectionnode`), one per query execution
+ * (`dbcollectionnode2.fetch`), one per Repeater instance (`foreach.tsx`), and one per nested
+ * array per record per deserialize (`cloudstore._deserializeJSON`). None of those names is
+ * ever published, so nothing could reach them by name — the table was pinning graphs of
+ * records that no part of the program could observe.
+ *
+ * Named collections (`Collection.get('myArray')`, the `identifierOf: 'CollectionName'` port)
+ * keep the old strong behaviour, and an anonymous name that is later spelled explicitly is
+ * promoted, so an id captured from `getId()` and re-resolved becomes durable at that point.
+ */
+const weakCollections = new WeakRegistry<CollectionLike>();
+
+function _newCollection(name: string): CollectionLike {
+  const collection = new Collection();
+  Object.defineProperty(collection, "_id", {
     enumerable: false,
     writable: false,
     value: name,
   });
+  return collection;
+}
+
+Collection.create = function (items?: ArrayLike<ModelLike | Record<string, unknown>>): CollectionLike {
+  // Always anonymous: there is no overload that names a created collection.
+  const collection = _newCollection(Model.guid());
+  weakCollections.add(collection.getId(), collection);
   if (items) {
-    collections[name].set(items);
+    collection.set(items);
   }
-  return collections[name];
+  return collection;
 };
 
 Collection.get = function (name?: string): CollectionLike {
-  if (name === undefined) name = Model.guid();
-  if (!collections[name]) {
-    collections[name] = new Collection();
-    Object.defineProperty(collections[name], "_id", {
-      enumerable: false,
-      writable: false,
-      value: name,
-    });
+  if (name === undefined) {
+    // Anonymous: the caller's reference is the only thing that should keep this alive.
+    const collection = _newCollection(Model.guid());
+    weakCollections.add(collection.getId(), collection);
+    return collection;
+  }
+  if (collections[name]) return collections[name];
+
+  // An explicit name is a rendezvous token; take ownership from here on.
+  const promoted = weakCollections.take(name);
+  if (promoted !== undefined) {
+    collections[name] = promoted;
+    return promoted;
   }
 
+  collections[name] = _newCollection(name);
   return collections[name];
 };
 
@@ -288,7 +331,13 @@ Collection.instanceOf = function (collection: unknown) {
 };
 
 Collection.exists = function (name: string) {
-  return collections[name] !== undefined;
+  // Both tiers — an anonymous collection that is still referenced does exist. `cloudstore`'s
+  // reference discriminator asks exactly that question of a string-valued property.
+  return collections[name] !== undefined || weakCollections.peek(name) !== undefined;
+};
+
+Collection._registrySize = function () {
+  return { named: Object.keys(collections).length, anonymous: weakCollections.size() };
 };
 
 // Legacy-module compatibility (DEBT-008). Backbone-era Noodl modules subclass
