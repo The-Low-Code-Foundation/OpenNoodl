@@ -11,10 +11,12 @@ import { Icon, IconName } from '@noodl-core-ui/components/common/Icon';
 import { MenuDialogWidth } from '@noodl-core-ui/components/popups/MenuDialog';
 
 import { showContextMenuInPopup } from '../../../ShowContextMenuInPopup';
+import { iconForKind, labelForKind } from '../componentKind';
 import css from '../ComponentsPanel.module.scss';
 import { ComponentTemplates } from '../ComponentTemplates';
 import { ComponentItemData, Sheet, TreeNode } from '../types';
 import { RenameInput } from './RenameInput';
+import { WarningDot } from './WarningDot';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const PopupLayer = require('@noodl-views/popuplayer').default;
@@ -43,6 +45,8 @@ interface ComponentItemProps {
   // Sheet management
   sheets?: Sheet[];
   onMoveToSheet?: (componentPath: string, sheet: Sheet) => void;
+  /** PNL-006: kept only as ancestry for a filter match — rendered dimmed. */
+  isDimmed?: boolean;
 }
 
 export function ComponentItem({
@@ -67,24 +71,20 @@ export function ComponentItem({
   onRenameConfirm,
   onRenameCancel,
   sheets,
-  onMoveToSheet
+  onMoveToSheet,
+  isDimmed
 }: ComponentItemProps) {
-  const indent = level * 12;
   const itemRef = useRef<HTMLDivElement>(null);
   const dragStartPos = useRef<{ x: number; y: number } | null>(null);
   const [isDropTarget, setIsDropTarget] = useState(false);
 
-  // Determine icon based on component type
-  let icon = IconName.Component;
-  if (component.isRoot) {
-    icon = IconName.Home;
-  } else if (component.isPage) {
-    icon = IconName.PageRouter;
-  } else if (component.isCloudFunction) {
-    icon = IconName.CloudFunction;
-  } else if (component.isVisual) {
-    icon = IconName.UI;
-  }
+  /* PNL-006: the glyph's *shape* is the derived kind, its *colour* is the
+     component's canvas category — see `componentKind.ts` and the stylesheet
+     header. The old if/else chain over four booleans is gone: two of those
+     booleans could never be true, so every non-page, non-home component fell
+     through to the same `UI` glyph. */
+  const kind = component.kind ?? 'component';
+  const icon = iconForKind(kind);
 
   // Drag handlers
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -305,9 +305,18 @@ export function ComponentItem({
       ref={itemRef}
       className={classNames(css['TreeItem'], {
         [css['Selected']]: isSelected,
-        [css['DropTarget']]: isDropTarget
+        [css['DropTarget']]: isDropTarget,
+        [css['IsHome']]: kind === 'home',
+        [css['Dimmed']]: isDimmed
       })}
-      style={{ paddingLeft: `${indent + 23}px` }}
+      /* The row's depth is the only per-row value the JS supplies. The padding
+         and every indent guide are derived from it in CSS — see the stylesheet.
+         `as React.CSSProperties` because a custom property is not in the type. */
+      style={{ '--level': String(level) } as React.CSSProperties}
+      data-test="component-tree-item"
+      data-kind={kind}
+      data-level={level}
+      title={`${labelForKind(kind)} · ${component.localName}`}
       onClick={onClick}
       onDoubleClick={handleDoubleClick}
       onContextMenu={handleContextMenu}
@@ -318,12 +327,20 @@ export function ComponentItem({
       onMouseLeave={handleMouseLeave}
       onDrop={handleDrop}
     >
+      {/* Where a folder's caret would be, so glyphs at one depth share one x. */}
+      <div className={css['CaretSlot']} />
       <div className={css['ItemContent']}>
-        <div className={css['Icon']}>
+        <div
+          className={classNames(
+            css['Icon'],
+            css[`Cat-${component.category ?? 'default'}`],
+            kind === 'home' && css['Kind-home']
+          )}
+        >
           <Icon icon={icon} />
         </div>
         <div className={css['Label']}>{component.localName}</div>
-        {component.hasWarnings && <div className={css['Warning']}>!</div>}
+        <WarningDot count={component.warningCount} />
       </div>
     </div>
   );

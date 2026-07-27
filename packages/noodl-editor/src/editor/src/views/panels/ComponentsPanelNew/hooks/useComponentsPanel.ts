@@ -2,8 +2,10 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { ComponentModel } from '@noodl-models/componentmodel';
 import { ProjectModel } from '@noodl-models/projectmodel';
+import { WarningsModel } from '@noodl-models/warningsmodel';
 
 import { EventDispatcher } from '../../../../../../shared/utils/EventDispatcher';
+import { buildKindIndex, ComponentKindIndex } from '../componentKind';
 import { Sheet, TreeNode } from '../types';
 
 /**
@@ -39,6 +41,12 @@ export function useComponentsPanel(options: UseComponentsPanelOptions = {}) {
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set(['/']));
   const [selectedId, setSelectedId] = useState<string | undefined>();
   const [updateCounter, setUpdateCounter] = useState(0);
+  /**
+   * PNL-006: warnings change far more often than the project's shape does, and
+   * on a different model. Counted separately so a warning appearing repaints the
+   * dots without rebuilding the kind index.
+   */
+  const [warningCounter, setWarningCounter] = useState(0);
   const [currentSheetName, setCurrentSheetName] = useState<string | null>(lockToSheet || null);
 
   // Subscribe to ProjectModel events using DIRECT pattern (proven in UseRoutes.ts)
@@ -66,6 +74,21 @@ export function useComponentsPanel(options: UseComponentsPanelOptions = {}) {
       }
     };
   }, []); // Empty deps: ProjectModel.instance is a singleton that never changes, so subscribe once and cleanup on unmount
+
+  /**
+   * PNL-006 — the warning dot's data source.
+   *
+   * `WarningsModel` batches its `warningsChanged` notification through a
+   * `setTimeout(1)`, so this fires once per burst rather than per warning.
+   */
+  useEffect(() => {
+    const group = { id: 'useComponentsPanel.warnings' };
+    WarningsModel.instance.on('warningsChanged', () => setWarningCounter((c) => c + 1), group);
+    return () => {
+      // `Model.off` returns the model; the cleanup must return void.
+      WarningsModel.instance.off(group);
+    };
+  }, []);
 
   // Get all components (including placeholders) for sheet detection
   // IMPORTANT: Spread to create new array reference - getComponents() may return
@@ -163,11 +186,17 @@ export function useComponentsPanel(options: UseComponentsPanelOptions = {}) {
     [lockToSheet]
   );
 
+  /**
+   * PNL-006: one walk of every graph, memoised against the same change counter
+   * the tree is. Cheaper than what it replaced — see `componentKind.ts`.
+   */
+  const kindIndex = useMemo(() => buildKindIndex(ProjectModel.instance), [updateCounter]);
+
   // Build tree structure with optional sheet filtering
   const treeData = useMemo(() => {
     if (!ProjectModel.instance) return [];
-    return buildTreeFromProject(ProjectModel.instance, hideSheets, currentSheet);
-  }, [updateCounter, hideSheets, currentSheet]);
+    return buildTreeFromProject(ProjectModel.instance, hideSheets, currentSheet, kindIndex, warningCounter);
+  }, [updateCounter, hideSheets, currentSheet, kindIndex, warningCounter]);
 
   // Toggle folder expand/collapse
   const toggleFolder = useCallback((folderId: string) => {
@@ -235,8 +264,18 @@ export function useComponentsPanel(options: UseComponentsPanelOptions = {}) {
  * @param project - The project model
  * @param hideSheets - Sheet names to hide (filter out)
  * @param currentSheet - If provided, filter to only show components in this sheet
+ * @param kindIndex - PNL-006 kind/category per component name
+ * @param warningGeneration - PNL-006; unused as a value, present so the tree is
+ *   rebuilt when warnings change (the counts are read live below)
  */
-function buildTreeFromProject(project: ProjectModel, hideSheets: string[], currentSheet: Sheet | null): TreeNode[] {
+function buildTreeFromProject(
+  project: ProjectModel,
+  hideSheets: string[],
+  currentSheet: Sheet | null,
+  kindIndex: ComponentKindIndex,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  warningGeneration: number
+): TreeNode[] {
   const rootFolder: FolderStructure = {
     name: '',
     path: '/',
@@ -291,7 +330,7 @@ function buildTreeFromProject(project: ProjectModel, hideSheets: string[], curre
   });
 
   // Convert folder structure to tree nodes
-  return convertFolderToTreeNodes(rootFolder);
+  return convertFolderToTreeNodes(rootFolder, kindIndex);
 }
 
 /**
@@ -337,7 +376,7 @@ function addComponentToFolderStructure(
 /**
  * Convert folder structure to tree nodes
  */
-function convertFolderToTreeNodes(folder: FolderStructure): TreeNode[] {
+function convertFolderToTreeNodes(folder: FolderStructure, kindIndex: ComponentKindIndex): TreeNode[] {
   const nodes: TreeNode[] = [];
 
   // Build a set of folder paths for quick lookup
@@ -351,7 +390,7 @@ function convertFolderToTreeNodes(folder: FolderStructure): TreeNode[] {
     // Skip root folder (empty name) from rendering as a folder item
     // The root should be transparent - just show its contents directly
     if (childFolder.name === '') {
-      nodes.push(...convertFolderToTreeNodes(childFolder));
+      nodes.push(...convertFolderToTreeNodes(childFolder, kindIndex));
       return;
     }
 
@@ -362,10 +401,8 @@ function convertFolderToTreeNodes(folder: FolderStructure): TreeNode[] {
     // A folder is only a "component-folder" if there's an actual component with the same path.
     // Having children (components inside) does NOT make it a component-folder - that's just a regular folder.
     const isComponentFolder = matchingComponent !== undefined;
-    const isRoot = matchingComponent ? ProjectModel.instance?.getRootComponent() === matchingComponent : false;
-    const isPage = matchingComponent ? checkIsPage(matchingComponent) : false;
-    const isCloudFunction = matchingComponent ? checkIsCloudFunction(matchingComponent) : false;
-    const isVisual = matchingComponent ? checkIsVisual(matchingComponent) : false;
+    const info = matchingComponent ? kindIndex.get(matchingComponent.name) : undefined;
+    const kind = info?.kind;
 
     const folderNode: TreeNode = {
       type: 'folder',
@@ -375,12 +412,15 @@ function convertFolderToTreeNodes(folder: FolderStructure): TreeNode[] {
         isOpen: false,
         isComponentFolder,
         component: matchingComponent, // Attach the component if it exists
-        children: convertFolderToTreeNodes(childFolder),
+        children: convertFolderToTreeNodes(childFolder, kindIndex),
         // Component type flags (only meaningful when isComponentFolder && matchingComponent exists)
-        isRoot,
-        isPage,
-        isCloudFunction,
-        isVisual
+        isRoot: kind === 'home',
+        isPage: kind === 'page',
+        isCloudFunction: kind === 'cloudfunction',
+        isVisual: kind === 'visual' || kind === 'page' || kind === 'popup' || kind === 'home',
+        kind,
+        category: info?.category,
+        warningCount: matchingComponent ? warningCountFor(matchingComponent) : 0
       }
     };
     nodes.push(folderNode);
@@ -396,10 +436,9 @@ function convertFolderToTreeNodes(folder: FolderStructure): TreeNode[] {
       return;
     }
 
-    const isRoot = ProjectModel.instance?.getRootComponent() === comp;
-    const isPage = checkIsPage(comp);
-    const isCloudFunction = checkIsCloudFunction(comp);
-    const isVisual = checkIsVisual(comp);
+    const info = kindIndex.get(comp.name);
+    const kind = info?.kind ?? 'component';
+    const warningCount = warningCountFor(comp);
 
     const componentNode: TreeNode = {
       type: 'component',
@@ -408,11 +447,16 @@ function convertFolderToTreeNodes(folder: FolderStructure): TreeNode[] {
         name: comp.name,
         localName: comp.localName,
         component: comp,
-        isRoot,
-        isPage,
-        isCloudFunction,
-        isVisual,
-        hasWarnings: false, // TODO: Implement warning detection
+        isRoot: kind === 'home',
+        isPage: kind === 'page',
+        isCloudFunction: kind === 'cloudfunction',
+        // "Can this be placed in, or made, a visual tree" — the question the
+        // context menu's "Make Home" actually asks.
+        isVisual: kind === 'visual' || kind === 'page' || kind === 'popup' || kind === 'home',
+        kind,
+        category: info?.category ?? 'default',
+        hasWarnings: warningCount > 0,
+        warningCount,
         path: comp.name
       }
     };
@@ -420,6 +464,27 @@ function convertFolderToTreeNodes(folder: FolderStructure): TreeNode[] {
   });
 
   return nodes;
+}
+
+/**
+ * PNL-006 — errors and warnings on a component, from `WarningsModel`.
+ *
+ * `excludeGlobal` drops the warnings that are already shown project-wide in the
+ * top bar; a per-row dot should mean "something is wrong *in here*".
+ *
+ * NOTE (documented in PNL-006-NOTES): this is a different source from the
+ * Problems panel, which renders `ProjectValidationService`'s semantic
+ * diagnostics. That is why the dot does not route there.
+ */
+function warningCountFor(component: ComponentModel): number {
+  try {
+    return WarningsModel.instance.getNumberOfWarningsForComponent(component, {
+      levels: ['error', 'warning'],
+      excludeGlobal: true
+    });
+  } catch {
+    return 0;
+  }
 }
 
 /**
@@ -434,41 +499,9 @@ function getSheetForComponent(componentName: string): string {
   return 'default';
 }
 
-/**
- * Check if component is a page
- */
-function checkIsPage(component: ComponentModel): boolean {
-  // A component is a page if it has nodes of type 'Page' or 'PageRouter'
-  let isPage = false;
-  component.forEachNode((node) => {
-    if (node.type.name === 'Page' || node.typename === 'Page') {
-      isPage = true;
-      return true; // Stop iteration
-    }
-  });
-  return isPage;
-}
-
-/**
- * Check if component is a cloud function
- */
-function checkIsCloudFunction(component: ComponentModel): boolean {
-  // A component is a cloud function if it has nodes of type 'Cloud Function'
-  let isCloudFunction = false;
-  component.forEachNode((node) => {
-    if (node.type.name === 'Cloud Function' || node.typename === 'Cloud Function') {
-      isCloudFunction = true;
-      return true; // Stop iteration
-    }
-  });
-  return isCloudFunction;
-}
-
-/**
- * Check if component is visual (has UI elements)
- */
-function checkIsVisual(component: ComponentModel): boolean {
-  // A component is visual if it's not a cloud function and has visual nodes
-  // For now, we'll consider all non-cloud-function components as visual
-  return !checkIsCloudFunction(component);
-}
+/* PNL-006: `checkIsPage`, `checkIsCloudFunction` and `checkIsVisual` are gone.
+   Two of the three could never return anything but a constant —
+   `checkIsCloudFunction` matched a node type name (`'Cloud Function'`) that does
+   not exist in the codebase, so it was always false, and `checkIsVisual` was its
+   negation, so it was always true. `componentKind.ts` replaces all three with
+   one walk and derivations that can actually be wrong. */

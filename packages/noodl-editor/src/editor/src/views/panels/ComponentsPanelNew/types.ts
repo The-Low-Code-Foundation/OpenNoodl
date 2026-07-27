@@ -4,6 +4,8 @@
 
 import { ComponentModel } from '@noodl-models/componentmodel';
 
+import { ComponentKind } from './componentKind';
+
 /**
  * Data structure for a component item in the tree
  */
@@ -16,7 +18,17 @@ export interface ComponentItemData {
   isPage: boolean;
   isCloudFunction: boolean;
   isVisual: boolean;
+  /** PNL-006: what this component is — see `componentKind.ts`. */
+  kind: ComponentKind;
+  /**
+   * PNL-006: the canvas category name (`ComponentModel.color`). Drives the
+   * glyph's colour via the same `--theme-color-node-category-*` token the canvas
+   * painter resolves through `CanvasTheme`.
+   */
+  category: string;
   hasWarnings: boolean;
+  /** PNL-006: real count from `WarningsModel`, for the dot's tooltip. */
+  warningCount: number;
   path: string;
 }
 
@@ -35,6 +47,10 @@ export interface FolderItemData {
   isPage?: boolean;
   isCloudFunction?: boolean;
   isVisual?: boolean;
+  /** PNL-006, only meaningful when `isComponentFolder`. */
+  kind?: ComponentKind;
+  category?: string;
+  warningCount?: number;
 }
 
 /**
