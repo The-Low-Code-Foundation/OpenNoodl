@@ -23,10 +23,19 @@ function anyToString(value: unknown) {
 }
 
 export function CodeDiffDialog({ diff, onClose }: CodeDiffDialogProps) {
+  // `isVisible` decides whether the dialog *shows*, but the children below are
+  // evaluated either way — and `DiffList` renders this with `diff === null` for
+  // as long as nothing is selected, which is its resting state. So reading
+  // `diff.original` threw on the panel's very first render and the whole of
+  // Version Control fell into its error boundary.
+  if (diff === null || diff === undefined) {
+    return null;
+  }
+
   return (
     <BaseDialog
       background={DialogBackground.Secondary}
-      isVisible={diff !== null}
+      isVisible
       hasBackdrop
       onClose={onClose}
       UNSAFE_style={{ width: '80vw' }}
