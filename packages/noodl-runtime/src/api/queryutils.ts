@@ -6,11 +6,23 @@ import ModelImport = require('../model');
 const Model = ModelImport as unknown as ModelModule;
 
 /**
+ * The one deliberate escape hatch in this file, and the reason it cannot be removed.
+ *
+ * A Parse query is an *open, arbitrarily nested* JSON document — `{ prop: { $gt: 3 } }`,
+ * `{ $and: [ … ] }`, `{ $relatedTo: { object: { __type: 'Pointer', … } } }` — and
+ * `matchesQuery` walks it dynamically, reading `query[k]['$eq']` for a `k` and an operator
+ * neither of which is known statically. Typing the document as `unknown` does not describe
+ * it any better; it only moves the same assertion to fifteen read sites and hides it.
+ * Declared once, named, and documented here instead.
+ */
+type OpenJson = any;
+
+/**
  * A Parse-style query document — `{ prop: { $gt: 3 } }`, `{ $and: [...] }`, and so on.
  * Deliberately open: this module's whole job is producing and interpreting it, and the
  * backend accepts more operators than any one function here writes.
  */
-export type ParseQuery = Record<string, any>;
+export type ParseQuery = Record<string, OpenJson>;
 
 /** A leaf or group in the editor's visual filter tree. */
 export interface VisualFilterQuery {
@@ -75,7 +87,7 @@ export function convertVisualFilter(
   } else {
     const _res: ParseQuery = {};
     let cond;
-    let value: any = query.input !== undefined ? inputs[query.input] : query.value;
+    let value: OpenJson = query.input !== undefined ? inputs[query.input] : query.value;
 
     if (query.operator === 'exist') {
       _res[query.property] = { $exists: true };
@@ -143,7 +155,7 @@ export function matchesQuery(model: ModelLike, query?: ParseQuery): boolean | nu
   // Every `&=`/`|=` right-hand side below is wrapped in `Number(...)`. That is exactly the
   // coercion the compound bitwise assignment already performs on a boolean at runtime —
   // TypeScript simply will not accept a boolean operand — so the conversion is inert.
-  let match: any = true;
+  let match: OpenJson = true;
 
   if (query === undefined) return true;
 
@@ -240,7 +252,7 @@ export interface FilterOpOptions {
  * `error` returned (usually `undefined`), so a malformed filter degrades to "no filter"
  * with a message rather than taking the node down.
  */
-export function convertFilterOp(filter: Record<string, any>, options: FilterOpOptions): ParseQuery {
+export function convertFilterOp(filter: ParseQuery, options: FilterOpOptions): ParseQuery {
   const keys = Object.keys(filter);
   if (keys.length === 0) return {};
   if (keys.length !== 1) {

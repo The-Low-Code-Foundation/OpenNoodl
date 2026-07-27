@@ -2250,7 +2250,7 @@ files. And **no live editor pass**, which is now the only gate this slice owes.
 
 ---
 
-## 28. Next slice
+## 28. Slice 12's plan for slice 13 (items 4 done; item 8 was WRONG — see §29.2)
 
 Tracked file counts at `066febdd`: `noodl-runtime/src` **28 `.js` / 97 `.ts`**;
 `noodl-viewer-react/src` **4 `.js` / 1 `.jsx` / 138 `.ts` / 46 `.tsx`** (untouched here).
@@ -2296,3 +2296,204 @@ real tests.
 
 **Owed, and not paid by this slice:** a live editor pass. The bundle debt from §25.6 is
 paid.
+
+---
+
+## 29. Slice 13 — the runtime's infrastructure, and the boundary that stops the rest
+
+Tracked file counts at `c364c781`: `noodl-runtime/src` **18 `.js` / 107 `.ts`**;
+`noodl-viewer-react/src` unchanged at **4 `.js` / 1 `.jsx` / 138 `.ts` / 46 `.tsx`**.
+
+Three commits: the behaviour fixes §28 item 4 earned (`68f55130`), ten leaf modules
+(`88a30806`), and `api/queryutils` plus the finding (`c364c781`).
+
+### 29.0 The behaviour fixes, committed first (`68f55130`)
+
+Same shape as §25.0 and §27.0, and for the same reason: the defects were found by a typing
+slice, they are live failures in shipping nodes, and they get their own commit with
+characterisation tests **proven able to fail** — 2 of 5 fail against the pre-fix source, and
+the 3 that pass pin behaviour that was already right (`test/nodes/query-records-cleanup.test.ts`).
+
+1. **Query Records' `error` output had never carried a message** (§27.3 item 1). `setError`
+   wrote `_internal.err`; the getter reads `_internal.error`. Only the `failure` signal
+   fired. §23.4 recorded exactly this in the *deprecated* `dbcollectionnode` — the same bug
+   survived the rewrite into the node that replaced it. Fixed at the setter, so the getter,
+   the setter and the `_internal` declaration are finally one description; the orphaned
+   `err` field is gone.
+2. **Query Records leaked its `create` listener** (§27.3 item 3). `initialize` subscribes to
+   `save`, `create`, `delete`; `_onNodeDeleted` unsubscribed `insert`, `delete`, `save`.
+   Nothing emits `insert`, and the `create` listener closes over the node, so a deleted node
+   stayed reachable and kept patching a collection nobody reads.
+3. **HTTP Request's four debug `console.log`s are gone** (§27.3 item 8). One fired at module
+   scope on every page load of every deployed app; `doFetch`'s printed the *built request
+   headers*, so a Bearer or Basic credential landed in the browser console.
+
+A wrinkle worth keeping: the stub context of §27.6 trap 5 had to grow three members
+(`connectionSentValue`, `nodeIsDirty`, `connectionSentSignal`) — but only *after* the fix,
+because before it the `error` output had no value to send and the code never reached
+`Node.sendValue`. A test harness that is "big enough" against buggy source can be too small
+against fixed source.
+
+### 29.1 The export rule, stated correctly at last
+
+Three slices have now hit this from three directions and each stated the rule slightly
+wrong. Here it is completely.
+
+**Two questions decide a runtime module's export form, and they are independent.**
+
+*Does any consumer use an ESM **named** import?* If so the module must use **named
+exports**. `export =` cannot be named-imported — that is `TS2497` regardless of
+`esModuleInterop`. This is what bit slice 4 (`@noodl/runtime/src/utils`, imported
+`import { x } from`) and what bit this slice: `node.ts` has
+`import { evaluateExpression, … } from './expression-evaluator'`, so
+`expression-type-coercion` — imported the same way — had to take named exports. A *default*
+import from `export =` is fine, because `esModuleInterop` is on in every consuming config.
+
+*Is the module reachable by an ESM `import` from a **`noodl-viewer-react`** `.ts` file?* If
+so it is type-checked **inside that package's program**, and that program is `module: es6`.
+There, `import … = require()` is `TS1202` and the runtime's ambient `src/globals.d.ts` is
+out of scope (`TS2304`). Such a module can use neither `export =` nor `import = require()`
+and cannot read the ambients — it must be written in pure ESM, exactly as
+`nodes/std-library/variables/variablebase.ts` already is.
+
+`noodl-viewer-cloud` is **`module: CommonJS`** and therefore has never had the second
+problem. That is the whole reason `nodescope.ts` — imported by `noodl-viewer-cloud/src/index.ts`
+— has used `export =` *and* `import guid = require('./guid')` since slice 2 with no trouble,
+while `cloudstore.ts` broke immediately. §25.1 recorded "a runtime `.ts` that any viewer
+`.ts` imports cannot use `export =`", which named the wrong mechanism and the wrong package.
+
+The reason the `.js` majority is unaffected: `noodl-viewer-react/tsconfig.json` sets
+`allowJs: false`, so a runtime `.js` file is never in its program at all. **Converting a
+file is what puts it there.**
+
+### 29.2 Four modules reverted, and §28 item 8 reopened
+
+`api/cloudstore`, `api/records`, `api/configservice` and `api/cloudfile` were converted,
+typechecked clean under `typecheck:runtime`, and then produced **30+ `TS1202`/`TS2304`** in
+the viewer production bundle. Each is imported by a react-viewer `.ts`
+(`uploadfile`, `userservice`, `cloudfunction`, and two `nodes-deprecated` files). All four
+are **reverted to `.js` deliberately**, and the same applies to the three not yet attempted:
+`model`, `collection`, `javascriptnodeparser`. Seven modules, and they are the ones §28
+ranked highest.
+
+Three ways out, none of them a five-minute job:
+
+1. **Write them in pure ESM** (`export default` + `import`). Breaks every plain-JS
+   `require()` consumer — `noodl-viewer-cloud/src/noodl-js-api.js`,
+   `noodl-viewer-cloud/src/api/files.js`, `noodl-viewer-react/src/api/files.ts`'s bare
+   `require`, several runtime `.js` files and four jest suites — each of which would need
+   the §13.5 `.default || module` unwrap. It also spreads: anything these import joins the
+   viewer's program too.
+2. **Ship `.d.ts` from `@noodl/runtime`** so consumers resolve declarations instead of
+   sources, and the react viewer stops compiling runtime `.ts` at all. **This reopens §28
+   item 8**, which recommended closing that idea as dead now that all *node* code is
+   TypeScript. It is not dead — it is precisely the thing that makes the last seven modules
+   convertible. Slice 9 already named its blocker concretely: no `types` field and no build
+   step, with `main` pointing at source for four consuming packages.
+3. **Move the react viewer to `module: CommonJS`**, matching the cloud viewer. Cheapest to
+   write and the largest blast radius; not obviously safe for tree-shaking or the SSR build.
+
+Recommend (2), as its own task rather than inside a typing slice.
+
+### 29.3 Defects found — three, none fixed
+
+1. **`matchesQuery`'s `$lte` branch compares against `$lt`.** On an `$lte`-only condition
+   that is `undefined`, and every comparison with `undefined` is false — so an `$lte` filter
+   has never matched a locally-held record, while the *same* filter sent to the backend
+   matches correctly. Local and server-side filtering disagree, which is the worst kind of
+   quiet wrong for a Query Records node deciding whether a just-created record belongs in
+   its results.
+2. **`matchesQuery`'s `$nin` branch reads `$in`.** On a `$nin`-only condition that throws a
+   `TypeError` rather than mismatching quietly.
+3. **`NodeModel.setStateTransitionParamter` guards the wrong level.** It creates
+   `stateTransitions` but never `stateTransitions[state]`, so the write throws on the first
+   transition set for a state that `setStateTransitions` has not already seeded.
+
+Two more recorded at the site without a numbered entry: `records.js`'s `removeRelation`
+rejects with "Failed to add relation."; and `CloudStore.create` emits its `create` event
+with `objectId: undefined`, because the id is only known once the backend answers and lives
+in `object.objectId` instead.
+
+### 29.4 The package entry point is untyped, and that is now the visible next thing
+
+`noodl-runtime.js` assigns `NoodlRuntime.instance = this` **inside its constructor**, which
+TypeScript's inference of a `.js` file does not track. So `import NoodlRuntime = require(…)`
+resolves `instance` to nothing, and every converted file that needs it uses a bare
+`const NoodlRuntime = require(…)` instead — `byob-utils`, `user`, `setuserproperties`, and
+now `configservice` had to. That is an untyped hole at the centre of the package, reached
+from ~10 files. It is not in this slice's scope but it is the obvious companion to §29.2's
+option 2.
+
+### 29.5 Verification
+
+`catalog:check` byte-identical — **154 node types, 89 with dynamic ports** — at every step,
+and it runs `register-nodes.js`, so it proves every converted file still loads and registers.
+
+Runtime, viewer, cloud and editor typechecks 0 errors. **Runtime jest 973 pass / 0 fail**
+(968 at `70f78585`, +5 from §29.0's characterisation tests). **nodegx-backend 619 pass / 61
+suites, and its esbuild build green** — it bundles the `local-sql` tree out of this package,
+so the converted `local-sql/index.ts` was verified through *its* loader rather than assumed
+(§27.4's lesson applied). **Viewer production bundle green, 0 `tsl` errors.**
+
+**The live editor pass ran and is green** — the Agent Chat Example project opens, the node
+graph paints with wires and node colours, the preview renders, and `.logs/dev.log` carries
+**zero `renderer:exception` lines**. That clears the debt slices 11 *and* 12 both recorded as
+owed, and is the evidence for the spec's "no behavioural regressions in real projects".
+
+### 29.6 Traps
+
+1. **`typecheck:viewer`'s usual filter cannot see this class of error.** Slices 5–12 count
+   viewer errors with `grep 'packages/noodl-viewer-react/src/'`, but a runtime file pulled
+   into the viewer's program reports against `packages/noodl-runtime/…` and is silently
+   dropped. That is §13.1's trap a **third** time, from a new direction. Use
+   `grep -E '^packages/'` (node_modules excluded), and treat the **prod bundle** as the gate
+   that actually decides — it is what found this.
+2. **`lerna exec … npm run build` can exit 0 with a failed webpack.** The first viewer build
+   this slice ran printed only its header and returned success; the errors appeared only on
+   a second invocation piped through `grep`. Count `^\[tsl\] ERROR` lines explicitly rather
+   than trusting the exit code.
+3. **`export =` and any other export cannot coexist** (§27.1, second occurrence — this time
+   from `.ts` files rather than `.d.ts`). `TS2309`. `records.ts` and `cloudstore.ts` both
+   needed sibling `-types.d.ts` files; `projectsettings.ts` instead kept its interfaces
+   module-local, which is the right call when no consumer wants them.
+4. **A `.d.ts` sibling is the pattern; a same-basename `.d.ts` is not.** `records-types.d.ts`
+   beside `records.ts`, never `records.d.ts`.
+
+---
+
+## 30. Next slice
+
+Tracked file counts at `c364c781`: `noodl-runtime/src` **18 `.js` / 107 `.ts`**.
+
+**Seven of the eighteen are blocked** on §29.2 and must not be attempted until it is
+decided: `model`, `collection`, `javascriptnodeparser`, `api/cloudstore`, `api/records`,
+`api/configservice`, `api/cloudfile`.
+
+**Eleven are convertible today**, none of them on the viewer boundary:
+
+1. **`models/graphmodel` (337) and `models/componentmodel` (389).** Both already described
+   by `GraphModelLike`/`ComponentModelLike`; the §28 item 2 case, cheapest per line and most
+   likely to find a disagreement — `nodemodel` found one this slice.
+2. **`editorconnection` (459) and `editormodeleventshandler` (284).** The editor-facing
+   pair; `editorconnection.activewarnings` is already converted.
+3. **`expression-evaluator` (311).** Must use **named exports** — `node.ts` named-imports
+   five of its functions (§29.1).
+4. **`nodelibraryexport` (672).**
+5. **The `local-sql` tree — `engine` (226), `SchemaManager` (776), `QueryBuilder` (944),
+   `LocalSQLAdapter` (1102).** 3,048 lines and the largest single block left. It is
+   `nodegx-backend`'s storage engine that happens to live here, so its gate set is the
+   backend's: `lerna run build`, its 619 specs, and `check:persistence`.
+6. **`events` (496) is vendored Joyent `EventEmitter`.** Recommend *not* converting it, for
+   the same reason `register-nodes.js` is not a conversion target (§27.4): it is third-party
+   code whose value per line is zero and whose risk is not. Record the decision and stop
+   carrying it.
+
+**`noodl-runtime.js` itself** (§29.4) is the companion to §29.2 option 2, not a separate
+idea.
+
+**Do not raise `strict`** (spec step 8), unchanged. Step 9's editor-side sweep stays with
+PLAT-004.
+
+**Owed:** nothing. The live editor pass is paid, the bundles are green, and the `tsfixme`
+gate's red is entirely AIX-005's — this slice's `any` contribution is zero.
+

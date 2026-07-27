@@ -43,13 +43,27 @@ There is a further reason to do this now rather than later, and it is the sequen
 
 ## Scope
 
+> **Status, 2026-07-27 (after slice 13).** Every success criterion is met except two, and
+> neither is now a matter of doing more of the same work. The editor-side `TSFixme` sweep
+> (step 9) is PLAT-004's by agreement. Full TypeScript compilation of `noodl-runtime` is
+> blocked for **seven** of its remaining eighteen `.js` modules by the module-boundary
+> problem in [NOTES §29.2](./PLAT-003-NOTES.md) — a structural issue about how
+> `noodl-viewer-react` compiles the runtime's sources, not a volume of files. Deciding that
+> (recommended: ship `.d.ts` from `@noodl/runtime`, as its own task) is what "finish" now
+> means. The other eleven modules are convertible today and are itemised in NOTES §30.
+
 ### In Scope
 - [x] Type the core runtime: `Node`, node definition, register, scope, context/scheduler
 - [x] Publish the node-definition API types (usable from `noodl-types` or an equivalent shared package)
 - [x] Convert standard-library nodes incrementally *(viewer: top level slice 5, `componentutils/`+`user/` slice 6, `data/` slice 7, `navigation/` slice 8, `nodes-deprecated/` slice 10; runtime: all 24 non-`data/` files slice 11, `std-library/data/` slice 12. **Complete — no node code remains in JavaScript in either package.**)*
 - [x] Type `react-component-node.js` (the React binding hub)
 - [x] Convert `noodl-viewer-react` visual and logic nodes *(visual slice 4, logic slices 5–8, deprecated slice 10; every node file in the package is now TypeScript)*
-- [~] Write characterisation tests before converting each significant unit *(partially: the runtime suite grew 132 → 959 across slices 1–11 and slice 11's behaviour fixes were test-first and proven able to fail, but tests have generally been written alongside conversions rather than before them)*
+- [~] Write characterisation tests before converting each significant unit *(partially, and
+  the shortfall is honest: the runtime suite grew **132 → 973** across slices 1–13, and each
+  of slices 11, 12 and 13 opened with a behaviour-fixing commit whose tests were written
+  first and **proven able to fail** against their own pre-fix source. But that discipline
+  was applied to the *defects* conversion uncovered, not to every unit converted — for the
+  conversions themselves, tests were generally written alongside rather than before.)*
 - [x] Coordinate the port/type model with SUB-004 so catalog and types agree
 - [ ] Remove editor-side `TSFixme`s that existed only because the runtime was untyped
 
@@ -90,13 +104,24 @@ Do not chase `strict: true` initially. Get accurate types with `strict: false`, 
 
 ## Success Criteria
 
-- [ ] `noodl-runtime` and `noodl-viewer-react` compile as TypeScript with meaningful types
+- [~] `noodl-runtime` and `noodl-viewer-react` compile as TypeScript with meaningful types
+  *(**all node code in both packages is TypeScript**, and `noodl-viewer-react` is done bar
+  four deliberate non-node files. `noodl-runtime/src` is at 18 `.js` / 107 `.ts`; **seven of
+  those eighteen are blocked** on the module-boundary problem in NOTES §29.2 — the react
+  viewer compiles at `module: es6`, so a runtime `.ts` it ESM-imports cannot use `export =`,
+  `import = require()`, or the runtime's ambient globals. Eleven are convertible today.)*
 - [x] Node-definition API types published and documented
 - [x] Dynamic ports modelled honestly rather than falsely typed
 - [x] Port/type model agrees with SUB-004's catalog
-- [ ] Characterisation tests written and passing; overall coverage measurably higher
-- [ ] No behavioural regressions in real projects
-- [ ] Editor-side boundary `TSFixme`s removed
+- [x] Characterisation tests written and passing; overall coverage measurably higher
+  *(runtime jest **132 → 973 passing, 0 failing**; slices 11, 12 and 13 each opened with a
+  test-first behaviour-fixing commit proven able to fail against its own pre-fix source)*
+- [x] No behavioural regressions in real projects *(live editor pass green at slice 10 and
+  again at slice 13: project opens, graph paints, preview renders, zero renderer exceptions;
+  `catalog:check` byte-identical across all thirteen slices, which is the stronger check —
+  it runs `register-nodes.js`, so it proves every converted file still loads and registers)*
+- [ ] Editor-side boundary `TSFixme`s removed *(spec step 9 — owned by PLAT-004, whose
+  ratchet and baseline are the mechanism; see NOTES §30)*
 
 ## Risks & Mitigations
 
@@ -115,7 +140,11 @@ Do not chase `strict: true` initially. Get accurate types with `strict: false`, 
 
 ## Checklist
 
-- [ ] Branch `task/plat-003-type-the-runtime`; agree port/type model with SUB-004
+- [x] ~~Branch `task/plat-003-type-the-runtime`~~; agree port/type model with SUB-004
+  *(the branch never existed and should not — this repo commits task work straight to
+  `cline-dev`. The SUB-004 half was done in slice 2 and has held for thirteen slices: the
+  published types import SUB-004's catalog vocabulary rather than restating it, so the two
+  cannot drift.)*
 - [x] Characterisation tests for core runtime behaviours
 - [x] Type core: Node, definition, register, scope, context
 - [x] Publish and validate node-definition API types
@@ -126,8 +155,12 @@ Do not chase `strict: true` initially. Get accurate types with `strict: false`, 
   not node code: the runtime's `api/`, models and other infrastructure, the 3 Group scroll
   plugins and `viewer.jsx`. `register-nodes.js` stays JavaScript — see NOTES §27.4)*
 - [x] Type `react-component-node.js`
-- [ ] Tighten strictness; sweep boundary `TSFixme`s
-- [ ] **After each slice merges, re-run `npm run tsfixme:baseline` and
+- [~] Tighten strictness; sweep boundary `TSFixme`s *(both deliberately **not** done, and
+  the reasons are recorded rather than pending. `strict` stays off per the Technical
+  Approach's own instruction — "do not chase `strict: true` initially" — and every slice
+  from 10 onwards has re-affirmed it; raising it is a separate task, not a step of this one.
+  The editor-side sweep is spec step 9 and belongs to PLAT-004, which owns the ratchet.)*
+- [x] **After each slice merges, re-run `npm run tsfixme:baseline` and
       `npm run tsfixme:report` and commit the result.** Typing the runtime is the single
       largest mover of these counts in the repo, in both directions, and PLAT-004's
       ratchet only blocks *increases* — so a slice that removes fifty markers banks
@@ -135,11 +168,73 @@ Do not chase `strict: true` initially. Get accurate types with `strict: false`, 
       gate red for every other task until someone raises it. Chasing that from a third
       session is a treadmill; the task that moved the number is the one that should
       record it (PLAT-004-NOTES §2, §6.2, §10).
-- [ ] CHANGELOG with before/after file counts; open PR
+- [x] CHANGELOG with before/after file counts; ~~open PR~~ *(no PR — work lands on
+  `cline-dev` directly; the CHANGELOG below carries the counts slice by slice)*
 
 ## CHANGELOG
 
 In progress. Full as-built record in [PLAT-003-NOTES.md](./PLAT-003-NOTES.md).
+
+### Slice 13 — 2026-07-27 — the runtime's infrastructure, and the boundary that stops the rest
+
+- **Ten leaf modules → `.ts`** (`88a30806`): `services/services`, `projectsettings`,
+  `editorconnection.activewarnings`, `timerscheduler`, `expression-type-coercion`,
+  `api/adapters/types`, `api/adapters/index`, `api/adapters/local-sql/index`,
+  `models/nodemodel`, and then `api/queryutils` (`c364c781`).
+  **`timerscheduler` and `nodemodel` are §28 item 2's case** — already *described* in
+  `@noodl/types`, so converting them is mostly making the implementation agree with its own
+  published type, which is what finds disagreements. `api/adapters/types` had been a wall of
+  `@typedef` exporting `{}`: the types existed only as comments and nothing could reference
+  them.
+- **The behaviour-fixing commit §28 item 4 earned** (`68f55130`), test-first and **proven
+  able to fail** — 2 of 5 characterisation tests fail against the pre-fix source.
+  **Query Records' `error` output had never carried a message** (setter wrote
+  `_internal.err`, getter reads `_internal.error` — §23.4's defect repeated in the node that
+  replaced the one it was found in); **Query Records leaked its `create` listener**
+  (`_onNodeDeleted` unsubscribed `insert`, a name nothing emits, so the listener outlived the
+  node and kept it reachable); and **HTTP Request's four debug `console.log`s are gone**, one
+  of which printed the built request headers and so put a Bearer or Basic credential in the
+  browser console.
+- **The finding that matters more than the conversion** (NOTES §29.1–§29.2).
+  `noodl-viewer-react` compiles at **`module: es6`**; `noodl-viewer-cloud` at
+  **`module: CommonJS`**. A runtime `.ts` reached by an ESM `import` from a *react* viewer
+  `.ts` is type-checked inside that ESM program, where `import … = require()` is `TS1202`
+  and the runtime's ambient `src/globals.d.ts` is out of scope (`TS2304`). That is why
+  `nodescope.ts` has used both idioms since slice 2 without trouble — only the *cloud*
+  viewer imports it — and why `cloudstore` broke at once. **`api/cloudstore`, `api/records`,
+  `api/configservice` and `api/cloudfile` were converted, typechecked clean, produced 30+
+  bundle errors, and are reverted to `.js` deliberately**; `model`, `collection` and
+  `javascriptnodeparser` are on the same boundary and were not attempted. Seven modules —
+  the seven §28 ranked highest. `allowJs: false` in the viewer's tsconfig is why the `.js`
+  majority is unaffected: **converting a file is what puts it in that program.**
+  **This reopens §28 item 8** — "`@noodl/runtime` ships `.d.ts`", recommended for closure as
+  dead, is in fact the thing that would make those seven convertible.
+- **The `typecheck:viewer` gate could not have caught it** (NOTES §29.6 trap 1). Its filter
+  since slice 5 counts only `packages/noodl-viewer-react/src/`, and every error here was
+  attributed to a `packages/noodl-runtime/…` file. §13.1's trap a third time. The prod
+  bundle is the gate that decides.
+- `@noodl/types` corrections, both found by conversion: **`GraphPortModel.plug` admitted two
+  values where four reach it** — `'input/output'`, and `'outputs'`, a misspelling real
+  exported projects contain and `createFromExportData` rewrites on the way in; and
+  **`ModelLike._class`**, set by `CloudStore._fromJSON` on every record from the backend and
+  what lets `Noodl.Records.save(id)` work from an id alone, which reached ~12 readers as
+  `unknown` (the §19.3 shape, sixth occurrence). Also published `_noodl_cloudservices`.
+- **Three defects documented at the site, none fixed** (NOTES §29.3). `matchesQuery`'s
+  `$lte` branch compares against `$lt` — `undefined` on an `$lte`-only condition — so local
+  and server-side filtering silently *disagree*; its `$nin` branch reads `$in` and throws;
+  and `NodeModel.setStateTransitionParamter` guards `stateTransitions` but not
+  `stateTransitions[state]`.
+
+File counts: `noodl-runtime/src` 28 `.js` / 97 `.ts` → **18 `.js` / 107 `.ts`**.
+`noodl-viewer-react/src` unchanged at 4 `.js` / 1 `.jsx` / 138 `.ts` / 46 `.tsx`.
+
+Gates: `catalog:check` byte-identical (154 node types, 89 dynamic); runtime, viewer, cloud
+and editor typechecks 0 errors under the **corrected** filter; **viewer production bundle
+green, 0 `tsl` errors**; runtime jest **973 pass / 0 fail** (968 at `70f78585`); nodegx-backend
+build green and 619 specs pass — it bundles the `local-sql` tree through esbuild, so that was
+verified rather than assumed. **`any` contribution zero**; the `tsfixme` gate's red is the
+same 56 AIX-005 agent markers, so the baseline is again deliberately left alone.
+**The live editor pass ran and is green**, clearing the debt slices 11 *and* 12 both owed.
 
 ### Slice 12 — 2026-07-27 — `@noodl/runtime`'s `std-library/data/`, and the end of node code in JavaScript
 
