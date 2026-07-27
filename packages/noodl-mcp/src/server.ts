@@ -15,6 +15,7 @@ import { registerDocsReadTools, registerDocsWriteTools } from './tools/docsTools
 import { registerReadTools } from './tools/read';
 import { registerStyleReadTools, registerStyleWriteTools } from './tools/styleTools';
 import { registerValidateTools } from './tools/validateTools';
+import { registerReviewTools } from './tools/review';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const PKG_VERSION: string = require('../package.json').version;
@@ -52,6 +53,9 @@ export function createServer(options: ServerOptions): CreatedServer {
   registerStyleReadTools(server, store);
   registerDocsReadTools(server, store);
   registerBackendReadTools(server);
+  // AIX-010 — read-only: assembles the docs-retrofit context. The caller drafts
+  // and writes back through write_project_doc.
+  registerReviewTools(server, store);
   if (options.allowWrites) {
     registerAuthorTools(server, store);
     registerPlanTools(server, store);

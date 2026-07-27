@@ -19,6 +19,12 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
+  PROJECT_REVIEW_CHANGED,
+  ProjectReviewStore,
+  REVIEW_SOURCE,
+  type ProjectReviewCoverage
+} from '@noodl-models/AiAssistant/review';
+import {
   currentProjectDocsModel,
   DOC_PROPOSALS_CHANGED,
   DOCS_CHANGED,
@@ -30,6 +36,7 @@ import {
   type DocProposal
 } from '@noodl-models/ProjectDocs';
 import { ProjectModel } from '@noodl-models/projectmodel';
+import { SidebarModel } from '@noodl-models/sidebar';
 
 import { EventDispatcher } from '../../../../../shared/utils/EventDispatcher';
 
@@ -45,6 +52,9 @@ import { BasePanel } from '@noodl-core-ui/components/sidebar/BasePanel';
 import { ExperimentalFlag } from '@noodl-core-ui/components/sidebar/ExperimentalFlag';
 import { Text, TextType } from '@noodl-core-ui/components/typography/Text';
 
+import { AiAuthoringPanel_ID } from '../AiAuthoringPanel/AiAuthoringPanel';
+import { ProjectReviewBanner } from '../AiAuthoringPanel/ProjectReviewBanner';
+import { ReviewCoverageSummary } from '../AiAuthoringPanel/ProjectReviewView';
 import css from './DocsPanel.module.scss';
 
 export const DocsPanel_ID = 'project-docs';
@@ -167,6 +177,22 @@ export function DocsPanel() {
     [proposals, reviewing, selected]
   );
 
+  // AIX-010 criterion 4: what the review read, shown *before* an accept. A
+  // proposal from the project review carries a coverage record; anything else
+  // (a plan's doc operation, an MCP client) does not, and shows nothing extra.
+  const [reviewCoverage, setReviewCoverage] = useState<ProjectReviewCoverage | null>(() =>
+    ProjectReviewStore.instance.getCoverage()
+  );
+  useEffect(() => {
+    const store = ProjectReviewStore.instance;
+    const update = () => setReviewCoverage(store.getCoverage());
+    store.on(PROJECT_REVIEW_CHANGED, update, EVENT_GROUP + ':review');
+    update();
+    return () => {
+      store.off(EVENT_GROUP + ':review');
+    };
+  }, []);
+
   const save = useCallback(async () => {
     if (!docs || draft === null) return;
     try {
@@ -231,6 +257,16 @@ export function DocsPanel() {
   return (
     <BasePanel title="Docs" isFill>
       <ExperimentalFlag />
+      {/* AIX-010: surface two of two. Same component, same dismissal, same
+          per-project memory as the one in the Build panel. */}
+      <ProjectReviewBanner
+        onStart={() => {
+          // The run and its progress feed live in the Build panel; duplicating
+          // them here would be two renderings of one job. Request, then go.
+          ProjectReviewStore.instance.requestReview();
+          SidebarModel.instance.switch(AiAuthoringPanel_ID);
+        }}
+      />
       <div className={css['Root']}>
         <div className={css['FileList']}>
           {entries.map((entry) => (
@@ -306,6 +342,14 @@ export function DocsPanel() {
                 />
               </HStack>
             </div>
+            {/* Criterion 4: the coverage is above the diff, not below it —
+                how much of the project was read is what tells you how hard to
+                read what follows. */}
+            {proposal.source === REVIEW_SOURCE && reviewCoverage && (
+              <Box hasXSpacing hasYSpacing>
+                <ReviewCoverageSummary coverage={reviewCoverage} />
+              </Box>
+            )}
             <div className={css['DiffHost']}>
               <CodeDiffView
                 original={proposal.baseline ?? ''}

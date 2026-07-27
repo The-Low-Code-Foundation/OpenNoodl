@@ -14,11 +14,48 @@
  * @module AiAssistant/explain/graph
  */
 
-import type { ComponentModel } from '@noodl-models/componentmodel';
-import type { NodeGraphNode } from '@noodl-models/nodegraphmodel';
-
 import { isComponentRef } from '../../../validation/model';
 import type { ExplainGraph, GraphComponent, GraphConnection, GraphNode } from './types';
+
+/**
+ * The live adapters are typed *structurally* rather than against `ComponentModel`
+ * and `NodeGraphNode`.
+ *
+ * They read six fields between them, and importing the model classes — even as
+ * `import type`, which erases at build time — makes every consumer of this
+ * module a consumer of `componentmodel.ts`, and through it of the entire editor
+ * and `noodl-core-ui`. That is invisible until something outside the editor
+ * typechecks this file: adding the AIX-010 assembler to `noodl-mcp`'s
+ * `editor-deps` took that package from 18 pre-existing errors to 1,985, all of
+ * them in editor and core-ui sources the MCP server never runs.
+ *
+ * `ComponentModel` and `NodeGraphNode` still satisfy these, so every existing
+ * call site is unchanged and passes its real models exactly as before.
+ */
+interface EditorPortLike {
+  name?: unknown;
+}
+
+interface EditorNodeLike {
+  id: string;
+  /** The authored type string. `type` is the resolved type *object*. */
+  typename?: string;
+  type?: unknown;
+  label?: unknown;
+  parameters?: unknown;
+  children?: EditorNodeLike[];
+  getPorts?(): EditorPortLike[] | undefined | null;
+  getComment?(): string | undefined | null;
+}
+
+interface EditorComponentLike {
+  name: string;
+  fullName?: string;
+  graph?: {
+    roots?: EditorNodeLike[];
+    connections?: ReadonlyArray<{ fromId: string; fromProperty: string; toId: string; toProperty: string }>;
+  };
+}
 
 /**
  * Node types whose instance ports *are* the component's interface. A component
@@ -44,9 +81,9 @@ export { isComponentRef };
 
 // ── Live editor models ────────────────────────────────────────────────────────
 
-function instancePortNames(node: NodeGraphNode): string[] {
+function instancePortNames(node: EditorNodeLike): string[] {
   const names: string[] = [];
-  for (const port of node.getPorts() ?? []) {
+  for (const port of node.getPorts?.() ?? []) {
     if (port && typeof port.name === 'string') names.push(port.name);
   }
   return names;
@@ -58,12 +95,12 @@ function instancePortNames(node: NodeGraphNode): string[] {
  * defaults out of the context, since a default tells the model nothing the
  * catalog has not already told it.
  */
-function authoredParameters(node: NodeGraphNode): Record<string, unknown> {
+function authoredParameters(node: EditorNodeLike): Record<string, unknown> {
   const params = node.parameters as Record<string, unknown> | undefined;
   return params ? { ...params } : {};
 }
 
-function fromEditorNode(node: NodeGraphNode, parentId: string | undefined, out: GraphNode[]): void {
+function fromEditorNode(node: EditorNodeLike, parentId: string | undefined, out: GraphNode[]): void {
   const children = node.children ?? [];
   // `node.type` is the resolved type *object*; `typename` is the authored string.
   const typeName = node.typename ?? (node.type as { name?: string } | undefined)?.name ?? '';
@@ -81,7 +118,7 @@ function fromEditorNode(node: NodeGraphNode, parentId: string | undefined, out: 
 }
 
 /** Adapt one live `ComponentModel` (the case the panel always has in hand). */
-export function fromComponentModel(component: ComponentModel): GraphComponent {
+export function fromComponentModel(component: EditorComponentLike): GraphComponent {
   const nodes: GraphNode[] = [];
   for (const root of component.graph?.roots ?? []) fromEditorNode(root, undefined, nodes);
 
@@ -99,7 +136,7 @@ export function fromComponentModel(component: ComponentModel): GraphComponent {
  * Adapt the whole open project. Explain mode only ever *renders* the active
  * component, but it needs the rest to resolve component instances by name.
  */
-export function fromProjectModel(project: { components?: ComponentModel[] } | null | undefined): ExplainGraph {
+export function fromProjectModel(project: { components?: EditorComponentLike[] } | null | undefined): ExplainGraph {
   return { components: (project?.components ?? []).map(fromComponentModel) };
 }
 

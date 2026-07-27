@@ -29,6 +29,7 @@ import {
 } from '@noodl-models/AiAssistant/authoring';
 import { AiClient } from '@noodl-models/AiAssistant/client';
 import { fromProjectModel } from '@noodl-models/AiAssistant/explain/graph';
+import { ProjectReviewStore } from '@noodl-models/AiAssistant/review';
 import { authoringTelemetry } from '@noodl-models/AiAssistant/telemetry';
 import { AppRegistry } from '@noodl-models/app_registry';
 import { ProjectModel } from '@noodl-models/projectmodel';
@@ -55,9 +56,18 @@ import { ChangeReviewDocumentProvider } from '../../documents/ChangeReviewDocume
 import { EditorDocumentProvider } from '../../documents/EditorDocument';
 import css from './AiAuthoringPanel.module.scss';
 import { ProjectAuthoringView } from './ProjectAuthoringView';
+import { ProjectReviewBanner } from './ProjectReviewBanner';
+import { ProjectReviewView } from './ProjectReviewView';
 
-/** AIX-011: the panel's two scopes. Component stays the default — and unchanged. */
-type AuthoringScope = 'component' | 'project';
+/**
+ * The panel's scopes. Component stays the default — and unchanged.
+ *
+ * AIX-011 added `project` (plan, then fan out). AIX-010 adds `review`, which is
+ * the read-only inverse: it authors no nodes at all, only the `docs/` set, and
+ * it is the permanent home for the "our docs have drifted" re-run as well as
+ * the destination the recommendation banner sends people to.
+ */
+type AuthoringScope = 'component' | 'project' | 'review';
 
 export const AiAuthoringPanel_ID = 'ai-authoring';
 
@@ -143,7 +153,17 @@ function outcomeNote(state: AuthoringSessionState): { text: string; type: Feedba
 }
 
 export function AiAuthoringPanel() {
-  const [scope, setScope] = useState<AuthoringScope>('component');
+  // AIX-010: the Docs panel's banner sets a one-shot request rather than
+  // driving this panel, so arriving from there opens on the review and starts
+  // it — the user already clicked once and should not have to click again.
+  // Consumed once, in one place, so the two `useState`s cannot disagree.
+  const arrivedFromBanner = useRef<boolean | undefined>(undefined);
+  if (arrivedFromBanner.current === undefined) {
+    arrivedFromBanner.current = ProjectReviewStore.instance.consumeReviewRequest();
+  }
+  const [scope, setScope] = useState<AuthoringScope>(arrivedFromBanner.current ? 'review' : 'component');
+  /** True only when a banner sent the user here — see ProjectReviewView. */
+  const [reviewFromBanner, setReviewFromBanner] = useState(arrivedFromBanner.current);
   const [componentPath, setComponentPath] = useState('');
   const [description, setDescription] = useState('');
   const [state, setState] = useState<AuthoringSessionState | null>(null);
@@ -364,8 +384,20 @@ export function AiAuthoringPanel() {
     <BasePanel title="Build" isFill>
       <ExperimentalFlag />
 
+      {/* AIX-010: surface one of two. The banner appears only while the project
+          has no docs/CONVENTIONS.md and only until this user dismisses it. */}
+      {scope !== 'review' && (
+        <ProjectReviewBanner
+          onStart={() => {
+            setReviewFromBanner(true);
+            setScope('review');
+          }}
+        />
+      )}
+
       {/* AIX-011: scope toggle. Component scope is the default and behaves
-          exactly as before; project scope plans, then fans out. */}
+          exactly as before; project scope plans, then fans out. AIX-010 adds
+          review, which writes docs and never touches the graph. */}
       <Section variant={SectionVariant.PanelShy} hasGutter>
         <HStack UNSAFE_style={{ gap: 8 }}>
           <PrimaryButton
@@ -380,10 +412,25 @@ export function AiAuthoringPanel() {
             isGrowing
             onClick={() => setScope('project')}
           />
+          <PrimaryButton
+            label="Docs"
+            variant={scope === 'review' ? PrimaryButtonVariant.Muted : PrimaryButtonVariant.Ghost}
+            isGrowing
+            onClick={() => {
+              setReviewFromBanner(false);
+              setScope('review');
+            }}
+          />
         </HStack>
       </Section>
 
-      {scope === 'project' ? (
+      {scope === 'review' ? (
+        <ProjectReviewView
+          isConfigured={isConfigured}
+          hasProject={hasProject}
+          startImmediately={reviewFromBanner}
+        />
+      ) : scope === 'project' ? (
         <ProjectAuthoringView isConfigured={isConfigured} hasProject={hasProject} />
       ) : (
         <>

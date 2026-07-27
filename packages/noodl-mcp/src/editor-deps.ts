@@ -107,3 +107,62 @@ export {
 } from '../../noodl-editor/src/editor/src/models/ProjectDocs/docsText';
 export type { KnownDoc, KnownDocKind } from '../../noodl-editor/src/editor/src/models/ProjectDocs/docsText';
 export { DOC_TEMPLATES } from '../../noodl-editor/src/editor/src/models/ProjectDocs/templates';
+
+// ─── Project review (AIX-010) ─────────────────────────────────────────────────
+// The pure half of the docs retrofit only. `review/assembleProject`,
+// `review/pageMap`, `review/selection` and `review/prompts` import nothing
+// beyond the catalog, the explain graph and `ProjectDocs/docsText` — never the
+// `review` barrel, which re-exports `collectSources` and `startProjectReview`
+// and would drag `ProjectModel`, `BackendServices` and the platform filesystem
+// in. Same rule as StyleVocabulary and docsText above.
+//
+// `reviewSystemPrompt` is exported deliberately: `review_project` returns the
+// EDITOR's per-document guidance rather than a second copy of it, so the "never
+// describe the graph" line cannot drift between the two consumers.
+export {
+  assembleProjectReview,
+  renderCoverageForPrompt,
+  renderProjectReviewContext,
+  REVIEW_BUDGET,
+  summariseCoverage
+} from '../../noodl-editor/src/editor/src/models/AiAssistant/review/assembleProject';
+export { buildPageMap, renderPageMap } from '../../noodl-editor/src/editor/src/models/AiAssistant/review/pageMap';
+export {
+  inboundReferenceCounts,
+  rankComponents
+} from '../../noodl-editor/src/editor/src/models/AiAssistant/review/selection';
+export {
+  countTodoMarkers,
+  REVIEW_DOC_PATHS,
+  reviewSystemPrompt,
+  reviewUserMessage,
+  TODO_MARKER
+} from '../../noodl-editor/src/editor/src/models/AiAssistant/review/prompts';
+export { REVIEW_DOC_ORDER } from '../../noodl-editor/src/editor/src/models/AiAssistant/review/types';
+export type {
+  BackendSummary,
+  CoverageRead,
+  CoverageSkipped,
+  CoverageSource,
+  DeclaredRoute,
+  PageMap,
+  PageMapEntry,
+  ProjectReviewContext,
+  ProjectReviewCoverage,
+  ProjectReviewSources,
+  RankedComponent,
+  ReviewDocKind,
+  SchemaCollection,
+  SchemaField
+} from '../../noodl-editor/src/editor/src/models/AiAssistant/review/types';
+// `graphComponentFromFiles` adapts stored component files into the graph shape
+// the assembler reads. AIX-011 imports it by relative path from `planTools`;
+// naming it here too would give one module two import spellings, so this is now
+// the one place it is exported from.
+export { graphComponentFromFiles } from '../../noodl-editor/src/editor/src/models/AiAssistant/authoring/plan';
+export type {
+  ExplainGraph,
+  GraphComponent,
+  GraphConnection,
+  GraphNode
+} from '../../noodl-editor/src/editor/src/models/AiAssistant/explain/types';

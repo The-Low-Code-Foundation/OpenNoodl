@@ -59,3 +59,9 @@ export * from './authoring-plan-staging.test';
 // plan doc write path on real files.
 export * from './authoring-doc-session.test';
 export * from './plan-doc-writer.test';
+
+// AIX-010: project review & docs retrofit. The page map (from Router/Page node
+// parameters, not the routes file), the selection rule, the coverage record the
+// prompt and the panel share, the drafting turn's two advisory passes, and
+// criterion 7's byte-for-byte real-file comparison after rejecting everything.
+export * from './project-review.test';
