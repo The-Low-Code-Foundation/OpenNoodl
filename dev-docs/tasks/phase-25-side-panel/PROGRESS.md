@@ -1,11 +1,13 @@
 # Phase 25 — Side Panel (Track J): Progress
 
-**Status:** ✅ **All 9 tasks complete and live-verified** (2026-07-27). Tiers 1–4 landed; the closing
-pass ran every gate from the primary checkout against a real editor, which no worktree agent could do
-— see *The trap that shaped this whole phase* below. That pass found and fixed five defects (F37–F41),
-two of them in behaviour a task had already described as shipped. Two named items remain unverified
-because they need a running local backend or a full project lifecycle; they are listed under
-*Still not verified*.
+**Status:** ✅ **All 9 tasks complete; all five gates run from the primary checkout** (2026-07-27).
+Tiers 1–4 landed. The closing pass did the thing no worktree agent could — ran the gates against a
+real editor (see *The trap that shaped this whole phase*) — and found **nine defects, F37–F45**, two
+of them in behaviour a task had already described as verified. Four gates are green:
+`panel-geometry` 45/45, `panel-chrome` 36/36, `panel-modes` 13/13, `components-tree` 4/4 both themes.
+The fifth, `settings-consolidation`, is 11/13: its two failures are **F44**, a real app-name
+persistence lag that is not a side-panel defect. **F41 and F44 are open and unowned**; the rest are
+fixed. Items still needing a human are listed under *Still not verified*.
 **Specced:** 2026-07-27
 **Mock:** [`mocks/nodegx-side-panel-mock.html`](./mocks/nodegx-side-panel-mock.html) (`93cc4da`)
 **Phase overview:** [README.md](./README.md)
@@ -19,10 +21,10 @@ because they need a running local backend or a full project lifecycle; they are 
 | [PNL-003](./PNL-003-PANEL-WIDTH-BEHAVIOUR.md) | Panel width: reset, memory, snap & collapse | 1 | ✅ Complete | 2026-07-27 | [NOTES](./PNL-003-NOTES.md). Width per panel, per project, persisted; ⌘\ wide, ⌘B hide, drag-to-collapse. 11/11 acceptance checks driven live. Found a renderer deadlock and F21. |
 | [PNL-004](./PNL-004-CONTAINER-QUERY-LAYOUT.md) | Container-query layout + `PanelRow` | 2 | ✅ Complete | 2026-07-27 | [NOTES](./PNL-004-NOTES.md). `PanelRow` + two named containers + three bands declared once. Band numbers carry a −34px content-box offset so they mean *panel* widths (F29). Gate grew a horizontal axis at five widths — and then had to be taught not to cry wolf (F30). |
 | [PNL-005](./PNL-005-ONE-PANEL-CHROME.md) | One panel chrome, everywhere | 2 | ✅ Complete | 2026-07-27 | [NOTES](./PNL-005-NOTES.md). `PanelHeader` finally styles its own `.Title`. 7 panels migrated, not 14 — the spec's list was wrong in five places (F31). Two panels had chrome-less *states* rather than no chrome (F32). |
-| [PNL-006](./PNL-006-COMPONENTS-PANEL-RESTYLE.md) | Components panel restyle | 3 | 🚧 In flight | — | |
+| [PNL-006](./PNL-006-COMPONENTS-PANEL-RESTYLE.md) | Components panel restyle | 3 | ✅ Complete | 2026-07-27 | [NOTES](./PNL-006-NOTES.md). Kind glyphs, indent guides, in-place filter, and the light-mode selection fix that was the reported bug. **Its gate had never been run**; the closing pass ran it and it is now green in both themes — selected-row contrast **12.2:1 dark, 13.72:1 light** against a 4.5:1 bar. Doing so cost F45 (the gate wedged the panel) and F41's coral (2.91:1, now 3.36:1). Four honest SKIPs remain: the warning dot needs a project that carries a warning. |
 | [PNL-007](./PNL-007-INLINE-RENAME.md) | Node label & inline rename | 3 | ✅ Complete | 2026-07-27 | [NOTES](./PNL-007-NOTES.md). Text at rest, real field on double-click, check/cancel, Escape reverts. Phantom-undo guard tested, not assumed. The AiAuthoringPanel half of the spec was a stale premise. |
-| [PNL-008](./PNL-008-SETTINGS-CONSOLIDATION.md) | Three settings panels become one | 3 | 🚧 In flight | — | |
-| [PNL-009](./PNL-009-FLOAT-AND-FULL-MODES.md) | Floating & full panel modes | 4 | 🚧 **Half complete** | 2026-07-27 | [NOTES](./PNL-009-NOTES.md). Need confirmed by Richard. Modes built **CSS-only** (no re-parenting) and validated incl. the legacy-view test; drag/resize/per-panel persistence work. **The 7 `LocalBackendCard` portals are NOT migrated** — acceptance 2 and 3 unmet. |
+| [PNL-008](./PNL-008-SETTINGS-CONSOLIDATION.md) | Three settings panels become one | 3 | ✅ Complete | 2026-07-27 | [NOTES](./PNL-008-NOTES.md). One destination behind a cog; F15's two-owners-of-the-title resolved. **Its live half had never been run**; it now passes 11 of 13 — one rail button, one header, both tabs, all 7 Project groups, one control per title field. The two failures are **F44**, a real and reproducible app-name persistence lag, not a layout defect. |
+| [PNL-009](./PNL-009-FLOAT-AND-FULL-MODES.md) | Floating & full panel modes | 4 | ✅ Complete | 2026-07-27 | [NOTES](./PNL-009-NOTES.md). Modes are **CSS-only** (no re-parenting), so the legacy `Frame`-hosted views survive; the 7 `LocalBackendCard` portals became registered transient panels and the scrim was deleted rather than tokenised. `panel-modes.mjs` is **13/13 green**, including the two behaviours the notes admitted were never verified. Getting there found F39 and F43 — the `⋯` menu had been opening in the window's corner the whole time. |
 
 ## Findings register
 
@@ -85,6 +87,8 @@ unable to take.
 | F41 | **⌘B on a floating panel returns it docked.** Hiding a floating panel and showing it again drops the floating mode. The spec's acceptance 6 asks only that ⌘B *hides* it, which it does, so this is **recorded rather than fixed** — but it is now printed by `panel-modes.mjs` on every run instead of being something nobody looked at | `SidePanel` layout state | ⚠️ open, unowned |
 | F42 | **The phase's own gate list names a script that does not exist.** `noodl-core-ui` has no `test:ci`; its scripts are `start` and `build`. The real check is `npm run typecheck:core-ui`. Corrected in *Gates for the phase* below | this file | ✅ corrected |
 | F43 | **`BaseDialog`'s position depended on its animation running.** The positioned variant is `position: absolute; top: 0; left: 0`, and every pixel of where it lands came from the `to` half of the `enter` keyframe plus `animation-fill-mode: both`. Suppress animations and **every menu in the editor** piles up in the window's top-left corner. This is what made the `⋯` anchoring check fail with **byte-identical numbers across three unrelated attempted fixes** — `panel-modes.mjs` injects `animation: none` for determinism, so the harness was suppressing the very thing doing the positioning. The identical numbers were the tell: a live measurement of a changing layout cannot repeat to the pixel | `BaseDialog.module.scss` | ✅ fixed — resting position stated as a rule; the keyframe still wins while it runs |
+| F44 | **The app name does not reach `project.json` when you set it — only when something else saves.** PNL-008's L5 round trip writes the App name, polls the file for 15s and still sees the old value; it then writes the Browser tab title and the *app name* appears on disk alongside it. The lag is exactly one step, twice. The Browser tab title control persists on its own, so the two controls behave differently — which is the part that makes this look like the app rather than the instrument. **Caveat, stated rather than glossed:** the input was driven synthetically (native value setter + `input` + Enter + `blur`), so a real keystroke may commit differently. One human check settles it: rename the app, quit without touching anything else, reopen | `AppSetupPanel` / `ProjectSettingsModel` save path | ⚠️ **open** — reproducible, root cause not established |
+| F45 | **A gate can leave the app unusable by *removing* a style, not just by injecting one.** `components-tree.mjs` cleared the inline `width` on the FrameDivider container to take its "wide" measurement. That width is `var(--frame-divider-…-container-1-width)`, owned by PNL-003's layout state, so deleting the declaration left nothing sizing the panel: it collapsed to 4px and **neither the rail icon nor ⌘B brought it back**, because as far as React was concerned nothing had changed. Every gate run afterwards then measured a collapsed panel. F35 said release what you inject; this is the same rule for what you remove | `corpus/components-tree.mjs` | ✅ fixed — saves and restores, and never removes what it did not set |
 
 ## Open questions
 
