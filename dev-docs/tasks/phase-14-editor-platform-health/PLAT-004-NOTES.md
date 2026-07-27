@@ -681,3 +681,173 @@ database, which is as close to live as this package gets. `noodl-mcp`'s `tsc` re
 matcher collisions when run from a worktree against the parent checkout's `node_modules`; that is an
 artifact of the shared-`node_modules` setup (the worktree has none of its own and Node resolves
 upward), not of any change here, and its jest run is green.
+
+---
+
+## 15. Burn-down slice 7 — the agent nodes and their suites, 184 markers → 0
+
+**Merged `b22cfab0`, baseline lowered in `436cd080` (2026-07-27).**
+
+### 15.1 The gate was red again, and for a familiar reason
+
+`cline-dev` tip measured **`any` 522 against a baseline of 465, `TSFixme` 546 against 545**.
+The ratchet named ten files that had grown; six of them were `noodl-runtime` suites for
+AIX-005's agent nodes, two were the agent node sources themselves, two were phase-25 editor
+panel work.
+
+§14.6 had already predicted this half of it. When slice 6 recorded its deliberate raises it
+wrote that `noodl-runtime` was "the repo's largest single `any` cluster (185, 65 of them the
+unclaimed agent-SSE nodes)". Nobody claimed them, and the suites written since added the rest.
+
+Sizing the cluster properly before starting is what made the slice worth doing: the ten
+*growing* files held 64 markers, but the agent directory and its suites together held **184**,
+all of one cause. Fixing 58 to clear the gate would have left the shape intact and the next
+suite would have re-grown it.
+
+### 15.2 The cause, stated once
+
+A node definition's callbacks are typed `this: NodeInstance`. That is the *published* surface —
+what a node author may call — and it deliberately knows nothing about the `methods` that same
+definition installs beside them. So:
+
+- a method calling a sibling method was written `(this as any).addChunk()`
+- a test driving one was written `(node as any).handleFrame(frame)`
+- a test reaching graph wiring was written `(receiver as any).connectInput(...)`
+
+Three descriptions of one object — the definition, its methods, its tests — none of them
+checked against the others. It is §14.2's shape for the fourth slice running: not one careless
+`any`, but one **unnamed contract** whose absence forces a cast at every call site.
+
+The third case is the sharpest, because the contract was not even missing. `RuntimeNode` in
+`src/internal.d.ts` has named `connectInput`, `_onNodeDeleted` and a typed `getOutput` since
+PLAT-003 slice 2. A test just had no reason to know that, so four suites each cast their way
+past it independently.
+
+### 15.3 `interface` vs `type` for `_internal` — the trap that cost the most time
+
+Naming each node's surface as `interface SseNodeInstance extends NodeInstance { _internal: SseInternal; … }`
+made **every callback in the definition** stop compiling at once, with
+
+```
+Type 'NodeInstance' is missing the following properties from type 'JsonStreamParserNodeInstance': doParse, …
+```
+
+on `initialize`, `getInspectInfo` and all seventeen input setters. The message points at the
+methods, and the methods are not the problem.
+
+`NodeInstance._internal` is `Record<string, unknown>`. **Only a type alias for an object literal
+gets TypeScript's implicit index signature; an interface never does.** So narrowing `_internal`
+with an interface makes the node instance unassignable to `NodeInstance` in *either* direction,
+which defeats the bivariance that would otherwise let a narrower `this` be supplied — and every
+callback fails together.
+
+That is also the answer to "why did `globalstorenode.ts` get away with this and these five could
+not": its `_internal` is an inline object type, written directly in the interface body.
+
+Every `*Internal` in `node-instances.d.ts` is a `type`, and the file says in place that it must
+stay one. A probe that reproduces the rule takes four lines and is worth writing before
+believing any theory about variance:
+
+```ts
+interface Base { x: number }
+interface Sub extends Base { y(): void }        // no _internal narrowing — this one compiles
+const a: { m?(this: Base): void } = { m(this: Sub) {} };
+```
+
+### 15.4 Where the declarations live, and why it is a `.d.ts`
+
+`agent/node-instances.d.ts` — each node's `_internal` shape and its own `methods`, named once
+and imported by both the sources and the suites.
+
+It is a declaration file rather than a module because these node files end in
+`export = { node: … }`, and an export assignment forbids exporting anything else beside it.
+There was literally nowhere in the files that own these shapes for them to live. `import type`
+is fully elided by both `tsc` and esbuild, so nothing reaches a bundle.
+
+The file also carries the three nodes that never contributed markers — `websocket.ts`,
+`actiondispatchernode.ts`, `actionhandlernode.ts` wrote
+`(this as NodeInstance & { scheduleRebuild(): void })` at each call site instead of reaching for
+`any`. Zero markers, but the same missing name: a *test* driving one has no inline intersection
+to borrow.
+
+### 15.5 What typing the seams found
+
+`sse-connection.ts` held 28 `any`, every one of them a platform dependency or something that
+followed from one. Its sibling `websocket-connection.ts`, written in the same week for the same
+task, already had the vocabulary — `WebSocketLike`, `WebSocketConstructorLike`,
+`setTimeoutImpl?(handler, timeout): unknown`. Applying it here was mostly transcription.
+
+Two things fell out that were not transcription:
+
+- **`SseTransportEnv` was exported and completely unused** — a dead third description of a seam
+  set that `SseConnectionOptions` and the node's `_internal.seams` each declared separately, six
+  fields, three times. It is now the one declaration both derive from.
+- **`SseRequestInit`** names exactly what the fetch transport passes as its second argument. The
+  node suite asserts on `calls[0].init.headers.Authorization`; before, `init` was `any` and that
+  read was unchecked, which is precisely the assertion you want checked in a file whose reason
+  for existing is that a header was once built wrong.
+
+One behaviour edit was needed: `es.onopen = es.onmessage = es.onerror = null` cannot stand once
+the three handlers have distinct signatures. Three statements, with the reason in place.
+
+### 15.6 Verification — and the one run that mattered
+
+| Check | Result |
+|---|---|
+| `noodl-runtime` jest | **973 / 0** (1 suite, 7 tests skipped — the opt-in live one) |
+| editor Jasmine (`test:ci`) | **1573 specs / 0 failures**, randomized |
+| `mcp` / `preview` / `nodegx-backend` / `cloud-runtime` / `viewer-react` jest | 87 / 14 / 619 / 46 / 59, all green |
+| `catalog:check` | **byte-identical**, 154 types / 89 dynamic |
+| `noodl-viewer-react` production bundle | green, **0 `[tsl] ERROR`** |
+| `typecheck:` runtime, viewer, cloud, editor, editor-tests, backend-tests | clean |
+| `typecheck:` core-ui, preview, viewer (standalone `tsc`) | 45 / 30 / 40 errors — **unchanged against a stashed clean tree**, all pre-existing (`@types/jest`, missing `@noodl-versioning` / `@noodl-viewer-cloud` aliases) |
+| `node scripts/tsfixme-ratchet.js` | **✓ Holding the line** |
+
+The run that actually tested the work is the opt-in one. Every seam type introduced here exists
+so that a *double* can stand in for a platform API — which means a wrong one is invisible to
+every suite that uses a double. So the live suite was run for real:
+
+```
+node project-examples/agent-chat/mock-agent-server.mjs 4831 5
+NODEGX_AGENT_LIVE=http://localhost:4831 npx jest test/agent-live-endpoint --forceExit
+```
+
+**7 / 7 pass** — real streaming `fetch` through `FetchLike`, a real WebSocket, real cancellation
+through `AbortControllerLike`, real NDJSON reassembly. That is the only evidence that
+`fetch as unknown as FetchLike` describes the thing it is standing in for.
+
+### 15.7 The re-baseline nearly swept another session's work in
+
+`npm run tsfixme:baseline` printed its dirty-tree warning: **22 uncommitted `.ts`/`.tsx` files**
+belonging to a concurrent session (AiAssistant authoring work) were being written into `byFile`
+as though they were part of `b22cfab0`. Seven of them were untracked, so they would have entered
+the baseline as *known* files and their markers would have been permanently free.
+
+The fix is not to stash — a concurrent session may be mid-edit. Baseline from a detached worktree
+at the commit being recorded:
+
+```
+git worktree add -q --detach "$WT" b22cfab0
+ln -s "$REPO/node_modules" "$WT/node_modules"     # the ratchet needs `typescript`
+node "$WT/scripts/tsfixme-ratchet.js" --update
+cp "$WT/.tsfixme-baseline.json" .tsfixme-baseline.json
+```
+
+The totals happened to be identical either way (336 / 540); the `byFile` map was not, and
+`byFile` is what the "files that grew" report is diffed against. **§10's re-baseline step should
+say "from a clean tree at the recorded commit", not just "run the script".**
+
+### 15.8 Still open after this slice
+
+- **`RuntimeNodeContext.nodeRegister` is still `any`** (`src/internal.d.ts`). `noderegister.ts`
+  has declared a full `NodeRegister` interface since PLAT-003 slice 2; wiring it through would
+  retire the one remaining cast in `node-harness.ts` (`createNode` returns the published
+  `NodeInstance`, which is right for production and too narrow for a test). Not done here because
+  it reaches every `context.nodeRegister` call site in two packages and this slice had no other
+  reason to touch them.
+- **`queryutils.ts`'s `type OpenJson = any`** grew by 1 and was left alone: it is a recorded
+  decision with the reasoning in place ("it only moves the same assertion to fifteen read sites
+  and hides it"), not an oversight.
+- The agent nodes were typed but **not exercised in the live editor** — the live suite drives
+  them headlessly against a real endpoint, which is stronger for the transport seams and weaker
+  for the property panel. AIX-005's own live-run residuals are unchanged by this slice.
