@@ -6,7 +6,7 @@
  */
 
 import { ipcRenderer, shell } from 'electron';
-import React, { useCallback, useEffect, useState, useMemo } from 'react';
+import React, { useCallback, useEffect, useState, useMemo, useRef } from 'react';
 import { clone } from '@noodl/git/src/core/clone';
 import { filesystem, platform } from '@noodl/platform';
 
@@ -14,7 +14,14 @@ import {
   CloudSyncType,
   LauncherProjectData
 } from '@noodl-core-ui/preview/launcher/Launcher/components/LauncherProjectCard';
-import { ProjectCreationWizard } from '@noodl-core-ui/preview/launcher/Launcher/components/ProjectCreationWizard';
+import {
+  AiAvailability,
+  ProjectCreationWizard,
+  ReviewPlanRow,
+  ScopingMessage,
+  ScopingState,
+  WizardMode
+} from '@noodl-core-ui/preview/launcher/Launcher/components/ProjectCreationWizard';
 import {
   useGitHubRepos,
   NoodlGitHubRepo,
@@ -24,16 +31,35 @@ import { Launcher } from '@noodl-core-ui/preview/launcher/Launcher/Launcher';
 import { LauncherLessonData } from '@noodl-core-ui/preview/launcher/Launcher/LauncherContext';
 
 import { useEventListener } from '../../hooks/useEventListener';
+import type { AuthoringPlan } from '../../models/AiAssistant/authoring/plan';
+import {
+  DOC_INITIAL_SCOPE,
+  ProjectScope,
+  ScopingSession,
+  emptyScope,
+  planFromScope,
+  scopeHasContent,
+  scopeOutline,
+  setPendingScopePlan,
+  writeScopeDocs
+} from '../../models/AiAssistant/scoping';
 import { DialogLayerModel } from '../../models/DialogLayerModel';
 import { LessonsProjectsModel } from '../../models/LessonsProjectModel';
 import LessonTemplatesModel from '../../models/lessontemplatesmodel';
+import { ProjectDocsModel } from '../../models/ProjectDocs/ProjectDocsModel';
+import type { ProjectModel } from '../../models/projectmodel';
 import { getAllPresets, setPendingPresetId } from '../../models/StylePresets';
 import { IRouteProps } from '../../pages/AppRoute';
+// Relative, not the `@noodl-store` alias: this file is inside noodl-core-ui's
+// typecheck include glob (it imports the launcher preview), and that project
+// does not carry the editor's path aliases.
+import { AiConfigStore } from '../../store/AiAssistantStore';
 import { GitHubOAuthService, GitHubClient } from '../../services/github';
 import { ProjectOrganizationService } from '../../services/ProjectOrganizationService';
 import getDocsEndpoint from '../../utils/getDocsEndpoint';
 import { LocalProjectsModel, ProjectItemWithRuntime } from '../../utils/LocalProjectsModel';
 import { tracker } from '../../utils/tracker';
+import { AiSettingsSection } from '../../views/panels/AiSettings/AiSettingsSection';
 import { getLessonsState } from '../../views/projectsview.lessonstate';
 import { MigrationWizard } from '../../views/migration/MigrationWizard';
 import { ToastLayer } from '../../views/ToastLayer/ToastLayer';
@@ -44,6 +70,58 @@ export interface ProjectsPageProps extends IRouteProps {
 
 /** Built-in presets computed once at module level — never changes at runtime. */
 const STYLE_PRESETS = getAllPresets();
+
+/**
+ * AIX-012 — the components a brand-new project has before anything is built,
+ * from `EmbeddedTemplateProvider`'s hello-world template.
+ *
+ * Used ONLY to preview the plan on the review step, which renders before the
+ * project exists. The plan that is actually written to disk and handed over is
+ * re-derived from the created project's real component list, so a template
+ * change can make the preview and the record disagree about create-vs-update on
+ * a page named "Home" — and the record, not the preview, is the one that counts.
+ */
+const NEW_PROJECT_COMPONENTS: ReadonlySet<string> = new Set(['/App', '/#__page__/Home']);
+
+/** The plan as the review step lists it. */
+function toPlanRows(plan: AuthoringPlan): ReviewPlanRow[] {
+  return plan.operations.map((op) => ({ kind: op.kind, target: op.target, intent: op.intent }));
+}
+
+/**
+ * Why "Start with AI" can or cannot be offered right now.
+ *
+ * The launcher genuinely does not host AI settings — the settings panel is part
+ * of the editor's panel system and there is no project open here — so the route
+ * out is a dialog carrying the real `AiSettingsSection`. That is the same
+ * component the editor shows and it writes the same `EditorSettings`, so
+ * configuring here configures everywhere; a launcher-only copy of the settings
+ * form would be a second source of truth for credentials, which is the last
+ * thing that should have two.
+ */
+function readAiAvailability(onConfigure: () => void): AiAvailability {
+  const provider = AiConfigStore.getProvider();
+  if (provider === 'disabled') {
+    return {
+      available: false,
+      reason: 'AI is turned off. Pick a provider and add a key to use it.',
+      actionLabel: 'Set up AI…',
+      onAction: onConfigure
+    };
+  }
+  if (!AiConfigStore.isConfigured()) {
+    return {
+      available: false,
+      reason:
+        provider === 'openai-compatible'
+          ? 'No endpoint is set for the custom AI provider.'
+          : `No API key is saved for ${AiConfigStore.getPrettyProvider() ?? provider}.`,
+      actionLabel: 'Finish setup…',
+      onAction: onConfigure
+    };
+  }
+  return { available: true };
+}
 
 /**
  * Map LocalProjectsModel ProjectItemWithRuntime to LauncherProjectData format
@@ -129,6 +207,16 @@ export function ProjectsPage(props: ProjectsPageProps) {
 
   // Create project modal state
   const [isCreateModalVisible, setIsCreateModalVisible] = useState(false);
+
+  // AIX-012 — the scoping conversation. The session lives in a ref because it
+  // is a long-lived object with an in-flight request, not render state; what
+  // React re-renders on is the transcript and the recorded scope it produces.
+  const scopingSessionRef = useRef<ScopingSession | null>(null);
+  const [scopingMessages, setScopingMessages] = useState<ScopingMessage[]>([]);
+  const [scopingScope, setScopingScope] = useState<ProjectScope>(() => emptyScope());
+  const [isScopingBusy, setIsScopingBusy] = useState(false);
+  const [scopingError, setScopingError] = useState<string | undefined>(undefined);
+  const [aiConfigVersion, setAiConfigVersion] = useState(0);
 
   // GitHub OAuth state
   const [githubIsAuthenticated, setGithubIsAuthenticated] = useState(false);
@@ -364,8 +452,94 @@ export function ProjectsPage(props: ProjectsPageProps) {
   });
 
   const handleCreateProject = useCallback(() => {
+    // Every open starts a fresh conversation. Reusing the previous one would
+    // scope a new project against the last one's answers.
+    scopingSessionRef.current = null;
+    setScopingMessages([]);
+    setScopingScope(emptyScope());
+    setScopingError(undefined);
+    setIsScopingBusy(false);
     setIsCreateModalVisible(true);
   }, []);
+
+  /**
+   * AIX-012 — the route out of "AI is not configured". The launcher has no
+   * settings panel, so the real settings section is shown in a dialog; when it
+   * closes, availability is recomputed so the entry card reflects what the user
+   * just did without needing the modal reopened.
+   */
+  const handleConfigureAi = useCallback(() => {
+    DialogLayerModel.instance.showDialog(
+      (close) =>
+        React.createElement(
+          'div',
+          { style: { width: '420px', maxHeight: '80vh', overflowY: 'auto', background: 'var(--theme-color-bg-1)' } },
+          React.createElement(AiSettingsSection, null),
+          React.createElement(
+            'div',
+            { style: { display: 'flex', justifyContent: 'flex-end', padding: 'var(--spacing-4)' } },
+            React.createElement('button', { type: 'button', onClick: close }, 'Done')
+          )
+        ),
+      { onClose: () => setAiConfigVersion((n) => n + 1) }
+    );
+  }, []);
+
+  const aiAvailability = useMemo(
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- aiConfigVersion is the re-read trigger
+    () => readAiAvailability(handleConfigureAi),
+    [handleConfigureAi, aiConfigVersion]
+  );
+
+  /** One user turn of the scoping conversation. */
+  const handleScopingSend = useCallback(async (text: string) => {
+    if (!scopingSessionRef.current) scopingSessionRef.current = new ScopingSession();
+    const session = scopingSessionRef.current;
+
+    setScopingError(undefined);
+    setIsScopingBusy(true);
+    // Show the user's own words immediately; a chat that waits for the model
+    // before echoing what you typed reads as dropped input.
+    setScopingMessages((prev) => [...prev, { role: 'user', text }]);
+
+    try {
+      const turn = await session.send(text);
+      setScopingScope(turn.scope);
+      if (turn.status === 'ok' || turn.status === 'cancelled') {
+        if (turn.reply) setScopingMessages([...session.transcript]);
+      } else {
+        setScopingError(turn.note ?? 'The assistant could not answer.');
+      }
+    } catch (error) {
+      setScopingError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setIsScopingBusy(false);
+    }
+  }, []);
+
+  /**
+   * The plan the review step previews. Derived from the agreed scope, so it
+   * cannot contain a page nobody agreed to.
+   */
+  const previewPlan = useMemo(
+    () => planFromScope(scopingScope, { existingComponents: NEW_PROJECT_COMPONENTS }),
+    [scopingScope]
+  );
+
+  const scopingState: ScopingState = useMemo(
+    () => ({
+      messages: scopingMessages,
+      isBusy: isScopingBusy,
+      outline: scopeOutline(scopingScope),
+      isAgreed: scopingScope.agreed,
+      error: scopingError,
+      planRows: toPlanRows(previewPlan),
+      onSend: (text: string) => {
+        void handleScopingSend(text);
+      }
+    }),
+    [scopingMessages, isScopingBusy, scopingScope, scopingError, previewPlan, handleScopingSend]
+  );
 
   const handleChooseLocation = useCallback(async (): Promise<string | null> => {
     try {
@@ -379,12 +553,65 @@ export function ProjectsPage(props: ProjectsPageProps) {
     }
   }, []);
 
+  /**
+   * AIX-012 — everything that happens to an AI-scoped project *after* it has
+   * been created by the ordinary path, and nothing that happens before.
+   *
+   * The spec's third criterion exists because new projects once shipped with no
+   * Home component, and the fix lives inside `newProject` /
+   * `EmbeddedTemplateProvider`. So there is no second creation path here: the
+   * project is created exactly as a blank one is, and this only writes files
+   * into the folder afterwards. A failure here costs the docs, never the
+   * project.
+   */
+  const finishScopedProject = useCallback(async (project: ProjectModel, scope: ProjectScope) => {
+    const docs = ProjectDocsModel.forProject(project);
+    if (!docs) {
+      ToastLayer.showError('The project was created, but its folder could not be found to write docs/ into.');
+      return;
+    }
+
+    // Re-derived against what the project actually has, not against the
+    // template we assume it came from.
+    const existingComponents = new Set<string>(project.getComponents().map((c) => c.name));
+    const plan = planFromScope(scope, { existingComponents });
+
+    const session = scopingSessionRef.current;
+    const result = await writeScopeDocs(docs, {
+      scope,
+      transcript: session ? [...session.transcript] : [],
+      plan,
+      // "Abandoned" is a statement about agreement, not about effort: a user who
+      // talked for ten minutes and never said yes still gets a record that says
+      // nothing here was inferred to fill the gaps.
+      abandoned: !scope.agreed
+    });
+
+    if (plan.operations.length > 0) {
+      setPendingScopePlan({ projectId: project.id, plan, recordPath: DOC_INITIAL_SCOPE });
+    }
+
+    if (result.failed.length > 0) {
+      console.error('[AIX-012] Some scoping documents could not be written:', result.failed);
+      ToastLayer.showError(
+        `The project was created, but ${result.failed.length} of ${
+          result.failed.length + result.written.length
+        } scoping documents could not be written. See the console for details.`
+      );
+    }
+  }, []);
+
   const handleCreateProjectConfirm = useCallback(
-    async (name: string, location: string, presetId: string) => {
+    async (name: string, location: string, presetId: string, mode: WizardMode) => {
       setIsCreateModalVisible(false);
 
       // Store the chosen preset — StyleTokensModel will consume it on editor startup.
       setPendingPresetId(presetId);
+
+      // Snapshot the scope now: the modal is closing and its state is about to
+      // be reset, and the docs must record what was agreed, not what is left.
+      const scope = scopingScope;
+      const withScope = mode === 'ai' && (scopeHasContent(scope) || Boolean(scope.request));
 
       try {
         const path = filesystem.makeUniquePath(filesystem.join(location, name));
@@ -394,15 +621,35 @@ export function ProjectsPage(props: ProjectsPageProps) {
 
         LocalProjectsModel.instance.newProject(
           (project) => {
-            ToastLayer.hideActivity(activityId);
             if (!project) {
+              ToastLayer.hideActivity(activityId);
               // Clear pending preset if project creation failed
               setPendingPresetId(null);
+              setPendingScopePlan(null);
               ToastLayer.showError('Could not create project');
               return;
             }
-            // Navigate to editor — StyleTokensModel will apply preset on load
-            props.route.router.route({ to: 'editor', project });
+
+            if (!withScope) {
+              ToastLayer.hideActivity(activityId);
+              // Navigate to editor — StyleTokensModel will apply preset on load
+              props.route.router.route({ to: 'editor', project });
+              return;
+            }
+
+            // The docs are written before the editor opens so the authoring
+            // loop's very first turn already sees CONVENTIONS.md — a rule the
+            // assistant has to be told about later is a rule it has already
+            // broken once.
+            finishScopedProject(project, scope)
+              .catch((error) => {
+                console.error('[AIX-012] Failed to write scoping documents:', error);
+                ToastLayer.showError('The project was created, but its docs/ could not be written.');
+              })
+              .finally(() => {
+                ToastLayer.hideActivity(activityId);
+                props.route.router.route({ to: 'editor', project });
+              });
           },
           { name, path, projectTemplate: '' }
         );
@@ -412,10 +659,13 @@ export function ProjectsPage(props: ProjectsPageProps) {
         ToastLayer.showError('Failed to create project');
       }
     },
-    [props.route]
+    [props.route, scopingScope, finishScopedProject]
   );
 
   const handleCreateModalClose = useCallback(() => {
+    // Cancel is cancel: an in-flight scoping turn is aborted rather than left
+    // to resolve into a closed modal.
+    scopingSessionRef.current?.cancel();
     setIsCreateModalVisible(false);
   }, []);
 
@@ -755,6 +1005,8 @@ export function ProjectsPage(props: ProjectsPageProps) {
         onConfirm={handleCreateProjectConfirm}
         onChooseLocation={handleChooseLocation}
         presets={STYLE_PRESETS}
+        aiAvailability={aiAvailability}
+        scoping={scopingState}
       />
     </>
   );

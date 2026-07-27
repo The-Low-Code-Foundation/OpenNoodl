@@ -59,3 +59,10 @@ export * from './authoring-plan-staging.test';
 // plan doc write path on real files.
 export * from './authoring-doc-session.test';
 export * from './plan-doc-writer.test';
+
+// AIX-012: AI project creation. The scoping conversation (scripted chat), the
+// plan it derives from the agreed pages, the four documents it renders, and
+// the write path on real files — including criterion 5's mechanical half:
+// the CONVENTIONS.md written at creation is what the context builder hands the
+// authoring loop.
+export * from './project-scoping.test';

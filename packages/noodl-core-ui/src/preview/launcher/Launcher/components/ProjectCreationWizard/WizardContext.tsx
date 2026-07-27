@@ -14,8 +14,9 @@ export type WizardMode = 'quick' | 'guided' | 'ai';
 /**
  * Step identifiers in the guided flow.
  * Quick mode only visits 'basics' (no preset or review step).
+ * AI mode inserts 'scoping' — the conversation — between preset and review.
  */
-export type WizardStep = 'entry' | 'basics' | 'preset' | 'review';
+export type WizardStep = 'entry' | 'basics' | 'preset' | 'scoping' | 'review';
 
 export const DEFAULT_PRESET_ID = 'modern';
 
@@ -71,8 +72,12 @@ export function getStepSequence(mode: WizardMode): WizardStep[] {
     case 'guided':
       return ['basics', 'preset', 'review'];
     case 'ai':
-      // AI mode is a stub for V1 — same as guided until AI is wired
-      return ['basics', 'preset', 'review'];
+      // AIX-012. Name, folder and preset come BEFORE the conversation, and that
+      // ordering is what makes "exitable at any point" unconditional: from the
+      // first word of scoping onward, everything project creation needs is
+      // already collected, so leaving the conversation early always yields a
+      // real project with whatever was agreed — never a half-filled form.
+      return ['basics', 'preset', 'scoping', 'review'];
   }
 }
 
@@ -88,6 +93,13 @@ export function isStepValid(step: WizardStep, state: WizardState): boolean {
       return state.projectName.trim().length > 0 && state.location.length > 0;
     case 'preset':
       return state.selectedPresetId.length > 0;
+    case 'scoping':
+      // Always true, deliberately. The scoping step's Continue is the exit the
+      // spec's criterion 2 is about: whatever has been agreed at that moment is
+      // a valid outcome, including nothing beyond the opening description.
+      // Gating it on "the assistant said the scope is agreed" would turn a
+      // conversation into a form you cannot leave.
+      return true;
     case 'review':
       return true;
   }

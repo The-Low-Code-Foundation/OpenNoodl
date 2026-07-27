@@ -10,12 +10,27 @@ import { PresetDisplayInfo } from '@noodl-core-ui/components/StylePresets';
 import { useWizardContext } from '../WizardContext';
 import css from './ReviewStep.module.scss';
 
-export interface ReviewStepProps {
-  presets: PresetDisplayInfo[];
+/** One planned operation, flattened for display. AIX-012. */
+export interface ReviewPlanRow {
+  kind: string;
+  target: string;
+  intent: string;
 }
 
-export function ReviewStep({ presets }: ReviewStepProps) {
-  const { state, update, goBack } = useWizardContext();
+export interface ReviewStepProps {
+  presets: PresetDisplayInfo[];
+  /**
+   * AIX-012 — what the scoping conversation agreed, and the plan it produced.
+   * Both absent in quick/guided mode. The plan is shown here, before creation,
+   * because it is the thing the user is being handed: it is created but never
+   * executed, so this is the moment they see what would be built.
+   */
+  scopeOutline?: readonly string[];
+  planRows?: readonly ReviewPlanRow[];
+}
+
+export function ReviewStep({ presets, scopeOutline, planRows }: ReviewStepProps) {
+  const { state, update } = useWizardContext();
 
   const selectedPreset = presets.find((p) => p.id === state.selectedPresetId);
 
@@ -76,7 +91,51 @@ export function ReviewStep({ presets }: ReviewStepProps) {
             Edit
           </button>
         </div>
+
+        {/* AIX-012 — the agreed scope. */}
+        {scopeOutline && scopeOutline.length > 0 && (
+          <div className={css['SummaryRow']}>
+            <div className={css['SummaryRow-label']}>Scope</div>
+            <div className={css['SummaryRow-value']}>
+              {scopeOutline.map((line, index) => (
+                <span key={index} className={index === 0 ? css['ScopeLine'] : css['ScopeLine--secondary']}>
+                  {line}
+                </span>
+              ))}
+            </div>
+            <button className={css['SummaryRow-edit']} onClick={() => update({ currentStep: 'scoping' })} type="button">
+              Edit
+            </button>
+          </div>
+        )}
       </div>
+
+      {/* AIX-012 — the plan, shown but not run. */}
+      {planRows && (
+        <div className={css['Plan']}>
+          <span className={css['Plan-title']}>Build plan — {planRows.length} step(s), not started</span>
+          {planRows.length > 0 ? (
+            <ol className={css['Plan-list']}>
+              {planRows.map((row, index) => (
+                <li key={index}>
+                  <strong>
+                    {row.kind} {row.target}
+                  </strong>
+                  <span className={css['Plan-intent']}>{row.intent}</span>
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <p className={css['Plan-empty']}>
+              No pages were agreed, so there is nothing to plan yet. The project and its docs are still created.
+            </p>
+          )}
+          <p className={css['Plan-note']}>
+            Creating the project writes the brief, the architecture notes, the conventions and the full scoping
+            record into <code>docs/</code>. The plan is saved with them and waits for you — nothing is built now.
+          </p>
+        </div>
+      )}
     </div>
   );
 }

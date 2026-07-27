@@ -1,0 +1,138 @@
+.ScopingStep {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3);
+  min-height: 0;
+}
+
+.Feed {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3);
+  overflow-y: auto;
+  max-height: 340px;
+  min-height: 160px;
+  padding-right: var(--spacing-2);
+}
+
+.Intro {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--theme-color-fg-default-shy);
+}
+
+.Message {
+  font-size: 13px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  padding: var(--spacing-3) var(--spacing-4);
+  border-radius: var(--radius-default);
+  max-width: 90%;
+
+  &--user {
+    align-self: flex-end;
+    background-color: var(--theme-color-bg-2);
+    color: var(--theme-color-fg-default);
+  }
+
+  &--assistant {
+    align-self: flex-start;
+    background-color: var(--theme-color-bg-3);
+    color: var(--theme-color-fg-default);
+  }
+
+  &--pending {
+    align-self: flex-start;
+    color: var(--theme-color-fg-default-shy);
+    font-style: italic;
+  }
+}
+
+.Error {
+  font-size: 13px;
+  line-height: 1.6;
+  padding: var(--spacing-3) var(--spacing-4);
+  border-radius: var(--radius-default);
+  border: 1px solid var(--theme-color-danger);
+  color: var(--theme-color-danger);
+}
+
+.Outline {
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: var(--radius-default);
+  padding: var(--spacing-3) var(--spacing-4);
+  background-color: var(--theme-color-bg-3);
+}
+
+.Outline-title {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--theme-color-fg-default-shy);
+  margin-bottom: var(--spacing-2);
+}
+
+.Outline-list {
+  margin: 0;
+  padding-left: var(--spacing-4);
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--theme-color-fg-default);
+}
+
+.Composer {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--spacing-2);
+}
+
+.Composer-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  resize: vertical;
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.5;
+  padding: var(--spacing-2) var(--spacing-3);
+  color: var(--theme-color-fg-default);
+  background-color: var(--theme-color-bg-2);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: var(--radius-default);
+
+  &:focus {
+    outline: none;
+    border-color: var(--theme-color-primary);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+  }
+}
+
+.Composer-send {
+  flex: 0 0 auto;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  padding: var(--spacing-2) var(--spacing-4);
+  color: var(--theme-color-fg-on-primary, var(--theme-color-fg-default));
+  background-color: var(--theme-color-primary);
+  border: none;
+  border-radius: var(--radius-default);
+  cursor: pointer;
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+}
+
+.Exit {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--theme-color-fg-default-shy);
+}
