@@ -1,0 +1,216 @@
+/**
+ * F21 — a focused `<button>` must not disable every editor keyboard shortcut.
+ *
+ * `KeyboardHandler.getFocusedElement` used to treat anything focusable as "a
+ * text input or similar" and decline to run *any* command while it had focus.
+ * Chromium focuses a `<button>` when you click it, so ⌘F / ⌘D / ⌘R / ⌘⇧X / ⌘⇧E,
+ * Backspace and the arrows all died until you happened to click something
+ * unfocusable. PNL-003 papered over ⌘\ and ⌘B with an opt-in flag; the predicate
+ * itself was what was wrong.
+ *
+ * Both directions are asserted here: a shortcut must survive a focused button,
+ * and typing in a text field must not fire a canvas shortcut.
+ */
+import { KeyCode, KeyMod } from '../../src/editor/src/utils/keyboard/KeyCode';
+import KeyboardHandler, {
+  getKeyboardFocusKind,
+  KeyboardCommand
+} from '../../src/editor/src/utils/keyboardhandler';
+
+describe('F21 KeyboardHandler focus predicate', () => {
+  let host: HTMLElement;
+  let registered: KeyboardCommand[];
+  let fired: string[];
+
+  /** A real keydown on `document`, which is where `KeyboardHandler` listens. */
+  function press(key: string, opts: { meta?: boolean; shift?: boolean; type?: 'keydown' | 'keyup' } = {}) {
+    document.dispatchEvent(
+      new KeyboardEvent(opts.type || 'keydown', {
+        key,
+        metaKey: !!opts.meta,
+        shiftKey: !!opts.shift,
+        bubbles: true,
+        cancelable: true
+      })
+    );
+  }
+
+  function register(commands: KeyboardCommand[]) {
+    registered = commands;
+    KeyboardHandler.instance.registerCommands(commands);
+  }
+
+  beforeEach(() => {
+    fired = [];
+    registered = [];
+    host = document.createElement('div');
+    document.body.appendChild(host);
+  });
+
+  afterEach(() => {
+    if (registered.length) KeyboardHandler.instance.deregisterCommands(registered);
+    host.remove();
+  });
+
+  // ---------------------------------------------------------------- predicate --
+
+  describe('getKeyboardFocusKind', () => {
+    function el(html: string): HTMLElement {
+      host.innerHTML = html;
+      return host.firstElementChild as HTMLElement;
+    }
+
+    it('reports nothing focused as "none"', () => {
+      expect(getKeyboardFocusKind(null)).toBe('none');
+    });
+
+    it('reports a button as "activatable", not as text entry — this is F21', () => {
+      expect(getKeyboardFocusKind(el('<button>Deploy</button>'))).toBe('activatable');
+    });
+
+    it('reports a link, a menu item and a tab as "activatable"', () => {
+      expect(getKeyboardFocusKind(el('<a href="#x">docs</a>'))).toBe('activatable');
+      expect(getKeyboardFocusKind(el('<div role="menuitem">Float</div>'))).toBe('activatable');
+      expect(getKeyboardFocusKind(el('<div role="tab">Project</div>'))).toBe('activatable');
+      expect(getKeyboardFocusKind(el('<div role="button">x</div>'))).toBe('activatable');
+    });
+
+    it('reports genuine text entry as "text-entry"', () => {
+      expect(getKeyboardFocusKind(el('<input type="text" />'))).toBe('text-entry');
+      expect(getKeyboardFocusKind(el('<textarea></textarea>'))).toBe('text-entry');
+      expect(getKeyboardFocusKind(el('<select><option>a</option></select>'))).toBe('text-entry');
+      expect(getKeyboardFocusKind(el('<div contenteditable="true">x</div>'))).toBe('text-entry');
+    });
+
+    it('reports anything inside a CodeMirror editor as "text-entry"', () => {
+      // CM6 focuses `.cm-content`, which is contenteditable — but the property
+      // editor focuses it by selector and CM's own panels host plain inputs, so
+      // the whole editor subtree counts.
+      const editor = el('<div class="cm-editor"><div class="cm-content"></div></div>');
+      expect(getKeyboardFocusKind(editor.querySelector('.cm-content'))).toBe('text-entry');
+    });
+
+    it('reports a plain focusable div (canvas, panel body) as "none"', () => {
+      expect(getKeyboardFocusKind(el('<div tabindex="0">canvas</div>'))).toBe('none');
+    });
+  });
+
+  // ------------------------------------------------------------- the two ways --
+
+  it('runs ⌘F while a button holds focus (the F21 regression)', () => {
+    register([{ handler: () => fired.push('search'), keybinding: KeyMod.CtrlCmd | KeyCode.KEY_F }]);
+
+    const button = document.createElement('button');
+    host.appendChild(button);
+    button.focus();
+    expect(document.activeElement).toBe(button);
+
+    press('f', { meta: true });
+    expect(fired).toEqual(['search']);
+  });
+
+  it('runs an unmodified shortcut (Backspace) while a button holds focus', () => {
+    register([{ handler: () => fired.push('delete'), keybinding: KeyCode.Backspace }]);
+
+    const button = document.createElement('button');
+    host.appendChild(button);
+    button.focus();
+
+    press('Backspace');
+    expect(fired).toEqual(['delete']);
+  });
+
+  it('does NOT run a canvas shortcut while you are typing in a text field', () => {
+    // The inverse regression: bare `d` must reach the input, not the canvas.
+    register([
+      { handler: () => fired.push('canvas-d'), keybinding: KeyCode.KEY_D },
+      { handler: () => fired.push('devtools'), keybinding: KeyMod.CtrlCmd | KeyCode.KEY_D }
+    ]);
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    host.appendChild(input);
+    input.focus();
+    expect(document.activeElement).toBe(input);
+
+    press('d');
+    press('d', { meta: true });
+    expect(fired).toEqual([]);
+  });
+
+  it('does NOT run a canvas shortcut while you are typing in a CodeMirror editor', () => {
+    register([{ handler: () => fired.push('canvas-d'), keybinding: KeyCode.KEY_D }]);
+
+    host.innerHTML = '<div class="cm-editor"><div class="cm-content" tabindex="0"></div></div>';
+    const content = host.querySelector<HTMLElement>('.cm-content');
+    content.focus();
+
+    press('d');
+    expect(fired).toEqual([]);
+  });
+
+  it('leaves Space and Enter to a focused button, so bare Space does not pan the canvas', () => {
+    register([
+      { handler: () => fired.push('pan-on'), keybinding: KeyCode.Space },
+      { handler: () => fired.push('pan-off'), keybinding: KeyCode.Space, type: 'up' },
+      { handler: () => fired.push('rename'), keybinding: KeyCode.Enter }
+    ]);
+
+    const button = document.createElement('button');
+    host.appendChild(button);
+    button.focus();
+
+    press(' ');
+    press(' ', { type: 'keyup' });
+    press('Enter');
+    expect(fired).toEqual([]);
+  });
+
+  it('still runs bare Space and Enter when nothing is focused', () => {
+    register([
+      { handler: () => fired.push('pan-on'), keybinding: KeyCode.Space },
+      { handler: () => fired.push('rename'), keybinding: KeyCode.Enter }
+    ]);
+
+    (document.activeElement as HTMLElement)?.blur?.();
+
+    press(' ');
+    press('Enter');
+    expect(fired).toEqual(['pan-on', 'rename']);
+  });
+
+  it('lets Escape reach the popup layer when a button holds focus, rather than only blurring it', () => {
+    register([{ handler: () => fired.push('close-popup'), keybinding: KeyCode.Escape }]);
+
+    const button = document.createElement('button');
+    host.appendChild(button);
+    button.focus();
+
+    press('Escape');
+    expect(fired).toEqual(['close-popup']);
+  });
+
+  it('Escape in a text field leaves the field and runs no command', () => {
+    register([{ handler: () => fired.push('close-popup'), keybinding: KeyCode.Escape }]);
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    host.appendChild(input);
+    input.focus();
+
+    press('Escape');
+    expect(fired).toEqual([]);
+    expect(document.activeElement).not.toBe(input);
+  });
+
+  it('runs a keyup command while a button holds focus', () => {
+    register([{ handler: () => fired.push('up'), keybinding: KeyCode.KEY_D, type: 'up' }]);
+
+    const button = document.createElement('button');
+    host.appendChild(button);
+    button.focus();
+
+    press('d', { type: 'keyup' });
+    expect(fired).toEqual(['up']);
+  });
+});

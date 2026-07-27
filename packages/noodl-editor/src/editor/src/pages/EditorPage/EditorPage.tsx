@@ -178,19 +178,17 @@ export function EditorPage({ route }: EditorPageProps) {
       keybinding: KeyMod.CtrlCmd | KeyMod.Shift | KeyCode.KEY_E
     },
     {
-      // PNL-003: widen the panel and back. `KeyboardHandler` already declines to
-      // run commands while a focusable element has focus, so this does not fire
-      // while you are typing in a panel field.
+      // PNL-003: widen the panel and back. `KeyboardHandler` declines to run
+      // commands while a *text* field has focus, so this does not fire while
+      // you are typing in a panel field — but it does still fire right after
+      // you clicked the rail icon or the header button, which in Chromium
+      // leaves that button focused (F21).
       handler: () => sidePanelLayoutRef.current.toggleWide(),
-      keybinding: KeyMod.CtrlCmd | KeyCode.US_BACKSLASH,
-      // Must still fire right after you clicked the rail icon or the header
-      // button, which in Chromium leaves that button focused.
-      worksWhenFocused: true
+      keybinding: KeyMod.CtrlCmd | KeyCode.US_BACKSLASH
     },
     {
       handler: () => sidePanelLayoutRef.current.toggleHidden(),
-      keybinding: KeyMod.CtrlCmd | KeyCode.KEY_B,
-      worksWhenFocused: true
+      keybinding: KeyMod.CtrlCmd | KeyCode.KEY_B
     }
   ]);
 
