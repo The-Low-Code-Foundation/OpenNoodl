@@ -5,8 +5,10 @@ import { ConfigVariable, ConfigType, RESERVED_CONFIG_KEYS } from '@noodl/runtime
 import { JSONEditor } from '@noodl-core-ui/components/json-editor';
 import { PropertyPanelTextInput } from '@noodl-core-ui/components/property-panel/PropertyPanelTextInput';
 import { CollapsableSection } from '@noodl-core-ui/components/sidebar/CollapsableSection';
+import { PanelRow } from '@noodl-core-ui/components/sidebar/PanelRow';
 
 import PopupLayer from '../../../popuplayer';
+import css from './sections.module.scss';
 
 interface VariablesSectionProps {
   variables: ConfigVariable[];
@@ -300,7 +302,9 @@ export function VariablesSection({ variables, onChange }: VariablesSectionProps)
     setJsonError('');
   };
 
-  const renderValueInput = (type: ConfigType, value: string, onValueChange: (v: string) => void): React.ReactNode => {
+  // Returns an element rather than a `ReactNode` so it satisfies core-ui's
+  // `Slot`, which deliberately excludes bare numbers.
+  const renderValueInput = (type: ConfigType, value: string, onValueChange: (v: string) => void): JSX.Element => {
     if (type === 'boolean') {
       return (
         <label
@@ -332,40 +336,25 @@ export function VariablesSection({ variables, onChange }: VariablesSectionProps)
       return (
         <input
           type="number"
+          className={css.NumberInput}
           value={value || ''}
           onChange={(e) => onValueChange(e.target.value)}
           placeholder="0"
-          style={{
-            width: '100%',
-            padding: '8px',
-            fontSize: '13px',
-            fontFamily: 'inherit',
-            backgroundColor: 'var(--theme-color-bg-3)',
-            border: '1px solid var(--theme-color-border-default)',
-            borderRadius: '4px',
-            color: 'var(--theme-color-fg-default)'
-          }}
         />
       );
     }
 
     if (type === 'color') {
       return (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div className={css.ColourField}>
           <input
             type="color"
+            aria-label="Colour swatch"
+            className={css.ColourSwatch}
             value={value || '#000000'}
             onChange={(e) => onValueChange(e.target.value)}
-            style={{
-              width: '40px',
-              height: '32px',
-              border: '1px solid var(--theme-color-border-default)',
-              borderRadius: '4px',
-              cursor: 'pointer',
-              backgroundColor: 'transparent'
-            }}
           />
-          <div style={{ flex: 1 }}>
+          <div className={css.ColourText}>
             <PropertyPanelTextInput value={value || '#000000'} onChange={onValueChange} />
           </div>
         </div>
@@ -419,11 +408,10 @@ export function VariablesSection({ variables, onChange }: VariablesSectionProps)
 
       {/* Add Variable Button + Clear All */}
       {!isAdding && (
-        <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+        <div className={css.ButtonRow}>
           <button
             onClick={() => setIsAdding(true)}
             style={{
-              flex: 1,
               padding: '8px',
               fontSize: '13px',
               fontWeight: 500,
@@ -448,7 +436,7 @@ export function VariablesSection({ variables, onChange }: VariablesSectionProps)
                 padding: '8px 12px',
                 fontSize: '13px',
                 fontWeight: 500,
-                backgroundColor: '#dc3545',
+                backgroundColor: 'var(--theme-color-danger)',
                 color: 'white',
                 border: 'none',
                 borderRadius: '4px',
@@ -472,18 +460,7 @@ export function VariablesSection({ variables, onChange }: VariablesSectionProps)
             borderRadius: '4px'
           }}
         >
-          <div style={{ marginBottom: '8px' }}>
-            <label
-              style={{
-                display: 'block',
-                fontSize: '12px',
-                fontWeight: 500,
-                marginBottom: '4px',
-                color: 'var(--theme-color-fg-default)'
-              }}
-            >
-              Key *
-            </label>
+          <PanelRow label="Key *">
             <PropertyPanelTextInput
               value={newKey}
               onChange={(value) => {
@@ -491,21 +468,12 @@ export function VariablesSection({ variables, onChange }: VariablesSectionProps)
                 setError('');
               }}
             />
-          </div>
+          </PanelRow>
 
-          <div style={{ marginBottom: '8px' }}>
-            <label
-              style={{
-                display: 'block',
-                fontSize: '12px',
-                fontWeight: 500,
-                marginBottom: '4px',
-                color: 'var(--theme-color-fg-default)'
-              }}
-            >
-              Type
-            </label>
+          <PanelRow label="Type" htmlFor="app-setup-variable-type">
             <select
+              id="app-setup-variable-type"
+              className={css.NativeSelect}
               value={newType}
               onChange={(e) => {
                 const newT = e.target.value as ConfigType;
@@ -519,17 +487,6 @@ export function VariablesSection({ variables, onChange }: VariablesSectionProps)
                 else setNewValue('');
                 setJsonError('');
               }}
-              style={{
-                width: '100%',
-                padding: '8px',
-                fontSize: '13px',
-                fontFamily: 'inherit',
-                backgroundColor: 'var(--theme-color-bg-3)',
-                border: '1px solid var(--theme-color-border-default)',
-                borderRadius: '4px',
-                color: 'var(--theme-color-fg-default)',
-                cursor: 'pointer'
-              }}
             >
               {ALL_TYPES.map((type) => (
                 <option key={type.value} value={type.value}>
@@ -537,52 +494,17 @@ export function VariablesSection({ variables, onChange }: VariablesSectionProps)
                 </option>
               ))}
             </select>
-          </div>
+          </PanelRow>
 
-          <div style={{ marginBottom: '8px' }}>
-            <label
-              style={{
-                display: 'block',
-                fontSize: '12px',
-                fontWeight: 500,
-                marginBottom: '4px',
-                color: 'var(--theme-color-fg-default)'
-              }}
-            >
-              Value
-            </label>
-            {renderValueInput(newType, newValue, setNewValue)}
-          </div>
+          <PanelRow label="Value">{renderValueInput(newType, newValue, setNewValue)}</PanelRow>
 
-          <div style={{ marginBottom: '8px' }}>
-            <label
-              style={{
-                display: 'block',
-                fontSize: '12px',
-                fontWeight: 500,
-                marginBottom: '4px',
-                color: 'var(--theme-color-fg-default)'
-              }}
-            >
-              Category (optional)
-            </label>
+          <PanelRow label="Category (optional)">
             <PropertyPanelTextInput value={newCategory} onChange={setNewCategory} />
-          </div>
+          </PanelRow>
 
-          <div style={{ marginBottom: '12px' }}>
-            <label
-              style={{
-                display: 'block',
-                fontSize: '12px',
-                fontWeight: 500,
-                marginBottom: '4px',
-                color: 'var(--theme-color-fg-default)'
-              }}
-            >
-              Description
-            </label>
+          <PanelRow label="Description">
             <PropertyPanelTextInput value={newDescription} onChange={setNewDescription} />
-          </div>
+          </PanelRow>
 
           {error && (
             <div
@@ -616,12 +538,11 @@ export function VariablesSection({ variables, onChange }: VariablesSectionProps)
             </div>
           )}
 
-          <div style={{ display: 'flex', gap: '8px' }}>
+          <div className={css.ButtonRow}>
             <button
               onClick={handleAdd}
               disabled={!!error || !!jsonError}
               style={{
-                flex: 1,
                 padding: '8px',
                 fontSize: '13px',
                 fontWeight: 500,
@@ -637,7 +558,6 @@ export function VariablesSection({ variables, onChange }: VariablesSectionProps)
             <button
               onClick={handleCancel}
               style={{
-                flex: 1,
                 padding: '8px',
                 fontSize: '13px',
                 fontWeight: 500,
@@ -691,47 +611,13 @@ export function VariablesSection({ variables, onChange }: VariablesSectionProps)
           {groupedVariables[category].map((variable) => {
             const index = localVariables.indexOf(variable);
             return (
-              <div
-                key={index}
-                style={{
-                  padding: '12px',
-                  marginBottom: '8px',
-                  backgroundColor: 'var(--theme-color-bg-2)',
-                  border: '1px solid var(--theme-color-border-default)',
-                  borderRadius: '4px'
-                }}
-              >
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    marginBottom: '8px'
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
-                    <span
-                      style={{
-                        fontSize: '13px',
-                        fontWeight: 500,
-                        fontFamily: 'monospace',
-                        color: 'var(--theme-color-fg-default)'
-                      }}
-                    >
+              <div key={index} className={css.VariableCard}>
+                <div className={css.VariableHeader}>
+                  <div className={css.VariableIdentity}>
+                    <span className={css.VariableKey} title={variable.key}>
                       {variable.key}
                     </span>
-                    <span
-                      style={{
-                        fontSize: '11px',
-                        padding: '2px 6px',
-                        backgroundColor: 'var(--theme-color-bg-3)',
-                        border: '1px solid var(--theme-color-border-default)',
-                        borderRadius: '3px',
-                        color: 'var(--theme-color-fg-muted)'
-                      }}
-                    >
-                      {variable.type}
-                    </span>
+                    <span className={css.VariableType}>{variable.type}</span>
                   </div>
                   <button
                     onClick={() => handleDelete(index)}
@@ -740,7 +626,7 @@ export function VariablesSection({ variables, onChange }: VariablesSectionProps)
                       padding: '4px 10px',
                       fontSize: '16px',
                       fontWeight: 'bold',
-                      backgroundColor: '#dc3545',
+                      backgroundColor: 'var(--theme-color-danger)',
                       color: 'white',
                       border: 'none',
                       borderRadius: '4px',
@@ -753,35 +639,11 @@ export function VariablesSection({ variables, onChange }: VariablesSectionProps)
                   </button>
                 </div>
 
-                <div style={{ marginBottom: '8px' }}>
-                  <label
-                    style={{
-                      display: 'block',
-                      fontSize: '11px',
-                      fontWeight: 500,
-                      marginBottom: '4px',
-                      color: 'var(--theme-color-fg-muted)'
-                    }}
-                  >
-                    Value
-                  </label>
+                <PanelRow label="Value" helpText={variable.description || undefined}>
                   {renderValueInput(variable.type, serializeValue(variable), (value) =>
                     handleUpdate(index, { value: parseValue(variable.type, value) })
                   )}
-                </div>
-
-                {variable.description && (
-                  <div
-                    style={{
-                      fontSize: '11px',
-                      color: 'var(--theme-color-fg-muted)',
-                      fontStyle: 'italic',
-                      marginTop: '4px'
-                    }}
-                  >
-                    {variable.description}
-                  </div>
-                )}
+                </PanelRow>
               </div>
             );
           })}

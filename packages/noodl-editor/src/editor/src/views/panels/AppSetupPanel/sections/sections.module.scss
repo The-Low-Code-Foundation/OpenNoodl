@@ -1,0 +1,192 @@
+/* PNL-004: shared by the App Setup sections.
+ *
+ * These sections hand-rolled every label as an inline-styled `<label>` above a
+ * field — which is the compact band's layout, applied at every width whether or
+ * not there is room for something better. They go through `PanelRow` now, and
+ * what is left here is the handful of controls `PanelRow` deliberately does not
+ * own: a textarea, a native select, a colour swatch.
+ */
+
+/* Multi-line free text. `PanelRow` gives it the whole row (`isStacked`); this
+   makes it fill that row. */
+.Textarea {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  padding: 8px;
+  font-size: 13px;
+  font-family: inherit;
+  background-color: var(--theme-color-bg-3);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: var(--radius-default);
+  color: var(--theme-color-fg-default);
+  resize: vertical;
+}
+
+/* The PWA display mode is a native `<select>` — the only one left in these
+   sections. Styled to match `PropertyPanelSelectInput` rather than replaced,
+   which would be a behaviour change this task has no business making. */
+.NativeSelect {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  padding: 8px;
+  font-size: 13px;
+  font-family: inherit;
+  background-color: var(--theme-color-bg-3);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: var(--radius-default);
+  color: var(--theme-color-fg-default);
+  cursor: pointer;
+}
+
+/* Swatch beside a hex field. The swatch never shrinks; the field takes the
+   rest and can go below its content width. */
+.ColourField {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  width: 100%;
+}
+
+.ColourSwatch {
+  flex: 0 0 auto;
+  width: 40px;
+  height: 32px;
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: var(--radius-default);
+  cursor: pointer;
+  background-color: transparent;
+}
+
+.ColourText {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* An inline checkbox with its own label — the PWA master switch, which gates
+   everything below it and so reads as a statement rather than a row. */
+.CheckboxLabel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--theme-color-fg-default);
+}
+
+.CheckboxInput {
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.CheckboxHelp {
+  margin-top: 4px;
+  margin-left: 24px;
+  min-width: 0;
+  font-size: 11px;
+  color: var(--theme-color-fg-muted);
+}
+
+.Group {
+  margin-bottom: 16px;
+  min-width: 0;
+}
+
+/* ---------------------------------------------------------------------------
+   Custom variables
+   PNL-004 touches this section's *reflow* only. Its buttons and cards are
+   hand-rolled inline styles that want a proper restyle; that is a redesign and
+   the spec puts it out of scope. What is fixed here is the three horizontal
+   groups that leave the panel at 240px.
+   --------------------------------------------------------------------------- */
+
+.ButtonRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+  margin-bottom: 12px;
+
+  > * {
+    flex: 1 1 110px;
+    min-width: 0;
+  }
+}
+
+.VariableCard {
+  padding: 12px;
+  margin-bottom: 8px;
+  min-width: 0;
+  background-color: var(--theme-color-bg-2);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: var(--radius-default);
+}
+
+.VariableHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+  margin-bottom: 8px;
+}
+
+/* The key is user-supplied and unbounded; it ellipsises rather than pushing the
+   delete button out of the card. */
+.VariableIdentity {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1 1 120px;
+  min-width: 0;
+}
+
+.VariableKey {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: monospace;
+  color: var(--theme-color-fg-default);
+}
+
+.VariableType {
+  flex: 0 0 auto;
+  font-size: 11px;
+  padding: 2px 6px;
+  background-color: var(--theme-color-bg-3);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: 3px;
+  color: var(--theme-color-fg-muted);
+}
+
+.VariableDescription {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: 11px;
+  color: var(--theme-color-fg-muted);
+  font-style: italic;
+  margin-top: 4px;
+}
+
+.NumberInput {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  padding: 8px;
+  font-size: 13px;
+  font-family: inherit;
+  background-color: var(--theme-color-bg-3);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: var(--radius-default);
+  color: var(--theme-color-fg-default);
+}

@@ -1,0 +1,18 @@
+/* PNL-004: the panel's own horizontal groups.
+ *
+ * `HStack` is one non-wrapping flex line with a 16px gap; a pair of buttons in
+ * one is fine at 380px and gone at 240px. This is the wrapping equivalent.
+ * `HStack` itself is shared with the rest of the editor and is not this task's
+ * to change.
+ */
+.ButtonRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+
+  > * {
+    flex: 1 1 96px;
+    min-width: 0;
+  }
+}

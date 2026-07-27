@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 /**
- * PNL-001 panel-geometry gate.
+ * Panel-geometry gate — PNL-001 (vertical) + PNL-004 (horizontal).
  *
- * The regression instrument for the side panel's scroll and box model. It walks
- * every registered rail panel at a **short** window height — the condition the
- * defects need — and asserts two things per panel:
+ * The regression instrument for the side panel's box model. It walks every
+ * registered rail panel and asserts, per panel:
  *
+ * **Vertically** (PNL-001), at a deliberately short window:
  *   1. Every scroll container reaches its own last pixel. After
  *      `scrollTo(0, scrollHeight)`, `scrollHeight - scrollTop - clientHeight <= 1`.
  *   2. **No descendant clips content it cannot scroll.** Any element whose
@@ -13,6 +13,41 @@
  *      is `hidden`/`clip` is content the user can never reach. This is the
  *      assertion that catches the flex-squeeze defect, and it is the one worth
  *      having: the panel looks fine, the sentence just ends.
+ *
+ * **Horizontally** (PNL-004), at each of five panel widths — 240, 300, 380,
+ * 560, 760:
+ *   3. **Nothing sticks out of the panel.** No element's border box extends
+ *      past the panel body's right edge. This is the direct statement of the
+ *      reported defect and the one a human would make looking at it.
+ *   4. **Nothing is clipped sideways.** An element whose `overflow-x` is
+ *      `hidden`/`clip` and whose `scrollWidth` exceeds its `clientWidth` is
+ *      content nobody can reach.
+ *   5. **Nothing scrolls sideways.** A horizontal scrollbar inside a panel is
+ *      always a layout failure here; the panel is a column.
+ *
+ * ### Why (3)–(5) are not the one-liner the spec proposed
+ *
+ * PNL-004's acceptance asks for "no element has `scrollWidth > clientWidth + 1`".
+ * Applied literally that flags the *fix*: an endpoint URL that ellipsises has
+ * `scrollWidth` 400 and `clientWidth` 200 by design, and so does every truncated
+ * name in the editor. Three exemptions keep the assertion pointed at defects:
+ *
+ *   - **Deliberate single-line truncation.** `text-overflow: ellipsis` with
+ *     `white-space: nowrap` is a decision, not an overflow. Skipped for (4).
+ *   - **Visually-hidden labels.** `PanelRow`'s sr-only label is a 1px box with
+ *     `overflow: hidden` and `nowrap`; every one would otherwise report.
+ *     `clientWidth <= 2` is skipped.
+ *   - **`visibility: hidden` / `opacity: 0`.** Measuring nodes (TextInput's
+ *     autosize sizer) carry real overflow nobody can see.
+ *
+ * ### How the width is set
+ *
+ * The panel's width is forced with an `!important` inline width on the
+ * `SideNavigation` root, then restored. That is a *measurement* override: it
+ * exercises the real container queries and the real flex chain, but it does not
+ * exercise the divider, the clamps or the persistence — those are PNL-003's,
+ * and it deliberately reaches widths the clamps would refuse so the layout is
+ * tested rather than the clamp.
  *
  * Lives beside the phase-23 screenshot corpus because it shares its harness
  * shape — one raw CDP socket, no dependencies, drives the real editor.
@@ -24,8 +59,9 @@
  *
  * Usage:
  *   node panel-geometry.mjs [--width 1280] [--height 720] [--json out.json]
+ *                           [--panel-widths 240,300,380,560,760] [--skip-horizontal]
  *
- * Exits non-zero if any panel has unreachable content.
+ * Exits non-zero if any panel has unreachable or overflowing content.
  */
 
 import fs from 'node:fs';
@@ -35,12 +71,19 @@ const arg = (name, def) => {
   const i = argv.indexOf(name);
   return i >= 0 && argv[i + 1] ? argv[i + 1] : def;
 };
+const has = (name) => argv.includes(name);
 const CDP = arg('--cdp', 'http://localhost:9222');
 // 1280x720 is deliberately shorter than the 13-inch laptop the defects were
 // reported on. A tall window hides all of this.
 const WIDTH = Number(arg('--width', 1280));
 const HEIGHT = Number(arg('--height', 720));
 const JSON_OUT = arg('--json', null);
+// PNL-004's five widths. 240 is `MIN_PANEL_WIDTH`; 760 is `WIDE_MAX_WIDTH`.
+const PANEL_WIDTHS = arg('--panel-widths', '240,300,380,560,760')
+  .split(',')
+  .map((n) => Number(n.trim()))
+  .filter((n) => n > 0);
+const SKIP_HORIZONTAL = has('--skip-horizontal');
 
 // ---- tiny CDP client (one socket, sequential) ------------------------------
 class CdpSession {
@@ -173,6 +216,108 @@ const MEASURE = `(() => {
   return { clipped, unreachable };
 })()`;
 
+/**
+ * PNL-004's horizontal measurement. Runs inside the renderer.
+ *
+ * Reported in three buckets, all failures; they are separated because the fix
+ * differs. `sticksOut` wants `min-width: 0` on a flex child or `flex-wrap` on
+ * its parent; `clippedX` wants the same one level up; `scrollsX` almost always
+ * means a fixed width somewhere that should have been a basis.
+ */
+const MEASURE_X = `(() => {
+  const panel = document.querySelector('[class*="SideNavigation-module__Panel"]');
+  if (!panel) return { error: 'no side-panel root — is a project open?' };
+
+  const name = (el) => {
+    const cls = typeof el.className === 'string' ? el.className.split(' ')[0] : '';
+    return el.tagName.toLowerCase() + (cls ? '.' + cls : '');
+  };
+
+  // The right edge nothing may cross. The panel's own content box: its padding
+  // box minus any scrollbar gutter, which is what the user sees.
+  const panelRect = panel.getBoundingClientRect();
+  const panelRight = panelRect.left + panel.clientWidth +
+    (panel.clientLeft || 0);
+
+  const sticksOut = [];
+  const clippedX = [];
+  const scrollsX = [];
+
+  for (const el of panel.querySelectorAll('*')) {
+    const cs = getComputedStyle(el);
+    if (cs.visibility === 'hidden' || cs.opacity === '0') continue;
+    if (cs.display === 'none') continue;
+    // A collapsed box, and the 1px sr-only label box PanelRow renders.
+    if (el.clientWidth <= 2 || el.clientHeight === 0) continue;
+    // Anything that has escaped the panel's flow is not the panel's geometry.
+    if (cs.position === 'fixed') continue;
+
+    const r = el.getBoundingClientRect();
+    if (r.width === 0) continue;
+
+    // (3) sticks out of the panel.
+    const past = r.right - panelRight;
+    if (past > 1) {
+      sticksOut.push({ el: name(el), past: Math.round(past), right: Math.round(r.right) });
+    }
+
+    const overBy = el.scrollWidth - el.clientWidth;
+    if (overBy <= 1) continue;
+
+    const ox = cs.overflowX;
+
+    // Deliberate single-line truncation is a decision, not an overflow.
+    const isEllipsised = cs.textOverflow === 'ellipsis' && cs.whiteSpace === 'nowrap';
+
+    if (ox === 'hidden' || ox === 'clip') {
+      if (isEllipsised) continue;
+      // Sub-character overflow is rounding, not hidden content.
+      const ch = parseFloat(cs.fontSize) || 12;
+      if (overBy < Math.max(2, ch / 2)) continue;
+      clippedX.push({ el: name(el), overBy, clientWidth: el.clientWidth, scrollWidth: el.scrollWidth });
+      continue;
+    }
+
+    if (ox === 'auto' || ox === 'scroll' || ox === 'overlay') {
+      scrollsX.push({ el: name(el), overBy, clientWidth: el.clientWidth, scrollWidth: el.scrollWidth });
+    }
+  }
+
+  return { sticksOut, clippedX, scrollsX, panelWidth: Math.round(panel.clientWidth) };
+})()`;
+
+/**
+ * Force the panel to a given width, or restore. See the header note: this is a
+ * measurement override, not a test of the divider.
+ */
+const setPanelWidth = (w) => `(() => {
+  const panel = document.querySelector('[class*="SideNavigation-module__Panel"]');
+  if (!panel) return null;
+  const root = panel.parentElement;
+  const RAIL = 52;
+  const props = ['width', 'min-width', 'max-width', 'flex'];
+  if (${w} === 0) {
+    for (const p of props) { root.style.removeProperty(p); panel.style.removeProperty(p); }
+    return { restored: true };
+  }
+  // The rail is a sibling inside the same root and the panel carries a 52px
+  // left margin for it, so the root must be the panel width plus the rail.
+  root.style.setProperty('width', (${w} + RAIL) + 'px', 'important');
+  root.style.setProperty('min-width', (${w} + RAIL) + 'px', 'important');
+  root.style.setProperty('max-width', (${w} + RAIL) + 'px', 'important');
+  root.style.setProperty('flex', '0 0 ' + (${w} + RAIL) + 'px', 'important');
+  // Belt and braces: if the root override does not reach the panel (a mode
+  // where the panel is positioned rather than flowed), pin the panel too.
+  const got = Math.round(panel.getBoundingClientRect().width);
+  if (Math.abs(got - ${w}) > 1) {
+    panel.style.setProperty('width', ${w} + 'px', 'important');
+    panel.style.setProperty('min-width', ${w} + 'px', 'important');
+    panel.style.setProperty('max-width', ${w} + 'px', 'important');
+    panel.style.setProperty('flex', '0 0 ' + ${w} + 'px', 'important');
+  }
+  return { applied: Math.round(panel.getBoundingClientRect().width) };
+})()`;
+
 // ---- main -------------------------------------------------------------------
 (async () => {
   console.log(`PNL-001 panel-geometry gate @ ${WIDTH}x${HEIGHT}`);
@@ -205,6 +350,7 @@ const MEASURE = `(() => {
 
   const results = [];
   let failures = 0;
+  let vFailures = 0;
 
   for (const id of railButtons) {
     if (!(await clickSel(cdp, `[data-test="${id}"]`))) {
@@ -215,6 +361,7 @@ const MEASURE = `(() => {
     if (m.error) {
       console.error(`  ✗  ${id} — ${m.error}`);
       failures++;
+      vFailures++;
       continue;
     }
     const bad = m.clipped.length + m.unreachable.length;
@@ -223,6 +370,7 @@ const MEASURE = `(() => {
       console.log(`  ✓  ${id}`);
     } else {
       failures++;
+      vFailures++;
       console.log(`  ✗  ${id}`);
       for (const c of m.clipped) {
         console.log(`       clips ${c.overBy}px it cannot scroll: ${c.el} (client ${c.clientHeight}, scroll ${c.scrollHeight})`);
@@ -233,12 +381,74 @@ const MEASURE = `(() => {
     }
   }
 
+  // ---- PNL-004: the horizontal axis, at five panel widths -------------------
+  const xResults = [];
+
+  if (!SKIP_HORIZONTAL) {
+    console.log(`\nPNL-004 horizontal overflow @ panel widths ${PANEL_WIDTHS.join(', ')}`);
+
+    for (const pw of PANEL_WIDTHS) {
+      const applied = await evalJS(cdp, setPanelWidth(pw));
+      await sleep(250);
+      if (!applied) {
+        console.error(`  ✗  could not set panel width — no panel element`);
+        failures++;
+        break;
+      }
+      if (applied.applied && Math.abs(applied.applied - pw) > 1) {
+        console.log(`  !  asked for ${pw}px, got ${applied.applied}px — measuring that instead`);
+      }
+
+      let widthFailures = 0;
+      for (const id of railButtons) {
+        if (!(await clickSel(cdp, `[data-test="${id}"]`))) continue;
+        const m = await evalJS(cdp, MEASURE_X);
+        if (m.error) {
+          console.error(`  ✗  ${pw}px ${id} — ${m.error}`);
+          failures++;
+          widthFailures++;
+          continue;
+        }
+        const bad = m.sticksOut.length + m.clippedX.length + m.scrollsX.length;
+        xResults.push({ panelWidth: pw, panel: id, ...m });
+        if (bad === 0) continue;
+
+        failures++;
+        widthFailures++;
+        console.log(`  ✗  ${pw}px  ${id}`);
+        for (const s of m.sticksOut.slice(0, 5)) {
+          console.log(`       sticks ${s.past}px past the panel's right edge: ${s.el}`);
+        }
+        if (m.sticksOut.length > 5) console.log(`       …and ${m.sticksOut.length - 5} more sticking out`);
+        for (const c of m.clippedX.slice(0, 5)) {
+          console.log(`       clips ${c.overBy}px sideways it cannot scroll: ${c.el} (client ${c.clientWidth}, scroll ${c.scrollWidth})`);
+        }
+        for (const s of m.scrollsX.slice(0, 5)) {
+          console.log(`       scrolls sideways by ${s.overBy}px: ${s.el}`);
+        }
+      }
+
+      if (widthFailures === 0) console.log(`  ✓  ${pw}px — all ${railButtons.length} panels clean`);
+    }
+
+    // Always hand the width back, pass or fail; a wedged override would make
+    // every later session in this editor lie.
+    await evalJS(cdp, setPanelWidth(0));
+  }
+
   if (JSON_OUT) {
-    fs.writeFileSync(JSON_OUT, JSON.stringify({ width: WIDTH, height: HEIGHT, results }, null, 2));
+    fs.writeFileSync(
+      JSON_OUT,
+      JSON.stringify({ width: WIDTH, height: HEIGHT, panelWidths: PANEL_WIDTHS, results, horizontal: xResults }, null, 2)
+    );
     console.log(`\nwrote ${JSON_OUT}`);
   }
 
-  console.log(`\n${results.length - failures}/${results.length} panels clean.`);
+  console.log(`\n${results.length - vFailures}/${results.length} panels clean vertically.`);
+  if (!SKIP_HORIZONTAL) {
+    const xBad = xResults.filter((r) => r.sticksOut.length + r.clippedX.length + r.scrollsX.length > 0).length;
+    console.log(`${xResults.length - xBad}/${xResults.length} panel×width combinations clean horizontally.`);
+  }
   process.exit(failures ? 1 : 0);
 })().catch((err) => {
   console.error('panel-geometry failed:', err.message);

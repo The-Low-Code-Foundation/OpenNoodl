@@ -22,13 +22,14 @@ import { PrimaryButton, PrimaryButtonVariant, PrimaryButtonSize } from '@noodl-c
 import { TextInput } from '@noodl-core-ui/components/inputs/TextInput';
 import { Box } from '@noodl-core-ui/components/layout/Box';
 import { Container } from '@noodl-core-ui/components/layout/Container';
-import { HStack, VStack } from '@noodl-core-ui/components/layout/Stack';
+import { VStack } from '@noodl-core-ui/components/layout/Stack';
 import { useConfirmationDialog } from '@noodl-core-ui/components/popups/ConfirmationDialog/ConfirmationDialog.hooks';
 import { BasePanel } from '@noodl-core-ui/components/sidebar/BasePanel';
 import { Section, SectionVariant } from '@noodl-core-ui/components/sidebar/Section';
 import { Text, TextType } from '@noodl-core-ui/components/typography/Text';
 
 import { AddBackendDialog } from './AddBackendDialog/AddBackendDialog';
+import css from './BackendServicesPanel.module.scss';
 import { BackendCard } from './BackendCard/BackendCard';
 import { CloudServicesEndpointSection } from './CloudServicesEndpointSection/CloudServicesEndpointSection';
 import { useLocalBackends } from './hooks/useLocalBackends';
@@ -208,13 +209,14 @@ export function BackendServicesPanel() {
                     />
                   </Box>
                   <Box hasTopSpacing>
-                    <HStack hasSpacing>
+                    <div className={css.ButtonRow}>
                       <PrimaryButton
                         label="Create"
                         size={PrimaryButtonSize.Small}
                         variant={PrimaryButtonVariant.Muted}
                         onClick={handleCreateLocalBackend}
                         isDisabled={!newLocalBackendName.trim()}
+                        isGrowing
                       />
                       <PrimaryButton
                         label="Cancel"
@@ -224,8 +226,9 @@ export function BackendServicesPanel() {
                           setIsAddLocalVisible(false);
                           setNewLocalBackendName('');
                         }}
+                        isGrowing
                       />
-                    </HStack>
+                    </div>
                   </Box>
                 </VStack>
               </Container>

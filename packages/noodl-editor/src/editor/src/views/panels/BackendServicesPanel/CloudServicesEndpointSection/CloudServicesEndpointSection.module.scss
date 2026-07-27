@@ -1,0 +1,35 @@
+/* PNL-004: a configured endpoint is a URL of unknown length beside a status
+ * icon, and the edit/disconnect pair is a non-wrapping `HStack`. Both overflow
+ * the panel at 240px. No query needed for either.
+ */
+.EndpointLine {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.EndpointUrl {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* An app id or a type description wraps rather than widening the section. */
+.EndpointMeta {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.ButtonRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+
+  > * {
+    flex: 1 1 96px;
+    min-width: 0;
+  }
+}

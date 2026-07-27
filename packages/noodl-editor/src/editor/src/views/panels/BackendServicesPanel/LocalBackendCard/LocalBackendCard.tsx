@@ -14,9 +14,10 @@ import { createPortal } from 'react-dom';
 import { Icon, IconName, IconSize } from '@noodl-core-ui/components/common/Icon';
 import { IconButton } from '@noodl-core-ui/components/inputs/IconButton';
 import { PrimaryButton, PrimaryButtonSize, PrimaryButtonVariant } from '@noodl-core-ui/components/inputs/PrimaryButton';
-import { HStack, VStack } from '@noodl-core-ui/components/layout/Stack';
+import { MenuDialogItem, MenuDialogWidth } from '@noodl-core-ui/components/popups/MenuDialog';
 import { Text, TextType } from '@noodl-core-ui/components/typography/Text';
 
+import { showContextMenuInPopup } from '../../../ShowContextMenuInPopup';
 import { AuthPanel } from '../../auth';
 import { DataBrowser } from '../../databrowser';
 import { EmailPanel } from '../../email';
@@ -117,21 +118,57 @@ export function LocalBackendCard({ backend, onStart, onStop, onDelete, onExport 
     }
   }, [backend.endpoint]);
 
+  // PNL-004: eleven actions cannot all be buttons in a column that is sometimes
+  // 240px wide. The three you reach for while building stay on the card; the
+  // rest — and everything destructive — move behind `⋯`, which is where a
+  // destructive action belongs anyway.
+  const handleShowMore = useCallback(() => {
+    const items: (MenuDialogItem | 'divider')[] = [];
+
+    if (backend.running) {
+      items.push(
+        { label: 'Triggers', icon: IconName.Lightning, onClick: () => setShowTriggers(true) },
+        { label: 'Email', icon: IconName.Chat, onClick: () => setShowEmail(true) },
+        { label: 'Search', icon: IconName.Search, onClick: () => setShowSearch(true) },
+        { label: 'Sign-in providers', icon: IconName.User, onClick: () => setShowAuth(true) }
+      );
+
+      if (onExport) {
+        items.push('divider');
+        items.push({ label: 'Export data…', icon: IconName.CloudDownload, onClick: onExport });
+      }
+    }
+
+    if (items.length) items.push('divider');
+    items.push({
+      label: 'Delete backend',
+      icon: IconName.Trash,
+      isDangerous: true,
+      // Deleting a running backend would strand its process; stop it first.
+      isDisabled: backend.running,
+      tooltip: backend.running ? 'Stop the backend before deleting it' : undefined,
+      onClick: onDelete,
+      testId: `delete-local-backend-${backend.id}`
+    });
+
+    showContextMenuInPopup({ items, width: MenuDialogWidth.Default });
+  }, [backend.running, backend.id, onDelete, onExport]);
+
   return (
     <div className={css.Root} data-test={`local-backend-card-${backend.id}`}>
       {/* Header */}
       <div className={css.Header}>
-        <HStack hasSpacing>
+        <div className={css.Identity}>
           <div className={css.TypeIcon}>
             <Text textType={TextType.Proud}>L</Text>
           </div>
-          <VStack>
+          <div className={css.IdentityText}>
             <Text textType={TextType.DefaultContrast}>{backend.name}</Text>
             <Text textType={TextType.Shy} style={{ fontSize: '11px' }}>
               Local SQLite • Port {backend.port}
             </Text>
-          </VStack>
-        </HStack>
+          </div>
+        </div>
 
         <div className={css.StatusBadge} style={{ color: statusDisplay.color }}>
           <Icon icon={statusDisplay.icon} size={IconSize.Tiny} UNSAFE_style={{ color: statusDisplay.color }} />
@@ -143,13 +180,13 @@ export function LocalBackendCard({ backend, onStart, onStop, onDelete, onExport 
 
       {/* Endpoint (when running) */}
       {backend.running && backend.endpoint && (
-        <div className={css.Endpoint} onClick={handleCopyEndpoint}>
-          <Text textType={TextType.Shy} style={{ fontSize: '11px' }}>
+        <div className={css.Endpoint} onClick={handleCopyEndpoint} title={`${backend.endpoint} — click to copy`}>
+          <Text className={css.EndpointUrl} textType={TextType.Shy} style={{ fontSize: '11px' }}>
             {backend.endpoint}
           </Text>
-          <Text textType={TextType.Shy} style={{ fontSize: '10px', marginLeft: '8px' }}>
-            (click to copy)
-          </Text>
+          <span className={css.EndpointHint}>
+            <Icon icon={IconName.Copy} size={IconSize.Tiny} />
+          </span>
         </div>
       )}
 
@@ -157,7 +194,7 @@ export function LocalBackendCard({ backend, onStart, onStop, onDelete, onExport 
       {isEphemeral && (
         <div className={css.PersistenceNotice} style={{ color: 'var(--theme-color-notice)' }}>
           <Icon icon={IconName.WarningTriangle} size={IconSize.Tiny} UNSAFE_style={{ color: 'var(--theme-color-notice)' }} />
-          <Text textType={TextType.Shy} style={{ fontSize: '11px', marginLeft: '6px' }}>
+          <Text className={css.PersistenceNoticeText} textType={TextType.Shy} style={{ fontSize: '11px', marginLeft: '6px' }}>
             Ephemeral mode — data is kept in memory only and will be lost when the backend stops or the app restarts.
           </Text>
         </div>
@@ -167,7 +204,7 @@ export function LocalBackendCard({ backend, onStart, onStop, onDelete, onExport 
       {hasFailed && (
         <div className={css.PersistenceNotice} style={{ color: 'var(--theme-color-danger)' }}>
           <Icon icon={IconName.WarningTriangle} size={IconSize.Tiny} UNSAFE_style={{ color: 'var(--theme-color-danger)' }} />
-          <Text textType={TextType.Shy} style={{ fontSize: '11px', marginLeft: '6px' }}>
+          <Text className={css.PersistenceNoticeText} textType={TextType.Shy} style={{ fontSize: '11px', marginLeft: '6px' }}>
             {failureMessage
               ? `Cannot persist data: ${failureMessage}`
               : 'The local SQLite engine could not load, so this backend cannot persist data.'}
@@ -182,87 +219,74 @@ export function LocalBackendCard({ backend, onStart, onStop, onDelete, onExport 
         </Text>
       </div>
 
-      {/* Actions */}
+      {/* Actions — start/stop owns its own row; the inspection surfaces wrap
+          beneath it; everything else is behind `⋯`. */}
       <div className={css.Actions}>
-        <HStack hasSpacing>
+        <div className={css.PrimaryAction}>
           <PrimaryButton
-            label={isOperating ? 'Processing...' : backend.running ? 'Stop' : 'Start'}
+            label={isOperating ? 'Processing…' : backend.running ? 'Stop backend' : 'Start backend'}
             size={PrimaryButtonSize.Small}
-            variant={backend.running ? PrimaryButtonVariant.Muted : PrimaryButtonVariant.Muted}
+            variant={PrimaryButtonVariant.Muted}
             onClick={handleToggle}
             isDisabled={isOperating}
+            isGrowing
+            testId={`toggle-local-backend-${backend.id}`}
           />
-          {hasFailed && (
+        </div>
+
+        {hasFailed && (
+          <div className={css.PrimaryAction}>
             <PrimaryButton
               label="Start ephemeral (no persistence)"
               size={PrimaryButtonSize.Small}
               variant={PrimaryButtonVariant.Muted}
               onClick={handleStartEphemeral}
               isDisabled={isOperating}
+              isGrowing
             />
-          )}
-          {backend.running && (
-            <>
+          </div>
+        )}
+
+        {backend.running && (
+          <>
+            <div className={css.SecondaryAction}>
               <PrimaryButton
                 label="Data"
                 size={PrimaryButtonSize.Small}
                 variant={PrimaryButtonVariant.Muted}
                 onClick={() => setShowDataBrowser(true)}
+                isGrowing
               />
+            </div>
+            <div className={css.SecondaryAction}>
               <PrimaryButton
                 label="Schema"
                 size={PrimaryButtonSize.Small}
                 variant={PrimaryButtonVariant.Muted}
                 onClick={() => setShowSchemaPanel(true)}
+                isGrowing
               />
+            </div>
+            <div className={css.SecondaryAction}>
               <PrimaryButton
-                label="Permissions"
+                label="Access"
                 size={PrimaryButtonSize.Small}
                 variant={PrimaryButtonVariant.Muted}
                 onClick={() => setShowPermissions(true)}
+                isGrowing
               />
-              <PrimaryButton
-                label="Triggers"
-                size={PrimaryButtonSize.Small}
-                variant={PrimaryButtonVariant.Muted}
-                onClick={() => setShowTriggers(true)}
-              />
-              <PrimaryButton
-                label="Email"
-                size={PrimaryButtonSize.Small}
-                variant={PrimaryButtonVariant.Muted}
-                onClick={() => setShowEmail(true)}
-              />
-              <PrimaryButton
-                label="Search"
-                size={PrimaryButtonSize.Small}
-                variant={PrimaryButtonVariant.Muted}
-                onClick={() => setShowSearch(true)}
-              />
-              <PrimaryButton
-                label="Sign-in"
-                size={PrimaryButtonSize.Small}
-                variant={PrimaryButtonVariant.Muted}
-                onClick={() => setShowAuth(true)}
-              />
-            </>
-          )}
-          {onExport && backend.running && (
-            <PrimaryButton
-              label="Export"
-              size={PrimaryButtonSize.Small}
-              variant={PrimaryButtonVariant.Muted}
-              onClick={onExport}
-            />
-          )}
+            </div>
+          </>
+        )}
+
+        <div className={css.MoreAction}>
           <IconButton
-            icon={IconName.Trash}
+            icon={IconName.DotsThreeHorizontal}
             size={IconSize.Small}
-            onClick={onDelete}
-            isDisabled={backend.running}
-            testId={`delete-local-backend-${backend.id}`}
+            onClick={handleShowMore}
+            testId={`local-backend-more-${backend.id}`}
           />
-        </HStack>
+        </div>
       </div>
 
       {/* Schema Panel (rendered via portal for full-screen overlay) */}

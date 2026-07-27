@@ -36,9 +36,11 @@ import { PrimaryButton, PrimaryButtonSize, PrimaryButtonVariant } from '@noodl-c
 import { TextInput } from '@noodl-core-ui/components/inputs/TextInput';
 import { Box } from '@noodl-core-ui/components/layout/Box';
 import { Container } from '@noodl-core-ui/components/layout/Container';
-import { HStack, VStack } from '@noodl-core-ui/components/layout/Stack';
+import { VStack } from '@noodl-core-ui/components/layout/Stack';
 import { Section, SectionVariant } from '@noodl-core-ui/components/sidebar/Section';
 import { Text, TextType } from '@noodl-core-ui/components/typography/Text';
+
+import css from './CloudServicesEndpointSection.module.scss';
 
 function readCurrentEndpoint() {
   const project = ProjectModel.instance;
@@ -113,14 +115,18 @@ export function CloudServicesEndpointSection() {
         <Container hasLeftSpacing hasRightSpacing hasTopSpacing hasBottomSpacing>
           {isConnected ? (
             <VStack hasSpacing>
-              <HStack hasSpacing>
+              <div className={css.EndpointLine} title={current.endpoint}>
                 <Icon icon={IconName.Check} size={IconSize.Small} UNSAFE_style={{ color: 'var(--theme-color-success)' }} />
-                <Text textType={TextType.DefaultContrast}>{current.endpoint}</Text>
-              </HStack>
+                <Text className={css.EndpointUrl} textType={TextType.DefaultContrast}>
+                  {current.endpoint}
+                </Text>
+              </div>
               {current.appId && (
-                <Text textType={TextType.Shy}>App ID: {current.appId}</Text>
+                <Text className={css.EndpointMeta} textType={TextType.Shy}>
+                  App ID: {current.appId}
+                </Text>
               )}
-              <Text textType={TextType.Shy}>
+              <Text className={css.EndpointMeta} textType={TextType.Shy}>
                 {current.type === 'nodegx'
                   ? 'NodeGX backend — supports realtime/Live'
                   : current.type === 'external'
@@ -128,20 +134,22 @@ export function CloudServicesEndpointSection() {
                   : 'Type unknown'}
               </Text>
               <Box hasTopSpacing>
-                <HStack hasSpacing>
+                <div className={css.ButtonRow}>
                   <PrimaryButton
                     label="Edit"
                     size={PrimaryButtonSize.Small}
                     variant={PrimaryButtonVariant.Muted}
                     onClick={startEditing}
+                    isGrowing
                   />
                   <PrimaryButton
                     label="Disconnect"
                     size={PrimaryButtonSize.Small}
                     variant={PrimaryButtonVariant.Muted}
                     onClick={handleDisconnect}
+                    isGrowing
                   />
-                </HStack>
+                </div>
               </Box>
             </VStack>
           ) : (
@@ -190,7 +198,7 @@ export function CloudServicesEndpointSection() {
               No master key here — the master-key admin surface was retired along with the Parse management panel.
             </Text>
             <Box hasTopSpacing>
-              <HStack hasSpacing>
+              <div className={css.ButtonRow}>
                 <PrimaryButton
                   label="Save"
                   size={PrimaryButtonSize.Small}
@@ -198,14 +206,16 @@ export function CloudServicesEndpointSection() {
                   onClick={handleSave}
                   isDisabled={!endpointInput.trim() || !appIdInput.trim()}
                   testId="save-cloud-services-endpoint-button"
+                  isGrowing
                 />
                 <PrimaryButton
                   label="Cancel"
                   size={PrimaryButtonSize.Small}
                   variant={PrimaryButtonVariant.Muted}
                   onClick={cancelEditing}
+                  isGrowing
                 />
-              </HStack>
+              </div>
             </Box>
           </VStack>
         </Container>

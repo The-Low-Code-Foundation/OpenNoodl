@@ -15,6 +15,28 @@
 .Root {
   box-sizing: border-box;
 
+  /* PNL-004: the panel frame is a query container, header included, so the
+     header can adapt to the panel's width rather than the window's. Written as
+     longhands rather than the `container: panel-frame / inline-size` shorthand
+     so Sass never has to decide what the `/` means.
+
+     `container-type: inline-size` implies `contain: layout style inline-size`.
+     Two consequences were checked before adding it:
+
+       - `.Root` becomes the containing block for `position: fixed` descendants.
+         Every full-screen overlay reachable from a panel escapes first —
+         `BaseDialog` (so `Modal`, `MenuDialog`, `ConfirmationDialog`) portals to
+         `.dialog-layer-portal-target`, and `LocalBackendCard`'s seven surfaces
+         `createPortal` to `document.body`. Nothing fixed is left in-tree.
+       - It contains *inline* size only, never block size, so the flex/height
+         chain below is untouched: `height: 100%` still resolves against the
+         slot, and `min-height: 0` still lets `.ChildrenContainer` scroll.
+
+     It does not affect PNL-009's detached modes: those make `SideNavigation
+     .Panel` — an *ancestor* of this element — `position: fixed`. */
+  container-type: inline-size;
+  container-name: panel-frame;
+
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -52,6 +74,15 @@
 
 .ChildrenContainer {
   box-sizing: border-box;
+
+  /* PNL-004: the scrolling body is the container every `PanelRow` and every
+     reflowing card queries. See `../PanelRow/panel-bands.scss` for the bands
+     and for why the numbers there are ~34px smaller than the panel widths they
+     correspond to (a size query resolves against the *content* box, and this
+     element carries the panel's horizontal inset). */
+  container-type: inline-size;
+  container-name: panel-body;
+
   overflow: hidden;
   min-height: 0;
   display: flex;

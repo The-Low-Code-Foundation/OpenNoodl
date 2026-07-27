@@ -3,8 +3,8 @@ import React, { useState } from 'react';
 import { ProjectModel } from '@noodl-models/projectmodel';
 
 import { PropertyPanelCheckbox } from '@noodl-core-ui/components/property-panel/PropertyPanelCheckbox';
-import { PropertyPanelRow } from '@noodl-core-ui/components/property-panel/PropertyPanelInput';
 import { CollapsableSection } from '@noodl-core-ui/components/sidebar/CollapsableSection';
+import { PanelRow, PanelRowVariant } from '@noodl-core-ui/components/sidebar/PanelRow';
 
 export function SitemapSection() {
   const [enabled, setEnabled] = useState(!!ProjectModel.instance.settings['sitemap.enabled']);
@@ -20,9 +20,9 @@ export function SitemapSection() {
 
   return (
     <CollapsableSection title="Experimental features - Sitemap" hasGutter hasVisibleOverflow hasTopDivider isClosed>
-      <PropertyPanelRow label="Enable">
+      <PanelRow label="Enable" variant={PanelRowVariant.Toggle}>
         <PropertyPanelCheckbox value={enabled} onChange={handleEnable} />
-      </PropertyPanelRow>
+      </PanelRow>
 
       {/* <PrimaryButton
         size={PrimaryButtonSize.Small}

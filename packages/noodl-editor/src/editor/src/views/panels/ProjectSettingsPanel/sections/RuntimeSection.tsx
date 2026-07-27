@@ -3,14 +3,15 @@ import React, { useState } from 'react';
 import { ProjectModel } from '@noodl-models/projectmodel';
 
 import { Box } from '@noodl-core-ui/components/layout/Box';
-import { PropertyPanelRow } from '@noodl-core-ui/components/property-panel/PropertyPanelInput';
 import { PropertyPanelSelectInput } from '@noodl-core-ui/components/property-panel/PropertyPanelSelectInput';
 import { CollapsableSection } from '@noodl-core-ui/components/sidebar/CollapsableSection';
+import { PanelRow } from '@noodl-core-ui/components/sidebar/PanelRow';
 import { Text, TextType } from '@noodl-core-ui/components/typography/Text';
 
 import { EventDispatcher } from '../../../../../../shared/utils/EventDispatcher';
 import { scanForLegacyPatterns } from '../../../../models/migration';
 import type { LegacyPatternScan } from '../../../../models/migration';
+import css from './sections.module.scss';
 
 /**
  * Per-project runtime React selection (RUN-001 slice 4).
@@ -75,15 +76,12 @@ export function RuntimeSection() {
         <Text>The React version powering the preview and all new deploys of this project.</Text>
       </Box>
 
-      <PropertyPanelRow label="React version">
+      <PanelRow
+        label="React version"
+        helpText="Already-deployed apps keep the React they were deployed with until you redeploy."
+      >
         <PropertyPanelSelectInput value={selected} properties={{ options: RUNTIME_OPTIONS }} onChange={handleChange} />
-      </PropertyPanelRow>
-
-      <Box hasTopSpacing>
-        <Text textType={TextType.Secondary}>
-          Already-deployed apps keep the React they were deployed with until you redeploy.
-        </Text>
-      </Box>
+      </PanelRow>
 
       {isScanning && (
         <Box hasTopSpacing>
@@ -106,7 +104,7 @@ export function RuntimeSection() {
             19. The preview is the real test — check these if something breaks:
           </Text>
           {findings.slice(0, 20).map((finding, i) => (
-            <Text key={i} textType={TextType.Secondary}>
+            <Text key={i} className={css.Breakable} textType={TextType.Secondary}>
               {finding.pattern} — {finding.path.replace(ProjectModel.instance._retainedProjectDirectory + '/', '')}:
               {finding.line}
             </Text>

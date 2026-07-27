@@ -3,6 +3,9 @@ import { AppSEO, AppIdentity } from '@noodl/runtime/src/config/types';
 
 import { PropertyPanelTextInput } from '@noodl-core-ui/components/property-panel/PropertyPanelTextInput';
 import { CollapsableSection } from '@noodl-core-ui/components/sidebar/CollapsableSection';
+import { PanelRow } from '@noodl-core-ui/components/sidebar/PanelRow';
+
+import css from './sections.module.scss';
 
 interface SEOSectionProps {
   seo: AppSEO;
@@ -31,48 +34,29 @@ export function SEOSection({ seo, identity, onChange }: SEOSectionProps) {
 
   return (
     <CollapsableSection title="SEO & Metadata" hasGutter hasVisibleOverflow hasTopDivider>
-      <div style={{ marginBottom: '12px' }}>
-        <label
-          style={{
-            display: 'block',
-            fontSize: '12px',
-            fontWeight: 500,
-            marginBottom: '4px',
-            color: 'var(--theme-color-fg-default)'
-          }}
-        >
-          Open Graph Title
-        </label>
+      <PanelRow
+        label="Open Graph title"
+        helpText={!seo.ogTitle && defaultOgTitle ? `Defaults to: ${defaultOgTitle}` : undefined}
+      >
         <PropertyPanelTextInput
           value={seo.ogTitle || ''}
           onChange={(value) => onChange({ ogTitle: value || undefined })}
         />
-        {!seo.ogTitle && defaultOgTitle && (
-          <div
-            style={{
-              fontSize: '11px',
-              color: 'var(--theme-color-fg-muted)',
-              marginTop: '4px'
-            }}
-          >
-            Defaults to: {defaultOgTitle}
-          </div>
-        )}
-      </div>
+      </PanelRow>
 
-      <div style={{ marginBottom: '12px' }}>
-        <label
-          style={{
-            display: 'block',
-            fontSize: '12px',
-            fontWeight: 500,
-            marginBottom: '4px',
-            color: 'var(--theme-color-fg-default)'
-          }}
-        >
-          Open Graph Description
-        </label>
+      <PanelRow
+        label="Open Graph description"
+        htmlFor="app-setup-og-description"
+        isStacked
+        helpText={
+          !seo.ogDescription && defaultOgDescription
+            ? `Defaults to: ${defaultOgDescription.substring(0, 50)}${defaultOgDescription.length > 50 ? '...' : ''}`
+            : undefined
+        }
+      >
         <textarea
+          id="app-setup-og-description"
+          className={css.Textarea}
           value={localOgDescription}
           onChange={(e) => {
             setLocalOgDescription(e.target.value);
@@ -80,115 +64,36 @@ export function SEOSection({ seo, identity, onChange }: SEOSectionProps) {
           }}
           placeholder="Enter description..."
           rows={3}
-          style={{
-            width: '100%',
-            padding: '8px',
-            fontSize: '13px',
-            fontFamily: 'inherit',
-            backgroundColor: 'var(--theme-color-bg-3)',
-            border: '1px solid var(--theme-color-border-default)',
-            borderRadius: '4px',
-            color: 'var(--theme-color-fg-default)',
-            resize: 'vertical'
-          }}
         />
-        {!seo.ogDescription && defaultOgDescription && (
-          <div
-            style={{
-              fontSize: '11px',
-              color: 'var(--theme-color-fg-muted)',
-              marginTop: '4px'
-            }}
-          >
-            Defaults to: {defaultOgDescription.substring(0, 50)}
-            {defaultOgDescription.length > 50 ? '...' : ''}
-          </div>
-        )}
-      </div>
+      </PanelRow>
 
-      <div style={{ marginBottom: '12px' }}>
-        <label
-          style={{
-            display: 'block',
-            fontSize: '12px',
-            fontWeight: 500,
-            marginBottom: '4px',
-            color: 'var(--theme-color-fg-default)'
-          }}
-        >
-          Open Graph Image
-        </label>
+      <PanelRow
+        label="Open Graph image"
+        helpText={!seo.ogImage && defaultOgImage ? `Defaults to: ${defaultOgImage}` : undefined}
+      >
         <PropertyPanelTextInput
           value={seo.ogImage || ''}
           onChange={(value) => onChange({ ogImage: value || undefined })}
         />
-        {!seo.ogImage && defaultOgImage && (
-          <div
-            style={{
-              fontSize: '11px',
-              color: 'var(--theme-color-fg-muted)',
-              marginTop: '4px'
-            }}
-          >
-            Defaults to: {defaultOgImage}
-          </div>
-        )}
-      </div>
+      </PanelRow>
 
-      <div style={{ marginBottom: '12px' }}>
-        <label
-          style={{
-            display: 'block',
-            fontSize: '12px',
-            fontWeight: 500,
-            marginBottom: '4px',
-            color: 'var(--theme-color-fg-default)'
-          }}
-        >
-          Favicon
-        </label>
+      <PanelRow label="Favicon" helpText="Path to favicon (.ico, .png, .svg)">
         <PropertyPanelTextInput value={seo.favicon || ''} onChange={(value) => onChange({ favicon: value })} />
-        <div
-          style={{
-            fontSize: '11px',
-            color: 'var(--theme-color-fg-muted)',
-            marginTop: '4px'
-          }}
-        >
-          Path to favicon (.ico, .png, .svg)
-        </div>
-      </div>
+      </PanelRow>
 
-      <div style={{ marginBottom: '12px' }}>
-        <label
-          style={{
-            display: 'block',
-            fontSize: '12px',
-            fontWeight: 500,
-            marginBottom: '4px',
-            color: 'var(--theme-color-fg-default)'
-          }}
-        >
-          Theme Color
-        </label>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+      <PanelRow label="Theme colour" helpText="Browser theme color (hex format)">
+        <div className={css.ColourField}>
           <input
             type="color"
+            aria-label="Theme colour swatch"
+            className={css.ColourSwatch}
             value={localThemeColor}
             onChange={(e) => {
               setLocalThemeColor(e.target.value);
               onChange({ themeColor: e.target.value });
             }}
-            style={{
-              width: '40px',
-              height: '32px',
-              border: '1px solid var(--theme-color-border-default)',
-              borderRadius: '4px',
-              cursor: 'pointer',
-              backgroundColor: 'transparent'
-            }}
           />
-          <div style={{ flex: 1 }}>
+          <div className={css.ColourText}>
             <PropertyPanelTextInput
               value={localThemeColor}
               onChange={(value) => {
@@ -198,16 +103,7 @@ export function SEOSection({ seo, identity, onChange }: SEOSectionProps) {
             />
           </div>
         </div>
-        <div
-          style={{
-            fontSize: '11px',
-            color: 'var(--theme-color-fg-muted)',
-            marginTop: '4px'
-          }}
-        >
-          Browser theme color (hex format)
-        </div>
-      </div>
+      </PanelRow>
     </CollapsableSection>
   );
 }
