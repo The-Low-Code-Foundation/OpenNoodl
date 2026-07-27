@@ -119,17 +119,31 @@ export const BACKEND_SURFACE_PANEL_IDS: readonly string[] = SURFACES.map((s) => 
  */
 const SURFACE_DEFAULT_WIDTH = 860;
 
+/**
+ * Where these sort in `getItems()`.
+ *
+ * They are transient, so they never reach the rail and the number is invisible —
+ * but `getItems()` sorts with `(a, b) => a.order - b.order`, and for an item with
+ * no `order` that expression is `NaN`. A comparator that returns `NaN` is not a
+ * valid ordering, and `Array.prototype.sort` is free to move *unrelated* elements
+ * when it meets one. Two registrations already have no order; adding seven more
+ * would make a silently reshuffled rail much more likely. So: ordered, just after
+ * `backend-services` (8), which is also where they belong conceptually.
+ */
+const SURFACE_ORDER_BASE = 8.01;
+
 /** Called once from `installSidePanel`, beside the rail-visible registrations. */
 export function installBackendSurfacePanels() {
-  for (const surface of SURFACES) {
+  SURFACES.forEach((surface, index) => {
     SidebarModel.instance.register({
       transient: true,
       id: backendSurfacePanelId(surface.kind),
       name: surface.name,
+      order: SURFACE_ORDER_BASE + index / 1000,
       defaultWidth: SURFACE_DEFAULT_WIDTH,
       panel: surface.panel
     });
-  }
+  });
 }
 
 /**
