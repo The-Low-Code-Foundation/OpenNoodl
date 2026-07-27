@@ -498,7 +498,7 @@ export function VariablesSection({ variables, onChange }: VariablesSectionProps)
 
           <PanelRow label="Value">{renderValueInput(newType, newValue, setNewValue)}</PanelRow>
 
-          <PanelRow label="Category (optional)">
+          <PanelRow label="Category" helpText="Optional. Groups the variable in this list.">
             <PropertyPanelTextInput value={newCategory} onChange={setNewCategory} />
           </PanelRow>
 

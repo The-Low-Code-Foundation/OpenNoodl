@@ -77,11 +77,16 @@ export function AiSettingsSection() {
     [provider]
   );
 
+  // PNL-004: the price used to ride in the option label —
+  // "Claude Sonnet 5 — $2/$10 per Mtok" is 248px of text in a control that is a
+  // `<select>` dressed as an `<input>`: `user-select: none`, and clicking opens
+  // the dropdown rather than placing a caret. So below about a 380px panel the
+  // model name just ended, with no way to read the rest. The name is what
+  // identifies the row; the price is what `helpText` is for, and it now names
+  // only the selected model rather than repeating itself on every option.
   const modelOptions = useMemo(() => {
     const options = registryModels.map((x) => ({
-      label: x.pricing
-        ? `${x.displayName} — $${x.pricing.inputPerMTok}/$${x.pricing.outputPerMTok} per Mtok`
-        : x.displayName,
+      label: x.displayName,
       value: x.id
     }));
 
@@ -99,6 +104,15 @@ export function AiSettingsSection() {
 
     return options;
   }, [registryModels, discoveredModels, model]);
+
+  /** The selected model's price, for the row's help text. */
+  const modelPricing = useMemo(() => {
+    const selected = registryModels.find((x) => x.id === model);
+    if (!selected?.pricing) return undefined;
+    const { inputPerMTok, outputPerMTok } = selected.pricing;
+    if (inputPerMTok === 0 && outputPerMTok === 0) return 'Runs on this machine — no per-token cost.';
+    return `$${inputPerMTok} in / $${outputPerMTok} out per million tokens, as published on ${PRICING_AS_OF}.`;
+  }, [registryModels, model]);
 
   const hasSavedKey = provider !== 'disabled' && AiConfigStore.hasApiKey(provider);
   const needsKey = provider !== 'disabled' && PROVIDERS_WITH_KEY.includes(provider);
@@ -175,7 +189,7 @@ export function AiSettingsSection() {
 
           {provider !== 'disabled' && (
             <>
-              <PanelRow label="Model">
+              <PanelRow label="Model" helpText={modelPricing}>
                 <PropertyPanelSelectInput
                   value={model}
                   properties={{ options: modelOptions }}
@@ -186,13 +200,24 @@ export function AiSettingsSection() {
                 />
               </PanelRow>
 
+              {/* PNL-004: "API Key (saved)" and "Endpoint (optional)" are the two
+                  labels the phase was reported over. The parenthetical is help
+                  text wearing a label's clothes — it says something about the
+                  field's *state*, not its name — and it is what pushed both past
+                  the 104px column. Moved where it belongs; the labels now fit
+                  the column at every band instead of wrapping to two lines. */}
               {needsKey && (
                 <PanelRow
-                  label={hasSavedKey && !apiKey ? 'API Key (saved)' : 'API Key'}
+                  label="API key"
                   helpText={
-                    provider === 'openai-compatible'
-                      ? 'Leave the key blank if your endpoint does not require one.'
-                      : undefined
+                    [
+                      hasSavedKey && !apiKey ? 'A key is saved. Enter a new one to replace it.' : null,
+                      provider === 'openai-compatible'
+                        ? 'Leave the key blank if your endpoint does not require one.'
+                        : null
+                    ]
+                      .filter(Boolean)
+                      .join(' ') || undefined
                   }
                 >
                   <PropertyPanelPasswordInput value={apiKey} onChange={onSaveApiKey} />
@@ -200,13 +225,18 @@ export function AiSettingsSection() {
               )}
 
               <PanelRow
-                label={provider === 'openai-compatible' ? 'Endpoint' : 'Endpoint (optional)'}
+                label="Endpoint"
                 helpText={
-                  ENDPOINT_PLACEHOLDER[provider]
-                    ? provider === 'openai-compatible'
-                      ? `Base URL of your OpenAI-compatible API, for example ${ENDPOINT_PLACEHOLDER[provider]}`
-                      : `Leave blank to use ${ENDPOINT_PLACEHOLDER[provider]}`
-                    : undefined
+                  [
+                    provider === 'openai-compatible' ? null : 'Optional.',
+                    ENDPOINT_PLACEHOLDER[provider]
+                      ? provider === 'openai-compatible'
+                        ? `Base URL of your OpenAI-compatible API, for example ${ENDPOINT_PLACEHOLDER[provider]}`
+                        : `Leave blank to use ${ENDPOINT_PLACEHOLDER[provider]}`
+                      : null
+                  ]
+                    .filter(Boolean)
+                    .join(' ') || undefined
                 }
               >
                 <PropertyPanelTextInput
@@ -264,9 +294,8 @@ export function AiSettingsSection() {
                 </Box>
               )}
 
-              <Box hasYSpacing>
-                <Text>Prices shown are per million tokens, as published on {PRICING_AS_OF}.</Text>
-              </Box>
+              {/* The "as published on …" caveat moved onto the Model row's help
+                  text, where it sits beside the number it qualifies. */}
             </>
           )}
 
