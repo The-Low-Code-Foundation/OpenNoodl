@@ -1,10 +1,23 @@
 'use strict';
 
-var Model = require('../../../model');
-var DbModelCRUDBase = require('./dbmodelcrudbase');
-const CloudStore = require('../../../api/cloudstore');
+import type { ModelModule } from '@noodl/types';
 
-var AddDbModelRelationNodeDefinition = {
+import type { DbCrudBaseInstance, DbCrudNodeModule, DbModelIdInstance, RelationPropertyInstance } from './crud-mixins';
+
+import ModelImport = require('../../../model');
+import DbModelCRUDBase = require('./dbmodelcrudbase');
+import CloudStore = require('../../../api/cloudstore');
+
+const Model = ModelImport as unknown as ModelModule;
+
+/** `this` inside Add Record Relation. */
+interface AddRelationInstance extends DbCrudBaseInstance, DbModelIdInstance, RelationPropertyInstance {
+  _internal: DbCrudBaseInstance['_internal'] & DbModelIdInstance['_internal'] & RelationPropertyInstance['_internal'];
+  validateInputs(): void;
+  scheduleAddRelation(): void;
+}
+
+const AddDbModelRelationNodeDefinition: DbCrudNodeModule = {
   node: {
     name: 'AddDbModelRelation',
     docs: 'https://docs.noodl.net/nodes/data/cloud-data/add-record-relation',
@@ -15,7 +28,7 @@ var AddDbModelRelationNodeDefinition = {
       store: {
         displayName: 'Do',
         group: 'Actions',
-        valueChangedToTrue: function () {
+        valueChangedToTrue: function (this: AddRelationInstance) {
           this.scheduleAddRelation();
         }
       }
@@ -28,10 +41,10 @@ var AddDbModelRelationNodeDefinition = {
       }
     },
     methods: {
-      validateInputs: function () {
+      validateInputs: function (this: AddRelationInstance) {
         if (!this.context.editorConnection) return;
 
-        const _warning = (message) => {
+        const _warning = (message: string) => {
           this.context.editorConnection.sendWarning(this.nodeScope.componentOwner.name, this.id, 'add-relation', {
             message
           });
@@ -49,7 +62,7 @@ var AddDbModelRelationNodeDefinition = {
           this.context.editorConnection.clearWarning(this.nodeScope.componentOwner.name, this.id, 'add-relation');
         }
       },
-      scheduleAddRelation: function (key) {
+      scheduleAddRelation: function (this: AddRelationInstance) {
         const _this = this;
         const internal = this._internal;
 
@@ -57,9 +70,9 @@ var AddDbModelRelationNodeDefinition = {
           _this.validateInputs();
 
           if (!internal.model) return;
-          var model = internal.model;
+          const model = internal.model;
 
-          var targetModelId = internal.targetModelId;
+          const targetModelId = internal.targetModelId;
           if (targetModelId === undefined) return;
 
           CloudStore.forScope(_this.nodeScope.modelScope).addRelation({
@@ -68,15 +81,15 @@ var AddDbModelRelationNodeDefinition = {
             key: internal.relationProperty,
             targetObjectId: targetModelId,
             targetClass: (_this.nodeScope.modelScope || Model).get(targetModelId)._class,
-            success: function (response) {
-              for (var _key in response) {
+            success: function (response: Record<string, unknown>) {
+              for (const _key in response) {
                 model.set(_key, response[_key]);
               }
 
               // Successfully added relation
               _this.sendSignalOnOutput('relationAdded');
             },
-            error: function (err) {
+            error: function (err: string) {
               _this.setError(err || 'Failed to add relation.');
             }
           });
@@ -92,4 +105,4 @@ DbModelCRUDBase.addBaseInfo(AddDbModelRelationNodeDefinition, {
 DbModelCRUDBase.addModelId(AddDbModelRelationNodeDefinition);
 DbModelCRUDBase.addRelationProperty(AddDbModelRelationNodeDefinition);
 
-module.exports = AddDbModelRelationNodeDefinition;
+export = AddDbModelRelationNodeDefinition;

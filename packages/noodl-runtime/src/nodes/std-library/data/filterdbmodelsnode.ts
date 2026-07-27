@@ -1,21 +1,88 @@
 'use strict';
 
-const { Node } = require('../../../../noodl-runtime');
+import type {
+  CollectionLike,
+  CollectionModule,
+  EditorConnectionLike,
+  GraphModelLike,
+  GraphNodeModel,
+  InspectInfo,
+  ModelLike,
+  ModelModule,
+  NodeContextLike,
+  NodeDefinitionOptions,
+  NodeInstance,
+  NodeModule,
+  RuntimeDiscoveredPort
+} from '@noodl/types';
 
-const Collection = require('../../../collection'),
-  Model = require('../../../model'),
-  CloudStore = require('../../../api/cloudstore'),
-  QueryUtils = require('../../../api/queryutils');
+import Node = require('../../../node');
+import CollectionImport = require('../../../collection');
+import ModelImport = require('../../../model');
+import CloudStore = require('../../../api/cloudstore');
+import QueryUtils = require('../../../api/queryutils');
 
-var FilterDBModelsNode = {
+const Collection = CollectionImport as unknown as CollectionModule;
+const Model = ModelImport as unknown as ModelModule;
+
+/** One class in the project's `dbCollections` metadata. */
+interface DbCollectionMeta {
+  name: string;
+  schema?: {
+    properties?: Record<string, { type?: string; [extra: string]: unknown }>;
+  };
+}
+
+/** A node in the editor's visual filter tree: either a group of rules or a leaf. */
+interface VisualFilterQuery {
+  rules?: VisualFilterQuery[];
+  /** Present on a leaf whose value comes from a port rather than a literal. */
+  input?: string;
+}
+
+/**
+ * `this` inside the Filter Records node.
+ *
+ * It filters an array it is *given* — client-side, in memory — which is what separates it
+ * from Query Records. The `filter` input decides whether it re-runs on its own: every
+ * setter here consults `isInputConnected('filter')` and stays passive when something else
+ * is driving it explicitly.
+ */
+interface FilterDbModelsInstance extends NodeInstance {
+  _internal: {
+    enabled?: boolean;
+    collection?: CollectionLike;
+    collectionName?: string;
+    filteredCollection?: CollectionLike;
+    filterSettings: Record<string, unknown>;
+    filterParameters: Record<string, unknown>;
+    visualFilter?: unknown;
+    visualSorting?: unknown[];
+    collectionChangedCallback?: () => void;
+    cloudStoreEvents?: (args: { collection?: string; objectId?: string }) => void;
+  };
+  /** On the instance rather than in `_internal` — guards {@link scheduleFilter}. */
+  collectionChangedScheduled?: boolean;
+  unbindCurrentCollection(): void;
+  bindCollection(collection: CollectionLike | undefined): void;
+  getLimit(): number | undefined;
+  getSkip(): number | undefined;
+  scheduleFilter(): void;
+  setCollectionName(name: string): void;
+  setVisualFilter(value: unknown): void;
+  setVisualSorting(value: unknown[]): void;
+  setFilterParameter(name: string, value: unknown): void;
+}
+
+const FilterDBModelsNode: NodeDefinitionOptions = {
   name: 'FilterDBModels',
   docs: 'https://docs.noodl.net/nodes/data/cloud-data/filter-records',
   displayNodeName: 'Filter Records',
   shortDesc: 'Filter, sort and limit array',
   category: 'Data',
   color: 'data',
-  initialize: function () {
-    var _this = this;
+  initialize: function (this: FilterDbModelsInstance) {
+    const _this = this;
 
     this._internal.collectionChangedCallback = function () {
       if (_this.isInputConnected('filter') === true) return;
@@ -23,13 +90,17 @@ var FilterDBModelsNode = {
       _this.scheduleFilter();
     };
 
-    this._internal.cloudStoreEvents = function (args) {
+    this._internal.cloudStoreEvents = function (args: { collection?: string; objectId?: string }) {
       if (_this.isInputConnected('filter') === true) return;
 
       if (_this._internal.visualFilter === undefined) return;
       if (_this._internal.collection === undefined) return;
       if (args.collection !== _this._internal.collectionName) return;
 
+      // Note this reaches for the *global* `Model` rather than `nodeScope.modelScope`,
+      // unlike every other record lookup in this directory. Under a scoped store the
+      // `contains` test therefore compares against a record from the wrong store and the
+      // re-filter is skipped.
       if (args.objectId !== undefined && _this._internal.collection.contains(Model.get(args.objectId)))
         _this.scheduleFilter();
     };
@@ -41,7 +112,7 @@ var FilterDBModelsNode = {
     this._internal.filterParameters = {};
     //   this._internal.filteredCollection = Collection.get();
   },
-  getInspectInfo() {
+  getInspectInfo(this: FilterDbModelsInstance): InspectInfo {
     const collection = this._internal.filteredCollection;
 
     if (!collection) {
@@ -64,8 +135,8 @@ var FilterDBModelsNode = {
       type: 'array',
       displayName: 'Items',
       group: 'General',
-      set(value) {
-        this.bindCollection(value);
+      set(this: FilterDbModelsInstance, value: unknown) {
+        this.bindCollection(value as CollectionLike);
         if (this.isInputConnected('filter') === false) this.scheduleFilter();
       }
     },
@@ -74,8 +145,8 @@ var FilterDBModelsNode = {
       group: 'General',
       displayName: 'Enabled',
       default: true,
-      set: function (value) {
-        this._internal.enabled = value;
+      set: function (this: FilterDbModelsInstance, value: unknown) {
+        this._internal.enabled = value as boolean;
         if (this.isInputConnected('filter') === false) this.scheduleFilter();
       }
     },
@@ -83,7 +154,7 @@ var FilterDBModelsNode = {
       type: 'signal',
       group: 'Actions',
       displayName: 'Filter',
-      valueChangedToTrue: function () {
+      valueChangedToTrue: function (this: FilterDbModelsInstance) {
         this.scheduleFilter();
       }
     }
@@ -93,7 +164,7 @@ var FilterDBModelsNode = {
       type: 'array',
       displayName: 'Items',
       group: 'General',
-      getter: function () {
+      getter: function (this: FilterDbModelsInstance) {
         return this._internal.filteredCollection;
       }
     },
@@ -101,7 +172,7 @@ var FilterDBModelsNode = {
       type: 'string',
       displayName: 'First Record Id',
       group: 'General',
-      getter: function () {
+      getter: function (this: FilterDbModelsInstance) {
         if (this._internal.filteredCollection !== undefined) {
           const firstItem = this._internal.filteredCollection.get(0);
           if (firstItem !== undefined) return firstItem.getId();
@@ -116,13 +187,13 @@ var FilterDBModelsNode = {
                 if(this._internal.filteredCollection !== undefined) {
                     return this._internal.filteredCollection.get(0);
                 }
-            }            
+            }
         },  */
     count: {
       type: 'number',
       displayName: 'Count',
       group: 'General',
-      getter: function () {
+      getter: function (this: FilterDbModelsInstance) {
         return this._internal.filteredCollection ? this._internal.filteredCollection.size() : 0;
       }
     },
@@ -133,18 +204,18 @@ var FilterDBModelsNode = {
     }
   },
   prototypeExtensions: {
-    unbindCurrentCollection: function () {
-      var collection = this._internal.collection;
+    unbindCurrentCollection: function (this: FilterDbModelsInstance) {
+      const collection = this._internal.collection;
       if (!collection) return;
       collection.off('change', this._internal.collectionChangedCallback);
       this._internal.collection = undefined;
     },
-    bindCollection: function (collection) {
+    bindCollection: function (this: FilterDbModelsInstance, collection: CollectionLike | undefined) {
       this.unbindCurrentCollection();
       this._internal.collection = collection;
       collection && collection.on('change', this._internal.collectionChangedCallback);
     },
-    _onNodeDeleted: function () {
+    _onNodeDeleted: function (this: FilterDbModelsInstance) {
       Node.prototype._onNodeDeleted.call(this);
       this.unbindCurrentCollection();
 
@@ -183,19 +254,19 @@ var FilterDBModelsNode = {
                 return _sort;
             }
         },*/
-    getLimit: function () {
+    getLimit: function (this: FilterDbModelsInstance) {
       const filterSettings = this._internal.filterSettings;
 
       if (!filterSettings['filterEnableLimit']) return;
-      else return filterSettings['filterLimit'] || 10;
+      else return (filterSettings['filterLimit'] as number) || 10;
     },
-    getSkip: function () {
+    getSkip: function (this: FilterDbModelsInstance) {
       const filterSettings = this._internal.filterSettings;
 
       if (!filterSettings['filterEnableLimit']) return;
-      else return filterSettings['filterSkip'] || 0;
+      else return (filterSettings['filterSkip'] as number) || 0;
     },
-    scheduleFilter: function () {
+    scheduleFilter: function (this: FilterDbModelsInstance) {
       if (this.collectionChangedScheduled) return;
       this.collectionChangedScheduled = true;
 
@@ -204,28 +275,31 @@ var FilterDBModelsNode = {
         if (!this._internal.collection) return;
 
         // Apply filter and write to output collection
-        var filtered = [].concat(this._internal.collection.items);
+        let filtered: ModelLike[] = [].concat(this._internal.collection.items);
 
         if (this._internal.enabled) {
           const _filter = this._internal.visualFilter;
           if (_filter !== undefined) {
-            var filter = QueryUtils.convertVisualFilter(_filter, {
+            const filter = QueryUtils.convertVisualFilter(_filter, {
               queryParameters: this._internal.filterParameters,
               collectionName: this._internal.collectionName
             });
             if (filter) filtered = filtered.filter((m) => QueryUtils.matchesQuery(m, filter));
           }
 
-          var _sort = this._internal.visualSorting;
+          // `sort` is declared outside the `if` deliberately: the original relied on `var`
+          // hoisting to read it below the block it was assigned in (PLAT-003 NOTES §23.1).
+          const _sort = this._internal.visualSorting;
+          let sort: unknown;
           if (_sort !== undefined && _sort.length > 0) {
-            var sort = QueryUtils.convertVisualSorting(_sort);
+            sort = QueryUtils.convertVisualSorting(_sort);
           }
           if (sort) filtered.sort(QueryUtils.compareObjects.bind(this, sort));
 
-          var skip = this.getSkip();
+          const skip = this.getSkip();
           if (skip) filtered = filtered.slice(skip, filtered.length);
 
-          var limit = this.getLimit();
+          const limit = this.getLimit();
           if (limit) filtered = filtered.slice(0, limit);
         }
 
@@ -237,27 +311,25 @@ var FilterDBModelsNode = {
         this.flagOutputDirty('count');
       });
     },
-    setCollectionName: function (name) {
+    setCollectionName: function (this: FilterDbModelsInstance, name: string) {
       this._internal.collectionName = name;
     },
-    setVisualFilter: function (value) {
+    setVisualFilter: function (this: FilterDbModelsInstance, value: unknown) {
       this._internal.visualFilter = value;
 
       if (this.isInputConnected('filter') === false) this.scheduleFilter();
     },
-    setVisualSorting: function (value) {
+    setVisualSorting: function (this: FilterDbModelsInstance, value: unknown[]) {
       this._internal.visualSorting = value;
 
       if (this.isInputConnected('filter') === false) this.scheduleFilter();
     },
-    setFilterParameter: function (name, value) {
+    setFilterParameter: function (this: FilterDbModelsInstance, name: string, value: unknown) {
       this._internal.filterParameters[name] = value;
 
       if (this.isInputConnected('filter') === false) this.scheduleFilter();
     },
-    registerInputIfNeeded: function (name) {
-      var _this = this;
-
+    registerInputIfNeeded: function (this: FilterDbModelsInstance, name: string) {
       if (this.hasInput(name)) {
         return;
       }
@@ -289,14 +361,19 @@ var FilterDBModelsNode = {
   }
 };
 
-function userInputSetter(name, value) {
+function userInputSetter(this: FilterDbModelsInstance, name: string, value: unknown) {
   /* jshint validthis:true */
   this._internal.filterSettings[name] = value;
   if (this.isInputConnected('filter') === false) this.scheduleFilter();
 }
 
-function updatePorts(nodeId, parameters, editorConnection, dbCollections) {
-  var ports = [];
+function updatePorts(
+  nodeId: string,
+  parameters: Record<string, unknown>,
+  editorConnection: EditorConnectionLike,
+  dbCollections: DbCollectionMeta[] | undefined
+) {
+  const ports: RuntimeDiscoveredPort[] = [];
 
   ports.push({
     name: 'collectionName',
@@ -343,19 +420,24 @@ function updatePorts(nodeId, parameters, editorConnection, dbCollections) {
     });
   }
 
+  // DEFECT (PLAT-003 NOTES §27.3), left verbatim: this guard tests only `collectionName`,
+  // while the `enums` above already established `dbCollections` may be `undefined` — so a
+  // Filter Records node that has a class selected throws a `TypeError` on `.find` whenever
+  // the metadata has not arrived. Every sibling (`dbmodelnode2`, `dbmodelcrudbase`) guards
+  // on both.
   if (parameters.collectionName !== undefined) {
-    var c = dbCollections.find((c) => c.name === parameters.collectionName);
+    const c = dbCollections.find((c) => c.name === parameters.collectionName);
     if (c && c.schema && c.schema.properties) {
       const schema = JSON.parse(JSON.stringify(c.schema));
 
-      const _supportedTypes = {
+      const _supportedTypes: Record<string, boolean> = {
         Boolean: true,
         String: true,
         Date: true,
         Number: true,
         Pointer: true
       };
-      for (var key in schema.properties) {
+      for (const key in schema.properties) {
         if (!_supportedTypes[schema.properties[key].type]) delete schema.properties[key];
       }
 
@@ -378,14 +460,14 @@ function updatePorts(nodeId, parameters, editorConnection, dbCollections) {
 
     if (parameters.visualFilter !== undefined) {
       // Find all input ports
-      const uniqueInputs = {};
-      function _collectInputs(query) {
+      const uniqueInputs: Record<string, boolean> = {};
+      function _collectInputs(query: VisualFilterQuery | undefined) {
         if (query === undefined) return;
         if (query.rules !== undefined) query.rules.forEach((r) => _collectInputs(r));
         else if (query.input !== undefined) uniqueInputs[query.input] = true;
       }
 
-      _collectInputs(parameters.visualFilter);
+      _collectInputs(parameters.visualFilter as VisualFilterQuery);
       Object.keys(uniqueInputs).forEach((input) => {
         ports.push({
           name: 'fp-' + input,
@@ -412,7 +494,7 @@ function updatePorts(nodeId, parameters, editorConnection, dbCollections) {
         group: 'Sort',
         name: 'filterSort',
         displayName: 'Sort',
-    })    
+    })
 
     const filterOps = {
         "string": [{ value: 'eq', label: 'Equals' }, { value: 'neq', label: 'Not Equals' },{value: 'regex', label: 'Matches RegEx'}],
@@ -491,29 +573,41 @@ function updatePorts(nodeId, parameters, editorConnection, dbCollections) {
   editorConnection.sendDynamicPorts(nodeId, ports);
 }
 
-module.exports = {
+const FilterDBModelsNodeModule: NodeModule = {
   node: FilterDBModelsNode,
-  setup: function (context, graphModel) {
+  setup: function (context: NodeContextLike, graphModel: GraphModelLike) {
     if (!context.editorConnection || !context.editorConnection.isRunningLocally()) {
       return;
     }
 
-    graphModel.on('nodeAdded.FilterDBModels', function (node) {
-      updatePorts(node.id, node.parameters, context.editorConnection, graphModel.getMetaData('dbCollections'));
+    graphModel.on('nodeAdded.FilterDBModels', function (node: GraphNodeModel) {
+      updatePorts(
+        node.id,
+        node.parameters,
+        context.editorConnection,
+        graphModel.getMetaData('dbCollections') as DbCollectionMeta[] | undefined
+      );
 
-      node.on('parameterUpdated', function (event) {
-        updatePorts(node.id, node.parameters, context.editorConnection, graphModel.getMetaData('dbCollections'));
+      node.on('parameterUpdated', function () {
+        updatePorts(
+          node.id,
+          node.parameters,
+          context.editorConnection,
+          graphModel.getMetaData('dbCollections') as DbCollectionMeta[] | undefined
+        );
       });
 
-      graphModel.on('metadataChanged.dbCollections', function (data) {
+      graphModel.on('metadataChanged.dbCollections', function (data: DbCollectionMeta[]) {
         CloudStore.invalidateCollections();
         updatePorts(node.id, node.parameters, context.editorConnection, data);
       });
 
-      graphModel.on('metadataChanged.systemCollections', function (data) {
+      graphModel.on('metadataChanged.systemCollections', function (data: DbCollectionMeta[]) {
         CloudStore.invalidateCollections();
         updatePorts(node.id, node.parameters, context.editorConnection, data);
       });
     });
   }
 };
+
+export = FilterDBModelsNodeModule;

@@ -1,11 +1,20 @@
-const CloudFile = require('../../../api/cloudfile');
+import type { NodeDefinitionOptions, NodeInstance, NodeModule } from '@noodl/types';
 
-const CloudFileNode = {
+import CloudFile = require('../../../api/cloudfile');
+
+/** `this` inside the Cloud File node — it holds one file and reports its URL and name. */
+interface CloudFileNodeInstance extends NodeInstance {
+  _internal: {
+    cloudFile?: CloudFile;
+  };
+}
+
+const CloudFileNode: NodeDefinitionOptions = {
   name: 'Cloud File',
   docs: 'https://docs.noodl.net/nodes/data/cloud-data/cloud-file',
   category: 'Cloud Services',
   color: 'data',
-  getInspectInfo() {
+  getInspectInfo(this: CloudFileNodeInstance) {
     return this._internal.cloudFile && this._internal.cloudFile.getUrl();
   },
   outputs: {
@@ -13,7 +22,7 @@ const CloudFileNode = {
       type: 'string',
       displayName: 'URL',
       group: 'General',
-      get() {
+      get(this: CloudFileNodeInstance) {
         return this._internal.cloudFile && this._internal.cloudFile.getUrl();
       }
     },
@@ -21,7 +30,7 @@ const CloudFileNode = {
       type: 'string',
       displayName: 'Name',
       group: 'General',
-      get() {
+      get(this: CloudFileNodeInstance) {
         if (!this._internal.cloudFile) return;
 
         //parse prefixes the file with a guid_
@@ -36,11 +45,11 @@ const CloudFileNode = {
       type: 'cloudfile',
       displayName: 'Cloud File',
       group: 'General',
-      set(value) {
+      set(this: CloudFileNodeInstance, value: unknown) {
         if (value instanceof CloudFile === false) {
           return;
         }
-        this._internal.cloudFile = value;
+        this._internal.cloudFile = value as CloudFile;
         this.flagOutputDirty('name');
         this.flagOutputDirty('url');
       }
@@ -48,6 +57,8 @@ const CloudFileNode = {
   }
 };
 
-module.exports = {
+const CloudFileNodeModule: NodeModule = {
   node: CloudFileNode
 };
+
+export = CloudFileNodeModule;

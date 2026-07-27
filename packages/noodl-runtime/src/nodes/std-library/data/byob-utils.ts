@@ -9,13 +9,23 @@
  * @since 2.0.0
  */
 
+import type {
+  BackendServicesMetaData,
+  DirectusListMeta,
+  EnhancedFieldType,
+  RelationField,
+  ResolvedBackend,
+  SchemaCollection,
+  SchemaField
+} from './byob-types';
+
 const NoodlRuntime = require('../../../../noodl-runtime');
 
 /**
  * Directus system collection endpoint mappings
  * Maps internal collection names to their API endpoints
  */
-const SYSTEM_ENDPOINTS = {
+const SYSTEM_ENDPOINTS: Record<string, string> = {
   directus_users: 'users',
   directus_roles: 'roles',
   directus_files: 'files',
@@ -40,8 +50,8 @@ const SYSTEM_ENDPOINTS = {
  * @param {string} backendId - Backend ID or '_active_' for active backend
  * @returns {Object|null} Backend config with { url, token, type, endpoints } or null
  */
-function resolveBackend(backendId) {
-  const backendServices = NoodlRuntime.instance.getMetaData('backendServices');
+function resolveBackend(backendId: string): ResolvedBackend | null {
+  const backendServices = NoodlRuntime.instance.getMetaData('backendServices') as BackendServicesMetaData | undefined;
 
   if (!backendServices || !backendServices.backends) {
     console.log('[BYOB Utils] No backend services metadata found');
@@ -77,7 +87,7 @@ function resolveBackend(backendId) {
  * @param {string} apiPathMode - 'items' or 'system'
  * @returns {string} Endpoint path (e.g., 'items/posts' or 'users')
  */
-function buildEndpoint(collection, apiPathMode) {
+function buildEndpoint(collection: string, apiPathMode: string): string {
   if (apiPathMode === 'system' && SYSTEM_ENDPOINTS[collection]) {
     return SYSTEM_ENDPOINTS[collection];
   }
@@ -89,8 +99,8 @@ function buildEndpoint(collection, apiPathMode) {
  * @param {string} token - Auth token (optional)
  * @returns {Object} Headers object
  */
-function buildHeaders(token) {
-  const headers = {
+function buildHeaders(token: string | undefined): Record<string, string> {
+  const headers: Record<string, string> = {
     'Content-Type': 'application/json'
   };
 
@@ -106,7 +116,7 @@ function buildHeaders(token) {
  * @param {string} collection - Collection name
  * @returns {boolean} True if it's a system collection
  */
-function isSystemCollection(collection) {
+function isSystemCollection(collection: string | undefined): boolean {
   return collection && collection.startsWith('directus_');
 }
 
@@ -115,7 +125,7 @@ function isSystemCollection(collection) {
  * @param {string} collection - Collection name
  * @returns {string} 'system' or 'items'
  */
-function detectApiPathMode(collection) {
+function detectApiPathMode(collection: string): string {
   return isSystemCollection(collection) ? 'system' : 'items';
 }
 
@@ -127,7 +137,12 @@ function detectApiPathMode(collection) {
  * @param {string} recordId - Optional record ID for specific record
  * @returns {string|null} Full URL or null if invalid
  */
-function buildUrl(backendConfig, collection, apiPathMode, recordId = null) {
+function buildUrl(
+  backendConfig: ResolvedBackend | null | undefined,
+  collection: string | undefined,
+  apiPathMode: string,
+  recordId: string | null = null
+): string | null {
   const baseUrl = backendConfig?.url;
 
   if (!baseUrl || !collection) {
@@ -152,7 +167,7 @@ function buildUrl(backendConfig, collection, apiPathMode, recordId = null) {
  * @param {Object} fieldSchema - Field schema information
  * @returns {*} Normalized value
  */
-function normalizeValue(value, fieldSchema) {
+function normalizeValue(value: unknown, fieldSchema: SchemaField | undefined): unknown {
   if (value === null || value === undefined) {
     return value;
   }
@@ -191,7 +206,7 @@ function normalizeValue(value, fieldSchema) {
 
     // Try to parse as date
     try {
-      const date = new Date(value);
+      const date = new Date(value as string | number | Date);
       if (!isNaN(date.getTime())) {
         return date.toISOString();
       }
@@ -209,7 +224,7 @@ function normalizeValue(value, fieldSchema) {
  * @param {string} apiPathMode - 'items' or 'system'
  * @returns {Array} Filtered collections
  */
-function filterCollectionsByMode(collections, apiPathMode) {
+function filterCollectionsByMode(collections: SchemaCollection[], apiPathMode: string): SchemaCollection[] {
   if (!apiPathMode || apiPathMode === 'items') {
     // Items mode: exclude system tables
     return collections.filter((c) => !isSystemCollection(c.name));
@@ -231,7 +246,7 @@ function filterCollectionsByMode(collections, apiPathMode) {
  * @param {Object} field - Field schema (cached SchemaField or raw Directus field)
  * @returns {boolean} True if field should be shown
  */
-function shouldShowField(field) {
+function shouldShowField(field: SchemaField | undefined): boolean {
   if (!field || !field.name) return false;
 
   // Cached SchemaField shape: hidden resolved at parse time
@@ -263,8 +278,8 @@ function shouldShowField(field) {
  * @param {Object} field - Field schema (cached SchemaField or raw Directus field)
  * @returns {Object} Port type definition { type, options, placeholder }
  */
-function getEnhancedFieldType(field) {
-  const result = {
+function getEnhancedFieldType(field: SchemaField): EnhancedFieldType {
+  const result: EnhancedFieldType = {
     type: 'string',
     options: null,
     placeholder: null
@@ -328,7 +343,7 @@ function getEnhancedFieldType(field) {
  * means "any related record matches" in Directus, but the schema parsers only
  * recover M2O/O2O today (see schemaParsers.ts), so that is what we expand.
  */
-const TRAVERSABLE_RELATION_TYPES = ['many-to-one', 'one-to-one'];
+const TRAVERSABLE_RELATION_TYPES: string[] = ['many-to-one', 'one-to-one'];
 
 /**
  * Get the traversable relation fields of a collection: visible fields whose
@@ -337,10 +352,10 @@ const TRAVERSABLE_RELATION_TYPES = ['many-to-one', 'one-to-one'];
  * @param {Array} allCollections - All SchemaCollections in the backend schema
  * @returns {Array} [{ field, targetCollection }]
  */
-function getRelationFields(collection, allCollections) {
+function getRelationFields(collection: SchemaCollection, allCollections: SchemaCollection[]): RelationField[] {
   if (!collection || !Array.isArray(collection.fields)) return [];
 
-  const result = [];
+  const result: RelationField[] = [];
   for (const field of collection.fields) {
     if (!shouldShowField(field)) continue;
     if (!field.relationTarget) continue;
@@ -368,8 +383,8 @@ function getRelationFields(collection, allCollections) {
  * @param {Array} allCollections - All SchemaCollections in the backend schema
  * @returns {Array} Pseudo SchemaFields with dotted names and relationPath: true
  */
-function expandRelationFields(collection, allCollections) {
-  const expanded = [];
+function expandRelationFields(collection: SchemaCollection, allCollections: SchemaCollection[]): SchemaField[] {
+  const expanded: SchemaField[] = [];
 
   for (const { field, targetCollection } of getRelationFields(collection, allCollections)) {
     const relationLabel = field.displayName || field.name;
@@ -403,11 +418,14 @@ function expandRelationFields(collection, allCollections) {
  * @param {Array<string>} includedRelations - Relation field names to expand
  * @returns {string} The effective fields parameter value
  */
-function buildFieldsParam(fieldsValue, includedRelations) {
+function buildFieldsParam(fieldsValue: string | undefined, includedRelations: string[] | undefined): string {
   const base = (fieldsValue || '*').trim() || '*';
   if (!includedRelations || includedRelations.length === 0) return base;
 
-  const parts = base.split(',').map((p) => p.trim()).filter(Boolean);
+  const parts = base
+    .split(',')
+    .map((p) => p.trim())
+    .filter(Boolean);
   for (const relation of includedRelations) {
     const expansion = `${relation}.*`;
     if (!parts.includes(expansion)) {
@@ -423,13 +441,13 @@ function buildFieldsParam(fieldsValue, includedRelations) {
  * (the whole collection) — pagination over a filtered list needs the former.
  * Falls back to the page length when no meta was returned.
  */
-function pickTotalCount(meta, records) {
+function pickTotalCount(meta: DirectusListMeta | undefined, records: unknown[] | undefined): number {
   if (meta && meta.filter_count !== undefined && meta.filter_count !== null) return meta.filter_count;
   if (meta && meta.total_count !== undefined && meta.total_count !== null) return meta.total_count;
   return records ? records.length : 0;
 }
 
-module.exports = {
+const ByobUtils = {
   SYSTEM_ENDPOINTS,
   resolveBackend,
   buildEndpoint,
@@ -446,3 +464,5 @@ module.exports = {
   buildFieldsParam,
   pickTotalCount
 };
+
+export = ByobUtils;

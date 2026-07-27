@@ -1,9 +1,43 @@
 'use strict';
 
-var DbModelCRUDBase = require('./dbmodelcrudbase');
-const CloudStore = require('../../../api/cloudstore');
+import type { ModelLike } from '@noodl/types';
 
-var SetDbModelPropertiedNodeDefinition = {
+import type {
+  AccessControlInstance,
+  DbCrudBaseInstance,
+  DbCrudNodeModule,
+  DbInputPropertiesInstance,
+  DbModelIdInstance
+} from './crud-mixins';
+
+import DbModelCRUDBase = require('./dbmodelcrudbase');
+import CloudStore = require('../../../api/cloudstore');
+
+/**
+ * `this` inside Set Record Properties — the intersection of every mixin the file applies.
+ *
+ * `storeType` is what makes this node two nodes in one: `'cloud'` writes through to the
+ * backend, `'local'` only updates the in-memory record.
+ */
+interface SetDbModelPropertiesInstance
+  extends DbCrudBaseInstance,
+    DbModelIdInstance,
+    DbInputPropertiesInstance,
+    AccessControlInstance {
+  _internal: DbCrudBaseInstance['_internal'] &
+    DbModelIdInstance['_internal'] &
+    DbInputPropertiesInstance['_internal'] &
+    AccessControlInstance['_internal'] & {
+      storeType?: 'cloud' | 'local';
+      storeProperties?: 'specified' | 'all';
+    };
+  /** On the instance rather than in `_internal` — guards {@link scheduleStore}. */
+  hasScheduledStore?: boolean;
+  scheduleSave(): void;
+  scheduleStore(): void;
+}
+
+const SetDbModelPropertiedNodeDefinition: DbCrudNodeModule = {
   node: {
     name: 'SetDbModelProperties',
     docs: 'https://docs.noodl.net/nodes/data/cloud-data/set-record-properties',
@@ -20,7 +54,7 @@ var SetDbModelPropertiedNodeDefinition = {
       store: {
         displayName: 'Do',
         group: 'Actions',
-        valueChangedToTrue: function () {
+        valueChangedToTrue: function (this: SetDbModelPropertiesInstance) {
           if (this._internal.storeType === undefined || this._internal.storeType === 'cloud') this.scheduleSave();
           else this.scheduleStore();
         }
@@ -36,8 +70,8 @@ var SetDbModelPropertiedNodeDefinition = {
           ]
         },
         default: 'specified',
-        set: function (value) {
-          this._internal.storeProperties = value;
+        set: function (this: SetDbModelPropertiesInstance, value: unknown) {
+          this._internal.storeProperties = value as 'specified' | 'all';
         }
       },
       storeType: {
@@ -51,8 +85,8 @@ var SetDbModelPropertiedNodeDefinition = {
           ]
         },
         default: 'cloud',
-        set: function (value) {
-          this._internal.storeType = value;
+        set: function (this: SetDbModelPropertiesInstance, value: unknown) {
+          this._internal.storeType = value as 'cloud' | 'local';
         }
       }
     },
@@ -64,7 +98,7 @@ var SetDbModelPropertiedNodeDefinition = {
       }
     },
     methods: {
-      scheduleSave: function () {
+      scheduleSave: function (this: SetDbModelPropertiesInstance) {
         const _this = this;
         const internal = this._internal;
 
@@ -75,41 +109,41 @@ var SetDbModelPropertiedNodeDefinition = {
             _this.setError('Missing Record Id');
             return;
           }
-          
+
           const model = internal.model;
           for (const key in internal.inputValues) {
             model.set(key, internal.inputValues[key], { resolve: true });
           }
-          
+
           CloudStore.forScope(_this.nodeScope.modelScope).save({
             collection: internal.collectionId,
             objectId: model.getId(), // Get the objectId part of the model id
             data: internal.storeProperties === 'all' ? model.data : internal.inputValues, // Only store input values by default, if not explicitly specified
             acl: _this._getACL(),
-            success: function (response) {
-              for (var key in response) {
+            success: function (response: Record<string, unknown>) {
+              for (const key in response) {
                 model.set(key, response[key]);
               }
 
               _this.sendSignalOnOutput('stored');
             },
-            error: function (err) {
+            error: function (err: string) {
               _this.setError(err || 'Failed to save.');
             }
           });
         });
       },
-      scheduleStore: function () {
+      scheduleStore: function (this: SetDbModelPropertiesInstance) {
         if (this.hasScheduledStore) return;
         this.hasScheduledStore = true;
 
-        var internal = this._internal;
+        const internal = this._internal;
         this.scheduleAfterInputsHaveUpdated(() => {
           this.hasScheduledStore = false;
           if (!internal.model) return;
 
-          for (var i in internal.inputValues) {
-            internal.model.set(i, internal.inputValues[i], { resolve: true });
+          for (const i in internal.inputValues) {
+            (internal.model as ModelLike).set(i, internal.inputValues[i], { resolve: true });
           }
           this.sendSignalOnOutput('stored');
         });
@@ -123,4 +157,4 @@ DbModelCRUDBase.addModelId(SetDbModelPropertiedNodeDefinition);
 DbModelCRUDBase.addInputProperties(SetDbModelPropertiedNodeDefinition);
 DbModelCRUDBase.addAccessControl(SetDbModelPropertiedNodeDefinition);
 
-module.exports = SetDbModelPropertiedNodeDefinition;
+export = SetDbModelPropertiedNodeDefinition;

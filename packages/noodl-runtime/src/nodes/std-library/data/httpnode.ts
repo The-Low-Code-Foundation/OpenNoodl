@@ -19,7 +19,24 @@
 
 // Note: This file uses CommonJS module format to match the noodl-runtime pattern
 
+import type {
+  EditorConnectionLike,
+  GraphModelLike,
+  GraphNodeModel,
+  InspectInfo,
+  NodeContextLike,
+  NodeDefinitionOptions,
+  NodeInstance,
+  NodeModule,
+  RuntimeDiscoveredPort
+} from '@noodl/types';
+
 // DEBUG: Confirm module is loaded
+// DEFECT (PLAT-003 NOTES §27.3), left verbatim: this and the three `[HTTP Node]` logs in
+// `scheduleFetch`/`doFetch` below are development scaffolding that ships. The module-level
+// one fires on *every* page load of every deployed app, and `doFetch`'s prints the request
+// headers — which, with Bearer or Basic auth configured, means the token lands in the
+// browser console. Removing them is a behaviour change and belongs in its own commit.
 console.log('[HTTP Node Module] 📦 httpnode.js MODULE LOADED');
 
 /**
@@ -30,12 +47,12 @@ console.log('[HTTP Node Module] 📦 httpnode.js MODULE LOADED');
  * @param {string} path - JSONPath expression starting with $
  * @returns {*} The extracted value or undefined
  */
-function extractByPath(obj, path) {
+function extractByPath(obj: unknown, path: string): unknown {
   if (!path || !path.startsWith('$')) return undefined;
   if (obj === undefined || obj === null) return undefined;
 
   const parts = path.substring(2).split('.').filter(Boolean);
-  let current = obj;
+  let current: unknown = obj;
 
   for (const part of parts) {
     if (current === undefined || current === null) return undefined;
@@ -43,9 +60,10 @@ function extractByPath(obj, path) {
     // Handle array access: items[0]
     const arrayMatch = part.match(/^(\w+)\[(\d+)\]$/);
     if (arrayMatch) {
-      current = current[arrayMatch[1]]?.[parseInt(arrayMatch[2])];
+      const nested = (current as Record<string, unknown>)[arrayMatch[1]] as unknown[] | undefined;
+      current = nested?.[parseInt(arrayMatch[2])];
     } else {
-      current = current[part];
+      current = (current as Record<string, unknown>)[part];
     }
   }
 
@@ -55,14 +73,35 @@ function extractByPath(obj, path) {
 /**
  * Configure authentication headers/params based on preset type
  */
-const authConfigurators = {
+/** What one preset contributes to the outgoing request. */
+interface AuthContribution {
+  headers?: Record<string, string>;
+  queryParams?: Record<string, string>;
+}
+
+/**
+ * The values the `auth-…` dynamic inputs write, keyed *with* their prefix stripped by the
+ * port names themselves (`auth-authToken` → `authToken`). Every one of these ports is
+ * declared `type: 'string'` in `updatePorts`, which is why the two call sites narrow the
+ * node's `Record<string, unknown>` to this on the way in.
+ */
+interface AuthInputs {
+  authToken?: string;
+  authUsername?: string;
+  authPassword?: string;
+  authApiKeyName?: string;
+  authApiKeyValue?: string;
+  authApiKeyLocation?: 'header' | 'query';
+}
+
+const authConfigurators: Record<string, (inputs: AuthInputs) => AuthContribution> = {
   none: () => ({}),
 
   bearer: (inputs) => ({
     headers: inputs.authToken ? { Authorization: `Bearer ${inputs.authToken}` } : {}
   }),
 
-  basic: (inputs) => {
+  basic: (inputs): AuthContribution => {
     if (!inputs.authUsername || !inputs.authPassword) return {};
     const encoded =
       typeof btoa !== 'undefined'
@@ -73,7 +112,7 @@ const authConfigurators = {
     };
   },
 
-  apiKey: (inputs) => {
+  apiKey: (inputs): AuthContribution => {
     if (!inputs.authApiKeyName || !inputs.authApiKeyValue) return {};
     if (inputs.authApiKeyLocation === 'query') {
       return { queryParams: { [inputs.authApiKeyName]: inputs.authApiKeyValue } };
@@ -82,7 +121,61 @@ const authConfigurators = {
   }
 };
 
-var HttpNode = {
+/**
+ * `this` inside the HTTP Request node.
+ *
+ * Almost every port is dynamic, including `url`, `fetch` and `cancel` — `updatePorts`
+ * re-publishes the *whole* set on each relevant parameter change, because the shape of the
+ * node depends on its own configuration: the method decides whether there is a body, the
+ * body type decides what kind, the auth preset decides which credentials, and the URL's
+ * `{placeholders}` become path-parameter inputs.
+ *
+ * The three static `inputs` are declared as well as published dynamically. That is
+ * deliberate: the static declaration is what gives them setters, the dynamic one is what
+ * makes the editor draw them.
+ */
+interface HttpNodeInstance extends NodeInstance {
+  _internal: {
+    inputValues: Record<string, unknown>;
+    outputValues: Record<string, unknown>;
+    headers: string;
+    queryParams: string;
+    bodyFields: string;
+    responseMapping: string;
+    inspectData: Record<string, unknown> | null;
+    url?: string;
+    method?: string;
+    bodyType?: string;
+    authType?: string;
+    timeout?: number;
+    response?: unknown;
+    statusCode?: number;
+    responseHeaders?: Record<string, string>;
+    error?: string;
+    lastRequestUrl?: string;
+    hasScheduledFetch?: boolean;
+    abortController?: AbortController | null;
+  };
+  _storeInputValue(name: string, value: unknown): void;
+  getOutputValue(name: string): unknown;
+  scheduleFetch(): void;
+  cancelFetch(): void;
+  buildUrl(): string;
+  buildHeaders(): Record<string, string>;
+  buildBody(): BodyInit | undefined;
+  processResponse(response: Response, responseBody: unknown): void;
+  doFetch(): void;
+  setHeaders(value: unknown): void;
+  setQueryParams(value: unknown): void;
+  setBodyType(value: unknown): void;
+  setBodyFields(value: unknown): void;
+  setResponseMapping(value: unknown): void;
+  setAuthType(value: unknown): void;
+  setMethod(value: unknown): void;
+  setTimeout(value: unknown): void;
+}
+
+const HttpNode: NodeDefinitionOptions = {
   name: 'net.noodl.HTTP',
   displayNodeName: 'HTTP Request',
   docs: 'https://docs.noodl.net/nodes/data/http-request',
@@ -90,7 +183,7 @@ var HttpNode = {
   color: 'data',
   searchTags: ['http', 'request', 'fetch', 'api', 'rest', 'curl'],
 
-  initialize: function () {
+  initialize: function (this: HttpNodeInstance) {
     this._internal.inputValues = {};
     this._internal.outputValues = {};
     this._internal.headers = '';
@@ -100,7 +193,7 @@ var HttpNode = {
     this._internal.inspectData = null;
   },
 
-  getInspectInfo() {
+  getInspectInfo(this: HttpNodeInstance): InspectInfo {
     if (!this._internal.inspectData) {
       return { type: 'text', value: '[Not executed yet]' };
     }
@@ -114,15 +207,15 @@ var HttpNode = {
       displayName: 'URL',
       group: 'Request',
       default: '',
-      set: function (value) {
-        this._internal.url = value;
+      set: function (this: HttpNodeInstance, value: unknown) {
+        this._internal.url = value as string;
       }
     },
     fetch: {
       type: 'signal',
       displayName: 'Fetch',
       group: 'Actions',
-      valueChangedToTrue: function () {
+      valueChangedToTrue: function (this: HttpNodeInstance) {
         this.scheduleFetch();
       }
     },
@@ -130,7 +223,7 @@ var HttpNode = {
       type: 'signal',
       displayName: 'Cancel',
       group: 'Actions',
-      valueChangedToTrue: function () {
+      valueChangedToTrue: function (this: HttpNodeInstance) {
         this.cancelFetch();
       }
     }
@@ -142,7 +235,7 @@ var HttpNode = {
       type: '*',
       displayName: 'Response',
       group: 'Response',
-      getter: function () {
+      getter: function (this: HttpNodeInstance) {
         return this._internal.response;
       }
     },
@@ -150,7 +243,7 @@ var HttpNode = {
       type: 'number',
       displayName: 'Status Code',
       group: 'Response',
-      getter: function () {
+      getter: function (this: HttpNodeInstance) {
         return this._internal.statusCode;
       }
     },
@@ -158,7 +251,7 @@ var HttpNode = {
       type: 'object',
       displayName: 'Response Headers',
       group: 'Response',
-      getter: function () {
+      getter: function (this: HttpNodeInstance) {
         return this._internal.responseHeaders;
       }
     },
@@ -181,7 +274,7 @@ var HttpNode = {
       type: 'string',
       displayName: 'Error',
       group: 'Events',
-      getter: function () {
+      getter: function (this: HttpNodeInstance) {
         return this._internal.error;
       }
     }
@@ -190,15 +283,15 @@ var HttpNode = {
   prototypeExtensions: {
     // Store values for dynamic inputs only - static inputs (including signals)
     // use the base Node.prototype.setInputValue which calls input.set()
-    _storeInputValue: function (name, value) {
+    _storeInputValue: function (this: HttpNodeInstance, name: string, value: unknown) {
       this._internal.inputValues[name] = value;
     },
 
-    getOutputValue: function (name) {
+    getOutputValue: function (this: HttpNodeInstance, name: string) {
       return this._internal.outputValues[name];
     },
 
-    registerOutputIfNeeded: function (name) {
+    registerOutputIfNeeded: function (this: HttpNodeInstance, name: string) {
       if (this.hasOutput(name)) return;
 
       if (name.startsWith('out-')) {
@@ -208,11 +301,11 @@ var HttpNode = {
       }
     },
 
-    registerInputIfNeeded: function (name) {
+    registerInputIfNeeded: function (this: HttpNodeInstance, name: string) {
       if (this.hasInput(name)) return;
 
       // Configuration inputs - these set internal state
-      const configSetters = {
+      const configSetters: Record<string, (value: unknown) => void> = {
         method: this.setMethod.bind(this),
         timeout: this.setTimeout.bind(this),
         headers: this.setHeaders.bind(this),
@@ -242,7 +335,7 @@ var HttpNode = {
       }
     },
 
-    scheduleFetch: function () {
+    scheduleFetch: function (this: HttpNodeInstance) {
       console.log('[HTTP Node] scheduleFetch called');
       if (this._internal.hasScheduledFetch) {
         console.log('[HTTP Node] Already scheduled, skipping');
@@ -253,14 +346,14 @@ var HttpNode = {
       this.scheduleAfterInputsHaveUpdated(this.doFetch.bind(this));
     },
 
-    cancelFetch: function () {
+    cancelFetch: function (this: HttpNodeInstance) {
       if (this._internal.abortController) {
         this._internal.abortController.abort();
         this._internal.abortController = null;
       }
     },
 
-    buildUrl: function () {
+    buildUrl: function (this: HttpNodeInstance) {
       let url = this._internal.url || '';
 
       // Replace path parameters: /users/{userId} → /users/123
@@ -274,7 +367,7 @@ var HttpNode = {
       }
 
       // Add query parameters
-      const queryParams = {};
+      const queryParams: Record<string, unknown> = {};
 
       // From visual config (stringlist format)
       if (this._internal.queryParams) {
@@ -293,7 +386,7 @@ var HttpNode = {
       // From auth (API Key in query)
       const authType = this._internal.authType;
       if (authType && authConfigurators[authType]) {
-        const authConfig = authConfigurators[authType](this._internal.inputValues);
+        const authConfig = authConfigurators[authType](this._internal.inputValues as AuthInputs);
         if (authConfig.queryParams) {
           Object.assign(queryParams, authConfig.queryParams);
         }
@@ -311,8 +404,8 @@ var HttpNode = {
       return url;
     },
 
-    buildHeaders: function () {
-      const headers = {};
+    buildHeaders: function (this: HttpNodeInstance) {
+      const headers: Record<string, string> = {};
 
       // From visual config (stringlist format)
       if (this._internal.headers) {
@@ -331,7 +424,7 @@ var HttpNode = {
       // From auth
       const authType = this._internal.authType;
       if (authType && authConfigurators[authType]) {
-        const authConfig = authConfigurators[authType](this._internal.inputValues);
+        const authConfig = authConfigurators[authType](this._internal.inputValues as AuthInputs);
         if (authConfig.headers) {
           Object.assign(headers, authConfig.headers);
         }
@@ -340,7 +433,7 @@ var HttpNode = {
       return headers;
     },
 
-    buildBody: function () {
+    buildBody: function (this: HttpNodeInstance): BodyInit | undefined {
       const method = this._internal.method || 'GET';
       if (['GET', 'HEAD', 'OPTIONS'].includes(method)) {
         return undefined;
@@ -356,7 +449,7 @@ var HttpNode = {
         .filter(Boolean);
 
       if (bodyType === 'json') {
-        const body = {};
+        const body: Record<string, unknown> = {};
         for (const field of bodyFields) {
           const value = this._internal.inputValues['body-' + field];
           if (value !== undefined) {
@@ -369,7 +462,7 @@ var HttpNode = {
         for (const field of bodyFields) {
           const value = this._internal.inputValues['body-' + field];
           if (value !== undefined && value !== null) {
-            formData.append(field, value);
+            formData.append(field, value as string);
           }
         }
         return formData;
@@ -383,19 +476,19 @@ var HttpNode = {
         }
         return params.toString();
       } else if (bodyType === 'raw') {
-        return this._internal.inputValues['body-raw'];
+        return this._internal.inputValues['body-raw'] as BodyInit;
       }
 
       return undefined;
     },
 
-    processResponse: function (response, responseBody) {
+    processResponse: function (this: HttpNodeInstance, response: Response, responseBody: unknown) {
       // Store raw response
       this._internal.response = responseBody;
       this._internal.statusCode = response.status;
 
       // Extract response headers
-      const responseHeaders = {};
+      const responseHeaders: Record<string, string> = {};
       response.headers.forEach((value, key) => {
         responseHeaders[key] = value;
       });
@@ -412,7 +505,7 @@ var HttpNode = {
 
       for (const name of outputNames) {
         // Get the path from the corresponding input port
-        const path = this._internal.inputValues['mapping-path-' + name] || '$';
+        const path = (this._internal.inputValues['mapping-path-' + name] as string) || '$';
 
         const outputName = 'out-' + name;
         const value = extractByPath(responseBody, path);
@@ -436,7 +529,7 @@ var HttpNode = {
       };
     },
 
-    doFetch: function () {
+    doFetch: function (this: HttpNodeInstance) {
       console.log('[HTTP Node] doFetch executing');
       this._internal.hasScheduledFetch = false;
 
@@ -534,36 +627,36 @@ var HttpNode = {
     },
 
     // Configuration setters called from setup function
-    setHeaders: function (value) {
-      this._internal.headers = value || '';
+    setHeaders: function (this: HttpNodeInstance, value: unknown) {
+      this._internal.headers = (value as string) || '';
     },
 
-    setQueryParams: function (value) {
-      this._internal.queryParams = value || '';
+    setQueryParams: function (this: HttpNodeInstance, value: unknown) {
+      this._internal.queryParams = (value as string) || '';
     },
 
-    setBodyType: function (value) {
-      this._internal.bodyType = value;
+    setBodyType: function (this: HttpNodeInstance, value: unknown) {
+      this._internal.bodyType = value as string;
     },
 
-    setBodyFields: function (value) {
-      this._internal.bodyFields = value || '';
+    setBodyFields: function (this: HttpNodeInstance, value: unknown) {
+      this._internal.bodyFields = (value as string) || '';
     },
 
-    setResponseMapping: function (value) {
-      this._internal.responseMapping = value || '';
+    setResponseMapping: function (this: HttpNodeInstance, value: unknown) {
+      this._internal.responseMapping = (value as string) || '';
     },
 
-    setAuthType: function (value) {
-      this._internal.authType = value;
+    setAuthType: function (this: HttpNodeInstance, value: unknown) {
+      this._internal.authType = value as string;
     },
 
-    setMethod: function (value) {
-      this._internal.method = value || 'GET';
+    setMethod: function (this: HttpNodeInstance, value: unknown) {
+      this._internal.method = (value as string) || 'GET';
     },
 
-    setTimeout: function (value) {
-      this._internal.timeout = value || 30000;
+    setTimeout: function (this: HttpNodeInstance, value: unknown) {
+      this._internal.timeout = (value as number) || 30000;
     }
   }
 };
@@ -571,12 +664,12 @@ var HttpNode = {
 /**
  * Update dynamic ports based on node configuration
  */
-function updatePorts(nodeId, parameters, editorConnection) {
-  const ports = [];
+function updatePorts(nodeId: string, parameters: Record<string, unknown>, editorConnection: EditorConnectionLike) {
+  const ports: RuntimeDiscoveredPort[] = [];
 
   // Parse URL for path parameters: /users/{userId} → userId port
   if (parameters.url) {
-    const pathParams = parameters.url.match(/\{([A-Za-z0-9_]+)\}/g) || [];
+    const pathParams = (parameters.url as string).match(/\{([A-Za-z0-9_]+)\}/g) || [];
     const uniqueParams = [...new Set(pathParams.map((p) => p.replace(/[{}]/g, '')))];
 
     for (const name of uniqueParams) {
@@ -601,7 +694,7 @@ function updatePorts(nodeId, parameters, editorConnection) {
 
   // Generate input ports for each header
   if (parameters.headers) {
-    const headerList = parameters.headers
+    const headerList = (parameters.headers as string)
       .split(',')
       .map((h) => h.trim())
       .filter(Boolean);
@@ -627,7 +720,7 @@ function updatePorts(nodeId, parameters, editorConnection) {
 
   // Generate input ports for each query param
   if (parameters.queryParams) {
-    const queryList = parameters.queryParams
+    const queryList = (parameters.queryParams as string)
       .split(',')
       .map((q) => q.trim())
       .filter(Boolean);
@@ -665,7 +758,7 @@ function updatePorts(nodeId, parameters, editorConnection) {
   });
 
   // Body type selector (only shown for POST/PUT/PATCH)
-  const method = parameters.method || 'GET';
+  const method = (parameters.method as string) || 'GET';
   if (['POST', 'PUT', 'PATCH'].includes(method)) {
     ports.push({
       name: 'bodyType',
@@ -708,13 +801,13 @@ function updatePorts(nodeId, parameters, editorConnection) {
 
       // Generate type selector and value input ports for each body field
       if (parameters.bodyFields) {
-        const fieldList = parameters.bodyFields
+        const fieldList = (parameters.bodyFields as string)
           .split(',')
           .map((f) => f.trim())
           .filter(Boolean);
         for (const field of fieldList) {
           // Get the selected type for this field (default to string)
-          const fieldType = parameters['body-type-' + field] || 'string';
+          const fieldType = (parameters['body-type-' + field] as string) || 'string';
 
           // Type selector for this field
           ports.push({
@@ -876,7 +969,7 @@ function updatePorts(nodeId, parameters, editorConnection) {
 
   // Generate path input ports and output ports for each response mapping
   if (parameters.responseMapping && typeof parameters.responseMapping === 'string') {
-    const outputNames = parameters.responseMapping
+    const outputNames = (parameters.responseMapping as string)
       .split(',')
       .map((m) => m.trim())
       .filter(Boolean);
@@ -963,17 +1056,17 @@ function updatePorts(nodeId, parameters, editorConnection) {
   editorConnection.sendDynamicPorts(nodeId, ports);
 }
 
-module.exports = {
+const HttpNodeModule: NodeModule = {
   node: HttpNode,
-  setup: function (context, graphModel) {
+  setup: function (context: NodeContextLike, graphModel: GraphModelLike) {
     if (!context.editorConnection || !context.editorConnection.isRunningLocally()) {
       return;
     }
 
-    function _managePortsForNode(node) {
+    function _managePortsForNode(node: GraphNodeModel) {
       updatePorts(node.id, node.parameters || {}, context.editorConnection);
 
-      node.on('parameterUpdated', function (event) {
+      node.on('parameterUpdated', function (event: { name: string }) {
         // Update ports when configuration changes
         if (
           event.name === 'url' ||
@@ -992,7 +1085,7 @@ module.exports = {
     }
 
     graphModel.on('editorImportComplete', () => {
-      graphModel.on('nodeAdded.net.noodl.HTTP', function (node) {
+      graphModel.on('nodeAdded.net.noodl.HTTP', function (node: GraphNodeModel) {
         _managePortsForNode(node);
       });
 
@@ -1002,3 +1095,5 @@ module.exports = {
     });
   }
 };
+
+export = HttpNodeModule;

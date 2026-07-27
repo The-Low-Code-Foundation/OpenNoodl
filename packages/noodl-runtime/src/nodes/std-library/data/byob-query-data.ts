@@ -10,14 +10,137 @@
  * @since 2.0.0
  */
 
-const NoodlRuntime = require('../../../../noodl-runtime');
-const { Node } = require('../../../../noodl-runtime');
-const ByobUtils = require('./byob-utils');
-const { RealtimeSSEConnection, isNodeGXRealtime } = require('./byob-realtime');
+import type {
+  GraphModelLike,
+  GraphNodeModel,
+  InspectInfo,
+  NodeContextLike,
+  NodeDefinitionOptions,
+  NodeInstance,
+  NodeModule,
+  RuntimeDiscoveredPort
+} from '@noodl/types';
+
+import type { BackendServicesMetaData, ResolvedBackend, SchemaCollection } from './byob-types';
+
+import Node = require('../../../node');
+import ByobUtils = require('./byob-utils');
+import ByobRealtime = require('./byob-realtime');
+
+const { RealtimeSSEConnection, isNodeGXRealtime } = ByobRealtime;
+
+/** The shape the `error` output carries. */
+interface ByobError {
+  status?: number;
+  message: string;
+  errors?: { message: string }[];
+}
+
+/** A rejected fetch, as this file throws and re-reads it. */
+interface ByobFetchError {
+  status?: number;
+  statusText?: string;
+  message?: string;
+  body?: { errors?: { message: string }[] } | null;
+}
+
+/**
+ * One node of the editor's visual filter tree.
+ *
+ * Group and condition are **one shape, not two**, and deliberately so: `type` is `'and'` or
+ * `'or'` on a group and the operator name on a leaf, and the code everywhere tests exactly
+ * that (`item.type === 'and' || item.type === 'or'`). Splitting this into a discriminated
+ * union would not narrow — the group's own `type` is a string too — and would put a cast at
+ * every branch. What arrives here is `JSON.parse` output, so every member is optional.
+ *
+ * `valueSource: 'connected'` is why the runtime re-converts the filter at fetch time rather
+ * than reusing what the editor serialised: that value comes from a wire, and only the
+ * runtime knows it.
+ */
+interface FilterGroup {
+  id?: string;
+  type?: 'and' | 'or' | (string & {});
+  /** Present on a group. */
+  conditions?: FilterGroup[];
+  /** Present on a leaf. */
+  field?: string;
+  operator?: string;
+  value?: unknown;
+  valueSource?: 'literal' | 'connected' | (string & {});
+  valuePortName?: string;
+}
+
+/** One connected condition, as `findConnectedConditions` reports it. */
+interface ConnectedCondition {
+  portName: string;
+  field?: string;
+  operator?: string;
+  conditionId?: string;
+}
+
+/** The part of a realtime connection this node uses — see `byob-subscribe.ts`. */
+interface RealtimeTransport {
+  connect(): void;
+  dispose(): void;
+}
+
+/**
+ * `this` inside the BYOB Query Data node.
+ *
+ * The node is a Directus (or NodeGX) list query built from dynamic ports: the collection
+ * comes from the cached schema, the filter from the editor's visual builder, and each
+ * condition whose value is *wired* rather than typed gets its own `filter_<port>` input —
+ * which is why the filter is re-converted here at fetch time instead of being reused as the
+ * editor serialised it (`resolveFilterWithConnectedValues`).
+ *
+ * With `live` on and a NodeGX backend it also holds an SSE subscription and re-runs the
+ * query on any change, including the `resync` frame that means "you may have missed some".
+ */
+interface QueryDataInstance extends NodeInstance {
+  _internal: {
+    inputValues: Record<string, unknown>;
+    loading: boolean;
+    records: unknown[];
+    totalCount: number;
+    inspectData: Record<string, unknown> | null;
+    apiPathMode: string;
+    filterPortValues?: Record<string, unknown>;
+    includeRelations?: Record<string, unknown>;
+    backendId?: string;
+    collection?: string;
+    live?: boolean;
+    filter?: string;
+    sortField?: string;
+    sortOrder?: string;
+    limit?: number;
+    offset?: number;
+    fields?: string;
+    error?: ByobError | null;
+    lastRequestUrl?: string;
+    hasScheduledFetch?: boolean;
+    hasScheduledLiveReconfigure?: boolean;
+    liveConnection?: RealtimeTransport | null;
+  };
+  _storeInputValue(name: string, value: unknown): void;
+  _storeFilterPortValue(name: string, value: unknown): void;
+  _storeIncludeRelationValue(relationName: string, value: unknown): void;
+  getIncludedRelations(): string[];
+  resolveBackend(): ResolvedBackend | null;
+  scheduleFetch(): void;
+  scheduleLiveReconfigure(): void;
+  reconfigureLive(): void;
+  teardownLive(): void;
+  buildUrl(backendConfig: ResolvedBackend | null): string | null;
+  buildHeaders(backendConfig: ResolvedBackend | null): Record<string, string>;
+  doFetch(): void;
+  resolveFilterWithConnectedValues(): unknown;
+  _resolveFilterGroupValues(group: FilterGroup): FilterGroup;
+  _toDirectusFilter(group: FilterGroup): unknown;
+}
 
 console.log('[BYOB Query Data] 📦 Module loaded');
 
-var QueryDataNode = {
+const QueryDataNode: NodeDefinitionOptions = {
   name: 'noodl.byob.QueryData',
   displayNodeName: 'Query Data',
   docs: 'https://docs.noodl.net/nodes/data/byob/query-data',
@@ -25,7 +148,7 @@ var QueryDataNode = {
   color: 'data',
   searchTags: ['byob', 'query', 'data', 'database', 'records', 'directus', 'supabase', 'api', 'backend', 'rest'],
 
-  initialize: function () {
+  initialize: function (this: QueryDataInstance) {
     this._internal.inputValues = {};
     this._internal.loading = false;
     this._internal.records = [];
@@ -34,7 +157,7 @@ var QueryDataNode = {
     this._internal.apiPathMode = 'items'; // 'items' or 'system'
   },
 
-  getInspectInfo() {
+  getInspectInfo(this: QueryDataInstance): InspectInfo {
     if (!this._internal.inspectData) {
       return { type: 'text', value: '[Not executed yet]' };
     }
@@ -48,7 +171,7 @@ var QueryDataNode = {
       type: 'signal',
       displayName: 'Fetch',
       group: 'Actions',
-      valueChangedToTrue: function () {
+      valueChangedToTrue: function (this: QueryDataInstance) {
         this.scheduleFetch();
       }
     }
@@ -59,7 +182,7 @@ var QueryDataNode = {
       type: 'array',
       displayName: 'Records',
       group: 'Results',
-      getter: function () {
+      getter: function (this: QueryDataInstance) {
         return this._internal.records;
       }
     },
@@ -67,7 +190,7 @@ var QueryDataNode = {
       type: 'object',
       displayName: 'First Record',
       group: 'Results',
-      getter: function () {
+      getter: function (this: QueryDataInstance) {
         return this._internal.records && this._internal.records.length > 0 ? this._internal.records[0] : null;
       }
     },
@@ -75,7 +198,7 @@ var QueryDataNode = {
       type: 'number',
       displayName: 'Count',
       group: 'Results',
-      getter: function () {
+      getter: function (this: QueryDataInstance) {
         return this._internal.records ? this._internal.records.length : 0;
       }
     },
@@ -83,7 +206,7 @@ var QueryDataNode = {
       type: 'number',
       displayName: 'Total Count',
       group: 'Results',
-      getter: function () {
+      getter: function (this: QueryDataInstance) {
         return this._internal.totalCount;
       }
     },
@@ -91,7 +214,7 @@ var QueryDataNode = {
       type: 'boolean',
       displayName: 'Loading',
       group: 'Status',
-      getter: function () {
+      getter: function (this: QueryDataInstance) {
         return this._internal.loading;
       }
     },
@@ -99,7 +222,7 @@ var QueryDataNode = {
       type: 'object',
       displayName: 'Error',
       group: 'Status',
-      getter: function () {
+      getter: function (this: QueryDataInstance) {
         return this._internal.error;
       }
     },
@@ -116,14 +239,14 @@ var QueryDataNode = {
   },
 
   prototypeExtensions: {
-    _storeInputValue: function (name, value) {
+    _storeInputValue: function (this: QueryDataInstance, name: string, value: unknown) {
       this._internal.inputValues[name] = value;
     },
 
     /**
      * Store filter port value (for connected filter conditions)
      */
-    _storeFilterPortValue: function (name, value) {
+    _storeFilterPortValue: function (this: QueryDataInstance, name: string, value: unknown) {
       if (!this._internal.filterPortValues) {
         this._internal.filterPortValues = {};
       }
@@ -133,7 +256,7 @@ var QueryDataNode = {
     /**
      * Store an Include-<relation> toggle (include_<field> ports)
      */
-    _storeIncludeRelationValue: function (relationName, value) {
+    _storeIncludeRelationValue: function (this: QueryDataInstance, relationName: string, value: unknown) {
       if (!this._internal.includeRelations) {
         this._internal.includeRelations = {};
       }
@@ -146,13 +269,13 @@ var QueryDataNode = {
      * is gone from the editor — validate against the current collection's
      * schema so a stale toggle can't poison the fields param.
      */
-    getIncludedRelations: function () {
+    getIncludedRelations: function (this: QueryDataInstance) {
       const includes = this._internal.includeRelations || {};
       const active = Object.keys(includes).filter((name) => !!includes[name]);
       if (active.length === 0) return active;
 
       const backend = this.resolveBackend();
-      const collection = backend?.collections?.find((c) => c.name === this._internal.collection);
+      const collection = backend?.collections?.find((c: SchemaCollection) => c.name === this._internal.collection);
       if (!collection) return active;
 
       const valid = ByobUtils.getRelationFields(collection, backend.collections).map((r) => r.field.name);
@@ -163,12 +286,12 @@ var QueryDataNode = {
      * Resolve the backend configuration from metadata
      * Returns { url, token, type } or null if not found
      */
-    resolveBackend: function () {
+    resolveBackend: function (this: QueryDataInstance) {
       const backendId = this._internal.backendId || '_active_';
       return ByobUtils.resolveBackend(backendId);
     },
 
-    scheduleFetch: function () {
+    scheduleFetch: function (this: QueryDataInstance) {
       console.log('[BYOB Query Data] scheduleFetch called');
       if (this._internal.hasScheduledFetch) {
         console.log('[BYOB Query Data] Already scheduled, skipping');
@@ -186,7 +309,7 @@ var QueryDataNode = {
     // NodeGX backend speaks SSE; for Directus and other BYOB backends the
     // dedicated Subscribe To Changes node (WebSocket) is the live path.
     // ------------------------------------------------------------------------
-    scheduleLiveReconfigure: function () {
+    scheduleLiveReconfigure: function (this: QueryDataInstance) {
       if (this._internal.hasScheduledLiveReconfigure) return;
       this._internal.hasScheduledLiveReconfigure = true;
       this.scheduleAfterInputsHaveUpdated(() => {
@@ -195,7 +318,7 @@ var QueryDataNode = {
       });
     },
 
-    reconfigureLive: function () {
+    reconfigureLive: function (this: QueryDataInstance) {
       this.teardownLive();
 
       if (!this._internal.live) return;
@@ -224,19 +347,19 @@ var QueryDataNode = {
       this._internal.liveConnection.connect();
     },
 
-    teardownLive: function () {
+    teardownLive: function (this: QueryDataInstance) {
       if (this._internal.liveConnection) {
         this._internal.liveConnection.dispose();
         this._internal.liveConnection = null;
       }
     },
 
-    _onNodeDeleted: function () {
+    _onNodeDeleted: function (this: QueryDataInstance) {
       Node.prototype._onNodeDeleted.call(this);
       this.teardownLive();
     },
 
-    buildUrl: function (backendConfig) {
+    buildUrl: function (this: QueryDataInstance, backendConfig: ResolvedBackend | null) {
       const collection = this._internal.collection || '';
       const apiPathMode = this._internal.apiPathMode || 'items';
 
@@ -305,11 +428,11 @@ var QueryDataNode = {
       return url;
     },
 
-    buildHeaders: function (backendConfig) {
+    buildHeaders: function (this: QueryDataInstance, backendConfig: ResolvedBackend | null) {
       return ByobUtils.buildHeaders(backendConfig?.token);
     },
 
-    doFetch: function () {
+    doFetch: function (this: QueryDataInstance) {
       console.log('[BYOB Query Data] doFetch executing');
       this._internal.hasScheduledFetch = false;
 
@@ -448,7 +571,7 @@ var QueryDataNode = {
         });
     },
 
-    registerInputIfNeeded: function (name) {
+    registerInputIfNeeded: function (this: QueryDataInstance, name: string) {
       if (this.hasInput(name)) return;
 
       // Map of dynamic input names to their setters
@@ -514,7 +637,7 @@ var QueryDataNode = {
      * Resolve connected filter values and build final filter JSON
      * Replaces placeholder values in the filter structure with actual port values
      */
-    resolveFilterWithConnectedValues: function () {
+    resolveFilterWithConnectedValues: function (this: QueryDataInstance) {
       const filterJson = this._internal.filter;
       if (!filterJson || !filterJson.trim()) return null;
 
@@ -539,7 +662,7 @@ var QueryDataNode = {
     /**
      * Recursively resolve connected values in a filter group
      */
-    _resolveFilterGroupValues: function (group) {
+    _resolveFilterGroupValues: function (this: QueryDataInstance, group: FilterGroup): FilterGroup {
       if (!group || !group.conditions) return group;
 
       const resolvedConditions = group.conditions.map((item) => {
@@ -568,7 +691,7 @@ var QueryDataNode = {
     /**
      * Convert visual filter builder format to Directus filter format
      */
-    _toDirectusFilter: function (group) {
+    _toDirectusFilter: function (this: QueryDataInstance, group: FilterGroup) {
       return toDirectusFilter(group);
     }
   }
@@ -580,13 +703,13 @@ var QueryDataNode = {
  * runtime re-converts at fetch time because connected port values are only
  * known here.
  */
-function toDirectusFilter(group) {
+function toDirectusFilter(group: FilterGroup): unknown {
   if (!group || !group.conditions || group.conditions.length === 0) {
     return null;
   }
 
   const combinator = group.type === 'or' ? '_or' : '_and';
-  const filterItems = [];
+  const filterItems: unknown[] = [];
 
   for (const item of group.conditions) {
     if (item.type === 'and' || item.type === 'or') {
@@ -604,7 +727,7 @@ function toDirectusFilter(group) {
 
         // Relation paths (author.name) must nest: { author: { name: { _eq: ... } } }.
         // A flat "author.name" key is rejected by Directus (live 403, slice 6).
-        let condition = { [item.operator]: operatorValue };
+        let condition: Record<string, unknown> = { [item.operator]: operatorValue };
         const parts = item.field.split('.');
         for (let i = parts.length - 1; i >= 0; i--) {
           condition = { [parts[i]]: condition };
@@ -617,7 +740,7 @@ function toDirectusFilter(group) {
   if (filterItems.length === 0) return null;
   if (filterItems.length === 1) return filterItems[0];
 
-  const result = {};
+  const result: Record<string, unknown> = {};
   result[combinator] = filterItems;
   return result;
 }
@@ -626,7 +749,7 @@ function toDirectusFilter(group) {
  * Helper to find all connected filter conditions in a filter group
  * Returns array of { portName, field, operator } for each connected condition
  */
-function findConnectedConditions(filterGroup, connected = []) {
+function findConnectedConditions(filterGroup: FilterGroup, connected: ConnectedCondition[] = []): ConnectedCondition[] {
   if (!filterGroup || !filterGroup.conditions) return connected;
 
   for (const item of filterGroup.conditions) {
@@ -650,7 +773,7 @@ function findConnectedConditions(filterGroup, connected = []) {
 /**
  * Parse filter JSON string and extract connected conditions
  */
-function parseFilterForConnectedPorts(filterJson) {
+function parseFilterForConnectedPorts(filterJson: string | undefined): ConnectedCondition[] {
   if (!filterJson || !filterJson.trim()) return [];
 
   try {
@@ -669,11 +792,18 @@ function parseFilterForConnectedPorts(filterJson) {
  * Update dynamic ports based on node configuration
  * This will be extended to support schema-driven collection/field dropdowns
  */
-function updatePorts(nodeId, parameters, editorConnection, graphModel) {
-  const ports = [];
+function updatePorts(
+  nodeId: string,
+  parameters: Record<string, unknown>,
+  editorConnection: NodeContextLike['editorConnection'],
+  graphModel: GraphModelLike
+) {
+  const ports: RuntimeDiscoveredPort[] = [];
 
   // Get backend services metadata
-  const backendServices = graphModel.getMetaData('backendServices') || { backends: [] };
+  const backendServices = (graphModel.getMetaData('backendServices') as BackendServicesMetaData) || {
+    backends: []
+  };
   const backends = backendServices.backends || [];
 
   // Backend selection dropdown
@@ -704,7 +834,7 @@ function updatePorts(nodeId, parameters, editorConnection, graphModel) {
   const allCollections = selectedBackend?.schema?.collections || [];
 
   // API Path Mode dropdown - MUST come before Collection for proper UX
-  const isSystemTable = ByobUtils.isSystemCollection(parameters.collection);
+  const isSystemTable = ByobUtils.isSystemCollection(parameters.collection as string);
 
   ports.push({
     name: 'apiPathMode',
@@ -723,7 +853,7 @@ function updatePorts(nodeId, parameters, editorConnection, graphModel) {
   });
 
   // Filter collections based on selected API path mode
-  const apiPathMode = parameters.apiPathMode || (isSystemTable ? 'system' : 'items');
+  const apiPathMode = (parameters.apiPathMode as string) || (isSystemTable ? 'system' : 'items');
   const filteredCollections = ByobUtils.filterCollectionsByMode(allCollections, apiPathMode);
 
   // Collection dropdown (filtered by API path mode)
@@ -862,7 +992,7 @@ function updatePorts(nodeId, parameters, editorConnection, graphModel) {
   });
 
   // Parse filter to find connected conditions and add dynamic ports
-  const connectedConditions = parseFilterForConnectedPorts(parameters.filter);
+  const connectedConditions = parseFilterForConnectedPorts(parameters.filter as string);
   if (connectedConditions.length > 0) {
     connectedConditions.forEach((condition) => {
       // Find the field info for better display name (relation paths included)
@@ -888,7 +1018,18 @@ function updatePorts(nodeId, parameters, editorConnection, graphModel) {
   editorConnection.sendDynamicPorts(nodeId, ports);
 }
 
-module.exports = {
+/**
+ * This module carries two pure functions beyond the node itself, for the unit tests in
+ * `test/byob-utils.test.js` to reach. `NodeModule` does not admit extra members, and the
+ * runtime ignores them — so the type says what the object is rather than the other way
+ * round.
+ */
+interface QueryDataModule extends NodeModule {
+  parseFilterForConnectedPorts(filterJson: string | undefined): ConnectedCondition[];
+  toDirectusFilter(group: FilterGroup): unknown;
+}
+
+const QueryDataNodeModule: QueryDataModule = {
   node: QueryDataNode,
   // Exported for unit tests: pure parser that finds connected filter conditions
   // in a stored filter parameter and derives their dynamic input ports.
@@ -896,12 +1037,12 @@ module.exports = {
   // Exported for unit tests: builder-format → Directus filter conversion
   // (relation-path nesting, null/empty operator mapping).
   toDirectusFilter,
-  setup: function (context, graphModel) {
+  setup: function (context: NodeContextLike, graphModel: GraphModelLike) {
     if (!context.editorConnection || !context.editorConnection.isRunningLocally()) {
       return;
     }
 
-    function _managePortsForNode(node) {
+    function _managePortsForNode(node: GraphNodeModel) {
       updatePorts(node.id, node.parameters || {}, context.editorConnection, graphModel);
 
       node.on('parameterUpdated', function () {
@@ -916,7 +1057,7 @@ module.exports = {
     }
 
     graphModel.on('editorImportComplete', () => {
-      graphModel.on('nodeAdded.noodl.byob.QueryData', function (node) {
+      graphModel.on('nodeAdded.noodl.byob.QueryData', function (node: GraphNodeModel) {
         _managePortsForNode(node);
       });
 
@@ -926,3 +1067,5 @@ module.exports = {
     });
   }
 };
+
+export = QueryDataNodeModule;

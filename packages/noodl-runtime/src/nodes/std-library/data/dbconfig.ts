@@ -1,23 +1,59 @@
 'use strict';
 
-const ConfigService = require('../../../api/configservice');
+import type {
+  GraphModelLike,
+  GraphNodeModel,
+  InspectInfo,
+  NodeContextLike,
+  NodeDefinitionOptions,
+  NodeInstance,
+  NodeModule,
+  RuntimeDiscoveredPort
+} from '@noodl/types';
 
-var ConfigNodeDefinition = {
+import ConfigService = require('../../../api/configservice');
+
+/** One parameter in the project's `dbConfigSchema` metadata. */
+interface ConfigSchemaEntry {
+  type?: string;
+  /** Parameters flagged this way are only offered in the cloud runtime. */
+  masterKeyOnly?: boolean;
+}
+
+/**
+ * `this` inside the Config node.
+ *
+ * Both of its ports are dynamic — the key comes from the project's config schema, and the
+ * value port's *type* comes from whichever key is selected — so there is nothing in
+ * `inputs`/`outputs` and everything in `registerInputIfNeeded`/`registerOutputIfNeeded`.
+ */
+interface DbConfigInstance extends NodeInstance {
+  _internal: {
+    config?: Record<string, unknown>;
+    configKey?: string;
+    useDevValue?: boolean;
+    devValue?: unknown;
+  };
+  getValue(): unknown;
+  setInternal(key: string, value: unknown): void;
+}
+
+const ConfigNodeDefinition: NodeDefinitionOptions = {
   name: 'DbConfig',
   docs: 'https://docs.noodl.net/nodes/data/cloud-data/config',
   displayNodeName: 'Config',
   category: 'Cloud Services',
   usePortAsLabel: 'configKey',
   color: 'data',
-  initialize: function () {
-    var internal = this._internal;
+  initialize: function (this: DbConfigInstance) {
+    const internal = this._internal;
 
-    ConfigService.instance.getConfig().then((config) => {
+    ConfigService.instance.getConfig().then((config: Record<string, unknown>) => {
       internal.config = config;
       if (this.hasOutput('value')) this.flagOutputDirty('value');
     });
   },
-  getInspectInfo() {
+  getInspectInfo(this: DbConfigInstance): InspectInfo {
     const value = this.getValue();
 
     if (value === undefined) return '[No Value]';
@@ -27,7 +63,7 @@ var ConfigNodeDefinition = {
   inputs: {},
   outputs: {},
   methods: {
-    getValue: function () {
+    getValue: function (this: DbConfigInstance) {
       const internal = this._internal;
       if (internal.useDevValue && this.context.editorConnection && this.context.editorConnection.isRunningLocally()) {
         return internal.devValue;
@@ -35,11 +71,11 @@ var ConfigNodeDefinition = {
         return internal.config[internal.configKey];
       }
     },
-    setInternal: function (key, value) {
+    setInternal: function (this: DbConfigInstance, key: string, value: unknown) {
       this._internal[key] = value;
       if (this.hasOutput('value')) this.flagOutputDirty('value');
     },
-    registerOutputIfNeeded: function (name) {
+    registerOutputIfNeeded: function (this: DbConfigInstance, name: string) {
       if (this.hasOutput(name)) {
         return;
       }
@@ -49,7 +85,7 @@ var ConfigNodeDefinition = {
           getter: this.getValue.bind(this)
         });
     },
-    registerInputIfNeeded: function (name) {
+    registerInputIfNeeded: function (this: DbConfigInstance, name: string) {
       if (this.hasInput(name)) {
         return;
       }
@@ -62,20 +98,20 @@ var ConfigNodeDefinition = {
   }
 };
 
-module.exports = {
+const DbConfigNodeModule: NodeModule = {
   node: ConfigNodeDefinition,
-  setup: function (context, graphModel) {
+  setup: function (context: NodeContextLike, graphModel: GraphModelLike) {
     if (!context.editorConnection || !context.editorConnection.isRunningLocally()) {
       return;
     }
 
-    function updatePorts(node) {
-      var ports = [];
+    function updatePorts(node: GraphNodeModel) {
+      const ports: RuntimeDiscoveredPort[] = [];
 
       context.editorConnection.clearWarning(node.component.name, node.id, 'dbconfig-warning');
 
-      const configSchema = graphModel.getMetaData('dbConfigSchema');
-      let valueType;
+      const configSchema = graphModel.getMetaData('dbConfigSchema') as Record<string, ConfigSchemaEntry> | undefined;
+      let valueType: string | undefined;
 
       if (configSchema) {
         const isCloud = typeof _noodl_cloud_runtime_version !== 'undefined';
@@ -93,8 +129,9 @@ module.exports = {
           plug: 'input'
         });
 
-        if (node.parameters['configKey'] !== undefined && configSchema && configSchema[node.parameters['configKey']]) {
-          valueType = configSchema[node.parameters['configKey']].type;
+        const configKey = node.parameters['configKey'] as string | undefined;
+        if (configKey !== undefined && configSchema && configSchema[configKey]) {
+          valueType = configSchema[configKey].type;
 
           if (
             valueType === 'string' ||
@@ -122,10 +159,10 @@ module.exports = {
               });
             }
           }
-        } else if (node.parameters['configKey'] !== undefined) {
+        } else if (configKey !== undefined) {
           context.editorConnection.sendWarning(node.component.name, node.id, 'dbconfig-warning', {
             showGlobally: true,
-            message: node.parameters['configKey'] + ' config parameter is missing, add it to your cloud service.'
+            message: configKey + ' config parameter is missing, add it to your cloud service.'
           });
         }
       } else {
@@ -146,21 +183,21 @@ module.exports = {
       context.editorConnection.sendDynamicPorts(node.id, ports);
     }
 
-    function _managePortsForNode(node) {
+    function _managePortsForNode(node: GraphNodeModel) {
       updatePorts(node);
 
-      node.on('parameterUpdated', function (event) {
+      node.on('parameterUpdated', function () {
         updatePorts(node);
       });
 
-      graphModel.on('metadataChanged.dbConfigSchema', function (data) {
+      graphModel.on('metadataChanged.dbConfigSchema', function () {
         ConfigService.instance.clearCache();
         updatePorts(node);
       });
     }
 
     graphModel.on('editorImportComplete', () => {
-      graphModel.on('nodeAdded.DbConfig', function (node) {
+      graphModel.on('nodeAdded.DbConfig', function (node: GraphNodeModel) {
         _managePortsForNode(node);
       });
 
@@ -170,3 +207,5 @@ module.exports = {
     });
   }
 };
+
+export = DbConfigNodeModule;

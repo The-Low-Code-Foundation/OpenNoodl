@@ -14,16 +14,76 @@
  * @since 2.0.0
  */
 
-const { Node } = require('../../../../noodl-runtime');
-const ByobUtils = require('./byob-utils');
-const {
-  RealtimeConnection,
-  RealtimeSSEConnection,
-  buildWebSocketUrl,
-  isNodeGXRealtime
-} = require('./byob-realtime');
+import type {
+  GraphModelLike,
+  GraphNodeModel,
+  InspectInfo,
+  NodeContextLike,
+  NodeDefinitionOptions,
+  NodeInstance,
+  NodeModule,
+  RuntimeDiscoveredPort
+} from '@noodl/types';
 
-var SubscribeToChangesNode = {
+import type { BackendServicesMetaData, ResolvedBackend, SchemaCollection } from './byob-types';
+
+import Node = require('../../../node');
+import ByobUtils = require('./byob-utils');
+import ByobRealtime = require('./byob-realtime');
+
+const { RealtimeConnection, RealtimeSSEConnection, buildWebSocketUrl, isNodeGXRealtime } = ByobRealtime;
+
+/** What both realtime transports report through `onError`. */
+interface RealtimeError {
+  message: string;
+  code?: string;
+}
+
+/**
+ * The part of a realtime connection this node uses.
+ *
+ * Deliberately structural rather than a union of the two concrete transports: picking one
+ * by backend type is the whole point, and the node is written to not care which it got.
+ */
+interface RealtimeTransport {
+  connect(): void;
+  dispose(): void;
+}
+
+/**
+ * `this` inside the BYOB Subscribe To Changes node.
+ *
+ * The node is a shell around one live subscription — the socket lifecycle (auth handshake,
+ * ping/pong, backoff reconnect) is in `byob-realtime.ts`. Every input is dynamic, so all
+ * three setters route through `scheduleReconfigure`: a backend and collection arriving in
+ * the same update tear down and rebuild the connection exactly once.
+ */
+interface SubscribeToChangesInstance extends NodeInstance {
+  _internal: {
+    enabled: boolean;
+    subscribed: boolean;
+    error: RealtimeError | null;
+    eventType: string;
+    changedRecord: Record<string, unknown> | null;
+    changedRecords: unknown[];
+    changedRecordId: string;
+    connection: RealtimeTransport | null;
+    backendId?: string;
+    collection?: string;
+    hasScheduledReconfigure?: boolean;
+  };
+  resolveBackend(): ResolvedBackend | null;
+  scheduleReconfigure(): void;
+  reconfigure(): void;
+  teardownConnection(): void;
+  setError(error: RealtimeError): void;
+  getPrimaryKeyName(): string;
+  handleRealtimeStatus(subscribed: boolean): void;
+  handleRealtimeError(error: RealtimeError): void;
+  handleRealtimeEvent(event: string, data: unknown[]): void;
+}
+
+const SubscribeToChangesNode: NodeDefinitionOptions = {
   name: 'noodl.byob.SubscribeToChanges',
   displayNodeName: 'Subscribe To Changes',
   docs: 'https://docs.noodl.net/nodes/data/byob/subscribe-to-changes',
@@ -35,7 +95,7 @@ var SubscribeToChangesNode = {
     note: 'A live subscription is meaningless in a server render and would leak a socket per request; the node activates in the browser after hydration.'
   },
 
-  initialize: function () {
+  initialize: function (this: SubscribeToChangesInstance) {
     this._internal.enabled = true;
     this._internal.subscribed = false;
     this._internal.error = null;
@@ -46,7 +106,7 @@ var SubscribeToChangesNode = {
     this._internal.connection = null;
   },
 
-  getInspectInfo() {
+  getInspectInfo(this: SubscribeToChangesInstance): InspectInfo {
     const internal = this._internal;
     if (!internal.collection) {
       return { type: 'text', value: '[No collection selected]' };
@@ -72,7 +132,7 @@ var SubscribeToChangesNode = {
       type: 'boolean',
       displayName: 'Subscribed',
       group: 'Status',
-      getter: function () {
+      getter: function (this: SubscribeToChangesInstance) {
         return this._internal.subscribed;
       }
     },
@@ -80,7 +140,7 @@ var SubscribeToChangesNode = {
       type: 'object',
       displayName: 'Error',
       group: 'Status',
-      getter: function () {
+      getter: function (this: SubscribeToChangesInstance) {
         return this._internal.error;
       }
     },
@@ -108,7 +168,7 @@ var SubscribeToChangesNode = {
       type: 'string',
       displayName: 'Event Type',
       group: 'Event',
-      getter: function () {
+      getter: function (this: SubscribeToChangesInstance) {
         return this._internal.eventType;
       }
     },
@@ -116,7 +176,7 @@ var SubscribeToChangesNode = {
       type: 'object',
       displayName: 'Changed Record',
       group: 'Event',
-      getter: function () {
+      getter: function (this: SubscribeToChangesInstance) {
         return this._internal.changedRecord;
       }
     },
@@ -124,7 +184,7 @@ var SubscribeToChangesNode = {
       type: 'array',
       displayName: 'Changed Records',
       group: 'Event',
-      getter: function () {
+      getter: function (this: SubscribeToChangesInstance) {
         return this._internal.changedRecords;
       }
     },
@@ -132,14 +192,14 @@ var SubscribeToChangesNode = {
       type: 'string',
       displayName: 'Changed Record Id',
       group: 'Event',
-      getter: function () {
+      getter: function (this: SubscribeToChangesInstance) {
         return this._internal.changedRecordId;
       }
     }
   },
 
   prototypeExtensions: {
-    resolveBackend: function () {
+    resolveBackend: function (this: SubscribeToChangesInstance) {
       const backendId = this._internal.backendId || '_active_';
       return ByobUtils.resolveBackend(backendId);
     },
@@ -149,7 +209,7 @@ var SubscribeToChangesNode = {
      * Scheduled after inputs have updated so a backend+collection change
      * arriving together only reconnects once.
      */
-    scheduleReconfigure: function () {
+    scheduleReconfigure: function (this: SubscribeToChangesInstance) {
       if (this._internal.hasScheduledReconfigure) return;
       this._internal.hasScheduledReconfigure = true;
       this.scheduleAfterInputsHaveUpdated(() => {
@@ -158,7 +218,7 @@ var SubscribeToChangesNode = {
       });
     },
 
-    reconfigure: function () {
+    reconfigure: function (this: SubscribeToChangesInstance) {
       this.teardownConnection();
 
       if (this._internal.enabled === false) return;
@@ -210,7 +270,7 @@ var SubscribeToChangesNode = {
       this._internal.connection.connect();
     },
 
-    teardownConnection: function () {
+    teardownConnection: function (this: SubscribeToChangesInstance) {
       if (this._internal.connection) {
         this._internal.connection.dispose();
         this._internal.connection = null;
@@ -221,7 +281,7 @@ var SubscribeToChangesNode = {
       }
     },
 
-    setError: function (error) {
+    setError: function (this: SubscribeToChangesInstance, error: RealtimeError) {
       console.warn('[BYOB Subscribe] Error:', error);
       this._internal.error = error;
       this.flagOutputDirty('error');
@@ -232,13 +292,13 @@ var SubscribeToChangesNode = {
      * cached schema. Delete events carry only keys, so this is what lets
      * Changed Record Id stay populated across all three event types.
      */
-    getPrimaryKeyName: function () {
+    getPrimaryKeyName: function (this: SubscribeToChangesInstance) {
       const backend = this.resolveBackend();
-      const collection = backend?.collections?.find((c) => c.name === this._internal.collection);
+      const collection = backend?.collections?.find((c: SchemaCollection) => c.name === this._internal.collection);
       return collection?.primaryKey || 'id';
     },
 
-    handleRealtimeStatus: function (subscribed) {
+    handleRealtimeStatus: function (this: SubscribeToChangesInstance, subscribed: boolean) {
       this._internal.subscribed = subscribed;
       if (subscribed) {
         this._internal.error = null;
@@ -247,11 +307,11 @@ var SubscribeToChangesNode = {
       this.flagOutputDirty('subscribed');
     },
 
-    handleRealtimeError: function (error) {
+    handleRealtimeError: function (this: SubscribeToChangesInstance, error: RealtimeError) {
       this.setError(error);
     },
 
-    handleRealtimeEvent: function (event, data) {
+    handleRealtimeEvent: function (this: SubscribeToChangesInstance, event: string, data: unknown[]) {
       // 'resync' (NodeGX SSE): the stream may have missed events (reconnect or a
       // slow-client overflow) and the server keeps no replay log — signal a
       // generic 'changed' so downstream re-queries, without firing a spurious
@@ -275,7 +335,7 @@ var SubscribeToChangesNode = {
         this._internal.changedRecordId = data.length > 0 ? String(data[0]) : '';
       } else {
         // Create/update events carry full records
-        this._internal.changedRecord = data.length > 0 ? data[0] : null;
+        this._internal.changedRecord = data.length > 0 ? (data[0] as Record<string, unknown>) : null;
         this._internal.changedRecords = data;
         const pkValue = this._internal.changedRecord?.[pkName];
         this._internal.changedRecordId = pkValue !== undefined && pkValue !== null ? String(pkValue) : '';
@@ -288,24 +348,24 @@ var SubscribeToChangesNode = {
       this.flagOutputDirty('changedRecords');
       this.flagOutputDirty('changedRecordId');
 
-      const eventSignals = { create: 'created', update: 'updated', delete: 'deleted' };
+      const eventSignals: Record<string, string> = { create: 'created', update: 'updated', delete: 'deleted' };
       this.sendSignalOnOutput(eventSignals[event]);
       this.sendSignalOnOutput('changed');
     },
 
-    registerInputIfNeeded: function (name) {
+    registerInputIfNeeded: function (this: SubscribeToChangesInstance, name: string) {
       if (this.hasInput(name)) return;
 
-      const dynamicInputSetters = {
-        backendId: (value) => {
+      const dynamicInputSetters: Record<string, (value: never) => void> = {
+        backendId: (value: never) => {
           this._internal.backendId = value;
           this.scheduleReconfigure();
         },
-        collection: (value) => {
+        collection: (value: never) => {
           this._internal.collection = value;
           this.scheduleReconfigure();
         },
-        enabled: (value) => {
+        enabled: (value: never) => {
           this._internal.enabled = !!value;
           this.scheduleReconfigure();
         }
@@ -318,7 +378,7 @@ var SubscribeToChangesNode = {
       }
     },
 
-    _onNodeDeleted: function () {
+    _onNodeDeleted: function (this: SubscribeToChangesInstance) {
       Node.prototype._onNodeDeleted.call(this);
       this.teardownConnection();
     }
@@ -330,10 +390,17 @@ var SubscribeToChangesNode = {
  * (same pattern as the other byob-* nodes). Realtime subscriptions target
  * user collections; Directus system collections are left out of the dropdown.
  */
-function updatePorts(nodeId, parameters, editorConnection, graphModel) {
-  const ports = [];
+function updatePorts(
+  nodeId: string,
+  parameters: Record<string, unknown>,
+  editorConnection: NodeContextLike['editorConnection'],
+  graphModel: GraphModelLike
+) {
+  const ports: RuntimeDiscoveredPort[] = [];
 
-  const backendServices = graphModel.getMetaData('backendServices') || { backends: [] };
+  const backendServices = (graphModel.getMetaData('backendServices') as BackendServicesMetaData) || {
+    backends: []
+  };
   const backends = backendServices.backends || [];
 
   const backendEnums = [{ label: 'Active Backend', value: '_active_' }];
@@ -394,14 +461,14 @@ function updatePorts(nodeId, parameters, editorConnection, graphModel) {
   editorConnection.sendDynamicPorts(nodeId, ports);
 }
 
-module.exports = {
+const SubscribeToChangesNodeModule: NodeModule = {
   node: SubscribeToChangesNode,
-  setup: function (context, graphModel) {
+  setup: function (context: NodeContextLike, graphModel: GraphModelLike) {
     if (!context.editorConnection || !context.editorConnection.isRunningLocally()) {
       return;
     }
 
-    function _managePortsForNode(node) {
+    function _managePortsForNode(node: GraphNodeModel) {
       updatePorts(node.id, node.parameters || {}, context.editorConnection, graphModel);
 
       node.on('parameterUpdated', function () {
@@ -414,7 +481,7 @@ module.exports = {
     }
 
     graphModel.on('editorImportComplete', () => {
-      graphModel.on('nodeAdded.noodl.byob.SubscribeToChanges', function (node) {
+      graphModel.on('nodeAdded.noodl.byob.SubscribeToChanges', function (node: GraphNodeModel) {
         _managePortsForNode(node);
       });
 
@@ -424,3 +491,5 @@ module.exports = {
     });
   }
 };
+
+export = SubscribeToChangesNodeModule;

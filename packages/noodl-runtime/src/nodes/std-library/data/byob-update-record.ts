@@ -1,32 +1,96 @@
 /**
- * BYOB Create Record Node
+ * BYOB Update Record Node
  *
- * Creates a new record in a BYOB backend collection.
+ * Updates an existing record in a BYOB backend collection.
  * Supports Directus system tables and user collections.
  *
  * @module noodl-runtime
  * @since 2.0.0
  */
 
-const ByobUtils = require('./byob-utils');
+import type {
+  GraphModelLike,
+  GraphNodeModel,
+  InspectInfo,
+  NodeContextLike,
+  NodeDefinitionOptions,
+  NodeInstance,
+  NodeModule,
+  RuntimeDiscoveredPort
+} from '@noodl/types';
 
-console.log('[BYOB Create Record] 📦 Module loaded');
+import type { BackendServicesMetaData, ResolvedBackend, SchemaField } from './byob-types';
 
-var CreateRecordNode = {
-  name: 'noodl.byob.CreateRecord',
-  displayNodeName: 'Create Record',
-  docs: 'https://docs.noodl.net/nodes/data/byob/create-record',
+import ByobUtils = require('./byob-utils');
+
+console.log('[BYOB Update Record] 📦 Module loaded');
+
+/** The shape the `error` output carries. */
+interface ByobError {
+  status?: number;
+  message: string;
+  errors?: { message: string }[];
+}
+
+/** A rejected fetch, as this file throws and re-reads it. */
+interface ByobFetchError {
+  status?: number;
+  statusText?: string;
+  message?: string;
+  body?: { errors?: { message: string }[] } | null;
+}
+
+/**
+ * `this` inside the BYOB Update Record node — Create Record's twin, plus a required
+ * `recordId` and a `PATCH` rather than a `POST`.
+ */
+interface UpdateRecordInstance extends NodeInstance {
+  _internal: {
+    fieldValues: Record<string, unknown>;
+    loading: boolean;
+    apiPathMode: string;
+    backendId?: string;
+    collection?: string;
+    recordId?: string;
+    record?: Record<string, unknown> | null;
+    error?: ByobError | null;
+    lastResult?: Record<string, unknown>;
+    hasScheduledUpdate?: boolean;
+    /**
+     * DEFECT (PLAT-003 NOTES §27.3), left verbatim. Nothing ever writes this.
+     *
+     * The `setup` function at the bottom builds a field schema and assigns it to
+     * `node._internal.fieldSchema` — but `node` there is the **`GraphNodeModel`**, an editor-
+     * side object, while this is the runtime **node instance**. They are different objects,
+     * and the `if (!node._internal) node._internal = {}` guard next to that assignment is the
+     * tell: the graph model has no `_internal`, so one was invented to hold a value nobody
+     * reads. The consequence is that `normalizeValue` is always called with an `undefined`
+     * schema, so date fields are never converted to ISO 8601 and `json`/`array` columns are
+     * never parsed out of their editor text. And `setup` only runs against a live editor at
+     * all, so a deployed app could not have had it either way.
+     */
+    fieldSchema?: Record<string, SchemaField>;
+  };
+  resolveBackend(): ResolvedBackend | null;
+  scheduleUpdate(): void;
+  doUpdate(): void;
+}
+
+const UpdateRecordNode: NodeDefinitionOptions = {
+  name: 'noodl.byob.UpdateRecord',
+  displayNodeName: 'Update Record',
+  docs: 'https://docs.noodl.net/nodes/data/byob/update-record',
   category: 'Data',
   color: 'data',
-  searchTags: ['byob', 'create', 'insert', 'add', 'data', 'database', 'records', 'directus', 'api', 'backend'],
+  searchTags: ['byob', 'update', 'edit', 'modify', 'data', 'database', 'records', 'directus', 'api', 'backend'],
 
-  initialize: function () {
+  initialize: function (this: UpdateRecordInstance) {
     this._internal.fieldValues = {};
     this._internal.loading = false;
     this._internal.apiPathMode = 'items';
   },
 
-  getInspectInfo() {
+  getInspectInfo(this: UpdateRecordInstance): InspectInfo {
     if (!this._internal.lastResult) {
       return { type: 'text', value: '[Not executed yet]' };
     }
@@ -34,12 +98,12 @@ var CreateRecordNode = {
   },
 
   inputs: {
-    create: {
+    update: {
       type: 'signal',
-      displayName: 'Create',
+      displayName: 'Update',
       group: 'Actions',
-      valueChangedToTrue: function () {
-        this.scheduleCreate();
+      valueChangedToTrue: function (this: UpdateRecordInstance) {
+        this.scheduleUpdate();
       }
     }
   },
@@ -49,23 +113,15 @@ var CreateRecordNode = {
       type: 'object',
       displayName: 'Record',
       group: 'Results',
-      getter: function () {
+      getter: function (this: UpdateRecordInstance) {
         return this._internal.record;
-      }
-    },
-    recordId: {
-      type: 'string',
-      displayName: 'Record ID',
-      group: 'Results',
-      getter: function () {
-        return this._internal.recordId;
       }
     },
     loading: {
       type: 'boolean',
       displayName: 'Loading',
       group: 'Status',
-      getter: function () {
+      getter: function (this: UpdateRecordInstance) {
         return this._internal.loading;
       }
     },
@@ -73,7 +129,7 @@ var CreateRecordNode = {
       type: 'object',
       displayName: 'Error',
       group: 'Status',
-      getter: function () {
+      getter: function (this: UpdateRecordInstance) {
         return this._internal.error;
       }
     },
@@ -91,38 +147,31 @@ var CreateRecordNode = {
 
   prototypeExtensions: {
     /**
-     * Store field value (for dynamic field inputs)
-     */
-    _storeFieldValue: function (name, value) {
-      this._internal.fieldValues[name] = value;
-    },
-
-    /**
      * Resolve the backend configuration from metadata
      */
-    resolveBackend: function () {
+    resolveBackend: function (this: UpdateRecordInstance) {
       const backendId = this._internal.backendId || '_active_';
       return ByobUtils.resolveBackend(backendId);
     },
 
-    scheduleCreate: function () {
-      console.log('[BYOB Create Record] scheduleCreate called');
-      if (this._internal.hasScheduledCreate) {
-        console.log('[BYOB Create Record] Already scheduled, skipping');
+    scheduleUpdate: function (this: UpdateRecordInstance) {
+      console.log('[BYOB Update Record] scheduleUpdate called');
+      if (this._internal.hasScheduledUpdate) {
+        console.log('[BYOB Update Record] Already scheduled, skipping');
         return;
       }
-      this._internal.hasScheduledCreate = true;
-      this.scheduleAfterInputsHaveUpdated(this.doCreate.bind(this));
+      this._internal.hasScheduledUpdate = true;
+      this.scheduleAfterInputsHaveUpdated(this.doUpdate.bind(this));
     },
 
-    doCreate: function () {
-      console.log('[BYOB Create Record] doCreate executing');
-      this._internal.hasScheduledCreate = false;
+    doUpdate: function (this: UpdateRecordInstance) {
+      console.log('[BYOB Update Record] doUpdate executing');
+      this._internal.hasScheduledUpdate = false;
 
       // Resolve the backend configuration
       const backendConfig = this.resolveBackend();
       if (!backendConfig) {
-        console.log('[BYOB Create Record] No backend configured');
+        console.log('[BYOB Update Record] No backend configured');
         this._internal.error = {
           message: 'No backend configured. Please add a backend in the Backend Services panel.'
         };
@@ -132,20 +181,29 @@ var CreateRecordNode = {
       }
 
       const collection = this._internal.collection;
+      const recordId = this._internal.recordId;
       const apiPathMode = this._internal.apiPathMode || 'items';
 
       if (!collection) {
-        console.log('[BYOB Create Record] No collection specified');
+        console.log('[BYOB Update Record] No collection specified');
         this._internal.error = { message: 'Collection is required' };
         this.flagOutputDirty('error');
         this.sendSignalOnOutput('failure');
         return;
       }
 
-      // Build URL
-      const url = ByobUtils.buildUrl(backendConfig, collection, apiPathMode);
+      if (!recordId) {
+        console.log('[BYOB Update Record] No record ID specified');
+        this._internal.error = { message: 'Record ID is required' };
+        this.flagOutputDirty('error');
+        this.sendSignalOnOutput('failure');
+        return;
+      }
+
+      // Build URL with record ID
+      const url = ByobUtils.buildUrl(backendConfig, collection, apiPathMode, recordId);
       if (!url) {
-        console.log('[BYOB Create Record] Failed to build URL');
+        console.log('[BYOB Update Record] Failed to build URL');
         this._internal.error = { message: 'Failed to build request URL' };
         this.flagOutputDirty('error');
         this.sendSignalOnOutput('failure');
@@ -159,14 +217,15 @@ var CreateRecordNode = {
       const fieldSchema = this._internal.fieldSchema || {};
 
       // Collect field values from dynamic inputs and normalize them (especially dates)
-      const body = {};
+      const body: Record<string, unknown> = {};
       for (const [fieldName, value] of Object.entries(this._internal.fieldValues)) {
         body[fieldName] = ByobUtils.normalizeValue(value, fieldSchema[fieldName]);
       }
 
-      console.log('[BYOB Create Record] Request:', {
+      console.log('[BYOB Update Record] Request:', {
         url,
         backendType: backendConfig.type,
+        recordId,
         fieldCount: Object.keys(body).length
       });
 
@@ -176,7 +235,7 @@ var CreateRecordNode = {
 
       // Perform fetch
       fetch(url, {
-        method: 'POST',
+        method: 'PATCH',
         headers: headers,
         body: JSON.stringify(body)
       })
@@ -184,14 +243,14 @@ var CreateRecordNode = {
           if (!response.ok) {
             return response
               .json()
-              .then((errorBody) => {
+              .then((errorBody: { errors?: { message: string }[] }) => {
                 throw {
                   status: response.status,
                   statusText: response.statusText,
                   body: errorBody
                 };
               })
-              .catch((parseError) => {
+              .catch((parseError: ByobFetchError) => {
                 if (parseError.status) throw parseError;
                 throw {
                   status: response.status,
@@ -202,12 +261,11 @@ var CreateRecordNode = {
           }
           return response.json();
         })
-        .then((data) => {
-          console.log('[BYOB Create Record] Response received');
+        .then((data: { data?: Record<string, unknown> } & Record<string, unknown>) => {
+          console.log('[BYOB Update Record] Response received');
 
           // Directus response format: { data: {...} }
           this._internal.record = data.data || data;
-          this._internal.recordId = this._internal.record?.id || null;
           this._internal.error = null;
           this._internal.loading = false;
 
@@ -215,29 +273,28 @@ var CreateRecordNode = {
           this._internal.lastResult = {
             url,
             collection,
+            recordId,
             record: this._internal.record
           };
 
           // Flag outputs dirty
           this.flagOutputDirty('record');
-          this.flagOutputDirty('recordId');
           this.flagOutputDirty('loading');
           this.flagOutputDirty('error');
 
           this.sendSignalOnOutput('success');
         })
-        .catch((error) => {
-          console.error('[BYOB Create Record] Error:', error);
+        .catch((error: ByobFetchError) => {
+          console.error('[BYOB Update Record] Error:', error);
 
           this._internal.loading = false;
           this._internal.record = null;
-          this._internal.recordId = null;
 
           // Format error for output
           if (error.body && error.body.errors) {
             this._internal.error = {
               status: error.status,
-              message: error.body.errors.map((e) => e.message).join(', '),
+              message: error.body.errors.map((e: { message: string }) => e.message).join(', '),
               errors: error.body.errors
             };
           } else {
@@ -251,11 +308,11 @@ var CreateRecordNode = {
           this._internal.lastResult = {
             url,
             collection,
+            recordId,
             error: this._internal.error
           };
 
           this.flagOutputDirty('record');
-          this.flagOutputDirty('recordId');
           this.flagOutputDirty('loading');
           this.flagOutputDirty('error');
 
@@ -263,18 +320,21 @@ var CreateRecordNode = {
         });
     },
 
-    registerInputIfNeeded: function (name) {
+    registerInputIfNeeded: function (this: UpdateRecordInstance, name: string) {
       if (this.hasInput(name)) return;
 
       // Map of configuration input names to their setters
-      const configSetters = {
-        backendId: (value) => {
+      const configSetters: Record<string, (value: never) => void> = {
+        backendId: (value: never) => {
           this._internal.backendId = value;
         },
-        collection: (value) => {
+        collection: (value: never) => {
           this._internal.collection = value;
         },
-        apiPathMode: (value) => {
+        recordId: (value: never) => {
+          this._internal.recordId = value;
+        },
+        apiPathMode: (value: never) => {
           this._internal.apiPathMode = value;
         }
       };
@@ -290,7 +350,7 @@ var CreateRecordNode = {
       if (name.startsWith('field_')) {
         const fieldName = name.substring(6); // Remove 'field_' prefix
         return this.registerInput(name, {
-          set: (value) => {
+          set: (value: unknown) => {
             this._internal.fieldValues[fieldName] = value;
           }
         });
@@ -302,11 +362,18 @@ var CreateRecordNode = {
 /**
  * Update dynamic ports based on node configuration
  */
-function updatePorts(nodeId, parameters, editorConnection, graphModel) {
-  const ports = [];
+function updatePorts(
+  nodeId: string,
+  parameters: Record<string, unknown>,
+  editorConnection: NodeContextLike['editorConnection'],
+  graphModel: GraphModelLike
+) {
+  const ports: RuntimeDiscoveredPort[] = [];
 
   // Get backend services metadata
-  const backendServices = graphModel.getMetaData('backendServices') || { backends: [] };
+  const backendServices = (graphModel.getMetaData('backendServices') as BackendServicesMetaData) || {
+    backends: []
+  };
   const backends = backendServices.backends || [];
 
   // Backend selection dropdown
@@ -337,7 +404,7 @@ function updatePorts(nodeId, parameters, editorConnection, graphModel) {
   const allCollections = selectedBackend?.schema?.collections || [];
 
   // API Path Mode dropdown - MUST come before Collection for proper UX
-  const isSystemTable = ByobUtils.isSystemCollection(parameters.collection);
+  const isSystemTable = ByobUtils.isSystemCollection(parameters.collection as string);
 
   ports.push({
     name: 'apiPathMode',
@@ -356,7 +423,7 @@ function updatePorts(nodeId, parameters, editorConnection, graphModel) {
   });
 
   // Filter collections based on selected API path mode
-  const apiPathMode = parameters.apiPathMode || (isSystemTable ? 'system' : 'items');
+  const apiPathMode = (parameters.apiPathMode as string) || (isSystemTable ? 'system' : 'items');
   const filteredCollections = ByobUtils.filterCollectionsByMode(allCollections, apiPathMode);
 
   // Collection dropdown (filtered by API path mode)
@@ -377,12 +444,21 @@ function updatePorts(nodeId, parameters, editorConnection, graphModel) {
     group: 'Configuration'
   });
 
+  // Record ID input (required for update)
+  ports.push({
+    name: 'recordId',
+    displayName: 'Record ID',
+    type: 'string',
+    plug: 'input',
+    group: 'Configuration'
+  });
+
   // Dynamic field inputs based on selected collection schema
   const selectedCollection = allCollections.find((c) => c.name === parameters.collection);
   const fields = selectedCollection?.fields || [];
 
   // Read-only fields that should never be editable
-  const readOnlyFields = ['id', 'date_created', 'date_updated', 'user_created', 'user_updated'];
+  const readOnlyFields = ['id', 'date_created', 'user_created'];
 
   fields.forEach((field) => {
     // Skip read-only fields
@@ -407,22 +483,24 @@ function updatePorts(nodeId, parameters, editorConnection, graphModel) {
     });
   });
 
-  // NOTE: 'create' signal is defined in static inputs.
+  // NOTE: 'update' signal is defined in static inputs.
   // Outputs are all static too — pushing them here would list each twice in getPorts().
 
   editorConnection.sendDynamicPorts(nodeId, ports);
 }
 
-module.exports = {
-  node: CreateRecordNode,
-  setup: function (context, graphModel) {
+const UpdateRecordNodeModule: NodeModule = {
+  node: UpdateRecordNode,
+  setup: function (context: NodeContextLike, graphModel: GraphModelLike) {
     if (!context.editorConnection || !context.editorConnection.isRunningLocally()) {
       return;
     }
 
-    function _managePortsForNode(node) {
+    function _managePortsForNode(node: GraphNodeModel & { _internal?: Record<string, unknown> }) {
       // Store field schema in node for value normalization
-      const backendServices = graphModel.getMetaData('backendServices') || { backends: [] };
+      const backendServices = (graphModel.getMetaData('backendServices') as BackendServicesMetaData) || {
+        backends: []
+      };
       const backends = backendServices.backends || [];
       const selectedBackendId =
         node.parameters.backendId === '_active_' || !node.parameters.backendId
@@ -433,8 +511,8 @@ module.exports = {
       const selectedCollection = allCollections.find((c) => c.name === node.parameters.collection);
 
       if (selectedCollection && selectedCollection.fields) {
-        const fieldSchema = {};
-        selectedCollection.fields.forEach((field) => {
+        const fieldSchema: Record<string, SchemaField> = {};
+        selectedCollection.fields.forEach((field: SchemaField) => {
           fieldSchema[field.name] = field;
         });
         // Ensure _internal exists before setting properties
@@ -448,7 +526,9 @@ module.exports = {
 
       node.on('parameterUpdated', function () {
         // Update field schema when collection changes
-        const backendServices = graphModel.getMetaData('backendServices') || { backends: [] };
+        const backendServices = (graphModel.getMetaData('backendServices') as BackendServicesMetaData) || {
+          backends: []
+        };
         const backends = backendServices.backends || [];
         const selectedBackendId =
           node.parameters.backendId === '_active_' || !node.parameters.backendId
@@ -459,8 +539,8 @@ module.exports = {
         const selectedCollection = allCollections.find((c) => c.name === node.parameters.collection);
 
         if (selectedCollection && selectedCollection.fields) {
-          const fieldSchema = {};
-          selectedCollection.fields.forEach((field) => {
+          const fieldSchema: Record<string, SchemaField> = {};
+          selectedCollection.fields.forEach((field: SchemaField) => {
             fieldSchema[field.name] = field;
           });
           // Ensure _internal exists before setting properties
@@ -479,13 +559,15 @@ module.exports = {
     }
 
     graphModel.on('editorImportComplete', () => {
-      graphModel.on('nodeAdded.noodl.byob.CreateRecord', function (node) {
+      graphModel.on('nodeAdded.noodl.byob.UpdateRecord', function (node: GraphNodeModel) {
         _managePortsForNode(node);
       });
 
-      for (const node of graphModel.getNodesWithType('noodl.byob.CreateRecord')) {
+      for (const node of graphModel.getNodesWithType('noodl.byob.UpdateRecord')) {
         _managePortsForNode(node);
       }
     });
   }
 };
+
+export = UpdateRecordNodeModule;

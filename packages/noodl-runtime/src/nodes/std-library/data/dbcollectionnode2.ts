@@ -1,12 +1,115 @@
-const { Node, EdgeTriggeredInput } = require('../../../../noodl-runtime');
+import type {
+  CollectionLike,
+  CollectionModule,
+  EditorConnectionLike,
+  GraphModelLike,
+  GraphNodeModel,
+  InspectInfo,
+  ModelLike,
+  ModelModule,
+  NodeContextLike,
+  NodeDefinitionOptions,
+  NodeInstance,
+  NodeModule,
+  RuntimeDiscoveredPort
+} from '@noodl/types';
 
-const Model = require('../../../model'),
-  Collection = require('../../../collection'),
-  CloudStore = require('../../../api/cloudstore'),
-  JavascriptNodeParser = require('../../../javascriptnodeparser'),
-  QueryUtils = require('../../../api/queryutils');
+import Node = require('../../../node');
+import EdgeTriggeredInput = require('../../../edgetriggeredinput');
+import ModelImport = require('../../../model');
+import CollectionImport = require('../../../collection');
+import CloudStore = require('../../../api/cloudstore');
+import JavascriptNodeParser = require('../../../javascriptnodeparser');
+import QueryUtils = require('../../../api/queryutils');
 
-var DbCollectionNode = {
+const Model = ModelImport as unknown as ModelModule;
+const Collection = CollectionImport as unknown as CollectionModule;
+
+/** One class in the project's `dbCollections` metadata. */
+interface DbCollectionMeta {
+  name: string;
+  schema?: {
+    properties?: Record<string, { type?: string; targetClass?: string; [extra: string]: unknown }>;
+    relations?: Record<string, { property: string }[]>;
+  };
+}
+
+/** A node in the editor's visual filter tree: either a group of rules or a leaf. */
+interface VisualFilterQuery {
+  rules?: VisualFilterQuery[];
+  /** Present on a leaf whose value comes from a port rather than a literal. */
+  input?: string;
+}
+
+/** The query last sent to the backend, kept so incremental updates can be matched against it. */
+interface CurrentQuery {
+  where?: unknown;
+  sort?: string[];
+  limit?: number;
+  skip?: number;
+  search?: string;
+}
+
+/** The payload of a `CloudStore` `save`/`create`/`delete` notification. */
+interface CloudStoreEventArgs {
+  type?: 'create' | 'save' | 'delete';
+  collection?: string;
+  objectId?: string;
+  object?: { objectId: string };
+}
+
+/**
+ * `this` inside the Query Records node.
+ *
+ * Almost its entire surface is dynamic — the class, the filter, the sort, the search term
+ * and every query parameter are registered at runtime from the project's schema, which is
+ * why `inputs` is empty. Two things are worth knowing before changing anything here:
+ *
+ * The node keeps its results *live*. It subscribes to the cloud store's save/create/delete
+ * notifications and patches its own collection in place, matching each changed record
+ * against `currentQuery.where` rather than re-querying — except when a search term is
+ * active, where BM25 ranking makes an incremental patch unrepresentable and it re-fetches.
+ *
+ * And every setter consults `isInputConnected('storageFetch')`: with `Do` wired, nothing
+ * here re-runs the query on its own.
+ */
+interface DbCollectionNodeInstance extends NodeInstance {
+  _internal: {
+    name?: string;
+    collection?: CollectionLike;
+    currentQuery?: CurrentQuery;
+    error?: string;
+    /** See the defect note on `setError` — this is what the setter actually writes. */
+    err?: string;
+    search?: string;
+    visualFilter?: unknown;
+    visualSorting?: unknown;
+    queryParameters: Record<string, unknown>;
+    storageSettings: Record<string, unknown>;
+    fetchScheduled?: boolean;
+    filterFunc?: (...args: unknown[]) => void;
+    filterVariables?: string[];
+    collectionChangedCallback?: () => void;
+    cloudStoreEvents?: (args: CloudStoreEventArgs) => void;
+  };
+  setCollectionName(name: string): void;
+  setCollection(collection: CollectionLike): void;
+  unbindCurrentCollection(): void;
+  bindCollection(collection: CollectionLike | undefined): void;
+  setError(err: string): void;
+  scheduleFetch(): void;
+  fetch(): void;
+  getStorageFilter(): { where?: unknown; sort?: unknown } | undefined;
+  getStorageLimit(): number | undefined;
+  getStorageSkip(): number | undefined;
+  getStorageFetchTotalCount(): boolean;
+  setVisualFilter(value: unknown): void;
+  setVisualSorting(value: unknown): void;
+  setSearch(value: string): void;
+  setQueryParameter(name: string, value: unknown): void;
+}
+
+const DbCollectionNode: NodeDefinitionOptions = {
   name: 'DbCollection2',
   docs: 'https://docs.noodl.net/nodes/data/cloud-data/query-records',
   displayName: 'Query Records',
@@ -14,11 +117,11 @@ var DbCollectionNode = {
   category: 'Cloud Services',
   usePortAsLabel: 'collectionName',
   color: 'data',
-  initialize: function () {
-    var _this = this;
+  initialize: function (this: DbCollectionNodeInstance) {
+    const _this = this;
     this._internal.queryParameters = {};
 
-    var collectionChangedScheduled = false;
+    let collectionChangedScheduled = false;
     this._internal.collectionChangedCallback = function () {
       //this can be called multiple times when adding/removing more than one item
       //so optimize by only updating outputs once
@@ -33,7 +136,7 @@ var DbCollectionNode = {
       });
     };
 
-    this._internal.cloudStoreEvents = function (args) {
+    this._internal.cloudStoreEvents = function (args: CloudStoreEventArgs) {
       if (_this.isInputConnected('storageFetch') === true) return;
 
       if (_this._internal.collection === undefined) return;
@@ -52,10 +155,13 @@ var DbCollectionNode = {
         return;
       }
 
-      function _addModelAtCorrectIndex(m) {
+      function _addModelAtCorrectIndex(m: ModelLike) {
+        // `i` is declared outside the loop because the original relied on `var` hoisting to
+        // read it after the `break` (PLAT-003 NOTES §23.1).
+        let i = 0;
         if (_this._internal.currentQuery.sort !== undefined) {
           // We need to add it at the right index
-          for (var i = 0; i < _this._internal.collection.size(); i++)
+          for (i = 0; i < _this._internal.collection.size(); i++)
             if (QueryUtils.compareObjects(_this._internal.currentQuery.sort, _this._internal.collection.get(i), m) > 0)
               break;
 
@@ -65,7 +171,7 @@ var DbCollectionNode = {
         }
 
         // Make sure we don't exceed limit
-        let size = _this._internal.collection.size();
+        const size = _this._internal.collection.size();
         if (_this._internal.currentQuery.limit !== undefined && size > _this._internal.currentQuery.limit)
           _this._internal.collection.remove(
             _this._internal.collection.get(
@@ -136,7 +242,7 @@ var DbCollectionNode = {
 
     this._internal.storageSettings = {};
   },
-  getInspectInfo() {
+  getInspectInfo(this: DbCollectionNodeInstance): InspectInfo {
     const collection = this._internal.collection;
     if (!collection) {
       return { type: 'text', value: '[Not executed yet]' };
@@ -155,7 +261,7 @@ var DbCollectionNode = {
       type: 'array',
       displayName: 'Items',
       group: 'General',
-      getter: function () {
+      getter: function (this: DbCollectionNodeInstance) {
         return this._internal.collection;
       }
     },
@@ -163,9 +269,9 @@ var DbCollectionNode = {
       type: 'string',
       displayName: 'First Record Id',
       group: 'General',
-      getter: function () {
+      getter: function (this: DbCollectionNodeInstance) {
         if (this._internal.collection) {
-          var firstItem = this._internal.collection.get(0);
+          const firstItem = this._internal.collection.get(0);
           if (firstItem !== undefined) return firstItem.getId();
         }
       }
@@ -174,7 +280,7 @@ var DbCollectionNode = {
       type: 'boolean',
       displayName: 'Is Empty',
       group: 'General',
-      getter: function () {
+      getter: function (this: DbCollectionNodeInstance) {
         if (this._internal.collection) {
           return this._internal.collection.size() === 0;
         }
@@ -185,7 +291,7 @@ var DbCollectionNode = {
       type: 'number',
       displayName: 'Count',
       group: 'General',
-      getter: function () {
+      getter: function (this: DbCollectionNodeInstance) {
         return this._internal.collection ? this._internal.collection.size() : 0;
       }
     },
@@ -203,51 +309,60 @@ var DbCollectionNode = {
       type: 'string',
       displayName: 'Error',
       group: 'Error',
-      getter: function () {
+      getter: function (this: DbCollectionNodeInstance) {
         return this._internal.error;
       }
     }
   },
   prototypeExtensions: {
-    setCollectionName: function (name) {
+    setCollectionName: function (this: DbCollectionNodeInstance, name: string) {
       this._internal.name = name;
 
       if (this.isInputConnected('storageFetch') === false) this.scheduleFetch();
     },
-    setCollection: function (collection) {
+    setCollection: function (this: DbCollectionNodeInstance, collection: CollectionLike) {
       this.bindCollection(collection);
       this.flagOutputDirty('firstItemId');
       this.flagOutputDirty('isEmpty');
       this.flagOutputDirty('items');
       this.flagOutputDirty('count');
     },
-    unbindCurrentCollection: function () {
-      var collection = this._internal.collection;
+    unbindCurrentCollection: function (this: DbCollectionNodeInstance) {
+      const collection = this._internal.collection;
       if (!collection) return;
       collection.off('change', this._internal.collectionChangedCallback);
       this._internal.collection = undefined;
     },
-    bindCollection: function (collection) {
+    bindCollection: function (this: DbCollectionNodeInstance, collection: CollectionLike | undefined) {
       this.unbindCurrentCollection();
       this._internal.collection = collection;
       collection && collection.on('change', this._internal.collectionChangedCallback);
     },
-    _onNodeDeleted: function () {
+    _onNodeDeleted: function (this: DbCollectionNodeInstance) {
       Node.prototype._onNodeDeleted.call(this);
       this.unbindCurrentCollection();
 
       const cloudstore = CloudStore.forScope(this.nodeScope.modelScope);
+      // DEFECT (PLAT-003 NOTES §27.3), left verbatim: `initialize` subscribes to
+      // `'save'`, `'create'` and `'delete'`, but this unsubscribes `'insert'` — a name
+      // nothing ever emits. The `'create'` listener therefore survives the node, and since
+      // it closes over `_this` the deleted node stays reachable and keeps patching a
+      // collection nobody reads.
       cloudstore.off('insert', this._internal.cloudStoreEvents);
       cloudstore.off('delete', this._internal.cloudStoreEvents);
       cloudstore.off('save', this._internal.cloudStoreEvents);
     },
-    setError: function (err) {
+    // DEFECT (PLAT-003 NOTES §27.3), left verbatim: this writes `_internal.err` while the
+    // `error` output's getter reads `_internal.error`, so the port has never carried a
+    // message — only the `failure` signal fires. §23.4 recorded exactly this in the
+    // *deprecated* `dbcollectionnode`; it is the same bug in the node that replaced it.
+    setError: function (this: DbCollectionNodeInstance, err: string) {
       this._internal.err = err;
       this.flagOutputDirty('error');
       this.sendSignalOnOutput('failure');
     },
-    scheduleFetch: function () {
-      var internal = this._internal;
+    scheduleFetch: function (this: DbCollectionNodeInstance) {
+      const internal = this._internal;
 
       if (internal.fetchScheduled) return;
       internal.fetchScheduled = true;
@@ -257,7 +372,7 @@ var DbCollectionNode = {
         this.fetch();
       });
     },
-    fetch: function () {
+    fetch: function (this: DbCollectionNodeInstance) {
       if (this.context.editorConnection) {
         if (this._internal.name === undefined) {
           this.context.editorConnection.sendWarning(this.nodeScope.componentOwner.name, this.id, 'query-collection', {
@@ -280,7 +395,7 @@ var DbCollectionNode = {
       const search = this._internal.search || undefined;
       this._internal.currentQuery = {
         where: f.where,
-        sort: f.sort,
+        sort: f.sort as string[],
         limit: limit,
         skip: skip,
         search: search
@@ -293,11 +408,11 @@ var DbCollectionNode = {
         skip: skip,
         count: count,
         search: search,
-        success: (results, count) => {
+        success: (results: Record<string, unknown>[], count: number) => {
           if (results !== undefined) {
             _c.set(
               results.map((i) => {
-                var m = CloudStore._fromJSON(i, this._internal.name, this.nodeScope.modelScope);
+                const m = CloudStore._fromJSON(i, this._internal.name, this.nodeScope.modelScope);
 
                 return m;
               })
@@ -310,13 +425,13 @@ var DbCollectionNode = {
           this.setCollection(_c);
           this.sendSignalOnOutput('fetched');
         },
-        error: (err) => {
+        error: (err: string) => {
           this.setCollection(_c);
           this.setError(err || 'Failed to fetch.');
         }
       });
     },
-    getStorageFilter: function () {
+    getStorageFilter: function (this: DbCollectionNodeInstance) {
       const storageSettings = this._internal.storageSettings;
       if (storageSettings['storageFilterType'] === undefined || storageSettings['storageFilterType'] === 'simple') {
         // Create simple filter
@@ -341,13 +456,13 @@ var DbCollectionNode = {
         // JSON filter
         if (!this._internal.filterFunc) {
           try {
-            var filterCode = storageSettings['storageJSONFilter'];
+            let filterCode = storageSettings['storageJSONFilter'] as string;
 
             // Parse out variables
             filterCode = filterCode.replace(/\/\*[\s\S]*?\*\/|\/\/.*/g, ''); // Remove comments
             this._internal.filterVariables = filterCode.match(/\$[A-Za-z0-9]+/g) || [];
 
-            var args = ['filter', 'where', 'sort', 'Inputs']
+            const args = ['filter', 'where', 'sort', 'Inputs']
               .concat(this._internal.filterVariables)
               .concat([filterCode]);
             this._internal.filterFunc = Function.apply(null, args);
@@ -359,15 +474,16 @@ var DbCollectionNode = {
 
         if (!this._internal.filterFunc) return;
 
-        var _filter = {},
-          _sort = [],
-          _this = this;
+        let _filter: unknown = {},
+          _sort: unknown = [];
+        const _this = this;
 
         // Collect filter variables
-        var _filterCb = function (f) {
+        // `f` is whatever the user's filter script passed to `where(…)`/`filter(…)`.
+        const _filterCb = function (f: Record<string, unknown>) {
           _filter = QueryUtils.convertFilterOp(f, {
             collectionName: _this._internal.name,
-            error: function (err) {
+            error: function (err: string) {
               _this.context.editorConnection.sendWarning(
                 _this.nodeScope.componentOwner.name,
                 _this.id,
@@ -379,18 +495,18 @@ var DbCollectionNode = {
             }
           });
         };
-        var _sortCb = function (s) {
+        const _sortCb = function (s: unknown) {
           _sort = s;
         };
 
         // Extract inputs
-        const inputs = {};
-        for (let key in storageSettings) {
+        const inputs: Record<string, unknown> = {};
+        for (const key in storageSettings) {
           if (key.startsWith('storageFilterValue-'))
             inputs[key.substring('storageFilterValue-'.length)] = storageSettings[key];
         }
 
-        var filterFuncArgs = [_filterCb, _filterCb, _sortCb, inputs]; // One for filter, one for where
+        const filterFuncArgs: unknown[] = [_filterCb, _filterCb, _sortCb, inputs]; // One for filter, one for where
 
         this._internal.filterVariables.forEach((v) => {
           filterFuncArgs.push(storageSettings['storageFilterValue-' + v.substring(1)]);
@@ -406,24 +522,24 @@ var DbCollectionNode = {
         return { where: _filter, sort: _sort };
       }
     },
-    getStorageLimit: function () {
+    getStorageLimit: function (this: DbCollectionNodeInstance) {
       const storageSettings = this._internal.storageSettings;
 
       if (!storageSettings['storageEnableLimit']) return;
-      else return storageSettings['storageLimit'] || 10;
+      else return (storageSettings['storageLimit'] as number) || 10;
     },
-    getStorageSkip: function () {
+    getStorageSkip: function (this: DbCollectionNodeInstance) {
       const storageSettings = this._internal.storageSettings;
 
       if (!storageSettings['storageEnableLimit']) return;
-      else return storageSettings['storageSkip'] || 0;
+      else return (storageSettings['storageSkip'] as number) || 0;
     },
-    getStorageFetchTotalCount: function () {
+    getStorageFetchTotalCount: function (this: DbCollectionNodeInstance) {
       const storageSettings = this._internal.storageSettings;
 
       return !!storageSettings['storageEnableCount'];
     },
-    registerOutputIfNeeded: function (name) {
+    registerOutputIfNeeded: function (this: DbCollectionNodeInstance, name: string) {
       if (this.hasOutput(name)) {
         return;
       }
@@ -432,12 +548,12 @@ var DbCollectionNode = {
         getter: userOutputGetter.bind(this, name)
       });
     },
-    setVisualFilter: function (value) {
+    setVisualFilter: function (this: DbCollectionNodeInstance, value: unknown) {
       this._internal.visualFilter = value;
 
       if (this.isInputConnected('storageFetch') === false) this.scheduleFetch();
     },
-    setVisualSorting: function (value) {
+    setVisualSorting: function (this: DbCollectionNodeInstance, value: unknown) {
       this._internal.visualSorting = value;
 
       if (this.isInputConnected('storageFetch') === false) this.scheduleFetch();
@@ -445,19 +561,17 @@ var DbCollectionNode = {
     // BAK-008: full-text search term (string; empty/undefined = no-op, plain
     // query unchanged). Orthogonal to the Filter — combined server-side with
     // whatever `where` the Visual/Javascript filter produces.
-    setSearch: function (value) {
+    setSearch: function (this: DbCollectionNodeInstance, value: string) {
       this._internal.search = value;
 
       if (this.isInputConnected('storageFetch') === false) this.scheduleFetch();
     },
-    setQueryParameter: function (name, value) {
+    setQueryParameter: function (this: DbCollectionNodeInstance, name: string, value: unknown) {
       this._internal.queryParameters[name] = value;
 
       if (this.isInputConnected('storageFetch') === false) this.scheduleFetch();
     },
-    registerInputIfNeeded: function (name) {
-      var _this = this;
-
+    registerInputIfNeeded: function (this: DbCollectionNodeInstance, name: string) {
       if (this.hasInput(name)) {
         return;
       }
@@ -467,7 +581,7 @@ var DbCollectionNode = {
           set: this.setQueryParameter.bind(this, name.substring('qp-'.length))
         });
 
-      const dynamicSignals = {
+      const dynamicSignals: Record<string, () => void> = {
         storageFetch: this.scheduleFetch.bind(this)
       };
 
@@ -478,7 +592,7 @@ var DbCollectionNode = {
           })
         });
 
-      const dynamicSetters = {
+      const dynamicSetters: Record<string, (value: never) => void> = {
         collectionName: this.setCollectionName.bind(this),
         visualFilter: this.setVisualFilter.bind(this),
         visualSort: this.setVisualSorting.bind(this),
@@ -497,12 +611,12 @@ var DbCollectionNode = {
   }
 };
 
-function userOutputGetter(name) {
+function userOutputGetter(this: DbCollectionNodeInstance, name: string) {
   /* jshint validthis:true */
   return this._internal.storageSettings[name];
 }
 
-function userInputSetter(name, value) {
+function userInputSetter(this: DbCollectionNodeInstance, name: string, value: unknown) {
   /* jshint validthis:true */
   this._internal.storageSettings[name] = value;
 
@@ -512,11 +626,16 @@ function userInputSetter(name, value) {
 const _defaultJSONQuery =
   '// Write your query script here, check out the reference documentation for examples\n' + 'where({ })\n';
 
-function updatePorts(nodeId, parameters, editorConnection, graphModel) {
-  var ports = [];
+function updatePorts(
+  nodeId: string,
+  parameters: Record<string, unknown>,
+  editorConnection: EditorConnectionLike,
+  graphModel: GraphModelLike
+) {
+  const ports: RuntimeDiscoveredPort[] = [];
 
-  const dbCollections = graphModel.getMetaData('dbCollections');
-  const systemCollections = graphModel.getMetaData('systemCollections');
+  const dbCollections = graphModel.getMetaData('dbCollections') as DbCollectionMeta[] | undefined;
+  const systemCollections = graphModel.getMetaData('systemCollections') as DbCollectionMeta[] | undefined;
 
   const _systemClasses = [
     { label: 'User', value: '_User' },
@@ -630,16 +749,16 @@ function updatePorts(nodeId, parameters, editorConnection, graphModel) {
   // Simple query
   if (parameters['storageFilterType'] === undefined || parameters['storageFilterType'] === 'simple') {
     if (parameters.collectionName !== undefined) {
-      var c = dbCollections && dbCollections.find((c) => c.name === parameters.collectionName);
+      let c = dbCollections && dbCollections.find((c) => c.name === parameters.collectionName);
       if (c === undefined && systemCollections) c = systemCollections.find((c) => c.name === parameters.collectionName);
       if (c && c.schema && c.schema.properties) {
-        const schema = JSON.parse(JSON.stringify(c.schema));
+        const schema = JSON.parse(JSON.stringify(c.schema)) as DbCollectionMeta['schema'];
 
         // Find all records that have a relation with this type
-        function _findRelations(c) {
+        function _findRelations(c: DbCollectionMeta) {
           if (c.schema !== undefined && c.schema.properties !== undefined)
-            for (var key in c.schema.properties) {
-              var p = c.schema.properties[key];
+            for (const key in c.schema.properties) {
+              const p = c.schema.properties[key];
               if (p.type === 'Relation' && p.targetClass === parameters.collectionName) {
                 if (schema.relations === undefined) schema.relations = {};
                 if (schema.relations[c.name] === undefined) schema.relations[c.name] = [];
@@ -671,14 +790,14 @@ function updatePorts(nodeId, parameters, editorConnection, graphModel) {
 
       if (parameters.visualFilter !== undefined) {
         // Find all input ports
-        const uniqueInputs = {};
-        function _collectInputs(query) {
+        const uniqueInputs: Record<string, boolean> = {};
+        function _collectInputs(query: VisualFilterQuery | undefined) {
           if (query === undefined) return;
           if (query.rules !== undefined) query.rules.forEach((r) => _collectInputs(r));
           else if (query.input !== undefined) uniqueInputs[query.input] = true;
         }
 
-        _collectInputs(parameters.visualFilter);
+        _collectInputs(parameters.visualFilter as VisualFilterQuery);
         Object.keys(uniqueInputs).forEach((input) => {
           ports.push({
             name: 'qp-' + input,
@@ -702,13 +821,13 @@ function updatePorts(nodeId, parameters, editorConnection, graphModel) {
       displayName: 'Filter'
     });
 
-    var filter = parameters['storageJSONFilter'];
+    let filter = parameters['storageJSONFilter'] as string | undefined;
     if (filter) {
       filter = filter.replace(/\/\*[\s\S]*?\*\/|\/\/.*/g, ''); // Remove comments
-      var variables = filter.match(/\$[A-Za-z0-9]+/g);
+      const variables = filter.match(/\$[A-Za-z0-9]+/g);
 
       if (variables) {
-        const unique = {};
+        const unique: Record<string, boolean> = {};
         variables.forEach((v) => {
           unique[v] = true;
         });
@@ -737,39 +856,39 @@ function updatePorts(nodeId, parameters, editorConnection, graphModel) {
   editorConnection.sendDynamicPorts(nodeId, ports);
 }
 
-module.exports = {
+const DbCollectionNodeModule: NodeModule = {
   node: DbCollectionNode,
-  setup: function (context, graphModel) {
+  setup: function (context: NodeContextLike, graphModel: GraphModelLike) {
     if (!context.editorConnection || !context.editorConnection.isRunningLocally()) {
       return;
     }
 
-    function _managePortsForNode(node) {
+    function _managePortsForNode(node: GraphNodeModel) {
       updatePorts(node.id, node.parameters, context.editorConnection, graphModel);
 
-      node.on('parameterUpdated', function (event) {
+      node.on('parameterUpdated', function (event: { name: string }) {
         if (event.name.startsWith('storage') || event.name === 'visualFilter' || event.name === 'collectionName') {
           updatePorts(node.id, node.parameters, context.editorConnection, graphModel);
         }
       });
 
-      graphModel.on('metadataChanged.dbCollections', function (data) {
+      graphModel.on('metadataChanged.dbCollections', function () {
         CloudStore.invalidateCollections();
         updatePorts(node.id, node.parameters, context.editorConnection, graphModel);
       });
 
-      graphModel.on('metadataChanged.systemCollections', function (data) {
+      graphModel.on('metadataChanged.systemCollections', function () {
         CloudStore.invalidateCollections();
         updatePorts(node.id, node.parameters, context.editorConnection, graphModel);
       });
 
-      graphModel.on('metadataChanged.cloudservices', function (data) {
+      graphModel.on('metadataChanged.cloudservices', function () {
         CloudStore.instance._initCloudServices();
       });
     }
 
     graphModel.on('editorImportComplete', () => {
-      graphModel.on('nodeAdded.DbCollection2', function (node) {
+      graphModel.on('nodeAdded.DbCollection2', function (node: GraphNodeModel) {
         _managePortsForNode(node);
       });
 
@@ -779,3 +898,5 @@ module.exports = {
     });
   }
 };
+
+export = DbCollectionNodeModule;

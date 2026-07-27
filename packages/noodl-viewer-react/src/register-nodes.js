@@ -162,11 +162,20 @@ export default function registerNodes(noodlRuntime) {
     require('./nodes-deprecated/std-library/data/collectionnode'),
     require('./nodes-deprecated/std-library/scriptdownloader')
   ].forEach(function (module) {
-    // Node files converted to TypeScript compile as ES modules and `export default`;
-    // the ones still on `module.exports` do not. `require()` of an ES module hands back
-    // the namespace object, so unwrap it. Every viewer node above is now TypeScript;
-    // what still needs this is the `@noodl/runtime` half of the list (`httpnode`, the
-    // five `byob-*` nodes), which is CommonJS. Remove it once those are converted too.
+    // The list mixes two module systems, and this expression is what bridges them.
+    //
+    // The viewer's own node files compile at `module: es6` and `export default`, so
+    // `require()` hands back a namespace object and the node is under `.default`. The
+    // `@noodl/runtime` entries below compile under that package's own CommonJS tsconfig
+    // and use `export =`, so `require()` hands back the node itself and `.default` is
+    // undefined — the `||` is what serves both.
+    //
+    // PLAT-003 slice 12 expected converting the `@noodl/runtime` half to retire this. It
+    // does not, and cannot: `export =` is the *required* convention for a runtime module
+    // that no viewer `.ts` imports (PLAT-003 NOTES §25.1), so those files stay CommonJS
+    // deliberately. Removing the unwrap was tried and fails outright — the whole viewer
+    // half registers `undefined`. It stays for as long as the two halves compile
+    // differently, which is to say indefinitely.
     noodlRuntime.registerNode(module.default || module);
   });
 

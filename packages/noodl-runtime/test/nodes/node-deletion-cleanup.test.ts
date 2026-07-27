@@ -19,13 +19,39 @@
  * These assert the fixed behaviour and are written to fail against the pre-fix source.
  */
 
+import type { NodeModule } from '@noodl/types';
+
 const NodeDefinition = require('../../src/nodedefinition');
 const Node = require('../../src/node');
 
 import RunTasks = require('../../src/nodes/std-library/runtasks');
 import Expression = require('../../src/nodes/std-library/expression');
 
-type AnyNode = any;
+/**
+ * The parts of a node these tests reach for.
+ *
+ * Structural rather than a real node type on purpose: Run Tasks and Expression share no
+ * interface beyond `NodeInstance`, and what is under test here is precisely the members
+ * that were *not* installed on the prototype.
+ */
+interface NodeUnderTest {
+  _deleted?: boolean;
+  model?: { removeListenersWithRef(ref: unknown): void };
+  _expressionSubscriptions: Record<string, { unsub(): void }>;
+  _internal: {
+    activeTasks?: Map<string, TaskComponent>;
+    unsubscribe?: (() => void) | null;
+  };
+  addDeleteListener(listener: () => void): void;
+  _onNodeDeleted(): void;
+  _deleteAllTasks?(): void;
+}
+
+/** A stand-in for the component instance Run Tasks creates per item. */
+interface TaskComponent {
+  id: string;
+  _internal: Record<string, unknown>;
+}
 
 /** The smallest context a node definition's factory will accept. */
 function createStubContext() {
@@ -38,28 +64,28 @@ function createStubContext() {
     },
     editorConnection: undefined,
     modelScope: undefined
-  } as AnyNode;
+  };
 }
 
-function createNode(module: AnyNode, nodeScope?: AnyNode) {
+function createNode(module: NodeModule, nodeScope?: unknown): NodeUnderTest {
   const definition = NodeDefinition.defineNode(module.node);
-  return definition(createStubContext(), 'test-node-id', nodeScope) as AnyNode;
+  return definition(createStubContext(), 'test-node-id', nodeScope);
 }
 
 describe('Run Tasks — deleting the node cleans up its live tasks', () => {
-  function createTaskNode(id: string) {
-    return { id, _internal: {} } as AnyNode;
+  function createTaskNode(id: string): TaskComponent {
+    return { id, _internal: {} };
   }
 
   function createStubScope() {
-    const deleted: AnyNode[] = [];
+    const deleted: unknown[] = [];
     return {
       deleted,
       modelScope: undefined,
-      deleteNode(node: AnyNode) {
+      deleteNode(node: unknown) {
         deleted.push(node);
       }
-    } as AnyNode;
+    };
   }
 
   it('installs its deletion hooks on the prototype', () => {
@@ -85,7 +111,7 @@ describe('Run Tasks — deleting the node cleans up its live tasks', () => {
 
     expect(scope.deleted).toEqual([first, second]);
     // A `for…of` over the Map itself would have handed `deleteNode` `['task-1', first]`.
-    scope.deleted.forEach((arg: AnyNode) => expect(Array.isArray(arg)).toBe(false));
+    scope.deleted.forEach((arg: unknown) => expect(Array.isArray(arg)).toBe(false));
   });
 
   it('clears the active-task map so nothing is deleted twice', () => {
@@ -132,9 +158,9 @@ describe('Expression — deleting the node chains to the base cleanup', () => {
   it('marks the node deleted and drops its model listeners', () => {
     const node = createNode(Expression);
 
-    let removedWithRef: AnyNode;
+    let removedWithRef: unknown;
     node.model = {
-      removeListenersWithRef(ref: AnyNode) {
+      removeListenersWithRef(ref: unknown) {
         removedWithRef = ref;
       }
     };

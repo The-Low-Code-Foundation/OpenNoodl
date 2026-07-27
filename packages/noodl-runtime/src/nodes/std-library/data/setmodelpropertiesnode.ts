@@ -1,8 +1,17 @@
 'use strict';
 
-var ModelCRUDBase = require('./modelcrudbase');
+import type { NodeInstance } from '@noodl/types';
 
-var SetModelPropertiedNodeDefinition = {
+import type { MixinNodeModule } from './crud-mixins';
+
+import ModelCRUDBase = require('./modelcrudbase');
+
+/** `this` inside Set Object Properties — `scheduleStore` comes from `addInputProperties`. */
+interface SetModelPropertiesInstance extends NodeInstance {
+  scheduleStore(): void;
+}
+
+const SetModelPropertiedNodeDefinition: MixinNodeModule = {
   node: {
     name: 'SetModelProperties',
     docs: 'https://docs.noodl.net/nodes/data/object/set-object-properties',
@@ -11,7 +20,7 @@ var SetModelPropertiedNodeDefinition = {
       store: {
         displayName: 'Do',
         group: 'Actions',
-        valueChangedToTrue: function () {
+        valueChangedToTrue: function (this: SetModelPropertiesInstance) {
           this.scheduleStore();
         }
       }
@@ -30,4 +39,4 @@ ModelCRUDBase.addBaseInfo(SetModelPropertiedNodeDefinition);
 ModelCRUDBase.addModelId(SetModelPropertiedNodeDefinition);
 ModelCRUDBase.addInputProperties(SetModelPropertiedNodeDefinition);
 
-module.exports = SetModelPropertiedNodeDefinition;
+export = SetModelPropertiedNodeDefinition;

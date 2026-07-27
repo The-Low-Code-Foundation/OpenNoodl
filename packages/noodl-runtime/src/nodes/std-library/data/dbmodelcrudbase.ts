@@ -1,9 +1,53 @@
 'use strict';
 
-const Model = require('../../../model');
-const CloudStore = require('../../../api/cloudstore');
+import type {
+  GraphModelLike,
+  GraphNodeModel,
+  ModelLike,
+  ModelModule,
+  ModelScopeLike,
+  NodeContextLike,
+  PrototypeExtensions,
+  RuntimeDiscoveredPort
+} from '@noodl/types';
 
-function _addBaseInfo(def, opts) {
+import type {
+  AccessControlInstance,
+  AccessControlList,
+  DbCrudBaseInstance,
+  DbCrudNodeModule,
+  DbInputPropertiesInstance,
+  DbModelIdInstance,
+  RelationPropertyInstance
+} from './crud-mixins';
+
+import ModelImport = require('../../../model');
+import CloudStoreImport = require('../../../api/cloudstore');
+
+const Model = ModelImport as unknown as ModelModule;
+const CloudStore = CloudStoreImport as {
+  instance: { appId: string };
+  invalidateCollections(): void;
+};
+
+/**
+ * The shared parts of the Record CRUD nodes — Record, Set/New/Delete Record Properties,
+ * Add/Remove Relation, Query Records.
+ *
+ * See `crud-mixins.d.ts` for what each function contributes and why the instance types
+ * live there rather than here: `export =` can carry only one thing, and that one thing is
+ * the value object at the bottom.
+ */
+
+/** One class in the project's `dbCollections` metadata. */
+interface DbCollectionMeta {
+  name: string;
+  schema?: {
+    properties?: Record<string, { type?: string; [extra: string]: unknown }>;
+  };
+}
+
+function _addBaseInfo(def: DbCrudNodeModule, opts?: { includeInputProperties?: boolean; includeRelations?: boolean }) {
   const _includeInputProperties = opts === undefined || opts.includeInputProperties;
   const _includeRelations = opts !== undefined && opts.includeRelations;
 
@@ -26,7 +70,7 @@ function _addBaseInfo(def, opts) {
       type: 'string',
       displayName: 'Error',
       group: 'Error',
-      getter: function () {
+      getter: function (this: DbCrudBaseInstance) {
         return this._internal.error;
       }
     }
@@ -34,7 +78,7 @@ function _addBaseInfo(def, opts) {
 
   // Methods
   Object.assign(def.node.methods, {
-    scheduleOnce: function (type, cb) {
+    scheduleOnce: function (this: DbCrudBaseInstance, type: string, cb: () => void) {
       const _this = this;
       const _type = 'hasScheduled' + type;
       if (this._internal[_type]) return;
@@ -44,7 +88,7 @@ function _addBaseInfo(def, opts) {
         cb();
       });
     },
-    checkWarningsBeforeCloudOp() {
+    checkWarningsBeforeCloudOp(this: DbCrudBaseInstance) {
       //clear all errors first
       this.clearWarnings();
 
@@ -55,7 +99,7 @@ function _addBaseInfo(def, opts) {
 
       return true;
     },
-    setError: function (err) {
+    setError: function (this: DbCrudBaseInstance, err: string) {
       this._internal.error = err;
       this.flagOutputDirty('error');
       this.sendSignalOnOutput('failure');
@@ -67,7 +111,7 @@ function _addBaseInfo(def, opts) {
         });
       }
     },
-    clearWarnings() {
+    clearWarnings(this: DbCrudBaseInstance) {
       if (this.context.editorConnection) {
         this.context.editorConnection.clearWarning(this.nodeScope.componentOwner.name, this.id, 'storage-op-warning');
       }
@@ -76,17 +120,17 @@ function _addBaseInfo(def, opts) {
 
   // Setup
   Object.assign(def, {
-    setup: function (context, graphModel) {
+    setup: function (context: NodeContextLike, graphModel: GraphModelLike) {
       if (!context.editorConnection || !context.editorConnection.isRunningLocally()) {
         return;
       }
 
-      function _managePortsForNode(node) {
+      function _managePortsForNode(node: GraphNodeModel) {
         function _updatePorts() {
-          var ports = [];
+          const ports: RuntimeDiscoveredPort[] = [];
 
-          const dbCollections = graphModel.getMetaData('dbCollections');
-          const systemCollections = graphModel.getMetaData('systemCollections');
+          const dbCollections = graphModel.getMetaData('dbCollections') as DbCollectionMeta[] | undefined;
+          const systemCollections = graphModel.getMetaData('systemCollections') as DbCollectionMeta[] | undefined;
 
           const _systemClasses = [
             { label: 'User', value: '_User' },
@@ -115,7 +159,7 @@ function _addBaseInfo(def, opts) {
 
           if (_includeRelations && parameters.collectionName && dbCollections) {
             // Fetch ports from collection keys
-            var c = dbCollections.find((c) => c.name === parameters.collectionName);
+            let c = dbCollections.find((c) => c.name === parameters.collectionName);
             if (c === undefined && systemCollections)
               c = systemCollections.find((c) => c.name === parameters.collectionName);
             if (c && c.schema && c.schema.properties) {
@@ -135,7 +179,7 @@ function _addBaseInfo(def, opts) {
           }
 
           if (_includeInputProperties && parameters.collectionName && dbCollections) {
-            const _typeMap = {
+            const _typeMap: Record<string, string> = {
               String: 'string',
               Boolean: 'boolean',
               Number: 'number',
@@ -143,13 +187,13 @@ function _addBaseInfo(def, opts) {
             };
 
             // Fetch ports from collection keys
-            var c = dbCollections.find((c) => c.name === parameters.collectionName);
+            let c = dbCollections.find((c) => c.name === parameters.collectionName);
             if (c === undefined && systemCollections)
               c = systemCollections.find((c) => c.name === parameters.collectionName);
             if (c && c.schema && c.schema.properties) {
-              var props = c.schema.properties;
-              for (var key in props) {
-                var p = props[key];
+              const props = c.schema.properties;
+              for (const key in props) {
+                const p = props[key];
                 if (ports.find((_p) => _p.name === key)) continue;
 
                 ports.push({
@@ -172,23 +216,23 @@ function _addBaseInfo(def, opts) {
 
         _updatePorts();
 
-        node.on('parameterUpdated', function (event) {
+        node.on('parameterUpdated', function () {
           _updatePorts();
         });
 
-        graphModel.on('metadataChanged.dbCollections', function (data) {
+        graphModel.on('metadataChanged.dbCollections', function () {
           CloudStore.invalidateCollections();
           _updatePorts();
         });
 
-        graphModel.on('metadataChanged.systemCollections', function (data) {
+        graphModel.on('metadataChanged.systemCollections', function () {
           CloudStore.invalidateCollections();
           _updatePorts();
         });
       }
 
       graphModel.on('editorImportComplete', () => {
-        graphModel.on('nodeAdded.' + def.node.name, function (node) {
+        graphModel.on('nodeAdded.' + def.node.name, function (node: GraphNodeModel) {
           _managePortsForNode(node);
         });
 
@@ -200,9 +244,8 @@ function _addBaseInfo(def, opts) {
   });
 }
 
-function _addModelId(def, opts) {
-  var _def = { node: Object.assign({}, def.node), setup: def.setup };
-  var _methods = Object.assign({}, def.node.methods);
+function _addModelId(def: DbCrudNodeModule, opts?: { includeInputs?: boolean; includeOutputs?: boolean }) {
+  const _methods: PrototypeExtensions = Object.assign({}, def.node.methods);
 
   const _includeInputs = opts === undefined || opts.includeInputs;
   const _includeOutputs = opts === undefined || opts.includeOutputs;
@@ -242,11 +285,11 @@ function _addModelId(def, opts) {
         group: 'General',
         tooltip:
           'Choose if you want to specify the Id explicitly, \n or if you want it to be that of the current record in a repeater.',
-        set: function (value) {
+        set: function (this: DbModelIdInstance, value: unknown) {
           if (value === 'foreach') {
             this.scheduleAfterInputsHaveUpdated(() => {
               // Find closest nodescope that have a _forEachModel
-              var component = this.nodeScope.componentOwner;
+              let component = this.nodeScope.componentOwner;
               while (component !== undefined && component._forEachModel === undefined && component.parentNodeScope) {
                 component = component.parentNodeScope.componentOwner;
               }
@@ -263,10 +306,10 @@ function _addModelId(def, opts) {
         },
         displayName: 'Id',
         group: 'General',
-        set: function (value) {
-          if (value instanceof Model) value = value.getId(); // Can be passed as model as well
-          this._internal.modelId = value; // Wait to fetch data
-          this.setModelID(value);
+        set: function (this: DbModelIdInstance, value: unknown) {
+          if (value instanceof Model) value = (value as ModelLike).getId(); // Can be passed as model as well
+          this._internal.modelId = value as string; // Wait to fetch data
+          this.setModelID(value as string);
         }
       }
     });
@@ -279,7 +322,7 @@ function _addModelId(def, opts) {
         type: 'string',
         displayName: 'Id',
         group: 'General',
-        getter: function () {
+        getter: function (this: DbModelIdInstance) {
           return this._internal.model ? this._internal.model.getId() : this._internal.modelId;
         }
       }
@@ -288,36 +331,44 @@ function _addModelId(def, opts) {
 
   // Methods
   Object.assign(def.node.methods, {
-    setCollectionID: function (id) {
+    setCollectionID: function (this: DbModelIdInstance & DbCrudBaseInstance, id: string) {
       this._internal.collectionId = id;
       this.clearWarnings();
     },
-    setModelID: function (id) {
-      var model = (this.nodeScope.modelScope || Model).get(id);
+    setModelID: function (this: DbModelIdInstance, id: string) {
+      const model = (this.nodeScope.modelScope || Model).get(id);
       this.setModel(model);
     },
-    setModel: function (model) {
+    setModel: function (this: DbModelIdInstance, model: ModelLike | undefined) {
       this._internal.model = model;
       this.flagOutputDirty('id');
     },
-    registerInputIfNeeded: function (name) {
+    registerInputIfNeeded: function (this: DbModelIdInstance, name: string) {
       if (this.hasInput(name)) {
         return;
       }
 
       if (name === 'collectionName')
         this.registerInput(name, {
-          set: this.setCollectionID.bind(this)
+          set: (this as DbModelIdInstance & DbCrudBaseInstance).setCollectionID.bind(this)
         });
 
-      _methods && _methods.registerInputIfNeeded && _methods.registerInputIfNeeded.call(this, name);
+      _methods && _methods.registerInputIfNeeded && (_methods.registerInputIfNeeded as MixinMethod).call(this, name);
     }
   });
 }
 
-function _addInputProperties(def) {
-  var _def = { node: Object.assign({}, def.node), setup: def.setup };
-  var _methods = Object.assign({}, def.node.methods);
+/**
+ * A method snapshotted off `def.node.methods` before a mixin overwrites it, so the new one
+ * can chain to the old. `PrototypeExtensions` says a member may be a `PropertyDescriptor`
+ * instead; in this family it is always a plain function, and the guard above proves it is
+ * present before the call.
+ */
+type MixinMethod = (this: unknown, ...args: unknown[]) => unknown;
+
+function _addInputProperties(def: DbCrudNodeModule) {
+  const _def: DbCrudNodeModule = { node: Object.assign({}, def.node), setup: def.setup };
+  const _methods: PrototypeExtensions = Object.assign({}, def.node.methods);
 
   Object.assign(def.node, {
     inputs: def.node.inputs || {},
@@ -326,8 +377,8 @@ function _addInputProperties(def) {
   });
 
   Object.assign(def.node, {
-    initialize: function () {
-      var internal = this._internal;
+    initialize: function (this: DbInputPropertiesInstance) {
+      const internal = this._internal;
       internal.inputValues = {};
 
       _def.node.initialize && _def.node.initialize.call(this);
@@ -342,7 +393,7 @@ function _addInputProperties(def) {
 
   // Methods
   Object.assign(def.node.methods, {
-    registerInputIfNeeded: function (name) {
+    registerInputIfNeeded: function (this: DbInputPropertiesInstance, name: string) {
       if (this.hasInput(name)) {
         return;
       }
@@ -352,17 +403,16 @@ function _addInputProperties(def) {
           set: this._setInputValue.bind(this, name.substring('prop-'.length))
         });
 
-      _methods && _methods.registerInputIfNeeded && _methods.registerInputIfNeeded.call(this, name);
+      _methods && _methods.registerInputIfNeeded && (_methods.registerInputIfNeeded as MixinMethod).call(this, name);
     },
-    _setInputValue: function (name, value) {
+    _setInputValue: function (this: DbInputPropertiesInstance, name: string, value: unknown) {
       this._internal.inputValues[name] = value;
     }
   });
 }
 
-function _addRelationProperty(def) {
-  var _def = { node: Object.assign({}, def.node), setup: def.setup };
-  var _methods = Object.assign({}, def.node.methods);
+function _addRelationProperty(def: DbCrudNodeModule) {
+  const _methods: PrototypeExtensions = Object.assign({}, def.node.methods);
 
   Object.assign(def.node, {
     inputs: def.node.inputs || {},
@@ -376,15 +426,15 @@ function _addRelationProperty(def) {
       type: { name: 'string', allowConnectionsOnly: true },
       displayName: 'Target Record Id',
       group: 'General',
-      set: function (value) {
-        this._internal.targetModelId = value;
+      set: function (this: RelationPropertyInstance, value: unknown) {
+        this._internal.targetModelId = value as string;
       }
     }
   });
 
   // Methods
   Object.assign(def.node.methods, {
-    registerInputIfNeeded: function (name) {
+    registerInputIfNeeded: function (this: RelationPropertyInstance, name: string) {
       if (this.hasInput(name)) {
         return;
       }
@@ -394,21 +444,22 @@ function _addRelationProperty(def) {
           set: this.setRelationProperty.bind(this)
         });
 
-      _methods && _methods.registerInputIfNeeded && _methods.registerInputIfNeeded.call(this, name);
+      _methods && _methods.registerInputIfNeeded && (_methods.registerInputIfNeeded as MixinMethod).call(this, name);
     },
-    setRelationProperty: function (value) {
+    setRelationProperty: function (this: RelationPropertyInstance, value: string) {
       this._internal.relationProperty = value;
     }
   });
 }
 
-function _getCurrentUser(modelScope) {
+function _getCurrentUser(modelScope: ModelScopeLike | undefined): string | undefined {
   if (typeof _noodl_cloud_runtime_version === 'undefined') {
     // We are running in browser, try to find the current user
-
-    var _cu = localStorage['Parse/' + CloudStore.instance.appId + '/currentUser'];
+    // The `Parse/<appId>/currentUser` key is a legacy name, not legacy code: `userservice.ts`
+    // still writes the session there.
+    const _cu = localStorage['Parse/' + CloudStore.instance.appId + '/currentUser'];
     if (_cu !== undefined) {
-      let cu;
+      let cu: { objectId?: string } | undefined;
       try {
         cu = JSON.parse(_cu);
       } catch (e) {}
@@ -418,13 +469,13 @@ function _getCurrentUser(modelScope) {
   } else {
     // Assume we are running in cloud runtime
     const request = modelScope.get('Request');
-    return request.UserId;
+    return request.UserId as string;
   }
 }
 
-function _addAccessControl(def) {
-  var _def = { node: Object.assign({}, def.node), setup: def.setup };
-  var _methods = Object.assign({}, def.node.methods);
+function _addAccessControl(def: DbCrudNodeModule) {
+  const _def: DbCrudNodeModule = { node: Object.assign({}, def.node), setup: def.setup };
+  const _methods: PrototypeExtensions = Object.assign({}, def.node.methods);
 
   Object.assign(def.node, {
     inputs: def.node.inputs || {},
@@ -433,8 +484,8 @@ function _addAccessControl(def) {
   });
 
   Object.assign(def.node, {
-    initialize: function () {
-      var internal = this._internal;
+    initialize: function (this: AccessControlInstance) {
+      const internal = this._internal;
       internal.accessControl = {};
 
       _def.node.initialize && _def.node.initialize.call(this);
@@ -448,17 +499,24 @@ function _addAccessControl(def) {
       index: 1000,
       displayName: 'Access Control Rules',
       group: 'Access Control Rules',
-      set: function (value) {
-        this._internal.accessControlRules = value;
+      set: function (this: AccessControlInstance, value: unknown) {
+        this._internal.accessControlRules = value as AccessControlInstance['_internal']['accessControlRules'];
       }
     }
   });
 
   // Dynamic ports
+  // Chained rather than assigned: `addBaseInfo`'s port builder calls whatever is here last,
+  // and more than one mixin may want to contribute.
   const _super = def._additionalDynamicPorts;
-  def._additionalDynamicPorts = function (node, ports, graphModel) {
-    if (node.parameters['accessControl'] !== undefined && node.parameters['accessControl'].length > 0) {
-      node.parameters['accessControl'].forEach((ac) => {
+  def._additionalDynamicPorts = function (
+    node: GraphNodeModel,
+    ports: RuntimeDiscoveredPort[],
+    graphModel: GraphModelLike
+  ) {
+    const rules = node.parameters['accessControl'] as { id: string; label: string }[] | undefined;
+    if (rules !== undefined && rules.length > 0) {
+      rules.forEach((ac) => {
         const prefix = 'acl-' + ac.id;
         // User or role?
         ports.push({
@@ -541,7 +599,7 @@ function _addAccessControl(def) {
 
   // Methods
   Object.assign(def.node.methods, {
-    registerInputIfNeeded: function (name) {
+    registerInputIfNeeded: function (this: AccessControlInstance, name: string) {
       if (this.hasInput(name)) {
         return;
       }
@@ -551,12 +609,12 @@ function _addAccessControl(def) {
           set: this.setAccessControl.bind(this, name)
         });
 
-      _methods && _methods.registerInputIfNeeded && _methods.registerInputIfNeeded.call(this, name);
+      _methods && _methods.registerInputIfNeeded && (_methods.registerInputIfNeeded as MixinMethod).call(this, name);
     },
-    _getACL: function () {
-      let acl = {};
+    _getACL: function (this: AccessControlInstance): AccessControlList | undefined {
+      const acl: AccessControlList = {};
 
-      function _rule(rule) {
+      function _rule(rule: { read?: boolean; write?: boolean }) {
         return {
           read: rule.read === undefined ? true : rule.read,
           write: rule.write === undefined ? true : rule.write
@@ -585,7 +643,7 @@ function _addAccessControl(def) {
 
       return Object.keys(acl).length > 0 ? acl : undefined;
     },
-    setAccessControl: function (name, value) {
+    setAccessControl: function (this: AccessControlInstance, name: string, value: unknown) {
       const _parts = name.split('-');
 
       if (this._internal.accessControl[_parts[1]] === undefined) this._internal.accessControl[_parts[1]] = {};
@@ -594,10 +652,12 @@ function _addAccessControl(def) {
   });
 }
 
-module.exports = {
+const DbModelCRUDBase = {
   addInputProperties: _addInputProperties,
   addModelId: _addModelId,
   addBaseInfo: _addBaseInfo,
   addRelationProperty: _addRelationProperty,
   addAccessControl: _addAccessControl
 };
+
+export = DbModelCRUDBase;

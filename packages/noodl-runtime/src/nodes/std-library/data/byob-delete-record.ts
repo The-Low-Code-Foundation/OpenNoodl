@@ -8,11 +8,56 @@
  * @since 2.0.0
  */
 
-const ByobUtils = require('./byob-utils');
+import type {
+  GraphModelLike,
+  GraphNodeModel,
+  InspectInfo,
+  NodeContextLike,
+  NodeDefinitionOptions,
+  NodeInstance,
+  NodeModule,
+  RuntimeDiscoveredPort
+} from '@noodl/types';
+
+import type { BackendServicesMetaData, ResolvedBackend, SchemaField } from './byob-types';
+
+import ByobUtils = require('./byob-utils');
 
 console.log('[BYOB Delete Record] 📦 Module loaded');
 
-var DeleteRecordNode = {
+/** The shape the `error` output carries. */
+interface ByobError {
+  status?: number;
+  message: string;
+  errors?: { message: string }[];
+}
+
+/** A rejected fetch, as this file throws and re-reads it. */
+interface ByobFetchError {
+  status?: number;
+  statusText?: string;
+  message?: string;
+  body?: { errors?: { message: string }[] } | null;
+}
+
+/** `this` inside the BYOB Delete Record node. */
+interface DeleteRecordInstance extends NodeInstance {
+  _internal: {
+    loading: boolean;
+    apiPathMode: string;
+    backendId?: string;
+    collection?: string;
+    recordId?: string;
+    error?: ByobError | null;
+    lastResult?: Record<string, unknown>;
+    hasScheduledDelete?: boolean;
+  };
+  resolveBackend(): ResolvedBackend | null;
+  scheduleDelete(): void;
+  doDelete(): void;
+}
+
+const DeleteRecordNode: NodeDefinitionOptions = {
   name: 'noodl.byob.DeleteRecord',
   displayNodeName: 'Delete Record',
   docs: 'https://docs.noodl.net/nodes/data/byob/delete-record',
@@ -20,12 +65,12 @@ var DeleteRecordNode = {
   color: 'data',
   searchTags: ['byob', 'delete', 'remove', 'data', 'database', 'records', 'directus', 'api', 'backend'],
 
-  initialize: function () {
+  initialize: function (this: DeleteRecordInstance) {
     this._internal.loading = false;
     this._internal.apiPathMode = 'items';
   },
 
-  getInspectInfo() {
+  getInspectInfo(this: DeleteRecordInstance): InspectInfo {
     if (!this._internal.lastResult) {
       return { type: 'text', value: '[Not executed yet]' };
     }
@@ -37,7 +82,7 @@ var DeleteRecordNode = {
       type: 'signal',
       displayName: 'Delete',
       group: 'Actions',
-      valueChangedToTrue: function () {
+      valueChangedToTrue: function (this: DeleteRecordInstance) {
         this.scheduleDelete();
       }
     }
@@ -48,7 +93,7 @@ var DeleteRecordNode = {
       type: 'boolean',
       displayName: 'Loading',
       group: 'Status',
-      getter: function () {
+      getter: function (this: DeleteRecordInstance) {
         return this._internal.loading;
       }
     },
@@ -56,7 +101,7 @@ var DeleteRecordNode = {
       type: 'object',
       displayName: 'Error',
       group: 'Status',
-      getter: function () {
+      getter: function (this: DeleteRecordInstance) {
         return this._internal.error;
       }
     },
@@ -76,12 +121,12 @@ var DeleteRecordNode = {
     /**
      * Resolve the backend configuration from metadata
      */
-    resolveBackend: function () {
+    resolveBackend: function (this: DeleteRecordInstance) {
       const backendId = this._internal.backendId || '_active_';
       return ByobUtils.resolveBackend(backendId);
     },
 
-    scheduleDelete: function () {
+    scheduleDelete: function (this: DeleteRecordInstance) {
       console.log('[BYOB Delete Record] scheduleDelete called');
       if (this._internal.hasScheduledDelete) {
         console.log('[BYOB Delete Record] Already scheduled, skipping');
@@ -91,7 +136,7 @@ var DeleteRecordNode = {
       this.scheduleAfterInputsHaveUpdated(this.doDelete.bind(this));
     },
 
-    doDelete: function () {
+    doDelete: function (this: DeleteRecordInstance) {
       console.log('[BYOB Delete Record] doDelete executing');
       this._internal.hasScheduledDelete = false;
 
@@ -159,14 +204,14 @@ var DeleteRecordNode = {
           if (!response.ok) {
             return response
               .json()
-              .then((errorBody) => {
+              .then((errorBody: { errors?: { message: string }[] }) => {
                 throw {
                   status: response.status,
                   statusText: response.statusText,
                   body: errorBody
                 };
               })
-              .catch((parseError) => {
+              .catch((parseError: ByobFetchError) => {
                 if (parseError.status) throw parseError;
                 throw {
                   status: response.status,
@@ -201,7 +246,7 @@ var DeleteRecordNode = {
 
           this.sendSignalOnOutput('success');
         })
-        .catch((error) => {
+        .catch((error: ByobFetchError) => {
           console.error('[BYOB Delete Record] Error:', error);
 
           this._internal.loading = false;
@@ -210,7 +255,7 @@ var DeleteRecordNode = {
           if (error.body && error.body.errors) {
             this._internal.error = {
               status: error.status,
-              message: error.body.errors.map((e) => e.message).join(', '),
+              message: error.body.errors.map((e: { message: string }) => e.message).join(', '),
               errors: error.body.errors
             };
           } else {
@@ -235,21 +280,21 @@ var DeleteRecordNode = {
         });
     },
 
-    registerInputIfNeeded: function (name) {
+    registerInputIfNeeded: function (this: DeleteRecordInstance, name: string) {
       if (this.hasInput(name)) return;
 
       // Map of configuration input names to their setters
-      const configSetters = {
-        backendId: (value) => {
+      const configSetters: Record<string, (value: never) => void> = {
+        backendId: (value: never) => {
           this._internal.backendId = value;
         },
-        collection: (value) => {
+        collection: (value: never) => {
           this._internal.collection = value;
         },
-        recordId: (value) => {
+        recordId: (value: never) => {
           this._internal.recordId = value;
         },
-        apiPathMode: (value) => {
+        apiPathMode: (value: never) => {
           this._internal.apiPathMode = value;
         }
       };
@@ -267,11 +312,18 @@ var DeleteRecordNode = {
 /**
  * Update dynamic ports based on node configuration
  */
-function updatePorts(nodeId, parameters, editorConnection, graphModel) {
-  const ports = [];
+function updatePorts(
+  nodeId: string,
+  parameters: Record<string, unknown>,
+  editorConnection: NodeContextLike['editorConnection'],
+  graphModel: GraphModelLike
+) {
+  const ports: RuntimeDiscoveredPort[] = [];
 
   // Get backend services metadata
-  const backendServices = graphModel.getMetaData('backendServices') || { backends: [] };
+  const backendServices = (graphModel.getMetaData('backendServices') as BackendServicesMetaData) || {
+    backends: []
+  };
   const backends = backendServices.backends || [];
 
   // Backend selection dropdown
@@ -302,7 +354,7 @@ function updatePorts(nodeId, parameters, editorConnection, graphModel) {
   const allCollections = selectedBackend?.schema?.collections || [];
 
   // API Path Mode dropdown - MUST come before Collection for proper UX
-  const isSystemTable = ByobUtils.isSystemCollection(parameters.collection);
+  const isSystemTable = ByobUtils.isSystemCollection(parameters.collection as string);
 
   ports.push({
     name: 'apiPathMode',
@@ -321,7 +373,7 @@ function updatePorts(nodeId, parameters, editorConnection, graphModel) {
   });
 
   // Filter collections based on selected API path mode
-  const apiPathMode = parameters.apiPathMode || (isSystemTable ? 'system' : 'items');
+  const apiPathMode = (parameters.apiPathMode as string) || (isSystemTable ? 'system' : 'items');
   const filteredCollections = ByobUtils.filterCollectionsByMode(allCollections, apiPathMode);
 
   // Collection dropdown (filtered by API path mode)
@@ -357,14 +409,14 @@ function updatePorts(nodeId, parameters, editorConnection, graphModel) {
   editorConnection.sendDynamicPorts(nodeId, ports);
 }
 
-module.exports = {
+const DeleteRecordNodeModule: NodeModule = {
   node: DeleteRecordNode,
-  setup: function (context, graphModel) {
+  setup: function (context: NodeContextLike, graphModel: GraphModelLike) {
     if (!context.editorConnection || !context.editorConnection.isRunningLocally()) {
       return;
     }
 
-    function _managePortsForNode(node) {
+    function _managePortsForNode(node: GraphNodeModel & { _internal?: Record<string, unknown> }) {
       updatePorts(node.id, node.parameters || {}, context.editorConnection, graphModel);
 
       node.on('parameterUpdated', function () {
@@ -377,7 +429,7 @@ module.exports = {
     }
 
     graphModel.on('editorImportComplete', () => {
-      graphModel.on('nodeAdded.noodl.byob.DeleteRecord', function (node) {
+      graphModel.on('nodeAdded.noodl.byob.DeleteRecord', function (node: GraphNodeModel) {
         _managePortsForNode(node);
       });
 
@@ -387,3 +439,5 @@ module.exports = {
     });
   }
 };
+
+export = DeleteRecordNodeModule;

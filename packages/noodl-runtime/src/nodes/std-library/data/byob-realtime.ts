@@ -22,6 +22,132 @@
  * @since 2.0.0
  */
 
+/** What both transports report through `onError`. */
+interface RealtimeError {
+  message: string;
+  code?: string;
+}
+
+/** The callback contract both transports share, so the node can pick one by backend type. */
+interface RealtimeCallbacks {
+  /** `event` is one of `init`/`create`/`update`/`delete`/`resync`. */
+  onEvent?: (event: string, records: unknown[]) => void;
+  onStatus?: (subscribed: boolean) => void;
+  onError?: (error: RealtimeError) => void;
+}
+
+/** A socket as this file uses one — the browser and undici shapes agree on this much. */
+interface RealtimeSocket {
+  onopen: ((...args: unknown[]) => void) | null;
+  onmessage: ((event: { data: string }) => void) | null;
+  onclose: ((...args: unknown[]) => void) | null;
+  onerror: ((...args: unknown[]) => void) | null;
+  send(data: string): void;
+  close(): void;
+  /** Set by `_handleSocketDown` so error-then-close only reconnects once. */
+  _downHandled?: boolean;
+}
+
+interface RealtimeConnectionOptions extends RealtimeCallbacks {
+  url: string;
+  token?: string;
+  collection: string;
+  WebSocketImpl?: (new (url: string) => RealtimeSocket) | null;
+  setTimeoutImpl?: (fn: () => void, delay: number) => unknown;
+  clearTimeoutImpl?: (handle: unknown) => void;
+}
+
+interface RealtimeConnectionInstance {
+  _url: string;
+  _token: string;
+  _collection: string;
+  _onEvent: (event: string, records: unknown[]) => void;
+  _onStatus: (subscribed: boolean) => void;
+  _onError: (error: RealtimeError) => void;
+  _WebSocket: (new (url: string) => RealtimeSocket) | null;
+  _setTimeout: (fn: () => void, delay: number) => unknown;
+  _clearTimeout: (handle: unknown) => void;
+  _socket: RealtimeSocket | null;
+  _reconnectTimer: unknown;
+  _reconnectAttempts: number;
+  _disposed: boolean;
+  /** Set when retrying cannot help — a bad token, or no WebSocket at all. */
+  _fatal: boolean;
+  _subscribed: boolean;
+  connect(): void;
+  dispose(): void;
+  _handleSocketDown(socket: RealtimeSocket): void;
+  _subscribe(): void;
+  _send(msg: unknown): void;
+}
+
+/**
+ * The `new`-able view of {@link RealtimeConnection}.
+ *
+ * It stays a constructor function with prototype methods rather than becoming a `class`:
+ * a class would make the methods non-enumerable and would refuse a call without `new`,
+ * neither of which is a change this conversion is allowed to make.
+ */
+interface RealtimeConnectionConstructor {
+  new (options: RealtimeConnectionOptions): RealtimeConnectionInstance;
+  prototype: RealtimeConnectionInstance;
+}
+
+/** One frame arriving over the Directus WebSocket. */
+interface DirectusRealtimeMessage {
+  type?: string;
+  status?: string;
+  event?: string;
+  data?: unknown[];
+  error?: { message?: string; code?: string };
+}
+
+/** An EventSource as this file uses one. */
+interface RealtimeEventSource {
+  addEventListener(type: string, listener: (ev: { data: string }) => void): void;
+  onerror: ((...args: unknown[]) => void) | null;
+  close(): void;
+}
+
+interface RealtimeSSEOptions extends RealtimeCallbacks {
+  baseUrl: string;
+  token?: string;
+  collection: string;
+  filter?: unknown;
+  EventSourceImpl?: (new (url: string) => RealtimeEventSource) | null;
+  fetchImpl?: (url: string, init: unknown) => Promise<{ json?(): Promise<unknown> }>;
+}
+
+interface RealtimeSSEInstance {
+  _baseUrl: string;
+  _token: string;
+  _collection: string;
+  _filter?: unknown;
+  _onEvent: (event: string, records: unknown[]) => void;
+  _onStatus: (subscribed: boolean) => void;
+  _onError: (error: RealtimeError) => void;
+  _EventSource: (new (url: string) => RealtimeEventSource) | null;
+  _fetch: ((url: string, init: unknown) => Promise<{ json?(): Promise<unknown> }>) | null;
+  _es: RealtimeEventSource | null;
+  /** Minted by the server in the first `connected` frame; scopes the subscription POST. */
+  _clientId: string | null;
+  _disposed: boolean;
+  connect(): void;
+  dispose(): void;
+  _postSubscriptions(): void;
+}
+
+interface RealtimeSSEConstructor {
+  new (options: RealtimeSSEOptions): RealtimeSSEInstance;
+  prototype: RealtimeSSEInstance;
+}
+
+/** The `subscriptions` POST's reply. */
+interface SubscriptionResult {
+  accepted?: unknown[];
+  rejected?: { reason?: string }[];
+}
+
 const RECONNECT_BASE_DELAY = 1000;
 const RECONNECT_MAX_DELAY = 30000;
 
@@ -30,7 +156,7 @@ const RECONNECT_MAX_DELAY = 30000;
  * @param {number} attempt - 0-based reconnect attempt counter
  * @returns {number} Delay in milliseconds
  */
-function nextReconnectDelay(attempt) {
+function nextReconnectDelay(attempt: number): number {
   return Math.min(RECONNECT_MAX_DELAY, RECONNECT_BASE_DELAY * Math.pow(2, attempt));
 }
 
@@ -40,7 +166,7 @@ function nextReconnectDelay(attempt) {
  * @param {string} baseUrl - Backend HTTP(S) base URL
  * @returns {string|null} WebSocket URL or null if the base URL is unusable
  */
-function buildWebSocketUrl(baseUrl) {
+function buildWebSocketUrl(baseUrl: string): string | null {
   if (!baseUrl || typeof baseUrl !== 'string') return null;
 
   const cleaned = baseUrl.trim().replace(/\/+$/, '');
@@ -70,7 +196,7 @@ function buildWebSocketUrl(baseUrl) {
  * @param {Function} [options.setTimeoutImpl] - Injectable timer (tests)
  * @param {Function} [options.clearTimeoutImpl] - Injectable timer (tests)
  */
-function RealtimeConnection(options) {
+function RealtimeConnection(this: RealtimeConnectionInstance, options: RealtimeConnectionOptions) {
   this._url = options.url;
   this._token = options.token || '';
   this._collection = options.collection;
@@ -92,7 +218,7 @@ function RealtimeConnection(options) {
   this._subscribed = false;
 }
 
-RealtimeConnection.prototype.connect = function () {
+RealtimeConnection.prototype.connect = function (this: RealtimeConnectionInstance) {
   if (this._disposed || this._fatal) return;
 
   if (!this._WebSocket) {
@@ -101,7 +227,7 @@ RealtimeConnection.prototype.connect = function () {
     return;
   }
 
-  let socket;
+  let socket: RealtimeSocket;
   try {
     socket = new this._WebSocket(this._url);
   } catch (e) {
@@ -125,7 +251,7 @@ RealtimeConnection.prototype.connect = function () {
   socket.onmessage = (event) => {
     if (this._disposed) return;
 
-    let msg;
+    let msg: DirectusRealtimeMessage;
     try {
       msg = JSON.parse(event.data);
     } catch (e) {
@@ -178,7 +304,7 @@ RealtimeConnection.prototype.connect = function () {
   socket.onerror = () => this._handleSocketDown(socket);
 };
 
-RealtimeConnection.prototype._handleSocketDown = function (socket) {
+RealtimeConnection.prototype._handleSocketDown = function (this: RealtimeConnectionInstance, socket: RealtimeSocket) {
   if (socket._downHandled) return;
   socket._downHandled = true;
 
@@ -204,11 +330,11 @@ RealtimeConnection.prototype._handleSocketDown = function (socket) {
   }, delay);
 };
 
-RealtimeConnection.prototype._subscribe = function () {
+RealtimeConnection.prototype._subscribe = function (this: RealtimeConnectionInstance) {
   this._send({ type: 'subscribe', collection: this._collection, uid: 'noodl-byob-subscribe' });
 };
 
-RealtimeConnection.prototype._send = function (msg) {
+RealtimeConnection.prototype._send = function (this: RealtimeConnectionInstance, msg: unknown) {
   try {
     this._socket.send(JSON.stringify(msg));
   } catch (e) {
@@ -216,7 +342,7 @@ RealtimeConnection.prototype._send = function (msg) {
   }
 };
 
-RealtimeConnection.prototype.dispose = function () {
+RealtimeConnection.prototype.dispose = function (this: RealtimeConnectionInstance) {
   this._disposed = true;
   if (this._reconnectTimer !== null) {
     this._clearTimeout(this._reconnectTimer);
@@ -258,7 +384,7 @@ RealtimeConnection.prototype.dispose = function () {
  * @param {string} [token] - Session/admin/api token ('' for none)
  * @returns {string|null} Stream URL or null if the base URL is unusable
  */
-function buildSSEUrl(baseUrl, token) {
+function buildSSEUrl(baseUrl: string, token?: string): string | null {
   if (!baseUrl || typeof baseUrl !== 'string') return null;
   const cleaned = baseUrl.trim().replace(/\/+$/, '');
   if (!/^https?:\/\//i.test(cleaned)) return null;
@@ -284,7 +410,7 @@ function buildSSEUrl(baseUrl, token) {
  * @param {Function} [options.EventSourceImpl] - Injectable EventSource ctor
  * @param {Function} [options.fetchImpl] - Injectable fetch (subscribe POST)
  */
-function RealtimeSSEConnection(options) {
+function RealtimeSSEConnection(this: RealtimeSSEInstance, options: RealtimeSSEOptions) {
   this._baseUrl = options.baseUrl;
   this._token = options.token || '';
   this._collection = options.collection;
@@ -301,7 +427,7 @@ function RealtimeSSEConnection(options) {
   this._disposed = false;
 }
 
-RealtimeSSEConnection.prototype.connect = function () {
+RealtimeSSEConnection.prototype.connect = function (this: RealtimeSSEInstance) {
   if (this._disposed) return;
 
   if (!this._EventSource) {
@@ -314,7 +440,7 @@ RealtimeSSEConnection.prototype.connect = function () {
     return;
   }
 
-  let es;
+  let es: RealtimeEventSource;
   try {
     es = new this._EventSource(url);
   } catch (e) {
@@ -336,7 +462,7 @@ RealtimeSSEConnection.prototype.connect = function () {
 
   es.addEventListener('change', (ev) => {
     if (this._disposed) return;
-    let payload;
+    let payload: { action?: string; record?: { objectId?: unknown } & Record<string, unknown> };
     try {
       payload = JSON.parse(ev.data);
     } catch (e) {
@@ -365,13 +491,13 @@ RealtimeSSEConnection.prototype.connect = function () {
   };
 };
 
-RealtimeSSEConnection.prototype._postSubscriptions = function () {
+RealtimeSSEConnection.prototype._postSubscriptions = function (this: RealtimeSSEInstance) {
   if (this._disposed || !this._clientId) return;
   if (!this._fetch) {
     this._onError({ message: 'fetch is not available to register the realtime subscription' });
     return;
   }
-  const sub = { collection: this._collection };
+  const sub: { collection: string; filter?: unknown } = { collection: this._collection };
   if (this._filter) sub.filter = this._filter;
 
   this._fetch(this._baseUrl.replace(/\/+$/, '') + '/realtime/subscriptions', {
@@ -380,7 +506,7 @@ RealtimeSSEConnection.prototype._postSubscriptions = function () {
     body: JSON.stringify({ clientId: this._clientId, subscriptions: [sub] })
   })
     .then((res) => (res && typeof res.json === 'function' ? res.json() : null))
-    .then((result) => {
+    .then((result: SubscriptionResult) => {
       if (this._disposed) return;
       if (result && Array.isArray(result.accepted) && result.accepted.length > 0) {
         this._onStatus(true);
@@ -395,7 +521,7 @@ RealtimeSSEConnection.prototype._postSubscriptions = function () {
     });
 };
 
-RealtimeSSEConnection.prototype.dispose = function () {
+RealtimeSSEConnection.prototype.dispose = function (this: RealtimeSSEInstance) {
   this._disposed = true;
   if (this._es) {
     const es = this._es;
@@ -416,13 +542,15 @@ RealtimeSSEConnection.prototype.dispose = function () {
  * @param {string} type - backendConfig.type
  * @returns {boolean}
  */
-function isNodeGXRealtime(type) {
+function isNodeGXRealtime(type: string): boolean {
   return type === 'nodegx' || type === 'nodegx-backend' || type === 'local';
 }
 
-module.exports = {
-  RealtimeConnection,
-  RealtimeSSEConnection,
+const ByobRealtime = {
+  // The construct signatures live on the interfaces above; the functions themselves are
+  // plain `function`s, so the cast is what hands consumers a `new`-able, typed value.
+  RealtimeConnection: RealtimeConnection as unknown as RealtimeConnectionConstructor,
+  RealtimeSSEConnection: RealtimeSSEConnection as unknown as RealtimeSSEConstructor,
   buildWebSocketUrl,
   buildSSEUrl,
   isNodeGXRealtime,
@@ -430,3 +558,5 @@ module.exports = {
   RECONNECT_BASE_DELAY,
   RECONNECT_MAX_DELAY
 };
+
+export = ByobRealtime;

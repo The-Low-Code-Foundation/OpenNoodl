@@ -1,10 +1,51 @@
 'use strict';
 
-const { Node } = require('../../../../noodl-runtime');
+import type {
+  EditorConnectionLike,
+  GraphModelLike,
+  GraphNodeModel,
+  InspectInfo,
+  ModelLike,
+  ModelModule,
+  NodeContextLike,
+  NodeDefinitionOptions,
+  NodeInstance,
+  NodeModule,
+  RuntimeDiscoveredPort
+} from '@noodl/types';
 
-var Model = require('../../../model');
+import Node = require('../../../node');
+import ModelImport = require('../../../model');
 
-var ModelNodeDefinition = {
+const Model = ModelImport as unknown as ModelModule;
+
+/**
+ * `this` inside the Object node.
+ *
+ * Every `prop-…` port is dynamic, derived from the `properties` string list, so the node's
+ * whole data surface is registered at runtime rather than declared. The `fetch` input
+ * changes the node's mode: connected, an id no longer resolves immediately — it waits to be
+ * pulled — which is why `modelId`'s setter branches on `isInputConnected('fetch')`.
+ */
+interface ModelNodeInstance extends NodeInstance {
+  _internal: {
+    model?: ModelLike;
+    modelId?: string;
+    inputValues: Record<string, unknown>;
+    /** Which inputs have changed since the last store, so unchanged ones are not rewritten. */
+    dirtyValues: Record<string, boolean>;
+    onModelChangedCallback?: (args: { name: string }) => void;
+  };
+  /** On the instance rather than in `_internal` — these guard the two schedulers. */
+  hasScheduledStore?: boolean;
+  hasScheduledSetModel?: boolean;
+  scheduleStore(): void;
+  scheduleSetModel(): void;
+  setModelID(id: string): void;
+  setModel(model: ModelLike | undefined): void;
+}
+
+const ModelNodeDefinition: NodeDefinitionOptions = {
   name: 'Model2',
   docs: 'https://docs.noodl.net/nodes/data/object/object-node',
   displayNodeName: 'Object',
@@ -20,13 +61,13 @@ var ModelNodeDefinition = {
       inputs: ['modelId']
     }
   ],
-  initialize: function () {
-    var internal = this._internal;
+  initialize: function (this: ModelNodeInstance) {
+    const internal = this._internal;
     internal.inputValues = {};
     internal.dirtyValues = {};
 
-    var _this = this;
-    this._internal.onModelChangedCallback = function (args) {
+    const _this = this;
+    this._internal.onModelChangedCallback = function (args: { name: string }) {
       if (_this.isInputConnected('fetch') === true) return;
 
       if (_this.hasOutput('prop-' + args.name)) _this.flagOutputDirty('prop-' + args.name);
@@ -36,7 +77,7 @@ var ModelNodeDefinition = {
       _this.sendSignalOnOutput('changed');
     };
   },
-  getInspectInfo() {
+  getInspectInfo(this: ModelNodeInstance): InspectInfo {
     const model = this._internal.model;
     if (!model) return '[No Object]';
 
@@ -50,7 +91,7 @@ var ModelNodeDefinition = {
       type: 'string',
       displayName: 'Id',
       group: 'General',
-      getter: function () {
+      getter: function (this: ModelNodeInstance) {
         return this._internal.model ? this._internal.model.getId() : this._internal.modelId;
       }
     },
@@ -78,11 +119,11 @@ var ModelNodeDefinition = {
       default: 'explicit',
       displayName: 'Get Id from',
       group: 'General',
-      set: function (value) {
+      set: function (this: ModelNodeInstance, value: unknown) {
         if (value === 'foreach') {
           this.scheduleAfterInputsHaveUpdated(() => {
             // Find closest nodescope that have a _forEachModel
-            var component = this.nodeScope.componentOwner;
+            let component = this.nodeScope.componentOwner;
             while (component !== undefined && component._forEachModel === undefined && component.parentNodeScope) {
               component = component.parentNodeScope.componentOwner;
             }
@@ -99,13 +140,13 @@ var ModelNodeDefinition = {
       },
       displayName: 'Id',
       group: 'General',
-      set: function (value) {
-        if (value instanceof Model) value = value.getId();
+      set: function (this: ModelNodeInstance, value: unknown) {
+        if (value instanceof Model) value = (value as ModelLike).getId();
         // Can be passed as model as well
-        else if (typeof value === 'object') value = Model.create(value).getId(); // If this is an js object, dereference it
+        else if (typeof value === 'object') value = Model.create(value as Record<string, unknown>).getId(); // If this is an js object, dereference it
 
-        this._internal.modelId = value; // Wait to fetch data
-        if (this.isInputConnected('fetch') === false) this.setModelID(value);
+        this._internal.modelId = value as string; // Wait to fetch data
+        if (this.isInputConnected('fetch') === false) this.setModelID(value as string);
         else {
           this.flagOutputDirty('id');
         }
@@ -115,48 +156,47 @@ var ModelNodeDefinition = {
       type: { name: 'stringlist', allowEditOnly: true },
       displayName: 'Properties',
       group: 'Properties',
-      set: function (value) {}
+      set: function () {}
     },
     fetch: {
       displayName: 'Fetch',
       group: 'Actions',
-      valueChangedToTrue: function () {
+      valueChangedToTrue: function (this: ModelNodeInstance) {
         this.scheduleSetModel();
       }
     }
   },
   prototypeExtensions: {
-    scheduleStore: function () {
+    scheduleStore: function (this: ModelNodeInstance) {
       if (this.hasScheduledStore) return;
       this.hasScheduledStore = true;
 
-      var internal = this._internal;
+      const internal = this._internal;
       this.scheduleAfterInputsHaveUpdated(() => {
         this.hasScheduledStore = false;
         if (!internal.model) return;
 
-        for (var i in internal.dirtyValues) {
+        for (const i in internal.dirtyValues) {
           internal.model.set(i, internal.inputValues[i], { resolve: true });
         }
         internal.dirtyValues = {}; // Reset dirty values
       });
     },
-    scheduleSetModel: function () {
+    scheduleSetModel: function (this: ModelNodeInstance) {
       if (this.hasScheduledSetModel) return;
       this.hasScheduledSetModel = true;
 
-      var internal = this._internal;
       this.scheduleAfterInputsHaveUpdated(() => {
         this.hasScheduledSetModel = false;
         this.setModelID(this._internal.modelId);
       });
     },
-    setModelID: function (id) {
-      var model = (this.nodeScope.modelScope || Model).get(id);
+    setModelID: function (this: ModelNodeInstance, id: string) {
+      const model = (this.nodeScope.modelScope || Model).get(id);
       this.setModel(model);
       this.sendSignalOnOutput('fetched');
     },
-    setModel: function (model) {
+    setModel: function (this: ModelNodeInstance, model: ModelLike | undefined) {
       if (this._internal.model)
         // Remove old listener if existing
         this._internal.model.off('change', this._internal.onModelChangedCallback);
@@ -169,16 +209,16 @@ var ModelNodeDefinition = {
         model.on('change', this._internal.onModelChangedCallback);
 
         // We have a new model, mark all outputs as dirty
-        for (var key in model.data) {
+        for (const key in model.data) {
           if (this.hasOutput('prop-' + key)) this.flagOutputDirty('prop-' + key);
         }
       }
     },
-    _onNodeDeleted: function () {
+    _onNodeDeleted: function (this: ModelNodeInstance) {
       Node.prototype._onNodeDeleted.call(this);
       if (this._internal.model) this._internal.model.off('change', this._internal.onModelChangedCallback);
     },
-    registerOutputIfNeeded: function (name) {
+    registerOutputIfNeeded: function (this: ModelNodeInstance, name: string) {
       if (this.hasOutput(name)) {
         return;
       }
@@ -188,9 +228,7 @@ var ModelNodeDefinition = {
           getter: userOutputGetter.bind(this, name.substring('prop-'.length))
         });
     },
-    registerInputIfNeeded: function (name) {
-      var _this = this;
-
+    registerInputIfNeeded: function (this: ModelNodeInstance, name: string) {
       if (this.hasInput(name)) {
         return;
       }
@@ -203,12 +241,12 @@ var ModelNodeDefinition = {
   }
 };
 
-function userOutputGetter(name) {
+function userOutputGetter(this: ModelNodeInstance, name: string) {
   /* jshint validthis:true */
   return this._internal.model ? this._internal.model.get(name, { resolve: true }) : undefined;
 }
 
-function userInputSetter(name, value) {
+function userInputSetter(this: ModelNodeInstance, name: string, value: unknown) {
   /* jshint validthis:true */
   this._internal.inputValues[name] = value;
 
@@ -221,15 +259,15 @@ function userInputSetter(name, value) {
   }
 }
 
-function updatePorts(nodeId, parameters, editorConnection) {
-  var ports = [];
+function updatePorts(nodeId: string, parameters: Record<string, unknown>, editorConnection: EditorConnectionLike) {
+  const ports: RuntimeDiscoveredPort[] = [];
 
   // Add value outputs
-  var properties = parameters.properties;
+  let properties = parameters.properties as string | string[] | undefined;
   if (properties) {
-    properties = properties ? properties.split(',') : undefined;
-    for (var i in properties) {
-      var p = properties[i];
+    properties = properties ? (properties as string).split(',') : undefined;
+    for (const i in properties) {
+      const p = properties[i];
 
       ports.push({
         type: {
@@ -259,19 +297,21 @@ function updatePorts(nodeId, parameters, editorConnection) {
   });
 }
 
-module.exports = {
+const ModelNodeModule: NodeModule = {
   node: ModelNodeDefinition,
-  setup: function (context, graphModel) {
+  setup: function (context: NodeContextLike, graphModel: GraphModelLike) {
     if (!context.editorConnection || !context.editorConnection.isRunningLocally()) {
       return;
     }
 
-    graphModel.on('nodeAdded.Model2', function (node) {
+    graphModel.on('nodeAdded.Model2', function (node: GraphNodeModel) {
       updatePorts(node.id, node.parameters, context.editorConnection);
 
-      node.on('parameterUpdated', function (event) {
+      node.on('parameterUpdated', function () {
         updatePorts(node.id, node.parameters, context.editorConnection);
       });
     });
   }
 };
+
+export = ModelNodeModule;

@@ -1,9 +1,23 @@
 'use strict';
 
-var Model = require('../../../model');
-var ModelCRUDBase = require('./modelcrudbase');
+import type { ModelModule } from '@noodl/types';
 
-var NewModelNodeDefinition = {
+import type { MixinNodeModule, ModelIdInstance } from './crud-mixins';
+
+import ModelImport = require('../../../model');
+import ModelCRUDBase = require('./modelcrudbase');
+
+const Model = ModelImport as unknown as ModelModule;
+
+/** `this` inside Create New Object — `addModelId` and `addInputProperties` are both applied. */
+interface NewModelNodeInstance extends ModelIdInstance {
+  /** On the instance rather than in `_internal` — guards {@link scheduleNew}. */
+  hasScheduledNew?: boolean;
+  scheduleNew(): void;
+  _pushInputValues(model: ReturnType<ModelModule['get']>): void;
+}
+
+const NewModelNodeDefinition: MixinNodeModule = {
   node: {
     name: 'NewModel',
     docs: 'https://docs.noodl.net/nodes/data/object/create-new-object',
@@ -12,7 +26,7 @@ var NewModelNodeDefinition = {
       new: {
         displayName: 'Do',
         group: 'Actions',
-        valueChangedToTrue: function () {
+        valueChangedToTrue: function (this: NewModelNodeInstance) {
           this.scheduleNew();
         }
       }
@@ -25,7 +39,7 @@ var NewModelNodeDefinition = {
       }
     },
     methods: {
-      scheduleNew: function () {
+      scheduleNew: function (this: NewModelNodeInstance) {
         if (this.hasScheduledNew) return;
         this.hasScheduledNew = true;
 
@@ -48,4 +62,4 @@ ModelCRUDBase.addBaseInfo(NewModelNodeDefinition);
 ModelCRUDBase.addModelId(NewModelNodeDefinition, { includeOutputs: true });
 ModelCRUDBase.addInputProperties(NewModelNodeDefinition);
 
-module.exports = NewModelNodeDefinition;
+export = NewModelNodeDefinition;

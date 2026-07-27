@@ -1,11 +1,66 @@
 'use strict';
 
-const { Node, EdgeTriggeredInput } = require('../../../../noodl-runtime');
+import type {
+  EditorConnectionLike,
+  GraphModelLike,
+  GraphNodeModel,
+  InspectInfo,
+  ModelLike,
+  ModelModule,
+  NodeContextLike,
+  NodeDefinitionOptions,
+  NodeInstance,
+  NodeModule,
+  RuntimeDiscoveredPort
+} from '@noodl/types';
 
-var Model = require('../../../model');
-const CloudStore = require('../../../api/cloudstore');
+import Node = require('../../../node');
+import EdgeTriggeredInput = require('../../../edgetriggeredinput');
+import ModelImport = require('../../../model');
+import CloudStore = require('../../../api/cloudstore');
 
-var ModelNodeDefinition = {
+const Model = ModelImport as unknown as ModelModule;
+
+/** One class in the project's `dbCollections` metadata. */
+interface DbCollectionMeta {
+  name: string;
+  schema?: {
+    properties?: Record<string, { type?: string; [extra: string]: unknown }>;
+  };
+}
+
+/**
+ * `this` inside the Record node.
+ *
+ * Structurally the Object node's backend twin, but the `prop-…` ports it publishes are
+ * *outputs only* (see `updatePorts`) — a Record is read here and written by the Set Record
+ * Properties node. That is why `inputValues`, `userInputSetter` and `scheduleStore` below
+ * are never exercised: they are the input half of a symmetry the editor does not offer.
+ */
+interface DbModelNodeInstance extends NodeInstance {
+  _internal: {
+    model?: ModelLike;
+    modelId?: string;
+    collectionId?: string;
+    error?: string;
+    inputValues: Record<string, unknown>;
+    /** Assigned an empty object in `initialize` and read nowhere. Dead. */
+    relationModelIds?: Record<string, unknown>;
+    onModelChangedCallback?: (args: { name: string }) => void;
+    /** `scheduleOnce` writes `hasScheduled<Type>` flags here. */
+    [extra: string]: unknown;
+  };
+  setCollectionID(id: string): void;
+  setModelID(id: string): void;
+  setModel(model: ModelLike): void;
+  scheduleOnce(type: string, cb: () => void): void;
+  setError(err: string): void;
+  clearWarnings(): void;
+  scheduleFetch(): void;
+  scheduleStore(): void;
+}
+
+const ModelNodeDefinition: NodeDefinitionOptions = {
   name: 'DbModel2',
   docs: 'https://docs.noodl.net/nodes/data/cloud-data/record',
   displayNodeName: 'Record',
@@ -20,13 +75,13 @@ var ModelNodeDefinition = {
       inputs: ['modelId']
     }
   ],
-  initialize: function () {
-    var internal = this._internal;
+  initialize: function (this: DbModelNodeInstance) {
+    const internal = this._internal;
     internal.inputValues = {};
     internal.relationModelIds = {};
 
-    var _this = this;
-    this._internal.onModelChangedCallback = function (args) {
+    const _this = this;
+    this._internal.onModelChangedCallback = function (args: { name: string }) {
       if (_this.isInputConnected('fetch')) return;
 
       if (_this.hasOutput('prop-' + args.name)) _this.flagOutputDirty('prop-' + args.name);
@@ -36,7 +91,7 @@ var ModelNodeDefinition = {
       _this.sendSignalOnOutput('changed');
     };
   },
-  getInspectInfo() {
+  getInspectInfo(this: DbModelNodeInstance): InspectInfo {
     const model = this._internal.model;
     if (!model) return '[No Record]';
 
@@ -50,7 +105,7 @@ var ModelNodeDefinition = {
       type: 'string',
       displayName: 'Id',
       group: 'General',
-      getter: function () {
+      getter: function (this: DbModelNodeInstance) {
         return this._internal.model ? this._internal.model.getId() : this._internal.modelId;
       }
     },
@@ -73,7 +128,7 @@ var ModelNodeDefinition = {
       type: 'string',
       displayName: 'Error',
       group: 'Error',
-      getter: function () {
+      getter: function (this: DbModelNodeInstance) {
         return this._internal.error;
       }
     }
@@ -91,14 +146,19 @@ var ModelNodeDefinition = {
       default: 'explicit',
       displayName: 'Id Source',
       group: 'General',
-      set: function (value) {
+      set: function (this: DbModelNodeInstance, value: unknown) {
         if (value === 'foreach') {
           this.scheduleAfterInputsHaveUpdated(() => {
             // Find closest nodescope that have a _forEachModel
-            var component = this.nodeScope.componentOwner;
+            let component = this.nodeScope.componentOwner;
             while (component !== undefined && component._forEachModel === undefined && component.parentNodeScope) {
               component = component.parentNodeScope.componentOwner;
             }
+            // DEFECT (PLAT-003 NOTES §27.3), left verbatim: when the walk finds no repeater
+            // this passes `undefined`, and `setModel` below dereferences its argument
+            // without a guard — so a Record node set to "From repeater" outside one throws
+            // a `TypeError`. The Object node's otherwise-identical `setModel` *does* guard
+            // (`modelnode2.ts`), and its comment says the undefined case is expected.
             this.setModel(component !== undefined ? component._forEachModel : undefined);
           });
         }
@@ -108,13 +168,13 @@ var ModelNodeDefinition = {
       type: { name: 'string', allowConnectionsOnly: true },
       displayName: 'Id',
       group: 'General',
-      set: function (value) {
-        if (value instanceof Model) value = value.getId();
+      set: function (this: DbModelNodeInstance, value: unknown) {
+        if (value instanceof Model) value = (value as ModelLike).getId();
         // Can be passed as model as well
-        else if (typeof value === 'object') value = Model.create(value).getId(); // If this is an js object, dereference it
+        else if (typeof value === 'object') value = Model.create(value as Record<string, unknown>).getId(); // If this is an js object, dereference it
 
-        this._internal.modelId = value; // Wait to fetch data
-        if (this.isInputConnected('fetch') === false) this.setModelID(value);
+        this._internal.modelId = value as string; // Wait to fetch data
+        if (this.isInputConnected('fetch') === false) this.setModelID(value as string);
         else {
           this.flagOutputDirty('id');
         }
@@ -123,21 +183,21 @@ var ModelNodeDefinition = {
     fetch: {
       displayName: 'Fetch',
       group: 'Actions',
-      valueChangedToTrue: function () {
+      valueChangedToTrue: function (this: DbModelNodeInstance) {
         this.scheduleFetch();
       }
     }
   },
   methods: {
-    setCollectionID: function (id) {
+    setCollectionID: function (this: DbModelNodeInstance, id: string) {
       this._internal.collectionId = id;
     },
-    setModelID: function (id) {
-      var model = (this.nodeScope.modelScope || Model).get(id);
+    setModelID: function (this: DbModelNodeInstance, id: string) {
+      const model = (this.nodeScope.modelScope || Model).get(id);
       // this._internal.modelIsNew = false;
       this.setModel(model);
     },
-    setModel: function (model) {
+    setModel: function (this: DbModelNodeInstance, model: ModelLike) {
       if (this._internal.model)
         // Remove old listener if existing
         this._internal.model.off('change', this._internal.onModelChangedCallback);
@@ -147,16 +207,16 @@ var ModelNodeDefinition = {
       model.on('change', this._internal.onModelChangedCallback);
 
       // We have a new model, mark all outputs as dirty
-      for (var key in model.data) {
+      for (const key in model.data) {
         if (this.hasOutput('prop-' + key)) this.flagOutputDirty('prop-' + key);
       }
       this.sendSignalOnOutput('fetched');
     },
-    _onNodeDeleted: function () {
+    _onNodeDeleted: function (this: DbModelNodeInstance) {
       Node.prototype._onNodeDeleted.call(this);
       if (this._internal.model) this._internal.model.off('change', this._internal.onModelChangedCallback);
     },
-    scheduleOnce: function (type, cb) {
+    scheduleOnce: function (this: DbModelNodeInstance, type: string, cb: () => void) {
       const _this = this;
       const _type = 'hasScheduled' + type;
       if (this._internal[_type]) return;
@@ -166,7 +226,7 @@ var ModelNodeDefinition = {
         cb();
       });
     },
-    setError: function (err) {
+    setError: function (this: DbModelNodeInstance, err: string) {
       this._internal.error = err;
       this.flagOutputDirty('error');
       this.sendSignalOnOutput('failure');
@@ -178,13 +238,13 @@ var ModelNodeDefinition = {
         });
       }
     },
-    clearWarnings() {
+    clearWarnings(this: DbModelNodeInstance) {
       if (this.context.editorConnection) {
         this.context.editorConnection.clearWarning(this.nodeScope.componentOwner.name, this.id, 'storage-op-warning');
       }
     },
-    scheduleFetch: function () {
-      var _this = this;
+    scheduleFetch: function (this: DbModelNodeInstance) {
+      const _this = this;
       const internal = this._internal;
 
       this.scheduleOnce('Fetch', function () {
@@ -198,8 +258,8 @@ var ModelNodeDefinition = {
         cloudstore.fetch({
           collection: internal.collectionId,
           objectId: internal.modelId, // Get the objectId part of the model id
-          success: function (response) {
-            var model = cloudstore._fromJSON(response, internal.collectionId);
+          success: function (response: Record<string, unknown>) {
+            const model = cloudstore._fromJSON(response, internal.collectionId);
             if (internal.model !== model) {
               // Check if we need to change model
               if (internal.model)
@@ -213,30 +273,32 @@ var ModelNodeDefinition = {
 
             delete response.objectId;
 
-            for (var key in response) {
+            for (const key in response) {
               if (_this.hasOutput('prop-' + key)) _this.flagOutputDirty('prop-' + key);
             }
 
             _this.sendSignalOnOutput('fetched');
           },
-          error: function (err) {
+          error: function (err: string) {
             _this.setError(err || 'Failed to fetch.');
           }
         });
       });
     },
-    scheduleStore: function () {
-      var _this = this;
-      var internal = this._internal;
+    // Dead: nothing calls this. `userInputSetter` — the only writer of `inputValues` — is
+    // reached only through a `prop-` *input*, and `updatePorts` publishes the `prop-` ports
+    // as outputs. Kept because deleting a method is an edit to a shipping definition.
+    scheduleStore: function (this: DbModelNodeInstance) {
+      const internal = this._internal;
       if (!internal.model) return;
 
       this.scheduleOnce('Store', function () {
-        for (var i in internal.inputValues) {
+        for (const i in internal.inputValues) {
           internal.model.set(i, internal.inputValues[i], { resolve: true });
         }
       });
     },
-    registerOutputIfNeeded: function (name) {
+    registerOutputIfNeeded: function (this: DbModelNodeInstance, name: string) {
       if (this.hasOutput(name)) {
         return;
       }
@@ -246,14 +308,16 @@ var ModelNodeDefinition = {
           getter: userOutputGetter.bind(this, name.substring('prop-'.length))
         });
     },
-    registerInputIfNeeded: function (name) {
-      var _this = this;
-
+    registerInputIfNeeded: function (this: DbModelNodeInstance, name: string) {
       if (this.hasInput(name)) {
         return;
       }
 
-      const dynamicSignals = {};
+      // DEFECT (PLAT-003 NOTES §27.3), left verbatim: `dynamicSignals` is an empty literal
+      // declared one line above the lookup that consults it, so the guard is always false
+      // and this whole `EdgeTriggeredInput` branch is unreachable. It is the shape of a
+      // table a sibling node fills in, emptied without removing the machinery.
+      const dynamicSignals: Record<string, () => void> = {};
 
       if (dynamicSignals[name])
         return this.registerInput(name, {
@@ -262,7 +326,7 @@ var ModelNodeDefinition = {
           })
         });
 
-      const dynamicSetters = {
+      const dynamicSetters: Record<string, (value: unknown) => void> = {
         collectionName: this.setCollectionID.bind(this)
       };
 
@@ -279,22 +343,27 @@ var ModelNodeDefinition = {
   }
 };
 
-function userOutputGetter(name) {
+function userOutputGetter(this: DbModelNodeInstance, name: string) {
   /* jshint validthis:true */
   return this._internal.model ? this._internal.model.get(name, { resolve: true }) : undefined;
 }
 
-function userInputSetter(name, value) {
+function userInputSetter(this: DbModelNodeInstance, name: string, value: unknown) {
   //console.log('dbmodel setter:',name,value)
   /* jshint validthis:true */
   this._internal.inputValues[name] = value;
 }
 
-function updatePorts(nodeId, parameters, editorConnection, graphModel) {
-  var ports = [];
+function updatePorts(
+  nodeId: string,
+  parameters: Record<string, unknown>,
+  editorConnection: EditorConnectionLike,
+  graphModel: GraphModelLike
+) {
+  const ports: RuntimeDiscoveredPort[] = [];
 
-  const dbCollections = graphModel.getMetaData('dbCollections');
-  const systemCollections = graphModel.getMetaData('systemCollections');
+  const dbCollections = graphModel.getMetaData('dbCollections') as DbCollectionMeta[] | undefined;
+  const systemCollections = graphModel.getMetaData('systemCollections') as DbCollectionMeta[] | undefined;
 
   const _systemClasses = [
     { label: 'User', value: '_User' },
@@ -320,18 +389,19 @@ function updatePorts(nodeId, parameters, editorConnection, graphModel) {
 
   if (parameters.collectionName && dbCollections) {
     // Fetch ports from collection keys
-    var c = dbCollections.find((c) => c.name === parameters.collectionName);
+    let c = dbCollections.find((c) => c.name === parameters.collectionName);
     if (c === undefined && systemCollections) c = systemCollections.find((c) => c.name === parameters.collectionName);
     if (c && c.schema && c.schema.properties) {
-      var props = c.schema.properties;
-      for (var key in props) {
-        var p = props[key];
+      const props = c.schema.properties;
+      for (const key in props) {
+        const p = props[key];
         if (ports.find((_p) => _p.name === key)) continue;
 
         if (p.type === 'Relation') {
+          // Relations are reached through the Add/Remove Relation nodes, not as a port here.
         } else {
           // Other schema type ports
-          const _typeMap = {
+          const _typeMap: Record<string, string> = {
             String: 'string',
             Boolean: 'boolean',
             Number: 'number',
@@ -363,33 +433,33 @@ function updatePorts(nodeId, parameters, editorConnection, graphModel) {
   editorConnection.sendDynamicPorts(nodeId, ports);
 }
 
-module.exports = {
+const DbModelNodeModule: NodeModule = {
   node: ModelNodeDefinition,
-  setup: function (context, graphModel) {
+  setup: function (context: NodeContextLike, graphModel: GraphModelLike) {
     if (!context.editorConnection || !context.editorConnection.isRunningLocally()) {
       return;
     }
 
-    function _managePortsForNode(node) {
+    function _managePortsForNode(node: GraphNodeModel) {
       updatePorts(node.id, node.parameters, context.editorConnection, graphModel);
 
-      node.on('parameterUpdated', function (event) {
+      node.on('parameterUpdated', function () {
         updatePorts(node.id, node.parameters, context.editorConnection, graphModel);
       });
 
-      graphModel.on('metadataChanged.dbCollections', function (data) {
+      graphModel.on('metadataChanged.dbCollections', function () {
         CloudStore.invalidateCollections();
         updatePorts(node.id, node.parameters, context.editorConnection, graphModel);
       });
 
-      graphModel.on('metadataChanged.systemCollections', function (data) {
+      graphModel.on('metadataChanged.systemCollections', function () {
         CloudStore.invalidateCollections();
         updatePorts(node.id, node.parameters, context.editorConnection, graphModel);
       });
     }
 
     graphModel.on('editorImportComplete', () => {
-      graphModel.on('nodeAdded.DbModel2', function (node) {
+      graphModel.on('nodeAdded.DbModel2', function (node: GraphNodeModel) {
         _managePortsForNode(node);
       });
 
@@ -399,3 +469,5 @@ module.exports = {
     });
   }
 };
+
+export = DbModelNodeModule;

@@ -263,6 +263,35 @@ export interface ModelModule {
 }
 
 /**
+ * A *scoped* record store — `Model.Scope`, reached as {@link NodeScopeLike.modelScope}.
+ *
+ * The idiom to recognise is `(this.nodeScope.modelScope || Model)`, which appears at
+ * roughly thirty sites across the data nodes. `modelScope` is normally `undefined`, and
+ * then records live in the one process-wide store the {@link ModelModule} itself owns;
+ * when it is set, the same ids resolve to a *different* set of records. That is what makes
+ * a sandboxed preview possible — the same graph, the same ids, an isolated store —
+ * and it is inherited: `componentinstance.ts` copies the parent scope's `modelScope` into
+ * each child scope it creates, so a whole component subtree shares one.
+ *
+ * It deliberately mirrors the module's own read/write surface rather than extending it:
+ * a scope has no constructor and no `prototype`, so `ModelModule` is not a supertype.
+ */
+export interface ModelScopeLike {
+  /** Fetches — or, for an unknown or omitted id, *creates* — the record. Never fails. */
+  get(id?: string): ModelLike;
+  /** Creates a record from a plain object. `data.id` picks the id; other keys are set. */
+  create(data?: Record<string, unknown>): ModelLike;
+  exists(id: string): boolean;
+  /** Throws on `null`/`undefined`, like {@link ModelModule.instanceOf}. */
+  instanceOf(value: unknown): boolean;
+  /** A 10-character random id. */
+  guid(): string;
+  /** Drops every record in this scope, and the cloud store cached against it. */
+  reset(): void;
+  [extra: string]: unknown;
+}
+
+/**
  * The payload of a {@link CollectionLike} `'add'` or `'remove'` notification.
  *
  * `'change'` carries no payload at all — it is notified with no argument immediately
@@ -492,6 +521,12 @@ export interface ComponentInstanceLike extends NodeInstance {
 /** The subset of `NodeScope` node definitions actually reach for. */
 export interface NodeScopeLike {
   componentOwner: ComponentInstanceLike;
+  /**
+   * The record store this scope's nodes read and write, or `undefined` for the global one.
+   * See {@link ModelScopeLike} — and note that every call site spells the fallback out as
+   * `(nodeScope.modelScope || Model)`, because `undefined` is the common case.
+   */
+  modelScope?: ModelScopeLike;
   /** Every live instance of `name` in this scope. Does not descend into child scopes. */
   getNodesWithType(name: string): NodeInstance[];
   /**
@@ -534,6 +569,11 @@ export interface EditorConnectionLike {
   clearWarning(componentName: string, nodeId: string, key: string): void;
   /**
    * Replace the editor's idea of a node's ports. The `runtime-discovered` mechanism.
+   *
+   * The array elements are {@link RuntimeDiscoveredPort}s. The parameter stays `unknown[]`
+   * rather than naming that type, because the call sites predate it and several build
+   * their arrays as `Record<string, unknown>[]`; authors writing new ones should annotate
+   * the array instead.
    */
   sendDynamicPorts(nodeId: string, ports: unknown[], options?: unknown): void;
   [extra: string]: unknown;
@@ -705,6 +745,42 @@ export interface RawDynamicPortEntry {
 }
 
 export type DynamicPortEntry = ConditionalPortGroup | RawDynamicPortEntry;
+
+/**
+ * One port in the editor's wire format — an element of the array handed to
+ * {@link EditorConnectionLike.sendDynamicPorts}.
+ *
+ * This is the *imperative* half of the dynamic-port story and should not be confused with
+ * {@link DynamicPortEntry}, which is the declarative `dynamicports` a definition carries.
+ * An entry there tells the editor a rule; one of these tells it a fact, computed from the
+ * project's own data — a record class's columns, a REST response's fields, a script's
+ * discovered outputs — and replaces the node's whole port set each time it is sent.
+ *
+ * Unlike {@link InputPortDefinition}, `plug` is required: an editor-side port has to say
+ * which side it belongs to, since there is no `inputs`/`outputs` object to place it in.
+ */
+export interface RuntimeDiscoveredPort {
+  name: string;
+  /**
+   * `'input/output'` declares *one* port on each side under the same name, which the Object
+   * node's `prop-…` ports and the editor's `detectRenamed` option both rely on. It has no
+   * counterpart in {@link InputPortDefinition.plug}, where a port's side is decided by which
+   * object it is declared in.
+   */
+  plug: 'input' | 'output' | 'input/output';
+  /** Omitted means the editor's default, which is `'*'`. */
+  type?: PortTypeSpec;
+  displayName?: string;
+  group?: string;
+  default?: unknown;
+  index?: number;
+  tab?: PortTab;
+  /** Groups this port under another in the property panel. */
+  parent?: string;
+  parentItemId?: string;
+  /** Anything the editor understands but the runtime does not need to name. */
+  [extra: string]: unknown;
+}
 
 /** A visual state (hover, pressed, …) a node's ports can carry per-state values for. */
 export interface VisualStateDefinition {
