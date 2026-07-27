@@ -127,7 +127,15 @@ export function PanelRow({
 
   return (
     <div
-      className={classNames(css['Root'], css[variant], isStacked && css['is-stacked'], UNSAFE_className)}
+      className={classNames(
+        css['Root'],
+        css[variant],
+        isStacked && css['is-stacked'],
+        // On the row, not just the label: a hidden label must not reserve its
+        // grid column, or every hidden-label row grows a 104px hole.
+        isLabelHidden && css['is-label-hidden'],
+        UNSAFE_className
+      )}
       style={UNSAFE_style}
       data-test={testId}
       // A hidden label is only a label if something announces it. `for` is the
