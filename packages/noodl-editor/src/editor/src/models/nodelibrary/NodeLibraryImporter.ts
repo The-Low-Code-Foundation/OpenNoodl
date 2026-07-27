@@ -9,6 +9,15 @@ import {
 } from '@noodl-models/nodelibrary/NodeLibraryData';
 
 import { EventDispatcher } from '../../../../shared/utils/EventDispatcher';
+import cloudNodeLibrary from './cloud-node-library.json';
+
+/**
+ * WFA-001 — the client id the generated cloud node library registers under.
+ *
+ * It is a client like any other as far as `ClientCollection` is concerned; it
+ * simply never disconnects.
+ */
+const STATIC_CLOUD_CLIENT_ID = '__cloud_node_library__';
 
 /**
  * Keep track of all the clients and their nodes.
@@ -97,6 +106,8 @@ export class NodeLibraryImporter {
 
   private currentNodeLibrary: NodeLibraryData = null;
   private clients = new ClientCollection();
+  /** WFA-001: whether the generated cloud library is in `currentNodeLibrary`. */
+  private hasStaticCloudLibrary = false;
 
   constructor() {
     EventDispatcher.instance.on(
@@ -104,6 +115,7 @@ export class NodeLibraryImporter {
       () => {
         this.clients.clear();
         this.currentNodeLibrary = null;
+        this.hasStaticCloudLibrary = false;
       },
       this
     );
@@ -119,6 +131,7 @@ export class NodeLibraryImporter {
 
     this.clients.clear();
     this.currentNodeLibrary = null;
+    this.hasStaticCloudLibrary = false;
   }
 
   /**
@@ -140,22 +153,47 @@ export class NodeLibraryImporter {
    * @returns
    */
   public onClientImport(clientId: string, runtimeType: RuntimeType, library: NodeLibraryData): void {
+    let updated = this.importLibrary(clientId, runtimeType, library);
+
+    /**
+     * WFA-001 — merge the generated cloud node library alongside the real one.
+     *
+     * The editor learns its node types from connected viewer clients. The
+     * browser types come from the preview window; the cloud types used to come
+     * from the hidden cloud-runtime window WF-007 deleted, and since then there
+     * have been **none** — a cloud function's canvas painted the Request and
+     * Response nodes from its own starter template as unknown types, and the
+     * node picker offered nothing that runs on a backend.
+     *
+     * It is merged *after* a real client rather than eagerly at boot so the
+     * assign/merge order is exactly what it is today: the browser client still
+     * establishes the library, and this only ever adds to it.
+     */
+    if (clientId !== STATIC_CLOUD_CLIENT_ID && !this.hasStaticCloudLibrary) {
+      this.hasStaticCloudLibrary = true;
+      // Deep-cloned: `assignNewLibrary`/`mergeUpdates` write `runtimeTypes` into
+      // the node objects, and this one is a module singleton shared across every
+      // project opened in this session.
+      const cloudLibrary = JSON.parse(JSON.stringify(cloudNodeLibrary)) as NodeLibraryData;
+      updated = this.importLibrary(STATIC_CLOUD_CLIENT_ID, RuntimeType.Cloud, cloudLibrary) || updated;
+    }
+
+    this.updateIndex(updated);
+  }
+
+  /** The assign-or-merge half of {@link onClientImport}, without the reload. */
+  private importLibrary(clientId: string, runtimeType: RuntimeType, library: NodeLibraryData): boolean {
     this.clients.import(clientId, runtimeType, library.nodetypes);
 
     console.debug('[nodelib] Received', runtimeType, ` (nodes: ${library.nodetypes.length})`);
 
     // Assign or update the new library into our current version.
-    let updated = false;
     if (!this.currentNodeLibrary) {
       this.assignNewLibrary(runtimeType, library);
-      updated = true;
-    } else {
-      if (this.mergeUpdates(runtimeType, library)) {
-        updated = true;
-      }
+      return true;
     }
 
-    this.updateIndex(updated);
+    return this.mergeUpdates(runtimeType, library);
   }
 
   private updateIndex(forceUpdate: boolean): void {
@@ -267,9 +305,13 @@ export class NodeLibraryImporter {
       mergeInByName(library.nodeIndex.moduleNodes, this.currentNodeLibrary.nodeIndex.moduleNodes);
     }
 
-    // do the same for project settings ports
-    mergeInByName(library.projectsettings.ports, this.currentNodeLibrary.projectsettings.ports);
-    mergeInByName(library.projectsettings.dynamicports, this.currentNodeLibrary.projectsettings.dynamicports);
+    // Do the same for project settings ports. WFA-001: guarded — a library
+    // without a `projectsettings` block (the generated cloud one has none; the
+    // cloud runtime has no project settings of its own) used to throw here.
+    if (library.projectsettings && this.currentNodeLibrary.projectsettings) {
+      mergeInByName(library.projectsettings.ports, this.currentNodeLibrary.projectsettings.ports);
+      mergeInByName(library.projectsettings.dynamicports, this.currentNodeLibrary.projectsettings.dynamicports);
+    }
 
     return updated;
   }

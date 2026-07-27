@@ -1,6 +1,6 @@
 # Phase 27 — Visual Backend Authoring (Track L): Progress
 
-**Status:** 📋 Specced, not started — 0 / 7
+**Status:** 🚧 In progress — 1 / 7 (WFA-001 complete)
 **Specced:** 2026-07-27, from a live end-to-end test of phase 19's workflow engine
 **Phase overview:** [README.md](./README.md)
 
@@ -12,7 +12,7 @@ Not started · In progress · **Built–not wired** · Complete · Superseded
 
 | ID | Title | Tier | Status | Landed | Notes |
 |---|---|---|---|---|---|
-| [WFA-001](./WFA-001-CLOUD-FUNCTIONS-RECONNECTED.md) | Cloud functions, reconnected | 1 | ⬜ Not started | — | A **regression against old Noodl**, not a new feature. Four cuts, all small; the deploy wire is the substantive half |
+| [WFA-001](./WFA-001-CLOUD-FUNCTIONS-RECONNECTED.md) | Cloud functions, reconnected | 1 | ✅ Complete | 2026-07-28 | There were **five** cuts, not four — the cloud node library never reached the editor after WF-007 (F25b). Full loop live-verified; two shipped defects found by running it (F26 export-without-Home, F28 hot-deploy crash). [Notes](./WFA-001-NOTES.md) |
 | [WFA-002](./WFA-002-RUN-INSPECTOR.md) | The run inspector | 1 | ⬜ Not started | — | Mostly switching on what WF-006 built. Independent of the canvas |
 | [WFA-003](./WFA-003-STEP-DATA-MAPPING.md) | Step data mapping & one payload shape | 2 | ⬜ Not started | — | Prerequisite for WFA-004. Backend-only; no editor work |
 | [WFA-004](./WFA-004-WORKFLOW-CANVAS.md) | The workflow canvas | 3 | ⬜ Not started | — | The big one. Reuse-or-escalate is the governing rule |
@@ -27,7 +27,7 @@ below was observed live unless marked *(read)*. Executors should re-confirm the 
 building around a finding — if one turns out to be stale, correct it here rather than implementing
 around the description.
 
-### The editor cannot reach the backend at all
+### The editor cannot reach the backend at all — **all closed by WFA-001, 2026-07-28**
 
 | # | Finding | Where | Owner |
 |---|---|---|---|
@@ -55,6 +55,17 @@ around the description.
 | F12 | The three entry points deliver **three different payload shapes**: webhook `{trigger, triggerId, slug, headers, query, body}` (`HttpServer.ts:1875`), schedule `{trigger, triggerId, firedAt, cron}`, manual `{trigger:'manual', triggerId, ...body}` (`admin-triggers.ts:121`), admin run `body.payload \|\| body` (`admin-workflows.ts:107`). A workflow authored against one breaks under another | as listed | WFA-003 |
 | F13 | Observed consequence of F11+F12: a workflow that worked from `POST /admin/workflow-defs/:id/run` failed from the same webhook with `Cannot order-compare undefined and 100`. The failure was **loud and precise**, which is the engine behaving correctly | live run `exec_ms3nr5vsuzmckc05` | WFA-003 |
 | F14 | Working around F11 today means each cloud function resolves its own source with a JS node (`previous.result ?? body ?? Inputs`). Functional, but every function carries adapter code | test fixtures, 2026-07-27 | WFA-003 |
+
+### Found by WFA-001, 2026-07-28
+
+| # | Finding | Where | Owner |
+|---|---|---|---|
+| F25b | **The fifth cut.** The editor's node library is delivered by connected viewer clients; the cloud runtime's client was the port-8577 window WF-007 deleted, so since then the editor has had **zero cloud node types**. A new cloud function painted its own template's Request/Response as unknown types and the picker offered nothing backend-capable. The spec's "cloud node types — intact, registered" was true of the package and false of the editor | `ViewerConnection.ts:380`, `NodeLibraryImporter.ts:187`; fixed by `scripts/cloud-node-library/` + a synthetic client | WFA-001 ✅ |
+| F26 | `StringInputPopup` renders **every** name prompt as an 8-line code editor with a line-number gutter and the placeholder `// Add your comment here...`, including "New component name". A faithful port of a legacy comment template, reused by component creation, component ports, `PropListType` and `StringListType` | `views/PopupLayer/StringInputPopup.tsx:62` | unowned — pre-existing, shared; first thing a user meets when creating a cloud function |
+| F27 | A Response node's dynamic parameter port (`params: 'id'`) is not in the exported `ports` array, so a connection into it does not survive the export and the runtime never creates the input. Returning a value through a Response parameter therefore does not work from a deployed function | `utils/exporter/util.ts` `exportComponent`; observed in a pushed bundle | unowned — WFA-006 territory |
+| F28 | **Hot-deploying a bundle crashed the backend service** (`exit 1`, mid-request): `cloudRunner.load()` re-imports components already in the runtime — always, since the bundle is loaded from disk at start — and `Duplicate component name` escapes the awaited call from a scheduled update, so a `try`/`catch` cannot contain it. Never seen because `backend:update-workflow` had no caller (F4) until WFA-001 | `WorkflowRunner.loadWorkflow`; fixed with a candidate-runner swap | WFA-001 ✅ |
+| F29 | Both frontend exporters bail on `!projectModel.getRootNode()`, so a project with **no Home component** could export no cloud functions at all — and the deployer read that as "no functions". Cloud functions have no visual root | `utils/exporter/json.ts:29,76`; fixed in `exporter/cloudFunctions.ts` | WFA-001 ✅ |
+| F30 | Creating a component while any non-default sheet is selected named it from the tree's **display** path, which has the sheet prefix stripped — so it landed in the default sheet (and at root, with no leading `/`). Dragging and folder-renaming had the same bug. Pre-existing for `#Pages`; fatal for `#__cloud__` | `ComponentsPanelNew/hooks/useComponentActions.ts`; fixed generally | WFA-001 ✅ |
 
 ### What already exists and is worth reusing
 
@@ -100,6 +111,23 @@ around the description.
 
 ## Log
 
+- **2026-07-28** — **WFA-001 complete.** The cloud sheet is a first-class, always-listed, protected
+  sheet in the existing Components panel (decision (b)) and is deliberately kept out of the flattened
+  "All" tree, because "All" strips sheet prefixes and would merge two *runtimes* into one namespace.
+  The three create menus resolve their templates from the selected sheet's runtime, and creation,
+  dragging and folder-renaming now put the sheet prefix back — that was broken for every sheet, not
+  just the cloud one (F30). Functions reach the backend on save (hash-gated), on backend start, and on
+  demand, with the backend's own function list on the Backend Services card so a bad push cannot be
+  silent. Four cuts closed — and a fifth found: **the editor has had no cloud node types at all since
+  WF-007** deleted the cloud runtime's viewer client (F25b), so the starter template's own nodes
+  painted as unknown. Fixed with a generated cloud node library (`cloud-library:check` gates it in CI)
+  registered as a client that never disconnects. Running the loop found two further shipped defects,
+  both fixed: cloud functions could not be exported from a project with **no Home component** (F29),
+  and **hot deploy crashed the backend service** with `Duplicate component name` (F28) — the first
+  time `backend:update-workflow` has ever been called since WF-004 shipped it. Full live pass in
+  [WFA-001-NOTES.md](./WFA-001-NOTES.md): function authored on canvas → deployed on backend start →
+  `POST /functions/saveOrder` → record visible in the Data browser → component deleted → 404.
+  Editor suite 1667/0.
 - **2026-07-27** — Phase specced. Trigger: a live end-to-end test of phase 19 drove the whole exit
   criterion successfully against a standalone `nodegx-backend` — webhook and cron both firing one
   workflow, DB read and write, branch, retry with backoff, error routing, merge, per-step history,

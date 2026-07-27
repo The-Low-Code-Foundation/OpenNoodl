@@ -129,6 +129,41 @@
   overflow-wrap: anywhere;
 }
 
+/* WFA-001: what the backend is serving, between the info line and the actions.
+   Absent entirely for a project with no cloud functions. */
+.CloudFunctions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--theme-color-border-default);
+}
+
+.CloudFunctionsHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+.CloudFunctionsList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    display: flex;
+    align-items: flex-start;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+}
+
 .Info {
   margin-bottom: 8px;
   padding-top: 8px;

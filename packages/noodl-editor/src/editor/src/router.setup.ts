@@ -7,6 +7,7 @@ import { KeyCode, KeyMod } from '@noodl-utils/keyboard/KeyCode';
 import { IconName } from '@noodl-core-ui/components/common/Icon';
 
 import config from '../../shared/config/config';
+import { CloudFunctionDeployer } from './services/CloudFunctionDeployer';
 import { AuthoringPreviewDocumentProvider } from './views/documents/AuthoringPreviewDocument';
 import { ChangeReviewDocumentProvider } from './views/documents/ChangeReviewDocument';
 import { ComponentDiffDocumentProvider } from './views/documents/ComponentDiffDocument';
@@ -75,8 +76,14 @@ export function installSidePanel({ isLesson }: SetupEditorOptions) {
     panelProps: {
       // This is a temporary solution so we can keep the state of open folder etc
       options: {
-        showSheetList: true,
-        hideSheets: ['__cloud__']
+        showSheetList: true
+        // WFA-001: `hideSheets: ['__cloud__']` used to be here, and it filtered
+        // cloud functions out of both the sheet dropdown and the tree — the
+        // first of the four cuts that made everything phases 19 and 22 built
+        // unreachable from the editor. The cloud sheet is now a first-class,
+        // always-listed sheet; it is still kept out of the flattened "All" tree,
+        // but that is `useComponentsPanel`'s decision about runtime boundaries
+        // rather than a panel option. See WFA-001-NOTES.md decision 1.
       }
     },
     panel: ComponentsPanel
@@ -138,6 +145,12 @@ export function installSidePanel({ isLesson }: SetupEditorOptions) {
   // Must start at boot, not at panel mount: the selection Explain needs to see
   // is cleared by the sidebar switch that mounts the panel. See explainTarget.ts.
   startExplainTargetTracking();
+
+  // WFA-001: also at boot, and for the same class of reason — cloud functions
+  // must reach a running backend whether or not the Backend Services panel has
+  // ever been opened. Subscribes to project saves; pushes nothing until there
+  // is a running backend and a cloud function to push.
+  CloudFunctionDeployer.start();
 
   SidebarModel.instance.register({
     experimental: true,

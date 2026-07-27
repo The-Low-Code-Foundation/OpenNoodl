@@ -6,7 +6,7 @@ import { WarningsModel } from '@noodl-models/warningsmodel';
 
 import { EventDispatcher } from '../../../../../../shared/utils/EventDispatcher';
 import { buildKindIndex, ComponentKindIndex } from '../componentKind';
-import { Sheet, TreeNode } from '../types';
+import { CLOUD_SHEET, Sheet, TreeNode } from '../types';
 
 /**
  * useComponentsPanel
@@ -149,13 +149,35 @@ export function useComponentsPanel(options: UseComponentsPanelOptions = {}) {
       const displayName = folderName.substring(1); // Remove # prefix
       if (!hideSheets.includes(displayName) && !hideSheets.includes(folderName)) {
         result.push({
-          name: displayName,
+          name: folderName === CLOUD_SHEET.folderName ? CLOUD_SHEET.displayName : displayName,
           folderName,
           isDefault: false,
-          componentCount: sheetCounts.get(folderName) || 0
+          componentCount: sheetCounts.get(folderName) || 0,
+          isCloud: folderName === CLOUD_SHEET.folderName
         });
       }
     });
+
+    /**
+     * WFA-001: the cloud sheet is listed whether or not it exists yet.
+     *
+     * Sheets are derived from component names, so a project with no cloud
+     * functions has no `#__cloud__` sheet — and "Add Sheet" refuses `#` in a
+     * name, so there would be no way to author the first one. Synthesising the
+     * entry (count 0) is what makes the door reachable; the tree itself is
+     * untouched until something is actually created.
+     */
+    if (!hideSheets.includes(CLOUD_SHEET.folderName) && !hideSheets.includes('__cloud__')) {
+      if (!result.some((s) => s.folderName === CLOUD_SHEET.folderName)) {
+        result.push({
+          name: CLOUD_SHEET.displayName,
+          folderName: CLOUD_SHEET.folderName,
+          isDefault: false,
+          componentCount: 0,
+          isCloud: true
+        });
+      }
+    }
 
     // Sort non-default sheets alphabetically
     result.sort((a, b) => {
@@ -292,6 +314,19 @@ function buildTreeFromProject(
     // Filter by hideSheets
     const sheet = getSheetForComponent(comp.name);
     if (hideSheets.includes(sheet)) {
+      return;
+    }
+
+    /**
+     * WFA-001: cloud components are never drawn in the flattened "All" tree.
+     *
+     * "All" strips the sheet prefix from every display path (below), so
+     * `/#__cloud__/saveOrder` would be drawn at `/saveOrder`, sharing a folder
+     * namespace with browser components and inheriting the browser create menu.
+     * Two different runtimes must not be merged into one namespace — select the
+     * Cloud Functions sheet to see them.
+     */
+    if (currentSheet === null && comp.name.startsWith(CLOUD_SHEET.pathPrefix)) {
       return;
     }
 

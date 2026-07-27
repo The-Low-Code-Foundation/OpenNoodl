@@ -88,4 +88,27 @@ export interface Sheet {
   isDefault: boolean;
   /** Number of components in this sheet */
   componentCount: number;
+  /**
+   * WFA-001: the cloud sheet (`#__cloud__`) — components that run on the
+   * backend, not in the browser. It is always listed even when empty (there
+   * would otherwise be no way to author the first cloud function), it cannot be
+   * renamed or deleted, and its components are kept out of the flattened "All"
+   * tree. See `CLOUD_SHEET` below and WFA-001-NOTES.md decision 1.
+   */
+  isCloud?: boolean;
 }
+
+/**
+ * WFA-001 — the one place the cloud sheet's identity is written down.
+ *
+ * `RuntimeType` is resolved from this same prefix (`utils/NodeGraph/index.ts`),
+ * so this is a runtime boundary rather than an ordinary organisational folder.
+ */
+export const CLOUD_SHEET = {
+  /** Folder name as it appears in a component path: `/#__cloud__/saveOrder`. */
+  folderName: '#__cloud__',
+  /** Path prefix, including the leading slash and trailing slash. */
+  pathPrefix: '/#__cloud__/',
+  /** What a user sees in the sheet list. */
+  displayName: 'Cloud Functions'
+} as const;

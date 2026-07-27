@@ -50,6 +50,8 @@
     "test:platform": "lerna exec --scope @noodl/platform-node -- npm test",
     "test:packages": "lerna run test --stream --concurrency 1 --scope @noodl/runtime --scope @noodl/nodegx-backend --scope @noodl/noodl-viewer-react --scope @noodl/preview --scope @noodl/mcp --scope @noodl/cloud-runtime",
     "check:persistence": "lerna run build --stream --scope @noodl/nodegx-backend && node scripts/check-packaged-persistence.js",
+    "cloud-library:generate": "node scripts/cloud-node-library/generate.js",
+    "cloud-library:check": "node scripts/cloud-node-library/generate.js --check",
     "catalog:generate": "node scripts/node-catalog/generate.js",
     "catalog:check": "node scripts/node-catalog/generate.js --check",
     "catalog:validate": "node scripts/node-catalog/validate-project.js",

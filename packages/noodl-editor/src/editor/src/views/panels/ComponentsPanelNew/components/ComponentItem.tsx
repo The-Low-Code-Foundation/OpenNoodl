@@ -14,7 +14,7 @@ import { showContextMenuInPopup } from '../../../ShowContextMenuInPopup';
 import { iconForKind, labelForKind } from '../componentKind';
 import css from '../ComponentsPanel.module.scss';
 import { ComponentTemplates } from '../ComponentTemplates';
-import { ComponentItemData, Sheet, TreeNode } from '../types';
+import { CLOUD_SHEET, ComponentItemData, Sheet, TreeNode } from '../types';
 import { RenameInput } from './RenameInput';
 import { WarningDot } from './WarningDot';
 
@@ -47,6 +47,8 @@ interface ComponentItemProps {
   onMoveToSheet?: (componentPath: string, sheet: Sheet) => void;
   /** PNL-006: kept only as ancestry for a filter match — rendered dimmed. */
   isDimmed?: boolean;
+  /** WFA-001: which runtime the create menu authors for — see `ComponentTree`. */
+  runtimeType?: 'browser' | 'cloud';
 }
 
 export function ComponentItem({
@@ -72,7 +74,8 @@ export function ComponentItem({
   onRenameCancel,
   sheets,
   onMoveToSheet,
-  isDimmed
+  isDimmed,
+  runtimeType = 'browser'
 }: ComponentItemProps) {
   const itemRef = useRef<HTMLDivElement>(null);
   const dragStartPos = useRef<{ x: number; y: number } | null>(null);
@@ -173,9 +176,15 @@ export function ComponentItem({
 
       // Add "Create" menu items if handlers are provided
       if (onAddComponent && onAddFolder) {
-        // Get templates for browser runtime (default)
+        // WFA-001: nesting *inside a component*, so `forParentType` is
+        // 'component'. This is what keeps "Cloud Function Component" out of
+        // this menu even on the cloud sheet: the template declares
+        // `parentTypes: ['folder']`, and a function nested inside another
+        // function would export as `/#__cloud__/outer/inner` — a name the
+        // backend's `/functions/:name` route cannot address.
         const templates = ComponentTemplates.instance.getTemplates({
-          forRuntimeType: 'browser'
+          forParentType: 'component',
+          forRuntimeType: runtimeType
         });
 
         // Add template creation items
@@ -223,8 +232,16 @@ export function ComponentItem({
         onClick: () => onDuplicate?.(node)
       });
 
-      // Add "Move to" option if sheets are available
-      if (sheets && sheets.length > 0 && onMoveToSheet) {
+      /**
+       * "Move to…". WFA-001: the cloud sheet is not an organisational folder
+       * but a runtime boundary, so it is neither a source nor a destination
+       * here — moving a component across it would change what executes it, and
+       * a menu that reads like tidying should not do that. Use it from the
+       * cloud sheet's own create menu instead.
+       */
+      const movableSheets = (sheets || []).filter((s) => !s.isCloud);
+      const isCloudComponent = component.path.startsWith(CLOUD_SHEET.pathPrefix);
+      if (!isCloudComponent && movableSheets.length > 0 && onMoveToSheet) {
         items.push('divider');
 
         // "Move to" opens a separate popup with sheet options
@@ -233,13 +250,13 @@ export function ComponentItem({
           icon: IconName.FolderClosed,
           onClick: () => {
             // Determine which sheet this component is currently in
-            const currentSheetFolder = sheets.find(
+            const currentSheetFolder = movableSheets.find(
               (s) => !s.isDefault && component.path.startsWith('/' + s.folderName + '/')
             );
             const isInDefaultSheet = !currentSheetFolder;
 
             // Create sheet selection menu items
-            const sheetItems: TSFixme[] = sheets.map((sheet) => {
+            const sheetItems: TSFixme[] = movableSheets.map((sheet) => {
               const isCurrentSheet = sheet.isDefault
                 ? isInDefaultSheet
                 : sheet.folderName === currentSheetFolder?.folderName;
@@ -277,7 +294,19 @@ export function ComponentItem({
         width: MenuDialogWidth.Default
       });
     },
-    [component, onOpen, onMakeHome, onRename, onDuplicate, onDelete, onAddComponent, onAddFolder, sheets, onMoveToSheet]
+    [
+      component,
+      onOpen,
+      onMakeHome,
+      onRename,
+      onDuplicate,
+      onDelete,
+      onAddComponent,
+      onAddFolder,
+      sheets,
+      onMoveToSheet,
+      runtimeType
+    ]
   );
 
   const handleDoubleClick = useCallback(() => {

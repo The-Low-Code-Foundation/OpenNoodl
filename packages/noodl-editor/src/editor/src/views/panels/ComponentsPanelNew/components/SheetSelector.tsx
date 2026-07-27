@@ -31,6 +31,17 @@ interface SheetSelectorProps {
 }
 
 /**
+ * WFA-001: which sheets a user may rename or delete.
+ *
+ * "Default" is not a real folder, and the cloud sheet's name is a runtime
+ * boundary the exporter, `RuntimeType` and `CloudRunner` all resolve from — a
+ * rename would silently detach every function from the backend that serves it.
+ */
+function canManageSheet(sheet: Sheet): boolean {
+  return !sheet.isDefault && !sheet.isCloud;
+}
+
+/**
  * SheetSelector displays a dropdown to switch between component sheets.
  * When no sheet is selected, all components are shown.
  */
@@ -167,7 +178,7 @@ export function SheetSelector({
                 key={sheet.folderName || 'default'}
                 className={classNames(css['SheetItem'], {
                   [css['Selected']]: currentSheet?.folderName === sheet.folderName,
-                  [css['HasActions']]: !sheet.isDefault && (onRenameSheet || onDeleteSheet)
+                  [css['HasActions']]: canManageSheet(sheet) && (onRenameSheet || onDeleteSheet)
                 })}
                 onClick={() => handleSelectSheet(sheet)}
               >
@@ -179,8 +190,8 @@ export function SheetSelector({
                 <span className={css['SheetLabel']}>{sheet.name}</span>
                 <span className={css['SheetCount']}>({sheet.componentCount})</span>
 
-                {/* Action buttons for non-default sheets */}
-                {!sheet.isDefault && (onRenameSheet || onDeleteSheet) && (
+                {/* Action buttons for ordinary sheets */}
+                {canManageSheet(sheet) && (onRenameSheet || onDeleteSheet) && (
                   <div
                     className={classNames(css['SheetActions'], {
                       [css['Visible']]: activeSheetMenu === sheet.folderName

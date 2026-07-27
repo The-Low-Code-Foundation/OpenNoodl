@@ -53,7 +53,8 @@ export function BackendServicesPanel() {
     createBackend: createLocalBackend,
     deleteBackend: deleteLocalBackend,
     startBackend: startLocalBackend,
-    stopBackend: stopLocalBackend
+    stopBackend: stopLocalBackend,
+    deployCloudFunctions
   } = useLocalBackends();
 
   // Initialize backends on mount
@@ -240,6 +241,7 @@ export function BackendServicesPanel() {
                   <LocalBackendCard
                     key={backend.id}
                     backend={backend}
+                    onDeployCloudFunctions={() => deployCloudFunctions(backend.id)}
                     onStart={async (options) => {
                       const ok = await startLocalBackend(backend.id, options);
                       // WF-004 convenience: a running local backend becomes the

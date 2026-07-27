@@ -14,7 +14,7 @@ import { showContextMenuInPopup } from '../../../ShowContextMenuInPopup';
 import { iconForKind, labelForKind } from '../componentKind';
 import css from '../ComponentsPanel.module.scss';
 import { ComponentTemplates } from '../ComponentTemplates';
-import { FolderItemData, Sheet, TreeNode } from '../types';
+import { CLOUD_SHEET, FolderItemData, Sheet, TreeNode } from '../types';
 import { RenameInput } from './RenameInput';
 import { WarningDot } from './WarningDot';
 
@@ -51,6 +51,8 @@ interface FolderItemProps {
   onDuplicate?: (node: TreeNode) => void;
   /** PNL-006: kept only as ancestry for a filter match — rendered dimmed. */
   isDimmed?: boolean;
+  /** WFA-001: which runtime the create menu authors for — see `ComponentTree`. */
+  runtimeType?: 'browser' | 'cloud';
 }
 
 export function FolderItem({
@@ -79,7 +81,8 @@ export function FolderItem({
   onOpen,
   onMakeHome,
   onDuplicate,
-  isDimmed
+  isDimmed,
+  runtimeType = 'browser'
 }: FolderItemProps) {
   const itemRef = useRef<HTMLDivElement>(null);
   const dragStartPos = useRef<{ x: number; y: number } | null>(null);
@@ -171,9 +174,11 @@ export function FolderItem({
 
       // Add "Create" menu items if handlers are provided
       if (onAddComponent && onAddFolder) {
-        // Get templates for browser runtime (default)
+        // WFA-001: a folder's create menu authors for the sheet's runtime, and
+        // declares itself a folder context so `parentTypes` is honoured.
         const templates = ComponentTemplates.instance.getTemplates({
-          forRuntimeType: 'browser'
+          forParentType: 'folder',
+          forRuntimeType: runtimeType
         });
 
         // Add template creation items
@@ -231,11 +236,12 @@ export function FolderItem({
 
       // Add "Move to" option for any folder that has a path and sheets are available
       // Works for both component-folders and regular folders
-      if (folder.path && sheets && sheets.length > 0 && onMoveToSheet) {
+      // WFA-001: the cloud sheet is a runtime boundary, not a destination — see
+      // the same guard in `ComponentItem`.
+      const movableSheets = (sheets || []).filter((s) => !s.isCloud);
+      const folderPath = folder.isComponentFolder && folder.component ? folder.component.name : folder.path;
+      if (folder.path && !folderPath.startsWith(CLOUD_SHEET.pathPrefix) && movableSheets.length > 0 && onMoveToSheet) {
         items.push('divider');
-
-        // Use component.name for component-folders, folder.path for regular folders
-        const folderPath = folder.isComponentFolder && folder.component ? folder.component.name : folder.path;
 
         // "Move to" opens a separate popup with sheet options
         items.push({
@@ -243,13 +249,13 @@ export function FolderItem({
           icon: IconName.FolderClosed,
           onClick: () => {
             // Determine which sheet this folder is currently in
-            const currentSheetFolder = sheets.find(
+            const currentSheetFolder = movableSheets.find(
               (s) => !s.isDefault && folderPath.startsWith('/' + s.folderName + '/')
             );
             const isInDefaultSheet = !currentSheetFolder;
 
             // Create sheet selection menu items
-            const sheetItems: TSFixme[] = sheets.map((sheet) => {
+            const sheetItems: TSFixme[] = movableSheets.map((sheet) => {
               const isCurrentSheet = sheet.isDefault
                 ? isInDefaultSheet
                 : sheet.folderName === currentSheetFolder?.folderName;
@@ -287,7 +293,19 @@ export function FolderItem({
         width: MenuDialogWidth.Default
       });
     },
-    [folder, onRename, onDelete, onAddComponent, onAddFolder, sheets, onMoveToSheet, onOpen, onMakeHome, onDuplicate]
+    [
+      folder,
+      onRename,
+      onDelete,
+      onAddComponent,
+      onAddFolder,
+      sheets,
+      onMoveToSheet,
+      onOpen,
+      onMakeHome,
+      onDuplicate,
+      runtimeType
+    ]
   );
 
   const handleDoubleClick = useCallback(() => {

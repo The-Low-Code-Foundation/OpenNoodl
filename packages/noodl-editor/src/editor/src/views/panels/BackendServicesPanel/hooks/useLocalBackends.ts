@@ -10,6 +10,8 @@
 
 import { useCallback, useEffect, useState } from 'react';
 
+import { CloudFunctionDeployer } from '../../../../services/CloudFunctionDeployer';
+
 /** Backend metadata as stored in config.json */
 export interface LocalBackendMetadata {
   id: string;
@@ -59,6 +61,8 @@ export interface UseLocalBackendsReturn {
   stopBackend: (id: string) => Promise<boolean>;
   /** Export schema */
   exportSchema: (id: string, format: 'postgres' | 'supabase' | 'json') => Promise<string | null>;
+  /** WFA-001: push the project's cloud functions to this backend now. */
+  deployCloudFunctions: (id: string) => Promise<boolean>;
 }
 
 /**
@@ -177,6 +181,16 @@ export function useLocalBackends(): UseLocalBackendsReturn {
       setError(null);
       try {
         await invokeIPC<{ running: boolean }>('backend:start', id, options ?? {});
+
+        /**
+         * WFA-001 (finding F6): a backend loads `*.workflow.json` from its data
+         * directory at start, so without this it comes up with whatever the last
+         * session left — usually nothing — regardless of what the open project
+         * contains. Awaited so the card's function list is already right by the
+         * time the button stops saying "Processing…".
+         */
+        await CloudFunctionDeployer.onBackendStarted(id);
+
         await refresh();
         return true;
       } catch (err) {
@@ -232,6 +246,15 @@ export function useLocalBackends(): UseLocalBackendsReturn {
     []
   );
 
+  const deployCloudFunctions = useCallback(async (id: string): Promise<boolean> => {
+    setIsOperating(true);
+    try {
+      return await CloudFunctionDeployer.pushToBackend(id, { force: true });
+    } finally {
+      setIsOperating(false);
+    }
+  }, []);
+
   return {
     backends,
     isLoading,
@@ -242,6 +265,7 @@ export function useLocalBackends(): UseLocalBackendsReturn {
     deleteBackend,
     startBackend,
     stopBackend,
-    exportSchema
+    exportSchema,
+    deployCloudFunctions
   };
 }

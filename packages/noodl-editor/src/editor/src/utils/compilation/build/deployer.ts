@@ -3,6 +3,7 @@ import { filesystem } from '@noodl/platform';
 import { ProjectModel } from '@noodl-models/projectmodel';
 
 import * as Exporter from '../../exporter';
+import { isCloudFunctionComponent } from '../../exporter/cloudFunctions';
 import { DeployEnvironment } from '../build-context';
 import { copyProjectFilesToFolder, formatCopyReportSummary, ProjectCopyReport } from './copy';
 import { loadDeployIndex, copyDeployFilesToFolder, getExternalFolderPath } from './deploy-index';
@@ -71,8 +72,10 @@ export async function deployToFolder({
     useBundles: true,
     useBundleHashes: true,
     environment,
-    // Remove all the cloud function components
-    ignoreComponentFilter: (component) => !component.name.startsWith('/#__cloud__/')
+    // Remove all the cloud function components. WFA-001: the shared predicate,
+    // negated — `exportCloudFunctionsToJSON` keeps exactly what this drops, and
+    // a spec asserts the two partition the component set.
+    ignoreComponentFilter: (component) => !isCloudFunctionComponent(component)
   });
 
   if (!exportJson) {

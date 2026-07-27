@@ -129,6 +129,12 @@ jobs:
       # node documented — new nodes cannot ship without an enrichment entry.
       - run: npm run catalog:examples
       - run: npm run catalog:merge:check
+      # WFA-001: the same freshness contract for the cloud node library the
+      # editor ships (models/nodelibrary/cloud-node-library.json). It is what
+      # gives a cloud function's canvas its node types — the cloud runtime has
+      # no viewer client to deliver them — so a cloud node added or renamed
+      # without regenerating leaves the editor painting it as an unknown type.
+      - run: npm run cloud-library:check
 
   library:
     name: Library check (LIB-001)

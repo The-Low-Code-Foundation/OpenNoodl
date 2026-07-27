@@ -21,6 +21,7 @@ import { Text, TextType } from '@noodl-core-ui/components/typography/Text';
 import { useSidePanelLayoutContext } from '../../../../pages/EditorPage/useSidePanelLayout';
 import { showContextMenuInPopup } from '../../../ShowContextMenuInPopup';
 import { LocalBackendInfo } from '../hooks/useLocalBackends';
+import { CloudFunctionsSection } from './CloudFunctionsSection';
 import { BACKEND_SERVICES_PANEL_ID, BackendSurfaceKind, openBackendSurface } from './backendSurfaces';
 import css from './LocalBackendCard.module.scss';
 
@@ -35,6 +36,8 @@ export interface LocalBackendCardProps {
   onDelete: () => void;
   /** Called when export is requested */
   onExport?: () => void;
+  /** WFA-001: push the project's cloud functions to this backend now. */
+  onDeployCloudFunctions: () => Promise<boolean>;
 }
 
 /**
@@ -59,7 +62,14 @@ function getStatusDisplay(backend: LocalBackendInfo): { icon: IconName; color: s
   return { icon: IconName.CircleOpen, color: 'var(--theme-color-fg-default-shy)', text: 'Stopped' };
 }
 
-export function LocalBackendCard({ backend, onStart, onStop, onDelete, onExport }: LocalBackendCardProps) {
+export function LocalBackendCard({
+  backend,
+  onStart,
+  onStop,
+  onDelete,
+  onExport,
+  onDeployCloudFunctions
+}: LocalBackendCardProps) {
   const [isOperating, setIsOperating] = useState(false);
   const statusDisplay = getStatusDisplay(backend);
   const layout = useSidePanelLayoutContext();
@@ -249,6 +259,13 @@ export function LocalBackendCard({ backend, onStart, onStop, onDelete, onExport 
           </Text>
         </div>
       )}
+
+      {/* WFA-001: what this backend is serving, and how to push again. */}
+      <CloudFunctionsSection
+        backendId={backend.id}
+        isRunning={backend.running}
+        onDeploy={onDeployCloudFunctions}
+      />
 
       {/* Info */}
       <div className={css.Info}>

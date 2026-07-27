@@ -21,7 +21,38 @@ import { TreeNode } from '../types';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const PopupLayer = require('@noodl-views/popuplayer').default;
 
-export function useComponentActions() {
+export interface UseComponentActionsOptions {
+  /**
+   * WFA-001 — the selected sheet's folder name (`#__cloud__`, `#Pages`, …), or
+   * `''` for the default sheet / the "All" view.
+   *
+   * The tree hands these handlers **display** paths, which have had the sheet
+   * prefix stripped (`useComponentsPanel.buildTreeFromProject`). Without this,
+   * creating a component while a sheet is selected names it `/Home` instead of
+   * `/#Pages/Home` — it lands in the default sheet and disappears from the view
+   * it was created in — and dragging one into a folder yanks it out of its
+   * sheet. Harmless-looking for `#Pages`; for `#__cloud__` it silently turns a
+   * cloud function into a browser component that no backend will ever serve.
+   */
+  sheetPrefix?: string;
+}
+
+/**
+ * WFA-001 — turn a tree display path into an absolute folder path.
+ *
+ * Always absolute and always trailing-slashed, so `path + localName` is a
+ * component name in the same shape as every other producer of one
+ * (`moveToSheet`, `handleAddFolder`). The old normalisation mapped root to `''`,
+ * which produced components named `Home` with no leading slash.
+ */
+function toFolderPath(sheetPrefix: string, parentPath?: string): string {
+  const relative = !parentPath || parentPath === '/' ? '/' : parentPath.startsWith('/') ? parentPath : '/' + parentPath;
+  const joined = sheetPrefix + relative;
+  return joined.endsWith('/') ? joined : joined + '/';
+}
+
+export function useComponentActions(options: UseComponentActionsOptions = {}) {
+  const { sheetPrefix = '' } = options;
   const handleMakeHome = useCallback((node: TreeNode) => {
     // Support both component nodes and folder nodes (for component-folders)
     let component;
@@ -182,9 +213,10 @@ export function useComponentActions() {
 
       return true;
     } else if (node.type === 'folder') {
-      const oldPath = node.data.path;
-      const parentPath = oldPath.includes('/') ? oldPath.substring(0, oldPath.lastIndexOf('/')) : '';
-      const newPath = parentPath ? `${parentPath}/${newName}` : newName;
+      // WFA-001: display path → real component path (see `handleDropOn`).
+      const oldPath = sheetPrefix + node.data.path;
+      const parentPath = oldPath.substring(0, oldPath.lastIndexOf('/'));
+      const newPath = `${parentPath}/${newName}`;
 
       // Get all components in this folder
       const componentsToRename = ProjectModel.instance
@@ -245,7 +277,7 @@ export function useComponentActions() {
     }
 
     return false;
-  }, []);
+  }, [sheetPrefix]);
 
   const handleOpen = useCallback((node: TreeNode) => {
     // Support both component nodes and folder nodes (for component-folders)
@@ -273,70 +305,76 @@ export function useComponentActions() {
   /**
    * Handle adding a new component using a template
    */
-  const handleAddComponent = useCallback((template: TSFixme, parentPath?: string) => {
-    // Normalize parent path: '/' means root (empty string), otherwise use as-is
-    const finalParentPath = !parentPath || parentPath === '/' ? '' : parentPath;
+  const handleAddComponent = useCallback(
+    (template: TSFixme, parentPath?: string) => {
+      const finalParentPath = toFolderPath(sheetPrefix, parentPath);
 
-    const popup = template.createPopup({
-      onCreate: (localName: string, options?: TSFixme) => {
-        const componentName = finalParentPath + localName;
+      const popup = template.createPopup({
+        onCreate: (localName: string, options?: TSFixme) => {
+          const componentName = finalParentPath + localName;
 
-        // Validate name
-        if (!localName || localName.trim() === '') {
-          ToastLayer.showError('Component name cannot be empty');
-          return;
-        }
+          // Validate name
+          if (!localName || localName.trim() === '') {
+            ToastLayer.showError('Component name cannot be empty');
+            return;
+          }
 
-        if (ProjectModel.instance?.getComponentWithName(componentName)) {
-          ToastLayer.showError('Component name already exists. Name must be unique.');
-          return;
-        }
+          if (ProjectModel.instance?.getComponentWithName(componentName)) {
+            ToastLayer.showError('Component name already exists. Name must be unique.');
+            return;
+          }
 
-        // Create component with undo support
-        const undoGroup = new UndoActionGroup({ label: 'add component' });
+          // Create component with undo support
+          const undoGroup = new UndoActionGroup({ label: 'add component' });
 
-        let component: ComponentModel;
-        if (template) {
-          component = template.createComponent(componentName, options, undoGroup);
-        } else {
-          component = new ComponentModel({
-            name: componentName,
-            graph: new NodeGraphModel(),
-            id: guid()
+          let component: ComponentModel;
+          if (template) {
+            component = template.createComponent(componentName, options, undoGroup);
+          } else {
+            component = new ComponentModel({
+              name: componentName,
+              graph: new NodeGraphModel(),
+              id: guid()
+            });
+          }
+
+          tracker.track('Component Created', {
+            template: template ? template.label : undefined
           });
+
+          ProjectModel.instance?.addComponent(component, { undo: undoGroup });
+          UndoQueue.instance.push(undoGroup);
+
+          // Switch to the new component
+          EventDispatcher.instance.notifyListeners('ComponentPanel.SwitchToComponent', {
+            component,
+            pushHistory: true
+          });
+
+          PopupLayer.instance.hidePopup();
+        },
+        onCancel: () => {
+          PopupLayer.instance.hidePopup();
         }
+      });
 
-        tracker.track('Component Created', {
-          template: template ? template.label : undefined
-        });
-
-        ProjectModel.instance?.addComponent(component, { undo: undoGroup });
-        UndoQueue.instance.push(undoGroup);
-
-        // Switch to the new component
-        EventDispatcher.instance.notifyListeners('ComponentPanel.SwitchToComponent', {
-          component,
-          pushHistory: true
-        });
-
-        PopupLayer.instance.hidePopup();
-      },
-      onCancel: () => {
-        PopupLayer.instance.hidePopup();
-      }
-    });
-
-    PopupLayer.instance.showPopup({
-      content: popup,
-      position: 'screen-center',
-      isBackgroundDimmed: true
-    });
-  }, []);
+      PopupLayer.instance.showPopup({
+        content: popup,
+        position: 'screen-center',
+        isBackgroundDimmed: true
+      });
+    },
+    [sheetPrefix]
+  );
 
   /**
    * Handle adding a new folder
    */
   const handleAddFolder = useCallback((parentPath?: string) => {
+    // WFA-001: resolved before the popup so the sheet in force when the menu was
+    // opened is the one the folder lands in.
+    const normalizedPath = toFolderPath(sheetPrefix, parentPath);
+
     const popup = new PopupLayer.StringInputPopup({
       label: 'New folder name',
       okLabel: 'Add',
@@ -348,21 +386,8 @@ export function useComponentActions() {
           return;
         }
 
-        // Normalize parent path: ensure it starts with /
-        // If parentPath is undefined, empty, or '/', treat as root '/'
-        let normalizedPath = parentPath || '/';
-        if (normalizedPath === '/') {
-          normalizedPath = '/';
-        } else if (!normalizedPath.startsWith('/')) {
-          normalizedPath = '/' + normalizedPath;
-        }
-        // Ensure it ends with / for concatenation (unless it's just '/')
-        if (normalizedPath !== '/' && !normalizedPath.endsWith('/')) {
-          normalizedPath = normalizedPath + '/';
-        }
-
         // Create folder path - component names MUST start with /
-        const folderPath = normalizedPath === '/' ? `/${folderName}` : `${normalizedPath}${folderName}`;
+        const folderPath = `${normalizedPath}${folderName}`;
 
         // Check if folder already exists (any component starts with this path)
         const folderExists = ProjectModel.instance
@@ -409,7 +434,7 @@ export function useComponentActions() {
       position: 'screen-center',
       isBackgroundDimmed: true
     });
-  }, []);
+  }, [sheetPrefix]);
 
   /**
    * Handle dropping an item onto the root level (empty space)
@@ -418,10 +443,13 @@ export function useComponentActions() {
     // Component → Root
     if (draggedItem.type === 'component') {
       const component = draggedItem.data.component;
-      const newName = component.localName;
+      // WFA-001: "root" means the root *of the current sheet*. Without the
+      // prefix, dropping a cloud function on empty space moves it out of
+      // `#__cloud__` and it silently stops being a function.
+      const newName = sheetPrefix + '/' + component.localName;
 
       // Check if already at root
-      if (!component.name.includes('/')) {
+      if (component.name === newName) {
         console.log('Component already at root level');
         PopupLayer.instance.dragCompleted();
         return;
@@ -453,11 +481,14 @@ export function useComponentActions() {
     }
     // Folder → Root (including component-folders)
     else if (draggedItem.type === 'folder') {
-      const sourcePath = draggedItem.data.path;
-      const newPath = draggedItem.data.name;
+      // WFA-001: the tree's folder paths are display paths — on a sheet they
+      // have had the sheet prefix stripped, so matching real component names
+      // against them found nothing and the drag was a silent no-op.
+      const sourcePath = sheetPrefix + draggedItem.data.path;
+      const newPath = sheetPrefix + '/' + draggedItem.data.name;
 
       // Check if already at root
-      if (!sourcePath.includes('/')) {
+      if (sourcePath === newPath) {
         console.log('Folder already at root level');
         PopupLayer.instance.dragCompleted();
         return;
@@ -508,17 +539,20 @@ export function useComponentActions() {
         })
       );
     }
-  }, []);
+  }, [sheetPrefix]);
 
   /**
    * Handle dropping an item onto a target
+   *
+   * WFA-001: every path taken from a `TreeNode` here is a **display** path, so
+   * each is resolved back to a real component name with the sheet prefix.
    */
   const handleDropOn = useCallback((draggedItem: TreeNode, targetItem: TreeNode) => {
     // Component → Folder
     if (draggedItem.type === 'component' && targetItem.type === 'folder') {
       const component = draggedItem.data.component;
-      const targetPath = targetItem.data.path === '/' ? '' : targetItem.data.path;
-      const newName = targetPath ? `${targetPath}/${component.localName}` : component.localName;
+      const targetPath = sheetPrefix + (targetItem.data.path === '/' ? '' : targetItem.data.path);
+      const newName = targetPath ? `${targetPath}/${component.localName}` : `/${component.localName}`;
 
       // Check for naming conflicts
       if (ProjectModel.instance?.getComponentWithName(newName)) {
@@ -544,9 +578,9 @@ export function useComponentActions() {
     }
     // Folder → Folder
     else if (draggedItem.type === 'folder' && targetItem.type === 'folder') {
-      const sourcePath = draggedItem.data.path;
-      const targetPath = targetItem.data.path === '/' ? '' : targetItem.data.path;
-      const newPath = targetPath ? `${targetPath}/${draggedItem.data.name}` : draggedItem.data.name;
+      const sourcePath = sheetPrefix + draggedItem.data.path;
+      const targetPath = sheetPrefix + (targetItem.data.path === '/' ? '' : targetItem.data.path);
+      const newPath = `${targetPath}/${draggedItem.data.name}`;
 
       // Prevent moving folder into itself
       if (targetPath.startsWith(sourcePath + '/') || targetPath === sourcePath) {
@@ -627,7 +661,7 @@ export function useComponentActions() {
     }
     // Folder → Component (treat component-folder AS a component, nest inside target)
     else if (draggedItem.type === 'folder' && targetItem.type === 'component') {
-      const sourcePath = draggedItem.data.path;
+      const sourcePath = sheetPrefix + draggedItem.data.path;
       const targetComponent = targetItem.data.component;
       const newPath = `${targetComponent.name}/${draggedItem.data.name}`;
 
@@ -682,7 +716,7 @@ export function useComponentActions() {
         })
       );
     }
-  }, []);
+  }, [sheetPrefix]);
 
   return {
     handleMakeHome,

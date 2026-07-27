@@ -3,7 +3,7 @@
 **Phase:** 27
 **Track:** L — make the backend something you can see, edit and debug without writing JSON
 **Source:** Scoping session 2026-07-27, following a live end-to-end test of phase 19's workflow engine (see the findings register in [PROGRESS.md](./PROGRESS.md)).
-**Status:** 📋 Specced, not started — 7 tasks.
+**Status:** 🚧 In progress — 1 / 7 (WFA-001 complete 2026-07-28). See [PROGRESS.md](./PROGRESS.md).
 **Starts:** Anytime. WFA-001 and WFA-002 are independent of everything else and independently valuable.
 
 ## Why this phase exists
@@ -113,7 +113,7 @@ zoom level rather than a context switch.
 
 | Order | ID | Title | Tier | Priority | Estimate | Prerequisites | Executor |
 |---|---|---|---|---|---|---|---|
-| 1 | [WFA-001](./WFA-001-CLOUD-FUNCTIONS-RECONNECTED.md) | Cloud functions, reconnected | 1 — reconnect | 🔴 Critical | ~1 wk | none | 🔵 Opus 5 |
+| 1 | [WFA-001](./WFA-001-CLOUD-FUNCTIONS-RECONNECTED.md) ✅ | Cloud functions, reconnected | 1 — reconnect | 🔴 Critical | ~1 wk | none | 🔵 Opus 5 |
 | 1 | [WFA-002](./WFA-002-RUN-INSPECTOR.md) | The run inspector | 1 — reconnect | 🟠 High | 3–5 days | none | 🟠 Opus 4.8 |
 | 2 | [WFA-003](./WFA-003-STEP-DATA-MAPPING.md) | Step data mapping & one payload shape | 2 — the prerequisite | 🔴 Critical | ~1 wk | none (WFA-002 helps prove it) | 🔵 Opus 5 |
 | 3 | [WFA-004](./WFA-004-WORKFLOW-CANVAS.md) | The workflow canvas | 3 — the canvas | 🔴 Critical | 3–4 wks | WFA-003; WFA-002 for the overlay | 🔵 Opus 5 |

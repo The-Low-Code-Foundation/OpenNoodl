@@ -41,6 +41,19 @@ export function ComponentsPanel({ options }: ComponentsPanelProps) {
       lockToSheet: options?.lockToSheet
     });
 
+  /**
+   * WFA-001 — the selected sheet, as the two things the actions below need.
+   *
+   * `sheetPrefix` puts back what the tree strips from its display paths, so a
+   * component created or dragged while a sheet is selected stays in that sheet.
+   * `runtimeType` is what decides which templates the create menus offer: on the
+   * Cloud Functions sheet you get the cloud ones, everywhere else the browser
+   * ones — offering "Cloud Function Component" inside a browser folder would
+   * produce a component in the wrong sheet.
+   */
+  const sheetPrefix = currentSheet && !currentSheet.isDefault ? `/${currentSheet.folderName}` : '';
+  const runtimeType = currentSheet?.isCloud ? 'cloud' : 'browser';
+
   const {
     handleMakeHome,
     handleDelete,
@@ -51,7 +64,7 @@ export function ComponentsPanel({ options }: ComponentsPanelProps) {
     handleDropOnRoot,
     handleAddComponent,
     handleAddFolder
-  } = useComponentActions();
+  } = useComponentActions({ sheetPrefix });
 
   const { createSheet, renameSheet, deleteSheet, moveToSheet } = useSheetManagement();
 
@@ -200,7 +213,11 @@ export function ComponentsPanel({ options }: ComponentsPanelProps) {
       e.stopPropagation();
 
       const templates = ComponentTemplates.instance.getTemplates({
-        forRuntimeType: 'browser'
+        // Empty space is the sheet's root — a folder context, not a component
+        // one. Passing it makes the templates' own `parentTypes` declarations
+        // load-bearing instead of inert.
+        forParentType: 'folder',
+        forRuntimeType: runtimeType
       });
 
       const items: TSFixme[] = templates.map((template) => ({
@@ -220,7 +237,7 @@ export function ComponentsPanel({ options }: ComponentsPanelProps) {
         width: MenuDialogWidth.Default
       });
     },
-    [handleAddComponent, handleAddFolder]
+    [handleAddComponent, handleAddFolder, runtimeType]
   );
 
   return (
@@ -291,6 +308,7 @@ export function ComponentsPanel({ options }: ComponentsPanelProps) {
             onDoubleClick={handleRename}
             sheets={sheets}
             onMoveToSheet={handleMoveToSheet}
+            runtimeType={runtimeType}
           />
         ) : filtered.isFiltering ? (
           /* An empty *result* is a different fact from an empty project, and
@@ -301,6 +319,16 @@ export function ComponentsPanel({ options }: ComponentsPanelProps) {
               No components match <span className={css['PlaceholderQuery']}>“{filterQuery.trim()}”</span>
             </span>
             <span>Clear the filter to see the whole tree.</span>
+          </div>
+        ) : currentSheet?.isCloud ? (
+          /* WFA-001: the Cloud Functions sheet is listed even when the project
+             has none, so this is the state a user meets first. It has to say
+             what a cloud function is and how to make one — an unexplained empty
+             tree is how the door stays shut. */
+          <div className={css['PlaceholderMessage']} data-test="cloud-functions-empty">
+            <span>No cloud functions yet</span>
+            <span>These components run on your backend, not in the browser.</span>
+            <span>Right-click here to create one.</span>
           </div>
         ) : (
           <div className={css['PlaceholderMessage']}>

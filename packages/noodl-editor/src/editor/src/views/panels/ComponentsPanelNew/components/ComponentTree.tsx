@@ -43,6 +43,12 @@ interface ComponentTreeProps {
    * dimmed. Null (the default) means no filter is active and nothing dims.
    */
   matched?: Set<string> | null;
+  /**
+   * WFA-001 — which runtime the create menus author for. Derived from the
+   * selected sheet by `ComponentsPanel`; `'cloud'` only on the Cloud Functions
+   * sheet.
+   */
+  runtimeType?: 'browser' | 'cloud';
 }
 
 export function ComponentTree({
@@ -70,7 +76,8 @@ export function ComponentTree({
   onDoubleClick,
   sheets,
   onMoveToSheet,
-  matched = null
+  matched = null,
+  runtimeType = 'browser'
 }: ComponentTreeProps) {
   return (
     <>
@@ -113,6 +120,7 @@ export function ComponentTree({
               onMakeHome={onMakeHome}
               onDuplicate={onDuplicate}
               isDimmed={isDimmed}
+              runtimeType={runtimeType}
             >
               {expandedFolders.has(node.data.path) && node.data.children.length > 0 && (
                 <ComponentTree
@@ -141,6 +149,7 @@ export function ComponentTree({
                   sheets={sheets}
                   onMoveToSheet={onMoveToSheet}
                   matched={matched}
+                  runtimeType={runtimeType}
                 />
               )}
             </FolderItem>
@@ -172,6 +181,7 @@ export function ComponentTree({
               sheets={sheets}
               onMoveToSheet={onMoveToSheet}
               isDimmed={isDimmed}
+              runtimeType={runtimeType}
             />
           );
         }

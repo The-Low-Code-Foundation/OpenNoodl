@@ -1,0 +1,5379 @@
+{
+  "typecasts": [
+    {
+      "from": "string",
+      "to": [
+        "number",
+        "boolean",
+        "image",
+        "color",
+        "enum",
+        "textStyle",
+        "dimension",
+        "array",
+        "object"
+      ]
+    },
+    {
+      "from": "boolean",
+      "to": [
+        "number",
+        "string",
+        "signal"
+      ]
+    },
+    {
+      "from": "number",
+      "to": [
+        "boolean",
+        "string",
+        "dimension"
+      ]
+    },
+    {
+      "from": "date",
+      "to": [
+        "string"
+      ]
+    },
+    {
+      "from": "signal",
+      "to": [
+        "boolean",
+        "number"
+      ]
+    },
+    {
+      "from": "image",
+      "to": []
+    },
+    {
+      "from": "cloudfile",
+      "to": [
+        "string",
+        "image"
+      ]
+    },
+    {
+      "from": "color",
+      "to": []
+    },
+    {
+      "from": "enum",
+      "to": []
+    },
+    {
+      "from": "object",
+      "to": []
+    },
+    {
+      "from": "domelement",
+      "to": []
+    },
+    {
+      "from": "reference",
+      "to": []
+    },
+    {
+      "from": "font",
+      "to": []
+    },
+    {
+      "from": "textStyle",
+      "to": [
+        "string"
+      ]
+    },
+    {
+      "from": "collection",
+      "to": [
+        "array"
+      ]
+    },
+    {
+      "from": "array",
+      "to": [
+        "collection"
+      ]
+    }
+  ],
+  "dynamicports": [
+    {
+      "type": "conditionalports",
+      "name": "basic"
+    },
+    {
+      "type": "expand",
+      "name": "basic"
+    }
+  ],
+  "colors": {
+    "nodes": {
+      "component": {
+        "base": "#363050",
+        "baseHighlighted": "#464066",
+        "header": "#2a2440",
+        "headerHighlighted": "#363050",
+        "outline": "#2a2440",
+        "outlineHighlighted": "#a78bfa",
+        "text": "#EEF2F6"
+      },
+      "visual": {
+        "base": "#1e3450",
+        "baseHighlighted": "#2a4466",
+        "header": "#16283e",
+        "headerHighlighted": "#1e3450",
+        "outline": "#16283e",
+        "outlineHighlighted": "#5ca9ff",
+        "text": "#EEF2F6"
+      },
+      "data": {
+        "base": "#1c3f2b",
+        "baseHighlighted": "#275239",
+        "header": "#14301f",
+        "headerHighlighted": "#1c3f2b",
+        "outline": "#14301f",
+        "outlineHighlighted": "#45d08a",
+        "text": "#EEF2F6"
+      },
+      "javascript": {
+        "base": "#4c2940",
+        "baseHighlighted": "#603552",
+        "header": "#3a1f30",
+        "headerHighlighted": "#4c2940",
+        "outline": "#3a1f30",
+        "outlineHighlighted": "#f776c4",
+        "text": "#EEF2F6"
+      },
+      "default": {
+        "base": "#222933",
+        "baseHighlighted": "#2c3540",
+        "header": "#181d24",
+        "headerHighlighted": "#222933",
+        "outline": "#181d24",
+        "outlineHighlighted": "#6b7682",
+        "text": "#EEF2F6"
+      }
+    },
+    "connections": {
+      "signal": {
+        "normal": "#35c3e8",
+        "highlighted": "#7ad8f0",
+        "pulsing": "#ffffff"
+      },
+      "default": {
+        "normal": "#45d08a",
+        "highlighted": "#7de0ac",
+        "pulsing": "#ffffff"
+      }
+    }
+  },
+  "nodetypes": [
+    {
+      "name": "Component Children",
+      "shortDesc": "This node is a placeholder for where children of this component will be inserted.",
+      "docs": "https://docs.noodl.net/nodes/component-utilities/component-children",
+      "color": "component",
+      "allowAsChild": true,
+      "category": "Visual",
+      "haveComponentChildren": [
+        "Visual"
+      ]
+    },
+    {
+      "name": "Component Inputs",
+      "haveComponentPorts": true,
+      "docs": "https://docs.noodl.net/nodes/component-utilities/component-inputs",
+      "shortDocs": "https://docs.noodl.net/nodes/component-utilities/component-inputs-short.md",
+      "category": "Component Utilities",
+      "panels": [
+        {
+          "name": "PortEditor",
+          "context": [
+            "select",
+            "connectFrom"
+          ],
+          "title": "Inputs",
+          "plug": "output",
+          "type": {
+            "name": "*"
+          },
+          "canArrangeInGroups": true
+        },
+        {
+          "name": "PropertyEditor",
+          "hidden": true
+        }
+      ],
+      "color": "component",
+      "ports": []
+    },
+    {
+      "name": "Component Outputs",
+      "haveComponentPorts": true,
+      "docs": "https://docs.noodl.net/nodes/component-utilities/component-outputs",
+      "shortDocs": "https://docs.noodl.net/nodes/component-utilities/component-outputs-short.md",
+      "category": "Component Utilities",
+      "panels": [
+        {
+          "name": "PortEditor",
+          "context": [
+            "select",
+            "connectTo"
+          ],
+          "title": "Outputs",
+          "plug": "input",
+          "type": {
+            "name": "*"
+          },
+          "canArrangeInGroups": true
+        },
+        {
+          "name": "PropertyEditor",
+          "hidden": true
+        }
+      ],
+      "color": "component",
+      "ports": []
+    },
+    {
+      "name": "RunTasks",
+      "displayNodeName": "Run Tasks",
+      "docs": "https://docs.noodl.net/nodes/data/run-tasks",
+      "shortDocs": "https://docs.noodl.net/nodes/data/run-tasks-short.md",
+      "category": "Data",
+      "color": "data",
+      "ports": [
+        {
+          "name": "items",
+          "type": "array",
+          "plug": "input",
+          "group": "Data",
+          "displayName": "Items"
+        },
+        {
+          "name": "stopOnFailure",
+          "type": "boolean",
+          "plug": "input",
+          "group": "General",
+          "displayName": "Stop On Failure",
+          "default": false
+        },
+        {
+          "name": "maxRunningTasks",
+          "type": "number",
+          "plug": "input",
+          "group": "General",
+          "displayName": "Max Running Tasks",
+          "default": 10
+        },
+        {
+          "name": "taskTemplate",
+          "type": "component",
+          "plug": "input",
+          "group": "General",
+          "displayName": "Template"
+        },
+        {
+          "name": "run",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "General",
+          "displayName": "Do"
+        },
+        {
+          "name": "abort",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "General",
+          "displayName": "Abort"
+        },
+        {
+          "name": "success",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Success"
+        },
+        {
+          "name": "failure",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Failure"
+        },
+        {
+          "name": "done",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Done"
+        },
+        {
+          "name": "aborted",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Aborted"
+        }
+      ]
+    },
+    {
+      "name": "REST2",
+      "searchTags": [
+        "http",
+        "request",
+        "fetch"
+      ],
+      "displayNodeName": "REST",
+      "docs": "https://docs.noodl.net/nodes/data/rest",
+      "shortDocs": "https://docs.noodl.net/nodes/data/rest-short.md",
+      "category": "Data",
+      "color": "data",
+      "ports": [
+        {
+          "name": "resource",
+          "type": "string",
+          "plug": "input",
+          "group": "Request",
+          "displayName": "Resource",
+          "default": "/"
+        },
+        {
+          "name": "method",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "GET",
+                "value": "GET"
+              },
+              {
+                "label": "POST",
+                "value": "POST"
+              },
+              {
+                "label": "PUT",
+                "value": "PUT"
+              },
+              {
+                "label": "PATCH",
+                "value": "PATCH"
+              },
+              {
+                "label": "DELETE",
+                "value": "DELETE"
+              }
+            ]
+          },
+          "plug": "input",
+          "group": "Request",
+          "displayName": "Method",
+          "default": "GET"
+        },
+        {
+          "name": "requestScript",
+          "type": {
+            "name": "string",
+            "allowEditOnly": true,
+            "codeeditor": "javascript"
+          },
+          "plug": "input",
+          "group": "Scripts",
+          "displayName": "Request",
+          "default": "//Add custom code to setup the request object before the request\n//is made.\n//\n//*Request.resource     contains the resource path of the request.\n//*Request.method       contains the method, GET, POST, PUT or DELETE.\n//*Request.headers      is a map where you can add additional headers.\n//*Request.parameters   is a map the parameters that will be appended\n//                      to the url.\n//*Request.content      contains the content of the request as a javascript\n//                      object.\n//\n"
+        },
+        {
+          "name": "responseScript",
+          "type": {
+            "name": "string",
+            "allowEditOnly": true,
+            "codeeditor": "javascript"
+          },
+          "plug": "input",
+          "group": "Scripts",
+          "displayName": "Response",
+          "default": "// Add custom code to convert the response content to outputs\n//\n//*Response.status    The status code of the response\n//*Response.content   The content of the response as a javascript\n//                    object.\n//*Response.request   The request object that resulted in the response.\n//\n//*Inputs and *Outputs contain the inputs and outputs of the node.\n"
+        },
+        {
+          "name": "fetch",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "Actions",
+          "displayName": "Fetch"
+        },
+        {
+          "name": "cancel",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "Actions",
+          "displayName": "Cancel"
+        },
+        {
+          "name": "failure",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Failure"
+        },
+        {
+          "name": "success",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Success"
+        },
+        {
+          "name": "canceled",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Canceled"
+        }
+      ]
+    },
+    {
+      "name": "Expression",
+      "searchTags": [
+        "javascript"
+      ],
+      "nodeDoubleClickAction": {
+        "focusPort": "Expression"
+      },
+      "docs": "https://docs.noodl.net/nodes/math/expression",
+      "shortDocs": "https://docs.noodl.net/nodes/math/expression-short.md",
+      "category": "CustomCode",
+      "usePortAsLabel": "expression",
+      "color": "javascript",
+      "ports": [
+        {
+          "name": "expression",
+          "type": {
+            "name": "string",
+            "allowEditOnly": true,
+            "codeeditor": "javascript"
+          },
+          "plug": "input",
+          "group": "General",
+          "displayName": "Expression"
+        },
+        {
+          "name": "run",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "Actions",
+          "displayName": "Run"
+        },
+        {
+          "name": "result",
+          "type": "*",
+          "plug": "output",
+          "group": "Result",
+          "displayName": "Result"
+        },
+        {
+          "name": "isTrue",
+          "type": "boolean",
+          "plug": "output",
+          "group": "Result",
+          "displayName": "Is True"
+        },
+        {
+          "name": "isFalse",
+          "type": "boolean",
+          "plug": "output",
+          "group": "Result",
+          "displayName": "Is False"
+        },
+        {
+          "name": "isTrueEv",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "On True"
+        },
+        {
+          "name": "isFalseEv",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "On False"
+        },
+        {
+          "name": "asString",
+          "type": "string",
+          "plug": "output",
+          "group": "Typed Results",
+          "displayName": "As String"
+        },
+        {
+          "name": "asNumber",
+          "type": "number",
+          "plug": "output",
+          "group": "Typed Results",
+          "displayName": "As Number"
+        },
+        {
+          "name": "asBoolean",
+          "type": "boolean",
+          "plug": "output",
+          "group": "Typed Results",
+          "displayName": "As Boolean"
+        }
+      ]
+    },
+    {
+      "name": "JavaScriptFunction",
+      "searchTags": [
+        "javascript"
+      ],
+      "displayNodeName": "Function",
+      "nodeDoubleClickAction": {
+        "focusPort": "Script"
+      },
+      "docs": "https://docs.noodl.net/nodes/javascript/function",
+      "shortDocs": "https://docs.noodl.net/nodes/javascript/function-short.md",
+      "category": "CustomCode",
+      "color": "javascript",
+      "exportDynamicPorts": true,
+      "ports": [
+        {
+          "name": "scriptInputs",
+          "type": {
+            "name": "proplist",
+            "allowEditOnly": true
+          },
+          "plug": "input",
+          "group": "Script Inputs"
+        },
+        {
+          "name": "scriptOutputs",
+          "type": {
+            "name": "proplist",
+            "allowEditOnly": true
+          },
+          "plug": "input",
+          "group": "Script Outputs"
+        },
+        {
+          "name": "functionScript",
+          "type": {
+            "name": "string",
+            "allowEditOnly": true,
+            "codeeditor": "javascript"
+          },
+          "plug": "input",
+          "group": "General",
+          "displayName": "Script"
+        },
+        {
+          "name": "run",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "Actions",
+          "displayName": "Run"
+        }
+      ]
+    },
+    {
+      "name": "Logic Builder",
+      "searchTags": [
+        "blockly",
+        "visual",
+        "logic",
+        "blocks",
+        "nocode"
+      ],
+      "displayNodeName": "Logic Builder",
+      "nodeDoubleClickAction": {
+        "focusPort": "workspace"
+      },
+      "docs": "https://docs.noodl.net/nodes/logic/logic-builder",
+      "shortDocs": "https://docs.noodl.net/nodes/logic/logic-builder-short.md",
+      "category": "CustomCode",
+      "color": "javascript",
+      "ports": [
+        {
+          "name": "workspace",
+          "type": {
+            "name": "string",
+            "allowEditOnly": true,
+            "editorType": "logic-builder-workspace"
+          },
+          "plug": "input",
+          "displayName": "Logic Blocks"
+        },
+        {
+          "name": "generatedCode",
+          "type": {
+            "name": "string",
+            "allowEditOnly": true,
+            "editorType": "logic-builder-hidden"
+          },
+          "plug": "input",
+          "displayName": "Generated Code"
+        },
+        {
+          "name": "run",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "Signals",
+          "displayName": "Run",
+          "editorName": "hidden"
+        },
+        {
+          "name": "error",
+          "type": "string",
+          "plug": "output",
+          "group": "Status",
+          "displayName": "Error",
+          "editorName": "hidden"
+        }
+      ]
+    },
+    {
+      "name": "DbCollection2",
+      "displayNodeName": "Query Records",
+      "docs": "https://docs.noodl.net/nodes/data/cloud-data/query-records",
+      "shortDocs": "https://docs.noodl.net/nodes/data/cloud-data/query-records-short.md",
+      "category": "Cloud Services",
+      "usePortAsLabel": "collectionName",
+      "color": "data",
+      "ports": [
+        {
+          "name": "items",
+          "type": "array",
+          "plug": "output",
+          "group": "General",
+          "displayName": "Items"
+        },
+        {
+          "name": "firstItemId",
+          "type": "string",
+          "plug": "output",
+          "group": "General",
+          "displayName": "First Record Id"
+        },
+        {
+          "name": "isEmpty",
+          "type": "boolean",
+          "plug": "output",
+          "group": "General",
+          "displayName": "Is Empty"
+        },
+        {
+          "name": "count",
+          "type": "number",
+          "plug": "output",
+          "group": "General",
+          "displayName": "Count"
+        },
+        {
+          "name": "fetched",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Success"
+        },
+        {
+          "name": "failure",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Failure"
+        },
+        {
+          "name": "error",
+          "type": "string",
+          "plug": "output",
+          "group": "Error",
+          "displayName": "Error"
+        }
+      ]
+    },
+    {
+      "name": "DbModel2",
+      "displayNodeName": "Record",
+      "docs": "https://docs.noodl.net/nodes/data/cloud-data/record",
+      "shortDocs": "https://docs.noodl.net/nodes/data/cloud-data/record-short.md",
+      "category": "Cloud Services",
+      "usePortAsLabel": "collectionName",
+      "color": "data",
+      "dynamicports": [
+        {
+          "name": "conditionalports/extended",
+          "condition": "idSource = explicit OR idSource NOT SET",
+          "ports": [
+            {
+              "name": "modelId",
+              "type": {
+                "name": "string",
+                "allowConnectionsOnly": true
+              },
+              "plug": "input",
+              "group": "General",
+              "displayName": "Id"
+            }
+          ]
+        }
+      ],
+      "ports": [
+        {
+          "name": "idSource",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Specify explicitly",
+                "value": "explicit"
+              },
+              {
+                "label": "From repeater",
+                "value": "foreach"
+              }
+            ],
+            "allowEditOnly": true
+          },
+          "plug": "input",
+          "group": "General",
+          "displayName": "Id Source",
+          "default": "explicit"
+        },
+        {
+          "name": "modelId",
+          "type": {
+            "name": "string",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "General",
+          "displayName": "Id"
+        },
+        {
+          "name": "fetch",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "Actions",
+          "displayName": "Fetch"
+        },
+        {
+          "name": "id",
+          "type": "string",
+          "plug": "output",
+          "group": "General",
+          "displayName": "Id"
+        },
+        {
+          "name": "fetched",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Fetched"
+        },
+        {
+          "name": "changed",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Changed"
+        },
+        {
+          "name": "failure",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Failure"
+        },
+        {
+          "name": "error",
+          "type": "string",
+          "plug": "output",
+          "group": "Error",
+          "displayName": "Error"
+        }
+      ]
+    },
+    {
+      "name": "SetDbModelProperties",
+      "displayNodeName": "Set Record Properties",
+      "docs": "https://docs.noodl.net/nodes/data/cloud-data/set-record-properties",
+      "shortDocs": "https://docs.noodl.net/nodes/data/cloud-data/set-record-properties-short.md",
+      "category": "Data",
+      "usePortAsLabel": "collectionName",
+      "color": "data",
+      "dynamicports": [
+        {
+          "name": "conditionalports/extended",
+          "condition": "storeType = cloud OR storeType NOT SET",
+          "ports": [
+            {
+              "name": "storeProperties",
+              "type": {
+                "name": "enum",
+                "enums": [
+                  {
+                    "label": "Only specified",
+                    "value": "specified"
+                  },
+                  {
+                    "label": "All",
+                    "value": "all"
+                  }
+                ]
+              },
+              "plug": "input",
+              "group": "General",
+              "displayName": "Properties to  store",
+              "default": "specified"
+            }
+          ]
+        },
+        {
+          "name": "conditionalports/extended",
+          "condition": "idSource = explicit OR idSource NOT SET",
+          "ports": [
+            {
+              "name": "modelId",
+              "type": {
+                "name": "string",
+                "identifierOf": "ModelName",
+                "identifierDisplayName": "Object Ids"
+              },
+              "plug": "input",
+              "group": "General",
+              "displayName": "Id"
+            }
+          ]
+        }
+      ],
+      "ports": [
+        {
+          "name": "store",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "Actions",
+          "displayName": "Do"
+        },
+        {
+          "name": "storeProperties",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Only specified",
+                "value": "specified"
+              },
+              {
+                "label": "All",
+                "value": "all"
+              }
+            ]
+          },
+          "plug": "input",
+          "group": "General",
+          "displayName": "Properties to  store",
+          "default": "specified"
+        },
+        {
+          "name": "storeType",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Cloud and local",
+                "value": "cloud"
+              },
+              {
+                "label": "Local only",
+                "value": "local"
+              }
+            ]
+          },
+          "plug": "input",
+          "group": "General",
+          "displayName": "Store to",
+          "default": "cloud"
+        },
+        {
+          "name": "idSource",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Specify explicitly",
+                "value": "explicit"
+              },
+              {
+                "label": "From repeater",
+                "value": "foreach"
+              }
+            ],
+            "allowEditOnly": true
+          },
+          "plug": "input",
+          "group": "General",
+          "displayName": "Id Source",
+          "default": "explicit",
+          "tooltip": "Choose if you want to specify the Id explicitly, \n or if you want it to be that of the current record in a repeater."
+        },
+        {
+          "name": "modelId",
+          "type": {
+            "name": "string",
+            "identifierOf": "ModelName",
+            "identifierDisplayName": "Object Ids"
+          },
+          "plug": "input",
+          "group": "General",
+          "displayName": "Id"
+        },
+        {
+          "name": "accessControl",
+          "type": {
+            "name": "proplist",
+            "autoName": "Rule",
+            "allowEditOnly": true
+          },
+          "plug": "input",
+          "group": "Access Control Rules",
+          "displayName": "Access Control Rules",
+          "index": 1000
+        },
+        {
+          "name": "stored",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Success"
+        },
+        {
+          "name": "failure",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Failure"
+        },
+        {
+          "name": "error",
+          "type": "string",
+          "plug": "output",
+          "group": "Error",
+          "displayName": "Error"
+        },
+        {
+          "name": "id",
+          "type": "string",
+          "plug": "output",
+          "group": "General",
+          "displayName": "Id"
+        }
+      ]
+    },
+    {
+      "name": "DeleteDbModelProperties",
+      "displayNodeName": "Delete Record",
+      "docs": "https://docs.noodl.net/nodes/data/cloud-data/delete-record",
+      "shortDocs": "https://docs.noodl.net/nodes/data/cloud-data/delete-record-short.md",
+      "category": "Data",
+      "usePortAsLabel": "collectionName",
+      "color": "data",
+      "dynamicports": [
+        {
+          "name": "conditionalports/extended",
+          "condition": "idSource = explicit OR idSource NOT SET",
+          "ports": [
+            {
+              "name": "modelId",
+              "type": {
+                "name": "string",
+                "identifierOf": "ModelName",
+                "identifierDisplayName": "Object Ids"
+              },
+              "plug": "input",
+              "group": "General",
+              "displayName": "Id"
+            }
+          ]
+        }
+      ],
+      "ports": [
+        {
+          "name": "store",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "Actions",
+          "displayName": "Do"
+        },
+        {
+          "name": "idSource",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Specify explicitly",
+                "value": "explicit"
+              },
+              {
+                "label": "From repeater",
+                "value": "foreach"
+              }
+            ],
+            "allowEditOnly": true
+          },
+          "plug": "input",
+          "group": "General",
+          "displayName": "Id Source",
+          "default": "explicit",
+          "tooltip": "Choose if you want to specify the Id explicitly, \n or if you want it to be that of the current record in a repeater."
+        },
+        {
+          "name": "modelId",
+          "type": {
+            "name": "string",
+            "identifierOf": "ModelName",
+            "identifierDisplayName": "Object Ids"
+          },
+          "plug": "input",
+          "group": "General",
+          "displayName": "Id"
+        },
+        {
+          "name": "deleted",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Success"
+        },
+        {
+          "name": "failure",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Failure"
+        },
+        {
+          "name": "error",
+          "type": "string",
+          "plug": "output",
+          "group": "Error",
+          "displayName": "Error"
+        },
+        {
+          "name": "id",
+          "type": "string",
+          "plug": "output",
+          "group": "General",
+          "displayName": "Id"
+        }
+      ]
+    },
+    {
+      "name": "NewDbModelProperties",
+      "displayNodeName": "Create New Record",
+      "docs": "https://docs.noodl.net/nodes/data/cloud-data/create-new-record",
+      "shortDocs": "https://docs.noodl.net/nodes/data/cloud-data/create-new-record-short.md",
+      "category": "Data",
+      "usePortAsLabel": "collectionName",
+      "color": "data",
+      "ports": [
+        {
+          "name": "store",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "Actions",
+          "displayName": "Do"
+        },
+        {
+          "name": "sourceObjectId",
+          "type": {
+            "name": "string",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "General",
+          "displayName": "Source Object Id"
+        },
+        {
+          "name": "accessControl",
+          "type": {
+            "name": "proplist",
+            "autoName": "Rule",
+            "allowEditOnly": true
+          },
+          "plug": "input",
+          "group": "Access Control Rules",
+          "displayName": "Access Control Rules",
+          "index": 1000
+        },
+        {
+          "name": "created",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Success"
+        },
+        {
+          "name": "failure",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Failure"
+        },
+        {
+          "name": "error",
+          "type": "string",
+          "plug": "output",
+          "group": "Error",
+          "displayName": "Error"
+        },
+        {
+          "name": "id",
+          "type": "string",
+          "plug": "output",
+          "group": "General",
+          "displayName": "Id"
+        }
+      ]
+    },
+    {
+      "name": "AddDbModelRelation",
+      "displayNodeName": "Add Record Relation",
+      "docs": "https://docs.noodl.net/nodes/data/cloud-data/add-record-relation",
+      "shortDocs": "https://docs.noodl.net/nodes/data/cloud-data/add-record-relation-short.md",
+      "category": "Data",
+      "usePortAsLabel": "collectionName",
+      "color": "data",
+      "dynamicports": [
+        {
+          "name": "conditionalports/extended",
+          "condition": "idSource = explicit OR idSource NOT SET",
+          "ports": [
+            {
+              "name": "modelId",
+              "type": {
+                "name": "string",
+                "identifierOf": "ModelName",
+                "identifierDisplayName": "Object Ids"
+              },
+              "plug": "input",
+              "group": "General",
+              "displayName": "Id"
+            }
+          ]
+        }
+      ],
+      "ports": [
+        {
+          "name": "store",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "Actions",
+          "displayName": "Do"
+        },
+        {
+          "name": "idSource",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Specify explicitly",
+                "value": "explicit"
+              },
+              {
+                "label": "From repeater",
+                "value": "foreach"
+              }
+            ],
+            "allowEditOnly": true
+          },
+          "plug": "input",
+          "group": "General",
+          "displayName": "Id Source",
+          "default": "explicit",
+          "tooltip": "Choose if you want to specify the Id explicitly, \n or if you want it to be that of the current record in a repeater."
+        },
+        {
+          "name": "modelId",
+          "type": {
+            "name": "string",
+            "identifierOf": "ModelName",
+            "identifierDisplayName": "Object Ids"
+          },
+          "plug": "input",
+          "group": "General",
+          "displayName": "Id"
+        },
+        {
+          "name": "targetId",
+          "type": {
+            "name": "string",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "General",
+          "displayName": "Target Record Id"
+        },
+        {
+          "name": "relationAdded",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Success"
+        },
+        {
+          "name": "failure",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Failure"
+        },
+        {
+          "name": "error",
+          "type": "string",
+          "plug": "output",
+          "group": "Error",
+          "displayName": "Error"
+        },
+        {
+          "name": "id",
+          "type": "string",
+          "plug": "output",
+          "group": "General",
+          "displayName": "Id"
+        }
+      ]
+    },
+    {
+      "name": "RemoveDbModelRelation",
+      "displayNodeName": "Remove Record Relation",
+      "docs": "https://docs.noodl.net/nodes/data/cloud-data/remove-record-relation",
+      "shortDocs": "https://docs.noodl.net/nodes/data/cloud-data/remove-record-relation-short.md",
+      "category": "Data",
+      "usePortAsLabel": "collectionName",
+      "color": "data",
+      "dynamicports": [
+        {
+          "name": "conditionalports/extended",
+          "condition": "idSource = explicit OR idSource NOT SET",
+          "ports": [
+            {
+              "name": "modelId",
+              "type": {
+                "name": "string",
+                "identifierOf": "ModelName",
+                "identifierDisplayName": "Object Ids"
+              },
+              "plug": "input",
+              "group": "General",
+              "displayName": "Id"
+            }
+          ]
+        }
+      ],
+      "ports": [
+        {
+          "name": "store",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "Actions",
+          "displayName": "Do"
+        },
+        {
+          "name": "idSource",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Specify explicitly",
+                "value": "explicit"
+              },
+              {
+                "label": "From repeater",
+                "value": "foreach"
+              }
+            ],
+            "allowEditOnly": true
+          },
+          "plug": "input",
+          "group": "General",
+          "displayName": "Id Source",
+          "default": "explicit",
+          "tooltip": "Choose if you want to specify the Id explicitly, \n or if you want it to be that of the current record in a repeater."
+        },
+        {
+          "name": "modelId",
+          "type": {
+            "name": "string",
+            "identifierOf": "ModelName",
+            "identifierDisplayName": "Object Ids"
+          },
+          "plug": "input",
+          "group": "General",
+          "displayName": "Id"
+        },
+        {
+          "name": "targetId",
+          "type": {
+            "name": "string",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "General",
+          "displayName": "Target Record Id"
+        },
+        {
+          "name": "relationRemoved",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Success"
+        },
+        {
+          "name": "failure",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Failure"
+        },
+        {
+          "name": "error",
+          "type": "string",
+          "plug": "output",
+          "group": "Error",
+          "displayName": "Error"
+        },
+        {
+          "name": "id",
+          "type": "string",
+          "plug": "output",
+          "group": "General",
+          "displayName": "Id"
+        }
+      ]
+    },
+    {
+      "name": "FilterDBModels",
+      "displayNodeName": "Filter Records",
+      "docs": "https://docs.noodl.net/nodes/data/cloud-data/filter-records",
+      "shortDocs": "https://docs.noodl.net/nodes/data/cloud-data/filter-records-short.md",
+      "category": "Data",
+      "color": "data",
+      "ports": [
+        {
+          "name": "items",
+          "type": "array",
+          "plug": "input",
+          "group": "General",
+          "displayName": "Items"
+        },
+        {
+          "name": "enabled",
+          "type": "boolean",
+          "plug": "input",
+          "group": "General",
+          "displayName": "Enabled",
+          "default": true
+        },
+        {
+          "name": "filter",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "Actions",
+          "displayName": "Filter"
+        },
+        {
+          "name": "items",
+          "type": "array",
+          "plug": "output",
+          "group": "General",
+          "displayName": "Items"
+        },
+        {
+          "name": "firstItemId",
+          "type": "string",
+          "plug": "output",
+          "group": "General",
+          "displayName": "First Record Id"
+        },
+        {
+          "name": "count",
+          "type": "number",
+          "plug": "output",
+          "group": "General",
+          "displayName": "Count"
+        },
+        {
+          "name": "modified",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Filtered"
+        }
+      ]
+    },
+    {
+      "name": "Model2",
+      "displayNodeName": "Object",
+      "docs": "https://docs.noodl.net/nodes/data/object/object-node",
+      "shortDocs": "https://docs.noodl.net/nodes/data/object/object-node-short.md",
+      "category": "Data",
+      "usePortAsLabel": "modelId",
+      "color": "data",
+      "dynamicports": [
+        {
+          "name": "conditionalports/extended",
+          "condition": "idSource = explicit OR idSource NOT SET",
+          "ports": [
+            {
+              "name": "modelId",
+              "type": {
+                "name": "string",
+                "identifierOf": "ModelName",
+                "identifierDisplayName": "Object Ids"
+              },
+              "plug": "input",
+              "group": "General",
+              "displayName": "Id"
+            }
+          ]
+        }
+      ],
+      "ports": [
+        {
+          "name": "idSource",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Specify explicitly",
+                "value": "explicit"
+              },
+              {
+                "label": "From repeater",
+                "value": "foreach"
+              }
+            ],
+            "allowEditOnly": true
+          },
+          "plug": "input",
+          "group": "General",
+          "displayName": "Get Id from",
+          "default": "explicit"
+        },
+        {
+          "name": "modelId",
+          "type": {
+            "name": "string",
+            "identifierOf": "ModelName",
+            "identifierDisplayName": "Object Ids"
+          },
+          "plug": "input",
+          "group": "General",
+          "displayName": "Id"
+        },
+        {
+          "name": "properties",
+          "type": {
+            "name": "stringlist",
+            "allowEditOnly": true
+          },
+          "plug": "input",
+          "group": "Properties",
+          "displayName": "Properties"
+        },
+        {
+          "name": "fetch",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "Actions",
+          "displayName": "Fetch"
+        },
+        {
+          "name": "id",
+          "type": "string",
+          "plug": "output",
+          "group": "General",
+          "displayName": "Id"
+        },
+        {
+          "name": "changed",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Changed"
+        },
+        {
+          "name": "fetched",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Fetched"
+        }
+      ]
+    },
+    {
+      "name": "SetModelProperties",
+      "displayNodeName": "Set Object Properties",
+      "docs": "https://docs.noodl.net/nodes/data/object/set-object-properties",
+      "shortDocs": "https://docs.noodl.net/nodes/data/object/set-object-properties-short.md",
+      "category": "Data",
+      "usePortAsLabel": "modelId",
+      "color": "data",
+      "dynamicports": [
+        {
+          "name": "conditionalports/extended",
+          "condition": "idSource = explicit OR idSource NOT SET",
+          "ports": [
+            {
+              "name": "modelId",
+              "type": {
+                "name": "string",
+                "identifierOf": "ModelName",
+                "identifierDisplayName": "Object Ids"
+              },
+              "plug": "input",
+              "group": "General",
+              "displayName": "Id"
+            }
+          ]
+        }
+      ],
+      "ports": [
+        {
+          "name": "store",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "Actions",
+          "displayName": "Do"
+        },
+        {
+          "name": "idSource",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Specify explicitly",
+                "value": "explicit"
+              },
+              {
+                "label": "From repeater",
+                "value": "foreach"
+              }
+            ],
+            "allowEditOnly": true
+          },
+          "plug": "input",
+          "group": "General",
+          "displayName": "Id Source",
+          "default": "explicit"
+        },
+        {
+          "name": "modelId",
+          "type": {
+            "name": "string",
+            "identifierOf": "ModelName",
+            "identifierDisplayName": "Object Ids"
+          },
+          "plug": "input",
+          "group": "General",
+          "displayName": "Id"
+        },
+        {
+          "name": "properties",
+          "type": {
+            "name": "stringlist",
+            "allowEditOnly": true
+          },
+          "plug": "input",
+          "group": "Properties to set",
+          "displayName": "Properties"
+        },
+        {
+          "name": "stored",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Done"
+        },
+        {
+          "name": "id",
+          "type": "string",
+          "plug": "output",
+          "group": "General",
+          "displayName": "Id"
+        }
+      ]
+    },
+    {
+      "name": "NewModel",
+      "displayNodeName": "Create New Object",
+      "docs": "https://docs.noodl.net/nodes/data/object/create-new-object",
+      "shortDocs": "https://docs.noodl.net/nodes/data/object/create-new-object-short.md",
+      "category": "Data",
+      "color": "data",
+      "ports": [
+        {
+          "name": "new",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "Actions",
+          "displayName": "Do"
+        },
+        {
+          "name": "properties",
+          "type": {
+            "name": "stringlist",
+            "allowEditOnly": true
+          },
+          "plug": "input",
+          "group": "Properties to set",
+          "displayName": "Properties"
+        },
+        {
+          "name": "created",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Done"
+        },
+        {
+          "name": "id",
+          "type": "string",
+          "plug": "output",
+          "group": "General",
+          "displayName": "Id"
+        }
+      ]
+    },
+    {
+      "name": "Cloud File",
+      "docs": "https://docs.noodl.net/nodes/data/cloud-data/cloud-file",
+      "shortDocs": "https://docs.noodl.net/nodes/data/cloud-data/cloud-file-short.md",
+      "category": "Cloud Services",
+      "color": "data",
+      "ports": [
+        {
+          "name": "file",
+          "type": "cloudfile",
+          "plug": "input",
+          "group": "General",
+          "displayName": "Cloud File"
+        },
+        {
+          "name": "url",
+          "type": "string",
+          "plug": "output",
+          "group": "General",
+          "displayName": "URL"
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "plug": "output",
+          "group": "General",
+          "displayName": "Name"
+        }
+      ]
+    },
+    {
+      "name": "DbConfig",
+      "displayNodeName": "Config",
+      "docs": "https://docs.noodl.net/nodes/data/cloud-data/config",
+      "shortDocs": "https://docs.noodl.net/nodes/data/cloud-data/config-short.md",
+      "category": "Cloud Services",
+      "usePortAsLabel": "configKey",
+      "color": "data",
+      "ports": []
+    },
+    {
+      "name": "Number",
+      "nodeDoubleClickAction": {
+        "focusPort": "value"
+      },
+      "docs": "https://docs.noodl.net/nodes/data/number",
+      "shortDocs": "https://docs.noodl.net/nodes/data/number-short.md",
+      "category": "Variables",
+      "ports": [
+        {
+          "name": "value",
+          "type": {
+            "name": "number"
+          },
+          "plug": "input",
+          "displayName": "Value",
+          "default": 0
+        },
+        {
+          "name": "saveValue",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "displayName": "Set"
+        },
+        {
+          "name": "savedValue",
+          "type": "number",
+          "plug": "output",
+          "displayName": "Value"
+        },
+        {
+          "name": "changed",
+          "type": "signal",
+          "plug": "output",
+          "displayName": "Changed"
+        },
+        {
+          "name": "stored",
+          "type": "signal",
+          "plug": "output",
+          "displayName": "Stored"
+        }
+      ]
+    },
+    {
+      "name": "String",
+      "nodeDoubleClickAction": {
+        "focusPort": "value"
+      },
+      "docs": "https://docs.noodl.net/nodes/data/string",
+      "shortDocs": "https://docs.noodl.net/nodes/data/string-short.md",
+      "category": "Variables",
+      "usePortAsLabel": "value",
+      "portLabelTruncationMode": "length",
+      "ports": [
+        {
+          "name": "value",
+          "type": {
+            "name": "string"
+          },
+          "plug": "input",
+          "displayName": "Value",
+          "default": ""
+        },
+        {
+          "name": "saveValue",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "displayName": "Set"
+        },
+        {
+          "name": "savedValue",
+          "type": "string",
+          "plug": "output",
+          "displayName": "Value"
+        },
+        {
+          "name": "changed",
+          "type": "signal",
+          "plug": "output",
+          "displayName": "Changed"
+        },
+        {
+          "name": "stored",
+          "type": "signal",
+          "plug": "output",
+          "displayName": "Stored"
+        },
+        {
+          "name": "length",
+          "type": "number",
+          "plug": "output",
+          "displayName": "Length"
+        }
+      ]
+    },
+    {
+      "name": "Boolean",
+      "docs": "https://docs.noodl.net/nodes/data/boolean",
+      "shortDocs": "https://docs.noodl.net/nodes/data/boolean-short.md",
+      "category": "Variables",
+      "ports": [
+        {
+          "name": "value",
+          "type": {
+            "name": "boolean"
+          },
+          "plug": "input",
+          "displayName": "Value",
+          "default": false
+        },
+        {
+          "name": "saveValue",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "displayName": "Set"
+        },
+        {
+          "name": "savedValue",
+          "type": "boolean",
+          "plug": "output",
+          "displayName": "Value"
+        },
+        {
+          "name": "changed",
+          "type": "signal",
+          "plug": "output",
+          "displayName": "Changed"
+        },
+        {
+          "name": "stored",
+          "type": "signal",
+          "plug": "output",
+          "displayName": "Stored"
+        }
+      ]
+    },
+    {
+      "name": "Condition",
+      "docs": "https://docs.noodl.net/nodes/utilities/logic/condition",
+      "shortDocs": "https://docs.noodl.net/nodes/utilities/logic/condition-short.md",
+      "category": "Logic",
+      "ports": [
+        {
+          "name": "condition",
+          "type": "boolean",
+          "plug": "input",
+          "group": "General",
+          "displayName": "Condition"
+        },
+        {
+          "name": "eval",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "Actions",
+          "displayName": "Evaluate"
+        },
+        {
+          "name": "ontrue",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "On True"
+        },
+        {
+          "name": "onfalse",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "On False"
+        },
+        {
+          "name": "result",
+          "type": "boolean",
+          "plug": "output",
+          "group": "Booleans",
+          "displayName": "Is True"
+        },
+        {
+          "name": "isfalse",
+          "type": "boolean",
+          "plug": "output",
+          "group": "Booleans",
+          "displayName": "Is False"
+        }
+      ]
+    },
+    {
+      "name": "And",
+      "docs": "https://docs.noodl.net/nodes/logic/and",
+      "shortDocs": "https://docs.noodl.net/nodes/logic/and-short.md",
+      "category": "Logic",
+      "ports": [
+        {
+          "name": "result",
+          "type": "boolean",
+          "plug": "output",
+          "displayName": "Result"
+        }
+      ]
+    },
+    {
+      "name": "Or",
+      "docs": "https://docs.noodl.net/nodes/logic/or",
+      "shortDocs": "https://docs.noodl.net/nodes/logic/or-short.md",
+      "category": "Logic",
+      "ports": [
+        {
+          "name": "result",
+          "type": "boolean",
+          "plug": "output",
+          "displayName": "Result"
+        }
+      ]
+    },
+    {
+      "name": "Boolean To String",
+      "docs": "https://docs.noodl.net/nodes/utilities/boolean-to-string",
+      "shortDocs": "https://docs.noodl.net/nodes/utilities/boolean-to-string-short.md",
+      "category": "Utilities",
+      "ports": [
+        {
+          "name": "trueString",
+          "type": "string",
+          "plug": "input",
+          "displayName": "String for true"
+        },
+        {
+          "name": "falseString",
+          "type": "string",
+          "plug": "input",
+          "displayName": "String for false"
+        },
+        {
+          "name": "input",
+          "type": {
+            "name": "boolean"
+          },
+          "plug": "input",
+          "displayName": "Selector"
+        },
+        {
+          "name": "currentValue",
+          "type": "string",
+          "plug": "output",
+          "group": "Value",
+          "displayName": "Current Value"
+        },
+        {
+          "name": "inputChanged",
+          "type": "signal",
+          "plug": "output",
+          "group": "Signals",
+          "displayName": "Selector Changed"
+        }
+      ]
+    },
+    {
+      "name": "Date To String",
+      "docs": "https://docs.noodl.net/nodes/utilities/date-to-string",
+      "shortDocs": "https://docs.noodl.net/nodes/utilities/date-to-string-short.md",
+      "category": "Utilities",
+      "ports": [
+        {
+          "name": "formatString",
+          "type": "string",
+          "plug": "input",
+          "displayName": "Format",
+          "default": "{year}-{month}-{date}"
+        },
+        {
+          "name": "input",
+          "type": {
+            "name": "date"
+          },
+          "plug": "input",
+          "displayName": "Date"
+        },
+        {
+          "name": "currentValue",
+          "type": "string",
+          "plug": "output",
+          "group": "Value",
+          "displayName": "Date String"
+        },
+        {
+          "name": "inputChanged",
+          "type": "signal",
+          "plug": "output",
+          "group": "Signals",
+          "displayName": "Date Changed"
+        },
+        {
+          "name": "onError",
+          "type": "signal",
+          "plug": "output",
+          "group": "Signals",
+          "displayName": "Invalid Date"
+        }
+      ]
+    },
+    {
+      "name": "String Mapper",
+      "docs": "https://docs.noodl.net/nodes/string-manipulation/string-mapper",
+      "shortDocs": "https://docs.noodl.net/nodes/string-manipulation/string-mapper-short.md",
+      "category": "Utilities",
+      "ports": [
+        {
+          "name": "inputString",
+          "type": {
+            "name": "string"
+          },
+          "plug": "input",
+          "displayName": "Input String",
+          "index": 1
+        },
+        {
+          "name": "defaultMapping",
+          "type": "string",
+          "plug": "input",
+          "group": "Mappings",
+          "displayName": "Default",
+          "index": 1000
+        },
+        {
+          "name": "mappedString",
+          "type": "string",
+          "plug": "output",
+          "group": "Value",
+          "displayName": "Mapped String"
+        }
+      ]
+    },
+    {
+      "name": "Inverter",
+      "docs": "https://docs.noodl.net/nodes/logic/inverter",
+      "shortDocs": "https://docs.noodl.net/nodes/logic/inverter-short.md",
+      "category": "Logic",
+      "ports": [
+        {
+          "name": "value",
+          "type": {
+            "name": "boolean"
+          },
+          "plug": "input",
+          "displayName": "Value"
+        },
+        {
+          "name": "result",
+          "type": "boolean",
+          "plug": "output",
+          "displayName": "Result"
+        }
+      ]
+    },
+    {
+      "name": "Substring",
+      "docs": "https://docs.noodl.net/nodes/string-manipulation/substring",
+      "shortDocs": "https://docs.noodl.net/nodes/string-manipulation/substring-short.md",
+      "category": "String Manipulation",
+      "ports": [
+        {
+          "name": "start",
+          "type": "number",
+          "plug": "input",
+          "displayName": "Start",
+          "default": 0
+        },
+        {
+          "name": "end",
+          "type": "number",
+          "plug": "input",
+          "displayName": "End",
+          "default": 0
+        },
+        {
+          "name": "string",
+          "type": {
+            "name": "string"
+          },
+          "plug": "input",
+          "displayName": "String",
+          "default": ""
+        },
+        {
+          "name": "result",
+          "type": "string",
+          "plug": "output",
+          "displayName": "Result"
+        }
+      ]
+    },
+    {
+      "name": "String Format",
+      "docs": "https://docs.noodl.net/nodes/string-manipulation/string-format",
+      "shortDocs": "https://docs.noodl.net/nodes/string-manipulation/string-format-short.md",
+      "category": "String Manipulation",
+      "usePortAsLabel": "format",
+      "portLabelTruncationMode": "length",
+      "ports": [
+        {
+          "name": "format",
+          "type": {
+            "name": "string",
+            "multiline": true
+          },
+          "plug": "input",
+          "displayName": "Format"
+        },
+        {
+          "name": "formatted",
+          "type": "string",
+          "plug": "output",
+          "displayName": "Formatted"
+        }
+      ]
+    },
+    {
+      "name": "Counter",
+      "docs": "https://docs.noodl.net/nodes/math/counter",
+      "shortDocs": "https://docs.noodl.net/nodes/math/counter-short.md",
+      "category": "Math",
+      "ports": [
+        {
+          "name": "increase",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "Actions",
+          "displayName": "Increase Count"
+        },
+        {
+          "name": "decrease",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "Actions",
+          "displayName": "Decrease Count"
+        },
+        {
+          "name": "reset",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "Actions",
+          "displayName": "Reset To Start"
+        },
+        {
+          "name": "startValue",
+          "type": "number",
+          "plug": "input",
+          "displayName": "Start Value",
+          "default": 0
+        },
+        {
+          "name": "limitsMin",
+          "type": {
+            "name": "number"
+          },
+          "plug": "input",
+          "group": "Limits",
+          "displayName": "Min Value",
+          "default": 0
+        },
+        {
+          "name": "limitsMax",
+          "type": {
+            "name": "number"
+          },
+          "plug": "input",
+          "group": "Limits",
+          "displayName": "Max Value",
+          "default": 0
+        },
+        {
+          "name": "limitsEnabled",
+          "type": {
+            "name": "boolean"
+          },
+          "plug": "input",
+          "group": "Limits",
+          "displayName": "Limits Enabled",
+          "default": false
+        },
+        {
+          "name": "currentCount",
+          "type": "number",
+          "plug": "output",
+          "displayName": "Current Count"
+        },
+        {
+          "name": "countChanged",
+          "type": "signal",
+          "plug": "output",
+          "displayName": "Count Changed"
+        }
+      ]
+    },
+    {
+      "name": "Unique Id",
+      "docs": "https://docs.noodl.net/nodes/utilities/unique-id",
+      "shortDocs": "https://docs.noodl.net/nodes/utilities/unique-id-short.md",
+      "category": "String Manipulation",
+      "ports": [
+        {
+          "name": "new",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "displayName": "New"
+        },
+        {
+          "name": "guid",
+          "type": "string",
+          "plug": "output",
+          "displayName": "Id"
+        }
+      ]
+    },
+    {
+      "name": "net.noodl.user.SetUserProperties",
+      "displayNodeName": "Set User Properties",
+      "docs": "https://docs.noodl.net/nodes/data/user/set-user-properties",
+      "shortDocs": "https://docs.noodl.net/nodes/data/user/set-user-properties-short.md",
+      "category": "Cloud Services",
+      "color": "data",
+      "ports": [
+        {
+          "name": "store",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "Actions",
+          "displayName": "Do"
+        },
+        {
+          "name": "email",
+          "type": "string",
+          "plug": "input",
+          "group": "General",
+          "displayName": "Email"
+        },
+        {
+          "name": "username",
+          "type": "string",
+          "plug": "input",
+          "group": "General",
+          "displayName": "Username"
+        },
+        {
+          "name": "success",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Success"
+        },
+        {
+          "name": "failure",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Failure"
+        },
+        {
+          "name": "error",
+          "type": "string",
+          "plug": "output",
+          "group": "Error",
+          "displayName": "Error"
+        }
+      ]
+    },
+    {
+      "name": "net.noodl.user.User",
+      "displayNodeName": "User",
+      "docs": "https://docs.noodl.net/nodes/data/user/user-node",
+      "shortDocs": "https://docs.noodl.net/nodes/data/user/user-node-short.md",
+      "category": "Cloud Services",
+      "color": "data",
+      "ports": [
+        {
+          "name": "fetch",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "Actions",
+          "displayName": "Fetch"
+        },
+        {
+          "name": "id",
+          "type": "string",
+          "plug": "output",
+          "group": "General",
+          "displayName": "Id"
+        },
+        {
+          "name": "fetched",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Fetched"
+        },
+        {
+          "name": "changed",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Changed"
+        },
+        {
+          "name": "failure",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Failure"
+        },
+        {
+          "name": "error",
+          "type": "string",
+          "plug": "output",
+          "group": "Error",
+          "displayName": "Error"
+        },
+        {
+          "name": "username",
+          "type": "string",
+          "plug": "output",
+          "group": "General",
+          "displayName": "Username"
+        },
+        {
+          "name": "email",
+          "type": "string",
+          "plug": "output",
+          "group": "General",
+          "displayName": "Email"
+        },
+        {
+          "name": "authenticated",
+          "type": "boolean",
+          "plug": "output",
+          "group": "General",
+          "displayName": "Authenticated"
+        }
+      ]
+    },
+    {
+      "name": "net.noodl.GlobalStore",
+      "displayNodeName": "Global Store",
+      "category": "Data",
+      "usePortAsLabel": "storeName",
+      "color": "data",
+      "ports": [
+        {
+          "name": "storeName",
+          "type": "string",
+          "plug": "input",
+          "group": "Store",
+          "displayName": "Store Name",
+          "default": "app"
+        },
+        {
+          "name": "initialState",
+          "type": "object",
+          "plug": "input",
+          "group": "Store",
+          "displayName": "Initial State"
+        },
+        {
+          "name": "persist",
+          "type": "boolean",
+          "plug": "input",
+          "group": "Store",
+          "displayName": "Persist",
+          "default": false
+        },
+        {
+          "name": "storageKey",
+          "type": "string",
+          "plug": "input",
+          "group": "Store",
+          "displayName": "Storage Key"
+        },
+        {
+          "name": "state",
+          "type": "object",
+          "plug": "output",
+          "group": "Data",
+          "displayName": "State"
+        },
+        {
+          "name": "changedKeys",
+          "type": "string",
+          "plug": "output",
+          "group": "Data",
+          "displayName": "Changed Keys"
+        },
+        {
+          "name": "stateChanged",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "State Changed"
+        },
+        {
+          "name": "ready",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Ready"
+        },
+        {
+          "name": "error",
+          "type": "string",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Error"
+        },
+        {
+          "name": "storeId",
+          "type": "string",
+          "plug": "output",
+          "group": "Info",
+          "displayName": "Store Id"
+        }
+      ]
+    },
+    {
+      "name": "net.noodl.GlobalStore.Set",
+      "displayNodeName": "Set Global Store",
+      "category": "Data",
+      "usePortAsLabel": "key",
+      "color": "data",
+      "ports": [
+        {
+          "name": "storeName",
+          "type": "string",
+          "plug": "input",
+          "group": "Store",
+          "displayName": "Store Name",
+          "default": "app"
+        },
+        {
+          "name": "key",
+          "type": "string",
+          "plug": "input",
+          "group": "Update",
+          "displayName": "Key"
+        },
+        {
+          "name": "value",
+          "type": "*",
+          "plug": "input",
+          "group": "Update",
+          "displayName": "Value"
+        },
+        {
+          "name": "merge",
+          "type": "boolean",
+          "plug": "input",
+          "group": "Update",
+          "displayName": "Merge Object",
+          "default": false
+        },
+        {
+          "name": "transaction",
+          "type": "boolean",
+          "plug": "input",
+          "group": "Update",
+          "displayName": "Batch With Others",
+          "default": false
+        },
+        {
+          "name": "set",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "Actions",
+          "displayName": "Set"
+        },
+        {
+          "name": "completed",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Completed"
+        },
+        {
+          "name": "error",
+          "type": "string",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Error"
+        }
+      ]
+    },
+    {
+      "name": "net.noodl.GlobalStore.Subscribe",
+      "displayNodeName": "Subscribe to Store",
+      "category": "Data",
+      "usePortAsLabel": "keys",
+      "color": "data",
+      "ports": [
+        {
+          "name": "storeName",
+          "type": "string",
+          "plug": "input",
+          "group": "Store",
+          "displayName": "Store Name",
+          "default": "app"
+        },
+        {
+          "name": "keys",
+          "type": "string",
+          "plug": "input",
+          "group": "Subscribe",
+          "displayName": "Keys",
+          "tooltip": "Comma-separated keys to watch. Leave blank to react to every change in the store."
+        },
+        {
+          "name": "value",
+          "type": "*",
+          "plug": "output",
+          "group": "Data",
+          "displayName": "Value"
+        },
+        {
+          "name": "previousValue",
+          "type": "*",
+          "plug": "output",
+          "group": "Data",
+          "displayName": "Previous Value"
+        },
+        {
+          "name": "changedKeys",
+          "type": "string",
+          "plug": "output",
+          "group": "Data",
+          "displayName": "Changed Keys"
+        },
+        {
+          "name": "changed",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Changed"
+        }
+      ]
+    },
+    {
+      "name": "net.noodl.OptimisticUpdate",
+      "displayNodeName": "Optimistic Update",
+      "category": "Data",
+      "usePortAsLabel": "key",
+      "color": "data",
+      "ports": [
+        {
+          "name": "storeName",
+          "type": "string",
+          "plug": "input",
+          "group": "Store",
+          "displayName": "Store Name",
+          "default": "app"
+        },
+        {
+          "name": "key",
+          "type": "string",
+          "plug": "input",
+          "group": "Store",
+          "displayName": "Key"
+        },
+        {
+          "name": "optimisticValue",
+          "type": "*",
+          "plug": "input",
+          "group": "Update",
+          "displayName": "Optimistic Value"
+        },
+        {
+          "name": "errorMessage",
+          "type": "string",
+          "plug": "input",
+          "group": "Update",
+          "displayName": "Error Message",
+          "tooltip": "Reason reported on Error when this update is rolled back. Wire the server error here."
+        },
+        {
+          "name": "transactionId",
+          "type": "string",
+          "plug": "input",
+          "group": "Transaction",
+          "displayName": "Transaction Id",
+          "tooltip": "Leave blank to let the node generate one. Set it to commit or roll back a specific update when several are in flight."
+        },
+        {
+          "name": "timeout",
+          "type": "number",
+          "plug": "input",
+          "group": "Config",
+          "displayName": "Timeout (ms)",
+          "default": 30000,
+          "tooltip": "Roll back automatically after this long with no answer. Zero disables the deadline."
+        },
+        {
+          "name": "onDispose",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Roll back",
+                "value": "rollback"
+              },
+              {
+                "label": "Keep the value",
+                "value": "commit"
+              }
+            ],
+            "allowEditOnly": true
+          },
+          "plug": "input",
+          "group": "Config",
+          "displayName": "When Removed",
+          "default": "rollback",
+          "tooltip": "What happens to updates still in flight when this node is removed. Rolling back keeps the store honest; keeping the value suits fire-and-forget actions the user navigates away from."
+        },
+        {
+          "name": "apply",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "Actions",
+          "displayName": "Apply"
+        },
+        {
+          "name": "commit",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "Actions",
+          "displayName": "Commit"
+        },
+        {
+          "name": "rollback",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "Actions",
+          "displayName": "Rollback"
+        },
+        {
+          "name": "value",
+          "type": "*",
+          "plug": "output",
+          "group": "Data",
+          "displayName": "Value"
+        },
+        {
+          "name": "previousValue",
+          "type": "*",
+          "plug": "output",
+          "group": "Data",
+          "displayName": "Previous Value"
+        },
+        {
+          "name": "isPending",
+          "type": "boolean",
+          "plug": "output",
+          "group": "Status",
+          "displayName": "Is Pending"
+        },
+        {
+          "name": "pendingCount",
+          "type": "number",
+          "plug": "output",
+          "group": "Status",
+          "displayName": "Pending Count"
+        },
+        {
+          "name": "isCommitted",
+          "type": "boolean",
+          "plug": "output",
+          "group": "Status",
+          "displayName": "Is Committed"
+        },
+        {
+          "name": "isRolledBack",
+          "type": "boolean",
+          "plug": "output",
+          "group": "Status",
+          "displayName": "Is Rolled Back"
+        },
+        {
+          "name": "transactionId",
+          "type": "string",
+          "plug": "output",
+          "group": "Info",
+          "displayName": "Transaction Id"
+        },
+        {
+          "name": "applied",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Applied"
+        },
+        {
+          "name": "committed",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Committed"
+        },
+        {
+          "name": "rolledBack",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Rolled Back"
+        },
+        {
+          "name": "timedOut",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Timed Out"
+        },
+        {
+          "name": "error",
+          "type": "string",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Error"
+        }
+      ]
+    },
+    {
+      "name": "net.noodl.StateHistory",
+      "displayNodeName": "State History",
+      "category": "Data",
+      "usePortAsLabel": "storeName",
+      "color": "data",
+      "ports": [
+        {
+          "name": "storeName",
+          "type": "string",
+          "plug": "input",
+          "group": "Store",
+          "displayName": "Store Name",
+          "default": "app"
+        },
+        {
+          "name": "trackKeys",
+          "type": "string",
+          "plug": "input",
+          "group": "Config",
+          "displayName": "Track Keys",
+          "tooltip": "Comma-separated keys to record. Blank records the whole store. Undo then writes only these keys and leaves the rest alone. Changing this clears the history."
+        },
+        {
+          "name": "maxHistory",
+          "type": "number",
+          "plug": "input",
+          "group": "Config",
+          "displayName": "Max History",
+          "default": 50,
+          "tooltip": "How many entries to keep. The oldest are dropped first. An unbounded history is a memory leak."
+        },
+        {
+          "name": "coalesceMs",
+          "type": "number",
+          "plug": "input",
+          "group": "Config",
+          "displayName": "Coalesce (ms)",
+          "default": 0,
+          "tooltip": "Fold successive changes to the same keys within this many milliseconds into one undo step, so typing is one undo rather than one per keystroke. 0 records every change separately."
+        },
+        {
+          "name": "enabled",
+          "type": "boolean",
+          "plug": "input",
+          "group": "Config",
+          "displayName": "Enabled",
+          "default": true,
+          "tooltip": "Turning this off pauses recording. The history already collected is kept."
+        },
+        {
+          "name": "clearHistory",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "Actions",
+          "displayName": "Clear History"
+        },
+        {
+          "name": "historySize",
+          "type": "number",
+          "plug": "output",
+          "group": "Status",
+          "displayName": "History Size"
+        },
+        {
+          "name": "currentIndex",
+          "type": "number",
+          "plug": "output",
+          "group": "Status",
+          "displayName": "Current Index"
+        },
+        {
+          "name": "canUndo",
+          "type": "boolean",
+          "plug": "output",
+          "group": "Status",
+          "displayName": "Can Undo"
+        },
+        {
+          "name": "canRedo",
+          "type": "boolean",
+          "plug": "output",
+          "group": "Status",
+          "displayName": "Can Redo"
+        },
+        {
+          "name": "fullyRestorable",
+          "type": "boolean",
+          "plug": "output",
+          "group": "Status",
+          "displayName": "Fully Restorable"
+        },
+        {
+          "name": "byReferenceKeys",
+          "type": "string",
+          "plug": "output",
+          "group": "Status",
+          "displayName": "By-Reference Keys"
+        },
+        {
+          "name": "history",
+          "type": "array",
+          "plug": "output",
+          "group": "Data",
+          "displayName": "History"
+        },
+        {
+          "name": "historyChanged",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "History Changed"
+        }
+      ]
+    },
+    {
+      "name": "net.noodl.StateHistory.Undo",
+      "displayNodeName": "Undo / Redo",
+      "category": "Data",
+      "usePortAsLabel": "storeName",
+      "color": "data",
+      "ports": [
+        {
+          "name": "storeName",
+          "type": "string",
+          "plug": "input",
+          "group": "Store",
+          "displayName": "Store Name",
+          "default": "app"
+        },
+        {
+          "name": "targetIndex",
+          "type": "number",
+          "plug": "input",
+          "group": "Jump",
+          "displayName": "Target Index",
+          "default": 0
+        },
+        {
+          "name": "undo",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "Actions",
+          "displayName": "Undo"
+        },
+        {
+          "name": "redo",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "Actions",
+          "displayName": "Redo"
+        },
+        {
+          "name": "jumpTo",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "Actions",
+          "displayName": "Jump To"
+        },
+        {
+          "name": "undone",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Undone"
+        },
+        {
+          "name": "redone",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Redone"
+        },
+        {
+          "name": "jumped",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Jumped"
+        },
+        {
+          "name": "fullyRestorable",
+          "type": "boolean",
+          "plug": "output",
+          "group": "Status",
+          "displayName": "Fully Restorable"
+        },
+        {
+          "name": "byReferenceKeys",
+          "type": "string",
+          "plug": "output",
+          "group": "Status",
+          "displayName": "By-Reference Keys"
+        },
+        {
+          "name": "error",
+          "type": "string",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Error"
+        }
+      ]
+    },
+    {
+      "name": "net.noodl.StateSnapshot",
+      "displayNodeName": "State Snapshot",
+      "category": "Data",
+      "usePortAsLabel": "snapshotName",
+      "color": "data",
+      "ports": [
+        {
+          "name": "storeName",
+          "type": "string",
+          "plug": "input",
+          "group": "Store",
+          "displayName": "Store Name",
+          "default": "app"
+        },
+        {
+          "name": "snapshotName",
+          "type": "string",
+          "plug": "input",
+          "group": "Snapshot",
+          "displayName": "Snapshot Name"
+        },
+        {
+          "name": "snapshotData",
+          "type": "object",
+          "plug": "input",
+          "group": "Snapshot",
+          "displayName": "Snapshot Data",
+          "tooltip": "Snapshot to restore instead of the named one — a previously exported \"Snapshot\" output. Leave blank to restore by name."
+        },
+        {
+          "name": "save",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "Actions",
+          "displayName": "Save"
+        },
+        {
+          "name": "restore",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "Actions",
+          "displayName": "Restore"
+        },
+        {
+          "name": "snapshot",
+          "type": "object",
+          "plug": "output",
+          "group": "Data",
+          "displayName": "Snapshot"
+        },
+        {
+          "name": "fullyRestorable",
+          "type": "boolean",
+          "plug": "output",
+          "group": "Status",
+          "displayName": "Fully Restorable"
+        },
+        {
+          "name": "byReferenceKeys",
+          "type": "string",
+          "plug": "output",
+          "group": "Status",
+          "displayName": "By-Reference Keys"
+        },
+        {
+          "name": "saved",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Saved"
+        },
+        {
+          "name": "restored",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Restored"
+        },
+        {
+          "name": "error",
+          "type": "string",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Error"
+        }
+      ]
+    },
+    {
+      "name": "net.noodl.WebSocket",
+      "searchTags": [
+        "websocket",
+        "ws",
+        "wss",
+        "realtime",
+        "bidirectional",
+        "socket",
+        "stream",
+        "streaming",
+        "agent",
+        "chat",
+        "live"
+      ],
+      "displayNodeName": "WebSocket",
+      "docs": "https://docs.noodl.net/nodes/data/websocket",
+      "shortDocs": "https://docs.noodl.net/nodes/data/websocket-short.md",
+      "category": "Data",
+      "usePortAsLabel": "url",
+      "portLabelTruncationMode": "path",
+      "color": "data",
+      "ports": [
+        {
+          "name": "url",
+          "type": "string",
+          "plug": "input",
+          "group": "Connection",
+          "displayName": "URL"
+        },
+        {
+          "name": "autoConnect",
+          "type": "boolean",
+          "plug": "input",
+          "group": "Connection",
+          "displayName": "Auto Connect",
+          "default": true,
+          "tooltip": "Connect as soon as a URL is available, without waiting for a Connect signal."
+        },
+        {
+          "name": "protocols",
+          "type": "string",
+          "plug": "input",
+          "group": "Connection",
+          "displayName": "Protocols",
+          "tooltip": "Comma-separated WebSocket subprotocols to offer during the handshake."
+        },
+        {
+          "name": "autoReconnect",
+          "type": "boolean",
+          "plug": "input",
+          "group": "Connection",
+          "displayName": "Auto Reconnect",
+          "default": true
+        },
+        {
+          "name": "reconnectDelay",
+          "type": "number",
+          "plug": "input",
+          "group": "Connection",
+          "displayName": "Reconnect Delay (ms)",
+          "default": 1000,
+          "tooltip": "First backoff delay. Each further attempt doubles it, up to Max Reconnect Delay."
+        },
+        {
+          "name": "maxReconnectDelay",
+          "type": "number",
+          "plug": "input",
+          "group": "Connection",
+          "displayName": "Max Reconnect Delay (ms)",
+          "default": 30000
+        },
+        {
+          "name": "maxRetries",
+          "type": "number",
+          "plug": "input",
+          "group": "Connection",
+          "displayName": "Max Retries",
+          "default": 10,
+          "tooltip": "Reconnect attempts allowed per outage. 0 disables retrying; a negative value means unlimited."
+        },
+        {
+          "name": "jitter",
+          "type": "boolean",
+          "plug": "input",
+          "group": "Connection",
+          "displayName": "Backoff Jitter",
+          "default": true,
+          "tooltip": "Spread reconnect attempts randomly across the second half of each backoff window."
+        },
+        {
+          "name": "heartbeatInterval",
+          "type": "number",
+          "plug": "input",
+          "group": "Connection",
+          "displayName": "Heartbeat Interval (ms)",
+          "default": 0,
+          "tooltip": "Send Heartbeat Message this often while open. 0 disables it. Only enable this if your server expects the message — it is application data, not a protocol ping frame."
+        },
+        {
+          "name": "heartbeatMessage",
+          "type": "string",
+          "plug": "input",
+          "group": "Connection",
+          "displayName": "Heartbeat Message",
+          "default": "ping"
+        },
+        {
+          "name": "heartbeatReply",
+          "type": "string",
+          "plug": "input",
+          "group": "Connection",
+          "displayName": "Heartbeat Reply",
+          "default": "pong",
+          "tooltip": "Exact text the server answers a heartbeat with. It is measured as Latency, hidden from On Message, and — if it stops arriving — treated as a dead connection. Leave empty to only send heartbeats."
+        },
+        {
+          "name": "connect",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "Actions",
+          "displayName": "Connect"
+        },
+        {
+          "name": "disconnect",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "Actions",
+          "displayName": "Disconnect"
+        },
+        {
+          "name": "send",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "Actions",
+          "displayName": "Send"
+        },
+        {
+          "name": "message",
+          "type": "*",
+          "plug": "input",
+          "group": "Message",
+          "displayName": "Message",
+          "tooltip": "Value to send. Objects are JSON-serialized; ArrayBuffers and typed arrays are sent as binary frames."
+        },
+        {
+          "name": "messageType",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Auto",
+                "value": "auto"
+              },
+              {
+                "label": "Text",
+                "value": "text"
+              },
+              {
+                "label": "Binary",
+                "value": "binary"
+              }
+            ]
+          },
+          "plug": "input",
+          "group": "Message",
+          "displayName": "Message Type",
+          "default": "auto",
+          "tooltip": "Auto sends binary values as binary and everything else as text. Binary forces text and objects to be UTF-8 encoded first."
+        },
+        {
+          "name": "whenDisconnected",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Queue",
+                "value": "queue"
+              },
+              {
+                "label": "Drop",
+                "value": "drop"
+              },
+              {
+                "label": "Report Error",
+                "value": "error"
+              }
+            ]
+          },
+          "plug": "input",
+          "group": "Message",
+          "displayName": "When Disconnected",
+          "default": "queue",
+          "tooltip": "What a Send does while the connection is not open. Queue holds it (in order) until the socket reopens; Drop discards it and counts it; Report Error also sets Last Error and fires On Error."
+        },
+        {
+          "name": "maxQueueSize",
+          "type": "number",
+          "plug": "input",
+          "group": "Message",
+          "displayName": "Max Queue Size",
+          "default": 100,
+          "tooltip": "Messages the queue holds before further Sends are refused and counted in Dropped. 0 or less means unlimited, which can grow without bound during a long outage."
+        },
+        {
+          "name": "connectionState",
+          "type": "string",
+          "plug": "output",
+          "group": "Status",
+          "displayName": "Connection State"
+        },
+        {
+          "name": "connected",
+          "type": "boolean",
+          "plug": "output",
+          "group": "Status",
+          "displayName": "Connected"
+        },
+        {
+          "name": "retryCount",
+          "type": "number",
+          "plug": "output",
+          "group": "Status",
+          "displayName": "Retry Count"
+        },
+        {
+          "name": "lastError",
+          "type": "string",
+          "plug": "output",
+          "group": "Status",
+          "displayName": "Last Error"
+        },
+        {
+          "name": "queueSize",
+          "type": "number",
+          "plug": "output",
+          "group": "Status",
+          "displayName": "Queue Size"
+        },
+        {
+          "name": "droppedCount",
+          "type": "number",
+          "plug": "output",
+          "group": "Status",
+          "displayName": "Dropped"
+        },
+        {
+          "name": "latency",
+          "type": "number",
+          "plug": "output",
+          "group": "Status",
+          "displayName": "Latency (ms)"
+        },
+        {
+          "name": "closeCode",
+          "type": "number",
+          "plug": "output",
+          "group": "Status",
+          "displayName": "Close Code"
+        },
+        {
+          "name": "closeReason",
+          "type": "string",
+          "plug": "output",
+          "group": "Status",
+          "displayName": "Close Reason"
+        },
+        {
+          "name": "received",
+          "type": "*",
+          "plug": "output",
+          "group": "Data",
+          "displayName": "Received"
+        },
+        {
+          "name": "receivedRaw",
+          "type": "string",
+          "plug": "output",
+          "group": "Data",
+          "displayName": "Received Raw"
+        },
+        {
+          "name": "receivedIsBinary",
+          "type": "boolean",
+          "plug": "output",
+          "group": "Data",
+          "displayName": "Received Is Binary"
+        },
+        {
+          "name": "onOpen",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "On Open"
+        },
+        {
+          "name": "onMessage",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "On Message"
+        },
+        {
+          "name": "onMessageSent",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "On Message Sent"
+        },
+        {
+          "name": "onError",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "On Error"
+        },
+        {
+          "name": "onClose",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "On Close"
+        },
+        {
+          "name": "onReconnect",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "On Reconnect"
+        }
+      ]
+    },
+    {
+      "name": "net.noodl.SSE",
+      "searchTags": [
+        "sse",
+        "stream",
+        "streaming",
+        "server-sent",
+        "events",
+        "eventsource",
+        "realtime",
+        "agent",
+        "ai",
+        "chat",
+        "tokens"
+      ],
+      "displayNodeName": "Server-Sent Events",
+      "docs": "https://docs.noodl.net/nodes/data/sse",
+      "shortDocs": "https://docs.noodl.net/nodes/data/sse-short.md",
+      "category": "Data",
+      "color": "data",
+      "ports": [
+        {
+          "name": "url",
+          "type": "string",
+          "plug": "input",
+          "group": "Connection",
+          "displayName": "URL"
+        },
+        {
+          "name": "transport",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Auto",
+                "value": "auto"
+              },
+              {
+                "label": "Fetch (headers, POST)",
+                "value": "fetch"
+              },
+              {
+                "label": "EventSource",
+                "value": "eventsource"
+              }
+            ]
+          },
+          "plug": "input",
+          "group": "Connection",
+          "displayName": "Transport",
+          "default": "auto"
+        },
+        {
+          "name": "method",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "GET",
+                "value": "GET"
+              },
+              {
+                "label": "POST",
+                "value": "POST"
+              },
+              {
+                "label": "PUT",
+                "value": "PUT"
+              },
+              {
+                "label": "PATCH",
+                "value": "PATCH"
+              }
+            ]
+          },
+          "plug": "input",
+          "group": "Request",
+          "displayName": "Method",
+          "default": "GET"
+        },
+        {
+          "name": "headers",
+          "type": "object",
+          "plug": "input",
+          "group": "Request",
+          "displayName": "Headers"
+        },
+        {
+          "name": "body",
+          "type": "*",
+          "plug": "input",
+          "group": "Request",
+          "displayName": "Body"
+        },
+        {
+          "name": "withCredentials",
+          "type": "boolean",
+          "plug": "input",
+          "group": "Request",
+          "displayName": "With Credentials",
+          "default": false
+        },
+        {
+          "name": "eventTypes",
+          "type": "string",
+          "plug": "input",
+          "group": "Connection",
+          "displayName": "Event Types",
+          "tooltip": "Comma-separated named event types to subscribe to. Only needed for the EventSource transport, which delivers a named event only to a listener registered in advance; the Fetch transport delivers every event type."
+        },
+        {
+          "name": "textPath",
+          "type": "string",
+          "plug": "input",
+          "group": "Data",
+          "displayName": "Text Path",
+          "tooltip": "Where the text lives inside a JSON payload, as a dot path — for an OpenAI-compatible endpoint, choices.0.delta.content. Leave blank for a stream that sends bare text. Whatever it names ends up on the Text output, which is always a string."
+        },
+        {
+          "name": "autoConnect",
+          "type": "boolean",
+          "plug": "input",
+          "group": "Connection",
+          "displayName": "Auto Connect",
+          "default": false
+        },
+        {
+          "name": "autoReconnect",
+          "type": "boolean",
+          "plug": "input",
+          "group": "Reconnection",
+          "displayName": "Auto Reconnect",
+          "default": true
+        },
+        {
+          "name": "reconnectOnStreamEnd",
+          "type": "boolean",
+          "plug": "input",
+          "group": "Reconnection",
+          "displayName": "Reconnect On Stream End",
+          "default": false,
+          "tooltip": "Reconnect when the server closes the stream cleanly. Off by default: an agent response stream is finite, and reconnecting would re-issue the request and start the response again."
+        },
+        {
+          "name": "reconnectDelay",
+          "type": "number",
+          "plug": "input",
+          "group": "Reconnection",
+          "displayName": "Reconnect Delay (ms)",
+          "default": 1000,
+          "tooltip": "First retry delay. Doubles per consecutive failure, up to the maximum."
+        },
+        {
+          "name": "maxReconnectDelay",
+          "type": "number",
+          "plug": "input",
+          "group": "Reconnection",
+          "displayName": "Max Reconnect Delay (ms)",
+          "default": 30000
+        },
+        {
+          "name": "maxRetries",
+          "type": "number",
+          "plug": "input",
+          "group": "Reconnection",
+          "displayName": "Max Retries",
+          "default": 0,
+          "tooltip": "0 means keep retrying. Otherwise the connection reports an error after this many consecutive failures."
+        },
+        {
+          "name": "dedupeById",
+          "type": "boolean",
+          "plug": "input",
+          "group": "Reconnection",
+          "displayName": "Dedupe By Id",
+          "default": true,
+          "tooltip": "Drop events whose id has already been seen, so a reconnect that resumes from the last event id cannot re-deliver messages. Turn off if your server reuses ids for distinct events."
+        },
+        {
+          "name": "connect",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "Actions",
+          "displayName": "Connect"
+        },
+        {
+          "name": "disconnect",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "Actions",
+          "displayName": "Disconnect"
+        },
+        {
+          "name": "connectionState",
+          "type": "string",
+          "plug": "output",
+          "group": "Status",
+          "displayName": "Connection State"
+        },
+        {
+          "name": "connected",
+          "type": "boolean",
+          "plug": "output",
+          "group": "Status",
+          "displayName": "Connected"
+        },
+        {
+          "name": "lastError",
+          "type": "string",
+          "plug": "output",
+          "group": "Status",
+          "displayName": "Last Error"
+        },
+        {
+          "name": "retryCount",
+          "type": "number",
+          "plug": "output",
+          "group": "Status",
+          "displayName": "Retry Count"
+        },
+        {
+          "name": "onOpen",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "On Open"
+        },
+        {
+          "name": "onMessage",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "On Message"
+        },
+        {
+          "name": "onError",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "On Error"
+        },
+        {
+          "name": "onClose",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "On Close"
+        },
+        {
+          "name": "data",
+          "type": "*",
+          "plug": "output",
+          "group": "Data",
+          "displayName": "Data"
+        },
+        {
+          "name": "raw",
+          "type": "string",
+          "plug": "output",
+          "group": "Data",
+          "displayName": "Raw"
+        },
+        {
+          "name": "text",
+          "type": "string",
+          "plug": "output",
+          "group": "Data",
+          "displayName": "Text"
+        },
+        {
+          "name": "eventType",
+          "type": "string",
+          "plug": "output",
+          "group": "Data",
+          "displayName": "Event Type"
+        },
+        {
+          "name": "lastEventId",
+          "type": "string",
+          "plug": "output",
+          "group": "Data",
+          "displayName": "Last Event Id"
+        },
+        {
+          "name": "messageCount",
+          "type": "number",
+          "plug": "output",
+          "group": "Status",
+          "displayName": "Message Count"
+        },
+        {
+          "name": "lastMessageTime",
+          "type": "number",
+          "plug": "output",
+          "group": "Status",
+          "displayName": "Last Message Time"
+        },
+        {
+          "name": "duplicatesSuppressed",
+          "type": "number",
+          "plug": "output",
+          "group": "Status",
+          "displayName": "Duplicates Suppressed"
+        },
+        {
+          "name": "deliverySemantics",
+          "type": "string",
+          "plug": "output",
+          "group": "Status",
+          "displayName": "Delivery Semantics"
+        }
+      ]
+    },
+    {
+      "name": "net.noodl.TextAccumulator",
+      "searchTags": [
+        "stream",
+        "accumulate",
+        "buffer",
+        "chunk",
+        "tokens",
+        "concat",
+        "agent",
+        "ai",
+        "streaming"
+      ],
+      "displayNodeName": "Text Accumulator",
+      "docs": "https://docs.noodl.net/nodes/data/text-accumulator",
+      "shortDocs": "https://docs.noodl.net/nodes/data/text-accumulator-short.md",
+      "category": "Data",
+      "color": "data",
+      "ports": [
+        {
+          "name": "chunk",
+          "type": "string",
+          "plug": "input",
+          "group": "Data",
+          "displayName": "Chunk"
+        },
+        {
+          "name": "delimiter",
+          "type": "string",
+          "plug": "input",
+          "group": "Config",
+          "displayName": "Delimiter",
+          "default": "\n",
+          "tooltip": "Message boundary. Leave empty to accumulate everything without splitting — the mode a token stream wants."
+        },
+        {
+          "name": "maxLength",
+          "type": "number",
+          "plug": "input",
+          "group": "Config",
+          "displayName": "Max Length (characters)",
+          "default": 1048576,
+          "tooltip": "Cap on the pending buffer. Overflow drops the oldest characters and is reported on Dropped Characters."
+        },
+        {
+          "name": "maxMessages",
+          "type": "number",
+          "plug": "input",
+          "group": "Config",
+          "displayName": "Max Messages",
+          "default": 1000,
+          "tooltip": "Cap on retained complete messages; the oldest are dropped first. 0 keeps them all, which grows forever."
+        },
+        {
+          "name": "add",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "Actions",
+          "displayName": "Add"
+        },
+        {
+          "name": "clear",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "Actions",
+          "displayName": "Clear"
+        },
+        {
+          "name": "accumulated",
+          "type": "string",
+          "plug": "output",
+          "group": "Data",
+          "displayName": "Accumulated"
+        },
+        {
+          "name": "messages",
+          "type": "array",
+          "plug": "output",
+          "group": "Data",
+          "displayName": "Messages"
+        },
+        {
+          "name": "lastMessage",
+          "type": "string",
+          "plug": "output",
+          "group": "Data",
+          "displayName": "Last Message"
+        },
+        {
+          "name": "messageCount",
+          "type": "number",
+          "plug": "output",
+          "group": "Status",
+          "displayName": "Message Count"
+        },
+        {
+          "name": "characterCount",
+          "type": "number",
+          "plug": "output",
+          "group": "Status",
+          "displayName": "Character Count"
+        },
+        {
+          "name": "byteCount",
+          "type": "number",
+          "plug": "output",
+          "group": "Status",
+          "displayName": "Byte Count (UTF-8)"
+        },
+        {
+          "name": "droppedCharacters",
+          "type": "number",
+          "plug": "output",
+          "group": "Status",
+          "displayName": "Dropped Characters"
+        },
+        {
+          "name": "droppedMessages",
+          "type": "number",
+          "plug": "output",
+          "group": "Status",
+          "displayName": "Dropped Messages"
+        },
+        {
+          "name": "error",
+          "type": "string",
+          "plug": "output",
+          "group": "Status",
+          "displayName": "Error"
+        },
+        {
+          "name": "messageReceived",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Message Received"
+        },
+        {
+          "name": "changed",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Changed"
+        },
+        {
+          "name": "cleared",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Cleared"
+        },
+        {
+          "name": "overflowed",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Overflowed"
+        }
+      ]
+    },
+    {
+      "name": "net.noodl.JSONStreamParser",
+      "searchTags": [
+        "json",
+        "ndjson",
+        "stream",
+        "parse",
+        "chunk",
+        "agent",
+        "ai",
+        "streaming",
+        "jsonl"
+      ],
+      "displayNodeName": "JSON Stream Parser",
+      "docs": "https://docs.noodl.net/nodes/data/json-stream-parser",
+      "shortDocs": "https://docs.noodl.net/nodes/data/json-stream-parser-short.md",
+      "category": "Data",
+      "color": "data",
+      "ports": [
+        {
+          "name": "chunk",
+          "type": "string",
+          "plug": "input",
+          "group": "Data",
+          "displayName": "Chunk"
+        },
+        {
+          "name": "format",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "NDJSON (one per line)",
+                "value": "ndjson"
+              },
+              {
+                "label": "Stream (any complete values)",
+                "value": "stream"
+              },
+              {
+                "label": "Single document",
+                "value": "single"
+              }
+            ]
+          },
+          "plug": "input",
+          "group": "Config",
+          "displayName": "Format",
+          "default": "ndjson"
+        },
+        {
+          "name": "maxLength",
+          "type": "number",
+          "plug": "input",
+          "group": "Config",
+          "displayName": "Max Pending (characters)",
+          "default": 1048576,
+          "tooltip": "Cap on unparsed text held while waiting for a value to complete. Exceeding it clears the buffer and reports an error, rather than growing without limit on a malformed stream."
+        },
+        {
+          "name": "parse",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "Actions",
+          "displayName": "Parse"
+        },
+        {
+          "name": "clear",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "Actions",
+          "displayName": "Clear"
+        },
+        {
+          "name": "parsed",
+          "type": "*",
+          "plug": "output",
+          "group": "Data",
+          "displayName": "Parsed"
+        },
+        {
+          "name": "values",
+          "type": "array",
+          "plug": "output",
+          "group": "Data",
+          "displayName": "Values"
+        },
+        {
+          "name": "valueCount",
+          "type": "number",
+          "plug": "output",
+          "group": "Status",
+          "displayName": "Value Count"
+        },
+        {
+          "name": "pendingCharacters",
+          "type": "number",
+          "plug": "output",
+          "group": "Status",
+          "displayName": "Pending Characters"
+        },
+        {
+          "name": "isComplete",
+          "type": "boolean",
+          "plug": "output",
+          "group": "Status",
+          "displayName": "Is Complete"
+        },
+        {
+          "name": "error",
+          "type": "string",
+          "plug": "output",
+          "group": "Status",
+          "displayName": "Error"
+        },
+        {
+          "name": "errorCount",
+          "type": "number",
+          "plug": "output",
+          "group": "Status",
+          "displayName": "Error Count"
+        },
+        {
+          "name": "success",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Success"
+        },
+        {
+          "name": "failure",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Failure"
+        },
+        {
+          "name": "cleared",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Cleared"
+        }
+      ]
+    },
+    {
+      "name": "net.noodl.PatternExtractor",
+      "searchTags": [
+        "regex",
+        "regexp",
+        "pattern",
+        "extract",
+        "match",
+        "parse",
+        "capture",
+        "group",
+        "stream"
+      ],
+      "displayNodeName": "Pattern Extractor",
+      "docs": "https://docs.noodl.net/nodes/data/pattern-extractor",
+      "shortDocs": "https://docs.noodl.net/nodes/data/pattern-extractor-short.md",
+      "category": "Data",
+      "color": "data",
+      "ports": [
+        {
+          "name": "text",
+          "type": "string",
+          "plug": "input",
+          "group": "Data",
+          "displayName": "Text"
+        },
+        {
+          "name": "pattern",
+          "type": "string",
+          "plug": "input",
+          "group": "Pattern",
+          "displayName": "Pattern",
+          "tooltip": "A JavaScript regular expression, without the surrounding slashes. Capture groups appear on Groups."
+        },
+        {
+          "name": "flags",
+          "type": "string",
+          "plug": "input",
+          "group": "Pattern",
+          "displayName": "Flags",
+          "tooltip": "Regex flags: i (ignore case), m (multiline), s (dot matches newline), u (unicode). g is controlled by Extract All."
+        },
+        {
+          "name": "extractAll",
+          "type": "boolean",
+          "plug": "input",
+          "group": "Pattern",
+          "displayName": "Extract All",
+          "default": false
+        },
+        {
+          "name": "extract",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "Actions",
+          "displayName": "Extract"
+        },
+        {
+          "name": "match",
+          "type": "string",
+          "plug": "output",
+          "group": "Data",
+          "displayName": "Match"
+        },
+        {
+          "name": "matches",
+          "type": "array",
+          "plug": "output",
+          "group": "Data",
+          "displayName": "Matches"
+        },
+        {
+          "name": "groups",
+          "type": "array",
+          "plug": "output",
+          "group": "Data",
+          "displayName": "Groups"
+        },
+        {
+          "name": "firstGroup",
+          "type": "string",
+          "plug": "output",
+          "group": "Data",
+          "displayName": "First Group"
+        },
+        {
+          "name": "namedGroups",
+          "type": "object",
+          "plug": "output",
+          "group": "Data",
+          "displayName": "Named Groups"
+        },
+        {
+          "name": "matchCount",
+          "type": "number",
+          "plug": "output",
+          "group": "Status",
+          "displayName": "Match Count"
+        },
+        {
+          "name": "error",
+          "type": "string",
+          "plug": "output",
+          "group": "Status",
+          "displayName": "Error"
+        },
+        {
+          "name": "found",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Found"
+        },
+        {
+          "name": "notFound",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Not Found"
+        },
+        {
+          "name": "failure",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Failure"
+        }
+      ]
+    },
+    {
+      "name": "net.noodl.StreamBuffer",
+      "searchTags": [
+        "buffer",
+        "batch",
+        "throttle",
+        "stream",
+        "queue",
+        "flush",
+        "debounce",
+        "agent",
+        "streaming"
+      ],
+      "displayNodeName": "Stream Buffer",
+      "docs": "https://docs.noodl.net/nodes/data/stream-buffer",
+      "shortDocs": "https://docs.noodl.net/nodes/data/stream-buffer-short.md",
+      "category": "Data",
+      "color": "data",
+      "ports": [
+        {
+          "name": "data",
+          "type": "*",
+          "plug": "input",
+          "group": "Data",
+          "displayName": "Data"
+        },
+        {
+          "name": "flushSize",
+          "type": "number",
+          "plug": "input",
+          "group": "Config",
+          "displayName": "Flush Size",
+          "default": 0,
+          "tooltip": "Flush automatically once this many items are buffered. 0 disables size-based flushing."
+        },
+        {
+          "name": "flushInterval",
+          "type": "number",
+          "plug": "input",
+          "group": "Config",
+          "displayName": "Flush Interval (ms)",
+          "default": 0,
+          "tooltip": "Flush automatically this often while items are buffered. 0 disables interval flushing."
+        },
+        {
+          "name": "maxSize",
+          "type": "number",
+          "plug": "input",
+          "group": "Config",
+          "displayName": "Max Size",
+          "default": 10000,
+          "tooltip": "Hard cap on buffered items. Overflow drops the oldest and is reported on Dropped Items. 0 means no cap."
+        },
+        {
+          "name": "add",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "Actions",
+          "displayName": "Add"
+        },
+        {
+          "name": "flush",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "Actions",
+          "displayName": "Flush"
+        },
+        {
+          "name": "clear",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "Actions",
+          "displayName": "Clear"
+        },
+        {
+          "name": "buffer",
+          "type": "array",
+          "plug": "output",
+          "group": "Data",
+          "displayName": "Buffer"
+        },
+        {
+          "name": "bufferSize",
+          "type": "number",
+          "plug": "output",
+          "group": "Status",
+          "displayName": "Buffer Size"
+        },
+        {
+          "name": "flushedData",
+          "type": "array",
+          "plug": "output",
+          "group": "Data",
+          "displayName": "Flushed Data"
+        },
+        {
+          "name": "flushCount",
+          "type": "number",
+          "plug": "output",
+          "group": "Status",
+          "displayName": "Flush Count"
+        },
+        {
+          "name": "droppedItems",
+          "type": "number",
+          "plug": "output",
+          "group": "Status",
+          "displayName": "Dropped Items"
+        },
+        {
+          "name": "flushed",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Flushed"
+        },
+        {
+          "name": "overflowed",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Overflowed"
+        },
+        {
+          "name": "cleared",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Cleared"
+        }
+      ]
+    },
+    {
+      "name": "net.noodl.ActionDispatcher",
+      "searchTags": [
+        "action",
+        "dispatch",
+        "command",
+        "agent",
+        "ai",
+        "backend",
+        "remote",
+        "control",
+        "workflow",
+        "guided",
+        "tour"
+      ],
+      "displayNodeName": "Action Dispatcher",
+      "category": "Data",
+      "usePortAsLabel": "channel",
+      "color": "data",
+      "ports": [
+        {
+          "name": "channel",
+          "type": "string",
+          "plug": "input",
+          "group": "Dispatcher",
+          "displayName": "Channel",
+          "default": "default",
+          "tooltip": "Names the handler registry this dispatcher draws on. Leave as \"default\" unless two independent flows must not see each other."
+        },
+        {
+          "name": "action",
+          "type": "*",
+          "plug": "input",
+          "group": "Action",
+          "displayName": "Action",
+          "tooltip": "An action object, an array of them to run in order, or JSON text holding either."
+        },
+        {
+          "name": "builtIns",
+          "type": "string",
+          "plug": "input",
+          "group": "Built-in Actions",
+          "displayName": "Enabled Built-ins",
+          "tooltip": "Comma-separated built-in action names this dispatcher may execute: SET_STORE, MERGE_STORE, DELETE_STORE_KEY, CLEAR_STORE. Empty — the default — means a server cannot write to the store at all; everything must go through an Action Handler you wired."
+        },
+        {
+          "name": "storeName",
+          "type": "string",
+          "plug": "input",
+          "group": "Built-in Actions",
+          "displayName": "Store Name",
+          "default": "app",
+          "tooltip": "The only store the built-in actions can write. A store named inside an incoming action is ignored — the graph chooses the store, not the server."
+        },
+        {
+          "name": "allowedKeys",
+          "type": "string",
+          "plug": "input",
+          "group": "Built-in Actions",
+          "displayName": "Allowed Keys",
+          "tooltip": "Comma-separated keys the built-in store actions may write. Blank means any key of the configured store. Setting any key also refuses CLEAR_STORE."
+        },
+        {
+          "name": "handlerTimeout",
+          "type": "number",
+          "plug": "input",
+          "group": "Delivery",
+          "displayName": "Handler Timeout (ms)",
+          "default": 30000,
+          "tooltip": "How long a handler has to signal Complete or Fail before the action is failed. 0 waits forever."
+        },
+        {
+          "name": "waitForHandler",
+          "type": "number",
+          "plug": "input",
+          "group": "Delivery",
+          "displayName": "Wait For Handler (ms)",
+          "default": 2000,
+          "tooltip": "How long an action waits for its handler to appear before being refused as unknown — the window in which a component can still mount. 0 refuses immediately. Everything behind it waits too, because order is preserved."
+        },
+        {
+          "name": "maxQueueSize",
+          "type": "number",
+          "plug": "input",
+          "group": "Delivery",
+          "displayName": "Max Queue Size",
+          "default": 100,
+          "tooltip": "Bound on queued actions. Overflow refuses the newest so accepted actions keep their order. 0 is unbounded."
+        },
+        {
+          "name": "rateLimit",
+          "type": "number",
+          "plug": "input",
+          "group": "Delivery",
+          "displayName": "Rate Limit",
+          "default": 0,
+          "tooltip": "Max actions executed per window. 0 is unlimited. Excess actions are refused, not delayed."
+        },
+        {
+          "name": "rateLimitWindow",
+          "type": "number",
+          "plug": "input",
+          "group": "Delivery",
+          "displayName": "Rate Limit Window (ms)",
+          "default": 60000
+        },
+        {
+          "name": "dispatch",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "Actions",
+          "displayName": "Dispatch"
+        },
+        {
+          "name": "cancel",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "Actions",
+          "displayName": "Cancel All"
+        },
+        {
+          "name": "actionType",
+          "type": "string",
+          "plug": "output",
+          "group": "Data",
+          "displayName": "Action Type"
+        },
+        {
+          "name": "actionId",
+          "type": "string",
+          "plug": "output",
+          "group": "Data",
+          "displayName": "Action Id"
+        },
+        {
+          "name": "payload",
+          "type": "*",
+          "plug": "output",
+          "group": "Data",
+          "displayName": "Payload"
+        },
+        {
+          "name": "result",
+          "type": "*",
+          "plug": "output",
+          "group": "Data",
+          "displayName": "Result"
+        },
+        {
+          "name": "dispatched",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Dispatched"
+        },
+        {
+          "name": "completed",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Completed"
+        },
+        {
+          "name": "failed",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Failed"
+        },
+        {
+          "name": "idle",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Idle"
+        },
+        {
+          "name": "refused",
+          "type": "signal",
+          "plug": "output",
+          "group": "Refusals",
+          "displayName": "Refused"
+        },
+        {
+          "name": "refusedType",
+          "type": "string",
+          "plug": "output",
+          "group": "Refusals",
+          "displayName": "Refused Type"
+        },
+        {
+          "name": "refusalReason",
+          "type": "string",
+          "plug": "output",
+          "group": "Refusals",
+          "displayName": "Refusal Reason"
+        },
+        {
+          "name": "refusalMessage",
+          "type": "string",
+          "plug": "output",
+          "group": "Refusals",
+          "displayName": "Refusal Message"
+        },
+        {
+          "name": "lastError",
+          "type": "string",
+          "plug": "output",
+          "group": "Status",
+          "displayName": "Last Error"
+        },
+        {
+          "name": "queueSize",
+          "type": "number",
+          "plug": "output",
+          "group": "Status",
+          "displayName": "Queue Size"
+        },
+        {
+          "name": "isExecuting",
+          "type": "boolean",
+          "plug": "output",
+          "group": "Status",
+          "displayName": "Is Executing"
+        },
+        {
+          "name": "waitingFor",
+          "type": "string",
+          "plug": "output",
+          "group": "Status",
+          "displayName": "Waiting For"
+        },
+        {
+          "name": "completedCount",
+          "type": "number",
+          "plug": "output",
+          "group": "Status",
+          "displayName": "Completed Count"
+        },
+        {
+          "name": "failedCount",
+          "type": "number",
+          "plug": "output",
+          "group": "Status",
+          "displayName": "Failed Count"
+        },
+        {
+          "name": "refusedCount",
+          "type": "number",
+          "plug": "output",
+          "group": "Status",
+          "displayName": "Refused Count"
+        },
+        {
+          "name": "cancelledCount",
+          "type": "number",
+          "plug": "output",
+          "group": "Status",
+          "displayName": "Cancelled Count"
+        },
+        {
+          "name": "cancelled",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Cancelled"
+        }
+      ]
+    },
+    {
+      "name": "net.noodl.ActionHandler",
+      "searchTags": [
+        "action",
+        "handler",
+        "register",
+        "dispatch",
+        "agent",
+        "ai",
+        "backend",
+        "remote",
+        "command"
+      ],
+      "displayNodeName": "Action Handler",
+      "category": "Data",
+      "usePortAsLabel": "actionType",
+      "color": "data",
+      "ports": [
+        {
+          "name": "channel",
+          "type": "string",
+          "plug": "input",
+          "group": "Handler",
+          "displayName": "Channel",
+          "default": "default",
+          "tooltip": "Must match the Channel on the Action Dispatcher that should be able to reach this handler."
+        },
+        {
+          "name": "actionType",
+          "type": "string",
+          "plug": "input",
+          "group": "Handler",
+          "displayName": "Action Type",
+          "tooltip": "The exact action type this handler accepts, e.g. OPEN_SESSION. Registering it is what makes it executable at all."
+        },
+        {
+          "name": "enabled",
+          "type": "boolean",
+          "plug": "input",
+          "group": "Handler",
+          "displayName": "Enabled",
+          "default": true,
+          "tooltip": "Turning this off unregisters the handler, so the action is refused as unknown rather than quietly ignored."
+        },
+        {
+          "name": "autoComplete",
+          "type": "boolean",
+          "plug": "input",
+          "group": "Completion",
+          "displayName": "Auto Complete",
+          "default": true,
+          "tooltip": "Report the action complete as soon as Trigger has been sent. Turn off when a later step must wait for this one to finish, and wire Complete or Fail yourself."
+        },
+        {
+          "name": "result",
+          "type": "*",
+          "plug": "input",
+          "group": "Completion",
+          "displayName": "Result",
+          "tooltip": "Handed back to the dispatcher as the Result of this action when it completes."
+        },
+        {
+          "name": "errorMessage",
+          "type": "string",
+          "plug": "input",
+          "group": "Completion",
+          "displayName": "Error Message"
+        },
+        {
+          "name": "complete",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "Actions",
+          "displayName": "Complete"
+        },
+        {
+          "name": "fail",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "Actions",
+          "displayName": "Fail"
+        },
+        {
+          "name": "trigger",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Trigger"
+        },
+        {
+          "name": "payload",
+          "type": "*",
+          "plug": "output",
+          "group": "Data",
+          "displayName": "Payload"
+        },
+        {
+          "name": "actionId",
+          "type": "string",
+          "plug": "output",
+          "group": "Data",
+          "displayName": "Action Id"
+        },
+        {
+          "name": "registered",
+          "type": "boolean",
+          "plug": "output",
+          "group": "Status",
+          "displayName": "Registered"
+        },
+        {
+          "name": "triggeredCount",
+          "type": "number",
+          "plug": "output",
+          "group": "Status",
+          "displayName": "Triggered Count"
+        },
+        {
+          "name": "error",
+          "type": "string",
+          "plug": "output",
+          "group": "Status",
+          "displayName": "Error"
+        }
+      ]
+    },
+    {
+      "name": "noodl.cloud.request",
+      "displayNodeName": "Request",
+      "allowAsExportRoot": false,
+      "singleton": true,
+      "docs": "https://docs.noodl.net/nodes/cloud-functions/request",
+      "shortDocs": "https://docs.noodl.net/nodes/cloud-functions/request-short.md",
+      "category": "Cloud",
+      "color": "data",
+      "connectionPanel": {
+        "groupPriority": [
+          "General",
+          "Mounted"
+        ]
+      },
+      "ports": [
+        {
+          "name": "allowNoAuth",
+          "type": "boolean",
+          "plug": "input",
+          "group": "General",
+          "displayName": "Allow Unauthenticated",
+          "default": false
+        },
+        {
+          "name": "params",
+          "type": {
+            "name": "stringlist",
+            "allowEditOnly": true
+          },
+          "plug": "input",
+          "group": "Parameters"
+        },
+        {
+          "name": "receive",
+          "type": "signal",
+          "plug": "output",
+          "group": "General",
+          "displayName": "Received"
+        },
+        {
+          "name": "auth",
+          "type": "boolean",
+          "plug": "output",
+          "group": "Request",
+          "displayName": "Authenticated"
+        },
+        {
+          "name": "userId",
+          "type": "boolean",
+          "plug": "output",
+          "group": "Request",
+          "displayName": "User Id"
+        }
+      ]
+    },
+    {
+      "name": "noodl.cloud.response",
+      "displayNodeName": "Response",
+      "allowAsExportRoot": false,
+      "docs": "https://docs.noodl.net/nodes/cloud-functions/response",
+      "shortDocs": "https://docs.noodl.net/nodes/cloud-functions/response-short.md",
+      "category": "Cloud",
+      "color": "data",
+      "dynamicports": [
+        {
+          "name": "conditionalports/extended",
+          "condition": "status = success OR status NOT SET",
+          "ports": [
+            {
+              "name": "params",
+              "type": {
+                "name": "stringlist",
+                "allowEditOnly": true
+              },
+              "plug": "input",
+              "group": "Parameters"
+            }
+          ]
+        },
+        {
+          "name": "conditionalports/extended",
+          "condition": "status = failure",
+          "ports": [
+            {
+              "name": "errorMessage",
+              "type": "string",
+              "plug": "input",
+              "group": "General",
+              "displayName": "Error Message"
+            }
+          ]
+        }
+      ],
+      "connectionPanel": {
+        "groupPriority": [
+          "General",
+          "Mounted"
+        ]
+      },
+      "ports": [
+        {
+          "name": "params",
+          "type": {
+            "name": "stringlist",
+            "allowEditOnly": true
+          },
+          "plug": "input",
+          "group": "Parameters"
+        },
+        {
+          "name": "errorMessage",
+          "type": "string",
+          "plug": "input",
+          "group": "General",
+          "displayName": "Error Message"
+        },
+        {
+          "name": "send",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "General",
+          "displayName": "Send"
+        },
+        {
+          "name": "status",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Success",
+                "value": "success"
+              },
+              {
+                "label": "Failure",
+                "value": "failure"
+              }
+            ]
+          },
+          "plug": "input",
+          "group": "General",
+          "displayName": "Status",
+          "default": "success"
+        }
+      ]
+    },
+    {
+      "name": "noodl.cloud.sendemail",
+      "displayNodeName": "Send Email",
+      "docs": "https://docs.noodl.net/nodes/cloud-functions/send-email",
+      "shortDocs": "https://docs.noodl.net/nodes/cloud-functions/send-email-short.md",
+      "category": "Cloud",
+      "color": "data",
+      "connectionPanel": {
+        "groupPriority": [
+          "General",
+          "Content",
+          "Actions"
+        ]
+      },
+      "ports": [
+        {
+          "name": "to",
+          "type": "string",
+          "plug": "input",
+          "group": "General",
+          "displayName": "To"
+        },
+        {
+          "name": "template",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "None (use Subject/Text/HTML below)",
+                "value": "none"
+              },
+              {
+                "label": "Password Reset",
+                "value": "passwordReset"
+              },
+              {
+                "label": "Verify Email",
+                "value": "verifyEmail"
+              }
+            ]
+          },
+          "plug": "input",
+          "group": "Content",
+          "displayName": "Template",
+          "default": "none"
+        },
+        {
+          "name": "variables",
+          "type": {
+            "name": "object",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "Content",
+          "displayName": "Template Variables"
+        },
+        {
+          "name": "subject",
+          "type": "string",
+          "plug": "input",
+          "group": "Content",
+          "displayName": "Subject"
+        },
+        {
+          "name": "text",
+          "type": "string",
+          "plug": "input",
+          "group": "Content",
+          "displayName": "Text Body"
+        },
+        {
+          "name": "html",
+          "type": "string",
+          "plug": "input",
+          "group": "Content",
+          "displayName": "HTML Body"
+        },
+        {
+          "name": "send",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "Actions",
+          "displayName": "Do"
+        },
+        {
+          "name": "sent",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Sent"
+        },
+        {
+          "name": "failed",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Failed"
+        },
+        {
+          "name": "error",
+          "type": "string",
+          "plug": "output",
+          "group": "Error",
+          "displayName": "Error"
+        }
+      ]
+    },
+    {
+      "name": "noodl.cloud.aggregate",
+      "displayNodeName": "Aggregate Records",
+      "docs": "https://docs.noodl.net/nodes/cloud-functions/cloud-data/aggregate-records",
+      "shortDocs": "https://docs.noodl.net/nodes/cloud-functions/cloud-data/aggregate-records-short.md",
+      "category": "Cloud Services",
+      "usePortAsLabel": "collectionName",
+      "color": "data",
+      "ports": [
+        {
+          "name": "aggregates",
+          "type": {
+            "name": "stringlist",
+            "allowEditOnly": true
+          },
+          "plug": "input",
+          "group": "Aggregates",
+          "displayName": "Aggregates",
+          "index": 100
+        },
+        {
+          "name": "fetched",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Success"
+        },
+        {
+          "name": "failure",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Failure"
+        },
+        {
+          "name": "error",
+          "type": "string",
+          "plug": "output",
+          "group": "Error",
+          "displayName": "Error"
+        }
+      ]
+    }
+  ],
+  "nodeIndex": {
+    "coreNodes": [
+      {
+        "name": "UI Elements",
+        "description": "Buttons, inputs, containers, media",
+        "type": "visual",
+        "subCategories": [
+          {
+            "name": "Basic Elements",
+            "items": [
+              "Group",
+              "net.noodl.visual.columns",
+              "Text",
+              "Image",
+              "Video",
+              "Circle",
+              "net.noodl.visual.icon"
+            ]
+          },
+          {
+            "name": "UI Controls",
+            "items": [
+              "net.noodl.controls.button",
+              "net.noodl.controls.checkbox",
+              "net.noodl.controls.options",
+              "net.noodl.controls.radiobutton",
+              "Radio Button Group",
+              "net.noodl.controls.range",
+              "net.noodl.controls.textinput"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "Navigation & Popups",
+        "description": "Page routing, navigation, popups",
+        "type": "logic",
+        "subCategories": [
+          {
+            "name": "Navigation",
+            "items": [
+              "Router",
+              "RouterNavigate",
+              "PageInputs",
+              "net.noodl.externallink",
+              "PageStackNavigateToPath"
+            ]
+          },
+          {
+            "name": "Component Stack",
+            "items": [
+              "Page Stack",
+              "PageStackNavigate",
+              "PageStackNavigateBack"
+            ]
+          },
+          {
+            "name": "Popups",
+            "items": [
+              "NavigationShowPopup",
+              "NavigationClosePopup"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "Logic & Utilities",
+        "description": "Logic, events, string manipulation",
+        "type": "logic",
+        "subCategories": [
+          {
+            "name": "General Utils",
+            "items": [
+              "States",
+              "Value Changed",
+              "Timer",
+              "Color Blend",
+              "Number Remapper",
+              "Counter",
+              "Drag",
+              "net.noodl.animatetovalue"
+            ]
+          },
+          {
+            "name": "Logic",
+            "items": [
+              "Boolean To String",
+              "Switch",
+              "And",
+              "Or",
+              "Condition",
+              "Inverter"
+            ]
+          },
+          {
+            "name": "Events",
+            "items": [
+              "Event Sender",
+              "Event Receiver"
+            ]
+          },
+          {
+            "name": "String Manipulation",
+            "items": [
+              "Substring",
+              "String Mapper",
+              "String Format",
+              "Date To String",
+              "Unique Id"
+            ]
+          },
+          {
+            "name": "System",
+            "items": [
+              "Screen Resolution",
+              "Open File Picker"
+            ]
+          },
+          {
+            "name": "Variables",
+            "items": [
+              "String",
+              "Boolean",
+              "Color",
+              "Number"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "Component Utilities",
+        "description": "Component inputs, outputs & object",
+        "type": "component",
+        "subCategories": [
+          {
+            "name": "",
+            "items": [
+              "Component Inputs",
+              "Component Outputs",
+              "Component Children",
+              "net.noodl.ComponentObject",
+              "net.noodl.ParentComponentObject",
+              "net.noodl.SetComponentObjectProperties",
+              "net.noodl.SetParentComponentObjectProperties"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "Read & Write Data",
+        "description": "Arrays, objects, cloud data",
+        "type": "data",
+        "subCategories": [
+          {
+            "name": "",
+            "items": [
+              "RunTasks",
+              "For Each",
+              "For Each Actions",
+              "Model2",
+              "SetModelProperties",
+              "NewModel",
+              "Set Variable",
+              "Variable2"
+            ]
+          },
+          {
+            "name": "Array",
+            "items": [
+              "Collection2",
+              "CollectionNew",
+              "CollectionRemove",
+              "CollectionClear",
+              "CollectionInsert",
+              "Filter Collection",
+              "Map Collection",
+              "Static Data"
+            ]
+          },
+          {
+            "name": "Cloud Data",
+            "items": [
+              "DbModel2",
+              "NewDbModelProperties",
+              "FilterDBModels",
+              "SetDbModelProperties",
+              "DbCollection2",
+              "DeleteDbModelProperties",
+              "AddDbModelRelation",
+              "RemoveDbModelRelation",
+              "Cloud File",
+              "Upload File",
+              "CloudFunction2",
+              "DbConfig"
+            ]
+          },
+          {
+            "name": "User",
+            "items": [
+              "net.noodl.user.LogIn",
+              "net.noodl.user.LogOut",
+              "net.noodl.user.SignUp",
+              "net.noodl.user.User",
+              "net.noodl.user.SetUserProperties",
+              "net.noodl.user.VerifyEmail",
+              "net.noodl.user.SendEmailVerification",
+              "net.noodl.user.ResetPassword",
+              "net.noodl.user.RequestPasswordReset"
+            ]
+          },
+          {
+            "name": "External Data",
+            "items": [
+              "net.noodl.HTTP",
+              "REST2"
+            ]
+          },
+          {
+            "name": "BYOB Data",
+            "items": [
+              "noodl.byob.QueryData",
+              "noodl.byob.CreateRecord",
+              "noodl.byob.UpdateRecord",
+              "noodl.byob.DeleteRecord",
+              "noodl.byob.SubscribeToChanges"
+            ]
+          },
+          {
+            "name": "Streaming",
+            "items": [
+              "net.noodl.SSE",
+              "net.noodl.WebSocket",
+              "net.noodl.TextAccumulator",
+              "net.noodl.JSONStreamParser",
+              "net.noodl.PatternExtractor",
+              "net.noodl.StreamBuffer"
+            ]
+          },
+          {
+            "name": "App State",
+            "items": [
+              "net.noodl.GlobalStore",
+              "net.noodl.GlobalStore.Set",
+              "net.noodl.GlobalStore.Subscribe",
+              "net.noodl.OptimisticUpdate",
+              "net.noodl.StateHistory",
+              "net.noodl.StateHistory.Undo",
+              "net.noodl.StateSnapshot"
+            ]
+          },
+          {
+            "name": "Agent Actions",
+            "items": [
+              "net.noodl.ActionDispatcher",
+              "net.noodl.ActionHandler"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "Custom Code",
+        "description": "Custom JavaScript and CSS",
+        "type": "javascript",
+        "subCategories": [
+          {
+            "name": "",
+            "items": [
+              "Expression",
+              "JavaScriptFunction",
+              "Javascript2",
+              "Logic Builder",
+              "CSS Definition"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "Cloud Functions",
+        "description": "Nodes to be used in cloud functions",
+        "type": "data",
+        "subCategories": [
+          {
+            "name": "",
+            "items": [
+              "noodl.cloud.request",
+              "noodl.cloud.response"
+            ]
+          },
+          {
+            "name": "Cloud Data",
+            "items": [
+              "noodl.cloud.aggregate"
+            ]
+          },
+          {
+            "name": "Email",
+            "items": [
+              "noodl.cloud.sendemail"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}
