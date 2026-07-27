@@ -7,15 +7,27 @@ import { EditorSettings } from '@noodl-utils/editorsettings';
 import { Checkbox, CheckboxVariant } from '@noodl-core-ui/components/inputs/Checkbox';
 import { Box } from '@noodl-core-ui/components/layout/Box';
 import { VStack } from '@noodl-core-ui/components/layout/Stack';
-import { BasePanel } from '@noodl-core-ui/components/sidebar/BasePanel';
 import { CollapsableSection } from '@noodl-core-ui/components/sidebar/CollapsableSection';
 import { ExperimentalFlag, ExperimentalFlagVariant } from '@noodl-core-ui/components/sidebar/ExperimentalFlag';
 import { Text, TextSize } from '@noodl-core-ui/components/typography/Text';
 
 import { AiSettingsSection } from '../AiSettings/AiSettingsSection';
-import { AppearanceSettingsSection } from './AppearanceSettingsSection';
+import { AppearanceSettingsSection } from './sections/AppearanceSettingsSection';
 
-export function EditorSettingsPanel() {
+/**
+ * PNL-008 — everything scoped to *this editor*, on *this machine*, in one tab.
+ *
+ * Unchanged from the panel it used to be, minus its `BasePanel`: the settings
+ * panel owns the chrome now, and a second `BasePanel` inside it would be a
+ * second panel header (which the PNL-005 chrome gate asserts against).
+ *
+ * Returns a fragment for the same reason `ProjectSettingsTab` does — see the
+ * note there. The experimental-panels list still reads `SidebarModel` live, so
+ * toggling a panel on and off from inside this tab keeps working; the toggle
+ * that matters most is the one for the panel you are standing in, and Settings
+ * is not experimental, so it cannot hide itself.
+ */
+export function EditorSettingsTab() {
   // @ts-expect-error Model is yeah, not great!
   useModel(EditorSettings.instance, ['updated']);
 
@@ -32,7 +44,7 @@ export function EditorSettingsPanel() {
   ];
 
   return (
-    <BasePanel title="Editor Settings" hasContentScroll>
+    <>
       <AppearanceSettingsSection />
       {Boolean(experimentalPanels.length) && (
         <>
@@ -58,7 +70,7 @@ export function EditorSettingsPanel() {
         </>
       )}
       <AiSettingsSection />
-    </BasePanel>
+    </>
   );
 }
 

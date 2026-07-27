@@ -6,6 +6,13 @@ import { ProjectModel } from '@noodl-models/projectmodel';
 import Model from '../../../../../shared/model';
 import { EventDispatcher } from '../../../../../shared/utils/EventDispatcher';
 
+/**
+ * The `<title>` of the built page, declared as a project-settings port in
+ * `noodl-viewer-react/src/project-settings.ts`. PNL-008 promotes it out of the
+ * legacy Ports view and into App Identity; see `getPorts()`.
+ */
+export const HTML_TITLE_PORT = 'htmlTitle';
+
 export class ProjectSettingsModel extends Model {
   private project: TSFixme;
   private _ports: TSFixme;
@@ -104,6 +111,15 @@ export class ProjectSettingsModel extends Model {
 
     // Static ports
     ports = ports.concat(this.type.ports || []);
+
+    // PNL-008: `htmlTitle` has its own control in the App Identity section, next
+    // to the app name it usually mirrors. Leaving it here as well would put two
+    // controls on one field in one panel — which is half of the duplication this
+    // task exists to remove. Filtered rather than deleted from the port list
+    // itself: `exporter/util.ts` and the version-control diff both read
+    // `NodeLibrary.getProjectSettingsPorts()` directly and still need the entry
+    // (it is where `ignoreInExport` and the "General: Title" label live).
+    ports = ports.filter((p: TSFixme) => p.name !== HTML_TITLE_PORT);
 
     // Dynamic ports
     //var dynamicports = NodeLibrary.instance.getDynamicPortsForNode(this);
