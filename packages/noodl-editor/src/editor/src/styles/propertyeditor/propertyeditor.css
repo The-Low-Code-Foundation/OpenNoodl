@@ -186,6 +186,46 @@
   min-width: 0;
 }
 
+/* PNL-007: the node name at rest is text, not a field. Editing swaps in a real
+   bordered input; until then this is a span you can double-click, or focus and
+   press Enter/F2. The hover rule is the only affordance it needs. */
+.property-header-name-trigger {
+  flex-grow: 1;
+  min-width: 0;
+}
+
+.property-header-name {
+  display: block;
+  /* Hug the name so the hover rule underlines the text, not the empty space
+     between it and the action rail. */
+  width: fit-content;
+  max-width: 100%;
+  font-family: var(--font-family);
+  font-size: 14.5px;
+  font-weight: var(--font-weight-semibold);
+  color: var(--theme-color-fg-highlight);
+  line-height: 20px;
+  padding: 4px 2px;
+  border-radius: var(--radius-default);
+  border-bottom: 1px solid transparent;
+  cursor: text;
+  user-select: none;
+
+  /* One line, ellipsised, so a long name cannot push the action rail off. */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.property-header-name:hover {
+  border-bottom-color: var(--theme-color-border-strong);
+}
+
+.property-header-name:focus-visible {
+  outline: 2px solid var(--theme-color-primary);
+  outline-offset: 1px;
+}
+
 /* The mock's two 26px header icon buttons (docs / delete; edit kept). */
 .property-header-icon-button {
   width: 26px;

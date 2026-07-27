@@ -1,6 +1,6 @@
 # Phase 25 — Side Panel (Track J): Progress
 
-**Status:** 🚧 In progress — 3 / 9 — **Tier 1 complete (3 / 3)**
+**Status:** 🚧 In progress — 4 / 9 — **Tier 1 complete (3 / 3)**, plus PNL-007
 **Specced:** 2026-07-27
 **Mock:** [`mocks/nodegx-side-panel-mock.html`](./mocks/nodegx-side-panel-mock.html) (`93cc4da`)
 **Phase overview:** [README.md](./README.md)
@@ -15,7 +15,7 @@
 | [PNL-004](./PNL-004-CONTAINER-QUERY-LAYOUT.md) | Container-query layout + `PanelRow` | 2 | ⬜ Not started | — | |
 | [PNL-005](./PNL-005-ONE-PANEL-CHROME.md) | One panel chrome, everywhere | 2 | ⬜ Not started | — | 14 panels to migrate |
 | [PNL-006](./PNL-006-COMPONENTS-PANEL-RESTYLE.md) | Components panel restyle | 3 | ⬜ Not started | — | |
-| [PNL-007](./PNL-007-INLINE-RENAME.md) | Node label & inline rename | 3 | ⬜ Not started | — | |
+| [PNL-007](./PNL-007-INLINE-RENAME.md) | Node label & inline rename | 3 | ✅ Complete | 2026-07-27 | [NOTES](./PNL-007-NOTES.md). Text at rest, real field on double-click, check/cancel, Escape reverts. Phantom-undo guard tested, not assumed. The AiAuthoringPanel half of the spec was a stale premise. |
 | [PNL-008](./PNL-008-SETTINGS-CONSOLIDATION.md) | Three settings panels become one | 3 | ⬜ Not started | — | |
 | [PNL-009](./PNL-009-FLOAT-AND-FULL-MODES.md) | Floating & full panel modes | 4 | ⬜ Not started | — | Validate the need first |
 
@@ -46,7 +46,8 @@ be stale or to have a different cause, correct it here rather than implementing 
 | F10 | Local backend `.Actions` has no `flex-wrap`; the row overflows once the backend is running | `LocalBackendCard.module.scss:72` | PNL-004 |
 | F11 | The endpoint URL row has no `min-width: 0`, so it pushes its card wider than the panel | `LocalBackendCard.tsx` | PNL-004 |
 | F12 | Selected tree row sets both an azure tint **and** azure label text — the least readable row in the tree on light | `ComponentsPanel.module.scss:91-94` | PNL-006 |
-| F13 | The node label is a permanently-rendered `TextInput` with `isDisabled={!isEditingLabel}` | `NodeLabel.tsx:171-184` | PNL-007 |
+| F13 | The node label is a permanently-rendered `TextInput` with `isDisabled={!isEditingLabel}` | `NodeLabel.tsx:171-184` | PNL-007 — ✅ fixed |
+| F26 | `Tooltip` wraps its child in a trigger `div`, which is the element a flex row actually lays out — without `min-width: 0` on it, ellipsis on the child never engages. Cost the node label its ellipsis until `UNSAFE_triggerClassName` was used | `Tooltip.tsx` (consumers) | PNL-007 found it; worth knowing for PNL-004/005 |
 | F14 | Three rail destinations for settings; `IconName.Setting` renders as a sun | `router.setup.ts:211-280` | PNL-008 |
 | F15 | Two panels both own the app title, writing through different models (`updateAppConfig` vs `ProjectSettingsModel`) | `AppSetupPanel.tsx`, `ProjectSettingsPanel.tsx` | PNL-008 — resolve **before** UI work |
 | F16 | `switch('cloud-functions')` in two places targets an id unregistered since WF-007; `switch()` silently no-ops on unknown ids | `NodeGraphContext.tsx:120`, `sidebarmodel.tsx:337` | PNL-008 (housekeeping) |
