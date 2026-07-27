@@ -79,8 +79,6 @@ interface DbCollectionNodeInstance extends NodeInstance {
     collection?: CollectionLike;
     currentQuery?: CurrentQuery;
     error?: string;
-    /** See the defect note on `setError` — this is what the setter actually writes. */
-    err?: string;
     search?: string;
     visualFilter?: unknown;
     visualSorting?: unknown;
@@ -343,21 +341,21 @@ const DbCollectionNode: NodeDefinitionOptions = {
       this.unbindCurrentCollection();
 
       const cloudstore = CloudStore.forScope(this.nodeScope.modelScope);
-      // DEFECT (PLAT-003 NOTES §27.3), left verbatim: `initialize` subscribes to
-      // `'save'`, `'create'` and `'delete'`, but this unsubscribes `'insert'` — a name
-      // nothing ever emits. The `'create'` listener therefore survives the node, and since
-      // it closes over `_this` the deleted node stays reachable and keeps patching a
-      // collection nobody reads.
-      cloudstore.off('insert', this._internal.cloudStoreEvents);
+      // These three must mirror `initialize`'s three subscriptions exactly. Until PLAT-003
+      // slice 13 the first was `'insert'` — a name nothing emits — so the `'create'`
+      // listener survived the node, and because it closes over `_this` the deleted node
+      // stayed reachable and kept patching a collection nobody reads (NOTES §27.3 item 3).
+      cloudstore.off('create', this._internal.cloudStoreEvents);
       cloudstore.off('delete', this._internal.cloudStoreEvents);
       cloudstore.off('save', this._internal.cloudStoreEvents);
     },
-    // DEFECT (PLAT-003 NOTES §27.3), left verbatim: this writes `_internal.err` while the
-    // `error` output's getter reads `_internal.error`, so the port has never carried a
-    // message — only the `failure` signal fires. §23.4 recorded exactly this in the
-    // *deprecated* `dbcollectionnode`; it is the same bug in the node that replaced it.
+    // The field written here must be the one the `error` output's getter reads. Until
+    // PLAT-003 slice 13 this wrote `_internal.err` against a getter reading
+    // `_internal.error`, so the port had never carried a message and only the `failure`
+    // signal fired. §23.4 recorded exactly this in the *deprecated* `dbcollectionnode`;
+    // it was the same bug in the node that replaced it (NOTES §27.3 item 1).
     setError: function (this: DbCollectionNodeInstance, err: string) {
-      this._internal.err = err;
+      this._internal.error = err;
       this.flagOutputDirty('error');
       this.sendSignalOnOutput('failure');
     },

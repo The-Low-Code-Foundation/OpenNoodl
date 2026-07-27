@@ -31,14 +31,6 @@ import type {
   RuntimeDiscoveredPort
 } from '@noodl/types';
 
-// DEBUG: Confirm module is loaded
-// DEFECT (PLAT-003 NOTES §27.3), left verbatim: this and the three `[HTTP Node]` logs in
-// `scheduleFetch`/`doFetch` below are development scaffolding that ships. The module-level
-// one fires on *every* page load of every deployed app, and `doFetch`'s prints the request
-// headers — which, with Bearer or Basic auth configured, means the token lands in the
-// browser console. Removing them is a behaviour change and belongs in its own commit.
-console.log('[HTTP Node Module] 📦 httpnode.js MODULE LOADED');
-
 /**
  * Extract value from object using JSONPath-like syntax
  * Supports: $.data.users, $.items[0].name, $.meta.pagination.total
@@ -336,13 +328,10 @@ const HttpNode: NodeDefinitionOptions = {
     },
 
     scheduleFetch: function (this: HttpNodeInstance) {
-      console.log('[HTTP Node] scheduleFetch called');
       if (this._internal.hasScheduledFetch) {
-        console.log('[HTTP Node] Already scheduled, skipping');
         return;
       }
       this._internal.hasScheduledFetch = true;
-      console.log('[HTTP Node] Scheduling doFetch after inputs update');
       this.scheduleAfterInputsHaveUpdated(this.doFetch.bind(this));
     },
 
@@ -530,7 +519,6 @@ const HttpNode: NodeDefinitionOptions = {
     },
 
     doFetch: function (this: HttpNodeInstance) {
-      console.log('[HTTP Node] doFetch executing');
       this._internal.hasScheduledFetch = false;
 
       const url = this.buildUrl();
@@ -539,20 +527,11 @@ const HttpNode: NodeDefinitionOptions = {
       const body = this.buildBody();
       const timeout = this._internal.timeout || 30000;
 
-      console.log('[HTTP Node] Request details:', {
-        url,
-        method,
-        headers,
-        body: body ? '(has body)' : '(no body)',
-        timeout
-      });
-
       // Store for inspect
       this._internal.lastRequestUrl = url;
 
       // Validate URL
       if (!url) {
-        console.log('[HTTP Node] No URL provided, sending failure');
         this._internal.error = 'URL is required';
         this.flagOutputDirty('error');
         this.sendSignalOnOutput('failure');
