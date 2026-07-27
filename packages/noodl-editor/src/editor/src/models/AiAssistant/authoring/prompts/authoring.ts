@@ -154,14 +154,27 @@ function referenceBlocks(projectOverview: string, catalogOverview: string, style
   ];
 }
 
+/**
+ * AIX-011: the plan block for an operation running inside a project-scope
+ * plan — sibling intents, never graphs. It sits in the VARIABLE half of the
+ * opening turn (per-plan data), so the AIX-007 cache-stable prefix — the
+ * reference blocks above the boundary — is byte-identical with or without it.
+ */
+function planContextBlock(planContext?: string): string[] {
+  if (!planContext) return [];
+  return ['--- THE PLAN ---', planContext, '--- END PLAN ---', ''];
+}
+
 /** The opening user turn: the overview blocks, then the task. */
 export function initialUserMessage(
   request: AuthoringRequest,
   projectOverview: string,
   catalogOverview: string,
-  styleVocabulary?: string
+  styleVocabulary?: string,
+  planContext?: string
 ): OpeningTurn {
   return openingTurn(referenceBlocks(projectOverview, catalogOverview, styleVocabulary), [
+    ...planContextBlock(planContext),
     '--- YOUR TASK ---',
     `Build a new component at "${request.componentPath}"${
       request.componentType ? ` (type: ${request.componentType})` : ''
@@ -192,9 +205,11 @@ export function updateUserMessage(
   currentComponentSource: string,
   projectOverview: string,
   catalogOverview: string,
-  styleVocabulary?: string
+  styleVocabulary?: string,
+  planContext?: string
 ): OpeningTurn {
   return openingTurn(referenceBlocks(projectOverview, catalogOverview, styleVocabulary), [
+    ...planContextBlock(planContext),
     '--- YOUR TASK ---',
     `Revise the existing component "${request.componentPath}".`,
     '',

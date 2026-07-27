@@ -106,6 +106,14 @@ export interface AuthoringSessionOptions {
    * `AUTHORING_EFFORT`; the measurement harness overrides it to sweep.
    */
   effort?: AiEffort;
+  /**
+   * AIX-011: when this session is one operation of a project-scope plan, the
+   * rendered plan (sibling kinds/targets/*intents*, never graphs — see
+   * `renderPlanContext`). Charged through the context builder and appended to
+   * the opening turn's variable half, after the cache-stable prefix. Absent
+   * for standalone sessions, whose behaviour is unchanged byte for byte.
+   */
+  planContext?: string;
 }
 
 const DEFAULT_MAX_TURNS = 12;
@@ -229,6 +237,8 @@ export class AuthoringSession {
   private readonly maxTurns: number;
   private readonly maxSubmits: number;
   private readonly effort: AiEffort;
+  /** AIX-011: rendered sibling-intent block when part of a plan, else undefined. */
+  private readonly planContext?: string;
   readonly context: AuthoringContextBuilder;
   readonly legacyName: string;
 
@@ -275,6 +285,7 @@ export class AuthoringSession {
     this.maxTurns = options.maxTurns ?? DEFAULT_MAX_TURNS;
     this.maxSubmits = options.maxSubmits ?? DEFAULT_MAX_SUBMITS;
     this.effort = options.effort ?? AUTHORING_EFFORT;
+    this.planContext = options.planContext;
     this.styleGuidance = options.styleGuidance ?? true;
     this.styleTokenRecords = options.styleTokenRecords;
     this.context = new AuthoringContextBuilder(graph, options.budget, undefined, options.styleVocabulary);
@@ -392,6 +403,9 @@ export class AuthoringSession {
       throw new AuthoringStateError('run() was already called — continue with refine() instead.');
     }
     this.started = true;
+    // AIX-011: charge the plan block (sibling intents) through the context
+    // builder so a plan's per-operation overhead is logged like any handout.
+    const planBlock = this.planContext ? this.context.planContext(this.planContext) : undefined;
     let opening: OpeningTurn;
     if (this.mode === 'update' && this.baseFiles) {
       const source = this.context.currentComponentSource(this.baseFiles);
@@ -411,14 +425,16 @@ export class AuthoringSession {
         source,
         this.context.projectOverview(),
         this.context.catalogOverview(),
-        this.styleGuidance ? this.context.styleVocabulary() : undefined
+        this.styleGuidance ? this.context.styleVocabulary() : undefined,
+        planBlock
       );
     } else {
       opening = initialUserMessage(
         this.request,
         this.context.projectOverview(),
         this.context.catalogOverview(),
-        this.styleGuidance ? this.context.styleVocabulary() : undefined
+        this.styleGuidance ? this.context.styleVocabulary() : undefined,
+        planBlock
       );
     }
     this.messages.push(

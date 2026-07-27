@@ -238,4 +238,13 @@ export class AuthoringContextBuilder {
       throw error;
     }
   }
+
+  /**
+   * AIX-011: the plan an operation belongs to — sibling operations' kinds,
+   * targets and *intents* (rendered by `renderPlanContext`; never a graph).
+   * Charged like every handout, so a plan's overhead shows in the log.
+   */
+  planContext(rendered: string): string {
+    return this.charge('plan-context', rendered);
+  }
 }

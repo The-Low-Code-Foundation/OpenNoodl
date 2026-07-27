@@ -85,6 +85,55 @@ export function updateAuthoredComponent(
   files: ComponentFiles,
   options: AcceptOptions = {}
 ): ComponentModel {
+  const legacyName = stagedLegacyName(files);
+  const undo = new UndoActionGroup({ label: options.label ?? `update AI component ${legacyName}` });
+  const component = updateAuthoredComponentInGroup(project, files, undo);
+  UndoQueue.instance.push(undo);
+  return component;
+}
+
+/** The legacy name a staged candidate would occupy in the project. */
+export function stagedLegacyName(files: ComponentFiles): string {
+  const registryPath = legacyNameToPath(files.component.path ?? files.component.name);
+  return toLegacyName(files.component, registryPath);
+}
+
+/**
+ * AIX-011: the create-accept mutation, recorded into a caller-owned undo
+ * group instead of pushing its own — the primitive `applyAuthoredPlan`
+ * composes so an N-operation apply is ONE undo step. `acceptAuthoredComponent`
+ * is the single-component wrapper over the same path.
+ */
+export function addAuthoredComponentToGroup(
+  project: ProjectModel,
+  files: ComponentFiles,
+  undo: UndoActionGroup
+): ComponentModel {
+  const registryPath = legacyNameToPath(files.component.path ?? files.component.name);
+  const legacyName = toLegacyName(files.component, registryPath);
+
+  if (project.getComponentWithName(legacyName)) {
+    throw new StagingError(
+      `Component "${legacyName}" already exists in the project — it was created after authoring started.`
+    );
+  }
+
+  const legacy = reconstructLegacyComponent(registryPath, files.component, files.nodes, files.connections);
+  const component = ComponentModel.fromJSON(legacy);
+  project.addComponent(component, { undo });
+  return component;
+}
+
+/**
+ * AIX-011: the update-accept mutation (replace-by-remove+add with order and
+ * root fidelity — see `updateAuthoredComponent`), recorded into a caller-owned
+ * undo group instead of pushing its own.
+ */
+export function updateAuthoredComponentInGroup(
+  project: ProjectModel,
+  files: ComponentFiles,
+  undo: UndoActionGroup
+): ComponentModel {
   const registryPath = legacyNameToPath(files.component.path ?? files.component.name);
   const legacyName = toLegacyName(files.component, registryPath);
 
@@ -122,7 +171,6 @@ export function updateAuthoredComponent(
     }
   };
 
-  const undo = new UndoActionGroup({ label: options.label ?? `update AI component ${legacyName}` });
   // The undo half sits first in the group (group undo runs in reverse), so in
   // BOTH directions settling runs only after its component is back in the
   // project.
@@ -144,7 +192,6 @@ export function updateAuthoredComponent(
       }
     }
   });
-  UndoQueue.instance.push(undo);
 
   return component;
 }
