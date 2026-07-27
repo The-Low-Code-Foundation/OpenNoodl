@@ -38,10 +38,14 @@ export function BasePanel({
   UNSAFE_content_style
 }: BasePanelProps) {
   const modeSlot = usePanelModeSlot();
+  const hasHeader = Boolean(title);
 
   return (
-    <div className={classNames(css['Root'], UNSAFE_className)} style={UNSAFE_style}>
-      {Boolean(title) && (
+    <div
+      className={classNames(css['Root'], hasHeader && css['has-panel-header'], UNSAFE_className)}
+      style={UNSAFE_style}
+    >
+      {hasHeader && (
         <PanelHeader hasNoHeaderDivider={hasNoHeaderDivider} title={title} modeSlot={modeSlot}>
           {headerSlot}
         </PanelHeader>

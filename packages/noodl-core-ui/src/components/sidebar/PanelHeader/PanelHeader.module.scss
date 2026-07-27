@@ -1,20 +1,73 @@
+/* PNL-005: one panel chrome.
+ *
+ * `PanelHeader` rendered a `.Title` div that had **no rule in this file at all**
+ * — the title's size was whatever `LabelSize.Big` happened to be that week, and
+ * every panel that rolled its own header picked something else. That is the
+ * mechanism behind "no two panels agree". The rule now exists, here, once.
+ *
+ * Geometry and type come from the phase-25 mock (`.phead` / `.phead .ptitle` in
+ * mocks/nodegx-side-panel-mock.html): a 44px bar on the panel ground with a
+ * hairline underneath, 13px / 650 title, actions right, the side panel's own
+ * mode controls behind a divider.
+ */
+
 .Root {
-  flex: 0 0 36px;
-  padding: 0 16px;
-  min-height: 36px;
+  box-sizing: border-box;
+
+  /* The mock's 44px. Exposed as a custom property so a panel that has to reason
+     about the header's height reads it instead of hardcoding 44 again. */
+  --panel-header-height: 44px;
+
+  flex: 0 0 var(--panel-header-height);
+  min-height: var(--panel-header-height);
+
+  /* Asymmetric on purpose: the title is optically inset, the 27px icon buttons
+     on the right carry their own padding and would look over-inset at 14px. */
+  padding: 0 6px 0 14px;
+
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  gap: 4px;
+
+  background-color: var(--theme-color-bg-2);
+  user-select: none;
 
   &:not(._hasNoHeaderDivider) {
-    border-bottom: 1px solid var(--theme-color-bg-1);
+    /* Was `--theme-color-bg-1`, i.e. a background token doing a border's job.
+       `border-default` is the mock's `--border-1` in both themes. */
+    border-bottom: 1px solid var(--theme-color-border-default);
   }
+}
+
+.Title {
+  /* Takes all of the squeeze so the action and mode groups never get pushed out
+     of the panel — `min-width: 0` is what actually lets a flex item shrink below
+     its content width, and without it the ellipsis below never engages. */
+  flex: 1 1 auto;
+  min-width: 0;
+
+  font-family: var(--font-family);
+  font-size: var(--font-size-md); /* 13px */
+  /* No token: the ramp has 600 (semibold) and 700 (bold); the mock's panel and
+     section titles are both 650. Kept as a literal rather than bending the
+     shared weight scale for two rules. */
+  font-weight: 650;
+  line-height: var(--line-height-tight);
+  letter-spacing: -0.005em;
+  color: var(--theme-color-fg-highlight);
+
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .Children {
   display: flex;
   align-items: center;
   gap: 2px;
+
+  /* Never shrink: the title above absorbs the width instead. */
+  flex: 0 0 auto;
 }
 
 /* PNL-003: the side panel's own controls, separated from the panel's actions by
@@ -27,5 +80,28 @@
 
   &:not(:first-child) {
     border-left: 1px solid var(--theme-color-border-default);
+  }
+}
+
+/* Narrow panels. The container is declared by `BasePanel` (`.Root` →
+   `container: panel-frame / inline-size`, PNL-004) — deliberately not here, so
+   there is exactly one declaration of it.
+ *
+ * What this does NOT do is the mock's `⋯` overflow menu. The mode buttons are
+ * built in `SidePanel.tsx`, outside this task's territory, and hiding two of
+ * them without building the menu that holds them would make float and full
+ * unreachable at narrow widths — a functional loss traded for a cosmetic gain.
+ * Instead the title absorbs the squeeze (`min-width: 0` above) and the bar gives
+ * back its own padding, which is what stops the controls being pushed out at
+ * 240px. The hook is here for whoever builds the menu: tag the demotable
+ * controls `data-panel-chrome="secondary"`. */
+@container panel-frame (max-width: 359px) {
+  .Root {
+    padding-left: 10px;
+    padding-right: 4px;
+  }
+
+  .Children [data-panel-chrome='secondary'] {
+    display: none;
   }
 }

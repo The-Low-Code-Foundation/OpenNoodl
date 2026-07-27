@@ -135,3 +135,31 @@
     pointer-events: none;
   }
 }
+
+/* =============================================================================
+ * ⚠️  PNL-005 — APPENDED BLOCK. Do not reorder; fold into the rules above at the
+ *     next opportunity. PNL-004 owned the rest of this file during the same
+ *     wave, so this was kept at the end to keep the merge clean. Called out in
+ *     PNL-005-NOTES.md.
+ *
+ * The header is the panel's top edge in the mock (`.panel > .phead`, flush,
+ * 44px, hairline underneath, body scrolls beneath it). `.Root` above gives the
+ * panel a vertical inset and a flex `gap`, both of which land *above and below
+ * the header* — so a "44px header" measured from the panel's top edge was really
+ * 44 + 16 + gap, and the hairline floated in the middle of the panel ground
+ * rather than sitting on the panel's shoulder.
+ *
+ * Only applied when a header actually exists: a headerless `BasePanel` keeps the
+ * inset it has today.
+ * ========================================================================== */
+.Root.has-panel-header {
+  padding-top: 0;
+  gap: 0;
+
+  /* The inset the header just gave up moves onto the scrolling content, where it
+     scrolls with it instead of masking it — the same reasoning as the horizontal
+     inset above. */
+  .ChildrenContainer {
+    padding-top: var(--spacing-panel-padding);
+  }
+}
