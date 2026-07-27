@@ -88,10 +88,46 @@ function nodesById(project: LegacyProject): Map<string, LegacyNode> {
   return map;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function params(node: LegacyNode | undefined): Record<string, any> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (node?.parameters ?? {}) as Record<string, any>;
+/**
+ * The object form of a parameter — the shape this suite exists to guard.
+ * `fallback` is `unknown` rather than absent because it is legitimately falsy in
+ * one fixture (0, '', false and null all have to survive), and optional because
+ * another fixture omits it entirely. `version` comes from the
+ * forward-compatibility fixture.
+ */
+interface ExpressionParameter {
+  mode: string;
+  expression: string;
+  fallback?: unknown;
+  version?: number;
+}
+
+/**
+ * A parameter bag mixes the object form with ordinary literals — `expr-mixed-with-plain`
+ * carries both on one node, which is the whole point of that fixture.
+ */
+type ParameterBag = Record<string, ExpressionParameter | string | number | boolean | null>;
+
+function params(node: LegacyNode | undefined): ParameterBag {
+  return (node?.parameters ?? {}) as ParameterBag;
+}
+
+/**
+ * Narrow a bag entry to the object form.
+ *
+ * This throws rather than casting, and the throw is the point: if a round-trip ever
+ * flattens an expression parameter back to a bare value, every assertion downstream
+ * of it would otherwise read `undefined` and this suite would report a confusing
+ * `expected undefined to be 'expression'`. Failing here names the actual defect.
+ */
+function expr(bag: ParameterBag, port: string): ExpressionParameter {
+  const value = bag[port];
+  if (value === null || typeof value !== 'object') {
+    throw new Error(
+      `parameter "${port}" is not the object form — got ${JSON.stringify(value)}. The round-trip flattened it.`
+    );
+  }
+  return value;
 }
 
 describe('SUB-011 expression parameters — v2 round-trip', () => {
@@ -99,7 +135,7 @@ describe('SUB-011 expression parameters — v2 round-trip', () => {
   const after = nodesById(roundTrip(fixture));
 
   it('the fixture really does carry the object form (guard against a vacuous suite)', () => {
-    const p = params(before.get('expr-string-port')).text;
+    const p = expr(params(before.get('expr-string-port')), 'text');
     expect(p.mode).toBe('expression');
     expect(typeof p.expression).toBe('string');
     expect(before.size).toBe(10);
@@ -111,7 +147,7 @@ describe('SUB-011 expression parameters — v2 round-trip', () => {
 
   it('preserves an expression parameter whole, on a string port', () => {
     expect(params(after.get('expr-string-port')).text).toEqual(params(before.get('expr-string-port')).text);
-    expect(params(after.get('expr-string-port')).text.expression).toBe(
+    expect(expr(params(after.get('expr-string-port')), 'text').expression).toBe(
       "Variables.firstName + ' ' + Variables.lastName"
     );
   });
@@ -122,24 +158,24 @@ describe('SUB-011 expression parameters — v2 round-trip', () => {
 
   it('preserves falsy fallbacks — 0, "", false and null all survive', () => {
     const out = params(after.get('expr-falsy-fallbacks'));
-    expect(out.text.fallback).toBe('');
-    expect(out.fontSize.fallback).toBe(0);
-    expect(out.visible.fallback).toBe(false);
-    expect(out.opacity.fallback).toBe(null);
+    expect(expr(out, 'text').fallback).toBe('');
+    expect(expr(out, 'fontSize').fallback).toBe(0);
+    expect(expr(out, 'visible').fallback).toBe(false);
+    expect(expr(out, 'opacity').fallback).toBe(null);
     // and nothing invented one where there was none
     expect(out).toEqual(params(before.get('expr-falsy-fallbacks')));
   });
 
   it('does not invent a fallback or version where the author omitted them', () => {
-    const out = params(after.get('expr-no-fallback')).text;
+    const out = expr(params(after.get('expr-no-fallback')), 'text');
     expect(out).toEqual({ mode: 'expression', expression: 'Variables.bare' });
     expect('fallback' in out).toBe(false);
     expect('version' in out).toBe(false);
   });
 
   it('preserves expressions containing quotes, backticks, escapes, markup and unicode', () => {
-    const src = params(before.get('expr-special-chars')).text;
-    const out = params(after.get('expr-special-chars')).text;
+    const src = expr(params(before.get('expr-special-chars')), 'text');
+    const out = expr(params(after.get('expr-special-chars')), 'text');
     expect(out).toEqual(src);
     // Spot-check the characters most likely to be eaten by a naive escape pass.
     expect(out.expression).toContain('`tpl ${Variables.x}`');
@@ -151,12 +187,12 @@ describe('SUB-011 expression parameters — v2 round-trip', () => {
   });
 
   it('preserves a structured (nested object/array) fallback', () => {
-    const out = params(after.get('expr-object-fallback')).text;
+    const out = expr(params(after.get('expr-object-fallback')), 'text');
     expect(out.fallback).toEqual({ nested: { deep: [1, 2, { three: true }] }, list: ['a', 'b'] });
   });
 
   it('preserves an unknown future version rather than rewriting it', () => {
-    expect(params(after.get('expr-future-version')).text.version).toBe(99);
+    expect(expr(params(after.get('expr-future-version')), 'text').version).toBe(99);
   });
 
   it('keeps expression and plain parameters side by side on one node', () => {
@@ -164,21 +200,19 @@ describe('SUB-011 expression parameters — v2 round-trip', () => {
     expect(out).toEqual(params(before.get('expr-mixed-with-plain')));
     expect(out.textAlign).toBe('center');
     expect(out.fontSize).toBe(18);
-    expect(out.text.mode).toBe('expression');
+    expect(expr(out, 'text').mode).toBe('expression');
   });
 
   it('preserves the object form inside stateParameters', () => {
     const out = after.get('expr-in-state-bags');
     expect(out.stateParameters).toEqual(before.get('expr-in-state-bags').stateParameters);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    expect((out.stateParameters as any).hover.fontSize.fallback).toBe(0);
+    expect(expr((out.stateParameters as Record<string, ParameterBag>).hover, 'fontSize').fallback).toBe(0);
   });
 
   it('preserves the object form inside variant parameters', () => {
     const out = roundTrip(fixture);
     expect(out.variants).toEqual(fixture.variants);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    expect((out.variants![0].parameters as any).text.mode).toBe('expression');
+    expect(expr(out.variants![0].parameters as ParameterBag, 'text').mode).toBe('expression');
   });
 });
 
