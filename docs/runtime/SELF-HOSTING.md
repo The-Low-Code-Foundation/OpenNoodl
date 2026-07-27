@@ -52,6 +52,12 @@ it can only check against a URL you tell it.
 Now export the app: **Deploy → Self Hosting → Deploy to folder**, and note the
 folder you chose.
 
+That export copies your project folder alongside the built app, minus a set of
+default exclusions (`docs/`, `.git/`, `node_modules/`, `.env` and others). The
+panel tells you what will be left out before you pick a folder; add a
+`.noodlignore` to exclude more. See
+[What ends up in a deploy](./DEPLOY-IGNORE.md).
+
 ## The happy path
 
 ```bash

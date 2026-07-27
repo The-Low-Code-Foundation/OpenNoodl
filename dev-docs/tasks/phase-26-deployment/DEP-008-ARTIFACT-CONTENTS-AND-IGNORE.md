@@ -135,8 +135,29 @@ the interlock between the two tracks.
 | Two ignore semantics (ours vs gitignore) confuse users | Use gitignore syntax as-is; do not invent a dialect |
 | The fix lands per-target and drifts | Criterion 6; one function, asserted |
 
+## Status
+
+**Implemented 2026-07-27.** The decisions this task exists to take — the default
+ignore set, the `.env` judgement call, and v2 project source in deploy output —
+are recorded in [DEP-008-NOTES.md](./DEP-008-NOTES.md), together with the
+deviations from this spec, the acceptance map, and what was and was not verified.
+
+Headlines:
+
+- `.noodlignore` in the project root, gitignore syntax, conformance-tested
+  against real `git check-ignore`; defaults first, user file second, so a
+  negation is the only way to override a default.
+- **v2 project source (`nodegx.*.json`, `components/`) is excluded** — and
+  re-includable. Reasoning in the notes, §2.
+- The `.git`/`.noodl` substring checks tested the *absolute* path, so any project
+  stored under a directory containing `.git` or `.noodl` had **every** file
+  dropped from its deploy. Fixed and pinned.
+- The AIX-009 interlock (criterion 7) is proved by
+  `packages/noodl-editor/tests/utils/deploy-ignore.test.ts`.
+
 ## References
 
+- [DEP-008-NOTES.md](./DEP-008-NOTES.md) — the decisions, deviations and verification record
 - [AIX-009 — Project context documents](../phase-15-ai-collaboration/AIX-009-PROJECT-CONTEXT-DOCS.md) — the blocked consumer
 - [DEPLOY-HANDOFF-PROJECT-DOCS.md](../phase-15-ai-collaboration/DEPLOY-HANDOFF-PROJECT-DOCS.md) — the original hand-off from the AI track
 - `packages/noodl-editor/src/editor/src/utils/compilation/build/copy.ts`
