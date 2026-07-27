@@ -7,11 +7,12 @@
  * @module noodl-editor
  */
 
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 
 import { DialogLayerModel } from '@noodl-models/DialogLayerModel';
 
 import { IconName } from '@noodl-core-ui/components/common/Icon';
+import { SearchInput } from '@noodl-core-ui/components/inputs/SearchInput';
 import { MenuDialogWidth } from '@noodl-core-ui/components/popups/MenuDialog';
 import { BasePanel } from '@noodl-core-ui/components/sidebar/BasePanel';
 
@@ -22,6 +23,7 @@ import { StringInputDialog } from './components/StringInputDialog';
 import css from './ComponentsPanel.module.scss';
 import { ComponentTemplates } from './ComponentTemplates';
 import { useComponentActions } from './hooks/useComponentActions';
+import { useComponentFilter } from './hooks/useComponentFilter';
 import { useComponentsPanel } from './hooks/useComponentsPanel';
 import { useDragDrop } from './hooks/useDragDrop';
 import { useRenameMode } from './hooks/useRenameMode';
@@ -56,6 +58,17 @@ export function ComponentsPanel({ options }: ComponentsPanelProps) {
   const { draggedItem, startDrag, canDrop } = useDragDrop();
 
   const { renamingItem, renameValue, startRename, setRenameValue, cancelRename, validateName } = useRenameMode();
+
+  /**
+   * PNL-006 — the in-place name filter.
+   *
+   * The query is the only new state. The filter derives an *effective* expansion
+   * set from it rather than writing to `expandedFolders`, so clearing the field
+   * restores the previous expansion exactly — there is nothing to restore,
+   * because nothing was overwritten.
+   */
+  const [filterQuery, setFilterQuery] = useState('');
+  const filtered = useComponentFilter(treeData, filterQuery, expandedFolders);
 
   // Handle creating a new sheet
   const handleCreateSheet = useCallback(() => {
@@ -233,12 +246,30 @@ export function ComponentsPanel({ options }: ComponentsPanelProps) {
         />
       }
     >
+      {/* PNL-006: the filter is pinned under the shared header — it does not
+          scroll with the tree, and it is name-only. The Search panel searches
+          parameter values and CSS; this does not duplicate it. */}
+      <div className={css['FilterBar']}>
+        <SearchInput
+          placeholder="Filter components"
+          value={filterQuery}
+          onChange={setFilterQuery}
+          UNSAFE_style={{ width: '100%' }}
+        />
+      </div>
+
       {/* Component tree - right-click for create menu, mouseUp on background triggers root drop */}
-      <div className={css['Tree']} onContextMenu={handleTreeContextMenu} onMouseUp={handleTreeMouseUp}>
-        {treeData.length > 0 ? (
+      <div
+        className={css['Tree']}
+        data-test="component-tree"
+        onContextMenu={handleTreeContextMenu}
+        onMouseUp={handleTreeMouseUp}
+      >
+        {filtered.nodes.length > 0 ? (
           <ComponentTree
-            nodes={treeData}
-            expandedFolders={expandedFolders}
+            nodes={filtered.nodes}
+            expandedFolders={filtered.expandedFolders}
+            matched={filtered.isFiltering ? filtered.matched : null}
             selectedId={selectedId}
             onItemClick={handleItemClick}
             onCaretClick={toggleFolder}
@@ -261,6 +292,16 @@ export function ComponentsPanel({ options }: ComponentsPanelProps) {
             sheets={sheets}
             onMoveToSheet={handleMoveToSheet}
           />
+        ) : filtered.isFiltering ? (
+          /* An empty *result* is a different fact from an empty project, and
+             saying the wrong one is how a filter convinces someone their work
+             has vanished. */
+          <div className={css['PlaceholderMessage']} data-test="component-tree-no-matches">
+            <span>
+              No components match <span className={css['PlaceholderQuery']}>“{filterQuery.trim()}”</span>
+            </span>
+            <span>Clear the filter to see the whole tree.</span>
+          </div>
         ) : (
           <div className={css['PlaceholderMessage']}>
             <span>No components in project</span>

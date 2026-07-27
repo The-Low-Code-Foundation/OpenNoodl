@@ -37,6 +37,12 @@ interface ComponentTreeProps {
   // Sheet management props
   sheets?: Sheet[];
   onMoveToSheet?: (componentPath: string, sheet: Sheet) => void;
+  /**
+   * PNL-006 — rows that matched the filter themselves. Anything rendered while
+   * this is non-null and *not* in it is ancestry kept for context, and is
+   * dimmed. Null (the default) means no filter is active and nothing dims.
+   */
+  matched?: Set<string> | null;
 }
 
 export function ComponentTree({
@@ -63,11 +69,15 @@ export function ComponentTree({
   onRenameCancel,
   onDoubleClick,
   sheets,
-  onMoveToSheet
+  onMoveToSheet,
+  matched = null
 }: ComponentTreeProps) {
   return (
     <>
       {nodes.map((node) => {
+        const id = node.type === 'component' ? node.data.name : node.data.path;
+        const isDimmed = matched !== null && !matched.has(id);
+
         // Check if this item is being renamed
         const isRenaming =
           renamingItem &&
@@ -102,6 +112,7 @@ export function ComponentTree({
               onOpen={onOpen}
               onMakeHome={onMakeHome}
               onDuplicate={onDuplicate}
+              isDimmed={isDimmed}
             >
               {expandedFolders.has(node.data.path) && node.data.children.length > 0 && (
                 <ComponentTree
@@ -129,6 +140,7 @@ export function ComponentTree({
                   onDoubleClick={onDoubleClick}
                   sheets={sheets}
                   onMoveToSheet={onMoveToSheet}
+                  matched={matched}
                 />
               )}
             </FolderItem>
@@ -159,6 +171,7 @@ export function ComponentTree({
               onRenameCancel={onRenameCancel}
               sheets={sheets}
               onMoveToSheet={onMoveToSheet}
+              isDimmed={isDimmed}
             />
           );
         }
