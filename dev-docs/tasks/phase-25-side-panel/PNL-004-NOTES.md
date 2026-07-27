@@ -355,3 +355,175 @@ Everything in the checklist above. Specifically, **none** of the following has b
   should stack at different widths, and a row whose label is itself interactive.
 - The 34px content-box offset is the thing that will bite you. Read the header of
   `panel-bands.scss` before writing a number.
+
+---
+
+# Appendix — after the first live run (2026-07-27)
+
+The coordinator merged PNL-004 (`713e8975`), corrected the band boundaries on top of it
+(`68fdff3b`), and ran the gate from the primary checkout with a project open. This appendix records
+what that found. **Nothing below has been observed by me** — I still cannot run the editor from a
+worktree, so every claim here is reasoning plus a fake-DOM smoke test, and the gate needs re-running
+to confirm any of it.
+
+## The band boundaries moved, and I agree with the move
+
+`68fdff3b` set `$compact-max: 305px` / `$wide-min: 526px`, so the queries carry the −34px offset and
+the *names* mean 340px and 560px **panels**. That is the right call and better than my flag: the
+acceptance and the phase exit criterion both talk in panel widths, so the panel width is the number
+a reader has in their head, and the offset belongs in the one file rather than in everyone's
+arithmetic.
+
+Re-checking my migrations against the shifted bands turned up one consequence. **A 340px panel is
+now the default band** where it used to be compact, so labels sit beside their control again from
+340px rather than from 374px — and at 340px the control column is only ~162px, with a 104px label
+column. Two of the labels there are the exact strings the phase was reported over:
+
+- `API Key (saved)` — ~96px, fits, but only just
+- `Endpoint (optional)` — ~112px, **does not fit 104px**, wraps to two lines
+
+Wrapping is not the original defect (that was wrapping *plus* `max-height: 28px; overflow: hidden`
+clipping it, which is gone). But both parentheticals describe the field's **state**, not its name —
+they are help text wearing a label's clothes, and they are what pushes the label past the column. So
+they moved to `helpText`, along with Custom Variables' `Category (optional)`. The labels are now
+`API key`, `Endpoint`, `Category` and fit the column at every band.
+
+Other labels in the migrated panels that exceed 104px — `Open Graph image`, `Background colour` —
+are left to wrap. That is the mock's own behaviour (`.rlabel { overflow-wrap: break-word }`) and
+renaming them would be inventing content changes to satisfy a column.
+
+## The four in-scope failures: one real, three my instrument crying wolf
+
+I want to be exact about this, because "I fixed it" and "I stopped the gate reporting it" are very
+different claims and three of these are the second kind.
+
+### Real — the AI model select truncated a value nothing could show
+
+```
+✗ 240px editor-settings  input.PropertyPanelBaseInput  client 163, scroll 248
+✗ 300px editor-settings  input.PropertyPanelBaseInput  client 223, scroll 248
+✗ 380px editor-settings  input.PropertyPanelBaseInput  client 191, scroll 248
+```
+
+The coordinator's observation that `scrollWidth` is a constant 248px across all three is what solved
+it: the content is fixed, only the box changes. 248px is an **option label**, and
+`AiSettingsSection` was building them as `${displayName} — $${in}/$${out} per Mtok` —
+"Claude Sonnet 5 — $2/$10 per Mtok". `PropertyPanelSelectInput` is a `<select>` dressed as an
+`<input>`: `user-select: none`, and its click opens a dropdown rather than placing a caret. So the
+model name simply ended and nothing would show you the rest.
+
+Fixed in `AiSettingsSection` (`7047f656`): the option label is the model name, and the price moves to
+the row's `helpText` — where it names only the *selected* model instead of repeating itself on every
+option, and where the "as published on …" caveat now sits beside the number it qualifies (that
+free-floating `<Box><Text>` at the bottom of the section is gone).
+
+**The non-monotonicity the coordinator flagged was the diagnosis.** 300px clips 25px and 380px clips
+57px because 300px is compact — stacked, control full-width — and 380px is default, where a 104px
+label column takes the space back. A wider panel giving a control less room is the band system
+behaving exactly as specified; the defect was that the content had no business being 248px wide.
+
+### Not real — the `p.Text` sticking 40px past the panel edge
+
+Traced to `packages/noodl-editor/src/editor/src/reactcomponents/tooltip.tsx`, mounted on the **Head
+Code** row of the legacy `Ports` view inside Project Settings. The tooltip renders its full DOM at
+all times and hides it with `opacity: 0` — the file's own TODO says so: *"optimization: don't render
+all the tooltip HTML if it's not showing (currently just hidden with opacity)"*. It is
+`position: absolute` with an inline `white-space: nowrap` and no `max-width`, holding the
+38-character string "Add custom code to the &lt;head&gt; tag" (React does not decode the entities,
+so they render literally) ≈ 245px.
+
+**My gate should have skipped it and did not.** It exempted `opacity: 0` — but only on the element
+itself, and `opacity` is not an inherited property: a `<p>` inside an `opacity: 0` wrapper computes
+its own `opacity` as `1`. `visibility` inherits, which is why that half of the exemption worked and
+this half silently did not. Now checked with
+`checkVisibility({ opacityProperty: true, visibilityProperty: true, contentVisibilityAuto: true })`,
+which walks the ancestors (`daa44eae`).
+
+### Not real — `.ChildrenContainer` clipping 65px
+
+The same tooltip, one level up. An invisible absolutely-positioned child still contributes to its
+scroll container's `scrollWidth`, so the panel body reported clipping 65px of nothing. A container
+must now prove a **visible** descendant reaches past its content edge before it counts as clipping.
+
+### Not real — the 10px `input` in Project Settings
+
+An editable text field whose value is longer than its box. That has `scrollWidth > clientWidth` and a
+UA-computed `overflow-x: clip`, so the original rule reported **every text field in the editor
+holding a long value**. It is not hidden content: the UA gives form controls their own scrolling and
+the caret reaches the end. Form controls now report in a `truncatedControl` bucket that **fails only
+when `user-select: none` or `readOnly`** — which is precisely how the model select above still gets
+caught. Editable fields are counted and printed, never failed.
+
+### What I did to keep myself honest about that
+
+Three of four findings were removed by changing the instrument, which is exactly the move that turns
+a gate into decoration. So the new logic was executed against a hand-built fake DOM containing both
+the phantom (invisible tooltip inflating a container) and a real overflowing action row:
+
+```
+invisible tooltip only       → sticksOut 0 | clippedX 0
+plus a real overflowing row  → sticksOut 1 | clippedX 1
+```
+
+The reported *cause* of each exemption is stated in the file next to the exemption. If a future
+reader thinks one is wrong, the reasoning is there to argue with.
+
+## The legacy tooltip is still a real defect — for someone else
+
+Removing it from the gate does not make it fine. At a 240px panel, **hovering** the Head Code row
+shows a tooltip that runs 40px past the panel and is then clipped by `.ChildrenContainer`'s
+`overflow-x: hidden`. So the tooltip is truncated exactly when the panel is narrow enough to need it.
+
+It is not mine to fix and I have not touched it: `reactcomponents/tooltip.tsx` is shared across the
+whole editor, and the `propertyeditor/` tree it appears in is phase-9 (STYLE-004) territory that the
+wave-1 brief explicitly reserves. **Routing it** with the fix that would work: give
+`.popup-layer-tooltip` a `max-width` and drop the inline `white-space: nowrap`, or move it into
+`PopupLayer` (which portals out and would escape the panel's clipping entirely — the TODO in that
+file already wants this).
+
+Two smaller things found in the same trace, also not mine, also worth recording:
+
+- `BooleanType` drops `view.tooltip` on the floor, so the Body Scroll port's tooltip never renders at
+  all.
+- `Frame` sets `height: 100%` on the legacy view host. As a `flex: 0 0 auto` child of the scrolling
+  `.ChildrenContainer`, that pins the ports block to the panel's full height regardless of content.
+  Latent, not currently reported by either axis.
+
+## Out of scope, newly visible — recorded as asked
+
+| Panel | Finding | My read |
+|---|---|---|
+| `versioncontrol-panel` | a `<pre>` scrolls sideways by 877 / 817 / 737px at 240 / 300 / 380px | **By design.** `scrollWidth` is a constant ~1100px while `clientWidth` tracks the panel — that is a diff. Soft-wrapping a unified diff destroys the column alignment that makes `+`/`-` readable, and long lines are normal in generated files. |
+| `search-panel` | `Section` body clips 11px at 240px | Probably real but minor. Whoever restyles that panel should look. Neither panel is in a wave-1 territory. |
+
+Rather than exempt the `<pre>` silently, the gate gained `data-allow-x-scroll="<reason>"`: put it on
+the element or any ancestor inside the panel and the sideways-scroll assertion skips it. The point is
+that the decision gets **written down where the next reader finds it**, not that the assertion
+disappears. Whoever owns `VersionControlPanel` should add it with the reason above; until they do,
+the gate will keep reporting it, which is the correct default.
+
+## Gates, re-run after these changes
+
+| Gate | Result |
+|---|---|
+| `npx tsc -p packages/noodl-editor --noEmit` | clean |
+| `npm run colors` | 16/16, holding |
+| `node --check` on the gate | clean — note that comments **inside** `MEASURE_X`/`MEASURE` must not contain backticks, since those blocks live inside template literals. Cost two syntax errors while writing this. |
+| Fake-DOM smoke test of the new bucket logic | as above |
+
+## Still could not verify
+
+Everything from the original list that is still open, plus:
+
+1. **That any of these four fixes actually resolve their findings.** The gate needs re-running. I
+   predict `editor-settings-panel` goes clean at all five widths and `settings-panel` goes clean at
+   240px, and I would rather be told I am wrong than have that stand as a claim.
+2. **That the shifted bands look right at the new boundaries** — specifically a 340px panel, which
+   is now the first width where labels sit beside controls, and 560px, which is now the first width
+   with a 132px column. Both are new transitions that nobody has looked at.
+3. **That moving the price out of the option labels reads well.** The dropdown no longer shows what
+   anything costs; you now have to select a model to see its price. That is a real trade and it was
+   made to fit a 240px panel — if comparing prices while choosing matters more, the better fix is a
+   two-line option row in `PropertyPanelSelectInput`, which is core-ui property-panel territory and a
+   larger change than this task should make unilaterally.
+4. **The `data-allow-x-scroll` opt-out has never been exercised**, because nothing uses it yet.
