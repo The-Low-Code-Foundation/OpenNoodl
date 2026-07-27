@@ -1740,7 +1740,7 @@ were deleted.
   import (the §17 convention) for `value instanceof Model` to narrow. Without it the
   `instanceof` compiles but narrows nothing, and the error lands on the `.getId()` after it.
 
-## 24. Next slice
+## 24. Slice 10's plan for slice 11 (items 1 and 5 done; see §26 for what is actually next)
 
 File counts: `noodl-viewer-react` **4 `.js` / 1 `.jsx` / 137 `.ts` / 46 `.tsx`**.
 `noodl-runtime` unchanged at 73 `.js` / 19 `.ts`.
@@ -1773,3 +1773,259 @@ the four `.js` files that remain are not nodes. The task's centre of gravity mov
    further, since a converted runtime needs no declarations to be imported from source.
 8. **Do not raise `strict`** (spec step 8). Unchanged: a global flip with concurrent
    workstreams in the same tsconfig. Step 9's editor-side sweep stays with PLAT-004.
+
+
+---
+
+## 25. Slice 11 — `@noodl/runtime`'s own node files, minus `data/` (spec step 7 continues into the runtime)
+
+The centre of gravity moved packages. Slice 10 finished the viewer; this one starts on
+`@noodl/runtime`, where the untyped mass now is. All 24 non-`data/` files under
+`src/nodes/` converted, ~3,600 lines: the component trio, the Variables family, twelve
+small utility nodes, and the four heavyweights (Expression, Function, Logic Builder,
+Run Tasks).
+
+It was preceded by its own commit — see §25.0 — because two of the findings slice 10
+recorded were hard failures in shipping nodes, and a typing slice is the wrong place to
+change behaviour.
+
+### 25.0 The two behaviour fixes, committed first (`2fecd32`)
+
+§24 item 5 said the Globals crash and `dbmodelnode`'s missing `storageNew` "need a
+decision rather than a conversion" and were "the strongest candidates for a small
+behaviour-fixing commit of their own". That is what happened, ahead of the conversion, so
+the typing commit stayed type-only.
+
+**Globals (§23.3).** The cache write is *dropped*, not the cache introduced. Of the two
+fixes §23.3 identified, this is the one that cannot change what any project observes: the
+output getter reads `context.globalValues[name]` directly and never consulted the cache,
+so the only behaviour that changes is that the listener stops throwing.
+
+**DbModel's New (§23.4 #1).** `git log -S storageNew` finds the identifier only in the
+initial import — it has **never** existed in this repo, so there was no prior
+implementation to restore and the port has thrown since the OSS release. Implemented to
+match the sibling **Model node's `scheduleNew`** exactly (`modelnode.ts:222`), which is the
+family precedent: New builds a fresh *local* record from the current input values and
+signals `created` + `stored`; Insert remains the port that writes to the backend. Choosing
+the sibling's semantics rather than inventing them is the whole of the justification.
+
+Characterisation tests for both at
+`noodl-viewer-react/tests/deprecated-node-defects.test.ts`, and **proven able to fail** —
+all 7 fail against the pre-fix source, which is the check §13.1 taught us to run rather
+than assume. Viewer jest 52 → 59.
+
+One wrinkle worth recording: the test's first draft stubbed `setModel` in the instance
+literal, but `bindMethods` runs *after* the literal and rebinds the real one over it. The
+fix was to stop stubbing and let the real `setModel` run — which is the more faithful test
+anyway, and it surfaced that `setModel` emits `fetched` before New's own two signals. That
+is pre-existing and shared with the Insert path, which calls the same method.
+
+### 25.1 Two export conventions, and why the split is load-bearing
+
+`@noodl/runtime` is CommonJS and `webpack-ts-rule.js` gives it its own ts-loader instance
+against its own tsconfig, so **`export =` is the convention** — as slice 2 established and
+AIX-005's `agent/` nodes follow.
+
+**`variables/variablebase.ts` is the one exception, and it has to be.**
+`noodl-viewer-react/src/nodes/std-library/variables/color.ts` imports it to build the Color
+node. That pulls the file into the *viewer's* program, which compiles at `module: es6`,
+where `export =` is a compile error (TS1203). It is precisely the boundary slice 4 hit with
+`src/utils` (§11) — and the rule generalises:
+
+> A runtime `.ts` file that any viewer `.ts` **imports** cannot use `export =`. One that is
+> only ever `require()`d from a `.js` file is never in the viewer's tsc program and is
+> therefore free to.
+
+`variablebase` takes a default export; its three runtime consumers (`number`, `string`,
+`boolean`) import it the same way and need no interop unwrap, because a CommonJS-emitting
+`.ts` compiles `import X from` to `__importDefault(require(…)).default`.
+
+Checked before converting anything else, on a two-file pilot (`or.ts` for the `export =`
+case, the `variables/` group for the ESM case) through **both** loaders — esbuild for the
+catalog and webpack for the bundle. Same de-risking slice 5 used, and worth keeping.
+
+### 25.2 The published types this slice moved — four, and one was a whole protocol
+
+1. **`RuntimeVisualNode`** (new, `internal.d.ts`). Converting Component Instance failed on
+   twelve members at once — `addChild`, `removeChild`, `isChild`, `getChildren`,
+   `contains`, `setChildIndex`, `render`, `getRef`, `triggerDidMount`, `forceUpdate`,
+   `parent`, `cachedChildren`. None was declared anywhere. But `ReactNodeInstance` in
+   `react-component-node.ts` **already declares all of them**, locally. So the child-tree
+   protocol was one contract with two descriptions and no shared name — the §15.2 shape,
+   which said to go straight to the `extends` clauses. Named once, in `internal.d.ts`
+   rather than `@noodl/types`, because a node *author* never implements it: the runtime and
+   the renderer do.
+2. **`ComponentModelLike.getInputPorts()` / `getOutputPorts()`.** Both exist on the real
+   `componentmodel.js`; neither was published, so they resolved through the index signature
+   as `unknown` and were **uncallable** — `Object.values(componentModel.getInputPorts())`
+   failed with "this expression is not callable". Fifth occurrence of the §19.3 shape.
+3. **`InputPortDefinition.plug`.** The Function node writes `plug: 'input'` on a statically
+   declared input. It is redundant there and nothing reads it — inputs are inputs — but it
+   is meaningful in the dynamic-port payloads written a few lines away, which is how the
+   two shapes got conflated. Published with that explanation rather than deleted from the
+   node, since deleting is an edit to a shipping definition.
+4. **`src/globals.d.ts`** (new). `_noodl_cloud_runtime_version` is branched on by **seven**
+   runtime modules to tell browser from cloud runtime, and is declared nowhere.
+
+   The file is deliberately a *script*, not a module — no top-level `import`/`export`, with
+   a comment saying so. A top-level import would make the declarations module-scoped, which
+   is exactly how the viewer's `interface Window { Noodl }` came to have never been in
+   effect (§21.3). That trap is now written down at the one place someone would reintroduce
+   it.
+
+### 25.3 Defects found — nine, none fixed
+
+Run Tasks alone accounts for the two that matter, and they compound:
+
+1. **Run Tasks never cleans up its tasks.** `_onNodeDeleted` and `_deleteAllTasks` are
+   declared at the **top level of the definition object**, not inside `methods`.
+   `nodedefinition.ts:266` installs only `opts.methods || opts.prototypeExtensions`, so
+   neither is ever put on the prototype. The base `Node.prototype._onNodeDeleted` runs
+   instead, and **deleting a Run Tasks node mid-run leaks every live task component** into
+   the node scope with no owner.
+2. **…and `_deleteAllTasks` would not work if it were reached.** `for…of` over a `Map`
+   yields `[key, value]` entries, so `nodeScope.deleteNode(taskComponent)` would receive a
+   two-element array. It wants `.values()`. Both bugs have to be fixed together, which is
+   the argument for doing it in one deliberate commit rather than inside a typing slice.
+3. **Expression's `_onNodeDeleted` never chains to `Node.prototype`**, unlike every sibling
+   that overrides it. The base clears model listeners, sets `_deleted`, and unsubscribes
+   port-level expression subscriptions — none of which runs for an Expression node.
+4. **Function's `intype-` setter is missing a hyphen**: it tests `this.hasInput('in' + n)`
+   and `this.getInput('in' + n)` where the value port is registered as `'in-' + n` a few
+   lines above. So changing an input's Type *after* the port exists has never retyped it.
+   It rarely shows because the type set at registration time — read from
+   `parameters['intype-…']` — is usually the right one already.
+5. **Function's `Outputs` Proxy `set` trap returns `undefined` for a deleted node.** The
+   comment says "just do nothing", but a falsy `set` trap makes the assignment **throw** in
+   strict-mode callers. Third occurrence of the §21.4 shape. It stays because the script
+   body is compiled non-strict by default, so only authors who opt in are exposed.
+6. **Function's `setScriptInputType`/`setScriptOutputType` write to containers that are
+   never created** (`_internal.inputTypes` / `outputTypes`). Same shape as the Globals
+   crash — but dead rather than live: nothing in the repo calls either.
+7. **Condition's `getInspectInfo` overwrites its own `'[No input]'` branch** on the very
+   next line, unconditionally, so an unset Condition shows blank.
+8. **Counter's Reset guard reads `this.currentValue`**, which does not exist — the count is
+   at `this._internal.currentValue`. The early return has never fired, so Reset always
+   flags dirty and signals even when nothing changed.
+9. **Logic Builder only ever detects outputs.** `detected.inputs`, `signalInputs` and
+   `signalOutputs` are declared, iterated and logged, but nothing pushes to them; and the
+   `detected.outputs.length > 0` guard means a workspace with no outputs sends **no ports
+   at all** and warns about an `IODetector` that does not exist in the file.
+
+Two smaller ones recorded without a code comment: Run Tasks increments
+`internal.runningTasks` in `checkDone` *and* again inside `startTask`, so every
+continuation counts twice (inert — nothing reads the field); and Boolean To String
+initialises `inputs`, `currentSelectedIndex` and `indexChanged`, none of which is ever read.
+
+### 25.4 Things that looked like defects and were not
+
+Worth recording, because each cost a check and the answer is reusable:
+
+- **`and.ts` uses `get()` where its siblings use `getter:`.** Both are honoured —
+  `node.ts:355` reads `output.get || output.getter` — and `OutputPortDefinition` already
+  publishes the pair, with `getter` marked as the historical spelling.
+- **Component Instance mixes `this` and `self` in one listener.** Harmless: `eventsender.ts`
+  invokes ref-registered listeners as `callback.call(ref, data)`, so `this` *is* the node.
+- **`substring`'s `value.toString()`.** A mechanical rewrite to `String(value)` would have
+  been a behaviour change — the two differ on `null`/`undefined`, where the original throws.
+  Typed as the structural requirement (`{ toString(): string }`) so the call survives.
+
+### 25.5 A narrower `this` does not assign to a port callback
+
+`InputPortDefinition.set` and `OutputPortDefinition.getter` declare `this: NodeInstance`.
+Annotating an inner callback with a *subtype* of that does not typecheck, and for
+`ComponentInstanceNode` — 39 members beyond `NodeInstance` — neither a direct cast nor a
+downcast inside the body is accepted either ("neither type sufficiently overlaps").
+
+The answer that is both clean and provably equivalent: **close over `self` from the
+enclosing method**, which this very file already does for its `inputPortRemoved` listener.
+The runtime invokes an input setter with the node the input was registered on, which is the
+node whose `registerInput` was called — so `self` and `this` are the same object by
+construction. Prefer this to `as unknown as`.
+
+Note it does not always bite: a small `NodeInstance` subtype (Component Outputs, which adds
+one member) annotates fine. It is the size of the delta that decides, which makes it a trap
+rather than a rule.
+
+### 25.6 Verification
+
+`catalog:check` byte-identical — **154 node types, 89 with dynamic ports**, unchanged
+across all 24 conversions, which is the real regression gate for this work. Runtime,
+viewer (`src/`) and cloud typechecks 0 errors. **Runtime jest 959 pass / 0 fail**
+(928 in §23.6). Viewer jest 59/59. Prettier clean. Lint ratchet green, 3074 under baseline.
+
+**The `any` contribution of this slice is zero.** The tsfixme gate *is* red, by +56, and
+every one of those is in AIX-005 agent test files committed at `1a5f7b4` that this slice
+never touched. Two `any`s did creep into the first draft (Function's `outputValues` record
+and Logic Builder's `Noodl` field) and both were removed rather than baselined — the
+first by typing the `.send` attachment at the point it happens instead of widening the
+whole record. **The baseline is deliberately left alone**: banking another workstream's 56
+markers under this slice's name is exactly the silent raise the gate exists to stop.
+
+Two build-gate caveats, both honest limits rather than results:
+
+- **The viewer prod bundle could not be proven green.** Every webpack error belongs to
+  `packages/noodl-runtime/src/sandbox/` — an AIX-008 workstream that was mid-flight in this
+  same checkout. This slice's own files produce no webpack errors, which is what the pilot
+  in §25.1 established, but "all bundles green" is not a claim this slice can make.
+- **No live editor pass.** Same reason as slice 9: it needs the main checkout in a state
+  where the editor builds.
+
+### 25.7 Traps
+
+1. **`prettier --write <directory>` in a shared checkout reformats other people's files.**
+   Running it over `src/nodes` touched seven `agent/` files and three `data/` ones — pure
+   formatting, and worse, this prettier disagrees with whatever formatted the `agent/` files
+   about nested-ternary indentation, so the churn was guaranteed to conflict. All ten
+   reverted. **Format the files you converted, by name.**
+2. **Concurrent sessions move the ground under a file-count claim.** The `.ts` baseline for
+   `noodl-runtime/src` went 40 → 46 mid-slice as another session landed six sandbox files,
+   so the counts first written into the commit message were wrong and had to be amended.
+   Take counts from `git ls-tree` at a named commit, not from `find` at wall-clock time.
+3. **`git stash` without a pathspec stashes the other session's work too.** Used twice here
+   (to prove the tests fail pre-fix, and to prove the `@types` noise is pre-existing) and
+   both times scoped with explicit pathspecs. The unscoped form is how you lose someone
+   else's uncommitted afternoon.
+4. **zsh does not word-split unquoted variables.** `npx prettier --check $FILES` passes one
+   long filename and reports "All matched files use Prettier code style!" having checked
+   nothing. Same false-green shape as §13.1's filter that never matched.
+5. The viewer typecheck's raw output carries ~28 pre-existing `@types` conflicts from
+   `node_modules`. The gate is `^packages/noodl-viewer-react/src/` — the `node_modules`
+   noise is not yours and filtering to `^packages/` is not enough, since the package has its
+   own nested `node_modules`.
+
+---
+
+## 26. Next slice
+
+Tracked file counts at `82eec928`: `noodl-runtime` **52 `.js` / 71 `.ts`**;
+`noodl-viewer-react` **4 `.js` / 1 `.jsx` / 137 `.ts` / 46 `.tsx`**.
+
+1. **`@noodl/runtime/src/nodes/std-library/data/`** — the other half of §24 item 1, and now
+   the largest single block left: 24 files, ~8,900 lines, dominated by `httpnode` (1,004),
+   `byob-query-data` (928), `dbcollectionnode2` (781), `dbmodelcrudbase` (603) and
+   `restnode` (591). These are the **last consumers of `register-nodes.js`'s
+   `module.default || module` unwrap**, so converting them is what finally retires it —
+   and `register-nodes.js` with it (§21.7). Note six of them read
+   `_noodl_cloud_runtime_version`, which §25.2 has now declared.
+2. **The 28 non-node modules under `src/`** — 9,460 lines. The `local-sql` adapter is
+   2,822 of it across three files, then `cloudstore`, `nodelibraryexport`, `collection`,
+   `events`, the three models and the expression evaluator/parser. `collection.js` deserves
+   care: §17.1 recorded that it patches `Array.prototype` for the whole process and that
+   this is load-bearing.
+3. **The behaviour-fixing commit this slice earned.** §25.3's items 1–2 (Run Tasks leaks
+   its tasks, and the cleanup it never calls is itself broken) are the same shape as the two
+   §25.0 just fixed, and now have the same justification. Item 3 (Expression not chaining
+   `_onNodeDeleted`) belongs with them.
+4. **The Group scroll plugins** (3 files, 1,182 lines) and **`viewer.jsx`** — unchanged from
+   §24 items 2–3, still the lowest value per line.
+5. **`register-nodes.js` last**, after (1), deleting the unwrap in the same commit.
+6. **The six mis-flagged deprecated controls** (§21.1) — still open, carried a third time.
+7. **`@noodl/runtime` shipping `.d.ts`** — carried a sixth time, and its value has now
+   fallen further for the reason §24 predicted: two thirds of the package's node code is
+   TypeScript, so consumers importing from source need no declarations.
+8. **Do not raise `strict`** (spec step 8), unchanged. Step 9's editor-side sweep stays with
+   PLAT-004.
+
+**Owed, and not paid by this slice:** the viewer prod bundle (blocked by another
+workstream's in-flight files, §25.6) and a live editor pass.

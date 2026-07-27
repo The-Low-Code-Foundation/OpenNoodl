@@ -46,10 +46,10 @@ There is a further reason to do this now rather than later, and it is the sequen
 ### In Scope
 - [x] Type the core runtime: `Node`, node definition, register, scope, context/scheduler
 - [x] Publish the node-definition API types (usable from `noodl-types` or an equivalent shared package)
-- [x] Convert standard-library nodes incrementally *(top level slice 5, `componentutils/`+`user/` slice 6, `data/` slice 7, `navigation/` slice 8, `nodes-deprecated/` slice 10; only dead `persisthelper.js` remains, deletion owned by DEBT-006)*
+- [x] Convert standard-library nodes incrementally *(viewer: top level slice 5, `componentutils/`+`user/` slice 6, `data/` slice 7, `navigation/` slice 8, `nodes-deprecated/` slice 10; runtime: all 24 non-`data/` files slice 11. Remaining: `@noodl/runtime`'s own `std-library/data/` (24 files), owned by slice 12)*
 - [x] Type `react-component-node.js` (the React binding hub)
 - [x] Convert `noodl-viewer-react` visual and logic nodes *(visual slice 4, logic slices 5–8, deprecated slice 10; every node file in the package is now TypeScript)*
-- [ ] Write characterisation tests before converting each significant unit
+- [~] Write characterisation tests before converting each significant unit *(partially: the runtime suite grew 132 → 959 across slices 1–11 and slice 11's behaviour fixes were test-first and proven able to fail, but tests have generally been written alongside conversions rather than before them)*
 - [x] Coordinate the port/type model with SUB-004 so catalog and types agree
 - [ ] Remove editor-side `TSFixme`s that existed only because the runtime was untyped
 
@@ -139,6 +139,70 @@ Do not chase `strict: true` initially. Get accurate types with `strict: false`, 
 ## CHANGELOG
 
 In progress. Full as-built record in [PLAT-003-NOTES.md](./PLAT-003-NOTES.md).
+
+### Slice 11 — 2026-07-27 — `@noodl/runtime`'s own node files, minus `data/` (step 7, in the runtime)
+
+- **All 24 non-`data/` files under `noodl-runtime/src/nodes`** → `.ts` (~3,600 lines): the
+  component trio (Component Inputs/Outputs and the 334-line Component Instance node), the
+  Variables family, twelve small std-library utility nodes, and the four heavyweights —
+  Expression (464), Function (425), Logic Builder (422) and Run Tasks (325). Annotated
+  against `NodeDefinitionOptions`/`NodeModule`, not renamed.
+- **Preceded by its own behaviour-fixing commit** (`2fecd32`), as slice 10's §24 item 5
+  proposed. The **Globals node's `TypeError`** is fixed by dropping the cache write rather
+  than creating the cache — the output getter reads `context.globalValues` directly, so
+  nothing observable changes but the crash. **`dbmodelnode`'s New action** is implemented to
+  match the sibling Model node's `scheduleNew` exactly: `git log -S` shows `storageNew` has
+  *never* existed in this repo, so the port has thrown since the OSS release and there was
+  no prior implementation to restore. Characterisation tests for both, **proven able to
+  fail** — all 7 fail against the pre-fix source. Viewer jest 52 → 59.
+- **Two export conventions, and the split is load-bearing** (NOTES §25.1). `export =`
+  everywhere, matching slice 2 and AIX-005's `agent/` nodes, because the package is
+  CommonJS and compiles under its own tsconfig — **except `variables/variablebase.ts`**,
+  which the viewer's `color.ts` imports. That pulls it into the viewer's `module: es6`
+  program where `export =` is `TS1203`, the same boundary slice 4 hit with `src/utils`. New
+  rule: a runtime `.ts` that any viewer `.ts` *imports* cannot use `export =`; one only
+  ever `require()`d from `.js` is never in the viewer's tsc program and is free to.
+- **A whole protocol had two descriptions and no name** (NOTES §25.2). Converting Component
+  Instance failed on twelve members at once — `addChild`, `render`, `contains`, `getRef`,
+  `parent`, `forceUpdate` and the rest — none declared anywhere, yet `ReactNodeInstance` in
+  the viewer *already declares all of them locally*. Published once as **`RuntimeVisualNode`**
+  in `internal.d.ts` (not `@noodl/types`: node authors never implement it). Also published:
+  **`ComponentModelLike.getInputPorts()`/`getOutputPorts()`**, which existed on the real
+  class but reached users as `unknown` and were therefore uncallable (the §19.3 shape,
+  fifth occurrence); **`InputPortDefinition.plug`**; and **`src/globals.d.ts`** for
+  `_noodl_cloud_runtime_version`, branched on by seven runtime modules and declared nowhere
+  — deliberately a *script* rather than a module, because a top-level import is exactly how
+  the viewer's `Window { Noodl }` came to never be in effect (§21.3).
+- **Nine defects found, documented at the site, none fixed** (NOTES §25.3). The two that
+  matter compound: **Run Tasks declares `_onNodeDeleted` and `_deleteAllTasks` at the
+  definition's top level**, and `nodedefinition.ts:266` installs only `methods`/
+  `prototypeExtensions` — so neither is installed, and deleting a Run Tasks node mid-run
+  **leaks every live task component**; and `_deleteAllTasks` would not work anyway, since
+  `for…of` over a `Map` yields entries rather than values. Also: Expression's
+  `_onNodeDeleted` never chains to `Node.prototype`; Function's `intype-` setter tests
+  `'in' + n` where the port is `'in-' + n`; Function's `Outputs` Proxy `set` trap returns
+  falsy on a deleted node, so strict-mode user code throws (§21.4's shape, third
+  occurrence); Condition's `getInspectInfo` overwrites its own `'[No input]'` branch;
+  Counter's Reset guard reads a `this.currentValue` that does not exist; Logic Builder
+  populates only `detected.outputs`.
+- **New trap, and it cost ten reverted files**: `prettier --write <directory>` in a shared
+  checkout reformats other sessions' work — seven `agent/` files and three `data/` ones,
+  with a prettier-version disagreement on ternary indentation guaranteeing conflicts.
+  Format the files you converted, by name (NOTES §25.7).
+
+File counts: `noodl-runtime` 76 `.js` / 46 `.ts` → **52 `.js` / 71 `.ts`**.
+`noodl-viewer-react` unchanged at 4 `.js` / 1 `.jsx` / 137 `.ts` / 46 `.tsx`.
+
+Gates: `catalog:check` byte-identical (154 node types, 89 dynamic); runtime, viewer (`src`)
+and cloud typechecks 0 errors; **runtime jest 959 pass / 0 fail** (928 in slice 10); viewer
+jest 59/59; prettier clean; lint ratchet green (3074 under baseline — `noodl-runtime` is
+not in its target set; this slice's own 29 eslint errors are all deliberate). **`any`
+contribution zero**: the `tsfixme` gate is red by +56, every one in AIX-005 agent test
+files at `1a5f7b4` that this slice never touched, so **the baseline is deliberately left
+alone** rather than banking another workstream's markers. Two `any`s that crept into the
+first draft were removed rather than baselined. **Owed:** the viewer prod bundle could not
+be proven green — every webpack error belongs to an AIX-008 workstream mid-flight in the
+same checkout — and the live editor pass, for the same reason.
 
 ### Slice 10 — 2026-07-27 — `nodes-deprecated/`, and the last of the node code (step 7, seventh group)
 
