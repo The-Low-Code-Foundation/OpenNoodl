@@ -41,6 +41,7 @@ export function IdentitySection({ identity, onChange, browserTitle, onBrowserTit
     <CollapsableSection title="App Identity" hasGutter hasVisibleOverflow>
       <PanelRow
         label="App name"
+        testId="settings-app-name"
         helpText="Read at runtime as Noodl.Config.appName, and the default for the Open Graph title."
       >
         <PropertyPanelTextInput value={appName} onChange={(value) => onChange({ appName: value })} />
@@ -48,6 +49,7 @@ export function IdentitySection({ identity, onChange, browserTitle, onBrowserTit
 
       <PanelRow
         label="Browser tab title"
+        testId="settings-browser-title"
         helpText={
           isFollowingAppName
             ? 'The <title> of the built and previewed page. Follows the app name — type here to set a different one.'
