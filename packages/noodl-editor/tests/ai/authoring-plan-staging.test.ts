@@ -17,11 +17,13 @@ import { buildComponentV2Files } from '../../src/editor/src/io/ProjectExporter';
 import { buildCandidate } from '../../src/editor/src/models/AiAssistant/authoring/candidate';
 import {
   applyAuthoredPlan,
-  type AppliedPlanOperation
+  type AppliedPlanOperation,
+  type PlanDocWriter
 } from '../../src/editor/src/models/AiAssistant/authoring/planStaging';
 import { StagingError } from '../../src/editor/src/models/AiAssistant/authoring/staging';
 import type { AuthoringRequest, ComponentFiles } from '../../src/editor/src/models/AiAssistant/authoring/types';
 import { ProjectModel } from '../../src/editor/src/models/projectmodel';
+import { expectRejection } from './helpers';
 import { UndoQueue } from '../../src/editor/src/models/undo-queue-model';
 
 /* eslint-disable @typescript-eslint/no-var-requires */
@@ -107,6 +109,62 @@ function threeComponentPlan(project: ProjectModel): AppliedPlanOperation[] {
   ];
 }
 
+const BASELINE = '# Architecture\n\nThe app is a reading list.\n';
+const PROPOSED = '# Architecture\n\nThe app is a reading list.\n\n## Checkout\n\nCheckout is its own page.\n';
+
+function docOperation(): AppliedPlanOperation {
+  return {
+    kind: 'doc',
+    operation: { id: 'op-4', kind: 'doc', target: 'docs/ARCHITECTURE.md', intent: 'record the checkout flow' },
+    proposed: PROPOSED,
+    baseline: BASELINE,
+    summary: 'Recorded why checkout is a page'
+  };
+}
+
+/**
+ * A stand-in for AIX-009's write path with the two behaviours the transaction
+ * depends on: it refuses in preflight when the file drifted from the baseline
+ * the proposal was authored against, and it records its inverse into the
+ * CALLER's undo group rather than pushing one of its own.
+ */
+interface FakeDocs {
+  /** The "file on disk". */
+  file: string | null;
+  /** Set to make `apply` throw, standing in for an I/O failure. */
+  failOnApply?: string;
+  writer: PlanDocWriter;
+}
+
+function fakeDocWriter(): FakeDocs {
+  const state: FakeDocs = {
+    file: BASELINE,
+    writer: {
+      preflight: (op) => {
+        if (state.file !== op.baseline) {
+          throw new Error(`${op.operation.target} changed on disk since it was read.`);
+        }
+      },
+      apply: (op, undoGroup) => {
+        if (state.failOnApply) throw new Error(state.failOnApply);
+        const { proposed, baseline } = op;
+        state.file = proposed;
+        // `push`, not the constructor pair: the write has already happened, so
+        // there is nothing to `do` — this only records the inverse.
+        undoGroup.push({
+          do: () => {
+            state.file = proposed;
+          },
+          undo: () => {
+            state.file = baseline;
+          }
+        });
+      }
+    }
+  };
+  return state;
+}
+
 describe('AIX-011 plan staging (the transaction)', () => {
   beforeEach(() => {
     UndoQueue.instance.clear();
@@ -117,7 +175,7 @@ describe('AIX-011 plan staging (the transaction)', () => {
     const before = await saveProjectFiles(project, 'before');
 
     const operations = threeComponentPlan(project);
-    const result = applyAuthoredPlan(project, operations);
+    const result = await applyAuthoredPlan(project, operations);
     expect(result.components.size).toBe(3);
 
     // The plan landed…
@@ -139,14 +197,15 @@ describe('AIX-011 plan staging (the transaction)', () => {
     expect(JSON.stringify(project.toJSON())).toBe(afterApply);
   });
 
-  it('preflight refuses the WHOLE plan before any mutation — never a partial application', () => {
+  it('preflight refuses the WHOLE plan before any mutation — never a partial application', async () => {
     const project = loadProject();
     const operations = threeComponentPlan(project);
     // Sabotage one operation: its target vanishes between authoring and apply.
     project.removeComponent(project.getComponentWithName('/Pages/Profile')!);
     const before = JSON.stringify(project.toJSON());
 
-    expect(() => applyAuthoredPlan(project, operations)).toThrowError(StagingError);
+    const error = await expectRejection(() => applyAuthoredPlan(project, operations));
+    expect(error instanceof StagingError).toBe(true);
 
     // Nothing applied — not even the operations that could have succeeded.
     expect(JSON.stringify(project.toJSON())).toBe(before);
@@ -154,53 +213,84 @@ describe('AIX-011 plan staging (the transaction)', () => {
     expect(UndoQueue.instance.getHistory().length).toBe(0);
   });
 
-  it('a doc operation without the AIX-009 writer refuses loudly, before any mutation', () => {
+  it('a doc operation with no writer at all refuses loudly, before any mutation', async () => {
     const project = loadProject();
     const before = JSON.stringify(project.toJSON());
-    const operations: AppliedPlanOperation[] = [
-      ...threeComponentPlan(project),
-      { kind: 'doc', operation: { id: 'op-4', kind: 'doc', target: 'docs/ARCHITECTURE.md', intent: 'record it' } }
-    ];
-    expect(() => applyAuthoredPlan(project, operations)).toThrowError(/AIX-009/);
+    const operations: AppliedPlanOperation[] = [...threeComponentPlan(project), docOperation()];
+    const error = await expectRejection(() => applyAuthoredPlan(project, operations));
+    expect(error.message).toContain('no docs folder');
     expect(JSON.stringify(project.toJSON())).toBe(before);
     expect(UndoQueue.instance.getHistory().length).toBe(0);
   });
 
-  it('with an injected doc writer, the doc write rides the SAME undo group (criterion 7 shape)', () => {
+  it('criterion 7: the doc write rides the SAME undo group as the components', async () => {
     const project = loadProject();
     const before = JSON.stringify(project.toJSON());
-    // A stand-in for AIX-009's reviewed write path: something stateful whose
-    // do/undo is recorded into the caller's group.
-    const docState = { written: false };
-    const docWriter = {
-      apply: (_op: unknown, undoGroup: { pushAndDo: (a: { do?: () => void; undo?: () => void }) => void }) => {
-        undoGroup.pushAndDo({
-          do: () => (docState.written = true),
-          undo: () => (docState.written = false)
-        });
-      }
-    };
-    const operations: AppliedPlanOperation[] = [
-      ...threeComponentPlan(project),
-      { kind: 'doc', operation: { id: 'op-4', kind: 'doc', target: 'docs/ARCHITECTURE.md', intent: 'record it' } }
-    ];
+    const docs = fakeDocWriter();
+    const operations: AppliedPlanOperation[] = [...threeComponentPlan(project), docOperation()];
 
-    applyAuthoredPlan(project, operations, { docWriter });
-    expect(docState.written).toBe(true);
+    const result = await applyAuthoredPlan(project, operations, { docWriter: docs.writer });
+    expect(docs.file).toBe(PROPOSED);
+    expect(result.docs).toEqual(['docs/ARCHITECTURE.md']);
     expect(UndoQueue.instance.getHistory().length).toBe(1);
 
     // One undo reverts components AND the doc write together.
     UndoQueue.instance.undo();
-    expect(docState.written).toBe(false);
+    expect(docs.file).toBe(BASELINE);
     expect(JSON.stringify(project.toJSON())).toBe(before);
 
     UndoQueue.instance.redo();
-    expect(docState.written).toBe(true);
+    expect(docs.file).toBe(PROPOSED);
     expect(project.getComponentWithName('/Pages/Checkout')).toBeDefined();
   });
 
-  it('an empty accepted set refuses instead of pretending to apply', () => {
+  it('a doc whose file changed under the review refuses in preflight — the components stay unapplied', async () => {
     const project = loadProject();
-    expect(() => applyAuthoredPlan(project, [])).toThrowError(StagingError);
+    const before = JSON.stringify(project.toJSON());
+    const docs = fakeDocWriter();
+    // The user edited docs/ARCHITECTURE.md in another editor while reviewing.
+    docs.file = 'Someone else got here first.\n';
+
+    const operations: AppliedPlanOperation[] = [...threeComponentPlan(project), docOperation()];
+    const error = await expectRejection(() => applyAuthoredPlan(project, operations, { docWriter: docs.writer }));
+    expect(error.message).toContain('changed on disk');
+
+    expect(docs.file).toBe('Someone else got here first.\n');
+    expect(JSON.stringify(project.toJSON())).toBe(before);
+    expect(UndoQueue.instance.getHistory().length).toBe(0);
+  });
+
+  it('a doc write that fails mid-apply rolls the whole plan back rather than leaving half of it', async () => {
+    const project = loadProject();
+    const before = JSON.stringify(project.toJSON());
+    const docs = fakeDocWriter();
+    docs.failOnApply = 'the disk is full';
+
+    const operations: AppliedPlanOperation[] = [...threeComponentPlan(project), docOperation()];
+    const error = await expectRejection(() => applyAuthoredPlan(project, operations, { docWriter: docs.writer }));
+    expect(error.message).toContain('rolled back');
+
+    expect(JSON.stringify(project.toJSON())).toBe(before);
+    expect(project.getComponentWithName('/Pages/Checkout')).toBeUndefined();
+    expect(UndoQueue.instance.getHistory().length).toBe(0);
+  });
+
+  it('a documentation-only plan is a real plan: no components, one doc, one undo step', async () => {
+    const project = loadProject();
+    const docs = fakeDocWriter();
+    const result = await applyAuthoredPlan(project, [docOperation()], { docWriter: docs.writer });
+
+    expect(result.components.size).toBe(0);
+    expect(result.docs).toEqual(['docs/ARCHITECTURE.md']);
+    expect(docs.file).toBe(PROPOSED);
+    expect(UndoQueue.instance.getHistory().length).toBe(1);
+    UndoQueue.instance.undo();
+    expect(docs.file).toBe(BASELINE);
+  });
+
+  it('an empty accepted set refuses instead of pretending to apply', async () => {
+    const project = loadProject();
+    const error = await expectRejection(() => applyAuthoredPlan(project, []));
+    expect(error instanceof StagingError).toBe(true);
   });
 });

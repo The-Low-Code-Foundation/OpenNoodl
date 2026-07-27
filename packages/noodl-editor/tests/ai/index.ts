@@ -53,3 +53,9 @@ export * from './authoring-apply.test';
 // including criterion 4's byte-for-byte real-file undo comparison.
 export * from './authoring-plan.test';
 export * from './authoring-plan-staging.test';
+
+// AIX-011 criterion 7: the doc-authoring turn (scripted chat), the
+// graph-restatement lint that keeps AIX-009's design line mechanical, and the
+// plan doc write path on real files.
+export * from './authoring-doc-session.test';
+export * from './plan-doc-writer.test';

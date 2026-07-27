@@ -16,10 +16,13 @@
  * `authoring/plan` module (relative import, the `editor-deps` pattern), so
  * the editor orchestrator and these tools cannot drift.
  *
- * Doc operations may appear in a plan (they are first-class in the model) but
- * cannot yet be applied here: their write path is AIX-009's reviewed
- * project-docs pipeline. `apply_plan` refuses a plan containing an unskipped
- * doc operation, loudly — the AIX-009 merge wires `applyDocOperation` below.
+ * Doc operations are first-class and staged exactly like component operations:
+ * `stage_plan_operation` takes their `content` (the whole file, the same
+ * whole-candidate contract) and `apply_plan` writes it through AIX-009's
+ * `write_project_doc` path. The editor's equivalent authors that body with a
+ * dedicated turn because its user is a human who did not write it; here the
+ * caller IS the agent, so the body is simply another thing it stages — and
+ * either way nothing reaches disk until the one apply call.
  */
 
 import * as crypto from 'crypto';
@@ -39,7 +42,9 @@ import {
 } from '../../../noodl-editor/src/editor/src/models/AiAssistant/authoring/plan';
 import type { Diagnostic, NormProject } from '../editor-deps';
 import {
+  assertInsideDocs,
   buildComponentRefs,
+  DocPathError,
   formatDiagnosticLine,
   normalizeV2Component,
   SCHEMA_IDS,
@@ -55,6 +60,7 @@ import { pathToLegacyName, toPathForm, validateComponentPath } from '../paths';
 import type { ProjectStore } from '../project/ProjectStore';
 import type { NodeInput } from './author';
 import { assembleCreateFiles, assembleSetFiles, connectionSchema, ensureIds, nodeSchema } from './author';
+import { writeProjectDocFile } from './docsTools';
 import { guarded, jsonResult } from './util';
 
 // ─── In-memory plan registry (per server process) ─────────────────────────────
@@ -64,16 +70,18 @@ interface ServerPlan {
   plan: AuthoringPlan;
   /** Staged candidates by operation id — memory only, never disk. */
   staged: Map<string, ComponentFiles>;
+  /** Staged doc bodies by operation id — memory only, never disk. */
+  stagedDocs: Map<string, string>;
 }
 
 /**
- * ── AIX-009 MERGE SEAM (MCP side) ────────────────────────────────────────────
- * When AIX-009's docs write path exists, implement this to write a doc
- * operation through `write_project_doc`'s pipeline and flip `apply_plan`'s
- * refusal below. Until then it is deliberately undefined — a doc operation
- * can be planned but not applied, and the refusal says why.
+ * A staged doc operation's write, through the same containment and atomic-write
+ * path as `write_project_doc`. Not a seam any more: AIX-009 shipped, and a
+ * second write path would be a doc-path check spelled twice.
  */
-const applyDocOperation: ((store: ProjectStore, op: PlanOperation) => void) | undefined = undefined;
+function applyDocOperation(store: ProjectStore, op: PlanOperation, content: string): string {
+  return writeProjectDocFile(store, op.target, content).path;
+}
 
 let semanticValidator: SemanticValidator | undefined;
 function validator(): SemanticValidator {
@@ -173,6 +181,23 @@ function validateStaged(
   };
 }
 
+// ─── Staging bookkeeping ──────────────────────────────────────────────────────
+
+/** True when this operation has its content in memory, whatever kind it is. */
+function isStaged(plan: ServerPlan, op: PlanOperation): boolean {
+  return op.kind === 'doc' ? plan.stagedDocs.has(op.id) : plan.staged.has(op.id);
+}
+
+function unstagedIds(plan: ServerPlan): string[] {
+  return plan.plan.operations.filter((op) => !isStaged(plan, op)).map((op) => op.id);
+}
+
+function stagingProgress(plan: ServerPlan): string {
+  const total = plan.plan.operations.length;
+  const staged = total - unstagedIds(plan).length;
+  return `${staged} of ${total} operations staged`;
+}
+
 // ─── Registration ─────────────────────────────────────────────────────────────
 
 export function registerPlanTools(server: McpServer, store: ProjectStore): void {
@@ -230,6 +255,18 @@ export function registerPlanTools(server: McpServer, store: ProjectStore): void 
           const pathError = validateComponentPath(op.target);
           if (pathError) errors.push(`Operation ${op.id}: ${pathError}`);
         }
+        if (op.kind === 'doc') {
+          // Checked here rather than at apply: a plan whose doc target escapes
+          // docs/ is unexecutable, and finding that out after staging five
+          // components is the failure the plan step exists to prevent.
+          try {
+            assertInsideDocs(op.target);
+          } catch (error) {
+            errors.push(
+              `Operation ${op.id}: ${error instanceof DocPathError ? error.message : String(error)}`
+            );
+          }
+        }
       }
       if (errors.length > 0) {
         throw new ToolError('invalid-argument', 'The plan is not executable — nothing was created.', { errors });
@@ -237,13 +274,19 @@ export function registerPlanTools(server: McpServer, store: ProjectStore): void 
 
       const ordered = orderPlanOperations(operations);
       const id = crypto.randomUUID();
-      plans.set(id, { id, plan: { request: args.request, operations: ordered }, staged: new Map() });
+      plans.set(id, {
+        id,
+        plan: { request: args.request, operations: ordered },
+        staged: new Map(),
+        stagedDocs: new Map()
+      });
       return jsonResult({
         planId: id,
         operations: ordered,
         note:
-          'Nothing is written yet. Stage each create/update with stage_plan_operation (in the order given — ' +
-          'creates first, so updates can instantiate them), then apply_plan.'
+          'Nothing is written yet. Stage every operation with stage_plan_operation (in the order given — ' +
+          'creates first, so updates can instantiate them; docs last, so you write them knowing what the ' +
+          'components ended up being), then apply_plan.'
       });
     })
   );
@@ -253,16 +296,25 @@ export function registerPlanTools(server: McpServer, store: ProjectStore): void 
     {
       title: 'Stage plan operation',
       description:
-        'Attach the full graph for one plan operation. Validated immediately against the project PLUS the ' +
-        'plan\'s other staged operations (so you may instantiate a component a sibling create provides). ' +
-        'Staged in memory only — nothing on disk until apply_plan. Restage to replace.',
+        'Attach one plan operation\'s content: the full graph for a create/update, or the whole file for a ' +
+        'doc. Component candidates are validated immediately against the project PLUS the plan\'s other ' +
+        'staged operations (so you may instantiate a component a sibling create provides). Staged in memory ' +
+        'only — nothing on disk until apply_plan. Restage to replace.',
       inputSchema: {
         plan_id: z.string(),
         operation_id: z.string().describe('The operation id from create_plan (e.g. "op-2")'),
-        nodes: z.array(nodeSchema).min(1),
+        nodes: z.array(nodeSchema).min(1).optional().describe('Component operations only'),
         connections: z.array(connectionSchema).optional(),
         visual_roots: z.array(z.string()).optional(),
         description: z.string().optional().describe('Summary stored on the component (creates only)'),
+        content: z
+          .string()
+          .optional()
+          .describe(
+            'Doc operations only: the complete new file. Docs hold intent, decisions, rejected alternatives ' +
+              'and external contracts — never a description of the graph, which the editor narrates on demand ' +
+              'and which is wrong the moment a node moves.'
+          ),
         allow_unknown_types: z.boolean().optional()
       }
     },
@@ -270,10 +322,11 @@ export function registerPlanTools(server: McpServer, store: ProjectStore): void 
       (args: {
         plan_id: string;
         operation_id: string;
-        nodes: NodeInput[];
+        nodes?: NodeInput[];
         connections?: ConnectionV2[];
         visual_roots?: string[];
         description?: string;
+        content?: string;
         allow_unknown_types?: boolean;
       }) => {
         const serverPlan = mustGetPlan(args.plan_id);
@@ -284,10 +337,26 @@ export function registerPlanTools(server: McpServer, store: ProjectStore): void 
           });
         }
         if (operation.kind === 'doc') {
+          if (typeof args.content !== 'string' || !args.content.trim()) {
+            throw new ToolError(
+              'invalid-argument',
+              `Operation ${operation.id} writes ${operation.target}: stage it with "content" (the complete ` +
+                'file), not with nodes.'
+            );
+          }
+          serverPlan.stagedDocs.set(operation.id, args.content);
+          return jsonResult({
+            staged: operation.id,
+            target: operation.target,
+            bytes: Buffer.byteLength(args.content, 'utf8'),
+            progress: stagingProgress(serverPlan),
+            remaining: unstagedIds(serverPlan)
+          });
+        }
+        if (!args.nodes || args.nodes.length === 0) {
           throw new ToolError(
             'invalid-argument',
-            'Doc operations carry no graph. They are written through the project-docs path at apply time ' +
-              '(not yet available — see apply_plan).'
+            `Operation ${operation.id} is a ${operation.kind} of ${operation.target}: stage it with "nodes".`
           );
         }
 
@@ -327,13 +396,12 @@ export function registerPlanTools(server: McpServer, store: ProjectStore): void 
         }
 
         serverPlan.staged.set(operation.id, candidate);
-        const componentOps = serverPlan.plan.operations.filter((op) => op.kind !== 'doc');
         return jsonResult({
           staged: operation.id,
           target: operation.target,
           warnings: validation.warnings,
-          progress: `${serverPlan.staged.size} of ${componentOps.length} component operations staged`,
-          remaining: componentOps.filter((op) => !serverPlan.staged.has(op.id)).map((op) => op.id)
+          progress: stagingProgress(serverPlan),
+          remaining: unstagedIds(serverPlan)
         });
       }
     )
@@ -344,12 +412,11 @@ export function registerPlanTools(server: McpServer, store: ProjectStore): void 
     {
       title: 'Apply plan',
       description:
-        'Write every staged operation of the plan to disk, in plan order, after re-validating the complete ' +
-        'set together — the all-or-nothing commit. Refuses (writing nothing) when any unskipped component ' +
-        'operation is unstaged or invalid, when a doc operation is not explicitly skipped (their write path ' +
-        'is not available yet), or when `skip` breaks a dependency (an operation whose graph instantiates a ' +
-        'skipped create must be skipped too — the refusal lists them). Skipping is the explicit partial-apply ' +
-        'choice; there is no implicit one.',
+        'Write every staged operation of the plan to disk — components first, then the docs that record ' +
+        'them — after re-validating the complete set together. The all-or-nothing commit. Refuses (writing ' +
+        'nothing) when any unskipped operation is unstaged or invalid, or when `skip` breaks a dependency ' +
+        '(an operation whose graph instantiates a skipped create must be skipped too — the refusal lists ' +
+        'them). Skipping is the explicit partial-apply choice; there is no implicit one.',
       inputSchema: {
         plan_id: z.string(),
         skip: z
@@ -368,22 +435,11 @@ export function registerPlanTools(server: McpServer, store: ProjectStore): void 
         }
       }
 
-      // Doc operations: plannable, not yet appliable — the AIX-009 seam.
-      if (!applyDocOperation) {
-        const docs = serverPlan.plan.operations.filter((op) => op.kind === 'doc' && !skip.has(op.id));
-        if (docs.length > 0) {
-          throw new ToolError(
-            'invalid-argument',
-            `This plan contains doc operation(s) [${docs.map((d) => d.id).join(', ')}] but the project-docs ` +
-              'write path (AIX-009) is not available in this build. Pass their ids in `skip` to apply the ' +
-              'component operations without them. Nothing was written.'
-          );
-        }
-      }
-
-      // Everything unskipped must be staged.
+      // Everything unskipped must be staged — doc operations included, now
+      // that they carry a body.
       const componentOps = serverPlan.plan.operations.filter((op) => op.kind !== 'doc' && !skip.has(op.id));
-      const unstaged = componentOps.filter((op) => !serverPlan.staged.has(op.id));
+      const docOps = serverPlan.plan.operations.filter((op) => op.kind === 'doc' && !skip.has(op.id));
+      const unstaged = [...componentOps, ...docOps].filter((op) => !isStaged(serverPlan, op));
       if (unstaged.length > 0) {
         throw new ToolError(
           'invalid-argument',
@@ -391,7 +447,7 @@ export function registerPlanTools(server: McpServer, store: ProjectStore): void 
           { unstaged: unstaged.map((op) => op.id) }
         );
       }
-      if (componentOps.length === 0) {
+      if (componentOps.length === 0 && docOps.length === 0) {
         throw new ToolError('invalid-argument', 'Every operation is skipped — nothing to apply.');
       }
 
@@ -415,7 +471,8 @@ export function registerPlanTools(server: McpServer, store: ProjectStore): void 
       const applyPlanView: ServerPlan = {
         id: serverPlan.id,
         plan: { ...serverPlan.plan, operations: serverPlan.plan.operations.filter((op) => !skip.has(op.id)) },
-        staged: new Map([...serverPlan.staged].filter(([id]) => !skip.has(id)))
+        staged: new Map([...serverPlan.staged].filter(([id]) => !skip.has(id))),
+        stagedDocs: new Map([...serverPlan.stagedDocs].filter(([id]) => !skip.has(id)))
       };
       for (const op of componentOps) {
         const files = serverPlan.staged.get(op.id);
@@ -431,8 +488,12 @@ export function registerPlanTools(server: McpServer, store: ProjectStore): void 
         }
       }
 
-      // Commit: writes in plan order. Validation was all-or-nothing above;
-      // the writes themselves are sequential file operations.
+      // Commit: components first, then the docs that record them. Validation
+      // was all-or-nothing above; the writes themselves are sequential file
+      // operations. Docs last here (and first in the editor, which has an undo
+      // group to roll back and therefore optimises for the opposite failure) —
+      // a doc that names a component the component write then failed on would
+      // be the more misleading leftover of the two.
       const applied: Array<{ operation: string; target: string; revision: string }> = [];
       for (const op of componentOps) {
         const files = serverPlan.staged.get(op.id);
@@ -443,10 +504,17 @@ export function registerPlanTools(server: McpServer, store: ProjectStore): void 
         });
         applied.push({ operation: op.id, target: op.target, revision });
       }
+      const docsWritten: Array<{ operation: string; path: string }> = [];
+      for (const op of docOps) {
+        const content = serverPlan.stagedDocs.get(op.id);
+        if (content === undefined) continue;
+        docsWritten.push({ operation: op.id, path: applyDocOperation(store, op, content) });
+      }
 
       plans.delete(serverPlan.id);
       return jsonResult({
         applied,
+        docs: docsWritten,
         skipped: [...skip],
         note: 'Plan applied and discarded. Re-read components with get_component for fresh revisions.'
       });
@@ -463,7 +531,10 @@ export function registerPlanTools(server: McpServer, store: ProjectStore): void 
     guarded((args: { plan_id: string }) => {
       const serverPlan = mustGetPlan(args.plan_id);
       plans.delete(serverPlan.id);
-      return jsonResult({ discarded: serverPlan.id, hadStagedOperations: serverPlan.staged.size });
+      return jsonResult({
+        discarded: serverPlan.id,
+        hadStagedOperations: serverPlan.staged.size + serverPlan.stagedDocs.size
+      });
     })
   );
 }

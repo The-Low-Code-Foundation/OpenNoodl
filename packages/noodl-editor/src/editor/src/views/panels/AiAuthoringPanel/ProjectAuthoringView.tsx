@@ -30,12 +30,12 @@ import {
   validateCandidateComponent,
   type AuthoringPlan,
   type ComponentFiles,
-  type PlanDocWriter,
   type PlanOperationState,
   type PlanRunState
 } from '@noodl-models/AiAssistant/authoring';
 import { fromProjectModel } from '@noodl-models/AiAssistant/explain/graph';
 import { AppRegistry } from '@noodl-models/app_registry';
+import { createPlanDocWriter, ProjectDocsModel } from '@noodl-models/ProjectDocs';
 import { ProjectModel } from '@noodl-models/projectmodel';
 import { buildEffectiveTokens, buildStyleVocabulary, readStoredTokens } from '@noodl-models/StyleTokensModel';
 
@@ -54,19 +54,21 @@ import { Text, TextType } from '@noodl-core-ui/components/typography/Text';
 
 import { ChangeReviewDocumentProvider } from '../../documents/ChangeReviewDocument';
 import { ActivityRow } from './AiAuthoringPanel';
+import { PlanDocReviewDialog } from './PlanDocReviewDialog';
 
 /**
- * ── AIX-009 MERGE SEAM ────────────────────────────────────────────────────────
- * The editor-side injection point for plan doc writes. Implement `PlanDocWriter`
- * over AIX-009's reviewed write path (`ProjectDocsModel` / `write_project_doc`)
- * and assign it here; `applyAuthoredPlan` then writes the doc in the same undo
- * group as the plan's components (criterion 7). While this is undefined, doc
- * operations are visibly marked "not applied" and excluded from the apply set —
- * they never silently succeed.
+ * The docs of the open project, or `undefined` when it has never been saved —
+ * an unsaved project has no folder to put a `docs/` in, which is the one case
+ * where doc operations genuinely cannot be applied.
  */
-const PLAN_DOC_WRITER: PlanDocWriter | undefined = undefined;
+function projectDocs(): ProjectDocsModel | undefined {
+  return ProjectDocsModel.forProject(ProjectModel.instance);
+}
 
 function statusIcon(state: PlanOperationState): { icon: IconName; variant?: FeedbackType } {
+  if (state.status === 'staged' && state.operation.kind === 'doc') {
+    return { icon: IconName.File, variant: FeedbackType.Success };
+  }
   switch (state.status) {
     case 'staged':
       return { icon: IconName.Check, variant: FeedbackType.Success };
@@ -74,13 +76,22 @@ function statusIcon(state: PlanOperationState): { icon: IconName; variant?: Feed
       return { icon: IconName.WarningTriangle, variant: FeedbackType.Danger };
     case 'authoring':
       return { icon: IconName.MagicWand };
-    case 'doc':
-      return { icon: IconName.File };
     case 'skipped':
       return { icon: IconName.Close };
     default:
       return { icon: IconName.CaretRight };
   }
+}
+
+/** One line describing a staged/failed operation, under its row. */
+function operationDetail(state: PlanOperationState): string | undefined {
+  if (state.status === 'failed' || state.status === 'skipped') return state.error;
+  if (state.status === 'staged' && state.stagedDoc) {
+    const { chars, created, summary } = state.stagedDoc;
+    const size = `${created ? 'New file' : 'Rewritten'}, ${chars} characters`;
+    return summary ? `${size} — ${summary}` : size;
+  }
+  return undefined;
 }
 
 export interface ProjectAuthoringViewProps {
@@ -95,10 +106,15 @@ export function ProjectAuthoringView({ isConfigured, hasProject }: ProjectAuthor
   const [note, setNote] = useState<{ text: string; type: FeedbackType } | null>(null);
   const [runState, setRunState] = useState<PlanRunState | null>(null);
   const [excluded, setExcluded] = useState<ReadonlySet<string>>(new Set());
-  const [applied, setApplied] = useState<{ count: number } | null>(null);
+  const [applied, setApplied] = useState<{ count: number; docs: string[] } | null>(null);
+  const [reviewingDoc, setReviewingDoc] = useState<string | null>(null);
 
   const runRef = useRef<PlanRun | null>(null);
   const planAbortRef = useRef<AbortController | null>(null);
+
+  // Whether doc operations can be applied at all. Recomputed when a run starts:
+  // a project saved for the first time mid-session gains a docs folder.
+  const [docsAvailable, setDocsAvailable] = useState<boolean>(() => projectDocs() !== undefined);
 
   useEffect(() => () => runRef.current?.dispose(), []);
 
@@ -108,6 +124,7 @@ export function ProjectAuthoringView({ isConfigured, hasProject }: ProjectAuthor
     setPlan(null);
     setRunState(null);
     setExcluded(new Set());
+    setReviewingDoc(null);
     setNote(null);
   }, []);
 
@@ -155,6 +172,8 @@ export function ProjectAuthoringView({ isConfigured, hasProject }: ProjectAuthor
       styleVocabulary: buildStyleVocabulary(project),
       styleTokenRecords: Array.from(buildEffectiveTokens(readStoredTokens(project)).values())
     };
+    const docs = projectDocs();
+    setDocsAvailable(docs !== undefined);
     const run = new PlanRun(fromProjectModel(project), plan, {
       baseFilesFor: (legacyName) => {
         const existing = project.getComponentWithName(legacyName);
@@ -162,6 +181,10 @@ export function ProjectAuthoringView({ isConfigured, hasProject }: ProjectAuthor
           ? (buildComponentV2Files(existing.toJSON(), new Date().toISOString()) as ComponentFiles)
           : undefined;
       },
+      // The doc turn reads the file it is about to rewrite; the same bytes
+      // become the write path's drift baseline. `PlanRun` never touches a
+      // filesystem itself — this is the only seam through which it sees one.
+      docBaselineFor: docs ? (relPath: string) => docs.read(relPath) : undefined,
       session: styleOptions
     });
     runRef.current = run;
@@ -207,11 +230,12 @@ export function ProjectAuthoringView({ isConfigured, hasProject }: ProjectAuthor
     });
   }, [excludeOperation]);
 
-  const applyPlan = useCallback(() => {
+  const applyPlan = useCallback(async () => {
     const run = runRef.current;
     const project = ProjectModel.instance;
     if (!run || !project) return;
-    const { operations } = run.acceptedOperations(excluded, { includeDocs: PLAN_DOC_WRITER !== undefined });
+    const docWriter = createPlanDocWriter(projectDocs());
+    const { operations } = run.acceptedOperations(excluded, { includeDocs: docWriter !== undefined });
     if (operations.length === 0) return;
 
     // Belt-and-braces: the same gate that validated each candidate during
@@ -237,8 +261,8 @@ export function ProjectAuthoringView({ isConfigured, hasProject }: ProjectAuthor
     }
 
     try {
-      const result = applyAuthoredPlan(project, operations, { docWriter: PLAN_DOC_WRITER });
-      setApplied({ count: result.components.size });
+      const result = await applyAuthoredPlan(project, operations, { docWriter });
+      setApplied({ count: result.components.size, docs: result.docs });
       reset();
       setDescription('');
     } catch (e) {
@@ -255,13 +279,16 @@ export function ProjectAuthoringView({ isConfigured, hasProject }: ProjectAuthor
   }, [reset]);
 
   const done = runState?.phase === 'done' || runState?.phase === 'cancelled';
-  const stagedCount = runState?.operations.filter((op) => op.status === 'staged').length ?? 0;
+  const stagedCount =
+    runState?.operations.filter((op) => op.status === 'staged' && op.operation.kind !== 'doc').length ?? 0;
   const failedOps = runState?.operations.filter((op) => op.status === 'failed') ?? [];
-  const docOps = runState?.operations.filter((op) => op.status === 'doc') ?? [];
+  const stagedDocOps = runState?.operations.filter((op) => op.status === 'staged' && op.operation.kind === 'doc') ?? [];
   const applyCount = done
-    ? runRef.current?.acceptedOperations(excluded, { includeDocs: PLAN_DOC_WRITER !== undefined }).operations.length ?? 0
+    ? runRef.current?.acceptedOperations(excluded, { includeDocs: docsAvailable }).operations.length ?? 0
     : 0;
   const totalComponentOps = runState ? runState.operations.filter((op) => op.operation.kind !== 'doc').length : 0;
+  const totalOps = runState?.operations.length ?? 0;
+  const reviewedDoc = reviewingDoc ? runRef.current?.docFor(reviewingDoc) : undefined;
 
   return (
     <>
@@ -321,8 +348,9 @@ export function ProjectAuthoringView({ isConfigured, hasProject }: ProjectAuthor
               <HStack UNSAFE_style={{ alignItems: 'flex-start', gap: 6 }}>
                 <Icon icon={IconName.Check} variant={FeedbackType.Success} size={IconSize.Small} />
                 <Text textType={TextType.Secondary}>
-                  Applied the plan — {applied.count} component{applied.count === 1 ? '' : 's'} changed. This was one
-                  edit: a single undo reverts all of it.
+                  Applied the plan — {applied.count} component{applied.count === 1 ? '' : 's'} changed
+                  {applied.docs.length > 0 ? `, ${applied.docs.join(' and ')} written` : ''}. This was one edit: a
+                  single undo reverts all of it.
                 </Text>
               </HStack>
             )}
@@ -349,9 +377,10 @@ export function ProjectAuthoringView({ isConfigured, hasProject }: ProjectAuthor
                     <VStack UNSAFE_style={{ gap: 2, flex: 1 }}>
                       <Text textType={TextType.Default}>{op.target}</Text>
                       <Text textType={TextType.Shy}>{op.intent}</Text>
-                      {op.kind === 'doc' && PLAN_DOC_WRITER === undefined && (
+                      {op.kind === 'doc' && !docsAvailable && (
                         <Text textType={TextType.Shy}>
-                          Project docs are not available yet — this operation will not be applied.
+                          This project has never been saved, so it has no docs folder — this operation will not be
+                          applied.
                         </Text>
                       )}
                     </VStack>
@@ -364,7 +393,7 @@ export function ProjectAuthoringView({ isConfigured, hasProject }: ProjectAuthor
                 ))}
                 <HStack UNSAFE_style={{ gap: 8 }}>
                   <PrimaryButton
-                    label={`Author plan (${plan.operations.filter((op) => op.kind !== 'doc').length})`}
+                    label={`Author plan (${plan.operations.length})`}
                     icon={IconName.MagicWand}
                     isGrowing
                     onClick={authorPlan}
@@ -379,6 +408,8 @@ export function ProjectAuthoringView({ isConfigured, hasProject }: ProjectAuthor
                 {runState.operations.map((op) => {
                   const { icon, variant } = statusIcon(op);
                   const isExcluded = excluded.has(op.operation.id);
+                  const isDoc = op.operation.kind === 'doc';
+                  const detail = operationDetail(op);
                   return (
                     <VStack key={op.operation.id} UNSAFE_style={{ gap: 2, opacity: isExcluded ? 0.5 : 1 }}>
                       <HStack UNSAFE_style={{ alignItems: 'center', gap: 6 }}>
@@ -394,7 +425,9 @@ export function ProjectAuthoringView({ isConfigured, hasProject }: ProjectAuthor
                             <PrimaryButton
                               label="Review"
                               variant={PrimaryButtonVariant.Ghost}
-                              onClick={() => reviewOperation(op.operation.id)}
+                              onClick={() =>
+                                isDoc ? setReviewingDoc(op.operation.id) : reviewOperation(op.operation.id)
+                              }
                             />
                             <PrimaryButton
                               label={isExcluded ? 'Restore' : 'Exclude'}
@@ -406,12 +439,10 @@ export function ProjectAuthoringView({ isConfigured, hasProject }: ProjectAuthor
                           </>
                         )}
                       </HStack>
-                      {op.status === 'failed' && op.error && <Text textType={TextType.Shy}>{op.error}</Text>}
-                      {op.status === 'doc' && done && (
+                      {detail && <Text textType={TextType.Shy}>{detail}</Text>}
+                      {isDoc && op.status === 'staged' && done && !docsAvailable && (
                         <Text textType={TextType.Shy}>
-                          {PLAN_DOC_WRITER === undefined
-                            ? 'Not applied — project docs are not available yet.'
-                            : 'Written on apply, in the same undo step.'}
+                          Not applied — this project has never been saved, so it has no docs folder.
                         </Text>
                       )}
                     </VStack>
@@ -437,30 +468,31 @@ export function ProjectAuthoringView({ isConfigured, hasProject }: ProjectAuthor
                         </Text>
                       </HStack>
                     )}
-                    {docOps.length > 0 && PLAN_DOC_WRITER === undefined && (
+                    {stagedDocOps.length > 0 && !docsAvailable && (
                       <Text textType={TextType.Shy}>
-                        {docOps.length} doc operation{docOps.length === 1 ? '' : 's'} will not be applied (project
-                        docs are not available yet).
+                        {stagedDocOps.length} doc operation{stagedDocOps.length === 1 ? '' : 's'} will not be applied
+                        — this project has never been saved, so it has no docs folder.
                       </Text>
                     )}
-                    {stagedCount > 0 ? (
+                    {stagedCount > 0 || stagedDocOps.length > 0 ? (
                       <Text textType={TextType.Secondary}>
-                        Nothing is in your project yet. Applying is one edit — a single undo reverts the whole plan.
+                        Nothing is in your project yet — not the components, and not the documents. Applying is one
+                        edit: a single undo reverts the whole plan.
                       </Text>
                     ) : (
-                      <Text textType={TextType.Secondary}>No operation produced a valid component.</Text>
+                      <Text textType={TextType.Secondary}>No operation produced anything to apply.</Text>
                     )}
                     <HStack UNSAFE_style={{ gap: 8 }}>
                       {applyCount > 0 && (
                         <PrimaryButton
                           label={
-                            applyCount === totalComponentOps && failedOps.length === 0 && excluded.size === 0
+                            applyCount === totalOps && failedOps.length === 0 && excluded.size === 0
                               ? `Apply plan (${applyCount})`
-                              : `Apply ${applyCount} of ${totalComponentOps}`
+                              : `Apply ${applyCount} of ${totalOps}`
                           }
                           icon={IconName.Check}
                           isGrowing
-                          onClick={applyPlan}
+                          onClick={() => void applyPlan()}
                         />
                       )}
                       <PrimaryButton label="Abandon" variant={PrimaryButtonVariant.Danger} isGrowing onClick={abandon} />
@@ -472,6 +504,18 @@ export function ProjectAuthoringView({ isConfigured, hasProject }: ProjectAuthor
           </VStack>
         </Box>
       </ScrollArea>
+
+      {reviewedDoc && reviewingDoc && (
+        <PlanDocReviewDialog
+          doc={reviewedDoc}
+          onKeep={() => setReviewingDoc(null)}
+          onExclude={() => {
+            excludeOperation(reviewingDoc);
+            setReviewingDoc(null);
+          }}
+          onClose={() => setReviewingDoc(null)}
+        />
+      )}
     </>
   );
 }

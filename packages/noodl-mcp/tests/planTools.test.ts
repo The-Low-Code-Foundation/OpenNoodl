@@ -4,8 +4,9 @@
  * The property under test is criterion 8: create_plan + stage_plan_operation
  * touch NOTHING on disk (asserted by hashing the whole project directory),
  * apply_plan writes the complete set at once, skips are the explicit partial
- * apply and must be dependency-closed, and doc operations refuse loudly until
- * AIX-009's write path exists.
+ * apply and must be dependency-closed, and doc operations stage their body in
+ * memory like everything else and are written by the same one apply call
+ * (criterion 7).
  */
 import * as crypto from 'crypto';
 import * as fs from 'fs';
@@ -199,7 +200,8 @@ describe('noodl-mcp plan tools (AIX-011)', () => {
     expect(projectDigest(dir)).toBe(before);
   });
 
-  it('doc operations are plannable but refuse to apply until AIX-009, and can be skipped explicitly', async () => {
+  /** A plan with one component operation and one doc operation. */
+  async function createDocPlan(): Promise<CreatePlanResponse> {
     const res = await call<CreatePlanResponse>(session, 'create_plan', {
       request: 'Checkout + docs',
       operations: [
@@ -208,17 +210,62 @@ describe('noodl-mcp plan tools (AIX-011)', () => {
       ]
     });
     expect(res.isError).toBe(false);
-    const plan = res.data;
+    return res.data;
+  }
+
+  const ARCHITECTURE = '# Architecture\n\nCheckout is a page so the back button behaves.\n';
+
+  it('doc operations stage their body in memory and are written by the same apply (criterion 7)', async () => {
+    const before = projectDigest(dir);
+    const plan = await createDocPlan();
     const createOp = plan.operations.find((op) => op.kind === 'create')!;
     const docOp = plan.operations.find((op) => op.kind === 'doc')!;
+    // Docs go last: the agent writes them knowing what the components became.
+    expect(plan.operations.map((op) => op.kind)).toEqual(['create', 'doc']);
 
-    // A doc op carries no graph and cannot be staged here.
-    const stageDoc = await call<ErrorPayload>(session, 'stage_plan_operation', {
+    // A doc op carries a file, not a graph.
+    const wrongShape = await call<ErrorPayload>(session, 'stage_plan_operation', {
       plan_id: plan.planId,
       operation_id: docOp.id,
       nodes: CHECKOUT_NODES
     });
-    expect(stageDoc.isError).toBe(true);
+    expect(wrongShape.isError).toBe(true);
+    expect(wrongShape.data.error?.message).toContain('"content"');
+
+    await call(session, 'stage_plan_operation', {
+      plan_id: plan.planId,
+      operation_id: createOp.id,
+      nodes: CHECKOUT_NODES,
+      visual_roots: ['co_page']
+    });
+    const stagedDoc = await call<{ staged: string; bytes: number }>(session, 'stage_plan_operation', {
+      plan_id: plan.planId,
+      operation_id: docOp.id,
+      content: ARCHITECTURE
+    });
+    expect(stagedDoc.isError).toBe(false);
+    expect(stagedDoc.data.bytes).toBe(Buffer.byteLength(ARCHITECTURE, 'utf8'));
+
+    // Still nothing on disk — the doc is staged exactly like a component.
+    expect(projectDigest(dir)).toBe(before);
+    expect(fs.existsSync(path.join(dir, 'docs', 'ARCHITECTURE.md'))).toBe(false);
+
+    const applied = await call<{ applied: Array<{ target: string }>; docs: Array<{ path: string }> }>(
+      session,
+      'apply_plan',
+      { plan_id: plan.planId }
+    );
+    expect(applied.isError).toBe(false);
+    expect(applied.data.applied.map((a) => a.target)).toEqual(['Pages/Checkout']);
+    expect(applied.data.docs.map((d) => d.path)).toEqual(['docs/ARCHITECTURE.md']);
+    expect(fs.readFileSync(path.join(dir, 'docs', 'ARCHITECTURE.md'), 'utf8')).toBe(ARCHITECTURE);
+  });
+
+  it('an unstaged doc operation blocks the apply — it cannot be forgotten into a no-op', async () => {
+    const before = projectDigest(dir);
+    const plan = await createDocPlan();
+    const createOp = plan.operations.find((op) => op.kind === 'create')!;
+    const docOp = plan.operations.find((op) => op.kind === 'doc')!;
 
     await call(session, 'stage_plan_operation', {
       plan_id: plan.planId,
@@ -227,19 +274,50 @@ describe('noodl-mcp plan tools (AIX-011)', () => {
       visual_roots: ['co_page']
     });
 
-    // Unskipped doc op → loud refusal naming the missing write path.
     const refused = await call<ErrorPayload>(session, 'apply_plan', { plan_id: plan.planId });
     expect(refused.isError).toBe(true);
-    expect(refused.data.error?.message).toContain('project-docs');
+    expect(refused.data.error?.details?.unstaged as string[]).toContain(docOp.id);
+    expect(projectDigest(dir)).toBe(before);
 
-    // Explicitly skipping the doc op applies the component work.
+    // Skipping it is still the explicit partial apply.
     const applied = await call<{ applied: Array<{ target: string }>; skipped: string[] }>(session, 'apply_plan', {
       plan_id: plan.planId,
       skip: [docOp.id]
     });
     expect(applied.isError).toBe(false);
-    expect(applied.data.applied.map((a) => a.target)).toEqual(['Pages/Checkout']);
     expect(applied.data.skipped).toEqual([docOp.id]);
+    expect(fs.existsSync(path.join(dir, 'docs', 'ARCHITECTURE.md'))).toBe(false);
+  });
+
+  it('a doc target outside docs/ is refused at PLAN time, before anything is staged', async () => {
+    const res = await call<ErrorPayload>(session, 'create_plan', {
+      request: 'sneaky',
+      operations: [{ kind: 'doc', target: '../../.ssh/config', intent: 'nope' }]
+    });
+    expect(res.isError).toBe(true);
+    const errors = res.data.error?.details?.errors as string[];
+    expect(errors.join('\n')).toMatch(/absolute path|outside docs/);
+  });
+
+  it('a documentation-only plan applies on its own', async () => {
+    const res = await call<CreatePlanResponse>(session, 'create_plan', {
+      request: 'Just write it down',
+      operations: [{ kind: 'doc', target: 'docs/BRIEF.md', intent: 'What this app is for.' }]
+    });
+    expect(res.isError).toBe(false);
+    const plan = res.data;
+    await call(session, 'stage_plan_operation', {
+      plan_id: plan.planId,
+      operation_id: plan.operations[0].id,
+      content: '# Brief\n\nA reading list for book clubs.\n'
+    });
+    const applied = await call<{ applied: unknown[]; docs: Array<{ path: string }> }>(session, 'apply_plan', {
+      plan_id: plan.planId
+    });
+    expect(applied.isError).toBe(false);
+    expect(applied.data.applied).toEqual([]);
+    expect(applied.data.docs.map((d) => d.path)).toEqual(['docs/BRIEF.md']);
+    expect(fs.readFileSync(path.join(dir, 'docs', 'BRIEF.md'), 'utf8')).toContain('book clubs');
   });
 
   it('discard leaves the project byte-identical', async () => {

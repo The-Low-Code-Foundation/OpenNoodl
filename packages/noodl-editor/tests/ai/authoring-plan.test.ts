@@ -255,7 +255,10 @@ describe('AIX-011 plan run', () => {
     // op-2's candidate instantiates /Pages/Checkout, which exists nowhere but
     // in op-1's staged files — the gate passing proves the graph extension.
     expect(byId.get('op-2')!.status).toBe('staged');
-    expect(byId.get('op-3')!.status).toBe('doc');
+    // op-3 is a doc operation and this run was given no docs reader, so it
+    // fails loudly rather than authoring a document against an imagined file.
+    // The doc turn itself is covered in authoring-doc-session.test.
+    expect(byId.get('op-3')!.status).toBe('failed');
     expect(log).toEqual(['Pages/Checkout', 'Pages/Article']);
 
     // Sibling context: each session's opening turn carries the plan's intents…
@@ -269,7 +272,10 @@ describe('AIX-011 plan run', () => {
     expect(accepted.operations.map((op) => op.operation.id)).toEqual(['op-1', 'op-2']);
     const partial = run.acceptedOperations(['op-1']);
     expect(partial.operations).toEqual([]);
-    expect([...partial.excluded].sort()).toEqual(['op-1', 'op-2']);
+    // op-3 is in the closure too: an operation that failed is excluded for the
+    // same reason a user-dropped one is — the closure is the accepted set's
+    // complement, not just the user's choices.
+    expect([...partial.excluded].sort()).toEqual(['op-1', 'op-2', 'op-3']);
   });
 
   it('dropping an operation from the plan authors only the remaining ones (criterion 3)', async () => {
@@ -281,7 +287,7 @@ describe('AIX-011 plan run', () => {
     const run = new PlanRun(loadGraph(), plan, { baseFilesFor, session: { chat: planChatScript(log) } });
     const state = await run.run();
     expect(log).toEqual(['Pages/Checkout']);
-    expect(state.operations.map((op) => op.status)).toEqual(['staged', 'doc']);
+    expect(state.operations.map((op) => op.status)).toEqual(['staged', 'failed']);
   });
 
   it('one operation failing the gate stages nothing for it and leaves the rest staged (criterion 5)', async () => {

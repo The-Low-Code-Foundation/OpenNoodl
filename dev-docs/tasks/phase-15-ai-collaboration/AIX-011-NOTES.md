@@ -1,7 +1,11 @@
 # AIX-011 — As-Built Notes
 
 _Executor: Fable 5, parallel worktree, 2026-07-27. One slice: the whole task,
-minus the deliberately deferred criterion 7 tail (see the seam section)._
+minus the deliberately deferred criterion 7 tail._
+
+_Second slice, 2026-07-27: **criterion 7 closed** — the doc-authoring turn, the
+graph-restatement lint, the fan-out's second pass, the reviewed diff, and both
+write paths. See "Criterion 7 — closed" below._
 
 ## What shipped
 
@@ -80,27 +84,71 @@ Specs: `tests/ai/authoring-plan.test.ts` (+11), `tests/ai/authoring-plan-staging
   is one module (`authoring/plan.ts`, imported by relative path per the
   `editor-deps` pattern).
 
-## The AIX-009 seam (criterion 7, deliberately deferred)
+## Criterion 7 — closed 2026-07-27, and the gap was not where the hand-off said
 
-`doc` is a first-class operation kind everywhere (model, planning prompt,
-panel, MCP), but the write itself is stubbed **loudly**, never silently:
+The first pass described this as "wire a seam". It was not. A `doc` plan
+operation carries `{target, intent}` and nothing else, and `PlanRun` skipped
+doc operations in the fan-out entirely — so **no step ever authored the doc
+body**, and `docs.write(path, proposed)` had no `proposed` to be handed. The
+seams refused loudly rather than fake-succeeding, so nothing was unsafe; what
+was missing was a producer.
 
-- **Editor**: `PlanDocWriter` in `planStaging.ts`; the injection point is the
-  `PLAN_DOC_WRITER` constant at the top of
-  `views/panels/AiAuthoringPanel/ProjectAuthoringView.tsx`. While undefined,
-  the UI marks doc ops "will not be applied" and excludes them from the apply
-  set; `applyAuthoredPlan` throws (naming AIX-009) if handed one anyway. At
-  merge: implement `PlanDocWriter.apply` over `ProjectDocsModel` /
-  `write_project_doc` so the doc write records into the shared undo group,
-  and assign it to `PLAN_DOC_WRITER`. The
-  "doc write rides the same undo group" mechanics are already spec-tested
-  with a stateful fake writer.
-- **MCP**: the `applyDocOperation` constant at the top of
-  `noodl-mcp/src/tools/planTools.ts`; while undefined `apply_plan` refuses a
-  plan whose doc ops aren't explicitly skipped.
+What closes it:
+
+| Piece | Where | Role |
+|---|---|---|
+| Doc-authoring turn | `DocSession.ts` + `prompts/docAuthoring.ts` | One bounded conversation, shaped like `PlanningSession`: one `submit_doc` tool taking the WHOLE file. Sees the current document, the plan's request, its own intent, and what the fan-out actually built. Writes nothing |
+| Graph-restatement lint | `docLint.ts` | The mechanical half of AIX-009's "docs never describe the graph". Advisory only — one rewrite pass, the AIX-006 style-advisory shape |
+| Fan-out second pass | `PlanRun.runDocOperation` | Doc ops author **after** every component op, in their own pass; the body is staged in memory with the baseline it was written against |
+| Plan outcome | `plan.ts` — `renderPlanOutcome` | What the plan *achieved*, per component op, including what it failed to build and an instruction not to document it |
+| Write path | `models/ProjectDocs/PlanDocWriter.ts` | `createPlanDocWriter(docs)`: optimistic-concurrency preflight + `push`-recorded inverse into the caller's group |
+| Review | `views/panels/AiAuthoringPanel/PlanDocReviewDialog.tsx` | The proposal as a `CodeDiffView` diff, in the plan, with Keep / Drop-from-plan |
+| MCP parity | `planTools.ts` | Doc ops stage `content` and are written by the same `apply_plan`; `writeProjectDocFile` extracted from `docsTools.ts` so there is one doc write path, not two |
+
+Four decisions worth keeping:
+
+- **The doc turn runs in a second pass, not interleaved.** `orderPlanOperations`
+  already sorts docs last, but relying on that would make the doc turn's
+  context depend on how the caller happened to sort the plan. A separate pass
+  makes "the doc sees the finished work" true by construction — and the outcome
+  it is given names failures explicitly, because a doc that records a component
+  the plan failed to build is worse than no doc.
+- **A declined doc is `skipped`, not `failed`.** "ARCHITECTURE.md already says
+  this" is the right answer often enough that flagging it red would teach users
+  to ignore the row. A submission byte-identical to the baseline is treated the
+  same way — an empty diff is not a review.
+- **The editor writes docs FIRST inside the apply; MCP writes them last.** They
+  optimise for opposite failures on purpose. The editor has an undo group it
+  can roll back, so it does the only fallible thing (disk I/O) first and rolls
+  back everything if a later step throws. MCP has no rollback, so it leaves the
+  doc — which names components — until those components are actually on disk.
+- **`applyAuthoredPlan` is now `async`.** The doc write is real I/O and its
+  drift check has to happen in preflight, before any component mutation; making
+  the whole transaction async was cheaper and more honest than pretending the
+  filesystem is synchronous. Component mutations remain synchronous.
+
+**A defect this found in `docLint` itself, by running it:** the lint keyed on
+catalog `typeName`s, but the editor shows `displayName`s and a model writes what
+a human sees. The node the picker calls "Repeater" has the type name `For
+Each`; "Array" is `Collection2`. So the first version was blind to every
+restatement written in the vocabulary of the actual UI — which is all of them.
+It now unions both names (179 distinctive names, verified to produce no hits on
+the honest-prose fixtures).
 
 ## Traps hit
 
+- **The editor's Electron suite runs on jasmine, and `tsc --noEmit` will not
+  tell you.** `toHaveLength`, `toMatchObject` and `expect(...).rejects` all
+  type-check under the root `tsc` (jest types are in scope there) and then fail
+  the test-CI webpack build with `TS2339`. The gate for editor specs is
+  `webpack.test-ci.js`, not `tsc`. `expectRejection` now lives in
+  `tests/ai/helpers.ts` — a bare try/catch passes silently when the call
+  *resolves*, which is the exact failure a "this must refuse" spec exists to
+  catch.
+- **The catalog's `typeName` is not what anyone writes.** The node picker shows
+  `displayName`, and they differ often: "Repeater" is `For Each`, "Array" is
+  `Collection2`. Any check that reads model-written prose for node names must
+  union both, or it is blind to the only vocabulary a model would use.
 - The noodl-mcp `tsc --noEmit` was already red on the base: 18 errors in
   `tests/*.test.ts` (jest matchers vs leaked jasmine types — `toHaveLength`,
   `objectContaining` etc.), verified by stashing this diff and re-running.
@@ -122,10 +170,30 @@ panel, MCP), but the write itself is stubbed **loudly**, never silently:
   the run including the 16 new specs — criterion 4's byte-for-byte file
   comparison runs there against the real save path.
 
+### Criterion 7 slice (2026-07-27)
+
+- `npx tsc --noEmit`: clean in noodl-editor and in noodl-mcp `src/`.
+- `noodl-mcp` jest under **node 22**: **87 passed / 0 failures** (was 84 —
+  +3 plan-doc specs). Node 20 still fails the backend specs by design (RUN-004's
+  loud failure); the plan and docs suites pass on both.
+- Editor Electron suite: **1573 specs / 0 failures** (seed 31729). The first run
+  of the same bundle showed 1 failure in `Git local tests … merge with conflicts
+  in project.json` — the known seed-dependent flake, in code this slice does not
+  touch, green on the re-run.
+- +27 specs: `tests/ai/authoring-doc-session.test.ts` (the turn, the lint, and
+  doc ops in the fan-out), `tests/ai/plan-doc-writer.test.ts` (the write path on
+  **real files**: bytes land, undo restores the previous bytes, undo of a
+  created doc deletes it, drift refuses, containment refuses), and three more in
+  `authoring-plan-staging.test.ts` (drift refusal before any mutation, rollback
+  on a failed doc write, documentation-only plans). Both new files registered in
+  `tests/ai/index.ts` — the spec-barrel trap.
+
 ## Not done / for the merger
 
-1. **Criterion 7 end-to-end** — blocked on AIX-009 by design; wire the two
-   seams above.
+1. ~~**Criterion 7 end-to-end**~~ — **closed 2026-07-27**, see the section
+   above. Residual: the doc turn has never run against a live provider, so the
+   *quality* of what it writes (and how often the graph-restatement advisory
+   actually fires on a real model) is unmeasured.
 2. **Criterion 1 and general plan *quality*** — needs a live provider run
    (does "wire Checkout in" plan the Cart/route updates?). The planning
    prompt targets exactly this failure mode; unverified against a real model.

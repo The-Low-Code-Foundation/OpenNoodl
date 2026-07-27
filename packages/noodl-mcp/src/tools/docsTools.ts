@@ -171,6 +171,30 @@ export function registerDocsReadTools(server: McpServer, store: ProjectStore): v
   );
 }
 
+export interface DocWriteResult {
+  /** Project-relative, forward-slashed. */
+  path: string;
+  created: boolean;
+  bytes: number;
+}
+
+/**
+ * The one doc write path in this server: containment, size cap, mkdir, atomic
+ * write. `write_project_doc` and `apply_plan`'s doc operations both go through
+ * it, so a path the one refuses the other cannot accept — the same reason
+ * `assertInsideDocs` is imported from the editor rather than reimplemented.
+ */
+export function writeProjectDocFile(store: ProjectStore, docPath: string, content: string): DocWriteResult {
+  const { rel, abs } = resolveDoc(store, docPath);
+  if (Buffer.byteLength(content, 'utf8') > MAX_DOC_BYTES) {
+    throw new ToolError('invalid-argument', `Content exceeds ${MAX_DOC_BYTES} bytes.`);
+  }
+  const existed = fs.existsSync(abs);
+  fs.mkdirSync(path.dirname(abs), { recursive: true });
+  writeTextAtomic(abs, content);
+  return { path: rel, created: !existed, bytes: Buffer.byteLength(content, 'utf8') };
+}
+
 /** Write tools — only when --allow-writes. */
 export function registerDocsWriteTools(server: McpServer, store: ProjectStore): void {
   server.registerTool(
@@ -189,19 +213,7 @@ export function registerDocsWriteTools(server: McpServer, store: ProjectStore): 
       }
     },
     guarded((args: { path: string; content: string }) => {
-      const { rel, abs } = resolveDoc(store, args.path);
-      if (Buffer.byteLength(args.content, 'utf8') > MAX_DOC_BYTES) {
-        throw new ToolError('invalid-argument', `Content exceeds ${MAX_DOC_BYTES} bytes.`);
-      }
-      const existed = fs.existsSync(abs);
-      fs.mkdirSync(path.dirname(abs), { recursive: true });
-      writeTextAtomic(abs, args.content);
-      return jsonResult({
-        ok: true,
-        path: rel,
-        created: !existed,
-        bytes: Buffer.byteLength(args.content, 'utf8')
-      });
+      return jsonResult({ ok: true, ...writeProjectDocFile(store, args.path, args.content) });
     })
   );
 

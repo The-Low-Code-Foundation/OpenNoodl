@@ -6,20 +6,31 @@
  * promised, at three levels:
  *
  *  1. There is no per-operation apply API. This function takes the complete
- *     accepted set — `AppliedPlanOperation` *requires* `files`, and staged
- *     files exist only for candidates that passed the validation gate — so
- *     "apply operation 1 before operation 3 has validated" has no code path
- *     that could express it. The orchestrator (`PlanRun`) never imports this
- *     module; it produces plain data.
+ *     accepted set — `AppliedPlanComponentOperation` *requires* `files` and
+ *     `AppliedPlanDocOperation` *requires* `proposed`, and both exist only for
+ *     candidates that passed their gate — so "apply operation 1 before
+ *     operation 3 has validated" has no code path that could express it. The
+ *     orchestrator (`PlanRun`) never imports this module; it produces plain
+ *     data.
  *  2. Every check that can refuse (collision, missing target, missing doc
- *     writer, duplicate targets) runs in a preflight pass BEFORE the first
- *     mutation. A refusal throws `StagingError` with the project untouched.
+ *     writer, duplicate targets, a doc that changed on disk since it was read)
+ *     runs in a preflight pass BEFORE the first mutation. A refusal throws
+ *     `StagingError` with the project untouched.
  *  3. Every mutation records into ONE `UndoActionGroup`, pushed once — a
  *     single undo restores the project exactly (criterion 4 tests this on
  *     real files, not a mock), and redo reapplies the whole plan.
  *
  * Reject-before-apply needs no code here, for AIX-002's original reason: a
  * plan that is never passed to this function has touched nothing.
+ *
+ * **Why the doc writes go first.** They are the only part of an apply that
+ * touches a disk, and therefore the only part that can still fail once
+ * preflight has passed; component operations at this point are in-memory model
+ * edits against a project preflight has just checked. Doing the fallible thing
+ * first means its failure is a clean refusal with nothing else applied. The
+ * remaining case — a component mutation throwing after a doc has been written
+ * — is caught and the whole group is rolled back through the inverses it has
+ * already recorded, so there is still no path that leaves half a plan behind.
  *
  * @module AiAssistant/authoring/planStaging
  */
@@ -48,78 +59,116 @@ export interface AppliedPlanComponentOperation {
 }
 
 /**
- * A doc operation in the accepted set. Its write goes through AIX-009's
- * reviewed project-docs path via the injected `PlanDocWriter` — see below.
+ * A doc operation in the accepted set, carrying the body a `DocSession`
+ * authored during the fan-out. `proposed` is required for exactly the reason
+ * `files` is on a component operation: a doc operation that never authored
+ * anything has nothing to put here, so "apply a doc op whose body does not
+ * exist yet" is not expressible. `baseline` is the file as the authoring turn
+ * read it, and is what the write path's optimistic-concurrency check compares
+ * against — `null` means the file did not exist.
  */
 export interface AppliedPlanDocOperation {
   kind: 'doc';
   operation: PlanOperation;
+  proposed: string;
+  baseline: string | null;
+  /** The model's one-line description of its change, for logs and labels. */
+  summary?: string;
 }
 
 export type AppliedPlanOperation = AppliedPlanComponentOperation | AppliedPlanDocOperation;
 
 /**
- * ── AIX-009 MERGE SEAM ────────────────────────────────────────────────────────
+ * The doc write path, injected.
  *
- * The single injection point for doc writes. AIX-011 makes `doc` a
- * first-class plan operation; the write itself belongs to AIX-009's reviewed
- * write path (`ProjectDocsModel` / `write_project_doc`), which is being built
- * in a parallel worktree and does not exist on this base. At merge time,
- * implement this interface over that path and hand it to `applyAuthoredPlan`
- * (the editor's construction site is `AiAuthoringPanel`'s `planDocWriter()`).
+ * The write itself belongs to AIX-009 (`ProjectDocsModel` — optimistic
+ * concurrency against `baseline`, temp-file + atomic rename), and this module
+ * belongs to AIX-011; the interface is the seam between them, and it is also
+ * what keeps the plan transaction free of the platform filesystem.
+ * `createPlanDocWriter` in `models/ProjectDocs` is the editor's implementation.
  *
- * The contract: `apply` performs the doc write for `op` and records its undo
- * into `undoGroup`, so the doc change rides in the SAME single undo step as
- * the plan's components (acceptance criterion 7). It must throw on failure —
- * never swallow. Until a writer exists, `applyAuthoredPlan` REFUSES a plan
- * containing doc operations in preflight (loudly, before any mutation); it
- * never fake-succeeds.
+ * The contract:
+ *
+ *  - `preflight` may refuse — the file changed on disk since the doc turn read
+ *    it, the path is not inside `docs/` — and runs with nothing yet mutated.
+ *  - `apply` performs the write and records its inverse into `undoGroup`, so
+ *    the doc change rides in the SAME single undo step as the plan's
+ *    components (acceptance criterion 7).
+ *  - Both must throw on failure, never swallow.
+ *
+ * Without a writer, `applyAuthoredPlan` REFUSES a plan containing doc
+ * operations in preflight, loudly, before any mutation. It never fake-succeeds.
  */
 export interface PlanDocWriter {
-  apply(op: AppliedPlanDocOperation, undoGroup: UndoActionGroup): void;
+  preflight?(op: AppliedPlanDocOperation): Promise<void> | void;
+  apply(op: AppliedPlanDocOperation, undoGroup: UndoActionGroup): Promise<void> | void;
 }
 
 export interface ApplyPlanOptions {
   label?: string;
-  /** Absent until AIX-009 merges — see the seam note above. */
+  /**
+   * Absent only when the project has nowhere to keep docs (an unsaved project
+   * has no folder), in which case a plan carrying doc operations is refused
+   * rather than silently applied without them.
+   */
   docWriter?: PlanDocWriter;
 }
 
 export interface AppliedPlanResult {
   /** Components created or replaced, in apply order, keyed by operation id. */
   components: Map<string, ComponentModel>;
+  /** Doc paths written, in apply order. */
+  docs: string[];
   undoLabel: string;
 }
 
 /**
  * Apply an accepted plan to the live project as one undoable step.
  *
- * Order is the caller's (plan order: creates, then updates, then docs) and is
- * preserved. Throws `StagingError` from preflight — project untouched — when
- * any operation could not apply; there is deliberately no path that applies
- * some operations and then discovers a refusal.
+ * Throws `StagingError` from preflight — project untouched — when any
+ * operation could not apply; there is deliberately no path that applies some
+ * operations and then discovers a refusal.
  */
-export function applyAuthoredPlan(
+export async function applyAuthoredPlan(
   project: ProjectModel,
   operations: readonly AppliedPlanOperation[],
   options: ApplyPlanOptions = {}
-): AppliedPlanResult {
+): Promise<AppliedPlanResult> {
   if (operations.length === 0) {
     throw new StagingError('The plan has no accepted operations to apply.');
   }
 
+  const docOps = operations.filter((op): op is AppliedPlanDocOperation => op.kind === 'doc');
+  const componentOps = operations.filter((op): op is AppliedPlanComponentOperation => op.kind !== 'doc');
+
   // ── Preflight: every refusal happens here, before any mutation. ────────────
-  const seen = new Set<string>();
-  for (const op of operations) {
-    if (op.kind === 'doc') {
-      if (!options.docWriter) {
-        throw new StagingError(
-          `Doc operation "${op.operation.target}" cannot be applied: the project docs write path (AIX-009) ` +
-            'is not available. Exclude the doc operation to apply the rest.'
-        );
-      }
-      continue;
+  const seenDocs = new Set<string>();
+  for (const op of docOps) {
+    if (!options.docWriter) {
+      throw new StagingError(
+        `Doc operation "${op.operation.target}" cannot be applied: this project has no docs folder to write ` +
+          'to (it has never been saved). Exclude the doc operation to apply the rest.'
+      );
     }
+    if (seenDocs.has(op.operation.target)) {
+      throw new StagingError(
+        `The plan writes "${op.operation.target}" twice — two operations cannot rewrite the same document.`
+      );
+    }
+    seenDocs.add(op.operation.target);
+    try {
+      await options.docWriter.preflight?.(op);
+    } catch (error) {
+      throw new StagingError(
+        `Doc operation "${op.operation.target}" cannot be applied: ${
+          error instanceof Error ? error.message : String(error)
+        } Nothing was written.`
+      );
+    }
+  }
+
+  const seen = new Set<string>();
+  for (const op of componentOps) {
     const legacyName = stagedLegacyName(op.files);
     if (seen.has(legacyName)) {
       throw new StagingError(`The plan applies "${legacyName}" twice — operations must target distinct components.`);
@@ -139,26 +188,43 @@ export function applyAuthoredPlan(
   }
 
   // ── One group, every mutation inside it, pushed once. ──────────────────────
-  const componentCount = operations.filter((op) => op.kind !== 'doc').length;
   const undoLabel =
     options.label ??
-    `apply AI plan (${componentCount} component${componentCount === 1 ? '' : 's'}${
-      operations.length > componentCount ? ' + docs' : ''
+    `apply AI plan (${componentOps.length} component${componentOps.length === 1 ? '' : 's'}${
+      docOps.length > 0 ? ` + ${docOps.length} doc${docOps.length === 1 ? '' : 's'}` : ''
     })`;
   const undo = new UndoActionGroup({ label: undoLabel });
   const components = new Map<string, ComponentModel>();
+  const docs: string[] = [];
 
-  for (const op of operations) {
-    if (op.kind === 'doc') {
-      // Preflight guaranteed the writer exists.
-      options.docWriter?.apply(op, undo);
-    } else if (op.kind === 'create') {
-      components.set(op.operation.id, addAuthoredComponentToGroup(project, op.files, undo));
-    } else {
-      components.set(op.operation.id, updateAuthoredComponentInGroup(project, op.files, undo));
+  try {
+    // Disk first — see the module note. Preflight guaranteed the writer exists.
+    for (const op of docOps) {
+      await options.docWriter!.apply(op, undo);
+      docs.push(op.operation.target);
     }
+    for (const op of componentOps) {
+      components.set(
+        op.operation.id,
+        op.kind === 'create'
+          ? addAuthoredComponentToGroup(project, op.files, undo)
+          : updateAuthoredComponentInGroup(project, op.files, undo)
+      );
+    }
+  } catch (error) {
+    // Roll back through the inverses recorded so far. This is not a
+    // partial-apply path — it is the absence of one.
+    try {
+      undo.undo();
+    } catch {
+      /* a failed rollback must not hide the failure that caused it */
+    }
+    throw new StagingError(
+      `The plan could not be applied: ${error instanceof Error ? error.message : String(error)} ` +
+        'Everything it had already changed was rolled back.'
+    );
   }
 
   UndoQueue.instance.push(undo);
-  return { components, undoLabel };
+  return { components, docs, undoLabel };
 }

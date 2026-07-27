@@ -49,13 +49,34 @@ export {
   planOperationRequires,
   planRequiredWith,
   renderPlanContext,
+  renderPlanOutcome,
   validatePlan
 } from './plan';
-export type { AuthoringPlan, PlanOperation, PlanOperationKind, StagedOperationLike } from './plan';
+export type {
+  AuthoringPlan,
+  PlanOperation,
+  PlanOperationKind,
+  PlanOutcomeEntry,
+  StagedOperationLike
+} from './plan';
 export { PlanningSession } from './PlanningSession';
 export type { PlanningOptions, PlanningOutcome, PlanningStatus } from './PlanningSession';
 export { PlanRun } from './PlanRun';
-export type { PlanOperationState, PlanOperationStatus, PlanRunOptions, PlanRunState } from './PlanRun';
+export type { PlanOperationState, PlanOperationStatus, PlanRunOptions, PlanRunState, StagedDoc } from './PlanRun';
+// AIX-011 criterion 7 — the doc-authoring turn and its graph-restatement lint.
+export { DocSession, MAX_DOC_CHARS } from './DocSession';
+export type { DocSessionOptions, DocSessionOutcome, DocSessionRequest, DocSessionStatus } from './DocSession';
+export { docLint } from './docLint';
+export type { DocLint, DocLintFinding, DocLintOptions } from './docLint';
+export {
+  DOC_TOOLS,
+  docAdvisoryMessage,
+  docRepairMessage,
+  docSystemPrompt,
+  docUserMessage,
+  SUBMIT_DOC
+} from './prompts/docAuthoring';
+export type { DocTurnInput } from './prompts/docAuthoring';
 export { applyAuthoredPlan } from './planStaging';
 export type {
   AppliedPlanComponentOperation,

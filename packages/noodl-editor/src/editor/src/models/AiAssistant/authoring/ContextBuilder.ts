@@ -188,6 +188,20 @@ export class AuthoringContextBuilder {
     );
   }
 
+  /**
+   * AIX-011 criterion 7 — an arbitrary doc body handed to the doc-authoring
+   * turn as its subject rather than as reference material.
+   *
+   * Separate from `docHandout` because the caller has already capped it (a doc
+   * being *edited* is capped by its own known cap, or by the doc session's cap
+   * for a path the system does not know), and because it must be charged and
+   * logged under its own path: the doc turn's cost belongs against the document
+   * it rewrote, not against a generic 'project-doc' bucket.
+   */
+  docSource(path: string, rendered: string): string {
+    return this.charge(`doc-source:${path}`, rendered);
+  }
+
   /** Cap, render and charge one known doc. */
   private docHandout(kind: 'conventions' | 'brief' | 'architecture', source: string): string | undefined {
     const body = this.docs[kind];

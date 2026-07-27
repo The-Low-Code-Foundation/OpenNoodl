@@ -97,3 +97,19 @@ export async function expectAiClientError(call: () => Promise<unknown>): Promise
   }
   throw new Error('Expected an AiClientError, but the call resolved.');
 }
+
+/**
+ * Run a call that must reject, and hand the error back for assertions.
+ *
+ * The Electron suite runs on jasmine, which has no `expect(...).rejects`, and a
+ * bare try/catch passes silently when the call *resolves* — which is the exact
+ * failure a "this must refuse" spec exists to catch.
+ */
+export async function expectRejection(call: () => Promise<unknown>): Promise<Error> {
+  try {
+    await call();
+  } catch (error) {
+    return error instanceof Error ? error : new Error(String(error));
+  }
+  throw new Error('Expected the call to reject, but it resolved.');
+}

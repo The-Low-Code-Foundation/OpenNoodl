@@ -38,6 +38,9 @@ export type { DocEntry } from './ProjectDocsModel';
 export { DOC_PROPOSALS_CHANGED, DocProposalStore, proposeDocChange } from './DocProposals';
 export type { DocProposal } from './DocProposals';
 
+// AIX-011 criterion 7 — the plan transaction's doc write path.
+export { createPlanDocWriter } from './PlanDocWriter';
+
 export { currentProjectDocs, setProjectDocsProvider } from './currentDocs';
 export type { ProjectDocsProvider } from './currentDocs';
 

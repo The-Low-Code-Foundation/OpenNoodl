@@ -231,6 +231,54 @@ export function renderPlanContext(plan: AuthoringPlan, currentOpId: string): str
   return lines.join('\n');
 }
 
+/**
+ * What the plan actually produced, as the doc-authoring turn sees it.
+ *
+ * The difference from `renderPlanContext` is tense and truth: the plan context
+ * is what the plan *intends*, handed to an operation before it runs; this is
+ * what the fan-out *achieved*, handed to the doc turn after every component has
+ * been authored. A doc that records a component the plan failed to build is
+ * worse than no doc, so failures are stated rather than omitted.
+ *
+ * Node counts are here on purpose and stop here: they tell the doc turn how
+ * substantial a piece of work was, and the prompt (and `docLint`) forbid them
+ * appearing in the prose it writes.
+ */
+export interface PlanOutcomeEntry {
+  operation: PlanOperation;
+  built: boolean;
+  nodeCount?: number;
+  /** Why it was not built, when it wasn't. */
+  note?: string;
+}
+
+export function renderPlanOutcome(entries: readonly PlanOutcomeEntry[]): string {
+  const components = entries.filter((e) => e.operation.kind !== 'doc');
+  if (components.length === 0) {
+    return 'This plan changed no components — it is a documentation-only change.';
+  }
+  const lines = ['What the plan built:', ''];
+  for (const entry of components) {
+    const { operation } = entry;
+    const size = entry.nodeCount !== undefined ? ` (${entry.nodeCount} nodes)` : '';
+    lines.push(
+      entry.built
+        ? `BUILT — ${operation.kind} ${operation.target}${size}: ${operation.intent}`
+        : `NOT BUILT — ${operation.kind} ${operation.target}: ${operation.intent}${
+            entry.note ? ` [${entry.note}]` : ''
+          }`
+    );
+  }
+  if (components.some((e) => !e.built)) {
+    lines.push(
+      '',
+      'Do not document anything marked NOT BUILT — it does not exist. If the document already describes it,',
+      'leave that text alone; it is not yours to correct here.'
+    );
+  }
+  return lines.join('\n');
+}
+
 // ── Graph extension ───────────────────────────────────────────────────────────
 
 /**
