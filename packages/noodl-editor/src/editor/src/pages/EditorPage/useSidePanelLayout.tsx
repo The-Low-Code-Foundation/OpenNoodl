@@ -60,6 +60,51 @@ const FLOAT_KEEP_VISIBLE = 120;
 
 export type SidePanelMode = 'docked' | 'wide' | 'hidden' | 'floating' | 'full';
 
+/**
+ * F41 — hide/reveal as a pure transition over (mode, remembered mode).
+ *
+ * `mode` is a single enum, so `setMode('hidden')` used to *overwrite* 'floating'
+ * or 'full' and un-hiding hardcoded 'docked'. ⌘B on a floating panel therefore
+ * returned it docked, silently dropping the mode you were working in.
+ *
+ * Carrying the mode a panel was hidden *from* keeps the modes CSS-only, which is
+ * PNL-009's constraint: nothing is re-parented — a legacy `Frame`-hosted view
+ * would not survive that — only which class the same element carries changes.
+ *
+ * Pure and exported so the round trip is provable without React test infra.
+ */
+export interface SidePanelHideState {
+  mode: SidePanelMode;
+  /** The mode a hidden panel returns to. Only meaningful while `mode` is 'hidden'. */
+  remembered: SidePanelMode;
+}
+
+/** Hide, remembering where from. Hiding twice must not forget the first answer. */
+export function hideTransition(state: SidePanelHideState): SidePanelHideState {
+  if (state.mode === 'hidden') return state;
+  return { mode: 'hidden', remembered: state.mode };
+}
+
+/** Un-hide, back to the mode it was hidden from. A no-op if already visible. */
+export function revealTransition(state: SidePanelHideState): SidePanelHideState {
+  if (state.mode !== 'hidden') return state;
+  return { mode: state.remembered, remembered: state.remembered };
+}
+
+/** ⌘B / the header's hide button: one verb, both directions. */
+export function toggleHiddenTransition(state: SidePanelHideState): SidePanelHideState {
+  return state.mode === 'hidden' ? revealTransition(state) : hideTransition(state);
+}
+
+/**
+ * Docking is explicit (Escape, the dock button, dragging the divider back out),
+ * so it also retires what a later un-hide would restore — otherwise a ⌘B round
+ * trip would resurrect a float you had already left.
+ */
+export function dockTransition(): SidePanelHideState {
+  return { mode: 'docked', remembered: 'docked' };
+}
+
 export interface SidePanelLayout {
   /** What the `FrameDivider` should be sized to: rail + panel. */
   dividerSize: number;
@@ -243,6 +288,31 @@ export function useSidePanelLayout(): SidePanelLayout {
     isDragging.current = false;
   }, []);
 
+  /**
+   * F41: the mode a hidden panel comes back to. A ref rather than state — it is
+   * never rendered, and reading it inside a `setMode` updater has to be safe.
+   */
+  const modeBeforeHidden = useRef<SidePanelMode>('docked');
+
+  /**
+   * Run one of the pure transitions above against the live state.
+   *
+   * The ref write happens inside the updater on purpose, and unlike the width
+   * store above (whose write in an updater deadlocked the renderer, see below)
+   * this one is safe: a ref assignment notifies nobody, and every transition is
+   * a pure function of `prev`, so React re-invoking the updater with the same
+   * `prev` — StrictMode's double call — produces the same answer.
+   */
+  const applyHideTransition = useCallback((transition: (state: SidePanelHideState) => SidePanelHideState) => {
+    setMode((prev) => {
+      const next = transition({ mode: prev, remembered: modeBeforeHidden.current });
+      modeBeforeHidden.current = next.remembered;
+      return next.mode;
+    });
+  }, []);
+
+  const hide = useCallback(() => applyHideTransition(hideTransition), [applyHideTransition]);
+
   const onDividerSizeChanged = useCallback(
     (size: number) => {
       // Ignore the divider echoing our own programmatic size back at us.
@@ -254,24 +324,25 @@ export function useSidePanelLayout(): SidePanelLayout {
       if (dragged < COLLAPSE_SNAP_WIDTH) {
         // Dragging past the floor collapses rather than leaving a sliver. The
         // remembered width is deliberately left alone, so revealing restores it.
-        setMode('hidden');
+        hide();
         return;
       }
 
       const clamped = Math.min(Math.max(dragged, MIN_PANEL_WIDTH), maxPanelWidth);
-      setMode('docked');
+      // A deliberate drag back out is a docked width, so it also retires the
+      // remembered mode — otherwise a later ⌘B round trip would resurrect a
+      // float you had already dragged your way out of.
+      applyHideTransition(dockTransition);
       persistWidth(activeId, clamped);
     },
-    [activeId, maxPanelWidth, persistWidth, storedWidth]
+    [activeId, applyHideTransition, hide, maxPanelWidth, persistWidth, storedWidth]
   );
 
   const toggleWide = useCallback(() => {
     setMode((prev) => (prev === 'wide' ? 'docked' : 'wide'));
   }, []);
 
-  const toggleHidden = useCallback(() => {
-    setMode((prev) => (prev === 'hidden' ? 'docked' : 'hidden'));
-  }, []);
+  const toggleHidden = useCallback(() => applyHideTransition(toggleHiddenTransition), [applyHideTransition]);
 
   const toggleFloating = useCallback(() => {
     setMode((prev) => (prev === 'floating' ? 'docked' : 'floating'));
@@ -283,7 +354,7 @@ export function useSidePanelLayout(): SidePanelLayout {
 
   const openFull = useCallback(() => setMode('full'), []);
 
-  const dock = useCallback(() => setMode('docked'), []);
+  const dock = useCallback(() => applyHideTransition(dockTransition), [applyHideTransition]);
 
   const setEditorArea = useCallback((bounds: DOMRect) => {
     setEditorAreaState((prev) =>
@@ -311,9 +382,9 @@ export function useSidePanelLayout(): SidePanelLayout {
 
   const floatRect = floatRects[activeId] ?? FLOAT_DEFAULT;
 
-  const revealIfHidden = useCallback(() => {
-    setMode((prev) => (prev === 'hidden' ? 'docked' : prev));
-  }, []);
+  // F41: a rail click brings a hidden panel back to the mode it was hidden from,
+  // not unconditionally to docked.
+  const revealIfHidden = useCallback(() => applyHideTransition(revealTransition), [applyHideTransition]);
 
   return {
     dividerSize: RAIL_WIDTH + panelWidth,

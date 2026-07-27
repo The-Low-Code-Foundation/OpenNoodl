@@ -21,7 +21,9 @@
  *   5. **focus is not trapped** (acceptance item 6, never verified until now):
  *      from an element inside a floating panel, `Tab` must reach something
  *      outside the panel within a bounded number of presses.
- *   6. **⌘B still hides a floating panel** (the other half of item 6).
+ *   6. **⌘B still hides a floating panel** (the other half of item 6), and — F41,
+ *      asserted since batch C rather than merely recorded — **the floating mode
+ *      survives the hide → show round trip** instead of silently returning docked.
  *   7. **the `⋯` overflow menu exists and is anchored to its button** — the
  *      popup-position check the executor notes asked for. A floating panel is
  *      the case that would expose a positioning bug, because it is the one place
@@ -593,20 +595,18 @@ async function shot(cdp, name) {
       // Bring it back however the previous line left it.
       if (hidden) await pressKey(cdp, { key: 'b', code: 'KeyB', vk: 66, modifiers: 4 });
       await sleep(300);
-      // Documented, not asserted. The spec's acceptance 6 asks only that ⌘B
-      // hides a floating panel, and it does. What it does *not* say is whether
-      // the mode should survive the round trip — and it does not: the panel
-      // comes back docked. Recorded so the behaviour is a decision someone made
-      // rather than something nobody ever looked at.
+      // F41, now asserted rather than merely observed. This used to record
+      // `ok: null` with the note "returns docked; floating is not restored":
+      // `SidePanelMode` is one enum, so hiding overwrote 'floating' and un-hiding
+      // hardcoded 'docked'. `useSidePanelLayout` now carries the mode the panel
+      // was hidden *from* (`hideTransition`/`revealTransition`), so the round trip
+      // preserves it — still CSS-only, nothing re-parented.
       const back = await evalJS(cdp, PANEL_STATE);
-      report.checks.push({
-        name: 'floating: (observed, not asserted) the mode after ⌘B hide → ⌘B show',
-        ok: null,
-        detail: { position: back.position, hasDetachedBar: back.hasDetachedBar, note: 'returns docked; floating is not restored' }
+      record('floating: the mode survives a ⌘B hide → ⌘B show round trip (F41)', back.position === 'fixed', {
+        position: back.position,
+        hasDetachedBar: back.hasDetachedBar,
+        expected: 'fixed (still floating)'
       });
-      console.log(
-        `  ·  floating: after ⌘B hide → show the panel returns ${back.position === 'fixed' ? 'floating' : 'DOCKED'} (observed, not asserted)`
-      );
       flush();
     });
 
@@ -617,9 +617,10 @@ async function shot(cdp, name) {
       // in floating mode the width is an inline style from React state and an
       // `!important` override would fight it.
       // Re-enter floating rather than assuming the previous check left us in it.
-      // It does not: ⌘B hides the panel and bringing it back returns it *docked*,
-      // dropping the floating mode. That is recorded as its own check below
-      // rather than being allowed to fail these four as "no resize grip".
+      // Since F41 the ⌘B round trip above *does* leave us floating, so this is
+      // now idempotent insurance rather than a workaround — `ensureFloating` is a
+      // no-op when the panel is already floating, and these four checks should
+      // not depend on the previous one's exit state either way.
       if (!(await ensureFloating(cdp))) throw new Error('could not re-enter floating mode');
       const s = await evalJS(cdp, PANEL_STATE);
       const grip = await box(cdp, '[data-test="side-panel-resize-grip"]');
