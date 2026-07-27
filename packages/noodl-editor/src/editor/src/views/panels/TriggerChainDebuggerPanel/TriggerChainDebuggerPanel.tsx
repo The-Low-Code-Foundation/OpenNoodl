@@ -9,6 +9,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 
 import { Icon, IconName } from '@noodl-core-ui/components/common/Icon';
 import { PrimaryButton, PrimaryButtonVariant } from '@noodl-core-ui/components/inputs/PrimaryButton';
+import { BasePanel } from '@noodl-core-ui/components/sidebar/BasePanel';
 
 import { triggerChainRecorder } from '../../../utils/triggerChain';
 import { ChainStats } from './components/ChainStats';
@@ -55,21 +56,22 @@ export function TriggerChainDebuggerPanel() {
   }, [isRecording]);
 
   return (
-    <div className={css['TriggerChainDebuggerPanel']}>
-      {/* Header */}
-      <div className={css['Header']}>
-        <div className={css['Title']}>
-          <Icon icon={IconName.CloudData} />
-          <h2>Trigger Chain Debugger</h2>
-        </div>
-        {isRecording && (
+    /* PNL-005: shared chrome. The recording indicator was the only live thing in
+       the panel's own header, so it becomes an action-slot control and the bar
+       around it goes. */
+    <BasePanel
+      title="Trigger Chain Debugger"
+      isFill
+      UNSAFE_content_style={{ paddingInline: 0, paddingTop: 0 }}
+      headerSlot={
+        isRecording ? (
           <div className={css['RecordingIndicator']}>
             <span className={css['RecordingDot']} />
-            <span>Recording...</span>
+            <span>Recording</span>
           </div>
-        )}
-      </div>
-
+        ) : null
+      }
+    >
       {/* Recording Controls */}
       <div className={css['Controls']}>
         {!isRecording ? (
@@ -129,6 +131,6 @@ export function TriggerChainDebuggerPanel() {
           </div>
         )}
       </div>
-    </div>
+    </BasePanel>
   );
 }

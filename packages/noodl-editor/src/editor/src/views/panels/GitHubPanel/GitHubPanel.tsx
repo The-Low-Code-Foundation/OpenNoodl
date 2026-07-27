@@ -8,6 +8,8 @@
 import { useEventListener } from '@noodl-hooks/useEventListener';
 import React, { useState, useEffect } from 'react';
 
+import { BasePanel } from '@noodl-core-ui/components/sidebar/BasePanel';
+
 import { GitHubClient, GitHubOAuthService } from '../../../services/github';
 import { ConnectToGitHubView } from './components/ConnectToGitHub';
 import { IssuesList } from './components/IssuesTab/IssuesList';
@@ -20,7 +22,22 @@ import { usePullRequests } from './hooks/usePullRequests';
 
 type TabType = 'issues' | 'pullRequests';
 
+/**
+ * PNL-005: the shared chrome. `GitHubPanelContent` below has six early returns
+ * (initialising, loading, not connected, no remote, not GitHub, not ready) —
+ * wrapping the panel here rather than at each of them is what keeps "no panel is
+ * missing a header" true in every one of those states, which was not the case
+ * when the panel had no title bar at all.
+ */
 export function GitHubPanel() {
+  return (
+    <BasePanel title="GitHub" isFill UNSAFE_content_style={{ paddingInline: 0, paddingTop: 0 }}>
+      <GitHubPanelContent />
+    </BasePanel>
+  );
+}
+
+function GitHubPanelContent() {
   const [activeTab, setActiveTab] = useState<TabType>('issues');
   const [isConnected, setIsConnected] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);

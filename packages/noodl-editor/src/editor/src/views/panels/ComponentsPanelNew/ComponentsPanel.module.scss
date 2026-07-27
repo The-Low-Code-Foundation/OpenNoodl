@@ -5,29 +5,11 @@
  * Using design tokens for proper theming support
  */
 
-.ComponentsPanel {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  overflow: visible; /* Allow popups to extend outside panel */
-}
-
-.Header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  height: 36px;
-  padding: 0 10px;
-  background-color: var(--theme-color-bg-3);
-  border-bottom: 1px solid var(--theme-color-bg-2);
-  color: var(--theme-color-fg-highlight);
-  font: 12px var(--font-family);
-}
-
-.Title {
-  font: 12px var(--font-family);
-  color: var(--theme-color-fg-highlight);
-}
+/* PNL-005: `.ComponentsPanel`, `.Header` and `.Title` are gone. The panel is a
+   `BasePanel` now, so the shell and the 36px `bg-3` bar with its own 12px title
+   are the shared `PanelHeader`'s job. `.AddButton` below has no reference left in
+   the panel either but is deliberately not deleted here — PNL-006 owns the tree
+   and its controls. */
 
 .AddButton {
   width: 24px;

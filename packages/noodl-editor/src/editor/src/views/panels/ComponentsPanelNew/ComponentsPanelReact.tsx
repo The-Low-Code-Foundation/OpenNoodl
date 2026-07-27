@@ -13,6 +13,7 @@ import { DialogLayerModel } from '@noodl-models/DialogLayerModel';
 
 import { IconName } from '@noodl-core-ui/components/common/Icon';
 import { MenuDialogWidth } from '@noodl-core-ui/components/popups/MenuDialog';
+import { BasePanel } from '@noodl-core-ui/components/sidebar/BasePanel';
 
 import { showContextMenuInPopup } from '../../ShowContextMenuInPopup';
 import { ComponentTree } from './components/ComponentTree';
@@ -210,10 +211,17 @@ export function ComponentsPanel({ options }: ComponentsPanelProps) {
   );
 
   return (
-    <div className={css['ComponentsPanel']}>
-      {/* Header with title and sheet selector */}
-      <div className={css['Header']}>
-        <span className={css['Title']}>Components</span>
+    /* PNL-005: the panel's own 36px `bg-3` bar is gone — this is the shared
+       `PanelHeader`, and the sheet selector is an action-slot control.
+       `UNSAFE_content_style` drops `BasePanel`'s horizontal inset so the tree
+       rows stay full-bleed (their hover and selection fills run to the panel
+       edge); PNL-006 owns the tree itself and can take the inset back if it
+       wants one. */
+    <BasePanel
+      title="Components"
+      isFill
+      UNSAFE_content_style={{ paddingInline: 0, paddingTop: 0 }}
+      headerSlot={
         <SheetSelector
           sheets={sheets}
           currentSheet={currentSheet}
@@ -223,8 +231,8 @@ export function ComponentsPanel({ options }: ComponentsPanelProps) {
           onDeleteSheet={handleDeleteSheet}
           disabled={!!options?.lockToSheet}
         />
-      </div>
-
+      }
+    >
       {/* Component tree - right-click for create menu, mouseUp on background triggers root drop */}
       <div className={css['Tree']} onContextMenu={handleTreeContextMenu} onMouseUp={handleTreeMouseUp}>
         {treeData.length > 0 ? (
@@ -259,6 +267,6 @@ export function ComponentsPanel({ options }: ComponentsPanelProps) {
           </div>
         )}
       </div>
-    </div>
+    </BasePanel>
   );
 }

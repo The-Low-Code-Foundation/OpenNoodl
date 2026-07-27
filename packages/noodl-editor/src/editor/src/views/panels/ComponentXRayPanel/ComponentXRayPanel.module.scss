@@ -4,14 +4,9 @@
  * Uses design tokens from UI-STYLING-GUIDE.md
  */
 
-.ComponentXRayPanel {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  background-color: var(--theme-color-bg-1);
-  color: var(--theme-color-fg-default);
-  overflow: hidden;
-}
+/* PNL-005: `.ComponentXRayPanel` (the shell) and `.Title` are gone — the shell
+   is a `BasePanel` and the panel's name is the shared `PanelHeader`'s. `.Header`
+   below survives as the *subject* band: it names the component being x-rayed. */
 
 /* =================================================================
    Empty State
@@ -46,25 +41,9 @@
 
 .Header {
   flex-shrink: 0;
-  padding: 16px;
+  padding: 12px 16px;
   border-bottom: 1px solid var(--theme-color-border-default);
   background-color: var(--theme-color-bg-2);
-}
-
-.Title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 12px;
-
-  h2 {
-    margin: 0;
-    font-size: 14px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: var(--theme-color-fg-default-shy);
-  }
 }
 
 .ComponentName {
