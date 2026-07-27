@@ -32,6 +32,25 @@ import { TokenResolver } from './TokenResolver';
 const METADATA_KEY = STYLE_TOKENS_METADATA_KEY;
 const CURRENT_VERSION = 1;
 
+/**
+ * Record an already-applied change on the undo stack.
+ *
+ * NB `group.push`, *not* the `UndoActionGroup` constructor's `{do, undo}` pair.
+ * The constructor appends straight to the group's action array and leaves the
+ * group's internal pointer at 0, so `undo()` — which loops from `ptr - 1` —
+ * runs from -1 and does nothing. Callers that go through `UndoQueue.pushAndDo`
+ * never see it, because `do()` advances the pointer on the way in. The token
+ * operations below are not those callers: they mutate first and then record,
+ * so there is nothing left to `do()`, and every one of them shipped with a
+ * silently dead undo. `group.push` advances the pointer without executing,
+ * which is exactly the "already applied — just record the inverse" case.
+ */
+function pushAppliedUndo(label: string, actions: { do: () => void; undo: () => void }): void {
+  const group = new UndoActionGroup({ label });
+  group.push(actions);
+  UndoQueue.instance.push(group);
+}
+
 export class StyleTokensModel extends Model {
   /** Full merged token map (defaults + overrides). */
   private _tokens: Map<string, StyleTokenRecord> = new Map();
@@ -148,19 +167,16 @@ export class StyleTokensModel extends Model {
     this.notifyListeners('tokensChanged', { name, token: newToken });
 
     if (args?.undo) {
-      UndoQueue.instance.push(
-        new UndoActionGroup({
-          label: args.label ?? 'set design token',
-          do: () => this.setToken(name, value),
-          undo: () => {
-            if (prevToken) {
-              this.setToken(name, prevToken.value);
-            } else {
-              this.deleteCustomToken(name);
-            }
+      pushAppliedUndo(args.label ?? 'set design token', {
+        do: () => this.setToken(name, value),
+        undo: () => {
+          if (prevToken) {
+            this.setToken(name, prevToken.value);
+          } else {
+            this.deleteCustomToken(name);
           }
-        })
-      );
+        }
+      });
     }
   }
 
@@ -180,13 +196,10 @@ export class StyleTokensModel extends Model {
     this.notifyListeners('tokensChanged', { name: token.name, token: newToken });
 
     if (args?.undo) {
-      UndoQueue.instance.push(
-        new UndoActionGroup({
-          label: args.label ?? 'add design token',
-          do: () => this.addCustomToken(token),
-          undo: () => this.deleteCustomToken(token.name)
-        })
-      );
+      pushAppliedUndo(args.label ?? 'add design token', {
+        do: () => this.addCustomToken(token),
+        undo: () => this.deleteCustomToken(token.name)
+      });
     }
   }
 
@@ -212,13 +225,10 @@ export class StyleTokensModel extends Model {
       this.notifyListeners('tokensChanged', { name, token: null });
 
       if (args?.undo) {
-        UndoQueue.instance.push(
-          new UndoActionGroup({
-            label: args.label ?? 'delete design token',
-            do: () => this.deleteCustomToken(name),
-            undo: () => this.addCustomToken(existing)
-          })
-        );
+        pushAppliedUndo(args.label ?? 'delete design token', {
+          do: () => this.deleteCustomToken(name),
+          undo: () => this.addCustomToken(existing)
+        });
       }
     }
   }
@@ -235,19 +245,17 @@ export class StyleTokensModel extends Model {
     this.notifyListeners('tokensChanged', { name: null, token: null });
 
     if (args?.undo) {
-      UndoQueue.instance.push(
-        new UndoActionGroup({
-          label: 'reset all design tokens',
-          do: () => this.resetAllToDefaults(),
-          undo: () => {
-            for (const token of prevCustom) {
-              this._tokens.set(token.name, token);
-            }
-            this._store();
-            this.notifyListeners('tokensChanged', { name: null, token: null });
+      pushAppliedUndo('reset all design tokens', {
+        do: () => this.resetAllToDefaults(),
+        undo: () => {
+          for (const token of prevCustom) {
+            this._tokens.set(token.name, token);
           }
-        })
-      );
+          this._store();
+          this.resolver.invalidate();
+          this.notifyListeners('tokensChanged', { name: null, token: null });
+        }
+      });
     }
   }
 
