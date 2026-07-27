@@ -278,14 +278,100 @@ const PANEL_STATE = `(() => {
   };
 })()`;
 
-/** Where the popup layer's popout actually is, if one is open. */
+/**
+ * Where the open menu actually is.
+ *
+ * NOT `.popup-layer-popout`. That element is the popup layer's handle: it holds
+ * the container the menu was rendered into, but `MenuDialog` portals *out* of it
+ * into `.dialog-layer-portal-target`, so the popout measures 0×0 and a gate
+ * filtering on a non-zero box finds nothing at all. This is PNL-002's finding F24
+ * — "the popup layer's inside/outside test was blind to it" — showing up a second
+ * time, in the instrument rather than the app. Reading the popout was why this
+ * gate reported "no popout opened" against a menu that was on screen.
+ *
+ * `BaseDialog` also renders a measuring copy of its children, and that copy lives
+ * *inside* `VisibleDialog` — scoping to `VisibleDialog` is not enough to avoid it.
+ * The measuring copy sits at the origin until the dialog has been positioned, so
+ * reading it reports a menu at (1, 1) no matter where the real one went. That is
+ * what made this check fail identically across two unrelated fixes: the number it
+ * printed never came from the menu on screen.
+ */
 const POPOUT_RECT = `(() => {
-  const candidates = Array.from(document.querySelectorAll('.popup-layer-popout'))
-    .filter((el) => { const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0; });
+  const visible = Array.from(
+    document.querySelectorAll('[class*="BaseDialog-module__VisibleDialog"] [class*="MenuDialog-module__Root"]')
+  ).filter((el) => !el.closest('[class*="BaseDialog-module__MeasuringContainer"]'))
+   .filter((el) => { const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0; });
+  const candidates = visible.length
+    ? visible
+    : Array.from(document.querySelectorAll('.popup-layer-popout'))
+        .filter((el) => { const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0; });
   if (!candidates.length) return null;
   const r = candidates[0].getBoundingClientRect();
   return { x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height) };
 })()`;
+
+// ---- preconditions ---------------------------------------------------------
+
+/**
+ * Put the panel back in the state every check below assumes: docked, visible,
+ * and wide enough that Float and Full are buttons rather than `⋯` items.
+ *
+ * Both halves were learned the hard way on the first live run.
+ *
+ * **Docked.** The gate inherited whatever the previous gate left on screen. Run
+ * one started with the panel already in a mode, so clicking Full toggled it
+ * *off*, and 11 of 12 checks failed reporting a docked panel — a full red board
+ * describing a feature that works. A gate that depends on the last gate's
+ * leftovers is not measuring the app.
+ *
+ * **Wide enough.** PNL-009's own band rule collapses Float and Full into the `⋯`
+ * below a 357px panel. The "switching panels stays in full mode" check switches
+ * to whichever rail button comes to hand, that panel restores its own remembered
+ * width (Components: 274px), and the floating phase then reports "float toggle
+ * not clickable" — which is the band working exactly as designed. Widen with the
+ * app's own wide toggle rather than a style override: an injected width would be
+ * testing CSS we wrote into the page instead of the panel the user gets.
+ */
+async function preflight(cdp) {
+  const s = await evalJS(cdp, PANEL_STATE);
+  if (s && s.position === 'fixed') {
+    await pressKey(cdp, { key: 'Escape', code: 'Escape', vk: 27 });
+    await sleep(400);
+  }
+  const panel = await box(cdp, '[class*="SideNavigation-module__Panel"]');
+  if (!panel || !panel.visible) {
+    // ⌘B hidden from an earlier run; the hide toggle is the way back.
+    await clickSel(cdp, '[data-test="side-panel-hide-toggle"]');
+  }
+  await exposeModeButtons(cdp);
+}
+
+/**
+ * If the mode group has collapsed into `⋯`, widen the panel until it has not.
+ * Returns whether the buttons are exposed, so a caller can say so rather than
+ * fail with a misleading "not clickable".
+ */
+async function exposeModeButtons(cdp) {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const float = await box(cdp, '[data-test="side-panel-float-toggle"]');
+    if (float && float.visible) return true;
+    if (!(await clickSel(cdp, '[data-test="side-panel-wide-toggle"]', 500))) return false;
+  }
+  const float = await box(cdp, '[data-test="side-panel-float-toggle"]');
+  return Boolean(float && float.visible);
+}
+
+/** Put the panel into floating mode from whatever state it is in now. */
+async function ensureFloating(cdp) {
+  const s = await evalJS(cdp, PANEL_STATE);
+  if (s && s.position === 'fixed' && s.hasDetachedBar) return true;
+  const panel = await box(cdp, '[class*="SideNavigation-module__Panel"]');
+  if (!panel || !panel.visible) await clickSel(cdp, '[data-test="side-panel-hide-toggle"]');
+  if (!(await exposeModeButtons(cdp))) return false;
+  if (!(await clickSel(cdp, '[data-test="side-panel-float-toggle"]'))) return false;
+  const after = await evalJS(cdp, PANEL_STATE);
+  return after.position === 'fixed';
+}
 
 // ---- report ----------------------------------------------------------------
 
@@ -352,6 +438,10 @@ async function shot(cdp, name) {
   }
   report.initial = initial;
 
+  // Never inherit the last run's leftovers. See preflight().
+  await preflight(cdp);
+  report.afterPreflight = await evalJS(cdp, PANEL_STATE);
+
   try {
     // ---------------------------------------------------------------- full ---
     await check('full: the panel is fixed and fills the editor area right of the rail', async () => {
@@ -405,7 +495,11 @@ async function shot(cdp, name) {
     });
 
     // ------------------------------------------------------------ floating ---
+    // The full phase above switches panels, and the panel it lands on restores
+    // its own width — which may be under the band that collapses Float into `⋯`.
     await check('floating: the panel is a fixed card over the canvas', async () => {
+      if (!(await exposeModeButtons(cdp)))
+        throw new Error('could not expose the mode buttons — the panel would not widen past the ⋯ band');
       if (!(await clickSel(cdp, '[data-test="side-panel-float-toggle"]'))) throw new Error('float toggle not clickable');
       const s = await evalJS(cdp, PANEL_STATE);
       await shot(cdp, 'gate--floating');
@@ -417,10 +511,20 @@ async function shot(cdp, name) {
       const before = await evalJS(cdp, PANEL_STATE);
       const bar = await box(cdp, '[data-test="side-panel-detached-bar"]');
       if (!bar || !bar.visible) throw new Error('no detached bar to grab');
-      // Deliberately drag far past the rail and past the top of the window: the
-      // assertion is that the card *stops*, not that it follows.
-      await drag(cdp, { x: bar.x, y: bar.y }, { x: 4, y: 4 });
+      // Park the card somewhere unambiguous first. Floating position persists per
+      // panel, so a re-run inherits the previous run's card — already pinned at
+      // the constraint corner. Dragging it into the corner again then moves it by
+      // zero pixels and the check fails claiming the drag does not work, when in
+      // fact the constraint had already done its job.
+      await drag(cdp, { x: bar.x, y: bar.y }, { x: bar.x + 260, y: bar.y + 180 });
+      const parked = await evalJS(cdp, PANEL_STATE);
+      const bar2 = await box(cdp, '[data-test="side-panel-detached-bar"]');
+      if (!bar2 || !bar2.visible) throw new Error('lost the detached bar while parking the card');
+      // Now drag far past the rail and past the top of the window: the assertion
+      // is that the card *stops*, not that it follows.
+      await drag(cdp, { x: bar2.x, y: bar2.y }, { x: 4, y: 4 });
       const after = await evalJS(cdp, PANEL_STATE);
+      before.rect = parked.rect;
       await shot(cdp, 'gate--floating-dragged');
       const moved = after.rect.x !== before.rect.x || after.rect.y !== before.rect.y;
       const offRail = after.rect.x >= (after.railRect ? after.railRect.x : 0) + RAIL_WIDTH - TOL;
@@ -488,6 +592,22 @@ async function shot(cdp, name) {
       record('floating: ⌘B still hides the panel', hidden === true, { hidden });
       // Bring it back however the previous line left it.
       if (hidden) await pressKey(cdp, { key: 'b', code: 'KeyB', vk: 66, modifiers: 4 });
+      await sleep(300);
+      // Documented, not asserted. The spec's acceptance 6 asks only that ⌘B
+      // hides a floating panel, and it does. What it does *not* say is whether
+      // the mode should survive the round trip — and it does not: the panel
+      // comes back docked. Recorded so the behaviour is a decision someone made
+      // rather than something nobody ever looked at.
+      const back = await evalJS(cdp, PANEL_STATE);
+      report.checks.push({
+        name: 'floating: (observed, not asserted) the mode after ⌘B hide → ⌘B show',
+        ok: null,
+        detail: { position: back.position, hasDetachedBar: back.hasDetachedBar, note: 'returns docked; floating is not restored' }
+      });
+      console.log(
+        `  ·  floating: after ⌘B hide → show the panel returns ${back.position === 'fixed' ? 'floating' : 'DOCKED'} (observed, not asserted)`
+      );
+      flush();
     });
 
     // ------------------------------------- the ⋯ menu, and where it lands ----
@@ -496,6 +616,11 @@ async function shot(cdp, name) {
       // has to actually be narrow. Drag the grip rather than injecting a width:
       // in floating mode the width is an inline style from React state and an
       // `!important` override would fight it.
+      // Re-enter floating rather than assuming the previous check left us in it.
+      // It does not: ⌘B hides the panel and bringing it back returns it *docked*,
+      // dropping the floating mode. That is recorded as its own check below
+      // rather than being allowed to fail these four as "no resize grip".
+      if (!(await ensureFloating(cdp))) throw new Error('could not re-enter floating mode');
       const s = await evalJS(cdp, PANEL_STATE);
       const grip = await box(cdp, '[data-test="side-panel-resize-grip"]');
       if (!grip || !grip.visible) throw new Error('no resize grip');

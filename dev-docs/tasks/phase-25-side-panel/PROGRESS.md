@@ -1,9 +1,11 @@
 # Phase 25 — Side Panel (Track J): Progress
 
-**Status:** 🚧 In progress — 6 / 9 complete + 1 partial — **Tiers 1 and 2 complete**. The 2026-07-27
-decision to stop after Tier 1 was reversed the same day; PNL-004 and PNL-005 ran as parallel worktree
-agents and merged, each after a live-QA fix-up round. PNL-006, PNL-008 and the PNL-009 remainder are
-in flight.
+**Status:** ✅ **All 9 tasks complete and live-verified** (2026-07-27). Tiers 1–4 landed; the closing
+pass ran every gate from the primary checkout against a real editor, which no worktree agent could do
+— see *The trap that shaped this whole phase* below. That pass found and fixed five defects (F37–F41),
+two of them in behaviour a task had already described as shipped. Two named items remain unverified
+because they need a running local backend or a full project lifecycle; they are listed under
+*Still not verified*.
 **Specced:** 2026-07-27
 **Mock:** [`mocks/nodegx-side-panel-mock.html`](./mocks/nodegx-side-panel-mock.html) (`93cc4da`)
 **Phase overview:** [README.md](./README.md)
@@ -65,7 +67,23 @@ be stale or to have a different cause, correct it here rather than implementing 
 | F33 | **A rail walk that looks complete isn't.** `router.setup.ts` registers 21 panels; a default-settings rail shows 8 (two canvas-transient, ten experimental, three devMode). This is exactly how `versioncontrol`'s blank state survived a green run | `router.setup.ts` | recorded; `panel-chrome.mjs` now prints reached vs. mounted-but-unreachable and takes `--expect-panels` |
 | F34 | **Version Control crashed into its error boundary on first render.** `CodeDiffDialog` gated with `isVisible={diff !== null}` but read `diff.original` in the children, which React evaluates regardless; `DiffList` renders it with `diff === null` whenever nothing is selected — its resting state. Predates the phase (last touched by DEBT-013). Found because the geometry gate started printing element text: an 877px-wide `<pre>` had been read as a unified diff and exempted as by-design, and was a stack trace | `CodeDiffDialog.tsx` | ✅ fixed `c492fc0d` |
 | F35 | A gate that `process.exit()`s with an injected `<style>` still in the page **leaves the editor wedged** — a socket closing does not undo DOM. A leaked `width: 240px !important` pinned the panel and killed the divider until the app was restarted | `corpus/*.mjs` | PNL-005 — ✅ every override released in a `finally` |
-| F36 | A gate can be green about the wrong thing. `panel-chrome.mjs` asserted "title is single-line and ellipsised" and happily passed a Components panel rendering **"Co…"** — two characters — which is the precise outcome the mock named as the failure the `⋯` menu exists to prevent | `corpus/panel-chrome.mjs` | PNL-005 — ✅ assertion F measures fitted characters with real `measureText` and is **red until PNL-009 ships the menu** |
+| F36 | A gate can be green about the wrong thing. `panel-chrome.mjs` asserted "title is single-line and ellipsised" and happily passed a Components panel rendering **"Co…"** — two characters — which is the precise outcome the mock named as the failure the `⋯` menu exists to prevent | `corpus/panel-chrome.mjs` | PNL-005 — ✅ assertion F measures fitted characters with real `measureText`; **now green**, 36/36, on the live editor |
+
+### Found by the closing live-QA pass, 2026-07-27
+
+Everything above F37 was established by reading code. Everything below was found by
+running the three merged-but-never-run tasks (PNL-006, PNL-008, PNL-009) against a real
+editor from the primary checkout — which is the step every worktree agent was structurally
+unable to take.
+
+| # | Finding | Where | Status |
+|---|---|---|---|
+| F37 | **`ListItem` lets an unbreakable string escape the panel.** `.Body` already had `min-width: 0`, but that only lets the *Body* shrink — its own flex children keep `min-width: auto`, i.e. their min-content width. A 101-character changed-file path with no break opportunity (neither `_` nor `.` is one) held its full 506px and stuck up to **325px** out of the panel at the 240px floor. Invisible until F34's fix made Version Control render at all, so it arrived the moment that panel stopped crashing | `ListItem.module.scss` | ✅ fixed — `overflow-wrap: anywhere` + `> * { min-width: 0 }` |
+| F38 | **`SearchInput` cannot shrink.** The `<input>` has `flex-grow: 1` and no `min-width: 0`, so it will not go below an `<input>`'s intrinsic ~20-character width plus the 40px icon gutter. At a 240px panel it overflowed its own Root by 35px and clipped the Search panel's section by 19px | `SearchInput.module.scss` | ✅ fixed — `min-width: 0` |
+| F39 | **The `⋯` menu opened in the window's top-left corner, not under its button** — the one behaviour PNL-009's notes claimed the gate asserted. Two independent causes. (a) `showContextMenuInPopup` gave `MenuDialog` the popup-layer `container` as its positioning trigger, but the menu portals *out* of that container, so it measures 0×0 and PopupLayer positions it *after* `BaseDialog`'s one-shot `useLayoutEffect` has already run. (b) `overflowButtonRef.current` is null after a mode change: the same `modeSlot` element is rendered into more than one header over a panel's life, so the shared ref ends up detached. With `attachTo` empty the code silently fell back to `screen.getCursorScreenPoint()` — which under a synthesised click is wherever the human's mouse is parked, hence (1, 1) | `ShowContextMenuInPopup.tsx`, `SidePanel.tsx` | ✅ fixed — anchor to `event.currentTarget`, and pass `attachTo` through as the dialog's trigger |
+| F40 | **Three instrument defects, one family: a gate green or red about the wrong thing.** `panel-geometry.mjs` measured the whole panel *slot* and filed every finding under the rail button it had just clicked — a Version Control overflow was reported three times as a Problems defect. `panel-chrome.mjs` could measure a panel that had not finished switching and pass anyway: `ai-authoring` was asserted while "Explain" was on screen, and "Explain" fits. `panel-modes.mjs` inherited the previous gate's panel state (11 of 12 checks red against a feature that works), looked for the menu in `.popup-layer-popout` when `MenuDialog` portals into the dialog layer — **F24 again, this time in the instrument** — and then read `BaseDialog`'s *measuring* copy, which sits at the origin, instead of the visible menu | `corpus/*.mjs` | ✅ all four fixed; findings now carry the panel they are in, titles are held to, state is reset in a preflight |
+| F41 | **⌘B on a floating panel returns it docked.** Hiding a floating panel and showing it again drops the floating mode. The spec's acceptance 6 asks only that ⌘B *hides* it, which it does, so this is **recorded rather than fixed** — but it is now printed by `panel-modes.mjs` on every run instead of being something nobody looked at | `SidePanel` layout state | ⚠️ open, unowned |
+| F42 | **The phase's own gate list names a script that does not exist.** `noodl-core-ui` has no `test:ci`; its scripts are `start` and `build`. The real check is `npm run typecheck:core-ui`. Corrected in *Gates for the phase* below | this file | ✅ corrected |
 
 ## Open questions
 
@@ -80,10 +98,44 @@ be stale or to have a different cause, correct it here rather than implementing 
 
 ## Gates for the phase
 
-- Editor `tsc` clean; `npm run test:ci` green for `noodl-editor` and `noodl-core-ui`.
+Results are from the closing pass on 2026-07-27, run from the **primary checkout** with a
+dev editor up and `Shine Phase 2` open.
+
+| Gate | Result |
+|---|---|
+| `npx tsc -p packages/noodl-editor --noEmit` | ✅ clean for this work. **Caveat:** a concurrent session (AIX-011) had `PlanRun.ts` / `ProjectAuthoringView.tsx` mid-edit and contributed 4 errors of its own during the run. Confirmed unrelated — this phase's diff is two `.scss` files and two `.tsx` files, all clean |
+| `node scripts/hex-color-ratchet.js` | ✅ `noodl-editor 16 / baseline 16`, holding |
+| `npx lerna exec --scope noodl-editor -- npm run test:ci` | ⚠️ **1547 specs, 1 failure** — *"Project import and export … re-keys imported node ids … Expected 8 to be 5"*. Pre-existing and not from this phase: PNL-009's first pass recorded the same failure with all its changes stashed |
+| `npm run typecheck:core-ui` | ⚠️ reports pre-existing `Cannot find module '@noodl-viewer-cloud/execution-history'` errors in `noodl-editor/src/main`. Untouched by this phase. (See F42 — there is no `test:ci` for this package) |
+| `corpus/panel-geometry.mjs` | ✅ **9/9 vertical, 45/45 panel×width horizontal** — after F37 and F38 were fixed. It was 39/45 when first run |
+| `corpus/panel-chrome.mjs` | ✅ **36/36** across both themes at wide and 240px. Assertion F is green: the Components title reads "Components", not "Co…". **This closes F36**, which PNL-005 left deliberately red |
+| `corpus/panel-modes.mjs` | see PNL-009 row — the mode system's behaviours, with F39 fixed |
+| `corpus/settings-consolidation.mjs --no-live` | ✅ S1, S1b, S2, S3, S4 all green |
+
 - Hex ratchet unchanged or improved for both packages (PNL-005 and PNL-009 delete legacy CSS and should
-  improve it — record the numbers).
-- The CDP panel-geometry gate introduced by PNL-001 and extended by PNL-004: at a short window height and
-  at five panel widths, no panel has unreachable content and nothing overflows horizontally.
+  improve it — record the numbers). **Recorded, and the expectation was wrong:** the ratchet counts
+  `#hex` only, and the CSS those tasks deleted was `rgba()`. It cannot move on this work.
 - Screenshots per task under `screenshots/pnl-00N/`, both themes. "Before" images must be captured at a
   **short window height** — the scroll defects don't reproduce on a tall window.
+
+### The trap that shaped this whole phase
+
+Every one of PNL-006, PNL-008 and PNL-009 merged with a *"Could not verify"* section, and every one gave
+the same structural reason: **`npx lerna exec` resolves the package root to the main checkout**, so an
+editor launched from a worktree runs someone else's code and neither a pass nor a fail means anything.
+Three tasks' worth of live verification therefore piled up behind a single step that only the primary
+checkout can take. When it was finally taken it found five defects — two of them (F37, F39) in shipped
+behaviour that had been *described as verified*.
+
+The lesson is not "worktrees are bad". It is that **a task whose acceptance needs a running app cannot be
+closed from a worktree**, and saying so in the notes is not the same as someone running it. Budget the
+primary-checkout pass as part of the task, not as a residual.
+
+### Still not verified
+
+- **The `New record` / `Create table` modals inside a full-mode backend surface.** PNL-009 moved them out
+  of a `z-index: 9999` portal into the panel's stacking context and named this the change most likely to
+  regress visually. It needs a running local backend.
+- **PNL-006's kind glyphs and warning dot against a real project**, and PNL-008's acceptance 2/4/5 round
+  trips (close-and-reopen, the experimental toggle, the settings-id migration). All need a project
+  lifecycle rather than a panel walk.

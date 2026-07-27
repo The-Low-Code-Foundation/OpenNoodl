@@ -532,6 +532,9 @@ function flush() {
 
   const failures = [];
   let timeouts = 0;
+  // rail id -> the title its header is known by, learned on first sighting and
+  // then held to. See the `stale-panel` check below.
+  const titleByPanel = new Map();
 
   try {
     for (const theme of THEMES) {
@@ -555,12 +558,39 @@ function flush() {
               continue;
             }
             const safe = id.replace(/[^a-z0-9_-]/gi, '_').toLowerCase();
-            const m = await evalJS(cdp, MEASURE);
+            let m = await evalJS(cdp, MEASURE);
 
             if (m.error) {
               failures.push({ panel: id, theme, pass: label, code: 'measure', msg: m.error });
               console.log(`  ✗  ${id} — ${m.error}`);
               continue;
+            }
+
+            // The panel switch is not synchronous, and 700ms is not a promise.
+            // One run in 36 measured `ai-authoring` while "Explain" was still on
+            // screen and passed — because "Explain" is short enough to fit, so
+            // every assertion was green about the wrong panel. That is F36's
+            // lesson repeating one layer up. Remember the title each panel is
+            // known by, and when a later read disagrees, wait and look again
+            // before believing it.
+            const seen = titleByPanel.get(id);
+            if (seen !== undefined && m.panelTitle !== seen) {
+              await sleep(800);
+              m = await evalJS(cdp, MEASURE);
+            }
+            if (m.panelTitle) {
+              if (seen === undefined) titleByPanel.set(id, m.panelTitle);
+              else if (m.panelTitle !== seen) {
+                failures.push({
+                  panel: id,
+                  theme,
+                  pass: label,
+                  code: 'stale-panel',
+                  msg: `header reads "${m.panelTitle}" but this panel is known as "${seen}" — the measurement is of a panel that had not finished switching`
+                });
+                console.log(`  ✗  ${id} — measured "${m.panelTitle}", expected "${seen}"`);
+                continue;
+              }
             }
 
             // Capture BEFORE asserting: a screenshot of a failing panel is the

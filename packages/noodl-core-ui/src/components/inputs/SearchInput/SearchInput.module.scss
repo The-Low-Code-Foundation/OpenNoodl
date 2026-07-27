@@ -32,6 +32,11 @@ $_search-bar-height: 45px;
   line-height: $_search-bar-height;
   border: none;
   flex-grow: 1;
+  // A flex item's `min-width: auto` is its intrinsic width, and an <input>'s
+  // intrinsic width is its default `size` — roughly 20 characters, ~168px, plus
+  // the 40px icon gutter below. Without this the field simply refuses to shrink
+  // and overflows its own Root by 35px once the panel is near its 240px floor.
+  min-width: 0;
   padding-left: 40px;
 
   &::placeholder {

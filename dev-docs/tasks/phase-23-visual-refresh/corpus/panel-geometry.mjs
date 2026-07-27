@@ -287,7 +287,24 @@ const MEASURE_X = `(() => {
 
   const textOf = (el) => (el.value || el.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 60);
 
-  const describe = (el) => ({ el: name(el), path: pathOf(el), text: textOf(el) });
+  // Which panel is this element actually inside? The measurement is scoped to
+  // the whole panel *slot*, and every panel stays mounted in it — so if a panel
+  // other than the one just clicked is still laid out, its content is measured
+  // and silently filed under the clicked panel's name. That happened: a Version
+  // Control changed-file path was reported three times as a Problems defect, and
+  // the only reason it was caught was that the text named a git path. A finding
+  // that cannot say which panel it is in is a finding you cannot act on.
+  const ownerOf = (el) => {
+    let cur = el;
+    while (cur && cur !== panel) {
+      const title = cur.querySelector && cur.querySelector('[class*="PanelHeader-module__Title"]');
+      if (title) return (title.innerText || '').trim();
+      cur = cur.parentElement;
+    }
+    return null;
+  };
+
+  const describe = (el) => ({ el: name(el), path: pathOf(el), text: textOf(el), owner: ownerOf(el) });
 
   // The right edge nothing may cross. The panel's own content box: its padding
   // box minus any scrollbar gutter, which is what the user sees.
@@ -532,7 +549,12 @@ const setPanelWidth = (w) => `(() => {
         failures++;
         widthFailures++;
         console.log(`  ✗  ${pw}px  ${id}`);
-        const where = (x) => `${x.el}${x.path ? `  [${x.path}]` : ''}${x.text ? `  "${x.text}"` : ''}`;
+        // `owner` is the panel the element is really inside. It is printed
+        // whenever it disagrees with the panel we just clicked, because that
+        // disagreement means the finding belongs to a different file than the
+        // heading above it claims.
+        const where = (x) =>
+          `${x.el}${x.owner ? `  (in "${x.owner}")` : ''}${x.path ? `  [${x.path}]` : ''}${x.text ? `  "${x.text}"` : ''}`;
         for (const s of m.sticksOut.slice(0, 5)) {
           console.log(`       sticks ${s.past}px past the panel's right edge (w ${s.width}): ${where(s)}`);
         }

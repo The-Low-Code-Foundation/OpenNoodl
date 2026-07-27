@@ -151,7 +151,7 @@ export function SidePanel() {
   // panel's title as "Co…".
   const overflowButtonRef = useRef<HTMLButtonElement>(null);
 
-  function showModeOverflowMenu() {
+  function showModeOverflowMenu(event?: React.MouseEvent<HTMLButtonElement>) {
     if (!layout) return;
     const items: (MenuDialogItem | 'divider')[] = [
       {
@@ -175,10 +175,20 @@ export function SidePanel() {
     // Anchored to the button, not to the mouse: a floating panel moves and the
     // cursor does not, and this is the one popup in the editor that is always
     // opened from inside a panel that may have been dragged anywhere.
+    //
+    // The clicked element first, the ref second. They are normally the same
+    // button, but "normally" is doing real work: when the ref came back empty the
+    // anchor silently fell through to `screen.getCursorScreenPoint()`, and under a
+    // synthesised click the OS cursor has not moved — so the menu appeared in the
+    // window's top-left corner instead of under the ⋯. `event.currentTarget` is
+    // the element the handler is attached to, by definition, so it cannot be the
+    // wrong button and cannot be unmounted while its own click is being handled.
+    const anchor = event?.currentTarget ?? overflowButtonRef.current ?? undefined;
+
     showContextMenuInPopup({
       items,
       width: MenuDialogWidth.Default,
-      attachTo: overflowButtonRef.current ?? undefined,
+      attachTo: anchor,
       position: 'bottom'
     });
   }

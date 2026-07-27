@@ -64,7 +64,23 @@ export function showContextMenuInPopup({
       title={title}
       width={width || MenuDialogWidth.Large}
       isVisible={true}
-      triggerRef={{ current: container }}
+      /**
+       * Anchor to the button when there is one, not to `container`.
+       *
+       * `MenuDialog` portals out of `container` into the dialog layer and
+       * positions itself from this rect in a one-shot `useLayoutEffect`. Two
+       * things then go wrong at once: `container` holds nothing (its only child
+       * has been portalled away) so it measures 0×0, and PopupLayer positions it
+       * *after* that effect has already run. The menu was measuring a zero-sized
+       * box at the origin and landing in the window's top-left corner — 280px
+       * and two hundred pixels away from the button that opened it.
+       *
+       * The `attachTo` element is the one thing here with a real, stable rect
+       * that is already laid out when the effect runs. With no `attachTo` the
+       * old behaviour is unchanged: `container` is positioned at the cursor
+       * point, which is what a right-click menu wants.
+       */
+      triggerRef={{ current: attachTo ?? container }}
       renderDirection={renderDirection}
       onClose={() => {
         PopupLayer.instance.hidePopout(popout);
