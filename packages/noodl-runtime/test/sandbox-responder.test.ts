@@ -56,6 +56,23 @@ describe('AIX-008 sandbox responder', () => {
     expect(body<QueryBody>(answer).results.length).toBe(2);
   });
 
+  it('finds the Parse route under a mount path — the shape every configured endpoint has', () => {
+    // `https://host/parse` and `http://localhost:8577/api` are the norm, not the
+    // exception; matching only the first segment answered an empty 200 to every
+    // query on any project that actually had a backend configured.
+    for (const url of [
+      'https://host/parse/classes/Books',
+      'http://localhost:8577/api/classes/Books',
+      'https://host/app/v1/parse/classes/Books'
+    ]) {
+      const answer = respond({ method: 'POST', url, body: { _method: 'GET' } }, store());
+      expect(body<QueryBody>(answer).results.length).toBe(2);
+    }
+
+    const session = respond({ method: 'POST', url: 'https://host/parse/login', body: { username: 'me@here' } }, store());
+    expect(body<Row>(session).sessionToken).toBeTruthy();
+  });
+
   it('distinguishes a create from a query on the same path', () => {
     const s = store();
     const answer = respond({ method: 'POST', url: '/classes/Books', body: { title: 'New' } }, s);

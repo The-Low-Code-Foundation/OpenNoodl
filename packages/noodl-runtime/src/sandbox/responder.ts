@@ -89,8 +89,39 @@ function parseSession(store: SandboxStore) {
   return { ...store.user, sessionToken: String(store.user.sessionToken ?? 'r:sandbox-session') };
 }
 
-function respondParse(request: SandboxRequest, store: SandboxStore, path: string, params: URLSearchParams) {
+/**
+ * The Parse-shaped segments, and where they start.
+ *
+ * A configured endpoint almost always carries a mount path —
+ * `https://host/parse`, `http://localhost:8577/api` — so `/classes/Books`
+ * arrives as `/parse/classes/Books`. Matching only the first segment made the
+ * sandbox answer an empty 200 to every query on any project that *had* a
+ * backend configured, which is the one case where the preview looks plausible
+ * and is silently wrong. Found live: a project with an endpoint rendered an
+ * empty list where the same graph rendered three books without one.
+ */
+const PARSE_HEADS = [
+  'classes',
+  'aggregate',
+  'functions',
+  'files',
+  'login',
+  'logout',
+  'users',
+  'auth',
+  'oauth',
+  'requestPasswordReset',
+  'verificationEmailRequest'
+];
+
+function parseSegments(path: string): string[] {
   const parts = segments(path);
+  const at = parts.findIndex((part) => PARSE_HEADS.indexOf(part) !== -1);
+  return at === -1 ? parts : parts.slice(at);
+}
+
+function respondParse(request: SandboxRequest, store: SandboxStore, path: string, params: URLSearchParams) {
+  const parts = parseSegments(path);
   const head = parts[0];
   const method = request.method.toUpperCase();
   const body = asObject(request.body);
