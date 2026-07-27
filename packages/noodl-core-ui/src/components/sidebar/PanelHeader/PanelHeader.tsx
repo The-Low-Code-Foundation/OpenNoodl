@@ -12,9 +12,23 @@ export interface PanelHeaderProps extends UnsafeStyleProps {
   hasNoHeaderDivider?: boolean;
 
   children?: Slot;
+
+  /**
+   * Chrome owned by the side panel rather than by any one panel — PNL-003's
+   * wide/hide controls. `BasePanel` fills it from `PanelModeSlotContext`, so a
+   * panel never has to know it exists. See PanelHeader.context.tsx.
+   */
+  modeSlot?: Slot;
 }
 
-export function PanelHeader({ title, hasNoHeaderDivider, children, UNSAFE_className, UNSAFE_style }: PanelHeaderProps) {
+export function PanelHeader({
+  title,
+  hasNoHeaderDivider,
+  children,
+  modeSlot,
+  UNSAFE_className,
+  UNSAFE_style
+}: PanelHeaderProps) {
   return (
     <div
       className={classNames(css['Root'], hasNoHeaderDivider && css._hasNoHeaderDivider, UNSAFE_className)}
@@ -23,7 +37,10 @@ export function PanelHeader({ title, hasNoHeaderDivider, children, UNSAFE_classN
       <div className={css['Title']}>
         <Label size={LabelSize.Big}>{title}</Label>
       </div>
-      <div className={css['Children']}>{children}</div>
+      <div className={css['Children']}>
+        {children}
+        {Boolean(modeSlot) && <div className={css['ModeGroup']}>{modeSlot}</div>}
+      </div>
     </div>
   );
 }

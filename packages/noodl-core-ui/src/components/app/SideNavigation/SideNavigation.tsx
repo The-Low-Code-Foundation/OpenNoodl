@@ -107,13 +107,16 @@ export interface SideNavigationProps {
   panel: Slot;
 
   onExitClick?: React.MouseEventHandler<HTMLDivElement>;
-  isExpanded?: boolean;
 }
 
-export function SideNavigation({ toolbar, panel, onExitClick, isExpanded = false }: SideNavigationProps) {
+// PNL-003: `isExpanded` is gone. It existed only for the topology panel, whose
+// registration has been commented out since it was shelved, so both the prop and
+// the `55vw` rule it drove were unreachable. The idea it prototyped — a wide
+// mode — is now general and lives in useSidePanelLayout.
+export function SideNavigation({ toolbar, panel, onExitClick }: SideNavigationProps) {
   return (
     <SideNavigationContextProvider>
-      <div className={classNames(css['Root'], isExpanded && css['Root--expanded'])}>
+      <div className={classNames(css['Root'])}>
         <div className={css['Panel']}>{panel}</div>
 
         <div className={css['Toolbar']}>

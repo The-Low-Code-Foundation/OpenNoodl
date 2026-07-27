@@ -2,17 +2,17 @@ $_sidebar-hover-enter-offset: 250ms;
 
 .Root {
   height: 100%;
+  width: 100%;
   border-right: 1px solid var(--theme-color-bg-1);
   display: flex;
   position: relative;
   overflow: hidden;
-  min-width: 380px;
-  max-width: 55vw;
-  transition: width 0.3s ease-in-out;
 
-  &--expanded {
-    width: 55vw;
-  }
+  /* PNL-003: `min-width: 380px` used to live here and silently overrode the
+     divider's own `sizeMin`, so the panel could not be made narrower than 380px
+     no matter what the divider said — and could not be collapsed at all. The
+     width is now owned in one place (useSidePanelLayout) and this element just
+     fills what the divider gives it. */
 }
 
 /* PAR-003: icon rail per the editor mock — 52px wide, bg-1, hairline right

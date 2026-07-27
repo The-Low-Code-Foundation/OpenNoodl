@@ -6,6 +6,20 @@ export interface KeyboardCommand {
   keybinding: number; //e.g. KeyMod.CtrlCmd | KeyCode.KEY_V
   weight?: number;
   type?: 'up' | 'down'; //default is down
+
+  /**
+   * PNL-003: run even when a *non-text* element holds focus.
+   *
+   * The default guard below declines to run any command while anything
+   * focusable has focus — and in Chromium a `<button>` takes focus when you
+   * click it, so clicking a rail icon or a toolbar button silently disables
+   * every shortcut until you click elsewhere. Layout commands (⌘\, ⌘B) have to
+   * work right after you clicked the thing they act on.
+   *
+   * Text entry still wins: a command with this set is *not* run while an input,
+   * textarea, select or contenteditable has focus.
+   */
+  worksWhenFocused?: boolean;
 }
 
 function getKeyMod(evt: KeyboardEvent): number {
@@ -29,6 +43,17 @@ function getFocusedElement(): HTMLElement | null {
   if (!element || !document.hasFocus()) return null;
   const isFocusable = !!(element.type || element.href || element.tabIndex !== -1);
   return isFocusable ? element : null;
+}
+
+/**
+ * Focus that a keystroke should belong to rather than to a command: somewhere
+ * the user is entering text.
+ */
+function isTextEntryElement(element: HTMLElement | null): boolean {
+  if (!element) return false;
+  if (element.isContentEditable) return true;
+  const tag = element.tagName;
+  return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
 }
 
 export default class KeyboardHandler {
@@ -61,6 +86,10 @@ export default class KeyboardHandler {
 
       if (focusedElement) {
         //something else has focus, e.g. a text input or similar
+        if (isTextEntryElement(focusedElement)) return;
+        // ...but a button that merely took focus when it was clicked must not
+        // disable every shortcut in the editor. Commands opt in explicitly.
+        this.executeCommandMatchingKeyEvent(event, 'down', true);
         return;
       }
 
@@ -108,14 +137,16 @@ export default class KeyboardHandler {
     document.removeEventListener('mouseup', this.onMouseUp);
   }
 
-  executeCommandMatchingKeyEvent(event: KeyboardEvent, type: 'down' | 'up') {
+  executeCommandMatchingKeyEvent(event: KeyboardEvent, type: 'down' | 'up', onlyWorksWhenFocused = false) {
     const code = getKeyMod(event) + KeyCodeUtils.fromString(event.key);
-    const command = this.findCommand(code, type);
+    const command = this.findCommand(code, type, onlyWorksWhenFocused);
     command?.handler();
   }
 
-  private findCommand(code: number, type: 'up' | 'down') {
-    const matchingCommands = this.commands.filter((c) => c.keybinding === code && (c.type || 'down') === type);
+  private findCommand(code: number, type: 'up' | 'down', onlyWorksWhenFocused = false) {
+    const matchingCommands = this.commands.filter(
+      (c) => c.keybinding === code && (c.type || 'down') === type && (!onlyWorksWhenFocused || c.worksWhenFocused)
+    );
 
     if (matchingCommands.length === 0) {
       return null;

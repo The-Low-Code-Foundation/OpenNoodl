@@ -13,4 +13,19 @@
 
 .Children {
   display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+/* PNL-003: the side panel's own controls, separated from the panel's actions by
+   a hairline — the mock's `.modeGroup`. */
+.ModeGroup {
+  display: flex;
+  gap: 2px;
+  padding-left: 6px;
+  margin-left: 2px;
+
+  &:not(:first-child) {
+    border-left: 1px solid var(--theme-color-border-default);
+  }
 }

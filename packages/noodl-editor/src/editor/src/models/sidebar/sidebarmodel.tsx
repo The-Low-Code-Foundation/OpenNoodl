@@ -25,6 +25,16 @@ export interface SidebarItem<TProps = Record<string, unknown>> {
 
   placement?: 'top' | 'bottom';
 
+  /**
+   * PNL-003: the width this panel opens at the first time, in pixels, **not**
+   * counting the 52px icon rail. After that the width the user set is
+   * remembered per panel, per project. Omit for the 328px default.
+   *
+   * It lives here rather than in a table in `EditorPage` so that the number sits
+   * next to the panel that has to live with it.
+   */
+  defaultWidth?: number;
+
   isDisabled?: boolean /** Default: false */;
 
   /** Default: false */

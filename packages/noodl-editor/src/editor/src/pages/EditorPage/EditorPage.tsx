@@ -3,7 +3,7 @@ import { ProjectDesignTokenContextProvider } from '@noodl-contexts/ProjectDesign
 import { useKeyboardCommands } from '@noodl-hooks/useKeyboardCommands';
 import { useModel } from '@noodl-hooks/useModel';
 import { ipcRenderer } from 'electron';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { platform } from '@noodl/platform';
 
 import { App } from '@noodl-models/app';
@@ -40,6 +40,7 @@ import { BaseWindow } from '../../views/windows/BaseWindow';
 import { whatsnewRender } from '../../whats-new';
 import { IRouteProps } from '../AppRoute';
 import { useSetupSettings } from './useSetupSettings';
+import { SidePanelLayoutProvider, useSidePanelLayout } from './useSidePanelLayout';
 
 
 if (import.meta.webpackHot) {
@@ -74,40 +75,17 @@ export function EditorPage({ route }: EditorPageProps) {
   const Document = appRegistry.getActiveDocument();
 
   const [lesson, setLesson] = useState(null);
-  const [frameDividerSize, setFrameDividerSize] = useState(undefined);
 
-  // Handle sidebar expansion for topology panel
-  useEffect(() => {
-    const eventGroup = {};
+  // PNL-003: the side panel's width. This replaces an effect that reset the
+  // width to 380px on every `activeChanged` *and* every `window.resize`, and
+  // never persisted it — the reset loop behind "I'm constantly expanding and
+  // shrinking the side panel". Width is now per panel, per project, and stays.
+  const sidePanelLayout = useSidePanelLayout();
 
-    const updateSidebarSize = () => {
-      const activeId = SidebarModel.instance.ActiveId;
-      const isTopology = activeId === 'topology';
-
-      if (isTopology) {
-        // Calculate 55vw in pixels to match SideNavigation expansion
-        const expandedSize = Math.floor(window.innerWidth * 0.55);
-        setFrameDividerSize(expandedSize);
-      } else {
-        // Use default size
-        setFrameDividerSize(380);
-      }
-    };
-
-    // Listen to sidebar changes
-    SidebarModel.instance.on(SidebarModelEvent.activeChanged, updateSidebarSize, eventGroup);
-
-    // Also listen to window resize to recalculate 55vw
-    window.addEventListener('resize', updateSidebarSize);
-
-    // Run once on mount
-    updateSidebarSize();
-
-    return () => {
-      SidebarModel.instance.off(eventGroup);
-      window.removeEventListener('resize', updateSidebarSize);
-    };
-  }, []);
+  // `useKeyboardCommands` registers once on mount, so the handlers below read
+  // the layout through a ref rather than closing over the first render's copy.
+  const sidePanelLayoutRef = useRef(sidePanelLayout);
+  sidePanelLayoutRef.current = sidePanelLayout;
 
   useEffect(() => {
     // Display latest whats-new-post if the user hasn't seen one after it was last published
@@ -198,6 +176,21 @@ export function EditorPage({ route }: EditorPageProps) {
     {
       handler: () => exportProjectComponents(),
       keybinding: KeyMod.CtrlCmd | KeyMod.Shift | KeyCode.KEY_E
+    },
+    {
+      // PNL-003: widen the panel and back. `KeyboardHandler` already declines to
+      // run commands while a focusable element has focus, so this does not fire
+      // while you are typing in a panel field.
+      handler: () => sidePanelLayoutRef.current.toggleWide(),
+      keybinding: KeyMod.CtrlCmd | KeyCode.US_BACKSLASH,
+      // Must still fire right after you clicked the rail icon or the header
+      // button, which in Chromium leaves that button focused.
+      worksWhenFocused: true
+    },
+    {
+      handler: () => sidePanelLayoutRef.current.toggleHidden(),
+      keybinding: KeyMod.CtrlCmd | KeyCode.KEY_B,
+      worksWhenFocused: true
     }
   ]);
 
@@ -225,18 +218,21 @@ export function EditorPage({ route }: EditorPageProps) {
           {isLoading ? (
             <ActivityIndicator />
           ) : (
-            <>
+            <SidePanelLayoutProvider value={sidePanelLayout}>
               <FrameDivider
                 first={<SidePanel />}
                 second={<ErrorBoundary>{Boolean(Document) && <Document />}</ErrorBoundary>}
-                sizeMin={200}
-                size={frameDividerSize}
+                sizeMin={sidePanelLayout.dividerSizeMin}
+                size={sidePanelLayout.dividerSize}
                 horizontal
-                onSizeChanged={setFrameDividerSize}
+                onDragStart={sidePanelLayout.onDividerDragStart}
+                onDragEnd={sidePanelLayout.onDividerDragEnd}
+                onSizeChanged={sidePanelLayout.onDividerSizeChanged}
+                onDividerDoubleClick={sidePanelLayout.toggleWide}
               />
 
               {Boolean(lesson) && <Frame instance={lesson} isContentSize isFitWidth />}
-            </>
+            </SidePanelLayoutProvider>
           )}
         </BaseWindow>
       </ProjectDesignTokenContextProvider>

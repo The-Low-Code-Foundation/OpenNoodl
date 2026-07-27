@@ -2,7 +2,7 @@ import classNames from 'classnames';
 import React from 'react';
 
 import { ActivityIndicator } from '@noodl-core-ui/components/common/ActivityIndicator';
-import { PanelHeader, PanelHeaderProps } from '@noodl-core-ui/components/sidebar/PanelHeader';
+import { PanelHeader, PanelHeaderProps, usePanelModeSlot } from '@noodl-core-ui/components/sidebar/PanelHeader';
 import { Slot } from '@noodl-core-ui/types/global';
 
 import css from './BasePanel.module.scss';
@@ -37,10 +37,12 @@ export function BasePanel({
   UNSAFE_style,
   UNSAFE_content_style
 }: BasePanelProps) {
+  const modeSlot = usePanelModeSlot();
+
   return (
     <div className={classNames(css['Root'], UNSAFE_className)} style={UNSAFE_style}>
       {Boolean(title) && (
-        <PanelHeader hasNoHeaderDivider={hasNoHeaderDivider} title={title}>
+        <PanelHeader hasNoHeaderDivider={hasNoHeaderDivider} title={title} modeSlot={modeSlot}>
           {headerSlot}
         </PanelHeader>
       )}

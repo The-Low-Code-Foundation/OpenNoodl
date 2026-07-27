@@ -8,12 +8,18 @@ import { SidebarModelEvent } from '@noodl-models/sidebar/sidebarmodel';
 
 import { SideNavigation, SideNavigationButton } from '@noodl-core-ui/components/app/SideNavigation';
 import { ErrorBoundary } from '@noodl-core-ui/components/common/ErrorBoundary';
+import { IconName } from '@noodl-core-ui/components/common/Icon';
+import { IconButton, IconButtonVariant } from '@noodl-core-ui/components/inputs/IconButton';
 import { Container, ContainerDirection } from '@noodl-core-ui/components/layout/Container';
+import { Tooltip } from '@noodl-core-ui/components/popups/Tooltip';
+import { PanelModeSlotProvider } from '@noodl-core-ui/components/sidebar/PanelHeader';
 
+import { useSidePanelLayoutContext } from '../../pages/EditorPage/useSidePanelLayout';
 import css from './SidePanel.model.scss';
 
 export function SidePanel() {
   const [group] = useState({});
+  const layout = useSidePanelLayoutContext();
 
   const sidebar = useModernModel(SidebarModel.instance, [SidebarModelEvent.itemsChanged]);
 
@@ -113,17 +119,40 @@ export function SidePanel() {
     };
   }, []);
 
+  // PNL-003: the two controls that belong to the side panel rather than to any
+  // one panel. They go into `PanelHeader`'s mode slot so every `BasePanel` gets
+  // them without a second header component existing; PNL-005 formalises the slot.
+  const modeSlot = layout ? (
+    <>
+      <Tooltip content={layout.mode === 'wide' ? 'Narrow panel' : 'Widen panel'} fineType="⌘\" showAfterMs={300}>
+        <IconButton
+          variant={IconButtonVariant.Transparent}
+          icon={layout.mode === 'wide' ? IconName.ArrowsInLineHorizontal : IconName.ViewportHorizontalArrow}
+          testId="side-panel-wide-toggle"
+          onClick={layout.toggleWide}
+        />
+      </Tooltip>
+      <Tooltip content="Hide panel" fineType="⌘B" showAfterMs={300}>
+        <IconButton
+          variant={IconButtonVariant.Transparent}
+          icon={IconName.ArrowLineLeft}
+          testId="side-panel-hide-toggle"
+          onClick={layout.toggleHidden}
+        />
+      </Tooltip>
+    </>
+  ) : null;
+
   function onItemClick(item: SidebarItem) {
+    // PNL-003: clicking any rail icon brings a hidden panel back at its last
+    // width — the rail stays usable while the panel is collapsed.
+    layout?.revealIfHidden();
     sidebar.switch(item.id);
     item.onClick && item.onClick();
   }
 
-  // Check if topology panel is active for expanded view
-  const isExpanded = activeId === 'topology';
-
   return (
     <SideNavigation
-      isExpanded={isExpanded}
       onExitClick={() => App.instance.exitProject()}
       toolbar={
         <>
@@ -160,39 +189,41 @@ export function SidePanel() {
         </>
       }
       panel={
-        <div style={{ height: '100%' }}>
-          {Object.entries(panels).map(([id, panel]) => (
-            <div
-              key={id}
-              data-panel-id={id}
-              className={css['PanelItem']}
-              style={{
-                display: id === activeId ? 'block' : 'none'
-              }}
-            >
-              <ErrorBoundary
-                showTryAgain
-                onTryAgain={() => {
-                  // Recreate all the panels, hopefully it will work again
-                  setPanels({});
-
-                  nextTick(() => {
-                    const currentPanelId = SidebarModel.instance.ActiveId;
-                    const component = SidebarModel.instance.getPanelComponent(currentPanelId);
-
-                    setPanels({
-                      [currentPanelId]: React.createElement(component)
-                    });
-
-                    setActiveId(currentPanelId);
-                  });
+        <PanelModeSlotProvider slot={modeSlot}>
+          <div style={{ height: '100%' }}>
+            {Object.entries(panels).map(([id, panel]) => (
+              <div
+                key={id}
+                data-panel-id={id}
+                className={css['PanelItem']}
+                style={{
+                  display: id === activeId ? 'block' : 'none'
                 }}
               >
-                {panel}
-              </ErrorBoundary>
-            </div>
-          ))}
-        </div>
+                <ErrorBoundary
+                  showTryAgain
+                  onTryAgain={() => {
+                    // Recreate all the panels, hopefully it will work again
+                    setPanels({});
+
+                    nextTick(() => {
+                      const currentPanelId = SidebarModel.instance.ActiveId;
+                      const component = SidebarModel.instance.getPanelComponent(currentPanelId);
+
+                      setPanels({
+                        [currentPanelId]: React.createElement(component)
+                      });
+
+                      setActiveId(currentPanelId);
+                    });
+                  }}
+                >
+                  {panel}
+                </ErrorBoundary>
+              </div>
+            ))}
+          </div>
+        </PanelModeSlotProvider>
       }
     />
   );

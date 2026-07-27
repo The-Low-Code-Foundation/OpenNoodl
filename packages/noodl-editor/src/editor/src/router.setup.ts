@@ -62,6 +62,7 @@ export function installSidePanel({ isLesson }: SetupEditorOptions) {
 
   SidebarModel.instance.register({
     id: 'components',
+    defaultWidth: 280,
     name: 'Components',
     order: 1,
     icon: IconName.Components,
@@ -82,6 +83,7 @@ export function installSidePanel({ isLesson }: SetupEditorOptions) {
 
   SidebarModel.instance.register({
     id: 'search',
+    defaultWidth: 340,
     name: 'Search',
     fineType: new Keybinding(KeyMod.CtrlCmd, KeyCode.KEY_F).label,
     order: 2,
@@ -139,6 +141,7 @@ export function installSidePanel({ isLesson }: SetupEditorOptions) {
   SidebarModel.instance.register({
     experimental: true,
     id: ExplainPanel_ID,
+    defaultWidth: 400,
     name: 'Explain',
     description:
       'Ask what the selected node, selection, or whole component does. Read-only — the explanation cites ' +
@@ -151,6 +154,7 @@ export function installSidePanel({ isLesson }: SetupEditorOptions) {
   SidebarModel.instance.register({
     experimental: true,
     id: AiAuthoringPanel_ID,
+    defaultWidth: 400,
     name: 'Build',
     description:
       'Describe a new component and watch an AI build it as nodes, validated against your project. ' +
@@ -163,6 +167,7 @@ export function installSidePanel({ isLesson }: SetupEditorOptions) {
   SidebarModel.instance.register({
     experimental: true,
     id: ProblemsPanel_ID,
+    defaultWidth: 420,
     name: 'Problems',
     description:
       'Validates the project against the node catalog: unknown node types, nonexistent ports, ' +
@@ -191,6 +196,7 @@ export function installSidePanel({ isLesson }: SetupEditorOptions) {
 
   SidebarModel.instance.register({
     id: 'backend-services',
+    defaultWidth: 560,
     name: 'Backend Services',
     isDisabled: isLesson === true,
     order: 8,
@@ -211,6 +217,7 @@ export function installSidePanel({ isLesson }: SetupEditorOptions) {
 
   SidebarModel.instance.register({
     id: 'app-setup',
+    defaultWidth: 460,
     name: 'App Setup',
     isDisabled: isLesson === true,
     order: 8.5,
@@ -220,6 +227,7 @@ export function installSidePanel({ isLesson }: SetupEditorOptions) {
 
   SidebarModel.instance.register({
     id: 'settings',
+    defaultWidth: 460,
     name: 'Project settings',
     order: 9,
     icon: IconName.Setting,
@@ -277,6 +285,7 @@ export function installSidePanel({ isLesson }: SetupEditorOptions) {
 
   SidebarModel.instance.register({
     id: 'editor-settings',
+    defaultWidth: 460,
     name: 'Editor settings',
     order: 1,
     placement: 'bottom',
