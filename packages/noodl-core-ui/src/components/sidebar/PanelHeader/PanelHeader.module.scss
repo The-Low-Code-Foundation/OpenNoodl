@@ -1,3 +1,5 @@
+@use '../PanelRow/panel-bands' as bands;
+
 /* PNL-005: one panel chrome.
  *
  * `PanelHeader` rendered a `.Title` div that had **no rule in this file at all**
@@ -95,10 +97,12 @@
  * back its own padding, which is what stops the controls being pushed out at
  * 240px. The hook is here for whoever builds the menu: tag the demotable
  * controls `data-panel-chrome="secondary"`. */
-/* 357px of content box, not 359: `.Root`'s padding is vertical only, so the
-   frame's content box is the panel width less its 2px of border. See the offset
-   note in `PanelRow/panel-bands.scss`, which owns every band number. */
-@container panel-frame (max-width: 357px) {
+/* The breakpoint is "a panel narrower than 360px", but a container query resolves
+   against the *content box* — and `.Root`'s padding is vertical only, so the
+   frame's content box is the panel width less its 2px of border. That −2px is
+   PNL-004's arithmetic and it stays in one place: `bands.frame-narrow` carries
+   it, so this file never restates a number. */
+@include bands.frame-narrow {
   .Root {
     padding-left: 10px;
     padding-right: 4px;
