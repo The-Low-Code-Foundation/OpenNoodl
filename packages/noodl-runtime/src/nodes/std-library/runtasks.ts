@@ -55,6 +55,7 @@ interface RunTasksNodeInstance extends NodeInstance {
   itemOutputSignalTriggered(name: string, model: ModelLike, itemNode: TaskNode): void;
   _queueOperation(op: () => void | Promise<void>): void;
   _runQueueOperations(): Promise<void>;
+  _deleteAllTasks(): void;
 }
 
 function sendSignalOnInput(itemNode: TaskNode, name: string) {
@@ -373,32 +374,24 @@ const RunTasksDefinition: NodeDefinitionOptions = {
       }
 
       this.runningOperations = false;
+    },
+    // Both of these used to be declared at the *top level* of the definition rather than
+    // here, and `nodedefinition.ts` installs `opts.methods || opts.prototypeExtensions` and
+    // nothing else — so neither reached the prototype. The base `Node.prototype._onNodeDeleted`
+    // ran instead, and deleting a Run Tasks node mid-run leaked every live task component
+    // into the node scope with no owner (PLAT-003 NOTES §25.3 items 1–2).
+    _deleteAllTasks(this: RunTasksNodeInstance) {
+      // `.values()`, not the Map itself: `for…of` over a `Map` yields `[key, value]`
+      // entries, so `deleteNode` would be handed a two-element array rather than a node.
+      for (const taskComponent of this._internal.activeTasks.values()) {
+        this.nodeScope.deleteNode(taskComponent);
+      }
+      this._internal.activeTasks.clear();
+    },
+    _onNodeDeleted(this: RunTasksNodeInstance) {
+      Node.prototype._onNodeDeleted.call(this);
+      this._deleteAllTasks();
     }
-  },
-  // ---------------------------------------------------------------------------------
-  // Both of these are declared at the *top level* of the definition rather than inside
-  // `methods`, and `nodedefinition.ts` only installs `opts.methods || opts.prototypeExtensions`
-  // on the prototype (line 266). So neither is ever installed:
-  //
-  //   * `_onNodeDeleted` here is dead — the base `Node.prototype._onNodeDeleted` runs
-  //     instead, so deleting a Run Tasks node mid-run leaks every live task component,
-  //     which stays in the node scope with no owner.
-  //   * `_deleteAllTasks` is therefore unreachable, and would not work if it were called:
-  //     `for…of` over a `Map` yields `[key, value]` entries, so `deleteNode` would receive
-  //     a two-element array rather than a node. It wants `activeTasks.values()`.
-  //
-  // Left verbatim: moving them into `methods` turns dead code live, which is a behaviour
-  // change and belongs in its own commit (PLAT-003 NOTES §25).
-  // ---------------------------------------------------------------------------------
-  _deleteAllTasks(this: RunTasksNodeInstance) {
-    for (const taskComponent of this._internal.activeTasks as unknown as Iterable<TaskNode>) {
-      this.nodeScope.deleteNode(taskComponent);
-    }
-    this._internal.activeTasks.clear();
-  },
-  _onNodeDeleted: function (this: RunTasksNodeInstance) {
-    Node.prototype._onNodeDeleted.call(this);
-    (this as unknown as { _deleteAllTasks(): void })._deleteAllTasks();
   }
 } as NodeDefinitionOptions;
 

@@ -11,6 +11,8 @@ import type {
   NodeModule
 } from '@noodl/types';
 
+import Node = require('../../node');
+
 const difference = require('lodash.difference');
 const ExpressionEvaluator = require('../../expression-evaluator');
 
@@ -82,17 +84,18 @@ const ExpressionNode: NodeDefinitionOptions = {
     internal.unsubscribe = null;
   },
   methods: {
-    // Note this does *not* chain to `Node.prototype._onNodeDeleted`, unlike every sibling
-    // that overrides it. The base clears the node's model listeners, sets `_deleted` and
-    // unsubscribes the port-level expression subscriptions; none of that runs for an
-    // Expression node. Kept verbatim — adding the chain is a behaviour change, and one
-    // whose blast radius is every project using the node (PLAT-003 NOTES §25).
+    // Own cleanup first, then chain — the order every sibling that overrides this uses
+    // (see `componentinstance.ts`). This used not to chain at all, so a deleted Expression
+    // node never cleared its model listeners, never set `_deleted`, and never unsubscribed
+    // its port-level expression subscriptions (PLAT-003 NOTES §25.3 item 3).
     _onNodeDeleted: function (this: ExpressionNodeInstance) {
       // Clean up reactive subscriptions to prevent memory leaks
       if (this._internal.unsubscribe) {
         this._internal.unsubscribe();
         this._internal.unsubscribe = null;
       }
+
+      Node.prototype._onNodeDeleted.call(this);
     },
     registerInputIfNeeded: function (this: ExpressionNodeInstance, name: string) {
       if (this.hasInput(name)) {
