@@ -7,6 +7,7 @@ import { UndoActionGroup, UndoQueue } from '@noodl-models/undo-queue-model';
 
 import { ScrollArea } from '@noodl-core-ui/components/layout/ScrollArea';
 import { Tabs, TabsVariant } from '@noodl-core-ui/components/layout/Tabs';
+import { BasePanel } from '@noodl-core-ui/components/sidebar/BasePanel';
 
 import { Frame } from '../../common/Frame';
 import { ToastLayer } from '../../ToastLayer/ToastLayer';
@@ -69,9 +70,6 @@ export function PropertyEditor(props: PropertyEditorProps) {
   }, [props.model]); // FIX: Update when model changes!
 
   const aiAssistant = props.model?.metadata?.AiAssistant;
-  if (aiAssistant) {
-    return <AiPropertyEditor {...props} instance={instance} />;
-  }
 
   // PAR-002: the panel sits on bg-1 (mock `.props`); the legacy shell and the
   // header are transparent so this is the single panel ground.
@@ -84,14 +82,41 @@ export function PropertyEditor(props: PropertyEditorProps) {
     backgroundColor: 'var(--theme-color-bg-1)'
   };
 
+  /*
+   * PNL-005: the property editor gets the shared `PanelHeader`, like every other
+   * registered panel.
+   *
+   * It is not a duplicate of the node header below it. That bar (PNL-007 /
+   * PAR-002 own its *contents* — the node name, the type chip, rename/docs/
+   * delete) names the *subject*; this one names the *panel*, and it is the only
+   * thing that carries the side panel's own mode controls. Without it, selecting
+   * a node switched to a panel with no widen, no hide and no float/full at all —
+   * `PanelHeader`'s mode slot is where those live.
+   *
+   * `UNSAFE_style` keeps PAR-002's bg-1 ground; `UNSAFE_content_style` drops
+   * `BasePanel`'s insets because the legacy `Frame` views underneath bring their
+   * own, and `isFill` keeps the flex chain Root → Inner → ChildrenContainer →
+   * ScrollArea → Frame exactly the shape it already was.
+   */
   return (
-    <div style={panelStyle}>
-      {Boolean(props.model) && <NodeLabel {...props} />}
+    <BasePanel
+      title="Properties"
+      isFill
+      UNSAFE_style={{ backgroundColor: 'var(--theme-color-bg-1)' }}
+      UNSAFE_content_style={{ paddingInline: 0, paddingTop: 0 }}
+    >
+      {aiAssistant ? (
+        <AiPropertyEditor {...props} instance={instance} />
+      ) : (
+        <div style={panelStyle}>
+          {Boolean(props.model) && <NodeLabel {...props} />}
 
-      <ScrollArea>
-        <Frame instance={instance} isContentSize UNSAFE_style={{ flex: 1 }} />
-      </ScrollArea>
-    </div>
+          <ScrollArea>
+            <Frame instance={instance} isContentSize UNSAFE_style={{ flex: 1 }} />
+          </ScrollArea>
+        </div>
+      )}
+    </BasePanel>
   );
 }
 

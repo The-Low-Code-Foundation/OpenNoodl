@@ -1,5 +1,10 @@
 import React, { useCallback, useState } from 'react';
 
+import { IconName } from '@noodl-core-ui/components/common/Icon';
+import { IconButton, IconButtonVariant } from '@noodl-core-ui/components/inputs/IconButton';
+import { BasePanel } from '@noodl-core-ui/components/sidebar/BasePanel';
+import { Tooltip } from '@noodl-core-ui/components/popups/Tooltip';
+
 import { EventDispatcher } from '../../../../../shared/utils/EventDispatcher';
 import { ExecutionDetail } from './components/ExecutionDetail/ExecutionDetail';
 import { ExecutionFilters } from './components/ExecutionFilters/ExecutionFilters';
@@ -44,14 +49,24 @@ export function ExecutionHistoryPanel() {
   );
 
   return (
-    <div className={styles.Panel}>
-      <div className={styles.Header}>
-        <span className={styles.Title}>Execution History</span>
-        <button className={styles.RefreshButton} onClick={refresh} title="Refresh" aria-label="Refresh">
-          ↻
-        </button>
-      </div>
-
+    /* PNL-005: shared chrome. The hand-rolled 12/16px bar with its own 13px/600
+       title is gone; Refresh is an action-slot icon button rather than a `↻`
+       glyph in a bare `<button>`. */
+    <BasePanel
+      title="Execution History"
+      isFill
+      UNSAFE_content_style={{ paddingInline: 0, paddingTop: 0 }}
+      headerSlot={
+        <Tooltip content="Refresh" showAfterMs={300}>
+          <IconButton
+            variant={IconButtonVariant.Transparent}
+            icon={IconName.Refresh}
+            onClick={refresh}
+            testId="execution-history-refresh"
+          />
+        </Tooltip>
+      }
+    >
       {!selectedExecutionId && <ExecutionFilters filters={filters} onChange={setFilters} />}
 
       <div className={styles.Body}>
@@ -65,6 +80,6 @@ export function ExecutionHistoryPanel() {
           <ExecutionList executions={executions} loading={loading} error={error} onSelect={setSelectedExecutionId} />
         )}
       </div>
-    </div>
+    </BasePanel>
   );
 }

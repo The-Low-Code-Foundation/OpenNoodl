@@ -16,6 +16,7 @@ import { ComponentModel } from '@noodl-models/componentmodel';
 import { NodeGraphNode } from '@noodl-models/nodegraphmodel';
 
 import { Icon, IconName } from '@noodl-core-ui/components/common/Icon';
+import { BasePanel } from '@noodl-core-ui/components/sidebar/BasePanel';
 
 import { HighlightManager } from '../../../services/HighlightManager';
 import css from './ComponentXRayPanel.module.scss';
@@ -92,24 +93,23 @@ export function ComponentXRayPanel() {
 
   if (!xrayData) {
     return (
-      <div className={css['ComponentXRayPanel']}>
+      <BasePanel title="Component X-Ray" isFill UNSAFE_content_style={{ paddingInline: 0, paddingTop: 0 }}>
         <div className={css['EmptyState']}>
           <Icon icon={IconName.Search} />
           <h3>No Component Selected</h3>
           <p>Select a component to view its X-Ray analysis</p>
         </div>
-      </div>
+      </BasePanel>
     );
   }
 
   return (
-    <div className={css['ComponentXRayPanel']}>
-      {/* Header */}
+    /* PNL-005: the panel's own 16px header carried both the panel's name (a 14px
+       uppercase `h2`, unlike any other panel) and the subject component's name.
+       The former is the shared `PanelHeader`; the latter stays, as a subject band
+       at the top of the content, because it is data and not chrome. */
+    <BasePanel title="Component X-Ray" isFill UNSAFE_content_style={{ paddingInline: 0, paddingTop: 0 }}>
       <div className={css['Header']}>
-        <div className={css['Title']}>
-          <Icon icon={IconName.Search} />
-          <h2>Component X-Ray</h2>
-        </div>
         <div className={css['ComponentName']}>
           <Icon icon={IconName.Component} />
           <span>{xrayData.componentFullName}</span>
@@ -350,6 +350,6 @@ export function ComponentXRayPanel() {
           </div>
         )}
       </div>
-    </div>
+    </BasePanel>
   );
 }

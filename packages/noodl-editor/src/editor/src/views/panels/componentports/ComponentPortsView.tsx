@@ -1,5 +1,7 @@
 import React, { useRef, useState } from 'react';
 
+import { PanelHeader } from '@noodl-core-ui/components/sidebar/PanelHeader';
+
 import PopupLayer from '../../popuplayer';
 
 export interface ComponentPortItem {
@@ -277,9 +279,17 @@ export function ComponentPortsView({
 }: ComponentPortsViewProps) {
   return (
     <>
-      <div className="sidebar-panel-header">
-        <span className="sidebar-panel-header-label">{title}</span>
-      </div>
+      {/* PNL-005: the shared `PanelHeader`, not the legacy 33px
+          `.sidebar-panel-header` with its 12px capitalised label — this panel
+          ("Ports", registered as `PortEditor`) was missing from the spec's list
+          of fourteen but wore a fifteenth kind of header.
+
+          `PanelHeader` directly rather than `BasePanel`: the panel is mounted
+          through a `Frame` into its own React root (`createRoot` in
+          componentports.tsx), so `BasePanel`'s flex chain and its mode-slot
+          context — which does not cross a root boundary — would buy nothing
+          here. Same bar; no mode controls, as today. */}
+      <PanelHeader title={title} />
 
       <div style={{ overflowY: 'auto' }}>
         <div className="ports">
