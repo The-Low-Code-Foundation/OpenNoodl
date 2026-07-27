@@ -1007,6 +1007,13 @@ export class ProjectModel extends Model {
       key,
       data
     });
+
+    // F44: `metadata` is serialised by `toJSON`, but this event is dispatched
+    // under the `ProjectModel.` namespace and so never reaches the `Model.*`
+    // autosave listener. Arm the save here rather than renaming the event —
+    // `Model.metadataChanged` is already taken by `ComponentModel.setMetaData`
+    // and forwarded to the viewer, and this is a *project* change.
+    scheduleProjectSave();
   }
 
   getMetaData(key: string) {
@@ -1037,6 +1044,9 @@ export class ProjectModel extends Model {
         data: this.metadata[key]
       });
     }
+
+    // F44: same gap as `setMetaData` — see the note there.
+    scheduleProjectSave();
   }
 
   // App Configuration Methods
@@ -1390,14 +1400,33 @@ const ignoreEvents = [
   'Model.1',
   'Model.2'
 ];
+/**
+ * F44: the one place that arms the autosave.
+ *
+ * It used to be inlined in the `Model.*` listener below, which meant the *only*
+ * way to get a project written to disk was to emit an event through
+ * `Model.notifyListeners` — `EventDispatcher`'s wildcard match requires the
+ * first dot-component to be identical, so anything dispatched under another
+ * namespace was silently unsaved. `setMetaData` dispatches
+ * `ProjectModel.metadataChanged`, so every write to `metadata` (the app config:
+ * app name, description, SEO, PWA, config variables) mutated memory and
+ * scheduled nothing. It reached `project.json` only when some *other* change
+ * fired a real `Model.*` event and `toJSON()` swept the pending metadata along
+ * with it — which is why the app name appeared to lag exactly one edit behind.
+ */
+function scheduleProjectSave() {
+  if (!saveOnModelChange) return;
+
+  clearTimeout(saveTimeout);
+  saveTimeout = setTimeout(saveProject, 1000);
+}
+
 EventDispatcher.instance.on(
   'Model.*',
   function (event, eventName) {
     if (ignoreEvents.indexOf(eventName) !== -1) return;
-    if (!saveOnModelChange) return;
 
-    clearTimeout(saveTimeout);
-    saveTimeout = setTimeout(saveProject, 1000);
+    scheduleProjectSave();
   },
   null
 );

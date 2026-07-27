@@ -31,6 +31,7 @@ export * from './project';
 export * from './projectmerger';
 export * from './projectpatcher';
 export * from './services';
+export * from './sidepanel';
 export * from './utils';
 export * from './schemas';
 export * from './io';
