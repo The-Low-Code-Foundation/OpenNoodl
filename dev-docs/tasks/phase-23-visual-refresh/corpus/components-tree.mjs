@@ -268,9 +268,38 @@ async function forcePanelWidth(cdp, px) {
       window.__pnl006_widthEl = target;
       const px = ${px === null ? 'null' : px};
       if (px === null) {
-        target.style.removeProperty('width');
-        target.style.removeProperty('flex');
+        // Put back what was there, do not just delete the declaration.
+        //
+        // The panel's docked width is driven from outside this element (the
+        // FrameDivider's custom properties, via PNL-003's layout state), and
+        // removing an inline width the harness did not necessarily author leaves
+        // the panel with nothing sizing it — it collapses to about 4px and
+        // neither the rail nor the hide toggle brings it back, because as far as
+        // the app is concerned nothing changed. That wedges the editor for every
+        // gate that runs afterwards, which is F35's lesson (a gate must not leave
+        // the app worse than it found it) with the sign flipped: it is not only
+        // injected styles that have to be undone, it is removed ones too.
+        const saved = window.__pnl006_savedWidth;
+        if (saved && saved.el === target) {
+          if (saved.width) target.style.setProperty('width', saved.width, saved.widthPriority || '');
+          else target.style.removeProperty('width');
+          if (saved.flex) target.style.setProperty('flex', saved.flex, saved.flexPriority || '');
+          else target.style.removeProperty('flex');
+        } else {
+          target.style.removeProperty('width');
+          target.style.removeProperty('flex');
+        }
+        window.__pnl006_savedWidth = null;
       } else {
+        if (!window.__pnl006_savedWidth) {
+          window.__pnl006_savedWidth = {
+            el: target,
+            width: target.style.getPropertyValue('width'),
+            widthPriority: target.style.getPropertyPriority('width'),
+            flex: target.style.getPropertyValue('flex'),
+            flexPriority: target.style.getPropertyPriority('flex')
+          };
+        }
         target.style.setProperty('width', px + 'px', 'important');
         target.style.setProperty('flex', '0 0 ' + px + 'px', 'important');
       }
@@ -460,6 +489,22 @@ const MEASURE = `(() => {
   }
   // The dot's *rule*, read from the stylesheet, so its contract is checked even
   // on a project that happens to have no warnings at all.
+  //
+  // A rule's style.* gives back what the author wrote, not what it resolves to —
+  // so a perfectly round dot declared as "border-radius: var(--radius-full)"
+  // reads as the literal string "var(--radius-full)" and fails a check looking
+  // for 9999px or 50%. Resolve single-token var() references against the
+  // document's own custom properties before asserting, and say when a token does
+  // not exist rather than reporting the reference as if it were a value.
+  // (No backticks in this block: it lives inside a template literal.)
+  const resolveVar = (value) => {
+    if (typeof value !== 'string') return value;
+    const m = value.trim().match(/^var\\(\\s*(--[A-Za-z0-9_-]+)\\s*(?:,\\s*([^)]*))?\\)$/);
+    if (!m) return value;
+    const resolved = getComputedStyle(document.documentElement).getPropertyValue(m[1]).trim();
+    if (resolved) return resolved;
+    return m[2] ? m[2].trim() : value + ' (token undefined)';
+  };
   try {
     for (const sheet of Array.from(document.styleSheets)) {
       let rules;
@@ -468,10 +513,10 @@ const MEASURE = `(() => {
         if (rule.selectorText && /ComponentsPanel-module__Warning/.test(rule.selectorText)) {
           out.dotRule = {
             selector: rule.selectorText,
-            width: rule.style.width,
-            height: rule.style.height,
-            borderRadius: rule.style.borderRadius,
-            background: rule.style.backgroundColor,
+            width: resolveVar(rule.style.width),
+            height: resolveVar(rule.style.height),
+            borderRadius: resolveVar(rule.style.borderRadius),
+            background: resolveVar(rule.style.backgroundColor),
             cursor: rule.style.cursor
           };
         }
@@ -703,6 +748,40 @@ function flush() {
     // Open the Components panel once; it stays active for the whole run.
     if (!(await clickSel(cdp, '[data-test="components-panel"]'))) {
       console.error('Could not reach the Components rail button. Open a project in the editor first.');
+      process.exit(1);
+    }
+
+    // The panel has to actually be open before anything below means anything.
+    //
+    // The "wide" pass does not set a width — it removes the override and takes
+    // whatever the panel already is. Run this straight after `panel-modes.mjs`,
+    // which leaves the panel hidden, and "wide" is **3px**: every row then reads
+    // as 75px past the panel's right edge and the glyph contrast is sampled
+    // against a sliver. The first live run reported exactly that, as eight
+    // separate failures, none of them about the Components panel.
+    //
+    // A precondition that is assumed is a precondition that eventually isn't
+    // true. Reveal it if it is collapsed, and refuse to report derived numbers
+    // measured against a panel nobody can see.
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const w = await evalJS(
+        cdp,
+        `(() => {
+          const p = document.querySelector('[class*="SideNavigation-module__Panel"]');
+          return p ? Math.round(p.getBoundingClientRect().width) : 0;
+        })()`
+      );
+      if (w >= 200) break;
+      if (attempt === 0) {
+        // ⌘B-hidden from an earlier gate; the hide toggle is the way back.
+        await clickSel(cdp, '[data-test="side-panel-hide-toggle"]');
+        await sleep(400);
+        continue;
+      }
+      console.error(
+        `The Components panel is ${w}px wide. Every measurement below would be about a collapsed panel, ` +
+          `so this run is refusing rather than reporting nonsense. Reveal the panel (⌘B) and re-run.`
+      );
       process.exit(1);
     }
 
