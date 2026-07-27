@@ -4,10 +4,10 @@
     "scripts"
   ],
   "exclude": [],
-  "commit": "d0cd779",
+  "commit": "6491dad",
   "max": {
     "TSFixme": 545,
-    "any": 461,
+    "any": 465,
     "@ts-ignore": 17,
     "@ts-nocheck": 0,
     "@ts-expect-error": 79
@@ -92,7 +92,7 @@
     },
     "noodl-viewer-react": {
       "TSFixme": 30,
-      "any": 67,
+      "any": 71,
       "@ts-ignore": 0,
       "@ts-nocheck": 0,
       "@ts-expect-error": 4
@@ -2265,6 +2265,13 @@
     "scripts/test-editor.ts": {
       "TSFixme": 0,
       "any": 1,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-viewer-react/src/nodes-deprecated/std-library/data/dbcollectionnode.ts": {
+      "TSFixme": 0,
+      "any": 4,
       "@ts-ignore": 0,
       "@ts-nocheck": 0,
       "@ts-expect-error": 0
