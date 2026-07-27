@@ -23,7 +23,8 @@
  *      `hidden`/`clip` and whose `scrollWidth` exceeds its `clientWidth` is
  *      content nobody can reach.
  *   5. **Nothing scrolls sideways.** A horizontal scrollbar inside a panel is
- *      always a layout failure here; the panel is a column.
+ *      a layout failure unless it is declared: `data-allow-x-scroll="<reason>"`
+ *      on the element or an ancestor. A unified diff is the case that earns it.
  *   6. **No control truncates a value you cannot then read.** A form control
  *      whose value overflows is normally fine — the caret reaches the end. It
  *      is a failure only when the control is `user-select: none` or `readOnly`,
@@ -41,8 +42,13 @@
  *   - **Visually-hidden labels.** `PanelRow`'s sr-only label is a 1px box with
  *     `overflow: hidden` and `nowrap`; every one would otherwise report.
  *     `clientWidth <= 2` is skipped.
- *   - **`visibility: hidden` / `opacity: 0`.** Measuring nodes (TextInput's
- *     autosize sizer) carry real overflow nobody can see.
+ *   - **Anything invisible, ancestors included.** Measuring nodes (TextInput's
+ *     autosize sizer) carry real overflow nobody can see. Checked with
+ *     `checkVisibility({ opacityProperty: true })`, not with the element's own
+ *     computed style: `visibility` inherits but **`opacity` does not**, so a
+ *     `<p>` inside an `opacity: 0` tooltip computes its own opacity as 1. That
+ *     cost one false "sticks 40px past the panel's right edge" in the first
+ *     live run.
  *   - **Form controls scrolling their own value.** Added after the first live
  *     run, which reported every text field in the editor holding a long value.
  *     See the `MEASURE_X` note; they move to bucket (6) rather than vanishing.
@@ -194,9 +200,17 @@ const MEASURE = `(() => {
   const clipped = [];
   const unreachable = [];
 
+  // See the note in MEASURE_X: opacity does not inherit, so checking the
+  // element alone lets anything inside a hidden wrapper report. Adding this can
+  // only remove findings, never add them.
+  const isVisible = (el) =>
+    typeof el.checkVisibility === 'function'
+      ? el.checkVisibility({ opacityProperty: true, visibilityProperty: true, contentVisibilityAuto: true })
+      : getComputedStyle(el).visibility !== 'hidden';
+
   for (const el of [panel, ...panel.querySelectorAll('*')]) {
+    if (!isVisible(el)) continue;
     const cs = getComputedStyle(el);
-    if (cs.visibility === 'hidden' || cs.opacity === '0') continue;
     if (el.clientHeight === 0) continue;
 
     const overBy = el.scrollHeight - el.clientHeight;
@@ -286,17 +300,48 @@ const MEASURE_X = `(() => {
   const scrollsX = [];
   const truncatedControl = [];
 
-  for (const el of panel.querySelectorAll('*')) {
-    const cs = getComputedStyle(el);
-    if (cs.visibility === 'hidden' || cs.opacity === '0') continue;
-    if (cs.display === 'none') continue;
-    // A collapsed box, and the 1px sr-only label box PanelRow renders.
-    if (el.clientWidth <= 2 || el.clientHeight === 0) continue;
-    // Anything that has escaped the panel's flow is not the panel's geometry.
-    if (cs.position === 'fixed') continue;
+  // An element nobody can see cannot overflow anything. visibility inherits, so
+  // checking the element sufficed for that; opacity does NOT — a <p> inside an
+  // opacity-0 wrapper computes its own opacity as 1. That is what made the first
+  // live run report the always-mounted legacy tooltip (reactcomponents/
+  // tooltip.tsx, whose own TODO admits it renders hidden rather than not at all)
+  // as content sticking 40px out of the Project Settings panel. Nothing was on
+  // screen. checkVisibility walks the ancestors properly.
+  // (No backticks in this block: it lives inside a template literal.)
+  const isVisible = (el) =>
+    typeof el.checkVisibility === 'function'
+      ? el.checkVisibility({ opacityProperty: true, visibilityProperty: true, contentVisibilityAuto: true })
+      : getComputedStyle(el).visibility !== 'hidden';
 
+  // Pass 1: the elements a human can actually see, with their boxes. An
+  // invisible element still contributes to an ancestor's scrollWidth, so a
+  // container can report as clipping content that does not exist on screen —
+  // the second half of the legacy-tooltip false positive. Pass 2 uses this to
+  // make a clipped container prove a *visible* child overflows it.
+  const visible = [];
+  for (const el of panel.querySelectorAll('*')) {
+    if (!isVisible(el)) continue;
+    if (el.clientWidth <= 2 || el.clientHeight === 0) continue;
+    const cs = getComputedStyle(el);
+    if (cs.position === 'fixed') continue;
     const r = el.getBoundingClientRect();
     if (r.width === 0) continue;
+    visible.push({ el, cs, r });
+  }
+
+  // Does anything on screen actually reach past this container's content edge?
+  const hasVisibleOverflow = (container) => {
+    const cr = container.getBoundingClientRect();
+    const contentRight = cr.left + container.clientLeft + container.clientWidth;
+    for (const v of visible) {
+      if (v.el === container) continue;
+      if (!container.contains(v.el)) continue;
+      if (v.r.right - contentRight > 1) return true;
+    }
+    return false;
+  };
+
+  for (const { el, cs, r } of visible) {
 
     // (3) sticks out of the panel.
     const past = r.right - panelRight;
@@ -332,11 +377,21 @@ const MEASURE_X = `(() => {
 
     if (ox === 'hidden' || ox === 'clip') {
       if (isEllipsised) continue;
+      // scrollWidth says something overflows; this says a human could see it.
+      if (!hasVisibleOverflow(el)) continue;
       clippedX.push({ ...describe(el), overBy, clientWidth: el.clientWidth, scrollWidth: el.scrollWidth });
       continue;
     }
 
     if (ox === 'auto' || ox === 'scroll' || ox === 'overlay') {
+      // An explicit, recorded decision. A unified diff is the real case: soft
+      // wrapping destroys the column alignment that makes +/- readable, so it
+      // scrolls on purpose. Opt out with a data-allow-x-scroll attribute on the
+      // element (or any ancestor inside the panel), with a reason as its value.
+      // The point is that the decision is written down where the next reader
+      // will find it, not that the assertion goes away.
+      // (No backticks in this block: it lives inside a template literal.)
+      if (el.closest('[data-allow-x-scroll]')) continue;
       scrollsX.push({ ...describe(el), overBy, clientWidth: el.clientWidth, scrollWidth: el.scrollWidth });
     }
   }
