@@ -46,7 +46,7 @@ There is a further reason to do this now rather than later, and it is the sequen
 ### In Scope
 - [x] Type the core runtime: `Node`, node definition, register, scope, context/scheduler
 - [x] Publish the node-definition API types (usable from `noodl-types` or an equivalent shared package)
-- [x] Convert standard-library nodes incrementally *(viewer: top level slice 5, `componentutils/`+`user/` slice 6, `data/` slice 7, `navigation/` slice 8, `nodes-deprecated/` slice 10; runtime: all 24 non-`data/` files slice 11. Remaining: `@noodl/runtime`'s own `std-library/data/` (24 files), owned by slice 12)*
+- [x] Convert standard-library nodes incrementally *(viewer: top level slice 5, `componentutils/`+`user/` slice 6, `data/` slice 7, `navigation/` slice 8, `nodes-deprecated/` slice 10; runtime: all 24 non-`data/` files slice 11, `std-library/data/` slice 12. **Complete — no node code remains in JavaScript in either package.**)*
 - [x] Type `react-component-node.js` (the React binding hub)
 - [x] Convert `noodl-viewer-react` visual and logic nodes *(visual slice 4, logic slices 5–8, deprecated slice 10; every node file in the package is now TypeScript)*
 - [~] Write characterisation tests before converting each significant unit *(partially: the runtime suite grew 132 → 959 across slices 1–11 and slice 11's behaviour fixes were test-first and proven able to fail, but tests have generally been written alongside conversions rather than before them)*
@@ -121,9 +121,10 @@ Do not chase `strict: true` initially. Get accurate types with `strict: false`, 
 - [x] Publish and validate node-definition API types
 - [x] Convert standard library and viewer nodes incrementally *(runtime std-library and
   all of `viewer/src/nodes/` done, slices 5–8; `viewer/src` root, `api/` and `constants/`
-  done slice 9; `nodes-deprecated/` done slice 10. **Every node file in the viewer is now
-  TypeScript.** What is left is not node code: the 3 Group scroll plugins, `viewer.jsx`,
-  and `register-nodes.js` last, once `@noodl/runtime`'s own node files are converted)*
+  done slice 9; `nodes-deprecated/` done slice 10; `@noodl/runtime`'s own node files
+  slices 11–12. **Every node file in both packages is now TypeScript.** What is left is
+  not node code: the runtime's `api/`, models and other infrastructure, the 3 Group scroll
+  plugins and `viewer.jsx`. `register-nodes.js` stays JavaScript — see NOTES §27.4)*
 - [x] Type `react-component-node.js`
 - [ ] Tighten strictness; sweep boundary `TSFixme`s
 - [ ] **After each slice merges, re-run `npm run tsfixme:baseline` and
@@ -139,6 +140,78 @@ Do not chase `strict: true` initially. Get accurate types with `strict: false`, 
 ## CHANGELOG
 
 In progress. Full as-built record in [PLAT-003-NOTES.md](./PLAT-003-NOTES.md).
+
+### Slice 12 — 2026-07-27 — `@noodl/runtime`'s `std-library/data/`, and the end of node code in JavaScript
+
+- **All 24 files under `noodl-runtime/src/nodes/std-library/data`** → `.ts` (~8,900 lines):
+  the two CRUD mixin libraries, the Object/Record/Query trio, Filter Records, REST (591),
+  HTTP Request (1,004) and the six BYOB files (3,184). **With this, no node code remains in
+  JavaScript in either package** — slice 10 finished the viewer, slice 11 the rest of the
+  runtime's nodes, and this the last block.
+- **Preceded by its own behaviour-fixing commit** (`6fdd4d40`), as §26 item 3 proposed.
+  **Run Tasks's `_onNodeDeleted`/`_deleteAllTasks` moved into `methods`** — where
+  `nodedefinition.ts` will actually install them, since it reads `opts.methods ||
+  opts.prototypeExtensions` and nothing else — *and* the cleanup's `for…of` over a `Map`
+  became `.values()`, because installing it without that fix would have handed `deleteNode`
+  a two-element array. The two had to be fixed together. **Expression's `_onNodeDeleted`
+  now chains to `Node.prototype`**, the order `componentinstance.ts` uses; before it,
+  a deleted Expression node never cleared its model listeners, never set `_deleted` and
+  never unsubscribed its port-level subscriptions. Characterisation tests at
+  `test/nodes/node-deletion-cleanup.test.ts`, **proven able to fail** — 6 of 8 fail against
+  the pre-fix source, and the 2 that pass pin the behaviour that was already right.
+- **Two protocols named, both in sibling `.d.ts` files** because `export =` carries one
+  thing (NOTES §27.1). **`crud-mixins.d.ts`** describes what `modelcrudbase` and
+  `dbmodelcrudbase` *add* to the seven nodes they assemble in place — members contributed by
+  a different file, written down nowhere, and therefore uncallable through `NodeInstance`'s
+  index signature. It also names **`MixinNodeModule`**: `category` is set by `addBaseInfo`,
+  so a consumer's literal genuinely is not a complete definition when written, and `Partial`
+  says so honestly rather than requiring what arrives later. **`byob-types.d.ts`** is a
+  deliberate second description of the editor's `BackendServices/types.ts` — the runtime may
+  not import it, and it is not node-author API — kept narrow so editor-side drift surfaces.
+- **`@noodl/types` gained two** (NOTES §27.2). **`ModelScopeLike` + `NodeScopeLike.modelScope`**:
+  `(nodeScope.modelScope || Model)` appears at ~30 sites here and resolved to `unknown` at
+  every one; the doc records that a set scope is what makes a sandboxed preview possible and
+  that it is inherited down the component tree. **`RuntimeDiscoveredPort`**, the
+  `sendDynamicPorts` payload — the §25.2 shape a third time, with three local descriptions
+  and no name. Its `plug` had to admit **`'input/output'`**, a third value the Object node
+  depends on; the narrower type was written first and that node caught it.
+- **§26 items 1 and 5 were wrong, and were tested rather than reasoned about** (NOTES §27.4).
+  Converting `data/` does **not** retire `register-nodes.js`'s `.default || module` unwrap:
+  `export =` is the *required* convention for a runtime module no viewer `.ts` imports
+  (§25.1), so these files stay CommonJS by design while the viewer's own nodes are ESM — the
+  `||` is what serves both. Removing it makes `catalog:check` fail outright. The comment
+  there now records that instead of predicting its own removal, and `register-nodes.js` is
+  struck from the next-slice list.
+- **Ten defects found, documented at the site, none fixed** (NOTES §27.3). The three that
+  matter: **Query Records' `error` output has never carried a message** — `setError` writes
+  `_internal.err`, the getter reads `_internal.error`, which is §23.4's defect repeated in
+  the node that replaced the one it was found in; **Create and Update Record never normalise
+  their values**, because `setup` assigns `fieldSchema` to the *graph node model* while the
+  reader is the *runtime instance* (the `if (!node._internal) node._internal = {}` guard
+  beside it is the tell), so dates are never ISO-8601'd and `json` columns never parsed; and
+  **Query Records unsubscribes `'insert'` on delete**, a name nothing emits, so its
+  `'create'` listener outlives the node and keeps it reachable. Also: Record's `setModel`
+  dereferences an argument its own `foreach` path passes as `undefined`; Filter Records'
+  port builder calls `.find` on metadata it has already admitted may be absent; Delete
+  Record reads `nodeScope.ModelScope`; `modelcrudbase`'s chain-to-previous call recurses
+  into itself; HTTP Request ships four debug `console.log`s, one printing Authorization
+  headers; REST's default help text is truncated by a stray `;`, and its three XHR handlers
+  `delete this._xhr` off the request rather than the node.
+
+File counts: `noodl-runtime/src` 52 `.js` / 71 `.ts` → **28 `.js` / 97 `.ts`**.
+`noodl-viewer-react/src` unchanged at 4 `.js` / 1 `.jsx` / 138 `.ts` / 46 `.tsx`.
+
+Gates: `catalog:check` byte-identical (154 node types, 89 dynamic) — and it *runs*
+`register-nodes.js`, so that gate proves every one of these files still loads and registers;
+runtime, viewer (`src`), cloud and editor typechecks 0 errors; **runtime jest 968 pass /
+0 fail** (959 in §25.6, +8 from the characterisation tests); viewer jest 59/59; **viewer,
+deploy, ssr and cloud prod bundles all green, which clears the debt §25.6 recorded as
+owed**; prettier clean; lint ratchet green (3074 under baseline). **`any` contribution
+zero** — the `tsfixme` gate is red by 56, every one in AIX-005 agent files this slice never
+touched, so **the baseline is deliberately left alone**; three `any`s that crept into the
+first draft were removed rather than baselined. 23 eslint errors, all the deliberate
+`no-this-alias` of §13.7. The preview typecheck's 30 errors were **proven pre-existing** by
+re-running with this slice's files stashed. **Owed:** a live editor pass, now the only one.
 
 ### Slice 11 — 2026-07-27 — `@noodl/runtime`'s own node files, minus `data/` (step 7, in the runtime)
 

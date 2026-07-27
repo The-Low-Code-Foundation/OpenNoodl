@@ -2029,3 +2029,270 @@ Tracked file counts at `82eec928`: `noodl-runtime` **52 `.js` / 71 `.ts`**;
 
 **Owed, and not paid by this slice:** the viewer prod bundle (blocked by another
 workstream's in-flight files, §25.6) and a live editor pass.
+
+---
+
+## 27. Slice 12 — `@noodl/runtime`'s `std-library/data/`, and the end of node code in JavaScript
+
+All 24 files under `noodl-runtime/src/nodes/std-library/data` converted, ~8,900 lines: the
+two CRUD mixin libraries, the Object/Record/Query trio, Filter Records, REST, HTTP Request
+and the six BYOB files. With slice 10 having finished the viewer and slice 11 the rest of
+the runtime's nodes, **there is no node code left in JavaScript in either package.**
+
+Preceded by its own behaviour-fixing commit (§27.0), as §26 item 3 proposed.
+
+### 27.0 The node-deletion fixes, committed first (`6fdd4d40`)
+
+§25.3 items 1–3, all three about what a deleted node fails to clean up.
+
+**Run Tasks (items 1–2).** `_onNodeDeleted` and `_deleteAllTasks` moved into `methods`,
+which is what makes them exist at all — `nodedefinition.ts` installs `opts.methods ||
+opts.prototypeExtensions` and nothing else. That alone would have installed a broken
+cleanup, so the `for…of` over the `Map` became `for…of … .values()` in the same commit.
+The two genuinely have to be fixed together, which was the argument for a separate commit
+rather than doing it inside a typing slice.
+
+**Expression (item 3).** Chains to `Node.prototype._onNodeDeleted` after its own cleanup —
+the order `componentinstance.ts` uses, and the one every sibling that overrides it follows.
+
+Characterisation tests at `noodl-runtime/test/nodes/node-deletion-cleanup.test.ts`, and
+**proven able to fail**: 6 of the 8 fail against the pre-fix source. The 2 that pass are
+worth keeping precisely because they pass — they pin the behaviour that was already
+correct (Run Tasks did run the *base* cleanup; Expression did unsubscribe its *own*
+subscription), so a later "fix" that trades one for the other is caught.
+
+### 27.1 Two protocols named, both in sibling `.d.ts` files
+
+`export =` carries exactly one thing, and in both cases that one thing is a value. So the
+types went next to the module rather than into it — the same constraint §25.1 describes,
+resolved differently because here it is types rather than a default export.
+
+1. **`crud-mixins.d.ts`.** `modelcrudbase` and `dbmodelcrudbase` are not node definitions:
+   each exports functions that take a half-built module and **mutate it in place**, folding
+   in ports, methods and sometimes a `setup` that wraps the caller's. Seven node files are
+   assembled this way. The consequence was the §19.3 shape at scale — the members a Record
+   node's `methods` may call are contributed by a *different file*, so every one of them
+   resolved through `NodeInstance`'s index signature as `unknown` and was uncallable. Now
+   named per mixin, so a consumer declares `this` as the intersection of the mixins it
+   actually applies, and calling `_getACL` without `addAccessControl` is a compile error.
+
+   It also names **`MixinNodeModule`**, and that one is a small piece of honesty worth
+   keeping: `category` is set by `addBaseInfo`, not by the file that declares the node, so
+   the literal a consumer writes genuinely *is not* a complete `NodeDefinitionOptions` at
+   the point it is written. `Partial` keeps every property the literal does declare checked,
+   which is the whole point of annotating, and stops requiring the one that arrives later.
+
+2. **`byob-types.d.ts`.** The cached backend schema the BYOB nodes read out of
+   `backendServices` metadata. This is deliberately a **second description** of
+   `noodl-editor/.../BackendServices/types.ts`, which is what writes that metadata: the
+   runtime may not depend on the editor, and this is not node-author API so it does not
+   belong in `@noodl/types` either. Declared narrow — only the members the nodes read — so
+   a change on the editor side surfaces as a missing property rather than as silence. (A
+   *third* copy already exists in the editor's own `ByobFilterBuilder/types.ts`.)
+
+### 27.2 The published types this slice moved
+
+1. **`ModelScopeLike`** and **`NodeScopeLike.modelScope`** (new). `(this.nodeScope.modelScope
+   || Model)` appears at roughly thirty sites across this directory and resolved to
+   `unknown` at every one. The type documents what the idiom is *for*: `modelScope` is
+   normally `undefined` and records live in one process-wide store; when it is set the same
+   ids resolve to a different set of records, which is what makes a sandboxed preview
+   possible. It is inherited — `componentinstance.ts` copies it into each child scope — so a
+   whole component subtree shares one. It deliberately mirrors `ModelModule`'s read/write
+   surface rather than extending it: a scope has no constructor and no `prototype`.
+2. **`RuntimeDiscoveredPort`** (new). The element type of the array handed to
+   `sendDynamicPorts` — the *imperative* half of the dynamic-port story, not to be confused
+   with the declarative `dynamicports` a definition carries. It had three descriptions and
+   no name: `javascript.ts` declares a local `DynamicPort`, `user.ts` spells it
+   `Record<string, unknown>`, and everywhere else it was an untyped literal. The §25.2
+   shape, third occurrence.
+
+   **Its `plug` had to admit a third value.** `'input/output'` declares one port on each
+   side under the same name; the Object node's `prop-…` ports and the editor's
+   `detectRenamed` option both depend on it. `'input' | 'output'` was written first and the
+   Object node caught it — a type that would have quietly lied at exactly the site that
+   needed it most. `EditorConnectionLike.sendDynamicPorts` keeps `unknown[]` rather than
+   naming the new type, because several existing call sites build
+   `Record<string, unknown>[]`; the doc comment points new authors at it instead.
+
+### 27.3 Defects found — ten, none fixed
+
+Three of these are live failures in shipping nodes, and the first two compound with the
+family's history:
+
+1. **Query Records' `error` output has never carried a message.** `setError` writes
+   `this._internal.err`; the getter reads `this._internal.error`. Only the `failure` signal
+   fires. §23.4 recorded *exactly this* in the deprecated `dbcollectionnode` — so it is the
+   same bug in the node that replaced it, carried across the rewrite.
+2. **Create and Update Record never normalise their values.** `setup` builds a field schema
+   and assigns it to `node._internal.fieldSchema`, but `node` there is the
+   **`GraphNodeModel`** and the reader is the **runtime node instance** — different objects.
+   The `if (!node._internal) node._internal = {}` guard sitting next to the assignment is
+   the tell: the graph model has no `_internal`, so one was invented to hold a value nobody
+   reads. So `normalizeValue` always gets an `undefined` schema, and dates are never
+   converted to ISO 8601 nor `json`/`array` columns parsed out of their editor text. And
+   `setup` only runs against a live editor, so a deployed app could not have had it anyway.
+3. **Query Records leaks its `create` listener.** `initialize` subscribes to `save`,
+   `create` and `delete`; `_onNodeDeleted` unsubscribes `insert`, `delete` and `save`.
+   Nothing emits `insert`. The `create` listener closes over the node, so a deleted Query
+   Records node stays reachable and keeps patching a collection nobody reads.
+4. **Record's `setModel` throws on its own `foreach` path.** It dereferences its argument
+   without a guard, and `idSource: 'foreach'` passes `undefined` when the walk finds no
+   repeater. The Object node's otherwise-identical `setModel` *does* guard, and its comment
+   says the undefined case is expected. Same shape as §23.3's Globals crash.
+5. **Filter Records' port builder can throw on project open.** Its guard tests only
+   `parameters.collectionName`, while the `enums` a few lines above have already admitted
+   `dbCollections` may be `undefined` — so `.find` throws before the metadata arrives.
+   Every sibling guards on both.
+6. **Delete Record reads `nodeScope.ModelScope`** — capital M, so `undefined`, so
+   `forScope` silently falls back to the process-wide store. Delete Record alone ignores a
+   scoped store; Save, Create and both relation nodes honour it.
+7. **`modelcrudbase`'s chain-to-previous recurses into itself.** The guard tests the
+   snapshot `_methods`, but the call goes through `_def.node.methods` — and `_def.node` is a
+   *shallow* copy, so that is the very object the mixin has just written the new function
+   into. Latent only because neither caller supplies its own `registerInputIfNeeded`. The
+   sibling `dbmodelcrudbase` calls `_methods.…` in all four equivalent places, which is what
+   this one means.
+8. **HTTP Request ships four debug `console.log`s.** One fires at module scope on every page
+   load of every deployed app; `doFetch`'s prints the request headers, which with Bearer or
+   Basic auth configured puts the token in the browser console.
+9. **REST's default Request help text is truncated.** A `;` ended the `+` chain one line
+   early, leaving `('//*Inputs and *Outputs …')` as a stray expression statement. The
+   Response script's default still has the line.
+10. **REST's three XHR handlers clear the wrong object.** They are `function`s, so `this` is
+    the `XMLHttpRequest`, and `delete this._xhr` removes a property from the request rather
+    than clearing the node's. The node keeps a reference to every completed request, and a
+    later Cancel aborts a finished one — a no-op, which is why it has gone unnoticed. The
+    `_this` alias two lines up is what the code means by the node.
+
+Two smaller ones recorded at the site without a numbered entry: `dbmodelnode2`'s
+`registerInputIfNeeded` consults a `dynamicSignals` table it declares empty one line above,
+so that whole `EdgeTriggeredInput` branch is unreachable; and its `scheduleStore` /
+`userInputSetter` / `inputValues` trio is dead by construction, because `updatePorts`
+publishes the `prop-…` ports as outputs only.
+
+### 27.4 §26 items 1 and 5 were wrong: the unwrap does not retire
+
+§26 said these files were "the last consumers of `register-nodes.js`'s `module.default ||
+module` unwrap, so converting them is what finally retires it — and `register-nodes.js`
+with it". Both halves of that are false, and the reason is §25.1's own rule.
+
+`export =` is the *required* convention for a runtime `.ts` that no viewer `.ts` imports.
+None of these is imported by a viewer `.ts` — the six that reach `register-nodes.js` get
+there through `require()` from a `.js` file — so all 24 take `export =` and stay CommonJS
+**by design**. Meanwhile the viewer's own node files compile at `module: es6` and
+`export default`. The list mixes two module systems permanently, and the `||` is what
+serves both.
+
+Tried, rather than reasoned about: removing the unwrap makes `catalog:check` fail outright
+— the whole viewer half registers `undefined`. The comment in `register-nodes.js` now
+records that instead of predicting its own removal. **`register-nodes.js` stays `.js`**; the
+§21.7 reasons have narrowed but not vanished, and it is the single most load-bearing file in
+the viewer's startup path.
+
+The general lesson is the §21.1 one again, from the other direction: a next-slice note
+predicting what a conversion will *enable* is a hypothesis, and this one had been carried
+forward twice without anyone testing it.
+
+### 27.5 Verification
+
+`catalog:check` byte-identical — **154 node types, 89 with dynamic ports**, unchanged across
+all 24 conversions. It is worth naming why that gate carries so much weight here:
+`scripts/node-catalog/extractor-entry.js` requires `register-nodes` and *runs* it, so a
+byte-identical catalog means every one of these files still loads, registers and produces
+the same ports through the esbuild loader.
+
+Runtime, viewer (`src/`), cloud and editor typechecks 0 errors. **Runtime jest 968 pass /
+0 fail** (959 at `2a465beb`, +8 from §27.0's characterisation tests). Viewer jest 59/59.
+Prettier clean. Lint ratchet green, 3074 under baseline.
+
+**The viewer, deploy, ssr and cloud production bundles are all green — this clears the debt
+§25.6 recorded as owed.** The AIX-008 sandbox workstream that was blocking it has landed.
+
+**`any` contribution zero.** The `tsfixme` gate is red by 56, every one of them in AIX-005
+agent files this slice never touched — the same 56 §25.6 described. The baseline is
+deliberately left alone rather than banking another workstream's markers. Three `any`s did
+creep into the first draft (`httpnode`'s JSONPath walker, `modelcrudbase`'s chain call, and
+an `AnyNode` alias in the new test) and all three were removed rather than baselined.
+
+23 eslint errors, all the deliberate `no-this-alias` of §13.7 plus one
+`no-inner-declarations`; `noodl-runtime` is not in the ratchet's target set.
+
+Two honest limits: **the preview typecheck reports 30 errors**, proven pre-existing by
+running it with this slice's files stashed and getting the identical count — they are
+`import.meta.webpackHot` and `Require.context` module-config errors in editor and core-ui
+files. And **no live editor pass**, which is now the only gate this slice owes.
+
+### 27.6 Traps
+
+1. **§25.7 trap 4 recurred, exactly.** `npx prettier --write $FILES` in zsh passes one
+   long filename and reports `ENAMETOOLONG`. The working form is
+   `… | tr '\n' '\0' | xargs -0 npx prettier --write`. Worth noting that the *failure* mode
+   differed — slice 11 got a false green, this got a hard error — so the same bug is not
+   reliably self-announcing.
+2. **A shell `cd` persists between tool calls.** Several commands ran from
+   `packages/noodl-runtime` and failed with `TS5058: The specified path does not exist:
+   'packages/noodl-runtime'`. Use absolute paths, or `cd` to the repo root first.
+3. **`git stash push` with explicit pathspecs is the safe form, and it works.** Used once
+   here to prove the preview errors were pre-existing, scoped to
+   `packages/noodl-runtime packages/noodl-types packages/…/register-nodes.js` — a
+   concurrent session had core-ui files open the whole time and never noticed. §25.7 trap 3
+   holds.
+4. **File counts moved under this slice again** (§25.7 trap 2, second occurrence). The
+   viewer's `.ts` count read 138 where §25 recorded 137; nothing this slice did touched the
+   viewer. Take counts from `git ls-tree` at a named commit — `6fdd4d40` here — never from
+   `find` at wall-clock time.
+5. **A test's `this`-stub can be defeated by `bindMethods`** — §25.0's wrinkle did not
+   recur, but the related one did: constructing a node through
+   `NodeDefinition.defineNode(module.node)(context, id, scope)` needs only a five-member
+   stub context, and that is a much cheaper harness than standing up a real `NodeContext`.
+   Worth reaching for first when a test only needs one node.
+
+---
+
+## 28. Next slice
+
+Tracked file counts at `066febdd`: `noodl-runtime/src` **28 `.js` / 97 `.ts`**;
+`noodl-viewer-react/src` **4 `.js` / 1 `.jsx` / 138 `.ts` / 46 `.tsx`** (untouched here).
+
+**There is no node code left in JavaScript.** What remains in `noodl-runtime` is
+infrastructure, and the value-per-line is different from here on: these modules have few
+authors, are called from typed code that already describes them, and several are covered by
+real tests.
+
+1. **The `api/` layer — 7 files.** `cloudstore.js` (633) is the one that matters: it is the
+   single untyped dependency of nine files this slice just converted, and every one of them
+   reaches it through an inferred-from-JS shape. `queryutils`, `records`, `configservice`,
+   `cloudfile` and the `adapters/` tree go with it. Highest value of what is left, precisely
+   because the callers are now typed.
+2. **`model.js` and `collection.js`.** Both are already *described* — `ModelLike`,
+   `ModelModule`, `CollectionLike`, `CollectionModule` and now `ModelScopeLike` are
+   published and exercised. Converting them is mostly making the implementation agree with
+   its own published type, which is the cheapest kind of conversion and the one most likely
+   to find a disagreement. §17.1's warning stands: `collection.js` patches `Array.prototype`
+   for the whole process and that is load-bearing.
+3. **The remaining `src/` modules** — the three `models/`, `events`, `editorconnection`,
+   `expression-evaluator`, `javascriptnodeparser`, `nodelibraryexport`, `projectsettings`,
+   `services`, `timerscheduler`.
+4. **The behaviour-fixing commit this slice earned.** §27.3 items 1–3 are live failures in
+   shipping nodes and are the same shape as the two §27.0 just fixed. Item 1 (Query Records'
+   `error` output) is a one-character fix with a characterisation test; item 3 (the
+   `'insert'`/`'create'` mismatch) likewise. Item 2 (Create/Update Record's `fieldSchema`)
+   is larger — it needs the schema to reach the node instance, which means a real decision
+   about *how*, not just a rename. Item 8 (HTTP Request's debug logging, one line of which
+   leaks auth headers) belongs with them and is the one with a security edge.
+5. **The Group scroll plugins** (3 files) and **`viewer.jsx`** — unchanged from §26 item 4,
+   still the lowest value per line.
+6. **`register-nodes.js` is not a conversion target**, and §27.4 explains why the previous
+   two notes were wrong to list it as one. Delete it from the next-slice list rather than
+   carrying it a third time.
+7. **The six mis-flagged deprecated controls** (§21.1) — still open, carried a fourth time.
+   If nobody has wanted it in four slices, it should be filed as its own task or dropped.
+8. **`@noodl/runtime` shipping `.d.ts`** — carried a seventh time and now effectively dead:
+   *all* of the package's node code is TypeScript, so consumers importing from source need
+   no declarations. Recommend closing it rather than carrying it again.
+9. **Do not raise `strict`** (spec step 8), unchanged. Step 9's editor-side sweep stays with
+   PLAT-004.
+
+**Owed, and not paid by this slice:** a live editor pass. The bundle debt from §25.6 is
+paid.
