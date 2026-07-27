@@ -3,6 +3,9 @@ import { AppIdentity } from '@noodl/runtime/src/config/types';
 
 import { PropertyPanelTextInput } from '@noodl-core-ui/components/property-panel/PropertyPanelTextInput';
 import { CollapsableSection } from '@noodl-core-ui/components/sidebar/CollapsableSection';
+import { PanelRow } from '@noodl-core-ui/components/sidebar/PanelRow';
+
+import css from './sections.module.scss';
 
 interface IdentitySectionProps {
   identity: AppIdentity;
@@ -20,34 +23,15 @@ export function IdentitySection({ identity, onChange }: IdentitySectionProps) {
 
   return (
     <CollapsableSection title="App Identity" hasGutter hasVisibleOverflow>
-      <div style={{ marginBottom: '12px' }}>
-        <label
-          style={{
-            display: 'block',
-            fontSize: '12px',
-            fontWeight: 500,
-            marginBottom: '4px',
-            color: 'var(--theme-color-fg-default)'
-          }}
-        >
-          App Name
-        </label>
+      <PanelRow label="App name">
         <PropertyPanelTextInput value={identity.appName || ''} onChange={(value) => onChange({ appName: value })} />
-      </div>
+      </PanelRow>
 
-      <div style={{ marginBottom: '12px' }}>
-        <label
-          style={{
-            display: 'block',
-            fontSize: '12px',
-            fontWeight: 500,
-            marginBottom: '4px',
-            color: 'var(--theme-color-fg-default)'
-          }}
-        >
-          Description
-        </label>
+      {/* A three-line textarea wants the whole row at every width. */}
+      <PanelRow label="Description" htmlFor="app-setup-description" isStacked>
         <textarea
+          id="app-setup-description"
+          className={css.Textarea}
           value={localDescription}
           onChange={(e) => {
             setLocalDescription(e.target.value);
@@ -55,46 +39,15 @@ export function IdentitySection({ identity, onChange }: IdentitySectionProps) {
           }}
           placeholder="Describe your app..."
           rows={3}
-          style={{
-            width: '100%',
-            padding: '8px',
-            fontSize: '13px',
-            fontFamily: 'inherit',
-            backgroundColor: 'var(--theme-color-bg-3)',
-            border: '1px solid var(--theme-color-border-default)',
-            borderRadius: '4px',
-            color: 'var(--theme-color-fg-default)',
-            resize: 'vertical'
-          }}
         />
-      </div>
+      </PanelRow>
 
-      <div style={{ marginBottom: '12px' }}>
-        <label
-          style={{
-            display: 'block',
-            fontSize: '12px',
-            fontWeight: 500,
-            marginBottom: '4px',
-            color: 'var(--theme-color-fg-default)'
-          }}
-        >
-          Cover Image
-        </label>
+      <PanelRow label="Cover image" helpText="Path to cover image in project">
         <PropertyPanelTextInput
           value={identity.coverImage || ''}
           onChange={(value) => onChange({ coverImage: value })}
         />
-        <div
-          style={{
-            fontSize: '11px',
-            color: 'var(--theme-color-fg-muted)',
-            marginTop: '4px'
-          }}
-        >
-          Path to cover image in project
-        </div>
-      </div>
+      </PanelRow>
     </CollapsableSection>
   );
 }

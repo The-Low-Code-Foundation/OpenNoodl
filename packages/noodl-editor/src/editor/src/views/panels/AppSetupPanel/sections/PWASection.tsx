@@ -3,6 +3,9 @@ import { AppPWA } from '@noodl/runtime/src/config/types';
 
 import { PropertyPanelTextInput } from '@noodl-core-ui/components/property-panel/PropertyPanelTextInput';
 import { CollapsableSection } from '@noodl-core-ui/components/sidebar/CollapsableSection';
+import { PanelRow } from '@noodl-core-ui/components/sidebar/PanelRow';
+
+import css from './sections.module.scss';
 
 interface PWASectionProps {
   pwa: AppPWA | undefined;
@@ -53,126 +56,39 @@ export function PWASection({ pwa, onChange }: PWASectionProps) {
 
   return (
     <CollapsableSection title="Progressive Web App" hasGutter hasVisibleOverflow hasTopDivider>
-      {/* Enable PWA Toggle */}
-      <div style={{ marginBottom: '16px' }}>
-        <label
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            cursor: 'pointer',
-            fontSize: '13px',
-            fontWeight: 500,
-            color: 'var(--theme-color-fg-default)'
-          }}
-        >
-          <input
-            type="checkbox"
-            checked={localEnabled}
-            onChange={handleToggle}
-            style={{
-              width: '16px',
-              height: '16px',
-              cursor: 'pointer'
-            }}
-          />
+      {/* The master switch gates everything below it, so it reads as a statement
+          rather than as one more label/control row. */}
+      <div className={css.Group}>
+        <label className={css.CheckboxLabel}>
+          <input type="checkbox" className={css.CheckboxInput} checked={localEnabled} onChange={handleToggle} />
           Enable Progressive Web App
         </label>
-        <div
-          style={{
-            fontSize: '11px',
-            color: 'var(--theme-color-fg-muted)',
-            marginTop: '4px',
-            marginLeft: '24px'
-          }}
-        >
-          Allow users to install your app on their device
-        </div>
+        <div className={css.CheckboxHelp}>Allow users to install your app on their device</div>
       </div>
 
       {/* PWA Configuration Fields - Only shown when enabled */}
       {localEnabled && (
         <>
-          <div style={{ marginBottom: '12px' }}>
-            <label
-              style={{
-                display: 'block',
-                fontSize: '12px',
-                fontWeight: 500,
-                marginBottom: '4px',
-                color: 'var(--theme-color-fg-default)'
-              }}
-            >
-              Short Name
-            </label>
+          <PanelRow label="Short name" helpText="Name shown on home screen (12 chars max recommended)">
             <PropertyPanelTextInput value={pwa?.shortName || ''} onChange={(value) => onChange({ shortName: value })} />
-            <div
-              style={{
-                fontSize: '11px',
-                color: 'var(--theme-color-fg-muted)',
-                marginTop: '4px'
-              }}
-            >
-              Name shown on home screen (12 chars max recommended)
-            </div>
-          </div>
+          </PanelRow>
 
-          <div style={{ marginBottom: '12px' }}>
-            <label
-              style={{
-                display: 'block',
-                fontSize: '12px',
-                fontWeight: 500,
-                marginBottom: '4px',
-                color: 'var(--theme-color-fg-default)'
-              }}
-            >
-              Start URL
-            </label>
+          <PanelRow label="Start URL" helpText="URL the app opens to (default: /)">
             <PropertyPanelTextInput
               value={pwa?.startUrl || '/'}
               onChange={(value) => onChange({ startUrl: value || '/' })}
             />
-            <div
-              style={{
-                fontSize: '11px',
-                color: 'var(--theme-color-fg-muted)',
-                marginTop: '4px'
-              }}
-            >
-              URL the app opens to (default: /)
-            </div>
-          </div>
+          </PanelRow>
 
-          <div style={{ marginBottom: '12px' }}>
-            <label
-              style={{
-                display: 'block',
-                fontSize: '12px',
-                fontWeight: 500,
-                marginBottom: '4px',
-                color: 'var(--theme-color-fg-default)'
-              }}
-            >
-              Display Mode
-            </label>
+          <PanelRow label="Display mode" htmlFor="app-setup-pwa-display" helpText="How the app appears when launched">
             <select
+              id="app-setup-pwa-display"
+              className={css.NativeSelect}
               value={localDisplay}
               onChange={(e) => {
                 const newValue = e.target.value as AppPWA['display'];
                 setLocalDisplay(newValue);
                 onChange({ display: newValue });
-              }}
-              style={{
-                width: '100%',
-                padding: '8px',
-                fontSize: '13px',
-                fontFamily: 'inherit',
-                backgroundColor: 'var(--theme-color-bg-3)',
-                border: '1px solid var(--theme-color-border-default)',
-                borderRadius: '4px',
-                color: 'var(--theme-color-fg-default)',
-                cursor: 'pointer'
               }}
             >
               {DISPLAY_MODES.map((mode) => (
@@ -181,47 +97,21 @@ export function PWASection({ pwa, onChange }: PWASectionProps) {
                 </option>
               ))}
             </select>
-            <div
-              style={{
-                fontSize: '11px',
-                color: 'var(--theme-color-fg-muted)',
-                marginTop: '4px'
-              }}
-            >
-              How the app appears when launched
-            </div>
-          </div>
+          </PanelRow>
 
-          <div style={{ marginBottom: '12px' }}>
-            <label
-              style={{
-                display: 'block',
-                fontSize: '12px',
-                fontWeight: 500,
-                marginBottom: '4px',
-                color: 'var(--theme-color-fg-default)'
-              }}
-            >
-              Background Color
-            </label>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <PanelRow label="Background colour" helpText="Splash screen background color">
+            <div className={css.ColourField}>
               <input
                 type="color"
+                aria-label="Background colour swatch"
+                className={css.ColourSwatch}
                 value={localBgColor}
                 onChange={(e) => {
                   setLocalBgColor(e.target.value);
                   onChange({ backgroundColor: e.target.value });
                 }}
-                style={{
-                  width: '40px',
-                  height: '32px',
-                  border: '1px solid var(--theme-color-border-default)',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  backgroundColor: 'transparent'
-                }}
               />
-              <div style={{ flex: 1 }}>
+              <div className={css.ColourText}>
                 <PropertyPanelTextInput
                   value={localBgColor}
                   onChange={(value) => {
@@ -231,43 +121,14 @@ export function PWASection({ pwa, onChange }: PWASectionProps) {
                 />
               </div>
             </div>
-            <div
-              style={{
-                fontSize: '11px',
-                color: 'var(--theme-color-fg-muted)',
-                marginTop: '4px'
-              }}
-            >
-              Splash screen background color
-            </div>
-          </div>
+          </PanelRow>
 
-          <div style={{ marginBottom: '12px' }}>
-            <label
-              style={{
-                display: 'block',
-                fontSize: '12px',
-                fontWeight: 500,
-                marginBottom: '4px',
-                color: 'var(--theme-color-fg-default)'
-              }}
-            >
-              Source Icon
-            </label>
+          <PanelRow label="Source icon" helpText="Path to 512x512 icon (generates all sizes automatically)">
             <PropertyPanelTextInput
               value={pwa?.sourceIcon || ''}
               onChange={(value) => onChange({ sourceIcon: value })}
             />
-            <div
-              style={{
-                fontSize: '11px',
-                color: 'var(--theme-color-fg-muted)',
-                marginTop: '4px'
-              }}
-            >
-              Path to 512x512 icon (generates all sizes automatically)
-            </div>
-          </div>
+          </PanelRow>
         </>
       )}
     </CollapsableSection>

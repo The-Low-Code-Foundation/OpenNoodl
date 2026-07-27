@@ -4,10 +4,10 @@ import { ProjectModel } from '@noodl-models/projectmodel';
 
 import { Box } from '@noodl-core-ui/components/layout/Box';
 import { PropertyPanelCheckbox } from '@noodl-core-ui/components/property-panel/PropertyPanelCheckbox';
-import { PropertyPanelRow } from '@noodl-core-ui/components/property-panel/PropertyPanelInput';
 import { PropertyPanelTextInput } from '@noodl-core-ui/components/property-panel/PropertyPanelTextInput';
 import { CollapsableSection } from '@noodl-core-ui/components/sidebar/CollapsableSection';
 import { ExperimentalFlag, ExperimentalFlagVariant } from '@noodl-core-ui/components/sidebar/ExperimentalFlag';
+import { PanelRow, PanelRowVariant } from '@noodl-core-ui/components/sidebar/PanelRow';
 import { Text } from '@noodl-core-ui/components/typography/Text';
 
 export function DeploySection() {
@@ -36,31 +36,29 @@ export function DeploySection() {
         variant={ExperimentalFlagVariant.NoPadding}
         text="All these settings are temporary and will be moved to another place in a future version."
       />
-      <Box hasBottomSpacing>
-        <Text>The Base Url.</Text>
-      </Box>
-      <PropertyPanelRow label="Custom Base Url">
+      <PanelRow label="Custom base url" helpText="Noodl.Env.BaseUrl: get the current base url.">
         <PropertyPanelTextInput value={baseUrl} onChange={handleBaseUrl} />
-      </PropertyPanelRow>
-      <Box hasBottomSpacing>
-        <Text>Noodl.Env.BaseUrl: Get the current base url.</Text>
-      </Box>
+      </PanelRow>
+
       <Box hasBottomSpacing hasTopSpacing>
         <Text>Include some extra variables in Noodl.Env:</Text>
       </Box>
-      <PropertyPanelRow label="Deploy Date">
+
+      <PanelRow
+        label="Deploy date"
+        variant={PanelRowVariant.Toggle}
+        helpText="Noodl.Env.DeployedAt: the deploy date time in UTC format."
+      >
         <PropertyPanelCheckbox value={enabledDeployDate} onChange={handleEnableDeployDate} />
-      </PropertyPanelRow>
-      <Box hasBottomSpacing>
-        <Text>Noodl.Env.DeployedAt: The deploy date time in UTC format.</Text>
-      </Box>
-      <PropertyPanelRow label="Git Stats">
+      </PanelRow>
+
+      <PanelRow
+        label="Git stats"
+        variant={PanelRowVariant.Toggle}
+        helpText="Noodl.Env.GitBranch and Noodl.Env.GitSha: the current git branch and commit sha."
+      >
         <PropertyPanelCheckbox value={enabledGitStats} onChange={handleEnableGitStats} />
-      </PropertyPanelRow>
-      <Box hasBottomSpacing>
-        <Text>Noodl.Env.GitBranch: The current git branch.</Text>
-        <Text>Noodl.Env.GitSha: The current git commit sha.</Text>
-      </Box>
+      </PanelRow>
     </CollapsableSection>
   );
 }

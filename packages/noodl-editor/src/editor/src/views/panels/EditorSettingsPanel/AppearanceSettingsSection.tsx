@@ -4,10 +4,9 @@ import { ThemeManager, ThemeManagerEvent, ThemeMode } from '@noodl-models/ThemeM
 
 import { Box } from '@noodl-core-ui/components/layout/Box';
 import { VStack } from '@noodl-core-ui/components/layout/Stack';
-import { PropertyPanelRow } from '@noodl-core-ui/components/property-panel/PropertyPanelInput';
 import { PropertyPanelSelectInput } from '@noodl-core-ui/components/property-panel/PropertyPanelSelectInput';
 import { CollapsableSection } from '@noodl-core-ui/components/sidebar/CollapsableSection';
-import { Text } from '@noodl-core-ui/components/typography/Text';
+import { PanelRow } from '@noodl-core-ui/components/sidebar/PanelRow';
 
 const THEME_OPTIONS: { label: string; value: ThemeMode }[] = [
   { label: 'System', value: 'system' },
@@ -37,19 +36,16 @@ export function AppearanceSettingsSection() {
     <CollapsableSection title="Appearance">
       <Box hasXSpacing>
         <VStack>
-          <PropertyPanelRow label="Theme" isChanged={false}>
+          <PanelRow
+            label="Theme"
+            helpText="System follows your operating system’s light or dark setting. Theme applies to the editor interface — your running app’s appearance is unaffected."
+          >
             <PropertyPanelSelectInput
               value={mode}
               properties={{ options: THEME_OPTIONS }}
               onChange={(value: ThemeMode) => ThemeManager.setMode(value)}
             />
-          </PropertyPanelRow>
-          <Box hasBottomSpacing={2}>
-            <Text>
-              System follows your operating system’s light or dark setting. Theme applies to the editor interface — your
-              running app’s appearance is unaffected.
-            </Text>
-          </Box>
+          </PanelRow>
         </VStack>
       </Box>
     </CollapsableSection>

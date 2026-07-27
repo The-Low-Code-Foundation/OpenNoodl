@@ -15,11 +15,11 @@ import { Box } from '@noodl-core-ui/components/layout/Box';
 import { VStack } from '@noodl-core-ui/components/layout/Stack';
 import { PropertyPanelButton } from '@noodl-core-ui/components/property-panel/PropertyPanelButton';
 import { PropertyPanelCheckbox } from '@noodl-core-ui/components/property-panel/PropertyPanelCheckbox';
-import { PropertyPanelRow } from '@noodl-core-ui/components/property-panel/PropertyPanelInput';
 import { PropertyPanelPasswordInput } from '@noodl-core-ui/components/property-panel/PropertyPanelPasswordInput';
 import { PropertyPanelSelectInput } from '@noodl-core-ui/components/property-panel/PropertyPanelSelectInput';
 import { PropertyPanelTextInput } from '@noodl-core-ui/components/property-panel/PropertyPanelTextInput';
 import { CollapsableSection } from '@noodl-core-ui/components/sidebar/CollapsableSection';
+import { PanelRow, PanelRowVariant } from '@noodl-core-ui/components/sidebar/PanelRow';
 import { Text } from '@noodl-core-ui/components/typography/Text';
 import { Title, TitleSize } from '@noodl-core-ui/components/typography/Title';
 
@@ -151,7 +151,7 @@ export function AiSettingsSection() {
     <CollapsableSection title="AI">
       <Box hasXSpacing>
         <VStack>
-          <PropertyPanelRow label="Provider" isChanged={false}>
+          <PanelRow label="Provider">
             <PropertyPanelSelectInput
               value={provider}
               properties={{
@@ -165,7 +165,7 @@ export function AiSettingsSection() {
                 AiConfigStore.setProvider(value);
               }}
             />
-          </PropertyPanelRow>
+          </PanelRow>
 
           {provider === 'disabled' && (
             <Box hasYSpacing>
@@ -175,7 +175,7 @@ export function AiSettingsSection() {
 
           {provider !== 'disabled' && (
             <>
-              <PropertyPanelRow label="Model" isChanged={false}>
+              <PanelRow label="Model">
                 <PropertyPanelSelectInput
                   value={model}
                   properties={{ options: modelOptions }}
@@ -184,27 +184,30 @@ export function AiSettingsSection() {
                     AiConfigStore.setModel(value, provider);
                   }}
                 />
-              </PropertyPanelRow>
+              </PanelRow>
 
               {needsKey && (
-                <>
-                  <PropertyPanelRow
-                    label={hasSavedKey && !apiKey ? 'API Key (saved)' : 'API Key'}
-                    isChanged={false}
-                  >
-                    <PropertyPanelPasswordInput value={apiKey} onChange={onSaveApiKey} />
-                  </PropertyPanelRow>
-                  {provider === 'openai-compatible' && (
-                    <Box hasBottomSpacing={2}>
-                      <Text>Leave the key blank if your endpoint does not require one.</Text>
-                    </Box>
-                  )}
-                </>
+                <PanelRow
+                  label={hasSavedKey && !apiKey ? 'API Key (saved)' : 'API Key'}
+                  helpText={
+                    provider === 'openai-compatible'
+                      ? 'Leave the key blank if your endpoint does not require one.'
+                      : undefined
+                  }
+                >
+                  <PropertyPanelPasswordInput value={apiKey} onChange={onSaveApiKey} />
+                </PanelRow>
               )}
 
-              <PropertyPanelRow
+              <PanelRow
                 label={provider === 'openai-compatible' ? 'Endpoint' : 'Endpoint (optional)'}
-                isChanged={false}
+                helpText={
+                  ENDPOINT_PLACEHOLDER[provider]
+                    ? provider === 'openai-compatible'
+                      ? `Base URL of your OpenAI-compatible API, for example ${ENDPOINT_PLACEHOLDER[provider]}`
+                      : `Leave blank to use ${ENDPOINT_PLACEHOLDER[provider]}`
+                    : undefined
+                }
               >
                 <PropertyPanelTextInput
                   value={endpoint}
@@ -213,19 +216,9 @@ export function AiSettingsSection() {
                     AiConfigStore.setEndpoint(value, provider);
                   }}
                 />
-              </PropertyPanelRow>
+              </PanelRow>
 
-              {ENDPOINT_PLACEHOLDER[provider] && (
-                <Box hasBottomSpacing={2}>
-                  <Text>
-                    {provider === 'openai-compatible'
-                      ? `Base URL of your OpenAI-compatible API, for example ${ENDPOINT_PLACEHOLDER[provider]}`
-                      : `Leave blank to use ${ENDPOINT_PLACEHOLDER[provider]}`}
-                  </Text>
-                </Box>
-              )}
-
-              <PropertyPanelRow label="Connection" isChanged={false}>
+              <PanelRow label="Connection">
                 <PropertyPanelButton
                   properties={{
                     isPrimary: true,
@@ -235,7 +228,7 @@ export function AiSettingsSection() {
                     }
                   }}
                 />
-              </PropertyPanelRow>
+              </PanelRow>
 
               {provider === 'ollama' && (
                 <Box hasYSpacing>
@@ -277,7 +270,13 @@ export function AiSettingsSection() {
             </>
           )}
 
-          <PropertyPanelRow label="Usage log" isChanged={false}>
+          <PanelRow
+            label="Usage log"
+            variant={PanelRowVariant.Toggle}
+            helpText={`Keeps an anonymous local log of AI authoring usage — outcomes, counts and cost only, never your prompts, component names, or project content. Nothing is sent anywhere; the file stays on this machine${
+              telemetryEnabled ? ` at ${authoringTelemetry().logPath()}` : ''
+            } and helps evaluate the authoring beta if you choose to share it.`}
+          >
             <PropertyPanelCheckbox
               value={telemetryEnabled}
               onChange={(value: boolean) => {
@@ -285,15 +284,7 @@ export function AiSettingsSection() {
                 authoringTelemetry().setEnabled(value);
               }}
             />
-          </PropertyPanelRow>
-          <Box hasBottomSpacing={2}>
-            <Text>
-              Keeps an anonymous local log of AI authoring usage — outcomes, counts and cost only, never your
-              prompts, component names, or project content. Nothing is sent anywhere; the file stays on this
-              machine{telemetryEnabled ? ` at ${authoringTelemetry().logPath()}` : ''} and helps evaluate the
-              authoring beta if you choose to share it.
-            </Text>
-          </Box>
+          </PanelRow>
 
           <Box
             hasXSpacing={3}
