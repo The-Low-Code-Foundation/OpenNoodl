@@ -230,6 +230,17 @@ export interface ModelLike {
   getId(): string;
   toJSON(): Record<string, unknown>;
 
+  /**
+   * The backend class this record came from, set by `CloudStore._fromJSON` when the record
+   * is deserialised — so it is present on anything fetched or created through the database
+   * nodes, and absent on a record the graph made itself.
+   *
+   * It is what lets `Noodl.Records.save(id)` and friends work from an id alone: the class
+   * is read back off the record rather than passed again. Every one of those call sites
+   * reached it through the index signature below and therefore got `unknown`.
+   */
+  _class?: string;
+
   /** The only event the runtime emits is `'change'`. */
   on(event: string, listener: (args: ModelChangeEvent) => void): void;
   off(event: string, listener: (args: ModelChangeEvent) => void): void;

@@ -18,3 +18,22 @@
  * a bare reference would throw a `ReferenceError` rather than read `undefined`.
  */
 declare const _noodl_cloud_runtime_version: string | undefined;
+
+/**
+ * The backend credentials baked into a *deployed cloud-runtime* bundle.
+ *
+ * Read only on the branch `_noodl_cloud_runtime_version` has already selected, and always
+ * behind its own `typeof … !== 'undefined'` guard, because the two are set independently:
+ * a cloud runtime can exist without baked credentials, in which case the reader falls back
+ * to whatever it holds on `this`.
+ *
+ * `masterKey` is present here and nowhere in the browser — this is the server-side path,
+ * which is the only place a master key is allowed to appear.
+ */
+declare const _noodl_cloudservices:
+  | {
+      endpoint: string;
+      appId: string;
+      masterKey?: string;
+    }
+  | undefined;

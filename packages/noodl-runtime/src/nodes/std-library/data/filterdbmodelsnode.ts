@@ -21,6 +21,7 @@ import CollectionImport = require('../../../collection');
 import ModelImport = require('../../../model');
 import CloudStore = require('../../../api/cloudstore');
 import QueryUtils = require('../../../api/queryutils');
+import type { VisualSorting } from '../../../api/queryutils';
 
 const Collection = CollectionImport as unknown as CollectionModule;
 const Model = ModelImport as unknown as ModelModule;
@@ -57,7 +58,7 @@ interface FilterDbModelsInstance extends NodeInstance {
     filterSettings: Record<string, unknown>;
     filterParameters: Record<string, unknown>;
     visualFilter?: unknown;
-    visualSorting?: unknown[];
+    visualSorting?: VisualSorting[];
     collectionChangedCallback?: () => void;
     cloudStoreEvents?: (args: { collection?: string; objectId?: string }) => void;
   };
@@ -319,7 +320,7 @@ const FilterDBModelsNode: NodeDefinitionOptions = {
 
       if (this.isInputConnected('filter') === false) this.scheduleFilter();
     },
-    setVisualSorting: function (this: FilterDbModelsInstance, value: unknown[]) {
+    setVisualSorting: function (this: FilterDbModelsInstance, value: VisualSorting[]) {
       this._internal.visualSorting = value;
 
       if (this.isInputConnected('filter') === false) this.scheduleFilter();

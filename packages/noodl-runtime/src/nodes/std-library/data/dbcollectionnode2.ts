@@ -21,6 +21,8 @@ import CollectionImport = require('../../../collection');
 import CloudStore = require('../../../api/cloudstore');
 import JavascriptNodeParser = require('../../../javascriptnodeparser');
 import QueryUtils = require('../../../api/queryutils');
+import type { VisualSorting } from '../../../api/queryutils';
+import type { WhereClause } from '../../../api/adapters/types';
 
 const Model = ModelImport as unknown as ModelModule;
 const Collection = CollectionImport as unknown as CollectionModule;
@@ -81,7 +83,7 @@ interface DbCollectionNodeInstance extends NodeInstance {
     error?: string;
     search?: string;
     visualFilter?: unknown;
-    visualSorting?: unknown;
+    visualSorting?: VisualSorting[];
     queryParameters: Record<string, unknown>;
     storageSettings: Record<string, unknown>;
     fetchScheduled?: boolean;
@@ -97,7 +99,7 @@ interface DbCollectionNodeInstance extends NodeInstance {
   setError(err: string): void;
   scheduleFetch(): void;
   fetch(): void;
-  getStorageFilter(): { where?: unknown; sort?: unknown } | undefined;
+  getStorageFilter(): { where?: WhereClause; sort?: string | string[] } | undefined;
   getStorageLimit(): number | undefined;
   getStorageSkip(): number | undefined;
   getStorageFetchTotalCount(): boolean;
@@ -551,7 +553,7 @@ const DbCollectionNode: NodeDefinitionOptions = {
 
       if (this.isInputConnected('storageFetch') === false) this.scheduleFetch();
     },
-    setVisualSorting: function (this: DbCollectionNodeInstance, value: unknown) {
+    setVisualSorting: function (this: DbCollectionNodeInstance, value: VisualSorting[]) {
       this._internal.visualSorting = value;
 
       if (this.isInputConnected('storageFetch') === false) this.scheduleFetch();

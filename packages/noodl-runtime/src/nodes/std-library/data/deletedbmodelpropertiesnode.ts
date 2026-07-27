@@ -1,5 +1,7 @@
 'use strict';
 
+import type { ModelScopeLike } from '@noodl/types';
+
 import type { DbCrudBaseInstance, DbCrudNodeModule, DbModelIdInstance } from './crud-mixins';
 
 import DbModelCRUDBase = require('./dbmodelcrudbase');
@@ -52,8 +54,11 @@ const DeleteDbModelPropertiedNodeDefinition: DbCrudNodeModule = {
           // reads `undefined` and `forScope` falls back to the process-wide store. Delete
           // Record therefore ignores the component's own record scope, unlike Save, Create,
           // Add Relation and Remove Relation. Fixing it is a behaviour change for any
-          // project running under a scoped store.
-          CloudStore.forScope(_this.nodeScope.ModelScope).delete({
+          // project running under a scoped store. PLAT-003 slice 13 note: now that
+          // `NodeScopeLike` is typed, the compiler *proves* it — `ModelScope` reaches the
+          // index signature rather than the declared `modelScope`, so it is `unknown`. The
+          // cast keeps the behaviour verbatim rather than quietly fixing it here.
+          CloudStore.forScope(_this.nodeScope.ModelScope as ModelScopeLike).delete({
             collection: internal.collectionId,
             objectId: internal.model.getId(), // Get the objectId part of the model id,
             success: function () {
