@@ -20,15 +20,6 @@ interface GlobalsNodeInstance extends NodeInstance {
   _internal: {
     listeners: GlobalsListener[];
   };
-  /**
-   * **Declared optional because it is never assigned — by this file or by the
-   * runtime.** `_cachedInputValues` exists nowhere in `@noodl/runtime`, so
-   * `_newOutputValueReceived` writes to `undefined` and throws a `TypeError` the
-   * first time a global this node has an *output* for changes. Left as it stands:
-   * both fixing it and deleting the line change behaviour, and the output getter
-   * reads `context.globalValues` directly, so the cache was never load-bearing.
-   */
-  _cachedInputValues?: Record<string, unknown>;
   _newOutputValueReceived(name: string): void;
 }
 
@@ -65,7 +56,13 @@ const GlobalsNode: NodeDefinitionOptions = {
     },
     _newOutputValueReceived: {
       value: function (this: GlobalsNodeInstance, name: string) {
-        this._cachedInputValues[name] = this.context.globalValues[name];
+        // This used to write `this._cachedInputValues[name]` first, but
+        // `_cachedInputValues` is assigned nowhere in the runtime, so the listener
+        // threw `TypeError: Cannot set properties of undefined` the first time a
+        // global changed that this node had an output for. The cache was never
+        // load-bearing — the output getter below reads `context.globalValues`
+        // directly — so the write is dropped rather than the cache introduced
+        // (PLAT-003 NOTES §23.3).
         this.flagOutputDirty(name);
       }
     },

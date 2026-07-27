@@ -75,6 +75,7 @@ interface DbModelNodeInstance extends NodeInstance {
   _hasChangesPending(): boolean;
   scheduleFetch(): void;
   scheduleStore(): void;
+  storageNew(): void;
   storageSave(): void;
   storageDelete(): void;
   storageInsert(): void;
@@ -228,11 +229,7 @@ const ModelNodeDefinition: NodeDefinitionOptions = {
       displayName: 'New',
       group: 'Actions',
       valueChangedToTrue: function (this: DbModelNodeInstance) {
-        // `storageNew` is not a method of this node, nor of `Node` — this throws a
-        // `TypeError` whenever the New input fires. Kept verbatim: the port has been
-        // broken for as long as the file has existed and correcting it is a
-        // behaviour change (PLAT-003 NOTES §23.4).
-        (this as unknown as { storageNew(): void }).storageNew();
+        this.storageNew();
       }
     },
     insert: {
@@ -349,6 +346,29 @@ const ModelNodeDefinition: NodeDefinitionOptions = {
           internal.model.set(i, internal.inputValues[i], { resolve: true });
         }
         _this.sendSignalOnOutput('stored');
+      });
+    },
+    // The New action called a `storageNew` that has never existed in this file, so it
+    // threw a `TypeError` on every use (PLAT-003 NOTES §23.4). Implemented here to match
+    // the sibling Model node's `scheduleNew` exactly — New makes a fresh *local* record
+    // out of the current input values; Insert is the port that writes one to the
+    // backend. Note that Save after New addresses the local id, which the backend does
+    // not know: that asymmetry is inherited from the Model node and is why Insert
+    // exists.
+    storageNew: function (this: DbModelNodeInstance) {
+      const internal = this._internal;
+
+      this.scheduleOnce('StorageNew', () => {
+        const newModel: ModelLike = Model.get();
+
+        for (const i in internal.inputValues) {
+          newModel.set(i, internal.inputValues[i], { resolve: true });
+        }
+
+        this.setModel(newModel);
+
+        this.sendSignalOnOutput('created');
+        this.sendSignalOnOutput('stored');
       });
     },
     storageSave: function (this: DbModelNodeInstance) {
