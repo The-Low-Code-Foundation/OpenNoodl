@@ -256,9 +256,19 @@ export function VersionControlPanel() {
     );
   }
 
-  // TODO: Loading state? Should be really quick though
+  // PNL-005: this used to be `return null` — a registered panel rendering
+  // *nothing*: no header, no content, a blank column. It is reached whenever
+  // `git` has not been set yet, and the "should be really quick though" above is
+  // only true on the happy path: the `isGitProject` promise below carries no
+  // `.catch()`, so a rejection leaves the panel blank permanently rather than
+  // briefly. PNL-005's live gate caught exactly this state and reported the panel
+  // as never migrated.
+  //
+  // The chrome is not conditional on the content being ready. It renders, with
+  // the activity blocker `BasePanel` already has, and the panel says what it is
+  // while it works.
   if (git === null) {
-    return null;
+    return <BasePanel isFill title="Version Control" hasActivityBlocker />;
   }
 
   return (

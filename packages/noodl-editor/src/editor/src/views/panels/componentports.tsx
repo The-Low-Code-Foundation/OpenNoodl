@@ -5,6 +5,8 @@ import { createRoot, Root } from 'react-dom/client';
 
 import { UndoQueue, UndoActionGroup } from '@noodl-models/undo-queue-model';
 
+import { PanelHeader, usePanelModeSlot } from '@noodl-core-ui/components/sidebar/PanelHeader';
+
 import View from '../../../../shared/ListenableView';
 import { Frame } from '../common/Frame';
 import PopupLayer, { StringInputPopup } from '../popuplayer';
@@ -213,7 +215,6 @@ export class ComponentPorts extends View {
 
     this.root.render(
       React.createElement(ComponentPortsView, {
-        title: this.title,
         // A new array each render so React sees the reordering after a drop
         items: [...this.items],
         canArrangeInGroups: Boolean(this.canArrangeInGroups),
@@ -426,8 +427,32 @@ export class ComponentPorts extends View {
   }
 }
 
-export function ComponentPortsComponent(props: unknown) {
+export function ComponentPortsComponent(props: { title?: string }) {
   const [instance, setInstance] = useState(null);
+
+  /*
+   * PNL-005 (follow-up): the header moved out of `ComponentPortsView` and up
+   * here, into the *main* React tree.
+   *
+   * It used to live inside the view that `Frame` hosts, which is rendered into
+   * its own React root (`createRoot` in `ComponentPorts.render`). Two
+   * consequences, both real defects the panel-chrome gate's sibling findings
+   * turned up:
+   *
+   *   1. On the first render pass `instance` is still null, so the whole panel —
+   *      header included — was an empty `<div>`. A registered panel rendering no
+   *      chrome at all, which is the exact class of defect this task exists to
+   *      remove (`VersionControlPanel` had the same shape).
+   *   2. `PanelModeSlotContext` does not cross a React root boundary, so the
+   *      Ports panel could never show the side panel's widen / hide / float /
+   *      full controls. Up here it can, and does.
+   *
+   * A plain flex column rather than `BasePanel`: this panel's box model is a
+   * legacy imperative view sized by `Frame`, and wrapping it in `BasePanel`'s
+   * border, radius and insets would change more than the header.
+   */
+  const modeSlot = usePanelModeSlot();
+  const title = props?.title ?? 'Ports';
 
   useEffect(() => {
     const instance = new ComponentPorts(props);
@@ -437,5 +462,12 @@ export function ComponentPortsComponent(props: unknown) {
     return () => instance.dispose();
   }, []);
 
-  return <Frame instance={instance} isFitWidth />;
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
+      <PanelHeader title={title} modeSlot={modeSlot} />
+      <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
+        <Frame instance={instance} isFitWidth />
+      </div>
+    </div>
+  );
 }

@@ -16,7 +16,13 @@ export interface BasePanelProps extends PanelHeaderProps {
   isFill?: boolean;
   headerSlot?: Slot;
   footerSlot?: Slot;
-  children: Slot;
+
+  /**
+   * PNL-005: optional. A panel that is still loading has no content yet, and it
+   * must not have to choose between `{null}` boilerplate and rendering no chrome
+   * at all — the second is what `VersionControlPanel` was doing.
+   */
+  children?: Slot;
 
   /** TODO: Only used for testing Copilot */
   UNSAFE_content_style?: React.CSSProperties;

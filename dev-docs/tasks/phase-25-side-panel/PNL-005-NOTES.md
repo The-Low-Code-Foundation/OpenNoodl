@@ -316,3 +316,195 @@ The script covers 1, 3, 4 and 5 mechanically. These are the ones that need eyes:
 - **A panel with early returns needs wrapping at the top, not at each return.**
   `GitHubPanel` has six; five of them are the states where a missing header is most
   confusing.
+
+---
+
+# Follow-up — after the coordinator's live run (2026-07-27, post-merge `3deb7208`)
+
+The gate was run from the primary checkout with a project open. It found a real gap, it
+died partway, and one of its passes turned out to be green about the wrong thing. All
+three are addressed below.
+
+**Commits:** `6946bcae` (chrome-less states), `96c81b5a` (gate + band mixin).
+
+## 1. "Every registered panel is on the shared chrome" was false — it was a *state*, not a panel
+
+The gate reported `versioncontrol-panel — no panel header at all`. `VersionControlPanel`
+*is* on `BasePanel`, with `title="Version Control"`, in two of its three render paths.
+The third was:
+
+```tsx
+// TODO: Loading state? Should be really quick though
+if (git === null) {
+  return null;
+}
+```
+
+A registered panel rendering **nothing**: no header, no content, a blank column. And the
+TODO's "should be really quick" is only true on the happy path — the `isGitProject()`
+promise that clears this state carries **no `.catch()`**, so a rejection leaves the panel
+blank *permanently* rather than briefly. That is very likely what the gate actually
+caught, since it reproduced in both the wide and the 240px pass.
+
+It now renders `<BasePanel isFill title="Version Control" hasActivityBlocker />`. The
+underlying missing `.catch()` is left alone — it is a VersionControl defect, not a chrome
+one, and is filed here rather than fixed silently. **The chrome is no longer conditional
+on the content being ready**, which is the general rule this task should have applied
+from the start and did not.
+
+`BasePanel`'s `children` is now optional, so a loading panel does not have to choose
+between `{null}` boilerplate and rendering no chrome.
+
+### The audit for others in the same position
+
+Every one of the 21 `SidebarModel.instance.register()` calls was traced, including
+commented-out ones. Results:
+
+- **One more, `componentports` ("Ports")** — same shape, different cause. Its header sat
+  inside `ComponentPortsView`, which `Frame` renders into its **own React root**
+  (`createRoot`). Before `instance` existed, the whole panel was an empty `<div>`.
+  The header moved up into `ComponentPortsComponent`, in the main tree.
+  **This also fixed something the first commit documented as unavoidable:**
+  `PanelModeSlotContext` does not cross a root boundary, so Ports could never show
+  widen / hide / float / full. In the main tree it can, and does. `title` is gone from
+  `ComponentPortsViewProps` so a second header cannot be added back by accident.
+- **`PropertyEditor`** has the identical first-render window (`instance === null`) but is
+  already safe: the `BasePanel` wraps the `Frame`, so the header renders regardless.
+  This is the pattern; `componentports` now matches it.
+- **Everything else is clean.** All other registered panels wrap every render path, and —
+  the trap worth naming — **no `<BasePanel>` anywhere in the panels tree is missing a
+  `title` prop**, which matters because `BasePanel` renders no header at all without one.
+  `GitHubPanel`'s six early returns are all inside the outer wrapper, as intended.
+- **Not fixed, filed:** `UndoQueuePanel` renders `title="History"` while registered as
+  `name: 'Undo Queue'` — the header disagrees with the rail tooltip. Cosmetic, but it is a
+  "one chrome" concern. Not changed here because I do not know which of the two names is
+  the intended one, and guessing at a user-visible label is not my call.
+- **Not fixed, out of scope:** the two commented-out panels (`TopologyMapPanel`,
+  `DataLineagePanel`) both hand-roll headers and would be findings if re-registered.
+  DEBT-010 / DEBT-012 own them.
+
+## 2. What wedged the renderer — and why the editor stayed broken afterwards
+
+These are two different failures and it is worth separating them.
+
+**Why the editor was unusable *afterwards*: the harness leaked its overrides.** On any
+failure the old script called `process.exit(1)` while `width: 240px !important` was still
+injected as a `<style>` in the page, and with `Emulation.setDeviceMetricsOverride` still
+set. The injected stylesheet is not undone by the socket closing — it is just DOM. So the
+side panel stayed pinned at 240px with `!important`, the divider drag did nothing, and the
+editor looked dead. **This is almost certainly the "unresponsive afterwards", and it is
+now impossible:** the overrides are released in a `finally` that runs on every path.
+
+**Why the `Runtime.evaluate` timed out in the first place — most likely a layout feedback
+loop.** `forcePanelWidth` was toggled *four times per panel* (wide → narrow → release, per
+panel, per theme): about 44 forced relayouts of a canvas-bearing Electron app, each one
+fighting machinery that reacts to exactly that — PNL-003 persists the panel width,
+`EditorPage` recomputes the divider on resize, and the canvas repaints on every change. A
+resize → restyle → resize loop pegs the main thread, and a pegged main thread is precisely
+a `Runtime.evaluate` timeout. It is consistent with the run getting most of the way
+through before dying rather than failing early.
+
+Mitigations, in order of confidence:
+
+- The width override is now applied **twice per theme**, not twice per panel — a whole
+  wide pass over every panel, then a whole narrow pass. ~44 relayouts become 4.
+- `--skip-narrow` removes the width override entirely, so if it happens again one run
+  settles whether the override is the cause.
+- The theme toggle is the other suspect and is *not* mitigated, because it is two DOM
+  writes per theme and was already cheap. If `--skip-narrow` still wedges, it is the
+  theme path or the screenshot call.
+- `Page.captureScreenshot({ fromSurface: true })` is the third suspect — it captures from
+  the OS compositor and can block on an occluded window. It now has its own 15s timeout
+  rather than sharing the default.
+
+**And the run no longer dies as a unit.** Each panel is isolated in a try/catch: a timeout
+skips that panel and is recorded, screenshots are taken *before* asserting so a failing
+panel still leaves an image, the JSON report is flushed after every panel, and three
+consecutive timeouts abort cleanly rather than grinding through thirty more 8-second
+waits.
+
+## 3. The gate was green about "Co…" — assertion F
+
+This was the most valuable finding and the most embarrassing. `components-panel--dark.png`
+shows the title rendered as **"Co…"**, and the gate passed it, because
+single-line-and-ellipsised is exactly what assertion C checks. The gate measured
+conformance to a rule while the rule was producing the outcome the mock explicitly named
+as the failure: *"the header keeps only widen and hide, and moves Float and Full into an
+overflow menu **rather than truncating the panel title to 'Compo…'**"*.
+
+**I was wrong to call the missing `⋯` menu a cosmetic trade.** It is a functional loss —
+the panel stops saying what it is — and my deviation note argued the opposite. Correcting
+that here rather than leaving it in the record.
+
+**Assertion F**, added: at the panel's *default* width, measure how many characters of the
+title actually fit — real `measureText` in the renderer, in the header's own computed
+font, binary-searching the longest prefix that fits inside `clientWidth` allowing for the
+ellipsis glyph — and fail below `--min-title-chars` (default 12, clamped to the title's
+own length so short names like "Docs" pass). "Co…" is 2 against a floor of 10 for
+"Components": red.
+
+It is reported separately, as `▲ EXPECTED`, with the reason inline:
+
+```
+▲ 1 EXPECTED failures — the ⋯ overflow menu is not built yet (SidePanel.tsx):
+  - components [dark] wide: title "Components" renders only 2 of 10 characters
+    ("Co…") in 24px at a 380px panel — needs 10. The action slot and four mode
+    buttons are eating the bar; this is what the ⋯ overflow menu is for.
+```
+
+**This gate is now expected to exit non-zero until the overflow menu lands.** That is
+deliberate and was asked for. The wave-2 agent that owns `SidePanel.tsx` turns it green by
+tagging Float and Full `data-panel-chrome="secondary"` — `PanelHeader.module.scss` already
+has the container query that hides them — and building the `⋯` that holds them.
+
+## 4. Coverage: the rail shows 8 of 21 panels by default
+
+The audit turned up something the first version of the gate hid. `router.setup.ts`
+registers 21 panels, but a rail walk cannot see most of them:
+
+- `transient: true` — `PropertyEditor`, `PortEditor` — are filtered out of
+  `getVisibleItems()` entirely; they appear only on canvas selection.
+- `experimental: true` — 10 panels — need `experimental.panel.<id>` set in EditorSettings.
+- 3 more sit behind `config.devMode`.
+
+**A default-settings editor shows 8 rail buttons.** The coordinator's run saw 11, so some
+experimental flags were on; either way "11 panels walked" is not "every panel checked",
+and a gate that quietly covers a third of the surface is how a gap survives a green run —
+which is exactly what happened to `versioncontrol`.
+
+The gate now prints what the rail reached, prints anything mounted but not rail-reachable,
+and takes `--expect-panels N` so a shrinking rail is loud rather than silent. **Properties
+and Ports still need checking by hand** — they are items 2 and 3 of the live-QA checklist
+above.
+
+## 5. Band boundary synced
+
+PNL-004 corrected my `@container panel-frame (max-width: 359px)` to 357px in `68fdff3b` —
+`.Root`'s padding is vertical only, so the frame's content box is the panel width less 2px
+of border. That number is no longer written in this file at all: `PanelHeader.module.scss`
+now goes through `bands.frame-narrow` from `PanelRow/panel-bands.scss`, which owns the
+offset arithmetic. Verified: the compiled CSS emits `@container panel-frame (max-width: 357px)`.
+
+## Gates, re-run
+
+| Gate | Result |
+|---|---|
+| editor `tsc` | clean |
+| core-ui `tsc` | 45, unchanged, all pre-existing `TS2307` |
+| `node scripts/hex-color-ratchet.js` | `noodl-editor 16 / baseline 16`, delta `=` |
+| `npx sass` on every changed `.module.scss` | compiles; band resolves to 357px |
+| `node --check panel-chrome.mjs` | OK |
+
+## Still could not verify
+
+Unchanged from the first pass, and now with two more items:
+
+- **The `componentports` restructure is the highest-risk unverified change in this task.**
+  A legacy imperative view hosted through `Frame` had its header moved into the outer
+  React tree and the `Frame` re-parented into a flex column. The flex chain is
+  `PanelItem → column div → PanelHeader (44px) + flex:1 min-height:0 → Frame (100%×100%)`,
+  which should behave, but **the port list's scrolling and drag-to-reorder need a live
+  look** — item 3 of the checklist.
+- **`VersionControlPanel`'s loading state** now renders a header plus an activity blocker.
+  Reaching it deliberately means opening a non-git project, or a project whose git open is
+  slow. Worth checking that the blocker does not sit on top of the header.

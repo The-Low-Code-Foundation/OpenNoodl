@@ -3,7 +3,7 @@
  * PNL-005 panel-chrome gate + screenshot corpus.
  *
  * "Every panel wears the same header" is a claim you can only settle by looking
- * at every panel. This walks the rail in **both themes**, and for each panel it
+ * at every panel. This walks the rail in **both themes** and, per panel,
  *
  *   1. screenshots it into `dev-docs/tasks/phase-25-side-panel/screenshots/pnl-005/`,
  *   2. measures its header and asserts the shared chrome actually applied.
@@ -12,16 +12,46 @@
  * prove the same rule produced all of them:
  *
  *   A. exactly **one** visible `[data-test="panel-header"]` in the active panel —
- *      not zero (a panel that never migrated) and not two (a panel that kept its
- *      own bar as well).
+ *      not zero (a panel that never migrated, or a state that renders no chrome)
+ *      and not two (a panel that kept its own bar as well).
  *   B. the header is **44px** tall.
- *   C. the title is **13px / 650 / fg-highlight**, on one line.
+ *   C. the title is **13px / 650**, one line, `nowrap` + `ellipsis`.
  *   D. nothing in the header is pushed outside the panel's right edge.
- *   E. section headers inside the panel are **subordinate** — shorter than the
- *      panel header and set smaller than its title (acceptance item 4).
+ *   E. section headers are **subordinate** — shorter than the panel header and
+ *      set smaller than its title.
+ *   F. **at the panel's default width the title is not truncated to a stub.**
+ *      See "Why F exists" below. This one is expected to be RED until the
+ *      overflow menu lands, and that is the point of it.
  *
- * Then it repeats B–D with the panel forced to **240px**, which is acceptance
- * item 3: the title must ellipsise rather than wrap or push the controls out.
+ * B–D are then repeated with the panel forced narrow: the title must ellipsise
+ * rather than wrap or push the controls out.
+ *
+ * ---------------------------------------------------------------------------
+ * WHY F EXISTS
+ *
+ * The first version of this gate asserted "single line + ellipsis engaged" and
+ * passed the Components panel while it was rendering its title as **"Co…"** —
+ * two characters. Ellipsised-and-single-line is exactly what C asserts, so C was
+ * green about the wrong thing: the mock's stated goal was that the header drop
+ * Float and Full into an overflow menu *rather than truncating the panel title
+ * to "Compo…"*, and without that menu the four mode buttons plus the panel's own
+ * action slot eat the bar and the title takes all of the squeeze.
+ *
+ * F measures how many characters actually fit (real text metrics, in the
+ * renderer, in the header's own computed font) and fails when a title is cut
+ * below a legible floor at the panel's *default* width. It will stay red for the
+ * panels with the busiest action slots until `SidePanel.tsx` grows the `⋯` menu
+ * and tags the demotable controls `data-panel-chrome="secondary"` — the hook
+ * `PanelHeader.module.scss` already queries. A gate that is red for a known,
+ * named reason is worth more than one that is green about the wrong thing.
+ * ---------------------------------------------------------------------------
+ *
+ * ROBUSTNESS. An earlier revision wedged the renderer partway through the light
+ * theme and took the editor down with it. Every panel is now isolated: a CDP
+ * timeout skips that panel and is recorded, the JSON report is flushed after
+ * every panel so a wedge on panel 9 cannot cost you panels 1–8, the width
+ * override is applied **twice per theme** rather than twice per panel (see
+ * `forcePanelWidth`), and the overrides are always released in a `finally`.
  *
  * Shares the harness shape of `capture.mjs` and `panel-geometry.mjs` beside it:
  * one raw CDP socket, zero dependencies, drives the real editor.
@@ -36,8 +66,11 @@
  *   node dev-docs/tasks/phase-23-visual-refresh/corpus/panel-chrome.mjs
  *   node panel-chrome.mjs [--width 1400] [--height 900] [--narrow 240]
  *                         [--out DIR] [--json report.json] [--no-shots]
+ *                         [--min-title-chars 12] [--timeout 8000]
+ *                         [--skip-narrow]
  *
- * Exits non-zero if any panel fails an assertion.
+ * Exits non-zero if any panel fails an assertion. `--json` is written even on a
+ * catastrophic failure, so a wedged run still tells you how far it got.
  */
 
 import fs from 'node:fs';
@@ -59,6 +92,10 @@ const HEIGHT = Number(arg('--height', 900));
 const NARROW = Number(arg('--narrow', 240));
 const JSON_OUT = arg('--json', null);
 const SHOTS = !has('--no-shots');
+const SKIP_NARROW = has('--skip-narrow');
+// Short enough that a wedged renderer is detected while the run can still
+// recover, long enough that a slow panel mount is not a false positive.
+const CALL_TIMEOUT = Number(arg('--timeout', 8000));
 const OUT = arg('--out', path.resolve(__dirname, '../../phase-25-side-panel/screenshots/pnl-005'));
 
 const THEMES = ['dark', 'light'];
@@ -68,8 +105,18 @@ const EXPECT = {
   headerHeight: 44,
   titleFontSize: 13,
   titleFontWeight: 650,
-  tolerance: 1
+  tolerance: 1,
+  /**
+   * Assertion F's floor. A panel title cut below this many characters at the
+   * panel's default width is not a title any more. 12 clears every registered
+   * panel name's first word ("Component X-Ray", "Version Control", "Execution
+   * History") while still failing "Co…".
+   */
+  minTitleChars: Number(arg('--min-title-chars', 12))
 };
+
+/** Failures of this class are expected until the `⋯` overflow menu lands. */
+const EXPECTED_RED = 'title-truncated';
 
 // ---- tiny CDP client (one socket, sequential) ------------------------------
 class CdpSession {
@@ -77,6 +124,8 @@ class CdpSession {
     this.ws = ws;
     this.id = 0;
     this.pending = new Map();
+    this.dead = false;
+    ws.addEventListener('close', () => (this.dead = true));
     ws.addEventListener('message', (ev) => {
       const msg = JSON.parse(ev.data);
       if (msg.id && this.pending.has(msg.id)) {
@@ -86,17 +135,23 @@ class CdpSession {
       }
     });
   }
-  send(method, params = {}) {
+  send(method, params = {}, timeout = CALL_TIMEOUT) {
+    if (this.dead) return Promise.reject(new Error('CDP socket closed'));
     const id = ++this.id;
     return new Promise((resolve, reject) => {
       this.pending.set(id, { resolve, reject });
-      this.ws.send(JSON.stringify({ id, method, params }));
+      try {
+        this.ws.send(JSON.stringify({ id, method, params }));
+      } catch (e) {
+        this.pending.delete(id);
+        return reject(e);
+      }
       setTimeout(() => {
         if (this.pending.has(id)) {
           this.pending.delete(id);
-          reject(new Error(`CDP timeout: ${method}`));
+          reject(new Error(`CDP timeout after ${timeout}ms: ${method}`));
         }
-      }, 30000);
+      }, timeout);
     });
   }
 }
@@ -115,8 +170,8 @@ async function connect() {
   return new CdpSession(ws);
 }
 
-async function evalJS(cdp, expression) {
-  const r = await cdp.send('Runtime.evaluate', { expression, returnByValue: true, awaitPromise: true });
+async function evalJS(cdp, expression, timeout) {
+  const r = await cdp.send('Runtime.evaluate', { expression, returnByValue: true, awaitPromise: true }, timeout);
   if (r.exceptionDetails) throw new Error(r.exceptionDetails.text + ' :: ' + expression.slice(0, 100));
   return r.result.value;
 }
@@ -169,12 +224,22 @@ async function injectDeterminism(cdp) {
 }
 
 /**
- * Force the docked panel to a given width, or release it.
+ * Force the docked panel to a given width, or release it (`px = null`).
  *
  * Injected CSS rather than a synthesised divider drag: the drag is PNL-003's
- * gesture and is not what this gate is testing. Because the container query
- * PNL-004 declares is on the panel frame's `inline-size`, narrowing the frame
- * this way exercises the real query.
+ * gesture and is not what this gate tests. Because the container query PNL-004
+ * declares is on the panel frame's `inline-size`, narrowing the frame this way
+ * exercises the real query.
+ *
+ * ⚠️ This is the prime suspect for the renderer wedge an earlier revision hit.
+ * Forcing `width !important` on the panel fights the editor's own layout: PNL-003
+ * persists the width, `EditorPage` recomputes the divider on resize, and the
+ * canvas repaints on every one — a plausible resize→restyle→resize feedback
+ * loop, and it was being toggled *four times per panel* (44 relayouts of a
+ * canvas-bearing app in one run). It is now toggled twice per theme: the walk
+ * runs a whole wide pass, then a whole narrow pass. If a wedge is ever seen
+ * again, run with `--skip-narrow` to take this out of the picture entirely and
+ * confirm.
  */
 async function forcePanelWidth(cdp, px) {
   await evalJS(
@@ -188,7 +253,7 @@ async function forcePanelWidth(cdp, px) {
       return true;
     })()`
   );
-  await sleep(350);
+  await sleep(500);
 }
 
 /**
@@ -215,6 +280,8 @@ const MEASURE = `(() => {
   const headers = Array.from(item.querySelectorAll('[data-test="panel-header"]')).filter(visible);
 
   const out = {
+    panelId: item.getAttribute('data-panel-id'),
+    panelWidth: Math.round(panelRect.width),
     panelTitle: null,
     headerCount: headers.length,
     headerHeight: null,
@@ -235,23 +302,50 @@ const MEASURE = `(() => {
     if (t) {
       const cs = getComputedStyle(t);
       const tr = t.getBoundingClientRect();
+      const text = (t.textContent || '').trim();
+
+      // --- assertion F's measurement -------------------------------------
+      // How many characters actually FIT, using the element's own computed
+      // font. \`scrollWidth > clientWidth\` only says "something was cut"; it
+      // cannot tell "Components" from "Co…", and that distinction is the whole
+      // point. Real text metrics, so the answer is the rendered truth.
+      let visibleChars = text.length;
+      try {
+        const ctx = document.createElement('canvas').getContext('2d');
+        ctx.font = cs.fontWeight + ' ' + cs.fontSize + ' ' + cs.fontFamily;
+        const avail = t.clientWidth;
+        if (ctx.measureText(text).width > avail) {
+          // Longest prefix that fits, allowing for the ellipsis glyph.
+          const ell = ctx.measureText('…').width;
+          let lo = 0, hi = text.length;
+          while (lo < hi) {
+            const mid = Math.ceil((lo + hi) / 2);
+            if (ctx.measureText(text.slice(0, mid)).width + ell <= avail) lo = mid;
+            else hi = mid - 1;
+          }
+          visibleChars = lo;
+        }
+      } catch (e) {
+        visibleChars = null; // metrics unavailable — assertion F will be skipped
+      }
+
       out.title = {
-        text: (t.textContent || '').trim(),
+        text,
         fontSize: parseFloat(cs.fontSize),
         fontWeight: Number(cs.fontWeight),
         color: cs.color,
         whiteSpace: cs.whiteSpace,
         textOverflow: cs.textOverflow,
+        clientWidth: t.clientWidth,
+        visibleChars,
         // One line: the box is no taller than a single line box.
         lines: Math.round(tr.height / (parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.2)),
-        // Ellipsis engaged (only meaningful when it actually overflows).
         isTruncated: t.scrollWidth > t.clientWidth + 1
       };
     }
 
     // Nothing in the header may sit outside the panel. This is the assertion
-    // PNL-007 needed (a 73-char name pushed its action rail 362px past the edge)
-    // and it is acceptance item 3's real content.
+    // PNL-007 needed (a 73-char name pushed its action rail 362px past the edge).
     for (const el of h.querySelectorAll('*')) {
       if (!visible(el)) continue;
       const r = el.getBoundingClientRect();
@@ -259,7 +353,6 @@ const MEASURE = `(() => {
     }
   }
 
-  // Acceptance 4: section headers must read as children of the panel header.
   for (const sh of Array.from(item.querySelectorAll('[class*="CollapsableSection-module__Header"]')).filter(visible)) {
     const r = sh.getBoundingClientRect();
     const titleEl = sh.firstElementChild;
@@ -273,46 +366,80 @@ const MEASURE = `(() => {
   return out;
 })()`;
 
-function assess(m, label) {
+/** Which panels exist in the DOM at all, vs. which the rail can reach. */
+const COVERAGE = `(() => {
+  const root = document.querySelector('[class*="SideNavigation-module__Panel"]');
+  const mounted = root
+    ? Array.from(root.querySelectorAll('[data-panel-id]')).map((el) => el.getAttribute('data-panel-id'))
+    : [];
+  const rail = Array.from(document.querySelectorAll('[data-test]'))
+    .filter((el) => el.offsetParent !== null && /-panel$/.test(el.getAttribute('data-test')))
+    .map((el) => el.getAttribute('data-test').replace(/-panel$/, ''));
+  return { mounted, rail };
+})()`;
+
+/** @returns {{code: string, msg: string}[]} */
+function assess(m, label, { checkTitleWidth }) {
   const fails = [];
   const T = EXPECT.tolerance;
+  const add = (code, msg) => fails.push({ code, msg: `${label}: ${msg}` });
 
-  if (m.headerCount === 0) fails.push('no panel header at all (panel never migrated to BasePanel)');
-  else if (m.headerCount > 1) fails.push(`${m.headerCount} panel headers (a panel kept its own bar as well)`);
+  if (m.headerCount === 0) add('no-header', 'no panel header at all (panel or state never migrated to BasePanel)');
+  else if (m.headerCount > 1) add('two-headers', `${m.headerCount} panel headers (a panel kept its own bar as well)`);
 
   if (m.headerCount === 1) {
     if (Math.abs(m.headerHeight - EXPECT.headerHeight) > T)
-      fails.push(`header is ${m.headerHeight}px, expected ${EXPECT.headerHeight}px`);
+      add('height', `header is ${m.headerHeight}px, expected ${EXPECT.headerHeight}px`);
 
-    if (!m.title) fails.push('header has no title element');
+    if (!m.title) add('no-title', 'header has no title element');
     else {
       if (Math.abs(m.title.fontSize - EXPECT.titleFontSize) > 0.6)
-        fails.push(`title is ${m.title.fontSize}px, expected ${EXPECT.titleFontSize}px`);
+        add('font-size', `title is ${m.title.fontSize}px, expected ${EXPECT.titleFontSize}px`);
       if (m.title.fontWeight !== EXPECT.titleFontWeight)
-        fails.push(`title weight is ${m.title.fontWeight}, expected ${EXPECT.titleFontWeight}`);
-      if (m.title.whiteSpace !== 'nowrap') fails.push(`title white-space is ${m.title.whiteSpace}, expected nowrap`);
+        add('font-weight', `title weight is ${m.title.fontWeight}, expected ${EXPECT.titleFontWeight}`);
+      if (m.title.whiteSpace !== 'nowrap') add('wrap', `title white-space is ${m.title.whiteSpace}, expected nowrap`);
       if (m.title.textOverflow !== 'ellipsis')
-        fails.push(`title text-overflow is ${m.title.textOverflow}, expected ellipsis`);
-      if (m.title.lines > 1) fails.push(`title wrapped to ${m.title.lines} lines`);
+        add('ellipsis', `title text-overflow is ${m.title.textOverflow}, expected ellipsis`);
+      if (m.title.lines > 1) add('lines', `title wrapped to ${m.title.lines} lines`);
+
+      // --- F: not truncated to a stub at the panel's default width ---------
+      if (checkTitleWidth && m.title.visibleChars != null) {
+        const floor = Math.min(EXPECT.minTitleChars, m.title.text.length);
+        if (m.title.visibleChars < floor) {
+          add(
+            EXPECTED_RED,
+            `title "${m.title.text}" renders only ${m.title.visibleChars} of ${m.title.text.length} characters ` +
+              `(“${m.title.text.slice(0, m.title.visibleChars)}…”) in ${m.title.clientWidth}px at a ` +
+              `${m.panelWidth}px panel — needs ${floor}. The action slot and four mode buttons are eating the bar; ` +
+              `this is what the ⋯ overflow menu is for.`
+          );
+        }
+      }
     }
 
-    if (m.overflowRight > 1) fails.push(`header content is ${m.overflowRight}px past the panel's right edge`);
+    if (m.overflowRight > 1) add('overflow', `header content is ${m.overflowRight}px past the panel's right edge`);
   }
 
-  // Subordination — only meaningful when the panel actually has sections.
   for (const s of m.sections) {
     if (s.height > EXPECT.headerHeight - 2)
-      fails.push(`a section header is ${s.height}px — not visibly shorter than the ${EXPECT.headerHeight}px panel header`);
+      add('section-height', `a section header is ${s.height}px — not visibly shorter than the ${EXPECT.headerHeight}px panel header`);
     if (m.title && s.fontSize != null && s.fontSize >= m.title.fontSize)
-      fails.push(`a section title is ${s.fontSize}px — not smaller than the panel title's ${m.title.fontSize}px`);
+      add('section-size', `a section title is ${s.fontSize}px — not smaller than the panel title's ${m.title.fontSize}px`);
   }
 
-  return fails.map((f) => `${label}: ${f}`);
+  return fails;
 }
 
 // ---- main -------------------------------------------------------------------
+const report = { width: WIDTH, height: HEIGHT, narrow: NARROW, minTitleChars: EXPECT.minTitleChars, coverage: null, results: [] };
+
+/** Flushed after every panel, so a wedge cannot cost the panels already walked. */
+function flush() {
+  if (JSON_OUT) fs.writeFileSync(JSON_OUT, JSON.stringify(report, null, 2));
+}
+
 (async () => {
-  console.log(`PNL-005 panel-chrome gate @ ${WIDTH}x${HEIGHT}, narrow ${NARROW}px`);
+  console.log(`PNL-005 panel-chrome gate @ ${WIDTH}x${HEIGHT}${SKIP_NARROW ? '' : `, narrow ${NARROW}px`}`);
   if (SHOTS) {
     fs.mkdirSync(OUT, { recursive: true });
     console.log(`screenshots → ${OUT}`);
@@ -330,85 +457,140 @@ function assess(m, label) {
   await sleep(800);
   await injectDeterminism(cdp);
 
-  const railButtons = await evalJS(
-    cdp,
-    `Array.from(document.querySelectorAll('[data-test]'))
-      .filter((el) => el.offsetParent !== null && /-panel$/.test(el.getAttribute('data-test')))
-      .map((el) => el.getAttribute('data-test'))
-      .filter((v, i, a) => a.indexOf(v) === i)`
-  );
+  const cov = await evalJS(cdp, COVERAGE);
+  report.coverage = cov;
+  const railButtons = cov.rail;
 
   if (!railButtons.length) {
     console.error('No rail panel buttons found. Open a project in the editor first.');
     process.exit(1);
   }
-  console.log(`walking ${railButtons.length} rail panels\n`);
 
-  const results = [];
+  /*
+   * Coverage is reported, never assumed — a rail walk does NOT see every panel,
+   * and a green run over half of them is how a gap survives.
+   *
+   * `router.setup.ts` registers 21 panels, but:
+   *   - `transient: true` (PropertyEditor, PortEditor) are filtered out of
+   *     `getVisibleItems()` entirely; they appear only on canvas selection.
+   *   - `experimental: true` (10 of them) need `experimental.panel.<id>` set in
+   *     EditorSettings.
+   *   - three more sit behind `config.devMode`.
+   * A default-settings editor therefore shows **8** rail buttons. Turn the
+   * experimental panels on before running this if you want real coverage, and
+   * check Properties and Ports by hand — they are in the live-QA checklist.
+   */
+  console.log(`rail reaches ${railButtons.length}: ${railButtons.join(', ')}`);
+  const unreachable = (cov.mounted || []).filter((id) => !railButtons.includes(id));
+  if (unreachable.length) console.log(`mounted but NOT rail-reachable (not covered): ${unreachable.join(', ')}`);
+  const expectPanels = Number(arg('--expect-panels', 0));
+  if (expectPanels && railButtons.length < expectPanels) {
+    console.log(
+      `⚠️  COVERAGE: ${railButtons.length} rail panels, expected at least ${expectPanels}. ` +
+        `Enable the experimental panels or this run proves less than you think.`
+    );
+    report.coverageShortfall = { got: railButtons.length, expected: expectPanels };
+  }
+  console.log('');
+
   const failures = [];
+  let timeouts = 0;
 
-  for (const theme of THEMES) {
-    console.log(`[theme: ${theme}]`);
-    await setTheme(cdp, theme);
-    await injectDeterminism(cdp);
+  try {
+    for (const theme of THEMES) {
+      await setTheme(cdp, theme);
+      await injectDeterminism(cdp);
 
-    for (const id of railButtons) {
-      if (!(await clickSel(cdp, `[data-test="${id}"]`))) {
-        console.log(`  ?  ${id} — not clickable, skipped`);
-        continue;
-      }
-      const safe = id.replace(/[^a-z0-9_-]/gi, '_').toLowerCase();
+      // Two passes per theme, not two width toggles per panel. See forcePanelWidth.
+      const passes = SKIP_NARROW ? [null] : [null, NARROW];
 
-      // --- wide ---
-      await forcePanelWidth(cdp, null);
-      const wide = await evalJS(cdp, MEASURE);
-      if (wide.error) {
-        failures.push(`${id} [${theme}]: ${wide.error}`);
-        console.log(`  ✗  ${id} — ${wide.error}`);
-        continue;
-      }
-      if (SHOTS) {
-        const { data } = await cdp.send('Page.captureScreenshot', { format: 'png', fromSurface: true });
-        fs.writeFileSync(path.join(OUT, `${safe}--${theme}.png`), Buffer.from(data, 'base64'));
-      }
+      for (const px of passes) {
+        const label = px === null ? 'wide' : `${px}px`;
+        console.log(`[theme: ${theme}] [${label}]`);
+        await forcePanelWidth(cdp, px);
 
-      // --- narrow (acceptance item 3) ---
-      await forcePanelWidth(cdp, NARROW);
-      const narrow = await evalJS(cdp, MEASURE);
-      if (SHOTS && !narrow.error) {
-        const { data } = await cdp.send('Page.captureScreenshot', { format: 'png', fromSurface: true });
-        fs.writeFileSync(path.join(OUT, `${safe}--${theme}--narrow${NARROW}.png`), Buffer.from(data, 'base64'));
-      }
-      await forcePanelWidth(cdp, null);
+        for (const id of railButtons) {
+          // Per-panel isolation: a timeout or a thrown assertion skips this
+          // panel and is recorded. It never aborts the run.
+          try {
+            if (!(await clickSel(cdp, `[data-test="${id}-panel"]`))) {
+              console.log(`  ?  ${id} — not clickable, skipped`);
+              continue;
+            }
+            const safe = id.replace(/[^a-z0-9_-]/gi, '_').toLowerCase();
+            const m = await evalJS(cdp, MEASURE);
 
-      const f = [...assess(wide, 'wide'), ...(narrow.error ? [] : assess(narrow, `${NARROW}px`))];
-      results.push({ panel: id, theme, title: wide.panelTitle, wide, narrow });
+            if (m.error) {
+              failures.push({ panel: id, theme, pass: label, code: 'measure', msg: m.error });
+              console.log(`  ✗  ${id} — ${m.error}`);
+              continue;
+            }
 
-      if (f.length === 0) {
-        console.log(`  ✓  ${id}  "${wide.panelTitle ?? ''}"`);
-      } else {
-        for (const line of f) {
-          failures.push(`${id} [${theme}] ${line}`);
-          console.log(`  ✗  ${id} — ${line}`);
+            // Capture BEFORE asserting: a screenshot of a failing panel is the
+            // most useful artefact there is, and a wedge on the assert side
+            // must not cost the image.
+            if (SHOTS) {
+              const suffix = px === null ? '' : `--narrow${px}`;
+              const { data } = await cdp.send('Page.captureScreenshot', { format: 'png', fromSurface: true }, 15000);
+              fs.writeFileSync(path.join(OUT, `${safe}--${theme}${suffix}.png`), Buffer.from(data, 'base64'));
+            }
+
+            const f = assess(m, label, { checkTitleWidth: px === null });
+            report.results.push({ panel: id, theme, pass: label, title: m.panelTitle, measured: m, failures: f });
+
+            if (f.length === 0) {
+              console.log(`  ✓  ${id}  "${m.panelTitle ?? ''}"`);
+            } else {
+              for (const { code, msg } of f) {
+                failures.push({ panel: id, theme, pass: label, code, msg });
+                console.log(`  ${code === EXPECTED_RED ? '▲' : '✗'}  ${id} — ${msg}`);
+              }
+            }
+          } catch (err) {
+            const isTimeout = /timeout|socket closed/i.test(err.message);
+            if (isTimeout) timeouts++;
+            failures.push({ panel: id, theme, pass: label, code: 'harness', msg: err.message });
+            console.log(`  !  ${id} — skipped: ${err.message}`);
+            // A wedged renderer will time out on every subsequent call; stop
+            // rather than grind through 30 more 8-second waits.
+            if (timeouts >= 3) throw new Error(`renderer appears wedged (${timeouts} consecutive CDP timeouts) — aborting cleanly`);
+          } finally {
+            flush();
+          }
         }
+        console.log('');
       }
     }
-    console.log('');
+  } finally {
+    // Always give the editor back. Leaving a `width !important` override or a
+    // device-metrics override behind is how the previous run left it unusable.
+    try {
+      await forcePanelWidth(cdp, null);
+      await cdp.send('Emulation.clearDeviceMetricsOverride', {}, 5000);
+    } catch {
+      console.log('(could not release overrides — restart the editor)');
+    }
+    flush();
+    if (JSON_OUT) console.log(`wrote ${JSON_OUT}`);
   }
 
-  if (JSON_OUT) {
-    fs.writeFileSync(JSON_OUT, JSON.stringify({ width: WIDTH, height: HEIGHT, narrow: NARROW, results }, null, 2));
-    console.log(`wrote ${JSON_OUT}`);
-  }
+  const expected = failures.filter((f) => f.code === EXPECTED_RED);
+  const real = failures.filter((f) => f.code !== EXPECTED_RED);
 
-  const checked = results.length;
-  console.log(`${checked - new Set(failures.map((f) => f.split(' ')[0])).size}/${checked} panel×theme checks clean.`);
-  if (failures.length) {
-    console.log(`\n${failures.length} assertion failures:`);
-    for (const f of failures) console.log(`  - ${f}`);
+  console.log(`\n${report.results.length} panel×theme×width checks run.`);
+  if (expected.length) {
+    console.log(`\n▲ ${expected.length} EXPECTED failures — the ⋯ overflow menu is not built yet (SidePanel.tsx):`);
+    for (const f of expected) console.log(`  - ${f.panel} [${f.theme}] ${f.msg}`);
   }
+  if (real.length) {
+    console.log(`\n✗ ${real.length} real failures:`);
+    for (const f of real) console.log(`  - ${f.panel} [${f.theme}/${f.pass}] (${f.code}) ${f.msg}`);
+  }
+  if (!failures.length) console.log('\n✓ clean.');
+
   process.exit(failures.length ? 1 : 0);
 })().catch((err) => {
   console.error('panel-chrome failed:', err.message);
+  flush();
   process.exit(1);
 });

@@ -1,7 +1,5 @@
 import React, { useRef, useState } from 'react';
 
-import { PanelHeader } from '@noodl-core-ui/components/sidebar/PanelHeader';
-
 import PopupLayer from '../../popuplayer';
 
 export interface ComponentPortItem {
@@ -11,7 +9,8 @@ export interface ComponentPortItem {
 }
 
 export interface ComponentPortsViewProps {
-  title: string;
+  /* No `title`: the panel's title belongs to the `PanelHeader` that
+     `ComponentPortsComponent` renders in the main React tree. See componentports.tsx. */
   items: ComponentPortItem[];
   canArrangeInGroups: boolean;
 
@@ -266,7 +265,6 @@ function GroupRow({
 
 /** The component ports ("Inputs"/"Outputs") sidebar panel. */
 export function ComponentPortsView({
-  title,
   items,
   canArrangeInGroups,
   onRenamePort,
@@ -279,17 +277,12 @@ export function ComponentPortsView({
 }: ComponentPortsViewProps) {
   return (
     <>
-      {/* PNL-005: the shared `PanelHeader`, not the legacy 33px
-          `.sidebar-panel-header` with its 12px capitalised label — this panel
-          ("Ports", registered as `PortEditor`) was missing from the spec's list
-          of fourteen but wore a fifteenth kind of header.
-
-          `PanelHeader` directly rather than `BasePanel`: the panel is mounted
-          through a `Frame` into its own React root (`createRoot` in
-          componentports.tsx), so `BasePanel`'s flex chain and its mode-slot
-          context — which does not cross a root boundary — would buy nothing
-          here. Same bar; no mode controls, as today. */}
-      <PanelHeader title={title} />
+      {/* PNL-005: the header is NOT here. It used to be the legacy 33px
+          `.sidebar-panel-header`, then briefly a `PanelHeader` in this file —
+          but this view renders into its own React root, so a header here is
+          invisible on the first paint and can never reach the mode slot. It
+          lives in `ComponentPortsComponent` (componentports.tsx) now, in the
+          main tree. Do not add one back here: two would render. */}
 
       <div style={{ overflowY: 'auto' }}>
         <div className="ports">
