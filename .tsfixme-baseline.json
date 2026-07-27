@@ -4,10 +4,10 @@
     "scripts"
   ],
   "exclude": [],
-  "commit": "6491dad",
+  "commit": "b22cfab0",
   "max": {
-    "TSFixme": 545,
-    "any": 465,
+    "TSFixme": 540,
+    "any": 336,
     "@ts-ignore": 17,
     "@ts-nocheck": 0,
     "@ts-expect-error": 79
@@ -28,8 +28,8 @@
       "@ts-expect-error": 11
     },
     "noodl-editor": {
-      "TSFixme": 497,
-      "any": 134,
+      "TSFixme": 492,
+      "any": 132,
       "@ts-ignore": 6,
       "@ts-nocheck": 0,
       "@ts-expect-error": 62
@@ -71,7 +71,7 @@
     },
     "noodl-runtime": {
       "TSFixme": 0,
-      "any": 185,
+      "any": 58,
       "@ts-ignore": 0,
       "@ts-nocheck": 0,
       "@ts-expect-error": 0
@@ -541,7 +541,7 @@
       "@ts-expect-error": 0
     },
     "packages/noodl-editor/src/editor/src/models/nodelibrary/NodeLibraryData.ts": {
-      "TSFixme": 2,
+      "TSFixme": 1,
       "any": 0,
       "@ts-ignore": 0,
       "@ts-nocheck": 0,
@@ -1100,13 +1100,6 @@
       "@ts-nocheck": 0,
       "@ts-expect-error": 0
     },
-    "packages/noodl-editor/src/editor/src/views/panels/AppSetupPanel/sections/VariablesSection.tsx": {
-      "TSFixme": 0,
-      "any": 2,
-      "@ts-ignore": 0,
-      "@ts-nocheck": 0,
-      "@ts-expect-error": 0
-    },
     "packages/noodl-editor/src/editor/src/views/panels/BackendServicesPanel/hooks/useLocalBackends.ts": {
       "TSFixme": 0,
       "any": 1,
@@ -1163,13 +1156,6 @@
       "@ts-nocheck": 0,
       "@ts-expect-error": 0
     },
-    "packages/noodl-editor/src/editor/src/views/panels/EditorSettingsPanel/EditorSettingsPanel.tsx": {
-      "TSFixme": 0,
-      "any": 0,
-      "@ts-ignore": 0,
-      "@ts-nocheck": 0,
-      "@ts-expect-error": 1
-    },
     "packages/noodl-editor/src/editor/src/views/panels/ExecutionHistoryPanel/hooks/useExecutionDetail.ts": {
       "TSFixme": 0,
       "any": 1,
@@ -1205,12 +1191,12 @@
       "@ts-nocheck": 0,
       "@ts-expect-error": 1
     },
-    "packages/noodl-editor/src/editor/src/views/panels/ProjectSettingsPanel/ProjectSettingsModel.ts": {
-      "TSFixme": 4,
+    "packages/noodl-editor/src/editor/src/views/panels/SettingsPanel/EditorSettingsTab.tsx": {
+      "TSFixme": 0,
       "any": 0,
       "@ts-ignore": 0,
       "@ts-nocheck": 0,
-      "@ts-expect-error": 0
+      "@ts-expect-error": 1
     },
     "packages/noodl-editor/src/editor/src/views/panels/TopologyMapPanel/utils/folderColors.ts": {
       "TSFixme": 0,
@@ -1940,6 +1926,13 @@
       "@ts-nocheck": 0,
       "@ts-expect-error": 0
     },
+    "packages/noodl-runtime/src/api/queryutils.ts": {
+      "TSFixme": 0,
+      "any": 1,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
     "packages/noodl-runtime/src/config/config-manager.test.ts": {
       "TSFixme": 0,
       "any": 2,
@@ -1982,72 +1975,9 @@
       "@ts-nocheck": 0,
       "@ts-expect-error": 0
     },
-    "packages/noodl-runtime/src/nodes/std-library/agent/json-stream-parser.ts": {
-      "TSFixme": 0,
-      "any": 4,
-      "@ts-ignore": 0,
-      "@ts-nocheck": 0,
-      "@ts-expect-error": 0
-    },
-    "packages/noodl-runtime/src/nodes/std-library/agent/pattern-extractor.ts": {
-      "TSFixme": 0,
-      "any": 1,
-      "@ts-ignore": 0,
-      "@ts-nocheck": 0,
-      "@ts-expect-error": 0
-    },
-    "packages/noodl-runtime/src/nodes/std-library/agent/sse-connection.ts": {
-      "TSFixme": 0,
-      "any": 28,
-      "@ts-ignore": 0,
-      "@ts-nocheck": 0,
-      "@ts-expect-error": 0
-    },
-    "packages/noodl-runtime/src/nodes/std-library/agent/sse.ts": {
-      "TSFixme": 0,
-      "any": 15,
-      "@ts-ignore": 0,
-      "@ts-nocheck": 0,
-      "@ts-expect-error": 0
-    },
-    "packages/noodl-runtime/src/nodes/std-library/agent/stream-buffer.ts": {
-      "TSFixme": 0,
-      "any": 15,
-      "@ts-ignore": 0,
-      "@ts-nocheck": 0,
-      "@ts-expect-error": 0
-    },
-    "packages/noodl-runtime/src/nodes/std-library/agent/text-accumulator.ts": {
-      "TSFixme": 0,
-      "any": 2,
-      "@ts-ignore": 0,
-      "@ts-nocheck": 0,
-      "@ts-expect-error": 0
-    },
     "packages/noodl-runtime/src/nodescope.ts": {
       "TSFixme": 0,
       "any": 17,
-      "@ts-ignore": 0,
-      "@ts-nocheck": 0,
-      "@ts-expect-error": 0
-    },
-    "packages/noodl-runtime/test/agent-sse-connection.test.ts": {
-      "TSFixme": 0,
-      "any": 25,
-      "@ts-ignore": 0,
-      "@ts-nocheck": 0,
-      "@ts-expect-error": 0
-    },
-    "packages/noodl-runtime/test/agent-sse-node.test.ts": {
-      "TSFixme": 0,
-      "any": 31,
-      "@ts-ignore": 0,
-      "@ts-nocheck": 0,
-      "@ts-expect-error": 0
-    },
-    "packages/noodl-runtime/test/agent-stream-nodes.test.ts": {
-      "TSFixme": 0,
-      "any": 7,
       "@ts-ignore": 0,
       "@ts-nocheck": 0,
       "@ts-expect-error": 0
@@ -2153,6 +2083,13 @@
     "packages/noodl-viewer-react/src/node-transitions.ts": {
       "TSFixme": 0,
       "any": 2,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-viewer-react/src/nodes-deprecated/std-library/data/dbcollectionnode.ts": {
+      "TSFixme": 0,
+      "any": 4,
       "@ts-ignore": 0,
       "@ts-nocheck": 0,
       "@ts-expect-error": 0
@@ -2265,13 +2202,6 @@
     "scripts/test-editor.ts": {
       "TSFixme": 0,
       "any": 1,
-      "@ts-ignore": 0,
-      "@ts-nocheck": 0,
-      "@ts-expect-error": 0
-    },
-    "packages/noodl-viewer-react/src/nodes-deprecated/std-library/data/dbcollectionnode.ts": {
-      "TSFixme": 0,
-      "any": 4,
       "@ts-ignore": 0,
       "@ts-nocheck": 0,
       "@ts-expect-error": 0
