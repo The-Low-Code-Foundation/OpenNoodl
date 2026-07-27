@@ -24,7 +24,13 @@ const STYLE_ELEMENT_ID = 'noodl-design-tokens';
 export class PreviewTokenInjector {
   private static _instance: PreviewTokenInjector | null = null;
 
-  private _webview: Electron.WebviewTag | null = null;
+  /**
+   * Every preview surface that needs tokens. AIX-008 added a second one (the
+   * authoring sandbox), and a single reference silently meant "whichever
+   * announced itself last" — the other would keep whatever CSS it started with
+   * and drift on the next token change.
+   */
+  private readonly _webviews = new Set<Electron.WebviewTag>();
   private _tokensModel: StyleTokensModel | null = null;
 
   private constructor() {}
@@ -54,21 +60,27 @@ export class PreviewTokenInjector {
    * Stores the webview reference and immediately injects the current tokens.
    */
   notifyDomReady(webview: Electron.WebviewTag): void {
-    this._webview = webview;
-    this._inject();
+    this._webviews.add(webview);
+    this._injectInto(webview);
   }
 
   /**
-   * Clear webview reference (e.g. when the canvas is destroyed).
+   * Stop tracking a preview surface. Without an argument this clears them all,
+   * which is what the canvas being destroyed used to mean.
    */
-  clearWebview(): void {
-    this._webview = null;
+  clearWebview(webview?: Electron.WebviewTag): void {
+    if (webview) this._webviews.delete(webview);
+    else this._webviews.clear();
   }
 
   // ─── Private ─────────────────────────────────────────────────────────────────
 
   private _inject(): void {
-    if (!this._webview || !this._tokensModel) return;
+    for (const webview of this._webviews) this._injectInto(webview);
+  }
+
+  private _injectInto(webview: Electron.WebviewTag): void {
+    if (!this._tokensModel) return;
 
     const css = this._tokensModel.generateCss();
     if (!css) return;
@@ -93,7 +105,7 @@ export class PreviewTokenInjector {
     // executeJavaScript returns a Promise — we intentionally don't await it here
     // because injection is best-effort and we don't want to block the caller.
     // Errors are swallowed because the webview may navigate away at any time.
-    this._webview.executeJavaScript(script).catch(() => {
+    webview.executeJavaScript(script).catch(() => {
       // Webview navigated or was destroyed — no action needed.
     });
   }

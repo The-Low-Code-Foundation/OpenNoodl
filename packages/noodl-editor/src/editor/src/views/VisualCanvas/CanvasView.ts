@@ -184,7 +184,7 @@ export class CanvasView extends View {
       this.root.unmount();
       this.root = null;
     }
-    PreviewTokenInjector.instance.clearWebview();
+    PreviewTokenInjector.instance.clearWebview(this.webview);
     ipcRenderer.off('editor-api-response', this._onEditorApiResponse);
   }
   refresh() {

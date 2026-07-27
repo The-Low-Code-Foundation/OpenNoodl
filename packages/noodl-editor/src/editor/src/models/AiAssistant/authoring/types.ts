@@ -60,6 +60,14 @@ export interface SubmittedNode {
   ports?: NodePort[];
 }
 
+/**
+ * AIX-008 — records the agent expects this component to display, keyed by the
+ * collection name it queries. Never written anywhere: it exists so the sandbox
+ * preview shows a book list full of books instead of a book list full of
+ * "Title 1", and is discarded with the preview.
+ */
+export type AgentSampleData = Record<string, Array<Record<string, unknown>>>;
+
 /** The agent's complete candidate for the component. */
 export interface SubmitPayload {
   nodes: SubmittedNode[];
@@ -67,6 +75,8 @@ export interface SubmitPayload {
   visualRoots?: string[];
   /** Agent-authored summary stored on the component. */
   description?: string;
+  /** Sample records for the preview sandbox. Optional; inference covers the gaps. */
+  sampleData?: AgentSampleData;
 }
 
 // ── Validation gate ───────────────────────────────────────────────────────────

@@ -37,10 +37,13 @@ import { PrimaryButton, PrimaryButtonVariant } from '@noodl-core-ui/components/i
 import { Label } from '@noodl-core-ui/components/typography/Label';
 import { Text, TextType } from '@noodl-core-ui/components/typography/Text';
 
+import { FrameDivider, FrameDividerOwner } from '@noodl-core-ui/components/layout/FrameDivider';
+
 import { Frame } from '../../common/Frame';
 import { NodeGraphEditor } from '../../nodegrapheditor';
 import { EditorDocumentProvider } from '../EditorDocument';
 import css from './AuthoringPreviewDocument.module.scss';
+import { SandboxPreview } from './SandboxPreview';
 
 export interface AuthoringPreviewDocumentProps {
   session: AuthoringSession;
@@ -51,6 +54,9 @@ export interface AuthoringPreviewDocumentProps {
 
 /** One reveal per tick — fast enough to feel live, slow enough to follow. */
 const REVEAL_INTERVAL_MS = 90;
+
+/** Starting width of the rendered pane, in pixels. */
+const DEFAULT_PREVIEW_WIDTH = 620;
 
 function statusLine(state: AuthoringSessionState): { text: string; type: FeedbackType | null } {
   switch (state.phase) {
@@ -92,6 +98,13 @@ function AuthoringPreviewDocument({ session, onAccept, onReject, onOpenReview }:
   });
 
   const [state, setState] = useState<AuthoringSessionState>(session.state);
+
+  // AIX-008: the rendered half. Wide by default — the question the user is
+  // being asked ("is this what you meant?") is answered by the render, and the
+  // graph answers the follow-up.
+  const splitRef = useRef<HTMLDivElement>(null);
+  const [splitSize, setSplitSize] = useState(DEFAULT_PREVIEW_WIDTH);
+  const [splitWidth, setSplitWidth] = useState<number | undefined>(undefined);
 
   const builderRef = useRef<PreviewGraphBuilder | null>(null);
   const queueRef = useRef<RevealQueue | null>(null);
@@ -188,8 +201,24 @@ function AuthoringPreviewDocument({ session, onAccept, onReject, onOpenReview }:
         </div>
       </div>
 
-      <div className={css.Canvas}>
-        <Frame instance={nodeGraph} onResize={(bounds) => nodeGraph.resize(bounds)} />
+      <div className={css.Canvas} ref={splitRef}>
+        <FrameDivider
+          horizontal
+          splitOwner={FrameDividerOwner.First}
+          size={splitSize}
+          sizeMin={280}
+          sizeMax={splitWidth ? Math.max(320, splitWidth - 280) : undefined}
+          first={
+            <SandboxPreview
+              files={session.stagedFiles}
+              sampleData={session.stagedSampleData}
+              revision={state.stagedRevision}
+            />
+          }
+          second={<Frame instance={nodeGraph} onResize={(bounds) => nodeGraph.resize(bounds)} />}
+          onSizeChanged={setSplitSize}
+          onBoundsChanged={(bounds) => setSplitWidth(bounds.width)}
+        />
       </div>
     </div>
   );

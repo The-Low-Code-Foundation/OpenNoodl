@@ -20,6 +20,8 @@ export class ViewerConnection extends Model {
   clientsToExportTo: Set<unknown>;
   registeredRuntimeTypes: Set<unknown>;
   highlightedNode: NodeGraphNode;
+  /** AIX-008: clientId → the export that client gets instead of the project. */
+  sandboxProviders: Map<string, () => object | undefined>;
 
   static instance: ViewerConnection;
   ws: WebSocket;
@@ -35,6 +37,7 @@ export class ViewerConnection extends Model {
     this.lastExports = {};
     this.clientsToExportTo = new Set();
     this.registeredRuntimeTypes = new Set();
+    this.sandboxProviders = new Map();
     this.bindDebugInspectorEvents();
   }
 
@@ -91,6 +94,11 @@ export class ViewerConnection extends Model {
     //a viewer disconnected
     else if (request.cmd === 'disconnect') {
       this.clientsToExportTo.delete(request.clientId);
+      // A sandbox client keeps its id across reloads (it is derived from the
+      // preview session, not minted per connection), so the "don't send the
+      // same export twice" cache has to be dropped or a reloaded window would
+      // never be fed again.
+      delete this.lastExports[request.clientId];
       NodeLibraryImporter.instance.onClientDisconnect(request.clientId);
       // PAR-003: client-presence signal for the bottom bar's "Preview live"
       // status. Pure notification — tracking semantics are unchanged.
@@ -174,6 +182,41 @@ export class ViewerConnection extends Model {
     }
   }
 
+  /**
+   * AIX-008 — Sandbox clients.
+   *
+   * A viewer client normally receives the project. A sandbox preview receives
+   * whatever its provider returns instead: the staged AI candidate, rendered as
+   * root, with sample data in the metadata. The client announces itself by
+   * registering as `sandbox-<sessionId>` (see the runtime's EditorConnection),
+   * so nothing in the WS relay had to learn a new message.
+   *
+   * The live project is never involved — the provider builds its export from a
+   * throwaway clone, which is what keeps "reject leaves no trace" structural.
+   */
+  registerSandboxExport(clientId: string, provider: () => object | undefined) {
+    this.sandboxProviders.set(clientId, provider);
+    // The client may already be connected (a refine round re-registers while the
+    // window stays open); push immediately in that case.
+    if (this.clientsToExportTo.has(clientId)) this.exportSandbox(clientId);
+  }
+
+  unregisterSandboxExport(clientId: string) {
+    this.sandboxProviders.delete(clientId);
+    delete this.lastExports[clientId];
+  }
+
+  /** Re-send a sandbox client's export; the runtime reloads on a changed one. */
+  exportSandbox(clientId: string) {
+    const provider = this.sandboxProviders.get(clientId);
+    if (!provider) return;
+
+    const json = provider();
+    if (!json) return;
+
+    this._exportToClient(clientId, JSON.stringify(json));
+  }
+
   _exportToClient(clientId, exportedJSON) {
     //don't send the same export twice
     if (exportedJSON === this.lastExports[clientId]) return;
@@ -215,10 +258,13 @@ export class ViewerConnection extends Model {
     const exportedJSON = JSON.stringify(_export);
 
     if (target) {
-      this._exportToClient(target, exportedJSON);
+      if (this.sandboxProviders.has(target as string)) this.exportSandbox(target as string);
+      else this._exportToClient(target, exportedJSON);
     } else {
       for (const clientId of this.clientsToExportTo.values()) {
-        this._exportToClient(clientId, exportedJSON);
+        // A sandbox client is fed by its provider, never by the project export.
+        if (this.sandboxProviders.has(clientId as string)) this.exportSandbox(clientId as string);
+        else this._exportToClient(clientId, exportedJSON);
       }
     }
   }
@@ -328,6 +374,12 @@ export class ViewerConnection extends Model {
    * @param {require('@noodl-models/nodelibrary/NodeLibraryData').NodeLibraryData} newLibrary
    */
   loadNodeLibrary(clientId, runtimeType, newLibrary) {
+    // A changed export makes the runtime call location.reload(), and a sandbox
+    // client comes back under the SAME id — so the "don't send the same export
+    // twice" cache would suppress the very export it just reloaded to receive,
+    // and the window would sit empty. Registering is always a fresh start.
+    if (this.sandboxProviders.has(clientId)) delete this.lastExports[clientId];
+
     this.clientsToExportTo.add(clientId);
     this.registeredRuntimeTypes.add(runtimeType);
 

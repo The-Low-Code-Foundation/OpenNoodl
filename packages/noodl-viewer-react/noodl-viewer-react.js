@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom';
 import NoodlRuntime from '@noodl/runtime';
 
 import registerPolyfills from './src/polyfills';
+import { readSandboxSession, startSandbox } from './src/sandbox';
 import Viewer, { ssrSetupRuntime } from './src/viewer.jsx';
 import { settle, createPageReadyGate, createFetchTracker, createXhrTracker } from './static/ssr/render-gate';
 
@@ -53,6 +54,16 @@ export default {
 
     if (isLocal) {
       runtimeArgs.platform.isRunningLocally = () => true;
+    }
+
+    // AIX-008: an authoring sandbox announces itself in the URL. Registering
+    // under a known client id is what makes the editor feed this window the
+    // staged candidate instead of the project; the network shim goes in before
+    // the runtime exists, so no node can reach a real backend even once.
+    const sandbox = readSandboxSession();
+    if (sandbox) {
+      runtimeArgs.editorClientId = sandbox.clientId;
+      if (sandbox.useSampleData) startSandbox();
     }
 
     const noodlRuntime = new NoodlRuntime(runtimeArgs);

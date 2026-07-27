@@ -35,6 +35,10 @@ export * from './aix007-cost.test';
 // AIX-003: graph-native review. The change-set adapter expresses staged AI
 // proposals through SUB-007's diff engine; specs diff against components
 // accepted through the real staging path.
+// AIX-008: the sandbox preview — what data the graph expects, and the export a
+// preview window is fed (which must never touch the project).
+export * from './authoring-sandbox.test';
+
 export * from './authoring-changeset.test';
 export * from './authoring-review.test';
 export * from './authoring-apply.test';

@@ -132,7 +132,10 @@ function NoodlRuntime(args) {
   // and reduce the need for lots of if(editorConnection)
   this.editorConnection = new EditorConnection({
     platform: args.platform,
-    runtimeType: this.type
+    runtimeType: this.type,
+    // AIX-008: sandbox previews register under a known id so the editor can feed
+    // them their own export. Undefined everywhere else — an anonymous guid.
+    clientId: args.editorClientId
   });
 
   this.context = new NodeContext({

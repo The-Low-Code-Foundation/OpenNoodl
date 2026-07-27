@@ -40,3 +40,7 @@ export type { MaterializedSelection } from './applyChangeSet';
 export { initialUserMessage, refineMessage, styleAdvisoryMessage, systemPrompt, updateUserMessage } from './prompts/authoring';
 export { countStyleValues, formatStyleFindings, styleLintCandidate } from './styleLint';
 export type { StyleLint, StyleLintOptions } from './styleLint';
+export { buildSandboxDataset, discoverDataShape } from './sandboxData';
+export type { BuildSandboxDatasetOptions } from './sandboxData';
+export { buildSandboxExport, candidateComponent, componentClosure } from './sandboxExport';
+export type { SandboxExport, SandboxExportOptions } from './sandboxExport';

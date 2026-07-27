@@ -12,6 +12,11 @@ function EditorConnection(opts) {
 
   this.runtimeType = _opts.runtimeType;
   this.platform = _opts.platform;
+  // AIX-008: a client normally mints an anonymous guid. A sandbox preview passes
+  // its own id instead, which is how the editor tells that client apart and feeds
+  // it a different export (see ViewerConnection.registerSandboxExport). The WS
+  // relay is untouched — it only ever copies whatever id the client registered.
+  this.fixedClientId = _opts.clientId;
   this.ws =
     (_opts.platform && _opts.platform.webSocketClass) || (typeof WebSocket !== 'undefined' ? WebSocket : undefined);
   this.wsOptions = (_opts.platform && _opts.platform.webSocketOptions) || undefined;
@@ -44,7 +49,7 @@ EditorConnection.prototype.connect = function (address) {
   var self = this;
 
   this.socket.addEventListener('open', function () {
-    self.clientId = guid();
+    self.clientId = self.fixedClientId || guid();
     self.socket.send(
       JSON.stringify({
         cmd: 'register',

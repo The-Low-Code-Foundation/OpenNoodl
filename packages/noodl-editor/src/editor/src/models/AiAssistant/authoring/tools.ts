@@ -13,7 +13,31 @@
 import type { ConnectionV2, NodePort } from '../../../schemas';
 import type { AiToolCall, AiToolDefinition } from '../client/types';
 import type { AuthoringContextBuilder } from './ContextBuilder';
-import type { SubmitPayload, SubmittedNode } from './types';
+import type { AgentSampleData, SubmitPayload, SubmittedNode } from './types';
+
+/** Records per collection the preview will show; more is wasted context. */
+const MAX_SAMPLE_RECORDS = 5;
+
+/**
+ * `sample_data` is model-supplied and unvalidated, so it is narrowed here
+ * rather than trusted: object of arrays of objects, capped. Anything else is
+ * dropped — the sandbox falls back to inference, which always produces
+ * something.
+ */
+function toSampleData(value: unknown): AgentSampleData | undefined {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) return undefined;
+
+  const result: AgentSampleData = {};
+  for (const [className, records] of Object.entries(value as Record<string, unknown>)) {
+    if (!Array.isArray(records)) continue;
+    const rows = records
+      .filter((record): record is Record<string, unknown> => record !== null && typeof record === 'object' && !Array.isArray(record))
+      .slice(0, MAX_SAMPLE_RECORDS);
+    if (rows.length > 0) result[className] = rows;
+  }
+
+  return Object.keys(result).length > 0 ? result : undefined;
+}
 
 export const GET_NODE_TYPES = 'get_node_types';
 export const GET_COMPONENT = 'get_component';
@@ -104,7 +128,13 @@ export const AUTHORING_TOOLS: AiToolDefinition[] = [
           items: { type: 'string' },
           description: 'Ids of the canvas root nodes (the visual root container for pages/visual components)'
         },
-        description: { type: 'string', description: 'One or two sentences: what this component is and does' }
+        description: { type: 'string', description: 'One or two sentences: what this component is and does' },
+        sample_data: {
+          type: 'object',
+          description:
+            'Optional. Example records the preview should display, keyed by the collection name this component ' +
+            'queries — up to 5 per collection, realistic values, no real data. Only for components that read a backend.'
+        }
       },
       required: ['nodes']
     }
@@ -117,7 +147,8 @@ export function toSubmitPayload(args: Record<string, unknown>): SubmitPayload {
     nodes: (args.nodes as SubmittedNode[]) ?? [],
     connections: args.connections as ConnectionV2[] | undefined,
     visualRoots: args.visual_roots as string[] | undefined,
-    description: typeof args.description === 'string' ? args.description : undefined
+    description: typeof args.description === 'string' ? args.description : undefined,
+    sampleData: toSampleData(args.sample_data)
   };
 }
 

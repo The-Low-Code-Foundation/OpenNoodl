@@ -63,6 +63,7 @@ import {
   toSubmitPayload
 } from './tools';
 import type {
+  AgentSampleData,
   AuthoringMetrics,
   AuthoringMode,
   AuthoringOutcome,
@@ -190,6 +191,12 @@ export interface AuthoringSessionState {
   building?: BuildingPreview;
   /** Present whenever some candidate has passed validation — it survives a failed refinement. */
   staged?: StagedSummary;
+  /**
+   * AIX-008: increments every time a *different* candidate is staged. The
+   * sandbox preview rebuilds its export on this rather than on object identity,
+   * so a refinement re-renders and a re-render does not.
+   */
+  stagedRevision: number;
   error?: string;
 }
 
@@ -210,6 +217,8 @@ interface SubmitResult {
   ok: boolean;
   text: string;
   files?: ComponentFiles;
+  /** AIX-008: sample records for the preview sandbox, when the model supplied any. */
+  sampleData?: AgentSampleData;
   errorLines: string[];
   /** AIX-006: style-lint findings on an otherwise-valid candidate (empty when clean). */
   styleFindings: string[];
@@ -236,6 +245,9 @@ export class AuthoringSession {
   private started = false;
   private inFlight = false;
   private staged?: ComponentFiles;
+  /** AIX-008: sample records the model supplied with the staged candidate. */
+  private stagedSample?: AgentSampleData;
+  private stagedRevision = 0;
   private building?: BuildingPreview;
   private submissionCounter = 0;
 
@@ -319,6 +331,11 @@ export class AuthoringSession {
     return this.staged;
   }
 
+  /** AIX-008: the sample records that came with the staged candidate, if any. */
+  get stagedSampleData(): AgentSampleData | undefined {
+    return this.stagedSample;
+  }
+
   get state(): AuthoringSessionState {
     const phase: AuthoringPhase = this.inFlight
       ? 'working'
@@ -344,6 +361,7 @@ export class AuthoringSession {
             connectionCount: this.staged.connections.connections.length
           }
         : undefined,
+      stagedRevision: this.stagedRevision,
       error: this.lastError
     };
   }
@@ -579,6 +597,10 @@ export class AuthoringSession {
             // The candidate passed the gate — keep it staged no matter what
             // happens next, so a failed style-improvement pass never loses it.
             this.staged = result.files;
+            // AIX-008: sample data belongs to the candidate it arrived with; a
+            // submission without any clears the last one rather than inheriting it.
+            this.stagedSample = result.sampleData;
+            this.stagedRevision++;
             // AIX-006: one advisory style pass, if the lint found raw values and
             // there is submission budget left. The component is already
             // acceptable; this asks the agent to make it on-system, at most once.
@@ -702,6 +724,7 @@ export class AuthoringSession {
       return {
         ok: true,
         files: candidate.files,
+        sampleData: payload.sampleData,
         errorLines: [],
         styleFindings,
         text: [
