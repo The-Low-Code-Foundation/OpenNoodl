@@ -1,0 +1,184 @@
+{
+  "name": "Expression Parameters",
+  "id": "expr-params-0001",
+  "version": "4",
+  "rootNodeId": "expr-root-comp",
+  "settings": {
+    "rootComponent": "/#App"
+  },
+  "variants": [
+    {
+      "typename": "Text",
+      "name": "ExpressionStyled",
+      "parameters": {
+        "text": { "mode": "expression", "expression": "Variables.variantLabel", "fallback": "variant fallback", "version": 1 },
+        "fontSize": { "mode": "expression", "expression": "Variables.scale * 12", "fallback": 12, "version": 1 }
+      },
+      "stateParamaters": {
+        "hover": {
+          "text": { "mode": "expression", "expression": "Variables.hoverLabel", "fallback": "", "version": 1 }
+        }
+      }
+    }
+  ],
+  "components": [
+    {
+      "name": "/#App",
+      "id": "expr-root-comp",
+      "graph": {
+        "roots": [
+          {
+            "id": "expr-group",
+            "type": "Group",
+            "x": 0,
+            "y": 0,
+            "parameters": {
+              "flexDirection": "column",
+              "paddingLeft": { "mode": "expression", "expression": "Variables.gutter", "fallback": 0, "version": 1 }
+            },
+            "children": [
+              {
+                "id": "expr-string-port",
+                "type": "Text",
+                "x": 40,
+                "y": 40,
+                "label": "String port, plain fallback",
+                "parameters": {
+                  "text": {
+                    "mode": "expression",
+                    "expression": "Variables.firstName + ' ' + Variables.lastName",
+                    "fallback": "Anonymous",
+                    "version": 1
+                  }
+                },
+                "children": []
+              },
+              {
+                "id": "expr-number-port",
+                "type": "Text",
+                "x": 40,
+                "y": 100,
+                "label": "Number port, zero fallback",
+                "parameters": {
+                  "fontSize": {
+                    "mode": "expression",
+                    "expression": "Math.max(12, Variables.base * 1.5)",
+                    "fallback": 0,
+                    "version": 1
+                  }
+                },
+                "children": []
+              },
+              {
+                "id": "expr-falsy-fallbacks",
+                "type": "Text",
+                "x": 40,
+                "y": 160,
+                "label": "Every falsy fallback — the classic silent-loss set",
+                "parameters": {
+                  "text": { "mode": "expression", "expression": "Variables.emptyish", "fallback": "", "version": 1 },
+                  "fontSize": { "mode": "expression", "expression": "Variables.zero", "fallback": 0, "version": 1 },
+                  "visible": { "mode": "expression", "expression": "Variables.flag", "fallback": false, "version": 1 },
+                  "opacity": { "mode": "expression", "expression": "Variables.nullish", "fallback": null, "version": 1 }
+                },
+                "children": []
+              },
+              {
+                "id": "expr-no-fallback",
+                "type": "Text",
+                "x": 40,
+                "y": 220,
+                "label": "No fallback key at all, and no version",
+                "parameters": {
+                  "text": { "mode": "expression", "expression": "Variables.bare" }
+                },
+                "children": []
+              },
+              {
+                "id": "expr-special-chars",
+                "type": "Text",
+                "x": 40,
+                "y": 280,
+                "label": "Characters that break naive escaping",
+                "parameters": {
+                  "text": {
+                    "mode": "expression",
+                    "expression": "\"quoted\" + 'single' + `tpl ${Variables.x}` + \"back\\\\slash\" + \"\\ttab\\nnewline\" + \"</script>\" + \"emoji 🎛 ünïcode\" + \"{\\\"json\\\": true}\"",
+                    "fallback": "fallback with \"quotes\", a \\backslash and a\nnewline",
+                    "version": 1
+                  }
+                },
+                "children": []
+              },
+              {
+                "id": "expr-mixed-with-plain",
+                "type": "Text",
+                "x": 40,
+                "y": 340,
+                "label": "Expression and plain parameters side by side",
+                "parameters": {
+                  "text": { "mode": "expression", "expression": "Variables.greeting", "fallback": "Hi", "version": 1 },
+                  "textAlign": "center",
+                  "fontSize": 18,
+                  "visible": true
+                },
+                "children": []
+              },
+              {
+                "id": "expr-in-state-bags",
+                "type": "Text",
+                "x": 40,
+                "y": 400,
+                "label": "Object form inside stateParameters",
+                "parameters": {
+                  "text": { "mode": "expression", "expression": "Variables.label", "fallback": "idle", "version": 1 }
+                },
+                "stateParameters": {
+                  "hover": {
+                    "text": { "mode": "expression", "expression": "Variables.hoverLabel", "fallback": "hovering", "version": 1 },
+                    "fontSize": { "mode": "expression", "expression": "Variables.hoverSize", "fallback": 0, "version": 1 }
+                  }
+                },
+                "stateTransitions": {
+                  "hover": { "fontSize": { "curve": "easeOut", "dur": 200 } }
+                },
+                "children": []
+              },
+              {
+                "id": "expr-future-version",
+                "type": "Text",
+                "x": 40,
+                "y": 460,
+                "label": "A version this build does not know",
+                "parameters": {
+                  "text": { "mode": "expression", "expression": "Variables.future", "fallback": "later", "version": 99 }
+                },
+                "children": []
+              },
+              {
+                "id": "expr-object-fallback",
+                "type": "Text",
+                "x": 40,
+                "y": 520,
+                "label": "Structured fallback — nested object and array survive whole",
+                "parameters": {
+                  "text": {
+                    "mode": "expression",
+                    "expression": "JSON.stringify(Variables.payload)",
+                    "fallback": { "nested": { "deep": [1, 2, { "three": true }] }, "list": ["a", "b"] },
+                    "version": 1
+                  }
+                },
+                "children": []
+              }
+            ]
+          }
+        ],
+        "connections": [
+          { "fromId": "expr-string-port", "fromProperty": "hovered", "toId": "expr-number-port", "toProperty": "visible" }
+        ],
+        "visualRoots": ["expr-group"]
+      }
+    }
+  ]
+}
