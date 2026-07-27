@@ -10,6 +10,7 @@ import { ProjectStore } from './project/ProjectStore';
 import { registerAuthorTools } from './tools/author';
 import { registerBackendReadTools, registerBackendWriteTools } from './tools/backendTools';
 import { registerCatalogTools } from './tools/catalogTools';
+import { registerDocsReadTools, registerDocsWriteTools } from './tools/docsTools';
 import { registerReadTools } from './tools/read';
 import { registerStyleReadTools, registerStyleWriteTools } from './tools/styleTools';
 import { registerValidateTools } from './tools/validateTools';
@@ -48,10 +49,12 @@ export function createServer(options: ServerOptions): CreatedServer {
   registerCatalogTools(server);
   registerValidateTools(server, store);
   registerStyleReadTools(server, store);
+  registerDocsReadTools(server, store);
   registerBackendReadTools(server);
   if (options.allowWrites) {
     registerAuthorTools(server, store);
     registerStyleWriteTools(server, store);
+    registerDocsWriteTools(server, store);
     registerBackendWriteTools(server);
   }
   return { server, store };

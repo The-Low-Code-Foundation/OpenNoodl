@@ -21,6 +21,10 @@ import type { NodeV2 } from '../../../schemas';
 // pull ProjectModel/Electron into the headless harness bundle).
 import { buildStyleVocabulary, renderStyleVocabulary } from '../../StyleTokensModel/StyleVocabulary';
 import type { StyleVocabulary } from '../../StyleTokensModel/StyleVocabulary';
+// Pure ProjectDocs submodule, for the same reason as StyleVocabulary above —
+// the barrel would drag ProjectModel and the platform filesystem in.
+import { KNOWN_DOCS, renderDocForPrompt } from '../../ProjectDocs/docsText';
+import type { ProjectDocsContent } from '../../ProjectDocs/docsText';
 import { assembleContext, ExplainContextError } from '../explain/assemble';
 import { componentPorts, findComponent } from '../explain/graph';
 import { renderContext } from '../explain/render';
@@ -68,17 +72,22 @@ export class AuthoringContextBuilder {
   /** The project's style vocabulary — tokens by category + element variants/sizes. */
   readonly styleVocab: StyleVocabulary;
 
+  /** AIX-009: the project's `docs/` bodies. Empty object = project has no docs. */
+  readonly docs: ProjectDocsContent;
+
   constructor(
     private readonly graph: ExplainGraph,
     budget: Partial<ContextBudget> = {},
     private readonly catalog: CatalogIndex = loadDefaultCatalog(),
-    styleVocab?: StyleVocabulary
+    styleVocab?: StyleVocabulary,
+    docs: ProjectDocsContent = {}
   ) {
     this.budget = { ...DEFAULT_BUDGET, ...budget };
     // Defaults-only when no project-aware vocabulary is injected: the token
     // NAMES the agent references are stable across projects; only overridden
     // values differ, and the agent emits names, not values.
     this.styleVocab = styleVocab ?? buildStyleVocabulary();
+    this.docs = docs;
   }
 
   get log(): readonly ContextLogEntry[] {
@@ -142,6 +151,49 @@ export class AuthoringContextBuilder {
    */
   styleVocabulary(elementTypes?: string[]): string {
     return this.charge('style-vocabulary', renderStyleVocabulary(this.styleVocab, { elementTypes }));
+  }
+
+  /**
+   * AIX-009 — `docs/CONVENTIONS.md`: the rules this project's assistant must
+   * follow. Injected by default on every authoring turn, because a convention
+   * the agent has to *ask* for is a convention it will not follow.
+   *
+   * Hard-capped ahead of the shared budget (`DOC_CAPS.conventions`) so prose can
+   * never squeeze out component reads, and truncation is stated in the injected
+   * text rather than dropped silently — a half-read rule is worse than a missing
+   * one. Returns `undefined` when the project has no CONVENTIONS.md, so the
+   * prompt omits the block entirely instead of carrying an empty heading.
+   */
+  projectConventions(): string | undefined {
+    return this.docHandout('conventions', 'project-conventions');
+  }
+
+  /** AIX-009 — `docs/BRIEF.md`: what the app is, for whom, and what it is not. */
+  projectBrief(): string | undefined {
+    return this.docHandout('brief', 'project-brief');
+  }
+
+  /**
+   * AIX-009 — `docs/ARCHITECTURE.md`, pull-only via `get_project_doc`.
+   *
+   * It is the largest of the three and is not needed on most turns. Making the
+   * agent ask keeps the default turn cheap and — the reason it is not merely an
+   * economy — keeps AIX-007's cache-stable prefix the same size on every turn of
+   * every session in a project.
+   */
+  projectArchitecture(): string {
+    return (
+      this.docHandout('architecture', 'project-doc:ARCHITECTURE.md') ??
+      'This project has no docs/ARCHITECTURE.md. Work from the project overview and the component interfaces.'
+    );
+  }
+
+  /** Cap, render and charge one known doc. */
+  private docHandout(kind: 'conventions' | 'brief' | 'architecture', source: string): string | undefined {
+    const body = this.docs[kind];
+    if (body === undefined || !body.trim()) return undefined;
+    const doc = KNOWN_DOCS.find((d) => d.kind === kind)!;
+    return this.charge(source, renderDocForPrompt(doc, body));
   }
 
   /** Full documentation for a batch of node types, in one charged handout. */

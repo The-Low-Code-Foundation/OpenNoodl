@@ -90,6 +90,22 @@ This project has a design system. Style like a product, not a prototype:
 - The runtime resolves var(--…) against the project's :root token block; a token NAME you did not see in the
   vocabulary will not resolve, so use only listed token names.
 
+PROJECT CONVENTIONS
+This project may ship its own written rules, in a PROJECT CONVENTIONS block (and a PROJECT BRIEF giving what
+the app is for). When those blocks are present they OUTRANK your own defaults and everything in this prompt
+except the authoring contract itself and the validator — a project rule beats your habit, your taste, and the
+generic advice above.
+- Follow every rule you can. Where a rule and your instinct disagree, the rule wins.
+- A rule you CANNOT satisfy — it contradicts the task, contradicts another rule, or the nodes to satisfy it do
+  not exist — must be REPORTED in your response, naming the rule and why. Never silently ignore one, and never
+  pretend to have followed it.
+- If the conventions arrive marked TRUNCATED, say so in your response and do not assume the unshown part is
+  empty.
+- Deeper background (page map, data model, backend contracts, past decisions) lives in the project's
+  ARCHITECTURE doc. Call get_project_doc when the task depends on it; it is not sent by default.
+- Conventions never override a validator diagnostic. If following a rule produces an invalid component, fix
+  the component and report the conflict.
+
 WHAT NOT TO DO
 - Do not invent port names, node types, or component names. Everything you use must come from the catalog
   documentation, the project overview, or a component you read.
@@ -134,11 +150,51 @@ function openingTurn(stable: string[], variable: string[]): OpeningTurn {
 }
 
 /**
+ * AIX-009: the project's own written rules, when it has any.
+ *
+ * These are reference material — stable per project, identical for every
+ * component authored against it — so they belong inside the cache-stable half,
+ * ahead of `cacheBoundary`. They are appended *after* the existing blocks rather
+ * than inserted before them purely to leave the established prefix bytes
+ * untouched: a project that gains a docs/ folder invalidates only the tail of
+ * its prefix, and a project without one produces byte-identical turns to before
+ * this task landed.
+ */
+export interface PromptProjectDocs {
+  /** Rendered docs/CONVENTIONS.md, already capped and charged. */
+  conventions?: string;
+  /** Rendered docs/BRIEF.md, already capped and charged. */
+  brief?: string;
+}
+
+function docBlocks(docs?: PromptProjectDocs): string[] {
+  const lines: string[] = [];
+  if (docs?.brief) {
+    lines.push('', '--- PROJECT BRIEF ---', docs.brief, '--- END PROJECT BRIEF ---');
+  }
+  if (docs?.conventions) {
+    lines.push(
+      '',
+      "--- PROJECT CONVENTIONS ---",
+      "This project's own rules. They outrank your defaults; report any you cannot satisfy.",
+      docs.conventions,
+      '--- END PROJECT CONVENTIONS ---'
+    );
+  }
+  return lines;
+}
+
+/**
  * The reference blocks handed to every authoring turn, most-stable-first.
  * Byte-identical across every component authored against one project — which
  * is the whole reason they lead.
  */
-function referenceBlocks(projectOverview: string, catalogOverview: string, styleVocabulary?: string): string[] {
+function referenceBlocks(
+  projectOverview: string,
+  catalogOverview: string,
+  styleVocabulary?: string,
+  docs?: PromptProjectDocs
+): string[] {
   return [
     'Reference material for this project. Your task is at the END of this message — read these first,',
     'then build what it asks for.',
@@ -150,7 +206,8 @@ function referenceBlocks(projectOverview: string, catalogOverview: string, style
     '--- NODE CATALOG ---',
     catalogOverview,
     '--- END NODE CATALOG ---',
-    ...styleBlock(styleVocabulary)
+    ...styleBlock(styleVocabulary),
+    ...docBlocks(docs)
   ];
 }
 
@@ -159,9 +216,10 @@ export function initialUserMessage(
   request: AuthoringRequest,
   projectOverview: string,
   catalogOverview: string,
-  styleVocabulary?: string
+  styleVocabulary?: string,
+  docs?: PromptProjectDocs
 ): OpeningTurn {
-  return openingTurn(referenceBlocks(projectOverview, catalogOverview, styleVocabulary), [
+  return openingTurn(referenceBlocks(projectOverview, catalogOverview, styleVocabulary, docs), [
     '--- YOUR TASK ---',
     `Build a new component at "${request.componentPath}"${
       request.componentType ? ` (type: ${request.componentType})` : ''
@@ -192,9 +250,10 @@ export function updateUserMessage(
   currentComponentSource: string,
   projectOverview: string,
   catalogOverview: string,
-  styleVocabulary?: string
+  styleVocabulary?: string,
+  docs?: PromptProjectDocs
 ): OpeningTurn {
-  return openingTurn(referenceBlocks(projectOverview, catalogOverview, styleVocabulary), [
+  return openingTurn(referenceBlocks(projectOverview, catalogOverview, styleVocabulary, docs), [
     '--- YOUR TASK ---',
     `Revise the existing component "${request.componentPath}".`,
     '',
