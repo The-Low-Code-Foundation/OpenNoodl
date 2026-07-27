@@ -1,12 +1,22 @@
 //used to optimize warnings so we're not sending unneccessary warnings.
 //Improves editor performance, especially in larger projects
 
+/**
+ * The warnings currently believed to be live on one node, keyed by the caller's warning key.
+ * A warning is an opaque payload as far as this class is concerned — it only ever compares
+ * identity, never reads inside.
+ */
+type WarningsByKey = Record<string, unknown>;
+
 class ActiveWarnings {
+  currentWarnings: Map<string, WarningsByKey>;
+
   constructor() {
     this.currentWarnings = new Map();
   }
 
-  setWarning(nodeId, key, warning) {
+  /** @returns whether the caller should actually send this warning to the editor. */
+  setWarning(nodeId: string, key: string, warning: unknown): boolean {
     //Check if we've already sent this warning
     if (this.currentWarnings.has(nodeId)) {
       //we have sent warnings to this node before, check if we've sent this particular one before
@@ -27,7 +37,8 @@ class ActiveWarnings {
     }
   }
 
-  clearWarning(nodeId, key) {
+  /** @returns whether the caller should actually tell the editor to clear this warning. */
+  clearWarning(nodeId: string, key: string): boolean {
     const warningKeys = this.currentWarnings.get(nodeId);
 
     if (!warningKeys || !warningKeys[key]) {
@@ -38,13 +49,18 @@ class ActiveWarnings {
 
     delete warningKeys[key];
     if (Object.keys(warningKeys).length === 0) {
-      delete this.currentWarnings.delete(nodeId);
+      // Behaviour-preserving: this line read `delete this.currentWarnings.delete(nodeId)`.
+      // `delete` on a call expression evaluates the call — so the entry *was* removed — and
+      // then returns `true` because the operand is not a reference. The keyword was inert;
+      // dropping it changes nothing at runtime and lets the line say what it does.
+      this.currentWarnings.delete(nodeId);
     }
 
     return true;
   }
 
-  clearWarnings(nodeId) {
+  /** @returns whether the node had any warnings worth telling the editor about. */
+  clearWarnings(nodeId: string): boolean {
     if (this.currentWarnings.has(nodeId) === false) {
       //no warnings on this node, save some performance by not sending a message to the editor
       return false;
@@ -56,4 +72,4 @@ class ActiveWarnings {
   }
 }
 
-module.exports = ActiveWarnings;
+export = ActiveWarnings;

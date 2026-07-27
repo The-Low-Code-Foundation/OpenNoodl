@@ -1127,7 +1127,16 @@ export interface GraphPortModel {
   name: string;
   /** Either the bare type name or the configured object form — check both. */
   type: PortTypeSpec;
-  plug?: 'input' | 'output';
+  /**
+   * Four values reach this field, not two.
+   *
+   * `'input/output'` is a port that is both — the Object node depends on it, which is why
+   * {@link RuntimeDiscoveredPort.plug} admits it too. `'outputs'` is a *misspelling* that
+   * exists in real exported projects: `NodeModel.createFromExportData` rewrites it to
+   * `'output'` on the way in, so nothing downstream has to know, but the field genuinely
+   * holds it until that runs.
+   */
+  plug?: 'input' | 'output' | 'input/output' | 'outputs';
   [extra: string]: unknown;
 }
 

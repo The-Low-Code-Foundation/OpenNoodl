@@ -7,12 +7,12 @@
  * @module adapters/local-sql
  */
 
-const LocalSQLAdapter = require('./LocalSQLAdapter');
-const QueryBuilder = require('./QueryBuilder');
-const SchemaManager = require('./SchemaManager');
-const engine = require('./engine');
+import LocalSQLAdapter = require('./LocalSQLAdapter');
+import QueryBuilder = require('./QueryBuilder');
+import SchemaManager = require('./SchemaManager');
+import engine = require('./engine');
 
-module.exports = {
+export = {
   LocalSQLAdapter,
   LocalBackendPersistenceError: LocalSQLAdapter.LocalBackendPersistenceError,
   QueryBuilder,

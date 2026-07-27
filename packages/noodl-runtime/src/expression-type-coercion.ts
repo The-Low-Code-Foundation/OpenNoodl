@@ -11,20 +11,26 @@
 'use strict';
 
 /**
+ * One entry of an input port's `enums`. Both forms are live in the standard library — the
+ * bare string is the older one, `{ value, label }` the form the editor's dropdown needs.
+ * Only `value` is compared here; `label` is presentation.
+ */
+type EnumOption = string | { value: string; label?: string };
+
+/**
  * Coerce expression result to expected property type
- *
- * @param {*} value - The value from expression evaluation
- * @param {string} expectedType - The expected type (string, number, boolean, color, enum, etc.)
- * @param {*} [fallback] - Fallback value if coercion fails
- * @param {Array} [enumOptions] - Valid options for enum type
- * @returns {*} Coerced value or fallback
  *
  * @example
  * coerceToType('42', 'number') // 42
  * coerceToType(true, 'string') // 'true'
  * coerceToType('#ff0000', 'color') // '#ff0000'
  */
-function coerceToType(value, expectedType, fallback, enumOptions) {
+export function coerceToType(
+  value: unknown,
+  expectedType: string,
+  fallback?: unknown,
+  enumOptions?: EnumOption[]
+): unknown {
   // Handle undefined/null upfront
   if (value === undefined || value === null) {
     return fallback;
@@ -56,13 +62,12 @@ function coerceToType(value, expectedType, fallback, enumOptions) {
 }
 
 /**
- * Coerce value to valid color string
+ * Coerce value to valid color string.
  *
- * @param {*} value - The value to coerce
- * @param {*} fallback - Fallback color
- * @returns {string} Valid color or fallback
+ * Note what this does *not* accept: named CSS colours, `#RRGGBBAA`, `hsl()` and the
+ * space-separated modern `rgb()` syntax all fall through to the fallback.
  */
-function coerceToColor(value, fallback) {
+function coerceToColor(value: unknown, fallback: unknown): unknown {
   const str = String(value);
 
   // Validate hex colors: #RGB or #RRGGBB (case insensitive)
@@ -79,15 +84,8 @@ function coerceToColor(value, fallback) {
   return fallback;
 }
 
-/**
- * Coerce value to valid enum option
- *
- * @param {*} value - The value to coerce
- * @param {*} fallback - Fallback enum value
- * @param {Array} enumOptions - Valid enum options (strings or {value, label} objects)
- * @returns {string} Valid enum value or fallback
- */
-function coerceToEnum(value, fallback, enumOptions) {
+/** Coerce value to valid enum option. */
+function coerceToEnum(value: unknown, fallback: unknown, enumOptions?: EnumOption[]): unknown {
   if (!enumOptions) {
     return fallback;
   }
@@ -106,6 +104,10 @@ function coerceToEnum(value, fallback, enumOptions) {
   return isValid ? enumVal : fallback;
 }
 
-module.exports = {
-  coerceToType
-};
+/**
+ * Named exports, not `export =` (NOTES §29.1). `node.ts` imports `coerceToType` with ESM
+ * named-import syntax, and `export =` in the imported file makes that `TS2497`. The rule
+ * that comes out of it: a runtime module whose CommonJS shape is a plain namespace object
+ * takes named exports; `export =` is for a module whose export *is* a single value.
+ */
+
