@@ -208,6 +208,39 @@ export interface RuntimeNode extends NodeInstance {
   setNodeModel(nodeModel: any): void;
 }
 
+/**
+ * The child-tree protocol that visual nodes implement.
+ *
+ * Kept here rather than in `@noodl/types` because it is not part of what a node *author*
+ * writes — a node definition never implements these; the runtime and the renderer do. Two
+ * things already implement it in full: `nodes/componentinstance.ts` in this package, and
+ * `ReactNodeInstance` in `noodl-viewer-react/src/react-component-node.ts`, which declared
+ * the same members locally before this existed. Naming it once is the §15.2 rule — a
+ * second description of one object is how the two drift apart.
+ *
+ * Every member is optional on the *consuming* side in practice: a Component Instance may
+ * hold roots that are not visual (the Repeater is the standard example), which is why the
+ * call sites guard with `root.render && root.render()` rather than assuming presence.
+ */
+export interface RuntimeVisualNode extends RuntimeNode {
+  parent?: RuntimeVisualNode;
+  /** Memoised child list; set to `undefined` to force the parent to re-render children. */
+  cachedChildren?: unknown;
+
+  addChild(child: RuntimeVisualNode, index?: number): void;
+  removeChild(child: RuntimeVisualNode): void;
+  isChild(child: RuntimeVisualNode): boolean;
+  getChildren(): RuntimeVisualNode[];
+  contains?(node: RuntimeVisualNode): boolean;
+  setChildIndex?(index: number): void;
+
+  render?(): unknown;
+  forceUpdate(): void;
+  getRef?(): unknown;
+  /** SSR: run the mount lifecycle after the server render has settled. */
+  triggerDidMount?(): void;
+}
+
 /** Payload of the model's `parameterUpdated` event. */
 export interface NodeModelParameterUpdatedEvent {
   name: string;

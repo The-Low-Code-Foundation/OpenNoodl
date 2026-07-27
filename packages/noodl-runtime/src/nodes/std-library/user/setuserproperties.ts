@@ -1,15 +1,54 @@
 'use strict';
 
+import type {
+  EditorConnectionLike,
+  GraphModelLike,
+  GraphNodeModel,
+  NodeContextLike,
+  NodeDefinitionOptions,
+  NodeInstance,
+  NodeModule
+} from '@noodl/types';
+
 const NoodlRuntime = require('../../../../noodl-runtime');
 
-var SetUserPropertiesNodeDefinition = {
+/** A class in the backend schema, as the editor reports it in `systemCollections`. */
+interface SystemCollection {
+  name: string;
+  schema?: { properties?: Record<string, { type?: string }> };
+}
+
+/**
+ * `this` inside the Set User Properties node.
+ *
+ * The port set is `runtime-discovered`: every writable column of the `_User` class becomes
+ * a `prop-<key>` input, both here (via `registerInputIfNeeded`) and editor-side (via
+ * `setup` below). The `prop-` prefix is what keeps those apart from the node's own
+ * `email`/`username` ports, and it is stripped again before the value is stored.
+ */
+interface SetUserPropertiesNodeInstance extends NodeInstance {
+  _internal: {
+    userProperties: Record<string, unknown>;
+    email?: string;
+    username?: string;
+    error?: string;
+  };
+  /** On the instance rather than in `_internal`, like String Format's `formatScheduled`. */
+  storeScheduled?: boolean;
+  setError(err: string): void;
+  clearWarnings(): void;
+  scheduleStore(): void;
+  setUserProperty(name: string, value: unknown): void;
+}
+
+const SetUserPropertiesNodeDefinition: NodeDefinitionOptions = {
   name: 'net.noodl.user.SetUserProperties',
   docs: 'https://docs.noodl.net/nodes/data/user/set-user-properties',
   displayNodeName: 'Set User Properties',
   category: 'Cloud Services',
   color: 'data',
-  initialize: function () {
-    var internal = this._internal;
+  initialize: function (this: SetUserPropertiesNodeInstance) {
+    const internal = this._internal;
 
     internal.userProperties = {};
   },
@@ -29,7 +68,7 @@ var SetUserPropertiesNodeDefinition = {
       type: 'string',
       displayName: 'Error',
       group: 'Error',
-      getter: function () {
+      getter: function (this: SetUserPropertiesNodeInstance) {
         return this._internal.error;
       }
     }
@@ -38,7 +77,7 @@ var SetUserPropertiesNodeDefinition = {
     store: {
       displayName: 'Do',
       group: 'Actions',
-      valueChangedToTrue: function () {
+      valueChangedToTrue: function (this: SetUserPropertiesNodeInstance) {
         this.scheduleStore();
       }
     },
@@ -46,7 +85,7 @@ var SetUserPropertiesNodeDefinition = {
       displayName: 'Email',
       type: 'string',
       group: 'General',
-      set: function (value) {
+      set: function (this: SetUserPropertiesNodeInstance, value: string) {
         this._internal.email = value;
       }
     },
@@ -54,13 +93,13 @@ var SetUserPropertiesNodeDefinition = {
       displayName: 'Username',
       type: 'string',
       group: 'General',
-      set: function (value) {
+      set: function (this: SetUserPropertiesNodeInstance, value: string) {
         this._internal.username = value;
       }
     }
   },
   methods: {
-    setError: function (err) {
+    setError: function (this: SetUserPropertiesNodeInstance, err: string) {
       this._internal.error = err;
       this.flagOutputDirty('error');
       this.sendSignalOnOutput('failure');
@@ -72,12 +111,12 @@ var SetUserPropertiesNodeDefinition = {
         });
       }
     },
-    clearWarnings() {
+    clearWarnings(this: SetUserPropertiesNodeInstance) {
       if (this.context.editorConnection) {
         this.context.editorConnection.clearWarning(this.nodeScope.componentOwner.name, this.id, 'user-set-warning');
       }
     },
-    scheduleStore: function () {
+    scheduleStore: function (this: SetUserPropertiesNodeInstance) {
       const internal = this._internal;
 
       if (this.storeScheduled === true) return;
@@ -94,16 +133,18 @@ var SetUserPropertiesNodeDefinition = {
           success: () => {
             this.sendSignalOnOutput('success');
           },
-          error: (e) => {
+          // `UserService` always hands the error callback a string, never an Error —
+          // every method unwraps the backend's `{ error, code }` first (NOTES §15.x).
+          error: (e: string) => {
             this.setError(e);
           }
         });
       });
     },
-    setUserProperty: function (name, value) {
+    setUserProperty: function (this: SetUserPropertiesNodeInstance, name: string, value: unknown) {
       this._internal.userProperties[name] = value;
     },
-    registerInputIfNeeded: function (name) {
+    registerInputIfNeeded: function (this: SetUserPropertiesNodeInstance, name: string) {
       if (this.hasInput(name)) {
         return;
       }
@@ -116,30 +157,38 @@ var SetUserPropertiesNodeDefinition = {
   }
 };
 
-function updatePorts(nodeId, parameters, editorConnection, systemCollections) {
-  var ports = [];
+function updatePorts(
+  nodeId: string,
+  parameters: Record<string, unknown>,
+  editorConnection: EditorConnectionLike,
+  systemCollections: SystemCollection[] | undefined
+) {
+  const ports: Record<string, unknown>[] = [];
 
   if (systemCollections) {
     // Fetch ports from collection keys
-    var c = systemCollections.find((c) => c.name === '_User');
+    const c = systemCollections.find((c) => c.name === '_User');
     if (c && c.schema && c.schema.properties) {
-      var props = c.schema.properties;
+      const props = c.schema.properties;
 
+      // Server-side, `password` and `emailVerified` are writable and so become ports;
+      // in the browser viewer they are not, hence the two lists.
       const _ignoreKeys =
         typeof _noodl_cloud_runtime_version === 'undefined'
           ? ['authData', 'createdAt', 'updatedAt', 'email', 'username', 'emailVerified', 'password']
           : ['authData', 'createdAt', 'updatedAt', 'email', 'username'];
 
-      for (var key in props) {
+      for (const key in props) {
         if (_ignoreKeys.indexOf(key) !== -1) continue;
 
-        var p = props[key];
+        const p = props[key];
         if (ports.find((_p) => _p.name === key)) continue;
 
         if (p.type === 'Relation') {
+          // Relations are not settable through this node.
         } else {
           // Other schema type ports
-          const _typeMap = {
+          const _typeMap: Record<string, string> = {
             String: 'string',
             Boolean: 'boolean',
             Number: 'number',
@@ -163,27 +212,37 @@ function updatePorts(nodeId, parameters, editorConnection, systemCollections) {
   editorConnection.sendDynamicPorts(nodeId, ports);
 }
 
-module.exports = {
+const SetUserPropertiesNodeModule: NodeModule = {
   node: SetUserPropertiesNodeDefinition,
-  setup: function (context, graphModel) {
+  setup: function (context: NodeContextLike, graphModel: GraphModelLike) {
     if (!context.editorConnection || !context.editorConnection.isRunningLocally()) {
       return;
     }
 
-    function _managePortsForNode(node) {
-      updatePorts(node.id, node.parameters, context.editorConnection, graphModel.getMetaData('systemCollections'));
+    function _managePortsForNode(node: GraphNodeModel) {
+      updatePorts(
+        node.id,
+        node.parameters,
+        context.editorConnection,
+        graphModel.getMetaData('systemCollections') as SystemCollection[]
+      );
 
-      node.on('parameterUpdated', function (event) {
-        updatePorts(node.id, node.parameters, context.editorConnection, graphModel.getMetaData('systemCollections'));
+      node.on('parameterUpdated', function () {
+        updatePorts(
+          node.id,
+          node.parameters,
+          context.editorConnection,
+          graphModel.getMetaData('systemCollections') as SystemCollection[]
+        );
       });
 
-      graphModel.on('metadataChanged.systemCollections', function (data) {
+      graphModel.on('metadataChanged.systemCollections', function (data: SystemCollection[]) {
         updatePorts(node.id, node.parameters, context.editorConnection, data);
       });
     }
 
     graphModel.on('editorImportComplete', () => {
-      graphModel.on('nodeAdded.net.noodl.user.SetUserProperties', function (node) {
+      graphModel.on('nodeAdded.net.noodl.user.SetUserProperties', function (node: GraphNodeModel) {
         _managePortsForNode(node);
       });
 
@@ -193,3 +252,5 @@ module.exports = {
     });
   }
 };
+
+export = SetUserPropertiesNodeModule;

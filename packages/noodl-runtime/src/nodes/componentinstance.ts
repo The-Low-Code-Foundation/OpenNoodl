@@ -1,11 +1,73 @@
 'use strict';
 
-var Node = require('../node');
-var NodeScope = require('../nodescope');
+import type { ComponentModelLike, GraphNodeModel, GraphPortModel } from '@noodl/types';
+
+import type { RuntimeNode, RuntimeNodeContext, RuntimeVisualNode } from '../internal';
+
+import Node = require('../node');
+import NodeScope = require('../nodescope');
 
 let componentIdCounter = 0;
 
-function ComponentInstanceNode(context, id, parentNodeScope) {
+/**
+ * A node that *is* an instance of a user component.
+ *
+ * It owns a `NodeScope` holding that component's whole graph, and its ports are the
+ * component's own — the `component-ports` dynamic mechanism. Its job is to keep three
+ * things in sync as the component model changes underneath it: the port set, the Component
+ * Inputs/Outputs nodes inside the scope, and the roots it renders.
+ */
+interface ComponentInstanceNode extends RuntimeVisualNode {
+  nodeScope: InstanceType<typeof NodeScope>;
+  parentNodeScope?: InstanceType<typeof NodeScope>;
+  componentModel?: ComponentModelLike;
+  _internal: RuntimeNode['_internal'] & {
+    childRoot: ComponentInstanceNode | null;
+    componentOutputValues: Record<string, unknown>;
+    componentOutputs: RuntimeNode[];
+    componentInputs: RuntimeNode[];
+    inputValues: Record<string, unknown>;
+    roots: RuntimeVisualNode[];
+    /** Stable per instance; the key component state is stored under. */
+    instanceId: string;
+    creatorCallbacks?: {
+      onOutputChanged?(name: string, value: unknown, previous: unknown): void;
+    };
+  };
+
+  setComponentModel(componentModel: ComponentModelLike): Promise<void>;
+  registerComponentInputPort(port: GraphPortModel): void;
+  registerComponentOutputPort(port: GraphPortModel): void;
+  setOutputFromComponentOutput(name: string, value: unknown): void;
+  setChildRoot(node: ComponentInstanceNode | null): void;
+  getChildRootIndex(): number;
+  getChildRoot(): ComponentInstanceNode | null;
+  getRoots(): RuntimeVisualNode[];
+  triggerDidMount(): void;
+  getInstanceId(): string;
+}
+
+interface ComponentInstanceNodeConstructor {
+  new (
+    context: RuntimeNodeContext,
+    id: string,
+    parentNodeScope?: InstanceType<typeof NodeScope>
+  ): ComponentInstanceNode;
+  (
+    this: ComponentInstanceNode,
+    context: RuntimeNodeContext,
+    id: string,
+    parentNodeScope?: InstanceType<typeof NodeScope>
+  ): void;
+  prototype: ComponentInstanceNode;
+}
+
+const ComponentInstanceNode = function ComponentInstanceNode(
+  this: ComponentInstanceNode,
+  context: RuntimeNodeContext,
+  id: string,
+  parentNodeScope?: InstanceType<typeof NodeScope>
+) {
   Node.call(this, context, id);
 
   this.nodeScope = new NodeScope(context, this);
@@ -17,18 +79,20 @@ function ComponentInstanceNode(context, id, parentNodeScope) {
   this._internal.inputValues = {};
   this._internal.roots = [];
 
+  // Note the typo is load-bearing: this exact prefix is what component state is keyed by,
+  // so correcting the spelling would orphan every stored value.
   this._internal.instanceId = '__$ndl_componentInstaceId' + componentIdCounter;
 
   this.nodeScope.modelScope = parentNodeScope ? parentNodeScope.modelScope : undefined;
 
   componentIdCounter++;
-}
+} as unknown as ComponentInstanceNodeConstructor;
 
 ComponentInstanceNode.prototype = Object.create(Node.prototype, {
   setComponentModel: {
-    value: async function (componentModel) {
+    value: async function (this: ComponentInstanceNode, componentModel: ComponentModelLike) {
       this.componentModel = componentModel;
-      var self = this;
+      const self = this;
 
       await this.nodeScope.setComponentModel(componentModel);
 
@@ -39,12 +103,15 @@ ComponentInstanceNode.prototype = Object.create(Node.prototype, {
       Object.values(componentModel.getOutputPorts()).forEach(this.registerComponentOutputPort.bind(this));
 
       const roots = componentModel.roots || [];
-      this._internal.roots = roots.map((id) => this.nodeScope.getNodeWithId(id));
+      // `getNodeWithId` is typed for any node in the scope; a component's roots are visual
+      // by construction, and the guarded calls in `render`/`triggerDidMount`/`contains`
+      // below are what cover the exceptions (a Repeater root is not a React node).
+      this._internal.roots = roots.map((id: string) => this.nodeScope.getNodeWithId(id) as RuntimeVisualNode);
 
       componentModel.on(
         'rootAdded',
-        (id) => {
-          this._internal.roots.push(this.nodeScope.getNodeWithId(id));
+        (id: string) => {
+          this._internal.roots.push(this.nodeScope.getNodeWithId(id) as RuntimeVisualNode);
           this.forceUpdate();
         },
         this
@@ -52,7 +119,7 @@ ComponentInstanceNode.prototype = Object.create(Node.prototype, {
 
       componentModel.on(
         'rootRemoved',
-        function (id) {
+        function (this: ComponentInstanceNode, id: string) {
           const index = this._internal.roots.findIndex((root) => root.id === id);
           if (index !== -1) {
             this._internal.roots.splice(index, 1);
@@ -67,7 +134,7 @@ ComponentInstanceNode.prototype = Object.create(Node.prototype, {
 
       componentModel.on(
         'inputPortRemoved',
-        function (port) {
+        function (port: GraphPortModel) {
           if (self.hasInput(port.name)) {
             self.deregisterInput(port.name);
           }
@@ -76,7 +143,10 @@ ComponentInstanceNode.prototype = Object.create(Node.prototype, {
       );
       componentModel.on(
         'outputPortRemoved',
-        function (port) {
+        // The mixed `this`/`self` here is only a style inconsistency: listeners registered
+        // with a `ref` are invoked as `callback.call(ref, data)` (`eventsender.ts`), so
+        // `this` is this same node.
+        function (this: ComponentInstanceNode, port: GraphPortModel) {
           if (this.hasOutput(port.name)) {
             self.deregisterOutput(port.name);
           }
@@ -86,7 +156,7 @@ ComponentInstanceNode.prototype = Object.create(Node.prototype, {
 
       componentModel.on(
         'nodeAdded',
-        function (node) {
+        function (node: GraphNodeModel) {
           if (node.type === 'Component Inputs') {
             self._internal.componentInputs.push(self.nodeScope.getNodeWithId(node.id));
           } else if (node.type === 'Component Outputs') {
@@ -98,8 +168,8 @@ ComponentInstanceNode.prototype = Object.create(Node.prototype, {
 
       componentModel.on(
         'nodeRemoved',
-        function (node) {
-          function removeNodesWithId(array, id) {
+        function (node: GraphNodeModel) {
+          function removeNodesWithId(array: RuntimeNode[], id: string) {
             return array.filter((e) => e.id !== id);
           }
           if (node.type === 'Component Inputs') {
@@ -113,7 +183,7 @@ ComponentInstanceNode.prototype = Object.create(Node.prototype, {
 
       componentModel.on(
         'renamed',
-        function (event) {
+        function (event: { newName: string }) {
           self.name = event.newName;
         },
         this
@@ -121,7 +191,7 @@ ComponentInstanceNode.prototype = Object.create(Node.prototype, {
     }
   },
   _onNodeDeleted: {
-    value: function () {
+    value: function (this: ComponentInstanceNode) {
       if (this.componentModel) {
         this.componentModel.removeListenersWithRef(this);
         this.componentModel = undefined;
@@ -132,11 +202,16 @@ ComponentInstanceNode.prototype = Object.create(Node.prototype, {
     }
   },
   registerComponentInputPort: {
-    value: function (port) {
+    value: function (this: ComponentInstanceNode, port: GraphPortModel) {
+      // The port callbacks declare `this: NodeInstance`, which a subtype annotation does not
+      // satisfy, so these close over `self` instead — the same idiom the `inputPortRemoved`
+      // listener above uses. Equivalent by construction: the runtime invokes an input setter
+      // with the node the input was registered on, which is this one.
+      const self = this;
       this.registerInput(port.name, {
-        set: function (value) {
-          this._internal.inputValues[port.name] = value;
-          this._internal.componentInputs.forEach(function (componentInput) {
+        set: function (value: unknown) {
+          self._internal.inputValues[port.name] = value;
+          self._internal.componentInputs.forEach(function (componentInput) {
             componentInput.registerOutputIfNeeded(port.name);
             componentInput.flagOutputDirty(port.name);
           });
@@ -145,16 +220,17 @@ ComponentInstanceNode.prototype = Object.create(Node.prototype, {
     }
   },
   registerComponentOutputPort: {
-    value: function (port) {
+    value: function (this: ComponentInstanceNode, port: GraphPortModel) {
+      const self = this;
       this.registerOutput(port.name, {
         getter: function () {
-          return this._internal.componentOutputValues[port.name];
+          return self._internal.componentOutputValues[port.name];
         }
       });
     }
   },
   setOutputFromComponentOutput: {
-    value: function (name, value) {
+    value: function (this: ComponentInstanceNode, name: string, value: unknown) {
       if (this.hasOutput(name) === false) {
         return;
       }
@@ -168,7 +244,7 @@ ComponentInstanceNode.prototype = Object.create(Node.prototype, {
     }
   },
   setChildRoot: {
-    value: function (node) {
+    value: function (this: ComponentInstanceNode, node: ComponentInstanceNode | null) {
       const prevChildRoot = this._internal.childRoot;
       const newChildRoot = node;
 
@@ -200,14 +276,14 @@ ComponentInstanceNode.prototype = Object.create(Node.prototype, {
     }
   },
   getChildRootIndex: {
-    value: function () {
+    value: function (this: ComponentInstanceNode) {
       if (!this._internal.childRoot || !this._internal.childRoot.model || !this._internal.childRoot.model.children) {
         return 0;
       }
 
-      var children = this._internal.childRoot.model.children;
+      const children = this._internal.childRoot.model.children;
 
-      for (var i = 0; i < children.length; i++) {
+      for (let i = 0; i < children.length; i++) {
         if (children[i].type === 'Component Children') {
           return i;
         }
@@ -217,7 +293,7 @@ ComponentInstanceNode.prototype = Object.create(Node.prototype, {
     }
   },
   getChildRoot: {
-    value: function () {
+    value: function (this: ComponentInstanceNode) {
       if (this._internal.childRoot) {
         return this._internal.childRoot;
       }
@@ -225,20 +301,20 @@ ComponentInstanceNode.prototype = Object.create(Node.prototype, {
     }
   },
   getRoots: {
-    value: function () {
+    value: function (this: ComponentInstanceNode) {
       return this._internal.roots;
     }
   },
   /** Added for SSR Support */
   triggerDidMount: {
-    value: function () {
+    value: function (this: ComponentInstanceNode) {
       this._internal.roots.forEach((root) => {
         root.triggerDidMount && root.triggerDidMount();
       });
     }
   },
   render: {
-    value: function () {
+    value: function (this: ComponentInstanceNode) {
       if (this._internal.roots.length === 0) {
         return null;
       }
@@ -247,30 +323,30 @@ ComponentInstanceNode.prototype = Object.create(Node.prototype, {
     }
   },
   setChildIndex: {
-    value: function (childIndex) {
+    value: function (this: ComponentInstanceNode, childIndex: number) {
       // NOTE: setChildIndex can be undefined when it is not a React node,
       //       but still a visual node like the foreach (Repeater) node.
       this.getRoots().forEach((root) => root.setChildIndex && root.setChildIndex(childIndex));
     }
   },
   addChild: {
-    value: function (child, index) {
+    value: function (this: ComponentInstanceNode, child: RuntimeVisualNode, index: number) {
       this.getChildRoot().addChild(child, index + this.getChildRootIndex());
     }
   },
   removeChild: {
-    value: function (child) {
+    value: function (this: ComponentInstanceNode, child: RuntimeVisualNode) {
       this.getChildRoot().removeChild(child);
     }
   },
   getChildren: {
-    value: function (child) {
+    value: function (this: ComponentInstanceNode) {
       const childRoot = this.getChildRoot();
       return childRoot ? childRoot.getChildren() : [];
     }
   },
   isChild: {
-    value: function (child) {
+    value: function (this: ComponentInstanceNode, child: RuntimeVisualNode) {
       if (!this.getChildRoot()) {
         return false;
       }
@@ -279,16 +355,16 @@ ComponentInstanceNode.prototype = Object.create(Node.prototype, {
     }
   },
   contains: {
-    value: function (node) {
+    value: function (this: ComponentInstanceNode, node: RuntimeVisualNode) {
       return this.getRoots().some((root) => root.contains && root.contains(node));
     }
   },
   _performDirtyUpdate: {
-    value: function () {
+    value: function (this: ComponentInstanceNode) {
       Node.prototype._performDirtyUpdate.call(this);
 
-      var componentInputs = this._internal.componentInputs;
-      for (var i = 0, len = componentInputs.length; i < len; i++) {
+      const componentInputs = this._internal.componentInputs;
+      for (let i = 0, len = componentInputs.length; i < len; i++) {
         componentInputs[i].flagDirty();
       }
 
@@ -298,13 +374,13 @@ ComponentInstanceNode.prototype = Object.create(Node.prototype, {
     }
   },
   getRef: {
-    value: function () {
+    value: function (this: ComponentInstanceNode) {
       const root = this._internal.roots[0];
       return root ? root.getRef() : undefined;
     }
   },
   update: {
-    value: function () {
+    value: function (this: ComponentInstanceNode) {
       Node.prototype.update.call(this);
 
       this._internal.componentOutputs.forEach(function (componentOutput) {
@@ -314,7 +390,7 @@ ComponentInstanceNode.prototype = Object.create(Node.prototype, {
   },
   forceUpdate: {
     //this is only used when roots are added or removed
-    value: function () {
+    value: function (this: ComponentInstanceNode) {
       if (!this.parent) return;
 
       //the parent will need to re-render the roots of this component instance
@@ -324,11 +400,12 @@ ComponentInstanceNode.prototype = Object.create(Node.prototype, {
     }
   },
   getInstanceId: {
-    value() {
+    value(this: ComponentInstanceNode) {
       return this._internal.instanceId;
     }
   }
 });
 
 ComponentInstanceNode.prototype.constructor = ComponentInstanceNode;
-module.exports = ComponentInstanceNode;
+
+export = ComponentInstanceNode;

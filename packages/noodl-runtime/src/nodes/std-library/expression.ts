@@ -1,9 +1,60 @@
 'use strict';
 
+import type {
+  EditorConnectionLike,
+  GraphModelLike,
+  GraphNodeModel,
+  InspectInfo,
+  NodeContextLike,
+  NodeDefinitionOptions,
+  NodeInstance,
+  NodeModule
+} from '@noodl/types';
+
 const difference = require('lodash.difference');
 const ExpressionEvaluator = require('../../expression-evaluator');
 
-const ExpressionNode = {
+/** The Noodl globals an expression may read, as `detectDependencies` reports them. */
+interface NoodlDependencies {
+  variables: string[];
+  objects: string[];
+  arrays: string[];
+}
+
+/**
+ * `this` inside the Expression node.
+ *
+ * The port set is `runtime-discovered` in the strongest sense: the inputs are whatever
+ * identifiers appear in the user's expression text, found by {@link parsePorts}. Nothing
+ * about that set is knowable statically, which is why the catalog records the mechanism
+ * rather than the ports.
+ *
+ * `scope` holds the current value of each such input by name; `inputNames`/`inputValues`
+ * are the same data flattened into positional arrays, because the compiled function takes
+ * its inputs as ordered arguments.
+ */
+interface ExpressionNodeInstance extends NodeInstance {
+  _internal: {
+    scope: Record<string, unknown>;
+    hasScheduledEvaluation: boolean;
+    code?: string;
+    cachedValue: unknown;
+    /** The full function body, preamble included — not the raw text the author typed. */
+    currentExpression: string;
+    compiledFunction?: (...args: unknown[]) => unknown;
+    inputNames: string[];
+    inputValues: unknown[];
+    noodlDependencies: NoodlDependencies;
+    unsubscribe: (() => void) | null;
+  };
+  /** Mutable here: `registerInputIfNeeded` seeds a value before the port exists. */
+  _inputValues: Record<string, unknown>;
+  _scheduleEvaluateExpression(): void;
+  _calculateExpression(): unknown;
+  _compileFunction(): (...args: unknown[]) => unknown;
+}
+
+const ExpressionNode: NodeDefinitionOptions = {
   name: 'Expression',
   docs: 'https://docs.noodl.net/nodes/math/expression',
   usePortAsLabel: 'expression',
@@ -13,8 +64,8 @@ const ExpressionNode = {
     focusPort: 'Expression'
   },
   searchTags: ['javascript'],
-  initialize: function () {
-    var internal = this._internal;
+  initialize: function (this: ExpressionNodeInstance) {
+    const internal = this._internal;
 
     internal.scope = {};
     internal.hasScheduledEvaluation = false;
@@ -31,14 +82,19 @@ const ExpressionNode = {
     internal.unsubscribe = null;
   },
   methods: {
-    _onNodeDeleted: function () {
+    // Note this does *not* chain to `Node.prototype._onNodeDeleted`, unlike every sibling
+    // that overrides it. The base clears the node's model listeners, sets `_deleted` and
+    // unsubscribes the port-level expression subscriptions; none of that runs for an
+    // Expression node. Kept verbatim — adding the chain is a behaviour change, and one
+    // whose blast radius is every project using the node (PLAT-003 NOTES §25).
+    _onNodeDeleted: function (this: ExpressionNodeInstance) {
       // Clean up reactive subscriptions to prevent memory leaks
       if (this._internal.unsubscribe) {
         this._internal.unsubscribe();
         this._internal.unsubscribe = null;
       }
     },
-    registerInputIfNeeded: function (name) {
+    registerInputIfNeeded: function (this: ExpressionNodeInstance, name: string) {
       if (this.hasInput(name)) {
         return;
       }
@@ -47,19 +103,19 @@ const ExpressionNode = {
       this._inputValues[name] = 0;
 
       this.registerInput(name, {
-        set: function (value) {
+        set: function (this: ExpressionNodeInstance, value: unknown) {
           this._internal.scope[name] = value;
           if (!this.isInputConnected('run')) this._scheduleEvaluateExpression();
         }
       });
     },
-    _scheduleEvaluateExpression: function () {
-      var internal = this._internal;
+    _scheduleEvaluateExpression: function (this: ExpressionNodeInstance) {
+      const internal = this._internal;
       if (internal.hasScheduledEvaluation === false) {
         internal.hasScheduledEvaluation = true;
         this.flagDirty();
-        this.scheduleAfterInputsHaveUpdated(function () {
-          var lastValue = internal.cachedValue;
+        this.scheduleAfterInputsHaveUpdated(function (this: ExpressionNodeInstance) {
+          const lastValue = internal.cachedValue;
           internal.cachedValue = this._calculateExpression();
           if (lastValue !== internal.cachedValue) {
             this.flagOutputDirty('result');
@@ -72,15 +128,15 @@ const ExpressionNode = {
         });
       }
     },
-    _calculateExpression: function () {
-      var internal = this._internal;
+    _calculateExpression: function (this: ExpressionNodeInstance) {
+      const internal = this._internal;
 
       if (!internal.compiledFunction) {
         internal.compiledFunction = this._compileFunction();
       }
 
-      for (var i = 0; i < internal.inputNames.length; ++i) {
-        var inputValue = internal.scope[internal.inputNames[i]];
+      for (let i = 0; i < internal.inputNames.length; ++i) {
+        const inputValue = internal.scope[internal.inputNames[i]];
         internal.inputValues[i] = inputValue;
       }
 
@@ -96,14 +152,14 @@ const ExpressionNode = {
       }
       return 0;
     },
-    _compileFunction: function () {
-      var expression = this._internal.currentExpression;
-      var args = Object.keys(this._internal.scope);
+    _compileFunction: function (this: ExpressionNodeInstance) {
+      const expression = this._internal.currentExpression;
+      const args = Object.keys(this._internal.scope);
 
       // Add 'Noodl' as last parameter for backward compatibility
       args.push('Noodl');
 
-      var key = expression + args.join(' ');
+      const key = expression + args.join(' ');
 
       if (compiledFunctionsCache.hasOwnProperty(key) === false) {
         args.push(expression);
@@ -117,7 +173,7 @@ const ExpressionNode = {
       return compiledFunctionsCache[key];
     }
   },
-  getInspectInfo() {
+  getInspectInfo(this: ExpressionNodeInstance): InspectInfo {
     // Wrapped: bare numbers/booleans render as nothing in the inspector (DEBT-006).
     return [{ type: 'value', value: this._internal.cachedValue }];
   },
@@ -131,17 +187,17 @@ const ExpressionNode = {
         codeeditor: 'javascript'
       },
       displayName: 'Expression',
-      set: function (value) {
-        var internal = this._internal;
+      set: function (this: ExpressionNodeInstance, value: string) {
+        const internal = this._internal;
         internal.currentExpression = functionPreamble + 'return (' + value + ');';
         internal.compiledFunction = undefined;
 
-        var newInputs = parsePorts(value);
+        const newInputs = parsePorts(value);
 
-        var inputsToAdd = difference(newInputs, internal.inputNames);
-        var inputsToRemove = difference(internal.inputNames, newInputs);
+        const inputsToAdd: string[] = difference(newInputs, internal.inputNames);
+        const inputsToRemove: string[] = difference(internal.inputNames, newInputs);
 
-        var self = this;
+        const self = this;
         inputsToRemove.forEach(function (name) {
           self.deregisterInput(name);
           delete internal.scope[name];
@@ -153,7 +209,7 @@ const ExpressionNode = {
           }
 
           self.registerInput(name, {
-            set: function (value) {
+            set: function (this: ExpressionNodeInstance, value: unknown) {
               internal.scope[name] = value;
               if (!this.isInputConnected('run')) this._scheduleEvaluateExpression();
             }
@@ -197,7 +253,7 @@ const ExpressionNode = {
       group: 'Actions',
       displayName: 'Run',
       type: 'signal',
-      valueChangedToTrue: function () {
+      valueChangedToTrue: function (this: ExpressionNodeInstance) {
         this._scheduleEvaluateExpression();
       }
     }
@@ -207,7 +263,7 @@ const ExpressionNode = {
       group: 'Result',
       type: '*',
       displayName: 'Result',
-      getter: function () {
+      getter: function (this: ExpressionNodeInstance) {
         if (!this._internal.currentExpression) {
           return 0;
         }
@@ -219,7 +275,7 @@ const ExpressionNode = {
       group: 'Result',
       type: 'boolean',
       displayName: 'Is True',
-      getter: function () {
+      getter: function (this: ExpressionNodeInstance) {
         if (!this._internal.currentExpression) {
           return false;
         }
@@ -231,7 +287,7 @@ const ExpressionNode = {
       group: 'Result',
       type: 'boolean',
       displayName: 'Is False',
-      getter: function () {
+      getter: function (this: ExpressionNodeInstance) {
         if (!this._internal.currentExpression) {
           return true;
         }
@@ -254,7 +310,7 @@ const ExpressionNode = {
       group: 'Typed Results',
       type: 'string',
       displayName: 'As String',
-      getter: function () {
+      getter: function (this: ExpressionNodeInstance) {
         const val = this._internal.cachedValue;
         return val !== undefined && val !== null ? String(val) : '';
       }
@@ -263,7 +319,7 @@ const ExpressionNode = {
       group: 'Typed Results',
       type: 'number',
       displayName: 'As Number',
-      getter: function () {
+      getter: function (this: ExpressionNodeInstance) {
         const val = this._internal.cachedValue;
         return typeof val === 'number' ? val : Number(val) || 0;
       }
@@ -272,14 +328,14 @@ const ExpressionNode = {
       group: 'Typed Results',
       type: 'boolean',
       displayName: 'As Boolean',
-      getter: function () {
+      getter: function (this: ExpressionNodeInstance) {
         return !!this._internal.cachedValue;
       }
     }
   }
 };
 
-var functionPreamble = [
+const functionPreamble = [
   'var min = Math.min,' +
     '    max = Math.max,' +
     '    cos = Math.cos,' +
@@ -308,17 +364,17 @@ var functionPreamble = [
 
 //Since apply cannot be used on constructors (i.e. new Something) we need this hax
 //see http://stackoverflow.com/questions/1606797/use-of-apply-with-new-operator-is-this-possible
-function construct(constructor, args) {
-  function F() {
+function construct(constructor: FunctionConstructor, args: string[]) {
+  function F(this: unknown) {
     return constructor.apply(this, args);
   }
   F.prototype = constructor.prototype;
-  return new F();
+  return new (F as unknown as { new (): (...args: unknown[]) => unknown })();
 }
 
-var compiledFunctionsCache = {};
+const compiledFunctionsCache: Record<string, (...args: unknown[]) => unknown> = {};
 
-var portsToIgnore = [
+const portsToIgnore = [
   'min',
   'max',
   'cos',
@@ -350,10 +406,18 @@ var portsToIgnore = [
   'Boolean'
 ];
 
-function parsePorts(expression) {
-  var ports = [];
+/**
+ * The whole `runtime-discovered` port mechanism for this node: every identifier in the
+ * expression that is not a known built-in becomes an input port.
+ *
+ * It is a text scan, not a parse, so it is deliberately conservative in one direction only
+ * — string literals are stripped first so their contents cannot mint ports, and a dotted
+ * path contributes just its root. An identifier inside a comment still would.
+ */
+function parsePorts(expression: string): string[] {
+  const ports: string[] = [];
 
-  function addPort(name) {
+  function addPort(name: string) {
     if (portsToIgnore.indexOf(name) !== -1) return;
     if (
       ports.some(function (p) {
@@ -369,9 +433,9 @@ function parsePorts(expression) {
   expression = expression.replace(/\"([^\"]*)\"/g, '').replace(/\'([^\']*)\'/g, '');
 
   // Extract identifiers
-  var identifiers = expression.matchAll(/[a-zA-Z\_\$][a-zA-Z0-9\.\_\$]*/g);
+  const identifiers = expression.matchAll(/[a-zA-Z\_\$][a-zA-Z0-9\.\_\$]*/g);
   for (const _id of identifiers) {
-    var name = _id[0];
+    let name = _id[0];
     if (name.indexOf('.') !== -1) {
       name = name.split('.')[0]; // Take first symbol on "." sequence
     }
@@ -382,10 +446,10 @@ function parsePorts(expression) {
   return ports;
 }
 
-function updatePorts(nodeId, expression, editorConnection) {
-  var portNames = parsePorts(expression);
+function updatePorts(nodeId: string, expression: string, editorConnection: EditorConnectionLike) {
+  const portNames = parsePorts(expression);
 
-  var ports = portNames.map(function (name) {
+  const ports = portNames.map(function (name) {
     return {
       group: 'Parameters',
       name: name,
@@ -400,8 +464,8 @@ function updatePorts(nodeId, expression, editorConnection) {
   editorConnection.sendDynamicPorts(nodeId, ports);
 }
 
-function evalCompileWarnings(editorConnection, node) {
-  const expression = node.parameters.expression;
+function evalCompileWarnings(editorConnection: EditorConnectionLike, node: GraphNodeModel) {
+  const expression = node.parameters.expression as string;
   if (!expression) {
     editorConnection.clearWarning(node.component.name, node.id, 'expression-compile-error');
     return;
@@ -418,7 +482,7 @@ function evalCompileWarnings(editorConnection, node) {
     editorConnection.clearWarning(node.component.name, node.id, 'expression-compile-error');
 
     // Optionally show detected dependencies as info (helpful for users)
-    const deps = ExpressionEvaluator.detectDependencies(expression);
+    const deps: NoodlDependencies = ExpressionEvaluator.detectDependencies(expression);
     const depCount = deps.variables.length + deps.objects.length + deps.arrays.length;
 
     if (depCount > 0) {
@@ -441,24 +505,26 @@ function evalCompileWarnings(editorConnection, node) {
   }
 }
 
-module.exports = {
+const ExpressionNodeModule: NodeModule = {
   node: ExpressionNode,
-  setup: function (context, graphModel) {
+  setup: function (context: NodeContextLike, graphModel: GraphModelLike) {
     if (!context.editorConnection || !context.editorConnection.isRunningLocally()) {
       return;
     }
 
-    graphModel.on('nodeAdded.Expression', function (node) {
+    graphModel.on('nodeAdded.Expression', function (node: GraphNodeModel) {
       if (node.parameters.expression) {
-        updatePorts(node.id, node.parameters.expression, context.editorConnection);
+        updatePorts(node.id, node.parameters.expression as string, context.editorConnection);
         evalCompileWarnings(context.editorConnection, node);
       }
-      node.on('parameterUpdated', function (event) {
+      node.on('parameterUpdated', function (event: { name: string }) {
         if (event.name === 'expression') {
-          updatePorts(node.id, node.parameters.expression, context.editorConnection);
+          updatePorts(node.id, node.parameters.expression as string, context.editorConnection);
           evalCompileWarnings(context.editorConnection, node);
         }
       });
     });
   }
 };
+
+export = ExpressionNodeModule;

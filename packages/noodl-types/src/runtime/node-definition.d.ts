@@ -592,6 +592,14 @@ export interface InputPortDefinition {
   /** Name shown in the property panel when it should differ from `displayName`. */
   editorName?: string;
   group?: string;
+  /**
+   * Redundant on a statically declared input — a member of `inputs` is an input by
+   * construction, and nothing reads this. It appears because dynamic-port payloads (the
+   * objects handed to `sendDynamicPorts`) *do* need to say which side they belong to, and
+   * the two shapes get written side by side. The Function node declares it on
+   * `functionScript`; published so that stays expressible rather than silently dropped.
+   */
+  plug?: 'input' | (string & {});
   /** Property-panel tab this port belongs to. See {@link PortTab}. */
   tab?: PortTab;
   /** Property-panel popout group this port belongs to. */
@@ -1064,6 +1072,13 @@ export interface ComponentModelLike extends EventSenderLike {
    */
   inputPorts: Record<string, GraphPortModel>;
   outputPorts: Record<string, GraphPortModel>;
+  /**
+   * Accessors for {@link inputPorts} / {@link outputPorts}. They return the live record,
+   * not a copy — `componentmodel.js` returns the field directly, exactly as
+   * {@link getRoots} does.
+   */
+  getInputPorts(): Record<string, GraphPortModel>;
+  getOutputPorts(): Record<string, GraphPortModel>;
   getNodeWithId(id: string): GraphNodeModel | undefined;
   getAllNodes(): GraphNodeModel[];
   getNodesWithType(type: string): GraphNodeModel[];

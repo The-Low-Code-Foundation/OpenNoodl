@@ -1,9 +1,53 @@
 'use strict';
 
+import type {
+  EditorConnectionLike,
+  GraphModelLike,
+  GraphNodeModel,
+  InspectInfo,
+  ModelChangeEvent,
+  ModelLike,
+  NodeContextLike,
+  NodeDefinitionOptions,
+  NodeInstance,
+  NodeModule
+} from '@noodl/types';
+
 const NoodlRuntime = require('../../../../noodl-runtime');
 const { Node } = require('../../../../noodl-runtime');
 
-var UserNodeDefinition = {
+/** A class in the backend schema, as the editor reports it in `systemCollections`. */
+interface SystemCollection {
+  name: string;
+  schema?: { properties?: Record<string, { type?: string }> };
+}
+
+/**
+ * `this` inside the User node.
+ *
+ * The port set is `runtime-discovered` on the *output* side: every readable column of the
+ * `_User` class becomes a `prop-<key>` output plus a `changed-<key>` signal, and three
+ * session signals (`loggedIn`/`loggedOut`/`sessionLost`) exist only in the browser. Those
+ * three are declared nowhere in `outputs` — the commented-out block there is the original
+ * static declaration, superseded by `registerOutputIfNeeded` and `updatePorts`.
+ */
+interface UserNodeInstance extends NodeInstance {
+  _internal: {
+    model?: ModelLike;
+    error?: string;
+    onModelChangedCallback(args: ModelChangeEvent): void;
+    /** `hasScheduled<Type>` flags, written by {@link scheduleOnce}. */
+    [flag: string]: unknown;
+  };
+  scheduleOnce(type: string, cb: () => void): void;
+  setError(err: string): void;
+  clearWarnings(): void;
+  setUserModel(model: ModelLike | undefined): void;
+  scheduleFetch(): void;
+  getUserProperty(name: string): unknown;
+}
+
+const UserNodeDefinition: NodeDefinitionOptions = {
   name: 'net.noodl.user.User',
   docs: 'https://docs.noodl.net/nodes/data/user/user-node',
   displayNodeName: 'User',
@@ -13,9 +57,9 @@ var UserNodeDefinition = {
     compat: 'partial',
     note: 'Sessions live in browser storage; a server render always sees a logged-out user.'
   },
-  initialize: function () {
-    var _this = this;
-    this._internal.onModelChangedCallback = function (args) {
+  initialize: function (this: UserNodeInstance) {
+    const _this = this;
+    this._internal.onModelChangedCallback = function (args: ModelChangeEvent) {
       if (_this.isInputConnected('fetch')) return;
 
       if (_this.hasOutput('prop-' + args.name)) _this.flagOutputDirty('prop-' + args.name);
@@ -48,7 +92,7 @@ var UserNodeDefinition = {
       if (this.hasOutput('sessionLost')) this.sendSignalOnOutput('sessionLost');
     });
   },
-  getInspectInfo() {
+  getInspectInfo(this: UserNodeInstance): InspectInfo {
     const model = this._internal.model;
     if (!model) return '[No Model]';
 
@@ -62,7 +106,7 @@ var UserNodeDefinition = {
       type: 'string',
       displayName: 'Id',
       group: 'General',
-      getter: function () {
+      getter: function (this: UserNodeInstance) {
         return this._internal.model !== undefined ? this._internal.model.getId() : undefined;
       }
     },
@@ -85,7 +129,7 @@ var UserNodeDefinition = {
       type: 'string',
       displayName: 'Error',
       group: 'Error',
-      getter: function () {
+      getter: function (this: UserNodeInstance) {
         return this._internal.error;
       }
     },
@@ -93,7 +137,7 @@ var UserNodeDefinition = {
       type: 'string',
       displayName: 'Username',
       group: 'General',
-      getter: function () {
+      getter: function (this: UserNodeInstance) {
         return this._internal.model !== undefined ? this._internal.model.get('username') : undefined;
       }
     },
@@ -101,7 +145,7 @@ var UserNodeDefinition = {
       type: 'string',
       displayName: 'Email',
       group: 'General',
-      getter: function () {
+      getter: function (this: UserNodeInstance) {
         return this._internal.model !== undefined ? this._internal.model.get('email') : undefined;
       }
     },
@@ -109,7 +153,7 @@ var UserNodeDefinition = {
       type: 'boolean',
       displayName: 'Authenticated',
       group: 'General',
-      getter: function () {
+      getter: function (this: UserNodeInstance) {
         return this._internal.model !== undefined;
       }
     }
@@ -133,17 +177,17 @@ var UserNodeDefinition = {
     fetch: {
       displayName: 'Fetch',
       group: 'Actions',
-      valueChangedToTrue: function () {
+      valueChangedToTrue: function (this: UserNodeInstance) {
         this.scheduleFetch();
       }
     }
   },
   methods: {
-    _onNodeDeleted: function () {
+    _onNodeDeleted: function (this: UserNodeInstance) {
       Node.prototype._onNodeDeleted.call(this);
       if (this._internal.model) this._internal.model.off('change', this._internal.onModelChangedCallback);
     },
-    scheduleOnce: function (type, cb) {
+    scheduleOnce: function (this: UserNodeInstance, type: string, cb: () => void) {
       const _this = this;
       const _type = 'hasScheduled' + type;
       if (this._internal[_type]) return;
@@ -153,7 +197,7 @@ var UserNodeDefinition = {
         cb();
       });
     },
-    setError: function (err) {
+    setError: function (this: UserNodeInstance, err: string) {
       this._internal.error = err;
       this.flagOutputDirty('error');
       this.sendSignalOnOutput('failure');
@@ -165,12 +209,12 @@ var UserNodeDefinition = {
         });
       }
     },
-    clearWarnings() {
+    clearWarnings(this: UserNodeInstance) {
       if (this.context.editorConnection) {
         this.context.editorConnection.clearWarning(this.nodeScope.componentOwner.name, this.id, 'user-warning');
       }
     },
-    setUserModel(model) {
+    setUserModel(this: UserNodeInstance, model: ModelLike | undefined) {
       const internal = this._internal;
 
       if (internal.model !== model) {
@@ -189,28 +233,28 @@ var UserNodeDefinition = {
 
       // Notify all properties changed
       if (model)
-        for (var key in model.data) {
+        for (const key in model.data) {
           if (this.hasOutput('prop-' + key)) this.flagOutputDirty('prop-' + key);
         }
     },
-    scheduleFetch: function () {
-      const internal = this._internal;
-
+    scheduleFetch: function (this: UserNodeInstance) {
       this.scheduleOnce('Fetch', () => {
         const userService = NoodlRuntime.Services.UserService.forScope(this.nodeScope.modelScope);
         userService.fetchCurrentUser({
-          success: (response) => {
+          // The response is deliberately unused — `userService.current` is the source of
+          // truth and the callback only signals that it has settled.
+          success: () => {
             this.setUserModel(userService.current);
 
             this.sendSignalOnOutput('fetched');
           },
-          error: (err) => {
+          error: (err: string) => {
             this.setError(err || 'Failed to fetch.');
           }
         });
       });
     },
-    registerOutputIfNeeded: function (name) {
+    registerOutputIfNeeded: function (this: UserNodeInstance, name: string) {
       if (this.hasOutput(name)) {
         return;
       }
@@ -227,31 +271,37 @@ var UserNodeDefinition = {
           getter: this.getUserProperty.bind(this, name.substring('prop-'.length))
         });
     },
-    getUserProperty: function (name) {
+    getUserProperty: function (this: UserNodeInstance, name: string) {
       return this._internal.model !== undefined ? this._internal.model.get(name) : undefined;
     }
   }
 };
 
-function updatePorts(nodeId, parameters, editorConnection, systemCollections) {
-  var ports = [];
+function updatePorts(
+  nodeId: string,
+  parameters: Record<string, unknown>,
+  editorConnection: EditorConnectionLike,
+  systemCollections: SystemCollection[] | undefined
+) {
+  const ports: Record<string, unknown>[] = [];
 
   if (systemCollections) {
     // Fetch ports from collection keys
-    var c = systemCollections.find((c) => c.name === '_User');
+    const c = systemCollections.find((c) => c.name === '_User');
     if (c && c.schema && c.schema.properties) {
-      var props = c.schema.properties;
+      const props = c.schema.properties;
       const _ignoreKeys = ['authData', 'password', 'username', 'email'];
-      for (var key in props) {
+      for (const key in props) {
         if (_ignoreKeys.indexOf(key) !== -1) continue;
 
-        var p = props[key];
+        const p = props[key];
         if (ports.find((_p) => _p.name === key)) continue;
 
         if (p.type === 'Relation') {
+          // Relations are not readable through this node.
         } else {
           // Other schema type ports
-          const _typeMap = {
+          const _typeMap: Record<string, string> = {
             String: 'string',
             Boolean: 'boolean',
             Number: 'number',
@@ -310,27 +360,37 @@ function updatePorts(nodeId, parameters, editorConnection, systemCollections) {
   editorConnection.sendDynamicPorts(nodeId, ports);
 }
 
-module.exports = {
+const UserNodeModule: NodeModule = {
   node: UserNodeDefinition,
-  setup: function (context, graphModel) {
+  setup: function (context: NodeContextLike, graphModel: GraphModelLike) {
     if (!context.editorConnection || !context.editorConnection.isRunningLocally()) {
       return;
     }
 
-    function _managePortsForNode(node) {
-      updatePorts(node.id, node.parameters, context.editorConnection, graphModel.getMetaData('systemCollections'));
+    function _managePortsForNode(node: GraphNodeModel) {
+      updatePorts(
+        node.id,
+        node.parameters,
+        context.editorConnection,
+        graphModel.getMetaData('systemCollections') as SystemCollection[]
+      );
 
-      node.on('parameterUpdated', function (event) {
-        updatePorts(node.id, node.parameters, context.editorConnection, graphModel.getMetaData('systemCollections'));
+      node.on('parameterUpdated', function () {
+        updatePorts(
+          node.id,
+          node.parameters,
+          context.editorConnection,
+          graphModel.getMetaData('systemCollections') as SystemCollection[]
+        );
       });
 
-      graphModel.on('metadataChanged.systemCollections', function (data) {
+      graphModel.on('metadataChanged.systemCollections', function (data: SystemCollection[]) {
         updatePorts(node.id, node.parameters, context.editorConnection, data);
       });
     }
 
     graphModel.on('editorImportComplete', () => {
-      graphModel.on('nodeAdded.net.noodl.user.User', function (node) {
+      graphModel.on('nodeAdded.net.noodl.user.User', function (node: GraphNodeModel) {
         _managePortsForNode(node);
       });
 
@@ -340,3 +400,5 @@ module.exports = {
     });
   }
 };
+
+export = UserNodeModule;

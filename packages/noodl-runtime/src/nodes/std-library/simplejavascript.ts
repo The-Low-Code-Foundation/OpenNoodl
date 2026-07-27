@@ -1,7 +1,61 @@
+import type {
+  GraphModelLike,
+  GraphPortModel,
+  GraphNodeModel,
+  InputPortDefinition,
+  InspectInfo,
+  NodeContextLike,
+  NodeDefinitionOptions,
+  NodeInstance,
+  NodeModule
+} from '@noodl/types';
+
 const JavascriptNodeParser = require('../../javascriptnodeparser');
 const { logJavaScriptNodeError } = require('../../utils');
 
-const SimpleJavascriptNode = {
+/** One row of the `scriptInputs`/`scriptOutputs` proplist the author edits. */
+interface ScriptPortSpec {
+  id: string;
+  label: string;
+}
+
+/**
+ * `this` inside the Function node.
+ *
+ * The port set is `runtime-discovered` twice over: the author declares ports in the two
+ * proplists, *and* `parseAndAddPortsFromScript` mines the script text for `Inputs.x` /
+ * `Outputs.y` reads. The `in-`/`out-`/`intype-`/`outtype-` prefixes are what keep those
+ * four families apart on one node.
+ *
+ * `outputValuesProxy` is the object user code writes to as `Outputs`. The proxy is the
+ * mechanism by which an assignment in user code becomes a port write.
+ */
+interface SimpleJavascriptNodeInstance extends NodeInstance {
+  _internal: {
+    inputValues: Record<string, unknown>;
+    outputValues: Record<string, unknown>;
+    outputValuesProxy: Record<string, unknown>;
+    /** The receiver user code sees as `this`; persists across runs. */
+    _this: Record<string, unknown>;
+    func?: (...args: unknown[]) => Promise<unknown>;
+  };
+  /** On the instance rather than in `_internal`. */
+  runScheduled?: boolean;
+  /**
+   * Set by the runtime when the node is removed (declared on `RuntimeNode` in
+   * `internal.d.ts`). This node reads it because user code can outlive the node — a
+   * `setTimeout` or an un-removed event listener keeps running after deletion.
+   */
+  _deleted: boolean;
+  scheduleRun(): void;
+  runScript(): Promise<void>;
+  setScriptInputValue(name: string, value: unknown): void;
+  getScriptOutputValue(name: string): unknown;
+  parseScript(script: string): ((...args: unknown[]) => Promise<unknown>) | undefined;
+  _isSignalType(name: string): boolean;
+}
+
+const SimpleJavascriptNode: NodeDefinitionOptions = {
   name: 'JavaScriptFunction',
   displayNodeName: 'Function',
   docs: 'https://docs.noodl.net/nodes/javascript/function',
@@ -16,15 +70,21 @@ const SimpleJavascriptNode = {
   },
   searchTags: ['javascript'],
   exportDynamicPorts: true,
-  initialize: function () {
+  initialize: function (this: SimpleJavascriptNodeInstance) {
     this._internal.inputValues = {};
     this._internal.outputValues = {};
 
     this._internal.outputValuesProxy = new Proxy(this._internal.outputValues, {
-      set: (obj, prop, value) => {
+      set: (obj, prop: string, value) => {
         //a function node can continue running after it has been deleted. E.g. with timeouts or event listeners that hasn't been removed.
         //if the node is deleted, just do nothing
         if (this._deleted) {
+          // Returning nothing here means the trap returns `undefined`, which is falsy — so
+          // in *strict-mode* user code this assignment throws a `TypeError` rather than
+          // being silently ignored, which is the opposite of the comment's intent. Same
+          // shape as the `Noodl.Arrays`/`Noodl.Objects` traps slice 9 fixed (NOTES §21.4);
+          // left as it stands here because the script body is compiled non-strict by
+          // default, so the throw only reaches authors who opt in (NOTES §25).
           return;
         }
 
@@ -42,7 +102,7 @@ const SimpleJavascriptNode = {
 
     this._internal._this = {};
   },
-  getInspectInfo() {
+  getInspectInfo(this: SimpleJavascriptNodeInstance): InspectInfo {
     return [
       {
         type: 'value',
@@ -60,7 +120,7 @@ const SimpleJavascriptNode = {
         allowEditOnly: true
       },
       group: 'Script Inputs',
-      set(value) {
+      set() {
         //  ignore
       }
     },
@@ -70,7 +130,7 @@ const SimpleJavascriptNode = {
         allowEditOnly: true
       },
       group: 'Script Outputs',
-      set(value) {
+      set() {
         //  ignore
       }
     },
@@ -83,7 +143,7 @@ const SimpleJavascriptNode = {
         codeeditor: 'javascript'
       },
       group: 'General',
-      set(script) {
+      set(this: SimpleJavascriptNodeInstance, script: string) {
         if (script === undefined) {
           this._internal.func = undefined;
           return;
@@ -98,14 +158,14 @@ const SimpleJavascriptNode = {
       type: 'signal',
       displayName: 'Run',
       group: 'Actions',
-      valueChangedToTrue: function () {
+      valueChangedToTrue: function (this: SimpleJavascriptNodeInstance) {
         this.scheduleRun();
       }
     }
   },
   outputs: {},
   methods: {
-    scheduleRun: function () {
+    scheduleRun: function (this: SimpleJavascriptNodeInstance) {
       if (this.runScheduled) return;
       this.runScheduled = true;
 
@@ -117,7 +177,7 @@ const SimpleJavascriptNode = {
         }
       });
     },
-    runScript: async function () {
+    runScript: async function (this: SimpleJavascriptNodeInstance) {
       const func = this._internal.func;
 
       if (func === undefined) return;
@@ -131,8 +191,12 @@ const SimpleJavascriptNode = {
           const _sendSignal = () => {
             if (this.hasOutput(key)) this.sendSignalOnOutput(key);
           };
-          this._internal.outputValues[key.substring('out-'.length)] = _sendSignal;
-          this._internal.outputValues[key.substring('out-'.length)].send = _sendSignal;
+          // The value is both callable and carries `.send`, so user code may write either
+          // `Outputs.done()` or `Outputs.done.send()`. Typed at the point the second shape
+          // is attached rather than by widening the whole record to `any`.
+          const signalValue = _sendSignal as typeof _sendSignal & { send: typeof _sendSignal };
+          signalValue.send = _sendSignal;
+          this._internal.outputValues[key.substring('out-'.length)] = signalValue;
         }
       }
 
@@ -167,25 +231,31 @@ const SimpleJavascriptNode = {
         }
       }
     },
-    setScriptInputValue: function (name, value) {
+    setScriptInputValue: function (this: SimpleJavascriptNodeInstance, name: string, value: unknown) {
       this._internal.inputValues[name] = value;
 
       if (!this.isInputConnected('run')) this.scheduleRun();
     },
-    getScriptOutputValue: function (name) {
+    getScriptOutputValue: function (this: SimpleJavascriptNodeInstance, name: string) {
       if (this._isSignalType(name)) {
         return undefined;
       }
       return this._internal.outputValues[name];
     },
-    setScriptInputType: function (name, type) {
-      this._internal.inputTypes[name] = type;
+    // These two write to `_internal.inputTypes` / `_internal.outputTypes`, and neither
+    // container is ever created — `initialize` above sets only `inputValues`,
+    // `outputValues`, `outputValuesProxy` and `_this`. Both would therefore throw
+    // `TypeError: Cannot set properties of undefined` if reached, the same shape as the
+    // Globals node's `_cachedInputValues`. Nothing in the repo calls either, so they are
+    // dead rather than broken. Kept verbatim (PLAT-003 NOTES §25).
+    setScriptInputType: function (this: SimpleJavascriptNodeInstance, name: string, type: unknown) {
+      (this._internal as unknown as { inputTypes: Record<string, unknown> }).inputTypes[name] = type;
     },
-    setScriptOutputType: function (name, type) {
-      this._internal.outputTypes[name] = type;
+    setScriptOutputType: function (this: SimpleJavascriptNodeInstance, name: string, type: unknown) {
+      (this._internal as unknown as { outputTypes: Record<string, unknown> }).outputTypes[name] = type;
     },
-    parseScript: function (script) {
-      var func;
+    parseScript: function (this: SimpleJavascriptNodeInstance, script: string) {
+      let func;
       try {
         const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
         func = new AsyncFunction(
@@ -201,11 +271,11 @@ const SimpleJavascriptNode = {
 
       return func;
     },
-    _isSignalType: function (name) {
+    _isSignalType: function (this: SimpleJavascriptNodeInstance, name: string) {
       // This will catch signals in script that may not have been delivered by the editor yet
       return this.model.outputPorts[name] && this.model.outputPorts[name].type === 'signal';
     },
-    registerInputIfNeeded: function (name) {
+    registerInputIfNeeded: function (this: SimpleJavascriptNodeInstance, name: string) {
       if (this.hasInput(name)) {
         return;
       }
@@ -213,13 +283,13 @@ const SimpleJavascriptNode = {
       if (name.startsWith('in-')) {
         const n = name.substring('in-'.length);
 
-        const input = {
+        const input: InputPortDefinition = {
           set: this.setScriptInputValue.bind(this, n)
         };
 
         //make sure we register the type as well, so Noodl resolves types like color styles to an actual color
         if (this.model && this.model.parameters['intype-' + n]) {
-          input.type = this.model.parameters['intype-' + n];
+          input.type = this.model.parameters['intype-' + n] as string;
         }
 
         this.registerInput(name, input);
@@ -229,10 +299,15 @@ const SimpleJavascriptNode = {
         const n = name.substring('intype-'.length);
 
         this.registerInput(name, {
-          set(value) {
-            //make sure we register the type as well, so Noodl resolves types like color styles to an actual color
+          set(this: SimpleJavascriptNodeInstance, value: unknown) {
+            // Both of these are missing the hyphen: the value port is registered as
+            // `'in-' + n` a few lines above, so `'in' + n` matches nothing and this
+            // branch has never applied a type. The effect is that changing an input's
+            // Type after the port exists does not retype it — the type set at
+            // registration time (from `parameters['intype-…']`) is the one that sticks,
+            // which is why this rarely shows. Kept verbatim (PLAT-003 NOTES §25).
             if (this.hasInput('in' + n)) {
-              this.getInput('in' + n).type = value;
+              this.getInput('in' + n).type = value as string;
             }
           }
         });
@@ -244,7 +319,7 @@ const SimpleJavascriptNode = {
         });
       }
     },
-    registerOutputIfNeeded: function (name) {
+    registerOutputIfNeeded: function (this: SimpleJavascriptNodeInstance, name: string) {
       if (this.hasOutput(name)) {
         return;
       }
@@ -257,7 +332,13 @@ const SimpleJavascriptNode = {
   }
 };
 
-function _parseScriptForErrorsAndPorts(script, name, node, context, ports) {
+function _parseScriptForErrorsAndPorts(
+  script: string | undefined,
+  name: string,
+  node: GraphNodeModel,
+  context: NodeContextLike,
+  ports: Record<string, unknown>[]
+) {
   // Clear run warnings if the script is edited
   context.editorConnection.clearWarning(node.component.name, node.id, 'js-function-run-waring');
 
@@ -315,16 +396,16 @@ const inputTypeEnums = [
   }
 ];
 
-module.exports = {
+const SimpleJavascriptNodeModule: NodeModule = {
   node: SimpleJavascriptNode,
-  setup: function (context, graphModel) {
+  setup: function (context: NodeContextLike, graphModel: GraphModelLike) {
     if (!context.editorConnection || !context.editorConnection.isRunningLocally()) {
       return;
     }
 
-    function _managePortsForNode(node) {
+    function _managePortsForNode(node: GraphNodeModel) {
       function _updatePorts() {
-        var ports = [];
+        const ports: Record<string, unknown>[] = [];
 
         const _outputTypeEnums = inputTypeEnums.concat([
           {
@@ -334,8 +415,9 @@ module.exports = {
         ]);
 
         // Outputs
-        if (node.parameters['scriptOutputs'] !== undefined && node.parameters['scriptOutputs'].length > 0) {
-          node.parameters['scriptOutputs'].forEach((p) => {
+        const scriptOutputs = node.parameters['scriptOutputs'] as ScriptPortSpec[] | undefined;
+        if (scriptOutputs !== undefined && scriptOutputs.length > 0) {
+          scriptOutputs.forEach((p) => {
             // Type for output
             ports.push({
               name: 'outtype-' + p.label,
@@ -357,15 +439,16 @@ module.exports = {
               name: 'out-' + p.label,
               displayName: p.label,
               plug: 'output',
-              type: node.parameters['outtype-' + p.label] || '*',
+              type: (node.parameters['outtype-' + p.label] as string) || '*',
               group: 'Outputs'
             });
           });
         }
 
         // Inputs
-        if (node.parameters['scriptInputs'] !== undefined && node.parameters['scriptInputs'].length > 0) {
-          node.parameters['scriptInputs'].forEach((p) => {
+        const scriptInputs = node.parameters['scriptInputs'] as ScriptPortSpec[] | undefined;
+        if (scriptInputs !== undefined && scriptInputs.length > 0) {
+          scriptInputs.forEach((p) => {
             // Type for input
             ports.push({
               name: 'intype-' + p.label,
@@ -387,19 +470,25 @@ module.exports = {
               name: 'in-' + p.label,
               displayName: p.label,
               plug: 'input',
-              type: node.parameters['intype-' + p.label] || 'string',
+              type: (node.parameters['intype-' + p.label] as string) || 'string',
               group: 'Inputs'
             });
           });
         }
 
-        _parseScriptForErrorsAndPorts(node.parameters['functionScript'], 'Script ', node, context, ports);
+        _parseScriptForErrorsAndPorts(
+          node.parameters['functionScript'] as string | undefined,
+          'Script ',
+          node,
+          context,
+          ports
+        );
 
         // Push output ports that are signals directly to the model, it's needed by the initial run of
         // the script function
         ports.forEach((p) => {
           if (p.type === 'signal' && p.plug === 'output') {
-            node.outputPorts[p.name] = p;
+            node.outputPorts[p.name as string] = p as unknown as GraphPortModel;
           }
         });
 
@@ -407,13 +496,13 @@ module.exports = {
       }
 
       _updatePorts();
-      node.on('parameterUpdated', function (ev) {
+      node.on('parameterUpdated', function () {
         _updatePorts();
       });
     }
 
     graphModel.on('editorImportComplete', () => {
-      graphModel.on('nodeAdded.JavaScriptFunction', function (node) {
+      graphModel.on('nodeAdded.JavaScriptFunction', function (node: GraphNodeModel) {
         _managePortsForNode(node);
       });
 
@@ -423,3 +512,5 @@ module.exports = {
     });
   }
 };
+
+export = SimpleJavascriptNodeModule;

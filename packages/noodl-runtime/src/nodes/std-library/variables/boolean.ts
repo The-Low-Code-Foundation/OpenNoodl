@@ -1,6 +1,8 @@
 'use strict';
 
-const VariableBase = require('./variablebase');
+import type { NodeModule } from '@noodl/types';
+
+import VariableBase from './variablebase';
 
 const BooleanNode = VariableBase.createDefinition({
   name: 'Boolean',
@@ -9,11 +11,13 @@ const BooleanNode = VariableBase.createDefinition({
   type: {
     name: 'boolean'
   },
-  cast: function (value) {
+  cast: function (value: unknown) {
     return Boolean(value);
   }
 });
 
-module.exports = {
+const BooleanNodeModule: NodeModule = {
   node: BooleanNode
 };
+
+export = BooleanNodeModule;

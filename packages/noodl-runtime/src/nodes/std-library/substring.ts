@@ -1,11 +1,30 @@
 'use strict';
 
-const SubStringNode = {
+import type { NodeDefinitionOptions, NodeInstance, NodeModule } from '@noodl/types';
+
+/**
+ * `this` inside the Substring node.
+ *
+ * The result is computed lazily in the getter and cached, so `resultDirty` is what makes
+ * the three setters cheap — they only mark, they never recompute.
+ */
+interface SubStringNodeInstance extends NodeInstance {
+  _internal: {
+    startIndex: number;
+    /** `-1` means "to the end of the string", not "one before the end". */
+    endIndex: number;
+    cachedResult: string;
+    inputString: string;
+    resultDirty: boolean;
+  };
+}
+
+const SubStringNode: NodeDefinitionOptions = {
   name: 'Substring',
   docs: 'https://docs.noodl.net/nodes/string-manipulation/substring',
   category: 'String Manipulation',
-  initialize: function () {
-    var internal = this._internal;
+  initialize: function (this: SubStringNodeInstance) {
+    const internal = this._internal;
     internal.startIndex = 0;
     internal.endIndex = -1;
     internal.cachedResult = '';
@@ -17,7 +36,7 @@ const SubStringNode = {
       type: 'number',
       displayName: 'Start',
       default: 0,
-      set: function (value) {
+      set: function (this: SubStringNodeInstance, value: number) {
         this._internal.startIndex = value;
         this._internal.resultDirty = true;
         this.flagOutputDirty('result');
@@ -27,7 +46,7 @@ const SubStringNode = {
       type: 'number',
       displayName: 'End',
       default: 0,
-      set: function (value) {
+      set: function (this: SubStringNodeInstance, value: number) {
         this._internal.endIndex = value;
         this._internal.resultDirty = true;
         this.flagOutputDirty('result');
@@ -39,9 +58,11 @@ const SubStringNode = {
       },
       displayName: 'String',
       default: '',
-      set: function (value) {
-        value = value.toString();
-        this._internal.inputString = value;
+      // `value.toString()`, not `String(value)`: the two differ on `null`/`undefined`,
+      // where the original throws rather than yielding `"null"`. Typed as the structural
+      // requirement so the call survives without widening what the port accepts.
+      set: function (this: SubStringNodeInstance, value: { toString(): string }) {
+        this._internal.inputString = value.toString();
         this._internal.resultDirty = true;
         this.flagOutputDirty('result');
       }
@@ -51,8 +72,8 @@ const SubStringNode = {
     result: {
       type: 'string',
       displayName: 'Result',
-      getter: function () {
-        var internal = this._internal;
+      getter: function (this: SubStringNodeInstance) {
+        const internal = this._internal;
 
         if (internal.resultDirty) {
           if (internal.endIndex === -1) {
@@ -71,6 +92,8 @@ const SubStringNode = {
   }
 };
 
-module.exports = {
+const SubStringNodeModule: NodeModule = {
   node: SubStringNode
 };
+
+export = SubStringNodeModule;

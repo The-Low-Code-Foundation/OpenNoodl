@@ -1,19 +1,74 @@
-const { Node } = require('../../../noodl-runtime');
-const guid = require('../../guid');
-const Model = require('../../model');
+import type { ModelLike, ModelModule, NodeDefinitionOptions, NodeInstance, NodeModule } from '@noodl/types';
 
-function sendSignalOnInput(itemNode, name) {
+import type { RuntimeNode } from '../../internal';
+
+const { Node } = require('../../../noodl-runtime');
+
+import guid = require('../../guid');
+import ModelImport = require('../../model');
+
+const Model = ModelImport as unknown as ModelModule;
+
+/** The component instance standing for one task, plus the creator hooks Run Tasks installs. */
+interface TaskNode extends RuntimeNode {
+  _internal: RuntimeNode['_internal'] & {
+    creatorCallbacks?: {
+      onOutputChanged(name: string, value: unknown, oldValue: unknown): void;
+    };
+  };
+}
+
+/**
+ * `this` inside the Run Tasks node.
+ *
+ * The node runs a component template once per item with bounded concurrency. Each task is
+ * a real component instance created in this node's scope, driven by pulsing its `Do` input
+ * and watched through `creatorCallbacks.onOutputChanged` — there is no port wiring between
+ * the template and this node, which is why the signal names `'Success'` and `'Failure'`
+ * are matched by string below.
+ */
+interface RunTasksNodeInstance extends NodeInstance {
+  _internal: {
+    queuedOperations: Array<() => void | Promise<void>>;
+    state: 'idle' | 'running' | 'aborted';
+    maxRunningTasks: number;
+    activeTasks: Map<string, TaskNode>;
+    items?: unknown[];
+    stopOnFailure?: boolean;
+    template?: string;
+    numTasks?: number;
+    failedTasks?: number;
+    completedTasks?: number;
+    queuedTasks?: unknown[];
+    runningTasks?: number;
+    hasScheduledRun?: boolean;
+    hasScheduledAbort?: boolean;
+  };
+  /** On the instance, not in `_internal` — guards {@link _runQueueOperations}. */
+  runningOperations?: boolean;
+  scheduleRun(): void;
+  scheduleAbort(): void;
+  createTaskComponent(item: unknown): Promise<TaskNode>;
+  startTask(task: unknown): Promise<void>;
+  run(): Promise<void>;
+  abort(): void;
+  itemOutputSignalTriggered(name: string, model: ModelLike, itemNode: TaskNode): void;
+  _queueOperation(op: () => void | Promise<void>): void;
+  _runQueueOperations(): Promise<void>;
+}
+
+function sendSignalOnInput(itemNode: TaskNode, name: string) {
   itemNode.queueInput(name, true); // send signal
   itemNode.queueInput(name, false);
 }
 
-const RunTasksDefinition = {
+const RunTasksDefinition: NodeDefinitionOptions = {
   name: 'RunTasks',
   displayNodeName: 'Run Tasks',
   docs: 'https://docs.noodl.net/nodes/data/run-tasks',
   color: 'data',
   category: 'Data',
-  initialize() {
+  initialize(this: RunTasksNodeInstance) {
     this._internal.queuedOperations = [];
     this._internal.state = 'idle';
     this._internal.maxRunningTasks = 10;
@@ -24,7 +79,7 @@ const RunTasksDefinition = {
       group: 'Data',
       displayName: 'Items',
       type: 'array',
-      set: function (value) {
+      set: function (this: RunTasksNodeInstance, value: unknown[]) {
         if (!value) return;
         if (value === this._internal.items) return;
 
@@ -36,7 +91,7 @@ const RunTasksDefinition = {
       displayName: 'Stop On Failure',
       type: 'boolean',
       default: false,
-      set: function (value) {
+      set: function (this: RunTasksNodeInstance, value: boolean) {
         this._internal.stopOnFailure = value;
       }
     },
@@ -45,7 +100,7 @@ const RunTasksDefinition = {
       displayName: 'Max Running Tasks',
       type: 'number',
       default: 10,
-      set: function (value) {
+      set: function (this: RunTasksNodeInstance, value: number) {
         this._internal.maxRunningTasks = value;
       }
     },
@@ -53,7 +108,7 @@ const RunTasksDefinition = {
       type: 'component',
       displayName: 'Template',
       group: 'General',
-      set: function (value) {
+      set: function (this: RunTasksNodeInstance, value: string) {
         this._internal.template = value;
       }
     },
@@ -61,7 +116,7 @@ const RunTasksDefinition = {
       group: 'General',
       displayName: 'Do',
       type: 'signal',
-      valueChangedToTrue: function () {
+      valueChangedToTrue: function (this: RunTasksNodeInstance) {
         this.scheduleRun();
       }
     },
@@ -69,7 +124,7 @@ const RunTasksDefinition = {
       group: 'General',
       displayName: 'Abort',
       type: 'signal',
-      valueChangedToTrue: function () {
+      valueChangedToTrue: function (this: RunTasksNodeInstance) {
         this.scheduleAbort();
       }
     }
@@ -97,8 +152,8 @@ const RunTasksDefinition = {
     }
   },
   methods: {
-    scheduleRun() {
-      var internal = this._internal;
+    scheduleRun(this: RunTasksNodeInstance) {
+      const internal = this._internal;
       if (!internal.hasScheduledRun) {
         internal.hasScheduledRun = true;
         this.scheduleAfterInputsHaveUpdated(() => {
@@ -109,8 +164,8 @@ const RunTasksDefinition = {
         });
       }
     },
-    scheduleAbort() {
-      var internal = this._internal;
+    scheduleAbort(this: RunTasksNodeInstance) {
+      const internal = this._internal;
       if (!internal.hasScheduledAbort) {
         internal.hasScheduledAbort = true;
         this.scheduleAfterInputsHaveUpdated(() => {
@@ -121,21 +176,25 @@ const RunTasksDefinition = {
         });
       }
     },
-    async createTaskComponent(item) {
+    async createTaskComponent(this: RunTasksNodeInstance, item: unknown) {
       const internal = this._internal;
 
-      const modelScope = this.nodeScope.modelScope || Model;
+      // `nodeScope.modelScope` is the per-component model scope when there is one, and the
+      // `Model` module itself otherwise — both answer `create`.
+      const modelScope = (this.nodeScope.modelScope || Model) as { create(data: unknown): ModelLike };
       const model = modelScope.create(item);
 
-      var itemNode = await this.nodeScope.createNode(internal.template, guid(), {
+      // `createNode` is declared for any node; a task template instantiates to a component
+      // instance, which is what carries `_internal.creatorCallbacks`.
+      const itemNode = (await this.nodeScope.createNode(internal.template, guid(), {
         _forEachModel: model,
         _forEachNode: this
-      });
+      })) as unknown as TaskNode;
 
       // This is needed to make sure any action connected to "Do"
       // is not run directly
       const _isInputConnected = itemNode.isInputConnected.bind(itemNode);
-      itemNode.isInputConnected = (name) => {
+      itemNode.isInputConnected = (name: string) => {
         if (name === 'Do') return true;
         return _isInputConnected(name);
       };
@@ -150,13 +209,13 @@ const RunTasksDefinition = {
 
       // Push all other values also as inputs
       // if they exist as component inputs
-      for (var inputKey in itemNode._inputs) {
+      for (const inputKey in itemNode._inputs) {
         if (model.data[inputKey] !== undefined) itemNode.setInputValue(inputKey, model.data[inputKey]);
       }
 
       // capture signals
       itemNode._internal.creatorCallbacks = {
-        onOutputChanged: (name, value, oldValue) => {
+        onOutputChanged: (name: string, value: unknown, oldValue: unknown) => {
           if ((oldValue === false || oldValue === undefined) && value === true) {
             this.itemOutputSignalTriggered(name, model, itemNode);
           }
@@ -165,7 +224,7 @@ const RunTasksDefinition = {
 
       return itemNode;
     },
-    async startTask(task) {
+    async startTask(this: RunTasksNodeInstance, task: unknown) {
       const internal = this._internal;
 
       try {
@@ -178,7 +237,7 @@ const RunTasksDefinition = {
         console.log(e);
       }
     },
-    async run() {
+    async run(this: RunTasksNodeInstance) {
       const internal = this._internal;
 
       if (this.context.editorConnection) {
@@ -232,12 +291,17 @@ const RunTasksDefinition = {
         this.startTask(task);
       }
     },
-    abort: function () {
+    abort: function (this: RunTasksNodeInstance) {
       const internal = this._internal;
 
       internal.state = 'aborted';
     },
-    itemOutputSignalTriggered: function (name, model, itemNode) {
+    itemOutputSignalTriggered: function (
+      this: RunTasksNodeInstance,
+      name: string,
+      model: ModelLike,
+      itemNode: TaskNode
+    ) {
       const internal = this._internal;
 
       if (internal.state === 'idle') {
@@ -261,6 +325,9 @@ const RunTasksDefinition = {
           if (internal.stopOnFailure) {
             // Only continue if there are no failed tasks, otherwise aborted
             if (internal.failedTasks === 0) {
+              // Note `startTask` increments `runningTasks` again, so each continuation
+              // counts twice. Nothing reads the field, so it is inert bookkeeping rather
+              // than a live bug — but it does not mean what it says. Kept verbatim.
               internal.runningTasks++;
               const task = internal.queuedTasks.shift();
               if (task) this.startTask(task);
@@ -290,11 +357,11 @@ const RunTasksDefinition = {
       internal.activeTasks.delete(itemNode.id);
       this.nodeScope.deleteNode(itemNode);
     },
-    _queueOperation(op) {
+    _queueOperation(this: RunTasksNodeInstance, op: () => void | Promise<void>) {
       this._internal.queuedOperations.push(op);
       this._runQueueOperations();
     },
-    async _runQueueOperations() {
+    async _runQueueOperations(this: RunTasksNodeInstance) {
       if (this.runningOperations) {
         return;
       }
@@ -308,18 +375,35 @@ const RunTasksDefinition = {
       this.runningOperations = false;
     }
   },
-  _deleteAllTasks() {
-    for (const taskComponent of this._internal.activeTasks) {
+  // ---------------------------------------------------------------------------------
+  // Both of these are declared at the *top level* of the definition rather than inside
+  // `methods`, and `nodedefinition.ts` only installs `opts.methods || opts.prototypeExtensions`
+  // on the prototype (line 266). So neither is ever installed:
+  //
+  //   * `_onNodeDeleted` here is dead — the base `Node.prototype._onNodeDeleted` runs
+  //     instead, so deleting a Run Tasks node mid-run leaks every live task component,
+  //     which stays in the node scope with no owner.
+  //   * `_deleteAllTasks` is therefore unreachable, and would not work if it were called:
+  //     `for…of` over a `Map` yields `[key, value]` entries, so `deleteNode` would receive
+  //     a two-element array rather than a node. It wants `activeTasks.values()`.
+  //
+  // Left verbatim: moving them into `methods` turns dead code live, which is a behaviour
+  // change and belongs in its own commit (PLAT-003 NOTES §25).
+  // ---------------------------------------------------------------------------------
+  _deleteAllTasks(this: RunTasksNodeInstance) {
+    for (const taskComponent of this._internal.activeTasks as unknown as Iterable<TaskNode>) {
       this.nodeScope.deleteNode(taskComponent);
     }
     this._internal.activeTasks.clear();
   },
-  _onNodeDeleted: function () {
+  _onNodeDeleted: function (this: RunTasksNodeInstance) {
     Node.prototype._onNodeDeleted.call(this);
-    this._deleteAllTasks();
+    (this as unknown as { _deleteAllTasks(): void })._deleteAllTasks();
   }
-};
+} as NodeDefinitionOptions;
 
-module.exports = {
+const RunTasksNodeModule: NodeModule = {
   node: RunTasksDefinition
 };
+
+export = RunTasksNodeModule;

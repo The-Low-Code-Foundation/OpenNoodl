@@ -1,19 +1,59 @@
 'use strict';
 
-/**
- * Logic Builder Node
- *
- * Visual logic building using Google Blockly.
- * Allows users to create complex logic without writing JavaScript.
- *
- * The node:
- * - Stores a Blockly workspace as JSON
- * - Auto-detects inputs/outputs from blocks
- * - Generates and executes JavaScript from blocks
- * - Provides full Noodl API access (Variables, Objects, Arrays)
- */
+import type {
+  EditorConnectionLike,
+  GraphModelLike,
+  GraphNodeModel,
+  InspectInfo,
+  NodeContextLike,
+  NodeDefinitionOptions,
+  NodeInstance,
+  NodeModule
+} from '@noodl/types';
 
-const LogicBuilderNode = {
+/** One port the code scan found in the generated JavaScript. */
+interface DetectedPort {
+  name: string;
+  type: string;
+}
+
+/**
+ * `this` inside the Logic Builder node.
+ *
+ * The port set is `runtime-discovered`: ports come from scanning the *generated* code, not
+ * the Blockly workspace itself. `workspace` is the authored source of truth and
+ * `generatedCode` is what actually runs — hence the two parameters, and hence a port update
+ * on either changing.
+ */
+interface LogicBuilderNodeInstance extends NodeInstance {
+  _internal: {
+    /** Blockly workspace JSON. */
+    workspace: string;
+    compiledFunction: ((...args: unknown[]) => unknown) | null;
+    executionError: string | null;
+    inputValues: Record<string, unknown>;
+    outputValues: Record<string, unknown>;
+    generatedCode?: string;
+  };
+  _executeLogic(triggerSignal: string): void;
+  _createExecutionContext(triggerSignal: string): LogicBuilderExecutionContext;
+  _compileFunction(): ((...args: unknown[]) => unknown) | null;
+}
+
+/** What the generated code is handed as its parameters. */
+interface LogicBuilderExecutionContext {
+  Inputs: Record<string, unknown>;
+  Outputs: Record<string, unknown>;
+  Noodl: Record<string, unknown>;
+  Variables: unknown;
+  Objects: unknown;
+  Arrays: unknown;
+  sendSignalOnOutput(name: string): void;
+  this: { sendSignalOnOutput(name: string): void };
+  __triggerSignal__: string;
+}
+
+const LogicBuilderNode: NodeDefinitionOptions = {
   name: 'Logic Builder',
   docs: 'https://docs.noodl.net/nodes/logic/logic-builder',
   displayNodeName: 'Logic Builder',
@@ -25,7 +65,7 @@ const LogicBuilderNode = {
   },
   searchTags: ['blockly', 'visual', 'logic', 'blocks', 'nocode'],
 
-  initialize: function () {
+  initialize: function (this: LogicBuilderNodeInstance) {
     const internal = this._internal;
 
     internal.workspace = ''; // Blockly workspace JSON
@@ -36,7 +76,7 @@ const LogicBuilderNode = {
   },
 
   methods: {
-    registerInputIfNeeded: function (name) {
+    registerInputIfNeeded: function (this: LogicBuilderNodeInstance, name: string) {
       if (this.hasInput(name)) {
         return;
       }
@@ -44,40 +84,40 @@ const LogicBuilderNode = {
       const internal = this._internal;
 
       this.registerInput(name, {
-        set: function (value) {
+        set: function (value: unknown) {
           internal.inputValues[name] = value;
           // Don't auto-execute - wait for signal inputs
         }
       });
     },
 
-    registerOutputIfNeeded: function (name, type) {
+    registerOutputIfNeeded: function (this: LogicBuilderNodeInstance, name: string, type?: string) {
       if (this.hasOutput(name)) {
         return;
       }
 
       this.registerOutput(name, {
         type: type || '*',
-        getter: function () {
+        getter: function (this: LogicBuilderNodeInstance) {
           return this._internal.outputValues[name];
         }
       });
     },
 
-    registerSignalInputIfNeeded: function (name) {
+    registerSignalInputIfNeeded: function (this: LogicBuilderNodeInstance, name: string) {
       if (this.hasInput(name)) {
         return;
       }
 
       this.registerInput(name, {
         type: 'signal',
-        valueChangedToTrue: function () {
+        valueChangedToTrue: function (this: LogicBuilderNodeInstance) {
           this._executeLogic(name);
         }
       });
     },
 
-    registerSignalOutputIfNeeded: function (name) {
+    registerSignalOutputIfNeeded: function (this: LogicBuilderNodeInstance, name: string) {
       if (this.hasOutput(name)) {
         return;
       }
@@ -87,7 +127,7 @@ const LogicBuilderNode = {
       });
     },
 
-    _executeLogic: function (triggerSignal) {
+    _executeLogic: function (this: LogicBuilderNodeInstance, triggerSignal: string) {
       const internal = this._internal;
 
       // Compile function if needed
@@ -129,7 +169,10 @@ const LogicBuilderNode = {
       }
     },
 
-    _createExecutionContext: function (triggerSignal) {
+    _createExecutionContext: function (
+      this: LogicBuilderNodeInstance,
+      triggerSignal: string
+    ): LogicBuilderExecutionContext {
       const internal = this._internal;
       // eslint-disable-next-line @typescript-eslint/no-this-alias
       const self = this;
@@ -153,13 +196,13 @@ const LogicBuilderNode = {
         Arrays: noodlAPI.Arrays,
 
         // Signal sending
-        sendSignalOnOutput: function (name) {
+        sendSignalOnOutput: function (name: string) {
           self.sendSignalOnOutput(name);
         },
 
         // Convenience alias
         this: {
-          sendSignalOnOutput: function (name) {
+          sendSignalOnOutput: function (name: string) {
             self.sendSignalOnOutput(name);
           }
         },
@@ -169,7 +212,7 @@ const LogicBuilderNode = {
       };
     },
 
-    _compileFunction: function () {
+    _compileFunction: function (this: LogicBuilderNodeInstance) {
       const internal = this._internal;
 
       if (!internal.workspace) {
@@ -207,7 +250,7 @@ const LogicBuilderNode = {
     }
   },
 
-  getInspectInfo() {
+  getInspectInfo(this: LogicBuilderNodeInstance): InspectInfo {
     const internal = this._internal;
     if (internal.executionError) {
       return `Error: ${internal.executionError}`;
@@ -224,7 +267,7 @@ const LogicBuilderNode = {
       },
       displayName: 'Logic Blocks',
       group: '', // Empty group to avoid "Other" label
-      set: function (value) {
+      set: function (this: LogicBuilderNodeInstance, value: string) {
         const internal = this._internal;
         internal.workspace = value;
         internal.compiledFunction = null; // Reset compiled function
@@ -239,7 +282,7 @@ const LogicBuilderNode = {
       },
       displayName: 'Generated Code',
       group: '', // Empty group
-      set: function (value) {
+      set: function (this: LogicBuilderNodeInstance, value: string) {
         const internal = this._internal;
         internal.generatedCode = value;
         internal.compiledFunction = null; // Reset compiled function when code changes
@@ -250,7 +293,7 @@ const LogicBuilderNode = {
       displayName: 'Run',
       group: 'Signals',
       editorName: 'hidden', // Hide from property panel - signal comes from dynamic ports
-      valueChangedToTrue: function () {
+      valueChangedToTrue: function (this: LogicBuilderNodeInstance) {
         this._executeLogic('run');
       }
     }
@@ -262,7 +305,7 @@ const LogicBuilderNode = {
       type: 'string',
       displayName: 'Error',
       editorName: 'hidden', // Hide from property panel
-      getter: function () {
+      getter: function (this: LogicBuilderNodeInstance) {
         return this._internal.executionError || '';
       }
     }
@@ -273,9 +316,21 @@ const LogicBuilderNode = {
  * Update dynamic ports based on workspace
  * This function is injected by the editor's setup code
  */
-let updatePortsImpl = null;
+type UpdatePortsImpl = (
+  nodeId: string,
+  workspace: string,
+  generatedCode: string,
+  editorConnection: EditorConnectionLike
+) => void;
 
-function updatePorts(nodeId, workspace, generatedCode, editorConnection) {
+/**
+ * Set by {@link LogicBuilderNodeModule.setup} (and overridable via `setUpdatePortsImpl`).
+ * Module-level and therefore shared by every Logic Builder node in the process, which is
+ * fine only because the implementation is stateless and takes its node id as an argument.
+ */
+let updatePortsImpl: UpdatePortsImpl | null = null;
+
+function updatePorts(nodeId: string, workspace: string, generatedCode: string, editorConnection: EditorConnectionLike) {
   if (!workspace) {
     editorConnection.sendDynamicPorts(nodeId, []);
     return;
@@ -288,9 +343,13 @@ function updatePorts(nodeId, workspace, generatedCode, editorConnection) {
   }
 }
 
-module.exports = {
+/**
+ * Carries one member beyond `NodeModule`: `setUpdatePortsImpl`, the seam the editor uses
+ * to install the real Blockly-aware port generator over the code-scanning fallback below.
+ */
+const LogicBuilderNodeModule: NodeModule & { setUpdatePortsImpl(impl: UpdatePortsImpl): void } = {
   node: LogicBuilderNode,
-  setup: function (context, graphModel) {
+  setup: function (context: NodeContextLike, graphModel: GraphModelLike) {
     if (!context.editorConnection || !context.editorConnection.isRunningLocally()) {
       return;
     }
@@ -305,7 +364,18 @@ module.exports = {
       try {
         console.log('[Logic Builder] Parsing generated code for outputs...');
 
-        const detected = {
+        // Only `outputs` is ever populated — the three sibling lists are declared, looped
+        // over and logged, but nothing adds to them. So Logic Builder has never produced an
+        // input port or either kind of signal port; the `detected.outputs.length > 0` guard
+        // below also means a workspace with no outputs sends no ports at all and warns
+        // about an `IODetector` that does not exist in this file. Kept verbatim
+        // (PLAT-003 NOTES §25).
+        const detected: {
+          inputs: DetectedPort[];
+          outputs: DetectedPort[];
+          signalInputs: string[];
+          signalOutputs: string[];
+        } = {
           inputs: [],
           outputs: [],
           signalInputs: [],
@@ -314,7 +384,7 @@ module.exports = {
 
         // Detect outputs from code like: Outputs["result"] = ...
         const outputRegex = /Outputs\["([^"]+)"\]/g;
-        let match;
+        let match: RegExpExecArray | null;
         while ((match = outputRegex.exec(generatedCode)) !== null) {
           const outputName = match[1];
           if (!detected.outputs.find((o) => o.name === outputName)) {
@@ -333,7 +403,7 @@ module.exports = {
           });
           console.log('[Logic Builder] Detected outputs:', detected.outputs);
 
-          const ports = [];
+          const ports: Record<string, unknown>[] = [];
 
           // Add detected inputs
           detected.inputs.forEach((input) => {
@@ -395,28 +465,40 @@ module.exports = {
       }
     };
 
-    graphModel.on('nodeAdded.Logic Builder', function (node) {
+    graphModel.on('nodeAdded.Logic Builder', function (node: GraphNodeModel) {
       console.log('[Logic Builder] Node added:', node.id);
       if (node.parameters.workspace) {
         console.log('[Logic Builder] Node has workspace, updating ports...');
-        updatePorts(node.id, node.parameters.workspace, node.parameters.generatedCode, context.editorConnection);
+        updatePorts(
+          node.id,
+          node.parameters.workspace as string,
+          node.parameters.generatedCode as string,
+          context.editorConnection
+        );
       }
 
-      node.on('parameterUpdated', function (event) {
+      node.on('parameterUpdated', function (event: { name: string }) {
         console.log('[Logic Builder] Parameter updated:', event.name, 'for node:', node.id);
         // Trigger port update when workspace OR generatedCode changes
         if (event.name === 'workspace' || event.name === 'generatedCode') {
           console.log('[Logic Builder] Triggering port update for:', event.name);
           console.log('[Logic Builder] Workspace value:', node.parameters.workspace ? 'exists' : 'empty');
           console.log('[Logic Builder] Generated code value:', node.parameters.generatedCode ? 'exists' : 'empty');
-          updatePorts(node.id, node.parameters.workspace, node.parameters.generatedCode, context.editorConnection);
+          updatePorts(
+            node.id,
+            node.parameters.workspace as string,
+            node.parameters.generatedCode as string,
+            context.editorConnection
+          );
         }
       });
     });
   },
 
   // Export for editor to set the implementation
-  setUpdatePortsImpl: function (impl) {
+  setUpdatePortsImpl: function (impl: UpdatePortsImpl) {
     updatePortsImpl = impl;
   }
 };
+
+export = LogicBuilderNodeModule;

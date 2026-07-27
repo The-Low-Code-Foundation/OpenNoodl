@@ -1,6 +1,8 @@
 'use strict';
 
-const VariableBase = require('./variablebase');
+import type { NodeModule } from '@noodl/types';
+
+import VariableBase from './variablebase';
 
 const NumberNode = VariableBase.createDefinition({
   name: 'Number',
@@ -12,11 +14,13 @@ const NumberNode = VariableBase.createDefinition({
   type: {
     name: 'number'
   },
-  cast: function (value) {
+  cast: function (value: unknown) {
     return Number(value);
   }
 });
 
-module.exports = {
+const NumberNodeModule: NodeModule = {
   node: NumberNode
 };
+
+export = NumberNodeModule;
