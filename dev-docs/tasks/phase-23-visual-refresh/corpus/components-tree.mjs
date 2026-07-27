@@ -285,11 +285,12 @@ async function forcePanelWidth(cdp, px) {
           else target.style.removeProperty('width');
           if (saved.flex) target.style.setProperty('flex', saved.flex, saved.flexPriority || '');
           else target.style.removeProperty('flex');
-        } else {
-          target.style.removeProperty('width');
-          target.style.removeProperty('flex');
+          window.__pnl006_savedWidth = null;
         }
-        window.__pnl006_savedWidth = null;
+        // Nothing saved means this harness never set a width, so there is nothing
+        // of ours to undo — and removing the declaration anyway is what collapsed
+        // the panel. The passes run [wide, narrow], so the very first call is this
+        // one: the gate was destroying the width before it measured anything.
       } else {
         if (!window.__pnl006_savedWidth) {
           window.__pnl006_savedWidth = {
@@ -516,7 +517,11 @@ const MEASURE = `(() => {
             width: resolveVar(rule.style.width),
             height: resolveVar(rule.style.height),
             borderRadius: resolveVar(rule.style.borderRadius),
-            background: resolveVar(rule.style.backgroundColor),
+            // Geometry is asserted on the resolved value; colour is asserted on
+            // the *authored* one, because the assertion there is "this came from
+            // the warning token", which resolving would erase. Both are kept.
+            background: rule.style.backgroundColor,
+            backgroundResolved: resolveVar(rule.style.backgroundColor),
             cursor: rule.style.cursor
           };
         }
@@ -677,7 +682,7 @@ function assess(m, label, { checkNarrow }) {
       fail('dot-shape', `.Warning border-radius is "${m.dotRule.borderRadius}" — the dot is not round`);
     }
     if (!/warning/.test(m.dotRule.background || '')) {
-      fail('dot-colour', `.Warning background is "${m.dotRule.background}" — expected the warning token (amber)`);
+      fail('dot-colour', `.Warning background is "${m.dotRule.background}" (resolves to ${m.dotRule.backgroundResolved}) — expected the warning token (amber)`);
     }
   }
   if (m.dots.length === 0) {

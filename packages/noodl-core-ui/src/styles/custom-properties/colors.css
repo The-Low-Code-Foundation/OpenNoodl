@@ -78,9 +78,18 @@
   --base-color-amber-900: #7a2e0e;
   --base-color-amber-950: #4e1d09;
 
-  /* Brand coral - wordmark dot ONLY */
+  /* Brand coral. Originally the wordmark dot only; PNL-006 added one more
+     sanctioned use — the Components tree's home glyph, the single non-danger
+     coral the phase-23 de-red rule allows — so this is now a UI colour and has
+     to clear WCAG 1.4.11's 3:1 for non-text, not merely look right.
+
+     The light-theme value was tuned against pure white, where #ff5a50 measures
+     3.07:1. Panel grounds are not white: on the Components panel it measures
+     2.91:1 and PNL-006's own gate fails it. #f5493f measures 3.36:1 there and
+     3.55:1 on white, and is the smallest darkening that clears the bar with
+     margin. The dark-theme value is 6.03:1 and is untouched. */
   --base-color-brand-coral: #ff6a5f;
-  --base-color-brand-coral-light-theme: #ff5a50;
+  --base-color-brand-coral-light-theme: #f5493f;
 
   /* Absolute white — theme-invariant surfaces (e.g. toggle knob, mock `.toggle::after`) */
   --base-color-white: #ffffff;
