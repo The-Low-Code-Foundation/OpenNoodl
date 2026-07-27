@@ -163,27 +163,16 @@
   flex: 0 0 auto;
 }
 
-.SchemaPanelOverlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.85);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 9999;
-  padding: 40px;
-
-  > div {
-    width: 100%;
-    max-width: 900px;
-    max-height: calc(100vh - 80px);
-    overflow: auto;
-    background-color: var(--theme-color-bg-2);
-    border-radius: 8px;
-    border: 1px solid var(--theme-color-border-default);
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-  }
-}
+/* PNL-009: `.SchemaPanelOverlay` is gone.
+ *
+ * It was `position: fixed; inset: 0` with `background-color: rgba(0, 0, 0, .85)`
+ * and `z-index: 9999`, and it hosted all seven backend surfaces. Three things
+ * were wrong with it and none of them were fixable in place: the scrim was a
+ * literal black that predates the light theme, `z-index: 9999` put it over the
+ * icon rail so the rail was unreachable while it was open, and a fixed overlay
+ * has no keyboard escape route by construction.
+ *
+ * The surfaces are registered panels now and open in PNL-009's full mode, which
+ * covers the editor area *beside* the rail rather than on top of it. There is no
+ * scrim at all, so there is no scrim colour to get right in two themes — which
+ * is the strongest form of acceptance item 3. */

@@ -20,8 +20,10 @@
  *   E. section headers are **subordinate** — shorter than the panel header and
  *      set smaller than its title.
  *   F. **at the panel's default width the title is not truncated to a stub.**
- *      See "Why F exists" below. This one is expected to be RED until the
- *      overflow menu lands, and that is the point of it.
+ *      See "Why F exists" below. It was written to be RED until the ⋯ overflow
+ *      menu landed; PNL-009 landed it, so F is now an ordinary assertion and a
+ *      red F means a real regression. Each failure prints the header's width
+ *      budget (title / action slot / mode group) so it says *what* ate the bar.
  *
  * B–D are then repeated with the panel forced narrow: the title must ellipsise
  * rather than wrap or push the controls out.
@@ -115,7 +117,15 @@ const EXPECT = {
   minTitleChars: Number(arg('--min-title-chars', 12))
 };
 
-/** Failures of this class are expected until the `⋯` overflow menu lands. */
+/**
+ * F's failure class.
+ *
+ * It was introduced as "expected red until the ⋯ overflow menu lands" — PNL-009
+ * landed the menu, so **this is now an ordinary failure**. It keeps its own code
+ * and its own section in the summary because the remedy is specific (the header
+ * budget printed with it says whether the mode group or the panel's own action
+ * slot is the thing eating the bar), not because it is tolerated.
+ */
 const EXPECTED_RED = 'title-truncated';
 
 // ---- tiny CDP client (one socket, sequential) ------------------------------
@@ -266,7 +276,12 @@ const MEASURE = `(() => {
   const root = document.querySelector('[class*="SideNavigation-module__Panel"]');
   if (!root) return { error: 'no side-panel root — is a project open?' };
 
-  const item = Array.from(root.querySelectorAll('[class*="PanelItem"]'))
+  // PNL-009 fix: \`[class*="PanelItem"]\` also matches \`PanelItems\`, the wrapper
+  // PNL-009 added around the list — and \`querySelectorAll\` returns the ancestor
+  // first, so this used to select the *container* and report \`panelId: null\`.
+  // It only kept working because every measurement below re-filters on
+  // visibility. Anchor on the attribute that actually identifies a panel.
+  const item = Array.from(root.querySelectorAll('[data-panel-id]'))
     .find((el) => el.getBoundingClientRect().height > 0);
   if (!item) return { error: 'no visible panel item' };
 
@@ -351,6 +366,25 @@ const MEASURE = `(() => {
       const r = el.getBoundingClientRect();
       out.overflowRight = Math.max(out.overflowRight, Math.round(r.right - panelRect.right));
     }
+
+    // PNL-009: when F fails, "the title is 24px" does not say *what took the
+    // other 300*. The header has exactly three consumers — the title, the
+    // panel's own action slot, and the side panel's mode group — so report all
+    // three and the next reader knows immediately whether the fix belongs in
+    // SidePanel.tsx (mode group) or in the panel itself (action slot).
+    const kids = h.children.length > 1 ? h.children[1] : null;
+    const modeGroup = kids ? Array.from(kids.children).find((el) => /ModeGroup/.test(el.className || '')) : null;
+    const w = (el) => (el ? Math.round(el.getBoundingClientRect().width) : 0);
+    out.budget = {
+      header: Math.round(h.getBoundingClientRect().width),
+      title: out.title ? out.title.clientWidth : 0,
+      actions: w(kids) - w(modeGroup),
+      modeGroup: w(modeGroup),
+      // How many of the mode group's controls are actually showing. Under the
+      // narrow band two of them are demoted into the ⋯; if this stays at four
+      // in a narrow panel then the demotion is not applying.
+      modeControls: modeGroup ? Array.from(modeGroup.querySelectorAll('button')).filter(visible).length : 0
+    };
   }
 
   for (const sh of Array.from(item.querySelectorAll('[class*="CollapsableSection-module__Header"]')).filter(visible)) {
@@ -406,12 +440,15 @@ function assess(m, label, { checkTitleWidth }) {
       if (checkTitleWidth && m.title.visibleChars != null) {
         const floor = Math.min(EXPECT.minTitleChars, m.title.text.length);
         if (m.title.visibleChars < floor) {
+          const b = m.budget || {};
           add(
             EXPECTED_RED,
             `title "${m.title.text}" renders only ${m.title.visibleChars} of ${m.title.text.length} characters ` +
               `(“${m.title.text.slice(0, m.title.visibleChars)}…”) in ${m.title.clientWidth}px at a ` +
-              `${m.panelWidth}px panel — needs ${floor}. The action slot and four mode buttons are eating the bar; ` +
-              `this is what the ⋯ overflow menu is for.`
+              `${m.panelWidth}px panel — needs ${floor}. Header budget: title ${b.title}px, ` +
+              `action slot ${b.actions}px, mode group ${b.modeGroup}px across ${b.modeControls} visible controls. ` +
+              `If the mode group is the big number the ⋯ demotion is not applying; if the action slot is, ` +
+              `the panel's own header controls are the thing to shrink.`
           );
         }
       }
@@ -579,7 +616,8 @@ function flush() {
 
   console.log(`\n${report.results.length} panel×theme×width checks run.`);
   if (expected.length) {
-    console.log(`\n▲ ${expected.length} EXPECTED failures — the ⋯ overflow menu is not built yet (SidePanel.tsx):`);
+    console.log(`\n✗ ${expected.length} truncated titles (assertion F). The ⋯ overflow menu exists (PNL-009), so`);
+    console.log(`  this is a real failure, not a known one — the header budget in each line says where to look:`);
     for (const f of expected) console.log(`  - ${f.panel} [${f.theme}] ${f.msg}`);
   }
   if (real.length) {

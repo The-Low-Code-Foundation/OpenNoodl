@@ -1,7 +1,48 @@
+/* PNL-009 — the header's `⋯`.
+ *
+ * The demotion rule itself lives in core-ui (`PanelHeader.module.scss` hides
+ * `[data-panel-chrome="secondary"]` inside `bands.frame-narrow`). Its inverse —
+ * "show the overflow button exactly when the demotable controls are hidden" —
+ * has to live wherever the button is built, and the button is built here. Both
+ * halves therefore query the same container, `panel-frame`, which `BasePanel`
+ * declares; the band's boundary is imported rather than restated so the two
+ * halves cannot drift apart.
+ *
+ * The import is a relative path across packages rather than the `@noodl-core-ui`
+ * webpack alias: no `.scss` in this package resolves a cross-package `@use`
+ * today, and a sass resolution failure is a blank editor rather than a type
+ * error. Not worth the elegance.
+ */
+@use '../../../../../../noodl-core-ui/src/components/sidebar/PanelRow/panel-bands' as bands;
+
 .PanelItem {
   position: relative;
   width: 100%;
   height: 100%;
+}
+
+/* Wrappers, so the demotion tag sits outside `Tooltip`'s block-level trigger
+   div — hiding the button alone would leave that div and the mode group's gap
+   behind. `display: contents` would be neater but Safari/WebKit drops the
+   element from the a11y tree; the editor is Chromium-only, but flex is the
+   boring answer and costs nothing. */
+.ModeControl,
+.ModeOverflow {
+  display: flex;
+  align-items: center;
+}
+
+/* The `⋯` is the *replacement* for float and full, so it exists only where they
+   do not. At wide widths an overflow button that duplicates two visible buttons
+   is clutter. */
+.ModeOverflow {
+  display: none;
+}
+
+@include bands.frame-narrow {
+  .ModeOverflow {
+    display: flex;
+  }
 }
 
 /* PNL-009: the panels' own container. A flex child of `SideNavigation .Panel`

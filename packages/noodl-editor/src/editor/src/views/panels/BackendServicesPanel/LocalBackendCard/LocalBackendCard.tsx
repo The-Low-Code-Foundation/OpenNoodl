@@ -9,7 +9,8 @@
  */
 
 import React, { useCallback, useState } from 'react';
-import { createPortal } from 'react-dom';
+
+import { SidebarModel } from '@noodl-models/sidebar';
 
 import { Icon, IconName, IconSize } from '@noodl-core-ui/components/common/Icon';
 import { IconButton } from '@noodl-core-ui/components/inputs/IconButton';
@@ -17,15 +18,10 @@ import { PrimaryButton, PrimaryButtonSize, PrimaryButtonVariant } from '@noodl-c
 import { MenuDialogItem, MenuDialogWidth } from '@noodl-core-ui/components/popups/MenuDialog';
 import { Text, TextType } from '@noodl-core-ui/components/typography/Text';
 
+import { useSidePanelLayoutContext } from '../../../../pages/EditorPage/useSidePanelLayout';
 import { showContextMenuInPopup } from '../../../ShowContextMenuInPopup';
-import { AuthPanel } from '../../auth';
-import { DataBrowser } from '../../databrowser';
-import { EmailPanel } from '../../email';
-import { PermissionsPanel } from '../../permissions';
-import { SchemaPanel } from '../../schemamanager';
-import { SearchPanel } from '../../search';
-import { TriggersPanel } from '../../triggers';
 import { LocalBackendInfo } from '../hooks/useLocalBackends';
+import { BACKEND_SERVICES_PANEL_ID, BackendSurfaceKind, openBackendSurface } from './backendSurfaces';
 import css from './LocalBackendCard.module.scss';
 
 export interface LocalBackendCardProps {
@@ -65,14 +61,40 @@ function getStatusDisplay(backend: LocalBackendInfo): { icon: IconName; color: s
 
 export function LocalBackendCard({ backend, onStart, onStop, onDelete, onExport }: LocalBackendCardProps) {
   const [isOperating, setIsOperating] = useState(false);
-  const [showSchemaPanel, setShowSchemaPanel] = useState(false);
-  const [showDataBrowser, setShowDataBrowser] = useState(false);
-  const [showPermissions, setShowPermissions] = useState(false);
-  const [showTriggers, setShowTriggers] = useState(false);
-  const [showEmail, setShowEmail] = useState(false);
-  const [showSearch, setShowSearch] = useState(false);
-  const [showAuth, setShowAuth] = useState(false);
   const statusDisplay = getStatusDisplay(backend);
+  const layout = useSidePanelLayoutContext();
+
+  /**
+   * PNL-009: open a backend surface as a full panel.
+   *
+   * This replaces seven `createPortal(…, document.body)` calls into a
+   * `position: fixed` overlay with an 85%-black scrim. The surface is now a
+   * registered (transient) panel, so it arrives with the rail still live, a
+   * header, `Escape`, and a remembered width — see `backendSurfaces.tsx` for why
+   * registration was chosen over an ad-hoc child of full mode.
+   *
+   * `onClose` is built here rather than in the surfaces module because the panel
+   * mode lives in React context: `dock()` is a stable callback, so capturing it
+   * for the surface's lifetime is safe.
+   */
+  const openSurface = useCallback(
+    (kind: BackendSurfaceKind) => {
+      const dock = layout?.dock;
+      const opened = openBackendSurface(kind, {
+        backendId: backend.id,
+        backendName: backend.name,
+        isRunning: backend.running,
+        onClose: () => {
+          SidebarModel.instance.switch(BACKEND_SERVICES_PANEL_ID);
+          dock?.();
+        }
+      });
+      // Full mode only if the surface actually opened — otherwise the editor
+      // would go full-screen on whatever panel happened to be showing.
+      if (opened) layout?.openFull();
+    },
+    [backend.id, backend.name, backend.running, layout]
+  );
 
   const isEphemeral = backend.running && backend.persistence?.mode === 'ephemeral';
   const hasFailed = !backend.running && backend.persistence?.mode === 'failed';
@@ -127,10 +149,10 @@ export function LocalBackendCard({ backend, onStart, onStop, onDelete, onExport 
 
     if (backend.running) {
       items.push(
-        { label: 'Triggers', icon: IconName.Lightning, onClick: () => setShowTriggers(true) },
-        { label: 'Email', icon: IconName.Chat, onClick: () => setShowEmail(true) },
-        { label: 'Search', icon: IconName.Search, onClick: () => setShowSearch(true) },
-        { label: 'Sign-in providers', icon: IconName.User, onClick: () => setShowAuth(true) }
+        { label: 'Triggers', icon: IconName.Lightning, onClick: () => openSurface('triggers') },
+        { label: 'Email', icon: IconName.Chat, onClick: () => openSurface('email') },
+        { label: 'Search', icon: IconName.Search, onClick: () => openSurface('search') },
+        { label: 'Sign-in providers', icon: IconName.User, onClick: () => openSurface('auth') }
       );
 
       if (onExport) {
@@ -152,7 +174,7 @@ export function LocalBackendCard({ backend, onStart, onStop, onDelete, onExport 
     });
 
     showContextMenuInPopup({ items, width: MenuDialogWidth.Default });
-  }, [backend.running, backend.id, onDelete, onExport]);
+  }, [backend.running, backend.id, onDelete, onExport, openSurface]);
 
   return (
     <div className={css.Root} data-test={`local-backend-card-${backend.id}`}>
@@ -193,8 +215,16 @@ export function LocalBackendCard({ backend, onStart, onStop, onDelete, onExport 
       {/* Ephemeral warning — data written now will NOT survive a restart */}
       {isEphemeral && (
         <div className={css.PersistenceNotice} style={{ color: 'var(--theme-color-notice)' }}>
-          <Icon icon={IconName.WarningTriangle} size={IconSize.Tiny} UNSAFE_style={{ color: 'var(--theme-color-notice)' }} />
-          <Text className={css.PersistenceNoticeText} textType={TextType.Shy} style={{ fontSize: '11px', marginLeft: '6px' }}>
+          <Icon
+            icon={IconName.WarningTriangle}
+            size={IconSize.Tiny}
+            UNSAFE_style={{ color: 'var(--theme-color-notice)' }}
+          />
+          <Text
+            className={css.PersistenceNoticeText}
+            textType={TextType.Shy}
+            style={{ fontSize: '11px', marginLeft: '6px' }}
+          >
             Ephemeral mode — data is kept in memory only and will be lost when the backend stops or the app restarts.
           </Text>
         </div>
@@ -203,8 +233,16 @@ export function LocalBackendCard({ backend, onStart, onStop, onDelete, onExport 
       {/* Persistence failure — the native SQLite engine could not load */}
       {hasFailed && (
         <div className={css.PersistenceNotice} style={{ color: 'var(--theme-color-danger)' }}>
-          <Icon icon={IconName.WarningTriangle} size={IconSize.Tiny} UNSAFE_style={{ color: 'var(--theme-color-danger)' }} />
-          <Text className={css.PersistenceNoticeText} textType={TextType.Shy} style={{ fontSize: '11px', marginLeft: '6px' }}>
+          <Icon
+            icon={IconName.WarningTriangle}
+            size={IconSize.Tiny}
+            UNSAFE_style={{ color: 'var(--theme-color-danger)' }}
+          />
+          <Text
+            className={css.PersistenceNoticeText}
+            textType={TextType.Shy}
+            style={{ fontSize: '11px', marginLeft: '6px' }}
+          >
             {failureMessage
               ? `Cannot persist data: ${failureMessage}`
               : 'The local SQLite engine could not load, so this backend cannot persist data.'}
@@ -254,8 +292,9 @@ export function LocalBackendCard({ backend, onStart, onStop, onDelete, onExport 
                 label="Data"
                 size={PrimaryButtonSize.Small}
                 variant={PrimaryButtonVariant.Muted}
-                onClick={() => setShowDataBrowser(true)}
+                onClick={() => openSurface('data')}
                 isGrowing
+                testId={`open-data-${backend.id}`}
               />
             </div>
             <div className={css.SecondaryAction}>
@@ -263,8 +302,9 @@ export function LocalBackendCard({ backend, onStart, onStop, onDelete, onExport 
                 label="Schema"
                 size={PrimaryButtonSize.Small}
                 variant={PrimaryButtonVariant.Muted}
-                onClick={() => setShowSchemaPanel(true)}
+                onClick={() => openSurface('schema')}
                 isGrowing
+                testId={`open-schema-${backend.id}`}
               />
             </div>
             <div className={css.SecondaryAction}>
@@ -272,8 +312,9 @@ export function LocalBackendCard({ backend, onStart, onStop, onDelete, onExport 
                 label="Access"
                 size={PrimaryButtonSize.Small}
                 variant={PrimaryButtonVariant.Muted}
-                onClick={() => setShowPermissions(true)}
+                onClick={() => openSurface('permissions')}
                 isGrowing
+                testId={`open-permissions-${backend.id}`}
               />
             </div>
           </>
@@ -289,77 +330,11 @@ export function LocalBackendCard({ backend, onStart, onStop, onDelete, onExport 
         </div>
       </div>
 
-      {/* Schema Panel (rendered via portal for full-screen overlay) */}
-      {showSchemaPanel &&
-        createPortal(
-          <div className={css.SchemaPanelOverlay}>
-            <SchemaPanel
-              backendId={backend.id}
-              backendName={backend.name}
-              isRunning={backend.running}
-              onClose={() => setShowSchemaPanel(false)}
-            />
-          </div>,
-          document.body
-        )}
-
-      {/* Data Browser (rendered via portal for full-screen overlay) */}
-      {showDataBrowser &&
-        createPortal(
-          <div className={css.SchemaPanelOverlay}>
-            <DataBrowser backendId={backend.id} backendName={backend.name} onClose={() => setShowDataBrowser(false)} />
-          </div>,
-          document.body
-        )}
-
-      {/* Permissions (BAK-003) — rendered via portal for full-screen overlay */}
-      {showPermissions &&
-        createPortal(
-          <div className={css.SchemaPanelOverlay}>
-            <PermissionsPanel
-              backendId={backend.id}
-              backendName={backend.name}
-              onClose={() => setShowPermissions(false)}
-            />
-          </div>,
-          document.body
-        )}
-
-      {/* Triggers (WF-005) — rendered via portal for full-screen overlay */}
-      {showTriggers &&
-        createPortal(
-          <div className={css.SchemaPanelOverlay}>
-            <TriggersPanel backendId={backend.id} backendName={backend.name} onClose={() => setShowTriggers(false)} />
-          </div>,
-          document.body
-        )}
-
-      {/* Email (BAK-002) — rendered via portal for full-screen overlay */}
-      {showEmail &&
-        createPortal(
-          <div className={css.SchemaPanelOverlay}>
-            <EmailPanel backendId={backend.id} backendName={backend.name} onClose={() => setShowEmail(false)} />
-          </div>,
-          document.body
-        )}
-
-      {/* Sign-in providers (BAK-004) — rendered via portal for full-screen overlay */}
-      {showAuth &&
-        createPortal(
-          <div className={css.SchemaPanelOverlay}>
-            <AuthPanel backendId={backend.id} backendName={backend.name} onClose={() => setShowAuth(false)} />
-          </div>,
-          document.body
-        )}
-
-      {/* Search (BAK-008) — rendered via portal for full-screen overlay */}
-      {showSearch &&
-        createPortal(
-          <div className={css.SchemaPanelOverlay}>
-            <SearchPanel backendId={backend.id} backendName={backend.name} onClose={() => setShowSearch(false)} />
-          </div>,
-          document.body
-        )}
+      {/* PNL-009: the seven full-screen surfaces used to be rendered from here
+          through `createPortal(…, document.body)` into a `position: fixed`
+          overlay with a hardcoded 85%-black scrim. They are registered panels
+          now and open in full mode — see `openSurface` above and
+          `backendSurfaces.tsx` for the reasoning. Nothing renders here. */}
     </div>
   );
 }

@@ -11,8 +11,9 @@ import { AuthoringPreviewDocumentProvider } from './views/documents/AuthoringPre
 import { ChangeReviewDocumentProvider } from './views/documents/ChangeReviewDocument';
 import { ComponentDiffDocumentProvider } from './views/documents/ComponentDiffDocument';
 import { EditorDocumentProvider } from './views/documents/EditorDocument';
-import { BackendServicesPanel } from './views/panels/BackendServicesPanel/BackendServicesPanel';
 import { AiAuthoringPanel, AiAuthoringPanel_ID } from './views/panels/AiAuthoringPanel';
+import { BackendServicesPanel } from './views/panels/BackendServicesPanel/BackendServicesPanel';
+import { installBackendSurfacePanels } from './views/panels/BackendServicesPanel/LocalBackendCard/backendSurfaces';
 import { ComponentPortsComponent } from './views/panels/componentports';
 import { ComponentsPanel } from './views/panels/componentspanel';
 import { ComponentXRayPanel } from './views/panels/ComponentXRayPanel';
@@ -21,9 +22,9 @@ import { ComponentXRayPanel } from './views/panels/ComponentXRayPanel';
 // import { DataLineagePanel } from './views/panels/DataLineagePanel';
 import { DesignTokenPanel } from './views/panels/DesignTokenPanel/DesignTokenPanel';
 import { DocsPanel, DocsPanel_ID } from './views/panels/DocsPanel';
+import { ExecutionHistoryPanel } from './views/panels/ExecutionHistoryPanel';
 import { ExplainPanel, ExplainPanel_ID, startExplainTargetTracking } from './views/panels/ExplainPanel';
 import { FileExplorerPanel } from './views/panels/FileExplorerPanel';
-import { ExecutionHistoryPanel } from './views/panels/ExecutionHistoryPanel';
 import { GitHubPanel } from './views/panels/GitHubPanel';
 import { NodeReferencesPanel_ID } from './views/panels/NodeReferencesPanel';
 import { NodeReferencesPanel } from './views/panels/NodeReferencesPanel/NodeReferencesPanel';
@@ -224,6 +225,12 @@ export function installSidePanel({ isLesson }: SetupEditorOptions) {
     panel: BackendServicesPanel
   });
 
+  // PNL-009: Schema, Data, Access, Triggers, Email, Sign-in providers and
+  // Search. Transient, so they take no rail slot — they are opened from a local
+  // backend's card and land in full mode. They used to be `createPortal` calls
+  // into a fixed overlay; see `backendSurfaces.tsx` for what that cost.
+  installBackendSurfacePanels();
+
   SidebarModel.instance.register({
     experimental: true,
     id: 'execution-history',
@@ -337,7 +344,10 @@ export function installDocuments() {
       );
     });
     import.meta.webpackHot.accept('./views/documents/ChangeReviewDocument', () => {
-      AppRegistry.instance.registerDocumentProvider(ChangeReviewDocumentProvider.ID, new ChangeReviewDocumentProvider());
+      AppRegistry.instance.registerDocumentProvider(
+        ChangeReviewDocumentProvider.ID,
+        new ChangeReviewDocumentProvider()
+      );
     });
   }
 }

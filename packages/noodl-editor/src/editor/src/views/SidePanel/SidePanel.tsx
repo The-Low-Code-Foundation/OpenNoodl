@@ -1,6 +1,6 @@
 import { nextTick } from 'process';
 import { useModernModel } from '@noodl-hooks/useModel';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 import { App } from '@noodl-models/app';
 import { SidebarItem, SidebarModel } from '@noodl-models/sidebar';
@@ -11,10 +11,12 @@ import { ErrorBoundary } from '@noodl-core-ui/components/common/ErrorBoundary';
 import { IconName } from '@noodl-core-ui/components/common/Icon';
 import { IconButton, IconButtonVariant } from '@noodl-core-ui/components/inputs/IconButton';
 import { Container, ContainerDirection } from '@noodl-core-ui/components/layout/Container';
+import { MenuDialogItem, MenuDialogWidth } from '@noodl-core-ui/components/popups/MenuDialog';
 import { Tooltip } from '@noodl-core-ui/components/popups/Tooltip';
 import { PanelModeSlotProvider } from '@noodl-core-ui/components/sidebar/PanelHeader';
 
 import { RAIL_WIDTH, useSidePanelLayoutContext } from '../../pages/EditorPage/useSidePanelLayout';
+import { showContextMenuInPopup } from '../ShowContextMenuInPopup';
 import css from './SidePanel.model.scss';
 
 export function SidePanel() {
@@ -136,9 +138,54 @@ export function SidePanel() {
   const isDetached = isFloating || layout?.mode === 'full';
   const activePanelName = SidebarModel.instance.getPanel(activeId)?.name ?? '';
 
-  // PNL-003: the two controls that belong to the side panel rather than to any
-  // one panel. They go into `PanelHeader`'s mode slot so every `BasePanel` gets
-  // them without a second header component existing; PNL-005 formalises the slot.
+  const floatLabel = layout?.mode === 'floating' ? 'Dock panel' : 'Float over the canvas';
+  const fullLabel = layout?.mode === 'full' ? 'Dock panel' : 'Fill the editor';
+
+  // PNL-009: the `⋯` the mock asks for, and PNL-005 deliberately did not build.
+  //
+  // Under a 357px frame `PanelHeader.module.scss` hides everything tagged
+  // `data-panel-chrome="secondary"`. PNL-005 left the hook but tagged nothing,
+  // on the reasoning that hiding float and full without somewhere to put them is
+  // a functional loss — correct, and this is the somewhere. The trade it made
+  // instead ("the title absorbs the squeeze") is what rendered the Components
+  // panel's title as "Co…".
+  const overflowButtonRef = useRef<HTMLButtonElement>(null);
+
+  function showModeOverflowMenu() {
+    if (!layout) return;
+    const items: (MenuDialogItem | 'divider')[] = [
+      {
+        label: floatLabel,
+        icon: IconName.Cards,
+        isDisabled: !canDetach,
+        tooltip: canDetach ? undefined : legacyReason,
+        onClick: () => layout.toggleFloating(),
+        testId: 'side-panel-float-menu-item'
+      },
+      {
+        label: fullLabel,
+        icon: IconName.ViewportDiagonalArrow,
+        isDisabled: !canDetach,
+        tooltip: canDetach ? undefined : legacyReason,
+        onClick: () => layout.toggleFull(),
+        testId: 'side-panel-full-menu-item'
+      }
+    ];
+
+    // Anchored to the button, not to the mouse: a floating panel moves and the
+    // cursor does not, and this is the one popup in the editor that is always
+    // opened from inside a panel that may have been dragged anywhere.
+    showContextMenuInPopup({
+      items,
+      width: MenuDialogWidth.Default,
+      attachTo: overflowButtonRef.current ?? undefined,
+      position: 'bottom'
+    });
+  }
+
+  // PNL-003: the controls that belong to the side panel rather than to any one
+  // panel. They go into `PanelHeader`'s mode slot so every `BasePanel` gets them
+  // without a second header component existing; PNL-005 formalises the slot.
   const modeSlot = layout ? (
     <>
       <Tooltip content={layout.mode === 'wide' ? 'Narrow panel' : 'Widen panel'} fineType="⌘\" showAfterMs={300}>
@@ -149,32 +196,45 @@ export function SidePanel() {
           onClick={layout.toggleWide}
         />
       </Tooltip>
-      {/* PNL-009: float and full. Disabled for panels that host legacy
-          imperative views — see `canFloat` below. */}
-      <Tooltip
-        content={layout.mode === 'floating' ? 'Dock panel' : canDetach ? 'Float over the canvas' : legacyReason}
-        showAfterMs={300}
-      >
-        <IconButton
-          variant={IconButtonVariant.Transparent}
-          icon={IconName.Cards}
-          isDisabled={!canDetach}
-          testId="side-panel-float-toggle"
-          onClick={layout.toggleFloating}
-        />
-      </Tooltip>
-      <Tooltip
-        content={layout.mode === 'full' ? 'Dock panel' : canDetach ? 'Fill the editor' : legacyReason}
-        showAfterMs={300}
-      >
-        <IconButton
-          variant={IconButtonVariant.Transparent}
-          icon={IconName.ViewportDiagonalArrow}
-          isDisabled={!canDetach}
-          testId="side-panel-full-toggle"
-          onClick={layout.toggleFull}
-        />
-      </Tooltip>
+      {/* PNL-009: float and full. Demotable — under a 357px frame these two are
+          hidden and the `⋯` below takes their place. The tag sits on a wrapper
+          rather than on the button because `Tooltip` puts a block-level trigger
+          div in between, and hiding only the button would leave that div (and
+          the mode group's 2px gap) behind. Disabled for panels that host legacy
+          imperative views — see `canDetach` above. */}
+      <span className={css['ModeControl']} data-panel-chrome="secondary">
+        <Tooltip content={canDetach ? floatLabel : legacyReason} showAfterMs={300}>
+          <IconButton
+            variant={IconButtonVariant.Transparent}
+            icon={IconName.Cards}
+            isDisabled={!canDetach}
+            testId="side-panel-float-toggle"
+            onClick={layout.toggleFloating}
+          />
+        </Tooltip>
+      </span>
+      <span className={css['ModeControl']} data-panel-chrome="secondary">
+        <Tooltip content={canDetach ? fullLabel : legacyReason} showAfterMs={300}>
+          <IconButton
+            variant={IconButtonVariant.Transparent}
+            icon={IconName.ViewportDiagonalArrow}
+            isDisabled={!canDetach}
+            testId="side-panel-full-toggle"
+            onClick={layout.toggleFull}
+          />
+        </Tooltip>
+      </span>
+      <span className={css['ModeOverflow']}>
+        <Tooltip content="Float, full and panel options" showAfterMs={300}>
+          <IconButton
+            ref={overflowButtonRef}
+            variant={IconButtonVariant.Transparent}
+            icon={IconName.DotsThreeHorizontal}
+            testId="side-panel-mode-overflow"
+            onClick={showModeOverflowMenu}
+          />
+        </Tooltip>
+      </span>
       <Tooltip content="Hide panel" fineType="⌘B" showAfterMs={300}>
         <IconButton
           variant={IconButtonVariant.Transparent}
@@ -300,7 +360,7 @@ export function SidePanel() {
         </>
       }
       panel={
-        <PanelModeSlotProvider slot={modeSlot}>
+        <>
           {/* PNL-009: a detached panel gets its own bar — the thing you grab to
               move a floating card, and the close route the six hand-rolled
               full-screen overlays never had. */}
@@ -331,26 +391,36 @@ export function SidePanel() {
                   display: id === activeId ? 'block' : 'none'
                 }}
               >
-                <ErrorBoundary
-                  showTryAgain
-                  onTryAgain={() => {
-                    // Recreate all the panels, hopefully it will work again
-                    setPanels({});
+                {/* PNL-009 / F28: the provider is per panel, not around all of
+                    them. One provider around the whole list gave *every* mounted
+                    panel — a dozen of them, all behind `display: none` — its own
+                    copy of the mode buttons, so `side-panel-float-toggle` and
+                    friends were a dozen non-unique ids and anything scripted had
+                    to filter on a non-zero bounding box. Inactive panels now get
+                    a null slot, which `PanelHeader` renders as no mode group at
+                    all. Cheap, and it makes the ids mean what they say. */}
+                <PanelModeSlotProvider slot={id === activeId ? modeSlot : null}>
+                  <ErrorBoundary
+                    showTryAgain
+                    onTryAgain={() => {
+                      // Recreate all the panels, hopefully it will work again
+                      setPanels({});
 
-                    nextTick(() => {
-                      const currentPanelId = SidebarModel.instance.ActiveId;
-                      const component = SidebarModel.instance.getPanelComponent(currentPanelId);
+                      nextTick(() => {
+                        const currentPanelId = SidebarModel.instance.ActiveId;
+                        const component = SidebarModel.instance.getPanelComponent(currentPanelId);
 
-                      setPanels({
-                        [currentPanelId]: React.createElement(component)
+                        setPanels({
+                          [currentPanelId]: React.createElement(component)
+                        });
+
+                        setActiveId(currentPanelId);
                       });
-
-                      setActiveId(currentPanelId);
-                    });
-                  }}
-                >
-                  {panel}
-                </ErrorBoundary>
+                    }}
+                  >
+                    {panel}
+                  </ErrorBoundary>
+                </PanelModeSlotProvider>
               </div>
             ))}
           </div>
@@ -362,7 +432,7 @@ export function SidePanel() {
               onPointerDown={(e) => startFloatGesture(e, 'resize')}
             />
           )}
-        </PanelModeSlotProvider>
+        </>
       }
     />
   );

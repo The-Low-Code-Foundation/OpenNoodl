@@ -78,6 +78,13 @@ export interface SidePanelLayout {
   toggleHidden: () => void;
   toggleFloating: () => void;
   toggleFull: () => void;
+  /**
+   * Enter full mode, idempotently. `toggleFull` is the header button's verb;
+   * this is the one a *caller* wants — "open this surface full-screen" must not
+   * mean "…unless it already was, in which case dock it". The seven backend
+   * surfaces that used to `createPortal` into a fixed overlay open through here.
+   */
+  openFull: () => void;
   /** Docked, whatever mode it was in. Escape's target. */
   dock: () => void;
   /** Drag/resize the floating card. `bounds` is the editor area's own size. */
@@ -274,6 +281,8 @@ export function useSidePanelLayout(): SidePanelLayout {
     setMode((prev) => (prev === 'full' ? 'docked' : 'full'));
   }, []);
 
+  const openFull = useCallback(() => setMode('full'), []);
+
   const dock = useCallback(() => setMode('docked'), []);
 
   const setEditorArea = useCallback((bounds: DOMRect) => {
@@ -322,6 +331,7 @@ export function useSidePanelLayout(): SidePanelLayout {
     toggleHidden,
     toggleFloating,
     toggleFull,
+    openFull,
     dock,
     setFloatRect,
     revealIfHidden
