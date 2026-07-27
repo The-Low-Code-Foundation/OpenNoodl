@@ -90,6 +90,27 @@ export function CoreBaseDialog({
   }, [isVisible]);
 
   const dialogRef = useRef<HTMLDivElement>(null);
+
+  /**
+   * PNL-002: dismissal is a gesture, not a click.
+   *
+   * `.Root` is a full-viewport click catcher and used to carry
+   * `onClick={onClose}`, with the visible dialog stopping propagation. But a
+   * `click` is dispatched to the nearest common ancestor of mousedown and
+   * mouseup — so pressing *inside* the dialog and releasing outside it produces
+   * a click on `.Root` itself, which never passed through the inner
+   * `stopPropagation` and therefore closed the dialog. Drag-selecting a menu
+   * label and releasing over the canvas closed the menu; so did any drag that
+   * started in the dialog and ended past its edge.
+   *
+   * Both ends of the gesture now have to be outside the visible dialog.
+   */
+  const visibleDialogRef = useRef<HTMLDivElement>(null);
+  const pressStartedOutside = useRef(false);
+
+  const isOutsideDialog = (target: EventTarget | null) =>
+    !(target instanceof Node) || !visibleDialogRef.current?.contains(target);
+
   const [dialogPosition, setDialogPosition] = useState({
     x: 0,
     y: 0,
@@ -272,7 +293,14 @@ export function CoreBaseDialog({
         typeof triggerRef === 'undefined' && css['is-centered'],
         css[variant]
       )}
-      onClick={onClose}
+      onPointerDown={(e) => {
+        pressStartedOutside.current = isOutsideDialog(e.target);
+      }}
+      onPointerUp={(e) => {
+        const shouldClose = pressStartedOutside.current && isOutsideDialog(e.target);
+        pressStartedOutside.current = false;
+        if (shouldClose) onClose?.();
+      }}
       style={
         {
           '--offsetY': `${Math.floor(dialogPosition.y)}px`,
@@ -286,6 +314,7 @@ export function CoreBaseDialog({
       }
     >
       <div
+        ref={visibleDialogRef}
         className={classNames(css['VisibleDialog'], UNSAFE_className, isVisible && css['is-visible'], css[variant])}
         style={UNSAFE_style}
         onClick={(e) => e.stopPropagation()}

@@ -177,6 +177,13 @@ export class PopupLayer {
   private shouldCloseModal = false;
   private allowShouldCloseModal = false;
 
+  /**
+   * PNL-002: cancel an in-flight dismissal gesture. Set up by
+   * `bindBodyListeners`; called by the `show*` methods so that the same gesture
+   * that opened something cannot also close it on its own `pointerup`.
+   */
+  private disarmDismissal: () => void = () => undefined;
+
   // Shell elements
   private popupEl: HTMLElement;
   private popupArrow: HTMLElement;
@@ -304,9 +311,26 @@ export class PopupLayer {
   }
 
   /**
-   * Outside-click handling. The listeners are registered in the same order as
-   * the legacy jQuery ones (popup, popout, modal, file drop) because the
-   * handlers depend on each other's state within a single event.
+   * Outside-click handling.
+   *
+   * PNL-002: dismissal is a **gesture**, not a click.
+   *
+   * A `click` event is dispatched to the nearest common ancestor of the
+   * mousedown and mouseup targets. Press inside a side-panel text field, drag
+   * right to select, release over the canvas, and the resulting `click` targets
+   * an ancestor of both — which is outside every popup, popout and modal, so the
+   * old "clicked outside → close" rules all fired on what was really a text
+   * selection. Measured, not deduced: the drag produces
+   * `mousedown → INPUT`, `mouseup → CANVAS`, `click → the FrameDivider root`.
+   *
+   * So the decision is made on `pointerdown` and acted on at `pointerup`, and
+   * **both ends of the gesture have to be outside** for it to count as a
+   * dismissal. Starting inside and ending outside is a selection; starting
+   * outside and ending inside is a mis-drag onto the popup. Neither dismisses.
+   *
+   * Pointer events rather than mouse events so a stylus or touch behaves the
+   * same. `pointercancel` and losing the window disarm, so a gesture that never
+   * gets its `pointerup` cannot leave the layer armed to dismiss on the next one.
    */
   private bindBodyListeners() {
     const body = document.body;
@@ -315,39 +339,50 @@ export class PopupLayer {
     const isInside = (target: EventTarget | null, node: HTMLElement) =>
       target instanceof Node && target !== node && node.contains(target);
 
-    // Detect if you click outside of a popup, then it should be closed
-    let shouldClosePopup = false;
-    body.addEventListener('click', (e) => {
-      if (!isInside(e.target, this.popupEl) && shouldClosePopup && !this.modals.length) {
-        this.hidePopup();
-        this.hideTooltip();
-      }
-    });
-    body.addEventListener('mousedown', (e) => {
-      shouldClosePopup = !isInside(e.target, this.popupEl) && !this.isLocked;
-    });
-
-    // Detect if you click outside of a popout and popup, then all popouts should be closed
-    let shouldClosePopout = false;
-
-    const onClick = (e: Event) => {
-      if (
-        !(isInside(e.target, this.popupEl) || isInside(e.target, this.popoutsEl)) &&
-        shouldClosePopout &&
-        !this.modals.length
-      ) {
-        this.hidePopouts();
-      }
+    /**
+     * `MenuDialog` / `BaseDialog` render through a React **portal** into
+     * `.dialog-layer-portal-target` on the body — so a popout's *visible* menu
+     * is not a DOM descendant of `popoutsEl` at all (measured: the popout
+     * element itself is a 0×0 box at the attach point, and the menu's parent
+     * chain is `BaseDialog .Root → .dialog-layer-portal-target → body`).
+     *
+     * Without this, pressing a context-menu item counts as pressing outside the
+     * popout: the popout is dismissed on `pointerup`, its React root unmounts,
+     * and the `click` that would have run the item's action never fires because
+     * the element is gone. Verified — the item received no click event at all.
+     *
+     * `contains` is DOM ancestry, not a hit test, so a click on the canvas
+     * behind a dialog still targets the canvas and still dismisses.
+     */
+    const insideDialogPortal = (target: EventTarget | null) => {
+      if (!(target instanceof Node)) return false;
+      const portal = document.querySelector('.dialog-layer-portal-target');
+      return !!portal && portal.contains(target);
     };
 
-    body.addEventListener('click', onClick);
-    body.addEventListener('contextmenu', (e) => {
-      if (!this.ignoreContextMenuEvent) {
-        onClick(e);
+    const outsidePopup = (target: EventTarget | null) =>
+      !isInside(target, this.popupEl) && !insideDialogPortal(target);
+    const outsidePopouts = (target: EventTarget | null) =>
+      !(isInside(target, this.popupEl) || isInside(target, this.popoutsEl)) && !insideDialogPortal(target);
+
+    // Armed by a pointerdown that landed outside; only a pointerup that also
+    // lands outside acts on it.
+    let popupArmed = false;
+    let popoutArmed = false;
+
+    this.disarmDismissal = () => {
+      popupArmed = false;
+      popoutArmed = false;
+      this.shouldCloseModal = false;
+    };
+
+    body.addEventListener('pointerdown', (e) => {
+      popupArmed = outsidePopup(e.target) && !this.isLocked;
+      popoutArmed = outsidePopouts(e.target) && !this.isLocked;
+
+      if (this.allowShouldCloseModal) {
+        this.shouldCloseModal = !isInside(e.target, this.modalEl);
       }
-    });
-    body.addEventListener('mousedown', (e) => {
-      shouldClosePopout = !(isInside(e.target, this.popupEl) || isInside(e.target, this.popoutsEl)) && !this.isLocked;
 
       // On Windows contextmenu is sent after mousedown. This can cause popups that are opened
       // through mousedown to close immediately. So ignore the contextmenu event for 0.1 seconds.
@@ -359,17 +394,37 @@ export class PopupLayer {
       }
     });
 
-    // Check if should close modal
-    body.addEventListener('click', () => {
-      if (this.shouldCloseModal) {
+    body.addEventListener('pointerup', (e) => {
+      // Order matters and is the same as the legacy listener order: popup,
+      // popout, modal. `modals.length` gates the first two exactly as before.
+      if (popupArmed && outsidePopup(e.target) && !this.modals.length) {
+        this.hidePopup();
+        this.hideTooltip();
+      }
+
+      if (popoutArmed && outsidePopouts(e.target) && !this.modals.length) {
+        this.hidePopouts();
+      }
+
+      if (this.shouldCloseModal && !isInside(e.target, this.modalEl)) {
         this.hideModal();
-        this.shouldCloseModal = false;
         this.allowShouldCloseModal = false;
       }
+
+      this.disarmDismissal();
     });
-    body.addEventListener('mousedown', (e) => {
-      if (this.allowShouldCloseModal) {
-        this.shouldCloseModal = !isInside(e.target, this.modalEl);
+
+    // A gesture that never completes must not stay armed.
+    body.addEventListener('pointercancel', () => this.disarmDismissal());
+    window.addEventListener('blur', () => this.disarmDismissal());
+
+    // Right-click dismisses popouts too. `contextmenu` arrives after the
+    // pointerdown that armed us and there is no pointerup to wait for, so it is
+    // handled on its own terms.
+    body.addEventListener('contextmenu', (e) => {
+      if (this.ignoreContextMenuEvent) return;
+      if (popoutArmed && outsidePopouts(e.target) && !this.modals.length) {
+        this.hidePopouts();
       }
     });
 
@@ -511,6 +566,9 @@ export class PopupLayer {
 
   public showPopup(args: PopupArgs) {
     const arrowSize = 10;
+
+    // The gesture that opened this must not also dismiss it (PNL-002).
+    this.disarmDismissal();
 
     this.hidePopup();
     this.blockerEl.style.display = '';
@@ -714,6 +772,8 @@ export class PopupLayer {
   }
 
   public showPopout(args: PopoutArgs): Popout {
+    this.disarmDismissal();
+
     this.blockerEl.style.display = '';
 
     const content = args.content.el;
@@ -820,6 +880,8 @@ export class PopupLayer {
 
   // ------------------------------ Modals ------------------------------
   public showModal(args: ModalArgs): ModalArgs {
+    this.disarmDismissal();
+
     const content = args.content.el;
     args.content.owner = this;
 

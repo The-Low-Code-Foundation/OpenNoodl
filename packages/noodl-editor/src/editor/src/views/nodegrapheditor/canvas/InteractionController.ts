@@ -63,6 +63,17 @@ export class InteractionController {
   lastLeftButtonPressedTime: TSFixme;
   leftButtonIsDoubleClicked: boolean;
 
+  /**
+   * PNL-002: did the left button go down *on this canvas*?
+   *
+   * The canvas only ever sees the half of a gesture that happens over it. Drag
+   * text to the right in a side-panel field, release past the panel edge, and
+   * the canvas gets a bare `mouseup` — which used to clear the node selection,
+   * rebuild the property panel, and take the field you were editing away from
+   * you. A release is only a click on the canvas if the press was too.
+   */
+  leftButtonPressedOnCanvas = false;
+
   latestMousePos: IVector2;
   spaceKeyDown: boolean;
   mouseEventsEnabled = true;
@@ -355,6 +366,8 @@ export class InteractionController {
     const scaledPos = owner.relativeCoordsToNodeGraphCords(pos);
 
     if (type === 'down' && evt.button === 0) {
+      this.leftButtonPressedOnCanvas = true;
+
       //hide inspectors that aren't pinned
       owner.hideInspectors();
       owner.hideNodeToolbar();
@@ -365,6 +378,14 @@ export class InteractionController {
     else if (type === 'up') {
       owner.setDOMLayerVisible(true);
       owner.updateNodeToolbar();
+    }
+
+    // The gesture ends here whatever else this release does, so consume the
+    // flag now — the checks below read the snapshot, not the field, because
+    // several of the paths between here and them return early.
+    const leftButtonPressedOnCanvas = this.leftButtonPressedOnCanvas;
+    if (type === 'up' && evt.button === 0) {
+      this.leftButtonPressedOnCanvas = false;
     }
 
     // Check for double clicks
@@ -432,11 +453,13 @@ export class InteractionController {
       }
 
       // Clear selection on left mouse up when no node is
-      // highlighted
+      // highlighted — but only if the press that this release ends happened on
+      // the canvas. See `leftButtonPressedOnCanvas`.
       if (
         !owner.readOnly &&
         type === 'up' &&
         evt.button === 0 &&
+        leftButtonPressedOnCanvas &&
         !evt.shiftKey &&
         owner.highlighted === undefined &&
         owner.highlightedConnection === undefined

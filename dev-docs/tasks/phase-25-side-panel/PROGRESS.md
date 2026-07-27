@@ -1,6 +1,6 @@
 # Phase 25 — Side Panel (Track J): Progress
 
-**Status:** 🚧 In progress — 2 / 9 (Tier 1: 2 / 3)
+**Status:** 🚧 In progress — 3 / 9 — **Tier 1 complete (3 / 3)**
 **Specced:** 2026-07-27
 **Mock:** [`mocks/nodegx-side-panel-mock.html`](./mocks/nodegx-side-panel-mock.html) (`93cc4da`)
 **Phase overview:** [README.md](./README.md)
@@ -10,7 +10,7 @@
 | ID | Title | Tier | Status | Landed | Notes |
 |---|---|---|---|---|---|
 | [PNL-001](./PNL-001-PANEL-SCROLL-CORRECTNESS.md) | Panel scroll & box-model correctness | 1 | ✅ Complete | 2026-07-27 | [NOTES](./PNL-001-NOTES.md). Both defects reproduced with numbers, then fixed. Global `box-sizing` reset **evaluated and rejected** — it shrinks every TextInput by 18px. Gate: `corpus/panel-geometry.mjs`, 11/11 clean at 620/720/1200px. |
-| [PNL-002](./PNL-002-OUTSIDE-CLICK-GESTURE.md) | Outside-click vs. drag in the popup layer | 1 | ⬜ Not started | — | |
+| [PNL-002](./PNL-002-OUTSIDE-CLICK-GESTURE.md) | Outside-click vs. drag in the popup layer | 1 | ✅ Complete | 2026-07-27 | [NOTES](./PNL-002-NOTES.md) · [matrix](./PNL-002-TEST-MATRIX.md). Mechanism confirmed off the live DOM, but the *felt* symptom had a second cause in the canvas. Fixed in 4 places; caught and fixed a regression the gesture change itself introduced. |
 | [PNL-003](./PNL-003-PANEL-WIDTH-BEHAVIOUR.md) | Panel width: reset, memory, snap & collapse | 1 | ✅ Complete | 2026-07-27 | [NOTES](./PNL-003-NOTES.md). Width per panel, per project, persisted; ⌘\ wide, ⌘B hide, drag-to-collapse. 11/11 acceptance checks driven live. Found a renderer deadlock and F21. |
 | [PNL-004](./PNL-004-CONTAINER-QUERY-LAYOUT.md) | Container-query layout + `PanelRow` | 2 | ⬜ Not started | — | |
 | [PNL-005](./PNL-005-ONE-PANEL-CHROME.md) | One panel chrome, everywhere | 2 | ⬜ Not started | — | 14 panels to migrate |
@@ -34,7 +34,10 @@ be stale or to have a different cause, correct it here rather than implementing 
 | F20 | A global `* { box-sizing: border-box }` is **not** adoptable as-is: it narrows every `TextInput` by 18px, shrinks the checkbox glyph 20→16px and the icon rail by 20px | measured, editor-wide | PNL-001 recorded the full table; unowned |
 | F21 | A focused `<button>` disables **every** editor keyboard shortcut. `KeyboardHandler.getFocusedElement()` treats anything focusable as "a text input or similar", and Chromium focuses buttons on click — so ⌘F/⌘D/⌘R/⌘⇧X/⌘⇧E all die after you click any button | `keyboardhandler.ts:26-32, 63-66` | PNL-003 fixed it **only** for ⌘\ and ⌘B via an opt-in `worksWhenFocused`; the rest is unowned |
 | F22 | The Components panel's header is clipped by the window title bar — it rolls its own header and does not reserve the title-bar height. Present in the PNL-001 "before" corpus, so it predates the phase | `componentspanel` | PNL-005 / PNL-006 |
-| F4 | `click` fires on the common ancestor of mousedown/mouseup, so a drag out of the panel reads as an outside click in all three dismissal pairs | `popuplayer.ts:320-341` | PNL-002 |
+| F4 | `click` fires on the common ancestor of mousedown/mouseup, so a drag out of the panel reads as an outside click in all three dismissal pairs | `popuplayer.ts:320-341` | PNL-002 — ✅ **confirmed** (`mousedown → INPUT`, `mouseup → CANVAS`, `click → FrameDivider .Root`) and fixed |
+| F23 | **The felt symptom had a different cause.** The canvas cleared the node selection on *any* left `mouseup` over it, so a drag begun in a panel field rebuilt the property panel and destroyed the focused field. This, not the popup layer, is "it kicks me out" | `InteractionController.ts` | PNL-002 — ✅ found by repro and fixed |
+| F24 | `MenuDialog`/`BaseDialog` render through a portal into `.dialog-layer-portal-target`, so a popout's visible menu is **not** a DOM descendant of `popoutsEl` — the popup layer's inside/outside test was blind to it. Latent before; a hard regression once dismissal moved to `pointerup` | `popuplayer.ts`, `ShowContextMenuInPopup.tsx` | PNL-002 — ✅ fixed |
+| F25 | `BaseDialog .Root` is a full-viewport catcher carrying `onClick={onClose}` — the same common-ancestor bug, in React: press inside a menu, release outside, and the click lands on `.Root` having bypassed the inner `stopPropagation` | `BaseDialog.tsx` | PNL-002 — ✅ fixed (the spec's "extend it there and say so" case) |
 | F5 | `min-width: 380px` on the rail+panel root silently overrides the divider's `sizeMin={200}` | `SideNavigation.module.scss:9` | PNL-003 — ✅ removed; 240px floor now reachable |
 | F6 | Dead `'topology'` references drive an expansion path for a panel whose registration is commented out | `SidePanel.tsx:122`, `EditorPage.tsx:85`, `router.setup.ts:92-100` | PNL-003 — ✅ live references and `SideNavigation.isExpanded` deleted; the commented registration is DEBT-010's |
 | F7 | 14 live panels don't use `BasePanel`; each rolls its own header | `views/panels/**` | PNL-005 |
