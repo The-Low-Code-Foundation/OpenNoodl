@@ -14,8 +14,9 @@
 
 import type { NodeDefinitionOptions, NodeInstance } from '@noodl/types';
 
-import NodeContext = require('../src/nodecontext');
-import NodeDefinition = require('../src/nodedefinition');
+import type { RuntimeEditorConnection } from '../src/internal';
+
+import { createGraph } from './helpers/node-harness';
 
 const literalNode: NodeDefinitionOptions = {
   name: 'Literal Input Probe',
@@ -69,9 +70,9 @@ interface Warning {
 }
 
 function createNode() {
-  const context = new NodeContext();
+  const graph = createGraph({ node: literalNode });
   const warnings: Warning[] = [];
-  (context as any).editorConnection = {
+  graph.context.editorConnection = {
     isConnected: () => false,
     sendWarning: (component: string, _id: string, key: string, warning: { message: string }) =>
       warnings.push({ component, key, message: warning.message }),
@@ -79,11 +80,10 @@ function createNode() {
       const index = warnings.findIndex((w) => w.key === key);
       if (index !== -1) warnings.splice(index, 1);
     }
-  };
-  context.nodeRegister.register(NodeDefinition.defineNode(literalNode));
-  const node = context.nodeRegister.createNode('Literal Input Probe', 'literal-1') as unknown as NodeInstance;
-  (node as any).nodeScope = { componentOwner: { name: '/Probe' } };
-  return { node, warnings, internal: () => node._internal as Record<string, unknown> };
+  } as unknown as RuntimeEditorConnection;
+  const node = graph.make('Literal Input Probe', 'literal-1');
+  node.nodeScope = { componentOwner: { name: '/Probe' } };
+  return { node, warnings, internal: () => node._internal };
 }
 
 describe('a literal typed into an array- or object-typed input', () => {

@@ -7,15 +7,21 @@
  * is left ticking after the node is deleted.
  */
 
-import type { NodeInstance } from '@noodl/types';
+import type { RuntimeEditorConnection } from '../src/internal';
+import type {
+  JsonStreamParserNodeInstance,
+  PatternExtractorNodeInstance,
+  StreamBufferNodeInstance,
+  StreamBufferSeams,
+  TextAccumulatorNodeInstance
+} from '../src/nodes/std-library/agent/node-instances';
 
-import NodeContext = require('../src/nodecontext');
-import NodeDefinition = require('../src/nodedefinition');
+import { createGraph, createNode } from './helpers/node-harness';
 
-const accumulatorModule = require('../src/nodes/std-library/agent/text-accumulator');
-const jsonParserModule = require('../src/nodes/std-library/agent/json-stream-parser');
-const patternModule = require('../src/nodes/std-library/agent/pattern-extractor');
-const bufferModule = require('../src/nodes/std-library/agent/stream-buffer');
+import accumulatorModule = require('../src/nodes/std-library/agent/text-accumulator');
+import jsonParserModule = require('../src/nodes/std-library/agent/json-stream-parser');
+import patternModule = require('../src/nodes/std-library/agent/pattern-extractor');
+import bufferModule = require('../src/nodes/std-library/agent/stream-buffer');
 
 function makeTimers() {
   let nextId = 1;
@@ -39,31 +45,6 @@ function makeTimers() {
   };
 }
 
-/** Builds a node and records the signals it sends. */
-function createNode(module: any, typeName: string) {
-  const context = new NodeContext();
-  context.nodeRegister.register(NodeDefinition.defineNode(module.node));
-  const node = context.nodeRegister.createNode(typeName, typeName + '-1') as unknown as NodeInstance;
-
-  const signals: string[] = [];
-  const original = (node as any).sendSignalOnOutput.bind(node);
-  (node as any).sendSignalOnOutput = (name: string) => {
-    signals.push(name);
-    original(name);
-  };
-
-  return {
-    node,
-    signals,
-    out: (name: string) => (node.getOutput(name) as any).value,
-    metadata: context.nodeRegister.getNodeMetadata(typeName),
-    /** Fires an edge-triggered input, resetting the edge first. */
-    pulse: (name: string) => {
-      node.setInputValue(name, false);
-      node.setInputValue(name, true);
-    }
-  };
-}
 
 // ============================================================================
 
@@ -244,9 +225,9 @@ describe('net.noodl.TextAccumulator', () => {
   });
 
   it('puts the mis-wiring on the canvas as a warning, not only on the output', () => {
-    const context = new NodeContext();
+    const graph = createGraph(accumulatorModule);
     const warnings: { key: string; message: string }[] = [];
-    (context as any).editorConnection = {
+    graph.context.editorConnection = {
       // NodeContext asks this before it reports a sent value to the editor.
       isConnected: () => false,
       sendWarning: (_component: string, _id: string, key: string, warning: { message: string }) =>
@@ -255,13 +236,9 @@ describe('net.noodl.TextAccumulator', () => {
         const index = warnings.findIndex((w) => w.key === key);
         if (index !== -1) warnings.splice(index, 1);
       }
-    };
-    context.nodeRegister.register(NodeDefinition.defineNode(accumulatorModule.node));
-    const node = context.nodeRegister.createNode(
-      'net.noodl.TextAccumulator',
-      'accumulator-warning'
-    ) as unknown as NodeInstance;
-    (node as any).nodeScope = { componentOwner: { name: '/Chat' } };
+    } as unknown as RuntimeEditorConnection;
+    const node = graph.make<TextAccumulatorNodeInstance>('net.noodl.TextAccumulator', 'accumulator-warning');
+    node.nodeScope = { componentOwner: { name: '/Chat' } };
 
     node.setInputValue('chunk', { delta: 'x' });
     expect(warnings.length).toBe(1);
@@ -456,9 +433,9 @@ describe('net.noodl.PatternExtractor', () => {
 });
 
 describe('net.noodl.StreamBuffer', () => {
-  function createBuffer(seams: Record<string, unknown> = {}) {
-    const created = createNode(bufferModule, 'net.noodl.StreamBuffer');
-    (created.node._internal as any).seams = seams;
+  function createBuffer(seams: StreamBufferSeams = {}) {
+    const created = createNode<StreamBufferNodeInstance>(bufferModule, 'net.noodl.StreamBuffer');
+    created.node._internal.seams = seams;
     return created;
   }
 
@@ -585,7 +562,7 @@ describe('net.noodl.StreamBuffer', () => {
     pulse('add');
     expect(timers.pending()).toBe(1);
 
-    (node as any)._onNodeDeleted();
+    node._onNodeDeleted();
 
     expect(timers.pending()).toBe(0);
     expect(out('bufferSize')).toBe(0);
@@ -597,7 +574,7 @@ describe('net.noodl.StreamBuffer', () => {
     node.addDeleteListener(function () {
       baseRan = true;
     });
-    (node as any)._onNodeDeleted();
+    node._onNodeDeleted();
     expect(baseRan).toBe(true);
   });
 

@@ -156,10 +156,96 @@ export interface SseTransport {
   close(): void;
 }
 
+/**
+ * The fields this file reads off a delivered event.
+ *
+ * A real `EventSource` sends `MessageEvent`s, but only two of their members are ever
+ * touched, and both are read defensively — so a test double is a two-key object rather
+ * than a DOM event.
+ */
+export interface SseMessageEventLike {
+  data?: unknown;
+  lastEventId?: unknown;
+}
+
+/**
+ * The `EventSource` surface this transport uses.
+ *
+ * Structural rather than the DOM `EventSource` for the same reason
+ * {@link WebSocketLike} is: the runtime's test environment is `node`, where the global
+ * does not exist, and a double that had to implement the whole DOM interface could not
+ * be written in a test.
+ */
+export interface EventSourceLike {
+  /** 0 CONNECTING / 1 OPEN / 2 CLOSED. Read numerically — see `onerror` below. */
+  readyState?: number;
+  onopen: ((...args: unknown[]) => void) | null;
+  onmessage: ((ev: SseMessageEventLike) => void) | null;
+  onerror: ((...args: unknown[]) => void) | null;
+  addEventListener(type: string, listener: (ev: SseMessageEventLike) => void): void;
+  close(): void;
+}
+
+export type EventSourceConstructorLike = new (url: string, init?: { withCredentials?: boolean }) => EventSourceLike;
+
+/** One `read()` from a streaming response body. */
+export interface StreamReadResultLike {
+  value?: unknown;
+  done?: boolean;
+}
+
+export interface StreamReaderLike {
+  read(): Promise<StreamReadResultLike>;
+  cancel?(): unknown;
+}
+
+/**
+ * A streaming response body, in either of the two forms this code accepts: a reader
+ * (browsers, undici) or an async iterable (Node streams).
+ */
+export interface StreamBodyLike {
+  getReader?(): StreamReaderLike;
+  [Symbol.asyncIterator]?(): AsyncIterator<unknown>;
+}
+
+export interface StreamResponseLike {
+  ok?: boolean;
+  status?: number;
+  body?: StreamBodyLike | null;
+}
+
+/** Exactly what {@link FetchStreamTransport} passes as the second argument. */
+export interface SseRequestInit {
+  method: string;
+  headers: Record<string, string>;
+  credentials: 'include' | 'same-origin';
+  body?: unknown;
+  signal?: unknown;
+}
+
+export type FetchLike = (url: string, init?: SseRequestInit) => Promise<StreamResponseLike>;
+
+export interface AbortControllerLike {
+  signal: unknown;
+  abort(): void;
+}
+
+export type AbortControllerConstructorLike = new () => AbortControllerLike;
+
+/**
+ * Every platform dependency, injectable.
+ *
+ * One declaration rather than one per consumer: {@link SseConnectionOptions}, both
+ * transports and the SSE node's own `_internal.seams` all describe this same set, and
+ * three descriptions of one object is how the three come apart.
+ */
 export interface SseTransportEnv {
-  EventSourceImpl?: any;
-  fetchImpl?: any;
-  AbortControllerImpl?: any;
+  EventSourceImpl?: EventSourceConstructorLike | null;
+  fetchImpl?: FetchLike | null;
+  AbortControllerImpl?: AbortControllerConstructorLike | null;
+  setTimeoutImpl?(handler: () => void, timeout: number): unknown;
+  clearTimeoutImpl?(handle: unknown): void;
+  nowImpl?(): number;
 }
 
 /**
@@ -180,14 +266,19 @@ export class EventSourceTransport implements SseTransport {
   private readonly _url: string;
   private readonly _withCredentials: boolean;
   private readonly _eventTypes: string[];
-  private readonly _EventSource: any;
+  private readonly _EventSource: EventSourceConstructorLike | null;
   private readonly _cb: SseTransportCallbacks;
-  private _es: any = null;
+  private _es: EventSourceLike | null = null;
   private _closed = false;
   private _everOpen = false;
 
   constructor(
-    options: { url: string; withCredentials?: boolean; eventTypes?: string[]; EventSourceImpl?: any },
+    options: {
+      url: string;
+      withCredentials?: boolean;
+      eventTypes?: string[];
+      EventSourceImpl?: EventSourceConstructorLike | null;
+    },
     callbacks: SseTransportCallbacks
   ) {
     this._url = options.url;
@@ -199,7 +290,7 @@ export class EventSourceTransport implements SseTransport {
       'EventSourceImpl' in options
         ? options.EventSourceImpl
         : typeof EventSource !== 'undefined'
-          ? EventSource
+          ? (EventSource as unknown as EventSourceConstructorLike)
           : null;
     this._cb = callbacks;
   }
@@ -211,7 +302,7 @@ export class EventSourceTransport implements SseTransport {
       return;
     }
 
-    let es: any;
+    let es: EventSourceLike;
     try {
       es = new this._EventSource(this._url, { withCredentials: this._withCredentials });
     } catch (e) {
@@ -226,7 +317,7 @@ export class EventSourceTransport implements SseTransport {
       this._cb.onOpen();
     };
 
-    es.onmessage = (ev: any) => {
+    es.onmessage = (ev: SseMessageEventLike) => {
       if (this._closed) return;
       this._cb.onFrame({ event: 'message', data: ev && ev.data != null ? String(ev.data) : '', id: idOf(ev) });
     };
@@ -236,7 +327,7 @@ export class EventSourceTransport implements SseTransport {
     // such restriction because it parses the wire format itself.
     for (const type of this._eventTypes) {
       if (!type || type === 'message') continue;
-      es.addEventListener(type, (ev: any) => {
+      es.addEventListener(type, (ev: SseMessageEventLike) => {
         if (this._closed) return;
         this._cb.onFrame({ event: type, data: ev && ev.data != null ? String(ev.data) : '', id: idOf(ev) });
       });
@@ -268,7 +359,11 @@ export class EventSourceTransport implements SseTransport {
     const es = this._es;
     if (!es) return;
     this._es = null;
-    es.onopen = es.onmessage = es.onerror = null;
+    // Three statements rather than a chained assignment: the handlers have distinct
+    // signatures, so one `= null` cannot stand for all three once they are typed.
+    es.onopen = null;
+    es.onmessage = null;
+    es.onerror = null;
     try {
       es.close();
     } catch (e) {
@@ -277,7 +372,7 @@ export class EventSourceTransport implements SseTransport {
   }
 }
 
-function idOf(ev: any): string {
+function idOf(ev: SseMessageEventLike): string {
   const id = ev && ev.lastEventId;
   return typeof id === 'string' ? id : '';
 }
@@ -300,11 +395,11 @@ export class FetchStreamTransport implements SseTransport {
   private readonly _body: unknown;
   private readonly _withCredentials: boolean;
   private readonly _lastEventId: string;
-  private readonly _fetch: any;
-  private readonly _AbortController: any;
+  private readonly _fetch: FetchLike | null;
+  private readonly _AbortController: AbortControllerConstructorLike | null;
   private readonly _cb: SseTransportCallbacks;
-  private _controller: any = null;
-  private _reader: any = null;
+  private _controller: AbortControllerLike | null = null;
+  private _reader: StreamReaderLike | null = null;
   private _closed = false;
 
   constructor(
@@ -315,8 +410,8 @@ export class FetchStreamTransport implements SseTransport {
       body?: unknown;
       withCredentials?: boolean;
       lastEventId?: string;
-      fetchImpl?: any;
-      AbortControllerImpl?: any;
+      fetchImpl?: FetchLike | null;
+      AbortControllerImpl?: AbortControllerConstructorLike | null;
     },
     callbacks: SseTransportCallbacks
   ) {
@@ -326,12 +421,17 @@ export class FetchStreamTransport implements SseTransport {
     this._body = options.body;
     this._withCredentials = !!options.withCredentials;
     this._lastEventId = options.lastEventId || '';
-    this._fetch = 'fetchImpl' in options ? options.fetchImpl : typeof fetch !== 'undefined' ? fetch : null;
+    this._fetch =
+      'fetchImpl' in options
+        ? options.fetchImpl
+        : typeof fetch !== 'undefined'
+          ? (fetch as unknown as FetchLike)
+          : null;
     this._AbortController =
       'AbortControllerImpl' in options
         ? options.AbortControllerImpl
         : typeof AbortController !== 'undefined'
-          ? AbortController
+          ? (AbortController as unknown as AbortControllerConstructorLike)
           : null;
     this._cb = callbacks;
   }
@@ -353,7 +453,7 @@ export class FetchStreamTransport implements SseTransport {
     // ours to send, which is also what makes resume work for POST streams.
     if (this._lastEventId) headers['Last-Event-ID'] = this._lastEventId;
 
-    const init: Record<string, unknown> = {
+    const init: SseRequestInit = {
       method: this._method,
       headers,
       credentials: this._withCredentials ? 'include' : 'same-origin'
@@ -377,7 +477,7 @@ export class FetchStreamTransport implements SseTransport {
       }
     }
 
-    let promise: Promise<any>;
+    let promise: Promise<StreamResponseLike>;
     try {
       // Detached deliberately. `this._fetch(...)` is a method call on the transport,
       // and a browser's `fetch` brand-checks its receiver — it rejects with
@@ -400,7 +500,7 @@ export class FetchStreamTransport implements SseTransport {
       });
   }
 
-  private async _onResponse(res: any): Promise<void> {
+  private async _onResponse(res: StreamResponseLike | null | undefined): Promise<void> {
     if (this._closed) return;
     if (!res) {
       this._cb.onFailure('The stream request returned no response', false);
@@ -500,9 +600,11 @@ export class FetchStreamTransport implements SseTransport {
     this._reader = null;
     if (reader && typeof reader.cancel === 'function') {
       try {
-        const p = reader.cancel();
         // A rejected cancel is not actionable and must not become an unhandled
-        // rejection during teardown.
+        // rejection during teardown. `cancel` is declared as returning `unknown`
+        // because a double may return nothing at all, so the thenable is sniffed
+        // rather than assumed.
+        const p = reader.cancel() as { catch?: (onRejected: () => void) => unknown } | undefined;
         if (p && typeof p.catch === 'function') p.catch(() => {});
       } catch (e) {
         // Already released.
@@ -526,7 +628,7 @@ function isAbort(e: unknown): boolean {
 // Connection
 // ============================================================================
 
-export interface SseConnectionOptions {
+export interface SseConnectionOptions extends SseTransportEnv {
   url: string;
 
   /** `'auto'` prefers fetch when it exists, because it is strictly more capable. */
@@ -562,24 +664,19 @@ export interface SseConnectionOptions {
   onError?: (message: string) => void;
   onDuplicate?: (frame: SseFrame) => void;
 
-  // Injectable environment (tests, and hosts without one of these globals).
-  EventSourceImpl?: any;
-  fetchImpl?: any;
-  AbortControllerImpl?: any;
-  setTimeoutImpl?: (fn: () => void, ms: number) => any;
-  clearTimeoutImpl?: (handle: any) => void;
-  nowImpl?: () => number;
+  // The injectable environment (tests, and hosts without one of these globals) is
+  // inherited from SseTransportEnv above.
 }
 
 export class SseConnection {
   private readonly _options: SseConnectionOptions;
-  private readonly _setTimeout: (fn: () => void, ms: number) => any;
-  private readonly _clearTimeout: (handle: any) => void;
+  private readonly _setTimeout: (fn: () => void, ms: number) => unknown;
+  private readonly _clearTimeout: (handle: unknown) => void;
   private readonly _now: () => number;
   private readonly _recentIds: RecentIds;
 
   private _transport: SseTransport | null = null;
-  private _reconnectTimer: any = null;
+  private _reconnectTimer: unknown = null;
   private _disposed = false;
 
   state: SseConnectionState = 'idle';
@@ -598,7 +695,7 @@ export class SseConnection {
   constructor(options: SseConnectionOptions) {
     this._options = options;
     this._setTimeout = options.setTimeoutImpl || ((fn, ms) => setTimeout(fn, ms));
-    this._clearTimeout = options.clearTimeoutImpl || ((h) => clearTimeout(h));
+    this._clearTimeout = options.clearTimeoutImpl || ((h) => clearTimeout(h as never));
     this._now = options.nowImpl || (() => Date.now());
     this._recentIds = new RecentIds(options.dedupeWindow);
   }
@@ -860,8 +957,8 @@ export function resolveTransport(options: {
   method?: string;
   headers?: Record<string, string>;
   body?: unknown;
-  fetchImpl?: any;
-  EventSourceImpl?: any;
+  fetchImpl?: FetchLike | null;
+  EventSourceImpl?: EventSourceConstructorLike | null;
 }): SseTransportKind {
   if (options.transport === 'eventsource') return 'eventsource';
   if (options.transport === 'fetch') return 'fetch';

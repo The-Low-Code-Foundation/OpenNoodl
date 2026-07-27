@@ -18,25 +18,14 @@
  * @since 2.0.0
  */
 
-import type { NodeDefinitionOptions, NodeInstance } from '@noodl/types';
+import type { NodeDefinitionOptions } from '@noodl/types';
+
+import type { AccumulatorInternal, TextAccumulatorNodeInstance } from './node-instances';
 
 import { splitDelimited, truncateHead, utf8ByteLength } from './stream-parsers';
 
-interface AccumulatorInternal {
-  pendingChunk: string;
-  buffer: string;
-  messages: string[];
-  lastMessage: string;
-  delimiter: string;
-  maxLength: number;
-  maxMessages: number;
-  droppedCharacters: number;
-  droppedMessages: number;
-  error: string;
-}
-
-function internalOf(node: NodeInstance): AccumulatorInternal {
-  return node._internal as unknown as AccumulatorInternal;
+function internalOf(node: TextAccumulatorNodeInstance): AccumulatorInternal {
+  return node._internal;
 }
 
 /** Warning key, so the canvas shows one warning per node rather than one per chunk. */
@@ -74,7 +63,7 @@ const TextAccumulatorNode: NodeDefinitionOptions = {
   docs: 'https://docs.noodl.net/nodes/data/text-accumulator',
   searchTags: ['stream', 'accumulate', 'buffer', 'chunk', 'tokens', 'concat', 'agent', 'ai', 'streaming'],
 
-  initialize(this: NodeInstance) {
+  initialize(this: TextAccumulatorNodeInstance) {
     const internal = internalOf(this);
     internal.pendingChunk = '';
     internal.buffer = '';
@@ -88,7 +77,7 @@ const TextAccumulatorNode: NodeDefinitionOptions = {
     internal.error = '';
   },
 
-  getInspectInfo(this: NodeInstance) {
+  getInspectInfo(this: TextAccumulatorNodeInstance) {
     const internal = internalOf(this);
     if (internal.error) return { type: 'text', value: internal.error };
     return {
@@ -108,7 +97,7 @@ const TextAccumulatorNode: NodeDefinitionOptions = {
       type: 'string',
       displayName: 'Chunk',
       group: 'Data',
-      set(this: NodeInstance, value: unknown) {
+      set(this: TextAccumulatorNodeInstance, value: unknown) {
         // Text and the primitives that read as text are accepted; anything else is
         // refused and named.
         //
@@ -131,11 +120,11 @@ const TextAccumulatorNode: NodeDefinitionOptions = {
           internal.pendingChunk = String(value);
         } else {
           internal.pendingChunk = '';
-          (this as any).reportChunkError(describeBadChunk(value));
+          this.reportChunkError(describeBadChunk(value));
           return;
         }
 
-        (this as any).clearChunkError();
+        this.clearChunkError();
       }
     },
 
@@ -145,7 +134,7 @@ const TextAccumulatorNode: NodeDefinitionOptions = {
       displayName: 'Delimiter',
       group: 'Config',
       tooltip: 'Message boundary. Leave empty to accumulate everything without splitting — the mode a token stream wants.',
-      set(this: NodeInstance, value: string) {
+      set(this: TextAccumulatorNodeInstance, value: string) {
         internalOf(this).delimiter = value === undefined || value === null ? '' : String(value);
       }
     },
@@ -156,7 +145,7 @@ const TextAccumulatorNode: NodeDefinitionOptions = {
       displayName: 'Max Length (characters)',
       group: 'Config',
       tooltip: 'Cap on the pending buffer. Overflow drops the oldest characters and is reported on Dropped Characters.',
-      set(this: NodeInstance, value: number) {
+      set(this: TextAccumulatorNodeInstance, value: number) {
         internalOf(this).maxLength = Number(value) > 0 ? Number(value) : 0;
       }
     },
@@ -167,7 +156,7 @@ const TextAccumulatorNode: NodeDefinitionOptions = {
       displayName: 'Max Messages',
       group: 'Config',
       tooltip: 'Cap on retained complete messages; the oldest are dropped first. 0 keeps them all, which grows forever.',
-      set(this: NodeInstance, value: number) {
+      set(this: TextAccumulatorNodeInstance, value: number) {
         internalOf(this).maxMessages = Number(value) >= 0 ? Number(value) : 0;
       }
     },
@@ -175,16 +164,16 @@ const TextAccumulatorNode: NodeDefinitionOptions = {
     add: {
       displayName: 'Add',
       group: 'Actions',
-      valueChangedToTrue(this: NodeInstance) {
-        (this as any).addChunk();
+      valueChangedToTrue(this: TextAccumulatorNodeInstance) {
+        this.addChunk();
       }
     },
 
     clear: {
       displayName: 'Clear',
       group: 'Actions',
-      valueChangedToTrue(this: NodeInstance) {
-        (this as any).clearBuffer();
+      valueChangedToTrue(this: TextAccumulatorNodeInstance) {
+        this.clearBuffer();
       }
     }
   },
@@ -194,7 +183,7 @@ const TextAccumulatorNode: NodeDefinitionOptions = {
       type: 'string',
       displayName: 'Accumulated',
       group: 'Data',
-      get(this: NodeInstance) {
+      get(this: TextAccumulatorNodeInstance) {
         return internalOf(this).buffer;
       }
     },
@@ -202,7 +191,7 @@ const TextAccumulatorNode: NodeDefinitionOptions = {
       type: 'array',
       displayName: 'Messages',
       group: 'Data',
-      get(this: NodeInstance) {
+      get(this: TextAccumulatorNodeInstance) {
         return internalOf(this).messages;
       }
     },
@@ -210,7 +199,7 @@ const TextAccumulatorNode: NodeDefinitionOptions = {
       type: 'string',
       displayName: 'Last Message',
       group: 'Data',
-      get(this: NodeInstance) {
+      get(this: TextAccumulatorNodeInstance) {
         return internalOf(this).lastMessage;
       }
     },
@@ -218,7 +207,7 @@ const TextAccumulatorNode: NodeDefinitionOptions = {
       type: 'number',
       displayName: 'Message Count',
       group: 'Status',
-      get(this: NodeInstance) {
+      get(this: TextAccumulatorNodeInstance) {
         return internalOf(this).messages.length;
       }
     },
@@ -226,7 +215,7 @@ const TextAccumulatorNode: NodeDefinitionOptions = {
       type: 'number',
       displayName: 'Character Count',
       group: 'Status',
-      get(this: NodeInstance) {
+      get(this: TextAccumulatorNodeInstance) {
         return internalOf(this).buffer.length;
       }
     },
@@ -234,7 +223,7 @@ const TextAccumulatorNode: NodeDefinitionOptions = {
       type: 'number',
       displayName: 'Byte Count (UTF-8)',
       group: 'Status',
-      get(this: NodeInstance) {
+      get(this: TextAccumulatorNodeInstance) {
         return utf8ByteLength(internalOf(this).buffer);
       }
     },
@@ -242,7 +231,7 @@ const TextAccumulatorNode: NodeDefinitionOptions = {
       type: 'number',
       displayName: 'Dropped Characters',
       group: 'Status',
-      get(this: NodeInstance) {
+      get(this: TextAccumulatorNodeInstance) {
         return internalOf(this).droppedCharacters;
       }
     },
@@ -250,7 +239,7 @@ const TextAccumulatorNode: NodeDefinitionOptions = {
       type: 'number',
       displayName: 'Dropped Messages',
       group: 'Status',
-      get(this: NodeInstance) {
+      get(this: TextAccumulatorNodeInstance) {
         return internalOf(this).droppedMessages;
       }
     },
@@ -258,7 +247,7 @@ const TextAccumulatorNode: NodeDefinitionOptions = {
       type: 'string',
       displayName: 'Error',
       group: 'Status',
-      get(this: NodeInstance) {
+      get(this: TextAccumulatorNodeInstance) {
         return internalOf(this).error;
       }
     },
@@ -277,7 +266,7 @@ const TextAccumulatorNode: NodeDefinitionOptions = {
      * author who has just wired the wrong port has not wired anything to `error` either, so
      * an editor warning is the only thing that reaches them unprompted.
      */
-    reportChunkError(this: NodeInstance, message: string) {
+    reportChunkError(this: TextAccumulatorNodeInstance, message: string) {
       const internal = internalOf(this);
       if (internal.error === message) return;
       internal.error = message;
@@ -292,7 +281,7 @@ const TextAccumulatorNode: NodeDefinitionOptions = {
       }
     },
 
-    clearChunkError(this: NodeInstance) {
+    clearChunkError(this: TextAccumulatorNodeInstance) {
       const internal = internalOf(this);
       if (!internal.error) return;
       internal.error = '';
@@ -304,7 +293,7 @@ const TextAccumulatorNode: NodeDefinitionOptions = {
       }
     },
 
-    addChunk(this: NodeInstance) {
+    addChunk(this: TextAccumulatorNodeInstance) {
       const internal = internalOf(this);
       const chunk = internal.pendingChunk;
       if (chunk === '') {
@@ -355,14 +344,14 @@ const TextAccumulatorNode: NodeDefinitionOptions = {
       this.sendSignalOnOutput('changed');
     },
 
-    clearBuffer(this: NodeInstance) {
+    clearBuffer(this: TextAccumulatorNodeInstance) {
       const internal = internalOf(this);
       internal.buffer = '';
       internal.messages = [];
       internal.lastMessage = '';
       internal.droppedCharacters = 0;
       internal.droppedMessages = 0;
-      (this as any).clearChunkError();
+      this.clearChunkError();
 
       this.flagOutputDirty('accumulated');
       this.flagOutputDirty('messages');

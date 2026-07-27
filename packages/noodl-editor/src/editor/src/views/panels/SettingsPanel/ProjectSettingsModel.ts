@@ -1,7 +1,11 @@
 import { find } from 'underscore';
 
 import { NodeLibrary } from '@noodl-models/nodelibrary';
-import { ProjectModel } from '@noodl-models/projectmodel';
+import type {
+  NodeLibraryProjectSettings,
+  NodeLibraryProjectSettingsPort
+} from '@noodl-models/nodelibrary/NodeLibraryData';
+import { ProjectModel, ProjectSettings } from '@noodl-models/projectmodel';
 
 import Model from '../../../../../shared/model';
 import { EventDispatcher } from '../../../../../shared/utils/EventDispatcher';
@@ -14,10 +18,18 @@ import { EventDispatcher } from '../../../../../shared/utils/EventDispatcher';
 export const HTML_TITLE_PORT = 'htmlTitle';
 
 export class ProjectSettingsModel extends Model {
-  private project: TSFixme;
-  private _ports: TSFixme;
-  private type: TSFixme;
-  private parameters: TSFixme;
+  private project: ProjectModel;
+  /** Memoised result of {@link getPorts}; cleared whenever a parameter is written. */
+  private _ports: NodeLibraryProjectSettingsPort[] | undefined;
+  /**
+   * The port *template* from the node library, not this project's values.
+   *
+   * Named `type` because the property editor treats a settings model like a node and
+   * reads `.type.ports` off it — the same shape a node type presents.
+   */
+  private type: NodeLibraryProjectSettings;
+  /** This project's saved settings, deep-copied so edits do not mutate the project. */
+  private parameters: ProjectSettings;
 
   constructor() {
     super();
@@ -85,22 +97,22 @@ export class ProjectSettingsModel extends Model {
     NodeLibrary.instance.off(this);
   }
 
-  getParameter(name) {
+  getParameter(name: string): unknown {
     return this.parameters[name] !== undefined ? this.parameters[name] : this.getPort(name).default;
   }
 
-  getPort(name) {
+  getPort(name: string): NodeLibraryProjectSettingsPort | undefined {
     const ports = this.getPorts();
     return find(ports, function (p) {
       return p.name === name;
     });
   }
 
-  getPorts() {
+  getPorts(): NodeLibraryProjectSettingsPort[] {
     if (this._ports) return this._ports;
 
     // Project name
-    let ports = [
+    let ports: NodeLibraryProjectSettingsPort[] = [
       /* {
         type:'string',
         name:'name',
@@ -119,7 +131,7 @@ export class ProjectSettingsModel extends Model {
     // itself: `exporter/util.ts` and the version-control diff both read
     // `NodeLibrary.getProjectSettingsPorts()` directly and still need the entry
     // (it is where `ignoreInExport` and the "General: Title" label live).
-    ports = ports.filter((p: TSFixme) => p.name !== HTML_TITLE_PORT);
+    ports = ports.filter((p) => p.name !== HTML_TITLE_PORT);
 
     // Dynamic ports
     //var dynamicports = NodeLibrary.instance.getDynamicPortsForNode(this);
@@ -129,7 +141,7 @@ export class ProjectSettingsModel extends Model {
     return ports;
   }
 
-  setParameter(name, value) {
+  setParameter(name: string, value: unknown) {
     /* if(name === 'name') {
       // Project name changed
       this.project.rename(value);

@@ -25,6 +25,40 @@ export interface NodeLibraryDataDynamicPort {
   name: string;
 }
 
+/**
+ * One project-settings port, as it arrives over the wire.
+ *
+ * The viewer declares these in `noodl-viewer-react/src/project-settings.ts` and hands
+ * the array straight to the editor via `setProjectSettings` — already in the editor's
+ * wire format, each entry naming itself and its `plug`, rather than keyed by name
+ * inside a node definition. This is the editor's side of that wire, which is what this
+ * file describes; `type` stays loose because a port type is either a bare name
+ * (`'string'`) or a spec object (`{ name: 'enum', enums: [...] }`), and the editor
+ * passes both through to the property panel without inspecting them.
+ */
+export interface NodeLibraryProjectSettingsPort {
+  name: string;
+  type: string | Record<string, unknown>;
+  plug?: 'input' | 'output' | 'input/output';
+  displayName?: string;
+  group?: string;
+  default?: unknown;
+  tooltip?: unknown;
+  /** Keeps the setting out of an exported or deployed build's settings surface. */
+  ignoreInExport?: boolean;
+}
+
+/**
+ * The project-settings template.
+ *
+ * Both members are optional because `getProjectSettingsPorts()` falls back to `{}`
+ * when the library has not loaded yet — which is the state the Settings panel opens in.
+ */
+export interface NodeLibraryProjectSettings {
+  ports?: NodeLibraryProjectSettingsPort[];
+  dynamicports?: NodeLibraryDataDynamicPort[];
+}
+
 export interface NodeLibraryDataNodeColors {
   base: string;
   baseHighlighted: string;
@@ -53,7 +87,7 @@ export interface NodeLibraryDataNodeType {
 }
 
 export interface NodeLibraryData {
-  projectsettings: TSFixme;
+  projectsettings: NodeLibraryProjectSettings;
 
   typecasts: NodeLibraryTypecast[];
 

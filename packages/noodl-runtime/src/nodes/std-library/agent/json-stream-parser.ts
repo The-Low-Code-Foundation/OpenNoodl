@@ -18,27 +18,14 @@
  * @since 2.0.0
  */
 
-import type { NodeDefinitionOptions, NodeInstance } from '@noodl/types';
+import type { NodeDefinitionOptions } from '@noodl/types';
+
+import type { JsonStreamFormat, JsonStreamParserNodeInstance, ParserInternal } from './node-instances';
 
 import { scanJsonValues, splitDelimited, tryParseJson } from './stream-parsers';
 
-type JsonStreamFormat = 'ndjson' | 'stream' | 'single';
-
-interface ParserInternal {
-  pendingChunk: string;
-  buffer: string;
-  format: JsonStreamFormat;
-  maxLength: number;
-  parsed: unknown;
-  values: unknown[];
-  totalValues: number;
-  error: string;
-  errorCount: number;
-  isComplete: boolean;
-}
-
-function internalOf(node: NodeInstance): ParserInternal {
-  return node._internal as unknown as ParserInternal;
+function internalOf(node: JsonStreamParserNodeInstance): ParserInternal {
+  return node._internal;
 }
 
 const JSONStreamParserNode: NodeDefinitionOptions = {
@@ -50,7 +37,7 @@ const JSONStreamParserNode: NodeDefinitionOptions = {
   docs: 'https://docs.noodl.net/nodes/data/json-stream-parser',
   searchTags: ['json', 'ndjson', 'stream', 'parse', 'chunk', 'agent', 'ai', 'streaming', 'jsonl'],
 
-  initialize(this: NodeInstance) {
+  initialize(this: JsonStreamParserNodeInstance) {
     const internal = internalOf(this);
     internal.pendingChunk = '';
     internal.buffer = '';
@@ -64,7 +51,7 @@ const JSONStreamParserNode: NodeDefinitionOptions = {
     internal.isComplete = false;
   },
 
-  getInspectInfo(this: NodeInstance) {
+  getInspectInfo(this: JsonStreamParserNodeInstance) {
     const internal = internalOf(this);
     return {
       type: 'value',
@@ -85,7 +72,7 @@ const JSONStreamParserNode: NodeDefinitionOptions = {
       type: 'string',
       displayName: 'Chunk',
       group: 'Data',
-      set(this: NodeInstance, value: unknown) {
+      set(this: JsonStreamParserNodeInstance, value: unknown) {
         internalOf(this).pendingChunk = value === undefined || value === null ? '' : String(value);
       }
     },
@@ -102,7 +89,7 @@ const JSONStreamParserNode: NodeDefinitionOptions = {
       default: 'ndjson',
       displayName: 'Format',
       group: 'Config',
-      set(this: NodeInstance, value: string) {
+      set(this: JsonStreamParserNodeInstance, value: string) {
         internalOf(this).format = (value as JsonStreamFormat) || 'ndjson';
       }
     },
@@ -114,7 +101,7 @@ const JSONStreamParserNode: NodeDefinitionOptions = {
       group: 'Config',
       tooltip:
         'Cap on unparsed text held while waiting for a value to complete. Exceeding it clears the buffer and reports an error, rather than growing without limit on a malformed stream.',
-      set(this: NodeInstance, value: number) {
+      set(this: JsonStreamParserNodeInstance, value: number) {
         internalOf(this).maxLength = Number(value) > 0 ? Number(value) : 0;
       }
     },
@@ -122,16 +109,16 @@ const JSONStreamParserNode: NodeDefinitionOptions = {
     parse: {
       displayName: 'Parse',
       group: 'Actions',
-      valueChangedToTrue(this: NodeInstance) {
-        (this as any).doParse();
+      valueChangedToTrue(this: JsonStreamParserNodeInstance) {
+        this.doParse();
       }
     },
 
     clear: {
       displayName: 'Clear',
       group: 'Actions',
-      valueChangedToTrue(this: NodeInstance) {
-        (this as any).clearBuffer();
+      valueChangedToTrue(this: JsonStreamParserNodeInstance) {
+        this.clearBuffer();
       }
     }
   },
@@ -142,7 +129,7 @@ const JSONStreamParserNode: NodeDefinitionOptions = {
       displayName: 'Parsed',
       group: 'Data',
       // The last complete value parsed. Several values in one chunk all appear on Values.
-      get(this: NodeInstance) {
+      get(this: JsonStreamParserNodeInstance) {
         return internalOf(this).parsed;
       }
     },
@@ -151,7 +138,7 @@ const JSONStreamParserNode: NodeDefinitionOptions = {
       displayName: 'Values',
       group: 'Data',
       // Every value completed by the most recent Parse, in order.
-      get(this: NodeInstance) {
+      get(this: JsonStreamParserNodeInstance) {
         return internalOf(this).values;
       }
     },
@@ -159,7 +146,7 @@ const JSONStreamParserNode: NodeDefinitionOptions = {
       type: 'number',
       displayName: 'Value Count',
       group: 'Status',
-      get(this: NodeInstance) {
+      get(this: JsonStreamParserNodeInstance) {
         return internalOf(this).totalValues;
       }
     },
@@ -169,7 +156,7 @@ const JSONStreamParserNode: NodeDefinitionOptions = {
       group: 'Status',
       // Text held back because a value is not complete yet. Persistently non-zero
       // means the selected format does not match the stream.
-      get(this: NodeInstance) {
+      get(this: JsonStreamParserNodeInstance) {
         return internalOf(this).buffer.length;
       }
     },
@@ -178,7 +165,7 @@ const JSONStreamParserNode: NodeDefinitionOptions = {
       displayName: 'Is Complete',
       group: 'Status',
       // True when the last Parse left nothing buffered: every value so far was whole.
-      get(this: NodeInstance) {
+      get(this: JsonStreamParserNodeInstance) {
         return internalOf(this).isComplete;
       }
     },
@@ -186,7 +173,7 @@ const JSONStreamParserNode: NodeDefinitionOptions = {
       type: 'string',
       displayName: 'Error',
       group: 'Status',
-      get(this: NodeInstance) {
+      get(this: JsonStreamParserNodeInstance) {
         return internalOf(this).error;
       }
     },
@@ -194,7 +181,7 @@ const JSONStreamParserNode: NodeDefinitionOptions = {
       type: 'number',
       displayName: 'Error Count',
       group: 'Status',
-      get(this: NodeInstance) {
+      get(this: JsonStreamParserNodeInstance) {
         return internalOf(this).errorCount;
       }
     },
@@ -205,7 +192,7 @@ const JSONStreamParserNode: NodeDefinitionOptions = {
   },
 
   methods: {
-    doParse(this: NodeInstance) {
+    doParse(this: JsonStreamParserNodeInstance) {
       const internal = internalOf(this);
       const chunk = internal.pendingChunk;
       if (chunk !== '') internal.buffer += chunk;
@@ -215,7 +202,7 @@ const JSONStreamParserNode: NodeDefinitionOptions = {
         // Dropping the buffer loudly beats accumulating a runaway one silently: at
         // this size the stream is not the format the author selected.
         internal.buffer = '';
-        (this as any).reportError(
+        this.reportError(
           'Gave up on ' + internal.maxLength + '+ characters of unparsed text; check the Format setting'
         );
         return;
@@ -262,14 +249,14 @@ const JSONStreamParserNode: NodeDefinitionOptions = {
         this.flagOutputDirty('valueCount');
       }
 
-      for (const message of errors) (this as any).reportError(message);
+      for (const message of errors) this.reportError(message);
 
       // Success reports "this Parse yielded values", so a chunk that merely advanced
       // an incomplete value stays quiet rather than firing an empty success.
       if (values.length > 0) this.sendSignalOnOutput('success');
     },
 
-    reportError(this: NodeInstance, message: string) {
+    reportError(this: JsonStreamParserNodeInstance, message: string) {
       const internal = internalOf(this);
       internal.error = message;
       internal.errorCount++;
@@ -278,7 +265,7 @@ const JSONStreamParserNode: NodeDefinitionOptions = {
       this.sendSignalOnOutput('failure');
     },
 
-    clearBuffer(this: NodeInstance) {
+    clearBuffer(this: JsonStreamParserNodeInstance) {
       const internal = internalOf(this);
       internal.buffer = '';
       internal.values = [];

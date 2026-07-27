@@ -13,24 +13,14 @@
  * @since 2.0.0
  */
 
-import type { NodeDefinitionOptions, NodeInstance } from '@noodl/types';
+import type { NodeDefinitionOptions } from '@noodl/types';
+
+import type { ExtractorInternal, PatternExtractorNodeInstance } from './node-instances';
 
 import { extractPattern } from './stream-parsers';
 
-interface ExtractorInternal {
-  text: string;
-  pattern: string;
-  flags: string;
-  extractAll: boolean;
-  match: string | null;
-  matches: string[];
-  groups: string[];
-  namedGroups: Record<string, string>;
-  error: string;
-}
-
-function internalOf(node: NodeInstance): ExtractorInternal {
-  return node._internal as unknown as ExtractorInternal;
+function internalOf(node: PatternExtractorNodeInstance): ExtractorInternal {
+  return node._internal;
 }
 
 const PatternExtractorNode: NodeDefinitionOptions = {
@@ -44,7 +34,7 @@ const PatternExtractorNode: NodeDefinitionOptions = {
   docs: 'https://docs.noodl.net/nodes/data/pattern-extractor',
   searchTags: ['regex', 'regexp', 'pattern', 'extract', 'match', 'parse', 'capture', 'group', 'stream'],
 
-  initialize(this: NodeInstance) {
+  initialize(this: PatternExtractorNodeInstance) {
     const internal = internalOf(this);
     internal.text = '';
     internal.pattern = '';
@@ -57,7 +47,7 @@ const PatternExtractorNode: NodeDefinitionOptions = {
     internal.error = '';
   },
 
-  getInspectInfo(this: NodeInstance) {
+  getInspectInfo(this: PatternExtractorNodeInstance) {
     const internal = internalOf(this);
     if (internal.error) return { type: 'text', value: internal.error };
     return {
@@ -76,7 +66,7 @@ const PatternExtractorNode: NodeDefinitionOptions = {
       type: 'string',
       displayName: 'Text',
       group: 'Data',
-      set(this: NodeInstance, value: unknown) {
+      set(this: PatternExtractorNodeInstance, value: unknown) {
         internalOf(this).text = value === undefined || value === null ? '' : String(value);
       }
     },
@@ -86,7 +76,7 @@ const PatternExtractorNode: NodeDefinitionOptions = {
       displayName: 'Pattern',
       group: 'Pattern',
       tooltip: 'A JavaScript regular expression, without the surrounding slashes. Capture groups appear on Groups.',
-      set(this: NodeInstance, value: string) {
+      set(this: PatternExtractorNodeInstance, value: string) {
         internalOf(this).pattern = value === undefined || value === null ? '' : String(value);
       }
     },
@@ -96,7 +86,7 @@ const PatternExtractorNode: NodeDefinitionOptions = {
       displayName: 'Flags',
       group: 'Pattern',
       tooltip: 'Regex flags: i (ignore case), m (multiline), s (dot matches newline), u (unicode). g is controlled by Extract All.',
-      set(this: NodeInstance, value: string) {
+      set(this: PatternExtractorNodeInstance, value: string) {
         internalOf(this).flags = value === undefined || value === null ? '' : String(value);
       }
     },
@@ -106,7 +96,7 @@ const PatternExtractorNode: NodeDefinitionOptions = {
       default: false,
       displayName: 'Extract All',
       group: 'Pattern',
-      set(this: NodeInstance, value: boolean) {
+      set(this: PatternExtractorNodeInstance, value: boolean) {
         internalOf(this).extractAll = !!value;
       }
     },
@@ -114,8 +104,8 @@ const PatternExtractorNode: NodeDefinitionOptions = {
     extract: {
       displayName: 'Extract',
       group: 'Actions',
-      valueChangedToTrue(this: NodeInstance) {
-        (this as any).doExtract();
+      valueChangedToTrue(this: PatternExtractorNodeInstance) {
+        this.doExtract();
       }
     }
   },
@@ -125,7 +115,7 @@ const PatternExtractorNode: NodeDefinitionOptions = {
       type: 'string',
       displayName: 'Match',
       group: 'Data',
-      get(this: NodeInstance) {
+      get(this: PatternExtractorNodeInstance) {
         return internalOf(this).match === null ? '' : internalOf(this).match;
       }
     },
@@ -133,7 +123,7 @@ const PatternExtractorNode: NodeDefinitionOptions = {
       type: 'array',
       displayName: 'Matches',
       group: 'Data',
-      get(this: NodeInstance) {
+      get(this: PatternExtractorNodeInstance) {
         return internalOf(this).matches;
       }
     },
@@ -143,7 +133,7 @@ const PatternExtractorNode: NodeDefinitionOptions = {
       group: 'Data',
       // Capture groups of the first match. An optional group that did not
       // participate becomes an empty string rather than a hole in the array.
-      get(this: NodeInstance) {
+      get(this: PatternExtractorNodeInstance) {
         return internalOf(this).groups;
       }
     },
@@ -152,7 +142,7 @@ const PatternExtractorNode: NodeDefinitionOptions = {
       displayName: 'First Group',
       group: 'Data',
       // Convenience for the common one-group case, e.g. the number in "(\d+)%".
-      get(this: NodeInstance) {
+      get(this: PatternExtractorNodeInstance) {
         const groups = internalOf(this).groups;
         return groups.length > 0 ? groups[0] : '';
       }
@@ -161,7 +151,7 @@ const PatternExtractorNode: NodeDefinitionOptions = {
       type: 'object',
       displayName: 'Named Groups',
       group: 'Data',
-      get(this: NodeInstance) {
+      get(this: PatternExtractorNodeInstance) {
         return internalOf(this).namedGroups;
       }
     },
@@ -169,7 +159,7 @@ const PatternExtractorNode: NodeDefinitionOptions = {
       type: 'number',
       displayName: 'Match Count',
       group: 'Status',
-      get(this: NodeInstance) {
+      get(this: PatternExtractorNodeInstance) {
         return internalOf(this).matches.length;
       }
     },
@@ -177,7 +167,7 @@ const PatternExtractorNode: NodeDefinitionOptions = {
       type: 'string',
       displayName: 'Error',
       group: 'Status',
-      get(this: NodeInstance) {
+      get(this: PatternExtractorNodeInstance) {
         return internalOf(this).error;
       }
     },
@@ -188,7 +178,7 @@ const PatternExtractorNode: NodeDefinitionOptions = {
   },
 
   methods: {
-    doExtract(this: NodeInstance) {
+    doExtract(this: PatternExtractorNodeInstance) {
       const internal = internalOf(this);
       const result = extractPattern(internal.text, internal.pattern, {
         all: internal.extractAll,

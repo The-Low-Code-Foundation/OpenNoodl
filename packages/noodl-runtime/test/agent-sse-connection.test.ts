@@ -12,6 +12,16 @@
  * `node` test environment.
  */
 
+import type {
+  AbortControllerLike,
+  EventSourceLike,
+  FetchLike,
+  SseMessageEventLike,
+  SseRequestInit,
+  StreamBodyLike,
+  StreamResponseLike,
+  StreamReadResultLike
+} from '../src/nodes/std-library/agent/sse-connection';
 import {
   backoffDelay,
   RecentIds,
@@ -20,6 +30,7 @@ import {
   SseConnectionOptions,
   SseConnectionState
 } from '../src/nodes/std-library/agent/sse-connection';
+import type { SseFrame } from '../src/nodes/std-library/agent/stream-parsers';
 
 const { nextReconnectDelay } = require('../src/nodes/std-library/data/byob-realtime');
 
@@ -54,7 +65,7 @@ function makeTimers() {
 /** A controllable response body implementing the web-streams reader interface. */
 function makeBody() {
   const queue: string[] = [];
-  let pending: { resolve: (v: any) => void; reject: (e: any) => void } | null = null;
+  let pending: { resolve: (v: StreamReadResultLike) => void; reject: (e: unknown) => void } | null = null;
   let ended = false;
   let failure: Error | null = null;
   const state = { cancelled: false, readerTaken: false };
@@ -110,21 +121,37 @@ function makeBody() {
   };
 }
 
-type FetchResponseSpec = { status?: number; ok?: boolean; body?: unknown } | { reject: string };
+type ResponseSpec = { status?: number; ok?: boolean; body?: StreamBodyLike };
+type RejectSpec = { reject: string };
+type FetchResponseSpec = ResponseSpec | RejectSpec;
+
+const isReject = (spec: FetchResponseSpec): spec is RejectSpec =>
+  !!spec && typeof (spec as RejectSpec).reject === 'string';
+
+/** One recorded request, with the request init the transport built for it. */
+interface FetchCall {
+  url: string;
+  init?: SseRequestInit;
+}
+
+type RecordingFetch = FetchLike & { calls: FetchCall[] };
 
 /** Fake fetch that hands out queued responses and records every call. */
-function makeFetch(responses: FetchResponseSpec[]) {
-  const calls: Array<{ url: string; init: any }> = [];
-  const fn = (url: string, init: any) => {
+function makeFetch(responses: FetchResponseSpec[]): RecordingFetch {
+  const calls: FetchCall[] = [];
+  const fn = ((url: string, init?: SseRequestInit) => {
     calls.push({ url, init });
     const spec = responses[Math.min(calls.length - 1, responses.length - 1)];
-    if (spec && (spec as any).reject) return Promise.reject(new Error((spec as any).reject));
-    const s = spec as { status?: number; ok?: boolean; body?: unknown };
-    const status = s.status === undefined ? 200 : s.status;
-    return Promise.resolve({ ok: s.ok !== undefined ? s.ok : status >= 200 && status < 300, status, body: s.body });
-  };
-  (fn as any).calls = calls;
-  return fn as any;
+    if (isReject(spec)) return Promise.reject(new Error(spec.reject));
+    const status = spec.status === undefined ? 200 : spec.status;
+    return Promise.resolve({
+      ok: spec.ok !== undefined ? spec.ok : status >= 200 && status < 300,
+      status,
+      body: spec.body
+    });
+  }) as RecordingFetch;
+  fn.calls = calls;
+  return fn;
 }
 
 /**
@@ -138,72 +165,115 @@ function makeFetch(responses: FetchResponseSpec[]) {
  * first token. Any double used here must reject a non-global receiver, or the same
  * bug can be reintroduced with the suite still green.
  */
-function makeBrowserLikeFetch(responses: FetchResponseSpec[]) {
+function makeBrowserLikeFetch(responses: FetchResponseSpec[]): RecordingFetch {
   const inner = makeFetch(responses);
-  const fn = function (this: unknown, url: string, init: any) {
+  const fn = function (this: unknown, url: string, init?: SseRequestInit) {
     if (this !== undefined && this !== globalThis) {
       return Promise.reject(new TypeError("Failed to execute 'fetch' on 'Window': Illegal invocation"));
     }
     return inner(url, init);
-  };
-  (fn as any).calls = (inner as any).calls;
-  return fn as any;
+  } as RecordingFetch;
+  fn.calls = inner.calls;
+  return fn;
 }
 
-function makeAbortController() {
-  const created: any[] = [];
-  function FakeAbortController(this: any) {
+interface FakeAbortController extends AbortControllerLike {
+  aborted: boolean;
+  signal: { aborted: boolean };
+}
+
+/**
+ * The `NodeRegisterConstructor` idiom: an ES5 constructor function needs its `new`
+ * signature, its prototype and its statics declared separately from the function
+ * expression that implements it.
+ */
+interface FakeAbortControllerConstructor {
+  new (): FakeAbortController;
+  prototype: FakeAbortController;
+  created: FakeAbortController[];
+}
+
+function makeAbortController(): FakeAbortControllerConstructor {
+  const created: FakeAbortController[] = [];
+  const FakeAbortController = function (this: FakeAbortController) {
     this.aborted = false;
     this.signal = { aborted: false };
     created.push(this);
-  }
-  FakeAbortController.prototype.abort = function () {
+  } as unknown as FakeAbortControllerConstructor;
+  FakeAbortController.prototype.abort = function (this: FakeAbortController) {
     this.aborted = true;
     this.signal.aborted = true;
   };
-  (FakeAbortController as any).created = created;
-  return FakeAbortController as any;
+  FakeAbortController.created = created;
+  return FakeAbortController;
+}
+
+type EventListenerLike = (ev: SseMessageEventLike) => void;
+
+/** The double's own surface: the real EventSource members plus the server-side pokes. */
+interface FakeEventSource extends EventSourceLike {
+  url: string;
+  options?: { withCredentials?: boolean };
+  readyState: number;
+  closed: boolean;
+  listeners: Record<string, EventListenerLike[]>;
+
+  serverOpen(): void;
+  serverMessage(data: string, lastEventId?: string): void;
+  serverNamed(type: string, data: string, lastEventId?: string): void;
+  /** `retrying` mirrors the browser's own reconnect; otherwise it gave up. */
+  serverError(retrying: boolean): void;
+}
+
+interface FakeEventSourceConstructor {
+  new (url: string, options?: { withCredentials?: boolean }): FakeEventSource;
+  prototype: FakeEventSource;
+  instances: FakeEventSource[];
 }
 
 /** Fake EventSource with the readyState transitions the real one exposes. */
-function makeEventSource() {
-  const instances: any[] = [];
-  function FakeES(this: any, url: string, options: any) {
+function makeEventSource(): FakeEventSourceConstructor {
+  const instances: FakeEventSource[] = [];
+  const FakeES = function (this: FakeEventSource, url: string, options?: { withCredentials?: boolean }) {
     this.url = url;
     this.options = options;
     this.readyState = 0;
     this.closed = false;
-    this.listeners = {} as Record<string, Array<(ev: any) => void>>;
+    this.listeners = {};
     this.onopen = null;
     this.onmessage = null;
     this.onerror = null;
     instances.push(this);
-  }
-  FakeES.prototype.addEventListener = function (type: string, cb: (ev: any) => void) {
+  } as unknown as FakeEventSourceConstructor;
+  FakeES.prototype.addEventListener = function (this: FakeEventSource, type: string, cb: EventListenerLike) {
     (this.listeners[type] || (this.listeners[type] = [])).push(cb);
   };
-  FakeES.prototype.close = function () {
+  FakeES.prototype.close = function (this: FakeEventSource) {
     this.closed = true;
     this.readyState = 2;
   };
   /** Test helpers. */
-  FakeES.prototype.serverOpen = function () {
+  FakeES.prototype.serverOpen = function (this: FakeEventSource) {
     this.readyState = 1;
     if (this.onopen) this.onopen({});
   };
-  FakeES.prototype.serverMessage = function (data: string, lastEventId?: string) {
+  FakeES.prototype.serverMessage = function (this: FakeEventSource, data: string, lastEventId?: string) {
     if (this.onmessage) this.onmessage({ data, lastEventId: lastEventId || '' });
   };
-  FakeES.prototype.serverNamed = function (type: string, data: string, lastEventId?: string) {
-    (this.listeners[type] || []).forEach((cb: any) => cb({ data, lastEventId: lastEventId || '' }));
+  FakeES.prototype.serverNamed = function (
+    this: FakeEventSource,
+    type: string,
+    data: string,
+    lastEventId?: string
+  ) {
+    (this.listeners[type] || []).forEach((cb) => cb({ data, lastEventId: lastEventId || '' }));
   };
-  /** `retrying` mirrors the browser's own reconnect; otherwise it gave up. */
-  FakeES.prototype.serverError = function (retrying: boolean) {
+  FakeES.prototype.serverError = function (this: FakeEventSource, retrying: boolean) {
     this.readyState = retrying ? 0 : 2;
     if (this.onerror) this.onerror({});
   };
-  (FakeES as any).instances = instances;
-  return FakeES as any;
+  FakeES.instances = instances;
+  return FakeES;
 }
 
 /** Collects everything the connection reports, for order-sensitive assertions. */
@@ -219,9 +289,9 @@ function makeRecorder() {
     duplicates,
     hooks: {
       onState: (s: SseConnectionState) => states.push(s),
-      onFrame: (f: any) => frames.push({ event: f.event, data: f.data, id: f.id }),
+      onFrame: (f: SseFrame) => frames.push({ event: f.event, data: f.data, id: f.id }),
       onError: (m: string) => errors.push(m),
-      onDuplicate: (f: any) => duplicates.push({ id: f.id })
+      onDuplicate: (f: SseFrame) => duplicates.push({ id: f.id })
     }
   };
 }
@@ -283,16 +353,16 @@ describe('RecentIds', () => {
 
 describe('resolveTransport', () => {
   it('honours an explicit choice', () => {
-    expect(resolveTransport({ transport: 'eventsource', fetchImpl: () => {} })).toBe('eventsource');
-    expect(resolveTransport({ transport: 'fetch', EventSourceImpl: function () {} })).toBe('fetch');
+    expect(resolveTransport({ transport: 'eventsource', fetchImpl: makeFetch([{}]) })).toBe('eventsource');
+    expect(resolveTransport({ transport: 'fetch', EventSourceImpl: makeEventSource() })).toBe('fetch');
   });
 
   it('prefers fetch on auto, because it is strictly more capable', () => {
-    expect(resolveTransport({ fetchImpl: () => {}, EventSourceImpl: function () {} })).toBe('fetch');
+    expect(resolveTransport({ fetchImpl: makeFetch([{}]), EventSourceImpl: makeEventSource() })).toBe('fetch');
   });
 
   it('falls back to EventSource when fetch is absent', () => {
-    expect(resolveTransport({ fetchImpl: null, EventSourceImpl: function () {} })).toBe('eventsource');
+    expect(resolveTransport({ fetchImpl: null, EventSourceImpl: makeEventSource() })).toBe('eventsource');
   });
 });
 
@@ -641,8 +711,8 @@ describe('SseConnection — delivery semantics', () => {
 describe('SseConnection — cancellation and teardown', () => {
   it('cancels a request that is still in flight', async () => {
     const AbortControllerImpl = makeAbortController();
-    let resolveFetch: (v: any) => void = () => {};
-    const fetchImpl = () => new Promise((resolve) => (resolveFetch = resolve));
+    let resolveFetch: (v: StreamResponseLike) => void = () => {};
+    const fetchImpl: FetchLike = () => new Promise((resolve) => (resolveFetch = resolve));
     const { connection, recorder } = fetchConnection({ fetchImpl, AbortControllerImpl });
 
     connection.connect();
@@ -721,11 +791,11 @@ describe('SseConnection — cancellation and teardown', () => {
 
     // Six connects, and every superseded attempt was aborted.
     expect(fetchImpl.calls.length).toBe(6);
-    const aborted = AbortControllerImpl.created.filter((c: any) => c.aborted).length;
+    const aborted = AbortControllerImpl.created.filter((c) => c.aborted).length;
     expect(aborted).toBe(5);
 
     connection.dispose();
-    expect(AbortControllerImpl.created.every((c: any) => c.aborted)).toBe(true);
+    expect(AbortControllerImpl.created.every((c) => c.aborted)).toBe(true);
     expect(timers.pending()).toBe(0);
   });
 

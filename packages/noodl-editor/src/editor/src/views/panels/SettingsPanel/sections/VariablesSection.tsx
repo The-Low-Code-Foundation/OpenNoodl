@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import type { Root } from 'react-dom/client';
 import { createRoot } from 'react-dom/client';
 import { ConfigVariable, ConfigType, RESERVED_CONFIG_KEYS } from '@noodl/runtime/src/config/types';
 
@@ -7,7 +8,7 @@ import { PropertyPanelTextInput } from '@noodl-core-ui/components/property-panel
 import { CollapsableSection } from '@noodl-core-ui/components/sidebar/CollapsableSection';
 import { PanelRow } from '@noodl-core-ui/components/sidebar/PanelRow';
 
-import PopupLayer from '../../../popuplayer';
+import PopupLayer, { Popout } from '../../../popuplayer';
 import css from './sections.module.scss';
 
 interface VariablesSectionProps {
@@ -24,8 +25,8 @@ interface JSONEditorButtonProps {
 
 function JSONEditorButton({ value, varType, onSave }: JSONEditorButtonProps) {
   const buttonRef = useRef<HTMLButtonElement>(null);
-  const popoutRef = useRef<any>(null);
-  const rootRef = useRef<any>(null);
+  const popoutRef = useRef<Popout | null>(null);
+  const rootRef = useRef<Root | null>(null);
 
   // Cleanup editor on unmount
   useEffect(() => {

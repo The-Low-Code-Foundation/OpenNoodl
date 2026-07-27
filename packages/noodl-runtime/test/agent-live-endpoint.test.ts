@@ -26,20 +26,20 @@
  * - Signal inputs are **edge-triggered**: `setInputValue(name, true)` twice in a
  *   row fires once. `pulse()` resets the edge first.
  */
-import type { NodeInstance } from '@noodl/types';
+import type { NodeModule } from '@noodl/types';
 
-import NodeContext = require('../src/nodecontext');
-import NodeDefinition = require('../src/nodedefinition');
+import { globalStoreManager } from '../src/nodes/std-library/agent/globalstore';
 
-const sseModule = require('../src/nodes/std-library/agent/sse');
-const accumModule = require('../src/nodes/std-library/agent/text-accumulator');
-const wsModule = require('../src/nodes/std-library/agent/websocket');
-const bufModule = require('../src/nodes/std-library/agent/stream-buffer');
-const jsonModule = require('../src/nodes/std-library/agent/json-stream-parser');
-const dispatcherModule = require('../src/nodes/std-library/agent/actiondispatchernode');
-const handlerModule = require('../src/nodes/std-library/agent/actionhandlernode');
-const storeModule = require('../src/nodes/std-library/agent/globalstorenode');
-const { globalStoreManager } = require('../src/nodes/std-library/agent/globalstore');
+import { createGraph, outputValue, pulse, TestGraph } from './helpers/node-harness';
+
+import sseModule = require('../src/nodes/std-library/agent/sse');
+import accumModule = require('../src/nodes/std-library/agent/text-accumulator');
+import wsModule = require('../src/nodes/std-library/agent/websocket');
+import bufModule = require('../src/nodes/std-library/agent/stream-buffer');
+import jsonModule = require('../src/nodes/std-library/agent/json-stream-parser');
+import dispatcherModule = require('../src/nodes/std-library/agent/actiondispatchernode');
+import handlerModule = require('../src/nodes/std-library/agent/actionhandlernode');
+import storeModule = require('../src/nodes/std-library/agent/globalstorenode');
 
 const BASE = process.env.NODEGX_AGENT_LIVE || '';
 const WS_BASE = BASE.replace(/^http/, 'ws');
@@ -47,38 +47,16 @@ const WS_BASE = BASE.replace(/^http/, 'ws');
 /** Skipped by default: without a mock endpoint there is nothing to talk to. */
 const live = BASE ? describe : describe.skip;
 
-function harness(modules: any[]) {
-  const context = new NodeContext();
-  for (const m of modules) context.nodeRegister.register(NodeDefinition.defineNode(m.node));
-  const signals: Record<string, string[]> = {};
-  const listeners: Record<string, (name: string) => void> = {};
-  return {
-    context,
-    signals,
-    make(type: string, id: string) {
-      const node = context.nodeRegister.createNode(type, id) as unknown as NodeInstance;
-      signals[id] = [];
-      const original = (node as any).sendSignalOnOutput.bind(node);
-      (node as any).sendSignalOnOutput = (name: string) => {
-        signals[id].push(name);
-        original(name);
-        const listener = listeners[id];
-        if (listener) listener(name);
-      };
-      return node;
-    },
-    on(id: string, listener: (name: string) => void) {
-      listeners[id] = listener;
-    }
-  };
-}
+/** Takes an array, unlike `createGraph`'s variadic form, because every call site has one. */
+const harness = (modules: NodeModule[]): TestGraph => createGraph(...modules);
 
-const out = (node: NodeInstance, name: string) => (node.getOutput(name) as any).value;
-const pulse = (node: NodeInstance, name: string) => {
-  node.setInputValue(name, false);
-  node.setInputValue(name, true);
-};
+const out = outputValue;
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/** Narrows one parsed NDJSON value far enough to read its `kind` discriminator. */
+function isKind(value: unknown, kind: string): boolean {
+  return !!value && typeof value === 'object' && (value as { kind?: unknown }).kind === kind;
+}
 
 async function until(predicate: () => boolean, ms = 20000, step = 25) {
   const deadline = Date.now() + ms;
@@ -128,7 +106,7 @@ live('LIVE: SSE + Text Accumulator against a real streaming POST', () => {
       retryCount: out(sse, 'retryCount'),
       lastError: out(sse, 'lastError'),
       duplicatesSuppressed: out(sse, 'duplicatesSuppressed'),
-      signals: Array.from(new Set(h.signals.sse)),
+      signals: Array.from(new Set(h.signalsFor('sse'))),
       accumulatedChars: answer.length,
       characterCount: out(accum, 'characterCount'),
       byteCount: out(accum, 'byteCount'),
@@ -139,15 +117,15 @@ live('LIVE: SSE + Text Accumulator against a real streaming POST', () => {
     expect(out(sse, 'lastError')).toBe('');
     expect(out(sse, 'retryCount')).toBe(0);
     expect(out(sse, 'deliverySemantics')).toBe('at-least-once-deduped');
-    expect(h.signals.sse).toContain('onOpen');
-    expect(h.signals.sse).toContain('onClose');
+    expect(h.signalsFor('sse')).toContain('onOpen');
+    expect(h.signalsFor('sse')).toContain('onClose');
     expect(answer).toContain('live test');
     expect(answer).toContain('```js');
     // Newlines survived the wire format's own line-based framing.
     expect(answer).toContain('\n');
 
-    (sse as any)._onNodeDeleted();
-    (accum as any)._onNodeDeleted();
+    sse._onNodeDeleted();
+    accum._onNodeDeleted();
   }, 60000);
 
   it('unwraps an OpenAI-style JSON envelope into the same answer', async () => {
@@ -201,8 +179,8 @@ live('LIVE: SSE + Text Accumulator against a real streaming POST', () => {
     expect(answer).not.toContain('choices');
     expect(out(accum, 'error')).toBe('');
 
-    (sse as any)._onNodeDeleted();
-    (accum as any)._onNodeDeleted();
+    sse._onNodeDeleted();
+    accum._onNodeDeleted();
   }, 60000);
 
   it('refuses the mis-wiring instead of rendering it, when data is wired to chunk', async () => {
@@ -245,8 +223,8 @@ live('LIVE: SSE + Text Accumulator against a real streaming POST', () => {
     expect(out(accum, 'error')).toBe('');
     expect(String(out(accum, 'accumulated'))).toBe('[DONE]');
 
-    (sse as any)._onNodeDeleted();
-    (accum as any)._onNodeDeleted();
+    sse._onNodeDeleted();
+    accum._onNodeDeleted();
   }, 60000);
 
   it('reports a terminal error for a route that does not exist', async () => {
@@ -258,9 +236,9 @@ live('LIVE: SSE + Text Accumulator against a real streaming POST', () => {
 
     expect(await until(() => out(sse, 'connectionState') === 'error', 10000)).toBe(true);
     // eslint-disable-next-line no-console
-    console.log('LIVE-SSE-404', { lastError: out(sse, 'lastError'), signals: h.signals.sse });
+    console.log('LIVE-SSE-404', { lastError: out(sse, 'lastError'), signals: h.signalsFor('sse') });
     expect(out(sse, 'lastError')).toContain('404');
-    (sse as any)._onNodeDeleted();
+    sse._onNodeDeleted();
   }, 20000);
 
   it('cancels a real in-flight stream on disconnect and leaves nothing running', async () => {
@@ -285,7 +263,7 @@ live('LIVE: SSE + Text Accumulator against a real streaming POST', () => {
     });
     expect(out(sse, 'connectionState')).toBe('closed');
     expect(Number(out(sse, 'messageCount'))).toBe(atCancel);
-    (sse as any)._onNodeDeleted();
+    sse._onNodeDeleted();
   }, 30000);
 });
 
@@ -302,18 +280,18 @@ live('LIVE: Action Dispatcher driven by a real action stream', () => {
     const handler = h.make('net.noodl.ActionHandler', 'handler');
 
     store.setInputValue('storeName', 'chat');
-    (store as any).update();
+    store.update();
 
     handler.setInputValue('channel', 'agent');
     handler.setInputValue('actionType', 'SHOW_NOTICE');
-    (handler as any).update();
+    handler.update();
 
     dispatcher.setInputValue('channel', 'agent');
     dispatcher.setInputValue('builtIns', 'SET_STORE,MERGE_STORE');
     dispatcher.setInputValue('storeName', 'chat');
     dispatcher.setInputValue('allowedKeys', 'title');
     dispatcher.setInputValue('waitForHandler', 800);
-    (dispatcher as any).update();
+    dispatcher.update();
 
     const refusals: string[] = [];
     h.on('dispatcher', (signal) => {
@@ -366,10 +344,10 @@ live('LIVE: Action Dispatcher driven by a real action stream', () => {
     expect(globalStoreManager.hasKey('chat', 'messages')).toBe(false);
     expect(payloads).toEqual(['This notice was sent by the server.']);
 
-    (sse as any)._onNodeDeleted();
-    (dispatcher as any)._onNodeDeleted();
-    (handler as any)._onNodeDeleted();
-    (store as any)._onNodeDeleted();
+    sse._onNodeDeleted();
+    dispatcher._onNodeDeleted();
+    handler._onNodeDeleted();
+    store._onNodeDeleted();
   }, 60000);
 });
 
@@ -382,10 +360,10 @@ live('LIVE: WebSocket + Stream Buffer + JSON Stream Parser', () => {
 
     buf.setInputValue('flushSize', 4);
     buf.setInputValue('flushInterval', 250);
-    (buf as any).update();
+    buf.update();
 
     json.setInputValue('format', 'ndjson');
-    (json as any).update();
+    json.update();
 
     const flushes: unknown[] = [];
     h.on('buf', (signal) => {
@@ -426,27 +404,27 @@ live('LIVE: WebSocket + Stream Buffer + JSON Stream Parser', () => {
       droppedCount: out(ws, 'droppedCount'),
       lastError: out(ws, 'lastError'),
       bufferFlushes: out(buf, 'flushCount'),
-      flushBatchSizes: flushes.map((f: any) => (Array.isArray(f) ? f.length : -1)),
+      flushBatchSizes: flushes.map((f) => (Array.isArray(f) ? f.length : -1)),
       jsonValueCount: out(json, 'valueCount'),
       jsonPending: out(json, 'pendingCharacters'),
       jsonErrors: out(json, 'errorCount'),
       parsedSample: parsed.slice(0, 4),
-      echoSeen: parsed.some((p: any) => p && p.kind === 'echo'),
-      signals: Array.from(new Set(h.signals.ws))
+      echoSeen: parsed.some((p) => isKind(p, 'echo')),
+      signals: Array.from(new Set(h.signalsFor('ws')))
     });
 
     expect(out(ws, 'lastError')).toBe('');
     expect(Number(out(json, 'errorCount'))).toBe(0);
     expect(Number(out(buf, 'flushCount'))).toBeGreaterThan(0);
-    expect(h.signals.ws).toContain('onOpen');
-    expect(h.signals.ws).toContain('onMessageSent');
-    expect(parsed.some((p: any) => p && p.kind === 'echo')).toBe(true);
+    expect(h.signalsFor('ws')).toContain('onOpen');
+    expect(h.signalsFor('ws')).toContain('onMessageSent');
+    expect(parsed.some((p) => isKind(p, 'echo'))).toBe(true);
     // Each burst is two JSON objects in ONE frame: the parser had real boundary work.
     expect(Number(out(json, 'valueCount'))).toBeGreaterThan(Number(out(buf, 'flushCount')));
 
     // A server-initiated close carries a real code and reason.
     ws.setInputValue('autoReconnect', false);
-    (ws as any).update();
+    ws.update();
     ws.setInputValue('message', 'bye');
     pulse(ws, 'send');
 
@@ -456,11 +434,11 @@ live('LIVE: WebSocket + Stream Buffer + JSON Stream Parser', () => {
       state: out(ws, 'connectionState'),
       closeCode: out(ws, 'closeCode'),
       closeReason: out(ws, 'closeReason'),
-      signals: Array.from(new Set(h.signals.ws))
+      signals: Array.from(new Set(h.signalsFor('ws')))
     });
 
-    (ws as any)._onNodeDeleted();
-    (buf as any)._onNodeDeleted();
-    (json as any)._onNodeDeleted();
+    ws._onNodeDeleted();
+    buf._onNodeDeleted();
+    json._onNodeDeleted();
   }, 60000);
 });

@@ -3,6 +3,7 @@ import _ from 'underscore';
 import { ComponentModel } from '@noodl-models/componentmodel';
 import { NodeGraphNode } from '@noodl-models/nodegraphmodel';
 import { BasicNodeType } from '@noodl-models/nodelibrary/BasicNodeType';
+import type { NodeLibraryProjectSettings } from '@noodl-models/nodelibrary/NodeLibraryData';
 import { UnknownNodeType } from '@noodl-models/nodelibrary/UnknownNodeType';
 
 import Model from '../../../../shared/model';
@@ -444,7 +445,7 @@ export class NodeLibrary extends Model {
   }
 
   // Project settings template from node library
-  getProjectSettingsPorts() {
+  getProjectSettingsPorts(): NodeLibraryProjectSettings {
     return this.library.projectsettings || {};
   }
 

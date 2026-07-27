@@ -7,12 +7,20 @@
  * the named success criterion — that deleting the node leaves nothing running.
  */
 
-import type { NodeInstance } from '@noodl/types';
+import type { SseNodeInstance } from '../src/nodes/std-library/agent/node-instances';
+import type {
+  AbortControllerLike,
+  EventSourceLike,
+  FetchLike,
+  SseRequestInit,
+  SseTransportEnv,
+  StreamBodyLike,
+  StreamReadResultLike
+} from '../src/nodes/std-library/agent/sse-connection';
 
-import NodeContext = require('../src/nodecontext');
-import NodeDefinition = require('../src/nodedefinition');
+import { createNode, outputValue } from './helpers/node-harness';
 
-const sseModule = require('../src/nodes/std-library/agent/sse');
+import sseModule = require('../src/nodes/std-library/agent/sse');
 
 // ---------------------------------------------------------------------------
 // Doubles (a trimmed copy of the connection suite's, kept local so the two
@@ -42,7 +50,7 @@ function makeTimers() {
 
 function makeBody() {
   const queue: string[] = [];
-  let pending: { resolve: (v: any) => void; reject: (e: any) => void } | null = null;
+  let pending: { resolve: (v: StreamReadResultLike) => void; reject: (e: unknown) => void } | null = null;
   let ended = false;
   let failure: Error | null = null;
   const state = { cancelled: false };
@@ -95,57 +103,68 @@ function makeBody() {
   };
 }
 
-function makeFetch(bodies: any[]) {
-  const calls: any[] = [];
-  const fn = (url: string, init: any) => {
+/** One recorded request, with the request init the transport built for it. */
+interface FetchCall {
+  url: string;
+  init?: SseRequestInit;
+}
+
+type RecordingFetch = FetchLike & { calls: FetchCall[] };
+
+function makeFetch(bodies: StreamBodyLike[]): RecordingFetch {
+  const calls: FetchCall[] = [];
+  const fn = ((url: string, init?: SseRequestInit) => {
     calls.push({ url, init });
     const body = bodies[Math.min(calls.length - 1, bodies.length - 1)];
     return Promise.resolve({ ok: true, status: 200, body });
-  };
-  (fn as any).calls = calls;
-  return fn as any;
+  }) as RecordingFetch;
+  fn.calls = calls;
+  return fn;
 }
 
-function makeAbortController() {
-  const created: any[] = [];
-  function FakeAbortController(this: any) {
+interface FakeAbortController extends AbortControllerLike {
+  aborted: boolean;
+}
+
+/**
+ * The `NodeRegisterConstructor` idiom: an ES5 constructor function needs its `new`
+ * signature, its prototype and its statics declared separately from the function
+ * expression that implements it.
+ */
+interface FakeAbortControllerConstructor {
+  new (): FakeAbortController;
+  prototype: FakeAbortController;
+  created: FakeAbortController[];
+}
+
+function makeAbortController(): FakeAbortControllerConstructor {
+  const created: FakeAbortController[] = [];
+  const FakeAbortController = function (this: FakeAbortController) {
     this.aborted = false;
     this.signal = {};
     created.push(this);
-  }
-  FakeAbortController.prototype.abort = function () {
+  } as unknown as FakeAbortControllerConstructor;
+  FakeAbortController.prototype.abort = function (this: FakeAbortController) {
     this.aborted = true;
   };
-  (FakeAbortController as any).created = created;
-  return FakeAbortController as any;
+  FakeAbortController.created = created;
+  return FakeAbortController;
 }
 
 const flush = () => new Promise((resolve) => setImmediate(resolve));
 
 /** Creates the node and records every signal it sends. */
-function createSseNode(seams: Record<string, unknown> = {}) {
-  const context = new NodeContext();
-  context.nodeRegister.register(NodeDefinition.defineNode(sseModule.node));
-  const node = context.nodeRegister.createNode('net.noodl.SSE', 'sse-1') as unknown as NodeInstance;
-
-  const signals: string[] = [];
-  const original = (node as any).sendSignalOnOutput.bind(node);
-  (node as any).sendSignalOnOutput = (name: string) => {
-    signals.push(name);
-    original(name);
-  };
-
-  (node._internal as any).seams = seams;
-  return { node, signals, out: (name: string) => (node.getOutput(name) as any).value };
+function createSseNode(seams: SseTransportEnv = {}) {
+  const { node, signals } = createNode<SseNodeInstance>(sseModule, 'net.noodl.SSE', 'sse-1');
+  node._internal.seams = seams;
+  return { node, signals, out: (name: string) => outputValue(node, name) };
 }
 
 // ---------------------------------------------------------------------------
 
 describe('net.noodl.SSE — port surface', () => {
   it('declares exactly the documented ports', () => {
-    const context = new NodeContext();
-    context.nodeRegister.register(NodeDefinition.defineNode(sseModule.node));
-    const metadata = context.nodeRegister.getNodeMetadata('net.noodl.SSE');
+    const { metadata } = createNode(sseModule, 'net.noodl.SSE');
 
     // Pinned deliberately: the SSE and WebSocket nodes are meant to read alike, so a
     // rename on one side should have to be a conscious edit here.
@@ -195,9 +214,7 @@ describe('net.noodl.SSE — port surface', () => {
   });
 
   it('turns connect and disconnect into connections-only signal inputs', () => {
-    const context = new NodeContext();
-    context.nodeRegister.register(NodeDefinition.defineNode(sseModule.node));
-    const metadata = context.nodeRegister.getNodeMetadata('net.noodl.SSE');
+    const { metadata } = createNode(sseModule, 'net.noodl.SSE');
     expect(metadata.inputs.connect.type).toEqual({ name: 'signal', allowConnectionsOnly: true });
     expect(metadata.inputs.disconnect.type).toEqual({ name: 'signal', allowConnectionsOnly: true });
   });
@@ -250,7 +267,7 @@ describe('net.noodl.SSE — streaming through the graph', () => {
     expect(out('deliverySemantics')).toBe('at-least-once-deduped');
     expect(signals).toEqual(['onOpen', 'onMessage']);
 
-    (node as any)._onNodeDeleted();
+    node._onNodeDeleted();
   });
 
   it('passes plain-text payloads through unparsed', async () => {
@@ -268,7 +285,7 @@ describe('net.noodl.SSE — streaming through the graph', () => {
     await flush();
 
     expect(out('data')).toBe('[DONE]');
-    (node as any)._onNodeDeleted();
+    node._onNodeDeleted();
   });
 
   // -- the Text output ------------------------------------------------------
@@ -293,7 +310,7 @@ describe('net.noodl.SSE — streaming through the graph', () => {
     await flush();
 
     expect(out('text')).toBe('Hello');
-    (node as any)._onNodeDeleted();
+    node._onNodeDeleted();
   });
 
   it('extracts the token from an OpenAI-style envelope when Text Path names it', async () => {
@@ -325,7 +342,7 @@ describe('net.noodl.SSE — streaming through the graph', () => {
     await flush();
     expect(out('text')).toBe('');
 
-    (node as any)._onNodeDeleted();
+    node._onNodeDeleted();
   });
 
   it('never puts an object on Text, whatever the path resolves to', async () => {
@@ -349,7 +366,7 @@ describe('net.noodl.SSE — streaming through the graph', () => {
     await flush();
     expect(out('text')).toBe('7');
 
-    (node as any)._onNodeDeleted();
+    node._onNodeDeleted();
   });
 
   it('re-reads Text when the path changes, without needing another frame', async () => {
@@ -370,7 +387,7 @@ describe('net.noodl.SSE — streaming through the graph', () => {
     node.setInputValue('textPath', 'b');
     expect(out('text')).toBe('two');
 
-    (node as any)._onNodeDeleted();
+    node._onNodeDeleted();
   });
 
   it('fires On Close when the server ends the stream', async () => {
@@ -390,7 +407,7 @@ describe('net.noodl.SSE — streaming through the graph', () => {
     expect(out('connectionState')).toBe('closed');
     expect(out('connected')).toBe(false);
     expect(signals).toEqual(['onOpen', 'onClose']);
-    (node as any)._onNodeDeleted();
+    node._onNodeDeleted();
   });
 
   it('surfaces a drop as On Error plus a visible reconnecting state and retry count', async () => {
@@ -415,7 +432,7 @@ describe('net.noodl.SSE — streaming through the graph', () => {
     expect(out('lastError')).toMatch(/interrupted/);
     expect(signals).toEqual(['onOpen', 'onError']);
 
-    (node as any)._onNodeDeleted();
+    node._onNodeDeleted();
     expect(timers.pending()).toBe(0);
   });
 
@@ -433,7 +450,7 @@ describe('net.noodl.SSE — streaming through the graph', () => {
     expect(out('connectionState')).toBe('error');
     expect(signals).toEqual(['onError', 'onClose']);
     expect(timers.pending()).toBe(0);
-    (node as any)._onNodeDeleted();
+    node._onNodeDeleted();
   });
 
   it('disconnects on the Disconnect signal', async () => {
@@ -454,7 +471,7 @@ describe('net.noodl.SSE — streaming through the graph', () => {
     await flush();
     expect(out('messageCount')).toBe(0);
 
-    (node as any)._onNodeDeleted();
+    node._onNodeDeleted();
   });
 
   it('carries headers and a body from the graph into the request', async () => {
@@ -472,18 +489,27 @@ describe('net.noodl.SSE — streaming through the graph', () => {
     expect(fetchImpl.calls[0].init.method).toBe('POST');
     expect(fetchImpl.calls[0].init.headers.Authorization).toBe('Bearer abc');
     expect(fetchImpl.calls[0].init.body).toBe('{"prompt":"hello"}');
-    (node as any)._onNodeDeleted();
+    node._onNodeDeleted();
   });
 
   it('splits the Event Types input for the EventSource transport', async () => {
-    const instances: any[] = [];
-    function FakeES(this: any, url: string) {
+    interface ListenerRecordingES extends EventSourceLike {
+      url: string;
+      listeners: Record<string, true>;
+    }
+    interface ListenerRecordingESConstructor {
+      new (url: string): ListenerRecordingES;
+      prototype: ListenerRecordingES;
+    }
+
+    const instances: ListenerRecordingES[] = [];
+    const FakeES = function (this: ListenerRecordingES, url: string) {
       this.url = url;
-      this.listeners = {} as Record<string, unknown>;
+      this.listeners = {};
       this.close = () => {};
       instances.push(this);
-    }
-    FakeES.prototype.addEventListener = function (type: string) {
+    } as unknown as ListenerRecordingESConstructor;
+    FakeES.prototype.addEventListener = function (this: ListenerRecordingES, type: string) {
       this.listeners[type] = true;
     };
 
@@ -494,7 +520,7 @@ describe('net.noodl.SSE — streaming through the graph', () => {
     node.setInputValue('connect', true);
 
     expect(Object.keys(instances[0].listeners).sort()).toEqual(['token', 'tool_call']);
-    (node as any)._onNodeDeleted();
+    node._onNodeDeleted();
   });
 });
 
@@ -517,7 +543,7 @@ describe('net.noodl.SSE — auto connect', () => {
     node.update();
     expect(fetchImpl.calls.length).toBe(1);
 
-    (node as any)._onNodeDeleted();
+    node._onNodeDeleted();
   });
 
   it('stays put when Auto Connect is off', () => {
@@ -544,7 +570,7 @@ describe('net.noodl.SSE — teardown leaves nothing running', () => {
     await flush();
     expect(out('messageCount')).toBe(1);
 
-    (node as any)._onNodeDeleted();
+    node._onNodeDeleted();
 
     expect(AbortControllerImpl.created[0].aborted).toBe(true);
     expect(stream.state.cancelled).toBe(true);
@@ -569,7 +595,7 @@ describe('net.noodl.SSE — teardown leaves nothing running', () => {
     await flush();
     expect(timers.pending()).toBe(1);
 
-    (node as any)._onNodeDeleted();
+    node._onNodeDeleted();
     expect(timers.pending()).toBe(0);
   });
 
@@ -589,10 +615,10 @@ describe('net.noodl.SSE — teardown leaves nothing running', () => {
     }
     await flush();
 
-    (node as any)._onNodeDeleted();
+    node._onNodeDeleted();
 
     expect(AbortControllerImpl.created.length).toBe(10);
-    expect(AbortControllerImpl.created.every((c: any) => c.aborted)).toBe(true);
+    expect(AbortControllerImpl.created.every((c) => c.aborted)).toBe(true);
     expect(timers.pending()).toBe(0);
   });
 
@@ -602,7 +628,7 @@ describe('net.noodl.SSE — teardown leaves nothing running', () => {
     node.addDeleteListener(function () {
       baseRan = true;
     });
-    (node as any)._onNodeDeleted();
+    node._onNodeDeleted();
     // The delete listeners are Node.prototype's job; forgetting the super call is the
     // classic way a node quietly stops cleaning up its model listeners.
     expect(baseRan).toBe(true);

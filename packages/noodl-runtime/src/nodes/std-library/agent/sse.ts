@@ -20,63 +20,23 @@
  * @since 2.0.0
  */
 
-import type { NodeDefinitionOptions, NodeInstance } from '@noodl/types';
+import type { NodeDefinitionOptions } from '@noodl/types';
 
+import type { SseInternal, SseNodeInstance } from './node-instances';
 import { parseJsonOrText, textForPath } from './stream-parsers';
 import { SseConnection, SseConnectionOptions, SseConnectionState } from './sse-connection';
 
 import Node = require('../../../node');
 
-/**
- * Injectable environment, read once per connect.
- *
- * Production leaves this empty and the connection falls through to the platform
- * globals. Tests assign to `node._internal.seams` before connecting; `_internal` is
- * the sanctioned per-instance scratch space, and the runtime's test environment is
- * `node`, where `EventSource` and streaming `fetch` do not exist — so a seam is the
- * only way the lifecycle matrix can be exercised at all.
- */
-interface SseNodeSeams {
-  EventSourceImpl?: any;
-  fetchImpl?: any;
-  AbortControllerImpl?: any;
-  setTimeoutImpl?: (fn: () => void, ms: number) => any;
-  clearTimeoutImpl?: (handle: any) => void;
-  nowImpl?: () => number;
-}
-
-interface SseInternal {
-  url: string;
-  transport: 'auto' | 'eventsource' | 'fetch';
-  method: string;
-  headers: Record<string, string> | null;
-  body: unknown;
-  withCredentials: boolean;
-  eventTypes: string;
-  textPath: string;
-  autoConnect: boolean;
-  autoReconnect: boolean;
-  reconnectOnStreamEnd: boolean;
-  reconnectDelay: number;
-  maxReconnectDelay: number;
-  maxRetries: number;
-  dedupeById: boolean;
-
-  connection: SseConnection | null;
-  connectionState: SseConnectionState;
-  data: unknown;
-  raw: string;
-  eventType: string;
-  autoConnectScheduled: boolean;
-  seams: SseNodeSeams;
-}
-
-function internalOf(node: NodeInstance): SseInternal {
-  return node._internal as unknown as SseInternal;
+function internalOf(node: SseNodeInstance): SseInternal {
+  return node._internal;
 }
 
 /** Reads the live connection's counter, or the resting value when there is none. */
-function counter(node: NodeInstance, key: 'retryCount' | 'messageCount' | 'duplicatesSuppressed' | 'lastMessageTime') {
+function counter(
+  node: SseNodeInstance,
+  key: 'retryCount' | 'messageCount' | 'duplicatesSuppressed' | 'lastMessageTime'
+) {
   const conn = internalOf(node).connection;
   return conn ? conn[key] : 0;
 }
@@ -109,7 +69,7 @@ const SSENode: NodeDefinitionOptions = {
     note: 'An event stream cannot be consumed during a server render; the node connects in the browser after hydration.'
   },
 
-  initialize(this: NodeInstance) {
+  initialize(this: SseNodeInstance) {
     const internal = internalOf(this);
     internal.url = '';
     internal.transport = 'auto';
@@ -136,7 +96,7 @@ const SSENode: NodeDefinitionOptions = {
     internal.seams = {};
   },
 
-  getInspectInfo(this: NodeInstance) {
+  getInspectInfo(this: SseNodeInstance) {
     const internal = internalOf(this);
     const conn = internal.connection;
     if (!internal.url) return { type: 'text', value: '[No URL set]' };
@@ -165,9 +125,9 @@ const SSENode: NodeDefinitionOptions = {
       type: 'string',
       displayName: 'URL',
       group: 'Connection',
-      set(this: NodeInstance, value: string) {
+      set(this: SseNodeInstance, value: string) {
         internalOf(this).url = value === undefined || value === null ? '' : String(value);
-        (this as any).scheduleAutoConnect();
+        this.scheduleAutoConnect();
       }
     },
 
@@ -183,7 +143,7 @@ const SSENode: NodeDefinitionOptions = {
       default: 'auto',
       displayName: 'Transport',
       group: 'Connection',
-      set(this: NodeInstance, value: string) {
+      set(this: SseNodeInstance, value: string) {
         internalOf(this).transport = (value as SseInternal['transport']) || 'auto';
       }
     },
@@ -201,7 +161,7 @@ const SSENode: NodeDefinitionOptions = {
       default: 'GET',
       displayName: 'Method',
       group: 'Request',
-      set(this: NodeInstance, value: string) {
+      set(this: SseNodeInstance, value: string) {
         internalOf(this).method = value || 'GET';
       }
     },
@@ -210,7 +170,7 @@ const SSENode: NodeDefinitionOptions = {
       type: 'object',
       displayName: 'Headers',
       group: 'Request',
-      set(this: NodeInstance, value: Record<string, string>) {
+      set(this: SseNodeInstance, value: Record<string, string>) {
         internalOf(this).headers = value && typeof value === 'object' ? value : null;
       }
     },
@@ -219,7 +179,7 @@ const SSENode: NodeDefinitionOptions = {
       type: '*',
       displayName: 'Body',
       group: 'Request',
-      set(this: NodeInstance, value: unknown) {
+      set(this: SseNodeInstance, value: unknown) {
         internalOf(this).body = value;
       }
     },
@@ -229,7 +189,7 @@ const SSENode: NodeDefinitionOptions = {
       default: false,
       displayName: 'With Credentials',
       group: 'Request',
-      set(this: NodeInstance, value: boolean) {
+      set(this: SseNodeInstance, value: boolean) {
         internalOf(this).withCredentials = !!value;
       }
     },
@@ -240,7 +200,7 @@ const SSENode: NodeDefinitionOptions = {
       group: 'Connection',
       tooltip:
         'Comma-separated named event types to subscribe to. Only needed for the EventSource transport, which delivers a named event only to a listener registered in advance; the Fetch transport delivers every event type.',
-      set(this: NodeInstance, value: string) {
+      set(this: SseNodeInstance, value: string) {
         internalOf(this).eventTypes = value || '';
       }
     },
@@ -253,7 +213,7 @@ const SSENode: NodeDefinitionOptions = {
         'Where the text lives inside a JSON payload, as a dot path — for an OpenAI-compatible endpoint, ' +
         'choices.0.delta.content. Leave blank for a stream that sends bare text. Whatever it names ends up ' +
         'on the Text output, which is always a string.',
-      set(this: NodeInstance, value: string) {
+      set(this: SseNodeInstance, value: string) {
         internalOf(this).textPath = value === undefined || value === null ? '' : String(value);
         this.flagOutputDirty('text');
       }
@@ -264,9 +224,9 @@ const SSENode: NodeDefinitionOptions = {
       default: false,
       displayName: 'Auto Connect',
       group: 'Connection',
-      set(this: NodeInstance, value: boolean) {
+      set(this: SseNodeInstance, value: boolean) {
         internalOf(this).autoConnect = !!value;
-        (this as any).scheduleAutoConnect();
+        this.scheduleAutoConnect();
       }
     },
 
@@ -275,7 +235,7 @@ const SSENode: NodeDefinitionOptions = {
       default: true,
       displayName: 'Auto Reconnect',
       group: 'Reconnection',
-      set(this: NodeInstance, value: boolean) {
+      set(this: SseNodeInstance, value: boolean) {
         internalOf(this).autoReconnect = !!value;
       }
     },
@@ -287,7 +247,7 @@ const SSENode: NodeDefinitionOptions = {
       group: 'Reconnection',
       tooltip:
         'Reconnect when the server closes the stream cleanly. Off by default: an agent response stream is finite, and reconnecting would re-issue the request and start the response again.',
-      set(this: NodeInstance, value: boolean) {
+      set(this: SseNodeInstance, value: boolean) {
         internalOf(this).reconnectOnStreamEnd = !!value;
       }
     },
@@ -298,7 +258,7 @@ const SSENode: NodeDefinitionOptions = {
       displayName: 'Reconnect Delay (ms)',
       group: 'Reconnection',
       tooltip: 'First retry delay. Doubles per consecutive failure, up to the maximum.',
-      set(this: NodeInstance, value: number) {
+      set(this: SseNodeInstance, value: number) {
         internalOf(this).reconnectDelay = Number(value) > 0 ? Number(value) : 1000;
       }
     },
@@ -308,7 +268,7 @@ const SSENode: NodeDefinitionOptions = {
       default: 30000,
       displayName: 'Max Reconnect Delay (ms)',
       group: 'Reconnection',
-      set(this: NodeInstance, value: number) {
+      set(this: SseNodeInstance, value: number) {
         internalOf(this).maxReconnectDelay = Number(value) > 0 ? Number(value) : 30000;
       }
     },
@@ -319,7 +279,7 @@ const SSENode: NodeDefinitionOptions = {
       displayName: 'Max Retries',
       group: 'Reconnection',
       tooltip: '0 means keep retrying. Otherwise the connection reports an error after this many consecutive failures.',
-      set(this: NodeInstance, value: number) {
+      set(this: SseNodeInstance, value: number) {
         internalOf(this).maxRetries = Number(value) > 0 ? Number(value) : 0;
       }
     },
@@ -331,7 +291,7 @@ const SSENode: NodeDefinitionOptions = {
       group: 'Reconnection',
       tooltip:
         'Drop events whose id has already been seen, so a reconnect that resumes from the last event id cannot re-deliver messages. Turn off if your server reuses ids for distinct events.',
-      set(this: NodeInstance, value: boolean) {
+      set(this: SseNodeInstance, value: boolean) {
         internalOf(this).dedupeById = !!value;
       }
     },
@@ -339,16 +299,16 @@ const SSENode: NodeDefinitionOptions = {
     connect: {
       displayName: 'Connect',
       group: 'Actions',
-      valueChangedToTrue(this: NodeInstance) {
-        (this as any).doConnect();
+      valueChangedToTrue(this: SseNodeInstance) {
+        this.doConnect();
       }
     },
 
     disconnect: {
       displayName: 'Disconnect',
       group: 'Actions',
-      valueChangedToTrue(this: NodeInstance) {
-        (this as any).doDisconnect();
+      valueChangedToTrue(this: SseNodeInstance) {
+        this.doDisconnect();
       }
     }
   },
@@ -359,7 +319,7 @@ const SSENode: NodeDefinitionOptions = {
       type: 'string',
       displayName: 'Connection State',
       group: 'Status',
-      get(this: NodeInstance) {
+      get(this: SseNodeInstance) {
         return internalOf(this).connectionState;
       }
     },
@@ -367,7 +327,7 @@ const SSENode: NodeDefinitionOptions = {
       type: 'boolean',
       displayName: 'Connected',
       group: 'Status',
-      get(this: NodeInstance) {
+      get(this: SseNodeInstance) {
         return internalOf(this).connectionState === 'open';
       }
     },
@@ -375,7 +335,7 @@ const SSENode: NodeDefinitionOptions = {
       type: 'string',
       displayName: 'Last Error',
       group: 'Status',
-      get(this: NodeInstance) {
+      get(this: SseNodeInstance) {
         const conn = internalOf(this).connection;
         return conn ? conn.lastError : '';
       }
@@ -384,7 +344,7 @@ const SSENode: NodeDefinitionOptions = {
       type: 'number',
       displayName: 'Retry Count',
       group: 'Status',
-      get(this: NodeInstance) {
+      get(this: SseNodeInstance) {
         return counter(this, 'retryCount');
       }
     },
@@ -399,7 +359,7 @@ const SSENode: NodeDefinitionOptions = {
       type: '*',
       displayName: 'Data',
       group: 'Data',
-      get(this: NodeInstance) {
+      get(this: SseNodeInstance) {
         return internalOf(this).data;
       }
     },
@@ -407,7 +367,7 @@ const SSENode: NodeDefinitionOptions = {
       type: 'string',
       displayName: 'Raw',
       group: 'Data',
-      get(this: NodeInstance) {
+      get(this: SseNodeInstance) {
         return internalOf(this).raw;
       }
     },
@@ -426,7 +386,7 @@ const SSENode: NodeDefinitionOptions = {
       type: 'string',
       displayName: 'Text',
       group: 'Data',
-      get(this: NodeInstance) {
+      get(this: SseNodeInstance) {
         const internal = internalOf(this);
         return textForPath(internal.raw, internal.data, internal.textPath);
       }
@@ -435,7 +395,7 @@ const SSENode: NodeDefinitionOptions = {
       type: 'string',
       displayName: 'Event Type',
       group: 'Data',
-      get(this: NodeInstance) {
+      get(this: SseNodeInstance) {
         return internalOf(this).eventType;
       }
     },
@@ -443,7 +403,7 @@ const SSENode: NodeDefinitionOptions = {
       type: 'string',
       displayName: 'Last Event Id',
       group: 'Data',
-      get(this: NodeInstance) {
+      get(this: SseNodeInstance) {
         const conn = internalOf(this).connection;
         return conn ? conn.lastEventId : '';
       }
@@ -452,7 +412,7 @@ const SSENode: NodeDefinitionOptions = {
       type: 'number',
       displayName: 'Message Count',
       group: 'Status',
-      get(this: NodeInstance) {
+      get(this: SseNodeInstance) {
         return counter(this, 'messageCount');
       }
     },
@@ -460,7 +420,7 @@ const SSENode: NodeDefinitionOptions = {
       type: 'number',
       displayName: 'Last Message Time',
       group: 'Status',
-      get(this: NodeInstance) {
+      get(this: SseNodeInstance) {
         return counter(this, 'lastMessageTime');
       }
     },
@@ -468,7 +428,7 @@ const SSENode: NodeDefinitionOptions = {
       type: 'number',
       displayName: 'Duplicates Suppressed',
       group: 'Status',
-      get(this: NodeInstance) {
+      get(this: SseNodeInstance) {
         return counter(this, 'duplicatesSuppressed');
       }
     },
@@ -476,7 +436,7 @@ const SSENode: NodeDefinitionOptions = {
       type: 'string',
       displayName: 'Delivery Semantics',
       group: 'Status',
-      get(this: NodeInstance) {
+      get(this: SseNodeInstance) {
         const conn = internalOf(this).connection;
         return conn ? conn.deliverySemantics : 'at-most-once';
       }
@@ -492,22 +452,22 @@ const SSENode: NodeDefinitionOptions = {
      * half-configured node, and connecting from the `autoConnect` setter would miss a
      * `url` that arrives afterwards.
      */
-    scheduleAutoConnect(this: NodeInstance) {
+    scheduleAutoConnect(this: SseNodeInstance) {
       const internal = internalOf(this);
       if (internal.autoConnectScheduled) return;
       internal.autoConnectScheduled = true;
-      this.scheduleAfterInputsHaveUpdated(function (this: NodeInstance) {
+      this.scheduleAfterInputsHaveUpdated(function (this: SseNodeInstance) {
         const inner = internalOf(this);
         inner.autoConnectScheduled = false;
         if (!inner.autoConnect || !inner.url) return;
         if (inner.connection && !inner.connection.disposed) return;
-        (this as any).doConnect();
+        this.doConnect();
       });
     },
 
-    doConnect(this: NodeInstance) {
+    doConnect(this: SseNodeInstance) {
       const internal = internalOf(this);
-      (this as any).teardownConnection();
+      this.teardownConnection();
 
       const options: SseConnectionOptions = {
         url: internal.url,
@@ -528,9 +488,9 @@ const SSENode: NodeDefinitionOptions = {
         maxReconnectDelay: internal.maxReconnectDelay,
         maxRetries: internal.maxRetries,
         dedupeById: internal.dedupeById,
-        onState: (state) => (this as any).handleState(state),
-        onFrame: (frame) => (this as any).handleFrame(frame),
-        onError: (message) => (this as any).handleError(message),
+        onState: (state) => this.handleState(state),
+        onFrame: (frame) => this.handleFrame(frame),
+        onError: (message) => this.handleError(message),
         ...internal.seams
       };
 
@@ -539,20 +499,20 @@ const SSENode: NodeDefinitionOptions = {
       connection.connect();
     },
 
-    doDisconnect(this: NodeInstance) {
+    doDisconnect(this: SseNodeInstance) {
       const connection = internalOf(this).connection;
       if (connection) connection.disconnect();
     },
 
     /** Releases the connection without emitting anything. Used on delete. */
-    teardownConnection(this: NodeInstance) {
+    teardownConnection(this: SseNodeInstance) {
       const internal = internalOf(this);
       const connection = internal.connection;
       internal.connection = null;
       if (connection) connection.dispose();
     },
 
-    handleState(this: NodeInstance, state: SseConnectionState) {
+    handleState(this: SseNodeInstance, state: SseConnectionState) {
       const internal = internalOf(this);
       internal.connectionState = state;
       this.flagOutputDirty('connectionState');
@@ -565,7 +525,7 @@ const SSENode: NodeDefinitionOptions = {
       if (state === 'closed' || state === 'error') this.sendSignalOnOutput('onClose');
     },
 
-    handleFrame(this: NodeInstance, frame: { event: string; data: string; id: string }) {
+    handleFrame(this: SseNodeInstance, frame: { event: string; data: string; id: string }) {
       const internal = internalOf(this);
       internal.raw = frame.data;
       internal.data = parseJsonOrText(frame.data);
@@ -586,16 +546,16 @@ const SSENode: NodeDefinitionOptions = {
       this.sendSignalOnOutput('onMessage');
     },
 
-    handleError(this: NodeInstance, message: string) {
+    handleError(this: SseNodeInstance, message: string) {
       this.flagOutputDirty('lastError');
       this.flagOutputDirty('retryCount');
       this.flagOutputDirty('duplicatesSuppressed');
       this.sendSignalOnOutput('onError');
     },
 
-    _onNodeDeleted(this: NodeInstance) {
+    _onNodeDeleted(this: SseNodeInstance) {
       Node.prototype._onNodeDeleted.call(this);
-      (this as any).teardownConnection();
+      this.teardownConnection();
     }
   }
 };

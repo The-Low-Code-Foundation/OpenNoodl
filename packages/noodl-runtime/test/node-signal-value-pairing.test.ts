@@ -18,87 +18,92 @@
 
 import type { NodeInstance } from '@noodl/types';
 
-import NodeContext = require('../src/nodecontext');
-import NodeDefinition = require('../src/nodedefinition');
+import type { SseNodeInstance, TextAccumulatorNodeInstance } from '../src/nodes/std-library/agent/node-instances';
 
-const sseModule = require('../src/nodes/std-library/agent/sse');
-const accumulatorModule = require('../src/nodes/std-library/agent/text-accumulator');
+import { createGraph, outputValue } from './helpers/node-harness';
+
+import sseModule = require('../src/nodes/std-library/agent/sse');
+import accumulatorModule = require('../src/nodes/std-library/agent/text-accumulator');
 
 // ---------------------------------------------------------------------------
 // A minimal sender/receiver pair: one value output plus one signal output, and a
 // receiver that records the value it sees each time the signal fires.
 // ---------------------------------------------------------------------------
 
-function makePair() {
-  const context = new NodeContext();
+/** The one method the sender definition adds to itself. */
+interface SenderNodeInstance extends NodeInstance {
+  emit(payload: unknown): void;
+}
 
+function makePair() {
   const seen: unknown[] = [];
 
-  context.nodeRegister.register(
-    NodeDefinition.defineNode({
-      name: 'test.Sender',
-      category: 'Test',
-      initialize: function (this: NodeInstance) {
-        (this._internal as Record<string, unknown>).payload = undefined;
-      },
-      outputs: {
-        payload: {
-          type: 'string',
-          getter: function (this: NodeInstance) {
-            return (this._internal as Record<string, unknown>).payload;
-          }
+  const graph = createGraph(
+    {
+      node: {
+        name: 'test.Sender',
+        category: 'Test',
+        initialize: function (this: NodeInstance) {
+          this._internal.payload = undefined;
         },
-        onEvent: { type: 'signal' }
-      },
-      methods: {
-        emit(this: NodeInstance, payload: unknown) {
-          (this._internal as Record<string, unknown>).payload = payload;
-          this.flagOutputDirty('payload');
-          this.sendSignalOnOutput('onEvent');
-        }
-      }
-    })
-  );
-
-  context.nodeRegister.register(
-    NodeDefinition.defineNode({
-      name: 'test.Receiver',
-      category: 'Test',
-      initialize: function (this: NodeInstance) {
-        (this._internal as Record<string, unknown>).payload = undefined;
-      },
-      inputs: {
-        payload: {
-          type: 'string',
-          set: function (this: NodeInstance, value: unknown) {
-            (this._internal as Record<string, unknown>).payload = value;
-          }
+        outputs: {
+          payload: {
+            type: 'string',
+            getter: function (this: NodeInstance) {
+              return this._internal.payload;
+            }
+          },
+          onEvent: { type: 'signal' }
         },
-        take: {
-          valueChangedToTrue: function (this: NodeInstance) {
-            seen.push((this._internal as Record<string, unknown>).payload);
+        methods: {
+          emit(this: NodeInstance, payload: unknown) {
+            this._internal.payload = payload;
+            this.flagOutputDirty('payload');
+            this.sendSignalOnOutput('onEvent');
           }
         }
       }
-    })
+    },
+    {
+      node: {
+        name: 'test.Receiver',
+        category: 'Test',
+        initialize: function (this: NodeInstance) {
+          this._internal.payload = undefined;
+        },
+        inputs: {
+          payload: {
+            type: 'string',
+            set: function (this: NodeInstance, value: unknown) {
+              this._internal.payload = value;
+            }
+          },
+          take: {
+            valueChangedToTrue: function (this: NodeInstance) {
+              seen.push(this._internal.payload);
+            }
+          }
+        }
+      }
+    }
   );
 
-  const sender = context.nodeRegister.createNode('test.Sender', 'sender') as unknown as NodeInstance;
-  const receiver = context.nodeRegister.createNode('test.Receiver', 'receiver') as unknown as NodeInstance;
+  const sender = graph.make<SenderNodeInstance>('test.Sender', 'sender');
+  const receiver = graph.make('test.Receiver', 'receiver');
 
-  (receiver as any).connectInput('payload', sender, 'payload');
-  (receiver as any).connectInput('take', sender, 'onEvent');
+  receiver.connectInput('payload', sender, 'payload');
+  receiver.connectInput('take', sender, 'onEvent');
 
   // One event on its own first: until a node has updated once, `_isFirstUpdate`
   // deliberately collapses value queues, which is a different path from the one under
   // test here.
-  (sender as any).emit('warm-up');
-  (receiver as any).update();
+  sender.emit('warm-up');
+  receiver.update();
   seen.length = 0;
 
   return {
-    emit: (payload: unknown) => (sender as any).emit(payload),
-    update: () => (receiver as any).update(),
+    emit: (payload: unknown) => sender.emit(payload),
+    update: () => receiver.update(),
     seen
   };
 }
@@ -135,30 +140,25 @@ describe('a signal and the value beside it', () => {
 
 describe('SSE -> Text Accumulator with frames batched into one iteration', () => {
   function wire() {
-    const context = new NodeContext();
-    context.nodeRegister.register(NodeDefinition.defineNode(sseModule.node));
-    context.nodeRegister.register(NodeDefinition.defineNode(accumulatorModule.node));
+    const graph = createGraph(sseModule, accumulatorModule);
 
-    const sse = context.nodeRegister.createNode('net.noodl.SSE', 'sse-1') as unknown as NodeInstance;
-    const accumulator = context.nodeRegister.createNode(
-      'net.noodl.TextAccumulator',
-      'accumulator-1'
-    ) as unknown as NodeInstance;
+    const sse = graph.make<SseNodeInstance>('net.noodl.SSE', 'sse-1');
+    const accumulator = graph.make<TextAccumulatorNodeInstance>('net.noodl.TextAccumulator', 'accumulator-1');
 
     accumulator.setInputValue('delimiter', '');
-    (accumulator as any).connectInput('chunk', sse, 'text');
-    (accumulator as any).connectInput('add', sse, 'onMessage');
+    accumulator.connectInput('chunk', sse, 'text');
+    accumulator.connectInput('add', sse, 'onMessage');
 
-    const frame = (data: string, id: string) => (sse as any).handleFrame({ event: 'message', data, id });
+    const frame = (data: string, id: string) => sse.handleFrame({ event: 'message', data, id });
 
     frame('warm-up', 'w');
-    (accumulator as any).update();
-    (accumulator as any).clearBuffer();
+    accumulator.update();
+    accumulator.clearBuffer();
 
     return {
       frame,
-      update: () => (accumulator as any).update(),
-      accumulated: () => (accumulator.getOutput('accumulated') as any).value
+      update: () => accumulator.update(),
+      accumulated: () => outputValue(accumulator, 'accumulated')
     };
   }
 
