@@ -64,6 +64,68 @@
   text-overflow: ellipsis;
 }
 
+/* AIX-012 — the scope summary wraps where the single-value rows above ellipsize:
+   "3 pages: Library, Book detail, Add a book" is information, not a filename. */
+.ScopeLine {
+  font-size: 14px;
+  color: var(--theme-color-fg-default);
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+.ScopeLine--secondary {
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--theme-color-fg-default-shy);
+}
+
+.Plan {
+  margin-top: var(--spacing-4);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: var(--radius-default);
+  padding: var(--spacing-4) var(--spacing-5);
+}
+
+.Plan-title {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--theme-color-fg-default-shy);
+  margin-bottom: var(--spacing-3);
+}
+
+.Plan-list {
+  margin: 0 0 var(--spacing-3) 0;
+  padding-left: var(--spacing-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+
+  li {
+    font-size: 13px;
+    color: var(--theme-color-fg-default);
+    line-height: 1.5;
+  }
+}
+
+.Plan-intent {
+  display: block;
+  font-size: 12px;
+  color: var(--theme-color-fg-default-shy);
+  line-height: 1.5;
+}
+
+.Plan-empty,
+.Plan-note {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--theme-color-fg-default-shy);
+}
+
 .SummaryRow-edit {
   font-size: 12px;
   color: var(--theme-color-primary);

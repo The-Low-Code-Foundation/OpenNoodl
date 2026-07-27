@@ -15,6 +15,7 @@ import { registerDocsReadTools, registerDocsWriteTools } from './tools/docsTools
 import { registerReadTools } from './tools/read';
 import { registerStyleReadTools, registerStyleWriteTools } from './tools/styleTools';
 import { registerValidateTools } from './tools/validateTools';
+import { registerCreateProjectTools } from './tools/createProject';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const PKG_VERSION: string = require('../package.json').version;
@@ -58,6 +59,9 @@ export function createServer(options: ServerOptions): CreatedServer {
     registerStyleWriteTools(server, store);
     registerDocsWriteTools(server, store);
     registerBackendWriteTools(server);
+    // AIX-012. Takes no store: it creates a project at a directory the caller
+    // names, which is by definition not the one this server is pointed at.
+    registerCreateProjectTools(server);
   }
   return { server, store };
 }

@@ -61,8 +61,20 @@ describe('WizardContext: step sequences', () => {
     expect(getStepSequence('guided')).toEqual(['basics', 'preset', 'review']);
   });
 
-  it('ai mode uses same sequence as guided (V1 stub)', () => {
-    expect(getStepSequence('ai')).toEqual(['basics', 'preset', 'review']);
+  // AIX-012 replaced the V1 stub (which was guided's sequence under another
+  // name, behind a permanently disabled card) with the real conversation.
+  it('ai mode inserts scoping between preset and review', () => {
+    expect(getStepSequence('ai')).toEqual(['basics', 'preset', 'scoping', 'review']);
+  });
+
+  it('ai mode collects everything creation needs BEFORE the conversation', () => {
+    // This is what makes "exitable at any point" unconditional rather than a
+    // promise: from the first word of scoping onward, name, folder and preset
+    // are already in hand, so leaving early always yields a real project.
+    const sequence = getStepSequence('ai');
+    const scoping = sequence.indexOf('scoping');
+    expect(sequence.indexOf('basics')).toBeLessThan(scoping);
+    expect(sequence.indexOf('preset')).toBeLessThan(scoping);
   });
 });
 
@@ -82,6 +94,12 @@ describe('WizardContext: validation', () => {
 
   it('review step is always valid', () => {
     expect(isStepValid('review', { ...baseState, currentStep: 'review' })).toBe(true);
+  });
+
+  // AIX-012 criterion 2. Gating Continue on "the assistant says the scope is
+  // agreed" would turn a conversation into a form the user cannot leave.
+  it('scoping step is always valid — the user may leave with whatever was agreed', () => {
+    expect(isStepValid('scoping', { ...baseState, mode: 'ai', currentStep: 'scoping' })).toBe(true);
   });
 
   it('basics step requires projectName and location', () => {

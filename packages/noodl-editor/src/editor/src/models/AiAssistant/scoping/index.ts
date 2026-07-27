@@ -1,0 +1,51 @@
+/**
+ * AIX-012 — AI project creation: describe an app at the launcher, agree its
+ * scope in conversation, and get a documented project with a plan you have not
+ * run yet.
+ *
+ * NOTE for headless consumers (and for `noodl-mcp`): import `./scope` directly
+ * rather than this barrel. `scope.ts` is pure — no `AiClient`, no filesystem,
+ * no `ProjectModel` — while `ScopingSession` pulls the AI client and
+ * `scopeDocs` pulls the platform filesystem. Same rule as the `ProjectDocs`
+ * barrel and the `StyleTokensModel/StyleVocabulary` submodule.
+ *
+ * @module AiAssistant/scoping
+ */
+
+export {
+  DOC_INITIAL_SCOPE,
+  TODO_MARKER,
+  emptyScope,
+  mergeScope,
+  pageComponentPath,
+  pageLegacyCandidates,
+  planFromScope,
+  renderArchitecture,
+  renderBrief,
+  renderConventions,
+  renderScopeRecord,
+  scopeDocuments,
+  scopeHasContent,
+  scopeOutline
+} from './scope';
+export type {
+  PlanFromScopeOptions,
+  ProjectScope,
+  ScopeDocument,
+  ScopeObject,
+  ScopePage,
+  ScopeRecordInput,
+  ScopeRejection,
+  ScopeTranscriptEntry
+} from './scope';
+
+export { RECORD_SCOPE, SCOPING_TOOLS, scopingOpeningMessage, scopingSystemPrompt } from './prompts';
+
+export { SCOPING_EFFORT, ScopingSession, toScopePatch } from './ScopingSession';
+export type { ScopingChatFn, ScopingOptions, ScopingTurn, ScopingTurnStatus } from './ScopingSession';
+
+export { writeScopeDocs } from './scopeDocs';
+export type { WriteScopeDocsInput, WriteScopeDocsResult } from './scopeDocs';
+
+export { peekPendingScopePlan, setPendingScopePlan, takePendingScopePlan } from './pendingPlan';
+export type { PendingScopePlan } from './pendingPlan';

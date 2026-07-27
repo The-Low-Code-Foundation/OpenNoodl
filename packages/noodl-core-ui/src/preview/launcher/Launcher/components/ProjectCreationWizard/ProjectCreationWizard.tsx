@@ -17,27 +17,56 @@ import { PrimaryButton, PrimaryButtonVariant, PrimaryButtonSize } from '@noodl-c
 import { PresetDisplayInfo } from '@noodl-core-ui/components/StylePresets';
 
 import css from './ProjectCreationWizard.module.scss';
-import { EntryModeStep } from './steps/EntryModeStep';
+import { AiAvailability, EntryModeStep } from './steps/EntryModeStep';
 import { ProjectBasicsStep } from './steps/ProjectBasicsStep';
-import { ReviewStep } from './steps/ReviewStep';
+import { ReviewPlanRow, ReviewStep } from './steps/ReviewStep';
+import { ScopingMessage, ScopingStep } from './steps/ScopingStep';
 import { StylePresetStep } from './steps/StylePresetStep';
-import { WizardProvider, useWizardContext, DEFAULT_PRESET_ID, WizardStep } from './WizardContext';
+import { WizardProvider, useWizardContext, WizardMode, WizardStep } from './WizardContext';
 
 // ----- Public API -----------------------------------------------------------
+
+/**
+ * AIX-012 — everything the host tells the wizard about the scoping
+ * conversation. The wizard renders it; the editor owns the session, because
+ * core-ui cannot import editor models.
+ */
+export interface ScopingState {
+  messages: readonly ScopingMessage[];
+  isBusy: boolean;
+  /** Short lines describing what has been agreed so far. */
+  outline: readonly string[];
+  isAgreed: boolean;
+  error?: string;
+  /** The plan derived from the agreed scope, for the review step. */
+  planRows: readonly ReviewPlanRow[];
+  onSend: (text: string) => void;
+}
 
 export interface ProjectCreationWizardProps {
   isVisible: boolean;
   onClose: () => void;
   /**
    * Called when the user confirms project creation.
-   * Signature is identical to the legacy CreateProjectModal.onConfirm so
-   * callers need no changes beyond swapping the import.
+   *
+   * The first three arguments are unchanged from the legacy
+   * CreateProjectModal.onConfirm. `mode` is appended (AIX-012) so the host can
+   * tell an AI-scoped creation — which also writes docs and stashes a plan —
+   * from a blank one; existing callers that ignore it behave exactly as before.
    */
-  onConfirm: (name: string, location: string, presetId: string) => void;
+  onConfirm: (name: string, location: string, presetId: string, mode: WizardMode) => void;
   /** Open a native folder picker; returns the chosen path or null if cancelled */
   onChooseLocation?: () => Promise<string | null>;
   /** Style presets to show in the preset picker step */
   presets?: PresetDisplayInfo[];
+  /**
+   * AIX-012 — whether "Start with AI" can be offered, and if not, why and what
+   * to do about it. Omitted means unavailable: never offer a path the host has
+   * not confirmed it can serve.
+   */
+  aiAvailability?: AiAvailability;
+  /** AIX-012 — the live scoping conversation. Required for the 'ai' mode. */
+  scoping?: ScopingState;
 }
 
 // ----- Step metadata --------------------------------------------------------
@@ -46,7 +75,14 @@ const STEP_TITLES: Record<WizardStep, string> = {
   entry: 'Create New Project',
   basics: 'Project Basics',
   preset: 'Style Preset',
+  scoping: 'What are we building?',
   review: 'Review'
+};
+
+const MODE_LABELS: Record<WizardMode, string> = {
+  quick: 'Quick Start',
+  guided: 'Guided Setup',
+  ai: 'Start with AI'
 };
 
 /** Steps where the Back button should be hidden (entry has no "back") */
@@ -58,7 +94,7 @@ interface WizardInnerProps extends Omit<ProjectCreationWizardProps, 'isVisible'>
   presets: PresetDisplayInfo[];
 }
 
-function WizardInner({ onClose, onConfirm, onChooseLocation, presets }: WizardInnerProps) {
+function WizardInner({ onClose, onConfirm, onChooseLocation, presets, aiAvailability, scoping }: WizardInnerProps) {
   const { state, goNext, goBack, canProceed } = useWizardContext();
 
   const { currentStep, mode, projectName, location, selectedPresetId } = state;
@@ -69,10 +105,14 @@ function WizardInner({ onClose, onConfirm, onChooseLocation, presets }: WizardIn
   const nextLabel = isLastStep ? 'Create Project' : 'Next';
   const showBack = !STEPS_WITHOUT_BACK.includes(currentStep);
 
+  // A turn in flight must not be walked out from under: the reply would land
+  // on an unmounted step and the scope it recorded would be lost.
+  const isBlocked = currentStep === 'scoping' && Boolean(scoping?.isBusy);
+
   const handleNext = () => {
     if (isLastStep) {
       // Fire creation with the wizard state values
-      onConfirm(projectName.trim(), location, selectedPresetId);
+      onConfirm(projectName.trim(), location, selectedPresetId, mode);
     } else {
       goNext();
     }
@@ -82,13 +122,30 @@ function WizardInner({ onClose, onConfirm, onChooseLocation, presets }: WizardIn
   const renderStep = () => {
     switch (currentStep) {
       case 'entry':
-        return <EntryModeStep />;
+        return <EntryModeStep aiAvailability={aiAvailability} />;
       case 'basics':
         return <ProjectBasicsStep onChooseLocation={onChooseLocation ?? (() => Promise.resolve(null))} />;
       case 'preset':
         return <StylePresetStep presets={presets} />;
+      case 'scoping':
+        return scoping ? (
+          <ScopingStep
+            messages={scoping.messages}
+            isBusy={scoping.isBusy}
+            outline={scoping.outline}
+            isAgreed={scoping.isAgreed}
+            error={scoping.error}
+            onSend={scoping.onSend}
+          />
+        ) : null;
       case 'review':
-        return <ReviewStep presets={presets} />;
+        return (
+          <ReviewStep
+            presets={presets}
+            scopeOutline={mode === 'ai' ? scoping?.outline : undefined}
+            planRows={mode === 'ai' ? scoping?.planRows ?? [] : undefined}
+          />
+        );
     }
   };
 
@@ -100,9 +157,7 @@ function WizardInner({ onClose, onConfirm, onChooseLocation, presets }: WizardIn
           <h3 className={css['Title']}>{STEP_TITLES[currentStep]}</h3>
 
           {/* Step indicator (not shown on entry screen) */}
-          {currentStep !== 'entry' && (
-            <span className={css['StepLabel']}>{mode === 'quick' ? 'Quick Start' : 'Guided Setup'}</span>
-          )}
+          {currentStep !== 'entry' && <span className={css['StepLabel']}>{MODE_LABELS[mode]}</span>}
         </div>
 
         {/* Content */}
@@ -117,6 +172,7 @@ function WizardInner({ onClose, onConfirm, onChooseLocation, presets }: WizardIn
                 size={PrimaryButtonSize.Default}
                 variant={PrimaryButtonVariant.Muted}
                 onClick={goBack}
+                isDisabled={isBlocked}
                 UNSAFE_style={{ marginRight: 'auto' }}
               />
             )}
@@ -130,10 +186,10 @@ function WizardInner({ onClose, onConfirm, onChooseLocation, presets }: WizardIn
             />
 
             <PrimaryButton
-              label={nextLabel}
+              label={currentStep === 'scoping' ? 'Continue' : nextLabel}
               size={PrimaryButtonSize.Default}
               onClick={handleNext}
-              isDisabled={!canProceed}
+              isDisabled={!canProceed || isBlocked}
             />
           </div>
         )}
@@ -164,7 +220,9 @@ export function ProjectCreationWizard({
   onClose,
   onConfirm,
   onChooseLocation,
-  presets
+  presets,
+  aiAvailability,
+  scoping
 }: ProjectCreationWizardProps) {
   if (!isVisible) return null;
 
@@ -177,6 +235,8 @@ export function ProjectCreationWizard({
         onConfirm={onConfirm}
         onChooseLocation={onChooseLocation}
         presets={presets ?? []}
+        aiAvailability={aiAvailability}
+        scoping={scoping}
       />
     </WizardProvider>
   );
