@@ -4,6 +4,8 @@
 **Re-scoped:** 2026-07-24, per [BACKEND-GAP-ASSESSMENT.md](./BACKEND-GAP-ASSESSMENT.md) — 3 tasks → 6, phase reframed from "bounded resurrection" to "the backend leg of the full stack"
 **Overall status:** 🟢 Complete — 7 / 7 tasks complete (WF-003 closed the phase on 2026-07-26; its residual "deploy a real editor export" is what phase 22's exit criterion still needs)
 
+> **2026-07-27 — the exit criterion was tested, and it passes on the backend but not in the editor.** A live end-to-end run against a standalone `nodegx-backend` drove the whole criterion successfully: a webhook and a cron both firing one workflow that wrote records, branched on a real value, retried a failing call with backoff, routed the failure to a handler receiving `previous.error`, merged and read the database back — with per-step history and full survival of a service restart. It then found that **none of it is reachable from the editor**: the Components panel hides the `__cloud__` sheet, WF-007 deleted the panel that displayed it, all three create menus hardcode the browser runtime type, and the `backend:update-workflow` IPC that deploys functions has never had a caller. Two shipped defects were also found (a webhook secret sent as `Authorization: Bearer` can never authenticate; a schedule trigger silently discards a `payload` it accepts with 201). All of it is owned by **[Phase 27 — Visual Backend Authoring](../phase-27-visual-backend-authoring/)**; the full findings register with file and line is in that phase's [PROGRESS.md](../phase-27-visual-backend-authoring/PROGRESS.md).
+
 ## Status vocabulary
 
 Not started · In progress · **Built–not wired** · Complete · Superseded
