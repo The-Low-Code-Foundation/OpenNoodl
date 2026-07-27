@@ -102,7 +102,15 @@ export function ProjectReviewBanner({ onStart, isBusy }: ProjectReviewBannerProp
           This project has no AI context docs. The assistant can read the whole project and draft them for you
           to correct — nothing is written until you accept each file.
         </Text>
-        <HStack UNSAFE_style={{ gap: 6 }}>
+        {/*
+          Wraps because the two labels do not fit side by side in the panel this
+          banner lives in. Found by mounting it: at the Docs panel's width the
+          dismiss button hangs past the right edge, and the panel is resizable
+          down to 240px, where the primary button alone does not fit a row. A
+          banner whose "no thanks" is the half you cannot reach is worse than no
+          banner — it reads as an offer you are not allowed to decline.
+        */}
+        <HStack UNSAFE_style={{ gap: 6, flexWrap: 'wrap' }}>
           <PrimaryButton
             label={isBusy ? 'Reviewing…' : 'Review the project and draft them'}
             icon={IconName.MagicWand}
