@@ -3,6 +3,19 @@ const Exporter = require('@noodl-utils/exporter');
 const { ProjectModel } = require('@noodl-models/projectmodel');
 
 describe('export tests', function () {
+  beforeEach(() => {
+    // Bundle discovery turns on `n.type instanceof ComponentModel`, and a node
+    // type only resolves if the singleton NodeLibrary has been loaded —
+    // `getNodeTypeWithName` refills its cache only when `types` is non-empty,
+    // so with no library loaded a project's own components never resolve and
+    // every dependency edge is missed. Nine other spec files install their own
+    // `window.NodeLibraryData` and reload; this one installed none and
+    // inherited whichever ran last, which is why its bundle assertions passed
+    // or failed on the seed. Install ours.
+    window.NodeLibraryData = require('../nodegraph/nodelibrary');
+    NodeLibrary.instance.loadLibrary();
+  });
+
   xit('can export ports on components', function () {
     ProjectModel.instance = ProjectModel.fromJSON(project1);
     NodeLibrary.instance.registerModule(ProjectModel.instance);

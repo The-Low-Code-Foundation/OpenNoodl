@@ -154,8 +154,26 @@ export class NodeLibrary extends Model {
   }
 
   registerModule(module) {
+    // Registering twice used to push a second entry and bind a second
+    // 'componentRemoved' listener. `unregisterModule` removes one entry by
+    // `indexOf`, so the duplicate was unremovable: the module stayed visible to
+    // `getComponents()` for the rest of the session, and every project ever
+    // double-registered kept shadowing later projects' same-named components.
+    // The `ProjectModel.instance` setter registers on assignment, so any caller
+    // that also registered explicitly leaked one.
+    if (this.modules.indexOf(module) !== -1) return;
+
     this.modules.push(module);
     module._registered = true;
+
+    // Registering a module changes what `getComponents()` returns, so any cache
+    // built before it is stale by construction — a component name this module
+    // defines may already be cached against a *different* module's component,
+    // and `getNodeTypeWithName` only refills on a miss, so the stale entry wins
+    // indefinitely. `unregisterModule` has always cleared for the mirror-image
+    // reason; this side was missing, which is how three specs in the editor
+    // suite came to pass or fail depending on what ran before them.
+    this.typeCache.clear();
 
     //keep this.typeCache in sync by removing components that are removed from registered modules
     //no need to listen for new components since getNodeTypeWithName handles types that arent in the typeCache

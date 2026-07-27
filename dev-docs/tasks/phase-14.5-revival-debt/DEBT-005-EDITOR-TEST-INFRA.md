@@ -53,3 +53,73 @@ Note the stakes for item 1: `StyleAnalyzer` is the engine PLAT-005 is about to w
 
 - [PLAT-004-NOTES.md §10/§12](../phase-14-editor-platform-health/PLAT-004-NOTES.md), [REV-008 D4](../phase-12-reanimation/REV-008-DEV-LOOP-HARDENING.md), [REV-002-NOTES.md](../phase-12-reanimation/REV-002-NOTES.md)
 - Related: PLAT-005 (StyleAnalyzer consumer), DEBT-004 (adds specs to this suite)
+
+---
+
+## CHANGELOG
+
+### 2026-07-27 — item 3 closed: the order-dependence had one cause, and it was a real product bug
+
+Background item 3 ("order-dependence, pinned rather than fixed") is done. Three
+specs had been failing intermittently under randomized order for long enough to
+be treated as background noise — `export tests can export an index that includes
+pages and for each nodes`, `export tests calculated dependencies for bundles`,
+and `Project import and export unit tests re-keys imported node ids while
+reusing the target component id (characterization)`. The last of these produced
+**8, 8, 5 and 4** for the same assertion across four seeds, which is what
+finally made it worth chasing: a characterization that drifts is one thing, a
+count that varies run to run is contamination.
+
+**The cause was not in the specs.** All three turn on whether a component-type
+reference resolves to a `ComponentModel` — `_collectDependencyGraph` branches on
+`n.type instanceof ComponentModel`, and `forEachNodeRecursive` descends *through*
+a component instance only if its type resolved. Resolution goes through the
+singleton `NodeLibrary`, and `getNodeTypeWithName` refills its cache only when
+`this.types` is non-empty:
+
+```ts
+const hasLoadedNodeLib = this.types.length;
+if (hasLoadedNodeLib && !this.typeCache.has(typename)) { /* refill */ }
+return this.typeCache.get(typename);
+```
+
+Nine spec files install their own `window.NodeLibraryData` fixture and call
+`loadLibrary()`. `export.js` and `projectimport.js` installed none — so they ran
+against whichever fixture the previously-executed file happened to leave behind,
+and against a library that might not be loaded at all. A project's own
+components are only reachable through that refill, so with the wrong predecessor
+they never resolved, every dependency edge was missed, and bundles that should
+have been separate merged.
+
+Two genuine defects in `NodeLibrary` came out of the chase, both fixed:
+
+1. **`registerModule` did not clear the type cache, while `unregisterModule`
+   always has.** Registering a module changes what `getComponents()` returns, so
+   a cache built before it is stale by construction — and since the cache only
+   refills on a *miss*, a name already bound to a different module's component
+   stayed bound to it indefinitely.
+2. **`registerModule` was not idempotent.** It pushed a second entry and bound a
+   second `componentRemoved` listener; `unregisterModule` removes one entry by
+   `indexOf`, so the duplicate was **unremovable** — the module stayed visible to
+   `getComponents()` for the rest of the session. The `ProjectModel.instance`
+   setter registers on assignment, so every caller that *also* registered
+   explicitly (several specs do) leaked one, and every project ever
+   double-registered went on shadowing later projects' same-named components.
+
+Fixing (1) and (2) alone was not enough — verified by running the suite four
+times and watching it still fail on one seed. The missing library load in the
+two spec files was the rest of it.
+
+Also fixed while in the area: `nodelibrary-spec.js`'s `beforeEach` unregistered
+modules by iterating `NodeLibrary.instance.modules` while `unregisterModule`
+spliced that same array, so it skipped every other module and left half of them
+registered — a cleanup step that had never fully cleaned up.
+
+**Verification.** Five consecutive full runs at five different random seeds
+(89382, 35166, 87383, 82416, 90795), **1547 specs / 0 failures** each. A sixth
+run died to `GPU process exited unexpectedly: exit_code=15` — SIGTERM collateral
+from the orchestrating shell command timing out, not a spec failure, and not
+counted either way.
+
+**Still open in this task:** items 1 and 2 (never-executed Jest specs and the
+`@jest/globals` export hazard) are untouched by this work.

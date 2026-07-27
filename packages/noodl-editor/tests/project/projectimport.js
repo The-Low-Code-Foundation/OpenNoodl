@@ -19,6 +19,7 @@ const { projectFromDirectory } = require('@noodl-models/projectmodel.editor');
 
 const remote = require('@electron/remote');
 const App = remote.app;
+const { NodeLibrary } = require('@noodl-models/nodelibrary');
 
 /** Everything a source project offers, as an `ImportSelection`. */
 function selectEverything(inventory) {
@@ -65,6 +66,17 @@ function componentShapes(inventory) {
 }
 
 describe('Project import and export unit tests', function () {
+  beforeEach(() => {
+    // The re-keying characterization counts nodes via `forEachNodeRecursive`,
+    // which descends *through* component instances — so its count depends on
+    // whether a component-instance node's type resolved, which depends on the
+    // singleton NodeLibrary having been loaded. Inheriting whatever an earlier
+    // spec file happened to install made the same assertion produce 8, 5 and 4
+    // on different seeds. Install our own library so the count is ours.
+    window.NodeLibraryData = require('../nodegraph/nodelibrary');
+    NodeLibrary.instance.loadLibrary();
+  });
+
   function expectFilesToExist(direntry, paths, callback) {
     var filesToCheck = paths.length;
     var success = true;
