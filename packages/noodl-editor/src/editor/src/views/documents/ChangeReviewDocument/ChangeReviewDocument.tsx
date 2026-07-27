@@ -65,6 +65,14 @@ export interface ChangeReviewDocumentProps {
   /** Stage the given (possibly partial) files; returns an error message or null. */
   onAcceptFiles: (files: ComponentFiles, selection?: { rejectedCount: number }) => string | null;
   onReject: () => void;
+  /**
+   * AIX-011: label override for the accept button — a plan-operation review
+   * "keeps" a selection on the plan rather than applying it, and the button
+   * should say so. Default keeps the single-component wording.
+   */
+  acceptLabel?: string;
+  /** AIX-011: one extra sentence in the rail summary (e.g. plan-mode framing). */
+  contextNote?: string;
 }
 
 type ViewMode = 'before' | 'review' | 'after';
@@ -119,7 +127,15 @@ function componentFromLegacy(legacy: Record<string, unknown>): ComponentModel {
   return ComponentModel.fromJSON(legacy as TSFixme);
 }
 
-function ChangeReviewDocument({ changeSet, files, title, onAcceptFiles, onReject }: ChangeReviewDocumentProps) {
+function ChangeReviewDocument({
+  changeSet,
+  files,
+  title,
+  onAcceptFiles,
+  onReject,
+  acceptLabel,
+  contextNote
+}: ChangeReviewDocumentProps) {
   const [nodeGraph] = useState<NodeGraphEditor>(() => {
     const ng = new NodeGraphEditor({});
     ng.setReadOnly(true);
@@ -242,7 +258,11 @@ function ChangeReviewDocument({ changeSet, files, title, onAcceptFiles, onReject
         </div>
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
           <PrimaryButton
-            label={rejected.size > 0 ? `Accept ${keptCount} of ${excludableCount}` : 'Accept all'}
+            label={
+              rejected.size > 0
+                ? `${acceptLabel ?? 'Accept'} ${keptCount} of ${excludableCount}`
+                : `${acceptLabel ?? 'Accept'} all`
+            }
             onClick={acceptSelected}
           />
           <PrimaryButton
@@ -271,6 +291,7 @@ function ChangeReviewDocument({ changeSet, files, title, onAcceptFiles, onReject
             <Text textType={TextType.Shy}>
               Click a change to see it on the canvas. Exclude what you don’t want — the rest is accepted.
             </Text>
+            {contextNote && <Text textType={TextType.Shy}>{contextNote}</Text>}
             {anchored.length > 1 && (
               <div className={css.Walkthrough}>
                 <PrimaryButton

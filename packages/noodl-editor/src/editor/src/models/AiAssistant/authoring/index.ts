@@ -30,8 +30,42 @@ export { PartialPayloadScanner } from './partial';
 export type { PartialPayload } from './partial';
 export { PreviewGraphBuilder, RevealQueue } from './preview';
 export type { RevealItem } from './preview';
-export { acceptAuthoredComponent, StagingError, updateAuthoredComponent } from './staging';
+export {
+  acceptAuthoredComponent,
+  addAuthoredComponentToGroup,
+  stagedLegacyName,
+  StagingError,
+  updateAuthoredComponent,
+  updateAuthoredComponentInGroup
+} from './staging';
 export type { AcceptOptions } from './staging';
+// AIX-011 — project-scope authoring: one plan model (shared with noodl-mcp),
+// the planning session, the fan-out orchestrator, and the all-or-nothing apply.
+export {
+  componentRefTargets,
+  graphComponentFromFiles,
+  orderPlanOperations,
+  planExcludedWith,
+  planOperationRequires,
+  planRequiredWith,
+  renderPlanContext,
+  validatePlan
+} from './plan';
+export type { AuthoringPlan, PlanOperation, PlanOperationKind, StagedOperationLike } from './plan';
+export { PlanningSession } from './PlanningSession';
+export type { PlanningOptions, PlanningOutcome, PlanningStatus } from './PlanningSession';
+export { PlanRun } from './PlanRun';
+export type { PlanOperationState, PlanOperationStatus, PlanRunOptions, PlanRunState } from './PlanRun';
+export { applyAuthoredPlan } from './planStaging';
+export type {
+  AppliedPlanComponentOperation,
+  AppliedPlanDocOperation,
+  AppliedPlanOperation,
+  AppliedPlanResult,
+  ApplyPlanOptions,
+  PlanDocWriter
+} from './planStaging';
+export { PLANNING_TOOLS, planningSystemPrompt, planningUserMessage, planRepairMessage, SUBMIT_PLAN } from './prompts/planning';
 export { buildChangeSet, requiredWith, excludedWith } from './ChangeSet';
 export type { AuthoringChangeSet, ReviewChange } from './ChangeSet';
 export { buildReviewComponent } from './reviewComponent';

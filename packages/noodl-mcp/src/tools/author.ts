@@ -33,13 +33,16 @@ import type {
 import { guarded, jsonResult } from './util';
 
 // ─── Zod shapes ───────────────────────────────────────────────────────────────
+// Exported for the plan tools (AIX-011): a staged plan operation carries the
+// same node/connection payload as create_component/update_component — one
+// authoring vocabulary, whichever door it arrives through.
 
-const portSchema = z
+export const portSchema = z
   .object({ name: z.string() })
   .passthrough()
   .describe('Port definition; `name` required, other fields (type, displayName, plug, group…) pass through');
 
-const nodeSchema = z
+export const nodeSchema = z
   .object({
     id: z.string().optional().describe('Unique node id; generated when omitted (but required to wire connections)'),
     type: z.string().describe('Catalog typeName ("Group") or a component legacyName ("/Pages/Home") to instantiate it'),
@@ -54,7 +57,7 @@ const nodeSchema = z
   })
   .passthrough();
 
-const connectionSchema = z.object({
+export const connectionSchema = z.object({
   fromId: z.string(),
   fromProperty: z.string().describe('Output port name on the source node'),
   toId: z.string(),
@@ -100,13 +103,82 @@ const operationSchema = z.discriminatedUnion('op', [
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 /** What agents may send: a NodeV2 whose id we generate when omitted. */
-type NodeInput = Omit<NodeV2, 'id'> & { id?: string };
+export type NodeInput = Omit<NodeV2, 'id'> & { id?: string };
 type OperationInput =
   | Exclude<UpdateOperation, { op: 'add_node' }>
   | { op: 'add_node'; node: NodeInput; index?: number };
 
-function ensureIds(nodes: NodeInput[]): NodeV2[] {
+export function ensureIds(nodes: NodeInput[]): NodeV2[] {
   return nodes.map((n) => ({ ...n, id: n.id ?? crypto.randomUUID() }) as NodeV2);
+}
+
+/**
+ * Assemble the three v2 files for a brand-new component — the exact shape
+ * `create_component` writes. Shared with the plan tools (AIX-011) so a staged
+ * plan create and a direct create can never drift. Hierarchy must already be
+ * reconciled.
+ */
+export function assembleCreateFiles(args: {
+  path: string;
+  legacyName: string;
+  type?: 'page' | 'visual' | 'logic' | 'cloud';
+  nodes: NodeV2[];
+  connections?: ConnectionV2[];
+  visualRoots?: string[];
+  description?: string;
+  modifiedBy?: string;
+}): ComponentFiles {
+  const now = new Date().toISOString();
+  const componentId = crypto.randomUUID();
+  const component: ComponentV2File = {
+    $schema: 'https://opennoodl.dev/schemas/component-v2.json',
+    id: componentId,
+    name: args.path.split('/').pop() ?? args.path,
+    path: args.legacyName,
+    type: args.type ?? inferComponentType(args.legacyName),
+    created: now,
+    modified: now,
+    modifiedBy: args.modifiedBy ?? 'noodl-mcp',
+    ...(args.description ? { description: args.description } : {})
+  };
+  const nodes: NodesV2File = {
+    $schema: 'https://opennoodl.dev/schemas/nodes-v2.json',
+    componentId,
+    version: 1,
+    nodes: args.nodes,
+    ...(args.visualRoots?.length ? { visualRoots: args.visualRoots } : {})
+  };
+  const connections: ConnectionsV2File = {
+    $schema: 'https://opennoodl.dev/schemas/connections-v2.json',
+    componentId,
+    version: 1,
+    connections: args.connections ?? []
+  };
+  return { component, nodes, connections };
+}
+
+/**
+ * Assemble an update candidate from a full graph replacement over a baseline —
+ * the exact shape `update_component`'s `set` branch writes. Shared with the
+ * plan tools (AIX-011). Hierarchy must already be reconciled.
+ */
+export function assembleSetFiles(
+  baseline: ComponentFiles,
+  set: { nodes: NodeV2[]; connections?: ConnectionV2[]; visualRoots?: string[] }
+): ComponentFiles {
+  const candidate: ComponentFiles = JSON.parse(JSON.stringify(baseline));
+  candidate.nodes.nodes = set.nodes;
+  if (set.visualRoots !== undefined) {
+    if (set.visualRoots.length > 0) candidate.nodes.visualRoots = set.visualRoots;
+    else delete candidate.nodes.visualRoots;
+  }
+  if (set.connections !== undefined) {
+    candidate.connections.connections = set.connections;
+  }
+  candidate.component.modified = new Date().toISOString();
+  candidate.component.modifiedBy = 'noodl-mcp';
+  backfillIds(candidate);
+  return candidate;
 }
 
 function normalizeOperations(operations: OperationInput[]): UpdateOperation[] {
@@ -210,33 +282,15 @@ export function registerAuthorTools(server: McpServer, store: ProjectStore): voi
           throw new ToolError('invalid-argument', 'Node hierarchy is inconsistent.', { errors: reconciled.errors });
         }
 
-        const now = new Date().toISOString();
-        const componentId = crypto.randomUUID();
-        const component: ComponentV2File = {
-          $schema: 'https://opennoodl.dev/schemas/component-v2.json',
-          id: componentId,
-          name: args.path.split('/').pop() ?? args.path,
-          path: legacyName,
-          type: args.type ?? inferComponentType(legacyName),
-          created: now,
-          modified: now,
-          modifiedBy: 'noodl-mcp',
-          ...(args.description ? { description: args.description } : {})
-        };
-        const nodes: NodesV2File = {
-          $schema: 'https://opennoodl.dev/schemas/nodes-v2.json',
-          componentId,
-          version: 1,
+        const candidate = assembleCreateFiles({
+          path: args.path,
+          legacyName,
+          type: args.type,
           nodes: reconciled.nodes,
-          ...(args.visual_roots?.length ? { visualRoots: args.visual_roots } : {})
-        };
-        const connections: ConnectionsV2File = {
-          $schema: 'https://opennoodl.dev/schemas/connections-v2.json',
-          componentId,
-          version: 1,
-          connections: args.connections ?? []
-        };
-        const candidate: ComponentFiles = { component, nodes, connections };
+          connections: args.connections,
+          visualRoots: args.visual_roots,
+          description: args.description
+        });
 
         const validation = validateCandidate(store, args.path, candidate, undefined, {
           allowUnknownTypes: args.allow_unknown_types
@@ -247,7 +301,7 @@ export function registerAuthorTools(server: McpServer, store: ProjectStore): voi
         const payload: CreateComponentResponse = {
           created: args.path,
           legacyName,
-          type: component.type,
+          type: candidate.component.type,
           revision,
           registry: 'updated',
           ...successPayload(validation)
@@ -303,15 +357,11 @@ export function registerAuthorTools(server: McpServer, store: ProjectStore): voi
           if (reconciled.errors.length > 0) {
             throw new ToolError('invalid-argument', 'Node hierarchy is inconsistent.', { errors: reconciled.errors });
           }
-          candidate = JSON.parse(JSON.stringify(baseline));
-          candidate.nodes.nodes = reconciled.nodes;
-          if (args.set.visual_roots !== undefined) {
-            if (args.set.visual_roots.length > 0) candidate.nodes.visualRoots = args.set.visual_roots;
-            else delete candidate.nodes.visualRoots;
-          }
-          if (args.set.connections !== undefined) {
-            candidate.connections.connections = args.set.connections;
-          }
+          candidate = assembleSetFiles(baseline, {
+            nodes: reconciled.nodes,
+            connections: args.set.connections,
+            visualRoots: args.set.visual_roots
+          });
         } else {
           const result = applyOperations(baseline, normalizeOperations(args.operations!));
           if (result.errors.length > 0) {

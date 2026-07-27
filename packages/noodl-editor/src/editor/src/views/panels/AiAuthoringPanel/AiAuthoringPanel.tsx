@@ -54,10 +54,14 @@ import { AuthoringPreviewDocumentProvider } from '../../documents/AuthoringPrevi
 import { ChangeReviewDocumentProvider } from '../../documents/ChangeReviewDocument';
 import { EditorDocumentProvider } from '../../documents/EditorDocument';
 import css from './AiAuthoringPanel.module.scss';
+import { ProjectAuthoringView } from './ProjectAuthoringView';
+
+/** AIX-011: the panel's two scopes. Component stays the default — and unchanged. */
+type AuthoringScope = 'component' | 'project';
 
 export const AiAuthoringPanel_ID = 'ai-authoring';
 
-function ActivityRow({ activity }: { activity: AuthoringActivity }) {
+export function ActivityRow({ activity }: { activity: AuthoringActivity }) {
   switch (activity.kind) {
     case 'user':
       return (
@@ -139,6 +143,7 @@ function outcomeNote(state: AuthoringSessionState): { text: string; type: Feedba
 }
 
 export function AiAuthoringPanel() {
+  const [scope, setScope] = useState<AuthoringScope>('component');
   const [componentPath, setComponentPath] = useState('');
   const [description, setDescription] = useState('');
   const [state, setState] = useState<AuthoringSessionState | null>(null);
@@ -359,6 +364,29 @@ export function AiAuthoringPanel() {
     <BasePanel title="Build" isFill>
       <ExperimentalFlag />
 
+      {/* AIX-011: scope toggle. Component scope is the default and behaves
+          exactly as before; project scope plans, then fans out. */}
+      <Section variant={SectionVariant.PanelShy} hasGutter>
+        <HStack UNSAFE_style={{ gap: 8 }}>
+          <PrimaryButton
+            label="This component"
+            variant={scope === 'component' ? PrimaryButtonVariant.Muted : PrimaryButtonVariant.Ghost}
+            isGrowing
+            onClick={() => setScope('component')}
+          />
+          <PrimaryButton
+            label="Project"
+            variant={scope === 'project' ? PrimaryButtonVariant.Muted : PrimaryButtonVariant.Ghost}
+            isGrowing
+            onClick={() => setScope('project')}
+          />
+        </HStack>
+      </Section>
+
+      {scope === 'project' ? (
+        <ProjectAuthoringView isConfigured={isConfigured} hasProject={hasProject} />
+      ) : (
+        <>
       <Section variant={SectionVariant.PanelShy} hasGutter>
         <VStack UNSAFE_style={{ gap: 8 }}>
           {!isConfigured && (
@@ -526,6 +554,8 @@ export function AiAuthoringPanel() {
             </HStack>
           </VStack>
         </Section>
+      )}
+        </>
       )}
     </BasePanel>
   );

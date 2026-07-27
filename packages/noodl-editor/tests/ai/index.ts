@@ -47,3 +47,9 @@ export * from './project-docs.test';
 export * from './authoring-changeset.test';
 export * from './authoring-review.test';
 export * from './authoring-apply.test';
+
+// AIX-011: project-scope authoring. The plan model + planning session +
+// orchestrator (scripted chat, corpus graph), and the plan transaction —
+// including criterion 4's byte-for-byte real-file undo comparison.
+export * from './authoring-plan.test';
+export * from './authoring-plan-staging.test';
