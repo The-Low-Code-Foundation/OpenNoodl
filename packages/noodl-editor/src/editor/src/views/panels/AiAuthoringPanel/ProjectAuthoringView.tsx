@@ -34,6 +34,10 @@ import {
   type PlanRunState
 } from '@noodl-models/AiAssistant/authoring';
 import { fromProjectModel } from '@noodl-models/AiAssistant/explain/graph';
+// Imported from the module rather than the `scoping` barrel: the barrel pulls
+// `ScopingSession` (the AI client) and `scopeDocs` (the platform filesystem),
+// and this seam is a plain-data handover that needs neither.
+import { takePendingScopePlan, type PendingScopePlan } from '@noodl-models/AiAssistant/scoping/pendingPlan';
 import { AppRegistry } from '@noodl-models/app_registry';
 import { createPlanDocWriter, ProjectDocsModel } from '@noodl-models/ProjectDocs';
 import { ProjectModel } from '@noodl-models/projectmodel';
@@ -100,10 +104,38 @@ export interface ProjectAuthoringViewProps {
 }
 
 export function ProjectAuthoringView({ isConfigured, hasProject }: ProjectAuthoringViewProps) {
+  // AIX-012 handover: a plan agreed in the launcher's scoping conversation,
+  // which created this project minutes ago and deliberately did not build it.
+  //
+  // Consumed here rather than in the panel because the plan state lives here,
+  // and taken once at first render — the same one-shot ref the AIX-010 banner
+  // request uses, for the same reason: two consumers of a destructive `take`
+  // would race, and the loser would silently show no plan.
+  //
+  // It arrives as an ordinary proposed plan, not an approved one. Every row is
+  // still prunable and nothing reaches the project until Apply, so a plan
+  // agreed in a conversation gets exactly the same gate as one typed here.
+  const arrivedWithPlan = useRef<PendingScopePlan | undefined | 'unread'>('unread');
+  if (arrivedWithPlan.current === 'unread') {
+    arrivedWithPlan.current = takePendingScopePlan(ProjectModel.instance?.id);
+  }
+  const scopePlan = arrivedWithPlan.current;
+
   const [description, setDescription] = useState('');
   const [planBusy, setPlanBusy] = useState(false);
-  const [plan, setPlan] = useState<AuthoringPlan | null>(null);
-  const [note, setNote] = useState<{ text: string; type: FeedbackType } | null>(null);
+  const [plan, setPlan] = useState<AuthoringPlan | null>(scopePlan?.plan ?? null);
+  const [note, setNote] = useState<{ text: string; type: FeedbackType } | null>(
+    scopePlan
+      ? {
+          text:
+            `From the scoping conversation that created this project — ${scopePlan.plan.operations.length} ` +
+            `operation${scopePlan.plan.operations.length === 1 ? '' : 's'}. Nothing has been built yet. Drop ` +
+            `anything you have changed your mind about, then author it. The conversation is recorded in ` +
+            `${scopePlan.recordPath}.`,
+          type: FeedbackType.Notice
+        }
+      : null
+  );
   const [runState, setRunState] = useState<PlanRunState | null>(null);
   const [excluded, setExcluded] = useState<ReadonlySet<string>>(new Set());
   const [applied, setApplied] = useState<{ count: number; docs: string[] } | null>(null);

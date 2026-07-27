@@ -30,6 +30,9 @@ import {
 import { AiClient } from '@noodl-models/AiAssistant/client';
 import { fromProjectModel } from '@noodl-models/AiAssistant/explain/graph';
 import { ProjectReviewStore } from '@noodl-models/AiAssistant/review';
+// The module, not the `scoping` barrel — the barrel pulls the AI client and the
+// platform filesystem, and this is a plain-data peek.
+import { peekPendingScopePlan } from '@noodl-models/AiAssistant/scoping/pendingPlan';
 import { authoringTelemetry } from '@noodl-models/AiAssistant/telemetry';
 import { AppRegistry } from '@noodl-models/app_registry';
 import { ProjectModel } from '@noodl-models/projectmodel';
@@ -161,7 +164,21 @@ export function AiAuthoringPanel() {
   if (arrivedFromBanner.current === undefined) {
     arrivedFromBanner.current = ProjectReviewStore.instance.consumeReviewRequest();
   }
-  const [scope, setScope] = useState<AuthoringScope>(arrivedFromBanner.current ? 'review' : 'component');
+  // AIX-012: a project created from a scoping conversation arrives with a plan
+  // waiting. Peeked, never consumed — `ProjectAuthoringView` owns the plan
+  // state and does the destructive `take`; this only decides which scope opens.
+  //
+  // A banner click still wins, on the reading that it is the more recent of the
+  // two intents. In practice they barely overlap: the review banner shows only
+  // when a project has no `docs/CONVENTIONS.md`, and a scoped project is
+  // created with one.
+  const scopePlanWaiting = useRef<boolean | undefined>(undefined);
+  if (scopePlanWaiting.current === undefined) {
+    scopePlanWaiting.current = Boolean(peekPendingScopePlan(ProjectModel.instance?.id));
+  }
+  const [scope, setScope] = useState<AuthoringScope>(
+    arrivedFromBanner.current ? 'review' : scopePlanWaiting.current ? 'project' : 'component'
+  );
   /** True only when a banner sent the user here — see ProjectReviewView. */
   const [reviewFromBanner, setReviewFromBanner] = useState(arrivedFromBanner.current);
   const [componentPath, setComponentPath] = useState('');
