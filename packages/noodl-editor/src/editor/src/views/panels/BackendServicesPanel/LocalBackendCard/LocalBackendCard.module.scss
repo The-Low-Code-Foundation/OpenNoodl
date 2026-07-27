@@ -1,4 +1,22 @@
+/* PNL-004: this card is the phase's reported overflow.
+ *
+ * Running, "Start" becomes "Stop" and four more buttons appear, and the action
+ * row scrolled sideways out of the panel because it was a plain `HStack` — one
+ * non-wrapping flex line. The endpoint URL did the same to the card, having no
+ * `min-width: 0` to shrink below its text.
+ *
+ * The fix is `flex-wrap` + `flex: 1 1 <basis>` + `min-width: 0`, which reflows
+ * at every width with no query at all. The card also declares `panel-body` on
+ * itself, so any `PanelRow` inside it follows the *card's* width — the same
+ * card reads correctly in a 268px docked panel and a 600px floating one.
+ */
 .Root {
+  container-type: inline-size;
+  container-name: panel-body;
+
+  box-sizing: border-box;
+  min-width: 0;
+
   background-color: var(--theme-color-bg-3);
   border: 1px solid var(--theme-color-border-default);
   border-radius: 6px;
@@ -13,9 +31,34 @@
 
 .Header {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
   margin-bottom: 8px;
+}
+
+/* The name block is what gives way; the icon and the status pill do not. */
+.Identity {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  flex: 1 1 140px;
+  min-width: 0;
+}
+
+.IdentityText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+
+  /* A long backend name ellipsises rather than widening the card. */
+  > * {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 }
 
 .TypeIcon {
@@ -32,6 +75,7 @@
 .StatusBadge {
   display: flex;
   align-items: center;
+  flex: 0 0 auto;
   padding: 2px 6px;
   border-radius: 4px;
   background-color: var(--theme-color-bg-2);
@@ -40,6 +84,8 @@
 .Endpoint {
   display: flex;
   align-items: center;
+  gap: 8px;
+  min-width: 0;
   background-color: var(--theme-color-bg-2);
   border: 1px solid var(--theme-color-border-default);
   border-radius: 4px;
@@ -53,14 +99,34 @@
   }
 }
 
+/* The URL is the part that gives way. Without this it pushed the card wider
+   than the panel — the second half of the reported defect. */
+.EndpointUrl {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.EndpointHint {
+  flex: 0 0 auto;
+}
+
 .PersistenceNotice {
   display: flex;
   align-items: flex-start;
+  min-width: 0;
   background-color: var(--theme-color-bg-2);
   border: 1px solid currentColor;
   border-radius: 4px;
   padding: 6px 8px;
   margin-bottom: 8px;
+}
+
+.PersistenceNoticeText {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .Info {
@@ -72,6 +138,29 @@
 .Actions {
   padding-top: 8px;
   border-top: 1px solid var(--theme-color-border-default);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+}
+
+/* Start/Stop is the primary action and owns its own row — mock's reading, and
+   the reason the remaining buttons have room to be equal. */
+.PrimaryAction {
+  flex: 1 1 100%;
+  min-width: 0;
+}
+
+/* 84px fits "Schema" and lets three share a 300px panel; below that they wrap
+   two-up, then one-up, without ever leaving the card. */
+.SecondaryAction {
+  flex: 1 1 84px;
+  min-width: 0;
+}
+
+/* The overflow menu never grows and never wraps to its own line alone. */
+.MoreAction {
+  flex: 0 0 auto;
 }
 
 .SchemaPanelOverlay {

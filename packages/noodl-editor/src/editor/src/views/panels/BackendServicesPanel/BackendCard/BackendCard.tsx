@@ -7,7 +7,7 @@
  * @since 1.2.0
  */
 
-import React from 'react';
+import React, { useCallback } from 'react';
 
 import { BackendConfig, ConnectionStatus } from '@noodl-models/BackendServices';
 import { getPreset } from '@noodl-models/BackendServices/presets';
@@ -15,9 +15,10 @@ import { getPreset } from '@noodl-models/BackendServices/presets';
 import { Icon, IconName, IconSize } from '@noodl-core-ui/components/common/Icon';
 import { IconButton } from '@noodl-core-ui/components/inputs/IconButton';
 import { PrimaryButton, PrimaryButtonSize, PrimaryButtonVariant } from '@noodl-core-ui/components/inputs/PrimaryButton';
-import { HStack, VStack } from '@noodl-core-ui/components/layout/Stack';
+import { MenuDialogWidth } from '@noodl-core-ui/components/popups/MenuDialog';
 import { Text, TextType } from '@noodl-core-ui/components/typography/Text';
 
+import { showContextMenuInPopup } from '../../../ShowContextMenuInPopup';
 import css from './BackendCard.module.scss';
 
 export interface BackendCardProps {
@@ -58,21 +59,38 @@ export function BackendCard({
   const preset = getPreset(backend.type);
   const statusDisplay = getStatusDisplay(backend.status);
 
+  // PNL-004: destructive actions belong behind the menu, not one mis-click away
+  // from "Sync schema" in a row that used to scroll sideways.
+  const handleShowMore = useCallback(() => {
+    showContextMenuInPopup({
+      items: [
+        {
+          label: 'Delete backend',
+          icon: IconName.Trash,
+          isDangerous: true,
+          onClick: onDelete,
+          testId: `delete-backend-${backend.id}`
+        }
+      ],
+      width: MenuDialogWidth.Default
+    });
+  }, [backend.id, onDelete]);
+
   return (
     <div className={`${css.Root} ${isActive ? css.Active : ''}`} data-test={`backend-card-${backend.id}`}>
       {/* Header */}
       <div className={css.Header}>
-        <HStack hasSpacing>
+        <div className={css.Identity}>
           <div className={css.TypeIcon}>
             <Text textType={TextType.Proud}>{preset.displayName.charAt(0).toUpperCase()}</Text>
           </div>
-          <VStack>
+          <div className={css.IdentityText} title={`${backend.name}\n${backend.url}`}>
             <Text textType={TextType.DefaultContrast}>{backend.name}</Text>
             <Text textType={TextType.Shy} style={{ fontSize: '11px' }}>
               {preset.displayName} • {backend.url}
             </Text>
-          </VStack>
-        </HStack>
+          </div>
+        </div>
 
         {isActive && (
           <div className={css.ActiveBadge}>
@@ -85,7 +103,7 @@ export function BackendCard({
 
       {/* Status */}
       <div className={css.Status}>
-        <HStack hasSpacing>
+        <div className={css.StatusLine}>
           <Icon icon={statusDisplay.icon} size={IconSize.Tiny} UNSAFE_style={{ color: statusDisplay.color }} />
           <Text textType={TextType.Shy}>{statusDisplay.text}</Text>
           {backend.lastSynced && (
@@ -93,9 +111,13 @@ export function BackendCard({
               • Last sync: {new Date(backend.lastSynced).toLocaleTimeString()}
             </Text>
           )}
-        </HStack>
+        </div>
         {backend.lastError && (
-          <Text textType={TextType.Shy} style={{ fontSize: '11px', color: 'var(--theme-color-danger)' }}>
+          <Text
+            className={css.StatusError}
+            textType={TextType.Shy}
+            style={{ fontSize: '11px', color: 'var(--theme-color-danger)' }}
+          >
             {backend.lastError}
           </Text>
         )}
@@ -110,36 +132,46 @@ export function BackendCard({
         </div>
       )}
 
-      {/* Actions */}
+      {/* Actions — the primary action owns its own row; the two inspection
+          actions wrap beneath it; delete is destructive and lives behind `⋯`. */}
       <div className={css.Actions}>
-        <HStack hasSpacing>
-          {!isActive && (
+        {!isActive && (
+          <div className={css.PrimaryAction}>
             <PrimaryButton
-              label="Set Active"
+              label="Set active"
               size={PrimaryButtonSize.Small}
               variant={PrimaryButtonVariant.Muted}
               onClick={onSetActive}
+              isGrowing
             />
-          )}
+          </div>
+        )}
+        <div className={css.SecondaryAction}>
           <PrimaryButton
             label="Test"
             size={PrimaryButtonSize.Small}
             variant={PrimaryButtonVariant.Muted}
             onClick={onTestConnection}
+            isGrowing
           />
+        </div>
+        <div className={css.SecondaryAction}>
           <PrimaryButton
-            label="Sync Schema"
+            label="Sync schema"
             size={PrimaryButtonSize.Small}
             variant={PrimaryButtonVariant.Muted}
             onClick={onFetchSchema}
+            isGrowing
           />
+        </div>
+        <div className={css.MoreAction}>
           <IconButton
-            icon={IconName.Trash}
+            icon={IconName.DotsThreeHorizontal}
             size={IconSize.Small}
-            onClick={onDelete}
-            testId={`delete-backend-${backend.id}`}
+            onClick={handleShowMore}
+            testId={`backend-more-${backend.id}`}
           />
-        </HStack>
+        </div>
       </div>
     </div>
   );
