@@ -46,6 +46,8 @@ const variantsStyles = require('../testfs/import_proj5/project.json') as LegacyP
 const commentsLarge = require('../testfs/git-repo-utf8/project.json') as LegacyProject; // 44 comps, comments
 const xlarge = require('../testfs/big-merge-test-mine/project.json') as LegacyProject; // 176 comps — scale
 const syntheticAwkward = require('./fixtures/synthetic-awkward.project.json') as LegacyProject;
+// SUB-011: object-valued (inline expression) parameters — see expression-parameters.test.ts
+const expressionParameters = require('./fixtures/expression-parameters.project.json') as LegacyProject;
 /* eslint-enable @typescript-eslint/no-var-requires */
 
 // ── Round-trip bridge ────────────────────────────────────────────────────────
@@ -116,7 +118,8 @@ const CORPUS: Array<{ name: string; project: LegacyProject }> = [
   { name: 'variants + styles (import_proj5)', project: variantsStyles },
   { name: 'comments, 44 components (git-repo-utf8)', project: commentsLarge },
   { name: 'xlarge, 176 components (big-merge-test-mine)', project: xlarge },
-  { name: 'synthetic awkward (all edge fields)', project: syntheticAwkward }
+  { name: 'synthetic awkward (all edge fields)', project: syntheticAwkward },
+  { name: 'object-valued expression parameters (SUB-011)', project: expressionParameters }
 ];
 
 // ── Whole-object round-trip ──────────────────────────────────────────────────

@@ -30,7 +30,8 @@ const FIXTURES: LegacyProject[] = [
   require('../testfs/import_proj5/project.json'),
   require('../testfs/git-repo-utf8/project.json'),
   require('../testfs/big-merge-test-mine/project.json'),
-  require('./fixtures/synthetic-awkward.project.json')
+  require('./fixtures/synthetic-awkward.project.json'),
+  require('./fixtures/expression-parameters.project.json')
 ];
 /* eslint-enable @typescript-eslint/no-var-requires */
 
