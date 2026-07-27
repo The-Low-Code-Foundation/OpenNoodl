@@ -28,6 +28,32 @@ The raw material exists. `packages/noodl-editor/src/editor/src/models/AiAssistan
 | AIX-005 | [Agentic UI Nodes](./AIX-005-AGENTIC-UI-NODES.md) | Implement phase-3.5's AGENT-001..007 (SSE/WebSocket/state-store nodes) so Noodl apps can *be* agent frontends | 6-8 wks | 🟠 Opus 4.8 |
 | AIX-006 | [Style Vocabulary](./AIX-006-STYLE-VOCABULARY.md) | Expose the shipped phase-9 token/variant system to the authoring loop + MCP; StyleAnalyzer as post-generation style linter. Added 2026-07-24 from the salvage audit — the cheapest visible quality jump for the G2 demo | ~1 wk | 🟠 Opus 4.8 |
 | AIX-007 | [Token Cost Reduction](./AIX-007-TOKEN-COST-REDUCTION.md) | Prompt caching + cache-first prefix ordering, per-call-site reasoning effort, cache-aware cost accounting, model default re-decided on evidence. Added 2026-07-26 from a cost review of the AIX-002 slice-5 measurements — four unexploited levers, ≥30% target | ~1 wk | 🟠 Opus 4.8 |
+| AIX-008 | [Sandbox Preview](./AIX-008-SANDBOX-PREVIEW.md) | Render the staged candidate, running on sandboxed data, beside its graph | ~1 wk | 🟠 Opus 4.8 |
+| AIX-009 | [Project Context Documents](./AIX-009-PROJECT-CONTEXT-DOCS.md) | A git-tracked `docs/` the human owns and the AI reads before authoring — brief, architecture, and the conventions file that outranks the agent's defaults. **Blocked on the deployment overhaul:** project files currently ship to the public origin | ~1-2 wks | 🔵 Fable 5 |
+| AIX-010 | [Project Review & Docs Retrofit](./AIX-010-PROJECT-REVIEW-AND-DOCS-RETROFIT.md) | Read an existing hand-built project and draft its docs for review; surfaced as a dismissible recommendation, never auto-run | ~1-2 wks | 🟠 Opus 4.8 |
+| AIX-011 | [Project-Scope Authoring](./AIX-011-PROJECT-SCOPE-AUTHORING.md) | Raise authoring from one component to a reviewed multi-component plan, staged all-or-nothing under one undo step. Makes "wire this page up to the others" possible | ~3-4 wks | 🔵 Fable 5 |
+| AIX-012 | [AI Project Creation](./AIX-012-AI-PROJECT-CREATION.md) | "Start with AI" at the launcher: a scoping conversation that produces project + docs + a plan, stopping deliberately short of building | ~2 wks | 🔵 Fable 5 |
+
+### The AIX-009…012 group (added 2026-07-27)
+
+These four are **one feature in four shippable pieces**, filed together after a
+scoping discussion. The through-line: the assistant is not short of capability,
+it is short of *this project's* context — and the moment that context is
+cheapest to capture is the moment nobody is capturing it.
+
+AIX-009 defines where that context lives and feeds it to the authoring prompt,
+reusing the exact seam AIX-006 used to get 2.4× more on-system styling. AIX-010
+back-fills it for projects that already exist. AIX-011 removes the
+one-component ceiling so the assistant can act at the scale the docs describe.
+AIX-012 puts the whole thing at the front door, where a scoping conversation is
+happening anyway.
+
+Deliberate non-goal across all four: **no AI-generated markdown that describes
+the graph.** Explain Mode already narrates the live artifact on demand, and a
+prose copy is a second source of truth that rots on the next node drag — which
+would quietly undo this phase's premise that the graph *is* the legible spec.
+The docs hold only what the graph structurally cannot: intent, decisions,
+rejected alternatives, external contracts, and the rules for next time.
 
 ---
 
@@ -43,6 +69,11 @@ AIX-001 (modern client) ── first; everything else calls through it
     └──► AIX-004 (explain mode)     ⟵ same catalog as AIX-002; can run in parallel
 
 AIX-007 (token cost) ── after AIX-002 ships; needs its measured baseline to optimise against
+
+AIX-009 (project docs) ⟵ BLOCKED on the deployment overhaul (private files deploy today)
+    ├──► AIX-010 (docs retrofit)        ⟵ also needs AIX-004's graph reading
+    └──► AIX-011 (project-scope authoring) ⟵ also needs AIX-003's review document
+             └──► AIX-012 (AI project creation)
 ```
 
 - **AIX-001 goes first.** It is pure plumbing with no cross-phase dependencies, and every other task consumes it.
@@ -50,6 +81,9 @@ AIX-007 (token cost) ── after AIX-002 ships; needs its measured baseline to 
 - **AIX-003 depends on phase-13 SUB-007** (v2-aware graph diff).
 - **AIX-005 is last, by design.** Phase 3.5 (AGENT-001..007) is 0/7 spec stubs today; it is genuinely differentiating but pointless before the authoring loop exists.
 - **AIX-007 could not have been written earlier.** It optimises against AIX-002's slice-5 live measurements; before those existed there was no baseline to beat and no way to tell a real saving from a plausible one. It edits the adapter layer, so explain mode and review inherit the wins without their own work.
+- **AIX-009 is blocked outside this phase.** `copyProjectFilesToFolder` copies the whole project folder into the deploy output past a five-name hardcoded filter, so a `docs/` folder of private scoping notes would be served from the app's public origin. The fix belongs to the deployment overhaul — the hand-off is written paste-ready in [DEPLOY-HANDOFF-PROJECT-DOCS.md](./DEPLOY-HANDOFF-PROJECT-DOCS.md), and AIX-009's acceptance criterion 8 is the interlock.
+- **AIX-011 is the hard one, and the reason is transactional, not conversational.** Reject is currently safe for a *structural* reason — a staged candidate is a detached `ComponentModel` and rejecting means `ProjectModel` was never called. Applying N components naively breaks that property. Preserving it (stage everything, apply inside one `UndoActionGroup`) is the task's actual engineering content.
+- **The multi-component substrate already exists — in MCP, not the editor.** `create_component`, `update_component`, `delete_component` and `search_project` are live in `packages/noodl-mcp`, and Claude Code driving a project does genuine project-scope work today. AIX-011 is not new primitives; it is bringing that reach into the surface that has the canvas, the diff review and the undo stack.
 
 ## Exit Criterion
 
