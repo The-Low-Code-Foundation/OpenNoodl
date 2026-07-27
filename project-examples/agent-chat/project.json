@@ -1293,7 +1293,7 @@
                 "x": 0,
                 "y": 0,
                 "parameters": {
-                  "text": "You",
+                  "text": "",
                   "fontSize": {
                     "value": "13",
                     "unit": "px"
@@ -1321,67 +1321,43 @@
             ]
           },
           {
-            "id": "5f827a45-37ff-4746-8d32-19fde99f43bb",
-            "type": "net.noodl.ComponentObject",
+            "id": "3d6a0b17-1c94-4c1a-9a3f-2b7f0e5c81aa",
+            "type": "Component Inputs",
             "x": 520,
             "y": 40,
-            "parameters": {
-              "properties": "role,text"
-            },
-            "ports": [],
-            "children": [],
-            "dynamicports": [
+            "parameters": {},
+            "ports": [
               {
-                "type": {
-                  "name": "*",
-                  "allowConnectionsOnly": true
-                },
-                "plug": "input/output",
-                "group": "Properties",
-                "name": "value-role",
-                "displayName": "role",
-                "index": 4
-              },
-              {
-                "type": "signal",
+                "name": "role",
                 "plug": "output",
-                "group": "Changed Events",
-                "displayName": "role Changed",
-                "name": "changed-role",
-                "index": 5
-              },
-              {
                 "type": {
-                  "name": "*",
-                  "allowConnectionsOnly": true
+                  "name": "*"
                 },
-                "plug": "input/output",
-                "group": "Properties",
-                "name": "value-text",
-                "displayName": "text",
-                "index": 6
+                "index": 0
               },
               {
-                "type": "signal",
+                "name": "text",
                 "plug": "output",
-                "group": "Changed Events",
-                "displayName": "text Changed",
-                "name": "changed-text",
-                "index": 7
+                "type": {
+                  "name": "*"
+                },
+                "index": 1
               }
-            ]
+            ],
+            "dynamicports": [],
+            "children": []
           }
         ],
         "connections": [
           {
-            "fromId": "5f827a45-37ff-4746-8d32-19fde99f43bb",
-            "fromProperty": "value-role",
+            "fromId": "3d6a0b17-1c94-4c1a-9a3f-2b7f0e5c81aa",
+            "fromProperty": "role",
             "toId": "7fbee094-49aa-4a50-8587-0d78a69ed4ad",
             "toProperty": "text"
           },
           {
-            "fromId": "5f827a45-37ff-4746-8d32-19fde99f43bb",
-            "fromProperty": "value-text",
+            "fromId": "3d6a0b17-1c94-4c1a-9a3f-2b7f0e5c81aa",
+            "fromProperty": "text",
             "toId": "7a0218b1-c7b6-4a16-85ba-fa97ba862e2c",
             "toProperty": "text"
           }

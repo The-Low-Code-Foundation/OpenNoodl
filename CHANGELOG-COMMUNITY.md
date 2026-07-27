@@ -55,6 +55,17 @@ This is the strategic heart of the revival, and it's **complete**.
 - **Modern AI client.** Replaced the stale, retired-model plumbing with a provider-agnostic client supporting current Anthropic / OpenAI / OpenAI-compatible models **and local models via Ollama** (for schools and privacy), with secure credential storage.
 - **Explain Mode.** Select any node or subgraph and the AI narrates what it does, where data flows, and what triggers what — read-only, with citations that highlight back onto the canvas.
 
+### 💬 Apps that talk to AI — agent UIs without custom code
+Fifteen new runtime nodes for the shape of app that barely existed when Noodl was written: a front-end for something that answers over time.
+
+- **Streaming.** Server-Sent Events and WebSocket nodes with the connection state — connecting, open, reconnecting, closed, retry count, delivery semantics — as ordinary graph outputs. Reconnection resumes where it left off instead of repeating itself, cancelling mid-answer keeps what already arrived, and navigating away closes the socket.
+- **Assembling a stream.** Text Accumulator, Stream Buffer, JSON Stream Parser and Pattern Extractor turn a burst of tokens into something a Text node can show — including servers that split one JSON object across frames or pack several into one.
+- **App state that outlives a page.** A Global Store with subscribe/set, optimistic updates that roll back when the server disagrees, undo/redo with real history, and named checkpoints.
+- **Letting a server drive the UI, safely.** An Action Dispatcher whose vocabulary is closed and opt-in: anything it does not recognise is refused *with the reason on an output*, never silently.
+- **A worked example.** `project-examples/agent-chat` — a four-page chat app using all fifteen nodes, with a zero-dependency mock endpoint, so it runs with no API key and no account.
+
+Running that example end to end is also how we found two bugs no test could see: the SSE node had never actually worked in a browser (a `fetch` call Node accepts and browsers reject), and a much older one in the runtime itself — when several messages arrived in the same frame, a signal and the value beside it drifted apart, dropping every other token. Both fixed; the second one quietly fixed every node that pairs a value with a signal.
+
 ### ⚛️ React 19 apps — opt in per project
 - **Your apps can now run on React 19.** Flip one setting (Project Settings → Runtime) and both live preview and your next deploy use React 19; leave it alone and nothing changes — existing projects stay on React 18.3 exactly as before, and the switch is fully reversible. Verified by rendering a corpus of real projects head-to-head on both versions (signal ordering, animations, navigation, repeaters): no behavioural differences. The comparison work also uncovered — and fixed — a long-standing bug where styles applied directly to elements (visibility, transforms, animations) silently didn't land until an unrelated re-render. Details: `docs/runtime/REACT-19-RUNTIME.md`.
 

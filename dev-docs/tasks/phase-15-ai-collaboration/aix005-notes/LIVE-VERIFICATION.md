@@ -1,5 +1,11 @@
 # AIX-005 — live editor verification
 
+> **Superseded in part by `LIVE-RUN.md` (same day).** Everything below still holds, but
+> the four items under "Not verified" have since been closed — the app has been run
+> against the mock server, and the object-typed property row and port groups have been
+> seen on screen. Running it found two defects the test suites could not see. Read
+> `LIVE-RUN.md` for what is actually still open.
+
 **Date:** 2026-07-27 · **Branch:** `cline-dev` · **Driven via CDP** (`scripts/devtools/cdp.js`)
 
 Every agent that built these nodes reported "never opened in the editor" as its

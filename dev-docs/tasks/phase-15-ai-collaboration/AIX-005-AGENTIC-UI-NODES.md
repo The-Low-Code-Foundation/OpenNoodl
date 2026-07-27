@@ -150,9 +150,9 @@ Make errors visible. A silent failed reconnection is the worst outcome for an ap
 
 - [x] ~~**Confirm Gate G2 signal is positive before starting** — this task is cancelled if it is not~~ — **overridden 2026-07-26, see the Gate G2 section at the top of this file.** Not satisfied; started regardless, on instruction.
 - [x] ~~Branch `task/aix-005-agentic-ui-nodes`~~ — superseded by the working agreement: task work commits straight to `cline-dev`, no task branches, no PRs
-- [ ] Review phase 3.5 specs; record deviations
-- [ ] SSE node with full lifecycle handling; then accumulators, WebSocket, conversation primitives
-- [ ] Lifecycle matrix testing incl. leak assertions
-- [ ] Example agent chat project
-- [ ] Catalog entries; verify AIX-002 can author with them
-- [ ] CHANGELOG; open PR
+- [x] Review phase 3.5 specs; record deviations — `aix005-notes/AGENT-001-007.md`
+- [x] SSE node with full lifecycle handling; then accumulators, WebSocket, conversation primitives
+- [x] Lifecycle matrix testing incl. leak assertions — and then the same matrix run against a live server *in a browser*, which is what found the two defects the tests could not: see `aix005-notes/LIVE-RUN.md`
+- [x] Example agent chat project — built, then actually run; three defects fixed, streamed answer byte-identical to the server's
+- [x] Catalog entries — 154/154 enriched, gates green — but **AIX-002 authoring with these nodes is not demonstrated**; that needs a live provider and is the one open success criterion
+- [x] CHANGELOG — ~~open PR~~ superseded by the working agreement (commits go straight to `cline-dev`)

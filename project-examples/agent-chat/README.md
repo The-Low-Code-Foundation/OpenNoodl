@@ -44,7 +44,8 @@ the repository.
 | | Press **Undo** / **Redo** | The title reverts and returns. *Can undo* / *Can redo* tell you in advance. |
 | | **Save checkpoint**, change the title, **Restore checkpoint** | Restoring is an ordinary write, so it is itself undoable. |
 | | **Apply**, then **Rollback** | An optimistic rename shown immediately and then reverted, with the reason on *Update error*. Apply, then set the title normally, *then* rollback — the newer value stands and the reason says so. |
-| **Live** | **Connect**, then **Send** | NDJSON bursts arrive — two JSON objects in one frame — so *Values parsed* runs ahead of *Buffered items*. Send `bye` to make the server close with code 1001 and a reason. |
+| **Live** | **Connect**, then **Send** | NDJSON bursts arrive — two JSON objects in one frame — so *Values parsed* runs ahead of *Buffered items*. |
+| | Send `bye` | The server closes with 1001. With Auto Reconnect on — the default here — the socket comes straight back, and *Close code* and *Retries* are both cleared by the reopen, so a close that heals leaves nothing on screen. Watch the mock's own log for `server said goodbye`, or turn Auto Reconnect off to see the close code stand still. |
 
 ## What the mock endpoint serves
 
@@ -83,8 +84,13 @@ Seven components:
   JSON deltas, and an accumulator refuses an object rather than appending
   `[object Object]`. The mock's `/chat/stream` sends bare tokens, so **Text Path**
   is left blank here.
-- **/Message Row** — the Repeater template. A `Component Object` node exposes
-  each message's `role` and `text`.
+- **/Message Row** — the Repeater template. A `Component Inputs` node exposes
+  each message's `role` and `text`. **Component Inputs, not `Component Object`**:
+  a Repeater sets the template's *component inputs* from the item's fields, by
+  name, while `Component Object` is per-instance state that has nothing to do
+  with the repeated item. Wired the wrong way round, the rows still appear — the
+  right number of them — and every field is simply blank, which is how this
+  shipped once.
 - **/#\_\_page\_\_/Tools** — `Action Dispatcher` + one `Action Handler`, fed by a
   second stream, with every refusal output on screen; plus `Pattern Extractor`
   reading the finished answer out of the store.

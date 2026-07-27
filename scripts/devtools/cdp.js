@@ -109,23 +109,33 @@ async function httpJson(urlPath, { attempts = 8, timeoutMs = 2000 } = {}) {
  * Renderer targets, by name. The editor and the preview are separate
  * BrowserWindows, so each is its own CDP page target. DevTools itself also shows
  * up as a page; never match that.
+ *
+ * The in-editor preview is a different animal again: it is a `<webview>` inside
+ * the editor window serving from the dev web server, so it is a `webview` target
+ * rather than a `page`. `viewer` therefore matches either — the detached preview
+ * window or the embedded pane, whichever is up.
  */
 const KNOWN_TARGETS = {
   editor: '/src/editor/index.html',
-  viewer: '/src/frames/viewer-frame/index.html'
+  viewer: ['/src/frames/viewer-frame/index.html', 'localhost:8574', 'Noodl Viewer']
 };
 
 async function appTarget(name = TARGET) {
   const targets = await httpJson('/json/list');
-  const pages = targets.filter((t) => t.type === 'page' && !t.url.startsWith('devtools://'));
-  const needle = KNOWN_TARGETS[name] || name;
-  const match = pages.find((t) => t.url.includes(needle) || t.title.includes(needle));
+  const pages = targets.filter(
+    (t) => (t.type === 'page' || t.type === 'webview') && !t.url.startsWith('devtools://')
+  );
+  const needles = [].concat(KNOWN_TARGETS[name] || name);
+  const match = pages.find((t) => needles.some((n) => t.url.includes(n) || t.title.includes(n)));
 
   // Falling back to the first page keeps `health` useful before the editor has
   // navigated, but only for the default target — an explicit --target=viewer
   // that silently attached to the editor would be worse than an error.
   if (!match && (name === 'editor' || !KNOWN_TARGETS[name])) {
-    if (pages[0]) return pages[0];
+    // Fall back to a real window, never to an embedded webview — attaching to the
+    // preview pane while asking for the editor is the confusion this avoids.
+    const firstWindow = pages.find((t) => t.type === 'page');
+    if (firstWindow) return firstWindow;
   }
   if (!match) {
     const open = pages.map((p) => p.url).join('\n    ') || '(none)';

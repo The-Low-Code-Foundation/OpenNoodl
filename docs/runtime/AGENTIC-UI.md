@@ -156,6 +156,13 @@ Four utilities, all pure — no timers except Stream Buffer's, no transports:
   on `droppedCharacters` / `droppedMessages` and an `overflowed` signal rather
   than dropped quietly. A chunk that is not text (an object, an array) is
   **refused and named on `error`** rather than stringified — see below.
+
+  > The value-and-signal pair is safe under load. A fast stream delivers several
+  > frames inside one update, and the runtime used to let the signal fall out of
+  > step with the value beside it — every other token dropped, the last one
+  > repeated. Fixed in the runtime (a signal is now one queue entry, not two),
+  > which means the same guarantee holds for any node wired this way, not just
+  > this one.
 - **JSON Stream Parser** — an incremental scanner, correct at every chunk
   boundary including one that lands inside a string. `ndjson` for
   newline-delimited, `stream` for concatenated objects or a streamed array,
