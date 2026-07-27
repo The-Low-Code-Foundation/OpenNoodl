@@ -1,7 +1,13 @@
 .Root {
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+
+  /* PNL-001: a section is a fixed-size item in its scroll container. Without
+     this it shrinks to fit and then clips its own content behind the
+     `overflow: hidden` above — the panel never scrolls, the text just ends. */
+  flex-shrink: 0;
 
   &.has-visible-overflow {
     overflow: visible;
@@ -67,8 +73,8 @@
 }
 
 .Body {
-  /* allow scrolling */
-  overflow: hidden overlay;
+  /* allow scrolling (`overlay` is a stale alias for `auto` in current Chromium) */
+  overflow: hidden auto;
   padding-top: 8px;
 
   &.is-variant-in-modal {

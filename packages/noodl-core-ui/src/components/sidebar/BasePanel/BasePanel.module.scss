@@ -1,7 +1,24 @@
+/* PNL-001: the panel's box model and its flex chain.
+ *
+ * Two defects lived here. (a) `.Root` was `height: 100%` + 16px padding + a 1px
+ * border with no `box-sizing`, so its border box was 34px taller than the slot
+ * it was given and the ancestor's `overflow: hidden` ate the difference. (b) the
+ * flex chain Root → Inner → ChildrenContainer had no `min-height: 0`, so the
+ * scroll container sized itself to its content instead of to its parent and
+ * never scrolled — while its children, being shrinkable flex items carrying
+ * their own `overflow: hidden`, squeezed and clipped themselves mid-sentence.
+ *
+ * The padding now lives on the scrolling content rather than on a non-scrolling
+ * ancestor, so the scrollbar reaches the panel edge and the bottom inset scrolls
+ * with the content instead of masking it.
+ */
 .Root {
+  box-sizing: border-box;
+
   display: flex;
   flex-direction: column;
   height: 100%;
+  min-height: 0;
 
   /* Background */
   background-color: var(--theme-color-bg-2);
@@ -10,30 +27,67 @@
   border: 1px solid var(--theme-color-border-subtle);
   border-radius: var(--radius-md);
 
-  /* Consistent padding */
-  padding: var(--spacing-panel-padding);
+  /* Vertical inset stays here — it shortens the scroll viewport, which is
+     correct. The horizontal inset moves down onto the scrolling content so the
+     scrollbar is not pushed 16px inboard of the panel edge. */
+  padding: var(--spacing-panel-padding) 0;
 
   /* Panel gap between children */
   gap: var(--spacing-panel-gap);
 }
 
 .Inner {
+  box-sizing: border-box;
   position: relative;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   flex-grow: 1;
+
+  /* Without this the container sizes to its content, not to the panel, and the
+     `overflow: hidden` below clips instead of the child scrolling. */
+  min-height: 0;
   overflow: hidden;
 }
 
 .ChildrenContainer {
+  box-sizing: border-box;
   overflow: hidden;
+  min-height: 0;
   display: flex;
   flex-direction: column;
 
+  /* The content's inset, so the scrollbar sits at the panel edge rather than
+     16px inboard of it. */
+  padding-inline: var(--spacing-panel-padding);
+  padding-top: 0;
+
+  > * {
+    box-sizing: border-box;
+  }
+
   &.has-content-scroll {
-    overflow-y: overlay;
+    overflow-y: auto;
     z-index: 0;
+
+    /* Every direct child of a *scroll* container is a fixed-size flex item.
+       Stated here, once, rather than on each section component — a section type
+       added later must not be able to reintroduce the squeeze.
+
+       Deliberately scoped to `has-content-scroll`: a panel that brings its own
+       scroller (search results, the explain feed) relies on its child shrinking
+       to the panel and scrolling internally, and pinning those to their content
+       height makes their content unreachable instead. */
+    > * {
+      flex: 0 0 auto;
+    }
+
+    /* Breathing room at the end of the scroll, so the last control is not flush
+       against the panel edge. */
+    padding-bottom: var(--spacing-8);
+
+    /* Reserve the scrollbar's track so content does not reflow when it appears. */
+    scrollbar-gutter: stable;
 
     /* Custom scrollbar styling */
     &::-webkit-scrollbar {
@@ -60,8 +114,13 @@
 }
 
 .Footer {
+  box-sizing: border-box;
   position: sticky;
   bottom: 0;
+  flex: 0 0 auto;
+
+  /* The footer used to inherit its horizontal inset from the root's padding. */
+  padding-inline: var(--spacing-panel-padding);
 
   &::before {
     z-index: -1;

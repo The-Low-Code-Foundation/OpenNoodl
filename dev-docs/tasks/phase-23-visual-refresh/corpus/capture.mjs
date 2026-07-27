@@ -40,8 +40,11 @@ const arg = (name, def) => {
   return i >= 0 && argv[i + 1] ? argv[i + 1] : def;
 };
 const CDP = arg('--cdp', 'http://localhost:9222');
-const WIDTH = 1600;
-const HEIGHT = 1000;
+// Default is the phase-23 reference size. PNL-001 needs a *short* window — the
+// side-panel scroll defects only reproduce when content is taller than the
+// panel — so the size is overridable rather than baked in.
+const WIDTH = Number(arg('--width', 1600));
+const HEIGHT = Number(arg('--height', 1000));
 // One dated folder per run, so before/after live side by side under corpus/.
 const stamp = arg('--label', new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-'));
 const OUT = arg('--out', path.join(__dirname, 'captures', stamp));

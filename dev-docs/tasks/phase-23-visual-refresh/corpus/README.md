@@ -76,11 +76,25 @@ PROGRESS.md), so the earliest reference images are the `screenshots/after-*`
 folders. Going forward, this corpus IS the baseline: capture it before a change,
 capture it after, diff the two folders.
 
+## PNL-001 panel-geometry gate
+
+`panel-geometry.mjs` shares this harness's shape but asserts rather than captures. It walks every
+rail panel at a short window height and fails if any panel has content the user cannot reach —
+either a scroll container that can't reach its end, or an element clipping content behind
+`overflow: hidden`. See [PNL-001-NOTES.md](../../phase-25-side-panel/PNL-001-NOTES.md).
+
+```bash
+node dev-docs/tasks/phase-23-visual-refresh/corpus/panel-geometry.mjs --width 1280 --height 720
+```
+
+Needs a project open, same as the panel captures. Exits non-zero on failure.
+
 ## Files
 
 | File | Role |
 |---|---|
-| `capture.mjs` | raw-CDP capture harness (no deps; Node ≥ 21) |
+| `capture.mjs` | raw-CDP capture harness (no deps; Node ≥ 21). `--width`/`--height` override the 1600×1000 default — PNL-001's "before" set needs a short window |
+| `panel-geometry.mjs` | PNL-001 regression gate: panel scroll reachability, pass/fail |
 | `gallery.mjs` | static before/after gallery generator (no deps) |
 | `run.sh` | one-command wrapper (launch → capture → gallery) |
 | `captures/<stamp>/` | one dated folder per run + `manifest.json` |

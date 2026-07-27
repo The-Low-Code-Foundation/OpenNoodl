@@ -1,7 +1,12 @@
 .Root {
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+
+  /* PNL-001: same as CollapsableSection — a section must not shrink to fit and
+     clip itself; the scroll container is what should overflow. */
+  flex-shrink: 0;
 
   &.has-visible-overflow {
     overflow: visible;
@@ -71,8 +76,8 @@
 }
 
 .Body {
-  /* allow scrolling */
-  overflow: hidden overlay;
+  /* allow scrolling (`overlay` is a stale alias for `auto` in current Chromium) */
+  overflow: hidden auto;
   padding-top: var(--spacing-2);
 
   &.is-variant-in-modal {

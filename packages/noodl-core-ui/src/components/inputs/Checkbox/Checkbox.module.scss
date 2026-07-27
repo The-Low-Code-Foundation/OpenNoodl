@@ -4,6 +4,13 @@
   display: flex;
   align-items: center;
 
+  /* PNL-001: the visually-hidden input below is absolutely positioned. Without
+     a positioned parent its containing block is whatever ancestor happens to be
+     relative — in a side panel that is `BasePanel .Inner`, outside the scroll
+     container — so a checkbox below the fold lands past the panel's bottom and
+     inflates the non-scrolling ancestor's scrollHeight. */
+  position: relative;
+
   &.has-bottom-spacing {
     margin-bottom: 15px;
   }
