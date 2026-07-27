@@ -19,7 +19,6 @@ interface RenameInputProps {
 
 export function RenameInput({ value, onChange, onConfirm, onCancel, level }: RenameInputProps) {
   const inputRef = useRef<HTMLInputElement>(null);
-  const indent = level * 12;
 
   // Auto-focus and select all on mount
   useEffect(() => {
@@ -60,7 +59,9 @@ export function RenameInput({ value, onChange, onConfirm, onCancel, level }: Ren
   );
 
   return (
-    <div className={css['RenameContainer']} style={{ paddingLeft: `${indent + 23}px` }}>
+    /* PNL-006: depth in, padding out — the same `--level` contract the rows use,
+       so the field sits exactly where the row it replaces did. */
+    <div className={css['RenameContainer']} style={{ '--level': String(level) } as React.CSSProperties}>
       <input
         ref={inputRef}
         type="text"

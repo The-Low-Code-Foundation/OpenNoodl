@@ -11,10 +11,12 @@ import { Icon, IconName } from '@noodl-core-ui/components/common/Icon';
 import { MenuDialogWidth } from '@noodl-core-ui/components/popups/MenuDialog';
 
 import { showContextMenuInPopup } from '../../../ShowContextMenuInPopup';
+import { iconForKind, labelForKind } from '../componentKind';
 import css from '../ComponentsPanel.module.scss';
 import { ComponentTemplates } from '../ComponentTemplates';
 import { FolderItemData, Sheet, TreeNode } from '../types';
 import { RenameInput } from './RenameInput';
+import { WarningDot } from './WarningDot';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const PopupLayer = require('@noodl-views/popuplayer').default;
@@ -47,6 +49,8 @@ interface FolderItemProps {
   onOpen?: (node: TreeNode) => void;
   onMakeHome?: (node: TreeNode) => void;
   onDuplicate?: (node: TreeNode) => void;
+  /** PNL-006: kept only as ancestry for a filter match — rendered dimmed. */
+  isDimmed?: boolean;
 }
 
 export function FolderItem({
@@ -74,9 +78,9 @@ export function FolderItem({
   onMoveToSheet,
   onOpen,
   onMakeHome,
-  onDuplicate
+  onDuplicate,
+  isDimmed
 }: FolderItemProps) {
-  const indent = level * 12;
   const itemRef = useRef<HTMLDivElement>(null);
   const dragStartPos = useRef<{ x: number; y: number } | null>(null);
   const [isDropTarget, setIsDropTarget] = useState(false);
@@ -306,15 +310,29 @@ export function FolderItem({
     );
   }
 
+  /* A component-folder is a component that happens to have children, so it wears
+     its own kind's glyph, coloured by its own canvas category — the same as it
+     would if it had no children. A plain folder is structure, not a component,
+     so it keeps the neutral folder glyph and follows its open/closed state. */
+  const kind = folder.isComponentFolder ? folder.kind ?? 'component' : undefined;
+  const icon = kind ? iconForKind(kind) : isExpanded ? IconName.FolderOpen : IconName.FolderClosed;
+
   return (
     <>
       <div
         ref={itemRef}
-        className={classNames(css['TreeItem'], {
+        className={classNames(css['TreeItem'], css['IsFolder'], {
           [css['Selected']]: isSelected,
-          [css['DropTarget']]: isDropTarget
+          [css['DropTarget']]: isDropTarget,
+          [css['IsHome']]: kind === 'home',
+          [css['Dimmed']]: isDimmed
         })}
-        style={{ paddingLeft: `${indent + 10}px` }}
+        // See ComponentItem: depth in, padding and indent guides out, in CSS.
+        style={{ '--level': String(level) } as React.CSSProperties}
+        data-test="component-tree-item"
+        data-kind={kind ?? 'folder'}
+        data-level={level}
+        title={kind ? `${labelForKind(kind)} · ${folder.name}` : folder.name}
         onContextMenu={handleContextMenu}
         onDoubleClick={handleDoubleClick}
         onMouseDown={handleMouseDown}
@@ -328,18 +346,26 @@ export function FolderItem({
           className={classNames(css['Caret'], {
             [css['Expanded']]: isExpanded
           })}
+          data-test="component-tree-caret"
           onClick={(e) => {
             e.stopPropagation();
             onCaretClick();
           }}
         >
-          ▶
+          <Icon icon={IconName.CaretRight} />
         </div>
         <div className={css['ItemContent']} onClick={onClick}>
-          <div className={css['Icon']}>
-            <Icon icon={folder.isComponentFolder ? IconName.ComponentWithChildren : IconName.FolderClosed} />
+          <div
+            className={classNames(
+              css['Icon'],
+              css[`Cat-${(folder.isComponentFolder && folder.category) || 'default'}`],
+              kind === 'home' && css['Kind-home']
+            )}
+          >
+            <Icon icon={icon} />
           </div>
           <div className={css['Label']}>{folder.name}</div>
+          <WarningDot count={folder.warningCount} />
         </div>
       </div>
       {children}

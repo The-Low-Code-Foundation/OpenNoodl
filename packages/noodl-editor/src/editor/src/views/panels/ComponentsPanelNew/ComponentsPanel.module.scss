@@ -1,43 +1,94 @@
 /**
- * ComponentsPanel Styles
- * 
- * Migrated from legacy componentspanel.css to CSS modules
- * Using design tokens for proper theming support
+ * ComponentsPanel — the component tree.
+ *
+ * PNL-005 removed `.ComponentsPanel`, `.Header` and `.Title`: the panel is a
+ * `BasePanel` now, so the shell and the 36px `bg-3` bar are the shared
+ * `PanelHeader`'s job, with the sheet selector in its action slot.
+ *
+ * PNL-006 owns everything below.
+ *
+ * ---------------------------------------------------------------------------
+ * NO BAND QUERY, DELIBERATELY.
+ *
+ * `PanelRow/panel-bands.scss` declares the panel's three width bands and is the
+ * only place their numbers may live. This stylesheet uses none of them, and
+ * therefore restates none of them. A tree row has one layout at every width —
+ * glyph, label, dot — and the phase's own rule applies: overflow is not a layout
+ * change. `min-width: 0` plus `text-overflow: ellipsis` on the label and
+ * `flex-shrink: 0` on the dot reflows correctly at 240px and at 700px with no
+ * container query at all. Acceptance item 7 is satisfied by the box model, not
+ * by a breakpoint.
+ * ---------------------------------------------------------------------------
+ *
+ * WHERE THE GLYPH COLOURS COME FROM.
+ *
+ * The kind glyph is tinted by the component's *canvas category* — the value of
+ * `ComponentModel.color`, which is exactly what `NodeGraphEditorNodePainter`
+ * passes to `CanvasTheme.categoryColors()` when it paints an instance of that
+ * component on the graph. `componentKind.ts` reads it; the class below resolves
+ * it to a colour.
+ *
+ * There is no second palette here. `CanvasTheme` resolves each category from a
+ * `--theme-color-node-category-*` custom property (see its `COLOR_SPECS`); these
+ * rules read the *same* custom properties directly. One token, two consumers, so
+ * the tree and the canvas cannot drift, and the tree re-themes with the document
+ * rather than needing a subscription and a re-render.
+ *
+ * The one mapping worth stating: CanvasTheme's `javascript` category resolves
+ * `--theme-color-node-category-function` (there is no `--…-javascript` token).
+ * The `.Cat-javascript` rule below matches that, deliberately.
  */
 
-/* PNL-005: `.ComponentsPanel`, `.Header` and `.Title` are gone. The panel is a
-   `BasePanel` now, so the shell and the 36px `bg-3` bar with its own 12px title
-   are the shared `PanelHeader`'s job. `.AddButton` below has no reference left in
-   the panel either but is deliberately not deleted here — PNL-006 owns the tree
-   and its controls. */
+/* -----------------------------------------------------------------------------
+ * Tree metrics. One indent step, one inset, stated once and used by the padding,
+ * the guides and the caret alike — the old code carried `level * 12 + 23` for a
+ * component and `level * 12 + 10` for a folder as two unrelated inline magic
+ * numbers, which is why nothing lined up.
+ * -------------------------------------------------------------------------- */
+.Tree {
+  --tree-indent: 12px;
+  --tree-inset: 10px;
+  /* Caret box (12px) + its gap (4px). A component row renders an empty box of
+     exactly this size where a folder's caret would be, so glyphs at the same
+     depth align whether or not the row can be expanded. */
+  --tree-caret-slot: 16px;
+  /* The x of a caret's centre at level 0 — where an ancestor's guide must land. */
+  --tree-guide-x: calc(var(--tree-inset) + 6px);
 
-.AddButton {
-  width: 24px;
-  height: 24px;
-  background-color: transparent;
-  color: var(--theme-color-fg-default);
-  border: none;
-  border-radius: 2px;
-  cursor: pointer;
-  font-size: 18px;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden auto;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0.6;
-  transition: opacity var(--speed-turbo), background-color var(--speed-turbo);
+  flex-direction: column;
+  scrollbar-gutter: stable;
 
-  &:hover {
-    background-color: var(--theme-color-bg-1);
-    color: var(--theme-color-fg-highlight);
-    opacity: 1;
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: var(--theme-color-bg-5);
+    border-radius: var(--radius-full);
+
+    &:hover {
+      background: var(--theme-color-fg-muted);
+    }
   }
 }
 
-.Tree {
-  flex: 1;
-  overflow: hidden overlay;
-  display: flex;
-  flex-direction: column;
+/* -----------------------------------------------------------------------------
+ * The filter field, pinned under the shared header.
+ * -------------------------------------------------------------------------- */
+.FilterBar {
+  flex: 0 0 auto;
+  padding: 0 var(--tree-inset, 10px) var(--spacing-2);
+  /* The tree scrolls beneath it; a hairline is what separates them. */
+  border-bottom: 1px solid var(--theme-color-border-subtle);
+  margin-bottom: var(--spacing-1);
 }
 
 .PlaceholderMessage {
@@ -45,6 +96,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: var(--spacing-1);
   padding: 32px 16px;
   color: var(--theme-color-fg-default-shy);
   text-align: center;
@@ -52,116 +104,267 @@
 
   span {
     display: block;
+    max-width: 100%;
+    overflow-wrap: break-word;
   }
 }
 
-/* Tree items */
+/* The query that found nothing, said as its own fact — never the tree's
+   "no components in project", which means something entirely different. */
+.PlaceholderQuery {
+  color: var(--theme-color-fg-highlight);
+  font-weight: 600;
+}
+
+/* -----------------------------------------------------------------------------
+ * Rows
+ * -------------------------------------------------------------------------- */
 .TreeItem {
+  position: relative;
+  box-sizing: border-box;
   display: flex;
   align-items: center;
-  padding: 6px 10px;
+  min-height: 26px;
+  /* `--level` is the row's depth, set inline. It is the only per-row value the
+     JS supplies: the padding and all of the indent guides are derived from it in
+     CSS, so a 200-component tree costs one custom property per row and no
+     per-row layout work. */
+  padding: 0 var(--spacing-2) 0 calc(var(--tree-inset) + var(--level, 0) * var(--tree-indent));
   cursor: pointer;
-  font: 11px var(--font-family);
+  font: 12px/1.35 var(--font-family);
   color: var(--theme-color-fg-default);
   user-select: none;
-  transition: background-color 0.15s ease;
+  transition: background-color var(--speed-turbo) var(--easing-base);
+
+  /* --- indent guides ------------------------------------------------------
+     One 1px rule per ancestor level, drawn as a repeating gradient clipped to
+     the indent area. Zero extra DOM, zero JS, and the count is exact: the
+     background box is `level * indent` wide, so a row at depth 4 gets four
+     rules and a root row gets a zero-width box and therefore none.
+
+     Positioned at a caret's centre, so each rule runs down through the carets of
+     the ancestors it belongs to rather than floating between them. */
+  background-image: repeating-linear-gradient(
+    to right,
+    var(--theme-color-border-default) 0 1px,
+    transparent 1px var(--tree-indent)
+  );
+  background-size: calc(var(--level, 0) * var(--tree-indent)) 100%;
+  background-position: var(--tree-guide-x) 0;
+  background-repeat: no-repeat;
 
   &:hover {
     background-color: var(--theme-color-bg-3);
   }
 
+  /* --- selection ----------------------------------------------------------
+     THE light-mode fix, and the reason this task exists.
+
+     What was here: `background-color: primary-transparent` **and**
+     `color: primary`. Azure ink on a 12%-azure tint measures **3.70:1** on the
+     light theme — below AA, and the selected row was the least readable row in
+     the tree.
+
+     What is here now: the same soft accent fill, a 2px accent bar on the leading
+     edge to carry the state, and the label left at full-strength ink. Measured
+     against the *composited* fill (accent at 9% over the panel's `bg-2`):
+
+         light  #18212b on rgb(227,237,250)  =  13.72:1
+         dark   #eef2f6 on rgb(31,46,64)     =  12.20:1
+
+     The bar is an inset box-shadow rather than a border or a pseudo-element: no
+     layout shift, no extra box, and it cannot collide with the first indent
+     guide, which starts 16px in. */
   &.Selected {
-    background-color: var(--theme-color-primary-transparent);
-    color: var(--theme-color-primary);
+    background-color: var(--theme-color-primary-bg);
+    box-shadow: inset 2px 0 0 0 var(--theme-color-primary);
+
+    .Label {
+      color: var(--theme-color-fg-highlight);
+    }
+
+    .Caret {
+      color: var(--theme-color-fg-default);
+    }
+
+    &:hover {
+      background-color: var(--theme-color-primary-bg);
+    }
   }
 
   &.DropTarget {
-    background-color: var(--theme-color-primary-transparent);
-    border: 2px dashed var(--theme-color-primary);
-    border-radius: 4px;
-    transition: all 0.15s ease;
+    background-color: var(--theme-color-primary-bg);
+    outline: 2px dashed var(--theme-color-primary);
+    outline-offset: -2px;
+  }
+
+  /* An ancestor kept only so a match below it has somewhere to hang. Present,
+     legible, and visibly not the thing you searched for. */
+  &.Dimmed .Label {
+    color: var(--theme-color-fg-muted);
   }
 }
 
 .Caret {
+  flex: 0 0 auto;
   width: 12px;
   height: 12px;
   margin-right: 4px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 8px;
   color: var(--theme-color-fg-muted);
-  transition: transform 0.15s ease;
+  transition: transform var(--speed-turbo) var(--easing-base), color var(--speed-turbo) var(--easing-base);
+
+  &:hover {
+    color: var(--theme-color-fg-highlight);
+  }
 
   &.Expanded {
     transform: rotate(90deg);
   }
 }
 
+/* A row that cannot expand still reserves the caret's space, so every glyph at a
+   given depth shares one x. */
+.CaretSlot {
+  flex: 0 0 var(--tree-caret-slot);
+  width: var(--tree-caret-slot);
+}
+
 .ItemContent {
   display: flex;
   align-items: center;
   flex: 1;
+  /* Without this the label's ellipsis never engages — a flex item's automatic
+     minimum size is its content. This is what makes acceptance item 7 work. */
+  min-width: 0;
   gap: 6px;
 }
 
 .Icon {
-  width: 16px;
-  height: 16px;
+  flex: 0 0 auto;
+  width: 15px;
+  height: 15px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--theme-color-fg-default);
+  /* Icons paint with `currentColor`, so the category rules below only need to
+     set `color`. */
+  color: var(--theme-color-fg-muted);
 }
 
 .Label {
   flex: 1;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.Warning {
-  width: 16px;
-  height: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: var(--theme-color-warning);
-  color: var(--theme-color-bg-1);
-  border-radius: 50%;
-  font-size: 10px;
-  font-weight: bold;
+/* -----------------------------------------------------------------------------
+ * Kind and category
+ * -------------------------------------------------------------------------- */
+
+/* Canvas categories. Same tokens `CanvasTheme` resolves — see the file header. */
+.Cat-visual {
+  color: var(--theme-color-node-category-visual);
 }
 
-/* Rename Input */
+.Cat-data {
+  color: var(--theme-color-node-category-data);
+}
+
+/* CanvasTheme maps the `javascript` category onto the *function* token. */
+.Cat-javascript {
+  color: var(--theme-color-node-category-function);
+}
+
+.Cat-component {
+  color: var(--theme-color-node-category-component);
+}
+
+/* Anything unclassified. CanvasTheme's `categoryDefault` is `fg-muted`; so is
+   this, so an uncategorised component looks the same in both places. */
+.Cat-default {
+  color: var(--theme-color-fg-muted);
+}
+
+/* The home component. Brand coral, and the one sanctioned non-danger use of it
+   per the phase-23 de-red rule: this is the row you should be able to find
+   without reading a single label. Wins over the category tint above. */
+.Kind-home {
+  color: var(--theme-color-brand);
+}
+
+.TreeItem.IsHome .Label {
+  font-weight: 650;
+  color: var(--theme-color-fg-highlight);
+}
+
+/* Folders are structure, not content — heavier, so the eye can skim the shape of
+   the project without reading it. */
+.TreeItem.IsFolder .Label {
+  font-weight: 600;
+}
+
+/* -----------------------------------------------------------------------------
+ * Warnings
+ *
+ * A 6px dot at the row's trailing edge, replacing the 16px filled `!` badge —
+ * which, for the record, had never rendered: `hasWarnings` was hard-coded
+ * `false` with a `TODO: Implement warning detection` beside it. The count is now
+ * real (`WarningsModel.getNumberOfWarningsForComponent`).
+ *
+ * The dot is INERT — a tooltip, not a control. The Problems panel renders
+ * `ProjectValidationService`'s semantic diagnostics, a different source from
+ * `WarningsModel`, and exposes no filter-to-component entry point. Routing there
+ * is filed as a follow-up rather than faked here; `cursor: help` says
+ * "informational" instead of promising a click that would do nothing.
+ * -------------------------------------------------------------------------- */
+.Warning {
+  flex: 0 0 auto;
+  width: 6px;
+  height: 6px;
+  margin-left: 6px;
+  border-radius: var(--radius-full);
+  background-color: var(--theme-color-warning);
+  cursor: help;
+}
+
+/* -----------------------------------------------------------------------------
+ * Rename (PNL-007 owns rename affordances elsewhere; the tree's inline input
+ * already works and stays — it only follows the new indent arithmetic).
+ * -------------------------------------------------------------------------- */
 .RenameContainer {
+  box-sizing: border-box;
   display: flex;
   align-items: center;
-  padding: 6px 10px;
+  min-height: 26px;
+  padding: 0 var(--spacing-2) 0
+    calc(var(--tree-inset) + var(--level, 0) * var(--tree-indent) + var(--tree-caret-slot));
   background-color: var(--theme-color-bg-3);
 }
 
 .RenameInput {
   flex: 1;
-  padding: 4px 8px;
-  font: 11px var(--font-family);
-  color: var(--theme-color-fg-default);
+  min-width: 0;
+  padding: 2px 6px;
+  font: 12px var(--font-family);
+  color: var(--theme-color-fg-highlight);
   background-color: var(--theme-color-bg-1);
   border: 1px solid var(--theme-color-primary);
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   outline: none;
   transition: border-color var(--speed-turbo), box-shadow var(--speed-turbo);
 
   &:focus {
     border-color: var(--theme-color-primary);
-    box-shadow: 0 0 0 2px var(--theme-color-primary-transparent);
-    background-color: var(--theme-color-bg-1);
+    box-shadow: 0 0 0 2px var(--theme-color-primary-bg);
   }
 
   &::selection {
     background-color: var(--theme-color-primary);
-    color: var(--theme-color-bg-1);
+    color: var(--theme-color-on-primary);
   }
 }
