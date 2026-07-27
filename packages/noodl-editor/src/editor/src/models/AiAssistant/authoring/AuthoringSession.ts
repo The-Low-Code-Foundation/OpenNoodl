@@ -35,12 +35,17 @@ import type {
   AiEffort,
   AiMessage,
   AiStreamCallbacks,
-  AiToolCall
+  AiToolCall,
+  AiToolDefinition
 } from '../client/types';
 import { findComponent } from '../explain/graph';
 import type { ExplainGraph } from '../explain/types';
 import type { StyleVocabulary } from '../../StyleTokensModel/StyleVocabulary';
 import type { StyleTokenRecord } from '../../StyleTokensModel/TokenCategories';
+// Pure ProjectDocs submodules only — the barrel would drag ProjectModel and the
+// platform filesystem into the headless measurement bundle.
+import { currentProjectDocs } from '../../ProjectDocs/currentDocs';
+import type { ProjectDocsContent } from '../../ProjectDocs/docsText';
 import { buildCandidate, pathToLegacyName } from './candidate';
 import { AuthoringContextBuilder } from './ContextBuilder';
 import { PartialPayloadScanner } from './partial';
@@ -53,6 +58,7 @@ import {
   systemPrompt,
   updateUserMessage
 } from './prompts/authoring';
+import { dispatchProjectDocTool, GET_PROJECT_DOC, projectDocToolLabel, projectDocTools } from './projectDocsTool';
 import { styleLintCandidate } from './styleLint';
 import {
   AUTHORING_TOOLS,
@@ -106,6 +112,13 @@ export interface AuthoringSessionOptions {
    * `AUTHORING_EFFORT`; the measurement harness overrides it to sweep.
    */
   effort?: AiEffort;
+  /**
+   * AIX-009: the project's `docs/` bodies. Defaults to whatever the editor's
+   * installed docs provider holds for the open project, so the panel needs no
+   * wiring; pass `{}` explicitly to author as if the project had no docs (the
+   * A/B control arm, and every headless spec that does not care).
+   */
+  projectDocs?: ProjectDocsContent;
 }
 
 const DEFAULT_MAX_TURNS = 12;
@@ -203,6 +216,9 @@ export interface AuthoringSessionState {
 type Listener = (state: AuthoringSessionState) => void;
 
 function readToolLabel(call: AiToolCall): string {
+  if (call.name === GET_PROJECT_DOC) {
+    return projectDocToolLabel();
+  }
   if (call.name === GET_NODE_TYPES) {
     const names = Array.isArray(call.arguments.typeNames) ? call.arguments.typeNames.map(String) : [];
     return names.length > 0 ? `Read node documentation: ${names.join(', ')}` : 'Read node documentation';
@@ -231,6 +247,8 @@ export class AuthoringSession {
   private readonly effort: AiEffort;
   readonly context: AuthoringContextBuilder;
   readonly legacyName: string;
+  /** AIX-009: `get_project_doc`, present only when the project has an ARCHITECTURE.md. */
+  private readonly docTools: AiToolDefinition[];
 
   // Conversation state, cumulative across run() and every refine().
   private readonly messages: AiMessage[] = [];
@@ -277,7 +295,15 @@ export class AuthoringSession {
     this.effort = options.effort ?? AUTHORING_EFFORT;
     this.styleGuidance = options.styleGuidance ?? true;
     this.styleTokenRecords = options.styleTokenRecords;
-    this.context = new AuthoringContextBuilder(graph, options.budget, undefined, options.styleVocabulary);
+    const projectDocs = options.projectDocs ?? currentProjectDocs();
+    this.context = new AuthoringContextBuilder(
+      graph,
+      options.budget,
+      undefined,
+      options.styleVocabulary,
+      projectDocs
+    );
+    this.docTools = projectDocTools(projectDocs);
     this.legacyName = pathToLegacyName(request.componentPath);
   }
 
@@ -376,6 +402,19 @@ export class AuthoringSession {
     for (const listener of this.listeners) listener(state);
   }
 
+  /**
+   * AIX-009: the two default-injected docs, charged through the context builder
+   * so their cost lands in the same log as every other handout. Called once, at
+   * the opening turn — these blocks live in the cache-stable half of the prompt
+   * and must not vary within a session.
+   */
+  private promptDocs(): { conventions?: string; brief?: string } | undefined {
+    const conventions = this.context.projectConventions();
+    const brief = this.context.projectBrief();
+    if (!conventions && !brief) return undefined;
+    return { ...(conventions ? { conventions } : {}), ...(brief ? { brief } : {}) };
+  }
+
   /** Abort the in-flight round. A previously staged candidate survives. */
   cancel(): void {
     this.currentAbort?.abort();
@@ -411,14 +450,16 @@ export class AuthoringSession {
         source,
         this.context.projectOverview(),
         this.context.catalogOverview(),
-        this.styleGuidance ? this.context.styleVocabulary() : undefined
+        this.styleGuidance ? this.context.styleVocabulary() : undefined,
+        this.promptDocs()
       );
     } else {
       opening = initialUserMessage(
         this.request,
         this.context.projectOverview(),
         this.context.catalogOverview(),
-        this.styleGuidance ? this.context.styleVocabulary() : undefined
+        this.styleGuidance ? this.context.styleVocabulary() : undefined,
+        this.promptDocs()
       );
     }
     this.messages.push(
@@ -493,7 +534,11 @@ export class AuthoringSession {
         response = await this.chat(
           {
             messages: [...this.messages],
-            tools: AUTHORING_TOOLS,
+            // AIX-009 appends `get_project_doc` only when the project has an
+            // ARCHITECTURE.md, so a project without docs sends the exact tool
+            // list it sent before — and the tool block, which Anthropic renders
+            // ahead of the system prompt, stays inside the cached prefix.
+            tools: this.docTools.length > 0 ? [...AUTHORING_TOOLS, ...this.docTools] : AUTHORING_TOOLS,
             toolChoice: 'auto',
             effort: this.effort,
             abortController
@@ -635,7 +680,7 @@ export class AuthoringSession {
             role: 'tool',
             toolCallId: call.id,
             name: call.name,
-            content: dispatchReadTool(call, this.context)
+            content: dispatchProjectDocTool(call, this.context) ?? dispatchReadTool(call, this.context)
           });
           this.publish();
         }

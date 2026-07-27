@@ -1,0 +1,71 @@
+.Root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.FileList {
+  flex: 0 0 auto;
+  border-bottom: 1px solid var(--theme-color-bg-3);
+  padding-bottom: 4px;
+}
+
+.Body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.Rendered {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 8px 10px;
+}
+
+.Source {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.Toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--theme-color-bg-3);
+}
+
+.Notice {
+  padding: 6px 8px;
+  border-left: 2px solid var(--theme-color-notice);
+  background-color: var(--theme-color-bg-2);
+  border-radius: 0 2px 2px 0;
+}
+
+.Danger {
+  composes: Notice;
+  border-left-color: var(--theme-color-danger);
+}
+
+.Proposal {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
+.DiffHost {
+  flex: 1 1 auto;
+  min-height: 240px;
+  overflow: hidden;
+}
+
+.Missing {
+  opacity: 0.6;
+}

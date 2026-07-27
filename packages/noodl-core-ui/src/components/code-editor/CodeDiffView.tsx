@@ -19,6 +19,7 @@ import { EditorView, lineNumbers, highlightActiveLineGutter } from '@codemirror/
 import React, { useEffect, useRef } from 'react';
 
 import { createOpenNoodlTheme } from './codemirror-theme';
+import { markdownExtensions } from './markdown-language';
 
 export interface CodeDiffViewProps {
   /** The "before" side. Always shown. */
@@ -27,6 +28,12 @@ export interface CodeDiffViewProps {
   modified?: string;
   /** Container height (CSS value). Defaults to 100%. */
   height?: string;
+  /**
+   * Which highlighter to use. Defaults to `javascript` — the original consumer.
+   * AIX-009 reviews AI-proposed doc changes through this same view, and a
+   * markdown file highlighted as JavaScript reads as one long error.
+   */
+  language?: 'javascript' | 'markdown';
 }
 
 /**
@@ -34,9 +41,9 @@ export interface CodeDiffViewProps {
  * Deliberately excludes editing affordances (autocomplete, linting, save
  * handlers) that {@link JavaScriptEditor} adds — this is a viewer, not an editor.
  */
-function readOnlyExtensions(): Extension[] {
+function readOnlyExtensions(language: 'javascript' | 'markdown'): Extension[] {
   return [
-    javascript(),
+    ...(language === 'markdown' ? markdownExtensions() : [javascript()]),
     createOpenNoodlTheme(),
     syntaxHighlighting(defaultHighlightStyle),
     lineNumbers(),
@@ -49,7 +56,7 @@ function readOnlyExtensions(): Extension[] {
   ];
 }
 
-export function CodeDiffView({ original, modified, height = '100%' }: CodeDiffViewProps) {
+export function CodeDiffView({ original, modified, height = '100%', language = 'javascript' }: CodeDiffViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -63,7 +70,7 @@ export function CodeDiffView({ original, modified, height = '100%' }: CodeDiffVi
       const view = new EditorView({
         state: EditorState.create({
           doc: modified ?? original ?? '',
-          extensions: readOnlyExtensions()
+          extensions: readOnlyExtensions(language)
         }),
         parent: container
       });
@@ -75,11 +82,11 @@ export function CodeDiffView({ original, modified, height = '100%' }: CodeDiffVi
     const merge = new MergeView({
       a: {
         doc: original,
-        extensions: readOnlyExtensions()
+        extensions: readOnlyExtensions(language)
       },
       b: {
         doc: modified,
-        extensions: readOnlyExtensions()
+        extensions: readOnlyExtensions(language)
       },
       parent: container,
       collapseUnchanged: { margin: 3, minSize: 4 },
@@ -88,7 +95,7 @@ export function CodeDiffView({ original, modified, height = '100%' }: CodeDiffVi
     });
 
     return () => merge.destroy();
-  }, [original, modified]);
+  }, [original, modified, language]);
 
   return <div ref={containerRef} className="cm-diff-view" style={{ height, overflow: 'auto' }} />;
 }

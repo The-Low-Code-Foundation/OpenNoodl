@@ -11,6 +11,10 @@
 export { JavaScriptEditor } from './JavaScriptEditor';
 export { CodeDiffView } from './CodeDiffView';
 export type { CodeDiffViewProps } from './CodeDiffView';
+// AIX-009: markdown source view for project docs.
+export { MarkdownEditor } from './MarkdownEditor';
+export type { MarkdownEditorProps } from './MarkdownEditor';
+export { markdownExtensions, markdownLanguage } from './markdown-language';
 export type { JavaScriptEditorProps, ValidationType, ValidationResult } from './utils/types';
 export { validateJavaScript } from './utils/jsValidator';
 export { formatJavaScript } from './utils/jsFormatter';

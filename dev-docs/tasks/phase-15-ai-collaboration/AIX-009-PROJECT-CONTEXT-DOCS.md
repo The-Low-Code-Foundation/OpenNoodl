@@ -228,6 +228,19 @@ reviewed and where the AIX-010 recommendation surfaces — not as a text editor.
 | Docs drift from reality and actively mislead the agent | Format excludes graph description by construction; AIX-010 supplies a re-review path |
 | Two writers (panel and external editor) race | File watching + whole-file writes; criterion 7 |
 
+## CHANGELOG
+
+- **2026-07-27 — implemented.** Scope 1–6 built; as-built notes, deviations and
+  the verification/could-not-verify split are in
+  [AIX-009-NOTES.md](./AIX-009-NOTES.md). Two deviations worth reading before
+  reviewing: `@codemirror/lang-markdown` was **not** added (a `StreamLanguage`
+  mode on the existing `@codemirror/language` does the job, so the task adds no
+  new dependency), and the authoring loop reads docs through a boot-installed
+  synchronous provider rather than through the panel. Acceptance 3, 5, 6 and 7
+  are verified; 1, 2 and the live half of 4 need a provider; **8 remains open as
+  a cross-task interlock with [DEP-008](../phase-26-deployment/DEP-008-ARTIFACT-CONTENTS-AND-IGNORE.md)**
+  — nothing here touches the deploy copy filter, by design.
+
 ## References
 
 - [AIX-002 — The Authoring Loop](./AIX-002-AUTHORING-LOOP.md) — the loop this extends

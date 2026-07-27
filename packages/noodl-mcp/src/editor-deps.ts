@@ -88,3 +88,22 @@ export type {
 } from '../../noodl-editor/src/editor/src/models/StyleTokensModel/TokenCategories';
 export { getPreset, getAllPresets } from '../../noodl-editor/src/editor/src/models/StylePresets/StylePresetsModel';
 export type { StylePreset } from '../../noodl-editor/src/editor/src/models/StylePresets/StylePresetTypes';
+
+// ─── Project docs (AIX-009) ───────────────────────────────────────────────────
+// The pure `docsText` submodule only — never the ProjectDocs barrel, which
+// pulls ProjectModel, the platform filesystem and the undo queue. `docsText`
+// imports nothing at all, so the containment rules the editor enforces and the
+// ones the MCP write tool enforces are literally the same function.
+export {
+  assertInsideDocs,
+  DocPathError,
+  DOCS_DIR,
+  DOC_ARCHITECTURE,
+  DOC_BRIEF,
+  DOC_CONVENTIONS,
+  DOC_DECISIONS_DIR,
+  KNOWN_DOCS,
+  normalizeDocPath
+} from '../../noodl-editor/src/editor/src/models/ProjectDocs/docsText';
+export type { KnownDoc, KnownDocKind } from '../../noodl-editor/src/editor/src/models/ProjectDocs/docsText';
+export { DOC_TEMPLATES } from '../../noodl-editor/src/editor/src/models/ProjectDocs/templates';

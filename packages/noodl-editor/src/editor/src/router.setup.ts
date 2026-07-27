@@ -1,4 +1,5 @@
 import { AppRegistry } from '@noodl-models/app_registry';
+import { installProjectDocs } from '@noodl-models/ProjectDocs';
 import { SidebarModel } from '@noodl-models/sidebar';
 import { Keybinding } from '@noodl-utils/keyboard/Keybinding';
 import { KeyCode, KeyMod } from '@noodl-utils/keyboard/KeyCode';
@@ -20,6 +21,7 @@ import { ComponentXRayPanel } from './views/panels/ComponentXRayPanel';
 // import kept commented so the panel code (one release cycle) still compiles.
 // import { DataLineagePanel } from './views/panels/DataLineagePanel';
 import { DesignTokenPanel } from './views/panels/DesignTokenPanel/DesignTokenPanel';
+import { DocsPanel, DocsPanel_ID } from './views/panels/DocsPanel';
 import { EditorSettingsPanel } from './views/panels/EditorSettingsPanel/EditorSettingsPanel';
 import { ExplainPanel, ExplainPanel_ID, startExplainTargetTracking } from './views/panels/ExplainPanel';
 import { FileExplorerPanel } from './views/panels/FileExplorerPanel';
@@ -162,6 +164,26 @@ export function installSidePanel({ isLesson }: SetupEditorOptions) {
     order: 4.7,
     icon: IconName.Pencil,
     panel: AiAuthoringPanel
+  });
+
+  // AIX-009: the authoring loop reads the project's docs at session
+  // construction, which happens long before anyone opens this panel — so the
+  // provider is installed at boot, like the explain-target tracking above, not
+  // at panel mount.
+  installProjectDocs();
+
+  SidebarModel.instance.register({
+    experimental: true,
+    id: DocsPanel_ID,
+    defaultWidth: 420,
+    name: 'Docs',
+    description:
+      "This project's docs/ folder — the brief, the architecture decisions, and the conventions the AI follows " +
+      'when it builds here. Owned by you and tracked by git; AI-proposed changes arrive as diffs you accept or ' +
+      'reject.',
+    order: 4.8,
+    icon: IconName.File,
+    panel: DocsPanel
   });
 
   SidebarModel.instance.register({

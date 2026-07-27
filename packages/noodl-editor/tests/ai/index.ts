@@ -39,6 +39,11 @@ export * from './aix007-cost.test';
 // preview window is fed (which must never touch the project).
 export * from './authoring-sandbox.test';
 
+// AIX-009: project context documents. The text transforms, path containment,
+// context charging, the cache-stable ordering the doc blocks must keep, and the
+// model's disk behaviour (including the external-edit clobber guard).
+export * from './project-docs.test';
+
 export * from './authoring-changeset.test';
 export * from './authoring-review.test';
 export * from './authoring-apply.test';

@@ -38,6 +38,9 @@ export { buildReviewComponent } from './reviewComponent';
 export { materializeSelection } from './applyChangeSet';
 export type { MaterializedSelection } from './applyChangeSet';
 export { initialUserMessage, refineMessage, styleAdvisoryMessage, systemPrompt, updateUserMessage } from './prompts/authoring';
+export type { PromptProjectDocs } from './prompts/authoring';
+// AIX-009: the pull-only project-doc read.
+export { dispatchProjectDocTool, GET_PROJECT_DOC, projectDocToolLabel, projectDocTools } from './projectDocsTool';
 export { countStyleValues, formatStyleFindings, styleLintCandidate } from './styleLint';
 export type { StyleLint, StyleLintOptions } from './styleLint';
 export { buildSandboxDataset, discoverDataShape } from './sandboxData';
