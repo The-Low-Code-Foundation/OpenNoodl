@@ -132,6 +132,42 @@ Object.defineProperties(OutputProperty.prototype, {
     }
   },
   /**
+   * Sends a signal as a single queue entry per receiver rather than a `true` followed by
+   * a `false`. See `SIGNAL_PULSE` in node.ts for why the difference matters: two entries
+   * make a signal advance through the input queue at half the rate of the value it is
+   * meant to pair with.
+   *
+   * A receiver that predates this — anything not going through `_setPulseFromConnection` —
+   * still sees the two-value form, so this is additive.
+   * @name OutputProperty#sendPulse
+   * @readonly
+   */
+  sendPulse: {
+    value: function (this: RuntimeOutputProperty) {
+      if (this._lastUpdateIteration !== this.owner._updatedAtIteration) {
+        this._lastUpdateIteration = this.owner._updatedAtIteration;
+        this.valuesSendThisIteration = 0;
+      } else {
+        this.valuesSendThisIteration++;
+      }
+
+      if (this.valuesSendThisIteration > 500) {
+        this.owner._cyclicLoop = true;
+      }
+
+      for (var i = 0, len = this.connections.length; i < len; i++) {
+        var connection = this.connections[i];
+        if (connection.node._setPulseFromConnection) {
+          connection.node._setPulseFromConnection(connection.inputPortName);
+        } else {
+          connection.node._setValueFromConnection(connection.inputPortName, true);
+          connection.node._setValueFromConnection(connection.inputPortName, false);
+        }
+      }
+    }
+  },
+
+  /**
    * @name OutputProperty#hasConnections
    * @readonly
    */

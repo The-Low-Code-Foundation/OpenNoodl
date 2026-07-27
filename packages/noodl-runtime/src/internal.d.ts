@@ -119,6 +119,8 @@ export interface RuntimeOutputProperty {
   deregisterConnection(node: RuntimeNode, inputPortName: string): void;
   flagDependeesDirty(): void;
   sendValue(value: unknown): void;
+  /** Sends a signal as one queue entry per receiver. See `SIGNAL_PULSE` in node.ts. */
+  sendPulse(): void;
   hasConnections(): boolean;
 
   /** Cyclic-loop bookkeeping; see the 500-values-per-iteration guard in `sendValue`. */
@@ -198,6 +200,7 @@ export interface RuntimeNode extends NodeInstance {
   _updateDependencies(): void;
   _performDirtyUpdate(): void;
   _setValueFromConnection(inputName: string, value: unknown): void;
+  _setPulseFromConnection(inputName: string): void;
   _hasInputBeenSetFromAConnection(inputName: string): boolean;
   _onNodeDeleted(): void;
   _onNodeModelParameterUpdated(event: NodeModelParameterUpdatedEvent): void;

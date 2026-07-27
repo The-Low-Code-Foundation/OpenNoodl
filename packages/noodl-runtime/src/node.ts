@@ -25,6 +25,21 @@ interface ExpressionParameter {
 }
 
 /**
+ * One queue entry standing for a whole signal pulse — the `true` and the `false` that
+ * follow it — rather than two entries.
+ *
+ * This exists because inputs are queued per port and drained one entry per port per pass.
+ * A value input queues one entry per event; a signal queued as two entries therefore
+ * advances at half the rate, and the pairing between a value and the signal that consumes
+ * it slips apart as soon as two events are queued before the node updates. With a stream —
+ * `SSE.text -> chunk`, `SSE.onMessage -> add` — that shows up as every other token dropped
+ * and the last one repeated for the leftover signals, which is exactly what the agent-chat
+ * example did on its first real run. Delivering the pulse as one entry keeps a value and
+ * its signal in step no matter how many events arrive in one iteration.
+ */
+const SIGNAL_PULSE = Object.freeze({ __noodlSignalPulse: true });
+
+/**
  * Helper to check if a value is an expression parameter
  */
 function isExpressionParameter(value: unknown): value is ExpressionParameter {
@@ -497,7 +512,16 @@ Node.prototype.update = function () {
           const inputName = inputNames[i];
           const queue = this._inputValuesQueue[inputName];
           if (queue.length > 0) {
-            this.setInputValue(inputName, queue.shift());
+            const queued = queue.shift();
+            if (queued === SIGNAL_PULSE) {
+              // Both halves in the same pass: the rising edge is the event, and the
+              // falling edge only rearms the detector. Splitting them across passes is
+              // what used to desynchronise a signal from the value it pairs with.
+              this.setInputValue(inputName, true);
+              this.setInputValue(inputName, false);
+            } else {
+              this.setInputValue(inputName, queued);
+            }
             if (queue.length > 0) {
               hasMoreInputs = true;
             }
@@ -614,8 +638,7 @@ Node.prototype.sendSignalOnOutput = function (outputName) {
   }
 
   const output = this.getOutput(outputName);
-  output.sendValue(true);
-  output.sendValue(false);
+  output.sendPulse();
 
   this._signalsSentThisUpdate[outputName] = true;
   this.scheduleAfterInputsHaveUpdated(function (this: RuntimeNode) {
@@ -630,6 +653,17 @@ Node.prototype.sendSignalOnOutput = function (outputName) {
 Node.prototype._setValueFromConnection = function (inputName, value) {
   this._valuesFromConnections[inputName] = value;
   this.queueInput(inputName, value);
+};
+
+/**
+ * A signal arriving over a connection: one queue entry for the whole pulse.
+ *
+ * The port settles at `false`, exactly as it did when the pulse was two separate sends,
+ * so anything reading `_valuesFromConnections` sees what it always saw.
+ */
+Node.prototype._setPulseFromConnection = function (inputName) {
+  this._valuesFromConnections[inputName] = false;
+  this.queueInput(inputName, SIGNAL_PULSE);
 };
 
 Node.prototype._hasInputBeenSetFromAConnection = function (inputName) {
@@ -648,7 +682,7 @@ Node.prototype.queueInput = function (inputName, value) {
     //signals need two values, so make sure we don't suppress the 'false' that comes directly
     //after a 'true'
     const queueValue = this._inputValuesQueue[inputName][0] as { unit?: string } | boolean | undefined;
-    const isSignal = queueValue === true; // && value === true;
+    const isSignal = queueValue === true || queueValue === SIGNAL_PULSE; // && value === true;
     if (!isSignal) {
       //default units are set as an object {value, unit}
       //subsequent inputs can be unitless. and will will then overwrite those

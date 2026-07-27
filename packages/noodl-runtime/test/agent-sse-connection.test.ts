@@ -127,6 +127,29 @@ function makeFetch(responses: FetchResponseSpec[]) {
   return fn as any;
 }
 
+/**
+ * A `fetch` that brand-checks its receiver the way a browser's does.
+ *
+ * This exists because of a defect the whole rest of this suite could not see: the
+ * transport called its injected fetch as `this._fetch(...)`, a method call on the
+ * transport object. Node's `fetch` is an ordinary function and ignores its receiver,
+ * so every test passed; a browser's rejects anything that is not a Window with
+ * "Illegal invocation", so the first real run in the editor's preview failed on the
+ * first token. Any double used here must reject a non-global receiver, or the same
+ * bug can be reintroduced with the suite still green.
+ */
+function makeBrowserLikeFetch(responses: FetchResponseSpec[]) {
+  const inner = makeFetch(responses);
+  const fn = function (this: unknown, url: string, init: any) {
+    if (this !== undefined && this !== globalThis) {
+      return Promise.reject(new TypeError("Failed to execute 'fetch' on 'Window': Illegal invocation"));
+    }
+    return inner(url, init);
+  };
+  (fn as any).calls = (inner as any).calls;
+  return fn as any;
+}
+
 function makeAbortController() {
   const created: any[] = [];
   function FakeAbortController(this: any) {
@@ -328,6 +351,25 @@ describe('SseConnection — fetch transport, happy path', () => {
     expect(init.headers.Accept).toBe('text/event-stream');
     expect(init.headers['Content-Type']).toBe('application/json');
     expect(init.body).toBe('{"prompt":"hi"}');
+    connection.dispose();
+  });
+
+  it('calls fetch with a receiver a browser accepts', async () => {
+    const stream = makeBody();
+    const { connection, recorder } = fetchConnection({ fetchImpl: makeBrowserLikeFetch([{ body: stream.body }]) });
+
+    connection.connect();
+    await flush();
+
+    // Before the fix this reached 'reconnecting' with "Illegal invocation" on
+    // recorder.errors instead of ever opening.
+    expect(recorder.errors).toEqual([]);
+    expect(recorder.states).toEqual(['connecting', 'open']);
+
+    stream.push('data: hello\n\n');
+    await flush();
+    expect(recorder.frames).toEqual([{ event: 'message', data: 'hello', id: '' }]);
+
     connection.dispose();
   });
 });

@@ -379,7 +379,14 @@ export class FetchStreamTransport implements SseTransport {
 
     let promise: Promise<any>;
     try {
-      promise = this._fetch(this._url, init);
+      // Detached deliberately. `this._fetch(...)` is a method call on the transport,
+      // and a browser's `fetch` brand-checks its receiver — it rejects with
+      // "Illegal invocation" for any `this` that is not a Window. Node's `fetch` is an
+      // ordinary function and does not care, which is why every test passed and the
+      // first real browser run failed on the first token. Calling through a local
+      // leaves `this` undefined, which the browser resolves to the global.
+      const fetchImpl = this._fetch;
+      promise = fetchImpl(this._url, init);
     } catch (e) {
       this._cb.onFailure('Could not start the request: ' + describeError(e), true);
       return;
