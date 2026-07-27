@@ -1,0 +1,21 @@
+{
+  "typeName": "Sign File URL",
+  "summary": "Mints a short-lived signed URL for a cloud file, for previewing or downloading files uploaded as private.",
+  "description": "Sign File URL takes a `cloudfile` handle (from Upload File or a record's file property) and, when `sign` fires, asks the backend for a time-limited signed URL to it. A private file's plain `url` 403s for anyone but its owner; the signed URL works for the short window it is valid, which is the intended usage — sign right before rendering, not once and persist. On `success` the signed `url`, its `expiresAt`, and `ttlSeconds` are available; `failure` carries `error`/`errorStatus` the same shape Upload File uses.",
+  "whenToUse": "Previewing or linking to a file that was uploaded with Upload File's `private` input set. Not needed for public (non-private) files — their plain `cloudFile.url` already works for anyone who can reach the app.",
+  "ports": {
+    "file": "The cloudfile to sign; set before firing `sign`.",
+    "sign": "Signal; requests a fresh signed URL. Re-fire before every use — a previously signed URL expires.",
+    "url": "The signed URL, valid until `expiresAt`/for `ttlSeconds` seconds from when `sign` fired.",
+    "expiresAt": "ISO timestamp the signed URL stops working.",
+    "ttlSeconds": "How long the signed URL is valid for, in seconds, from when it was minted."
+  },
+  "examples": ["cloud-sign-private-file-url"],
+  "patterns": [
+    "Fire `sign` from the same signal that produced the `cloudFile` (e.g. Upload File's `success`), so the graph never holds a `cloudFile` without also having signed it."
+  ],
+  "antiPatterns": [
+    "Persisting a signed `url` (e.g. saving it to a record) instead of the plain cloudfile — the signature expires and the stored link stops working; store the cloudfile, sign again at render time."
+  ],
+  "relatedNodes": ["Upload File", "Cloud File"]
+}

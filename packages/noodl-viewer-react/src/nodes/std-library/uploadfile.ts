@@ -12,6 +12,8 @@ interface UploadError {
 interface UploadFileInstance extends NodeInstance {
   _internal: {
     file?: File;
+    /** BAK-006 follow-up: upload as a private (owner-only, ACL'd) file. */
+    private?: boolean;
     cloudFile?: unknown;
     error?: unknown;
     errorStatus?: number;
@@ -41,6 +43,21 @@ const UploadFile: NodeDefinitionOptions = {
         this._internal.file = file;
       }
     },
+    // BAK-006 follow-up: the header-based private-upload surface
+    // (`X-NodeGX-File-Private`) already works over raw HTTP; this just gives
+    // it a node input so an app author doesn't need a cloud function to set
+    // it. A private upload's file is only readable by its uploader (or an
+    // admin) — see "Sign File URL" for getting a usable, time-limited link to
+    // it back out.
+    private: {
+      group: 'General',
+      displayName: 'Private',
+      type: 'boolean',
+      default: false,
+      set(this: UploadFileInstance, value: boolean) {
+        this._internal.private = value;
+      }
+    },
     upload: {
       type: 'signal',
       displayName: 'Upload',
@@ -56,6 +73,7 @@ const UploadFile: NodeDefinitionOptions = {
 
           CloudStore.instance.uploadFile({
             file,
+            private: this._internal.private,
             onUploadProgress: (p: { total: number; loaded: number }) => {
               this._internal.progressTotal = p.total;
               this._internal.progressLoaded = p.loaded;

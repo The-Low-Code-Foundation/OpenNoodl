@@ -20549,6 +20549,119 @@
       }
     },
     {
+      "typeName": "Sign File URL",
+      "displayName": "Sign File URL",
+      "category": "Cloud Services",
+      "isVisual": false,
+      "isDeprecated": false,
+      "inNodePicker": true,
+      "availableIn": [
+        "browser",
+        "cloud"
+      ],
+      "providedBy": "noodl-runtime",
+      "ssr": {
+        "compat": "safe"
+      },
+      "docs": "https://docs.noodl.net/nodes/data/cloud-data/sign-file-url",
+      "inputs": [
+        {
+          "name": "file",
+          "displayName": "File",
+          "group": "General",
+          "plug": "input",
+          "type": {
+            "name": "cloudfile"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "sign",
+          "displayName": "Sign",
+          "group": "Actions",
+          "plug": "input",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "isSignal": true
+        }
+      ],
+      "outputs": [
+        {
+          "name": "error",
+          "displayName": "Error",
+          "group": "Error",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "errorStatus",
+          "displayName": "Error Status Code",
+          "group": "Error",
+          "plug": "output",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "expiresAt",
+          "displayName": "Expires At",
+          "group": "General",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "failure",
+          "displayName": "Failure",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true
+        },
+        {
+          "name": "success",
+          "displayName": "Success",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true
+        },
+        {
+          "name": "ttlSeconds",
+          "displayName": "TTL (Seconds)",
+          "group": "General",
+          "plug": "output",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "url",
+          "displayName": "Signed URL",
+          "group": "General",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false
+        }
+      ],
+      "dynamicPorts": null
+    },
+    {
       "typeName": "Signal To Index",
       "displayName": "Signal To Index",
       "category": "Logic",
@@ -23838,6 +23951,17 @@
             "name": "*"
           },
           "isSignal": false
+        },
+        {
+          "name": "private",
+          "displayName": "Private",
+          "group": "General",
+          "plug": "input",
+          "type": {
+            "name": "boolean"
+          },
+          "isSignal": false,
+          "default": false
         },
         {
           "name": "upload",

@@ -674,6 +674,7 @@ function generateNodeLibrary(nodeRegister: NodeRegisterLike) {
             'RemoveDbModelRelation',
             'Cloud File',
             'Upload File',
+            'Sign File URL',
             'CloudFunction2',
             'DbConfig'
           ]

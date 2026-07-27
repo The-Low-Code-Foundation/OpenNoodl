@@ -22504,6 +22504,145 @@
       }
     },
     {
+      "typeName": "Sign File URL",
+      "displayName": "Sign File URL",
+      "category": "Cloud Services",
+      "isVisual": false,
+      "isDeprecated": false,
+      "inNodePicker": true,
+      "availableIn": [
+        "browser",
+        "cloud"
+      ],
+      "providedBy": "noodl-runtime",
+      "ssr": {
+        "compat": "safe"
+      },
+      "docs": "https://docs.noodl.net/nodes/data/cloud-data/sign-file-url",
+      "inputs": [
+        {
+          "name": "file",
+          "displayName": "File",
+          "group": "General",
+          "plug": "input",
+          "type": {
+            "name": "cloudfile"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "sign",
+          "displayName": "Sign",
+          "group": "Actions",
+          "plug": "input",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "isSignal": true
+        }
+      ],
+      "outputs": [
+        {
+          "name": "error",
+          "displayName": "Error",
+          "group": "Error",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "errorStatus",
+          "displayName": "Error Status Code",
+          "group": "Error",
+          "plug": "output",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "expiresAt",
+          "displayName": "Expires At",
+          "group": "General",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "failure",
+          "displayName": "Failure",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true
+        },
+        {
+          "name": "success",
+          "displayName": "Success",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true
+        },
+        {
+          "name": "ttlSeconds",
+          "displayName": "TTL (Seconds)",
+          "group": "General",
+          "plug": "output",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "url",
+          "displayName": "Signed URL",
+          "group": "General",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false
+        }
+      ],
+      "dynamicPorts": null,
+      "enrichment": {
+        "typeName": "Sign File URL",
+        "summary": "Mints a short-lived signed URL for a cloud file, for previewing or downloading files uploaded as private.",
+        "description": "Sign File URL takes a `cloudfile` handle (from Upload File or a record's file property) and, when `sign` fires, asks the backend for a time-limited signed URL to it. A private file's plain `url` 403s for anyone but its owner; the signed URL works for the short window it is valid, which is the intended usage — sign right before rendering, not once and persist. On `success` the signed `url`, its `expiresAt`, and `ttlSeconds` are available; `failure` carries `error`/`errorStatus` the same shape Upload File uses.",
+        "whenToUse": "Previewing or linking to a file that was uploaded with Upload File's `private` input set. Not needed for public (non-private) files — their plain `cloudFile.url` already works for anyone who can reach the app.",
+        "ports": {
+          "file": "The cloudfile to sign; set before firing `sign`.",
+          "sign": "Signal; requests a fresh signed URL. Re-fire before every use — a previously signed URL expires.",
+          "url": "The signed URL, valid until `expiresAt`/for `ttlSeconds` seconds from when `sign` fired.",
+          "expiresAt": "ISO timestamp the signed URL stops working.",
+          "ttlSeconds": "How long the signed URL is valid for, in seconds, from when it was minted."
+        },
+        "examples": [
+          "cloud-sign-private-file-url"
+        ],
+        "patterns": [
+          "Fire `sign` from the same signal that produced the `cloudFile` (e.g. Upload File's `success`), so the graph never holds a `cloudFile` without also having signed it."
+        ],
+        "antiPatterns": [
+          "Persisting a signed `url` (e.g. saving it to a record) instead of the plain cloudfile — the signature expires and the stored link stops working; store the cloudfile, sign again at render time."
+        ],
+        "relatedNodes": [
+          "Upload File",
+          "Cloud File"
+        ]
+      }
+    },
+    {
       "typeName": "Signal To Index",
       "displayName": "Signal To Index",
       "category": "Logic",
@@ -26123,6 +26262,17 @@
           "isSignal": false
         },
         {
+          "name": "private",
+          "displayName": "Private",
+          "group": "General",
+          "plug": "input",
+          "type": {
+            "name": "boolean"
+          },
+          "isSignal": false,
+          "default": false
+        },
+        {
           "name": "upload",
           "displayName": "Upload",
           "group": "Actions",
@@ -26234,22 +26384,27 @@
         "whenToUse": "Attachments, avatars, imports — any user-picked file that must persist server-side. The upload stores the file only; associating it with a record is a separate write (Create/Set Record).",
         "ports": {
           "file": "The browser file to upload; untyped so any file source connects.",
+          "private": "Boolean, default false. When true the backend ACLs the upload to its uploader instead of leaving it public — the resulting cloudfile's plain `url` then only works for the uploader (or an admin); use Sign File URL to get a usable link back out.",
           "upload": "Signal; starts the upload.",
           "cloudFile": "The stored file's handle, valid from `success` onward.",
           "progressLoadedPercent": "Number level 0–100 while uploading; drive progress UI from here."
         },
         "examples": [
-          "cloud-create-record-with-upload"
+          "cloud-create-record-with-upload",
+          "cloud-sign-private-file-url"
         ],
         "patterns": [
-          "Picker `success` → `upload`, upload `success` → record write: three nodes, each owning one step."
+          "Picker `success` → `upload`, upload `success` → record write: three nodes, each owning one step.",
+          "`private: true` uploads pair with Sign File URL: wire the same `success` signal to both the record write and the signer."
         ],
         "antiPatterns": [
-          "Treating `cloudFile` as set before `success` fired — sequence record writes on the success signal."
+          "Treating `cloudFile` as set before `success` fired — sequence record writes on the success signal.",
+          "Setting `private: true` and then binding `cloudFile.url` straight to an Image/link — a private file's plain url 403s for anyone but the uploader; sign it first."
         ],
         "relatedNodes": [
           "Open File Picker",
           "Cloud File",
+          "Sign File URL",
           "NewDbModelProperties",
           "SetDbModelProperties"
         ]
@@ -47698,8 +47853,8 @@
     "version": "1.0.0",
     "docs": "docs/node-catalog/ENRICHMENT.md",
     "coverage": {
-      "documented": 154,
-      "total": 154
+      "documented": 155,
+      "total": 155
     }
   },
   "compatibility": {
@@ -49814,6 +49969,106 @@
               "fromProperty": "onClick",
               "toId": "delete_project",
               "toProperty": "store"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cloud-sign-private-file-url",
+      "title": "Upload a private file and preview it with a signed URL",
+      "description": "Open File Picker hands the picked file to Upload File with its `private` input set, so the backend ACLs the upload to its uploader instead of leaving it public. A private file's plain URL is not directly usable in an `<img>` — it 403s for anyone else, including an unauthenticated preview — so on `success` the resulting `cloudFile` is wired into Sign File URL, whose `sign` signal is fired from the same `success`. Sign File URL mints a short-TTL signed URL (the row-ACL check that gates it is the same one the file's own GET route uses), and THAT url — not the cloudFile's own plain url — feeds the Image's `src`. Re-signing before every render (rather than persisting the signed URL) is the idiomatic use: a stored, expired signature just 403s later.",
+      "demonstrates": [
+        "Upload File",
+        "Sign File URL",
+        "Open File Picker"
+      ],
+      "components": [
+        {
+          "name": "/Private Upload Preview",
+          "nodes": [
+            {
+              "id": "root",
+              "type": "Group",
+              "label": "Uploader",
+              "parameters": {
+                "flexDirection": "column"
+              },
+              "children": [
+                "pick_btn",
+                "preview_image"
+              ]
+            },
+            {
+              "id": "pick_btn",
+              "type": "net.noodl.controls.button",
+              "label": "Pick file",
+              "parent": "root",
+              "parameters": {
+                "label": "Choose a private file"
+              }
+            },
+            {
+              "id": "preview_image",
+              "type": "Image",
+              "label": "Preview",
+              "parent": "root"
+            },
+            {
+              "id": "file_picker",
+              "type": "Open File Picker",
+              "label": "Pick"
+            },
+            {
+              "id": "upload",
+              "type": "Upload File",
+              "label": "Upload privately",
+              "parameters": {
+                "private": true
+              }
+            },
+            {
+              "id": "signer",
+              "type": "Sign File URL",
+              "label": "Sign for preview"
+            }
+          ],
+          "connections": [
+            {
+              "fromId": "pick_btn",
+              "fromProperty": "onClick",
+              "toId": "file_picker",
+              "toProperty": "open"
+            },
+            {
+              "fromId": "file_picker",
+              "fromProperty": "file",
+              "toId": "upload",
+              "toProperty": "file"
+            },
+            {
+              "fromId": "file_picker",
+              "fromProperty": "success",
+              "toId": "upload",
+              "toProperty": "upload"
+            },
+            {
+              "fromId": "upload",
+              "fromProperty": "cloudFile",
+              "toId": "signer",
+              "toProperty": "file"
+            },
+            {
+              "fromId": "upload",
+              "fromProperty": "success",
+              "toId": "signer",
+              "toProperty": "sign"
+            },
+            {
+              "fromId": "signer",
+              "fromProperty": "url",
+              "toId": "preview_image",
+              "toProperty": "src"
             }
           ]
         }
