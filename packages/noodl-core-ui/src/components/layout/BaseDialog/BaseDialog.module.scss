@@ -56,6 +56,22 @@
 
   .Root:not(.is-centered) &.is-visible {
     &.is-variant-default {
+      // The resting position, stated as a rule rather than left to the `to` half
+      // of the keyframe below.
+      //
+      // This element is `position: absolute; top: 0; left: 0`, so the whole of
+      // where it ends up came from `enter`'s final transform and
+      // `animation-fill-mode: both`. That makes the layout depend on an
+      // animation actually running: suppress animations — a screenshot harness,
+      // a reduced-motion stylesheet, print — and every menu in the editor stacks
+      // up in the window's top-left corner, 300px from the button that opened
+      // it. Found exactly that way, by a gate that injects `animation: none`.
+      //
+      // The keyframe still wins while it is running (an animation overrides the
+      // cascade), so the entrance is unchanged; the difference is only what is
+      // true when it is not running. `.is-variant-select` below already relies
+      // on the static transform alone.
+      transform: translate(var(--offsetX), var(--offsetY));
       animation: enter var(--speed-quick) var(--easing-base) both;
     }
 
