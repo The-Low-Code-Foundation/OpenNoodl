@@ -28528,7 +28528,8 @@
           "One Action Handler per thing the server may do, each wired to the nodes that do it — that set of handlers *is* the permission list, visible on the canvas.",
           "`refusalReason` and `refusalMessage` → a Text node in a debug group: the fastest way to find out that the server is sending `OPEN_VIEW` while the graph registered `OPEN_SESSION`.",
           "Send an array of actions for a guided tour; set `autoComplete` off on the handlers that must finish before the next step starts, and wire `idle` to whatever runs at the end.",
-          "Enable `SET_STORE` with `allowedKeys` naming just the view keys the agent may steer, so a store write cannot reach an auth token that happens to live in the same store."
+          "Enable `SET_STORE` with `allowedKeys` naming just the view keys the agent may steer, so a store write cannot reach an auth token that happens to live in the same store.",
+          "A built-in's own fields may sit on the envelope (`{type:'SET_STORE', key, value}`) or inside `payload` (`{type:'SET_STORE', payload:{key, value}}`) — the same resolution a handler's `payload` output uses, envelope first on a collision. `MERGE_STORE` wants `values` either way. A `storeName` in the message is always ignored in favour of the node's own."
         ],
         "antiPatterns": [
           "Enabling built-ins with `allowedKeys` blank on a store that also holds credentials or ids — a server can then overwrite any key in it.",
@@ -30504,6 +30505,17 @@
           "description": "Reconnect when the server closes the stream cleanly. Off by default: an agent response stream is finite, and reconnecting would re-issue the request and start the response again."
         },
         {
+          "name": "textPath",
+          "displayName": "Text Path",
+          "group": "Data",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "Where the text lives inside a JSON payload, as a dot path — for an OpenAI-compatible endpoint, choices.0.delta.content. Leave blank for a stream that sends bare text. Whatever it names ends up on the Text output, which is always a string."
+        },
+        {
           "name": "transport",
           "displayName": "Transport",
           "group": "Connection",
@@ -30710,6 +30722,16 @@
             "name": "number"
           },
           "isSignal": false
+        },
+        {
+          "name": "text",
+          "displayName": "Text",
+          "group": "Data",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false
         }
       ],
       "dynamicPorts": null,
@@ -30725,6 +30747,7 @@
           "headers": "Fetch transport only — an object of header name to value. EventSource cannot send headers at all.",
           "body": "Fetch transport only. An object is JSON-encoded and Content-Type is set unless Headers already sets it.",
           "eventTypes": "Comma-separated named event types. Only needed for EventSource, which delivers a named event only to a listener registered in advance.",
+          "textPath": "Where the text lives inside a JSON payload, as a dot path — `choices.0.delta.content` for an OpenAI-compatible endpoint. Blank for a stream that sends bare text. Whatever it names appears on `text`.",
           "autoConnect": "Connects once the URL and the rest of the inputs have landed, without needing a Connect signal.",
           "autoReconnect": "Retry after a failure. Off means a single failure goes straight to the error state.",
           "reconnectOnStreamEnd": "Off by default. An agent response stream is finite, and reconnecting would re-issue the request and start the response again.",
@@ -30732,13 +30755,14 @@
           "dedupeById": "Drops events whose id was already seen, so a resumed reconnect cannot re-deliver messages. Turn off only if the server reuses ids for distinct events.",
           "connectionState": "idle, connecting, open, reconnecting, closed or error. 'error' is terminal; 'reconnecting' means another attempt is coming.",
           "connected": "True only while the stream is open — false during connect, backoff and after a terminal failure.",
-          "data": "The event payload, parsed as JSON when it parses and left as the raw string when it does not (so a `[DONE]` sentinel arrives intact).",
+          "data": "The event payload, parsed as JSON when it parses and left as the raw string when it does not (so a `[DONE]` sentinel arrives intact). An *object* for a JSON payload — feed a Text node or a Text Accumulator from `text`, not from here.",
           "raw": "The payload exactly as sent, before any JSON parsing.",
+          "text": "The one data output that is always a string: the payload as sent when `textPath` is blank, or the field at that path when it is set. A missing field, a non-JSON sentinel or a path landing on an object all read as empty rather than as `[object Object]`.",
           "eventType": "The `event:` field of the last event, or 'message' when the server sent none.",
           "lastEventId": "The furthest `id:` the server has sent; this is what a reconnect resumes from.",
           "deliverySemantics": "'at-most-once' when the server sends no ids (gap events are lost), 'at-least-once' when it does, 'at-least-once-deduped' when ids are present and Dedupe By Id is on.",
           "duplicatesSuppressed": "How many replayed events were dropped after a resume. Non-zero is normal after a reconnect.",
-          "onMessage": "Fires once per event, after the Data outputs have updated — so an accumulator wired `data` → `chunk` and `onMessage` → `add` sees the chunk first.",
+          "onMessage": "Fires once per event, after the Data outputs have updated — so an accumulator wired `text` → `chunk` and `onMessage` → `add` sees the chunk first.",
           "onClose": "Fires when the stream stops, whether cleanly or with a terminal error, so a Close handler always runs.",
           "onError": "Fires on every failure, including ones the node is about to retry."
         },
@@ -30747,13 +30771,16 @@
           "agent-sse-task-monitor"
         ],
         "patterns": [
-          "SSE `data` → Text Accumulator `chunk` and SSE `onMessage` → Text Accumulator `add`, with an empty delimiter, renders an AI response as it is written.",
+          "SSE `text` → Text Accumulator `chunk` and SSE `onMessage` → Text Accumulator `add`, with an empty delimiter, renders an AI response as it is written. Set `textPath` to `choices.0.delta.content` for an OpenAI-compatible endpoint and leave it blank for a stream of bare tokens; either way `text` is a string.",
+          "`data` is for the payloads that are meant to be objects: a JSON Stream Parser, or an Action Dispatcher's `action` input.",
           "SSE `connectionState` → String Mapper → a status label makes reconnection visible instead of leaving the UI apparently frozen.",
           "POST the prompt in `body` with an Authorization header rather than putting a token in the query string, which the EventSource-only approach forces."
         ],
         "antiPatterns": [
           "Turning on Reconnect On Stream End for a finite agent response — the request is re-issued and the answer regenerates in a loop.",
-          "Ignoring `connectionState` and wiring only `data`: a silently failing reconnection then looks identical to a slow server.",
+          "Ignoring `connectionState` and wiring only the data outputs: a silently failing reconnection then looks identical to a slow server.",
+          "Wiring `data` into anything that expects text. `data` is JSON-parsed, so for the commonest agent shape (`data: {\"delta\":\"Hi\"}`) it is an object; a Text Accumulator refuses it and reports the mis-wiring rather than appending `[object Object]`. Use `text`.",
+          "Leaving `textPath` blank on a JSON-envelope stream and wiring `raw` instead — the answer then reads as a run of JSON fragments.",
           "Using the EventSource transport when the endpoint needs an Authorization header, then smuggling the token through the URL."
         ],
         "relatedNodes": [
@@ -31878,6 +31905,16 @@
           "isSignal": false
         },
         {
+          "name": "error",
+          "displayName": "Error",
+          "group": "Status",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false
+        },
+        {
           "name": "lastMessage",
           "displayName": "Last Message",
           "group": "Data",
@@ -31935,7 +31972,7 @@
         "description": "Each `add` appends the current `chunk` to a buffer. With an empty delimiter nothing is ever split and `accumulated` is simply the text so far — the mode a token stream wants. With a delimiter (newline by default) every complete piece moves to `messages` and only the unfinished tail stays in `accumulated`, so a message split across chunk boundaries reassembles correctly. Both stores are bounded: `maxLength` caps the pending buffer and `maxMessages` caps the retained list, dropping the oldest first and reporting the loss on `droppedCharacters` / `droppedMessages` plus an `overflowed` signal rather than growing without limit in a long-lived session. An empty chunk is ignored, so a stream's keep-alive frames do not fire `changed`.",
         "whenToUse": "Assembling anything that arrives in pieces: AI tokens into a displayable answer, log lines out of a chunked feed, NDJSON lines before parsing them. Pair it with Server-Sent Events or any node that emits fragments. Not needed when each event is already a whole value — wire that straight to its consumer.",
         "ports": {
-          "chunk": "The fragment to append. Non-strings are stringified rather than dropped, since a stream's Data output is typed `*`.",
+          "chunk": "The fragment to append. Text, numbers and booleans are accepted; an object or an array is refused and named on `error`, because it means a JSON-parsed `data` output was wired here where the stream's `text` output was wanted.",
           "add": "Appends the current chunk. Wire the stream's `onMessage` here; the chunk value arrives first.",
           "delimiter": "Message boundary. Empty means no boundaries — accumulate everything, which is what a token stream needs.",
           "maxLength": "Cap on the pending buffer in characters. Overflow drops the oldest and reports it; 0 disables the cap.",
@@ -31946,17 +31983,19 @@
           "byteCount": "UTF-8 size of the pending buffer, which differs from Character Count for anything non-ASCII.",
           "changed": "Fires on every non-empty Add, so a Text node repaints as the stream arrives.",
           "messageReceived": "Fires once per Add that completed at least one message — not once per message.",
-          "overflowed": "Fires when a cap dropped data. Wire it if losing the oldest content matters."
+          "overflowed": "Fires when a cap dropped data. Wire it if losing the oldest content matters.",
+          "error": "Empty until something that is not text arrives on `chunk`, then a message naming what came and which output to wire instead. Clears on the next usable chunk and on Clear."
         },
         "examples": [
           "agent-sse-chat-stream"
         ],
         "patterns": [
-          "Server-Sent Events `data` → `chunk`, `onMessage` → `add`, delimiter empty, `accumulated` → Text `text`: an answer that types itself out.",
+          "Server-Sent Events `text` → `chunk`, `onMessage` → `add`, delimiter empty, `accumulated` → Text `text`: an answer that types itself out.",
           "Delimiter `\\n` with `messages` → For Each renders a growing log without re-parsing the whole buffer each time.",
           "The stream's `onOpen` → `clear` resets the accumulator when a new response starts."
         ],
         "antiPatterns": [
+          "Wiring a stream's `data` output into `chunk`. `data` is JSON-parsed and is an object for an OpenAI-style payload; wire `text` (with the stream's `textPath` set) or a Function node that picks out the string field.",
           "Leaving `maxMessages` at 0 in a session that runs for hours — the array grows until the tab does.",
           "Wiring `add` from a signal that fires before `chunk` is set (a Function's own output, say) — the last chunk gets appended twice and the newest not at all."
         ],
@@ -48105,7 +48144,7 @@
     {
       "id": "agent-sse-chat-stream",
       "title": "Agent chat: stream an AI answer token by token",
-      "description": "The core agentic-UI wiring. Server-Sent Events POSTs the prompt with an Authorization header — which needs the Fetch transport, since EventSource can neither POST nor set headers — and each streamed token lands on `data`. Text Accumulator collects them with an empty delimiter, so `accumulated` is the answer as it is being written, and `changed` repaints the Text node. `connectionState` drives a status label, so a reconnection is visible rather than looking like a stalled answer, and `onOpen` clears the accumulator when a new response starts.",
+      "description": "The core agentic-UI wiring. Server-Sent Events POSTs the prompt with an Authorization header — which needs the Fetch transport, since EventSource can neither POST nor set headers — and each streamed token lands on `text`. `text` and not `data`: `data` is JSON-parsed, so for an OpenAI-compatible endpoint it is an object, and `textPath` here (`choices.0.delta.content`) is what turns that envelope into the token. For an endpoint that streams bare text, leave `textPath` blank and `text` is the payload as sent. Text Accumulator collects the tokens with an empty delimiter, so `accumulated` is the answer as it is being written, and `changed` repaints the Text node. `connectionState` drives a status label, so a reconnection is visible rather than looking like a stalled answer, and `onOpen` clears the accumulator when a new response starts.",
       "demonstrates": [
         "net.noodl.SSE",
         "net.noodl.TextAccumulator"
@@ -48165,6 +48204,7 @@
                 "url": "https://api.example.com/chat/stream",
                 "transport": "fetch",
                 "method": "POST",
+                "textPath": "choices.0.delta.content",
                 "autoReconnect": true,
                 "reconnectOnStreamEnd": false,
                 "reconnectDelay": 1000
@@ -48224,7 +48264,7 @@
             },
             {
               "fromId": "chat_stream",
-              "fromProperty": "data",
+              "fromProperty": "text",
               "toId": "answer_accumulator",
               "toProperty": "chunk"
             },

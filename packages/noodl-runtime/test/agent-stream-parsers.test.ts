@@ -13,9 +13,12 @@ import {
   parseSseChunk,
   scanJsonValues,
   splitDelimited,
+  splitPath,
+  textForPath,
   truncateHead,
   tryParseJson,
-  utf8ByteLength
+  utf8ByteLength,
+  valueAtPath
 } from '../src/nodes/std-library/agent/stream-parsers';
 
 /** Feeds `text` one character at a time, to prove every boundary is safe. */
@@ -283,5 +286,55 @@ describe('buffer housekeeping', () => {
     expect(truncateHead('abcdef', 3)).toEqual({ text: 'def', dropped: 3 });
     expect(truncateHead('abc', 10)).toEqual({ text: 'abc', dropped: 0 });
     expect(truncateHead('abc', 0)).toEqual({ text: 'abc', dropped: 0 });
+  });
+});
+
+describe('valueAtPath / textForPath', () => {
+  const openAiFrame = { choices: [{ delta: { content: 'Hi' }, index: 0 }] };
+
+  it('splits dot and bracket paths the same way', () => {
+    expect(splitPath('choices.0.delta.content')).toEqual(['choices', '0', 'delta', 'content']);
+    expect(splitPath('choices[0].delta.content')).toEqual(['choices', '0', 'delta', 'content']);
+    expect(splitPath('')).toEqual([]);
+    expect(splitPath('..a..')).toEqual(['a']);
+  });
+
+  it('reads a field out of an OpenAI-style envelope', () => {
+    expect(valueAtPath(openAiFrame, 'choices.0.delta.content')).toBe('Hi');
+    expect(valueAtPath(openAiFrame, 'choices[0].index')).toBe(0);
+  });
+
+  it('returns undefined for a path that does not resolve, rather than throwing', () => {
+    expect(valueAtPath(openAiFrame, 'choices.5.delta.content')).toBeUndefined();
+    expect(valueAtPath(openAiFrame, 'delta.content')).toBeUndefined();
+    expect(valueAtPath(undefined, 'a.b')).toBeUndefined();
+    expect(valueAtPath('a plain string', 'length')).toBeUndefined();
+  });
+
+  it('gives back the root for an empty path', () => {
+    expect(valueAtPath(openAiFrame, '')).toBe(openAiFrame);
+  });
+
+  it('refuses to walk into the language internals', () => {
+    expect(valueAtPath({}, '__proto__')).toBeUndefined();
+    expect(valueAtPath({}, 'constructor.name')).toBeUndefined();
+    expect(valueAtPath({ a: {} }, 'a.prototype')).toBeUndefined();
+  });
+
+  it('falls back to the raw payload when no path is configured', () => {
+    expect(textForPath('a token', 'a token', '')).toBe('a token');
+    expect(textForPath('{"delta":"Hi"}', { delta: 'Hi' }, '')).toBe('{"delta":"Hi"}');
+  });
+
+  it('is a string for every payload a real stream sends', () => {
+    expect(textForPath('{"choices":[…]}', openAiFrame, 'choices.0.delta.content')).toBe('Hi');
+    // A frame that carries no content, the sentinel that ends the stream, and a path that
+    // lands on a whole object: all "nothing", none of them "[object Object]".
+    expect(textForPath('{}', {}, 'choices.0.delta.content')).toBe('');
+    expect(textForPath('[DONE]', '[DONE]', 'choices.0.delta.content')).toBe('');
+    expect(textForPath('{"delta":{}}', { delta: {} }, 'delta')).toBe('');
+    // Primitives read as text.
+    expect(textForPath('{"n":7}', { n: 7 }, 'n')).toBe('7');
+    expect(textForPath('{"b":false}', { b: false }, 'b')).toBe('false');
   });
 });

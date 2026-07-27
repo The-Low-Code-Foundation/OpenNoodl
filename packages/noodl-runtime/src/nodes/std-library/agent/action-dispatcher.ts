@@ -357,6 +357,29 @@ export function payloadOf(action: ActionEnvelope): unknown {
   return action;
 }
 
+/**
+ * Where a built-in store action's own fields (`key`, `value`, `values`, `merge`) are read
+ * from: the envelope first, then the payload a handler would have been given.
+ *
+ * The built-ins used to read the envelope only, so
+ * `{ type: 'SET_STORE', payload: { key: 'title', value: 'x' } }` — the shape a server
+ * author writes first, and the shape a *handler* receives — was refused as `invalid`.
+ * There was no reason for the asymmetry beyond the order the two paths were written in.
+ *
+ * Envelope wins on a collision, so every message that worked before still resolves to
+ * exactly the same fields. Presence is what counts, not truthiness, so `{ value: 0 }` and
+ * `{ value: null }` are values like any other — the same rule `payloadOf` follows.
+ *
+ * `storeName` is deliberately **not** in this list. The store a dispatcher writes to is the
+ * node's own configuration and no message may name it, on the envelope or in a payload.
+ */
+export function builtInFieldOf(action: ActionEnvelope, field: 'key' | 'value' | 'values' | 'merge'): unknown {
+  if (field in action) return (action as Record<string, unknown>)[field];
+  const payload = payloadOf(action);
+  if (payload !== action && isPlainRecord(payload) && field in payload) return payload[field];
+  return undefined;
+}
+
 let nextActionSeq = 0;
 
 /**
@@ -720,7 +743,7 @@ export class ActionDispatcher {
     const allowed = this.options.allowedKeys;
 
     if (type === 'SET_STORE' || type === 'DELETE_STORE_KEY') {
-      const key = action.key;
+      const key = builtInFieldOf(action, 'key');
       if (typeof key !== 'string' || key === '') {
         return { reason: 'invalid', message: `${type} requires a non-empty string "key"` };
       }
@@ -731,7 +754,7 @@ export class ActionDispatcher {
     }
 
     if (type === 'MERGE_STORE') {
-      const values = action.values;
+      const values = builtInFieldOf(action, 'values');
       if (!isPlainRecord(values)) {
         return { reason: 'invalid', message: 'MERGE_STORE requires a "values" object' };
       }
@@ -774,21 +797,29 @@ export class ActionDispatcher {
 
     try {
       let result: unknown;
+      // Resolved with the same rule `checkBuiltIn` validated with — `builtInFieldOf` is
+      // pure, so the two cannot disagree about what this action says.
       switch (action.type) {
-        case 'SET_STORE':
-          this.store.setKey(storeName, action.key as string, action.value, { merge: action.merge === true });
-          result = { storeName, key: action.key };
+        case 'SET_STORE': {
+          const key = builtInFieldOf(action, 'key') as string;
+          this.store.setKey(storeName, key, builtInFieldOf(action, 'value'), {
+            merge: builtInFieldOf(action, 'merge') === true
+          });
+          result = { storeName, key };
           break;
+        }
         case 'MERGE_STORE': {
-          const values = action.values as Record<string, unknown>;
+          const values = builtInFieldOf(action, 'values') as Record<string, unknown>;
           this.store.setState(storeName, values);
           result = { storeName, keys: Object.keys(values) };
           break;
         }
-        case 'DELETE_STORE_KEY':
-          this.store.deleteKey(storeName, action.key as string);
-          result = { storeName, key: action.key };
+        case 'DELETE_STORE_KEY': {
+          const key = builtInFieldOf(action, 'key') as string;
+          this.store.deleteKey(storeName, key);
+          result = { storeName, key };
           break;
+        }
         case 'CLEAR_STORE':
           this.store.clearStore(storeName);
           result = { storeName };

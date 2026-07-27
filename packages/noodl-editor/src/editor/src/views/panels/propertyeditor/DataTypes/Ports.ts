@@ -292,6 +292,18 @@ export class Ports extends View {
       return NodeLibrary.nameForPortType(type) === 'array';
     }
 
+    // Object-typed ports edit as a literal in the same code editor as arrays.
+    //
+    // Without this branch `viewClassForPort` returned undefined and `_getPorts` filtered
+    // the row out altogether, so an object-typed input was connection-only with nothing on
+    // screen to say why — you could not give a Global Store its starting shape or an SSE
+    // call its headers without wiring a Function node whose whole body was a literal.
+    // `array` already had exactly this affordance, and `Node.setInputValue` parses a string
+    // arriving on either type, so this is the existing pattern rather than a new one.
+    function isOfObjectType() {
+      return NodeLibrary.nameForPortType(type) === 'object';
+    }
+
     // Image ref type
     function isOfImageType() {
       return NodeLibrary.nameForPortType(type) === 'image';
@@ -394,6 +406,7 @@ export class Ports extends View {
     else if (isOfTextAreaType()) return TextAreaType;
     else if (isOfCodeEditorType()) return CodeEditorType;
     else if (isOfArrayType()) return CodeEditorType;
+    else if (isOfObjectType()) return CodeEditorType;
     else if (isOfMarginPaddingType()) return MarginPaddingType;
     else if (isOfNumberWithUnitsType()) return NumberWithUnits;
     else if (isOfDimensionType()) return Dimension;

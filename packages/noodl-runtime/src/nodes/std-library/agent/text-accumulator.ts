@@ -3,8 +3,13 @@
  *
  * Collects stream fragments into growing text, and — when a delimiter is set — into
  * complete messages. This is the node that turns an AI token stream into something a
- * Text node can display: wire `SSE.data -> chunk` and `SSE.onMessage -> add`, leave
+ * Text node can display: wire `SSE.text -> chunk` and `SSE.onMessage -> add`, leave
  * the delimiter empty, and `accumulated` is the response as it is being written.
+ *
+ * `text` and not `data`: `data` is JSON-parsed when the payload is JSON, so for the
+ * commonest agent shape it is an object, and an accumulator's job is text. A non-text
+ * chunk is refused and reported on `error` rather than stringified — see the `chunk`
+ * setter.
  *
  * The parsing itself is `splitDelimited` in stream-parsers.ts; this file is ports,
  * bounds and reporting.
@@ -27,10 +32,37 @@ interface AccumulatorInternal {
   maxMessages: number;
   droppedCharacters: number;
   droppedMessages: number;
+  error: string;
 }
 
 function internalOf(node: NodeInstance): AccumulatorInternal {
   return node._internal as unknown as AccumulatorInternal;
+}
+
+/** Warning key, so the canvas shows one warning per node rather than one per chunk. */
+const CHUNK_WARNING = 'text-accumulator-chunk-not-text';
+
+/**
+ * Names what arrived, in the words of the port that should have been wired instead.
+ *
+ * The message has to be actionable: "expected text" tells an author nothing they did not
+ * already know, whereas naming the mistake — a JSON-parsed `data` output wired into a text
+ * input — is the whole content of the fix.
+ */
+function describeBadChunk(value: unknown): string {
+  const shape = Array.isArray(value)
+    ? 'an array'
+    : value instanceof Date
+      ? 'a Date'
+      : typeof value === 'object'
+        ? 'an object'
+        : `a ${typeof value}`;
+  return (
+    `Chunk must be text, but ${shape} arrived, so nothing was appended. ` +
+    "A stream's Data output is JSON-parsed and is an object for a payload like " +
+    '{"delta":"Hi"} — wire the stream\'s Text output instead (set its Text Path for a JSON ' +
+    'payload), or a Function node that picks the string field out of Data.'
+  );
 }
 
 const TextAccumulatorNode: NodeDefinitionOptions = {
@@ -53,10 +85,12 @@ const TextAccumulatorNode: NodeDefinitionOptions = {
     internal.maxMessages = 1000;
     internal.droppedCharacters = 0;
     internal.droppedMessages = 0;
+    internal.error = '';
   },
 
   getInspectInfo(this: NodeInstance) {
     const internal = internalOf(this);
+    if (internal.error) return { type: 'text', value: internal.error };
     return {
       type: 'value',
       value: {
@@ -75,10 +109,33 @@ const TextAccumulatorNode: NodeDefinitionOptions = {
       displayName: 'Chunk',
       group: 'Data',
       set(this: NodeInstance, value: unknown) {
-        // Anything stringifiable is accepted: a stream carrying JSON frames will feed
-        // this from a `*` output, and silently dropping non-strings would look like
-        // the accumulator was broken.
-        internalOf(this).pendingChunk = value === undefined || value === null ? '' : String(value);
+        // Text and the primitives that read as text are accepted; anything else is
+        // refused and named.
+        //
+        // This used to be `String(value)` for everything, on the reasoning that silently
+        // dropping a chunk would look broken. It does look broken — but so does
+        // `[object Object]`, and that is what the wiring the docs recommended actually
+        // produced for an OpenAI-style stream, all the way through a live run without
+        // anybody noticing. An accumulator handed an object has been mis-wired, and the
+        // whole premise of these nodes is that a failure is visible rather than plausible.
+        const internal = internalOf(this);
+        const kind = typeof value;
+
+        if (value === undefined || value === null) {
+          internal.pendingChunk = '';
+        } else if (kind === 'string') {
+          internal.pendingChunk = value as string;
+        } else if (kind === 'number' || kind === 'boolean' || kind === 'bigint') {
+          // A number is text in every sense an author cares about, and a counter wired to
+          // a log accumulator is a reasonable thing to build.
+          internal.pendingChunk = String(value);
+        } else {
+          internal.pendingChunk = '';
+          (this as any).reportChunkError(describeBadChunk(value));
+          return;
+        }
+
+        (this as any).clearChunkError();
       }
     },
 
@@ -197,6 +254,14 @@ const TextAccumulatorNode: NodeDefinitionOptions = {
         return internalOf(this).droppedMessages;
       }
     },
+    error: {
+      type: 'string',
+      displayName: 'Error',
+      group: 'Status',
+      get(this: NodeInstance) {
+        return internalOf(this).error;
+      }
+    },
 
     messageReceived: { type: 'signal', displayName: 'Message Received', group: 'Events' },
     changed: { type: 'signal', displayName: 'Changed', group: 'Events' },
@@ -205,6 +270,40 @@ const TextAccumulatorNode: NodeDefinitionOptions = {
   },
 
   methods: {
+    /**
+     * Puts a mis-wiring on `error` *and* on the canvas.
+     *
+     * Both, deliberately: `error` is the graph-visible channel this family promises, but an
+     * author who has just wired the wrong port has not wired anything to `error` either, so
+     * an editor warning is the only thing that reaches them unprompted.
+     */
+    reportChunkError(this: NodeInstance, message: string) {
+      const internal = internalOf(this);
+      if (internal.error === message) return;
+      internal.error = message;
+      this.flagOutputDirty('error');
+
+      const editorConnection = this.context && this.context.editorConnection;
+      if (editorConnection && this.nodeScope && this.nodeScope.componentOwner) {
+        editorConnection.sendWarning(this.nodeScope.componentOwner.name, this.id, CHUNK_WARNING, {
+          showGlobally: true,
+          message
+        });
+      }
+    },
+
+    clearChunkError(this: NodeInstance) {
+      const internal = internalOf(this);
+      if (!internal.error) return;
+      internal.error = '';
+      this.flagOutputDirty('error');
+
+      const editorConnection = this.context && this.context.editorConnection;
+      if (editorConnection && this.nodeScope && this.nodeScope.componentOwner) {
+        editorConnection.clearWarning(this.nodeScope.componentOwner.name, this.id, CHUNK_WARNING);
+      }
+    },
+
     addChunk(this: NodeInstance) {
       const internal = internalOf(this);
       const chunk = internal.pendingChunk;
@@ -263,6 +362,7 @@ const TextAccumulatorNode: NodeDefinitionOptions = {
       internal.lastMessage = '';
       internal.droppedCharacters = 0;
       internal.droppedMessages = 0;
+      (this as any).clearChunkError();
 
       this.flagOutputDirty('accumulated');
       this.flagOutputDirty('messages');

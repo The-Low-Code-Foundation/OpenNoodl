@@ -1113,7 +1113,7 @@
           },
           {
             "fromId": "1346ccf9-0dec-4fd8-8ea9-d052bc9559ee",
-            "fromProperty": "data",
+            "fromProperty": "text",
             "toId": "cef7f30c-f86f-4a03-847b-948157c265a2",
             "toProperty": "chunk"
           },

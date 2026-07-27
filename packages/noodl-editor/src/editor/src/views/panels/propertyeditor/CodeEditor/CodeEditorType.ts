@@ -95,8 +95,10 @@ export class CodeEditorType extends TypeView {
    * - `codeeditor: 'json'` ports get real JSON highlighting/validation.
    * - `codeeditor: 'javascript' | 'typescript'` ports use the JS heuristics that were
    *   already in place (name-based expression/script/function guess).
-   * - Anything else reaching this view is an array-typed port edited as a JS array
-   *   literal (see DataTypes/Ports.ts `isOfArrayType`) - treat it as an expression.
+   * - Anything else reaching this view is an array- or object-typed port edited as a JS
+   *   literal (see DataTypes/Ports.ts `isOfArrayType` / `isOfObjectType`) - treat it as an
+   *   expression. Not `json`, deliberately: `{ Authorization: 'Bearer x' }` is a perfectly
+   *   good object literal and JSON validation would mark the unquoted key as an error.
    */
   private getValidationType(): ValidationType {
     if (this.type.codeeditor === 'json') {
@@ -113,7 +115,8 @@ export class CodeEditorType extends TypeView {
       return 'function';
     }
 
-    // Array-typed port edited as a JS literal (e.g. Options node's "Items" input)
+    // Array- or object-typed port edited as a JS literal (the Options node's "Items", a
+    // Global Store's "Initial State", an SSE call's "Headers")
     return 'expression';
   }
 

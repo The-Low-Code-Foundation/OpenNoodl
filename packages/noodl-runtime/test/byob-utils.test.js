@@ -164,6 +164,28 @@ describe('byob-utils', () => {
       expect(ByobUtils.normalizeValue('hello', { type: 'string' })).toBe('hello');
       expect(ByobUtils.normalizeValue(5, { type: 'integer' })).toBe(5);
     });
+
+    // A json/array column's port is object-typed, and object-typed ports became editable in
+    // the property panel (AIX-005 integration pass) — so the value arriving for such a
+    // field may be the literal the author typed. Sending it on would double-encode it.
+    it('parses JSON text for json and array columns', () => {
+      expect(ByobUtils.normalizeValue('{"a":1}', { type: 'json' })).toEqual({ a: 1 });
+      expect(ByobUtils.normalizeValue('[1,2]', { type: 'array' })).toEqual([1, 2]);
+      expect(ByobUtils.normalizeValue('  {"a":1}  ', { type: 'json' })).toEqual({ a: 1 });
+    });
+
+    it('leaves an already-parsed value and unparseable text alone', () => {
+      const object = { a: 1 };
+      expect(ByobUtils.normalizeValue(object, { type: 'json' })).toBe(object);
+      // A json column can legitimately hold a plain string; guessing is worse than sending
+      // what was asked for.
+      expect(ByobUtils.normalizeValue('not json at all', { type: 'json' })).toBe('not json at all');
+      expect(ByobUtils.normalizeValue('', { type: 'json' })).toBe('');
+    });
+
+    it('does not parse JSON text for a string column', () => {
+      expect(ByobUtils.normalizeValue('{"a":1}', { type: 'string' })).toBe('{"a":1}');
+    });
   });
 
   // ── shouldShowField: both field shapes ─────────────────────────────────────

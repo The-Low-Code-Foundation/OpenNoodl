@@ -17,6 +17,13 @@
  *                          response cleanly, which is what makes the node go to
  *                          `closed` instead of reconnecting for ever.
  *
+ *   POST /chat/stream-json The same answer in the OpenAI-compatible shape —
+ *                          `data: {"choices":[{"delta":{"content":"…"}}]}` and a
+ *                          final `[DONE]`. Point the Chat page at this and set the
+ *                          SSE node's Text Path to `choices.0.delta.content`. This
+ *                          is the shape that used to render `[object Object]` when
+ *                          `data` was wired straight into a Text Accumulator.
+ *
  *   GET  /agent/actions    text/event-stream. Six action envelopes, chosen so the
  *                          Action Dispatcher's whole vocabulary of outcomes is
  *                          visible: two that execute, three refused for three
@@ -118,7 +125,14 @@ function readBody(req) {
   });
 }
 
-async function chatStream(req, res) {
+/**
+ * @param {{ envelope?: boolean }} [options] `envelope: true` wraps each token in the
+ *   OpenAI-compatible `{choices:[{delta:{content}}]}` shape and ends with a `[DONE]`
+ *   sentinel, which is what a real provider sends and what the SSE node's `textPath`
+ *   exists to unwrap. The plain route stays plain: both shapes are real, and a stream
+ *   whose payloads are JSON is the one that used to render `[object Object]`.
+ */
+async function chatStream(req, res, options = {}) {
   const raw = await readBody(req);
   let prompt = '';
   try {
@@ -129,7 +143,8 @@ async function chatStream(req, res) {
 
   // A real endpoint would check this. This one only reports it, so the example can
   // show a POST with an Authorization header working without owning a secret.
-  log(`POST /chat/stream prompt=${JSON.stringify(prompt.slice(0, 60))} auth=${req.headers.authorization || 'none'}`);
+  const route = options.envelope ? '/chat/stream-json' : '/chat/stream';
+  log(`POST ${route} prompt=${JSON.stringify(prompt.slice(0, 60))} auth=${req.headers.authorization || 'none'}`);
 
   openStream(res);
 
@@ -148,8 +163,18 @@ async function chatStream(req, res) {
       return;
     }
     if (i + 1 <= resumeFrom) continue;
-    sendEvent(res, { id: i + 1, data: tokens[i] });
+    const data = options.envelope
+      ? JSON.stringify({ id: 'chatcmpl-mock', choices: [{ index: 0, delta: { content: tokens[i] } }] })
+      : tokens[i];
+    sendEvent(res, { id: i + 1, data });
     await sleep(TOKEN_DELAY);
+  }
+
+  if (options.envelope) {
+    // The sentinel a real provider ends with. It is not JSON, so `data` holds the bare
+    // string and `text` — with a Text Path set — is empty, which is why it never lands in
+    // the middle of the answer.
+    sendEvent(res, { data: '[DONE]' });
   }
 
   // A clean end. The SSE node's `reconnectOnStreamEnd` is false, so this becomes
@@ -163,13 +188,19 @@ async function chatStream(req, res) {
 // ---------------------------------------------------------------------------
 
 /**
- * Note the shape: the built-in store actions read `key` / `value` / `values` off
- * the envelope itself. Only a handler's payload comes from `payload`/`data`.
+ * Note the shapes: a built-in store action's `key` / `value` / `values` may sit on the
+ * envelope (srv-1) or inside `payload` (srv-7) — the envelope wins if both are there.
+ * A handler's payload comes from `payload`, else `data`, else the whole action.
  */
 const ACTIONS = [
   // Executes: SET_STORE is enabled by name on the dispatcher and `title` is in its
   // allowed keys.
   { type: 'SET_STORE', id: 'srv-1', key: 'title', value: 'Renamed by the server' },
+
+  // Executes too, and this is the shape most server authors write first: the fields
+  // wrapped in `payload`, exactly as a handler would receive them. It used to be refused
+  // as `invalid` because the built-ins read the envelope only.
+  { type: 'SET_STORE', id: 'srv-7', payload: { key: 'title', value: 'Renamed again, from a payload' } },
 
   // Executes: an Action Handler in the graph registered SHOW_NOTICE. Its
   // registration IS its permission — delete the handler node and this is refused.
@@ -390,8 +421,9 @@ function handleUpgrade(req, socket) {
 
 const INDEX = `Mock agent endpoint for the NodeGX Agent Chat example.
 
-  POST /chat/stream     streamed answer (text/event-stream)
-  GET  /agent/actions   action envelopes for the Action Dispatcher
+  POST /chat/stream       streamed answer, bare tokens (text/event-stream)
+  POST /chat/stream-json  the same answer as OpenAI-style JSON deltas
+  GET  /agent/actions     action envelopes for the Action Dispatcher
   ws   /live            two-way stream with NDJSON bursts
 
 Token delay ${TOKEN_DELAY}ms. Nothing here is authenticated; do not deploy it.
@@ -407,6 +439,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (pathname === '/chat/stream' && req.method === 'POST') return chatStream(req, res);
+  if (pathname === '/chat/stream-json' && req.method === 'POST') return chatStream(req, res, { envelope: true });
   if (pathname === '/agent/actions' && req.method === 'GET') return actionStream(req, res);
 
   if (pathname === '/') {
@@ -424,6 +457,7 @@ server.on('upgrade', handleUpgrade);
 server.listen(PORT, () => {
   log(`listening on http://localhost:${PORT} (token delay ${TOKEN_DELAY}ms)`);
   log(`  POST http://localhost:${PORT}/chat/stream`);
+  log(`  POST http://localhost:${PORT}/chat/stream-json`);
   log(`  GET  http://localhost:${PORT}/agent/actions`);
   log(`  ws://localhost:${PORT}/live`);
 });

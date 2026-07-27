@@ -4,7 +4,7 @@
   "description": "Each `add` appends the current `chunk` to a buffer. With an empty delimiter nothing is ever split and `accumulated` is simply the text so far — the mode a token stream wants. With a delimiter (newline by default) every complete piece moves to `messages` and only the unfinished tail stays in `accumulated`, so a message split across chunk boundaries reassembles correctly. Both stores are bounded: `maxLength` caps the pending buffer and `maxMessages` caps the retained list, dropping the oldest first and reporting the loss on `droppedCharacters` / `droppedMessages` plus an `overflowed` signal rather than growing without limit in a long-lived session. An empty chunk is ignored, so a stream's keep-alive frames do not fire `changed`.",
   "whenToUse": "Assembling anything that arrives in pieces: AI tokens into a displayable answer, log lines out of a chunked feed, NDJSON lines before parsing them. Pair it with Server-Sent Events or any node that emits fragments. Not needed when each event is already a whole value — wire that straight to its consumer.",
   "ports": {
-    "chunk": "The fragment to append. Non-strings are stringified rather than dropped, since a stream's Data output is typed `*`.",
+    "chunk": "The fragment to append. Text, numbers and booleans are accepted; an object or an array is refused and named on `error`, because it means a JSON-parsed `data` output was wired here where the stream's `text` output was wanted.",
     "add": "Appends the current chunk. Wire the stream's `onMessage` here; the chunk value arrives first.",
     "delimiter": "Message boundary. Empty means no boundaries — accumulate everything, which is what a token stream needs.",
     "maxLength": "Cap on the pending buffer in characters. Overflow drops the oldest and reports it; 0 disables the cap.",
@@ -15,14 +15,16 @@
     "byteCount": "UTF-8 size of the pending buffer, which differs from Character Count for anything non-ASCII.",
     "changed": "Fires on every non-empty Add, so a Text node repaints as the stream arrives.",
     "messageReceived": "Fires once per Add that completed at least one message — not once per message.",
-    "overflowed": "Fires when a cap dropped data. Wire it if losing the oldest content matters."
+    "overflowed": "Fires when a cap dropped data. Wire it if losing the oldest content matters.",
+    "error": "Empty until something that is not text arrives on `chunk`, then a message naming what came and which output to wire instead. Clears on the next usable chunk and on Clear."
   },
   "patterns": [
-    "Server-Sent Events `data` → `chunk`, `onMessage` → `add`, delimiter empty, `accumulated` → Text `text`: an answer that types itself out.",
+    "Server-Sent Events `text` → `chunk`, `onMessage` → `add`, delimiter empty, `accumulated` → Text `text`: an answer that types itself out.",
     "Delimiter `\\n` with `messages` → For Each renders a growing log without re-parsing the whole buffer each time.",
     "The stream's `onOpen` → `clear` resets the accumulator when a new response starts."
   ],
   "antiPatterns": [
+    "Wiring a stream's `data` output into `chunk`. `data` is JSON-parsed and is an object for an OpenAI-style payload; wire `text` (with the stream's `textPath` set) or a Function node that picks out the string field.",
     "Leaving `maxMessages` at 0 in a session that runs for hours — the array grows until the tab does.",
     "Wiring `add` from a signal that fires before `chunk` is set (a Function's own output, say) — the last chunk gets appended twice and the newest not at all."
   ],

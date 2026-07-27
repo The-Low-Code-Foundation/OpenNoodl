@@ -52,6 +52,39 @@ describe('Property editor panel unit tests', function () {
     expect(c.graph.findNodeWithId('A').label).toBe('group');
   });
 
+  // AIX-005 integration pass: object-typed inputs (a Global Store's Initial State, an SSE
+  // call's Headers, a State Snapshot's Snapshot Data) had no branch in viewClassForPort, so
+  // _getPorts filtered the row out entirely and the port was connection-only with nothing
+  // saying why. They edit as a literal in the same code editor as array-typed ports.
+  it('gives an object-typed port the same editor as an array-typed port', function () {
+    const arrayView = pe.portsView.viewClassForPort({ name: 'items', type: 'array' });
+    const objectView = pe.portsView.viewClassForPort({ name: 'headers', type: 'object' });
+
+    expect(arrayView).not.toBe(undefined);
+    expect(objectView).toBe(arrayView);
+
+    // The long spelling has to resolve too, since that is how a module-provided node
+    // usually declares it.
+    expect(pe.portsView.viewClassForPort({ name: 'headers', type: { name: 'object' } })).toBe(arrayView);
+  });
+
+  it('still leaves a connections-only object port out of the panel', function () {
+    // `allowConnectionsOnly` is how a node says "wire this, do not type it", and the new
+    // branch must not override it. noodl.cloud.sendemail's Variables is the live example —
+    // the only object-typed input in the product that is meant to stay unwritable.
+    const view = pe.portsView;
+    const original = view.model.getPorts;
+    view.model.getPorts = () => [
+      { name: 'headers', group: 'General', type: 'object' },
+      { name: 'variables', group: 'General', type: { name: 'object', allowConnectionsOnly: true } }
+    ];
+    try {
+      expect(view._getPorts().map((p) => p.name)).toEqual(['headers']);
+    } finally {
+      view.model.getPorts = original;
+    }
+  });
+
   it('can edit parameter and undo', function () {
     pe.portsView.setParameter('alpha', 0.5);
 

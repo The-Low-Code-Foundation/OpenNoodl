@@ -164,6 +164,7 @@ describe('net.noodl.SSE — port surface', () => {
         'method',
         'reconnectDelay',
         'reconnectOnStreamEnd',
+        'textPath',
         'transport',
         'url',
         'withCredentials'
@@ -187,7 +188,8 @@ describe('net.noodl.SSE — port surface', () => {
         'onMessage',
         'onOpen',
         'raw',
-        'retryCount'
+        'retryCount',
+        'text'
       ].sort()
     );
   });
@@ -266,6 +268,108 @@ describe('net.noodl.SSE — streaming through the graph', () => {
     await flush();
 
     expect(out('data')).toBe('[DONE]');
+    (node as any)._onNodeDeleted();
+  });
+
+  // -- the Text output ------------------------------------------------------
+  //
+  // `data` is JSON-parsed, which is right for a stream that mixes JSON frames with bare
+  // sentinels — but it means `data` is an *object* for the commonest agent shape, and the
+  // documented wiring (`data` -> a Text Accumulator's `chunk`) therefore rendered
+  // `[object Object]`. `text` is the output that is always a string.
+
+  it('puts the raw payload on Text when no Text Path is set', async () => {
+    const stream = makeBody();
+    const { node, out } = createSseNode({
+      fetchImpl: makeFetch([stream.body]),
+      AbortControllerImpl: makeAbortController(),
+      ...makeTimers()
+    });
+    node.setInputValue('url', 'https://example.test/stream');
+    node.setInputValue('connect', true);
+    await flush();
+
+    stream.push('data: Hello\n\n');
+    await flush();
+
+    expect(out('text')).toBe('Hello');
+    (node as any)._onNodeDeleted();
+  });
+
+  it('extracts the token from an OpenAI-style envelope when Text Path names it', async () => {
+    const stream = makeBody();
+    const { node, out } = createSseNode({
+      fetchImpl: makeFetch([stream.body]),
+      AbortControllerImpl: makeAbortController(),
+      ...makeTimers()
+    });
+    node.setInputValue('url', 'https://example.test/stream');
+    node.setInputValue('textPath', 'choices.0.delta.content');
+    node.setInputValue('connect', true);
+    await flush();
+
+    stream.push('data: {"choices":[{"delta":{"role":"assistant"}}]}\n\n');
+    await flush();
+    // The first frame of a real stream announces the role and carries no content: an
+    // absent field is an ordinary outcome and must read as "nothing", not as undefined.
+    expect(out('text')).toBe('');
+
+    stream.push('data: {"choices":[{"delta":{"content":"Hi"}}]}\n\n');
+    await flush();
+    expect(out('text')).toBe('Hi');
+    expect(out('data')).toEqual({ choices: [{ delta: { content: 'Hi' } }] });
+
+    // …and the sentinel that ends such a stream never parses, so it contributes nothing
+    // rather than being appended to the answer.
+    stream.push('data: [DONE]\n\n');
+    await flush();
+    expect(out('text')).toBe('');
+
+    (node as any)._onNodeDeleted();
+  });
+
+  it('never puts an object on Text, whatever the path resolves to', async () => {
+    const stream = makeBody();
+    const { node, out } = createSseNode({
+      fetchImpl: makeFetch([stream.body]),
+      AbortControllerImpl: makeAbortController(),
+      ...makeTimers()
+    });
+    node.setInputValue('url', 'https://example.test/stream');
+    node.setInputValue('textPath', 'delta');
+    node.setInputValue('connect', true);
+    await flush();
+
+    stream.push('data: {"delta":{"nested":"no"}}\n\n');
+    await flush();
+    expect(out('text')).toBe('');
+
+    // A number at the path is text as far as an author is concerned.
+    stream.push('data: {"delta":7}\n\n');
+    await flush();
+    expect(out('text')).toBe('7');
+
+    (node as any)._onNodeDeleted();
+  });
+
+  it('re-reads Text when the path changes, without needing another frame', async () => {
+    const stream = makeBody();
+    const { node, out } = createSseNode({
+      fetchImpl: makeFetch([stream.body]),
+      AbortControllerImpl: makeAbortController(),
+      ...makeTimers()
+    });
+    node.setInputValue('url', 'https://example.test/stream');
+    node.setInputValue('connect', true);
+    await flush();
+
+    stream.push('data: {"a":"one","b":"two"}\n\n');
+    await flush();
+    expect(out('text')).toBe('{"a":"one","b":"two"}');
+
+    node.setInputValue('textPath', 'b');
+    expect(out('text')).toBe('two');
+
     (node as any)._onNodeDeleted();
   });
 

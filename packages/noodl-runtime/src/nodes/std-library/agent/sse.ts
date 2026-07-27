@@ -22,7 +22,7 @@
 
 import type { NodeDefinitionOptions, NodeInstance } from '@noodl/types';
 
-import { parseJsonOrText } from './stream-parsers';
+import { parseJsonOrText, textForPath } from './stream-parsers';
 import { SseConnection, SseConnectionOptions, SseConnectionState } from './sse-connection';
 
 import Node = require('../../../node');
@@ -53,6 +53,7 @@ interface SseInternal {
   body: unknown;
   withCredentials: boolean;
   eventTypes: string;
+  textPath: string;
   autoConnect: boolean;
   autoReconnect: boolean;
   reconnectOnStreamEnd: boolean;
@@ -117,6 +118,7 @@ const SSENode: NodeDefinitionOptions = {
     internal.body = undefined;
     internal.withCredentials = false;
     internal.eventTypes = '';
+    internal.textPath = '';
     internal.autoConnect = false;
     internal.autoReconnect = true;
     internal.reconnectOnStreamEnd = false;
@@ -150,6 +152,9 @@ const SSENode: NodeDefinitionOptions = {
         lastEventId: conn ? conn.lastEventId : '',
         deliverySemantics: conn ? conn.deliverySemantics : 'at-most-once',
         lastEvent: internal.data,
+        // Shown next to the event it came from: a `textPath` that does not match the
+        // server's shape is otherwise only visible as a Text node that never fills in.
+        lastText: textForPath(internal.raw, internal.data, internal.textPath),
         lastError: conn ? conn.lastError : ''
       }
     };
@@ -237,6 +242,20 @@ const SSENode: NodeDefinitionOptions = {
         'Comma-separated named event types to subscribe to. Only needed for the EventSource transport, which delivers a named event only to a listener registered in advance; the Fetch transport delivers every event type.',
       set(this: NodeInstance, value: string) {
         internalOf(this).eventTypes = value || '';
+      }
+    },
+
+    textPath: {
+      type: 'string',
+      displayName: 'Text Path',
+      group: 'Data',
+      tooltip:
+        'Where the text lives inside a JSON payload, as a dot path — for an OpenAI-compatible endpoint, ' +
+        'choices.0.delta.content. Leave blank for a stream that sends bare text. Whatever it names ends up ' +
+        'on the Text output, which is always a string.',
+      set(this: NodeInstance, value: string) {
+        internalOf(this).textPath = value === undefined || value === null ? '' : String(value);
+        this.flagOutputDirty('text');
       }
     },
 
@@ -392,6 +411,26 @@ const SSENode: NodeDefinitionOptions = {
         return internalOf(this).raw;
       }
     },
+    /**
+     * The one data output that is guaranteed to be a string.
+     *
+     * `data` is `parseJsonOrText`'d, which is right — a stream mixes JSON frames and bare
+     * sentinels — but it means `data` is an *object* for the commonest agent shape
+     * (`data: {"delta":"Hi"}`), and objects are not text. `text` is what a Text node or a
+     * Text Accumulator should be wired to: the raw payload when no `textPath` is set, and
+     * the field at that path when one is, with anything non-primitive (a missing field, a
+     * `[DONE]` sentinel that never parsed) reported as `''` — which every consumer in this
+     * family already treats as "nothing arrived" rather than appending it.
+     */
+    text: {
+      type: 'string',
+      displayName: 'Text',
+      group: 'Data',
+      get(this: NodeInstance) {
+        const internal = internalOf(this);
+        return textForPath(internal.raw, internal.data, internal.textPath);
+      }
+    },
     eventType: {
       type: 'string',
       displayName: 'Event Type',
@@ -534,10 +573,11 @@ const SSENode: NodeDefinitionOptions = {
 
       // Values first, signal last: `flagOutputDirty` queues the new value on every
       // connected input, and a downstream node drains that queue in insertion order —
-      // so an accumulator wired `data -> chunk`, `onMessage -> add` sees the chunk
+      // so an accumulator wired `text -> chunk`, `onMessage -> add` sees the chunk
       // before the signal that consumes it.
       this.flagOutputDirty('data');
       this.flagOutputDirty('raw');
+      this.flagOutputDirty('text');
       this.flagOutputDirty('eventType');
       this.flagOutputDirty('lastEventId');
       this.flagOutputDirty('messageCount');

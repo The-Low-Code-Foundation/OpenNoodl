@@ -147,7 +147,7 @@ function buildUrl(backendConfig, collection, apiPathMode, recordId = null) {
 
 /**
  * Normalize a value for API submission
- * Handles date conversion to ISO 8601 format
+ * Handles date conversion to ISO 8601 format, and JSON text for json/array columns
  * @param {*} value - The value to normalize
  * @param {Object} fieldSchema - Field schema information
  * @returns {*} Normalized value
@@ -155,6 +155,25 @@ function buildUrl(backendConfig, collection, apiPathMode, recordId = null) {
 function normalizeValue(value, fieldSchema) {
   if (value === null || value === undefined) {
     return value;
+  }
+
+  // A json/array column's port is object-typed (getEnhancedFieldType), and object-typed
+  // ports are now editable in the property panel as a literal — so what arrives here for
+  // such a field may be the *text* the author typed. Sending that on would double-encode
+  // it: the column would hold the string `{"a":1}` rather than the object. Parsed here
+  // rather than in each node's setter because this is the one funnel every write path
+  // shares, and because the setter has no schema to consult.
+  //
+  // Text that does not parse is passed through untouched: a `json` column can legitimately
+  // hold a JSON string, and guessing is worse than sending what was asked for.
+  if (fieldSchema && (fieldSchema.type === 'json' || fieldSchema.type === 'array') && typeof value === 'string') {
+    const trimmed = value.trim();
+    if (trimmed === '') return value;
+    try {
+      return JSON.parse(trimmed);
+    } catch (e) {
+      return value;
+    }
   }
 
   // Handle date/datetime fields - convert to ISO 8601

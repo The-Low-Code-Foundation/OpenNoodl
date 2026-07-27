@@ -82,6 +82,7 @@ describe('net.noodl.TextAccumulator', () => {
         'cleared',
         'droppedCharacters',
         'droppedMessages',
+        'error',
         'lastMessage',
         'messageCount',
         'messageReceived',
@@ -183,6 +184,91 @@ describe('net.noodl.TextAccumulator', () => {
     expect(out('messages')).toEqual([]);
     expect(out('messageCount')).toBe(0);
     expect(signals).toContain('cleared');
+  });
+
+  // -- a chunk that is not text ---------------------------------------------
+  //
+  // The integration pass found `SSE.data -> chunk` — the wiring the enrichment, the
+  // catalog example and the example project all recommended — rendering `[object Object]`
+  // for an OpenAI-style stream, because `data` is JSON-parsed and this setter used to
+  // `String()` whatever it was given.
+
+  it('refuses an object chunk and names the mistake instead of appending [object Object]', () => {
+    const { node, out, signals, pulse } = createNode(accumulatorModule, 'net.noodl.TextAccumulator');
+    node.setInputValue('delimiter', '');
+    node.setInputValue('chunk', 'Hi');
+    pulse('add');
+
+    node.setInputValue('chunk', { delta: ' there' });
+    pulse('add');
+
+    expect(out('accumulated')).toBe('Hi');
+    expect(out('accumulated')).not.toContain('[object Object]');
+    expect(out('error')).toContain('Chunk must be text');
+    // Names the port that should have been wired, since that is the whole fix.
+    expect(out('error')).toContain('Text output');
+    // Nothing was appended, so nothing repainted: exactly one Changed, from 'Hi'.
+    expect(signals.filter((s) => s === 'changed').length).toBe(1);
+  });
+
+  it('refuses an array chunk too, and says which shape arrived', () => {
+    const { node, out } = createNode(accumulatorModule, 'net.noodl.TextAccumulator');
+    node.setInputValue('chunk', ['a', 'b']);
+    expect(out('error')).toContain('an array');
+  });
+
+  it('accepts numbers and booleans, which read as text', () => {
+    const { node, out, pulse } = createNode(accumulatorModule, 'net.noodl.TextAccumulator');
+    node.setInputValue('delimiter', '');
+    node.setInputValue('chunk', 42);
+    pulse('add');
+    node.setInputValue('chunk', true);
+    pulse('add');
+
+    expect(out('accumulated')).toBe('42true');
+    expect(out('error')).toBe('');
+  });
+
+  it('clears the error on the next good chunk, and on Clear', () => {
+    const { node, out, pulse } = createNode(accumulatorModule, 'net.noodl.TextAccumulator');
+    node.setInputValue('chunk', { delta: 'x' });
+    expect(out('error')).not.toBe('');
+
+    node.setInputValue('chunk', 'ok');
+    expect(out('error')).toBe('');
+
+    node.setInputValue('chunk', { delta: 'x' });
+    expect(out('error')).not.toBe('');
+    pulse('clear');
+    expect(out('error')).toBe('');
+  });
+
+  it('puts the mis-wiring on the canvas as a warning, not only on the output', () => {
+    const context = new NodeContext();
+    const warnings: { key: string; message: string }[] = [];
+    (context as any).editorConnection = {
+      // NodeContext asks this before it reports a sent value to the editor.
+      isConnected: () => false,
+      sendWarning: (_component: string, _id: string, key: string, warning: { message: string }) =>
+        warnings.push({ key, message: warning.message }),
+      clearWarning: (_component: string, _id: string, key: string) => {
+        const index = warnings.findIndex((w) => w.key === key);
+        if (index !== -1) warnings.splice(index, 1);
+      }
+    };
+    context.nodeRegister.register(NodeDefinition.defineNode(accumulatorModule.node));
+    const node = context.nodeRegister.createNode(
+      'net.noodl.TextAccumulator',
+      'accumulator-warning'
+    ) as unknown as NodeInstance;
+    (node as any).nodeScope = { componentOwner: { name: '/Chat' } };
+
+    node.setInputValue('chunk', { delta: 'x' });
+    expect(warnings.length).toBe(1);
+    expect(warnings[0].message).toContain('Chunk must be text');
+
+    node.setInputValue('chunk', 'fine now');
+    expect(warnings.length).toBe(0);
   });
 });
 

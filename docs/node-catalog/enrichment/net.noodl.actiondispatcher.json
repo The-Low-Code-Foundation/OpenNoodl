@@ -43,7 +43,8 @@
     "One Action Handler per thing the server may do, each wired to the nodes that do it — that set of handlers *is* the permission list, visible on the canvas.",
     "`refusalReason` and `refusalMessage` → a Text node in a debug group: the fastest way to find out that the server is sending `OPEN_VIEW` while the graph registered `OPEN_SESSION`.",
     "Send an array of actions for a guided tour; set `autoComplete` off on the handlers that must finish before the next step starts, and wire `idle` to whatever runs at the end.",
-    "Enable `SET_STORE` with `allowedKeys` naming just the view keys the agent may steer, so a store write cannot reach an auth token that happens to live in the same store."
+    "Enable `SET_STORE` with `allowedKeys` naming just the view keys the agent may steer, so a store write cannot reach an auth token that happens to live in the same store.",
+    "A built-in's own fields may sit on the envelope (`{type:'SET_STORE', key, value}`) or inside `payload` (`{type:'SET_STORE', payload:{key, value}}`) — the same resolution a handler's `payload` output uses, envelope first on a collision. `MERGE_STORE` wants `values` either way. A `storeName` in the message is always ignored in favour of the node's own."
   ],
   "antiPatterns": [
     "Enabling built-ins with `allowedKeys` blank on a store that also holds credentials or ids — a server can then overwrite any key in it.",

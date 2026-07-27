@@ -477,6 +477,72 @@ export function truncateHead(text: string, maxLength: number): { text: string; d
   return { text: text.slice(text.length - maxLength), dropped: text.length - maxLength };
 }
 
+// ============================================================================
+// Reading a field out of a parsed payload
+// ============================================================================
+
+/**
+ * Splits a dot/bracket path into its segments.
+ *
+ * `choices.0.delta.content` and `choices[0].delta.content` both give
+ * `['choices','0','delta','content']`. An empty path gives `[]`.
+ */
+export function splitPath(path: string): string[] {
+  if (!path) return [];
+  return path
+    .replace(/\[(\d+)\]/g, '.$1')
+    .split('.')
+    .map((segment) => segment.trim())
+    .filter((segment) => segment !== '');
+}
+
+/**
+ * Reads `path` out of `root`, or `undefined` when any step of it is missing.
+ *
+ * Deliberately total: an agent stream's frames are not uniform — the first frame of an
+ * OpenAI-style stream carries `role` and no `content`, the last carries neither — so a
+ * path that does not resolve is an ordinary outcome and must not throw. Nothing is
+ * evaluated; this is plain property access on objects and arrays only, which is what
+ * makes it safe to point at data that arrived over a socket.
+ *
+ * `__proto__`, `constructor` and `prototype` resolve to `undefined` rather than to the
+ * language's own internals. Reads cannot pollute anything, but a path is a value like any
+ * other and may itself arrive over a connection, so it gets no reach the author did not
+ * obviously intend.
+ *
+ * An empty path returns `root`, so a caller can treat "no path configured" as identity.
+ */
+export function valueAtPath(root: unknown, path: string): unknown {
+  const segments = splitPath(path);
+  let current: unknown = root;
+  for (const segment of segments) {
+    if (current === null || typeof current !== 'object') return undefined;
+    if (segment === '__proto__' || segment === 'constructor' || segment === 'prototype') return undefined;
+    current = (current as Record<string, unknown>)[segment];
+  }
+  return current;
+}
+
+/**
+ * The text a stream node should put on a guaranteed-string output.
+ *
+ * `raw` is the payload exactly as it arrived and `parsed` is the same payload after
+ * `parseJsonOrText`. With no `path` the answer is `raw` — a plain-text token stream needs
+ * no extraction. With a `path` the answer is that field of the parsed payload, and
+ * anything that is not a primitive (a missing field, a `[DONE]` sentinel that never
+ * parsed, an object) becomes `''` rather than `[object Object]`: an empty chunk is
+ * something every consumer in this family already ignores, and a stringified object is
+ * something none of them can recover from.
+ */
+export function textForPath(raw: string, parsed: unknown, path: string): string {
+  if (!path) return raw;
+  const value = valueAtPath(parsed, path);
+  const kind = typeof value;
+  if (kind === 'string') return value as string;
+  if (kind === 'number' || kind === 'boolean') return String(value);
+  return '';
+}
+
 /** Human-readable message from an unknown thrown value. */
 export function describeError(e: unknown): string {
   if (e instanceof Error) return e.message;
