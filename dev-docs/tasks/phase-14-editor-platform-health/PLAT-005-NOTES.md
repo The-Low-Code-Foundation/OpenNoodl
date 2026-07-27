@@ -244,3 +244,68 @@ variant through the normal Variants UI (not the banner) and confirm it behaves a
   reconciling, but it is a design decision, not a bug fix, and it is not this task's.
 - **The two pre-existing `export` spec failures** (§5.1) and the **NodePicker compile breakage**
   (§5.1) — both outside this task's boundary.
+
+---
+
+## 8. Live QA — what was run, 2026-07-27
+
+The §6 click-through was attempted against a real editor (`npm run dev:debug`, driven over
+CDP). **Part C passes in full. Parts A, B and D are still owed**, and the reason is worth
+recording because it is not "ran out of time" — it is that §6's script assumes a human
+clicking, and the substitute for that does not drive the code under test.
+
+### 8.1 Part C — dashboard routing (steps 12–14): **PASS**
+
+| Step | Result |
+|---|---|
+| 12. Click Projects / Learn / Templates | `location.href` stays `file:///…/editor/index.html` throughout. Nothing writes `/dashboard/…` into the URL — the §4 fix holds |
+| 13. Reload | Lands on the launcher. **No `ERR_FILE_NOT_FOUND`, no `Failed to load URL`** in `.logs/dev.log` after the reload point |
+| 14. Tab survives the reload | `localStorage['noodl-launcher-active-tab'] === 'templates'`, and the Templates tab renders selected. Screenshot confirms the underline is on Templates, not a default |
+
+### 8.2 Persistence of node parameters: **PASS** (the mechanism behind step 6)
+
+A Button created with `backgroundColor: #3B5BFF`, `color: #FFFFFF`, `borderRadius: 7px`
+survived save → close → reopen with all three values intact. That is the save/reopen half
+of step 6 proven, on ordinary parameters. It is **not** the variant half, which is what §2's
+fix is actually about.
+
+### 8.3 Parts A and B — blocked, and on what
+
+The suggestion banner never rendered, and the run could not establish why. Three candidate
+causes were separated as far as scripting allows:
+
+1. **Programmatic selection does not mount the style section.** `__nodeGraphEditor.selector.select([view])`
+   selects the node on the canvas, but after a fresh editor load it left
+   `[class*=SizePicker]` and `[class*=VariantSelector]` absent from the DOM — so
+   `ElementStyleSectionHost`, which is what renders the banner, was never mounted. The
+   property editor listens for something the selector alone does not emit. **A future run
+   needs real trusted clicks on the node's canvas rectangle**, via
+   `Input.dispatchMouseEvent`, not the selector API.
+2. **The analyzer only ever runs once per React root, and the root is deliberately
+   reused.** `useStyleSuggestions` calls `refresh()` in a `useEffect` with a stable
+   dependency — i.e. on mount only — while `propertyeditor.ts`'s `renderElementStyleSection`
+   documents itself as *"Safe to call multiple times — reuses the existing React root"*.
+   Together those mean the banner cannot appear in response to edits made while the panel
+   is open: an author who types three raw values sees nothing until the root is torn down.
+   This was observed (setting three values with the panel open produced no banner, and
+   re-selecting did not change that) but **not** isolated from cause 1, so it is a strong
+   suspicion rather than a confirmed defect.
+3. **The analyzer itself is not the problem.** `tests/services/StyleAnalyzer.test.ts` and
+   `StyleAnalyzerQuality.test.ts` carry 45 specs between them, including variant-candidate
+   cases asserting `overrideCount: 4`, and all of them pass in `npm run test:ci`
+   (1573 specs / 0 failures). The rule that §6 step 1 exercises — three raw values on a
+   Button, `backgroundColor` and `color` from `COLOR_PROPERTIES`, `borderRadius` from
+   `SPACING_PROPERTIES`, against `variantCandidateMinOverrides: 3` — is covered and green.
+
+So the risk that remains is **entirely in the wiring between the analyzer and the panel**,
+which is exactly the part unit tests cannot reach. Steps 1–11 and part D are still owed and
+should be run by hand, or by a script that clicks the canvas the way a user does.
+
+### 8.4 A side benefit: PLAT-006's live pass
+
+This session doubles as the live editor pass PLAT-006 owed. The whole run was against a
+runtime whose entry point, `model`, `collection`, `cloudfile` and `configservice` had just
+been converted to TypeScript, with the react viewer resolving declarations rather than
+sources. Across launcher render, project open, canvas paint, node creation, parameter
+writes, save, a full window reload and reopen: **zero `renderer:exception` lines in
+`.logs/dev.log`**, and the preview webview attached normally.
