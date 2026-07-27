@@ -313,4 +313,18 @@ export class AuthoringContextBuilder {
   planContext(rendered: string): string {
     return this.charge('plan-context', rendered);
   }
+
+  /**
+   * AIX-010: one project-scope reference block (the page map, the backend
+   * schema) rendered by the review assembler and charged here.
+   *
+   * Appended at the end of the class, and never called by any authoring or
+   * planning path — the AIX-007 cache prefix is a property of the *order the
+   * opening turn calls these methods in*, and the review turn is not that turn.
+   * A review builds its own throwaway builder, so nothing it charges can
+   * displace a byte of an authoring session's cached prefix.
+   */
+  reviewSource(source: string, text: string): string {
+    return this.charge(`review:${source}`, text);
+  }
 }

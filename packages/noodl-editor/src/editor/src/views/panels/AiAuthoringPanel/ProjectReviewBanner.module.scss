@@ -1,0 +1,28 @@
+/*
+ * AIX-010 — the recommendation banner.
+ *
+ * Neutral by design. Phase 23's palette law reserves red for danger and amber
+ * for warning; a project without context docs is neither. The left rule is the
+ * accent colour, which reads as "an offer" rather than "a problem".
+ */
+.Root {
+  padding: 8px 10px;
+  border-left: 2px solid var(--theme-color-primary);
+  background-color: var(--theme-color-bg-2);
+  border-radius: 0 2px 2px 0;
+  margin: 8px;
+}
+
+/* The coverage summary shown beside a drafted document, in both panels. */
+.Coverage {
+  padding: 6px 8px;
+  background-color: var(--theme-color-bg-2);
+  border-radius: 2px;
+}
+
+.CoverageList {
+  margin: 4px 0 0;
+  padding-left: 16px;
+  max-height: 140px;
+  overflow-y: auto;
+}
