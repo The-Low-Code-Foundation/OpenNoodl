@@ -1,10 +1,13 @@
-/* PNL-004: shared by the App Setup sections.
+/* PNL-004: shared by the settings sections.
  *
  * These sections hand-rolled every label as an inline-styled `<label>` above a
  * field — which is the compact band's layout, applied at every width whether or
  * not there is room for something better. They go through `PanelRow` now, and
  * what is left here is the handful of controls `PanelRow` deliberately does not
  * own: a textarea, a native select, a colour swatch.
+ *
+ * PNL-008 merged the former App Setup and Project Settings section stylesheets
+ * into this one, because the sections they styled are now siblings in one panel.
  */
 
 /* Multi-line free text. `PanelRow` gives it the whole row (`isStacked`); this
@@ -189,4 +192,15 @@
   border: 1px solid var(--theme-color-border-default);
   border-radius: var(--radius-default);
   color: var(--theme-color-fg-default);
+}
+
+/* ---------------------------------------------------------------------------
+   From the former ProjectSettingsPanel/sections/sections.module.scss (PNL-004).
+   --------------------------------------------------------------------------- */
+
+/* A findings list is file paths — long, and with no spaces to break at. Without
+   this the section pushes the panel's scroll container sideways at 240px. */
+.Breakable {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }

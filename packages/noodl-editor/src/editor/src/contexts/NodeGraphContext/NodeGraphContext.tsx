@@ -2,7 +2,6 @@ import React, { createContext, useContext, useCallback, useState, useEffect } fr
 
 import { ComponentModel } from '@noodl-models/componentmodel';
 import { ProjectModel } from '@noodl-models/projectmodel';
-import { SidebarModel } from '@noodl-models/sidebar';
 import { isComponentModel_CloudRuntime } from '@noodl-utils/NodeGraph';
 
 import { Slot } from '@noodl-core-ui/types/global';
@@ -114,17 +113,16 @@ export function NodeGraphContextProvider({ children }: NodeGraphContextProviderP
       // Guard against undefined model (happens on empty projects)
       if (!model) return;
 
-      if (isComponentModel_CloudRuntime(model)) {
-        setActive('backend');
-        if (SidebarModel.instance.ActiveId === 'components') {
-          SidebarModel.instance.switch('cloud-functions');
-        }
-      } else {
-        setActive('frontend');
-        if (SidebarModel.instance.ActiveId === 'cloud-functions') {
-          SidebarModel.instance.switch('components');
-        }
-      }
+      /*
+       * PNL-008: this used to `switch('cloud-functions')` on entering a backend
+       * component and back to `components` on leaving it. No panel with that id
+       * has been registered since WF-007 retired Cloud Services, and `switch()`
+       * no-ops silently on an unknown id — so the first branch has done nothing
+       * for two releases and the second could never fire (`ActiveId` can never
+       * equal an id that cannot be switched to). Both are gone; what remains is
+       * the `setActive` call, which is the part that was actually working.
+       */
+      setActive(isComponentModel_CloudRuntime(model) ? 'backend' : 'frontend');
     }
 
     const eventGroup = {};

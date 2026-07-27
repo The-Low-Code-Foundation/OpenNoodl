@@ -11,7 +11,6 @@ import { AuthoringPreviewDocumentProvider } from './views/documents/AuthoringPre
 import { ChangeReviewDocumentProvider } from './views/documents/ChangeReviewDocument';
 import { ComponentDiffDocumentProvider } from './views/documents/ComponentDiffDocument';
 import { EditorDocumentProvider } from './views/documents/EditorDocument';
-import { AppSetupPanel } from './views/panels/AppSetupPanel/AppSetupPanel';
 import { BackendServicesPanel } from './views/panels/BackendServicesPanel/BackendServicesPanel';
 import { AiAuthoringPanel, AiAuthoringPanel_ID } from './views/panels/AiAuthoringPanel';
 import { ComponentPortsComponent } from './views/panels/componentports';
@@ -22,7 +21,6 @@ import { ComponentXRayPanel } from './views/panels/ComponentXRayPanel';
 // import { DataLineagePanel } from './views/panels/DataLineagePanel';
 import { DesignTokenPanel } from './views/panels/DesignTokenPanel/DesignTokenPanel';
 import { DocsPanel, DocsPanel_ID } from './views/panels/DocsPanel';
-import { EditorSettingsPanel } from './views/panels/EditorSettingsPanel/EditorSettingsPanel';
 import { ExplainPanel, ExplainPanel_ID, startExplainTargetTracking } from './views/panels/ExplainPanel';
 import { FileExplorerPanel } from './views/panels/FileExplorerPanel';
 import { ExecutionHistoryPanel } from './views/panels/ExecutionHistoryPanel';
@@ -31,9 +29,9 @@ import { NodeReferencesPanel_ID } from './views/panels/NodeReferencesPanel';
 import { NodeReferencesPanel } from './views/panels/NodeReferencesPanel/NodeReferencesPanel';
 import { ProblemsPanel_ID } from './views/panels/ProblemsPanel';
 import { ProblemsPanel } from './views/panels/ProblemsPanel/ProblemsPanel';
-import { ProjectSettingsPanel } from './views/panels/ProjectSettingsPanel/ProjectSettingsPanel';
 import { PropertyEditor } from './views/panels/propertyeditor';
 import { SearchPanel } from './views/panels/search-panel/search-panel';
+import { SETTINGS_PANEL_ID, SettingsPanel } from './views/panels/SettingsPanel';
 // import { TopologyMapPanel } from './views/panels/TopologyMapPanel'; // Disabled - shelved feature
 import { TriggerChainDebuggerPanel } from './views/panels/TriggerChainDebuggerPanel';
 import { UndoQueuePanel } from './views/panels/UndoQueuePanel/UndoQueuePanel';
@@ -238,25 +236,6 @@ export function installSidePanel({ isLesson }: SetupEditorOptions) {
   });
 
   SidebarModel.instance.register({
-    id: 'app-setup',
-    defaultWidth: 460,
-    name: 'App Setup',
-    isDisabled: isLesson === true,
-    order: 8.5,
-    icon: IconName.Sliders,
-    panel: AppSetupPanel
-  });
-
-  SidebarModel.instance.register({
-    id: 'settings',
-    defaultWidth: 460,
-    name: 'Project settings',
-    order: 9,
-    icon: IconName.Setting,
-    panel: ProjectSettingsPanel
-  });
-
-  SidebarModel.instance.register({
     experimental: true,
     id: 'trigger-chain-debugger',
     name: 'Trigger Chain Debugger',
@@ -305,14 +284,34 @@ export function installSidePanel({ isLesson }: SetupEditorOptions) {
     panel: NodeReferencesPanel
   });
 
+  /*
+   * PNL-008: three settings destinations became one.
+   *
+   *   `app-setup`       (Sliders, order 8.5)            ─┐
+   *   `settings`        (Setting/a sun, order 9)         ├─→ this
+   *   `editor-settings` (SlidersHorizontal, bottom)     ─┘
+   *
+   * The surviving id is `settings`, so the projects already sitting on it keep
+   * their place; the other two are mapped on read in `settingsPanelRoute.ts`.
+   * Placement follows the phase-25 mock, which puts the one gear below the rail
+   * spacer — the slot Editor settings already occupied, and where an editor's
+   * settings are conventionally found.
+   *
+   * `IconName.Setting` still, but its glyph is now a cog rather than a sun. All
+   * eight of its call sites mean "settings"; none meant "appearance".
+   *
+   * No `isDisabled: isLesson` (which `app-setup` carried): this panel is also
+   * the only route to the theme switch and the AI provider, and hiding those in
+   * a lesson would be a functional loss, not a simplification.
+   */
   SidebarModel.instance.register({
-    id: 'editor-settings',
+    id: SETTINGS_PANEL_ID,
     defaultWidth: 460,
-    name: 'Editor settings',
+    name: 'Settings',
     order: 1,
     placement: 'bottom',
-    icon: IconName.SlidersHorizontal,
-    panel: EditorSettingsPanel
+    icon: IconName.Setting,
+    panel: SettingsPanel
   });
 }
 

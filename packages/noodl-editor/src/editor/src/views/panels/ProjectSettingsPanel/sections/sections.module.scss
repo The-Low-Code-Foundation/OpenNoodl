@@ -1,8 +1,0 @@
-/* PNL-004: shared by the Project Settings sections. */
-
-/* A findings list is file paths — long, and with no spaces to break at. Without
-   this the section pushes the panel's scroll container sideways at 240px. */
-.Breakable {
-  min-width: 0;
-  overflow-wrap: anywhere;
-}

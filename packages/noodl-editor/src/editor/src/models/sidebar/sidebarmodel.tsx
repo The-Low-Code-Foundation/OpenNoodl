@@ -1,4 +1,7 @@
-import { NodeGraphContextTmp } from '@noodl-contexts/NodeGraphContext/NodeGraphContext';
+// PNL-008: `NodeGraphContextTmp` was imported for `hidePanels`'s frontend/backend
+// branch alone. With the dead `cloud-functions` branch gone the import goes too,
+// which also takes out a circular edge between the sidebar model and the node
+// graph context.
 import React from 'react';
 
 import { NodeGraphNode } from '@noodl-models/nodegraphmodel';
@@ -343,9 +346,16 @@ export class SidebarModel extends Model<SidebarModelEvent, SidebarModelEventEven
       this.switch(this.previousActiveId);
       this.previousActiveId = undefined;
     } else {
-      const isFrontend = NodeGraphContextTmp.active === 'frontend';
-      const newPanel = isFrontend ? 'components' : 'cloud-functions';
-      this.switch(newPanel);
+      /*
+       * PNL-008: the backend branch used to switch to `cloud-functions`, which
+       * has not been a registered panel since WF-007 retired Cloud Services.
+       * `switch()` no-ops silently on an unknown id, so deselecting a node while
+       * inside a backend component left the transient property editor showing
+       * instead of falling back to anything. `components` is the fallback for
+       * both graphs now — it is registered, and it is what the frontend branch
+       * always did.
+       */
+      this.switch('components');
     }
   }
 
