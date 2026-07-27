@@ -184,3 +184,60 @@ describe('AIX-002 candidate builder — update mode', () => {
     expect(title.variant).toBe('Headline');
   });
 });
+
+/**
+ * Phase-15 close-out — malformed submissions must be *rejected*, never thrown.
+ *
+ * Found by the first live run of update mode: `claude-sonnet-5` submitted
+ * `nodes` as a JSON **string** rather than an array, and
+ * `(payload.nodes ?? []).map(…)` threw a `TypeError` straight out of the
+ * authoring session — losing every turn the user had already paid for, on a
+ * mistake the model corrects immediately when told. `SubmitPayload` types these
+ * fields as arrays, but it is built by an unchecked cast over tool arguments the
+ * model wrote, so the type is a claim about what should arrive rather than about
+ * what does.
+ */
+describe('AIX-002 candidate builder — malformed array fields', () => {
+  const badShapes: [string, unknown, string][] = [
+    ['a JSON string', '[{"id":"root","type":"Group"}]', 'string'],
+    ['an object', { 0: { id: 'root', type: 'Group' } }, 'object'],
+    ['a number', 3, 'number']
+  ];
+
+  for (const [label, value, typeWord] of badShapes) {
+    it(`rejects nodes submitted as ${label} instead of throwing`, () => {
+      const result = buildCandidate(REQUEST, { nodes: value } as unknown as SubmitPayload);
+      expect(result.files).toBeUndefined();
+      expect(result.errors).toEqual([`submit_component: \`nodes\` must be an array — got ${typeWord}.`]);
+    });
+  }
+
+  it('rejects connections submitted as a string', () => {
+    const result = buildCandidate(REQUEST, payload({ connections: '[]' as never }));
+    expect(result.files).toBeUndefined();
+    expect(result.errors).toEqual(['submit_component: `connections` must be an array — got string.']);
+  });
+
+  it('rejects visual_roots submitted as a single string', () => {
+    const result = buildCandidate(REQUEST, payload({ visualRoots: 'root' as never }));
+    expect(result.files).toBeUndefined();
+    expect(result.errors).toEqual(['submit_component: `visual_roots` must be an array — got string.']);
+  });
+
+  it("rejects a node whose ports are not an array — they are mapped further down", () => {
+    const result = buildCandidate(
+      REQUEST,
+      payload({
+        nodes: [{ id: 'root', type: 'Group', ports: { name: 'Label' } as never }]
+      })
+    );
+    expect(result.files).toBeUndefined();
+    expect(result.errors).toEqual(['Node "root": `ports` must be an array — got object.']);
+  });
+
+  it('still accepts the fields when they are genuinely absent', () => {
+    const result = buildCandidate(REQUEST, { nodes: [{ id: 'root', type: 'Group' }] });
+    expect(result.errors).toEqual([]);
+    expect(result.files!.connections.connections).toEqual([]);
+  });
+});

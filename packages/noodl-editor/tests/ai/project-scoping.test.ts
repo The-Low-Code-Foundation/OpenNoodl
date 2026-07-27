@@ -28,7 +28,7 @@ import path from 'path';
 import { AuthoringContextBuilder } from '../../src/editor/src/models/AiAssistant/authoring/ContextBuilder';
 import { validatePlan } from '../../src/editor/src/models/AiAssistant/authoring/plan';
 import { fromSerialisedProject } from '../../src/editor/src/models/AiAssistant/explain/graph';
-import { RECORD_SCOPE, SCOPING_TOOLS } from '../../src/editor/src/models/AiAssistant/scoping/prompts';
+import { RECORD_SCOPE, SCOPING_TOOLS, scopingSystemPrompt } from '../../src/editor/src/models/AiAssistant/scoping/prompts';
 import { ScopingSession } from '../../src/editor/src/models/AiAssistant/scoping/ScopingSession';
 import {
   DOC_INITIAL_SCOPE,
@@ -448,6 +448,30 @@ describe('AIX-012 — writing the documents into a real project folder', () => {
     expect(handout).toContain('Every list page shows an explicit empty state.');
     expect(context.projectBrief()).toContain(READING_LIST.summary);
   });
+
+  /**
+   * Phase-15 close-out — the other half of criterion 5, which the mechanical
+   * assertion above cannot see: *what is in* the file that gets handed over.
+   *
+   * The template seeds six `(example)` rules, and the handout is the file
+   * verbatim — `renderDocForPrompt` only truncates. So a project created from a
+   * conversation that agreed three pages ships "(example) Do not add a Router;
+   * this app is a single page" into every authoring turn, under a header saying
+   * these rules must be followed and outrank the model's defaults. The examples
+   * have to carry their own disclaimer, because the file is read by the model
+   * and by the user and neither should be told a different thing.
+   */
+  it('the handed-over conventions disown their own example rules', async () => {
+    await writeScopeDocs(docs, { scope: agreedScope(), transcript: [], at: 'now' });
+    const content = await docs.content();
+    const graph = fromSerialisedProject(JSON.parse(JSON.stringify(gitRepoUtf8)));
+    const handout = new AuthoringContextBuilder(graph, {}, undefined, undefined, content).projectConventions()!;
+
+    // The example that would actively contradict a multi-page plan.
+    expect(handout).toContain('(example) Do not add a Router');
+    // …and, in the same text, the statement that it is not a rule here.
+    expect(handout).toContain('are NOT rules for this project and must not be followed');
+  });
 });
 
 describe('AIX-012 — the plan handover', () => {
@@ -471,5 +495,51 @@ describe('AIX-012 — the plan handover', () => {
     expect(peekPendingScopePlan('p2')).toBeUndefined();
     expect(takePendingScopePlan('p2')).toBeUndefined();
     expect(takePendingScopePlan('p1')).toBeUndefined();
+  });
+});
+
+/**
+ * Phase-15 close-out — findings from the first live scoping conversation.
+ *
+ * Two things only a real model produces. Both are about a document that
+ * contradicts itself, which is worse than a document with a gap: a `> TODO:`
+ * tells the next reader to go and find out, and a contradiction tells them
+ * something false with the same confidence as everything around it.
+ */
+describe('AIX-012 — what the live conversation got wrong', () => {
+  /**
+   * The run: the model assumed "no accounts for now" on turn 1 and recorded it
+   * in `outOfScope`; the user asked for email/password sign-in on turn 3; the
+   * model recorded the Login page and the auth backend and left the stale
+   * out-of-scope line in place. The brief then said the app has no accounts on
+   * the same page as it said how people log in.
+   *
+   * The merge was never the problem — it replaces, and this proves it. What was
+   * missing was the model knowing that a reversed decision means re-sending the
+   * *shortened* list, which is now stated in the tool schema and the prompt.
+   */
+  it('lets a later turn shrink a list, so a reversed decision can be un-recorded', () => {
+    const first = mergeScope(emptyScope('a book club app'), {
+      outOfScope: ['In-app chat (WhatsApp covers it)', 'User accounts/authentication']
+    });
+    expect(first.outOfScope.length).toBe(2);
+
+    const reversed = mergeScope(first, { outOfScope: ['In-app chat (WhatsApp covers it)'] });
+    expect(reversed.outOfScope).toEqual(['In-app chat (WhatsApp covers it)']);
+  });
+
+  it('tells the model that a reversed decision needs the shortened list re-sent', () => {
+    const prompt = scopingSystemPrompt();
+    // The generic "each field replaces" line was already in the tool schema and
+    // was not enough — the model reads `record_scope` as "record what is new".
+    // What it needed was the consequence spelled out.
+    expect(prompt).toContain('REPLACES');
+    expect(prompt.toLowerCase()).toContain('re-send that whole list');
+  });
+
+  it('marks the out-of-scope field as replacing, where the model reads it', () => {
+    const tool = SCOPING_TOOLS.find((t) => t.name === RECORD_SCOPE)!;
+    const properties = (tool.parameters as { properties: Record<string, { description: string }> }).properties;
+    expect(properties.outOfScope.description).toContain('Replaces the previous list');
   });
 });

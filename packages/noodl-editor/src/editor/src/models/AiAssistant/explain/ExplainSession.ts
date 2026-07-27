@@ -15,7 +15,12 @@
  */
 
 import { AiClient } from '@noodl-models/AiAssistant/client';
-import type { AiMessage } from '@noodl-models/AiAssistant/client/types';
+import type {
+  AiChatRequest,
+  AiChatResponse,
+  AiMessage,
+  AiStreamCallbacks
+} from '@noodl-models/AiAssistant/client/types';
 
 import { assembleContext, ExplainRequest } from './assemble';
 import { stripUnresolvedCitations } from './citations';
@@ -37,7 +42,17 @@ export interface ExplainTurn {
 
 export interface ExplainSessionOptions extends ExplainContextOptions {
   detail?: ExplainDetail;
+  /**
+   * Injection seam; defaults to the configured AiClient, streaming. Every other
+   * session in this module (`AuthoringSession`, `PlanningSession`,
+   * `ScopingSession`, `ReviewDocSession`, `DocSession`) takes one — this was
+   * the only one that reached the client directly, which put Explain Mode out
+   * of reach of the headless measurement harness.
+   */
+  chat?: ExplainChatFn;
 }
+
+export type ExplainChatFn = (request: AiChatRequest, callbacks?: AiStreamCallbacks) => Promise<AiChatResponse>;
 
 /** Everything the panel renders, recomputed and published on every change. */
 export interface ExplainSessionState {
@@ -136,7 +151,8 @@ export class ExplainSession {
     this.publish();
 
     try {
-      const response = await AiClient.chatStream(
+      const chat = this.options.chat ?? ((request, callbacks) => AiClient.chatStream(request, callbacks ?? {}));
+      const response = await chat(
         { messages: [...this.messages], abortController },
         {
           onText: (fullText) => {

@@ -1,0 +1,165 @@
+{
+  "component": {
+    "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+    "id": "d4c38400-ed22-4ae6-83a0-e9c4655b309d",
+    "name": "Save Button",
+    "path": "/Visual Components/Article/Save Button",
+    "type": "visual",
+    "created": "2026-07-27T20:35:20.671Z",
+    "modified": "2026-07-27T20:35:20.671Z",
+    "modifiedBy": "ai-authoring",
+    "description": "A toggleable save/unsave icon button for an article: reflects saved state via icon color, and on click calls Manage Saved Articles to toggle save state, emitting Toggled on success."
+  },
+  "nodes": {
+    "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+    "componentId": "d4c38400-ed22-4ae6-83a0-e9c4655b309d",
+    "version": 1,
+    "nodes": [
+      {
+        "id": "in",
+        "type": "Component Inputs",
+        "x": 0,
+        "y": 0,
+        "ports": [
+          {
+            "name": "articleId",
+            "plug": "output",
+            "type": "*"
+          },
+          {
+            "name": "isSaved",
+            "plug": "output",
+            "type": "boolean"
+          }
+        ]
+      },
+      {
+        "id": "out",
+        "type": "Component Outputs",
+        "x": 900,
+        "y": 0,
+        "ports": [
+          {
+            "name": "Toggled",
+            "plug": "input",
+            "type": "signal"
+          }
+        ]
+      },
+      {
+        "id": "root",
+        "type": "Group",
+        "label": "Save Button root",
+        "x": 300,
+        "y": 150,
+        "children": [
+          "btn"
+        ],
+        "parameters": {
+          "flexDirection": "row",
+          "alignItems": "center",
+          "backgroundColor": "transparent"
+        }
+      },
+      {
+        "id": "btn",
+        "type": "net.noodl.controls.button",
+        "label": "Save/Unsave button",
+        "x": 320,
+        "y": 150,
+        "parent": "root",
+        "parameters": {
+          "variant": "ghost",
+          "label": "",
+          "width": 40,
+          "height": 40,
+          "backgroundColor": "transparent",
+          "borderWidth": 0,
+          "iconIconSource": {
+            "className": "fa fa-bookmark"
+          },
+          "iconSize": 20
+        }
+      },
+      {
+        "id": "colorExpr",
+        "type": "Expression",
+        "label": "Icon color from saved state",
+        "x": 100,
+        "y": 300,
+        "parameters": {
+          "expression": "isSaved ? 'var(--primary)' : 'var(--muted-foreground)'"
+        }
+      },
+      {
+        "id": "actionExpr",
+        "type": "Expression",
+        "label": "Toggle action string",
+        "x": 100,
+        "y": 450,
+        "parameters": {
+          "expression": "isSaved ? 'unsave' : 'save'"
+        }
+      },
+      {
+        "id": "manage",
+        "type": "/Logic Components/Manage Saved Articles",
+        "label": "Manage Saved Articles logic",
+        "x": 550,
+        "y": 450
+      }
+    ],
+    "visualRoots": [
+      "root"
+    ]
+  },
+  "connections": {
+    "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+    "componentId": "d4c38400-ed22-4ae6-83a0-e9c4655b309d",
+    "version": 1,
+    "connections": [
+      {
+        "fromId": "in",
+        "fromProperty": "isSaved",
+        "toId": "colorExpr",
+        "toProperty": "isSaved"
+      },
+      {
+        "fromId": "colorExpr",
+        "fromProperty": "asString",
+        "toId": "btn",
+        "toProperty": "iconColor"
+      },
+      {
+        "fromId": "in",
+        "fromProperty": "isSaved",
+        "toId": "actionExpr",
+        "toProperty": "isSaved"
+      },
+      {
+        "fromId": "actionExpr",
+        "fromProperty": "asString",
+        "toId": "manage",
+        "toProperty": "action"
+      },
+      {
+        "fromId": "in",
+        "fromProperty": "articleId",
+        "toId": "manage",
+        "toProperty": "articleId"
+      },
+      {
+        "fromId": "btn",
+        "fromProperty": "onClick",
+        "toId": "manage",
+        "toProperty": "Do"
+      },
+      {
+        "fromId": "manage",
+        "fromProperty": "Success",
+        "toId": "out",
+        "toProperty": "Toggled"
+      }
+    ]
+  }
+}

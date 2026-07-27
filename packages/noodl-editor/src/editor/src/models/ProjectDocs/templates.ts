@@ -71,6 +71,12 @@ const CONVENTIONS = `# Conventions
 
   Write rules that are checkable. "Make it nice" is not a rule; "every page's
   outermost node is a Group named Page Root" is.
+
+  Lines starting "(example)" are placeholders showing the shape of a good rule.
+  They are NOT rules for this project and must not be followed — replace them or
+  delete them. This matters because the file goes to the assistant verbatim: a
+  project created from a scoping conversation that agreed three pages ships with
+  "(example) Do not add a Router; this app is a single page" still in it.
 -->
 
 ## Structure

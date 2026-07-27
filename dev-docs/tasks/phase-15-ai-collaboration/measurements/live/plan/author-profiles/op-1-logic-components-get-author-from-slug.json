@@ -1,0 +1,143 @@
+{
+  "component": {
+    "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+    "id": "68b53616-866e-4924-a6ae-edca98c6759e",
+    "name": "Get Author From Slug",
+    "path": "/Logic Components/Get Author From Slug",
+    "type": "visual",
+    "created": "2026-07-27T20:43:50.746Z",
+    "modified": "2026-07-27T20:43:50.746Z",
+    "modifiedBy": "ai-authoring",
+    "description": "Given an author Slug and a Do trigger, queries Contentful GraphQL for the author's name, bio, photo and their authored articles, exposing Success/Failure signals and an author object."
+  },
+  "nodes": {
+    "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+    "componentId": "68b53616-866e-4924-a6ae-edca98c6759e",
+    "version": 1,
+    "nodes": [
+      {
+        "id": "in",
+        "type": "Component Inputs",
+        "x": 0,
+        "y": 0,
+        "ports": [
+          {
+            "name": "Do",
+            "plug": "output",
+            "type": "signal"
+          },
+          {
+            "name": "Slug",
+            "plug": "output",
+            "type": "string"
+          }
+        ]
+      },
+      {
+        "id": "buildQuery",
+        "type": "JavaScriptFunction",
+        "label": "Build GraphQL query for author by slug",
+        "x": 250,
+        "y": 0,
+        "parameters": {
+          "functionScript": "if(Inputs.slug){\n  Outputs.query = 'query { authorCollection(where: {slug: \\\"'+Inputs.slug+'\\\"}, limit: 1) { items { name bio photo { url } articlesCollection { items { title slug } } } } }';\n  Outputs.done();\n}"
+        }
+      },
+      {
+        "id": "gql",
+        "type": "/Logic Components/Contentful GraphQL",
+        "label": "Contentful GraphQL query",
+        "x": 500,
+        "y": 0
+      },
+      {
+        "id": "extract",
+        "type": "JavaScriptFunction",
+        "label": "Extract author fields from query result",
+        "x": 750,
+        "y": 0,
+        "parameters": {
+          "functionScript": "if(Inputs.result && Inputs.result.authorCollection && Inputs.result.authorCollection.items.length > 0){\n  var a = Inputs.result.authorCollection.items[0];\n  Outputs.author = {\n    name: a.name,\n    photo: a.photo ? a.photo.url : null,\n    bio: a.bio,\n    articles: a.articlesCollection ? a.articlesCollection.items : []\n  };\n}"
+        }
+      },
+      {
+        "id": "out",
+        "type": "Component Outputs",
+        "x": 1000,
+        "y": 0,
+        "ports": [
+          {
+            "name": "Success",
+            "plug": "input",
+            "type": "signal"
+          },
+          {
+            "name": "Failure",
+            "plug": "input",
+            "type": "signal"
+          },
+          {
+            "name": "author",
+            "plug": "input",
+            "type": "*"
+          }
+        ]
+      }
+    ]
+  },
+  "connections": {
+    "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+    "componentId": "68b53616-866e-4924-a6ae-edca98c6759e",
+    "version": 1,
+    "connections": [
+      {
+        "fromId": "in",
+        "fromProperty": "Do",
+        "toId": "buildQuery",
+        "toProperty": "run"
+      },
+      {
+        "fromId": "in",
+        "fromProperty": "Slug",
+        "toId": "buildQuery",
+        "toProperty": "slug"
+      },
+      {
+        "fromId": "buildQuery",
+        "fromProperty": "query",
+        "toId": "gql",
+        "toProperty": "Query"
+      },
+      {
+        "fromId": "buildQuery",
+        "fromProperty": "done",
+        "toId": "gql",
+        "toProperty": "Do"
+      },
+      {
+        "fromId": "gql",
+        "fromProperty": "queryResult",
+        "toId": "extract",
+        "toProperty": "result"
+      },
+      {
+        "fromId": "gql",
+        "fromProperty": "Success",
+        "toId": "out",
+        "toProperty": "Success"
+      },
+      {
+        "fromId": "gql",
+        "fromProperty": "Failure",
+        "toId": "out",
+        "toProperty": "Failure"
+      },
+      {
+        "fromId": "extract",
+        "fromProperty": "author",
+        "toId": "out",
+        "toProperty": "author"
+      }
+    ]
+  }
+}

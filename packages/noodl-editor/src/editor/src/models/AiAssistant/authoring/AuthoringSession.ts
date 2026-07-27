@@ -763,7 +763,23 @@ export class AuthoringSession {
 
   private handleSubmit(call: AiToolCall): SubmitResult {
     const payload = toSubmitPayload(call.arguments);
-    const candidate = buildCandidate(this.request, payload, undefined, this.baseFiles);
+    // `buildCandidate` reports the malformed shapes it knows about, and this
+    // catch covers the ones it does not: a submission is untrusted model output,
+    // and the loop's contract is that a bad one is *rejected* — repairable, with
+    // the reason handed back — never thrown out of the session. Losing a whole
+    // authoring run to a `TypeError` costs the user every turn paid for so far.
+    let candidate;
+    try {
+      candidate = buildCandidate(this.request, payload, undefined, this.baseFiles);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return {
+        ok: false,
+        errorLines: [`The submission could not be read: ${message}`],
+        styleFindings: [],
+        text: `The submission could not be read: ${message}\nResubmit with the shape submit_component documents.`
+      };
+    }
     if (!candidate.files) {
       return {
         ok: false,

@@ -1,0 +1,940 @@
+{
+  "component": {
+    "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+    "id": "adab817a-ff0e-c294-04d0-f51a9c1f538e",
+    "name": "Article",
+    "path": "/Visual Components/Article/Article",
+    "type": "visual",
+    "modified": "2026-07-27T20:52:00.182Z",
+    "metadata": {
+      "canvasPos": {
+        "x": 1659,
+        "y": -20
+      }
+    },
+    "modifiedBy": "ai-authoring"
+  },
+  "nodes": {
+    "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+    "componentId": "adab817a-ff0e-c294-04d0-f51a9c1f538e",
+    "version": 1,
+    "nodes": [
+      {
+        "id": "b2b07330-85dd-6c35-33b2-bc3a94d305ce",
+        "type": "Group",
+        "x": 0,
+        "y": 0,
+        "children": [
+          "1536049f-c30f-8093-c1b1-a30894abc0e9",
+          "d3e07743-6b70-cde2-d8ae-095ea8946ddf"
+        ],
+        "parameters": {
+          "clip": false,
+          "scrollEnabled": false,
+          "alignItems": "center",
+          "paddingBottom": {
+            "value": 24,
+            "unit": "px"
+          },
+          "sizeMode": "explicit"
+        }
+      },
+      {
+        "id": "1536049f-c30f-8093-c1b1-a30894abc0e9",
+        "type": "/Visual Components/Article/Article Page Header",
+        "parent": "b2b07330-85dd-6c35-33b2-bc3a94d305ce"
+      },
+      {
+        "id": "d3e07743-6b70-cde2-d8ae-095ea8946ddf",
+        "type": "Group",
+        "label": "Article Header Area",
+        "parent": "b2b07330-85dd-6c35-33b2-bc3a94d305ce",
+        "children": [
+          "475c2501-0d45-a628-6f68-631d036fbc01",
+          "498658f0-fb26-5842-73f5-bf2f32aced61",
+          "4f878d89-4457-ca78-8e05-6d33ec7a52ed",
+          "faf82dfd-45e1-974a-32ce-ae13e4891dc6",
+          "09ec8d50-a79a-f602-0d2e-eeb4ae43aa7b",
+          "ee18c745-5db9-df18-dab1-df00cb1b236d",
+          "6e87a45f-b49c-527d-a766-85601257c92e",
+          "ba513083-1ed4-f55b-6654-ad98df47f221"
+        ],
+        "parameters": {
+          "sizeMode": "contentHeight",
+          "scrollEnabled": false,
+          "position": "relative",
+          "maxWidth": {
+            "value": 1000,
+            "unit": "px"
+          },
+          "alignItems": "center"
+        }
+      },
+      {
+        "id": "475c2501-0d45-a628-6f68-631d036fbc01",
+        "type": "Image",
+        "parent": "d3e07743-6b70-cde2-d8ae-095ea8946ddf",
+        "parameters": {
+          "sizeMode": "contentHeight",
+          "width": {
+            "value": 100,
+            "unit": "%"
+          },
+          "alignX": "center",
+          "position": "relative"
+        }
+      },
+      {
+        "id": "498658f0-fb26-5842-73f5-bf2f32aced61",
+        "type": "Group",
+        "label": "Group",
+        "parent": "d3e07743-6b70-cde2-d8ae-095ea8946ddf",
+        "children": [
+          "de810a44-152c-6890-0a7c-e32d153924c2",
+          "5e16c28c-9a38-ef71-cae5-e07d3ec6c452",
+          "d594b52b-868e-ec0d-0826-221d2680947f"
+        ],
+        "parameters": {
+          "sizeMode": "contentHeight",
+          "backgroundColor": "#FFFFFF",
+          "borderBottomStyle": "none",
+          "boxShadowInset": false,
+          "boxShadowOffsetY": {
+            "value": 5,
+            "unit": "px"
+          },
+          "boxShadowSpreadRadius": {
+            "value": 0,
+            "unit": "px"
+          },
+          "styleCss": "box-shadow: 0 5px 2px -2px #e7e7e7;",
+          "width": {
+            "value": 100,
+            "unit": "%",
+            "isFixed": false
+          },
+          "zIndex": 2,
+          "position": "sticky",
+          "paddingTop": {
+            "value": 24,
+            "unit": "px"
+          },
+          "paddingLeft": {
+            "value": 24,
+            "unit": "px"
+          },
+          "paddingRight": {
+            "value": 24,
+            "unit": "px"
+          },
+          "paddingBottom": {
+            "value": 24,
+            "unit": "px"
+          },
+          "marginBottom": {
+            "value": 24,
+            "unit": "px"
+          },
+          "alignY": "top",
+          "marginTop": {
+            "value": 0,
+            "unit": "px"
+          }
+        }
+      },
+      {
+        "id": "de810a44-152c-6890-0a7c-e32d153924c2",
+        "type": "Text",
+        "parent": "498658f0-fb26-5842-73f5-bf2f32aced61",
+        "parameters": {
+          "cssClassName": "titleArticle"
+        }
+      },
+      {
+        "id": "5e16c28c-9a38-ef71-cae5-e07d3ec6c452",
+        "type": "Group",
+        "parent": "498658f0-fb26-5842-73f5-bf2f32aced61",
+        "children": [
+          "4d325072-4e40-2070-fecd-ea8c956f29ca",
+          "6d2dcbad-19b0-66b4-a6e6-3ad51a98864b"
+        ],
+        "parameters": {
+          "sizeMode": "contentHeight",
+          "height": {
+            "value": 72,
+            "unit": "px"
+          },
+          "flexWrap": "wrap",
+          "cssClassName": "authorClickable"
+        }
+      },
+      {
+        "id": "4d325072-4e40-2070-fecd-ea8c956f29ca",
+        "type": "Text",
+        "parent": "5e16c28c-9a38-ef71-cae5-e07d3ec6c452",
+        "parameters": {
+          "cssClassName": "info"
+        }
+      },
+      {
+        "id": "6d2dcbad-19b0-66b4-a6e6-3ad51a98864b",
+        "type": "Text",
+        "parent": "5e16c28c-9a38-ef71-cae5-e07d3ec6c452",
+        "parameters": {
+          "fontFamily": "Inter-Bold.ttf",
+          "fontSize": {
+            "value": 13,
+            "unit": "px"
+          },
+          "color": "#505758",
+          "marginLeft": {
+            "value": 0,
+            "unit": "px"
+          },
+          "marginTop": {
+            "value": 8,
+            "unit": "px"
+          }
+        }
+      },
+      {
+        "id": "d594b52b-868e-ec0d-0826-221d2680947f",
+        "type": "/Visual Components/Article/Like Comment Share Component",
+        "parent": "498658f0-fb26-5842-73f5-bf2f32aced61",
+        "parameters": {
+          "numLikes": "0"
+        }
+      },
+      {
+        "id": "4f878d89-4457-ca78-8e05-6d33ec7a52ed",
+        "type": "Group",
+        "parent": "d3e07743-6b70-cde2-d8ae-095ea8946ddf",
+        "children": [
+          "1f7b0595-12c9-65ca-38ea-cde41289bd7f"
+        ],
+        "parameters": {
+          "sizeMode": "contentHeight",
+          "alignItems": "center"
+        }
+      },
+      {
+        "id": "1f7b0595-12c9-65ca-38ea-cde41289bd7f",
+        "type": "Text",
+        "parent": "4f878d89-4457-ca78-8e05-6d33ec7a52ed",
+        "parameters": {
+          "cssClassName": "article"
+        }
+      },
+      {
+        "id": "faf82dfd-45e1-974a-32ce-ae13e4891dc6",
+        "type": "Group",
+        "label": "Divider",
+        "parent": "d3e07743-6b70-cde2-d8ae-095ea8946ddf",
+        "parameters": {
+          "height": {
+            "value": 3,
+            "unit": "px"
+          },
+          "backgroundColor": "#EDEDED",
+          "borderRadius": {
+            "value": 5,
+            "unit": "px"
+          },
+          "width": {
+            "value": 90,
+            "unit": "%"
+          },
+          "alignX": "center",
+          "marginBottom": {
+            "value": 32,
+            "unit": "px"
+          }
+        }
+      },
+      {
+        "id": "09ec8d50-a79a-f602-0d2e-eeb4ae43aa7b",
+        "type": "/Visual Components/Article/Reference Component",
+        "parent": "d3e07743-6b70-cde2-d8ae-095ea8946ddf"
+      },
+      {
+        "id": "ee18c745-5db9-df18-dab1-df00cb1b236d",
+        "type": "Group",
+        "parent": "d3e07743-6b70-cde2-d8ae-095ea8946ddf",
+        "children": [
+          "48e0b5f6-f660-1c55-3a9f-52ede1fa4cf1"
+        ]
+      },
+      {
+        "id": "48e0b5f6-f660-1c55-3a9f-52ede1fa4cf1",
+        "type": "/Visual Components/Article/Comments",
+        "parent": "ee18c745-5db9-df18-dab1-df00cb1b236d"
+      },
+      {
+        "id": "6e87a45f-b49c-527d-a766-85601257c92e",
+        "type": "/Visual Components/Article/Rating/Rating Component",
+        "parent": "d3e07743-6b70-cde2-d8ae-095ea8946ddf"
+      },
+      {
+        "id": "ba513083-1ed4-f55b-6654-ad98df47f221",
+        "type": "Group",
+        "label": "Footer",
+        "parent": "d3e07743-6b70-cde2-d8ae-095ea8946ddf",
+        "children": [
+          "b22047aa-63f7-521a-2a72-2299292fccea"
+        ],
+        "parameters": {
+          "alignItems": "center",
+          "paddingLeft": {
+            "value": 24,
+            "unit": "px"
+          },
+          "paddingRight": {
+            "value": 24,
+            "unit": "px"
+          },
+          "marginTop": {
+            "value": 32,
+            "unit": "px"
+          }
+        }
+      },
+      {
+        "id": "b22047aa-63f7-521a-2a72-2299292fccea",
+        "type": "Text",
+        "parent": "ba513083-1ed4-f55b-6654-ad98df47f221",
+        "parameters": {
+          "cssClassName": "footer"
+        }
+      },
+      {
+        "id": "8ecb74ea-2e38-8617-5c75-13cca3eb8603",
+        "type": "Component Inputs",
+        "x": -575.3849128901966,
+        "y": 537.0473079713851,
+        "ports": [
+          {
+            "name": "bodyTextMd",
+            "plug": "output",
+            "type": {
+              "name": "*"
+            },
+            "index": 1
+          },
+          {
+            "name": "title",
+            "plug": "output",
+            "type": {
+              "name": "*"
+            },
+            "index": 2
+          },
+          {
+            "name": "coverImage",
+            "plug": "output",
+            "type": {
+              "name": "*"
+            },
+            "index": 3
+          },
+          {
+            "name": "author",
+            "plug": "output",
+            "type": {
+              "name": "*"
+            },
+            "index": 4
+          },
+          {
+            "name": "verified",
+            "plug": "output",
+            "type": {
+              "name": "*"
+            },
+            "index": 5
+          },
+          {
+            "name": "publishedAt",
+            "plug": "output",
+            "type": {
+              "name": "*"
+            },
+            "index": 6
+          },
+          {
+            "name": "Mounted",
+            "plug": "output",
+            "type": {
+              "name": "*"
+            },
+            "index": 7
+          },
+          {
+            "name": "References",
+            "plug": "output",
+            "type": {
+              "name": "*"
+            },
+            "index": 8
+          },
+          {
+            "name": "articleObjectId",
+            "plug": "output",
+            "type": {
+              "name": "*"
+            },
+            "index": 9
+          },
+          {
+            "name": "articleId",
+            "plug": "output",
+            "type": {
+              "name": "*"
+            },
+            "index": 10
+          },
+          {
+            "name": "footerText",
+            "plug": "output",
+            "type": {
+              "name": "*"
+            },
+            "index": 11
+          },
+          {
+            "name": "authorSlug",
+            "plug": "output",
+            "type": {
+              "name": "*"
+            },
+            "index": 12
+          }
+        ]
+      },
+      {
+        "id": "cc916008-bdba-0a3c-3cf7-174f68dcfe65",
+        "type": "CSS Definition",
+        "x": -559.8395349442089,
+        "y": 431.41844242144265,
+        "parameters": {
+          "style": ".article{ margin:0px; padding:24px; font-family:Inter; font-size:16px; color:#505758; width:100%; max-width:1000px; height:100%; } .article h3{ color:#379EA5; font-size:19px; } .article ul{ font-family:Inter; font-size:16px; padding-inline-start: 32px; } .article img{ width:100%; height:auto; margin:0 auto; max-width:600px; display:block; } .article .imgDesc{ margin-top:-1em; padding-left:1em; color:#505758; font-size:13px; } .footer{ font-family:Inter; font-size:13px; color:black; line-height:20px; }"
+        }
+      },
+      {
+        "id": "52197658-a3dc-b47d-11fc-ad6161c6924d",
+        "type": "JavaScriptFunction",
+        "x": -499.2014628923682,
+        "y": 948.869359696762,
+        "parameters": {
+          "functionScript": "Outputs.formattedDate = moment(Inputs.date).format('MMM Do YYYY')"
+        },
+        "dynamicports": [
+          {
+            "name": "in-date",
+            "displayName": "date",
+            "plug": "input",
+            "type": "*",
+            "group": "Inputs",
+            "index": 4
+          },
+          {
+            "name": "out-formattedDate",
+            "displayName": "formattedDate",
+            "plug": "output",
+            "type": "*",
+            "group": "Outputs",
+            "index": 5
+          }
+        ]
+      },
+      {
+        "id": "7922d8f3-af7d-c165-345d-13510f66879e",
+        "type": "Number Remapper",
+        "x": 321.7705327401352,
+        "y": 390.65065354351316,
+        "parameters": {
+          "maxInputValue": 100,
+          "maxOutputValue": 24,
+          "minOutputValue": 100
+        }
+      },
+      {
+        "id": "8f42c664-50f0-cf1e-8764-e4a3151c3404",
+        "type": "String Format",
+        "x": -203.9518439874593,
+        "y": 625.8719378924455,
+        "parameters": {
+          "format": "By <span>{author}</span> - Verified by  <span>{verifiedBy}</span>"
+        },
+        "dynamicports": [
+          {
+            "name": "author",
+            "type": "string",
+            "plug": "input",
+            "index": 2
+          },
+          {
+            "name": "verifiedBy",
+            "type": "string",
+            "plug": "input",
+            "index": 3
+          }
+        ]
+      },
+      {
+        "id": "6618fdd0-6eef-2e82-6113-bf3c474759a0",
+        "type": "CSS Definition",
+        "x": -370.6702464949774,
+        "y": 425.9524428075569,
+        "parameters": {
+          "style": ".info { font-family:Inter; font-size:13px; color:#505758; } .info span{ color:#539CA0; }"
+        }
+      },
+      {
+        "id": "d876b99e-1a92-8961-1f9a-2706d7dc7fdb",
+        "type": "Model2",
+        "label": "currentArticle",
+        "x": -850.0758668839255,
+        "y": 886.9836147719959,
+        "parameters": {
+          "properties": "likes_count,article_id"
+        },
+        "dynamicports": [
+          {
+            "type": {
+              "name": "*",
+              "allowConnectionsOnly": true
+            },
+            "plug": "input/output",
+            "group": "Properties",
+            "name": "prop-likes_count",
+            "displayName": "likes_count",
+            "index": 7
+          },
+          {
+            "type": "signal",
+            "plug": "output",
+            "group": "Changed Events",
+            "displayName": "likes_count Changed",
+            "name": "changed-likes_count",
+            "index": 8
+          },
+          {
+            "type": {
+              "name": "*",
+              "allowConnectionsOnly": true
+            },
+            "plug": "input/output",
+            "group": "Properties",
+            "name": "prop-article_id",
+            "displayName": "article_id",
+            "index": 9
+          },
+          {
+            "type": "signal",
+            "plug": "output",
+            "group": "Changed Events",
+            "displayName": "article_id Changed",
+            "name": "changed-article_id",
+            "index": 10
+          }
+        ]
+      },
+      {
+        "id": "628e681e-a92e-3d83-c37d-44d42c746116",
+        "type": "DbCollection2",
+        "x": -832.5282762944611,
+        "y": 730.1520238786559,
+        "parameters": {
+          "collectionName": "Article",
+          "visualFilter": {
+            "combinator": "or",
+            "rules": [
+              {
+                "combinator": "and",
+                "rules": [
+                  {
+                    "property": "article_id",
+                    "operator": "equal to",
+                    "input": "MyInput"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "dynamicports": [
+          {
+            "name": "collectionName",
+            "type": {
+              "name": "enum",
+              "enums": [
+                {
+                  "label": "User",
+                  "value": "_User"
+                },
+                {
+                  "label": "Role",
+                  "value": "_Role"
+                },
+                {
+                  "value": "ShineSignUpData",
+                  "label": "ShineSignUpData"
+                },
+                {
+                  "value": "LandingPageForm",
+                  "label": "LandingPageForm"
+                },
+                {
+                  "value": "GlossaryViewed",
+                  "label": "GlossaryViewed"
+                },
+                {
+                  "value": "Comment",
+                  "label": "Comment"
+                },
+                {
+                  "value": "Article",
+                  "label": "Article"
+                }
+              ],
+              "allowEditOnly": true
+            },
+            "displayName": "Class",
+            "plug": "input",
+            "group": "General",
+            "index": 6
+          },
+          {
+            "name": "storageFilterType",
+            "type": {
+              "name": "enum",
+              "allowEditOnly": true,
+              "enums": [
+                {
+                  "value": "simple",
+                  "label": "Visual"
+                },
+                {
+                  "value": "json",
+                  "label": "Javascript"
+                }
+              ]
+            },
+            "displayName": "Filter",
+            "default": "simple",
+            "plug": "input",
+            "group": "General",
+            "index": 7
+          },
+          {
+            "type": "boolean",
+            "plug": "input",
+            "group": "Limit",
+            "name": "storageEnableLimit",
+            "displayName": "Use limit",
+            "index": 8
+          },
+          {
+            "type": "signal",
+            "plug": "input",
+            "group": "Actions",
+            "name": "storageFetch",
+            "displayName": "Do",
+            "index": 9
+          },
+          {
+            "name": "visualFilter",
+            "plug": "input",
+            "type": {
+              "name": "query-filter",
+              "schema": {
+                "properties": {
+                  "createdAt": {
+                    "type": "Date"
+                  },
+                  "updatedAt": {
+                    "type": "Date"
+                  },
+                  "article_id": {
+                    "type": "String",
+                    "required": true
+                  },
+                  "likes_count": {
+                    "type": "Number",
+                    "required": false
+                  },
+                  "ratings": {
+                    "type": "Object",
+                    "required": false
+                  }
+                }
+              },
+              "allowEditOnly": true
+            },
+            "displayName": "Filter",
+            "group": "Filter",
+            "index": 10
+          },
+          {
+            "name": "visualSort",
+            "plug": "input",
+            "type": {
+              "name": "query-sorting",
+              "schema": {
+                "properties": {
+                  "createdAt": {
+                    "type": "Date"
+                  },
+                  "updatedAt": {
+                    "type": "Date"
+                  },
+                  "article_id": {
+                    "type": "String",
+                    "required": true
+                  },
+                  "likes_count": {
+                    "type": "Number",
+                    "required": false
+                  },
+                  "ratings": {
+                    "type": "Object",
+                    "required": false
+                  }
+                }
+              },
+              "allowEditOnly": true
+            },
+            "displayName": "Sort",
+            "group": "Sorting",
+            "index": 11
+          },
+          {
+            "name": "qp-MyInput",
+            "plug": "input",
+            "type": "*",
+            "displayName": "MyInput",
+            "group": "Query Parameters",
+            "index": 12
+          }
+        ]
+      },
+      {
+        "id": "e3541e81-69f4-9362-124f-638b9aa4710d",
+        "type": "JavaScriptFunction",
+        "x": 552.5278910933544,
+        "y": 1001.4487373311574,
+        "parameters": {
+          "functionScript": "var element = Inputs.ref.getDOMElement(); element.scrollIntoView(true)"
+        },
+        "dynamicports": [
+          {
+            "name": "in-ref",
+            "displayName": "ref",
+            "plug": "input",
+            "type": "*",
+            "group": "Inputs",
+            "index": 4
+          }
+        ]
+      },
+      {
+        "id": "4e581e25-9fc8-0f2f-45c3-39bbe1c901af",
+        "type": "CSS Definition",
+        "x": 262.14048401326045,
+        "y": 537.6250063649132,
+        "parameters": {
+          "style": ".titleArticle { font-family:Inter; font-weight:700; font-size:10px; color:#379EA5; }"
+        }
+      },
+      {
+        "id": "authorClickableCss",
+        "type": "CSS Definition",
+        "x": -370.6702464949774,
+        "y": 300,
+        "parameters": {
+          "style": ".authorClickable{ cursor:pointer; }"
+        }
+      },
+      {
+        "id": "authorNavRouter",
+        "type": "RouterNavigate",
+        "label": "Navigate to Author Profile",
+        "x": -100,
+        "y": 900,
+        "parameters": {
+          "router": "Main",
+          "target": "/Pages/Author Profile"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+    "componentId": "adab817a-ff0e-c294-04d0-f51a9c1f538e",
+    "version": 1,
+    "connections": [
+      {
+        "fromId": "8ecb74ea-2e38-8617-5c75-13cca3eb8603",
+        "fromProperty": "bodyTextMd",
+        "toId": "1f7b0595-12c9-65ca-38ea-cde41289bd7f",
+        "toProperty": "text"
+      },
+      {
+        "fromId": "8ecb74ea-2e38-8617-5c75-13cca3eb8603",
+        "fromProperty": "coverImage",
+        "toId": "475c2501-0d45-a628-6f68-631d036fbc01",
+        "toProperty": "src"
+      },
+      {
+        "fromId": "8ecb74ea-2e38-8617-5c75-13cca3eb8603",
+        "fromProperty": "publishedAt",
+        "toId": "52197658-a3dc-b47d-11fc-ad6161c6924d",
+        "toProperty": "in-date"
+      },
+      {
+        "fromId": "52197658-a3dc-b47d-11fc-ad6161c6924d",
+        "fromProperty": "out-formattedDate",
+        "toId": "6d2dcbad-19b0-66b4-a6e6-3ad51a98864b",
+        "toProperty": "text"
+      },
+      {
+        "fromId": "498658f0-fb26-5842-73f5-bf2f32aced61",
+        "fromProperty": "screenPositionY",
+        "toId": "7922d8f3-af7d-c165-345d-13510f66879e",
+        "toProperty": "inputValue"
+      },
+      {
+        "fromId": "7922d8f3-af7d-c165-345d-13510f66879e",
+        "fromProperty": "remappedValue",
+        "toId": "498658f0-fb26-5842-73f5-bf2f32aced61",
+        "toProperty": "paddingTop"
+      },
+      {
+        "fromId": "8ecb74ea-2e38-8617-5c75-13cca3eb8603",
+        "fromProperty": "author",
+        "toId": "8f42c664-50f0-cf1e-8764-e4a3151c3404",
+        "toProperty": "author"
+      },
+      {
+        "fromId": "8ecb74ea-2e38-8617-5c75-13cca3eb8603",
+        "fromProperty": "verified",
+        "toId": "8f42c664-50f0-cf1e-8764-e4a3151c3404",
+        "toProperty": "verifiedBy"
+      },
+      {
+        "fromId": "8f42c664-50f0-cf1e-8764-e4a3151c3404",
+        "fromProperty": "formatted",
+        "toId": "4d325072-4e40-2070-fecd-ea8c956f29ca",
+        "toProperty": "text"
+      },
+      {
+        "fromId": "475c2501-0d45-a628-6f68-631d036fbc01",
+        "fromProperty": "boundingHeight",
+        "toId": "1536049f-c30f-8093-c1b1-a30894abc0e9",
+        "toProperty": "Image Height"
+      },
+      {
+        "fromId": "475c2501-0d45-a628-6f68-631d036fbc01",
+        "fromProperty": "screenPositionY",
+        "toId": "1536049f-c30f-8093-c1b1-a30894abc0e9",
+        "toProperty": "Image Screen Pos Y"
+      },
+      {
+        "fromId": "1536049f-c30f-8093-c1b1-a30894abc0e9",
+        "fromProperty": "Mounted",
+        "toId": "5e16c28c-9a38-ef71-cae5-e07d3ec6c452",
+        "toProperty": "mounted"
+      },
+      {
+        "fromId": "8ecb74ea-2e38-8617-5c75-13cca3eb8603",
+        "fromProperty": "References",
+        "toId": "09ec8d50-a79a-f602-0d2e-eeb4ae43aa7b",
+        "toProperty": "Reference Markdown"
+      },
+      {
+        "fromId": "8ecb74ea-2e38-8617-5c75-13cca3eb8603",
+        "fromProperty": "articleId",
+        "toId": "48e0b5f6-f660-1c55-3a9f-52ede1fa4cf1",
+        "toProperty": "parent_id"
+      },
+      {
+        "fromId": "8ecb74ea-2e38-8617-5c75-13cca3eb8603",
+        "fromProperty": "articleId",
+        "toId": "d594b52b-868e-ec0d-0826-221d2680947f",
+        "toProperty": "articleId"
+      },
+      {
+        "fromId": "8ecb74ea-2e38-8617-5c75-13cca3eb8603",
+        "fromProperty": "articleId",
+        "toId": "628e681e-a92e-3d83-c37d-44d42c746116",
+        "toProperty": "qp-MyInput"
+      },
+      {
+        "fromId": "b2b07330-85dd-6c35-33b2-bc3a94d305ce",
+        "fromProperty": "didMount",
+        "toId": "628e681e-a92e-3d83-c37d-44d42c746116",
+        "toProperty": "storageFetch"
+      },
+      {
+        "fromId": "628e681e-a92e-3d83-c37d-44d42c746116",
+        "fromProperty": "firstItemId",
+        "toId": "d876b99e-1a92-8961-1f9a-2706d7dc7fdb",
+        "toProperty": "modelId"
+      },
+      {
+        "fromId": "d876b99e-1a92-8961-1f9a-2706d7dc7fdb",
+        "fromProperty": "id",
+        "toId": "d594b52b-868e-ec0d-0826-221d2680947f",
+        "toProperty": "articleObjId"
+      },
+      {
+        "fromId": "8ecb74ea-2e38-8617-5c75-13cca3eb8603",
+        "fromProperty": "Mounted",
+        "toId": "b2b07330-85dd-6c35-33b2-bc3a94d305ce",
+        "toProperty": "mounted"
+      },
+      {
+        "fromId": "d876b99e-1a92-8961-1f9a-2706d7dc7fdb",
+        "fromProperty": "id",
+        "toId": "6e87a45f-b49c-527d-a766-85601257c92e",
+        "toProperty": "articleObjId"
+      },
+      {
+        "fromId": "d594b52b-868e-ec0d-0826-221d2680947f",
+        "fromProperty": "Comments Clicked",
+        "toId": "e3541e81-69f4-9362-124f-638b9aa4710d",
+        "toProperty": "run"
+      },
+      {
+        "fromId": "09ec8d50-a79a-f602-0d2e-eeb4ae43aa7b",
+        "fromProperty": "Reference",
+        "toId": "e3541e81-69f4-9362-124f-638b9aa4710d",
+        "toProperty": "in-ref"
+      },
+      {
+        "fromId": "8ecb74ea-2e38-8617-5c75-13cca3eb8603",
+        "fromProperty": "footerText",
+        "toId": "b22047aa-63f7-521a-2a72-2299292fccea",
+        "toProperty": "text"
+      },
+      {
+        "fromId": "8ecb74ea-2e38-8617-5c75-13cca3eb8603",
+        "fromProperty": "title",
+        "toId": "de810a44-152c-6890-0a7c-e32d153924c2",
+        "toProperty": "text"
+      },
+      {
+        "fromId": "5e16c28c-9a38-ef71-cae5-e07d3ec6c452",
+        "fromProperty": "onClick",
+        "toId": "authorNavRouter",
+        "toProperty": "navigate"
+      },
+      {
+        "fromId": "8ecb74ea-2e38-8617-5c75-13cca3eb8603",
+        "fromProperty": "authorSlug",
+        "toId": "authorNavRouter",
+        "toProperty": "pm-slug"
+      }
+    ]
+  }
+}

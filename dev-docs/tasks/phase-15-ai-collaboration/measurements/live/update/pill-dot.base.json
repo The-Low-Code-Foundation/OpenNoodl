@@ -1,0 +1,247 @@
+{
+  "component": {
+    "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+    "id": "bf221679-f1c2-7070-3ad6-c917e1064dcd",
+    "name": "Pill",
+    "path": "/Visual Components/Pills/Pill",
+    "type": "visual",
+    "modified": "1970-01-01T00:00:00.000Z",
+    "metadata": {
+      "canvasPos": {
+        "x": 3843.790357923064,
+        "y": 0
+      }
+    }
+  },
+  "nodes": {
+    "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+    "componentId": "bf221679-f1c2-7070-3ad6-c917e1064dcd",
+    "version": 1,
+    "nodes": [
+      {
+        "id": "3a876b72-a134-6578-6e3b-f497446a7754",
+        "type": "Group",
+        "x": -375.9504556050059,
+        "y": -26.44075892279716,
+        "parameters": {
+          "sizeMode": "contentWidth",
+          "backgroundColor": "transparent",
+          "borderStyle": "solid",
+          "borderWidth": {
+            "value": 2,
+            "unit": "px"
+          },
+          "borderColor": "Cyan Dark",
+          "borderRadius": {
+            "value": 50,
+            "unit": "px"
+          },
+          "paddingLeft": {
+            "value": 16,
+            "unit": "px"
+          },
+          "paddingRight": {
+            "value": 16,
+            "unit": "px"
+          },
+          "paddingTop": {
+            "value": 8,
+            "unit": "px"
+          },
+          "paddingBottom": {
+            "value": 8,
+            "unit": "px"
+          },
+          "marginRight": {
+            "value": 4,
+            "unit": "px"
+          },
+          "marginTop": {
+            "value": 4,
+            "unit": "px"
+          },
+          "marginBottom": {
+            "value": 4,
+            "unit": "px"
+          },
+          "height": {
+            "value": 40,
+            "unit": "px"
+          },
+          "styleCss": "/* background-color: red; */\ncursor:pointer;",
+          "marginLeft": {
+            "value": 4,
+            "unit": "px"
+          }
+        },
+        "stateParameters": {
+          "hover": {
+            "backgroundColor": "Blue Cloud"
+          }
+        },
+        "defaultStateTransitions": {
+          "hover": {
+            "curve": [
+              0,
+              0,
+              0.58,
+              1
+            ],
+            "dur": 300,
+            "delay": 0
+          }
+        },
+        "children": [
+          "f6304b60-b221-d5cc-9622-599ad2a9f98c"
+        ]
+      },
+      {
+        "id": "f6304b60-b221-d5cc-9622-599ad2a9f98c",
+        "type": "Text",
+        "parameters": {
+          "pointerEventsMode": "explicit",
+          "pointerEventsEnabled": false
+        },
+        "parent": "3a876b72-a134-6578-6e3b-f497446a7754"
+      },
+      {
+        "id": "7208b6e7-6dfd-989b-014d-01b5ffc622a0",
+        "type": "Model2",
+        "x": -604.6720906419213,
+        "y": -170.9501465722759,
+        "parameters": {
+          "idSource": "foreach",
+          "properties": "label,Symptom"
+        },
+        "dynamicports": [
+          {
+            "type": {
+              "name": "*",
+              "allowConnectionsOnly": true
+            },
+            "plug": "input/output",
+            "group": "Properties",
+            "name": "prop-label",
+            "displayName": "label",
+            "index": 7
+          },
+          {
+            "type": "signal",
+            "plug": "output",
+            "group": "Changed Events",
+            "displayName": "label Changed",
+            "name": "changed-label",
+            "index": 8
+          },
+          {
+            "type": {
+              "name": "*",
+              "allowConnectionsOnly": true
+            },
+            "plug": "input/output",
+            "group": "Properties",
+            "name": "prop-Symptom",
+            "displayName": "Symptom",
+            "index": 9
+          },
+          {
+            "type": "signal",
+            "plug": "output",
+            "group": "Changed Events",
+            "displayName": "Symptom Changed",
+            "name": "changed-Symptom",
+            "index": 10
+          }
+        ]
+      },
+      {
+        "id": "8b6252cf-78ac-b586-3a28-38861f069f52",
+        "type": "CollectionInsert",
+        "x": 134.24572611499127,
+        "y": -116.16520636563678,
+        "parameters": {
+          "collectionId": "Selected Symptoms"
+        }
+      },
+      {
+        "id": "32eb4461-51c2-fc0a-b7ef-65867e825a13",
+        "type": "CollectionRemove",
+        "x": 145.80183797570112,
+        "y": 60.06549951018849,
+        "parameters": {
+          "collectionId": "Symptoms"
+        }
+      },
+      {
+        "id": "3f28df64-b13a-8153-c6eb-4c47a7fc85c8",
+        "type": "JavaScriptFunction",
+        "x": -598.1309104812831,
+        "y": 45.79784332631323,
+        "parameters": {
+          "functionScript": "Outputs.capitalizedText = Inputs.string.charAt(0).toUpperCase() + Inputs.string.slice(1);"
+        },
+        "dynamicports": [
+          {
+            "name": "in-string",
+            "displayName": "string",
+            "plug": "input",
+            "type": "*",
+            "group": "Inputs",
+            "index": 4
+          },
+          {
+            "name": "out-capitalizedText",
+            "displayName": "capitalizedText",
+            "plug": "output",
+            "type": "*",
+            "group": "Outputs",
+            "index": 5
+          }
+        ]
+      }
+    ]
+  },
+  "connections": {
+    "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+    "componentId": "bf221679-f1c2-7070-3ad6-c917e1064dcd",
+    "version": 1,
+    "connections": [
+      {
+        "fromId": "3a876b72-a134-6578-6e3b-f497446a7754",
+        "fromProperty": "onClick",
+        "toId": "8b6252cf-78ac-b586-3a28-38861f069f52",
+        "toProperty": "add"
+      },
+      {
+        "fromId": "7208b6e7-6dfd-989b-014d-01b5ffc622a0",
+        "fromProperty": "id",
+        "toId": "8b6252cf-78ac-b586-3a28-38861f069f52",
+        "toProperty": "modifyId"
+      },
+      {
+        "fromId": "7208b6e7-6dfd-989b-014d-01b5ffc622a0",
+        "fromProperty": "id",
+        "toId": "32eb4461-51c2-fc0a-b7ef-65867e825a13",
+        "toProperty": "modifyId"
+      },
+      {
+        "fromId": "8b6252cf-78ac-b586-3a28-38861f069f52",
+        "fromProperty": "modified",
+        "toId": "32eb4461-51c2-fc0a-b7ef-65867e825a13",
+        "toProperty": "remove"
+      },
+      {
+        "fromId": "7208b6e7-6dfd-989b-014d-01b5ffc622a0",
+        "fromProperty": "prop-Symptom",
+        "toId": "3f28df64-b13a-8153-c6eb-4c47a7fc85c8",
+        "toProperty": "in-string"
+      },
+      {
+        "fromId": "3f28df64-b13a-8153-c6eb-4c47a7fc85c8",
+        "fromProperty": "out-capitalizedText",
+        "toId": "f6304b60-b221-d5cc-9622-599ad2a9f98c",
+        "toProperty": "text"
+      }
+    ]
+  }
+}

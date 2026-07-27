@@ -54,9 +54,42 @@ export interface CandidateResult {
   errors: string[];
 }
 
+/**
+ * The array-shaped fields of a submission, checked before anything iterates
+ * them.
+ *
+ * `SubmitPayload` says these are arrays, but it is built by an unchecked cast
+ * over tool arguments the model wrote — so the type is a claim about what
+ * should arrive, not about what does. A model that submits `nodes` as an object
+ * or as a JSON string used to reach `(payload.nodes ?? []).map(…)` and throw a
+ * `TypeError` out of the session entirely, which is the one failure mode this
+ * loop is built to not have: a malformed submission is repairable, and the
+ * agent only gets to repair what it is told about.
+ */
+function arrayShapeErrors(payload: SubmitPayload): string[] {
+  const errors: string[] = [];
+  const check = (value: unknown, field: string): void => {
+    if (value !== undefined && value !== null && !Array.isArray(value)) {
+      errors.push(`submit_component: \`${field}\` must be an array — got ${typeof value}.`);
+    }
+  };
+  check(payload.nodes, 'nodes');
+  check(payload.connections, 'connections');
+  check(payload.visualRoots, 'visual_roots');
+  return errors;
+}
+
 function shapeErrors(nodes: SubmittedNode[], payload: SubmitPayload): string[] {
   const errors: string[] = [];
   if (nodes.length === 0) errors.push('The component has no nodes. Submit at least one node.');
+
+  for (const node of nodes) {
+    // Same reason as `arrayShapeErrors`: `ports` is mapped further down, and a
+    // model that sends it as an object would otherwise throw there.
+    if (node.ports !== undefined && node.ports !== null && !Array.isArray(node.ports)) {
+      errors.push(`Node "${node.id ?? node.type}": \`ports\` must be an array — got ${typeof node.ports}.`);
+    }
+  }
 
   const ids = new Set<string>();
   for (const node of nodes) {
@@ -110,6 +143,11 @@ export function buildCandidate(
   now: string = new Date().toISOString(),
   base?: ComponentFiles
 ): CandidateResult {
+  // Before anything iterates: the payload's array fields are model output, and
+  // a non-array here would throw rather than be reported.
+  const arrayErrors = arrayShapeErrors(payload);
+  if (arrayErrors.length > 0) return { errors: arrayErrors };
+
   const submitted = (payload.nodes ?? []).map((n) => ({ ...n, id: n.id ?? newId() }));
   const errors = shapeErrors(submitted, payload);
   if (errors.length > 0) return { errors };

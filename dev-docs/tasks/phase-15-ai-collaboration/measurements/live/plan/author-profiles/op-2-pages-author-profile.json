@@ -1,0 +1,286 @@
+{
+  "component": {
+    "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+    "id": "d444fb15-0af9-40f8-bd33-3ffea0ca76a3",
+    "name": "Author Profile",
+    "path": "/Pages/Author Profile",
+    "type": "page",
+    "created": "2026-07-27T20:48:27.758Z",
+    "modified": "2026-07-27T20:48:27.758Z",
+    "modifiedBy": "ai-authoring",
+    "description": "Author Profile page: reads the pm-slug path param, fetches the author via Get Author From Slug, and displays their photo, name, bio and a list of their articles; tapping an article navigates to /Pages/Article with its slug."
+  },
+  "nodes": {
+    "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+    "componentId": "d444fb15-0af9-40f8-bd33-3ffea0ca76a3",
+    "version": 1,
+    "nodes": [
+      {
+        "id": "page",
+        "type": "Page",
+        "label": "Author Profile page root",
+        "x": 0,
+        "y": 0,
+        "children": [
+          "headerGroup",
+          "articlesHeading",
+          "listGroup"
+        ],
+        "parameters": {
+          "title": "Author Profile",
+          "urlPath": "/author/{slug}"
+        }
+      },
+      {
+        "id": "pageInputs",
+        "type": "PageInputs",
+        "label": "Reads slug path param",
+        "x": -300,
+        "y": 0,
+        "parameters": {
+          "pathParams": [
+            "slug"
+          ]
+        }
+      },
+      {
+        "id": "getAuthor",
+        "type": "/Logic Components/Get Author From Slug",
+        "label": "Fetch author by slug",
+        "x": -300,
+        "y": 150
+      },
+      {
+        "id": "extractAuthor",
+        "type": "JavaScriptFunction",
+        "label": "Extract author fields",
+        "x": 0,
+        "y": 150,
+        "parameters": {
+          "functionScript": "if(Inputs.author){\n  Outputs.name = Inputs.author.name;\n  Outputs.bio = Inputs.author.bio;\n  Outputs.photo = Inputs.author.photo;\n  Outputs.articles = Inputs.author.articles;\n}"
+        }
+      },
+      {
+        "id": "buildItems",
+        "type": "JavaScriptFunction",
+        "label": "Build repeater items from articles",
+        "x": 300,
+        "y": 150,
+        "parameters": {
+          "functionScript": "if(Inputs.articles){\n  var items = [];\n  for(var i=0;i<Inputs.articles.length;i++){\n    var a = Inputs.articles[i];\n    items.push({id:a.slug, Label:a.title, \"Icon Src Set\":\"\"});\n  }\n  Outputs.items = items;\n}"
+        }
+      },
+      {
+        "id": "headerGroup",
+        "type": "Group",
+        "label": "Header row: photo + name/bio",
+        "x": 0,
+        "y": 300,
+        "parent": "page",
+        "children": [
+          "photoImage",
+          "nameBioGroup"
+        ],
+        "parameters": {
+          "flexDirection": "row",
+          "alignItems": "center",
+          "paddingTop": "var(--space-6)",
+          "paddingBottom": "var(--space-6)",
+          "paddingLeft": "var(--space-4)",
+          "paddingRight": "var(--space-4)"
+        }
+      },
+      {
+        "id": "photoImage",
+        "type": "Image",
+        "label": "Author photo",
+        "x": 0,
+        "y": 380,
+        "parent": "headerGroup",
+        "parameters": {
+          "sizeMode": "explicit",
+          "width": {
+            "value": 96,
+            "unit": "px"
+          },
+          "height": {
+            "value": 96,
+            "unit": "px"
+          },
+          "objectFit": "cover",
+          "borderRadius": "var(--radius-full)"
+        }
+      },
+      {
+        "id": "nameBioGroup",
+        "type": "Group",
+        "label": "Name and bio column",
+        "x": 150,
+        "y": 380,
+        "parent": "headerGroup",
+        "children": [
+          "nameText",
+          "bioText"
+        ],
+        "parameters": {
+          "flexDirection": "column",
+          "marginLeft": "var(--space-4)"
+        }
+      },
+      {
+        "id": "nameText",
+        "type": "Text",
+        "label": "Author name",
+        "x": 150,
+        "y": 420,
+        "parent": "nameBioGroup",
+        "parameters": {
+          "variant": "heading-2",
+          "fontSize": "var(--text-3xl)",
+          "fontWeight": "var(--font-semibold)",
+          "lineHeight": "var(--leading-tight)",
+          "color": "var(--foreground)"
+        }
+      },
+      {
+        "id": "bioText",
+        "type": "Text",
+        "label": "Author bio",
+        "x": 150,
+        "y": 460,
+        "parent": "nameBioGroup",
+        "parameters": {
+          "variant": "muted",
+          "fontSize": "var(--text-sm)",
+          "color": "var(--muted-foreground)",
+          "marginTop": "var(--space-2)"
+        }
+      },
+      {
+        "id": "articlesHeading",
+        "type": "Text",
+        "label": "Articles section heading",
+        "x": 0,
+        "y": 600,
+        "parent": "page",
+        "parameters": {
+          "variant": "heading-4",
+          "fontSize": "var(--text-xl)",
+          "fontWeight": "var(--font-semibold)",
+          "color": "var(--foreground)",
+          "marginLeft": "var(--space-4)",
+          "marginTop": "var(--space-6)"
+        }
+      },
+      {
+        "id": "listGroup",
+        "type": "Group",
+        "label": "Article list container",
+        "x": 0,
+        "y": 700,
+        "parent": "page",
+        "children": [
+          "forEach"
+        ],
+        "parameters": {
+          "flexDirection": "column",
+          "paddingLeft": "var(--space-4)",
+          "paddingRight": "var(--space-4)",
+          "paddingTop": "var(--space-2)"
+        }
+      },
+      {
+        "id": "forEach",
+        "type": "For Each",
+        "label": "Repeats one row per article",
+        "x": 0,
+        "y": 780,
+        "parent": "listGroup",
+        "parameters": {
+          "template": "/Pop-ups/Share/Share Item"
+        }
+      },
+      {
+        "id": "routerNav",
+        "type": "RouterNavigate",
+        "label": "Navigate to Article page on row click",
+        "x": 300,
+        "y": 780,
+        "parameters": {
+          "router": "Main",
+          "target": "/Pages/Article"
+        }
+      }
+    ],
+    "visualRoots": [
+      "page"
+    ]
+  },
+  "connections": {
+    "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+    "componentId": "d444fb15-0af9-40f8-bd33-3ffea0ca76a3",
+    "version": 1,
+    "connections": [
+      {
+        "fromId": "page",
+        "fromProperty": "didMount",
+        "toId": "getAuthor",
+        "toProperty": "Do"
+      },
+      {
+        "fromId": "pageInputs",
+        "fromProperty": "pm-slug",
+        "toId": "getAuthor",
+        "toProperty": "Slug"
+      },
+      {
+        "fromId": "getAuthor",
+        "fromProperty": "author",
+        "toId": "extractAuthor",
+        "toProperty": "author"
+      },
+      {
+        "fromId": "extractAuthor",
+        "fromProperty": "name",
+        "toId": "nameText",
+        "toProperty": "text"
+      },
+      {
+        "fromId": "extractAuthor",
+        "fromProperty": "bio",
+        "toId": "bioText",
+        "toProperty": "text"
+      },
+      {
+        "fromId": "extractAuthor",
+        "fromProperty": "photo",
+        "toId": "photoImage",
+        "toProperty": "src"
+      },
+      {
+        "fromId": "extractAuthor",
+        "fromProperty": "articles",
+        "toId": "buildItems",
+        "toProperty": "articles"
+      },
+      {
+        "fromId": "buildItems",
+        "fromProperty": "items",
+        "toId": "forEach",
+        "toProperty": "items"
+      },
+      {
+        "fromId": "forEach",
+        "fromProperty": "Click",
+        "toId": "routerNav",
+        "toProperty": "navigate"
+      },
+      {
+        "fromId": "forEach",
+        "fromProperty": "itemActionItemId",
+        "toId": "routerNav",
+        "toProperty": "pm-slug"
+      }
+    ]
+  }
+}

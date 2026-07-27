@@ -538,3 +538,48 @@ describe('AIX-002 authoring session — update mode', () => {
     expect(session.state.phase).toBe('error');
   });
 });
+
+/**
+ * Phase-15 close-out — a malformed submission is repairable, not fatal.
+ *
+ * The live update-mode run produced exactly this: `nodes` arrived as a JSON
+ * string, `buildCandidate` threw, and the `TypeError` escaped the session. The
+ * loop's whole contract is that the agent gets told what was wrong and submits
+ * again, so a submission that cannot be read has to come back as a rejected
+ * submit — with the reason — rather than as an exception that discards every
+ * turn the user has paid for.
+ */
+describe('AIX-002 authoring session — unreadable submissions', () => {
+  it('rejects a submission whose nodes are a JSON string, then accepts the repair', async () => {
+    const { chat } = scriptedChat([
+      () => respond({ toolCalls: [call('submit_component', { nodes: JSON.stringify(goodSubmitArgs().nodes) })] }),
+      () => respond({ toolCalls: [call('submit_component', goodSubmitArgs())] })
+    ]);
+
+    const session = AuthoringSession.create(GRAPH, REQUEST, { chat });
+    const outcome = await session.run();
+
+    expect(outcome.status).toBe('authored');
+    expect(outcome.rounds.length).toBe(2);
+    expect(outcome.rounds[0].ok).toBe(false);
+    expect(outcome.rounds[0].errorLines).toEqual(['submit_component: `nodes` must be an array — got string.']);
+    expect(outcome.rounds[1].ok).toBe(true);
+  });
+
+  it('never lets an unforeseen submission error escape the session', async () => {
+    // A payload the shape checks pass and the builder still cannot read: `nodes`
+    // is an array, so nothing rejects it up front, but its entries are not
+    // objects. Whatever the builder does with these, the session must survive.
+    const { chat } = scriptedChat([
+      () => respond({ toolCalls: [call('submit_component', { nodes: [null, 7] })] }),
+      () => respond({ toolCalls: [call('submit_component', goodSubmitArgs())] })
+    ]);
+
+    const session = AuthoringSession.create(GRAPH, REQUEST, { chat });
+    const outcome = await session.run();
+
+    expect(outcome.status).toBe('authored');
+    expect(outcome.rounds[0].ok).toBe(false);
+    expect(outcome.rounds[0].errorLines.length).toBeGreaterThan(0);
+  });
+});

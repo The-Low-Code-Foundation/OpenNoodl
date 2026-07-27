@@ -1,0 +1,230 @@
+{
+  "component": {
+    "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+    "id": "5b66f866-9435-4602-8a4a-6bcbd8c33875",
+    "name": "AIX Draft Box",
+    "path": "/Visual Components/AIX Draft Box",
+    "type": "visual",
+    "created": "2026-07-27T20:33:16.681Z",
+    "modified": "2026-07-27T20:33:16.681Z",
+    "modifiedBy": "ai-authoring",
+    "description": "A shared draft text area: edits write to a global store (aixDraftStore.draft) so any other component can read the same draft, with Undo/Redo buttons driven by a StateHistory tracking that store."
+  },
+  "nodes": {
+    "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+    "componentId": "5b66f866-9435-4602-8a4a-6bcbd8c33875",
+    "version": 1,
+    "nodes": [
+      {
+        "id": "root",
+        "type": "Group",
+        "label": "Draft Box",
+        "x": 0,
+        "y": 0,
+        "children": [
+          "label",
+          "input",
+          "btnRow"
+        ],
+        "parameters": {
+          "flexDirection": "column",
+          "alignItems": "stretch",
+          "backgroundColor": "var(--surface)",
+          "borderRadius": "var(--radius-lg)",
+          "borderStyle": "solid",
+          "borderWidth": "var(--border-1)",
+          "borderColor": "var(--border)"
+        }
+      },
+      {
+        "id": "label",
+        "type": "Text",
+        "label": "Field Label",
+        "x": 0,
+        "y": -100,
+        "parent": "root",
+        "parameters": {
+          "variant": "label",
+          "text": "Draft"
+        }
+      },
+      {
+        "id": "input",
+        "type": "net.noodl.controls.textinput",
+        "label": "Draft Text Area",
+        "x": 200,
+        "y": 0,
+        "parent": "root",
+        "parameters": {
+          "type": "textArea",
+          "variant": "default",
+          "borderColor": "var(--border)",
+          "backgroundColor": "var(--background)"
+        }
+      },
+      {
+        "id": "btnRow",
+        "type": "Group",
+        "label": "Buttons Row",
+        "x": 200,
+        "y": 200,
+        "parent": "root",
+        "children": [
+          "undoBtn",
+          "redoBtn"
+        ],
+        "parameters": {
+          "flexDirection": "row",
+          "columnGap": "var(--space-2)"
+        }
+      },
+      {
+        "id": "undoBtn",
+        "type": "net.noodl.controls.button",
+        "label": "Undo",
+        "x": 400,
+        "y": 150,
+        "parent": "btnRow",
+        "parameters": {
+          "label": "Undo",
+          "backgroundColor": "transparent",
+          "color": "var(--foreground)",
+          "borderWidth": "var(--border-1)",
+          "borderColor": "var(--border)",
+          "borderStyle": "solid"
+        }
+      },
+      {
+        "id": "redoBtn",
+        "type": "net.noodl.controls.button",
+        "label": "Redo",
+        "x": 400,
+        "y": 250,
+        "parent": "btnRow",
+        "parameters": {
+          "label": "Redo",
+          "backgroundColor": "transparent",
+          "color": "var(--foreground)",
+          "borderWidth": "var(--border-1)",
+          "borderColor": "var(--border)",
+          "borderStyle": "solid"
+        }
+      },
+      {
+        "id": "store",
+        "type": "net.noodl.GlobalStore",
+        "label": "Draft Store",
+        "x": -300,
+        "y": 0,
+        "parameters": {
+          "storeName": "aixDraftStore",
+          "initialState": {
+            "draft": ""
+          }
+        }
+      },
+      {
+        "id": "setNode",
+        "type": "net.noodl.GlobalStore.Set",
+        "label": "Write Draft",
+        "x": 200,
+        "y": -200,
+        "parameters": {
+          "storeName": "aixDraftStore",
+          "key": "draft"
+        }
+      },
+      {
+        "id": "subscribe",
+        "type": "net.noodl.GlobalStore.Subscribe",
+        "label": "Watch Draft",
+        "x": -300,
+        "y": 200,
+        "parameters": {
+          "storeName": "aixDraftStore",
+          "keys": "draft"
+        }
+      },
+      {
+        "id": "history",
+        "type": "net.noodl.StateHistory",
+        "label": "Draft History",
+        "x": -300,
+        "y": 400,
+        "parameters": {
+          "storeName": "aixDraftStore",
+          "trackKeys": "draft",
+          "coalesceMs": 500
+        }
+      },
+      {
+        "id": "undoNode",
+        "type": "net.noodl.StateHistory.Undo",
+        "label": "Undo/Redo Driver",
+        "x": -300,
+        "y": 600,
+        "parameters": {
+          "storeName": "aixDraftStore"
+        }
+      }
+    ],
+    "visualRoots": [
+      "root"
+    ]
+  },
+  "connections": {
+    "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+    "componentId": "5b66f866-9435-4602-8a4a-6bcbd8c33875",
+    "version": 1,
+    "connections": [
+      {
+        "fromId": "input",
+        "fromProperty": "onTextChanged",
+        "toId": "setNode",
+        "toProperty": "value"
+      },
+      {
+        "fromId": "input",
+        "fromProperty": "textChanged",
+        "toId": "setNode",
+        "toProperty": "set"
+      },
+      {
+        "fromId": "subscribe",
+        "fromProperty": "value",
+        "toId": "input",
+        "toProperty": "startValue"
+      },
+      {
+        "fromId": "subscribe",
+        "fromProperty": "changed",
+        "toId": "input",
+        "toProperty": "set"
+      },
+      {
+        "fromId": "undoBtn",
+        "fromProperty": "onClick",
+        "toId": "undoNode",
+        "toProperty": "undo"
+      },
+      {
+        "fromId": "redoBtn",
+        "fromProperty": "onClick",
+        "toId": "undoNode",
+        "toProperty": "redo"
+      },
+      {
+        "fromId": "history",
+        "fromProperty": "canUndo",
+        "toId": "undoBtn",
+        "toProperty": "enabled"
+      },
+      {
+        "fromId": "history",
+        "fromProperty": "canRedo",
+        "toId": "redoBtn",
+        "toProperty": "enabled"
+      }
+    ]
+  }
+}

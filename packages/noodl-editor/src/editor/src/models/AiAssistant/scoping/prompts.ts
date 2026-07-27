@@ -38,7 +38,9 @@ export const SCOPING_TOOLS: AiToolDefinition[] = [
         },
         audience: {
           type: 'string',
-          description: 'Who actually opens this and what they are trying to get done.'
+          description:
+            'Who actually opens this and what they are trying to get done. Record it the moment they tell ' +
+            'you, including in passing ("about twelve of us, all on our phones") — it is rarely said twice.'
         },
         objects: {
           type: 'array',
@@ -80,7 +82,9 @@ export const SCOPING_TOOLS: AiToolDefinition[] = [
         },
         outOfScope: {
           type: 'array',
-          description: 'What this app deliberately will NOT do. The most useful list here.',
+          description:
+            'What this app deliberately will NOT do. The most useful list here. Replaces the previous list — ' +
+            'drop anything the conversation has since decided the app WILL do.',
           items: { type: 'string' }
         },
         backend: {
@@ -164,6 +168,12 @@ Call ${RECORD_SCOPE} after every exchange that settles anything, and always befo
 question. The user can walk away at any moment and whatever you last recorded is what their project ships
 with — an unrecorded agreement is a lost one. Set "agreed" true only once you have laid out the whole scope
 and they have said yes to it.
+
+Every field you send REPLACES the one you sent before — the lists are not added to. So when a decision
+changes, re-send that whole list without the entry that is no longer true. Assuming "no accounts" early and
+then agreeing to sign-in later means re-sending outOfScope WITHOUT the accounts line; leave it in and their
+brief will say the app has no accounts on the same page as it says how people log in. Re-send every list you
+still stand behind, not just the one you have news about.
 
 Write like a person. Short paragraphs, no bullet-point walls, no headings, and never restate the whole
 scope back at them unless they ask or you are proposing the final version.`;
