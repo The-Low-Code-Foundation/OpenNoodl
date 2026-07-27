@@ -1,7 +1,125 @@
 'use strict';
 
-function formatDynamicPorts(nodeMetadata) {
-  const dynamicports = [];
+/**
+ * Builds the node-library blob the editor receives over `sendNodeLibrary` — the palette,
+ * the type index and every node type's ports. `catalog:check` compares this file's output
+ * byte-for-byte, so the *order* of the conditional assignments below is load-bearing:
+ * JSON.stringify serialises keys in insertion order.
+ */
+
+/** One port as it appears in the export. `type` is the port-type spec, passed through verbatim. */
+interface ExportedPort {
+  name: string;
+  type: unknown;
+  plug: string;
+  group?: unknown;
+  displayName?: unknown;
+  description?: unknown;
+  editorName?: unknown;
+  default?: unknown;
+  index?: unknown;
+  tooltip?: unknown;
+  tab?: unknown;
+  popout?: unknown;
+  allowVisualStates?: unknown;
+}
+
+/**
+ * One entry of a node's `dynamicports` metadata — either already in the editor's format
+ * (`ports`/`template`/`port`/`channelPort`) and passed through, or the name-list form
+ * (`inputs`/`outputs`) that {@link formatDynamicPorts} expands against the node's own
+ * port metadata.
+ */
+interface DynamicPortsEntry {
+  ports?: unknown;
+  template?: unknown;
+  port?: unknown;
+  channelPort?: { plug: string; name: string };
+  inputs?: string[];
+  outputs?: string[];
+  name?: string;
+  condition?: unknown;
+  [extra: string]: unknown;
+}
+
+/** The slice of a compiled node definition's `metadata` this export reads. */
+interface NodeExportMetadata {
+  searchTags?: unknown;
+  version?: unknown;
+  displayNodeName?: unknown;
+  nodeDoubleClickAction?: unknown;
+  shortDesc?: unknown;
+  module?: unknown;
+  deprecated?: unknown;
+  haveComponentPorts?: unknown;
+  category?: string;
+  allowAsExportRoot?: unknown;
+  allowChildren?: unknown;
+  allowChildrenWithCategory?: unknown;
+  singleton?: unknown;
+  allowAsChild?: unknown;
+  docs?: string;
+  shortDocs?: string;
+  panels?: unknown;
+  usePortAsLabel?: unknown;
+  portLabelTruncationMode?: unknown;
+  color?: unknown;
+  dynamicports?: DynamicPortsEntry[];
+  exportDynamicPorts?: unknown;
+  visualStates?: unknown;
+  useVariants?: unknown;
+  connectionPanel?: unknown;
+  inputs: Record<string, Record<string, unknown>>;
+  outputs: Record<string, Record<string, unknown>>;
+  [extra: string]: unknown;
+}
+
+/** One entry in the export's `nodetypes` list. Fields are added only when present. */
+interface ExportedNodeType {
+  name: string;
+  searchTags?: unknown;
+  version?: unknown;
+  displayNodeName?: unknown;
+  nodeDoubleClickAction?: unknown;
+  shortDesc?: unknown;
+  module?: unknown;
+  deprecated?: boolean;
+  haveComponentPorts?: boolean;
+  allowAsChild?: boolean;
+  allowAsExportRoot?: unknown;
+  color?: unknown;
+  allowChildrenWithCategory?: unknown;
+  singleton?: boolean;
+  docs?: string;
+  shortDocs?: string;
+  category?: string;
+  panels?: unknown;
+  usePortAsLabel?: unknown;
+  portLabelTruncationMode?: unknown;
+  dynamicports?: DynamicPortsEntry[];
+  exportDynamicPorts?: unknown;
+  visualStates?: unknown;
+  useVariants?: unknown;
+  connectionPanel?: unknown;
+  ports?: ExportedPort[];
+  haveComponentChildren?: string[];
+}
+
+/** The node register as this export reads it — the compiled-definition table. */
+interface NodeRegisterLike {
+  _constructors: Record<string, { metadata: NodeExportMetadata }>;
+}
+
+/** One category of the add-node picker's index. */
+interface NodeIndexCategory {
+  name: string;
+  description: string;
+  type: string;
+  subCategories: Array<{ name?: string; items: string[] }>;
+}
+
+function formatDynamicPorts(nodeMetadata: NodeExportMetadata): DynamicPortsEntry[] {
+  const dynamicports: DynamicPortsEntry[] = [];
 
   for (const dp of nodeMetadata.dynamicports) {
     if (dp.ports || dp.template || dp.port || dp.channelPort) {
@@ -12,7 +130,7 @@ function formatDynamicPorts(nodeMetadata) {
       //need to pull the metadata from the inputs/outputs since they
       //won't be registered by the editor (it's either a regular port
       // or a dynamic port, can't register both)
-      const ports = [];
+      const ports: ExportedPort[] = [];
 
       if (dp.inputs) {
         for (const inputName of dp.inputs) {
@@ -39,8 +157,8 @@ function formatDynamicPorts(nodeMetadata) {
   return dynamicports;
 }
 
-function formatPort(portName, portData, plugType) {
-  var port = {
+function formatPort(portName: string, portData: Record<string, unknown>, plugType: string): ExportedPort {
+  const port: ExportedPort = {
     name: portName,
     type: portData.type,
     plug: plugType
@@ -78,8 +196,8 @@ function formatPort(portName, portData, plugType) {
   return port;
 }
 
-function generateNodeLibrary(nodeRegister) {
-  var obj = {
+function generateNodeLibrary(nodeRegister: NodeRegisterLike) {
+  const obj = {
     //note: needs to include ALL types
     typecasts: [
       {
@@ -235,15 +353,24 @@ function generateNodeLibrary(nodeRegister) {
         category: 'Visual',
         haveComponentChildren: ['Visual']
       }
-    ]
+    ] as ExportedNodeType[],
+    // Assigned unconditionally below; declared here so the object's type carries it.
+    // JSON.stringify omits `undefined` members, and key order (last) matches the
+    // original post-hoc assignment, so the serialised export is unchanged.
+    nodeIndex: undefined as
+      | undefined
+      | {
+          coreNodes: NodeIndexCategory[];
+          moduleNodes?: Array<{ name: string; items: string[] }>;
+        }
   };
 
-  var nodeTypes = Object.keys(nodeRegister._constructors);
+  const nodeTypes = Object.keys(nodeRegister._constructors);
 
   nodeTypes.forEach(function (type) {
-    var nodeMetadata = nodeRegister._constructors[type].metadata;
+    const nodeMetadata = nodeRegister._constructors[type].metadata;
 
-    var nodeObj = {
+    const nodeObj: ExportedNodeType = {
       name: type,
       searchTags: nodeMetadata.searchTags
     };
@@ -330,9 +457,9 @@ function generateNodeLibrary(nodeRegister) {
     }
     nodeObj.ports = [];
 
-    var dynamicports = nodeObj.dynamicports || [];
-    var selectorNames = {};
-    var conditionalPortNames = {};
+    const dynamicports = nodeObj.dynamicports || [];
+    const selectorNames: Record<string, boolean> = {};
+    const conditionalPortNames: Record<string, boolean> = {};
 
     //flag conditional ports so they don't get added from the normal ports, making them appear twice in the export
     /* dynamicports.filter(d=> d.name === 'conditionalports/basic')
@@ -361,7 +488,7 @@ function generateNodeLibrary(nodeRegister) {
         //this is a selector or dynamic port. It's already been registered
         return;
       }
-      var port = nodeMetadata.inputs[inputName];
+      const port = nodeMetadata.inputs[inputName];
       if (port.exportToEditor === false) {
         return;
       }
@@ -369,8 +496,8 @@ function generateNodeLibrary(nodeRegister) {
       nodeObj.ports.push(formatPort(inputName, port, 'input'));
     });
 
-    function exportOutput(name, output) {
-      var port = {
+    function exportOutput(name: string, output: Record<string, unknown>) {
+      const port: ExportedPort = {
         name: name,
         type: output.type,
         plug: 'output'
@@ -396,7 +523,7 @@ function generateNodeLibrary(nodeRegister) {
         return;
       }
 
-      var output = nodeMetadata.outputs[prop];
+      const output = nodeMetadata.outputs[prop];
       exportOutput(prop, output);
     });
   });
@@ -648,7 +775,7 @@ function generateNodeLibrary(nodeRegister) {
     coreNodes
   };
 
-  const moduleNodes = [];
+  const moduleNodes: string[] = [];
 
   nodeTypes.forEach((type) => {
     const nodeMetadata = nodeRegister._constructors[type].metadata;
@@ -669,4 +796,4 @@ function generateNodeLibrary(nodeRegister) {
   return obj;
 }
 
-module.exports = generateNodeLibrary;
+export = generateNodeLibrary;

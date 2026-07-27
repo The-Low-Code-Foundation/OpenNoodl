@@ -8,14 +8,30 @@
  * @module adapters/local-sql/SchemaManager
  */
 
-const { escapeTable, escapeColumn } = require('./QueryBuilder');
+import type { EngineDatabase } from './engine';
+import { escapeTable, escapeColumn } from './QueryBuilder';
+
+/** One column of a collection schema, as the editor's data model persists it. */
+interface SchemaColumn {
+  name: string;
+  type: string;
+  /** Relations only: the class on the other side of the junction table. */
+  targetClass?: string;
+  required?: boolean;
+  defaultValue?: unknown;
+}
+
+/** A collection's schema as tracked in the `_Schema` table. */
+interface TableSchema {
+  name: string;
+  columns?: SchemaColumn[];
+  [extra: string]: unknown;
+}
 
 /**
  * Map Noodl/Parse types to SQLite types
- *
- * @type {Object<string, string>}
  */
-const TYPE_MAP = {
+const TYPE_MAP: Record<string, string | null> = {
   String: 'TEXT',
   Number: 'REAL',
   Boolean: 'INTEGER', // SQLite uses 0/1
@@ -30,10 +46,8 @@ const TYPE_MAP = {
 
 /**
  * Map Noodl types to PostgreSQL types (for export)
- *
- * @type {Object<string, string>}
  */
-const POSTGRES_TYPE_MAP = {
+const POSTGRES_TYPE_MAP: Record<string, string | null> = {
   String: 'TEXT',
   Number: 'NUMERIC',
   Boolean: 'BOOLEAN',
@@ -50,10 +64,13 @@ const POSTGRES_TYPE_MAP = {
  * SchemaManager class
  */
 class SchemaManager {
+  db: EngineDatabase;
+  _schemaCache: Map<string, TableSchema>;
+
   /**
-   * @param {import('better-sqlite3').Database} db - SQLite database instance
+   * @param db - SQLite database instance (better-sqlite3 shape; see engine.ts)
    */
-  constructor(db) {
+  constructor(db: EngineDatabase) {
     this.db = db;
     this._schemaCache = new Map();
   }
@@ -61,7 +78,7 @@ class SchemaManager {
   /**
    * Ensure the internal schema tracking table exists
    */
-  ensureSchemaTable() {
+  ensureSchemaTable(): void {
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS "_Schema" (
         "name" TEXT PRIMARY KEY,
@@ -75,12 +92,9 @@ class SchemaManager {
   /**
    * Create a table from a schema definition
    *
-   * @param {Object} schema - Table schema
-   * @param {string} schema.name - Table name
-   * @param {Array<Object>} schema.columns - Column definitions
-   * @returns {boolean} Whether table was created (false if already existed)
+   * @returns Whether table was created (false if already existed)
    */
-  createTable(schema) {
+  createTable(schema: TableSchema): boolean {
     const tableName = schema.name;
 
     // Check if table exists
@@ -125,7 +139,7 @@ class SchemaManager {
     this.ensureSchemaTable();
     this.db
       .prepare(
-        `INSERT OR REPLACE INTO "_Schema" ("name", "schema", "updatedAt") 
+        `INSERT OR REPLACE INTO "_Schema" ("name", "schema", "updatedAt")
        VALUES (?, ?, CURRENT_TIMESTAMP)`
       )
       .run(tableName, JSON.stringify(schema));
@@ -137,11 +151,8 @@ class SchemaManager {
 
   /**
    * Add a column to an existing table
-   *
-   * @param {string} tableName - Table name
-   * @param {Object} column - Column definition
    */
-  addColumn(tableName, column) {
+  addColumn(tableName: string, column: SchemaColumn): void {
     const colDef = this._columnToSQL(column);
     if (!colDef) {
       return;
@@ -171,10 +182,9 @@ class SchemaManager {
   /**
    * Delete a table and all its data
    *
-   * @param {string} tableName - Table name
-   * @returns {boolean} Whether table was deleted
+   * @returns Whether table was deleted
    */
-  deleteTable(tableName) {
+  deleteTable(tableName: string): boolean {
     // Check if table exists
     const exists = this.db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name = ?").get(tableName);
 
@@ -195,7 +205,7 @@ class SchemaManager {
     // Drop any junction tables for relations
     const junctionTables = this.db
       .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name LIKE ?")
-      .all(`_Join_%_${tableName}`);
+      .all(`_Join_%_${tableName}`) as Array<{ name: string }>;
 
     for (const jt of junctionTables) {
       this.db.exec(`DROP TABLE IF EXISTS ${escapeTable(jt.name)}`);
@@ -207,12 +217,9 @@ class SchemaManager {
   /**
    * Rename a column in a table (SQLite 3.25.0+)
    *
-   * @param {string} tableName - Table name
-   * @param {string} oldName - Current column name
-   * @param {string} newName - New column name
-   * @returns {boolean} Whether column was renamed
+   * @returns Whether column was renamed
    */
-  renameColumn(tableName, oldName, newName) {
+  renameColumn(tableName: string, oldName: string, newName: string): boolean {
     // Validate new name
     if (!newName || !/^[a-zA-Z][a-zA-Z0-9_]*$/.test(newName)) {
       throw new Error('Invalid column name');
@@ -253,18 +260,17 @@ class SchemaManager {
 
   /**
    * Get schema for a table
-   *
-   * @param {string} tableName - Table name
-   * @returns {Object|null} Schema definition or null
    */
-  getTableSchema(tableName) {
+  getTableSchema(tableName: string): TableSchema | null {
     if (this._schemaCache.has(tableName)) {
       return this._schemaCache.get(tableName);
     }
 
     this.ensureSchemaTable();
 
-    const row = this.db.prepare('SELECT "schema" FROM "_Schema" WHERE "name" = ?').get(tableName);
+    const row = this.db.prepare('SELECT "schema" FROM "_Schema" WHERE "name" = ?').get(tableName) as
+      | { schema: string }
+      | undefined;
 
     if (row) {
       const schema = JSON.parse(row.schema);
@@ -277,10 +283,8 @@ class SchemaManager {
 
   /**
    * List all tables
-   *
-   * @returns {string[]} Table names
    */
-  listTables() {
+  listTables(): string[] {
     // NB: `_` is a LIKE wildcard matching any single character — unescaped,
     // `NOT LIKE '_%'` excludes EVERY table, not just underscore-prefixed ones.
     // Latent for as long as only the in-memory mock ran; surfaced by the real
@@ -289,33 +293,31 @@ class SchemaManager {
       .prepare(
         "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite%' AND name NOT LIKE '\\_%' ESCAPE '\\'"
       )
-      .all();
+      .all() as Array<{ name: string }>;
 
     return rows.map((r) => r.name);
   }
 
   /**
    * Export all schemas
-   *
-   * @returns {Object[]} Array of schema definitions
    */
-  exportSchemas() {
+  exportSchemas(): TableSchema[] {
     this.ensureSchemaTable();
 
     // Same wildcard-escape fix as listTables() — `_%` unescaped matches everything.
-    const rows = this.db.prepare('SELECT "name", "schema" FROM "_Schema" WHERE "name" NOT LIKE \'\\_%\' ESCAPE \'\\\'').all();
+    const rows = this.db
+      .prepare('SELECT "name", "schema" FROM "_Schema" WHERE "name" NOT LIKE \'\\_%\' ESCAPE \'\\\'')
+      .all() as Array<{ name: string; schema: string }>;
 
     return rows.map((r) => JSON.parse(r.schema));
   }
 
   /**
    * Generate PostgreSQL-compatible SQL for migration
-   *
-   * @returns {string} SQL statements
    */
-  generatePostgresSQL() {
+  generatePostgresSQL(): string {
     const schemas = this.exportSchemas();
-    const statements = [];
+    const statements: string[] = [];
 
     statements.push('-- Generated by Noodl LocalSQL Export');
     statements.push('-- PostgreSQL Schema');
@@ -371,13 +373,11 @@ class SchemaManager {
 
   /**
    * Generate Supabase-compatible SQL (includes RLS policies)
-   *
-   * @returns {string} SQL statements
    */
-  generateSupabaseSQL() {
+  generateSupabaseSQL(): string {
     const baseSQL = this.generatePostgresSQL();
     const schemas = this.exportSchemas();
-    const rlsStatements = [];
+    const rlsStatements: string[] = [];
 
     rlsStatements.push('');
     rlsStatements.push('-- Row Level Security Policies');
@@ -419,10 +419,8 @@ class SchemaManager {
 
   /**
    * Generate JSON schema export
-   *
-   * @returns {Object} JSON schema definition
    */
-  exportAsJSON() {
+  exportAsJSON(): { version: string; exportedAt: string; tables: TableSchema[] } {
     return {
       version: '1.0',
       exportedAt: new Date().toISOString(),
@@ -433,9 +431,9 @@ class SchemaManager {
   /**
    * Import schema from JSON
    *
-   * @param {Object} jsonSchema - Schema definition from exportAsJSON
+   * @param jsonSchema - Schema definition from exportAsJSON
    */
-  importFromJSON(jsonSchema) {
+  importFromJSON(jsonSchema: { tables?: TableSchema[] }): void {
     const tables = jsonSchema.tables || [];
 
     for (const tableSchema of tables) {
@@ -446,11 +444,12 @@ class SchemaManager {
   /**
    * Check if a table needs migration (schema changed)
    *
-   * @param {string} tableName - Table name
-   * @param {Object} newSchema - New schema definition
-   * @returns {Object} Migration info with added/removed columns
+   * @returns Migration info with added/removed columns
    */
-  checkMigration(tableName, newSchema) {
+  checkMigration(
+    tableName: string,
+    newSchema: TableSchema
+  ): { needsMigration: boolean; tableExists: boolean; added?: string[]; removed?: string[] } {
     const currentSchema = this.getTableSchema(tableName);
 
     if (!currentSchema) {
@@ -475,10 +474,8 @@ class SchemaManager {
    * Convert column definition to SQL
    *
    * @private
-   * @param {Object} col - Column definition
-   * @returns {string|null} SQL column definition
    */
-  _columnToSQL(col) {
+  _columnToSQL(col: SchemaColumn): string | null {
     const sqlType = TYPE_MAP[col.type];
     if (!sqlType) {
       return null; // Relations handled separately
@@ -505,11 +502,8 @@ class SchemaManager {
    * Create a junction table for many-to-many relations
    *
    * @private
-   * @param {string} owningClass - Source class name
-   * @param {string} relationName - Relation field name
-   * @param {string} targetClass - Target class name
    */
-  _createJunctionTable(owningClass, relationName, targetClass) {
+  _createJunctionTable(owningClass: string, relationName: string, targetClass: string): void {
     const junctionTable = `_Join_${relationName}_${owningClass}`;
 
     this.db.exec(`
@@ -531,13 +525,8 @@ class SchemaManager {
 
   /**
    * Add to a relation (junction table)
-   *
-   * @param {string} owningClass - Source class name
-   * @param {string} owningId - Source record ID
-   * @param {string} relationName - Relation field name
-   * @param {string} targetId - Target record ID
    */
-  addRelation(owningClass, owningId, relationName, targetId) {
+  addRelation(owningClass: string, owningId: string, relationName: string, targetId: string): void {
     const junctionTable = `_Join_${relationName}_${owningClass}`;
 
     try {
@@ -559,13 +548,8 @@ class SchemaManager {
 
   /**
    * Remove from a relation (junction table)
-   *
-   * @param {string} owningClass - Source class name
-   * @param {string} owningId - Source record ID
-   * @param {string} relationName - Relation field name
-   * @param {string} targetId - Target record ID
    */
-  removeRelation(owningClass, owningId, relationName, targetId) {
+  removeRelation(owningClass: string, owningId: string, relationName: string, targetId: string): void {
     const junctionTable = `_Join_${relationName}_${owningClass}`;
 
     this.db
@@ -575,19 +559,14 @@ class SchemaManager {
 
   /**
    * Get related IDs from a relation
-   *
-   * @param {string} owningClass - Source class name
-   * @param {string} owningId - Source record ID
-   * @param {string} relationName - Relation field name
-   * @returns {string[]} Related record IDs
    */
-  getRelatedIds(owningClass, owningId, relationName) {
+  getRelatedIds(owningClass: string, owningId: string, relationName: string): string[] {
     const junctionTable = `_Join_${relationName}_${owningClass}`;
 
     try {
       const rows = this.db
         .prepare(`SELECT "relatedId" FROM ${escapeTable(junctionTable)} WHERE "owningId" = ?`)
-        .all(owningId);
+        .all(owningId) as Array<{ relatedId: string }>;
       return rows.map((r) => r.relatedId);
     } catch (e) {
       if (e.message.includes('no such table')) {
@@ -613,10 +592,8 @@ class SchemaManager {
    * Cheap (creates and drops a throwaway virtual table) and side-effect-free
    * on the caller's schema. Callers use this to fail loudly and explicitly
    * BEFORE attempting to enable search — never a silent LIKE fallback.
-   *
-   * @returns {boolean}
    */
-  hasFts5Support() {
+  hasFts5Support(): boolean {
     try {
       this.db.exec('CREATE VIRTUAL TABLE IF NOT EXISTS "__fts5_probe" USING fts5(x)');
       this.db.exec('DROP TABLE IF EXISTS "__fts5_probe"');
@@ -628,11 +605,8 @@ class SchemaManager {
 
   /**
    * Whether a collection currently has a search (FTS5 shadow table) index.
-   *
-   * @param {string} tableName
-   * @returns {boolean}
    */
-  hasSearchIndex(tableName) {
+  hasSearchIndex(tableName: string): boolean {
     const ftsTable = `${tableName}_fts`;
     const exists = this.db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name = ?").get(ftsTable);
     return !!exists;
@@ -645,11 +619,11 @@ class SchemaManager {
    * table already holds; callers that need existing data indexed must follow
    * with the 'rebuild' command (see rebuildSearchIndex, the normal entry point).
    *
-   * @param {string} tableName
-   * @param {string[]} fields - real column names on tableName to index
-   * @param {string} [tokenizer='unicode61']
+   * @param tableName
+   * @param fields - real column names on tableName to index
+   * @param tokenizer
    */
-  createSearchIndex(tableName, fields, tokenizer = 'unicode61') {
+  createSearchIndex(tableName: string, fields: string[], tokenizer = 'unicode61'): void {
     if (!Array.isArray(fields) || fields.length === 0) {
       throw new Error('createSearchIndex requires at least one field to index');
     }
@@ -673,10 +647,8 @@ class SchemaManager {
    * the FTS5 shadow table in lockstep with the content table. Idempotent.
    *
    * @private
-   * @param {string} tableName
-   * @param {string[]} fields
    */
-  _createSearchTriggers(tableName, fields) {
+  _createSearchTriggers(tableName: string, fields: string[]): void {
     const ftsTable = `${tableName}_fts`;
     const colList = fields.map((f) => escapeColumn(f)).join(', ');
     const newVals = fields.map((f) => `new.${escapeColumn(f)}`).join(', ');
@@ -721,10 +693,8 @@ class SchemaManager {
   /**
    * Drop a collection's search index and its sync triggers. Safe to call when
    * no index exists.
-   *
-   * @param {string} tableName
    */
-  dropSearchIndex(tableName) {
+  dropSearchIndex(tableName: string): void {
     const ftsTable = `${tableName}_fts`;
     this.db.exec(`DROP TRIGGER IF EXISTS ${escapeTable(`${tableName}_fts_ai`)}`);
     this.db.exec(`DROP TRIGGER IF EXISTS ${escapeTable(`${tableName}_fts_ad`)}`);
@@ -740,13 +710,12 @@ class SchemaManager {
    * consistent re-derivation, never a delta applied on top of drift) and is
    * how both "enable search" and "fields changed" are implemented — one path,
    * not two similar ones that could disagree.
-   *
-   * @param {string} tableName
-   * @param {string[]} fields
-   * @param {string} [tokenizer='unicode61']
-   * @returns {{ tableName: string, fields: string[], tokenizer: string, rowsIndexed: number, elapsedMs: number }}
    */
-  rebuildSearchIndex(tableName, fields, tokenizer = 'unicode61') {
+  rebuildSearchIndex(
+    tableName: string,
+    fields: string[],
+    tokenizer = 'unicode61'
+  ): { tableName: string; fields: string[]; tokenizer: string; rowsIndexed: number; elapsedMs: number } {
     if (!this.hasFts5Support()) {
       throw new Error(
         'Full-text search requires the SQLite FTS5 extension, which this engine build does not have. ' +
@@ -761,7 +730,9 @@ class SchemaManager {
     const ftsTable = `${tableName}_fts`;
     this.db.exec(`INSERT INTO ${escapeTable(ftsTable)}(${escapeTable(ftsTable)}) VALUES('rebuild')`);
 
-    const countRow = this.db.prepare(`SELECT COUNT(*) as count FROM ${escapeTable(tableName)}`).get();
+    const countRow = this.db.prepare(`SELECT COUNT(*) as count FROM ${escapeTable(tableName)}`).get() as
+      | { count: number }
+      | undefined;
 
     return {
       tableName,
@@ -773,4 +744,4 @@ class SchemaManager {
   }
 }
 
-module.exports = SchemaManager;
+export = SchemaManager;

@@ -1,12 +1,118 @@
 'use strict';
 
-var EventSender = require('./eventsender'),
-  Services = require('./services/services'),
-  guid = require('./guid');
+import type { RuntimeDiscoveredPort } from '@noodl/types';
 
-const ActiveWarnings = require('./editorconnection.activewarnings');
-function EditorConnection(opts) {
-  var _opts = opts || {};
+import type { RuntimeEditorConnection } from './internal';
+
+import EventSender = require('./eventsender');
+import Services = require('./services/services');
+import guid = require('./guid');
+
+import ActiveWarnings = require('./editorconnection.activewarnings');
+
+/** The WebSocket *instance* surface this file uses — DOM `WebSocket` or `ws` alike. */
+interface WebSocketLike {
+  readyState: number;
+  send(data: string): void;
+  close(): void;
+  addEventListener(event: string, callback: (e?: WebSocketEventLike) => void): void;
+}
+
+/** The union of what the open/close/error/message handlers read off their event. */
+interface WebSocketEventLike {
+  code?: number;
+  reason?: string;
+  /** A string normally; a Blob when the payload is large — hence the `.text()` branch. */
+  data?: string | { text(): Promise<string> };
+  [extra: string]: unknown;
+}
+
+/** A WebSocket constructor plus the `OPEN` ready-state constant `isConnected` reads. */
+interface WebSocketConstructorLike {
+  new (address: string, options?: unknown): WebSocketLike;
+  OPEN: number;
+}
+
+/** The host-supplied platform adapter, as this file uses it. */
+interface EditorConnectionPlatform {
+  getCurrentTime(): number;
+  isRunningLocally?(): boolean;
+  /** Node hosts supply `ws` here; browsers fall back to the global `WebSocket`. */
+  webSocketClass?: WebSocketConstructorLike;
+  webSocketOptions?: unknown;
+  [extra: string]: unknown;
+}
+
+interface EditorConnectionOptions {
+  runtimeType?: string;
+  platform?: EditorConnectionPlatform;
+  /** AIX-008: a sandbox preview's fixed id; anonymous clients mint a guid instead. */
+  clientId?: string;
+}
+
+/** One prefix/plug slice of the port set to run rename detection over. */
+interface DetectRenamedSpec {
+  prefix?: string;
+  plug?: string;
+}
+
+interface SendDynamicPortsOptions {
+  /** Consumed here: replaced by `renamed` before the message is sent. */
+  detectRenamed?: DetectRenamedSpec | DetectRenamedSpec[];
+  renamed?: Array<{ plug?: string; patterns: string[]; before: string; after: string }>;
+  [extra: string]: unknown;
+}
+
+/**
+ * The viewer's channel to the editor over the project WebSocket. Published narrowly as
+ * `EditorConnectionLike` in `@noodl/types` (what a node definition may call) and more
+ * fully as {@link RuntimeEditorConnection} in `internal.d.ts` (what the node context
+ * drives); this is the implementation of both.
+ */
+interface EditorConnection extends RuntimeEditorConnection, EventSender {
+  runtimeType?: string;
+  platform?: EditorConnectionPlatform;
+  fixedClientId?: string;
+  clientId?: string;
+  ws?: WebSocketConstructorLike;
+  wsOptions?: unknown;
+  socket?: WebSocketLike;
+  reconnectOnClose: boolean;
+  enableDebugger: boolean;
+  lastSendTimestamp: number;
+  sendQueue: unknown[];
+  sendTimer?: ReturnType<typeof setTimeout>;
+  activeWarnings: ActiveWarnings;
+
+  on(eventName: string, callback: (data?: unknown) => void, ref?: unknown): void;
+
+  isRunningLocally(): boolean;
+  connect(address: string): void;
+  reconnect(address: string): void;
+  isConnected(): boolean;
+  send(data: unknown): void;
+  sendInspectId(id: string): void;
+  sendSelectComponent(componentName: string): void;
+  sendPulsingConnections(connectionMap: Record<string, { connections: unknown[] }>): void;
+  sendDynamicPorts(id: string, ports: RuntimeDiscoveredPort[], options?: SendDynamicPortsOptions): void;
+  clearWarnings(componentName: string, nodeId: string): void;
+  sendPatches(patches: unknown): void;
+  requestFullExport(): void;
+  requestNoodlModules(): void;
+  sendServiceRequest(request: Record<string, unknown>, callback: unknown): void;
+  close(): void;
+  sendNodeLibrary(nodelibrary: unknown): void;
+  sendComponentMetadata(componentName: string, key: string, data: unknown): void;
+  sendProjectMetadata(key: string, data: unknown): void;
+}
+
+interface EditorConnectionConstructor {
+  new (opts?: EditorConnectionOptions): EditorConnection;
+  prototype: EditorConnection;
+}
+
+const EditorConnection = function EditorConnection(this: EditorConnection, opts?: EditorConnectionOptions) {
+  const _opts = opts || {};
 
   EventSender.call(this);
 
@@ -30,23 +136,23 @@ function EditorConnection(opts) {
   //used to optimize warnings so we're not sending unneccessary warnings.
   //Clan slow down the editor in large projects
   this.activeWarnings = new ActiveWarnings();
-}
+} as unknown as EditorConnectionConstructor;
 
 EditorConnection.prototype = Object.create(EventSender.prototype);
 EditorConnection.prototype.constructor = EditorConnection;
 
-EditorConnection.prototype.isRunningLocally = function () {
-  var runningLocallyInBrowser =
+EditorConnection.prototype.isRunningLocally = function (this: EditorConnection) {
+  const runningLocallyInBrowser =
     (this.platform.isRunningLocally && this.platform.isRunningLocally()) ||
     (typeof document !== 'undefined' &&
       (document.location.hostname === 'localhost' || document.location.hostname === '127.0.0.1'));
   return runningLocallyInBrowser;
 };
 
-EditorConnection.prototype.connect = function (address) {
+EditorConnection.prototype.connect = function (this: EditorConnection, address) {
   this.socket = this.wsOptions ? new this.ws(address, this.wsOptions) : new this.ws(address);
 
-  var self = this;
+  const self = this;
 
   this.socket.addEventListener('open', function () {
     self.clientId = self.fixedClientId || guid();
@@ -123,15 +229,15 @@ EditorConnection.prototype.connect = function (address) {
   });
 };
 
-EditorConnection.prototype.reconnect = function (address) {
-  var self = this;
+EditorConnection.prototype.reconnect = function (this: EditorConnection, address) {
+  const self = this;
 
   setTimeout(function () {
     self.connect(address);
   }, 2000);
 };
 
-EditorConnection.prototype.isConnected = function () {
+EditorConnection.prototype.isConnected = function (this: EditorConnection) {
   return this.socket !== undefined && this.socket.readyState === this.ws.OPEN;
 };
 
@@ -139,7 +245,7 @@ EditorConnection.prototype.isConnected = function () {
 //Using this example: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Errors/Cyclic_object_value#examples
 const getCircularReplacer = () => {
   const seen = new WeakSet();
-  return (key, value) => {
+  return (key: string, value: unknown) => {
     if (typeof value === 'object' && value !== null) {
       if (seen.has(value)) {
         return '[Circular]';
@@ -150,12 +256,12 @@ const getCircularReplacer = () => {
   };
 };
 
-EditorConnection.prototype.send = function (data) {
+EditorConnection.prototype.send = function (this: EditorConnection, data) {
   const now = this.platform.getCurrentTime();
   const dt = now - this.lastSendTimestamp;
 
   //Send objects as json and capture exceptions
-  const trySend = (msg) => {
+  const trySend = (msg: unknown) => {
     try {
       this.socket.send(JSON.stringify(msg));
     } catch (e) {
@@ -204,7 +310,7 @@ EditorConnection.prototype.send = function (data) {
   }
 };
 
-EditorConnection.prototype.sendInspectId = function (id) {
+EditorConnection.prototype.sendInspectId = function (this: EditorConnection, id) {
   this.send({
     cmd: 'select',
     type: 'viewer',
@@ -212,7 +318,7 @@ EditorConnection.prototype.sendInspectId = function (id) {
   });
 };
 
-EditorConnection.prototype.sendSelectComponent = function (componentName) {
+EditorConnection.prototype.sendSelectComponent = function (this: EditorConnection, componentName) {
   this.send({
     cmd: 'select',
     type: 'viewer',
@@ -220,10 +326,10 @@ EditorConnection.prototype.sendSelectComponent = function (componentName) {
   });
 };
 
-EditorConnection.prototype.sendPulsingConnections = function (connectionMap) {
-  var connectionsToPulse = [];
+EditorConnection.prototype.sendPulsingConnections = function (this: EditorConnection, connectionMap) {
+  let connectionsToPulse = [];
   Object.keys(connectionMap).forEach(function (c) {
-    var connection = connectionMap[c];
+    const connection = connectionMap[c];
     connectionsToPulse = connectionsToPulse.concat(connection.connections);
   });
 
@@ -236,7 +342,7 @@ EditorConnection.prototype.sendPulsingConnections = function (connectionMap) {
   });
 };
 
-EditorConnection.prototype.sendDebugInspectorValues = function (inspectors) {
+EditorConnection.prototype.sendDebugInspectorValues = function (this: EditorConnection, inspectors) {
   this.send({
     cmd: 'debuginspectorvalues',
     type: 'viewer',
@@ -244,7 +350,7 @@ EditorConnection.prototype.sendDebugInspectorValues = function (inspectors) {
   });
 };
 
-EditorConnection.prototype.sendConnectionValue = function (connectionId, value) {
+EditorConnection.prototype.sendConnectionValue = function (this: EditorConnection, connectionId, value) {
   this.send({
     cmd: 'connectionValue',
     type: 'viewer',
@@ -252,15 +358,15 @@ EditorConnection.prototype.sendConnectionValue = function (connectionId, value) 
   });
 };
 
-const dynamicPortsHash = {};
+const dynamicPortsHash: Record<string, string> = {};
 
-function _detectRename(before, after) {
+function _detectRename(before: string[], after: string[]): { before?: string; after?: string } | undefined {
   if (!before || !after) return;
 
   if (before.length !== after.length) return; // Must be of same length
 
-  var res = {};
-  for (var i = 0; i < before.length; i++) {
+  const res: { before?: string; after?: string } = {};
+  for (let i = 0; i < before.length; i++) {
     if (after.indexOf(before[i]) === -1) {
       if (res.before) return; // Can only be one from before that is missing
       res.before = before[i];
@@ -275,20 +381,20 @@ function _detectRename(before, after) {
   return res.before && res.after ? res : undefined;
 }
 
-EditorConnection.prototype.sendDynamicPorts = function (id, ports, options) {
-  var hash = JSON.stringify(ports);
+EditorConnection.prototype.sendDynamicPorts = function (this: EditorConnection, id, ports, options) {
+  const hash = JSON.stringify(ports);
   if (dynamicPortsHash[id] === hash) {
     // Make sure we don't resend the same port data
     return;
   }
 
   if (dynamicPortsHash[id] && ports && options && options.detectRenamed) {
-    var detectRenamed = Array.isArray(options.detectRenamed) ? options.detectRenamed : [options.detectRenamed];
+    const detectRenamed = Array.isArray(options.detectRenamed) ? options.detectRenamed : [options.detectRenamed];
 
-    var renamed = [];
+    const renamed: Array<{ plug?: string; patterns: string[]; before: string; after: string }> = [];
     detectRenamed.forEach((d) => {
-      var before = JSON.parse(dynamicPortsHash[id]),
-        after = [].concat(ports);
+      let before: RuntimeDiscoveredPort[] = JSON.parse(dynamicPortsHash[id]);
+      let after: RuntimeDiscoveredPort[] = ([] as RuntimeDiscoveredPort[]).concat(ports);
 
       // Filter ports with correct prefix and plug
       if (d.prefix) {
@@ -302,11 +408,11 @@ EditorConnection.prototype.sendDynamicPorts = function (id, ports, options) {
       }
 
       // Remove the prefix
-      after = after.map((p) => p.name.substring((d.prefix || '').length));
-      before = before.map((p) => p.name.substring((d.prefix || '').length));
+      const afterNames = after.map((p) => p.name.substring((d.prefix || '').length));
+      const beforeNames = before.map((p) => p.name.substring((d.prefix || '').length));
 
       // Find the one that is renamed (if any)
-      var res = _detectRename(before, after);
+      const res = _detectRename(beforeNames, afterNames);
       if (res) {
         renamed.push({
           plug: d.plug,
@@ -334,7 +440,7 @@ EditorConnection.prototype.sendDynamicPorts = function (id, ports, options) {
   });
 };
 
-EditorConnection.prototype.sendWarning = function (componentName, nodeId, key, warning) {
+EditorConnection.prototype.sendWarning = function (this: EditorConnection, componentName, nodeId, key, warning) {
   const isNewWarning = this.activeWarnings.setWarning(nodeId, key, warning);
 
   if (isNewWarning) {
@@ -351,7 +457,7 @@ EditorConnection.prototype.sendWarning = function (componentName, nodeId, key, w
   }
 };
 
-EditorConnection.prototype.clearWarning = function (componentName, nodeId, key) {
+EditorConnection.prototype.clearWarning = function (this: EditorConnection, componentName, nodeId, key) {
   const hasWarning = this.activeWarnings.clearWarning(nodeId, key);
 
   if (hasWarning) {
@@ -368,7 +474,7 @@ EditorConnection.prototype.clearWarning = function (componentName, nodeId, key) 
   }
 };
 
-EditorConnection.prototype.clearWarnings = function (componentName, nodeId) {
+EditorConnection.prototype.clearWarnings = function (this: EditorConnection, componentName, nodeId) {
   const hasWarnings = this.activeWarnings.clearWarnings(nodeId);
 
   if (hasWarnings) {
@@ -383,7 +489,7 @@ EditorConnection.prototype.clearWarnings = function (componentName, nodeId) {
   }
 };
 
-EditorConnection.prototype.sendPatches = function (patches) {
+EditorConnection.prototype.sendPatches = function (this: EditorConnection, patches) {
   this.send({
     cmd: 'patchproject',
     type: 'viewer',
@@ -391,29 +497,35 @@ EditorConnection.prototype.sendPatches = function (patches) {
   });
 };
 
-EditorConnection.prototype.requestFullExport = function () {
+EditorConnection.prototype.requestFullExport = function (this: EditorConnection) {
   this.send({
     cmd: 'register',
     type: 'viewer'
   });
 };
 
-EditorConnection.prototype.requestNoodlModules = function () {
+EditorConnection.prototype.requestNoodlModules = function (this: EditorConnection) {
   this.send({
     cmd: 'getNoodlModules',
     type: 'viewer'
   });
 };
 
-var serviceRequests = {};
-EditorConnection.prototype.sendServiceRequest = function (request, callback) {
+/**
+ * DEFECT (PLAT-003 NOTES §31), left verbatim: this registry is write-only. No message
+ * handler reads `serviceRequests`, so a callback passed to `sendServiceRequest` is never
+ * invoked and its entry is never freed — the responses this was built for are not routed
+ * anywhere in the repo.
+ */
+const serviceRequests: Record<string, unknown> = {};
+EditorConnection.prototype.sendServiceRequest = function (this: EditorConnection, request, callback) {
   request.token = guid();
   request.clientId = this.clientId;
-  serviceRequests[request.token] = callback;
+  serviceRequests[request.token as string] = callback;
   this.send(request);
 };
 
-EditorConnection.prototype.close = function () {
+EditorConnection.prototype.close = function (this: EditorConnection) {
   this.reconnectOnClose = false;
 
   if (this.isConnected() === false) {
@@ -423,7 +535,7 @@ EditorConnection.prototype.close = function () {
   this.socket.close();
 };
 
-EditorConnection.prototype.sendNodeLibrary = function (nodelibrary) {
+EditorConnection.prototype.sendNodeLibrary = function (this: EditorConnection, nodelibrary) {
   this.send({
     cmd: 'nodelibrary',
     type: 'viewer',
@@ -433,7 +545,7 @@ EditorConnection.prototype.sendNodeLibrary = function (nodelibrary) {
   });
 };
 
-EditorConnection.prototype.sendComponentMetadata = function (componentName, key, data) {
+EditorConnection.prototype.sendComponentMetadata = function (this: EditorConnection, componentName, key, data) {
   this.send({
     cmd: 'componentMetadata',
     type: 'viewer',
@@ -445,7 +557,7 @@ EditorConnection.prototype.sendComponentMetadata = function (componentName, key,
   });
 };
 
-EditorConnection.prototype.sendProjectMetadata = function (key, data) {
+EditorConnection.prototype.sendProjectMetadata = function (this: EditorConnection, key, data) {
   this.send({
     cmd: 'projectMetadata',
     type: 'viewer',
@@ -456,4 +568,4 @@ EditorConnection.prototype.sendProjectMetadata = function (key, data) {
   });
 };
 
-module.exports = EditorConnection;
+export = EditorConnection;

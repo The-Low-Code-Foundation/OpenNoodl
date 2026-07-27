@@ -43,14 +43,15 @@ There is a further reason to do this now rather than later, and it is the sequen
 
 ## Scope
 
-> **Status, 2026-07-27 (after slice 13).** Every success criterion is met except two, and
-> neither is now a matter of doing more of the same work. The editor-side `TSFixme` sweep
-> (step 9) is PLAT-004's by agreement. Full TypeScript compilation of `noodl-runtime` is
-> blocked for **seven** of its remaining eighteen `.js` modules by the module-boundary
-> problem in [NOTES §29.2](./PLAT-003-NOTES.md) — a structural issue about how
-> `noodl-viewer-react` compiles the runtime's sources, not a volume of files. Deciding that
-> (recommended: ship `.d.ts` from `@noodl/runtime`, as its own task) is what "finish" now
-> means. The other eleven modules are convertible today and are itemised in NOTES §30.
+> **CLOSED, 2026-07-27 (after slice 14).** Slice 14 converted all eleven NOTES §30
+> modules — `noodl-runtime/src` ends at **8 `.js` / 117 `.ts`**, and each remaining `.js`
+> has a recorded disposition rather than pending work: seven are the §29.2
+> module-boundary set, now owned by
+> [PLAT-006](./PLAT-006-RUNTIME-DECLARATIONS.md) (ship declarations from
+> `@noodl/runtime`, the §29.2 option 2 this spec recommended); the eighth is vendored
+> `events.js`, decided keep-as-JavaScript (NOTES §31.4). The editor-side `TSFixme` sweep
+> (step 9) is PLAT-004's by agreement. Nothing is owed; the as-built record ends at
+> [NOTES §31](./PLAT-003-NOTES.md).
 
 ### In Scope
 - [x] Type the core runtime: `Node`, node definition, register, scope, context/scheduler
@@ -65,7 +66,9 @@ There is a further reason to do this now rather than later, and it is the sequen
   was applied to the *defects* conversion uncovered, not to every unit converted — for the
   conversions themselves, tests were generally written alongside rather than before.)*
 - [x] Coordinate the port/type model with SUB-004 so catalog and types agree
-- [ ] Remove editor-side `TSFixme`s that existed only because the runtime was untyped
+- [~] Remove editor-side `TSFixme`s that existed only because the runtime was untyped
+  *(handed to PLAT-004 by agreement — its ratchet and baseline are the mechanism; not
+  part of this task's closure)*
 
 ### Out of Scope
 - Behavioural changes or refactors — this is typing, and any behaviour change is a bug
@@ -104,24 +107,28 @@ Do not chase `strict: true` initially. Get accurate types with `strict: false`, 
 
 ## Success Criteria
 
-- [~] `noodl-runtime` and `noodl-viewer-react` compile as TypeScript with meaningful types
+- [x] `noodl-runtime` and `noodl-viewer-react` compile as TypeScript with meaningful types
   *(**all node code in both packages is TypeScript**, and `noodl-viewer-react` is done bar
-  four deliberate non-node files. `noodl-runtime/src` is at 18 `.js` / 107 `.ts`; **seven of
-  those eighteen are blocked** on the module-boundary problem in NOTES §29.2 — the react
-  viewer compiles at `module: es6`, so a runtime `.ts` it ESM-imports cannot use `export =`,
-  `import = require()`, or the runtime's ambient globals. Eleven are convertible today.)*
+  four deliberate non-node files. `noodl-runtime/src` ends at **8 `.js` / 117 `.ts`**, and
+  every remaining `.js` is a decision, not a backlog: seven are NOTES §29.2's
+  module-boundary set, owned by PLAT-006; `events.js` is vendored third-party code, kept
+  as JavaScript by decision — NOTES §31.4.)*
 - [x] Node-definition API types published and documented
 - [x] Dynamic ports modelled honestly rather than falsely typed
 - [x] Port/type model agrees with SUB-004's catalog
 - [x] Characterisation tests written and passing; overall coverage measurably higher
   *(runtime jest **132 → 973 passing, 0 failing**; slices 11, 12 and 13 each opened with a
   test-first behaviour-fixing commit proven able to fail against its own pre-fix source)*
-- [x] No behavioural regressions in real projects *(live editor pass green at slice 10 and
-  again at slice 13: project opens, graph paints, preview renders, zero renderer exceptions;
-  `catalog:check` byte-identical across all thirteen slices, which is the stronger check —
-  it runs `register-nodes.js`, so it proves every converted file still loads and registers)*
-- [ ] Editor-side boundary `TSFixme`s removed *(spec step 9 — owned by PLAT-004, whose
-  ratchet and baseline are the mechanism; see NOTES §30)*
+- [x] No behavioural regressions in real projects *(live editor pass green at slices 10,
+  13 and 14: project opens, graph paints, preview renders, zero renderer exceptions;
+  `catalog:check` byte-identical across all fourteen slices, which is the stronger check —
+  it runs `register-nodes.js`, so it proves every converted file still loads and registers.
+  Slice 14's pass is also the sharpest: the editor session itself runs through the
+  converted `graphmodel`/`componentmodel`/`editorconnection`/`nodelibraryexport`/
+  `editormodeleventshandler`.)*
+- [~] Editor-side boundary `TSFixme`s removed *(spec step 9 — owned by PLAT-004 by
+  agreement, whose ratchet and baseline are the mechanism; not part of this task's
+  closure. See NOTES §30/§31.)*
 
 ## Risks & Mitigations
 
@@ -173,7 +180,55 @@ Do not chase `strict: true` initially. Get accurate types with `strict: false`, 
 
 ## CHANGELOG
 
-In progress. Full as-built record in [PLAT-003-NOTES.md](./PLAT-003-NOTES.md).
+Complete. Full as-built record in [PLAT-003-NOTES.md](./PLAT-003-NOTES.md).
+
+### Slice 14 — 2026-07-27 — the last convertible modules, and the close of the task
+
+- **All eleven NOTES §30 modules → `.ts`** (~5,500 lines): `models/graphmodel` and
+  `models/componentmodel` (the §28-item-2 case — already described by
+  `GraphModelLike`/`ComponentModelLike`, so converting is making the implementation agree
+  with its published type); the editor-facing pair `editorconnection` (now implementing
+  `RuntimeEditorConnection` + the `EventSender` interface) and `editormodeleventshandler`;
+  `expression-evaluator` (**named exports**, as §29.1 requires — `node.ts` named-imports
+  five of its functions); `nodelibraryexport` (whose output `catalog:check` compares
+  byte-for-byte, so the conditional-assignment *order* was the constraint); and the
+  four-file **`local-sql` tree** — `engine` (its `@typedef` wall became real exported
+  `EngineDatabase`/`EngineStatement`/`ResolvedEngine` types), `QueryBuilder`,
+  `SchemaManager` and `LocalSQLAdapter`, whose CloudStore-facing operation options are
+  written down for the first time.
+- **`events.js` decided, not deferred** (NOTES §31.4): vendored Joyent `EventEmitter`
+  stays JavaScript permanently — third-party code, zero conversion value per line, the
+  `register-nodes.js` reasoning (§27.4). No longer carried as unconverted work.
+- **The seven §29.2-blocked modules are now PLAT-006**
+  ([PLAT-006-RUNTIME-DECLARATIONS.md](./PLAT-006-RUNTIME-DECLARATIONS.md)): ship
+  declarations from `@noodl/runtime`, then convert `model`, `collection`,
+  `javascriptnodeparser` and the four `api/` modules plus the untyped entry point (§29.4).
+  The spec names the constraint that decides the design: sibling `.d.ts` files do not
+  work, because `tsc` prefers `.ts` when both exist.
+- **New trap** (NOTES §31.3): the viewer's ts-jest compiles imported runtime `.ts` at a
+  **pre-ES2015 target**, so `for…of` over a Map/Set/matchAll iterator is `TS2802` there
+  and nowhere else — a third program with a third strictness profile; the viewer jest
+  suite is the gate that sees it. Wrap ES2015 iterables in `Array.from(…)`.
+- **Five defects found, documented at the site, none fixed** (NOTES §31.2). The two that
+  matter: `connectionRemoved`'s last-connection check passes the target node's *id* where
+  the port name belongs, so it never finds a connection and always reverts the port; and
+  `variantRenamed` assigns `variant.variantName` — a member no variant has — so a rename
+  sets the variant's name to `undefined`. Also: `Services.pubsub` is read and assigned
+  nowhere; `sendServiceRequest`'s callback registry is write-only; `ComponentModel.reset`'s
+  nodes loop iterates an array-used-as-dictionary and can never remove anything.
+
+File counts: `noodl-runtime/src` 18 `.js` / 107 `.ts` → **8 `.js` / 117 `.ts`**.
+`noodl-viewer-react/src` unchanged at 4 `.js` / 1 `.jsx` / 138 `.ts` / 46 `.tsx`.
+
+Gates: `catalog:check` byte-identical (154 node types, 89 dynamic) after every mutation;
+runtime, viewer, cloud and editor typechecks 0 errors (runtime gate proven able to fail);
+runtime jest **973 / 0**; viewer jest 59/59; cloud jest 46/46; **viewer, deploy, ssr and
+cloud prod bundles green, 0 `tsl` errors (counted)**; **nodegx-backend build green, 619
+specs pass, and `check:persistence` passes a real restart round-trip on `node:sqlite`** —
+the converted `local-sql` tree verified through its own loader and gate set. **`any`
+contribution zero**; the `tsfixme` red remains other workstreams' and the baseline is
+deliberately untouched. **The live editor pass ran and is green** — Agent Chat Example
+opens, graph paints, preview renders live, zero renderer exceptions.
 
 ### Slice 13 — 2026-07-27 — the runtime's infrastructure, and the boundary that stops the rest
 

@@ -7,6 +7,57 @@
  * @module adapters/local-sql/QueryBuilder
  */
 
+/** The caller's row-level access context (BAK-003). */
+export interface AclContext {
+  access: 'read' | 'write';
+  keys: string[];
+}
+
+/** A built statement: the SQL text and its bound parameters, in order. */
+export interface BuiltQuery {
+  sql: string;
+  params: unknown[];
+}
+
+/** A value as it appears in a Parse-style payload — open JSON plus Parse's tagged objects. */
+interface ParseTaggedValue {
+  __type?: string;
+  iso?: string;
+  objectId?: string;
+  className?: string;
+  [extra: string]: unknown;
+}
+
+interface QueryOptionsBase {
+  collection: string;
+  where?: Record<string, unknown>;
+  acl?: AclContext;
+}
+
+interface SelectOptions extends QueryOptionsBase {
+  select?: string | string[];
+  sort?: string | string[];
+  limit?: number;
+  skip?: number;
+}
+
+interface SearchOptions extends QueryOptionsBase {
+  /** The raw search term; turned into an FTS5 MATCH string by {@link toFts5MatchQuery}. */
+  search: string;
+  sort?: string | string[];
+  limit?: number;
+  skip?: number;
+}
+
+/** One aggregate output column: exactly one of the operators is set. */
+interface AggregateGroupConfig {
+  avg?: string;
+  sum?: string;
+  max?: string;
+  min?: string;
+  distinct?: string;
+}
+
 /**
  * Reserved SQLite keywords that need to be escaped
  */
@@ -75,10 +126,8 @@ const RESERVED_WORDS = new Set([
 
 /**
  * Escape a table name for SQL
- * @param {string} name
- * @returns {string}
  */
-function escapeTable(name) {
+export function escapeTable(name: string): string {
   // Sanitize: only allow alphanumeric and underscore
   const sanitized = name.replace(/[^a-zA-Z0-9_]/g, '');
   return `"${sanitized}"`;
@@ -86,10 +135,8 @@ function escapeTable(name) {
 
 /**
  * Escape a column name for SQL
- * @param {string} name
- * @returns {string}
  */
-function escapeColumn(name) {
+export function escapeColumn(name: string): string {
   // Sanitize: only allow alphanumeric and underscore
   const sanitized = name.replace(/[^a-zA-Z0-9_]/g, '');
   // Always quote to handle reserved words
@@ -106,12 +153,12 @@ function escapeColumn(name) {
  * set, not the raw set. Principal keys are bound parameters, never
  * interpolated.
  *
- * @param {string} tableName - Unescaped table name (for column qualification)
- * @param {{ access: 'read'|'write', keys: string[] }} acl - Caller's access context
- * @param {Array} params - Parameter array to push principal keys to
- * @returns {string} SQL predicate, or '' when acl is absent
+ * @param tableName - Unescaped table name (for column qualification)
+ * @param acl - Caller's access context
+ * @param params - Parameter array to push principal keys to
+ * @returns SQL predicate, or '' when acl is absent
  */
-function buildAclPredicate(tableName, acl, params) {
+export function buildAclPredicate(tableName: string, acl: AclContext | undefined, params: unknown[]): string {
   if (!acl || !Array.isArray(acl.keys)) {
     return '';
   }
@@ -133,12 +180,11 @@ function buildAclPredicate(tableName, acl, params) {
 
 /**
  * Convert a Parse Date object to ISO string for SQLite
- * @param {Object|Date|string} value
- * @returns {string}
  */
-function convertDateValue(value) {
-  if (value && value.__type === 'Date' && value.iso) {
-    return value.iso;
+function convertDateValue(value: unknown): unknown {
+  const tagged = value as ParseTaggedValue | null | undefined;
+  if (tagged && tagged.__type === 'Date' && tagged.iso) {
+    return tagged.iso;
   }
   if (value instanceof Date) {
     return value.toISOString();
@@ -148,12 +194,11 @@ function convertDateValue(value) {
 
 /**
  * Convert a Parse Pointer to its objectId
- * @param {Object|string} value
- * @returns {string}
  */
-function convertPointerValue(value) {
-  if (value && value.__type === 'Pointer' && value.objectId) {
-    return value.objectId;
+function convertPointerValue(value: unknown): unknown {
+  const tagged = value as ParseTaggedValue | null | undefined;
+  if (tagged && tagged.__type === 'Pointer' && tagged.objectId) {
+    return tagged.objectId;
   }
   return value;
 }
@@ -161,29 +206,34 @@ function convertPointerValue(value) {
 /**
  * Build a WHERE clause from a Parse-style query
  *
- * @param {Object} where - Parse-style query object
- * @param {Array} params - Array to push parameter values to
- * @param {Object} [schema] - Optional schema for type-aware conversion
- * @param {string} [tableAlias] - BAK-008: when the caller is joining the
+ * @param where - Parse-style query object
+ * @param params - Array to push parameter values to
+ * @param schema - Optional schema for type-aware conversion
+ * @param tableAlias - BAK-008: when the caller is joining the
  *   collection's table against another (the FTS5 shadow table, whose columns
  *   are named after the indexed fields), unqualified column references like
  *   `"title" = ?` become ambiguous. Passing the escaped table name/alias here
  *   qualifies every column reference (`"table"."title" = ?`). Omitted by every
  *   pre-existing call site, so behavior there is unchanged.
- * @returns {string} SQL WHERE clause (without "WHERE" keyword)
+ * @returns SQL WHERE clause (without "WHERE" keyword)
  */
-function buildWhereClause(where, params, schema, tableAlias) {
+export function buildWhereClause(
+  where: Record<string, unknown> | undefined,
+  params: unknown[],
+  schema?: unknown,
+  tableAlias?: string
+): string {
   if (!where || Object.keys(where).length === 0) {
     return '';
   }
 
-  const conditions = [];
+  const conditions: string[] = [];
 
   for (const [key, condition] of Object.entries(where)) {
     // Handle logical operators
     if (key === '$and' && Array.isArray(condition)) {
       const subConditions = condition
-        .map((sub) => buildWhereClause(sub, params, schema, tableAlias))
+        .map((sub) => buildWhereClause(sub as Record<string, unknown>, params, schema, tableAlias))
         .filter((c) => c);
       if (subConditions.length > 0) {
         conditions.push(`(${subConditions.join(' AND ')})`);
@@ -193,7 +243,7 @@ function buildWhereClause(where, params, schema, tableAlias) {
 
     if (key === '$or' && Array.isArray(condition)) {
       const subConditions = condition
-        .map((sub) => buildWhereClause(sub, params, schema, tableAlias))
+        .map((sub) => buildWhereClause(sub as Record<string, unknown>, params, schema, tableAlias))
         .filter((c) => c);
       if (subConditions.length > 0) {
         conditions.push(`(${subConditions.join(' OR ')})`);
@@ -204,7 +254,10 @@ function buildWhereClause(where, params, schema, tableAlias) {
     // Handle $relatedTo - this is tricky with SQLite
     if (key === '$relatedTo') {
       // For relations, we need a subquery on the junction table
-      const { object, key: relationKey } = condition;
+      const { object, key: relationKey } = condition as {
+        object?: { objectId?: string; className?: string };
+        key?: string;
+      };
       if (object && object.objectId && object.className && relationKey) {
         const junctionTable = `_Join_${relationKey}_${object.className}`;
         const idCol = tableAlias ? `${tableAlias}."objectId"` : '"objectId"';
@@ -239,14 +292,20 @@ function buildWhereClause(where, params, schema, tableAlias) {
 /**
  * Translate a single Parse operator to SQL
  *
- * @param {string} col - Escaped column name
- * @param {string} op - Parse operator ($eq, $ne, etc.)
- * @param {*} value - Comparison value
- * @param {Array} params - Parameters array to push values to
- * @param {Object} [schema] - Optional schema
- * @returns {string|null} SQL condition or null
+ * @param col - Escaped column name
+ * @param op - Parse operator ($eq, $ne, etc.)
+ * @param value - Comparison value
+ * @param params - Parameters array to push values to
+ * @param schema - Optional schema
+ * @returns SQL condition or null
  */
-function translateOperator(col, op, value, params, schema) {
+function translateOperator(
+  col: string,
+  op: string,
+  value: unknown,
+  params: unknown[],
+  schema?: unknown
+): string | null {
   // Convert special types
   const convertedValue = convertDateValue(convertPointerValue(value));
 
@@ -281,7 +340,7 @@ function translateOperator(col, op, value, params, schema) {
       params.push(convertedValue);
       return `${col} <= ?`;
 
-    case '$in':
+    case '$in': {
       if (!Array.isArray(value) || value.length === 0) {
         return '0'; // Always false
       }
@@ -289,8 +348,9 @@ function translateOperator(col, op, value, params, schema) {
       const placeholders = inValues.map(() => '?').join(', ');
       params.push(...inValues);
       return `${col} IN (${placeholders})`;
+    }
 
-    case '$nin':
+    case '$nin': {
       if (!Array.isArray(value) || value.length === 0) {
         return '1'; // Always true (not in empty set)
       }
@@ -298,6 +358,7 @@ function translateOperator(col, op, value, params, schema) {
       const ninPlaceholders = ninValues.map(() => '?').join(', ');
       params.push(...ninValues);
       return `${col} NOT IN (${ninPlaceholders})`;
+    }
 
     case '$exists':
       return value ? `${col} IS NOT NULL` : `${col} IS NULL`;
@@ -312,14 +373,16 @@ function translateOperator(col, op, value, params, schema) {
       // This is used with $regex, ignore here
       return null;
 
-    case '$text':
+    case '$text': {
       // Full text search - convert to LIKE
-      if (value && value.$search) {
-        const term = typeof value.$search === 'string' ? value.$search : value.$search.$term || '';
+      const textValue = value as { $search?: string | { $term?: string } } | null | undefined;
+      if (textValue && textValue.$search) {
+        const term = typeof textValue.$search === 'string' ? textValue.$search : textValue.$search.$term || '';
         params.push(`%${term}%`);
         return `${col} LIKE ?`;
       }
       return null;
+    }
 
     case 'contains':
     case '$contains':
@@ -343,11 +406,11 @@ function translateOperator(col, op, value, params, schema) {
 /**
  * Build ORDER BY clause from Parse-style sort
  *
- * @param {string|string[]} sort - Sort specification (e.g., 'name' or '-createdAt' for desc)
- * @param {string} [tableAlias] - BAK-008: qualify column references (see buildWhereClause).
- * @returns {string} SQL ORDER BY clause (without "ORDER BY" keyword)
+ * @param sort - Sort specification (e.g., 'name' or '-createdAt' for desc)
+ * @param tableAlias - BAK-008: qualify column references (see buildWhereClause).
+ * @returns SQL ORDER BY clause (without "ORDER BY" keyword)
  */
-function buildOrderClause(sort, tableAlias) {
+export function buildOrderClause(sort: string | string[] | undefined, tableAlias?: string): string {
   if (!sort) {
     return '';
   }
@@ -367,19 +430,9 @@ function buildOrderClause(sort, tableAlias) {
 
 /**
  * Build a SELECT query
- *
- * @param {Object} options - Query options
- * @param {string} options.collection - Collection name
- * @param {Object} [options.where] - Parse-style query filter
- * @param {string|string[]} [options.select] - Fields to select
- * @param {string|string[]} [options.sort] - Sort order
- * @param {number} [options.limit] - Max records
- * @param {number} [options.skip] - Records to skip
- * @param {Object} [schema] - Optional schema
- * @returns {{ sql: string, params: Array }}
  */
-function buildSelect(options, schema) {
-  const params = [];
+export function buildSelect(options: SelectOptions, schema?: unknown): BuiltQuery {
+  const params: unknown[] = [];
   const table = escapeTable(options.collection);
 
   // Build SELECT clause
@@ -398,7 +451,7 @@ function buildSelect(options, schema) {
   let sql = `SELECT ${selectClause} FROM ${table}`;
 
   // Build WHERE clause (query filter AND row-level ACL predicate)
-  const conditions = [];
+  const conditions: string[] = [];
   if (options.where) {
     const whereClause = buildWhereClause(options.where, params, schema);
     if (whereClause) {
@@ -437,20 +490,14 @@ function buildSelect(options, schema) {
 
 /**
  * Build a COUNT query
- *
- * @param {Object} options
- * @param {string} options.collection
- * @param {Object} [options.where]
- * @param {Object} [schema]
- * @returns {{ sql: string, params: Array }}
  */
-function buildCount(options, schema) {
-  const params = [];
+export function buildCount(options: QueryOptionsBase, schema?: unknown): BuiltQuery {
+  const params: unknown[] = [];
   const table = escapeTable(options.collection);
 
   let sql = `SELECT COUNT(*) as count FROM ${table}`;
 
-  const conditions = [];
+  const conditions: string[] = [];
   if (options.where) {
     const whereClause = buildWhereClause(options.where, params, schema);
     if (whereClause) {
@@ -470,19 +517,13 @@ function buildCount(options, schema) {
 
 /**
  * Build an INSERT query
- *
- * @param {Object} options
- * @param {string} options.collection
- * @param {Object} options.data
- * @param {string} objectId
- * @returns {{ sql: string, params: Array }}
  */
-function buildInsert(options, id) {
-  const params = [];
+export function buildInsert(options: { collection: string; data: Record<string, unknown> }, id: string): BuiltQuery {
+  const params: unknown[] = [];
   const table = escapeTable(options.collection);
 
   const now = new Date().toISOString();
-  const data = {
+  const data: Record<string, unknown> = {
     objectId: id,
     createdAt: now,
     updatedAt: now,
@@ -493,8 +534,8 @@ function buildInsert(options, id) {
   delete data._createdAt;
   delete data._updatedAt;
 
-  const columns = [];
-  const placeholders = [];
+  const columns: string[] = [];
+  const placeholders: string[] = [];
 
   for (const [key, value] of Object.entries(data)) {
     columns.push(escapeColumn(key));
@@ -509,15 +550,15 @@ function buildInsert(options, id) {
 
 /**
  * Build an UPDATE query
- *
- * @param {Object} options
- * @param {string} options.collection
- * @param {string} options.id - Record ID
- * @param {Object} options.data
- * @returns {{ sql: string, params: Array }}
  */
-function buildUpdate(options) {
-  const params = [];
+export function buildUpdate(options: {
+  collection: string;
+  id?: string;
+  objectId?: string;
+  data: Record<string, unknown>;
+  acl?: AclContext;
+}): BuiltQuery {
+  const params: unknown[] = [];
   const table = escapeTable(options.collection);
 
   const data = { ...options.data };
@@ -531,7 +572,7 @@ function buildUpdate(options) {
   delete data._createdAt;
   delete data._updatedAt;
 
-  const setClause = [];
+  const setClause: string[] = [];
 
   for (const [key, value] of Object.entries(data)) {
     setClause.push(`${escapeColumn(key)} = ?`);
@@ -557,17 +598,17 @@ function buildUpdate(options) {
 
 /**
  * Build a DELETE query
- *
- * @param {Object} options
- * @param {string} options.collection
- * @param {string} options.id - Record ID
- * @returns {{ sql: string, params: Array }}
  */
-function buildDelete(options) {
+export function buildDelete(options: {
+  collection: string;
+  id?: string;
+  objectId?: string;
+  acl?: AclContext;
+}): BuiltQuery {
   const table = escapeTable(options.collection);
   // Use id or objectId for backwards compatibility
   const recordId = options.id || options.objectId;
-  const params = [recordId];
+  const params: unknown[] = [recordId];
   let sql = `DELETE FROM ${table} WHERE "objectId" = ?`;
   const aclClause = buildAclPredicate(options.collection, options.acl, params);
   if (aclClause) {
@@ -578,18 +619,18 @@ function buildDelete(options) {
 
 /**
  * Build an INCREMENT query
- *
- * @param {Object} options
- * @param {string} options.collection
- * @param {string} options.id - Record ID
- * @param {Object<string, number>} options.properties
- * @returns {{ sql: string, params: Array }}
  */
-function buildIncrement(options) {
-  const params = [];
+export function buildIncrement(options: {
+  collection: string;
+  id?: string;
+  objectId?: string;
+  properties: Record<string, number>;
+  acl?: AclContext;
+}): BuiltQuery {
+  const params: unknown[] = [];
   const table = escapeTable(options.collection);
 
-  const setClause = [];
+  const setClause: string[] = [];
 
   for (const [key, amount] of Object.entries(options.properties)) {
     const col = escapeColumn(key);
@@ -632,10 +673,10 @@ function buildIncrement(options) {
  * implicit AND across independent phrases (unchanged, order-insensitive)
  * rather than becoming one big order-sensitive phrase.
  *
- * @param {string} term - raw user input
- * @returns {string} an FTS5 query string safe to bind as the MATCH RHS
+ * @param term - raw user input
+ * @returns an FTS5 query string safe to bind as the MATCH RHS
  */
-function toFts5MatchQuery(term) {
+export function toFts5MatchQuery(term: string): string {
   return String(term)
     .trim()
     .split(/\s+/)
@@ -655,20 +696,9 @@ function toFts5MatchQuery(term) {
  * Requires `<collection>_fts` to exist (SchemaManager.rebuildSearchIndex) —
  * callers should translate the resulting "no such table" SQL error into a
  * clear "search not enabled" message (see LocalSQLAdapter.search).
- *
- * @param {Object} options
- * @param {string} options.collection
- * @param {string} options.search - FTS5 query string (the search term)
- * @param {Object} [options.where] - additional structured filter, ANDed in
- * @param {string|string[]} [options.sort] - overrides the default rank order
- * @param {number} [options.limit]
- * @param {number} [options.skip]
- * @param {{access: 'read'|'write', keys: string[]}} [options.acl]
- * @param {Object} [schema]
- * @returns {{ sql: string, params: Array }}
  */
-function buildSearchSelect(options, schema) {
-  const params = [];
+export function buildSearchSelect(options: SearchOptions, schema?: unknown): BuiltQuery {
+  const params: unknown[] = [];
   const table = escapeTable(options.collection);
   const ftsTable = escapeTable(`${options.collection}_fts`);
 
@@ -712,13 +742,9 @@ function buildSearchSelect(options, schema) {
 /**
  * Build a COUNT query for a search (BAK-008) — same MATCH + filter + ACL
  * predicate as buildSearchSelect, no ranking/snippet/order/limit.
- *
- * @param {Object} options - same shape as buildSearchSelect
- * @param {Object} [schema]
- * @returns {{ sql: string, params: Array }}
  */
-function buildSearchCount(options, schema) {
-  const params = [];
+export function buildSearchCount(options: SearchOptions, schema?: unknown): BuiltQuery {
+  const params: unknown[] = [];
   const table = escapeTable(options.collection);
   const ftsTable = escapeTable(`${options.collection}_fts`);
 
@@ -741,21 +767,15 @@ function buildSearchCount(options, schema) {
 
 /**
  * Build a DISTINCT query
- *
- * @param {Object} options
- * @param {string} options.collection
- * @param {string} options.property
- * @param {Object} [options.where]
- * @returns {{ sql: string, params: Array }}
  */
-function buildDistinct(options) {
-  const params = [];
+export function buildDistinct(options: QueryOptionsBase & { property: string }): BuiltQuery {
+  const params: unknown[] = [];
   const table = escapeTable(options.collection);
   const col = escapeColumn(options.property);
 
   let sql = `SELECT DISTINCT ${col} FROM ${table}`;
 
-  const conditions = [];
+  const conditions: string[] = [];
   if (options.where) {
     const whereClause = buildWhereClause(options.where, params);
     if (whereClause) {
@@ -775,20 +795,14 @@ function buildDistinct(options) {
 
 /**
  * Build an AGGREGATE query
- *
- * @param {Object} options
- * @param {string} options.collection
- * @param {Object} [options.where]
- * @param {Object} options.group - Grouping config with avg/sum/max/min/distinct
- * @param {number} [options.limit]
- * @param {number} [options.skip]
- * @returns {{ sql: string, params: Array }}
  */
-function buildAggregate(options) {
-  const params = [];
+export function buildAggregate(
+  options: QueryOptionsBase & { group: Record<string, AggregateGroupConfig>; limit?: number; skip?: number }
+): BuiltQuery {
+  const params: unknown[] = [];
   const table = escapeTable(options.collection);
 
-  const selectParts = [];
+  const selectParts: string[] = [];
 
   for (const [alias, groupConfig] of Object.entries(options.group)) {
     if (groupConfig.avg !== undefined) {
@@ -811,7 +825,7 @@ function buildAggregate(options) {
 
   let sql = `SELECT ${selectParts.join(', ')} FROM ${table}`;
 
-  const conditions = [];
+  const conditions: string[] = [];
   if (options.where) {
     const whereClause = buildWhereClause(options.where, params);
     if (whereClause) {
@@ -831,31 +845,29 @@ function buildAggregate(options) {
 
 /**
  * Serialize a JavaScript value for SQLite storage
- *
- * @param {*} value
- * @returns {*}
  */
-function serializeValue(value) {
+export function serializeValue(value: unknown): unknown {
   if (value === null || value === undefined) {
     return null;
   }
 
   // Handle Parse types
   if (value && typeof value === 'object') {
+    const tagged = value as ParseTaggedValue;
     // Date type
-    if (value.__type === 'Date' && value.iso) {
-      return value.iso;
+    if (tagged.__type === 'Date' && tagged.iso) {
+      return tagged.iso;
     }
     // Pointer type - store just the objectId
-    if (value.__type === 'Pointer' && value.objectId) {
-      return value.objectId;
+    if (tagged.__type === 'Pointer' && tagged.objectId) {
+      return tagged.objectId;
     }
     // File type - store as JSON
-    if (value.__type === 'File') {
+    if (tagged.__type === 'File') {
       return JSON.stringify(value);
     }
     // GeoPoint type - store as JSON
-    if (value.__type === 'GeoPoint') {
+    if (tagged.__type === 'GeoPoint') {
       return JSON.stringify(value);
     }
     // Arrays and objects - store as JSON
@@ -880,11 +892,10 @@ function serializeValue(value) {
 /**
  * Deserialize a SQLite value back to JavaScript
  *
- * @param {*} value
- * @param {string} [type] - Expected type from schema
- * @returns {*}
+ * @param value
+ * @param type - Expected type from schema
  */
-function deserializeValue(value, type) {
+export function deserializeValue(value: unknown, type?: string): unknown {
   if (value === null || value === undefined) {
     return null;
   }
@@ -921,24 +932,3 @@ function deserializeValue(value, type) {
 
   return value;
 }
-
-module.exports = {
-  escapeTable,
-  escapeColumn,
-  buildAclPredicate,
-  buildWhereClause,
-  buildOrderClause,
-  buildSelect,
-  buildCount,
-  buildSearchSelect,
-  buildSearchCount,
-  toFts5MatchQuery,
-  buildInsert,
-  buildUpdate,
-  buildDelete,
-  buildIncrement,
-  buildDistinct,
-  buildAggregate,
-  serializeValue,
-  deserializeValue
-};

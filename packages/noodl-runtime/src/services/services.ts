@@ -10,6 +10,13 @@ import EventEmitter = require('../events');
 interface ServicesModule {
   (): void;
   events: typeof EventEmitter.prototype;
+  /**
+   * Read by `editorconnection.ts`'s `'publish'` branch — and assigned by nothing in the
+   * repository, so that branch throws a `TypeError` if a publish message ever arrives.
+   * Declared optional to describe the read honestly; see the DEFECT register in
+   * PLAT-003 NOTES §31.
+   */
+  pubsub?: { routeMessage(message: unknown): void };
 }
 
 const Services = function Services() {} as unknown as ServicesModule;

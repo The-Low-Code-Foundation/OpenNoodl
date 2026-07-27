@@ -2461,7 +2461,7 @@ owed, and is the evidence for the spec's "no behavioural regressions in real pro
 
 ---
 
-## 30. Next slice
+## 30. Slice 13's plan for slice 14 (executed in full — see §31; the task closes there)
 
 Tracked file counts at `c364c781`: `noodl-runtime/src` **18 `.js` / 107 `.ts`**.
 
@@ -2497,3 +2497,135 @@ PLAT-004.
 **Owed:** nothing. The live editor pass is paid, the bundles are green, and the `tsfixme`
 gate's red is entirely AIX-005's — this slice's `any` contribution is zero.
 
+
+---
+
+## 31. Slice 14 — the last convertible modules, and the close of the task
+
+Tracked file counts after this slice: `noodl-runtime/src` **8 `.js` / 117 `.ts`**.
+`noodl-viewer-react/src` unchanged at 4 `.js` / 1 `.jsx` / 138 `.ts` / 46 `.tsx`.
+
+All eleven §30 items executed: the two models, the editor-facing pair,
+`expression-evaluator` (named exports, as §29.1 requires — `node.ts` named-imports five of
+its functions), `nodelibraryexport`, and the four-file `local-sql` tree. The eight `.js`
+files that remain are exactly the seven §29.2-blocked modules plus `events.js`, and both
+groups now have a recorded disposition (§31.4, §31.5).
+
+### 31.1 What the conversions established
+
+- **`nodelibraryexport` is `catalog:check`'s subject, not just its passenger.** Its output
+  is the blob the gate compares byte-for-byte, and JSON.stringify serialises keys in
+  insertion order — so the conversion had to preserve the *order* of ~30 conditional
+  assignments, and the one structural liberty taken (declaring `nodeIndex: undefined` in
+  the object literal rather than adding the key later) is order-neutral because the key was
+  already last and `JSON.stringify` drops `undefined`. The gate stayed byte-identical.
+- **`EditorConnection` now implements its own published types.** The implementation
+  interface extends `RuntimeEditorConnection` (internal.d.ts) *and* the `EventSender`
+  instance interface; the one member both parents declare (`on`) must be re-declared in the
+  child or the double-inheritance check rejects it (`TS2320`-shape). The re-declaration
+  uses `unknown`, not `any` — method bivariance makes it assignable to both parents.
+- **The engine's `@typedef` wall became real exported types.** `EngineStatement`,
+  `EngineDatabase`, `ResolvedEngine` existed only as JSDoc comments (§28 item 6's shape,
+  again); `SchemaManager` and `LocalSQLAdapter` now import them, and the adapter's
+  CloudStore-facing operation options (`QueryOptions` … `RelationOptions`) are written
+  down for the first time.
+- **`getParameter` is not a runtime member.** `editormodeleventshandler`'s variant-revert
+  path calls `node.getParameter(…)` on what comes back from
+  `getAllNodesWithVariantRecursive` — a member installed by the *viewer's* React binding
+  (`ReactNodeInstance`), not by the base `Node`. Typed as an intersection at the scope
+  interface with the reason documented: only visual nodes carry variants, so the instances
+  are always React-backed in practice.
+- **Two different schema shapes flow through `LocalSQLAdapter._getSchema`** — the editor's
+  dbCollections form (`schema.properties`, what `_rowToRecord` deserialises against) and
+  SchemaManager's tracked `TableSchema` (`{name, columns}`, no `properties` at all). Rows
+  from SchemaManager-tracked-only collections therefore deserialise without column types.
+  Pre-existing behaviour, now typed as `AdapterSchema` with the asymmetry documented,
+  and the same fact explains why the AdapterFacade path's `TableSchema`-shaped
+  `collections` never trigger the adapter's auto-create loop (it reads `collection.schema`,
+  which those entries do not have).
+
+### 31.2 Defects found — five, none fixed, all documented at the site
+
+1. **`connectionRemoved`'s last-connection check can never find a connection.** It calls
+   `getConnectionsToPort(targetNodeModel.id, event.model.targetId)` — the second argument
+   is the target node's *id*, not `targetPort`. No port is named after a node id, so the
+   lookup always returns `[]`, the guard is always true, and the port reverts to its
+   parameter/default even when other connections to the same port remain.
+2. **`variantRenamed` renames every variant to `undefined`.** It assigns
+   `variant.name = variant.variantName`, a member no variant has — the new name is on the
+   *event*. Every node referencing the variant by its old name loses it.
+3. **`Services.pubsub` is read and never assigned.** `editorconnection`'s `'publish'`
+   branch calls `Services.pubsub.routeMessage(message)`; nothing in the repository assigns
+   `pubsub`, and nothing sends `cmd: 'publish'`, so the branch is dead until the day
+   something does — at which point it throws. Declared optional on `ServicesModule` with
+   the fact recorded in its doc.
+4. **`sendServiceRequest`'s callback registry is write-only.** Callbacks are stored in
+   `serviceRequests` keyed by token; no message handler reads the map, so no callback is
+   ever invoked and no entry is ever freed.
+5. **`ComponentModel.reset`'s second loop is dead code.** `nodes` is an array used as an
+   id-keyed dictionary, so `for…of` yields its *elements* — none under GUID ids, or the
+   node objects themselves under numeric ids — never the id strings `hasNodeWithId`
+   expects. Only roots and their descendants are actually removed by a reset. (Two smaller
+   finds of the same §29.3 guard-the-wrong-level shape: `GraphModel`'s
+   `updateVariantDefaultStateTransition` and `updateVariantStateTransition` both throw on a
+   variant that arrived without the optional transitions field.)
+
+### 31.3 The trap this slice adds: the viewer's ts-jest target
+
+Three suites-fail-to-load rounds, one cause. `noodl-viewer-react`'s jest compiles imported
+runtime `.ts` at a **pre-ES2015 target**, where iterating a `MapIterator`, a `Set` or a
+`RegExpStringIterator` with `for…of` is `TS2802`. The gate that catches it is the *viewer
+jest suite* — `typecheck:runtime` is clean (ES2019 target) and the prod bundle is clean, so
+this is a third program with a third strictness profile. Rule: in any runtime file a
+viewer test can reach, wrap ES2015 iterables in `Array.from(…)` before `for…of` (arrays
+are fine). Three sites converted: `graphmodel.getBundlesContainingSheet`,
+`expression-evaluator.detectDependencies`, `editormodeleventshandler.parameterChanged`.
+
+### 31.4 `events.js` stays JavaScript — decided, not deferred
+
+§30 item 6 adopted as a decision: the vendored Joyent `EventEmitter` is third-party code
+whose conversion value per line is zero and whose risk is not — the same reasoning that
+keeps `register-nodes.js` in JavaScript (§27.4). It is no longer carried as unconverted
+work; it is out of scope, permanently. (Checked while typing the adapter against it: it
+does have `off`, `setMaxListeners` and `removeAllListeners`; the third `context` argument
+the CloudStore interface passes to `on`/`off` is silently ignored by its
+two-parameter signatures.)
+
+### 31.5 The seven blocked modules are PLAT-006's
+
+§29.2's recommendation is now filed as
+[PLAT-006-RUNTIME-DECLARATIONS.md](./PLAT-006-RUNTIME-DECLARATIONS.md): ship type
+declarations from `@noodl/runtime` so the react viewer resolves declarations instead of
+compiling runtime sources, then convert `model`, `collection`, `javascriptnodeparser`,
+`api/cloudstore`, `api/records`, `api/configservice`, `api/cloudfile`, and the untyped
+package entry point (§29.4). The spec states the resolution-mechanism constraint up front
+— sibling `.d.ts` files do *not* work, because `tsc` prefers `.ts` when both exist.
+
+### 31.6 Verification
+
+`catalog:check` byte-identical — **154 node types, 89 with dynamic ports** — re-run after
+every mutation including the prettier/eslint pass. Runtime jest **973 pass / 0 fail**;
+viewer jest **59/59** (2 suites were failing to load mid-slice — §31.3 — and are green);
+cloud viewer jest 46/46. Runtime, viewer, cloud and editor typechecks 0 errors under the
+corrected `^packages/` filter, and the runtime gate was proven able to fail
+(`--noImplicitReturns` surfaces 22). **Viewer, deploy, ssr and cloud production bundles
+all green, 0 `tsl` errors** (counted, not exit-code-trusted — §29.6 trap 2).
+**nodegx-backend: build green, 619 pass / 61 suites, and `check:persistence` passes a
+real restart round-trip on `node:sqlite`** — the converted `local-sql` tree verified
+through its own loader and gate set, as §30 item 5 prescribed. Prettier clean; eslint 9
+remaining errors, all deliberate (`no-this-alias` ×5, API-shape unused params ×4).
+**`any` contribution zero** — the `tsfixme` gate's +57 is 56 AIX-005 agent markers plus
+slice 13's `queryutils`, none of it this slice's, so the baseline is again deliberately
+left alone (and the regenerated `TYPE-ESCAPE-HATCHES.md` snapshot was reverted rather
+than committed, per §-slice-10 practice — it cannot be truthful with other sessions'
+files uncommitted). **The live editor pass ran and is green**: the Agent Chat Example
+project opens, the graph paints with node colours, the preview webview renders the chat
+UI live, and `.logs/dev.log` carries **zero `renderer:exception` lines**.
+
+That the editor session worked at all is itself the strongest smoke test this slice could
+have: the project model is built by the converted `graphmodel`/`componentmodel`, the
+editor channel *is* the converted `editorconnection`, the node library the graph renders
+from is the converted `nodelibraryexport`'s output, and live edits flow through the
+converted `editormodeleventshandler`.
+
+**Owed: nothing.** PLAT-003 closes with this slice.

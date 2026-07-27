@@ -21,6 +21,8 @@ interface NodeModel extends GraphNodeModel {
   outputs: unknown[];
   /** The variant this node inherits parameters and transitions from, if any. */
   variant?: unknown;
+  /** Set by `addChild` — a node's parent is always another `NodeModel`. */
+  parent?: NodeModel;
 
   setParameter(name: string, value: unknown, state?: string): void;
   setParameters(parameters: Record<string, unknown>): void;

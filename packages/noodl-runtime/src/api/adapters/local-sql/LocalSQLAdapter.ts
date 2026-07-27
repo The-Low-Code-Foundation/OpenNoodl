@@ -8,10 +8,170 @@
  * @module adapters/local-sql/LocalSQLAdapter
  */
 
-const EventEmitter = require('../../../events');
-const QueryBuilder = require('./QueryBuilder');
-const SchemaManager = require('./SchemaManager');
-const { resolveEngine } = require('./engine');
+import { resolveEngine, type EngineDatabase, type ResolvedEngine } from './engine';
+import type { AclContext } from './QueryBuilder';
+
+import EventEmitter = require('../../../events');
+import QueryBuilder = require('./QueryBuilder');
+import SchemaManager = require('./SchemaManager');
+
+/** A stored record as it crosses the adapter boundary. */
+type AdapterRecord = Record<string, unknown>;
+
+/** The post-write change event BAK-001 (realtime) and WF-005 (triggers) consume. */
+interface ChangeEvent {
+  type: string;
+  id: string;
+  collection: string;
+  object?: AdapterRecord | null;
+}
+
+/**
+ * The schema shape `_rowToRecord` deserialises against — the editor's
+ * dbCollections form. SchemaManager's tracked `TableSchema` (`{ name, columns }`)
+ * also flows through `_getSchema`, and for it `properties` is simply absent, so
+ * rows from SchemaManager-tracked-only collections deserialise without column
+ * types. That asymmetry is the pre-existing behaviour, typed rather than hidden.
+ */
+interface AdapterSchema {
+  properties?: Record<string, { type?: string; required?: boolean; targetClass?: string }>;
+}
+
+/**
+ * One collection's configuration. The editor's dbCollections metadata carries
+ * `schema.properties`, which the auto-create loop in `connect()` reads; the
+ * AdapterFacade path (`adapters/index.ts`) passes `TableSchema`-shaped entries
+ * (`{ name, columns }`) with no `schema` member at all, so for those the loop
+ * is a guarded no-op and table creation happens through SchemaManager directly.
+ */
+interface CollectionConfig {
+  schema?: AdapterSchema;
+  name?: string;
+  columns?: unknown[];
+}
+
+/**
+ * The vendored Joyent emitter as this adapter drives it. The third `context`
+ * argument the CloudStore interface carries reaches `on`/`off` but the Joyent
+ * implementation takes only `(type, listener)` and ignores it.
+ */
+interface AdapterEventEmitter {
+  setMaxListeners(n: number): void;
+  on(event: string, handler: (...args: unknown[]) => void, context?: unknown): void;
+  off(event: string, handler?: (...args: unknown[]) => void, context?: unknown): void;
+  emit(event: string, ...args: unknown[]): void;
+  removeAllListeners(event?: string): void;
+}
+
+interface AdapterErrorCallback {
+  (message: string): void;
+}
+
+interface QueryOptions {
+  collection: string;
+  where?: Record<string, unknown>;
+  select?: string | string[];
+  sort?: string | string[];
+  limit?: number;
+  skip?: number;
+  count?: boolean;
+  acl?: AclContext;
+  success(results: AdapterRecord[], count?: number): void;
+  error: AdapterErrorCallback;
+}
+
+interface SearchOptions extends QueryOptions {
+  search: string;
+}
+
+interface FetchOptions {
+  collection: string;
+  id?: string;
+  objectId?: string;
+  acl?: AclContext;
+  success(record: AdapterRecord): void;
+  error: AdapterErrorCallback;
+}
+
+interface CreateOptions {
+  collection: string;
+  data: Record<string, unknown>;
+  success(record: AdapterRecord): void;
+  error: AdapterErrorCallback;
+}
+
+interface SaveOptions {
+  collection: string;
+  id?: string;
+  objectId?: string;
+  data: Record<string, unknown>;
+  acl?: AclContext;
+  success(record: AdapterRecord): void;
+  error: AdapterErrorCallback;
+}
+
+interface DeleteOptions {
+  collection: string;
+  id?: string;
+  objectId?: string;
+  acl?: AclContext;
+  success(): void;
+  error: AdapterErrorCallback;
+}
+
+interface CountOptions {
+  collection: string;
+  where?: Record<string, unknown>;
+  acl?: AclContext;
+  success(count: number): void;
+  error: AdapterErrorCallback;
+}
+
+interface AggregateOptions {
+  collection: string;
+  where?: Record<string, unknown>;
+  group: Record<string, { avg?: string; sum?: string; max?: string; min?: string; distinct?: string }>;
+  acl?: AclContext;
+  success(result: Record<string, unknown>): void;
+  error: AdapterErrorCallback;
+}
+
+interface DistinctOptions {
+  collection: string;
+  property: string;
+  where?: Record<string, unknown>;
+  acl?: AclContext;
+  success(values: unknown[]): void;
+  error: AdapterErrorCallback;
+}
+
+interface IncrementOptions {
+  collection: string;
+  id?: string;
+  objectId?: string;
+  properties: Record<string, number>;
+  acl?: AclContext;
+  success(record: AdapterRecord): void;
+  error: AdapterErrorCallback;
+}
+
+interface RelationOptions {
+  collection: string;
+  objectId: string;
+  key: string;
+  targetObjectId: string;
+  success(result: Record<string, never>): void;
+  error: AdapterErrorCallback;
+}
+
+interface AdapterOptions {
+  autoCreateTables?: boolean;
+  allowEphemeral?: boolean;
+  collections?: Record<string, CollectionConfig>;
+  /** Test/embedding seam: a pre-resolved engine instead of the shared resolver. */
+  engine?: ResolvedEngine;
+  [extra: string]: unknown;
+}
 
 /**
  * Thrown when the native SQLite engine cannot be loaded and the caller has not
@@ -21,15 +181,17 @@ const { resolveEngine } = require('./engine');
  * in-memory mock, so records appeared to save and then vanished on restart —
  * the worst possible behaviour for a persistence layer. Failing loudly bounds
  * the damage: a clear error costs minutes, a silent one costs a weekend of work.
- *
- * @augments Error
  */
 class LocalBackendPersistenceError extends Error {
+  code: string;
+  cause?: Error;
+  causeMessage?: string;
+
   /**
-   * @param {string} message - Human-readable, actionable message
-   * @param {Error} [cause] - The underlying module-load error
+   * @param message - Human-readable, actionable message
+   * @param cause - The underlying module-load error
    */
-  constructor(message, cause) {
+  constructor(message: string, cause?: Error) {
     super(message);
     this.name = 'LocalBackendPersistenceError';
     this.code = 'PERSISTENCE_ENGINE_UNAVAILABLE';
@@ -43,9 +205,9 @@ class LocalBackendPersistenceError extends Error {
 /**
  * Generate a UUID v4
  *
- * @returns {string} UUID string (e.g., "123e4567-e89b-12d3-a456-426614174000")
+ * @returns UUID string (e.g., "123e4567-e89b-12d3-a456-426614174000")
  */
-function generateUUID() {
+function generateUUID(): string {
   // RFC 4122 version 4 UUID
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
     const r = (Math.random() * 16) | 0;
@@ -60,17 +222,34 @@ function generateUUID() {
  * Implements the same interface as CloudStore but uses SQLite
  */
 class LocalSQLAdapter {
+  static LocalBackendPersistenceError = LocalBackendPersistenceError;
+
+  dbPath: string;
+  options: AdapterOptions & { autoCreateTables: boolean; allowEphemeral: boolean };
+  db: EngineDatabase | null;
+  schemaManager: SchemaManager | null;
+  events: AdapterEventEmitter;
+  _txnDepth: number;
+  _txnChangeBuffer: ChangeEvent[];
+  _persistenceMode: 'unknown' | 'persistent' | 'ephemeral' | 'failed';
+  _loadError: (Error & { code?: string }) | null;
+  _usingMock: boolean;
+  _engineName: string | null;
+  _resolveEngine: () => ResolvedEngine | null | undefined;
+  _collections: Record<string, CollectionConfig>;
+  _mockData?: Record<string, Record<string, AdapterRecord>>;
+  _mockSchema?: Record<string, { name: string; columns: Array<{ name: string; type?: string }> }>;
+
   /**
-   * @param {string} dbPath - Path to SQLite database file
-   * @param {Object} [options] - Configuration options
-   * @param {boolean} [options.autoCreateTables=true] - Auto-create tables on first access
-   * @param {Object} [options.collections] - Collection schemas (same as dbCollections metadata)
-   * @param {boolean} [options.allowEphemeral=false] - When the native SQLite engine
-   *   cannot load, opt in to an in-memory mock instead of throwing. Data written in
-   *   this mode is NOT persisted and is lost on restart; the caller is responsible
-   *   for making that ephemerality visible to the user.
+   * @param dbPath - Path to SQLite database file
+   * @param options - Configuration options. `autoCreateTables` (default true)
+   *   auto-creates tables on first access; `collections` carries the schemas
+   *   (same as dbCollections metadata); `allowEphemeral` (default false) opts in
+   *   to an in-memory mock when the native SQLite engine cannot load — data
+   *   written in that mode is NOT persisted and is lost on restart; the caller
+   *   is responsible for making that ephemerality visible to the user.
    */
-  constructor(dbPath, options = {}) {
+  constructor(dbPath: string, options: AdapterOptions = {}) {
     this.dbPath = dbPath;
     this.options = {
       autoCreateTables: true,
@@ -80,7 +259,7 @@ class LocalSQLAdapter {
 
     this.db = null;
     this.schemaManager = null;
-    this.events = new EventEmitter();
+    this.events = new EventEmitter() as unknown as AdapterEventEmitter;
     this.events.setMaxListeners(10000);
 
     // BAK-001: the post-commit change tap. `create`/`save`/`delete` are change
@@ -113,20 +292,18 @@ class LocalSQLAdapter {
 
   /**
    * Connect to the database
-   *
-   * @returns {Promise<void>}
    */
-  async connect() {
+  async connect(): Promise<void> {
     if (this.db) {
       return; // Already connected
     }
 
     // Resolve the SQLite engine (WF-004: node:sqlite preferred, better-sqlite3
-    // as a legacy fallback — see ./engine.js). On failure we EITHER throw
+    // as a legacy fallback — see ./engine.ts). On failure we EITHER throw
     // (default) OR, if the caller explicitly opted in via options.allowEphemeral,
     // fall back to a clearly-labelled in-memory mock. We never silently
     // substitute the mock — see LocalBackendPersistenceError.
-    let engine;
+    let engine: ResolvedEngine | null | undefined;
     try {
       engine = this._resolveEngine();
     } catch (e) {
@@ -188,9 +365,9 @@ class LocalSQLAdapter {
    * marked as ephemeral so callers can label it in the UI.
    *
    * @private
-   * @param {Error} cause - The underlying load/open error
+   * @param cause - The underlying load/open error
    */
-  _handleEngineLoadFailure(cause) {
+  _handleEngineLoadFailure(cause: Error): void {
     if (!this.options.allowEphemeral) {
       this._persistenceMode = 'failed';
       throw new LocalBackendPersistenceError(
@@ -221,11 +398,14 @@ class LocalSQLAdapter {
 
   /**
    * Report how this adapter is persisting data.
-   *
-   * @returns {{ mode: 'unknown'|'persistent'|'ephemeral'|'failed', persistent: boolean,
-   *   ephemeral: boolean, engine: string, error: ({ message: string, code: string }|null) }}
    */
-  getPersistenceStatus() {
+  getPersistenceStatus(): {
+    mode: 'unknown' | 'persistent' | 'ephemeral' | 'failed';
+    persistent: boolean;
+    ephemeral: boolean;
+    engine: string | null;
+    error: { message: string; code: string } | null;
+  } {
     return {
       mode: this._persistenceMode,
       persistent: this._persistenceMode === 'persistent',
@@ -238,40 +418,45 @@ class LocalSQLAdapter {
   }
 
   /**
-   * Create a mock database object that stores data in memory
+   * Create a mock database object that stores data in memory. Deliberately
+   * partial — `run` answers `{ changes: 1 }` without `lastInsertRowid`, which
+   * nothing in the mock's callers reads — hence the cast.
    * @private
    */
-  _createMockDb() {
+  _createMockDb(): EngineDatabase {
     const self = this;
     return {
-      prepare: (sql) => ({
-        get: (...params) => self._mockExec(sql, params, 'get'),
-        all: (...params) => self._mockExec(sql, params, 'all'),
-        run: (...params) => self._mockExec(sql, params, 'run')
+      prepare: (sql: string) => ({
+        get: (...params: unknown[]) => self._mockExec(sql, params, 'get'),
+        all: (...params: unknown[]) => self._mockExec(sql, params, 'all'),
+        run: (...params: unknown[]) => self._mockExec(sql, params, 'run')
       }),
       exec: () => {},
       close: () => {},
       pragma: () => {},
       transaction: (fn) => fn
-    };
+    } as unknown as EngineDatabase;
   }
 
   /**
-   * Create a mock schema manager
+   * Create a mock schema manager. Deliberately partial: only the members this
+   * adapter itself calls exist, and the search members throw or answer false
+   * (BAK-008) — loud, specific errors instead of a generic "not a function"
+   * TypeError or, worse, silent no-ops. Same reasoning as _guardAclSupport.
    * @private
    */
-  _createMockSchemaManager() {
+  _createMockSchemaManager(): SchemaManager {
     const self = this;
     return {
       ensureSchemaTable: () => {},
-      createTable: ({ name, columns }) => {
+      createTable: ({ name, columns }: { name: string; columns?: Array<{ name: string; type?: string }> }) => {
         if (!self._mockData[name]) {
           self._mockData[name] = {};
           self._mockSchema[name] = { name, columns: columns || [] };
         }
         return true;
       },
-      addColumn: (table, col) => {
+      addColumn: (table: string, col: { name: string; type?: string }) => {
         if (!self._mockSchema[table]) self._mockSchema[table] = { name: table, columns: [] };
         if (!self._mockSchema[table].columns) self._mockSchema[table].columns = [];
         // Check if column already exists
@@ -280,7 +465,7 @@ class LocalSQLAdapter {
           self._mockSchema[table].columns.push(col);
         }
       },
-      getTableSchema: (table) => self._mockSchema[table] || null,
+      getTableSchema: (table: string) => self._mockSchema[table] || null,
       listTables: () => Object.keys(self._mockData).filter((name) => !name.startsWith('_')),
       exportSchemas: () => Object.values(self._mockSchema).filter((s) => s && !s.name?.startsWith('_')),
       addRelation: () => {},
@@ -297,14 +482,14 @@ class LocalSQLAdapter {
       rebuildSearchIndex: () => {
         throw new Error('Full-text search is not available in ephemeral (in-memory mock) mode.');
       }
-    };
+    } as unknown as SchemaManager;
   }
 
   /**
    * Execute mock SQL operations
    * @private
    */
-  _mockExec(sql, params, mode) {
+  _mockExec(sql: string, params: unknown[], mode: 'get' | 'all' | 'run'): unknown {
     // Parse SQL patterns for mock execution
     // Match SELECT with optional WHERE, ORDER BY, LIMIT, OFFSET
     const selectMatch = sql.match(/SELECT\s+\*\s+FROM\s+"?(\w+)"?/i);
@@ -321,7 +506,7 @@ class LocalSQLAdapter {
       // Check for WHERE id = ? or WHERE objectId = ?
       const idMatch = sql.match(/WHERE\s+"?(?:id|objectId)"?\s*=\s*\?/i);
       if (idMatch && params.length > 0) {
-        const recordId = params[0];
+        const recordId = params[0] as string;
         const record = this._mockData[table][recordId];
         return mode === 'get' ? record || null : record ? [record] : [];
       }
@@ -332,8 +517,8 @@ class LocalSQLAdapter {
         const orderCol = orderMatch[1];
         const orderDir = (orderMatch[2] || 'ASC').toUpperCase();
         records = records.sort((a, b) => {
-          const aVal = a[orderCol];
-          const bVal = b[orderCol];
+          const aVal = a[orderCol] as number | string;
+          const bVal = b[orderCol] as number | string;
           if (aVal < bVal) return orderDir === 'ASC' ? -1 : 1;
           if (aVal > bVal) return orderDir === 'ASC' ? 1 : -1;
           return 0;
@@ -350,8 +535,8 @@ class LocalSQLAdapter {
         const whereParams = (whereClause.match(/\?/g) || []).length;
         paramIndex = whereParams;
 
-        const limit = params[paramIndex];
-        const skip = sql.includes('OFFSET') ? params[paramIndex + 1] || 0 : 0;
+        const limit = params[paramIndex] as number;
+        const skip = (sql.includes('OFFSET') ? params[paramIndex + 1] || 0 : 0) as number;
         records = records.slice(skip, skip + limit);
       }
 
@@ -366,7 +551,7 @@ class LocalSQLAdapter {
       const columnsMatch = sql.match(/\(([^)]+)\)\s*VALUES/i);
       if (columnsMatch) {
         const columns = columnsMatch[1].split(',').map((c) => c.trim().replace(/"/g, ''));
-        const record = {};
+        const record: AdapterRecord = {};
         columns.forEach((col, idx) => {
           record[col] = params[idx];
         });
@@ -374,7 +559,7 @@ class LocalSQLAdapter {
         if (!record.id && params[0]) {
           record.id = params[0];
         }
-        const recordId = record.id;
+        const recordId = record.id as string;
         this._mockData[table][recordId] = record;
         return { changes: 1 };
       }
@@ -382,14 +567,14 @@ class LocalSQLAdapter {
       // Fallback: simple record creation
       const now = new Date().toISOString();
       const record = { id: params[0], createdAt: now, updatedAt: now };
-      this._mockData[table][params[0]] = record;
+      this._mockData[table][params[0] as string] = record;
       return { changes: 1 };
     }
 
     if (updateMatch) {
       const table = updateMatch[1];
       // Last param is typically the id in WHERE clause
-      const recordId = params[params.length - 1];
+      const recordId = params[params.length - 1] as string;
       if (this._mockData[table] && this._mockData[table][recordId]) {
         // Parse SET clauses to update actual fields
         const setMatch = sql.match(/SET\s+(.+?)\s+WHERE/i);
@@ -411,7 +596,7 @@ class LocalSQLAdapter {
 
     if (deleteMatch) {
       const table = deleteMatch[1];
-      const recordId = params[0];
+      const recordId = params[0] as string;
       if (this._mockData[table]) {
         delete this._mockData[table][recordId];
       }
@@ -433,10 +618,8 @@ class LocalSQLAdapter {
 
   /**
    * Disconnect from the database
-   *
-   * @returns {Promise<void>}
    */
-  async disconnect() {
+  async disconnect(): Promise<void> {
     if (this.db) {
       this.db.close();
       this.db = null;
@@ -448,9 +631,8 @@ class LocalSQLAdapter {
    * Ensure table exists (auto-create if needed)
    *
    * @private
-   * @param {string} collection - Collection name
    */
-  _ensureTable(collection) {
+  _ensureTable(collection: string): void {
     if (!this.schemaManager) {
       throw new Error('Database not connected');
     }
@@ -471,29 +653,25 @@ class LocalSQLAdapter {
    * Get schema for a collection
    *
    * @private
-   * @param {string} collection - Collection name
-   * @returns {Object|null}
    */
-  _getSchema(collection) {
+  _getSchema(collection: string): AdapterSchema | null {
     if (this._collections[collection]) {
       return this._collections[collection].schema;
     }
-    return this.schemaManager?.getTableSchema(collection);
+    // SchemaManager returns its TableSchema shape — no `properties` member; see AdapterSchema.
+    return this.schemaManager?.getTableSchema(collection) as unknown as AdapterSchema;
   }
 
   /**
    * Convert a database row to a record object
    *
    * @private
-   * @param {Object} row - Database row
-   * @param {string} collection - Collection name
-   * @returns {Object}
    */
-  _rowToRecord(row, collection) {
+  _rowToRecord(row: AdapterRecord | null | undefined, collection: string): AdapterRecord {
     if (!row) return null;
 
     const schema = this._getSchema(collection);
-    const record = {};
+    const record: AdapterRecord = {};
 
     for (const [key, value] of Object.entries(row)) {
       const colType = schema?.properties?.[key]?.type;
@@ -510,22 +688,22 @@ class LocalSQLAdapter {
   /**
    * Subscribe to events
    *
-   * @param {string} event - Event name
-   * @param {Function} handler - Event handler
-   * @param {Object} [context] - Context for handler
+   * @param event - Event name
+   * @param handler - Event handler
+   * @param context - Context for handler
    */
-  on(event, handler, context) {
+  on(event: string, handler: (...args: unknown[]) => void, context?: unknown): void {
     this.events.on(event, handler, context);
   }
 
   /**
    * Unsubscribe from events
    *
-   * @param {string} [event] - Event name (optional - removes all if not provided)
-   * @param {Function} [handler] - Event handler
-   * @param {Object} [context] - Context
+   * @param event - Event name (optional - removes all if not provided)
+   * @param handler - Event handler
+   * @param context - Context
    */
-  off(event, handler, context) {
+  off(event?: string, handler?: (...args: unknown[]) => void, context?: unknown): void {
     if (event) {
       this.events.off(event, handler, context);
     } else {
@@ -540,9 +718,8 @@ class LocalSQLAdapter {
    * (realtime/SSE) and WF-005 (DB-change triggers) both subscribe to.
    *
    * @private
-   * @param {{ type: string, id: string, collection: string, object?: Object }} event
    */
-  _emitChange(event) {
+  _emitChange(event: ChangeEvent): void {
     if (this._txnDepth > 0) {
       this._txnChangeBuffer.push(event);
       return;
@@ -556,9 +733,8 @@ class LocalSQLAdapter {
    * acl option against the mock is a hard error (loud-failure doctrine).
    *
    * @private
-   * @param {Object} options
    */
-  _guardAclSupport(options) {
+  _guardAclSupport(options: { acl?: AclContext }): void {
     if (options.acl && this._usingMock) {
       throw new Error(
         'ACL enforcement is not available in ephemeral (in-memory mock) mode — ' +
@@ -569,10 +745,8 @@ class LocalSQLAdapter {
 
   /**
    * Query records
-   *
-   * @param {Object} options - Query options
    */
-  query(options) {
+  query(options: QueryOptions): void {
     try {
       this._ensureTable(options.collection);
       this._guardAclSupport(options);
@@ -580,14 +754,14 @@ class LocalSQLAdapter {
       const schema = this._getSchema(options.collection);
       const { sql, params } = QueryBuilder.buildSelect(options, schema);
 
-      const rows = this.db.prepare(sql).all(...params);
+      const rows = this.db.prepare(sql).all(...params) as AdapterRecord[];
       const results = rows.map((row) => this._rowToRecord(row, options.collection));
 
       // Handle count if requested
       let count;
       if (options.count) {
         const { sql: countSQL, params: countParams } = QueryBuilder.buildCount(options, schema);
-        const countRow = this.db.prepare(countSQL).get(...countParams);
+        const countRow = this.db.prepare(countSQL).get(...countParams) as { count?: number } | undefined;
         count = countRow?.count || 0;
       }
 
@@ -606,7 +780,7 @@ class LocalSQLAdapter {
    *
    * @private
    */
-  _guardSearchSupport() {
+  _guardSearchSupport(): void {
     if (this._usingMock) {
       throw new Error(
         'Full-text search is not available in ephemeral (in-memory mock) mode — the mock cannot evaluate FTS5 queries.'
@@ -623,9 +797,9 @@ class LocalSQLAdapter {
    * a non-empty string; there is no bare-query fallback here (callers decide
    * whether to call query() or search()).
    *
-   * @param {Object} options - Same shape as query(), plus options.search (string).
+   * @param options - Same shape as query(), plus options.search (string).
    */
-  search(options) {
+  search(options: SearchOptions): void {
     try {
       this._ensureTable(options.collection);
       this._guardAclSupport(options);
@@ -639,7 +813,7 @@ class LocalSQLAdapter {
       const schema = this._getSchema(options.collection);
       const { sql, params } = QueryBuilder.buildSearchSelect(options, schema);
 
-      const rows = this.db.prepare(sql).all(...params);
+      const rows = this.db.prepare(sql).all(...params) as AdapterRecord[];
       const results = rows.map((row) => {
         const { _rank, _snippet, ...rest } = row;
         const record = this._rowToRecord(rest, options.collection);
@@ -653,7 +827,7 @@ class LocalSQLAdapter {
       let count;
       if (options.count) {
         const { sql: countSQL, params: countParams } = QueryBuilder.buildSearchCount(options, schema);
-        const countRow = this.db.prepare(countSQL).get(...countParams);
+        const countRow = this.db.prepare(countSQL).get(...countParams) as { count?: number } | undefined;
         count = countRow?.count || 0;
       }
 
@@ -673,15 +847,13 @@ class LocalSQLAdapter {
 
   /**
    * Fetch a single record
-   *
-   * @param {Object} options - Fetch options
    */
-  fetch(options) {
+  fetch(options: FetchOptions): void {
     try {
       this._ensureTable(options.collection);
       this._guardAclSupport(options);
 
-      const params = [options.id || options.objectId];
+      const params: unknown[] = [options.id || options.objectId];
       let sql = `SELECT * FROM ${QueryBuilder.escapeTable(options.collection)} WHERE "objectId" = ?`;
       // Row-level read check: an unreadable row answers exactly like a missing
       // one (existence hiding).
@@ -689,8 +861,8 @@ class LocalSQLAdapter {
       if (aclClause) {
         sql += ` AND ${aclClause}`;
       }
-      const recordId = params[0];
-      const row = this.db.prepare(sql).get(...params);
+      const recordId = params[0] as string;
+      const row = this.db.prepare(sql).get(...params) as AdapterRecord | undefined;
 
       if (!row) {
         options.error('Object not found');
@@ -715,10 +887,8 @@ class LocalSQLAdapter {
 
   /**
    * Create a new record
-   *
-   * @param {Object} options - Create options
    */
-  create(options) {
+  create(options: CreateOptions): void {
     try {
       this._ensureTable(options.collection);
 
@@ -740,7 +910,7 @@ class LocalSQLAdapter {
       // Fetch the created record to get all fields
       const createdRow = this.db
         .prepare(`SELECT * FROM ${QueryBuilder.escapeTable(options.collection)} WHERE "objectId" = ?`)
-        .get(recordId);
+        .get(recordId) as AdapterRecord | undefined;
 
       const record = this._rowToRecord(createdRow, options.collection);
 
@@ -760,10 +930,8 @@ class LocalSQLAdapter {
 
   /**
    * Save (update) an existing record
-   *
-   * @param {Object} options - Save options
    */
-  save(options) {
+  save(options: SaveOptions): void {
     try {
       this._ensureTable(options.collection);
 
@@ -793,7 +961,7 @@ class LocalSQLAdapter {
       // Fetch the updated record
       const updatedRow = this.db
         .prepare(`SELECT * FROM ${QueryBuilder.escapeTable(options.collection)} WHERE "objectId" = ?`)
-        .get(recordId);
+        .get(recordId) as AdapterRecord | undefined;
 
       const record = this._rowToRecord(updatedRow, options.collection);
 
@@ -813,10 +981,8 @@ class LocalSQLAdapter {
 
   /**
    * Delete a record
-   *
-   * @param {Object} options - Delete options
    */
-  delete(options) {
+  delete(options: DeleteOptions): void {
     try {
       this._ensureTable(options.collection);
       this._guardAclSupport(options);
@@ -828,11 +994,11 @@ class LocalSQLAdapter {
       // delivery-time permission checks need. This read is unfiltered; the
       // DELETE itself carries the ACL predicate and decides whether the row is
       // actually removed.
-      let removedRecord = null;
+      let removedRecord: AdapterRecord | null = null;
       try {
         const existingRow = this.db
           .prepare(`SELECT * FROM ${QueryBuilder.escapeTable(options.collection)} WHERE "objectId" = ?`)
-          .get(recordId);
+          .get(recordId) as AdapterRecord | undefined;
         removedRecord = this._rowToRecord(existingRow, options.collection);
       } catch (e) {
         removedRecord = null;
@@ -862,10 +1028,8 @@ class LocalSQLAdapter {
 
   /**
    * Count records
-   *
-   * @param {Object} options - Count options
    */
-  count(options) {
+  count(options: CountOptions): void {
     try {
       this._ensureTable(options.collection);
       this._guardAclSupport(options);
@@ -873,7 +1037,7 @@ class LocalSQLAdapter {
       const schema = this._getSchema(options.collection);
       const { sql, params } = QueryBuilder.buildCount(options, schema);
 
-      const row = this.db.prepare(sql).get(...params);
+      const row = this.db.prepare(sql).get(...params) as { count?: number } | undefined;
       options.success(row?.count || 0);
     } catch (e) {
       console.error('LocalSQLAdapter.count error:', e);
@@ -883,19 +1047,17 @@ class LocalSQLAdapter {
 
   /**
    * Aggregate records
-   *
-   * @param {Object} options - Aggregate options
    */
-  aggregate(options) {
+  aggregate(options: AggregateOptions): void {
     try {
       this._ensureTable(options.collection);
       this._guardAclSupport(options);
 
       const { sql, params } = QueryBuilder.buildAggregate(options);
-      const row = this.db.prepare(sql).get(...params);
+      const row = this.db.prepare(sql).get(...params) as AdapterRecord | undefined;
 
       // Format result like Parse Server
-      const result = {};
+      const result: Record<string, unknown> = {};
       if (row) {
         for (const key of Object.keys(options.group)) {
           result[key] = row[key];
@@ -911,16 +1073,14 @@ class LocalSQLAdapter {
 
   /**
    * Get distinct values
-   *
-   * @param {Object} options - Distinct options
    */
-  distinct(options) {
+  distinct(options: DistinctOptions): void {
     try {
       this._ensureTable(options.collection);
       this._guardAclSupport(options);
 
       const { sql, params } = QueryBuilder.buildDistinct(options);
-      const rows = this.db.prepare(sql).all(...params);
+      const rows = this.db.prepare(sql).all(...params) as AdapterRecord[];
 
       const results = rows.map((r) => r[options.property]);
       options.success(results);
@@ -932,10 +1092,8 @@ class LocalSQLAdapter {
 
   /**
    * Increment properties
-   *
-   * @param {Object} options - Increment options
    */
-  increment(options) {
+  increment(options: IncrementOptions): void {
     try {
       this._ensureTable(options.collection);
       this._guardAclSupport(options);
@@ -952,7 +1110,7 @@ class LocalSQLAdapter {
       const recordId = options.id || options.objectId;
       const updatedRow = this.db
         .prepare(`SELECT * FROM ${QueryBuilder.escapeTable(options.collection)} WHERE "objectId" = ?`)
-        .get(recordId);
+        .get(recordId) as AdapterRecord | undefined;
 
       const record = this._rowToRecord(updatedRow, options.collection);
       options.success(record);
@@ -964,10 +1122,8 @@ class LocalSQLAdapter {
 
   /**
    * Add a relation
-   *
-   * @param {Object} options - Relation options
    */
-  addRelation(options) {
+  addRelation(options: RelationOptions): void {
     try {
       this.schemaManager.addRelation(options.collection, options.objectId, options.key, options.targetObjectId);
 
@@ -980,10 +1136,8 @@ class LocalSQLAdapter {
 
   /**
    * Remove a relation
-   *
-   * @param {Object} options - Relation options
    */
-  removeRelation(options) {
+  removeRelation(options: RelationOptions): void {
     try {
       this.schemaManager.removeRelation(options.collection, options.objectId, options.key, options.targetObjectId);
 
@@ -1000,30 +1154,25 @@ class LocalSQLAdapter {
 
   /**
    * Get the schema manager instance
-   *
-   * @returns {SchemaManager}
    */
-  getSchemaManager() {
+  getSchemaManager(): SchemaManager | null {
     return this.schemaManager;
   }
 
   /**
    * Get the raw database instance
-   *
-   * @returns {import('better-sqlite3').Database}
    */
-  getDatabase() {
+  getDatabase(): EngineDatabase | null {
     return this.db;
   }
 
   /**
    * Execute raw SQL (use with caution!)
    *
-   * @param {string} sql - SQL statement
-   * @param {Array} [params] - Parameters
-   * @returns {any}
+   * @param sql - SQL statement
+   * @param params - Parameters
    */
-  exec(sql, params = []) {
+  exec(sql: string, params: unknown[] = []): unknown {
     if (params.length > 0) {
       return this.db.prepare(sql).all(...params);
     }
@@ -1033,10 +1182,9 @@ class LocalSQLAdapter {
   /**
    * Run a transaction
    *
-   * @param {Function} fn - Function to run in transaction
-   * @returns {any}
+   * @param fn - Function to run in transaction
    */
-  transaction(fn) {
+  transaction(fn: (...args: unknown[]) => unknown): unknown {
     // Track transaction depth so change events emitted by create/save/delete
     // inside `fn` are buffered (see _emitChange) and released only if the
     // transaction commits. A rollback (fn throws) discards the buffer — the
@@ -1063,10 +1211,8 @@ class LocalSQLAdapter {
    * Infer type from a JavaScript value
    *
    * @private
-   * @param {*} value
-   * @returns {string}
    */
-  _inferType(value) {
+  _inferType(value: unknown): string {
     if (value === null || value === undefined) {
       return 'String';
     }
@@ -1086,17 +1232,15 @@ class LocalSQLAdapter {
       return 'Array';
     }
     if (typeof value === 'object') {
-      if (value.__type === 'Date') return 'Date';
-      if (value.__type === 'Pointer') return 'Pointer';
-      if (value.__type === 'File') return 'File';
-      if (value.__type === 'GeoPoint') return 'GeoPoint';
+      const tagged = value as { __type?: string };
+      if (tagged.__type === 'Date') return 'Date';
+      if (tagged.__type === 'Pointer') return 'Pointer';
+      if (tagged.__type === 'File') return 'File';
+      if (tagged.__type === 'GeoPoint') return 'GeoPoint';
       return 'Object';
     }
     return 'String';
   }
 }
 
-LocalSQLAdapter.LocalBackendPersistenceError = LocalBackendPersistenceError;
-
-module.exports = LocalSQLAdapter;
-module.exports.LocalBackendPersistenceError = LocalBackendPersistenceError;
+export = LocalSQLAdapter;

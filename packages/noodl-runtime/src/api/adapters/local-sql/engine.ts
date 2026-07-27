@@ -35,39 +35,45 @@
  * Minimum Node version that ships `node:sqlite` flag-free.
  * (Added behind `--experimental-sqlite` in 22.5; unflagged in 22.13 / 23.4.)
  */
-const NODE_SQLITE_MIN = [22, 13, 0];
+export const NODE_SQLITE_MIN = [22, 13, 0];
 
-/**
- * A statement handle shaped like better-sqlite3's Statement.
- * @typedef {Object} EngineStatement
- * @property {(...params: any[]) => (any|undefined)} get
- * @property {(...params: any[]) => any[]} all
- * @property {(...params: any[]) => { changes: number, lastInsertRowid: (number|bigint) }} run
- */
+/** A statement handle shaped like better-sqlite3's Statement. */
+export interface EngineStatement {
+  get(...params: unknown[]): unknown;
+  all(...params: unknown[]): unknown[];
+  run(...params: unknown[]): { changes: number; lastInsertRowid: number | bigint };
+}
 
 /**
  * A database handle shaped like a better-sqlite3 Database — the shape the
  * adapter stack consumes.
- * @typedef {Object} EngineDatabase
- * @property {(sql: string) => EngineStatement} prepare
- * @property {(sql: string) => void} exec
- * @property {(source: string) => any} pragma
- * @property {(fn: Function) => Function} transaction
- * @property {() => void} close
  */
+export interface EngineDatabase {
+  prepare(sql: string): EngineStatement;
+  exec(sql: string): void;
+  pragma(source: string): unknown;
+  transaction(fn: (...args: unknown[]) => unknown): (...args: unknown[]) => unknown;
+  close(): void;
+}
 
-/**
- * @typedef {Object} ResolvedEngine
- * @property {string} name - Engine identifier, e.g. 'node:sqlite' or 'better-sqlite3'.
- * @property {(dbPath: string) => EngineDatabase} open - Open/create a database at dbPath.
- */
+export interface ResolvedEngine {
+  /** Engine identifier, e.g. 'node:sqlite' or 'better-sqlite3'. */
+  name: string;
+  /** Open/create a database at dbPath. */
+  open(dbPath: string): EngineDatabase;
+}
+
+/** The slice of `node:sqlite`'s DatabaseSync the shim reads. */
+interface NodeSqliteDatabaseLike {
+  prepare(sql: string): EngineStatement;
+  exec(sql: string): void;
+  close(): void;
+}
 
 /**
  * Parse a semver-ish string ("22.22.0") into a numeric tuple.
- * @param {string} v
- * @returns {number[]}
  */
-function parseVersion(v) {
+function parseVersion(v: string): number[] {
   return String(v)
     .replace(/^v/, '')
     .split('.')
@@ -75,11 +81,9 @@ function parseVersion(v) {
 }
 
 /**
- * @param {number[]} a
- * @param {number[]} b
- * @returns {boolean} true if a >= b
+ * @returns true if a >= b
  */
-function gte(a, b) {
+function gte(a: number[], b: number[]): boolean {
   for (let i = 0; i < b.length; i++) {
     if ((a[i] || 0) > (b[i] || 0)) return true;
     if ((a[i] || 0) < (b[i] || 0)) return false;
@@ -94,11 +98,8 @@ function gte(a, b) {
  * (`prepare`, `exec`, `close`) passes straight through — the StatementSync
  * already exposes get/all/run with variadic positional params, matching the
  * adapter's `stmt.get(...params)` call style.
- *
- * @param {import('node:sqlite').DatabaseSync} db
- * @returns {EngineDatabase}
  */
-function wrapNodeSqlite(db) {
+export function wrapNodeSqlite(db: NodeSqliteDatabaseLike): EngineDatabase {
   return {
     prepare(sql) {
       return db.prepare(sql);
@@ -151,13 +152,13 @@ function wrapNodeSqlite(db) {
 
 /**
  * Try to resolve `node:sqlite`.
- * @returns {ResolvedEngine|null} null if unavailable (older Node / build without it).
+ * @returns null if unavailable (older Node / build without it).
  */
-function tryNodeSqlite() {
+export function tryNodeSqlite(): ResolvedEngine | null {
   if (!gte(parseVersion(process.versions.node), NODE_SQLITE_MIN)) {
     return null;
   }
-  let DatabaseSync;
+  let DatabaseSync: unknown;
   try {
     ({ DatabaseSync } = require('node:sqlite'));
   } catch (e) {
@@ -167,7 +168,10 @@ function tryNodeSqlite() {
     // (Node ≥22.3) reaches the builtin below the module system entirely;
     // identical behaviour outside sandboxes.
     try {
-      ({ DatabaseSync } = process.getBuiltinModule('node:sqlite'));
+      // getBuiltinModule shipped in Node 22.3; the workspace @types/node predates it.
+      ({ DatabaseSync } = (
+        process as unknown as { getBuiltinModule(id: string): { DatabaseSync?: unknown } }
+      ).getBuiltinModule('node:sqlite'));
     } catch (e2) {
       return null;
     }
@@ -175,10 +179,11 @@ function tryNodeSqlite() {
   if (typeof DatabaseSync !== 'function') {
     return null;
   }
+  const DatabaseSyncCtor = DatabaseSync as new (dbPath: string) => NodeSqliteDatabaseLike;
   return {
     name: 'node:sqlite',
     open(dbPath) {
-      const db = new DatabaseSync(dbPath);
+      const db = new DatabaseSyncCtor(dbPath);
       return wrapNodeSqlite(db);
     }
   };
@@ -186,10 +191,9 @@ function tryNodeSqlite() {
 
 /**
  * Try to resolve `better-sqlite3` (only if actually installed).
- * @returns {ResolvedEngine|null}
  */
-function tryBetterSqlite3() {
-  let Database;
+export function tryBetterSqlite3(): ResolvedEngine | null {
+  let Database: new (dbPath: string) => EngineDatabase;
   try {
     Database = require('better-sqlite3');
   } catch (e) {
@@ -210,17 +214,7 @@ function tryBetterSqlite3() {
  * Order: node:sqlite (preferred), then better-sqlite3 (legacy fallback).
  * Returns null when neither is available so the caller can throw the loud
  * LocalBackendPersistenceError (RUN-004 policy) rather than silently mocking.
- *
- * @returns {ResolvedEngine|null}
  */
-function resolveEngine() {
+export function resolveEngine(): ResolvedEngine | null {
   return tryNodeSqlite() || tryBetterSqlite3() || null;
 }
-
-module.exports = {
-  resolveEngine,
-  wrapNodeSqlite,
-  tryNodeSqlite,
-  tryBetterSqlite3,
-  NODE_SQLITE_MIN
-};
