@@ -23,9 +23,14 @@
  *      `hidden`/`clip` and whose `scrollWidth` exceeds its `clientWidth` is
  *      content nobody can reach.
  *   5. **Nothing scrolls sideways.** A horizontal scrollbar inside a panel is
- *      always a layout failure here; the panel is a column.
+ *      a layout failure unless it is declared: `data-allow-x-scroll="<reason>"`
+ *      on the element or an ancestor. A unified diff is the case that earns it.
+ *   6. **No control truncates a value you cannot then read.** A form control
+ *      whose value overflows is normally fine — the caret reaches the end. It
+ *      is a failure only when the control is `user-select: none` or `readOnly`,
+ *      i.e. a `<select>` dressed as an `<input>`, where the value simply ends.
  *
- * ### Why (3)–(5) are not the one-liner the spec proposed
+ * ### Why (3)–(6) are not the one-liner the spec proposed
  *
  * PNL-004's acceptance asks for "no element has `scrollWidth > clientWidth + 1`".
  * Applied literally that flags the *fix*: an endpoint URL that ellipsises has
@@ -37,8 +42,16 @@
  *   - **Visually-hidden labels.** `PanelRow`'s sr-only label is a 1px box with
  *     `overflow: hidden` and `nowrap`; every one would otherwise report.
  *     `clientWidth <= 2` is skipped.
- *   - **`visibility: hidden` / `opacity: 0`.** Measuring nodes (TextInput's
- *     autosize sizer) carry real overflow nobody can see.
+ *   - **Anything invisible, ancestors included.** Measuring nodes (TextInput's
+ *     autosize sizer) carry real overflow nobody can see. Checked with
+ *     `checkVisibility({ opacityProperty: true })`, not with the element's own
+ *     computed style: `visibility` inherits but **`opacity` does not**, so a
+ *     `<p>` inside an `opacity: 0` tooltip computes its own opacity as 1. That
+ *     cost one false "sticks 40px past the panel's right edge" in the first
+ *     live run.
+ *   - **Form controls scrolling their own value.** Added after the first live
+ *     run, which reported every text field in the editor holding a long value.
+ *     See the `MEASURE_X` note; they move to bucket (6) rather than vanishing.
  *
  * ### How the width is set
  *
@@ -187,9 +200,17 @@ const MEASURE = `(() => {
   const clipped = [];
   const unreachable = [];
 
+  // See the note in MEASURE_X: opacity does not inherit, so checking the
+  // element alone lets anything inside a hidden wrapper report. Adding this can
+  // only remove findings, never add them.
+  const isVisible = (el) =>
+    typeof el.checkVisibility === 'function'
+      ? el.checkVisibility({ opacityProperty: true, visibilityProperty: true, contentVisibilityAuto: true })
+      : getComputedStyle(el).visibility !== 'hidden';
+
   for (const el of [panel, ...panel.querySelectorAll('*')]) {
+    if (!isVisible(el)) continue;
     const cs = getComputedStyle(el);
-    if (cs.visibility === 'hidden' || cs.opacity === '0') continue;
     if (el.clientHeight === 0) continue;
 
     const overBy = el.scrollHeight - el.clientHeight;
@@ -219,19 +240,54 @@ const MEASURE = `(() => {
 /**
  * PNL-004's horizontal measurement. Runs inside the renderer.
  *
- * Reported in three buckets, all failures; they are separated because the fix
+ * Four buckets. The first three fail; they are separated because the fix
  * differs. `sticksOut` wants `min-width: 0` on a flex child or `flex-wrap` on
  * its parent; `clippedX` wants the same one level up; `scrollsX` almost always
  * means a fixed width somewhere that should have been a basis.
+ *
+ * The fourth, `truncatedControl`, is the correction the first live run forced.
+ * A single-line `<input>` whose *value* is longer than its box has
+ * `scrollWidth > clientWidth` and a UA-computed `overflow-x: clip` — so the
+ * original `clippedX` rule reported every text field in the editor holding a
+ * long value. That is not hidden content: the UA gives form controls their own
+ * scrolling, and the caret reaches the end.
+ *
+ * The exception is a control you cannot caret-scroll, which in this codebase
+ * means `PropertyPanelSelectInput` — a `<select>` dressed as an `<input>`,
+ * `user-select: none`, whose click opens a dropdown instead of placing a
+ * caret. There the value simply ends and nothing will show you the rest. So
+ * form controls are bucketed separately and **fail only when
+ * `user-select: none`**; editable fields are reported as information.
+ *
+ * Every entry carries `text` and `path` because the first live run produced
+ * `p.Text-module__Root--Gaf4_`, which names a component used several hundred
+ * times and located nothing.
  */
 const MEASURE_X = `(() => {
   const panel = document.querySelector('[class*="SideNavigation-module__Panel"]');
   if (!panel) return { error: 'no side-panel root — is a project open?' };
 
+  // Strip css-loader's hash so a name survives a rebuild, and keep the module
+  // prefix, which is the part that says which file to open.
   const name = (el) => {
     const cls = typeof el.className === 'string' ? el.className.split(' ')[0] : '';
-    return el.tagName.toLowerCase() + (cls ? '.' + cls : '');
+    return el.tagName.toLowerCase() + (cls ? '.' + cls.replace(/--[A-Za-z0-9_-]+$/, '') : '');
   };
+
+  // Enough ancestry to find the thing in the source.
+  const pathOf = (el) => {
+    const parts = [];
+    let cur = el.parentElement;
+    while (cur && cur !== panel && parts.length < 4) {
+      parts.unshift(name(cur));
+      cur = cur.parentElement;
+    }
+    return parts.join(' > ');
+  };
+
+  const textOf = (el) => (el.value || el.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 60);
+
+  const describe = (el) => ({ el: name(el), path: pathOf(el), text: textOf(el) });
 
   // The right edge nothing may cross. The panel's own content box: its padding
   // box minus any scrollbar gutter, which is what the user sees.
@@ -242,48 +298,105 @@ const MEASURE_X = `(() => {
   const sticksOut = [];
   const clippedX = [];
   const scrollsX = [];
+  const truncatedControl = [];
 
+  // An element nobody can see cannot overflow anything. visibility inherits, so
+  // checking the element sufficed for that; opacity does NOT — a <p> inside an
+  // opacity-0 wrapper computes its own opacity as 1. That is what made the first
+  // live run report the always-mounted legacy tooltip (reactcomponents/
+  // tooltip.tsx, whose own TODO admits it renders hidden rather than not at all)
+  // as content sticking 40px out of the Project Settings panel. Nothing was on
+  // screen. checkVisibility walks the ancestors properly.
+  // (No backticks in this block: it lives inside a template literal.)
+  const isVisible = (el) =>
+    typeof el.checkVisibility === 'function'
+      ? el.checkVisibility({ opacityProperty: true, visibilityProperty: true, contentVisibilityAuto: true })
+      : getComputedStyle(el).visibility !== 'hidden';
+
+  // Pass 1: the elements a human can actually see, with their boxes. An
+  // invisible element still contributes to an ancestor's scrollWidth, so a
+  // container can report as clipping content that does not exist on screen —
+  // the second half of the legacy-tooltip false positive. Pass 2 uses this to
+  // make a clipped container prove a *visible* child overflows it.
+  const visible = [];
   for (const el of panel.querySelectorAll('*')) {
-    const cs = getComputedStyle(el);
-    if (cs.visibility === 'hidden' || cs.opacity === '0') continue;
-    if (cs.display === 'none') continue;
-    // A collapsed box, and the 1px sr-only label box PanelRow renders.
+    if (!isVisible(el)) continue;
     if (el.clientWidth <= 2 || el.clientHeight === 0) continue;
-    // Anything that has escaped the panel's flow is not the panel's geometry.
+    const cs = getComputedStyle(el);
     if (cs.position === 'fixed') continue;
-
     const r = el.getBoundingClientRect();
     if (r.width === 0) continue;
+    visible.push({ el, cs, r });
+  }
+
+  // Does anything on screen actually reach past this container's content edge?
+  const hasVisibleOverflow = (container) => {
+    const cr = container.getBoundingClientRect();
+    const contentRight = cr.left + container.clientLeft + container.clientWidth;
+    for (const v of visible) {
+      if (v.el === container) continue;
+      if (!container.contains(v.el)) continue;
+      if (v.r.right - contentRight > 1) return true;
+    }
+    return false;
+  };
+
+  for (const { el, cs, r } of visible) {
 
     // (3) sticks out of the panel.
     const past = r.right - panelRight;
     if (past > 1) {
-      sticksOut.push({ el: name(el), past: Math.round(past), right: Math.round(r.right) });
+      sticksOut.push({ ...describe(el), past: Math.round(past), width: Math.round(r.width) });
     }
 
     const overBy = el.scrollWidth - el.clientWidth;
     if (overBy <= 1) continue;
 
     const ox = cs.overflowX;
+    const tag = el.tagName;
+
+    // Sub-character overflow is rounding, not hidden content.
+    const ch = parseFloat(cs.fontSize) || 12;
+    if (overBy < Math.max(2, ch / 2)) continue;
+
+    // (6) a form control scrolling its own value — see the header note.
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') {
+      const unreadable = cs.userSelect === 'none' || el.readOnly === true;
+      truncatedControl.push({
+        ...describe(el),
+        overBy,
+        clientWidth: el.clientWidth,
+        scrollWidth: el.scrollWidth,
+        unreadable
+      });
+      continue;
+    }
 
     // Deliberate single-line truncation is a decision, not an overflow.
     const isEllipsised = cs.textOverflow === 'ellipsis' && cs.whiteSpace === 'nowrap';
 
     if (ox === 'hidden' || ox === 'clip') {
       if (isEllipsised) continue;
-      // Sub-character overflow is rounding, not hidden content.
-      const ch = parseFloat(cs.fontSize) || 12;
-      if (overBy < Math.max(2, ch / 2)) continue;
-      clippedX.push({ el: name(el), overBy, clientWidth: el.clientWidth, scrollWidth: el.scrollWidth });
+      // scrollWidth says something overflows; this says a human could see it.
+      if (!hasVisibleOverflow(el)) continue;
+      clippedX.push({ ...describe(el), overBy, clientWidth: el.clientWidth, scrollWidth: el.scrollWidth });
       continue;
     }
 
     if (ox === 'auto' || ox === 'scroll' || ox === 'overlay') {
-      scrollsX.push({ el: name(el), overBy, clientWidth: el.clientWidth, scrollWidth: el.scrollWidth });
+      // An explicit, recorded decision. A unified diff is the real case: soft
+      // wrapping destroys the column alignment that makes +/- readable, so it
+      // scrolls on purpose. Opt out with a data-allow-x-scroll attribute on the
+      // element (or any ancestor inside the panel), with a reason as its value.
+      // The point is that the decision is written down where the next reader
+      // will find it, not that the assertion goes away.
+      // (No backticks in this block: it lives inside a template literal.)
+      if (el.closest('[data-allow-x-scroll]')) continue;
+      scrollsX.push({ ...describe(el), overBy, clientWidth: el.clientWidth, scrollWidth: el.scrollWidth });
     }
   }
 
-  return { sticksOut, clippedX, scrollsX, panelWidth: Math.round(panel.clientWidth) };
+  return { sticksOut, clippedX, scrollsX, truncatedControl, panelWidth: Math.round(panel.clientWidth) };
 })()`;
 
 /**
@@ -409,22 +522,29 @@ const setPanelWidth = (w) => `(() => {
           widthFailures++;
           continue;
         }
-        const bad = m.sticksOut.length + m.clippedX.length + m.scrollsX.length;
+        // A form control that *can* be caret-scrolled is information, not a
+        // failure. One that cannot is content nobody can read.
+        const unreadable = m.truncatedControl.filter((c) => c.unreadable);
+        const bad = m.sticksOut.length + m.clippedX.length + m.scrollsX.length + unreadable.length;
         xResults.push({ panelWidth: pw, panel: id, ...m });
         if (bad === 0) continue;
 
         failures++;
         widthFailures++;
         console.log(`  ✗  ${pw}px  ${id}`);
+        const where = (x) => `${x.el}${x.path ? `  [${x.path}]` : ''}${x.text ? `  "${x.text}"` : ''}`;
         for (const s of m.sticksOut.slice(0, 5)) {
-          console.log(`       sticks ${s.past}px past the panel's right edge: ${s.el}`);
+          console.log(`       sticks ${s.past}px past the panel's right edge (w ${s.width}): ${where(s)}`);
         }
         if (m.sticksOut.length > 5) console.log(`       …and ${m.sticksOut.length - 5} more sticking out`);
         for (const c of m.clippedX.slice(0, 5)) {
-          console.log(`       clips ${c.overBy}px sideways it cannot scroll: ${c.el} (client ${c.clientWidth}, scroll ${c.scrollWidth})`);
+          console.log(`       clips ${c.overBy}px sideways it cannot scroll (client ${c.clientWidth}, scroll ${c.scrollWidth}): ${where(c)}`);
         }
         for (const s of m.scrollsX.slice(0, 5)) {
-          console.log(`       scrolls sideways by ${s.overBy}px: ${s.el}`);
+          console.log(`       scrolls sideways by ${s.overBy}px: ${where(s)}`);
+        }
+        for (const c of unreadable.slice(0, 5)) {
+          console.log(`       control truncates its value with no way to read it (client ${c.clientWidth}, scroll ${c.scrollWidth}): ${where(c)}`);
         }
       }
 
@@ -446,8 +566,16 @@ const setPanelWidth = (w) => `(() => {
 
   console.log(`\n${results.length - vFailures}/${results.length} panels clean vertically.`);
   if (!SKIP_HORIZONTAL) {
-    const xBad = xResults.filter((r) => r.sticksOut.length + r.clippedX.length + r.scrollsX.length > 0).length;
+    const badness = (r) =>
+      r.sticksOut.length + r.clippedX.length + r.scrollsX.length + r.truncatedControl.filter((c) => c.unreadable).length;
+    const xBad = xResults.filter((r) => badness(r) > 0).length;
     console.log(`${xResults.length - xBad}/${xResults.length} panel×width combinations clean horizontally.`);
+    // Editable fields scrolling their own value: reported so the number is
+    // visible, never a failure. A spike here usually means a field got narrower.
+    const scrollable = xResults.reduce((n, r) => n + r.truncatedControl.filter((c) => !c.unreadable).length, 0);
+    if (scrollable) {
+      console.log(`${scrollable} editable field(s) scroll their own value — the caret reaches the end, not a failure.`);
+    }
   }
   process.exit(failures ? 1 : 0);
 })().catch((err) => {
