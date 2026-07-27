@@ -3,7 +3,9 @@
     "packages",
     "scripts"
   ],
-  "exclude": [],
+  "exclude": [
+    "packages/noodl-runtime/dist-types"
+  ],
   "commit": "b22cfab0",
   "max": {
     "TSFixme": 540,

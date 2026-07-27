@@ -10,6 +10,13 @@
     "module": "es6",
     "moduleResolution": "node",
 
+    // Without this, TypeScript pulls in every hoisted `@types/*` in the monorepo and
+    // jasmine's globals shadow jest's `expect` — which is how `tests/` came to fail with
+    // "Property 'any' does not exist" on `expect.any(String)` while the suite it belongs
+    // to had never changed. `noodl-preview/tsconfig.json` carries the same line for the
+    // same reason.
+    "types": ["node", "jest"],
+
     // Resolve `@noodl/runtime` to *declarations*, not sources.
     //
     // This package compiles at `module: es6` with `allowJs: false`, so a runtime `.js`

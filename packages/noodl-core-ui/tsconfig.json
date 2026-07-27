@@ -8,6 +8,12 @@
     "noEmit": true,
     "baseUrl": ".",
     "paths": {
+      // Overriding `paths` replaces the root's map rather than merging with it, so the
+      // @noodl/runtime redirect has to be repeated here. Without it this program compiles
+      // the runtime's `.ts` sources inside an ES-module program, where `export =` is
+      // TS1203. See PLAT-006.
+      "@noodl/runtime": ["../noodl-runtime/dist-types/noodl-runtime.d.ts"],
+      "@noodl/runtime/src/*": ["../noodl-runtime/dist-types/src/*"],
       "@noodl-core-ui/*": ["./src/*"],
       "@noodl-hooks/*": ["../noodl-editor/src/editor/src/hooks/*"],
       "@noodl-utils/*": ["../noodl-editor/src/editor/src/utils/*"],

@@ -110,12 +110,13 @@ dev editor up and `Shine Phase 2` open.
 |---|---|
 | `npx tsc -p packages/noodl-editor --noEmit` | ✅ clean for this work. **Caveat:** a concurrent session (AIX-011) had `PlanRun.ts` / `ProjectAuthoringView.tsx` mid-edit and contributed 4 errors of its own during the run. Confirmed unrelated — this phase's diff is two `.scss` files and two `.tsx` files, all clean |
 | `node scripts/hex-color-ratchet.js` | ✅ `noodl-editor 16 / baseline 16`, holding |
-| `npx lerna exec --scope noodl-editor -- npm run test:ci` | ⚠️ **1547 specs, 1 failure** — *"Project import and export … re-keys imported node ids … Expected 8 to be 5"*. Pre-existing and not from this phase: PNL-009's first pass recorded the same failure with all its changes stashed |
+| `npx lerna exec --scope noodl-editor -- npm run test:ci` | ✅ **1573 specs, 0 failures**. Earlier in this same session it was 1547/1 — *"Project import and export … Expected 8 to be 5"* — which PNL-009 had already recorded as pre-existing and reproduced with all its changes stashed. A concurrent session fixed it while this pass was running. Worth knowing that the count moved by 26 specs mid-session: on this branch the suite is a moving target, so quote the run, not a remembered number |
 | `npm run typecheck:core-ui` | ⚠️ reports pre-existing `Cannot find module '@noodl-viewer-cloud/execution-history'` errors in `noodl-editor/src/main`. Untouched by this phase. (See F42 — there is no `test:ci` for this package) |
 | `corpus/panel-geometry.mjs` | ✅ **9/9 vertical, 45/45 panel×width horizontal** — after F37 and F38 were fixed. It was 39/45 when first run |
 | `corpus/panel-chrome.mjs` | ✅ **36/36** across both themes at wide and 240px. Assertion F is green: the Components title reads "Components", not "Co…". **This closes F36**, which PNL-005 left deliberately red |
 | `corpus/panel-modes.mjs` | see PNL-009 row — the mode system's behaviours, with F39 fixed |
-| `corpus/settings-consolidation.mjs --no-live` | ✅ S1, S1b, S2, S3, S4 all green |
+| `corpus/settings-consolidation.mjs` | ⚠️ **11/13**. Static S1–S4 green; live L1–L4, L6, L7 green — one rail button, one header, both tabs, all 7 Project groups, exactly one control per title field. The two failures are **F44** (app-name persistence), not side-panel defects |
+| `corpus/components-tree.mjs` | ✅ **4/4 theme×width**, 58 rows at depth 4. Selected-row contrast **12.2:1 dark, 13.72:1 light** against a 4.5:1 bar — assertion A is the light-mode complaint this task existed to answer. Four honest SKIPs: the warning dot needs a project that carries a warning |
 
 - Hex ratchet unchanged or improved for both packages (PNL-005 and PNL-009 delete legacy CSS and should
   improve it — record the numbers). **Recorded, and the expectation was wrong:** the ratchet counts
