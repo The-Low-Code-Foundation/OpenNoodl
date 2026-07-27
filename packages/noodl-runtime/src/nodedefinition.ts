@@ -41,8 +41,9 @@ function registerInput(object: SharedInputs, metadata: NodeMetadata, name: strin
 
     //types to keep in the input on the node instances
     //color and textStyles are used for style updates
-    //array is for supporting eval:ing strings
-    const typesToSaveInInput = ['color', 'textStyle', 'array'];
+    //array and object are for supporting eval:ing strings — both are edited as a literal
+    //in the property panel, so the value that reaches setInputValue is the typed text
+    const typesToSaveInInput = ['color', 'textStyle', 'array', 'object'];
 
     typesToSaveInInput.forEach((type) => {
       if (input.type && (input.type === type || (input.type as PortType).name === type)) {

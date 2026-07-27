@@ -38,7 +38,7 @@ the repository.
 | **Chat** | Type a prompt, press Send | The answer appears a token at a time. *Connection* walks `idle → connecting → open → closed`; *Delivery* says `at-least-once-deduped` because the mock sends `id:` fields. The finished answer joins the transcript, which lives in the store. |
 | | Press **Stop** mid-answer | Cancellation: the stream stops immediately and the partial answer is kept. |
 | | Stop the mock server mid-answer, then restart it | *Connection* goes to `reconnecting` and *Retries* climbs, then it recovers. This is the failure the state outputs exist for. |
-| **Tools** | Press **Start action stream** | Six action envelopes arrive. Two execute — the title is renamed by the server, and a notice appears. Four are refused, each with its own reason: two `not-allowed`, one `invalid`, and one `unknown` that first parks on *Waiting for* while the dispatcher gives a handler time to mount. |
+| **Tools** | Press **Start action stream** | Seven action envelopes arrive. Three execute — the title is renamed by the server twice (once with the fields on the envelope, once with them wrapped in `payload`; both are accepted) and a notice appears. Four are refused, each with its own reason: two `not-allowed`, one `invalid`, and one `unknown` that first parks on *Waiting for* while the dispatcher gives a handler time to mount. |
 | | Press **Extract** (after sending a prompt on Chat) | Pattern Extractor pulls the fenced code block out of the finished answer, held in the same store. |
 | **State** | Type a title, press **Set title**, several times | *History entries* grows. `coalesceMs` is 400 ms, so a burst of typing is one undo step. |
 | | Press **Undo** / **Redo** | The title reverts and returns. *Can undo* / *Can redo* tell you in advance. |
@@ -51,7 +51,8 @@ the repository.
 | Route | Purpose |
 |---|---|
 | `POST /chat/stream` | `text/event-stream`. A canned answer, one token per event, each with an `id:`, ending the response cleanly. Honours `Last-Event-ID` on a resume. Logs the `Authorization` header it received but does not check it. |
-| `GET /agent/actions` | `text/event-stream`. Six action envelopes covering every dispatcher outcome. |
+| `POST /chat/stream-json` | The same answer in the OpenAI-compatible shape — `data: {"choices":[{"delta":{"content":"…"}}]}`, ending with a `[DONE]` sentinel. Point the Chat page's stream at this and set the SSE node's **Text Path** to `choices.0.delta.content`; the answer renders identically. This is the shape that renders `[object Object]` if you wire `Data` instead of `Text`. |
+| `GET /agent/actions` | `text/event-stream`. Seven action envelopes covering every dispatcher outcome. |
 | `ws://localhost:4830/live` | Answers `ping` with `pong`, echoes anything else, closes with 1001 on `bye`, and pushes an NDJSON burst every 400 ms. |
 | `GET /` | Plain-text index of the above. |
 
@@ -69,14 +70,19 @@ nothing more. **Do not deploy it** — it authenticates nothing.
 Seven components:
 
 - **App** — the page router, plus the `Global Store` node that configures the
-  store named `chat` for the whole app. `initialState` is an object-typed port,
-  which has no editor in the property panel, so a small Function node supplies
-  it. Every page shares this one store.
+  store named `chat` for the whole app. A small Function node supplies
+  `initialState`, which is worth keeping here because the shape is documented in
+  the script — an object-typed port can also simply be typed into as a literal in
+  the property panel. Every page shares this one store.
 - **/Nav** — four buttons and four Navigate nodes; included on each page.
-- **/#\_\_page\_\_/Chat** — the streaming chat. `Server-Sent Events` → `Text
-  Accumulator` → a Text node for the progressive render; a Function node builds
-  the request body and headers and then pulses `Connect`; two more Function
-  nodes append a turn to the store's `messages` array.
+- **/#\_\_page\_\_/Chat** — the streaming chat. `Server-Sent Events` **`Text`** →
+  `Text Accumulator` `Chunk` → a Text node for the progressive render; a Function
+  node builds the request body and headers and then pulses `Connect`; two more
+  Function nodes append a turn to the store's `messages` array. `Text` and not
+  `Data`: `Data` is JSON-parsed, so it is an object on any endpoint that sends
+  JSON deltas, and an accumulator refuses an object rather than appending
+  `[object Object]`. The mock's `/chat/stream` sends bare tokens, so **Text Path**
+  is left blank here.
 - **/Message Row** — the Repeater template. A `Component Object` node exposes
   each message's `role` and `text`.
 - **/#\_\_page\_\_/Tools** — `Action Dispatcher` + one `Action Handler`, fed by a

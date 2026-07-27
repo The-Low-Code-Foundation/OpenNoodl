@@ -286,25 +286,39 @@ Node.prototype.setInputValue = function (name, value) {
   // Evaluate expression parameters before further processing
   value = this._evaluateExpressionParameter(value, name);
 
+  const inputTypeName = typeof input.type === 'string' ? input.type : input.type && input.type.name;
+
   if (input.type === 'color' && this.context && this.context.styles) {
     value = (this.context.styles as { resolveColor(value: unknown): unknown }).resolveColor(value);
-  } else if (input.type === 'array' && typeof value === 'string') {
+  } else if ((inputTypeName === 'array' || inputTypeName === 'object') && typeof value === 'string') {
+    // An array- or object-typed port can be written as a literal in the property panel
+    // (both map to the JSON/expression code editor), and the string -> array / string ->
+    // object typecasts are declared in the node library, so a string arriving here is
+    // meant to be the value rather than to *be* a string. Parsing it is the whole content
+    // of those typecasts; without this an object port silently ignored what was typed.
+    //
+    // An object literal has to be parenthesised: `eval('{a:1, b:2}')` reads the braces as
+    // a block and throws, and `eval('{a:1}')` quietly returns 1 (a labelled statement).
+    const literal = inputTypeName === 'object' ? '(' + value + ')' : value;
+    // Reporting needs both an editor to report to and a component to name it in. Guarded
+    // rather than assumed: the object branch is reachable from environments the array
+    // branch never was, and a missing editor connection must not turn a bad literal into a
+    // thrown TypeError.
+    const canReport = !!(this.context.editorConnection && this.nodeScope && this.nodeScope.componentOwner);
+    const warningKey = 'invalid-' + inputTypeName + '-' + name;
     try {
-      value = eval(value);
-      this.context.editorConnection.clearWarning(this.nodeScope.componentOwner.name, this.id, 'invalid-array-' + name);
+      value = eval(literal);
+      if (canReport) {
+        this.context.editorConnection.clearWarning(this.nodeScope.componentOwner.name, this.id, warningKey);
+      }
     } catch (e) {
-      value = [];
+      value = inputTypeName === 'object' ? {} : [];
       console.log(e);
-      if (this.context.editorConnection) {
-        this.context.editorConnection.sendWarning(
-          this.nodeScope.componentOwner.name,
-          this.id,
-          'invalid-array-' + name,
-          {
-            showGlobally: true,
-            message: 'Invalid array<br>' + e.toString()
-          }
-        );
+      if (canReport) {
+        this.context.editorConnection.sendWarning(this.nodeScope.componentOwner.name, this.id, warningKey, {
+          showGlobally: true,
+          message: 'Invalid ' + inputTypeName + '<br>' + e.toString()
+        });
       }
     }
   }

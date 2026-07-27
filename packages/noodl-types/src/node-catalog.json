@@ -27686,6 +27686,17 @@
           "description": "Reconnect when the server closes the stream cleanly. Off by default: an agent response stream is finite, and reconnecting would re-issue the request and start the response again."
         },
         {
+          "name": "textPath",
+          "displayName": "Text Path",
+          "group": "Data",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "Where the text lives inside a JSON payload, as a dot path — for an OpenAI-compatible endpoint, choices.0.delta.content. Leave blank for a stream that sends bare text. Whatever it names ends up on the Text output, which is always a string."
+        },
+        {
           "name": "transport",
           "displayName": "Transport",
           "group": "Connection",
@@ -27890,6 +27901,16 @@
           "plug": "output",
           "type": {
             "name": "number"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "text",
+          "displayName": "Text",
+          "group": "Data",
+          "plug": "output",
+          "type": {
+            "name": "string"
           },
           "isSignal": false
         }
@@ -28811,6 +28832,16 @@
           "plug": "output",
           "type": {
             "name": "number"
+          },
+          "isSignal": false
+        },
+        {
+          "name": "error",
+          "displayName": "Error",
+          "group": "Status",
+          "plug": "output",
+          "type": {
+            "name": "string"
           },
           "isSignal": false
         },

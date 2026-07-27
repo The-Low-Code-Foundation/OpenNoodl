@@ -100,7 +100,9 @@ live('LIVE: SSE + Text Accumulator against a real streaming POST', () => {
     h.on('sse', (signal) => {
       if (signal === 'onOpen') pulse(accum, 'clear');
       if (signal === 'onMessage') {
-        accum.setInputValue('chunk', out(sse, 'data'));
+        // `text`, not `data`: `data` is JSON-parsed, so a token that happens to look like
+        // a number arrives as one and a JSON-envelope stream arrives as an object.
+        accum.setInputValue('chunk', out(sse, 'text'));
         pulse(accum, 'add');
       }
     });
@@ -143,6 +145,105 @@ live('LIVE: SSE + Text Accumulator against a real streaming POST', () => {
     expect(answer).toContain('```js');
     // Newlines survived the wire format's own line-based framing.
     expect(answer).toContain('\n');
+
+    (sse as any)._onNodeDeleted();
+    (accum as any)._onNodeDeleted();
+  }, 60000);
+
+  it('unwraps an OpenAI-style JSON envelope into the same answer', async () => {
+    // The shape no test had ever run: `data: {"choices":[{"delta":{"content":"…"}}]}`
+    // followed by a `[DONE]` sentinel. `data` is an object here, which is what used to
+    // reach a Text Accumulator and render `[object Object]` once per token.
+    const h = harness([sseModule, accumModule]);
+    const sse = h.make('net.noodl.SSE', 'sse');
+    const accum = h.make('net.noodl.TextAccumulator', 'accum');
+
+    accum.setInputValue('delimiter', '');
+
+    const dataShapes = new Set<string>();
+    h.on('sse', (signal) => {
+      if (signal === 'onOpen') pulse(accum, 'clear');
+      if (signal === 'onMessage') {
+        dataShapes.add(typeof out(sse, 'data'));
+        accum.setInputValue('chunk', out(sse, 'text'));
+        pulse(accum, 'add');
+      }
+    });
+
+    sse.setInputValue('url', BASE + '/chat/stream-json');
+    sse.setInputValue('transport', 'fetch');
+    sse.setInputValue('method', 'POST');
+    sse.setInputValue('textPath', 'choices.0.delta.content');
+    sse.setInputValue('headers', { 'Content-Type': 'application/json' });
+    sse.setInputValue('body', JSON.stringify({ prompt: 'json envelope' }));
+    sse.setInputValue('reconnectOnStreamEnd', false);
+    sse.setInputValue('connect', true);
+
+    expect(await until(() => out(sse, 'connectionState') === 'closed')).toBe(true);
+
+    const answer = String(out(accum, 'accumulated'));
+    // eslint-disable-next-line no-console
+    console.log('LIVE-SSE-JSON', {
+      messageCount: out(sse, 'messageCount'),
+      dataShapes: Array.from(dataShapes),
+      accumulatedChars: answer.length,
+      accumulatorError: out(accum, 'error'),
+      head: answer.slice(0, 120)
+    });
+
+    // `data` really was an object for the token frames — the trap is exercised, not
+    // side-stepped — and the answer is still clean text.
+    expect(Array.from(dataShapes)).toContain('object');
+    expect(answer).toContain('json envelope');
+    expect(answer).toContain('```js');
+    expect(answer).not.toContain('[object Object]');
+    expect(answer).not.toContain('[DONE]');
+    expect(answer).not.toContain('choices');
+    expect(out(accum, 'error')).toBe('');
+
+    (sse as any)._onNodeDeleted();
+    (accum as any)._onNodeDeleted();
+  }, 60000);
+
+  it('refuses the mis-wiring instead of rendering it, when data is wired to chunk', async () => {
+    // The old advertised wiring, kept as a spec so the failure stays legible rather than
+    // going back to being plausible.
+    const h = harness([sseModule, accumModule]);
+    const sse = h.make('net.noodl.SSE', 'sse');
+    const accum = h.make('net.noodl.TextAccumulator', 'accum');
+
+    accum.setInputValue('delimiter', '');
+    const errorsSeen: string[] = [];
+    h.on('sse', (signal) => {
+      if (signal === 'onMessage') {
+        accum.setInputValue('chunk', out(sse, 'data'));
+        pulse(accum, 'add');
+        const error = String(out(accum, 'error'));
+        if (error) errorsSeen.push(error);
+      }
+    });
+
+    sse.setInputValue('url', BASE + '/chat/stream-json');
+    sse.setInputValue('transport', 'fetch');
+    sse.setInputValue('method', 'POST');
+    sse.setInputValue('body', JSON.stringify({ prompt: 'mis-wired' }));
+    sse.setInputValue('connect', true);
+
+    expect(await until(() => out(sse, 'connectionState') === 'closed')).toBe(true);
+
+    // eslint-disable-next-line no-console
+    console.log('LIVE-SSE-MISWIRED', {
+      accumulated: String(out(accum, 'accumulated')).slice(0, 80),
+      framesRefused: errorsSeen.length,
+      firstError: errorsSeen[0]
+    });
+    expect(String(out(accum, 'accumulated'))).not.toContain('[object Object]');
+    expect(errorsSeen.length).toBeGreaterThan(20);
+    expect(errorsSeen[0]).toContain('Chunk must be text');
+    // The sentinel at the end *is* text, so the error clears — which is the intended
+    // behaviour and the reason the assertion above watches the stream rather than its end.
+    expect(out(accum, 'error')).toBe('');
+    expect(String(out(accum, 'accumulated'))).toBe('[DONE]');
 
     (sse as any)._onNodeDeleted();
     (accum as any)._onNodeDeleted();
@@ -254,12 +355,14 @@ live('LIVE: Action Dispatcher driven by a real action stream', () => {
       storeHasMessages: globalStoreManager.hasKey('chat', 'messages')
     });
 
-    expect(out(dispatcher, 'completedCount')).toBe(2);
+    // Three execute: SET_STORE on the envelope, SET_STORE wrapped in a payload (the shape
+    // that used to be refused as `invalid`), and the registered handler.
+    expect(out(dispatcher, 'completedCount')).toBe(3);
     expect(out(dispatcher, 'refusedCount')).toBe(4);
     expect(refusals.sort()).toEqual(
       ['invalid:', 'not-allowed:CLEAR_STORE', 'not-allowed:SET_STORE', 'unknown:DELETE_EVERYTHING'].sort()
     );
-    expect(globalStoreManager.getKey('chat', 'title')).toBe('Renamed by the server');
+    expect(globalStoreManager.getKey('chat', 'title')).toBe('Renamed again, from a payload');
     expect(globalStoreManager.hasKey('chat', 'messages')).toBe(false);
     expect(payloads).toEqual(['This notice was sent by the server.']);
 

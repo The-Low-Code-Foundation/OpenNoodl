@@ -149,12 +149,13 @@ dead peer.
 
 Four utilities, all pure — no timers except Stream Buffer's, no transports:
 
-- **Text Accumulator** — the token-to-text node. `data → chunk`,
+- **Text Accumulator** — the token-to-text node. `text → chunk`,
   `onMessage → add`, delimiter empty, and `accumulated` is the answer as it is
   being written. With a delimiter set it also splits into `messages` /
   `lastMessage`. Capped by `maxLength` / `maxMessages`, with the loss reported
   on `droppedCharacters` / `droppedMessages` and an `overflowed` signal rather
-  than dropped quietly.
+  than dropped quietly. A chunk that is not text (an object, an array) is
+  **refused and named on `error`** rather than stringified — see below.
 - **JSON Stream Parser** — an incremental scanner, correct at every chunk
   boundary including one that lands inside a string. `ndjson` for
   newline-delimited, `stream` for concatenated objects or a streamed array,
@@ -169,13 +170,45 @@ Four utilities, all pure — no timers except Stream Buffer's, no transports:
   message. `flushedData` is a detached array, so a later `add` cannot mutate
   what a Repeater is already rendering.
 
-> **The mistake almost everyone makes first.** The SSE node's `data` output
-> parses each payload as JSON when it can, because agent backends mix JSON
-> frames and bare text (`data: [DONE]`) on the same stream. So if your endpoint
-> sends the OpenAI-style `data: {"delta":"Hi"}`, `data` is an **object**, and
-> wiring it straight into Text Accumulator's `chunk` shows you
-> `[object Object]`. Either take the field you want out of `data` with a
-> Function node, or use the `raw` output, which is always the unparsed string.
+### Which data output to wire — the thing to get right first
+
+The Server-Sent Events node has three data outputs, and the difference between
+them is the single most common first-run mistake in this whole family.
+
+| Output | Is | Wire it to |
+|---|---|---|
+| `text` | **Always a string** | Anything that displays or accumulates text |
+| `data` | The payload parsed as JSON when it parses, the string when it does not | Things that want the structure: JSON Stream Parser, Action Dispatcher's `action` |
+| `raw` | The payload exactly as sent, never parsed | Debugging, checksums, a parser of your own |
+
+**Use `text` for text.** With `textPath` blank it is the payload as sent, which
+is what an endpoint streaming bare tokens gives you. With `textPath` set it is
+the field at that dot path inside the parsed payload:
+
+```
+textPath: choices.0.delta.content     for an OpenAI-compatible endpoint
+textPath: delta.text                  for an Anthropic-style one
+textPath:                             (blank) for a stream of bare tokens
+```
+
+Anything the path cannot find — the first frame of a real stream announces the
+role and carries no content, the last is a `[DONE]` sentinel that is not JSON at
+all — reads as the empty string, and an empty chunk is something every consumer
+here already ignores. So the sentinel never lands in the middle of your answer.
+
+> **Why this matters.** `data` is JSON-parsed because agent backends mix JSON
+> frames and bare text on one stream, so for the commonest shape
+> (`data: {"delta":"Hi"}`) `data` is an **object**. Wiring an object into Text
+> Accumulator's `chunk` used to render `[object Object]`, once per token, with
+> nothing anywhere saying why. It no longer does: a non-text chunk is refused,
+> `error` names what arrived and which output to use instead, and the editor
+> shows a warning on the node. Nothing is appended, so you get a Text node that
+> stays empty and an explanation — not a page full of `[object Object]`.
+
+**The WebSocket node has the same split under different names**, and no path
+input: `receivedRaw` is always the frame as text (wire that to an accumulator),
+`received` is the frame parsed when it is JSON. A socket carrying JSON envelopes
+needs a Function node to pick the field out of `received`.
 
 ---
 
@@ -213,11 +246,13 @@ and unmount many times over an app's life, and defaults stomping live state on
 remount is a bug nobody can see. A persisted copy is applied after the
 defaults and wins over them.
 
-> `initialState` is an object-typed port, and object-typed ports have no editor
-> in the property panel — they can only be *wired*. The shortest way to supply
-> one is a Function node whose script is `Outputs.State = { … };`, connected to
-> `Initial State`. The same is true of the SSE node's `headers` and State
-> Snapshot's `snapshotData`.
+> `initialState` is an object-typed port, so it edits as a **literal in a code
+> editor** — click the row and type `{ messages: [], title: 'Untitled' }`. JSON
+> works too, since JSON is a subset of what a JS object literal accepts. A
+> literal that does not parse leaves a warning on the node rather than silently
+> becoming nothing. Wiring a Function node that emits an object still works and
+> is the right choice when the starting shape has to be computed. The same is
+> true of the SSE node's `headers` and State Snapshot's `snapshotData`.
 
 **Set Global Store** writes one key. `merge` shallow-merges when both the old
 and new values are plain objects. `transaction` ("Batch With Others") holds the
@@ -399,9 +434,24 @@ first, so a stream's `raw` output works as well as its parsed `data`.
 
 A handler's `payload` output is the action's `payload` if that key is *present*,
 else its `data` if present, else the whole action object — presence, not
-truthiness, so a payload of `0` or `""` is still a payload. The **built-in store
-actions are different**: they read `key` / `value` / `values` off the envelope
-itself, not out of `payload`.
+truthiness, so a payload of `0` or `""` is still a payload.
+
+The **built-in store actions read their own fields the same way**: `key`,
+`value`, `values` and `merge` are taken from the envelope if they are there and
+from the payload if they are not, so both of these work and mean the same thing:
+
+```jsonc
+{ "type": "SET_STORE", "key": "title", "value": "x" }
+{ "type": "SET_STORE", "payload": { "key": "title", "value": "x" } }
+```
+
+The envelope wins if a field appears in both. `storeName` is deliberately not in
+that list — the store a dispatcher writes to is the node's own configuration and
+no message may name it, on the envelope or in a payload. `MERGE_STORE` wants
+`values` specifically (`{"payload": {"values": {…}}}`); a payload that is itself
+a bare key/value map is refused, because a store key called `values` would make
+the two indistinguishable and a dispatcher may not guess about which keys a
+server gets to write.
 
 Actions execute strictly one at a time in arrival order. Several handlers on one
 type run in registration order, and the action completes when the last one does.
@@ -460,17 +510,16 @@ Under server-side rendering (see [RENDERING-MODES.md](./RENDERING-MODES.md)):
 ## Current limits
 
 - **No live-endpoint soak.** The transports have been exercised against a real
-  local server, but not against a production agent endpoint, not cross-origin
-  with credentials, and not for long enough to say anything about a
-  connection held open for hours.
+  local server — including the OpenAI-shaped `{"choices":[{"delta":{…}}]}`
+  envelope and its `[DONE]` sentinel — but not against a production agent
+  endpoint, not cross-origin with credentials, and not for long enough to say
+  anything about a connection held open for hours.
 - **Performance is unmeasured.** Bounds exist and are tested (`maxLength`,
   `maxQueueSize`, `maxHistory`, the dedupe window), so nothing grows without
   limit — but no claim is made about messages larger than a megabyte, hundreds
   of subscribers, or hundreds of updates a second.
 - **A store, a history and the action registry are all process-global**, like
   Variables. Consistent, but worth knowing.
-- **`initialState`, `headers` and `snapshotData` cannot be typed into the
-  property panel** — object-typed ports have no editor. Wire a Function node.
 - **The SSE `eventsource` transport cannot detect a clean stream end**, so
   `reconnectOnStreamEnd: false` cannot be honoured there.
 - **Backoff has no jitter on the SSE node** (the WebSocket node does have it), so

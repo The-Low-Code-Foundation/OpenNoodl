@@ -24,6 +24,7 @@ import {
   ActionStore,
   actionRegistry,
   BUILT_IN_ACTIONS,
+  builtInFieldOf,
   isBuiltInAction,
   payloadOf,
   RefusalInfo
@@ -374,6 +375,139 @@ describe('the action vocabulary is closed', () => {
   it('reports isBuiltInAction for exactly the four reserved names', () => {
     expect(BUILT_IN_ACTIONS.every(isBuiltInAction)).toBe(true);
     expect(isBuiltInAction('OPEN_VIEW')).toBe(false);
+  });
+});
+
+// ===========================================================================
+// Where a built-in reads its fields
+//
+// The integration pass found that the built-ins read `key`/`value`/`values` off the
+// envelope only, while a handler's `payload` output resolves payload -> data -> the whole
+// object. So the shape a server author writes first — and the shape a handler would have
+// received — was refused as `invalid`. Both are accepted now; the envelope still wins.
+// ===========================================================================
+
+describe('a built-in reads its fields from the envelope or from the payload', () => {
+  function make(options: Partial<ActionDispatcherOptions> = {}) {
+    const registry = new ActionRegistry();
+    const store = fakeStore();
+    const rec = recorder();
+    return {
+      store,
+      rec,
+      dispatcher: new ActionDispatcher(
+        defaultOptions({ builtIns: [...BUILT_IN_ACTIONS], ...options }),
+        rec.hooks,
+        { registry, store }
+      )
+    };
+  }
+
+  it('accepts SET_STORE wrapped in a payload — the shape a server author writes first', () => {
+    const { dispatcher, store, rec } = make();
+
+    dispatcher.dispatch({ type: 'SET_STORE', payload: { key: 'title', value: 'x' } });
+
+    expect(store.state).toEqual({ title: 'x' });
+    expect(rec.refusals).toEqual([]);
+    expect(rec.completed[0].result).toEqual({ storeName: 'app', key: 'title' });
+  });
+
+  it('accepts a payload under "data" too, exactly as payloadOf does', () => {
+    const { dispatcher, store } = make();
+
+    dispatcher.dispatch({ type: 'SET_STORE', data: { key: 'title', value: 'y' } });
+
+    expect(store.state).toEqual({ title: 'y' });
+  });
+
+  it('still accepts the envelope form, and the envelope wins on a collision', () => {
+    const { dispatcher, store } = make();
+
+    dispatcher.dispatch({ type: 'SET_STORE', key: 'onEnvelope', value: 1, payload: { key: 'inPayload', value: 2 } });
+
+    expect(store.calls).toEqual(['setKey:app:onEnvelope']);
+    expect(store.state).toEqual({ onEnvelope: 1 });
+  });
+
+  it('reads a falsy value out of a payload rather than calling it absent', () => {
+    const { dispatcher, store } = make();
+
+    dispatcher.dispatch({ type: 'SET_STORE', payload: { key: 'count', value: 0 } });
+
+    expect(store.state).toEqual({ count: 0 });
+  });
+
+  it('reads merge out of a payload as well', () => {
+    const { dispatcher, store } = make();
+    store.state.profile = { name: 'a' };
+
+    dispatcher.dispatch({ type: 'SET_STORE', payload: { key: 'profile', value: { age: 2 }, merge: true } });
+
+    // Merged, not replaced — so the flag was read from the payload and honoured.
+    expect(store.state.profile).toEqual({ name: 'a', age: 2 });
+  });
+
+  it('accepts MERGE_STORE and DELETE_STORE_KEY wrapped in a payload', () => {
+    const { dispatcher, store } = make();
+
+    dispatcher.dispatch({ type: 'MERGE_STORE', payload: { values: { a: 1, b: 2 } } });
+    expect(store.state).toEqual({ a: 1, b: 2 });
+
+    dispatcher.dispatch({ type: 'DELETE_STORE_KEY', payload: { key: 'a' } });
+    expect(store.state).toEqual({ b: 2 });
+  });
+
+  it('refuses a MERGE_STORE payload that is a bare key/value map, and says what it wanted', () => {
+    // Deliberately *not* accepted: a payload of `{ values: {...} }` and a payload that
+    // *is* the values are indistinguishable when a store key is itself called "values",
+    // and a dispatcher may not guess about which keys a server gets to write.
+    const { dispatcher, store, rec } = make();
+
+    dispatcher.dispatch({ type: 'MERGE_STORE', payload: { a: 1, b: 2 } });
+
+    expect(store.calls).toEqual([]);
+    expect(rec.refusals[0].reason).toBe('invalid');
+    expect(rec.refusals[0].message).toContain('requires a "values" object');
+  });
+
+  it('keeps every security property when the fields come from a payload', () => {
+    // The store is the node's, not the message's.
+    const scoped = make({ storeName: 'session' });
+    scoped.dispatcher.dispatch({ type: 'SET_STORE', payload: { storeName: 'admin', key: 'role', value: 'root' } });
+    expect(scoped.store.calls).toEqual(['setKey:session:role']);
+
+    // allowedKeys still gates a key that arrived in a payload.
+    const gated = make({ allowedKeys: ['view'] });
+    gated.dispatcher.dispatch({ type: 'SET_STORE', payload: { key: 'authToken', value: 'x' } });
+    expect(gated.store.calls).toEqual([]);
+    expect(gated.rec.refusals[0].reason).toBe('not-allowed');
+
+    // …and so does a whole set of merge keys.
+    const gatedMerge = make({ allowedKeys: ['view'] });
+    gatedMerge.dispatcher.dispatch({ type: 'MERGE_STORE', payload: { values: { view: 'a', authToken: 'x' } } });
+    expect(gatedMerge.store.calls).toEqual([]);
+    expect(gatedMerge.rec.refusals[0].reason).toBe('not-allowed');
+
+    // CLEAR_STORE is still refused under an allow-list, payload or no payload.
+    const cleared = make({ allowedKeys: ['view'] });
+    cleared.dispatcher.dispatch({ type: 'CLEAR_STORE', payload: {} });
+    expect(cleared.store.calls).toEqual([]);
+    expect(cleared.rec.refusals[0].reason).toBe('not-allowed');
+  });
+
+  it('resolves a field the same way whether it is validated or executed', () => {
+    // checkBuiltIn and runBuiltIn both call this, so the pure function is what makes it
+    // impossible for the two to disagree about what an action said.
+    expect(builtInFieldOf({ type: 'SET_STORE', key: 'a' }, 'key')).toBe('a');
+    expect(builtInFieldOf({ type: 'SET_STORE', payload: { key: 'b' } }, 'key')).toBe('b');
+    expect(builtInFieldOf({ type: 'SET_STORE', data: { key: 'c' } }, 'key')).toBe('c');
+    expect(builtInFieldOf({ type: 'SET_STORE', key: 'a', payload: { key: 'b' } }, 'key')).toBe('a');
+    expect(builtInFieldOf({ type: 'SET_STORE', payload: 'not a record' }, 'key')).toBeUndefined();
+    expect(builtInFieldOf({ type: 'SET_STORE' }, 'key')).toBeUndefined();
+    // With no payload at all, payloadOf returns the envelope — which must not make an
+    // absent field resolve to something.
+    expect(builtInFieldOf({ type: 'SET_STORE', value: 1 }, 'key')).toBeUndefined();
   });
 });
 
