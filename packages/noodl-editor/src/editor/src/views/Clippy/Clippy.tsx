@@ -7,7 +7,6 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { FeedbackType } from '@noodl-constants/FeedbackType';
 import { AiAssistantModel } from '@noodl-models/AiAssistant';
 import { AiClient } from '@noodl-models/AiAssistant/client/AiClient';
-import { SidebarModel } from '@noodl-models/sidebar';
 import getDocsEndpoint from '@noodl-utils/getDocsEndpoint';
 import { LocalUserIdentity } from '@noodl-utils/LocalUserIdentity';
 import { tracker } from '@noodl-utils/tracker';
@@ -23,6 +22,7 @@ import { Text, TextSize, TextType } from '@noodl-core-ui/components/typography/T
 import { Title } from '@noodl-core-ui/components/typography/Title';
 import { UserBadge, UserBadgeSize } from '@noodl-core-ui/components/user/UserBadge';
 
+import { openSettingsPanel } from '../panels/SettingsPanel';
 import { ToastLayer } from '../ToastLayer/ToastLayer';
 import css from './Clippy.module.scss';
 import {
@@ -365,7 +365,7 @@ export default function Clippy() {
             <div className={css.ClippyNoApiKey}>
               <Title hasBottomSpacing>Set up an AI provider</Title>
               <Text hasBottomSpacing>
-                AI commands need a provider. Open the AI section in Editor Settings and pick one:
+                AI commands need a provider. Open the AI section under Settings → Editor and pick one:
               </Text>
               <Text>• Anthropic or OpenAI — paste an API key</Text>
               <Text>• OpenAI-compatible — point at your own endpoint</Text>
@@ -374,7 +374,11 @@ export default function Clippy() {
               <PrimaryButton
                 size={PrimaryButtonSize.Small}
                 variant={PrimaryButtonVariant.MutedOnLowBg}
-                onClick={() => SidebarModel.instance.switch('editor-settings')}
+                /* PNL-008: `editor-settings` is no longer a registered panel —
+                   it is a tab. `openSettingsPanel` names the tab as well as the
+                   panel, so this still lands on the AI section rather than on
+                   Project settings. */
+                onClick={() => openSettingsPanel('editor')}
                 label="Open editor settings"
               />
             </div>
