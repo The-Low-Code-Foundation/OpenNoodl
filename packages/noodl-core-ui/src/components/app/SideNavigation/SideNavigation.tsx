@@ -107,17 +107,43 @@ export interface SideNavigationProps {
   panel: Slot;
 
   onExitClick?: React.MouseEventHandler<HTMLDivElement>;
+
+  /**
+   * PNL-009: how the panel is presented — beside the canvas, over it as a card,
+   * or filling the editor area. **Purely CSS**: the panel element keeps the same
+   * parent in every mode. Several panels host legacy imperative views through
+   * `Frame`, and re-parenting their DOM subtree would unmount and remount views
+   * that bind listeners in `render()` and hold direct DOM references.
+   */
+  panelMode?: 'docked' | 'floating' | 'full';
+  /**
+   * Where the detached panel sits, in viewport coordinates. Measured by the
+   * host from the real editor area rather than guessed from a title-bar
+   * constant, and applied for both detached modes.
+   */
+  panelStyle?: React.CSSProperties;
 }
 
 // PNL-003: `isExpanded` is gone. It existed only for the topology panel, whose
 // registration has been commented out since it was shelved, so both the prop and
 // the `55vw` rule it drove were unreachable. The idea it prototyped — a wide
 // mode — is now general and lives in useSidePanelLayout.
-export function SideNavigation({ toolbar, panel, onExitClick }: SideNavigationProps) {
+export function SideNavigation({
+  toolbar,
+  panel,
+  onExitClick,
+  panelMode = 'docked',
+  panelStyle
+}: SideNavigationProps) {
   return (
     <SideNavigationContextProvider>
-      <div className={classNames(css['Root'])}>
-        <div className={css['Panel']}>{panel}</div>
+      <div className={classNames(css['Root'], panelMode !== 'docked' && css['is-panel-detached'])}>
+        <div
+          className={classNames(css['Panel'], panelMode !== 'docked' && css[`is-panel-${panelMode}`])}
+          style={panelMode === 'docked' ? undefined : panelStyle}
+        >
+          {panel}
+        </div>
 
         <div className={css['Toolbar']}>
           <div className={css['Logo']}>

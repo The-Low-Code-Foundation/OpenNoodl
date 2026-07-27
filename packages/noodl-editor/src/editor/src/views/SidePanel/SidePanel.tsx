@@ -14,7 +14,7 @@ import { Container, ContainerDirection } from '@noodl-core-ui/components/layout/
 import { Tooltip } from '@noodl-core-ui/components/popups/Tooltip';
 import { PanelModeSlotProvider } from '@noodl-core-ui/components/sidebar/PanelHeader';
 
-import { useSidePanelLayoutContext } from '../../pages/EditorPage/useSidePanelLayout';
+import { RAIL_WIDTH, useSidePanelLayoutContext } from '../../pages/EditorPage/useSidePanelLayout';
 import css from './SidePanel.model.scss';
 
 export function SidePanel() {
@@ -119,6 +119,23 @@ export function SidePanel() {
     };
   }, []);
 
+  /**
+   * PNL-009: panels that cannot take a detached mode.
+   *
+   * The modes are CSS-only — the panel element never changes parent, so the
+   * legacy imperative views that `propertyeditor`, `ProjectSettingsPanel` and
+   * `componentports` host through `Frame` are never unmounted. This list is the
+   * escape hatch if that ever stops being true for a particular panel: the
+   * float/full buttons go disabled with a reason rather than breaking it.
+   */
+  const LEGACY_HOSTING_PANELS: string[] = [];
+  const canDetach = !LEGACY_HOSTING_PANELS.includes(activeId);
+  const legacyReason = 'This panel hosts a legacy view and cannot be detached';
+
+  const isFloating = layout?.mode === 'floating';
+  const isDetached = isFloating || layout?.mode === 'full';
+  const activePanelName = SidebarModel.instance.getPanel(activeId)?.name ?? '';
+
   // PNL-003: the two controls that belong to the side panel rather than to any
   // one panel. They go into `PanelHeader`'s mode slot so every `BasePanel` gets
   // them without a second header component existing; PNL-005 formalises the slot.
@@ -130,6 +147,32 @@ export function SidePanel() {
           icon={layout.mode === 'wide' ? IconName.ArrowsInLineHorizontal : IconName.ViewportHorizontalArrow}
           testId="side-panel-wide-toggle"
           onClick={layout.toggleWide}
+        />
+      </Tooltip>
+      {/* PNL-009: float and full. Disabled for panels that host legacy
+          imperative views — see `canFloat` below. */}
+      <Tooltip
+        content={layout.mode === 'floating' ? 'Dock panel' : canDetach ? 'Float over the canvas' : legacyReason}
+        showAfterMs={300}
+      >
+        <IconButton
+          variant={IconButtonVariant.Transparent}
+          icon={IconName.Cards}
+          isDisabled={!canDetach}
+          testId="side-panel-float-toggle"
+          onClick={layout.toggleFloating}
+        />
+      </Tooltip>
+      <Tooltip
+        content={layout.mode === 'full' ? 'Dock panel' : canDetach ? 'Fill the editor' : legacyReason}
+        showAfterMs={300}
+      >
+        <IconButton
+          variant={IconButtonVariant.Transparent}
+          icon={IconName.ViewportDiagonalArrow}
+          isDisabled={!canDetach}
+          testId="side-panel-full-toggle"
+          onClick={layout.toggleFull}
         />
       </Tooltip>
       <Tooltip content="Hide panel" fineType="⌘B" showAfterMs={300}>
@@ -145,15 +188,83 @@ export function SidePanel() {
 
   function onItemClick(item: SidebarItem) {
     // PNL-003: clicking any rail icon brings a hidden panel back at its last
-    // width — the rail stays usable while the panel is collapsed.
+    // width — the rail stays usable while the panel is collapsed. In a detached
+    // mode the rail stays live and the mode persists across the switch, which is
+    // the point of full mode.
     layout?.revealIfHidden();
     sidebar.switch(item.id);
     item.onClick && item.onClick();
   }
 
+  // PNL-009: Escape returns a detached panel to docked. Registered directly
+  // rather than through `useKeyboardCommands` because the popup layer also binds
+  // Escape and should keep winning while a popup is open.
+  useEffect(() => {
+    if (!isDetached) return;
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      const el = document.activeElement as HTMLElement | null;
+      if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)) return;
+      // Something dismissible is open — it owns Escape first.
+      if (document.querySelector('.popup-layer-popout')) return;
+      layout?.dock();
+    };
+
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [isDetached, layout]);
+
+  /** Drag the floating card by its bar; resize it by the corner grip. */
+  function startFloatGesture(e: React.PointerEvent, kind: 'move' | 'resize') {
+    if (!layout?.editorArea) return;
+    e.preventDefault();
+    const area = layout.editorArea;
+    const start = layout.floatRect;
+    const originX = e.clientX;
+    const originY = e.clientY;
+    const bounds = { width: area.width, height: area.height };
+
+    const onMove = (ev: PointerEvent) => {
+      const dx = ev.clientX - originX;
+      const dy = ev.clientY - originY;
+      layout.setFloatRect(
+        kind === 'move'
+          ? { ...start, x: start.x + dx, y: start.y + dy }
+          : { ...start, width: start.width + dx, height: start.height + dy },
+        bounds
+      );
+    };
+    const onUp = () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      window.removeEventListener('pointercancel', onUp);
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', onUp);
+  }
+
+  const panelStyle: React.CSSProperties | undefined = (() => {
+    if (!layout || !isDetached || !layout.editorArea) return undefined;
+    const area = layout.editorArea;
+    if (layout.mode === 'full') {
+      return {
+        left: area.x + RAIL_WIDTH,
+        top: area.y,
+        width: Math.max(0, area.width - RAIL_WIDTH),
+        height: area.height
+      };
+    }
+    const r = layout.floatRect;
+    return { left: area.x + r.x, top: area.y + r.y, width: r.width, height: r.height };
+  })();
+
   return (
     <SideNavigation
       onExitClick={() => App.instance.exitProject()}
+      panelMode={isDetached ? (isFloating ? 'floating' : 'full') : 'docked'}
+      panelStyle={panelStyle}
       toolbar={
         <>
           <Container direction={ContainerDirection.Vertical} UNSAFE_style={{ flex: '1' }}>
@@ -190,7 +301,27 @@ export function SidePanel() {
       }
       panel={
         <PanelModeSlotProvider slot={modeSlot}>
-          <div style={{ height: '100%' }}>
+          {/* PNL-009: a detached panel gets its own bar — the thing you grab to
+              move a floating card, and the close route the six hand-rolled
+              full-screen overlays never had. */}
+          {isDetached && (
+            <div
+              className={css['DetachedBar']}
+              onPointerDown={isFloating ? (e) => startFloatGesture(e, 'move') : undefined}
+              data-test="side-panel-detached-bar"
+              style={{ cursor: isFloating ? 'grab' : 'default' }}
+            >
+              <span className={css['DetachedTitle']}>{activePanelName}</span>
+              <IconButton
+                variant={IconButtonVariant.Transparent}
+                icon={IconName.Close}
+                testId="side-panel-dock-button"
+                onClick={() => layout?.dock()}
+              />
+            </div>
+          )}
+
+          <div className={css['PanelItems']}>
             {Object.entries(panels).map(([id, panel]) => (
               <div
                 key={id}
@@ -223,6 +354,14 @@ export function SidePanel() {
               </div>
             ))}
           </div>
+
+          {isFloating && (
+            <div
+              className={css['ResizeGrip']}
+              data-test="side-panel-resize-grip"
+              onPointerDown={(e) => startFloatGesture(e, 'resize')}
+            />
+          )}
         </PanelModeSlotProvider>
       }
     />

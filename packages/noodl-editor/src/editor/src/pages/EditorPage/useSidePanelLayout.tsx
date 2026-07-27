@@ -42,20 +42,46 @@ const WIDE_VIEWPORT_FRACTION = 0.55;
 const MIN_CANVAS_WIDTH = 320;
 
 const SETTINGS_KEY = 'editor-sidebar-widths';
+const FLOAT_SETTINGS_KEY = 'editor-sidebar-float-rects';
 
-export type SidePanelMode = 'docked' | 'wide' | 'hidden';
+/** PNL-009: a floating panel's card, in editor-area coordinates. */
+export interface FloatRect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+const FLOAT_DEFAULT: FloatRect = { x: 96, y: 64, width: 420, height: 520 };
+const FLOAT_MIN_WIDTH = 280;
+const FLOAT_MIN_HEIGHT = 200;
+/** Keep at least this much of the card reachable inside the editor area. */
+const FLOAT_KEEP_VISIBLE = 120;
+
+export type SidePanelMode = 'docked' | 'wide' | 'hidden' | 'floating' | 'full';
 
 export interface SidePanelLayout {
   /** What the `FrameDivider` should be sized to: rail + panel. */
   dividerSize: number;
   dividerSizeMin: number;
   mode: SidePanelMode;
+  /** The floating card's rect, in editor-area coordinates. Only read in 'floating'. */
+  floatRect: FloatRect;
+  /** The editor area's rect in viewport coordinates, reported by the divider. */
+  editorArea: { x: number; y: number; width: number; height: number } | null;
+  setEditorArea: (bounds: DOMRect) => void;
   /** The divider's own drag callbacks. */
   onDividerDragStart: () => void;
   onDividerSizeChanged: (size: number) => void;
   onDividerDragEnd: () => void;
   toggleWide: () => void;
   toggleHidden: () => void;
+  toggleFloating: () => void;
+  toggleFull: () => void;
+  /** Docked, whatever mode it was in. Escape's target. */
+  dock: () => void;
+  /** Drag/resize the floating card. `bounds` is the editor area's own size. */
+  setFloatRect: (rect: FloatRect, bounds: { width: number; height: number }) => void;
   /** Clicking a rail icon must bring a hidden panel back. */
   revealIfHidden: () => void;
 }
@@ -87,11 +113,44 @@ function defaultWidthFor(panelId: string): number {
   return panel?.defaultWidth ?? DEFAULT_PANEL_WIDTH;
 }
 
+function readStoredFloatRects(): Record<string, FloatRect> {
+  if (!ProjectModel.instance) return {};
+  const projectSettings = EditorSettings.instance.get(ProjectModel.instance.id) || {};
+  const stored = projectSettings[FLOAT_SETTINGS_KEY];
+  return stored && typeof stored === 'object' ? { ...stored } : {};
+}
+
+function writeStoredFloatRects(rects: Record<string, FloatRect>) {
+  if (!ProjectModel.instance) return;
+  EditorSettings.instance.setMerge(ProjectModel.instance.id, { [FLOAT_SETTINGS_KEY]: rects });
+}
+
+/**
+ * Keep a floating card inside the editor area, and always leave enough of its
+ * header on screen to grab. A card you cannot reach is a card you cannot close.
+ */
+function constrainFloat(rect: FloatRect, bounds: { width: number; height: number }): FloatRect {
+  const width = Math.max(FLOAT_MIN_WIDTH, Math.min(rect.width, Math.max(FLOAT_MIN_WIDTH, bounds.width)));
+  const height = Math.max(FLOAT_MIN_HEIGHT, Math.min(rect.height, Math.max(FLOAT_MIN_HEIGHT, bounds.height)));
+  return {
+    width,
+    height,
+    // Never over the rail (it has to stay clickable) and never so far right
+    // that the header cannot be grabbed to bring it back.
+    x: Math.min(Math.max(rect.x, RAIL_WIDTH), Math.max(RAIL_WIDTH, bounds.width - FLOAT_KEEP_VISIBLE)),
+    y: Math.min(Math.max(rect.y, 0), Math.max(0, bounds.height - 36))
+  };
+}
+
 export function useSidePanelLayout(): SidePanelLayout {
   const [activeId, setActiveId] = useState<string>(() => SidebarModel.instance.ActiveId);
   const [widths, setWidths] = useState<Record<string, number>>(readStoredWidths);
   const [mode, setMode] = useState<SidePanelMode>('docked');
   const [viewportWidth, setViewportWidth] = useState(() => window.innerWidth);
+  const [floatRects, setFloatRects] = useState<Record<string, FloatRect>>(readStoredFloatRects);
+  const [editorArea, setEditorAreaState] = useState<{ x: number; y: number; width: number; height: number } | null>(
+    null
+  );
 
   // True only between the divider's own dragstart and dragend. `FrameDivider`
   // calls `onSizeChanged` for programmatic changes too (it echoes back a clamped
@@ -108,6 +167,9 @@ export function useSidePanelLayout(): SidePanelLayout {
         setActiveId(panelId);
         // The mock treats wide as per-session and clears it on a panel switch.
         // Shipped as such and recorded in NOTES as a decision to revisit.
+        // The mock treats wide as per-session and clears it on a panel switch.
+        // Floating and full are *modes you are working in* — switching panels
+        // inside them is the point (the rail stays live), so they persist.
         setMode((prev) => (prev === 'wide' ? 'docked' : prev));
       },
       eventGroup
@@ -140,7 +202,11 @@ export function useSidePanelLayout(): SidePanelLayout {
   const storedWidth = widths[activeId] ?? defaultWidthFor(activeId);
 
   const panelWidth = useMemo(() => {
-    if (mode === 'hidden') return 0;
+    // Floating and full take the panel out of the flow entirely — it is
+    // positioned over the editor area rather than beside it — so the divider
+    // gives all the width to the canvas underneath. Same as hidden, as far as
+    // the split is concerned.
+    if (mode === 'hidden' || mode === 'floating' || mode === 'full') return 0;
     const target = mode === 'wide' ? wideWidth : storedWidth;
     return Math.min(Math.max(target, MIN_PANEL_WIDTH), maxPanelWidth);
   }, [mode, wideWidth, storedWidth, maxPanelWidth]);
@@ -200,6 +266,42 @@ export function useSidePanelLayout(): SidePanelLayout {
     setMode((prev) => (prev === 'hidden' ? 'docked' : 'hidden'));
   }, []);
 
+  const toggleFloating = useCallback(() => {
+    setMode((prev) => (prev === 'floating' ? 'docked' : 'floating'));
+  }, []);
+
+  const toggleFull = useCallback(() => {
+    setMode((prev) => (prev === 'full' ? 'docked' : 'full'));
+  }, []);
+
+  const dock = useCallback(() => setMode('docked'), []);
+
+  const setEditorArea = useCallback((bounds: DOMRect) => {
+    setEditorAreaState((prev) =>
+      prev && prev.x === bounds.x && prev.y === bounds.y && prev.width === bounds.width && prev.height === bounds.height
+        ? prev
+        : { x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height }
+    );
+  }, []);
+
+  const floatRectsRef = useRef(floatRects);
+  floatRectsRef.current = floatRects;
+
+  const setFloatRect = useCallback(
+    (rect: FloatRect, bounds: { width: number; height: number }) => {
+      if (!activeId) return;
+      const next = { ...floatRectsRef.current, [activeId]: constrainFloat(rect, bounds) };
+      floatRectsRef.current = next;
+      setFloatRects(next);
+      // Same purity rule as the widths: the write happens beside the setter,
+      // never inside its updater.
+      writeStoredFloatRects(next);
+    },
+    [activeId]
+  );
+
+  const floatRect = floatRects[activeId] ?? FLOAT_DEFAULT;
+
   const revealIfHidden = useCallback(() => {
     setMode((prev) => (prev === 'hidden' ? 'docked' : prev));
   }, []);
@@ -210,11 +312,18 @@ export function useSidePanelLayout(): SidePanelLayout {
     // panel minimum — dragging *below* the minimum is how you collapse.
     dividerSizeMin: RAIL_WIDTH,
     mode,
+    floatRect,
+    editorArea,
+    setEditorArea,
     onDividerDragStart,
     onDividerSizeChanged,
     onDividerDragEnd,
     toggleWide,
     toggleHidden,
+    toggleFloating,
+    toggleFull,
+    dock,
+    setFloatRect,
     revealIfHidden
   };
 }

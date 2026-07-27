@@ -229,6 +229,10 @@ export function EditorPage({ route }: EditorPageProps) {
                 onDragEnd={sidePanelLayout.onDividerDragEnd}
                 onSizeChanged={sidePanelLayout.onDividerSizeChanged}
                 onDividerDoubleClick={sidePanelLayout.toggleWide}
+                // PNL-009: the detached modes are positioned against the real
+                // editor area rather than a guessed title-bar offset. The
+                // divider already measures exactly that rect.
+                onBoundsChanged={sidePanelLayout.setEditorArea}
               />
 
               {Boolean(lesson) && <Frame instance={lesson} isContentSize isFitWidth />}

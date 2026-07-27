@@ -1,6 +1,6 @@
 # Phase 25 — Side Panel (Track J): Progress
 
-**Status:** 🚧 In progress — 4 / 9 — **Tier 1 complete (3 / 3)**, plus PNL-007
+**Status:** 🚧 In progress — 4 / 9 complete + 1 partial — **Tier 1 complete (3 / 3)**, plus PNL-007; PNL-009 half done. Tiers 2–3 (PNL-004/005/006/008) **not started by decision** (2026-07-27): Tier 1 was taken as the stopping point.
 **Specced:** 2026-07-27
 **Mock:** [`mocks/nodegx-side-panel-mock.html`](./mocks/nodegx-side-panel-mock.html) (`93cc4da`)
 **Phase overview:** [README.md](./README.md)
@@ -17,7 +17,7 @@
 | [PNL-006](./PNL-006-COMPONENTS-PANEL-RESTYLE.md) | Components panel restyle | 3 | ⬜ Not started | — | |
 | [PNL-007](./PNL-007-INLINE-RENAME.md) | Node label & inline rename | 3 | ✅ Complete | 2026-07-27 | [NOTES](./PNL-007-NOTES.md). Text at rest, real field on double-click, check/cancel, Escape reverts. Phantom-undo guard tested, not assumed. The AiAuthoringPanel half of the spec was a stale premise. |
 | [PNL-008](./PNL-008-SETTINGS-CONSOLIDATION.md) | Three settings panels become one | 3 | ⬜ Not started | — | |
-| [PNL-009](./PNL-009-FLOAT-AND-FULL-MODES.md) | Floating & full panel modes | 4 | ⬜ Not started | — | Validate the need first |
+| [PNL-009](./PNL-009-FLOAT-AND-FULL-MODES.md) | Floating & full panel modes | 4 | 🚧 **Half complete** | 2026-07-27 | [NOTES](./PNL-009-NOTES.md). Need confirmed by Richard. Modes built **CSS-only** (no re-parenting) and validated incl. the legacy-view test; drag/resize/per-panel persistence work. **The 7 `LocalBackendCard` portals are NOT migrated** — acceptance 2 and 3 unmet. |
 
 ## Findings register
 
@@ -51,7 +51,9 @@ be stale or to have a different cause, correct it here rather than implementing 
 | F14 | Three rail destinations for settings; `IconName.Setting` renders as a sun | `router.setup.ts:211-280` | PNL-008 |
 | F15 | Two panels both own the app title, writing through different models (`updateAppConfig` vs `ProjectSettingsModel`) | `AppSetupPanel.tsx`, `ProjectSettingsPanel.tsx` | PNL-008 — resolve **before** UI work |
 | F16 | `switch('cloud-functions')` in two places targets an id unregistered since WF-007; `switch()` silently no-ops on unknown ids | `NodeGraphContext.tsx:120`, `sidebarmodel.tsx:337` | PNL-008 (housekeeping) |
-| F17 | Six `createPortal` + `position: fixed` full-screen overlays in one file, with a hardcoded `rgba(0,0,0,.85)` scrim that predates the light theme | `LocalBackendCard.tsx:268-340` | PNL-009 |
+| F17 | Six `createPortal` + `position: fixed` full-screen overlays in one file, with a hardcoded `rgba(0,0,0,.85)` scrim that predates the light theme | `LocalBackendCard.tsx:268-340` | PNL-009 — **still open**; there are **seven**, not six. The full mode they should move onto now exists |
+| F27 | The mode buttons live in `PanelHeader`'s slot, so only `BasePanel` panels can be detached at all — 15 panels have no header. And the property editor can never reach full mode (no header, and full covers the canvas you'd select a node on) | `SidePanel.tsx`, `views/panels/**` | PNL-005 unblocks it |
+| F28 | Every mounted panel renders its own copy of the mode buttons, so their `data-test` ids are not unique. Anything scripted has to filter on a non-zero bounding box | `SidePanel.tsx` | PNL-005 / test hygiene |
 | F18 | Two search panel implementations in the tree; only `search-panel/search-panel` is registered | `views/panels/search/`, `views/panels/search-panel/` | PNL-005 to identify; DEBT-010 to delete |
 
 ## Open questions

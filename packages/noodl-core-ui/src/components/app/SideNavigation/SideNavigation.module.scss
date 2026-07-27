@@ -135,6 +135,51 @@ $_sidebar-hover-enter-offset: 250ms;
   border-left: 1px solid var(--theme-color-border-default);
 }
 
+/* PNL-009 — the detached modes.
+ *
+ * Both are CSS only: the panel keeps its parent, so the legacy imperative views
+ * several panels host through `Frame` are never unmounted and remounted. The
+ * rail is a sibling and stays exactly where it is, live, in every mode.
+ *
+ * `position: fixed` is what lets the panel escape `.Root`'s and the frame
+ * divider's `overflow: hidden` without moving in the DOM. It relies on no
+ * ancestor establishing a containing block for fixed positioning (a `transform`,
+ * `filter`, `perspective`, `contain: paint` or `will-change` on any ancestor
+ * would break it) — verified against the live editor, not assumed.
+ */
+.Panel.is-panel-full,
+.Panel.is-panel-floating {
+  position: fixed;
+  margin-left: 0;
+  min-height: 0;
+  z-index: 5;
+}
+
+/* Fills the editor area to the right of the rail. The rail keeps working, so
+   you can switch panels without leaving full mode. The insets come from the
+   host as inline styles — measured off the real editor area, because the panel
+   sits below a window title bar whose height is not a constant worth guessing. */
+.Panel.is-panel-full {
+  border-left: 1px solid var(--theme-color-border-default);
+}
+
+/* A card over the canvas. Position and size come from the layout state as
+   inline styles; everything here is presentation. */
+.Panel.is-panel-floating {
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-float, 0 18px 48px rgba(0, 0, 0, 0.38));
+  overflow: hidden;
+}
+
+/* With the panel detached the rail is all that is left in the flow, so the root
+   must not try to stretch to the divider's width. */
+.Root.is-panel-detached {
+  width: 52px;
+  min-width: 52px;
+  border-right: 0;
+}
+
 .SideNavigationButton {
   display: flex;
   align-items: center;
