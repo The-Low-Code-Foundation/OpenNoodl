@@ -55,6 +55,43 @@ its graph, so `/comp1`'s own root is included — which incidentally observes th
   gate is `npm run test:ci` in `packages/noodl-editor` (~3 min, needs Electron),
   and it is non-optional for anything touching the import engine.
 
+## ⚠️ OPEN — the same spec is order-dependent, and that is incident three
+
+Found 2026-07-28 by the cross-phase defect batch, which ran `test:ci` four times
+over the course of one merge sequence.
+
+`re-keys imported node ids while reusing the target component id
+(characterization)` **fails or passes depending on the randomization seed, on an
+otherwise identical tree**:
+
+| Seed | Result |
+|---|---|
+| `63183` | `Expected 8 to be 5` |
+| `07241` | pass |
+| `69768` | pass (with batch A+B+C+D merged) |
+
+So the count is not 5-vs-4 as the retraction above concluded, nor 8 — it is
+*whatever earlier specs left behind*. The spec assigns `ProjectModel.instance`
+and mutates `tMain.id`, and it copies `tests/testfs/import_proj2` into a temp
+dir while a sibling spec (`ignores .git`) writes into and deletes from
+`tests/testfs/` directly. Under a randomized order those interact.
+
+**This is the third diagnosis of this one assertion, and the first two were both
+confident and wrong.** It was filed as engine data loss (retracted above), then
+as a `forEachRecursive` truthy-return bug — which was real and *is* fixed, but
+was not the whole story, because fixing it left a spec that still only passes on
+some orders. The lesson the retraction drew ("an assertion that has never
+executed is not evidence") needs a second clause: **an assertion that passes
+once under a random order is not evidence either.** For a spec that mutates
+global state, pass/fail on a single seed says nothing.
+
+Not fixed here — it is a test-isolation defect, not an engine defect, and it sits
+in LIB-004's characterization suite rather than in this batch's territory.
+Whoever takes it should make the spec own its fixtures (copy to temp, never read
+through `require`'s module cache, restore `ProjectModel.instance`) rather than
+pin the expected count to a number that happens to hold on one seed. Reproduce
+with `npm run test:ci` and seed `63183`.
+
 ## Anytime fixes (independent of task order)
 
 - [x] Import-from-URL collision popup ignores unticked items (`EditorPage.tsx:353–363`) — LIB-004 step 0 (2026-07-25; fix applies `filterImports(..., { remove: getUnselectedImports() })`. ⚠️ verified by construction, not yet live)
