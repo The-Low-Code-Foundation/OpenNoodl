@@ -1,0 +1,53 @@
+{
+  "name": "duplicate-node-id fixture",
+  "_comment": "SUB-012 fixture. Deliberately corrupt: a two-way collision in /#Home, a three-way collision in /Pages/Three, and an id reused across two components. Consumed by `npm run catalog:validate:selftest`.",
+  "components": [
+    {
+      "name": "/#Home",
+      "graph": {
+        "roots": [
+          {
+            "id": "home-root",
+            "type": "Group",
+            "children": [
+              { "id": "collide-2way", "type": "Text", "label": "First", "children": [] },
+              { "id": "collide-2way", "type": "Text", "label": "Second", "children": [] }
+            ]
+          }
+        ],
+        "connections": []
+      }
+    },
+    {
+      "name": "/Pages/Three",
+      "graph": {
+        "roots": [
+          {
+            "id": "three-root",
+            "type": "Group",
+            "children": [
+              { "id": "collide-3way", "type": "Text", "label": "A", "children": [] },
+              { "id": "collide-3way", "type": "Text", "label": "B", "children": [] },
+              { "id": "collide-3way", "type": "Text", "label": "C", "children": [] }
+            ]
+          }
+        ],
+        "connections": []
+      }
+    },
+    {
+      "name": "/Pages/CopyA",
+      "graph": {
+        "roots": [{ "id": "shared-across-components", "type": "Group", "children": [] }],
+        "connections": []
+      }
+    },
+    {
+      "name": "/Pages/CopyB",
+      "graph": {
+        "roots": [{ "id": "shared-across-components", "type": "Group", "children": [] }],
+        "connections": []
+      }
+    }
+  ]
+}

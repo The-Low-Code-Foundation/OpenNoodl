@@ -46,6 +46,8 @@ export const SEVERITY_ORDER: Record<Severity, number> = {
  * should switch on these rather than parsing messages.
  */
 export enum DiagnosticCode {
+  /** Two nodes share one id — the substrate's primary key is not unique. */
+  DuplicateNodeId = 'duplicate-node-id',
   UnknownNodeType = 'unknown-node-type',
   NonexistentPort = 'nonexistent-port',
   DanglingConnection = 'dangling-connection',

@@ -129,6 +129,10 @@ jobs:
       # node documented — new nodes cannot ship without an enrichment entry.
       - run: npm run catalog:examples
       - run: npm run catalog:merge:check
+      # SUB-012: the catalog validator's duplicate-node-id rule, against its
+      # committed corrupt/clean fixture pair. A project with two nodes sharing
+      # an id used to pass every gate with zero failures.
+      - run: node scripts/node-catalog/validate-project.js --self-test
 
   library:
     name: Library check (LIB-001)
