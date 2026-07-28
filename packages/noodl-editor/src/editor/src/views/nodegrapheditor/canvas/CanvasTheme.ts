@@ -314,6 +314,15 @@ export const WireLabel = {
   lineHeight: 13,
   /** The chip is nearly opaque: a bare glyph over the dot grid is unreadable. */
   chipAlpha: 0.92,
+  /**
+   * Widest a label chip gets, in graph units — roughly a card (150) plus a
+   * little. Wider and a label competes with the nodes it describes (CAN-002).
+   */
+  maxWidth: 160,
+  /** Lines before the text is ellipsised; the rest is on hover. */
+  maxLines: 3,
+  /** Characters accepted by the editor. A wire label is a phrase. */
+  maxLength: 280,
   /** Default position along the curve. */
   defaultT: 0.5,
   /**

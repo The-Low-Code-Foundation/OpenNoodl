@@ -87,6 +87,7 @@ function anchorNodeId(change: GraphChange): string | undefined {
       return change.recreatedAs.id;
     case 'connection-added':
     case 'connection-removed':
+    case 'connection-relabelled':
       return change.connection.toId;
     case 'connection-rewired':
       return change.after.toId;

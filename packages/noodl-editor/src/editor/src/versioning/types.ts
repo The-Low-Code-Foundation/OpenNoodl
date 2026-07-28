@@ -37,6 +37,10 @@ export interface SnapshotConnection {
   fromProperty: string;
   toId: string;
   toProperty: string;
+  /** Author-written text on the wire (CAN-002). Semantic — diffed. */
+  label?: string;
+  /** Where that text sits along the wire (CAN-001). Presentation — not diffed. */
+  labelT?: number;
   rest: Record<string, unknown>;
 }
 
@@ -126,6 +130,20 @@ export type GraphChange =
       after: ConnectionRef;
       category: 'semantic';
     }
+  /**
+   * A wire's author-written label changed (CAN-002). Semantic, like its
+   * connection neighbours: a label is authored meaning, and a diff that files
+   * it as cosmetic defeats the point of writing one. Moving a label (`labelT`)
+   * is NOT a change — that is presentation, and it is why the two are separate
+   * keys.
+   */
+  | {
+      kind: 'connection-relabelled';
+      connection: ConnectionRef;
+      fromLabel?: string;
+      toLabel?: string;
+      category: 'semantic';
+    }
   | { kind: 'comment-added'; commentKey: string; text: string; category: 'semantic' }
   | { kind: 'comment-removed'; commentKey: string; text: string; category: 'semantic' }
   | { kind: 'comment-changed'; commentKey: string; fromText: string; toText: string; category: 'semantic' }
@@ -174,6 +192,10 @@ export type ConflictKind =
   | 'orphaned'
   | 'child-order'
   | 'connection-rewire'
+  /** Both sides wrote different text on the same wire (CAN-002). */
+  | 'connection-label'
+  /** One side deleted a wire the other side labelled (CAN-002). */
+  | 'connection-label-deleted'
   | 'connection-to-deleted'
   | 'comment'
   | 'component-rename'

@@ -131,6 +131,24 @@ export function formatChange(change: GraphChange, options: FormatOptions = {}): 
             'to',
             displayName
           )} (was ${endpoint(change.before, 'to', displayName)})`;
+    case 'connection-relabelled':
+      return change.toLabel === undefined
+        ? `Removed the label from ${endpoint(change.connection, 'from', displayName)} → ${endpoint(
+            change.connection,
+            'to',
+            displayName
+          )} (was ${shortValue(change.fromLabel)})`
+        : change.fromLabel === undefined
+        ? `Labelled ${endpoint(change.connection, 'from', displayName)} → ${endpoint(
+            change.connection,
+            'to',
+            displayName
+          )} ${shortValue(change.toLabel)}`
+        : `Relabelled ${endpoint(change.connection, 'from', displayName)} → ${endpoint(
+            change.connection,
+            'to',
+            displayName
+          )} ${shortValue(change.fromLabel)} → ${shortValue(change.toLabel)}`;
     case 'comment-added':
       return `Added comment ${shortValue(change.text)}`;
     case 'comment-removed':
@@ -190,6 +208,12 @@ export function formatConflict(conflict: GraphConflict, options: FormatOptions =
       return `Both sides rewired the same input differently${
         conflict.connection?.toNode ? ` on ${nodeName(conflict.connection.toNode, displayName)}` : ''
       }`;
+    case 'connection-label':
+      return `Both sides wrote a different label on the same connection ('${conflict.ours ?? ''}' vs '${
+        conflict.theirs ?? ''
+      }')`;
+    case 'connection-label-deleted':
+      return `${conflict.deletedBy === 'ours' ? 'You' : 'They'} deleted a connection the other side labelled`;
     case 'connection-to-deleted':
       return `A connection references ${
         conflict.connection ? 'a node' : 'something'

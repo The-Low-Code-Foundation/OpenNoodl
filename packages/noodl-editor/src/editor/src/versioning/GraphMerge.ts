@@ -682,6 +682,42 @@ function connectionRefFor(context: MergeContext, connection: SnapshotConnection)
   return ref;
 }
 
+/**
+ * Field-level merge for a wire both sides kept (CAN-002).
+ *
+ * `label` follows the standard three-way scalar rule and raises a conflict when
+ * both sides wrote different text — losing one author's stated reason to the
+ * other's is exactly what must not happen quietly. `labelT` is presentation:
+ * whichever side moved it wins, and two different positions are not worth
+ * asking about.
+ */
+function mergeConnectionFields(
+  context: MergeContext,
+  base: SnapshotConnection | undefined,
+  ours: SnapshotConnection,
+  theirs: SnapshotConnection
+): SnapshotConnection {
+  const merged = deepClone(ours);
+
+  const label = merge3(base?.label, ours.label, theirs.label, (baseLabel, oursLabel, theirsLabel) => {
+    addConflict(context, {
+      kind: 'connection-label',
+      connection: connectionRefFor(context, ours),
+      base: baseLabel,
+      ours: oursLabel,
+      theirs: theirsLabel
+    });
+  });
+  if (label === undefined) delete merged.label;
+  else merged.label = label;
+
+  const labelT = ours.labelT === base?.labelT ? theirs.labelT : ours.labelT;
+  if (labelT === undefined) delete merged.labelT;
+  else merged.labelT = labelT;
+
+  return merged;
+}
+
 function mergeConnections(context: MergeContext): void {
   const { base, ours, theirs, merged } = context;
   const baseMap = new Map(base.connections.map((c) => [connectionKey(c), c]));
@@ -736,8 +772,31 @@ function mergeConnections(context: MergeContext): void {
     const inOurs = oursMap.has(key);
     const inTheirs = theirsMap.has(key);
     let keep: SnapshotConnection | undefined;
-    if (inOurs && inTheirs) keep = oursMap.get(key);
-    else if (!inBase && inOurs) keep = oursMap.get(key);
+    if (inOurs && inTheirs) {
+      // Same wire on both sides, but its label can still differ (CAN-002).
+      // Without this the ours-wins rule would drop the other side's label with
+      // nothing said — the exact silent loss the field exists to avoid.
+      keep = mergeConnectionFields(context, baseMap.get(key), oursMap.get(key), theirsMap.get(key));
+    } else if (!inBase && inOurs) keep = oursMap.get(key);
+    else if (inBase && inOurs !== inTheirs) {
+      // One side removed the wire. If the other side wrote a label on it in the
+      // meantime, that is an edit to something the other side deleted — the
+      // deletion still wins, but the reason someone wrote down does not vanish
+      // without a word. (Same shape as delete-vs-edit on a node.)
+      const survivor = inOurs ? oursMap.get(key) : theirsMap.get(key);
+      const baseConnection = baseMap.get(key);
+      if ((survivor.label ?? undefined) !== (baseConnection.label ?? undefined)) {
+        const labelledBy: ConflictSide = inOurs ? 'ours' : 'theirs';
+        addConflict(context, {
+          kind: 'connection-label-deleted',
+          connection: connectionRefFor(context, survivor),
+          deletedBy: labelledBy === 'ours' ? 'theirs' : 'ours',
+          base: baseConnection.label,
+          ours: labelledBy === 'ours' ? deepClone(survivor) : undefined,
+          theirs: labelledBy === 'theirs' ? deepClone(survivor) : undefined
+        });
+      }
+    }
     else if (!inBase && inTheirs && !suppressedTheirsAdds.has(key)) keep = theirsMap.get(key);
     // inBase && missing on one side: removed — dropped.
     if (!keep) continue;
@@ -984,6 +1043,27 @@ export function applyResolution(result: MergeResult, conflictId: string, side: C
         const endpoint = `${theirsConnection.toId}:${theirsConnection.toProperty}`;
         merged.connections = merged.connections.filter((c) => `${c.toId}:${c.toProperty}` !== endpoint);
         merged.connections.push(deepClone(theirsConnection));
+      }
+      break;
+    }
+    case 'connection-label': {
+      const key = conflict.connection ? connectionKey(conflict.connection) : undefined;
+      const connection = key ? merged.connections.find((c) => connectionKey(c) === key) : undefined;
+      if (connection) {
+        if (chosen === undefined) delete connection.label;
+        else connection.label = chosen as string;
+      }
+      break;
+    }
+    case 'connection-label-deleted': {
+      // Keeping the labelled side means keeping the wire it was written on.
+      const labelled = (conflict.ours ?? conflict.theirs) as SnapshotConnection | undefined;
+      const labelledBy: ConflictSide = conflict.ours !== undefined ? 'ours' : 'theirs';
+      if (side === labelledBy && labelled) {
+        const exists = merged.connections.some((c) => connectionKey(c) === connectionKey(labelled));
+        if (!exists && merged.nodes.has(labelled.fromId) && merged.nodes.has(labelled.toId)) {
+          merged.connections.push(deepClone(labelled));
+        }
       }
       break;
     }

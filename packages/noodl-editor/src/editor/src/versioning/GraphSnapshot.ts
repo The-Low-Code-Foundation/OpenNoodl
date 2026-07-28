@@ -35,7 +35,17 @@ const NODE_KNOWN_KEYS = new Set([
 /** Transient fields written by older diff/merge code — never part of identity or content. */
 const NODE_TRANSIENT_KEYS = new Set(['conflicts', 'annotation', 'diffData', '_parent', '_sort']);
 
-const CONNECTION_KNOWN_KEYS = new Set(['fromId', 'fromProperty', 'toId', 'toProperty']);
+/**
+ * `label` and `labelT` are CAN-002's author-written wire text and its position.
+ * Known rather than `rest`, because the diff has to be able to see a relabel —
+ * `rest` is never compared for connections, so a label swept in there would
+ * round-trip safely and still produce no change at all.
+ *
+ * `annotation` sits on the same object and is transient (diff presentation,
+ * AIX-003). Putting `label` beside it by symmetry would strip it from every
+ * snapshot.
+ */
+const CONNECTION_KNOWN_KEYS = new Set(['fromId', 'fromProperty', 'toId', 'toProperty', 'label', 'labelT']);
 const CONNECTION_TRANSIENT_KEYS = new Set(['annotation']);
 
 const COMMENT_KNOWN_KEYS = new Set(['id', 'text', 'x', 'y']);
@@ -90,13 +100,16 @@ function normalizeComment(raw: Record<string, unknown>, index: number): Snapshot
 }
 
 function normalizeConnection(raw: Record<string, unknown>): SnapshotConnection {
-  return {
+  const connection: SnapshotConnection = {
     fromId: String(raw.fromId),
     fromProperty: String(raw.fromProperty),
     toId: String(raw.toId),
     toProperty: String(raw.toProperty),
     rest: pickRest(raw, CONNECTION_KNOWN_KEYS, CONNECTION_TRANSIENT_KEYS)
   };
+  if (raw.label !== undefined) connection.label = raw.label as string;
+  if (raw.labelT !== undefined) connection.labelT = raw.labelT as number;
+  return connection;
 }
 
 // ---------------------------------------------------------------------------
@@ -257,13 +270,17 @@ function denormalizeComment(comment: SnapshotComment): Record<string, unknown> {
 }
 
 function denormalizeConnection(connection: SnapshotConnection): Record<string, unknown> {
-  return {
+  const out: Record<string, unknown> = {
     fromId: connection.fromId,
     fromProperty: connection.fromProperty,
     toId: connection.toId,
-    toProperty: connection.toProperty,
-    ...connection.rest
+    toProperty: connection.toProperty
   };
+  // Written only when present, so a wire that never carried a label does not
+  // grow the keys on its way through a merge.
+  if (connection.label !== undefined) out.label = connection.label;
+  if (connection.labelT !== undefined) out.labelT = connection.labelT;
+  return { ...out, ...connection.rest };
 }
 
 /** Children ids of a parent (undefined = roots), ordered by childIndex. */

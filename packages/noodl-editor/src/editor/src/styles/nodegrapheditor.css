@@ -30,3 +30,25 @@
   top: 0;
   left: 0;
 }
+
+/* CAN-002: the wire-label editor. It lives in the DOM layer, which carries the
+   canvas pan/zoom transform, so every length here is in graph units — the
+   browser scales them with everything else. */
+.nodegraph-wire-label-editor {
+  box-sizing: border-box;
+  resize: none;
+  overflow: hidden;
+  padding: 2px 4px;
+  border: 1px solid var(--theme-color-primary);
+  border-radius: 3px;
+  background-color: var(--theme-color-bg-1);
+  color: var(--theme-color-fg-highlight);
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 10.5px;
+  line-height: 13px;
+  text-align: center;
+}
+
+.nodegraph-wire-label-editor:focus {
+  outline: none;
+}

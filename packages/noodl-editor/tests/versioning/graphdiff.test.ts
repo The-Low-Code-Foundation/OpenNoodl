@@ -164,6 +164,40 @@ describe('GraphDiff', () => {
     expect(lines[0]).not.toContain('net.noodl.controls.button');
   });
 
+  /** CAN-002: a label is meaning, and version control has to be able to see it. */
+  describe('connection labels', () => {
+    const wired = (label?: string, labelT?: number) => {
+      const connection: Record<string, unknown> = conn('a', 'out', 'b', 'in');
+      if (label !== undefined) connection.label = label;
+      if (labelT !== undefined) connection.labelT = labelT;
+      return comp([node('a', 'Text', { label: 'Source' }), node('b', 'Text', { label: 'Sink' })], [connection]);
+    };
+
+    it('reports a relabel as a semantic change with both texts', () => {
+      const changes = diffGraphs(wired('old reason'), wired('new reason')).changes;
+      expect(changes.length).toBe(1);
+      const change = changes[0];
+      if (change.kind !== 'connection-relabelled') throw new Error('wrong kind ' + change.kind);
+      expect(change.category).toBe('semantic');
+      expect(change.fromLabel).toBe('old reason');
+      expect(change.toLabel).toBe('new reason');
+    });
+
+    it('reports adding and removing a label', () => {
+      const added = diffGraphs(wired(), wired('because retries')).changes;
+      expect(added.map((c) => c.kind)).toEqual(['connection-relabelled']);
+      expect(formatChange(added[0], {})).toContain('because retries');
+
+      const removed = diffGraphs(wired('because retries'), wired()).changes;
+      expect(removed.map((c) => c.kind)).toEqual(['connection-relabelled']);
+      expect(formatChange(removed[0], {})).toContain('Removed the label');
+    });
+
+    it('reports nothing at all when only the label`s position moved', () => {
+      expect(diffGraphs(wired('same text', 0.2), wired('same text', 0.8)).changes).toEqual([]);
+    });
+  });
+
   it('formats rewires in graph terms', () => {
     const base = comp([node('a', 'Text', { label: 'Source A' }), node('b', 'Text'), node('c', 'Text', { label: 'Sink' })], [conn('a', 'out', 'c', 'in')]);
     const target = comp([node('a', 'Text', { label: 'Source A' }), node('b', 'Text'), node('c', 'Text', { label: 'Sink' })], [conn('b', 'out', 'c', 'in')]);

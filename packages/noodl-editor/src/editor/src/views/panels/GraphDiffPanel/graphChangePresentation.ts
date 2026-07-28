@@ -41,6 +41,7 @@ export function groupOf(change: GraphChange): ChangeGroup {
     case 'connection-added':
     case 'connection-removed':
     case 'connection-rewired':
+    case 'connection-relabelled':
       return ChangeGroup.Wiring;
     case 'node-renamed':
     case 'node-parameters-changed':

@@ -7,9 +7,30 @@ import { IVector2, NodeGraphEditor } from '../nodegrapheditor';
 import PopupLayer from '../popuplayer';
 import { CanvasFonts, CanvasTheme, WireLabel, WIRE_TYPE_ERROR } from './canvas/CanvasTheme';
 import { NodeGraphEditorNode } from './NodeGraphEditorNode';
+import { textWordWrap } from './NodeGraphEditorNodePainter';
 
 /** Editor setting: show every wire's label without hovering (CAN-001). */
 export const ALWAYS_SHOW_WIRE_LABELS = 'nodeGraphEditor.alwaysShowWireLabels';
+
+/**
+ * Break a label into the lines the chip will draw (CAN-002).
+ *
+ * `textWordWrap` from the node painter does the measure-and-break — there is no
+ * second wrapper in this codebase — and this collects its callback instead of
+ * drawing, because the chip has to be sized before anything is painted into it.
+ * Past three lines the text is ellipsised and the full string is available on
+ * hover; a wire label is a phrase, and a paragraph belongs in a node comment.
+ */
+function wrapLabelLines(ctx: CanvasRenderingContext2D, text: string): string[] {
+  const lines: string[] = [];
+  textWordWrap(ctx, text, 0, 0, WireLabel.lineHeight, WireLabel.maxWidth, (line: string) => lines.push(line));
+
+  if (lines.length <= WireLabel.maxLines) return lines.length ? lines : [text];
+
+  const kept = lines.slice(0, WireLabel.maxLines);
+  kept[WireLabel.maxLines - 1] = kept[WireLabel.maxLines - 1] + '…';
+  return kept;
+}
 
 function getPortName(p) {
   return p ? p.editorName || p.displayName : undefined;
@@ -236,6 +257,15 @@ export class NodeGraphEditorConnection {
                 position: 'bottom',
                 content: health.message
               });
+            } else if (this.model.label) {
+              // The chip stops at three lines; hovering is where the rest of a
+              // long label lives (CAN-002).
+              PopupLayer.instance.showTooltip({
+                x: evt.pageX,
+                y: evt.pageY,
+                position: 'bottom',
+                content: this.model.label
+              });
             }
           }
           this.owner.repaint();
@@ -249,6 +279,15 @@ export class NodeGraphEditorConnection {
       evt.consumed = true;
 
       if (this.owner.readOnly === true) return;
+
+      // Double-click writes a label (CAN-002). It is available at all because
+      // CAN-003 retired the arm-then-confirm delete, whose second click this
+      // used to be.
+      if (this.owner.interaction.leftButtonIsDoubleClicked) {
+        PopupLayer.instance.hideTooltip();
+        this.owner.wireLabelEditor.open(this);
+        return;
+      }
 
       // Grabbing an end detaches it (CAN-003). Tested before anything else on
       // the wire, so a grab can never select instead.
@@ -410,12 +449,18 @@ export class NodeGraphEditorConnection {
     if (!a) return;
 
     ctx.save();
+    // Set before measuring: textWordWrap measures with whatever font the
+    // previous paint left on the context.
     ctx.font = CanvasFonts.portLabel;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
-    const width = ctx.measureText(label).width + WireLabel.paddingX * 2;
-    const height = WireLabel.lineHeight;
+    // An author's text wraps and is capped at three lines; a port name is one
+    // short word and comes out of the same code as a single line.
+    const lines = wrapLabelLines(ctx, label);
+    const textWidth = Math.max(...lines.map((line) => ctx.measureText(line).width));
+    const width = Math.min(textWidth, WireLabel.maxWidth) + WireLabel.paddingX * 2;
+    const height = WireLabel.lineHeight * lines.length;
 
     // A chip behind the text: a bare glyph over a dot-grid at low zoom is
     // unreadable, and the wire itself runs under it.
@@ -425,7 +470,9 @@ export class NodeGraphEditorConnection {
     ctx.globalAlpha = 1;
 
     ctx.fillStyle = strokeColor;
-    ctx.fillText(label, a.x, a.y);
+    lines.forEach((line, index) => {
+      ctx.fillText(line, a.x, a.y - height / 2 + WireLabel.lineHeight * (index + 0.5));
+    });
     ctx.restore();
 
     // Cached for hit-testing the drag. Graph coordinates, this frame only.

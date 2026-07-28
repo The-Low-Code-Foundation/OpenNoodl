@@ -161,6 +161,42 @@ describe('GraphMerge', () => {
     expect(result.merged.connections.map(connectionKey)).toEqual(['d:out->c:in']);
   });
 
+  /** CAN-002: two people writing why the same wire exists is a real conflict. */
+  describe('connection labels', () => {
+    const wired = (label?: string, labelT?: number) => {
+      const connection: Record<string, unknown> = conn('a', 'out', 'b', 'in');
+      if (label !== undefined) connection.label = label;
+      if (labelT !== undefined) connection.labelT = labelT;
+      return comp([node('a', 'Text'), node('b', 'Text')], [connection]);
+    };
+
+    it('takes the one side`s label when the other left it alone', () => {
+      const result = mergeGraphs(wired(), wired(), wired('their reason'));
+      expect(result.conflicts).toEqual([]);
+      expect(result.merged.connections[0].label).toBe('their reason');
+
+      const ourSide = mergeGraphs(wired(), wired('our reason'), wired());
+      expect(ourSide.conflicts).toEqual([]);
+      expect(ourSide.merged.connections[0].label).toBe('our reason');
+    });
+
+    it('conflicts when both sides wrote different text, and keeps ours until resolved', () => {
+      const result = mergeGraphs(wired('base'), wired('our reason'), wired('their reason'));
+      const conflicts = result.conflicts.filter((c) => c.kind === 'connection-label');
+      expect(conflicts.length).toBe(1);
+      expect(result.merged.connections[0].label).toBe('our reason');
+
+      applyResolution(result, conflicts[0].id, 'theirs');
+      expect(result.merged.connections[0].label).toBe('their reason');
+    });
+
+    it('does not conflict over where the label sits', () => {
+      const result = mergeGraphs(wired('same', 0.5), wired('same', 0.2), wired('same', 0.8));
+      expect(result.conflicts).toEqual([]);
+      expect(result.merged.connections[0].labelT).toBe(0.2);
+    });
+  });
+
   it('conflicts on a connection added to a node the other side deleted (improvement over silent drop)', () => {
     const base = comp([node('a', '0'), node('b', '0')]);
     const ours = comp([node('a', '0'), node('b', '0')], [conn('a', '0', 'b', '1')]);

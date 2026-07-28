@@ -354,6 +354,25 @@ export function diffGraphs(base: GraphSnapshot, target: GraphSnapshot, options: 
       changes.push({ kind: 'connection-added', connection: connectionRef(connection, target, base), category: 'semantic' });
   }
 
+  // A wire that exists on both sides can still differ: its author-written label
+  // (CAN-002). `connectionKey` is the four endpoints, so nothing above notices.
+  // Position (`labelT`) is deliberately not compared — moving a label is not an
+  // edit to the graph's meaning.
+  for (const [key, baseConnection] of baseConnections) {
+    const targetConnection = targetConnections.get(key);
+    if (!targetConnection) continue;
+    if ((baseConnection.label ?? undefined) === (targetConnection.label ?? undefined)) continue;
+
+    const change: GraphChange = {
+      kind: 'connection-relabelled',
+      connection: connectionRef(targetConnection, target, base),
+      category: 'semantic'
+    };
+    if (baseConnection.label !== undefined) change.fromLabel = baseConnection.label;
+    if (targetConnection.label !== undefined) change.toLabel = targetConnection.label;
+    changes.push(change);
+  }
+
   // --- Comments ---
   const baseComments = new Map(base.comments.map((c) => [c.key, c]));
   const targetComments = new Map(target.comments.map((c) => [c.key, c]));

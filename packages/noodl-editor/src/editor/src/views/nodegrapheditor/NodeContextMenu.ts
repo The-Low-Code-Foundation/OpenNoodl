@@ -4,7 +4,7 @@ import { canExtractToComponent } from '@noodl-utils/ExtractToComponent';
 
 import { IconName } from '@noodl-core-ui/components/common/Icon';
 import { DialogRenderDirection } from '@noodl-core-ui/components/layout/BaseDialog';
-import { MenuDialogWidth } from '@noodl-core-ui/components/popups/MenuDialog';
+import { MenuDialogItem, MenuDialogWidth } from '@noodl-core-ui/components/popups/MenuDialog';
 import { PopupToolbar, PopupToolbarProps } from '@noodl-core-ui/components/popups/PopupToolbar';
 
 import { SidebarModel } from '@noodl-models/sidebar';
@@ -283,10 +283,16 @@ export class NodeContextMenu {
    * Right-click on a wire (CAN-003 / F54). Wires had no menu at all — deleting
    * one meant discovering an undocumented two-click gesture.
    */
-  getConnectionContextMenuActions(connection: NodeGraphEditorConnection) {
+  getConnectionContextMenuActions(connection: NodeGraphEditorConnection): (MenuDialogItem | 'divider')[] {
     const editor = this.editor;
 
     return [
+      {
+        label: connection.model.label ? 'Edit label' : 'Add label',
+        icon: IconName.NotePencil,
+        onClick: () => editor.wireLabelEditor.open(connection)
+      },
+      'divider',
       {
         label: 'Delete connection',
         icon: IconName.Trash,

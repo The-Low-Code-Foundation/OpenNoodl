@@ -51,6 +51,7 @@ import { NodeOperations } from './nodegrapheditor/NodeOperations';
 import { OverlayViews } from './nodegrapheditor/OverlayViews';
 import { SelectionActions } from './nodegrapheditor/SelectionActions';
 import { ViewportActions } from './nodegrapheditor/ViewportActions';
+import { WireLabelEditor } from './nodegrapheditor/WireLabelEditor';
 import { ToastLayer } from './ToastLayer/ToastLayer';
 
 // Styles
@@ -132,6 +133,9 @@ export class NodeGraphEditor extends View {
 
   /** Pan/zoom side-effect coordination: comment layer + overlay sync, clamping (PLAT-001 wave 3 extraction). */
   viewportActions = new ViewportActions(this);
+
+  /** The textarea shown when a wire's label is being written (CAN-002). */
+  wireLabelEditor = new WireLabelEditor(this);
 
   /** Layout/paint pipeline: measure, AABB, per-frame FrameState assembly (PLAT-001 wave 3 extraction). */
   painter = new CanvasPainter(this);

@@ -137,6 +137,13 @@ export function atomsOf(diff: ComponentDiff): Atom[] {
         atoms.push({ kind: 'conn-del', key: `conn-del:${connectionKey(change.before)}`, value: '' });
         atoms.push({ kind: 'conn-add', key: `conn-add:${connectionKey(change.after)}`, value: '' });
         break;
+      case 'connection-relabelled':
+        atoms.push({
+          kind: 'conn-label',
+          key: `conn-label:${connectionKey(change.connection)}`,
+          value: encode(change.toLabel)
+        });
+        break;
       case 'comment-added':
         atoms.push({ kind: 'comment', key: `comment-add:${change.commentKey}`, value: change.text, commentKey: change.commentKey });
         break;
@@ -197,6 +204,11 @@ export function conflictCovers(conflict: GraphConflict, atom: Atom): boolean {
         conflict.connection !== undefined &&
         (atom.key === `conn-add:${connectionKey(conflict.connection)}` ||
           atom.key === `conn-del:${connectionKey(conflict.connection)}`)
+      );
+    case 'connection-label':
+    case 'connection-label-deleted':
+      return (
+        conflict.connection !== undefined && atom.key === `conn-label:${connectionKey(conflict.connection)}`
       );
     case 'comment':
       return atom.commentKey !== undefined && atom.commentKey === conflict.name;
@@ -420,7 +432,7 @@ function detach(component: MutableComponent, id: string): RawNode | undefined {
 export function mutate(component: MutableComponent, rng: Rng, count: number, side: string): void {
   for (let i = 0; i < count; i++) {
     const nodes = allNodes(component);
-    const op = rng.int(13);
+    const op = rng.int(14);
     switch (op) {
       case 0: {
         // add node under a random parent (or root)
@@ -520,6 +532,14 @@ export function mutate(component: MutableComponent, rng: Rng, count: number, sid
       case 9: {
         if (component.connections.length === 0) break;
         component.connections.splice(rng.int(component.connections.length), 1);
+        break;
+      }
+      case 13: {
+        // write (or clear) an author label on a wire — CAN-002
+        if (component.connections.length === 0) break;
+        const target = component.connections[rng.int(component.connections.length)];
+        if (rng.next() < 0.25) delete target.label;
+        else target.label = `why-${side}-${i}`;
         break;
       }
       case 10: {

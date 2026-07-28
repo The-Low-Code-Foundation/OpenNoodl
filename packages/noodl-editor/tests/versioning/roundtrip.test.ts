@@ -44,7 +44,18 @@ describe('GraphSnapshot round-trip', () => {
         },
         { id: 'solo', type: 'Image' }
       ],
-      connections: [{ fromId: 't1', fromProperty: 'out', toId: 'solo', toProperty: 'in', annotation: 'Created' }],
+      connections: [
+        {
+          fromId: 't1',
+          fromProperty: 'out',
+          toId: 'solo',
+          toProperty: 'in',
+          // CAN-002/CAN-001: known keys now, so the diff can see a relabel.
+          label: 'only after validation',
+          labelT: 0.3,
+          annotation: 'Created'
+        }
+      ],
       comments: [{ id: 'c1', text: 'note', x: 5, y: 6, width: 100, height: 50, fill: true }],
       futureGraphField: 42
     },
@@ -72,8 +83,11 @@ describe('GraphSnapshot round-trip', () => {
     expect(back.graph.comments[0].text).toBe('note');
     expect(back.graph.comments[0].width).toBe(100);
     expect(back.metadata).toEqual({ some: 'meta' });
-    // The transient diff annotation is intentionally dropped.
+    // The transient diff annotation is intentionally dropped...
     expect((back.graph.connections[0] as Record<string, unknown>).annotation).toBeUndefined();
+    // ...while the author's label, which sits beside it on the same object, is not.
+    expect((back.graph.connections[0] as Record<string, unknown>).label).toBe('only after validation');
+    expect((back.graph.connections[0] as Record<string, unknown>).labelT).toBe(0.3);
   });
 
   it('v2 files → snapshot → v2 files preserves ids, hierarchy and ordering', () => {
