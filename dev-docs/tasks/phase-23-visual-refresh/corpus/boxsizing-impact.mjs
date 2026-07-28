@@ -266,8 +266,17 @@ try {
   await release().catch(() => {});
   await unfreeze(cdp).catch(() => {});
   await cdp.send('Emulation.setEmulatedMedia', { features: [] }).catch(() => {});
-  fs.writeFileSync(JSON_OUT, JSON.stringify(report, null, 2));
-  console.log(`\nwrote ${JSON_OUT}`);
+  // Never overwrite a good report with an empty one. The `finally` runs on the
+  // error paths too, so a run that bailed out early (wrong screen, no project)
+  // would otherwise leave `{}` on disk looking exactly like "nothing changes" —
+  // the most dangerous possible false pass for a gate whose green IS an empty
+  // result.
+  if (Object.keys(report).length > 0) {
+    fs.writeFileSync(JSON_OUT, JSON.stringify(report, null, 2));
+    console.log(`\nwrote ${JSON_OUT}`);
+  } else {
+    console.log('\nno measurements taken — leaving any previous report on disk');
+  }
   cdp.close();
 }
 

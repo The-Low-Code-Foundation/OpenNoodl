@@ -168,9 +168,19 @@ class CdpSession {
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// The editor's own document, matched SPECIFICALLY.
+//
+// `/index\.html/` is not specific enough: `frames/viewer-frame/index.html` and
+// `about-window/about.html` are also `file:` page targets, and both sort AHEAD
+// of the editor in `/json/list`. Attaching to one of them looks like a broken
+// app rather than a wrong window — this gate reported "No rail panel buttons
+// found. Open a project in the editor first." with a project plainly open,
+// purely because a preview was running.
+const EDITOR_PAGE = /noodl-editor\/src\/editor\/index\.html/;
+
 async function connect() {
   const list = await (await fetch(`${CDP}/json`)).json();
-  const page = list.find((t) => t.type === 'page' && /index\.html/.test(t.url) && !/devtools/.test(t.url));
+  const page = list.find((t) => t.type === 'page' && EDITOR_PAGE.test(t.url));
   if (!page) throw new Error('No editor CDP page target found — is dev:debug running?');
   const ws = new WebSocket(page.webSocketDebuggerUrl);
   await new Promise((res, rej) => {

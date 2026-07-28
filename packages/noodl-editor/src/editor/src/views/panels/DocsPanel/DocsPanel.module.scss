@@ -39,6 +39,24 @@
   gap: 8px;
   padding: 6px 8px;
   border-bottom: 1px solid var(--theme-color-bg-3);
+
+  /* F20 — the same shape as F37 and F38: a flex child defaults to
+     `min-width: auto`, so the label (a doc path, arbitrarily long) held its full
+     min-content width and shoved the button group past the panel's right edge
+     at the 240px floor. It only fitted before because content-box was giving
+     this row more width than its CSS asked for; the box-sizing reset made the
+     shortfall real.
+     The label is the shrinkable one — it ellipsizes. The buttons are not. */
+  > :first-child {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  > :last-child {
+    flex: none;
+  }
 }
 
 .Notice {

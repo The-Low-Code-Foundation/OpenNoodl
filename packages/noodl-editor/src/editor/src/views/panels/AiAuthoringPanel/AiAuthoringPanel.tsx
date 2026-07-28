@@ -416,7 +416,15 @@ export function AiAuthoringPanel() {
           exactly as before; project scope plans, then fans out. AIX-010 adds
           review, which writes docs and never touches the graph. */}
       <Section variant={SectionVariant.PanelShy} hasGutter>
-        <HStack UNSAFE_style={{ gap: 8 }}>
+        {/* F20: wraps at narrow panel widths. These three are `isGrowing`, but a
+            flex item still cannot go below its min-content width, and "This
+            component" + "Project" + "Docs" need 242px against the 204px a
+            240px-wide panel actually offers. It only ever fitted because
+            content-box was quietly giving the Section 38px more than its CSS
+            asked for; with the box-sizing reset adopted the shortfall is real.
+            Wrapping (as ProjectReviewBanner already does) keeps the labels
+            readable, where shrinking would ellipsize them to nothing. */}
+        <HStack UNSAFE_style={{ gap: 8, flexWrap: 'wrap' }}>
           <PrimaryButton
             label="This component"
             variant={scope === 'component' ? PrimaryButtonVariant.Muted : PrimaryButtonVariant.Ghost}

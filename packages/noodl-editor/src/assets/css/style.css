@@ -2,6 +2,33 @@
    Global stuff
    ------------------------------------------------------------------- */
 
+/* F20 — the global box-sizing reset, adopted 2026-07-28.
+ *
+ * Lives here rather than in noodl-core-ui/styles/global.css because that file
+ * is not imported by the editor at all (only mentioned in a comment); this is
+ * the sheet index.html actually links, and it covers the launcher too — they
+ * share one window.
+ *
+ * Adopting this CHANGES rendering, and that is the point. The phase-24 mock
+ * specifies OUTER dimensions the way design tools report them — "Sidebar
+ * (224px, bg-1, border-r, padding 16px 10px)", "search flex max-width 380px …
+ * padding 8px 12px", "Toast … width 340 … padding 13px 14px". Read as
+ * border-box, which is how they were written. Under content-box the padding
+ * and border were added ON TOP, so those elements have been rendering wider
+ * than the mock ever asked for: the sidebar at 245px against a specified 224,
+ * the search box at 406 against 380. The reset does not break mock parity, it
+ * is what delivers it.
+ *
+ * Zero specificity, so any component rule still wins. Measured by
+ * dev-docs/tasks/phase-23-visual-refresh/corpus/boxsizing-impact.mjs, whose
+ * job after adoption is to report ~nothing left to change.
+ */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 /* Open sans specified as one family per weight */
 @font-face {
   font-family: 'OpenSans-Light';
