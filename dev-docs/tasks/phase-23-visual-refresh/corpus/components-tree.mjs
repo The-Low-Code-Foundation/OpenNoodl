@@ -647,7 +647,7 @@ function assess(m, label, { checkNarrow }) {
   const fail = (code, msg) => out.push({ code, msg: `${label}: ${msg}` });
   const skip = (code, msg) => out.push({ code, msg: `${label}: ${msg}`, skip: true });
   /** Measured, below the bar, and accepted on the record. Not a pass, not a skip. */
-  const exempt = (code, msg) => out.push({ code, msg: `${label}: ${msg}`, exempt: true });
+  const exempt = (code, msg, key) => out.push({ code, msg: `${label}: ${msg}`, exempt: true, exemptKey: key });
 
   // --- A: the light-mode fix ------------------------------------------------
   if (!m.selected) {
@@ -753,10 +753,14 @@ function assess(m, label, { checkNarrow }) {
       const ex = GLYPH_CONTRAST_EXEMPT[g.key];
       if (ex && g.contrast >= ex.floor) {
         // Measured, below the bar, and accepted — see GLYPH_CONTRAST_EXEMPT.
+        // The reason is deliberately NOT repeated per pass: it is a paragraph,
+        // and printing it once per theme×width buried the rest of the report.
+        // The run prints it once, at the end, keyed by glyph.
         exempt(
           'glyph-contrast',
           `the "${g.key}" glyph measures ${g.contrast}:1, below ${EXPECT.minGlyphContrast}:1 — ` +
-            `recorded exemption (floor ${ex.floor}). ${ex.why}`
+            `recorded exemption (floor ${ex.floor})`,
+          g.key
         );
       } else if (ex) {
         fail(
@@ -988,9 +992,13 @@ function flush() {
   if (exemptions.length) {
     console.log(
       `\n~ ${exemptions.length} EXEMPTIONS — measured, below the bar, and accepted on the record. ` +
-        `Not passes; see GLYPH_CONTRAST_EXEMPT for why each one stands:`
+        `Not passes:`
     );
     for (const e of exemptions) console.log(`  - [${e.theme ?? '-'}/${e.pass ?? '-'}] (${e.code}) ${e.msg}`);
+    // The rationale once per distinct glyph, not once per theme×width pass.
+    for (const key of [...new Set(exemptions.map((e) => e.exemptKey).filter(Boolean))]) {
+      console.log(`\n  why "${key}" stands:\n    ${GLYPH_CONTRAST_EXEMPT[key].why.replace(/\s+/g, ' ')}`);
+    }
   }
   if (skips.length) {
     console.log(`\n– ${skips.length} SKIPS — these are NOT passes, they are things this run could not prove:`);
