@@ -195,6 +195,40 @@ retention leak — but importing a large project makes the target graph re-resol
 all of its types once per source component. A performance smell, not a
 correctness bug. Not fixed; recorded so the next person does not re-derive it.
 
+**CLOSED 2026-07-28 — measured, and the observation was an artefact twice over.**
+The static read had refuted the *mechanism* but left the observation
+(`owner.name === 'proj1'`) unexplained. Restoring the identity form of assertion
+3 with diagnostics, over seeds `63183` / `07241` / `69768`:
+
+| seed | `type === target /comp1` | `type.owner.name` | target `owner.name` | `typeCache('/comp1') === target` |
+|---|---|---|---|---|
+| 63183 | **false** | proj1 | proj1 | true |
+| 07241 | **true** | proj1 | proj1 | true |
+| 69768 | **false** | proj1 | proj1 | true |
+
+Two independent findings, either of which alone closes it:
+
+1. **`proj1` never identified the source project.** `import_proj2` — the
+   **target** fixture — was *also* named `"proj1"`. Both sides therefore
+   reported the same owner name, so the original evidence could not distinguish
+   "the source project analyze loaded" from "the component apply just grafted
+   in". The inference had nothing under it. The fixture is now renamed to
+   `proj2` so this cannot mislead a third investigation.
+2. **Identity is order-dependent** — false, true, false across three seeds. That
+   is exactly the discriminator the note itself prescribed: *"if it only
+   reproduces on some orders it is test isolation, not the importer."*
+
+What is **stable on every seed**: `NodeLibrary.instance.typeCache.get('/comp1')`
+is the *target's* component. So `getNodeTypeWithName` resolves correctly and the
+import contract holds. What varies is only whether `instanceNode.type` had
+already latched a type object from an earlier resolution — NodeLibrary is a
+singleton, and these specs assign `ProjectModel.instance` freely.
+
+So: **no retention leak, and nothing for `apply` to fix.** The spec now asserts
+the stable half (`typeCache('/comp1')` is the target's component) and still does
+not assert identity, because identity is a property of spec order. The
+misleading comment has been replaced with the measurement.
+
 ## Anytime fixes (independent of task order)
 
 - [x] Import-from-URL collision popup ignores unticked items (`EditorPage.tsx:353–363`) — LIB-004 step 0 (2026-07-25; fix applies `filterImports(..., { remove: getUnselectedImports() })`. ⚠️ verified by construction, not yet live)

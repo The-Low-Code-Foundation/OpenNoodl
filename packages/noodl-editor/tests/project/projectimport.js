@@ -480,20 +480,34 @@ describe('Project import and export unit tests', function () {
                 // "references in imported components resolve post-import"
                 // contract, stated over this project's own state only.
                 //
-                // Object identity is deliberately NOT asserted. Writing it that
-                // way first turned up something worth its own look: `type` is
-                // `NodeLibrary.getNodeTypeWithName(typename)`, and after an
-                // import it resolves to the /comp1 ComponentModel owned by the
-                // *source* ProjectModel that `analyzeSource` loaded for
-                // analysis (`owner.name === 'proj1'`, retained directory
-                // `tests/testfs/import_proj1`) — not the one `apply` put in the
-                // target project. The graphs are identical so nothing visibly
-                // breaks, but the imported graph holds a live reference into a
-                // project object that should have been discarded. Filed as an
-                // observation, not asserted here in either direction: pinning
-                // the current behaviour would freeze something that looks wrong,
-                // and pinning the other would fail a suite over an unproven
-                // claim.
+                // Object identity is deliberately NOT asserted, and the reason is
+                // now measured rather than suspected.
+                //
+                // An earlier note read `instanceNode.type.owner.name === 'proj1'`
+                // as "the type resolves to the component owned by the SOURCE
+                // project analyzeSource loaded, not the one apply put in the
+                // target" — a retention leak into a discarded project. Measured
+                // over seeds 63183 / 07241 / 69768 (2026-07-28), that is wrong
+                // twice:
+                //
+                //   - `proj1` never identified the source. `import_proj2`, the
+                //     TARGET fixture, was also named "proj1", so both sides
+                //     reported the same owner name. It has since been renamed to
+                //     "proj2" precisely so this cannot mislead again.
+                //   - identity came out false / TRUE / false across those three
+                //     seeds. Order-dependent, which is the discriminator the note
+                //     itself named: test isolation, not `apply`.
+                //
+                // What is stable on all three: the typeCache entry for '/comp1'
+                // IS the target's component, so `getNodeTypeWithName` resolves
+                // correctly. What varies is whether `instanceNode.type` had
+                // already latched a type object from an earlier resolution, in a
+                // suite where NodeLibrary is a singleton and specs assign
+                // ProjectModel.instance freely.
+                //
+                // So identity stays unasserted because it is a property of spec
+                // order, not of the importer. Asserting it either way would pin
+                // the singleton's history.
                 const importedComp1 = ProjectModel.instance.getComponentWithName('/comp1');
                 expect(importedComp1).not.toBe(undefined);
                 let instanceNode;
@@ -502,6 +516,10 @@ describe('Project import and export unit tests', function () {
                 });
                 expect(instanceNode).not.toBe(undefined);
                 expect(instanceNode.type.name).toBe('/comp1');
+
+                // The target's own component is what the name resolves through —
+                // asserted, unlike identity, because it is order-independent.
+                expect(NodeLibrary.instance.typeCache.get('/comp1')).toBe(importedComp1);
 
                 done();
               });
