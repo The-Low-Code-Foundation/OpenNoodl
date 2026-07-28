@@ -82,6 +82,49 @@ Probe: `/scratchpad/boxsizing-impact.mjs` (transient; the method is a before/aft
 `getBoundingClientRect()` sweep with the reset injected via a `<style>` element, which anyone can
 re-run in ten minutes).
 
+### — re-measured 2026-07-28: the table above is stale, and the scope is bigger
+
+Richard's call (2026-07-28) is to **adopt** the reset. Re-measuring first, because the table above
+is nine days old — and it has moved in both directions. The probe is no longer transient: it lives at
+`dev-docs/tasks/phase-23-visual-refresh/corpus/boxsizing-impact.mjs`, self-contained like its
+neighbours, so the next person measures instead of re-deriving. **Losing the first probe is why this
+had to be redone at all.**
+
+It also **freezes animation before sampling**. Without that, `ActivityIndicator`'s loader dots and
+Clippy's `bounce1/2/3` dominate the output: a dot sampled at 0.02px "before" and 6.4px "after" reads
+as a 6px box-sizing regression and is really two keyframes. The first re-run reported exactly that.
+Numbers below are post-freeze and stable across runs.
+
+| Selector | Δ (2026-07-28) | vs. the table above |
+|---|---|---|
+| `ToastCard .Root` + Body/Title/Message/Actions | **Δw −30** | **new — and now the largest** |
+| `SideNavigation .Toolbar` | Δh −20 | unchanged |
+| `CanvasHud .ZoomCluster` / `.ZoomValue` | Δw −8 | unchanged |
+| `ClippyLogo .LogoIdleCircle` | Δw/Δh −8 (30→22) | unchanged |
+| `TextInput` .Root/.InputArea/.InputWrapper/.Input | **Δw −4.42** | **was −18** — most of it has since been fixed |
+| `EditorTopbar` .LeftSide/.UrlBarWrapper/.RightSide | Δw −4.42/−2.25, Δh −2 | new, small |
+| `Checkbox .FauxCheckbox` | not reproduced | no checkbox in the sampled panels — unconfirmed either way |
+
+**And the original sweep only covered four editor panels, so it missed a whole surface.** The
+launcher is affected at least as much:
+
+| Selector | Δ |
+|---|---|
+| `LauncherSearchBar .Search` / `.SearchInput` | Δw −26 |
+| `FolderTree` .Root/.SideLabel/.VirtualFolders/.Grow/.NewFolderButton, `FolderTreeItem .Root` | Δw −21 |
+| `Projects` .Sidebar / .Main / .Grid | Δw ∓21, Δh +2/+16 |
+| `LauncherProjectCard` .Card/.Thumb/.Meta/.Info/.Name/.Sub/.ThumbImage | Δw +7, Δh +4 |
+
+So the job is **~8–9 component families, not five**, the item the decision was framed around
+(`TextInput`, "most of it") is now the *smallest* of them, and two of the biggest — `ToastCard` and
+the launcher's search/folder tree — are not in the approved table at all. Adoption is well specified
+now but it is its own focused pass with a visual gate, not a tail-end cleanup: **not started**, so
+that the editor is not left in a half-converted state.
+
+Order to work in, cheapest-signal-first: `ToastCard` (−30, one component, self-contained), then
+`FolderTree`/`LauncherSearchBar` (−21/−26, launcher only), then `SideNavigation .Toolbar` (−20),
+then the −8s and −4s. Gate after each: this probe, plus `panel-geometry.mjs` and `panel-modes.mjs`.
+
 ## The regression gate
 
 `node dev-docs/tasks/phase-23-visual-refresh/corpus/panel-geometry.mjs [--width 1280] [--height 720]`
