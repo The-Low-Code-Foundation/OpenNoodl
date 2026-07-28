@@ -150,3 +150,63 @@ primary-checkout pass as part of the task, not as a residual.
 - **PNL-006's kind glyphs and warning dot against a real project**, and PNL-008's acceptance 2/4/5 round
   trips (close-and-reopen, the experimental toggle, the settings-id migration). All need a project
   lifecycle rather than a panel walk.
+
+### — the 2026-07-28 live-editor pass: F41 and F44 closed, one new defect
+
+Run from the primary checkout, which is the only place it can be run (`lerna exec`
+resolves there, so a worktree agent's "live verification" describes another tree).
+
+**F41 — closed.** `panel-modes.mjs` executed for the first time: **13/13 clean**.
+The assertion that had never run — the floating mode surviving a ⌘B hide → ⌘B show
+round trip — passes (`position: fixed`, `hasDetachedBar: true`). The run also
+closed four PNL-009 acceptance items that were previously recorded but unverified:
+the icon rail stays hit-testable under a full-mode panel (`railHitTakesRail: true`
+at 53px), focus is not trapped in a floating panel (escapes in 7 Tab presses of a
+25 budget), the `⋯` popup is anchored to its button rather than the mouse, and
+PNL-002's drag-out-of-popup is still not treated as an outside click.
+
+**F44 — the synthetic-input caveat is closed, positively.** The register asked for
+a rename "using the keyboard". Driven as real per-character
+`Input.dispatchKeyEvent` with `text` (keydown/keypress/input per character, not an
+inserted string), committed with Enter through `PropertyPanelTextInput`'s real
+`inputValue !== value` gate: the new name reached `project.json` within 3s with
+nothing else touched, and the divergent browser tab title was left alone. The
+starting state was the hard case on purpose — `appName "My Noodl App"` vs
+`htmlTitle "Noodl Viewer"`, i.e. the titles already diverged, which is what the
+title-follow rule used to mask. **10/10.**
+
+**F44's other caveat — "I did not look at the quit path" — turned out to be a real
+defect, and a bigger one than F44.**
+
+> **NEW — pending project saves are dropped on quit (1s silent data-loss window).**
+> `scheduleProjectSave()` (`projectmodel.ts:1418`) is a bare
+> `setTimeout(saveProject, 1000)` in the **renderer**, and it is the single arming
+> point for *both* F44's metadata writes and the `Model.*` autosave — which is
+> every graph edit. `app.on('before-quit')` (`main.js:745`) awaits
+> `backendManager.stopAll()` and nothing else: no IPC asks the renderer to flush,
+> and nothing awaits a save. So any edit followed by a quit inside the debounce is
+> lost, with no error in any log.
+>
+> Observed, not inferred, on both paths — each time with the model confirmed to
+> hold the value and the disk confirmed not to, then `app.quit()` (the app's own
+> path, not a kill, which would have skipped the very handlers under test):
+> - metadata rename → lost, reproduced **twice**;
+> - a node label change on `/#__page__/Home` → lost (disk still `"Hello World!"`).
+>
+> This is **pre-existing and not caused by F44**. F44 made metadata *reach* the
+> timer, so it inherits an exposure the graph path has always had. Blast radius is
+> therefore everything on either path: identity, SEO, PWA, config variables,
+> Styles, design tokens, the DB schema cache, backend services, cloudservices —
+> plus every node, connection and component edit.
+>
+> A fix is not just "call `saveProject` on unload": `toDirectory` is async, so it
+> needs `before-quit` to `preventDefault()`, ask the renderer to flush, await it,
+> then quit — with a timeout so a failing save cannot wedge the quit. That is a
+> design decision with its own hang risk, so it is filed here rather than taken
+> in passing.
+
+Also worth recording, a driving trap one window along from the documented one:
+**`--target=dashboard` silently attaches to the "About NodeGX" window when it is
+open.** `about-window/about.html` is also a `file:` page and sorts ahead of the
+editor, so every query returns normally and only `webpackChunknoodl_editor` being
+undefined gives it away. Match `noodl-editor/src/editor/index.html` specifically.
