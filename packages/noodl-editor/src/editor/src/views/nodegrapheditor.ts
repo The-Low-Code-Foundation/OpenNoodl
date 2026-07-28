@@ -2,6 +2,7 @@ import { AiAssistantModel } from '@noodl-models/AiAssistant/AiAssistantModel';
 import { RuntimeType } from '@noodl-models/nodelibrary/NodeLibraryData';
 import { SidebarModel } from '@noodl-models/sidebar';
 import { UndoQueue } from '@noodl-models/undo-queue-model';
+import { EditorSettings } from '@noodl-utils/editorsettings';
 import KeyboardHandler, { KeyboardCommand } from '@noodl-utils/keyboardhandler';
 import { getComponentModelRuntimeType } from '@noodl-utils/NodeGraph';
 
@@ -44,7 +45,7 @@ import { InspectorActions } from './nodegrapheditor/InspectorActions';
 import { ModelBindings } from './nodegrapheditor/ModelBindings';
 import { NavigationHistory } from './nodegrapheditor/NavigationHistory';
 import { NodeContextMenu } from './nodegrapheditor/NodeContextMenu';
-import { NodeGraphEditorConnection } from './nodegrapheditor/NodeGraphEditorConnection';
+import { ALWAYS_SHOW_WIRE_LABELS, NodeGraphEditorConnection } from './nodegrapheditor/NodeGraphEditorConnection';
 import { NodeGraphEditorNode } from './nodegrapheditor/NodeGraphEditorNode';
 import { NodeOperations } from './nodegrapheditor/NodeOperations';
 import { OverlayViews } from './nodegrapheditor/OverlayViews';
@@ -211,6 +212,16 @@ export class NodeGraphEditor extends View {
     // Theme change (UIX-005/UIX-008): CanvasTheme re-resolves its colours,
     // we repaint. Context = this editor, detached in dispose.
     CanvasTheme.instance.on(() => this.repaint(), this);
+
+    // Same shape of concern for the wire-label setting (CAN-001): flipping it
+    // changes what every wire paints, so the canvas has to hear about it.
+    EditorSettings.instance.on(
+      'updated',
+      (args) => {
+        if (args?.key === ALWAYS_SHOW_WIRE_LABELS) this.repaint();
+      },
+      this
+    );
   }
 
   dispose() {
@@ -218,6 +229,7 @@ export class NodeGraphEditor extends View {
     KeyboardHandler.instance.deregisterCommands(this.keyboardCommands);
 
     CanvasTheme.instance.off(this);
+    EditorSettings.instance.off(this);
     EventDispatcher.instance.off(this);
     NodeLibrary.instance.off(this);
     ProjectModel.instance && ProjectModel.instance.off(this);

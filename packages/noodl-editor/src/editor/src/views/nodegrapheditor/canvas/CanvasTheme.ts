@@ -300,6 +300,30 @@ export const CanvasFonts = {
   annotationBadge: `600 12px ${SYSTEM_FONT}`
 } as const;
 
+/**
+ * Wire-label chip geometry (CAN-001, extracted from the WFA-004 paint path).
+ *
+ * Named here rather than left as literals in the connection painter because
+ * CAN-002 computes a *wrapped* chip from the same numbers, and two copies of a
+ * padding is how they drift.
+ */
+export const WireLabel = {
+  /** Horizontal padding inside the chip, per side. */
+  paddingX: 4,
+  /** One line of label text — also the single-line chip height. */
+  lineHeight: 13,
+  /** The chip is nearly opaque: a bare glyph over the dot grid is unreadable. */
+  chipAlpha: 0.92,
+  /** Default position along the curve. */
+  defaultT: 0.5,
+  /**
+   * Placement clamp. Outside this the chip overlaps a node card, and cards are
+   * painted after wires.
+   */
+  minT: 0.15,
+  maxT: 0.85
+} as const;
+
 /** Grid geometry (mock: 20px cell, 1px-radius dots). */
 export const GRID_CELL_SIZE = 20;
 const GRID_DOT_RADIUS = 1;

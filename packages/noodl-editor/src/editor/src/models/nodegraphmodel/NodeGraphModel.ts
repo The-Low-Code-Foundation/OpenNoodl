@@ -16,7 +16,20 @@ export type Connection = {
   fromId: string;
   toProperty: string;
   toId: string;
+  /** Diff/review presentation only — transient, never serialised (AIX-003). */
   annotation: 'Deleted' | 'Changed' | 'Created' | undefined;
+  /**
+   * Author-written text shown on the wire (CAN-002). Absent when never set —
+   * never `undefined` or `''`, so a wire that was clicked and left alone does
+   * not churn `project.json`.
+   *
+   * Flat keys rather than a nested `metadata`, matching the four above, and
+   * separate from `labelT` because they mean different things to version
+   * control: `label` is meaning, `labelT` is where it sits.
+   */
+  label?: string;
+  /** Normalised position of the label along the curve, 0.15–0.85 (CAN-001). */
+  labelT?: number;
 };
 
 type NodeGraphModelJson = {
@@ -432,6 +445,46 @@ export class NodeGraphModel extends Model {
           }
         });
       }
+    }
+  }
+
+  /**
+   * Change a connection's own fields — its label and where that label sits
+   * (CAN-001/CAN-002). The third connection verb, beside add and remove.
+   *
+   * A change to `undefined` **deletes** the key rather than storing it: an
+   * empty label has to be indistinguishable from never having had one, or
+   * every wire that was ever clicked accumulates a dead key in `project.json`.
+   */
+  updateConnection(model: Connection, changes: Partial<Connection>, args?: TSFixme) {
+    const _this = this;
+    const keys = Object.keys(changes) as (keyof Connection)[];
+
+    const previous: Partial<Connection> = {};
+    for (const key of keys) previous[key] = model[key] as never;
+
+    function apply(values: Partial<Connection>) {
+      for (const key of Object.keys(values) as (keyof Connection)[]) {
+        if (values[key] === undefined) delete model[key];
+        else (model[key] as unknown) = values[key];
+      }
+      _this.notifyListeners('connectionUpdated', { model });
+    }
+
+    apply(changes);
+
+    if (args && args.undo) {
+      const undo = typeof args.undo === 'object' ? args.undo : UndoQueue.instance;
+
+      undo.push({
+        label: args.label,
+        do: function () {
+          apply(changes);
+        },
+        undo: function () {
+          apply(previous);
+        }
+      });
     }
   }
 

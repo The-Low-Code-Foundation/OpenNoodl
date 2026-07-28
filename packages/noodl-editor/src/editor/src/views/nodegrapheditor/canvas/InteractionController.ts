@@ -8,6 +8,7 @@ import { CreateNewNodePanel } from '../../createnewnodepanel';
 import { canAcceptDrop, onDrop } from '../../nodegrapheditor.drag';
 import PopupLayer from '../../popuplayer';
 import { NodeGraphEditorNode } from '../NodeGraphEditorNode';
+import { WireLabel } from './CanvasTheme';
 import * as HitTester from './HitTester';
 import { IVector2, MouseEventType } from './types';
 
@@ -69,6 +70,13 @@ export class InteractionController {
 
   /** Escape listener installed for the lifetime of a reroute drag. */
   private cancelRerouteOnEscape: ((evt: KeyboardEvent) => void) | undefined;
+
+  /**
+   * A wire's label chip is being slid along its curve (CAN-001). `startT` is
+   * kept so the whole drag becomes one undo entry — and so a drag that ends
+   * where it started pushes none.
+   */
+  draggingWireLabel: { connection: NodeGraphEditorConnection; startT: number | undefined };
 
   // Rect multiselect
   multiselectMouseDown: IVector2;
@@ -218,6 +226,17 @@ export class InteractionController {
     this.owner.repaint();
   }
 
+  /** Grab a wire's label chip to slide it along the curve (CAN-001). */
+  startDraggingWireLabel(connection: NodeGraphEditorConnection) {
+    if (this.owner.readOnly) {
+      return false;
+    }
+
+    // `this.model.labelT`, never `this.labelT` — the view copies model fields
+    // once, at construction, so the view's copy is a snapshot.
+    this.draggingWireLabel = { connection, startT: connection.model.labelT };
+  }
+
   handleMouseWheelEvent(event: TSFixme, args?: TSFixme) {
     event.preventDefault();
 
@@ -347,6 +366,35 @@ export class InteractionController {
     if (this.draggingNodes) {
       this.doDragNodesAndComments(this.draggingNodes, type, pos, evt);
       if (evt.consumed) return true;
+    }
+
+    // A wire's label is being slid along its curve (CAN-001)
+    if (this.draggingWireLabel) {
+      const { connection, startT } = this.draggingWireLabel;
+
+      if (type === 'move') {
+        // `findClosestPointOnCurve` is the binary subdivision the canvas
+        // already has; the clamp is what keeps the chip off the node cards.
+        const t = Math.min(WireLabel.maxT, Math.max(WireLabel.minT, connection.findClosestPointOnCurve(pos)));
+        connection.model.labelT = t;
+
+        evt.consumed = true;
+        this.owner.repaint();
+      } else if (type === 'up') {
+        const t = connection.model.labelT;
+        this.draggingWireLabel = undefined;
+
+        if (t !== startT) {
+          // One undo entry for the whole drag: rewind to where it started and
+          // let the setter record the move as a single change.
+          connection.model.labelT = startT;
+          this.owner.model.updateConnection(connection.model, { labelT: t }, { undo: true, label: 'move wire label' });
+        }
+
+        evt.consumed = true;
+        this.owner.repaint();
+      }
+      return true;
     }
 
     // An existing wire's end is being dragged (CAN-003)

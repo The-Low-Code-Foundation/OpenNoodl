@@ -1,11 +1,15 @@
 import { Connection } from '@noodl-models/nodegraphmodel';
 import { NodeLibrary } from '@noodl-models/nodelibrary';
 import DebugInspector from '@noodl-utils/debuginspector';
+import { EditorSettings } from '@noodl-utils/editorsettings';
 
 import { IVector2, NodeGraphEditor } from '../nodegrapheditor';
 import PopupLayer from '../popuplayer';
-import { CanvasFonts, CanvasTheme, WIRE_TYPE_ERROR } from './canvas/CanvasTheme';
+import { CanvasFonts, CanvasTheme, WireLabel, WIRE_TYPE_ERROR } from './canvas/CanvasTheme';
 import { NodeGraphEditorNode } from './NodeGraphEditorNode';
+
+/** Editor setting: show every wire's label without hovering (CAN-001). */
+export const ALWAYS_SHOW_WIRE_LABELS = 'nodeGraphEditor.alwaysShowWireLabels';
 
 function getPortName(p) {
   return p ? p.editorName || p.displayName : undefined;
@@ -34,6 +38,13 @@ export class NodeGraphEditorConnection {
    * `fromNode`/`toNode` and `paint()` would throw on the next frame.
    */
   rerouting: { end: 'from' | 'to'; pos: IVector2 } | undefined;
+
+  /**
+   * The label chip's rect in graph coordinates, written by `paintPortLabel` and
+   * read by the drag hit-test (CAN-001). Undefined when no label was painted
+   * this frame.
+   */
+  labelBounds: { x: number; y: number; width: number; height: number } | undefined;
 
   fromNode: any;
   toNode: any;
@@ -237,12 +248,21 @@ export class NodeGraphEditorConnection {
     } else if (type === 'down' && this.owner.highlightedConnection === this) {
       evt.consumed = true;
 
+      if (this.owner.readOnly === true) return;
+
       // Grabbing an end detaches it (CAN-003). Tested before anything else on
-      // the wire, so a grab can never arm or select instead.
-      const end = this.owner.readOnly !== true ? this.endpointAt(pos) : undefined;
+      // the wire, so a grab can never select instead.
+      const end = this.endpointAt(pos);
       if (end) {
         PopupLayer.instance.hideTooltip();
         this.owner.interaction.startReroutingConnection(this, end);
+        return;
+      }
+
+      // Grabbing the label chip moves it along the wire (CAN-001).
+      if (this.isPointInLabel(pos)) {
+        PopupLayer.instance.hideTooltip();
+        this.owner.interaction.startDraggingWireLabel(this);
       }
     } else if (type === 'up' && this.owner.highlightedConnection === this) {
       PopupLayer.instance.hideTooltip();
@@ -333,49 +353,91 @@ export class NodeGraphEditorConnection {
     return this.getHealth().healthy;
   }
 
-  /**
-   * Draw the source port's name on the wire, for ports whose type asks for it
-   * (WFA-004).
-   *
-   * Off for every port type that exists today, so browser and cloud graphs
-   * paint exactly as before. It exists because a node card only grows a port
-   * row for a port that is *already connected* (`NodeGraphEditorNode.measure`
-   * builds `plugs` from `this.connections`) — so on a workflow canvas an
-   * unwired `onfalse` is invisible, and once wired the wire may run a long way
-   * from the card that named it. An unlabelled branch is unreadable, which is
-   * the one place a workflow graph has to differ from a browser graph in a way
-   * the user can see.
-   */
-  paintPortLabel(ctx: CanvasRenderingContext2D, strokeColor: string) {
-    const portType = this.fromPort?.type;
-    if (!portType || typeof portType !== 'object' || !portType.connectionLabel) return;
+  /** The text on this wire: what the author wrote, else the source port's name. */
+  labelText(): string | undefined {
+    return this.model.label || getPortName(this.fromPort) || this.fromProperty;
+  }
 
-    const label = getPortName(this.fromPort) || this.fromProperty;
+  /**
+   * Should this wire show its label right now? (CAN-001.)
+   *
+   * WFA-004 gated the label on the source port type's `connectionLabel` flag,
+   * which only two workflow port types set — a conservative default, not a
+   * technical boundary. It is a policy now, in this order:
+   *
+   *   1. an author wrote it → always, it is the only text the graph does not
+   *      already contain (CAN-002);
+   *   2. the port type asks for it → always, preserving WFA-004 exactly;
+   *   3. the always-on setting is on → yes;
+   *   4. the wire is highlighted → yes. Note `isHighlighted` is true when
+   *      *either endpoint node* is hovered or selected, so hovering a node
+   *      names every wire attached to it.
+   *
+   * Hover is the default rather than always-on because on a browser graph a
+   * connected port already prints its name on the card at BOTH ends of every
+   * wire — an always-on chip is a third copy, on graphs that routinely carry
+   * 50–100 wires at a fixed 150px card width.
+   */
+  shouldShowPortLabel(): boolean {
+    if (this.model.label) return true;
+
+    const portType = this.fromPort?.type;
+    if (portType && typeof portType === 'object' && portType.connectionLabel) return true;
+
+    if (EditorSettings.instance.get(ALWAYS_SHOW_WIRE_LABELS)) return true;
+
+    return this.isHighlighted();
+  }
+
+  /** Where the label sits on the curve, clamped clear of both node cards. */
+  labelT(): number {
+    const t = typeof this.model.labelT === 'number' ? this.model.labelT : WireLabel.defaultT;
+    return Math.min(WireLabel.maxT, Math.max(WireLabel.minT, t));
+  }
+
+  paintPortLabel(ctx: CanvasRenderingContext2D, strokeColor: string) {
+    this.labelBounds = undefined;
+
+    if (!this.shouldShowPortLabel()) return;
+
+    const label = this.labelText();
     if (!label) return;
 
-    // Two thirds along the middle segment: clear of both cards, and away from
-    // the elbow where several wires from one node overlap.
-    const a = this.midpoint(this.curve[1], this.curve[2]);
+    // A point ON the curve, not the midpoint of two control points — the label
+    // is draggable now, and a position the user picked has to land where they
+    // put it. (This is why WFA-004's workflow captures shift by a pixel or two.)
+    const a = this.pointOnCurve(this.labelT());
+    if (!a) return;
 
     ctx.save();
     ctx.font = CanvasFonts.portLabel;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
-    const paddingX = 4;
-    const width = ctx.measureText(label).width + paddingX * 2;
-    const height = 13;
+    const width = ctx.measureText(label).width + WireLabel.paddingX * 2;
+    const height = WireLabel.lineHeight;
 
     // A chip behind the text: a bare glyph over a dot-grid at low zoom is
     // unreadable, and the wire itself runs under it.
     ctx.fillStyle = CanvasTheme.instance.colors.cardBg;
-    ctx.globalAlpha = 0.92;
+    ctx.globalAlpha = WireLabel.chipAlpha;
     ctx.fillRect(a.x - width / 2, a.y - height / 2, width, height);
     ctx.globalAlpha = 1;
 
     ctx.fillStyle = strokeColor;
     ctx.fillText(label, a.x, a.y);
     ctx.restore();
+
+    // Cached for hit-testing the drag. Graph coordinates, this frame only.
+    this.labelBounds = { x: a.x - width / 2, y: a.y - height / 2, width, height };
+  }
+
+  /** Is this point on the label chip? Only meaningful when one was painted. */
+  isPointInLabel(pos: IVector2): boolean {
+    const b = this.labelBounds;
+    if (!b) return false;
+
+    return pos.x >= b.x && pos.x <= b.x + b.width && pos.y >= b.y && pos.y <= b.y + b.height;
   }
 
   paint(ctx, paintRect) {

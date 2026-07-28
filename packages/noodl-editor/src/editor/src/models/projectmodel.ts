@@ -1475,6 +1475,8 @@ const projectSaveTriggers = new Set(
     'nodeDetached',
     'connectionAdded',
     'connectionRemoved',
+    /** A wire's own fields — its label and where that label sits (CAN-001/002). */
+    'connectionUpdated',
     'connectionPortChanged',
     'nodePortRenamed',
     'nodePortRearranged',
