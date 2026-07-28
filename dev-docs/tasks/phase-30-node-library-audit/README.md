@@ -67,32 +67,35 @@ Everything after it is measured against that corpus.
 
 ## Tasks
 
-Tier 1 is specced. Tier 2 and 3 are briefed here from the findings and need their own task files
-before execution — the row's Focus column is the brief, not the spec.
-
 | ID | Title | Tier | Focus |
 |---|---|---|---|
 | [NDA-001](./NDA-001-NODE-BEHAVIOUR-CORPUS.md) | Node behaviour corpus | 1 | Failing tests for every symptom in `FINDINGS.md`, before any fix |
 | [NDA-002](./NDA-002-REACTIVITY-CONTRACT.md) | The reactivity contract | 1 | Define it; make `Collection` notify on all mutations; `Variable`/`States` obey it |
 | [NDA-003](./NDA-003-EMPTY-VALUE-CONTRACT.md) | The empty-value contract | 1 | `null` clears, `undefined` abstains; fix the four disagreeing layers and the casts |
-| NDA-004 | The failure contract | 2 | A runtime error channel; `Failure` outputs on the 50; signals on the mute 10 |
-| NDA-005 | Port documentation sweep | 2 | 2,508 undocumented ports — the AI authoring loop's biggest single input |
-| NDA-006 | Columns: breakpoints, repeaters, masonry | 2 | Fix the in-place `pop()`; wrap repeater children; then masonry |
-| NDA-007 | Icon: a set model that isn't an icon font | 2 | SVG sprites and inline sets; one registration path for editor + viewer |
-| NDA-008 | Component Stack | 2 | Unify replace/stack; animation on both; **reproduce the scroll jump first** |
-| NDA-009 | Run Tasks | 2 | Kill the string-matched `Do`/`Success`/`Failure` contract; validate and warn |
-| NDA-010 | Popups: data flow and stack policy | 2 | Typed params/results; find the closer by scope explicitly; de-duplicate shows |
-| NDA-011 | REST → HTTP consolidation | 3 | Confirm `httpnode` is a superset; deprecate the DSL rather than improve it |
-| NDA-012 | The remaining 142 nodes | 3 | Work the register; one verdict per node against the contracts |
-| NDA-013 | Repeater re-reads its source on Refresh | **1** | `refresh()` rebuilds from a stale private copy. Standalone, small, and makes the Repeater recoverable *before* NDA-002 lands |
-| NDA-014 | `object`/`array` are dead ends in the type system | 2 | `object` casts to nothing and reaches 4 of 1,750 input ports; picking the right type is worse than leaving `*` |
-| NDA-015 | Explicit targeting for scope-resolved nodes | 2 | Parent Component Object and Close Popup both bind to a nearest ancestor with no way to name it. One class, one fix |
-| NDA-016 | `Layout.size` has no branch for an unset `sizeMode` | 2 | The Text width defect; same undefined-vs-explicit confusion as NDA-003, in the layout engine |
+| [NDA-013](./NDA-013-REPEATER-REFRESH.md) | Repeater re-reads its source on Refresh | **1** | `refresh()` rebuilds from a stale private copy. Small, standalone, and restores a working escape hatch *before* NDA-002 |
+| [NDA-004](./NDA-004-FAILURE-CONTRACT.md) | The failure contract | 2 | A runtime error channel; `Failure` outputs on the 50; signals on the mute 10 |
+| [NDA-005](./NDA-005-PORT-DOCUMENTATION.md) | Port documentation sweep | 2 | 2,508 undocumented ports — the AI authoring loop's biggest single input |
+| [NDA-006](./NDA-006-COLUMNS.md) | Columns: breakpoints, repeaters, masonry | 2 | Fix the in-place `pop()`; lay out repeater children at all; then masonry |
+| [NDA-007](./NDA-007-ICON-SETS.md) | Icon: a set model that isn't an icon font | 2 | SVG sprites and inline sets; one registration path for editor + viewer |
+| [NDA-008](./NDA-008-COMPONENT-STACK.md) | Component Stack | 2 | Unify replace/stack; animate both; **§0 reproduces the scroll jump first** |
+| [NDA-009](./NDA-009-RUN-TASKS.md) | Run Tasks | 2 | Kill the string-matched `Do`/`Success`/`Failure` contract; validate and warn |
+| [NDA-010](./NDA-010-POPUPS.md) | Popups: data flow and stack policy | 2 | Derive params/results from the target component; one modal slot; §2 shared with NDA-015 |
+| [NDA-014](./NDA-014-TYPE-DEAD-ENDS.md) | `object`/`array`/`color` are type dead ends | 2 | `object` casts to nothing and reaches 4 of 1,750 input ports; picking the right type is worse than leaving `*` |
+| [NDA-015](./NDA-015-EXPLICIT-BINDING.md) | Explicit targeting for scope-resolved nodes | 2 | Parent Component Object and Close Popup both bind to a nearest ancestor with no way to name it |
+| [NDA-016](./NDA-016-LAYOUT-SIZEMODE.md) | `Layout.size` has no unset-`sizeMode` branch | 2 | The Text width defect; one file, 29-node blast radius; **§0 blocking** |
+| [NDA-011](./NDA-011-REST-TO-HTTP.md) | REST → HTTP consolidation | 3 | Confirm `httpnode` is a superset; deprecate the DSL rather than improve it |
+| [NDA-012](./NDA-012-PER-NODE-AUDIT.md) | **Per-node audit — all 155, one at a time** | 3 (optional) | Twelve checks per node, pre-filled worksheets per category. The only thing that bounds the unknown |
 
-**Tiers are stopping points.** Tier 1 (NDA-001…003) is the reactivity and empty-value work — it is
-the highest-value slice and it stands alone; if the phase stops there it has still fixed the thing
-Richard described as cutting across everything. Tier 2 is the named nodes plus the two library-wide
-sweeps. Tier 3 is the long tail.
+**Tiers are stopping points.** Tier 1 (NDA-001, 002, 003, 013) is the reactivity and empty-value work
+— the highest-value slice, and it stands alone; if the phase stops there it has still fixed the thing
+Richard described as cutting across everything, and NDA-013 gives the Repeater a working escape hatch
+on the way. Tier 2 is the named nodes plus the library-wide sweeps. Tier 3 is consolidation and the
+optional per-node audit.
+
+**NDA-012 is opt-in and resumable.** It is the only task that bounds how much is still unfound, but
+it is ~155 × 30 minutes and its expected value declines as it goes. It is written to be stopped
+early: audit by category, record the find rate, stop when the rate drops. Do not treat 155/155 as the
+goal.
 
 ## The register
 

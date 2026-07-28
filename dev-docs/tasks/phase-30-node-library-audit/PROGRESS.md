@@ -2,32 +2,35 @@
 
 **Track O — Node Library Audit & Remediation**
 
-| Task | Status | Notes |
-|---|---|---|
-| NDA-001 Node behaviour corpus | ⬜ Not started | Specced. Must land red before NDA-002/003 |
-| NDA-002 Reactivity contract | ⬜ Not started | Specced. §1 needs Richard's call on listener-coalescing |
-| NDA-003 Empty-value contract | ⬜ Not started | Specced. §1 corollary 3 needs Richard's call on nullable Numbers |
-| NDA-004 Failure contract | ⬜ Not specced | Briefed in README |
-| NDA-005 Port documentation sweep | ⬜ Not specced | Briefed in README |
-| NDA-006 Columns | ⬜ Not specced | Briefed in README + FINDINGS §1 |
-| NDA-007 Icon | ⬜ Not specced | Briefed in README + FINDINGS §2 |
-| NDA-008 Component Stack | ⬜ Not specced | **Blocked on reproducing the scroll jump** — no cause found in source |
-| NDA-009 Run Tasks | ⬜ Not specced | Briefed in README + FINDINGS §4 |
-| NDA-010 Popups | ⬜ Not specced | Briefed in README + FINDINGS §5 |
-| NDA-011 REST → HTTP | ⬜ Not specced | Briefed in README + FINDINGS §8 |
-| NDA-012 Remaining 142 nodes | ⬜ Not started | Register generated; 0/155 verdicts filled |
-| NDA-013 Repeater Refresh re-reads source | ⬜ Not specced | **Tier 1.** Small, standalone, cause confirmed at `foreach.tsx:509-527` |
-| NDA-014 `object`/`array` type dead ends | ⬜ Not specced | Type-table decision, not a node fix |
-| NDA-015 Explicit targeting for scope-resolved nodes | ⬜ Not specced | Subsumes half of NDA-010 |
-| NDA-016 `Layout.size` unset-`sizeMode` branch | ⬜ Not specced | **Diagnosis unfinished** — needs the running editor |
+**All 16 tasks specced as of 2026-07-29.** None started.
+
+| Task | Tier | Status | Notes |
+|---|---|---|---|
+| NDA-001 Node behaviour corpus | 1 | ⬜ Not started | Must land **red** before NDA-002/003/013 |
+| NDA-002 Reactivity contract | 1 | ⬜ Not started | §1 needs Richard's call on listener-coalescing; §2 on Proxy-vs-patch |
+| NDA-003 Empty-value contract | 1 | ⬜ Not started | §1 corollary 3 needs Richard's call on nullable Numbers |
+| NDA-013 Repeater Refresh | 1 | ⬜ Not started | Cause confirmed `foreach.tsx:509-527`. ⚠️ watch the add/remove queue race |
+| NDA-004 Failure contract | 2 | ⬜ Not started | §1 (the channel) is independently useful — NDA-002 wants it for cycle warnings |
+| NDA-005 Port documentation | 2 | ⬜ Not started | Do the shared port definitions first and re-measure; batch with NDA-012 |
+| NDA-006 Columns | 2 | ⬜ Not started | Checked: `Columns.tsx` is the **only** file special-casing `ForEachComponent` |
+| NDA-007 Icon sets | 2 | ⬜ Not started | §1 is an interface decision; check LIB/styles before inventing an asset path |
+| NDA-008 Component Stack | 2 | ⬜ Not started | **§0 blocking** — scroll jump has no located cause |
+| NDA-009 Run Tasks | 2 | ⬜ Not started | §1 alone closes corpus F1 |
+| NDA-010 Popups | 2 | ⬜ Not started | §2 shared with NDA-015 |
+| NDA-014 Type dead ends | 2 | ⬜ Not started | Recommend option A now, C as the direction |
+| NDA-015 Explicit binding | 2 | ⬜ Not started | §2 includes a sweep for other instances of the pattern |
+| NDA-016 `Layout.size` | 2 | ⬜ Not started | **§0 blocking** — a contradiction between the mechanism and the default path |
+| NDA-011 REST → HTTP | 3 | ⬜ Not started | First output is an assessment, not a change |
+| NDA-012 Per-node audit | 3 | ⬜ **1 of 17 categories** | Variables done (4/4) as the worked example. Opt-in, resumable, stop on find-rate decline |
 
 ## Audit coverage
 
 | | Count | |
 |---|---|---|
 | Nodes with a machine-derived smell row | 155 | ✅ `NODE-REGISTER.md` |
-| Nodes whose implementation has been read | 13 | 8 named by Richard + 5 from his second list |
-| Nodes with a hand-written verdict | 0 | NDA-012 |
+| Nodes with a pre-filled audit worksheet | 155 | ✅ `audit/`, 17 category files |
+| Nodes whose implementation has been read | 15 | 8 named by Richard + 5 from his second list + Boolean/Color |
+| Nodes fully audited against the 12 checks | **4** | Variables, as NDA-012's worked example |
 | Systemic defect classes identified | 6 | A reactivity, B failure, C documentation, D string contracts, **E type dead ends**, **F implicit binding** |
 | Findings live-verified in the running editor | 0 | everything in `FINDINGS.md` is read from source |
 
@@ -44,8 +47,24 @@ none of them. The 142 unread rows are unaudited, not clean — do not read a bla
 3. **NDA-002 §2** — approach A (patch prototype methods) or B (Proxy, matching `Model`).
    Recommendation: B. It is the higher-risk change and the only one that covers `arr[0] = x`.
 
+## Find rate (NDA-012 stop signal)
+
+| Category | Nodes audited | Nodes with ≥1 defect | New defects |
+|---|---|---|---|
+| Variables | 4 / 4 | 4 | 3 |
+
+Three new defects in the *simplest* category in the library — `latestValue` initialising to `0`
+regardless of type, `color` being a type dead end, and the String `length` getter that will throw the
+moment NDA-003 makes `null` storable. Consistent with the second-pass calibration. Stop NDA-012 when
+this table shows a category producing nothing new.
+
 ## Log
 
+- **2026-07-29 (later)** — All 16 tasks specced. Added the NDA-012 per-node audit protocol: twelve
+  checks derived from defect classes A–F, and `scripts/node-audit/worksheets.js` generating one
+  pre-filled worksheet per category (checks B1/B3/C1/E1/H1 answered from the catalog). Audited the
+  Variables category as the worked example — 4/4, 3 new defects, one of which is a fix-ordering
+  hazard for NDA-003.
 - **2026-07-29** — Second pass, from Richard's five further reports. Four confirmed against source
   (Repeater Refresh rebuilding from a stale private copy; Parent Component Object binding to the
   nearest ancestor with no targeting; `object` outputs reaching 4 of 1,750 input ports; `Layout.size`
