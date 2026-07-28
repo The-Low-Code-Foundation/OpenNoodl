@@ -1,7 +1,6 @@
 import { useNodeGraphContext } from '@noodl-contexts/NodeGraphContext/NodeGraphContext';
 import { useKeyboardCommands } from '@noodl-hooks/useKeyboardCommands';
 import usePrevious from '@noodl-hooks/usePrevious';
-import { AiConfigStore } from '@noodl-store/AiAssistantStore';
 import { ipcRenderer } from 'electron';
 import React, { useCallback, useEffect, useState } from 'react';
 
@@ -18,7 +17,6 @@ import { FrameDivider, FrameDividerOwner } from '@noodl-core-ui/components/layou
 import { MenuDialogWidth } from '@noodl-core-ui/components/popups/MenuDialog';
 
 import { EventDispatcher } from '../../../../../shared/utils/EventDispatcher';
-import Clippy from '../../Clippy/Clippy';
 import { Frame } from '../../common/Frame';
 import { EditorTopbar } from '../../EditorTopbar';
 import { HelpCenter } from '../../HelpCenter';
@@ -52,27 +50,9 @@ function EditorDocument() {
   const [viewportSize, setViewportSize] = useState({ width: null, height: null, deviceName: null });
   const [frameDividerSize, setFrameDividerSize] = useState(undefined);
 
-  const [enableAi, setEnableAi] = useState(AiConfigStore.isEnabled());
-
-  useEffect(() => {
-    const group = {};
-    EditorSettings.instance.on(
-      'updated',
-      () => {
-        setEnableAi(AiConfigStore.isEnabled());
-      },
-      group
-    );
-    return function () {
-      EditorSettings.instance.off(group);
-    };
-  }, []);
-
   const [selectedNodeId, setSelectedNodeId] = useState(null); //The ID of the selected node, as highlighted by the viewer
 
   const [hasLoadedEditorSettings, setHasLoadedEditorSettings] = useState(false);
-
-  const [_forceUpdate, setForceUpdate] = useState(0);
 
   const [navigationState, setNavigationState] = useState({
     canGoBack: false,
@@ -85,14 +65,6 @@ function EditorDocument() {
   const viewerDetached = documentLayout === 'detachedPreview';
 
   const canvasView = useCanvasView(setNavigationState);
-
-  useEffect(() => {
-    if (import.meta.webpackHot) {
-      import.meta.webpackHot.accept('../../Clippy/Clippy', () => {
-        setForceUpdate(performance.now());
-      });
-    }
-  });
 
   useKeyboardCommands(() => [
     {
@@ -390,8 +362,6 @@ function EditorDocument() {
       setFrameDividerSize(settings.frameDividerSize);
     }
 
-    // setEnableAi(settings[AI_ASSISTANT_ENABLED_KEY]);
-
     if (settings.selectedComponentName) {
       const component = ProjectModel.instance.getComponentWithName(settings.selectedComponentName);
       if (component) {
@@ -402,18 +372,6 @@ function EditorDocument() {
     setPreviewMode(settings.previewMode ? true : false);
   }, [nodeGraph]);
 
-  // useEffect(() => {
-  //   const func = () => {
-  //     setEnableAi(!!EditorSettings.instance.get(AI_ASSISTANT_ENABLED_KEY));
-  //   };
-  //
-  //   func();
-  //
-  //   EditorSettings.instance.on('updated', func, group);
-  //   return function () {
-  //     EditorSettings.instance.off(group);
-  //   };
-  // }, []);
 
   useCaptureThumbnails(canvasView, viewerDetached);
 
@@ -450,7 +408,6 @@ function EditorDocument() {
       )}
 
       <HelpCenter />
-      {enableAi && <Clippy />}
     </Container>
   );
 }
