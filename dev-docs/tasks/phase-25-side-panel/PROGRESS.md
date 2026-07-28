@@ -93,6 +93,7 @@ unable to take.
 | F42 | **The phase's own gate list names a script that does not exist.** `noodl-core-ui` has no `test:ci`; its scripts are `start` and `build`. The real check is `npm run typecheck:core-ui`. Corrected in *Gates for the phase* below | this file | ✅ corrected |
 | F43 | **`BaseDialog`'s position depended on its animation running.** The positioned variant is `position: absolute; top: 0; left: 0`, and every pixel of where it lands came from the `to` half of the `enter` keyframe plus `animation-fill-mode: both`. Suppress animations and **every menu in the editor** piles up in the window's top-left corner. This is what made the `⋯` anchoring check fail with **byte-identical numbers across three unrelated attempted fixes** — `panel-modes.mjs` injects `animation: none` for determinism, so the harness was suppressing the very thing doing the positioning. The identical numbers were the tell: a live measurement of a changing layout cannot repeat to the pixel | `BaseDialog.module.scss` | ✅ fixed — resting position stated as a rule; the keyframe still wins while it runs |
 | F44 | **The app name does not reach `project.json` when you set it — only when something else saves.** PNL-008's L5 round trip writes the App name, polls the file for 15s and still sees the old value; it then writes the Browser tab title and the *app name* appears on disk alongside it. The lag is exactly one step, twice. The Browser tab title control persists on its own, so the two controls behave differently — which is the part that makes this look like the app rather than the instrument. **Caveat, stated rather than glossed:** the input was driven synthetically (native value setter + `input` + Enter + `blur`), so a real keystroke may commit differently. One human check settles it: rename the app, quit without touching anything else, reopen | `ProjectModel.setMetaData` / `EventDispatcher` | ✅ **FIXED 2026-07-28** (batch C) — **and the recorded cause was wrong.** Not a lag, not a debounce, not the synthetic-input instrument, not an F15 residue, and `AppSetupPanel`/`ProjectSettingsModel`-save-path no longer exist. `setMetaData` dispatches `ProjectModel.metadataChanged`; `EventDispatcher` matches on the first dot-component being *identical*, so the `Model.*` listener — the editor's only autosave — never heard it. **No save was ever armed.** It looked one step behind because `toJSON()` serialises `metadata` unconditionally, so the value rode out with whatever save something else happened to trigger. **The blast radius was never just the app name:** SEO, PWA, config variables, Styles, design tokens and the DB schema cache all persist through the same gap. ⚠️ Still owed: the real-keystroke path and quit-and-reopen against the 1s debounce |
+| F62 | **The Components panel's warning dot could never render, and eleven SKIPs had been hiding it.** `warningCountFor` asked `WarningsModel` for a per-component count with `excludeGlobal: true`, on the reasoning that a row dot should not repeat what the top bar counts. But `showGlobally` means "*also* list this project-wide" — it does not mean "not attached to a component". Every health warning sets it (`node-missing-type`, `node-not-child`, `con-no-source-port`; 18 of the 33 `setWarning` call sites), and every one is raised *against a component*, so the count was zero for exactly the warnings worth pointing at. Measured against the fixture: the top bar read **2** and the tree rendered **0** dots. PNL-006's own notes recorded "❌ the warning dot rendered at all — it needs a project carrying warnings", and the assertion had been skipping ever since; nothing had ever proven the feature worked, and it did not | `useComponentsPanel.ts` `warningCountFor` | ✅ **FIXED 2026-07-28** — `excludeGlobal` dropped, with the reasoning recorded at the call site so it does not come back. Assertion D now executes: two dots, 6×6, `border-radius: 9999px`, `#fdb022`, both inside the panel edge |
 | F46 | **`project.json` was rewritten in response to almost any event in the app, and the biggest single source was a graph that is not in the project.** The autosave listener took every `Model.*` event minus a 22-name denylist; there are **116** distinct `Model.*` events in the editor, so ~94 of them armed a full project write. Two writes in twenty seconds on a cold start with zero user input. **The recorded cause was partly wrong:** the `nodeAdded ×5 / connectionAdded ×5 / graphModelBound` burst was read as load-time reconstruction of the project's graphs, and the project's own load is in fact already silent (`projectFromDirectory` holds `Model._listenersEnabled = false` across `fromJSON`). The burst is `WorkflowComponentModel`, which `extends ComponentModel` — so **opening a workflow tab** runs `bindGraph` and raises a node/connection event per step and wire, for a document that lives in a backend's data directory. Which also means the "genuinely hard edge" — that `nodeAdded`/`connectionAdded`/`labelChanged` are raised by both a real edit and a load, so no name can separate them — **did not need a load/edit state flag.** The discriminator is ownership | `projectmodel.ts` autosave listener | ✅ **FIXED 2026-07-28** — allowlist (47 names, membership rule `ProjectModel.toJSON()`) **plus** an `owner`-chain check requiring the emitting model to reach `ProjectModel.instance`. Five new specs; editor suite 1828/0 |
 | F45 | **A gate can leave the app unusable by *removing* a style, not just by injecting one.** `components-tree.mjs` cleared the inline `width` on the FrameDivider container to take its "wide" measurement. That width is `var(--frame-divider-…-container-1-width)`, owned by PNL-003's layout state, so deleting the declaration left nothing sizing the panel: it collapsed to 4px and **neither the rail icon nor ⌘B brought it back**, because as far as React was concerned nothing had changed. Every gate run afterwards then measured a collapsed panel. F35 said release what you inject; this is the same rule for what you remove | `corpus/components-tree.mjs` | ✅ fixed — saves and restores, and never removes what it did not set |
 
@@ -590,3 +591,53 @@ spec harness. It wants the same instrument that produced the original
 measurement: a console capture over a cold start into a restored project, plus
 blur / quit / close by hand. The 2-space `writeJson` of `56b086c5` makes a stray
 save easy to see in `git diff` while doing it.
+
+### — the fixture earns its keep: 11 SKIPs → 1, and the warning dot was broken (2026-07-28)
+
+The run the fixture was built for, from the primary checkout against
+`nodegx-qa-fixture`. `components-tree` had reported **11 SKIPs** against the best
+projects available; it now reports **one**, and that one is a *measured* number
+rather than an untested assertion.
+
+| Gate | Result |
+|---|---|
+| `components-tree` | 4/4 theme×width passes, **1 SKIP**. 28 rows, depth 4, selected contrast **12.2:1** dark / **13.72:1** light |
+| `panel-geometry` | **12/12** panels clean vertically, **60/60** panel×width combinations clean horizontally |
+| `panel-chrome` | **48/48** panel×theme×width checks clean |
+
+Both of the latter were unverified since `fb619b39` removed a layer from
+`CanvasShell`; both are green.
+
+**What the fixture caught — F62.** Assertion D (the warning dot) had been skipping
+since PNL-006 shipped, for want of a project carrying a warning. Given one, it
+still found nothing: the top bar counted **2** — the fixture's two unresolved
+`Markdown` nodes, correctly attributed to `/Content/Changelog` and
+`/Content/Release Notes` — while the tree rendered **zero** dots. The cause was
+`excludeGlobal: true` in `warningCountFor`, which reads `showGlobally` as "not a
+component's problem" when it actually means "*also* show this project-wide". 18 of
+the 33 `setWarning` sites set it, all against a component, so the dot could
+essentially never appear. With the flag dropped, assertion D executes and passes in
+both themes at both widths: two dots, 6×6, `9999px` radius, `#fdb022`, each 17px
+inside the panel's right edge.
+
+This is exactly the failure mode the fixture's README calls *the meaningless
+green*, one level deeper — not a gate passing without running an assertion, but an
+assertion skipping for two weeks over a feature that was broken the whole time.
+
+**The last SKIP changed character rather than surviving.** At 900px the 28-row tree
+does not overflow, so scroll cost was NOT MEASURED. Re-run at `--height 520` it
+scrolls, the assertion executes, and it reports **p95 frame 17.5ms over 28 rows**
+against a 16.7ms 60fps budget — reported, not failed, because virtualising the tree
+is explicitly out of PNL-006's scope. Worth filing; it is no longer unknown.
+
+**The two cheap leftovers, closed.** `[class*=Clippy]` matches **0** elements, and
+the canvas pill reads **"Ask AI… ⌘+J"**.
+
+⚠️ **A fixture note that cost a diff.** Opening the fixture rewrites it once: the
+generator emits `ports`, `visual` and `visualStateTransitions` per component and a
+top-level `rootComponent`, none of which `ProjectModel.toJSON()` writes — it writes
+`rootNodeId`. So the first save strips them. `verify.py` mirrors the editor's
+*derivations* but not its *serialisation*, which is why this was invisible until
+the project was opened. The committed fixture is still the pre-open form; a
+regeneration should either emit the canonical shape or the README should say the
+first open normalises it.

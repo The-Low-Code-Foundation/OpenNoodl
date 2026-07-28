@@ -87,6 +87,31 @@ npm run validate:project -- dev-docs/qa-fixtures/nodegx-qa-fixture
 
 **The two warnings are the point.** If that count changes, something else broke.
 
+### What it caught on its first real run (2026-07-28)
+
+`components-tree` went from **11 SKIPs to 1**, and assertion D — the warning dot —
+failed to be provable for a second reason once it finally had a project carrying a
+warning: the dot was **broken**. The top bar counted the two `Markdown` nodes and
+the tree rendered zero dots, because `warningCountFor` passed `excludeGlobal: true`
+and every health warning sets `showGlobally`. Fixed as **F62**; see phase 25's
+PROGRESS. This is the point of the fixture — the SKIPs had been hiding a feature
+that never worked.
+
+The surviving SKIP is now a *measurement*, not an unknown: at `--height 520` the
+tree scrolls and reports p95 frame 17.5ms over 28 rows against a 16.7ms budget.
+
+### ⚠️ The committed shape is not the shape the editor writes
+
+`generate.py` emits `ports`, `visual` and `visualStateTransitions` on every
+component, plus a top-level `rootComponent`. **`ProjectModel.toJSON()` writes none
+of them** — it writes `rootNodeId`. So the first time the editor opens this
+project it strips all four, and `project.json` gets one large one-time diff.
+
+`verify.py` did not catch it because it mirrors the editor's *derivations*
+(`addComponentToFolderStructure`, `componentKind.categoryFor`,
+`ComponentModel.color`) and not its *serialisation*. Either regenerate to the
+canonical shape or expect that first diff; do not read it as corruption.
+
 ### ⚠️ Opening it rewrites it
 
 Opening any tracked project rewrites `project.json` on open *and* on shutdown.

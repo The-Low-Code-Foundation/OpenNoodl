@@ -504,8 +504,20 @@ function convertFolderToTreeNodes(folder: FolderStructure, kindIndex: ComponentK
 /**
  * PNL-006 — errors and warnings on a component, from `WarningsModel`.
  *
- * `excludeGlobal` drops the warnings that are already shown project-wide in the
- * top bar; a per-row dot should mean "something is wrong *in here*".
+ * **Do not add `excludeGlobal` back.** It was here on the reasoning that a per-row
+ * dot should mean "something is wrong *in here*" rather than repeating what the
+ * top bar already counts — but that is not what the flag does. `showGlobally`
+ * means "also list this project-wide"; it does not mean "not attached to a
+ * component". Every health warning sets it — `node-missing-type`,
+ * `node-not-child`, `con-no-source-port`, 18 of the 33 `setWarning` call sites —
+ * and all of them are raised *against a component*. Excluding them left the count
+ * at zero for precisely the warnings worth pointing at, so the dot could
+ * essentially never render.
+ *
+ * Measured 2026-07-28 against `nodegx-qa-fixture`, whose two `Markdown` nodes are
+ * unresolved: the top bar read **2** and the tree rendered **0** dots. PNL-006's
+ * assertion D had never proven otherwise — it had been skipping for want of a
+ * project that carries a warning, which is the whole reason that fixture exists.
  *
  * NOTE (documented in PNL-006-NOTES): this is a different source from the
  * Problems panel, which renders `ProjectValidationService`'s semantic
@@ -514,8 +526,7 @@ function convertFolderToTreeNodes(folder: FolderStructure, kindIndex: ComponentK
 function warningCountFor(component: ComponentModel): number {
   try {
     return WarningsModel.instance.getNumberOfWarningsForComponent(component, {
-      levels: ['error', 'warning'],
-      excludeGlobal: true
+      levels: ['error', 'warning']
     });
   } catch {
     return 0;
