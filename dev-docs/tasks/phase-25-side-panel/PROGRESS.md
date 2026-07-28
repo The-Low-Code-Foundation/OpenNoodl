@@ -144,9 +144,16 @@ primary-checkout pass as part of the task, not as a residual.
 
 ### Still not verified
 
-- **The `New record` / `Create table` modals inside a full-mode backend surface.** PNL-009 moved them out
-  of a `z-index: 9999` portal into the panel's stacking context and named this the change most likely to
-  regress visually. It needs a running local backend.
+- ~~**The `New record` / `Create table` modals inside a full-mode backend surface.**~~ **VERIFIED
+  2026-07-28.** Driven against a running SQLite backend on 8578: Backend Services → Data → `+ New Record`
+  opens "New Record in Articles" over the full-width Data Browser, dimming it. The PNL-009 regression
+  risk — the modal falling *behind* the panel once it left the `z-index: 9999` portal — did **not**
+  materialise: hit-testing every 18px down the modal's centre line returns a `NewRecordModal-*` element
+  at every point, so nothing occludes it, and it is not clipped out of the viewport.
+  ⚠️ One caveat for whoever looks next: the **screenshot** shows a horizontal seam bisecting the `views`
+  input exactly at the graph canvas's top edge. It is a `Page.captureScreenshot` compositing artefact
+  across the canvas layer boundary, **not** occlusion — the hit-test above is what settles it. Do not
+  re-file it from the image alone.
 - **PNL-006's kind glyphs and warning dot against a real project**, and PNL-008's acceptance 2/4/5 round
   trips (close-and-reopen, the experimental toggle, the settings-id migration). All need a project
   lifecycle rather than a panel walk.
