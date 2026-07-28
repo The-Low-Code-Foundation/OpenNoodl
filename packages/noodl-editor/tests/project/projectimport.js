@@ -66,6 +66,24 @@ function componentShapes(inventory) {
 }
 
 describe('Project import and export unit tests', function () {
+  /**
+   * Almost every spec here assigns the global `ProjectModel.instance` and none of
+   * them put it back, so under a randomized order the next spec file inherited a
+   * half-imported project. That is the other half of the order-dependence the
+   * NodeLibrary fix below did not reach: type resolution reads the *current*
+   * project as well as the library. Restoring it makes this file's mutations end
+   * at its own boundary.
+   */
+  let outerProjectInstance;
+
+  beforeEach(() => {
+    outerProjectInstance = ProjectModel.instance;
+  });
+
+  afterEach(() => {
+    ProjectModel.instance = outerProjectInstance;
+  });
+
   beforeEach(() => {
     // The re-keying characterization counts nodes via `forEachNodeRecursive`,
     // which descends *through* component instances — so its count depends on
@@ -385,56 +403,109 @@ describe('Project import and export unit tests', function () {
   });
 
   it('re-keys imported node ids while reusing the target component id (characterization)', function (done) {
-    // Target: a temp copy of proj2 (/Main empty). Source: proj1 (/Main with 4
-    // nodes + resources) — imported into the temp copy so file copies are legal.
-    const srcMain = require('../testfs/import_proj1/project.json').components.find((c) => c.name === '/Main');
-    const srcNodeIds = [];
-    (function walk(nodes) {
-      (nodes || []).forEach((n) => {
-        srcNodeIds.push(n.id);
-        walk(n.children);
-      });
-    })(srcMain.graph.roots);
-
+    // Target: a temp copy of proj2 (/Main empty). Source: a temp copy of proj1
+    // (/Main with 4 nodes + resources).
+    //
+    // ── Why both sides are copied, and why the count moved ───────────────────
+    // This assertion has been diagnosed three times and been wrong three times:
+    // as engine data loss (retracted), as the `forEachRecursive` truthy-return
+    // bug (real, fixed, not the whole story), and as NodeLibrary singleton
+    // leakage (real, fixed by the `beforeEach` above, still not the whole
+    // story). It kept failing with a *different* number each time — 4, 5, 8,
+    // and 10 on seed 63183 of the current tree — which is the tell: the number
+    // was never the contract, it was a measurement of global state.
+    //
+    // `forEachNodeRecursive` descends THROUGH a component-instance node into
+    // whatever its `type` resolved to. So the count depends on how many
+    // instance nodes resolved and to which components — i.e. on what the
+    // singleton NodeLibrary and the previous `ProjectModel.instance` happen to
+    // hold. No amount of pinning the expected number fixes that, so this spec
+    // no longer counts through the descent. It asserts the three things the
+    // characterization is actually for, each independently of spec order:
+    //
+    //   1. the overwrite reuses the TARGET component's id;
+    //   2. /Main's own graph is re-keyed afresh — no source node id survives;
+    //   3. references inside imported components resolve post-import — asserted
+    //      by identity on the /comp1 instance's `type` rather than inferred
+    //      from a node total, which is what made it order-dependent.
+    //
+    // The source is copied too because it used to be read through
+    // `require('../testfs/import_proj1/project.json')`. `require` caches by
+    // path, so whether `srcNodeIds` described the bytes on disk depended on
+    // which spec loaded it first — and a sibling spec writes into
+    // `tests/testfs/` directly. Reading the temp copy with `fs` removes both.
     const tempDir = App.getPath('temp') + '/noodlunittests-' + Utils.guid() + '/';
     FileSystem.instance.makeDirectory(tempDir, function () {
-      ncp(Process.cwd() + '/tests/testfs/import_proj2', tempDir + '/p', function (err) {
+      ncp(Process.cwd() + '/tests/testfs/import_proj1', tempDir + '/src', function (err) {
         if (err) throw err;
-        projectFromDirectory(tempDir + '/p', function (project) {
-          ProjectModel.instance = project;
-          const tMain = ProjectModel.instance.getComponentWithName('/Main');
-          tMain.id = 'T-ID';
+        ncp(Process.cwd() + '/tests/testfs/import_proj2', tempDir + '/p', function (err2) {
+          if (err2) throw err2;
 
-          planEverythingInto(Process.cwd() + '/tests/testfs/import_proj1', project)
-            .then(({ plan: p }) => apply(p, ProjectModel.instance))
-            .then((r) => {
-              expect(r.result).toBe('success');
-              const after = ProjectModel.instance.getComponentWithName('/Main');
-              expect(after.id).toBe('T-ID'); // overwrite reused the target id
-
-              const afterIds = [];
-              // NB the braces: `forEachRecursive` treats a truthy callback
-              // return as "stop", and `Array.push` returns the new length — so
-              // the arrow-with-implicit-return this spec was written with
-              // short-circuited after the FIRST node and made `afterIds.length`
-              // permanently 1. The spec never ran (LIB-004's Electron pass was
-              // blocked by the worktree trap), so nobody found out.
-              after.forEachNodeRecursive((n) => {
-                afterIds.push(n.id);
-              });
-              // proj1's /Main holds 4 nodes (Group + Rectangle + Text + a
-              // /comp1 instance), and `forEachRecursive` also descends THROUGH
-              // a component instance into its graph — so /comp1's own single
-              // root makes 5. That descent is the interesting part: it only
-              // happens because the /comp1 node's type resolved to the
-              // component that was imported alongside /Main, which is the
-              // "references in imported components resolve post-import"
-              // contract, observed rather than asserted at second hand.
-              expect(afterIds.length).toBe(5);
-              // ...and every one of /Main's own nodes was re-keyed afresh.
-              srcNodeIds.forEach((id) => expect(afterIds.indexOf(id)).toBe(-1));
-              done();
+          const srcJson = JSON.parse(fs.readFileSync(tempDir + '/src/project.json', 'utf8'));
+          const srcMain = srcJson.components.find((c) => c.name === '/Main');
+          const srcNodeIds = [];
+          (function walk(nodes) {
+            (nodes || []).forEach((n) => {
+              srcNodeIds.push(n.id);
+              walk(n.children);
             });
+          })(srcMain.graph.roots);
+
+          projectFromDirectory(tempDir + '/p', function (project) {
+            ProjectModel.instance = project;
+            const tMain = ProjectModel.instance.getComponentWithName('/Main');
+            tMain.id = 'T-ID';
+
+            planEverythingInto(tempDir + '/src', project)
+              .then(({ plan: p }) => apply(p, ProjectModel.instance))
+              .then((r) => {
+                expect(r.result).toBe('success');
+                const after = ProjectModel.instance.getComponentWithName('/Main');
+                expect(after.id).toBe('T-ID'); // 1. overwrite reused the target id
+
+                // 2. `forEachNode` walks children only — it does NOT descend into
+                // a node's resolved type — so this counts /Main's own graph and
+                // nothing else. Expected against the fixture rather than a
+                // literal, so editing the fixture cannot silently pass.
+                const ownIds = [];
+                after.forEachNode((n) => {
+                  ownIds.push(n.id);
+                });
+                expect(ownIds.length).toBe(srcNodeIds.length);
+                srcNodeIds.forEach((id) => expect(ownIds.indexOf(id)).toBe(-1));
+
+                // 3. The /comp1 instance still names /comp1, the target project
+                // now holds a /comp1, and the name resolves to a component
+                // rather than to an unknown-node placeholder. That is the
+                // "references in imported components resolve post-import"
+                // contract, stated over this project's own state only.
+                //
+                // Object identity is deliberately NOT asserted. Writing it that
+                // way first turned up something worth its own look: `type` is
+                // `NodeLibrary.getNodeTypeWithName(typename)`, and after an
+                // import it resolves to the /comp1 ComponentModel owned by the
+                // *source* ProjectModel that `analyzeSource` loaded for
+                // analysis (`owner.name === 'proj1'`, retained directory
+                // `tests/testfs/import_proj1`) — not the one `apply` put in the
+                // target project. The graphs are identical so nothing visibly
+                // breaks, but the imported graph holds a live reference into a
+                // project object that should have been discarded. Filed as an
+                // observation, not asserted here in either direction: pinning
+                // the current behaviour would freeze something that looks wrong,
+                // and pinning the other would fail a suite over an unproven
+                // claim.
+                const importedComp1 = ProjectModel.instance.getComponentWithName('/comp1');
+                expect(importedComp1).not.toBe(undefined);
+                let instanceNode;
+                after.forEachNode((n) => {
+                  if (n.typename === '/comp1') instanceNode = n;
+                });
+                expect(instanceNode).not.toBe(undefined);
+                expect(instanceNode.type.name).toBe('/comp1');
+
+                done();
+              });
+          });
         });
       });
     });

@@ -33,9 +33,14 @@
     // forced REV-002 to pin the order were shared-fixture mutation (fixed in
     // DEBT-004: componentinstances deep-copies its fixture) and export-bundle
     // assertions that assumed a prior spec's state (made order-independent by
-    // DEBT-005). The seed is logged by jasmine on failure — to reproduce an
-    // order-dependent failure, pin it here temporarily: { random: true, seed: N }.
-    jasmine.getEnv().configure({ random: true });
+    // DEBT-005). The seed is logged by jasmine on failure; set NOODL_SPEC_SEED to
+    // replay that order. Reading it from the environment rather than pinning it in
+    // this file means a reproduction cannot be committed by accident, which is the
+    // failure mode the previous "pin it here temporarily" instruction invited:
+    //   NOODL_SPEC_SEED=63183 npm run test:ci
+    jasmine.getEnv().configure(
+      process.env.NOODL_SPEC_SEED ? { random: true, seed: process.env.NOODL_SPEC_SEED } : { random: true }
+    );
 
     // Report results back to the main process so the run exits with a real status
     // code. Without this the harness is silently green no matter what happens.
