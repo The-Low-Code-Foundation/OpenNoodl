@@ -213,8 +213,18 @@ export class ProjectModel extends Model {
 
   static setSaveOnModelChange(enabled) {
     saveOnModelChange = enabled;
+
     if (!saveOnModelChange) {
+      // The queued write is held, not abandoned — `savePending` survives the
+      // disable, so the branch below re-arms it. Callers turn saving off for a
+      // short critical section (a component reload from disk, the v2
+      // migration) and turn it back on; without the re-arm, an edit that was
+      // already waiting on the timer when the section began simply never
+      // reached disk. Same family of defect as the quit path.
       clearTimeout(saveTimeout);
+    } else if (savePending) {
+      clearTimeout(saveTimeout);
+      saveTimeout = setTimeout(saveProject, 1000);
     }
   }
 
@@ -1377,6 +1387,15 @@ function stripNodeChildPositions(json) {
 // Project saver, saves current project when a change to a model occurs
 let saveOnModelChange = true;
 let saveTimeout;
+
+/**
+ * True from the moment an edit arms the debounce until that edit has actually
+ * reached disk. It is what `flushPendingProjectSave()` reads to decide whether
+ * there is anything to drain, and it deliberately outlives `saveTimeout` — the
+ * timer having fired is not the same as the write having landed, and
+ * `setSaveOnModelChange(false)` clears the timer without the edit being written.
+ */
+let savePending = false;
 const ignoreEvents = [
   'Model.thumbnailChanged',
   'Model.inspectorAdded',
@@ -1417,6 +1436,7 @@ const ignoreEvents = [
 function scheduleProjectSave() {
   if (!saveOnModelChange) return;
 
+  savePending = true;
   clearTimeout(saveTimeout);
   saveTimeout = setTimeout(saveProject, 1000);
 }
@@ -1431,33 +1451,107 @@ EventDispatcher.instance.on(
   null
 );
 
-function saveProject() {
-  if (!ProjectModel.instance) return;
+type SaveOutcome =
+  /** Written to the project directory. The only case that emits `projectSavedToDisk`. */
+  | { status: 'saved' }
+  /** Nothing to write, or written somewhere that is not the project directory. */
+  | { status: 'skipped' }
+  | { status: 'failed'; message: string };
 
-  // CRITICAL: Do not save read-only projects (e.g., legacy projects opened for inspection)
-  if (ProjectModel.instance._isReadOnly) {
-    console.log('⚠️  Skipping auto-save: Project is in read-only mode');
-    return;
-  }
+/**
+ * Serialises writes. `toDirectory` is async and there are now two callers —
+ * the debounced timer and `flushPendingProjectSave()` — so a flush can arrive
+ * while a save is already mid-write. Two concurrent directory writes of the
+ * same project can interleave, so each write waits for the previous one to
+ * settle (hence `onSettled` on both arms) before starting.
+ */
+let saveChain: Promise<SaveOutcome> = Promise.resolve({ status: 'skipped' });
 
-  if (ProjectModel.instance._retainedProjectDirectory) {
+function writeProjectToDisk(): Promise<SaveOutcome> {
+  const onSettled = () => doWriteProjectToDisk();
+  const next = saveChain.then(onSettled, onSettled);
+  saveChain = next;
+  return next;
+}
+
+function doWriteProjectToDisk(): Promise<SaveOutcome> {
+  return new Promise<SaveOutcome>((resolve) => {
+    const project = ProjectModel.instance;
+    if (!project) return resolve({ status: 'skipped' });
+
+    // CRITICAL: Do not save read-only projects (e.g., legacy projects opened for inspection)
+    if (project._isReadOnly) {
+      console.log('⚠️  Skipping auto-save: Project is in read-only mode');
+      return resolve({ status: 'skipped' });
+    }
+
+    if (!project._retainedProjectDirectory) {
+      // The project is not loaded from a directory, store to local store
+      localStorage['project'] = JSON.stringify(project.toJSON(), null, 3);
+      console.log('Project stored to local storage ' + new Date());
+      return resolve({ status: 'skipped' });
+    }
+
     // Project is loaded from directory, save it
-    ProjectModel.instance.toDirectory(ProjectModel.instance._retainedProjectDirectory, function (r) {
-      if (r.result !== 'success') {
-        console.log(r.message);
-        //retry in 3 seconds
-        clearTimeout(saveTimeout);
-        saveTimeout = setTimeout(saveProject, 3000);
-        EventDispatcher.instance.emit('ProjectModel.saveFailedRetryScheduled');
-      } else {
-        console.log('Project saved ' + new Date()); // Project is saved to disk, start the watch timer
-        EventDispatcher.instance.emit('ProjectModel.projectSavedToDisk');
-        //startWatchTimeOut();
-      }
+    project.toDirectory(project._retainedProjectDirectory, function (r) {
+      resolve(r.result === 'success' ? { status: 'saved' } : { status: 'failed', message: r.message });
     });
-  } else {
-    // The project is not loaded from a directory, store to local store
-    localStorage['project'] = JSON.stringify(ProjectModel.instance.toJSON(), null, 3);
-    console.log('Project stored to local storage ' + new Date());
-  }
+  });
+}
+
+function saveProject() {
+  writeProjectToDisk().then((outcome) => {
+    if (outcome.status === 'failed') {
+      console.log(outcome.message);
+      //retry in 3 seconds — `savePending` stays true, so a quit in the meantime
+      //still flushes rather than dropping the edit on the floor.
+      clearTimeout(saveTimeout);
+      saveTimeout = setTimeout(saveProject, 3000);
+      EventDispatcher.instance.emit('ProjectModel.saveFailedRetryScheduled');
+      return;
+    }
+
+    savePending = false;
+
+    if (outcome.status === 'saved') {
+      console.log('Project saved ' + new Date()); // Project is saved to disk, start the watch timer
+      EventDispatcher.instance.emit('ProjectModel.projectSavedToDisk');
+      //startWatchTimeOut();
+    }
+  });
+}
+
+/**
+ * Write any pending edit *now* and resolve once it has landed.
+ *
+ * `scheduleProjectSave()` debounces by a second, and until this existed nothing
+ * ever asked the renderer to drain that timer before the app went away:
+ * `app.on('before-quit')` awaited `backendManager.stopAll()` and nothing else,
+ * so an edit followed by ⌘Q inside the debounce reached memory, never disk, and
+ * failed silently. Two callers wire it up in `src/editor/index.ts` — the main
+ * process's quit handshake, and window `blur`.
+ *
+ * It resolves rather than rejects when the write fails. Both callers are on
+ * their way out, a retry timer would never get to run, and a rejection would
+ * only risk wedging the quit it was added to protect — so a failure is logged
+ * as loudly as this layer can and `savePending` is left set.
+ */
+export function flushPendingProjectSave(): Promise<void> {
+  if (!savePending) return Promise.resolve();
+
+  clearTimeout(saveTimeout);
+
+  return writeProjectToDisk().then((outcome) => {
+    if (outcome.status === 'failed') {
+      console.error('Project save FAILED while flushing before exit — changes may be lost: ' + outcome.message);
+      return;
+    }
+
+    savePending = false;
+
+    if (outcome.status === 'saved') {
+      console.log('Pending project save flushed to disk ' + new Date());
+      EventDispatcher.instance.emit('ProjectModel.projectSavedToDisk');
+    }
+  });
 }

@@ -29,6 +29,16 @@
 
 export const THEME_CHANGED_EVENT = 'nodegx:themechanged';
 
+/**
+ * The port type name that paints a wire as an error path (WFA-004).
+ *
+ * Declared here, next to the colour it selects, so the connection painter and
+ * the workflow node library cannot disagree about the spelling. It is a port
+ * *type* rather than a flag on the connection because that is how every other
+ * wire already picks its colour — `connectionColors(fromPort.type)`.
+ */
+export const WIRE_TYPE_ERROR = 'signal-error';
+
 type Listener = { fn: () => void; context: unknown };
 
 /** One colour: optional CSS token name + mandatory headless fallback. */
@@ -122,12 +132,19 @@ const COLOR_SPECS = {
   wirePulse: { css: '--theme-color-fg-highlight', fallback: '#eef2f6' },
 
   /* --- Node categories (UIX-001 category tokens) --------------------------
-     Existing category keys only (see UIX-005-NOTES): component, visual, data,
-     javascript, default. `javascript` maps onto the *function* token (pink);
-     there is no `logic` key in the taxonomy, so the amber logic token stays
-     unused on canvas (amber = warning/Changed annotation). */
+     component, visual, data, javascript, default. `javascript` maps onto the
+     *function* token (pink).
+
+     WFA-004 adds `logic`, which UIX-005 left out because no browser node type
+     declares that category and amber also carries warning/Changed. Workflow
+     step kinds DO have a logic category (`branch`, `switch`, `for-each`,
+     `merge`, and the timing kinds), so the token now has a referent. The
+     collision with amber-as-warning is bounded: a warning is drawn as a badge
+     and an annotation is drawn on the wire, neither of which is a category
+     chip, and no node type carries both. */
   categoryVisual: { css: '--theme-color-node-category-visual', fallback: '#5ca9ff' },
   categoryData: { css: '--theme-color-node-category-data', fallback: '#45d08a' },
+  categoryLogic: { css: '--theme-color-node-category-logic', fallback: '#f5b843' },
   categoryJavascript: { css: '--theme-color-node-category-function', fallback: '#f776c4' },
   categoryComponent: { css: '--theme-color-node-category-component', fallback: '#a78bfa' },
   categoryDefault: { css: '--theme-color-fg-muted', fallback: '#6b7682' }
@@ -135,7 +152,7 @@ const COLOR_SPECS = {
 
 type BaseColors = { [K in keyof typeof COLOR_SPECS]: string };
 
-export type CanvasCategoryName = 'component' | 'visual' | 'data' | 'javascript' | 'default';
+export type CanvasCategoryName = 'component' | 'visual' | 'data' | 'logic' | 'javascript' | 'default';
 
 export type CanvasCategoryColors = {
   /** Full-strength category hue (chip glyph, category accents). */
@@ -188,6 +205,7 @@ export type CanvasThemeColors = BaseColors & {
   selectionGlow: string;
   wireSignalHighlighted: string;
   wireDataHighlighted: string;
+  wireErrorHighlighted: string;
   categories: Record<CanvasCategoryName, CanvasCategoryColors>;
   /** DOM node chrome (picker / connection popup / references panel). */
   nodeSchemes: Record<CanvasCategoryName, NodeColorScheme>;
@@ -350,11 +368,20 @@ export class CanvasTheme {
   /**
    * Wire colours for a connection/port type name: `signal` gets the cyan pair,
    * everything else carries data (matching the old signal/default split).
+   *
+   * WFA-004 adds `signal-error` — the workflow canvas's `onError` edge. This is
+   * the one legitimate use of red under phase 23's danger-only law: the edge
+   * exists precisely because something failed. Colour alone would not be enough
+   * (greyscale screenshots, colourblindness), so the connection painter also
+   * dashes it — see `WIRE_TYPE_ERROR` in NodeGraphEditorConnection.
    */
   connectionColors(typeName: string | undefined): CanvasWireColors {
     const c = this.colors;
     if (typeName === 'signal') {
       return { normal: c.wireSignal, highlighted: c.wireSignalHighlighted, pulsing: c.wirePulse };
+    }
+    if (typeName === WIRE_TYPE_ERROR) {
+      return { normal: c.danger, highlighted: c.wireErrorHighlighted, pulsing: c.wirePulse };
     }
     return { normal: c.wireData, highlighted: c.wireDataHighlighted, pulsing: c.wirePulse };
   }
@@ -442,9 +469,11 @@ export class CanvasTheme {
       selectionGlow: withAlpha(base.selection, 0.15),
       wireSignalHighlighted: highlight(base.wireSignal),
       wireDataHighlighted: highlight(base.wireData),
+      wireErrorHighlighted: highlight(base.danger),
       categories: {
         visual: chip(base.categoryVisual),
         data: chip(base.categoryData),
+        logic: chip(base.categoryLogic),
         javascript: chip(base.categoryJavascript),
         component: chip(base.categoryComponent),
         default: chip(base.categoryDefault)
@@ -452,6 +481,7 @@ export class CanvasTheme {
       nodeSchemes: {
         visual: nodeScheme(base.categoryVisual),
         data: nodeScheme(base.categoryData),
+        logic: nodeScheme(base.categoryLogic),
         javascript: nodeScheme(base.categoryJavascript),
         component: nodeScheme(base.categoryComponent),
         default: nodeScheme(base.categoryDefault)

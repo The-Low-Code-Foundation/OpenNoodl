@@ -20,6 +20,15 @@ import cloudNodeLibrary from './cloud-node-library.json';
 const STATIC_CLOUD_CLIENT_ID = '__cloud_node_library__';
 
 /**
+ * WFA-004 — the client id the workflow step-kind library registers under.
+ *
+ * There is one, not one per backend: the workflow canvas targets one backend at
+ * a time, and a union of two backends' catalogs would be a vocabulary neither
+ * of them can execute.
+ */
+const WORKFLOW_CLIENT_ID = '__workflow_step_kinds__';
+
+/**
  * Keep track of all the clients and their nodes.
  *
  * This is so we can make sure we always give the user the correct information
@@ -109,6 +118,20 @@ export class NodeLibraryImporter {
   /** WFA-001: whether the generated cloud library is in `currentNodeLibrary`. */
   private hasStaticCloudLibrary = false;
 
+  /**
+   * WFA-004 — the workflow step-kind library, fetched from a running backend.
+   *
+   * Held rather than merged-and-forgotten because a workflow library is
+   * *replaced*, not merged: two backends can serve different versions of the
+   * same kind, and `mergeUpdates` deliberately never updates an existing node's
+   * data (it has always been additive). Merging a second backend's catalog on
+   * top of the first would leave the first backend's params in place under the
+   * second backend's name — the exact drift the served registry exists to
+   * prevent. So the names installed last time are remembered and removed first.
+   */
+  private workflowLibrary: NodeLibraryData | null = null;
+  private workflowNodeNames = new Set<string>();
+
   constructor() {
     EventDispatcher.instance.on(
       'ProjectModel.instanceWillChange',
@@ -116,9 +139,64 @@ export class NodeLibraryImporter {
         this.clients.clear();
         this.currentNodeLibrary = null;
         this.hasStaticCloudLibrary = false;
+        this.workflowLibrary = null;
+        this.workflowNodeNames.clear();
       },
       this
     );
+  }
+
+  /**
+   * Install (or clear, with `null`) the workflow step-kind node types.
+   *
+   * A no-op until some client has established a library — there is no canvas to
+   * render into before that, and `assignNewLibrary` would otherwise make the
+   * workflow catalog the base library, which carries no colours or project
+   * settings. The pending library is applied on the next client import instead.
+   */
+  public importWorkflowLibrary(library: NodeLibraryData | null): void {
+    this.workflowLibrary = library;
+    this.applyWorkflowLibrary();
+  }
+
+  private applyWorkflowLibrary(): void {
+    if (!this.currentNodeLibrary) return;
+
+    let changed = false;
+
+    // Remove exactly what was installed last time — by remembered name, so this
+    // never reaches a node type some other runtime contributed.
+    if (this.workflowNodeNames.size) {
+      const before = this.currentNodeLibrary.nodetypes.length;
+      this.currentNodeLibrary.nodetypes = this.currentNodeLibrary.nodetypes.filter(
+        (n) => !this.workflowNodeNames.has(n.name)
+      );
+      changed = this.currentNodeLibrary.nodetypes.length !== before;
+      this.workflowNodeNames.clear();
+    }
+
+    if (this.workflowLibrary) {
+      const library = JSON.parse(JSON.stringify(this.workflowLibrary)) as NodeLibraryData;
+      library.nodetypes.forEach((node) => {
+        node.runtimeTypes = [RuntimeType.Workflow];
+        this.currentNodeLibrary.nodetypes.push(node);
+        this.workflowNodeNames.add(node.name);
+      });
+
+      // The picker's rail reads `nodeIndex.coreNodes`; replace the workflow
+      // categories wholesale for the same reason the node types are replaced.
+      const workflowCategories = new Set(library.nodeIndex.coreNodes.map((c) => c.name));
+      this.currentNodeLibrary.nodeIndex.coreNodes = this.currentNodeLibrary.nodeIndex.coreNodes
+        .filter((c) => !workflowCategories.has(c.name))
+        .concat(library.nodeIndex.coreNodes);
+
+      this.clients.import(WORKFLOW_CLIENT_ID, RuntimeType.Workflow, library.nodetypes);
+      changed = true;
+    } else {
+      this.clients.remove(WORKFLOW_CLIENT_ID);
+    }
+
+    if (changed) this.updateIndex(true);
   }
 
   // NOTE: Made for labbing with ConnectionInspector
@@ -179,6 +257,10 @@ export class NodeLibraryImporter {
     }
 
     this.updateIndex(updated);
+
+    // WFA-004: a workflow library fetched before any client had reported has
+    // been waiting for a base library to merge into. This is where it lands.
+    if (this.workflowLibrary && !this.workflowNodeNames.size) this.applyWorkflowLibrary();
   }
 
   /** The assign-or-merge half of {@link onClientImport}, without the reload. */

@@ -4,7 +4,7 @@ import DebugInspector from '@noodl-utils/debuginspector';
 
 import { IVector2, NodeGraphEditor } from '../nodegrapheditor';
 import PopupLayer from '../popuplayer';
-import { CanvasTheme } from './canvas/CanvasTheme';
+import { CanvasFonts, CanvasTheme, WIRE_TYPE_ERROR } from './canvas/CanvasTheme';
 import { NodeGraphEditorNode } from './NodeGraphEditorNode';
 
 function getPortName(p) {
@@ -288,6 +288,51 @@ export class NodeGraphEditorConnection {
     return this.getHealth().healthy;
   }
 
+  /**
+   * Draw the source port's name on the wire, for ports whose type asks for it
+   * (WFA-004).
+   *
+   * Off for every port type that exists today, so browser and cloud graphs
+   * paint exactly as before. It exists because a node card only grows a port
+   * row for a port that is *already connected* (`NodeGraphEditorNode.measure`
+   * builds `plugs` from `this.connections`) — so on a workflow canvas an
+   * unwired `onfalse` is invisible, and once wired the wire may run a long way
+   * from the card that named it. An unlabelled branch is unreadable, which is
+   * the one place a workflow graph has to differ from a browser graph in a way
+   * the user can see.
+   */
+  paintPortLabel(ctx: CanvasRenderingContext2D, strokeColor: string) {
+    const portType = this.fromPort?.type;
+    if (!portType || typeof portType !== 'object' || !portType.connectionLabel) return;
+
+    const label = getPortName(this.fromPort) || this.fromProperty;
+    if (!label) return;
+
+    // Two thirds along the middle segment: clear of both cards, and away from
+    // the elbow where several wires from one node overlap.
+    const a = this.midpoint(this.curve[1], this.curve[2]);
+
+    ctx.save();
+    ctx.font = CanvasFonts.portLabel;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    const paddingX = 4;
+    const width = ctx.measureText(label).width + paddingX * 2;
+    const height = 13;
+
+    // A chip behind the text: a bare glyph over a dot-grid at low zoom is
+    // unreadable, and the wire itself runs under it.
+    ctx.fillStyle = CanvasTheme.instance.colors.cardBg;
+    ctx.globalAlpha = 0.92;
+    ctx.fillRect(a.x - width / 2, a.y - height / 2, width, height);
+    ctx.globalAlpha = 1;
+
+    ctx.fillStyle = strokeColor;
+    ctx.fillText(label, a.x, a.y);
+    ctx.restore();
+  }
+
   paint(ctx, paintRect) {
     this.ctx = ctx;
 
@@ -360,6 +405,15 @@ export class NodeGraphEditorConnection {
 
     const hoverConnection = this.isHighlighted();
     const type = NodeLibrary.nameForPortType(this.fromPort ? this.fromPort.type : undefined);
+
+    // WFA-004: an error edge is dashed as well as red. Colour alone would not
+    // survive a greyscale screenshot or a colourblind reader, and this is the
+    // one edge whose meaning must be unmistakable. Keyed on the source port's
+    // TYPE, like every other wire treatment here — the canvas does not know
+    // what a workflow is.
+    if (type === WIRE_TYPE_ERROR) {
+      ctx.setLineDash([7, 4]);
+    }
     // UIX-005: wire colours come from CanvasTheme (signal = cyan pair,
     // everything else = data/emerald pair) instead of the library blob.
     const connectionColors = CanvasTheme.instance.connectionColors(type);
@@ -409,6 +463,8 @@ export class NodeGraphEditorConnection {
 
     ctx.lineDashOffset = 0;
     ctx.setLineDash([]); // Restore line dash if it has been previously set
+
+    this.paintPortLabel(ctx, strokeColor);
 
     // Show the delete marker
     if (this.owner && this.owner.deleteModeConnection === this) {

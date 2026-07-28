@@ -563,6 +563,22 @@ export function validateStepShape(step: WorkflowStep): string[] {
     errors.push(`${at}: kind "${step.kind}" does not invoke a function — remove "ref"`);
   }
 
+  // WFA-004: the editor's canvas position. Optional and engine-invisible, but
+  // checked so a malformed one is a 400 at write time rather than something a
+  // canvas has to defend against on every open.
+  if (step.ui !== undefined) {
+    const ui = step.ui as unknown;
+    if (
+      !isPlainObject(ui) ||
+      typeof ui.x !== 'number' ||
+      typeof ui.y !== 'number' ||
+      !Number.isFinite(ui.x) ||
+      !Number.isFinite(ui.y)
+    ) {
+      errors.push(`${at}: ui must be { x: number, y: number } (the editor's canvas position)`);
+    }
+  }
+
   const p = params(step);
   const routeNames = Object.keys(step.routes || {});
 

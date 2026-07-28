@@ -95,6 +95,23 @@ export interface WorkflowStep {
    * expressed as first-class edges.
    */
   onError?: string[];
+  /**
+   * Editor-owned canvas position (WFA-004). The engine never reads it.
+   *
+   * It lives on the step, and not in editor-local storage, because a workflow
+   * definition is the ONLY artefact a workflow has: it is not a project file,
+   * so no repository carries a layout beside it. Editor-local positions would
+   * mean every collaborator — and the same author on a second machine — opens a
+   * workflow that has never been arranged. `WorkflowRegistry.upsert` rebuilds
+   * the definition from a field whitelist but passes `steps` through verbatim,
+   * so a per-step key is what survives a round trip; a workflow-level one would
+   * not. Declared here rather than left to that accident.
+   *
+   * Optional, and absent from every definition written before WFA-004 — so the
+   * shape check `validateStepShape` performs on it cannot make an existing file
+   * refuse to load.
+   */
+  ui?: { x: number; y: number };
 }
 
 export interface WorkflowDefinition {

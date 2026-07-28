@@ -331,6 +331,26 @@ function launchApp() {
       win.show();
     });
 
+    // Closing the window destroys the renderer, and with it any project save
+    // still sitting on the 1s debounce. On Windows and Linux this is also the
+    // ordinary route to a quit. Hold the close open for the same flush
+    // handshake `before-quit` uses — and stand down when that handler is
+    // already draining, so ⌘Q costs one round trip rather than two.
+    let closeFlushStarted = false;
+    win.on('close', (event) => {
+      if (closeFlushStarted || quitFlushStarted) return;
+
+      event.preventDefault();
+      closeFlushStarted = true;
+
+      flushRendererProjectSave().then((reason) => {
+        if (reason === 'timeout') {
+          console.log('Timed out waiting for the renderer to flush its pending project save; closing anyway');
+        }
+        if (win && !win.isDestroyed()) win.destroy();
+      });
+    });
+
     win.on('closed', () => {
       win = null;
       clearTimeout(saveWindowSettingsTimeout);
@@ -741,13 +761,70 @@ function launchApp() {
     }
   });
 
-  // Stop all local backends on quit
-  app.on('before-quit', async () => {
-    try {
-      await backendManager.stopAll();
-    } catch (e) {
-      console.log('Error stopping backends:', e);
-    }
+  // ── Quitting without dropping the user's last edit ────────────────────────
+  //
+  // The renderer debounces project saves by a second (`scheduleProjectSave` in
+  // projectmodel.ts), so an edit followed immediately by a quit used to be lost
+  // silently — nothing here asked it to flush.
+  //
+  // Note this handler was already `async` and already `await`ed `stopAll()`:
+  // that await never did anything, because **Electron does not wait for an
+  // async `before-quit` handler**. The only way to hold a quit open is
+  // `preventDefault()` and quit again later, which is what the handshake below
+  // does — so the backend teardown becomes correct as a side effect.
+  //
+  // The timeout is not optional. A save that hangs must cost the user five
+  // seconds, not their ability to close the app.
+  const PROJECT_FLUSH_TIMEOUT_MS = 5000;
+
+  function flushRendererProjectSave() {
+    return new Promise((resolve) => {
+      // A crashed renderer is checked explicitly, not just a destroyed one: the
+      // crash handler calls `win.close()`, and a dead renderer will never reply,
+      // so without this every crash-restart would sit out the full timeout.
+      if (!win || win.isDestroyed() || win.webContents.isDestroyed() || win.webContents.isCrashed()) {
+        return resolve('no-window');
+      }
+
+      let settled = false;
+      const finish = (reason) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        ipcMain.removeListener('flush-project-save-done', onDone);
+        resolve(reason);
+      };
+
+      const onDone = () => finish('flushed');
+      const timer = setTimeout(() => finish('timeout'), PROJECT_FLUSH_TIMEOUT_MS);
+
+      ipcMain.on('flush-project-save-done', onDone);
+      win.webContents.send('flush-project-save');
+    });
+  }
+
+  let quitFlushStarted = false;
+  let readyToQuit = false;
+
+  app.on('before-quit', (event) => {
+    if (readyToQuit) return;
+
+    event.preventDefault();
+    if (quitFlushStarted) return; // a second ⌘Q while the first is still draining
+    quitFlushStarted = true;
+
+    flushRendererProjectSave()
+      .then((reason) => {
+        if (reason === 'timeout') {
+          console.log('Timed out waiting for the renderer to flush its pending project save; quitting anyway');
+        }
+      })
+      .then(() => backendManager.stopAll())
+      .catch((e) => console.log('Error stopping backends:', e))
+      .then(() => {
+        readyToQuit = true;
+        app.quit();
+      });
   });
 
   app.on('activate', () => {

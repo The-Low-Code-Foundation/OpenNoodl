@@ -133,6 +133,17 @@ class BackendManager {
       this.cancelWorkflowRun(id, executionId)
     );
 
+    // WFA-004: the workflow canvas. The step-kind catalog is the canvas's node
+    // registry and comes from the backend the workflow will actually run on —
+    // never a bundled copy, which could offer a kind that backend cannot
+    // execute. The CRUD half is the canvas's save path.
+    ipcMain.handle('backend:workflow-step-kinds', async (_, id) => this.getWorkflowStepKinds(id));
+    ipcMain.handle('backend:get-workflow-def', async (_, id, workflowId) => this.getWorkflowDef(id, workflowId));
+    ipcMain.handle('backend:save-workflow-def', async (_, id, workflow) => this.saveWorkflowDef(id, workflow));
+    ipcMain.handle('backend:delete-workflow-def', async (_, id, workflowId) =>
+      this.deleteWorkflowDef(id, workflowId)
+    );
+
     // ==========================================================================
     // ACCESS CONTROL (BAK-003) — the permissions panel proxies to /admin/*
     // ==========================================================================
@@ -946,6 +957,69 @@ class BackendManager {
   async cancelWorkflowRun(backendId, executionId) {
     const supervisor = this.requireRunning(backendId, 'cancel a workflow run');
     return supervisor.request('POST', `/admin/workflow-runs/${encodeURIComponent(executionId)}/cancel`);
+  }
+
+  // ==========================================================================
+  // WF-001 WORKFLOW DEFINITIONS (WFA-004) — the canvas's registry and save path
+  // ==========================================================================
+
+  /**
+   * The step-kind catalog of ONE backend — the workflow canvas's node registry.
+   *
+   * Deliberately per-backend and never cached across backends: the whole reason
+   * the registry is served rather than generated is that it cannot describe a
+   * kind the backend you are targeting is unable to execute. A backend that is
+   * not running has no catalog, and the canvas says so rather than falling back
+   * to a bundled copy.
+   *
+   * @param {string} backendId
+   */
+  async getWorkflowStepKinds(backendId) {
+    const supervisor = this.requireRunning(backendId, 'read the step-kind catalog');
+    return supervisor.request('GET', '/admin/workflow-step-kinds');
+  }
+
+  /**
+   * One workflow definition, in full. The list endpoint already returns whole
+   * definitions, but the canvas re-reads the one it is opening so it renders
+   * what the backend has right now rather than what a list fetched earlier said.
+   *
+   * @param {string} backendId
+   * @param {string} workflowId
+   */
+  async getWorkflowDef(backendId, workflowId) {
+    const supervisor = this.requireRunning(backendId, 'read a workflow');
+    return supervisor.request('GET', `/admin/workflow-defs/${encodeURIComponent(workflowId)}`);
+  }
+
+  /**
+   * Create or replace a workflow definition.
+   *
+   * `PUT` covers both: the registry's `upsert` creates when the id is unknown.
+   * A definition the registry rejects comes back as a 400 whose body is the
+   * validator's own error list, and `ServiceSupervisor.request` rethrows that
+   * message — which is what the canvas shows. That matters more here than
+   * elsewhere: an invalid definition on disk stops the backend booting, so the
+   * only safe place for a bad definition to be refused is before it is written.
+   *
+   * @param {string} backendId
+   * @param {Object} workflow - A WorkflowInput (id, name, entry, steps, ...)
+   */
+  async saveWorkflowDef(backendId, workflow) {
+    const supervisor = this.requireRunning(backendId, 'save a workflow');
+    if (workflow && workflow.id) {
+      return supervisor.request('PUT', `/admin/workflow-defs/${encodeURIComponent(workflow.id)}`, workflow);
+    }
+    return supervisor.request('POST', '/admin/workflow-defs', workflow);
+  }
+
+  /**
+   * @param {string} backendId
+   * @param {string} workflowId
+   */
+  async deleteWorkflowDef(backendId, workflowId) {
+    const supervisor = this.requireRunning(backendId, 'delete a workflow');
+    return supervisor.request('DELETE', `/admin/workflow-defs/${encodeURIComponent(workflowId)}`);
   }
 }
 

@@ -7,7 +7,7 @@ import './process-setup';
 
 import { EventDispatcher } from '../shared/utils/EventDispatcher';
 import { NodeLibrary } from './src/models/nodelibrary';
-import { ProjectModel } from './src/models/projectmodel';
+import { flushPendingProjectSave, ProjectModel } from './src/models/projectmodel';
 
 // Design tokens — canonical source lives in noodl-core-ui (UIX-001)
 import '@noodl-core-ui/styles/custom-properties/animations.css';
@@ -36,6 +36,36 @@ ipcRenderer.on('open-noodl-uri', async (event, uri) => {
 
 ipcRenderer.on('import-projectmetadata', (event, data) => {
   ProjectModel.instance.mergeMetadata(data);
+});
+
+// ── Draining the autosave debounce on the way out ───────────────────────────
+//
+// `scheduleProjectSave()` waits a second before writing, and nothing used to
+// drain that timer when the app went away: an edit followed by ⌘Q inside the
+// debounce was lost silently, on every edit path — metadata and every node,
+// connection and component change alike.
+//
+// Two triggers, deliberately overlapping, because neither covers the other's
+// cases:
+//
+//   * the main process holds the quit open and asks for a flush (⌘Q, the app
+//     menu, the dock, and the window close button — see main.js). This is the
+//     only one that can guarantee the *last* keystroke is written;
+//   * `blur` writes whenever the editor stops being the focused window, which
+//     reaches what no quit handler can — a crash, a force-kill, an OS-initiated
+//     shutdown. It bounds the loss to "since you last switched away" rather
+//     than "since you last saved".
+//
+// Registered at module scope rather than inside `DOMContentLoaded` so a quit
+// during startup is handled too. Both are free when nothing is pending:
+// `flushPendingProjectSave()` returns immediately unless an edit is queued.
+ipcRenderer.on('flush-project-save', () => {
+  const reply = () => ipcRenderer.send('flush-project-save-done');
+  flushPendingProjectSave().then(reply, reply);
+});
+
+window.addEventListener('blur', () => {
+  flushPendingProjectSave();
 });
 
 function setupViewerIpc() {

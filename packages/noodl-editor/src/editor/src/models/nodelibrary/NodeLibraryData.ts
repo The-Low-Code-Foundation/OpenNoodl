@@ -1,9 +1,21 @@
 export enum RuntimeType {
   Browser = 'browser',
-  Cloud = 'cloud'
+  Cloud = 'cloud',
+  /**
+   * WFA-004 — the WF-001 workflow engine.
+   *
+   * This filters which node types the picker offers for the graph you have
+   * open, which is the whole job `RuntimeType` does. It does NOT say a workflow
+   * is a component: a workflow is its own document type stored on a backend,
+   * not in the project (see WFA-004-ASSESSMENT §1). The node types under this
+   * runtime are the WF-002 step kinds, and they arrive from a running backend's
+   * `GET /admin/workflow-step-kinds` — never from a bundled copy, which could
+   * offer a kind the target backend cannot execute.
+   */
+  Workflow = 'workflow'
 }
 
-export const RuntimeTypes: RuntimeType[] = [RuntimeType.Browser, RuntimeType.Cloud];
+export const RuntimeTypes: RuntimeType[] = [RuntimeType.Browser, RuntimeType.Cloud, RuntimeType.Workflow];
 
 export interface NodeLibraryDataNode {
   name: string;
