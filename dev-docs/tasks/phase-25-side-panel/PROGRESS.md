@@ -156,9 +156,17 @@ primary-checkout pass as part of the task, not as a residual.
   input exactly at the graph canvas's top edge. It is a `Page.captureScreenshot` compositing artefact
   across the canvas layer boundary, **not** occlusion — the hit-test above is what settles it. Do not
   re-file it from the image alone.
-- **PNL-006's kind glyphs and warning dot against a real project**, and PNL-008's acceptance 2/4/5 round
-  trips (close-and-reopen, the experimental toggle, the settings-id migration). All need a project
-  lifecycle rather than a panel walk.
+- **UIX-011 row 11 (lesson checkmarks, the `#FCCC73` yellow) stays unproven — Richard's call,
+  2026-07-28.** It needs a lesson to exist, and phase 17 (Learn) is deferred except LEARN-006 pilots,
+  so the fixture cannot supply it the way it supplies rows 1–10. Recorded here rather than left to
+  drift a sixth session: it is the flagged highest-risk row and it has still never been seen. Closing
+  it means authoring one minimal lesson purely as a QA fixture — a small job, but a decision, not an
+  oversight.
+
+- **PNL-006's kind glyphs and warning dot against a real project** — ✅ **CLOSED 2026-07-28**, and the
+  warning dot was **broken**: see **F62**. `components-tree` against `nodegx-qa-fixture` goes from 11
+  SKIPs to 1. PNL-008's acceptance 2/4/5 round trips (close-and-reopen, the experimental toggle, the
+  settings-id migration) are still open. All need a project lifecycle rather than a panel walk.
 
   **Partly closed 2026-07-28, and it found something.** `components-tree.mjs` run against two
   independent real projects (`VerifyFix4`, `Agent Chat Example`) reports the same **2 failures** in
