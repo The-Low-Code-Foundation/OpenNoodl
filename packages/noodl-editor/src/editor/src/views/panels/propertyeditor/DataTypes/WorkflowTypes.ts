@@ -19,7 +19,10 @@ import { createRoot, Root } from 'react-dom/client';
 
 import { PropertyPanelRow } from '@noodl-core-ui/components/property-panel/PropertyPanelInput';
 
+import { WorkflowEditorService } from '@noodl-models/workflow/WorkflowEditorService';
+
 import { ConditionEditor } from '../components/WorkflowCondition/ConditionEditor';
+import { FunctionRefRow } from '../components/WorkflowCondition/FunctionRefRow';
 import { SwitchCasesEditor } from '../components/WorkflowCondition/SwitchCasesEditor';
 import { TriggerInfoRow } from '../components/WorkflowCondition/TriggerInfoRow';
 import { WorkflowValueInput } from '../components/WorkflowCondition/WorkflowValueInput';
@@ -199,6 +202,63 @@ export class WorkflowValueType extends WorkflowTypeView {
           ariaLabel: this.displayName
         })
       )
+    );
+  }
+}
+
+/**
+ * The `ref` row — which cloud function this step calls (WFA-006).
+ *
+ * A step field rather than a param, but it edits like one, and it is the only
+ * row in this editor whose value points at something in a **different artefact
+ * store**: the function lives in the project, the step lives in a backend's
+ * data directory, and the two can disagree. So this row states which of the
+ * four resolution states it is in, offers the descent when there is a graph to
+ * open, offers the deploy when that is what is missing, and lists the names
+ * that do exist.
+ *
+ * The answer comes from the open `WorkflowDocument`, which is the one thing that
+ * knows both halves — the project's functions and what THIS backend is serving.
+ * Only one workflow is open at a time, which is what makes that lookup exact.
+ */
+export class WorkflowFunctionRefType extends WorkflowTypeView {
+  static fromPort(args: TSFixme) {
+    return WorkflowTypeView.fill(new WorkflowFunctionRefType(), args);
+  }
+
+  renderReact() {
+    if (!this.root) return;
+
+    const document = WorkflowEditorService.instance.document;
+    const stepId = this.stepId;
+    const resolution = document && stepId ? document.resolveStep(stepId) : null;
+
+    // "Open" only when there is a graph to open; "Deploy it" only when the
+    // function is in this project and the backend has said it does not have it.
+    // A button that cannot help is worse than no button — it reads as an offer.
+    const canOpen = resolution?.state === 'resolved-in-project';
+    const canDeploy = Boolean(resolution?.inProject) && resolution?.deployed === false;
+
+    this.root.render(
+      React.createElement(PropertyPanelRow, {
+        label: this.displayName,
+        isChanged: !this.isDefault,
+        onReset: () => this.write(undefined),
+        children: React.createElement(FunctionRefRow, {
+          value: typeof this.value === 'string' ? this.value : '',
+          onChange: (value: string) => this.write(value || undefined),
+          resolution,
+          suggestions: document ? document.functionSuggestions() : [],
+          onOpen: canOpen && stepId ? () => void document?.descendInto(stepId) : undefined,
+          onDeploy: canDeploy
+            ? async () => {
+                await document?.deployFunctions();
+                this.renderReact();
+              }
+            : undefined,
+          ariaLabel: this.displayName
+        })
+      })
     );
   }
 }

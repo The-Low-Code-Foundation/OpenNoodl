@@ -35,6 +35,7 @@ import { QueryFilterType } from './QueryFilterType';
 import {
   WorkflowCasesType,
   WorkflowConditionType,
+  WorkflowFunctionRefType,
   WorkflowTriggerInfoType,
   WorkflowValueType
 } from './WorkflowTypes';
@@ -421,6 +422,12 @@ export class Ports extends View {
       return NodeLibrary.nameForPortType(type) === 'workflow-trigger-info';
     }
 
+    // WFA-006: the cloud function a step calls. A name, plus what it resolves to
+    // in the project and on the backend — which are two different questions.
+    function isOfWorkflowFunctionRefType() {
+      return NodeLibrary.nameForPortType(type) === 'workflow-function-ref';
+    }
+
     function isOfPropListType() {
       return NodeLibrary.nameForPortType(type) === 'proplist';
     }
@@ -458,6 +465,7 @@ export class Ports extends View {
     else if (isOfWorkflowCasesType()) return WorkflowCasesType;
     else if (isOfWorkflowValueType()) return WorkflowValueType;
     else if (isOfWorkflowTriggerInfoType()) return WorkflowTriggerInfoType;
+    else if (isOfWorkflowFunctionRefType()) return WorkflowFunctionRefType;
   }
   _getPorts(): readonly Port[] {
     let ports = this.model.getPorts('input');

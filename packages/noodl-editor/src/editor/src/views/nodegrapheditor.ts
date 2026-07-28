@@ -533,10 +533,24 @@ export class NodeGraphEditor extends View {
 
       this.activeComponent = component;
 
+      /**
+       * F48, closed as a rule rather than per caller (WFA-006).
+       *
+       * `NavigationHistory` resolves every entry through
+       * `ProjectModel.getComponentWithName`, which cannot find a workflow — so an
+       * entry pushed for one is a dead stop that back/forward silently refuses to
+       * move through. WFA-004 kept workflows out by passing `pushHistory: false`
+       * at its one call site; WFA-006 adds a second door (the trail's crumb back
+       * from a descent), and a rule that every caller has to remember is a rule
+       * that gets forgotten. Decided by runtime type, in the place that has just
+       * computed it.
+       */
+      const canPushHistory = this.runtimeType !== RuntimeType.Workflow;
+
       if (args?.replaceHistory) {
         this.navigationHistory.reset();
-        this.navigationHistory.push(component);
-      } else if (args?.pushHistory) {
+        if (canPushHistory) this.navigationHistory.push(component);
+      } else if (args?.pushHistory && canPushHistory) {
         this.navigationHistory.push(component);
       }
 

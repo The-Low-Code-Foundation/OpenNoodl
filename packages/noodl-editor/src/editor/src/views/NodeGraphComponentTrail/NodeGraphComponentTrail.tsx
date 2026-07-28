@@ -39,6 +39,17 @@ export interface NodeGraphComponentTrailProps {
   runtimeType?: RuntimeType;
   /** PAR-003: hides the "+" new-component affordance on read-only canvases. */
   readOnly?: boolean;
+
+  /**
+   * WFA-006: anything the hosting canvas wants to say about the world outside
+   * this graph — today, a cloud function's callers and its deploy button.
+   *
+   * A slot rather than a set of props on purpose: this bar is the shared
+   * navigation surface for every canvas in the editor, and the one thing it must
+   * not learn is what a workflow is. Nothing is rendered when it is absent, so an
+   * ordinary component's trail takes the same code path it takes today.
+   */
+  statusSlot?: React.ReactNode;
 }
 
 /**
@@ -58,7 +69,8 @@ export function NodeGraphComponentTrail({
   onHistoryForward,
 
   runtimeType,
-  readOnly
+  readOnly,
+  statusSlot
 }: NodeGraphComponentTrailProps) {
   const trailRef = useRef<HTMLDivElement>(null);
   const { handleAddComponent } = useComponentActions();
@@ -148,6 +160,8 @@ export function NodeGraphComponentTrail({
       )}
 
       <div className={css['Spacer']} />
+
+      {statusSlot}
 
       <PreviewLiveStatus />
     </div>

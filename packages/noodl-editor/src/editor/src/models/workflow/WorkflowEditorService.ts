@@ -14,6 +14,7 @@
 
 import { NodeGraphContextTmp } from '../../contexts/NodeGraphContext/NodeGraphContext';
 import Model from '../../../../shared/model';
+import { clearDescent } from './workflowDescent';
 import { WorkflowDocument } from './WorkflowDocument';
 
 import type { WorkflowRef } from './types';
@@ -58,6 +59,11 @@ export class WorkflowEditorService extends Model {
 
   adopt(document: WorkflowDocument) {
     this._document?.dispose();
+    // WFA-006: a descent points back at the workflow it came from, and that
+    // workflow is about to be replaced. The pointer is cleared here rather than
+    // left to expire, because `descentFor` matches on the FUNCTION component —
+    // a stale pointer would offer a crumb back to a disposed document.
+    clearDescent();
     this._document = document;
 
     document.on(
@@ -77,6 +83,7 @@ export class WorkflowEditorService extends Model {
     this._document.off(this);
     this._document.dispose();
     this._document = null;
+    clearDescent();
     this.notifyListeners(WorkflowEditorEvent.documentChanged, { document: null });
   }
 }

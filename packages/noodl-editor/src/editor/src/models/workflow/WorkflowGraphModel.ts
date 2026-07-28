@@ -44,6 +44,21 @@ export class WorkflowGraphModel extends NodeGraphModel {
   }
 
   /**
+   * WFA-006: what double-clicking one of this graph's nodes means.
+   *
+   * Set by `WorkflowDocument`, which is the thing that knows what a step points
+   * at. The same shape as `contextMenuActionsProvider` above, and for the same
+   * reason: the canvas asks the graph whether it wants the gesture, and the
+   * knowledge stays out of the canvas.
+   */
+  public doubleClickProvider?: (nodeId: string) => boolean;
+
+  /** True when the graph handled it and the canvas should do nothing more. */
+  handleDoubleClick(nodeId: string): boolean {
+    return this.doubleClickProvider ? this.doubleClickProvider(nodeId) : false;
+  }
+
+  /**
    * A canvas node id IS the step id (F15) — which means it has to be readable.
    *
    * `NodeOperations.createNewNode` mints a guid, and a guid is a legal step id,

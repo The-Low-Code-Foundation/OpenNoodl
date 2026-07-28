@@ -78,6 +78,9 @@ export const PORT_FIRES = 'fires';
 /** A read-only fact about a trigger, shown in the property editor. */
 export const PORT_TYPE_TRIGGER_INFO = 'workflow-trigger-info';
 
+/** The cloud function a step calls, with what it resolves to (WFA-006). */
+export const PORT_TYPE_FUNCTION_REF = 'workflow-function-ref';
+
 export function typeNameForKind(kind: string): string {
   return WORKFLOW_TYPE_PREFIX + kind;
 }
@@ -227,11 +230,16 @@ function portsForKind(spec: StepKindSpec, catalog?: StepKindCatalog) {
 
   // `ref` is a step field rather than a param, but it edits exactly like one and
   // it is the single most useful thing on the card, so it goes first.
+  //
+  // WFA-006: its own port type rather than `string`, because it is the one value
+  // in a workflow that points into a DIFFERENT artefact store — the project —
+  // and the row has to be able to say whether what it points at is there, on
+  // this backend, in both, or in neither.
   if (spec.invokesFunction) {
     ports.push({
       name: 'ref',
       displayName: 'Function',
-      type: { name: 'string', allowEditOnly: true },
+      type: { name: PORT_TYPE_FUNCTION_REF, allowEditOnly: true },
       plug: 'input',
       group: GROUP_PARAMS,
       index: index++,

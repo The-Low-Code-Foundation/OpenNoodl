@@ -129,6 +129,40 @@
   flex: 1;
 }
 
+/* WFA-006: the cloud-function chips ("Used by 2 workflows", "Deploy to …").
+   Same pill geometry as an inactive trail tab, deliberately quieter than the
+   current-component pill — they are facts about the world outside this graph,
+   not part of the path to it. Tokens only. */
+.TrailChip {
+  flex: none;
+  border: 1px solid var(--theme-color-border-default);
+  background: none;
+  border-radius: var(--radius-md);
+  padding: 4px 10px;
+  font-family: var(--font-family);
+  font-size: 11.5px;
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--theme-color-fg-muted);
+  cursor: pointer;
+  white-space: nowrap;
+
+  &:hover:not(:disabled) {
+    background-color: var(--theme-color-bg-3);
+    color: var(--theme-color-fg-highlight);
+  }
+
+  &:disabled {
+    cursor: default;
+    opacity: 0.6;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--theme-color-primary);
+    outline-offset: 2px;
+  }
+}
+
 /* "Preview live" (mock `.status`): 7px success dot + 11.5px fg-3. */
 .Status {
   display: inline-flex;

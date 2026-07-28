@@ -7,7 +7,10 @@ import { ExecutionOverlay } from '../CanvasOverlays/ExecutionOverlay';
 import { HighlightOverlay } from '../CanvasOverlays/HighlightOverlay';
 import { CanvasTabs } from '../CanvasTabs';
 import { EditorBanner } from '../EditorBanner';
+import { refFromComponentName } from '../../models/workflow/functionRefResolution';
+import { descentFor } from '../../models/workflow/workflowDescent';
 import { NodeGraphComponentTrail } from '../NodeGraphComponentTrail';
+import { CloudFunctionTrailStatus } from '../NodeGraphComponentTrail/CloudFunctionTrailStatus';
 import { CenterToFitMode } from './canvas/types';
 
 import type { NodeGraphEditor } from '../nodegrapheditor';
@@ -286,6 +289,33 @@ export class OverlayViews {
       const firstItem = nameParts.shift();
       const componentTrail = [];
 
+      /**
+       * WFA-006 §1: the way back out of a descent.
+       *
+       * A cloud function's trail is an ordinary project path — `#__cloud__` is
+       * already suppressed by the trail itself, so it reads `saveOrder`. What it
+       * cannot know is that you arrived from a workflow step, so the crumb is
+       * prepended here, from the descent pointer, and reads
+       * `Order Pipeline › saveOrder`.
+       *
+       * It is a normal trail item carrying a real `component` — the workflow's
+       * canvas adapter — so clicking it goes through exactly the same
+       * `switchToComponent` path as any other crumb. The trail component itself
+       * is untouched by this, which is what keeps ordinary component navigation
+       * out of the blast radius.
+       */
+      const descent = descentFor(fullName);
+      const cloudFunctionName = refFromComponentName(fullName);
+      if (descent) {
+        componentTrail.push({
+          name: descent.workflowName,
+          fullName: descent.workflowComponent.fullName,
+          component: descent.workflowComponent,
+          isCurrent: false,
+          isFolderComponent: false
+        });
+      }
+
       for (let i = 0; i < nameParts.length; i++) {
         let part = '';
 
@@ -326,7 +356,17 @@ export class OverlayViews {
         // runtime type for the "+" new-component menu and hides authoring
         // affordances on read-only canvases.
         runtimeType: editor.runtimeType,
-        readOnly: Boolean(editor.readOnly)
+        readOnly: Boolean(editor.readOnly),
+        // WFA-006: on a cloud function's canvas only — who calls it, and the
+        // explicit deploy. `refFromComponentName` answers null for anything
+        // else, so every other canvas passes `undefined` and renders nothing.
+        statusSlot: cloudFunctionName
+          ? React.createElement(CloudFunctionTrailStatus, {
+              functionName: cloudFunctionName,
+              backendId: descent?.backendId,
+              backendName: descent?.backendName
+            })
+          : undefined
       };
 
       editor.overlays.renderSlot('title', rootElem, React.createElement(NodeGraphComponentTrail, props));

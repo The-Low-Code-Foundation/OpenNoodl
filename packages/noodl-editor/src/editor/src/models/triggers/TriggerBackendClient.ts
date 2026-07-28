@@ -18,6 +18,8 @@
  * @module models/triggers/TriggerBackendClient
  */
 
+import { deployedFunctionNames } from '../workflow/functionRefResolution';
+
 export type TriggerType = 'schedule' | 'webhook' | 'db-change';
 export type MissedFirePolicy = 'skip' | 'run-once-on-start';
 export type WebhookScheme = 'hmac-sha256' | 'token';
@@ -141,7 +143,13 @@ export async function fetchTriggerTargets(backendId: string): Promise<TriggerTar
       ipc().invoke('backend:list-workflow-defs')
     ]);
 
-    const functions: string[] = Array.isArray(status?.functions) ? status.functions.map(String) : [];
+    // F54: `GET /admin/workflows` answers `functions: {name, workflow}[]`, so the
+    // `.map(String)` this used to do produced `["[object Object]"]` — the picker
+    // listed a placeholder and `isTargetResolved` then answered FALSE for a
+    // function that is deployed, which is the wrong warning about a working
+    // trigger that its own third value exists to prevent. One reader for both
+    // surfaces now, shared with WFA-006's resolution helper.
+    const functions: string[] = deployedFunctionNames(status).names;
 
     // `list-workflow-defs` answers for EVERY running backend; a trigger can only
     // point at its own backend's workflows, so the others are dropped here

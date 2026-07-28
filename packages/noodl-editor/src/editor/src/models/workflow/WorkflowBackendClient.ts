@@ -22,11 +22,28 @@ function ipc() {
   return (window as any).require('electron').ipcRenderer;
 }
 
-interface BackendWorkflowDefs {
+export interface BackendWorkflowDefs {
   backendId: string;
   backendName: string;
   workflows: WorkflowDefinition[];
   error?: string;
+}
+
+/**
+ * Every running backend's workflow definitions, whole.
+ *
+ * `listWorkflows` below reduces these to `WorkflowRef`s for the panel; WFA-006's
+ * reverse lookup ("which workflows call this function?") needs the steps, so it
+ * reads the same answer rather than fetching each definition again. An
+ * unreachable backend arrives with `error` set and an empty list — the caller
+ * must be able to tell that from "this backend has no workflows".
+ */
+export async function listWorkflowDefinitions(): Promise<BackendWorkflowDefs[]> {
+  try {
+    return ((await ipc().invoke('backend:list-workflow-defs')) as BackendWorkflowDefs[]) || [];
+  } catch {
+    return [];
+  }
 }
 
 export interface WorkflowListResult {
@@ -42,12 +59,7 @@ export interface WorkflowListResult {
  * keeps the backend it came from.
  */
 export async function listWorkflows(): Promise<WorkflowListResult> {
-  let result: BackendWorkflowDefs[] = [];
-  try {
-    result = (await ipc().invoke('backend:list-workflow-defs')) || [];
-  } catch {
-    return { workflows: [], unreachable: [], backendCount: 0 };
-  }
+  const result = await listWorkflowDefinitions();
 
   const workflows: WorkflowRef[] = [];
   const unreachable: string[] = [];

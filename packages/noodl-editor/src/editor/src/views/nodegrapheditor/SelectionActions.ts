@@ -99,6 +99,15 @@ export class SelectionActions {
 
     // Handle double-click navigation
     if (editor.interaction.leftButtonIsDoubleClicked) {
+      // A graph may claim the gesture (WFA-006: a workflow step descends into
+      // the cloud function it calls). Asked first and only asked — the knowledge
+      // of what a node points at stays in the graph model, the way
+      // `getContextMenuActions` already works.
+      const graph = editor.model as unknown as { handleDoubleClick?: (nodeId: string) => boolean };
+      if (typeof graph?.handleDoubleClick === 'function' && graph.handleDoubleClick(node.model.id)) {
+        return;
+      }
+
       if (node.model.type instanceof ComponentModel) {
         editor.switchToComponent(node.model.type, { pushHistory: true });
       } else {
