@@ -60,6 +60,11 @@ interface StubOwnerShape {
   openRightClickMenu: jasmine.Spy;
   relayout: jasmine.Spy;
   repaint: jasmine.Spy;
+  // CAN-003 wire gestures
+  findConnectionAtPoint: jasmine.Spy;
+  openConnectionRightClickMenu: jasmine.Spy;
+  openReroutePanels: jasmine.Spy;
+  removeConnection: jasmine.Spy;
 }
 
 type StubOwner = MembersOf<NodeGraphEditor, StubOwnerShape>;
@@ -125,7 +130,21 @@ function stubOwner(): StubOwner {
     openRightClickMenu: jasmine.createSpy('openRightClickMenu'),
     relayout: jasmine.createSpy('relayout'),
     repaint: jasmine.createSpy('repaint'),
+    findConnectionAtPoint: jasmine.createSpy('findConnectionAtPoint'),
+    openConnectionRightClickMenu: jasmine.createSpy('openConnectionRightClickMenu'),
+    openReroutePanels: jasmine.createSpy('openReroutePanels'),
+    removeConnection: jasmine.createSpy('removeConnection'),
     mouseWheelDetector: { changeMode: () => 'mouse' }
+  };
+}
+
+/** A wire view, as much of one as the reroute state machine touches. */
+function stubConnection(overrides?: { fromNode?: unknown; toNode?: unknown }) {
+  return {
+    model: { fromId: 'a', fromProperty: 'out', toId: 'b', toProperty: 'in' },
+    rerouting: undefined,
+    fromNode: overrides?.fromNode ?? { id: 'a' },
+    toNode: overrides?.toNode ?? { id: 'b' }
   };
 }
 
@@ -273,5 +292,99 @@ describe('InteractionController', () => {
     expect(controller.draggingNodes).toBeNull();
     expect(controller.startDraggingConnection({})).toBe(false);
     expect(controller.draggingConnection).toBeUndefined();
+  });
+
+  /**
+   * CAN-003. The drop is where the meaning is — over a node it rewires, over
+   * empty canvas it deletes — and the model is untouched until then.
+   */
+  describe('rerouting a wire endpoint', () => {
+    function startReroute(end: 'from' | 'to' = 'to') {
+      const connection = stubConnection();
+      controller.latestMousePos = { x: 10, y: 10 };
+      controller.startReroutingConnection(connection as TSFixme, end);
+      return connection;
+    }
+
+    it('marks the wire as having a loose end without touching the model', () => {
+      const connection = startReroute();
+
+      expect(controller.reroutingConnection.end).toBe('to');
+      expect(connection.rerouting).toEqual({ end: 'to', pos: { x: 10, y: 10 } });
+      expect(connection.model).toEqual({ fromId: 'a', fromProperty: 'out', toId: 'b', toProperty: 'in' });
+      expect(owner.setDOMLayerVisible).toHaveBeenCalledWith(false);
+    });
+
+    it('is refused in read-only mode', () => {
+      owner.readOnly = true;
+      const connection = stubConnection();
+      expect(controller.startReroutingConnection(connection as TSFixme, 'to')).toBe(false);
+      expect(controller.reroutingConnection).toBeUndefined();
+      expect(connection.rerouting).toBeUndefined();
+    });
+
+    it('deletes the connection when the loose end is dropped on empty canvas', () => {
+      const connection = startReroute();
+
+      mouse('move', 400, 400);
+      expect(controller.reroutingConnection.toNode).toBeUndefined();
+
+      mouse('up', 400, 400);
+      expect(owner.removeConnection).toHaveBeenCalledWith(connection.model);
+      expect(controller.reroutingConnection).toBeUndefined();
+      expect(connection.rerouting).toBeUndefined();
+    });
+
+    it('opens the pinned-end port picker when the loose end is dropped on a node', () => {
+      const connection = startReroute();
+      const target = { shouldConnect: () => target, borderHighlighted: false } as TSFixme;
+      owner.roots = [target];
+
+      mouse('move', 400, 400);
+      expect(controller.reroutingConnection.toNode).toBe(target);
+      expect(target.borderHighlighted).toBe(true);
+
+      mouse('up', 400, 400);
+      expect(owner.openReroutePanels).toHaveBeenCalled();
+      expect(owner.removeConnection).not.toHaveBeenCalled();
+      // Still in flight — the popup resolves it, and only then is the wire let go.
+      expect(connection.rerouting).toBeDefined();
+    });
+
+    it('cancels without changing anything, and puts the DOM layer back', () => {
+      const connection = startReroute();
+      owner.setDOMLayerVisible.calls.reset();
+
+      controller.cancelReroutingConnection();
+
+      expect(controller.reroutingConnection).toBeUndefined();
+      expect(connection.rerouting).toBeUndefined();
+      expect(owner.removeConnection).not.toHaveBeenCalled();
+      expect(owner.setDOMLayerVisible).toHaveBeenCalledWith(true);
+    });
+
+    it('never offers the pinned end`s own node as a rewire target', () => {
+      const connection = stubConnection();
+      controller.latestMousePos = { x: 10, y: 10 };
+      // The pinned end for a loose `to` is the source node.
+      const pinned = { shouldConnect: () => pinned, borderHighlighted: false } as TSFixme;
+      connection.fromNode = pinned;
+      controller.startReroutingConnection(connection as TSFixme, 'to');
+      owner.roots = [pinned];
+
+      mouse('move', 400, 400);
+      expect(controller.reroutingConnection.toNode).toBeUndefined();
+    });
+  });
+
+  it('offers a right-clicked wire its own menu, ahead of the node hit test', () => {
+    const connection = stubConnection();
+    owner.findConnectionAtPoint.and.returnValue(connection);
+
+    mouse('down', 100, 100, { button: 2 });
+    mouse('up', 100, 100, { button: 2 });
+
+    expect(owner.openConnectionRightClickMenu).toHaveBeenCalledWith(connection as TSFixme);
+    expect(owner.openRightClickMenu).not.toHaveBeenCalled();
   });
 });

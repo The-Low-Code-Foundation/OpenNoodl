@@ -19,8 +19,6 @@ import { NodeLibrary } from '../models/nodelibrary';
 import { ProjectModel } from '../models/projectmodel';
 import { WarningsModel } from '../models/warningsmodel';
 import { HighlightManager } from '../services/HighlightManager';
-// Initialize Blockly globals early (must run before runtime nodes load)
-import { initBlocklyEditorGlobals } from '../utils/BlocklyEditorGlobals';
 import DebugInspector from '../utils/debuginspector';
 import CommentLayer from './commentlayer';
 // Import test utilities for console debugging (dev only)
@@ -53,8 +51,6 @@ import { OverlayViews } from './nodegrapheditor/OverlayViews';
 import { SelectionActions } from './nodegrapheditor/SelectionActions';
 import { ViewportActions } from './nodegrapheditor/ViewportActions';
 import { ToastLayer } from './ToastLayer/ToastLayer';
-
-initBlocklyEditorGlobals();
 
 // Styles
 require('../styles/nodegrapheditor.css');
@@ -148,13 +144,18 @@ export class NodeGraphEditor extends View {
   topLeftCanvasPos: number[];
   mouseWheelDetector: TSFixme;
   inspectorsModel: DebugInspector.InspectorsModel;
-  clearDeleteModeTimer: NodeJS.Timeout;
   lastBlocklyTabCloseTime: number = 0; // Track when Blockly tabs close to prevent accidental deletions
 
-  deleteModeConnection: TSFixme;
   componentName: TSFixme;
   componentFolder: string;
   highlightedConnection: TSFixme;
+
+  /**
+   * The wire the user has clicked (CAN-003). Hover is `highlightedConnection`;
+   * this is selection, and it is what Delete and the connection context menu
+   * act on. Only ever one — wires are not multi-selectable.
+   */
+  selectedConnection: NodeGraphEditorConnection;
   createNewNodePanel: CreateNewNodePanel;
 
   relayoutNeeded: boolean;
@@ -618,6 +619,30 @@ export class NodeGraphEditor extends View {
 
   setHighlightedConnection(c: NodeGraphEditorConnection, atPosition?) {
     return this.inspectorActions.setHighlightedConnection(c, atPosition);
+  }
+
+  selectConnection(c: NodeGraphEditorConnection) {
+    this.selectionActions.selectConnection(c);
+  }
+
+  /**
+   * The wire under a point, if any (CAN-003). Right-click asks this rather than
+   * reading the hover state, so a menu opens on the wire the cursor is on even
+   * if no move event landed on it first.
+   */
+  findConnectionAtPoint(pos: { x: number; y: number }): NodeGraphEditorConnection | undefined {
+    for (const connection of this.connections) {
+      if (connection.hitTest(pos)) return connection;
+    }
+  }
+
+  openConnectionRightClickMenu(c: NodeGraphEditorConnection) {
+    this.contextMenu.openConnectionRightClickMenu(c);
+  }
+
+  /** Port picker for a reroute drop, with the wire's other end pinned (CAN-003). */
+  openReroutePanels() {
+    this.connectionPopups.openForReroute();
   }
 
   //hide all other inspectors that aren't pinned

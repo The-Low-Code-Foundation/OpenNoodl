@@ -107,12 +107,13 @@ const COLOR_SPECS = {
   selection: { css: '--theme-color-primary', fallback: '#4da3ff' },
 
   /* --- Status ------------------------------------------------------------- */
-  /** Errors and destructive affordances (unhealthy borders, delete marker). */
+  /**
+   * Errors and destructive affordances (unhealthy borders, error wires).
+   *
+   * The `deleteMarker` / `deleteMarkerGlyph` pair that used to sit here went
+   * with the arm-then-confirm wire delete it painted (CAN-003).
+   */
   danger: { css: '--theme-color-danger', fallback: '#f97066' },
-  /** Connection delete marker fill (destructive — red is allowed here). */
-  deleteMarker: { css: '--theme-color-danger', fallback: '#f97066' },
-  /** The X glyph on the delete marker (white on both themes). */
-  deleteMarkerGlyph: { fallback: '#ffffff' },
 
   /* --- Annotations (diff/review — SUB-007 / AIX-003) ---------------------- */
   annotationCreated: { css: '--theme-color-success', fallback: '#3ccb7f' },

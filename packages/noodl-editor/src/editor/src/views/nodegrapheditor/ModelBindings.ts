@@ -235,6 +235,12 @@ export class ModelBindings {
         const con = _this.findConnectionWithModel(args.model);
         con && con.disconnect();
 
+        // Don't leave hover or selection (CAN-003) pointing at a wire whose
+        // view has just been disconnected — `paint` would throw on the next
+        // frame, and Delete would act on nothing.
+        if (con && _this.highlightedConnection === con) _this.setHighlightedConnection(undefined);
+        if (con && _this.selectedConnection === con) _this.selectedConnection = undefined;
+
         const inspector = _this.getInspectorForConnection(con);
         inspector && inspector.remove();
 

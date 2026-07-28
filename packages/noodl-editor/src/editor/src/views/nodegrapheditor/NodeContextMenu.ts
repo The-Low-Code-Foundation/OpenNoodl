@@ -18,6 +18,7 @@ import { OverlayHandle } from './canvas/OverlayHost';
 import { AABB } from './canvas/types';
 import { NodeGraphEditorNode } from './NodeGraphEditorNode';
 
+import type { NodeGraphEditorConnection } from './NodeGraphEditorConnection';
 import type { NodeGraphEditor } from '../nodegrapheditor';
 
 /**
@@ -273,6 +274,36 @@ export class NodeContextMenu {
   openRightClickMenu() {
     showContextMenuInPopup({
       items: this.getContextMenuActions(),
+      width: MenuDialogWidth.Default,
+      renderDirection: DialogRenderDirection.Horizontal
+    });
+  }
+
+  /**
+   * Right-click on a wire (CAN-003 / F54). Wires had no menu at all — deleting
+   * one meant discovering an undocumented two-click gesture.
+   */
+  getConnectionContextMenuActions(connection: NodeGraphEditorConnection) {
+    const editor = this.editor;
+
+    return [
+      {
+        label: 'Delete connection',
+        icon: IconName.Trash,
+        onClick: () => {
+          if (editor.selectedConnection === connection) editor.selectedConnection = undefined;
+          editor.setHighlightedConnection(undefined);
+          editor.removeConnection(connection.model);
+        }
+      }
+    ];
+  }
+
+  openConnectionRightClickMenu(connection: NodeGraphEditorConnection) {
+    this.editor.selectConnection(connection);
+
+    showContextMenuInPopup({
+      items: this.getConnectionContextMenuActions(connection),
       width: MenuDialogWidth.Default,
       renderDirection: DialogRenderDirection.Horizontal
     });

@@ -83,6 +83,16 @@ export class EditorClipboard {
       return false;
     }
 
+    // A selected wire is what Delete means (CAN-003). Wire and node selection
+    // are exclusive, so this never competes with a node deletion.
+    if (editor.selectedConnection) {
+      const connection = editor.selectedConnection;
+      editor.selectedConnection = undefined;
+      editor.setHighlightedConnection(undefined);
+      editor.removeConnection(connection.model);
+      return;
+    }
+
     const nodes = [...editor.selector.nodes];
 
     // Make sure all nodes can be deleted

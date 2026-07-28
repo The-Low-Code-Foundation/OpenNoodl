@@ -16,8 +16,24 @@ function getPortIndex(p) {
 }
 
 export class NodeGraphEditorConnection {
+  /** Stroke width used for hit-testing the wire (much wider than it paints). */
+  static readonly hitStrokeWidth = 10;
+  /** Painted radius of an endpoint dot; grows to a handle on highlight. */
+  static readonly endpointRadius = 3;
+  static readonly endpointHandleRadius = 4;
+  /** Grab radius for an endpoint handle — larger than it paints, on purpose. */
+  static readonly endpointHitRadius = 8;
+
   ctx: CanvasRenderingContext2D;
   owner: NodeGraphEditor;
+
+  /**
+   * Set while one end of this wire is being dragged (CAN-003). The model is
+   * untouched — the connection stays whole and only *paints* with a loose end,
+   * so a cancelled drag has nothing to restore. `disconnect()` would null
+   * `fromNode`/`toNode` and `paint()` would throw on the next frame.
+   */
+  rerouting: { end: 'from' | 'to'; pos: IVector2 } | undefined;
 
   fromNode: any;
   toNode: any;
@@ -141,38 +157,74 @@ export class NodeGraphEditorConnection {
     );
   }
 
+  /**
+   * Is this point on the wire? (CAN-003 — the stroke test the hover path has
+   * always used, given a name so right-click and the editor can ask too.)
+   *
+   * `isPointInStroke` reads `ctx.lineWidth`, so the test widens the stroke to
+   * the 10px hit width and then puts it back — the old inline version left the
+   * context at 10 and everything painted after it inherited that.
+   */
+  hitTest(pos: IVector2): boolean {
+    if (!this.ctx || !this.curve) return false;
+
+    const previousLineWidth = this.ctx.lineWidth;
+    this.ctx.lineWidth = NodeGraphEditorConnection.hitStrokeWidth;
+    this.drawCurve();
+    const hit = this.ctx.isPointInStroke(pos.x, pos.y);
+    this.ctx.lineWidth = previousLineWidth;
+
+    return hit;
+  }
+
+  /**
+   * Which endpoint handle is under this point, if any (CAN-003).
+   *
+   * Tested against the curve's own ends, which `paint()` computed this frame,
+   * and with a hit radius comfortably larger than the painted dot — the handle
+   * has to be grabbable while sitting on a node's edge.
+   */
+  endpointAt(pos: IVector2): 'from' | 'to' | undefined {
+    if (!this.curve) return undefined;
+
+    const r = NodeGraphEditorConnection.endpointHitRadius;
+    const within = (p: IVector2) => (p.x - pos.x) * (p.x - pos.x) + (p.y - pos.y) * (p.y - pos.y) <= r * r;
+
+    if (within(this.curve[0])) return 'from';
+    if (within(this.curve[3])) return 'to';
+    return undefined;
+  }
+
+  isSelected() {
+    return this.owner?.selectedConnection === this;
+  }
+
   mouse(type, pos: IVector2, evt) {
     if (evt.button !== 0) return; //only interact with left mouse button
 
-    const _this = this;
     if (type === 'move') {
       if (this.ctx) {
-        this.ctx.lineWidth = 10;
-        this.drawCurve();
-        if (this.ctx.isPointInStroke(pos.x, pos.y)) {
+        if (this.hitTest(pos)) {
           evt.consumed = true;
           this.owner.setHighlightedConnection(this, pos);
 
-          // Show tooltip if the connection is unhealthy or has annotations
-          if (this.owner.deleteModeConnection !== this) {
-            // annotations takes priority over health
-            if (this.model.annotation) {
+          // annotations takes priority over health
+          if (this.model.annotation) {
+            PopupLayer.instance.showTooltip({
+              x: evt.pageX,
+              y: evt.pageY,
+              position: 'bottom',
+              content: this.model.annotation
+            });
+          } else {
+            const health = this.getHealth();
+            if (!health.healthy) {
               PopupLayer.instance.showTooltip({
                 x: evt.pageX,
                 y: evt.pageY,
                 position: 'bottom',
-                content: this.model.annotation
+                content: health.message
               });
-            } else {
-              const health = this.getHealth();
-              if (!health.healthy) {
-                PopupLayer.instance.showTooltip({
-                  x: evt.pageX,
-                  y: evt.pageY,
-                  position: 'bottom',
-                  content: health.message
-                });
-              }
             }
           }
           this.owner.repaint();
@@ -184,32 +236,25 @@ export class NodeGraphEditorConnection {
       }
     } else if (type === 'down' && this.owner.highlightedConnection === this) {
       evt.consumed = true;
+
+      // Grabbing an end detaches it (CAN-003). Tested before anything else on
+      // the wire, so a grab can never arm or select instead.
+      const end = this.owner.readOnly !== true ? this.endpointAt(pos) : undefined;
+      if (end) {
+        PopupLayer.instance.hideTooltip();
+        this.owner.interaction.startReroutingConnection(this, end);
+      }
     } else if (type === 'up' && this.owner.highlightedConnection === this) {
       PopupLayer.instance.hideTooltip();
       evt.consumed = true;
 
+      // A click selects the wire. It used to arm a delete that a second click
+      // anywhere on the wire confirmed — a gesture nothing announced, that made
+      // double-click unusable for anything else, and whose three replacements
+      // (drag an end to empty canvas, right-click → Delete, select + Delete)
+      // all live in this task.
       if (this.model && this.owner.readOnly !== true) {
-        // Don't do delete connection if in read only mode
-        if (this.owner.deleteModeConnection === this) {
-          // Connection is clicked the second time
-          // Delete the connection
-          this.owner.deleteModeConnection = undefined;
-          this.owner.setHighlightedConnection(undefined);
-          this.owner.removeConnection(this.model);
-        } else {
-          // Connection is clicked, turn it into a delete connection
-          this.owner.deleteModeConnection = this;
-          this.owner.repaint();
-
-          // If nothing has happened in 3 seconds clear delete mode
-          this.owner.clearDeleteModeTimer && clearTimeout(this.owner.clearDeleteModeTimer);
-          this.owner.clearDeleteModeTimer = setTimeout(function () {
-            if ((_this.owner.deleteModeConnection = _this)) {
-              _this.owner.deleteModeConnection = undefined;
-              _this.owner.repaint();
-            }
-          }, 3000);
-        }
+        this.owner.selectConnection(this);
       }
     }
   }
@@ -386,6 +431,20 @@ export class NodeGraphEditorConnection {
       ];
     }
 
+    // One end is being dragged: rebuild the curve as an elbow between the end
+    // that is still pinned and the cursor (CAN-003). Done after the normal
+    // curve so the pinned end keeps its port anchor exactly.
+    if (this.rerouting) {
+      const pinned = this.rerouting.end === 'to' ? this.curve[0] : this.curve[3];
+      const loose = this.rerouting.pos;
+      const mid = (pinned.x + loose.x) * 0.5;
+
+      this.curve =
+        this.rerouting.end === 'to'
+          ? [pinned, { x: mid, y: pinned.y }, { x: mid, y: loose.y }, loose]
+          : [loose, { x: mid, y: loose.y }, { x: mid, y: pinned.y }, pinned];
+    }
+
     function aabbIntersectTest(connection, paintArea) {
       const minX = Math.min(connection[0].x, connection[1].x, connection[2].x, connection[3].x);
       const maxX = Math.max(connection[0].x, connection[1].x, connection[2].x, connection[3].x);
@@ -437,17 +496,27 @@ export class NodeGraphEditorConnection {
     ctx.lineWidth = this.lineWidth ? this.lineWidth : lineWidth;
     // Added routing is thicker (shape cue, AIX-003).
     if (this.model.annotation === 'Created') ctx.lineWidth = 3;
+    // Selected (CAN-003): a heavier stroke, not a colour. Wire colour already
+    // carries type, health, debug pulse and diff annotation — selection would
+    // be the fifth meaning on one channel.
+    if (this.isSelected()) ctx.lineWidth = Math.max(ctx.lineWidth, 3);
 
     this.drawCurve();
     ctx.stroke();
 
-    // Endpoint dots (mock: 3px wire-coloured dots at both ends)
+    // Endpoint dots (mock: 3px wire-coloured dots at both ends). On a
+    // highlighted wire they grow into the grab handles CAN-003 adds; they stay
+    // dots otherwise, because handles on every wire would be a hundred new hit
+    // targets competing with the node cards on a dense graph.
+    const endpointRadius = hoverConnection
+      ? NodeGraphEditorConnection.endpointHandleRadius
+      : NodeGraphEditorConnection.endpointRadius;
     ctx.fillStyle = strokeColor;
     ctx.beginPath();
-    ctx.arc(this.curve[0].x, this.curve[0].y, 3, 0, 2 * Math.PI, false);
+    ctx.arc(this.curve[0].x, this.curve[0].y, endpointRadius, 0, 2 * Math.PI, false);
     ctx.fill();
     ctx.beginPath();
-    ctx.arc(this.curve[3].x, this.curve[3].y, 3, 0, 2 * Math.PI, false);
+    ctx.arc(this.curve[3].x, this.curve[3].y, endpointRadius, 0, 2 * Math.PI, false);
     ctx.fill();
 
     if (DebugInspector.instance.isEnabled() && DebugInspector.instance.isConnectionPulsing(this)) {
@@ -465,29 +534,5 @@ export class NodeGraphEditorConnection {
     ctx.setLineDash([]); // Restore line dash if it has been previously set
 
     this.paintPortLabel(ctx, strokeColor);
-
-    // Show the delete marker
-    if (this.owner && this.owner.deleteModeConnection === this) {
-      const a = this.midpoint(this.curve[0], this.curve[1]),
-        b = this.midpoint(this.curve[1], this.curve[2]),
-        c = this.midpoint(this.curve[2], this.curve[3]);
-
-      const mp = this.midpoint(this.midpoint(a, b), this.midpoint(b, c));
-      ctx.fillStyle = theme.deleteMarker;
-      ctx.beginPath();
-      ctx.arc(mp.x, mp.y, 6, 0, 2 * Math.PI, false);
-      ctx.fill();
-      ctx.lineWidth = 1.5;
-      // (NodeGraphColors.base2 was undefined here — the X glyph silently kept
-      // the previous strokeStyle. Now an explicit themed glyph colour.)
-      ctx.strokeStyle = theme.deleteMarkerGlyph;
-      ctx.beginPath();
-      const l = 2.5;
-      ctx.moveTo(mp.x - l, mp.y - l);
-      ctx.lineTo(mp.x + l, mp.y + l);
-      ctx.moveTo(mp.x + l, mp.y - l);
-      ctx.lineTo(mp.x - l, mp.y + l);
-      ctx.stroke();
-    }
   }
 }

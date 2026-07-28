@@ -12,6 +12,7 @@ import * as HitTester from './HitTester';
 import { IVector2, MouseEventType } from './types';
 
 import type { NodeGraphEditor } from '../../nodegrapheditor';
+import type { NodeGraphEditorConnection } from '../NodeGraphEditorConnection';
 
 type MousePosition = {
   x: number;
@@ -48,6 +49,26 @@ export class InteractionController {
     pos?: TSFixme;
     popupOpen?: TSFixme;
   };
+
+  /**
+   * One end of an existing wire is being dragged (CAN-003).
+   *
+   * Deliberately a sibling of `draggingConnection` rather than a mode inside
+   * it: the drop resolves to *remove old + add new*, and the connection stays
+   * whole and rendered until it does.
+   */
+  reroutingConnection: {
+    connection: NodeGraphEditorConnection;
+    /** Which end is loose. The other keeps its port. */
+    end: 'from' | 'to';
+    pos: IVector2;
+    /** Hover candidate for the loose end. */
+    toNode?: NodeGraphEditorNode;
+    popupOpen?: boolean;
+  };
+
+  /** Escape listener installed for the lifetime of a reroute drag. */
+  private cancelRerouteOnEscape: ((evt: KeyboardEvent) => void) | undefined;
 
   // Rect multiselect
   multiselectMouseDown: IVector2;
@@ -143,6 +164,58 @@ export class InteractionController {
         y: this.latestMousePos.y
       }
     };
+  }
+
+  /**
+   * Grab one end of an existing wire (CAN-003). The model is not touched here
+   * — the connection paints with a loose end and the drop decides what it
+   * means: over a node it rewires, over empty canvas it deletes, Escape
+   * cancels.
+   */
+  startReroutingConnection(connection: NodeGraphEditorConnection, end: 'from' | 'to') {
+    if (this.owner.readOnly) {
+      return false;
+    }
+
+    this.owner.selector.unselect();
+    this.owner.setDOMLayerVisible(false);
+
+    this.owner.highlighted && ViewerConnection.instance.sendNodeHighlighted(this.owner.highlighted.model, false);
+    this.owner.highlighted = undefined;
+
+    this.reroutingConnection = { connection, end, pos: this.latestMousePos };
+    connection.rerouting = { end, pos: this.latestMousePos };
+
+    // Escape has to reach us even though the canvas is not a focusable element
+    // with a key handler of its own.
+    this.cancelRerouteOnEscape = (evt: KeyboardEvent) => {
+      if (evt.key === 'Escape') this.cancelReroutingConnection();
+    };
+    window.addEventListener('keydown', this.cancelRerouteOnEscape);
+  }
+
+  /**
+   * End a reroute drag without changing anything. Every exit path goes through
+   * here: the DOM layer, the hidden viewer window and the Escape listener are
+   * all global state that would otherwise be left switched off.
+   */
+  cancelReroutingConnection() {
+    if (!this.reroutingConnection) return;
+
+    const rerouting = this.reroutingConnection;
+    rerouting.connection.rerouting = undefined;
+    if (rerouting.toNode) rerouting.toNode.borderHighlighted = false;
+
+    this.reroutingConnection = undefined;
+
+    if (this.cancelRerouteOnEscape) {
+      window.removeEventListener('keydown', this.cancelRerouteOnEscape);
+      this.cancelRerouteOnEscape = undefined;
+    }
+
+    ipcRenderer.send('viewer-show');
+    this.owner.setDOMLayerVisible(true);
+    this.owner.repaint();
   }
 
   handleMouseWheelEvent(event: TSFixme, args?: TSFixme) {
@@ -274,6 +347,56 @@ export class InteractionController {
     if (this.draggingNodes) {
       this.doDragNodesAndComments(this.draggingNodes, type, pos, evt);
       if (evt.consumed) return true;
+    }
+
+    // An existing wire's end is being dragged (CAN-003)
+    if (this.reroutingConnection && !this.reroutingConnection.popupOpen) {
+      const rerouting = this.reroutingConnection;
+      // The end that stays put decides which node a candidate may not be.
+      const pinnedNode =
+        rerouting.end === 'to' ? rerouting.connection.fromNode : rerouting.connection.toNode;
+
+      if (type === 'move') {
+        ipcRenderer.send('viewer-hide');
+
+        rerouting.pos = pos;
+        rerouting.connection.rerouting = { end: rerouting.end, pos };
+
+        if (rerouting.toNode) rerouting.toNode.borderHighlighted = false;
+
+        let toNode: NodeGraphEditorNode;
+        for (const i in this.owner.roots) {
+          toNode = this.owner.roots[i].shouldConnect(pos, pinnedNode);
+          if (toNode) break;
+        }
+
+        if (toNode && toNode !== pinnedNode) {
+          toNode.borderHighlighted = true;
+          rerouting.toNode = toNode;
+        } else {
+          rerouting.toNode = undefined;
+        }
+
+        evt.consumed = true;
+        this.owner.repaint();
+      } else if (type === 'up') {
+        if (rerouting.toNode) {
+          // Over a node: ask for the moved end's port, with the other end
+          // pinned. The popup resolves it as remove + add in one undo group.
+          rerouting.popupOpen = true;
+          this.owner.openReroutePanels();
+          evt.stopPropagation && evt.stopPropagation();
+        } else {
+          // Over empty canvas: this is the delete gesture now.
+          const model = rerouting.connection.model;
+          this.cancelReroutingConnection();
+          this.owner.removeConnection(model);
+        }
+
+        evt.consumed = true;
+        this.owner.repaint();
+      }
+      return true;
     }
 
     // A new connections is being dragged
@@ -496,6 +619,16 @@ export class InteractionController {
         ) {
           PopupLayer.instance.hidePopup();
           evt.consumed = true;
+
+          // A wire under the cursor claims the menu first (CAN-003 / F54).
+          // Asked before the node hit test because a wire's endpoints sit on a
+          // node's edge, and the wire is the smaller, more specific target.
+          const connectionUnderCursor = owner.findConnectionAtPoint(scaledPos);
+          if (connectionUnderCursor) {
+            owner.openConnectionRightClickMenu(connectionUnderCursor);
+            this.rightClickPos = undefined;
+            return true;
+          }
 
           // Check if we're right-clicking on a node (selected or not)
           let nodeUnderCursor: NodeGraphEditorNode = null;

@@ -5,6 +5,7 @@ import { NodeLibrary } from '../../models/nodelibrary';
 import PopupLayer from '../popuplayer';
 import * as HitTester from './canvas/HitTester';
 
+import type { NodeGraphEditorConnection } from './NodeGraphEditorConnection';
 import type { NodeGraphEditorNode } from './NodeGraphEditorNode';
 import type { NodeGraphEditor } from '../nodegrapheditor';
 
@@ -45,13 +46,32 @@ export class SelectionActions {
       editor.interaction.draggingConnection = undefined;
     }
 
-    // Clear any connections that are being deleted
+    // Clear any connection hover/selection
     editor.setHighlightedConnection(undefined);
-    editor.deleteModeConnection = undefined;
+    editor.selectedConnection = undefined;
 
     // Close open popup
     PopupLayer.instance.hideAllModalsAndPopups();
     PopupLayer.instance.hideTooltip();
+  }
+
+  /**
+   * Select a wire (CAN-003). Node selection and wire selection are exclusive:
+   * `clearSelection` drops whichever was held, so Delete and the context menus
+   * never have to decide between them.
+   */
+  selectConnection(connection: NodeGraphEditorConnection) {
+    const editor = this.editor;
+
+    if (editor.readOnly) {
+      return;
+    }
+
+    this.clearSelection();
+    editor.commentLayer?.clearSelection();
+
+    editor.selectedConnection = connection;
+    editor.repaint();
   }
 
   addNodeToSelection(node: NodeGraphEditorNode) {
