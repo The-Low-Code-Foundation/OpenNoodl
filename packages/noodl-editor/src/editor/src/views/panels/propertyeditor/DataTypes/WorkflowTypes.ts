@@ -226,12 +226,50 @@ export class WorkflowFunctionRefType extends WorkflowTypeView {
     return WorkflowTypeView.fill(new WorkflowFunctionRefType(), args);
   }
 
+  /**
+   * Re-render on both ways this row can go stale, because it has two.
+   *
+   * **The world changed.** A deploy from the trail chip, a backend starting, a
+   * function renamed in the Components panel: the value is untouched and the
+   * answer is different. A row still reading "not deployed" after you deployed
+   * it is the stalest kind of lie.
+   *
+   * **The value changed from somewhere else.** An undo, MCP, or the retarget
+   * chip. The property editor does not rebuild a row on `parametersChanged`, so
+   * without this the row keeps painting the name it was built with — caught in
+   * the live pass showing the OLD name beside the NEW name's resolution, which
+   * is worse than either alone.
+   */
+  render() {
+    const el = super.render();
+    WorkflowEditorService.instance.document?.on('resolutionChanged', () => this.renderReact(), this);
+    this.graph?.findNodeWithId(this.stepId)?.on('parametersChanged', () => this.renderReact(), this);
+    return el;
+  }
+
+  dispose() {
+    WorkflowEditorService.instance.document?.off(this);
+    this.graph?.findNodeWithId(this.stepId)?.off(this);
+    super.dispose();
+  }
+
   renderReact() {
     if (!this.root) return;
 
     const document = WorkflowEditorService.instance.document;
     const stepId = this.stepId;
     const resolution = document && stepId ? document.resolveStep(stepId) : null;
+
+    /**
+     * Read the parameter, not `this.value`.
+     *
+     * `this.value` is filled once when the row is built and only refreshed by
+     * this row's own `write`. A `ref` can change from elsewhere — an undo, MCP,
+     * or the retarget after a rename — and the live pass caught this row showing
+     * the previous name beside the NEW name's resolution. The sibling types all
+     * read through `getParameter` here for the same reason.
+     */
+    const value = this.parent.model.getParameter(this.name);
 
     // "Open" only when there is a graph to open; "Deploy it" only when the
     // function is in this project and the backend has said it does not have it.
@@ -245,7 +283,7 @@ export class WorkflowFunctionRefType extends WorkflowTypeView {
         isChanged: !this.isDefault,
         onReset: () => this.write(undefined),
         children: React.createElement(FunctionRefRow, {
-          value: typeof this.value === 'string' ? this.value : '',
+          value: typeof value === 'string' ? value : '',
           onChange: (value: string) => this.write(value || undefined),
           resolution,
           suggestions: document ? document.functionSuggestions() : [],

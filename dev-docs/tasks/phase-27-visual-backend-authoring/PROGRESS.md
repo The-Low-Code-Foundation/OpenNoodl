@@ -1,6 +1,6 @@
 # Phase 27 — Visual Backend Authoring (Track L): Progress
 
-**Status:** 🚧 In progress — 5 / 7 complete, WFA-006 next
+**Status:** 🚧 In progress — 6 / 7 complete, WFA-007 next
 **Specced:** 2026-07-27, from a live end-to-end test of phase 19's workflow engine
 **Phase overview:** [README.md](./README.md)
 
@@ -17,7 +17,7 @@ Not started · In progress · **Built–not wired** · Complete · Superseded
 | [WFA-003](./WFA-003-STEP-DATA-MAPPING.md) | Step data mapping & one payload shape | 2 | ✅ Complete | 2026-07-28 | Backend-only, as specced. There were **five** entry points, not four (F38). One key could not be kept in both shapes — `trigger` is now the object, the string moved to `triggerType` (F39). [Notes](./WFA-003-NOTES.md) |
 | [WFA-004](./WFA-004-WORKFLOW-CANVAS.md) | The workflow canvas | 3 | ✅ Complete | 2026-07-28 | **Reuse, not escalate** — the §1 decision is in [WFA-004-ASSESSMENT.md](./WFA-004-ASSESSMENT.md), and a real workflow renders on the *existing* canvas with node ids that are step ids, so WFA-002's overlay lands on it **unmodified** (criterion 3, confirmed badge-by-badge). The live pass found one shipped defect: a single `switch` step made a whole workflow fail to open (F49). [Notes](./WFA-004-NOTES.md) |
 | [WFA-005](./WFA-005-TRIGGERS-ON-CANVAS.md) | Triggers as canvas entry nodes | 3 | ✅ Complete | 2026-07-28 | **F8 was never about `payload`** — the write path validated the object it had just built, so an unknown key was dropped at every level while the load path refuses to boot on the same key. F7's exemption is scoped by the matched route's own declared access kind, not by a path prefix. F9 was two defects in one number. F47 folded in on Richard's call and closes F34's other half. The live pass drove the phase-19 exit clause end to end: one definition, two entry points, **different branches**. [Notes](./WFA-005-NOTES.md) |
-| [WFA-006](./WFA-006-STEP-TO-FUNCTION-DESCENT.md) | Descend from a step into its function graph | 3 | ⬜ Not started | — | What makes the two tiers feel like one language |
+| [WFA-006](./WFA-006-STEP-TO-FUNCTION-DESCENT.md) | Descend from a step into its function graph | 3 | ✅ Complete | 2026-07-28 | **Two facts, never collapsed into one** — `inProject` and `deployed` (`true \| false \| null`) derive four states, and the difference between them is the feature. Descent + crumb + reverse lookup, no painter change and one optional trail slot. Found F54 by reading (a deployed function reported as missing) and F55 by measuring (the marker gate was already red). §7's decision is recorded and the test **corrected the spec's own wording** (F56). [Notes](./WFA-006-NOTES.md) · [Decisions](./WFA-006-ASSESSMENT.md) |
 | [WFA-007](./WFA-007-AI-PROPOSES-ONTO-CANVAS.md) | AI proposes workflows onto the canvas | 4 | ⬜ Not started | — | Adds no AI capability; adds a review surface |
 
 ## Findings register
@@ -110,6 +110,15 @@ around the description.
 | F52 | **The property editor's type chip names a COLOUR as if it were a category.** `getNodeTypeChipInfo` appends the taxonomy key's label, and for most nodes the colour and the category happen to be the same word — so it reads as a category. A trigger is coloured `data` for its hue (it is where the run's data comes from) and the chip read `WEBHOOK · POST /BOTH-WAYS · DATA`. Given a one-line opt-out (`metadata.hideCategoryChip`) rather than a taxonomy change; the general problem stands for any node whose colour is chosen for hue | `propertyeditor/utils.ts:46` | WFA-005 ✅ (locally) |
 | F53 | **A trigger's configuration cannot be edited from either surface.** `PUT /admin/triggers/:id` exists and is tested, but neither the panel nor the canvas offers a form for it — changing a cron means delete-and-recreate, which for a webhook mints a new secret and breaks every sender. Not in WFA-005's scope (the spec asks for creation, enable/disable and delete) but it is the obvious next ask | `TriggersPanel.tsx` | unowned |
 
+### Found by WFA-006, 2026-07-28
+
+| # | Finding | Where | Owner |
+|---|---|---|---|
+| F54 | **A deployed function was reported as missing, by a `.map(String)`.** `GET /admin/workflows` answers `functions: {name, workflow}[]` (`WorkflowRunnerStatus`), and `fetchTriggerTargets` read it as `status.functions.map(String)` — i.e. `["[object Object]"]`. So WFA-005's trigger target picker listed a placeholder instead of the function names, and `isTargetResolved` answered **false for a function that is deployed**: exactly the wrong-warning-about-a-working-trigger its own `null` state exists to prevent. Invisible in WFA-005's live pass because that backend had no functions deployed — its notes record the picker saying *"No functions on this backend"*. One reader now (`deployedFunctionNames`), shared with WFA-006's resolution and specced against the object shape the backend actually serves | `TriggerBackendClient.fetchTriggerTargets`; `models/workflow/functionRefResolution.ts` | WFA-006 ✅ |
+| F55 | **The TSFixme / `any` ratchet is red on `cline-dev`, and was red before WFA-006.** Measured, not assumed: `git archive HEAD` into a clean tree scores **TSFixme +16 / any +9** against a baseline pinned at `b22cfab0`, **48 commits back**. WFA-006 adds +1 and +1 (one `args: TSFixme` consistent with five sibling `TypeView`s, and the `(window as any).require('electron')` idiom every renderer client module uses). Deliberately **not** re-baselined by this task — that would launder 48 commits of unrelated drift into one commit, and PLAT-004's rule is to raise it deliberately and say so. Needs a re-baseline commit of its own | `.tsfixme-baseline.json`, `scripts/tsfixme-ratchet.js` | unowned |
+| F56 | **A rename does not make a step "unresolved" — not immediately, and saying so would be its own wrong warning.** Success criterion 7 asks for `unresolved`; the backend is still serving the function under its **old name**, so the step still runs. What it shows is `deployed, not in this project`, and it becomes `unresolved` only when the next deploy removes the old name. Reproduced live end to end. This is not a defect but a correction to the spec's wording, and it is the strongest argument for §7's decision: an automatic fix-up at rename time would rewrite a **working** step | observed live; specced in both stages | WFA-006 ✅ (recorded) |
+| F57 | **A property-panel checkbox row did not respond to a dispatched click at its own box.** The Request node's *Allow Unauthenticated* toggle reports a real 32×19 rect and a real `<input type=checkbox>`, and `Input.dispatchMouseEvent` at its centre changed nothing (the parameter stayed unset). Not workflow-specific — `PropertyPanelCheckbox` is used by every node type — and not investigated here beyond confirming the click landed. Worth knowing before the next pass tries to drive one | `PropertyPanelCheckbox`; observed live | unowned |
+
 ### What already exists and is worth reusing
 
 | # | Finding | Where | Owner |
@@ -165,6 +174,43 @@ around the description.
   running backend). WFA-001 decides; whatever it picks must be visible in the UI.
 
 ## Log
+
+- **2026-07-28** — **WFA-006 complete.** The task is one idea applied consistently: **a workflow step
+  and a cloud function live in different stores and are allowed to disagree**, so the resolver keeps
+  *two* facts — `inProject` (always knowable) and `deployed` (`true | false | null`, WFA-005's third
+  value reused rather than reinvented) — and never collapses them, because the difference between
+  them is the thing the user needs to see. Four states follow, and the discipline is in what is
+  **not** a warning: `deployed, not in this project` is a legitimate state and `the backend could not
+  be asked` is an unanswered question, so neither draws a danger ring, and the second says nothing on
+  the card at all until an answer arrives.
+  **Nothing in the canvas learned the word "workflow".** The descent rides one hook shaped like
+  WFA-004's context-menu one; the crumb back is a normal trail item carrying the workflow's own
+  adapter, prepended in `OverlayViews` from a pointer that self-clears by matching on the function it
+  landed on; the danger ring is `WarningsModel`, which the painter already reads — **no painter
+  change**. The shared trail component gained one optional slot, and an ordinary component's trail
+  takes the code path it took before (re-checked live). F48 is closed as a *rule* — workflows are
+  kept out of `NavigationHistory` by runtime type, not by every caller remembering.
+  **Two findings before a line was written, from reading and from measuring.** `fetchTriggerTargets`
+  read the deployed-function list as `.map(String)` over `{name, workflow}` objects, so WFA-005's
+  picker listed `[object Object]` and `isTargetResolved` called a **deployed** function missing —
+  invisible in that pass only because the backend had no functions (F54). And the marker ratchet is
+  red on this branch independent of this task, by +16/+9, with a baseline 48 commits stale (F55).
+  **§7's decision was recorded before building and then corrected by its own test.** A rename does
+  not rewrite backend-held definitions — six reasons, the first being that `projectIds` is dead so
+  "this project's backends" is *every* running backend. Writing the test showed the spec's criterion
+  7 was wrong in a way that mattered: right after a rename the step is `deployed, not in this
+  project` and **still works**, because the backend still serves the old name; `unresolved` arrives
+  with the next deploy (F56). Which is the strongest argument for the decision.
+  **The live pass drove the phase's thesis end to end.** Same workflow, same payload, twice: `charge`
+  **ERROR** (`Function "chargeCard" returned HTTP 500`, 2 attempts, *Error routed to Log failure*) →
+  descend into the function from its own step → edit → **Deploy** from the function's trail → run →
+  `charge` **SUCCESS**, 1 attempt, badges pinned on the workflow canvas. Without leaving the editor.
+  The pass also found a defect in this task's own property-editor row — it painted the **old** name
+  beside the **new** name's answer, because it cached the value and nothing re-rendered it when the
+  value changed from elsewhere; and verifying the fix needed a clean restart, HMR having kept
+  `Ports.ts` handing out the previous class. Editor **1823 / 0** (was 1791), backend **66 / 715**
+  unchanged (editor-only), typecheck clean. Full pass in [WFA-006-NOTES.md](./WFA-006-NOTES.md),
+  decisions in [WFA-006-ASSESSMENT.md](./WFA-006-ASSESSMENT.md).
 
 - **2026-07-28** — **WFA-005 complete.** The spec's implementation order earned its keep:
   **F8 was never about `payload`.** Reproduced live before anything changed, an unknown key
