@@ -24,6 +24,7 @@ import { ComponentXRayPanel } from './views/panels/ComponentXRayPanel';
 import { DesignTokenPanel } from './views/panels/DesignTokenPanel/DesignTokenPanel';
 import { DocsPanel, DocsPanel_ID } from './views/panels/DocsPanel';
 import { ExecutionHistoryPanel } from './views/panels/ExecutionHistoryPanel';
+import { WorkflowsPanel, WorkflowsPanel_ID } from './views/panels/WorkflowsPanel';
 import { ExplainPanel, ExplainPanel_ID, startExplainTargetTracking } from './views/panels/ExplainPanel';
 import { FileExplorerPanel } from './views/panels/FileExplorerPanel';
 import { GitHubPanel } from './views/panels/GitHubPanel';
@@ -256,6 +257,19 @@ export function installSidePanel({ isLesson }: SetupEditorOptions) {
     order: 8.8,
     icon: IconName.Bug,
     panel: ExecutionHistoryPanel
+  });
+
+  // WFA-004: where a workflow is found and opened onto the canvas. Beside
+  // Execution History deliberately — authoring and watching a run are the same
+  // question asked twice, and both are about a backend rather than the project.
+  SidebarModel.instance.register({
+    id: WorkflowsPanel_ID,
+    name: 'Workflows',
+    description: 'Author a backend workflow as a graph: steps as nodes, routes as connections.',
+    isDisabled: isLesson === true,
+    order: 8.9,
+    icon: IconName.StructureCircle,
+    panel: WorkflowsPanel
   });
 
   SidebarModel.instance.register({

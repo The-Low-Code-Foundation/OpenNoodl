@@ -241,6 +241,45 @@ export class OverlayViews {
     const editor = this.editor;
     const rootElem = editor.shell.componentTrailRoot;
 
+    // WFA-004: a workflow's trail is not a project path. Its adapter is named
+    // `/#__workflow__/<id>`, which would otherwise read as a folder called
+    // `#__workflow__` containing a component with a machine id. What a reader
+    // needs instead is which BACKEND this workflow lives on — the question a
+    // project component never has and this document type always does.
+    const workflow = editor.activeComponent as unknown as {
+      backendName?: string;
+      workflowId?: string;
+      displayName?: string;
+    };
+    if (editor.activeComponent && workflow.backendName && workflow.workflowId) {
+      editor.componentName = workflow.displayName;
+      editor.componentFolder = workflow.backendName + ' /';
+      editor.overlays.renderSlot(
+        'title',
+        rootElem,
+        React.createElement(NodeGraphComponentTrail, {
+          componentTrail: [
+            { name: workflow.backendName, fullName: '', isCurrent: false, isFolderComponent: false },
+            {
+              name: workflow.displayName,
+              fullName: editor.activeComponent.fullName,
+              stateText: editor.stateText,
+              isCurrent: true,
+              isFolderComponent: false
+            }
+          ],
+          onSwitchToComponent: editor.switchToComponent.bind(editor),
+          onHistoryForward: editor.navigationHistory.goForward.bind(editor.navigationHistory),
+          onHistoryBack: editor.navigationHistory.goBack.bind(editor.navigationHistory),
+          canNavigateBack: editor.navigationHistory.canNavigateBack,
+          canNavigateForward: editor.navigationHistory.canNavigateForward,
+          runtimeType: editor.runtimeType,
+          readOnly: Boolean(editor.readOnly)
+        } as TSFixme)
+      );
+      return;
+    }
+
     if (editor.activeComponent) {
       const fullName = editor.activeComponent.fullName;
       const nameParts = fullName.split('/');

@@ -1,5 +1,6 @@
 import { NodeGraphNode } from '@noodl-models/nodegraphmodel';
 import { NodeLibraryImporter } from '@noodl-models/nodelibrary/NodeLibraryImporter';
+import { WORKFLOW_NAME_PREFIX } from '@noodl-utils/NodeGraph';
 
 import Model from '../../shared/model';
 import { EventDispatcher } from '../../shared/utils/EventDispatcher';
@@ -12,6 +13,28 @@ import * as Exporter from './utils/exporter';
 import { triggerChainRecorder } from './utils/triggerChain';
 
 const port = process.env.NOODLPORT || 8574;
+
+/**
+ * WFA-004: is this model event about a workflow graph rather than the project?
+ *
+ * `Model.*` events are broadcast globally by `shared/model.js`, so a workflow's
+ * canvas graph — which is deliberately NOT part of `ProjectModel` — reaches
+ * every handler here. `Model.nodeAdded` already filtered on project ownership;
+ * its siblings checked only that a component existed, which a workflow's canvas
+ * adapter satisfies, so a step edit would have sent the viewer an update naming
+ * a component it has never heard of.
+ *
+ * Written as a positive test for the workflow prefix rather than as "not this
+ * project", because the second would also drop module-component updates, which
+ * these handlers deliberately still send.
+ */
+function isWorkflowModelEvent(model: TSFixme): boolean {
+  // Walk up: node → graph → component, or graph → component.
+  for (let m = model, i = 0; m && i < 3; m = m.owner, i++) {
+    if (typeof m.name === 'string' && m.name.startsWith(WORKFLOW_NAME_PREFIX)) return true;
+  }
+  return false;
+}
 
 export class ViewerConnection extends Model {
   modelChangesListenerGroup: unknown;
@@ -495,6 +518,7 @@ export class ViewerConnection extends Model {
         //so no need to send affected connections
 
         if (!e.model.owner) return; //Model is being created, no owner yet. Viewer will use full export
+        if (isWorkflowModelEvent(e.model)) return; // WFA-004: not this project's graph
         if (NodeLibrary.instance.typeIsMissing(e.args.model.type)) return;
 
         _this.send({
@@ -536,6 +560,7 @@ export class ViewerConnection extends Model {
         if (_this.watchModelChangesDisabled) return;
 
         if (!e.model.owner) return; //Model is being created, no owner yet. Viewer will use full export
+        if (isWorkflowModelEvent(e.model)) return; // WFA-004: not this project's graph
 
         _this.send({
           cmd: 'modelUpdate',
@@ -557,6 +582,7 @@ export class ViewerConnection extends Model {
         if (_this.watchModelChangesDisabled) return;
 
         if (!e.model.owner) return; //Model is being created, no owner yet. Viewer will use full export
+        if (isWorkflowModelEvent(e.model)) return; // WFA-004: not this project's graph
 
         _this.send({
           cmd: 'modelUpdate',
@@ -579,6 +605,7 @@ export class ViewerConnection extends Model {
         if (_this.watchModelChangesDisabled) return;
 
         if (!e.model.owner || !e.model.owner.owner) return; //Model is being created, no owner yet. Viewer will use full export
+        if (isWorkflowModelEvent(e.model)) return; // WFA-004: not this project's graph
 
         const c = e.args.model;
 
@@ -616,6 +643,7 @@ export class ViewerConnection extends Model {
         if (_this.watchModelChangesDisabled) return;
 
         if (!e.model.owner || !e.model.owner.owner) return; //Model is being created, no owner yet. Viewer will use full export
+        if (isWorkflowModelEvent(e.model)) return; // WFA-004: not this project's graph
 
         const args = e.args || {};
 
@@ -1049,6 +1077,8 @@ export class ViewerConnection extends Model {
       'activeComponentChanged',
       ({ component }) => {
         if (component === undefined) return;
+        // WFA-004: a workflow is not a component the viewer can switch to.
+        if (isWorkflowModelEvent(component)) return;
         _this.send({
           cmd: 'activeComponentChanged',
           component: component.fullName

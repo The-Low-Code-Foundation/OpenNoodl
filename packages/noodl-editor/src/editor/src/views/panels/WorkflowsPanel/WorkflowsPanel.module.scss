@@ -1,0 +1,160 @@
+.Body {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.Notice {
+  padding: 12px 16px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--theme-color-fg-default-shy);
+}
+
+.NoticeTitle {
+  display: block;
+  color: var(--theme-color-fg-default);
+  margin-bottom: 4px;
+}
+
+.BackendGroup {
+  padding: 8px 16px 2px;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--theme-color-fg-default-shy);
+}
+
+.Item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 16px;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--theme-color-bg-3);
+  color: var(--theme-color-fg-default);
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+
+  &:hover {
+    background-color: var(--theme-color-bg-2);
+  }
+}
+
+.ItemOpen {
+  background-color: var(--theme-color-bg-2);
+  box-shadow: inset 2px 0 0 var(--theme-color-primary);
+}
+
+.ItemName {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ItemMeta {
+  font-size: 11px;
+  color: var(--theme-color-fg-default-shy);
+}
+
+.OpenBar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--theme-color-bg-3);
+  background-color: var(--theme-color-bg-2);
+}
+
+.OpenTitle {
+  font-size: 12px;
+  color: var(--theme-color-fg-default);
+}
+
+.OpenMeta {
+  font-size: 11px;
+  color: var(--theme-color-fg-default-shy);
+}
+
+.Dirty {
+  color: var(--theme-color-warning);
+}
+
+.Actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.Button {
+  background: none;
+  border: 1px solid var(--theme-color-bg-3);
+  border-radius: 4px;
+  color: var(--theme-color-fg-default);
+  font-size: 12px;
+  padding: 4px 10px;
+  cursor: pointer;
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
+
+  &:hover:not(:disabled) {
+    background-color: var(--theme-color-bg-3);
+  }
+}
+
+.Primary {
+  border-color: var(--theme-color-primary);
+  color: var(--theme-color-primary);
+
+  &:hover:not(:disabled) {
+    background-color: color-mix(in srgb, var(--theme-color-primary) 15%, transparent);
+  }
+}
+
+.Danger {
+  border-color: var(--theme-color-danger);
+  color: var(--theme-color-danger);
+
+  &:hover:not(:disabled) {
+    background-color: color-mix(in srgb, var(--theme-color-danger) 15%, transparent);
+  }
+}
+
+.Error {
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--theme-color-danger);
+  white-space: pre-wrap;
+}
+
+.Status {
+  font-size: 11px;
+  color: var(--theme-color-fg-default-shy);
+}
+
+.Form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--theme-color-bg-3);
+  background-color: var(--theme-color-bg-2);
+}
+
+.Input,
+.Select {
+  background-color: var(--theme-color-bg-1);
+  border: 1px solid var(--theme-color-bg-3);
+  border-radius: 4px;
+  color: var(--theme-color-fg-default);
+  font-size: 12px;
+  padding: 4px 6px;
+}

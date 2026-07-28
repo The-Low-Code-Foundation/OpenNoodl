@@ -92,9 +92,18 @@ export class WorkflowDocument extends Model {
     NodeLibraryImporter.instance.importWorkflowLibrary(buildWorkflowNodeLibrary(catalog));
 
     const definition = await fetchWorkflow(ref.backendId, ref.id);
-    const graph = buildGraph(definition, catalog);
+    return WorkflowDocument.fromDefinition(ref, definition, catalog);
+  }
 
-    return new WorkflowDocument({ ref, definition, catalog, graph });
+  /**
+   * The pure half of `open` — no IPC, no node-library side effects.
+   *
+   * Separated so the definition⇄graph conversion (the part with an invariant
+   * worth testing: node id === step id, and a round trip that preserves every
+   * edge) can be exercised without a running backend.
+   */
+  static fromDefinition(ref: WorkflowRef, definition: WorkflowDefinition, catalog: StepKindCatalog) {
+    return new WorkflowDocument({ ref, definition, catalog, graph: buildGraph(definition, catalog) });
   }
 
   /** A brand-new, unsaved workflow with a single entry step. */
@@ -114,13 +123,7 @@ export class WorkflowDocument extends Model {
       updatedAt: now
     };
 
-    const graph = buildGraph(definition, catalog);
-    const doc = new WorkflowDocument({
-      ref: { ...ref, stepCount: 1 },
-      definition,
-      catalog,
-      graph
-    });
+    const doc = WorkflowDocument.fromDefinition({ ...ref, stepCount: 1 }, definition, catalog);
     doc.markDirty();
     return doc;
   }
@@ -133,7 +136,7 @@ export class WorkflowDocument extends Model {
     return this.catalog.kinds.find((k) => k.kind === kind);
   }
 
-  private markDirty() {
+  markDirty() {
     if (this._dirty) return;
     this._dirty = true;
     this.notifyListeners('dirtyChanged', { dirty: true });
