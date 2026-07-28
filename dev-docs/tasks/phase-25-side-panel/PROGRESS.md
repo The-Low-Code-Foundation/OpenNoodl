@@ -372,16 +372,66 @@ before and was patched one name at a time.
 
 `ProjectModel.fromJSON` does guard the load itself (`Model._listenersEnabled =
 false` around it), so the trigger is something that runs *after* the re-enable.
-**Which event it is, is NOT established** — `updateType()` turned out not to emit,
-and `projectmodel.modules.ts` neither adds components nor notifies, so the two
-obvious candidates are eliminated rather than confirmed. `Model.typeAdded` is
-absent from the denylist and remains the leading suspect, but that is a
-hypothesis. Settling it needs the editor: open a tracked example with a
-`Model.*` tap installed and read the event name that lands.
+
+**MEASURED 2026-07-28, live, and it is worse than the hypothesis.** A temporary
+`console.log` inside the wildcard listener, editor launched with `dev:debug`,
+console captured over a cold start into a restored project. The static guess had
+been `Model.typeAdded`; **`typeAdded` never fires at all.** What actually lands:
+
+```
+[save-trigger] Model.changed
+[save-trigger] Model.templatesChanged
+[save-trigger] Model.templatesChanged
+Loaded 0 modules
+[save-trigger] Model.viewerClientsChanged
+Project saved Tue Jul 28 2026 16:57:28          ← save #1
+[nodelib] Received browser (nodes: 151)
+[save-trigger] Model.labelChanged / variantChanged / nodeAdded ×5,
+               connectionAdded ×5, graphModelBound
+Project saved Tue Jul 28 2026 16:57:48          ← save #2
+```
+
+**Two complete project writes in twenty seconds, with zero user input**, and
+neither of them caused by a change to project content:
+
+- `Model.templatesChanged` is the **template list** loading. It fires *before*
+  `Loaded 0 modules`, i.e. before the project is in place at all.
+- `Model.viewerClientsChanged` is a **preview client connecting** — directly
+  after `Connected to viewer server at ws://localhost:8574`. **Connecting a
+  preview rewrites `project.json`.** Nothing about the project changed.
+- The second burst is **load-time graph reconstruction**, arriving right after
+  the node library does (`nodes: 151`) and ending on `Model.graphModelBound` —
+  the event whose literal meaning is "the graph model finished binding".
+
+So this is not one stray event that can be added to the denylist. Three
+different subsystems — templates, viewer presence, and graph binding — each
+raise events that mean "something loaded", and the denylist reads all of them as
+"the user edited the project".
+
+⚠️ **Measurement caveat, stated because it bounds the claim:** this was captured
+against the project the editor happened to restore (a concurrent session's
+`test`, which has a workflow open), so the `nodeAdded`/`connectionAdded` burst
+may partly be WFA-005's workflow-canvas synthesis rather than ordinary graph
+load. The first three events and **save #1 are entirely project-independent** —
+they precede any project graph work — so the finding does not rest on that
+burst.
 
 **The blur-save is not the cause**, though it makes the symptom easier to hit —
 it flushes a save that was already scheduled, so it changes *when*, not *whether*.
 
-**Suggested shape of the fix, for when the event is known:** invert the list.
-An allowlist of events that genuinely mean "the project changed" cannot silently
-grow new triggers, and the denylist has already demonstrated it does.
+**The fix has to be an allowlist, and the measurement is what settles that.**
+Adding three more names to a 22-name denylist would fix today's symptom and
+leave the design that produced it — the next subsystem to raise a "something
+loaded" event becomes a project-save trigger again, silently, exactly as
+`Model.instancePortsChanged` did before. An allowlist of the events that
+genuinely mean *the user changed the project* cannot grow new triggers by
+accident.
+
+The allowlist needs deriving from the model layer rather than guessed, and it
+has one genuinely hard edge: `nodeAdded` / `connectionAdded` / `labelChanged`
+are raised **both** by a real edit and by load-time reconstruction, so the name
+alone cannot separate them. Whatever shape it takes has to distinguish those two
+by state (a load/bind flag, or extending the existing `Model._listenersEnabled`
+guard to cover binding, not just `fromJSON`) rather than by event name. Not
+attempted here — it is a design change in the save path, and the save path was
+only just stabilised by the quit-flush work.
