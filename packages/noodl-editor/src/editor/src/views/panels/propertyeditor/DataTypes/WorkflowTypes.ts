@@ -21,6 +21,7 @@ import { PropertyPanelRow } from '@noodl-core-ui/components/property-panel/Prope
 
 import { ConditionEditor } from '../components/WorkflowCondition/ConditionEditor';
 import { SwitchCasesEditor } from '../components/WorkflowCondition/SwitchCasesEditor';
+import { TriggerInfoRow } from '../components/WorkflowCondition/TriggerInfoRow';
 import { WorkflowValueInput } from '../components/WorkflowCondition/WorkflowValueInput';
 import { TypeView } from '../TypeView';
 import { getEditType } from '../utils';
@@ -199,5 +200,51 @@ export class WorkflowValueType extends WorkflowTypeView {
         })
       )
     );
+  }
+}
+
+/**
+ * A read-only fact about a trigger (WFA-005).
+ *
+ * Triggers are drawn on a workflow's canvas as its entry nodes, and a trigger is
+ * a BACKEND object: `triggers.json` holds it, the running service writes status
+ * back into that file, and one trigger may be shared by nothing on this canvas
+ * at all. So these rows READ. Enabling, disabling and deleting are actions on
+ * the node's own right-click menu, where the label can say which backend is
+ * about to change.
+ *
+ * The webhook URL is `copyable`, because it is the single most-wanted string in
+ * this whole feature and it is otherwise assembled by hand out of two panels.
+ */
+export class WorkflowTriggerInfoType extends WorkflowTypeView {
+  static fromPort(args: TSFixme) {
+    return WorkflowTypeView.fill(new WorkflowTriggerInfoType(), args);
+  }
+
+  private get copyable(): boolean {
+    return Boolean(this.type?.copyable);
+  }
+
+  renderReact() {
+    if (!this.root) return;
+    const value = this.parent.model.getParameter(this.name);
+    this.root.render(
+      React.createElement(
+        PropertyPanelRow,
+        // No `onReset`: there is no default to go back to, and offering one
+        // would suggest this row writes something.
+        { label: this.displayName } as TSFixme,
+        React.createElement(TriggerInfoRow, {
+          value: value === undefined || value === null ? '—' : String(value),
+          copyable: this.copyable,
+          ariaLabel: this.displayName
+        })
+      )
+    );
+  }
+
+  /** Nothing to reset — but the base class calls this on a parameter change. */
+  resetToDefault() {
+    this.renderReact();
   }
 }

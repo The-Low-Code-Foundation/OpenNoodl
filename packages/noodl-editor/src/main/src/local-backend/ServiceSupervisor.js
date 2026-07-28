@@ -98,10 +98,18 @@ class ServiceSupervisor {
    * @param {string} config.dataDir - Data directory (SQLite files, workflows, uploads)
    * @param {number} config.port - Port to bind
    * @param {boolean} [config.ephemeral] - Opt in to non-persisting mode
+   * @param {(exit: {code: number|null, signal: string|null}) => void} [config.onUnexpectedExit] -
+   *   Called when the child dies AFTER it was ready — i.e. a crash, not a
+   *   `stop()`. A failure during startup is reported by rejecting `start()`
+   *   instead, so this fires exactly once and only for the case nobody asked
+   *   for. WFA-005 uses it to tell the renderer a backend went away, which is
+   *   otherwise indistinguishable from one that is still running.
    */
   constructor(config) {
     this.config = config;
     this.child = null;
+    /** True from the moment `stop()` is asked for, so the exit it causes is not reported as a crash. */
+    this.stopping = false;
     this.ready = null; // parsed READY payload
     this.lastExit = null; // { code, signal }
     this.logRing = [];
@@ -225,6 +233,15 @@ class ServiceSupervisor {
                 `(code=${code}, signal=${signal}).\nLast output:\n${this.logTail()}`
             )
           );
+          return;
+        }
+        // Already ready, and now gone: a crash or an outside kill. `stop()`
+        // marks its own teardown so a deliberate stop does not arrive as one.
+        if (this.stopping || !this.config.onUnexpectedExit) return;
+        try {
+          this.config.onUnexpectedExit({ code, signal });
+        } catch (e) {
+          safeLog(`onUnexpectedExit handler threw: ${e.message}`);
         }
       });
     });
@@ -232,6 +249,9 @@ class ServiceSupervisor {
 
   /** SIGTERM, then SIGKILL after the grace period. Resolves when exited. */
   stop() {
+    // Set before any signal: the exit this is about to cause is expected, and
+    // `onUnexpectedExit` is only for the ones nobody asked for.
+    this.stopping = true;
     return new Promise((resolve) => {
       const child = this.child;
       if (!child || child.exitCode !== null) {

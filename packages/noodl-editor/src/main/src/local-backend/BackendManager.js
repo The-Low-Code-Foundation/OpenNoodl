@@ -17,7 +17,7 @@
  * @module local-backend/BackendManager
  */
 
-const { ipcMain } = require('electron');
+const { ipcMain, BrowserWindow } = require('electron');
 const fs = require('fs').promises;
 const path = require('path');
 const os = require('os');
@@ -326,6 +326,48 @@ class BackendManager {
   }
 
   /**
+   * Tell every renderer that the set of backends, or one backend's running
+   * state, changed (WFA-005, closing F47/F34).
+   *
+   * Three panels — Workflows, Execution History, Triggers — describe another
+   * process's state, and the sidebar keeps an inactive panel MOUNTED AND HIDDEN,
+   * so switching away and back neither remounts nor refetches. Each of them
+   * worked around that with an `activeChanged` listener, which cannot help the
+   * case that actually bites: the panel is already open and in front of you when
+   * the backend starts, and it keeps saying "no backend is running" until you
+   * press Refresh. There was no event to listen to. This is it — one event, so
+   * the workaround does not have to be written a fourth time.
+   *
+   * Broadcast rather than sender-targeted: a lifecycle change is true of the
+   * whole application, not of whoever asked for it, and the panel that needs to
+   * know is usually not the one that pressed Start.
+   *
+   * @param {string} backendId
+   * @param {'created'|'started'|'stopped'|'deleted'|'exited'} reason
+   * @private
+   */
+  broadcastStatusChanged(backendId, reason) {
+    const detail = {
+      backendId,
+      reason,
+      running: reason === 'started',
+      at: new Date().toISOString()
+    };
+    for (const win of BrowserWindow.getAllWindows()) {
+      if (win.isDestroyed()) continue;
+      const wc = win.webContents;
+      // A renderer that is gone or still loading cannot receive this, and
+      // neither case is an error — it will read the state on mount anyway.
+      if (!wc || wc.isDestroyed()) continue;
+      try {
+        wc.send('backend:statusChanged', detail);
+      } catch (e) {
+        safeLog(`Could not deliver backend:statusChanged to a window: ${e.message}`);
+      }
+    }
+  }
+
+  /**
    * Open (once per sender+backend+collection) a realtime SSE subscription and
    * forward each change/resync to the renderer as `backend:collectionChanged`.
    * No-op if the backend is not running. Streams are torn down on explicit
@@ -469,6 +511,7 @@ class BackendManager {
     await fs.writeFile(path.join(backendPath, 'schema.json'), JSON.stringify({ tables: [] }, null, 2));
 
     safeLog(`Created backend: ${id} (${name}) on port ${port}`);
+    this.broadcastStatusChanged(id, 'created');
     return config;
   }
 
@@ -490,6 +533,7 @@ class BackendManager {
     this.startErrors.delete(id);
 
     safeLog(`Deleted backend: ${id}`);
+    this.broadcastStatusChanged(id, 'deleted');
     return { deleted: true, id };
   }
 
@@ -521,7 +565,18 @@ class BackendManager {
       // The service owns the whole data dir: SQLite files, uploads, workflows.
       dataDir: backendPath,
       port: config.port,
-      ephemeral: options.ephemeral === true
+      ephemeral: options.ephemeral === true,
+      // A backend that dies on its own is exactly as interesting to a panel as
+      // one that is stopped deliberately, and it is the case that used to be
+      // invisible: the panel kept showing a running backend that was gone.
+      onUnexpectedExit: ({ code, signal }) => {
+        this.runningBackends.delete(id);
+        this.startErrors.set(id, {
+          code: 'BACKEND_EXITED',
+          message: `The backend service exited unexpectedly (code=${code}, signal=${signal}).`
+        });
+        this.broadcastStatusChanged(id, 'exited');
+      }
     });
 
     try {
@@ -541,6 +596,7 @@ class BackendManager {
     this.runningBackends.set(id, supervisor);
 
     safeLog(`Started backend: ${id} on ${supervisor.endpoint}`);
+    this.broadcastStatusChanged(id, 'started');
     return this.getStatus(id);
   }
 
@@ -559,6 +615,7 @@ class BackendManager {
     this.runningBackends.delete(id);
 
     safeLog(`Stopped backend: ${id}`);
+    this.broadcastStatusChanged(id, 'stopped');
     return { running: false };
   }
 

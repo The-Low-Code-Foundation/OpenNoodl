@@ -1,3 +1,4 @@
+import { useBackendStatusChanged } from '@noodl-hooks/useBackendStatusChanged';
 import { useEventListener } from '@noodl-hooks/useEventListener';
 import React, { useCallback, useState } from 'react';
 
@@ -96,6 +97,16 @@ export function ExecutionHistoryPanel() {
    */
   useEventListener(SidebarModel.instance, SidebarModelEvent.activeChanged, () => {
     if (SidebarModel.instance.ActiveId !== 'execution-history') return;
+    refresh();
+    runner.refresh();
+  });
+
+  /**
+   * F34's other half, closed by WFA-005. Becoming active covers "I was away
+   * while things changed"; it cannot cover "I was watching". A backend started
+   * — or gone — while this panel is in front of you is now an event.
+   */
+  useBackendStatusChanged(() => {
     refresh();
     runner.refresh();
   });

@@ -14,6 +14,8 @@
  * @module models/workflow/workflowScope
  */
 
+import { isTriggerNode } from './workflowTriggerNodes';
+
 import type { NodeGraphModel } from '@noodl-models/nodegraphmodel';
 
 export interface UpstreamStep {
@@ -52,6 +54,12 @@ export function upstreamSteps(graph: NodeGraphModel, stepId: string): UpstreamSt
   const steps: UpstreamStep[] = [];
   graph.forEachNode((node) => {
     if (!seen.has(node.id)) return;
+    // WFA-005: a TRIGGER is upstream of the entry step on the canvas, and it is
+    // not a step. Offering it here would produce `{"$path": "upstream.trg_…"}`,
+    // which the backend rejects with a 400 — the exact drift this module exists
+    // to prevent, arriving through the entry nodes drawn beside the graph. What
+    // a trigger delivers is reachable already, as `body` and `trigger`.
+    if (isTriggerNode(node)) return;
     steps.push({
       id: node.id,
       label: node.label || node.id,
@@ -82,7 +90,11 @@ export function danglingReference(
   const named = path.slice('upstream.'.length).split('.')[0];
   if (!named) return { message: 'Name a step after `upstream.`' };
 
-  if (!graph.findNodeWithId(named)) {
+  const node = graph.findNodeWithId(named);
+  // A trigger node is on the canvas but is not a step, so naming one is the
+  // same mistake as naming something that is not there at all — and saying so
+  // is more use than "that is not upstream", which it also is not.
+  if (!node || isTriggerNode(node)) {
     return { message: `There is no step called "${named}" in this workflow.` };
   }
 

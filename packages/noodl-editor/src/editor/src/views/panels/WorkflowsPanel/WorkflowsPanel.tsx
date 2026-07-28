@@ -1,3 +1,4 @@
+import { useBackendStatusChanged } from '@noodl-hooks/useBackendStatusChanged';
 import { useEventListener } from '@noodl-hooks/useEventListener';
 import React, { useCallback, useEffect, useState } from 'react';
 
@@ -56,6 +57,11 @@ export function WorkflowsPanel() {
     setUnreachable(result.unreachable);
     setBackendCount(result.backendCount);
     setLoading(false);
+    // WFA-005: a workflow's triggers are drawn on its canvas as entry nodes, and
+    // they are edited from a different surface (the Triggers panel, MCP, the
+    // admin API). Refresh is the moment to re-read them, so the canvas is not
+    // left showing an entry node that has been deleted somewhere else.
+    await WorkflowEditorService.instance.document?.refreshTriggers().catch(() => undefined);
   }, []);
 
   useEffect(() => {
@@ -63,11 +69,17 @@ export function WorkflowsPanel() {
   }, [refresh]);
 
   // WFA-002's F34: an inactive panel stays mounted and hidden, so becoming
-  // active is the only reliable moment to re-read another process's state.
+  // active is a moment worth re-reading another process's state at.
   useEventListener(SidebarModel.instance, SidebarModelEvent.activeChanged, () => {
     if (SidebarModel.instance.ActiveId !== WorkflowsPanel_ID) return;
     refresh();
   });
+
+  // F47, closed in WFA-005. `activeChanged` could not help the case that
+  // actually bites: this panel already open and in front of you when a backend
+  // starts, still reading "Start a backend to author workflows" until Refresh.
+  // There is now an event for it.
+  useBackendStatusChanged(refresh);
 
   useEventListener(service, WorkflowEditorEvent.documentChanged, () => {
     setDocument(service.document);

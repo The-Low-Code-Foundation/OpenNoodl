@@ -61,11 +61,43 @@ export function routeNameFromPort(portName: string): string {
   return portName.slice(ROUTE_PORT_PREFIX.length);
 }
 
+/**
+ * Trigger node types (WFA-005). Nested INSIDE the workflow prefix on purpose —
+ * `kindFromTypeName` checks for this longer prefix first and answers `undefined`,
+ * so a trigger node is not a step to any of the code that asks "what kind of
+ * step is this?". That matters most in `WorkflowDocument.toInput`, which walks
+ * every node on the canvas: without the guard a trigger would be written into
+ * the definition as a step of kind `trigger.webhook` and the backend would
+ * refuse the save.
+ */
+export const TRIGGER_TYPE_PREFIX = 'workflow.trigger.';
+
+/** The trigger's one output: "this is where the run starts". */
+export const PORT_FIRES = 'fires';
+
+/** A read-only fact about a trigger, shown in the property editor. */
+export const PORT_TYPE_TRIGGER_INFO = 'workflow-trigger-info';
+
 export function typeNameForKind(kind: string): string {
   return WORKFLOW_TYPE_PREFIX + kind;
 }
 
+export function triggerTypeName(triggerType: string): string {
+  return TRIGGER_TYPE_PREFIX + triggerType;
+}
+
+export function isTriggerTypeName(typeName: string): boolean {
+  return typeName.startsWith(TRIGGER_TYPE_PREFIX);
+}
+
+export function triggerTypeFromTypeName(typeName: string): string | undefined {
+  return isTriggerTypeName(typeName) ? typeName.slice(TRIGGER_TYPE_PREFIX.length) : undefined;
+}
+
 export function kindFromTypeName(typeName: string): string | undefined {
+  // A trigger is not a step kind. Checked first, because its type name also
+  // starts with the workflow prefix.
+  if (isTriggerTypeName(typeName)) return undefined;
   return typeName.startsWith(WORKFLOW_TYPE_PREFIX) ? typeName.slice(WORKFLOW_TYPE_PREFIX.length) : undefined;
 }
 
@@ -278,13 +310,141 @@ function nodeTypeForKind(spec: StepKindSpec, catalog?: StepKindCatalog): NodeLib
   } as unknown as NodeLibraryDataNodeType;
 }
 
+/* -------------------------------------------------------------------------- */
+/* Trigger entry nodes (WFA-005)                                               */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * What each trigger type shows when its node is selected.
+ *
+ * Read-only rows, because a trigger is a BACKEND object and a canvas that let
+ * you type into its cron would owe you a write path, a conflict story and an
+ * answer for the status the running service writes back into the same file
+ * between your read and your write. Enabling, disabling and deleting — the
+ * three things §1 asks for from the node — are actions on the node's own menu,
+ * where the consequence can be stated.
+ */
+const TRIGGER_FIELDS: Record<string, { name: string; displayName: string; copyable?: boolean; tooltip?: string }[]> = {
+  webhook: [
+    {
+      name: 'url',
+      displayName: 'URL',
+      copyable: true,
+      tooltip: 'Point the sending service at this. POST only.'
+    },
+    { name: 'scheme', displayName: 'Verification', tooltip: 'How the sender proves it is allowed to call this hook.' },
+    { name: 'secret', displayName: 'Secret', tooltip: 'Shown once at creation and never recoverable.' }
+  ],
+  schedule: [
+    { name: 'cron', displayName: 'Cron', copyable: true },
+    { name: 'when', displayName: 'Which means' },
+    { name: 'nextFire', displayName: 'Next fire' },
+    { name: 'missedFires', displayName: 'Missed fires', tooltip: 'What happens to fires due while the service was down.' },
+    { name: 'payload', displayName: 'Payload', tooltip: 'Delivered as the run’s body, like a webhook’s JSON.' }
+  ],
+  'db-change': [
+    { name: 'collection', displayName: 'Collection' },
+    { name: 'actions', displayName: 'On' }
+  ],
+  manual: []
+};
+
+/** The rows every trigger has, after its own. */
+const TRIGGER_COMMON_FIELDS = [
+  { name: 'enabled', displayName: 'Enabled' },
+  { name: 'target', displayName: 'Runs' },
+  { name: 'lastFired', displayName: 'Last fired' },
+  { name: 'lastResult', displayName: 'Last result' }
+];
+
+const TRIGGER_DISPLAY: Record<string, { label: string; summary: string }> = {
+  webhook: {
+    label: 'Webhook',
+    summary: 'An HTTP request to this hook’s URL starts the workflow.'
+  },
+  schedule: {
+    label: 'Schedule',
+    summary: 'A cron expression starts the workflow while the backend runs.'
+  },
+  'db-change': {
+    label: 'DB change',
+    summary: 'A create, update or delete on a collection starts the workflow.'
+  },
+  manual: {
+    label: 'Manual',
+    summary: 'Nothing starts this workflow on its own — it runs when something asks it to.'
+  }
+};
+
+/**
+ * The four entry-node types.
+ *
+ * `singleton: true` is the one behavioural flag, and it is doing real work:
+ * `NodeGraphNode.canBeDeleted`/`canBeCopied` both read it, so the canvas's
+ * delete gesture will not remove a trigger and copy/paste will not duplicate
+ * one. Both refusals are correct — canvas delete is local and undoable, and
+ * deleting a trigger is neither; a pasted copy of a backend object would be a
+ * card describing something that does not exist. The node's right-click menu
+ * carries the real actions, where the consequence can be named.
+ *
+ * `manual` is included deliberately: a workflow with no trigger still draws an
+ * entry marker, so "how does this start?" always has a visible answer rather
+ * than being answered by the absence of something.
+ */
+export function buildTriggerNodeTypes(): NodeLibraryDataNodeType[] {
+  return Object.keys(TRIGGER_DISPLAY).map((triggerType) => {
+    const fields = [...(TRIGGER_FIELDS[triggerType] || []), ...(triggerType === 'manual' ? [] : TRIGGER_COMMON_FIELDS)];
+
+    const ports: Record<string, unknown>[] = fields.map((f, i) => ({
+      name: f.name,
+      displayName: f.displayName,
+      type: { name: PORT_TYPE_TRIGGER_INFO, copyable: Boolean((f as { copyable?: boolean }).copyable) },
+      plug: 'input',
+      group: 'Trigger',
+      index: i,
+      tooltip: (f as { tooltip?: string }).tooltip
+    }));
+
+    ports.push({
+      name: PORT_FIRES,
+      displayName: 'fires',
+      editorName: 'fires',
+      // Labelled on the wire, so the edge into the entry step reads as what it
+      // is rather than as one more anonymous `next`.
+      type: { name: 'signal', connectionLabel: true },
+      plug: 'output',
+      group: 'Routes',
+      index: 100,
+      tooltip: 'The step this trigger starts the run at.'
+    });
+
+    return {
+      name: triggerTypeName(triggerType),
+      displayNodeName: TRIGGER_DISPLAY[triggerType].label,
+      category: 'Workflow Triggers',
+      // `data`, from the existing five-key taxonomy — a trigger is where the
+      // run's data comes from. No new colour, per phase 23's law.
+      color: 'data',
+      shortDesc: TRIGGER_DISPLAY[triggerType].summary,
+      docs: '',
+      allowAsChild: false,
+      allowAsExportRoot: false,
+      haveComponentChildren: undefined,
+      singleton: true,
+      ports,
+      dynamicports: [],
+      searchTags: ['workflow', 'trigger', triggerType]
+    } as unknown as NodeLibraryDataNodeType;
+  });
+}
+
 /**
  * Build the library the importer merges. Categories in `nodeIndex.coreNodes`
  * are what the picker's rail renders, so they come from the served spec's own
  * `category` strings rather than a list written here.
  */
 export function buildWorkflowNodeLibrary(catalog: StepKindCatalog): NodeLibraryData {
-  const nodetypes = catalog.kinds.map((spec) => nodeTypeForKind(spec, catalog));
+  const nodetypes = [...catalog.kinds.map((spec) => nodeTypeForKind(spec, catalog)), ...buildTriggerNodeTypes()];
 
   const byCategory = new Map<string, string[]>();
   for (const spec of catalog.kinds) {

@@ -164,3 +164,36 @@
   flex: 1;
   min-width: 0;
 }
+
+/* trigger entry nodes (WFA-005) — read-only rows, one of them copyable */
+.TriggerInfo {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  width: 100%;
+  min-width: 0;
+}
+
+.TriggerInfoValue {
+  flex: 1;
+  min-width: 0;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--theme-color-fg-default);
+  word-break: break-all;
+}
+
+.TriggerInfoCopy {
+  flex: 0 0 auto;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  border: 1px solid var(--theme-color-border-default);
+  background-color: var(--theme-color-bg-3);
+  color: var(--theme-color-fg-default);
+  cursor: pointer;
+
+  &:hover {
+    background-color: var(--theme-color-bg-2);
+  }
+}

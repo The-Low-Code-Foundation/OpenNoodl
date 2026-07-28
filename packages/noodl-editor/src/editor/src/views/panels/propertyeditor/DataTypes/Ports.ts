@@ -32,7 +32,12 @@ import { NumberWithUnits } from './NumberWithUnits';
 import { PopoutGroup } from './PopoutGroup';
 import { PropListType } from './PropListType';
 import { QueryFilterType } from './QueryFilterType';
-import { WorkflowCasesType, WorkflowConditionType, WorkflowValueType } from './WorkflowTypes';
+import {
+  WorkflowCasesType,
+  WorkflowConditionType,
+  WorkflowTriggerInfoType,
+  WorkflowValueType
+} from './WorkflowTypes';
 import { QuerySortingType } from './QuerySortingType';
 import { ResizingType } from './ResizingType';
 import { SizeModeType } from './SizeModeType';
@@ -410,6 +415,12 @@ export class Ports extends View {
       return name === 'workflow-value' || name === 'workflow-path';
     }
 
+    // WFA-005: a read-only fact about a trigger — a backend object drawn on the
+    // canvas as an entry node. A row, not a control.
+    function isOfWorkflowTriggerInfoType() {
+      return NodeLibrary.nameForPortType(type) === 'workflow-trigger-info';
+    }
+
     function isOfPropListType() {
       return NodeLibrary.nameForPortType(type) === 'proplist';
     }
@@ -446,6 +457,7 @@ export class Ports extends View {
     else if (isOfWorkflowConditionType()) return WorkflowConditionType;
     else if (isOfWorkflowCasesType()) return WorkflowCasesType;
     else if (isOfWorkflowValueType()) return WorkflowValueType;
+    else if (isOfWorkflowTriggerInfoType()) return WorkflowTriggerInfoType;
   }
   _getPorts(): readonly Port[] {
     let ports = this.model.getPorts('input');
