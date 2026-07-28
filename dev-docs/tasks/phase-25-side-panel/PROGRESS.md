@@ -158,6 +158,34 @@ primary-checkout pass as part of the task, not as a residual.
   trips (close-and-reopen, the experimental toggle, the settings-id migration). All need a project
   lifecycle rather than a panel walk.
 
+  **Partly closed 2026-07-28, and it found something.** `components-tree.mjs` run against two
+  independent real projects (`VerifyFix4`, `Agent Chat Example`) reports the same **2 failures** in
+  both: *the "default" glyph measures **2.97:1** against its ground, below the 3:1 bar* — dark theme,
+  at both wide and 240px. Project-independent, so it is the token and not the content.
+
+  **Not fixed, deliberately, because the cause is a documented coupling rather than an oversight.**
+  `.Cat-default` is `var(--theme-color-fg-muted)` and its comment says why: *"CanvasTheme's
+  `categoryDefault` is `fg-muted`; so is this, so an uncategorised component looks the same in both
+  places."* Changing the tree alone breaks that parity on purpose-built ground, and changing
+  `CanvasTheme` is UIX-005/UIX-012 territory, not this task's. It is also a **1% miss on a decorative
+  glyph** — the row is identified by its label, which passes at 13.72:1, so the glyph is redundant
+  information rather than the thing carrying meaning. Three ways out, all Richard's call: lift
+  `fg-muted`; give the glyph its own token and accept a deliberate tree/canvas divergence; or record
+  a documented exemption and drop the assertion to match. **Do not "fix" it by editing one side.**
+
+  Still NOT PROVEN, and honestly reported as such by the gate: **11 SKIPs** — depth-4 nesting, the
+  warning dot, and label ellipsis. None of the eleven projects on this launcher has four levels of
+  nesting, a component carrying a warning, or a name long enough to ellipsise at 186px. Covering
+  these needs a **purpose-built fixture project**, not another walk.
+
+  ⚠️ **`Shine Phase 2` — this phase's own reference project — no longer opens.** It points at
+  `/private/tmp/.../c4026a28-.../scratchpad/demo-project`, a *previous session's scratchpad*, which
+  has been cleaned up: `ENOENT … project.json`. Every earlier "run against Shine Phase 2 with 58 rows
+  at depth 4" is therefore unrepeatable. The failure itself is handled **well** — a toast reads
+  *"Couldn't load 'Shine Phase 2' — Its project.json is missing or unreadable"* with Show details /
+  Dismiss, which is RUN-004's loud-failure work doing its job. But a reference project used by a
+  phase's gates must not live in a temp directory; the fixture above should replace it.
+
 ### — the 2026-07-28 live-editor pass: F41 and F44 closed, one new defect
 
 Run from the primary checkout, which is the only place it can be run (`lerna exec`
