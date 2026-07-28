@@ -92,6 +92,63 @@ through `require`'s module cache, restore `ProjectModel.instance`) rather than
 pin the expected count to a number that happens to hold on one seed. Reproduce
 with `npm run test:ci` and seed `63183`.
 
+### — FIXED 2026-07-28 (`e40851ba`)
+
+Reproduced first, as instructed. At seed `63183` on the tree at `f2d1de98` it
+failed as **`Expected 10 to be 5`** — not the `8` recorded above. That is the
+finding: DEBT-005's NodeLibrary `beforeEach` (`25a73534`, already merged when
+the batch measured `8`) narrowed the failure without removing it, and an
+assertion that reads **4, 5, 8 and 10** on different orders was never measuring
+a contract.
+
+**Why no expected value could have worked.** `forEachNodeRecursive` descends
+*through* a component-instance node into whatever its `type` resolved to, and
+`NodeGraphNode.type` is `NodeLibrary.instance.getNodeTypeWithName(typename)` — a
+singleton, resolved against the current `ProjectModel.instance`. The count was a
+function of global state by construction. Both earlier fixes were real and both
+were partial because they treated symptoms of that.
+
+The spec now asserts the three things the characterization exists for, each over
+its own state only:
+
+1. the overwrite reuses the **target** component's id;
+2. `/Main`'s own graph is re-keyed afresh — counted with `forEachNode`, which
+   does **not** descend, and expected against the fixture's own node count
+   rather than a literal, so editing the fixture cannot silently pass;
+3. the `/comp1` reference still resolves to a component after import.
+
+Isolation, both halves:
+
+- **the source project is copied to temp too.** It was read through
+  `require('../testfs/import_proj1/project.json')`; `require` caches by path, so
+  whether `srcNodeIds` described the bytes on disk depended on which spec loaded
+  it first — while the sibling `ignores .git` spec writes into `tests/testfs/`
+  directly.
+- **an `afterEach` restores `ProjectModel.instance`.** Nearly every spec in the
+  file assigned the global and none put it back, so the next spec file inherited
+  a half-imported project. This is the coupling the NodeLibrary fix could not
+  reach, because type resolution reads the current project as well as the library.
+
+**Reproducing an order is no longer a file edit.** `SpecRunner.html` reads
+`NOODL_SPEC_SEED`, so `NOODL_SPEC_SEED=63183 npm run test:ci` replays an order.
+The old instruction ("pin it here temporarily") invited committing a pinned seed.
+
+Gate: **1731/0** on seeds `63183`, `07241`, `69768`, and one unpinned (`88162`).
+Four orders, because the lesson above cuts both ways — one passing seed is not
+evidence for a spec that mutates global state.
+
+**New observation, filed not asserted.** Writing assertion 3 as object identity
+first showed that after an import, an instance node's `type` resolves to the
+`/comp1` `ComponentModel` owned by the **source** `ProjectModel` that
+`analyzeSource` loaded for analysis (`owner.name === 'proj1'`, retained directory
+`tests/testfs/import_proj1`) — not the one `apply` put in the target project. The
+graphs are identical so nothing visibly breaks, but the imported graph holds a
+live reference into a project object that should have been discarded: a retention
+leak of the [[DEBT-014]] kind, and a latent hazard if `/comp1` is later edited in
+the target. The spec asserts `type.name` rather than identity so that it pins
+neither the current behaviour nor an unproven claim about what it should be.
+Wants its own investigation.
+
 ## Anytime fixes (independent of task order)
 
 - [x] Import-from-URL collision popup ignores unticked items (`EditorPage.tsx:353–363`) — LIB-004 step 0 (2026-07-25; fix applies `filterImports(..., { remove: getUnselectedImports() })`. ⚠️ verified by construction, not yet live)
