@@ -6,6 +6,7 @@ import { createRoot, Root } from 'react-dom/client';
 import { AiAssistantModel } from '@noodl-models/AiAssistant/AiAssistantModel';
 import { AiCopilotContext } from '@noodl-models/AiAssistant/AiCopilotContext';
 import { ChatHistoryEvent, ChatMessage } from '@noodl-models/AiAssistant/ChatHistory';
+import { PopupItemType } from '@noodl-models/AiAssistant/PopupItemType';
 import { NodeGraphNode } from '@noodl-models/nodegraphmodel';
 import { LocalUserIdentity } from '@noodl-utils/LocalUserIdentity';
 import { tracker } from '@noodl-utils/tracker';
@@ -27,7 +28,6 @@ import { Text, TextType } from '@noodl-core-ui/components/typography/Text';
 
 import { JavaScriptEditor } from '@noodl-core-ui/components/code-editor';
 
-import { PopupItemType } from '../../../../Clippy/ClippyCommandsMetadata';
 import PopupLayer, { Popout } from '../../../../popuplayer';
 
 export interface AiChatProps {

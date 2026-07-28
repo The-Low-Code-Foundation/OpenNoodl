@@ -12,8 +12,8 @@ import { Model } from '@noodl-utils/model';
 import { guid } from '@noodl-utils/utils';
 
 import { EventDispatcher } from '../../../../shared/utils/EventDispatcher';
-import { PopupItemType } from '../../views/Clippy/ClippyCommandsMetadata';
 import { ToastLayer } from '../../views/ToastLayer/ToastLayer';
+import { PopupItemType } from './PopupItemType';
 
 const docsTemplates = [
   {
