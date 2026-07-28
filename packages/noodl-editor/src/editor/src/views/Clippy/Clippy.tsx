@@ -188,7 +188,12 @@ export default function Clippy() {
     aiAssistantModel.removeActivity(id);
   }
 
-  const initialPlaceholder = isInputOpen ? 'Select (or type) a command below' : 'Ask Noodl AI';
+  // "Ask AI", not "Ask NodeGX AI": this was pre-rebrand copy, but renaming it to
+  // the product would keep the deeper error. There is no first-party AI service —
+  // AIX-001 made the client provider-agnostic, and the footer a few hundred lines
+  // below renders the provider and model actually configured ("Anthropic (…)"),
+  // which the old label contradicted.
+  const initialPlaceholder = isInputOpen ? 'Select (or type) a command below' : 'Ask AI';
   const isPromptInWrongOrder = Boolean(!selectedOption) && Boolean(secondInputValue);
 
   // Commands run whenever a provider is configured. Individual commands that
