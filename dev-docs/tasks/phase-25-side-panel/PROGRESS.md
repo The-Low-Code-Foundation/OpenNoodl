@@ -93,6 +93,7 @@ unable to take.
 | F42 | **The phase's own gate list names a script that does not exist.** `noodl-core-ui` has no `test:ci`; its scripts are `start` and `build`. The real check is `npm run typecheck:core-ui`. Corrected in *Gates for the phase* below | this file | ✅ corrected |
 | F43 | **`BaseDialog`'s position depended on its animation running.** The positioned variant is `position: absolute; top: 0; left: 0`, and every pixel of where it lands came from the `to` half of the `enter` keyframe plus `animation-fill-mode: both`. Suppress animations and **every menu in the editor** piles up in the window's top-left corner. This is what made the `⋯` anchoring check fail with **byte-identical numbers across three unrelated attempted fixes** — `panel-modes.mjs` injects `animation: none` for determinism, so the harness was suppressing the very thing doing the positioning. The identical numbers were the tell: a live measurement of a changing layout cannot repeat to the pixel | `BaseDialog.module.scss` | ✅ fixed — resting position stated as a rule; the keyframe still wins while it runs |
 | F44 | **The app name does not reach `project.json` when you set it — only when something else saves.** PNL-008's L5 round trip writes the App name, polls the file for 15s and still sees the old value; it then writes the Browser tab title and the *app name* appears on disk alongside it. The lag is exactly one step, twice. The Browser tab title control persists on its own, so the two controls behave differently — which is the part that makes this look like the app rather than the instrument. **Caveat, stated rather than glossed:** the input was driven synthetically (native value setter + `input` + Enter + `blur`), so a real keystroke may commit differently. One human check settles it: rename the app, quit without touching anything else, reopen | `ProjectModel.setMetaData` / `EventDispatcher` | ✅ **FIXED 2026-07-28** (batch C) — **and the recorded cause was wrong.** Not a lag, not a debounce, not the synthetic-input instrument, not an F15 residue, and `AppSetupPanel`/`ProjectSettingsModel`-save-path no longer exist. `setMetaData` dispatches `ProjectModel.metadataChanged`; `EventDispatcher` matches on the first dot-component being *identical*, so the `Model.*` listener — the editor's only autosave — never heard it. **No save was ever armed.** It looked one step behind because `toJSON()` serialises `metadata` unconditionally, so the value rode out with whatever save something else happened to trigger. **The blast radius was never just the app name:** SEO, PWA, config variables, Styles, design tokens and the DB schema cache all persist through the same gap. ⚠️ Still owed: the real-keystroke path and quit-and-reopen against the 1s debounce |
+| F46 | **`project.json` was rewritten in response to almost any event in the app, and the biggest single source was a graph that is not in the project.** The autosave listener took every `Model.*` event minus a 22-name denylist; there are **116** distinct `Model.*` events in the editor, so ~94 of them armed a full project write. Two writes in twenty seconds on a cold start with zero user input. **The recorded cause was partly wrong:** the `nodeAdded ×5 / connectionAdded ×5 / graphModelBound` burst was read as load-time reconstruction of the project's graphs, and the project's own load is in fact already silent (`projectFromDirectory` holds `Model._listenersEnabled = false` across `fromJSON`). The burst is `WorkflowComponentModel`, which `extends ComponentModel` — so **opening a workflow tab** runs `bindGraph` and raises a node/connection event per step and wire, for a document that lives in a backend's data directory. Which also means the "genuinely hard edge" — that `nodeAdded`/`connectionAdded`/`labelChanged` are raised by both a real edit and a load, so no name can separate them — **did not need a load/edit state flag.** The discriminator is ownership | `projectmodel.ts` autosave listener | ✅ **FIXED 2026-07-28** — allowlist (47 names, membership rule `ProjectModel.toJSON()`) **plus** an `owner`-chain check requiring the emitting model to reach `ProjectModel.instance`. Five new specs; editor suite 1828/0 |
 | F45 | **A gate can leave the app unusable by *removing* a style, not just by injecting one.** `components-tree.mjs` cleared the inline `width` on the FrameDivider container to take its "wide" measurement. That width is `var(--frame-divider-…-container-1-width)`, owned by PNL-003's layout state, so deleting the declaration left nothing sizing the panel: it collapsed to 4px and **neither the rail icon nor ⌘B brought it back**, because as far as React was concerned nothing had changed. Every gate run afterwards then measured a collapsed panel. F35 said release what you inject; this is the same rule for what you remove | `corpus/components-tree.mjs` | ✅ fixed — saves and restores, and never removes what it did not set |
 
 ## Open questions
@@ -494,3 +495,98 @@ backend class schema and a running preview respectively.
 held the dev stack for this whole session. Running `components-tree` against it
 is the first thing to do next, and the SKIP count is the measurement that says
 whether this worked.
+
+### — the autosave becomes an allowlist, and the measured cause was two-thirds right (2026-07-28)
+
+Closes F46. The measurement from earlier in the day stood up in every particular
+except the one it had already flagged as uncertain, and correcting it made the fix
+smaller rather than larger.
+
+**What was confirmed.** The listener really did take any `Model.*` event minus a
+22-name denylist. Counted rather than estimated: there are **116** distinct
+`Model.*` event names in `packages/noodl-editor/src`, so ~94 of them armed a
+complete project write. `Model.templatesChanged` is `lessontemplatesmodel`'s list
+of *lesson templates* loading, and it fires before a project is in place;
+`Model.viewerClientsChanged` is `ViewerConnection` announcing that a preview
+attached. Both wrote `project.json`.
+
+**What was wrong.** The second burst — `nodeAdded ×5`, `connectionAdded ×5`,
+`labelChanged`, `variantChanged`, ending on `graphModelBound` — was recorded as
+load-time reconstruction of the project's own graphs. It is not, and the
+measurement's own caveat was pointing at the answer. The project's load is
+**already silent**: `projectFromDirectory` holds `Model._listenersEnabled = false`
+across `fromJSON`, and `notifyListeners` returns before it dispatches anything at
+all when that flag is down. What survived the guard was
+`WorkflowComponentModel`, which `extends ComponentModel` — so constructing one
+runs `ComponentModel`'s constructor, which calls `bindGraph`, which raises
+`graphModelBound`; and the workflow graph it wraps is a real `NodeGraphModel`, so
+building the canvas raises a `nodeAdded` per step and a `connectionAdded` per
+wire. **Opening a workflow tab rewrote the project**, repeatedly, for a document
+that lives in a backend's data directory and is not part of `project.json`.
+
+That correction is what removed the hard part. The recorded edge was that
+`nodeAdded` / `connectionAdded` / `labelChanged` are raised by *both* a real edit
+and load-time reconstruction, so no list of names separates them, so the fix needs
+a load/bind state flag. With the load already silent, the surviving ambiguity is
+not load-vs-edit at all — it is **whose graph this is**. That is answerable
+structurally, at the moment the event fires, with no flag for a future caller to
+forget to set: `Model.notifyListeners` already dispatches `{ model: <emitter> }`,
+so walk the `owner` chain and require it to reach `ProjectModel.instance`.
+
+**Two gates, and both are load-bearing.**
+
+*The allowlist* (47 names). Membership rule is `ProjectModel.toJSON()` — `name`,
+`components[]`, `settings`, `rootNodeId`, `runtimeVersion`, `lesson`, `metadata`,
+`variants[]`. `metadata` needs no entry of its own because `setMetaData` calls
+`scheduleProjectSave()` directly, which is what F44 fixed and what covers app
+config, styles, design tokens and backend services. Checked mechanically for
+typos: every one of the 47 has an emitter in the source.
+
+*The ownership check*, applied only to `ComponentModel` → `NodeGraphModel` →
+`NodeGraphNode`, the three classes whose chain is known to terminate at the
+project. `VariantModel`, `StylesModel` and `CommentsModel` have **no `owner` at
+all**, so judging them this way would read "unowned" as "foreign" and silently
+stop saving them. The bias throughout is that a redundant write is cheap and a
+dropped edit is not.
+
+Neither gate works alone, and the reason is worth keeping:
+
+- **`Model.change` has to be allowed.** `Model.prototype.set` raises it, and that
+  is how dragging a node persists — `commitMoveNode` does
+  `node.model.set({x, y})`. It is also on the base class, so every model in the
+  app can raise it. Allowing that name without the ownership check re-admits most
+  of what the denylist let through, including a step dragged on a workflow canvas.
+- **`graphModelBound` has to be allowed too**, which was not obvious. Excluding it
+  looks right — its literal meaning is binding — but version control's "reset
+  component to a previous version" replaces a project component's graph wholesale
+  and raises *nothing else*. Excluding the name would have made a reset stop
+  reaching disk: a new data-loss bug, introduced by the fix for a spurious-write
+  bug. Ownership admits the reset and rejects the workflow.
+
+**Five specs, in `tests/project/projectsavetriggers.js`** — and registered in
+`tests/project/index.ts`, which is a barrel: a spec file not exported there never
+runs and never says so. They observe through a sentinel written only to disk, so
+any save at all serialises it away; no spying on internals, and no assertion about
+timing. Two assert that a preview client connecting and the template list loading
+leave the file alone; one builds the unowned-`ComponentModel`-with-a-real-graph
+shape a workflow has and asserts the same. The other two are the counterweight
+that matters more — **moving a node and changing a parameter still write** — because
+an allowlist can only fail by omission, and omission is a silently dropped edit.
+
+Also verified by hand, since an omission is invisible: all 64 events that used to
+trigger a save and no longer do. Three needed checking rather than eyeballing.
+`undo`/`redo` are safe because `UndoQueue` runs the inverse action *first*, which
+raises the real allowlisted model events; the notification is bookkeeping after
+the fact. `backendServicesChanged` is safe because it is raised immediately after
+a `setMetaData` that schedules its own save. `tokensChanged` likewise.
+
+Gates, from the primary checkout: editor `test:ci` **1828/0** on seed `54768`
+(1823 before, plus these five), editor `tsc --noEmit` **0**. The four data-loss
+specs in `projectsaveflush.js` all ran and passed.
+
+⚠️ **Not yet verified live.** The claim that a cold start now performs *zero*
+project writes is the point of the change and has only been tested through the
+spec harness. It wants the same instrument that produced the original
+measurement: a console capture over a cold start into a restored project, plus
+blur / quit / close by hand. The 2-space `writeJson` of `56b086c5` makes a stray
+save easy to see in `git diff` while doing it.

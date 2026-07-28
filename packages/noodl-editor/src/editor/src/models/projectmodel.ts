@@ -1396,29 +1396,168 @@ let saveTimeout;
  * `setSaveOnModelChange(false)` clears the timer without the edit being written.
  */
 let savePending = false;
-const ignoreEvents = [
-  'Model.thumbnailChanged',
-  'Model.inspectorAdded',
-  'Model.inspectorRemoved',
-  'Model.itemsChanged',
-  'Model.activeChanged',
-  'Model.warningsChanged',
-  'Model.GetCurrentFrontends',
-  'Model.GetAllEnvironments',
-  'Model.myProjectsChanged',
-  'Model.moduleRegistered',
-  'Model.libraryUpdated',
-  'Model.documentChanged',
-  'Model.nodeSelected',
-  'Model.selectNode',
-  'Model.moduleUnregistered',
-  'Model.exitEditor',
-  'Model.lessonProgressChanged',
-  'Model.instancePortsChanged',
-  'Model.0',
-  'Model.1',
-  'Model.2'
-];
+/**
+ * The events that mean *the project's serialised content changed*.
+ *
+ * This was a 22-name **denylist**, and the design was the bug. Every `Model.*`
+ * event raised anywhere in the app armed a project save unless someone had
+ * previously noticed that particular event and excluded it — so each new event
+ * type in any model silently became a save trigger. There are 116 distinct
+ * `Model.*` events in the editor, which left ~94 of them writing `project.json`.
+ * Measured on a cold start with zero user input: **two complete project writes in
+ * twenty seconds**, none of them caused by a change to project content.
+ * `Model.templatesChanged` is the launcher's *lesson template list* loading;
+ * `Model.viewerClientsChanged` means a preview client connected. Neither has
+ * anything to do with the project, and both wrote it to disk.
+ *
+ * Adding those two names to the denylist would have fixed the symptom and kept
+ * the design. So the list is inverted: an event has to be *named here* to reach
+ * disk, and the membership rule is `ProjectModel.toJSON()` — `name`,
+ * `components[]`, `settings`, `rootNodeId`, `runtimeVersion`, `lesson`,
+ * `metadata`, `variants[]`. Anything a save would not write is not here.
+ *
+ * `metadata` needs no entry: `setMetaData` calls `scheduleProjectSave()` itself,
+ * which is what covers app config, styles and style tokens.
+ *
+ * Notable *exclusions*, each previously a trigger: `thumbnailChanged` (the
+ * thumbnail is commented out of `toJSON`), `folderCreated`/`folderRenamed`/
+ * `folderDeleted`/`folderReordered` (launcher folders, persisted to the
+ * launcher's own store), `dirtyChanged`/`stepChanged`/`triggersChanged`/
+ * `entryChanged` (workflow documents, which live in a backend's data directory),
+ * `tokensChanged` (reaches disk via `setMetaData`), and `instancePortsChanged`
+ * (derived from parameters, which are themselves a trigger).
+ */
+const projectSaveTriggers = new Set(
+  [
+    /**
+     * `Model.prototype.set` — the base-class assign-and-notify. This is how
+     * **dragging a node** persists: `commitMoveNode` does `node.model.set({x, y})`.
+     * It is also the reason the ownership gate below is not optional. `set` is on
+     * every Model in the app, so allowing this name alone would re-admit most of
+     * what the denylist let through.
+     */
+    'change',
+
+    // ProjectModel — the project's own shape.
+    'renamed',
+    'settingsChanged',
+    'runtimeVersionChanged',
+    'rootNodeChanged',
+    'componentAdded',
+    'componentRemoved',
+    'componentRenamed',
+    'componentDuplicated',
+    'cloudServicesChanged',
+    'projectMigratedToV2',
+    'variantAdded',
+    'variantCreated',
+    'variantUpdated',
+    'variantDeleted',
+    'variantRenamed',
+
+    // ComponentModel.
+    'metadataChanged',
+    /**
+     * Binding a graph onto a component. Two callers reach this with a project
+     * component: the load path — already silent, `projectFromDirectory` holds
+     * `Model._listenersEnabled = false` across `fromJSON` — and version
+     * control's "reset component to a previous version", which replaces the
+     * graph wholesale and is a genuine edit that must reach disk. The third
+     * caller is `WorkflowComponentModel`, and the ownership gate is what
+     * separates it.
+     */
+    'graphModelBound',
+
+    // NodeGraphModel — nodes, wires, and parent/child.
+    'nodeAdded',
+    'nodeRemoved',
+    'nodeAttached',
+    'nodeDetached',
+    'connectionAdded',
+    'connectionRemoved',
+    'connectionPortChanged',
+    'nodePortRenamed',
+    'nodePortRearranged',
+
+    // NodeGraphNode — parameters, label, variant, states, ports.
+    'parametersChanged',
+    'labelChanged',
+    'variantChanged',
+    'stateTransitionsChanged',
+    'defaultStateTransitionChanged',
+    'commentChanged',
+    'portAdded',
+    'portRemoved',
+    'portRenamed',
+    'portRearranged',
+    'modelParameterUndo',
+    'modelParameterRedo',
+
+    // VariantModel — variants serialise into the project.
+    'variantParametersChanged',
+    'variantStateTransitionsChanged',
+    'variantDefaultStateTransitionChanged',
+
+    // CommentsModel.
+    'commentAdded',
+    'commentsChanged',
+
+    /**
+     * StylesModel. Redundant in principle — `store()` goes through `setMetaData`,
+     * which schedules a save directly — and named anyway, so that a style edit
+     * does not depend on that one call staying where it is.
+     */
+    'stylesChanged',
+    'styleChanged',
+    'styleRenamed'
+  ].map((event) => 'Model.' + event)
+);
+
+/** node → graph → component → project is three; the rest is headroom. */
+const MAX_OWNER_HOPS = 6;
+
+/**
+ * Whether the model that raised an event is part of the project we would save.
+ *
+ * The allowlist cannot answer this on its own, because the same event names are
+ * raised by graphs that are **not in the project at all**.
+ * `WorkflowComponentModel extends ComponentModel`, so opening a workflow tab runs
+ * `ComponentModel`'s constructor — `bindGraph`, then a `nodeAdded` per step and a
+ * `connectionAdded` per wire, then `graphModelBound`. Every one of those armed a
+ * full `project.json` write for a document that lives in a backend's data
+ * directory. That burst, arriving straight after the node library, is what the
+ * cold-start measurement caught and attributed to load-time reconstruction; the
+ * project's own load is in fact already silent, because `projectFromDirectory`
+ * holds `Model._listenersEnabled = false` across `fromJSON`.
+ *
+ * So the discriminator is structural rather than a load/edit state flag: walk the
+ * `owner` chain and require it to reach `ProjectModel.instance`. A flag has to be
+ * set and cleared correctly by every future caller; ownership is already true or
+ * false at the moment the event fires.
+ *
+ * Applied **only** to the three classes whose chain is known to terminate at the
+ * project (`ComponentModel` → `NodeGraphModel` → `NodeGraphNode`). `VariantModel`,
+ * `StylesModel` and `CommentsModel` have no `owner` at all, so judging them this
+ * way would read "unowned" as "foreign" and quietly stop saving. Everything else
+ * is left to the allowlist — the bias throughout is that a redundant write is
+ * cheap and a dropped edit is not.
+ */
+function emitterIsForeignToProject(emitter: unknown): boolean {
+  const project: unknown = ProjectModel.instance;
+  if (!project || !emitter) return false; // Cannot tell — let the save through.
+
+  const isGraphTreeModel =
+    emitter instanceof ComponentModel || emitter instanceof NodeGraphModel || emitter instanceof NodeGraphNode;
+  if (!isGraphTreeModel) return false;
+
+  let current: unknown = emitter;
+  for (let hops = 0; current && hops <= MAX_OWNER_HOPS; hops++) {
+    if (current === project) return false;
+    current = (current as { owner?: unknown }).owner;
+  }
+
+  return true;
+}
 /**
  * F44: the one place that arms the autosave.
  *
@@ -1444,7 +1583,11 @@ function scheduleProjectSave() {
 EventDispatcher.instance.on(
   'Model.*',
   function (event, eventName) {
-    if (ignoreEvents.indexOf(eventName) !== -1) return;
+    if (!projectSaveTriggers.has(eventName)) return;
+
+    // `Model.notifyListeners` dispatches `{ model: <emitter>, args }`, so the
+    // model that raised the event is available here without any extra plumbing.
+    if (emitterIsForeignToProject(event?.model)) return;
 
     scheduleProjectSave();
   },
