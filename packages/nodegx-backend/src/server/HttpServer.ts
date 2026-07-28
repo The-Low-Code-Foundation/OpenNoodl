@@ -1306,17 +1306,44 @@ export class HttpServer {
       res.setHeader('Retry-After', String(retryAfter));
       throw new HttpError(429, `Too many failed credential attempts. Try again in ${retryAfter}s.`);
     }
+    // WFA-005 / F7: the hook route family carries its OWN credential, so it is
+    // not asked for a service one.
+    //
+    // `resolvePrincipal` throws 401 for any `Bearer` that is not an admin
+    // token. `webhook.ts` accepts a per-hook secret as `Authorization: Bearer`
+    // and its own refusal message advertises that it does — but the request was
+    // rejected here, before routing, so that form could never authenticate. A
+    // third-party service that sends only `Authorization` could not call a
+    // NodeGX hook, and the 401 it got did not mention webhooks.
+    //
+    // THE SCOPE OF THE EXEMPTION IS THE ROUTE'S OWN DECLARATION, not the path.
+    // `matchRoute` has already run, so this is the exact set of routes the table
+    // marks `{kind: 'webhook'}` — one, today. It is not a prefix test and not a
+    // substring test: nothing about the request can steer it, and reaching a
+    // second route through it would take adding that route to the family
+    // deliberately. `checkAccess` treats `webhook` as self-enforcing for the
+    // same reason, and `handleWebhook` then verifies the per-hook secret with a
+    // timing-safe comparison.
+    //
+    // An admin token gains nothing here. It arrives as an anonymous principal
+    // like every other hook caller and is then compared against THAT hook's
+    // secret, which it is not — so it is refused, with the webhook's message.
+    const selfAuthenticatingRoute = route.access.kind === 'webhook';
     let principal: Principal;
-    try {
-      principal = await this.security.resolvePrincipal(req);
-    } catch (e) {
-      this.authLimiter.recordFailure(authBucket);
-      // A rejected credential IS an audited event — it is the one an operator
-      // reads when asking "is somebody trying?" — and it is recorded whatever
-      // route was being reached for.
-      trace.auditAction = AUDIT_LOGIN_FAILURE;
-      trace.auditDetail = { reason: e instanceof Error ? e.message : String(e) };
-      throw e;
+    if (selfAuthenticatingRoute) {
+      principal = { kind: 'anonymous' };
+    } else {
+      try {
+        principal = await this.security.resolvePrincipal(req);
+      } catch (e) {
+        this.authLimiter.recordFailure(authBucket);
+        // A rejected credential IS an audited event — it is the one an operator
+        // reads when asking "is somebody trying?" — and it is recorded whatever
+        // route was being reached for.
+        trace.auditAction = AUDIT_LOGIN_FAILURE;
+        trace.auditDetail = { reason: e instanceof Error ? e.message : String(e) };
+        throw e;
+      }
     }
     trace.principal = principal.kind === 'admin' && principal.readonly ? 'admin:readonly' : principal.kind;
     trace.actor = principal.kind === 'user' ? principal.userId : principal.kind === 'apiKey' ? principal.name : '';

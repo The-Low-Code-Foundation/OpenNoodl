@@ -52,6 +52,17 @@ export interface ScheduleConfig {
    *     exactly ONCE at startup (never N times for N missed windows), then resume.
    */
   missedFirePolicy: MissedFirePolicy;
+  /**
+   * Constant data every fire of this schedule delivers, landing in WFA-003's
+   * `body` — the same place a webhook's JSON lands (WFA-005, F8).
+   *
+   * That is the whole point: a schedule had no way to say anything, so a
+   * definition reading `body.mode` worked from a webhook and saw `undefined`
+   * from cron, and "the same workflow, triggered by a webhook AND on a
+   * schedule" — phase 19's exit clause — was unreachable for one definition.
+   * A schedule with no payload still sends `body: {}`, unchanged.
+   */
+  payload?: Record<string, unknown>;
 }
 
 export interface WebhookConfig {
@@ -153,16 +164,55 @@ function emptyStatus(): TriggerStatus {
 
 const CHANGE_ACTIONS: ChangeAction[] = ['create', 'update', 'delete'];
 
+/**
+ * The known keys, at every level, in ONE place.
+ *
+ * These were previously inline in `validateTriggerDef`, which is the *load*
+ * path. The write path built its own object from the input and then validated
+ * the object it had just built — so an unknown key was gone before validation
+ * could see it, and `POST /admin/triggers` answered 201 to a config it had
+ * silently discarded half of (WFA-005, F8). Naming the sets here is what lets
+ * both paths apply the same rule, which is the actual fix; `payload` was only
+ * how the gap was noticed.
+ */
+const TRIGGER_KEYS = [
+  'id', 'type', 'name', 'enabled', 'target', 'schedule', 'webhook', 'dbChange', 'createdAt', 'updatedAt', 'status'
+] as const;
+const TARGET_KEYS = ['kind', 'name'] as const;
+const SCHEDULE_KEYS = ['cron', 'missedFirePolicy', 'payload'] as const;
+const WEBHOOK_KEYS = ['slug', 'scheme', 'maxBodyBytes'] as const;
+const DB_CHANGE_KEYS = ['collection', 'actions'] as const;
+
+/**
+ * Fields the REGISTRY owns. Accepted on write and ignored, rather than refused:
+ * `GET` a trigger, change its cron, `PUT` it back is the obvious edit gesture
+ * from a panel or an agent, and it round-trips exactly these three.
+ */
+const REGISTRY_OWNED_KEYS: readonly string[] = ['createdAt', 'updatedAt', 'status'];
+
+/** Write-path-only key: the plaintext webhook secret, which is never stored here. */
+const INPUT_ONLY_KEYS: readonly string[] = ['secret'];
+
+function unknownKeys(
+  obj: Record<string, unknown>,
+  known: readonly string[],
+  label: string,
+  errors: string[],
+  alsoAllowed: readonly string[] = []
+): void {
+  for (const key of Object.keys(obj)) {
+    if (known.includes(key) || alsoAllowed.includes(key)) continue;
+    errors.push(label ? `unknown ${label} key "${key}"` : `unknown key "${key}"`);
+  }
+}
+
 /** Validate a fully-formed TriggerDef. Returns error strings; empty = valid. */
 export function validateTriggerDef(raw: unknown): string[] {
   const errors: string[] = [];
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return ['trigger must be an object'];
   const t = raw as Record<string, unknown>;
 
-  const KEYS = new Set([
-    'id', 'type', 'name', 'enabled', 'target', 'schedule', 'webhook', 'dbChange', 'createdAt', 'updatedAt', 'status'
-  ]);
-  for (const key of Object.keys(t)) if (!KEYS.has(key)) errors.push(`unknown key "${key}"`);
+  unknownKeys(t, TRIGGER_KEYS, '', errors);
 
   if (typeof t.id !== 'string' || !t.id) errors.push('id must be a non-empty string');
   if (t.type !== 'schedule' && t.type !== 'webhook' && t.type !== 'db-change') {
@@ -176,6 +226,7 @@ export function validateTriggerDef(raw: unknown): string[] {
   if (!target || typeof target !== 'object') {
     errors.push('target is required');
   } else {
+    unknownKeys(target, TARGET_KEYS, 'target', errors);
     if (target.kind !== 'function' && target.kind !== 'workflow') {
       errors.push('target.kind must be "function" or "workflow"');
     }
@@ -189,7 +240,7 @@ export function validateTriggerDef(raw: unknown): string[] {
     if (!s || typeof s !== 'object') {
       errors.push('schedule config is required for a schedule trigger');
     } else {
-      for (const k of Object.keys(s)) if (k !== 'cron' && k !== 'missedFirePolicy') errors.push(`unknown schedule key "${k}"`);
+      unknownKeys(s, SCHEDULE_KEYS, 'schedule', errors);
       if (typeof s.cron !== 'string') errors.push('schedule.cron must be a string');
       else {
         const cronErr = validateCron(s.cron);
@@ -198,6 +249,11 @@ export function validateTriggerDef(raw: unknown): string[] {
       if (s.missedFirePolicy !== 'skip' && s.missedFirePolicy !== 'run-once-on-start') {
         errors.push('schedule.missedFirePolicy must be "skip" or "run-once-on-start"');
       }
+      // The payload becomes the run's `body`, which a definition reads keys off,
+      // so an array or a scalar there is a definition that cannot work.
+      if (s.payload !== undefined && (typeof s.payload !== 'object' || s.payload === null || Array.isArray(s.payload))) {
+        errors.push('schedule.payload must be an object (it is delivered as the run\'s body)');
+      }
     }
   } else if (t.type === 'webhook') {
     if (t.schedule || t.dbChange) errors.push('a webhook trigger must not carry schedule/dbChange config');
@@ -205,9 +261,7 @@ export function validateTriggerDef(raw: unknown): string[] {
     if (!w || typeof w !== 'object') {
       errors.push('webhook config is required for a webhook trigger');
     } else {
-      for (const k of Object.keys(w)) {
-        if (k !== 'slug' && k !== 'scheme' && k !== 'maxBodyBytes') errors.push(`unknown webhook key "${k}"`);
-      }
+      unknownKeys(w, WEBHOOK_KEYS, 'webhook', errors);
       if (typeof w.slug !== 'string' || !SLUG_RE.test(w.slug)) {
         errors.push('webhook.slug must match [a-z0-9][a-z0-9-]{0,63} (lowercase, digits, hyphens)');
       }
@@ -222,13 +276,51 @@ export function validateTriggerDef(raw: unknown): string[] {
     if (!d || typeof d !== 'object') {
       errors.push('dbChange config is required for a db-change trigger');
     } else {
-      for (const k of Object.keys(d)) if (k !== 'collection' && k !== 'actions') errors.push(`unknown dbChange key "${k}"`);
+      unknownKeys(d, DB_CHANGE_KEYS, 'dbChange', errors);
       if (typeof d.collection !== 'string' || !d.collection) errors.push('dbChange.collection must be a non-empty string');
       if (!Array.isArray(d.actions) || d.actions.length === 0) {
         errors.push('dbChange.actions must be a non-empty array');
       } else {
         for (const a of d.actions) if (!CHANGE_ACTIONS.includes(a as ChangeAction)) errors.push(`unknown dbChange action "${a}"`);
       }
+    }
+  }
+
+  return errors;
+}
+
+/**
+ * Validate what a CALLER sent, before any of it is copied into a definition.
+ *
+ * This is the half that did not exist. `upsert` reads the fields it knows and
+ * builds a `TriggerDef` from them, so validating that object can only ever
+ * confirm that `upsert` copied correctly — an unknown key never reaches it. The
+ * result was a 201 for a trigger whose config had been silently halved, while
+ * the very same key in `triggers.json` refuses to let the service start
+ * (WFA-005, F8).
+ *
+ * Only key names are checked here; every value rule stays in
+ * `validateTriggerDef`, which still runs on the constructed definition. That
+ * split is deliberate — it keeps ONE description of what a valid trigger is,
+ * and it keeps the new strictness on the WRITE path, so a `triggers.json` that
+ * boots today still boots (the spec's stored-data trap).
+ */
+export function validateTriggerInput(raw: unknown): string[] {
+  const errors: string[] = [];
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return ['trigger must be an object'];
+  const t = raw as Record<string, unknown>;
+
+  unknownKeys(t, TRIGGER_KEYS, '', errors, INPUT_ONLY_KEYS);
+
+  const nested: [unknown, readonly string[], string][] = [
+    [t.target, TARGET_KEYS, 'target'],
+    [t.schedule, SCHEDULE_KEYS, 'schedule'],
+    [t.webhook, WEBHOOK_KEYS, 'webhook'],
+    [t.dbChange, DB_CHANGE_KEYS, 'dbChange']
+  ];
+  for (const [value, known, label] of nested) {
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+      unknownKeys(value as Record<string, unknown>, known, label, errors);
     }
   }
 
@@ -344,6 +436,17 @@ export class TriggerRegistry {
    * the plaintext secret ONCE (never retrievable again — like an API key).
    */
   upsert(input: TriggerInput): { trigger: TriggerDef; secret?: string } {
+    // Before anything is copied: is all of what the caller sent understood? A
+    // key this registry does not know is a policy the caller believes is in
+    // force and which nothing will ever enforce (F8).
+    const inputErrors = validateTriggerInput(input);
+    if (inputErrors.length > 0) {
+      throw new TriggerConfigError(
+        `Invalid trigger:\n${inputErrors.map((e) => `  - ${e}`).join('\n')}\n` +
+          `  (a key this backend does not understand would be stored nowhere and enforced by nothing)`
+      );
+    }
+
     const existing = input.id ? this.triggers.find((t) => t.id === input.id) : undefined;
     const id = input.id || 'trg_' + crypto.randomBytes(9).toString('base64url');
     const now = nowIso();
@@ -364,7 +467,10 @@ export class TriggerRegistry {
     if (input.type === 'schedule') {
       def.schedule = {
         cron: input.schedule ? input.schedule.cron : '',
-        missedFirePolicy: input.schedule && input.schedule.missedFirePolicy ? input.schedule.missedFirePolicy : 'skip'
+        missedFirePolicy: input.schedule && input.schedule.missedFirePolicy ? input.schedule.missedFirePolicy : 'skip',
+        // Omitted rather than stored as `{}`, so a schedule that carries nothing
+        // reads on disk exactly as it did before this field existed.
+        ...(input.schedule && input.schedule.payload !== undefined ? { payload: input.schedule.payload } : {})
       };
     } else if (input.type === 'webhook') {
       const w = input.webhook;

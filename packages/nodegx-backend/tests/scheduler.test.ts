@@ -110,8 +110,8 @@ describe('CronScheduler.start', () => {
 
     // WFA-003: the uniform payload, from the real call site. `body: {}` rather
     // than an absent key is what lets one definition read `body.x` whether a
-    // cron or a webhook started it — the schedule simply has nothing to put
-    // there yet (F8 is WFA-005's).
+    // cron or a webhook started it. A schedule that authors no payload still
+    // sends `{}` after WFA-005 — the new field is additive.
     const payload = fires[0].payload;
     expect(payload.body).toEqual({});
     expect(payload.triggerType).toBe('schedule');
@@ -124,5 +124,76 @@ describe('CronScheduler.start', () => {
     // The deprecated top-level view a definition written before WFA-003 reads.
     expect(payload.triggerId).toBe(trigger.id);
     expect(payload.cron).toBe('0 * * * *');
+  });
+
+  /**
+   * WFA-005 / F8. The whole point of the field: `body` is where a webhook's JSON
+   * lands, so a schedule that fills the same slot lets ONE definition serve both
+   * entry points — the phase-19 exit clause that was unreachable while a
+   * schedule had no way to say anything.
+   */
+  it('delivers a schedule payload as the run body, beside the unchanged trigger envelope', async () => {
+    const reg = new TriggerRegistry(dir, new SecretsStore(dir));
+    const { trigger } = reg.upsert({
+      type: 'schedule',
+      target: { kind: 'workflow', name: 'digest' },
+      schedule: {
+        cron: '0 * * * *',
+        missedFirePolicy: 'run-once-on-start',
+        payload: { mode: 'nightly', limit: 50 }
+      }
+    });
+    reg.recordFire(trigger.id, { firedAt: '2026-01-01T08:00:00.000Z' });
+
+    const fires: FireInput[] = [];
+    const fakeDispatcher = {
+      fire: (input: FireInput): Promise<FireOutcome> => {
+        fires.push(input);
+        return Promise.resolve({ result: { ok: true, at: 'now' }, statusCode: 200, body: '{}' });
+      },
+      recordRejection: () => ({ ok: false, at: 'now' })
+    } as unknown as TriggerDispatcher;
+
+    const scheduler = new CronScheduler({
+      registry: reg,
+      dispatcher: fakeDispatcher,
+      now: () => new Date(2026, 0, 1, 12, 30)
+    });
+    scheduler.start();
+    await Promise.resolve();
+    await Promise.resolve();
+    scheduler.stop();
+
+    const payload = fires[0].payload;
+    expect(payload.body).toEqual({ mode: 'nightly', limit: 50 });
+    // The envelope is untouched — a payload adds data, it does not shadow the
+    // facts about the fire.
+    expect(payload.triggerType).toBe('schedule');
+    expect(payload.trigger).toMatchObject({ type: 'schedule', id: trigger.id, cron: '0 * * * *' });
+  });
+
+  it('round-trips a schedule payload through the registry file', () => {
+    const first = new TriggerRegistry(dir, new SecretsStore(dir));
+    const { trigger } = first.upsert({
+      type: 'schedule',
+      target: { kind: 'workflow', name: 'digest' },
+      schedule: { cron: '0 * * * *', missedFirePolicy: 'skip', payload: { region: 'eu' } }
+    });
+
+    // A second registry over the same directory is the boot path: the stored
+    // payload has to survive the strict load validation that refuses to start
+    // on an unknown key.
+    const reloaded = new TriggerRegistry(dir, new SecretsStore(dir));
+    expect(reloaded.get(trigger.id)?.schedule?.payload).toEqual({ region: 'eu' });
+  });
+
+  it('omits payload entirely when none was authored, so the file reads as it always did', () => {
+    const reg = new TriggerRegistry(dir, new SecretsStore(dir));
+    const { trigger } = reg.upsert({
+      type: 'schedule',
+      target: { kind: 'function', name: 'digest' },
+      schedule: { cron: '0 * * * *', missedFirePolicy: 'skip' }
+    });
+    expect('payload' in (reg.get(trigger.id)!.schedule as object)).toBe(false);
   });
 });

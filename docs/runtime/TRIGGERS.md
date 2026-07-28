@@ -34,8 +34,20 @@ All three trigger types share **one** code path from "trigger fired" to
   trigger's `lastResult`, then returns the error. Nothing fails silently
   (RUN-004 loud-failure doctrine).
 
-Workflows (WF-001, when they land) become a second target `kind` on this same
-contract — the semantics are designed once.
+### What a trigger targets
+
+Every trigger names a target as `{ kind, name }`:
+
+| `kind` | `name` is | What runs |
+|---|---|---|
+| `function` | the cloud function's name | the function, once |
+| `workflow` | the workflow **id** | the WF-001 step DAG, through the engine |
+
+A workflow target is a second target *kind* on this same contract, not a second
+dispatch path — the semantics are designed once. A target that does not exist on
+this backend fails **loudly at fire time** with `Trigger target … not found on
+this backend`, recorded as a failed execution; the editor additionally warns
+about it at author time, which is an addition rather than a replacement.
 
 ---
 
@@ -71,6 +83,35 @@ honest choices. Replaying every missed window implies a durability guarantee we
 do not make. An explicit, visible policy (with last/next fire in the UI) beats
 false precision.
 
+### `payload` — constant data every fire delivers
+
+A schedule may carry a `payload` object, and it arrives as the run's **`body`** —
+the same slot a webhook's JSON lands in:
+
+```json
+{
+  "type": "schedule",
+  "target": { "kind": "workflow", "name": "digest" },
+  "schedule": {
+    "cron": "0 3 * * *",
+    "missedFirePolicy": "skip",
+    "payload": { "mode": "nightly", "limit": 50 }
+  }
+}
+```
+
+The step then reads `{"$path": "body.mode"}` exactly as it would from a webhook,
+which is what lets **one** definition serve both entry points. A schedule with no
+payload still delivers `body: {}`, so `body.x` is safe to read unconditionally.
+
+`payload` must be an object — it becomes `body`, which definitions read keys off.
+It is schedule-only; a webhook's body comes from its caller and a db-change's is
+the changed record.
+
+**Test fire** (`POST /admin/triggers/:id/fire`, and the panel button) sends the
+schedule's own payload when the caller posts no body, so a test fire exercises
+what cron will actually send. An explicitly posted body still wins.
+
 ---
 
 ## Webhook
@@ -89,9 +130,27 @@ the request as payload.
   **raw request bytes** and accepts the signature from `X-Hub-Signature-256`,
   `X-Signature-256`, or `X-Webhook-Signature` (hex or base64, optional `sha256=`
   prefix), constant-time compared. Point GitHub straight at it.
-  - A **`token`** scheme is also available (shared token in `X-Webhook-Token`,
-    `Authorization: Bearer`, or `?token=`) for senders that cannot sign. It is
-    weaker (the secret crosses the wire) — documented, not default.
+  - A **`token`** scheme is also available for senders that cannot sign. It is
+    weaker (the secret crosses the wire) — documented, not default. **All three
+    transports below work, and are the only three:**
+
+    | Transport | Example |
+    |---|---|
+    | `X-Webhook-Token` header | `X-Webhook-Token: whsec_…` |
+    | `Authorization: Bearer` | `Authorization: Bearer whsec_…` |
+    | `?token=` query parameter | `POST /hooks/<backend-id>/<slug>?token=whsec_…` |
+
+    A wrong secret in any of them is refused **401** with the *webhook's* reason
+    (`Webhook rejected: webhook token does not match`) and recorded.
+
+    > **Fixed in WFA-005.** `Authorization: Bearer` was accepted by the verifier
+    > and advertised by its own error message, but could never authenticate: the
+    > service resolved a principal for every request before routing and rejected
+    > any Bearer that was not an admin token, so the sender got a bare
+    > `{"error":"Unauthorized."}` that did not mention webhooks. The hook route
+    > family is now exempt from service-credential resolution, because it carries
+    > its own credential. An admin token gains nothing there — on a hook it is
+    > compared against *that hook's* secret like any other caller's bytes.
 - **Payload-size limit.** Per-hook `maxBodyBytes` (default 1 MB). An oversize
   body is rejected **413** and recorded.
 - **Enable/disable** per hook. A disabled or unknown slug is `404` (no record,

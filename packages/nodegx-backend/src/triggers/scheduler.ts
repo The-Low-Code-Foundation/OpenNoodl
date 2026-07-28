@@ -198,9 +198,11 @@ export class CronScheduler {
         triggerId,
         firedAt,
         cron,
-        // A schedule carries no caller data, so `body` is `{}` — which is what
-        // makes `body.x` safe to read from a definition that also runs from a
-        // webhook. WFA-005 adds the field that fills it (F8).
+        // The schedule's authored payload IS the run's body — the same slot a
+        // webhook's JSON lands in, which is what lets one definition read
+        // `body.mode` whichever entry point started it (F8). A schedule that
+        // authored none still sends `{}`, exactly as before.
+        body: trigger.schedule ? trigger.schedule.payload : undefined,
         legacy: { triggerId, firedAt, cron }
       })
     });

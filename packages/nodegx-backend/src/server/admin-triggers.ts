@@ -114,7 +114,13 @@ export class AdminTriggerRoutes {
   async fire(ctx: RequestContext): Promise<void> {
     const trigger = this.triggers.registry.get(ctx.params.id);
     if (!trigger) throw new HttpError(404, `No trigger "${ctx.params.id}"`);
-    const body = await readJSONBody(ctx.req);
+    const posted = await readJSONBody(ctx.req);
+    // A test fire with no body of its own reproduces what the schedule itself
+    // sends (WFA-005). Otherwise "Test fire" would exercise a payload the real
+    // fire never uses, which is the one thing a test fire must not do. An
+    // explicitly posted body still wins — that is how you try a variation.
+    const scheduled = trigger.type === 'schedule' ? trigger.schedule?.payload : undefined;
+    const body = posted && Object.keys(posted).length > 0 ? posted : scheduled || posted;
     const outcome = await this.triggers.dispatcher.fire({
       trigger,
       triggerType: 'manual',
