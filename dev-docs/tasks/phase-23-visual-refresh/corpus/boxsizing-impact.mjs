@@ -15,11 +15,25 @@
  * Every injected style is removed in a `finally` — a leaked `!important` from a
  * crashed run once wedged the editor for a previous agent.
  *
- * Prerequisite — a dev editor on a CDP endpoint WITH A PROJECT OPEN, launched from
- * the primary checkout (`lerna exec` resolves there, not to a worktree).
+ * Prerequisite — a dev editor on a CDP endpoint, launched from the primary
+ * checkout (`lerna exec` resolves there, not to a worktree). With a project open
+ * for the default panel walk; on the launcher for `--launcher`.
  *
- * Usage: node dev-docs/tasks/phase-23-visual-refresh/corpus/boxsizing-impact.mjs
- *        [--json out.json]
+ * Usage: node .../boxsizing-impact.mjs [--json out.json]   # walk the editor rail
+ *        node .../boxsizing-impact.mjs --launcher          # measure the launcher
+ *
+ * ⚠️ The report is keyed PER PANEL and that keying has been wrong before. Panels
+ * stay mounted, so the panel title used to be read with a bare
+ * `document.querySelector` and always returned the first header in DOM order —
+ * every panel produced the same key, the report overwrote itself, and only the
+ * LAST panel survived into the JSON. Both recorded F20 tables were read off that
+ * collapsed report, which is why they disagreed with each other and why
+ * `TextInput` appeared to shrink from −18 to −4.43 without anyone fixing it:
+ * −18 is Search, −4.43 is Workflows, and the same selector genuinely measures
+ * differently depending on how much room the panel leaves the topbar.
+ *
+ * So: these deltas are NOT per-component constants. Compare like with like —
+ * same panel key, same window size — or the comparison means nothing.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -30,6 +44,8 @@ const CDP_URL = process.env.CDP_URL || 'http://localhost:9222';
 const JSON_OUT = process.argv.includes('--json')
   ? process.argv[process.argv.indexOf('--json') + 1]
   : path.resolve(__dirname, 'boxsizing-impact.json');
+
+const LAUNCHER_MODE = process.argv.includes('--launcher');
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -168,70 +184,83 @@ async function railButtons() {
 // the guard. A visible launcher card means we are on the launcher.
 const stillInProject = () => evalJS(cdp, `(() => !document.querySelector('[data-test=launcher-project-card]'))()`);
 
+/**
+ * One before/after measurement of whatever is currently on screen.
+ *
+ * Factored out so the launcher can be measured with exactly the same method as
+ * a panel. The original sweep covered four editor panels only and therefore
+ * missed the launcher entirely — the surface a new user sees first.
+ */
+async function measure(key) {
+  await release();
+  await sleep(250);
+  const before = await evalJS(cdp, SNAPSHOT, 30000);
+  await inject();
+  await sleep(350);
+  const after = await evalJS(cdp, SNAPSHOT, 30000);
+  await release();
+  await sleep(200);
+
+  const byPath = new Map(after.map((e) => [e.path, e]));
+  const changed = [];
+  for (const b of before) {
+    const a = byPath.get(b.path);
+    if (!a) continue;
+    const dw = Math.round((a.w - b.w) * 100) / 100;
+    const dh = Math.round((a.h - b.h) * 100) / 100;
+    if (dw !== 0 || dh !== 0) changed.push({ cls: b.cls, tag: b.tag, dw, dh, was: { w: b.w, h: b.h }, box: b.box });
+  }
+  // Group by class so the report names selectors, not element instances.
+  const groups = {};
+  for (const c of changed) {
+    const key = `${c.tag}.${c.cls.split(' ')[0]} Δw${c.dw} Δh${c.dh}`;
+    groups[key] = (groups[key] || 0) + 1;
+  }
+  const significant = changed.filter((c) => Math.abs(c.dw) > 1.5 || Math.abs(c.dh) > 1.5);
+
+  report[key] = {
+    total: before.length,
+    changed: changed.length,
+    significant: significant.length,
+    significantGroups: Object.entries(
+      significant.reduce((acc, c) => {
+        const k = `${c.tag}.${c.cls.split(' ')[0]}`;
+        acc[k] = acc[k] || { count: 0, dw: c.dw, dh: c.dh, was: c.was };
+        acc[k].count++;
+        return acc;
+      }, {})
+    ).sort((a, b) => b[1].count - a[1].count)
+  };
+  console.log(`${key}: ${changed.length}/${before.length} boxes change, ${significant.length} by more than 1.5px`);
+  for (const [sel, info] of report[key].significantGroups) {
+    console.log(`    ${sel}  ×${info.count}  Δw${info.dw} Δh${info.dh}  (was ${info.was.w}×${info.was.h})`);
+  }
+}
+
 const report = {};
 try {
   await release(); // in case a previous run died mid-flight
   await cdp.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] }).catch(() => {});
   await freeze(cdp);
-  const rails = await railButtons();
-  console.log(`${rails.length} rail buttons\n`);
 
-  if (!(await stillInProject())) throw new Error('no project open — run open-project.mjs first');
+  // `--launcher` measures the launcher instead of walking the editor's rail.
+  // The original sweep covered four editor panels and nothing else, so it
+  // missed the launcher completely — which is both a large share of the impact
+  // and the first surface a new user sees. Same method, same `measure()`.
+  if (LAUNCHER_MODE) {
+    if (await stillInProject()) {
+      throw new Error('--launcher expects the launcher, but a project is open — exit to the launcher first');
+    }
+    await measure('00-Launcher');
+  } else {
+    const rails = await railButtons();
+    console.log(`${rails.length} rail buttons\n`);
 
-  for (let i = 0; i < rails.length; i++) {
-    await clickAt(cdp, rails[i].x, rails[i].y, 1200);
     if (!(await stillInProject())) {
-      console.log(`  (rail button ${i} at y=${rails[i].y0} left the project — skipping, not a panel button)`);
-      break;
+      throw new Error('no project open — open one first, or pass --launcher to measure the launcher');
     }
-    const label = await evalJS(cdp, `(() => {
-      const h = document.querySelector('[class*="BasePanel"] [class*="Title"], [class*="PanelHeader"]');
-      return (h && h.innerText.trim().split('\\n')[0]) || 'panel-' + ${i};
-    })()`);
 
-    await release();
-    await sleep(250);
-    const before = await evalJS(cdp, SNAPSHOT, 30000);
-    await inject();
-    await sleep(350);
-    const after = await evalJS(cdp, SNAPSHOT, 30000);
-    await release();
-    await sleep(200);
-
-    const byPath = new Map(after.map((e) => [e.path, e]));
-    const changed = [];
-    for (const b of before) {
-      const a = byPath.get(b.path);
-      if (!a) continue;
-      const dw = Math.round((a.w - b.w) * 100) / 100;
-      const dh = Math.round((a.h - b.h) * 100) / 100;
-      if (dw !== 0 || dh !== 0) changed.push({ cls: b.cls, tag: b.tag, dw, dh, was: { w: b.w, h: b.h }, box: b.box });
-    }
-    // Group by class so the report names selectors, not element instances.
-    const groups = {};
-    for (const c of changed) {
-      const key = `${c.tag}.${c.cls.split(' ')[0]} Δw${c.dw} Δh${c.dh}`;
-      groups[key] = (groups[key] || 0) + 1;
-    }
-    const significant = changed.filter((c) => Math.abs(c.dw) > 1.5 || Math.abs(c.dh) > 1.5);
-
-    report[label] = {
-      total: before.length,
-      changed: changed.length,
-      significant: significant.length,
-      significantGroups: Object.entries(
-        significant.reduce((acc, c) => {
-          const k = `${c.tag}.${c.cls.split(' ')[0]}`;
-          acc[k] = acc[k] || { count: 0, dw: c.dw, dh: c.dh, was: c.was };
-          acc[k].count++;
-          return acc;
-        }, {})
-      ).sort((a, b) => b[1].count - a[1].count)
-    };
-    console.log(`${label}: ${changed.length}/${before.length} boxes change, ${significant.length} by more than 1.5px`);
-    for (const [sel, info] of report[label].significantGroups) {
-      console.log(`    ${sel}  ×${info.count}  Δw${info.dw} Δh${info.dh}  (was ${info.was.w}×${info.was.h})`);
-    }
+    await walkPanels(rails);
   }
 } finally {
   await release().catch(() => {});
@@ -240,4 +269,40 @@ try {
   fs.writeFileSync(JSON_OUT, JSON.stringify(report, null, 2));
   console.log(`\nwrote ${JSON_OUT}`);
   cdp.close();
+}
+
+async function walkPanels(rails) {
+  for (let i = 0; i < rails.length; i++) {
+    await clickAt(cdp, rails[i].x, rails[i].y, 1200);
+    if (!(await stillInProject())) {
+      console.log(`  (rail button ${i} at y=${rails[i].y0} left the project — skipping, not a panel button)`);
+      break;
+    }
+    // Panels stay MOUNTED — 34 `PanelHeader` elements exist at once — so a bare
+    // `document.querySelector` returns the first in DOM order, not the one on
+    // screen. Every panel therefore reported the same title, and since the
+    // report is keyed by title, all eleven collapsed into a single entry and
+    // only the last survived. That is PNL-001's documented "filter on
+    // clientHeight > 0" trap reappearing inside the instrument, and F40's lesson
+    // again: a gate that is confident about the wrong thing.
+    //
+    // Scope to the visible panel BODY (`SideNavigation-module__Panel`, not
+    // `[data-test$="-panel"]` — those are the rail buttons), and take the first
+    // visible, non-empty header inside it.
+    const label = await evalJS(cdp, `(() => {
+      const vis = (el) => { const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0; };
+      const body = Array.from(document.querySelectorAll('[class*="SideNavigation-module__Panel"]')).find(vis);
+      const scope = body || document;
+      const h = Array.from(scope.querySelectorAll('[class*="PanelHeader"], [class*="BasePanel"] [class*="Title"]'))
+        .filter(vis)
+        .find((el) => el.innerText.trim().length > 0);
+      return (h && h.innerText.trim().split('\\n')[0]) || 'panel-' + ${i};
+    })()`);
+    // Index-prefixed so two panels sharing a title can never overwrite each
+    // other — the failure above was silent, and a unique key makes it impossible
+    // rather than unlikely.
+    const key = `${String(i).padStart(2, '0')}-${label}`;
+
+    await measure(key);
+  }
 }
