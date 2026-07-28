@@ -175,6 +175,22 @@ export class NodeContextMenu {
       items.push('divider');
     }
 
+    // Comment (CAN-004). Single-select only: the popup is titled for one node
+    // and writes one node's model. Reading a comment is not here — hovering the
+    // node shows it, which is cheaper than any menu — and neither is removing
+    // one, because submitting the popup empty already clears it and already
+    // says so in its undo label.
+    if (selectedNodes.length === 1) {
+      const node = selectedNodes[0];
+      items.push({
+        label: node.model.hasComment() ? 'Edit comment' : 'Add comment',
+        icon: IconName.NotePencil,
+        onClick: () => node.showCommentEditPopup()
+      });
+
+      items.push('divider');
+    }
+
     // Data Lineage - RETIRED FROM REACH (DEBT-012, 2026-07-25).
     // Decision is NOT to revive this panel: its tracing algorithm enumerates
     // ports instead of following wires and five fix attempts failed. The sidebar

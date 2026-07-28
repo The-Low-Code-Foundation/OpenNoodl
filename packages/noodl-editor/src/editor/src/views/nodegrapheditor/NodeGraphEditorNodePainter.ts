@@ -128,9 +128,24 @@ function paintCategoryGlyph(ctx: CanvasRenderingContext2D, category: string, cx:
   ctx.restore();
 }
 
+/**
+ * The comment stripe's width in *graph* units, widened at low zoom so it never
+ * falls below one device pixel (CAN-004 — a mark you must zoom in to see is not
+ * a mark). The context transform's horizontal scale is device pixels per graph
+ * unit; contexts without `getTransform` (headless/jsdom) get the nominal width.
+ */
+function commentStripeWidth(ctx: CanvasRenderingContext2D): number {
+  const nominal = NodeGraphEditorNode.commentStripeWidth;
+  if (typeof ctx.getTransform !== 'function') return nominal;
+
+  const scale = ctx.getTransform().a;
+  if (!scale || scale <= 0) return nominal;
+
+  return Math.max(nominal, 1 / scale);
+}
+
 // Stateless: draws one node (and recurses to children via node.paint). Holds no
-// references — reads node state per call. Writes back the geometry caches that
-// hit-testing depends on (commentIconBounds); do not remove those writes.
+// references — reads node state per call.
 export function paintNode(node: NodeGraphEditorNode, ctx: CanvasRenderingContext2D, paintRect, options?) {
   const _this = node;
 
@@ -274,82 +289,17 @@ export function paintNode(node: NodeGraphEditorNode, ctx: CanvasRenderingContext
       ctx.restore();
     }
 
-    // Draw comment icon (if node has comment OR is highlighted)
-    // Position on right side, before the node icon area if present
-    const hasComment = node.model.hasComment();
-    if (hasComment || isHighligthed) {
-      const commentIconSize = 14;
-      // Adjust offset based on whether node icon is present
-      // If icon exists, offset more to avoid overlap; if not, position closer to edge
-      const commentIconRightOffset = node.icon ? 30 : 10;
-      const commentIconX = x + node.nodeSize.width - connectionDragAreaWidth - commentIconSize - commentIconRightOffset;
-      const commentIconY = y + titlebarHeight / 2 - commentIconSize / 2;
-
-      // Store bounds for click detection
-      node.commentIconBounds = {
-        x: commentIconX,
-        y: commentIconY,
-        width: commentIconSize,
-        height: commentIconSize
-      };
-
+    // Comment gutter stripe (CAN-004). Presence means presence of a comment —
+    // there is no highlighted state to interpret, and no glyph, because the
+    // titlebar has no free horizontal room at a fixed 150px card width.
+    // Painted inside the rounded-rect clip, so the top-left corner is rounded
+    // for free, and keyed off titlebarHeight rather than centred in it, so it
+    // cannot drift when a wrapped title grows the titlebar.
+    if (node.model.hasComment()) {
       ctx.save();
-
-      // Set opacity based on whether comment exists
-      ctx.globalAlpha = hasComment ? 1.0 : 0.4;
-      ctx.fillStyle = theme.cardSubText;
-      ctx.strokeStyle = theme.cardSubText;
-      ctx.lineWidth = 1.5;
-
-      // Draw speech bubble (rounded rectangle)
-      const bubbleWidth = commentIconSize;
-      const bubbleHeight = commentIconSize * 0.8;
-      const bubbleRadius = 2;
-
-      // Main bubble body
-      ctx.beginPath();
-      ctx.moveTo(commentIconX + bubbleRadius, commentIconY);
-      ctx.lineTo(commentIconX + bubbleWidth - bubbleRadius, commentIconY);
-      ctx.quadraticCurveTo(
-        commentIconX + bubbleWidth,
-        commentIconY,
-        commentIconX + bubbleWidth,
-        commentIconY + bubbleRadius
-      );
-      ctx.lineTo(commentIconX + bubbleWidth, commentIconY + bubbleHeight - bubbleRadius);
-      ctx.quadraticCurveTo(
-        commentIconX + bubbleWidth,
-        commentIconY + bubbleHeight,
-        commentIconX + bubbleWidth - bubbleRadius,
-        commentIconY + bubbleHeight
-      );
-
-      // Draw tail (small triangle at bottom)
-      const tailWidth = 3;
-      const tailHeight = 3;
-      const tailX = commentIconX + bubbleWidth * 0.7;
-      ctx.lineTo(tailX + tailWidth, commentIconY + bubbleHeight);
-      ctx.lineTo(tailX, commentIconY + bubbleHeight + tailHeight);
-      ctx.lineTo(tailX - tailWidth / 2, commentIconY + bubbleHeight);
-
-      // Complete the bubble
-      ctx.lineTo(commentIconX + bubbleRadius, commentIconY + bubbleHeight);
-      ctx.quadraticCurveTo(
-        commentIconX,
-        commentIconY + bubbleHeight,
-        commentIconX,
-        commentIconY + bubbleHeight - bubbleRadius
-      );
-      ctx.lineTo(commentIconX, commentIconY + bubbleRadius);
-      ctx.quadraticCurveTo(commentIconX, commentIconY, commentIconX + bubbleRadius, commentIconY);
-      ctx.closePath();
-
-      ctx.stroke();
-
+      ctx.fillStyle = theme.commentIndicator;
+      ctx.fillRect(x, y, commentStripeWidth(ctx), titlebarHeight);
       ctx.restore();
-    } else {
-      // Clear bounds when not visible
-      node.commentIconBounds = undefined;
     }
 
     ctx.restore(); // Restore clip so we can draw border

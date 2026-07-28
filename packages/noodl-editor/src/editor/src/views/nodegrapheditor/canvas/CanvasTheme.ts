@@ -88,8 +88,18 @@ const COLOR_SPECS = {
   cardBorderHover: { css: '--theme-color-border-strong', fallback: '#37404c' },
   /** Node name. */
   cardText: { css: '--theme-color-fg-highlight', fallback: '#eef2f6' },
-  /** Type line + comment icon. */
+  /** Type line. */
   cardSubText: { css: '--theme-color-fg-muted', fallback: '#6b7682' },
+  /**
+   * The "this node has a comment" gutter stripe (CAN-004).
+   *
+   * The primary accent, deliberately: a comment is informational, and the two
+   * obvious alternatives are already spoken for — red is danger-only under the
+   * phase-23 law, amber means warning (UIX-004's toolbar). It is not the node's
+   * `cat.accent` either, or the stripe would read as another category tint
+   * rather than as a mark that means something.
+   */
+  commentIndicator: { css: '--theme-color-primary', fallback: '#4da3ff' },
   /** Port row labels. */
   portText: { css: '--theme-color-fg-default', fallback: '#a6b0bb' },
 

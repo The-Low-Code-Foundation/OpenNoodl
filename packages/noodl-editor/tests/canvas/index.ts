@@ -5,3 +5,4 @@ export * from './NodeSelector.test';
 export * from './OverlayHost.test';
 export * from './CanvasViewport.test';
 export * from './HitTester.test';
+export * from './NodeCommentStripe.test';

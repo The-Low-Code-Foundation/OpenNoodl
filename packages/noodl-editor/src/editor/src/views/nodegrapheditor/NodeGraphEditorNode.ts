@@ -33,6 +33,12 @@ export class NodeGraphEditorNode {
   public static readonly headerTextInset =
     NodeGraphEditorNode.headerChipInset + NodeGraphEditorNode.headerChipSize + 8; // 37
 
+  // CAN-004 comment gutter stripe. It lives in x → x+3, the strip left of the
+  // header chip (which starts at x+7), so it is the one mark that can be added
+  // to the titlebar without taking width from the title — the card is a fixed
+  // 150px and the title allowance is already only 81px.
+  public static readonly commentStripeWidth = 3;
+
   model: NodeGraphNode;
   x: number;
   y: number;
@@ -58,8 +64,6 @@ export class NodeGraphEditorNode {
   rotatingIcon: HTMLImageElement;
   iconSize: number;
   iconRotation: number;
-
-  commentIconBounds: { x: number; y: number; width: number; height: number } | undefined;
 
   constructor(model) {
     this.model = model;
@@ -233,6 +237,16 @@ export class NodeGraphEditorNode {
               position: 'bottom',
               content: health.message
             });
+          } else if (this.model.hasComment()) {
+            // CAN-004: the stripe says a comment exists; hovering reads it, so
+            // the context menu only has to *edit*. Ranked below health because
+            // a broken node is the more urgent thing to say.
+            PopupLayer.instance.showTooltip({
+              x: evt.pageX,
+              y: evt.pageY,
+              position: 'bottom',
+              content: this.model.getComment()
+            });
           }
         }
 
@@ -263,16 +277,6 @@ export class NodeGraphEditorNode {
         PopupLayer.instance.hideTooltip();
 
         if (this.owner.highlighted === this) {
-          // Check if clicking on comment icon
-          const inCommentIcon = this.commentIconBounds && this.isPointInCommentIcon(pos);
-
-          if (inCommentIcon) {
-            // Show comment edit prompt
-            this.showCommentEditPopup();
-            evt.stopPropagation && evt.stopPropagation();
-            return;
-          }
-
           if (this.borderHighlighted || this.connectionDragAreaHighlighted) {
             // User starts dragging from the border or connection area with circle icon
             this.owner.startDraggingConnection(this);
@@ -550,27 +554,6 @@ export class NodeGraphEditorNode {
       this.parent.children.splice(idx, 1);
       this.parent = undefined;
     }
-  }
-
-  /**
-   * Check if a point (in local node coordinates) is within the comment icon bounds
-   */
-  isPointInCommentIcon(pos: { x: number; y: number }): boolean {
-    if (!this.commentIconBounds) return false;
-
-    // Convert local pos to global for comparison with commentIconBounds (which are in global coords)
-    const globalX = pos.x + this.global.x;
-    const globalY = pos.y + this.global.y;
-
-    const bounds = this.commentIconBounds;
-    const padding = 4; // Extra hit area padding for easier clicking
-
-    return (
-      globalX >= bounds.x - padding &&
-      globalX <= bounds.x + bounds.width + padding &&
-      globalY >= bounds.y - padding &&
-      globalY <= bounds.y + bounds.height + padding
-    );
   }
 
   /**
