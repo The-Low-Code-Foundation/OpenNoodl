@@ -210,6 +210,9 @@ primary-checkout pass as part of the task, not as a residual.
   Dismiss, which is RUN-004's loud-failure work doing its job. But a reference project used by a
   phase's gates must not live in a temp directory; the fixture above should replace it.
 
+  ✅ **Built 2026-07-28** — `dev-docs/qa-fixtures/nodegx-qa-fixture`, committed to the repo. See
+  the entry at the end of this file.
+
 ### — the 2026-07-28 live-editor pass: F41 and F44 closed, one new defect
 
 Run from the primary checkout, which is the only place it can be run (`lerna exec`
@@ -353,6 +356,18 @@ to read. Pretty-printing would fix that, and would cost one large one-time diff
 in every existing project the first time it is saved. Richard's call — not taken
 here.
 
+✅ **Decided 2026-07-28: pretty-print.** `filesystem.writeJson` now writes
+`JSON.stringify(obj, null, 2)`. Two spaces was picked on evidence rather than
+taste — the repo's `prettier.config.js` sets `tabWidth: 2`, `project.json` is not
+in `.prettierignore`, and the projects this repo authored itself (`agent-chat`,
+the phase-16 probes) are already 2-space. The 4-space files are legacy library
+modules imported from upstream Noodl.
+
+Blast radius is three call sites, all human-readable config: `project.json`,
+`.sitemap.metadata.json`, and editor storage via `storage-node.ts`. There is one
+implementation of the `FileSystem` interface, so there is no second writer to
+keep in step.
+
 **3. The save fires with no user edit, and the mechanism is the real bug.**
 `projectmodel.ts` installs a **global wildcard listener**:
 
@@ -435,3 +450,47 @@ by state (a load/bind flag, or extending the existing `Model._listenersEnabled`
 guard to cover binding, not just `fromJSON`) rather than by event name. Not
 attempted here — it is a design change in the save path, and the save path was
 only just stabilised by the quit-flush work.
+
+### — the fixture project exists: `dev-docs/qa-fixtures/nodegx-qa-fixture` (2026-07-28)
+
+The keystone the 11 SKIPs were waiting on, and the replacement for `Shine Phase
+2`. Committed to the repo rather than a scratchpad, which is the whole point —
+the project it replaces died because it lived in `/private/tmp`.
+
+**21 components, 28 rows expanded, four levels deep.** It carries, deliberately
+and one-for-one against an assertion: depth-4 nesting (**B**), two components
+holding an unresolved `Markdown` node for the warning dot (**D**), a
+79-character leaf label for the ellipsis (**C**), five uncategorised components
+(**E**), a Router with three pages, four text styles all actually referenced, a
+variant, a visual state, a `DbCollection2`/`FilterDBModels` pair, and one signal
+plus one data connection. `dev-docs/qa-fixtures/README.md` maps each to its row.
+
+**Generated, not hand-written.** `generate.py` builds it from `uuid5` of stable
+labels, so regeneration is byte-identical and a real change shows as a real
+diff; `verify.py` re-derives the properties using the editor's own rules
+(`addComponentToFolderStructure`, `componentKind.categoryFor`,
+`ComponentModel.color`). That paid for itself immediately — the first run failed
+on a `Button Label` text style referenced by nodes but never defined, which
+would have made row 8 read as a bug in the picker.
+
+The semantic validator reports **0 errors, 2 warnings, 45 nodes** — and the two
+warnings *are* the two deliberate `Markdown` nodes. If that count moves,
+something else broke.
+
+⚠️ **The uncategorised components are load-bearing.** `/Logic/*` is built from
+`JavaScriptFunction` and `Expression` roots because `ComponentModel.color` only
+takes a colour from a root with `allowAsChild`. Give any of them a visual root
+and the category stops being `default`, `GLYPH_CONTRAST_EXEMPT` stops executing,
+and the gate goes green having tested nothing — the exact false green recorded
+against `Agent Chat Example`.
+
+**Still not covered: UIX-011 row 11** (lesson checkmarks, the `#FCCC73` yellow).
+It needs a lesson and phase 17 is deferred, so the highest-risk row remains
+unseen. Rows 6 and 10 also keep preconditions the fixture cannot supply — a
+backend class schema and a running preview respectively.
+
+**Not yet run against the gates.** The fixture is proven by the validator and by
+`verify.py`; it has not been opened in the editor, because a concurrent session
+held the dev stack for this whole session. Running `components-tree` against it
+is the first thing to do next, and the SKIP count is the measurement that says
+whether this worked.

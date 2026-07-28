@@ -57,6 +57,14 @@
  *   nohup setsid npm run dev:debug -- --quiet > /dev/null 2>&1 &
  *   until curl -s http://localhost:9222/json/list >/dev/null; do sleep 5; done
  *
+ * OPEN `dev-docs/qa-fixtures/nodegx-qa-fixture` — not whatever the editor
+ * happened to restore. It is the only project in the repo that can satisfy every
+ * assertion below: four levels of nesting (B), an unresolved node type for the
+ * warning dot (D), a 79-character label for the ellipsis (C), and an
+ * uncategorised component, without which assertion E's exemption branch never
+ * executes and reports green having tested nothing. See the fixture's README.
+ * Copy it out of the tree first if you would rather not have the run dirty it.
+ *
  * Usage:
  *   node dev-docs/tasks/phase-23-visual-refresh/corpus/components-tree.mjs
  *   node components-tree.mjs [--width 1400] [--height 900] [--narrow 240]

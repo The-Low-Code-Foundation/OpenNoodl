@@ -325,6 +325,14 @@ Run from the **primary checkout** (`npm start`), on a project with at least one 
 variant, one visual state, a Query/Filter node, a Text Style, and a Router. Toggle theme in
 **Editor Settings → Appearance**.
 
+> **Use `dev-docs/qa-fixtures/nodegx-qa-fixture`** (added 2026-07-28). It was built to carry
+> exactly that list — plus a signal connection for row 9 and a data connection for row 10 —
+> because no project in the repo had them. Its README maps each row to the thing that serves
+> it. Three caveats it does **not** remove: row 6's rule popup still needs a backend class
+> schema, row 10 still needs the preview running (inspect is not persisted), and **row 11 is
+> not covered at all** — it needs a lesson, and phase 17 is deferred. Row 11 therefore remains
+> the flagged highest-risk row and has still never been seen.
+
 For every row: the icon must be **visible and correctly contrasted in both themes**, and must
 **change colour when the theme flips**. An icon that looks identical in both themes is a
 failure — that is precisely the bug this task exists to remove.
