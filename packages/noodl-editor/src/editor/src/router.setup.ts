@@ -235,7 +235,11 @@ export function installSidePanel({ isLesson }: SetupEditorOptions) {
     id: 'github',
     name: 'GitHub',
     order: 5.5,
-    icon: IconName.Link,
+    // Was Link — a chain link, i.e. "hyperlink". Not the Octocat: Lucide dropped
+    // its brand icons, and a second upstream for one slot brings a trademark
+    // question with it. Paired with GitBranch above, the rail now says local vs
+    // remote instead of saying nothing twice.
+    icon: IconName.GitPullRequest,
     panel: GitHubPanel
   });
 

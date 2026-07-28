@@ -73,6 +73,7 @@ export enum IconName {
   FolderOpen = 'folder_open',
   FolderClosed = 'folder_closed',
   GitBranch = 'git_branch',
+  GitPullRequest = 'git_pull_request',
   History = 'history',
   Home = 'home',
   HomeFill = 'home_fill',

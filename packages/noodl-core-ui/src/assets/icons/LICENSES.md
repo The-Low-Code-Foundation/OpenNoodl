@@ -23,10 +23,10 @@ dense as a 16/1.5 stroke one at the same rendered size, and `IconSize` is inert
 
 ## Lucide (ISC)
 
-`git_branch.svg`, `database.svg`, `history.svg` and `book_open.svg` are derived from
-[Lucide](https://lucide.dev) v1.27.0. They are conventions rather than design
-opportunities — a bespoke git or database mark is *less* recognisable than the
-standard one, so these are taken rather than drawn.
+`git_branch.svg`, `git_pull_request.svg`, `database.svg`, `history.svg` and
+`book_open.svg` are derived from [Lucide](https://lucide.dev) v1.27.0. They are
+conventions rather than design opportunities — a bespoke git or database mark is
+*less* recognisable than the standard one, so these are taken rather than drawn.
 
 Lucide's 24-grid path data is kept **verbatim**; each file wraps it in
 `transform="translate(0.5 0.5) scale(0.625)"` with `stroke-width="2.4"`, which lands
@@ -53,8 +53,10 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 ```
 
 Note that Lucide **removed its brand icons**, so there is no `github` mark to take
-from it — see the open question in the phase-23 notes about what the GitHub panel
-should use.
+from it. The GitHub panel deliberately uses `git_pull_request` rather than pulling
+the Octocat from a second upstream: one slot is not worth a second licence and a
+trademark question, and paired with `git_branch` on Version control it encodes
+local-vs-remote instead of repeating a shape. Decided 2026-07-28.
 
 Unrelated to this folder: `library/modules/lucide-icons/` ships Lucide to *end users*
 as a webfont, inside a Noodl library module. Different artefact, same upstream.
