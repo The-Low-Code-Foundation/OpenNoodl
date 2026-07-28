@@ -1,0 +1,4 @@
+<!-- Derived from Lucide (ISC) — see ../LICENSES.md. Lucide's 24-grid geometry is
+     kept verbatim; the transform lands it on this set's 16 grid, and stroke-width
+     2.4 x 0.625 gives the house 1.5 stroke. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><g transform="translate(0.5 0.5) scale(0.625)" stroke-width="2.4"><path d="M15 6a9 9 0 0 0-9 9V3"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/></g></svg>

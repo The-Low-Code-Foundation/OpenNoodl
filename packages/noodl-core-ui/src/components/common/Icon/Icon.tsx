@@ -26,8 +26,10 @@ export enum IconName {
   BorderDown = 'border_down',
   BorderLeft = 'border_left',
   BorderRight = 'border_right',
+  BookOpen = 'book_open',
   BorderUp = 'border_up',
   Bug = 'bug',
+  BuildAi = 'build_ai',
   Cards = 'cards',
   CaretUp = 'caret_up',
   CaretDown = 'caret_down',
@@ -53,6 +55,7 @@ export enum IconName {
   ComponentsFill = 'components_fill',
   Copy = 'copy',
   Columns = 'columns',
+  Database = 'database',
   DeviceDesktop = 'device_desktop',
   DeviceLaptop = 'device_laptop',
   DevicePhone = 'device_phone',
@@ -63,11 +66,14 @@ export enum IconName {
   DimenstionWidth = 'dimenstion_width',
   DotsThree = 'dots_three',
   DotsThreeHorizontal = 'dots_three_horizontal',
+  Explain = 'explain',
   ExternalLink = 'external_link',
   File = 'file',
   FileFill = 'file_fill',
   FolderOpen = 'folder_open',
   FolderClosed = 'folder_closed',
+  GitBranch = 'git_branch',
+  History = 'history',
   Home = 'home',
   HomeFill = 'home_fill',
   HorizontalSplit = 'horizontal_split',
@@ -134,6 +140,9 @@ export enum IconName {
   WarningCircle = 'warning_circle',
   WarningCircleFilled = 'warning_circle_filled',
   WarningTriangle = 'warning_triangle',
+  /** Stroked twin of {@link WarningTriangle}, for navigation surfaces. The filled
+   *  one stays the inline severity mark; see warning_triangle_line.svg. */
+  WarningTriangleLine = 'warning_triangle_line',
   ImportDown = 'import_down',
   ImportLeft = 'import_left',
   ImportSlanted = 'import_slanted',
@@ -160,7 +169,8 @@ export enum IconName {
   SlidersFilled = 'sliders_filled',
   Navigate = 'navigate',
   Link = 'link',
-  SEO = 'seo'
+  SEO = 'seo',
+  Workflow = 'workflow'
 }
 
 export enum IconSize {

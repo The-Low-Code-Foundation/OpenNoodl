@@ -162,7 +162,10 @@ export function installSidePanel({ isLesson }: SetupEditorOptions) {
       'Ask what the selected node, selection, or whole component does. Read-only — the explanation cites ' +
       'nodes by name, and clicking one jumps to it on canvas.',
     order: 4.6,
-    icon: IconName.MagicWand,
+    // Not MagicWand: a wand means "generate", and Explain is read-only. It is also
+    // the app-wide AI-action mark (AiAuthoringPanel, NodeContextMenu), so the rail
+    // was colliding with it. `Explain` is a node card being asked a question.
+    icon: IconName.Explain,
     panel: ExplainPanel
   });
 
@@ -175,7 +178,9 @@ export function installSidePanel({ isLesson }: SetupEditorOptions) {
       'Describe a new component and watch an AI build it as nodes, validated against your project. ' +
       'Nothing is added until you accept — rejecting leaves no trace, accepting is undoable.',
     order: 4.7,
-    icon: IconName.Pencil,
+    // Was Pencil, which said "edit" and nothing more — this is the panel that
+    // actually authors a graph. Explain and Build were effectively swapped.
+    icon: IconName.BuildAi,
     panel: AiAuthoringPanel
   });
 
@@ -195,7 +200,8 @@ export function installSidePanel({ isLesson }: SetupEditorOptions) {
       'when it builds here. Owned by you and tracked by git; AI-proposed changes arrive as diffs you accept or ' +
       'reject.',
     order: 4.8,
-    icon: IconName.File,
+    // Was File, which read as "a file" rather than "documentation".
+    icon: IconName.BookOpen,
     panel: DocsPanel
   });
 
@@ -209,7 +215,9 @@ export function installSidePanel({ isLesson }: SetupEditorOptions) {
       'dangling/incompatible connections, orphaned nodes, and unresolved component references. ' +
       'Click a problem to jump to the offending node.',
     order: 4.7,
-    icon: IconName.WarningTriangle,
+    // Same triangle, stroked: the filled one is the inline severity mark, and in
+    // the rail it was the only filled glyph among eleven stroked ones.
+    icon: IconName.WarningTriangleLine,
     panel: ProblemsPanel
   });
 
@@ -217,7 +225,9 @@ export function installSidePanel({ isLesson }: SetupEditorOptions) {
     id: VersionControlPanel_ID,
     name: 'Version control',
     order: 5,
-    icon: IconName.StructureCircle,
+    // StructureCircle is an org chart, not a git glyph — and Workflows below was
+    // using the identical file, so the rail carried the same mark twice.
+    icon: IconName.GitBranch,
     panel: VersionControlPanel
   });
 
@@ -235,7 +245,9 @@ export function installSidePanel({ isLesson }: SetupEditorOptions) {
     name: 'Backend Services',
     isDisabled: isLesson === true,
     order: 8,
-    icon: IconName.RestApi,
+    // Was RestApi — a `{ }` braces glyph, i.e. "code". This panel is now the
+    // database, auth, email, storage, search and triggers; REST is one facet of it.
+    icon: IconName.Database,
     panel: BackendServicesPanel
   });
 
@@ -255,7 +267,9 @@ export function installSidePanel({ isLesson }: SetupEditorOptions) {
     description: 'Watch a cloud function or workflow run, step by step, with the data each step received.',
     isDisabled: isLesson === true,
     order: 8.8,
-    icon: IconName.Bug,
+    // Was Bug — a literal insect, for a panel that is a run timeline and not a
+    // debugger, as the WFA-002 note directly above says.
+    icon: IconName.History,
     panel: ExecutionHistoryPanel
   });
 
@@ -268,7 +282,10 @@ export function installSidePanel({ isLesson }: SetupEditorOptions) {
     description: 'Author a backend workflow as a graph: steps as nodes, routes as connections.',
     isDisabled: isLesson === true,
     order: 8.9,
-    icon: IconName.StructureCircle,
+    // The other half of the StructureCircle duplication. Two steps and the route
+    // between them — deliberately not circles-and-a-curve, which would read as the
+    // git glyph now four slots above.
+    icon: IconName.Workflow,
     panel: WorkflowsPanel
   });
 
