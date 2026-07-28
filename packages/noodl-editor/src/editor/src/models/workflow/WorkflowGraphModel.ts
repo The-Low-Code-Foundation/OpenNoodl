@@ -19,6 +19,7 @@
 
 import { NodeGraphModel } from '@noodl-models/nodegraphmodel';
 
+import { placeNewStep } from './workflowLayout';
 import { kindFromTypeName, PORT_IN } from './workflowNodeLibrary';
 
 /** The shape `utils.guid()` produces — 8-4-4-4-12 hex. */
@@ -59,6 +60,21 @@ export class WorkflowGraphModel extends NodeGraphModel {
     if (model && typeof model.id === 'string' && (GUID_RE.test(model.id) || this.nodeMap.has(model.id))) {
       model.id = this.mintStepId(model.typename);
     }
+
+    // A step added with no position — by MCP, or by WFA-007 — must not land on
+    // top of something the user arranged, and must not move anything that is
+    // already placed (§5). The canvas's own create path supplies the click
+    // position and never reaches this.
+    if (model && !model.x && !model.y) {
+      const existing: { x: number; y: number }[] = [];
+      this.forEachNode((n) => {
+        existing.push({ x: n.x, y: n.y });
+      });
+      const placed = placeNewStep(existing);
+      model.x = placed.x;
+      model.y = placed.y;
+    }
+
     return super.addRoot(model, args);
   }
 

@@ -99,14 +99,17 @@ export const PORT_TYPE_PATH = 'workflow-path';
 /** A param that accepts anything, including a `{"$path": …}` reference. */
 export const PORT_TYPE_VALUE = 'workflow-value';
 
-function portTypeForParam(param: StepParamSpec): unknown {
+function portTypeForParam(param: StepParamSpec, catalog?: StepKindCatalog): unknown {
   switch (param.type) {
     case 'enum':
       return { name: 'enum', enums: param.enums || [] };
     case 'condition':
-      return { name: PORT_TYPE_CONDITION };
+      // The operator set and the scope roots ride ON the port type, the way
+      // `enum` already carries its values — so the control reads them off the
+      // port it is rendering and never holds its own copy of a served contract.
+      return { name: PORT_TYPE_CONDITION, ops: conditionOps(catalog), scope: scopeRoots(catalog) };
     case 'path':
-      return { name: PORT_TYPE_PATH };
+      return { name: PORT_TYPE_PATH, scope: scopeRoots(catalog) };
     case 'boolean':
       return 'boolean';
     case 'number':
@@ -121,8 +124,29 @@ function portTypeForParam(param: StepParamSpec): unknown {
     default:
       // `any` params take a literal OR a `{"$path": …}` reference (WFA-003), so
       // they need the value control rather than a bare text field.
-      return { name: PORT_TYPE_VALUE };
+      return { name: PORT_TYPE_VALUE, scope: scopeRoots(catalog) };
   }
+}
+
+/**
+ * The operator set the backend will actually evaluate.
+ *
+ * Empty when a pre-1.2.0 backend served no `conditionLanguage`. The control
+ * says so rather than falling back to a guessed list: an operator that backend
+ * cannot evaluate is a run that fails loudly at 3am, which is worse than a
+ * control that admits it does not know.
+ */
+function conditionOps(catalog?: StepKindCatalog) {
+  return catalog?.conditionLanguage?.ops || [];
+}
+
+/** The root names a `$path` may start from, from the served value language. */
+function scopeRoots(catalog?: StepKindCatalog): { name: string; description: string }[] {
+  const scope = catalog?.valueLanguage?.scope;
+  if (!Array.isArray(scope)) return [];
+  return scope
+    .filter((s) => s && typeof (s as { name?: unknown }).name === 'string')
+    .map((s) => s as { name: string; description: string });
 }
 
 /**
@@ -130,10 +154,14 @@ function portTypeForParam(param: StepParamSpec): unknown {
  * ports*. It gets the condition-family editor rather than a JSON textarea; the
  * spec is explicit that a JSON textarea here fails the task.
  */
-function portTypeForRawParam(param: StepParamSpec): unknown {
-  if (param.type === 'condition') return { name: PORT_TYPE_CONDITION };
-  if (param.name === 'cases') return { name: 'workflow-cases' };
-  return portTypeForParam(param);
+function portTypeForRawParam(param: StepParamSpec, catalog?: StepKindCatalog): unknown {
+  if (param.type === 'condition') {
+    return { name: PORT_TYPE_CONDITION, ops: conditionOps(catalog), scope: scopeRoots(catalog) };
+  }
+  if (param.name === 'cases') {
+    return { name: PORT_TYPE_CASES, ops: conditionOps(catalog), scope: scopeRoots(catalog) };
+  }
+  return portTypeForParam(param, catalog);
 }
 
 export const PORT_TYPE_CASES = 'workflow-cases';
@@ -152,7 +180,7 @@ function routePort(route: string, index: number, description: string) {
   };
 }
 
-function portsForKind(spec: StepKindSpec) {
+function portsForKind(spec: StepKindSpec, catalog?: StepKindCatalog) {
   const ports: Record<string, unknown>[] = [];
 
   ports.push({
@@ -187,7 +215,7 @@ function portsForKind(spec: StepKindSpec) {
     ports.push({
       name: param.name,
       displayName: param.name,
-      type: param.raw ? portTypeForRawParam(param) : portTypeForParam(param),
+      type: param.raw ? portTypeForRawParam(param, catalog) : portTypeForParam(param, catalog),
       plug: 'input',
       group: GROUP_PARAMS,
       index: index++,
@@ -230,7 +258,7 @@ function portsForKind(spec: StepKindSpec) {
   return ports;
 }
 
-function nodeTypeForKind(spec: StepKindSpec): NodeLibraryDataNodeType {
+function nodeTypeForKind(spec: StepKindSpec, catalog?: StepKindCatalog): NodeLibraryDataNodeType {
   return {
     name: typeNameForKind(spec.kind),
     displayNodeName: spec.displayName,
@@ -241,7 +269,7 @@ function nodeTypeForKind(spec: StepKindSpec): NodeLibraryDataNodeType {
     allowAsChild: false,
     allowAsExportRoot: false,
     haveComponentChildren: undefined,
-    ports: portsForKind(spec),
+    ports: portsForKind(spec, catalog),
     dynamicports: [],
     searchTags: ['workflow', spec.kind, spec.category],
     // Everything the property editor and the picker preview want to say about
@@ -256,7 +284,7 @@ function nodeTypeForKind(spec: StepKindSpec): NodeLibraryDataNodeType {
  * `category` strings rather than a list written here.
  */
 export function buildWorkflowNodeLibrary(catalog: StepKindCatalog): NodeLibraryData {
-  const nodetypes = catalog.kinds.map(nodeTypeForKind);
+  const nodetypes = catalog.kinds.map((spec) => nodeTypeForKind(spec, catalog));
 
   const byCategory = new Map<string, string[]>();
   for (const spec of catalog.kinds) {

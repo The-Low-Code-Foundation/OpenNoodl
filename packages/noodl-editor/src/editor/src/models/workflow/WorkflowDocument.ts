@@ -20,6 +20,7 @@ import { NodeGraphNode } from '@noodl-models/nodegraphmodel';
 import { NodeLibrary } from '@noodl-models/nodelibrary';
 import { NodeLibraryImporter } from '@noodl-models/nodelibrary/NodeLibraryImporter';
 
+import { NodeGraphContextTmp } from '../../contexts/NodeGraphContext/NodeGraphContext';
 import Model from '../../../../shared/model';
 import { fetchStepKinds, fetchWorkflow, saveWorkflow } from './WorkflowBackendClient';
 import { WorkflowComponentModel } from './WorkflowComponentModel';
@@ -41,6 +42,30 @@ import type { StepKindCatalog, StepKindSpec, WorkflowDefinition, WorkflowInput, 
 
 /** Params the editor stores on the node but which are step *fields*, not params. */
 const STEP_FIELD_PARAMS = new Set(['ref']);
+
+/**
+ * The card's second line.
+ *
+ * It carries three things, in the order they are worth reading: what kind of
+ * step this is, which function it invokes (`call-function` and `retry` — the
+ * single most useful thing on the card, §2), and whether the run starts here.
+ * All of it rides `metadata.typeLabelOverride`, which the canvas painter
+ * already reads as the sub-label, so none of it needs a painter change.
+ */
+function subLabelParts(displayName: string, ref: unknown, isEntry: boolean): string {
+  const parts = [displayName];
+  if (ref) parts.push(String(ref));
+  if (isEntry) parts.push('entry step');
+  return parts.join(' · ');
+}
+
+function subLabel(spec: StepKindSpec, node: NodeGraphNode, isEntry: boolean): string {
+  return subLabelParts(spec.displayName, spec.invokesFunction ? node.parameters?.ref : undefined, isEntry);
+}
+
+function subLabelFor(spec: StepKindSpec, step: WorkflowStep, isEntry: boolean): string {
+  return subLabelParts(spec.displayName, spec.invokesFunction ? step.ref : undefined, isEntry);
+}
 
 export class WorkflowDocument extends Model {
   public readonly ref: WorkflowRef;
@@ -76,6 +101,21 @@ export class WorkflowDocument extends Model {
     });
 
     this.bindGraph();
+
+    // "Set as entry step" — the one thing about a workflow that is not
+    // expressible by dragging a wire. Contributed to the canvas's existing
+    // context menu rather than added as a surface.
+    this.graph.contextMenuActionsProvider = (selected: string[]) => {
+      if (selected.length !== 1) return [];
+      const id = selected[0];
+      if (id === this.entry) return [];
+      return [
+        {
+          label: `Start the run at "${this.graph.findNodeWithId(id)?.label || id}"`,
+          onClick: () => this.setEntry(id)
+        }
+      ];
+    };
   }
 
   /**
@@ -185,17 +225,18 @@ export class WorkflowDocument extends Model {
     const spec = this.specFor(kind);
     if (!spec) return;
 
-    if (spec.invokesFunction) {
-      const ref = node.parameters?.ref;
-      node.metadata = {
-        ...(node.metadata || {}),
-        typeLabelOverride: ref ? `${spec.displayName} · ${ref}` : spec.displayName
-      };
-    }
+    node.metadata = { ...(node.metadata || {}), typeLabelOverride: subLabel(spec, node, node.id === this.entry) };
 
     if (kind === 'switch') {
       node.setDynamicPorts(switchRoutePorts(node));
     }
+  }
+
+  /** Repaint every card's sub-label — the entry marker moved. */
+  private refreshAllChrome() {
+    this.graph.forEachNode((node) => {
+      this.refreshNodeChrome(node);
+    });
   }
 
   /**
@@ -219,14 +260,19 @@ export class WorkflowDocument extends Model {
     });
     roots.sort((a, b) => a.x - b.x);
     this.entry = roots[0]?.id || [...ids][0];
+    this.refreshAllChrome();
     this.notifyListeners('entryChanged', { entry: this.entry });
   }
 
   setEntry(stepId: string) {
     if (this.entry === stepId) return;
     this.entry = stepId;
+    this.refreshAllChrome();
     this.markDirty();
     this.notifyListeners('entryChanged', { entry: stepId });
+    // The card's sub-label carries the entry marker, so the canvas has to
+    // repaint for the move to be visible.
+    NodeGraphContextTmp.nodeGraph?.repaint();
   }
 
   /** The definition as the graph currently stands. */
@@ -366,10 +412,7 @@ function buildGraph(definition: WorkflowDefinition, catalog: StepKindCatalog): W
       y: pos.y,
       label: step.name || step.id,
       parameters,
-      metadata:
-        spec && spec.invokesFunction
-          ? { typeLabelOverride: step.ref ? `${spec.displayName} · ${step.ref}` : spec.displayName }
-          : undefined
+      metadata: spec ? { typeLabelOverride: subLabelFor(spec, step, step.id === definition.entry) } : undefined
     });
 
     if (step.kind === 'switch') node.setDynamicPorts(switchRoutePorts(node));

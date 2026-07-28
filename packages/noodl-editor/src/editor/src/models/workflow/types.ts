@@ -86,6 +86,29 @@ export interface ValueLanguageSpec {
   [key: string]: unknown;
 }
 
+/** One comparison operator, as the backend describes it. */
+export interface ConditionOpSpec {
+  name: string;
+  label: string;
+  /** Takes no right-hand operand — `exists`, `truthy`, `empty`, … */
+  unary: boolean;
+  /** Accepts regex flags — `matches` only. */
+  takesFlags?: boolean;
+}
+
+/**
+ * The closed operator set, served rather than bundled.
+ *
+ * The editor renders a condition as three controls precisely because the set is
+ * closed; holding its own copy of the list would let it offer an operator the
+ * target backend cannot evaluate, which is the drift the served registry exists
+ * to prevent.
+ */
+export interface ConditionLanguageSpec {
+  ops: ConditionOpSpec[];
+  summary: string;
+}
+
 /** The body of `GET /admin/workflow-step-kinds`. */
 export interface StepKindCatalog {
   version: string;
@@ -93,6 +116,26 @@ export interface StepKindCatalog {
   docs: string;
   kinds: StepKindSpec[];
   valueLanguage: ValueLanguageSpec;
+  /** Present from catalog 1.2.0 (WFA-004). */
+  conditionLanguage?: ConditionLanguageSpec;
+}
+
+/** A comparison, the leaf of a condition. */
+export interface Comparison {
+  left: unknown;
+  op: string;
+  right?: unknown;
+  flags?: string;
+}
+
+export type Condition = Comparison | { all: Condition[] } | { any: Condition[] } | { not: Condition };
+
+export function isComparison(c: unknown): c is Comparison {
+  return !!c && typeof c === 'object' && typeof (c as Comparison).op === 'string';
+}
+
+export function isGroup(c: unknown): c is { all: Condition[] } | { any: Condition[] } {
+  return !!c && typeof c === 'object' && (Array.isArray((c as { all?: unknown[] }).all) || Array.isArray((c as { any?: unknown[] }).any));
 }
 
 export interface WorkflowStep {

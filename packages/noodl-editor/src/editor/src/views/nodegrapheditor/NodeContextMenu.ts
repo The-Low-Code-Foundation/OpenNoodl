@@ -236,6 +236,21 @@ export class NodeContextMenu {
       icon: IconName.Trash
     });
 
+    // A graph may contribute its own actions (WFA-004: "Set as entry step").
+    // The knowledge of what those mean stays in the graph model — this menu
+    // only asks whether there are any, the way it already asks the component
+    // whether a node can be created.
+    const fromGraph = (editor.model as TSFixme)?.getContextMenuActions;
+    if (typeof fromGraph === 'function') {
+      const extra = fromGraph.call(
+        editor.model,
+        selectedNodes.map((n) => n.model.id)
+      );
+      if (Array.isArray(extra) && extra.length) {
+        items.push('divider', ...extra);
+      }
+    }
+
     return items;
   }
 

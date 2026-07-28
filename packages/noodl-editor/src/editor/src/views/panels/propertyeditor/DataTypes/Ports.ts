@@ -32,6 +32,7 @@ import { NumberWithUnits } from './NumberWithUnits';
 import { PopoutGroup } from './PopoutGroup';
 import { PropListType } from './PropListType';
 import { QueryFilterType } from './QueryFilterType';
+import { WorkflowCasesType, WorkflowConditionType, WorkflowValueType } from './WorkflowTypes';
 import { QuerySortingType } from './QuerySortingType';
 import { ResizingType } from './ResizingType';
 import { SizeModeType } from './SizeModeType';
@@ -394,6 +395,21 @@ export class Ports extends View {
     }
 
     // Is of proplist
+    // WFA-004: workflow step params. Three more port types beside the thirty
+    // above — the registry's intended extension point.
+    function isOfWorkflowConditionType() {
+      return NodeLibrary.nameForPortType(type) === 'workflow-condition';
+    }
+
+    function isOfWorkflowCasesType() {
+      return NodeLibrary.nameForPortType(type) === 'workflow-cases';
+    }
+
+    function isOfWorkflowValueType() {
+      const name = NodeLibrary.nameForPortType(type);
+      return name === 'workflow-value' || name === 'workflow-path';
+    }
+
     function isOfPropListType() {
       return NodeLibrary.nameForPortType(type) === 'proplist';
     }
@@ -427,6 +443,9 @@ export class Ports extends View {
     else if (isOfByobFilterType()) return ByobFilterType;
     else if (isOfPagesType()) return PagesType;
     else if (isOfPropListType()) return PropListType;
+    else if (isOfWorkflowConditionType()) return WorkflowConditionType;
+    else if (isOfWorkflowCasesType()) return WorkflowCasesType;
+    else if (isOfWorkflowValueType()) return WorkflowValueType;
   }
   _getPorts(): readonly Port[] {
     let ports = this.model.getPorts('input');

@@ -41,7 +41,8 @@
  */
 
 import type { StepKind, WorkflowStep } from '../types';
-import { validateCondition } from './conditions';
+import { CONDITION_LANGUAGE, validateCondition } from './conditions';
+import type { ConditionLanguageSpec } from './conditions';
 import type { ValueLanguageSpec } from './values';
 import { isPlainObject, VALUE_LANGUAGE } from './values';
 
@@ -50,8 +51,13 @@ import { isPlainObject, VALUE_LANGUAGE } from './values';
  *
  * 1.1.0 — WFA-003 added `valueLanguage` (so a client can render the right
  * control for a param and know what a `$path` may address) and `raw` on a param.
+ * 1.2.0 — WFA-004 added `conditionLanguage`. The workflow canvas renders a
+ * condition as three controls, and the operator list it offers has to come from
+ * the backend that will evaluate it — a bundled copy could offer an operator
+ * this backend does not implement, which is the drift the served registry
+ * exists to prevent.
  */
-export const STEP_KIND_CATALOG_VERSION = '1.1.0';
+export const STEP_KIND_CATALOG_VERSION = '1.2.0';
 
 export interface StepParamSpec {
   name: string;
@@ -497,15 +503,22 @@ export interface StepKindCatalog {
    * bundled copy of either could disagree with the backend that will execute it.
    */
   valueLanguage: ValueLanguageSpec;
+  /**
+   * WFA-004: the closed operator set, with a label per operator and which ones
+   * are unary — everything a three-control condition editor needs in order not
+   * to hold its own copy of the list.
+   */
+  conditionLanguage: ConditionLanguageSpec;
 }
 
 export function stepKindCatalog(): StepKindCatalog {
   return {
     version: STEP_KIND_CATALOG_VERSION,
-    source: 'nodegx-backend/workflow/steps/kinds.ts (WF-002, WFA-003)',
+    source: 'nodegx-backend/workflow/steps/kinds.ts (WF-002, WFA-003, WFA-004)',
     docs: 'docs/runtime/WORKFLOW-NODES.md',
     kinds: STEP_KINDS.map((k) => STEP_KIND_SPECS[k]),
-    valueLanguage: VALUE_LANGUAGE
+    valueLanguage: VALUE_LANGUAGE,
+    conditionLanguage: CONDITION_LANGUAGE
   };
 }
 

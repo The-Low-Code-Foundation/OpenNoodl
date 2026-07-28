@@ -71,6 +71,57 @@ export type ConditionOp = (typeof CONDITION_OPS)[number];
 /** Operators that take no `right` operand. */
 const UNARY_OPS = new Set<ConditionOp>(['exists', 'notExists', 'truthy', 'falsy', 'empty', 'notEmpty']);
 
+/**
+ * The condition language, described for a client that has to RENDER it
+ * (WFA-004).
+ *
+ * The closed operator set is a security decision — an `eval`'d string inside a
+ * persisted, deployable, agent-authored artifact is an RCE surface behind an
+ * admin credential — and it is exactly what makes a condition editable as three
+ * controls instead of a code editor. Served rather than bundled for the same
+ * reason the step kinds are: an editor working from its own copy of this list
+ * could offer an operator the backend cannot evaluate.
+ */
+export interface ConditionLanguageSpec {
+  ops: { name: ConditionOp; label: string; unary: boolean; takesFlags?: boolean }[];
+  /** Prose for the editor's own help text. */
+  summary: string;
+}
+
+const OP_LABELS: Record<ConditionOp, string> = {
+  eq: 'is',
+  neq: 'is not',
+  gt: 'is greater than',
+  gte: 'is at least',
+  lt: 'is less than',
+  lte: 'is at most',
+  contains: 'contains',
+  notContains: 'does not contain',
+  startsWith: 'starts with',
+  endsWith: 'ends with',
+  matches: 'matches regex',
+  in: 'is one of',
+  notIn: 'is not one of',
+  exists: 'exists',
+  notExists: 'does not exist',
+  truthy: 'is truthy',
+  falsy: 'is falsy',
+  empty: 'is empty',
+  notEmpty: 'is not empty'
+};
+
+export const CONDITION_LANGUAGE: ConditionLanguageSpec = {
+  summary:
+    'A condition compares one value with another using a fixed operator set. There is no expression language and ' +
+    'no arithmetic — compute a value in a cloud function and compare the result.',
+  ops: CONDITION_OPS.map((name) => ({
+    name,
+    label: OP_LABELS[name],
+    unary: UNARY_OPS.has(name),
+    takesFlags: name === 'matches' ? true : undefined
+  }))
+};
+
 export interface Comparison {
   /** Literal, `{$path}` or `{$literal}`. */
   left: unknown;
