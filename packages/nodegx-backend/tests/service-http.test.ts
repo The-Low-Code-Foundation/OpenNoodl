@@ -382,7 +382,7 @@ describe('nodegx-backend HTTP surface', () => {
 
     const detail = await req<ExecutionWithSteps>('GET', `/executions/${entry.id}`);
     expect(detail.status).toBe(200);
-    // `triggerData` is the per-trigger-kind bag (see DbChangePayload for the
+    // `triggerData` is the per-trigger-kind bag (see DbChangeLegacyPayload for the
     // db-change one); for a function call it carries the scrubbed HTTP body.
     const body = (detail.json.triggerData as { body: Record<string, unknown> } | undefined)?.body;
     expect(body?.password).toBe('[REDACTED]');

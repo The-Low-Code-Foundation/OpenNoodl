@@ -30,6 +30,7 @@ import type { BackendServiceOptions } from '../config';
 import type { PersistenceHandle } from '../persistence/createAdapter';
 import type { AdapterFacade, AclOption } from '../persistence/AdapterFacade';
 import type { ExecutionHistory } from '../execution/ExecutionStore';
+import { buildRunPayload } from '../workflow/runPayload';
 import type { WorkflowRunner } from '../workflow/WorkflowRunner';
 import type { SecurityState } from '../security/state';
 import type { SearchState } from '../search/SearchState';
@@ -1872,7 +1873,17 @@ export class HttpServer {
       trigger,
       triggerType: 'webhook',
       source,
-      payload: { trigger: 'webhook', triggerId: trigger.id, slug, headers: headerObj, query: ctx.query, body: parsed },
+      // WFA-003: one payload shape, built in one place. `slug`/`triggerId` stay
+      // at the top level as the deprecated legacy view of the same facts.
+      payload: buildRunPayload({
+        type: 'webhook',
+        triggerId: trigger.id,
+        slug,
+        headers: headerObj,
+        query: ctx.query,
+        body: parsed,
+        legacy: { triggerId: trigger.id, slug }
+      }),
       headers: ctx.req.headers as Record<string, unknown>,
       requestId: ctx.requestId
     });

@@ -78,7 +78,7 @@ The handler receives:
 
 ---
 
-## Data passed between steps
+## Passing data between steps
 
 A step's input is:
 
@@ -88,6 +88,122 @@ A step's input is:
 
 `previous` is the output of the predecessor whose edge reached this step (or its
 `{ error }` when that predecessor failed).
+
+The interesting part is that a **param can be a reference, not just a literal**.
+That is what makes "take the order id from the save step and pass it to the
+charge step" expressible:
+
+```jsonc
+{
+  "id": "charge",
+  "kind": "call-function",
+  "ref": "chargeCard",
+  "params": {
+    "amount":   { "$path": "previous.result.total" },
+    "orderId":  { "$path": "upstream.save.result.orderId" },
+    "currency": "GBP",
+    "note":     { "$literal": { "$path": "not a path" } }
+  }
+}
+```
+
+References are resolved **before** the step runs, so the function receives
+`{ amount: 4200, orderId: "ord_9", currency: "GBP", note: {"$path": "not a path"} }`
+and the execution record shows those values rather than the references. It is the
+same value language conditions use — one dialect, not two.
+
+### What a `$path` can address
+
+| Root | What it is |
+|---|---|
+| `body` | **The caller's own data.** The webhook body, the manual-fire body, the admin run's `payload`. Always present; `{}` when there was none. |
+| `trigger` | How this run started: `{ type, id?, firedAt, slug?, cron?, collection?, action?, recordId? }`. |
+| `triggerType` | The trigger type as a bare string — `switch` on this to branch by entry point. |
+| `headers`, `query` | Webhook runs only. |
+| `previous` | The output of the predecessor whose edge reached this step, or its `{ error }`. |
+| `upstream.<stepId>` | The output of an **earlier step, by id**. |
+| *a param name* | This step's own params, which are merged into the input. |
+
+Rules worth knowing before you debug something:
+
+- Segments walk objects and arrays alike: `body.items.0.id`. A **negative index
+  counts from the end**, so `previous.items.-1` is the last item.
+- A missing segment resolves to `undefined` rather than failing, which is what
+  keeps an optional param possible. A *dangling step reference* is different —
+  see [Validation](#validation).
+- A param **cannot reference another param of the same step**. Resolution happens
+  before params are merged, so there is no order to rely on.
+- `{ "$literal": … }` is the escape: the wrapped value is used verbatim and is
+  not looked inside. Use it when a param genuinely needs a `$path` key.
+- References resolve through nested objects and arrays, to a depth of 32. Deeper
+  than that is rejected when you save.
+
+### `previous` vs `upstream.<stepId>`
+
+Use `previous` for a straight line. Use `upstream.<stepId>` the moment anything
+sits in between:
+
+```jsonc
+// `previous` here is the BRANCH's output — `{result: true, isfalse: false}` —
+// which is not the data you wanted. The quote step is still addressable.
+{ "id": "big", "kind": "call-function", "ref": "chargeCard",
+  "params": { "amount": { "$path": "upstream.quote.result.total" } } }
+```
+
+The same applies where two branches converge: `previous` is whichever arrived
+first, which is not something to build on.
+
+### Params that are structures, not values
+
+A `condition`, a `for-each` `filter` and a `switch`'s `cases` are **not values** —
+they are small structures whose own operands use this language, evaluated when the
+step runs. They are marked `raw` in `GET /admin/workflow-step-kinds` and are
+passed to the step exactly as authored (so the execution record shows the
+comparison you wrote, not its answer).
+
+### No expressions, deliberately
+
+There is no arithmetic, no string interpolation and no function call in a param.
+A workflow definition is a persisted, deployable, agent-authored JSON file, so an
+`eval`'d string inside one is a remote-code-execution surface with an admin
+credential in front of it. **Compute in a cloud function** — that is what the
+function is for. This language makes *referencing* values possible, not
+*computing* them.
+
+### One payload, whatever started the run
+
+Every entry point — webhook, schedule, manual fire, admin run, db-change —
+delivers the same envelope:
+
+```jsonc
+{
+  "trigger":     { "type": "webhook", "id": "trg_…", "firedAt": "…", "slug": "github" },
+  "triggerType": "webhook",
+  "body":        { /* the caller's JSON, always here, always unwrapped */ },
+  "headers":     { /* webhook only */ },
+  "query":       { /* webhook only */ }
+}
+```
+
+This is why one definition can be triggered by a webhook **and** on a schedule:
+`{"$path": "body.total"}` means the same thing either way. Before this, the
+webhook wrapped the caller's JSON under `body` and the admin run did not wrap at
+all, so a workflow that ran green from `POST /admin/workflow-defs/:id/run` failed
+from a webhook carrying the same JSON.
+
+**Migrating a definition written before this.** Every entry point still spreads
+the keys it used to deliver at the top level, **deprecated, for one release** — so
+a definition reading `{"$path": "total"}` from an admin run keeps working. Two
+things to know:
+
+- `payload.trigger` **was the type as a string** and is now the object above. One
+  key cannot be both. Read **`triggerType`** (or `trigger.type`) for the string.
+- Where a legacy top-level key collides with a canonical one, the **canonical one
+  wins**. If your own data has a `body` key, the top-level view of it is shadowed
+  and it is reachable as `body.body`.
+
+A db-change run puts the changed record in `body`, and `collection` / `action` /
+`recordId` on `trigger`.
 
 ### The condition language
 
@@ -420,8 +536,11 @@ route throughout:
 
     { "id": "manualReview", "kind": "call-function", "ref": "queueForReview", "next": ["join"] },
 
+    // `previous` here is the branch's `{result, isfalse}`, so the amount comes
+    // from the validate step by id — the case `previous` cannot express.
     { "id": "charge", "kind": "retry", "ref": "chargeCard",
-      "params": { "maxAttempts": 4, "delayMs": 500, "retryOnStatus": [429, 502, 503] },
+      "params": { "amount": { "$path": "upstream.validate.total" },
+                  "maxAttempts": 4, "delayMs": 500, "retryOnStatus": [429, 502, 503] },
       "next": ["join"], "onError": ["alertOps"] },
 
     { "id": "join", "kind": "merge", "params": { "mode": "any" }, "next": ["receipt"] },
@@ -449,6 +568,22 @@ target exists; the graph is acyclic; the kind is known; `ref` is present exactly
 where it belongs; conditions are well-formed; switch cases are unambiguous,
 unique and not named `default`; route names are valid for the kind; numeric
 params are in range; and a `wait` is inside the 24-hour cap.
+
+**Step references are checked too.** A `{"$path": "upstream.<stepId>…"}` is a
+**400 naming the step** when:
+
+- the step **does not exist** in this workflow — that is a typo, not a runtime
+  possibility, and
+- the step is **not upstream** of the one referencing it — topological order
+  means it cannot have produced output by the time this step runs.
+
+A path *into* an upstream step's output is allowed silently. The engine cannot
+know what shape a cloud function returns, so `upstream.save.whatever.it.returns`
+is between you and your function; if it resolves to nothing you get `undefined`,
+which is what the payload has always done.
+
+Nothing here checks `previous.…` or a payload key against a shape — there isn't
+one to check against.
 
 ---
 

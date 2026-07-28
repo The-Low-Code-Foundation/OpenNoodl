@@ -18,9 +18,13 @@
  *   - a path into the step input   `{ "$path": "previous.order.total" }`
  *   - an explicit literal escape   `{ "$literal": { "$path": "not-a-path" } }`
  *
- * The scope a `$path` resolves against is the step's resolved input — i.e.
- * `{ ...runPayload, ...step.params, previous }` (WF-001-SEMANTICS §1 "Data
- * passed between steps"). `previous.error` is populated when the upstream step
+ * That language now lives in `values.ts`, because WFA-003 gave step `params` the
+ * same one and a second implementation would disagree at the edges. `getPath`
+ * and `resolveValue` are re-exported here so this module's surface is unchanged.
+ *
+ * The scope a `$path` resolves against is the step's run scope — the resolved
+ * input plus `upstream` (WF-001-SEMANTICS §1 "Data passed between steps", as
+ * extended by WFA-003). `previous.error` is populated when the upstream step
  * FAILED and routed here via `onError`, which is what makes CF11-002's catch
  * branches able to see what went wrong.
  *
@@ -32,6 +36,12 @@
  *
  * @module nodegx-backend/workflow/steps/conditions
  */
+
+import { getPath, isPlainObject, resolveValue } from './values';
+
+// The value language is shared with step params (WFA-003) but is part of the
+// condition contract, so it stays importable from here.
+export { getPath, resolveValue };
 
 /** Every comparison operator. Closed set — no user-supplied code, ever. */
 export const CONDITION_OPS = [
@@ -79,46 +89,6 @@ export class ConditionError extends Error {
     super(message);
     this.name = 'ConditionError';
   }
-}
-
-// ---------------------------------------------------------------------------
-// Value resolution
-// ---------------------------------------------------------------------------
-
-function isPlainObject(v: unknown): v is Record<string, unknown> {
-  return typeof v === 'object' && v !== null && !Array.isArray(v);
-}
-
-/**
- * Read a dotted path out of a scope. `a.b.0.c` walks objects and arrays alike.
- * A missing segment yields `undefined` (which `exists`/`notExists` test for) —
- * it is not an error, because "the field is absent" is a legitimate thing to
- * branch on.
- */
-export function getPath(scope: unknown, path: string): unknown {
-  if (!path) return scope;
-  let cur: unknown = scope;
-  for (const rawSegment of path.split('.')) {
-    if (cur === null || cur === undefined) return undefined;
-    if (Array.isArray(cur)) {
-      const idx = Number(rawSegment);
-      if (!Number.isInteger(idx)) return undefined;
-      cur = cur[idx < 0 ? cur.length + idx : idx];
-      continue;
-    }
-    if (typeof cur !== 'object') return undefined;
-    cur = (cur as Record<string, unknown>)[rawSegment];
-  }
-  return cur;
-}
-
-/** Resolve a value spec (literal / `{$path}` / `{$literal}`) against the scope. */
-export function resolveValue(spec: unknown, scope: Record<string, unknown>): unknown {
-  if (isPlainObject(spec)) {
-    if (typeof spec.$path === 'string') return getPath(scope, spec.$path);
-    if ('$literal' in spec) return spec.$literal;
-  }
-  return spec;
 }
 
 // ---------------------------------------------------------------------------

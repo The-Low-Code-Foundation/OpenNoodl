@@ -53,7 +53,7 @@ export class WaitStepExecutor implements StepExecutor {
         `Step "${ctx.step.id}": unknown wait unit "${unit}" (${Object.keys(WAIT_UNIT_MS).join(', ')})`
       );
     }
-    const duration = resolveValue(p.duration, ctx.input);
+    const duration = resolveValue(p.duration, ctx.scope);
     if (typeof duration !== 'number' || !Number.isFinite(duration) || duration <= 0) {
       throw new StepExecutionError(`Step "${ctx.step.id}": wait duration must resolve to a number > 0`);
     }
@@ -77,7 +77,7 @@ export class WaitStepExecutor implements StepExecutor {
 export class WaitUntilStepExecutor implements StepExecutor {
   async execute(ctx: StepExecContext): Promise<StepExecResult> {
     const p = params(ctx);
-    const raw = resolveValue(p.target, ctx.input);
+    const raw = resolveValue(p.target, ctx.scope);
     const targetMs = parseInstant(raw);
     if (targetMs === null) {
       // An unparseable target must NOT degrade to "wait zero and carry on":

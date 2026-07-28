@@ -30,7 +30,8 @@
 import type { ExecutionHistory } from '../execution/ExecutionStore';
 import type { StepExecutor, StepExecContext, StepExecResult } from './StepExecutor';
 import { StepExecutionError, normalizeStepReturn } from './StepExecutor';
-import { validateStepShape } from './steps/kinds';
+import { rawParamNames, validateStepShape } from './steps/kinds';
+import { collectValuePaths, exceedsValueDepth, MAX_VALUE_DEPTH, resolveStepParams } from './steps/values';
 import type {
   WorkflowDefinition,
   WorkflowStep,
@@ -179,6 +180,75 @@ export function validateWorkflowDefinition(def: WorkflowDefinition): string[] {
       }
     }
     if (seen !== ids.size) errors.push('workflow graph has a cycle (edges must form a DAG)');
+  }
+
+  // WFA-003: `{"$path": "upstream.<stepId>.…"}` references, checked against the
+  // graph. A typo here is not a runtime possibility — the step either exists
+  // upstream of this one or it can never have run — so it is a 400 rather than a
+  // silent `undefined` discovered halfway through a production run.
+  if (errors.length === 0) errors.push(...validateValueReferences(def));
+
+  return errors;
+}
+
+/** Transitive ancestors of every step, over `next` ∪ `onError` ∪ `routes`. */
+function ancestorsOf(def: WorkflowDefinition): Map<string, Set<string>> {
+  const ancestors = new Map<string, Set<string>>(def.steps.map((s) => [s.id, new Set<string>()]));
+  // Topological order means a step's predecessors are already complete when we
+  // reach it, so one forward pass suffices.
+  for (const step of topoOrder(def)) {
+    const mine = ancestors.get(step.id)!;
+    for (const target of allEdgeTargets(step)) {
+      const theirs = ancestors.get(target);
+      if (!theirs) continue; // dangling target, already reported
+      theirs.add(step.id);
+      for (const a of mine) theirs.add(a);
+    }
+  }
+  return ancestors;
+}
+
+/**
+ * Validate every `$path` in every step's params (conditions included) that
+ * addresses another step. Only `upstream.<stepId>` names a step; `previous` and
+ * the payload keys are shapes the engine cannot know, so a path into them is
+ * allowed silently — a function's output shape is the function's business.
+ */
+function validateValueReferences(def: WorkflowDefinition): string[] {
+  const errors: string[] = [];
+  const ids = new Set(def.steps.map((s) => s.id));
+  const ancestors = ancestorsOf(def);
+
+  for (const step of def.steps) {
+    if (!step.params) continue;
+    const at = `step "${step.id}"`;
+
+    // Walked PER PARAM, at the same starting depth the resolver uses, so
+    // "rejected at write time" and "resolved at run time" agree exactly rather
+    // than differing by the params object itself.
+    const found: { path: string; where: string }[] = [];
+    for (const [name, value] of Object.entries(step.params)) {
+      if (exceedsValueDepth(value)) {
+        errors.push(`${at}.params.${name} nests deeper than ${MAX_VALUE_DEPTH} levels, past where values are resolved`);
+      }
+      found.push(...collectValuePaths(value, `${at}.params.${name}`));
+    }
+
+    for (const { path, where } of found) {
+      const segments = path.split('.');
+      if (segments[0] !== 'upstream') continue;
+      const target = segments[1];
+      if (!target) {
+        errors.push(`${where}: "$path": "${path}" needs a step id — write "upstream.<stepId>.<field>"`);
+      } else if (!ids.has(target)) {
+        errors.push(`${where}: "$path" references step "${target}", which is not a step in this workflow`);
+      } else if (!ancestors.get(step.id)?.has(target)) {
+        errors.push(
+          `${where}: "$path" references step "${target}", which is not upstream of "${step.id}" — ` +
+            'it cannot have produced output by the time this step runs'
+        );
+      }
+    }
   }
 
   return errors;
@@ -392,16 +462,49 @@ export class WorkflowEngine {
 
         const prevId = reachedBy.get(step.id);
         const previous = prevId ? outcomes.get(prevId)?.output : undefined;
-        const input: Record<string, unknown> = {
-          ...basePayload,
-          ...(step.params || {}),
-          ...(previous ? { previous } : {})
-        };
         // Outputs of every predecessor that took an edge here. Topological
         // order guarantees they have all completed; a failed one appears with
         // its `{ error }` output.
         const upstream: Record<string, Record<string, unknown> | undefined> = {};
         for (const id of reachedByAll.get(step.id) || []) upstream[id] = outcomes.get(id)?.output;
+
+        // WFA-003's author-facing `upstream.<stepId>`: EVERY earlier step that
+        // produced output, not only the immediate predecessors. A three-step
+        // chain must be able to read step 1 from step 3, and `ctx.upstream`
+        // cannot widen to cover that — `merge` mode "all" decides whether a
+        // branch arrived by asking exactly which steps have an edge INTO it, so
+        // making that map transitive would report a half-merge as complete.
+        // Write-time validation is the gate that keeps this honest: a `$path`
+        // may only name a step that is genuinely upstream in the graph.
+        const upstreamByStepId: Record<string, Record<string, unknown> | undefined> = {};
+        for (const [id, outcome] of outcomes) {
+          if (outcome.output !== undefined) upstreamByStepId[id] = outcome.output;
+        }
+
+        // WFA-003: params are VALUES, not just literals — `{"$path": "…"}`
+        // resolves against what the run has produced so far. The scope params
+        // resolve against deliberately EXCLUDES the params themselves: a param
+        // referencing another param of the same step would need a resolution
+        // order to be defined, and there isn't one worth defining.
+        const paramScope: Record<string, unknown> = {
+          ...basePayload,
+          ...(previous ? { previous } : {}),
+          upstream: upstreamByStepId
+        };
+        const resolvedParams = resolveStepParams(step.params, paramScope, rawParamNames(step.kind));
+
+        const input: Record<string, unknown> = {
+          ...basePayload,
+          ...resolvedParams,
+          ...(previous ? { previous } : {})
+        };
+        // The scope every LAZY value resolves against (conditions, a `wait`
+        // duration, a `for-each`'s items): the input the step runs with, plus
+        // `upstream`. `upstream` is in the SCOPE and not in the INPUT on
+        // purpose — it would otherwise be copied into every function's request
+        // body and into every step's recorded inputData, duplicating data the
+        // record already holds one row above.
+        const scope: Record<string, unknown> = { ...input, upstream: upstreamByStepId };
 
         const stepId = logger?.startNode({
           nodeId: step.id,
@@ -412,7 +515,7 @@ export class WorkflowEngine {
 
         const timeoutMs = step.timeoutMs && step.timeoutMs > 0 ? step.timeoutMs : def.stepTimeoutMs || 0;
         try {
-          const ctx: StepExecContext = { workflow: def, step, input, upstream, signal };
+          const ctx: StepExecContext = { workflow: def, step, input, scope, upstream, signal };
           const result = await this.runStepGuarded(ctx, timeoutMs, signal);
           const output = result.output;
           if (stepId) logger?.completeNode(stepId, true, output);

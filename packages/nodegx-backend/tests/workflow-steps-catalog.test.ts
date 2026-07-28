@@ -87,6 +87,19 @@ describe('WF-002 step-kind catalog coverage', () => {
     // It must survive the wire: the whole point is that an agent reads it.
     expect(JSON.parse(JSON.stringify(catalog)).kinds).toHaveLength(STEP_KINDS.length);
   });
+
+  it('the value language is served whole, and survives the wire (WFA-003)', () => {
+    // A param is only usable if a client knows what may go IN it. WFA-003 put
+    // that in the same document as the kinds, for the same reason WF-002 served
+    // the kinds at all: a bundled copy can disagree with the backend that will
+    // execute the definition.
+    const wire = JSON.parse(JSON.stringify(stepKindCatalog())) as ReturnType<typeof stepKindCatalog>;
+    expect(wire.valueLanguage.forms.map((f) => f.form)).toEqual(['literal', '$path', '$literal']);
+    expect(wire.valueLanguage.scope.map((s) => s.name)).toContain('upstream.<stepId>');
+    expect(wire.valueLanguage.maxDepth).toBeGreaterThan(0);
+    expect(wire.valueLanguage.payload.canonical.body).toBeTruthy();
+    expect(wire.valueLanguage.pathRules.length).toBeGreaterThan(2);
+  });
 });
 
 describe('WF-002 author documentation coverage', () => {
@@ -122,5 +135,35 @@ describe('WF-002 author documentation coverage', () => {
 
   it('explains why these are absent from the node catalog', () => {
     expect(doc).toMatch(/not in the node catalog|not a canvas node/i);
+  });
+
+  it('documents every value form and every scope name the catalog serves (WFA-003)', () => {
+    // The drift this catches: adding a scope root (or a form) to the served spec
+    // without telling an author it exists. The spec table and the page are the
+    // two things a definition author reads, and they must agree.
+    const { valueLanguage } = stepKindCatalog();
+    for (const form of valueLanguage.forms) {
+      if (form.form === 'literal') continue; // prose, not a token
+      expect(doc).toContain(form.form);
+    }
+    for (const entry of valueLanguage.scope) {
+      // Placeholders are documented under their pattern, not their literal text.
+      const token = entry.name.startsWith('<') ? null : entry.name.replace('.<stepId>', '');
+      if (token) expect(doc).toContain(`\`${token}`);
+    }
+    expect(doc).toContain('## Passing data between steps');
+    // The one deprecated key that could not be preserved must be findable by
+    // someone whose workflow just stopped seeing `payload.trigger` as a string.
+    expect(doc).toMatch(/triggerType/);
+  });
+
+  it('documents which params are DSL structures rather than values', () => {
+    for (const kind of STEP_KINDS) {
+      for (const param of STEP_KIND_SPECS[kind].params) {
+        if (!param.raw) continue;
+        expect(doc).toContain(`\`${param.name}\``);
+      }
+    }
+    expect(doc).toMatch(/structures, not values|not a value/i);
   });
 });

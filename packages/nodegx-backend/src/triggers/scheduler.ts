@@ -26,6 +26,7 @@
  * @module nodegx-backend/triggers/scheduler
  */
 
+import { buildRunPayload } from '../workflow/runPayload';
 import { parseCron, CronExpression } from './cron';
 import type { TriggerDef, TriggerType } from './registry';
 import type { FireInput, FireOutcome, RejectionInput, TriggerResultShape } from './dispatcher';
@@ -186,16 +187,22 @@ export class CronScheduler {
   private async fire(triggerId: string, source: string): Promise<void> {
     const trigger = this.registry.get(triggerId);
     if (!trigger) return;
+    const firedAt = this.now().toISOString();
+    const cron = trigger.schedule ? trigger.schedule.cron : undefined;
     await this.dispatcher.fire({
       trigger,
       triggerType: 'schedule',
       source,
-      payload: {
-        trigger: 'schedule',
+      payload: buildRunPayload({
+        type: 'schedule',
         triggerId,
-        firedAt: this.now().toISOString(),
-        cron: trigger.schedule ? trigger.schedule.cron : undefined
-      }
+        firedAt,
+        cron,
+        // A schedule carries no caller data, so `body` is `{}` — which is what
+        // makes `body.x` safe to read from a definition that also runs from a
+        // webhook. WFA-005 adds the field that fills it (F8).
+        legacy: { triggerId, firedAt, cron }
+      })
     });
   }
 

@@ -191,10 +191,12 @@ export function registerBackendReadTools(server: McpServer): void {
       title: 'List backend workflow step kinds',
       description:
         'The step vocabulary a backend can run (WF-002): every step `kind` with its params, routes, output shape ' +
-        'and when to use it — call-function, branch, switch, for-each, merge, retry, stop, wait, wait-until. ' +
-        'CALL THIS BEFORE AUTHORING A WORKFLOW. A workflow step is not a canvas node, so these are NOT in the ' +
-        'node catalog (list_node_types); this is where their contract lives, and it is served by the running ' +
-        'backend so it can never drift from what that backend actually executes.',
+        'and when to use it — call-function, branch, switch, for-each, merge, retry, stop, wait, wait-until — ' +
+        'PLUS `valueLanguage` (WFA-003): how a param references data ($path / $literal), what a $path may ' +
+        'address (body, trigger, previous, upstream.<stepId>), and the one payload shape every entry point ' +
+        'delivers. CALL THIS BEFORE AUTHORING A WORKFLOW. A workflow step is not a canvas node, so these are ' +
+        'NOT in the node catalog (list_node_types); this is where their contract lives, and it is served by the ' +
+        'running backend so it can never drift from what that backend actually executes.',
       inputSchema: { backendId: z.string().optional().describe('Which backend (omit if exactly one is running)') }
     },
     guarded(async ({ backendId }) => {
@@ -912,7 +914,14 @@ export function registerBackendWriteTools(server: McpServer): void {
     params: z
       .record(z.unknown())
       .optional()
-      .describe("Static params merged into the step input, and the kind's own configuration (condition, cases, …)"),
+      .describe(
+        "Params merged into the step input, and the kind's own configuration (condition, cases, …). A param may " +
+          'be a literal OR a reference: {"$path":"body.total"} reads the caller\'s data, ' +
+          '{"$path":"previous.result.x"} the last step\'s output, {"$path":"upstream.<stepId>.x"} a named earlier ' +
+          'step (use this when a branch sits in between), {"$literal":…} escapes. No arithmetic — compute in a ' +
+          'cloud function. A reference to a step that does not exist, or is not upstream, is REJECTED at write ' +
+          'time. Full spec in list_backend_step_kinds → valueLanguage.'
+      ),
     timeoutMs: z.number().optional().describe('Per-step timeout (0/omitted = the workflow default)'),
     next: z
       .array(z.string())
@@ -952,7 +961,8 @@ export function registerBackendWriteTools(server: McpServer): void {
       description:
         'Author a WF-001 workflow on a running backend: a multi-step, ordered, error-routed, cancellable server ' +
         'execution over a DAG of steps (each step invokes a cloud function in v1). The definition is validated ' +
-        '(acyclic, edges resolve) and REJECTED with the reason if invalid — never silently accepted. It is ' +
+        '(acyclic, edges resolve, every step reference is to a step that exists upstream) and REJECTED with the ' +
+        'reason if invalid — never silently accepted. It is ' +
         'persisted and deploys with the backend. Point a trigger at it with target {kind:"workflow", name:<id>}.',
       inputSchema: { backendId: z.string().optional(), id: z.string().optional().describe('Omit to mint one'), ...workflowFields }
     },

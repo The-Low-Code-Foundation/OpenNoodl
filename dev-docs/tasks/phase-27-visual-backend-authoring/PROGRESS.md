@@ -1,6 +1,6 @@
 # Phase 27 — Visual Backend Authoring (Track L): Progress
 
-**Status:** 🚧 In progress — 2 / 7 (WFA-001, WFA-002 complete)
+**Status:** 🚧 In progress — 3 / 7 (WFA-001, WFA-002, WFA-003 complete)
 **Specced:** 2026-07-27, from a live end-to-end test of phase 19's workflow engine
 **Phase overview:** [README.md](./README.md)
 
@@ -14,7 +14,7 @@ Not started · In progress · **Built–not wired** · Complete · Superseded
 |---|---|---|---|---|---|
 | [WFA-001](./WFA-001-CLOUD-FUNCTIONS-RECONNECTED.md) | Cloud functions, reconnected | 1 | ✅ Complete | 2026-07-28 | There were **five** cuts, not four — the cloud node library never reached the editor after WF-007 (F25b). Full loop live-verified; two shipped defects found by running it (F26 export-without-Home, F28 hot-deploy crash). [Notes](./WFA-001-NOTES.md) |
 | [WFA-002](./WFA-002-RUN-INSPECTOR.md) | The run inspector | 1 | ✅ Complete | 2026-07-28 | The spec was right that most of it existed and was off — and wrong that cloud function runs feed it: **they record zero steps** (F32), so the overlay can place a badge only once WFA-004 exists. Run/cancel live-verified; three shipped defects fixed (F31, F33, F34). [Notes](./WFA-002-NOTES.md) |
-| [WFA-003](./WFA-003-STEP-DATA-MAPPING.md) | Step data mapping & one payload shape | 2 | ⬜ Not started | — | Prerequisite for WFA-004. Backend-only; no editor work |
+| [WFA-003](./WFA-003-STEP-DATA-MAPPING.md) | Step data mapping & one payload shape | 2 | ✅ Complete | 2026-07-28 | Backend-only, as specced. There were **five** entry points, not four (F38). One key could not be kept in both shapes — `trigger` is now the object, the string moved to `triggerType` (F39). [Notes](./WFA-003-NOTES.md) |
 | [WFA-004](./WFA-004-WORKFLOW-CANVAS.md) | The workflow canvas | 3 | ⬜ Not started | — | The big one. Reuse-or-escalate is the governing rule |
 | [WFA-005](./WFA-005-TRIGGERS-ON-CANVAS.md) | Triggers as canvas entry nodes | 3 | ⬜ Not started | — | Carries shipped defects F7 and F8 |
 | [WFA-006](./WFA-006-STEP-TO-FUNCTION-DESCENT.md) | Descend from a step into its function graph | 3 | ⬜ Not started | — | What makes the two tiers feel like one language |
@@ -47,14 +47,14 @@ around the description.
 | F9 | The Triggers panel hardcodes `target: {kind: 'function'}`, so **no trigger created in the editor can target a workflow**; and the target is free text with no validation, so a typo only surfaces at the next fire | `TriggersPanel.tsx:44,109` | WFA-005 |
 | F10 | `docs/runtime/WORKFLOW-NODES.md` tells authors to use "the Backend Services panel" to author workflows. No such surface exists | `docs/runtime/WORKFLOW-NODES.md` | WFA-004 |
 
-### The data model
+### The data model — **all closed by WFA-003, 2026-07-28**
 
 | # | Finding | Where | Owner |
 |---|---|---|---|
-| F11 | A step's input is `{...runPayload, ...step.params, previous}` and `params` are **static literals** — no `$path` resolution. There is no way to feed one step's output into the next step's function parameters | `WorkflowEngine.ts:397`; contract described at `StepExecutor.ts:30` | WFA-003 |
-| F12 | The three entry points deliver **three different payload shapes**: webhook `{trigger, triggerId, slug, headers, query, body}` (`HttpServer.ts:1875`), schedule `{trigger, triggerId, firedAt, cron}`, manual `{trigger:'manual', triggerId, ...body}` (`admin-triggers.ts:121`), admin run `body.payload \|\| body` (`admin-workflows.ts:107`). A workflow authored against one breaks under another | as listed | WFA-003 |
-| F13 | Observed consequence of F11+F12: a workflow that worked from `POST /admin/workflow-defs/:id/run` failed from the same webhook with `Cannot order-compare undefined and 100`. The failure was **loud and precise**, which is the engine behaving correctly | live run `exec_ms3nr5vsuzmckc05` | WFA-003 |
-| F14 | Working around F11 today means each cloud function resolves its own source with a JS node (`previous.result ?? body ?? Inputs`). Functional, but every function carries adapter code | test fixtures, 2026-07-27 | WFA-003 |
+| F11 | A step's input is `{...runPayload, ...step.params, previous}` and `params` are **static literals** — no `$path` resolution. There is no way to feed one step's output into the next step's function parameters | `WorkflowEngine.ts:397`; contract described at `StepExecutor.ts:30` | WFA-003 ✅ |
+| F12 | The three entry points deliver **three different payload shapes**: webhook `{trigger, triggerId, slug, headers, query, body}` (`HttpServer.ts:1875`), schedule `{trigger, triggerId, firedAt, cron}`, manual `{trigger:'manual', triggerId, ...body}` (`admin-triggers.ts:121`), admin run `body.payload \|\| body` (`admin-workflows.ts:107`). A workflow authored against one breaks under another | as listed | WFA-003 ✅ |
+| F13 | Observed consequence of F11+F12: a workflow that worked from `POST /admin/workflow-defs/:id/run` failed from the same webhook with `Cannot order-compare undefined and 100`. The failure was **loud and precise**, which is the engine behaving correctly | live run `exec_ms3nr5vsuzmckc05` | WFA-003 ✅ |
+| F14 | Working around F11 today means each cloud function resolves its own source with a JS node (`previous.result ?? body ?? Inputs`). Functional, but every function carries adapter code | test fixtures, 2026-07-27 | WFA-003 ✅ |
 
 ### Found by WFA-001, 2026-07-28
 
@@ -78,6 +78,15 @@ around the description.
 | F35 | A dispatched run's record is written as the run *starts*, so a refresh in the same tick loses the race to the HTTP round trip and the in-flight row is missing until the user refreshes. One follow-up fetch ~800 ms later covers it (deliberately not a poller) | `ExecutionHistoryPanel.handleStarted` | WFA-002 ✅ |
 | F36 | `npm run cloud-library:check` reports the committed cloud node library stale — **and was already stale on a clean `cline-dev` tree** (verified by stashing). A CI gate WFA-001 added is red on `main`-line work | `scripts/cloud-node-library/`, `cloud-node-library.json` | unowned — pre-existing, needs a regenerate-and-commit |
 | F37 | Schedule-triggered executions carry a doubled workflow name (`countOrdercountOrderss`) in the list. Cosmetic, from the WF-005 trigger path, not touched here | observed in `/executions` rows | unowned |
+
+### Found by WFA-003, 2026-07-28
+
+| # | Finding | Where | Owner |
+|---|---|---|---|
+| F38 | **There are five entry points, not four.** F12's table lists webhook, schedule, manual fire and admin run; **db-change** delivered a fifth shape (`{trigger:'db-change', triggerId, action, collection, id, record}`) and was missed. Unified with the rest: the changed record is the run's `body`, and `collection`/`action`/`recordId` moved onto `trigger` | `triggers/dbchange.ts:124` | WFA-003 ✅ |
+| F39 | **One key could not be preserved in both shapes.** `payload.trigger` was the trigger type as a *string*; the uniform envelope needs it to be the metadata object, and one key cannot hold both. The object wins (it is what the served spec, the MCP tools and WFA-004's property editor are written against) and the string is preserved beside it as `triggerType`. Checked before deciding: nothing in this repository read `payload.trigger`; `docs/runtime/TRIGGERS.md` documented it and now documents the migration. Every *other* legacy top-level key is still delivered, deprecated, for one release, and where one collides with a canonical key the canonical one wins — decided in one place and tested, not left to spread order | `workflow/runPayload.ts` | WFA-003 ✅ |
+| F40 | **A `wait` duration written as a reference was rejected at write time**, although `WaitStepExecutor` has resolved it since WF-002 — so the executor's own resolution was unreachable from a saved definition. Validation now defers the numeric and 24h-cap checks to the executor (which fails loudly on both) when the value is a reference | `steps/kinds.ts` `validateStepShape` case `wait` | WFA-003 ✅ |
+| F41 | `for-each` now passes the **resolved** `items` array into each per-item function invocation, where it previously passed the unresolved `{"$path": …}` spec. Strictly better, and a change in what those functions receive | `steps/logic.ts` `ForEachStepExecutor` | WFA-003 ✅ (noted, not a defect) |
 
 ### What already exists and is worth reusing
 
@@ -123,6 +132,32 @@ around the description.
 
 ## Log
 
+- **2026-07-28** — **WFA-003 complete.** A step param can now be a reference rather than a
+  literal — `{"$path": "previous.result.total"}`, `{"$path": "upstream.save.result.orderId"}`,
+  `{"$literal": …}` to escape — using the value language that already existed for conditions,
+  **extracted** rather than reimplemented (the condition suite passes untouched, which is the
+  evidence the extraction was behaviour-preserving). "Take the order id from the save step and
+  pass it to the charge step" is now expressible, proven end to end against real cloud functions
+  by the receiving function's own response body rather than by a spy. And every entry point
+  delivers one envelope — `{trigger, triggerType, body, headers?, query?}` — with the caller's
+  data always under `body`, so the same definition branches identically whether an admin run, a
+  webhook or a schedule started it. That is **F13 closed**: the live failure phase 27 was specced
+  on cannot recur.
+  **Three things the spec did not anticipate.** There are **five** entry points, not four — F12's
+  table missed db-change (F38). One key could **not** be kept in both shapes: `payload.trigger`
+  was the trigger type as a string and the envelope needs it to be the metadata object, so the
+  object wins and the string moved to `triggerType` (F39) — every other legacy top-level key is
+  still delivered, deprecated, for one release, with the canonical key winning any collision by
+  an explicit, tested decision rather than by spread order. And a `wait` duration written as a
+  reference was rejected at write time even though the executor has resolved it since WF-002,
+  making that path unreachable from a saved definition (F40). Write-time validation gained two
+  typo-only 400s — a `$path` naming a step that does not exist, or one that is not upstream — and
+  the boot-refusal risk that carries is assessed and accepted in the notes rather than assumed
+  away. The served catalog now describes the value language (version `1.1.0`) so WFA-004's
+  property editor and the MCP tools can render a param control without hardcoding, and the WF-002
+  coverage gate was extended so the spec and the author docs cannot drift apart on it.
+  Backend suite **64 suites / 670 passed**, up from 62 / 622. Full pass in
+  [WFA-003-NOTES.md](./WFA-003-NOTES.md).
 - **2026-07-28** — **WFA-002 complete.** The Execution History panel is a normal rail panel, the merged
   list says which stores answered it (so "no backend running", "backend running with nothing recorded"
   and "the backend that had your runs cannot be read" are three different messages), and a workflow's

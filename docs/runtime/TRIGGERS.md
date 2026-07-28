@@ -105,14 +105,22 @@ unrecoverable afterward.
 
 ### Payload shape
 
-The function receives a uniform envelope as its request body:
+The function receives the same envelope every entry point delivers (WFA-003):
 
 ```json
-{ "trigger": "webhook", "triggerId": "trg_…", "slug": "github",
+{ "trigger": { "type": "webhook", "id": "trg_…", "firedAt": "…", "slug": "github" },
+  "triggerType": "webhook",
   "headers": { … }, "query": { … }, "body": <the parsed webhook payload> }
 ```
 
-Read `body` for what the sender posted, `headers` for signatures/metadata.
+Read `body` for what the sender posted, `headers` for signatures/metadata. The
+full language for reading these from a workflow step is in
+[Workflow step kinds → Passing data between steps](./WORKFLOW-NODES.md#passing-data-between-steps).
+
+> **Changed:** `trigger` used to be the type as a **string** (`"webhook"`) and is
+> now the object above. Read **`triggerType`** — or `trigger.type` — for the
+> string. Every other key this envelope used to carry is still delivered at the
+> top level, deprecated, for one release.
 
 ---
 
@@ -125,7 +133,10 @@ the change payload.
   single post-commit tap the realtime SSE hub uses. DB-change is the bus's
   *second consumer*; there is no second event tap. A `delete` carries the
   pre-delete record, so a delete handler can see the row.
-- Payload envelope: `{ trigger: "db-change", triggerId, action, collection, id, record }`.
+- Payload envelope: the changed record is `body`, and the change context is on
+  `trigger`: `{ trigger: { type: "db_change", id, firedAt, collection, action, recordId }, triggerType: "db_change", body: <the record> }`.
+  The pre-WFA-003 top-level keys (`triggerId`, `action`, `collection`, `id`,
+  `record`) are still delivered, deprecated, for one release.
 
 ### Loop protection (decided + documented + tested)
 

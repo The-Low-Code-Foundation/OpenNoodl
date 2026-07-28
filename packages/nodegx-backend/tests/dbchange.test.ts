@@ -13,7 +13,7 @@ import * as path from 'path';
 import { ChangeBus } from '../src/realtime/ChangeBus';
 import { SecretsStore } from '../src/config/SecretsStore';
 import { TriggerRegistry } from '../src/triggers/registry';
-import { DbChangePayload, DbChangeTriggers } from '../src/triggers/dbchange';
+import { DbChangeLegacyPayload, DbChangeTriggers } from '../src/triggers/dbchange';
 import type { LocalSqlAdapter, LocalSqlAdapterCtor } from './helpers/local-sql';
 import type { TriggerDispatcher, FireInput, FireOutcome } from '../src/triggers/dispatcher';
 
@@ -81,10 +81,24 @@ describe('DbChangeTriggers', () => {
 
     expect(fires).toHaveLength(1);
     expect(fires[0].triggerType).toBe('db_change');
-    const payload = fires[0].payload as DbChangePayload;
+    const payload = fires[0].payload as DbChangeLegacyPayload;
     expect(payload.action).toBe('create');
     expect(payload.collection).toBe('Orders');
     expect(payload.record.objectId).toBe(row.objectId);
+
+    // WFA-003: the fifth entry point (F12 listed four) delivers the same
+    // envelope as the other four — the changed record is the run's `body`, the
+    // change context is on `trigger`.
+    expect(fires[0].payload.triggerType).toBe('db_change');
+    expect(fires[0].payload.body).toEqual(payload.record);
+    expect(fires[0].payload.trigger).toEqual({
+      type: 'db_change',
+      id: reg.list()[0].id,
+      firedAt: expect.any(String),
+      collection: 'Orders',
+      action: 'create',
+      recordId: row.objectId
+    });
     dbc.stop();
   });
 

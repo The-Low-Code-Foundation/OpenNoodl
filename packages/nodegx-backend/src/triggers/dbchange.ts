@@ -32,17 +32,21 @@
  */
 
 import type { ChangeBus, ChangeEvent } from '../realtime/ChangeBus';
+import { buildRunPayload } from '../workflow/runPayload';
 import type { TriggerDef, TriggerRegistry } from './registry';
 import type { TriggerDispatcher } from './dispatcher';
 
 /**
- * What a db-change trigger hands its target. `FireInput.payload` is
- * deliberately an open `Record<string, unknown>` — every trigger kind fills it
- * differently — but *this* kind's contents are fixed, and naming them is what
- * lets a consumer (or a spec) read `.action` without an assertion.
+ * The DEPRECATED top-level view a db-change trigger has always handed its
+ * target. WFA-003 keeps every key, and adds the uniform envelope beside it: the
+ * changed record is the run's `body`, and `{ collection, action, recordId }` move
+ * onto `trigger`. `trigger` itself is now that object rather than the string
+ * `'db-change'` — read `triggerType` for the string.
+ *
+ * Naming the keys is what lets a consumer (or a spec) read `.action` without an
+ * assertion, so the shape stays declared even though it is on its way out.
  */
-export interface DbChangePayload extends Record<string, unknown> {
-  trigger: 'db-change';
+export interface DbChangeLegacyPayload extends Record<string, unknown> {
   triggerId: string;
   action: ChangeEvent['action'];
   collection: string;
@@ -121,14 +125,20 @@ export class DbChangeTriggers {
         trigger,
         triggerType: 'db_change',
         source: `db-change ${event.action} on ${event.collection}`,
-        payload: {
-          trigger: 'db-change',
+        payload: buildRunPayload({
+          type: 'db_change',
           triggerId: trigger.id,
-          action: event.action,
-          collection: event.collection,
-          id: event.id,
-          record: event.record
-        } satisfies DbChangePayload
+          change: { action: event.action, collection: event.collection, id: event.id },
+          // The changed record is what the run is *about*, so it is the body.
+          body: event.record,
+          legacy: {
+            triggerId: trigger.id,
+            action: event.action,
+            collection: event.collection,
+            id: event.id,
+            record: event.record
+          } satisfies DbChangeLegacyPayload
+        })
       })
     ).then(done, done);
   }

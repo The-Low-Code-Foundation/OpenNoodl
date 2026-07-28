@@ -42,9 +42,16 @@
 
 import type { StepKind, WorkflowStep } from '../types';
 import { validateCondition } from './conditions';
+import type { ValueLanguageSpec } from './values';
+import { isPlainObject, VALUE_LANGUAGE } from './values';
 
-/** Bumped when the spec table's SHAPE changes (not when a kind is added). */
-export const STEP_KIND_CATALOG_VERSION = '1.0.0';
+/**
+ * Bumped when the spec table's SHAPE changes (not when a kind is added).
+ *
+ * 1.1.0 — WFA-003 added `valueLanguage` (so a client can render the right
+ * control for a param and know what a `$path` may address) and `raw` on a param.
+ */
+export const STEP_KIND_CATALOG_VERSION = '1.1.0';
 
 export interface StepParamSpec {
   name: string;
@@ -53,6 +60,16 @@ export interface StepParamSpec {
   default?: unknown;
   enums?: string[];
   description: string;
+  /**
+   * WFA-003: this param is a DSL STRUCTURE — a condition, a filter, a switch's
+   * cases — not a value. Its operands use the value language, but the executor
+   * evaluates them when the step runs, so the engine does not resolve the param
+   * itself. Every other param IS value-resolved before the step runs.
+   *
+   * A property editor should render a `raw` param with its own editor (three
+   * dropdowns for a condition) rather than a value/binding control.
+   */
+  raw?: boolean;
 }
 
 export interface StepRouteSpec {
@@ -126,9 +143,11 @@ export const STEP_KIND_SPECS: Record<StepKind, StepKindSpec> = {
         name: 'condition',
         type: 'condition',
         required: true,
+        raw: true,
         description:
-          'A declarative condition (see the condition language). Paths resolve against the step input, so ' +
-          '`{"$path":"previous.total"}` reads the upstream step output.'
+          'A declarative condition (see the condition language). Paths resolve against the run scope, so ' +
+          '`{"$path":"previous.total"}` reads the upstream step output and `{"$path":"upstream.save.id"}` reads a ' +
+          'named earlier step.'
       }
     ],
     routes: [
@@ -166,6 +185,7 @@ export const STEP_KIND_SPECS: Record<StepKind, StepKindSpec> = {
         name: 'cases',
         type: 'array',
         required: true,
+        raw: true,
         description:
           'Ordered `[{ label, equals }]` or `[{ label, when: <condition> }]`. The FIRST match wins. Each label ' +
           'names a route in `routes`; `default` is reserved.'
@@ -227,6 +247,7 @@ export const STEP_KIND_SPECS: Record<StepKind, StepKindSpec> = {
       {
         name: 'filter',
         type: 'condition',
+        raw: true,
         description: 'Optional condition; items that do not match are skipped (counted in `skipped`).'
       }
     ],
@@ -446,20 +467,45 @@ export function isStepKind(v: unknown): v is StepKind {
   return typeof v === 'string' && Object.prototype.hasOwnProperty.call(STEP_KIND_SPECS, v);
 }
 
+/**
+ * The params of a kind that are DSL structures rather than values, and so are
+ * NOT resolved by the engine before the step runs (WFA-003). The engine asks
+ * this; nothing else needs to know which they are.
+ */
+export function rawParamNames(kind: StepKind): ReadonlySet<string> {
+  const spec = STEP_KIND_SPECS[kind];
+  if (!spec) return EMPTY_RAW_PARAMS;
+  const cached = RAW_PARAM_CACHE.get(kind);
+  if (cached) return cached;
+  const names = new Set(spec.params.filter((p) => p.raw).map((p) => p.name));
+  RAW_PARAM_CACHE.set(kind, names);
+  return names;
+}
+
+const EMPTY_RAW_PARAMS: ReadonlySet<string> = new Set();
+const RAW_PARAM_CACHE = new Map<StepKind, ReadonlySet<string>>();
+
 /** The wire form served by `GET /admin/workflow-step-kinds` and MCP. */
 export interface StepKindCatalog {
   version: string;
   source: string;
   docs: string;
   kinds: StepKindSpec[];
+  /**
+   * WFA-003: how a param value may reference the run's data. Served alongside
+   * the kinds because a client rendering a param editor needs both, and a
+   * bundled copy of either could disagree with the backend that will execute it.
+   */
+  valueLanguage: ValueLanguageSpec;
 }
 
 export function stepKindCatalog(): StepKindCatalog {
   return {
     version: STEP_KIND_CATALOG_VERSION,
-    source: 'nodegx-backend/workflow/steps/kinds.ts (WF-002)',
+    source: 'nodegx-backend/workflow/steps/kinds.ts (WF-002, WFA-003)',
     docs: 'docs/runtime/WORKFLOW-NODES.md',
-    kinds: STEP_KINDS.map((k) => STEP_KIND_SPECS[k])
+    kinds: STEP_KINDS.map((k) => STEP_KIND_SPECS[k]),
+    valueLanguage: VALUE_LANGUAGE
   };
 }
 
@@ -479,6 +525,11 @@ export const WAIT_UNIT_MS: Record<string, number> = {
 
 function params(step: WorkflowStep): Record<string, unknown> {
   return (step.params || {}) as Record<string, unknown>;
+}
+
+/** True for `{"$path": …}` / `{"$literal": …}` — a value that is not known yet. */
+function isValueSpec(v: unknown): boolean {
+  return isPlainObject(v) && (typeof v.$path === 'string' || '$literal' in v);
 }
 
 function requirePositiveNumber(v: unknown, where: string, errors: string[], min = 1): void {
@@ -618,6 +669,13 @@ export function validateStepShape(step: WorkflowStep): string[] {
       if (!WAIT_UNIT_MS[unit]) {
         errors.push(`${at}.params.unit must be one of ${Object.keys(WAIT_UNIT_MS).join(', ')}`);
       }
+      // A duration written as a reference cannot be range-checked here — the
+      // value does not exist yet. The executor already resolves it and already
+      // fails loudly on a non-number and on the 24h cap, so this defers to it
+      // rather than rejecting a legal definition. (`WaitStepExecutor` has
+      // resolved `duration` since WF-002; write-time validation refused it,
+      // which made the feature unreachable.)
+      if (isValueSpec(p.duration)) break;
       if (typeof p.duration !== 'number' || !Number.isFinite(p.duration) || p.duration <= 0) {
         errors.push(`${at}.params.duration must be a number > 0`);
       } else if (WAIT_UNIT_MS[unit] && p.duration * WAIT_UNIT_MS[unit] > MAX_WAIT_MS) {

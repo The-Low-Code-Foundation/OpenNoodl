@@ -15,6 +15,7 @@
  * @module nodegx-backend/server/admin-triggers
  */
 
+import { buildRunPayload, spreadableBody } from '../workflow/runPayload';
 import type { RequestContext } from './HttpServer';
 import type { TriggerSubsystem } from '../triggers/TriggerSubsystem';
 import { TriggerConfigError, TriggerDef, TriggerInput } from '../triggers/registry';
@@ -118,7 +119,17 @@ export class AdminTriggerRoutes {
       trigger,
       triggerType: 'manual',
       source: `manual test fire of ${trigger.id}`,
-      payload: { trigger: 'manual', triggerId: trigger.id, ...(body || {}) }
+      // WFA-003: the posted body used to be SPREAD at the top level, so a
+      // definition authored against a manual fire read `Inputs.total` while the
+      // same definition fired by a webhook had to read `Inputs.body.total`. It
+      // now lands under `body` like every other entry point; the spread stays as
+      // the deprecated legacy view.
+      payload: buildRunPayload({
+        type: 'manual',
+        triggerId: trigger.id,
+        body: body || {},
+        legacy: { triggerId: trigger.id, ...spreadableBody(body) }
+      })
     });
     sendJSON(ctx.res, 200, {
       fired: true,

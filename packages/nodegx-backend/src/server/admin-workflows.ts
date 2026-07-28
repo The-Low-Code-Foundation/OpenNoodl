@@ -18,6 +18,7 @@
 import type { RequestContext } from './HttpServer';
 import type { WorkflowSubsystem } from '../workflow/WorkflowSubsystem';
 import { WorkflowConfigError } from '../workflow/WorkflowRegistry';
+import { buildRunPayload, spreadableBody } from '../workflow/runPayload';
 import { stepKindCatalog } from '../workflow/steps/kinds';
 import type { WorkflowDefinition, WorkflowInput, WorkflowRunResult } from '../workflow/types';
 import { HttpError, readJSONBody, sendJSON } from './http-util';
@@ -104,7 +105,16 @@ export class AdminWorkflowRoutes {
   /** Run a workflow now (records as a 'manual' execution unless a body says otherwise). */
   async run(ctx: RequestContext): Promise<void> {
     const body = await readJSONBody(ctx.req);
-    const payload = (body && (body.payload as Record<string, unknown>)) || body || {};
+    // `{"payload": …}` is the documented form; a bare object is accepted as the
+    // payload itself. WFA-003: whichever it was, the caller's data lands under
+    // `body` — and stays spread at the top level as the deprecated legacy view,
+    // which is the shape every workflow authored before this reads.
+    const callerData = (body && (body.payload as Record<string, unknown>)) || body || {};
+    const payload = buildRunPayload({
+      type: 'manual',
+      body: callerData,
+      legacy: spreadableBody(callerData)
+    });
     const { found, result } = await this.subsystem().run(
       ctx.params.id,
       { type: 'manual', source: `manual run of ${ctx.params.id}` },

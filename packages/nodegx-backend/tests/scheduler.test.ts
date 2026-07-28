@@ -107,5 +107,22 @@ describe('CronScheduler.start', () => {
     expect(fires[0].trigger.id).toBe(trigger.id);
     // next fire recorded for the UI.
     expect(reg.get(trigger.id)!.status.nextFireAt).toBeTruthy();
+
+    // WFA-003: the uniform payload, from the real call site. `body: {}` rather
+    // than an absent key is what lets one definition read `body.x` whether a
+    // cron or a webhook started it — the schedule simply has nothing to put
+    // there yet (F8 is WFA-005's).
+    const payload = fires[0].payload;
+    expect(payload.body).toEqual({});
+    expect(payload.triggerType).toBe('schedule');
+    expect(payload.trigger).toEqual({
+      type: 'schedule',
+      id: trigger.id,
+      firedAt: expect.any(String),
+      cron: '0 * * * *'
+    });
+    // The deprecated top-level view a definition written before WFA-003 reads.
+    expect(payload.triggerId).toBe(trigger.id);
+    expect(payload.cron).toBe('0 * * * *');
   });
 });

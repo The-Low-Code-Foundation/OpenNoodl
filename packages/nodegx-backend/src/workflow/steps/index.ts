@@ -7,6 +7,17 @@
  */
 
 export * from './conditions';
+// `getPath` / `resolveValue` come through conditions, which re-exports them.
+export {
+  collectValuePaths,
+  exceedsValueDepth,
+  isPlainObject,
+  MAX_VALUE_DEPTH,
+  resolveStepParams,
+  resolveValueDeep,
+  VALUE_LANGUAGE
+} from './values';
+export type { FoundPath, ScopeEntrySpec, ValueFormSpec, ValueLanguageSpec } from './values';
 export * from './kinds';
 export * from './sleep';
 export * from './logic';

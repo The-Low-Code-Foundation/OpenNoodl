@@ -39,7 +39,7 @@ function params(ctx: StepExecContext): Record<string, unknown> {
 /** Wrap a condition-language failure as a loud step failure. */
 function evaluate(cond: unknown, ctx: StepExecContext, where: string): boolean {
   try {
-    return evaluateCondition(cond as Condition, ctx.input);
+    return evaluateCondition(cond as Condition, ctx.scope);
   } catch (e) {
     throw new StepExecutionError(`Step "${ctx.step.id}" ${where}: ${e instanceof Error ? e.message : String(e)}`);
   }
@@ -69,7 +69,7 @@ interface SwitchCase {
 export class SwitchStepExecutor implements StepExecutor {
   async execute(ctx: StepExecContext): Promise<StepExecResult> {
     const p = params(ctx);
-    const value = resolveValue(p.value, ctx.input);
+    const value = resolveValue(p.value, ctx.scope);
     const cases = (p.cases || []) as SwitchCase[];
 
     // FIRST match wins — ordered, not "most specific". Deterministic and
@@ -78,7 +78,7 @@ export class SwitchStepExecutor implements StepExecutor {
       const hit =
         'when' in c && c.when !== undefined
           ? evaluate(c.when, ctx, `case "${c.label}" failed to evaluate`)
-          : deepEqualValue(value, resolveValue(c.equals, ctx.input));
+          : deepEqualValue(value, resolveValue(c.equals, ctx.scope));
       if (hit) return stepResult({ matched: c.label, value }, { select: [c.label] });
     }
     return stepResult({ matched: null, value }, { select: ['default'] });
@@ -113,7 +113,7 @@ export class ForEachStepExecutor implements StepExecutor {
     if (!ref) throw new StepExecutionError(`Step "${ctx.step.id}" is a for-each step with no ref`);
 
     const itemsSpec = p.items === undefined ? { $path: 'previous.items' } : p.items;
-    const resolved = resolveValue(itemsSpec, ctx.input);
+    const resolved = resolveValue(itemsSpec, ctx.scope);
     if (!Array.isArray(resolved)) {
       // Loud: "no items" and "items was a string / undefined" are different
       // bugs, and quietly treating the second as the first hides a wiring error.
@@ -141,7 +141,7 @@ export class ForEachStepExecutor implements StepExecutor {
     let skipped = 0;
     for (let i = 0; i < resolved.length; i++) {
       if (p.filter !== undefined) {
-        const scope = { ...ctx.input, [itemKey]: resolved[i], [indexKey]: i };
+        const scope = { ...ctx.scope, [itemKey]: resolved[i], [indexKey]: i };
         let keep: boolean;
         try {
           keep = evaluateCondition(p.filter as Condition, scope);

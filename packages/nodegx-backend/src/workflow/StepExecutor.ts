@@ -27,9 +27,13 @@ export interface StepExecContext {
   workflow: WorkflowDefinition;
   step: WorkflowStep;
   /**
-   * The step's resolved input: the run payload plus the step's static `params`
-   * plus the immediately-upstream step's output under `previous`. See
+   * The step's resolved input: the run payload plus the step's `params` — with
+   * every `{"$path"}` / `{"$literal"}` already resolved (WFA-003) — plus the
+   * immediately-upstream step's output under `previous`. See
    * WF-001-SEMANTICS.md §Data.
+   *
+   * This is what a `call-function` step sends as the function's request body, so
+   * it is deliberately no larger than it needs to be.
    *
    * When the upstream step FAILED and routed here via `onError`, `previous` is
    * `{ error: { message, name, statusCode? } }` — which is what lets CF11-002's
@@ -37,10 +41,25 @@ export interface StepExecContext {
    */
   input: Record<string, unknown>;
   /**
-   * Outputs of EVERY predecessor that took an edge into this step, keyed by
-   * step id (WF-002 engine extension, for the `merge` kind). Topological order
-   * guarantees they have all finished by the time this step runs. A predecessor
-   * that failed appears with its `{ error }` output.
+   * The scope a LAZY value resolves against (WFA-003): `input` plus
+   * `upstream.<stepId>` for every earlier step that produced output. Conditions,
+   * a `wait` duration and a `for-each`'s `items` resolve against THIS, not
+   * `input`, so `{"$path": "upstream.save.orderId"}` means the same thing
+   * wherever it is written.
+   *
+   * It is not `input` because `upstream` must not be copied into every
+   * function's request body and every step's recorded inputData.
+   */
+  scope: Record<string, unknown>;
+  /**
+   * Outputs of every IMMEDIATE predecessor that took an edge into this step,
+   * keyed by step id (WF-002 engine extension, for the `merge` kind).
+   * Topological order guarantees they have all finished by the time this step
+   * runs. A predecessor that failed appears with its `{ error }` output.
+   *
+   * Narrower than `scope.upstream`, which spans every earlier step: `merge`
+   * decides whether a declared branch arrived by asking whether it is a KEY
+   * here, so widening this map would report a half-merge as complete.
    */
   upstream: Record<string, Record<string, unknown> | undefined>;
   /**
