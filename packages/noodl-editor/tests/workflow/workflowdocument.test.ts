@@ -21,6 +21,7 @@ import {
   typeNameForKind
 } from '../../src/editor/src/models/workflow/workflowNodeLibrary';
 import { layoutWorkflow } from '../../src/editor/src/models/workflow/workflowLayout';
+import { EventDispatcher } from '../../src/shared/utils/EventDispatcher';
 
 import type {
   StepKindCatalog,
@@ -281,6 +282,56 @@ describe('WFA-004 workflow document', () => {
       const doc = WorkflowDocument.fromDefinition({ ...REF, id: 'sw' }, definition, CATALOG);
       const names = doc.graph.findNodeWithId('route').dynamicports.map((p: { name: string }) => p.name);
       expect(names).toEqual([routePortName('paid'), routePortName('failed')]);
+    });
+
+    /**
+     * The step is in the graph BEFORE it announces its ports.
+     *
+     * `setDynamicPorts` broadcasts `Model.instancePortsChanged` to every global
+     * listener, and those listeners identify what an event is about by walking
+     * `owner`. Announcing from an unowned node crashed `ViewerConnection`'s
+     * handler with a TypeError that propagated out of `WorkflowDocument.open`,
+     * so ONE `switch` step made an entire workflow fail to open — found in the
+     * WFA-004 live pass, invisible to the spec above because no listener is
+     * attached here.
+     *
+     * Asserted as the invariant rather than by re-testing the listener: the
+     * listener is one of several, and the thing that must be true is that a
+     * node has a graph when it tells the world its ports changed.
+     */
+    it('adds the step to the graph before announcing its ports', () => {
+      const definition: WorkflowDefinition = {
+        version: 1,
+        id: 'sw',
+        entry: 'route',
+        concurrency: 1,
+        steps: [
+          {
+            id: 'route',
+            kind: 'switch',
+            params: { value: { $path: 'body.status' }, cases: [{ label: 'paid', equals: 'paid' }] }
+          }
+        ],
+        createdAt: '',
+        updatedAt: ''
+      };
+
+      const owners: unknown[] = [];
+      const group = {};
+      EventDispatcher.instance.on(
+        'Model.instancePortsChanged',
+        (e: { model: { owner?: unknown } }) => owners.push(e.model.owner),
+        group
+      );
+
+      try {
+        WorkflowDocument.fromDefinition({ ...REF, id: 'sw' }, definition, CATALOG);
+      } finally {
+        EventDispatcher.instance.off(group);
+      }
+
+      expect(owners.length).toBeGreaterThan(0);
+      owners.forEach((owner) => expect(owner).toBeDefined());
     });
   });
 

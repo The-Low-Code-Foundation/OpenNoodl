@@ -415,9 +415,16 @@ function buildGraph(definition: WorkflowDefinition, catalog: StepKindCatalog): W
       metadata: spec ? { typeLabelOverride: subLabelFor(spec, step, step.id === definition.entry) } : undefined
     });
 
-    if (step.kind === 'switch') node.setDynamicPorts(switchRoutePorts(node));
-
+    // Added to the graph BEFORE its dynamic ports are set, and the order is
+    // load-bearing rather than stylistic. `setDynamicPorts` broadcasts
+    // `Model.instancePortsChanged` globally, and every listener of a global
+    // model event identifies what the event is about by walking `owner` — so an
+    // unowned node is both a crash risk in a listener that does not expect one
+    // and invisible to the workflow filter that exists to stop these events
+    // reaching the viewer. Owned first, then announce.
     graph.addRoot(node);
+
+    if (step.kind === 'switch') node.setDynamicPorts(switchRoutePorts(node));
   }
 
   const known = new Set(definition.steps.map((s) => s.id));

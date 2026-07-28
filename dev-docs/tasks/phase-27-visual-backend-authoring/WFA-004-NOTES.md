@@ -1,11 +1,11 @@
-# WFA-004 — Notes (in progress)
+# WFA-004 — Notes
 
-**Status:** 🚧 In progress. The reuse thesis is proven and the authoring surface is built; the
-live pass is **not** finished, so the task is not closed. See [What is left](#what-is-left).
+**Status:** ✅ Complete. Every success criterion was driven in the running editor and
+screenshotted; the live pass found and fixed one shipped defect (F49).
 **Spec:** [WFA-004-WORKFLOW-CANVAS.md](./WFA-004-WORKFLOW-CANVAS.md) ·
 **Assessment / §1 decision:** [WFA-004-ASSESSMENT.md](./WFA-004-ASSESSMENT.md)
 
-**Commits so far**
+**Commits**
 
 | Commit | What |
 |---|---|
@@ -13,6 +13,7 @@ live pass is **not** finished, so the task is not closed. See [What is left](#wh
 | `b0a021b8` | A workflow is a document; step kinds are node types |
 | `638ebb36` | A real workflow renders on the existing canvas |
 | `632afcd9` | Edit a condition without touching JSON |
+| (this) | The live pass, and the `switch` step that could not open (F49) |
 
 ---
 
@@ -93,8 +94,38 @@ undo of a delete re-adding a step other steps' edges still point at.
 In a property-editor `TypeView`, `parent.model` is the visual-state/variant proxy; the real
 `NodeGraphNode` is one hop further in at `.model` (the same hop `TypeView.bindStyleDefaultWatch`
 makes). Reading `parent.model.owner` returns `undefined` with no error — the predecessor picker
-simply said "nothing runs before this step" on a step that had three. Found live, fixed, **not yet
-re-verified in the running app**.
+simply said "nothing runs before this step" on a step that had three. Found live, fixed, and
+**re-verified live**: selecting Order Pipeline's `decide` step now offers *Receive order*.
+
+### One `switch` step made a whole workflow fail to open (F49)
+
+The defect the live pass existed to find, and it was invisible to a green suite.
+
+`buildGraph` called `node.setDynamicPorts(...)` **before** `graph.addRoot(node)`. `setDynamicPorts`
+broadcasts `Model.instancePortsChanged`, and `ViewerConnection`'s handler for it opens with
+`if (!e.model.owner.owner)` — a guard whose own comment describes "the node isn't assigned to a
+component yet" but which is written one level too shallow. A node with no *graph* threw a
+`TypeError` out of the listener, through `notifyListeners`, out of `buildGraph`, and out of
+`WorkflowDocument.open` — so a workflow containing a single `switch` step opened as nothing at all.
+The Workflows panel's `guard` caught the rejection but the message never rendered, which is a second
+small thing worth knowing: a click that appears to do nothing is what a thrown-and-caught open looks
+like.
+
+Two fixes, because there were two faults:
+
+- **The listener** now guards both levels (`!e.model.owner || !e.model.owner.owner`), the way every
+  sibling handler in that file already does — and it gained the `isWorkflowModelEvent` filter it was
+  missing, so a `switch` step's dynamic ports no longer reach the viewer naming a component it has
+  never heard of. F44 closed six of these handlers and missed the seventh.
+- **`buildGraph`** adds the step to the graph *before* it announces its ports. That ordering is
+  load-bearing rather than tidy: every listener of a global model event identifies what the event is
+  about by walking `owner`, so an unowned node is both a crash risk in a listener that does not
+  expect one and **invisible to the workflow filter** — the guard could not have fired.
+
+**Why the suite could not have caught it:** `workflowdocument.test.ts` already built a `switch` step
+and passed, because no `ViewerConnection` is constructed in the editor specs, so nothing was
+listening. The new spec therefore asserts the *invariant* — every `Model.instancePortsChanged` a
+workflow emits carries a node that has an owner — rather than re-testing one listener.
 
 ### `forEachNode`'s callback is a truthy-return early-exit
 
@@ -136,30 +167,75 @@ know what an entry step is.
 - Editor: `packages/noodl-editor/tests/workflow/` — the definition⇄graph round trip (every step,
   edge, param and name), node id === step id, the acyclicity refusals, guid renaming, deterministic
   layout, and the catalog→node-type translation.
-- **Backend suite: 65 suites / 683 passed.** Editor typecheck clean.
+- **Backend suite: 65 suites / 683 passed. Editor suite: 1767 specs / 0 failures.** Editor typecheck
+  clean. The editor suite gained the `instancePortsChanged` ownership invariant above.
 
-## What is left
+## The live pass
 
-Blocking the task's success criteria:
+Driven in the running editor over CDP, from the launcher each time, against a real backend on
+`:8578`. Fixture: `WFA-004-nine-kinds.workflow.json` in this folder — one workflow with all nine
+kinds, authored over the admin API (which is itself the second success criterion), left on the local
+backend as *All Nine Kinds*.
 
-1. **Save round trip, live** — edit a step, Save, reopen, confirm the backend has it. The code path
-   exists and the backend contract test covers the wire; the gesture has not been driven.
-2. **Run &amp; pin, live** — §7's one continuous sequence, and the confirmation that WFA-002's
-   overlay places badges on this canvas **without modification** (success criterion 3). The overlay
-   needs nothing in theory — it resolves `step.nodeId` through `findNodeWithId` over the open graph,
-   and the ids match by construction — but "in theory" is not what that criterion asks for.
-3. **Re-verify the two fixes made after the last live run**: the `ModelProxy` hop in the predecessor
-   picker, and the scope chips no longer offering pattern entries (`upstream.<stepId>`).
-4. **The live pass on a workflow with all nine kinds, both themes, screenshotted**, and the hex
-   literal check over the new files.
-5. **Creation from the palette** — right-click an empty workflow canvas and add a step. The picker
-   filtering is in place (`getCreateStatus` + the runtime type) but has not been driven.
+| Criterion | Evidence |
+|---|---|
+| §1 decision recorded before canvas code | [the assessment](./WFA-004-ASSESSMENT.md), dated before `b0a021b8` |
+| An admin-API workflow renders, routes labelled, error path distinct | Order Pipeline and All Nine Kinds both open on the existing canvas; `ontrue`/`onfalse`/`empty`/`nonempty`/`done`/`skipped`/`paid`/`refunded`/`default` drawn on the wires; `onError` red **and** dashed |
+| Node ids are step ids; the overlay works **unmodified** | `getNodeBounds` answered for all six Order Pipeline step ids, and every pinned badge sat at `node.x + node.width + 3` — i.e. each badge on its own step's card, with no change to `ExecutionOverlay` |
+| Created from scratch on the canvas, and runs | *From Scratch* built by hand (New → palette → delete the template step → set `duration`), saved, then `Run & pin` → overlay header **success**, `✓ 28 ms` on the step, timeline `Step 1 / 1` |
+| A condition edited without touching JSON | `total gt 100` → `250` through the three controls, saved, reopened, confirmed on the backend |
+| `$path` from a picker over reachable predecessors | `decide` offers `body`, `trigger`, `headers`, `query`, `previous` and the concrete step **Receive order** — no pattern entries |
+| A cycle prevented at author time | `tally.next → receive.in` refused live: *"That would make a loop…"*; a self-edge refused; a legitimate downstream edge allowed |
+| Layout readable with no stored positions; adding a step disturbs nothing | All Nine Kinds arrived with no `ui` and laid out as a readable DAG row; the two saves wrote `ui` per step and a reopen reproduced the arrangement |
+| No backend, no lies | With the backend stopped the panel reads *"Start a backend to author workflows"* and explains that a workflow lives in a backend's data directory |
+| Run-and-pin as one gesture | One button: saves if dirty, runs, reads the record back, emits `execution:pinToCanvas` |
+| Both themes, tokens only | Screenshotted light and dark; the canvas repainted through `nodegx:themechanged`. Hex-literal check over the 17 new files: **zero**. The only hex in touched code is `CanvasTheme`'s `fallback:` for the new `logic` token — that file's own convention for all 32 tokens, and `--theme-color-node-category-logic` is defined for both themes in `colors.css` |
+| `WORKFLOW-NODES.md` describes what exists | F10 closed; the coverage gate fails if it names a missing surface again |
+
+**A saved definition cannot break a backend, demonstrated rather than argued.** The from-scratch
+workflow's first save was *refused* — `step "wait".params.duration must be a number > 0`, the
+backend validator's own message shown verbatim in the panel — because the palette-inserted step had
+no duration yet. That is the spec's boot-refusal trap closed at the only place it can be: nothing is
+written locally first, so a refused save leaves the backend exactly as it was.
+
+### The open question the spec asked: does `for-each` read as one node?
+
+**Yes, and the reason is the sub-label.** The card measures 150 × 120, is titled *Each order line*,
+and its second line reads **`For Each · chargeLine`** — the per-item function named on the card
+itself, beside two route ports (`empty`, `nonempty`). Nothing about it suggests a container you could
+descend into, so the n8n expectation is not set up and then broken; what it says is "this step calls
+`chargeLine` once per item", which is exactly what it does. Descending into `chargeLine` is WFA-006,
+and the card already names the thing WFA-006 will open.
 
 ## Open items to hand on
 
 | # | Item |
 |---|---|
-| a | The Workflows panel re-reads backends when it **becomes active** or on Refresh. A backend started while the panel is already open needs a Refresh press — there is no backend-started event in the renderer today, so closing this properly means adding one. Same hazard family as WFA-002's F34. |
+| a | **F47, and a call for Richard.** The Workflows panel re-reads backends when it becomes active or on Refresh. A backend started while the panel is already open needs a Refresh press, because there is no backend-started event in the renderer. Closing it properly means adding one — and it would close WFA-002's F34 and the Triggers panel at the same time, which is the argument for doing it once rather than three times. Left as a residual beside F34 pending that call. |
 | b | `NavigationHistory` resolves its entries through `ProjectModel.getComponentWithName`, which cannot find a workflow, so workflows are deliberately kept **out** of canvas back/forward (`pushHistory: false`) rather than pushed and silently discarded. |
 | c | `EditorDocument` remembers `selectedComponentName` and restores it through the same lookup, so "reopen the last thing I had open" does not restore a workflow. Guarded, so it no-ops rather than failing. |
-| d | `for-each` draws as one node, per the spec's Out of Scope. Whether that reads clearly is the open question the live pass should answer. |
+| d | The node picker's count says *9 nodes* while also listing `Comment` under **Other** — `Comment` is a canvas annotation available on every graph and is not counted as a node type. Pre-existing picker behaviour, not workflow-specific; noted because a nine-kind workflow is the first graph where "9" and "10 cards" sit next to each other. |
+
+## Driving notes for the next executor
+
+Two hours of this task went to the harness rather than the code. What actually works:
+
+- **`--target=dashboard` is not a real target.** `cdp.js` has no such name, so it silently falls back
+  to *the first page in `/json/list`* — which is the editor only until an About window or a detached
+  preview exists. Use `--target=/src/editor/index.html`.
+- **Do not click the sidebar rail by index.** It is icon-only, clicking the *active* icon collapses
+  the panel and re-renders the rail, and index 0 is `BrandExit` — which leaves the project. Call
+  `SidebarModel.instance.switch('<panel id>')` instead. Reach it from CDP by pushing a probe chunk
+  onto `webpackChunknoodl_editor` to capture `__webpack_require__`, then reading `R.c` by module path;
+  `scripts` for this are worth keeping.
+- **A hidden panel's elements have a zero-sized box**, and `cdp.js click` then aims somewhere else
+  entirely. Check `getBoundingClientRect().width > 0` before every click.
+- **The canvas is Canvas2D**, so there is nothing to select. Screen position is
+  `topLeftCanvasPos + (getNodeBounds(id) + pan) * scale`; dispatch `Input.dispatchMouseEvent` at that
+  point. `centerToFit` centres but does **not** zoom out, and `setPanAndScale` needs a `repaint()`.
+- **A card only grows a port row for a port that is already connected**, so a new node shows no
+  ports: hover its right edge to raise the connection dot, then drag to the target to open the
+  existing two-step ConnectionBar.
+- The editor process was SIGTERMed repeatedly mid-session (renderer *and* GPU, `exit_code=15`, with
+  the quit handshake's "Timed out waiting for the renderer to flush" in the log). Launch it with the
+  Bash sandbox disabled and do each check in **one** script rather than across several calls.

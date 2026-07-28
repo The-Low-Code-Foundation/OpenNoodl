@@ -1,6 +1,6 @@
 # Phase 27 — Visual Backend Authoring (Track L): Progress
 
-**Status:** 🚧 In progress — 3 / 7 complete, WFA-004 under way
+**Status:** 🚧 In progress — 4 / 7 complete, WFA-005 next
 **Specced:** 2026-07-27, from a live end-to-end test of phase 19's workflow engine
 **Phase overview:** [README.md](./README.md)
 
@@ -15,7 +15,7 @@ Not started · In progress · **Built–not wired** · Complete · Superseded
 | [WFA-001](./WFA-001-CLOUD-FUNCTIONS-RECONNECTED.md) | Cloud functions, reconnected | 1 | ✅ Complete | 2026-07-28 | There were **five** cuts, not four — the cloud node library never reached the editor after WF-007 (F25b). Full loop live-verified; two shipped defects found by running it (F26 export-without-Home, F28 hot-deploy crash). [Notes](./WFA-001-NOTES.md) |
 | [WFA-002](./WFA-002-RUN-INSPECTOR.md) | The run inspector | 1 | ✅ Complete | 2026-07-28 | The spec was right that most of it existed and was off — and wrong that cloud function runs feed it: **they record zero steps** (F32), so the overlay can place a badge only once WFA-004 exists. Run/cancel live-verified; three shipped defects fixed (F31, F33, F34). [Notes](./WFA-002-NOTES.md) |
 | [WFA-003](./WFA-003-STEP-DATA-MAPPING.md) | Step data mapping & one payload shape | 2 | ✅ Complete | 2026-07-28 | Backend-only, as specced. There were **five** entry points, not four (F38). One key could not be kept in both shapes — `trigger` is now the object, the string moved to `triggerType` (F39). [Notes](./WFA-003-NOTES.md) |
-| [WFA-004](./WFA-004-WORKFLOW-CANVAS.md) | The workflow canvas | 3 | 🚧 In progress | — | **Reuse, not escalate** — the §1 decision is recorded in [WFA-004-ASSESSMENT.md](./WFA-004-ASSESSMENT.md) and a real workflow renders on the *existing* canvas with node ids that are step ids. Authoring surface built; the live pass is not finished. [Notes](./WFA-004-NOTES.md) |
+| [WFA-004](./WFA-004-WORKFLOW-CANVAS.md) | The workflow canvas | 3 | ✅ Complete | 2026-07-28 | **Reuse, not escalate** — the §1 decision is in [WFA-004-ASSESSMENT.md](./WFA-004-ASSESSMENT.md), and a real workflow renders on the *existing* canvas with node ids that are step ids, so WFA-002's overlay lands on it **unmodified** (criterion 3, confirmed badge-by-badge). The live pass found one shipped defect: a single `switch` step made a whole workflow fail to open (F49). [Notes](./WFA-004-NOTES.md) |
 | [WFA-005](./WFA-005-TRIGGERS-ON-CANVAS.md) | Triggers as canvas entry nodes | 3 | ⬜ Not started | — | Carries shipped defects F7 and F8 |
 | [WFA-006](./WFA-006-STEP-TO-FUNCTION-DESCENT.md) | Descend from a step into its function graph | 3 | ⬜ Not started | — | What makes the two tiers feel like one language |
 | [WFA-007](./WFA-007-AI-PROPOSES-ONTO-CANVAS.md) | AI proposes workflows onto the canvas | 4 | ⬜ Not started | — | Adds no AI capability; adds a review surface |
@@ -96,9 +96,10 @@ around the description.
 | F43 | **`NodeLibraryImporter.mergeUpdates` is additive by design** (`TODO: Update the node data?`), so importing a second backend's step-kind catalog would leave the FIRST backend's params in place under the second backend's names — the exact drift the served registry exists to prevent, arriving through the editor's own merge. A workflow library is now *replaced*: the importer remembers the names it installed and removes exactly those first | `NodeLibraryImporter.ts` | WFA-004 ✅ |
 | F44 | **`Model.*` events are broadcast globally** by `shared/model.js`, so a workflow's canvas graph — deliberately not part of `ProjectModel` — reaches every handler in `ViewerConnection`. Only `Model.nodeAdded` filtered on project ownership; its siblings checked that a *component* existed, which a workflow's canvas adapter satisfies, so editing a step param would have sent the viewer a `parameterChanged` naming a component it has never heard of. Guarded as a positive test for the workflow prefix — "not this project" would also drop module-component updates those handlers deliberately still send | `ViewerConnection.ts` | WFA-004 ✅ |
 | F45 | **A guid is a legal step id**, so nothing would have broken if canvas-created steps kept theirs — but every execution record would read `nodeId: "3f2a1c04-…"` instead of `nodeId: "charge"`, and the run inspector this canvas exists to feed would be unreadable. New nodes are renamed from their kind on the way in; a non-guid id is kept, because that case is the undo of a delete re-adding a step other steps' edges point at | `WorkflowGraphModel.addRoot` | WFA-004 ✅ |
-| F46 | **In a property-editor row, `parent.model` is a `ModelProxy`** and the real `NodeGraphNode` is one hop further in at `.model`. Reading `parent.model.owner` returns `undefined` with no error, so the `$path` predecessor picker said "nothing runs before this step" on a step with three. Silent because every other read through the proxy works. Fixed; **not yet re-verified in the running app** | `propertyeditor/DataTypes/WorkflowTypes.ts` | WFA-004 |
+| F46 | **In a property-editor row, `parent.model` is a `ModelProxy`** and the real `NodeGraphNode` is one hop further in at `.model`. Reading `parent.model.owner` returns `undefined` with no error, so the `$path` predecessor picker said "nothing runs before this step" on a step with three. Silent because every other read through the proxy works. Fixed and **re-verified live** — `decide` now offers *Receive order* | `propertyeditor/DataTypes/WorkflowTypes.ts` | WFA-004 ✅ |
 | F47 | The Workflows panel re-reads backends when it **becomes active** or on Refresh. A backend started while the panel is already open needs a Refresh press, because **there is no backend-started event in the renderer** — closing this properly means adding one. Same hazard family as F34, now in a third panel | `WorkflowsPanel.tsx`; `BackendManager.js` sends nothing | unowned |
 | F48 | `NavigationHistory` resolves its entries through `ProjectModel.getComponentWithName`, and `EditorDocument` restores `selectedComponentName` the same way — neither can find a workflow. Workflows are therefore kept **out** of canvas back/forward rather than pushed and silently discarded, and "reopen the last thing I had open" does not restore one | `NavigationHistory.ts:104`, `EditorDocument.tsx:396` | WFA-004 (accepted) |
+| F49 | **One `switch` step made a whole workflow fail to open, and a green suite could not see it.** `buildGraph` called `setDynamicPorts` *before* `graph.addRoot`, and `ViewerConnection`'s `Model.instancePortsChanged` handler opens `if (!e.model.owner.owner)` — a guard whose own comment describes a node with no *component* but which is one level too shallow for a node with no *graph*. The `TypeError` escaped the listener, `notifyListeners`, `buildGraph` and `WorkflowDocument.open`, so the panel click appeared to do nothing at all. **F44 closed six of these handlers and missed the seventh**, which also had no `isWorkflowModelEvent` filter — so a `switch` step's ports would have reached the viewer naming a component it has never heard of. Both fixed, plus the ordering: a step is in the graph *before* it announces its ports, because every listener of a global model event identifies the event by walking `owner`, and an unowned node is invisible to the very filter meant to stop it. The editor specs already built a `switch` step and passed, because no `ViewerConnection` exists there — the new spec asserts the *invariant* instead | `ViewerConnection.ts` `Model.instancePortsChanged`; `WorkflowDocument.buildGraph` | WFA-004 ✅ |
 
 ### What already exists and is worth reusing
 
@@ -124,11 +125,15 @@ around the description.
   third `RuntimeType` is added for the node LIBRARY, which is what filters the picker. The question
   conflated two things with different answers, and separating them was the decision. Reasoning in
   [WFA-004-ASSESSMENT.md](./WFA-004-ASSESSMENT.md) §1.
-- **Where do workflows live in the tree?** They are backend artefacts stored in the backend's data
-  directory, not project files — so unlike cloud functions they do not belong to the project, do not
-  travel through version control, and are not in the export. That is a genuine modelling question
-  WFA-004 owns, and it interacts with DEP-002/DEP-005: a workflow that is not in the artifact does not
-  get deployed with the app.
+- ~~**Where do workflows live in the tree?**~~ **Decided by WFA-004 — not in the tree at all.** They
+  are listed in their own **Workflows** panel, grouped by the backend they belong to, beside Execution
+  History rather than beside the project's components — because they are not project components, and
+  WFA-001 already established that flattening two *runtimes* into one tree namespace is a bug. A
+  `git clone` brings none: what you see depends entirely on which backend the editor is pointed at.
+  The interaction with DEP-002/DEP-005 stands and is **not solved here**: a deployed app does not
+  carry its workflows, the canvas names its backend at all times, and "promote these workflows to the
+  production backend" is a phase-26 conversation rather than an export button that writes a file
+  nothing reads. Reasoning in [WFA-004-ASSESSMENT.md](./WFA-004-ASSESSMENT.md) §1c.
 - ~~**Does an empty palette read as broken?**~~ **Handled by WFA-004** — with no backend running
   the Workflows panel says *"Start a backend to author workflows"* and explains that a workflow
   lives in a backend's data directory rather than in the project. Nothing is bundled: the step-kind
@@ -140,14 +145,50 @@ around the description.
   every collaborator. Auto-layout is deterministic, so a workflow with no positions is readable
   rather than random, and a step added with none is placed clear of everything already arranged
   without moving any of it.
-- **Is `for-each` legible on a canvas without a sub-graph?** It iterates a function rather than a
-  sub-graph, deliberately. Whether that reads clearly as a single node with a fan-out badge, or
-  confuses everyone who has used n8n, is a real question the WFA-004 live pass should answer.
+- ~~**Is `for-each` legible on a canvas without a sub-graph?**~~ **Answered by the WFA-004 live pass
+  — yes, because of the sub-label.** The card is titled *Each order line* with a second line reading
+  `For Each · chargeLine`: the per-item function is named on the card itself, beside its `empty` /
+  `nonempty` routes. Nothing about it suggests a container to descend into, so the n8n expectation is
+  never set up and then broken. Descending into `chargeLine` is WFA-006, and the card already names
+  what WFA-006 will open.
 - **Should WFA-001 deploy functions on save, on backend start, or on an explicit button?** On-save is
   the best feel and the worst failure mode (a broken function silently replaces a working one on a
   running backend). WFA-001 decides; whatever it picks must be visible in the UI.
 
 ## Log
+
+- **2026-07-28** — **WFA-004 complete.** The live pass closed it, and it earned its keep: **one
+  `switch` step made an entire workflow fail to open** (F49), and the click that opened it appeared to
+  do nothing at all. `buildGraph` announced a step's dynamic ports *before* putting the step in the
+  graph, and `ViewerConnection`'s `Model.instancePortsChanged` handler — the one sibling F44 missed,
+  and the one with no workflow filter — read through the missing graph and threw a `TypeError` that
+  escaped all the way out of `WorkflowDocument.open`. The editor suite already built a `switch` step
+  and passed, because no `ViewerConnection` is constructed there; the new spec therefore asserts the
+  **invariant** (a node has an owner when it announces its ports) rather than re-testing one listener.
+  A green suite proved nothing about this, which is exactly the claim this phase's verification
+  posture makes.
+  **Every success criterion driven in the running editor.** Node ids are step ids and WFA-002's
+  overlay lands on this canvas **with no modification** — confirmed badge-by-badge, each one sitting
+  at its own step's card corner, which closes F32's "the badges have never had anything to draw".
+  A condition edited through three controls (`gt 100` → `250`) survived Save → close → reopen and was
+  read back off the backend, with the per-step `ui` positions beside it. A workflow was built from
+  scratch — right-click an empty canvas, palette offering **exactly the nine step kinds and nothing
+  else** (the third `RuntimeType` doing its job with no filtering code in the picker), a step inserted
+  with the id `wait` rather than a guid — then saved and run, with the overlay reporting *success* and
+  `✓ 28 ms`. Its **first** save was *refused* — `step "wait".params.duration must be a number > 0`,
+  the backend validator's own words in the panel — which is the boot-refusal trap closed by
+  demonstration rather than by argument. Drawing a cycle is refused live with a sentence about DAGs;
+  the `$path` picker offers the served scope roots and the concrete predecessor **Receive order**
+  (F46 re-verified). All nine kinds screenshotted in **both themes**, repainting through
+  `nodegx:themechanged`, with the `onError` edge red *and* dashed so it survives greyscale; the
+  hex-literal check over the 17 new files is **zero**.
+  **The `for-each` question is answered: yes, it reads as one node**, because the card's second line
+  names the function it iterates (`For Each · chargeLine`) — it never sets up the n8n expectation of a
+  container, and it already names what WFA-006 will open. Editor suite **1767/0**, backend
+  **65 / 683**, typecheck clean. F47 (no backend-started event in the renderer) is left as a residual
+  beside F34 — closing it properly would fix three panels at once, which is the argument for doing it
+  once. Full pass, including the CDP driving notes that cost this session two hours, in
+  [WFA-004-NOTES.md](./WFA-004-NOTES.md).
 
 - **2026-07-28** — **WFA-004 in progress.** The §1 decision was taken and written down before any
   canvas code, and it separates two questions the spec asked as one: **a workflow is its own

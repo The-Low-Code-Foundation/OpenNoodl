@@ -818,7 +818,16 @@ export class ViewerConnection extends Model {
       function (e) {
         if (_this.watchModelChangesDisabled) return;
 
-        if (!e.model.owner.owner) {
+        if (isWorkflowModelEvent(e.model)) return; // WFA-004: not this project's graph
+
+        // `!e.model.owner` as well as `!e.model.owner.owner`: the comment below
+        // describes a node that has no *component* yet, but a node can also have
+        // no *graph* yet — `setDynamicPorts` before the node is added to one.
+        // Reading through the missing graph threw a TypeError that aborted the
+        // caller, which is how a `switch` step made an entire workflow fail to
+        // open (WFA-004 live pass). Every sibling handler here already spells
+        // the guard both levels deep; this one did not.
+        if (!e.model.owner || !e.model.owner.owner) {
           //node isn't assigned to a component yet
           //this can happen during specific cirumstances like the following:
           //1. ComponentModel.fromJSON is called

@@ -1,0 +1,80 @@
+{
+  "id": "nineKinds",
+  "name": "All Nine Kinds",
+  "entry": "receive",
+  "concurrency": 1,
+  "steps": [
+    {
+      "id": "receive",
+      "name": "Receive order",
+      "kind": "call-function",
+      "ref": "intake",
+      "next": ["gate"]
+    },
+    {
+      "id": "gate",
+      "name": "Over £100?",
+      "kind": "branch",
+      "params": {
+        "condition": { "left": { "$path": "previous.total" }, "op": "gt", "right": 100 }
+      },
+      "routes": { "ontrue": ["kind"], "onfalse": ["hold"] }
+    },
+    {
+      "id": "kind",
+      "name": "Payment status",
+      "kind": "switch",
+      "params": {
+        "value": { "$path": "previous.status" },
+        "cases": [
+          { "label": "paid", "equals": "paid" },
+          { "label": "refunded", "equals": "refunded" }
+        ]
+      },
+      "routes": { "paid": ["charge"], "refunded": ["lines"], "default": ["halt"] }
+    },
+    {
+      "id": "charge",
+      "name": "Charge card",
+      "kind": "retry",
+      "ref": "chargeCard",
+      "params": { "maxAttempts": 3, "delayMs": 200 },
+      "next": ["lines"],
+      "onError": ["halt"]
+    },
+    {
+      "id": "lines",
+      "name": "Each order line",
+      "kind": "for-each",
+      "ref": "chargeLine",
+      "params": { "items": { "$path": "previous.items" }, "concurrency": 1 },
+      "routes": { "nonempty": ["tally"], "empty": ["hold"] }
+    },
+    {
+      "id": "hold",
+      "name": "Cool off",
+      "kind": "wait",
+      "params": { "duration": 2, "unit": "seconds" },
+      "next": ["embargo"]
+    },
+    {
+      "id": "embargo",
+      "name": "Hold until release",
+      "kind": "wait-until",
+      "params": { "target": { "$path": "previous.releaseAt" } },
+      "routes": { "done": ["tally"], "skipped": ["tally"] }
+    },
+    {
+      "id": "halt",
+      "name": "Refuse the order",
+      "kind": "stop",
+      "params": { "message": "This order cannot be paid for", "isError": true }
+    },
+    {
+      "id": "tally",
+      "name": "Tally",
+      "kind": "merge",
+      "params": { "mode": "any", "strategy": "object" }
+    }
+  ]
+}
