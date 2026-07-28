@@ -27,7 +27,14 @@
 **Preview pane**: device card (bg white, radius 10, border-1, shadow-sm) on bg-0 ground — shipped in UIX-004; verify. Size tag top-right mono 10.5px fg-3 (`1280 × 800 · 100%`).
 
 **Canvas overlays** (over the dot-grid graph area):
-- **AI pill** bottom-left (left 16 / bottom 14): bg-1, border-1, radius 99px, padding 8px 14px, shadow-popup, 12.5px fg-3, accent 14px spark glyph, `Ask NodeGX AI…` + `⌘J` kbd chip (mono 10px, bg-3, border-1, radius 4). **Bind to the real AI entry point** (AIX-002 authoring loop UI) and register ⌘J if free. If no invokable AI surface exists in this build, omit the pill and flag it in NOTES — no dead UI.
+- **AI pill** bottom-left (left 16 / bottom 14): bg-1, border-1, radius 99px, padding 8px 14px, shadow-popup, 12.5px fg-3, accent 14px spark glyph, `Ask AI…` + `⌘J` kbd chip (mono 10px, bg-3, border-1, radius 4). **Bind to the real AI entry point** (AIX-002 authoring loop UI) and register ⌘J if free. If no invokable AI surface exists in this build, omit the pill and flag it in NOTES — no dead UI.
+  > ⚠️ **Wording superseded 2026-07-28.** The mock, and this spec as originally
+  > written, said `Ask NodeGX AI…`. Richard's call: it now reads **`Ask AI…`**.
+  > Same reasoning that renamed the retired canvas palette — AIX-001 made the
+  > client provider-agnostic, and the panel names the configured provider itself,
+  > so naming the product here claims a first-party service that does not exist.
+  > The mock HTML and the 2026-07-26 PROGRESS entry still say the old string;
+  > both are historical records and are deliberately left as-is.
 - **Zoom cluster** bottom-right (right 14 / bottom 14): bg-1, border-1, radius 8, shadow-sm, joined buttons padding 6px 10px (−, mono 11px %, +, fit-view 13px glyphs), hover bg-3. Bind to the real canvas zoom API (the painter exposes zoom; UIX-005 QA drove 25/50/200%). Fit-view binds to the existing zoom-to-fit if present, else omit that button.
 
 **Bottom bar** (38px, bg-1, border-t, gap 6, padding 0 12px):

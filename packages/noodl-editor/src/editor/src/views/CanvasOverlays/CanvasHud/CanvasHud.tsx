@@ -20,8 +20,8 @@ export interface CanvasHudProps {
 
 /**
  * PAR-003: the two DOM overlays over the node-graph canvas from the editor
- * mock — the "Ask NodeGX AI" pill (bottom-left) and the zoom cluster
- * (bottom-right). Pure presentation over real signals:
+ * mock — the "Ask AI" pill (bottom-left) and the zoom cluster (bottom-right).
+ * Pure presentation over real signals:
  *
  * - The AI pill opens the AIX-002 authoring loop UI (the "Build" side panel)
  *   and only renders while that panel is actually registered/enabled in the
@@ -74,7 +74,7 @@ export function CanvasHud({ zoomPercent, onZoomIn, onZoomOut, onZoomToFit, showA
               <path d="M8 1.5c.5 2.9 1.6 4 4.5 4.5-2.9.5-4 1.6-4.5 4.5-.5-2.9-1.6-4-4.5-4.5 2.9-.5 4-1.6 4.5-4.5ZM12.8 9.5c.3 1.6.9 2.2 2.5 2.5-1.6.3-2.2.9-2.5 2.5-.3-1.6-.9-2.2-2.5-2.5 1.6-.3 2.2-.9 2.5-2.5Z" />
             </svg>
           </span>
-          Ask NodeGX AI…
+          Ask AI…
           <kbd>{Keybindings.OPEN_AI_PANEL.label}</kbd>
         </button>
       )}
