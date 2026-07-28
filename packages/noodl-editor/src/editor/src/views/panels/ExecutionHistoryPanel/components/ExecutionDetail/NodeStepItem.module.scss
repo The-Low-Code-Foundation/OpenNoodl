@@ -57,9 +57,79 @@
   text-overflow: ellipsis;
 }
 
+.NodeId {
+  font-family: 'Courier New', Courier, monospace;
+
+  &::before {
+    content: '·';
+    margin: 0 4px;
+  }
+}
+
+/* Second line: `wait · start · 2 attempts`. Everything secondary lives here so
+   the name keeps the full width of the first line. */
 .NodeType {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
   color: var(--theme-color-fg-default-shy);
   font-size: 10px;
+}
+
+.Chip {
+  margin-left: 6px;
+  font-size: 10px;
+  color: var(--theme-color-fg-default-shy);
+  background-color: var(--theme-color-bg-3);
+  border-radius: 10px;
+  padding: 1px 6px;
+  white-space: nowrap;
+}
+
+.Status {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--theme-color-fg-default-shy);
+
+  &[data-status='success'] {
+    color: var(--theme-color-success);
+  }
+
+  &[data-status='error'] {
+    color: var(--theme-color-danger);
+  }
+
+  &[data-status='running'] {
+    color: var(--theme-color-notice);
+  }
+}
+
+/* The error-routing / skipped explanation line. Always visible, never behind a
+   disclosure — it is the answer to "why did this run do that". */
+.Routing {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 12px 8px 40px;
+  font-size: 11px;
+}
+
+.RoutingHandled {
+  color: var(--theme-color-fg-default-shy);
+}
+
+.RoutingUnhandled {
+  color: var(--theme-color-danger);
+}
+
+.RoutingReceived {
+  color: var(--theme-color-notice);
+}
+
+.RoutingSkipped {
+  color: var(--theme-color-fg-default-shy);
+  font-style: italic;
 }
 
 .StepMeta {

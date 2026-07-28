@@ -6,6 +6,11 @@ export interface UseExecutionDetailResult {
   execution: ExecutionWithSteps | null;
   loading: boolean;
   error: string | null;
+  /**
+   * Re-read the record. Needed after cancelling: the run's status changes on the
+   * backend and this view would otherwise keep saying `running` (observed live).
+   */
+  refresh: () => void;
 }
 
 /**
@@ -48,5 +53,5 @@ export function useExecutionDetail(executionId: string | null): UseExecutionDeta
     fetch();
   }, [fetch]);
 
-  return { execution, loading, error };
+  return { execution, loading, error, refresh: fetch };
 }

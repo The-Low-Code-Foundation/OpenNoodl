@@ -1,6 +1,6 @@
 # Phase 27 — Visual Backend Authoring (Track L): Progress
 
-**Status:** 🚧 In progress — 1 / 7 (WFA-001 complete)
+**Status:** 🚧 In progress — 2 / 7 (WFA-001, WFA-002 complete)
 **Specced:** 2026-07-27, from a live end-to-end test of phase 19's workflow engine
 **Phase overview:** [README.md](./README.md)
 
@@ -13,7 +13,7 @@ Not started · In progress · **Built–not wired** · Complete · Superseded
 | ID | Title | Tier | Status | Landed | Notes |
 |---|---|---|---|---|---|
 | [WFA-001](./WFA-001-CLOUD-FUNCTIONS-RECONNECTED.md) | Cloud functions, reconnected | 1 | ✅ Complete | 2026-07-28 | There were **five** cuts, not four — the cloud node library never reached the editor after WF-007 (F25b). Full loop live-verified; two shipped defects found by running it (F26 export-without-Home, F28 hot-deploy crash). [Notes](./WFA-001-NOTES.md) |
-| [WFA-002](./WFA-002-RUN-INSPECTOR.md) | The run inspector | 1 | ⬜ Not started | — | Mostly switching on what WF-006 built. Independent of the canvas |
+| [WFA-002](./WFA-002-RUN-INSPECTOR.md) | The run inspector | 1 | ✅ Complete | 2026-07-28 | The spec was right that most of it existed and was off — and wrong that cloud function runs feed it: **they record zero steps** (F32), so the overlay can place a badge only once WFA-004 exists. Run/cancel live-verified; three shipped defects fixed (F31, F33, F34). [Notes](./WFA-002-NOTES.md) |
 | [WFA-003](./WFA-003-STEP-DATA-MAPPING.md) | Step data mapping & one payload shape | 2 | ⬜ Not started | — | Prerequisite for WFA-004. Backend-only; no editor work |
 | [WFA-004](./WFA-004-WORKFLOW-CANVAS.md) | The workflow canvas | 3 | ⬜ Not started | — | The big one. Reuse-or-escalate is the governing rule |
 | [WFA-005](./WFA-005-TRIGGERS-ON-CANVAS.md) | Triggers as canvas entry nodes | 3 | ⬜ Not started | — | Carries shipped defects F7 and F8 |
@@ -67,14 +67,26 @@ around the description.
 | F29 | Both frontend exporters bail on `!projectModel.getRootNode()`, so a project with **no Home component** could export no cloud functions at all — and the deployer read that as "no functions". Cloud functions have no visual root | `utils/exporter/json.ts:29,76`; fixed in `exporter/cloudFunctions.ts` | WFA-001 ✅ |
 | F30 | Creating a component while any non-default sheet is selected named it from the tree's **display** path, which has the sheet prefix stripped — so it landed in the default sheet (and at root, with no leading `/`). Dragging and folder-renaming had the same bug. Pre-existing for `#Pages`; fatal for `#__cloud__` | `ComponentsPanelNew/hooks/useComponentActions.ts`; fixed generally | WFA-001 ✅ |
 
+### Found by WFA-002, 2026-07-28
+
+| # | Finding | Where | Owner |
+|---|---|---|---|
+| F31 | **A 0 ms step was indistinguishable from a skipped one.** `rowToStep`/`rowToExecution` read nullable numeric columns with `(row.x as number) \|\| undefined`, folding a genuine `0` into "absent". On a local backend most steps finish sub-millisecond, so the `branch` step in every observed run showed `—`, exactly like the `skipped` step two rows below it. Fixed with a `nullableNumber` helper — shared with the backend, so `/executions` is fixed too | `noodl-viewer-cloud/src/execution-history/store.ts:621,641` | WFA-002 ✅ |
+| F32 | **Cloud function runs record zero steps.** `ExecutionLogger.startNode` is called from exactly one place in the repo — `WorkflowEngine.ts:406`. Nothing in the cloud runtime records a function's graph nodes. Confirmed against WFA-001's three `saveOrder` executions: `steps: 0` every time. So the `ExecutionOverlay` can **never** place a badge today: function runs have no steps, and a workflow run's step ids match no canvas until WFA-004. **F16 is true only of workflow runs**, and the spec's Step 7 (pin a function execution, scrub its timeline) is not possible. WFA-002 makes both cases say so in words | `ExecutionLogger.startNode`, `WorkflowEngine.ts:406` | WFA-004 (to make it resolvable); message shipped by WFA-002 |
+| F33 | **A long run read as a failed run.** `POST /admin/workflow-defs/:id/run` answers only when the run finishes, and every `ServiceSupervisor.request` carries a hard `AbortSignal.timeout(30000)`. Observed live on a 5-minute `wait`: `TimeoutError` surfaced in the editor while the run was healthy. `runWorkflowDef` now reports `{stillRunning:true}` instead of throwing; raising the ceiling would only move the lie further out | `BackendManager.runWorkflowDef`, `ServiceSupervisor.js:311` | WFA-002 ✅ |
+| F34 | **The sidebar keeps an inactive panel mounted but hidden**, so switching away and back does not remount or refetch. Observed live: open the panel, start a backend, come back — still "No backend is running" until Refresh. Fixed for this panel with an `activeChanged` listener. A general hazard for **any** panel whose subject is another process's state — Backend Services and Triggers are worth checking | `SidebarModel.setActivePanel` | WFA-002 ✅ (this panel); unowned for the others |
+| F35 | A dispatched run's record is written as the run *starts*, so a refresh in the same tick loses the race to the HTTP round trip and the in-flight row is missing until the user refreshes. One follow-up fetch ~800 ms later covers it (deliberately not a poller) | `ExecutionHistoryPanel.handleStarted` | WFA-002 ✅ |
+| F36 | `npm run cloud-library:check` reports the committed cloud node library stale — **and was already stale on a clean `cline-dev` tree** (verified by stashing). A CI gate WFA-001 added is red on `main`-line work | `scripts/cloud-node-library/`, `cloud-node-library.json` | unowned — pre-existing, needs a regenerate-and-commit |
+| F37 | Schedule-triggered executions carry a doubled workflow name (`countOrdercountOrderss`) in the list. Cosmetic, from the WF-005 trigger path, not touched here | observed in `/executions` rows | unowned |
+
 ### What already exists and is worth reusing
 
 | # | Finding | Where | Owner |
 |---|---|---|---|
 | F15 | `ExecutionOverlay` keys on `step.nodeId → getNodeBounds(nodeId)`, and the workflow engine writes the **workflow's own step ids** into that field (`save`, `decide`, `charge`). A canvas using step ids as node ids gets the overlay unmodified | `ExecutionOverlay.tsx:38,77`; bounds from `OverlayViews.ts:100` via `nodegrapheditor.ts:340` | WFA-002, WFA-004 |
-| F16 | The overlay is a complete run inspector already: `ExecutionNodeBadge` (status at node bounds), `ExecutionDataPopup` (input/output/error/timing), `ExecutionTimeline` (scrubber that steps through a run) | `views/CanvasOverlays/ExecutionOverlay/` | WFA-002 |
+| F16 | The overlay is a complete run inspector already: `ExecutionNodeBadge` (status at node bounds), `ExecutionDataPopup` (input/output/error/timing), `ExecutionTimeline` (scrubber that steps through a run). **Qualified by F32 (2026-07-28): true only for workflow runs, and only once a canvas exists whose node ids are step ids. Cloud function runs record no steps at all, so the badges have never had anything to draw.** | `views/CanvasOverlays/ExecutionOverlay/` | WFA-002 |
 | F17 | "Pin to Canvas" already exists — `ExecutionDetail` emits `execution:pinToCanvas` over `EventDispatcher` with the full execution including steps | `ExecutionHistoryPanel.tsx:24,41` | WFA-002 |
-| F18 | The Execution History panel is registered `experimental: true`, so it is **not in the sidebar rail** by default | `router.setup.ts:232` | WFA-002 |
+| F18 | The Execution History panel is registered `experimental: true`, so it is **not in the sidebar rail** by default. **Closed by WFA-002, 2026-07-28** | `router.setup.ts:232` | WFA-002 ✅ |
 | F19 | Step records carry everything a run inspector needs: `nodeId`, `nodeType`, `stepIndex`, `startedAt`, `completedAt`, `durationMs`, `status`, `inputData`, `outputData`. Observed `nodeType` values: `function:saveOrder`, `branch`, `retry:chargeCard`, `merge` | `GET /executions/:id`, live | WFA-002 |
 | F20 | `GET /admin/workflow-step-kinds` serves a versioned registry: per kind, `params[{name,type,required,description}]`, `routes[{name,description,dynamic}]`, `output`, `whenToUse`, `clientEquivalent`. Types include `condition`, `path`, `enum` — enough to drive a property editor | `workflow/steps/kinds.ts`, served live | WFA-004 |
 | F21 | `RuntimeType` is a two-value enum (`Browser`, `Cloud`) with a `RuntimeTypes` array, resolved from the component name prefix — the seam a third type would extend *(read)* | `NodeLibraryData.ts:1-6`, `utils/NodeGraph/index.ts` | WFA-004 |
@@ -111,6 +123,27 @@ around the description.
 
 ## Log
 
+- **2026-07-28** — **WFA-002 complete.** The Execution History panel is a normal rail panel, the merged
+  list says which stores answered it (so "no backend running", "backend running with nothing recorded"
+  and "the backend that had your runs cannot be read" are three different messages), and a workflow's
+  step records now read as a run rather than as JSON: every step in DAG order including the skipped
+  ones, the step id beside the name, a status word, retry attempts, and the error routing stated in
+  words — *Error routed to Log failure* on the failure, *Received the error from Charge card* on the
+  handler, with `previous.error` broken out of the input blob. A definition can be run from the panel
+  with an edited payload and an in-flight run cancelled, both live-verified, closing the `curl`
+  round-trip this phase exists to remove.
+  **The task's shape changed on one finding.** The spec assumed cloud function calls feed the canvas
+  overlay; they record **zero steps** (F32) — `startNode` is called only by the workflow engine — so
+  the overlay's badges have never had anything to draw, and the spec's Step 7 is not possible. That
+  turns the "be honest about unresolved nodes" requirement from an edge case into the overlay's normal
+  output, written as two distinct messages (no steps recorded vs. steps that match no open node) rather
+  than one that would blame the open graph for missing data. Three further shipped defects fixed on the
+  way: a **0 ms step was indistinguishable from a skipped one** (F31), a **long run reported
+  `TimeoutError` and read as a failure** because the run route answers only on completion behind a hard
+  30-second request ceiling (F33), and **an inactive sidebar panel stays mounted and hidden**, so this
+  panel silently showed pre-backend state until Refresh was pressed (F34). Editor suite **1731/0**;
+  the editor's main-process jest suites (43 specs, the gate on execution history) now run in CI, which
+  they did not before. Full pass in [WFA-002-NOTES.md](./WFA-002-NOTES.md).
 - **2026-07-28** — **WFA-001 complete.** The cloud sheet is a first-class, always-listed, protected
   sheet in the existing Components panel (decision (b)) and is deliberately kept out of the flattened
   "All" tree, because "All" strips sheet prefixes and would merge two *runtimes* into one namespace.

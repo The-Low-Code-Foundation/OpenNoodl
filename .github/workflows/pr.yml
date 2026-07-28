@@ -93,6 +93,13 @@ jobs:
       # several of them bind real sockets.
       - run: npm run test:packages
 
+      # WFA-002: the editor's main-process jest suites (`packages/noodl-editor/
+      # tests-main`) were in no workflow — `test:packages` scopes by package and
+      # noodl-editor's `test` script starts a dev server, so they ran only on
+      # developer machines. They are the gate on execution history, which is
+      # exactly the code a run inspector depends on.
+      - run: npm run test:main
+
       # RUN-004's last open criterion: the packaged app runs the backend service
       # under Electron's bundled Node (ELECTRON_RUN_AS_NODE), not the system
       # Node the suites above use. This spawns the real service bundle that way

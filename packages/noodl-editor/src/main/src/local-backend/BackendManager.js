@@ -123,6 +123,16 @@ class BackendManager {
     ipcMain.handle('backend:reload-workflows', async (_, id) => this.reloadWorkflows(id));
     ipcMain.handle('backend:workflow-status', async (_, id) => this.getWorkflowStatus(id));
 
+    // WF-001 workflow definitions (WFA-002): the Execution History panel runs
+    // and cancels them, so a change can be tested without leaving the editor.
+    ipcMain.handle('backend:list-workflow-defs', async () => this.listAllWorkflowDefs());
+    ipcMain.handle('backend:run-workflow-def', async (_, id, workflowId, payload) =>
+      this.runWorkflowDef(id, workflowId, payload)
+    );
+    ipcMain.handle('backend:cancel-workflow-run', async (_, id, executionId) =>
+      this.cancelWorkflowRun(id, executionId)
+    );
+
     // ==========================================================================
     // ACCESS CONTROL (BAK-003) — the permissions panel proxies to /admin/*
     // ==========================================================================
@@ -868,6 +878,74 @@ class BackendManager {
       return { initialized: false, workflowCount: 0, functions: [] };
     }
     return supervisor.request('GET', '/admin/workflows');
+  }
+
+  // ==========================================================================
+  // WF-001 WORKFLOW DEFINITIONS (WFA-002) — run / cancel from the editor
+  //
+  // These proxy `/admin/workflow-defs*`, which shipped with WF-001 and, like
+  // `backend:update-workflow` before WFA-001, had no editor caller: testing a
+  // change meant round-tripping through `curl`. Read-and-run only — authoring
+  // a definition is WFA-004's canvas.
+  // ==========================================================================
+
+  /**
+   * Every running backend's workflow definitions, one entry per backend so the
+   * caller can tell an empty backend from an unreachable one.
+   * @returns {Promise<{backendId: string, backendName: string, workflows: unknown[], error?: string}[]>}
+   */
+  async listAllWorkflowDefs() {
+    const running = this.getRunningEndpoints();
+    return Promise.all(
+      running.map(async ({ id, name }) => {
+        try {
+          const result = await this.runningBackends.get(id).request('GET', '/admin/workflow-defs');
+          return { backendId: id, backendName: name, workflows: (result && result.workflows) || [] };
+        } catch (e) {
+          return { backendId: id, backendName: name, workflows: [], error: e.message };
+        }
+      })
+    );
+  }
+
+  /**
+   * Run a workflow definition now. The backend records it as a `manual`
+   * execution, so the resulting run appears in execution history like any other.
+   *
+   * WFA-002: the route answers only when the run FINISHES, and every supervisor
+   * request has a 30-second ceiling. A workflow with a `wait` step legitimately
+   * outlives that — found live on a 5-minute wait, which surfaced as
+   * `TimeoutError` and read as "the run failed" when the run was fine and still
+   * going. A timeout here is therefore reported as `stillRunning`, not thrown:
+   * the run is on the backend, its record is in history, and it can be
+   * cancelled. Raising the ceiling would only move the lie further out.
+   *
+   * @param {string} backendId
+   * @param {string} workflowId
+   * @param {Object} [payload] - The run payload; `{}` when omitted.
+   */
+  async runWorkflowDef(backendId, workflowId, payload) {
+    const supervisor = this.requireRunning(backendId, 'run a workflow');
+    try {
+      return await supervisor.request('POST', `/admin/workflow-defs/${encodeURIComponent(workflowId)}/run`, {
+        payload: payload || {}
+      });
+    } catch (e) {
+      if (e && (e.name === 'TimeoutError' || e.name === 'AbortError')) {
+        return { stillRunning: true };
+      }
+      throw e;
+    }
+  }
+
+  /**
+   * Cancel an in-flight run by its execution id.
+   * @param {string} backendId
+   * @param {string} executionId
+   */
+  async cancelWorkflowRun(backendId, executionId) {
+    const supervisor = this.requireRunning(backendId, 'cancel a workflow run');
+    return supervisor.request('POST', `/admin/workflow-runs/${encodeURIComponent(executionId)}/cancel`);
   }
 }
 

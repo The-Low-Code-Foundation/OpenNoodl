@@ -70,14 +70,18 @@ describe('ExecutionHistoryManager', () => {
     logger.completeExecution(true);
 
     // Exactly the channel names + call shape useExecutionHistory.ts / useExecutionDetail.ts use.
+    // WFA-002: `list` answers with `{executions, sources}` rather than a bare
+    // array — a bare array cannot say which stores answered, which is what made
+    // "no backend running" and "backend running, nothing has run" identical.
     const listResult = (await ipcMain.invoke('execution-history:list', {
       limit: 100,
       orderBy: 'started_at',
       orderDir: 'desc'
-    })) as { error?: string }[];
-    expect(listResult).not.toHaveProperty('error');
-    expect(Array.isArray(listResult)).toBe(true);
-    expect(listResult.length).toBe(1);
+    })) as { error?: string; executions: unknown[]; sources: { kind: string }[] };
+    expect(listResult.error).toBeUndefined();
+    expect(Array.isArray(listResult.executions)).toBe(true);
+    expect(listResult.executions.length).toBe(1);
+    expect(listResult.sources.map((s) => s.kind)).toEqual(['local']);
 
     const getResult = (await ipcMain.invoke('execution-history:get', execId)) as { id: string; steps: unknown[] };
     expect(getResult.id).toBe(execId);

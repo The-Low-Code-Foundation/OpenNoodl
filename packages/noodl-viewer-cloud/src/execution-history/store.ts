@@ -80,6 +80,19 @@ function parseData(json: string | null): Record<string, unknown> | undefined {
 }
 
 /**
+ * A nullable numeric column, preserving 0.
+ *
+ * WFA-002: this used to be `(row.duration_ms as number) || undefined`, which
+ * folded a genuine **0 ms** into "no duration". On a fast local backend most
+ * steps complete sub-millisecond, so a successful step and a *skipped* one
+ * (which really has no duration) both rendered as `—` in the run inspector —
+ * the single most misleading thing the panel could say about a branch.
+ */
+function nullableNumber(value: unknown): number | undefined {
+  return value === null || value === undefined ? undefined : Number(value);
+}
+
+/**
  * SQLite Database interface
  * Compatible with better-sqlite3
  */
@@ -617,8 +630,8 @@ export class ExecutionStore {
       triggerData: parseData(row.trigger_data as string | null),
       status: row.status as WorkflowExecution['status'],
       startedAt: row.started_at as number,
-      completedAt: (row.completed_at as number) || undefined,
-      durationMs: (row.duration_ms as number) || undefined,
+      completedAt: nullableNumber(row.completed_at),
+      durationMs: nullableNumber(row.duration_ms),
       errorMessage: (row.error_message as string) || undefined,
       errorStack: (row.error_stack as string) || undefined,
       metadata: parseData(row.metadata as string | null)
@@ -637,8 +650,8 @@ export class ExecutionStore {
       nodeName: (row.node_name as string) || undefined,
       stepIndex: row.step_index as number,
       startedAt: row.started_at as number,
-      completedAt: (row.completed_at as number) || undefined,
-      durationMs: (row.duration_ms as number) || undefined,
+      completedAt: nullableNumber(row.completed_at),
+      durationMs: nullableNumber(row.duration_ms),
       status: row.status as ExecutionStep['status'],
       inputData: parseData(row.input_data as string | null),
       outputData: parseData(row.output_data as string | null),

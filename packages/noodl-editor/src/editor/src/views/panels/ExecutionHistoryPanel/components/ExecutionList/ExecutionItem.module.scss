@@ -79,3 +79,9 @@
   text-transform: uppercase;
   letter-spacing: 0.4px;
 }
+
+/* Which store served this row. Only rendered when more than one backend is
+   running, where two rows can otherwise be identical apart from their origin. */
+.Source {
+  color: var(--theme-color-fg-default-shy);
+}

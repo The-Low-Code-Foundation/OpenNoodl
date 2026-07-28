@@ -85,6 +85,21 @@ export function ExecutionOverlay({ viewport, getNodeBounds }: ExecutionOverlayPr
 
   if (!pinnedExecution) return null;
 
+  /**
+   * WFA-002: `getNodeBounds` resolves against the CURRENTLY OPEN graph, and the
+   * overlay used to render nothing for a step it could not place — no badge, no
+   * message, just a header and a timeline over an untouched canvas. Pinning a
+   * workflow run while a browser component is open looks exactly like a broken
+   * overlay. So count what resolved and say so.
+   *
+   * Deliberately computed in render rather than memoised on the execution: the
+   * open graph changes underneath us (this component re-renders on every pan,
+   * zoom and graph switch), and a stale "nothing matches" would be its own lie.
+   */
+  const totalSteps = pinnedExecution.steps.length;
+  const resolvedCount = pinnedExecution.steps.filter((step) => getNodeBounds(step.nodeId)).length;
+  const unresolvedCount = totalSteps - resolvedCount;
+
   const containerTransform = `scale(${viewport.zoom}) translate(${viewport.x}px, ${viewport.y}px)`;
 
   const handleClose = () => {
@@ -117,6 +132,46 @@ export function ExecutionOverlay({ viewport, getNodeBounds }: ExecutionOverlayPr
           Unpin
         </button>
       </div>
+
+      {/* ── Resolution honesty (WFA-002) ──
+          None resolved: the overlay has nothing to draw and must say why.
+          Some resolved: a partial overlay that silently drops half the steps is
+          worse than one that admits it. */}
+      {/* A run with no step records at all. WFA-002 found live that this is the
+          case for EVERY cloud function call: `ExecutionLogger.startNode` is
+          called only by the WF-001 workflow engine, so a function's graph nodes
+          are never recorded individually. Saying "none of its 0 steps matched"
+          would blame the open graph for missing data that was never written. */}
+      {totalSteps === 0 && (
+        <div className={styles.notice} data-severity="none">
+          <span className={styles.noticeTitle}>This run recorded no steps</span>
+          <span className={styles.noticeBody}>
+            <strong>{pinnedExecution.workflowName}</strong> ran, but no per-step data was recorded, so there is nothing
+            to place on the canvas. Only workflow runs record steps today — a cloud function call records the call
+            itself, not its individual nodes.
+          </span>
+        </div>
+      )}
+
+      {totalSteps > 0 && resolvedCount === 0 && (
+        <div className={styles.notice} data-severity="none">
+          <span className={styles.noticeTitle}>Nothing to show on this graph</span>
+          <span className={styles.noticeBody}>
+            This execution ran on <strong>{pinnedExecution.workflowName}</strong>. None of its {totalSteps}{' '}
+            {totalSteps === 1 ? 'step' : 'steps'} matches a node in the graph you have open, so there is nowhere to put
+            the badges. Open that function or workflow, or use the panel&rsquo;s step list to read the run.
+          </span>
+        </div>
+      )}
+
+      {resolvedCount > 0 && unresolvedCount > 0 && (
+        <div className={styles.notice} data-severity="partial">
+          <span className={styles.noticeBody}>
+            Showing {resolvedCount} of {totalSteps} steps — {unresolvedCount} {unresolvedCount === 1 ? 'is' : 'are'} not
+            in this graph.
+          </span>
+        </div>
+      )}
 
       {/* ── Canvas-space transform container ── */}
       <div className={styles.transformContainer} style={{ transform: containerTransform, transformOrigin: '0 0' }}>

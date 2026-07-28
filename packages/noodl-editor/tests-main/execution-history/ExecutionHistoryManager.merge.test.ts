@@ -51,9 +51,7 @@ describe('ExecutionHistoryManager remote-store merge (WF-004)', () => {
     return manager;
   }
 
-  it('merges remote executions with the local store, newest first', async () => {
-    const manager = makeManager(true);
-
+  function addLocalExecution(manager: ExecutionHistoryManager): void {
     const logger = manager.createLogger();
     expect(logger).not.toBeNull();
     logger!.startExecution({
@@ -62,9 +60,14 @@ describe('ExecutionHistoryManager remote-store merge (WF-004)', () => {
       triggerType: 'manual'
     });
     logger!.completeExecution(true);
+  }
 
-    const merged = (await manager.listMerged({ limit: 10 })) as { workflowId: string }[];
-    const ids = merged.map((e) => e.workflowId);
+  it('merges remote executions with the local store, newest first', async () => {
+    const manager = makeManager(true);
+    addLocalExecution(manager);
+
+    const { executions } = await manager.listMerged({ limit: 10 });
+    const ids = executions.map((e) => e.workflowId);
     expect(ids).toContain('localFunc');
     expect(ids).toContain('remoteFunc');
     // Remote entry was stamped newer — the merge re-sorts by startedAt desc.
@@ -79,16 +82,76 @@ describe('ExecutionHistoryManager remote-store merge (WF-004)', () => {
 
   it('serves remote-only results when the local store never initialized', async () => {
     const manager = makeManager(false);
-    const merged = (await manager.listMerged({ limit: 10 })) as { workflowId: string }[];
-    expect(merged.length).toBe(1);
-    expect(merged[0].workflowId).toBe('remoteFunc');
+    const { executions } = await manager.listMerged({ limit: 10 });
+    expect(executions.length).toBe(1);
+    expect(executions[0].workflowId).toBe('remoteFunc');
   });
 
   it('an unreachable backend degrades to local-only, not an error', async () => {
     const manager = new ExecutionHistoryManager();
     manager.init(':memory:');
     manager.setRemoteSources(() => [{ id: 'x', name: 'Dead', endpoint: 'http://127.0.0.1:1' }]);
-    const merged = await manager.listMerged({ limit: 10 });
-    expect(Array.isArray(merged)).toBe(true);
+    const { executions, error } = await manager.listMerged({ limit: 10 });
+    expect(Array.isArray(executions)).toBe(true);
+    expect(error).toBeUndefined();
+  });
+
+  // WFA-002 — the panel cannot tell "no backend" from "backend with no runs"
+  // from "the backend that had the runs is unreachable" unless the list says
+  // which sources answered. All three used to render as one empty list.
+  describe('source reporting (WFA-002)', () => {
+    it('reports every source, its reachability and its row count', async () => {
+      const manager = makeManager(true);
+      addLocalExecution(manager);
+
+      const { sources } = await manager.listMerged({ limit: 10 });
+      const local = sources.find((s) => s.kind === 'local');
+      const backend = sources.find((s) => s.id === 'backend_remote');
+
+      expect(local!.id).toBe('local');
+      expect(local!.reachable).toBe(true);
+      expect(local!.count).toBe(1);
+      expect(backend!.kind).toBe('backend');
+      expect(backend!.reachable).toBe(true);
+      expect(backend!.count).toBe(1);
+    });
+
+    it('marks an unreachable backend unreachable, with a reason', async () => {
+      const manager = new ExecutionHistoryManager();
+      manager.init(':memory:');
+      manager.setRemoteSources(() => [{ id: 'x', name: 'Dead', endpoint: 'http://127.0.0.1:1' }]);
+
+      const { sources } = await manager.listMerged({ limit: 10 });
+      const dead = sources.find((s) => s.id === 'x');
+      expect(dead!.reachable).toBe(false);
+      expect(dead!.count).toBe(0);
+      expect(typeof dead!.error).toBe('string');
+    });
+
+    it('stamps which source served each row', async () => {
+      const manager = makeManager(true);
+      addLocalExecution(manager);
+
+      const { executions } = await manager.listMerged({ limit: 10 });
+      const remote = executions.find((e) => e.workflowId === 'remoteFunc');
+      const local = executions.find((e) => e.workflowId === 'localFunc');
+
+      expect(remote!.metadata!.sourceId).toBe('backend_remote');
+      expect(remote!.metadata!.sourceName).toBe('Remote');
+      expect(local!.metadata!.sourceId).toBe('local');
+      // The backend's own `backendId` is preserved, not overwritten: that is
+      // what the backend called itself, which is a different fact.
+      expect(remote!.metadata!.backendId).toBe('backend_remote');
+    });
+
+    it('reports an error only when there is nothing to ask at all', async () => {
+      const manager = new ExecutionHistoryManager();
+      manager.setRemoteSources(() => []);
+      const { executions, sources, error } = await manager.listMerged({ limit: 10 });
+      expect(executions).toEqual([]);
+      expect(sources.length).toBe(1);
+      expect(sources[0].kind).toBe('local');
+      expect(typeof error).toBe('string');
+    });
   });
 });

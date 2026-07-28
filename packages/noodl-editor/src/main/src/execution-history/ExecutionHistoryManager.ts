@@ -62,7 +62,53 @@ export interface RemoteExecutionSource {
   endpoint: string;
 }
 
+/**
+ * WFA-002: where a list's rows came from, per source. Without this the panel
+ * cannot tell "no backend is running" from "a backend is running and has no
+ * runs" from "the backend that had the runs just died" — three states that all
+ * rendered as one empty list, and one of which is a bug.
+ */
+export interface ExecutionSourceStatus {
+  /** `local` for the editor-local store, otherwise the backend id. */
+  id: string;
+  name: string;
+  kind: 'local' | 'backend';
+  /** false when the source could not be read for this list. */
+  reachable: boolean;
+  /** Rows this source contributed. */
+  count: number;
+  /** Why it was unreachable, when known. */
+  error?: string;
+}
+
+/**
+ * The `execution-history:list` payload. An object rather than the bare array it
+ * used to be, because a bare array cannot say which sources answered.
+ */
+export interface ExecutionListResult {
+  executions: WorkflowExecution[];
+  sources: ExecutionSourceStatus[];
+  /** Set only when there is nothing to report at all (no store, no backends). */
+  error?: string;
+}
+
 const REMOTE_FETCH_TIMEOUT_MS = 2000;
+
+/** The editor's own store, as a source alongside the running backends. */
+const LOCAL_SOURCE_ID = 'local';
+const LOCAL_SOURCE_NAME = 'Editor';
+
+/**
+ * Record which source served a row. Two backends running the same-named
+ * function produce records that are identical apart from where they came from,
+ * so the panel needs to be able to say. Written under `metadata` (an existing
+ * open field) rather than as new top-level columns, and deliberately NOT
+ * overwriting the backend's own `metadata.backendId` — that is what the backend
+ * called itself; this is which source answered.
+ */
+function stampSource<T extends WorkflowExecution>(row: T, sourceId: string, sourceName: string): T {
+  return { ...row, metadata: { ...(row.metadata || {}), sourceId, sourceName } };
+}
 
 export class ExecutionHistoryManager {
   private store: ExecutionStore | null = null;
@@ -170,7 +216,10 @@ export class ExecutionHistoryManager {
   // Remote (child-process) stores — WF-004
   // ==========================================================================
 
-  private async fetchRemoteList(source: RemoteExecutionSource, query: ExecutionQuery): Promise<WorkflowExecution[]> {
+  private async fetchRemoteList(
+    source: RemoteExecutionSource,
+    query: ExecutionQuery
+  ): Promise<{ rows: WorkflowExecution[]; reachable: boolean; error?: string }> {
     try {
       const params = new URLSearchParams();
       if (query.workflowId) params.set('workflowId', query.workflowId);
@@ -180,12 +229,15 @@ export class ExecutionHistoryManager {
       const res = await fetch(`${source.endpoint}/executions?${params}`, {
         signal: AbortSignal.timeout(REMOTE_FETCH_TIMEOUT_MS)
       });
-      if (!res.ok) return [];
-      return (await res.json()) as WorkflowExecution[];
-    } catch {
+      if (!res.ok) return { rows: [], reachable: false, error: `HTTP ${res.status}` };
+      const rows = (await res.json()) as WorkflowExecution[];
+      return { rows: rows.map((row) => stampSource(row, source.id, source.name)), reachable: true };
+    } catch (e) {
       // A briefly-unreachable backend must not break the whole panel; its
-      // entries just don't appear until the next refresh.
-      return [];
+      // entries just don't appear until the next refresh — but it is REPORTED
+      // (WFA-002), because "one backend is unreachable" and "no history" are
+      // different things and used to look identical.
+      return { rows: [], reachable: false, error: e instanceof Error ? e.message : String(e) };
     }
   }
 
@@ -195,7 +247,8 @@ export class ExecutionHistoryManager {
         signal: AbortSignal.timeout(REMOTE_FETCH_TIMEOUT_MS)
       });
       if (!res.ok) return null;
-      return (await res.json()) as ExecutionWithSteps;
+      const row = (await res.json()) as ExecutionWithSteps;
+      return stampSource(row, source.id, source.name);
     } catch {
       return null;
     }
@@ -203,30 +256,70 @@ export class ExecutionHistoryManager {
 
   /**
    * Local list merged with every running backend's store, newest-first,
-   * re-limited. Serves the same IPC channel/shape as before WF-004.
+   * re-limited — plus which sources answered (WFA-002).
    */
-  async listMerged(query: ExecutionQuery): Promise<ListResult> {
-    const local = this.store ? this.list(query) : [];
-    const localRows = Array.isArray(local) ? local : [];
+  async listMerged(query: ExecutionQuery): Promise<ExecutionListResult> {
+    const remotes = this.remoteSources ? this.remoteSources() : [];
+    const sources: ExecutionSourceStatus[] = [];
 
-    const sources = this.remoteSources ? this.remoteSources() : [];
-    const remoteRows = (await Promise.all(sources.map((s) => this.fetchRemoteList(s, query)))).flat();
+    let rows: WorkflowExecution[] = [];
 
-    if (!this.store && sources.length === 0) {
-      // Nothing local AND nothing to merge — keep the original honest error.
-      return this.list(query);
+    if (this.store) {
+      const local = this.list(query);
+      const localRows = Array.isArray(local)
+        ? local.map((row) => stampSource(row, LOCAL_SOURCE_ID, LOCAL_SOURCE_NAME))
+        : [];
+      rows = rows.concat(localRows);
+      sources.push({
+        id: LOCAL_SOURCE_ID,
+        name: LOCAL_SOURCE_NAME,
+        kind: 'local',
+        reachable: Array.isArray(local),
+        count: localRows.length,
+        ...(Array.isArray(local) ? {} : { error: local.error })
+      });
+    } else {
+      sources.push({
+        id: LOCAL_SOURCE_ID,
+        name: LOCAL_SOURCE_NAME,
+        kind: 'local',
+        reachable: false,
+        count: 0,
+        error: this.unavailableMessage()
+      });
     }
 
-    const merged = [...localRows, ...remoteRows].sort((a, b) => (b.startedAt || 0) - (a.startedAt || 0));
+    const fetched = await Promise.all(remotes.map((s) => this.fetchRemoteList(s, query)));
+    remotes.forEach((source, i) => {
+      const { rows: remoteRows, reachable, error } = fetched[i];
+      rows = rows.concat(remoteRows);
+      sources.push({
+        id: source.id,
+        name: source.name,
+        kind: 'backend',
+        reachable,
+        count: remoteRows.length,
+        ...(error ? { error } : {})
+      });
+    });
+
+    if (!this.store && remotes.length === 0) {
+      // Nothing local AND nothing to merge — keep the original honest error.
+      return { executions: [], sources, error: this.unavailableMessage() };
+    }
+
+    const merged = rows.sort((a, b) => (b.startedAt || 0) - (a.startedAt || 0));
     const limit = query.limit ?? 100;
-    return merged.slice(0, limit);
+    return { executions: merged.slice(0, limit), sources };
   }
 
   /** Local store first, then each running backend. */
   async getMerged(executionId: string): Promise<GetResult> {
     if (this.store) {
       const local = this.get(executionId);
-      if (local && !('error' in (local as object))) return local;
+      if (local && !('error' in (local as object))) {
+        return stampSource(local as ExecutionWithSteps, LOCAL_SOURCE_ID, LOCAL_SOURCE_NAME);
+      }
     }
     const sources = this.remoteSources ? this.remoteSources() : [];
     for (const source of sources) {

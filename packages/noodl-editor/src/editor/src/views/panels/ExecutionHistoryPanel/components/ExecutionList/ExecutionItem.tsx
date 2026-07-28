@@ -6,6 +6,8 @@ import styles from './ExecutionItem.module.scss';
 
 interface Props {
   execution: WorkflowExecution;
+  /** Show which store served the row — only useful with more than one source. */
+  showSource?: boolean;
   onSelect: () => void;
 }
 
@@ -29,7 +31,9 @@ function formatDuration(ms?: number): string {
 /**
  * Single row in the execution history list.
  */
-export function ExecutionItem({ execution, onSelect }: Props) {
+export function ExecutionItem({ execution, showSource, onSelect }: Props) {
+  const sourceName = execution.metadata?.sourceName as string | undefined;
+
   return (
     <div
       className={styles.Item}
@@ -42,7 +46,10 @@ export function ExecutionItem({ execution, onSelect }: Props) {
       <div className={styles.StatusDot} data-status={execution.status} />
       <div className={styles.Info}>
         <span className={styles.Name}>{execution.workflowName}</span>
-        <span className={styles.Time}>{formatRelativeTime(execution.startedAt)}</span>
+        <span className={styles.Time}>
+          {formatRelativeTime(execution.startedAt)}
+          {showSource && sourceName && <span className={styles.Source}> · {sourceName}</span>}
+        </span>
       </div>
       <div className={styles.Meta}>
         <span className={styles.Duration}>{formatDuration(execution.durationMs)}</span>

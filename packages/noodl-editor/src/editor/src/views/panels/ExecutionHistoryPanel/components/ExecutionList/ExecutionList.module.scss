@@ -47,3 +47,21 @@
   justify-content: flex-start;
   padding: 12px 16px;
 }
+
+/* One backend answered and another did not: the list is real but incomplete,
+   which is neither an empty state nor a hard error. */
+.Notice {
+  margin: 8px 16px 0;
+  padding: 8px 10px;
+  border: 1px solid var(--theme-color-notice);
+  border-radius: 4px;
+  background-color: color-mix(in srgb, var(--theme-color-notice) 10%, transparent);
+  color: var(--theme-color-notice);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.Empty .EmptyHint {
+  line-height: 1.5;
+  max-width: 32ch;
+}

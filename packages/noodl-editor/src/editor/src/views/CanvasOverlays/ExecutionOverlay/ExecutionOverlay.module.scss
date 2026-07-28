@@ -87,3 +87,46 @@
     background-color: var(--theme-color-bg-3);
   }
 }
+
+/**
+ * WFA-002: what the overlay says when it cannot place a run's steps on the open
+ * graph. Fixed-position and OUTSIDE the transform container, deliberately —
+ * the whole point is that it appears when there are no badges to position, so
+ * it must not depend on canvas-space coordinates or on a badge rendering first.
+ */
+.notice {
+  position: absolute;
+  top: 40px; // below the header bar
+  left: 12px;
+  right: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: 4px;
+  z-index: 200;
+  pointer-events: all;
+  font-size: 12px;
+  line-height: 1.5;
+
+  &[data-severity='none'] {
+    background-color: var(--theme-color-bg-2);
+    border: 1px solid var(--theme-color-notice);
+    color: var(--theme-color-fg-default);
+  }
+
+  &[data-severity='partial'] {
+    background-color: var(--theme-color-bg-2);
+    border: 1px solid var(--theme-color-border-default);
+    color: var(--theme-color-fg-default-shy);
+  }
+}
+
+.noticeTitle {
+  font-weight: 600;
+  color: var(--theme-color-fg-default);
+}
+
+.noticeBody {
+  color: inherit;
+}

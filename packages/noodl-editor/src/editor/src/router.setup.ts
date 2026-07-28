@@ -244,11 +244,14 @@ export function installSidePanel({ isLesson }: SetupEditorOptions) {
   // into a fixed overlay; see `backendSurfaces.tsx` for what that cost.
   installBackendSurfacePanels();
 
+  // WFA-002: no longer experimental. It has a main-process handler, real data
+  // from every running backend, and a working detail view — the flag was a
+  // leftover from before any of that was true, and it kept the only surface
+  // that can explain a backend run out of the rail.
   SidebarModel.instance.register({
-    experimental: true,
     id: 'execution-history',
     name: 'Execution History',
-    description: 'View workflow execution history, inspect node data, and debug failed runs.',
+    description: 'Watch a cloud function or workflow run, step by step, with the data each step received.',
     isDisabled: isLesson === true,
     order: 8.8,
     icon: IconName.Bug,
