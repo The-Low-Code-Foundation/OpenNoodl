@@ -773,9 +773,23 @@ function launchApp() {
   // `preventDefault()` and quit again later, which is what the handshake below
   // does — so the backend teardown becomes correct as a side effect.
   //
-  // The timeout is not optional. A save that hangs must cost the user five
-  // seconds, not their ability to close the app.
+  // The timeouts are not optional, and they cover *both* awaited steps. Holding
+  // the quit open is what makes the flush possible, but it is also what makes a
+  // hang fatal: while `stopAll()` was fire-and-forget, a backend that never
+  // finished stopping could not block anything, and now it could. Nothing here
+  // may cost the user more than a few seconds of their ability to close the app.
   const PROJECT_FLUSH_TIMEOUT_MS = 5000;
+  const BACKEND_STOP_TIMEOUT_MS = 5000;
+
+  /** Resolve with `onTimeout` if `promise` has not settled in `ms`. */
+  function withTimeout(promise, ms, onTimeout) {
+    return Promise.race([
+      Promise.resolve(promise).catch((e) => {
+        console.log('Error during quit teardown:', e);
+      }),
+      new Promise((resolve) => setTimeout(() => resolve(onTimeout), ms))
+    ]);
+  }
 
   function flushRendererProjectSave() {
     return new Promise((resolve) => {
@@ -819,7 +833,12 @@ function launchApp() {
           console.log('Timed out waiting for the renderer to flush its pending project save; quitting anyway');
         }
       })
-      .then(() => backendManager.stopAll())
+      .then(() => withTimeout(backendManager.stopAll(), BACKEND_STOP_TIMEOUT_MS, 'timeout'))
+      .then((reason) => {
+        if (reason === 'timeout') {
+          console.log('Timed out stopping local backends; quitting anyway');
+        }
+      })
       .catch((e) => console.log('Error stopping backends:', e))
       .then(() => {
         readyToQuit = true;
