@@ -125,6 +125,82 @@ Order to work in, cheapest-signal-first: `ToastCard` (−30, one component, self
 `FolderTree`/`LauncherSearchBar` (−21/−26, launcher only), then `SideNavigation .Toolbar` (−20),
 then the −8s and −4s. Gate after each: this probe, plus `panel-geometry.mjs` and `panel-modes.mjs`.
 
+### — ✅ ADOPTED 2026-07-28. Both tables above are wrong, and the plan they imply is unnecessary.
+
+`68f5fa15`, with the probe fix in `7a7c252c`. **One global rule, zero per-family
+compensation.** Neither the 9-day-old table nor the re-measurement above should be trusted; keep
+them only as the record of how the number was arrived at.
+
+**1. The probe was reporting one panel and calling it ten.** `report[label]` was keyed by panel
+title, and the title came from a bare `document.querySelector`. Panels stay mounted — **34
+`PanelHeader` elements exist at once** — so it always returned the first in DOM order. Every panel
+produced the same key, the report overwrote itself, and only the **last** survived into the JSON.
+That is this very file's own "panels stay mounted, filter on `clientHeight > 0`" trap, reappearing
+inside the instrument, and F40's lesson a second time.
+
+Fixed, the panels are nothing alike:
+
+| Panel | significant boxes |
+|---|---|
+| Search / Explain / Build / Problems / Docs | **52–57 each** |
+| Version Control / GitHub / Execution History / Workflows | 13 |
+| Backend Services | 7 |
+
+So the headline disagreement between the two tables dissolves. **`TextInput` never went from −18 to
+−4.42 because someone fixed it** — −18 is Search, −4.43 is Workflows. The same selector genuinely
+measures differently depending on how much room the panel leaves the topbar, so **these deltas are
+not per-component constants** and only mean anything compared like-for-like.
+
+**2. The deltas were parity errors, not breakage — so "fix them first" was the wrong instinct.**
+The phase-24 mock states **outer** dimensions, the way design tools report them: *"Sidebar (224px,
+bg-1, border-r, padding 16px 10px)"*, *"search flex max-width 380px … padding 8px 12px"*, *"Toast …
+width 340 … padding 13px 14px"*. Under content-box the padding and border were added **on top**, so
+every one of these has been rendering wider than the mock ever asked for — the sidebar at 245px
+against a specified 224, the search box at 406 against 380. Compensating the numbers to preserve
+today's pixels would have **locked the parity bug in**. Adopting the reset is what delivers PAR-001.
+
+That is also why the launcher's "7 families" were only ever 2 causes: `Projects .Sidebar` and
+`LauncherSearchBar .Search`. The `+21` on `Projects .Main` / `LauncherPage` and the `+7` on
+`LauncherProjectCard` were that same 21px redistributed across a 3-column grid.
+
+`ToastCard` — the item the plan was ordered around — **never appears in any run**, because no toast
+is on screen when the probe samples. Same reason `Checkbox` was "not reproduced". An element that
+is not rendered cannot be measured, and neither belongs in a table presented as complete.
+
+**Where the reset lives:** `packages/noodl-editor/src/assets/css/style.css`, not
+`noodl-core-ui/styles/global.css` — the latter is **not imported by the editor at all**, only
+mentioned in a comment in `fonts.css`. One sheet covers the launcher too; they share a window.
+
+**Two real defects surfaced**, both at the 240px floor, both content that never fitted and was only
+concealed by containers being handed more width than their CSS asked for:
+
+- the Build panel's `This component | Project | Docs` control needs 242px against 204px available —
+  now wraps, as `ProjectReviewBanner` in the same panel already did;
+- the Docs toolbar's path label held its full min-content width and shoved the buttons out — now
+  ellipsizes, the same shape as F37 and F38.
+
+**And six of the eight corpus gates were attaching to the wrong window.** `/index\.html/` also
+matches `frames/viewer-frame/index.html` and `about-window/about.html`, both of which sort **ahead**
+of the editor in `/json/list`. Any gate run with a preview open silently measured the preview:
+`panel-geometry` reported *"No rail panel buttons found. Open a project in the editor first."* with
+a project plainly open. Only `boxsizing-impact` was hardened, after the About window bit the
+previous session. All six now match `noodl-editor/src/editor/index.html` specifically.
+
+| Gate | Result |
+|---|---|
+| `boxsizing-impact --launcher` | **91 significant → 0/301** |
+| `boxsizing-impact` (panels) | all 12 panels **0 changed, 0 significant** |
+| `panel-geometry` | **12/12** vertical, **60/60** panel×width horizontal |
+| `panel-modes` | **13/13**, F41's round trip included |
+| `npm run test:ci` | **1766 specs, 0 failures** (seed 63183) |
+| `npm run colors` | 16/16, holding |
+| `npx tsc -p packages/noodl-editor` | clean |
+
+⚠️ One reading was transient and did not reproduce: a first pass showed `03-Problems` with 79
+significant boxes, all of them `FrameDivider Container1 −20 / Container2 +20` and the canvas moving
+with them — a panel resize in flight, not box-sizing. It came back 0/0 on a re-run. **Re-run before
+filing anything whose signature is "the whole layout shifted by one round number".**
+
 ## The regression gate
 
 `node dev-docs/tasks/phase-23-visual-refresh/corpus/panel-geometry.mjs [--width 1280] [--height 720]`
