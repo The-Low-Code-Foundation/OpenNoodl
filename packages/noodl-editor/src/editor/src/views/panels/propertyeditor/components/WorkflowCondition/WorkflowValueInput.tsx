@@ -142,16 +142,23 @@ export function WorkflowValueInput({
 
       {mode === 'path' && (
         <div className={styles.PathHelpers}>
-          {(scope || []).map((root) => (
-            <button
-              key={root.name}
-              className={styles.Chip}
-              title={root.description}
-              onClick={() => onChange({ $path: root.name.replace('<stepId>', '') })}
-            >
-              {root.name}
-            </button>
-          ))}
+          {/* The served scope has PATTERN entries — `upstream.<stepId>`,
+              `<param name>` — which describe a family rather than name a root.
+              Inserting one literally would produce a path that resolves to
+              nothing, so the concrete steps below stand in for `upstream.*` and
+              the patterns are not offered as chips. */}
+          {(scope || [])
+            .filter((root) => !root.name.includes('<'))
+            .map((root) => (
+              <button
+                key={root.name}
+                className={styles.Chip}
+                title={root.description}
+                onClick={() => onChange({ $path: root.name + '.' })}
+              >
+                {root.name}
+              </button>
+            ))}
           {upstream.map((step) => (
             <button
               key={step.id}
@@ -163,7 +170,9 @@ export function WorkflowValueInput({
             </button>
           ))}
           {upstream.length === 0 && (
-            <span className={styles.Hint}>Nothing runs before this step yet, so only the run payload is readable.</span>
+            <span className={styles.Hint}>
+              Nothing runs before this step, so only the run payload is readable here.
+            </span>
           )}
         </div>
       )}

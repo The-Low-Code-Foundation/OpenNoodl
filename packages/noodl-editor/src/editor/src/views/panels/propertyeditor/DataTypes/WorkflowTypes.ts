@@ -62,13 +62,27 @@ abstract class WorkflowTypeView extends TypeView {
     return this.type?.scope || [];
   }
 
+  /**
+   * The node this row is editing.
+   *
+   * `parent.model` is a `ModelProxy` (the visual-state/variant indirection), and
+   * the real `NodeGraphNode` is one level in at `.model` — the same hop
+   * `TypeView.bindStyleDefaultWatch` makes. Reading `parent.model.owner`
+   * directly returns undefined, which is silent: the predecessor picker simply
+   * says nothing runs before this step.
+   */
+  private get node() {
+    const m = this.parent?.model as TSFixme;
+    return (m && m.model) || m;
+  }
+
   /** The graph and step id the predecessor picker needs. */
   protected get graph() {
-    return this.parent?.model?.owner;
+    return this.node?.owner;
   }
 
   protected get stepId(): string | undefined {
-    return this.parent?.model?.id;
+    return this.node?.id;
   }
 
   protected write(value: unknown) {

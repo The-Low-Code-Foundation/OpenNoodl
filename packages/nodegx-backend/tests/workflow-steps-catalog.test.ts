@@ -157,6 +157,36 @@ describe('WF-002 author documentation coverage', () => {
     expect(doc).toMatch(/triggerType/);
   });
 
+  it('documents every condition operator the catalog serves (WFA-004)', () => {
+    // The workflow canvas builds its operator dropdown from the served
+    // `conditionLanguage`, so an operator can now reach a user's screen without
+    // anyone writing it down. Same drift, one surface further out.
+    const { conditionLanguage } = stepKindCatalog();
+    expect(conditionLanguage.ops.length).toBeGreaterThan(0);
+    for (const op of conditionLanguage.ops) {
+      expect(doc).toContain(`\`${op.name}\``);
+      // A label is what the dropdown shows; a missing one would render an empty
+      // option rather than fail anywhere.
+      expect(op.label.length).toBeGreaterThan(0);
+    }
+    // Exactly the operators that take no right-hand operand, so the editor
+    // hides the right-hand control for those and only those.
+    const unary = conditionLanguage.ops.filter((o) => o.unary).map((o) => o.name).sort();
+    expect(unary).toEqual(['empty', 'exists', 'falsy', 'notEmpty', 'notExists', 'truthy']);
+  });
+
+  it('tells an author how to build one on the canvas (WFA-004, F10)', () => {
+    // F10: this page told authors to use "the Backend Services panel", a
+    // surface that did not exist. A doc that names a surface has to name one
+    // that is real.
+    expect(doc).not.toMatch(/Author them:.*Backend Services panel/);
+    expect(doc).toContain('Workflows panel');
+    expect(doc).toContain('## Authoring one on the canvas');
+    // The deploy interaction is the thing most likely to bite someone, so it
+    // must be stated rather than left to be discovered.
+    expect(doc).toMatch(/is not deployed with your app/i);
+  });
+
   it('documents which params are DSL structures rather than values', () => {
     for (const kind of STEP_KINDS) {
       for (const param of STEP_KIND_SPECS[kind].params) {

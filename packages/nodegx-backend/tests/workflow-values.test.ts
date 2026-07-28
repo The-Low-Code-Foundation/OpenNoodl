@@ -323,9 +323,11 @@ describe('WFA-003 the served spec describes the value language', () => {
   });
 
   it('is pinned to a version, so a shape change has to be a decision', () => {
-    // WF-002 shipped 1.0.0; WFA-003 added `valueLanguage` and `raw`. Bumping
-    // this line is the deliberate act the catalog's `version` field is for.
-    expect(catalog.version).toBe('1.1.0');
+    // WF-002 shipped 1.0.0; WFA-003 added `valueLanguage` and `raw`; WFA-004
+    // added `conditionLanguage`, because the workflow canvas renders a
+    // condition from the served operator set rather than a bundled copy.
+    // Bumping this line is the deliberate act the catalog's `version` is for.
+    expect(catalog.version).toBe('1.2.0');
   });
 
   it('marks every DSL param raw, and nothing else', () => {

@@ -16,10 +16,59 @@ read the two paragraphs under "Ordering" first. The one thing to internalise:
 
 - **Discover them live:** `GET /admin/workflow-step-kinds` on a running backend,
   or the MCP tool `list_backend_step_kinds`.
-- **Author them:** the Backend Services panel, or the MCP tools
-  `create_backend_workflow` / `update_backend_workflow`.
-- **Watch them run:** every step produces an event in the execution History
-  Panel and the canvas Execution Overlay (WF-006).
+- **Author them:** the **Workflows panel** in the editor, which draws a workflow
+  as a graph on the canvas — or the MCP tools `create_backend_workflow` /
+  `update_backend_workflow`.
+- **Watch them run:** every step produces an event in the Execution History
+  panel and, because a canvas node id *is* a step id, a badge on the step that
+  produced it in the canvas Execution Overlay.
+
+---
+
+## Authoring one on the canvas
+
+Open the **Workflows** panel (the sidebar rail). It lists the workflows of every
+running backend, grouped by backend — and with none running it says so, because
+a workflow lives in a backend's data directory and there is nothing to list and
+nothing to author against until one is up.
+
+Click a workflow to draw it:
+
+- **A step is a node.** Its title is the step's name (or its id), and its second
+  line is the kind, the function it invokes for `call-function` and `retry`, and
+  `entry step` on the one the run starts at.
+- **An edge is a connection.** `next` is the plain wire; a route carries its
+  name on the wire, because an unlabelled branch is unreadable; `onError` is red
+  and dashed.
+- **Params are edited in the property editor.** A condition is three controls —
+  left value, operator, right value — with `all`/`any` groups that nest. Any
+  value can be a literal or a reference to data the run produced, chosen from a
+  picker over the steps that can actually have run before this one.
+- **The canvas will not let you draw a loop.** A workflow is a DAG; the engine
+  rejects a cyclic definition and would refuse to load one, so the connection is
+  refused at the moment you draw it rather than at the moment you save.
+- **Save writes to the backend**, and a definition the backend's validator
+  rejects comes back with that validator's own message. Nothing is written until
+  it is accepted.
+- **Run & pin** runs the workflow and pins the execution to this canvas, so the
+  badges land on the steps you just authored.
+
+### What a workflow is *not*
+
+A workflow is **not** a project component, and the canvas is the only place the
+two look alike. It is not in your project, does not arrive with a `git clone`,
+is not in an export, and **is not deployed with your app** — a deploy carries
+the project artifact, and workflow definitions are state on whichever backend
+holds them. Moving a workflow to a production backend is done against that
+backend's admin API (or its own editor session), not by deploying the app.
+
+Step positions are the one editor-owned thing stored in the definition, as an
+optional `ui: { x, y }` per step, and the engine ignores them. They live there
+rather than in editor-local storage because the definition is the *only*
+artefact a workflow has: no repository carries a layout beside it, so
+editor-local positions would mean every collaborator opened a workflow that had
+never been arranged. A workflow with no positions — one written by an agent, say
+— is laid out deterministically on first open.
 
 ---
 
