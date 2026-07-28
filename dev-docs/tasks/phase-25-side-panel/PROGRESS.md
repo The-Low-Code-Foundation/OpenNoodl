@@ -212,6 +212,56 @@ defect, and a bigger one than F44.**
 > design decision with its own hang risk, so it is filed here rather than taken
 > in passing.
 
+**✅ FIXED and live-verified 2026-07-28.** Richard took the design decision: do
+both — hold the quit open *and* save on blur, because neither covers the other's
+cases. Commits `b0a021b8` (the implementation, swept into a WFA-004 commit by a
+concurrent session rather than landing under its own message), `6e88a614` (specs)
+and `1121272a` (the backend-teardown timeout).
+
+What shipped:
+
+| Trigger | Covers |
+|---|---|
+| `before-quit` → `preventDefault()` → flush → stop backends → quit | ⌘Q, the app menu, the dock |
+| window `close` → same handshake, then `destroy()` | ⌘W and the red button; the usual quit route on Windows/Linux. Stands down when `before-quit` is already draining, so ⌘Q costs one round trip |
+| `blur` → flush | what no quit handler can reach — a crash, a force-kill, an OS-initiated shutdown |
+| `flushPendingProjectSave()` | the renderer half: promisified, writes serialised so a flush cannot interleave with the debounced save, `savePending` tracking the edit until it is actually on disk |
+
+**Two things the original write-up had not seen.** The old handler was `async`
+and *appeared* to await `stopAll()` — but **Electron does not wait for an async
+`before-quit` handler**, so that await never did anything and backends were being
+torn down fire-and-forget. `preventDefault()` fixes that as a side effect. And
+because holding the quit open is precisely what makes a hang fatal, `stopAll()`
+had to be bounded too: it was previously un-hangable *because* it was un-awaited.
+
+Also fixed, same family: `setSaveOnModelChange(false)` cleared the timer and
+dropped the queued edit. `savePending` now survives the disable and re-arms on
+re-enable.
+
+**Live verification**, from the primary checkout, against `VerifyFix4`
+(legacy format, one `project.json`, the same `/#__page__/Home` component as the
+original report). Every probe edited, then read `project.json` **synchronously**
+to confirm the edit was genuinely still only in memory, before doing anything:
+
+| Path | Result |
+|---|---|
+| Edit → `app.quit()` 50ms later | model had it, disk did **not**; app exited in **581ms**; label **on disk** afterwards. Reopened: `labelAfterReopen: "QUITFLUSH-PROBE-1"` |
+| Blur (control) — edit, no blur | not on disk at 350ms, on disk at 2500ms, i.e. the ordinary 1s debounce |
+| Blur (treatment) — focus, edit, blur | **on disk at 366ms**, far inside the 1s debounce. The listener wrote it, not the timer |
+| Window `close` | edit not on disk at edit time → on disk after close, and the app correctly stayed alive on macOS |
+| **Hanging save** — `toDirectory` patched to never call back | app **still quit**, in **5284ms**, logging *"Timed out waiting for the renderer to flush its pending project save; quitting anyway"*. The wedge risk is bounded, not theoretical |
+
+Gate: **1766 specs, 0 failures**, on four orders (seeds 63183, 07241, 69768,
+unpinned 70078) — the four new specs touch module globals, and one seed is not
+evidence for a spec that does.
+
+⚠️ **A blur test that does not first take focus proves nothing.** The first
+attempt called `win.blur()` on a window that had never had OS focus (the app was
+launched headlessly while the terminal held focus), so no `blur` event fired at
+all — `blurEventsFired: 0` — and the save that eventually appeared was the
+debounce. `isFocused()` was `false` the whole time. Focus first, then blur, and
+keep the no-blur control alongside it.
+
 Also worth recording, a driving trap one window along from the documented one:
 **`--target=dashboard` silently attaches to the "About NodeGX" window when it is
 open.** `about-window/about.html` is also a `file:` page and sorts ahead of the
