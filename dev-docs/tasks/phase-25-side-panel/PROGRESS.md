@@ -173,6 +173,30 @@ primary-checkout pass as part of the task, not as a residual.
   `fg-muted`; give the glyph its own token and accept a deliberate tree/canvas divergence; or record
   a documented exemption and drop the assertion to match. **Do not "fix" it by editing one side.**
 
+  **✅ DECIDED 2026-07-28 — Richard took the documented exemption.** Neither of the other two was
+  worth 0.03 on a decoration: lifting `fg-muted` moves the canvas as well (it is the same token that
+  `CanvasTheme.categoryDefault` reads), and a private token buys the contrast by breaking the exact
+  tree/canvas parity the coupling exists to guarantee.
+
+  **The exemption is recorded in the gate, not just in prose.** `components-tree.mjs` grew a
+  `GLYPH_CONTRAST_EXEMPT` table and a third finding kind alongside pass/skip:
+
+  | Kind | Means |
+  |---|---|
+  | fail | below the bar, not accepted |
+  | skip | this run could not prove it |
+  | **exempt** | **measured, below the bar, and accepted on the record** |
+
+  This matters because an exemption is *not* a skip — the value is still measured on every pass and
+  printed on every run (`~ EXEMPT …`), so it cannot rot quietly. And it is not a blank cheque: the
+  entry carries a **floor of 2.9**, and a drop below that fails with a distinct message
+  (*"below its recorded exemption floor … a regression beyond what was accepted, not the known
+  miss"*). Lowering `minGlyphContrast` globally would have done neither.
+
+  ⚠️ **Still worth a separate look:** this exemption is justified *because the glyph is redundant*.
+  Wherever `fg-muted` is load-bearing rather than decorative, 2.97:1 is a real problem and this
+  decision says nothing about it. That is a UIX-001 token question, not a PNL-006 one.
+
   Still NOT PROVEN, and honestly reported as such by the gate: **11 SKIPs** — depth-4 nesting, the
   warning dot, and label ellipsis. None of the eleven projects on this launcher has four levels of
   nesting, a component carrying a warning, or a name long enough to ellipsise at 186px. Covering

@@ -107,6 +107,33 @@ const EXPECT = {
   minGlyphContrast: 3.0
 };
 
+/**
+ * Recorded exemptions from `minGlyphContrast` — Richard's call, 2026-07-28.
+ *
+ * An exemption is NOT a skip. A skip means "this run could not prove it"; these
+ * are measured every pass, reported every pass, and accepted. They are also not
+ * a blank cheque: each carries a `floor`, and dropping below it FAILS. So the
+ * exemption records a decision without turning the assertion off.
+ *
+ * Do not add one without the same three fields, and do not add one for a glyph
+ * that carries meaning on its own.
+ */
+const GLYPH_CONTRAST_EXEMPT = {
+  default: {
+    floor: 2.9,
+    why:
+      '`.Cat-default` is deliberately `var(--theme-color-fg-muted)` because CanvasTheme’s ' +
+      '`categoryDefault` is the same token — an uncategorised component is meant to look ' +
+      'identical in the tree and on the canvas, and editing one side breaks that silently. ' +
+      'The miss is 2.97 against 3.0 (1%) on a DECORATIVE glyph: the row is identified by its ' +
+      'label, which measures 13.72:1, so the glyph is redundant information rather than the ' +
+      'thing carrying meaning, and WCAG 1.4.11 scopes the 3:1 bar to elements required to ' +
+      'understand content. Fixing it means lifting `fg-muted` globally (UIX-005/UIX-012 ' +
+      'territory, and it moves the canvas too) or accepting a deliberate tree/canvas ' +
+      'divergence. Neither is worth 0.03 on a decoration. DO NOT "fix" this by editing one side.'
+  }
+};
+
 /** The tree's kind→category expectation, mirroring `componentKind.ts`. */
 const CATEGORY_TOKEN = {
   visual: '--theme-color-node-category-visual',
@@ -619,6 +646,8 @@ function assess(m, label, { checkNarrow }) {
   const out = [];
   const fail = (code, msg) => out.push({ code, msg: `${label}: ${msg}` });
   const skip = (code, msg) => out.push({ code, msg: `${label}: ${msg}`, skip: true });
+  /** Measured, below the bar, and accepted on the record. Not a pass, not a skip. */
+  const exempt = (code, msg) => out.push({ code, msg: `${label}: ${msg}`, exempt: true });
 
   // --- A: the light-mode fix ------------------------------------------------
   if (!m.selected) {
@@ -721,7 +750,23 @@ function assess(m, label, { checkNarrow }) {
       );
     }
     if (g.contrast != null && g.contrast < EXPECT.minGlyphContrast) {
-      fail('glyph-contrast', `the "${g.key}" glyph measures ${g.contrast}:1 against its ground, below ${EXPECT.minGlyphContrast}:1`);
+      const ex = GLYPH_CONTRAST_EXEMPT[g.key];
+      if (ex && g.contrast >= ex.floor) {
+        // Measured, below the bar, and accepted — see GLYPH_CONTRAST_EXEMPT.
+        exempt(
+          'glyph-contrast',
+          `the "${g.key}" glyph measures ${g.contrast}:1, below ${EXPECT.minGlyphContrast}:1 — ` +
+            `recorded exemption (floor ${ex.floor}). ${ex.why}`
+        );
+      } else if (ex) {
+        fail(
+          'glyph-contrast',
+          `the "${g.key}" glyph measures ${g.contrast}:1 — below its recorded exemption floor of ` +
+            `${ex.floor}, so this is a regression beyond what was accepted, not the known miss`
+        );
+      } else {
+        fail('glyph-contrast', `the "${g.key}" glyph measures ${g.contrast}:1 against its ground, below ${EXPECT.minGlyphContrast}:1`);
+      }
     }
   }
 
@@ -757,6 +802,7 @@ function flush() {
 
   const failures = [];
   const skips = [];
+  const exemptions = [];
   let timeouts = 0;
 
   try {
@@ -889,8 +935,9 @@ function flush() {
           const f = assess(m, label, { checkNarrow: px !== null });
           report.results.push({ theme, pass: label, measured: m, findings: f });
 
-          const real = f.filter((x) => !x.skip);
+          const real = f.filter((x) => !x.skip && !x.exempt);
           const sk = f.filter((x) => x.skip);
+          const ex = f.filter((x) => x.exempt);
           for (const x of real) {
             failures.push({ theme, pass: label, ...x });
             console.log(`  ✗  ${x.msg}`);
@@ -898,6 +945,10 @@ function flush() {
           for (const x of sk) {
             skips.push({ theme, pass: label, ...x });
             console.log(`  –  SKIP ${x.msg}`);
+          }
+          for (const x of ex) {
+            exemptions.push({ theme, pass: label, ...x });
+            console.log(`  ~  EXEMPT ${x.msg}`);
           }
           if (!real.length) {
             const c = m.selected ? `selected contrast ${m.selected.contrast}:1` : 'no selection';
@@ -930,9 +981,17 @@ function flush() {
   }
 
   report.skips = skips;
+  report.exemptions = exemptions;
   flush();
 
   console.log(`\n${report.results.length} theme×width passes run.`);
+  if (exemptions.length) {
+    console.log(
+      `\n~ ${exemptions.length} EXEMPTIONS — measured, below the bar, and accepted on the record. ` +
+        `Not passes; see GLYPH_CONTRAST_EXEMPT for why each one stands:`
+    );
+    for (const e of exemptions) console.log(`  - [${e.theme ?? '-'}/${e.pass ?? '-'}] (${e.code}) ${e.msg}`);
+  }
   if (skips.length) {
     console.log(`\n– ${skips.length} SKIPS — these are NOT passes, they are things this run could not prove:`);
     for (const s of skips) console.log(`  - [${s.theme ?? '-'}/${s.pass ?? '-'}] (${s.code}) ${s.msg}`);
