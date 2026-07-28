@@ -149,6 +149,52 @@ the target. The spec asserts `type.name` rather than identity so that it pins
 neither the current behaviour nor an unproven claim about what it should be.
 Wants its own investigation.
 
+**Investigated 2026-07-28 (static read). The stated mechanism does not hold —
+but the observation is not thereby explained, so this stays open.** Four things
+in the code contradict "a live reference into the project `analyzeSource`
+loaded":
+
+1. **`analyzeSource` retains nothing.** It resolves `project.toJSON()` — plain
+   data. The `ProjectModel` it built is unreachable once the callback returns.
+   `AnalyzedSource.project` is `ProjectData`, not a model.
+2. **`apply` does not use analyze's project at all.** It calls
+   `projectFromDirectory(plan.sourceDir, …)` and loads its *own* source. So even
+   a leak in analyze could not be what `apply` grafts from.
+3. **The graft re-parents.** `ProjectModel.addComponent` sets
+   `component.owner = this` before anything else, so a component that has been
+   through `target.addComponent` has the **target** as its owner by construction.
+4. **A throwaway source is unreachable from the type system.**
+   `NodeLibrary.getNodeTypeWithName` resolves through `getComponents()`, which
+   reads *registered modules only*, and the sole `registerModule(project)` call
+   site in `src/` is the `ProjectModel.instance` setter. A source project loaded
+   for import is never `ProjectModel.instance`. `NodeGraphModel.updateTypes()`
+   independently bails unless its owner is a registered module, then re-resolves
+   every node's type through that same path.
+
+So `owner.name === 'proj1'` cannot be produced by the route the note describes.
+The likeliest remaining explanation is **spec-environment global state** rather
+than import logic — `NodeLibrary.instance` is a singleton with a name-keyed
+`typeCache`, specs assign `ProjectModel.instance` freely, and this file already
+records three specs that passed or failed on what ran before them. That is a
+hypothesis, not a finding.
+
+**How to close it properly, since this is reproducible in a spec and does not
+need a live editor:** restore the identity form of assertion 3, run the suite on
+several seeds, and if it reproduces, log `NodeLibrary.instance.typeCache.get(
+'/comp1')` and `isModuleRegistered` for both projects at the assertion. If it
+only reproduces on some orders, it is the singleton and not the importer — and
+the fix belongs to test isolation, not to `apply`.
+
+**One real thing found on the way, worth its own line:** `ProjectModel.fromJSON`
+→ `addComponent` fires `NodeLibrary.instance.notifyListeners('typeAdded')` on
+the **global** singleton for every component, including those of the throwaway
+source projects that analyze and apply each load. Every `NodeGraphModel` in the
+open project answers that with `scheduleUpdateTypes()`. No listener retains the
+payload (all four call sites ignore it and just reschedule), so it is **not** a
+retention leak — but importing a large project makes the target graph re-resolve
+all of its types once per source component. A performance smell, not a
+correctness bug. Not fixed; recorded so the next person does not re-derive it.
+
 ## Anytime fixes (independent of task order)
 
 - [x] Import-from-URL collision popup ignores unticked items (`EditorPage.tsx:353–363`) — LIB-004 step 0 (2026-07-25; fix applies `filterImports(..., { remove: getUnselectedImports() })`. ⚠️ verified by construction, not yet live)
