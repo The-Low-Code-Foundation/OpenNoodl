@@ -1,6 +1,6 @@
 # Phase 27 — Visual Backend Authoring (Track L): Progress
 
-**Status:** 🚧 In progress — 4 / 7 complete, WFA-005 next
+**Status:** 🚧 In progress — 5 / 7 complete, WFA-006 next
 **Specced:** 2026-07-27, from a live end-to-end test of phase 19's workflow engine
 **Phase overview:** [README.md](./README.md)
 
@@ -16,7 +16,7 @@ Not started · In progress · **Built–not wired** · Complete · Superseded
 | [WFA-002](./WFA-002-RUN-INSPECTOR.md) | The run inspector | 1 | ✅ Complete | 2026-07-28 | The spec was right that most of it existed and was off — and wrong that cloud function runs feed it: **they record zero steps** (F32), so the overlay can place a badge only once WFA-004 exists. Run/cancel live-verified; three shipped defects fixed (F31, F33, F34). [Notes](./WFA-002-NOTES.md) |
 | [WFA-003](./WFA-003-STEP-DATA-MAPPING.md) | Step data mapping & one payload shape | 2 | ✅ Complete | 2026-07-28 | Backend-only, as specced. There were **five** entry points, not four (F38). One key could not be kept in both shapes — `trigger` is now the object, the string moved to `triggerType` (F39). [Notes](./WFA-003-NOTES.md) |
 | [WFA-004](./WFA-004-WORKFLOW-CANVAS.md) | The workflow canvas | 3 | ✅ Complete | 2026-07-28 | **Reuse, not escalate** — the §1 decision is in [WFA-004-ASSESSMENT.md](./WFA-004-ASSESSMENT.md), and a real workflow renders on the *existing* canvas with node ids that are step ids, so WFA-002's overlay lands on it **unmodified** (criterion 3, confirmed badge-by-badge). The live pass found one shipped defect: a single `switch` step made a whole workflow fail to open (F49). [Notes](./WFA-004-NOTES.md) |
-| [WFA-005](./WFA-005-TRIGGERS-ON-CANVAS.md) | Triggers as canvas entry nodes | 3 | ⬜ Not started | — | Carries shipped defects F7 and F8 |
+| [WFA-005](./WFA-005-TRIGGERS-ON-CANVAS.md) | Triggers as canvas entry nodes | 3 | ✅ Complete | 2026-07-28 | **F8 was never about `payload`** — the write path validated the object it had just built, so an unknown key was dropped at every level while the load path refuses to boot on the same key. F7's exemption is scoped by the matched route's own declared access kind, not by a path prefix. F9 was two defects in one number. F47 folded in on Richard's call and closes F34's other half. The live pass drove the phase-19 exit clause end to end: one definition, two entry points, **different branches**. [Notes](./WFA-005-NOTES.md) |
 | [WFA-006](./WFA-006-STEP-TO-FUNCTION-DESCENT.md) | Descend from a step into its function graph | 3 | ⬜ Not started | — | What makes the two tiers feel like one language |
 | [WFA-007](./WFA-007-AI-PROPOSES-ONTO-CANVAS.md) | AI proposes workflows onto the canvas | 4 | ⬜ Not started | — | Adds no AI capability; adds a review surface |
 
@@ -42,9 +42,9 @@ around the description.
 
 | # | Finding | Where | Owner |
 |---|---|---|---|
-| F7 | A webhook secret sent as `Authorization: Bearer <secret>` **can never authenticate**. `webhook.ts` explicitly accepts that form and its own 401 advertises it, but `resolvePrincipal` runs first for every request and throws 401 for any Bearer that is not an admin credential. `X-Webhook-Token` and `?token=` both work | `webhook.ts:67-68` vs `HttpServer.ts:1310` → `security/state.ts:220-224` | WFA-005 |
-| F8 | A schedule trigger created with a `payload` key returns **201 and silently discards it** — not stored, not rejected. So a scheduled run always receives `{trigger, triggerId, firedAt, cron}` and nothing else | `registry.ts` ScheduleConfig; observed via `POST /admin/triggers` then `GET` | WFA-005 |
-| F9 | The Triggers panel hardcodes `target: {kind: 'function'}`, so **no trigger created in the editor can target a workflow**; and the target is free text with no validation, so a typo only surfaces at the next fire | `TriggersPanel.tsx:44,109` | WFA-005 |
+| F7 | **Closed by WFA-005, 2026-07-28.** A webhook secret sent as `Authorization: Bearer <secret>` **can never authenticate**. `webhook.ts` explicitly accepts that form and its own 401 advertises it, but `resolvePrincipal` runs first for every request and throws 401 for any Bearer that is not an admin credential. `X-Webhook-Token` and `?token=` both work | `webhook.ts:67-68` vs `HttpServer.ts:1310` → `security/state.ts:220-224` | WFA-005 ✅ |
+| F8 | **Closed by WFA-005, 2026-07-28 — and it was a class, not a key.** A schedule trigger created with a `payload` key returned **201 and silently discarded it**; so did an unknown key at the top level, in `target`, in `webhook` and in `dbChange`, all reproduced live. `upsert` reconstructed a `TriggerDef` from the input and validated *the reconstruction*, so validation of the write path could only ever confirm that `upsert` copied correctly — while the same key in `triggers.json` refuses to start the service. Fixed by validating the INPUT before anything is copied, with the key sets in one place; then `ScheduleConfig.payload` delivered as WFA-003's `body` | `registry.ts` ScheduleConfig; observed via `POST /admin/triggers` then `GET` | WFA-005 ✅ |
+| F9 | **Closed by WFA-005, 2026-07-28.** The Triggers panel hardcoded `target: {kind: 'function'}`, so no trigger created in the editor could target a workflow; and the target was free text, so a typo only surfaced at the next fire. Both halves are now chosen — a `runs` control and a name picked from `/admin/workflows` + `/admin/workflow-defs` — with free text still permitted and flagged as unresolved rather than accepted silently | `TriggersPanel.tsx:44,109` | WFA-005 ✅ |
 | F10 | `docs/runtime/WORKFLOW-NODES.md` tells authors to use "the Backend Services panel" to author workflows. No such surface exists. **Closed by WFA-004, 2026-07-28** — the page now describes the Workflows panel and the canvas, and a coverage test fails if it ever again names a surface that is not there | `docs/runtime/WORKFLOW-NODES.md` | WFA-004 ✅ |
 
 ### The data model — **all closed by WFA-003, 2026-07-28**
@@ -74,7 +74,7 @@ around the description.
 | F31 | **A 0 ms step was indistinguishable from a skipped one.** `rowToStep`/`rowToExecution` read nullable numeric columns with `(row.x as number) \|\| undefined`, folding a genuine `0` into "absent". On a local backend most steps finish sub-millisecond, so the `branch` step in every observed run showed `—`, exactly like the `skipped` step two rows below it. Fixed with a `nullableNumber` helper — shared with the backend, so `/executions` is fixed too | `noodl-viewer-cloud/src/execution-history/store.ts:621,641` | WFA-002 ✅ |
 | F32 | **Cloud function runs record zero steps.** `ExecutionLogger.startNode` is called from exactly one place in the repo — `WorkflowEngine.ts:406`. Nothing in the cloud runtime records a function's graph nodes. Confirmed against WFA-001's three `saveOrder` executions: `steps: 0` every time. So the `ExecutionOverlay` can **never** place a badge today: function runs have no steps, and a workflow run's step ids match no canvas until WFA-004. **F16 is true only of workflow runs**, and the spec's Step 7 (pin a function execution, scrub its timeline) is not possible. WFA-002 makes both cases say so in words | `ExecutionLogger.startNode`, `WorkflowEngine.ts:406` | WFA-004 (to make it resolvable); message shipped by WFA-002 |
 | F33 | **A long run read as a failed run.** `POST /admin/workflow-defs/:id/run` answers only when the run finishes, and every `ServiceSupervisor.request` carries a hard `AbortSignal.timeout(30000)`. Observed live on a 5-minute `wait`: `TimeoutError` surfaced in the editor while the run was healthy. `runWorkflowDef` now reports `{stillRunning:true}` instead of throwing; raising the ceiling would only move the lie further out | `BackendManager.runWorkflowDef`, `ServiceSupervisor.js:311` | WFA-002 ✅ |
-| F34 | **The sidebar keeps an inactive panel mounted but hidden**, so switching away and back does not remount or refetch. Observed live: open the panel, start a backend, come back — still "No backend is running" until Refresh. Fixed for this panel with an `activeChanged` listener. A general hazard for **any** panel whose subject is another process's state — Backend Services and Triggers are worth checking | `SidebarModel.setActivePanel` | WFA-002 ✅ (this panel); unowned for the others |
+| F34 | **The sidebar keeps an inactive panel mounted but hidden**, so switching away and back does not remount or refetch. Observed live: open the panel, start a backend, come back — still "No backend is running" until Refresh. Fixed for this panel with an `activeChanged` listener. A general hazard for **any** panel whose subject is another process's state — Backend Services and Triggers are worth checking | `SidebarModel.setActivePanel` | WFA-002 ✅ (this panel); **the others closed by WFA-005's `backend:statusChanged`** |
 | F35 | A dispatched run's record is written as the run *starts*, so a refresh in the same tick loses the race to the HTTP round trip and the in-flight row is missing until the user refreshes. One follow-up fetch ~800 ms later covers it (deliberately not a poller) | `ExecutionHistoryPanel.handleStarted` | WFA-002 ✅ |
 | F36 | `npm run cloud-library:check` reports the committed cloud node library stale — **and was already stale on a clean `cline-dev` tree** (verified by stashing). A CI gate WFA-001 added is red on `main`-line work | `scripts/cloud-node-library/`, `cloud-node-library.json` | unowned — pre-existing, needs a regenerate-and-commit |
 | F37 | Schedule-triggered executions carry a doubled workflow name (`countOrdercountOrderss`) in the list. Cosmetic, from the WF-005 trigger path, not touched here | observed in `/executions` rows | unowned |
@@ -97,9 +97,18 @@ around the description.
 | F44 | **`Model.*` events are broadcast globally** by `shared/model.js`, so a workflow's canvas graph — deliberately not part of `ProjectModel` — reaches every handler in `ViewerConnection`. Only `Model.nodeAdded` filtered on project ownership; its siblings checked that a *component* existed, which a workflow's canvas adapter satisfies, so editing a step param would have sent the viewer a `parameterChanged` naming a component it has never heard of. Guarded as a positive test for the workflow prefix — "not this project" would also drop module-component updates those handlers deliberately still send | `ViewerConnection.ts` | WFA-004 ✅ |
 | F45 | **A guid is a legal step id**, so nothing would have broken if canvas-created steps kept theirs — but every execution record would read `nodeId: "3f2a1c04-…"` instead of `nodeId: "charge"`, and the run inspector this canvas exists to feed would be unreadable. New nodes are renamed from their kind on the way in; a non-guid id is kept, because that case is the undo of a delete re-adding a step other steps' edges point at | `WorkflowGraphModel.addRoot` | WFA-004 ✅ |
 | F46 | **In a property-editor row, `parent.model` is a `ModelProxy`** and the real `NodeGraphNode` is one hop further in at `.model`. Reading `parent.model.owner` returns `undefined` with no error, so the `$path` predecessor picker said "nothing runs before this step" on a step with three. Silent because every other read through the proxy works. Fixed and **re-verified live** — `decide` now offers *Receive order* | `propertyeditor/DataTypes/WorkflowTypes.ts` | WFA-004 ✅ |
-| F47 | The Workflows panel re-reads backends when it **becomes active** or on Refresh. A backend started while the panel is already open needs a Refresh press, because **there is no backend-started event in the renderer** — closing this properly means adding one. Same hazard family as F34, now in a third panel | `WorkflowsPanel.tsx`; `BackendManager.js` sends nothing | unowned |
+| F47 | **Closed by WFA-005, 2026-07-28, on Richard's call to fold it in rather than work around it a fourth time.** `BackendManager` now broadcasts `backend:statusChanged` on create / start / stop / delete **and on an unexpected exit** — the last being the state that was previously invisible, because a crashed backend left every panel still describing a running one. One `useBackendStatusChanged` hook, adopted by the Workflows, Execution History and Triggers panels; **F34's "unowned for the others" is closed with it**. Verified live: the Workflows panel went from *"Start a backend to author workflows"* to listing three workflows with no Refresh press | `WorkflowsPanel.tsx`; `BackendManager.js` sends nothing | WFA-005 ✅ |
 | F48 | `NavigationHistory` resolves its entries through `ProjectModel.getComponentWithName`, and `EditorDocument` restores `selectedComponentName` the same way — neither can find a workflow. Workflows are therefore kept **out** of canvas back/forward rather than pushed and silently discarded, and "reopen the last thing I had open" does not restore one | `NavigationHistory.ts:104`, `EditorDocument.tsx:396` | WFA-004 (accepted) |
 | F49 | **One `switch` step made a whole workflow fail to open, and a green suite could not see it.** `buildGraph` called `setDynamicPorts` *before* `graph.addRoot`, and `ViewerConnection`'s `Model.instancePortsChanged` handler opens `if (!e.model.owner.owner)` — a guard whose own comment describes a node with no *component* but which is one level too shallow for a node with no *graph*. The `TypeError` escaped the listener, `notifyListeners`, `buildGraph` and `WorkflowDocument.open`, so the panel click appeared to do nothing at all. **F44 closed six of these handlers and missed the seventh**, which also had no `isWorkflowModelEvent` filter — so a `switch` step's ports would have reached the viewer naming a component it has never heard of. Both fixed, plus the ordering: a step is in the graph *before* it announces its ports, because every listener of a global model event identifies the event by walking `owner`, and an unowned node is invisible to the very filter meant to stop it. The editor specs already built a `switch` step and passed, because no `ViewerConnection` exists there — the new spec asserts the *invariant* instead | `ViewerConnection.ts` `Model.instancePortsChanged`; `WorkflowDocument.buildGraph` | WFA-004 ✅ |
+
+### Found by WFA-005, 2026-07-28
+
+| # | Finding | Where | Owner |
+|---|---|---|---|
+| F50 | **The Bearer webhook rejection produced no execution record, and fed the auth lockout budget.** F7's description stopped at "returns 401". Two further consequences, both read off the live execution log during the reproduction: the request was refused in `handle()` *before* routing reached `handleWebhook`, so the loud-rejection record the spec's own trap protects was never written — an operator debugging a failing integration saw an empty history rather than a rejected hook; and `handle()` calls `authLimiter.recordFailure` on a thrown principal resolution, so a third-party service retrying a Bearer hook walked itself into BAK-005's 429 for **every** route on the backend. Both fixed as a consequence of the exemption | `HttpServer.handle`, `admin/auth` | WFA-005 ✅ |
+| F51 | **A trigger entry node was offered as an upstream STEP by the `$path` picker** — the F49 shape again, a global structure growing a member every existing walker assumed could not exist. A trigger genuinely *is* upstream of the entry step on the canvas, so `upstreamSteps` listed it, and `{"$path": "upstream.trg_…"}` is a 400 from the backend: precisely the drift `workflowScope` exists to prevent. `syncEntry` had the mirror problem — the trigger's wire made the entry step look like it had a predecessor, so deleting the entry step would have promoted the wrong step. Caught within minutes by WFA-004's existing "the node ids are the step ids" spec | `workflowScope.ts`, `WorkflowDocument.syncEntry` | WFA-005 ✅ |
+| F52 | **The property editor's type chip names a COLOUR as if it were a category.** `getNodeTypeChipInfo` appends the taxonomy key's label, and for most nodes the colour and the category happen to be the same word — so it reads as a category. A trigger is coloured `data` for its hue (it is where the run's data comes from) and the chip read `WEBHOOK · POST /BOTH-WAYS · DATA`. Given a one-line opt-out (`metadata.hideCategoryChip`) rather than a taxonomy change; the general problem stands for any node whose colour is chosen for hue | `propertyeditor/utils.ts:46` | WFA-005 ✅ (locally) |
+| F53 | **A trigger's configuration cannot be edited from either surface.** `PUT /admin/triggers/:id` exists and is tested, but neither the panel nor the canvas offers a form for it — changing a cron means delete-and-recreate, which for a webhook mints a new secret and breaks every sender. Not in WFA-005's scope (the spec asks for creation, enable/disable and delete) but it is the obvious next ask | `TriggersPanel.tsx` | unowned |
 
 ### What already exists and is worth reusing
 
@@ -156,6 +165,55 @@ around the description.
   running backend). WFA-001 decides; whatever it picks must be visible in the UI.
 
 ## Log
+
+- **2026-07-28** — **WFA-005 complete.** The spec's implementation order earned its keep:
+  **F8 was never about `payload`.** Reproduced live before anything changed, an unknown key
+  was silently dropped at *every* level — top level, `target`, `schedule`, `webhook`,
+  `dbChange` — all answered **201**, while the same key in `triggers.json` refuses to let
+  the service start. The cause is one line of shape: `upsert` reconstructs a `TriggerDef`
+  field-by-field from the input and then validates *the reconstruction*, so validating the
+  write path could only ever confirm that `upsert` copied correctly. The key sets now live
+  in one place and `validateTriggerInput` checks what the caller sent **before any of it is
+  copied**, with every value rule left where it was — one description of a valid trigger,
+  and the new strictness on the write path only, so a `triggers.json` that boots today
+  still boots. Adding the field first would have hidden the class, which is exactly what
+  the spec said.
+  **F7's exemption is scoped by the matched route's own declared access kind**
+  (`{kind:'webhook'}`), not by a path prefix: `matchRoute` has already run, nothing about
+  the request can steer it, and reaching a second route through it would take adding that
+  route to the family deliberately. An admin token gains nothing — on a hook it arrives
+  anonymous and is compared against *that hook's* secret. Two consequences the finding did
+  not list, both read off the live execution log: the Bearer rejection produced **no
+  execution record at all** (refused before the handler, so the loud-rejection behaviour
+  never ran) and it **fed BAK-005's auth lockout**, so a retrying third-party service
+  walked itself into a 429 for every route (F50).
+  **F9 was two defects in one number** — a hardcoded target kind and a free-text name —
+  and both halves are now chosen from what the backend actually has, with free text still
+  permitted and flagged rather than accepted silently. Triggers draw as **entry nodes** on
+  the workflow canvas, and the whole design is about keeping "this is a view of a backend
+  object" true: a trigger is not a step to `kindFromTypeName`, so `toInput` cannot write
+  one into a definition; the nodes are added before the dirty listener exists, so a
+  workflow does not open unsaved because something triggers it; and the types are
+  `singleton`, so the canvas will not delete or copy them — the real actions are on the
+  node's menu, because canvas delete is undoable and deleting a backend object is not.
+  Drawing them immediately caused **the F49 shape again**: the `$path` picker offered a
+  trigger as an upstream *step*, which produces a definition the backend rejects with a
+  400, and `syncEntry` would have promoted the wrong step (F51). Caught in minutes by
+  WFA-004's own "node ids are step ids" spec.
+  **F47 folded in on Richard's call**, which also closes F34's "unowned for the others":
+  one `backend:statusChanged` broadcast — including on an *unexpected exit*, the state that
+  was previously invisible because a crashed backend left every panel describing a running
+  one — and one hook, adopted by three panels.
+  **The live pass drove the phase-19 exit clause end to end.** One definition, one webhook
+  trigger and one schedule trigger, and the branch takes a **different route** for each:
+  the schedule's payload arrives as `body` and picks `nightly`, the webhook's JSON picks
+  `adhoc`. That comparison was impossible before F8. All three token transports returned
+  200 against the URL copied off the panel; a wrong secret and an admin token were both
+  refused with the webhook's own message; the Workflows panel noticed a backend starting
+  with no Refresh press. One thing only a screenshot could find: the property editor's
+  header chip names a colour as if it were a category, so a webhook read `· DATA` (F52).
+  Backend **66 suites / 715** (was 65 / 683), editor **1791 / 0** (was 1767), typecheck
+  clean. Full pass in [WFA-005-NOTES.md](./WFA-005-NOTES.md).
 
 - **2026-07-28** — **WFA-004 complete.** The live pass closed it, and it earned its keep: **one
   `switch` step made an entire workflow fail to open** (F49), and the click that opened it appeared to

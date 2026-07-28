@@ -21,7 +21,11 @@ import { NodeLibrary } from '@noodl-models/nodelibrary';
 import { NodeLibraryImporter } from '@noodl-models/nodelibrary/NodeLibraryImporter';
 
 import { NodeGraphContextTmp } from '../../contexts/NodeGraphContext/NodeGraphContext';
+import {
+  OPEN_TRIGGERS_SURFACE
+} from '../../views/panels/BackendServicesPanel/LocalBackendCard/backendSurfaces';
 import Model from '../../../../shared/model';
+import { EventDispatcher } from '../../../../shared/utils/EventDispatcher';
 import {
   deleteTrigger,
   fetchBackendEndpoint,
@@ -175,14 +179,26 @@ export class WorkflowDocument extends Model {
    * where the label can name the backend it is about to change.
    */
   private triggerActions(nodeId: string): unknown[] {
+    // Adding one needs a form — type, cron or slug, scheme, target — and that
+    // form is the Triggers panel. The canvas asks for it rather than growing a
+    // second one on a Canvas2D surface that has no controls.
+    const add = {
+      label: `Add a trigger on ${this.ref.backendName}…`,
+      onClick: () =>
+        EventDispatcher.instance.emit(OPEN_TRIGGERS_SURFACE, {
+          backendId: this.ref.backendId,
+          backendName: this.ref.backendName
+        })
+    };
+
     const triggerId = triggerIdOfNode({ id: nodeId, typename: this.graph.findNodeWithId(nodeId)?.typename });
     if (!triggerId) {
-      // The manual marker stands for the absence of a trigger; there is nothing
-      // to enable and nothing to delete.
-      return [];
+      // The manual marker stands for the ABSENCE of a trigger, so the only
+      // thing it can offer is the way to stop being one.
+      return [add];
     }
     const trigger = this.triggers.find((t) => t.id === triggerId);
-    if (!trigger) return [];
+    if (!trigger) return [add];
 
     return [
       {
@@ -192,7 +208,8 @@ export class WorkflowDocument extends Model {
       {
         label: `Delete this trigger from ${this.ref.backendName}…`,
         onClick: () => void this.deleteTrigger(triggerId)
-      }
+      },
+      add
     ];
   }
 

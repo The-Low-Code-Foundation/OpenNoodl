@@ -199,7 +199,13 @@ export function addTriggerNodes(
       y: anchor.y + i * LAYOUT_ROW_HEIGHT,
       label: triggerLabel(trigger),
       parameters: triggerParameters(trigger, ctx),
-      metadata: { typeLabelOverride: triggerSubLabel(trigger) }
+      metadata: {
+        typeLabelOverride: triggerSubLabel(trigger),
+        // The colour is `data` for its hue — a trigger is where the run's data
+        // comes from — but "Data" is not what a trigger IS, and the sub-label
+        // already says what it is.
+        hideCategoryChip: true
+      }
     });
 
     graph.addRoot(node);

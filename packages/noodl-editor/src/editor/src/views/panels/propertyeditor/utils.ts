@@ -50,7 +50,15 @@ export function getNodeTypeChipInfo(model: TSFixme): NodeTypeChipInfo | undefine
   const typeLabel: string = model.metadata?.typeLabelOverride || model.type.displayName || model.type.name || '';
   if (!typeLabel) return undefined;
 
-  const categoryLabel = CATEGORY_LABELS[category];
+  /**
+   * The suffix names the taxonomy key, which is a COLOUR — and for most nodes
+   * the colour and the category are the same word, so it reads as a category.
+   * A node whose colour was chosen for its hue rather than its meaning can opt
+   * out: WFA-005's trigger entry nodes are `data` because a trigger is where the
+   * run's data comes from, and "Webhook · POST /both-ways · DATA" is a chip that
+   * says something false in order to say something the type label already said.
+   */
+  const categoryLabel = model.metadata?.hideCategoryChip ? undefined : CATEGORY_LABELS[category];
 
   return {
     category,

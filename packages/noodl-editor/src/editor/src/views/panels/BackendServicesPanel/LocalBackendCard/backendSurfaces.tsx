@@ -52,6 +52,8 @@ import React from 'react';
 import { SidebarModel } from '@noodl-models/sidebar';
 import { SidebarModelEvent } from '@noodl-models/sidebar/sidebarmodel';
 
+import { EventDispatcher } from '../../../../../../shared/utils/EventDispatcher';
+
 import { AuthPanel } from '../../auth';
 import { DataBrowser } from '../../databrowser';
 import { EmailPanel } from '../../email';
@@ -132,8 +134,40 @@ const SURFACE_DEFAULT_WIDTH = 860;
  */
 const SURFACE_ORDER_BASE = 8.01;
 
+/**
+ * The event the workflow canvas raises to reach the Triggers surface (WFA-005).
+ *
+ * The canvas draws a workflow's triggers as entry nodes and can enable, disable
+ * and delete one — but ADDING a trigger needs a form (type, cron or slug,
+ * scheme, target), and that form already exists here. Rather than build a second
+ * one on a Canvas2D surface that has no controls, the canvas asks for this
+ * panel, pre-pointed at the right backend. The event keeps the model layer from
+ * importing a panel: `WorkflowDocument` knows which backend, not which React
+ * tree.
+ */
+export const OPEN_TRIGGERS_SURFACE = 'backend:openTriggersSurface';
+
+export interface OpenTriggersSurfaceDetail {
+  backendId: string;
+  backendName: string;
+}
+
 /** Called once from `installSidePanel`, beside the rail-visible registrations. */
 export function installBackendSurfacePanels() {
+  EventDispatcher.instance.on(
+    OPEN_TRIGGERS_SURFACE,
+    ({ backendId, backendName }: OpenTriggersSurfaceDetail) => {
+      openBackendSurface('triggers', {
+        backendId,
+        backendName,
+        onClose: () => SidebarModel.instance.switch(BACKEND_SERVICES_PANEL_ID)
+      });
+    },
+    // No group to unsubscribe with: these registrations last as long as the
+    // editor does, exactly like the panel registrations below them.
+    null
+  );
+
   SURFACES.forEach((surface, index) => {
     SidebarModel.instance.register({
       transient: true,

@@ -246,11 +246,46 @@ provisions it (or the service mints missing secrets on first start).
 - **Editor:** Backend Services → a running local backend → **Triggers** opens a
   panel to add/enable/disable/delete triggers and see each one's type, config,
   enabled state, last fired, next fire, and last result, plus a **Test fire**.
+  The target is `{kind, name}` and both halves are chosen: `a cloud function` or
+  `a workflow`, then a name from what that backend actually has. A name may still
+  be typed — a function that is not deployed yet is a legitimate thing to point
+  at — and is then flagged as unresolved rather than accepted silently.
 
-Trigger configuration is **not node-shaped** — triggers target existing cloud
-functions, whose `noodl.cloud.request` node is the entry point — so no new
-catalog node ships; agent visibility is the MCP surface above (per the spec's
-"configuration that isn't node-shaped is still visible via MCP").
+### On the workflow canvas (WFA-005)
+
+A workflow's triggers are drawn as its **entry nodes**, wired into its entry
+step, so the whole automation is one picture:
+
+| Node | Shows |
+|---|---|
+| Webhook | the full `POST /hooks/<backend-id>/<slug>` URL with a copy button, and which verification scheme is in force |
+| Schedule | the cron, a plain-English reading of it, the next fire, the missed-fire policy, and the payload |
+| DB change | the collection and the actions |
+| Manual | drawn when *nothing* triggers the workflow, so "how does this start?" always has a visible answer |
+
+Enabled/disabled is on the card itself, and right-clicking the node offers
+**Enable/Disable** and **Delete this trigger from &lt;backend&gt;…**.
+
+Three things to be clear about:
+
+- **The nodes are a view.** A trigger is a backend object in `triggers.json`, not
+  part of the workflow definition. Nothing about a trigger is written when the
+  workflow is saved, and the drawn wire is derived from the definition's `entry`
+  (dragging it to another step moves the entry — that is a change to the
+  *workflow*).
+- **Deleting the node deletes the trigger from the backend**, which is why it is
+  on the menu behind a confirmation rather than on the canvas's delete key: canvas
+  delete is local and undoable, and this is neither.
+- **A trigger targeting a function has no node here** and stays in the panel. A
+  function is not a workflow.
+- **The secret is not recoverable from the node.** It was shown once at creation;
+  the row says so rather than implying otherwise.
+
+Trigger configuration was **not node-shaped** when WF-005 shipped, because a
+trigger targeted a cloud function whose `noodl.cloud.request` node was already
+the entry point. A *workflow* has no such node, which is what the entry nodes
+above supply. Agent visibility is still the MCP surface, which reaches every
+trigger type including the ones no canvas shows.
 
 ---
 
