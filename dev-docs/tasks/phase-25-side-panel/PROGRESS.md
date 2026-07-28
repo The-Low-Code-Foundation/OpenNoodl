@@ -319,3 +319,69 @@ Also worth recording, a driving trap one window along from the documented one:
 open.** `about-window/about.html` is also a `file:` page and sorts ahead of the
 editor, so every query returns normally and only `webpackChunknoodl_editor` being
 undefined gives it away. Match `noodl-editor/src/editor/index.html` specifically.
+
+### — opening a tracked example rewrites it: investigated 2026-07-28, root cause found, fix needs a decision
+
+Filed as *"open `project-examples/agent-chat` and `project.json` goes from 5718
+pretty-printed lines to 1 minified line, keys reordered, `rootComponent` silently
+dropped — with no user edit at all"*. Three separate things, and they have three
+separate answers. Two are settled by reading; the third needs the editor.
+
+**1. `rootComponent` is not lost — it is input-only, by design.** `fromJSON`
+reads `rootNodeId` first and falls back to `rootComponent` (a component *name*,
+which is how templates express it); `toJSON` has no `rootComponent` key at all
+and always emits `rootNodeId`. So any save normalises the one into the other.
+That is lossless **provided `setRootComponent` resolved** — and
+[[new-project-no-home-fix]] records that it silently no-ops when the NodeLibrary
+is empty, in which case `rootNodeId` comes out `undefined` and the root really is
+gone. The reported project kept working and `rootNodeId` was present, so
+resolution succeeded here. **Not a defect. Do not "fix" it by teaching `toJSON`
+to write `rootComponent`** — that would put two sources of truth for the root
+back into the file.
+
+**2. The minification is unconditional.** `filesystem.writeJson` is
+`JSON.stringify(obj)` with no `space` argument, so *every* project save writes
+one line. The tracked example is pretty-printed because it was committed that
+way, not because the editor ever writes that shape. So the reformat is not
+specific to examples — it is what every project on disk already looks like after
+its first save.
+
+⚠️ **This is worth a decision rather than a patch.** A one-line `project.json`
+means every project change is a whole-file git diff, in a product that ships git
+integration, a graph merge driver (SUB-007) and example projects it asks people
+to read. Pretty-printing would fix that, and would cost one large one-time diff
+in every existing project the first time it is saved. Richard's call — not taken
+here.
+
+**3. The save fires with no user edit, and the mechanism is the real bug.**
+`projectmodel.ts` installs a **global wildcard listener**:
+
+```js
+EventDispatcher.instance.on('Model.*', function (event, eventName) {
+  if (ignoreEvents.indexOf(eventName) !== -1) return;
+  scheduleProjectSave();
+});
+```
+
+`ignoreEvents` is a **22-name denylist**. So the project is saved in response to
+*any* `Model.*` event raised anywhere in the app unless someone has previously
+noticed that particular event and added it — an opt-out design, where every new
+event type in any model silently becomes a project-save trigger. That
+`Model.instancePortsChanged` is already on the list is the evidence this has bitten
+before and was patched one name at a time.
+
+`ProjectModel.fromJSON` does guard the load itself (`Model._listenersEnabled =
+false` around it), so the trigger is something that runs *after* the re-enable.
+**Which event it is, is NOT established** — `updateType()` turned out not to emit,
+and `projectmodel.modules.ts` neither adds components nor notifies, so the two
+obvious candidates are eliminated rather than confirmed. `Model.typeAdded` is
+absent from the denylist and remains the leading suspect, but that is a
+hypothesis. Settling it needs the editor: open a tracked example with a
+`Model.*` tap installed and read the event name that lands.
+
+**The blur-save is not the cause**, though it makes the symptom easier to hit —
+it flushes a save that was already scheduled, so it changes *when*, not *whether*.
+
+**Suggested shape of the fix, for when the event is known:** invert the list.
+An allowlist of events that genuinely mean "the project changed" cannot silently
+grow new triggers, and the denylist has already demonstrated it does.
