@@ -45,10 +45,10 @@ const TABS = [
 export function SettingsPanel() {
   const [activeTab, setActiveTab] = useState<SettingsTabId>(() => takeRequestedSettingsTab() || 'project');
 
-  // Another part of the editor (Clippy's "set up an AI provider", the retired-id
-  // migration on project open) can ask for a specific tab while this panel is
-  // already mounted — `SidePanel` keeps panels alive behind `display: none`, so
-  // a mount-time read alone would miss every request after the first.
+  // Another part of the editor (the retired-id migration on project open) can
+  // ask for a specific tab while this panel is already mounted — `SidePanel`
+  // keeps panels alive behind `display: none`, so a mount-time read alone would
+  // miss every request after the first.
   useEffect(() => {
     const onRequest = () => {
       const tab = takeRequestedSettingsTab();

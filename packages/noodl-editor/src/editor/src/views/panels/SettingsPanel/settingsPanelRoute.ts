@@ -40,7 +40,7 @@ export const RETIRED_PANEL_IDS: Record<string, { id: string; tab?: SettingsTabId
  *
  * A module-level value plus a DOM event rather than a context: the panel is
  * mounted by `SidebarModel` outside any provider this module could reach, and
- * callers (Clippy, the id migration) run before it exists.
+ * its caller (the id migration) runs before it exists.
  */
 let requestedTab: SettingsTabId | null = null;
 

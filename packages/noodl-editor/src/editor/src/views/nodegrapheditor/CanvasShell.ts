@@ -8,9 +8,8 @@
  * used to re-query it with `el.find('#...')` now get typed handles instead.
  *
  * The ids and class names are load-bearing: `styles/nodegrapheditor.css`,
- * `CommentLayer.css`, `HelpCenter.module.scss` and `Clippy.module.scss` all
- * select on them, and `HelpCenter`/`Clippy` portal into `.help-center-layer` /
- * `.clippy-layer` by document-level query.
+ * `CommentLayer.css` and `HelpCenter.module.scss` all select on them, and
+ * `HelpCenter` portals into `.help-center-layer` by document-level query.
  */
 export interface CanvasShell {
   /** The shell root; the editor's `el`. */
@@ -87,7 +86,6 @@ export function createCanvasShell(): CanvasShell {
   const componentTrailRoot = div(undefined, undefined, 'nodegraph-component-trail-root');
   const canvasHudRoot = div(undefined, undefined, 'canvas-hud-root');
   const helpCenterLayer = div(undefined, undefined, 'help-center-layer');
-  const clippyLayer = div(undefined, undefined, 'clippy-layer');
 
   root.append(
     editorBannerRoot,
@@ -100,8 +98,7 @@ export function createCanvasShell(): CanvasShell {
     domLayerWrapper,
     canvasHudRoot,
     componentTrailRoot,
-    helpCenterLayer,
-    clippingWrapper(clippyLayer, 'none')
+    helpCenterLayer
   );
 
   return {
