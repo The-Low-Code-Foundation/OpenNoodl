@@ -275,6 +275,15 @@ class BackendManager {
         { enabled }
       )
     );
+    // WFA-008: rotation is a verb of its own, because sending `secret` on an
+    // update REPLACES it — an edit form that carried the key would break every
+    // sender as a side effect of a cron change.
+    ipcMain.handle('backend:rotateTriggerSecret', async (_, id, triggerId) =>
+      this.requireRunning(id, 'rotate a webhook secret').request(
+        'POST',
+        `/admin/triggers/${encodeURIComponent(triggerId)}/secret`
+      )
+    );
     ipcMain.handle('backend:deleteTrigger', async (_, id, triggerId) =>
       this.requireRunning(id, 'delete trigger').request('DELETE', `/admin/triggers/${encodeURIComponent(triggerId)}`)
     );

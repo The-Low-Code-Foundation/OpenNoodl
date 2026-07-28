@@ -240,16 +240,61 @@ provisions it (or the service mints missing secrets on first start).
 
 - **MCP (SUB-008):** `list_backend_triggers`, `get_backend_trigger`,
   `create_backend_trigger`, `update_backend_trigger`,
-  `set_backend_trigger_enabled`, `delete_backend_trigger`. An agent can
-  enumerate and author every trigger type; webhook secrets are returned once and
-  never listed.
+  `set_backend_trigger_enabled`, `rotate_backend_trigger_secret`,
+  `delete_backend_trigger`. An agent can enumerate and author every trigger type;
+  webhook secrets are returned once and never listed.
 - **Editor:** Backend Services → a running local backend → **Triggers** opens a
-  panel to add/enable/disable/delete triggers and see each one's type, config,
-  enabled state, last fired, next fire, and last result, plus a **Test fire**.
-  The target is `{kind, name}` and both halves are chosen: `a cloud function` or
-  `a workflow`, then a name from what that backend actually has. A name may still
-  be typed — a function that is not deployed yet is a legitimate thing to point
-  at — and is then flagged as unresolved rather than accepted silently.
+  panel to add/edit/enable/disable/delete triggers and see each one's type,
+  config, enabled state, last fired, next fire, and last result, plus a
+  **Test fire**. The target is `{kind, name}` and both halves are chosen:
+  `a cloud function` or `a workflow`, then a name from what that backend actually
+  has. A name may still be typed — a function that is not deployed yet is a
+  legitimate thing to point at — and is then flagged as unresolved rather than
+  accepted silently.
+
+### Editing an existing trigger (WFA-008)
+
+**An edit keeps a webhook's secret.** That is the whole reason to edit rather
+than delete and recreate: `PUT /admin/triggers/:id` mints only when no secret is
+stored and replaces one only when the caller actually sends `secret`, so changing
+a cron, a name or a target leaves every sender working.
+
+What each change does to the integrations already pointing at a hook:
+
+| Change | Senders |
+|---|---|
+| cron, missed-fire policy, payload, name, target, actions, collection | unaffected |
+| `webhook.slug` | **the URL moves** — anything posting to the old one gets a 404. The credential itself is unchanged and works at the new address |
+| rotating the secret | **every sender is rejected** until it is given the new value |
+
+Rules the write path enforces, for the editor, an agent and `curl` alike:
+
+- **`enabled` absent means "keep what is stored."** So an edit cannot re-enable a
+  trigger somebody turned off; use the enable/disable route to change it.
+- **Sending `secret` REPLACES it.** Rotation is therefore its own verb —
+  `POST /admin/triggers/:id/secret` mints server-side and returns the new value
+  **once**. It is recorded in the audit trail as `trigger.secret.rotate`, because
+  it is the entry an operator looks for when working integrations start failing.
+- **A trigger's `type` cannot be changed** (400). A different type is a different
+  trigger: turning a webhook into a schedule would leave its secret orphaned in
+  `secrets.json`, and turning it back would silently re-use that old secret.
+  Create the new trigger, then delete the old one.
+- **A `PUT` to an unknown id is a 404**, not a create. A trigger deleted while an
+  editor form was open is not resurrected with a fresh secret and a reset fire
+  count.
+- **The config block is rebuilt from the input**, so a `PUT` sends its type's
+  whole block (`{slug, scheme}`, `{cron, missedFirePolicy}`, …). Omitting it is a
+  400, not "keep what is stored". `GET` → edit → `PUT` round-trips, and the
+  registry-owned `status`, `createdAt` and `updatedAt` are accepted and ignored.
+- **Status is not a configuration change.** `updatedAt` moves for an edit, a
+  toggle or a rotation and **not** for a fire, which is what lets an editor tell
+  "somebody changed this while I had it open" from "it fired twice".
+
+The editor's form is on the Triggers panel for both creating and editing — the
+canvas's trigger node offers **Edit this trigger…**, which opens that panel at
+that trigger rather than putting a second form on the canvas. It reads the
+trigger fresh when the form opens and again before it saves: if the definition
+moved in between, it says what changed and saves nothing until you say so again.
 
 ### On the workflow canvas (WFA-005)
 
@@ -264,7 +309,8 @@ step, so the whole automation is one picture:
 | Manual | drawn when *nothing* triggers the workflow, so "how does this start?" always has a visible answer |
 
 Enabled/disabled is on the card itself, and right-clicking the node offers
-**Enable/Disable** and **Delete this trigger from &lt;backend&gt;…**.
+**Edit this trigger…**, **Enable/Disable** and
+**Delete this trigger from &lt;backend&gt;…**.
 
 Three things to be clear about:
 
@@ -279,7 +325,9 @@ Three things to be clear about:
 - **A trigger targeting a function has no node here** and stays in the panel. A
   function is not a workflow.
 - **The secret is not recoverable from the node.** It was shown once at creation;
-  the row says so rather than implying otherwise.
+  the row says so rather than implying otherwise. Editing the trigger does not
+  need it, and rotating it is a deliberate act with its own confirmation
+  (see *Editing an existing trigger* above).
 
 Trigger configuration was **not node-shaped** when WF-005 shipped, because a
 trigger targeted a cloud function whose `noodl.cloud.request` node was already

@@ -143,6 +143,19 @@ export class ModelBindings {
         const node = owner.findNodeWithId(args.model.id);
         if (!node) return; // The node was not found
 
+        /**
+         * Was THIS node the selected one? Read before anything unselects it.
+         *
+         * `clearSelection()` below hides the node panels, which for a *transient*
+         * panel means unmounting it and losing its state. Removing a node nobody
+         * had selected must therefore leave the panels alone — WFA-008 found the
+         * consequence live: redrawing a workflow's trigger entry nodes removes
+         * the manual marker, which bounced the Triggers panel away to Components
+         * and **destroyed the banner holding a webhook's one-time, unrecoverable
+         * secret** one tick after it was created.
+         */
+        const wasSelected = node.selected || owner.selector.nodes.indexOf(node) !== -1;
+
         // If the highlighted node is delete empty the reference
         if (owner.highlighted === node) {
           owner.highlighted && ViewerConnection.instance.sendNodeHighlighted(owner.highlighted.model, false);
@@ -165,7 +178,7 @@ export class ModelBindings {
           node.destruct();
         }
 
-        owner.clearSelection();
+        owner.clearSelection({ disableHidePanels: !wasSelected });
         owner.relayout();
         owner.repaint();
 

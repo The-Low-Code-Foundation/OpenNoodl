@@ -204,8 +204,12 @@ describe('BAK-009 rate limiting over real sockets', () => {
     // link), and +2 data (GET/DELETE /users/me/identities — session-kind but
     // ordinary authenticated app traffic, exactly like /users/me itself, not a
     // route where a credential is presented).
+    // WFA-008 moved it by 1: `POST /admin/triggers/:id/secret` rotates a webhook
+    // secret. Reviewed and left in the `admin` budget — it is an operator action
+    // taken once, mints server-side, and needs no budget of its own; the thing
+    // that must not be cheap to guess is the secret, not the route.
     expect(counts).toEqual({
-      admin: 71,
+      admin: 72,
       auth: 15,
       data: 17,
       files: 4,

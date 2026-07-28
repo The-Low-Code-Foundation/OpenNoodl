@@ -852,7 +852,11 @@ export function registerBackendWriteTools(server: McpServer): void {
     'update_backend_trigger',
     {
       title: 'Update a backend trigger',
-      description: 'Replace a trigger definition by id on a running backend. Same fields as create.',
+      description:
+        'Replace a trigger definition by id on a running backend. Same fields as create. A webhook keeps its ' +
+        'existing secret, so changing a cron or a target does NOT break senders — but changing webhook.slug ' +
+        'changes the URL, and sending `secret` REPLACES it (use rotate_backend_trigger_secret for that, ' +
+        'deliberately). The `type` cannot be changed: a different type is a different trigger. Unknown id → 404.',
       inputSchema: { backendId: z.string().optional(), id: z.string().describe('The trigger id'), ...triggerFields }
     },
     guarded(async ({ backendId, id, ...body }) => {
@@ -876,6 +880,23 @@ export function registerBackendWriteTools(server: McpServer): void {
     guarded(async ({ backendId, id, enabled }) => {
       const client = await requireBackend(backendId);
       const { json } = await client.request('POST', `/admin/triggers/${encodeURIComponent(id)}/enabled`, { enabled });
+      return jsonResult(json);
+    })
+  );
+
+  server.registerTool(
+    'rotate_backend_trigger_secret',
+    {
+      title: 'Rotate a webhook trigger secret',
+      description:
+        'Mint a NEW secret for a webhook trigger and return it once (WFA-008). Every sender still using the ' +
+        'previous secret is rejected from this moment until it is given the new one, so do this only when asked ' +
+        'to. Editing a webhook does not need it — an update keeps the existing secret.',
+      inputSchema: { backendId: z.string().optional(), id: z.string().describe('The webhook trigger id') }
+    },
+    guarded(async ({ backendId, id }) => {
+      const client = await requireBackend(backendId);
+      const { json } = await client.request('POST', `/admin/triggers/${encodeURIComponent(id)}/secret`);
       return jsonResult(json);
     })
   );

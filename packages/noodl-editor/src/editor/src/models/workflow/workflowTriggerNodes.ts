@@ -208,7 +208,19 @@ export function addTriggerNodes(
       }
     });
 
-    graph.addRoot(node);
+    /**
+     * `disableSelect` — a trigger node appearing is a REDRAW, not the user
+     * creating a node (WFA-008, found live).
+     *
+     * `ModelBindings`' `nodeAdded` handler selects a newly added node unless
+     * asked not to, and selecting switches the sidebar to the property editor.
+     * The Triggers panel is a *transient* panel, so switching away unmounts it —
+     * and with it the banner holding a webhook's **one-time, unrecoverable
+     * secret**, the moment after it was created. Creating a trigger from the
+     * panel bounced the user to Properties and destroyed the secret in the same
+     * tick.
+     */
+    graph.addRoot(node, { disableSelect: true });
 
     // A manual marker has nothing to fire, so it is drawn unwired: the gap is
     // the point.
@@ -224,7 +236,21 @@ export function addTriggerNodes(
   });
 }
 
-/** Refresh one trigger node in place — after an enable/disable, say. */
+/**
+ * Refresh one trigger node in place — after an enable/disable or an edit.
+ *
+ * **Written through `setParameter`, not into `node.parameters`** (WFA-008 §4(i)).
+ * The direct assignment notified nothing, so a trigger node that was *selected*
+ * when its configuration changed kept its property rows painting the old cron —
+ * the same staleness WFA-006's live pass found in its own `ref` row, where the
+ * row showed the old name beside the new name's answer.
+ *
+ * Emitting the event is safe in both directions that matter, and both were
+ * checked rather than assumed: `WorkflowDocument.bindNode` returns early for a
+ * trigger node, so this cannot dirty the document; and `ViewerConnection`'s
+ * `isWorkflowModelEvent` guard (F44) drops the global broadcast before it can
+ * reach the viewer naming a component it has never heard of.
+ */
 export function refreshTriggerNode(
   graph: WorkflowGraphModel,
   trigger: TriggerDef,
@@ -234,7 +260,8 @@ export function refreshTriggerNode(
   if (!node || !isTriggerNode(node)) return;
 
   for (const [name, value] of Object.entries(triggerParameters(trigger, ctx))) {
-    node.parameters[name] = value;
+    if (node.parameters[name] === value) continue;
+    node.setParameter(name, value);
   }
   node.setLabel(triggerLabel(trigger));
   node.metadata = { ...(node.metadata || {}), typeLabelOverride: triggerSubLabel(trigger) };

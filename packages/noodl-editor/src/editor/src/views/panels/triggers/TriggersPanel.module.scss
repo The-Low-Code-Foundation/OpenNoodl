@@ -140,6 +140,21 @@
   color: var(--theme-color-fg-default-shy);
 }
 
+/**
+ * The edit form, opened inside the row it belongs to (WFA-008).
+ *
+ * Indented and on its own ground so it reads as "this trigger, being changed"
+ * rather than as a second Add form — the two are the same fields, and the row is
+ * what tells them apart.
+ */
+.EditForm {
+  margin: 8px 0 4px 8px;
+  padding: 10px;
+  border-left: 2px solid var(--theme-color-primary);
+  border-radius: 0 6px 6px 0;
+  background-color: var(--theme-color-bg-2);
+}
+
 .StatusLine {
   display: flex;
   flex-wrap: wrap;

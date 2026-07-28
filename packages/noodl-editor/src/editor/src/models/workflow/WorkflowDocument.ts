@@ -34,7 +34,9 @@ import {
   fetchBackendEndpoint,
   listTriggers,
   setTriggerEnabled,
-  TriggerDef
+  TriggerDef,
+  TRIGGERS_CHANGED,
+  TriggersChangedDetail
 } from '../triggers/TriggerBackendClient';
 import { CLOUD_FUNCTIONS_DEPLOY_STATE_CHANGED, CloudFunctionDeployer } from '../../services/CloudFunctionDeployer';
 import {
@@ -472,6 +474,24 @@ export class WorkflowDocument extends Model {
 
     return [
       {
+        /**
+         * WFA-008: a door to the one form, not a second form.
+         *
+         * The fields of a trigger are a target picker, a JSON payload box and a
+         * scheme dropdown, and the registry's refusals are three-line
+         * sentences — none of which a Canvas2D property row can hold. The panel
+         * has all of it already, so the canvas points at it, pre-pointed at this
+         * trigger. Reasoning in WFA-008-ASSESSMENT §1.
+         */
+        label: 'Edit this trigger…',
+        onClick: () =>
+          EventDispatcher.instance.emit(OPEN_TRIGGERS_SURFACE, {
+            backendId: this.ref.backendId,
+            backendName: this.ref.backendName,
+            editTriggerId: triggerId
+          })
+      },
+      {
         label: trigger.enabled ? 'Disable this trigger' : 'Enable this trigger',
         onClick: () => void this.setTriggerEnabled(triggerId, !trigger.enabled)
       },
@@ -761,6 +781,31 @@ export class WorkflowDocument extends Model {
     EventDispatcher.instance.on(
       CLOUD_FUNCTIONS_DEPLOY_STATE_CHANGED,
       () => void this.refreshResolution().catch(() => undefined),
+      this
+    );
+
+    /**
+     * A trigger changed on some backend (WFA-008 §4(ii)).
+     *
+     * The entry nodes are a view of backend objects that four writers can
+     * change, and before this the only cross-surface re-read was the Workflows
+     * panel's Refresh button — so editing a cron in the Triggers panel left the
+     * card drawing the old one, and **re-targeting a trigger from this workflow
+     * to another one left a node standing for a trigger that no longer belongs
+     * here at all.** `refreshTriggers` already handles both, because it compares
+     * the id SET and rebuilds when it differs; what was missing was anyone
+     * telling it.
+     *
+     * Filtered on the backend, because a trigger on another backend cannot be on
+     * this canvas — and unfiltered it would make every edit anywhere re-read
+     * this workflow's whole trigger list.
+     */
+    EventDispatcher.instance.on(
+      TRIGGERS_CHANGED,
+      (e: TriggersChangedDetail) => {
+        if (e?.backendId !== this.ref.backendId) return;
+        void this.refreshTriggers().catch(() => undefined);
+      },
       this
     );
   }

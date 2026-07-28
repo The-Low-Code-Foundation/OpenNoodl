@@ -9,6 +9,7 @@
  *   POST   /admin/triggers            create (returns webhook secret once)
  *   PUT    /admin/triggers/:id        update
  *   POST   /admin/triggers/:id/enabled   { enabled }
+ *   POST   /admin/triggers/:id/secret    rotate a webhook secret (WFA-008)
  *   DELETE /admin/triggers/:id        delete
  *   POST   /admin/triggers/:id/fire   manual test fire (payload optional)
  *
@@ -76,7 +77,43 @@ export class AdminTriggerRoutes {
 
   async update(ctx: RequestContext): Promise<void> {
     const body = await readJSONBody(ctx.req);
+
+    /**
+     * A PUT to an id the registry does not hold is a 404 (WFA-008, F59).
+     *
+     * `upsert` is legitimately an upsert — the boot path and `POST` both go
+     * through it — so this belongs to the HTTP verb rather than the registry.
+     * Without it, a PUT to a trigger deleted while an editor form was open
+     * silently RECREATED it: same id, a **new** webhook secret (delete removed
+     * the old one), a reset fire count, and 200 reported as a successful edit.
+     */
+    if (!this.triggers.registry.get(ctx.params.id)) {
+      throw new HttpError(404, `No trigger "${ctx.params.id}" — it may have been deleted. Nothing was changed.`);
+    }
+
     this.upsert(ctx, body as unknown as TriggerInput, ctx.params.id, 200);
+  }
+
+  /**
+   * `POST /admin/triggers/:id/secret` — mint a new webhook secret (WFA-008 §3).
+   *
+   * Rotation is a verb rather than a field on an update: sending `secret` to
+   * `upsert` replaces it, so an edit form carrying the key would rotate as a
+   * side effect of changing a cron. The response says, in the body, what the
+   * caller has just done to every existing sender.
+   */
+  rotateSecret(ctx: RequestContext): void {
+    const result = this.triggers.registry.rotateWebhookSecret(ctx.params.id);
+    if (result === null) throw new HttpError(404, `No trigger "${ctx.params.id}"`);
+    if (result === 'not-a-webhook') {
+      throw new HttpError(400, `Trigger "${ctx.params.id}" is not a webhook — only a webhook has a secret.`);
+    }
+    sendJSON(ctx.res, 200, {
+      trigger: result.trigger,
+      secret: result.secret,
+      secretNote:
+        'Store this now — it is not recoverable. Every sender using the previous secret is now rejected until it is updated.'
+    } satisfies TriggerResponse);
   }
 
   private upsert(ctx: RequestContext, input: TriggerInput, id: string | undefined, status: number): void {

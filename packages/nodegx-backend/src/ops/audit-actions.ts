@@ -49,6 +49,10 @@ const ACTIONS: Record<string, string> = {
   'DELETE admin/triggers/:id': 'trigger.delete',
   'POST admin/triggers/:id/enabled': 'trigger.enabled.set',
   'POST admin/triggers/:id/fire': 'trigger.fire',
+  // WFA-008: the one trigger action that breaks working integrations on purpose,
+  // so it is exactly the entry an operator goes looking for afterwards ("why did
+  // every hook from Stripe start failing at 14:06?").
+  'POST admin/triggers/:id/secret': 'trigger.secret.rotate',
   'POST admin/workflow-defs': 'workflow.create',
   'PUT admin/workflow-defs/:id': 'workflow.update',
   'DELETE admin/workflow-defs/:id': 'workflow.delete',

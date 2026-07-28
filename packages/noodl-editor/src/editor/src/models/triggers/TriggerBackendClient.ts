@@ -20,6 +20,7 @@
 
 import { ipcInvoke } from '@noodl-utils/ipc';
 
+import { EventDispatcher } from '../../../../shared/utils/EventDispatcher';
 import { deployedFunctionNames } from '../workflow/functionRefResolution';
 
 export type TriggerType = 'schedule' | 'webhook' | 'db-change';
@@ -88,29 +89,103 @@ export interface TriggerTargets {
   known: boolean;
 }
 
+/**
+ * A trigger on a backend was created, edited, toggled, rotated or deleted
+ * (WFA-008 §4).
+ *
+ * Emitted by the write functions below rather than by their callers, which is
+ * the same rule WFA-006 used to close F48: a caller that must remember to
+ * announce a change is a caller that will forget. Since §5 of WFA-005 every
+ * surface writes through this module, so this is the one place a change is
+ * known to have happened.
+ *
+ * The listener that matters is the open workflow canvas, whose entry nodes are a
+ * VIEW of these objects — and a re-targeted trigger changes which workflow it
+ * belongs to at all, so redrawing is not optional.
+ */
+export const TRIGGERS_CHANGED = 'backend:triggersChanged';
+
+export interface TriggersChangedDetail {
+  backendId: string;
+}
+
+function announceChanged(backendId: string): void {
+  EventDispatcher.instance.emit(TRIGGERS_CHANGED, { backendId } satisfies TriggersChangedDetail);
+}
+
 export async function listTriggers(backendId: string): Promise<TriggerDef[]> {
   const result = await ipcInvoke<{ triggers?: TriggerDef[] }>('backend:listTriggers', backendId);
   return result?.triggers || [];
 }
 
-export async function createTrigger(backendId: string, input: TriggerInput): Promise<TriggerCreated> {
-  return await ipcInvoke<TriggerCreated>('backend:createTrigger', backendId, input);
+/**
+ * One trigger, read fresh.
+ *
+ * The edit form opens from THIS rather than from the list the panel rendered,
+ * and keeps the `updatedAt` it answers with as its concurrency token: a form
+ * prefilled from a stale snapshot would write stale values back for every field
+ * the user did not touch.
+ */
+export async function getTrigger(backendId: string, triggerId: string): Promise<TriggerDef | null> {
+  const result = await ipcInvoke<{ trigger?: TriggerDef }>('backend:getTrigger', backendId, triggerId);
+  return result?.trigger || null;
 }
 
+export async function createTrigger(backendId: string, input: TriggerInput): Promise<TriggerCreated> {
+  const created = await ipcInvoke<TriggerCreated>('backend:createTrigger', backendId, input);
+  announceChanged(backendId);
+  return created;
+}
+
+/**
+ * Change an existing trigger's configuration (WFA-008).
+ *
+ * Two things this deliberately does not do, both of which would be
+ * data-loss-shaped:
+ *
+ *  - **it does not send `secret`.** `upsert` keeps a webhook's stored secret
+ *    unless the caller sends one, which is the whole reason editing beats
+ *    delete-and-recreate; sending it would rotate as a side effect of changing a
+ *    cron. Rotation is `rotateTriggerSecret`.
+ *  - **it does not send `enabled`.** Absent means "keep what is stored", so a
+ *    trigger someone disabled while the form was open stays disabled.
+ *
+ * A `type` different from the stored one, and an id the backend does not hold,
+ * are both refused by the backend (F58, F59) rather than defended against here.
+ */
 export async function updateTrigger(
   backendId: string,
   triggerId: string,
   input: TriggerInput
 ): Promise<TriggerCreated> {
-  return await ipcInvoke<TriggerCreated>('backend:updateTrigger', backendId, triggerId, input);
+  const result = await ipcInvoke<TriggerCreated>('backend:updateTrigger', backendId, triggerId, input);
+  announceChanged(backendId);
+  return result;
+}
+
+/**
+ * Mint a new secret for a webhook trigger, returned once.
+ *
+ * Every sender still holding the previous secret is rejected from this moment,
+ * so the caller must have said so before getting here.
+ */
+export async function rotateTriggerSecret(
+  backendId: string,
+  triggerId: string
+): Promise<TriggerCreated> {
+  const result = await ipcInvoke<TriggerCreated>('backend:rotateTriggerSecret', backendId, triggerId);
+  announceChanged(backendId);
+  return result;
 }
 
 export async function setTriggerEnabled(backendId: string, triggerId: string, enabled: boolean): Promise<void> {
   await ipcInvoke('backend:setTriggerEnabled', backendId, triggerId, enabled);
+  announceChanged(backendId);
 }
 
 export async function deleteTrigger(backendId: string, triggerId: string): Promise<void> {
   await ipcInvoke('backend:deleteTrigger', backendId, triggerId);
+  announceChanged(backendId);
 }
 
 export async function fireTrigger(

@@ -1,6 +1,6 @@
 # Phase 27 — Visual Backend Authoring (Track L): Progress
 
-**Status:** 🚧 In progress — 6 / 8 complete; WFA-008 (F53, added on Richard's call) then WFA-007
+**Status:** 🚧 In progress — 7 / 8 complete; WFA-007 remains
 **Specced:** 2026-07-27, from a live end-to-end test of phase 19's workflow engine
 **Phase overview:** [README.md](./README.md)
 
@@ -18,7 +18,7 @@ Not started · In progress · **Built–not wired** · Complete · Superseded
 | [WFA-004](./WFA-004-WORKFLOW-CANVAS.md) | The workflow canvas | 3 | ✅ Complete | 2026-07-28 | **Reuse, not escalate** — the §1 decision is in [WFA-004-ASSESSMENT.md](./WFA-004-ASSESSMENT.md), and a real workflow renders on the *existing* canvas with node ids that are step ids, so WFA-002's overlay lands on it **unmodified** (criterion 3, confirmed badge-by-badge). The live pass found one shipped defect: a single `switch` step made a whole workflow fail to open (F49). [Notes](./WFA-004-NOTES.md) |
 | [WFA-005](./WFA-005-TRIGGERS-ON-CANVAS.md) | Triggers as canvas entry nodes | 3 | ✅ Complete | 2026-07-28 | **F8 was never about `payload`** — the write path validated the object it had just built, so an unknown key was dropped at every level while the load path refuses to boot on the same key. F7's exemption is scoped by the matched route's own declared access kind, not by a path prefix. F9 was two defects in one number. F47 folded in on Richard's call and closes F34's other half. The live pass drove the phase-19 exit clause end to end: one definition, two entry points, **different branches**. [Notes](./WFA-005-NOTES.md) |
 | [WFA-006](./WFA-006-STEP-TO-FUNCTION-DESCENT.md) | Descend from a step into its function graph | 3 | ✅ Complete | 2026-07-28 | **Two facts, never collapsed into one** — `inProject` and `deployed` (`true \| false \| null`) derive four states, and the difference between them is the feature. Descent + crumb + reverse lookup, no painter change and one optional trail slot. Found F54 by reading (a deployed function reported as missing) and F55 by measuring (the marker gate was already red). §7's decision is recorded and the test **corrected the spec's own wording** (F56). [Notes](./WFA-006-NOTES.md) · [Decisions](./WFA-006-ASSESSMENT.md) |
-| WFA-008 | Edit a trigger's configuration (F53) | 3 | 🚧 In progress | — | **Added 2026-07-28 on Richard's call**, before WFA-007: `PUT /admin/triggers/:id` exists and is tested; only the form is missing, and delete-and-recreate mints a new webhook secret |
+| [WFA-008](./WFA-008-EDIT-A-TRIGGER.md) | Edit a trigger's configuration (F53) | 3 | ✅ Complete | 2026-07-28 | **The premise held and two new findings came out of checking it**: a `PUT` keeps a webhook's secret (so an edit is what delete-and-recreate cannot be), but it also accepted a **type change** that orphaned the secret and re-used it on the way back (F58), and a `PUT` to a deleted id **recreated** it with a fresh secret and answered 200 (F59). One form, in the panel, with a door from the canvas node (§1); `enabled` and `secret` are never sent, and the form re-reads before it writes. The live pass found **two** defects in the redraw this task added, the first of which **destroyed a one-time secret**. [Notes](./WFA-008-NOTES.md) · [Decisions](./WFA-008-ASSESSMENT.md) |
 | [WFA-007](./WFA-007-AI-PROPOSES-ONTO-CANVAS.md) | AI proposes workflows onto the canvas | 4 | ⬜ Not started | — | Adds no AI capability; adds a review surface |
 
 ## Findings register
@@ -109,7 +109,7 @@ around the description.
 | F50 | **The Bearer webhook rejection produced no execution record, and fed the auth lockout budget.** F7's description stopped at "returns 401". Two further consequences, both read off the live execution log during the reproduction: the request was refused in `handle()` *before* routing reached `handleWebhook`, so the loud-rejection record the spec's own trap protects was never written — an operator debugging a failing integration saw an empty history rather than a rejected hook; and `handle()` calls `authLimiter.recordFailure` on a thrown principal resolution, so a third-party service retrying a Bearer hook walked itself into BAK-005's 429 for **every** route on the backend. Both fixed as a consequence of the exemption | `HttpServer.handle`, `admin/auth` | WFA-005 ✅ |
 | F51 | **A trigger entry node was offered as an upstream STEP by the `$path` picker** — the F49 shape again, a global structure growing a member every existing walker assumed could not exist. A trigger genuinely *is* upstream of the entry step on the canvas, so `upstreamSteps` listed it, and `{"$path": "upstream.trg_…"}` is a 400 from the backend: precisely the drift `workflowScope` exists to prevent. `syncEntry` had the mirror problem — the trigger's wire made the entry step look like it had a predecessor, so deleting the entry step would have promoted the wrong step. Caught within minutes by WFA-004's existing "the node ids are the step ids" spec | `workflowScope.ts`, `WorkflowDocument.syncEntry` | WFA-005 ✅ |
 | F52 | **The property editor's type chip names a COLOUR as if it were a category.** `getNodeTypeChipInfo` appends the taxonomy key's label, and for most nodes the colour and the category happen to be the same word — so it reads as a category. A trigger is coloured `data` for its hue (it is where the run's data comes from) and the chip read `WEBHOOK · POST /BOTH-WAYS · DATA`. Given a one-line opt-out (`metadata.hideCategoryChip`) rather than a taxonomy change; the general problem stands for any node whose colour is chosen for hue | `propertyeditor/utils.ts:46` | WFA-005 ✅ (locally) |
-| F53 | **A trigger's configuration cannot be edited from either surface.** `PUT /admin/triggers/:id` exists and is tested, but neither the panel nor the canvas offers a form for it — changing a cron means delete-and-recreate, which for a webhook mints a new secret and breaks every sender. Not in WFA-005's scope (the spec asks for creation, enable/disable and delete) but it is the obvious next ask. **Richard's call, 2026-07-28: fold into phase 27 now, before WFA-007** — the secret loss is data-loss-shaped rather than polish, and WFA-005 already built the create form and target picker it reuses. Owned by **WFA-008** | `TriggersPanel.tsx` | WFA-008 |
+| F53 | **Closed by WFA-008, 2026-07-28.** **A trigger's configuration cannot be edited from either surface.** `PUT /admin/triggers/:id` exists and is tested, but neither the panel nor the canvas offers a form for it — changing a cron means delete-and-recreate, which for a webhook mints a new secret and breaks every sender. Not in WFA-005's scope (the spec asks for creation, enable/disable and delete) but it is the obvious next ask. **Richard's call, 2026-07-28: fold into phase 27 now, before WFA-007** — the secret loss is data-loss-shaped rather than polish, and WFA-005 already built the create form and target picker it reuses. Owned by **WFA-008** | `TriggersPanel.tsx` | WFA-008 |
 
 ### Found by WFA-006, 2026-07-28
 
@@ -120,6 +120,15 @@ around the description.
 | F55 (as found) | **The TSFixme / `any` ratchet is red on `cline-dev`, and was red before WFA-006.** Measured, not assumed: `git archive HEAD` into a clean tree scores **TSFixme +16 / any +9** against a baseline pinned at `b22cfab0`, **48 commits back**. WFA-006 adds +1 and +1 (one `args: TSFixme` consistent with five sibling `TypeView`s, and the `(window as any).require('electron')` idiom every renderer client module uses). Deliberately **not** re-baselined by this task — that would launder 48 commits of unrelated drift into one commit, and PLAT-004's rule is to raise it deliberately and say so. Needs a re-baseline commit of its own | `.tsfixme-baseline.json`, `scripts/tsfixme-ratchet.js` | unowned |
 | F56 | **A rename does not make a step "unresolved" — not immediately, and saying so would be its own wrong warning.** Success criterion 7 asks for `unresolved`; the backend is still serving the function under its **old name**, so the step still runs. What it shows is `deployed, not in this project`, and it becomes `unresolved` only when the next deploy removes the old name. Reproduced live end to end. This is not a defect but a correction to the spec's wording, and it is the strongest argument for §7's decision: an automatic fix-up at rename time would rewrite a **working** step | observed live; specced in both stages | WFA-006 ✅ (recorded) |
 | F57 | **A property-panel checkbox row did not respond to a dispatched click at its own box.** The Request node's *Allow Unauthenticated* toggle reports a real 32×19 rect and a real `<input type=checkbox>`, and `Input.dispatchMouseEvent` at its centre changed nothing (the parameter stayed unset). Not workflow-specific — `PropertyPanelCheckbox` is used by every node type — and not investigated here beyond confirming the click landed. Worth knowing before the next pass tries to drive one | `PropertyPanelCheckbox`; observed live | unowned |
+
+### Found by WFA-008, 2026-07-28
+
+| # | Finding | Where | Owner |
+|---|---|---|---|
+| F58 | **A `PUT` could change a trigger's TYPE, and the secret survived the change — then came back.** `upsert` rebuilds the definition from the input, so `{type:'schedule'}` on a webhook's id was accepted: the stored trigger lost its `webhook` block and its secret stayed in `secrets.json` under that id, orphaned (only `delete()` clears one). Morphing **back** to a webhook then **re-used that old secret** instead of minting — so a hook an operator believes is gone can return, credential intact, with nothing saying so. Observed against a real registry, not deduced. Refused in the registry (one rule for the panel, the canvas and MCP) rather than by clearing the secret on the way out, which would make morphing look supported while handing out a secret every sender is unaware of | `triggers/registry.ts` `upsert` | WFA-008 ✅ |
+| F59 | **`PUT /admin/triggers/:id` on an unknown id CREATED it.** `upsert` is a true upsert and the route passed `ctx.params.id` straight in, so saving a form over a trigger deleted meanwhile silently resurrected it — same id, a **new** webhook secret (delete had removed the old one), a reset fire count, and **200** reported as a successful edit. Reachable from MCP's `update_backend_trigger` too. Now a 404 at the route, because `upsert` is legitimately an upsert (the boot path and `POST` use it) and the promise belongs to the HTTP verb | `server/admin-triggers.ts` `update` | WFA-008 ✅ |
+| F60 | **A redraw of a canvas view tore down an unrelated panel, and the first version of it destroyed a webhook secret.** Two halves, both found live. (i) `ModelBindings`' `nodeAdded` handler **selects** a newly added node unless told not to, and selecting switches the sidebar to the property editor; the Triggers panel is *transient*, so switching away unmounts it — taking the banner holding the webhook's **one-time, unrecoverable** secret with it, one tick after creation. (ii) With that fixed, `nodeRemoved` → `clearSelection()` → `hidePanels()` still switched to `components` when the manual marker was removed, i.e. **removing a node nobody had selected** tore down a panel. Fixed as `disableSelect` on trigger nodes and, generally, by hiding the panels only when the removed node was the selected one. Not visible to a unit test of either the panel or the graph, because the damage lands in a third place | `views/nodegrapheditor/ModelBindings.ts`; `models/workflow/workflowTriggerNodes.ts` | WFA-008 ✅ |
+| F61 | An **out-of-process** write does not reach an open canvas: the `TRIGGERS_CHANGED` broadcast lives on the renderer's write door (`TriggerBackendClient`), so a trigger changed by MCP or `curl` leaves the entry nodes stale until the Workflows panel refreshes. Observed deliberately. A backend-side signal (the `ChangeBus`/SSE pair BAK-001 and WF-005 already share) would close it for every surface at once | `models/triggers/TriggerBackendClient.ts` | unowned — accepted, see WFA-008 notes (a) |
 
 ### What already exists and is worth reusing
 
@@ -176,6 +185,41 @@ around the description.
   running backend). WFA-001 decides; whatever it picks must be visible in the UI.
 
 ## Log
+
+- **2026-07-28** — **WFA-008 complete** (F53 closed). The task was worth doing for one verified fact
+  and it earned its keep by two the check turned up. **`upsert` keeps a webhook's secret** — a `PUT`
+  that changed a token hook's name and target returned no secret, left `getWebhookSecret` byte-identical
+  and preserved `createdAt` — which is exactly what delete-and-recreate cannot promise, and the whole
+  argument for the feature. The same probe found that a `PUT` could change a trigger's **type**,
+  orphaning the secret in `secrets.json` and silently **re-using it** if the type was changed back
+  (F58), and that a `PUT` to a **deleted** id recreated the trigger with a fresh secret, a reset fire
+  count and a 200 (F59) — both reachable from MCP, both now refused where the rule belongs rather than
+  guarded in one caller.
+  **The §1 decision is one form, in the panel, with a door from the canvas.** The fields are the create
+  form's, extracted so a field cannot reach one path and miss the other; the canvas node offers *Edit
+  this trigger…* rather than growing a second form on a surface whose rows are deliberately prose
+  (`"No — this trigger will not fire"`) and which has nowhere to put a three-line 400. Three rules make
+  an edit safe, and all three are structural rather than defensive: the form **never sends `secret`**
+  (sending it *is* rotation, which is now its own verb with its own confirmation), **never sends
+  `enabled`** (absent means keep, so a save cannot re-enable what someone turned off), and **re-reads
+  before it writes** — usable because `updatedAt` moves for a configuration change and *not* for a
+  fire, so a hook firing every minute does not read as somebody editing it.
+  **The walker audit paid for itself twice.** The set of trigger entry nodes was not new; what is new
+  is that a member can change identity-relevant fields in place — so a *re-targeted* trigger has to
+  leave one workflow's canvas and appear on another's, and nothing was telling `refreshTriggers` that
+  anything had happened. Closed as a rule (the write door broadcasts) rather than per caller.
+  **And the live pass found two defects in the redraw this task added, the first of which destroyed a
+  one-time secret** (F60): adding a node selects it, selecting switches the sidebar, and the Triggers
+  panel is transient — so the webhook's unrecoverable secret was unmounted one tick after it was
+  created. The second arrived through the same redraw's *removal* half. Neither is visible to a unit
+  test of the panel or of the graph, because the damage lands in the sidebar.
+  **The criterion was driven with the hook itself**: fired before the edit (ran *Both Ways*),
+  re-targeted from the canvas, fired again **with the same secret** — 200 by header and by Bearer,
+  running *Order Pipeline* — a wrong secret 401, then a rotation making the old secret 401 and the new
+  one 200, and a slug change moving the URL (old **404**) while the credential stayed valid at the new
+  address. Backend **67 suites / 728** (was 66 / 715), editor **1851 / 0** (was 1823), typecheck clean.
+  Full pass in [WFA-008-NOTES.md](./WFA-008-NOTES.md), decisions in
+  [WFA-008-ASSESSMENT.md](./WFA-008-ASSESSMENT.md).
 
 - **2026-07-28** — **WFA-006 complete.** The task is one idea applied consistently: **a workflow step
   and a cloud function live in different stores and are allowed to disagree**, so the resolver keeps

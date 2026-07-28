@@ -825,6 +825,14 @@ export class HttpServer {
         access: { kind: 'admin' },
         handler: (ctx) => adminTriggers.fire(ctx)
       },
+      // WFA-008: rotating a webhook secret is its own verb, not a field on the
+      // update — an edit that carried `secret` would rotate as a side effect.
+      {
+        method: 'POST',
+        pattern: 'admin/triggers/:id/secret',
+        access: { kind: 'admin' },
+        handler: (ctx) => adminTriggers.rotateSecret(ctx)
+      },
 
       // ---- Admin: workflow definitions (WF-001) + step kinds (WF-002) -----
       {

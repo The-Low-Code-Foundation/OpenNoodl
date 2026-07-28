@@ -175,6 +175,13 @@ const CHANGE_ACTIONS: ChangeAction[] = ['create', 'update', 'delete'];
  * both paths apply the same rule, which is the actual fix; `payload` was only
  * how the gap was noticed.
  */
+/**
+ * The last three are the REGISTRY's own fields, and they are here deliberately:
+ * accepted on the write path and ignored rather than refused, because `GET` a
+ * trigger → change its cron → `PUT` it back is the obvious edit gesture from a
+ * panel or an agent (WFA-008 is that panel) and it round-trips exactly those
+ * three. `upsert` never reads them from the input.
+ */
 const TRIGGER_KEYS = [
   'id', 'type', 'name', 'enabled', 'target', 'schedule', 'webhook', 'dbChange', 'createdAt', 'updatedAt', 'status'
 ] as const;
@@ -182,13 +189,6 @@ const TARGET_KEYS = ['kind', 'name'] as const;
 const SCHEDULE_KEYS = ['cron', 'missedFirePolicy', 'payload'] as const;
 const WEBHOOK_KEYS = ['slug', 'scheme', 'maxBodyBytes'] as const;
 const DB_CHANGE_KEYS = ['collection', 'actions'] as const;
-
-/**
- * Fields the REGISTRY owns. Accepted on write and ignored, rather than refused:
- * `GET` a trigger, change its cron, `PUT` it back is the obvious edit gesture
- * from a panel or an agent, and it round-trips exactly these three.
- */
-const REGISTRY_OWNED_KEYS: readonly string[] = ['createdAt', 'updatedAt', 'status'];
 
 /** Write-path-only key: the plaintext webhook secret, which is never stored here. */
 const INPUT_ONLY_KEYS: readonly string[] = ['secret'];
@@ -448,6 +448,30 @@ export class TriggerRegistry {
     }
 
     const existing = input.id ? this.triggers.find((t) => t.id === input.id) : undefined;
+
+    /**
+     * A trigger's TYPE is not editable (WFA-008, F58).
+     *
+     * `def` is rebuilt from the input every time, so `{type:'schedule'}` on a
+     * webhook's id used to be accepted: the stored trigger lost its `webhook`
+     * block and the secret stayed in secrets.json under that id, orphaned —
+     * only `delete()` clears one. Morphing BACK then re-used that old secret
+     * instead of minting, so a hook an operator believes is gone could return
+     * with its credential intact and nothing would say so.
+     *
+     * Refused here rather than in the editor's form so the panel, the canvas
+     * and MCP get one rule. Clearing the secret on the way out was the
+     * alternative and is worse: it makes morphing look supported, while a
+     * round trip hands out a new secret every sender is unaware of.
+     */
+    if (existing && existing.type !== input.type) {
+      throw new TriggerConfigError(
+        `trigger "${existing.id}" is a ${existing.type} trigger and its type cannot be changed to ` +
+          `"${input.type}" — a different type is a different trigger (create the new one, then delete this one). ` +
+          `Changing it in place would orphan this trigger's webhook secret.`
+      );
+    }
+
     const id = input.id || 'trg_' + crypto.randomBytes(9).toString('base64url');
     const now = nowIso();
 
@@ -515,6 +539,34 @@ export class TriggerRegistry {
     }
     this.persist();
     return { trigger: { ...def }, secret: mintedSecret };
+  }
+
+  /**
+   * Mint a NEW secret for a webhook trigger and return it once (WFA-008 §3).
+   *
+   * A verb of its own, because the alternative is worse in both directions: an
+   * edit that carries `secret` rotates as a side effect, and a `secret` field on
+   * an edit form is a blank box beside a value that cannot be read back. The
+   * caller does not supply the new value — minting and its format live here,
+   * exactly as they do for a create.
+   *
+   * `null` when there is no such trigger, `'not-a-webhook'` when it is not a
+   * webhook: two different answers, because the second is a category error and
+   * saying "no such trigger" about a schedule would send the caller looking for
+   * the wrong thing.
+   */
+  rotateWebhookSecret(id: string): { trigger: TriggerDef; secret: string } | null | 'not-a-webhook' {
+    const t = this.triggers.find((x) => x.id === id);
+    if (!t) return null;
+    if (t.type !== 'webhook') return 'not-a-webhook';
+
+    const secret = 'whsec_' + crypto.randomBytes(24).toString('base64url');
+    this.secrets.set(WEBHOOK_SECRETS_NAMESPACE, id, secret);
+    // A rotation IS a configuration change, so it moves `updatedAt` — which is
+    // what an editor holding an open form compares against (WFA-008 §2).
+    t.updatedAt = nowIso();
+    this.persist();
+    return { trigger: { ...t }, secret };
   }
 
   setEnabled(id: string, enabled: boolean): TriggerDef | null {

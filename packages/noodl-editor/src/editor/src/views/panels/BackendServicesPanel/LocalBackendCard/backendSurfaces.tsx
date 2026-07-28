@@ -150,16 +150,25 @@ export const OPEN_TRIGGERS_SURFACE = 'backend:openTriggersSurface';
 export interface OpenTriggersSurfaceDetail {
   backendId: string;
   backendName: string;
+  /**
+   * WFA-008: open with this trigger's edit form already showing.
+   *
+   * The canvas node's *Edit this trigger…* is a door to the one form rather than
+   * a second form (assessment §1), and this is what makes it land on the right
+   * row instead of on a panel the user then has to search.
+   */
+  editTriggerId?: string;
 }
 
 /** Called once from `installSidePanel`, beside the rail-visible registrations. */
 export function installBackendSurfacePanels() {
   EventDispatcher.instance.on(
     OPEN_TRIGGERS_SURFACE,
-    ({ backendId, backendName }: OpenTriggersSurfaceDetail) => {
+    ({ backendId, backendName, editTriggerId }: OpenTriggersSurfaceDetail) => {
       openBackendSurface('triggers', {
         backendId,
         backendName,
+        editTriggerId,
         onClose: () => SidebarModel.instance.switch(BACKEND_SERVICES_PANEL_ID)
       });
     },

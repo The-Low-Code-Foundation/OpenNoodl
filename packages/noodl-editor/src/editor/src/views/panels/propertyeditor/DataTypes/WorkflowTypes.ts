@@ -326,6 +326,32 @@ export class WorkflowTriggerInfoType extends WorkflowTypeView {
     return Boolean(this.type?.copyable);
   }
 
+  /**
+   * Re-render when the trigger this row describes changes (WFA-008).
+   *
+   * These rows are a view of a backend object, and since WFA-008 that object is
+   * editable — from this panel's own surface (the Triggers panel), from the
+   * node's menu, or from MCP. The property editor does not rebuild a row on
+   * `parametersChanged`, so without this a selected webhook kept reporting the
+   * cron and target it had when it was selected: the same staleness the live
+   * pass caught in `WorkflowFunctionRefType`, which subscribes for the same
+   * reason.
+   *
+   * Subscribed on the node reached through `graph`/`stepId`, not on
+   * `parent.model` — that is a `ModelProxy` (F46), and reading through it for
+   * anything but a parameter is the silent-undefined trap.
+   */
+  render() {
+    const el = super.render();
+    this.graph?.findNodeWithId(this.stepId)?.on('parametersChanged', () => this.renderReact(), this);
+    return el;
+  }
+
+  dispose() {
+    this.graph?.findNodeWithId(this.stepId)?.off(this);
+    super.dispose();
+  }
+
   renderReact() {
     if (!this.root) return;
     const value = this.parent.model.getParameter(this.name);
