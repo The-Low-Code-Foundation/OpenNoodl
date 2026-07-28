@@ -1,7 +1,7 @@
 # Phase 18 Progress — Code Export v2
 
 **Created:** 2026-07-22, from [NOODL-REVIVAL-ROADMAP.md](../../reviews/NOODL-REVIVAL-ROADMAP.md) Track F
-**Overall status:** 🔴 Not started — 0 / 5 tasks
+**Overall status:** 🔴 Not started — 0 / 6 tasks
 
 ## Status vocabulary
 
@@ -16,6 +16,7 @@ Not started · In progress · **Built–not wired** · Complete · Superseded
 | EXP-003 | AI logic translation + trace verification | Not started | 6–8 wks | **The 2026 addition** — machine-checked translation of Function/Expression/dynamic-port nodes |
 | EXP-004 | Export report & honesty UX | Not started | 1 wk | What exported clean, what is best-effort, what needs review |
 | EXP-005 | Multi-framework pipeline | Not started | 4–6 wks | AI ports the *exported React* to Svelte/Vue, same trace harness — not native multi-compilers |
+| [EXP-006](./EXP-006-EXPORT-AUTHORING-INTENT.md) | Export carries authoring intent | Not started | 1–1.5 wks | Node comments, wire labels, authored titles and comment-box regions become comments and identifiers. Design is [CAN-005](../phase-28-canvas-legibility/CAN-005-EXPORT-AUTHORING-INTENT.md); rescues CODE-008 (F57). Blocked on EXP-002 |
 
 ## Relationship to the original Phase 7
 
@@ -26,6 +27,15 @@ This phase **supersedes** `dev-docs/tasks/phase-7-code-export/` rather than repl
 3. **EXP-005's reframing of multi-framework support.** Rather than maintaining N compiler backends, export to React once and let AI port the output, verified by the same trace harness.
 
 Mark `phase-7-code-export/PROGRESS.md` as superseded when EXP-001 begins.
+
+**CODE-008 is resolved — it is [EXP-006](./EXP-006-EXPORT-AUTHORING-INTENT.md) now** (2026-07-29).
+`phase-7-code-export/CODE-008-node-comments-export.md` specs node-comment export in full detail, and
+nothing in EXP-001…005's scope mentioned comments, labels or titles — so stamping phase 7 superseded
+would have orphaned a complete design referenced by nothing live. That was phase 28's finding F57; the
+scope now lives in EXP-006, with the expanded version from
+[CAN-005](../phase-28-canvas-legibility/CAN-005-EXPORT-AUTHORING-INTENT.md) (wire labels, authored
+titles and comment-box regions as well as node comments) and CODE-008's formatters adopted rather than
+rewritten. Phase 7 can be stamped without losing anything.
 
 ## Phase-level prerequisites
 
