@@ -226,15 +226,6 @@ export function createOpenNoodlTheme(): Extension {
         opacity: 0.6
       },
 
-      // Indent guides (will be added via custom extension)
-      '.cm-indent-guide': {
-        position: 'absolute',
-        top: '0',
-        bottom: '0',
-        width: '1px',
-        backgroundColor: 'var(--theme-color-fg-transparent)'
-      },
-
       // Scroller
       '.cm-scroller': {
         overflow: 'auto',

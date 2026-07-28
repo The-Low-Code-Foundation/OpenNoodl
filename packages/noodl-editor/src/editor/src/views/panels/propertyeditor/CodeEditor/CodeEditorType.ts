@@ -1,7 +1,7 @@
 import React from 'react';
 import { createRoot, Root } from 'react-dom/client';
 
-import { CodeHistoryManager } from '@noodl-models/CodeHistoryManager';
+import { CodeHistoryStore } from '@noodl-models/CodeHistory';
 import { WarningsModel } from '@noodl-models/warningsmodel';
 
 import { JavaScriptEditor, type ValidationType } from '@noodl-core-ui/components/code-editor';
@@ -133,9 +133,11 @@ export class CodeEditorType extends TypeView {
       let source = _this.value;
       if (source === '') source = undefined;
 
-      // Save snapshot to history (before updating)
-      if (source && nodeId) {
-        CodeHistoryManager.instance.saveSnapshot(nodeId, scope.name, source);
+      // Snapshot before updating. This goes to `<project>/.nodegx/code-history.json`,
+      // never to the node's metadata — see CED-001 (B1/B3). Fire-and-forget: a
+      // snapshot that cannot be written must not hold up the parameter write.
+      if (source && nodeId && !_this.readOnly) {
+        void CodeHistoryStore.instance.saveSnapshot(nodeId, scope.name, source);
       }
 
       _this.value = source;
@@ -174,8 +176,14 @@ export class CodeEditorType extends TypeView {
       _this.parent.hidePopout();
     };
 
-    // Render JavaScriptEditor with proper sizing and history support
-    // For read-only fields, don't pass nodeId/parameterName (no history tracking)
+    // History is offered only for editable fields of a project that exists on disk —
+    // there is nowhere to put the sidecar otherwise, and a History button that can
+    // never have anything in it is worse than no button.
+    const historyProvider =
+      !this.readOnly && nodeId && CodeHistoryStore.instance.isAvailable()
+        ? CodeHistoryStore.instance.providerFor(nodeId, scope.name)
+        : undefined;
+
     this.popoutRoot.render(
       React.createElement(JavaScriptEditor, {
         value: this.value || '',
@@ -191,9 +199,7 @@ export class CodeEditorType extends TypeView {
         disabled: this.readOnly, // Enable read-only mode if port is marked readOnly
         width: initialSize?.x || 800,
         height: initialSize?.y || 500,
-        // Only add history tracking for editable fields
-        nodeId: this.readOnly ? undefined : nodeId,
-        parameterName: this.readOnly ? undefined : scope.name
+        historyProvider
       })
     );
 

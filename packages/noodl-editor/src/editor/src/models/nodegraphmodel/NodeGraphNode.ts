@@ -1,5 +1,6 @@
 import { each, filter, find, isEqual, some } from 'underscore';
 
+import { stripCodeHistoryMetadata } from '@noodl-models/CodeHistory/codeHistoryMetadata';
 import { ComponentModel } from '@noodl-models/componentmodel';
 import { NodeGraphModel } from '@noodl-models/nodegraphmodel/NodeGraphModel';
 import { NodeGrapPort } from '@noodl-models/NodeGraphPort';
@@ -150,7 +151,10 @@ export class NodeGraphNode extends Model {
       dynamicports: json.dynamicports,
       conflicts: json.conflicts,
       annotation: json.annotation,
-      metadata: json.metadata,
+      // CED-001 (B2): code history used to be stashed here, up to 20 full copies of
+      // every code parameter. Dropping it on the way in means the next write of the
+      // project sheds it, once, and it never comes back.
+      metadata: stripCodeHistoryMetadata(json.metadata),
       diffData: json.diffData
     });
     for (const i in json.children) {

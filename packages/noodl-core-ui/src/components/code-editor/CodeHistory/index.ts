@@ -9,4 +9,5 @@
 export { CodeHistoryButton } from './CodeHistoryButton';
 export { CodeHistoryDropdown } from './CodeHistoryDropdown';
 export { CodeHistoryDiffModal } from './CodeHistoryDiffModal';
-export type { CodeSnapshot } from './types';
+export { formatTimestamp } from './formatTimestamp';
+export type { CodeHistoryProvider, CodeSnapshot } from './types';

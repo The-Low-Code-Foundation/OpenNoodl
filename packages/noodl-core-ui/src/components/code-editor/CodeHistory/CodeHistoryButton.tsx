@@ -11,15 +11,16 @@ import React, { useState, useRef, useEffect } from 'react';
 
 import css from './CodeHistoryButton.module.scss';
 import { CodeHistoryDropdown } from './CodeHistoryDropdown';
-import type { CodeSnapshot } from './types';
+import type { CodeHistoryProvider, CodeSnapshot } from './types';
 
 export interface CodeHistoryButtonProps {
-  /** Node ID to fetch history for */
-  nodeId: string;
-  /** Parameter name (e.g., 'code', 'expression') */
-  parameterName: string;
-  /** Current code value */
-  currentCode: string;
+  /** Where past versions of this parameter come from */
+  provider: CodeHistoryProvider;
+  /**
+   * Reads the editor's current text. A getter, not a value: the editor does not
+   * re-render on every keystroke, so a prop would go stale between opens.
+   */
+  getCurrentCode: () => string;
   /** Callback when user wants to restore a snapshot */
   onRestore: (snapshot: CodeSnapshot) => void;
 }
@@ -27,7 +28,7 @@ export interface CodeHistoryButtonProps {
 /**
  * History button with dropdown
  */
-export function CodeHistoryButton({ nodeId, parameterName, currentCode, onRestore }: CodeHistoryButtonProps) {
+export function CodeHistoryButton({ provider, getCurrentCode, onRestore }: CodeHistoryButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -78,9 +79,8 @@ export function CodeHistoryButton({ nodeId, parameterName, currentCode, onRestor
       {isOpen && (
         <div ref={dropdownRef} className={css.Dropdown}>
           <CodeHistoryDropdown
-            nodeId={nodeId}
-            parameterName={parameterName}
-            currentCode={currentCode}
+            provider={provider}
+            currentCode={getCurrentCode()}
             onRestore={(snapshot) => {
               onRestore(snapshot);
               setIsOpen(false);

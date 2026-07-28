@@ -1,0 +1,15 @@
+{
+  // The package tsconfig pulls in the whole editor app through its `paths` map, which
+  // is far more than a unit test needs (and does not resolve outside a webpack build).
+  // This one compiles only `tests/` and the modules they import.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["jest", "node"],
+    "esModuleInterop": true,
+    "noEmit": true
+  },
+  // Only the specs. Everything they import is pulled in by module resolution, which
+  // keeps the React components (and their `.module.scss` imports, which need the
+  // webpack loader) out of a program that has no business compiling them.
+  "include": ["tests/**/*.ts"]
+}

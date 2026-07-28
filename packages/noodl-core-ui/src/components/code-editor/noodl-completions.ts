@@ -6,11 +6,14 @@
  * - Inputs, Outputs, State, Props (node context)
  * - Math helpers (min, max, cos, sin, etc.)
  *
+ * Registered through `javascriptLanguage.data.of({ autocomplete })` so it runs
+ * *beside* the JavaScript language's own sources (local variables, keywords,
+ * snippets) rather than replacing them — see CED-001 (A2).
+ *
  * @module code-editor
  */
 
 import { CompletionContext, CompletionResult } from '@codemirror/autocomplete';
-import { syntaxTree } from '@codemirror/language';
 
 /**
  * Noodl API structure completions

@@ -6,86 +6,58 @@
  * @module code-editor/CodeHistory
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 
-import { computeDiff, getDiffSummary } from '../utils/codeDiff';
+import { summariseDiff } from '../utils/diffSummary';
 import { CodeHistoryDiffModal } from './CodeHistoryDiffModal';
 import css from './CodeHistoryDropdown.module.scss';
-import type { CodeSnapshot } from './types';
+import { formatTimestamp } from './formatTimestamp';
+import type { CodeHistoryProvider, CodeSnapshot } from './types';
 
 export interface CodeHistoryDropdownProps {
-  nodeId: string;
-  parameterName: string;
+  provider: CodeHistoryProvider;
   currentCode: string;
   onRestore: (snapshot: CodeSnapshot) => void;
   onClose: () => void;
 }
 
-// Format timestamp to human-readable format
-function formatTimestamp(timestamp: string): string {
-  const now = new Date();
-  const then = new Date(timestamp);
-  const diffMs = now.getTime() - then.getTime();
-  const diffSec = Math.floor(diffMs / 1000);
-  const diffMin = Math.floor(diffSec / 60);
-  const diffHour = Math.floor(diffMin / 60);
-  const diffDay = Math.floor(diffHour / 24);
-
-  if (diffSec < 60) {
-    return 'just now';
-  } else if (diffMin < 60) {
-    return `${diffMin} minute${diffMin === 1 ? '' : 's'} ago`;
-  } else if (diffHour < 24) {
-    return `${diffHour} hour${diffHour === 1 ? '' : 's'} ago`;
-  } else if (diffDay === 1) {
-    return 'yesterday at ' + then.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  } else if (diffDay < 7) {
-    return `${diffDay} days ago`;
-  } else {
-    return then.toLocaleDateString() + ' at ' + then.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  }
-}
-
-export function CodeHistoryDropdown({
-  nodeId,
-  parameterName,
-  currentCode,
-  onRestore,
-  onClose
-}: CodeHistoryDropdownProps) {
+export function CodeHistoryDropdown({ provider, currentCode, onRestore, onClose }: CodeHistoryDropdownProps) {
   const [selectedSnapshot, setSelectedSnapshot] = useState<CodeSnapshot | null>(null);
   const [history, setHistory] = useState<CodeSnapshot[]>([]);
 
-  // Load history on mount
-  React.useEffect(() => {
-    // Dynamically import CodeHistoryManager to avoid circular dependencies
-    // This allows noodl-core-ui to access noodl-editor functionality
-    import('@noodl-models/CodeHistoryManager')
-      .then(({ CodeHistoryManager }) => {
-        const historyData = CodeHistoryManager.instance.getHistory(nodeId, parameterName);
-        setHistory(historyData);
+  useEffect(() => {
+    let cancelled = false;
+
+    Promise.resolve(provider.getHistory())
+      .then((snapshots) => {
+        if (!cancelled) {
+          setHistory(snapshots);
+        }
       })
       .catch((error) => {
-        console.warn('Could not load CodeHistoryManager:', error);
-        setHistory([]);
+        console.error('Could not load code history:', error);
+        if (!cancelled) {
+          setHistory([]);
+        }
       });
-  }, [nodeId, parameterName]);
 
-  // Compute diffs for all snapshots (newest first)
-  const snapshotsWithDiffs = useMemo(() => {
-    return history
-      .slice() // Don't mutate original
-      .reverse() // Newest first
-      .map((snapshot) => {
-        const diff = computeDiff(snapshot.code, currentCode);
-        const summary = getDiffSummary(diff);
-        return {
+    return () => {
+      cancelled = true;
+    };
+  }, [provider]);
+
+  // Newest first, each labelled with how it differs from what is in the editor now.
+  const snapshots = useMemo(
+    () =>
+      history
+        .slice()
+        .reverse()
+        .map((snapshot) => ({
           snapshot,
-          diff,
-          summary
-        };
-      });
-  }, [history, currentCode]);
+          summary: summariseDiff(snapshot.code, currentCode)
+        })),
+    [history, currentCode]
+  );
 
   if (history.length === 0) {
     return (
@@ -131,8 +103,7 @@ export function CodeHistoryDropdown({
         </div>
 
         <div className={css.List}>
-          {/* Historical snapshots (newest first) */}
-          {snapshotsWithDiffs.map(({ snapshot, diff, summary }, index) => (
+          {snapshots.map(({ snapshot, summary }) => (
             <div key={snapshot.timestamp} className={css.Item}>
               <div className={css.ItemHeader}>
                 <span className={css.ItemIcon}>•</span>

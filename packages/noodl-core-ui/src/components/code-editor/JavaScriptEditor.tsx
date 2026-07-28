@@ -7,6 +7,7 @@
  * @module code-editor
  */
 
+import { indentRange } from '@codemirror/language';
 import { EditorView } from '@codemirror/view';
 import { useDragHandler } from '@noodl-hooks/useDragHandler';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
@@ -14,11 +15,26 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { ToolbarGrip } from '@noodl-core-ui/components/toolbar/ToolbarGrip';
 
 import { CodeHistoryButton, type CodeSnapshot } from './CodeHistory';
-import { createEditorState, createExtensions } from './codemirror-extensions';
+import {
+  createEditorState,
+  createExtensions,
+  externalValueSync,
+  readOnlyCompartment,
+  readOnlyExtensions
+} from './codemirror-extensions';
 import css from './JavaScriptEditor.module.scss';
-import { formatJavaScript } from './utils/jsFormatter';
-import { validateJavaScript } from './utils/jsValidator';
-import { JavaScriptEditorProps } from './utils/types';
+import { isSameValidation, validateJavaScript } from './utils/jsValidator';
+import { isPixelSize, parseSizeProp, type CssSize } from './utils/size';
+import { firstErrorPosition } from './utils/syntaxDiagnostics';
+import { minimalChange } from './utils/textChange';
+import { JavaScriptEditorProps, ValidationType } from './utils/types';
+
+/** Shared with {@link useDragHandler} below — the editor cannot usefully go smaller. */
+const MIN_WIDTH = 400;
+const MIN_HEIGHT = 200;
+
+const DEFAULT_WIDTH = 800;
+const DEFAULT_HEIGHT = 500;
 
 /**
  * Main JavaScriptEditor Component
@@ -33,35 +49,45 @@ export function JavaScriptEditor({
   height,
   width,
   placeholder = '// Enter your JavaScript code here',
-  nodeId,
-  parameterName
+  historyProvider
 }: JavaScriptEditorProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const editorContainerRef = useRef<HTMLDivElement>(null);
   const editorViewRef = useRef<EditorView | null>(null);
 
-  // Generation counter approach to prevent race conditions
-  // Replaces the unreliable isInternalChangeRef + setTimeout pattern
-  const changeGenerationRef = useRef(0);
-  const lastSyncedGenerationRef = useRef(0);
+  // CodeMirror owns the document; this is only the verdict shown in the toolbar and
+  // the panel below it.
+  const [validation, setValidation] = useState(() => validateJavaScript(value || '', validationType));
 
-  // Only store validation state (needed for display outside editor)
-  // Don't store localValue - CodeMirror is the single source of truth
-  const [validation, setValidation] = useState(validateJavaScript(value || '', validationType));
+  const applyValidation = useCallback((code: string, type: ValidationType) => {
+    setValidation((current) => {
+      let next = validateJavaScript(code, type);
 
-  // Resize support - convert width/height to numbers
-  const initialWidth = typeof width === 'number' ? width : typeof width === 'string' ? parseInt(width, 10) : 800;
-  const initialHeight = typeof height === 'number' ? height : typeof height === 'string' ? parseInt(height, 10) : 500;
+      // Neither `new Function` nor most of `JSON.parse`'s errors carry a position, so
+      // the panel used to say only *what* was wrong. The parse tree always knows where.
+      const view = editorViewRef.current;
+      if (!next.valid && next.line === undefined && view) {
+        const position = firstErrorPosition(view.state);
+        if (position) {
+          next = { ...next, ...position };
+        }
+      }
 
-  const [size, setSize] = useState<{ width: number; height: number }>({
-    width: initialWidth,
-    height: initialHeight
-  });
+      return isSameValidation(current, next) ? current : next;
+    });
+  }, []);
+
+  // A number or px string is resizable; every other CSS length passes straight through
+  // (CED-001, A6 — `parseInt('100%')` used to yield a 100px editor, clamped up to 400).
+  const [size, setSize] = useState<{ width: CssSize; height: CssSize }>(() => ({
+    width: parseSizeProp(width, DEFAULT_WIDTH),
+    height: parseSizeProp(height, DEFAULT_HEIGHT)
+  }));
 
   const { startDrag } = useDragHandler({
     root: rootRef,
-    minHeight: 200,
-    minWidth: 400,
+    minHeight: MIN_HEIGHT,
+    minWidth: MIN_WIDTH,
     onDrag(contentWidth, contentHeight) {
       setSize({
         width: contentWidth,
@@ -76,133 +102,129 @@ export function JavaScriptEditor({
   // Handle text changes from CodeMirror
   const handleChange = useCallback(
     (newValue: string) => {
-      // Increment generation counter for every internal change
-      // This prevents race conditions with external value syncing
-      changeGenerationRef.current++;
-
-      // Validate the new code
-      const result = validateJavaScript(newValue, validationType);
-      setValidation(result);
-
-      // Propagate changes to parent
-      if (onChange) {
-        onChange(newValue);
-      }
-
-      // No setTimeout needed - generation counter handles sync safely
+      applyValidation(newValue, validationType);
+      onChange?.(newValue);
     },
-    [onChange, validationType]
+    [applyValidation, onChange, validationType]
   );
 
-  // Handle format button
+  /**
+   * Re-indent the document from the language's own indentation rules.
+   *
+   * This used to run a hand-rolled character loop that did not know about `//`
+   * comments, regex literals or `${}` in template literals, and put a newline after
+   * every semicolon — which turned `for (let i = 0; i < n; i++)` into three broken
+   * lines. `indentRange` only ever rewrites leading whitespace, using the same syntax
+   * tree the editor highlights from, so it cannot corrupt code (CED-001, A4).
+   *
+   * It also returns a minimal change set, so Cmd-Z steps back over the indent alone.
+   */
   const handleFormat = useCallback(() => {
-    if (!editorViewRef.current) return;
+    const view = editorViewRef.current;
+    if (!view) return;
 
-    try {
-      const currentCode = editorViewRef.current.state.doc.toString();
-      const formatted = formatJavaScript(currentCode);
+    const changes = indentRange(view.state, 0, view.state.doc.length);
+    if (changes.empty) return;
 
-      // Increment generation counter for programmatic changes
-      changeGenerationRef.current++;
+    view.dispatch({ changes });
+    view.focus();
+  }, []);
 
-      // Update CodeMirror with formatted code
-      editorViewRef.current.dispatch({
-        changes: {
-          from: 0,
-          to: editorViewRef.current.state.doc.length,
-          insert: formatted
-        }
-      });
-
-      if (onChange) {
-        onChange(formatted);
-      }
-
-      // No setTimeout needed
-    } catch (error) {
-      console.error('Format error:', error);
-    }
-  }, [onChange]);
+  // The extensions are built once, so the callbacks they close over have to be read
+  // through a ref — otherwise a consumer that passes a fresh `onChange`/`onSave` each
+  // render keeps talking to the one from mount.
+  const handleChangeRef = useRef(handleChange);
+  const onSaveRef = useRef(onSave);
+  useEffect(() => {
+    handleChangeRef.current = handleChange;
+    onSaveRef.current = onSave;
+  });
 
   // Initialize CodeMirror editor
   useEffect(() => {
     if (!editorContainerRef.current) return;
 
-    // Create extensions
-    const extensions = createExtensions({
-      validationType,
-      placeholder,
-      readOnly: disabled,
-      onChange: handleChange,
-      onSave,
-      tabSize: 2
-    });
-
-    // Create editor state
-    const state = createEditorState(value || '', extensions);
-
-    // Create editor view
     const view = new EditorView({
-      state,
+      state: createEditorState(
+        value || '',
+        createExtensions({
+          validationType,
+          placeholder,
+          readOnly: disabled,
+          onChange: (newValue) => handleChangeRef.current(newValue),
+          onSave: onSave ? (newValue) => onSaveRef.current?.(newValue) : undefined,
+          tabSize: 2
+        })
+      ),
       parent: editorContainerRef.current
     });
 
     editorViewRef.current = view;
 
-    // Cleanup on unmount
     return () => {
       view.destroy();
       editorViewRef.current = null;
     };
-    // Only run on mount - we handle updates separately
+    // Mounted once. `value` and `disabled` are kept in step by the effects below;
+    // the rest are fixed for the lifetime of an editor instance.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Update editor when external value changes (but NOT from internal typing)
+  // Push an externally-supplied value into the document.
+  //
+  // The dispatch is annotated so the update listener does not report it straight back
+  // to the consumer, and is a minimal change rather than a whole-document replace, so
+  // it costs one undo step instead of erasing the history (CED-001, A7/A8).
   useEffect(() => {
-    if (!editorViewRef.current) return;
+    const view = editorViewRef.current;
+    if (!view) return;
 
-    // Skip if internal changes have happened since last sync
-    // This prevents race conditions from auto-complete, fold, etc.
-    if (changeGenerationRef.current > lastSyncedGenerationRef.current) {
-      return;
-    }
+    const next = value || '';
+    const change = minimalChange(view.state.doc.toString(), next);
+    if (!change) return;
 
-    const currentValue = editorViewRef.current.state.doc.toString();
+    view.dispatch({
+      changes: change,
+      annotations: externalValueSync.of(true)
+    });
 
-    // Only update if value actually changed from external source
-    if (currentValue !== value) {
-      // Update synced generation to current
-      lastSyncedGenerationRef.current = changeGenerationRef.current;
+    applyValidation(next, validationType);
+  }, [applyValidation, value, validationType]);
 
-      // Preserve cursor position during external update
-      const currentSelection = editorViewRef.current.state.selection;
-
-      editorViewRef.current.dispatch({
-        changes: {
-          from: 0,
-          to: editorViewRef.current.state.doc.length,
-          insert: value || ''
-        },
-        // Try to preserve selection if it's still valid
-        selection: currentSelection.ranges[0].to <= (value || '').length ? currentSelection : undefined
-      });
-
-      setValidation(validateJavaScript(value || '', validationType));
-    }
-  }, [value, validationType]);
-
-  // Update read-only state
+  // Keep the verdict in step when only the mode changes.
   useEffect(() => {
-    if (!editorViewRef.current) return;
+    const view = editorViewRef.current;
+    applyValidation(view ? view.state.doc.toString() : value || '', validationType);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [validationType]);
 
-    editorViewRef.current.dispatch({
-      effects: [
-        // Note: This requires reconfiguring the editor
-        // For now, we handle it on initial mount
-      ]
+  // Toggle read-only on the live editor.
+  useEffect(() => {
+    const view = editorViewRef.current;
+    if (!view) return;
+
+    view.dispatch({
+      effects: readOnlyCompartment.reconfigure(readOnlyExtensions(disabled))
     });
   }, [disabled]);
+
+  const readCurrentCode = useCallback(
+    () => editorViewRef.current?.state.doc.toString() ?? value ?? '',
+    [value]
+  );
+
+  const handleRestore = useCallback((snapshot: CodeSnapshot) => {
+    const view = editorViewRef.current;
+    if (!view) return;
+
+    const change = minimalChange(view.state.doc.toString(), snapshot.code);
+    if (!change) return;
+
+    // Deliberately un-annotated: restoring is a real edit, and the consumer needs to
+    // hear about it. Not auto-saved either — the person still chooses to keep it.
+    view.dispatch({ changes: change, scrollIntoView: true });
+    view.focus();
+  }, []);
 
   // Get validation mode label
   const getModeLabel = () => {
@@ -227,8 +249,10 @@ export function JavaScriptEditor({
       style={{
         width: size.width,
         height: size.height,
-        minWidth: 400,
-        minHeight: 200
+        // A pixel floor only makes sense for a pixel size; imposing 400px on a '100%'
+        // editor inside a narrow modal just overflows it.
+        ...(isPixelSize(size.width) ? { minWidth: MIN_WIDTH } : null),
+        ...(isPixelSize(size.height) ? { minHeight: MIN_HEIGHT } : null)
       }}
     >
       {/* Toolbar */}
@@ -242,53 +266,22 @@ export function JavaScriptEditor({
           )}
         </div>
         <div className={css['ToolbarRight']}>
-          {/* History button - only show if nodeId and parameterName provided */}
-          {nodeId && parameterName && (
-            <CodeHistoryButton
-              nodeId={nodeId}
-              parameterName={parameterName}
-              currentCode={editorViewRef.current?.state.doc.toString() || value || ''}
-              onRestore={(snapshot: CodeSnapshot) => {
-                if (!editorViewRef.current) return;
-
-                // Increment generation counter for restore operation
-                changeGenerationRef.current++;
-
-                // Restore code from snapshot
-                editorViewRef.current.dispatch({
-                  changes: {
-                    from: 0,
-                    to: editorViewRef.current.state.doc.length,
-                    insert: snapshot.code
-                  }
-                });
-
-                if (onChange) {
-                  onChange(snapshot.code);
-                }
-
-                // No setTimeout needed
-
-                // Don't auto-save - let user manually save if they want to keep the restored version
-                // This prevents creating duplicate snapshots
-              }}
-            />
+          {/* History button — only shown when the consumer supplies a provider */}
+          {historyProvider && (
+            <CodeHistoryButton provider={historyProvider} getCurrentCode={readCurrentCode} onRestore={handleRestore} />
           )}
           <button
             onClick={handleFormat}
             disabled={disabled}
             className={css['FormatButton']}
-            title="Format code"
+            title="Re-indent using the language's indentation rules"
             type="button"
           >
             Format
           </button>
           {onSave && (
             <button
-              onClick={() => {
-                const currentCode = editorViewRef.current?.state.doc.toString() || '';
-                onSave(currentCode);
-              }}
+              onClick={() => onSave(readCurrentCode())}
               disabled={disabled}
               className={css['SaveButton']}
               title="Save (Ctrl+S)"
@@ -301,10 +294,7 @@ export function JavaScriptEditor({
             <button
               onClick={() => {
                 // Save before closing if onSave is available
-                if (onSave) {
-                  const currentCode = editorViewRef.current?.state.doc.toString() || '';
-                  onSave(currentCode);
-                }
+                onSave?.(readCurrentCode());
                 onClose();
               }}
               className={css['CloseButton']}

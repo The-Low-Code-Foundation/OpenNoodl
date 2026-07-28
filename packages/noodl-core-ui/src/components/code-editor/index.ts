@@ -16,5 +16,7 @@ export { MarkdownEditor } from './MarkdownEditor';
 export type { MarkdownEditorProps } from './MarkdownEditor';
 export { markdownExtensions, markdownLanguage } from './markdown-language';
 export type { JavaScriptEditorProps, ValidationType, ValidationResult } from './utils/types';
+export type { CodeHistoryProvider, CodeSnapshot } from './CodeHistory/types';
 export { validateJavaScript } from './utils/jsValidator';
-export { formatJavaScript } from './utils/jsFormatter';
+export { summariseDiff } from './utils/diffSummary';
+export type { DiffSummary } from './utils/diffSummary';

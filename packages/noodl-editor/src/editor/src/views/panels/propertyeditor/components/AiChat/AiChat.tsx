@@ -7,6 +7,7 @@ import { AiAssistantModel } from '@noodl-models/AiAssistant/AiAssistantModel';
 import { AiCopilotContext } from '@noodl-models/AiAssistant/AiCopilotContext';
 import { ChatHistoryEvent, ChatMessage } from '@noodl-models/AiAssistant/ChatHistory';
 import { PopupItemType } from '@noodl-models/AiAssistant/PopupItemType';
+import { CodeHistoryStore } from '@noodl-models/CodeHistory';
 import { NodeGraphNode } from '@noodl-models/nodegraphmodel';
 import { LocalUserIdentity } from '@noodl-utils/LocalUserIdentity';
 import { tracker } from '@noodl-utils/tracker';
@@ -312,6 +313,12 @@ function AiMessageFunctionNodeAffix({ context, onUpdated }: AiMessageFunctionNod
     let currentValue = context.node.getParameter('functionScript') || '';
 
     function save() {
+      // Snapshot before the write, matching CodeEditorType — the History button in
+      // this popout is the same one, and it reads the same sidecar.
+      if (currentValue) {
+        void CodeHistoryStore.instance.saveSnapshot(context.node.id, 'functionScript', currentValue);
+      }
+
       context.node.setParameter('functionScript', currentValue);
 
       // Refresh Property Panel
@@ -325,8 +332,9 @@ function AiMessageFunctionNodeAffix({ context, onUpdated }: AiMessageFunctionNod
       React.createElement(JavaScriptEditor, {
         value: currentValue,
         validationType: 'function',
-        nodeId: context.node.id,
-        parameterName: 'functionScript',
+        historyProvider: CodeHistoryStore.instance.isAvailable()
+          ? CodeHistoryStore.instance.providerFor(context.node.id, 'functionScript')
+          : undefined,
         onChange: (newValue: string) => {
           currentValue = newValue;
         },

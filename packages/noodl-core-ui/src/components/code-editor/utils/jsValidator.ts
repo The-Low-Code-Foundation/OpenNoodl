@@ -10,19 +10,41 @@
 import { ValidationResult, ValidationType } from './types';
 
 /**
- * Extract line and column from error message
+ * Turn a document offset into a 1-based line and column.
  */
-function parseErrorLocation(error: Error): { line?: number; column?: number } {
-  const message = error.message;
-
-  // Try to extract line number from various error formats
-  const lineMatch = message.match(/line (\d+)/i);
-  const posMatch = message.match(/position (\d+)/i);
+function offsetToLineColumn(code: string, offset: number): { line: number; column: number } {
+  const before = code.slice(0, Math.max(0, offset));
+  const lines = before.split('\n');
 
   return {
-    line: lineMatch ? parseInt(lineMatch[1], 10) : undefined,
-    column: posMatch ? parseInt(posMatch[1], 10) : undefined
+    line: lines.length,
+    column: lines[lines.length - 1].length + 1
   };
+}
+
+/**
+ * Extract line and column from an error message, where the engine gives one.
+ *
+ * `JSON.parse` reports a position; V8 phrases it as `... at position 12` on older
+ * builds and `... at position 12 (line 1 column 13)` on newer ones. Syntax errors
+ * from `new Function(...)` carry no position at all, and this returns nothing rather
+ * than inventing one — the inline squiggles come from the parse tree instead
+ * (see `syntaxDiagnostics.ts`, CED-001 A3).
+ */
+function parseErrorLocation(error: Error, code: string): { line?: number; column?: number } {
+  const message = error.message;
+
+  const lineColumn = message.match(/line (\d+) column (\d+)/i);
+  if (lineColumn) {
+    return { line: parseInt(lineColumn[1], 10), column: parseInt(lineColumn[2], 10) };
+  }
+
+  const position = message.match(/position (\d+)/i);
+  if (position) {
+    return offsetToLineColumn(code, parseInt(position[1], 10));
+  }
+
+  return {};
 }
 
 /**
@@ -65,7 +87,7 @@ function validateExpression(code: string): ValidationResult {
     new Function(`return (${code});`);
     return { valid: true };
   } catch (error) {
-    const location = parseErrorLocation(error as Error);
+    const location = parseErrorLocation(error as Error, code);
     return {
       valid: false,
       error: (error as Error).message,
@@ -89,7 +111,7 @@ function validateFunction(code: string): ValidationResult {
     new Function(code);
     return { valid: true };
   } catch (error) {
-    const location = parseErrorLocation(error as Error);
+    const location = parseErrorLocation(error as Error, code);
     return {
       valid: false,
       error: (error as Error).message,
@@ -120,7 +142,7 @@ function validateJson(code: string): ValidationResult {
     JSON.parse(code);
     return { valid: true };
   } catch (error) {
-    const location = parseErrorLocation(error as Error);
+    const location = parseErrorLocation(error as Error, code);
     return {
       valid: false,
       error: (error as Error).message,
@@ -146,4 +168,21 @@ export function validateJavaScript(code: string, validationType: ValidationType 
     default:
       return { valid: false, error: 'Unknown validation type' };
   }
+}
+
+/**
+ * Whether two verdicts say the same thing.
+ *
+ * The editor re-validates on every keystroke *and* whenever a controlled consumer
+ * feeds the text back in; holding the previous object when nothing has changed lets
+ * React skip the second render of the pair.
+ */
+export function isSameValidation(a: ValidationResult, b: ValidationResult): boolean {
+  return (
+    a.valid === b.valid &&
+    a.error === b.error &&
+    a.suggestion === b.suggestion &&
+    a.line === b.line &&
+    a.column === b.column
+  );
 }

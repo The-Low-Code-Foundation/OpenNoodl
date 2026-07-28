@@ -4,6 +4,8 @@
  * @module code-editor/utils
  */
 
+import type { CodeHistoryProvider } from '../CodeHistory/types';
+
 export type ValidationType = 'expression' | 'function' | 'script' | 'json';
 
 export interface ValidationResult {
@@ -33,18 +35,21 @@ export interface JavaScriptEditorProps {
   /** Disable the editor */
   disabled?: boolean;
 
-  /** Width of the editor */
+  /**
+   * Width of the editor. A number or `px` string sets a resizable pixel width;
+   * any other CSS length (`'100%'`, `'70vh'`) is used as written.
+   */
   width?: number | string;
 
-  /** Height of the editor */
+  /** Height of the editor. Same rules as {@link JavaScriptEditorProps.width}. */
   height?: number | string;
 
   /** Placeholder text */
   placeholder?: string;
 
-  /** Node ID for history tracking (optional) */
-  nodeId?: string;
-
-  /** Parameter name for history tracking (optional) */
-  parameterName?: string;
+  /**
+   * Supplies past versions of this parameter for the History button. Omit it and the
+   * button is not rendered at all.
+   */
+  historyProvider?: CodeHistoryProvider;
 }
