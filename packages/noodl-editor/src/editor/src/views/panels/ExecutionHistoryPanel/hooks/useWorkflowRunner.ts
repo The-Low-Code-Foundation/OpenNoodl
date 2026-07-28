@@ -1,3 +1,4 @@
+import { ipcInvoke } from '@noodl-utils/ipc';
 import { useCallback, useEffect, useState } from 'react';
 
 /**
@@ -41,11 +42,6 @@ interface BackendWorkflowDefs {
   error?: string;
 }
 
-function ipc() {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (window as any).require('electron').ipcRenderer;
-}
-
 export function useWorkflowRunner(): UseWorkflowRunnerResult {
   const [workflows, setWorkflows] = useState<RunnableWorkflow[]>([]);
   const [unreachable, setUnreachable] = useState<string[]>([]);
@@ -54,7 +50,7 @@ export function useWorkflowRunner(): UseWorkflowRunnerResult {
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      const result: BackendWorkflowDefs[] = await ipc().invoke('backend:list-workflow-defs');
+      const result = await ipcInvoke<BackendWorkflowDefs[]>('backend:list-workflow-defs');
       const rows: RunnableWorkflow[] = [];
       const dead: string[] = [];
       for (const backend of result || []) {
@@ -86,17 +82,22 @@ export function useWorkflowRunner(): UseWorkflowRunnerResult {
   }, [refresh]);
 
   const run = useCallback(async (workflow: RunnableWorkflow, payload: Record<string, unknown>) => {
-    const result = await ipc().invoke('backend:run-workflow-def', workflow.backendId, workflow.id, payload);
+    const result = await ipcInvoke<{ stillRunning?: boolean; run?: { executionId?: string }; error?: string }>(
+      'backend:run-workflow-def',
+      workflow.backendId,
+      workflow.id,
+      payload
+    );
     if (result?.stillRunning) return null;
     const executionId = result?.run?.executionId;
     if (!executionId) {
       throw new Error(result?.error || 'The backend accepted the run but returned no execution id.');
     }
-    return executionId as string;
+    return executionId;
   }, []);
 
   const cancel = useCallback(async (backendId: string, executionId: string) => {
-    await ipc().invoke('backend:cancel-workflow-run', backendId, executionId);
+    await ipcInvoke('backend:cancel-workflow-run', backendId, executionId);
   }, []);
 
   return { workflows, unreachable, loading, refresh, run, cancel };

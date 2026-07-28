@@ -1,4 +1,5 @@
 import { useBackendStatusChanged } from '@noodl-hooks/useBackendStatusChanged';
+import { ipcInvoke } from '@noodl-utils/ipc';
 import { useEventListener } from '@noodl-hooks/useEventListener';
 import React, { useCallback, useEffect, useState } from 'react';
 
@@ -140,9 +141,7 @@ export function WorkflowsPanel() {
           return;
         }
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { ipcRenderer } = (window as any).require('electron');
-        const execution = await ipcRenderer.invoke('execution-history:get', executionId);
+        const execution = await ipcInvoke<{ error?: string } | null>('execution-history:get', executionId);
         if (!execution || execution.error) {
           setStatus(`Ran as ${executionId}, but its record could not be read back.`);
           return;

@@ -26,6 +26,7 @@
  */
 
 import { ProjectModel } from '@noodl-models/projectmodel';
+import { ipcInvoke } from '@noodl-utils/ipc';
 
 import { CLOUD_COMPONENT_PREFIX, getCloudFunctionNames } from '../../utils/exporter/cloudFunctions';
 
@@ -107,15 +108,10 @@ export function deployedFunctionNames(status: unknown): DeployedFunctions {
   return { names, known: true };
 }
 
-function ipc() {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (window as any).require('electron').ipcRenderer;
-}
-
 /** Ask ONE backend what it is serving. Never throws: an unreachable backend is `known: false`. */
 export async function fetchDeployedFunctions(backendId: string): Promise<DeployedFunctions> {
   try {
-    return deployedFunctionNames(await ipc().invoke('backend:workflow-status', backendId));
+    return deployedFunctionNames(await ipcInvoke('backend:workflow-status', backendId));
   } catch {
     return { names: [], known: false };
   }

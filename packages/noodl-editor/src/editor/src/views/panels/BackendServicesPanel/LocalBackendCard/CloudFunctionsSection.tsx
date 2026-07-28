@@ -11,6 +11,7 @@
  * @module BackendServicesPanel/LocalBackendCard/CloudFunctionsSection
  */
 
+import { ipcInvoke } from '@noodl-utils/ipc';
 import React, { useCallback, useEffect, useState } from 'react';
 
 import { Icon, IconName, IconSize } from '@noodl-core-ui/components/common/Icon';
@@ -58,9 +59,7 @@ export function CloudFunctionsSection({ backendId, isRunning, onDeploy }: CloudF
       return;
     }
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { ipcRenderer } = (window as any).require('electron');
-      setStatus(await ipcRenderer.invoke('backend:workflow-status', backendId));
+      setStatus(await ipcInvoke<WorkflowStatus>('backend:workflow-status', backendId));
     } catch {
       setStatus(null);
     }

@@ -15,12 +15,9 @@
  * @module models/workflow/WorkflowBackendClient
  */
 
-import type { StepKindCatalog, WorkflowDefinition, WorkflowInput, WorkflowRef } from './types';
+import { ipcInvoke } from '@noodl-utils/ipc';
 
-function ipc() {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (window as any).require('electron').ipcRenderer;
-}
+import type { StepKindCatalog, WorkflowDefinition, WorkflowInput, WorkflowRef } from './types';
 
 export interface BackendWorkflowDefs {
   backendId: string;
@@ -40,7 +37,7 @@ export interface BackendWorkflowDefs {
  */
 export async function listWorkflowDefinitions(): Promise<BackendWorkflowDefs[]> {
   try {
-    return ((await ipc().invoke('backend:list-workflow-defs')) as BackendWorkflowDefs[]) || [];
+    return (await ipcInvoke<BackendWorkflowDefs[]>('backend:list-workflow-defs')) || [];
   } catch {
     return [];
   }
@@ -80,7 +77,7 @@ export async function listWorkflows(): Promise<WorkflowListResult> {
 
 /** The step vocabulary of ONE backend. Throws when that backend is not running. */
 export async function fetchStepKinds(backendId: string): Promise<StepKindCatalog> {
-  const catalog: StepKindCatalog = await ipc().invoke('backend:workflow-step-kinds', backendId);
+  const catalog = await ipcInvoke<StepKindCatalog>('backend:workflow-step-kinds', backendId);
   if (!catalog || !Array.isArray(catalog.kinds)) {
     throw new Error('The backend answered the step-kind catalog with something that is not a catalog.');
   }
@@ -88,7 +85,7 @@ export async function fetchStepKinds(backendId: string): Promise<StepKindCatalog
 }
 
 export async function fetchWorkflow(backendId: string, workflowId: string): Promise<WorkflowDefinition> {
-  const result = await ipc().invoke('backend:get-workflow-def', backendId, workflowId);
+  const result = await ipcInvoke<{ workflow?: WorkflowDefinition }>('backend:get-workflow-def', backendId, workflowId);
   const workflow = result?.workflow;
   if (!workflow) throw new Error(`The backend has no workflow "${workflowId}".`);
   return workflow as WorkflowDefinition;
@@ -103,14 +100,14 @@ export async function fetchWorkflow(backendId: string, workflowId: string): Prom
  * stopped a backend from booting.
  */
 export async function saveWorkflow(backendId: string, workflow: WorkflowInput): Promise<WorkflowDefinition> {
-  const result = await ipc().invoke('backend:save-workflow-def', backendId, workflow);
+  const result = await ipcInvoke<{ workflow?: WorkflowDefinition }>('backend:save-workflow-def', backendId, workflow);
   const saved = result?.workflow;
   if (!saved) throw new Error('The backend accepted the save but returned no workflow.');
   return saved as WorkflowDefinition;
 }
 
 export async function deleteWorkflow(backendId: string, workflowId: string): Promise<void> {
-  await ipc().invoke('backend:delete-workflow-def', backendId, workflowId);
+  await ipcInvoke('backend:delete-workflow-def', backendId, workflowId);
 }
 
 /** Run it now. `null` means the run outlived the request ceiling and is still going (F33). */
@@ -119,7 +116,12 @@ export async function runWorkflow(
   workflowId: string,
   payload: Record<string, unknown>
 ): Promise<string | null> {
-  const result = await ipc().invoke('backend:run-workflow-def', backendId, workflowId, payload);
+  const result = await ipcInvoke<{ stillRunning?: boolean; run?: { executionId?: string }; error?: string }>(
+    'backend:run-workflow-def',
+    backendId,
+    workflowId,
+    payload
+  );
   if (result?.stillRunning) return null;
   const executionId = result?.run?.executionId;
   if (!executionId) {

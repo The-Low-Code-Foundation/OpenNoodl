@@ -20,6 +20,7 @@
  * @module hooks/useBackendStatusChanged
  */
 
+import { getIpc } from '@noodl-utils/ipc';
 import { useEffect, useRef } from 'react';
 
 export interface BackendStatusChange {
@@ -44,10 +45,8 @@ export function useBackendStatusChanged(onChange: (change: BackendStatusChange) 
   useEffect(() => {
     // Guarded: the editor's specs render these panels outside Electron, where
     // there is no ipcRenderer, and a panel must not fail to mount over an
-    // event it only uses to stay fresh.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const electron = (window as any).require ? (window as any).require('electron') : null;
-    const ipcRenderer = electron?.ipcRenderer;
+    // event it only uses to stay fresh. `getIpc` answers null there.
+    const ipcRenderer = getIpc();
     if (!ipcRenderer) return;
 
     const listener = (_event: unknown, change: BackendStatusChange) => handler.current(change);

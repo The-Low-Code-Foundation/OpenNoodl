@@ -17,9 +17,9 @@
 import React from 'react';
 import { createRoot, Root } from 'react-dom/client';
 
-import { PropertyPanelRow } from '@noodl-core-ui/components/property-panel/PropertyPanelInput';
-
 import { WorkflowEditorService } from '@noodl-models/workflow/WorkflowEditorService';
+
+import { PropertyPanelRow } from '@noodl-core-ui/components/property-panel/PropertyPanelInput';
 
 import { ConditionEditor } from '../components/WorkflowCondition/ConditionEditor';
 import { FunctionRefRow } from '../components/WorkflowCondition/FunctionRefRow';
@@ -134,10 +134,11 @@ export class WorkflowConditionType extends WorkflowTypeView {
   renderReact() {
     if (!this.root) return;
     this.root.render(
-      React.createElement(
-        PropertyPanelRow,
-        { label: this.displayName, isChanged: !this.isDefault, onReset: () => this.write(undefined) } as TSFixme,
-        React.createElement(ConditionEditor, {
+      React.createElement(PropertyPanelRow, {
+        label: this.displayName,
+        isChanged: !this.isDefault,
+        onReset: () => this.write(undefined),
+        children: React.createElement(ConditionEditor, {
           value: this.parent.model.getParameter(this.name),
           onChange: (value: unknown) => this.write(value),
           ops: this.ops,
@@ -145,7 +146,7 @@ export class WorkflowConditionType extends WorkflowTypeView {
           graph: this.graph,
           stepId: this.stepId
         })
-      )
+      })
     );
   }
 }
@@ -159,10 +160,11 @@ export class WorkflowCasesType extends WorkflowTypeView {
   renderReact() {
     if (!this.root) return;
     this.root.render(
-      React.createElement(
-        PropertyPanelRow,
-        { label: this.displayName, isChanged: !this.isDefault, onReset: () => this.write(undefined) } as TSFixme,
-        React.createElement(SwitchCasesEditor, {
+      React.createElement(PropertyPanelRow, {
+        label: this.displayName,
+        isChanged: !this.isDefault,
+        onReset: () => this.write(undefined),
+        children: React.createElement(SwitchCasesEditor, {
           value: this.parent.model.getParameter(this.name),
           onChange: (value: unknown) => this.write(value),
           ops: this.ops,
@@ -170,7 +172,7 @@ export class WorkflowCasesType extends WorkflowTypeView {
           graph: this.graph,
           stepId: this.stepId
         })
-      )
+      })
     );
   }
 }
@@ -190,10 +192,11 @@ export class WorkflowValueType extends WorkflowTypeView {
   renderReact() {
     if (!this.root) return;
     this.root.render(
-      React.createElement(
-        PropertyPanelRow,
-        { label: this.displayName, isChanged: !this.isDefault, onReset: () => this.write(undefined) } as TSFixme,
-        React.createElement(WorkflowValueInput, {
+      React.createElement(PropertyPanelRow, {
+        label: this.displayName,
+        isChanged: !this.isDefault,
+        onReset: () => this.write(undefined),
+        children: React.createElement(WorkflowValueInput, {
           value: this.parent.model.getParameter(this.name),
           onChange: (value: unknown) => this.write(value),
           scope: this.scope,
@@ -201,7 +204,7 @@ export class WorkflowValueType extends WorkflowTypeView {
           stepId: this.stepId,
           ariaLabel: this.displayName
         })
-      )
+      })
     );
   }
 }

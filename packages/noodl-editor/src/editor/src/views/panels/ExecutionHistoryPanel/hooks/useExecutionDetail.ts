@@ -1,3 +1,4 @@
+import { ipcInvoke } from '@noodl-utils/ipc';
 import { useCallback, useEffect, useState } from 'react';
 
 import type { ExecutionWithSteps } from '@noodl-viewer-cloud/execution-history';
@@ -31,9 +32,10 @@ export function useExecutionDetail(executionId: string | null): UseExecutionDeta
     setError(null);
 
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { ipcRenderer } = (window as any).require('electron');
-      const result = await ipcRenderer.invoke('execution-history:get', executionId);
+      const result = await ipcInvoke<(ExecutionWithSteps & { error?: string }) | null>(
+        'execution-history:get',
+        executionId
+      );
 
       if (result && result.error) {
         setError(result.error);

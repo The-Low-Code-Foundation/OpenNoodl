@@ -1,3 +1,4 @@
+import { ipcInvoke } from '@noodl-utils/ipc';
 import { useCallback, useEffect, useState } from 'react';
 
 import type { ExecutionQuery, ExecutionStatus, WorkflowExecution } from '@noodl-viewer-cloud/execution-history';
@@ -47,9 +48,6 @@ export function useExecutionHistory(filters: ExecutionFilters): UseExecutionHist
     setError(null);
 
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { ipcRenderer } = (window as any).require('electron');
-
       const query: ExecutionQuery = {
         status: filters.status,
         startedAfter: filters.startDate?.getTime(),
@@ -59,7 +57,7 @@ export function useExecutionHistory(filters: ExecutionFilters): UseExecutionHist
         orderDir: 'desc'
       };
 
-      const result: ExecutionListResult = await ipcRenderer.invoke('execution-history:list', query);
+      const result = await ipcInvoke<ExecutionListResult>('execution-history:list', query);
 
       setSources(result?.sources || []);
       setExecutions(result?.executions || []);

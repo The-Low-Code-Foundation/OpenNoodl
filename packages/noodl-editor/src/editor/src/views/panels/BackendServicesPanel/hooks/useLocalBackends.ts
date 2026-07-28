@@ -8,6 +8,7 @@
  * @since 1.2.0
  */
 
+import { getIpc } from '@noodl-utils/ipc';
 import { useCallback, useEffect, useState } from 'react';
 
 import { CloudFunctionDeployer } from '../../../../services/CloudFunctionDeployer';
@@ -71,10 +72,9 @@ export interface UseLocalBackendsReturn {
  */
 async function invokeIPC<T>(channel: string, ...args: unknown[]): Promise<T | null> {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { ipcRenderer } = (window as any).require('electron');
-    if (ipcRenderer?.invoke) {
-      return await ipcRenderer.invoke(channel, ...args);
+    const ipcRenderer = getIpc();
+    if (ipcRenderer) {
+      return (await ipcRenderer.invoke(channel, ...args)) as T;
     }
     console.warn('[useLocalBackends] ipcRenderer not available');
     return null;

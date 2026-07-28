@@ -8,6 +8,7 @@
  * @since 1.2.0
  */
 
+import { ipcInvoke } from '@noodl-utils/ipc';
 import React, { useCallback, useEffect, useState } from 'react';
 
 import { PrimaryButton, PrimaryButtonSize, PrimaryButtonVariant } from '@noodl-core-ui/components/inputs/PrimaryButton';
@@ -37,9 +38,7 @@ interface SchemaData {
  * Invoke IPC handler with error handling
  */
 async function invokeIPC<T>(channel: string, ...args: unknown[]): Promise<T> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { ipcRenderer } = (window as any).require('electron');
-  return ipcRenderer.invoke(channel, ...args);
+  return ipcInvoke<T>(channel, ...args);
 }
 
 /**

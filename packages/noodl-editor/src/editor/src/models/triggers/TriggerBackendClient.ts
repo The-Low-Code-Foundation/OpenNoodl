@@ -18,6 +18,8 @@
  * @module models/triggers/TriggerBackendClient
  */
 
+import { ipcInvoke } from '@noodl-utils/ipc';
+
 import { deployedFunctionNames } from '../workflow/functionRefResolution';
 
 export type TriggerType = 'schedule' | 'webhook' | 'db-change';
@@ -86,18 +88,13 @@ export interface TriggerTargets {
   known: boolean;
 }
 
-function ipc() {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (window as any).require('electron').ipcRenderer;
-}
-
 export async function listTriggers(backendId: string): Promise<TriggerDef[]> {
-  const result = await ipc().invoke('backend:listTriggers', backendId);
-  return (result?.triggers as TriggerDef[]) || [];
+  const result = await ipcInvoke<{ triggers?: TriggerDef[] }>('backend:listTriggers', backendId);
+  return result?.triggers || [];
 }
 
 export async function createTrigger(backendId: string, input: TriggerInput): Promise<TriggerCreated> {
-  return (await ipc().invoke('backend:createTrigger', backendId, input)) as TriggerCreated;
+  return await ipcInvoke<TriggerCreated>('backend:createTrigger', backendId, input);
 }
 
 export async function updateTrigger(
@@ -105,15 +102,15 @@ export async function updateTrigger(
   triggerId: string,
   input: TriggerInput
 ): Promise<TriggerCreated> {
-  return (await ipc().invoke('backend:updateTrigger', backendId, triggerId, input)) as TriggerCreated;
+  return await ipcInvoke<TriggerCreated>('backend:updateTrigger', backendId, triggerId, input);
 }
 
 export async function setTriggerEnabled(backendId: string, triggerId: string, enabled: boolean): Promise<void> {
-  await ipc().invoke('backend:setTriggerEnabled', backendId, triggerId, enabled);
+  await ipcInvoke('backend:setTriggerEnabled', backendId, triggerId, enabled);
 }
 
 export async function deleteTrigger(backendId: string, triggerId: string): Promise<void> {
-  await ipc().invoke('backend:deleteTrigger', backendId, triggerId);
+  await ipcInvoke('backend:deleteTrigger', backendId, triggerId);
 }
 
 export async function fireTrigger(
@@ -121,9 +118,12 @@ export async function fireTrigger(
   triggerId: string,
   payload: Record<string, unknown> = {}
 ): Promise<{ result?: { ok?: boolean; error?: string } }> {
-  return (await ipc().invoke('backend:fireTrigger', backendId, triggerId, payload)) as {
-    result?: { ok?: boolean; error?: string };
-  };
+  return await ipcInvoke<{ result?: { ok?: boolean; error?: string } }>(
+    'backend:fireTrigger',
+    backendId,
+    triggerId,
+    payload
+  );
 }
 
 /**
@@ -139,8 +139,10 @@ export async function fetchTriggerTargets(backendId: string): Promise<TriggerTar
   const empty: TriggerTargets = { functions: [], workflows: [], known: false };
   try {
     const [status, defsPerBackend] = await Promise.all([
-      ipc().invoke('backend:workflow-status', backendId),
-      ipc().invoke('backend:list-workflow-defs')
+      ipcInvoke<{ initialized?: boolean; functions?: unknown }>('backend:workflow-status', backendId),
+      ipcInvoke<{ backendId: string; workflows?: { id: string; name?: string }[]; error?: string }[]>(
+        'backend:list-workflow-defs'
+      )
     ]);
 
     // F54: `GET /admin/workflows` answers `functions: {name, workflow}[]`, so the
@@ -154,9 +156,7 @@ export async function fetchTriggerTargets(backendId: string): Promise<TriggerTar
     // `list-workflow-defs` answers for EVERY running backend; a trigger can only
     // point at its own backend's workflows, so the others are dropped here
     // rather than offered as targets that would 404 at fire time.
-    const mine = (defsPerBackend || []).find(
-      (b: { backendId: string }) => b.backendId === backendId
-    ) as { workflows?: { id: string; name?: string }[]; error?: string } | undefined;
+    const mine = (defsPerBackend || []).find((b) => b.backendId === backendId);
     const workflows = (mine?.workflows || []).map((w) => ({ id: w.id, name: w.name || w.id }));
 
     return { functions, workflows, known: Boolean(status?.initialized) && !mine?.error };
@@ -188,7 +188,10 @@ export function isTargetResolved(target: TriggerTarget, targets: TriggerTargets)
  */
 export async function fetchBackendEndpoint(backendId: string): Promise<string | null> {
   try {
-    const status = await ipc().invoke('backend:status', backendId);
+    const status = await ipcInvoke<{ running?: boolean; port?: number; endpoint?: string }>(
+      'backend:status',
+      backendId
+    );
     if (!status?.running) return null;
     return status.port ? `http://127.0.0.1:${status.port}` : status.endpoint || null;
   } catch {
