@@ -295,12 +295,197 @@ carries six separate `!== undefined && !== null` guards — same defect class A2
 
 ---
 
-## What this pass did *not* cover
+# Second pass — defects found outside the original eight
 
-- **147 of 155 nodes** have only their machine-derived smell row in `NODE-REGISTER.md`. No
-  implementation has been read for them.
-- The Component Stack scroll behaviour is **unreproduced** (see above).
-- No live verification of any finding. Everything here is read from source. The `run-editor` skill and
-  the NodeGX QA fixture exist to change that, and the first task of the phase should be a failing-test
-  corpus rather than a fix.
+**Added 2026-07-29.** The first pass read only the eight nodes Richard named and swept the other 147
+*structurally* (ports, signals, docs coverage). A structural sweep cannot find "works until you add a
+second one", so it found none of the five defects below. Richard reported four of them from memory;
+the fifth (class E) fell out while confirming the third.
+
+Two of these generalise into new systemic classes.
+
+## Defect class E — `object` and `array` are dead ends in the type system
+
+This started as "there were output types on Function and Script nodes that don't work, like objects".
+It is not a Function-node bug. It is the port type table.
+
+The Function/Script node offers `object` as an output type, and the value it carries is fine. The
+problem is what an `object` port is allowed to *connect to*. From the catalog's typecast table:
+
+```
+{ "from": "object", "to": [] }        ← casts to nothing
+{ "from": "string", "to": [ …, "array", "object" ] }   ← but string casts INTO object
+```
+
+So an `object`-typed output connects only to an input *exactly* typed `object`. Counting those across
+the whole library:
+
+| | Count |
+|---|---|
+| Input ports in the library | 1,750 |
+| **Input ports typed `object`** | **4** — `Global Store.initialState`, `Server-Sent Events.headers`, `State Snapshot.snapshotData`, `Send Email.variables` |
+| Input ports typed `*` (wildcard) | 12 |
+| Output ports typed `object` | 13 |
+
+**An `object` output can reach four destinations in the entire product.** And because the Function
+node defaults an untyped output to `*` ([`simplejavascript.ts:442`](../../../packages/noodl-runtime/src/nodes/std-library/simplejavascript.ts#L442),
+`node.parameters['outtype-' + p.label] || '*'`), **selecting the correct type makes the port strictly
+less useful than leaving it alone**. That is a UI that punishes the author for being accurate, which
+is a fair description of "output types that don't work".
+
+The same is half-true of `array`: it casts only to `collection` and back. The 13 `object` outputs
+include `HTTP Request.responseHeaders`, `Query Data.firstRecord` and every `error` port on the Cloud
+Data nodes — i.e. the error objects from defect class B are themselves nearly unconnectable.
+
+Fixing this is a type-table decision, not a node fix: either `object` gains casts (to `string` via
+JSON, at minimum), or `*` becomes the honest default and the enum stops offering a choice that makes
+things worse.
+
+## Defect class F — implicit nearest-ancestor resolution, with no way to target
+
+Richard's report: "you can't target a specific component object with the Parent Component Object
+node, so if you've made a couple of components that both have Component Objects in them and you nest
+the components, sometimes the wrong Component Object will be updated."
+
+Confirmed, and it is not "sometimes" — it is deterministic and undiscoverable.
+[`parentcomponentobject.ts:149-186`](../../../packages/noodl-viewer-react/src/nodes/std-library/componentutils/parentcomponentobject.ts#L149-L186)
+walks up the component tree and returns the **first** ancestor that contains a
+`net.noodl.ComponentObject` node:
+
+```ts
+if (parent.nodeScope.getNodesWithType('net.noodl.ComponentObject').length > 0) {
+  return parent;
+}
+return getParentComponent(parent);   // otherwise keep walking
+```
+
+There is no name input, no id input, no depth input — **nothing on the node lets an author say which
+ancestor they meant**. Nest two components that each own a Component Object and the inner node
+silently binds to the nearer one. The node does expose the resolved name in `getInspectInfo`
+([`parentcomponentobject.ts:101-103`](../../../packages/noodl-viewer-react/src/nodes/std-library/componentutils/parentcomponentobject.ts#L101-L103)),
+which is the only way to find out what happened, and only while inspecting.
+
+Worse, the resolution is not stable. One branch walks `getVisualParentNode()`
+([`parentcomponentobject.ts:159`](../../../packages/noodl-viewer-react/src/nodes/std-library/componentutils/parentcomponentobject.ts#L159)),
+so **the binding can change when the visual tree changes**, and there is a standing
+`//FIXME: temporary hack` at [line 88](../../../packages/noodl-viewer-react/src/nodes/std-library/componentutils/parentcomponentobject.ts#L88)
+deferring resolution by a frame because the parent's node scope may not exist yet. That is where the
+"sometimes" comes from.
+
+**This is the same shape as the Close Popup defect** in the first pass: a node that finds its target
+by walking scope, with no way to name the target and no indication of what it found. Treat them as
+one class. The fix is the same in both: an optional explicit target, and a *visible* indication of
+what was resolved when it is left implicit.
+
+## The Repeater does not re-read its source on Refresh
+
+Richard: "when an array feeding into the repeater is changed… not through the standard Noodl node
+system… the repeater doesn't update, and using the Refresh signal does fuck all."
+
+Both halves confirmed, and they are **two separate bugs**.
+
+The first half is defect class A1 — the source collection never notifies on `push`, so
+`onItemsCollectionChanged` never runs. The `items` setter also early-returns on an unchanged
+reference ([`foreach.tsx:209`](../../../packages/noodl-viewer-react/src/nodes/std-library/data/foreach.tsx#L209),
+`if (value === this._internal.items) return;`), so re-sending the same mutated array does nothing either.
+
+The second half is its own defect and the more damning one. The Repeater keeps a private copy of the
+collection — "so we don't have to refresh all content if the input items collection changes"
+([`foreach.tsx:162`](../../../packages/noodl-viewer-react/src/nodes/std-library/data/foreach.tsx#L162)) —
+and **`refresh()` rebuilds from that copy, never from `items`**:
+
+```ts
+// foreach.tsx:509-527
+refresh: async function () {
+  this._deleteAllItemNodes();
+  ...
+  for (let i = 0; i < internal.collection.size(); i++) {   // <-- the private copy
+    const model = internal.collection.get(i);
+    await this.addItem(model, baseIndex + i);
+  }
+}
+```
+
+`internal.collection` is only resynced by `internal.collection.set(internal.items)`, which runs from
+`onItemsCollectionChanged` (never fires — see above) and `scheduleCopyItems` (only when a *different*
+array object arrives). So Refresh tears down every item node and rebuilds them from stale data,
+producing byte-identical output at the cost of a full re-render. It does not do nothing; it does a
+lot of work and changes nothing, which is worse.
+
+**Fix is one line in shape**: `refresh()` must resync from `items` before rebuilding. That is what a
+signal named Refresh means, and it makes the Repeater recoverable even while class A1 is outstanding
+— which is a good argument for landing it *before* NDA-002.
+
+`Array Filter` and `Array Map` are downstream of the same A1 defect
+([`filtercollectionnode.ts:243`](../../../packages/noodl-viewer-react/src/nodes/std-library/data/filtercollectionnode.ts#L243),
+[`mapcollectionnode.ts:136`](../../../packages/noodl-viewer-react/src/nodes/std-library/data/mapcollectionnode.ts#L136)),
+and neither has a Refresh input at all.
+
+## Text sizes to content until you touch Size Mode
+
+Richard: "the text node starts off as responsive width, but if you add two text nodes side by side
+the first one will take up 100% of the width, unless you change to fixed width and back to
+responsive, then it works."
+
+Partially confirmed, with the mechanism identified and one gap.
+
+[`layout.ts:60-67`](../../../packages/noodl-viewer-react/src/layout.ts#L60-L67) is the whole of size
+resolution:
+
+```ts
+if (props.sizeMode === 'explicit')          { style.width = props.width; style.height = props.height; }
+else if (props.sizeMode === 'contentHeight') { style.width = props.width; }
+else if (props.sizeMode === 'contentWidth')  { style.height = props.height; }
+// no else
+```
+
+**There is no `else`.** When `sizeMode` is unset, `style.width` is never assigned from `props.width`,
+so it keeps whatever `defaultCss` gave it — for Text, `width: 'auto'`
+([`text.ts:30-33`](../../../packages/noodl-viewer-react/src/nodes/visual/text.ts#L30-L33), carrying a
+`// FIX:` comment). `flexShrink` is then set to `0` unconditionally at
+[`layout.ts:69`](../../../packages/noodl-viewer-react/src/layout.ts#L69), and the percentage →
+`flexGrow` conversion at [`layout.ts:71-75`](../../../packages/noodl-viewer-react/src/layout.ts#L71-L75)
+is gated on `isPercentage(style.width)` — which `'auto'` is not. So an unset `sizeMode` yields a
+non-shrinkable, non-growing item: the first one takes the row. Setting Size Mode explicitly and back
+puts a real value on the port, the branch runs, `width` becomes `'100%'`, and both children get
+`flexGrow` and share.
+
+**The gap:** `sizeMode` is declared with `default: 'contentHeight'`
+([`node-shared-port-definitions.ts:638-653`](../../../packages/noodl-viewer-react/src/node-shared-port-definitions.ts#L638-L653))
+and defaults *are* copied into props at
+[`react-component-node.ts:823-841`](../../../packages/noodl-viewer-react/src/react-component-node.ts#L823-L841),
+so on this reading `props.sizeMode` should already be set and the symptom should not occur. Something
+between those two — port registration order, a `dynamicports` interaction, or the editor writing the
+parameter only on first edit — is dropping it. **This one needs the running editor to finish
+diagnosing.** The missing `else` is a real defect regardless and should be closed either way; it is
+the same undefined-versus-explicit confusion as defect class A2, in the layout engine.
+
+## Repeater Item: only the first one gets the remove handshake
+
+I could not reproduce "doesn't work at all" from source — the node is in the picker, not deprecated,
+and both its signals are wired from the Repeater
+([`foreach.tsx:454`](../../../packages/noodl-viewer-react/src/nodes/std-library/data/foreach.tsx#L454)
+for `Added`, [`foreach.tsx:479`](../../../packages/noodl-viewer-react/src/nodes/std-library/data/foreach.tsx#L479)
+for `Try Remove`). Two things are worth recording anyway:
+
+1. **Asymmetric fan-out.** `Added` is signalled on *every* Repeater Item node in the template (a loop
+   at line 454); `Try Remove` is sent only to `forEachActions[0]` (line 479). A template with two
+   Repeater Item nodes gets one that never receives the remove handshake, and since `Try Remove` is a
+   handshake the Repeater *waits* on, this is a plausible source of "it doesn't work".
+2. **A mechanism was deleted from under it.** The node used to publish `itemAction-…` ports whose
+   handler called a `signalItemAction` that no node ever defined — "dead *and* broken", removed under
+   DEBT-006 ([`foreachactions.ts:86-89`](../../../packages/noodl-viewer-react/src/nodes/std-library/data/foreachactions.ts#L86-L89)).
+   If the memory is of item actions rather than of the node itself, that is what it is.
+
+---
+
+## What these passes did *not* cover
+
+- **142 of 155 nodes** have only their machine-derived smell row in `NODE-REGISTER.md`. No
+  implementation has been read for them. The second pass is direct evidence that the structural sweep
+  under-reports: five real defects in the first six nodes anyone looked at closely.
+- **Two findings are unfinished.** The Component Stack scroll jump has a symptom and no located cause;
+  the Text sizing default has a mechanism but a contradiction in the default-propagation path. Both
+  need the running editor, and neither should be specced as a fix before that.
+- No live verification of *any* finding. Everything here is read from source.
 - Deprecated-node dispositions (23 nodes) have not been decided.

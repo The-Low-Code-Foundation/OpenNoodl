@@ -29,7 +29,7 @@ citation. The short version:
 
 ## The thesis
 
-**Three contracts are missing, and their absence is what makes 155 nodes feel individually broken.**
+**Five contracts are missing, and their absence is what makes 155 nodes feel individually broken.**
 
 1. **The reactivity contract.** What is a change, who is told, and when. Today the answer differs
    between `Model` (correct), `Collection` (five verbs out of fifteen), `Variable` (swallows the
@@ -38,9 +38,25 @@ citation. The short version:
    different things and none of them agree — so clearing a value is unreliable across the whole library.
 3. **The failure contract.** How a node that went wrong says so *at runtime*, not just to the editor.
    `editorConnection.sendWarning` does not exist in a deployed app, in cloud runtime, or in export.
+4. **The type contract.** What a port type promises. `object` casts to nothing and reaches 4 of the
+   library's 1,750 input ports, so declaring an output's true type makes it *less* connectable than
+   leaving it `*`. Added in the second pass.
+5. **The binding contract.** How a node that targets another node says which one. Parent Component
+   Object and Close Popup both walk up to a nearest ancestor, with no way to name the target and no
+   visible record of what was found. Added in the second pass.
 
-Write those three down, make the runtime enforce them, and most of the eight complaints stop being
+Write those down, make the runtime enforce them, and most of the reported complaints stop being
 separate bugs. The per-node work that remains is then genuinely per-node.
+
+## A note on how much is still unfound
+
+Contracts 4 and 5 were **not** in the first pass. That pass read the eight nodes Richard named and
+swept the other 147 structurally — ports, signals, documentation coverage — which cannot find
+"works until you add a second one". Richard then reported five more defects from memory; four
+confirmed against source, and confirming one of them turned up contract 4.
+
+Five real defects in the next six nodes anyone looked at closely. Treat the register's 142 unread
+rows as *unaudited*, not as clean.
 
 ## Sequencing, and why the first task is not a fix
 
@@ -67,7 +83,11 @@ before execution — the row's Focus column is the brief, not the spec.
 | NDA-009 | Run Tasks | 2 | Kill the string-matched `Do`/`Success`/`Failure` contract; validate and warn |
 | NDA-010 | Popups: data flow and stack policy | 2 | Typed params/results; find the closer by scope explicitly; de-duplicate shows |
 | NDA-011 | REST → HTTP consolidation | 3 | Confirm `httpnode` is a superset; deprecate the DSL rather than improve it |
-| NDA-012 | The remaining 147 nodes | 3 | Work the register; one verdict per node against the three contracts |
+| NDA-012 | The remaining 142 nodes | 3 | Work the register; one verdict per node against the contracts |
+| NDA-013 | Repeater re-reads its source on Refresh | **1** | `refresh()` rebuilds from a stale private copy. Standalone, small, and makes the Repeater recoverable *before* NDA-002 lands |
+| NDA-014 | `object`/`array` are dead ends in the type system | 2 | `object` casts to nothing and reaches 4 of 1,750 input ports; picking the right type is worse than leaving `*` |
+| NDA-015 | Explicit targeting for scope-resolved nodes | 2 | Parent Component Object and Close Popup both bind to a nearest ancestor with no way to name it. One class, one fix |
+| NDA-016 | `Layout.size` has no branch for an unset `sizeMode` | 2 | The Text width defect; same undefined-vs-explicit confusion as NDA-003, in the layout engine |
 
 **Tiers are stopping points.** Tier 1 (NDA-001…003) is the reactivity and empty-value work — it is
 the highest-value slice and it stands alone; if the phase stops there it has still fixed the thing
