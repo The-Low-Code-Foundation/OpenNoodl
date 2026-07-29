@@ -116,6 +116,8 @@ interface ForEachInstance extends NodeInstance {
   };
   isMounted?: boolean;
   runningOperations?: boolean;
+  /** Set by the runtime on removal; the queue can outlive the node that owns it. */
+  _deleted?: boolean;
   updateTarget(targetId: string | undefined): void;
   scheduleRefresh(): void;
   unbindCurrentCollection(): void;
@@ -129,6 +131,8 @@ interface ForEachInstance extends NodeInstance {
   refresh(): Promise<void>;
   _queueOperation(op: QueuedOperation): void;
   _runQueueOperations(): Promise<void>;
+  /** Fires `Items Rendered` once the operation queue has drained. See NDA-004 §3. */
+  _signalItemsRendered(didWork: boolean): void;
   didMount(): void;
   willUnmount(): void;
   scheduleCopyItems(): void;
@@ -278,6 +282,16 @@ const ForEachDefinition: NodeDefinitionOptions = {
       getter: function (this: ForEachInstance) {
         return this._internal.itemActionItemId;
       }
+    },
+    // NDA-004 §3. The Repeater was one of the ten nodes that take a signal and emit none, and
+    // it is the one that hurt most: item creation is queued and — with
+    // `repeaterCreateComponentsAsync` — deliberately spread across frames to keep the frame
+    // rate up, so "the list exists now" was knowable to the runtime and to nobody else. Every
+    // list-then-scroll, list-then-measure and list-then-focus interaction was a guessed Delay.
+    itemsRendered: {
+      type: 'signal',
+      group: 'Events',
+      displayName: 'Items Rendered'
     }
   },
   prototypeExtensions: {
@@ -563,6 +577,12 @@ const ForEachDefinition: NodeDefinitionOptions = {
 
       const repeaterCreateComponentsAsync = NoodlRuntime.instance.getProjectSettings().repeaterCreateComponentsAsync;
 
+      // Whether this drain actually built anything. `_runQueueOperations` is called on every
+      // `_queueOperation`, so without this the signal would also fire for drains that had
+      // nothing to do — and a completion signal that fires when nothing completed is worse
+      // than none, because an author cannot tell the two apart.
+      let didWork = false;
+
       if (repeaterCreateComponentsAsync) {
         //create items in chunks of roughly 25ms at a time
         //so basically trying to keep ~30 fps
@@ -571,6 +591,7 @@ const ForEachDefinition: NodeDefinitionOptions = {
 
           while (this._internal.queuedOperations.length && performance.now() - start < 25) {
             const op = this._internal.queuedOperations.shift();
+            didWork = true;
             await op();
           }
 
@@ -578,6 +599,7 @@ const ForEachDefinition: NodeDefinitionOptions = {
             setTimeout(runOps, 0);
           } else {
             this.runningOperations = false;
+            this._signalItemsRendered(didWork);
           }
         };
 
@@ -585,11 +607,24 @@ const ForEachDefinition: NodeDefinitionOptions = {
       } else {
         while (this._internal.queuedOperations.length) {
           const op = this._internal.queuedOperations.shift();
+          didWork = true;
           await op();
         }
 
         this.runningOperations = false;
+        this._signalItemsRendered(didWork);
       }
+    },
+    /**
+     * Announce that the queue has drained — every item node for this pass now exists.
+     *
+     * This is the one honest moment to signal from. Chunked creation spans frames, so
+     * `refresh()` returning means only that the work was *queued*; the queue emptying means
+     * it was done.
+     */
+    _signalItemsRendered(this: ForEachInstance, didWork: boolean) {
+      if (!didWork || this._deleted) return;
+      this.sendSignalOnOutput('itemsRendered');
     },
     _onNodeDeleted: function (this: ForEachInstance) {
       Node.prototype._onNodeDeleted.call(this);

@@ -38,6 +38,8 @@ interface SimpleJavascriptNodeInstance extends NodeInstance {
     /** The receiver user code sees as `this`; persists across runs. */
     _this: Record<string, unknown>;
     func?: (...args: unknown[]) => Promise<unknown>;
+    /** Message of the last throw from user code, for the built-in `Error` output. */
+    lastError?: string;
   };
   /** On the instance rather than in `_internal`. */
   runScheduled?: boolean;
@@ -163,7 +165,37 @@ const SimpleJavascriptNode: NodeDefinitionOptions = {
       }
     }
   },
-  outputs: {},
+  // NDA-004 §3. This node used to be one of the ten that take a signal and emit none: a
+  // Function that could not say "done" forced authors into timing hacks — a Delay node long
+  // enough to probably cover an async call — because there was no way to sequence anything
+  // after it. `Run` in, nothing out.
+  //
+  // The reserved-name problem the spec flags solves itself: every author-declared output is
+  // registered as `'out-' + name` (see `registerOutputIfNeeded`), so any port name *without*
+  // that prefix is unreachable from user code and cannot collide. `Outputs.success = …` in a
+  // script still writes to the author's own `out-success`, untouched by these three.
+  outputs: {
+    success: {
+      type: 'signal',
+      displayName: 'Success',
+      group: 'Events'
+    },
+    failure: {
+      type: 'signal',
+      displayName: 'Failure',
+      group: 'Events'
+    },
+    error: {
+      type: 'string',
+      displayName: 'Error',
+      group: 'Events',
+      // A bare Failure signal reproduces "no information" one level up, so the message
+      // travels with it (FAILURE-CONTRACT.md).
+      getter: function (this: SimpleJavascriptNodeInstance) {
+        return this._internal.lastError;
+      }
+    }
+  },
   methods: {
     scheduleRun: function (this: SimpleJavascriptNodeInstance) {
       if (this.runScheduled) return;
@@ -214,9 +246,17 @@ const SimpleJavascriptNode: NodeDefinitionOptions = {
           noodlAPI,
           JavascriptNodeParser.getComponentScopeForNode(this)
         ]);
+
+        // `await`ed, so an `async` script signals when it has actually finished rather than
+        // when it was started. That is the whole point of the port: sequencing after an
+        // async Function used to require guessing a delay.
+        if (!this._deleted) this.sendSignalOnOutput('success');
       } catch (e) {
         logJavaScriptNodeError(e);
 
+        // The editor warning is kept exactly as it was — it carries the stack, which the
+        // structured channel deliberately does not — and the failure is *also* raised, so a
+        // throwing Function is diagnosable in a deployed app instead of vanishing.
         if (this.context.editorConnection && this.context.isWarningTypeEnabled('javascriptExecution')) {
           this.context.editorConnection.sendWarning(
             this.nodeScope.componentOwner.name,
@@ -229,6 +269,16 @@ const SimpleJavascriptNode: NodeDefinitionOptions = {
             }
           );
         }
+
+        if (this._deleted) return;
+
+        this._internal.lastError = e && e.message ? String(e.message) : String(e);
+        this.raiseRuntimeError('function/script-threw', 'The script threw: ' + this._internal.lastError, {
+          error: this._internal.lastError
+        });
+
+        this.flagOutputDirty('error');
+        this.sendSignalOnOutput('failure');
       }
     },
     setScriptInputValue: function (this: SimpleJavascriptNodeInstance, name: string, value: unknown) {
