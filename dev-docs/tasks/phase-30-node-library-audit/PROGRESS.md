@@ -89,7 +89,18 @@ this table shows a category producing nothing new.
   - **Live-verified** in the running editor: the library is 156 node types, `On App Error` among
     them, and all three nodes' new ports are present on the real `NodeLibraryData` — so static
     ports coexist with these nodes' dynamic-port machinery, which was the risk worth checking.
-  - Not done, and owed: §2's 50 per-node `Failure` outputs; §3's other 8 mute nodes; criterion 2's
+  - Second batch (`2be4e44b`): **Send Event, Close Popup, Navigate To Path, External Link,
+    Unique Id**. All five had the same shape — an early `return` on the condition an author is
+    most likely to hit, with no port and no report on the way out. Close Popup's missing
+    `closeCallback` and External Link's popup-blocker `null` are the two the contract names by
+    hand. Reporting only: Close Popup's *targeting* stays NDA-010 §2 / NDA-015. **Logic Builder
+    untouched on purpose** — another session is mid-rewrite in that file.
+  - `NODE-REGISTER.md` verdicts filled in for all eight fixed nodes; its `Mute?`/`Fail?` columns
+    are knowingly stale until the catalog is regenerated cleanly.
+  - Mute 10 status: 7 done (Function, Repeater, Send Event, Close Popup, Navigate To Path,
+    External Link, Unique Id), 3 left (Logic Builder — blocked on another session; Pop Component
+    Stack; Response).
+  - Not done, and owed: §2's remaining per-node `Failure` outputs; those 3 mute nodes; criterion 2's
     cloud-runtime and **export** legs (the export one is the one the spec says will be forgotten);
     node-catalog regeneration for `On App Error` — **deliberately skipped** because the tree
     carries another session's uncommitted `logic-builder` rewrite and regeneration folds in any

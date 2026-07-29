@@ -3,6 +3,12 @@
 Generated from `packages/noodl-types/src/node-catalog.json` (catalogFormatVersion 1.0.0).
 Regenerate with `node scripts/node-audit/register.js` — hand-written `Verdict` cells are preserved.
 
+⚠️ **The smell columns are stale for the nodes NDA-004 fixed.** They are derived from
+`node-catalog.json`, which has not been regenerated since (the tree carried another session's
+uncommitted node-source edits, and regeneration folds those in). The hand-written `Verdict`
+column is the current truth; the `Mute?`/`Fail?` flags will correct themselves on the next
+`node scripts/node-audit/register.js` run after a clean catalog regeneration.
+
 The smell columns are *machine-derivable*, not verdicts.
 
 - **Fail?** — has a signal input and signal outputs, but no failure/error output: the node can go wrong and say nothing.
@@ -16,7 +22,7 @@ The smell columns are *machine-derivable*, not verdicts.
 | 3 | States | Animation | 4/2 | ⚠️ |  | 0% | partial | browser |  |
 | 4 | Transition _(deprecated)_ | Animation | 6/2 | ⚠️ |  | 0% | partial | browser |  |
 | 5 | Request | Cloud | 2/3 |  |  | 0% | — | cloud |  |
-| 6 | Response | Cloud | 4/0 |  | ⚠️ | 0% | — | cloud |  |
+| 6 | Response | Cloud | 4/0 |  | ⚠️ | 0% | — | cloud | ⏳ NDA-004 §3 pending |
 | 7 | Send Email | Cloud | 7/3 |  |  | 0% | — | cloud |  |
 | 8 | Aggregate Records | Cloud Services | 1/3 |  |  | 0% | — | cloud |  |
 | 9 | Cloud File | Cloud Services | 1/2 |  |  | 0% | safe | browser, cloud |  |
@@ -50,8 +56,8 @@ The smell columns are *machine-derivable*, not verdicts.
 | 37 | Set Parent Component Object Properties | Component Utilities | 2/1 | ⚠️ |  | 0% | safe | browser |  |
 | 38 | CSS Definition | CustomCode | 1/0 |  |  | 0% | safe | browser |  |
 | 39 | Expression | CustomCode | 2/8 | ⚠️ |  | 0% | safe | browser, cloud |  |
-| 40 | Function | CustomCode | 4/0 |  | ⚠️ | 0% | partial | browser, cloud |  |
-| 41 | Logic Builder | CustomCode | 3/1 |  | ⚠️ | 0% | safe | browser, cloud |  |
+| 40 | Function | CustomCode | 4/0 |  | ⚠️ | 0% | partial | browser, cloud | ✅ NDA-004 §3 — Success/Failure/Error added; built-ins are collision-free because author outputs are all `out-`prefixed |
+| 41 | Logic Builder | CustomCode | 3/1 |  | ⚠️ | 0% | safe | browser, cloud | ⏳ NDA-004 §3 pending — file is mid-rewrite by another workstream; do not touch until that lands |
 | 42 | Script | CustomCode | 5/0 |  |  | 0% | partial | browser |  |
 | 43 | Action Dispatcher | Data | 12/21 |  |  | 27% | safe | browser, cloud |  |
 | 44 | Action Handler | Data | 8/6 |  |  | 36% | safe | browser, cloud |  |
@@ -81,7 +87,7 @@ The smell columns are *machine-derivable*, not verdicts.
 | 68 | Remove Record Relation | Data | 4/4 |  |  | 13% | safe | browser, cloud |  |
 | 69 | Repeater Item | Data | 1/3 | ⚠️ |  | 0% | safe | browser |  |
 | 70 | REST | Data | 6/3 |  |  | 0% | safe | browser, cloud |  |
-| 71 | Run Tasks | Data | 6/4 |  |  | 0% | safe | browser, cloud |  |
+| 71 | Run Tasks | Data | 6/4 |  |  | 0% | safe | browser, cloud | ✅ NDA-004 — raises `run-tasks/no-completion-output` and ends the run instead of hanging (corpus F1/F1′). NDA-009 §1 still owes the editor-time check |
 | 72 | Server-Sent Events | Data | 17/17 |  |  | 18% | client-only | browser, cloud |  |
 | 73 | Set Global Store | Data | 6/2 |  |  | 0% | safe | browser, cloud |  |
 | 74 | Set Object Properties | Data | 4/2 | ⚠️ |  | 0% | safe | browser, cloud |  |
@@ -100,7 +106,7 @@ The smell columns are *machine-derivable*, not verdicts.
 | 87 | Variable | Data | 3/4 | ⚠️ |  | 0% | safe | browser |  |
 | 88 | WebSocket | Data | 18/18 |  |  | 31% | client-only | browser, cloud |  |
 | 89 | Receive Event | Events | 3/1 |  |  | 0% | safe | browser |  |
-| 90 | Send Event | Events | 4/0 |  | ⚠️ | 0% | safe | browser |  |
+| 90 | Send Event | Events | 4/0 |  | ⚠️ | 0% | safe | browser | ✅ NDA-004 — `Sent`/`Failure`; empty channel name reported rather than dispatched into the void |
 | 91 | Color Blend | Interpolation | 1/1 |  |  | 0% | safe | browser |  |
 | 92 | Number Blend _(deprecated)_ | Interpolation | 2/1 |  |  | 0% | safe | browser |  |
 | 93 | Script Downloader _(deprecated)_ | Javascript | 2/1 | ⚠️ |  | 0% | client-only | browser |  |
@@ -113,18 +119,18 @@ The smell columns are *machine-derivable*, not verdicts.
 | 100 | Value Changed | Logic | 1/1 |  |  | 0% | safe | browser |  |
 | 101 | Counter | Math | 7/2 | ⚠️ |  | 0% | safe | browser, cloud |  |
 | 102 | Number Remapper | Math | 6/1 |  |  | 0% | safe | browser |  |
-| 103 | Close Popup | Navigation | 3/0 |  | ⚠️ | 0% | safe | browser |  |
-| 104 | External Link | Navigation | 3/0 |  | ⚠️ | 0% | safe | browser |  |
+| 103 | Close Popup | Navigation | 3/0 |  | ⚠️ | 0% | safe | browser | ✅ NDA-004 §2 — `Closed`/`Failure`/`Error`; no-popup-in-scope now reported. Targeting stays NDA-010 §2 / NDA-015 |
+| 104 | External Link | Navigation | 3/0 |  | ⚠️ | 0% | safe | browser | ✅ NDA-004 — `Success`/`Failure`/`Error`; catches the popup-blocker case that made the button look dead |
 | 105 | Navigate | Navigation | 2/1 | ⚠️ |  | 0% | safe | browser |  |
-| 106 | Navigate To Path | Navigation | 4/0 |  | ⚠️ | 0% | safe | browser |  |
+| 106 | Navigate To Path | Navigation | 4/0 |  | ⚠️ | 0% | safe | browser | ✅ NDA-004 — `Success`/`Failure`/`Error`; the `path === undefined` return is no longer silent |
 | 107 | Page Inputs | Navigation | 2/0 |  |  | 0% | safe | browser |  |
-| 108 | Pop Component Stack | Navigation | 3/0 |  | ⚠️ | 0% | safe | browser |  |
+| 108 | Pop Component Stack | Navigation | 3/0 |  | ⚠️ | 0% | safe | browser | ⏳ NDA-004 §3 pending |
 | 109 | Push Component To Stack | Navigation | 3/1 | ⚠️ |  | 0% | safe | browser |  |
 | 110 | Show Popup | Navigation | 2/1 | ⚠️ |  | 0% | safe | browser |  |
 | 111 | Device Orientation _(deprecated)_ | Sensors | 0/3 |  |  | 0% | client-only | browser |  |
 | 112 | String Format | String Manipulation | 1/1 |  |  | 0% | safe | browser, cloud |  |
 | 113 | Substring | String Manipulation | 3/1 |  |  | 0% | safe | browser, cloud |  |
-| 114 | Unique Id | String Manipulation | 1/1 |  | ⚠️ | 0% | safe | browser, cloud |  |
+| 114 | Unique Id | String Manipulation | 1/1 |  | ⚠️ | 0% | safe | browser, cloud | ✅ NDA-004 §3 — `Generated` |
 | 115 | Boolean To String | Utilities | 3/2 |  |  | 0% | safe | browser, cloud |  |
 | 116 | Date To String | Utilities | 2/3 |  |  | 0% | safe | browser, cloud |  |
 | 117 | Delay | Utilities | 5/2 | ⚠️ |  | 0% | partial | browser |  |
@@ -160,7 +166,7 @@ The smell columns are *machine-derivable*, not verdicts.
 | 147 | Radio Button | Visual | 76/19 |  |  | 1% | safe | browser |  |
 | 148 | Radio Button Group | Visual | 33/11 |  |  | 11% | safe | browser |  |
 | 149 | Range | Visual | 40/22 |  |  | 2% | safe | browser |  |
-| 150 | Repeater | Visual | 5/1 |  | ⚠️ | 0% | safe | browser |  |
+| 150 | Repeater | Visual | 5/1 |  | ⚠️ | 0% | safe | browser | ✅ NDA-004 §3 — `Items Rendered`, fired when the operation queue drains (not when `refresh()` returns) |
 | 151 | Slider | Visual | 92/21 |  |  | 1% | safe | browser |  |
 | 152 | Text | Visual | 43/14 |  |  | 14% | safe | browser |  |
 | 153 | Text Input | Visual | 55/21 | ⚠️ |  | 7% | safe | browser |  |
