@@ -14,7 +14,7 @@
 | NDA-005 Port documentation | 2 | ⬜ Not started | Do the shared port definitions first and re-measure; batch with NDA-012 |
 | NDA-006 Columns | 2 | ⬜ Not started | Checked: `Columns.tsx` is the **only** file special-casing `ForEachComponent`. Slice 4 (Fable) is gated on slices 2–3 |
 | NDA-007 Icon sets | 2 | 🔄 §1 done | Model at [`ICON-SOURCE-MODEL.md`](../../reference/ICON-SOURCE-MODEL.md) — tagged union (`font`/`sprite`/`inline`), sanitise-at-registration policy decided (no existing viewer policy existed to match; checked) |
-| NDA-008 Component Stack | 2 | 🔄 **§0 resolved, unblocked** | **The stack does not scroll** — zero `focus()` calls and zero px moved across navigate/replace/useRoutes, measured. The scroll is browser focus-scroll into the viewer's `overflow: hidden` app root (`viewer.jsx:344-353`), triggered by the library's only DOM focus, `TextInput` (`text-input.ts:211-214`). `preventScroll: true` fixes it (0 px vs 1169 px) but is **not applied** — it would stop a deliberate `Focus` scrolling an off-screen field into view. Needs a call from Richard; filed against the viewer, not this node. §2's no-scroll bullet moves out; §1 and §3 stand |
+| NDA-008 Component Stack | 2 | 🔄 **§0 fixed** | **The stack does not scroll** — zero `focus()` calls and zero px moved across navigate/replace/useRoutes, measured. The scroll is browser focus-scroll into the viewer's `overflow: hidden` app root (`viewer.jsx:344-353`), triggered by the library's only DOM focus, `TextInput` (`text-input.ts:211-214`). **Richard chose "Both" (2026-07-29): fix the box, keep the feature.** Applied as `overflow: clip` on the app root — `clip` creates no scroll container at all, where `hidden` creates one only the *browser* can scroll. `TextInput` keeps its plain `.focus()`, so a deliberate `Focus` still scrolls the nearest genuinely-scrollable ancestor. Measured live on the same element in one session: `hidden` 0 → **1762 px**, `clip` 0 → **0 px**. §2's no-scroll bullet moves out; §1 and §3 stand |
 | NDA-009 Run Tasks | 2 | ⬜ Not started | §1 alone closes corpus F1 |
 | NDA-010 Popups | 2 | 🔄 **§2 done** | Close Popup now *pulls*: `showPopup` publishes `_popupCloseHandler` on the popup instance and the node walks up to it, so it works from anywhere in the popup's tree — 7 corpus rows, shown to discriminate. Criterion 2 met. **⚠️ §1's premise is partly stale**: `showpopup.ts:129-177` already derives typed `popupParam-*` from the target's input ports and `closeResult-*`/`closeAction-*` from its Close Popup nodes. The real gaps are the hand-typed `results`/`closeActions` on the *Close Popup* side and untyped (`*`) results — re-scoped in the spec. §3 (stack policy, corpus F2) untouched |
 | NDA-014 Type dead ends | 2 | 🔄 §1+§2 done | Decision at [`PORT-TYPE-CONTRACT.md`](../../reference/PORT-TYPE-CONTRACT.md) (A now, C direction). Table changed (`object`/`array`/`color` → `string`), JSON mirror added in `setInputValue`, catalog + register regenerated, runtime jest green (1,026), editor suite green (1,885 specs incl. validator/catalog-index). Outstanding: live editor check of the 13 `object` outputs |
@@ -64,6 +64,27 @@ moment NDA-003 makes `null` storable. Consistent with the second-pass calibratio
 this table shows a category producing nothing new.
 
 ## Log
+
+- **2026-07-29 (NDA-008 §0 fixed — Richard chose "Both")** — the scroll jump is closed at the viewer's
+  app root, and `TextInput` keeps its plain `.focus()` so a deliberate `Focus` still brings an
+  off-screen field into view.
+  - **The fix is one property, and it is `clip` rather than `hidden`.** `overflow: hidden` still
+    creates a *scroll container* — it removes the scrollbars, not the scrolling — so the browser can
+    scroll it (any real DOM focus does) while the user cannot scroll it back. `overflow: clip`
+    creates no scroll container at all, so neither side can, and the two agree again. Focus-scroll
+    then lands on the nearest ancestor that genuinely *is* scrollable — a Group with scroll enabled
+    — which is exactly the behaviour `preventScroll: true` would have destroyed.
+  - **Measured live, both ways, on the same element in one session**, with a page 2400 px tall in a
+    529 px viewport and an input 2018 px below the fold: with `hidden`, focusing it moved the app
+    root **0 → 1762 px**; with `clip`, **0 → 0 px**. Window and body stayed at 0 throughout.
+  - **`#root` in the two host pages is changed too, and is honestly labelled as defensive.** It is
+    *not* the element that caused this: measured at 0 px even with the app root fixed, because its
+    only child is `height: 100%` and its content never exceeds it. Kept because it is the identical
+    trap one layout change away, with both declarations (`hidden` then `clip`) so Safari < 16 keeps
+    today's behaviour instead of falling back to `visible` and letting content escape.
+  - Only two host pages are tracked (`noodl-viewer-react/static/{viewer,deploy}/index.html`);
+    `noodl-editor/src/external/*/index.html` are build artefacts.
+  - Viewer jest 113 green, viewer typecheck green.
 
 - **2026-07-29 (NDA-015 §1–§3 + NDA-010 §2 — the Binding Contract, applied)** — both named nodes now
   obey all three clauses, and the sweep the spec asked for turned up more than the spec named.
