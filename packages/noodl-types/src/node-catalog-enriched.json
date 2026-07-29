@@ -90,7 +90,9 @@
     },
     {
       "from": "color",
-      "to": []
+      "to": [
+        "string"
+      ]
     },
     {
       "from": "enum",
@@ -98,7 +100,9 @@
     },
     {
       "from": "object",
-      "to": []
+      "to": [
+        "string"
+      ]
     },
     {
       "from": "domelement",
@@ -127,7 +131,8 @@
     {
       "from": "array",
       "to": [
-        "collection"
+        "collection",
+        "string"
       ]
     }
   ],
@@ -688,6 +693,28 @@
             "allowConnectionsOnly": true
           },
           "isSignal": true
+        },
+        {
+          "name": "treatEmptyAs",
+          "displayName": "Treat empty as",
+          "group": "Advanced",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "allowEditOnly": true,
+            "enums": [
+              {
+                "label": "Null (default)",
+                "value": "null"
+              },
+              {
+                "label": "False",
+                "value": "false"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "null"
         },
         {
           "name": "value",
@@ -4761,6 +4788,28 @@
             "allowConnectionsOnly": true
           },
           "isSignal": true
+        },
+        {
+          "name": "treatEmptyAs",
+          "displayName": "Treat empty as",
+          "group": "Advanced",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "allowEditOnly": true,
+            "enums": [
+              {
+                "label": "Null (default)",
+                "value": "null"
+              },
+              {
+                "label": "Empty string (\"\")",
+                "value": "empty-string"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "null"
         },
         {
           "name": "value",
@@ -15415,6 +15464,28 @@
           "isSignal": true
         },
         {
+          "name": "treatEmptyAs",
+          "displayName": "Treat empty as",
+          "group": "Advanced",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "allowEditOnly": true,
+            "enums": [
+              {
+                "label": "Null (default)",
+                "value": "null"
+              },
+              {
+                "label": "Zero (0)",
+                "value": "zero"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "null"
+        },
+        {
           "name": "value",
           "displayName": "Value",
           "plug": "input",
@@ -22993,6 +23064,28 @@
             "allowConnectionsOnly": true
           },
           "isSignal": true
+        },
+        {
+          "name": "treatEmptyAs",
+          "displayName": "Treat empty as",
+          "group": "Advanced",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "allowEditOnly": true,
+            "enums": [
+              {
+                "label": "Null (default)",
+                "value": "null"
+              },
+              {
+                "label": "Empty string (\"\")",
+                "value": "empty-string"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "null"
         },
         {
           "name": "value",
@@ -47895,7 +47988,10 @@
       "cloudfile→image": "The cloud file is used as an image source (its URL).",
       "textStyle→string": "The text style's name as a string.",
       "collection→array": "Collection (legacy shared-list type) and array are interchangeable: the same underlying list object flows through unchanged.",
-      "array→collection": "Array and collection (legacy shared-list type) are interchangeable: the same underlying list object flows through unchanged."
+      "array→collection": "Array and collection (legacy shared-list type) are interchangeable: the same underlying list object flows through unchanged.",
+      "object→string": "The runtime serialises with JSON.stringify before the receiver's cast runs (NDA-014, PORT-TYPE-CONTRACT.md). Values with their own toString (e.g. Date) keep that rendering; circular structures deliver '' and raise a warning.",
+      "array→string": "The runtime serialises with JSON.stringify before the receiver's cast runs (NDA-014, PORT-TYPE-CONTRACT.md). Circular structures deliver '' and raise a warning.",
+      "color→string": "The resolved color string — a style name resolves to its value (context.styles.resolveColor) before crossing the wire."
     },
     "verifiedPairs": {
       "$comment": "Sampled pairs asserted by scripts/node-catalog/merge.js against the gate rule + the catalog typecast table on every merge/check. 'permitted' must pass canCastPortTypes; 'rejected' must fail it.",
@@ -47961,6 +48057,21 @@
           "from": "object",
           "to": "object",
           "note": "same type always connects"
+        },
+        {
+          "from": "object",
+          "to": "string",
+          "note": "NDA-014: JSON on the wire"
+        },
+        {
+          "from": "array",
+          "to": "string",
+          "note": "NDA-014: JSON on the wire"
+        },
+        {
+          "from": "color",
+          "to": "string",
+          "note": "NDA-014: the resolved color string"
         }
       ],
       "rejected": [
@@ -47971,25 +48082,11 @@
         },
         {
           "from": "object",
-          "to": "string",
-          "note": "no serialisation on the wire — extract a property instead"
-        },
-        {
-          "from": "object",
           "to": "array"
         },
         {
           "from": "array",
-          "to": "string"
-        },
-        {
-          "from": "array",
           "to": "object"
-        },
-        {
-          "from": "color",
-          "to": "string",
-          "note": "color is not readable back as a string"
         },
         {
           "from": "image",
