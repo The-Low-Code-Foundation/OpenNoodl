@@ -9,6 +9,9 @@
  *
  * It is pinned rather than fixed: whatever NDA-003 writes down, this node must keep doing
  * this, and the pin is what makes a change to it deliberate.
+ *
+ * NDA-003 §2 added the sibling case below: `null` is a real value and clears the collection,
+ * which the guard above never distinguished from `undefined` before this task's fix.
  */
 
 /* eslint-env jest */
@@ -75,5 +78,25 @@ describe('NDA-001 E7: the Array node and an empty items write', () => {
     await graph.settle(2);
 
     expect(collectionOf(graph, 'array').size()).toBe(3);
+  });
+
+  // NDA-003 §2: `collectionnode2.ts:112`'s guard was `undefined`-only; `null` fell into the
+  // same "ignore it" hole even though the contract says it should clear. Not a corpus row of
+  // its own (E7 is undefined-only), but the sibling behaviour the task's own site-by-site
+  // table calls out — pinned here so it cannot regress silently.
+  test('E7 (null): an Array node fed null items clears its collection', async () => {
+    const graph = await arrayNode('corpus-e7-null');
+
+    const source = Collection.get('corpus-e7-null');
+    await source.add(Model.create({ id: 'one' }));
+    await source.add(Model.create({ id: 'two' }));
+    graph.frame();
+
+    expect(collectionOf(graph, 'array').size()).toBe(2);
+
+    graph.node('array').setInputValue('items', null);
+    await graph.settle(2);
+
+    expect(collectionOf(graph, 'array').size()).toBe(0);
   });
 });

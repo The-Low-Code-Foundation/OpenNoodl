@@ -18,10 +18,15 @@ interface CollectionNodeInstance extends NodeInstance {
     collection?: CollectionLike;
     /** Latest id seen on the `collectionId` input, kept for the deferred `fetch`. */
     collectionId?: string;
-    /** The collection connected to `items`, mirrored into {@link collection}. */
-    sourceCollection?: CollectionLike;
+    /**
+     * The collection connected to `items`, mirrored into {@link collection}. `null` is the
+     * empty-value contract's explicit clear (dev-docs/reference/EMPTY-VALUE-CONTRACT.md) —
+     * distinct from `undefined`, which never reaches here at all (`items`'s `set` abstains
+     * before storing it).
+     */
+    sourceCollection?: CollectionLike | null;
     /** `items` as it arrived, before the scheduled copy runs. */
-    pendingSourceCollection?: CollectionLike;
+    pendingSourceCollection?: CollectionLike | null;
     collectionChangedCallback(): void;
     sourceCollectionChangedCallback(): void;
   };
@@ -29,7 +34,7 @@ interface CollectionNodeInstance extends NodeInstance {
   hasScheduledCopyItems?: boolean;
   setCollectionID(id: string): void;
   setCollection(collection: CollectionLike): void;
-  setSourceCollection(collection: CollectionLike): void;
+  setSourceCollection(collection: CollectionLike | null): void;
   scheduleSetCollection(): void;
   scheduleCopyItems(): void;
   _copySourceItems(): void;
@@ -108,7 +113,15 @@ const CollectionNode: NodeDefinitionOptions = {
       type: 'array',
       group: 'General',
       displayName: 'Items',
-      set: function (this: CollectionNodeInstance, value: CollectionLike) {
+      description:
+        'undefined leaves this Array\'s current collection alone (no opinion supplied). null ' +
+        'clears it — every item is removed and Changed fires once, the same as connecting an ' +
+        'empty collection.',
+      set: function (this: CollectionNodeInstance, value: CollectionLike | null) {
+        // Empty-value contract (dev-docs/reference/EMPTY-VALUE-CONTRACT.md): `undefined`
+        // abstains — no upstream opinion was given, so the collection this node already owns
+        // is left exactly as it is. `null` is a real value and falls through to the path
+        // below, which clears it.
         if (value === undefined) return;
         if (value === this._internal.collection) return;
 
@@ -190,13 +203,16 @@ const CollectionNode: NodeDefinitionOptions = {
       this.flagOutputDirty('firstItemId');
       this.flagOutputDirty('count');
     },
-    setSourceCollection: function (this: CollectionNodeInstance, collection: CollectionLike) {
+    setSourceCollection: function (this: CollectionNodeInstance, collection: CollectionLike | null) {
       const internal = this._internal;
 
       if (internal.sourceCollection && internal.sourceCollection instanceof Collection)
         // Remove old listener if existing
         internal.sourceCollection.off('change', internal.sourceCollectionChangedCallback);
 
+      // `collection` is `null` on the empty-value contract's clear path (`items`'s `set`
+      // above) — `instanceof Collection` is false for it, so no listener is attached, which
+      // is correct: there is nothing to listen to.
       internal.sourceCollection = collection;
       if (internal.sourceCollection instanceof Collection)
         internal.sourceCollection.on('change', internal.sourceCollectionChangedCallback);
@@ -218,6 +234,10 @@ const CollectionNode: NodeDefinitionOptions = {
 
       if (internal.collection === undefined && this.isInputConnected('fetch') === false)
         this.setCollection(Collection.get());
+      // `Collection#set` (src/collection.ts, out of scope here) treats a falsy source —
+      // `null` included — as an empty array, which is the null path the empty-value
+      // contract calls for: every item is removed as one batched `change`, not left as
+      // whatever this node held before.
       internal.collection && internal.collection.set(internal.sourceCollection);
     },
     scheduleCopyItems: function (this: CollectionNodeInstance) {
