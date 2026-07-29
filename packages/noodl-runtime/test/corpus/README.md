@@ -63,24 +63,36 @@ fails today is therefore marked **`test.failing`**, which:
 `test.failing` is a skip's opposite: the behaviour is named, executed and asserted every run.
 Rows marked ✅ are ordinary `test` and are pinned so NDA-002/003 cannot regress them.
 
-## Row status on the unmodified tree
+## Row status
 
-`fails` = `test.failing`, red today for the reason given. `pinned` = passes today.
+`fails` = `test.failing`, red for the reason given. `pinned` = passes and is guarded.
 
-### Reactivity
+### Reactivity — all closed by NDA-002
 
-| # | Test | Status | What actually happens |
+The reactivity rows were red on the unmodified tree for the reasons in the last column;
+[NDA-002](../../../../dev-docs/tasks/phase-30-node-library-audit/NDA-002-REACTIVITY-CONTRACT.md)
+turned every one of them green and they are pinned in that direction now. The normative
+statement of what they enforce is
+[`dev-docs/reference/REACTIVITY-CONTRACT.md`](../../../../dev-docs/reference/REACTIVITY-CONTRACT.md).
+
+| # | Test | Status | What used to happen |
 |---|---|---|---|
-| R1 | `R1: collection.push(item) fires change` | fails | 0 notifications. `push` is the native method; the patch never wrapped it. |
-| R2 | `R2: collection.splice(0, 1) fires change` | fails | 0 notifications. |
-| R3 | `R3: collection[0] = item fires change` | fails | 0 notifications. |
-| R4 | `R4: collection.items.push(item) fires change` | fails | 0 notifications — and `items === collection`, asserted in the test. |
-| R5 | `R5: collection.length = 0 fires change` | fails | 0 notifications; the array empties silently. |
-| R6 | `R6: collection.add(item) fires change` | **pinned** | 1 notification, delivered a microtask late (second pinned test records the asynchrony). |
-| R7 | `R7: setting a Variable to its startValue fires changed` | fails | `signals` is `[]` — `initialize` already seeded `currentValue`. |
-| R8 | `R8: stateChanged fires for a state change that happened and came back` | fails | 0 `stateChanged`. Both requests coalesce in one pass; the survivor equals the current state. |
-| R9 | `R9: reached-B fires when B is passed through` | fails | 0 hits. B is never entered, so no transition is started and `onFinish` never runs. |
+| R1 | `R1: collection.push(item) fires change` | **pinned** | 0 notifications. `push` is the native method; the patch never wrapped it. |
+| R2 | `R2: collection.splice(0, 1) fires change` | **pinned** | 0 notifications. |
+| R3 | `R3: collection[0] = item fires change` | **pinned** | 0 notifications. |
+| R4 | `R4: collection.items.push(item) fires change` | **pinned** | 0 notifications — `items` handed back the raw array. It returns the notifying Proxy now, which is the reference a consumer already holds, so `items === collection` still reads true. |
+| R5 | `R5: collection.length = 0 fires change` | **pinned** | 0 notifications; the array emptied silently. |
+| R6 | `R6: collection.add(item) fires change` | **pinned** | 1 notification, delivered a microtask late. |
+| R7 | `R7: setting a Variable to its startValue fires changed` | **pinned** | `signals` was `[]` — `initialize` had already seeded `currentValue`. |
+| R8 | `R8: stateChanged fires for a state change that happened and came back` | **pinned** | 0 `stateChanged`. Both requests coalesced in one pass; the survivor equalled the current state. |
+| R9 | `R9: reached-B fires when B is passed through` | **pinned** | 0 hits. B was never entered, so no transition started and `onFinish` never ran. |
 | R10 | `R10: Function node → Set Object Properties → Object node fires changed` | **pinned** | `changed` fires; the record carries the function's value. |
+
+⚠️ One pinned row was deliberately **inverted** rather than kept: `R6 (corollary)` recorded
+that `add` notified *asynchronously*, which the contract's third clause outlaws. It now pins
+synchronous delivery. Two further collection corollaries were added with NDA-002 — one `set`
+emits N structural events and a single `change`, a no-op `set` is silent, and a throwing
+listener does not silence the ones behind it.
 
 ### Empty values
 
@@ -111,7 +123,8 @@ Rows marked ✅ are ordinary `test` and are pinned so NDA-002/003 cannot regress
 Alongside these, seven **pinned controls** exist so that a red row can never be mistaken for a
 broken harness — each one drives the same code path in the case that *does* work:
 `R6 (corollary)`, `R7 (pinned)`, `F1 (pinned control)`, both `R8–R9 (pinned control)` rows,
-`E7 (pinned)`, `F2 (pinned)` and `F3 (pinned control)`.
+`E7 (pinned)`, `F2 (pinned)` and `F3 (pinned control)`. They stayed green through NDA-002,
+which is what makes "R8 fires twice now" a fix rather than a shrug.
 
 ## Which task turns which row green
 
@@ -120,10 +133,8 @@ in the same commit.
 
 | Task | Rows it should turn green |
 |---|---|
-| **NDA-002** — reactivity contract for collections | R1, R2, R3, R4, R5 (and must not disturb R6, R10) |
+| ✅ **NDA-002** — the reactivity contract | R1, R2, R3, R4, R5 (§2), R7 (§3), R8, R9 (§4) — done; R6 and R10 undisturbed |
 | **NDA-003** — defined semantics for empty | E1, E2, E3, E4, E4′, E6, E6′, E8 (and must not disturb E5, E7, E8′) |
-| **NDA-013** — `Variable` first-change swallow | R7 |
-| **NDA-004 / NDA-009** — `States` coalescing | R8, R9 |
 | **NDA-006** — `Columns` rework | F3, F3′ |
 | **NDA-010** — popup targeting and stack policy | F2 |
 | **Run Tasks / defect class D** (owner TBD, see `NODE-REGISTER.md`) | F1, F1′ |
