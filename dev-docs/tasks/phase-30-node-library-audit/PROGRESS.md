@@ -6,10 +6,10 @@
 
 | Task | Tier | Status | Notes |
 |---|---|---|---|
-| NDA-001 Node behaviour corpus | 1 | 🔄 In progress | Building as a red suite (expected-failure markers so CI stays green) |
-| NDA-002 Reactivity contract | 1 | 🔄 §1 done | Contract at [`REACTIVITY-CONTRACT.md`](../../reference/REACTIVITY-CONTRACT.md). Richard decided: no coalescing; approach B (Proxy). §2–4 await the red corpus |
-| NDA-003 Empty-value contract | 1 | 🔄 §1 done | Contract at [`EMPTY-VALUE-CONTRACT.md`](../../reference/EMPTY-VALUE-CONTRACT.md). Richard decided: nullable Variables with `Treat empty as` back-compat. §2 awaits the red corpus |
-| NDA-013 Repeater Refresh | 1 | ⬜ Not started | Cause confirmed `foreach.tsx:509-527`. ⚠️ watch the add/remove queue race |
+| NDA-001 Node behaviour corpus | 1 | ✅ **Done** `7a27e7c3` | 34 tests (16 `test.failing`, 18 pinned), wired into `pr.yml` `test-packages` — verified, not assumed. Two spec corrections: **E6 is a failing row** (`undefined` *overwrites* the key with the type default, worse than documented), and E8's propagation half already works — the defect is the `String` cast. F2/F3 are node-boundary/SSR proxies, documented in the corpus README |
+| NDA-002 Reactivity contract | 1 | 🔄 §2–4 in progress | Contract at [`REACTIVITY-CONTRACT.md`](../../reference/REACTIVITY-CONTRACT.md). Richard decided: no coalescing; approach B (Proxy). Implementation running (4 bisectable commits: sync+Proxy, set single-notify, hasBeenSet, States) |
+| NDA-003 Empty-value contract | 1 | 🔄 §1 done | Contract at [`EMPTY-VALUE-CONTRACT.md`](../../reference/EMPTY-VALUE-CONTRACT.md). Richard decided: nullable Variables with `Treat empty as` back-compat. §2 starts after NDA-002 lands (shared variables territory) |
+| NDA-013 Repeater Refresh | 1 | 🔄 In progress | Cause confirmed `foreach.tsx:509-527`. ⚠️ watch the add/remove queue race |
 | NDA-004 Failure contract | 2 | 🔄 §1 done | Design at [`FAILURE-CONTRACT.md`](../../reference/FAILURE-CONTRACT.md). "Both per-node `Failure` outputs **and** a global catch-all node" adopted on the spec's recommendation — **Richard has not reviewed this one**; veto window open |
 | NDA-005 Port documentation | 2 | ⬜ Not started | Do the shared port definitions first and re-measure; batch with NDA-012 |
 | NDA-006 Columns | 2 | ⬜ Not started | Checked: `Columns.tsx` is the **only** file special-casing `ForEachComponent`. Slice 4 (Fable) is gated on slices 2–3 |
@@ -17,7 +17,7 @@
 | NDA-008 Component Stack | 2 | ⬜ Not started | **§0 blocking** — scroll jump has no located cause |
 | NDA-009 Run Tasks | 2 | ⬜ Not started | §1 alone closes corpus F1 |
 | NDA-010 Popups | 2 | ⬜ Not started | §2 shared with NDA-015 |
-| NDA-014 Type dead ends | 2 | 🔄 §1+§2 done | Decision at [`PORT-TYPE-CONTRACT.md`](../../reference/PORT-TYPE-CONTRACT.md) (A now, C direction). Table changed (`object`/`array`/`color` → `string`), JSON mirror added in `setInputValue`, catalog + register regenerated, runtime jest green. Outstanding: editor validation suite run + live editor check of the 13 `object` outputs |
+| NDA-014 Type dead ends | 2 | 🔄 §1+§2 done | Decision at [`PORT-TYPE-CONTRACT.md`](../../reference/PORT-TYPE-CONTRACT.md) (A now, C direction). Table changed (`object`/`array`/`color` → `string`), JSON mirror added in `setInputValue`, catalog + register regenerated, runtime jest green (1,026), editor suite green (1,885 specs incl. validator/catalog-index). Outstanding: live editor check of the 13 `object` outputs |
 | NDA-015 Explicit binding | 2 | 🔄 §1 done | Contract at [`BINDING-CONTRACT.md`](../../reference/BINDING-CONTRACT.md). Explicit-target-miss ≠ fallback is the load-bearing clause. §2 sweep + §3 FIXME open |
 | NDA-016 `Layout.size` | 2 | ⬜ Not started | **§0 blocking** — a contradiction between the mechanism and the default path |
 | NDA-011 REST → HTTP | 3 | ⬜ Not started | First output is an assessment, not a change |
