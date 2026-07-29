@@ -635,6 +635,28 @@
           "isSignal": true
         },
         {
+          "name": "treatEmptyAs",
+          "displayName": "Treat empty as",
+          "group": "Advanced",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "allowEditOnly": true,
+            "enums": [
+              {
+                "label": "Null (default)",
+                "value": "null"
+              },
+              {
+                "label": "False",
+                "value": "false"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "null"
+        },
+        {
           "name": "value",
           "displayName": "Value",
           "plug": "input",
@@ -4378,6 +4400,28 @@
             "allowConnectionsOnly": true
           },
           "isSignal": true
+        },
+        {
+          "name": "treatEmptyAs",
+          "displayName": "Treat empty as",
+          "group": "Advanced",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "allowEditOnly": true,
+            "enums": [
+              {
+                "label": "Null (default)",
+                "value": "null"
+              },
+              {
+                "label": "Empty string (\"\")",
+                "value": "empty-string"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "null"
         },
         {
           "name": "value",
@@ -14046,6 +14090,28 @@
           "isSignal": true
         },
         {
+          "name": "treatEmptyAs",
+          "displayName": "Treat empty as",
+          "group": "Advanced",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "allowEditOnly": true,
+            "enums": [
+              {
+                "label": "Null (default)",
+                "value": "null"
+              },
+              {
+                "label": "Zero (0)",
+                "value": "zero"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "null"
+        },
+        {
           "name": "value",
           "displayName": "Value",
           "plug": "input",
@@ -20943,6 +21009,28 @@
             "allowConnectionsOnly": true
           },
           "isSignal": true
+        },
+        {
+          "name": "treatEmptyAs",
+          "displayName": "Treat empty as",
+          "group": "Advanced",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "allowEditOnly": true,
+            "enums": [
+              {
+                "label": "Null (default)",
+                "value": "null"
+              },
+              {
+                "label": "Empty string (\"\")",
+                "value": "empty-string"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "null"
         },
         {
           "name": "value",
