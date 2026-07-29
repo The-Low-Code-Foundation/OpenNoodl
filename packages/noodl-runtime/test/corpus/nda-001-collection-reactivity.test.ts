@@ -141,6 +141,36 @@ describe('NDA-001 R1–R6: a Noodl Array notifies when it changes', () => {
     expect(state.changes).toBe(1);
   });
 
+  // ✅ Pinned. The contract's second clause, on the operation that broke it worst: `set`
+  // reaches `removeAtIndex`/`addAtIndex`/`add` per item, and each of those used to emit a
+  // `change` of its own on top of its structural event — so replacing a 100-item collection
+  // emitted 200 notifications. The structural events are still per item, because that is what
+  // the Repeater queues its mount/unmount work from (`foreach.tsx`).
+  test('R1–R5 (corollary): set replaces N items with N structural events and one change', async () => {
+    const state = await watched();
+    const structural: string[] = [];
+    state.collection.on('add', () => structural.push('add'));
+    state.collection.on('remove', () => structural.push('remove'));
+
+    state.collection.set([{ id: 'kept-1' }, { id: 'kept-2' }, { id: 'kept-3' }]);
+
+    expect(state.collection.length).toBe(3);
+    // Two seeded records leave, three arrive.
+    expect(structural.filter((event) => event === 'remove').length).toBe(2);
+    expect(structural.filter((event) => event === 'add').length).toBe(3);
+    expect(state.changes).toBe(1);
+  });
+
+  // ✅ Pinned: a `set` that changes nothing is not a mutation, so it says nothing.
+  test('R1–R5 (corollary): a set that changes nothing is silent', async () => {
+    const state = await watched();
+
+    state.collection.set(Array.from(state.collection));
+
+    expect(state.collection.length).toBe(2);
+    expect(state.changes).toBe(0);
+  });
+
   // ✅ Pinned: a listener that throws must not stop the ones behind it. Until the NDA-004
   // error channel exists the exception is logged (see `collection.ts`'s TODO); what this row
   // guards is that it is neither swallowed into an unhandled rejection nor allowed to abort

@@ -493,40 +493,48 @@ Object.defineProperty(Array.prototype, "set", {
       else bItems.push(Model.create(item as Record<string, unknown>));
     }
 
-    // The raw array, deliberately: this stays a live view while `removeAtIndex` mutates it
-    // below, and reaching it through the Proxy would only add trap overhead.
-    var aItems = self;
-    var aKeys = keyIndex(aItems);
-    var bKeys = keyIndex(bItems);
+    // NDA-002, the contract's second clause: `set` is *one* logical mutation, however many
+    // items it moves. The diff below reaches `removeAtIndex`/`addAtIndex`/`add`, each of
+    // which used to emit its own `change` on top of its `add`/`remove` — so replacing a
+    // 100-item collection emitted 200 notifications and every `on('change')` consumer in the
+    // library re-ran 100 times. The structural events still fire per item, which is what the
+    // Repeater queues from; the `change` is emitted once, when the diff has settled.
+    withBatch(self, () => {
+      // The raw array, deliberately: this stays a live view while `removeAtIndex` mutates it
+      // below, and reaching it through the Proxy would only add trap overhead.
+      var aItems = self;
+      var aKeys = keyIndex(aItems);
+      var bKeys = keyIndex(bItems);
 
-    // First remove all items not in the new collection
-    length = aItems.length;
-    for (i = 0; i < length; i++) {
-      if (!bKeys.hasOwnProperty(aItems[i].getId())) {
-        // This item is not present in new collection, remove it
-        self.removeAtIndex(i);
-        i--;
-        length--;
-      }
-    }
-
-    // Reorder items
-    for (i = 0; i < Math.min(aItems.length, bItems.length); i++) {
-      if (aItems[i] !== bItems[i]) {
-        if (aKeys.hasOwnProperty(bItems[i].getId())) {
-          // The bItem exist in the collection but is in the wrong place
-          self.remove(bItems[i]);
+      // First remove all items not in the new collection
+      length = aItems.length;
+      for (i = 0; i < length; i++) {
+        if (!bKeys.hasOwnProperty(aItems[i].getId())) {
+          // This item is not present in new collection, remove it
+          self.removeAtIndex(i);
+          i--;
+          length--;
         }
-
-        // This is a new item, add it at correct index
-        self.addAtIndex(bItems[i], i);
       }
-    }
 
-    // Add remaining items
-    for (i = aItems.length; i < bItems.length; i++) {
-      self.add(bItems[i]);
-    }
+      // Reorder items
+      for (i = 0; i < Math.min(aItems.length, bItems.length); i++) {
+        if (aItems[i] !== bItems[i]) {
+          if (aKeys.hasOwnProperty(bItems[i].getId())) {
+            // The bItem exist in the collection but is in the wrong place
+            self.remove(bItems[i]);
+          }
+
+          // This is a new item, add it at correct index
+          self.addAtIndex(bItems[i], i);
+        }
+      }
+
+      // Add remaining items
+      for (i = aItems.length; i < bItems.length; i++) {
+        self.add(bItems[i]);
+      }
+    });
   },
 });
 
