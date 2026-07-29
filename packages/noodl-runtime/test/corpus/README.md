@@ -94,21 +94,34 @@ synchronous delivery. Two further collection corollaries were added with NDA-002
 emits N structural events and a single `change`, a no-op `set` is silent, and a throwing
 listener does not silence the ones behind it.
 
-### Empty values
+### Empty values — all closed by NDA-003
 
-| # | Test | Status | What actually happens |
+The empty-value rows were red on the unmodified tree for the reasons in the last column;
+[NDA-003](../../../../dev-docs/tasks/phase-30-node-library-audit/NDA-003-EMPTY-VALUE-CONTRACT.md)
+turned every one of them green and they are pinned in that direction now. The normative
+statement of what they enforce is
+[`dev-docs/reference/EMPTY-VALUE-CONTRACT.md`](../../../../dev-docs/reference/EMPTY-VALUE-CONTRACT.md).
+
+| # | Test | Status | What used to happen |
 |---|---|---|---|
-| E1 | `E1: a String Variable fed null stores an empty value…` | fails | Stores the four-character text `"null"`. |
-| E2 | `E2: a String Variable fed undefined is left alone` | fails | Stores `"undefined"`, and fires a spurious `changed`. |
-| E3 | `E3: a Number Variable fed null is distinguishable from a real zero` | fails | Both hold `0`; cleared and zero are the same state. |
-| E4 | `E4: a Number Variable fed undefined is left alone` | fails | Stores `NaN`. |
-| E4′ | `E4 (corollary): once NaN lands, changed stops meaning anything` | fails | 3 `changed` for 3 identical sets — `NaN !== NaN`. |
+| E1 | `E1: a String Variable fed null stores an empty value…` | **pinned** | Stored the four-character text `"null"`. |
+| E2 | `E2: a String Variable fed undefined is left alone` | **pinned** | Stored `"undefined"`, and fired a spurious `changed`. |
+| E3 | `E3: a Number Variable fed null is distinguishable from a real zero` | **pinned** | Both held `0`; cleared and zero were the same state. |
+| E4 | `E4: a Number Variable fed undefined is left alone` | **pinned** | Stored `NaN`. |
+| E4′ | `E4 (corollary): once NaN lands, changed stops meaning anything` | **pinned** | 3 `changed` for 3 identical sets — `NaN !== NaN`. |
 | E5 | `E5: Set Object Properties fed null writes null onto the record` | **pinned** | Writes `null`; `Model` notifies. |
-| E6 | `E6: Set Object Properties fed undefined leaves the key alone` | fails | Writes `''` — see the spec correction below. |
-| E6′ | `E6 (untyped): …with no declared type also leaves the key alone` | fails | Writes `undefined` over the record's real content. |
+| E6 | `E6: Set Object Properties fed undefined leaves the key alone` | **pinned** | Wrote `''` — see the spec correction below. |
+| E6′ | `E6 (untyped): …with no declared type also leaves the key alone` | **pinned** | Wrote `undefined` over the record's real content. |
 | E7 | `E7: an Array node fed undefined items leaves its collection alone` | **pinned** | Returns early; the collection is untouched. |
-| E8 | `E8: two changes are observed downstream, and the cleared state is empty` | fails | Downstream sees `['hello', 'null', 'world']` — two changes *are* observed, but the cleared state arrives as truthy text. |
+| E8 | `E8: two changes are observed downstream, and the cleared state is empty` | **pinned** | Downstream saw `['hello', 'null', 'world']` — two changes *were* observed, but the cleared state arrived as truthy text. Now `['hello', null, 'world']` — `null` is the contract's default empty value, not `''`, which is why this is not the pre-NDA-003 corpus text bent back into shape but a genuine adjustment (see `EMPTY-VALUE-CONTRACT.md` §3). |
 | E8′ | `E8 (pinned): a null crossing a bare connection is delivered` | **pinned** | `['hello', null, 'world']`. |
+
+⚠️ One more pinned addition beyond the corpus's original E-rows: `collectionnode2.ts:112`'s
+`undefined`-only guard let `null` fall through to the same "ignore it" path — the Array node's
+`items` input now has its own `E7 (null)` test in
+`nda-001-array-node-empty.test.ts`, pinning that `null` clears the collection. It is not an
+"official" corpus row (E7 only ever covered `undefined`), but it is the sibling case the
+task's own site-by-site table called out.
 
 ### Failure reporting
 
@@ -134,7 +147,7 @@ in the same commit.
 | Task | Rows it should turn green |
 |---|---|
 | ✅ **NDA-002** — the reactivity contract | R1, R2, R3, R4, R5 (§2), R7 (§3), R8, R9 (§4) — done; R6 and R10 undisturbed |
-| **NDA-003** — defined semantics for empty | E1, E2, E3, E4, E4′, E6, E6′, E8 (and must not disturb E5, E7, E8′) |
+| ✅ **NDA-003** — defined semantics for empty | E1, E2, E3, E4, E4′, E6, E6′, E8 — done; E5, E7, E8′ undisturbed |
 | **NDA-006** — `Columns` rework | F3, F3′ |
 | **NDA-010** — popup targeting and stack policy | F2 |
 | **Run Tasks / defect class D** (owner TBD, see `NODE-REGISTER.md`) | F1, F1′ |
