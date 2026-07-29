@@ -163,6 +163,31 @@ export interface NodeInstance {
   update(): void;
   scheduleAfterInputsHaveUpdated(callback: (this: NodeInstance) => void): void;
   addDeleteListener(listener: (this: NodeInstance) => void): void;
+
+  // --- failure ------------------------------------------------------------
+  /**
+   * Report that this node was asked to act and could not.
+   * See `dev-docs/reference/FAILURE-CONTRACT.md`.
+   *
+   * Use this in place of `context.editorConnection.sendWarning`: the warning channel exists
+   * only in the editor, so anything reported through it disappears in a deployed app, in the
+   * cloud runtime and in exported code — exactly when an author most needs to know.
+   *
+   * `nodeId`, `componentName` and `nodeType` are filled in by the runtime, so a call site
+   * cannot misattribute itself.
+   *
+   * @param code    Stable, kebab-case, namespaced by node type — `'run-tasks/no-success-output'`.
+   *                Tests and tooling match on this, so treat it as an interface: reword
+   *                `message` freely, never `code`.
+   * @param message One human-readable sentence, no trailing period.
+   * @param detail  Optional structured payload (the caught error, the offending value). Must
+   *                be safe to serialise — the cloud and export paths will JSON it.
+   *
+   * Only raise for actual failures. An unset input (see the Empty-Value Contract), an empty
+   * result set, or a condition being false are not failures, and a `Failure` port that fires
+   * on those trains authors to ignore it.
+   */
+  raiseRuntimeError(code: string, message: string, detail?: unknown): void;
 }
 
 /**

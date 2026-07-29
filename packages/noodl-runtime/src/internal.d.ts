@@ -19,6 +19,8 @@ import type {
   TimerScheduler
 } from '@noodl/types';
 
+import type { RuntimeErrorBus } from './runtimeerror';
+
 /**
  * The editor channel as the runtime core uses it.
  *
@@ -43,6 +45,13 @@ export interface RuntimeEditorConnection extends EditorConnectionLike {
  */
 export interface RuntimeNodeContext {
   editorConnection?: RuntimeEditorConnection;
+
+  /**
+   * The runtime error channel. Present in every context, editor or not — that is the whole
+   * point of it. See `dev-docs/reference/FAILURE-CONTRACT.md`; nodes raise through
+   * `Node.raiseRuntimeError` rather than touching this directly.
+   */
+  errorBus: RuntimeErrorBus;
   /** Supplied by the viewer, which owns the implementation; absent in the cloud runtime. */
   styles?: StylesLike;
 
@@ -175,6 +184,12 @@ export interface RuntimeNode extends NodeInstance {
   _updateIteration?: number;
   _cyclicLoop?: boolean;
   _cyclicWarningSent?: boolean;
+  /**
+   * Which cycle breaker tripped — the 500-sends-per-iteration one in `outputproperty.ts` or
+   * the 100-update-iterations one in `node.ts`. Carried as the `detail` of the raised
+   * `runtime/cyclic-loop` error.
+   */
+  _cyclicLoopCause?: { limit: string; count: number; port?: string };
 
   /** Present only on visual nodes; see `_onNodeModelParameterUpdated`. */
   _getVisualStates?: () => string[];

@@ -123,6 +123,10 @@ Object.defineProperties(OutputProperty.prototype, {
       if (this.valuesSendThisIteration > 500) {
         //this will make the owner send a warning and stop its update
         this.owner._cyclicLoop = true;
+        // Which breaker tripped, and on which port — `Node.update` raises this through the
+        // runtime error channel (NDA-004), and "a cycle" is far easier to find when the
+        // report names the output that ran away.
+        this.owner._cyclicLoopCause = { limit: 'value-sends', count: 500, port: this.name };
       }
 
       for (var i = 0, len = this.connections.length; i < len; i++) {

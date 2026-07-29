@@ -1,8 +1,9 @@
 # The Failure Contract
 
-**Status:** Normative design. Decided 2026-07-29 (phase 30, NDA-004 §1). One decision adopted on
-the spec's recommendation pending Richard's veto: the channel surfaces both per-node `Failure`
-outputs **and** a global catch-all node.
+**Status:** Normative design. Decided 2026-07-29 (phase 30, NDA-004 §1); **built** 2026-07-29 —
+the channel is `packages/noodl-runtime/src/runtimeerror.ts`. Both surfaces — per-node `Failure`
+outputs **and** a global catch-all node — were confirmed by Richard on 2026-07-29; the decision is
+no longer provisional.
 **Applies to:** every node that can fail, in every runtime — editor preview, deployed browser app,
 cloud runtime, SSR/SSG, and exported code.
 **Enforced by:** NDA-001 corpus rows F1–F3, and the register: each of the 50 failure-mute action
@@ -63,8 +64,18 @@ this.raiseRuntimeError(code, message, detail?)
 ### Interaction with other contracts
 
 - **Reactivity:** the cycle breakers (500 sends/iteration, 100 iterations) report through this
-  channel when they trip — decided in the Reactivity Contract. Listener exceptions from
-  notification delivery are raised here too, attributed to the listening node.
+  channel when they trip — decided in the Reactivity Contract. Both now raise
+  `runtime/cyclic-loop`, with a `detail` naming which breaker tripped and, for the send limit,
+  the output port that ran away. The `cyclicLoops` warning-type gate is kept, so an author who
+  turned the warning off still has it off.
+- **Collection listener exceptions** are raised here too, but **unattributed**
+  (`collection/listener-threw`, provenance `'<runtime>'`) rather than attributed to the listening
+  node: listeners are registered through the patched `Array.prototype.on`, whose signature holds
+  no reference back to the node that registered them. Threading a node ref through that public,
+  prototype-patched API is a larger change than this contract; the gap is recorded here rather
+  than papered over. `raiseUnattributedRuntimeError` is the entry point, and it falls back to
+  `console.error` when no `NodeContext` exists yet — `Array.prototype` is patched at import time,
+  so a collection can notify before any context has been built.
 - **Types (NDA-014):** the `Error` object outputs added by §2 must be connectable — they are among
   the 13 `object` outputs the type work exists to un-strand. Land NDA-014's cast additions before
   or with §2.

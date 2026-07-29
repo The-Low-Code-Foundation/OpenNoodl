@@ -48,6 +48,7 @@
 import type { CollectionChangeEvent, CollectionLike, ModelLike } from '@noodl/types';
 
 import Model = require('./model');
+import { raiseUnattributedRuntimeError } from './runtimeerror';
 import WeakRegistry = require('./weak-registry');
 
 /**
@@ -563,11 +564,16 @@ Object.defineProperty(Array.prototype, "notify", {
       try {
         l[i](args);
       } catch (e) {
-        // TODO(NDA-004): route this through the runtime error channel described in
-        // `dev-docs/reference/FAILURE-CONTRACT.md` (`raiseRuntimeError`) once it exists.
-        // Until then it is logged rather than swallowed — what must not happen is one bad
-        // listener silently stopping the rest, which is what the `await` loop used to do.
-        console.error("Noodl.Array: a '" + event + "' listener threw.", e);
+        // NDA-004: raised on the runtime error channel, so a throwing listener is diagnosable
+        // in a deployed app and not only in a dev console. What must not happen either way is
+        // one bad listener silently stopping the rest, which is what the `await` loop used to
+        // do. Unattributed because `Array.prototype.on` keeps no reference to the node that
+        // registered the listener — see `raiseUnattributedRuntimeError`.
+        raiseUnattributedRuntimeError(
+          'collection/listener-threw',
+          "A '" + event + "' listener on an array threw",
+          { event, error: e instanceof Error ? e.message : String(e) }
+        );
       }
     }
   },

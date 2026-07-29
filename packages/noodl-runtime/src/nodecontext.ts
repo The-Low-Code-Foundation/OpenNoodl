@@ -4,6 +4,12 @@ import type { RuntimeNode, RuntimeNodeContext, RuntimeOutputProperty } from './i
 
 import EventEmitter = require('./events');
 import NodeRegister = require('./noderegister');
+import {
+  RuntimeErrorBus,
+  createConsoleErrorSubscriber,
+  createEditorWarningSubscriber,
+  setAmbientErrorBus
+} from './runtimeerror';
 import TimerScheduler = require('./timerscheduler');
 import Variants = require('./variants');
 
@@ -144,6 +150,20 @@ const NodeContext = function NodeContext(this: NodeContext, args?: NodeContextAr
     graphModel: this.graphModel,
     getNodeScope: () => (this.rootComponent ? this.rootComponent.nodeScope : null)
   });
+
+  // The runtime error channel (FAILURE-CONTRACT.md). Created before anything can raise, with
+  // the default subscriber for this context: the editor keeps the warning panel it always
+  // had, and every other runtime — deployed app, cloud, SSR, export — gets a structured
+  // console line so a failure is never fully silent.
+  this.errorBus = new RuntimeErrorBus();
+  if (this.editorConnection) {
+    this.errorBus.subscribe(createEditorWarningSubscriber(this.editorConnection));
+  } else {
+    this.errorBus.subscribe(createConsoleErrorSubscriber());
+  }
+  // So failures raised where no node is in scope — `Collection`'s notification loop — have
+  // somewhere to go. See `raiseUnattributedRuntimeError`.
+  setAmbientErrorBus(this.errorBus);
 
   if (this.editorConnection) {
     this.editorConnection.on('debugInspectorsUpdated', (inspectors) => {

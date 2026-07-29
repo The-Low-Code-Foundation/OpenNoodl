@@ -565,6 +565,7 @@ Node.prototype.update = function () {
 
       if (this._updateIteration >= maxUpdateIterations) {
         this._cyclicLoop = true;
+        this._cyclicLoopCause = { limit: 'update-iterations', count: maxUpdateIterations };
       }
     }
   } catch (e) {
@@ -579,17 +580,13 @@ Node.prototype.update = function () {
       this.context.nodeIsDirty(this);
     });
 
-    if (this.context.editorConnection && !this._cyclicWarningSent && this.context.isWarningTypeEnabled('cyclicLoops')) {
-      this.context.editorConnection.sendWarning(this.nodeScope.componentOwner.name, this.id, 'cyclic-loop', {
-        showGlobally: true,
-        message: 'Cyclic loop detected'
-      });
+    // NDA-004: reported through the runtime error channel rather than straight to
+    // `editorConnection.sendWarning`, so a cycle in a deployed app is diagnosable at all. The
+    // editor still shows the same message — its warning adapter is a subscriber now. The
+    // `cyclicLoops` gate is kept so an author who turned this warning off still has it off.
+    if (!this._cyclicWarningSent && this.context.isWarningTypeEnabled('cyclicLoops')) {
       this._cyclicWarningSent = true;
-      console.log('cycle detected', {
-        id: this.id,
-        name: this.name,
-        component: this.nodeScope.componentOwner.name
-      });
+      this.raiseRuntimeError('runtime/cyclic-loop', 'Cyclic loop detected', this._cyclicLoopCause);
     }
   }
 
@@ -675,6 +672,38 @@ Node.prototype.sendSignalOnOutput = function (outputName) {
   if (this.context) {
     this.context.connectionSentSignal(output);
   }
+};
+
+/**
+ * Report that this node was asked to act and could not — the one way a node reports failure.
+ * See `dev-docs/reference/FAILURE-CONTRACT.md`.
+ *
+ * Provenance is filled in here rather than at the call site: a node cannot claim to be
+ * another, and every call site stays one line. `componentName` falls back rather than
+ * throwing, because the conditions worth reporting include ones that happen before a node
+ * has a scope — and a failure in the failure channel would be the worst possible bug.
+ */
+Node.prototype.raiseRuntimeError = function (code: string, message: string, detail?: unknown) {
+  const context = this.context;
+  if (!context || !context.errorBus) return;
+
+  let componentName = '<unknown>';
+  try {
+    if (this.nodeScope && this.nodeScope.componentOwner && this.nodeScope.componentOwner.name) {
+      componentName = this.nodeScope.componentOwner.name;
+    }
+  } catch (e) {
+    /* provenance is best-effort; the event still carries nodeId and nodeType */
+  }
+
+  context.errorBus.raise({
+    nodeId: this.id,
+    componentName,
+    nodeType: this.name,
+    code,
+    message,
+    detail
+  });
 };
 
 Node.prototype._setValueFromConnection = function (inputName, value) {
