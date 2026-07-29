@@ -10,7 +10,7 @@
 | NDA-002 Reactivity contract | 1 | ✅ **Built** `bd6632ca`…`825da393` | R1–R9 green unmarked; all suites green. **`items === arr` does NOT break** — `Collection.get`/`create` return a memoised Proxy, so identity holds and the raw array is simply unreachable. Mutating methods intercepted in the `get` trap (traps alone storm 3–4 changes per `splice`). Perf: only indexed reads regress (~0.3 µs/read Proxy floor; digit-leading fast path recovers 28%). ⚠️ `packages/noodl-editor/src/external/*` + `nodegx-backend/deploy/artifact/` embed stale `collection.ts` copies until rebuilt. Live QA + QA-fixture cyclic-warning check pending |
 | NDA-003 Empty-value contract | 1 | ✅ **Built** `e707f0cc`…`b2032129` | All E-rows green unmarked. Nullable Variables shipped with `Treat empty as` (String/Color: `null`/`''`; Number: `null`/`0`; Boolean: `null`/`false`); corpus E1/E8 expectations reconciled to the contract (`null`, not `''`). String `length` returns 0 on null store. httpnode normalised to one helper (both omit; JSON body keeps `null`-is-sent, documented). E5's null-clears-collection worked by accident — now explicit + tested. Enriched catalog needed the NDA-014 compatibility fix first (`61e8b3da`) |
 | NDA-013 Repeater Refresh | 1 | ✅ **Done** `0e96c93a` | `refresh()` resyncs from `items`; queue race handled by truncating the ops `set()` just appended (synchronous span, nothing interleaves). Full teardown kept deliberately, documented. Refresh added to Array Map; Array Filter's premise was wrong — its `Filter` signal always re-read fresh, `refresh` added as alias. 3 new corpus rows red→green. Live QA pending |
-| NDA-004 Failure contract | 2 | 🔄 §1 built, §3 priority pair done | Channel at `packages/noodl-runtime/src/runtimeerror.ts`; `On App Error` node; F1/F1′ green; Function + Repeater completion signals. Both-surfaces decision ✅ confirmed by Richard. **Remaining: §2's 50 nodes, §3's other 8, the export/cloud legs of criterion 2, catalog regeneration** |
+| NDA-004 Failure contract | 2 | 🔄 §1 done, §3 **9 of 10**, §2 first batch | Channel at `packages/noodl-runtime/src/runtimeerror.ts`; `On App Error` node; F1/F1′ green. §3: only **Logic Builder** left, still blocked by another session's uncommitted rewrite — `Response` landed 2026-07-29 (it was hiding a `TypeError` out of an input setter *and* a silently-discarded second answer). §2 first batch: Set Object Properties, Set Record Properties, Add/Remove Record Relation. **Remaining: §2's ⏳ list in the register, criterion 2's cloud + export legs, catalog regeneration** |
 | NDA-005 Port documentation | 2 | ⬜ Not started | Do the shared port definitions first and re-measure; batch with NDA-012 |
 | NDA-006 Columns | 2 | ⬜ Not started | Checked: `Columns.tsx` is the **only** file special-casing `ForEachComponent`. Slice 4 (Fable) is gated on slices 2–3 |
 | NDA-007 Icon sets | 2 | 🔄 §1 done | Model at [`ICON-SOURCE-MODEL.md`](../../reference/ICON-SOURCE-MODEL.md) — tagged union (`font`/`sprite`/`inline`), sanitise-at-registration policy decided (no existing viewer policy existed to match; checked) |
@@ -64,6 +64,82 @@ moment NDA-003 makes `null` storable. Consistent with the second-pass calibratio
 this table shows a category producing nothing new.
 
 ## Log
+
+- **2026-07-29 (live QA of three tasks, NDA-004 §3's last reachable mute node, and §2's first
+  batch)** — the biggest un-run instrument was run, and it found nothing wrong; the code work that
+  followed found something the spec's own framing would have got wrong.
+
+  **Live QA — five claims, one editor launch, all pass.** A scratch project with a Repeater over a
+  static array, a two-page Component Stack driven by real button clicks, and a popup whose Close
+  Popup node sits one component deeper than the popup's top level.
+  - **Class F, both directions.** The Object node with `Id Source = From repeater` *outside* a
+    Repeater reads `healthy: false` with exactly the specced message; *inside* the template its card
+    reads **`→ /Item`**, aggregated from the two live instances into one target. The sub-label
+    replaces the type-name line, which is what `typeDisplayName()` documents.
+  - **NDA-008 §2** — clicking the already-active tab: the text typed into that tab survived, and so
+    did the input's per-instance class (`input-5d8a50d9-…` unchanged), which is what distinguishes
+    "same instance" from "re-mounted and coincidentally restored". Depth 1 → 1, entries 1 → 1,
+    `navigated` fired. **Control:** clicking the *other* tab still pushes, 1 → 2. So the no-op is
+    specific to "already showing", not a blanket suppression.
+  - **NDA-008 §1** — replace animates, and the *surface* is there: sampling per frame, the stack
+    holds **2 children with both "TAB B" and "TAB A" in the DOM** for ~23 frames, then settles to 1.
+    Worth knowing for the next session: `_internal.stack` collapses to one entry *immediately*, so a
+    row watching `stack.length` sees nothing — the overlap is in `getChildren()`.
+  - **NDA-008 §3** — all three codes confirmed: `stack-at-root` and `transition-in-progress` driven
+    at the stack (`back()` returns the `StackBackResult`), and `no-stack-in-scope` end-to-end through
+    the Pop node, which turned the node card red with the right message.
+  - **NDA-010 §2** — the deep Close Popup closes the popup, and its card reads **`→ /Popup`**. That
+    is the pull seam and clause (b) working together in the real app.
+
+  **NDA-004 §3 — `Response`, the last mute node not blocked by another workstream.** It hid two
+  different things behind having no outputs at all, and one of them was a crash: an unguarded
+  `this._internal._sendResponseCallback(...)`, i.e. a `TypeError` thrown out of an input setter,
+  for any Response node that was not part of the function component when the request arrived.
+  The other was the *second* answer to a request, discarded silently in
+  `noodl-viewer-cloud/src/index.ts`.
+  - **`Sent` fires before delivery, and that ordering is forced, not chosen.** The callback tears
+    the request down synchronously — `functionComponent._onNodeDeleted()` then
+    `requestScope.reset()`, *before* resolving — so a completion signal sent afterwards reaches a
+    graph that no longer exists. A `_requestIsOpen()` query was added beside the callback so the
+    "already answered" case can be reported while the node still exists to report it.
+  - 6 rows in a package whose jest runner exists but had only two suites; cloud suite **52** (was
+    46). Shown to discriminate three ways: disabling the two guards reddens exactly the two guard
+    rows; moving `Sent` after delivery reddens the ordering row and the fallback row.
+
+  **NDA-004 §2 — first batch, "the Do that did nothing".** Five sites in the Object/Record family
+  opened with `if (!internal.model) return;`. Four were the defect and **one was not**:
+  - **Set Object Properties**: `Do` with no object wrote nothing, emitted nothing, said nothing.
+    Now `Failure`/`Error` and `set-object-properties/no-object`.
+  - **Set Record Properties**: the two branches of one enum disagreed. `Store Type = cloud` has
+    always answered a missing Id with `setError('Missing Record Id')`; `local` returned silently.
+    Same node, same author mistake, and whether they were told depended on a dropdown.
+  - **Add / Remove Record Relation**: `validateInputs` opened with `if (!this.context
+    .editorConnection) return;` — so **in a deployed app it validated nothing**, and the caller
+    then hit two bare `return`s. It now returns the verdict and the caller fails through `setError`.
+  - ⚠️ **The Object node looks identical and must stay silent.** `Model2.scheduleStore` has the same
+    line, but the node has **no `Do`** — it is reached from `userInputSetter`, i.e. from any value
+    arriving at a `prop-…` port. An Object node whose Id has not arrived yet hits that branch once
+    per incoming value *on the ordinary boot path*; the values are deliberately retained and written
+    when an object appears. Adding `Failure` there was built, tested, and **reverted** when the rows
+    showed it firing on the happy path. The comment and a corpus row now hold that shut.
+  - **The raise is `explicit`-mode only; the graph surface fires in both.** In `foreach` mode
+    `foreachitem.ts` has already raised the precise reason, and a second vaguer event on one root
+    cause is the "two wordings of one failure" the contract calls noise.
+  - 6 corpus rows, verified discriminating: reverting the guard reddens 4 and leaves both pinned
+    controls green.
+
+  **Register:** an NDA-004 §2 triage of all 50, split into **read** (binding) and **reasoned**
+  (provisional, a prediction about where to read next) — criterion 4 is *not* met and the section
+  says so. 8 Verdict cells filled. Next-pass order is written down, highest-yield first; the two
+  worth naming are **Video** (`HTMLMediaElement.play()` rejects under autoplay policy — a real,
+  common, invisible failure) and the **Component Object family**, which NDA-015 gave *raising* but
+  never gave `Failure` **ports**, so they are the cheapest remaining ✅s.
+
+  Gates: runtime jest **1,081** (was 1,075), viewer jest **145**, cloud jest **52** (was 46), both
+  typechecks green. ⚠️ One full runtime run failed once in `runtimeerror.test.ts:247` with the
+  console subscriber throwing, and passed in the five full runs after it, plus in isolation and
+  paired — recorded rather than dismissed; the shape (a `console.error` after teardown) suggests an
+  async leak from a neighbouring file under parallel load, not a defect in the code changed here.
 
 - **2026-07-29 (NDA-008 §2 — the Component Stack as a tab system; the task is now complete)** — the
   section asked for the behaviour to be *checked* before being assumed broken. It was, and it was
