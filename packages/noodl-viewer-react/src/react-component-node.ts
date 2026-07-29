@@ -26,7 +26,7 @@ import type {
 } from '@noodl/types';
 
 import DOMBoundingBoxObserver from './dom-boundingbox-oberver';
-import Layout from './layout';
+import Layout, { type ParentLayout } from './layout';
 import mergeDeep from './mergedeep';
 import NodeSharedPortDefinitions from './node-shared-port-definitions';
 import transitionParameter from './node-transitions';
@@ -233,6 +233,11 @@ export interface ReactNodeInstance extends NodeInstance {
   render(): React.ReactElement | undefined;
   renderChildren(): React.ReactNode;
   forceUpdate(): void;
+  /**
+   * Change the layout this node lays its children out in. Always use this
+   * rather than assigning `props.layout` — see the method for why.
+   */
+  setLayout(layout: ParentLayout): void;
   /** Re-key the node so React rebuilds its subtree from scratch. */
   _resetReactVirtualDOM(): void;
   /** SSR only: fire `didMount` without a browser lifecycle to hang it off. */
@@ -1114,6 +1119,21 @@ function createNodeFromReactComponent(def: ReactNodeDefinition): ReactNodeModule
       },
       getChildRoot() {
         return this;
+      },
+      setLayout(layout) {
+        if (this.props.layout === layout) return;
+        this.props.layout = layout;
+
+        // Children read this as `parentLayout` in their own render (see the
+        // `noodlNodeAsProp` block in `render`), and `renderChildren` memoises
+        // the elements it built from it. Re-rendering only ourselves would hand
+        // React those same elements back, so the children would keep laying
+        // themselves out for the layout we just left — a percentage width
+        // stays a flex-grow after a switch to column, and stays a plain width
+        // after a switch to row, which makes the first child eat the row.
+        // Dropping the memo is what makes the children recompute.
+        this.cachedChildren = undefined;
+        this.forceUpdate();
       },
       forceUpdate() {
         if (this.forceUpdateScheduled === true) return;

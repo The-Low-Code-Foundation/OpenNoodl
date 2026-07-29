@@ -19,7 +19,7 @@
 | NDA-010 Popups | 2 | ⬜ Not started | §2 shared with NDA-015 |
 | NDA-014 Type dead ends | 2 | 🔄 §1+§2 done | Decision at [`PORT-TYPE-CONTRACT.md`](../../reference/PORT-TYPE-CONTRACT.md) (A now, C direction). Table changed (`object`/`array`/`color` → `string`), JSON mirror added in `setInputValue`, catalog + register regenerated, runtime jest green (1,026), editor suite green (1,885 specs incl. validator/catalog-index). Outstanding: live editor check of the 13 `object` outputs |
 | NDA-015 Explicit binding | 2 | 🔄 §1 done | Contract at [`BINDING-CONTRACT.md`](../../reference/BINDING-CONTRACT.md). Explicit-target-miss ≠ fallback is the load-bearing clause. §2 sweep + §3 FIXME open |
-| NDA-016 `Layout.size` | 2 | ⬜ Not started | **§0 blocking** — a contradiction between the mechanism and the default path |
+| NDA-016 `Layout.size` | 2 | ✅ **Done** | **§0 resolved: the spec's premise was wrong.** `sizeMode` is never unset — a fresh Text node carries `contentHeight`/`100%`, read live. The real defect is a stale `parentLayout`: children bake the parent's layout in at *their* render, `renderChildren` memoises them, and the Layout setter never invalidated the memo — so a layout change never reached the children, and the first child ate the row. Fixed with `setLayout` as the single writer. §1 built too, on its own terms (an abstaining *connection* can still unset the port). 10 regression tests; 15-node-type live blast-radius check. Criterion 4's screenshot corpus is an instrument mismatch — see the spec |
 | NDA-011 REST → HTTP | 3 | ⬜ Not started | First output is an assessment, not a change |
 | NDA-012 Per-node audit | 3 | ⬜ **1 of 17 categories** | Variables done (4/4) as the worked example. Opt-in, resumable, stop on find-rate decline |
 
@@ -64,6 +64,40 @@ moment NDA-003 makes `null` storable. Consistent with the second-pass calibratio
 this table shows a category producing nothing new.
 
 ## Log
+
+- **2026-07-29 (NDA-016 done — §0 falsified the task's own premise)** — the fifth spec claim to
+  fall to implementation, and the most consequential so far: the task was written around
+  `Layout.size` having no `else` for an unset `sizeMode`, and **`sizeMode` is never unset.** Read
+  live off a real node instance in the preview (reached through the React fiber on the rendered
+  element — the viewer target exposes no runtime handle on `window`, but every visual node's DOM
+  element leads back to its `noodlNode`): a fresh, never-touched Text node has
+  `props.sizeMode === 'contentHeight'` and `props.width === '100%'`. 15 node types placed with no
+  parameters at all, and every one carries its declared default.
+  - The real defect: children read the parent's layout as `parentLayout` **at their own render**
+    and `renderChildren` memoises the elements built from it. The Group's Layout setter wrote
+    `props.layout` and called `forceUpdate()` — which re-renders the Group and hands React back the
+    *same* children. So a layout change never reached them. Column → row left both Texts at
+    `flex-shrink: 0` with no `flex-grow`, both 320px in a 320px row: the first eats the row. That
+    is Richard's report exactly, and it is why the folklore workaround works — touching any port on
+    a child re-renders *that child*.
+  - `setLayout` is now the single writer of `props.layout` after init: it drops the memo,
+    re-renders, and no-ops on an unchanged value so the memoisation still pays. Group, Radio Button
+    Group, and deprecated Form/Fieldset adopt it. The four `initialize`-time assignments stay
+    direct — no children exist yet.
+  - §1 built anyway, and it turned out to be reachable from a direction the spec did not consider:
+    the generic prop setter *deletes* the prop on `undefined`, so a **connection** into Size Mode
+    that abstains still unset it. The port now restores the declared default (Empty-Value
+    Contract), non-enum values report through NDA-004 as `dimensions/unknown-size-mode` once at the
+    port rather than every render, and `Layout.size`'s `else` is documented rather than silent.
+    Found in passing: `width`/`height`'s `onChange` read `value.isFixed` unguarded — an abstaining
+    connection was a `TypeError` inside an input setter, not the inert value §0 candidate 4 guessed.
+  - **Criterion 4 not run, on purpose.** The phase-23 screenshot corpus photographs editor chrome;
+    this change is entirely in the viewer that renders the *user's* app. Running it would have been
+    a green that tested nothing. The blast-radius check that does apply — 15 node types through one
+    layout switch — was run instead and is recorded in the spec.
+  - ⚠️ Method-on-the-node pattern worth reusing: anything a **child** reads off its parent at render
+    time is invisible to `forceUpdate` and must clear `cachedChildren`. `props.layout` was the only
+    such prop; if another is ever added, it needs the same treatment.
 
 - **2026-07-29 (NDA-004 §1 + §3 priority pair)** — the runtime error channel exists
   (`8cca1a76`, `d491e6c2`, `2c16f6a7`). `runtimeerror.ts` is a plain synchronous bus in

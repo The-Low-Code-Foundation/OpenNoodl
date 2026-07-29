@@ -47,7 +47,7 @@ const GroupNode: ReactNodeDefinition = {
       },
       default: 'column',
       set(value) {
-        this.props.layout = value;
+        this.setLayout(value);
 
         if (value !== 'none') {
           this.setStyle({ flexDirection: value });

@@ -53,6 +53,13 @@ export interface TextStyleInputsOptions extends StyleTagOption {
   [extra: string]: any;
 }
 
+/**
+ * Every Size Mode the layout engine knows how to lay out. Kept beside the enum
+ * it builds so a fifth mode cannot be offered in the editor without
+ * `Layout.size` learning it.
+ */
+const SIZE_MODES = ['explicit', 'contentWidth', 'contentHeight', 'contentSize'];
+
 export interface DimensionsOptions {
   defaultSizeMode?: 'explicit' | 'contentHeight' | 'contentWidth' | (string & {});
   /** Wording used in the size-mode enum labels, e.g. 'Content' vs 'Text'. */
@@ -651,7 +658,29 @@ export default {
         group: 'Dimensions',
         displayName: 'Size Mode',
         default: defaultSizeMode,
-        allowVisualStates: true
+        allowVisualStates: true,
+        onChange(value) {
+          // A connection can deliver `undefined`, and the generic prop setter
+          // deletes the prop when it does. An absent `sizeMode` is not a fifth
+          // mode — `Layout.size` would stop assigning a width at all and the
+          // node would keep whatever `defaultCss` happened to leave behind. Per
+          // the Empty-Value Contract, undefined abstains: put the node's own
+          // declared default back.
+          if (value === undefined) {
+            this.props.sizeMode = defaultSizeMode;
+            return;
+          }
+
+          // The port is an enum, but a connection can carry any value at all.
+          // Report it here — once, when it arrives, attributed to this node —
+          // rather than from `Layout.size`, which would repeat it every render.
+          if (!SIZE_MODES.includes(value)) {
+            this.raiseRuntimeError(
+              'dimensions/unknown-size-mode',
+              `Unknown Size Mode '${String(value)}'. Expected one of ${SIZE_MODES.join(', ')}.`
+            );
+          }
+        }
       },
       width: {
         index: 11,
@@ -665,7 +694,9 @@ export default {
         default: 100,
         allowVisualStates: true,
         onChange(value) {
-          this.props.fixedWidth = value.isFixed;
+          // `value` is undefined whenever a connection abstains, and was read
+          // through unguarded until NDA-016 — a plain TypeError in a render path.
+          this.props.fixedWidth = value ? value.isFixed : undefined;
         }
       },
       height: {
@@ -680,7 +711,8 @@ export default {
         default: 100,
         allowVisualStates: true,
         onChange(value) {
-          this.props.fixedHeight = value.isFixed;
+          // See the note on `width`.
+          this.props.fixedHeight = value ? value.isFixed : undefined;
         }
       }
     });

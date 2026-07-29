@@ -64,8 +64,21 @@ const Layout = {
       style.width = props.width;
     } else if (props.sizeMode === 'contentWidth') {
       style.height = props.height;
+    } else {
+      // `contentSize` — both axes come from the content, so neither is assigned.
+      //
+      // Anything else landing here is a value the enum does not define, and it
+      // is sized from content too. It used to be *unset* that landed here, which
+      // silently left the node at whatever `defaultCss` had given it; the port
+      // now restores its declared default when a connection abstains and reports
+      // a value that is not a mode at all (`addDimensions`, NDA-016). Reporting
+      // from here instead would repeat on every render of every visual node.
     }
 
+    // Noodl nodes never shrink below their stated size unless they are sharing a
+    // row or column with siblings — the percentage paths below opt back in to
+    // shrinking when they convert a percentage to flex-grow. Without this, a
+    // node given an explicit width would silently lose it to a crowded parent.
     style.flexShrink = 0;
 
     if (props.parentLayout === 'row' && style.position === 'relative') {

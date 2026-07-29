@@ -427,6 +427,17 @@ Richard: "the text node starts off as responsive width, but if you add two text 
 the first one will take up 100% of the width, unless you change to fixed width and back to
 responsive, then it works."
 
+> **SUPERSEDED 2026-07-29 by NDA-016 §0.** The mechanism below is wrong, and the "gap" it records
+> was the tell. `sizeMode` is **never unset** — a fresh, never-touched Text node reads
+> `props.sizeMode === 'contentHeight'`, `props.width === '100%'` off the live node in the preview,
+> and so does every one of 15 visual node types placed with no parameters. The symptom is a stale
+> `parentLayout`: a child copies its parent's layout into its props when *it* renders,
+> `renderChildren` memoises the result, and the Group's Layout setter re-rendered only itself — so
+> the change never reached the children. Full account and fix in
+> [`NDA-016-LAYOUT-SIZEMODE.md`](NDA-016-LAYOUT-SIZEMODE.md) §0. Kept verbatim below because the
+> reasoning is sound and still wrong, which is the useful part: every step of it checks out against
+> the source, and the conclusion does not survive one reading of the running app.
+
 Partially confirmed, with the mechanism identified and one gap.
 
 [`layout.ts:60-67`](../../../packages/noodl-viewer-react/src/layout.ts#L60-L67) is the whole of size
