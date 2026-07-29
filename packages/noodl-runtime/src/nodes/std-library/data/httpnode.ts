@@ -63,6 +63,25 @@ function extractByPath(obj: unknown, path: string): unknown {
 }
 
 /**
+ * The empty-value contract for an HTTP request parameter
+ * (dev-docs/reference/EMPTY-VALUE-CONTRACT.md): `undefined` abstains — no value was supplied,
+ * so the parameter is omitted, exactly as if the port had never been wired. `null` is an
+ * explicit clear, but a URL path segment, a query string, an HTTP header and a
+ * form/URL-encoded field all have no way to *represent* `null` itself (unlike a JSON body,
+ * which has a native `null` — see `buildBody`'s `json` branch, the one site that does not use
+ * this helper) — so for those five sites "clear it" and "omit it" are the same outcome, and
+ * `null` is omitted too.
+ *
+ * This is the one shared guard `httpnode.ts` used to carry six independently-written copies
+ * of, three of them narrower than the other three (`buildBody`'s `json` branch checked only
+ * `undefined`, which turned out to be correct by accident rather than by agreement — see its
+ * own comment).
+ */
+function hasHttpParamValue(value: unknown): boolean {
+  return value !== undefined && value !== null;
+}
+
+/**
  * Configure authentication headers/params based on preset type
  */
 /** What one preset contributes to the outgoing request. */
@@ -350,7 +369,7 @@ const HttpNode: NodeDefinitionOptions = {
       for (const param of pathParams) {
         const name = param.replace(/[{}]/g, '');
         const value = this._internal.inputValues['path-' + name];
-        if (value !== undefined && value !== null) {
+        if (hasHttpParamValue(value)) {
           url = url.replace(param, encodeURIComponent(String(value)));
         }
       }
@@ -366,7 +385,9 @@ const HttpNode: NodeDefinitionOptions = {
           .filter(Boolean);
         for (const qp of queryList) {
           const value = this._internal.inputValues['query-' + qp];
-          if (value !== undefined && value !== null && value !== '') {
+          // `value !== ''` is pre-existing and orthogonal to the empty-value contract — an
+          // author-typed empty string omits a query param the same way it always has.
+          if (hasHttpParamValue(value) && value !== '') {
             queryParams[qp] = value;
           }
         }
@@ -404,7 +425,7 @@ const HttpNode: NodeDefinitionOptions = {
           .filter(Boolean);
         for (const h of headerList) {
           const value = this._internal.inputValues['header-' + h];
-          if (value !== undefined && value !== null) {
+          if (hasHttpParamValue(value)) {
             headers[h] = String(value);
           }
         }
@@ -441,6 +462,10 @@ const HttpNode: NodeDefinitionOptions = {
         const body: Record<string, unknown> = {};
         for (const field of bodyFields) {
           const value = this._internal.inputValues['body-' + field];
+          // Deliberately not `hasHttpParamValue`: JSON has a native `null`, so this is the
+          // one site where "clear it" and "omit it" are different outcomes. `undefined`
+          // still abstains (the field is left out of the body entirely); `null` is kept and
+          // reaches `JSON.stringify` as JSON `null`.
           if (value !== undefined) {
             body[field] = value;
           }
@@ -450,7 +475,9 @@ const HttpNode: NodeDefinitionOptions = {
         const formData = new FormData();
         for (const field of bodyFields) {
           const value = this._internal.inputValues['body-' + field];
-          if (value !== undefined && value !== null) {
+          // `FormData` has no `null` — appending one would coerce to the four-character
+          // string "null" — so, like the path/query/header sites, `null` is omitted here.
+          if (hasHttpParamValue(value)) {
             formData.append(field, value as string);
           }
         }
@@ -459,7 +486,8 @@ const HttpNode: NodeDefinitionOptions = {
         const params = new URLSearchParams();
         for (const field of bodyFields) {
           const value = this._internal.inputValues['body-' + field];
-          if (value !== undefined && value !== null) {
+          // Same reasoning as the form branch above: `URLSearchParams` has no `null` either.
+          if (hasHttpParamValue(value)) {
             params.append(field, String(value));
           }
         }
@@ -657,7 +685,11 @@ function updatePorts(nodeId: string, parameters: Record<string, unknown>, editor
         displayName: name,
         type: 'string',
         plug: 'input',
-        group: 'Path Parameters'
+        group: 'Path Parameters',
+        description:
+          'undefined or null leaves the {' +
+          name +
+          '} placeholder in the URL literally, unreplaced — a path segment cannot be empty.'
       });
     }
   }
@@ -683,7 +715,8 @@ function updatePorts(nodeId: string, parameters: Record<string, unknown>, editor
         displayName: header,
         type: 'string',
         plug: 'input',
-        group: 'Headers'
+        group: 'Headers',
+        description: 'undefined or null omits this header — an HTTP header has no way to carry null.'
       });
     }
   }
@@ -709,7 +742,9 @@ function updatePorts(nodeId: string, parameters: Record<string, unknown>, editor
         displayName: param,
         type: 'string',
         plug: 'input',
-        group: 'Query Parameters'
+        group: 'Query Parameters',
+        description:
+          "undefined, null or '' omits this query parameter — a query string has no way to carry null."
       });
     }
   }
@@ -808,7 +843,15 @@ function updatePorts(nodeId: string, parameters: Record<string, unknown>, editor
             displayName: field,
             type: fieldType,
             plug: 'input',
-            group: 'Body'
+            group: 'Body',
+            // Empty-value contract (dev-docs/reference/EMPTY-VALUE-CONTRACT.md): undefined
+            // always abstains and omits the field. What null does depends on the body's
+            // encoding — JSON has a native null, so it is kept and sent; Form Data and
+            // URL Encoded have no way to represent null, so it is omitted like undefined.
+            description:
+              bodyType === 'json'
+                ? 'undefined omits this field from the JSON body. null is kept and sent as JSON null.'
+                : 'undefined or null omits this field — this encoding has no way to carry null.'
           });
         }
       }
