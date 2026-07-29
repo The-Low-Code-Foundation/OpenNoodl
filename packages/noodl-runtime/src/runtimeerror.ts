@@ -15,43 +15,25 @@
  * runtime, SSR and exported code the same events.
  */
 
+import type { RuntimeErrorEventLike, RuntimeErrorSubscriptionLike } from '@noodl/types';
+
 /**
  * One raised failure, structured.
  *
  * Provenance (`nodeId`, `componentName`, `nodeType`) is filled in by `Node.raiseRuntimeError`
  * rather than by the caller, so a call site stays one line and cannot misattribute itself.
+ * `code` is the matchable half of the pair — stable, kebab-case, namespaced by node type — and
+ * `message` is the half that may be reworded freely.
+ *
+ * Aliased to the published type rather than restated, so the two cannot drift: node
+ * definitions and the `On App Error` node both read this shape.
  */
-export interface RuntimeErrorEvent {
-  /** The id of the node that failed. */
-  nodeId: string;
-  /** The component the node lives in. `'<unknown>'` when a node fails before it has a scope. */
-  componentName: string;
-  /** The node's type name, e.g. `'Run Tasks'`. */
-  nodeType: string;
-  /**
-   * A stable, kebab-case, per-node-type identifier — `'run-tasks/no-success-output'`.
-   *
-   * Tooling and tests match on this, so it must not be reworded for readability; `message`
-   * is the field that is allowed to change.
-   */
-  code: string;
-  /** Human-readable, one sentence, no trailing period. */
-  message: string;
-  /**
-   * Optional structured payload: the caught error, the offending value.
-   *
-   * Contract: it must be safe to serialise. The cloud runtime and the export path will JSON
-   * it, and a subscriber that cannot stringify a payload drops the whole event.
-   */
-  detail?: unknown;
-}
+export type RuntimeErrorEvent = RuntimeErrorEventLike;
 
 export type RuntimeErrorSubscriber = (event: RuntimeErrorEvent) => void;
 
 /** Handed back by `subscribe`, so a caller never needs to keep the function to remove it. */
-export interface RuntimeErrorSubscription {
-  unsubscribe(): void;
-}
+export type RuntimeErrorSubscription = RuntimeErrorSubscriptionLike;
 
 /**
  * How deep a raise-inside-a-subscriber chain is allowed to go before events are dropped.

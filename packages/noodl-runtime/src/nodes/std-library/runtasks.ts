@@ -50,6 +50,8 @@ interface RunTasksNodeInstance extends NodeInstance {
   scheduleAbort(): void;
   createTaskComponent(item: unknown): Promise<TaskNode>;
   startTask(task: unknown): Promise<void>;
+  /** Ends a run that provably cannot finish, reporting `code` on the runtime error channel. */
+  endRunAsFailed(code: string, message: string, detail?: unknown): void;
   run(): Promise<void>;
   abort(): void;
   itemOutputSignalTriggered(name: string, model: ModelLike, itemNode: TaskNode): void;
@@ -230,13 +232,65 @@ const RunTasksDefinition: NodeDefinitionOptions = {
 
       try {
         const taskComponent = await this.createTaskComponent(task);
+
+        // NDA-004 / corpus row F1. This node's whole contract with its template is three
+        // string-matched port names, and the one an author actually gets wrong is the
+        // completion signal: name the template's output `Done` instead of `Success` and
+        // `itemOutputSignalTriggered` never matches, `completedTasks` never reaches
+        // `numTasks`, and the run sits in `running` for ever — no success, no failure, no
+        // timeout, no warning. The four warnings in `run` cover every condition except that
+        // one, which is why the node reads as broken rather than misconfigured.
+        //
+        // A template with neither port cannot ever complete, so this is knowable the moment
+        // the first task component exists rather than never. Report it and end the run: a
+        // hang is the worst of the available outcomes because it is the only one downstream
+        // cannot react to. NDA-009 §1 additionally catches this at template-selection time
+        // in the editor, which is earlier and better; this is the runtime backstop that also
+        // holds in a deployed app.
+        if (!taskComponent.hasOutput('Success') && !taskComponent.hasOutput('Failure')) {
+          this.nodeScope.deleteNode(taskComponent);
+          this.endRunAsFailed(
+            'run-tasks/no-completion-output',
+            'The task template "' +
+              internal.template +
+              '" has no Success or Failure output, so a task can never report completion',
+            { template: internal.template, expectedOutputs: ['Success', 'Failure'] }
+          );
+          return;
+        }
+
         internal.runningTasks++;
         sendSignalOnInput(taskComponent, 'Do');
         internal.activeTasks.set(taskComponent.id, taskComponent);
       } catch (e) {
-        // Something went wrong starting the task
-        console.log(e);
+        // Something went wrong starting the task. Reported rather than logged: a task that
+        // never starts is one that never completes, so the run would hang on it just as
+        // surely as a mis-named output does.
+        this.endRunAsFailed('run-tasks/task-start-failed', 'A task could not be started', {
+          template: internal.template,
+          error: e instanceof Error ? e.message : String(e)
+        });
       }
+    },
+    /**
+     * End a run that provably cannot finish, and say why.
+     *
+     * `failure` and `done` both fire because downstream sequencing is what is actually at
+     * stake: an author who wired "when the run is done, do the next thing" gets to do the
+     * next thing, and an author who wired `failure` finds out. Idempotent — with
+     * `maxRunningTasks` above one, several tasks discover the same broken template in the
+     * same pass, and the author needs telling once.
+     */
+    endRunAsFailed(this: RunTasksNodeInstance, code: string, message: string, detail?: unknown) {
+      const internal = this._internal;
+      if (internal.state === 'idle') return;
+
+      this.raiseRuntimeError(code, message, detail);
+
+      internal.queuedTasks = [];
+      internal.state = 'idle';
+      this.sendSignalOnOutput('failure');
+      this.sendSignalOnOutput('done');
     },
     async run(this: RunTasksNodeInstance) {
       const internal = this._internal;

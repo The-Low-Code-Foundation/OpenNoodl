@@ -115,13 +115,17 @@ describe('NDA-001 F1: Run Tasks and a template that does not spell Success', () 
     expect(graph.signalsFor('runner')).toEqual(['success', 'done']);
   });
 
-  test.failing('F1: a template whose output is named Done produces a warning', async () => {
+  // ✅ Green since NDA-004 §1: `startTask` checks the template for a completion port the
+  // moment the first task component exists, and reports through the runtime error channel —
+  // which the editor's warning adapter subscribes to, so the assertion below still reads the
+  // warning list. The same report now also reaches a deployed app, which is the point.
+  test('F1: a template whose output is named Done produces a warning', async () => {
     const graph = await runTasksWithTemplateOutput('Done');
 
-    // Today: the node sits in `running` for ever. Nothing is signalled, and — the row's
-    // point — nothing is reported either.
-    expect(graph.signalsFor('runner')).toEqual([]);
     expect(graph.editorConnection.warnings.map((warning) => warning.nodeId)).toContain('runner');
+    expect(graph.editorConnection.warnings.map((warning) => warning.key)).toContain(
+      'run-tasks/no-completion-output'
+    );
   });
 
   /**
@@ -129,10 +133,12 @@ describe('NDA-001 F1: Run Tasks and a template that does not spell Success', () 
    * ever happens again. Kept separate from the warning assertion because the two are
    * different fixes — one is "tell me", the other is "do not hang".
    */
-  test.failing('F1 (corollary): a mis-named template output does not leave the run hung for ever', async () => {
+  test('F1 (corollary): a mis-named template output does not leave the run hung for ever', async () => {
     const graph = await runTasksWithTemplateOutput('Done');
     await graph.settle(20);
 
-    expect(graph.signalsFor('runner').length).toBeGreaterThan(0);
+    // `failure` then `done`: an author who wired either one gets to react. A hang is the one
+    // outcome downstream cannot respond to at all.
+    expect(graph.signalsFor('runner')).toEqual(['failure', 'done']);
   });
 });

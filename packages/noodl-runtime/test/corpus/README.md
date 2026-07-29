@@ -127,8 +127,8 @@ task's own site-by-site table called out.
 
 | # | Test | Status | What actually happens |
 |---|---|---|---|
-| F1 | `F1: a template whose output is named Done produces a warning` | fails | No warning, ever. |
-| F1′ | `F1 (corollary): …does not leave the run hung for ever` | fails | 0 signals after 20 frames; the node stays `running`. |
+| F1 | `F1: a template whose output is named Done produces a warning` | ✅ green (NDA-004) | Raises `run-tasks/no-completion-output` on the runtime error channel. |
+| F1′ | `F1 (corollary): …does not leave the run hung for ever` | ✅ green (NDA-004) | The run ends `failure` then `done` instead of sitting in `running`. |
 | F2 | `F2: two Show Popup nodes in one frame produce one popup…` | fails | Two `showPopup` calls; two stacked dialogs. |
 | F3 | `F3: every child of a Columns node is given a column wrapper` | fails | 2 wrappers for 3 children — the Repeater is filtered out. |
 | F3′ | `F3 (corollary): Columns is visible on its first render` | fails | `visibility:hidden` until a `ResizeObserver` callback that never comes under SSR. |
@@ -148,9 +148,9 @@ in the same commit.
 |---|---|
 | ✅ **NDA-002** — the reactivity contract | R1, R2, R3, R4, R5 (§2), R7 (§3), R8, R9 (§4) — done; R6 and R10 undisturbed |
 | ✅ **NDA-003** — defined semantics for empty | E1, E2, E3, E4, E4′, E6, E6′, E8 — done; E5, E7, E8′ undisturbed |
+| ✅ **NDA-004 §1** — the runtime error channel | F1, F1′ — done. NDA-009 §1 still owes the *editor-time* check, which catches the same mistake earlier |
 | **NDA-006** — `Columns` rework | F3, F3′ |
 | **NDA-010** — popup targeting and stack policy | F2 |
-| **Run Tasks / defect class D** (owner TBD, see `NODE-REGISTER.md`) | F1, F1′ |
 
 ## Two corrections to the task spec, found by running it
 

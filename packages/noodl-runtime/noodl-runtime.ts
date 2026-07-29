@@ -215,6 +215,10 @@ function registerNodes(noodlRuntime: NoodlRuntime) {
     require('./src/nodes/std-library/stringformat'),
     require('./src/nodes/std-library/counter'),
     require('./src/nodes/std-library/uniqueid'),
+    // The Failure Contract's global error boundary (NDA-004 §1). Registered here rather than
+    // in the viewer so it exists in the cloud runtime and in exported code too — a catch-all
+    // that only works in the browser would miss the contexts hardest to debug.
+    require('./src/nodes/std-library/onapperror'),
 
     // User
     require('./src/nodes/std-library/user/setuserproperties'),

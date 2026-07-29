@@ -424,8 +424,50 @@ export interface CollectionModule {
 }
 
 /** The subset of `NodeContext` node definitions actually reach for. */
+/**
+ * One failure, structured — the payload of the runtime error channel.
+ * See `dev-docs/reference/FAILURE-CONTRACT.md`.
+ *
+ * Published here rather than kept inside `noodl-runtime` because it is an interface in both
+ * directions: node definitions build the `detail`, and the `On App Error` node hands the
+ * whole event out on an `object` output for authors to log or forward.
+ */
+export interface RuntimeErrorEventLike {
+  nodeId: string;
+  componentName: string;
+  nodeType: string;
+  /** Stable, kebab-case, namespaced by node type — `'run-tasks/no-completion-output'`. */
+  code: string;
+  message: string;
+  /** Optional structured payload. Must be safe to serialise — cloud and export paths JSON it. */
+  detail?: unknown;
+}
+
+export interface RuntimeErrorSubscriptionLike {
+  unsubscribe(): void;
+}
+
+/**
+ * The runtime error channel, as node definitions see it.
+ *
+ * Nodes *raise* through {@link NodeInstance.raiseRuntimeError}, never through this. Direct
+ * access is for the handful of nodes that need to observe every failure — `On App Error` is
+ * the one in the standard library.
+ */
+export interface RuntimeErrorBusLike {
+  subscribe(subscriber: (event: RuntimeErrorEventLike) => void): RuntimeErrorSubscriptionLike;
+  unsubscribe(subscriber: (event: RuntimeErrorEventLike) => void): void;
+  readonly hasSubscribers: boolean;
+}
+
 export interface NodeContextLike {
   editorConnection?: EditorConnectionLike;
+  /**
+   * The runtime error channel. Present in every context — editor, deployed browser app,
+   * cloud runtime, SSR and exported code — which is the whole point of it, and the reason
+   * it is not `editorConnection.sendWarning`.
+   */
+  errorBus: RuntimeErrorBusLike;
   /**
    * Runtime lifecycle events. The one node definitions listen for is
    * `'applicationDataReloaded'`, which is their cue to drop listeners they registered
