@@ -14,7 +14,7 @@
 | NDA-005 Port documentation | 2 | ⬜ Not started | Do the shared port definitions first and re-measure; batch with NDA-012 |
 | NDA-006 Columns | 2 | ⬜ Not started | Checked: `Columns.tsx` is the **only** file special-casing `ForEachComponent`. Slice 4 (Fable) is gated on slices 2–3 |
 | NDA-007 Icon sets | 2 | 🔄 §1 done | Model at [`ICON-SOURCE-MODEL.md`](../../reference/ICON-SOURCE-MODEL.md) — tagged union (`font`/`sprite`/`inline`), sanitise-at-registration policy decided (no existing viewer policy existed to match; checked) |
-| NDA-008 Component Stack | 2 | ⬜ Not started | **§0 blocking** — scroll jump has no located cause |
+| NDA-008 Component Stack | 2 | 🔄 **§0 resolved, unblocked** | **The stack does not scroll** — zero `focus()` calls and zero px moved across navigate/replace/useRoutes, measured. The scroll is browser focus-scroll into the viewer's `overflow: hidden` app root (`viewer.jsx:344-353`), triggered by the library's only DOM focus, `TextInput` (`text-input.ts:211-214`). `preventScroll: true` fixes it (0 px vs 1169 px) but is **not applied** — it would stop a deliberate `Focus` scrolling an off-screen field into view. Needs a call from Richard; filed against the viewer, not this node. §2's no-scroll bullet moves out; §1 and §3 stand |
 | NDA-009 Run Tasks | 2 | ⬜ Not started | §1 alone closes corpus F1 |
 | NDA-010 Popups | 2 | ⬜ Not started | §2 shared with NDA-015 |
 | NDA-014 Type dead ends | 2 | 🔄 §1+§2 done | Decision at [`PORT-TYPE-CONTRACT.md`](../../reference/PORT-TYPE-CONTRACT.md) (A now, C direction). Table changed (`object`/`array`/`color` → `string`), JSON mirror added in `setInputValue`, catalog + register regenerated, runtime jest green (1,026), editor suite green (1,885 specs incl. validator/catalog-index). Outstanding: live editor check of the 13 `object` outputs |
@@ -64,6 +64,29 @@ moment NDA-003 makes `null` storable. Consistent with the second-pass calibratio
 this table shows a category producing nothing new.
 
 ## Log
+
+- **2026-07-29 (NDA-008 §0 resolved — the node is innocent)** — the scroll jump is real, is
+  reproducible, and has nothing to do with the Component Stack. Measured with a Page Stack in a
+  page taller than the viewport, scrolled so the header was off-screen: switching components moved
+  the scroll position **0 px** and called `HTMLElement.prototype.focus` **0 times** (patched and
+  counted), identically for `navigate`+Push, `replace`, and `useRoutes` on and off.
+  - The trap is the viewer's app root: `viewer.jsx:344-353` wraps the whole app in
+    `overflow: hidden; width: 100%; height: 100%`. That div is pinned to the viewport (663 px) and
+    holds taller content (2337 px). **`overflow: hidden` stops the user scrolling, not the
+    browser** — so a programmatic scroll is one-way, which is why the header never comes back.
+    That asymmetry is the actual complaint, not the scroll itself.
+  - The trigger is any real DOM focus: `element.focus()` moved it 0 → 1169;
+    `focus({ preventScroll: true })` moved it 0 → 0. The library's only DOM focus is `TextInput`
+    (`text-input.ts:211-214`), reached from its `Focus` input (`:132`) or from Noodl's click-capture
+    focus system (`viewer.jsx:293-310`), which walks up from every click target calling `_focus()`.
+    `Group._focus` only emits a signal, so Groups are not implicated.
+  - **Fix deliberately not applied.** `preventScroll` is measured to work but is not obviously
+    right: an author firing `Focus` on an off-screen field in a genuinely scrollable container
+    expects it scrolled into view. The real question is whether the app root should be a
+    hidden-overflow box that overflows at all — a decision about the viewer's layout root, for
+    Richard. §1 and §3 of NDA-008 are unaffected and now unblocked; §2's no-scroll bullet moves out.
+  - Also seen in passing: with `useRoutes` on and no page paths set, `_updateUrlWithTopPage` pushes
+    a bare `#` onto the URL (`http://localhost:8574/#`). Cosmetic, unfiled.
 
 - **2026-07-29 (NDA-016 done — §0 falsified the task's own premise)** — the fifth spec claim to
   fall to implementation, and the most consequential so far: the task was written around

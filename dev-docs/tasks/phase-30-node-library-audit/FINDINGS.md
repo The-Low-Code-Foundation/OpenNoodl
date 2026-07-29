@@ -251,6 +251,14 @@ therefore coming from somewhere else (browser focus restoration, the router, or 
 **that needs to be reproduced live before it is specified**, or the fix will be aimed at the wrong
 component. This is the one item in the eight where I have a symptom and no confirmed cause.
 
+> **RESOLVED 2026-07-29 by NDA-008 §0 — and the caution above was worth every word.** The stack
+> moves the scroll position **0 px** on a switch and calls `focus()` **0 times** (patched and
+> counted, across navigate/replace/`useRoutes` on and off). The scroll is the browser focusing an
+> element inside the viewer's `overflow: hidden` app root (`viewer.jsx:344-353`) — which stops the
+> *user* scrolling, not the browser, so the jump is one-way and the header never comes back. The
+> only DOM focus in the library is `TextInput` (`text-input.ts:211-214`). Full account in
+> [`NDA-008-COMPONENT-STACK.md`](NDA-008-COMPONENT-STACK.md) §0.
+
 ### 4. Run Tasks — see defect class D above
 
 Additionally: `sendSignalOnInput(taskComponent, 'Do')` at
@@ -495,8 +503,9 @@ for `Try Remove`). Two things are worth recording anyway:
 - **142 of 155 nodes** have only their machine-derived smell row in `NODE-REGISTER.md`. No
   implementation has been read for them. The second pass is direct evidence that the structural sweep
   under-reports: five real defects in the first six nodes anyone looked at closely.
-- **Two findings are unfinished.** The Component Stack scroll jump has a symptom and no located cause;
-  the Text sizing default has a mechanism but a contradiction in the default-propagation path. Both
-  need the running editor, and neither should be specced as a fix before that.
+- ~~**Two findings are unfinished.**~~ **Both closed 2026-07-29 in the running editor, and both
+  turned out to be aimed at the wrong file** — which is the strongest argument in this document for
+  the "reproduce before speccing" rule. The Component Stack does not scroll (NDA-008 §0); the Text
+  sizing default was never unset, and the real defect was a stale `parentLayout` (NDA-016 §0).
 - No live verification of *any* finding. Everything here is read from source.
 - Deprecated-node dispositions (23 nodes) have not been decided.
