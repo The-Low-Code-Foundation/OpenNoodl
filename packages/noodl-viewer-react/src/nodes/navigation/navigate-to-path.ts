@@ -28,6 +28,8 @@ interface NavigateToPathInstance extends NodeInstance {
     path?: string;
     queryNames?: string;
     hasScheduledNavigate?: boolean;
+    /** Message for the `Error` output; see NDA-004. */
+    lastError?: string;
   };
   scheduleNavigate(): void;
   navigate(): void;
@@ -81,7 +83,29 @@ const NavigateToPathNode: NodeDefinitionOptions = {
       }
     }
   },
-  outputs: {},
+  // NDA-004 §3. One of the ten nodes that took a signal and emitted none — so "navigate, then
+  // do the next thing" had nothing to hang off, and the `path === undefined` early return
+  // below was indistinguishable from a navigation that worked.
+  outputs: {
+    success: {
+      type: 'signal',
+      displayName: 'Success',
+      group: 'Events'
+    },
+    failure: {
+      type: 'signal',
+      displayName: 'Failure',
+      group: 'Events'
+    },
+    error: {
+      type: 'string',
+      displayName: 'Error',
+      group: 'Events',
+      getter(this: NavigateToPathInstance) {
+        return this._internal.lastError;
+      }
+    }
+  },
   methods: {
     scheduleNavigate(this: NavigateToPathInstance) {
       const internal = this._internal;
@@ -98,7 +122,14 @@ const NavigateToPathNode: NodeDefinitionOptions = {
       const internal = this._internal;
 
       let formattedPath = internal.path;
-      if (formattedPath === undefined) return;
+      if (formattedPath === undefined) {
+        // Was a bare `return`: the node was told to navigate, could not, and said nothing.
+        internal.lastError = 'No path to navigate to';
+        this.raiseRuntimeError('navigate-to-path/no-path', 'No path to navigate to');
+        this.flagOutputDirty('error');
+        this.sendSignalOnOutput('failure');
+        return;
+      }
 
       const matches = internal.path.match(/\{[A-Za-z0-9_]*\}/g);
       let inputs: string[] = [];
@@ -133,15 +164,30 @@ const NavigateToPathNode: NodeDefinitionOptions = {
         (hashPath !== undefined ? '#' + hashPath : '');
 
       // Browser-history navigation cannot run server-side; if the graph fires
-      // this during an SSR render it degrades to a no-op instead of throwing.
+      // this during an SSR render it degrades to a no-op instead of throwing. No signal
+      // either way — there is no navigation to succeed or fail at, and an SSR pass firing
+      // `Failure` would train authors to ignore the port.
       if (typeof window === 'undefined') return;
 
       if (this._internal.openInNewTab) {
-        window.open(compiledUrl, '_blank');
+        const opened = window.open(compiledUrl, '_blank');
+        if (!opened) {
+          internal.lastError = 'The browser blocked opening a new tab';
+          this.raiseRuntimeError(
+            'navigate-to-path/blocked',
+            'The browser blocked opening a new tab — this usually means the navigation was not triggered directly by a user action',
+            { url: compiledUrl }
+          );
+          this.flagOutputDirty('error');
+          this.sendSignalOnOutput('failure');
+          return;
+        }
       } else {
         window.history.pushState({}, '', compiledUrl);
         dispatchEvent(new PopStateEvent('popstate', {}));
       }
+
+      this.sendSignalOnOutput('success');
     },
     setParam(this: NavigateToPathInstance, name: string, value: unknown) {
       this._internal.params[name] = value;

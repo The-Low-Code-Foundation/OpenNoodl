@@ -31,6 +31,10 @@ const UniqueIdNode: NodeDefinitionOptions = {
         const internal = this._internal;
         internal.guid = Model.guid();
         this.flagOutputDirty('guid');
+        // NDA-004 §3. `Id` is a value output, so a downstream node that wants to *act* on a
+        // fresh id had nothing to trigger on — the node took `New` and emitted nothing. The
+        // value is flagged dirty first so the signal and the id it announces stay in step.
+        this.sendSignalOnOutput('generated');
       }
     }
   },
@@ -42,6 +46,11 @@ const UniqueIdNode: NodeDefinitionOptions = {
         const internal = this._internal;
         return internal.guid;
       }
+    },
+    generated: {
+      type: 'signal',
+      displayName: 'Generated',
+      group: 'Events'
     }
   },
   prototypeExtensions: {}

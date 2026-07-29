@@ -18,6 +18,8 @@ interface ClosePopupInstance extends NodeInstance {
     hasScheduledClose?: boolean;
     /** Installed by the popup layer when the popup opens; see showpopup's `onClosePopup`. */
     closeCallback?(action: string | undefined, results: Record<string, unknown>): void;
+    /** Message for the `Error` output; see NDA-004. */
+    lastError?: string;
   };
   scheduleClose(): void;
   close(): void;
@@ -57,6 +59,28 @@ const ClosePopupNode: NodeDefinitionOptions = {
       }
     }
   },
+  // NDA-004 §3: this node took a signal and emitted none, so nothing could be sequenced after
+  // a popup closed and a close that did nothing looked identical to one that worked.
+  outputs: {
+    success: {
+      type: 'signal',
+      displayName: 'Closed',
+      group: 'Events'
+    },
+    failure: {
+      type: 'signal',
+      displayName: 'Failure',
+      group: 'Events'
+    },
+    error: {
+      type: 'string',
+      displayName: 'Error',
+      group: 'Events',
+      getter: function (this: ClosePopupInstance) {
+        return this._internal.lastError;
+      }
+    }
+  },
   methods: {
     setResultValue: function (this: ClosePopupInstance, key: string, value: unknown) {
       this._internal.resultValues[key] = value;
@@ -76,8 +100,27 @@ const ClosePopupNode: NodeDefinitionOptions = {
       }
     },
     close: function (this: ClosePopupInstance) {
-      if (this._internal.closeCallback)
-        this._internal.closeCallback(this._internal.closeAction, this._internal.resultValues);
+      // NDA-004 §2. `closeCallback` is installed by the popup layer when the popup opens, so
+      // its absence means exactly one thing: this node was asked to close a popup and there
+      // is no popup in scope to close. The Failure Contract names this case explicitly. It
+      // used to be a bare `if` with no `else` — the node did nothing and said nothing, which
+      // reads to an author as a broken Close button.
+      //
+      // This is the *reporting* half only. Which popup a Close Popup node should target, and
+      // how that target is made visible on the canvas, is NDA-010 §2 / NDA-015's work.
+      if (!this._internal.closeCallback) {
+        this._internal.lastError = 'No popup in scope to close';
+        this.raiseRuntimeError(
+          'close-popup/no-popup-in-scope',
+          'No popup in scope to close — this node only works inside a component opened as a popup'
+        );
+        this.flagOutputDirty('error');
+        this.sendSignalOnOutput('failure');
+        return;
+      }
+
+      this._internal.closeCallback(this._internal.closeAction, this._internal.resultValues);
+      this.sendSignalOnOutput('success');
     },
     closeActionTriggered: function (this: ClosePopupInstance, name: string) {
       this._internal.closeAction = name;

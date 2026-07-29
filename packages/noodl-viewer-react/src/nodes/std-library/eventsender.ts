@@ -39,6 +39,15 @@ const EventSender: NodeDefinitionOptions = {
 
         //wait for all other inputs to update before sending
         this.scheduleAfterInputsHaveUpdated(function () {
+          // NDA-004 §2. An event sent to no channel name goes nowhere, and this used to be
+          // the silent case: no receiver fires, nothing is reported, and the author is left
+          // looking at the receiving end wondering why it never triggered.
+          if (!self._internal.channelName) {
+            self.raiseRuntimeError('event-sender/no-channel', 'No channel name, so the event was not sent');
+            self.sendSignalOnOutput('failure');
+            return;
+          }
+
           if (self._internal.propagation === 'global') {
             self.context.sendGlobalEventFromEventSender(self._internal.channelName, self._internal.inputValues);
           } else {
@@ -48,6 +57,11 @@ const EventSender: NodeDefinitionOptions = {
               self._internal.propagation
             );
           }
+
+          // NDA-004 §3: `Sent` fires after the event has been dispatched, which — because
+          // dispatch is deferred to after every input has settled — is a moment the author
+          // previously had no way to observe at all.
+          self.sendSignalOnOutput('sent');
         });
       }
     },
@@ -89,6 +103,18 @@ const EventSender: NodeDefinitionOptions = {
         allowEditOnly: true
       },
       group: 'Payload'
+    }
+  },
+  outputs: {
+    sent: {
+      type: 'signal',
+      displayName: 'Sent',
+      group: 'Events'
+    },
+    failure: {
+      type: 'signal',
+      displayName: 'Failure',
+      group: 'Events'
     }
   },
   prototypeExtensions: {
