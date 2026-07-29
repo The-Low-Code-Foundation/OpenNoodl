@@ -49,6 +49,12 @@ interface StatesInstance extends NodeInstance {
     state?: string;
     startState?: string;
     goToState?: string;
+    /**
+     * Every state requested during the current update pass, in the order they were asked
+     * for. NDA-002 §4: the node used to keep only the last one, so A → B → A inside one pass
+     * cancelled itself out and nothing fired at all.
+     */
+    goToStateQueue?: string[];
   };
   /**
    * Set directly on the instance rather than in `_internal` — the original does this and
@@ -56,7 +62,8 @@ interface StatesInstance extends NodeInstance {
    */
   hasScheduledGoToState?: boolean;
   scheduleGoToState(state: string): void;
-  goToState(state: string): void;
+  /** `settleImmediately` skips the animation, so a state passed *through* still reports. */
+  goToState(state?: string, settleImmediately?: boolean): void;
   jumpToState(state?: string): void;
   updateAtStatePorts(): void;
 }
@@ -405,7 +412,14 @@ const StatesNode: NodeDefinitionOptions = {
       this.flagOutputDirty('currentState');
 
       if (internal.valuesAreInitialised) {
-        // Do not send state changed on first initial state set
+        // Do not send state changed on first initial state set.
+        //
+        // Deliberate, and left alone by NDA-002 §4 — but worth naming, because it is the
+        // *other* reason this node looks like it fires at random. Entering the very first
+        // state is the node arriving at where it starts, not a transition an author asked
+        // for, so nothing downstream is told. An author who wires `stateChanged` and then
+        // wonders why the initial state produced nothing is seeing this, not the coalescing
+        // defect above.
         //console.log('stateChanged signal', state);
         this.sendSignalOnOutput('stateChanged');
       }
@@ -413,9 +427,35 @@ const StatesNode: NodeDefinitionOptions = {
 
       this.updateAtStatePorts();
     },
+    /**
+     * NDA-002 §4 (corpus R8/R9).
+     *
+     * This used to keep only the *last* state requested during a pass: a second call
+     * overwrote `_internal.goToState` and returned, and if it had overwritten back to the
+     * state the node was already in, `goToState`'s equality guard then returned too. Driving
+     * A → B → A inside one update pass produced no `stateChanged`, no `reached-A`, no
+     * `reached-B` and no port updates — an author who requested two transitions observed
+     * none, which is precisely the "your change was silently discarded" class the reactivity
+     * contract exists to eliminate.
+     *
+     * The requests are queued instead, and the queue is run. Coalescing the *animation* is
+     * still right — a state machine should not start two transitions in a frame — so every
+     * state the pass passes *through* is settled immediately, reporting `stateChanged` and
+     * its `reached-<state>`, and only the state the pass ends in animates.
+     */
     scheduleGoToState: function (this: StatesInstance, state: string) {
       const _this = this;
+      const internal = this._internal;
 
+      if (!internal.goToStateQueue) internal.goToStateQueue = [];
+      const queue = internal.goToStateQueue;
+
+      // Asking again for where the pass is already heading is not a transition. A falsy
+      // state is left to `goToState`, which resolves it to the first state.
+      const pendingTarget = queue.length > 0 ? queue[queue.length - 1] : internal.state;
+      if (state && pendingTarget === state) return;
+
+      queue.push(state);
       this._internal.goToState = state;
 
       //console.log('set go to state: ' + state)
@@ -424,10 +464,16 @@ const StatesNode: NodeDefinitionOptions = {
       this.scheduleAfterInputsHaveUpdated(function () {
         //console.log('changing state: ' + _this._internal.goToState)
         _this.hasScheduledGoToState = false;
-        _this.goToState(_this._internal.goToState);
+
+        // Drained before the loop, so a state change requested *by* one of these signals
+        // starts a fresh queue and a fresh pass rather than extending this one.
+        const requested = queue.splice(0, queue.length);
+        for (let i = 0; i < requested.length; i++) {
+          _this.goToState(requested[i], i < requested.length - 1);
+        }
       });
     },
-    goToState: function (this: StatesInstance, state?: string) {
+    goToState: function (this: StatesInstance, state?: string, settleImmediately?: boolean) {
       const internal = this._internal;
       if (!internal.states) return;
       if (!state) state = internal.states[0];
@@ -467,7 +513,13 @@ const StatesNode: NodeDefinitionOptions = {
                 delay: 0
               };
 
-            if ((transitionCurve.dur === 0 && transitionCurve.delay === 0) || !internal.useTransitions) {
+            if (
+              (transitionCurve.dur === 0 && transitionCurve.delay === 0) ||
+              !internal.useTransitions ||
+              // A state the pass only passed through: settle it so it is observable, rather
+              // than starting an animation the next queued state would cancel a line later.
+              settleImmediately
+            ) {
               // Simply set the target value
               internal.currentValues[v] = internal.stateParameters['value-' + state + '-' + v];
               this.flagOutputDirty(v);

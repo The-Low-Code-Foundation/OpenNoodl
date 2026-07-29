@@ -4,12 +4,15 @@
  * This is Richard's *"sometimes triggering a state change using the state value input doesn't
  * trigger the state change output"*, and it is not sometimes.
  *
- * `scheduleGoToState` stores the requested state and returns early if a transition is already
- * scheduled for this pass (`states.ts:416-428`), so several requests inside one update pass
- * are coalesced to the **last** one. `goToState` then compares that survivor against the
- * current state and returns if they match (`states.ts:430-434`). Go `A → B → A` in one pass
- * and the pair cancel each other out: no transition, no `stateChanged`, no `reached-A`, and no
- * `reached-B` — the intermediate state never happened as far as anything downstream can tell.
+ * `scheduleGoToState` used to store the requested state and return early if a transition was
+ * already scheduled for this pass, so several requests inside one update pass were coalesced
+ * to the **last** one. `goToState` then compared that survivor against the current state and
+ * returned if they matched. Go `A → B → A` in one pass and the pair cancelled each other out:
+ * no transition, no `stateChanged`, no `reached-A`, and no `reached-B` — the intermediate
+ * state never happened as far as anything downstream could tell.
+ *
+ * NDA-002 §4 queues the requests and runs them. The animation is still coalesced — only the
+ * state the pass ends in animates — but every state passed through is settled and reported.
  *
  * Two controls sit beside the failing rows. Without them "zero signals" would be equally
  * consistent with a harness that never drove a frame, and `reached-<state>` in particular is
@@ -124,7 +127,7 @@ function currentState(graph: CorpusGraph): string | undefined {
 }
 
 describe('NDA-001 R8–R9: States driven A → B → A inside one update pass', () => {
-  test.failing('R8: stateChanged fires for a state change that happened and came back', async () => {
+  test('R8: stateChanged fires for a state change that happened and came back', async () => {
     const graph = await statesGraph();
     const switcher = graph.node<SwitcherInstance>('switcher');
 
@@ -132,14 +135,16 @@ describe('NDA-001 R8–R9: States driven A → B → A inside one update pass', 
     switcher.goToA();
     runFrames(graph);
 
-    // Today: zero. Both requests land in the same pass, the second overwrites the first, and
-    // the survivor equals the state the node is already in — so `goToState` returns before it
-    // does anything at all.
-    expect(graph.signalsFor('states').filter((signal) => signal === 'stateChanged').length).toBeGreaterThan(0);
-    expect((graph.node('changedCounter') as unknown as CounterInstance).hits).toBeGreaterThan(0);
+    // Both requests land in the same pass. The second used to overwrite the first, and the
+    // survivor equalled the state the node was already in, so `goToState` returned before it
+    // did anything at all. The pass is queued now: B is settled and reported on the way
+    // through, and A — the state the pass ends in — is the one that animates.
+    expect(currentState(graph)).toBe('A');
+    expect(graph.signalsFor('states').filter((signal) => signal === 'stateChanged').length).toBe(2);
+    expect((graph.node('changedCounter') as unknown as CounterInstance).hits).toBe(2);
   });
 
-  test.failing('R9: reached-B fires when B is passed through', async () => {
+  test('R9: reached-B fires when B is passed through', async () => {
     const graph = await statesGraph();
     const switcher = graph.node<SwitcherInstance>('switcher');
 
@@ -147,9 +152,10 @@ describe('NDA-001 R8–R9: States driven A → B → A inside one update pass', 
     switcher.goToA();
     runFrames(graph);
 
-    // Today: zero. B was never entered, so the transition that would have ended in B was
-    // never started, so `animation.onFinish` never ran.
-    expect((graph.node('reachedBCounter') as unknown as CounterInstance).hits).toBeGreaterThan(0);
+    // B used to be skipped entirely, so the transition that would have ended in B was never
+    // started and `animation.onFinish` never ran. Passing *through* B now reports reaching
+    // it — the whole point of wiring A → B → A.
+    expect((graph.node('reachedBCounter') as unknown as CounterInstance).hits).toBe(1);
   });
 
   // ✅ Pinned control. A single transition works end to end — including the timer-driven
