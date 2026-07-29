@@ -13,7 +13,8 @@ const Model = ModelImport as unknown as ModelModule;
 /** `this` inside Remove Record Relation. */
 interface RemoveRelationInstance extends DbCrudBaseInstance, DbModelIdInstance, RelationPropertyInstance {
   _internal: DbCrudBaseInstance['_internal'] & DbModelIdInstance['_internal'] & RelationPropertyInstance['_internal'];
-  validateInputs(): void;
+  /** NDA-004 §2: returns the first missing input, or `undefined` when the node can act. */
+  validateInputs(): string | undefined;
   scheduleRemoveRelation(): void;
 }
 
@@ -43,39 +44,45 @@ const AddDbModelRelationNodeDefinition: DbCrudNodeModule = {
       }
     },
     methods: {
-      validateInputs: function (this: RemoveRelationInstance) {
-        if (!this.context.editorConnection) return;
-
-        const _warning = (message: string) => {
-          this.context.editorConnection.sendWarning(this.nodeScope.componentOwner.name, this.id, 'add-relation', {
-            message
-          });
-        };
+      /** The first thing missing, or `undefined` when ready. See the twin in `-addrelation`. */
+      validateInputs: function (this: RemoveRelationInstance): string | undefined {
+        let problem: string | undefined;
 
         if (this._internal.collectionId === undefined) {
-          _warning('No class specified');
+          problem = 'No class specified';
         } else if (this._internal.relationProperty === undefined) {
-          _warning('No relation property specified');
+          problem = 'No relation property specified';
         } else if (this._internal.targetModelId === undefined) {
-          _warning('No target record Id (the record to add a relation to) specified');
+          problem = 'No target record Id (the record to remove a relation from) specified';
         } else if (this._internal.model === undefined) {
-          _warning('No record Id specified (the record that should get the relation)');
-        } else {
-          this.context.editorConnection.clearWarning(this.nodeScope.componentOwner.name, this.id, 'add-relation');
+          problem = 'No record Id specified (the record that should lose the relation)';
         }
+
+        if (this.context.editorConnection) {
+          if (problem) {
+            this.context.editorConnection.sendWarning(this.nodeScope.componentOwner.name, this.id, 'add-relation', {
+              message: problem
+            });
+          } else {
+            this.context.editorConnection.clearWarning(this.nodeScope.componentOwner.name, this.id, 'add-relation');
+          }
+        }
+
+        return problem;
       },
       scheduleRemoveRelation: function (this: RemoveRelationInstance) {
         const _this = this;
         const internal = this._internal;
 
         this.scheduleOnce('StorageRemoveRelation', function () {
-          _this.validateInputs();
+          const problem = _this.validateInputs();
+          if (problem !== undefined) {
+            _this.setError(problem);
+            return;
+          }
 
-          if (!internal.model) return;
           const model = internal.model;
-
           const targetModelId = internal.targetModelId;
-          if (targetModelId === undefined) return;
 
           CloudStore.forScope(_this.nodeScope.modelScope).removeRelation({
             collection: internal.collectionId,

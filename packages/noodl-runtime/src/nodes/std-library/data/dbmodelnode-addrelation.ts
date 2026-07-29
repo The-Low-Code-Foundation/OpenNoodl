@@ -13,7 +13,8 @@ const Model = ModelImport as unknown as ModelModule;
 /** `this` inside Add Record Relation. */
 interface AddRelationInstance extends DbCrudBaseInstance, DbModelIdInstance, RelationPropertyInstance {
   _internal: DbCrudBaseInstance['_internal'] & DbModelIdInstance['_internal'] & RelationPropertyInstance['_internal'];
-  validateInputs(): void;
+  /** NDA-004 §2: returns the first missing input, or `undefined` when the node can act. */
+  validateInputs(): string | undefined;
   scheduleAddRelation(): void;
 }
 
@@ -41,39 +42,55 @@ const AddDbModelRelationNodeDefinition: DbCrudNodeModule = {
       }
     },
     methods: {
-      validateInputs: function (this: AddRelationInstance) {
-        if (!this.context.editorConnection) return;
-
-        const _warning = (message: string) => {
-          this.context.editorConnection.sendWarning(this.nodeScope.componentOwner.name, this.id, 'add-relation', {
-            message
-          });
-        };
+      /**
+       * The first thing missing, or `undefined` when the node is ready to act.
+       *
+       * NDA-004 §2 — this used to `return` immediately without an `editorConnection`, so
+       * outside the editor it validated *nothing*, and the caller then hit two bare `return`s.
+       * A deployed Add Record Relation with an unset property therefore did nothing at all and
+       * said nothing at all. It still writes the same editor warning it always did; what is
+       * new is that it also hands the verdict back, so the caller can fail properly.
+       */
+      validateInputs: function (this: AddRelationInstance): string | undefined {
+        let problem: string | undefined;
 
         if (this._internal.collectionId === undefined) {
-          _warning('No class specified');
+          problem = 'No class specified';
         } else if (this._internal.relationProperty === undefined) {
-          _warning('No relation property specified');
+          problem = 'No relation property specified';
         } else if (this._internal.targetModelId === undefined) {
-          _warning('No target record Id (the record to add a relation to) specified');
+          problem = 'No target record Id (the record to add a relation to) specified';
         } else if (this._internal.model === undefined) {
-          _warning('No record Id specified (the record that should get the relation)');
-        } else {
-          this.context.editorConnection.clearWarning(this.nodeScope.componentOwner.name, this.id, 'add-relation');
+          problem = 'No record Id specified (the record that should get the relation)';
         }
+
+        if (this.context.editorConnection) {
+          if (problem) {
+            this.context.editorConnection.sendWarning(this.nodeScope.componentOwner.name, this.id, 'add-relation', {
+              message: problem
+            });
+          } else {
+            this.context.editorConnection.clearWarning(this.nodeScope.componentOwner.name, this.id, 'add-relation');
+          }
+        }
+
+        return problem;
       },
       scheduleAddRelation: function (this: AddRelationInstance) {
         const _this = this;
         const internal = this._internal;
 
         this.scheduleOnce('StorageAddRelation', function () {
-          _this.validateInputs();
+          // One exit for every "cannot act" case, replacing two silent `return`s that between
+          // them covered the same conditions `validateInputs` already knew about.
+          const problem = _this.validateInputs();
+          if (problem !== undefined) {
+            _this.setError(problem);
+            return;
+          }
 
-          if (!internal.model) return;
           const model = internal.model;
-
           const targetModelId = internal.targetModelId;
-          if (targetModelId === undefined) return;
 
           CloudStore.forScope(_this.nodeScope.modelScope).addRelation({
             collection: internal.collectionId,

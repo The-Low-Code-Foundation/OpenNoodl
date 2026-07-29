@@ -208,6 +208,17 @@ const ModelNodeDefinition: NodeDefinitionOptions = {
       const internal = this._internal;
       this.scheduleAfterInputsHaveUpdated(() => {
         this.hasScheduledStore = false;
+
+        // NDA-004 §2 examined this `return` and left it silent, deliberately — it looks like
+        // the "Do that did nothing" defect fixed in `modelcrudbase.scheduleStore` and is not.
+        //
+        // This node has no `Do`. `scheduleStore` is reached from `userInputSetter`, i.e. from
+        // *any* value arriving at a `prop-…` input, so an Object node whose Id has not shown
+        // up yet reaches here once per incoming value as the app boots. Nobody asked it to
+        // act; the values are being accumulated, `dirtyValues` deliberately keeps them, and
+        // they are written the moment an object arrives. Firing `Failure` here would report a
+        // failure on the ordinary path and train authors to ignore the port — which the
+        // Failure Contract names as worse than no port at all.
         if (!internal.model) return;
 
         for (const i in internal.dirtyValues) {

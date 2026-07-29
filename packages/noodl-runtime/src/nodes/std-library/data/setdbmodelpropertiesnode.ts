@@ -140,7 +140,15 @@ const SetDbModelPropertiedNodeDefinition: DbCrudNodeModule = {
         const internal = this._internal;
         this.scheduleAfterInputsHaveUpdated(() => {
           this.hasScheduledStore = false;
-          if (!internal.model) return;
+
+          // NDA-004 §2: the two branches of `Store Type` disagreed about this. `scheduleSave`
+          // (cloud) has always answered a missing Id with `setError('Missing Record Id')`;
+          // this one, the local branch of the *same node*, returned silently. Same node, same
+          // mistake by the author, and whether they heard about it depended on an enum.
+          if (!internal.model) {
+            this.setError('Missing Record Id');
+            return;
+          }
 
           for (const i in internal.inputValues) {
             (internal.model as ModelLike).set(i, internal.inputValues[i], { resolve: true });

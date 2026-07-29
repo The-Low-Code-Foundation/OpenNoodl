@@ -35,6 +35,78 @@ const Model = ModelImport as unknown as ModelModule;
  * The record-backed siblings live in `dbmodelcrudbase.ts` and are deliberately near-copies.
  */
 
+/**
+ * NDA-004 §2 — the failure surface for the Object family.
+ *
+ * Applied per node rather than folded into {@link _addModelId}, because {@link _addModelId} also
+ * reaches `Create New Object`, which builds its own object and therefore cannot fail to find
+ * one. A `Failure` output on a node that cannot fail is worse than no output at all (Failure
+ * Contract), so the mixin is opt-in and every consumer states its own code prefix.
+ */
+function _addFailure(def: MixinNodeModule, codePrefix: string) {
+  Object.assign(def.node, {
+    outputs: def.node.outputs || {},
+    methods: def.node.methods || {}
+  });
+
+  Object.assign(def.node.outputs, {
+    failure: {
+      type: 'signal',
+      displayName: 'Failure',
+      group: 'Events'
+    },
+    error: {
+      type: 'string',
+      displayName: 'Error',
+      group: 'Error',
+      getter: function (this: FailableNodeInstance) {
+        return this._internal.error;
+      }
+    }
+  });
+
+  Object.assign(def.node.methods, {
+    /**
+     * The node was asked to act and had no object to act on.
+     *
+     * `codePrefix` is passed in rather than derived from `this.name`, so the raised code reads
+     * as the contract's examples do (`set-object-properties/no-object`) instead of echoing an
+     * internal type name, and so a rename of either cannot silently change the other.
+     */
+    _failNoModel: function (this: FailableNodeInstance, action: string) {
+      const fromRepeater = this._internal.idSource === 'foreach';
+      const message = fromRepeater
+        ? 'Nothing to ' + action + ' — Id Source is "From repeater" and no item resolved.'
+        : 'Nothing to ' +
+          action +
+          ' — no object is bound. Set the Id input, or connect one, before triggering this node.';
+
+      this._internal.error = message;
+      this.flagOutputDirty('error');
+
+      // Raise only in `explicit` mode. In `foreach` mode `foreachitem.ts` already raised the
+      // precise diagnosis when the binding missed (`repeater-item/no-item-in-scope` and
+      // friends), and a second, vaguer event about the same root cause is exactly the "two
+      // wordings of one failure" the Failure Contract calls noise. The graph surface still
+      // fires in both modes, because branching on "the write did not happen" is a different
+      // question from "why did the binding miss" and the author may only have wired one.
+      if (!fromRepeater) {
+        this.raiseRuntimeError(codePrefix + '/no-object', message, { idSource: 'explicit' });
+      }
+
+      this.sendSignalOnOutput('failure');
+    }
+  });
+}
+
+/** `this` inside a node that has had {@link _addFailure} mixed in. */
+interface FailableNodeInstance extends NodeInstance {
+  _internal: {
+    error?: string;
+    idSource?: unknown;
+  };
+}
+
 /** `this` inside a node that has had {@link _addModelId} mixed in. */
 interface ModelIdNodeInstance extends NodeInstance {
   _internal: {
@@ -52,8 +124,15 @@ interface ModelIdNodeInstance extends NodeInstance {
   bindToRepeaterItem(): void;
 }
 
-/** `this` inside a node that has had {@link _addInputProperties} mixed in as well. */
+/**
+ * `this` inside a node that has had {@link _addInputProperties} mixed in as well.
+ *
+ * `_failNoModel` comes from {@link _addFailure}, which is applied separately — every consumer
+ * of `addInputProperties` whose `Do` can find no object also applies it. The optional marker
+ * is what keeps `Create New Object`, which applies one mixin and not the other, honest.
+ */
 interface InputPropertiesNodeInstance extends ModelIdNodeInstance {
+  _failNoModel?(action: string): void;
   /** On the instance rather than in `_internal` — guards {@link scheduleStore}. */
   hasScheduledStore?: boolean;
   _pushInputValues(model: ModelLike): void;
@@ -406,7 +485,23 @@ function _addInputProperties(def: MixinNodeModule) {
       const internal = this._internal;
       this.scheduleAfterInputsHaveUpdated(() => {
         this.hasScheduledStore = false;
-        if (!internal.model) return;
+
+        // NDA-004 §2: `Do` on a node with no object bound used to return here — no write, no
+        // `Done`, no report. From the graph that is indistinguishable from a write that
+        // happened, which is the whole complaint the Failure Contract exists to answer.
+        //
+        // Reached in `explicit` mode when no Id was ever supplied; in `foreach` mode
+        // `foreachitem.ts` has already raised the more specific "not inside a Repeater", and
+        // the `Failure` output still fires here so the graph can branch either way.
+        if (!internal.model) {
+          // The guard is not paranoia about `_addFailure`: TypeScript cannot check which
+          // mixins a node composed, so without it a consumer that forgot `addFailure` would
+          // get a `TypeError` thrown out of a scheduler — the least legible failure there is,
+          // and precisely what this task exists to remove. Named instead.
+          if (this._failNoModel) this._failNoModel('store');
+          else this.raiseRuntimeError('data/mixin-missing', 'This node cannot report failures: addFailure was not applied');
+          return;
+        }
 
         this._pushInputValues(internal.model);
 
@@ -453,7 +548,8 @@ function _addInputProperties(def: MixinNodeModule) {
 const ModelCRUDBase = {
   addInputProperties: _addInputProperties,
   addModelId: _addModelId,
-  addBaseInfo: _addBaseInfo
+  addBaseInfo: _addBaseInfo,
+  addFailure: _addFailure
 };
 
 export = ModelCRUDBase;
