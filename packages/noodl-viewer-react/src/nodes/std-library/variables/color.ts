@@ -14,9 +14,16 @@ const Color: NodeDefinitionOptions = VariableBase.createDefinition({
   type: {
     name: 'color'
   },
+  // `null`/`undefined` are handled generically by `variablebase` per the empty-value
+  // contract — this only has to cast a genuinely present value, and a colour needs no
+  // coercion (it already arrives as the string the property panel or a style produced).
   cast: function (value: unknown) {
     return value;
-  }
+  },
+  emptyOptions: [
+    { value: 'null', label: 'Null (default)', coerce: null },
+    { value: 'empty-string', label: 'Empty string ("")', coerce: '' }
+  ]
 });
 
 export default {

@@ -62,19 +62,26 @@ describe('NDA-001 R7: a Variable set to its start value', () => {
 });
 
 describe('NDA-001 E1–E4: what a Variable does with an empty value', () => {
-  test.failing('E1: a String Variable fed null stores an empty value, not the text "null"', () => {
+  test('E1: a String Variable fed null stores an empty value, not the text "null"', () => {
     const variable = stringVariable();
 
     variable.node.setInputValue('value', 'hello');
     variable.node.setInputValue('value', null);
 
-    // Today: `"null"` — four visible characters in the UI, and truthy, so every downstream
-    // Condition takes the wrong branch. Whatever NDA-003 decides "empty" is, it is not this.
+    // Was: `"null"` — four visible characters in the UI, and truthy, so every downstream
+    // Condition took the wrong branch.
+    //
+    // Adjusted from the original corpus expectation (`.toBe('')`), which predates Richard's
+    // nullable-variables decision (EMPTY-VALUE-CONTRACT.md §3). The contract's default empty
+    // value for a Variable is `null` itself, not the type's zero value — `''` is only what
+    // `savedValue` holds if the author opts into it via the `Treat empty as` input. `null` is
+    // still not the text `"null"`, so the first assertion — the one Richard's report was
+    // actually about — is unchanged.
     expect(variable.out('savedValue')).not.toBe('null');
-    expect(variable.out('savedValue')).toBe('');
+    expect(variable.out('savedValue')).toBeNull();
   });
 
-  test.failing('E2: a String Variable fed undefined is left alone', () => {
+  test('E2: a String Variable fed undefined is left alone', () => {
     const variable = stringVariable();
 
     variable.node.setInputValue('value', 'hello');
@@ -85,7 +92,7 @@ describe('NDA-001 E1–E4: what a Variable does with an empty value', () => {
     expect(variable.signals).toEqual(['changed']);
   });
 
-  test.failing('E3: a Number Variable fed null is distinguishable from a real zero', () => {
+  test('E3: a Number Variable fed null is distinguishable from a real zero', () => {
     const cleared = numberVariable();
     const zero = createNode(NumberModule, 'Number', 'corpus-number-zero');
 
@@ -93,29 +100,36 @@ describe('NDA-001 E1–E4: what a Variable does with an empty value', () => {
     cleared.node.setInputValue('value', null);
     zero.node.setInputValue('value', 0);
 
-    // Today both hold `0`. "The user cleared this field" and "the user typed zero" are the
-    // same state, which is why a cleared numeric input reads as a real value downstream.
+    // Was: both held `0`. "The user cleared this field" and "the user typed zero" were the
+    // same state, which is why a cleared numeric input read as a real value downstream.
     expect(cleared.out('savedValue')).not.toBe(zero.out('savedValue'));
+
+    // The contract is specific about *what* the cleared state is, not just that it differs
+    // (EMPTY-VALUE-CONTRACT.md §3): `null`, by default, not some other sentinel.
+    expect(cleared.out('savedValue')).toBeNull();
+    expect(zero.out('savedValue')).toBe(0);
   });
 
-  test.failing('E4: a Number Variable fed undefined is left alone', () => {
+  test('E4: a Number Variable fed undefined is left alone', () => {
     const variable = numberVariable();
 
     variable.node.setInputValue('value', 5);
     variable.node.setInputValue('value', undefined);
 
-    // Today: `NaN`.
+    // Was: `NaN`.
     expect(variable.out('savedValue')).toBe(5);
   });
 
-  test.failing('E4 (corollary): once NaN lands, changed stops meaning anything', () => {
+  test('E4 (corollary): once NaN lands, changed stops meaning anything', () => {
     const variable = numberVariable();
 
     variable.node.setInputValue('value', undefined);
     const afterFirst = variable.signals.length;
 
-    // `NaN !== NaN`, so `variablebase.ts:98` reports a change every time, for ever, on a
-    // value that has not moved.
+    // Was: `NaN !== NaN`, so `variablebase.ts` reported a change every time, for ever, on a
+    // value that had not moved. Now `undefined` abstains before it ever reaches `cast`
+    // (EMPTY-VALUE-CONTRACT.md corollary 4), so `NaN` never lands in the first place —
+    // `afterFirst` is `0`, and stays `0`.
     variable.node.setInputValue('value', undefined);
     variable.node.setInputValue('value', undefined);
 
