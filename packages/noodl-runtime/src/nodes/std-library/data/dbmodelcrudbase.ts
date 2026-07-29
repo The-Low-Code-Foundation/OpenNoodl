@@ -22,7 +22,10 @@ import type {
 } from './crud-mixins';
 
 import ModelImport = require('../../../model');
+import Node = require('../../../node');
 import CloudStoreImport = require('../../../api/cloudstore');
+
+import { forgetForEachItem, resolveForEachItem } from '../../../foreachitem';
 
 const Model = ModelImport as unknown as ModelModule;
 const CloudStore = CloudStoreImport as {
@@ -266,6 +269,11 @@ function _addModelId(def: DbCrudNodeModule, opts?: { includeInputs?: boolean; in
         name: 'conditionalports/extended',
         condition: 'idSource = explicit OR idSource NOT SET',
         inputs: ['modelId']
+      },
+      {
+        name: 'conditionalports/extended',
+        condition: 'idSource = foreach',
+        inputs: ['repeaterComponent']
       }
     ]);
 
@@ -286,16 +294,23 @@ function _addModelId(def: DbCrudNodeModule, opts?: { includeInputs?: boolean; in
         tooltip:
           'Choose if you want to specify the Id explicitly, \n or if you want it to be that of the current record in a repeater.',
         set: function (this: DbModelIdInstance, value: unknown) {
-          if (value === 'foreach') {
-            this.scheduleAfterInputsHaveUpdated(() => {
-              // Find closest nodescope that have a _forEachModel
-              let component = this.nodeScope.componentOwner;
-              while (component !== undefined && component._forEachModel === undefined && component.parentNodeScope) {
-                component = component.parentNodeScope.componentOwner;
-              }
-              this.setModel(component !== undefined ? component._forEachModel : undefined);
-            });
-          }
+          this._internal.idSource = value;
+          if (value === 'foreach') this.bindToRepeaterItem();
+        }
+      },
+      /**
+       * BINDING-CONTRACT §(a) — which Repeater's item, when nesting makes "the nearest one"
+       * ambiguous. Optional: unset keeps the historical nearest-wins resolution exactly.
+       */
+      repeaterComponent: {
+        type: 'component',
+        displayName: 'Repeater Component',
+        group: 'General',
+        set: function (this: DbModelIdInstance, value: string) {
+          this._internal.repeaterComponent = value || undefined;
+          // Only re-resolve in the mode this input belongs to; in `explicit` mode the record
+          // comes from `modelId` and rebinding here would quietly overwrite it.
+          if (this._internal.idSource === 'foreach') this.bindToRepeaterItem();
         }
       },
       modelId: {
@@ -331,6 +346,24 @@ function _addModelId(def: DbCrudNodeModule, opts?: { includeInputs?: boolean; in
 
   // Methods
   Object.assign(def.node.methods, {
+    /**
+     * Bind to the current Repeater/Run Tasks item — BINDING-CONTRACT, via `foreachitem.ts`.
+     * The deferral is the one these nodes always had; the reporting is new.
+     */
+    bindToRepeaterItem: function (this: DbModelIdInstance) {
+      this.scheduleAfterInputsHaveUpdated(() => {
+        this.setModel(resolveForEachItem(this, { target: this._internal.repeaterComponent }));
+      });
+    },
+    /**
+     * Chains to `Node.prototype` so a consumer that later adds its own does not have to
+     * remember this. The reporter holds instances strongly and these nodes live inside
+     * Repeater templates, which is exactly where instances churn.
+     */
+    _onNodeDeleted: function (this: DbModelIdInstance) {
+      Node.prototype._onNodeDeleted.call(this);
+      forgetForEachItem(this);
+    },
     setCollectionID: function (this: DbModelIdInstance & DbCrudBaseInstance, id: string) {
       this._internal.collectionId = id;
       this.clearWarnings();

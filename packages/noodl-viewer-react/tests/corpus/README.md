@@ -17,10 +17,17 @@ row must be shown to discriminate before it is trusted.
 
 | File | Contract | Rows |
 |---|---|---|
-| `nda-015-explicit-binding.test.ts` | [Binding](../../../../dev-docs/reference/BINDING-CONTRACT.md) §(a)(b)(c) on Parent Component Object | 9 |
+| `nda-015-explicit-binding.test.ts` | [Binding](../../../../dev-docs/reference/BINDING-CONTRACT.md) §(a)(b)(c) on Parent Component Object, **+ reader/writer agreement** | 11 |
 | `nda-010-close-popup-targeting.test.ts` | Binding §(a)(b)(c) on Close Popup — NDA-010 §2 | 7 |
+| `nda-015-repeater-item-binding.test.ts` | Binding §(a)(b)(c) on the current Repeater item (`_forEachModel`) — FINDINGS F-ii | 13 |
 
-Both use `visual-container.ts` rather than the real `Group`: the walk under test reads exactly
+The `_forEachModel` rows nest **two Repeaters**, for the same reason the Parent Component Object
+rows nest components: with one Repeater there is only one answer and the binding looks correct
+whatever the code does. Its sibling rows for the fifth site (`Component.RepeaterObject` in a
+Function node) are in the runtime half, because both that seam and `Run Tasks` — the *second*
+producer of `_forEachModel` — live there.
+
+The first two files use `visual-container.ts` rather than the real `Group`: the walk under test reads exactly
 `addChild` and `getVisualParentNode`, and standing up a React node needs a DOM, a `ResizeObserver`
 and three untransformed scroll plugins. Both members are copied verbatim from
 `react-component-node.ts`, because a reconstruction that diverged there would be testing the

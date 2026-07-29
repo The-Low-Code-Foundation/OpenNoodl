@@ -17,6 +17,8 @@ import type {
 import Node = require('../../../node');
 import ModelImport = require('../../../model');
 
+import { forgetForEachItem, resolveForEachItem } from '../../../foreachitem';
+
 const Model = ModelImport as unknown as ModelModule;
 
 /**
@@ -35,6 +37,10 @@ interface ModelNodeInstance extends NodeInstance {
     /** Which inputs have changed since the last store, so unchanged ones are not rewritten. */
     dirtyValues: Record<string, boolean>;
     onModelChangedCallback?: (args: { name: string }) => void;
+    /** Latest `idSource`, so the explicit-target input knows whether it is the live mode. */
+    idSource?: unknown;
+    /** The `Repeater Component` input: an item component named explicitly (BINDING-CONTRACT §a). */
+    repeaterComponent?: string;
   };
   /** On the instance rather than in `_internal` — these guard the two schedulers. */
   hasScheduledStore?: boolean;
@@ -43,6 +49,7 @@ interface ModelNodeInstance extends NodeInstance {
   scheduleSetModel(): void;
   setModelID(id: string): void;
   setModel(model: ModelLike | undefined): void;
+  bindToRepeaterItem(): void;
 }
 
 const ModelNodeDefinition: NodeDefinitionOptions = {
@@ -59,6 +66,11 @@ const ModelNodeDefinition: NodeDefinitionOptions = {
       name: 'conditionalports/extended',
       condition: 'idSource = explicit OR idSource NOT SET',
       inputs: ['modelId']
+    },
+    {
+      name: 'conditionalports/extended',
+      condition: 'idSource = foreach',
+      inputs: ['repeaterComponent']
     }
   ],
   initialize: function (this: ModelNodeInstance) {
@@ -120,16 +132,26 @@ const ModelNodeDefinition: NodeDefinitionOptions = {
       displayName: 'Get Id from',
       group: 'General',
       set: function (this: ModelNodeInstance, value: unknown) {
-        if (value === 'foreach') {
-          this.scheduleAfterInputsHaveUpdated(() => {
-            // Find closest nodescope that have a _forEachModel
-            let component = this.nodeScope.componentOwner;
-            while (component !== undefined && component._forEachModel === undefined && component.parentNodeScope) {
-              component = component.parentNodeScope.componentOwner;
-            }
-            this.setModel(component !== undefined ? component._forEachModel : undefined);
-          });
-        }
+        this._internal.idSource = value;
+        if (value === 'foreach') this.bindToRepeaterItem();
+      }
+    },
+    /**
+     * BINDING-CONTRACT §(a) — which Repeater's item, when nesting makes "the nearest one"
+     * ambiguous. Optional: unset keeps the historical nearest-wins resolution exactly.
+     *
+     * A component name rather than a hop count, for the same reason as everywhere else in the
+     * contract — "two levels up" breaks the moment somebody wraps a component in a Group.
+     */
+    repeaterComponent: {
+      type: 'component',
+      displayName: 'Repeater Component',
+      group: 'General',
+      set: function (this: ModelNodeInstance, value: string) {
+        this._internal.repeaterComponent = value || undefined;
+        // Only re-resolve in the mode this input belongs to; in `explicit` mode the model
+        // comes from `modelId` and rebinding here would quietly overwrite it.
+        if (this._internal.idSource === 'foreach') this.bindToRepeaterItem();
       }
     },
     modelId: {
@@ -167,6 +189,18 @@ const ModelNodeDefinition: NodeDefinitionOptions = {
     }
   },
   prototypeExtensions: {
+    /**
+     * Bind to the current Repeater/Run Tasks item — BINDING-CONTRACT, via `foreachitem.ts`.
+     *
+     * The deferral is the one this node always had: the walk needs the component tree in
+     * place, and `scheduleAfterInputsHaveUpdated` is where it was. What is new is that a walk
+     * finding nothing now reports instead of setting `undefined` and falling silent.
+     */
+    bindToRepeaterItem: function (this: ModelNodeInstance) {
+      this.scheduleAfterInputsHaveUpdated(() => {
+        this.setModel(resolveForEachItem(this, { target: this._internal.repeaterComponent }));
+      });
+    },
     scheduleStore: function (this: ModelNodeInstance) {
       if (this.hasScheduledStore) return;
       this.hasScheduledStore = true;
@@ -217,6 +251,9 @@ const ModelNodeDefinition: NodeDefinitionOptions = {
     _onNodeDeleted: function (this: ModelNodeInstance) {
       Node.prototype._onNodeDeleted.call(this);
       if (this._internal.model) this._internal.model.off('change', this._internal.onModelChangedCallback);
+      // Not optional — the resolved-target reporter holds instances strongly, and a Repeater
+      // churning its template creates and destroys these constantly.
+      forgetForEachItem(this);
     },
     registerOutputIfNeeded: function (this: ModelNodeInstance, name: string) {
       if (this.hasOutput(name)) {

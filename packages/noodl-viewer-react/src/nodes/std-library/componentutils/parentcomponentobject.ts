@@ -2,7 +2,12 @@
 
 import { EventEmitter } from 'events';
 import { Node } from '@noodl/runtime';
-import { componentAncestorNames, findAncestorWithName, findAncestorWithNodeType } from '@noodl/runtime/src/componentwalk';
+import {
+  COMPONENT_OBJECT_TYPES,
+  componentAncestorNames,
+  findAncestorWithComponentObject,
+  findAncestorWithName
+} from '@noodl/runtime/src/componentwalk';
 import Model from '@noodl/runtime/src/model';
 import { ResolvedTargetReporter } from '@noodl/runtime/src/resolvedtarget';
 import type {
@@ -20,17 +25,6 @@ import type {
 
 const graphEventEmitter = new EventEmitter();
 graphEventEmitter.setMaxListeners(1000000);
-
-/**
- * The node types that make a component "one that owns a Component Object".
- *
- * `'Component State'` is the deprecated predecessor, and it belongs here: `javascriptnodeparser.js`
- * has always accepted both, while this node accepted only the first. A Function node reading
- * `Component Object` and a Parent Component Object node sitting in the same place could
- * therefore resolve to *different* ancestors, with nothing to say so — found by NDA-015 §2's
- * sweep. Accepting both here is what makes the two agree.
- */
-const COMPONENT_OBJECT_TYPES = ['net.noodl.ComponentObject', 'Component State'] as const;
 
 /**
  * Clause (b) of the Binding Contract: the resolved ancestor's name, on the node card.
@@ -274,7 +268,7 @@ const ParentComponentObject: NodeDefinitionOptions = {
 
       // Implicit: nearest ancestor that owns a Component Object. Unchanged behaviour, so
       // existing projects bind exactly as before — what is new is that it now says so.
-      const parent: ComponentInstanceLike | undefined = findAncestorWithNodeType(self, COMPONENT_OBJECT_TYPES);
+      const parent: ComponentInstanceLike | undefined = findAncestorWithComponentObject(self);
 
       if (!parent) {
         this._internal.parentComponentName = undefined;

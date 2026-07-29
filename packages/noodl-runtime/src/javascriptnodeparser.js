@@ -2,6 +2,8 @@
 
 const Model = require('./model');
 const { getAbsoluteUrl } = require('./utils');
+const { findAncestorWithComponentObject } = require('./componentwalk');
+const { resolveForEachItem } = require('./foreachitem');
 
 var userFunctionsCache = {};
 
@@ -381,55 +383,13 @@ JavascriptNodeParser.prototype.getPorts = function () {
 const _componentScopes = {};
 
 function _findParentComponentStateModelId(node) {
-  function getParentComponent(component) {
-    let parent;
-    if (component.getRoots().length > 0) {
-      //visual
-      const root = component.getRoots()[0];
-
-      if (root.getVisualParentNode) {
-        //regular visual node
-        if (root.getVisualParentNode()) {
-          parent = root.getVisualParentNode().nodeScope.componentOwner;
-        }
-      } else if (root.parentNodeScope) {
-        //component instance node
-        parent = component.parentNodeScope.componentOwner;
-      }
-    } else if (component.parentNodeScope) {
-      parent = component.parentNodeScope.componentOwner;
-    }
-
-    //check that a parent exists and that the component is different
-    if (parent && parent.nodeScope && parent.nodeScope.componentOwner !== component) {
-      //check if parent has a Component State node
-      if (parent.nodeScope.getNodesWithType('net.noodl.ComponentObject').length > 0) {
-        return parent;
-      }
-
-      if (parent.nodeScope.getNodesWithType('Component State').length > 0) {
-        return parent;
-      }
-
-      //if not, continue searching up the tree
-      return getParentComponent(parent);
-    }
-  }
-
-  const parent = getParentComponent(node.nodeScope.componentOwner);
+  // Was a fourth hand-copy of the walk. It happened to accept both Component Object types, so
+  // it agreed with `parentcomponentobject.ts` — but only by coincidence, and the two write-side
+  // copies did not. One implementation now (`componentwalk.ts`).
+  const parent = findAncestorWithComponentObject(node.nodeScope.componentOwner);
   if (!parent) return;
 
-  //this._internal.parentComponentName = parent.name;
-
   return 'componentState' + parent.getInstanceId();
-}
-
-function _findForEachModel(node) {
-  var component = node.nodeScope.componentOwner;
-  while (component !== undefined && component._forEachModel === undefined && component.parentNodeScope) {
-    component = component.parentNodeScope.componentOwner;
-  }
-  return component !== undefined ? component._forEachModel : undefined;
 }
 
 JavascriptNodeParser.getComponentScopeForNode = function (node) {
@@ -452,8 +412,30 @@ JavascriptNodeParser.getComponentScopeForNode = function (node) {
 
   _componentScopes[componentId].ParentObject = parentComponentObject;
 
-  // Set the for each model
-  _componentScopes[componentId].RepeaterObject = _findForEachModel(node);
+  // The for each model — the fifth site of the `_forEachModel` walk (FINDINGS F-ii), and the
+  // only one that has to be **lazy**.
+  //
+  // The other four resolve because an author set `Id Source = From repeater`, which is a
+  // statement of intent: a miss there is worth raising. This one is computed for *every*
+  // Function node in the project, whether or not its script ever mentions `Component
+  // .RepeaterObject`. Resolving eagerly would raise "not inside a Repeater" against every
+  // Function node in every non-repeated component in the project — the exact noise that would
+  // get the whole channel ignored.
+  //
+  // A getter defers both the walk and the report to the moment the script actually reads the
+  // property, so only a script that *asked* for the repeater item can be told it did not get
+  // one. The scope object is handed to the user function by reference (see the `Component`
+  // parameter in `_source` and `simplejavascript.ts`), never spread or serialised, so the
+  // getter survives to the point of use. `configurable` because this runs per node and the
+  // scope object is cached per component — last writer wins, exactly as the plain assignment
+  // it replaces did.
+  Object.defineProperty(_componentScopes[componentId], 'RepeaterObject', {
+    configurable: true,
+    enumerable: true,
+    get: function () {
+      return resolveForEachItem(node);
+    }
+  });
 
   return _componentScopes[componentId];
 };

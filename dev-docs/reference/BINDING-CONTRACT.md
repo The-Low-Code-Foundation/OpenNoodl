@@ -8,8 +8,27 @@ wire.
 |---|---|
 | `Parent Component Object` | ✅ obeys all three clauses |
 | `Close Popup` | ✅ obeys all three clauses |
+| "current Repeater item" (`_forEachModel`, 5 sites) | ✅ obeys all three clauses, via `foreachitem.ts` |
 | `Set Parent Component Object Properties` | ⚠️ shares the walk, has no explicit target yet |
-| "current Repeater item" (`_forEachModel`, 5 sites) | ❌ same class, unfixed — see FINDINGS F-ii |
+| `Parent Component State` (deprecated) | ⚠️ shares the walk; type list deliberately narrower |
+
+## The two walks
+
+There are two, and they are not interchangeable. Using the wrong one moves bindings silently.
+
+| | `componentAncestors` family | `scopeChain` family |
+|---|---|---|
+| Follows | the **visual** parent when there is one, else `parentNodeScope` | `parentNodeScope` only |
+| Includes the component itself | no | **yes** |
+| Used for | "an ancestor that owns a node of type X" (Component Object) | ambient properties (`_forEachModel`, `_popupCloseHandler`) |
+| Why | the node being looked for lives in an ancestor's scope | the property is handed down at `createNode` time, so it follows creation, not layout — and the asking node is normally *inside* the component carrying it |
+
+Both live in `componentwalk.ts`. `COMPONENT_OBJECT_TYPES` and `findAncestorWithComponentObject`
+live there too, because the four copies of the Component Object walk each carried their own type
+list and the lists had **diverged** — see the note in that file. That is worse than duplication:
+with a deprecated `Component State` on a nearer ancestor and a modern Component Object further
+up, `Parent Component Object` *read* one component while `Set Parent Component Object
+Properties` *wrote* to another.
 
 ## How to obey it
 
@@ -26,9 +45,25 @@ many at runtime, and reporting them one at a time would flicker between answers.
 genuinely disagree it says so ("→ 2 targets: A, B"), which is not a fallback — it is the most useful
 thing the canvas can say, and it is the litmus test at the bottom of this file answered honestly.
 
-Clause (c) goes through `Node.raiseRuntimeError` (Failure Contract). Gate it: raise only once the
-node has had a fair chance to resolve, and only once per distinct miss. Both guards are load-bearing
-— see the note on resolution timing below.
+Clause (c) goes through `Node.raiseRuntimeError` (Failure Contract). Raise only once per distinct
+miss — a node that re-resolves on every graph change would otherwise drown the channel it is trying
+to use. Whether you *also* need to gate the first attempt depends on the protocol, and the two
+shipped cases differ:
+
+- **Looking for a node in an ancestor's scope** (`parentcomponentobject.ts`) needs the gate. That
+  ancestor's nodes are still being created when the child first asks, so an early miss is expected
+  and must stay silent, or every correctly-wired graph reports a failure on load.
+- **Reading an ambient property** (`foreachitem.ts`) does not. `_forEachModel` arrives as
+  `extraProps` on `createNode`, which `NodeContext.createComponentInstanceNode` copies onto the
+  instance *before* `setComponentModel` builds any of the component's inner nodes. By the time a
+  node inside the template can ask, the answer is there or is never coming.
+
+Do not copy either file's timing into a third without checking which case it is.
+
+**Where the resolution is computed for every node whether or not it is wanted, make it lazy.**
+`Component.RepeaterObject` is built for every Function node in the project; resolving eagerly would
+file a failure against every Function node outside a Repeater. It is a getter, so only a script that
+actually reads it can be told it resolved nothing.
 
 ## The rule
 

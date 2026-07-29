@@ -402,7 +402,54 @@ node sitting in the same place could resolve to different ancestors**, with noth
 by moving the walk to `noodl-runtime/src/componentwalk.ts` and having the Component Object family
 accept both types.
 
-**F-ii. `_forEachModel` is the same defect class, unfixed — five sites.** "The current Repeater item"
+**F-i′. F-i was only a quarter closed, and the live half was worse than the half that was fixed.**
+Re-read on 2026-07-29 while doing F-ii: only `parentcomponentobject.ts` had actually adopted
+`componentwalk.ts`. `setparentcomponentobjectproperties.ts`, `parentcomponentstate.ts` and
+`javascriptnodeparser.js` were **still hand-rolled**, still carrying their own type lists — so the
+drift F-i describes was still shipping, in a worse direction than the one it names:
+
+| Site | Accepted | Direction |
+|---|---|---|
+| `parentcomponentobject.ts` | modern + deprecated | **read** |
+| `javascriptnodeparser.js` | modern + deprecated | read (Function nodes) |
+| `setparentcomponentobjectproperties.ts` | modern only | **write** |
+| `parentcomponentstate.ts` (deprecated node) | deprecated only | read/write |
+
+F-i's example is two *readers* disagreeing. The live one is a **reader and a writer of the same
+state disagreeing**: with a deprecated `Component State` on `/Outer` and a modern Component Object
+on `/Root`, `Parent Component Object` read `/Outer` while the `Set Parent Component Object
+Properties` node beside it wrote `/Root`. The author sees a value that never changes and a write
+that never lands, with nothing on the canvas to explain it. Now closed for real — all four go
+through `componentwalk.ts`, and the type list is a shared constant (`COMPONENT_OBJECT_TYPES`) rather
+than four hand-written lists. The deprecated node's list stays deliberately narrower; widening it
+would have *moved* bindings rather than aligned them, which is written into the code.
+
+Worth generalising: **"de-duplicated into one place" is a claim to re-check, not a fact to inherit.**
+The commit that created `componentwalk.ts` converted one of four call sites and described the job as
+done.
+
+**F-ii. `_forEachModel` is the same defect class — five sites. ✅ Closed 2026-07-29.** All five now
+resolve through `noodl-runtime/src/foreachitem.ts`, which implements the three clauses once: an
+optional `Repeater Component` input (a), the resolved template on the node card (b), and
+`repeater-item/no-item-in-scope` · `/target-not-found` · `/target-has-no-item` (c). 16 corpus rows,
+shown to discriminate. Three things the original write-up did not know:
+
+- **There are two producers, not one.** `runtasks.ts:193` sets `_forEachModel` with the same
+  `createNode` extraProps shape as the Repeater, so the messages name both — telling an author with
+  a Run Tasks template that they are "not inside a Repeater" would send them hunting a bug that is
+  not there.
+- **The fifth site could not be fixed like the other four.** `Component.RepeaterObject` is computed
+  for *every* Function node in the project, not only ones whose author asked for a repeater item, so
+  raising eagerly would have filed a failure against every Function node in every non-repeated
+  component. It is a lazy getter; only a script that reads it can be told it resolved nothing.
+- **One of the five was crashing, not falling silent.** `dbmodelnode2.setModel` dereferenced its
+  argument unguarded (a documented live defect, PLAT-003 NOTES §27.3), so a `Record` set to "From
+  repeater" outside a repeater threw a `TypeError` from inside an input setter. Its twin the Object
+  node always guarded. Fixed with the rest.
+
+The original write-up follows.
+
+**F-ii (as first written).** "The current Repeater item"
 is resolved by walking `parentNodeScope.componentOwner` upwards until a component carries
 `_forEachModel`:
 
@@ -420,6 +467,9 @@ is clause (c) exactly. Nested Repeaters give the same undiscoverable nearest-win
 (a). Not fixed here: it is five files this task does not otherwise touch, each needing its own corpus
 row, and the shape is named as `findAncestorWithProperty` in `componentwalk.ts` so a sixth spelling
 does not get invented. **This is the highest-value remaining item in class F.**
+
+> Path correction: all five sites are in **`packages/noodl-runtime/src/`**, not the viewer — the
+> table's bare `data/…` prefixes read as viewer paths and are not.
 
 **What the sweep cleared.** The other `componentOwner` hits are not this class: they read
 `componentOwner.name` to attribute a warning (~20 sites), or `componentOwner` for the node's *own*

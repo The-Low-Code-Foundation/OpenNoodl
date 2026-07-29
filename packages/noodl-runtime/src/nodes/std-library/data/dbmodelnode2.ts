@@ -16,6 +16,8 @@ import type {
 
 import Node = require('../../../node');
 import EdgeTriggeredInput = require('../../../edgetriggeredinput');
+
+import { forgetForEachItem, resolveForEachItem } from '../../../foreachitem';
 import ModelImport = require('../../../model');
 import CloudStore = require('../../../api/cloudstore');
 
@@ -47,12 +49,17 @@ interface DbModelNodeInstance extends NodeInstance {
     /** Assigned an empty object in `initialize` and read nowhere. Dead. */
     relationModelIds?: Record<string, unknown>;
     onModelChangedCallback?: (args: { name: string }) => void;
+    /** Latest `idSource`, so the explicit-target input knows whether it is the live mode. */
+    idSource?: unknown;
+    /** The `Repeater Component` input: an item component named explicitly (BINDING-CONTRACT §a). */
+    repeaterComponent?: string;
     /** `scheduleOnce` writes `hasScheduled<Type>` flags here. */
     [extra: string]: unknown;
   };
   setCollectionID(id: string): void;
   setModelID(id: string): void;
-  setModel(model: ModelLike): void;
+  setModel(model: ModelLike | undefined): void;
+  bindToRepeaterItem(): void;
   scheduleOnce(type: string, cb: () => void): void;
   setError(err: string): void;
   clearWarnings(): void;
@@ -73,6 +80,11 @@ const ModelNodeDefinition: NodeDefinitionOptions = {
       name: 'conditionalports/extended',
       condition: 'idSource = explicit OR idSource NOT SET',
       inputs: ['modelId']
+    },
+    {
+      name: 'conditionalports/extended',
+      condition: 'idSource = foreach',
+      inputs: ['repeaterComponent']
     }
   ],
   initialize: function (this: DbModelNodeInstance) {
@@ -147,21 +159,23 @@ const ModelNodeDefinition: NodeDefinitionOptions = {
       displayName: 'Id Source',
       group: 'General',
       set: function (this: DbModelNodeInstance, value: unknown) {
-        if (value === 'foreach') {
-          this.scheduleAfterInputsHaveUpdated(() => {
-            // Find closest nodescope that have a _forEachModel
-            let component = this.nodeScope.componentOwner;
-            while (component !== undefined && component._forEachModel === undefined && component.parentNodeScope) {
-              component = component.parentNodeScope.componentOwner;
-            }
-            // DEFECT (PLAT-003 NOTES §27.3), left verbatim: when the walk finds no repeater
-            // this passes `undefined`, and `setModel` below dereferences its argument
-            // without a guard — so a Record node set to "From repeater" outside one throws
-            // a `TypeError`. The Object node's otherwise-identical `setModel` *does* guard
-            // (`modelnode2.ts`), and its comment says the undefined case is expected.
-            this.setModel(component !== undefined ? component._forEachModel : undefined);
-          });
-        }
+        this._internal.idSource = value;
+        if (value === 'foreach') this.bindToRepeaterItem();
+      }
+    },
+    /**
+     * BINDING-CONTRACT §(a) — which Repeater's item, when nesting makes "the nearest one"
+     * ambiguous. Optional: unset keeps the historical nearest-wins resolution exactly.
+     */
+    repeaterComponent: {
+      type: 'component',
+      displayName: 'Repeater Component',
+      group: 'General',
+      set: function (this: DbModelNodeInstance, value: string) {
+        this._internal.repeaterComponent = value || undefined;
+        // Only re-resolve in the mode this input belongs to; in `explicit` mode the record
+        // comes from `modelId` and rebinding here would quietly overwrite it.
+        if (this._internal.idSource === 'foreach') this.bindToRepeaterItem();
       }
     },
     modelId: {
@@ -189,6 +203,15 @@ const ModelNodeDefinition: NodeDefinitionOptions = {
     }
   },
   methods: {
+    /**
+     * Bind to the current Repeater/Run Tasks item — BINDING-CONTRACT, via `foreachitem.ts`.
+     * The deferral is the one this node always had; the reporting is new.
+     */
+    bindToRepeaterItem: function (this: DbModelNodeInstance) {
+      this.scheduleAfterInputsHaveUpdated(() => {
+        this.setModel(resolveForEachItem(this, { target: this._internal.repeaterComponent }));
+      });
+    },
     setCollectionID: function (this: DbModelNodeInstance, id: string) {
       this._internal.collectionId = id;
     },
@@ -197,13 +220,22 @@ const ModelNodeDefinition: NodeDefinitionOptions = {
       // this._internal.modelIsNew = false;
       this.setModel(model);
     },
-    setModel: function (this: DbModelNodeInstance, model: ModelLike) {
+    setModel: function (this: DbModelNodeInstance, model: ModelLike | undefined) {
       if (this._internal.model)
         // Remove old listener if existing
         this._internal.model.off('change', this._internal.onModelChangedCallback);
 
       this._internal.model = model;
       this.flagOutputDirty('id');
+
+      // DEFECT (PLAT-003 NOTES §27.3), now fixed. This dereferenced its argument unguarded,
+      // so a Record set to "From repeater" *outside* a repeater threw a `TypeError` from
+      // inside an input setter rather than binding to nothing — the same walk that merely
+      // fell silent on the Object node crashed here. The Object node's `setModel` always
+      // guarded; the two are twins and now agree. The miss itself is reported by
+      // `foreachitem.ts`, which is where a failed binding belongs.
+      if (!model) return;
+
       model.on('change', this._internal.onModelChangedCallback);
 
       // We have a new model, mark all outputs as dirty
@@ -215,6 +247,8 @@ const ModelNodeDefinition: NodeDefinitionOptions = {
     _onNodeDeleted: function (this: DbModelNodeInstance) {
       Node.prototype._onNodeDeleted.call(this);
       if (this._internal.model) this._internal.model.off('change', this._internal.onModelChangedCallback);
+      // Not optional — the resolved-target reporter holds instances strongly.
+      forgetForEachItem(this);
     },
     scheduleOnce: function (this: DbModelNodeInstance, type: string, cb: () => void) {
       const _this = this;

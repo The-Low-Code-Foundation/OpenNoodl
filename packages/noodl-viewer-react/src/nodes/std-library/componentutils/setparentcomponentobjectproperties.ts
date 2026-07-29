@@ -1,51 +1,30 @@
 'use strict';
 
-import type { ComponentInstanceLike, NodeInstance } from '@noodl/types';
+import type { NodeInstance } from '@noodl/types';
+
+import { findAncestorWithComponentObject } from '@noodl/runtime/src/componentwalk';
 
 import { extendSetComponentObjectProperties } from './base';
 
 /**
- * The same upward walk as `parentcomponentobject.ts`'s
- * `findParentComponentStateModelId`, duplicated there and here. Left duplicated: this
- * slice types, it does not refactor.
+ * The **write** half of the Parent Component Object pair, and until now it did not agree with
+ * the read half.
+ *
+ * This carried its own copy of the upward walk with its own type list — modern
+ * `net.noodl.ComponentObject` only — while `parentcomponentobject.ts` accepted the deprecated
+ * `'Component State'` as well. With a deprecated Component State on `/Outer` and a modern one
+ * on `/Root`, the reading node bound to `/Outer` and this one wrote to `/Root`: the same piece
+ * of component state read from one place and written to another, with nothing to say so.
+ *
+ * Both now go through `componentwalk.ts`'s single definition, so the pair cannot diverge again.
+ * BINDING-CONTRACT §(a) is still owed here — this node has no explicit-target input yet.
  */
 export default extendSetComponentObjectProperties({
   name: 'net.noodl.SetParentComponentObjectProperties',
   displayName: 'Set Parent Component Object Properties',
   docs: 'https://docs.noodl.net/nodes/component-utilities/set-parent-component-object-properties',
   getComponentObjectId: function (this: NodeInstance) {
-    function getParentComponent(component: ComponentInstanceLike): ComponentInstanceLike | undefined {
-      let parent: ComponentInstanceLike | undefined;
-      if (component.getRoots().length > 0) {
-        //visual
-        const root = component.getRoots()[0];
-
-        if (root.getVisualParentNode) {
-          //regular visual node
-          if (root.getVisualParentNode()) {
-            parent = root.getVisualParentNode().nodeScope.componentOwner;
-          }
-        } else if (root.parentNodeScope) {
-          //component instance node
-          parent = component.parentNodeScope.componentOwner;
-        }
-      } else if (component.parentNodeScope) {
-        parent = component.parentNodeScope.componentOwner;
-      }
-
-      //check that a parent exists and that the component is different
-      if (parent && parent.nodeScope && parent.nodeScope.componentOwner !== component) {
-        //check if parent has a Component State node
-        if (parent.nodeScope.getNodesWithType('net.noodl.ComponentObject').length > 0) {
-          return parent;
-        }
-
-        //if not, continue searching up the tree
-        return getParentComponent(parent);
-      }
-    }
-
-    const parent = getParentComponent(this.nodeScope.componentOwner);
+    const parent = findAncestorWithComponentObject(this.nodeScope.componentOwner);
     if (!parent) return;
 
     return 'componentState' + parent.getInstanceId();

@@ -3,8 +3,8 @@
 import { EventEmitter } from 'events';
 import { Node } from '@noodl/runtime';
 import Model from '@noodl/runtime/src/model';
+import { findAncestorWithNodeType } from '@noodl/runtime/src/componentwalk';
 import type {
-  ComponentInstanceLike,
   EditorConnectionLike,
   GraphModelLike,
   GraphNodeModel,
@@ -168,39 +168,18 @@ const ParentComponentState: NodeDefinitionOptions = {
         this.setModelId(this._internal.modelId);
       }
     },
+    /**
+     * The last of the four hand-copied walks, now sharing the one implementation.
+     *
+     * Its type list stays **narrower than {@link COMPONENT_OBJECT_TYPES} on purpose**: this is
+     * the deprecated node, and it has only ever bound to the deprecated `'Component State'`.
+     * Widening it to accept modern Component Objects too would look like the same tidy-up as
+     * everywhere else and would quietly *move* bindings — a project with a Component Object on
+     * a nearer ancestor than its Component State would start resolving to the nearer one. So
+     * the walk is shared and the list is not.
+     */
     findParentComponentStateModelId(this: ParentComponentStateInstance): string | undefined {
-      function getParentComponent(component: ComponentInstanceLike): ComponentInstanceLike | undefined {
-        let parent: ComponentInstanceLike | undefined;
-        if (component.getRoots().length > 0) {
-          //visual
-          const root = component.getRoots()[0];
-
-          if (root.getVisualParentNode) {
-            //regular visual node
-            if (root.getVisualParentNode()) {
-              parent = root.getVisualParentNode().nodeScope.componentOwner;
-            }
-          } else if (root.parentNodeScope) {
-            //component instance node
-            parent = component.parentNodeScope.componentOwner;
-          }
-        } else if (component.parentNodeScope) {
-          parent = component.parentNodeScope.componentOwner;
-        }
-
-        //check that a parent exists and that the component is different
-        if (parent && parent.nodeScope && parent.nodeScope.componentOwner !== component) {
-          //check if parent has a Component State node
-          if (parent.nodeScope.getNodesWithType('Component State').length > 0) {
-            return parent;
-          }
-
-          //if not, continue searching up the tree
-          return getParentComponent(parent);
-        }
-      }
-
-      const parent = getParentComponent(this.nodeScope.componentOwner);
+      const parent = findAncestorWithNodeType(this.nodeScope.componentOwner, ['Component State']);
       if (!parent) return;
 
       this._internal.parentComponentName = parent.name;

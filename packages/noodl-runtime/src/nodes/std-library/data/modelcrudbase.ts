@@ -17,6 +17,9 @@ import type { MixinNodeModule } from './crud-mixins';
 
 import CollectionImport = require('../../../collection');
 import ModelImport = require('../../../model');
+import Node = require('../../../node');
+
+import { forgetForEachItem, resolveForEachItem } from '../../../foreachitem';
 
 const Collection = CollectionImport as unknown as CollectionModule;
 const Model = ModelImport as unknown as ModelModule;
@@ -39,9 +42,14 @@ interface ModelIdNodeInstance extends NodeInstance {
     modelId?: string;
     inputValues?: Record<string, unknown>;
     inputTypes?: Record<string, string>;
+    /** Latest `idSource`, so the explicit-target input knows whether it is the live mode. */
+    idSource?: unknown;
+    /** The `Repeater Component` input: an item component named explicitly (BINDING-CONTRACT §a). */
+    repeaterComponent?: string;
   };
   setModelID(id: string): void;
   setModel(model: ModelLike | undefined): void;
+  bindToRepeaterItem(): void;
 }
 
 /** `this` inside a node that has had {@link _addInputProperties} mixed in as well. */
@@ -80,6 +88,11 @@ function _addModelId(def: MixinNodeModule, opts?: { includeInputs?: boolean; inc
         name: 'conditionalports/extended',
         condition: 'idSource = explicit OR idSource NOT SET',
         inputs: ['modelId']
+      },
+      {
+        name: 'conditionalports/extended',
+        condition: 'idSource = foreach',
+        inputs: ['repeaterComponent']
       }
     ]);
 
@@ -98,16 +111,23 @@ function _addModelId(def: MixinNodeModule, opts?: { includeInputs?: boolean; inc
         displayName: 'Id Source',
         group: 'General',
         set: function (this: ModelIdNodeInstance, value: unknown) {
-          if (value === 'foreach') {
-            this.scheduleAfterInputsHaveUpdated(() => {
-              // Find closest nodescope that have a _forEachModel
-              let component = this.nodeScope.componentOwner;
-              while (component !== undefined && component._forEachModel === undefined && component.parentNodeScope) {
-                component = component.parentNodeScope.componentOwner;
-              }
-              this.setModel(component !== undefined ? component._forEachModel : undefined);
-            });
-          }
+          this._internal.idSource = value;
+          if (value === 'foreach') this.bindToRepeaterItem();
+        }
+      },
+      /**
+       * BINDING-CONTRACT §(a) — which Repeater's item, when nesting makes "the nearest one"
+       * ambiguous. Optional: unset keeps the historical nearest-wins resolution exactly.
+       */
+      repeaterComponent: {
+        type: 'component',
+        displayName: 'Repeater Component',
+        group: 'General',
+        set: function (this: ModelIdNodeInstance, value: string) {
+          this._internal.repeaterComponent = value || undefined;
+          // Only re-resolve in the mode this input belongs to; in `explicit` mode the model
+          // comes from `modelId` and rebinding here would quietly overwrite it.
+          if (this._internal.idSource === 'foreach') this.bindToRepeaterItem();
         }
       },
       modelId: {
@@ -143,6 +163,15 @@ function _addModelId(def: MixinNodeModule, opts?: { includeInputs?: boolean; inc
 
   // Methods
   Object.assign(def.node.methods, {
+    /**
+     * Bind to the current Repeater/Run Tasks item — BINDING-CONTRACT, via `foreachitem.ts`.
+     * The deferral is the one these nodes always had; the reporting is new.
+     */
+    bindToRepeaterItem: function (this: ModelIdNodeInstance) {
+      this.scheduleAfterInputsHaveUpdated(() => {
+        this.setModel(resolveForEachItem(this, { target: this._internal.repeaterComponent }));
+      });
+    },
     setModelID: function (this: ModelIdNodeInstance, id: string) {
       const model = (this.nodeScope.modelScope || Model).get(id);
       this.setModel(model);
@@ -150,6 +179,16 @@ function _addModelId(def: MixinNodeModule, opts?: { includeInputs?: boolean; inc
     setModel: function (this: ModelIdNodeInstance, model: ModelLike | undefined) {
       this._internal.model = model;
       this.flagOutputDirty('id');
+    },
+    /**
+     * No consumer of this mixin defines its own, so this is the only one — but it still
+     * chains to `Node.prototype`, because a future consumer that adds one must not have to
+     * remember this. The reporter holds instances strongly and these nodes live inside
+     * Repeater templates, which is exactly where instances churn.
+     */
+    _onNodeDeleted: function (this: ModelIdNodeInstance) {
+      Node.prototype._onNodeDeleted.call(this);
+      forgetForEachItem(this);
     }
   });
 

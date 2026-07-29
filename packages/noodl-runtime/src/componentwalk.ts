@@ -138,6 +138,39 @@ export function findAncestorWithNodeType(
 }
 
 /**
+ * The node types that make a component "one that owns a Component Object".
+ *
+ * Here rather than beside any one node, because the four copies of this walk each carried
+ * their *own* list and the lists had diverged — which is worse than the duplication, since it
+ * produces disagreement rather than mere repetition:
+ *
+ * | Site | Accepted before |
+ * |---|---|
+ * | `parentcomponentobject.ts` (reads) | both |
+ * | `javascriptnodeparser.js` (Function nodes read) | both |
+ * | `setparentcomponentobjectproperties.ts` (**writes**) | modern only |
+ * | `parentcomponentstate.ts` (deprecated) | deprecated only |
+ *
+ * So with a deprecated `Component State` on `/Outer` and a modern Component Object on
+ * `/Root`, a Parent Component Object node **read** `/Outer` while the Set Parent Component
+ * Object Properties node beside it **wrote** `/Root` — the read and the write of one piece of
+ * state landing on two different components, silently. One list, one walk, no drift.
+ */
+export const COMPONENT_OBJECT_TYPES = ['net.noodl.ComponentObject', 'Component State'] as const;
+
+/**
+ * The nearest ancestor that owns a Component Object — the one definition of that question.
+ *
+ * Every node in the Component Object family must resolve through this and nothing else, or
+ * the table above starts growing rows again.
+ */
+export function findAncestorWithComponentObject(
+  component: ComponentInstanceLike | undefined
+): ComponentInstanceLike | undefined {
+  return findAncestorWithNodeType(component, COMPONENT_OBJECT_TYPES);
+}
+
+/**
  * The nearest ancestor whose component name is `name` — the explicit-target walk.
  *
  * Named, not counted. "Two levels up" breaks the moment somebody wraps a component in a
@@ -151,23 +184,54 @@ export function findAncestorWithName(
 }
 
 /**
- * The nearest ancestor carrying `property` — the "ambient" protocol.
+ * The `parentNodeScope` chain, **self included**, nearest first.
  *
- * `_forEachModel` (the current Repeater item) is resolved this way in five places. Note it
- * uses a *different* walk from everything above: `parentNodeScope` only, never the visual
- * branch. Those sites are not converted here — see NDA-015 §2's sweep notes — but the shape
- * is named so the next one does not invent a sixth spelling.
+ * Deliberately not {@link componentAncestors}, on both counts:
+ *
+ * - *Self included.* The ambient protocols below are set on a component instance by whoever
+ *   created it, so the node asking is normally inside that very component. A Repeater item's
+ *   Object node sits in the item template, and the instance carrying `_forEachModel` is its
+ *   own `componentOwner` — excluding self would make an item unable to see its own item.
+ * - *Creation, not layout.* This follows `parentNodeScope` only and never takes the visual
+ *   branch, because these properties are handed down at `createNode` time. Routing them
+ *   through the visual walk would let a binding move when somebody re-parents a Group.
+ *
+ * Keeping the two walks distinct is the point. Collapsing them into one would look like
+ * tidying and would silently move bindings in existing projects.
+ */
+export function scopeChain(component: ComponentInstanceLike | undefined): ComponentInstanceLike[] {
+  const chain: ComponentInstanceLike[] = [];
+
+  let current = component;
+  for (let depth = 0; depth < MAX_WALK_DEPTH; depth++) {
+    if (!current) break;
+    chain.push(current);
+    if (!current.parentNodeScope) break;
+    current = current.parentNodeScope.componentOwner;
+  }
+
+  return chain;
+}
+
+/** Scope-chain component names, nearest first — for a failure message that names the alternatives. */
+export function scopeChainNames(component: ComponentInstanceLike | undefined): string[] {
+  return scopeChain(component).map((entry) => entry.name);
+}
+
+/**
+ * The nearest component in the scope chain carrying `property` — the "ambient" protocol.
+ *
+ * `_forEachModel` (the current Repeater item) and `_popupCloseHandler` are both resolved this
+ * way. See {@link scopeChain} for why this walk is not the visual one.
  */
 export function findAncestorWithProperty(
   component: ComponentInstanceLike | undefined,
   property: string
 ): ComponentInstanceLike | undefined {
-  let current = component;
-  for (let depth = 0; depth < MAX_WALK_DEPTH; depth++) {
-    if (!current) return undefined;
-    if (current[property] !== undefined) return current;
-    if (!current.parentNodeScope) return undefined;
-    current = current.parentNodeScope.componentOwner;
+  const chain = scopeChain(component);
+
+  for (let i = 0; i < chain.length; i++) {
+    if (chain[i][property] !== undefined) return chain[i];
   }
 
   return undefined;

@@ -98,10 +98,16 @@ export interface ModelIdInstance extends NodeInstance {
   _internal: {
     model?: ModelLike;
     modelId?: string;
+    /** Latest `idSource`, so the explicit-target input knows whether it is the live mode. */
+    idSource?: unknown;
+    /** The `Repeater Component` input: an item component named explicitly (BINDING-CONTRACT §a). */
+    repeaterComponent?: string;
     [extra: string]: unknown;
   };
   setModelID(id: string): void;
   setModel(model: ModelLike | undefined): void;
+  /** Resolves "the current Repeater item" through `foreachitem.ts` and binds to it. */
+  bindToRepeaterItem(): void;
 }
 
 /** Additionally contributed by `dbmodelcrudbase.addModelId`. */

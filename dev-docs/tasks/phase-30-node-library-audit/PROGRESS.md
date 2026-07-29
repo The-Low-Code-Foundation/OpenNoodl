@@ -18,7 +18,7 @@
 | NDA-009 Run Tasks | 2 | ⬜ Not started | §1 alone closes corpus F1 |
 | NDA-010 Popups | 2 | 🔄 **§2 done** | Close Popup now *pulls*: `showPopup` publishes `_popupCloseHandler` on the popup instance and the node walks up to it, so it works from anywhere in the popup's tree — 7 corpus rows, shown to discriminate. Criterion 2 met. **⚠️ §1's premise is partly stale**: `showpopup.ts:129-177` already derives typed `popupParam-*` from the target's input ports and `closeResult-*`/`closeAction-*` from its Close Popup nodes. The real gaps are the hand-typed `results`/`closeActions` on the *Close Popup* side and untyped (`*`) results — re-scoped in the spec. §3 (stack policy, corpus F2) untouched |
 | NDA-014 Type dead ends | 2 | 🔄 §1+§2 done | Decision at [`PORT-TYPE-CONTRACT.md`](../../reference/PORT-TYPE-CONTRACT.md) (A now, C direction). Table changed (`object`/`array`/`color` → `string`), JSON mirror added in `setInputValue`, catalog + register regenerated, runtime jest green (1,026), editor suite green (1,885 specs incl. validator/catalog-index). Outstanding: live editor check of the 13 `object` outputs |
-| NDA-015 Explicit binding | 2 | ✅ **Done + live-verified** | All three sections. Walk de-duplicated into `runtime/src/componentwalk.ts` (it existed **four** times and had drifted — the `.js` copy accepted `'Component State'`, the TS ones did not, so a Function node and a Parent Component Object in the same place could resolve to *different* ancestors). Clause (b) ships as a node-card sub-label over a new `nodesublabel` message — **not** CAN-001/002, which are wire labels, and **not** `metadata.typeLabelOverride`, which is persisted. §3: the FIXME was load-bearing and its own comment described what `scheduleAfterUpdate` already does. 16 corpus rows. **Sweep found the class is wider** — `_forEachModel` (5 sites) is the same defect, unfixed, see FINDINGS F-ii |
+| NDA-015 Explicit binding | 2 | ✅ **Done + live-verified**; class F tail closed | All three sections. Clause (b) ships as a node-card sub-label over a new `nodesublabel` message — **not** CAN-001/002, which are wire labels, and **not** `metadata.typeLabelOverride`, which is persisted. §3: the FIXME was load-bearing and its own comment described what `scheduleAfterUpdate` already does. **Class F tail closed 2026-07-29**: `_forEachModel`'s 5 sites now resolve through `runtime/src/foreachitem.ts` (FINDINGS F-ii), and the de-duplication this task claimed was **only 1 of 4 call sites** — the other three were still hand-rolled with divergent type lists, which had a *reader and a writer* of the same state landing on different components (FINDINGS F-i′). 34 corpus rows total |
 | NDA-016 `Layout.size` | 2 | ✅ **Done** | **§0 resolved: the spec's premise was wrong.** `sizeMode` is never unset — a fresh Text node carries `contentHeight`/`100%`, read live. The real defect is a stale `parentLayout`: children bake the parent's layout in at *their* render, `renderChildren` memoises them, and the Layout setter never invalidated the memo — so a layout change never reached the children, and the first child ate the row. Fixed with `setLayout` as the single writer. §1 built too, on its own terms (an abstaining *connection* can still unset the port). 10 regression tests; 15-node-type live blast-radius check. Criterion 4's screenshot corpus is an instrument mismatch — see the spec |
 | NDA-011 REST → HTTP | 3 | ⬜ Not started | First output is an assessment, not a change |
 | NDA-012 Per-node audit | 3 | ⬜ **1 of 17 categories** | Variables done (4/4) as the worked example. Opt-in, resumable, stop on find-rate decline |
@@ -64,6 +64,66 @@ moment NDA-003 makes `null` storable. Consistent with the second-pass calibratio
 this table shows a category producing nothing new.
 
 ## Log
+
+- **2026-07-29 (class F tail — `_forEachModel`'s five sites, and the walk that was never actually
+  shared)** — the highest-value item left in the implicit-binding class, plus a defect found on the
+  way in that was worse than the one being fixed.
+  - **All five `_forEachModel` sites now go through one resolver**, `runtime/src/foreachitem.ts`:
+    the two node files (`modelnode2`, `dbmodelnode2`), the two CRUD mixins (`modelcrudbase`,
+    `dbmodelcrudbase`, which reach seven node types between them) and
+    `javascriptnodeparser`. Every one of them used to end
+    `setModel(component !== undefined ? component._forEachModel : undefined)` — so **`Id Source =
+    From repeater` outside a Repeater bound to nothing and said nothing.** Now: optional
+    `Repeater Component` input (a), the resolved template on the node card (b), and
+    `repeater-item/no-item-in-scope` · `/target-not-found` · `/target-has-no-item` (c).
+  - **There are two producers, not one.** `runtasks.ts:193` sets `_forEachModel` with the same
+    `createNode` extraProps shape as the Repeater. The name, the docs and the spec all say
+    "Repeater"; the messages say "Repeater or Run Tasks", because telling an author with a task
+    template that they are not inside a Repeater sends them hunting a bug that is not there.
+  - **The fifth site had to be lazy, and that is the interesting half.** `Component.RepeaterObject`
+    is built for *every* Function node in the project, not only ones whose author asked for an item,
+    so resolving eagerly would have filed a failure against every Function node in every
+    non-repeated component. It is a getter on the component scope object — which is safe because
+    the scope is handed to the user's script by reference, never spread or serialised. A corpus row
+    pins the laziness, and it is the row that goes red if anyone "simplifies" it back.
+  - **One of the five was crashing, not falling silent.** `dbmodelnode2.setModel` dereferenced its
+    argument unguarded — a live defect carried as a comment since PLAT-003 NOTES §27.3 — so a
+    `Record` set to "From repeater" outside a repeater threw a `TypeError` from inside an input
+    setter. Its twin the Object node always guarded. The twins now agree.
+  - **No `resolutionIsLoud` gate here, deliberately, and the reason is worth carrying.**
+    `parentcomponentobject.ts` needs one because it looks for a *node* in an ancestor's scope that
+    may not exist yet. This protocol has no such window: `extraProps` land on the instance at
+    `nodecontext.ts:398-403`, *before* `setComponentModel` builds any inner node. Gating would only
+    have delayed a true report. Written into BINDING-CONTRACT so a third case picks deliberately.
+  - **⚠️ NDA-015's own claim was wrong, and this is the ninth spec/log claim to fall.** "One
+    implementation now, in `componentwalk.ts`" — in fact **one of four** call sites had adopted it.
+    `setparentcomponentobjectproperties.ts`, `parentcomponentstate.ts` and `javascriptnodeparser.js`
+    were still hand-rolled *with their own type lists*, and those lists disagreed. F-i describes two
+    readers disagreeing; what was actually shipping is **a reader and a writer of the same state
+    disagreeing** — `Parent Component Object` read `/Outer` while the `Set Parent Component Object
+    Properties` node beside it wrote `/Root`, whenever a deprecated `Component State` sat nearer
+    than a modern Component Object. All four now share the walk *and* the type list
+    (`COMPONENT_OBJECT_TYPES`). The deprecated node's list stays narrower on purpose: widening it
+    would have moved bindings rather than aligned them.
+  - **`componentwalk.ts` now documents that there are two walks**, and they are not
+    interchangeable — the visual-aware ancestor walk for "an ancestor owning a node of type X", and
+    the new self-inclusive `scopeChain` (`parentNodeScope` only) for ambient properties. Using the
+    wrong one moves bindings silently, so the table is in the contract.
+  - **18 new corpus rows, all shown to discriminate** by three separate revert-and-rerun passes:
+    reverting the resolver reddens 8 of 13 and leaves all 5 controls green (including "the innermost
+    Repeater wins", which pins that existing bindings did *not* move); narrowing the write-side type
+    list back reddens the read/write agreement row alone; making the Function-node scope eager
+    reddens the laziness row alone.
+  - Gates: runtime jest **1,075** (was 1,072), viewer jest **140** (was 125), both typechecks green.
+  - ⚠️ **Catalog regeneration owed** — same blocker as NDA-004 and NDA-015 before it: the tree still
+    carries another session's uncommitted node-source edits, and regeneration folds them in. Seven
+    node types gain a `repeaterComponent` input: **Object** (`Model2`), **Record** (`DbModel2`),
+    **Set Object Properties**, **Set Record Properties**, **Delete Record**, **Add Record
+    Relation**, **Remove Record Relation**. The two `Create New …` nodes correctly do *not* —
+    `addModelId({ includeOutputs: true })` leaves `includeInputs` falsy, which is right for a node
+    that creates rather than references. `nodelibraryexport.ts` reads the live register, so the
+    editor picker and property panel are already correct; only the generated JSON snapshot is stale.
+  - Owed: live QA (jest only so far).
 
 - **2026-07-29 (NDA-008 §1 + §3)** — the last two open sections of the Component Stack task.
   - **§1: replace had no animation *surface*, not just no animation.** `replaceAsync` deleted every

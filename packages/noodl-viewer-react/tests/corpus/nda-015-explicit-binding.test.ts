@@ -18,6 +18,7 @@ import { createCorpusGraph, type CorpusGraph } from '../../../noodl-runtime/test
 
 import ComponentObjectModule from '../../src/nodes/std-library/componentutils/componentobject';
 import ParentComponentObjectModule from '../../src/nodes/std-library/componentutils/parentcomponentobject';
+import SetParentComponentObjectPropertiesModule from '../../src/nodes/std-library/componentutils/setparentcomponentobjectproperties';
 
 import { GroupModule } from './visual-container';
 
@@ -186,5 +187,113 @@ describe('NDA-015 §(c): resolving nothing is loud', () => {
 
     expect(graph.errors).toEqual([]);
     expect(boundTo(graph)).toBe('/Outer');
+  });
+});
+
+/**
+ * The read half and the write half of Component Object state must pick the same ancestor.
+ *
+ * NDA-015 §2 said the hand-copied walk had been reduced to one implementation. It had not —
+ * only `parentcomponentobject.ts` adopted `componentwalk.ts`, and the other three copies were
+ * still hand-rolled with their **own type lists**, which had diverged:
+ *
+ * | Site | Accepted |
+ * |---|---|
+ * | `parentcomponentobject.ts` (reads) | modern + deprecated |
+ * | `javascriptnodeparser.js` (Function nodes read) | modern + deprecated |
+ * | `setparentcomponentobjectproperties.ts` (**writes**) | modern only |
+ *
+ * That is not a tidiness problem. With a deprecated `Component State` on the nearer ancestor
+ * and a modern Component Object further up, the reading node bound to the nearer one and the
+ * writing node beside it wrote to the further one — the same piece of state read from one
+ * component and written to another, silently, with no way to see it.
+ */
+describe('NDA-015 §2: the Component Object walk is one walk', () => {
+  /**
+   * A stand-in for the deprecated `Component State` node.
+   *
+   * The walk's only question is "does this component's scope contain a node of this type", so
+   * a bare registration is a faithful stimulus — and it keeps this row from depending on the
+   * deprecated node's own behaviour, which is not what is under test.
+   */
+  const DeprecatedComponentStateModule: NodeModule = {
+    node: { name: 'Component State', category: 'Corpus' }
+  };
+
+  /** `/root` (modern Component Object) → `/Outer` (deprecated) → `/Inner` (both nodes). */
+  async function splitOwnerGraph(): Promise<CorpusGraph> {
+    const graph = await createCorpusGraph({
+      modules: [
+        GroupModule,
+        ComponentObjectModule as unknown as NodeModule,
+        ParentComponentObjectModule as unknown as NodeModule,
+        SetParentComponentObjectPropertiesModule,
+        DeprecatedComponentStateModule
+      ],
+      rootComponent: '/root',
+      data: {
+        components: [
+          {
+            name: '/root',
+            nodes: [
+              { id: 'root-group', type: 'Group', children: [{ id: 'outer-instance', type: '/Outer' }] },
+              { id: 'root-object', type: 'net.noodl.ComponentObject', parameters: { properties: 'title' } }
+            ]
+          },
+          {
+            name: '/Outer',
+            nodes: [
+              { id: 'outer-group', type: 'Group', children: [{ id: 'inner-instance', type: '/Inner' }] },
+              // The nearer owner, and the deprecated spelling.
+              { id: 'outer-state', type: 'Component State' }
+            ]
+          },
+          {
+            name: '/Inner',
+            nodes: [
+              {
+                id: 'inner-group',
+                type: 'Group',
+                children: [
+                  { id: 'parent-object', type: 'net.noodl.ParentComponentObject', parameters: { properties: 'title' } },
+                  {
+                    id: 'set-parent-object',
+                    type: 'net.noodl.SetParentComponentObjectProperties',
+                    parameters: { properties: 'title' }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      } as never
+    });
+
+    await graph.settle(4);
+    return graph;
+  }
+
+  test('the reader and the writer resolve to the same component', async () => {
+    const graph = await splitOwnerGraph();
+
+    const readId = graph
+      .node<ParentObjectInstance & { findParentComponentStateModelId(): string | undefined }>('parent-object')
+      .findParentComponentStateModelId();
+    const writeId = graph
+      .node<NodeInstance & { getComponentObjectId(): string | undefined }>('set-parent-object')
+      .getComponentObjectId();
+
+    // The claim in one line: reading and writing "the parent component object" must mean the
+    // same object. Before the shared walk these were two different components.
+    expect(readId).toBe(writeId);
+    expect(readId).toBeDefined();
+  });
+
+  test('both pick the nearer ancestor, deprecated spelling included', async () => {
+    const graph = await splitOwnerGraph();
+
+    // Naming which one they agree on, so "they agree" cannot be satisfied by both being wrong
+    // in the same direction — e.g. both skipping `/Outer` and landing on `/root`.
+    expect(graph.node<ParentObjectInstance>('parent-object')._internal.parentComponentName).toBe('/Outer');
   });
 });
