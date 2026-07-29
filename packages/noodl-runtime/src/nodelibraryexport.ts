@@ -229,16 +229,22 @@ function generateNodeLibrary(nodeRegister: NodeRegisterLike) {
         to: ['string', 'image']
       },
       {
+        // The resolved color string (context.styles.resolveColor already
+        // produces it), so a Color variable can feed anything that takes text.
         from: 'color',
-        to: []
+        to: ['string']
       },
       {
         from: 'enum',
         to: []
       },
       {
+        // PORT-TYPE-CONTRACT.md: declaring `object` must not strand the port.
+        // The string form is JSON — the conversion lives in
+        // Node.setInputValue, which mirrors the existing string -> object
+        // parse on the way out.
         from: 'object',
-        to: []
+        to: ['string']
       },
       {
         from: 'domelement',
@@ -263,7 +269,7 @@ function generateNodeLibrary(nodeRegister: NodeRegisterLike) {
       },
       {
         from: 'array',
-        to: ['collection']
+        to: ['collection', 'string']
       }
     ],
     dynamicports: [

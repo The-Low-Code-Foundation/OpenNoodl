@@ -6,19 +6,19 @@
 
 | Task | Tier | Status | Notes |
 |---|---|---|---|
-| NDA-001 Node behaviour corpus | 1 | ⬜ Not started | Must land **red** before NDA-002/003/013 |
-| NDA-002 Reactivity contract | 1 | ⬜ Not started | §1 needs Richard's call on listener-coalescing; §2 on Proxy-vs-patch |
-| NDA-003 Empty-value contract | 1 | ⬜ Not started | §1 corollary 3 needs Richard's call on nullable Numbers |
+| NDA-001 Node behaviour corpus | 1 | 🔄 In progress | Building as a red suite (expected-failure markers so CI stays green) |
+| NDA-002 Reactivity contract | 1 | 🔄 §1 done | Contract at [`REACTIVITY-CONTRACT.md`](../../reference/REACTIVITY-CONTRACT.md). Richard decided: no coalescing; approach B (Proxy). §2–4 await the red corpus |
+| NDA-003 Empty-value contract | 1 | 🔄 §1 done | Contract at [`EMPTY-VALUE-CONTRACT.md`](../../reference/EMPTY-VALUE-CONTRACT.md). Richard decided: nullable Variables with `Treat empty as` back-compat. §2 awaits the red corpus |
 | NDA-013 Repeater Refresh | 1 | ⬜ Not started | Cause confirmed `foreach.tsx:509-527`. ⚠️ watch the add/remove queue race |
-| NDA-004 Failure contract | 2 | ⬜ Not started | §1 (the channel) is independently useful — NDA-002 wants it for cycle warnings |
+| NDA-004 Failure contract | 2 | 🔄 §1 done | Design at [`FAILURE-CONTRACT.md`](../../reference/FAILURE-CONTRACT.md). "Both per-node `Failure` outputs **and** a global catch-all node" adopted on the spec's recommendation — **Richard has not reviewed this one**; veto window open |
 | NDA-005 Port documentation | 2 | ⬜ Not started | Do the shared port definitions first and re-measure; batch with NDA-012 |
-| NDA-006 Columns | 2 | ⬜ Not started | Checked: `Columns.tsx` is the **only** file special-casing `ForEachComponent` |
-| NDA-007 Icon sets | 2 | ⬜ Not started | §1 is an interface decision; check LIB/styles before inventing an asset path |
+| NDA-006 Columns | 2 | ⬜ Not started | Checked: `Columns.tsx` is the **only** file special-casing `ForEachComponent`. Slice 4 (Fable) is gated on slices 2–3 |
+| NDA-007 Icon sets | 2 | 🔄 §1 done | Model at [`ICON-SOURCE-MODEL.md`](../../reference/ICON-SOURCE-MODEL.md) — tagged union (`font`/`sprite`/`inline`), sanitise-at-registration policy decided (no existing viewer policy existed to match; checked) |
 | NDA-008 Component Stack | 2 | ⬜ Not started | **§0 blocking** — scroll jump has no located cause |
 | NDA-009 Run Tasks | 2 | ⬜ Not started | §1 alone closes corpus F1 |
 | NDA-010 Popups | 2 | ⬜ Not started | §2 shared with NDA-015 |
-| NDA-014 Type dead ends | 2 | ⬜ Not started | Recommend option A now, C as the direction |
-| NDA-015 Explicit binding | 2 | ⬜ Not started | §2 includes a sweep for other instances of the pattern |
+| NDA-014 Type dead ends | 2 | 🔄 §1+§2 done | Decision at [`PORT-TYPE-CONTRACT.md`](../../reference/PORT-TYPE-CONTRACT.md) (A now, C direction). Table changed (`object`/`array`/`color` → `string`), JSON mirror added in `setInputValue`, catalog + register regenerated, runtime jest green. Outstanding: editor validation suite run + live editor check of the 13 `object` outputs |
+| NDA-015 Explicit binding | 2 | 🔄 §1 done | Contract at [`BINDING-CONTRACT.md`](../../reference/BINDING-CONTRACT.md). Explicit-target-miss ≠ fallback is the load-bearing clause. §2 sweep + §3 FIXME open |
 | NDA-016 `Layout.size` | 2 | ⬜ Not started | **§0 blocking** — a contradiction between the mechanism and the default path |
 | NDA-011 REST → HTTP | 3 | ⬜ Not started | First output is an assessment, not a change |
 | NDA-012 Per-node audit | 3 | ⬜ **1 of 17 categories** | Variables done (4/4) as the worked example. Opt-in, resumable, stop on find-rate decline |
@@ -37,15 +37,19 @@
 **Calibration:** the second pass found five real defects in six nodes. The structural sweep found
 none of them. The 142 unread rows are unaudited, not clean — do not read a blank Verdict as a pass.
 
-## Decisions awaiting Richard
+## Decisions
 
-1. **NDA-002 §1** — should a mutation performed inside a change listener coalesce? Recommendation:
-   no; keep the existing cycle breakers and surface them through the NDA-004 error channel.
-2. **NDA-003 §1 corollary 3** — should Number/String variables hold a real `null`, distinguishable
-   from `0`/`''`? Recommendation: yes, with a per-node `Treat empty as` input for back-compat. The
-   smaller alternative (fix the casts only) is written into the task's Risks section.
-3. **NDA-002 §2** — approach A (patch prototype methods) or B (Proxy, matching `Model`).
-   Recommendation: B. It is the higher-risk change and the only one that covers `arr[0] = x`.
+All three gating decisions were put to Richard on 2026-07-29 and he confirmed the recommendations:
+
+1. **NDA-002 §1** — no listener-coalescing; keep the cycle breakers and surface trips through the
+   NDA-004 error channel. ✅ Decided.
+2. **NDA-003 §1 corollary 3** — Variables are nullable, with a per-node `Treat empty as` input for
+   back-compat. ✅ Decided.
+3. **NDA-002 §2** — approach B (Proxy, matching `Model`). ✅ Decided.
+
+One further decision was **adopted on the spec's recommendation without Richard's explicit
+confirmation** and is flagged for veto: **NDA-004 §1** — the error channel surfaces both per-node
+`Failure` outputs *and* a global `On App Error` catch-all node (rather than either alone).
 
 ## Find rate (NDA-012 stop signal)
 
@@ -60,6 +64,16 @@ this table shows a category producing nothing new.
 
 ## Log
 
+- **2026-07-29 (execution begins)** — The three gating decisions put to Richard and confirmed (see
+  Decisions). All five contracts + the icon model written into `dev-docs/reference/`:
+  `REACTIVITY-CONTRACT.md`, `EMPTY-VALUE-CONTRACT.md`, `FAILURE-CONTRACT.md`,
+  `PORT-TYPE-CONTRACT.md`, `BINDING-CONTRACT.md`, `ICON-SOURCE-MODEL.md`. NDA-014 §2 applied:
+  typecast table gains `object → string`, `array → string`, `color → string`; `setInputValue` gains
+  the outbound JSON mirror (Dates keep their `String()` rendering; circular structures warn and
+  deliver `''`); catalog and register regenerated; noodl-runtime jest green (1026 passed). NDA-001
+  corpus build launched (Opus). ⚠️ The regenerated `node-catalog.json` also reflected *another
+  session's uncommitted* logic-builder edits — only the typecast hunks were staged; if the catalog
+  looks stale later, that is why.
 - **2026-07-29 (later)** — All 16 tasks specced. Added the NDA-012 per-node audit protocol: twelve
   checks derived from defect classes A–F, and `scripts/node-audit/worksheets.js` generating one
   pre-filled worksheet per category (checks B1/B3/C1/E1/H1 answered from the catalog). Audited the

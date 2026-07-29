@@ -90,7 +90,9 @@
     },
     {
       "from": "color",
-      "to": []
+      "to": [
+        "string"
+      ]
     },
     {
       "from": "enum",
@@ -98,7 +100,9 @@
     },
     {
       "from": "object",
-      "to": []
+      "to": [
+        "string"
+      ]
     },
     {
       "from": "domelement",
@@ -127,7 +131,8 @@
     {
       "from": "array",
       "to": [
-        "collection"
+        "collection",
+        "string"
       ]
     }
   ],

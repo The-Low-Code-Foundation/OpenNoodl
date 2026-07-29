@@ -336,6 +336,33 @@ Node.prototype.setInputValue = function (name, value) {
         });
       }
     }
+  } else if (inputTypeName === 'string' && value !== null && typeof value === 'object') {
+    // The outbound half of the object/array <-> string typecasts
+    // (PORT-TYPE-CONTRACT.md): the table lets an object output reach a string
+    // input, and the useful string form is JSON. Values with a toString of
+    // their own (Date, via the long-standing date -> string cast) keep the
+    // String() rendering they have always had — only values that would print
+    // "[object Object]" (or an array's bare join) get the JSON treatment.
+    if (Array.isArray(value) || String(value) === '[object Object]') {
+      try {
+        value = JSON.stringify(value);
+      } catch (e) {
+        // Circular structures cannot be a string; deliver '' rather than throw
+        // mid-update. Same guarded reporting as the parse branch above.
+        value = '';
+        if (this.context.editorConnection && this.nodeScope && this.nodeScope.componentOwner) {
+          this.context.editorConnection.sendWarning(
+            this.nodeScope.componentOwner.name,
+            this.id,
+            'unstringifiable-object-' + name,
+            {
+              showGlobally: true,
+              message: 'Could not convert object to string<br>' + e.toString()
+            }
+          );
+        }
+      }
+    }
   }
 
   input.set.call(this, value);
