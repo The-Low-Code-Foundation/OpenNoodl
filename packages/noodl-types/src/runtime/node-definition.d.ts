@@ -305,9 +305,13 @@ export interface ModelScopeLike {
 /**
  * The payload of a {@link CollectionLike} `'add'` or `'remove'` notification.
  *
- * `'change'` carries no payload at all — it is notified with no argument immediately
- * after every `'add'`/`'remove'`, so a listener that reads `args` on `'change'` reads
- * `undefined`. The overloads on {@link CollectionLike.on} keep the two apart.
+ * `'change'` carries no payload at all — it is notified with no argument once per logical
+ * mutation, so a listener that reads `args` on `'change'` reads `undefined`. The overloads
+ * on {@link CollectionLike.on} keep the two apart.
+ *
+ * A bulk mutation (`splice`, `length = 0`, `set`) emits an `'add'`/`'remove'` per structural
+ * change and **one** `'change'` for the operation — see
+ * `dev-docs/reference/REACTIVITY-CONTRACT.md`.
  */
 export interface CollectionChangeEvent {
   item: ModelLike;
@@ -340,10 +344,16 @@ export interface CollectionLike extends Array<ModelLike> {
   readonly id: string;
   getId(): string;
   /**
-   * The backing array — literally `this`. Present because node code and `getInspectInfo`
-   * read `collection.items`; assigning to it is the same as calling {@link set}.
+   * The collection as a notifying view. Present because node code and `getInspectInfo` read
+   * `collection.items`; assigning to it is the same as calling {@link set}.
+   *
+   * NDA-002: this used to hand back the raw backing array, so anything a caller did through
+   * it (`items.push(x)`, `items[0] = x`) was invisible to listeners. It returns the same
+   * write-through Proxy that `Collection.get`/`create` hand out, which is why it is now
+   * typed as a `CollectionLike` and why `arr.items === arr` for any collection a consumer
+   * holds.
    */
-  items: ModelLike[];
+  items: CollectionLike;
   size(): number;
   get(index: number): ModelLike | undefined;
   each(callback: (item: ModelLike, index: number) => void): void;
@@ -351,20 +361,21 @@ export interface CollectionLike extends Array<ModelLike> {
   /** Diffs `src` into this collection. `undefined` is treated as an empty list. */
   set(src: ArrayLike<ModelLike | Record<string, unknown>> | CollectionLike | undefined): void;
   /**
-   * The four mutators are `async` and awaited internally so that listeners run to
-   * completion in order — but no caller in the standard library awaits them, so treat the
-   * returned promise as fire-and-forget and the mutation itself as already done.
+   * The four mutators are **synchronous**: every listener has run by the time the call
+   * returns, exactly as for {@link ModelLike.set}. They used to be `async` and to `await`
+   * each listener, so the mutation settled a turn after the call site expected; NDA-002's
+   * third clause retired that. `await`ing one is harmless and does nothing.
    */
-  add(item: ModelLike): Promise<void>;
-  addAtIndex(item: ModelLike, index: number): Promise<void>;
+  add(item: ModelLike): void;
+  addAtIndex(item: ModelLike, index: number): void;
   remove(item: ModelLike): void;
-  removeAtIndex(index: number): Promise<void>;
+  removeAtIndex(index: number): void;
 
   on(event: 'add' | 'remove', listener: (args: CollectionChangeEvent) => void): void;
   on(event: 'change', listener: () => void): void;
   off(event: 'add' | 'remove', listener: (args: CollectionChangeEvent) => void): void;
   off(event: 'change', listener: () => void): void;
-  notify(event: string, args?: unknown): Promise<void>;
+  notify(event: string, args?: unknown): void;
 }
 
 /**
