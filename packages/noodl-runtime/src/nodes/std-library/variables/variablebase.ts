@@ -14,6 +14,12 @@ export interface VariableNodeInstance extends NodeInstance {
   _internal: {
     currentValue: unknown;
     latestValue: unknown;
+    /**
+     * Whether an author has ever stored into this Variable, as opposed to `initialize`
+     * having seeded it. NDA-002 §3: the `!==` guard has to compare against what the author
+     * last observed, and a seeded `startValue` was never observed.
+     */
+    hasBeenSet: boolean;
   };
   setValueTo(value: unknown): void;
 }
@@ -47,6 +53,7 @@ export function createDefinition(args: VariableDefinitionArgs): NodeDefinitionOp
     initialize: function (this: VariableNodeInstance) {
       this._internal.currentValue = args.startValue;
       this._internal.latestValue = 0;
+      this._internal.hasBeenSet = false;
     },
     getInspectInfo(this: VariableNodeInstance): InspectInfo {
       const type = args.type.name === 'color' ? 'color' : 'text';
@@ -95,8 +102,16 @@ export function createDefinition(args: VariableDefinitionArgs): NodeDefinitionOp
     prototypeExtensions: {
       setValueTo: function (this: VariableNodeInstance, value: unknown) {
         value = args.cast(value);
-        const changed = this._internal.currentValue !== value;
+        // NDA-002 §3 (corpus R7). The `!==` guard is right and stays — setting a Variable to
+        // the value it already holds is not a change. What was wrong is that `initialize`
+        // seeds `currentValue` with `startValue`, and a seeded value is indistinguishable
+        // from one the author stored: wiring "set this String to '', then react" fired
+        // nothing, for ever, because `''` is where the node started. The contract requires
+        // that the guard compare against what the *author* last observed, and that "has been
+        // set" be tracked explicitly rather than inferred from equality.
+        const changed = !this._internal.hasBeenSet || this._internal.currentValue !== value;
         this._internal.currentValue = value;
+        this._internal.hasBeenSet = true;
 
         if (changed) {
           this.flagOutputDirty('savedValue');

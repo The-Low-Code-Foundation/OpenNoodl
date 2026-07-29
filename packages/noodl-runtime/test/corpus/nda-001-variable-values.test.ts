@@ -37,11 +37,12 @@ function numberVariable(): DrivenNode {
 }
 
 describe('NDA-001 R7: a Variable set to its start value', () => {
-  test.failing('R7: setting a Variable to its startValue fires changed', () => {
+  test('R7: setting a Variable to its startValue fires changed', () => {
     const variable = stringVariable();
 
-    // `initialize` already put `''` in `currentValue`, so this write is indistinguishable
-    // from "nothing happened" — even though an author explicitly sent a value.
+    // `initialize` puts `''` in `currentValue`, which used to make this write
+    // indistinguishable from "nothing happened" even though an author explicitly sent a
+    // value. NDA-002 §3 tracks "has been set" explicitly, so the first store reports.
     variable.node.setInputValue('value', '');
 
     expect(variable.out('savedValue')).toBe('');
