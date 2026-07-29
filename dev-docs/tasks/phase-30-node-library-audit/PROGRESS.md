@@ -8,7 +8,7 @@
 |---|---|---|---|
 | NDA-001 Node behaviour corpus | 1 | ✅ **Done** `7a27e7c3` | 34 tests (16 `test.failing`, 18 pinned), wired into `pr.yml` `test-packages` — verified, not assumed. Two spec corrections: **E6 is a failing row** (`undefined` *overwrites* the key with the type default, worse than documented), and E8's propagation half already works — the defect is the `String` cast. F2/F3 are node-boundary/SSR proxies, documented in the corpus README |
 | NDA-002 Reactivity contract | 1 | ✅ **Built** `bd6632ca`…`825da393` | R1–R9 green unmarked; all suites green. **`items === arr` does NOT break** — `Collection.get`/`create` return a memoised Proxy, so identity holds and the raw array is simply unreachable. Mutating methods intercepted in the `get` trap (traps alone storm 3–4 changes per `splice`). Perf: only indexed reads regress (~0.3 µs/read Proxy floor; digit-leading fast path recovers 28%). ⚠️ `packages/noodl-editor/src/external/*` + `nodegx-backend/deploy/artifact/` embed stale `collection.ts` copies until rebuilt. Live QA + QA-fixture cyclic-warning check pending |
-| NDA-003 Empty-value contract | 1 | 🔄 §2 in progress | Contract at [`EMPTY-VALUE-CONTRACT.md`](../../reference/EMPTY-VALUE-CONTRACT.md). Richard decided: nullable Variables with `Treat empty as` back-compat. Implementation running; corpus expectations that predate the decision (E1/E8 `''`) get reconciled to the contract |
+| NDA-003 Empty-value contract | 1 | ✅ **Built** `e707f0cc`…`b2032129` | All E-rows green unmarked. Nullable Variables shipped with `Treat empty as` (String/Color: `null`/`''`; Number: `null`/`0`; Boolean: `null`/`false`); corpus E1/E8 expectations reconciled to the contract (`null`, not `''`). String `length` returns 0 on null store. httpnode normalised to one helper (both omit; JSON body keeps `null`-is-sent, documented). E5's null-clears-collection worked by accident — now explicit + tested. Enriched catalog needed the NDA-014 compatibility fix first (`61e8b3da`) |
 | NDA-013 Repeater Refresh | 1 | ✅ **Done** `0e96c93a` | `refresh()` resyncs from `items`; queue race handled by truncating the ops `set()` just appended (synchronous span, nothing interleaves). Full teardown kept deliberately, documented. Refresh added to Array Map; Array Filter's premise was wrong — its `Filter` signal always re-read fresh, `refresh` added as alias. 3 new corpus rows red→green. Live QA pending |
 | NDA-004 Failure contract | 2 | 🔄 §1 done | Design at [`FAILURE-CONTRACT.md`](../../reference/FAILURE-CONTRACT.md). "Both per-node `Failure` outputs **and** a global catch-all node" adopted on the spec's recommendation — **Richard has not reviewed this one**; veto window open |
 | NDA-005 Port documentation | 2 | ⬜ Not started | Do the shared port definitions first and re-measure; batch with NDA-012 |
@@ -32,7 +32,7 @@
 | Nodes whose implementation has been read | 15 | 8 named by Richard + 5 from his second list + Boolean/Color |
 | Nodes fully audited against the 12 checks | **4** | Variables, as NDA-012's worked example |
 | Systemic defect classes identified | 6 | A reactivity, B failure, C documentation, D string contracts, **E type dead ends**, **F implicit binding** |
-| Findings live-verified in the running editor | 0 | everything in `FINDINGS.md` is read from source |
+| Findings live-verified in the running editor | Tier 1 + NDA-014 | 2026-07-29 pass: preview runs the new collection semantics (push/index/length notify once each, synchronous, `items` identity holds, `set` = one change); zero renderer exceptions; no cyclic warnings; editor's live typecast table carries the three new casts. Catalog page empty = expected (DB query, no local data, no repeater on it) |
 
 **Calibration:** the second pass found five real defects in six nodes. The structural sweep found
 none of them. The 142 unread rows are unaudited, not clean — do not read a blank Verdict as a pass.
@@ -64,6 +64,19 @@ this table shows a category producing nothing new.
 
 ## Log
 
+- **2026-07-29 (Tier 1 complete + live QA)** — NDA-003 §2–3 landed (`e707f0cc`…`b2032129`): all
+  corpus E-rows green, nullable Variables with `Treat empty as`, httpnode guard helper, E1/E8
+  expectations reconciled to the decided contract. NDA-014 gained its **fifth consumer**
+  (`61e8b3da`): `catalog:merge` validates against `docs/node-catalog/compatibility.json`, which
+  still listed the new casts as rejected — the PORT-TYPE-CONTRACT checklist said four consumers;
+  it is five. Consolidated live-editor pass over NDA-002/003/013/014: dev viewer build is fresh
+  from source (so the preview runs the new collection code — the *committed* bundles under
+  `noodl-editor/src/external/*` and `nodegx-backend/deploy/artifact/` remain stale until rebuilt);
+  all collection probes pass in the real preview; zero exceptions; no cyclic-loop warnings; the
+  editor's live typecast table carries object/array/color→string. **Tier 1 is done** (NDA-001,
+  002, 003, 013) plus NDA-014 of Tier 2; remaining residuals: screenshot-corpus run for NDA-002
+  criterion 3, and a live wiring demo of an `object` output to a Text node (table verified live,
+  DOM demo not performed).
 - **2026-07-29 (execution begins)** — The three gating decisions put to Richard and confirmed (see
   Decisions). All five contracts + the icon model written into `dev-docs/reference/`:
   `REACTIVITY-CONTRACT.md`, `EMPTY-VALUE-CONTRACT.md`, `FAILURE-CONTRACT.md`,
