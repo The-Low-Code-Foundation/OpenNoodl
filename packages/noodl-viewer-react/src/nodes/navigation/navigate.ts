@@ -133,6 +133,10 @@ const Navigate: NodeDefinitionOptions = {
       } else if (this._internal.navigationMode === 'replace') {
         NavigationHandler.instance.replace(this._internal.stack, {
           target: this._internal.target,
+          // NDA-008 §1: replace used to forward no transition at all, which is half of why it
+          // could not animate. It defaults to `None` rather than push's `Push`, so every
+          // replace already out there behaves exactly as it did.
+          transition: { ...{ type: this._internal.transition || 'None' }, ...this._internal.transitionParams },
           params: this._internal.pageParams,
           hasNavigated: () => {
             this.scheduleAfterInputsHaveUpdated(() => {
@@ -193,18 +197,28 @@ function setup(context: NodeContextLike, graphModel: GraphModelLike) {
     function _updatePorts() {
       let ports: DynamicPort[] = [];
 
-      // Only push mode have transition
-      if (node.parameters['mode'] === 'push' || node.parameters['mode'] === undefined) {
+      // NDA-008 §1: both modes have transitions now. This used to read "Only push mode have
+      // transition", which was the split stated out loud — the animation capability came
+      // bundled with the choice of semantics instead of being an independent axis.
+      //
+      // The *default* still differs, and that is deliberate rather than an oversight: push has
+      // always animated by default, replace has never animated at all. Matching them would
+      // silently add an animation to every replace node already in every project. So the
+      // default is per mode, and existing graphs are untouched either way.
+      {
+        const isReplace = node.parameters['mode'] === 'replace';
+        const defaultTransition = isReplace ? 'None' : 'Push';
+
         ports.push({
           name: 'transition',
           plug: 'input',
           type: { name: 'enum', enums: Object.keys(Transitions) },
-          default: 'Push',
+          default: defaultTransition,
           displayName: 'Transition',
           group: 'Transition'
         });
 
-        const transition = (node.parameters['transition'] as string) || 'Push';
+        const transition = (node.parameters['transition'] as string) || defaultTransition;
         if (Transitions[transition])
           ports = ports.concat(Transitions[transition].ports(node.parameters) as DynamicPort[]);
       }

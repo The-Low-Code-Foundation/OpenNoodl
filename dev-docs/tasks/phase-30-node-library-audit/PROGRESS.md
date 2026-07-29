@@ -14,7 +14,7 @@
 | NDA-005 Port documentation | 2 | ⬜ Not started | Do the shared port definitions first and re-measure; batch with NDA-012 |
 | NDA-006 Columns | 2 | ⬜ Not started | Checked: `Columns.tsx` is the **only** file special-casing `ForEachComponent`. Slice 4 (Fable) is gated on slices 2–3 |
 | NDA-007 Icon sets | 2 | 🔄 §1 done | Model at [`ICON-SOURCE-MODEL.md`](../../reference/ICON-SOURCE-MODEL.md) — tagged union (`font`/`sprite`/`inline`), sanitise-at-registration policy decided (no existing viewer policy existed to match; checked) |
-| NDA-008 Component Stack | 2 | 🔄 **§0 fixed** | **The stack does not scroll** — zero `focus()` calls and zero px moved across navigate/replace/useRoutes, measured. The scroll is browser focus-scroll into the viewer's `overflow: hidden` app root (`viewer.jsx:344-353`), triggered by the library's only DOM focus, `TextInput` (`text-input.ts:211-214`). **Richard chose "Both" (2026-07-29): fix the box, keep the feature.** Applied as `overflow: clip` on the app root — `clip` creates no scroll container at all, where `hidden` creates one only the *browser* can scroll. `TextInput` keeps its plain `.focus()`, so a deliberate `Focus` still scrolls the nearest genuinely-scrollable ancestor. Measured live on the same element in one session: `hidden` 0 → **1762 px**, `clip` 0 → **0 px**. §2's no-scroll bullet moves out; §1 and §3 stand |
+| NDA-008 Component Stack | 2 | 🔄 **§0/§1/§3 done** | **The stack does not scroll** — zero `focus()` calls and zero px moved across navigate/replace/useRoutes, measured. The scroll is browser focus-scroll into the viewer's `overflow: hidden` app root (`viewer.jsx:344-353`), triggered by the library's only DOM focus, `TextInput` (`text-input.ts:211-214`). **Richard chose "Both" (2026-07-29): fix the box, keep the feature.** Applied as `overflow: clip` on the app root — `clip` creates no scroll container at all, where `hidden` creates one only the *browser* can scroll. `TextInput` keeps its plain `.focus()`, so a deliberate `Focus` still scrolls the nearest genuinely-scrollable ancestor. Measured live on the same element in one session: `hidden` 0 → **1762 px**, `clip` 0 → **0 px**. §1 done: replace animates through the same `Transitions` machinery, defaulting to `None` so no existing project starts moving; the `// Only push mode have transition` gate is gone. §3 done: `Popped`/`Failure`/`Error` and **three** codes, not two — the unbriefed one is `transition-in-progress`, i.e. a double-tapped back button used to lose its second tap. Only §2's re-mount bullet is left |
 | NDA-009 Run Tasks | 2 | ⬜ Not started | §1 alone closes corpus F1 |
 | NDA-010 Popups | 2 | 🔄 **§2 done** | Close Popup now *pulls*: `showPopup` publishes `_popupCloseHandler` on the popup instance and the node walks up to it, so it works from anywhere in the popup's tree — 7 corpus rows, shown to discriminate. Criterion 2 met. **⚠️ §1's premise is partly stale**: `showpopup.ts:129-177` already derives typed `popupParam-*` from the target's input ports and `closeResult-*`/`closeAction-*` from its Close Popup nodes. The real gaps are the hand-typed `results`/`closeActions` on the *Close Popup* side and untyped (`*`) results — re-scoped in the spec. §3 (stack policy, corpus F2) untouched |
 | NDA-014 Type dead ends | 2 | 🔄 §1+§2 done | Decision at [`PORT-TYPE-CONTRACT.md`](../../reference/PORT-TYPE-CONTRACT.md) (A now, C direction). Table changed (`object`/`array`/`color` → `string`), JSON mirror added in `setInputValue`, catalog + register regenerated, runtime jest green (1,026), editor suite green (1,885 specs incl. validator/catalog-index). Outstanding: live editor check of the 13 `object` outputs |
@@ -64,6 +64,34 @@ moment NDA-003 makes `null` storable. Consistent with the second-pass calibratio
 this table shows a category producing nothing new.
 
 ## Log
+
+- **2026-07-29 (NDA-008 §1 + §3)** — the last two open sections of the Component Stack task.
+  - **§1: replace had no animation *surface*, not just no animation.** `replaceAsync` deleted every
+    current page before creating the new one, so there was never anything to transition from, and
+    the entry it pushed carried no `transition` at all. Three places encoded the split — the viewer,
+    the Navigate node's `navigate()` (which forwarded no transition in replace mode), and its
+    `_updatePorts`, whose comment `// Only push mode have transition` was the defect stated out
+    loud. Replace is now "push, then drop the previous entries once the transition completes".
+  - **The default did not move, on purpose.** Push has always defaulted to `Push`, replace has never
+    animated; matching them would silently animate every replace node in every existing project. So
+    the transition port's default is per mode — `Push` for push, `None` for replace. Half the new
+    rows pin that rather than the feature.
+  - **Found on the way: `getChildren()` returns the live array**, and both `replaceAsync` and
+    `resetAsync` removed while iterating it by index — so with two children they deleted one and
+    left the other mounted for ever. Invisible while a stack had one visible child. Fixed in both.
+  - **§3: three silent failures, not the two the spec named.** `Pop Component Stack` gains
+    `Popped`/`Failure`/`Error` with `pop-component-stack/no-stack-in-scope`, `/stack-at-root` and
+    `/transition-in-progress`. The third was not in the brief and is the one authors actually hit:
+    `back()` returned early while animating, so **a double-tapped back button lost its second tap
+    without trace**.
+  - `PageStack.back()` returns a `StackBackResult` rather than `void`. The stack deliberately does
+    *not* raise — it did not fail; the Pop node was asked to act and could not, and it owns the port
+    and the provenance. A callback returning nothing counts as success, because `_setBackCallback`
+    is reachable across the node-type boundary and "told us nothing" must not read as failure.
+  - 12 new rows (7 + 5), the §1 ones verified discriminating. Viewer jest **125**, runtime jest
+    **1,072**, viewer typecheck green.
+  - Owed: live QA of both (jest only so far), and NDA-004's last two mute nodes are now **Response
+    and Logic Builder** — Logic Builder still blocked by another session's uncommitted rewrite.
 
 - **2026-07-29 (NDA-008 §0 fixed — Richard chose "Both")** — the scroll jump is closed at the viewer's
   app root, and `TextInput` keeps its plain `.focus()` so a deliberate `Focus` still brings an

@@ -9,6 +9,8 @@ import type {
 } from '@noodl/types';
 import { EdgeTriggeredInput } from '@noodl/runtime';
 
+import type { StackBackResult } from './navigation-stack';
+
 interface NavigateBackInstance extends NodeInstance {
   _internal: {
     resultValues: Record<string, unknown>;
@@ -17,10 +19,13 @@ interface NavigateBackInstance extends NodeInstance {
     backAction?: string;
     hasScheduledNavigate?: boolean;
     /** Set by the Component Stack when this node's page is pushed; see navigation-stack. */
-    backCallback?(args: { backAction: string | undefined; results: Record<string, unknown> }): void;
+    backCallback?(args: { backAction: string | undefined; results: Record<string, unknown> }): StackBackResult;
+    /** Message for the `Error` output; see NDA-004. */
+    lastError?: string;
   };
   scheduleNavigate(): void;
   navigate(): void;
+  reportFailure(code: string, message: string): void;
   backActionTriggered(name: string): void;
   setResultValue(key: string, value: unknown): void;
 }
@@ -53,6 +58,28 @@ const NavigateBack: NodeDefinitionOptions = {
       }
     }
   },
+  // NDA-004 §2/§3 + NDA-008 §3: this node took a signal and emitted none, so nothing could be
+  // sequenced after a pop and a pop that did nothing looked identical to one that worked.
+  outputs: {
+    success: {
+      type: 'signal',
+      displayName: 'Popped',
+      group: 'Events'
+    },
+    failure: {
+      type: 'signal',
+      displayName: 'Failure',
+      group: 'Events'
+    },
+    error: {
+      type: 'string',
+      displayName: 'Error',
+      group: 'Events',
+      getter: function (this: NavigateBackInstance) {
+        return this._internal.lastError;
+      }
+    }
+  },
   initialize: function (this: NavigateBackInstance) {
     this._internal.resultValues = {};
   },
@@ -71,13 +98,43 @@ const NavigateBack: NodeDefinitionOptions = {
     _setBackCallback(this: NavigateBackInstance, cb: NavigateBackInstance['_internal']['backCallback']) {
       this._internal.backCallback = cb;
     },
+    /**
+     * NDA-008 §3. Three things could go wrong here and all three were silent.
+     *
+     * The callback is absent when this node is not inside a component that a Component Stack
+     * pushed — the same shape as Close Popup's "no popup in scope", and the same reason it
+     * reads to an author as a dead Back button. The other two come back from the stack: the
+     * stack is already at its first component, or it is still animating the last navigation.
+     * That last one is the case authors actually hit, because a double-tapped back button
+     * used to lose its second tap without trace.
+     */
     navigate(this: NavigateBackInstance) {
-      if (this._internal.backCallback === undefined) return;
+      if (this._internal.backCallback === undefined) {
+        return this.reportFailure(
+          'pop-component-stack/no-stack-in-scope',
+          'No Component Stack to pop — this node only works inside a component that a Component Stack pushed'
+        );
+      }
 
-      this._internal.backCallback({
+      const result = this._internal.backCallback({
         backAction: this._internal.backAction,
         results: this._internal.resultValues
       });
+
+      // Tolerate a `void` return: `_setBackCallback` is public enough that something other
+      // than `navigation-stack.tsx` could be installing it, and treating "told us nothing" as
+      // a failure would be worse than assuming it worked.
+      if (result && result.ok === false) {
+        return this.reportFailure(result.code, result.message);
+      }
+
+      this.sendSignalOnOutput('success');
+    },
+    reportFailure(this: NavigateBackInstance, code: string, message: string) {
+      this._internal.lastError = message;
+      this.raiseRuntimeError(code, message);
+      this.flagOutputDirty('error');
+      this.sendSignalOnOutput('failure');
     },
     setResultValue: function (this: NavigateBackInstance, key: string, value: unknown) {
       this._internal.resultValues[key] = value;

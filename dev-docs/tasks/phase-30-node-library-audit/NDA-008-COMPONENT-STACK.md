@@ -100,6 +100,28 @@ not auto-focusing at all — a very small change in a file this task otherwise d
 
 ## §1 — Unify the two modes
 
+> **✅ Done 2026-07-29.** Replace is now "push, then drop the previous entries once the transition
+> completes" — the same `Transitions` registry, the same `tr-…` params, the same `isTransitioning`
+> gate. Three places encoded the split and all three are fixed:
+> `replaceAsync` (built no transition and deleted the outgoing pages before the new one existed),
+> `navigate.ts`'s `navigate()` (forwarded no `transition` in replace mode), and `navigate.ts`'s
+> `_updatePorts`, whose comment `// Only push mode have transition` was the split stated out loud.
+>
+> **The default deliberately did not move.** Push has always defaulted to `Push`; replace has never
+> animated. Matching them would silently add an animation to every replace node in every existing
+> project, so the port default is per mode — `Push` for push, `None` for replace — and an author who
+> wants one now picks it. Seven rows in `tests/nda-008-stack-replace-transition.test.ts`, verified
+> discriminating; the back-compat rows are half of them.
+>
+> **Found while doing it:** `getChildren()` returns the *live* array, and both `replaceAsync` and
+> `resetAsync` removed while iterating it by index — so with two children they deleted one and left
+> the other mounted for ever. Invisible while a stack had a single visible child. Fixed in both.
+>
+> The spec's "watch for" is answered: the outgoing component's state is destroyed in both cases, as
+> before — replace deletes its pages, it just does so when the animation ends rather than before it
+> starts. Nothing in the stack retains them, so the never-popping-stack memory concern does not
+> arise.
+
 Transitions are constructed only on the stack path
 ([`navigation-stack.tsx:717-765`](../../../packages/noodl-viewer-react/src/nodes/navigation/navigation-stack.tsx#L717-L765)):
 
@@ -134,6 +156,26 @@ things follow from §0 and §1:
 
 `Pop Component Stack` is one of the ten mute nodes (signal in, no signal out) — see NDA-004. Popping
 an empty stack, or targeting a component that does not exist, should be observable.
+
+> **✅ Done 2026-07-29.** The node gains `Popped` / `Failure` / `Error`, matching the shape NDA-004
+> gave Close Popup. **Three** silent failures, not the two this section names:
+>
+> | Code | When |
+> |---|---|
+> | `pop-component-stack/no-stack-in-scope` | the node is not inside a component a stack pushed |
+> | `pop-component-stack/stack-at-root` | the stack is already showing its first component |
+> | `pop-component-stack/transition-in-progress` | a pop arrived while the last one was still animating |
+>
+> The third is the one authors actually hit and it was not in the brief: `back()` returned early on
+> `isTransitioning`, so **a double-tapped back button silently lost its second tap**.
+>
+> `PageStack.back()` returns a `StackBackResult` instead of `void` now. The stack does not raise:
+> *it* did not fail — the Pop Component Stack node was asked to act and could not, and it is the one
+> carrying the port and the provenance (Failure Contract). A callback returning nothing is treated as
+> success, since `_setBackCallback` is reachable across the node-type boundary and "told us nothing"
+> must not read as failure. Five rows in `tests/mute-node-completion.test.ts`.
+>
+> This leaves **Response** and **Logic Builder** as NDA-004's last two mute nodes.
 
 ## Success criteria
 

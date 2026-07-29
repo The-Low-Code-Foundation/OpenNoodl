@@ -74,6 +74,15 @@ interface StackEntry {
   componentName?: string;
 }
 
+/**
+ * What a pop attempt did — NDA-008 §3.
+ *
+ * Returned rather than raised, because the Component Stack is not the node that failed: the
+ * Pop Component Stack node was asked to act and could not, and it is the one carrying the
+ * `Failure` port and the provenance an author can act on (Failure Contract).
+ */
+export type StackBackResult = { ok: true } | { ok: false; code: string; message: string };
+
 interface PageStackInstance extends ReactNodeInstance {
   _internal: {
     stack: StackEntry[];
@@ -113,7 +122,7 @@ interface PageStackInstance extends ReactNodeInstance {
   replaceAsync(args: StackNavigateArgs): Promise<void>;
   navigate(args: StackNavigateArgs): void;
   navigateAsync(args: StackNavigateArgs): Promise<void>;
-  back(args: { backAction?: string; results?: Record<string, unknown> }): void;
+  back(args: { backAction?: string; results?: Record<string, unknown> }): StackBackResult;
   setPageComponent(pageId: string, component: string): void;
   setPagePath(pageId: string, path: string): void;
   setStartPage(pageId: string): void;
@@ -355,9 +364,11 @@ const PageStack = {
       this._internal.asyncQueue.enqueue(this.resetAsync.bind(this));
     },
     async resetAsync(this: PageStackInstance) {
-      const children = this.getChildren();
-      for (const i in children) {
-        const c = children[i];
+      // `.slice()` for the same reason as in `replaceAsync`: `getChildren()` is the live array,
+      // and removing while iterating it by index skips every other child. Reset is the initial
+      // mount and deliberately has no transition — the app's first paint should not animate.
+      const children = this.getChildren().slice();
+      for (const c of children) {
         this.removeChild(c);
         this.nodeScope.deleteNode(c);
       }
@@ -603,6 +614,24 @@ const PageStack = {
     replace(this: PageStackInstance, args: StackNavigateArgs) {
       this._internal.asyncQueue.enqueue(this.replaceAsync.bind(this, args));
     },
+    /**
+     * NDA-008 §1 — one mechanism, two policies.
+     *
+     * Replace used to have no animation *surface at all*: it deleted every current page before
+     * the new one existed, so there was never anything to transition from, and the entry it
+     * pushed carried no `transition`. That is the split Richard called sad — you picked your
+     * semantics and the animation capability came bundled with the choice, rather than being an
+     * independent axis.
+     *
+     * Now replace is "push, then drop the previous entries once the transition completes",
+     * which is `navigateAsync` with one difference: the outgoing pages do not stay in the
+     * stack. Same `Transitions` registry, same `tr-…` params, same `isTransitioning` gate.
+     *
+     * **The default stays `None`, so no existing project starts animating.** Push's default is
+     * `Push`; matching it here would silently add an animation to every replace already out
+     * there. An author who wants one now picks it — see the mode-aware port default in
+     * `navigate.ts`.
+     */
     async replaceAsync(this: PageStackInstance, args: StackNavigateArgs) {
       if (this._internal.pages === undefined || this._internal.pages.length === 0) {
         return;
@@ -621,15 +650,28 @@ const PageStack = {
         return;
       }
 
-      // Remove all current pages in the stack
-      const children = this.getChildren();
-      for (const i in children) {
-        const c = children[i];
-        this.removeChild(c);
-        this.nodeScope.deleteNode(c);
-      }
+      // `.slice()`: `getChildren()` hands back the live array, so removing while iterating it
+      // skips every other entry. Harmless while a stack had one visible child, wrong the moment
+      // it has two — and the animated path below genuinely needs the whole snapshot.
+      const outgoing = this.getChildren().slice();
+      const from = this._internal.stack.length > 0 ? this._internal.stack[this._internal.stack.length - 1].page : null;
+
+      const transitionType = (args.transition && args.transition.type) || 'None';
+      const willAnimate = !!from && transitionType !== 'None' && !!Transitions[transitionType];
+
+      const dropOutgoing = () => {
+        for (const child of outgoing) {
+          this.removeChild(child);
+          this.nodeScope.deleteNode(child);
+        }
+      };
+
+      // Unanimated replace keeps its original ordering exactly — tear down first, then build —
+      // so the two pages are never children at the same time and cannot flash side by side.
+      if (!willAnimate) dropOutgoing();
 
       const group = this.createPageContainer();
+      if (willAnimate) group.setInputValue('position', 'absolute');
 
       // Create the page content
       const content = (await this.nodeScope.createNode(pageInfo.component, guid())) as ReactNodeInstance;
@@ -638,9 +680,12 @@ const PageStack = {
       }
       group.addChild(content);
 
-      this.addChild(group);
+      const transition = willAnimate
+        ? new Transitions[transitionType](from as ReactNodeInstance, group, args.transition)
+        : undefined;
 
-      // Replace stack
+      // Replace stack. `from: null` regardless: whatever was showing is on its way out, so
+      // there is nothing above this entry to go back to — that is what makes this a replace.
       this._internal.stack = [
         {
           from: null,
@@ -648,7 +693,8 @@ const PageStack = {
           pageId: pageId,
           pageInfo: pageInfo,
           params: args.params,
-          componentName: args.target
+          componentName: args.target,
+          transition: transition
         }
       ];
 
@@ -658,6 +704,24 @@ const PageStack = {
       });
 
       this._updateUrlWithTopPage();
+
+      if (transition) {
+        transition.forward(0);
+
+        this._internal.isTransitioning = true;
+        transition.start({
+          end: () => {
+            this._internal.isTransitioning = false;
+
+            // The only difference from `navigateAsync`: the outgoing pages are destroyed
+            // rather than kept below the new top.
+            dropOutgoing();
+            group.setInputValue('position', 'relative');
+          }
+        });
+      }
+
+      this.addChild(group);
 
       args.hasNavigated && args.hasNavigated();
     },
@@ -742,9 +806,28 @@ const PageStack = {
 
       args.hasNavigated && args.hasNavigated();
     },
-    back(this: PageStackInstance, args: { backAction?: string; results?: Record<string, unknown> }) {
-      if (this._internal.stack.length <= 1) return;
-      if (this._internal.isTransitioning) return;
+    /**
+     * Pop the top of the stack, and **say what happened** — NDA-008 §3 / NDA-004 §2.
+     *
+     * Both early returns below were bare. A Pop Component Stack node asked to pop the root of
+     * the stack, or asked twice while a transition was still running, did nothing and reported
+     * nothing — indistinguishable from a broken Back button. The second case is the one authors
+     * actually hit: a double-tapped back button silently loses its second tap.
+     *
+     * The outcome is returned rather than raised here, because *this* node did not fail — the
+     * Pop Component Stack node did, and it is the one that owns the `Failure` port and the
+     * provenance an author needs. See `navigate-back.ts`.
+     */
+    back(
+      this: PageStackInstance,
+      args: { backAction?: string; results?: Record<string, unknown> }
+    ): StackBackResult {
+      if (this._internal.stack.length <= 1) {
+        return { ok: false, code: 'pop-component-stack/stack-at-root', message: 'Nothing to pop — the Component Stack is already showing its first component' };
+      }
+      if (this._internal.isTransitioning) {
+        return { ok: false, code: 'pop-component-stack/transition-in-progress', message: 'Ignored — the Component Stack is still animating the previous navigation' };
+      }
 
       const top = this._internal.stack[this._internal.stack.length - 1];
 
@@ -775,6 +858,8 @@ const PageStack = {
         },
         back: true
       });
+
+      return { ok: true };
     },
     setPageComponent(this: PageStackInstance, pageId: string, component: string) {
       const internal = this._internal;

@@ -17,11 +17,16 @@ import type { NodeInstance, NodeModule } from '@noodl/types';
 import { createCorpusGraph, type CorpusGraph } from '../../noodl-runtime/test/corpus/graph-harness';
 
 import ClosePopupModule from '../src/nodes/navigation/closepopup';
+import NavigateBackModule from '../src/nodes/navigation/navigate-back';
 import EventSenderModule from '../src/nodes/std-library/eventsender';
 import ExternalLinkModule from '../src/nodes/std-library/externallink';
 
 interface ClosePopupInstance extends NodeInstance {
   _internal: { closeCallback?: (action: string | undefined, results: Record<string, unknown>) => void };
+}
+
+interface NavigateBackInstance extends NodeInstance {
+  _internal: { backCallback?: (args: unknown) => { ok: boolean; code?: string; message?: string } | void };
 }
 
 async function graphWith(module: NodeModule, type: string, parameters: Record<string, unknown> = {}) {
@@ -155,6 +160,85 @@ describe('NDA-004: External Link', () => {
     await graph.settle(2);
 
     expect(opened).toEqual(['https://example.com']);
+    expect(graph.signalsFor('node')).toEqual(['success']);
+  });
+});
+
+/**
+ * NDA-008 §3. Three ways to fail, all of them formerly silent — and the third is the one
+ * authors actually hit, because a double-tapped back button lost its second tap without trace.
+ */
+describe('NDA-004 / NDA-008 §3: Pop Component Stack', () => {
+  test('outside a pushed component, reports instead of doing nothing quietly', async () => {
+    const graph = await graphWith(NavigateBackModule, 'PageStackNavigateBack');
+
+    graph.node('node').setInputValue('navigate', true);
+    await graph.settle(3);
+
+    expect(graph.signalsFor('node')).toEqual(['failure']);
+    expect(codesRaised(graph)).toContain('pop-component-stack/no-stack-in-scope');
+  });
+
+  test('a stack already at its first component reports, rather than swallowing the pop', async () => {
+    const graph = await graphWith(NavigateBackModule, 'PageStackNavigateBack');
+    const node = graph.node<NavigateBackInstance>('node');
+    // What the Component Stack installs when it pushes this node's component.
+    node._internal.backCallback = () => ({
+      ok: false,
+      code: 'pop-component-stack/stack-at-root',
+      message: 'Nothing to pop'
+    });
+
+    node.setInputValue('navigate', true);
+    await graph.settle(3);
+
+    expect(graph.signalsFor('node')).toEqual(['failure']);
+    expect(codesRaised(graph)).toContain('pop-component-stack/stack-at-root');
+  });
+
+  test('a pop during a transition reports, rather than losing the second tap', async () => {
+    const graph = await graphWith(NavigateBackModule, 'PageStackNavigateBack');
+    const node = graph.node<NavigateBackInstance>('node');
+    node._internal.backCallback = () => ({
+      ok: false,
+      code: 'pop-component-stack/transition-in-progress',
+      message: 'Still animating'
+    });
+
+    node.setInputValue('navigate', true);
+    await graph.settle(3);
+
+    expect(graph.signalsFor('node')).toEqual(['failure']);
+    expect(codesRaised(graph)).toContain('pop-component-stack/transition-in-progress');
+  });
+
+  test('a pop that works signals Popped', async () => {
+    const graph = await graphWith(NavigateBackModule, 'PageStackNavigateBack');
+    const node = graph.node<NavigateBackInstance>('node');
+    const popped: unknown[] = [];
+    node._internal.backCallback = (args) => {
+      popped.push(args);
+      return { ok: true };
+    };
+
+    node.setInputValue('navigate', true);
+    await graph.settle(3);
+
+    expect(popped.length).toBe(1);
+    expect(graph.signalsFor('node')).toEqual(['success']);
+  });
+
+  test('a callback that returns nothing is treated as success, not failure', async () => {
+    // `_setBackCallback` is reachable across the node-type boundary, so something other than
+    // `navigation-stack.tsx` could be installing one. Treating "told us nothing" as a failure
+    // would be worse than assuming it worked.
+    const graph = await graphWith(NavigateBackModule, 'PageStackNavigateBack');
+    const node = graph.node<NavigateBackInstance>('node');
+    node._internal.backCallback = () => undefined;
+
+    node.setInputValue('navigate', true);
+    await graph.settle(3);
+
     expect(graph.signalsFor('node')).toEqual(['success']);
   });
 });
