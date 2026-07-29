@@ -385,6 +385,48 @@ by walking scope, with no way to name the target and no indication of what it fo
 one class. The fix is the same in both: an optional explicit target, and a *visible* indication of
 what was resolved when it is left implicit.
 
+### The class F sweep — done 2026-07-29 (NDA-015 §2, criterion 4)
+
+Both named nodes are fixed. The sweep the spec asked for — grep `getNodesWithType`,
+`parentNodeScope`, `getVisualParentNode`, `componentOwner` across `noodl-runtime/src/nodes` and
+`noodl-viewer-react/src/nodes` — found the class is **wider than the two reported nodes**, in two
+directions the specs did not name.
+
+**F-i. The walk itself existed four times, and had already drifted.** The recursive
+`getParentComponent` was hand-copied into `parentcomponentobject.ts`,
+`setparentcomponentobjectproperties.ts`, `javascriptnodeparser.js` and the deprecated
+`parentcomponentstate.ts`. Three of them are not identical: the `.js` copy accepts the deprecated
+`'Component State'` node type as well as `'net.noodl.ComponentObject'`, the two TypeScript copies
+accept only the latter. So **a Function node reading `Component Object` and a Parent Component Object
+node sitting in the same place could resolve to different ancestors**, with nothing to say so. Closed
+by moving the walk to `noodl-runtime/src/componentwalk.ts` and having the Component Object family
+accept both types.
+
+**F-ii. `_forEachModel` is the same defect class, unfixed — five sites.** "The current Repeater item"
+is resolved by walking `parentNodeScope.componentOwner` upwards until a component carries
+`_forEachModel`:
+
+| File | Line |
+|---|---|
+| `data/modelcrudbase.ts` | 104–106 |
+| `data/modelnode2.ts` | 126–128 |
+| `data/dbmodelcrudbase.ts` | 292–294 |
+| `data/dbmodelnode2.ts` | 153–155 |
+| `javascriptnodeparser.js` | 429–432 (`_findForEachModel`) |
+
+Every one ends `setModel(component !== undefined ? component._forEachModel : undefined)` — so setting
+**Id Source = Repeater Item on a node that is not inside a Repeater silently binds to nothing**, which
+is clause (c) exactly. Nested Repeaters give the same undiscoverable nearest-wins binding as clause
+(a). Not fixed here: it is five files this task does not otherwise touch, each needing its own corpus
+row, and the shape is named as `findAncestorWithProperty` in `componentwalk.ts` so a sixth spelling
+does not get invented. **This is the highest-value remaining item in class F.**
+
+**What the sweep cleared.** The other `componentOwner` hits are not this class: they read
+`componentOwner.name` to attribute a warning (~20 sites), or `componentOwner` for the node's *own*
+scope rather than an ancestor's. `getNodesWithType` on a `graphModel` (Users, HTTP, REST, BYOB, …) is
+editor-time port plumbing over the whole project, not a scope walk. Routers and Page Stacks target by
+an explicit name already, so they satisfy clause (a) and only lack (b).
+
 ## The Repeater does not re-read its source on Refresh
 
 Richard: "when an array feeding into the repeater is changed… not through the standard Noodl node

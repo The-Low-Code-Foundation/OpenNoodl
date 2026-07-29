@@ -16,9 +16,9 @@
 | NDA-007 Icon sets | 2 | 🔄 §1 done | Model at [`ICON-SOURCE-MODEL.md`](../../reference/ICON-SOURCE-MODEL.md) — tagged union (`font`/`sprite`/`inline`), sanitise-at-registration policy decided (no existing viewer policy existed to match; checked) |
 | NDA-008 Component Stack | 2 | 🔄 **§0 resolved, unblocked** | **The stack does not scroll** — zero `focus()` calls and zero px moved across navigate/replace/useRoutes, measured. The scroll is browser focus-scroll into the viewer's `overflow: hidden` app root (`viewer.jsx:344-353`), triggered by the library's only DOM focus, `TextInput` (`text-input.ts:211-214`). `preventScroll: true` fixes it (0 px vs 1169 px) but is **not applied** — it would stop a deliberate `Focus` scrolling an off-screen field into view. Needs a call from Richard; filed against the viewer, not this node. §2's no-scroll bullet moves out; §1 and §3 stand |
 | NDA-009 Run Tasks | 2 | ⬜ Not started | §1 alone closes corpus F1 |
-| NDA-010 Popups | 2 | ⬜ Not started | §2 shared with NDA-015 |
+| NDA-010 Popups | 2 | 🔄 **§2 done** | Close Popup now *pulls*: `showPopup` publishes `_popupCloseHandler` on the popup instance and the node walks up to it, so it works from anywhere in the popup's tree — 7 corpus rows, shown to discriminate. Criterion 2 met. **⚠️ §1's premise is partly stale**: `showpopup.ts:129-177` already derives typed `popupParam-*` from the target's input ports and `closeResult-*`/`closeAction-*` from its Close Popup nodes. The real gaps are the hand-typed `results`/`closeActions` on the *Close Popup* side and untyped (`*`) results — re-scoped in the spec. §3 (stack policy, corpus F2) untouched |
 | NDA-014 Type dead ends | 2 | 🔄 §1+§2 done | Decision at [`PORT-TYPE-CONTRACT.md`](../../reference/PORT-TYPE-CONTRACT.md) (A now, C direction). Table changed (`object`/`array`/`color` → `string`), JSON mirror added in `setInputValue`, catalog + register regenerated, runtime jest green (1,026), editor suite green (1,885 specs incl. validator/catalog-index). Outstanding: live editor check of the 13 `object` outputs |
-| NDA-015 Explicit binding | 2 | 🔄 §1 done | Contract at [`BINDING-CONTRACT.md`](../../reference/BINDING-CONTRACT.md). Explicit-target-miss ≠ fallback is the load-bearing clause. §2 sweep + §3 FIXME open |
+| NDA-015 Explicit binding | 2 | ✅ **Done** | All three sections. Walk de-duplicated into `runtime/src/componentwalk.ts` (it existed **four** times and had drifted — the `.js` copy accepted `'Component State'`, the TS ones did not, so a Function node and a Parent Component Object in the same place could resolve to *different* ancestors). Clause (b) ships as a node-card sub-label over a new `nodesublabel` message — **not** CAN-001/002, which are wire labels, and **not** `metadata.typeLabelOverride`, which is persisted. §3: the FIXME was load-bearing and its own comment described what `scheduleAfterUpdate` already does. 16 corpus rows. **Sweep found the class is wider** — `_forEachModel` (5 sites) is the same defect, unfixed, see FINDINGS F-ii |
 | NDA-016 `Layout.size` | 2 | ✅ **Done** | **§0 resolved: the spec's premise was wrong.** `sizeMode` is never unset — a fresh Text node carries `contentHeight`/`100%`, read live. The real defect is a stale `parentLayout`: children bake the parent's layout in at *their* render, `renderChildren` memoises them, and the Layout setter never invalidated the memo — so a layout change never reached the children, and the first child ate the row. Fixed with `setLayout` as the single writer. §1 built too, on its own terms (an abstaining *connection* can still unset the port). 10 regression tests; 15-node-type live blast-radius check. Criterion 4's screenshot corpus is an instrument mismatch — see the spec |
 | NDA-011 REST → HTTP | 3 | ⬜ Not started | First output is an assessment, not a change |
 | NDA-012 Per-node audit | 3 | ⬜ **1 of 17 categories** | Variables done (4/4) as the worked example. Opt-in, resumable, stop on find-rate decline |
@@ -64,6 +64,63 @@ moment NDA-003 makes `null` storable. Consistent with the second-pass calibratio
 this table shows a category producing nothing new.
 
 ## Log
+
+- **2026-07-29 (NDA-015 §1–§3 + NDA-010 §2 — the Binding Contract, applied)** — both named nodes now
+  obey all three clauses, and the sweep the spec asked for turned up more than the spec named.
+  - **The walk existed four times and had already drifted.** `parentcomponentobject.ts`,
+    `setparentcomponentobjectproperties.ts`, `javascriptnodeparser.js` and the deprecated
+    `parentcomponentstate.ts` each carried a hand-copied `getParentComponent`. The `.js` one accepts
+    the deprecated `'Component State'` node type; the two TS ones do not. So **a Function node
+    reading `Component Object` and a Parent Component Object node sitting in the same place could
+    resolve to different ancestors**, silently. One implementation now, in
+    `runtime/src/componentwalk.ts`, and the Component Object family accepts both types.
+  - **Close Popup was pushed to; now it pulls.** `showPopup` handed its close callback only to
+    `getNodesWithType('NavigationClosePopup')` on the popup's *own top-level scope*, so a Close
+    Popup one component deeper was never given one — that is the whole of "very hard to find the
+    right place to put the close popup node". It now publishes `_popupCloseHandler` on the popup's
+    component instance (unconditionally: the old registration ran only when a top-level Close Popup
+    happened to exist) and the node walks up to it. The handed callback is still preferred, so
+    graphs that work today take the path they took before.
+  - **Clause (b) needed a new channel, and the spec pointed at the wrong one.** CAN-001/002 are
+    *connector* labels — text on a wire — and carry nothing about a node. The surface that works is
+    the node card's sub-label, which the painter already draws and which nothing at runtime could
+    reach. New one-way `nodesublabel` message → `NodeGraphNode.runtimeSubLabel` → the existing
+    sub-label paint. **Not** `metadata.typeLabelOverride`, the other writer of that slot: metadata is
+    persisted, and writing a runtime value there would dirty `project.json` on every preview (class
+    F46). **Not** a warning either — a binding that worked is not a problem.
+  - **One canvas node is many runtime nodes.** `ResolvedTargetReporter` aggregates a graph node's
+    live instances before sending, keyed per `NodeContext`. When instances genuinely disagree it says
+    "→ 2 targets: A, B" rather than showing whichever updated last — which is the contract's litmus
+    test answered honestly, not a fallback.
+  - **§3: the FIXME was load-bearing and its own comment described the fix it was waiting for.**
+    `scheduleAfterUpdate` is not a timer — `updateDirtyNodes` drains `callbacksAfterUpdate` after the
+    dirty-node loop *within the same pass*, re-looping until settled, so the whole tree exists by
+    then. `nodeScopeDidInitialize` alone is genuinely too early (it fires part-way through the
+    parent's node-creation loop). Reworded, not deleted, and now also the point at which reporting
+    goes loud: raising before it would report a failure on every correctly-wired graph on load.
+  - **Sweep result (criterion 4), recorded in FINDINGS as F-i/F-ii.** The class is wider:
+    `_forEachModel` — "the current Repeater item" — is resolved by the same kind of walk in **five**
+    places (`modelcrudbase`, `modelnode2`, `dbmodelcrudbase`, `dbmodelnode2`, `javascriptnodeparser`),
+    each ending in a silent `undefined`. So **Id Source = Repeater Item outside a Repeater binds to
+    nothing and says nothing**. Not fixed — five files this task does not otherwise touch — but named
+    as `findAncestorWithProperty` so a sixth spelling is not invented. Highest-value item left in the
+    class. What the sweep *cleared* is recorded too.
+  - **Harness gaps closed, both worth knowing.** `frame()` now emits `frameStart`/`frameEnd` like
+    `NoodlRuntime._doUpdate` — it did not, so anything deferred with `scheduleNextFrame` (closing a
+    popup) never ran and read as a node doing nothing. And `graph.errors` exposes the error channel
+    directly, because `editorConnection.warnings` carries only the message, not the `code`.
+  - **NDA-004 assertion moved with it:** Close Popup's `Error` output now carries the same sentence
+    as the raised event instead of a shorter separate one — the Failure Contract asks for exactly
+    that, and two wordings of one failure is "no information one level up" in miniature.
+  - 16 new corpus rows, verified discriminating: removing the pull seam reddens 4 of the popup rows
+    and leaves the pinned control green. Gates: runtime jest **1,072**, viewer jest **113** (was 97),
+    editor jasmine **1,885 / 0 failures** — all unchanged from baseline apart from the additions.
+  - ⚠️ **Catalog not regenerated** for the two new `targetComponent` inputs, same reason as NDA-004:
+    the working tree still carries another session's node-source edits and regeneration folds them
+    in. `nodelibraryexport.ts` reads the live register, so the editor's picker and property panel are
+    already correct; only the generated JSON snapshot is stale.
+  - ⚠️ **Not live-QA'd.** Everything here is jest. The sub-label's *appearance* on a real canvas —
+    wrap, card growth, the `→` glyph in the card font — has not been seen in the running editor.
 
 - **2026-07-29 (NDA-008 §0 resolved — the node is innocent)** — the scroll jump is real, is
   reproducible, and has nothing to do with the Component Stack. Measured with a Page Stack in a

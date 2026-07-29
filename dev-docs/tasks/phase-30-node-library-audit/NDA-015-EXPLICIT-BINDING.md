@@ -1,5 +1,25 @@
 # NDA-015: Explicit targeting for scope-resolved nodes
 
+> **Status: §1, §2 and §3 complete — 2026-07-29.** The contract is written
+> (`dev-docs/reference/BINDING-CONTRACT.md`), both named nodes obey all three clauses, the walk is
+> shared, and the sweep is recorded in [FINDINGS.md](./FINDINGS.md#the-class-f-sweep--done-2026-07-29-nda-015-2-criterion-4).
+> Corpus: `noodl-viewer-react/tests/corpus/nda-015-explicit-binding.test.ts` (9 rows) and
+> `nda-010-close-popup-targeting.test.ts` (7 rows).
+>
+> **Two of this spec's premises did not survive implementation.** Read these before the body:
+>
+> 1. **§1's suggestion to reuse phase 28's CAN-001/002 label mechanism does not apply.** Those are
+>    *connector* labels — text on a wire — and carry nothing about a node. The surface that worked is
+>    the node card's **sub-label**, which the painter already draws
+>    (`NodeGraphEditorNode.typeDisplayName`) and which nothing at runtime could previously reach. A
+>    new one-way message (`nodesublabel`) feeds it. Deliberately *not* `metadata.typeLabelOverride`,
+>    the other writer of that slot: metadata is persisted, and a runtime value written there would
+>    dirty `project.json` on every preview.
+> 2. **§3's FIXME is load-bearing and was already correct.** See the §3 note below.
+>
+> **The sweep found the class is wider than this spec's two nodes** — see F-i and F-ii in FINDINGS.
+> F-ii (`_forEachModel`, five sites) is unfixed and is the remaining work in this class.
+
 ## Metadata
 
 | Field | Value |
@@ -95,6 +115,29 @@ code: resolution runs before the parent's node scope exists. An explicit target 
 need to resolve it at the right time. Work out whether the scope-ready point can be observed properly
 rather than waited for; if it cannot, document why the deferral is load-bearing so the next person
 does not delete it.
+
+> **Answered 2026-07-29: the deferral is load-bearing, it is not a sleep, and the old comment's own
+> proposed fix was a description of what the code already did.**
+>
+> The ordering problem is real. `nodeScopeDidInitialize` fires from the *child's*
+> `NodeScope.setComponentModel`, which runs part-way through the parent's node-creation loop — so any
+> of the parent's nodes created after this instance, possibly including the Component Object being
+> looked for, do not exist yet.
+>
+> But `context.scheduleAfterUpdate` is not a timer. It pushes onto `callbacksAfterUpdate`, which
+> `NodeContext.updateDirtyNodes` drains *after the dirty-node loop within the same update pass*,
+> re-looping until both queues are empty (`nodecontext.ts:233-245`). By the time it runs, the whole
+> tree for that pass exists. That is a defined scope-ready point — which is exactly what the comment
+> proposed ("call this code when the entire node tree has been created, before running the next
+> update") as the fix it was waiting for.
+>
+> What the comment got right is the cost: outputs propagate a pass later than the rest of the graph.
+> That is inherent to resolving after creation, not a defect of this call, and removing it would need
+> `NodeScope` to announce readiness upwards — beyond this contract.
+>
+> The deferral now also gates *reporting*: before it, a miss is expected and silent; after it, a miss
+> is a genuine failure and is raised. Without that gate every correctly-wired graph in the project
+> would raise a failure on load, which is worse than the silence the contract set out to fix.
 
 ## Success criteria
 

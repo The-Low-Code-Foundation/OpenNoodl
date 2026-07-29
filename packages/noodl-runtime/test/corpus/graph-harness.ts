@@ -13,7 +13,7 @@
  * tool for R1–R7 and E1–E4.
  */
 
-import type { NodeInstance, NodeModule, NodeDefinitionOptions } from '@noodl/types';
+import type { NodeInstance, NodeModule, NodeDefinitionOptions, RuntimeErrorEventLike } from '@noodl/types';
 
 import type { RuntimeNode } from '../../src/internal';
 
@@ -42,9 +42,25 @@ export interface RecordedWarning {
 export interface RecordingEditorConnection {
   warnings: RecordedWarning[];
   cleared: Array<{ nodeId: string; key: string }>;
+  /**
+   * The latest node-card sub-label per node id — BINDING-CONTRACT §(b)'s observable.
+   *
+   * Latest rather than a log, because that is what the canvas shows: the reporter already
+   * collapses a graph node's live instances into one summary before sending.
+   */
+  subLabels: Record<string, string | undefined>;
   sendWarning(component: string, nodeId: string, key: string, warning?: { message?: string }): void;
   clearWarning(component: string, nodeId: string, key: string): void;
   sendDynamicPorts(...args: unknown[]): void;
+  sendNodeSubLabel(nodeId: string, subLabel: string | undefined): void;
+  /**
+   * `true`, so nodes take the "there is an editor watching" path.
+   *
+   * Node *modules*' `setup` is never called by this harness, so this cannot switch on the
+   * editor-only port plumbing; what it does reach is the handful of node instances that ask
+   * before reporting something, which is precisely what a corpus row wants to observe.
+   */
+  isRunningLocally(): boolean;
   hasWarningFor(nodeId: string): boolean;
   /**
    * `false`, always. `NodeContext.connectionSentValue` asks this before serialising every
@@ -71,8 +87,15 @@ export function createRecordingEditorConnection(): RecordingEditorConnection {
         }
       }
     },
+    subLabels: {},
     sendDynamicPorts() {
       /* the editor draws ports; a test only needs the call not to throw */
+    },
+    sendNodeSubLabel(nodeId, subLabel) {
+      connection.subLabels[nodeId] = subLabel;
+    },
+    isRunningLocally() {
+      return true;
     },
     hasWarningFor(nodeId) {
       return connection.warnings.some((w) => w.nodeId === nodeId);
@@ -105,6 +128,15 @@ export interface CorpusGraph {
 
   /** Signal names sent by `id`, in order. Live — assert on it directly. */
   signalsFor(id: string): string[];
+
+  /**
+   * Everything raised on the runtime error channel, in order. Live.
+   *
+   * The Failure Contract's own observable. `editorConnection.warnings` sees the same events
+   * through the editor adapter, but only their message — a row asserting on the *code*, which
+   * is the stable half of the pair, has to read them here.
+   */
+  errors: RuntimeErrorEventLike[];
 
   /** One frame: drain the dirty list and every after-update callback. */
   update(): void;
@@ -160,6 +192,9 @@ export async function createCorpusGraph(options: CorpusGraphOptions): Promise<Co
     context.nodeRegister.register(NodeDefinition.defineNode(definitionOf(entry)));
   }
 
+  const errors: RuntimeErrorEventLike[] = [];
+  context.errorBus.subscribe((event) => errors.push(event));
+
   const signals: Record<string, string[]> = {};
 
   // Every node instance records its own signals as it is created, so a test never has to
@@ -192,6 +227,7 @@ export async function createCorpusGraph(options: CorpusGraphOptions): Promise<Co
     graphModel,
     root,
     editorConnection,
+    errors,
 
     node<I extends NodeInstance = NodeInstance>(id: string): CorpusNode<I> {
       const found = root.nodeScope.getNodesWithIdRecursive(id);
@@ -209,7 +245,13 @@ export async function createCorpusGraph(options: CorpusGraphOptions): Promise<Co
 
     frame(dt = 16) {
       context.currentFrameTime += dt;
+      // The same three steps as `NoodlRuntime._doUpdate`, events included. They are not
+      // decoration: `NodeContext.scheduleNextFrame` is `eventEmitter.once('frameStart', …)`,
+      // so anything deferred to the next frame — closing a popup is the corpus's case —
+      // simply never runs without them, and reads as a node that did nothing.
+      context.eventEmitter.emit('frameStart');
       context.update();
+      context.eventEmitter.emit('frameEnd');
     },
 
     async settle(frames = 10) {

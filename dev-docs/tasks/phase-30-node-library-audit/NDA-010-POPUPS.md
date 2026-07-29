@@ -1,5 +1,12 @@
 # NDA-010: Popups — data in, data out, and only one at a time
 
+> **Status: §2 complete — 2026-07-29** (shared with NDA-015). §1 and §3 remain; read the notes on
+> each below before starting them, because §1's premise is partly stale.
+>
+> Success criterion 2 is met: a Close Popup node anywhere in the popup's component tree now works, and
+> says why when it does not. Corpus: `noodl-viewer-react/tests/corpus/nda-010-close-popup-targeting.test.ts`
+> — 7 rows, verified discriminating (removing the fix reddens 4 and leaves the pinned control green).
+
 ## Metadata
 
 | Field | Value |
@@ -38,6 +45,33 @@ invent matching names on both sides. This is the same fix shape as NDA-009 §2.
 them, or ship a migration. Check the QA fixture and the docs-repo library content for real usage
 before designing the replacement.
 
+> ### ⚠️ §1's premise is partly stale — read before building (noted 2026-07-29, NDA-010 §2)
+>
+> Two of the sentences above are already false of the code, found while doing §2. Source-read only,
+> not run — but the code is unambiguous.
+>
+> **Show Popup already derives its ports from the target component.** `showpopup.ts:129-177`
+> (`_updatePorts`) iterates the target component's `inputPorts` and emits one `popupParam-<name>`
+> port per input **carrying that input's declared type** (`type: o.type || '*'`). It then reads the
+> target's `NavigationClosePopup` nodes and emits `closeAction-*` and `closeResult-*` from their
+> parameters, re-running on `inputPortAdded`/`inputPortRemoved`/`nodeAdded`/`parameterUpdated`. So
+> "nothing tells the author which params the target popup expects" is wrong, and so is "asking the
+> author to invent matching names on both sides" — **only one side invents them**, and the other is
+> generated, which is why the names cannot mismatch.
+>
+> What is *actually* missing, and what §1 should be re-scoped to:
+>
+> 1. **The Close Popup side is still hand-typed.** `results` and `closeActions` are `stringlist`
+>    parameters (`closepopup.ts`), so results are named by hand — the reverse direction from what this
+>    section assumed. Deriving *those* from the component's output ports is the real gap.
+> 2. **Results are untyped.** `closeResult-*` ports are pushed as `type: '*'` while `popupParam-*`
+>    carry a real type. So one direction type-checks and the other does not.
+> 3. **The validator.** Whether the semantic validator can now express the contract needs re-checking
+>    against what is actually derived, not against this section's description of it.
+>
+> Do not start §1 without re-reading `showpopup.ts` first. This is the phase's recurring lesson: six
+> spec claims have now fallen to implementation.
+
 ## §2 — Close Popup must know what it closes
 
 `Close Popup` does not find its popup — it waits to be *handed* a callback. `_setCloseCallback`
@@ -54,6 +88,24 @@ popup node so that it actually works" — and it is the same defect class as Par
 - an optional explicit target,
 - a visible indication of what was resolved when left implicit,
 - a warning when nothing resolves, instead of a node that silently does nothing.
+
+> ### ✅ Done 2026-07-29
+>
+> The push became a **pull**. `NodeContext.showPopup` now publishes its close handler on the popup's
+> component instance as `_popupCloseHandler` — unconditionally, where the old registration ran only
+> when the popup's top-level scope happened to contain a Close Popup node — and `closepopup.ts`
+> resolves *upwards* to the nearest ancestor carrying one, using the shared walk in
+> `runtime/src/componentwalk.ts`. The handed-down callback is still preferred when present, so every
+> graph that works today takes exactly the path it took before.
+>
+> All three bullets landed: an optional `Popup` input (an explicit miss fails, it never falls back to
+> the enclosing popup — closing *something* would be worse than closing nothing), the resolved popup
+> name on the node card via the new `nodesublabel` channel, and the NDA-004 failure raised with
+> `close-popup/no-popup-in-scope` or `close-popup/target-not-found`.
+>
+> One assertion in NDA-004's `mute-node-completion.test.ts` moved with it: the `Error` output now
+> carries the same sentence as the raised event instead of a shorter separate one, which is what the
+> Failure Contract asks for ("accompanied by an `Error` value output carrying `message`/`code`").
 
 ## §3 — A stack policy
 

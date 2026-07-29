@@ -583,20 +583,40 @@ NodeContext.prototype.showPopup = async function (popupComponent, params, args) 
   //if the body can scroll the position of the popup needs to be fixed.
   group.setInputValue('position', bodyScroll ? 'fixed' : 'absolute');
 
+  // NDA-010 §2 / NDA-015: closing a popup is *pull*, not only push.
+  //
+  // This used to hand the close callback to `getNodesWithType('NavigationClosePopup')` on
+  // the popup's own scope and nothing else, so a Close Popup node one component deeper
+  // inside the popup was never given one and silently did nothing. That is the reported
+  // "very hard to find the right place to put the close popup node so that it actually
+  // works": whether the node worked depended on which scope it happened to sit in, with no
+  // indication either way.
+  //
+  // The handler is now published on the popup's component instance as well, where
+  // `closepopup.ts` finds it by walking up (`componentwalk.ts`) from wherever it sits. The
+  // push is kept for the nodes that already had it — identical behaviour, no reliance on
+  // walk ordering for graphs that work today — and the pull is the fallback.
+  const closeHandler = (action, results) => {
+    //close next frame so all nodes have a chance to update before being deleted
+    this.scheduleNextFrame(() => {
+      //avoid double callbacks
+      if (!nodeScope.hasNodeWithId(group.id)) return;
+
+      this.onClosePopup(group);
+      nodeScope.deleteNode(group);
+      args && args.onClosePopup && args.onClosePopup(action, results);
+    });
+  };
+
+  // Read by `closepopup.ts`'s upward walk. Set unconditionally: a popup whose only Close
+  // Popup node sits in a nested component used to get no handler at all, because the
+  // registration below never ran.
+  popupNode._popupCloseHandler = closeHandler;
+
   var closePopupNodes = popupNode.nodeScope.getNodesWithType('NavigationClosePopup');
   if (closePopupNodes && closePopupNodes.length > 0) {
     for (var j = 0; j < closePopupNodes.length; j++) {
-      closePopupNodes[j]._setCloseCallback((action, results) => {
-        //close next frame so all nodes have a chance to update before being deleted
-        this.scheduleNextFrame(() => {
-          //avoid double callbacks
-          if (!nodeScope.hasNodeWithId(group.id)) return;
-
-          this.onClosePopup(group);
-          nodeScope.deleteNode(group);
-          args && args.onClosePopup && args.onClosePopup(action, results);
-        });
-      });
+      closePopupNodes[j]._setCloseCallback(closeHandler);
     }
   }
 

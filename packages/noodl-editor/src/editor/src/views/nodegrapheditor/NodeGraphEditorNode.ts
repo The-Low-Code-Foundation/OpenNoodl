@@ -349,8 +349,16 @@ export class NodeGraphEditorNode {
     return this.titlebarLabelHeight() + labelExtraHeight + 22;
   }
 
+  /**
+   * The card's second line.
+   *
+   * `runtimeSubLabel` wins because it is strictly more informative when present: it says
+   * which target a scope-resolving node actually bound to (BINDING-CONTRACT §(b)), where the
+   * type name repeats what the node's colour and the property panel already say. It is only
+   * ever set on nodes that resolve something implicitly, and only while a preview is running.
+   */
   typeDisplayName() {
-    return this.model.metadata?.typeLabelOverride || this.model.type.displayName;
+    return this.model.runtimeSubLabel || this.model.metadata?.typeLabelOverride || this.model.type.displayName;
   }
 
   paint(ctx: CanvasRenderingContext2D, paintRect, options?) {

@@ -1,5 +1,8 @@
-import { EdgeTriggeredInput } from '@noodl/runtime';
+import { EdgeTriggeredInput, Node } from '@noodl/runtime';
+import { componentAncestors } from '@noodl/runtime/src/componentwalk';
+import { ResolvedTargetReporter } from '@noodl/runtime/src/resolvedtarget';
 import type {
+  ComponentInstanceLike,
   EditorConnectionLike,
   GraphModelLike,
   GraphNodeModel,
@@ -8,6 +11,22 @@ import type {
   NodeInstance,
   NodeModule
 } from '@noodl/types';
+
+/** BINDING-CONTRACT §(b): which popup this node will close, on the node card. */
+const resolvedTargets = new ResolvedTargetReporter();
+
+/** What an attempt to find the enclosing popup came back with. */
+interface PopupResolution {
+  /** The popup's component instance, when one was found. */
+  popup?: ComponentInstanceLike;
+  /** How to close it — either the popup's published handler or a handed-down callback. */
+  close?(action: string | undefined, results: Record<string, unknown>): void;
+  /** Set when nothing resolved: the failure code and message to raise. */
+  missCode?: string;
+  missMessage?: string;
+  /** Popup component names enclosing this node, nearest first — for the failure detail. */
+  candidates: string[];
+}
 
 interface ClosePopupInstance extends NodeInstance {
   _internal: {
@@ -18,6 +37,8 @@ interface ClosePopupInstance extends NodeInstance {
     hasScheduledClose?: boolean;
     /** Installed by the popup layer when the popup opens; see showpopup's `onClosePopup`. */
     closeCallback?(action: string | undefined, results: Record<string, unknown>): void;
+    /** The `Popup` input: a popup named explicitly, or unset for "the enclosing one". */
+    targetComponent?: string;
     /** Message for the `Error` output; see NDA-004. */
     lastError?: string;
   };
@@ -25,6 +46,8 @@ interface ClosePopupInstance extends NodeInstance {
   close(): void;
   closeActionTriggered(name: string): void;
   setResultValue(key: string, value: unknown): void;
+  resolvePopup(): PopupResolution;
+  reportResolution(): void;
 }
 
 const ClosePopupNode: NodeDefinitionOptions = {
@@ -35,7 +58,36 @@ const ClosePopupNode: NodeDefinitionOptions = {
   initialize: function (this: ClosePopupInstance) {
     this._internal.resultValues = {};
   },
+  /**
+   * Report what this node will close as soon as it can, not only when it is asked to close.
+   *
+   * Deferred for the same reason `parentcomponentobject.ts` defers (NDA-015 §3): at
+   * `nodeScopeDidInitialize` the enclosing tree is still being built, and `showPopup` only
+   * attaches the popup's group a frame later. `scheduleAfterUpdate` runs at the end of this
+   * update pass, by which time the walk has something to walk.
+   */
+  nodeScopeDidInitialize: function (this: ClosePopupInstance) {
+    this.context.scheduleAfterUpdate(() => {
+      this.reportResolution();
+    });
+  },
   inputs: {
+    /**
+     * BINDING-CONTRACT §(a). Optional: unset closes the enclosing popup, which is what this
+     * node has always done, so no existing graph changes behaviour.
+     *
+     * Worth having because popups nest — a popup opened from inside a popup gives a Close
+     * Popup node two honest answers, and only the author knows which was meant.
+     */
+    targetComponent: {
+      type: 'component',
+      displayName: 'Popup',
+      group: 'General',
+      set: function (this: ClosePopupInstance, value: string) {
+        this._internal.targetComponent = value || undefined;
+        this.reportResolution();
+      }
+    },
     results: {
       type: { name: 'stringlist', allowEditOnly: true },
       group: 'Results',
@@ -87,6 +139,14 @@ const ClosePopupNode: NodeDefinitionOptions = {
     },
     _setCloseCallback: function (this: ClosePopupInstance, cb: ClosePopupInstance['_internal']['closeCallback']) {
       this._internal.closeCallback = cb;
+      // Being handed a callback is the moment this node learns it is inside an open popup,
+      // so it is also the moment the card can say which one.
+      this.reportResolution();
+    },
+    _onNodeDeleted: function (this: ClosePopupInstance) {
+      Node.prototype._onNodeDeleted.call(this);
+      // The reporter holds instances strongly; popups are created and destroyed constantly.
+      resolvedTargets.forget(this);
     },
     scheduleClose: function (this: ClosePopupInstance) {
       const _this = this;
@@ -99,27 +159,95 @@ const ClosePopupNode: NodeDefinitionOptions = {
         });
       }
     },
+    /**
+     * Find the popup this node closes — NDA-010 §2 / NDA-015 §2.
+     *
+     * This node used to *wait to be handed* a callback: `NodeContext.showPopup` pushed one
+     * onto `getNodesWithType('NavigationClosePopup')` in the popup's own top-level scope and
+     * nowhere else. So a Close Popup node one component deeper inside the popup was never
+     * given one, did nothing, and said nothing — "very hard to find the right place to put
+     * the close popup node so that it actually works", reported as a defect and true.
+     *
+     * It now *resolves*: `showPopup` publishes `_popupCloseHandler` on the popup's component
+     * instance, and this walks up until it finds one. The handed callback is still preferred
+     * when present so graphs that work today take exactly the path they took before.
+     *
+     * Order matters in the walk: the node's own component owner is tested first, because a
+     * Close Popup node sitting directly in the popup component belongs to *that* popup, and
+     * `componentAncestors` deliberately never returns the starting component.
+     */
+    resolvePopup: function (this: ClosePopupInstance): PopupResolution {
+      const owner = this.nodeScope && this.nodeScope.componentOwner;
+      const chain: ComponentInstanceLike[] = owner ? [owner].concat(componentAncestors(owner)) : [];
+      const popups = chain.filter((component) => typeof component._popupCloseHandler === 'function');
+      const candidates = popups.map((component) => component.name);
+      const wanted = this._internal.targetComponent;
+
+      // Explicit target: a miss is a failure, never a fall back to the enclosing popup.
+      // Falling back would close *something*, which is worse than closing nothing — the
+      // author would see a popup shut and believe the target was honoured.
+      if (wanted) {
+        const named = popups.find((component) => component.name === wanted);
+        if (!named) {
+          return {
+            candidates,
+            missCode: 'close-popup/target-not-found',
+            missMessage:
+              'This node is not inside a popup named "' +
+              wanted +
+              '"' +
+              (candidates.length ? ' — it is inside: ' + candidates.join(', ') : '')
+          };
+        }
+        return { popup: named, close: named._popupCloseHandler, candidates };
+      }
+
+      // The callback the popup layer handed down, when there was one. Identical behaviour to
+      // before this change for every graph that already worked.
+      if (this._internal.closeCallback) {
+        return { popup: popups[0], close: this._internal.closeCallback, candidates };
+      }
+
+      if (popups.length === 0) {
+        return {
+          candidates,
+          missCode: 'close-popup/no-popup-in-scope',
+          missMessage: 'No popup in scope to close — this node only works inside a component opened as a popup'
+        };
+      }
+
+      return { popup: popups[0], close: popups[0]._popupCloseHandler, candidates };
+    },
+    /**
+     * Push the resolved popup name to the node card (BINDING-CONTRACT §(b)).
+     *
+     * Silent about misses: this runs whenever the graph might have changed, and a Close Popup
+     * node simply sitting in a component that is not currently open as a popup is the normal
+     * state, not a failure. Failures are raised from `close`, where the node was actually
+     * asked to do something and could not.
+     */
+    reportResolution: function (this: ClosePopupInstance) {
+      const resolution = this.resolvePopup();
+      resolvedTargets.report(this, resolution.popup ? resolution.popup.name : undefined);
+    },
     close: function (this: ClosePopupInstance) {
-      // NDA-004 §2. `closeCallback` is installed by the popup layer when the popup opens, so
-      // its absence means exactly one thing: this node was asked to close a popup and there
-      // is no popup in scope to close. The Failure Contract names this case explicitly. It
-      // used to be a bare `if` with no `else` — the node did nothing and said nothing, which
-      // reads to an author as a broken Close button.
-      //
-      // This is the *reporting* half only. Which popup a Close Popup node should target, and
-      // how that target is made visible on the canvas, is NDA-010 §2 / NDA-015's work.
-      if (!this._internal.closeCallback) {
-        this._internal.lastError = 'No popup in scope to close';
-        this.raiseRuntimeError(
-          'close-popup/no-popup-in-scope',
-          'No popup in scope to close — this node only works inside a component opened as a popup'
-        );
+      const resolution = this.resolvePopup();
+      resolvedTargets.report(this, resolution.popup ? resolution.popup.name : undefined);
+
+      // NDA-004 §2: a close that did nothing used to look identical to one that worked —
+      // a bare `if` with no `else`, which reads to an author as a broken Close button.
+      if (!resolution.close) {
+        this._internal.lastError = resolution.missMessage;
+        this.raiseRuntimeError(resolution.missCode, resolution.missMessage, {
+          target: this._internal.targetComponent,
+          popupsInScope: resolution.candidates
+        });
         this.flagOutputDirty('error');
         this.sendSignalOnOutput('failure');
         return;
       }
 
-      this._internal.closeCallback(this._internal.closeAction, this._internal.resultValues);
+      resolution.close(this._internal.closeAction, this._internal.resultValues);
       this.sendSignalOnOutput('success');
     },
     closeActionTriggered: function (this: ClosePopupInstance, name: string) {

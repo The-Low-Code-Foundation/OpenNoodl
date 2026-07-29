@@ -95,6 +95,7 @@ interface EditorConnection extends RuntimeEditorConnection, EventSender {
   sendSelectComponent(componentName: string): void;
   sendPulsingConnections(connectionMap: Record<string, { connections: unknown[] }>): void;
   sendDynamicPorts(id: string, ports: RuntimeDiscoveredPort[], options?: SendDynamicPortsOptions): void;
+  sendNodeSubLabel(nodeId: string, subLabel: string | undefined): void;
   clearWarnings(componentName: string, nodeId: string): void;
   sendPatches(patches: unknown): void;
   requestFullExport(): void;
@@ -436,6 +437,30 @@ EditorConnection.prototype.sendDynamicPorts = function (this: EditorConnection, 
       nodeid: id,
       ports: ports,
       options: options
+    })
+  });
+};
+
+/**
+ * Tell the editor what a scope-resolving node actually bound to (BINDING-CONTRACT §(b)).
+ *
+ * The editor paints it in the node card's sub-label slot. `undefined` clears it.
+ *
+ * Not a warning: a binding that worked is not a problem, and routing it through
+ * `sendWarning` would draw the danger ring and file an entry in the Problems panel for a
+ * node that is behaving perfectly. Not a dynamic port either — this is display text, and a
+ * port would be structure, saved into the project and connectable.
+ *
+ * Aggregation across a graph node's live instances happens *before* this call, in
+ * `resolvedtarget.ts`; by here there is one string for one node id.
+ */
+EditorConnection.prototype.sendNodeSubLabel = function (this: EditorConnection, nodeId, subLabel) {
+  this.send({
+    cmd: 'nodesublabel',
+    type: 'viewer',
+    content: JSON.stringify({
+      nodeId: nodeId,
+      subLabel: subLabel
     })
   });
 };

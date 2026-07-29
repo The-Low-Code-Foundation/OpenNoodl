@@ -137,6 +137,14 @@ export class ViewerConnection extends Model {
       const content = JSON.parse(request.content);
       const node = ProjectModel.instance.findNodeWithId(content.nodeid);
       node && node.setDynamicPorts(content.ports, content.options);
+    }
+    // What a scope-resolving node bound to, for the node card's sub-label.
+    // See `dev-docs/reference/BINDING-CONTRACT.md` §(b). Purely presentational and never
+    // saved — `setRuntimeSubLabel` deliberately does not touch `metadata`.
+    else if (request.cmd === 'nodesublabel' && request.type === 'viewer') {
+      const content = JSON.parse(request.content);
+      const node = ProjectModel.instance && ProjectModel.instance.findNodeWithId(content.nodeId);
+      node && node.setRuntimeSubLabel(content.subLabel);
     } else if (request.cmd === 'connectiondebugpulse' && request.type === 'viewer') {
       const content = JSON.parse(request.content);
       DebugInspector.instance.setConnectionsToPulse(content.connectionsToPulse);

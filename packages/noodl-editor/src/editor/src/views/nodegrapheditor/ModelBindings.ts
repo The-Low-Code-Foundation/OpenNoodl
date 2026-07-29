@@ -276,7 +276,9 @@ export class ModelBindings {
     const _this = this.editor;
 
     model.on(
-      ['labelChanged', 'portRearranged', 'typeRenamed'],
+      // `runtimeSubLabelChanged` needs the relayout, not just the repaint: a sub-label
+      // appearing or wrapping changes the titlebar's height (BINDING-CONTRACT §(b)).
+      ['labelChanged', 'portRearranged', 'typeRenamed', 'runtimeSubLabelChanged'],
       function () {
         _this.relayout();
         _this.repaint();

@@ -48,7 +48,13 @@ describe('NDA-004: Close Popup', () => {
 
     expect(graph.signalsFor('node')).toEqual(['failure']);
     expect(codesRaised(graph)).toContain('close-popup/no-popup-in-scope');
-    expect(graph.node('node').getOutput('error').value).toBe('No popup in scope to close');
+    // NDA-015 changed this from a shorter, separate string. The Failure Contract asks that a
+    // `Failure` signal be "accompanied by an `Error` value output carrying `message`/`code`",
+    // and two different wordings of one failure is the "no information one level up" problem
+    // in miniature: the author reading the Error port saw less than the raised event said.
+    expect(graph.node('node').getOutput('error').value).toBe(
+      'No popup in scope to close — this node only works inside a component opened as a popup'
+    );
   });
 
   test('inside a popup, closes and signals Closed', async () => {

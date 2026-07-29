@@ -124,6 +124,28 @@ export class NodeGraphNode extends Model {
     this.notifyListeners('labelChanged');
   }
 
+  /**
+   * What a scope-resolving node bound to at runtime — the node card's sub-label.
+   *
+   * See `dev-docs/reference/BINDING-CONTRACT.md` §(b). Pushed by the viewer through
+   * `nodesublabel`; `Parent Component Object` and `Close Popup` set it today.
+   *
+   * **Never persisted.** It is not in `toJSON`, and it must stay out: it describes a running
+   * app, not the project, and writing it would dirty `project.json` on every preview — the
+   * spurious-save class F46 exists for. That is also why it is not `metadata.typeLabelOverride`,
+   * which is otherwise the same slot on the card but *is* saved.
+   */
+  public runtimeSubLabel?: string;
+
+  /** Set the runtime sub-label. `undefined` clears it. */
+  setRuntimeSubLabel(subLabel: string | undefined) {
+    if (this.runtimeSubLabel === subLabel) return;
+    this.runtimeSubLabel = subLabel;
+    // The canvas binds this to relayout-and-repaint: the card's height depends on whether a
+    // sub-label is present, so a repaint alone would paint new text into an old box.
+    this.notifyListeners('runtimeSubLabelChanged');
+  }
+
   constructor(args) {
     super();
 

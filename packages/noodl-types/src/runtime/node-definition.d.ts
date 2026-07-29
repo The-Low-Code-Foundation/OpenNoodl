@@ -604,6 +604,17 @@ export interface ComponentInstanceLike extends NodeInstance {
   /** The Repeater instance that created this one. Set alongside {@link _forEachModel}. */
   _forEachNode?: NodeInstance;
 
+  /**
+   * Present on a component instance that was opened as a popup: how to close it.
+   *
+   * Set by `NodeContext.showPopup`. `Close Popup` resolves *upwards* to the nearest
+   * ancestor carrying one, which is what lets it work from anywhere inside the popup's
+   * tree rather than only from the popup's own top-level scope (NDA-010 §2). Like
+   * {@link _forEachModel} this is an ambient protocol, not a private field — see
+   * `dev-docs/reference/BINDING-CONTRACT.md`.
+   */
+  _popupCloseHandler?(action: string | undefined, results: Record<string, unknown>): void;
+
   [extra: string]: unknown;
 }
 
@@ -665,6 +676,16 @@ export interface EditorConnectionLike {
    * the array instead.
    */
   sendDynamicPorts(nodeId: string, ports: unknown[], options?: unknown): void;
+  /**
+   * What a scope-resolving node bound to, for the node card's sub-label
+   * (`dev-docs/reference/BINDING-CONTRACT.md` §(b)). `undefined` clears it.
+   *
+   * Display text, not structure and not a warning — see `runtime/src/editorconnection.ts`.
+   * Node definitions should go through `ResolvedTargetReporter` rather than calling this
+   * directly, so that a graph node with several live instances reports one summary instead
+   * of flickering between them.
+   */
+  sendNodeSubLabel(nodeId: string, subLabel: string | undefined): void;
   [extra: string]: unknown;
 }
 

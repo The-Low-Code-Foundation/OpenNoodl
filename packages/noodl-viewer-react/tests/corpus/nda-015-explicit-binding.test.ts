@@ -1,0 +1,190 @@
+/**
+ * NDA-015 §2 / NDA-010 §2 — the Binding Contract, applied.
+ *
+ * `dev-docs/reference/BINDING-CONTRACT.md` says a node that resolves a target implicitly must
+ * (a) accept an explicit target, (b) show what it resolved, and (c) warn when it resolves
+ * nothing. These rows are that contract, one clause at a time, on the two nodes it names.
+ *
+ * The graphs here nest components deliberately, because *nesting is the defect*. Richard's
+ * "sometimes the wrong Component Object will be updated" is what a single-component test can
+ * never reproduce: with one ancestor there is only one answer and the binding looks perfect.
+ */
+
+/* eslint-env jest */
+
+import type { NodeInstance, NodeModule } from '@noodl/types';
+
+import { createCorpusGraph, type CorpusGraph } from '../../../noodl-runtime/test/corpus/graph-harness';
+
+import ComponentObjectModule from '../../src/nodes/std-library/componentutils/componentobject';
+import ParentComponentObjectModule from '../../src/nodes/std-library/componentutils/parentcomponentobject';
+
+import { GroupModule } from './visual-container';
+
+interface ParentObjectInstance extends NodeInstance {
+  _internal: { parentComponentName?: string; model?: { data: Record<string, unknown> } };
+}
+
+/**
+ * Two or three nested components, each optionally owning a Component Object.
+ *
+ * `/root` contains `/Outer`, which contains `/Inner`, which holds the Parent Component Object
+ * node under test. `owners` names the components that get a Component Object node.
+ */
+async function nestedGraph(options: {
+  owners: string[];
+  target?: string;
+}): Promise<CorpusGraph> {
+  const objectNodeFor = (component: string) =>
+    options.owners.indexOf(component) !== -1
+      ? [{ id: component + '-object', type: 'net.noodl.ComponentObject', parameters: { properties: 'title' } }]
+      : [];
+
+  const graph = await createCorpusGraph({
+    modules: [
+      GroupModule,
+      ComponentObjectModule as unknown as NodeModule,
+      ParentComponentObjectModule as unknown as NodeModule
+    ],
+    rootComponent: '/root',
+    data: {
+      components: [
+        {
+          name: '/root',
+          nodes: [
+            {
+              id: 'root-group',
+              type: 'Group',
+              children: [{ id: 'outer-instance', type: '/Outer' }]
+            },
+            ...objectNodeFor('/root')
+          ]
+        },
+        {
+          name: '/Outer',
+          nodes: [
+            {
+              id: 'outer-group',
+              type: 'Group',
+              children: [{ id: 'inner-instance', type: '/Inner' }]
+            },
+            ...objectNodeFor('/Outer')
+          ]
+        },
+        {
+          name: '/Inner',
+          nodes: [
+            {
+              id: 'inner-group',
+              type: 'Group',
+              children: [
+                {
+                  id: 'parent-object',
+                  type: 'net.noodl.ParentComponentObject',
+                  parameters: {
+                    properties: 'title',
+                    ...(options.target ? { targetComponent: options.target } : {})
+                  }
+                }
+              ]
+            },
+            ...objectNodeFor('/Inner')
+          ]
+        }
+      ]
+    } as never
+  });
+
+  await graph.settle(4);
+  return graph;
+}
+
+/** What the node bound to, read off the node itself rather than off the canvas message. */
+function boundTo(graph: CorpusGraph): string | undefined {
+  return graph.node<ParentObjectInstance>('parent-object')._internal.parentComponentName;
+}
+
+describe('NDA-015 §(a): Parent Component Object can name its target', () => {
+  test('the default is unchanged — the nearest ancestor that owns a Component Object', async () => {
+    const graph = await nestedGraph({ owners: ['/root', '/Outer'] });
+
+    // Both /root and /Outer qualify. The contract does not change which one wins; existing
+    // projects must bind exactly as they did.
+    expect(boundTo(graph)).toBe('/Outer');
+  });
+
+  test('an explicit target reaches past the nearer ancestor', async () => {
+    const graph = await nestedGraph({ owners: ['/root', '/Outer'], target: '/root' });
+
+    // This is the case that had no expressible answer before: two nested components each
+    // owning a Component Object, and the author wanting the outer one.
+    expect(boundTo(graph)).toBe('/root');
+    expect(graph.errors).toEqual([]);
+  });
+
+  test('an explicit target that is not an ancestor fails — it does not fall back', async () => {
+    const graph = await nestedGraph({ owners: ['/root', '/Outer'], target: '/Nowhere' });
+
+    // Falling back to /Outer would be the silent-wrong-target bug wearing the input that was
+    // supposed to prevent it. Nothing bound, and the miss was raised.
+    expect(boundTo(graph)).toBeUndefined();
+    expect(graph.errors.map((e) => e.code)).toContain('parent-component-object/target-not-found');
+  });
+
+  test('naming an ancestor that has no Component Object is its own failure', async () => {
+    const graph = await nestedGraph({ owners: ['/root'], target: '/Outer' });
+
+    // Distinct from "not an ancestor" on purpose: the two mistakes have different fixes, and
+    // a single "could not resolve" would leave the author guessing which one they made.
+    expect(graph.errors.map((e) => e.code)).toContain('parent-component-object/target-has-no-object');
+  });
+});
+
+describe('NDA-015 §(b): the resolved target is visible', () => {
+  test('the node card is told which ancestor was bound', async () => {
+    const graph = await nestedGraph({ owners: ['/root', '/Outer'] });
+
+    // Clause (b). Before this, the answer existed only inside `getInspectInfo` — visible to
+    // somebody already inspecting the node, which is to say already suspecting it.
+    expect(graph.editorConnection.subLabels['parent-object']).toBe('→ /Outer');
+  });
+
+  test('a node that resolved nothing claims no target', async () => {
+    const graph = await nestedGraph({ owners: [] });
+
+    expect(graph.editorConnection.subLabels['parent-object']).toBeUndefined();
+  });
+});
+
+describe('NDA-015 §(c): resolving nothing is loud', () => {
+  test('no ancestor with a Component Object raises rather than binding to nothing quietly', async () => {
+    const graph = await nestedGraph({ owners: [] });
+
+    const raised = graph.errors.filter((e) => e.code === 'parent-component-object/no-ancestor');
+    expect(raised.length).toBeGreaterThan(0);
+    // The ancestors that *do* exist ride along, so the message can say what the author has
+    // to choose from rather than only what they do not.
+    expect(raised[0].detail).toEqual({ ancestors: ['/Outer', '/root'] });
+  });
+
+  test('the miss is raised once, not once per graph change', async () => {
+    const graph = await nestedGraph({ owners: [] });
+    const before = graph.errors.length;
+
+    await graph.settle(4);
+
+    // `findParentComponentStateModelId` runs again on every `componentStateNodesChanged`.
+    // Without the `lastMissCode` guard a legitimately-unresolvable node would drown the very
+    // channel it is trying to report on.
+    expect(graph.errors.length).toBe(before);
+  });
+
+  test('a healthy graph raises nothing', async () => {
+    // The pinned control. Without it, "no errors" above could equally mean the error bus was
+    // never wired to this graph at all.
+    const graph = await nestedGraph({ owners: ['/Outer'] });
+
+    expect(graph.errors).toEqual([]);
+    expect(boundTo(graph)).toBe('/Outer');
+  });
+});
