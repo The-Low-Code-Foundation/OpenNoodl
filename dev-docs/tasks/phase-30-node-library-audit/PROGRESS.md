@@ -10,7 +10,7 @@
 | NDA-002 Reactivity contract | 1 | ✅ **Built** `bd6632ca`…`825da393` | R1–R9 green unmarked; all suites green. **`items === arr` does NOT break** — `Collection.get`/`create` return a memoised Proxy, so identity holds and the raw array is simply unreachable. Mutating methods intercepted in the `get` trap (traps alone storm 3–4 changes per `splice`). Perf: only indexed reads regress (~0.3 µs/read Proxy floor; digit-leading fast path recovers 28%). ⚠️ `packages/noodl-editor/src/external/*` + `nodegx-backend/deploy/artifact/` embed stale `collection.ts` copies until rebuilt. Live QA + QA-fixture cyclic-warning check pending |
 | NDA-003 Empty-value contract | 1 | ✅ **Built** `e707f0cc`…`b2032129` | All E-rows green unmarked. Nullable Variables shipped with `Treat empty as` (String/Color: `null`/`''`; Number: `null`/`0`; Boolean: `null`/`false`); corpus E1/E8 expectations reconciled to the contract (`null`, not `''`). String `length` returns 0 on null store. httpnode normalised to one helper (both omit; JSON body keeps `null`-is-sent, documented). E5's null-clears-collection worked by accident — now explicit + tested. Enriched catalog needed the NDA-014 compatibility fix first (`61e8b3da`) |
 | NDA-013 Repeater Refresh | 1 | ✅ **Done** `0e96c93a` | `refresh()` resyncs from `items`; queue race handled by truncating the ops `set()` just appended (synchronous span, nothing interleaves). Full teardown kept deliberately, documented. Refresh added to Array Map; Array Filter's premise was wrong — its `Filter` signal always re-read fresh, `refresh` added as alias. 3 new corpus rows red→green. Live QA pending |
-| NDA-004 Failure contract | 2 | 🔄 §1 done | Design at [`FAILURE-CONTRACT.md`](../../reference/FAILURE-CONTRACT.md). "Both per-node `Failure` outputs **and** a global catch-all node" adopted on the spec's recommendation — **Richard has not reviewed this one**; veto window open |
+| NDA-004 Failure contract | 2 | 🔄 §1 built, §3 priority pair done | Channel at `packages/noodl-runtime/src/runtimeerror.ts`; `On App Error` node; F1/F1′ green; Function + Repeater completion signals. Both-surfaces decision ✅ confirmed by Richard. **Remaining: §2's 50 nodes, §3's other 8, the export/cloud legs of criterion 2, catalog regeneration** |
 | NDA-005 Port documentation | 2 | ⬜ Not started | Do the shared port definitions first and re-measure; batch with NDA-012 |
 | NDA-006 Columns | 2 | ⬜ Not started | Checked: `Columns.tsx` is the **only** file special-casing `ForEachComponent`. Slice 4 (Fable) is gated on slices 2–3 |
 | NDA-007 Icon sets | 2 | 🔄 §1 done | Model at [`ICON-SOURCE-MODEL.md`](../../reference/ICON-SOURCE-MODEL.md) — tagged union (`font`/`sprite`/`inline`), sanitise-at-registration policy decided (no existing viewer policy existed to match; checked) |
@@ -47,9 +47,10 @@ All three gating decisions were put to Richard on 2026-07-29 and he confirmed th
    back-compat. ✅ Decided.
 3. **NDA-002 §2** — approach B (Proxy, matching `Model`). ✅ Decided.
 
-One further decision was **adopted on the spec's recommendation without Richard's explicit
-confirmation** and is flagged for veto: **NDA-004 §1** — the error channel surfaces both per-node
-`Failure` outputs *and* a global `On App Error` catch-all node (rather than either alone).
+4. **NDA-004 §1** — the error channel surfaces both per-node `Failure` outputs *and* a global
+   `On App Error` catch-all node (rather than either alone). Put to Richard on 2026-07-29 and
+   ✅ **confirmed**; the veto window is closed and `FAILURE-CONTRACT.md` no longer marks it
+   provisional.
 
 ## Find rate (NDA-012 stop signal)
 
@@ -63,6 +64,37 @@ moment NDA-003 makes `null` storable. Consistent with the second-pass calibratio
 this table shows a category producing nothing new.
 
 ## Log
+
+- **2026-07-29 (NDA-004 §1 + §3 priority pair)** — the runtime error channel exists
+  (`8cca1a76`, `d491e6c2`, `2c16f6a7`). `runtimeerror.ts` is a plain synchronous bus in
+  `noodl-runtime` with no editor dependency; `Node.raiseRuntimeError(code, message, detail?)` is
+  the single entry point and fills in provenance itself. `sendWarning` is now a *subscriber*, so
+  the editor shows what it always showed while every other runtime gets a structured
+  `console.error`. Delivery is hardened deliberately: a throwing subscriber cannot stop the
+  others, unsubscribing mid-delivery does not skip a neighbour, and re-entrant raises are
+  depth-bounded so an `On App Error` node whose own graph fails cannot recurse the stack away.
+  - Both NDA-002 TODOs are wired: the two cycle breakers raise `runtime/cyclic-loop` with a
+    `detail` naming which one tripped and the runaway port; Collection listener throws raise
+    `collection/listener-threw`, **unattributed** — `Array.prototype.on` keeps no node ref, and
+    that gap is written into the contract rather than papered over.
+  - `On App Error` shipped (registered in `noodl-runtime`, so it exists in cloud runtime and
+    export, not just the browser). Every instance fires; no claiming. `Filter` narrows by code
+    prefix, which is why codes are namespaced by node type.
+  - **F1 and F1′ are green.** Run Tasks checks its template for a completion port as soon as the
+    first task component exists, reports, and ends the run `failure` → `done`. A hang is the only
+    outcome downstream cannot react to at all. NDA-009 §1 still owes the earlier editor-time check.
+  - §3's priority pair: `Function` gained Success/Failure/Error (the reserved-name problem solves
+    itself — author outputs are all `out-`prefixed), `Repeater` gained Items Rendered, fired when
+    the operation queue drains rather than when `refresh()` returns.
+  - **Live-verified** in the running editor: the library is 156 node types, `On App Error` among
+    them, and all three nodes' new ports are present on the real `NodeLibraryData` — so static
+    ports coexist with these nodes' dynamic-port machinery, which was the risk worth checking.
+  - Not done, and owed: §2's 50 per-node `Failure` outputs; §3's other 8 mute nodes; criterion 2's
+    cloud-runtime and **export** legs (the export one is the one the spec says will be forgotten);
+    node-catalog regeneration for `On App Error` — **deliberately skipped** because the tree
+    carries another session's uncommitted `logic-builder` rewrite and regeneration folds in any
+    uncommitted node-source edit. `nodelibraryexport.ts` reads the live register, so the editor
+    picker is already correct; only the generated JSON snapshot is stale.
 
 - **2026-07-29 (Tier 1 complete + live QA)** — NDA-003 §2–3 landed (`e707f0cc`…`b2032129`): all
   corpus E-rows green, nullable Variables with `Treat empty as`, httpnode guard helper, E1/E8
