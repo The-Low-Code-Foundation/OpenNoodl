@@ -93,6 +93,19 @@ const MapCollectionNode: NodeDefinitionOptions = {
         }
         this.scheduleMap();
       }
+    },
+    // NDA-013: Array Map had no manual "recompute now" input at all — only the automatic
+    // paths (`items`/`mapScript` changing, or a `change` event on the bound collection,
+    // which a raw mutation such as `push` never fires — the A1 defect). `scheduleMap` reads
+    // `this._internal.collection` fresh on every run, so pulsing this is enough to recover
+    // from a source that changed without notifying.
+    refresh: {
+      type: 'signal',
+      group: 'General',
+      displayName: 'Refresh',
+      valueChangedToTrue: function (this: MapCollectionInstance) {
+        this.scheduleMap();
+      }
     }
   },
   outputs: {

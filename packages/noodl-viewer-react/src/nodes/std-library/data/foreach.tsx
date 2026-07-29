@@ -511,6 +511,31 @@ const ForEachDefinition: NodeDefinitionOptions = {
       internal.hasScheduledRefresh = false;
       if (!(internal.template || internal.templateFunction) || !internal.items) return;
 
+      // NDA-013: resync the private collection from whatever is currently bound to `items`
+      // before rebuilding, so Refresh actually re-reads the source instead of rebuilding
+      // from the stale copy `internal.collection` otherwise is (it is normally kept in sync
+      // only by `change` events on `items`, which a raw mutation — `push`, the A1 defect —
+      // never fires).
+      //
+      // `Collection.set` diffs by `getId()` and emits `add`/`remove` per change, which the
+      // listeners registered in `initialize()` turn into operations QUEUED on this very node
+      // (`_queueOperation`, above). Because `set()` never awaits those listeners, every one
+      // of them has already pushed its op onto `queuedOperations` by the time `set()`
+      // returns — synchronously, before the next line here runs (nothing else can run
+      // between them; JS is single-threaded and `set()`'s own loop doesn't await anything
+      // either). This function is about to do its own full teardown-and-rebuild below, so
+      // those queued ops would be pure duplicates racing it. Drop exactly the ones `set()`
+      // just appended — and only those, so anything already queued before Refresh started
+      // (and thus meant to run after it) is left alone.
+      const queueLengthBeforeResync = internal.queuedOperations.length;
+      internal.collection.set(internal.items);
+      internal.queuedOperations.length = queueLengthBeforeResync;
+
+      // Full teardown-and-rebuild, deliberately kept rather than turned into a diff: `set`
+      // above already reconciles `internal.collection` by id, so a cheaper Refresh that
+      // reused the *existing* item nodes for records that didn't change is possible — but
+      // is a separate, riskier change against item-node identity (component state, mounted
+      // DOM) that this fix does not need in order to make Refresh correct.
       this._deleteAllItemNodes();
 
       //check if we have a target to add nodes to

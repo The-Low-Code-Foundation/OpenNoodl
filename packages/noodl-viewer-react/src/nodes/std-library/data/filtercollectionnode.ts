@@ -184,6 +184,18 @@ const FilterCollectionNode: NodeDefinitionOptions = {
       valueChangedToTrue: function (this: FilterCollectionInstance) {
         this.scheduleFilter();
       }
+    },
+    // NDA-013: same signal as `filter` above, under the name the rest of the Array family
+    // (Repeater, Array Map) uses for "recompute now". `scheduleFilter` already re-reads
+    // `this._internal.collection.items` fresh on every run — Filter never kept a private
+    // copy that could go stale the way the Repeater's did — so this needed no other change.
+    refresh: {
+      type: 'signal',
+      group: 'Actions',
+      displayName: 'Refresh',
+      valueChangedToTrue: function (this: FilterCollectionInstance) {
+        this.scheduleFilter();
+      }
     }
   },
   outputs: {
