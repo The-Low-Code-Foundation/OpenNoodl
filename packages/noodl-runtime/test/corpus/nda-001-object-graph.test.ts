@@ -118,7 +118,7 @@ async function throughAStringVariable(): Promise<CorpusGraph> {
 }
 
 describe('NDA-001 E8: a value goes non-null, then null, then non-null', () => {
-  test.failing('E8: two changes are observed downstream, and the cleared state is empty', async () => {
+  test('E8: two changes are observed downstream, and the cleared state is empty', async () => {
     const graph = await throughAStringVariable();
     const source = graph.node<SourceInstance>('source');
     const sink = graph.node<SinkInstance>('sink');
@@ -131,14 +131,20 @@ describe('NDA-001 E8: a value goes non-null, then null, then non-null', () => {
       graph.update();
     }
 
-    // Two changes after the first value: this half already works, and the pinned test below
+    // Two changes after the first value: this half already worked, and the pinned test below
     // holds it.
     expect(graph.signalsFor('variable')).toEqual(['changed', 'changed', 'changed']);
 
-    // The half that does not. Today the sink receives `['hello', 'null', 'world']` — the
-    // cleared state arrives as four characters of text that is truthy, indistinguishable
+    // The half that did not. Was: the sink received `['hello', 'null', 'world']` — the
+    // cleared state arrived as four characters of text that was truthy, indistinguishable
     // from content the user typed, and permanently stuck in every Text node downstream.
-    expect(sink.seen).toEqual(['hello', '', 'world']);
+    //
+    // Adjusted from the original corpus expectation (`.toEqual(['hello', '', 'world'])`),
+    // which predates Richard's nullable-variables decision. The contract's default empty
+    // value for a Variable is `null` itself (EMPTY-VALUE-CONTRACT.md §3) — `''` is not the
+    // text "null", but it is not the contract's default either, and this row is the
+    // acceptance test for the whole contract, so it has to assert the real thing.
+    expect(sink.seen).toEqual(['hello', null, 'world']);
   });
 
   // ✅ Pinned: a null does cross a plain wire, and it does reach an Object node's property.
@@ -239,7 +245,7 @@ describe('NDA-001 E5–E6: Set Object Properties and an empty value', () => {
    * `undefined` does not leave the key alone, it **overwrites** it with the type's default.
    * The spec's Today column is wrong, and the row belongs with the failures.
    */
-  test.failing('E6: Set Object Properties fed undefined leaves the key alone', async () => {
+  test('E6: Set Object Properties fed undefined leaves the key alone', async () => {
     const graph = await setObjectProperties('corpus-e6', 'string');
     const setter = graph.node('setter');
 
@@ -250,11 +256,11 @@ describe('NDA-001 E5–E6: Set Object Properties and an empty value', () => {
     setter.setInputValue('store', true);
     await graph.settle(2);
 
-    // Today: `''`. The record's real content is destroyed by a write that carried no value.
+    // Was: `''`. The record's real content was destroyed by a write that carried no value.
     expect(Model.get('corpus-e6').get('title')).toBe('seed');
   });
 
-  test.failing('E6 (untyped): an undefined property with no declared type also leaves the key alone', async () => {
+  test('E6 (untyped): an undefined property with no declared type also leaves the key alone', async () => {
     const graph = await setObjectProperties('corpus-e6-untyped', '*');
     const setter = graph.node('setter');
 
@@ -265,8 +271,8 @@ describe('NDA-001 E5–E6: Set Object Properties and an empty value', () => {
     setter.setInputValue('store', true);
     await graph.settle(2);
 
-    // Today: `undefined` — `_defaultValueForType[undefined]` is itself undefined, so the
-    // key survives with nothing in it. Different wrong answer, same defect.
+    // Was: `undefined` — `_defaultValueForType[undefined]` was itself undefined, so the key
+    // survived with nothing in it. Different wrong answer, same defect.
     expect(Model.get('corpus-e6-untyped').get('title')).toBe('seed');
   });
 });

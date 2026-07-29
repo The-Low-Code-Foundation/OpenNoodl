@@ -219,7 +219,13 @@ function _addInputProperties(def: MixinNodeModule) {
                 group: 'Property Values',
                 displayName: p,
                 //  editorName:p,
-                name: 'prop-' + p
+                name: 'prop-' + p,
+                // Empty-value contract (dev-docs/reference/EMPTY-VALUE-CONTRACT.md): `undefined`
+                // abstains — the key is left as it is on the record (including "never set" at
+                // all). `null` is a real value — it clears the key and notifies.
+                description:
+                  'undefined leaves this property on the record unchanged. null clears it (writes ' +
+                  'null onto the record and notifies).'
               });
 
               // Property type
@@ -285,13 +291,6 @@ function _addInputProperties(def: MixinNodeModule) {
     _pushInputValues: function (this: InputPropertiesNodeInstance, model: ModelLike) {
       const internal = this._internal;
 
-      const _defaultValueForType: Record<string, unknown> = {
-        boolean: false,
-        string: '',
-        number: 0,
-        date: new Date()
-      };
-
       const _allKeys: Record<string, boolean> = {};
       for (const key in internal.inputTypes) _allKeys[key] = true;
       for (const key in internal.inputValues) _allKeys[key] = true;
@@ -305,51 +304,60 @@ function _addInputProperties(def: MixinNodeModule) {
       for (const i of keysToSet) {
         let value: unknown = internal.inputValues[i];
 
-        if (value !== undefined) {
-          //Parse array types with string as javascript
-          if (internal.inputTypes[i] !== undefined && internal.inputTypes[i] === 'array' && typeof value === 'string') {
-            const source = value;
-            this.context.editorConnection.clearWarning(
-              this.nodeScope.componentOwner.name,
-              this.id,
-              'invalid-array-' + i
-            );
+        // Empty-value contract (dev-docs/reference/EMPTY-VALUE-CONTRACT.md): `undefined`
+        // abstains — no property was supplied, so the key is left exactly as it was on the
+        // record (corpus E6/E6'). `undefined` is also every key's value before it has ever
+        // been set, which is what makes this the right guard for "never touched" too.
+        //
+        // Was: the `else` branch wrote `_defaultValueForType[type]` here, which meant an
+        // `undefined` write did not skip the key — it overwrote the record's real content
+        // with the type's zero value (`''`/`false`/`0`/`new Date()`), or with `undefined`
+        // itself for an untyped property. `null` never took this branch (`null !==
+        // undefined`), which is why E5 — `null` clearing the key — already worked.
+        if (value === undefined) continue;
 
-            try {
-              value = eval(source); //this might be static data in the form of javascript
-            } catch (e) {
-              if (source.indexOf('[') !== -1 || source.indexOf('{') !== -1) {
-                this.context.editorConnection.sendWarning(
-                  this.nodeScope.componentOwner.name,
-                  this.id,
-                  'invalid-array-' + i,
-                  {
-                    showGlobally: true,
-                    message: 'Invalid array<br>' + e.toString()
-                  }
-                );
-                value = [];
-              } else {
-                //backwards compability with how this node used to work
-                value = Collection.get(source);
-              }
+        //Parse array types with string as javascript
+        if (internal.inputTypes[i] !== undefined && internal.inputTypes[i] === 'array' && typeof value === 'string') {
+          const source = value;
+          this.context.editorConnection.clearWarning(
+            this.nodeScope.componentOwner.name,
+            this.id,
+            'invalid-array-' + i
+          );
+
+          try {
+            value = eval(source); //this might be static data in the form of javascript
+          } catch (e) {
+            if (source.indexOf('[') !== -1 || source.indexOf('{') !== -1) {
+              this.context.editorConnection.sendWarning(
+                this.nodeScope.componentOwner.name,
+                this.id,
+                'invalid-array-' + i,
+                {
+                  showGlobally: true,
+                  message: 'Invalid array<br>' + e.toString()
+                }
+              );
+              value = [];
+            } else {
+              //backwards compability with how this node used to work
+              value = Collection.get(source);
             }
           }
-          // Resolve object  from IDs
-          if (
-            internal.inputTypes[i] !== undefined &&
-            internal.inputTypes[i] === 'object' &&
-            typeof value === 'string'
-          ) {
-            value = (this.nodeScope.modelScope || Model).get(value);
-          }
-
-          model.set(i, value, { resolve: true });
-        } else {
-          model.set(i, _defaultValueForType[internal.inputTypes[i]], {
-            resolve: true
-          });
         }
+        // Resolve object  from IDs
+        if (
+          internal.inputTypes[i] !== undefined &&
+          internal.inputTypes[i] === 'object' &&
+          typeof value === 'string'
+        ) {
+          value = (this.nodeScope.modelScope || Model).get(value);
+        }
+
+        // `null` is a real value here (contract corollary 1): it reaches `model.set`
+        // unmodified — neither of the two resolutions above match it (both require
+        // `typeof value === 'string'`) — which clears the key and notifies. Pinned by E5.
+        model.set(i, value, { resolve: true });
       }
     },
     scheduleStore: function (this: InputPropertiesNodeInstance) {
