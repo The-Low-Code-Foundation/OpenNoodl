@@ -85,19 +85,33 @@ function makePage(id: string): FakePage {
  * bound onto it, the same approach as `nda-016-layout-sizemode.test.ts` — a whole node scope
  * and a mounted React tree are not needed to exercise a navigation policy.
  */
-function makeStack(existing: FakePage[]): FakeStack {
+function makeStack(existing: FakePage[], topParams?: Record<string, unknown>): FakeStack {
   const stack: FakeStack = {
     _internal: {
       pages: [{ id: 'p1', label: 'One' }, { id: 'p2', label: 'Two' }],
       pageInfo: {},
-      stack: existing.map((page) => ({ from: null, page, pageId: 'p1', pageInfo: { label: 'One' } })),
+      // `pageInfo` carries the resolved `id`, as the real `_findPage` returns and as
+      // `_isAlreadyShowing` compares on. It used to carry only `label` here, which was enough
+      // for the §1 rows and would have made every §2 row silently pass by never matching.
+      stack: existing.map((page) => ({
+        from: null,
+        page,
+        pageId: 'p1',
+        pageInfo: { id: 'p1', label: 'One', component: '/Page' },
+        params: topParams
+      })),
       isTransitioning: false
     },
     children: existing.slice(),
     deleted: [],
     outputs: {},
     nodeScope: {
-      createNode: async () => makePage('content'),
+      createNode: async () => {
+        const content = makePage('content') as FakePage & { nodeScope: unknown };
+        // `navigateAsync` wires Pop Component Stack nodes through the new content's scope.
+        content.nodeScope = { getNodesWithType: () => [] };
+        return content;
+      },
       deleteNode: (page: FakePage) => {
         page.deleted = true;
         stack.deleted.push(page.id);
@@ -235,5 +249,120 @@ describe('NDA-008 §1: replace animates with the same machinery as push', () => 
 
     expect(constructed).toHaveLength(0);
     expect(stack._internal.stack).toHaveLength(1);
+  });
+});
+
+/**
+ * NDA-008 §2 — using this node as internal tabs.
+ *
+ * The spec asked for the current behaviour to be *checked* before assuming it was broken. It
+ * was checked, and it was broken in both modes: re-selecting the page already on top created a
+ * fresh component — losing whatever state the tab held — and `navigate` additionally pushed a
+ * duplicate stack entry, so every click on the active tab grew a stack that Back then had to
+ * walk back through.
+ *
+ * These rows pin the fix and, just as hard, pin the two cases that must keep re-mounting:
+ * same component with *different params* (the master → detail → detail idiom), and replace on
+ * a deeper stack (which still has collapsing to do).
+ */
+describe('NDA-008 §2: re-selecting the current page is a no-op', () => {
+  test('navigate to the page already on top does not re-mount or grow the stack', async () => {
+    const current = makePage('current');
+    const stack = makeStack([current]);
+    let created = 0;
+    stack.nodeScope.createNode = async () => {
+      created++;
+      return makePage('content');
+    };
+
+    let navigated = 0;
+    await stack.navigateAsync({ target: 'p1', transition: {}, hasNavigated: () => navigated++ });
+
+    // Measured before the fix: created 1, depth 1 → 2, children 1 → 2.
+    expect(created).toBe(0);
+    expect(stack._internal.stack).toHaveLength(1);
+    expect(stack.children).toEqual([current]);
+    expect(current.deleted).toBe(false);
+
+    // The completion callback still fires. The request *was* satisfied — the stack is showing
+    // what was asked for — and swallowing it would turn a re-selected tab into a dead button,
+    // which is the same class of silent failure §3 just removed from the Pop node.
+    expect(navigated).toBe(1);
+  });
+
+  test('replace with the page already on top does not re-mount it', async () => {
+    const current = makePage('current');
+    const stack = makeStack([current]);
+    let created = 0;
+    stack.nodeScope.createNode = async () => {
+      created++;
+      return makePage('content');
+    };
+
+    let navigated = 0;
+    await stack.replaceAsync({ target: 'p1', transition: {}, hasNavigated: () => navigated++ });
+
+    expect(created).toBe(0);
+    expect(current.deleted).toBe(false);
+    expect(stack._internal.stack).toHaveLength(1);
+    expect(navigated).toBe(1);
+  });
+
+  test('the same page with different params still re-mounts — that is the detail idiom', async () => {
+    const current = makePage('current');
+    const stack = makeStack([current], { recordId: 'a' });
+    let created = 0;
+    stack.nodeScope.createNode = async () => {
+      created++;
+      const content = makePage('content') as any;
+      content.nodeScope = { getNodesWithType: () => [] };
+      return content;
+    };
+
+    await stack.navigateAsync({ target: 'p1', params: { recordId: 'b' }, transition: {} });
+
+    // master → detail(a) → detail(b) is the same component three times and must keep pushing.
+    // A "same component" check without params would have broken ordinary stack navigation to
+    // fix a tab bug.
+    expect(created).toBe(1);
+    expect(stack._internal.stack).toHaveLength(2);
+  });
+
+  test('replace on a deeper stack still collapses it, even onto the same page', async () => {
+    const below = makePage('below');
+    const current = makePage('current');
+    const stack = makeStack([below, current]);
+    let created = 0;
+    stack.nodeScope.createNode = async () => {
+      created++;
+      return makePage('content');
+    };
+
+    await stack.replaceAsync({ target: 'p1', transition: {} });
+
+    // Replace's post-condition is "one deep, showing the target". The top was already right,
+    // but the entry below it was not, and skipping here would silently keep what the author
+    // asked to be rid of.
+    expect(created).toBe(1);
+    expect(stack._internal.stack).toHaveLength(1);
+  });
+
+  test('a different page still navigates normally', async () => {
+    // The pinned control: without it, "created 0" above could equally mean the fake stack
+    // never reaches page creation at all.
+    const current = makePage('current');
+    const stack = makeStack([current]);
+    let created = 0;
+    stack.nodeScope.createNode = async () => {
+      created++;
+      const content = makePage('content') as any;
+      content.nodeScope = { getNodesWithType: () => [] };
+      return content;
+    };
+
+    await stack.navigateAsync({ target: 'p2', transition: {} });
+
+    expect(created).toBe(1);
+    expect(stack._internal.stack).toHaveLength(2);
   });
 });

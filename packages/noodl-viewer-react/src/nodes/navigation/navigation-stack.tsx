@@ -106,6 +106,8 @@ interface PageStackInstance extends ReactNodeInstance {
   _registerPageStack(): void;
   _deregisterPageStack(): void;
   _findPage(pageIdOrLabel: string): FoundPage | undefined;
+  /** NDA-008 §2 — whether this exact page-and-params is already the top of the stack. */
+  _isAlreadyShowing(pageInfo: FoundPage, params: Record<string, unknown> | undefined): boolean;
   setPageOutputs(outputs: Record<string, unknown>): void;
   scheduleReset(): void;
   createPageContainer(): ReactNodeInstance;
@@ -338,6 +340,51 @@ const PageStack = {
       }
 
       return undefined;
+    },
+    /**
+     * Is the requested page, with these params, already the top of the stack? — NDA-008 §2.
+     *
+     * Using a Component Stack for internal tabs is the common case, and re-selecting the
+     * current tab used to **re-mount it**: measured, `navigate` created a fresh component *and*
+     * pushed a duplicate stack entry (depth 1 → 2), and `replace` created a fresh one and
+     * destroyed the old. Either way the tab's state was lost on a click that should have done
+     * nothing, and push additionally grew a stack that Back then had to walk back through.
+     *
+     * **Params are part of the question, and that is what keeps this safe.** "Same component"
+     * alone would have broken the ordinary stack idiom — master → detail(id=1) → detail(id=2)
+     * is the same component three times and must keep pushing. Only a request that would
+     * reproduce the state already on screen is skipped.
+     *
+     * Comparison is shallow and by identity, deliberately. Params are port values and may be
+     * arbitrary objects; a deep compare would be both expensive and wrong (two structurally
+     * equal Models are not interchangeable). Shallow-unequal falls through to today's exact
+     * behaviour, so every uncertain case stays as it was.
+     */
+    _isAlreadyShowing(
+      this: PageStackInstance,
+      pageInfo: FoundPage,
+      params: Record<string, unknown> | undefined
+    ): boolean {
+      const stack = this._internal.stack;
+      if (!stack || stack.length === 0) return false;
+
+      const top = stack[stack.length - 1];
+      if (!top || !top.pageInfo || top.pageInfo.id !== pageInfo.id) return false;
+
+      const a = top.params || {};
+      const b = params || {};
+
+      const aKeys = Object.keys(a);
+      const bKeys = Object.keys(b);
+      if (aKeys.length !== bKeys.length) return false;
+
+      for (let i = 0; i < aKeys.length; i++) {
+        const key = aKeys[i];
+        if (!Object.prototype.hasOwnProperty.call(b, key)) return false;
+        if (a[key] !== b[key]) return false;
+      }
+
+      return true;
     },
     setPageOutputs(this: PageStackInstance, outputs: Record<string, unknown>) {
       for (const prop in outputs) {
@@ -650,6 +697,18 @@ const PageStack = {
         return;
       }
 
+      // NDA-008 §2 — as in `navigateAsync`, but with one extra condition that matters.
+      //
+      // Replace's post-condition is "the stack is one deep, showing the target". A no-op is
+      // only correct when that is *already* true. With a deeper stack, replace still has
+      // collapsing to do even though the top page is right, so it must proceed — skipping
+      // there would silently leave entries the author asked to be rid of. The tab case, which
+      // is what §2 is about, is depth 1 by construction and lands on the no-op.
+      if (this._internal.stack.length === 1 && this._isAlreadyShowing(pageInfo, args.params)) {
+        args.hasNavigated && args.hasNavigated();
+        return;
+      }
+
       // `.slice()`: `getChildren()` hands back the live array, so removing while iterating it
       // skips every other entry. Harmless while a stack had one visible child, wrong the moment
       // it has two — and the animated path below genuinely needs the whole snapshot.
@@ -743,6 +802,15 @@ const PageStack = {
       const pageInfo = this._findPage(pageId);
       if (pageInfo === undefined || pageInfo.component === undefined) {
         // No page was found
+        return;
+      }
+
+      // NDA-008 §2 — re-selecting the current page is a no-op, not a re-mount *and* a duplicate
+      // stack entry. `hasNavigated` still fires: the request was satisfied, the stack is showing
+      // exactly what was asked for, and swallowing the completion callback here would turn a
+      // re-selected tab into a dead button — the failure this phase exists to remove.
+      if (this._isAlreadyShowing(pageInfo, args.params)) {
+        args.hasNavigated && args.hasNavigated();
         return;
       }
 

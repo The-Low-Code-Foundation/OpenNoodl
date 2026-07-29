@@ -14,7 +14,7 @@
 | NDA-005 Port documentation | 2 | ⬜ Not started | Do the shared port definitions first and re-measure; batch with NDA-012 |
 | NDA-006 Columns | 2 | ⬜ Not started | Checked: `Columns.tsx` is the **only** file special-casing `ForEachComponent`. Slice 4 (Fable) is gated on slices 2–3 |
 | NDA-007 Icon sets | 2 | 🔄 §1 done | Model at [`ICON-SOURCE-MODEL.md`](../../reference/ICON-SOURCE-MODEL.md) — tagged union (`font`/`sprite`/`inline`), sanitise-at-registration policy decided (no existing viewer policy existed to match; checked) |
-| NDA-008 Component Stack | 2 | 🔄 **§0/§1/§3 done** | **The stack does not scroll** — zero `focus()` calls and zero px moved across navigate/replace/useRoutes, measured. The scroll is browser focus-scroll into the viewer's `overflow: hidden` app root (`viewer.jsx:344-353`), triggered by the library's only DOM focus, `TextInput` (`text-input.ts:211-214`). **Richard chose "Both" (2026-07-29): fix the box, keep the feature.** Applied as `overflow: clip` on the app root — `clip` creates no scroll container at all, where `hidden` creates one only the *browser* can scroll. `TextInput` keeps its plain `.focus()`, so a deliberate `Focus` still scrolls the nearest genuinely-scrollable ancestor. Measured live on the same element in one session: `hidden` 0 → **1762 px**, `clip` 0 → **0 px**. §1 done: replace animates through the same `Transitions` machinery, defaulting to `None` so no existing project starts moving; the `// Only push mode have transition` gate is gone. §3 done: `Popped`/`Failure`/`Error` and **three** codes, not two — the unbriefed one is `transition-in-progress`, i.e. a double-tapped back button used to lose its second tap. Only §2's re-mount bullet is left |
+| NDA-008 Component Stack | 2 | ✅ **Done — all four sections** | **The stack does not scroll** — zero `focus()` calls and zero px moved across navigate/replace/useRoutes, measured. The scroll is browser focus-scroll into the viewer's `overflow: hidden` app root (`viewer.jsx:344-353`), triggered by the library's only DOM focus, `TextInput` (`text-input.ts:211-214`). **Richard chose "Both" (2026-07-29): fix the box, keep the feature.** Applied as `overflow: clip` on the app root — `clip` creates no scroll container at all, where `hidden` creates one only the *browser* can scroll. `TextInput` keeps its plain `.focus()`, so a deliberate `Focus` still scrolls the nearest genuinely-scrollable ancestor. Measured live on the same element in one session: `hidden` 0 → **1762 px**, `clip` 0 → **0 px**. §1 done: replace animates through the same `Transitions` machinery, defaulting to `None` so no existing project starts moving; the `// Only push mode have transition` gate is gone. §3 done: `Popped`/`Failure`/`Error` and **three** codes, not two — the unbriefed one is `transition-in-progress`, i.e. a double-tapped back button used to lose its second tap. **§2 done 2026-07-29**: re-selecting the page already on top used to re-mount it in *both* modes, and push also pushed a duplicate entry (depth 1 → 2), so every click on the active tab lost its state and grew a stack Back had to walk back through. The no-op is **params-aware** — same component with different params is the master→detail idiom and must keep pushing — and replace additionally requires depth 1, since on a deeper stack it still has collapsing to do. `hasNavigated` still fires, or a re-selected tab would be a dead button. **NDA-008 is complete** |
 | NDA-009 Run Tasks | 2 | ⬜ Not started | §1 alone closes corpus F1 |
 | NDA-010 Popups | 2 | 🔄 **§2 done** | Close Popup now *pulls*: `showPopup` publishes `_popupCloseHandler` on the popup instance and the node walks up to it, so it works from anywhere in the popup's tree — 7 corpus rows, shown to discriminate. Criterion 2 met. **⚠️ §1's premise is partly stale**: `showpopup.ts:129-177` already derives typed `popupParam-*` from the target's input ports and `closeResult-*`/`closeAction-*` from its Close Popup nodes. The real gaps are the hand-typed `results`/`closeActions` on the *Close Popup* side and untyped (`*`) results — re-scoped in the spec. §3 (stack policy, corpus F2) untouched |
 | NDA-014 Type dead ends | 2 | 🔄 §1+§2 done | Decision at [`PORT-TYPE-CONTRACT.md`](../../reference/PORT-TYPE-CONTRACT.md) (A now, C direction). Table changed (`object`/`array`/`color` → `string`), JSON mirror added in `setInputValue`, catalog + register regenerated, runtime jest green (1,026), editor suite green (1,885 specs incl. validator/catalog-index). Outstanding: live editor check of the 13 `object` outputs |
@@ -64,6 +64,33 @@ moment NDA-003 makes `null` storable. Consistent with the second-pass calibratio
 this table shows a category producing nothing new.
 
 ## Log
+
+- **2026-07-29 (NDA-008 §2 — the Component Stack as a tab system; the task is now complete)** — the
+  section asked for the behaviour to be *checked* before being assumed broken. It was, and it was
+  broken in both modes, one of them worse than the brief said.
+  - **Measured, not read.** Re-selecting the page already on top: `navigate` created a fresh
+    component *and* pushed a duplicate stack entry (depth 1 → 2, children 1 → 2); `replace` created
+    a fresh one and destroyed the old. So a tab click lost the tab's state either way, and push
+    additionally grew a stack that Back then had to walk back through — the extra half the bullet
+    did not predict.
+  - **The no-op is params-aware, and that is the whole of its safety.** "Same component" alone
+    would have broken the ordinary stack idiom: master → detail(id=1) → detail(id=2) is the same
+    component three times and must keep pushing. Comparison is shallow and by identity — params are
+    port values and may be arbitrary objects, so a deep compare would be expensive *and* wrong (two
+    structurally equal Models are not interchangeable), and anything shallow-unequal falls through
+    to today's exact behaviour.
+  - **Replace needs one more condition than push.** Its post-condition is "one deep, showing the
+    target", so a no-op is only correct when that is already true; on a deeper stack it still has
+    collapsing to do. The tab case is depth 1 by construction and lands on the no-op.
+  - **`hasNavigated` still fires on the no-op.** The request *was* satisfied. Swallowing the
+    completion callback would have turned a re-selected tab into a dead button, which is the same
+    silent-failure class §3 had just removed from the Pop node one commit earlier.
+  - Harness note: `makeStack`'s fake stack entries carried only `pageInfo.label`. That was enough
+    for the §1 rows and would have made every §2 row pass by never matching — they now carry the
+    resolved `id`, as the real `_findPage` returns.
+  - 5 rows, shown to discriminate: removing both guards reddens exactly the two no-op rows and
+    leaves the different-params, deeper-stack and different-page controls green. Viewer jest **145**
+    (was 140), viewer typecheck green.
 
 - **2026-07-29 (class F tail — `_forEachModel`'s five sites, and the walk that was never actually
   shared)** — the highest-value item left in the implicit-binding class, plus a defect found on the

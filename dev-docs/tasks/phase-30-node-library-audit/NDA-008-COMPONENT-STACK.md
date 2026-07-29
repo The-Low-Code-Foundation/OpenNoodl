@@ -148,9 +148,36 @@ things follow from §0 and §1:
 - ~~No scroll should occur on a switch unless the author asks for one.~~ **Moved out by §0** — no
   scroll occurs on a switch today. The scroll belongs to the viewer's layout root and to
   `TextInput`'s focus; see §0.
-- Switching to an already-shown component should be a no-op, not a re-mount. Check the current
-  behaviour; if it re-mounts, tab state is lost on every tab click, which would be a second reason the
-  node feels wrong in this role.
+- ~~Switching to an already-shown component should be a no-op, not a re-mount.~~ **✅ Done
+  2026-07-29.** The behaviour was checked before being assumed, as this section asked — and it was
+  worse than "a re-mount" in one of the two modes:
+
+  | Re-select the page already on top | `createNode` | Stack depth |
+  |---|---|---|
+  | `navigate` (push) | 1 — fresh mount | 1 → **2** |
+  | `replace` | 1 — fresh mount, old destroyed | 1 |
+
+  So a tab click lost the tab's state in both modes, and in push mode it *also* pushed a duplicate
+  entry, so every click on the active tab grew a stack that Back then had to walk back through.
+
+  **The fix is params-aware, and that is what makes it safe.** "Same component" alone would have
+  broken the ordinary stack idiom — master → detail(id=1) → detail(id=2) is the same component
+  three times and must keep pushing. Only a request that would reproduce what is already on screen
+  is skipped. Comparison is shallow and by identity: params are port values and may be arbitrary
+  objects, so a deep compare would be both expensive and wrong, and anything shallow-unequal falls
+  through to today's exact behaviour.
+
+  **Replace carries one extra condition.** Its post-condition is "one deep, showing the target", so
+  a no-op is only correct when that is already true. On a deeper stack it still has collapsing to
+  do and proceeds. The tab case is depth 1 by construction, so it lands on the no-op.
+
+  **The completion callback still fires.** `hasNavigated` is what drives the Navigate node's
+  downstream signal; swallowing it would have turned a re-selected tab into a dead button — the
+  same silent-failure class §3 had just removed from the Pop node.
+
+  5 rows in `nda-008-stack-replace-transition.test.ts`, shown to discriminate: removing both guards
+  reddens exactly the two no-op rows and leaves the different-params, deeper-stack and
+  different-page controls green.
 
 ## §3 — Report failures
 
