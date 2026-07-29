@@ -64,8 +64,22 @@ export class CloudRunner {
             let hasResponded = false;
             const responseNodes = functionComponent.nodeScope.getNodesWithTypeRecursive('noodl.cloud.response');
             responseNodes.forEach((resp) => {
+              // NDA-004 §3: the callback reports whether it actually delivered.
+              //
+              // `hasResponded` lives here, in the per-request closure, and it has to: two
+              // different Response nodes both firing is the ordinary shape of the defect, so
+              // no single node can know locally that the request is already answered. Before
+              // this, the second send was swallowed here without a trace — the node had no
+              // outputs at all, so "responded" and "silently discarded" were indistinguishable
+              // from the graph. Returning the verdict lets the node own the report, which is
+              // where the provenance is (Failure Contract).
+              // Asked *before* delivery, because delivering destroys the asker: the teardown
+              // below runs synchronously inside the callback, so the node cannot report
+              // anything after it returns.
+              resp._internal._requestIsOpen = () => !hasResponded;
+
               resp._internal._sendResponseCallback = (resp) => {
-                if (hasResponded) return;
+                if (hasResponded) return false;
                 hasResponded = true;
 
                 //the functionComponent is "manually" created outside of a scope, so call the delete function directly
@@ -76,6 +90,7 @@ export class CloudRunner {
                 requestScope.modelScope.reset();
 
                 resolve(resp);
+                return true;
               };
             });
 

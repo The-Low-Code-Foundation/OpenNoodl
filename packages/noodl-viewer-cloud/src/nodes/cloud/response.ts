@@ -46,18 +46,7 @@ export const node = {
       type: 'signal',
       group: 'General',
       valueChangedToTrue: function () {
-        if(this._internal.status === undefined || this._internal.status === 'success') {
-          this._internal._sendResponseCallback({
-            statusCode: 200,
-            body: JSON.stringify({result:this._internal.responseParameters})
-          })
-        }
-        else {
-          this._internal._sendResponseCallback({
-            statusCode: 400,
-            body: JSON.stringify({error:this._internal.errorMessage})
-          })
-        }
+        this.sendResponse();
       }
     },
     status: {
@@ -82,9 +71,92 @@ export const node = {
       }
     }
   },
+  // NDA-004 §3 — the last of the mute ten to be reachable.
+  //
+  // This node took a signal and emitted nothing at all, which hid two different things. A
+  // Response node whose callback was never installed threw a `TypeError` from inside an input
+  // setter (see `sendResponse`), and a second Send on an already-answered request was
+  // swallowed in `noodl-viewer-cloud/src/index.ts` with no trace. Both now report, and a
+  // response that *did* go out says so, so downstream logging and cleanup can be sequenced.
+  outputs: {
+    sent: {
+      type: 'signal',
+      displayName: 'Sent',
+      group: 'Events'
+    },
+    failure: {
+      type: 'signal',
+      displayName: 'Failure',
+      group: 'Events'
+    },
+    error: {
+      type: 'string',
+      displayName: 'Error',
+      group: 'Events',
+      getter: function () {
+        return this._internal.lastError;
+      }
+    }
+  },
   methods:{
     setResponseParameter:function(name,value) {
       this._internal.responseParameters[name] = value
+    },
+    /** Raise, publish on `Error`, and fire `Failure`. One place, so the two codes cannot drift. */
+    _failResponse: function (code, message, detail) {
+      this._internal.lastError = message;
+      this.raiseRuntimeError(code, message, detail);
+      this.flagOutputDirty('error');
+      this.sendSignalOnOutput('failure');
+    },
+    sendResponse: function () {
+      const isSuccess = this._internal.status === undefined || this._internal.status === 'success';
+
+      // `_sendResponseCallback` is installed per request, by `NoodlCloudRuntime.run`, over the
+      // Response nodes that exist *at the moment the function component is created*. A Response
+      // node created later — inside a Repeater template, or a component instantiated in response
+      // to the request — is never given one, and this call used to be an unguarded invocation of
+      // `undefined`: a `TypeError` thrown from inside an input setter, which is the least
+      // legible way a node can fail. Now it is a failure with a name.
+      if (typeof this._internal._sendResponseCallback !== 'function') {
+        return this._failResponse(
+          'response/no-request-in-scope',
+          'This Response node has no request to answer — it was not part of the cloud function when the request arrived',
+          { status: isSuccess ? 'success' : 'failure' }
+        );
+      }
+
+      const alreadySent =
+        'The request has already been answered — a cloud function can only send one response';
+
+      // A request can only be answered once, and two Response nodes on two branches of one
+      // graph is exactly how an author reaches the second call. Asked *before* delivering, so
+      // the failure is reported while this node still exists to report it.
+      if (this._internal._requestIsOpen && !this._internal._requestIsOpen()) {
+        return this._failResponse('response/already-sent', alreadySent, { status: isSuccess ? 'success' : 'failure' });
+      }
+
+      const payload = isSuccess
+        ? { statusCode: 200, body: JSON.stringify({ result: this._internal.responseParameters }) }
+        : { statusCode: 400, body: JSON.stringify({ error: this._internal.errorMessage }) };
+
+      // `Sent` fires BEFORE the callback, and that ordering is forced rather than chosen.
+      // Delivering the response tears the request down synchronously — `NoodlCloudRuntime.run`
+      // calls `functionComponent._onNodeDeleted()` and `requestScope.reset()` inside the
+      // callback, *before* resolving — so by the time it returns, this node and everything
+      // wired to its outputs have been deleted. A completion signal sent afterwards would
+      // reach a graph that no longer exists, which is a completion signal in name only.
+      //
+      // Firing first is safe because nothing can intervene: the check above has established
+      // the request is open, and the call below is the next statement on the same tick.
+      this.sendSignalOnOutput('sent');
+
+      // Belt and braces for a host that installs the callback without `_requestIsOpen` (the
+      // return value is the older, coarser answer). Reached only if something downstream of
+      // `Sent` answered the request first, which is pathological but not impossible.
+      if (this._internal._sendResponseCallback(payload) === false) {
+        this._failResponse('response/already-sent', alreadySent, { status: isSuccess ? 'success' : 'failure' });
+      }
     },
     registerInputIfNeeded: function(name) {
       if(this.hasInput(name)) {
