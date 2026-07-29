@@ -18,7 +18,7 @@
 | NDA-009 Run Tasks | 2 | ⬜ Not started | §1 alone closes corpus F1 |
 | NDA-010 Popups | 2 | 🔄 **§2 done** | Close Popup now *pulls*: `showPopup` publishes `_popupCloseHandler` on the popup instance and the node walks up to it, so it works from anywhere in the popup's tree — 7 corpus rows, shown to discriminate. Criterion 2 met. **⚠️ §1's premise is partly stale**: `showpopup.ts:129-177` already derives typed `popupParam-*` from the target's input ports and `closeResult-*`/`closeAction-*` from its Close Popup nodes. The real gaps are the hand-typed `results`/`closeActions` on the *Close Popup* side and untyped (`*`) results — re-scoped in the spec. §3 (stack policy, corpus F2) untouched |
 | NDA-014 Type dead ends | 2 | 🔄 §1+§2 done | Decision at [`PORT-TYPE-CONTRACT.md`](../../reference/PORT-TYPE-CONTRACT.md) (A now, C direction). Table changed (`object`/`array`/`color` → `string`), JSON mirror added in `setInputValue`, catalog + register regenerated, runtime jest green (1,026), editor suite green (1,885 specs incl. validator/catalog-index). Outstanding: live editor check of the 13 `object` outputs |
-| NDA-015 Explicit binding | 2 | ✅ **Done** | All three sections. Walk de-duplicated into `runtime/src/componentwalk.ts` (it existed **four** times and had drifted — the `.js` copy accepted `'Component State'`, the TS ones did not, so a Function node and a Parent Component Object in the same place could resolve to *different* ancestors). Clause (b) ships as a node-card sub-label over a new `nodesublabel` message — **not** CAN-001/002, which are wire labels, and **not** `metadata.typeLabelOverride`, which is persisted. §3: the FIXME was load-bearing and its own comment described what `scheduleAfterUpdate` already does. 16 corpus rows. **Sweep found the class is wider** — `_forEachModel` (5 sites) is the same defect, unfixed, see FINDINGS F-ii |
+| NDA-015 Explicit binding | 2 | ✅ **Done + live-verified** | All three sections. Walk de-duplicated into `runtime/src/componentwalk.ts` (it existed **four** times and had drifted — the `.js` copy accepted `'Component State'`, the TS ones did not, so a Function node and a Parent Component Object in the same place could resolve to *different* ancestors). Clause (b) ships as a node-card sub-label over a new `nodesublabel` message — **not** CAN-001/002, which are wire labels, and **not** `metadata.typeLabelOverride`, which is persisted. §3: the FIXME was load-bearing and its own comment described what `scheduleAfterUpdate` already does. 16 corpus rows. **Sweep found the class is wider** — `_forEachModel` (5 sites) is the same defect, unfixed, see FINDINGS F-ii |
 | NDA-016 `Layout.size` | 2 | ✅ **Done** | **§0 resolved: the spec's premise was wrong.** `sizeMode` is never unset — a fresh Text node carries `contentHeight`/`100%`, read live. The real defect is a stale `parentLayout`: children bake the parent's layout in at *their* render, `renderChildren` memoises them, and the Layout setter never invalidated the memo — so a layout change never reached the children, and the first child ate the row. Fixed with `setLayout` as the single writer. §1 built too, on its own terms (an abstaining *connection* can still unset the port). 10 regression tests; 15-node-type live blast-radius check. Criterion 4's screenshot corpus is an instrument mismatch — see the spec |
 | NDA-011 REST → HTTP | 3 | ⬜ Not started | First output is an assessment, not a change |
 | NDA-012 Per-node audit | 3 | ⬜ **1 of 17 categories** | Variables done (4/4) as the worked example. Opt-in, resumable, stop on find-rate decline |
@@ -119,8 +119,18 @@ this table shows a category producing nothing new.
     the working tree still carries another session's node-source edits and regeneration folds them
     in. `nodelibraryexport.ts` reads the live register, so the editor's picker and property panel are
     already correct; only the generated JSON snapshot is stale.
-  - ⚠️ **Not live-QA'd.** Everything here is jest. The sub-label's *appearance* on a real canvas —
-    wrap, card growth, the `→` glyph in the card font — has not been seen in the running editor.
+  - ✅ **Live-QA'd in the running editor**, which is the half jest cannot reach. A scratch project
+    with `App > /Outer > /Inner`, both outer components owning a Component Object:
+    - the implicit node's card reads **`→ /Outer`** in the sub-label slot, muted, under the wrapped
+      title — the correct ancestor, not the nearer one it shares a component with;
+    - its card is **78 px** against the sibling's **64 px**, so `relayout` did run and the card grew
+      by exactly the sub-label line rather than painting text into an old box;
+    - the sibling targeting a non-existent `/Nowhere` shows **no** sub-label and instead carries the
+      dashed danger ring, the warning glyph and `No ancestor component named "/Nowhere"` on hover,
+      with the toolbar warning count at 1 — so clause (c) reaches the editor through NDA-004's
+      channel and the editor's warning adapter, unchanged;
+    - `targetComponent [input component]` is present in the node type's exported ports, so the
+      property panel offers the component picker **without** the catalog regeneration below.
 
 - **2026-07-29 (NDA-008 §0 resolved — the node is innocent)** — the scroll jump is real, is
   reproducible, and has nothing to do with the Component Stack. Measured with a Page Stack in a

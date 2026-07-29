@@ -4,7 +4,9 @@
 > (`dev-docs/reference/BINDING-CONTRACT.md`), both named nodes obey all three clauses, the walk is
 > shared, and the sweep is recorded in [FINDINGS.md](./FINDINGS.md#the-class-f-sweep--done-2026-07-29-nda-015-2-criterion-4).
 > Corpus: `noodl-viewer-react/tests/corpus/nda-015-explicit-binding.test.ts` (9 rows) and
-> `nda-010-close-popup-targeting.test.ts` (7 rows).
+> `nda-010-close-popup-targeting.test.ts` (7 rows). **Live-verified in the running editor** — the
+> sub-label paints, the card grows by exactly one line, and an explicit miss draws the danger ring
+> with its message instead of a sub-label. See the PROGRESS log for the measurements.
 >
 > **Two of this spec's premises did not survive implementation.** Read these before the body:
 >
