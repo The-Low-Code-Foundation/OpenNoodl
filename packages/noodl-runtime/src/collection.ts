@@ -354,8 +354,17 @@ function buildMutators(self: PatchedArray): Mutators {
  */
 const collectionProxyHandler: ProxyHandler<PatchedArray> = {
   get(target, prop, receiver) {
-    if (prop === RAW_TARGET) return target;
-    if (typeof prop === "string" && MUTATOR_NAMES.has(prop)) return mutatorsFor(target)[prop];
+    if (typeof prop === "string") {
+      // Element reads are the hot path — a Repeater walks its whole collection every time it
+      // copies items — and they can never resolve to an accessor, because nothing on
+      // `Array.prototype` is named with a leading digit. Answering them without
+      // `Reflect.get` is worth roughly a third of the trap's cost.
+      const first = prop.charCodeAt(0);
+      if (first >= 48 && first <= 57) return target[prop as unknown as number];
+      if (MUTATOR_NAMES.has(prop)) return mutatorsFor(target)[prop];
+    } else if (prop === RAW_TARGET) {
+      return target;
+    }
     return Reflect.get(target, prop, receiver);
   },
 
