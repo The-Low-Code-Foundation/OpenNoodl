@@ -14,9 +14,10 @@
 | **Branch** | commit directly to `cline-dev` |
 | **Recommended executor** | 🔴 **Opus 5** for §0 and §1 (the decision is a runtime-shape question); Sonnet for the build |
 
-> **⚠️ §0 is blocking.** This task is specced from source, not from a reproduction. The phase has
-> now twice specced a fix aimed at the wrong file (NDA-008 §0, NDA-016 §0) and both times the §0
-> reproduction is what caught it. Reproduce before building.
+> **✅ §0 is done** (`d6db6f39`, 2026-07-30). All four claims reproduce; the spec's mechanism
+> survives contact, which is not what happened in NDA-008 §0 or NDA-016 §0. One correction and one
+> addition are folded in below — see [§0 — result](#0--result). **§1 is now the blocker**, and it is
+> Richard's decision, not a coding task.
 
 ## The report
 
@@ -126,6 +127,59 @@ its own:
 Do row 2 against the **Function** node as well, not only Expression. If it reproduces there, the
 reporter's workaround is not a workaround and the finding is a class, not a node.
 
+## §0 — result
+
+Done in `d6db6f39`. Ten rows in
+[`packages/noodl-runtime/test/corpus/nda-017-signal-input-freshness.test.ts`](../../../packages/noodl-runtime/test/corpus/nda-017-signal-input-freshness.test.ts);
+four `test.failing`, six pinned.
+
+**Every claim above reproduced, including the one about the Function node.** Row 4 is the one that
+changes the shape of the task: the reporter said they had "to use function node many times in places
+where even a simple expression node would be suffice", and Function re-publishes the previous cycle's
+answer under identical conditions. The workaround bought nothing, and "twelve families, not one node"
+is measured rather than grepped.
+
+**The frame discipline is the reusable half.** `graph.update()` is synchronous — it drains the dirty
+list and the after-update callbacks without yielding — while `settle()` awaits the macrotask queue
+between frames. A producer that lands its value from a `setTimeout` therefore *cannot* have landed
+across an `update()`, which is exactly the real timing: `Run` on one frame, the async answer some
+frames later. **A row written with `settle()` lets the producer win the race and reports this defect
+as absent.** Anything else in this class needs the same care.
+
+**Discrimination, against the mechanism rather than a fix** (a §0 has no fix to revert). Dropping the
+`run` guard from Expression's two value setters reddens exactly the passivity control and the "never
+corrects it" characterisation, and moves neither Function row. Dropping it from
+`setScriptInputValue` reddens exactly the two Function rows and moves nothing in Expression. The
+guard is therefore the mechanism, and the two nodes are independent instances rather than one
+measurement leaking into the other.
+
+### The correction: a fifth route to the plausible value, with no signal involved
+
+§0 predicted the seed reaches the graph through an early `Run`. It also reaches it **with no `Run` at
+all**.
+
+With the control signal connected, the node never evaluates at boot — `signalsFor('expr')` is empty
+for the whole of it, because `isTrueEv`/`isFalseEv` fire on *every* evaluation and neither appears.
+Yet a downstream node still receives a confident `0`: `connectInput` pushes the source's current
+output when the wire is made, and `result`'s getter answers over the initial `cachedValue`.
+
+That is row 1's shape — a plausible value standing in for "no answer yet" — arriving by a route the
+spec did not consider, and it matters for §1: **option A as written does not reach it.** "On the
+control signal, if any connected input is still on its seed, report" cannot fire when no control
+signal is involved. Whatever §1 chooses has to say what a signal-driven node publishes before its
+first evaluation, or the remedy closes three of four doors. Pinned by its own row so the decision is
+made against the whole surface.
+
+### Row 3, measured
+
+The asymmetry is real and is observable only downstream: two `Run` pulses with nothing changed
+upstream deliver **two** signal pulses and **one** value. `_scheduleEvaluateExpression` re-flags
+`result`/`isTrue`/`isFalse` only when the value differs (`expression.ts:133-139`) while
+`isTrueEv`/`isFalseEv` fire unconditionally (`:140-141`). Reading the node's own outputs shows the
+cached value and misses this entirely. Left as a characterisation row, not a `test.failing` one —
+whether the two ports *should* agree is §1's call, and the row exists so that call is made against a
+measurement.
+
 ## §1 — The decision (put to Richard before building)
 
 The remedy is not obvious and the options differ by an order of magnitude in cost.
@@ -134,6 +188,12 @@ The remedy is not obvious and the options differ by an order of magnitude in cos
   received. On the control signal, if any *connected* input is still on its seed, report
   `expression/inputs-never-arrived` through the NDA-004 channel and pulse `Failure` instead of
   evaluating. **Closes case 1 only.** Cheap, local, and reuses machinery that exists.
+  - ⚠️ **Amended by §0.** As written this closes case 1 only *on the control signal*. §0 measured a
+    second way the seed reaches the graph — the connect-time push of `result`'s getter, before any
+    evaluation has ever happened — which no control-signal check can intercept. If A is chosen it
+    needs a companion answer for what the node publishes before its first evaluation (candidates: no
+    push until evaluated, or a declared "not yet evaluated" value). Otherwise the seed keeps its
+    quietest route.
 - **B — an upstream-pending notion in the runtime.** Async nodes declare themselves in flight; a
   signal-driven consumer that evaluates while a connected producer is pending reports it. **Closes
   case 2, which is the reported one.** Costs a new runtime-wide concept and an opt-in from every
@@ -164,7 +224,8 @@ report will read the same.
 
 ## Success criteria
 
-1. The §0 corpus rows exist and each reddens only its own claim.
+1. ✅ The §0 corpus rows exist and each reddens only its own claim (`d6db6f39`; discrimination run
+   twice, against Expression's guard and against Function's).
 2. Richard's §1 decision is recorded in this file, with the veto window closed.
 3. The chosen remedy is applied across every node family in the table, or the exceptions are named
    with a reason.
