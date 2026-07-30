@@ -281,6 +281,32 @@ raise there fires on the boot path. It needs the trigger distinguished first.
    `failure` output reddened **nothing** until three `hasOutput` rows were added. The existing §2
    corpus files share the gap.
 
+### B-vi — States goes to a state it does not have, and reports success (2026-07-30)
+
+Register ⏳ item 5, predicted as "`goToState` with a name that is not in the list". Right about the
+trigger, and the damage is a `0`-class defect rather than a silence one.
+
+`goToState` never checked its argument against `internal.states`
+([`states.ts:476-480`](../../../packages/noodl-viewer-react/src/nodes/std-library/states.ts#L476-L480)
+before the fix). An unknown name has no `value-<state>-<name>` parameters, so the transition timer's
+`onStart` fell through to `stateValues[prefix + v] || 0` and animated **every value to 0** — zero for
+numbers, black for colours. The node then wrote the bogus name to its `State` output and fired
+`stateChanged`, so everything downstream was told the transition had succeeded. `reached-<state>`,
+the one signal that would have looked wrong, never fired — because no such port exists for a state
+that does not exist.
+
+Ordinary to hit: `State` is an enum input, and a wire can feed an enum any string at all. A Text
+Input, a Record property, or a state renamed in the editor while something upstream still spells it
+the old way. Fixed with a membership check that **refuses to move** as well as reporting
+(`states/unknown-state`, `detail` carrying the requested name and the real list) — moving was the
+whole mechanism of the damage.
+
+The port is safe on the happy path for `Expression`'s reason, and it is a *narrower* guard than it
+looks: it fires only for a **truthy** unknown name. A falsy request is resolved to the first state
+one line above, which is the boot path and what `states`'s own setter depends on. A corpus control
+pins that, and reverting just the falsy resolution reddens exactly that control — the Object node's
+lesson, checked rather than assumed.
+
 ## Defect class C — 95% of ports are undocumented
 
 2,508 of 2,650 ports carry no `description`. 112 of 155 nodes have not a single documented port.

@@ -65,6 +65,40 @@ this table shows a category producing nothing new.
 
 ## Log
 
+- **2026-07-30 (NDA-004 §2 — States)** — ⏳ item 5, one node, and the first entry in a while where
+  the prediction was simply correct: `goToState` with a name that is not in the list. What the
+  prediction could not say is which *class* of defect it is.
+
+  It is the Expression class, not the silence class. An unknown name has no `value-<state>-<name>`
+  parameters, so the transition timer's `onStart` fell through to `stateValues[prefix + v] || 0` and
+  animated **every value to 0** — zero for numbers, black for colours. The node then wrote the bogus
+  name to its `State` output and fired `stateChanged`, so everything downstream was told the
+  transition had succeeded. `reached-<state>`, the one signal that would have looked wrong, never
+  fired for the trivial reason that no such port exists for a state that does not exist. So the
+  author's evidence was: the state machine moved, and all the values collapsed to zero.
+
+  Two things worth carrying:
+
+  **The fix has to refuse to move, not just report.** Transitioning to a state whose values do not
+  exist *is* the mechanism of the damage, so a raise on its own would leave the zeroing in place. A
+  corpus revert that reports-but-still-transitions reddens exactly the three rows about the node's
+  observable state, which is what makes that distinction a tested decision rather than a preference.
+
+  **The guard is narrower than "not in the list", and the control proves it.** It fires only for a
+  **truthy** unknown name, because a falsy request is resolved to the first state one line above —
+  that is the boot path, and `states`'s own setter depends on it. Reverting just the falsy resolution
+  reddens exactly the "an empty State value raises nothing" control. That is the Object node's
+  lesson applied as a test instead of an assumption.
+
+  Reachability is unglamorous and total: `State` is an enum input, and a wire can feed an enum any
+  string. A Text Input, a Record property, or a state renamed in the editor while something upstream
+  still spells it the old way.
+
+  10 corpus rows, four reverts, each reddening only its own rows. Viewer jest **202** (was 192),
+  typecheck clean, no runtime source touched. One incidental harness note: `reached-<state>` is a
+  runtime-discovered output that `onFinish` gates on `hasOutput`, so an unwired control reads as "the
+  transition never completed" — the row wires a sink to it.
+
 - **2026-07-30 (NDA-004 §2 — the Array mutators)** — ⏳ item 6, five of six nodes decided, and the
   interesting part is again not the code.
 

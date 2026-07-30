@@ -23,6 +23,7 @@ row must be shown to discriminate before it is trusted.
 | `nda-004-component-object-family.test.ts` | [Failure](../../../../dev-docs/reference/FAILURE-CONTRACT.md) §2 on the Component Object family, **incl. the two 🔵 verdicts** — FINDINGS B-i | 14 |
 | `nda-004-video-playback.test.tsx` | Failure §2 on Video — FINDINGS B-ii | 10 |
 | `nda-004-array-mutators.test.ts` | [Failure](../../../../dev-docs/reference/FAILURE-CONTRACT.md) §2 on the Array mutators, **incl. two 🔵 verdicts** — FINDINGS B-v | 23 |
+| `nda-004-states-unknown-state.test.ts` | Failure §2 on States — FINDINGS B-vi | 10 |
 
 Four of those rows pin an **absence**: `Set Component Object Properties` must keep having *no*
 `Failure` port, because it cannot miss, `Component Object` must stay silent when values arrive, and

@@ -45,6 +45,7 @@ of the five defects a careful read found:
 | Insert Object Into Array | two `sendWarning` + bare `return` branches behind `if (this.context.editorConnection)` — right on the canvas, silent everywhere else, and no graph surface either way | `insert-into-array/no-array`, `/no-object-id` |
 | Remove Object From Array | **two bare `return`s**: no diagnosis in any runtime at all, the editor included | `remove-from-array/no-array`, `/no-object-id` |
 | Clear Array | **no guard at all** — `collection.set([])` on `undefined` threw a `TypeError` out of a scheduled callback | `clear-array/no-array` |
+| States | a state name not in the list animated **every value to 0**, adopted the name on the `State` output and fired `stateChanged` — a transition that read as successful | `states/unknown-state` |
 
 ### 🔵 Decided, on evidence (read)
 
@@ -94,7 +95,10 @@ Ordered by expected yield, highest first. Every one of these takes a signal and 
    so sequence it after that decision rather than before.
 4. **Push Component To Stack / Navigate** — a target page that does not resolve. `navigate.ts`
    already returns early on `_findPage` missing.
-5. **States** — `goToState` with a name that is not in the list.
+5. ~~**States**~~ — **done 2026-07-30, ✅.** The prediction was right and the damage was the
+   Expression class, not the silence class: the unknown state animated every value to **0**, took
+   the bogus name onto its `State` output and fired `stateChanged`, so the transition read as
+   successful everywhere downstream. Fixed by refusing to move as well as reporting.
 6. ~~**Array family**~~ — **done 2026-07-30**, five of six. The trigger question resolved cleanly:
    the three *mutators* take an author `Do` and are ✅; `Array` and `Create New Array` are 🔵 for
    the two different reasons the Object family established. But "the same question" was the wrong
@@ -118,7 +122,7 @@ Ordered by expected yield, highest first. Every one of these takes a signal and 
 |---|---|---|---|---|---|---|---|---|---|
 | 1 | Animate To Value | Animation | 4/2 |  |  | 0% | partial | browser |  |
 | 2 | Animation _(deprecated)_ | Animation | 13/2 | ⚠️ |  | 0% | partial | browser |  |
-| 3 | States | Animation | 4/2 | ⚠️ |  | 0% | partial | browser |  |
+| 3 | States | Animation | 4/2 | ⚠️ |  | 0% | partial | browser | ✅ NDA-004 §2 — `Failure`/`Error`, `states/unknown-state`. A name not in the list animated **every value to 0**, adopted the bogus name on the `State` output and fired `stateChanged`; no `reached-` port exists for it, so the transition read as successful. The guard refuses to move as well as reporting, and fires only for a *truthy* unknown name |
 | 4 | Transition _(deprecated)_ | Animation | 6/2 | ⚠️ |  | 0% | partial | browser |  |
 | 5 | Request | Cloud | 2/3 |  |  | 0% | — | cloud |  |
 | 6 | Response | Cloud | 4/0 |  | ⚠️ | 0% | — | cloud | ✅ NDA-004 §3 — `Sent`/`Failure`/`Error`. `response/no-request-in-scope` (the callback was never installed — previously a `TypeError` out of an input setter) and `response/already-sent` (the second answer, previously discarded in silence). `Sent` fires *before* delivery because delivering tears the request scope down synchronously |

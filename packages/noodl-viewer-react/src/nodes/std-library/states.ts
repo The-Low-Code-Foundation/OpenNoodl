@@ -55,6 +55,8 @@ interface StatesInstance extends NodeInstance {
      * cancelled itself out and nothing fired at all.
      */
     goToStateQueue?: string[];
+    /** Latest failure message, for the `Error` output (NDA-004 §2). */
+    error?: string;
   };
   /**
    * Set directly on the instance rather than in `_internal` — the original does this and
@@ -66,6 +68,7 @@ interface StatesInstance extends NodeInstance {
   goToState(state?: string, settleImmediately?: boolean): void;
   jumpToState(state?: string): void;
   updateAtStatePorts(): void;
+  _failUnknownState(state: string): void;
 }
 
 const defaultDuration = 300;
@@ -272,6 +275,37 @@ const StatesNode: NodeDefinitionOptions = {
       type: 'signal',
       displayName: 'State Changed',
       group: 'Current State'
+    },
+    /**
+     * NDA-004 §2. `goToState` never checked that the state it was handed was one of the node's
+     * own, and the consequences were the Expression node's all over again: a name that is not in
+     * the list has no `value-<state>-<name>` parameters, so `onStart` fell through to
+     * `stateValues[prefix + v] || 0` and animated **every value to 0** — black for colours, zero
+     * for numbers. The node then set `State` to the bogus name and fired `stateChanged`, so
+     * everything downstream was told a transition had succeeded. No `reached-<state>` port exists
+     * for a state that does not exist, so the one signal that would have looked wrong never fired.
+     *
+     * A plausible result, arrived at by a broken route — the class the contract calls strictly
+     * worse than an obviously broken one.
+     *
+     * The port is safe on the happy path for the reason `Expression`'s is: the guard fires only
+     * for a **truthy** state that is not in the list. A falsy request is resolved to the first
+     * state a line above (that is the boot path, and `states`'s own setter uses it), and the
+     * `currentState` port's default is `startState || states[0]`, so a node nobody has wired
+     * never reaches this branch.
+     */
+    failure: {
+      type: 'signal',
+      displayName: 'Failure',
+      group: 'Events'
+    },
+    error: {
+      type: 'string',
+      displayName: 'Error',
+      group: 'Events',
+      getter: function (this: StatesInstance) {
+        return this._internal.error;
+      }
     }
   },
   prototypeExtensions: {
@@ -473,11 +507,43 @@ const StatesNode: NodeDefinitionOptions = {
         }
       });
     },
+    /**
+     * NDA-004 §2 — the one place a requested state is checked against the list.
+     *
+     * `goToState` is the single entry point: `jumpToState` is only ever reached from the branch
+     * below, and `scheduleGoToState` cannot do the check itself because it runs before `states`
+     * has necessarily been set. Guarding here also means the queue is unaffected — a rejected
+     * state leaves `internal.state` alone, so a later request for a real state still works.
+     */
+    _failUnknownState: function (this: StatesInstance, state: string) {
+      const states = this._internal.states || [];
+      // Name the alternatives. "Unknown state" is not actionable; "you have A, B, C" is, and a
+      // wired `State` input misspelt or left behind by a rename is the common cause.
+      const message =
+        'Cannot go to state "' +
+        state +
+        '" — this node has no such state. Its states are: ' +
+        (states.length > 0 ? states.join(', ') : '(none defined)') +
+        '.';
+
+      this._internal.error = message;
+      this.flagOutputDirty('error');
+      this.raiseRuntimeError('states/unknown-state', message, { requested: state, states: states.slice() });
+      this.sendSignalOnOutput('failure');
+    },
     goToState: function (this: StatesInstance, state?: string, settleImmediately?: boolean) {
       const internal = this._internal;
       if (!internal.states) return;
       if (!state) state = internal.states[0];
       if (internal.state === state) return;
+
+      if (internal.states.indexOf(state) === -1) {
+        // Refusing to move is the point, not just the report. Transitioning to a state whose
+        // values do not exist is what produced the animate-everything-to-zero behaviour; staying
+        // put leaves the node in a state it actually has.
+        this._failUnknownState(state);
+        return;
+      }
 
       //this._internal.scheduledToGoToState = undefined;
       if (!internal.valuesAreInitialised) {
