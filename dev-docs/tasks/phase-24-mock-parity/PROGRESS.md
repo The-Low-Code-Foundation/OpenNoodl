@@ -7,6 +7,7 @@
 | PAR-001 | Launcher parity | ✅ Done 2026-07-26 | 52px titlebar w/ inset lights + 120px region, 224px mock sidebar, Bricolage head row, ⌘K search, 3-up cards, plain footer, toast anchor/radius/shadow; typecheck + ratchet green; see [PAR-001-NOTES.md](./PAR-001-NOTES.md) — live smoke (lights/⌘K/drag/light-theme) pending from primary checkout |
 | PAR-002 | Properties panel rebuild | ✅ Done 2026-07-26 (needs live QA) | Header type-chip (UIX-004b closed), 62px grid, input kit, 32×19 toggles, seg-icons, box-model, binding chip w/ real source + click-to-select. [Notes](./PAR-002-NOTES.md) |
 | PAR-003 | Editor chrome parity | ✅ Done 2026-07-26 (needs live QA) | Toolbar/rail/HUD/bottom-bar per mock; AI pill→Build panel (⌘J), zoom cluster→ViewportActions, Preview-live→ViewerConnection presence; ratchet =, 0 new TS errors. See [PAR-003-NOTES.md](./PAR-003-NOTES.md) |
+| PAR-004 | Polish pass — the recorded residual deltas | 📋 Specced 2026-07-30 | [PAR-004-POLISH-PASS.md](./PAR-004-POLISH-PASS.md). The 2026-07-26 live pass listed five deltas "for a PAR-004 polish pass" and PAR-004 was never filed, which is why this phase has sat at 🚧 with all three tasks done. Now filed with owners. One of the five (the launcher sort select) is a **feature-level** decision, not polish; another (traffic lights / light theme / real keystrokes) is explicitly un-runnable under CDP and folds into [ALPHA-001](../phase-33-alpha-launch/ALPHA-001-FIRST-HOUR.md) |
 
 ## Coordination
 
