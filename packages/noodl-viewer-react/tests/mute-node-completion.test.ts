@@ -89,6 +89,16 @@ describe('NDA-004: Send Event', () => {
     expect(codesRaised(graph)).toContain('event-sender/no-channel');
   });
 
+  test('the Error output carries the message, so a graph can show it', async () => {
+    const graph = await graphWith(EventSenderModule, 'Event Sender');
+
+    graph.node('node').setInputValue('sendEvent', true);
+    await graph.settle(3);
+
+    // Added 2026-07-30 with the port itself. The contract forbids a bare `Failure` signal.
+    expect(graph.node('node').getOutput('error').value).toBe('No channel name, so the event was not sent');
+  });
+
   test('with a channel name, sends and signals Sent', async () => {
     const graph = await graphWith(EventSenderModule, 'Event Sender', { channelName: 'ping' });
 
@@ -240,5 +250,37 @@ describe('NDA-004 / NDA-008 §3: Pop Component Stack', () => {
     await graph.settle(3);
 
     expect(graph.signalsFor('node')).toEqual(['success']);
+  });
+});
+
+/**
+ * NDA-004 §2 — the ports themselves, not just the signal log.
+ *
+ * `graph.signalsFor` records a port name **before** delegating, and `Node.sendSignalOnOutput` on
+ * a name the node lacks only `console.log`s and returns. So deleting a node's `failure` output
+ * leaves every `toContain('failure')` row in this file green — verified by doing it. Whenever the
+ * *port* is part of the claim, `hasOutput` is the assertion that holds it in place.
+ */
+describe('NDA-004 §2/§3: the ports exist', () => {
+  const CASES = [
+    { label: 'Close Popup', module: ClosePopupModule, type: 'NavigationClosePopup', done: 'success' },
+    { label: 'Send Event', module: EventSenderModule, type: 'Event Sender', done: 'sent' },
+    { label: 'External Link', module: ExternalLinkModule, type: 'net.noodl.externallink', done: 'success' },
+    { label: 'Pop Component Stack', module: NavigateBackModule, type: 'PageStackNavigateBack', done: 'success' }
+  ];
+
+  /**
+   * This top-up is what found **Send Event had no `Error` port at all** — a `Failure` signal and
+   * a raised code, but nothing an author could read on the canvas, which the contract calls out
+   * by name: "a bare signal reproduces 'no information' one level up". The batch-1 rows asserted
+   * on `signalsFor` and the raised code, so nothing noticed for two batches.
+   */
+  test.each(CASES)('$label carries its completion, Failure and Error', async ({ module, type, done }) => {
+    const graph = await graphWith(module as NodeModule, type);
+    const node = graph.node('node');
+
+    expect({ done: node.hasOutput(done), failure: node.hasOutput('failure'), error: node.hasOutput('error') }).toEqual(
+      { done: true, failure: true, error: true }
+    );
   });
 });

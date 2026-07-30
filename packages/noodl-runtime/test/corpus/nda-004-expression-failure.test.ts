@@ -189,3 +189,21 @@ describe('NDA-004 §2: what must stay silent', () => {
     expect(graph.node('expr').getOutput('result').value).toBe(2);
   });
 });
+
+/**
+ * NDA-004 §2 — the ports themselves, not just the signal log.
+ *
+ * `graph.signalsFor` records a port name **before** delegating, and `Node.sendSignalOnOutput` on
+ * a name the node lacks only `console.log`s and returns. So deleting a node's `failure` output
+ * leaves every `toContain('failure')` row in this file green — verified by doing it. Whenever the
+ * *port* is part of the claim, `hasOutput` is the assertion that holds it in place.
+ */
+describe('NDA-004 §2: the ports exist', () => {
+  test('Expression carries Failure and Error alongside its result', async () => {
+    const graph = await graphWith('a + 1');
+
+    expect(graph.node('expr').hasOutput('result')).toBe(true);
+    expect(graph.node('expr').hasOutput('failure')).toBe(true);
+    expect(graph.node('expr').hasOutput('error')).toBe(true);
+  });
+});

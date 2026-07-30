@@ -15,6 +15,8 @@ interface EventSenderInstance extends NodeInstance {
     inputValues: Record<string, unknown>;
     channelName: string;
     propagation: Propagation;
+    /** Message for the `Error` output; see NDA-004. */
+    lastError?: string;
   };
 }
 
@@ -43,7 +45,10 @@ const EventSender: NodeDefinitionOptions = {
           // the silent case: no receiver fires, nothing is reported, and the author is left
           // looking at the receiving end wondering why it never triggered.
           if (!self._internal.channelName) {
-            self.raiseRuntimeError('event-sender/no-channel', 'No channel name, so the event was not sent');
+            const message = 'No channel name, so the event was not sent';
+            self._internal.lastError = message;
+            self.raiseRuntimeError('event-sender/no-channel', message);
+            self.flagOutputDirty('error');
             self.sendSignalOnOutput('failure');
             return;
           }
@@ -115,6 +120,24 @@ const EventSender: NodeDefinitionOptions = {
       type: 'signal',
       displayName: 'Failure',
       group: 'Events'
+    },
+    /**
+     * NDA-004 §2 — added 2026-07-30, and found by a `hasOutput` top-up rather than by a failing
+     * row.
+     *
+     * The batch-1 fix gave this node a `Failure` signal and a raised code but **no `Error`
+     * port**, which the contract names as its own defect: "a bare signal reproduces 'no
+     * information' one level up". The rows written at the time asserted on `signalsFor` and on
+     * the raised code, so nothing noticed. Retro-fitting `hasOutput` assertions to the batch-1
+     * and batch-2 files is what surfaced it.
+     */
+    error: {
+      type: 'string',
+      displayName: 'Error',
+      group: 'Events',
+      getter: function (this: EventSenderInstance) {
+        return this._internal.lastError;
+      }
     }
   },
   prototypeExtensions: {
