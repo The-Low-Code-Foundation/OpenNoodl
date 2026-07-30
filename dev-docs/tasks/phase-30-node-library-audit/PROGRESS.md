@@ -66,6 +66,44 @@ this table shows a category producing nothing new.
 
 ## Log
 
+- **2026-07-30 (the confirmatory deploy — the three fixes watched running)** — no runtime change;
+  fixture + docs only. **All three witnesses pass.** FINDINGS **H-iv** has the table.
+
+  This closes the one piece of live work the deployed-build workstream owed. Every defect in class H
+  was measured live and every *fix* was pinned only by the corpus, so a second Deploy To Folder
+  (same headless chunk-registry recipe, `runtimeType: 'ssr'`, then `npm run build:ssg && npm run
+  ssg`) was run to watch the fixed state.
+
+  - **Masonry first paint** (SSG `dist/index.html` with every `<script>` stripped): container
+    **1280px**, all seven items **427px**, and `box-sizing` still present in the serialised `style`
+    attribute. Under the defect the items were 0px.
+  - **The console line, twice.** `[noodl] Expression (App): The expression could not be compiled:
+    Unexpected token '*' [expression/compile-failed]` appears in the **SSG build's stdout** with the
+    full structured payload (`nodeId`/`componentName`/`nodeType`/`code`/`message`/`detail`) *and* in
+    the **deployed browser console** as a `console.error`. There was none in either before.
+  - **The fixture has no `On App Error` node**, deliberately and now recorded in its README as
+    load-bearing. That absence is the whole point: criterion 2 passed three reviews because the
+    fixture it was checked against happened to contain one.
+
+  **The reusable half is that the deploy output is itself a fixture you can edit.** The masonry
+  witness was discriminated without rebuilding anything: substituting `width:calc(100% + 0px)` →
+  `width:calc(100% + (0px)` in the served HTML and reloading collapses the masonry container to
+  **0** and reproduces H-i's recorded 110px/28px on the breakpoint container. Any defect whose
+  evidence is a *serialised attribute* can be discriminated this way, in seconds rather than a
+  full deploy-and-build cycle.
+
+  Small correction to H-i, written into FINDINGS in place: the recorded 110px shrink-to-fit
+  container is the **breakpoint** Columns node, not masonry. Masonry goes to **0** — its children
+  are absolutely positioned, so it has nothing to shrink to fit.
+
+  Also re-confirmed on the hydrated page: masonry tops `0,0,0,40,90,60,160`, height **230**, which
+  is what the corpus computes and the second independent measurement of it.
+
+  ⚠️ **Catalog regeneration and `Logic Builder` are both still blocked** — checked at the top of this
+  session: `packages/noodl-types/src/node-catalog.json`, `node-catalog-enriched.json` and
+  `packages/noodl-runtime/src/nodes/std-library/logic-builder.ts` are all still dirty with the other
+  session's work.
+
 - **2026-07-30 (NDA-017 §0 — reproduced, and the spec's mechanism survived)** — `d6db6f39`,
   `47c80295`. Ten rows in
   [`nda-017-signal-input-freshness.test.ts`](../../../packages/noodl-runtime/test/corpus/nda-017-signal-input-freshness.test.ts),
@@ -190,10 +228,10 @@ this table shows a category producing nothing new.
   own comment — so J1–J5 drive the real `setup` against a fake graph model. That split is the
   phase's "testing a helper is not testing that anything calls it", applied before it bit.
 
-  ⚠️ **Owed: the fixed state has not been watched running.** What was measured live is the *defect*,
-  in all three cases; what pins the fixes is the corpus (D11–D13, G1–G3, H1–H4, I1–I7, J1–J5), each
-  shown to discriminate under an isolated revert. Both rebuilt deploy bundles were confirmed to
-  carry both fixes. The confirmatory run is one launch away and is written up in `NEXT-SESSION.md`.
+  ~~⚠️ **Owed: the fixed state has not been watched running.**~~ **Done 2026-07-30** — see the newest
+  log entry and FINDINGS **H-iv**. What was measured live here is the *defect*, in all three cases;
+  what pins the fixes is the corpus (D11–D13, G1–G3, H1–H4, I1–I7, J1–J5), each shown to
+  discriminate under an isolated revert.
 
   ⚠️ **`VerifyFix4` now holds the live-QA fixture again**, not Hello World; the session scratchpad
   was cleared before it could be put back. It regenerates either way from `scripts/nda-live-qa/`.

@@ -36,6 +36,7 @@ const BTN = id('aaaa');
 const DATA = id('aaaa');
 const SP_A = id('aaaa');
 const SP_B = id('aaaa');
+const EXPR = id('aaaa');
 
 const app = {
   name: 'App',
@@ -125,7 +126,14 @@ const app = {
         json: JSON.stringify([{ label: 'R0' }, { label: 'R1' }, { label: 'R2' }, { label: 'R3' }])
       }),
       node(SP_A, 'NavigationShowPopup', { target: '/PopupA', stackPolicy: 'replace' }),
-      node(SP_B, 'NavigationShowPopup', { target: '/PopupB', stackPolicy: 'replace' })
+      node(SP_B, 'NavigationShowPopup', { target: '/PopupB', stackPolicy: 'replace' }),
+      // NDA-004 §2 criterion 2: a raised failure that needs no interaction and no `On App Error`
+      // node to be observable. `Run` is deliberately left unconnected, so setting `expression`
+      // at boot schedules the evaluation itself (`expression.ts:321`) and `_calculateExpression`
+      // reports `expression/compile-failed` on the first frame. The witness is a `[noodl]` line
+      // on the *default* channel — the path a project gets without the author doing anything,
+      // which is precisely the path criterion 2 had never been checked through.
+      node(EXPR, 'Expression', { expression: '1 +* ' })
     ],
     visualRoots: [ROOT]
   },
@@ -173,4 +181,4 @@ const project = {
 
 fs.writeFileSync(path, JSON.stringify(project, null, 2));
 console.log('wrote', path);
-console.log(JSON.stringify({ ICON_PRESET, ICON_BLANK, ROOT, COL_BP, COL_AF, COL_REP, FOREACH, BTN, DATA, SP_A, SP_B, ROW_INPUT }, null, 2));
+console.log(JSON.stringify({ ICON_PRESET, ICON_BLANK, ROOT, COL_BP, COL_AF, COL_REP, COL_MAS, FOREACH, BTN, DATA, SP_A, SP_B, EXPR, ROW_INPUT }, null, 2));

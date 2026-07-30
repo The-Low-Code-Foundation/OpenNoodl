@@ -22,6 +22,11 @@ the project from the launcher.
 | Columns, `packing: masonry`, 7 boxes of heights 40/90/60/120/50/80/70 | NDA-006 §4 — expected tops `0,0,0,40,90,60,160`, height 230 |
 | One Button wired to **two** Show Popup nodes, both on `Replace It` | NDA-010 §3 — one popup, and the superseded node sends `Dismissed` |
 | Two Icon nodes, one preset to a sprite value and one blank | NDA-007 §2/§3 — the app path and the picker path |
+| An `Expression` reading `1 +* `, `Run` unconnected, **no `On App Error` node anywhere** | NDA-004 §2 criterion 2 — a `[noodl] … [expression/compile-failed]` line on the *default* channel |
+
+**The absence of an `On App Error` node is load-bearing.** Criterion 2 read as met for three
+sessions because the fixture it was checked against happened to contain one; the default channel
+produced nothing at all in any deployed runtime. Do not add one to this fixture.
 
 ## Measuring, from CDP
 

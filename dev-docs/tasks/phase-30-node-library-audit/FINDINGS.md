@@ -1141,6 +1141,33 @@ to how much it had to say.
 believed for years, and was half true: the connection genuinely never connects, and genuinely does
 not no-op.
 
+### H-iv — the fixed state, confirmed on a second deploy (2026-07-30)
+
+H-i and H-ii were both *measured as defects* and then fixed against the corpus; neither fixed state
+had been watched running. One further Deploy To Folder — same headless recipe, same fixture plus an
+`Expression` reading `1 +* ` and **no `On App Error` node anywhere in the project** — confirms both:
+
+| Witness | Under the defect | Now |
+| --- | --- | --- |
+| Masonry container / items, script-stripped SSG first paint | 0px / 0px ×7 | **1280px / 427px ×7** |
+| Breakpoint Columns container / items, same page | 110px / 28px ×4 | **1280px / 320px ×4** |
+| `box-sizing` in the serialised `style` attribute | dropped | **present** |
+| `[noodl] … [expression/compile-failed]` in SSG build stdout | absent | **present, with the structured payload** |
+| The same line in the deployed browser console | absent | **present, as `console.error`** |
+
+The masonry witness was **discriminated on the artefact itself** rather than in source: substituting
+`width:calc(100% + 0px)` → `width:calc(100% + (0px)` in the served HTML and reloading collapses the
+masonry container to **0** and reproduces the recorded 110/28 numbers on the breakpoint container.
+That is a cheaper discrimination check than a revert-and-rebuild, and it is available for any defect
+whose evidence is a serialised attribute: **the deploy output is a fixture you can edit.**
+
+One correction to H-i in passing: the recorded "the container fell back to shrink-to-fit as a flex
+item (110px)" is the *breakpoint* Columns node. The masonry container goes to **0**, because its
+children are absolutely positioned and it has nothing to shrink to fit.
+
+Also confirmed on the hydrated page, which is what NDA-006 §5 asked for and is now measured twice:
+masonry tops `0,0,0,40,90,60,160`, container height **230** — exactly what the corpus computes.
+
 ---
 
 ## What these passes did *not* cover
