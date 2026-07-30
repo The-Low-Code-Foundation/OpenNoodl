@@ -13,7 +13,7 @@
 | NDA-004 Failure contract | 2 | 🔄 §1 done, §3 **9 of 10**, §2 two batches | Channel at `packages/noodl-runtime/src/runtimeerror.ts`; `On App Error` node; F1/F1′ green. §3: only **Logic Builder** left, still blocked by another session's uncommitted rewrite — `Response` landed 2026-07-29 (it was hiding a `TypeError` out of an input setter *and* a silently-discarded second answer). §2 batch 1: Set Object Properties, Set Record Properties, Add/Remove Record Relation. §2 batch 2 (2026-07-30): **Set Parent Component Object Properties** (reported `Done` for a write into a throwaway record — worst class-B defect so far), **Parent Component Object**, **Video** (×2 failures), plus Component Object and Set Component Object Properties 🔵 on evidence. **Remaining: §2's ⏳ list in the register, criterion 2's cloud + export legs, catalog regeneration** |
 | NDA-005 Port documentation | 2 | ⬜ Not started | Do the shared port definitions first and re-measure; batch with NDA-012 |
 | NDA-006 Columns | 2 | 🔄 **Slices 1+2 done** | **Slice 2's premise was wrong**: a Repeater adds its items as *siblings* of its `ForEachComponent` (`foreach.tsx:472`), so they were always wrapped and sized — filtering the `ForEachComponent` out is *correct*, and F3's original expectation is reconciled, not satisfied. Seven real defects found instead, four of them worse: autofold was dead the moment an author set Horizontal Gap (a units port writes `'16px'`, and `number < string` is `NaN`); a Repeater that was a Columns node's **only** child was dropped from the tree entirely and never mounted; only the **first** of several Repeaters was rendered; wrappers were keyed by position, so a Repeater deleting one row remounted every row after it. Plus `calcAutofold` mutating its caller, folding to *zero* columns (`width: NaN%`), a double space in the layout string doing the same, and `visibility: hidden` painting blank through the whole of SSR. 11 corpus rows, 7 reverts, each reddening only its own. **Slice 3 (breakpoints) needs Richard's API call; slice 4 (masonry) gated on it. Live QA owed** — the key fix is not reachable without a DOM |
-| NDA-007 Icon sets | 2 | 🔄 §1 done | Model at [`ICON-SOURCE-MODEL.md`](../../reference/ICON-SOURCE-MODEL.md) — tagged union (`font`/`sprite`/`inline`), sanitise-at-registration policy decided (no existing viewer policy existed to match; checked) |
+| NDA-007 Icon sets | 2 | 🔄 **§1 done + renderer built** | Model at [`ICON-SOURCE-MODEL.md`](../../reference/ICON-SOURCE-MODEL.md) — tagged union (`font`/`sprite`/`inline`), sanitise-at-registration policy decided (no existing viewer policy existed to match; checked). **2026-07-30: the union is real in the renderer.** The font-triple splat existed in **six** components, each hard-wired to font semantics — widening the model meant widening it six times or once; now once, in `IconGlyph.tsx`. Criteria 2 and 3 met (font output byte-identical, `iconSize`/`iconColor` identical across kinds via `1em`+`currentColor`). 15 corpus rows. ⚠️ **§2 (registration) and §3 (picker) remain** — a sprite value renders but cannot yet be installed or selected, and the sanitiser runs at render time until §2 gives it a registration to live in |
 | NDA-008 Component Stack | 2 | ✅ **Done — all four sections** | **The stack does not scroll** — zero `focus()` calls and zero px moved across navigate/replace/useRoutes, measured. The scroll is browser focus-scroll into the viewer's `overflow: hidden` app root (`viewer.jsx:344-353`), triggered by the library's only DOM focus, `TextInput` (`text-input.ts:211-214`). **Richard chose "Both" (2026-07-29): fix the box, keep the feature.** Applied as `overflow: clip` on the app root — `clip` creates no scroll container at all, where `hidden` creates one only the *browser* can scroll. `TextInput` keeps its plain `.focus()`, so a deliberate `Focus` still scrolls the nearest genuinely-scrollable ancestor. Measured live on the same element in one session: `hidden` 0 → **1762 px**, `clip` 0 → **0 px**. §1 done: replace animates through the same `Transitions` machinery, defaulting to `None` so no existing project starts moving; the `// Only push mode have transition` gate is gone. §3 done: `Popped`/`Failure`/`Error` and **three** codes, not two — the unbriefed one is `transition-in-progress`, i.e. a double-tapped back button used to lose its second tap. **§2 done 2026-07-29**: re-selecting the page already on top used to re-mount it in *both* modes, and push also pushed a duplicate entry (depth 1 → 2), so every click on the active tab lost its state and grew a stack Back had to walk back through. The no-op is **params-aware** — same component with different params is the master→detail idiom and must keep pushing — and replace additionally requires depth 1, since on a deeper stack it still has collapsing to do. `hasNavigated` still fires, or a re-selected tab would be a dead button. **NDA-008 is complete** |
 | NDA-009 Run Tasks | 2 | ⬜ Not started | §1 alone closes corpus F1 |
 | NDA-010 Popups | 2 | 🔄 **§2 done** | Close Popup now *pulls*: `showPopup` publishes `_popupCloseHandler` on the popup instance and the node walks up to it, so it works from anywhere in the popup's tree — 7 corpus rows, shown to discriminate. Criterion 2 met. **⚠️ §1's premise is partly stale**: `showpopup.ts:129-177` already derives typed `popupParam-*` from the target's input ports and `closeResult-*`/`closeAction-*` from its Close Popup nodes. The real gaps are the hand-typed `results`/`closeActions` on the *Close Popup* side and untyped (`*`) results — re-scoped in the spec. **§3 done 2026-07-30** — one modal slot by default (`When A Popup Is Open` → `Replace It`), `Show On Top` as the opt-in. The policy lives in `NodeContext.showPopup`, not on the node, because two Show Popup nodes cannot see each other — which is why **F2's expectation was reconciled, not satisfied**. The slot is claimed *before* the first `await` or the race just moves. A replaced popup gets a new **`Dismissed`** signal rather than `Closed`, on NDA-004's Open-File-Picker reasoning. Also fixed: `Noodl.Navigation.showPopup` called `undefined.replace` on every ordinary close. Criterion 1 met; **§1 remains**, and this unblocks NDA-004 §2's ⏳ item 3 (Show Popup) |
@@ -107,6 +107,52 @@ this table shows a category producing nothing new.
   defect, not the claim, and now assert `['failure']` and the raised code. Two other test harnesses
   build a fake node by binding the definition's methods onto a plain object, so `raiseRuntimeError`
   did not exist on them; both now record and assert it rather than stubbing it away.
+
+- **2026-07-30 (NDA-007 — the icon source model, made real in the renderer)** — §1's union
+  implemented; **§2 and §3 deliberately not attempted**, and the row above says so rather than
+  reading as a finished task.
+
+  **The reason "add a custom icon set" was hard is that the font assumption was written down six
+  times.** `Icon`, `Button`, `Checkbox`, `RadioButton`, `Select` and `TextInput` each carried their
+  own copy of the `codeAsClass ? … : …` splat — the same eight lines, differing only in which local
+  `style` object they passed and, in `RadioButton`'s case, one extra class. So widening `Noodl.Icon`
+  meant widening it in six places, and every future kind would have cost six more. It is one place
+  now (`IconGlyph.tsx`). Class F's shape again, in a corner nobody had counted.
+
+  **What made one renderer possible is the size/colour rule from §1**, and it is worth stating as a
+  design result rather than a detail: the caller passes the style it *already built for the font
+  case* — `fontSize` carrying `iconSize`, `color` carrying `iconColor` — and the SVG kinds inherit
+  both by sizing at `1em` and filling with `currentColor`. So no caller needs a per-kind branch. Had
+  the union required callers to know which kind they held, six copies would have become six copies
+  of something bigger.
+
+  **A revert that could not be written.** The discrimination pass covers the sanitiser and the class
+  ordering and the `1em`/`currentColor` normalisation, but removing the sprite branch is rejected by
+  the *compiler*: the discriminant is what narrows `Icon`, so deleting the narrowing makes `class`,
+  `code` and `codeAsClass` stop existing. Recorded as a stronger guarantee than a red row, not
+  waved through as untested.
+
+  **A gap in my own rows, found by the revert pass and worth generalising.** I9–I14 called
+  `sanitizeInlineIconSvg` directly, so deleting the renderer's *call* to it left all six green — a
+  suite proving a sanitiser that nothing was wired to. I15 goes through the render path and reddens.
+  Same failure mode as NDA-006's B4 and NDA-010's F2 stub: **testing the helper is not testing that
+  anything calls the helper.**
+
+  The scrub is regex-based on purpose — it runs under SSR and under `testEnvironment: node`, where
+  there is no parser to borrow — so it is conservative by construction. One trap in writing it: the
+  bare-value alternative in the `href` pattern has to exclude quote characters, or it matches a
+  *quoted* fragment reference as an unquoted token starting at the `"` (which is not `#`, so the
+  lookahead on the quoted branches never gets a say) and strips the one reference an inline set
+  legitimately needs.
+
+  ⚠️ **§2 (one registration path) and §3 (the picker) are the larger half and remain.** A `sprite`
+  or `inline` value renders correctly, but nothing installs a set and the editor's icon picker
+  (`iconpicker.jsx`, `IconType.ts`, `IconInput.tsx`) still assumes font semantics — so getting such
+  a value onto the port today means script or hand-editing. The sanitiser also still runs at render
+  time, because there is no registration for it to live in. Criterion 1 (end to end, deployed) is
+  **not** met and criterion 4 (exactly one place registers a set) is not started.
+
+  15 corpus rows, viewer jest **313**, typecheck clean.
 
 - **2026-07-30 (NDA-011 — REST → HTTP)** — an assessment task that closed on the first reading,
   because the thing it was written to evaluate does not exist.

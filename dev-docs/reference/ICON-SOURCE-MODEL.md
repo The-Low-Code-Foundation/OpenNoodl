@@ -53,6 +53,30 @@ injection today is CSS (`css-definition.ts`), which cannot carry script. Inline 
   referenced file in modern browsers), but sprite files installed through the registration path
   get the same scrub for defence in depth.
 
+## Implementation status (2026-07-30)
+
+**The renderer implements this model in full**; registration and the picker do not exist yet.
+
+- `Noodl.Icon` is the union above (`viewer-react/src/types.ts`), and **one** component renders it:
+  `components/visual/Icon/IconGlyph.tsx`. There were **six** copies of the font-triple splat before
+  it — `Icon`, `Button`, `Checkbox`, `RadioButton`, `Select`, `TextInput` — each independently
+  hard-wired to font semantics. All six now go through `IconGlyph`.
+- Size and colour work identically across the three kinds, exactly as specced: the caller passes the
+  style it already built for the font case (`fontSize` = `iconSize`, `color` = `iconColor`) and the
+  SVG kinds inherit by sizing at `1em` and filling with `currentColor`. **A caller needs no per-kind
+  branch**, which is what made collapsing the six call sites possible.
+- `sanitizeInlineIconSvg` is implemented and exported. It is **regex-based on purpose** — it runs
+  under SSR and under `testEnvironment: node`, where there is no parser to borrow — so it is
+  conservative by construction.
+- ⚠️ **The scrub currently happens at render time, not registration time**, because there is no
+  registration path to put it in. When §2 lands it moves there and the render-time call becomes
+  defence in depth. It is memo-free today; if that shows up in a profile before §2, that is the
+  reason.
+- ⚠️ **§2 and §3 are not done.** An author cannot install a sprite set or select one in the editor's
+  icon picker (`propertyeditor/iconpicker.jsx`, `DataTypes/IconType.ts`, `components/IconInput.tsx`
+  all still assume font semantics). A `sprite` or `inline` value reaching the node *renders*; getting
+  one there today means setting the port from script or by hand.
+
 ## Constraints on §2/§3 (registration and picker)
 
 - **One registration point** per set, serving both documents: the editor picker and the viewer app

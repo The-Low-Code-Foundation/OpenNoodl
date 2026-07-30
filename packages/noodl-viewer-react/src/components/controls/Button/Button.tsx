@@ -4,6 +4,7 @@ import Layout from '../../../layout';
 import Utils from '../../../nodes/controls/utils';
 import { Noodl, Slot } from '../../../types';
 import { noodlRootRef } from '../../noodl-root-ref';
+import { IconGlyph } from '../../visual/Icon/IconGlyph';
 
 export interface ButtonProps extends Noodl.ReactProps {
   enabled: boolean;
@@ -60,17 +61,7 @@ export function Button(props: ButtonProps) {
       iconStyle.fontSize = props.iconSize;
       iconStyle.color = props.iconColor;
 
-      if (props.iconIconSource.codeAsClass === true) {
-        return (
-          <span className={[props.iconIconSource.class, props.iconIconSource.code].join(' ')} style={iconStyle}></span>
-        );
-      } else {
-        return (
-          <span className={props.iconIconSource.class} style={iconStyle}>
-            {props.iconIconSource.code}
-          </span>
-        );
-      }
+      return <IconGlyph source={props.iconIconSource} style={iconStyle} />;
     }
 
     return null;

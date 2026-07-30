@@ -4,6 +4,7 @@ import Layout from '../../../layout';
 import Utils from '../../../nodes/controls/utils';
 import { Noodl, Slot } from '../../../types';
 import { noodlRootRef } from '../../noodl-root-ref';
+import { IconGlyph } from '../../visual/Icon/IconGlyph';
 
 //this stops a text field from being unfocused by the clickHandler in the viewer that handles focus globally.
 //The specific case is when a mouseDown is registered in the input, but the mouseUp is outside.
@@ -119,17 +120,7 @@ export class TextInput extends React.Component<TextInputProps, State> {
         if (props.iconPlacement === 'left' || props.iconPlacement === undefined) style.marginRight = props.iconSpacing;
         else style.marginLeft = props.iconSpacing;
 
-        if (props.iconIconSource.codeAsClass === true) {
-          return (
-            <span className={[props.iconIconSource.class, props.iconIconSource.code].join(' ')} style={style}></span>
-          );
-        } else {
-          return (
-            <span className={props.iconIconSource.class} style={style}>
-              {props.iconIconSource.code}
-            </span>
-          );
-        }
+        return <IconGlyph source={props.iconIconSource} style={style} />;
       }
 
       return null;

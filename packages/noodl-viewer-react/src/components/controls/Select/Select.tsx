@@ -6,6 +6,7 @@ import Utils from '../../../nodes/controls/utils';
 import type { StyleObject } from '../../../react-component-node';
 import { Noodl } from '../../../types';
 import { noodlRootRef } from '../../noodl-root-ref';
+import { IconGlyph } from '../../visual/Icon/IconGlyph';
 
 export interface SelectProps extends Noodl.ReactProps {
   id: string;
@@ -66,17 +67,7 @@ export function Select(props: SelectProps) {
       if (props.iconPlacement === 'left' || props.iconPlacement === undefined) style.marginRight = props.iconSpacing;
       else style.marginLeft = props.iconSpacing;
 
-      if (props.iconIconSource.codeAsClass === true) {
-        return (
-          <span className={[props.iconIconSource.class, props.iconIconSource.code].join(' ')} style={style}></span>
-        );
-      } else {
-        return (
-          <span className={props.iconIconSource.class} style={style}>
-            {props.iconIconSource.code}
-          </span>
-        );
-      }
+      return <IconGlyph source={props.iconIconSource} style={style} />;
     }
 
     return null;

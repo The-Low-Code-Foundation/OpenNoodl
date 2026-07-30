@@ -5,6 +5,7 @@ import Layout from '../../../layout';
 import Utils from '../../../nodes/controls/utils';
 import { Noodl } from '../../../types';
 import { noodlRootRef } from '../../noodl-root-ref';
+import { IconGlyph } from '../../visual/Icon/IconGlyph';
 
 export interface RadioButtonProps extends Noodl.ReactProps {
   id: string;
@@ -81,20 +82,7 @@ export function RadioButton(props: RadioButtonProps) {
       return <img alt="" src={props.iconImageSource} style={{ width: props.iconSize, height: props.iconSize }} />;
     else if (props.iconSourceType === 'icon' && props.iconIconSource !== undefined) {
       const style = { fontSize: props.iconSize, color: props.iconColor };
-      if (props.iconIconSource.codeAsClass === true) {
-        return (
-          <span
-            className={['ndl-controls-abs-center', props.iconIconSource.class, props.iconIconSource.code].join(' ')}
-            style={style}
-          ></span>
-        );
-      } else {
-        return (
-          <span className={['ndl-controls-abs-center', props.iconIconSource.class].join(' ')} style={style}>
-            {props.iconIconSource.code}
-          </span>
-        );
-      }
+      return <IconGlyph source={props.iconIconSource} style={style} className="ndl-controls-abs-center" />;
     }
 
     return null;

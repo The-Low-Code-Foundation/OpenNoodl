@@ -9,10 +9,34 @@ export namespace Noodl {
 
   export type Image = string;
 
-  export type Icon = {
+  /**
+   * An icon source — see `dev-docs/reference/ICON-SOURCE-MODEL.md` (NDA-007 §1).
+   *
+   * A tagged union, with `kind` absent meaning `'font'` so every value written before the
+   * union existed parses unchanged. The value stays plainly serialisable: it travels through
+   * ports, project JSON and the AI authoring loop, so no functions and no components.
+   */
+  export type Icon = IconFontSource | IconSpriteSource | IconInlineSource;
+
+  /** An icon font: a CSS class plus either a codepoint or a class-per-glyph. */
+  export type IconFontSource = {
+    kind?: 'font';
     class: string;
     code: string;
     codeAsClass?: boolean;
+  };
+
+  /** An SVG sprite sheet: `<svg><use href={url + '#' + symbolId}/></svg>`. */
+  export type IconSpriteSource = {
+    kind: 'sprite';
+    url: string;
+    symbolId: string;
+  };
+
+  /** Markup rendered directly, for glyphs that must be animated or multicolour. */
+  export type IconInlineSource = {
+    kind: 'inline';
+    svg: string;
   };
 
   export type TextStyle = {
