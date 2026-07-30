@@ -13,6 +13,22 @@ import type {
   NodeModule
 } from '@noodl/types';
 
+/**
+ * NDA-004 §2 / FINDINGS B-iv — the code this node raises when it cannot fetch the logged-in user.
+ *
+ * The graph half was always right: `failure` and `error` are real ports. The *diagnosis*
+ * went to `editorConnection.sendWarning` and therefore existed only on the canvas.
+ *
+ * Per node rather than one code for the family (`record/storage-op-failed`'s choice),
+ * because there the family shares a single `setError` funnel and the message is what
+ * distinguishes the cases; here every node has its own funnel and the *operation* is the
+ * distinguishing fact, so the code should carry it.
+ *
+ * It is also the editor's warning key — the bus's editor subscriber keys by `code` — so
+ * `clearWarnings` names this same constant. Raise and clear move together, always.
+ */
+const USER_FETCH_ERROR_CODE = 'user/fetch-failed';
+
 const NoodlRuntime = require('../../../../noodl-runtime');
 const { Node } = require('../../../../noodl-runtime');
 
@@ -202,16 +218,13 @@ const UserNodeDefinition: NodeDefinitionOptions = {
       this.flagOutputDirty('error');
       this.sendSignalOnOutput('failure');
 
-      if (this.context.editorConnection) {
-        this.context.editorConnection.sendWarning(this.nodeScope.componentOwner.name, this.id, 'user-warning', {
-          message: err,
-          showGlobally: true
-        });
-      }
+      this.raiseRuntimeError(USER_FETCH_ERROR_CODE, err);
     },
     clearWarnings(this: UserNodeInstance) {
       if (this.context.editorConnection) {
-        this.context.editorConnection.clearWarning(this.nodeScope.componentOwner.name, this.id, 'user-warning');
+        const component = this.nodeScope.componentOwner.name;
+        this.context.editorConnection.clearWarning(component, this.id, USER_FETCH_ERROR_CODE);
+        this.context.editorConnection.clearWarning(component, this.id, 'user-warning');
       }
     },
     setUserModel(this: UserNodeInstance, model: ModelLike | undefined) {

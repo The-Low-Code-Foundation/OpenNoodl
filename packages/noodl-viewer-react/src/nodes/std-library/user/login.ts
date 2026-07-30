@@ -4,6 +4,22 @@ import type { NodeDefinitionOptions, NodeInstance, NodeModule } from '@noodl/typ
 
 import UserService from './userservice';
 
+/**
+ * NDA-004 §2 / FINDINGS B-iv — the code this node raises when it cannot log in.
+ *
+ * The graph half was always right: `failure` and `error` are real ports. The *diagnosis*
+ * went to `editorConnection.sendWarning` and therefore existed only on the canvas.
+ *
+ * Per node rather than one code for the family (`record/storage-op-failed`'s choice),
+ * because there the family shares a single `setError` funnel and the message is what
+ * distinguishes the cases; here every node has its own funnel and the *operation* is the
+ * distinguishing fact, so the code should carry it.
+ *
+ * It is also the editor's warning key — the bus's editor subscriber keys by `code` — so
+ * `clearWarnings` names this same constant. Raise and clear move together, always.
+ */
+const LOG_IN_ERROR_CODE = 'user/log-in-failed';
+
 /** `this` inside the Log In node. */
 interface LogInInstance extends NodeInstance {
   _internal: {
@@ -74,16 +90,13 @@ const LoginNodeDefinition: NodeDefinitionOptions = {
       this.flagOutputDirty('error');
       this.sendSignalOnOutput('failure');
 
-      if (this.context.editorConnection) {
-        this.context.editorConnection.sendWarning(this.nodeScope.componentOwner.name, this.id, 'user-login-warning', {
-          message: err,
-          showGlobally: true
-        });
-      }
+      this.raiseRuntimeError(LOG_IN_ERROR_CODE, err);
     },
     clearWarnings(this: LogInInstance) {
       if (this.context.editorConnection) {
-        this.context.editorConnection.clearWarning(this.nodeScope.componentOwner.name, this.id, 'user-login-warning');
+        const component = this.nodeScope.componentOwner.name;
+        this.context.editorConnection.clearWarning(component, this.id, LOG_IN_ERROR_CODE);
+        this.context.editorConnection.clearWarning(component, this.id, 'user-login-warning');
       }
     },
     scheduleLogIn(this: LogInInstance) {

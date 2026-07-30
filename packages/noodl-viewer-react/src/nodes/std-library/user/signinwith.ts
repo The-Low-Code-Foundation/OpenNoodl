@@ -5,6 +5,22 @@ import type { InspectInfo, NodeDefinitionOptions, NodeInstance, NodeModule } fro
 import UserService, { OAuthReturnState } from './userservice';
 
 /**
+ * NDA-004 §2 / FINDINGS B-iv — the code this node raises when it cannot sign in with an external provider.
+ *
+ * The graph half was always right: `failure` and `error` are real ports. The *diagnosis*
+ * went to `editorConnection.sendWarning` and therefore existed only on the canvas.
+ *
+ * Per node rather than one code for the family (`record/storage-op-failed`'s choice),
+ * because there the family shares a single `setError` funnel and the message is what
+ * distinguishes the cases; here every node has its own funnel and the *operation* is the
+ * distinguishing fact, so the code should carry it.
+ *
+ * It is also the editor's warning key — the bus's editor subscriber keys by `code` — so
+ * `clearWarnings` names this same constant. Raise and clear move together, always.
+ */
+const SIGN_IN_WITH_ERROR_CODE = 'user/sign-in-with-failed';
+
+/**
  * Sign In With — BAK-004's provider sign-in, as one node.
  *
  * The shape of this node is dictated by the shape of the flow, which is unlike
@@ -135,16 +151,13 @@ const SignInWithNodeDefinition: NodeDefinitionOptions = {
       this.flagOutputDirty('signingIn');
       this.sendSignalOnOutput('failure');
 
-      if (this.context.editorConnection) {
-        this.context.editorConnection.sendWarning(this.nodeScope.componentOwner.name, this.id, 'user-signinwith-warning', {
-          message: err,
-          showGlobally: true
-        });
-      }
+      this.raiseRuntimeError(SIGN_IN_WITH_ERROR_CODE, err);
     },
     clearWarnings(this: SignInWithInstance) {
       if (this.context.editorConnection) {
-        this.context.editorConnection.clearWarning(this.nodeScope.componentOwner.name, this.id, 'user-signinwith-warning');
+        const component = this.nodeScope.componentOwner.name;
+        this.context.editorConnection.clearWarning(component, this.id, SIGN_IN_WITH_ERROR_CODE);
+        this.context.editorConnection.clearWarning(component, this.id, 'user-signinwith-warning');
       }
     },
     applyReturn(this: SignInWithInstance, state: OAuthReturnState) {
