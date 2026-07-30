@@ -338,7 +338,8 @@
           "type": {
             "name": "boolean"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "True only while every connected input is true; false when no input is connected at all"
         }
       ],
       "dynamicPorts": {
@@ -5391,7 +5392,8 @@
           "type": {
             "name": "boolean"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Value to test for truth; it is re-tested on every change unless Evaluate is connected"
         },
         {
           "name": "eval",
@@ -5402,7 +5404,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Tests Condition now; connecting this stops the node testing on every change, so nothing happens until it fires"
         }
       ],
       "outputs": [
@@ -5414,7 +5417,8 @@
           "type": {
             "name": "boolean"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "The opposite of Is True, so a false branch needs no Inverter"
         },
         {
           "name": "onfalse",
@@ -5424,7 +5428,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires each time Condition is tested and found false, including while Condition has never been set"
         },
         {
           "name": "ontrue",
@@ -5434,7 +5439,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires each time Condition is tested and found true — exactly one of On True and On False fires per test"
         },
         {
           "name": "result",
@@ -5444,7 +5450,8 @@
           "type": {
             "name": "boolean"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Whether the last test found Condition true, for wiring into a value rather than branching on a signal"
         }
       ],
       "dynamicPorts": null,
@@ -13411,7 +13418,8 @@
           "type": {
             "name": "boolean"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Value to negate; anything falsy counts as false, and leaving it unset keeps Result unset too"
         }
       ],
       "outputs": [
@@ -13422,7 +13430,8 @@
           "type": {
             "name": "boolean"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "The opposite of Value, and unset rather than true while Value has never been set"
         }
       ],
       "dynamicPorts": null,
@@ -17984,7 +17993,8 @@
           "type": {
             "name": "boolean"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "True while at least one connected input is true; false when no input is connected at all"
         }
       ],
       "dynamicPorts": {
@@ -23954,7 +23964,8 @@
           "type": {
             "name": "number"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Number of the signal input that last fired, counting from zero"
         },
         {
           "name": "signalTriggered",
@@ -23963,7 +23974,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when any signal input fires, but before Index has been updated — read Index on the next frame"
         }
       ],
       "dynamicPorts": {
@@ -24775,7 +24787,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Switches to whichever state it is not currently in"
         },
         {
           "name": "off",
@@ -24786,7 +24799,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Switches off, doing nothing if it is already off"
         },
         {
           "name": "on",
@@ -24797,7 +24811,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Switches on, doing nothing if it is already on"
         },
         {
           "name": "onFromStart",
@@ -24808,7 +24823,8 @@
             "name": "boolean"
           },
           "isSignal": false,
-          "default": false
+          "default": false,
+          "description": "State to start in, and setting it announces a switch on Switched even though nothing switched"
         }
       ],
       "outputs": [
@@ -24819,7 +24835,8 @@
           "type": {
             "name": "boolean"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "True while the switch is on"
         },
         {
           "name": "switched",
@@ -24829,7 +24846,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires on every state change, alongside whichever of Switched To On and Switched To Off applies"
         },
         {
           "name": "switchedToOff",
@@ -24839,7 +24857,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when the switch becomes off"
         },
         {
           "name": "switchedToOn",
@@ -24849,7 +24868,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when the switch becomes on"
         }
       ],
       "dynamicPorts": null,
@@ -27844,7 +27864,8 @@
           "type": {
             "name": "*"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Value to watch; changes are detected by identity, so editing an Object or Array in place is not a change here"
         }
       ],
       "outputs": [
@@ -27855,7 +27876,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when Input becomes a different value, including the first time it arrives"
         }
       ],
       "dynamicPorts": null,

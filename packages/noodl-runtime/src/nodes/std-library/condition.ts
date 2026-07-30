@@ -42,6 +42,7 @@ const ConditionNode: NodeDefinitionOptions = {
       type: 'boolean',
       displayName: 'Condition',
       group: 'General',
+      description: 'Value to test for truth; it is re-tested on every change unless Evaluate is connected',
       // The incoming value is deliberately unused — the setter's only job is to decide
       // whether to evaluate now or wait for the `eval` signal. Every reader goes back
       // through `getInputValue('condition')`.
@@ -56,6 +57,8 @@ const ConditionNode: NodeDefinitionOptions = {
       type: 'signal',
       displayName: 'Evaluate',
       group: 'Actions',
+      description:
+        'Tests Condition now; connecting this stops the node testing on every change, so nothing happens until it fires',
       valueChangedToTrue(this: ConditionNodeInstance) {
         this.scheduleEvaluate();
       }
@@ -65,17 +68,20 @@ const ConditionNode: NodeDefinitionOptions = {
     ontrue: {
       type: 'signal',
       displayName: 'On True',
-      group: 'Events'
+      group: 'Events',
+      description: 'Fires each time Condition is tested and found true — exactly one of On True and On False fires per test'
     },
     onfalse: {
       type: 'signal',
       displayName: 'On False',
-      group: 'Events'
+      group: 'Events',
+      description: 'Fires each time Condition is tested and found false, including while Condition has never been set'
     },
     result: {
       type: 'boolean',
       displayName: 'Is True',
       group: 'Booleans',
+      description: 'Whether the last test found Condition true, for wiring into a value rather than branching on a signal',
       get(this: ConditionNodeInstance) {
         return !!this.getInputValue('condition');
       }
@@ -84,6 +90,7 @@ const ConditionNode: NodeDefinitionOptions = {
       type: 'boolean',
       displayName: 'Is False',
       group: 'Booleans',
+      description: 'The opposite of Is True, so a false branch needs no Inverter',
       get(this: ConditionNodeInstance) {
         return !this.getInputValue('condition');
       }

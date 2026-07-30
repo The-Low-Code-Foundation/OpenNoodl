@@ -25,6 +25,8 @@ const ValueChangedNode: NodeDefinitionOptions = {
     value: {
       type: '*',
       displayName: 'Input',
+      description:
+        'Value to watch; changes are detected by identity, so editing an Object or Array in place is not a change here',
       set: function (this: ValueChangedInstance, value: unknown) {
         if (this._internal.lastValue === value) {
           return;
@@ -39,7 +41,8 @@ const ValueChangedNode: NodeDefinitionOptions = {
   outputs: {
     valueChanged: {
       type: 'signal',
-      displayName: 'Value Changed'
+      displayName: 'Value Changed',
+      description: 'Fires when Input becomes a different value, including the first time it arrives'
     }
   }
 };

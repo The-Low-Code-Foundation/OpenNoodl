@@ -47,6 +47,7 @@ const OrNode: NodeDefinitionOptions = {
     result: {
       type: 'boolean',
       displayName: 'Result',
+      description: 'True while at least one connected input is true; false when no input is connected at all',
       getter: function (this: OrNodeInstance) {
         return this._internal.inputs.some(isTrue);
       }

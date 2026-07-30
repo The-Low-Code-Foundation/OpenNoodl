@@ -50,13 +50,15 @@ const SignalToIndexNode: NodeDefinitionOptions = {
     index: {
       displayName: 'Index',
       type: 'number',
+      description: 'Number of the signal input that last fired, counting from zero',
       getter: function (this: SignalToIndexNodeInstance) {
         return this._internal.currentIndex;
       }
     },
     signalTriggered: {
       displayName: 'Signal Triggered',
-      type: 'signal'
+      type: 'signal',
+      description: 'Fires when any signal input fires, but before Index has been updated — read Index on the next frame'
     }
   },
   prototypeExtensions: {

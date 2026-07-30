@@ -53,6 +53,7 @@ const AndNode: NodeDefinitionOptions = {
     result: {
       type: 'boolean',
       displayName: 'Result',
+      description: 'True only while every connected input is true; false when no input is connected at all',
       // `get` and `getter` are both honoured — `node.ts` reads `output.get || output.getter`.
       get(this: AndNodeInstance) {
         return this._internal.result;

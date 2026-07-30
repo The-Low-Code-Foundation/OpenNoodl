@@ -30,6 +30,7 @@ const Switch: NodeDefinitionOptions = {
     on: {
       displayName: 'On',
       group: 'Change State',
+      description: 'Switches on, doing nothing if it is already on',
       valueChangedToTrue(this: SwitchInstance) {
         if (this._internal.state === true) {
           return;
@@ -42,6 +43,7 @@ const Switch: NodeDefinitionOptions = {
     off: {
       displayName: 'Off',
       group: 'Change State',
+      description: 'Switches off, doing nothing if it is already off',
       valueChangedToTrue(this: SwitchInstance) {
         if (this._internal.state === false) {
           return;
@@ -54,6 +56,7 @@ const Switch: NodeDefinitionOptions = {
     flip: {
       displayName: 'Flip',
       group: 'Change State',
+      description: 'Switches to whichever state it is not currently in',
       valueChangedToTrue(this: SwitchInstance) {
         this._internal.state = !this._internal.state;
         this.flagOutputDirty('state');
@@ -64,6 +67,7 @@ const Switch: NodeDefinitionOptions = {
       type: 'boolean',
       displayName: 'State',
       group: 'General',
+      description: 'State to start in, and setting it announces a switch on Switched even though nothing switched',
       default: false,
       set(this: SwitchInstance, value: unknown) {
         this._internal.state = !!value;
@@ -76,6 +80,7 @@ const Switch: NodeDefinitionOptions = {
     state: {
       type: 'boolean',
       displayName: 'Current State',
+      description: 'True while the switch is on',
       getter(this: SwitchInstance) {
         return this._internal.state;
       }
@@ -83,17 +88,20 @@ const Switch: NodeDefinitionOptions = {
     switched: {
       displayName: 'Switched',
       type: 'signal',
-      group: 'Signals'
+      group: 'Signals',
+      description: 'Fires on every state change, alongside whichever of Switched To On and Switched To Off applies'
     },
     switchedToOn: {
       displayName: 'Switched To On',
       type: 'signal',
-      group: 'Signals'
+      group: 'Signals',
+      description: 'Fires when the switch becomes on'
     },
     switchedToOff: {
       displayName: 'Switched To Off',
       type: 'signal',
-      group: 'Signals'
+      group: 'Signals',
+      description: 'Fires when the switch becomes off'
     }
   },
   prototypeExtensions: {

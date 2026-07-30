@@ -104,13 +104,13 @@ The smell columns are *machine-derivable*, not verdicts.
 | 91 | Color Blend | Interpolation | 1/1 |  |  | 0% | safe | browser |  |
 | 92 | Number Blend _(deprecated)_ | Interpolation | 2/1 |  |  | 0% | safe | browser |  |
 | 93 | Script Downloader _(deprecated)_ | Javascript | 2/1 | ⚠️ |  | 0% | client-only | browser |  |
-| 94 | And | Logic | 0/1 |  |  | 0% | safe | browser, cloud |  |
-| 95 | Condition | Logic | 2/4 | ⚠️ |  | 0% | safe | browser, cloud |  |
-| 96 | Inverter | Logic | 1/1 |  |  | 0% | safe | browser, cloud |  |
-| 97 | Or | Logic | 0/1 |  |  | 0% | safe | browser, cloud |  |
-| 98 | Signal To Index _(deprecated)_ | Logic | 0/2 |  |  | 0% | safe | browser |  |
-| 99 | Switch | Logic | 4/4 | ⚠️ |  | 0% | safe | browser |  |
-| 100 | Value Changed | Logic | 1/1 |  |  | 0% | safe | browser |  |
+| 94 | And | Logic | 0/1 |  |  | 100% | safe | browser, cloud |  |
+| 95 | Condition | Logic | 2/4 | ⚠️ |  | 100% | safe | browser, cloud |  |
+| 96 | Inverter | Logic | 1/1 |  |  | 100% | safe | browser, cloud |  |
+| 97 | Or | Logic | 0/1 |  |  | 100% | safe | browser, cloud |  |
+| 98 | Signal To Index _(deprecated)_ | Logic | 0/2 |  |  | 100% | safe | browser |  |
+| 99 | Switch | Logic | 4/4 | ⚠️ |  | 100% | safe | browser |  |
+| 100 | Value Changed | Logic | 1/1 |  |  | 100% | safe | browser |  |
 | 101 | Counter | Math | 7/2 | ⚠️ |  | 0% | safe | browser, cloud |  |
 | 102 | Number Remapper | Math | 6/1 |  |  | 0% | safe | browser |  |
 | 103 | Close Popup | Navigation | 4/3 |  |  | 0% | safe | browser | ✅ NDA-004 §2 — `Closed`/`Failure`/`Error`; no-popup-in-scope now reported. Targeting stays NDA-010 §2 / NDA-015 |

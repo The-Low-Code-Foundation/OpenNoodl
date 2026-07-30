@@ -36,6 +36,7 @@ const InverterNode: NodeDefinitionOptions = {
         name: 'boolean'
       },
       displayName: 'Value',
+      description: 'Value to negate; anything falsy counts as false, and leaving it unset keeps Result unset too',
       set: function (this: InverterNodeInstance, value: unknown) {
         this._internal.currentValue = value;
         this.flagOutputDirty('result');
@@ -46,6 +47,7 @@ const InverterNode: NodeDefinitionOptions = {
     result: {
       type: 'boolean',
       displayName: 'Result',
+      description: 'The opposite of Value, and unset rather than true while Value has never been set',
       getter: function (this: InverterNodeInstance) {
         return invert(this._internal.currentValue);
       }
