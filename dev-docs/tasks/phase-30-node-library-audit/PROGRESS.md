@@ -116,10 +116,29 @@ this table shows a category producing nothing new.
   artefacts frozen in git. Anything grading them is testing *whatever was last built*, which is
   worth knowing before trusting or distrusting it.
 
+  **Expression (⏳ item 1) — ✅, and the finding is the fallback value.** Both failure modes
+  returned `0`. That is worse than silence, because `0` is *plausible*: `Is False` fires, `Is True`
+  does not, and every downstream branch takes exactly the path a legitimate zero would send it
+  down. The compile path was also misreporting itself — `_compileFunction` returned `undefined`,
+  `_calculateExpression` called `.apply` on it, and the resulting `TypeError` was the only
+  diagnosis that ever reached a deployed runtime; the author's actual syntax error lived in
+  `evalCompileWarnings`, which is `sendWarning` and therefore editor-only.
+
+  Generalised: **when auditing a silent failure, ask what value it falls back to.** A fallback
+  indistinguishable from a legitimate result is strictly worse than an obviously wrong one, and the
+  register's `Fail?` column cannot see the difference.
+
+  The port is safe here for the exact reason it was not on the Object node, and inverted:
+  `registerInputIfNeeded` seeds every discovered input to `0`, not `undefined`, so the node never
+  passes through a "values have not arrived yet" state. A corpus row pins the seeding, because the
+  safety of the port depends on it. 8 rows, discriminating (silencing the report reddens 4, all
+  three pinned controls stay green). Runtime jest **1,089** (was 1,081).
+
   **Owed from this batch:** catalog regeneration (still blocked — the tree still carries another
   session's uncommitted node-source edits), now also for `Set Parent Component Object Properties`'
-  `targetComponent`/`Failure`/`Error`, `Parent Component Object`'s `Failure`/`Error`, and Video's
-  `Playback Failure`/`Error`. Live QA of all three nodes in a running editor.
+  `targetComponent`/`Failure`/`Error`, `Parent Component Object`'s `Failure`/`Error`, Video's
+  `Playback Failure`/`Error`, and Expression's `Failure`/`Error`. Live QA of all four nodes in a
+  running editor.
 
 - **2026-07-29 (live QA of three tasks, NDA-004 §3's last reachable mute node, and §2's first
   batch)** — the biggest un-run instrument was run, and it found nothing wrong; the code work that

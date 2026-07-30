@@ -176,6 +176,32 @@ The third finding is the one that constrains the fix: `AbortError` — `play()` 
 `pause()` or a new `src` — rejects on a graph that is working exactly as written. It is deliberately
 **not** reported, and `SILENT_PLAY_REJECTIONS` in `Video.tsx` is where that decision lives.
 
+### B-iii — the Expression node's failure value is plausible (2026-07-30)
+
+Both of Expression's failure modes returned **`0`** and said nothing outside the editor.
+
+That value is the finding. Every other class-B defect makes a working node look broken, which at
+least *looks* wrong. `0` looks fine: `Is False` fires, `Is True` does not, and every downstream
+branch takes exactly the path a legitimate zero would have sent it down. "Your expression is broken"
+and "your expression evaluated to zero" were the same observable.
+
+The compile path was additionally misreporting itself. `_compileFunction` caught the syntax error,
+logged it to the console and returned `undefined`; `_calculateExpression` then called `.apply` on
+that `undefined`, and the resulting `TypeError` landed in its own catch. So the single diagnosis
+that reached a deployed runtime was *"Cannot read properties of undefined (reading 'apply')"* — the
+runtime's own bug, not the author's. The real syntax error existed only in `evalCompileWarnings`,
+which routes through `sendWarning` and is therefore editor-only.
+
+Worth carrying forward: **when auditing a silent failure, ask what value it falls back to.** A
+fallback that is indistinguishable from a legitimate result is a strictly worse defect than a
+fallback that is obviously wrong, and the register's `Fail?` column cannot see the difference.
+
+The node passes the "does a `Failure` port fire on the happy path" test for a specific reason worth
+recording, because it is the opposite of the Object node's: `registerInputIfNeeded` seeds every
+discovered input to `0`, not `undefined`. There is no window in which the ports exist but hold
+nothing, so this node never passes through a "values have not arrived yet" state on its way to
+working. A corpus row pins that seeding, because the safety of the port depends on it.
+
 ## Defect class C — 95% of ports are undocumented
 
 2,508 of 2,650 ports carry no `description`. 112 of 155 nodes have not a single documented port.

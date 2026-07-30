@@ -41,6 +41,7 @@ of the five defects a careful read found:
 | Set Parent Component Object Properties | the walk missed, `Model.get(undefined)` minted a throwaway record, the properties went into it and the node emitted **`Done`** | `set-parent-component-object-properties/*` |
 | Parent Component Object | NDA-015 gave it the raise; it had no port to wire, so a graph could not branch on "my parent state never resolved" | (ports on the existing `reportMiss`) |
 | Video | `play()`'s **rejected promise** dropped at all three call sites, and the element's `error` event had **no listener at all** | `video/play-rejected`, `video/media-error` |
+| Expression | a malformed or throwing expression returned **`0`** and said nothing outside the editor — and the compile error reported itself as a `TypeError` about `.apply` | `expression/compile-failed`, `expression/threw` |
 
 ### 🔵 Decided, on evidence (read)
 
@@ -78,9 +79,11 @@ predictions.
 
 Ordered by expected yield, highest first. Every one of these takes a signal and acts:
 
-1. **Expression** — a malformed expression is a real failure and `expression-evaluator.ts` already
-   has a `compileExpression` returning `null` (visible in the jest console output as a caught
-   parse error). Almost certainly ✅.
+1. ~~**Expression**~~ — **done 2026-07-30, ✅.** The prediction was right and understated the
+   damage: the fallback value is `0`, so a broken expression is not silent-and-visibly-doing-
+   nothing, it is *plausible*. The compile error also misreported itself — `_compileFunction`
+   returned `undefined`, `_calculateExpression` called `.apply` on it, and the TypeError that
+   produced was the only diagnosis that ever reached a deployed runtime.
 2. **Open File Picker** — has `success` and no counterpart; cancel and read-error are both real.
 3. **Show Popup** — a target component that does not resolve. Overlaps NDA-010 §3 (stack policy),
    so sequence it after that decision rather than before.
@@ -140,7 +143,7 @@ Ordered by expected yield, highest first. Every one of these takes a signal and 
 | 36 | Set Component Object Properties | Component Utilities | 2/1 | ⚠️ |  | 0% | safe | browser | 🔵 NDA-004 §2 — writes to `componentState<own instance id>`, which always exists. Shares a file with row 37 and gets the opposite verdict; a corpus row pins the *absence* of the port |
 | 37 | Set Parent Component Object Properties | Component Utilities | 2/1 | ⚠️ |  | 0% | safe | browser | ✅ NDA-004 §2 — **it reported `Done` for a write that went nowhere.** The walk returned `undefined` and the base handed it to `Model.get`, whose `undefined` branch mints a fresh anonymous record per store. Also gains BINDING-CONTRACT §(a)'s explicit target, the last ⚠️ in that doc's table |
 | 38 | CSS Definition | CustomCode | 1/0 |  |  | 0% | safe | browser |  |
-| 39 | Expression | CustomCode | 2/8 | ⚠️ |  | 0% | safe | browser, cloud |  |
+| 39 | Expression | CustomCode | 2/8 | ⚠️ |  | 0% | safe | browser, cloud | ✅ NDA-004 §2 — `Failure`/`Error`. Two modes: `expression/compile-failed` (the syntax error was reported *as a TypeError about `.apply`*, and only in the editor) and `expression/threw`. Both returned **`0`**, which `Is True`/`Is False` branch on happily — a plausible value, not a visibly broken one. Deduped by message, re-armed by the next good evaluation |
 | 40 | Function | CustomCode | 4/0 |  | ⚠️ | 0% | partial | browser, cloud | ✅ NDA-004 §3 — Success/Failure/Error added; built-ins are collision-free because author outputs are all `out-`prefixed |
 | 41 | Logic Builder | CustomCode | 3/1 |  | ⚠️ | 0% | safe | browser, cloud | ⏳ NDA-004 §3 pending — file is mid-rewrite by another workstream; do not touch until that lands |
 | 42 | Script | CustomCode | 5/0 |  |  | 0% | partial | browser |  |

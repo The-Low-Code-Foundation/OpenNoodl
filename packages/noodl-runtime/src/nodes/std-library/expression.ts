@@ -48,12 +48,24 @@ interface ExpressionNodeInstance extends NodeInstance {
     inputValues: unknown[];
     noodlDependencies: NoodlDependencies;
     unsubscribe: (() => void) | null;
+    /**
+     * Why the last compile failed, captured where it happens.
+     *
+     * `_compileFunction` swallowed the syntax error and returned `undefined`, so by the time
+     * anything noticed, the only message left was the wrapper's — see `_calculateExpression`.
+     */
+    compileError?: string;
+    /** Message for the `Error` output; see NDA-004 §2. */
+    lastError?: string;
+    /** The last failure already reported, so a re-evaluation does not repeat it. */
+    lastReportedError?: string;
   };
   /** Mutable here: `registerInputIfNeeded` seeds a value before the port exists. */
   _inputValues: Record<string, unknown>;
   _scheduleEvaluateExpression(): void;
   _calculateExpression(): unknown;
-  _compileFunction(): (...args: unknown[]) => unknown;
+  _compileFunction(): (...args: unknown[]) => unknown | undefined;
+  _reportFailure(code: string, message: string, detail?: unknown): void;
 }
 
 const ExpressionNode: NodeDefinitionOptions = {
@@ -131,11 +143,56 @@ const ExpressionNode: NodeDefinitionOptions = {
         });
       }
     },
+    /**
+     * Report a failure once — NDA-004 §2.
+     *
+     * Deduplicated by message, and the dedupe is cleared by the next evaluation that works, so
+     * a persistent problem reports once and a transient one reports once. Without that, a node
+     * whose expression is broken re-reports on every input change, which for a reactive node is
+     * every frame something upstream moves: the channel would drown in one author's typo.
+     *
+     * `Failure` is safe on this node for a reason worth stating, because the Object node in the
+     * first §2 batch failed the same test: `registerInputIfNeeded` seeds every discovered input
+     * to `0`, not `undefined`. There is no window in which the ports exist but hold nothing, so
+     * "the values have not arrived yet" is not a state this node passes through on the way to
+     * working.
+     */
+    _reportFailure: function (this: ExpressionNodeInstance, code: string, message: string, detail?: unknown) {
+      const internal = this._internal;
+      internal.lastError = message;
+      this.flagOutputDirty('error');
+
+      if (internal.lastReportedError === message) return;
+      internal.lastReportedError = message;
+
+      this.raiseRuntimeError(code, message, detail);
+      this.sendSignalOnOutput('failure');
+    },
     _calculateExpression: function (this: ExpressionNodeInstance) {
       const internal = this._internal;
 
       if (!internal.compiledFunction) {
         internal.compiledFunction = this._compileFunction();
+      }
+
+      /**
+       * A malformed expression, reported as itself.
+       *
+       * `_compileFunction` logged the syntax error to the console and returned `undefined`,
+       * and this method then called `.apply` on it. The resulting `TypeError` landed in the
+       * catch below, so the one diagnosis that ever reached anywhere said *"Cannot read
+       * properties of undefined"* — the wrapper's failure, not the author's. The syntax error
+       * itself only existed in `evalCompileWarnings`, which is `sendWarning` and therefore
+       * editor-only: deployed, a broken expression evaluated to `0` in total silence, and `0`
+       * is a value the `Is True`/`Is False` outputs branch on quite happily.
+       */
+      if (!internal.compiledFunction) {
+        this._reportFailure(
+          'expression/compile-failed',
+          'The expression could not be compiled: ' + (internal.compileError || 'syntax error'),
+          { expression: this.model && this.model.parameters ? this.model.parameters.expression : undefined }
+        );
+        return 0;
       }
 
       for (let i = 0; i < internal.inputNames.length; ++i) {
@@ -149,9 +206,18 @@ const ExpressionNode: NodeDefinitionOptions = {
       const argsWithNoodl = internal.inputValues.concat([noodlAPI]);
 
       try {
-        return internal.compiledFunction.apply(null, argsWithNoodl);
+        const value = internal.compiledFunction.apply(null, argsWithNoodl);
+        // An evaluation that worked re-arms the report, so a problem that comes back is heard
+        // again rather than being suppressed for the life of the session.
+        internal.lastReportedError = undefined;
+        internal.lastError = undefined;
+        return value;
       } catch (e) {
-        console.error('Error in expression:', e.message);
+        // Was `console.error` and nothing else. The `0` returned below is unchanged — altering
+        // the value would move behaviour in existing projects, which is not this contract's
+        // business — but it is no longer indistinguishable from an expression that genuinely
+        // evaluated to zero.
+        this._reportFailure('expression/threw', 'The expression threw: ' + e.message, { message: e.message });
       }
       return 0;
     },
@@ -169,8 +235,11 @@ const ExpressionNode: NodeDefinitionOptions = {
 
         try {
           compiledFunctionsCache[key] = construct(Function, args);
+          this._internal.compileError = undefined;
         } catch (e) {
-          console.error('Failed to compile JS function', e.message);
+          // Kept rather than reported here: this runs inside `_calculateExpression`, which owns
+          // the reporting so that one broken expression produces one event rather than two.
+          this._internal.compileError = e.message;
         }
       }
       return compiledFunctionsCache[key];
@@ -307,6 +376,27 @@ const ExpressionNode: NodeDefinitionOptions = {
       group: 'Events',
       type: 'signal',
       displayName: 'On False'
+    },
+    /**
+     * NDA-004 §2. Both failure modes this node has — a malformed expression and one that throws
+     * while evaluating — used to return `0` and say nothing outside the editor.
+     *
+     * `0` is the specific reason this needed a port rather than a log line: it is not an obviously
+     * broken value, it is a plausible one. `Is False` fires, `Is True` does not, and every
+     * downstream branch takes the path it would have taken for a legitimate zero.
+     */
+    failure: {
+      group: 'Events',
+      type: 'signal',
+      displayName: 'Failure'
+    },
+    error: {
+      group: 'Events',
+      type: 'string',
+      displayName: 'Error',
+      getter: function (this: ExpressionNodeInstance) {
+        return this._internal.lastError;
+      }
     },
     // New typed outputs for better downstream compatibility
     asString: {
