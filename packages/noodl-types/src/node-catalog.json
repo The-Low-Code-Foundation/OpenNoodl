@@ -1,5 +1,5 @@
 {
-  "catalogFormatVersion": "1.0.0",
+  "catalogFormatVersion": "1.1.0",
   "generatedBy": "scripts/node-catalog/generate.js",
   "schemaDocs": "docs/node-catalog/SCHEMA.md",
   "packages": {
@@ -286,6 +286,29 @@
             "name": "conditionalports/extended"
           }
         ]
+      },
+      "parameterEncoding": {
+        "known": true,
+        "seededBy": [],
+        "seededByProjectMetadata": [
+          "dbCollections"
+        ],
+        "patterns": [
+          {
+            "pattern": "collectionName",
+            "plug": "input",
+            "group": "General",
+            "valueType": "enum",
+            "example": "collectionName"
+          },
+          {
+            "pattern": "relationProperty",
+            "plug": "input",
+            "group": "General",
+            "valueType": "enum",
+            "example": "relationProperty"
+          }
+        ]
       }
     },
     {
@@ -331,6 +354,10 @@
             }
           }
         ]
+      },
+      "parameterEncoding": {
+        "known": false,
+        "reason": "The port helper needs project context this generator cannot supply headlessly — a live component, a connected node, or a backend schema."
       }
     },
     {
@@ -623,6 +650,10 @@
             ]
           }
         ]
+      },
+      "parameterEncoding": {
+        "known": false,
+        "reason": "No parameter on this node carries the list its ports are generated from, so the port set could not be observed headlessly."
       }
     },
     {
@@ -717,7 +748,8 @@
           "isSignal": true
         }
       ],
-      "dynamicPorts": null
+      "dynamicPorts": null,
+      "parameterEncoding": null
     },
     {
       "typeName": "Boolean To String",
@@ -786,7 +818,8 @@
           "isSignal": true
         }
       ],
-      "dynamicPorts": null
+      "dynamicPorts": null,
+      "parameterEncoding": null
     },
     {
       "typeName": "Button",
@@ -1930,6 +1963,12 @@
             ]
           }
         ]
+      },
+      "parameterEncoding": {
+        "known": true,
+        "patterns": [],
+        "seededBy": [],
+        "notes": "This node computes no port names. Its dynamic behaviour is visibility only: every port it can ever have is listed in `inputs`/`outputs` above, and `dynamicPorts.declaredPortGroups` says which parameter values reveal which of them."
       }
     },
     {
@@ -1964,7 +2003,8 @@
         }
       ],
       "outputs": [],
-      "dynamicPorts": null
+      "dynamicPorts": null,
+      "parameterEncoding": null
     },
     {
       "typeName": "Checkbox",
@@ -2909,7 +2949,8 @@
           "description": "Fires just before this element is removed from the page, while it still exists"
         }
       ],
-      "dynamicPorts": null
+      "dynamicPorts": null,
+      "parameterEncoding": null
     },
     {
       "typeName": "Circle",
@@ -3713,6 +3754,12 @@
             ]
           }
         ]
+      },
+      "parameterEncoding": {
+        "known": true,
+        "patterns": [],
+        "seededBy": [],
+        "notes": "This node computes no port names. Its dynamic behaviour is visibility only: every port it can ever have is listed in `inputs`/`outputs` above, and `dynamicPorts.declaredPortGroups` says which parameter values reveal which of them."
       }
     },
     {
@@ -3765,7 +3812,8 @@
           "isSignal": false
         }
       ],
-      "dynamicPorts": null
+      "dynamicPorts": null,
+      "parameterEncoding": null
     },
     {
       "typeName": "Cloud Function",
@@ -3852,6 +3900,24 @@
           "runtime-discovered"
         ],
         "description": "Some ports are discovered at runtime from user code, parameters or connected components, and are pushed to the editor per instance; the static port list below is incomplete for such instances."
+      },
+      "parameterEncoding": {
+        "known": true,
+        "seededBy": [
+          "params"
+        ],
+        "patterns": [
+          {
+            "pattern": "pm-<param>",
+            "plug": "input",
+            "variables": {
+              "param": "one of the comma-separated entries in the `params` parameter"
+            },
+            "group": "Parameters",
+            "valueType": "*",
+            "example": "pm-Sa1"
+          }
+        ]
       }
     },
     {
@@ -3921,6 +3987,10 @@
         ],
         "description": "Input/output ports mirror the request/response ports of the targeted cloud function component (CloudFunctionAdapter).",
         "editorAdapter": "CloudFunctionAdapter"
+      },
+      "parameterEncoding": {
+        "known": false,
+        "reason": "Ports are computed by the editor from the selected cloud function component's inputs and outputs (CloudFunctionAdapter)."
       }
     },
     {
@@ -4121,7 +4191,8 @@
           "isSignal": true
         }
       ],
-      "dynamicPorts": null
+      "dynamicPorts": null,
+      "parameterEncoding": null
     },
     {
       "typeName": "Collection2",
@@ -4236,7 +4307,8 @@
           "isSignal": false
         }
       ],
-      "dynamicPorts": null
+      "dynamicPorts": null,
+      "parameterEncoding": null
     },
     {
       "typeName": "CollectionClear",
@@ -4310,7 +4382,8 @@
           "isSignal": true
         }
       ],
-      "dynamicPorts": null
+      "dynamicPorts": null,
+      "parameterEncoding": null
     },
     {
       "typeName": "CollectionInsert",
@@ -4395,7 +4468,8 @@
           "isSignal": true
         }
       ],
-      "dynamicPorts": null
+      "dynamicPorts": null,
+      "parameterEncoding": null
     },
     {
       "typeName": "CollectionNew",
@@ -4457,7 +4531,8 @@
           "isSignal": false
         }
       ],
-      "dynamicPorts": null
+      "dynamicPorts": null,
+      "parameterEncoding": null
     },
     {
       "typeName": "CollectionRemove",
@@ -4542,7 +4617,8 @@
           "isSignal": true
         }
       ],
-      "dynamicPorts": null
+      "dynamicPorts": null,
+      "parameterEncoding": null
     },
     {
       "typeName": "Color",
@@ -4635,7 +4711,8 @@
           "isSignal": true
         }
       ],
-      "dynamicPorts": null
+      "dynamicPorts": null,
+      "parameterEncoding": null
     },
     {
       "typeName": "Color Blend",
@@ -4661,7 +4738,8 @@
             "name": "number"
           },
           "isSignal": false,
-          "default": 0
+          "default": 0,
+          "description": "Position along the colour list, where 1 is exactly Color 1 and 1.5 is halfway to Color 2; values outside the list are clamped"
         }
       ],
       "outputs": [
@@ -4672,7 +4750,8 @@
           "type": {
             "name": "color"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "The blended colour as a hex string; the inputs must be 6-digit hex, since any other notation yields nonsense"
         }
       ],
       "dynamicPorts": {
@@ -4689,6 +4768,10 @@
             }
           }
         ]
+      },
+      "parameterEncoding": {
+        "known": false,
+        "reason": "The port helper needs project context this generator cannot supply headlessly — a live component, a connected node, or a backend schema."
       }
     },
     {
@@ -4709,7 +4792,8 @@
       "allowAsChild": true,
       "inputs": [],
       "outputs": [],
-      "dynamicPorts": null
+      "dynamicPorts": null,
+      "parameterEncoding": null
     },
     {
       "typeName": "Component Inputs",
@@ -4735,6 +4819,10 @@
           "runtime-discovered"
         ],
         "description": "Output ports mirror the port names listed in this node's \"ports\" parameter; each becomes an input of the containing component and an output of this node."
+      },
+      "parameterEncoding": {
+        "known": false,
+        "reason": "Ports mirror the component input declarations the author makes on this node; the names are whatever they typed, with no prefix or transformation."
       }
     },
     {
@@ -4761,6 +4849,10 @@
           "runtime-discovered"
         ],
         "description": "Input ports mirror the port names listed in this node's \"ports\" parameter; each becomes an output of the containing component and an input of this node."
+      },
+      "parameterEncoding": {
+        "known": false,
+        "reason": "Ports mirror the component output declarations the author makes on this node; the names are whatever they typed, with no prefix or transformation."
       }
     },
     {
@@ -4850,6 +4942,34 @@
           "runtime-discovered"
         ],
         "description": "Some ports are discovered at runtime from user code, parameters or connected components, and are pushed to the editor per instance; the static port list below is incomplete for such instances."
+      },
+      "parameterEncoding": {
+        "known": true,
+        "seededBy": [
+          "properties"
+        ],
+        "patterns": [
+          {
+            "pattern": "changed-<property>",
+            "plug": "output",
+            "variables": {
+              "property": "one of the comma-separated entries in the `properties` parameter"
+            },
+            "group": "Changed Events",
+            "valueType": "signal",
+            "example": "changed-Sa1"
+          },
+          {
+            "pattern": "value-<property>",
+            "plug": "input/output",
+            "variables": {
+              "property": "one of the comma-separated entries in the `properties` parameter"
+            },
+            "group": "Properties",
+            "valueType": "*",
+            "example": "value-Sa1"
+          }
+        ]
       }
     },
     {
@@ -4939,7 +5059,8 @@
           "description": "Whether the last test found Condition true, for wiring into a value rather than branching on a signal"
         }
       ],
-      "dynamicPorts": null
+      "dynamicPorts": null,
+      "parameterEncoding": null
     },
     {
       "typeName": "Counter",
@@ -4967,7 +5088,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Subtracts one from the count, or does nothing at all when Limits Enabled and the count is already at Min Value"
         },
         {
           "name": "increase",
@@ -4978,7 +5100,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Adds one to the count, or does nothing at all when Limits Enabled and the count is already at Max Value"
         },
         {
           "name": "limitsEnabled",
@@ -4989,7 +5112,8 @@
             "name": "boolean"
           },
           "isSignal": false,
-          "default": false
+          "default": false,
+          "description": "Whether Min Value and Max Value bound the count; without it the count runs unbounded in both directions"
         },
         {
           "name": "limitsMax",
@@ -5000,7 +5124,8 @@
             "name": "number"
           },
           "isSignal": false,
-          "default": 0
+          "default": 0,
+          "description": "Highest count Increase will reach, ignored unless Limits Enabled"
         },
         {
           "name": "limitsMin",
@@ -5011,7 +5136,8 @@
             "name": "number"
           },
           "isSignal": false,
-          "default": 0
+          "default": 0,
+          "description": "Lowest count Decrease will reach, ignored unless Limits Enabled"
         },
         {
           "name": "reset",
@@ -5022,7 +5148,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Puts the count back to Start Value"
         },
         {
           "name": "startValue",
@@ -5032,7 +5159,8 @@
             "name": "number"
           },
           "isSignal": false,
-          "default": 0
+          "default": 0,
+          "description": "Count to begin at and to return to on Reset; setting it announces a change on Count Changed at page load"
         }
       ],
       "outputs": [
@@ -5043,7 +5171,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires after the count has moved, and also once at page load when Start Value is set"
         },
         {
           "name": "currentCount",
@@ -5052,10 +5181,12 @@
           "type": {
             "name": "number"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "The count as it stands"
         }
       ],
-      "dynamicPorts": null
+      "dynamicPorts": null,
+      "parameterEncoding": null
     },
     {
       "typeName": "Date To String",
@@ -5126,7 +5257,8 @@
           "isSignal": true
         }
       ],
-      "dynamicPorts": null
+      "dynamicPorts": null,
+      "parameterEncoding": null
     },
     {
       "typeName": "DbCollection",
@@ -5231,6 +5363,57 @@
           "runtime-discovered"
         ],
         "description": "Some ports are discovered at runtime from user code, parameters or connected components, and are pushed to the editor per instance; the static port list below is incomplete for such instances."
+      },
+      "parameterEncoding": {
+        "known": true,
+        "seededBy": [],
+        "seededByProjectMetadata": [
+          "dbCollections"
+        ],
+        "patterns": [
+          {
+            "pattern": "collectionName",
+            "plug": "input",
+            "group": "General",
+            "valueType": "enum",
+            "example": "collectionName"
+          },
+          {
+            "pattern": "storageEnableLimit",
+            "plug": "input",
+            "group": "Limit",
+            "valueType": "boolean",
+            "example": "storageEnableLimit"
+          },
+          {
+            "pattern": "storageFetch",
+            "plug": "input",
+            "group": "Storage",
+            "valueType": "signal",
+            "example": "storageFetch"
+          },
+          {
+            "pattern": "storageFilter",
+            "plug": "input",
+            "group": "Filter",
+            "valueType": "stringlist",
+            "example": "storageFilter"
+          },
+          {
+            "pattern": "storageFilterType",
+            "plug": "input",
+            "group": "General",
+            "valueType": "enum",
+            "example": "storageFilterType"
+          },
+          {
+            "pattern": "storageSort",
+            "plug": "input",
+            "group": "Sort",
+            "valueType": "stringlist",
+            "example": "storageSort"
+          }
+        ]
       }
     },
     {
@@ -5329,6 +5512,71 @@
         ],
         "description": "Filter/sort input ports are generated by the editor from the visual query (QueryRecordsAdapter) and the selected class schema.",
         "editorAdapter": "QueryRecordsAdapter"
+      },
+      "parameterEncoding": {
+        "known": true,
+        "seededBy": [],
+        "seededByProjectMetadata": [
+          "dbCollections"
+        ],
+        "patterns": [
+          {
+            "pattern": "collectionName",
+            "plug": "input",
+            "group": "General",
+            "valueType": "enum",
+            "example": "collectionName"
+          },
+          {
+            "pattern": "search",
+            "plug": "input",
+            "group": "Search",
+            "valueType": "string",
+            "example": "search"
+          },
+          {
+            "pattern": "storageEnableCount",
+            "plug": "input",
+            "group": "Total Count",
+            "valueType": "boolean",
+            "example": "storageEnableCount"
+          },
+          {
+            "pattern": "storageEnableLimit",
+            "plug": "input",
+            "group": "Limit",
+            "valueType": "boolean",
+            "example": "storageEnableLimit"
+          },
+          {
+            "pattern": "storageFetch",
+            "plug": "input",
+            "group": "Actions",
+            "valueType": "signal",
+            "example": "storageFetch"
+          },
+          {
+            "pattern": "storageFilterType",
+            "plug": "input",
+            "group": "General",
+            "valueType": "enum",
+            "example": "storageFilterType"
+          },
+          {
+            "pattern": "visualFilter",
+            "plug": "input",
+            "group": "Filter",
+            "valueType": "query-filter",
+            "example": "visualFilter"
+          },
+          {
+            "pattern": "visualSort",
+            "plug": "input",
+            "group": "Sorting",
+            "valueType": "query-sorting",
+            "example": "visualSort"
+          }
+        ]
       }
     },
     {
@@ -5354,6 +5602,10 @@
           "runtime-discovered"
         ],
         "description": "Some ports are discovered at runtime from user code, parameters or connected components, and are pushed to the editor per instance; the static port list below is incomplete for such instances."
+      },
+      "parameterEncoding": {
+        "known": false,
+        "reason": "Ports follow the database configuration schema fetched from the backend."
       }
     },
     {
@@ -5558,6 +5810,51 @@
           "runtime-discovered"
         ],
         "description": "Some ports are discovered at runtime from user code, parameters or connected components, and are pushed to the editor per instance; the static port list below is incomplete for such instances."
+      },
+      "parameterEncoding": {
+        "known": true,
+        "seededBy": [
+          "properties"
+        ],
+        "seededByProjectMetadata": [
+          "dbCollections"
+        ],
+        "patterns": [
+          {
+            "pattern": "$ndlCollectionName",
+            "plug": "input",
+            "group": "General",
+            "valueType": "enum",
+            "example": "$ndlCollectionName"
+          },
+          {
+            "pattern": "$ndlModelInitCode",
+            "plug": "input",
+            "group": "Scripts",
+            "valueType": "string",
+            "example": "$ndlModelInitCode"
+          },
+          {
+            "pattern": "<property>",
+            "plug": "input/output",
+            "variables": {
+              "property": "a property of the cloud database class selected by the `collectionName` parameter. The names come from the class schema, not from anything on this node — a project without that class has no way to know them."
+            },
+            "group": "Properties",
+            "valueType": "*",
+            "example": "Sa1"
+          },
+          {
+            "pattern": "changed-<property>",
+            "plug": "output",
+            "variables": {
+              "property": "a property of the cloud database class selected by the `collectionName` parameter. The names come from the class schema, not from anything on this node — a project without that class has no way to know them."
+            },
+            "group": "Events",
+            "valueType": "signal",
+            "example": "changed-Sa1"
+          }
+        ]
       }
     },
     {
@@ -5706,6 +6003,42 @@
             "name": "conditionalports/extended"
           }
         ]
+      },
+      "parameterEncoding": {
+        "known": true,
+        "seededBy": [],
+        "seededByProjectMetadata": [
+          "dbCollections"
+        ],
+        "patterns": [
+          {
+            "pattern": "changed-<property>",
+            "plug": "output",
+            "variables": {
+              "property": "a property of the cloud database class selected by the `collectionName` parameter. The names come from the class schema, not from anything on this node — a project without that class has no way to know them."
+            },
+            "group": "Changed Events",
+            "valueType": "signal",
+            "example": "changed-Sa1"
+          },
+          {
+            "pattern": "collectionName",
+            "plug": "input",
+            "group": "General",
+            "valueType": "enum",
+            "example": "collectionName"
+          },
+          {
+            "pattern": "prop-<property>",
+            "plug": "output",
+            "variables": {
+              "property": "a property of the cloud database class selected by the `collectionName` parameter. The names come from the class schema, not from anything on this node — a project without that class has no way to know them."
+            },
+            "group": "Properties",
+            "valueType": "string",
+            "example": "prop-Sa1"
+          }
+        ]
       }
     },
     {
@@ -5844,6 +6177,22 @@
               "repeaterComponent"
             ],
             "name": "conditionalports/extended"
+          }
+        ]
+      },
+      "parameterEncoding": {
+        "known": true,
+        "seededBy": [],
+        "seededByProjectMetadata": [
+          "dbCollections"
+        ],
+        "patterns": [
+          {
+            "pattern": "collectionName",
+            "plug": "input",
+            "group": "General",
+            "valueType": "enum",
+            "example": "collectionName"
           }
         ]
       }
@@ -6236,7 +6585,8 @@
           "description": "Fires just before this element is removed from the page, while it still exists"
         }
       ],
-      "dynamicPorts": null
+      "dynamicPorts": null,
+      "parameterEncoding": null
     },
     {
       "typeName": "Event Receiver",
@@ -6262,7 +6612,8 @@
             "name": "string",
             "identifierOf": "EventChannelName"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Name to listen on, which must match a Send Event exactly; nothing reports a name no sender uses"
         },
         {
           "name": "consume",
@@ -6282,7 +6633,8 @@
             ]
           },
           "isSignal": false,
-          "default": "never"
+          "default": "never",
+          "description": "Whether receiving an event stops it reaching other receivers on the same channel"
         },
         {
           "name": "enabled",
@@ -6292,7 +6644,8 @@
             "name": "boolean"
           },
           "isSignal": false,
-          "default": true
+          "default": true,
+          "description": "Whether events on this channel are acted on; while off they are ignored and not passed to another receiver either"
         }
       ],
       "outputs": [
@@ -6303,7 +6656,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when an event arrives, but before the payload outputs have been updated — read them on the next frame"
         }
       ],
       "dynamicPorts": {
@@ -6311,6 +6665,10 @@
           "runtime-discovered"
         ],
         "description": "Payload output ports mirror the payload schema of the channel selected via the \"channelName\" parameter (as defined by matching Event Sender nodes)."
+      },
+      "parameterEncoding": {
+        "known": false,
+        "reason": "Output ports mirror the payload of whatever `Event Sender` nodes publish on the channel named by the `channelName` parameter — they are derived from another node, not from this one."
       }
     },
     {
@@ -6341,7 +6699,8 @@
             "identifierOf": "EventChannelName"
           },
           "isSignal": false,
-          "default": ""
+          "default": "",
+          "description": "Name every Receive Event must match to hear this; nothing reports a name no receiver listens on"
         },
         {
           "name": "payload",
@@ -6351,7 +6710,8 @@
             "name": "stringlist",
             "allowEditOnly": true
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Names of the values to carry with the event; each becomes an input here and an output on every matching Receive Event"
         },
         {
           "name": "propagation",
@@ -6380,7 +6740,8 @@
             ]
           },
           "isSignal": false,
-          "default": "global"
+          "default": "global",
+          "description": "How far the event travels: the whole app, or only the receivers above, below or beside this node"
         },
         {
           "name": "sendEvent",
@@ -6390,7 +6751,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Sends one event on Channel Name, after every payload input has settled"
         }
       ],
       "outputs": [
@@ -6402,7 +6764,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Why the last send failed, empty when the last send succeeded"
         },
         {
           "name": "failure",
@@ -6412,7 +6775,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when the event could not be sent, which today means Channel Name was left empty"
         },
         {
           "name": "sent",
@@ -6422,7 +6786,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires once the event has been dispatched to every matching receiver"
         }
       ],
       "dynamicPorts": {
@@ -6430,6 +6795,24 @@
           "runtime-discovered"
         ],
         "description": "Payload input ports are defined by the \"ports\" parameter (the payload schema of the channel being sent on)."
+      },
+      "parameterEncoding": {
+        "known": true,
+        "seededBy": [
+          "payload"
+        ],
+        "patterns": [
+          {
+            "pattern": "<payload>",
+            "plug": "input",
+            "variables": {
+              "payload": "one of the comma-separated entries in the `payload` parameter"
+            },
+            "group": "Payload",
+            "valueType": "*",
+            "example": "Sa1"
+          }
+        ]
       }
     },
     {
@@ -6583,6 +6966,24 @@
           "runtime-discovered"
         ],
         "description": "Input ports are created for each free variable referenced in the \"expression\" parameter (e.g. the expression \"a + b\" yields number inputs named \"a\" and \"b\"). The \"result\" output and its type follow the expression."
+      },
+      "parameterEncoding": {
+        "known": true,
+        "seededBy": [
+          "expression"
+        ],
+        "patterns": [
+          {
+            "pattern": "<expression>",
+            "plug": "input",
+            "variables": {
+              "expression": "a free variable referenced in the `expression` parameter"
+            },
+            "group": "Parameters",
+            "valueType": "*",
+            "example": "Sa1"
+          }
+        ]
       }
     },
     {
@@ -7417,6 +7818,12 @@
             ]
           }
         ]
+      },
+      "parameterEncoding": {
+        "known": true,
+        "patterns": [],
+        "seededBy": [],
+        "notes": "This node computes no port names. Its dynamic behaviour is visibility only: every port it can ever have is listed in `inputs`/`outputs` above, and `dynamicPorts.declaredPortGroups` says which parameter values reveal which of them."
       }
     },
     {
@@ -7546,6 +7953,10 @@
           "runtime-discovered"
         ],
         "description": "Some ports are discovered at runtime from user code, parameters or connected components, and are pushed to the editor per instance; the static port list below is incomplete for such instances."
+      },
+      "parameterEncoding": {
+        "known": false,
+        "reason": "Ports follow the filter script in the node parameters."
       }
     },
     {
@@ -7667,6 +8078,10 @@
         ],
         "description": "Filter input ports are generated by the editor from the visual filter definition (FilterRecordsAdapter) and the selected class schema.",
         "editorAdapter": "FilterRecordsAdapter"
+      },
+      "parameterEncoding": {
+        "known": false,
+        "reason": "The port helper could not be run headlessly — it needs project context this generator does not have (Cannot read properties of undefined (reading 'find'))."
       }
     },
     {
@@ -7797,6 +8212,10 @@
             "name": "conditionalports/extended"
           }
         ]
+      },
+      "parameterEncoding": {
+        "known": false,
+        "reason": "Input ports mirror the input ports of the template component chosen by the `template` parameter, name for name. They cannot be derived from this node's own parameters."
       }
     },
     {
@@ -7859,7 +8278,8 @@
           "isSignal": true
         }
       ],
-      "dynamicPorts": null
+      "dynamicPorts": null,
+      "parameterEncoding": null
     },
     {
       "typeName": "Form",
@@ -8707,6 +9127,12 @@
             ]
           }
         ]
+      },
+      "parameterEncoding": {
+        "known": true,
+        "patterns": [],
+        "seededBy": [],
+        "notes": "This node computes no port names. Its dynamic behaviour is visibility only: every port it can ever have is listed in `inputs`/`outputs` above, and `dynamicPorts.declaredPortGroups` says which parameter values reveal which of them."
       }
     },
     {
@@ -8730,6 +9156,10 @@
           "runtime-discovered"
         ],
         "description": "Some ports are discovered at runtime from user code, parameters or connected components, and are pushed to the editor per instance; the static port list below is incomplete for such instances."
+      },
+      "parameterEncoding": {
+        "known": false,
+        "reason": "Ports follow the global variables the project defines at runtime."
       }
     },
     {
@@ -10760,6 +11190,12 @@
             ]
           }
         ]
+      },
+      "parameterEncoding": {
+        "known": true,
+        "patterns": [],
+        "seededBy": [],
+        "notes": "This node computes no port names. Its dynamic behaviour is visibility only: every port it can ever have is listed in `inputs`/`outputs` above, and `dynamicPorts.declaredPortGroups` says which parameter values reveal which of them."
       }
     },
     {
@@ -10787,7 +11223,8 @@
           "type": {
             "name": "number"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Front-to-back tilt in degrees; it never updates on iOS, which requires a permission this node does not request"
         },
         {
           "name": "rotationY",
@@ -10796,7 +11233,8 @@
           "type": {
             "name": "number"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Left-to-right tilt in degrees; it never updates on iOS, which requires a permission this node does not request"
         },
         {
           "name": "rotationZ",
@@ -10805,10 +11243,12 @@
           "type": {
             "name": "number"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Compass heading in degrees; it never updates on iOS, which requires a permission this node does not request"
         }
       ],
-      "dynamicPorts": null
+      "dynamicPorts": null,
+      "parameterEncoding": null
     },
     {
       "typeName": "Image",
@@ -12317,6 +12757,12 @@
             ]
           }
         ]
+      },
+      "parameterEncoding": {
+        "known": true,
+        "patterns": [],
+        "seededBy": [],
+        "notes": "This node computes no port names. Its dynamic behaviour is visibility only: every port it can ever have is listed in `inputs`/`outputs` above, and `dynamicPorts.declaredPortGroups` says which parameter values reveal which of them."
       }
     },
     {
@@ -12359,7 +12805,8 @@
           "description": "The opposite of Value, and unset rather than true while Value has never been set"
         }
       ],
-      "dynamicPorts": null
+      "dynamicPorts": null,
+      "parameterEncoding": null
     },
     {
       "typeName": "JavaScriptFunction",
@@ -12463,6 +12910,65 @@
           "runtime-discovered"
         ],
         "description": "This is the Function node. Input and output ports are discovered from the user script in the \"functionScript\" parameter: reading \"Inputs.xyz\" creates input port \"xyz\", assigning \"Outputs.xyz\" creates output port \"xyz\". Signal outputs are created by calling \"Outputs.xyz()\"."
+      },
+      "parameterEncoding": {
+        "known": true,
+        "seededBy": [
+          "scriptInputs",
+          "scriptOutputs",
+          "functionScript"
+        ],
+        "patterns": [
+          {
+            "pattern": "in-<functionScript>",
+            "plug": "inputs",
+            "variables": {
+              "functionScript": "a name read as `Inputs.<name>` or assigned as `Outputs.<name>` in the `functionScript` parameter"
+            },
+            "group": "Inputs",
+            "valueType": "*",
+            "example": "in-Ta1"
+          },
+          {
+            "pattern": "in-<scriptInput>",
+            "plug": "input",
+            "variables": {
+              "scriptInput": "the `label` of a row in the `scriptInputs` parameter"
+            },
+            "group": "Inputs",
+            "valueType": "string",
+            "example": "in-Sa1"
+          },
+          {
+            "pattern": "intype-<scriptInput>",
+            "plug": "input",
+            "variables": {
+              "scriptInput": "the `label` of a row in the `scriptInputs` parameter"
+            },
+            "valueType": "enum",
+            "example": "intype-Sa1"
+          },
+          {
+            "pattern": "out-<scriptOutput>",
+            "plug": "output",
+            "variables": {
+              "scriptOutput": "the `label` of a row in the `scriptOutputs` parameter"
+            },
+            "group": "Outputs",
+            "valueType": "follows the matching `outtype-<scriptOutput>` parameter",
+            "example": "out-Vb sp"
+          },
+          {
+            "pattern": "outtype-<scriptOutput>",
+            "plug": "input",
+            "variables": {
+              "scriptOutput": "the `label` of a row in the `scriptOutputs` parameter"
+            },
+            "valueType": "enum",
+            "example": "outtype-Vb sp"
+          }
+        ],
+        "notes": "Names are interpolated verbatim, including spaces — a value called `bg color` produces a port called `value-true-bg color`, not `value-true-bgColor`."
       }
     },
     {
@@ -12573,6 +13079,54 @@
             ]
           }
         ]
+      },
+      "parameterEncoding": {
+        "known": true,
+        "seededBy": [
+          "scriptInputs",
+          "scriptOutputs"
+        ],
+        "patterns": [
+          {
+            "pattern": "<scriptInput>",
+            "plug": "input",
+            "variables": {
+              "scriptInput": "the `label` of a row in the `scriptInputs` parameter"
+            },
+            "group": "Inputs",
+            "valueType": "string",
+            "example": "Sa1"
+          },
+          {
+            "pattern": "<scriptOutput>",
+            "plug": "output",
+            "variables": {
+              "scriptOutput": "the `label` of a row in the `scriptOutputs` parameter"
+            },
+            "group": "Outputs",
+            "valueType": "*",
+            "example": "Vb sp"
+          },
+          {
+            "pattern": "intype-<scriptInput>",
+            "plug": "input",
+            "variables": {
+              "scriptInput": "the `label` of a row in the `scriptInputs` parameter"
+            },
+            "valueType": "enum",
+            "example": "intype-Sa1"
+          },
+          {
+            "pattern": "outtype-<scriptOutput>",
+            "plug": "input",
+            "variables": {
+              "scriptOutput": "the `label` of a row in the `scriptOutputs` parameter"
+            },
+            "valueType": "enum",
+            "example": "outtype-Vb sp"
+          }
+        ],
+        "notes": "Names are interpolated verbatim, including spaces — a value called `bg color` produces a port called `value-true-bg color`, not `value-true-bgColor`."
       }
     },
     {
@@ -13905,6 +14459,12 @@
             ]
           }
         ]
+      },
+      "parameterEncoding": {
+        "known": true,
+        "patterns": [],
+        "seededBy": [],
+        "notes": "This node computes no port names. Its dynamic behaviour is visibility only: every port it can ever have is listed in `inputs`/`outputs` above, and `dynamicPorts.declaredPortGroups` says which parameter values reveal which of them."
       }
     },
     {
@@ -14070,7 +14630,8 @@
           "isSignal": true
         }
       ],
-      "dynamicPorts": null
+      "dynamicPorts": null,
+      "parameterEncoding": null
     },
     {
       "typeName": "Model",
@@ -14213,6 +14774,34 @@
           "runtime-discovered"
         ],
         "description": "Some ports are discovered at runtime from user code, parameters or connected components, and are pushed to the editor per instance; the static port list below is incomplete for such instances."
+      },
+      "parameterEncoding": {
+        "known": true,
+        "seededBy": [
+          "properties"
+        ],
+        "patterns": [
+          {
+            "pattern": "<property>",
+            "plug": "input/output",
+            "variables": {
+              "property": "one of the comma-separated entries in the `properties` parameter"
+            },
+            "group": "Properties",
+            "valueType": "*",
+            "example": "Sa1"
+          },
+          {
+            "pattern": "changed-<property>",
+            "plug": "output",
+            "variables": {
+              "property": "one of the comma-separated entries in the `properties` parameter"
+            },
+            "group": "Changed Events",
+            "valueType": "signal",
+            "example": "changed-Sa1"
+          }
+        ]
       }
     },
     {
@@ -14353,6 +14942,34 @@
             "name": "conditionalports/extended"
           }
         ]
+      },
+      "parameterEncoding": {
+        "known": true,
+        "seededBy": [
+          "properties"
+        ],
+        "patterns": [
+          {
+            "pattern": "changed-<property>",
+            "plug": "output",
+            "variables": {
+              "property": "one of the comma-separated entries in the `properties` parameter"
+            },
+            "group": "Changed Events",
+            "valueType": "signal",
+            "example": "changed-Sa1"
+          },
+          {
+            "pattern": "prop-<property>",
+            "plug": "input/output",
+            "variables": {
+              "property": "one of the comma-separated entries in the `properties` parameter"
+            },
+            "group": "Properties",
+            "valueType": "*",
+            "example": "prop-Sa1"
+          }
+        ]
       }
     },
     {
@@ -14450,6 +15067,36 @@
           "runtime-discovered"
         ],
         "description": "Output ports mirror the close-result values declared by the popup being closed."
+      },
+      "parameterEncoding": {
+        "known": true,
+        "seededBy": [
+          "closeActions",
+          "results"
+        ],
+        "patterns": [
+          {
+            "pattern": "closeAction-<closeAction>",
+            "plug": "input",
+            "variables": {
+              "closeAction": "one of the comma-separated entries in the `closeActions` parameter"
+            },
+            "group": "Close Actions",
+            "valueType": "signal",
+            "example": "closeAction-Sa1"
+          },
+          {
+            "pattern": "result-<result>",
+            "plug": "input",
+            "variables": {
+              "result": "one of the comma-separated entries in the `results` parameter"
+            },
+            "group": "Results",
+            "valueType": "*",
+            "example": "result-Vb sp"
+          }
+        ],
+        "notes": "Names are interpolated verbatim, including spaces — a value called `bg color` produces a port called `value-true-bg color`, not `value-true-bgColor`."
       }
     },
     {
@@ -14556,6 +15203,10 @@
           "runtime-discovered"
         ],
         "description": "Input ports mirror the component inputs of the target popup component; close-result outputs mirror its Component Outputs."
+      },
+      "parameterEncoding": {
+        "known": false,
+        "reason": "Ports mirror the input ports of the target popup component, and the results and close actions its `Close Popup` nodes declare."
       }
     },
     {
@@ -14658,6 +15309,74 @@
           "runtime-discovered"
         ],
         "description": "Property input ports follow the selected cloud database class schema."
+      },
+      "parameterEncoding": {
+        "known": true,
+        "seededBy": [
+          "accessControl"
+        ],
+        "seededByProjectMetadata": [
+          "dbCollections"
+        ],
+        "patterns": [
+          {
+            "pattern": "acl-<accessControlId>-read",
+            "plug": "input",
+            "variables": {
+              "accessControlId": "the `id` of a row in the `accessControl` parameter — an editor-generated identifier, not a name you choose"
+            },
+            "group": "<property> Access Rule",
+            "valueType": "boolean",
+            "example": "acl-Sa1Id-read"
+          },
+          {
+            "pattern": "acl-<accessControlId>-target",
+            "plug": "input",
+            "variables": {
+              "accessControlId": "the `id` of a row in the `accessControl` parameter — an editor-generated identifier, not a name you choose"
+            },
+            "group": "<property> Access Rule",
+            "valueType": "enum",
+            "example": "acl-Sa1Id-target"
+          },
+          {
+            "pattern": "acl-<accessControlId>-userid",
+            "plug": "input",
+            "variables": {
+              "accessControlId": "the `id` of a row in the `accessControl` parameter — an editor-generated identifier, not a name you choose"
+            },
+            "group": "<property> Access Rule",
+            "valueType": "string",
+            "example": "acl-Sa1Id-userid"
+          },
+          {
+            "pattern": "acl-<accessControlId>-write",
+            "plug": "input",
+            "variables": {
+              "accessControlId": "the `id` of a row in the `accessControl` parameter — an editor-generated identifier, not a name you choose"
+            },
+            "group": "<property> Access Rule",
+            "valueType": "boolean",
+            "example": "acl-Sa1Id-write"
+          },
+          {
+            "pattern": "collectionName",
+            "plug": "input",
+            "group": "General",
+            "valueType": "enum",
+            "example": "collectionName"
+          },
+          {
+            "pattern": "prop-<property>",
+            "plug": "input",
+            "variables": {
+              "property": "a property of the cloud database class selected by the `collectionName` parameter. The names come from the class schema, not from anything on this node — a project without that class has no way to know them."
+            },
+            "group": "Properties",
+            "valueType": "string",
+            "example": "prop-Sa1"
+          }
+        ]
       }
     },
     {
@@ -14727,6 +15446,34 @@
           "runtime-discovered"
         ],
         "description": "Property input ports are created from the \"properties\" parameter."
+      },
+      "parameterEncoding": {
+        "known": true,
+        "seededBy": [
+          "properties"
+        ],
+        "patterns": [
+          {
+            "pattern": "prop-<property>",
+            "plug": "input",
+            "variables": {
+              "property": "one of the comma-separated entries in the `properties` parameter"
+            },
+            "group": "Property Values",
+            "valueType": "follows the matching `type-<property>` parameter",
+            "example": "prop-Sa1"
+          },
+          {
+            "pattern": "type-<property>",
+            "plug": "input",
+            "variables": {
+              "property": "one of the comma-separated entries in the `properties` parameter"
+            },
+            "group": "Property Types",
+            "valueType": "enum",
+            "example": "type-Sa1"
+          }
+        ]
       }
     },
     {
@@ -14821,7 +15568,8 @@
           "isSignal": true
         }
       ],
-      "dynamicPorts": null
+      "dynamicPorts": null,
+      "parameterEncoding": null
     },
     {
       "typeName": "Number Blend",
@@ -14847,7 +15595,8 @@
             "name": "number"
           },
           "isSignal": false,
-          "default": 0
+          "default": 0,
+          "description": "Position along the number list, where 1 is exactly Number 1 and 1.5 is halfway to Number 2"
         },
         {
           "name": "clamp",
@@ -14857,7 +15606,8 @@
             "name": "boolean"
           },
           "isSignal": false,
-          "default": false
+          "default": false,
+          "description": "Holds Blend Value inside the list rather than extrapolating past either end"
         }
       ],
       "outputs": [
@@ -14868,7 +15618,8 @@
           "type": {
             "name": "number"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "The interpolated number"
         }
       ],
       "dynamicPorts": {
@@ -14885,6 +15636,10 @@
             }
           }
         ]
+      },
+      "parameterEncoding": {
+        "known": false,
+        "reason": "The port helper needs project context this generator cannot supply headlessly — a live component, a connected node, or a backend schema."
       }
     },
     {
@@ -14913,7 +15668,8 @@
             "allowEditOnly": true
           },
           "isSignal": false,
-          "default": true
+          "default": true,
+          "description": "Holds the result inside the output range when Input Value falls outside the input range, instead of extrapolating"
         },
         {
           "name": "inputValue",
@@ -14925,7 +15681,8 @@
             "allowConnectionOnly": true
           },
           "isSignal": false,
-          "default": 0
+          "default": 0,
+          "description": "Number to remap, read against Input Minimum and Input Maximum"
         },
         {
           "name": "maxInputValue",
@@ -14936,7 +15693,8 @@
             "name": "number"
           },
           "isSignal": false,
-          "default": 0
+          "default": 0,
+          "description": "Value of Input Value that maps to Output Maximum; must differ from Input Minimum or the node reports a constant"
         },
         {
           "name": "maxOutputValue",
@@ -14947,7 +15705,8 @@
             "name": "number"
           },
           "isSignal": false,
-          "default": 1
+          "default": 1,
+          "description": "Result when Input Value is at Input Maximum"
         },
         {
           "name": "minInputValue",
@@ -14958,7 +15717,8 @@
             "name": "number"
           },
           "isSignal": false,
-          "default": 0
+          "default": 0,
+          "description": "Value of Input Value that maps to Output Minimum; leaving this equal to Input Maximum pins the result at Output Minimum"
         },
         {
           "name": "minOutputValue",
@@ -14969,7 +15729,8 @@
             "name": "number"
           },
           "isSignal": false,
-          "default": 0
+          "default": 0,
+          "description": "Result when Input Value is at Input Minimum"
         }
       ],
       "outputs": [
@@ -14981,10 +15742,12 @@
           "type": {
             "name": "number"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Input Value rescaled from the input range onto the output range"
         }
       ],
-      "dynamicPorts": null
+      "dynamicPorts": null,
+      "parameterEncoding": null
     },
     {
       "typeName": "On App Error",
@@ -15093,7 +15856,8 @@
           "description": "Kind of node that raised the error, or <runtime> when it was raised outside any node"
         }
       ],
-      "dynamicPorts": null
+      "dynamicPorts": null,
+      "parameterEncoding": null
     },
     {
       "typeName": "Open File Picker",
@@ -15236,7 +16000,8 @@
           "isSignal": false
         }
       ],
-      "dynamicPorts": null
+      "dynamicPorts": null,
+      "parameterEncoding": null
     },
     {
       "typeName": "Options",
@@ -16453,6 +17218,12 @@
             ]
           }
         ]
+      },
+      "parameterEncoding": {
+        "known": true,
+        "patterns": [],
+        "seededBy": [],
+        "notes": "This node computes no port names. Its dynamic behaviour is visibility only: every port it can ever have is listed in `inputs`/`outputs` above, and `dynamicPorts.declaredPortGroups` says which parameter values reveal which of them."
       }
     },
     {
@@ -16498,6 +17269,10 @@
             }
           }
         ]
+      },
+      "parameterEncoding": {
+        "known": false,
+        "reason": "The port helper needs project context this generator cannot supply headlessly — a live component, a connected node, or a backend schema."
       }
     },
     {
@@ -16965,6 +17740,10 @@
           "runtime-discovered"
         ],
         "description": "Some ports are discovered at runtime from user code, parameters or connected components, and are pushed to the editor per instance; the static port list below is incomplete for such instances."
+      },
+      "parameterEncoding": {
+        "known": false,
+        "reason": "Ports follow the component the page renders."
       }
     },
     {
@@ -17218,6 +17997,30 @@
           "runtime-discovered"
         ],
         "description": "Per-page signal outputs and transition parameters are generated from the \"pages\" parameter."
+      },
+      "parameterEncoding": {
+        "known": true,
+        "seededBy": [
+          "pages"
+        ],
+        "patterns": [
+          {
+            "pattern": "pageComp-<pageId>",
+            "plug": "input",
+            "variables": {
+              "pageId": "the `id` of a row in the `pages` parameter — an editor-generated identifier, not a name you choose"
+            },
+            "valueType": "component",
+            "example": "pageComp-Sa1Id"
+          },
+          {
+            "pattern": "startPage",
+            "plug": "input",
+            "group": "General",
+            "valueType": "enum",
+            "example": "startPage"
+          }
+        ]
       }
     },
     {
@@ -17265,6 +18068,10 @@
         ],
         "description": "Output ports are the path/query parameters declared on the containing page component (PageInputsAdapter).",
         "editorAdapter": "PageInputsAdapter"
+      },
+      "parameterEncoding": {
+        "known": false,
+        "reason": "Ports are computed by the editor from the route that reaches the containing page component (PageInputsAdapter)."
       }
     },
     {
@@ -17365,6 +18172,10 @@
           "runtime-discovered"
         ],
         "description": "Input ports for target-page parameters are derived from the target page component of the containing Page Stack."
+      },
+      "parameterEncoding": {
+        "known": false,
+        "reason": "Ports mirror the input ports of the target page component."
       }
     },
     {
@@ -17452,6 +18263,36 @@
           "runtime-discovered"
         ],
         "description": "Result ports depend on the \"backActions\" style parameters of the containing Page Stack."
+      },
+      "parameterEncoding": {
+        "known": true,
+        "seededBy": [
+          "backActions",
+          "results"
+        ],
+        "patterns": [
+          {
+            "pattern": "backAction-<backAction>",
+            "plug": "input",
+            "variables": {
+              "backAction": "one of the comma-separated entries in the `backActions` parameter"
+            },
+            "group": "Back Actions",
+            "valueType": "signal",
+            "example": "backAction-Sa1"
+          },
+          {
+            "pattern": "result-<result>",
+            "plug": "input",
+            "variables": {
+              "result": "one of the comma-separated entries in the `results` parameter"
+            },
+            "group": "Results",
+            "valueType": "*",
+            "example": "result-Vb sp"
+          }
+        ],
+        "notes": "Names are interpolated verbatim, including spaces — a value called `bg color` produces a port called `value-true-bg color`, not `value-true-bgColor`."
       }
     },
     {
@@ -17552,6 +18393,24 @@
           "runtime-discovered"
         ],
         "description": "Ports depend on the target page and its declared path parameters."
+      },
+      "parameterEncoding": {
+        "known": true,
+        "seededBy": [
+          "queryNames"
+        ],
+        "patterns": [
+          {
+            "pattern": "q-<queryName>",
+            "plug": "input",
+            "variables": {
+              "queryName": "one of the comma-separated entries in the `queryNames` parameter"
+            },
+            "group": "Query",
+            "valueType": "*",
+            "example": "q-Sa1"
+          }
+        ]
       }
     },
     {
@@ -17641,6 +18500,34 @@
           "runtime-discovered"
         ],
         "description": "Some ports are discovered at runtime from user code, parameters or connected components, and are pushed to the editor per instance; the static port list below is incomplete for such instances."
+      },
+      "parameterEncoding": {
+        "known": true,
+        "seededBy": [
+          "properties"
+        ],
+        "patterns": [
+          {
+            "pattern": "<property>",
+            "plug": "input/output",
+            "variables": {
+              "property": "one of the comma-separated entries in the `properties` parameter"
+            },
+            "group": "Properties",
+            "valueType": "*",
+            "example": "Sa1"
+          },
+          {
+            "pattern": "changed-<property>",
+            "plug": "output",
+            "variables": {
+              "property": "one of the comma-separated entries in the `properties` parameter"
+            },
+            "group": "Changed Events",
+            "valueType": "signal",
+            "example": "changed-Sa1"
+          }
+        ]
       }
     },
     {
@@ -17795,6 +18682,10 @@
           "runtime-discovered"
         ],
         "description": "Input and output ports are parsed from the request/response scripts in the node parameters (custom headers, query parameters and response mappings become ports)."
+      },
+      "parameterEncoding": {
+        "known": false,
+        "reason": "Ports are parsed from the request and response scripts in the node parameters."
       }
     },
     {
@@ -18729,7 +19620,8 @@
           "description": "Fires just before this element is removed from the page, while it still exists"
         }
       ],
-      "dynamicPorts": null
+      "dynamicPorts": null,
+      "parameterEncoding": null
     },
     {
       "typeName": "Radio Button Group",
@@ -19582,6 +20474,12 @@
             ]
           }
         ]
+      },
+      "parameterEncoding": {
+        "known": true,
+        "patterns": [],
+        "seededBy": [],
+        "notes": "This node computes no port names. Its dynamic behaviour is visibility only: every port it can ever have is listed in `inputs`/`outputs` above, and `dynamicPorts.declaredPortGroups` says which parameter values reveal which of them."
       }
     },
     {
@@ -20552,7 +21450,8 @@
           "description": "Fires just before this element is removed from the page, while it still exists"
         }
       ],
-      "dynamicPorts": null
+      "dynamicPorts": null,
+      "parameterEncoding": null
     },
     {
       "typeName": "RemoveDbModelRelation",
@@ -20701,6 +21600,29 @@
               "repeaterComponent"
             ],
             "name": "conditionalports/extended"
+          }
+        ]
+      },
+      "parameterEncoding": {
+        "known": true,
+        "seededBy": [],
+        "seededByProjectMetadata": [
+          "dbCollections"
+        ],
+        "patterns": [
+          {
+            "pattern": "collectionName",
+            "plug": "input",
+            "group": "General",
+            "valueType": "enum",
+            "example": "collectionName"
+          },
+          {
+            "pattern": "relationProperty",
+            "plug": "input",
+            "group": "General",
+            "valueType": "enum",
+            "example": "relationProperty"
           }
         ]
       }
@@ -20969,6 +21891,10 @@
         ],
         "description": "The \"pages\" parameter determines which pages exist; the editor (RouterAdapter) derives ports and navigation metadata from the page components.",
         "editorAdapter": "RouterAdapter"
+      },
+      "parameterEncoding": {
+        "known": false,
+        "reason": "Ports are computed by the editor from the project's page components (RouterAdapter)."
       }
     },
     {
@@ -21050,6 +21976,10 @@
         ],
         "description": "Ports are derived from the target router and the path parameters of the selected page component (RouterNavigateAdapter).",
         "editorAdapter": "RouterNavigateAdapter"
+      },
+      "parameterEncoding": {
+        "known": false,
+        "reason": "Ports are computed by the editor from the target page component's parameters (RouterNavigateAdapter)."
       }
     },
     {
@@ -21224,7 +22154,8 @@
           "isSignal": true
         }
       ],
-      "dynamicPorts": null
+      "dynamicPorts": null,
+      "parameterEncoding": null
     },
     {
       "typeName": "Screen Resolution",
@@ -21272,7 +22203,8 @@
           "isSignal": false
         }
       ],
-      "dynamicPorts": null
+      "dynamicPorts": null,
+      "parameterEncoding": null
     },
     {
       "typeName": "Script Downloader",
@@ -21300,7 +22232,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fetches every script that is not already in the page"
         },
         {
           "name": "startLoad",
@@ -21311,7 +22244,8 @@
             "name": "boolean"
           },
           "isSignal": false,
-          "default": true
+          "default": true,
+          "description": "Whether the scripts are fetched as soon as the node appears, rather than waiting for Load"
         }
       ],
       "outputs": [
@@ -21322,7 +22256,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires once every script has finished loading; a script that fails to load reports nothing and this never fires"
         }
       ],
       "dynamicPorts": {
@@ -21341,6 +22276,10 @@
             "index": 3008
           }
         ]
+      },
+      "parameterEncoding": {
+        "known": false,
+        "reason": "Ports follow the script loaded at runtime."
       }
     },
     {
@@ -21466,6 +22405,10 @@
           "runtime-discovered"
         ],
         "description": "The value input type follows the selected variable type."
+      },
+      "parameterEncoding": {
+        "known": false,
+        "reason": "The `name` parameter selects which variable is written; it does not appear in any port name. The single dynamic port is `value`, whose *type* follows the `setWith` parameter."
       }
     },
     {
@@ -21668,6 +22611,74 @@
             "name": "conditionalports/extended"
           }
         ]
+      },
+      "parameterEncoding": {
+        "known": true,
+        "seededBy": [
+          "accessControl"
+        ],
+        "seededByProjectMetadata": [
+          "dbCollections"
+        ],
+        "patterns": [
+          {
+            "pattern": "acl-<accessControlId>-read",
+            "plug": "input",
+            "variables": {
+              "accessControlId": "the `id` of a row in the `accessControl` parameter — an editor-generated identifier, not a name you choose"
+            },
+            "group": "<property> Access Rule",
+            "valueType": "boolean",
+            "example": "acl-Sa1Id-read"
+          },
+          {
+            "pattern": "acl-<accessControlId>-target",
+            "plug": "input",
+            "variables": {
+              "accessControlId": "the `id` of a row in the `accessControl` parameter — an editor-generated identifier, not a name you choose"
+            },
+            "group": "<property> Access Rule",
+            "valueType": "enum",
+            "example": "acl-Sa1Id-target"
+          },
+          {
+            "pattern": "acl-<accessControlId>-userid",
+            "plug": "input",
+            "variables": {
+              "accessControlId": "the `id` of a row in the `accessControl` parameter — an editor-generated identifier, not a name you choose"
+            },
+            "group": "<property> Access Rule",
+            "valueType": "string",
+            "example": "acl-Sa1Id-userid"
+          },
+          {
+            "pattern": "acl-<accessControlId>-write",
+            "plug": "input",
+            "variables": {
+              "accessControlId": "the `id` of a row in the `accessControl` parameter — an editor-generated identifier, not a name you choose"
+            },
+            "group": "<property> Access Rule",
+            "valueType": "boolean",
+            "example": "acl-Sa1Id-write"
+          },
+          {
+            "pattern": "collectionName",
+            "plug": "input",
+            "group": "General",
+            "valueType": "enum",
+            "example": "collectionName"
+          },
+          {
+            "pattern": "prop-<property>",
+            "plug": "input",
+            "variables": {
+              "property": "a property of the cloud database class selected by the `collectionName` parameter. The names come from the class schema, not from anything on this node — a project without that class has no way to know them."
+            },
+            "group": "Properties",
+            "valueType": "string",
+            "example": "prop-Sa1"
+          }
+        ]
       }
     },
     {
@@ -21818,6 +22829,34 @@
             "name": "conditionalports/extended"
           }
         ]
+      },
+      "parameterEncoding": {
+        "known": true,
+        "seededBy": [
+          "properties"
+        ],
+        "patterns": [
+          {
+            "pattern": "prop-<property>",
+            "plug": "input",
+            "variables": {
+              "property": "one of the comma-separated entries in the `properties` parameter"
+            },
+            "group": "Property Values",
+            "valueType": "follows the matching `type-<property>` parameter",
+            "example": "prop-Sa1"
+          },
+          {
+            "pattern": "type-<property>",
+            "plug": "input",
+            "variables": {
+              "property": "one of the comma-separated entries in the `properties` parameter"
+            },
+            "group": "Property Types",
+            "valueType": "enum",
+            "example": "type-Sa1"
+          }
+        ]
       }
     },
     {
@@ -21931,7 +22970,8 @@
           "isSignal": false
         }
       ],
-      "dynamicPorts": null
+      "dynamicPorts": null,
+      "parameterEncoding": null
     },
     {
       "typeName": "Signal To Index",
@@ -21985,6 +23025,10 @@
             }
           }
         ]
+      },
+      "parameterEncoding": {
+        "known": false,
+        "reason": "The port helper needs project context this generator cannot supply headlessly — a live component, a connected node, or a backend schema."
       }
     },
     {
@@ -22096,6 +23140,105 @@
           "runtime-discovered"
         ],
         "description": "Ports are generated from the \"states\" and \"values\" parameters: each value gets per-state value inputs and a current-value output, each state gets an activation signal input and reached/left signal outputs."
+      },
+      "parameterEncoding": {
+        "known": true,
+        "seededBy": [
+          "states",
+          "values"
+        ],
+        "patterns": [
+          {
+            "pattern": "<value>",
+            "plug": "output",
+            "variables": {
+              "value": "one of the comma-separated entries in the `values` parameter"
+            },
+            "group": "Values",
+            "valueType": "number",
+            "example": "Vb sp"
+          },
+          {
+            "pattern": "at-<state>",
+            "plug": "output",
+            "variables": {
+              "state": "one of the comma-separated entries in the `states` parameter"
+            },
+            "group": "Current state",
+            "valueType": "boolean",
+            "example": "at-Sa1"
+          },
+          {
+            "pattern": "currentState",
+            "plug": "input",
+            "group": "States",
+            "valueType": "enum",
+            "example": "currentState"
+          },
+          {
+            "pattern": "reached-<state>",
+            "plug": "output",
+            "variables": {
+              "state": "one of the comma-separated entries in the `states` parameter"
+            },
+            "group": "Current state",
+            "valueType": "signal",
+            "example": "reached-Sa1"
+          },
+          {
+            "pattern": "to-<state>",
+            "plug": "input",
+            "variables": {
+              "state": "one of the comma-separated entries in the `states` parameter"
+            },
+            "group": "Go to state",
+            "valueType": "signal",
+            "example": "to-Sa1"
+          },
+          {
+            "pattern": "transition-<state>-<value>",
+            "plug": "input",
+            "variables": {
+              "state": "one of the comma-separated entries in the `states` parameter",
+              "value": "one of the comma-separated entries in the `values` parameter"
+            },
+            "group": "<state> Transitions",
+            "valueType": "curve",
+            "example": "transition-Sb1-Vb sp"
+          },
+          {
+            "pattern": "transitiondef-<state>",
+            "plug": "input",
+            "variables": {
+              "state": "one of the comma-separated entries in the `states` parameter"
+            },
+            "group": "<state> Transitions",
+            "valueType": "curve",
+            "example": "transitiondef-Sa1"
+          },
+          {
+            "pattern": "type-<value>",
+            "plug": "input",
+            "variables": {
+              "value": "one of the comma-separated entries in the `values` parameter"
+            },
+            "group": "Types",
+            "valueType": "enum",
+            "example": "type-Vb sp"
+          },
+          {
+            "pattern": "value-<state>-<value>",
+            "plug": "input",
+            "variables": {
+              "state": "one of the comma-separated entries in the `states` parameter",
+              "value": "one of the comma-separated entries in the `values` parameter"
+            },
+            "group": "<state> Values",
+            "valueType": "follows the matching `type-<value>` parameter",
+            "example": "value-Sb1-Vb sp"
+          }
+        ],
+        "notes": "Names are interpolated verbatim, including spaces — a value called `bg color` produces a port called `value-true-bg color`, not `value-true-bgColor`."
       }
     },
     {
@@ -22204,6 +23347,12 @@
             "name": "conditionalports/extended"
           }
         ]
+      },
+      "parameterEncoding": {
+        "known": true,
+        "patterns": [],
+        "seededBy": [],
+        "notes": "This node computes no port names. Its dynamic behaviour is visibility only: every port it can ever have is listed in `inputs`/`outputs` above, and `dynamicPorts.declaredPortGroups` says which parameter values reveal which of them."
       }
     },
     {
@@ -22308,7 +23457,8 @@
           "isSignal": true
         }
       ],
-      "dynamicPorts": null
+      "dynamicPorts": null,
+      "parameterEncoding": null
     },
     {
       "typeName": "String Format",
@@ -22335,7 +23485,8 @@
             "name": "string",
             "multiline": true
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Template text; each {placeholder} becomes an input port, and a placeholder used twice fills only the first time"
         }
       ],
       "outputs": [
@@ -22346,7 +23497,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Format with every placeholder substituted, and an unset placeholder replaced by nothing"
         }
       ],
       "dynamicPorts": {
@@ -22354,6 +23506,23 @@
           "runtime-discovered"
         ],
         "description": "Input ports are created for each \"{tag}\" appearing in the \"format\" parameter string."
+      },
+      "parameterEncoding": {
+        "known": true,
+        "seededBy": [
+          "format"
+        ],
+        "patterns": [
+          {
+            "pattern": "<format>",
+            "plug": "input",
+            "variables": {
+              "format": "a `{placeholder}` appearing in the `format` parameter"
+            },
+            "valueType": "string",
+            "example": "Sa1"
+          }
+        ]
       }
     },
     {
@@ -22432,6 +23601,10 @@
             "index": 1001
           }
         ]
+      },
+      "parameterEncoding": {
+        "known": false,
+        "reason": "The port helper needs project context this generator cannot supply headlessly — a live component, a connected node, or a backend schema."
       }
     },
     {
@@ -22497,6 +23670,10 @@
             }
           }
         ]
+      },
+      "parameterEncoding": {
+        "known": false,
+        "reason": "The port helper needs project context this generator cannot supply headlessly — a live component, a connected node, or a backend schema."
       }
     },
     {
@@ -22524,7 +23701,8 @@
             "name": "number"
           },
           "isSignal": false,
-          "default": 0
+          "default": 0,
+          "description": "Position to stop before; leave it unset to run to the end of the string, since setting it to 0 yields nothing"
         },
         {
           "name": "start",
@@ -22534,7 +23712,8 @@
             "name": "number"
           },
           "isSignal": false,
-          "default": 0
+          "default": 0,
+          "description": "Position of the first character to keep, counting from zero; a negative value counts back from the end"
         },
         {
           "name": "string",
@@ -22544,7 +23723,8 @@
             "name": "string"
           },
           "isSignal": false,
-          "default": ""
+          "default": "",
+          "description": "Text to take the substring from; it must not be cleared to null, which raises an error rather than yielding an empty result"
         }
       ],
       "outputs": [
@@ -22555,10 +23735,12 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "The section of String between Start and End"
         }
       ],
-      "dynamicPorts": null
+      "dynamicPorts": null,
+      "parameterEncoding": null
     },
     {
       "typeName": "Switch",
@@ -22670,7 +23852,8 @@
           "description": "Fires when the switch becomes on"
         }
       ],
-      "dynamicPorts": null
+      "dynamicPorts": null,
+      "parameterEncoding": null
     },
     {
       "typeName": "Text",
@@ -23806,6 +24989,12 @@
             ]
           }
         ]
+      },
+      "parameterEncoding": {
+        "known": true,
+        "patterns": [],
+        "seededBy": [],
+        "notes": "This node computes no port names. Its dynamic behaviour is visibility only: every port it can ever have is listed in `inputs`/`outputs` above, and `dynamicPorts.declaredPortGroups` says which parameter values reveal which of them."
       }
     },
     {
@@ -25062,6 +26251,12 @@
             ]
           }
         ]
+      },
+      "parameterEncoding": {
+        "known": true,
+        "patterns": [],
+        "seededBy": [],
+        "notes": "This node computes no port names. Its dynamic behaviour is visibility only: every port it can ever have is listed in `inputs`/`outputs` above, and `dynamicPorts.declaredPortGroups` says which parameter values reveal which of them."
       }
     },
     {
@@ -25152,7 +26347,8 @@
           "isSignal": true
         }
       ],
-      "dynamicPorts": null
+      "dynamicPorts": null,
+      "parameterEncoding": null
     },
     {
       "typeName": "Transition",
@@ -25278,7 +26474,8 @@
           "isSignal": false
         }
       ],
-      "dynamicPorts": null
+      "dynamicPorts": null,
+      "parameterEncoding": null
     },
     {
       "typeName": "Unique Id",
@@ -25305,7 +26502,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Generates a fresh id, replacing the one on Id"
         }
       ],
       "outputs": [
@@ -25317,7 +26515,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires once a new id is available on Id"
         },
         {
           "name": "guid",
@@ -25326,10 +26525,12 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "A globally unique identifier, generated once when the node is created and again on every New"
         }
       ],
-      "dynamicPorts": null
+      "dynamicPorts": null,
+      "parameterEncoding": null
     },
     {
       "typeName": "Upload File",
@@ -25472,7 +26673,8 @@
           "isSignal": true
         }
       ],
-      "dynamicPorts": null
+      "dynamicPorts": null,
+      "parameterEncoding": null
     },
     {
       "typeName": "Value Changed",
@@ -25513,7 +26715,8 @@
           "description": "Fires when Input becomes a different value, including the first time it arrives"
         }
       ],
-      "dynamicPorts": null
+      "dynamicPorts": null,
+      "parameterEncoding": null
     },
     {
       "typeName": "Variable",
@@ -25628,7 +26831,8 @@
           "isSignal": false
         }
       ],
-      "dynamicPorts": null
+      "dynamicPorts": null,
+      "parameterEncoding": null
     },
     {
       "typeName": "Variable2",
@@ -25722,7 +26926,8 @@
           "isSignal": false
         }
       ],
-      "dynamicPorts": null
+      "dynamicPorts": null,
+      "parameterEncoding": null
     },
     {
       "typeName": "Video",
@@ -27276,6 +28481,12 @@
             ]
           }
         ]
+      },
+      "parameterEncoding": {
+        "known": true,
+        "patterns": [],
+        "seededBy": [],
+        "notes": "This node computes no port names. Its dynamic behaviour is visibility only: every port it can ever have is listed in `inputs`/`outputs` above, and `dynamicPorts.declaredPortGroups` says which parameter values reveal which of them."
       }
     },
     {
@@ -27658,7 +28869,8 @@
           "isSignal": false
         }
       ],
-      "dynamicPorts": null
+      "dynamicPorts": null,
+      "parameterEncoding": null
     },
     {
       "typeName": "net.noodl.ActionHandler",
@@ -27840,7 +29052,8 @@
           "isSignal": false
         }
       ],
-      "dynamicPorts": null
+      "dynamicPorts": null,
+      "parameterEncoding": null
     },
     {
       "typeName": "net.noodl.ComponentObject",
@@ -27908,6 +29121,34 @@
           "runtime-discovered"
         ],
         "description": "Property ports are created from the \"properties\" parameter (the schema of the component object)."
+      },
+      "parameterEncoding": {
+        "known": true,
+        "seededBy": [
+          "properties"
+        ],
+        "patterns": [
+          {
+            "pattern": "changed-<property>",
+            "plug": "output",
+            "variables": {
+              "property": "one of the comma-separated entries in the `properties` parameter"
+            },
+            "group": "Changed Events",
+            "valueType": "signal",
+            "example": "changed-Sa1"
+          },
+          {
+            "pattern": "value-<property>",
+            "plug": "input/output",
+            "variables": {
+              "property": "one of the comma-separated entries in the `properties` parameter"
+            },
+            "group": "Properties",
+            "valueType": "*",
+            "example": "value-Sa1"
+          }
+        ]
       }
     },
     {
@@ -28031,7 +29272,8 @@
           "isSignal": false
         }
       ],
-      "dynamicPorts": null
+      "dynamicPorts": null,
+      "parameterEncoding": null
     },
     {
       "typeName": "net.noodl.GlobalStore.Set",
@@ -28136,7 +29378,8 @@
           "isSignal": false
         }
       ],
-      "dynamicPorts": null
+      "dynamicPorts": null,
+      "parameterEncoding": null
     },
     {
       "typeName": "net.noodl.GlobalStore.Subscribe",
@@ -28219,7 +29462,8 @@
           "isSignal": false
         }
       ],
-      "dynamicPorts": null
+      "dynamicPorts": null,
+      "parameterEncoding": null
     },
     {
       "typeName": "net.noodl.HTTP",
@@ -28356,6 +29600,10 @@
           "runtime-discovered"
         ],
         "description": "Input and output ports derive from node parameters: configured headers and query parameters become inputs; response mappings become outputs."
+      },
+      "parameterEncoding": {
+        "known": false,
+        "reason": "Ports are parsed from the configured headers, query parameters and response mappings in the node parameters."
       }
     },
     {
@@ -28558,7 +29806,8 @@
           "isSignal": false
         }
       ],
-      "dynamicPorts": null
+      "dynamicPorts": null,
+      "parameterEncoding": null
     },
     {
       "typeName": "net.noodl.OptimisticUpdate",
@@ -28820,7 +30069,8 @@
           "isSignal": false
         }
       ],
-      "dynamicPorts": null
+      "dynamicPorts": null,
+      "parameterEncoding": null
     },
     {
       "typeName": "net.noodl.ParentComponentObject",
@@ -28918,6 +30168,34 @@
           "runtime-discovered"
         ],
         "description": "Property ports mirror the parent component object's property schema."
+      },
+      "parameterEncoding": {
+        "known": true,
+        "seededBy": [
+          "properties"
+        ],
+        "patterns": [
+          {
+            "pattern": "changed-<property>",
+            "plug": "output",
+            "variables": {
+              "property": "one of the comma-separated entries in the `properties` parameter"
+            },
+            "group": "Changed Events",
+            "valueType": "signal",
+            "example": "changed-Sa1"
+          },
+          {
+            "pattern": "value-<property>",
+            "plug": "input/output",
+            "variables": {
+              "property": "one of the comma-separated entries in the `properties` parameter"
+            },
+            "group": "Properties",
+            "valueType": "*",
+            "example": "value-Sa1"
+          }
+        ]
       }
     },
     {
@@ -29105,7 +30383,8 @@
           "isSignal": true
         }
       ],
-      "dynamicPorts": null
+      "dynamicPorts": null,
+      "parameterEncoding": null
     },
     {
       "typeName": "net.noodl.SSE",
@@ -29531,7 +30810,8 @@
           "isSignal": false
         }
       ],
-      "dynamicPorts": null
+      "dynamicPorts": null,
+      "parameterEncoding": null
     },
     {
       "typeName": "net.noodl.SetComponentObjectProperties",
@@ -29589,6 +30869,34 @@
           "runtime-discovered"
         ],
         "description": "Property input ports follow the \"properties\" parameter."
+      },
+      "parameterEncoding": {
+        "known": true,
+        "seededBy": [
+          "properties"
+        ],
+        "patterns": [
+          {
+            "pattern": "prop-<property>",
+            "plug": "input",
+            "variables": {
+              "property": "one of the comma-separated entries in the `properties` parameter"
+            },
+            "group": "Property Values",
+            "valueType": "follows the matching `type-<property>` parameter",
+            "example": "prop-Sa1"
+          },
+          {
+            "pattern": "type-<property>",
+            "plug": "input",
+            "variables": {
+              "property": "one of the comma-separated entries in the `properties` parameter"
+            },
+            "group": "Property Types",
+            "valueType": "enum",
+            "example": "type-Sa1"
+          }
+        ]
       }
     },
     {
@@ -29677,6 +30985,34 @@
           "runtime-discovered"
         ],
         "description": "Property input ports follow the \"properties\" parameter."
+      },
+      "parameterEncoding": {
+        "known": true,
+        "seededBy": [
+          "properties"
+        ],
+        "patterns": [
+          {
+            "pattern": "prop-<property>",
+            "plug": "input",
+            "variables": {
+              "property": "one of the comma-separated entries in the `properties` parameter"
+            },
+            "group": "Property Values",
+            "valueType": "follows the matching `type-<property>` parameter",
+            "example": "prop-Sa1"
+          },
+          {
+            "pattern": "type-<property>",
+            "plug": "input",
+            "variables": {
+              "property": "one of the comma-separated entries in the `properties` parameter"
+            },
+            "group": "Property Types",
+            "valueType": "enum",
+            "example": "type-Sa1"
+          }
+        ]
       }
     },
     {
@@ -29847,7 +31183,8 @@
           "isSignal": false
         }
       ],
-      "dynamicPorts": null
+      "dynamicPorts": null,
+      "parameterEncoding": null
     },
     {
       "typeName": "net.noodl.StateHistory.Undo",
@@ -29993,7 +31330,8 @@
           "isSignal": true
         }
       ],
-      "dynamicPorts": null
+      "dynamicPorts": null,
+      "parameterEncoding": null
     },
     {
       "typeName": "net.noodl.StateSnapshot",
@@ -30138,7 +31476,8 @@
           "isSignal": false
         }
       ],
-      "dynamicPorts": null
+      "dynamicPorts": null,
+      "parameterEncoding": null
     },
     {
       "typeName": "net.noodl.StreamBuffer",
@@ -30351,7 +31690,8 @@
           "isSignal": true
         }
       ],
-      "dynamicPorts": null
+      "dynamicPorts": null,
+      "parameterEncoding": null
     },
     {
       "typeName": "net.noodl.TextAccumulator",
@@ -30582,7 +31922,8 @@
           "isSignal": true
         }
       ],
-      "dynamicPorts": null
+      "dynamicPorts": null,
+      "parameterEncoding": null
     },
     {
       "typeName": "net.noodl.WebSocket",
@@ -31032,7 +32373,8 @@
           "isSignal": false
         }
       ],
-      "dynamicPorts": null
+      "dynamicPorts": null,
+      "parameterEncoding": null
     },
     {
       "typeName": "net.noodl.animatetovalue",
@@ -31135,7 +32477,8 @@
           "isSignal": false
         }
       ],
-      "dynamicPorts": null
+      "dynamicPorts": null,
+      "parameterEncoding": null
     },
     {
       "typeName": "net.noodl.controls.button",
@@ -33012,6 +34355,12 @@
             ]
           }
         ]
+      },
+      "parameterEncoding": {
+        "known": true,
+        "patterns": [],
+        "seededBy": [],
+        "notes": "This node computes no port names. Its dynamic behaviour is visibility only: every port it can ever have is listed in `inputs`/`outputs` above, and `dynamicPorts.declaredPortGroups` says which parameter values reveal which of them."
       }
     },
     {
@@ -34770,6 +36119,12 @@
             ]
           }
         ]
+      },
+      "parameterEncoding": {
+        "known": true,
+        "patterns": [],
+        "seededBy": [],
+        "notes": "This node computes no port names. Its dynamic behaviour is visibility only: every port it can ever have is listed in `inputs`/`outputs` above, and `dynamicPorts.declaredPortGroups` says which parameter values reveal which of them."
       }
     },
     {
@@ -36845,6 +38200,12 @@
             ]
           }
         ]
+      },
+      "parameterEncoding": {
+        "known": true,
+        "patterns": [],
+        "seededBy": [],
+        "notes": "This node computes no port names. Its dynamic behaviour is visibility only: every port it can ever have is listed in `inputs`/`outputs` above, and `dynamicPorts.declaredPortGroups` says which parameter values reveal which of them."
       }
     },
     {
@@ -38600,6 +39961,12 @@
             ]
           }
         ]
+      },
+      "parameterEncoding": {
+        "known": true,
+        "patterns": [],
+        "seededBy": [],
+        "notes": "This node computes no port names. Its dynamic behaviour is visibility only: every port it can ever have is listed in `inputs`/`outputs` above, and `dynamicPorts.declaredPortGroups` says which parameter values reveal which of them."
       }
     },
     {
@@ -40675,6 +42042,12 @@
             ]
           }
         ]
+      },
+      "parameterEncoding": {
+        "known": true,
+        "patterns": [],
+        "seededBy": [],
+        "notes": "This node computes no port names. Its dynamic behaviour is visibility only: every port it can ever have is listed in `inputs`/`outputs` above, and `dynamicPorts.declaredPortGroups` says which parameter values reveal which of them."
       }
     },
     {
@@ -42876,6 +44249,12 @@
             ]
           }
         ]
+      },
+      "parameterEncoding": {
+        "known": true,
+        "patterns": [],
+        "seededBy": [],
+        "notes": "This node computes no port names. Its dynamic behaviour is visibility only: every port it can ever have is listed in `inputs`/`outputs` above, and `dynamicPorts.declaredPortGroups` says which parameter values reveal which of them."
       }
     },
     {
@@ -42956,7 +44335,8 @@
           "isSignal": true
         }
       ],
-      "dynamicPorts": null
+      "dynamicPorts": null,
+      "parameterEncoding": null
     },
     {
       "typeName": "net.noodl.user.LogIn",
@@ -43038,7 +44418,8 @@
           "isSignal": true
         }
       ],
-      "dynamicPorts": null
+      "dynamicPorts": null,
+      "parameterEncoding": null
     },
     {
       "typeName": "net.noodl.user.LogOut",
@@ -43100,7 +44481,8 @@
           "isSignal": true
         }
       ],
-      "dynamicPorts": null
+      "dynamicPorts": null,
+      "parameterEncoding": null
     },
     {
       "typeName": "net.noodl.user.RequestMagicLink",
@@ -43182,7 +44564,8 @@
           "isSignal": true
         }
       ],
-      "dynamicPorts": null
+      "dynamicPorts": null,
+      "parameterEncoding": null
     },
     {
       "typeName": "net.noodl.user.RequestPasswordReset",
@@ -43254,7 +44637,8 @@
           "isSignal": true
         }
       ],
-      "dynamicPorts": null
+      "dynamicPorts": null,
+      "parameterEncoding": null
     },
     {
       "typeName": "net.noodl.user.ResetPassword",
@@ -43346,7 +44730,8 @@
           "isSignal": true
         }
       ],
-      "dynamicPorts": null
+      "dynamicPorts": null,
+      "parameterEncoding": null
     },
     {
       "typeName": "net.noodl.user.SendEmailVerification",
@@ -43418,7 +44803,8 @@
           "isSignal": true
         }
       ],
-      "dynamicPorts": null
+      "dynamicPorts": null,
+      "parameterEncoding": null
     },
     {
       "typeName": "net.noodl.user.SetUserProperties",
@@ -43506,6 +44892,10 @@
           "runtime-discovered"
         ],
         "description": "Property inputs include one port per custom user property."
+      },
+      "parameterEncoding": {
+        "known": false,
+        "reason": "No parameter on this node carries the list its ports are generated from, so the port set could not be observed headlessly."
       }
     },
     {
@@ -43608,7 +44998,8 @@
           "isSignal": true
         }
       ],
-      "dynamicPorts": null
+      "dynamicPorts": null,
+      "parameterEncoding": null
     },
     {
       "typeName": "net.noodl.user.SignUp",
@@ -43705,6 +45096,10 @@
           "runtime-discovered"
         ],
         "description": "Property inputs include one port per custom user property."
+      },
+      "parameterEncoding": {
+        "known": false,
+        "reason": "No parameter on this node carries the list its ports are generated from, so the port set could not be observed headlessly."
       }
     },
     {
@@ -43824,6 +45219,10 @@
           "runtime-discovered"
         ],
         "description": "Property outputs include one port per custom user property in addition to the built-in ones."
+      },
+      "parameterEncoding": {
+        "known": false,
+        "reason": "No parameter on this node carries the list its ports are generated from, so the port set could not be observed headlessly."
       }
     },
     {
@@ -43906,7 +45305,8 @@
           "isSignal": true
         }
       ],
-      "dynamicPorts": null
+      "dynamicPorts": null,
+      "parameterEncoding": null
     },
     {
       "typeName": "net.noodl.visual.columns",
@@ -44272,7 +45672,8 @@
           "description": "Fires just before this element is removed from the page, while it still exists"
         }
       ],
-      "dynamicPorts": null
+      "dynamicPorts": null,
+      "parameterEncoding": null
     },
     {
       "typeName": "net.noodl.visual.icon",
@@ -45007,6 +46408,12 @@
             ]
           }
         ]
+      },
+      "parameterEncoding": {
+        "known": true,
+        "patterns": [],
+        "seededBy": [],
+        "notes": "This node computes no port names. Its dynamic behaviour is visibility only: every port it can ever have is listed in `inputs`/`outputs` above, and `dynamicPorts.declaredPortGroups` says which parameter values reveal which of them."
       }
     },
     {
@@ -45116,6 +46523,10 @@
           "runtime-discovered"
         ],
         "description": "Property input ports are derived from the configured record schema."
+      },
+      "parameterEncoding": {
+        "known": false,
+        "reason": "No parameter on this node carries the list its ports are generated from, so the port set could not be observed headlessly."
       }
     },
     {
@@ -45204,6 +46615,10 @@
           "runtime-discovered"
         ],
         "description": "Parameter ports are derived from the configured record identification."
+      },
+      "parameterEncoding": {
+        "known": false,
+        "reason": "No parameter on this node carries the list its ports are generated from, so the port set could not be observed headlessly."
       }
     },
     {
@@ -45333,6 +46748,10 @@
           "runtime-discovered"
         ],
         "description": "Filter/parameter ports are derived from the configured query definition."
+      },
+      "parameterEncoding": {
+        "known": false,
+        "reason": "No parameter on this node carries the list its ports are generated from, so the port set could not be observed headlessly."
       }
     },
     {
@@ -45480,6 +46899,10 @@
           "runtime-discovered"
         ],
         "description": "Some ports are discovered at runtime from user code, parameters or connected components, and are pushed to the editor per instance; the static port list below is incomplete for such instances."
+      },
+      "parameterEncoding": {
+        "known": false,
+        "reason": "No parameter on this node carries the list its ports are generated from, so the port set could not be observed headlessly."
       }
     },
     {
@@ -45579,6 +47002,10 @@
           "runtime-discovered"
         ],
         "description": "Property input ports are derived from the configured record schema."
+      },
+      "parameterEncoding": {
+        "known": false,
+        "reason": "No parameter on this node carries the list its ports are generated from, so the port set could not be observed headlessly."
       }
     },
     {
@@ -45644,6 +47071,35 @@
           "runtime-discovered"
         ],
         "description": "Group/aggregate output ports are generated from the aggregation definition in the node parameters."
+      },
+      "parameterEncoding": {
+        "known": true,
+        "seededBy": [
+          "aggregates"
+        ],
+        "patterns": [
+          {
+            "pattern": "collectionName",
+            "plug": "input",
+            "group": "General",
+            "valueType": "enum",
+            "example": "collectionName"
+          },
+          {
+            "pattern": "storageFetch",
+            "plug": "input",
+            "group": "Actions",
+            "valueType": "signal",
+            "example": "storageFetch"
+          },
+          {
+            "pattern": "storageFilterType",
+            "plug": "input",
+            "group": "General",
+            "valueType": "enum",
+            "example": "storageFilterType"
+          }
+        ]
       }
     },
     {
@@ -45720,6 +47176,24 @@
           "runtime-discovered"
         ],
         "description": "Output ports mirror the parameters declared for the cloud function (one output per request parameter)."
+      },
+      "parameterEncoding": {
+        "known": true,
+        "seededBy": [
+          "params"
+        ],
+        "patterns": [
+          {
+            "pattern": "pm-<param>",
+            "plug": "output",
+            "variables": {
+              "param": "one of the comma-separated entries in the `params` parameter"
+            },
+            "group": "Parameters",
+            "valueType": "*",
+            "example": "pm-Sa1"
+          }
+        ]
       }
     },
     {
@@ -45841,6 +47315,24 @@
               "errorMessage"
             ],
             "name": "conditionalports/extended"
+          }
+        ]
+      },
+      "parameterEncoding": {
+        "known": true,
+        "seededBy": [
+          "params"
+        ],
+        "patterns": [
+          {
+            "pattern": "pm-<param>",
+            "plug": "input",
+            "variables": {
+              "param": "one of the comma-separated entries in the `params` parameter"
+            },
+            "group": "Parameters",
+            "valueType": "*",
+            "example": "pm-Sa1"
           }
         ]
       }
@@ -45982,7 +47474,8 @@
           "isSignal": true
         }
       ],
-      "dynamicPorts": null
+      "dynamicPorts": null,
+      "parameterEncoding": null
     }
   ]
 }

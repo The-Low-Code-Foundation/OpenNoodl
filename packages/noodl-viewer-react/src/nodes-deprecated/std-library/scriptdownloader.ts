@@ -51,6 +51,7 @@ const ScriptDownloadDefinition: NodeDefinitionOptions = {
       type: 'boolean',
       default: true,
       displayName: 'Load on start',
+      description: 'Whether the scripts are fetched as soon as the node appears, rather than waiting for Load',
       group: 'General',
       set: function (this: ScriptDownloaderNodeInstance, value: boolean) {
         this._internal.startLoad = value;
@@ -58,6 +59,7 @@ const ScriptDownloadDefinition: NodeDefinitionOptions = {
     },
     load: {
       displayName: 'Load',
+      description: 'Fetches every script that is not already in the page',
       group: 'Actions',
       valueChangedToTrue: function (this: ScriptDownloaderNodeInstance) {
         this.scheduleUpdateScripts();
@@ -67,7 +69,8 @@ const ScriptDownloadDefinition: NodeDefinitionOptions = {
   outputs: {
     loaded: {
       type: 'signal',
-      displayName: 'Loaded'
+      displayName: 'Loaded',
+      description: 'Fires once every script has finished loading; a script that fails to load reports nothing and this never fires'
     }
   },
   numberedInputs: {

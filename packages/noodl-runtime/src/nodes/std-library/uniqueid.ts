@@ -27,6 +27,7 @@ const UniqueIdNode: NodeDefinitionOptions = {
   inputs: {
     new: {
       displayName: 'New',
+      description: 'Generates a fresh id, replacing the one on Id',
       valueChangedToTrue: function (this: UniqueIdNodeInstance) {
         const internal = this._internal;
         internal.guid = Model.guid();
@@ -42,6 +43,7 @@ const UniqueIdNode: NodeDefinitionOptions = {
     guid: {
       type: 'string',
       displayName: 'Id',
+      description: 'A globally unique identifier, generated once when the node is created and again on every New',
       getter: function (this: UniqueIdNodeInstance) {
         const internal = this._internal;
         return internal.guid;
@@ -50,7 +52,8 @@ const UniqueIdNode: NodeDefinitionOptions = {
     generated: {
       type: 'signal',
       displayName: 'Generated',
-      group: 'Events'
+      group: 'Events',
+      description: 'Fires once a new id is available on Id'
     }
   },
   prototypeExtensions: {}

@@ -40,6 +40,7 @@ const CounterNode: NodeDefinitionOptions = {
     increase: {
       group: 'Actions',
       displayName: 'Increase Count',
+      description: 'Adds one to the count, or does nothing at all when Limits Enabled and the count is already at Max Value',
       valueChangedToTrue: function (this: CounterNodeInstance) {
         if (this._internal.limitsEnabled && this._internal.currentValue >= this._internal.limitsMax) {
           return;
@@ -53,6 +54,7 @@ const CounterNode: NodeDefinitionOptions = {
     decrease: {
       group: 'Actions',
       displayName: 'Decrease Count',
+      description: 'Subtracts one from the count, or does nothing at all when Limits Enabled and the count is already at Min Value',
       valueChangedToTrue: function (this: CounterNodeInstance) {
         if (this._internal.limitsEnabled && this._internal.currentValue <= this._internal.limitsMin) {
           return;
@@ -66,6 +68,7 @@ const CounterNode: NodeDefinitionOptions = {
     reset: {
       group: 'Actions',
       displayName: 'Reset To Start',
+      description: 'Puts the count back to Start Value',
       valueChangedToTrue: function (this: CounterNodeInstance) {
         // Kept verbatim, and it is a defect: the count lives at
         // `this._internal.currentValue`, so `this.currentValue` is always `undefined`
@@ -83,6 +86,7 @@ const CounterNode: NodeDefinitionOptions = {
     startValue: {
       type: 'number',
       displayName: 'Start Value',
+      description: 'Count to begin at and to return to on Reset; setting it announces a change on Count Changed at page load',
       default: 0,
       set: function (this: CounterNodeInstance, value: unknown) {
         this._internal.startValue = Number(value);
@@ -100,6 +104,7 @@ const CounterNode: NodeDefinitionOptions = {
         name: 'number'
       },
       displayName: 'Min Value',
+      description: 'Lowest count Decrease will reach, ignored unless Limits Enabled',
       group: 'Limits',
       default: 0,
       set: function (this: CounterNodeInstance, value: unknown) {
@@ -111,6 +116,7 @@ const CounterNode: NodeDefinitionOptions = {
         name: 'number'
       },
       displayName: 'Max Value',
+      description: 'Highest count Increase will reach, ignored unless Limits Enabled',
       group: 'Limits',
       default: 0,
       set: function (this: CounterNodeInstance, value: unknown) {
@@ -122,6 +128,7 @@ const CounterNode: NodeDefinitionOptions = {
         name: 'boolean'
       },
       displayName: 'Limits Enabled',
+      description: 'Whether Min Value and Max Value bound the count; without it the count runs unbounded in both directions',
       group: 'Limits',
       default: false,
       set: function (this: CounterNodeInstance, value: unknown) {
@@ -133,13 +140,15 @@ const CounterNode: NodeDefinitionOptions = {
     currentCount: {
       displayName: 'Current Count',
       type: 'number',
+      description: 'The count as it stands',
       getter: function (this: CounterNodeInstance) {
         return this._internal.currentValue;
       }
     },
     countChanged: {
       displayName: 'Count Changed',
-      type: 'signal'
+      type: 'signal',
+      description: 'Fires after the count has moved, and also once at page load when Start Value is set'
     }
   }
 };

@@ -36,6 +36,7 @@ const EventSender: NodeDefinitionOptions = {
   inputs: {
     sendEvent: {
       displayName: 'Send',
+      description: 'Sends one event on Channel Name, after every payload input has settled',
       valueChangedToTrue: function (this: EventSenderInstance) {
         const self = this;
 
@@ -80,6 +81,7 @@ const EventSender: NodeDefinitionOptions = {
       default: '',
       group: 'Settings',
       displayName: 'Channel Name',
+      description: 'Name every Receive Event must match to hear this; nothing reports a name no receiver listens on',
       set: function (this: EventSenderInstance, value: string) {
         this._internal.channelName = value;
         this._internal.inputValues._channelName = value;
@@ -98,6 +100,7 @@ const EventSender: NodeDefinitionOptions = {
       default: 'global',
       group: 'Settings',
       displayName: 'Send to',
+      description: 'How far the event travels: the whole app, or only the receivers above, below or beside this node',
       set: function (this: EventSenderInstance, value: Propagation) {
         this._internal.propagation = value;
       }
@@ -107,6 +110,7 @@ const EventSender: NodeDefinitionOptions = {
         name: 'stringlist',
         allowEditOnly: true
       },
+      description: 'Names of the values to carry with the event; each becomes an input here and an output on every matching Receive Event',
       group: 'Payload'
     }
   },
@@ -114,12 +118,14 @@ const EventSender: NodeDefinitionOptions = {
     sent: {
       type: 'signal',
       displayName: 'Sent',
-      group: 'Events'
+      group: 'Events',
+      description: 'Fires once the event has been dispatched to every matching receiver'
     },
     failure: {
       type: 'signal',
       displayName: 'Failure',
-      group: 'Events'
+      group: 'Events',
+      description: 'Fires when the event could not be sent, which today means Channel Name was left empty'
     },
     /**
      * NDA-004 §2 — added 2026-07-30, and found by a `hasOutput` top-up rather than by a failing
@@ -135,6 +141,7 @@ const EventSender: NodeDefinitionOptions = {
       type: 'string',
       displayName: 'Error',
       group: 'Events',
+      description: 'Why the last send failed, empty when the last send succeeded',
       getter: function (this: EventSenderInstance) {
         return this._internal.lastError;
       }

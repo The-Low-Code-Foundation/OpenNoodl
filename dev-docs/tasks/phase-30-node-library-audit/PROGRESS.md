@@ -22,7 +22,7 @@
 | NDA-016 `Layout.size` | 2 | ✅ **Done** | **§0 resolved: the spec's premise was wrong.** `sizeMode` is never unset — a fresh Text node carries `contentHeight`/`100%`, read live. The real defect is a stale `parentLayout`: children bake the parent's layout in at *their* render, `renderChildren` memoises them, and the Layout setter never invalidated the memo — so a layout change never reached the children, and the first child ate the row. Fixed with `setLayout` as the single writer. §1 built too, on its own terms (an abstaining *connection* can still unset the port). 10 regression tests; 15-node-type live blast-radius check. Criterion 4's screenshot corpus is an instrument mismatch — see the spec |
 | NDA-017 Signal input freshness | 2 | 🔄 **§0 done `d6db6f39`; §1 is Richard's** | Community report, **now reproduced** — 10 rows, 4 `test.failing`, including row 4 against the **Function** node, so the reporter's workaround is measured not to be one. The spec's mechanism survived §0 (unlike NDA-008/016). **One correction**: the seed also reaches the graph with *no* `Run` at all — with the signal connected the node never evaluates at boot, yet `connectInput` pushes a confident `0` downstream from `result`'s getter, so §1's option A as written closes three of four doors. Reusable: `update()` is synchronous and `settle()` yields, so a row written with `settle()` reports this whole defect class as absent. The confirmed mechanism: with `Run` connected the value setters go passive and `Run` evaluates whatever is in scope, so an async producer that hasn't landed leaves the previous cycle's value, and `On True`/`On False` pulse downstream while `Result` stays quiet. **Twelve node families**, not one. **§1 is now the blocker and it is a decision for Richard** (never-arrived detection vs. an upstream-pending notion in the runtime vs. making the completion-signal sequencing discoverable) |
 | NDA-011 REST → HTTP | 3 | ✅ **Done — §1, §2 decided, §3 already met** | Assessment at [`NDA-011-CAPABILITY-COMPARISON.md`](./NDA-011-CAPABILITY-COMPARISON.md). **There is no resource DSL**: REST is one path template plus two `new Function` scripts, and does *neither* of the things the spec lists as what a DSL is good for. HTTP Request wins every declarative row; REST wins two, both "run some JavaScript". So it is **not** a clean subset → **deprecated, not deleted**, with the conversion path left to LIB-006. §3 needed no work (NDA-003 already made the six guards one helper; `responseHeaders` became usable via NDA-014's `object → string` cast). **Criterion 3 was six nodes, not four** — and they held the *plain* names their modern replacements show via `displayName`, so the picker offered two entries reading "Button" and the deprecated one was as likely to be picked |
-| NDA-012 Per-node audit | 3 | ⬜ **1 of 17 categories** | Variables done (4/4) as the worked example. Opt-in, resumable, stop on find-rate decline |
+| NDA-012 Per-node audit | 3 | 🔄 **8 of 17 categories, 22 of 155 nodes** | Variables (4/4) as the worked example; **Logic, Math, Events, String Manipulation, Interpolation, Javascript and Sensors added 2026-07-30**, run batched with NDA-005's C1 so each node is read once. **31 new defects in 22 nodes and no find-rate decline.** Two shapes recurred *across* categories, which the per-node reads could not have shown: **signal-before-value** (`Receive Event`, `Signal To Index` — in both, carrying data with a signal is the node's whole purpose) and **a value port whose setter emits**, announcing a change at page load once authored (`Switch`'s `State`, `Counter`'s `Start Value`). Two nodes are clean and both for a recorded reason. See the find-rate table |
 
 ## Audit coverage
 
@@ -58,6 +58,32 @@ All three gating decisions were put to Richard on 2026-07-29 and he confirmed th
 | Category | Nodes audited | Nodes with ≥1 defect | New defects |
 |---|---|---|---|
 | Variables | 4 / 4 | 4 | 3 |
+| Logic | 7 / 7 | 6 | 5 |
+| Math | 2 / 2 | 2 | 6 |
+| Events | 2 / 2 | 2 | 4 |
+| String Manipulation | 3 / 3 | 2 | 4 |
+| Interpolation | 2 / 2 | 2 | 4 |
+| Javascript | 1 / 1 | 1 | 4 |
+| Sensors | 1 / 1 | 1 | 1 |
+| **8 of 17 categories** | **22 / 155** | **20** | **31** |
+
+**No decline, over eight categories and 22 nodes.** The rate is ~1.4 new defects per node and it has
+not moved between the simplest category in the library and the small utility ones. Two nodes are clean
+(`Inverter`, `Unique Id`) and both are clean for a recorded reason: Inverter is the only node in its
+category with a correct empty-value policy, and Unique Id was fixed by NDA-004 §3 three days ago.
+
+**Two defect shapes recurred across category boundaries**, which is the first structural result this
+protocol has produced that the per-node reads could not:
+
+- **Signal before value.** `Receive Event` (`eventreceiver.ts:106`) and `Signal To Index`
+  (`signaltoindex.ts:64`) both announce and *then* update the values the announcement is about, so a
+  node acting on the pulse reads the previous event's data. In both cases carrying data alongside a
+  signal is the node's entire purpose. `Unique Id` and `On App Error` do it correctly and both were
+  written under NDA-004's rule — the ordering rule exists, and these nodes predate it.
+- **A value port whose setter emits.** `Switch`'s `State` and `Counter`'s `Start Value` both read as
+  "where this starts" and both announce a change at page load once authored. The control that
+  distinguishes them from a false alarm is that an *unset* port is silent, because a declared
+  `default` does not run its setter at construction.
 
 Three new defects in the *simplest* category in the library — `latestValue` initialising to `0`
 regardless of type, `color` being a type dead end, and the String `length` getter that will throw the
@@ -65,6 +91,53 @@ moment NDA-003 makes `null` storable. Consistent with the second-pass calibratio
 this table shows a category producing nothing new.
 
 ## Log
+
+- **2026-07-30 (NDA-012 + NDA-005: seven categories, 18 nodes, and two shapes that cross category
+  lines)** — runtime jest 1,172 → **1,181** (+9, two new corpus files), viewer **367** unchanged,
+  both typechecks clean, both catalog gates green. Port documentation **36.5% → 39.1%**; nodes at 0%
+  **101 → 83**; C1 closed outright for all seven categories.
+
+  Run as NDA-005 §0 recommends — **one read per node, verdict and port sentences written together**,
+  because opening the file is the expensive part and the sentence is nearly free once it is open. That
+  batching is the whole reason 18 nodes fit in a session.
+
+  **31 new defects in 22 audited nodes, and the rate has not declined across eight categories.** The
+  two clean nodes are clean for reasons worth recording rather than by luck: `Inverter` is the only
+  node in its category with a correct empty-value policy, and `Unique Id` was fixed by NDA-004 §3 last
+  week.
+
+  **The result that the per-node reads could not have produced is two defect shapes that cross
+  category boundaries.** *Signal before value* — `Receive Event` and `Signal To Index` both announce
+  and then update the data the announcement is about, and in both cases carrying data alongside a
+  signal is the node's entire purpose. `Unique Id` and `On App Error` get it right and both were
+  written under NDA-004 §3's rule, so this is a library that has the rule and predates it in places.
+  *A value port whose setter emits* — `Switch`'s `State` and `Counter`'s `Start Value` both read as
+  "where this starts" and both announce a change at page load once authored.
+
+  **A row in the second corpus file looked green and pinned nothing, and the control passed too.**
+  `setInputValue('amount', …)` on Event Sender is a no-op — `amount` is runtime-discovered and
+  `registerInputIfNeeded` only runs when a *connection* targets it, so the call logs "node doesn't
+  have input amount" and returns. The watcher saw `undefined` because nothing was ever sent, not
+  because of the ordering under test; and the "delivers the event" control passed anyway, because
+  `Received` fires regardless of payload. Fixed by wiring the payload over a wire and asserting the
+  receiver **holds 7 by the end of the frame** while the node acting on the pulse saw `undefined` —
+  which is what makes the row a measurement. Banked as a harness fact: **a dynamic port cannot be
+  driven by `setInputValue`, and a control that does not depend on the payload cannot detect that.**
+
+  Two findings are not defects and are the more useful half. **`Number Blend` is deprecated and is the
+  healthier of the pair** — it does Color Blend's job over a type with no format ambiguity and no dead
+  end, so deprecation does not track quality and whatever decides the deprecated dispositions should
+  not assume it does. And **`Script Downloader` is the strongest argument yet in the deprecated-five
+  question**: a node that does network I/O against author-supplied URLs and has no failure surface at
+  all is a much easier case for "yes, it still needs one" than the others.
+
+  Two more worth flagging for later work rather than fixing here: **the Events channel is a bare
+  string on both sides and only the empty-name case is caught**, but the editor already walks every
+  `Event Sender` to derive payload ports (`eventreceiver.ts:158-169`), so the wrong-name check is that
+  same walk asking a different question. And **`Number Remapper` ships in a degenerate configuration** —
+  `Input Minimum` and `Input Maximum` both default to `0`, equal endpoints take the
+  `normalizedValue = 0` branch, and every freshly dropped node reports a constant with no warning.
+  Same shape as Expression's plausible `0`.
 
 - **2026-07-30 (catalog regeneration — thirteen sessions of debt, and the node nobody could add)** —
   runtime jest 1,169 → **1,172** (+3, one new corpus file), viewer **367** unchanged, editor jasmine

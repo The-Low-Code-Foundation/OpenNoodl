@@ -1,6 +1,6 @@
 # Node Register — all 156 catalogued nodes
 
-Generated from `packages/noodl-types/src/node-catalog.json` (catalogFormatVersion 1.0.0).
+Generated from `packages/noodl-types/src/node-catalog.json` (catalogFormatVersion 1.1.0).
 Regenerate with `node scripts/node-audit/register.js` — hand-written `Verdict` cells are preserved.
 
 The smell columns are *machine-derivable*, not verdicts.
@@ -99,11 +99,11 @@ The smell columns are *machine-derivable*, not verdicts.
 | 86 | Variable _(deprecated)_ | Data | 4/5 | ⚠️ |  | 0% | safe | browser |  |
 | 87 | Variable | Data | 3/4 | ⚠️ |  | 0% | safe | browser |  |
 | 88 | WebSocket | Data | 18/18 |  |  | 31% | client-only | browser, cloud |  |
-| 89 | Receive Event | Events | 3/1 |  |  | 0% | safe | browser |  |
-| 90 | Send Event | Events | 4/3 |  |  | 0% | safe | browser | ✅ NDA-004 — `Sent`/`Failure`; empty channel name reported rather than dispatched into the void |
-| 91 | Color Blend | Interpolation | 1/1 |  |  | 0% | safe | browser |  |
-| 92 | Number Blend _(deprecated)_ | Interpolation | 2/1 |  |  | 0% | safe | browser |  |
-| 93 | Script Downloader _(deprecated)_ | Javascript | 2/1 | ⚠️ |  | 0% | client-only | browser |  |
+| 89 | Receive Event | Events | 3/1 |  |  | 100% | safe | browser |  |
+| 90 | Send Event | Events | 4/3 |  |  | 100% | safe | browser | ✅ NDA-004 — `Sent`/`Failure`; empty channel name reported rather than dispatched into the void |
+| 91 | Color Blend | Interpolation | 1/1 |  |  | 100% | safe | browser |  |
+| 92 | Number Blend _(deprecated)_ | Interpolation | 2/1 |  |  | 100% | safe | browser |  |
+| 93 | Script Downloader _(deprecated)_ | Javascript | 2/1 | ⚠️ |  | 100% | client-only | browser |  |
 | 94 | And | Logic | 0/1 |  |  | 100% | safe | browser, cloud |  |
 | 95 | Condition | Logic | 2/4 | ⚠️ |  | 100% | safe | browser, cloud |  |
 | 96 | Inverter | Logic | 1/1 |  |  | 100% | safe | browser, cloud |  |
@@ -111,8 +111,8 @@ The smell columns are *machine-derivable*, not verdicts.
 | 98 | Signal To Index _(deprecated)_ | Logic | 0/2 |  |  | 100% | safe | browser |  |
 | 99 | Switch | Logic | 4/4 | ⚠️ |  | 100% | safe | browser |  |
 | 100 | Value Changed | Logic | 1/1 |  |  | 100% | safe | browser |  |
-| 101 | Counter | Math | 7/2 | ⚠️ |  | 0% | safe | browser, cloud |  |
-| 102 | Number Remapper | Math | 6/1 |  |  | 0% | safe | browser |  |
+| 101 | Counter | Math | 7/2 | ⚠️ |  | 100% | safe | browser, cloud |  |
+| 102 | Number Remapper | Math | 6/1 |  |  | 100% | safe | browser |  |
 | 103 | Close Popup | Navigation | 4/3 |  |  | 0% | safe | browser | ✅ NDA-004 §2 — `Closed`/`Failure`/`Error`; no-popup-in-scope now reported. Targeting stays NDA-010 §2 / NDA-015 |
 | 104 | External Link | Navigation | 3/3 |  |  | 0% | safe | browser | ✅ NDA-004 — `Success`/`Failure`/`Error`; catches the popup-blocker case that made the button look dead |
 | 105 | Navigate | Navigation | 2/3 |  |  | 0% | safe | browser | ✅ NDA-004 §2 — `Failure`/`Error`. `navigate/no-target-page` and `navigate/page-not-found`; the latter replaces a bare `return` that carried `//TODO: send error to editor`. The editor adapter's health warning is the edit-time half and does not travel |
@@ -121,10 +121,10 @@ The smell columns are *machine-derivable*, not verdicts.
 | 108 | Pop Component Stack | Navigation | 3/3 |  |  | 0% | safe | browser | ✅ NDA-004 §3 — done in NDA-008 §3 (`0db1d770`), not pending: `Popped`/`Failure`/`Error` and `reportFailure` raising on the bus (`navigate-back.ts:63-80,133-138`). **This row said ⏳ until 2026-07-30** — the work landed under another task's commit and nobody came back to the register. A `void` return from `backCallback` counts as success on purpose |
 | 109 | Push Component To Stack | Navigation | 3/3 |  |  | 0% | safe | browser | ✅ NDA-004 §2 — `Failure`/`Error` for five drops: three guards in `navigateAsync` and the same three copied into `replaceAsync`. Reported via a `hasFailed` callback because the stack's `asyncQueue` outlives the caller's frame; the *node* owns the port, NDA-008 §3's decision for `back()` |
 | 110 | Show Popup | Navigation | 3/4 |  |  | 0% | safe | browser | ✅ NDA-004 §2 — every outcome it had was a *later* one, so a popup that never opened looked like one the user had not finished with. `show-popup/no-target`, and `show-popup/target-failed` for the **unhandled promise rejection**: `showPopup` is `async` and `getComponentModel` throws for an unregistered name, which the node dropped. Residual: a runtime with no popup host resolves successfully having done nothing |
-| 111 | Device Orientation _(deprecated)_ | Sensors | 0/3 |  |  | 0% | client-only | browser |  |
-| 112 | String Format | String Manipulation | 1/1 |  |  | 0% | safe | browser, cloud |  |
-| 113 | Substring | String Manipulation | 3/1 |  |  | 0% | safe | browser, cloud |  |
-| 114 | Unique Id | String Manipulation | 1/2 | ⚠️ |  | 0% | safe | browser, cloud | ✅ NDA-004 §3 — `Generated` |
+| 111 | Device Orientation _(deprecated)_ | Sensors | 0/3 |  |  | 100% | client-only | browser |  |
+| 112 | String Format | String Manipulation | 1/1 |  |  | 100% | safe | browser, cloud |  |
+| 113 | Substring | String Manipulation | 3/1 |  |  | 100% | safe | browser, cloud |  |
+| 114 | Unique Id | String Manipulation | 1/2 | ⚠️ |  | 100% | safe | browser, cloud | ✅ NDA-004 §3 — `Generated` |
 | 115 | Boolean To String | Utilities | 3/2 |  |  | 0% | safe | browser, cloud |  |
 | 116 | Date To String | Utilities | 2/3 |  |  | 0% | safe | browser, cloud |  |
 | 117 | Delay | Utilities | 5/2 | ⚠️ |  | 0% | partial | browser |  |

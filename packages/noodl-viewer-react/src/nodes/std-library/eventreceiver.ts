@@ -39,6 +39,7 @@ const EventReceiver: NodeDefinitionOptions = {
       displayName: 'Enabled',
       type: 'boolean',
       default: true,
+      description: 'Whether events on this channel are acted on; while off they are ignored and not passed to another receiver either',
       set: function (this: EventReceiverInstance, value: unknown) {
         this._internal._isEnabled = value ? true : false;
       }
@@ -53,6 +54,7 @@ const EventReceiver: NodeDefinitionOptions = {
         ]
       },
       default: 'never',
+      description: 'Whether receiving an event stops it reaching other receivers on the same channel',
       set: function (this: EventReceiverInstance, value: 'never' | 'always') {
         this._internal.consume = value;
       }
@@ -60,6 +62,7 @@ const EventReceiver: NodeDefinitionOptions = {
     channelName: {
       type: { name: 'string', identifierOf: 'EventChannelName' },
       displayName: 'Channel',
+      description: 'Name to listen on, which must match a Send Event exactly; nothing reports a name no sender uses',
       set: function (this: EventReceiverInstance, value: string) {
         if (this._internal.onEventReceivedCallback) {
           //remove old listener
@@ -78,7 +81,8 @@ const EventReceiver: NodeDefinitionOptions = {
   outputs: {
     eventReceived: {
       displayName: 'Received',
-      type: 'signal'
+      type: 'signal',
+      description: 'Fires when an event arrives, but before the payload outputs have been updated — read them on the next frame'
     }
   },
   prototypeExtensions: {

@@ -98,6 +98,7 @@ const NumberBlend: NodeDefinitionOptions = {
     blendValue: {
       type: 'number',
       displayName: 'Blend Value',
+      description: 'Position along the number list, where 1 is exactly Number 1 and 1.5 is halfway to Number 2',
       default: 0,
       set: function (this: NumberBlendNodeInstance, value: number) {
         this._internal.blendValue = value;
@@ -107,6 +108,7 @@ const NumberBlend: NodeDefinitionOptions = {
     clamp: {
       type: 'boolean',
       displayName: 'Clamp',
+      description: 'Holds Blend Value inside the list rather than extrapolating past either end',
       default: false,
       set: function (this: NumberBlendNodeInstance, value: unknown) {
         this._internal.clamp = value ? true : false;
@@ -118,6 +120,7 @@ const NumberBlend: NodeDefinitionOptions = {
     result: {
       type: 'number',
       displayName: 'Result',
+      description: 'The interpolated number',
       getter: function (this: NumberBlendNodeInstance) {
         return this._internal.result;
       }

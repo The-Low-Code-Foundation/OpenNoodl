@@ -41,6 +41,7 @@ const NumberRemapperNode: NodeDefinitionOptions = {
       },
       default: 0,
       displayName: 'Input Value',
+      description: 'Number to remap, read against Input Minimum and Input Maximum',
       set: function (this: NumberRemapperInstance, value: number) {
         this._internal._currentInputValue = value;
         this._calculateNewOutputValue();
@@ -53,6 +54,7 @@ const NumberRemapperNode: NodeDefinitionOptions = {
       },
       default: 0,
       displayName: 'Input Minimum',
+      description: 'Value of Input Value that maps to Output Minimum; leaving this equal to Input Maximum pins the result at Output Minimum',
       set: function (this: NumberRemapperInstance, value: number) {
         this._internal._minInputValue = value;
         this._calculateNewOutputValue();
@@ -65,6 +67,7 @@ const NumberRemapperNode: NodeDefinitionOptions = {
       },
       default: 0,
       displayName: 'Input Maximum',
+      description: 'Value of Input Value that maps to Output Maximum; must differ from Input Minimum or the node reports a constant',
       set: function (this: NumberRemapperInstance, value: number) {
         this._internal._maxInputValue = value;
         this._calculateNewOutputValue();
@@ -77,6 +80,7 @@ const NumberRemapperNode: NodeDefinitionOptions = {
       },
       default: 0,
       displayName: 'Output Minimum',
+      description: 'Result when Input Value is at Input Minimum',
       set: function (this: NumberRemapperInstance, value: number) {
         this._internal._minOutputValue = value;
         this._calculateNewOutputValue();
@@ -89,6 +93,7 @@ const NumberRemapperNode: NodeDefinitionOptions = {
       },
       default: 1,
       displayName: 'Output Maximum',
+      description: 'Result when Input Value is at Input Maximum',
       set: function (this: NumberRemapperInstance, value: number) {
         this._internal._maxOutputValue = value;
         this._calculateNewOutputValue();
@@ -102,6 +107,7 @@ const NumberRemapperNode: NodeDefinitionOptions = {
       },
       default: true,
       displayName: 'Clamp Output',
+      description: 'Holds the result inside the output range when Input Value falls outside the input range, instead of extrapolating',
       set: function (this: NumberRemapperInstance, value: unknown) {
         this._internal._clampOutput = value ? true : false;
         this._calculateNewOutputValue();
@@ -113,6 +119,7 @@ const NumberRemapperNode: NodeDefinitionOptions = {
       type: 'number',
       displayName: 'Remapped Value',
       group: 'Outputs',
+      description: 'Input Value rescaled from the input range onto the output range',
       getter: function (this: NumberRemapperInstance) {
         return this._internal._remappedValue;
       }

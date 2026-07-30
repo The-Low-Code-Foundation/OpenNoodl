@@ -49,6 +49,7 @@ const StringFormatDefinition: NodeDefinitionOptions = {
     format: {
       type: { name: 'string', multiline: true },
       displayName: 'Format',
+      description: 'Template text; each {placeholder} becomes an input port, and a placeholder used twice fills only the first time',
       set(this: StringFormatNodeInstance, value: string) {
         if (this._internal.format === value) return;
 
@@ -62,6 +63,7 @@ const StringFormatDefinition: NodeDefinitionOptions = {
     formatted: {
       type: 'string',
       displayName: 'Formatted',
+      description: 'Format with every placeholder substituted, and an unset placeholder replaced by nothing',
       get(this: StringFormatNodeInstance) {
         return this.formatValue();
       }

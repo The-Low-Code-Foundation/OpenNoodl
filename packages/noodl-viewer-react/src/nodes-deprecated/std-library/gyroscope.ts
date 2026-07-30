@@ -35,6 +35,7 @@ const GyroscopeNode: NodeDefinitionOptions = {
     rotationX: {
       type: 'number',
       displayName: 'Rotation X',
+      description: 'Front-to-back tilt in degrees; it never updates on iOS, which requires a permission this node does not request',
       getter: function (this: GyroscopeNodeInstance) {
         return -this._internal.beta;
       }
@@ -42,6 +43,7 @@ const GyroscopeNode: NodeDefinitionOptions = {
     rotationY: {
       type: 'number',
       displayName: 'Rotation Y',
+      description: 'Left-to-right tilt in degrees; it never updates on iOS, which requires a permission this node does not request',
       getter: function (this: GyroscopeNodeInstance) {
         return this._internal.gamma;
       }
@@ -49,6 +51,7 @@ const GyroscopeNode: NodeDefinitionOptions = {
     rotationZ: {
       type: 'number',
       displayName: 'Rotation Z',
+      description: 'Compass heading in degrees; it never updates on iOS, which requires a permission this node does not request',
       getter: function (this: GyroscopeNodeInstance) {
         return -this._internal.alpha;
       }

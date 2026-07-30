@@ -35,6 +35,7 @@ const SubStringNode: NodeDefinitionOptions = {
     start: {
       type: 'number',
       displayName: 'Start',
+      description: 'Position of the first character to keep, counting from zero; a negative value counts back from the end',
       default: 0,
       set: function (this: SubStringNodeInstance, value: number) {
         this._internal.startIndex = value;
@@ -45,6 +46,7 @@ const SubStringNode: NodeDefinitionOptions = {
     end: {
       type: 'number',
       displayName: 'End',
+      description: 'Position to stop before; leave it unset to run to the end of the string, since setting it to 0 yields nothing',
       default: 0,
       set: function (this: SubStringNodeInstance, value: number) {
         this._internal.endIndex = value;
@@ -57,6 +59,7 @@ const SubStringNode: NodeDefinitionOptions = {
         name: 'string'
       },
       displayName: 'String',
+      description: 'Text to take the substring from; it must not be cleared to null, which raises an error rather than yielding an empty result',
       default: '',
       // `value.toString()`, not `String(value)`: the two differ on `null`/`undefined`,
       // where the original throws rather than yielding `"null"`. Typed as the structural
@@ -72,6 +75,7 @@ const SubStringNode: NodeDefinitionOptions = {
     result: {
       type: 'string',
       displayName: 'Result',
+      description: 'The section of String between Start and End',
       getter: function (this: SubStringNodeInstance) {
         const internal = this._internal;
 
