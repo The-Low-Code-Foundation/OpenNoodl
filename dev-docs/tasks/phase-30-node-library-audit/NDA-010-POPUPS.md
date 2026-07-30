@@ -41,9 +41,11 @@ The target popup is a component with known inputs and outputs. **Derive the para
 from it**, the way a Component Instance already derives its ports, instead of asking the author to
 invent matching names on both sides. This is the same fix shape as NDA-009 §2.
 
-⚠️ Existing projects have hand-named `popupParam-*` ports. Whatever replaces this must keep reading
-them, or ship a migration. Check the QA fixture and the docs-repo library content for real usage
-before designing the replacement.
+Hand-named `popupParam-*` ports exist in the QA fixture and possibly in the docs-repo library
+content. **Those two are the only compatibility target** — check them for real usage, and update
+them as part of this change if the derived-port design cannot read them. Legacy user projects are
+explicitly *not* a constraint here: derive the ports properly and let the importer flag what it
+cannot convert ([`COMPATIBILITY-POLICY.md`](../../reference/COMPATIBILITY-POLICY.md)).
 
 > ### ⚠️ §1's premise is partly stale — read before building (noted 2026-07-29, NDA-010 §2)
 >

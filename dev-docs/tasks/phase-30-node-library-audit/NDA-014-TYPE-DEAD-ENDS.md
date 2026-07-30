@@ -88,9 +88,10 @@ AI authoring loop need.
   ([`node.ts:308-339`](../../../packages/noodl-runtime/src/node.ts#L308-L339)) needs a mirror on the
   way out, and be careful: that path `eval`s author input and already has a warning channel.
 
-⚠️ Adding casts changes which connections the editor *allows*. Existing projects cannot break (nothing
-is being removed) but the connection UI, the semantic validator and the AI authoring loop all read
-this table. Regenerate and re-run all three.
+⚠️ Adding casts changes which connections the editor *allows*, and the connection UI, the semantic
+validator and the AI authoring loop all read this table. Regenerate and re-run all three. Widen (or
+narrow) on type-correctness grounds — legacy projects are not a constraint, so removing a wrong cast
+is on the table too ([`COMPATIBILITY-POLICY.md`](../../reference/COMPATIBILITY-POLICY.md)).
 
 ## Success criteria
 

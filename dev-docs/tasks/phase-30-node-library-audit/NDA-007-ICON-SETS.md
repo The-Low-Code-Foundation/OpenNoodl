@@ -45,8 +45,9 @@ paths, with no single place that registers a set.
 
 Widen `Noodl.Icon` from a font triple to a tagged union. Sketch, for review:
 
-- `{ kind: 'font', class, code, codeAsClass }` — exactly today's behaviour, unchanged, so every
-  existing project keeps working.
+- `{ kind: 'font', class, code, codeAsClass }` — exactly today's behaviour, kept because it is what
+  an icon *font* genuinely needs and what the whole shipped library uses. (Not for legacy-project
+  compatibility — see [`COMPATIBILITY-POLICY.md`](../../reference/COMPATIBILITY-POLICY.md).)
 - `{ kind: 'sprite', url, symbolId }` — renders `<svg><use href="…#id"/></svg>`.
 - `{ kind: 'inline', svg }` — renders the markup directly; needed for anything that must inherit
   `currentColor` per-path or be animated.

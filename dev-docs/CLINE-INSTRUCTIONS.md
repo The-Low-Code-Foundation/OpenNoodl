@@ -37,6 +37,28 @@ The `localhost:8080` webpack dev server is internal to Electron - it's not meant
 
 ---
 
+## 🚨 CRITICAL: NodeGX Is a Fresh Start
+
+**Existing Noodl projects will not reliably import.** Decided 2026-07-30. Full policy:
+`dev-docs/reference/COMPATIBILITY-POLICY.md`.
+
+- ❌ **NEVER** halt, narrow, dual-path, or default-to-old-behaviour in order to protect projects
+  built in Noodl 2.x or pre-revival OpenNoodl
+- ❌ **NEVER** treat "would this break an existing project?" as a blocking question — it is
+  unanswerable (we have no corpus) and therefore wins every argument it is allowed into
+- ✅ **ALWAYS** ship the correct behaviour and record the break in the task notes
+- ✅ **ALWAYS** treat a pre-2026-07-30 spec clause saying "existing projects must keep working" as
+  **void**; note that you are overriding it and continue
+- ✅ **ALWAYS** keep the QA fixture and repo example projects green — and **update the fixture as
+  part of your change** when the change requires it
+
+Still non-negotiable: never silently corrupt a project you opened — fail loudly instead.
+
+**The test:** strike the words "existing projects" from your justification. If the decision no
+longer stands on its own merits, it was legacy-driven — take it again.
+
+---
+
 ## Identity
 
 You are an expert TypeScript/React developer working on OpenNoodl, a visual low-code application builder. You write clean, well-documented, tested code that follows established patterns.

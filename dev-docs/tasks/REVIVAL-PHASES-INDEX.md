@@ -20,7 +20,7 @@ These phases document the unlimited-budget revival plan. They sit alongside the 
 | [18 — Code Export v2](./phase-18-code-export-v2/) | F | EXP-001…005 | `@nodegx/core`, generators, AI translation with trace verification | After Phase 13 |
 | [19 — Cloud & Workflows](./phase-19-cloud-workflows/) | G | WF-001…007 | The backend leg of the full stack: standalone service (speaks the Parse-wire subset), workflow engine, triggers, observability, one deploy target, Parse-framework retirement (re-scoped 2026-07-24 — see [BACKEND-GAP-ASSESSMENT](./phase-19-cloud-workflows/BACKEND-GAP-ASSESSMENT.md)) | After G2-critical work; WF-006 + RUN-004 loud-failure anytime |
 | [20 — Ecosystem](./phase-20-ecosystem/) | Horizon 3 | ECO-001…005 | Collaboration, marketplace, multi-project, hosting, rebrand | 🔒 **Gated on G3** |
-| [21 — Library & Import](./phase-21-library-and-import/) | Cross-track | LIB-001…005 | Library source of truth + pipeline, prefab repair/restyle, module hygiene/expansion, import engine v2, import UX (created 2026-07-25) | Anytime — not gated; precondition for ECO-002's sharing test |
+| [21 — Library & Import](./phase-21-library-and-import/) | Cross-track | LIB-001…006 | Library source of truth + pipeline, prefab repair/restyle, module hygiene/expansion, import engine v2, import UX (created 2026-07-25); legacy-import best-effort + AI repair (LIB-006, added 2026-07-30 with the fresh-start decision) | Anytime — not gated; precondition for ECO-002's sharing test |
 | [22 — Production Backend](./phase-22-production-backend/) | H | BAK-001…009 | BaaS parity for `nodegx-backend`, tiered: realtime (SSE), email/SMTP + reset/verify, access control (CLPs/ACLs/roles/keys), backups & promotion; then OAuth/magic links, served admin dashboard, files v2; then FTS5 search, ops hardening (created 2026-07-25) | After Phase 19's WF-004; tiers are stopping points |
 | [23 — Visual Refresh](./phase-23-visual-refresh/) | I | UIX-001…009 | The NodeGX look, tiered: token re-palette (azure accent, red→danger-only, elevation) + hardcoded-hex ratchet; then control kit, editor chrome, canvas re-palette + node cards, launcher/first-run, iconography; then light theme + switching, long-tail sweep + screenshot-QA harness (created 2026-07-26; mocks in the phase folder) | Anytime — not gated; UIX-001 first; tiers are stopping points |
 | [26 — Deployment](./phase-26-deployment/) | K | DEP-001…008 | The three ways a NodeGX app reaches the world, tiered: un-freeze the baked backend endpoint + decide what is in an artifact; then a local full-stack folder that runs on one Node process and direct-upload publishing to Netlify/Cloudflare Pages with no GitHub; then deploy targets, secrets and SSH deployment to a server you own with automatic TLS; then Hetzner provisioning and a read-only deploy assistant (created 2026-07-27) | Anytime — not gated; DEP-001 and DEP-008 first; tiers are stopping points |
@@ -39,6 +39,12 @@ Not everything is equally load-bearing. In dependency order, the spine is:
 **REV-001** (build works) → **SUB-002** (no data loss) → **SUB-001** (editor uses v2) → **SUB-004** (node catalog) → **SUB-006** (semantic validator) → **AIX-002** (the authoring loop) → **Gate G2** (does anyone want this?)
 
 Everything else supports, parallels, or follows that line. If capacity is contended, protect it.
+
+## Standing decisions (bind every phase)
+
+| Decided | Decision | Where |
+|---|---|---|
+| 2026-07-30 | **NodeGX is a fresh start. Existing Noodl projects will not reliably import.** No task may be halted, narrowed, or dual-pathed to protect pre-NodeGX projects; best-effort conversion plus an honest report is the whole promise, and the remainder is the importing user's AI assistant's problem or a rebuild. Every pre-dating "existing projects must keep working" clause is void. | [`COMPATIBILITY-POLICY.md`](../reference/COMPATIBILITY-POLICY.md) |
 
 ## Decision gates
 

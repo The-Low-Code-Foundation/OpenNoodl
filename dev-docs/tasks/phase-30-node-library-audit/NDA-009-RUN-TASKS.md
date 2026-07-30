@@ -54,9 +54,10 @@ silent dead end into a solvable problem.
 
 ## §2 — Make the contract selectable
 
-Better than warning about three hardcoded names: let the author say which ports mean what, defaulting
-to `Do`/`Success`/`Failure` so existing projects are unaffected. Three enum inputs populated from the
-template's actual ports.
+Better than warning about three hardcoded names: let the author say which ports mean what. Default to
+`Do`/`Success`/`Failure` because that is the right default for a *new* task template — not to protect
+existing projects ([`COMPATIBILITY-POLICY.md`](../../reference/COMPATIBILITY-POLICY.md)). Three enum
+inputs populated from the template's actual ports.
 
 That also removes the class-D smell rather than papering over it — the contract becomes data the
 validator can check, instead of a string literal buried in the runtime.
@@ -80,6 +81,7 @@ found. Cheap, and it makes §1's warning redundant in the good case.
 ## Success criteria
 
 1. Corpus row F1 green — a mismatched template produces a warning naming the missing port.
-2. Existing projects using `Do`/`Success`/`Failure` are unaffected; verify against the QA fixture.
+2. The QA fixture is green — updating the fixture is a legitimate part of this change if the default
+   moves.
 3. A failing task reports which item failed and why.
 4. The semantic validator can check the Run Tasks contract, which it cannot today.

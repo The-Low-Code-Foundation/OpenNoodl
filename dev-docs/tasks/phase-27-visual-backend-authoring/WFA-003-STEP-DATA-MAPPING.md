@@ -133,7 +133,11 @@ Every entry point delivers:
 
 - `body` is **always** present and always the caller's own data, whether that came from a webhook
   body, a manual fire, or an admin run's `payload`. A schedule with no payload has `body: {}`.
-- **Backwards compatibility is not optional.** Workflow definitions exist in data directories today,
+- **Backwards compatibility is not optional here** — and this is *not* waived by the 2026-07-30
+  fresh-start decision ([`COMPATIBILITY-POLICY.md`](../../reference/COMPATIBILITY-POLICY.md)). That
+  policy waives compatibility with **legacy Noodl project files**; this clause is about **live data
+  in a running deployed backend**, which the policy explicitly still protects. Do not read one as
+  licence for the other. Workflow definitions exist in data directories today,
   and their functions read top-level keys. Keep the current top-level spread alongside the new shape
   for one release, with the old keys marked deprecated in the docs and in
   `GET /admin/workflow-step-kinds`'s version. A definition written against today's shapes must keep

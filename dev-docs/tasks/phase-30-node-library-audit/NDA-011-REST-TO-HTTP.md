@@ -45,16 +45,23 @@ can express it. Pay attention to the things a DSL is actually good at and a port
 
 If HTTP Request covers all of it, proceed to §2. If not, the gap list becomes the spec for §2 instead.
 
-## §2 — Deprecate, migrate, keep working
+## §2 — Delete or deprecate, on merit
 
 Assuming §1 confirms the superset:
 
-1. Mark REST deprecated and remove it from the node picker. Note the register already shows **4
-   deprecated nodes still in the picker** — do not add a fifth, and consider fixing those four here
-   since the mechanism is identical.
-2. Existing projects must keep running. Deprecated means hidden and unrecommended, not removed.
-3. Write a migration note, and check whether an automated migration is feasible — the DSL is
-   structured, so a mechanical REST → HTTP Request rewrite may be within reach. Worth a timebox.
+1. Remove REST from the node picker. The register already shows **4 deprecated nodes still in the
+   picker** — do not add a fifth, and fix those four here since the mechanism is identical.
+2. **Decide deletion on maintenance cost, not on installed base.** Per
+   [`COMPATIBILITY-POLICY.md`](../../reference/COMPATIBILITY-POLICY.md) (2026-07-30), legacy Noodl
+   projects are no longer a reason to keep a node alive — the previous instruction here ("existing
+   projects must keep running; deprecated means hidden, not removed") is **void**. If REST is a true
+   subset of HTTP Request, deleting it removes a permanently-maintained duplicate; a project that
+   used it fails loudly at load and the importer flags the node. That is the preferred outcome.
+   Keeping it needs its own argument.
+3. Attempt the mechanical REST → HTTP Request rewrite — the DSL is structured, so it is plausibly
+   within reach, and it is exactly the kind of conversion the legacy importer
+   ([LIB-006](../phase-21-library-and-import/LIB-006-LEGACY-IMPORT-ASSIST.md)) should own. Timebox
+   it; where it fails, emit a report entry rather than a shim.
 
 ## §3 — Clean up HTTP Request while you are here
 
@@ -78,7 +85,7 @@ nothing (see [NDA-014](./NDA-014-TYPE-DEAD-ENDS.md)). Worth confirming it is usa
 ## Success criteria
 
 1. The §1 comparison table exists and is committed, whatever it concludes.
-2. If the superset holds: REST is deprecated, out of the picker, existing projects unaffected, and a
-   migration note exists.
+2. If the superset holds: REST is out of the picker, its deletion-vs-deprecation call is recorded
+   with a maintenance-cost reason, and a conversion path (mechanical or reported) exists.
 3. The four already-deprecated-but-visible nodes are out of the picker too.
 4. `httpnode.ts` has one empty-value helper, not six inline guards.

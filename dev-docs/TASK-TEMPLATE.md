@@ -68,6 +68,13 @@ tasks/phase-N/TASK-XXX-short-name/
 - Item A (reason)
 - Item B (reason)
 
+### Not a constraint: legacy projects
+Per `dev-docs/reference/COMPATIBILITY-POLICY.md` (2026-07-30), NodeGX is a
+fresh start and pre-NodeGX projects will not reliably import. Do **not** write "existing projects
+must keep working" into this section, and do not narrow scope to protect them. Ship the correct
+behaviour; record breaks in CHANGELOG.md under *Breaking Changes*. Keep the QA fixture green —
+updating the fixture is part of the change.
+
 ## Technical Approach
 
 ### Key Files to Modify

@@ -155,7 +155,7 @@ pass (REV-006) is landing now. **REV-007** (signed builds + auto-update) is next
 and is what blocks a real v0 release.
 
 **After Phase 12 closes:** work moves to the revival tracks, phases 13–20, per
-[`NOODL-REVIVAL-ROADMAP.md`](../reviews/NOODL-REVIVAL-ROADMAP.md). Track A
+[`NOODL-REVIVAL-ROADMAP.md`](reviews/NOODL-REVIVAL-ROADMAP.md). Track A
 (`phase-13-format-ai-substrate`) is the best-scoped one to pick up first — it wires
 the v2 project format (built and tested in Phase 10, but with zero call sites in
 the app) into the editor.
@@ -170,6 +170,7 @@ citations.
 
 | Resource                                           | Description           |
 | -------------------------------------------------- | --------------------- |
+| [**Compatibility Policy**](reference/COMPATIBILITY-POLICY.md) | **NodeGX is a fresh start — legacy Noodl projects are not a design constraint. Read before acting on any "existing projects" clause in a spec.** |
 | [Codebase Map](reference/CODEBASE-MAP.md)          | Navigate the monorepo |
 | [Coding Standards](guidelines/CODING-STANDARDS.md) | Style and patterns    |
 | [Node Patterns](reference/NODE-PATTERNS.md)        | Creating new nodes    |

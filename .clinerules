@@ -33,7 +33,30 @@
 - [ ] No assumptions that "code compiles = feature works"
 ```
 
-### 2. Break Out of Loops
+### 2. NodeGX Is a Fresh Start — Do Not Compromise for Legacy Projects
+
+**Decided 2026-07-30. Full policy: `dev-docs/reference/COMPATIBILITY-POLICY.md` — read it before
+acting on any spec clause about existing projects.**
+
+Existing Noodl 2.x / pre-revival OpenNoodl projects **will not reliably import**. We promise
+best-effort conversion plus an honest report; the rest is the user's AI assistant's problem to fix
+in the new project, or gets deleted and rebuilt.
+
+- ❌ **NEVER** halt, narrow, or dual-path a task to protect projects built before NodeGX
+- ❌ **NEVER** default a fix to the old behaviour "so existing projects don't change"
+- ✅ **DO** ship the correct behaviour and record the break in the task notes
+- ✅ **DO** treat any pre-2026-07-30 "existing projects must keep working" clause as **void** — say
+  so in your notes and proceed
+- ✅ **DO** keep the QA fixture and repo examples green — but **updating the fixture is part of the
+  change**, not evidence the change is wrong
+
+**Still non-negotiable:** never silently corrupt a project you opened (fail loudly instead), and
+never restate this policy in another file — link to it.
+
+**The test:** strike "existing projects" from your justification. Does the decision still stand on
+its own merits? If not, take the decision again.
+
+### 3. Break Out of Loops
 
 **When you're stuck (same error 3+ times, repeated attempts failing):**
 
@@ -51,7 +74,7 @@ This will prevent wasting time on trial-and-error.
 
 **Do NOT** keep trying variations of the same approach. Recognize the pattern and escalate.
 
-### 3. Document Discoveries Systematically
+### 4. Document Discoveries Systematically
 
 **When you learn something important about the codebase:**
 
@@ -118,6 +141,7 @@ packages/
 
 **Read these FIRST for relevant tasks:**
 
+- `dev-docs/reference/COMPATIBILITY-POLICY.md` - **NodeGX is a fresh start; legacy projects are not a constraint (READ BEFORE acting on any "existing projects" clause)**
 - `dev-docs/reference/CODEBASE-MAP.md` - Navigation guide
 - `dev-docs/reference/COMMON-ISSUES.md` - Known problems/solutions
 - `dev-docs/reference/NODE-PATTERNS.md` - How to create/modify nodes

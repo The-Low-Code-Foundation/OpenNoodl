@@ -104,6 +104,26 @@ hand-written `Verdict` column. Regenerate with `node scripts/node-audit/register
 verdicts across runs, so it stays accurate as the library changes. The register is the phase's
 denominator: NDA-012 is done when every row has a verdict.
 
+## Legacy projects are not a constraint on this phase
+
+Standing decision, 2026-07-30 — [`COMPATIBILITY-POLICY.md`](../../reference/COMPATIBILITY-POLICY.md):
+**NodeGX is a fresh start and existing Noodl projects will not reliably import.** This phase is
+where the old constraint hurt most, because fixing a contract *is* a behaviour change by
+definition — and half the specs here were written to avoid exactly that.
+
+So, for every NDA task:
+
+- Ship the correct behaviour. Do not default a contract fix to the wrong-but-familiar branch, and do
+  not dual-path it, in order to leave old projects untouched.
+- Deleting a node, a port, or a deprecated entry is on the table. Argue it on maintenance cost.
+- The **QA fixture is the compatibility target that remains** — and it is ours to edit. "Verify
+  against the QA fixture" in these specs means *keep it green*, which includes updating it when a
+  contract fix legitimately changes what the fixture should assert. Say so in the commit.
+- Record every behaviour change in the task notes. Speed, not silence.
+
+Clauses in NDA-007/009/010/011/014 have been amended in place; any remaining "existing projects are
+unaffected" wording elsewhere in this phase predates the decision and is void.
+
 ## What this phase is not
 
 It is not a rewrite of the node library, and it is not a redesign of the visual nodes. It is three

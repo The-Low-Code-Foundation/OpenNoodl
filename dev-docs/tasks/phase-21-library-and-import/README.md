@@ -2,7 +2,7 @@
 
 **Phase:** 21
 **Created:** 2026-07-25, from a code-level investigation of the prefab/module library and the import pipeline
-**Status:** 🔴 Not started — 0 / 5 tasks
+**Status:** 🟡 In progress — 6 tasks (LIB-006 added 2026-07-30). See [`PROGRESS.md`](./PROGRESS.md), which is authoritative; this line is not.
 **Shape:** Two sprints, ~2–3 weeks each
 
 ## What this phase is
@@ -37,6 +37,7 @@ This is **not** the marketplace (ECO-002, gated on Gate G3 and community critica
 | A | [LIB-003](./LIB-003-MODULE-OVERHAUL.md) | Module audit, hygiene & expansion | 1–1.5 wks | 🟠 Opus 4.8 |
 | B | [LIB-004](./LIB-004-IMPORT-ENGINE.md) | Import engine v2 | 1–1.5 wks | 🟠 Opus 4.8 |
 | B | [LIB-005](./LIB-005-IMPORT-UX.md) | Import experience overhaul | 1.5–2 wks | 🔵 Fable 5 |
+| B | [LIB-006](./LIB-006-LEGACY-IMPORT-ASSIST.md) | Legacy project import — best effort, honest report, AI repair | 1–1.5 wks | 🔵 Fable 5 |
 
 **Anytime fixes** (independent, land immediately, don't wait for their parent task): the import-from-URL untick bug (LIB-004 step 0), the `startsWith` loader bug (LIB-003 step 0), loud fetch failure in the library tabs (LIB-001 step 0).
 
@@ -47,6 +48,23 @@ This is **not** the marketplace (ECO-002, gated on Gate G3 and community critica
 **Sprint B — make bringing things in trustworthy.** LIB-004 (engine) before LIB-005 (experience). LIB-005 consumes the engine's dry-run/diff API; building the UI first would mean building it twice.
 
 Order across sprints matters less than it looks: Sprint B touches only this monorepo and can start while Sprint A's content work is still in review. The only hard edge is LIB-002/003 → LIB-001 (publishing) and LIB-005 → LIB-004 (dry-run API).
+
+## Legacy projects: best effort, and that is the whole promise
+
+Standing decision, 2026-07-30 — [`COMPATIBILITY-POLICY.md`](../../reference/COMPATIBILITY-POLICY.md):
+**NodeGX is a fresh start and existing Noodl projects will not reliably import.** This phase owns
+the import machinery, so it owns the honest half of that promise — hence **LIB-006**, added the same
+day.
+
+What it means here:
+
+- Import fidelity for *legacy* projects is a best-effort target, never a gate. No NodeGX improvement
+  is blocked, and no legacy code path is maintained, to raise it.
+- The five in-app flows (prefab, module, project, URL, export) move NodeGX-shaped content and are
+  unaffected by this — they still have to be correct.
+- What the importer cannot convert becomes a **visible placeholder plus a report entry**, addressed
+  to the user's AI assistant. Not a shim, and never a silent drop.
+- "Delete and rebuild it in NodeGX" is a legitimate recommendation for the importer to make.
 
 ## What this phase deliberately does not do
 
